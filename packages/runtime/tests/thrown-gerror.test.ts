@@ -1,7 +1,8 @@
 import type { Cancellable, Initable } from "@gtkx/gi/gio";
 import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
 import { Object as GObject } from "@gtkx/gi/gobject";
-import { registerClass, t } from "@gtkx/runtime";
+import { getHandle, registerClass, t } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 import { createTypeNameFactory } from "./helpers/unique-name.js";
 
@@ -9,28 +10,29 @@ type InitImpl = (cancellable: Cancellable | null) => boolean;
 
 const GLIB = "libglib-2.0.so.0";
 const uniqueName = createTypeNameFactory("_");
-const pointer = t.biguint64;
-const parseHookT = t.callback([pointer, pointer, pointer], t.boolean, { canThrow: true });
-const newOptionContext = t.fn(GLIB, "g_option_context_new", { args: [{ type: t.string() }], returns: pointer });
-const freeOptionContext = t.fn(GLIB, "g_option_context_free", { args: [{ type: pointer }], returns: t.void });
+const contextT = t.struct("borrowed", { wrapperClass: GLib.OptionContext });
+const groupT = t.struct("borrowed", { wrapperClass: GLib.OptionGroup });
+const parseHookT = t.callback([contextT, groupT, t.struct("borrowed")], t.boolean, { canThrow: true });
+const newOptionContext = t.fn(GLIB, "g_option_context_new", { args: [{ type: t.string() }], returns: contextT });
+const freeOptionContext = t.fn(GLIB, "g_option_context_free", { args: [{ type: contextT }], returns: t.void });
 
 const newOptionGroup = t.fn(GLIB, "g_option_group_new", {
-    args: [{ type: t.string() }, { type: t.string() }, { type: t.string() }, { type: pointer }, { type: pointer }],
-    returns: pointer,
+    args: [{ type: t.string() }, { type: t.string() }, { type: t.string() }, { type: t.buffer }, { type: t.buffer }],
+    returns: groupT,
 });
 
 const setMainGroup = t.fn(GLIB, "g_option_context_set_main_group", {
-    args: [{ type: pointer }, { type: pointer }],
+    args: [{ type: contextT }, { type: groupT }],
     returns: t.void,
 });
 
 const setParseHooks = t.fn(GLIB, "g_option_group_set_parse_hooks", {
-    args: [{ type: pointer }, { type: parseHookT }, { type: parseHookT }],
+    args: [{ type: groupT }, { type: parseHookT }, { type: parseHookT }],
     returns: t.void,
 });
 
 const parseOptionContext = t.fn(GLIB, "g_option_context_parse", {
-    args: [{ type: pointer }, { type: pointer }, { type: pointer }],
+    args: [{ type: contextT }, { type: t.buffer }, { type: t.buffer }],
     returns: t.boolean,
     canThrow: true,
 });
@@ -48,10 +50,10 @@ const createInitable = (willInit: InitImpl): Initable => {
 };
 
 const parseWithPreParseHook = (willPreParse: () => boolean): unknown => {
-    const context = newOptionContext("gtkx-thrown-gerror-test");
+    const context = getHandle(newOptionContext("gtkx-thrown-gerror-test") as GLib.OptionContext);
 
     try {
-        const group = newOptionGroup("main", "", "", null, null);
+        const group = getHandle(newOptionGroup("main", "", "", null, null) as GLib.OptionGroup);
         setParseHooks(group, willPreParse, null);
         setMainGroup(context, group);
 

@@ -68,14 +68,18 @@ impl Encoder for FundamentalCodec {
         Ok(())
     }
 
-    fn transfer_release(&self) -> Option<ffi::ReleaseKind> {
+    fn owned_release(&self) -> anyhow::Result<Option<ffi::ReleaseKind>> {
         if self.ownership.is_borrowed() {
-            return None;
+            return Ok(None);
         }
-        let Ok((Some(_), Some(unref_fn))) = self.lookup_fns() else {
-            return None;
-        };
-        Some(ffi::ReleaseKind::Fundamental(unref_fn))
+        Ok(self.lookup_fns()?.1.map(ffi::ReleaseKind::Function))
+    }
+
+    fn transfer_release(&self) -> anyhow::Result<Option<ffi::ReleaseKind>> {
+        if self.ownership.is_borrowed() || self.lookup_fns()?.0.is_none() {
+            return Ok(None);
+        }
+        self.owned_release()
     }
 
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
@@ -139,7 +143,7 @@ impl PtrWriter for FundamentalCodec {
                 "Fundamental field write",
                 |handle| Encoder::check_instance(self, handle),
                 |new_ptr| unsafe { ref_fn.map_or(new_ptr, |f| f(new_ptr)) },
-                ref_fn.and(unref_fn).map(ffi::ReleaseKind::Fundamental),
+                ref_fn.and(unref_fn).map(ffi::ReleaseKind::Function),
             );
         }
         swap_owned_slot(

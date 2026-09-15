@@ -1,5 +1,6 @@
 import {
     alloc,
+    allocField,
     bind,
     bindField,
     call,
@@ -12,12 +13,35 @@ import {
 } from "@gtkx/native";
 import { expect, test } from "vitest";
 
+const encoder = new TextEncoder();
+
 const GLIB = "libglib-2.0.so.0";
 const INT32 = bindField({ kind: "int32" });
 const FLOAT64 = bindField({ kind: "float64" });
-const STRING = bindField({ kind: "string", ownership: "borrowed" });
-const BOOLEAN = bindField({ kind: "boolean" });
-const UNICHAR = bindField({ kind: "unichar" });
+const BYTES = bindField({ kind: "bytes", ownership: "borrowed" });
+const BOOLEAN_STORAGE = bindField({ kind: "int32" });
+const UNICHAR_STORAGE = bindField({ kind: "uint32" });
+
+test.each([
+    { descriptor: { kind: "int8" } as const, value: -128, zero: 0 },
+    { descriptor: { kind: "biguint64" } as const, value: 18_446_744_073_709_551_615n, zero: 0n },
+    { descriptor: { kind: "float64" } as const, value: 1.25, zero: 0 },
+])("a $descriptor.kind field allocates zeroed storage of its ABI width", ({ descriptor, value, zero }) => {
+    const field = bindField(descriptor);
+    const storage = allocField(field);
+
+    expect(readField(field, storage, 0)).toBe(zero);
+    writeField(field, storage, 0, value);
+    expect(readField(field, storage, 0)).toBe(value);
+    expect(() => readField(field, storage, 1)).toThrow();
+    expect(() => writeField(field, storage, 1, value)).toThrow();
+});
+
+test("a field without a declared storage size cannot allocate memory", () => {
+    const field = bindField({ kind: "struct", ownership: "borrowed", isInline: true });
+
+    expect(() => allocField(field)).toThrow();
+});
 
 test("a bound numeric field reads back the value written at the same offset", () => {
     const block = alloc(16);
@@ -61,21 +85,21 @@ test("a bound float field round-trips a fractional value", () => {
     expect(readField(FLOAT64, block, 8)).toBe(0.5);
 });
 
-test("a bound borrowed string field reads back the string written at the same offset", () => {
+test("a bound borrowed byte field reads back the bytes written at the same offset", () => {
     const block = alloc(16);
 
-    writeField(STRING, block, 0, "hello");
+    writeField(BYTES, block, 0, encoder.encode("hello"));
 
-    expect(readField(STRING, block, 0)).toBe("hello");
+    expect(readField(BYTES, block, 0)).toEqual(encoder.encode("hello"));
 });
 
-test("a bound boolean field round-trips both truth values", () => {
+test("a bound gboolean storage field round-trips both integer values", () => {
     const block = alloc(16);
 
-    writeField(BOOLEAN, block, 0, true);
-    writeField(BOOLEAN, block, 4, false);
+    writeField(BOOLEAN_STORAGE, block, 0, 1);
+    writeField(BOOLEAN_STORAGE, block, 4, 0);
 
-    expect([readField(BOOLEAN, block, 0), readField(BOOLEAN, block, 4)]).toEqual([true, false]);
+    expect([readField(BOOLEAN_STORAGE, block, 0), readField(BOOLEAN_STORAGE, block, 4)]).toEqual([1, 0]);
 });
 
 test("a bound bigint field round-trips a value beyond the exact integer range", () => {
@@ -88,14 +112,14 @@ test("a bound bigint field round-trips a value beyond the exact integer range", 
 });
 
 test("bound descriptors read the fields of a struct a library laid out", () => {
-    const stringNew = bind(GLIB, "g_string_new", [{ kind: "string", ownership: "borrowed" }], {
+    const stringNew = bind(GLIB, "g_string_new", [{ kind: "bytes", ownership: "borrowed" }], {
         kind: "struct",
         ownership: "borrowed",
     });
     const uint64 = bindField({ kind: "uint64" });
-    const gstring = call(stringNew, ["hello"]) as ExternalObject<Handle>;
+    const gstring = call(stringNew, [encoder.encode("hello")]).value as ExternalObject<Handle>;
 
-    expect([readField(STRING, gstring, 0), readField(uint64, gstring, 8)]).toEqual(["hello", 5]);
+    expect([readField(BYTES, gstring, 0), readField(uint64, gstring, 8)]).toEqual([encoder.encode("hello"), 5]);
 });
 
 test("a freshly allocated block reads as zero at every offset", () => {
@@ -104,45 +128,45 @@ test("a freshly allocated block reads as zero at every offset", () => {
     expect([readField(INT32, block, 0), readField(INT32, block, 4), readField(FLOAT64, block, 8)]).toEqual([0, 0, 0]);
 });
 
-test("an unwritten string field reads as null", () => {
+test("an unwritten byte field reads as null", () => {
     const block = alloc(16);
 
-    expect(readField(STRING, block, 0)).toBeNull();
+    expect(readField(BYTES, block, 0)).toBeNull();
 });
 
-test("an unwritten boolean field reads as false", () => {
+test("an unwritten gboolean storage field reads as zero", () => {
     const block = alloc(16);
 
-    expect(readField(BOOLEAN, block, 0)).toBe(false);
+    expect(readField(BOOLEAN_STORAGE, block, 0)).toBe(0);
 });
 
-test("overwriting a string field replaces what the offset holds", () => {
+test("overwriting a byte field replaces what the offset holds", () => {
     const block = alloc(16);
 
-    writeField(STRING, block, 0, "first");
-    writeField(STRING, block, 0, "second");
+    writeField(BYTES, block, 0, encoder.encode("first"));
+    writeField(BYTES, block, 0, encoder.encode("second"));
 
-    expect(readField(STRING, block, 0)).toBe("second");
+    expect(readField(BYTES, block, 0)).toEqual(encoder.encode("second"));
 });
 
-test("a string field owning its storage keeps the last of several writes", () => {
+test("a byte field owning its storage keeps the last of several writes", () => {
     const block = alloc(16);
-    const owned = bindField({ kind: "string", hasOwnedStorage: true, ownership: "full" });
+    const owned = bindField({ kind: "bytes", hasOwnedStorage: true, ownership: "full" });
 
-    writeField(owned, block, 0, "first");
-    writeField(owned, block, 0, "second");
-    writeField(owned, block, 0, "third");
+    writeField(owned, block, 0, encoder.encode("first"));
+    writeField(owned, block, 0, encoder.encode("second"));
+    writeField(owned, block, 0, encoder.encode("third"));
 
-    expect(readField(owned, block, 0)).toBe("third");
+    expect(readField(owned, block, 0)).toEqual(encoder.encode("third"));
 });
 
-test("writing null into a string field clears it back to null", () => {
+test("writing null into a byte field clears it back to null", () => {
     const block = alloc(16);
 
-    writeField(STRING, block, 0, "hello");
-    writeField(STRING, block, 0, null);
+    writeField(BYTES, block, 0, encoder.encode("hello"));
+    writeField(BYTES, block, 0, null);
 
-    expect(readField(STRING, block, 0)).toBeNull();
+    expect(readField(BYTES, block, 0)).toBeNull();
 });
 
 test("writing null into a numeric field stores zero", () => {
@@ -173,12 +197,12 @@ test("a byte field reads the low byte of the integer written over it", () => {
     expect(readField(uint8, block, 0)).toBe(0x04);
 });
 
-test("a unichar field decodes the codepoint an integer write stored", () => {
+test("a gunichar storage field reads the written codepoint", () => {
     const block = alloc(16);
 
     writeField(INT32, block, 0, 0x1_F6_00);
 
-    expect(readField(UNICHAR, block, 0)).toBe("\u{1F600}");
+    expect(readField(UNICHAR_STORAGE, block, 0)).toBe(0x1_F6_00);
 });
 
 test("an inline struct field decodes to a handle aliasing the owner's memory", () => {
@@ -186,20 +210,20 @@ test("an inline struct field decodes to a handle aliasing the owner's memory", (
     const uint8 = bindField({ kind: "uint8" });
     const inlineStruct = bindField({ kind: "struct", isInline: true, ownership: "borrowed" });
     const strdup = bind(GLIB, "g_strdup", [{ kind: "struct", ownership: "borrowed" }], {
-        kind: "string",
+        kind: "bytes",
         ownership: "full",
     });
 
     writeField(uint8, block, 8, 0x68);
     writeField(uint8, block, 9, 0x69);
 
-    expect(call(strdup, [readField(inlineStruct, block, 8)])).toBe("hi");
+    expect(call(strdup, [readField(inlineStruct, block, 8)]).value).toEqual(encoder.encode("hi"));
 });
 
-test("writing a unichar field throws", () => {
+test("writing a string into unsigned storage throws", () => {
     const block = alloc(16);
 
-    expect(() => writeField(UNICHAR, block, 0, "a")).toThrow();
+    expect(() => writeField(UNICHAR_STORAGE, block, 0, "a")).toThrow();
 });
 
 test("writing a string into a numeric field throws", () => {
@@ -208,10 +232,10 @@ test("writing a string into a numeric field throws", () => {
     expect(() => writeField(INT32, block, 0, "nope")).toThrow();
 });
 
-test("writing a number into a boolean field throws", () => {
+test("writing a boolean into integer storage throws", () => {
     const block = alloc(16);
 
-    expect(() => writeField(BOOLEAN, block, 0, 1)).toThrow();
+    expect(() => writeField(BOOLEAN_STORAGE, block, 0, true)).toThrow();
 });
 
 test("writing an out-of-range number into a numeric field throws", () => {
@@ -256,8 +280,8 @@ test("writing through a handle over an empty allocation throws", () => {
     expect(() => writeField(INT32, block, 0, 1)).toThrow();
 });
 
-test("binding a string descriptor with a negative length throws", () => {
-    expect(() => bindField({ kind: "string", length: -1, ownership: "borrowed" })).toThrow();
+test("binding a byte descriptor with a negative length throws", () => {
+    expect(() => bindField({ kind: "bytes", length: -1, ownership: "borrowed" })).toThrow();
 });
 
 test("binding a ref descriptor around a kind it cannot wrap throws", () => {

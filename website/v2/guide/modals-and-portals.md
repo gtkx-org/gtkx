@@ -5,19 +5,11 @@ description: "Rendering surfaces that live outside the widget tree: portals, win
 
 # Modals and Portals
 
-Portals let a component render children into a container other than its JSX parent, while it keeps owning those children's state, props, and lifetime.
+GTKX windows and Adwaita dialogs handle their own native placement. Use `createPortal` for other objects that belong outside their surrounding widget container.
 
 ## createPortal
 
-`createPortal` from `@gtkx/react` has the same signature as its React DOM namesake, with native GObject containers in place of DOM nodes:
-
-```ts
-createPortal(children: ReactNode, container: GObject.Object | RootElement, key?: string): ReactPortal
-```
-
-The container is any live `GObject.Object`, or `rootElement` (also exported from `@gtkx/react`), the marker that mounts children at the top level with no widget parent.
-
-The container has to exist before the portal can target it, so capture it in state rather than a plain ref, which makes the portal render as soon as the widget is created:
+`createPortal` from `@gtkx/react` renders into a native object whose child-placement rules accept the content. Capture that target with a state callback ref:
 
 ```tsx
 import type * as Gtk from "@gtkx/gi/gtk";
@@ -36,11 +28,13 @@ const StatusArea = () => {
 };
 ```
 
-Portal children stay in the *React* tree of the component that rendered them, so context, state, and effects flow from where the portal is written, not from where the widgets land.
+Pass `rootElement` from `@gtkx/react` when the object needs React ownership without a native parent. The [async operations example](/v2/guide/async-operations#awaiting-async-operations) uses this for a file dialog.
+
+See the [`createPortal` reference](/v2/reference/@gtkx/react/index/variables/createPortal) for GTKX's arguments, and React's [portal documentation](https://react.dev/reference/react-dom/createPortal) for context and component lifetime.
 
 ## Windows
 
-Windows portal themselves. A window element mounts at the top level wherever it sits in the JSX, so opening one is a conditional render:
+Window elements present themselves on mount and destroy the native window on unmount. Render a secondary window conditionally:
 
 ```tsx
 import { AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
@@ -53,13 +47,15 @@ const MirrorWindow = ({ open }: { open: boolean }) =>
     ) : null;
 ```
 
-A window element presents itself on mount and destroys the window on unmount. `AdwApplicationWindow` registers with the application ancestor it finds in the React tree, normally `AdwApplication`, and throws when there is none. `AdwToolbarView` and `AdwHeaderBar` give the secondary window the same GNOME window structure as the main one. Relationships between top-level windows are expressed with `transientFor`, which the underlying `GtkWindow` defaults to the nearest window ancestor in the React tree; pass it explicitly to point at another window, or pass `null` for a fully independent one.
+`AdwApplicationWindow` registers with its nearest application element, normally `AdwApplication`; it requires that ancestor. To associate it with another window, pass `transientFor` explicitly.
+
+Plain `AdwWindow` and `GtkWindow` elements default `transientFor` to their nearest window ancestor. An explicit value selects another parent; `null` keeps the window independent.
 
 Wire `onCloseRequest` to clear the state that mounted a secondary window, so React stays in charge of when it goes away.
 
 ## Dialogs
 
-Mounting an `AdwDialog`, or any element derived from it, presents the dialog; unmounting it closes the dialog. These elements come from `@gtkx/jsx/adw`, which exists once `Adw-1` is bound — a scaffolded project binds it from the start.
+Adwaita dialog elements present on mount and close on unmount. Handle `onClosed` by clearing the state that rendered the dialog:
 
 ```tsx
 import { AdwDialog } from "@gtkx/jsx/adw";
@@ -72,11 +68,11 @@ const Notice = ({ onClose }: { onClose: () => void }) => (
 );
 ```
 
-Reach for `AdwDialog` when a plain surface is enough, and for a more specific element such as `AdwAlertDialog` or `AdwPreferencesDialog` when you want its behavior. Each carries the same contract and takes its own props and children directly. A plain `AdwDialog`'s children fill its whole surface, while a specialized one places them where its own layout expects: `AdwPreferencesDialog` takes `AdwPreferencesPage` children.
+Specialized dialogs keep the same lifecycle. Place their content in the supported JSX slots; for example, `AdwPreferencesDialog` takes `AdwPreferencesPage` children.
 
 Set `canClose={false}` when the dialog is not ready to go away, and handle `onCloseAttempt` to decide what happens instead. Unmounting still closes the dialog unconditionally.
 
-`AdwAlertDialog` is the message-and-buttons modal. Its `heading` and `body` props are plain strings, it takes a declarative `responses` array, and the chosen button's `id` arrives on `onResponse`:
+`AdwAlertDialog` takes plain-text `heading` and `body` values and a declarative `responses` array. Its `onResponse` prop receives the selected response ID:
 
 ```tsx
 import * as Adw from "@gtkx/gi/adw";
@@ -100,11 +96,11 @@ const RenameDialog = ({ onResponse }: { onResponse: (id: string) => void }) => (
 );
 ```
 
-Children fill the dialog's extra slot, below the heading and body and above the response buttons. `extraChild` is not part of the element's prop surface, so children are the only way to fill it.
+Place extra content between the heading and response buttons as children, as shown by the entry above.
 
 ## Finding the parent window
 
-`useParentWindow()` from `@gtkx/react` returns the `Gtk.Window` provided by the nearest window ancestor, or `null` when there is none. It resolves through the React tree, so a dialog portaled out of a window's subtree still finds that window.
+`useParentWindow()` from `@gtkx/react` returns the nearest window once its native instance exists. It returns `null` while the instance is unavailable or when there is no window ancestor. The lookup follows component ancestry through portals, so portaled dialogs can still use their originating window.
 
 The tutorial builds these surfaces in [Mounting dialogs](/v2/tutorial/actions-menus-shortcuts#mounting-dialogs), [Confirming a permanent delete](/v2/tutorial/trash-and-toasts#confirming-a-permanent-delete), and [A dialog that is a form](/v2/tutorial/trash-and-toasts#a-dialog-that-is-a-form). The exported API is in the [@gtkx/react reference](/v2/reference/@gtkx/react/).
 

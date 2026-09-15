@@ -14,17 +14,20 @@ type Context = TSESLint.RuleContext<MessageIds, Options>;
 
 type Subject = {
     doc: ts.JSDoc | undefined;
+    isOverloadFollower: boolean;
     isPublic: boolean;
     name: string;
-    node: ts.Node;
 };
 
 const DOCUMENTABLE = [
+    AST_NODE_TYPES.AccessorProperty,
     AST_NODE_TYPES.ClassDeclaration,
     AST_NODE_TYPES.FunctionDeclaration,
     AST_NODE_TYPES.MethodDefinition,
     AST_NODE_TYPES.PropertyDefinition,
     AST_NODE_TYPES.TSDeclareFunction,
+    AST_NODE_TYPES.TSCallSignatureDeclaration,
+    AST_NODE_TYPES.TSConstructSignatureDeclaration,
     AST_NODE_TYPES.TSEnumDeclaration,
     AST_NODE_TYPES.TSIndexSignature,
     AST_NODE_TYPES.TSInterfaceDeclaration,
@@ -63,7 +66,7 @@ const publicApiJsdoc = ESLintUtils.RuleCreator.withoutDocs<Options, MessageIds>(
     defaultOptions: [{ entrypoints: [], modules: [], root: "" }],
     create(context, [options]) {
         const services = ESLintUtils.getParserServices(context);
-        const surface = publicSurfaceFor(options);
+        const surface = publicSurfaceFor(options, services.program);
 
         if (!isGovernedFile(surface, context.filename)) {
             return {};
@@ -71,18 +74,15 @@ const publicApiJsdoc = ESLintUtils.RuleCreator.withoutDocs<Options, MessageIds>(
 
         const visit = (node: TSESTree.Node): void => {
             const target = services.esTreeNodeToTSNodeMap.get(node);
-            report(context, node, describe(surface, target));
+            report(context, node, describe(surface, target, services.program.getTypeChecker()));
         };
 
         return Object.fromEntries(DOCUMENTABLE.map((type) => [type, guard(visit, services)]));
     },
 });
 
-const getJsDocComment = (node: ts.Node): ts.JSDoc | undefined => {
-    const docs = (node as { jsDoc?: ts.JSDoc[] }).jsDoc;
-
-    return docs === undefined ? undefined : docs.at(-1);
-};
+const getJsDocComment = (node: ts.Node): ts.JSDoc | undefined =>
+    ts.getJSDocCommentsAndTags(node).findLast((entry) => ts.isJSDoc(entry));
 
 const getDocumentedNode = (node: ts.Node): ts.Node => (ts.isVariableDeclaration(node) ? node.parent.parent : node);
 
@@ -98,10 +98,11 @@ const getDeclaredName = (node: ts.Node): string => {
     return first === undefined ? "this" : first.name.getText();
 };
 
-const isOverloadFollower = (node: ts.Node): boolean => {
-    const siblings: ts.Node[] = (node as { symbol?: ts.Symbol }).symbol?.declarations ?? [];
+const isOverloadFollower = (node: ts.Node, checker: ts.TypeChecker): boolean => {
+    const name = (node as ts.NamedDeclaration).name;
+    const siblings = (name === undefined ? undefined : checker.getSymbolAtLocation(name))?.declarations ?? [];
 
-    return siblings.length > 1 && siblings.at(0) !== node;
+    return siblings.slice(1).includes(node as ts.Declaration);
 };
 
 const isSurfaceMember = (surface: Surface, node: ts.Node): boolean => {
@@ -114,21 +115,21 @@ const isSurfaceMember = (surface: Surface, node: ts.Node): boolean => {
     return declarations.some((entry) => surface.keys.has(getDeclarationKey(entry)));
 };
 
-const describe = (surface: Surface, node: ts.Node): Subject => {
+const describe = (surface: Surface, node: ts.Node, checker: ts.TypeChecker): Subject => {
     const target = getDocumentedNode(node);
 
     return {
         doc: getJsDocComment(target),
+        isOverloadFollower: isOverloadFollower(target, checker),
         isPublic: isSurfaceMember(surface, target),
         name: getDeclaredName(target),
-        node: target,
     };
 };
 
 const report = (context: Context, node: TSESTree.Node, subject: Subject): void => {
     const data = { name: subject.name };
 
-    if (subject.doc === undefined && subject.isPublic && !isOverloadFollower(subject.node)) {
+    if (subject.doc === undefined && subject.isPublic && !subject.isOverloadFollower) {
         context.report({ node, messageId: "missingJsDoc", data });
     }
 

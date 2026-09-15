@@ -7,13 +7,13 @@ description: "How GTKX reconciles React trees into native GObjects, routes child
 
 `@gtkx/react` is a custom React renderer for native GObjects. It translates React's host operations into object construction, property updates, signal connections, and container-specific child placement. Generated JSX supplies the typed component surface, and generated GI supplies the classes and methods the renderer uses.
 
-The [reconciler boundary](/contributing/principles#keep-the-reconciler-transparent) requires a thin, transparent translation to native APIs: construct objects, set props, and append, remove, or reorder children. Mount and unmount effects, list-factory handling, and other complex behavior belong outside the reconciler. The implementation map below includes existing behavior machinery that must be reviewed against this requirement.
+The [reconciler boundary](/contributing/principles#keep-the-reconciler-transparent) requires a thin translation to native APIs: construct objects, set props, and append, remove, or reorder children. Mount and unmount effects, list-factory handling, and other composed behavior belong in components and hooks above the reconciler.
 
 The reconciler is configured in [`reconciler/host-config.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/host-config.ts). It uses mutation mode with concurrent roots, Node timers, and microtasks. Persistence and hydration are disabled. GTK performs layout and painting after the renderer changes the native tree.
 
 ## Generated components and host elements
 
-A generated component such as `GtkButton` is a typed factory around a host element whose name is a GType name, such as `GtkButton`. Its reference to the generated GI class and metadata keeps the registration needed by that name available in a bundled application.
+A generated component such as `GtkButton` is a typed factory around a host element whose name is a GType name, such as `GtkButton`. Its reference to the generated GI class retains that class's registration and metadata in a bundled application.
 
 [`components/element.tsx`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/components/element.tsx) builds that host element. It examines props containing React elements and routes them through internal `gtkx:prop` elements. This turns a named prop containing JSX into a reconcilable subtree associated with a slot name, while ordinary `children` remain in the default slot.
 
@@ -21,7 +21,7 @@ The renderer distinguishes four node kinds in [`reconciler/node.ts`](https://git
 
 | Kind | Meaning |
 | --- | --- |
-| Element | A native GObject, its current props, handlers, child placements, and behavior state. |
+| Element | A native GObject, its current props, handlers, child placements, and style resources. |
 | Prop | A named slot and the children routed into it; it has no native object. |
 | Lazy | A declaration for an object created by its parent, adopted after placement. |
 | Text | Text content associated with a supported text host. |
@@ -35,9 +35,9 @@ The renderer combines native type ancestry with generated property and signal me
 There are two complementary definitions for an element:
 
 - [`element-config.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/element-config.ts) describes its generated surface: additional props, omitted native props, component wrappers, accepted child types, and parent-created instances. It can be imported during generation without loading native bindings.
-- [`element-behaviors.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/element-behaviors.ts) registers executable native behavior: creating objects, consuming specialized props, placing children, deferring updates, flushing work after a commit, and cleaning up.
+- [`element-behaviors.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/element-behaviors.ts) registers native construction, specialized prop updates, and child placement operations.
 
-Shared behavior builders in [`reconciler/behaviors.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/behaviors.ts) implement recurring patterns such as a single child setter, ordered box children, indexed collections, deferred values, and controlled text. The registry composes behaviors through type ancestry, allowing common GTK widget behavior and more specific Adwaita behavior to work together.
+Shared builders in [`reconciler/behaviors.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/behaviors.ts) implement recurring attachment patterns such as a single child setter, ordered box children, and indexed collections. The registry combines these operations through type ancestry. Controlled values and layout effects use components and hooks instead of a separate host lifecycle.
 
 ## Construction and prop updates
 
@@ -47,7 +47,7 @@ When React creates an instance, [`reconciler/instance.ts`](https://github.com/gt
 
 On an update, unchanged values are skipped. Removing a prop can restore its recorded default. A construct-only native property cannot be changed on an existing instance; the renderer rejects that update, so an application must change the element's key when it needs a newly constructed object.
 
-The host configuration's `resetAfterCommit` flushes text hosts, behavior work, accessibility updates, and styles in that order. Some accessibility state is also reapplied when a widget maps. These operations happen after the tree mutations they depend on.
+The host configuration's `resetAfterCommit` flushes text, accessibility, styles, and adopted object references after tree mutations. Adopted refs are available to parent layout effects. The element component handles accessibility reapplication on map through [`useAccessibleMap`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/hooks/use-accessible-map.ts), whose callback ref owns the signal connection and cleanup.
 
 ## Child placement and parent-created objects
 
@@ -75,6 +75,8 @@ The wrapper dispatches handlers with React's discrete event priority. It also kn
 
 Signal behavior changes should be checked through an actual interaction and through a prop-driven update, since those paths can emit the same native signal for different reasons.
 
+Controlled selection and visibility use [`components/controlled.tsx`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/components/controlled.tsx) and its shared hook. These observe native changes and restore the latest committed prop when needed. Menu descriptions likewise compose JSX menu elements above the host layer.
+
 ## Roots, portals, and presentation
 
 [`reconciler/root.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/root.ts) creates roots, submits updates, tracks mounted roots, and exposes portals. The default root container is a marker with no native object. A root can also target an existing GObject, which the renderer adopts as a container. Portals let React children target another container while retaining their React ancestry.
@@ -89,6 +91,6 @@ These wrappers live under [`packages/react/src/components`](https://github.com/g
 
 ## Teardown and verification
 
-React removal first routes native detachment through the same placement system used for attachment. Deleted element instances then disconnect renderer handlers, tear down placements and behavior state, and release style resources. Adopted lazy instances disconnect their own handlers as well. Wrapper and native allocation lifetime continue to be governed by the runtime's ownership model, so unmounting and native finalization are separate events.
+React removal routes detachment through the placement system and removes subtree attachments before GTK unroots their widgets. This includes controllers, action groups, slots, and constraints. Deleted instances disconnect renderer handlers and release style resources; adopted instances disconnect their handlers too. The runtime still governs wrapper and native allocation lifetime, so unmounting and native finalization are separate events.
 
 Renderer changes can be observed through [`@gtkx/testing`](https://github.com/gtkx-org/gtkx/tree/main/packages/testing), which renders React into the GTKX renderer and queries native widgets. The running development app also exposes its tree, interactions, and screenshots through the [GTKX MCP tools](/v2/guide/mcp). Use those native observations to confirm the behavior affected by a change: successful mounting, subsequent updates, removal, relevant edge cases, and invalid input where applicable.

@@ -1,15 +1,15 @@
 ---
 title: "CSS"
-description: "Style libadwaita and GTK4 widgets with the GNOME platform's CSS engine and GTKX's style APIs."
+description: "Apply widget styles and reusable classes in GTKX."
 ---
 
 # CSS
 
-libadwaita supplies the GNOME design language and its theme variables and style classes; GTK4 resolves the CSS beneath it. GTKX gives you the `style` prop and `@gtkx/css` for the application-specific styling left over. Every widget element takes a `style` prop for declarations that belong to that one widget, and `@gtkx/css` is Emotion-style CSS-in-JS for the ones worth naming: you write styles next to your components, and it hands back class names that GTK4 resolves.
+GTKX provides a `style` prop for individual widgets and `@gtkx/css` for reusable styles. Start with [Adwaita's style classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/style-classes.html) when they cover the design. For custom rules, use [GTK's supported CSS properties](https://docs.gtk.org/gtk4/css-properties.html); layout stays in widget props.
 
-## The `style` prop
+## Style one widget
 
-Every element that renders a `Gtk.Widget` takes a `style` prop: an object of declarations, spelled the way React DOM spells them, that applies to that widget and nothing else.
+The `style` prop accepts an object with camelCase property names:
 
 ```tsx
 import { GtkLabel } from "@gtkx/jsx/gtk";
@@ -17,9 +17,9 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 <GtkLabel label="Overdue" style={{ color: "var(--error-color)", fontWeight: 700 }} />;
 ```
 
-Numbers get `px` appended, except on the properties that are unitless on the web, which are `opacity`, `fontWeight`, `lineHeight` and `animationIterationCount`, so `minHeight: 48` is `min-height: 48px`. Any other unit goes in as a string.
+Numeric lengths use pixels: `minHeight: 48` becomes `min-height: 48px`. Pass other units as strings. Setting `style` to `undefined` or `null` removes its declarations.
 
-A key that starts with `&` nests a block under a selector built from it, the same way it works inside a `css` template:
+Nested selectors start with `&`, which refers to the styled widget:
 
 ```tsx
 import { GtkButton } from "@gtkx/jsx/gtk";
@@ -34,95 +34,50 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 />;
 ```
 
-The `&` is not optional, and the type enforces it: a bare `":hover"` key would compile to a *descendant* `:hover`, which is not what it reads like. Every rule has to start from the widget's own class, and one that does not is dropped with a warning instead of applied, so a declaration cannot break out of its block and repaint the rest of the window. A combinator after the `&` does reach past the widget on purpose, which is what `& label` above relies on.
+A declaration in `style` takes precedence over the same declaration supplied through `cssClasses`. GTKX adds a generated class to apply the style; leave that class under GTKX's control.
 
-Setting the prop to `undefined` or `null` removes the declarations again. Animated values can drive the whole object or individual declarations without re-rendering the component; see [Animations](/v2/guide/animations#animated-styles). Each frame still reloads GTK's shared style provider, so native properties and CSS transitions are cheaper when they can express the same effect.
+Use `style` for values that change with an individual widget. GTKX batches these updates through a shared style provider, but frequent changes still make GTK recalculate styles. Prefer native animated properties or CSS transitions when they express the effect. See [Animations](/v2/guide/animations) for animated styles.
 
-### GTK4 CSS has no layout
+## Create reusable classes
 
-GTK4's CSS engine covers paint and typography, and stops there. Colors, backgrounds, borders and border radius, shadows, outlines, filters, fonts, letter spacing, text decoration, `transform`, `transition` and `animation` all resolve, and so do `padding`, `margin`, `min-width` and `min-height`. There is no `width`, `height`, `display`, `position`, `flex-direction`, `gap`, `text-align`, `cursor`, `z-index` or `overflow`: GTK4 has no such properties, and a rule that sets one is reported as a warning during development and then ignored.
-
-Layout belongs to the widget instead, so it stays in props. `widthRequest` and `heightRequest` ask for a size, `halign`, `valign`, `hexpand` and `vexpand` place a widget in the space it is given, a `GtkBox`'s `orientation` and `spacing` lay out a row or a column, a `GtkLabel`'s `xalign` and `justify` align text, and a `GtkScrolledWindow` is what clips and scrolls. `style` is typed as a curated list of properties rather than the whole web set for this reason: <span v-pre>`style={{ display: "flex" }}`</span> fails to compile, instead of turning into a runtime warning you have to notice.
-
-### Choosing between `style` and a class
-
-Reach for `style` when the declarations belong to one widget: a color derived from data, a one-off `min-height`, or an animated CSS-only value. Reach for `css` and `cssClasses` when the styles are worth naming, when several widgets share them, or when you need something `style` deliberately cannot express, such as `@keyframes`, a `@media` query, a custom property, a `-gtk-` property, or a selector that does not start from the widget it is written on. The two mix on one element, and `cssClasses` keeps whatever you put in it.
-
-### One shared style provider
-
-Styled widgets share one `Gtk.CssProvider`, with each rule keyed by a class the reconciler adds to its widget. A React commit that changes several `style` props rebuilds that provider once after every affected rule is ready. Imperative writes, including animation frames, schedule the same flush independently of React and coalesce updates made in the same turn. GTK still invalidates the display's style when the provider reloads, so prefer an equivalent native property, CSS transition, or keyframes when available, and profile large trees with many simultaneous animated styles. The provider sits one priority step above the stylesheet the generated classes go into, which is what makes a declaration in `style` outrank the same declaration coming from `cssClasses`. The generated class is an ordinary class named `gtkx-s` followed by a number: it shows up in `getCssClasses()` and it counts against `toHaveClass` under `{ exact: true }`. Do not write selectors against it.
-
-## The `css` tagged template
-
-`css` returns a generated class name for the styles you write, and that string goes straight into `cssClasses`:
-
-```ts
-import { css } from "@gtkx/css";
-
-export const listDot = (color: string): string => css`
-    min-width: 12px;
-    min-height: 12px;
-    border-radius: 9999px;
-    background: ${color};
-`;
-```
+`css` accepts a tagged template or style object and returns a class name for `cssClasses`:
 
 ```tsx
-<GtkBox cssClasses={[listDot(list.color)]} />;
-```
-
-Interpolation is ordinary JavaScript, and identical styles resolve to the same class and are inserted once, so calling `css` on every render costs nothing extra. Interpolating a previously generated class name into another `css` call inlines its styles, exactly as Emotion composition works.
-
-Adwaita exposes its palette as CSS custom properties, so use `var(--accent-bg-color)` in new styles; GTK4's own `@`-prefixed color names such as `@card_bg_color` still work. A property GTK4 does not understand is reported as a warning during development instead of failing silently.
-
-## Transitions and keyframes
-
-GTK4 animates from CSS, so `transition` and `animation` behave the way they do on the web, and both belong in the same `css` template as the rest of a widget's styles:
-
-```ts
 import { css } from "@gtkx/css";
+import { GtkLabel } from "@gtkx/jsx/gtk";
 
-export const pendingRow = css`
-    background: alpha(var(--accent-bg-color), 0.08);
-    transition: background 200ms ease-out;
-    animation: tasks-pulse 1.2s ease-in-out infinite;
+const overdue = css`
+    color: var(--error-color);
+    font-weight: 700;
 
     &:hover {
-        background: alpha(var(--accent-bg-color), 0.16);
-    }
-
-    @keyframes tasks-pulse {
-        50% {
-            background: alpha(var(--accent-bg-color), 0.24);
-        }
+        text-decoration: underline;
     }
 `;
+
+<GtkLabel label="Overdue" cssClasses={[overdue]} />;
 ```
 
-Keyframes names are global rather than hashed, so give them a prefix of your own to keep two components from claiming the same name.
+Identical styles reuse the same class and are inserted once. Interpolating a generated class into another `css` call includes its declarations. Use these classes for styles shared by several widgets, or for rules such as `@media` and `@keyframes` that the `style` prop does not expose. Keyframe names are global, so give them an application or component prefix.
 
-## Combining classes with `cx`
+## Combine classes
 
-`cx` returns a `string[]` for `cssClasses`, drops falsy tokens, and mixes generated classes freely with the style classes Adwaita ships, such as `suggested-action`:
+`cx` returns the array that `cssClasses` expects. It drops empty and conditional values while preserving ordinary class names:
 
 ```tsx
 import { css, cx } from "@gtkx/css";
 import { GtkButton } from "@gtkx/jsx/gtk";
 
-const swatch = css`
-    min-width: 48px;
-    min-height: 32px;
-    border-radius: 4px;
-`;
+const action = css({ minWidth: 96 });
 
-<GtkButton cssClasses={cx(swatch, isSelected && "suggested-action")} />;
+<GtkButton label="Save" cssClasses={cx(action, canSave && "suggested-action")} />;
 ```
 
-When two or more generated classes appear in one `cx` call, they merge into a single class and the last argument wins on conflicting properties. Raw class names pass through untouched. A declaration in the `style` prop beats all of them whatever order they were inserted in, because the prop's own provider is registered one priority step above the stylesheet these classes live in.
+When several generated classes are combined, `cx` merges their declarations into one class. Later arguments win on conflicting properties.
 
-## Global styles
+## Apply global rules
 
-`injectGlobal` inserts rules without scoping them to a generated class, which is how you target widget node names or define theme-wide rules:
+`injectGlobal` inserts selectors without a generated class:
 
 ```ts
 import { injectGlobal } from "@gtkx/css";
@@ -134,40 +89,16 @@ injectGlobal`
 `;
 ```
 
-Importing a plain `.css` file works too: the GTKX CLI compiles the import into an `injectGlobal` call with the file's content.
+A plain `.css` import also works: the GTKX CLI turns it into an `injectGlobal` call. Global rules remain installed for the application's lifetime.
 
-## Using a bundled font
+## Follow appearance preferences
 
-A `?font` import bundles the font file and returns its family name, which is the string `fontFamily` expects:
+GTKX's stylesheet follows the color scheme resolved by [Adw.StyleManager](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.StyleManager.html), including an application override. It also follows the system's contrast preference and, on GTK 4.22 or later, reduced-motion preference.
 
-```tsx
-import bodyFont from "../data/fonts/Inter-Regular.otf?font";
-
-const body = css({ fontFamily: bodyFont, fontSize: 16 });
-
-<GtkLabel label="Bundled" cssClasses={[body]} />;
-```
-
-Pass the family through the `fontFamily` field rather than building a font description string by hand. `Pango.FontDescription.fromString` reads trailing words such as `Light`, `Medium`, or `Condensed` as weight and stretch, so a family like `Inter Display Medium` would be truncated to `Inter Display` and select a different file.
-
-A font imported only to widen glyph coverage needs no binding at all. `import "../data/fonts/NotoSansKR.otf?font";` bundles the file and makes the family available for fallback. See [Import project data](/v2/guide/configuration-and-codegen#import-project-data) for the other asset flavors.
-
-## Dark style and theming
-
-Light or dark cannot be forced from CSS. Set the color scheme through `Adw.StyleManager` instead:
+Use theme variables in custom styles so their colors follow the active appearance. When a rule needs to change by preference, place its `@media` block inside `css`:
 
 ```ts
-import * as Adw from "@gtkx/gi/adw";
-
-Adw.StyleManager.getDefault().setColorScheme(Adw.ColorScheme.FORCE_DARK);
-```
-
-Every theme color re-resolves automatically when the scheme flips. To vary your own rules by scheme, wrap them in `@media (prefers-color-scheme: dark)` inside a `css` template:
-
-```ts
-import { css } from "@gtkx/css";
-
-export const card = css`
+const card = css`
     background: var(--card-bg-color);
     box-shadow: 0 1px 3px var(--shade-color);
 
@@ -177,10 +108,16 @@ export const card = css`
 `;
 ```
 
-The query follows whatever the app resolves to, so it tracks both the desktop's preference and a scheme the app forces through `Adw.StyleManager`. `@media (prefers-contrast: more)` follows the system's high-contrast preference the same way, and `@media (prefers-reduced-motion: reduce)` does too on GTK 4.22 or later.
+See [Preferences and Theming](/v2/tutorial/preferences-and-theming) for an application preference that switches the scheme.
 
-The [Preferences and Theming](/v2/tutorial/preferences-and-theming) tutorial chapter builds a preference that switches the scheme at runtime.
+## Use a bundled font
 
-## Next
+A `?font` import bundles the font and returns its family name. Pass that name directly to `fontFamily`:
 
-Continue with [Animations](/v2/guide/animations) to drive widget properties with springs.
+```tsx
+import bodyFont from "../data/fonts/Inter-Regular.otf?font";
+
+<GtkLabel label="Bundled" style={{ fontFamily: bodyFont }} />;
+```
+
+To add a font for fallback coverage without selecting it, use a side-effect import such as `import "../data/fonts/NotoSansKR.otf?font";`. See [Import project data](/v2/guide/configuration-and-codegen#import-project-data) for asset imports.

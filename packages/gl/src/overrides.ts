@@ -5,23 +5,12 @@ import type {
     DebugType,
     GLenum,
     GLint,
-    GLsync,
     GLuint,
-    SyncObjectMask,
-    SyncStatus,
 } from "./generated/types.js";
-import { clientWaitSync, enable, getProgramiv, getProgramPipelineiv, getShaderiv, LIB } from "./generated/commands.js";
-import {
-    ALREADY_SIGNALED,
-    CONDITION_SATISFIED,
-    DEBUG_OUTPUT,
-    DEBUG_OUTPUT_SYNCHRONOUS,
-    INFO_LOG_LENGTH,
-    TIMEOUT_EXPIRED,
-} from "./generated/enums.js";
+import { getProgramiv, getProgramPipelineiv, getShaderiv, LIB } from "./generated/commands.js";
+import { INFO_LOG_LENGTH } from "./generated/enums.js";
 
 type LengthQuery = (id: GLuint, pname: GLenum) => GLint;
-/** Arguments the driver hands the raw debug callback: source, type, id, severity, message length, and text. */
 type DebugCallbackArgs = [GLenum, GLenum, GLuint, GLenum, number, string];
 
 /**
@@ -50,15 +39,14 @@ const glDebugMessageCallbackBinding = t.bind(
     LIB,
     "glDebugMessageCallback",
     [
-        t.callback([t.uint32, t.uint32, t.uint32, t.uint32, t.int32, t.string("borrowed"), t.uint64], t.void, {
+        t.callback([t.uint32, t.uint32, t.uint32, t.uint32, t.int32, t.string("borrowed"), t.buffer], t.void, {
+            hasUserData: true,
             userDataIndex: 6,
             scope: "forever",
         }),
     ],
     t.void,
 );
-
-const MAX_WAIT_CHUNK_NS = 1_000_000_000;
 
 const readInfoLog = (symbol: string, id: GLuint, query: LengthQuery): string => {
     const length = query(id, INFO_LOG_LENGTH);
@@ -108,7 +96,7 @@ function getProgramPipelineInfoLog(pipeline: GLuint): string {
 }
 
 /**
- * Installs a callback that receives GL debug messages, enabling synchronous debug output.
+ * Installs a callback that receives GL debug messages.
  * Passing null removes any previously installed callback.
  * @param callback The handler to invoke for each debug message, or null to clear it.
  */
@@ -119,55 +107,10 @@ function debugMessageCallback(callback: DebugMessageCallback | null): void {
         return;
     }
 
-    enable(DEBUG_OUTPUT);
-    enable(DEBUG_OUTPUT_SYNCHRONOUS);
-
     glDebugMessageCallbackBinding((...args: DebugCallbackArgs) => {
         const [source, type, id, severity, , message] = args;
         callback({ source, type, id, severity, message });
     });
-}
-
-const settledSyncStatus = (status: SyncStatus): SyncStatus | null => {
-    if (status === ALREADY_SIGNALED || status === CONDITION_SATISFIED) {
-        return status;
-    }
-
-    if (status !== TIMEOUT_EXPIRED) {
-        return status;
-    }
-
-    return null;
-};
-
-/**
- * Blocks until a sync object is signaled or the timeout elapses, looping over glClientWaitSync
- * in bounded chunks so long waits are not truncated by the driver's per-call limit.
- * @param sync The sync object (fence) to wait on.
- * @param flags Flags controlling the wait, such as flushing pending commands on the first call.
- * @param timeoutNs The total time to wait, in nanoseconds.
- * @returns The status of the sync object: signaled, condition satisfied, or timeout expired.
- */
-function clientWaitSyncLoop(sync: GLsync, flags: SyncObjectMask, timeoutNs: number): SyncStatus {
-    let remaining = timeoutNs;
-    let currentFlags = flags;
-
-    for (;;) {
-        const chunk = Math.min(remaining, MAX_WAIT_CHUNK_NS);
-        const settled = settledSyncStatus(clientWaitSync(sync, currentFlags, chunk));
-
-        if (settled !== null) {
-            return settled;
-        }
-
-        remaining -= chunk;
-
-        if (remaining <= 0) {
-            return TIMEOUT_EXPIRED;
-        }
-
-        currentFlags = 0;
-    }
 }
 
 export {
@@ -175,7 +118,6 @@ export {
     getProgramInfoLog,
     getProgramPipelineInfoLog,
     debugMessageCallback,
-    clientWaitSyncLoop,
     type DebugMessage,
     type DebugMessageCallback,
 };

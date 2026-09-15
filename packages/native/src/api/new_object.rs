@@ -15,7 +15,11 @@ use crate::value::{pending_wrapper, wrapper};
 
 type Associator<'a> = Function<'a, FnArgs<(Unknown<'a>, Unknown<'a>)>, ()>;
 
-handle_newtype!(ValueHandle, *const gobject_ffi::GValue);
+handle_newtype!(
+    ValueHandle,
+    *const gobject_ffi::GValue,
+    size_of::<gobject_ffi::GValue>()
+);
 
 struct ConstructProperties {
     names: Vec<CString>,
@@ -45,17 +49,8 @@ impl ConstructProperties {
                 .collect::<Result<_>>()?,
             values: values
                 .iter()
-                .map(|value| {
-                    if value.0.is_null() {
-                        return Err(Error::new(
-                            Status::InvalidArg,
-                            "new_object: property value handle must not be null",
-                        ));
-                    }
-
-                    Ok(unsafe { std::ptr::read(value.0) })
-                })
-                .collect::<Result<_>>()?,
+                .map(|value| unsafe { std::ptr::read_unaligned(value.ptr) })
+                .collect(),
         })
     }
 
@@ -94,42 +89,10 @@ fn ensure_instantiable(type_: glib::Type) -> Result<()> {
     Ok(())
 }
 
-/// Rejects a construct property the type does not declare before anything is built. Left to
-/// `g_object_new_with_properties`, an unknown name only logs a critical and is then ignored, so the
-/// caller would receive an instance quietly missing the state it asked for.
-fn ensure_properties_exist(type_: glib::Type, properties: &ConstructProperties) -> Result<()> {
-    let class = unsafe { gobject_ffi::g_type_class_ref(type_.into_glib()) };
-
-    if class.is_null() {
-        return Err(Error::new(
-            Status::InvalidArg,
-            format!("new_object: type '{type_}' carries no class to look properties up in"),
-        ));
-    }
-
-    let missing = properties
-        .names
-        .iter()
-        .find(|name| {
-            unsafe { gobject_ffi::g_object_class_find_property(class.cast(), name.as_ptr()) }
-                .is_null()
-        })
-        .map(|name| name.to_string_lossy().into_owned());
-    unsafe { gobject_ffi::g_type_class_unref(class) };
-
-    match missing {
-        Some(name) => Err(Error::new(
-            Status::InvalidArg,
-            format!("new_object: '{type_}' has no property named '{name}'"),
-        )),
-        None => Ok(()),
-    }
-}
-
 unsafe fn construct(
     type_: glib::Type,
     properties: &ConstructProperties,
-) -> Result<*mut gobject_ffi::GObject> {
+) -> Result<(*mut gobject_ffi::GObject, Option<String>)> {
     let count = properties.count()?;
     let mut name_ptrs: Vec<*const c_char> =
         properties.names.iter().map(|name| name.as_ptr()).collect();
@@ -156,7 +119,7 @@ unsafe fn construct(
         ));
     }
 
-    Ok(ptr)
+    Ok((ptr, critical))
 }
 
 fn associate_constructed(
@@ -229,9 +192,12 @@ pub fn new_object<'env>(
     let type_ = type_from_bigint(&gtype, "new_object:")?;
     ensure_instantiable(type_)?;
     let properties = ConstructProperties::new(names, &values)?;
-    ensure_properties_exist(type_, &properties)?;
     let guard = unsafe { pending_wrapper::push(type_.into_glib(), wrapper.raw(), associate.raw()) };
-    let ptr = unsafe { construct(type_, &properties) }?;
+    let (ptr, critical) = unsafe { construct(type_, &properties) }?;
+    let existing = finish_construction(env, ptr, &guard, type_, &wrapper, &associate)?;
 
-    finish_construction(env, ptr, &guard, type_, &wrapper, &associate)
+    match critical {
+        Some(message) => Err(Error::new(Status::GenericFailure, message)),
+        None => Ok(existing),
+    }
 }

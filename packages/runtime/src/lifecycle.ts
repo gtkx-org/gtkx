@@ -60,12 +60,28 @@ function createQuit(): () => void {
         }
 
         hasQuit = true;
+        const errors: unknown[] = [];
+        const runCleanup = (cleanup: () => void): void => {
+            try {
+                cleanup();
+            } catch (error) {
+                errors.push(error);
+            }
+        };
 
         for (const callback of shutdownCallbacks) {
-            callback();
+            runCleanup(callback);
         }
 
-        nativeQuit();
+        runCleanup(nativeQuit);
+
+        if (errors.length === 1) {
+            throw errors[0];
+        }
+
+        if (errors.length > 1) {
+            throw new AggregateError(errors, "GTKX shutdown failed");
+        }
     };
 }
 

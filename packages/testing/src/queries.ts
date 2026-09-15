@@ -410,12 +410,15 @@ function queryAllByLabelText<T extends Gtk.Accessible = Gtk.Widget>(
     options?: MatcherOptions<T>,
 ): T[] {
     const results: Set<Gtk.Widget> = new Set();
+    const widgets = new Set(traverse(container));
 
-    for (const widget of traverse(container)) {
+    for (const widget of widgets) {
         collectLabelMatches(results, widget, text, options);
     }
 
-    return [...results].filter((widget): widget is Gtk.Widget & T => isMatchingWidgetType(widget, options));
+    return [...results].filter((widget): widget is Gtk.Widget & T =>
+        widgets.has(widget) && isMatchingWidgetType(widget, options),
+    );
 }
 
 /**

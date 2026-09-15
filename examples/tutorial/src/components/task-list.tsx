@@ -1,11 +1,12 @@
+import { markupEscapeText } from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { useTranslation } from "@gtkx/i18n";
 import { AdwClamp, AdwEntryRow, AdwStatusPage } from "@gtkx/jsx/adw";
 import { GtkBox, GtkListBox, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/jsx/gtk";
+import type { Selection } from "../types.js";
 import { useSortOrder } from "../hooks/use-sort-order.js";
 import { useStore } from "../store/index.js";
 import { addListId, emptyState, isReorderable, visibleTasks } from "../store/selectors.js";
-import type { Selection } from "../types.js";
 import { TaskRow } from "./task-row.js";
 
 export const TaskList = ({ selection }: { selection: Selection }) => {
@@ -23,7 +24,7 @@ export const TaskList = ({ selection }: { selection: Selection }) => {
     const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sortOrder });
     const empty = emptyState(selection, searchQuery);
     const listId = addListId(selection, lists);
-    const canReorder = isReorderable(selection, searchQuery, sortOrder);
+    const canReorder = isReorderable(selection, searchQuery, filter, sortOrder);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
@@ -48,8 +49,14 @@ export const TaskList = ({ selection }: { selection: Selection }) => {
                                     self.text = "";
                                 }}
                             />
-                            {visible.map((task) => (
-                                <TaskRow key={task.id} task={task} canReorder={canReorder} />
+                            {visible.map((task, index) => (
+                                <TaskRow
+                                    key={task.id}
+                                    task={task}
+                                    canReorder={canReorder}
+                                    previousId={visible[index - 1]?.id}
+                                    nextId={visible[index + 1]?.id}
+                                />
                             ))}
                         </GtkListBox>
                         {visible.length === 0 ? (
@@ -57,7 +64,7 @@ export const TaskList = ({ selection }: { selection: Selection }) => {
                                 cssClasses={["compact"]}
                                 iconName={empty.icon}
                                 title={empty.title}
-                                description={empty.description}
+                                description={markupEscapeText(empty.description, -1)}
                             />
                         ) : null}
                     </GtkBox>

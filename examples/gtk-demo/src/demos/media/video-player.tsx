@@ -1,7 +1,16 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkButton, GtkHeaderBar, GtkImage, GtkShortcut, GtkShortcutController, GtkVideo } from "@gtkx/jsx/gtk";
+import {
+    GtkButton,
+    GtkCallbackAction,
+    GtkHeaderBar,
+    GtkImage,
+    GtkShortcut,
+    GtkShortcutController,
+    GtkShortcutTrigger,
+    GtkVideo,
+} from "@gtkx/jsx/gtk";
 import { useSignal } from "@gtkx/react";
 import { createContext, useContext, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
@@ -95,13 +104,13 @@ function VideoPlayerProvider({ window, children }: DemoProviderProps) {
     const bbbPaintable = Gdk.Texture.newFromResource(bbbPngPath);
 
     useSignal(window, "notify::fullscreened", () => {
-        setIsFullscreen(window.current?.isFullscreen() ?? false);
+        setIsFullscreen(window?.isFullscreen() ?? false);
     }, {
         isImmediate: true,
     });
 
     const handleOpen = () => {
-        void openVideoDialog(window.current, setVideoFile);
+        void openVideoDialog(window, setVideoFile);
     };
 
     const handleLogo = () => {
@@ -112,10 +121,10 @@ function VideoPlayerProvider({ window, children }: DemoProviderProps) {
         setVideoFile(Gio.File.newForUri("https://download.blender.org/peach/trailer/trailer_400p.ogg"));
     };
 
-    const handleFullscreen = () => window.current?.fullscreen();
+    const handleFullscreen = () => window?.fullscreen();
 
     const handleToggleFullscreen = () => {
-        toggleFullscreen(window.current);
+        toggleFullscreen(window);
     };
 
     const value = {
@@ -176,12 +185,16 @@ function VideoPlayerDemo() {
                     scope={Gtk.ShortcutScope.GLOBAL}
                     shortcuts={(
                         <GtkShortcut
-                            trigger={Gtk.ShortcutTrigger.parseString("F11")}
-                            action={Gtk.CallbackAction.new(() => {
-                                handleToggleFullscreen();
+                            trigger={<GtkShortcutTrigger accelerator="F11" />}
+                            action={(
+                                <GtkCallbackAction
+                                    callback={() => {
+                                        handleToggleFullscreen();
 
-                                return true;
-                            })}
+                                        return true;
+                                    }}
+                                />
+                            )}
                         />
                     )}
                 />

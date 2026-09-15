@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-type CreateRun = { status: number | null; output: string; target: string; installs: string[] };
+type CreateRun = { status: number | null; output: string; target: string; workspaceRoot: string; installs: string[] };
 
 type CreateOptions = {
     args: string[];
@@ -25,6 +25,7 @@ type CreateOptions = {
     isInstallFailing?: boolean | undefined;
     name?: string | undefined;
     nodeVersion?: string | undefined;
+    isTerminal?: boolean | undefined;
 };
 
 type Workspace = { root: string; binDir: string; logPath: string };
@@ -38,6 +39,10 @@ const APPLICATION_ID = "com.example.myapp";
 const COVERAGE_SLOWDOWN = 3;
 const CREATE_TIMEOUT_MS = 120_000 * (process.env.GTKX_COVERAGE_DIR === undefined ? 1 : COVERAGE_SLOWDOWN);
 const LOG_NAME = "package-manager.log";
+const TERMINAL_COMMAND = 'exec "$GTKX_CREATE_NODE" --input-type=commonjs -e ' +
+    "'const { spawnSync } = require(\"node:child_process\"); " +
+    "const result = spawnSync(process.execPath, JSON.parse(process.env.GTKX_CREATE_ARGV), { stdio: \"inherit\" }); " +
+    "process.exitCode = result.status ?? 1;'";
 
 const versionPreload = (version: string): string => {
     const source = `Object.defineProperty(process.versions, "node", { value: ${JSON.stringify(version)} });`;
@@ -117,23 +122,31 @@ const runCreate = (options: CreateOptions): CreateRun => {
     seedLinks(target, links);
 
     const versionArgs = options.nodeVersion === undefined ? [] : ["--import", versionPreload(options.nodeVersion)];
-    const result = spawnSync(process.execPath, [...versionArgs, ...CLI_ARGV, target, ...options.args], {
+    const argv = [...versionArgs, ...CLI_ARGV, target, ...options.args];
+    const command = options.isTerminal ? "script" : process.execPath;
+    const commandArgs = options.isTerminal ? ["--quiet", "--return", "--command", TERMINAL_COMMAND, "/dev/null"] : argv;
+    const result = spawnSync(command, commandArgs, {
         cwd: workspace.root,
         encoding: "utf8",
-        env: createEnvironment(workspace),
-        timeout: CREATE_TIMEOUT_MS,
+        env: {
+            ...createEnvironment(workspace),
+            GTKX_CREATE_NODE: process.execPath,
+            GTKX_CREATE_ARGV: JSON.stringify(argv),
+        },
+        timeout: options.isTerminal ? 5000 : CREATE_TIMEOUT_MS,
     });
 
     return {
         status: result.status,
         output: `${result.stdout}${result.stderr}`,
         target,
+        workspaceRoot: workspace.root,
         installs: readInstalls(workspace.logPath),
     };
 };
 
 const removeRun = (run: CreateRun): void => {
-    rmSync(join(run.target, ".."), { recursive: true, force: true });
+    rmSync(run.workspaceRoot, { recursive: true, force: true });
 };
 
 const listProject = (run: CreateRun): string[] =>

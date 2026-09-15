@@ -1,17 +1,37 @@
-import type { ListItem, ListItemRenderArgs, ListSection } from "@gtkx/components";
+import type {
+    ColumnViewProps,
+    ComboRowProps,
+    DropDownProps,
+    ListItem,
+    ListItemRenderArgs,
+    ListSection,
+    ListSectionRenderer,
+    ListViewProps,
+} from "@gtkx/components";
 import type { ReactNode, RefObject } from "react";
 import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { render, screen, userEvent, waitFor } from "@gtkx/testing";
+import { render, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 import { expanderCount, expanderNamed } from "./helpers/expanders.js";
 import { expectRowTexts } from "./helpers/row-texts.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
-import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 type Named = { name: string };
+
+type SectionedViewProps =
+    | ListViewProps<string, string> |
+    ColumnViewProps<string, string> |
+    DropDownProps<string, string> |
+    ComboRowProps<string, string>;
+
+type ItemViewProps = {
+    items: ListItem<string>[];
+    renderItem: () => null;
+    columns: [];
+};
 
 type ListDraw = {
     groups: ListSection<string, Named>[];
@@ -47,11 +67,6 @@ const mirrorSection: ListSection<string, Named> = {
     data: [branch("p3", "Parent 3", [leaf("c4", "Child 4")]), leaf("x3", "Solo 3")],
 };
 
-const repeatedIdSections: ListSection<string, Named>[] = [
-    { id: "s", value: "First", data: [leaf("a", "Alpha")] },
-    { id: "s", value: "Second", data: [leaf("b", "Beta")] },
-];
-
 const sections = [firstSection, secondSection];
 const firstSectionOnly = [firstSection];
 const secondSectionOnly = [secondSection];
@@ -77,6 +92,12 @@ function renderItem({ item }: ListItemRenderArgs<Named>): ReactNode {
 
 function renderHeader({ section }: { section: string }): ReactNode {
     return <GtkLabel>{`H:${section}`}</GtkLabel>;
+}
+
+function StatefulHeader({ section }: { section: string }): ReactNode {
+    const [initial] = useState(section);
+
+    return <GtkLabel>{`H:${section}:${initial}`}</GtkLabel>;
 }
 
 const drawList = (ref: RefObject<Gtk.ListView | null>, draw: ListDraw, handlers: ListHandlers): ReactNode => (
@@ -126,26 +147,64 @@ function StatefulSections({ listRef }: { listRef: RefObject<Gtk.ListView | null>
 }
 
 describe("ListView sections", () => {
+    it("accepts an empty source and switches between section and item renderers", async () => {
+        expectTypeOf<ItemViewProps & { sections: ListSection<string, string>[] }>()
+            .not.toExtend<SectionedViewProps>();
+        expectTypeOf<ItemViewProps & { renderHeader: ListSectionRenderer<string> }>()
+            .not.toExtend<SectionedViewProps>();
+        expectTypeOf<{ renderItem: () => null; columns: []; renderHeader: () => null }>()
+            .not.toExtend<SectionedViewProps>();
+        expectTypeOf<{ renderItem: () => null; columns: []; sections: undefined; renderHeader: () => null }>()
+            .not.toExtend<SectionedViewProps>();
+        expectTypeOf<"children">().not.toExtend<keyof ColumnViewProps>();
+
+        const ref = createRef<Gtk.ListView>();
+        const { rerender } = await render(
+            <ListView ref={ref} items={undefined} sections={undefined} renderHeader={null} renderItem={renderItem} />,
+        );
+        expect(ref.current?.getModel()).toHaveObjectProperty("nItems", 0);
+
+        await rerender(
+            <ListView
+                ref={ref}
+                sections={[{ id: "group", value: { title: "Group" }, data: [leaf("one", "One")] }]}
+                renderItem={({ item }) => <GtkLabel>{item.name}</GtkLabel>}
+                renderHeader={({ section }) => <GtkLabel>{section.title}</GtkLabel>}
+            />,
+        );
+        await expectRowTexts(ref, ["Group", "One"]);
+
+        await rerender(<ListView ref={ref} items={[leaf("two", "Two")]} renderItem={renderItem} />);
+        await expectRowTexts(ref, ["Two"]);
+
+        await rerender(<ListView ref={ref} renderItem={renderItem} />);
+        await expectRowTexts(ref, []);
+        expect(ref.current?.getModel()).toHaveObjectProperty("nItems", 0);
+    });
+
     it("draws a header per section and models only the children as items", async () => {
         const { ref } = await renderFixture({ groups: sections, expandedIds: [] });
         await expectRowTexts(ref, collapsedRows);
         expect(ref.current?.getModel()).toHaveObjectProperty("nItems", 4);
     });
 
-    it("renders the header content as the header's direct child", async () => {
-        const { ref } = await renderFixture({ groups: sections, expandedIds: [] });
-        const [headerLabel] = await screen.findAllByText("H:One");
-
-        if (headerLabel === undefined || ref.current === null) {
-            throw new TypeError("Expected the header to render");
-        }
-
-        expectNoBoxBetween(headerLabel, ref.current);
-    });
-
-    it("keeps two sections that share an id apart", async () => {
-        const { ref } = await renderFixture({ groups: repeatedIdSections, expandedIds: [] });
-        await expectRowTexts(ref, ["H:First", "Alpha", "H:Second", "Beta"]);
+    it("does not carry component state between reordered sections", async () => {
+        const ref = createRef<Gtk.ListView>();
+        const draw = (groups: ListSection<string, Named>[]): ReactNode => (
+            <ScrollWrapper>
+                <ListView
+                    ref={ref}
+                    sections={groups}
+                    isFlat
+                    renderItem={renderItem}
+                    renderHeader={({ section }) => <StatefulHeader section={section} />}
+                />
+            </ScrollWrapper>
+        );
+        const { rerender } = await render(draw(sections));
+        await expectRowTexts(ref, ["H:One:One", "Parent 1", "Solo 1", "H:Two:Two", "Solo 2", "Parent 2"]);
+        await rerender(draw(sections.toReversed()));
+        await expectRowTexts(ref, ["H:Two:Two", "Solo 2", "Parent 2", "H:One:One", "Parent 1", "Solo 1"]);
     });
 
     it("selects the row named by selectedIds once a section arrives", async () => {

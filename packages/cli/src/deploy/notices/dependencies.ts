@@ -1,7 +1,6 @@
 import { warn } from "@gtkx/utils";
-import type { DeploySettings, Notice, NoticeSection } from "../types.js";
-import type { BundledPackage } from "./packages.js";
-import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
+import type { RecordedPackage } from "../../internal/build-manifest.js";
+import type { Notice, NoticeSection } from "../types.js";
 import { isGtkxPackage } from "./gtkx.js";
 
 const TITLE = "Bundled JavaScript dependencies";
@@ -13,10 +12,10 @@ const SUMMARY = [
     "an SPDX identifier is listed with that identifier and with where its source can be obtained.",
 ];
 
-const subjectFor = (entry: BundledPackage): string =>
+const subjectFor = (entry: RecordedPackage): string =>
     entry.version === null ? entry.name : `${entry.name} ${entry.version}`;
 
-const noticeFor = (entry: BundledPackage): Notice => ({
+const noticeFor = (entry: RecordedPackage): Notice => ({
     subject: subjectFor(entry),
     license: entry.license ?? UNKNOWN_LICENSE,
     source: entry.source,
@@ -24,8 +23,8 @@ const noticeFor = (entry: BundledPackage): Notice => ({
     text: entry.text,
 });
 
-const warnUndeclared = (entries: BundledPackage[]): void => {
-    const undeclared = entries.filter((entry) => entry.isPresent && entry.license === null && entry.text === null);
+const warnUndeclared = (entries: RecordedPackage[]): void => {
+    const undeclared = entries.filter((entry) => entry.license === null && entry.text === null);
 
     if (undeclared.length === 0) {
         return;
@@ -38,13 +37,13 @@ const warnUndeclared = (entries: BundledPackage[]): void => {
     );
 };
 
-const dependencyNotices = (settings: DeploySettings, packages: BundledPackage[]): NoticeSection => {
+const dependencyNotices = (bundleFile: string, packages: RecordedPackage[]): NoticeSection => {
     const bundled = packages.filter((entry) => !isGtkxPackage(entry));
     warnUndeclared(bundled);
 
     return {
         title: TITLE,
-        files: [`lib/${settings.binaryName}/${BUNDLE_FILENAME}`],
+        files: [bundleFile],
         summary: SUMMARY,
         notices: bundled.map((entry) => noticeFor(entry)),
     };

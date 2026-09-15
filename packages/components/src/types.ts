@@ -8,6 +8,7 @@ import type {
     GtkGridViewProps,
     GtkListViewProps,
 } from "@gtkx/jsx/gtk";
+import type { Primitive } from "@gtkx/utils";
 import type { ReactNode, RefObject } from "react";
 
 /**
@@ -15,11 +16,11 @@ import type { ReactNode, RefObject } from "react";
  * arbitrary value. Nested items form a tree.
  */
 type ListItem<T = unknown> = {
-    /** Stable identifier used to track the item across updates and selection, naming every row that carries it. */
+    /** Stable identifier, unique across the collection, used to preserve identity across updates and selection. */
     id: string;
     /** Payload handed to the cell renderer as `ListItemRenderArgs.item`. */
     value: T;
-    /** Child items nested under this one, which turn a plain item list into a tree, read only as rows are drawn. */
+    /** Child items in an acyclic tree, read only as rows are drawn. */
     children?: ListItem<T>[] | undefined;
     /** Hides the tree expander arrow even when the item has children, through `hide-expander`. */
     shouldHideExpander?: boolean | undefined;
@@ -31,7 +32,7 @@ type ListItem<T = unknown> = {
 
 /** A group of items rendered under a shared section header. */
 type ListSection<S = unknown, T = unknown> = {
-    /** Stable identifier used to track the section across updates. */
+    /** Stable identifier, unique among sections, used to track the section across updates. */
     id: string;
     /** Payload handed to the section header renderer as `ListSectionRenderArgs.section`. */
     value: S;
@@ -104,8 +105,7 @@ type FlatnessProps = {
 type SelectionProps = {
     /**
      * Ids of the items to keep selected; omitting it keeps nothing selected, and `onSelectionChanged` is how a
-     * user's selection is adopted into it. An id repeated in several branches of a tree names every matching row,
-     * and a single-selection view takes the first of them.
+     * user's selection is adopted into it.
      */
     selectedIds?: string[] | null | undefined;
     /** Called with one id per selected row whenever the selection changes, and once on mount. */
@@ -130,9 +130,7 @@ type ExpanderDescriptions = {
 type ExpansionProps = {
     /**
      * Ids of the items to keep expanded; omitting it keeps every row collapsed, and `onExpandedChange` is how a
-     * user's expansion is adopted into it. An id repeated in several branches names every matching row, so all of
-     * them expand together. An item whose children lead back to itself expands one level at a time, since a row
-     * repeating an item already expanded above it stays collapsed.
+     * user's expansion is adopted into it.
      */
     expandedIds?: string[] | null | undefined;
     /** Called with one id per expanded row, in visible order, whenever expansion changes. */
@@ -156,12 +154,15 @@ type SortProps = {
 };
 
 /** The data a collection view renders, either as a plain item list or grouped into sections. */
-type SourceProps<T, S> = {
-    /** Items to render, nesting through `ListItem.children` for a tree; ignored once `sections` is given. */
+type SourceProps<T, S> = ({
+    /** Items to render, nesting through `ListItem.children` for a tree. */
     items?: ListItem<T>[] | undefined;
-    /** Items grouped under section headers, rendered in place of `items`. */
-    sections?: ListSection<S, T>[] | undefined;
-};
+} & Partial<Record<"sections", undefined>> & Partial<Record<"renderHeader", null | undefined>>) | ({
+    /** Items grouped under section headers. */
+    sections: ListSection<S, T>[];
+    /** Renders the header shown above each section. */
+    renderHeader?: ListSectionRenderer<S> | null | undefined;
+} & Partial<Record<"items", undefined>>);
 
 /** One column of a {@link ColumnView}, pairing Gtk.ColumnViewColumn props with a cell renderer. */
 type ColumnViewColumn<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | "sorter" | "id" | "title"> & {
@@ -186,8 +187,6 @@ type ColumnViewOwnProps<T, S> = SelectionProps &
     Omit<ItemSizeProps, "estimatedItemWidth"> & {
         /** Columns to render, in order; each carries its own cell renderer. */
         columns: ColumnViewColumn<T>[];
-        /** Renders the header shown above each section. */
-        renderHeader?: ListSectionRenderer<S> | null | undefined;
         /** Resolves the props of the row carrying one item's cells, such as its screen-reader label. */
         rowProps?: ListRowPropsResolver<T> | null | undefined;
     };
@@ -200,22 +199,20 @@ type ColumnViewOwnProps<T, S> = SelectionProps &
  */
 type ColumnViewProps<T = unknown, S = unknown> = Omit<
     GtkColumnViewProps,
-    "columns" | "model" | "headerFactory" | "rowFactory" | keyof ColumnViewOwnProps<T, S>
+    "children" | "columns" | "model" | "headerFactory" | "rowFactory" | keyof ColumnViewOwnProps<T, S>
 > &
 ColumnViewOwnProps<T, S>;
 
 /** The declarative collection props {@link DropDown} and `ComboRow` add on top of their widget's own. */
 type DropDownOwnProps<T, S> = SourceProps<T, S> & {
     /** Id of the currently selected item, making the selection controlled. */
-    selectedId?: string | null | undefined;
-    /** Called with the id of the item that became selected. */
-    onSelectionChanged?: ((id: string) => void) | null | undefined;
-    /** Renders the collapsed display, and the popup rows too unless `renderListItem` is given. */
+    selectedId?: string | undefined;
+    /** Called with the selected id, or `null` when the model becomes empty. */
+    onSelectionChanged?: ((id: string | null) => void) | null | undefined;
+    /** Renders the collapsed display and, unless overridden, the popup rows. Required for non-primitive values. */
     renderItem?: ListItemRenderer<T> | null | undefined;
     /** Renderer for items in the open popup list, falling back to renderItem when omitted. */
     renderListItem?: ListItemRenderer<T> | null | undefined;
-    /** Renderer for section headers in the popup list. */
-    renderHeader?: ListSectionRenderer<S> | null | undefined;
 };
 
 /** A drop-down-shaped widget's props with its model and factories swapped for the declarative collection props. */
@@ -223,7 +220,8 @@ type DropDownWidgetProps<Widget, T, S> = Omit<
     Widget,
     "model" | "factory" | "listFactory" | "headerFactory" | keyof DropDownOwnProps<T, S>
 > &
-DropDownOwnProps<T, S>;
+DropDownOwnProps<T, S> &
+(SourceProps<T & Primitive, S> | Record<"renderItem", ListItemRenderer<T>>);
 
 /**
  * Props for {@link DropDown}. Combines the underlying Gtk.DropDown props with the declarative
@@ -257,8 +255,6 @@ type ListViewOwnProps<T, S> = ItemSizeProps &
     FlatnessProps & {
         /** Renders the contents of one row. */
         renderItem: ListItemRenderer<T>;
-        /** Renders the header shown above each section. */
-        renderHeader?: ListSectionRenderer<S> | null | undefined;
     };
 
 /**

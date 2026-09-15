@@ -24,6 +24,7 @@ type RegisteredApp = {
 };
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+const DEFAULT_APP_TIMEOUT_MS = 10_000;
 
 const routerStoppedError = (): Error => new Error("GTKX MCP server stopped while waiting for an application");
 
@@ -42,13 +43,9 @@ function appUnregisteredEvent(applicationId: string): AppUnregisteredEvent {
 }
 
 class AppRouter extends EventTarget {
-    private static defaultWaitTimeout = 10_000;
-
     private apps: Map<string, RegisteredApp> = new Map();
 
     private connectionToApp: Map<string, string> = new Map();
-
-    private requestTimeout: number;
 
     private connections: AppConnections;
 
@@ -56,10 +53,9 @@ class AppRouter extends EventTarget {
 
     private isDisposed = false;
 
-    constructor(connections: AppConnections, options: { requestTimeout?: number } = {}) {
+    constructor(connections: AppConnections) {
         super();
         this.connections = connections;
-        this.requestTimeout = options.requestTimeout ?? DEFAULT_REQUEST_TIMEOUT_MS;
         this.connections.onRequest = (connection, request) => this.handleRequest(connection, request);
 
         this.connections.addEventListener("disconnection", (event) => {
@@ -107,16 +103,10 @@ class AppRouter extends EventTarget {
         }
 
         const params = parseResult.data;
-
-        const appInfo: AppInfo = {
-            applicationId: params.applicationId,
-            pid: params.pid,
-            ...(params.projectRoot !== undefined && { projectRoot: params.projectRoot }),
-        };
-
-        this.apps.set(params.applicationId, { info: appInfo, connection });
+        this.removeApp(connection);
+        this.apps.set(params.applicationId, { info: params, connection });
         this.connectionToApp.set(connection.id, params.applicationId);
-        this.dispatchEvent(appRegisteredEvent(appInfo));
+        this.dispatchEvent(appRegisteredEvent(params));
 
         return { success: true };
     }
@@ -129,7 +119,7 @@ class AppRouter extends EventTarget {
         }
 
         if (error.code === REQUEST_TIMEOUT_CODE) {
-            return requestTimeoutError(this.requestTimeout);
+            return requestTimeoutError(DEFAULT_REQUEST_TIMEOUT_MS);
         }
 
         return protocolErrorFrom(error);
@@ -216,7 +206,7 @@ class AppRouter extends EventTarget {
         }
     }
 
-    waitForApp(applicationId?: string, timeout: number = AppRouter.defaultWaitTimeout): Promise<AppInfo> {
+    waitForApp(applicationId?: string, timeout: number = DEFAULT_APP_TIMEOUT_MS): Promise<AppInfo> {
         if (this.isDisposed) {
             return Promise.reject(routerStoppedError());
         }
@@ -240,7 +230,7 @@ class AppRouter extends EventTarget {
         const app = this.resolveTargetApp(applicationId);
 
         try {
-            return await app.connection.send<T>(method, params, this.requestTimeout);
+            return await app.connection.send<T>(method, params, DEFAULT_REQUEST_TIMEOUT_MS);
         } catch (error) {
             if (error instanceof McpError) {
                 throw this.toAppError(app, error);

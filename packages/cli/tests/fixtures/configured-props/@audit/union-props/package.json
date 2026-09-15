@@ -1,0 +1,10 @@
+{
+    "name": "@audit/union-props",
+    "version": "1.0.0",
+    "type": "module",
+    "exports": {
+        ".": {
+            "types": "./index.d.ts"
+        }
+    }
+}

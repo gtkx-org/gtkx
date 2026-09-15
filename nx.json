@@ -2,6 +2,9 @@
     "$schema": "./node_modules/nx/schemas/nx-schema.json",
     "defaultBase": "main",
     "analytics": false,
+    "sync": {
+        "disabledTaskSyncGenerators": ["@nx/js:typescript-sync"]
+    },
     "namedInputs": {
         "default": [
             "{projectRoot}/**/*",
@@ -66,6 +69,7 @@
                 "testMode": "run"
             },
             "exclude": [
+                "packages/e2e/vitest.config.ts",
                 "examples/gtk-demo/*",
                 "examples/animations/*",
                 "examples/navigation/*",

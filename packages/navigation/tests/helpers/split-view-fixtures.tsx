@@ -17,6 +17,8 @@ import { render, screen, userEvent } from "@gtkx/testing";
 import { createContext, useContext, useEffect } from "react";
 import { expect, vi } from "vitest";
 
+import { getAncestor } from "./widget-ancestors.js";
+
 type Params = {
     Lists: undefined;
     Tasks: { listId: string };
@@ -28,7 +30,6 @@ type SplitEvent = { type: string; route: string; isClosing?: boolean };
 type EventSpy = Mock<(event: SplitEvent) => void>;
 type PreventSpy = Mock<(data: { action: NavigationAction }) => void>;
 type StateSpy = Mock<(state: NavigationState | undefined) => void>;
-type WidgetClass<T> = abstract new (...args: never[]) => T;
 type NavigatorProps = Partial<Omit<ComponentProps<typeof Split.Navigator>, "children">>;
 type Spies = { onEvent?: EventSpy; onPrevent?: PreventSpy };
 
@@ -183,20 +184,6 @@ const buildSplit = (options: SplitOptions = {}): ReactNode => (
 const renderSplit = (options: SplitOptions = {}): Promise<RenderResult> =>
     render(buildSplit(options), { areAnimationsEnabled: options.isAnimated });
 
-const getAncestor = <T,>(widget: Gtk.Widget, type: WidgetClass<T>): T => {
-    let current: Gtk.Widget | null = widget;
-
-    while (current !== null) {
-        if (current instanceof type) {
-            return current;
-        }
-
-        current = current.getParent();
-    }
-
-    throw new Error("The widget has no ancestor of the requested type");
-};
-
 const splitView = (): Adw.NavigationSplitView =>
     getAncestor(screen.getByText("Lists Content"), Adw.NavigationSplitView);
 
@@ -234,7 +221,6 @@ export {
     expectHidden,
     expectRouteNames,
     expectVisible,
-    getAncestor,
     type Params,
     pressKeys,
     renderSplit,
@@ -242,3 +228,5 @@ export {
     type SplitEvent,
     splitView,
 };
+
+export { getAncestor } from "./widget-ancestors.js";

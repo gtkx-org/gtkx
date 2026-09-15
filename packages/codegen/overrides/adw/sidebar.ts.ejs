@@ -1,0 +1,5 @@
+import { installSidebarModeOverride } from "@gtkx/runtime/internal";
+import { ListBox, ListBoxRow } from "@gtkx/gi/gtk";
+import { PreferencesGroup, Sidebar } from "../adw.js";
+
+installSidebarModeOverride(Sidebar.prototype, { PreferencesGroup, ListBox, ListBoxRow });

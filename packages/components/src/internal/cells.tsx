@@ -3,8 +3,7 @@ import type { ReactElement, ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkSignalListItemFactory, GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal, useProperty } from "@gtkx/react";
-import { setProperty, t } from "@gtkx/runtime";
-import { memo, useInsertionEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Fragment, memo, useInsertionEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type {
     ExpanderDescriptions,
     ListItem,
@@ -15,7 +14,8 @@ import type {
     ListSectionRenderer,
 } from "../types.js";
 import type { Collection } from "./collection.js";
-import { slotRefFor } from "./collection-model.js";
+import { slotPathAt, type SlotRef, slotRefFor } from "./collection-model.js";
+import { joinParts } from "./keys.js";
 
 type CellSize = {
     width: number;
@@ -84,6 +84,7 @@ type ItemSlotOptions = {
 type PositionedHost = Gtk.ListItem | Gtk.ColumnViewRow;
 
 type ItemSlot = {
+    itemKey: string;
     item: ListItem;
     row: Gtk.TreeListRow | null;
     args: ListItemRenderArgs<unknown>;
@@ -100,6 +101,7 @@ type CollectionStateStore = {
 };
 
 type ItemIdentity = {
+    itemKey: string;
     item: ListItem | undefined;
     position: number;
     isExpanded: boolean;
@@ -170,10 +172,14 @@ const HEADER_OPTIONS: CellRegistryOptions<Gtk.ListHeader> = { isHost: isListHead
 const ROW_OPTIONS: CellRegistryOptions<Gtk.ColumnViewRow> = { isHost: isColumnViewRow };
 const NO_SIZE: CellSize = { width: -1, height: -1 };
 const NO_ROW_PROPS: ListRowProps = {};
-const ROW_TEXT_DESCRIPTOR = t.string("borrowed");
+const placeholders: WeakSet<Gtk.Widget> = new WeakSet();
 
-const placeholder = (size: CellSize): Gtk.Widget =>
-    new Gtk.Box({ widthRequest: size.width, heightRequest: size.height });
+const placeholder = (size: CellSize): Gtk.Widget => {
+    const widget = new Gtk.Box({ widthRequest: size.width, heightRequest: size.height });
+    placeholders.add(widget);
+
+    return widget;
+};
 
 function isListItem(value: GObject.Object): value is Gtk.ListItem {
     return value instanceof Gtk.ListItem;
@@ -188,8 +194,12 @@ function isColumnViewRow(value: GObject.Object): value is Gtk.ColumnViewRow {
 }
 
 function prepareCell(host: CellHost, size: CellSize): void {
-    if (host.getChild() === null) {
+    const child = host.getChild();
+
+    if (child === null) {
         host.setChild(placeholder(size));
+    } else if (placeholders.has(child)) {
+        child.setSizeRequest(size.width, size.height);
     }
 }
 
@@ -274,7 +284,15 @@ function createCellRegistry<H extends FactoryHost>(options: CellRegistryOptions<
     return {
         handlers: createHandlers(state),
         setSize: (next) => {
+            if (state.size.width === next.width && state.size.height === next.height) {
+                return;
+            }
+
             state.size = next;
+
+            for (const host of state.entries.keys()) {
+                state.prepare?.(host, next);
+            }
         },
         subscribe: (onChange) => subscribeRegistry(state, onChange),
         getEntries: () => getRegistryEntries(state),
@@ -324,15 +342,25 @@ function itemArgs(
     return args;
 }
 
+function keyForItem(ref: SlotRef, item: ListItem): string {
+    return joinParts([slotPathAt(ref.store, ref.slot), item.id]);
+}
+
 function slotFor(options: ItemSlotOptions): ItemSlot | null {
     const ref = slotRefFor(options.item);
-    const item = ref === null ? undefined : options.collection.itemAt(ref);
+
+    if (ref === null) {
+        return null;
+    }
+
+    const item = options.collection.itemAt(ref);
 
     if (item === undefined) {
         return null;
     }
 
     return {
+        itemKey: keyForItem(ref, item),
         item,
         row: options.row,
         args: itemArgs(item, options.position, options.row, isRowWanted(options, item)),
@@ -352,6 +380,7 @@ function useItemSlot(
         return identity.item === undefined
             ? null
             : {
+                    itemKey: identity.itemKey,
                     item: identity.item,
                     row,
                     args: itemArgs(identity.item, position, row, identity.isExpanded),
@@ -372,6 +401,7 @@ function itemIdentity(
     const item = ref === null ? undefined : collection.itemAt(ref);
 
     return {
+        itemKey: ref === null || item === undefined ? "" : keyForItem(ref, item),
         item,
         position: entry.host.getPosition(),
         isExpanded: item === undefined ? false : (expandedIds?.includes(item.id) ?? false),
@@ -381,6 +411,7 @@ function itemIdentity(
 function isSameItemIdentity(previous: ItemIdentity, next: ItemIdentity): boolean {
     return (
         previous.item === next.item &&
+        previous.itemKey === next.itemKey &&
         previous.position === next.position &&
         previous.isExpanded === next.isExpanded
     );
@@ -417,6 +448,7 @@ function createItemIdentityStore(): ItemIdentityStore {
 
 function renderedIdentity(entry: CellEntry<PositionedHost>, slot: ItemSlot | null): ItemIdentity {
     return {
+        itemKey: slot?.itemKey ?? "",
         item: slot?.item,
         position: slot?.args.index ?? entry.host.getPosition(),
         isExpanded: slot?.args.isExpanded ?? false,
@@ -506,7 +538,9 @@ function itemBody(
     const renderItem = render as ListItemRenderer<unknown>;
     const content = renderItem(slot.args);
 
-    return hasExpander ? wrapExpander(slot, content, descriptions) : content;
+    return (
+        <Fragment key={slot.itemKey}>{hasExpander ? wrapExpander(slot, content, descriptions) : content}</Fragment>
+    );
 }
 
 function rowText(value: string | undefined): string | null {
@@ -531,21 +565,17 @@ function rowPropsFor(slot: ItemSlot | null, rowProps: ListRowPropsResolver<never
     };
 }
 
-function setRowText(host: Gtk.ColumnViewRow, name: string, value: string | null): void {
-    setProperty(host, name, ROW_TEXT_DESCRIPTOR, value);
-}
-
 function applyRowProps(
     host: Gtk.ColumnViewRow,
     props: ResolvedRowProps,
     previous: ResolvedRowProps | null,
 ): void {
     if (previous?.accessibleLabel !== props.accessibleLabel) {
-        setRowText(host, "accessible-label", props.accessibleLabel);
+        host.accessibleLabel = props.accessibleLabel;
     }
 
     if (previous?.accessibleDescription !== props.accessibleDescription) {
-        setRowText(host, "accessible-description", props.accessibleDescription);
+        host.accessibleDescription = props.accessibleDescription;
     }
 
     if (previous?.isActivatable !== props.isActivatable) {
@@ -592,11 +622,29 @@ function ItemRowImpl({ entry, rowProps, state, ...identity }: ItemRowProps): Rea
 
 function HeaderCellImpl({ entry, render, collection }: HeaderCellProps): ReactNode {
     const item = useProperty(entry.host, "item") ?? null;
-    const ref = slotRefFor(item);
-    const renderHeader = render as ListSectionRenderer<unknown>;
-    const body = ref === null ? null : renderHeader({ section: collection.sectionFor(ref.store.level.path) });
 
-    return createPortal(body, entry.host, entry.key);
+    return createPortal(headerBody(slotRefFor(item), render, collection), entry.host, entry.key);
+}
+
+function headerBody(
+    ref: SlotRef | null,
+    render: ListSectionRenderer<never>,
+    collection: Collection,
+): ReactNode {
+    if (ref === null) {
+        return null;
+    }
+
+    const section = collection.sectionFor(ref.store.level.path);
+
+    if (section === undefined) {
+        return null;
+    }
+
+    const renderHeader = render as ListSectionRenderer<unknown>;
+    const key = joinParts([ref.store.level.path, section.id]);
+
+    return <Fragment key={key}>{renderHeader({ section: section.value })}</Fragment>;
 }
 
 function usePortalEntries<H extends FactoryHost>(registry: CellRegistry<H>): CellEntry<H>[] {

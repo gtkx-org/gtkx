@@ -23,7 +23,7 @@ type BuildMetadata = {
     configFile: string;
     configDigest: string;
     schemas: string[];
-    packages: { name: string; version: string | null; dir: string }[];
+    packages: { name: string; version: string | null }[];
 };
 
 const APPLICATION_ID = "com.gtkx.clibuild";
@@ -122,11 +122,12 @@ const APP_SOURCE = String.raw`import { css } from "@gtkx/css";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GSettings } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
-import { createRoot, quit, useSetting } from "@gtkx/react";
+import { createPortal, createRoot, quit, rootElement, useSetting } from "@gtkx/react";
 import packageResourcePath, { packageIconName } from "${PACKAGE_NAME}";
 import { readFileSync } from "node:fs";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import schema, { com_gtkx_clibuild_appFolders as folders } from "../data/${SCHEMA_FILE}";
 import logoPath, { path as namedLogoPath } from "../data/logo.png?resource";
 import logoFile from "../data/logo.png?url";
@@ -142,9 +143,9 @@ import collectionFontFamily from "../data/${COLLECTION_FONT_FILE}?font";
 
 const heading = css({ fontWeight: "bold" });
 
-const App = () => {
-    const [counter] = useSetting(schema, "counter");
-    const [children] = useSetting(folders, "folder-children");
+const Content = ({ settings, folderSettings }: { settings: Gio.Settings; folderSettings: Gio.Settings }) => {
+    const [counter] = useSetting(settings, schema, "counter");
+    const [children] = useSetting(folderSettings, folders, "folder-children");
 
     useEffect(() => {
         const emittedLogo = readFileSync(logoFile, "utf8").trim();
@@ -191,6 +192,21 @@ const App = () => {
                 <GtkLabel label="probe" cssClasses={[heading]} />
             </GtkApplicationWindow>
         </GtkApplication>
+    );
+};
+
+const App = () => {
+    const [settings, setSettings] = useState<Gio.Settings | null>(null);
+    const [folderSettings, setFolderSettings] = useState<Gio.Settings | null>(null);
+
+    return (
+        <>
+            {createPortal(<GSettings ref={setSettings} schemaId={schema.id} />, rootElement)}
+            {createPortal(<GSettings ref={setFolderSettings} schemaId={folders.id} />, rootElement)}
+            {settings !== null && folderSettings !== null && (
+                <Content settings={settings} folderSettings={folderSettings} />
+            )}
+        </>
     );
 };
 
@@ -362,18 +378,16 @@ const expectUnifiedBuildMetadata = (project: CliProject): void => {
     const contents = readFileSync(join(project.root, OUT_DIR, BUILD_METADATA), "utf8");
     const metadata = JSON.parse(contents) as BuildMetadata;
     expect(metadata.generator).toBe("gtkx-build");
-    expect(metadata.formatVersion).toBe(2);
+    expect(metadata.formatVersion).toBe(3);
     expect(metadata.configFile).toBe("gtkx.config.ts");
     expect(metadata.configDigest).toMatch(/^[\da-f]{64}$/);
     expect(metadata.schemas).toEqual([join("data", SCHEMA_FILE)]);
 
     expect(metadata.packages).toEqual(expect.arrayContaining([
-        { name: MANIFEST.name, version: MANIFEST.version, dir: ".." },
-        {
-            name: PACKAGE_NAME,
-            version: null,
-            dir: join("..", "node_modules", "@probe", "resource-package"),
-        },
+        expect.objectContaining({ name: PACKAGE_NAME, version: null }),
+    ]));
+    expect(metadata.packages).not.toEqual(expect.arrayContaining([
+        expect.objectContaining({ name: MANIFEST.name }),
     ]));
 
     expect(emittedNames(project)).not.toContain("gtkx-packages.json");

@@ -11,14 +11,12 @@ import type {
     StackNavigationConfig,
     StackNavigationEventMap,
     StackNavigationHelpers,
-    StackNavigationOptions,
 } from "./types.js";
 import { HeaderBar } from "../shared/header-bar.js";
 import { useStackPages } from "./stack-pages.js";
 import { reconcilePoppedStack, syncNavigationStack } from "./sync-navigation-stack.js";
 
 type ViewRef = RefObject<Adw.NavigationView | null>;
-type MutableOptions = Record<string, StackNavigationOptions>;
 
 type StackViewProps = StackNavigationConfig & {
     state: StackNavigationState<ParamListBase>;
@@ -57,18 +55,6 @@ const useLatest = <T,>(value: T): RefObject<T> => {
     }, [value]);
 
     return ref;
-};
-
-const useTrackedOptions = (descriptors: StackDescriptorMap): RefObject<MutableOptions> => {
-    const optionsRef = useRef<MutableOptions>({});
-
-    useEffect(() => {
-        for (const [key, descriptor] of Object.entries(descriptors)) {
-            optionsRef.current[key] = descriptor.options;
-        }
-    }, [descriptors]);
-
-    return optionsRef;
 };
 
 const useStackSync = (
@@ -179,8 +165,8 @@ const StackPage = ({ descriptor, previous, navigation, onHidden }: StackPageProp
 const StackView = (props: StackViewProps): ReactNode => {
     const { state, navigation, descriptors, describe, popOnEscape, offset = 0 } = props;
     const viewRef = useRef<Adw.NavigationView | null>(null);
-    const options = useTrackedOptions(descriptors);
     const { pages, release } = useStackPages(state, descriptors, describe, offset);
+    const options = useLatest<OptionsByKey>(Object.fromEntries(pages.map((page) => [page.route.key, page.options])));
     const onPopped = usePoppedHandler(viewRef, navigation, options, offset);
     useStackSync(viewRef, state, options, offset);
 

@@ -7,8 +7,8 @@
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
     "scripts": {
-        "build": "nx run-many -t build",
-        "codegen": "nx run-many -t codegen",
+        "build": "nx run-many -t build && nx run gtkx:reference",
+        "codegen": "nx run-many -t codegen && nx run gtkx:reference",
         "coverage": "nx run-many -t coverage --parallel=1",
         "lint": "nx run-many -t lint lint:rust lint:knip",
         "plan": "nx release plan",
@@ -25,7 +25,7 @@
         "includedScripts": [],
         "targets": {
             "codegen": {
-                "command": "NODE_OPTIONS=--conditions=source tsx packages/cli/src/cli.ts codegen",
+                "command": "NODE_OPTIONS=--conditions=source tsx packages/cli/src/cli.ts codegen --config scripts/gtkx.bootstrap.ts",
                 "cache": false,
                 "dependsOn": [
                     "@gtkx/native:build"
@@ -34,11 +34,22 @@
                     "{workspaceRoot}/node_modules/.gtkx/**/*.{js,d.ts,json}"
                 ]
             },
+            "reference": {
+                "command": "node packages/cli/dist/cli.js codegen",
+                "cache": false,
+                "dependsOn": [
+                    "@gtkx/cli:build"
+                ],
+                "outputs": [
+                    "{workspaceRoot}/.gtkx/reference"
+                ]
+            },
             "typecheck": {
                 "command": "tsc --noEmit",
                 "cache": true,
                 "dependsOn": [
-                    "codegen"
+                    "codegen",
+                    "reference"
                 ],
                 "inputs": [
                     "{workspaceRoot}/tsconfig.json",
@@ -102,7 +113,8 @@
                 "command": "eslint . --ignore-pattern packages --ignore-pattern examples --ignore-pattern website",
                 "cache": true,
                 "dependsOn": [
-                    "codegen"
+                    "codegen",
+                    "reference"
                 ],
                 "inputs": [
                     "{workspaceRoot}/eslint.config.ts",
@@ -172,6 +184,7 @@
         "@nx/vitest": "^23.2.0",
         "@types/node": "catalog:",
         "@types/react": "catalog:",
+        "@types/semver": "^7.8.0",
         "@vitest/coverage-v8": "catalog:",
         "c8": "^12.0.0",
         "eslint": "^10.10.0",
@@ -179,6 +192,7 @@
         "knip": "^6.35.0",
         "nx": "^23.2.0",
         "react": "catalog:",
+        "semver": "^7.8.5",
         "tsx": "^4.23.13",
         "typescript": "catalog:",
         "verdaccio": "^6.10.3",

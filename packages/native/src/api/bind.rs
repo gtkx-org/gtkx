@@ -10,6 +10,7 @@ use crate::api::{native_result, type_from_bigint};
 use crate::ffi::codec::{Codec, Encoder as _};
 use crate::ffi::descriptor::Descriptor;
 use crate::ffi::library_cache::FfiCache;
+use crate::handle::Handle;
 
 pub(crate) enum CallTarget {
     Symbol {
@@ -20,7 +21,7 @@ pub(crate) enum CallTarget {
         byte_offset: usize,
     },
     Pointer {
-        address: usize,
+        handle: Handle,
     },
 }
 
@@ -62,6 +63,9 @@ pub struct BindVfuncOptions {
 
 impl CallDescriptor {
     pub(crate) fn symbol(&self) -> anyhow::Result<CodePtr> {
+        if let CallTarget::Pointer { handle } = &self.target {
+            return Ok(CodePtr(handle.begin_function_call()?));
+        }
         if let Some(symbol) = self.symbol.get() {
             return Ok(*symbol);
         }
@@ -77,7 +81,7 @@ impl CallDescriptor {
                 vtable,
                 byte_offset,
             } => CodePtr(resolve_vfunc_slot(*vtable, *byte_offset, &self.label)?),
-            CallTarget::Pointer { address } => CodePtr(*address as *mut c_void),
+            CallTarget::Pointer { .. } => unreachable!(),
         };
         let _ = self.symbol.set(resolved);
 
@@ -216,32 +220,20 @@ pub fn bind(
     )))
 }
 
-/// Precompiles the argument and return marshalling of a call to a raw C function pointer into a
-/// reusable call descriptor that `call` can invoke. The pointer comes from a native caller that
-/// handed a callback into a JavaScript-implemented virtual function or callback, decoded as a
-/// bigint address; it must stay valid for as long as the descriptor is called through.
-#[allow(clippy::needless_pass_by_value)]
 #[napi(catch_unwind)]
 pub fn bind_function_pointer(
-    fn_ptr: BigInt,
+    function_handle: &External<Handle>,
     arg_descriptors: Vec<Descriptor>,
     return_descriptor: Descriptor,
     label: String,
 ) -> Result<External<CallDescriptor>> {
-    let (_, raw_address, lossless) = fn_ptr.get_u64();
-    let address = usize::try_from(raw_address).unwrap_or(0);
-
-    if !lossless || address == 0 {
-        return Err(Error::new(
-            Status::InvalidArg,
-            format!("{label}: a function pointer must be a non-zero address-sized value"),
-        ));
-    }
-
+    let _leases = crate::handle::LeaseScope::open();
+    native_result("bind_function_pointer", function_handle.function_ptr())?;
     let (arg_codecs, return_codec) = into_codecs(arg_descriptors, return_descriptor)?;
-
     Ok(External::new(prepare(
-        CallTarget::Pointer { address },
+        CallTarget::Pointer {
+            handle: (**function_handle).clone(),
+        },
         label,
         arg_codecs,
         return_codec,

@@ -3,7 +3,7 @@ import type { WaitForOptions } from "./types.js";
 import { runWithActEnvironment } from "./act.js";
 import { getConfig } from "./config.js";
 import { timeoutError } from "./errors.js";
-import { advanceFakeClock, delay, now } from "./timers.js";
+import { advanceFakeClock, cancelTimeout, delay, now, scheduleTimeout } from "./timers.js";
 import { requireWidget } from "./widget-target.js";
 
 type PollResult<T> = { status: "resolved"; value: T } | { status: "timedout"; lastError: Error | null };
@@ -40,21 +40,38 @@ const pollUntilSuccess = async <T>(
 ): Promise<PollResult<T>> => {
     const startTime = now();
     let lastError: Error | null = null;
+    const deadline = Promise.withResolvers<PollResult<T>>();
+    const timer = scheduleTimeout(() => {
+        deadline.resolve({ status: "timedout", lastError });
+    }, timeout);
 
-    while (now() - startTime < timeout) {
-        try {
-            const result = await callback();
-            await delay(0);
+    const poll = async (): Promise<PollResult<T>> => {
+        while (now() - startTime < timeout) {
+            try {
+                const result = await callback();
+                await delay(0);
 
-            return { status: "resolved", value: result };
-        } catch (error) {
-            lastError = error as Error;
+                return { status: "resolved", value: result };
+            } catch (error) {
+                lastError = error as Error;
+            }
+
+            if (now() - startTime >= timeout) {
+                break;
+            }
+
             await advanceFakeClock(interval);
             await delay(interval);
         }
-    }
 
-    return { status: "timedout", lastError };
+        return { status: "timedout", lastError };
+    };
+
+    try {
+        return await Promise.race([poll(), deadline.promise]);
+    } finally {
+        cancelTimeout(timer);
+    }
 };
 
 const buildTimeoutError = (
@@ -79,25 +96,19 @@ const buildTimeoutError = (
  * @returns The callback's result once it succeeds.
  */
 const waitFor = <T>(callback: () => T | Promise<T>, options?: WaitForOptions): Promise<T> => {
-    if (typeof callback !== "function") {
-        throw new TypeError("Received `callback` arg must be a function");
-    }
-
     const stackTraceError = options?.stackTraceError ?? new Error("STACK_TRACE_MESSAGE");
 
-    return Promise.resolve(
-        runWithActEnvironment(false, async () => {
-            const config = getConfig();
-            const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
-            const result = await pollUntilSuccess(callback, timeout, interval);
+    return runWithActEnvironment(false, async () => {
+        const config = getConfig();
+        const { timeout = config.asyncUtilTimeout, interval = DEFAULT_INTERVAL, onTimeout } = options ?? {};
+        const result = await pollUntilSuccess(callback, timeout, interval);
 
-            if (result.status === "resolved") {
-                return result.value;
-            }
+        if (result.status === "resolved") {
+            return result.value;
+        }
 
-            throw buildTimeoutError(timeout, result.lastError, stackTraceError, onTimeout);
-        }),
-    );
+        throw buildTimeoutError(timeout, result.lastError, stackTraceError, onTimeout);
+    });
 };
 
 const getTarget = (elementOrCallback: ElementOrCallback): RemovalTarget =>
@@ -106,11 +117,7 @@ const getTarget = (elementOrCallback: ElementOrCallback): RemovalTarget =>
 const isWidgetRemoved = (target: Gtk.Accessible): boolean => {
     const widget = requireWidget(target);
 
-    try {
-        return widget.getRoot() === null;
-    } catch {
-        return true;
-    }
+    return widget.getRoot() === null;
 };
 
 const isTargetRemoved = (target: RemovalTarget): boolean => {

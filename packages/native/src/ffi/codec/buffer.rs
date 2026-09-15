@@ -1,23 +1,7 @@
-use anyhow::bail;
-
-use super::numeric::MAX_SAFE_INTEGER;
 use super::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
 pub struct BufferCodec;
-
-impl BufferCodec {
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    fn ptr_from_number(value: f64) -> anyhow::Result<*mut c_void> {
-        if !value.is_finite() || value.fract() != 0.0 || !(0.0..=MAX_SAFE_INTEGER).contains(&value)
-        {
-            bail!(
-                "Buffer address {value} is not a non-negative integer within [0, {MAX_SAFE_INTEGER}]"
-            );
-        }
-        Ok(value as usize as *mut c_void)
-    }
-}
 
 impl Encoder for BufferCodec {
     fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
@@ -25,14 +9,11 @@ impl Encoder for BufferCodec {
             return Ok(ffi::Stash::Ptr(view.ptr()));
         }
         match value.get_type()? {
-            ValueType::Number => {
-                let number = value::read_napi::<f64>(value)?;
-                Ok(ffi::Stash::Ptr(Self::ptr_from_number(number)?))
-            }
+            ValueType::External => Ok(ffi::Stash::Ptr(value::opaque_ptr(value, "buffer")?)),
             ValueType::Null | ValueType::Undefined => Ok(ffi::Stash::Ptr(std::ptr::null_mut())),
             other => {
                 bail_expected!(
-                    format!("an ArrayBufferView, number, or null, got {other:?}"),
+                    format!("an ArrayBufferView, native handle, or null, got {other:?}"),
                     "buffer"
                 )
             }
@@ -42,6 +23,18 @@ impl Encoder for BufferCodec {
     fn encode_owned(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
         match value::TypedView::from_unknown(env, value)? {
             Some(view) => Ok(ffi::Stash::Storage(owned_view_storage(&view))),
+            None if value.get_type()? == ValueType::External => {
+                let pointer = value::opaque_ptr(value, "buffer")?;
+                let handle: &External<crate::handle::Handle> = value::read_napi(value)?;
+                if handle.is_process_static() {
+                    return Ok(ffi::Stash::Ptr(pointer));
+                }
+                let retained = handle.retain_owned()?;
+                Ok(ffi::Stash::Storage(ffi::StashStorage::new(
+                    pointer,
+                    ffi::StashData::Handle(retained),
+                )))
+            }
             None => self.encode(env, value),
         }
     }

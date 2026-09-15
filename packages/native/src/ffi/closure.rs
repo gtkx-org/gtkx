@@ -6,21 +6,28 @@ use ::libffi::{low as libffi_low, middle as libffi};
 use glib::prelude::StaticType as _;
 use glib::translate::IntoGlib as _;
 use napi::bindgen_prelude::{
-    BigInt, FromNapiValue as _, Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Object,
-    Unknown,
+    BigInt, Either, External, FromNapiValue as _, Function, JsObjectValue, JsValue,
+    JsValuesTupleIntoVec, Null, Object, ToNapiValue as _, Unknown,
 };
 use napi::{Env, Status, ValueType};
+use napi_derive::napi;
 
 use crate::ffi::Stash;
 use crate::ffi::codec::{
-    CallbackCodec, Codec, Decoder as _, Encoder as _, Ownership, PtrWriter as _, ReadCtx, SlotInit,
-    str_to_glib_full,
+    CallbackCodec, CallbackScope, Codec, Decoder as _, DestroyNotifyKind, Encoder as _,
+    PtrWriter as _, ReadCtx, SlotInit, bytes_to_glib_full, read_bytes,
 };
 use crate::handle::{BorrowScope, Handle};
 use crate::host::error_reporter::ReportErr;
 use crate::host::node_env;
 use crate::host::panic_handler::guard_ffi_boundary;
 use crate::value::{self, ClosureHandle};
+
+#[napi(object, object_from_js = false)]
+pub struct DecodedCallback {
+    pub function: External<Handle>,
+    pub user_data: Either<External<Handle>, Null>,
+}
 
 struct CallbackArgs(Vec<napi::sys::napi_value>);
 
@@ -79,7 +86,7 @@ pub struct ClosureData {
     oneshot_fired: Cell<bool>,
     in_flight: Cell<u32>,
     pending_destroy: Cell<bool>,
-    retained_strings: RefCell<HashMap<CString, *mut c_char>>,
+    retained_bytes: RefCell<HashMap<CString, *mut c_char>>,
     retained_containers: RefCell<Vec<Stash>>,
     retained_transfers: RefCell<Vec<crate::ffi::PendingTransfer>>,
 }
@@ -105,7 +112,7 @@ impl ClosureData {
             oneshot_fired: Cell::new(false),
             in_flight: Cell::new(0),
             pending_destroy: Cell::new(false),
-            retained_strings: RefCell::new(HashMap::new()),
+            retained_bytes: RefCell::new(HashMap::new()),
             retained_containers: RefCell::new(Vec::new()),
             retained_transfers: RefCell::new(Vec::new()),
         }
@@ -114,12 +121,10 @@ impl ClosureData {
 
 impl Drop for ClosureData {
     fn drop(&mut self) {
-        for (_, ptr) in self.retained_strings.get_mut().drain() {
+        for (_, ptr) in self.retained_bytes.get_mut().drain() {
             unsafe { glib::ffi::g_free(ptr.cast()) };
         }
-        for transfer in self.retained_transfers.get_mut().drain(..) {
-            transfer.release_now();
-        }
+        self.retained_transfers.get_mut().clear();
     }
 }
 
@@ -298,6 +303,7 @@ struct RefSlot<'e> {
     inner_ptr: *mut c_void,
     inner_codec: &'e Codec,
     init: SlotInit,
+    array_extent: Option<usize>,
 }
 
 /// The arguments beside the one being read, as the sizing path consumes them: the stash each libffi
@@ -419,6 +425,15 @@ impl ClosureData {
     ) -> anyhow::Result<RefSlot<'e>> {
         let inner_ptr = unsafe { arg_ptr.cast::<*mut c_void>().read_unaligned() };
         let is_seeded = ref_codec.is_inout();
+        let array_extent = if is_seeded
+            && !inner_ptr.is_null()
+            && let Codec::Array(array) = ref_codec.inner_codec()
+            && !unsafe { inner_ptr.cast::<*mut c_void>().read_unaligned() }.is_null()
+        {
+            array.replacement_extent(siblings.stashes, siblings.codecs)?
+        } else {
+            None
+        };
         let seed = if is_seeded {
             seed_ref(env, inner_ptr, ref_codec.inner_codec(), siblings)?
         } else {
@@ -426,9 +441,14 @@ impl ClosureData {
         };
 
         Ok(RefSlot {
-            obj: wrap_ref(env, seed)?,
+            obj: if inner_ptr.is_null() {
+                value::js_null(env)?
+            } else {
+                wrap_ref(env, seed)?
+            },
             inner_ptr,
             inner_codec: ref_codec.inner_codec(),
+            array_extent,
             init: if ref_codec.is_inout() {
                 SlotInit::Initialized
             } else {
@@ -468,6 +488,25 @@ impl ClosureData {
 
             let arg_ptr = unsafe { *args.add(arg_slot) };
             if let Codec::Ref(ref_codec) = codec {
+                if ref_codec.inner_codec().is_scalar() {
+                    let ptr = unsafe { arg_ptr.cast::<*mut c_void>().read_unaligned() };
+                    let value = if ptr.is_null() {
+                        value::js_null(env)?
+                    } else {
+                        let size = ref_codec.inner_codec().field_size().ok_or_else(|| {
+                            anyhow::anyhow!("The reference has no declared storage size")
+                        })?;
+                        if !ref_codec.is_inout() {
+                            unsafe { ptr.cast::<u8>().write_bytes(0, size) };
+                        }
+                        value::handle_to_unknown(
+                            env,
+                            Handle::from_glib_borrow(ptr).with_allocated_bytes(size),
+                        )?
+                    };
+                    js_args.push(value);
+                    continue;
+                }
                 let slot = unsafe { Self::read_ref_arg(env, ref_codec, arg_ptr, &siblings) }
                     .map_err(|e| e.context(format!("callback: failed to read arg {i}")))?;
                 js_args.push(slot.obj);
@@ -500,6 +539,7 @@ impl ClosureData {
         args: *const *const c_void,
         result: *mut c_void,
     ) -> Option<*mut ClosureState> {
+        let _leases = crate::handle::LeaseScope::open();
         let env = node_env::env();
 
         let capture_result = !matches!(self.return_codec, Codec::Void(_));
@@ -565,10 +605,10 @@ impl ClosureData {
     }
 
     fn write_return(&self, env: &Env, result: *mut c_void, value: &Result<Unknown<'_>, ()>) {
-        if let Codec::String(string_codec) = &self.return_codec
-            && string_codec.ownership.is_borrowed()
+        if let Codec::Bytes(bytes_codec) = &self.return_codec
+            && bytes_codec.ownership.is_borrowed()
         {
-            self.write_retained_string_return(result, value);
+            self.write_retained_bytes_return(result, value);
             return;
         }
         if self.return_type_is_borrowed_container() {
@@ -603,12 +643,17 @@ impl ClosureData {
             let Some(new_value) = read_ref_value(env, slot.obj) else {
                 continue;
             };
-            let written = slot.inner_codec.write_value_to_ptr(
-                env,
-                unsafe { crate::ffi::Slot::new(slot.inner_ptr) },
-                new_value,
-                slot.init,
-            );
+            let target = unsafe { crate::ffi::Slot::new(slot.inner_ptr) };
+            let written = match slot.inner_codec {
+                Codec::Array(array) => array.write_value_with_extent(
+                    *env,
+                    target,
+                    new_value,
+                    slot.init,
+                    slot.array_extent,
+                ),
+                codec => codec.write_value_to_ptr(env, target, new_value, slot.init),
+            };
             match written {
                 Ok(Some(transfer)) => self.retain_transfer(transfer),
                 Ok(None) => {}
@@ -643,21 +688,21 @@ impl ClosureData {
         unsafe { crate::ffi::Slot::new(result).store(ptr) };
     }
 
-    fn intern_string_return(&self, value: &Result<Unknown<'_>, ()>) -> *mut c_char {
+    fn intern_bytes_return(&self, value: &Result<Unknown<'_>, ()>) -> *mut c_char {
         let Ok(unknown) = value else {
             return std::ptr::null_mut();
         };
-        let Some(text) = string_from_unknown(*unknown) else {
+        let Ok(Some(bytes)) = read_bytes(*unknown) else {
             return std::ptr::null_mut();
         };
-        let Ok(key) = CString::new(text.as_bytes()) else {
+        let Ok(key) = CString::new(bytes) else {
             return std::ptr::null_mut();
         };
-        let mut retained = self.retained_strings.borrow_mut();
+        let mut retained = self.retained_bytes.borrow_mut();
         if let Some(&existing) = retained.get(&key) {
             return existing;
         }
-        let Ok(ptr) = str_to_glib_full(&text) else {
+        let Ok(ptr) = bytes_to_glib_full(key.as_bytes()) else {
             return std::ptr::null_mut();
         };
         retained.insert(key, ptr);
@@ -665,16 +710,9 @@ impl ClosureData {
         ptr
     }
 
-    fn write_retained_string_return(&self, result: *mut c_void, value: &Result<Unknown<'_>, ()>) {
-        let ptr = self.intern_string_return(value);
+    fn write_retained_bytes_return(&self, result: *mut c_void, value: &Result<Unknown<'_>, ()>) {
+        let ptr = self.intern_bytes_return(value);
         unsafe { crate::ffi::Slot::new(result).store(ptr.cast()) };
-    }
-}
-
-fn string_from_unknown(value: Unknown<'_>) -> Option<String> {
-    match value.get_type().ok()? {
-        ValueType::String => value::read_napi::<String>(value).ok(),
-        _ => None,
     }
 }
 
@@ -756,15 +794,45 @@ unsafe fn read_callback_arg<'e>(
         return Ok(value::js_null(env)?);
     }
 
-    let mut target: Object<'e> = Object::new(env)?;
-    target.set_named_property("fnPtr", BigInt::from(fn_ptr as u64))?;
-
-    if codec.has_user_data {
-        let user_data = unsafe { (*args.add(slot + 1)).cast::<*mut c_void>().read_unaligned() };
-        target.set_named_property("userData", BigInt::from(user_data as u64))?;
+    let user_data = if codec.has_user_data {
+        unsafe { (*args.add(slot + 1)).cast::<*mut c_void>().read_unaligned() }
+    } else {
+        std::ptr::null_mut()
+    };
+    let owner = if codec.scope == CallbackScope::Notified && codec.has_destroy {
+        anyhow::ensure!(
+            codec.destroy_kind == DestroyNotifyKind::DestroyNotify,
+            "A decoded callback requires a data-only destroy notify"
+        );
+        let destroy_slot = slot + 1 + usize::from(codec.has_user_data);
+        let destroy = unsafe {
+            (*args.add(destroy_slot))
+                .cast::<*mut c_void>()
+                .read_unaligned()
+        };
+        if destroy.is_null() {
+            None
+        } else {
+            Some(Handle::callback_data(user_data, unsafe {
+                std::mem::transmute::<*mut c_void, crate::handle::BoxedFreeFn>(destroy)
+            }))
+        }
+    } else {
+        None
+    };
+    let lent = codec.scope == CallbackScope::Call
+        || (codec.scope == CallbackScope::Notified && owner.is_none());
+    let function = Handle::function(fn_ptr, owner, codec.scope == CallbackScope::Async, lent);
+    let user_data = if user_data.is_null() {
+        Either::B(Null)
+    } else {
+        Either::A(External::new(Handle::pointer(user_data, &function)))
+    };
+    Ok(DecodedCallback {
+        function: External::new(function),
+        user_data,
     }
-
-    Ok(target.to_unknown())
+    .into_unknown(env)?)
 }
 
 fn seed_ref<'e>(
@@ -777,28 +845,18 @@ fn seed_ref<'e>(
         return Ok(value::js_null(env)?);
     }
     let seeded = match inner_codec {
-        codec if codec.is_scalar() => {
-            unsafe { codec.read(env, ReadCtx::slot(inner_ptr.cast_const(), "ref seed")) }
+        Codec::Bytes(bytes_codec) if bytes_codec.length.is_none() => {
+            unsafe { bytes_codec.read(env, ReadCtx::slot(inner_ptr, "ref seed")) }
                 .report_err("callback: failed to seed ref")
         }
-        // A length-bounded inout array takes its extent from the sibling the caller passed beside
-        // it, exactly the way an incoming array argument does. It is read without being freed: the
-        // write-back releases the container it replaces.
-        Codec::Array(array_codec) if array_codec.is_length_bounded() => {
+        Codec::Array(array_codec) => {
             let value_ptr = unsafe { inner_ptr.cast::<*mut c_void>().read_unaligned() };
-            array_codec
-                .decode_with_context(
-                    env,
-                    &Stash::Ptr(value_ptr),
-                    siblings.stashes,
-                    siblings.codecs,
-                )
-                .report_err("callback: failed to seed ref")
-        }
-        Codec::Array(array_codec) if !array_codec.is_length_bounded() => {
-            let value_ptr = unsafe { inner_ptr.cast::<*mut c_void>().read_unaligned() };
-            unsafe { array_codec.read_value(env, value_ptr, "ref seed", Ownership::Borrowed) }
-                .report_err("callback: failed to seed ref")
+            return array_codec.decode_borrowed_with_context(
+                env,
+                &Stash::Ptr(value_ptr),
+                siblings.stashes,
+                siblings.codecs,
+            );
         }
         _ => None,
     };

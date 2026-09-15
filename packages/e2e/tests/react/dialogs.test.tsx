@@ -253,7 +253,7 @@ describe("Dialog - render prop and lifecycle", () => {
         expect(dialog).toBeRooted();
     });
 
-    it("fires onClose when the user closes the dialog", async () => {
+    it("fires onClosed when the dialog closes", async () => {
         const dialogRef = createRef<Adw.AlertDialog>();
         const onClose = vi.fn();
 
@@ -269,11 +269,16 @@ describe("Dialog - render prop and lifecycle", () => {
             </InApp>,
         );
 
+        const dialog = requireDialog(dialogRef);
+        expect(dialog).toBeRooted();
         await act(() => {
-            requireDialog(dialogRef).emit("closed");
+            expect(dialog.close()).toBe(true);
         });
 
-        expect(onClose).toHaveBeenCalledTimes(1);
+        await waitFor(() => {
+            expect(onClose).toHaveBeenCalledTimes(1);
+            expect(dialog).not.toBeRooted();
+        });
     });
 
     it("does not fire onClose when React unmounts the dialog", async () => {
@@ -357,9 +362,11 @@ describe("render - AlertDialog responses", () => {
             return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label }]} />;
         }
 
-        await render(<App label="Initial" />, options());
+        const { rerender } = await render(<App label="Initial" />, options());
+        const dialog = ref.current;
         expect(ref.current?.getResponseLabel("test")).toBe("Initial");
-        await render(<App label="Updated" />, options());
+        await rerender(<App label="Updated" />);
+        expect(ref.current).toBe(dialog);
         expect(ref.current?.getResponseLabel("test")).toBe("Updated");
     });
 
@@ -370,9 +377,11 @@ describe("render - AlertDialog responses", () => {
             return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", appearance }]} />;
         }
 
-        await render(<App appearance={Adw.ResponseAppearance.DEFAULT} />, options());
+        const { rerender } = await render(<App appearance={Adw.ResponseAppearance.DEFAULT} />, options());
+        const dialog = ref.current;
         expect(ref.current?.getResponseAppearance("test")).toBe(Adw.ResponseAppearance.DEFAULT);
-        await render(<App appearance={Adw.ResponseAppearance.DESTRUCTIVE} />, options());
+        await rerender(<App appearance={Adw.ResponseAppearance.DESTRUCTIVE} />);
+        expect(ref.current).toBe(dialog);
         expect(ref.current?.getResponseAppearance("test")).toBe(Adw.ResponseAppearance.DESTRUCTIVE);
     });
 
@@ -383,9 +392,11 @@ describe("render - AlertDialog responses", () => {
             return <AdwAlertDialog ref={ref} heading="Test" responses={[{ id: "test", label: "Test", isEnabled }]} />;
         }
 
-        await render(<App isEnabled={true} />, options());
+        const { rerender } = await render(<App isEnabled={true} />, options());
+        const dialog = ref.current;
         expect(ref.current?.getResponseEnabled("test")).toBe(true);
-        await render(<App isEnabled={false} />, options());
+        await rerender(<App isEnabled={false} />);
+        expect(ref.current).toBe(dialog);
         expect(ref.current?.getResponseEnabled("test")).toBe(false);
     });
 
@@ -546,12 +557,14 @@ describe("render - ColorDialogButton", () => {
         }
 
         const initialColor = makeRgba(1, 0, 0, 1);
-        await render(<App color={initialColor} />);
+        const { rerender } = await render(<App color={initialColor} />);
+        const button = ref.current;
         const rgba1 = ref.current?.getRgba();
         expect(rgba1?.red).toBeCloseTo(1);
         expect(rgba1?.green).toBeCloseTo(0);
         const newColor = makeRgba(0, 1, 0, 1);
-        await render(<App color={newColor} />);
+        await rerender(<App color={newColor} />);
+        expect(ref.current).toBe(button);
         const rgba2 = ref.current?.getRgba();
         expect(rgba2?.red).toBeCloseTo(0);
         expect(rgba2?.green).toBeCloseTo(1);
@@ -586,10 +599,14 @@ describe("render - ColorDialogButton", () => {
             return <GtkColorDialogButton ref={ref} dialog={<GtkColorDialog withAlpha={hasAlpha} />} />;
         }
 
-        await render(<App hasAlpha={true} />);
-        expect(ref.current?.getDialog()).toHaveObjectProperty("withAlpha", true);
-        await render(<App hasAlpha={false} />);
-        expect(ref.current?.getDialog()).toHaveObjectProperty("withAlpha", false);
+        const { rerender } = await render(<App hasAlpha={true} />);
+        const button = ref.current;
+        const dialog = button?.getDialog();
+        expect(dialog).toHaveObjectProperty("withAlpha", true);
+        await rerender(<App hasAlpha={false} />);
+        expect(ref.current).toBe(button);
+        expect(ref.current?.getDialog()).toBe(dialog);
+        expect(dialog).toHaveObjectProperty("withAlpha", false);
     });
 });
 
@@ -618,11 +635,13 @@ describe("render - FontDialogButton", () => {
         }
 
         const initialFont = Pango.FontDescription.fromString("Sans 10");
-        await render(<App font={initialFont} />);
+        const { rerender } = await render(<App font={initialFont} />);
+        const button = ref.current;
         const fontDesc1 = ref.current?.getFontDesc();
         expect(fontDesc1?.toString()).toBe("Sans 10");
         const newFont = Pango.FontDescription.fromString("Serif Bold 14");
-        await render(<App font={newFont} />);
+        await rerender(<App font={newFont} />);
+        expect(ref.current).toBe(button);
         const fontDesc2 = ref.current?.getFontDesc();
         expect(fontDesc2?.toString()).toBe("Serif Bold 14");
     });
@@ -661,9 +680,11 @@ describe("render - FontDialogButton", () => {
             return <GtkFontDialogButton ref={ref} useFont={shouldUseFont} />;
         }
 
-        await render(<App shouldUseFont={false} />);
+        const { rerender } = await render(<App shouldUseFont={false} />);
+        const button = ref.current;
         expect(ref.current).toHaveObjectProperty("useFont", false);
-        await render(<App shouldUseFont={true} />);
+        await rerender(<App shouldUseFont={true} />);
+        expect(ref.current).toBe(button);
         expect(ref.current).toHaveObjectProperty("useFont", true);
     });
 
@@ -681,9 +702,11 @@ describe("render - FontDialogButton", () => {
             return <GtkFontDialogButton ref={ref} useSize={shouldUseSize} />;
         }
 
-        await render(<App shouldUseSize={false} />);
+        const { rerender } = await render(<App shouldUseSize={false} />);
+        const button = ref.current;
         expect(ref.current).toHaveObjectProperty("useSize", false);
-        await render(<App shouldUseSize={true} />);
+        await rerender(<App shouldUseSize={true} />);
+        expect(ref.current).toBe(button);
         expect(ref.current).toHaveObjectProperty("useSize", true);
     });
 
@@ -701,9 +724,11 @@ describe("render - FontDialogButton", () => {
             return <GtkFontDialogButton ref={ref} level={level} />;
         }
 
-        await render(<App level={Gtk.FontLevel.FONT} />);
+        const { rerender } = await render(<App level={Gtk.FontLevel.FONT} />);
+        const button = ref.current;
         expect(ref.current).toHaveObjectProperty("level", Gtk.FontLevel.FONT);
-        await render(<App level={Gtk.FontLevel.FEATURES} />);
+        await rerender(<App level={Gtk.FontLevel.FEATURES} />);
+        expect(ref.current).toBe(button);
         expect(ref.current).toHaveObjectProperty("level", Gtk.FontLevel.FEATURES);
     });
 });

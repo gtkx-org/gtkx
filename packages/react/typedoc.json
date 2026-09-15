@@ -5,11 +5,10 @@
     ],
     "intentionallyNotExported": [
         "Container",
-        "Properties",
         "SettingValue",
         "SettingsSchema",
         "SettingsSchemaKeys",
-        "TypedSignalHandler",
+        "SettingsSchemaValues",
         "UseBindSettingOptions",
         "UseSignalOptions"
     ]

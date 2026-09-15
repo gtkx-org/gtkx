@@ -11,9 +11,8 @@ import {
     applyAdoptedProps,
     applyElementProps,
     assertPropsCanChange,
+    discardAccessible,
     flushAccessible,
-    flushBehaviors,
-    teardownBehaviors,
 } from "./apply-props.js";
 import { attachChild, detachChild } from "./child-routing.js";
 import { resolveElementNode } from "./instance.js";
@@ -27,12 +26,13 @@ import {
     type Instance,
     LAZY_KIND,
     lazyTarget,
+    TEXT_KIND,
     type TextNode,
 } from "./node.js";
-import { teardownPlacements } from "./placement.js";
+import { flushAdoptions, teardownPlacements } from "./placement.js";
 import { isRootElement, type RootElement } from "./root-element.js";
 import { disconnectAllHandlers } from "./signals.js";
-import { flushStyles, releaseStyle } from "./style.js";
+import { flushStyles, releaseCssClasses, releaseStyle } from "./style.js";
 import {
     didUpdateTextSurgically,
     enclosingHost,
@@ -91,9 +91,9 @@ const hostConfig = {
     prepareForCommit: (): null => null,
     resetAfterCommit: (): void => {
         flushTextHosts();
-        flushBehaviors();
         flushAccessible();
         flushStyles();
+        flushAdoptions();
     },
     preparePortalMount: (): void => undefined,
     clearContainer: (): void => undefined,
@@ -110,6 +110,7 @@ const hostConfig = {
         attachToContainer(container, child, before);
     },
     removeChild: (parent: Instance, child: AnyNode): void => {
+        detachSubtree(child);
         detachChild(parent, child);
     },
     removeChildFromContainer: (container: Container, child: AnyNode): void => {
@@ -134,13 +135,7 @@ const hostConfig = {
     },
     hideTextInstance: (): void => undefined,
     unhideTextInstance: (): void => undefined,
-    detachDeletedInstance: (instance: Instance): void => {
-        if (instance.kind === ELEMENT_KIND) {
-            detachElement(instance);
-        } else if (instance.kind === LAZY_KIND && instance.adopted !== null) {
-            disconnectAllHandlers(lazyTarget(instance, instance.adopted));
-        }
-    },
+    detachDeletedInstance: (): void => undefined,
     getInstanceFromNode: (): null => null,
     beforeActiveInstanceBlur: (): void => undefined,
     afterActiveInstanceBlur: (): void => undefined,
@@ -192,11 +187,45 @@ function createPriorityTracker(): PriorityTracker {
 
 const detachElement = (instance: ElementNode): void => {
     disconnectAllHandlers(instance);
+    discardAccessible(instance);
+
+    for (const entries of instance.placements.values()) {
+        for (const entry of entries) {
+            detachSubtree(entry.node);
+        }
+    }
+
+    for (const child of instance.content) {
+        detachSubtree(child);
+    }
+
     teardownPlacements(instance);
-    teardownBehaviors(instance);
 
     if (instance.object instanceof Gtk.Widget) {
+        releaseCssClasses(instance.object, instance);
         releaseStyle(instance.object);
+    }
+
+    containerNodes.delete(instance.object);
+};
+
+const detachSubtree = (instance: AnyNode): void => {
+    if (instance.kind === TEXT_KIND) {
+        return;
+    }
+
+    if (instance.kind === ELEMENT_KIND) {
+        detachElement(instance);
+
+        return;
+    }
+
+    if (instance.kind === LAZY_KIND && instance.adopted !== null) {
+        disconnectAllHandlers(lazyTarget(instance, instance.adopted));
+    }
+
+    for (const child of instance.children) {
+        detachSubtree(child);
     }
 };
 
@@ -208,10 +237,13 @@ const updateInstance = (instance: Instance, prev: Props, next: Props): void => {
         return;
     }
 
-    if (instance.kind === LAZY_KIND && instance.adopted !== null) {
+    if (instance.kind === LAZY_KIND) {
         assertPropsCanChange(instance.typeName, prev, next);
-        applyAdoptedProps(lazyTarget(instance, instance.adopted), prev, next);
         instance.props = next;
+
+        if (instance.adopted !== null) {
+            applyAdoptedProps(lazyTarget(instance, instance.adopted), prev, next);
+        }
     }
 };
 
@@ -222,6 +254,8 @@ const attachToContainer = (container: Container, child: AnyNode, before: AnyNode
 };
 
 const detachFromContainer = (container: Container, child: AnyNode): void => {
+    detachSubtree(child);
+
     if (!isRootElement(container)) {
         detachChild(getOrCreateContainerNode(container), child);
     }
@@ -230,10 +264,6 @@ const detachFromContainer = (container: Container, child: AnyNode): void => {
 const getPublicInstance = (instance: Instance): object => {
     if (instance.kind === ELEMENT_KIND) {
         return instance.object;
-    }
-
-    if (instance.kind === LAZY_KIND) {
-        return instance.adopted ?? instance;
     }
 
     return instance;

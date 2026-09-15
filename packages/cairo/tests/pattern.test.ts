@@ -91,7 +91,7 @@ describe("Pattern (context sources)", () => {
         const source = createContext().getSource();
         expect(source.getType()).toBe(PatternType.SOLID);
         expect(source.getRgba()).toEqual({ red: 0, green: 0, blue: 0, alpha: 1 });
-        expect(source.getColorStopCount()).toBe(0);
+        expect(() => source.getColorStopCount()).toThrow();
     });
 
     it("rejects a missing source", () => {
@@ -139,6 +139,33 @@ describe("Pattern (statics)", () => {
         expect(mesh).toBeInstanceOf(MeshPattern);
         expect(mesh.getPatchCount()).toBe(0);
         expect(mesh.getType()).toBe(PatternType.MESH);
+    });
+
+    it("distinguishes an empty gradient from a failed color query", () => {
+        const gradient = Pattern.createLinear(0, 0, 10, 0);
+        expect(gradient.getColorStopCount()).toBe(0);
+        expect(() => gradient.getColorStopRgba(0)).toThrow();
+        expect(() => gradient.getRgba()).toThrow();
+        expect(gradient.status()).toBe(Status.SUCCESS);
+        gradient.addColorStopRgb(0, 1, 0, 0);
+        expect(gradient.getColorStopRgba(0)).toEqual({ offset: 0, red: 1, green: 0, blue: 0, alpha: 1 });
+        expect(() => gradient.getColorStopRgba(1)).toThrow();
+    });
+
+    it("rejects queries for a missing mesh patch", () => {
+        const mesh = Pattern.createMesh();
+        expect(() => mesh.getPath(0)).toThrow();
+        expect(() => mesh.getControlPoint(0, 0)).toThrow();
+        expect(() => mesh.getCornerColorRgba(0, 0)).toThrow();
+        expect(mesh.status()).toBe(Status.SUCCESS);
+    });
+
+    it("rejects out-of-range mesh control points and corners", () => {
+        const mesh = createPatch();
+        expect(() => mesh.getControlPoint(0, 4)).toThrow();
+        expect(() => mesh.getCornerColorRgba(0, 4)).toThrow();
+        expect(() => mesh.getPath(1)).toThrow();
+        expect(mesh.getPatchCount()).toBe(1);
     });
 
     it("rejects a missing operand", () => {

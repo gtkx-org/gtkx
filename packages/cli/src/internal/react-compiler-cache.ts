@@ -28,7 +28,7 @@ const ENTRY_SUFFIX = ".json";
 const GENERATION_LENGTH = 16;
 const MAX_ENTRIES = 2048;
 const TOOLCHAIN_PACKAGES = ["@babel/core", "@babel/preset-typescript", "babel-plugin-react-compiler"];
-const PLUGIN_MODULE = ["..", "vite-plugins", "react-compiler"];
+const PLUGIN_MODULE = "../vite-plugins/react-compiler.js";
 const toolchain: { value: string | undefined } = { value: undefined };
 
 const readText = (path: string): string | undefined => {
@@ -207,7 +207,7 @@ const writeEntry = (dir: string, key: string, output: CompilerOutput): void => {
     writeAtomically(join(dir, `${key}${ENTRY_SUFFIX}`), JSON.stringify(output));
 };
 
-const pluginHash = (): string => moduleHash(join(import.meta.dirname, ...PLUGIN_MODULE));
+const pluginHash = (): string => moduleHash(new URL(import.meta.resolve(PLUGIN_MODULE)));
 
 const cacheIdentity = (options: ResolvedReactCompilerOptions, generation: string): string =>
     [

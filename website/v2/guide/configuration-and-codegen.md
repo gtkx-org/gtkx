@@ -1,415 +1,189 @@
 ---
 title: "Configuration and Codegen"
-description: "Configure GTKX's Adwaita-first GNOME foundation, additional GIR libraries, and generated typed JSX bindings."
+description: "Configure a GTKX project and generate its bindings."
 ---
 
 # Configuration and Codegen
 
-Codegen is driven from `gtkx.config.ts`, which declares your application ID and any additional GIR roots. GTKX starts from `Adw-1` as its sole default root, and Adwaita's GIR include pulls in `Gtk-4.0` to complete the always-present GNOME application foundation.
+`gtkx.config.ts` identifies your application and selects the libraries GTKX generates bindings for. GTKX 2 includes Adwaita and GTK by default.
 
 ## The config file
 
-`defineConfig` from `@gtkx/config` types your config for editor completion and validates it when the CLI loads the file:
+Create `gtkx.config.ts` in the project root:
 
 ```ts
 import { defineConfig } from "@gtkx/config";
 
 export default defineConfig({
-    applicationId: "com.gtkx.tutorial",
+    applicationId: "com.example.Tasks",
 });
 ```
 
-`mergeConfig(base, override)` layers a project config over a shared base. A `$development` or `$production` block layers over the top level, per mode.
+List additional libraries by GIR name and version, for example `libraries: ["WebKit-6.0"]`. Codegen starts from `Adw-1` and follows its GIR dependencies, including `Gtk-4.0`. Omit these two entries from `libraries`; listing them explicitly is an error. The 1.x `"*"` wildcard is also removed.
+
+`defineConfig` provides editor completion. The CLI validates the configuration when it loads it. The application ID is required and uses a reverse-DNS name such as `com.example.Tasks`.
+
+Install the corresponding GIR files before generating bindings. Use `girPath` when they live outside the standard search directories; relative paths start at the project root. Supplying a newer GIR file changes the declarations, not the library that runs your app.
+
+### Other settings {#every-option}
+
+Use the [configuration reference](/v2/reference/@gtkx/config/index/type-aliases/Config) for available settings. The React Compiler is enabled by default; `reactCompiler: false` disables it. Application icons and package metadata are covered in [Deploying](/v2/guide/deploying), and agent tool settings in [MCP](/v2/guide/mcp).
+
+For shared configuration, `mergeConfig(base, override)` applies the override over the base; arrays concatenate with override entries first. `$development` and `$production` blocks provide mode-specific overrides.
 
 ### Selecting another configuration
 
-`gtkx dev`, `gtkx codegen`, `gtkx build`, and `gtkx deploy` all accept the same project-relative `--config` option:
+`gtkx dev`, `gtkx codegen`, `gtkx build`, and `gtkx deploy` accept `--config`:
 
 ```bash
 gtkx dev --config gtkx.enterprise.config.ts
-gtkx codegen --config gtkx.enterprise.config.ts
 gtkx build --config gtkx.enterprise.config.ts
-gtkx deploy --config gtkx.enterprise.config.ts
 ```
 
-The path is relative to the project root selected by `--cwd` and must remain inside that root. Build and deploy
-also pass the selected file through their implicit codegen and every build-time config consumer, so generated
-bindings, `virtual:gtkx-config`, the bundle, and deployment metadata all use one configuration.
+The path is relative to the project root selected by `--cwd` and must stay inside it. For tests, pass the same path as `gtkx({ configFile: "gtkx.enterprise.config.ts" })` in `vitest.config.ts`.
 
-Use the same file in Vitest with `gtkx({ configFile: "gtkx.enterprise.config.ts" })` in `vitest.config.ts`.
+Development watches the selected config and its local dependencies, including shared config layers and imported data. Changes regenerate bindings and restart the app. If a reload fails, the current app keeps running until the configuration is fixed.
 
-`gtkx dev` watches the selected file together with every local file it reaches: `import` and `require`
-sources, `package.json` `imports` aliases such as `#base`, c12 `extends` layers, and imported data files such
-as `.json` or `.yaml`. A dependency the configuration fails to load because it is missing is watched too, so
-creating it reloads the configuration, and a dependency a reload introduces joins the watch. Files under
-`node_modules` are left out. Each reload names the file that changed, regenerates bindings, and restarts the
-app, so saving the shared base of `gtkx.enterprise.config.ts` reports:
-
-```
-gtkx.config.ts changed; regenerating bindings...
-```
-
-When the reload fails, the running app is kept and the error is reported; fix the file and save again.
-
-Every production build records both the project-relative config path and a digest of the production-mode
-configuration in its build manifest. `gtkx deploy --skip-build --config ...` compares both identities before it
-packages `dist/`, and rejects a bundle built with another config file or with different config values.
-
-### Every option
-
-`applicationId` is the only required key; the rest have defaults.
-
-- **`applicationId`**: the GApplication identifier the app registers under, in reverse-DNS form (`com.example.Tasks`).
-- **`libraries`**: additional GIR roots to bind, as `Name-Version`. `Adw-1` is the sole default root, and its GIR include generates `Gtk-4.0` transitively. List only what the project needs beyond that foundation — `["WebKit-6.0"]` rather than `["Adw-1", "Gtk-4.0", "WebKit-6.0"]`. Listing `Adw-1`, listing its transitive `Gtk-4.0`, or using the removed `"*"` wildcard is rejected. A different version of either namespace replaces the version GTKX would otherwise select.
-- **`girPath`**: directories searched for `.gir` files ahead of the standard locations. This can generate bindings from a newer GIR, for example libadwaita 1.10 declarations on a codegen host whose standard path has 1.9. It changes declarations only: it does not install or upgrade the shared library, and every machine that runs the result still needs a runtime providing those APIs.
-- **`reactCompiler`**: the React Compiler, on by default. `false` disables it; an object forwards `compilationMode` and `panicThreshold`.
-- **`codegen: false`**: skips generation, so the project imports whatever binding store is already installed.
-- **`applicationIcon`**: a project-relative icon-theme directory, or one SVG, PNG, or XPM file to install as the
-  desktop application icon. Directories keep their theme layout; a single file is placed under `hicolor` and
-  renamed to the application ID. When omitted, GTKX uses exactly one `<applicationId>.svg`, `.png`, or `.xpm`
-  file in the project root, if present; multiple matches require an explicit choice.
-- **`userEventSignals`**: signals, keyed by GLib type name, that GTKX suppresses while writing to a widget itself. A write silences all of them, and silences `notify` only for the property it writes, so a property the widget changes in reaction still reaches its `onNotifyX`. Entries merge into the defaults.
-- **`elements`**: the [element customizations](#advanced-customizing-elements): `behaviors` is the module default-exporting your `defineElements` map, `config` sets per-type codegen output (`component`, `props`, `omittedProps`, `isLazy`).
-- **`agents`**: what codegen writes for coding agents, both on by default. `rules: false` stops the `AGENTS.md` block, `reference: false` stops the on-disk element reference. See [What agents are given](#what-agents-are-given).
-- **`mcp`**: which tools the [MCP server](/v2/guide/mcp) registers: `tools` is a list of name patterns, `readOnly` drops the tools that drive the app.
-
-### The application resource base
-
-GTKX derives a resource base from `applicationId` by prefixing `/` and replacing dots with slashes, so
-`com.example.Tasks` becomes `/com/example/Tasks`. It exports the result as `resourceBasePath` from
-`virtual:gtkx-config` and uses the same prefix for derived `?resource` paths and `?icon` assets. An explicit
-absolute `?resource=/path` remains exactly the path you supply.
-
-`AdwApplication` and `GtkApplication` elements default their `resourceBasePath` prop to that config-derived
-value. GApplication can derive the same value from its application ID, but GTKX supplies it explicitly so the
-application and its generated resources stay aligned. Consequently, overriding an element's `applicationId`
-prop alone does not move those resources; also pass `resourceBasePath` when intentionally using a different
-resource tree.
-
-## Production build output
-
-`gtkx build` writes to `dist/` by default. Use a separate project-relative output for another independently
-runnable build, such as a helper or a second entry point:
-
-```bash
-gtkx build src/helper.ts --out build/helper
-gtkx build src/index.ts --out build/application
-```
-
-An `--out` path must be below the project root, cannot pass through a symbolic link, and must be absent, empty,
-or contain the manifest from an earlier GTKX build. GTKX can safely replace that earlier build, but rejects the
-project root, directories containing unrelated files, and a path nested inside another managed build. Each
-selected directory receives its own
-`bundle.mjs`, build manifest, and emitted assets. `gtkx deploy --skip-build` still packages `dist/`; its own
-`--out` option selects the deployment work and artifact directory instead.
-
-### Self-contained module resolution
-
-Production builds inspect every emitted JavaScript chunk for literal module resolution that would escape the
-artifact. Node.js builtins and relative files emitted with the build are allowed; a bare package or missing
-relative file that would have to resolve from the installed machine fails the build. The inspection follows
-the actual lexical bindings of `require`, imported `createRequire` aliases, and aliases derived from
-`import.meta.url`, so a resolver hidden behind a constant alias is still checked while an unrelated local
-function that merely shares one of those names is not.
+Builds use the selected configuration throughout generation and bundling. `gtkx deploy --skip-build --config ...` rejects a bundle created with another config file or different production settings.
 
 ## What codegen emits
 
-Codegen writes packages into `node_modules/.gtkx` and links them into `node_modules/@gtkx`, so imports resolve without either appearing in your `package.json`:
-
-- **`@gtkx/gi`** is the introspected API, one subpath per namespace (`@gtkx/gi/gtk`, `@gtkx/gi/adw`): the classes, enums, and functions you call imperatively, for refs and values such as `Gtk.Orientation.VERTICAL`.
-- **`@gtkx/jsx/<namespace>`** is the React layer (`@gtkx/jsx/gtk`, `@gtkx/jsx/adw`): a PascalCase component per widget (`GtkButton`, `AdwHeaderBar`), a `Props` interface for each, and a `React.JSX.IntrinsicElements` augmentation.
-
-The generated store must sit in the same project dependency tree as its installed `@gtkx/*` packages. Codegen
-rejects packages resolved from a `node_modules` directory above the project, naming both locations, because a
-hoisted copy could otherwise share and overwrite another project's generated bindings. Scaffold and run the
-project outside an ancestor dependency tree, or install its dependencies locally.
-
-### Store publication and recovery
-
-GTKX publishes the GI and JSX stores as one matched pair. `node_modules/.gtkx/current` points to the active
-`.pair-generation-*` directory, while `.gtkx/gi` and `.gtkx/jsx` lead to that pair's two packages. The public
-`node_modules/@gtkx/gi` and `node_modules/@gtkx/jsx` links remain stable while `current` switches atomically, so
-readers cannot observe a new JSX store with an older GI store.
-
-Codegen retains at most three complete pair generations, including the active one, so a process that is still
-importing from an earlier pair keeps a consistent store while newer pairs are published. Every enabled codegen run,
-whether it regenerates or finds the bindings up to date, reclaims everything else under `node_modules/.gtkx`: pair
-generations beyond that allowance, incomplete pairs, staging directories, and the root-level `.gi-*` and `.jsx-*`
-directories that earlier layouts wrote and no retained pair reaches. Each directory records its writer process in
-its name; one whose writer is another process that is still running is left for that process to finish, and
-whatever `current` or a store link reaches is never removed. After a run, `node_modules/.gtkx` holds the retained
-pairs, the `current`, `gi`, and `jsx` links, `env.d.ts`, and `import-scan.json`, the cache that lets a run reuse
-the import scan of every source file whose contents are unchanged.
-
-Writers serialize through `node_modules/.gtkx/.codegen.lock`. A normal exit removes that lock-owner file; a
-forced exit can leave it behind, but the operating-system lock is released with the process and the next run
-can recover. Waiting for an active writer defaults to 10 minutes; when that wait runs out, the error reports how
-long it waited and names the variable that raises the limit. Set `GTKX_CODEGEN_LOCK_TIMEOUT_MS` to a positive
-millisecond value to choose a different timeout, for example:
+Run generation after installing dependencies or changing the configured libraries:
 
 ```bash
-GTKX_CODEGEN_LOCK_TIMEOUT_MS=30000 gtkx codegen
+gtkx codegen
 ```
 
-### The compile cache
+GTKX generates real modules under `node_modules/.gtkx` and links them as `@gtkx/gi` and `@gtkx/jsx`. They belong to the project and are not separate npm dependencies. Development and production builds also check whether generation is needed.
 
-The `gtkx` command and the development runner it forks enable Node's V8 compile cache, so the second and later
-starts skip recompiling the CLI, Vite, and codegen modules they load. The cache lives under
-`${XDG_CACHE_HOME:-$HOME/.cache}/gtkx/compile-cache`, in a directory Node names after its own version,
-architecture, and V8 flags, and `gtkx cleanup` removes the directories the running Node can no longer use.
-With the cache turned off that run cannot know its own V8 flags, so it reaps only the directories built by
-another Node version or architecture. Set `GTKX_DISABLE_COMPILE_CACHE` to `1` to turn it off for both
-processes, for example in a throwaway CI container that pays the write on every job and never reads it back:
-
-```bash
-GTKX_DISABLE_COMPILE_CACHE=1 gtkx build
-```
-
-The `cairo` namespace is provided by the [`@gtkx/cairo`](/v2/guide/cairo) package rather than generated.
-
-Record fields appear as accessors: a getter wherever the read lands on the right memory, and a setter only where a field slot can hold what it stores. `null`-terminated pointer arrays read, so `Gio.DBusNodeInfo.interfaces` hands back its array, but they are read-only and absent from the record's constructor props, since the slot cannot keep an array alive. Fields whose element count lives in a sibling field, and `GList` or `GSList` links, carry no accessor and are absent from the class.
-
-A few bindings take a NUL-terminated C string that GIR describes as a byte array (`GLib.Variant.newBytestring`), so the value silently stops at the first zero byte. Binary payloads go through `GLib.Bytes` and `GLib.Variant.newFromBytes`.
-
-### Import elements by namespace
-
-Each JSX element is exported from its generated namespace subpath:
+Import classes, enums, and functions from GI modules, and elements from JSX modules:
 
 ```tsx
+import * as Gtk from "@gtkx/gi/gtk";
 import { AdwHeaderBar } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 ```
 
-There is no bare `@gtkx/jsx` entry point. Splitting imports prevents one file from evaluating every generated namespace and its matching GI module.
+Both packages use namespace subpaths; neither has a bare root import. Use [`@gtkx/cairo`](/v2/guide/cairo) for Cairo.
 
-`@gtkx/gi` has no equivalent root. Its symbols are imported namespaced, as `import * as Gtk from "@gtkx/gi/gtk"`, so `Gtk.Orientation` and `Adw.ResponseAppearance` stay apart.
+Leave generation enabled for an ordinary application. `codegen: false` is for projects that reuse an installed binding store. If a generated store needs rebuilding, run `gtkx codegen --force` in the project that generates it.
 
-### Member precedence
+### Production bindings
 
-Generated wrappers follow JavaScript prototype precedence. A callable on the class chain wins over implemented interfaces, and the first implemented interface wins between interfaces. An interface callable replaces an inherited member only when that member is GTKX's synthetic signal helper. The winning callable keeps its natural camelCase name. GIR `shadows` metadata also chooses the canonical public name, so create a subprocess with `Gio.Subprocess.new(argv, flags)`, not `newv`.
+Production builds remove unused generated classes. Import a class as a runtime value when the app needs its type registration, including when using `GObject.typeFromName`. A side-effect-only namespace import initializes the namespace but does not retain every class. Development and tests do not bundle.
 
-When GIR narrows an inherited callable incompatibly, the generated store may contain a `(this: never, ...args: never[]): any` overload inside a local, non-exported `_Class$InstanceBase` declaration. This tombstone prevents TypeScript from accepting the invalid inherited call while keeping the public class's valid member visible. The same mechanism resolves natural `connect` or `disconnect` methods and conflicting async members. These declarations are deliberate compiler scaffolding and do not become public hover or completion entries.
+## The JSX prop model
 
-Most GObjects still use `connect`, `disconnect`, `emit`, `on`, `once`, and `off` for signals. When a GIR callable owns one of those names, use the signal functions exported by `@gtkx/gi/gobject` instead:
+Generated elements follow the native API with GTKX naming conventions:
 
-```ts
-import * as Gio from "@gtkx/gi/gio";
-import * as GObject from "@gtkx/gi/gobject";
+- Properties use camelCase, such as `showTitleButtons`.
+- Signals use handler props, such as `onClicked`. GTKX passes the emitting object after the signal arguments.
+- Property notifications use `onNotifyX`, receiving the new value and the emitting object.
+- Object properties that accept elements can be expressed as JSX, with GTKX managing their lifetime.
+- Refs expose the corresponding GI instance for imperative APIs.
 
-const connectSocket = (socket: Gio.Socket, address: Gio.SocketAddress): void => {
-    const handlerId = GObject.signalConnect(socket, "notify::blocking", () => {});
+Prefer JSX for object creation and child placement. The [generated element reference](#generating-element-reference-docs) shows the exact props, slots, and signals for each configured library.
 
-    socket.connect(address, null);
-    GObject.signalDisconnect(socket, handlerId);
-};
-```
+### Member names
 
-`GObject.signalEmit(instance, signal, ...args)` is the corresponding emission escape hatch. Properties have matching collision-safe helpers:
-
-```ts
-const blocking = GObject.getProperty(socket, "blocking");
-GObject.setProperty(socket, "blocking", !blocking);
-```
-
-Property names use their generated camelCase spelling. The getter accepts readable properties and infers their result, while the setter accepts mutable properties and checks the value type. Both resolve the installed `GObject.ParamSpec`, so they still reach a property when a more-specific method owns the same JavaScript name. Read-only and construct-only properties are excluded from the setter. Other inherited GIR implementations remain reachable explicitly through their prototype when both versions are useful.
+Native methods keep their generated camelCase names, even when a name overlaps a GTKX signal or property helper. For example, `Gio.Socket.connect` connects the socket; use `GObject.signalConnect` to connect one of its signals. `GObject.getProperty` and `GObject.setProperty` reach native properties when another member owns their name. Property names use camelCase and values are typechecked.
 
 ## Passing a GType
 
-Every parameter that takes a GType accepts the class registered under one alongside the numeric `bigint`: a generated wrapper class, a generated interface, or a class `registerClass` registered — the same classes whose GType `SomeClass.prototype.__type__` reads. Signal arguments declared as GTypes take a class the same way. The GType is the class's own registration, so a plain `class extends Gtk.Label {}` that never went through `registerClass` is rejected rather than resolving to its parent's type, as is any other class, object, or string:
+GTKX accepts a registered class wherever a binding takes a GType:
 
 ```ts
-const store = Gio.ListStore.new(Gtk.Label);     // same store as new(Gtk.Label.prototype.__type__)
-store.append(new Gtk.Label());
-GObject.typeName(Gtk.Label);                    // "GtkLabel"
+import * as Gio from "@gtkx/gi/gio";
+import * as Gtk from "@gtkx/gi/gtk";
+
+const store = Gio.ListStore.new(Gtk.Label);
 ```
 
-Only the input direction widens: a return value, out parameter, or signal handler argument still hands back the numeric GType.
+Generated classes and interfaces, and subclasses registered with `registerClass`, can be passed this way. A plain JavaScript subclass has no registration of its own. Returned GTypes and signal handler arguments remain `bigint` values.
 
 ## Passing a GValue
 
-A `GObject.Value` is GObject's boxed value: a GType plus a payload of that type. Every parameter the callee only reads — a `const GValue *` in C — is typed `GObject.Value | JsValue`, as is every `GObject.Value` argument of an emitted signal, so you can pass the JavaScript value itself and the GType is inferred from it:
+When a binding reads a `GObject.Value`, GTKX usually accepts the JavaScript payload directly:
 
 ```ts
-Gdk.ContentProvider.newForValue("payload");             // gchararray
-Gdk.ContentProvider.newForValue(rgba);                  // GdkRGBA
-widget.updateProperty([Gtk.AccessibleProperty.LABEL], ["Save"]);
-dropTarget.emit("drop", "payload", x, y);
+import * as Gdk from "@gtkx/gi/gdk";
+
+const provider = Gdk.ContentProvider.newForValue("Copied text");
 ```
 
-A signal *handler* still receives a `GObject.Value`, since a handler for a binding transform produces its result by writing into the value it is given.
+Use an explicitly initialized `GObject.Value` when the operation requires a particular native type, including an interface type for clipboard or drag-and-drop matching. A binding that fills a value instead takes a new, uninitialized `GObject.Value`; its generated signature identifies this case. Signal handlers continue to receive the value object.
 
-What each JavaScript value infers to:
+For nullable value parameters, `null` means no value object. To represent a typed null payload, create a value with the required type and set its payload to null.
 
-| Value | GType |
-| --- | --- |
-| string | `gchararray` |
-| boolean | `gboolean` |
-| number, whole and within `gint` range | `gint` |
-| any other number | `gdouble` |
-| `bigint` | `gint64`, or `guint64` from 2^63 up; outside the 64-bit range it throws |
-| array of strings | `GStrv` |
-| a wrapper instance | the GType it carries |
-| `null` | a NULL `gpointer` |
+### Generated return values
 
-`null` infers a NULL `gpointer` because that is what GJS infers, so code ported from it behaves the same — but few callees accept a `gpointer`, and it is rarely what you want. A nullable parameter takes `null` as *no value at all*, passing the callee a NULL `GValue *`, and clearing a typed slot takes a value of that type holding nothing, such as `TYPE_OBJECT` with `setObject(null)`.
+Returned byte sequences use `Uint8Array`; byte inputs accept `Uint8Array` or `number[]`. Returned `GObject.Value` objects are unpacked to their payloads, typed as `unknown`.
 
-Inference covers what a JavaScript value can say on its own, which leaves the cases that need an explicitly initialized value:
-
-**A GType no JavaScript value names.** `guchar`, `guint`, `gfloat`, `glong`, enumerations, flags, and a GValue holding a GType are unreachable, since a number infers as `gint` or `gdouble` and a GType is a `bigint`. Name the type yourself:
-
-```ts
-const value = new GObject.Value();
-value.init(GObject.TYPE_UCHAR);
-value.setUchar(200);
-```
-
-**A `GValue` the callee fills in.** A mutable `GValue *` is storage the callee initializes itself — `Gtk.Expression.evaluate`, `Gdk.Display.getSetting`, `Gtk.accessiblePropertyInitValue` — so those parameters are typed `GObject.Value` alone and take one you allocate with `new GObject.Value()`. Handing them an already-initialized value is what `g_value_init` refuses.
-
-**A payload negotiated by an interface GType.** A wrapper infers its own concrete type, so a `Gdk.Texture` becomes `GdkMemoryTexture` and a file from `Gio.File.newForPath` becomes `GLocalFile`. Clipboard and drag-and-drop match GTypes exactly, so a drop target declaring `types={[Gio.File.prototype.__type__]}` never sees a provider built from a bare file. Initialize the value to the interface instead:
-
-```ts
-const value = new GObject.Value();
-value.init(Gio.File);
-value.setObject(file);
-Gdk.ContentProvider.newForValue(value);
-```
-
-Passing a `GObject.Value` you built yourself always works, wherever inference would guess something else.
+Promisified operations omit a redundant success boolean when failure already rejects. Inout records and boxed values are updated in place without being repeated in the return value. See [Async Operations](/v2/guide/async-operations) for promise usage.
 
 ## Import project data
 
-Use relative imports so GTKX can follow project files from source to the production resource bundle:
+Use relative imports so GTKX can bundle the files with the app:
 
 ```ts
 import logoPath from "../data/logo.png?resource";
 import saveIcon from "../data/icons/scalable/actions/save.svg?icon=example-save-symbolic";
-import sourcePath from "../data/template.txt?url";
+import templatePath from "../data/template.txt?url";
 import bodyFont from "../data/fonts/Inter-Regular.otf?font";
 import settings from "../data/com.example.Tasks.gschema.xml";
 ```
 
-`?resource` bundles an asset and returns its GResource path; `?resource=/org/example/exact.png` chooses an exact path. Use `?url` when an API needs a real file. Settings schemas stay query-free and receive generated types. Build a URI only where an API requires one: `` `resource://${logoPath}` ``.
+`?resource` returns a bundled GResource path; `?resource=/org/example/exact.png` selects an exact path. Convert it to a `resource://` URI only when an API requires one. `?url` provides a real file path, while settings schema imports remain query-free and receive generated types.
 
-`?icon` bundles an SVG, PNG, or XPM as a private icon-theme resource and returns its extensionless icon name. An import below an `icons/hicolor/<size>/<context>/` or `icons/<size>/<context>/` tree keeps that layout. Files outside those trees become unthemed fallbacks. A query value such as `?icon=example-confirm-symbolic` overrides the name.
+`?icon` returns an icon name and registers the bundled icon with the app's private theme path. Keep icons under `icons/<size>/<context>/` or `icons/hicolor/<size>/<context>/` to preserve theme layout; other locations become unthemed fallbacks. Choose package-specific names for icons supplied by libraries.
 
-`?font` bundles a TrueType, OpenType, TrueType Collection, WOFF, or WOFF2 font and returns the family name read out of the file, so nothing has to repeat that name as a literal. The font is emitted into `fonts/` beside `bundle.mjs` and the bundle points `XDG_DATA_DIRS` at that directory, which is where fontconfig looks, so Pango resolves the family with no registration call at startup. Import for the name when you select the family yourself, or import for the side effect alone when the font is only there to cover codepoints the system fonts lack.
+`?font` bundles a font and returns its family name. GTKX makes bundled fonts available automatically. Import a font for its side effect when it only supplies fallback characters; see [CSS](/v2/guide/css) for choosing a family in styles.
 
-Production builds place bundled assets in `gtkx.gresource` beside `bundle.mjs`. Generated resource modules load and register it automatically.
+GTKX derives resource paths from the configured application ID: `com.example.Tasks` becomes `/com/example/Tasks`. Overriding an application's `applicationId` prop alone does not move bundled resources; supply a matching `resourceBasePath` when using another resource tree.
 
-## Generated return values
+Production builds load their `gtkx.gresource` file automatically.
 
-GIR byte sequences are `Uint8Array` in return values, out parameters, record fields, and properties. Parameters accept either `Uint8Array` or `number[]`. The cairo and OpenGL packages use their own typed-array contracts.
+## Production build output
 
-Bindings that return a `GObject.Value` hand back its payload typed as `unknown`, so assert the type established by the operation at the call site. Promisified finish methods omit a leading success boolean when failure already rejects, and inout records and boxed values mutate the passed object without repeating it in the return value. [Async Operations](/v2/guide/async-operations) covers the promise shapes.
+`gtkx build` writes to `dist/`. Use `--out` for another independently runnable build:
 
-## Tree-shaken bindings
-
-Each generated class registers as part of its own definition, so production builds retain the widgets, classes, and signature dependencies the application reaches. A bare namespace import runs namespace initialization but retains no generated class by itself. Import a class explicitly when `GObject.typeFromName` must find it in a production bundle. Development and tests do not bundle and keep every generated type registered.
-
-## The JSX prop model
-
-Every GIR class descending from `GObject` becomes an intrinsic element whose props follow these rules:
-
-- **Properties become camelCase props.** Writable, construct, and construct-only properties become optional props: `show-title-buttons` is `showTitleButtons`.
-- **Almost every property gets a notify handler.** `onNotifyX` receives `(value, self)`, read-only properties included, so you can observe what GTK4 changes on its own, including what it changes in reaction to a write of another prop. The element-accepting object properties below are the exception: they carry their value as a child element instead.
-- **Object-typed props also accept elements.** A writable, non-construct-only property typed as a GObject class takes a `ReactElement` as well as an instance, and the reconciler manages the child.
-- **Signals become `on` handlers.** `clicked` is `onClicked`, `row-activated` is `onRowActivated`, and the handler receives the signal's parameters followed by `self`.
-- **`ref` yields the `@gtkx/gi` instance.** Every element accepts `ref?: Ref<Self | null>` (`Gtk.Button`, `Adw.ToastOverlay`), the escape hatch to the imperative API.
-
-```tsx
-import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkButton } from "@gtkx/jsx/gtk";
-import { useRef } from "react";
-
-const SaveButton = () => {
-    const buttonRef = useRef<Gtk.Button | null>(null);
-
-    return <GtkButton label="Save" onClicked={(self) => self.setSensitive(false)} ref={buttonRef} />;
-};
+```bash
+gtkx build src/helper.ts --out build/helper
 ```
+
+Choose a directory below the project root that is empty or contains an earlier GTKX build. GTKX rejects unrelated files, symlinked paths, and output nested inside another build. Generated bundles contain their JavaScript dependencies; unresolved package imports fail the build.
+
+`gtkx deploy --skip-build` packages `dist/`. Its `--out` option selects the deployment artifact directory, not the application build directory. See [Deploying](/v2/guide/deploying).
 
 ## Generating element reference docs
 
-`gtkx docs` writes one markdown page per JSX element, by default into `docs/reference`:
+`gtkx docs` writes reference pages for the project's generated elements to `docs/reference`:
 
 ```bash
 gtkx docs
 ```
 
-Each page carries the widget's documentation, hierarchy, slot rules, props, signal handlers, and `ref` methods with their signatures. `gtkx docs --help` covers the output directory and link root. Use it for pages you intend to publish; the copy agents read is written automatically, below.
+Use `gtkx docs --help` to choose an output directory or link root. These pages describe the project's configured libraries and element props, including props imported through `elements.config`. Rerun the command after changing those inputs; the MCP reference refreshes them automatically.
 
 ## What agents are given
 
-A model writing GTKX code has read a great deal of GTK, nearly all of it in C, PyGObject, Vala, or GJS, and nearly none of it valid here. Codegen writes an element reference and a rules block that correct for that, and both stay in step with the bindings because the same run produces them.
+Codegen also writes `.gtkx/reference` for coding agents and maintains a marked GTKX section in `AGENTS.md`. Text outside that section is preserved. It creates a `CLAUDE.md` import only when that file does not already exist.
 
-`.gtkx/reference` holds the same element pages `gtkx docs` produces, generated from this project's own GIR libraries and linked by paths that resolve from the project root. It is the authority on which props, signals, and methods exist, it costs nothing to read with `grep` or `cat`, and it is regenerated whenever the libraries or element configuration change. Add `.gtkx/` to `.gitignore`, as scaffolded projects do.
-
-The rules block is marked in `AGENTS.md`, alongside a `CLAUDE.md` importing it for Claude Code, which reads it under that name instead. The block lists the idioms models get wrong here and points at the reference:
-
-```markdown
-<!-- BEGIN:gtkx-agent-rules -->
-...
-<!-- END:gtkx-agent-rules -->
-```
-
-Only what is between the markers is rewritten, so anything else in the file is yours to keep. An existing `CLAUDE.md` is never touched. Committing the block keeps the working tree clean, since it is rewritten on every codegen run. Set `agents: { rules: false }` or `agents: { reference: false }` to turn either off.
+Commit the rules file and ignore `.gtkx/`, as scaffolded projects do. Set `agents.rules` or `agents.reference` to `false` to disable the corresponding output.
 
 ## Advanced: Customizing elements
 
-A `GtkScale`'s marks have no property behind them, only `addMark` and `clearMarks`, and adding a child is `insertChildAfter` on a `GtkBox` but `addTopBar` on an `AdwToolbarView`. **Element behaviors** cover what property setting cannot: lifecycle hooks bound to a GLib type, which the reconciler calls as elements of that type are created, populated, updated, and removed. Every hook is listed in the [`ElementBehavior` reference](/v2/reference/@gtkx/react/config/type-aliases/ElementBehavior): `attach`, `reorder`, and `detach` place, move, and remove a child in a slot, `resolve` returns the object the container made for that child, and `flush` runs once the surrounding commit has placed every child. `update` runs on each commit with the previous and next props, and the prop names it returns are the ones GTKX will not also set as plain properties.
-
-`setCursorFromName` is another method with no property behind it. Default-export a map keyed by GLib type name, wrapping each behavior in `defineBehavior` with the class it applies to:
+Use element behaviors when a native API needs custom prop handling or child placement. Export a `defineElements` map from a module, keyed by GLib type name, and register it through `elements.behaviors`:
 
 ```ts
-// src/elements.ts
-import type * as Gtk from "@gtkx/gi/gtk";
-import { defineBehavior, defineElements } from "@gtkx/react/config";
-
-export default defineElements({
-    GtkWidget: {
-        behaviors: [
-            defineBehavior<Gtk.Widget>({
-                update: (widget, prev, next) => {
-                    if (!Object.is(prev.cursorName, next.cursorName) && typeof next.cursorName === "string") {
-                        widget.setCursorFromName(next.cursorName);
-                    }
-                    return ["cursorName"];
-                },
-            }),
-        ],
-    },
-});
-```
-
-Pass the class as the type argument so the hooks are typed. Point `elements.behaviors` at the module, then declare the prop on the generated interface:
-
-```ts
-// gtkx.config.ts
-import { defineConfig } from "@gtkx/config";
-
 export default defineConfig({
-    applicationId: "com.gtkx.tutorial",
+    applicationId: "com.example.Tasks",
     elements: { behaviors: "./src/elements.ts" },
 });
 ```
 
-```ts
-// src/augmentations.d.ts
-import "@gtkx/jsx/gtk";
+Wrap each behavior with `defineBehavior` from `@gtkx/react/config`, supplying its GI class as the type argument. Behaviors apply to descendants and run before built-in behaviors. The [ElementBehavior reference](/v2/reference/@gtkx/react/config/type-aliases/ElementBehavior) describes the hooks.
 
-declare module "@gtkx/jsx/gtk" {
-    interface GtkWidgetProps {
-        cursorName?: string | null | undefined;
-    }
-}
-```
+Declare additional props by augmenting the namespace module that owns them, with a top-level import of that module. Keep application effects and higher-level behavior in React components.
 
-The leading `import` is what makes this an augmentation. Without a top-level import or export, `declare module` becomes an ambient module declaration that shadows the generated one, and `@gtkx/jsx/gtk` stops exporting elements.
-
-Augment the namespace module that declares the props. `GtkWidgetProps` belongs to `@gtkx/jsx/gtk`, so the import and declaration above target that subpath.
-
-A behavior on a type covers every element descending from it, and your behaviors run before the built-in ones, so they override existing prop and slot handling. `isLazy: true` in the same map marks a type whose GObject its parent container creates.
-
-## Next
-
-With the codegen pipeline in hand, continue to [Async Operations](/v2/guide/async-operations).
+Continue with [Async Operations](/v2/guide/async-operations).

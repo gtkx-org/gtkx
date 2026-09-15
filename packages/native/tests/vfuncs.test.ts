@@ -1,6 +1,8 @@
 import { bindVfunc, call, registerClass, resolveType } from "@gtkx/native";
 import { expect, test } from "vitest";
 
+const encoder = new TextEncoder();
+
 const GOBJECT = "libgobject-2.0.so.0";
 const OBJECT_TYPE = resolveType(GOBJECT, "g_object_get_type");
 const PLUGIN_TYPE = resolveType(GOBJECT, "g_type_plugin_get_type");
@@ -11,8 +13,8 @@ const USE_PLUGIN_OFFSET = 16;
 const UNUSE_PLUGIN_OFFSET = 24;
 const PLUGIN_VTABLE_SIZE = 48;
 const BEYOND_CLASS_STRUCT = 4096;
-const BORROWED_STRING = { kind: "string", ownership: "borrowed" } as const;
-const OWNED_STRING = { kind: "string", ownership: "full" } as const;
+const BORROWED_BYTES = { kind: "bytes", ownership: "borrowed" } as const;
+const OWNED_BYTES = { kind: "bytes", ownership: "full" } as const;
 
 test("a bound class slot calls the implementation the class installed", () => {
     const type = registerClass("VfuncClassSlot", OBJECT_TYPE, {
@@ -34,7 +36,7 @@ test("a bound class slot calls the implementation the class installed", () => {
         returnDescriptor: { kind: "int32" },
     });
 
-    expect(call(slot, [21])).toBe(42);
+    expect(call(slot, [21]).value).toBe(42);
 });
 
 test("a bound interface slot calls the implementation the class installed", () => {
@@ -65,7 +67,7 @@ test("a bound interface slot calls the implementation the class installed", () =
         returnDescriptor: { kind: "int32" },
     });
 
-    expect(call(slot, [1])).toBe(101);
+    expect(call(slot, [1]).value).toBe(101);
 });
 
 test("binding against the parent type reaches the parent implementation, not the override", () => {
@@ -100,8 +102,8 @@ test("binding against the parent type reaches the parent implementation, not the
             returnDescriptor: { kind: "int32" },
         });
 
-    expect(call(bindAt(childType), [])).toBe(2);
-    expect(call(bindAt(parentType), [])).toBe(1);
+    expect(call(bindAt(childType), []).value).toBe(2);
+    expect(call(bindAt(parentType), []).value).toBe(1);
 });
 
 test("binding a slot a subclass leaves alone reaches the implementation it inherited", () => {
@@ -126,7 +128,7 @@ test("binding a slot a subclass leaves alone reaches the implementation it inher
         returnDescriptor: { kind: "int32" },
     });
 
-    expect(call(slot, [])).toBe(7);
+    expect(call(slot, []).value).toBe(7);
 });
 
 test("a slot taking no arguments and returning void runs its implementation", () => {
@@ -153,18 +155,18 @@ test("a slot taking no arguments and returning void runs its implementation", ()
         returnDescriptor: { kind: "void" },
     });
 
-    expect(call(slot, [])).toBeUndefined();
+    expect(call(slot, []).value).toBeUndefined();
     expect(runs).toBe(1);
 });
 
-test("a slot declaring string descriptors marshals the argument and the return value", () => {
+test("a slot declaring byte descriptors passes the argument and the return value", () => {
     const type = registerClass("VfuncStringSlot", OBJECT_TYPE, {
         vfuncs: [
             {
                 byteOffset: DISPOSE_OFFSET,
-                argDescriptors: [BORROWED_STRING],
-                returnDescriptor: OWNED_STRING,
-                fn: (value: string) => `${value}-x`,
+                argDescriptors: [BORROWED_BYTES],
+                returnDescriptor: OWNED_BYTES,
+                fn: (value: Uint8Array) => new Uint8Array([...value, 45, 120]),
             },
         ],
     });
@@ -173,11 +175,11 @@ test("a slot declaring string descriptors marshals the argument and the return v
         instanceType: type,
         byteOffset: DISPOSE_OFFSET,
         label: "VfuncStringSlotClass.dispose",
-        argDescriptors: [BORROWED_STRING],
-        returnDescriptor: OWNED_STRING,
+        argDescriptors: [BORROWED_BYTES],
+        returnDescriptor: OWNED_BYTES,
     });
 
-    expect(call(slot, ["gtk"])).toBe("gtk-x");
+    expect(call(slot, [encoder.encode("gtk")]).value).toEqual(encoder.encode("gtk-x"));
 });
 
 test("the same bound slot can be called repeatedly", () => {
@@ -200,7 +202,7 @@ test("the same bound slot can be called repeatedly", () => {
         returnDescriptor: { kind: "int32" },
     });
 
-    expect([call(slot, [1]), call(slot, [2]), call(slot, [3])]).toEqual([2, 3, 4]);
+    expect([call(slot, [1]).value, call(slot, [2]).value, call(slot, [3]).value]).toEqual([2, 3, 4]);
 });
 
 test("a slot the interface default vtable leaves empty binds and throws only when it is called", () => {
@@ -213,7 +215,7 @@ test("a slot the interface default vtable leaves empty binds and throws only whe
         returnDescriptor: { kind: "void" },
     });
 
-    expect(() => call(slot, [])).toThrow();
+    expect(() => call(slot, []).value).toThrow();
 });
 
 test("a slot of an interface the type does not implement binds and throws only when it is called", () => {
@@ -227,7 +229,7 @@ test("a slot of an interface the type does not implement binds and throws only w
         returnDescriptor: { kind: "void" },
     });
 
-    expect(() => call(slot, [])).toThrow();
+    expect(() => call(slot, []).value).toThrow();
 });
 
 test("an implementation that throws propagates out of the call", () => {
@@ -252,7 +254,7 @@ test("an implementation that throws propagates out of the call", () => {
         returnDescriptor: { kind: "int32" },
     });
 
-    expect(() => call(slot, [])).toThrow();
+    expect(() => call(slot, []).value).toThrow();
 });
 
 test("a byte offset past the end of the class struct throws", () => {

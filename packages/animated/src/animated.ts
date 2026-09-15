@@ -6,10 +6,9 @@ import { withAnimated } from "./with-animated.js";
 type Animated = <T extends Exclude<ElementType, string>>(component: T) => AnimatedComponent<T>;
 
 /**
- * Wraps a component so that its props accept springs and interpolations: `animated(GtkLabel)` is
- * `GtkLabel` with every prop also taking a `SpringValue` or an `Interpolation`. Animated values are
- * written to the widget on each frame without a React render. The wrapper of a given component is
- * created once and reused.
+ * Wraps a component so its mutable props accept springs and interpolations. Construct-only props
+ * keep their original types. Animated values are written to the widget on each frame without a
+ * React render. The wrapper of a given component is created once and reused.
  */
 const animated: Animated = withAnimated;
 

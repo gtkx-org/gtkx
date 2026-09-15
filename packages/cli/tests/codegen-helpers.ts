@@ -7,7 +7,6 @@ import { expect } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCli } from "./cli-project.js";
 
 type BrokenCase = { title: string; config: string | undefined };
-type OmittedFieldCase = { title: string; jsName: string };
 type CodegenRunState = { project: CliProject; status: number | null };
 type DocumentedModuleCase = { title: string; store: string; stem: string; docs: string[]; stripped: string[] };
 type HoverCase = { title: string; text: string; doc: string; omits: string[] };
@@ -28,7 +27,6 @@ const GI_MODULES = [
 const JSX_MODULES = [
     join("adw", "adw.js"),
     join("adw", "index.js"),
-    "metadata.js",
     join("gtk", "gtk.js"),
     join("gtk", "index.js"),
     "package.json",
@@ -45,61 +43,6 @@ const BROKEN_CASES: BrokenCase[] = [
         title: "a GIR file that is not well-formed XML",
         config: `${HEAD}, libraries: ["InvalidXml-1.0"], girPath: ${JSON.stringify([FIXTURE_GIR])} };\n`,
     },
-];
-
-const VALUE_PARAMETER_DECLARATIONS = [
-    "store(value: GObject.Value | JsValue): void",
-    "storeMaybe(value: GObject.Value | JsValue | null): void",
-    "storeAll(values: (GObject.Value | JsValue)[]): void",
-    "fillInPlace(value: GObject.Value): void",
-];
-
-const VALUE_PARAMETER_BINDINGS = [
-    "valueBoxHolderStore(getHandle(this), toValueHandle(value))",
-    "valueBoxHolderStoreMaybe(getHandle(this), tryToValueHandle(value))",
-    "values.map((item) => toValueHandle(item))",
-    "valueBoxHolderFillInPlace(getHandle(this), getHandle(value))",
-];
-
-const RECORD_FIELD_ACCESSORS = [
-    "get refCount(): number;",
-    "set refCount(value: number);",
-    "get interfaces(): Iface[];",
-];
-
-const ARRAY_WRITES = ["set interfaces(", "interfaces?:", "props.interfaces"];
-
-const INLINE_ARRAY_ACCESSORS = [
-    "get axes(): number[];",
-    "set axes(__value: number[]);",
-    "get corners(): Corner[];",
-    "set corners(__value: Corner[]);",
-    "get spans(): Span[];",
-    "set spans(__value: Span[]);",
-];
-
-const INLINE_ELEMENT_DESCRIPTORS = [
-    '"inline_array_corner_get_type", isInline: true, size: 16, fallbackClass: () => Corner }',
-    't.struct("borrowed", { size: 8, wrapperClass: Span, isInline: true })',
-];
-
-const INLINE_ARRAY_FIELDS = ["axes", "corners", "spans"];
-const POINTER_ARRAY_FIELDS = ["names", "buffer"];
-const OMITTED_ARRAY_FIELDS = ["handles", "slots"];
-const AXES_GETTER = /get axes\(\) \{\s+const __result = \[\];\s+for \(let __index = 0; __index < 4/u;
-const AXES_READ = /__result\[__index\] = read\(getHandle\(this\), \w+, 0 \+ __index \* 8\);/u;
-const AXES_SETTER = /set axes\(__value\) \{\s+for \(const \[__index, __element\] of __value\.entries/u;
-const AXES_BOUND = /if \(__index >= 4\) \{\s+break;\s+\}/u;
-const AXES_WRITE = /write\(getHandle\(this\), (\w+), 0 \+ __index \* 8, toNative\(\1, __element\)\);/u;
-const CORNER_READ = /__result\[__index\] = fromNative\(\w+, read\(getHandle\(this\), \w+, 32 \+ __index \* 16\)\)/u;
-const CORNER_WRITE = /write\(getHandle\(this\), (\w+), 32 \+ __index \* 16, toNative\(\1, __element\)\);/u;
-const POINTER_ARRAY_GETTER = /get buffer\(\) \{\s+return fromNative\(/u;
-const LENGTH_BOUNDED_READ = /read\(getHandle\(this\), t\.struct\("borrowed", \{ size: this\.nLinks \* 8 \}\), 8\)/u;
-const AXES_EMISSION = [AXES_GETTER, AXES_READ, AXES_SETTER, AXES_BOUND, AXES_WRITE];
-
-const OMITTED_FIELD_CASES: OmittedFieldCase[] = [
-    { title: "an array whose length lives in a sibling field", jsName: "entries" },
-    { title: "a linked list", jsName: "links" },
 ];
 
 const NOTE_DOC = "Holds a short piece of text the user jotted down.";
@@ -209,7 +152,7 @@ const fixtureConfig = (library: string): string =>
 const fixtureLibrariesConfig = (libraries: string[] | undefined): string => {
     const selection = libraries === undefined ? "" : `, libraries: ${JSON.stringify(libraries)}`;
 
-    return config(`${selection}, girPath: ${JSON.stringify([FIXTURE_GIR])}`);
+    return config(`${selection}, girPath: ${JSON.stringify([FIXTURE_GIR])}, agents: { reference: false }`);
 };
 
 const initialRunState = (): CodegenRunState => ({
@@ -262,9 +205,6 @@ const expectStoreAndLink = (project: CliProject, store: string, modules: string[
     expectModules(linkPath(project, store), modules);
 };
 
-const omittedMentions = (source: string, jsName: string): string[] =>
-    [`${jsName}:`, `get ${jsName}(`, `set ${jsName}(`].filter((text) => source.includes(text));
-
 const classBody = (source: string, className: string): string => {
     const declared = source.indexOf(`class ${className} `);
     const bound = source.indexOf(`class _${className} `);
@@ -306,15 +246,11 @@ const hoverDoc = (project: CliProject, fileName: string, text: string): string =
 };
 
 export {
-    ARRAY_WRITES,
-    AXES_EMISSION,
     BROKEN_CASES,
     CAIRO_PACKAGE,
     classBody,
     COMMENT,
     config,
-    CORNER_READ,
-    CORNER_WRITE,
     DOCUMENTED_MODULE_CASES,
     expectModules,
     expectStoreAndLink,
@@ -326,26 +262,14 @@ export {
     HOVER_PROBE,
     hoverDoc,
     initialRunState,
-    INLINE_ARRAY_ACCESSORS,
-    INLINE_ARRAY_FIELDS,
-    INLINE_ELEMENT_DESCRIPTORS,
     isStoreMarked,
     JSX_MODULES,
-    LENGTH_BOUNDED_READ,
     linkPath,
     markStore,
-    OMITTED_ARRAY_FIELDS,
-    OMITTED_FIELD_CASES,
-    omittedMentions,
-    POINTER_ARRAY_FIELDS,
-    POINTER_ARRAY_GETTER,
     PURE,
-    RECORD_FIELD_ACCESSORS,
     resolveCairoFrom,
     runInitialCodegen,
     storeManifest,
     storePath,
-    VALUE_PARAMETER_BINDINGS,
-    VALUE_PARAMETER_DECLARATIONS,
     withProject,
 };

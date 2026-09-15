@@ -1,3 +1,5 @@
+import { upperFirst } from "@gtkx/utils";
+
 /** Props left out of the generated element props, keyed by GLib type name. */
 type OmittedProps = Record<string, string[]>;
 
@@ -10,6 +12,11 @@ const setOmittedProps = (props: OmittedProps): void => {
         omittedProps.set(glibName, new Set(names));
     }
 };
+
+const omittedPropNamesFor = (glibName: string): string[] => [...(omittedProps.get(glibName) ?? [])];
+
+const omittedPropKeysFor = (glibName: string): string[] =>
+    omittedPropNamesFor(glibName).flatMap((name) => [name, `onNotify${upperFirst(name)}`]);
 
 const isOmittedProp = (glibName: string | undefined, jsName: string): boolean =>
     glibName !== undefined && omittedProps.get(glibName)?.has(jsName) === true;
@@ -27,4 +34,11 @@ const mergeOmittedProps = (...maps: OmittedProps[]): OmittedProps => {
     return merged;
 };
 
-export { setOmittedProps, isOmittedProp, mergeOmittedProps, type OmittedProps };
+export {
+    omittedPropKeysFor,
+    omittedPropNamesFor,
+    setOmittedProps,
+    isOmittedProp,
+    mergeOmittedProps,
+    type OmittedProps,
+};

@@ -36,7 +36,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 />
 ```
 
-Nesting `ListItem.children` turns the same component into a tree, with `expandedIds` and `onExpandedChange` driving expansion.
+Nesting `ListItem.children` turns the same component into an acyclic tree, with `expandedIds` and `onExpandedChange` driving expansion. Keep item IDs stable and unique across the collection, including nested items. Section IDs must be unique among sections.
 
 When every item is known to be a leaf, pass `isFlat` to `ListView` or `ColumnView`. This skips tree discovery when synchronizing large collections; do not use it when any item has children.
 
@@ -71,7 +71,7 @@ Nesting `ListItem.children` turns a `ColumnView` into a tree as well, driven by 
 
 ### DropDown
 
-`DropDown<T, S>` takes `items`, or `sections` plus `renderHeader`, with single controlled selection through `selectedId` and `onSelectionChanged`. `renderItem` is optional and draws both the button face and the popup rows, `renderListItem` overrides the popup rows on their own, and with neither given each value is shown as a label.
+`DropDown<T, S>` takes `items`, or `sections` plus `renderHeader`, with single controlled selection through `selectedId` and `onSelectionChanged`. Primitive values display as labels by default; `null` and `undefined` leave the display empty. Objects and other structured values require `renderItem`, which draws both the selected value and the popup rows. Use `renderListItem` to override only the popup rows.
 
 ```tsx
 import { DropDown } from "@gtkx/components";
@@ -79,9 +79,13 @@ import { DropDown } from "@gtkx/components";
 <DropDown
     items={SOURCE_TYPES.map((type) => ({ id: type, value: type }))}
     selectedId={sourceType}
-    onSelectionChanged={(id) => setSourceType(id)}
+    onSelectionChanged={(id) => {
+        if (id !== null) setSourceType(id);
+    }}
 />
 ```
+
+The callback receives `null` when the model becomes empty.
 
 `ComboRow<T, S>` from `@gtkx/components` takes the same collection props and renders an `Adw.ComboRow`, presenting the choice as a row inside a preferences group, as the tutorial's [preferences chapter](/v2/tutorial/preferences-and-theming) does.
 
@@ -108,13 +112,9 @@ import { GtkListBox } from "@gtkx/jsx/gtk";
 </GtkListBox>
 ```
 
-The prop is optional: leave it off and the box keeps whatever the user selects, untouched. Pass it and it holds these guarantees.
+Leave `selectedIndex` out for native selection, or set it to keep selection under application control. Use `-1` or `null` to clear it. If the desired row has not mounted yet, GTKX keeps the current selection and applies the index once that row exists.
 
-- The row at that index is selected. `-1`, which is what `findIndex` answers for a value that is not in the list, and `null` both mean no row.
-- An index whose row is not mounted yet is remembered rather than dropped: the box holds the selection it has, and the write lands as soon as that row is added.
-- gtkx performs the write itself and suppresses the `row-selected` its own write causes, so `onRowSelected` reports a selection the user made and nothing else. Handlers need no guard against their own echo.
-- The prop is drift-correcting, not a one-shot write per render. If the box's selection moves away from the index you passed, which is what happens when the user clicks a row and your handler declines to act on it, gtkx puts it back on the next microtask, without waiting for a re-render.
-- An index that is not a whole number throws.
+GTKX suppresses `onRowSelected` while applying its own selection updates. Other native selection changes still reach the handler, including changes made through native methods. Update the controlled value in that handler to keep the new selection; otherwise GTKX restores the requested row.
 
 The tutorial's [sidebar](/v2/tutorial/lists-and-the-sidebar#keeping-gtk4-and-the-route-in-agreement) drives one from the current route.
 

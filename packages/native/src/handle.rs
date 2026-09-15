@@ -1,14 +1,18 @@
 mod boxed;
 mod fundamental;
+mod lease;
 pub(crate) mod surface;
 
 use std::cell::{Cell, RefCell};
 use std::ffi::c_void;
 use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 pub use boxed::{Boxed, BoxedFreeFn};
 pub use fundamental::{Fundamental, RefFn, UnrefFn};
-use glib::prelude::ObjectType as _;
+use glib::prelude::{ObjectExt as _, ObjectType as _};
+pub(crate) use lease::LeaseScope;
 
 use crate::ffi::PendingTransfer;
 
@@ -97,15 +101,7 @@ impl FieldStore {
         };
         let previous = std::mem::replace(&mut entry.1, transfer);
         drop(allocations);
-        previous.release_now();
-    }
-}
-
-impl Drop for FieldStore {
-    fn drop(&mut self) {
-        for (_, transfer) in self.allocations.get_mut().drain(..) {
-            transfer.release_now();
-        }
+        drop(previous);
     }
 }
 
@@ -119,12 +115,48 @@ pub enum HandleClass {
     Fundamental,
     Struct,
     Opaque,
+    Function,
+}
+
+struct ObjectLifetime {
+    ended: Arc<AtomicBool>,
+}
+
+impl ObjectLifetime {
+    fn track(object: &glib::Object) -> Arc<AtomicBool> {
+        let key = glib::Quark::from_static_str(glib::gstr!("gtkx-object-lifetime"));
+        if let Some(lifetime) = unsafe { object.qdata::<Self>(key) } {
+            return Arc::clone(&unsafe { lifetime.as_ref() }.ended);
+        }
+
+        let ended = Arc::new(AtomicBool::new(false));
+        unsafe {
+            object.set_qdata(
+                key,
+                Self {
+                    ended: Arc::clone(&ended),
+                },
+            );
+        }
+
+        ended
+    }
+}
+
+impl Drop for ObjectLifetime {
+    fn drop(&mut self) {
+        self.ended.store(true, Ordering::Release);
+    }
 }
 
 enum HandleKind {
     Object {
         ptr: Cell<*mut c_void>,
         owned: Cell<Option<glib::Object>>,
+        lent: bool,
+        lifetime: Option<Arc<AtomicBool>>,
+        weak: glib::WeakRef<glib::Object>,
+        wrapper: RefCell<std::rc::Weak<crate::value::wrapper::WrapperHandle>>,
     },
     Boxed(Boxed),
     Fundamental(Fundamental),
@@ -133,6 +165,21 @@ enum HandleKind {
         free_fn: Option<BoxedFreeFn>,
     },
     Borrowed(*mut c_void),
+    Static(*mut c_void),
+    CallbackData {
+        ptr: *mut c_void,
+        destroy: BoxedFreeFn,
+    },
+    Pointer {
+        ptr: *mut c_void,
+        owner: Handle,
+    },
+    Function {
+        ptr: *mut c_void,
+        owner: Option<Handle>,
+        once: bool,
+        lent: bool,
+    },
     Field {
         owner: Handle,
         offset: usize,
@@ -162,6 +209,10 @@ impl std::fmt::Debug for Handle {
             HandleKind::Fundamental(_) => "Fundamental",
             HandleKind::Struct { .. } => "Struct",
             HandleKind::Borrowed(_) => "Borrowed",
+            HandleKind::Static(_) => "Static",
+            HandleKind::CallbackData { .. } => "CallbackData",
+            HandleKind::Pointer { .. } => "Pointer",
+            HandleKind::Function { .. } => "Function",
             HandleKind::Field { .. } => "Field",
         };
         f.debug_struct("Handle")
@@ -198,6 +249,103 @@ impl From<Fundamental> for Handle {
 }
 
 impl Handle {
+    #[must_use]
+    pub fn callback_data(ptr: *mut c_void, destroy: BoxedFreeFn) -> Self {
+        HandleKind::CallbackData { ptr, destroy }.into()
+    }
+
+    #[must_use]
+    pub fn function(ptr: *mut c_void, owner: Option<Handle>, once: bool, lent: bool) -> Self {
+        let handle: Self = HandleKind::Function {
+            ptr,
+            owner,
+            once,
+            lent,
+        }
+        .into();
+        if lent {
+            record_borrow(&handle);
+        }
+        handle
+    }
+
+    #[must_use]
+    pub fn pointer(ptr: *mut c_void, owner: &Handle) -> Self {
+        HandleKind::Pointer {
+            ptr,
+            owner: owner.clone(),
+        }
+        .into()
+    }
+
+    pub fn function_ptr(&self) -> anyhow::Result<*mut c_void> {
+        self.retain_lease()?;
+        anyhow::ensure!(!self.is_invalidated(), "{INVALIDATED_HANDLE}");
+        let HandleKind::Function { ptr, .. } = self.inner.kind else {
+            anyhow::bail!("The handle does not reference a native function");
+        };
+        anyhow::ensure!(!ptr.is_null(), "{NULL_HANDLE}");
+        Ok(ptr)
+    }
+
+    #[must_use]
+    pub fn is_process_static(&self) -> bool {
+        match &self.inner.kind {
+            HandleKind::Static(_) => true,
+            HandleKind::Function {
+                owner,
+                once: false,
+                lent: false,
+                ..
+            } => owner.as_ref().is_none_or(Handle::is_process_static),
+            HandleKind::Field { owner, .. } | HandleKind::Pointer { owner, .. } => {
+                owner.is_process_static()
+            }
+            _ => false,
+        }
+    }
+
+    pub fn retain_owned(&self) -> anyhow::Result<Self> {
+        anyhow::ensure!(!self.is_invalidated(), "{INVALIDATED_HANDLE}");
+        let retained = match &self.inner.kind {
+            HandleKind::Object { lent: false, .. } => Self::decoded_gobject(
+                self.acquire_lease()?
+                    .ok_or_else(|| anyhow::anyhow!("{INVALIDATED_HANDLE}"))?,
+            ),
+            HandleKind::Object { lent: true, .. }
+            | HandleKind::Borrowed(_)
+            | HandleKind::Function { lent: true, .. }
+            | HandleKind::Function { once: true, .. } => {
+                anyhow::bail!("A borrowed native handle cannot acquire an independent lifetime");
+            }
+            HandleKind::Fundamental(fundamental) if !fundamental.is_owned() => {
+                anyhow::bail!(
+                    "A borrowed fundamental handle cannot acquire an independent lifetime"
+                );
+            }
+            HandleKind::Field { owner, offset } => {
+                Self::field(&owner.retain_owned()?, *offset, self.allocated_bytes())
+            }
+            HandleKind::Pointer { owner, ptr } => Self::pointer(*ptr, &owner.retain_owned()?),
+            HandleKind::Function { owner, ptr, .. } => Self::function(
+                *ptr,
+                owner.as_ref().map(Handle::retain_owned).transpose()?,
+                false,
+                false,
+            ),
+            _ => self.clone(),
+        };
+        Ok(retained)
+    }
+
+    pub fn begin_function_call(&self) -> anyhow::Result<*mut c_void> {
+        let ptr = self.function_ptr()?;
+        if matches!(self.inner.kind, HandleKind::Function { once: true, .. }) {
+            self.invalidate();
+        }
+        Ok(ptr)
+    }
+
     /// A handle over memory that belongs to whoever handed the pointer over. Built inside a
     /// [`BorrowScope`], it joins that scope, so the borrow ends when the scope's owner says so.
     pub fn from_glib_borrow(ptr: *mut c_void) -> Self {
@@ -235,23 +383,44 @@ impl Handle {
         self.inner.allocated_bytes.get()
     }
 
+    pub(crate) fn check_range(&self, offset: usize, size: usize) -> anyhow::Result<()> {
+        let end = offset
+            .checked_add(size)
+            .ok_or_else(|| anyhow::anyhow!("memory range exceeds the address space"))?;
+
+        if let Some(available) = self.allocated_bytes() {
+            anyhow::ensure!(
+                end <= available,
+                "memory range {offset}..{end} exceeds the handle's {available} bytes"
+            );
+        }
+
+        Ok(())
+    }
+
     /// A handle over memory that stays alive for the rest of the process, such as a registered
     /// type's class struct. Nothing owns the memory through the handle, and no borrow scope ever
     /// ends the borrow.
     #[must_use]
     pub fn process_static(ptr: *mut c_void) -> Self {
-        HandleKind::Borrowed(ptr).into()
+        HandleKind::Static(ptr).into()
     }
 
     /// A handle over the `offset` bytes into `owner`, aliasing the owner's memory instead of
     /// copying it, and holding the owner alive for as long as the field handle exists.
     #[must_use]
-    pub fn field(owner: &Self, offset: usize) -> Self {
-        HandleKind::Field {
+    pub fn field(owner: &Self, offset: usize, size: Option<usize>) -> Self {
+        let extent = size.or_else(|| owner.allocated_bytes().map(|bytes| bytes - offset));
+        let handle: Self = HandleKind::Field {
             owner: owner.clone(),
             offset,
         }
-        .into()
+        .into();
+
+        match extent {
+            Some(size) => handle.with_allocated_bytes(size),
+            None => handle,
+        }
     }
 
     /// The store that adopts allocations written into this handle's fields, paired with the byte
@@ -272,9 +441,15 @@ impl Handle {
     #[must_use]
     pub fn decoded_gobject(object: glib::Object) -> Self {
         let ptr = object.as_ptr().cast::<c_void>();
+        let lifetime = ObjectLifetime::track(&object);
+        let weak = object.downgrade();
         HandleKind::Object {
             ptr: Cell::new(ptr),
             owned: Cell::new(Some(object)),
+            lent: false,
+            lifetime: Some(lifetime),
+            weak,
+            wrapper: RefCell::new(std::rc::Weak::new()),
         }
         .into()
     }
@@ -288,6 +463,10 @@ impl Handle {
         let handle: Self = HandleKind::Object {
             ptr: Cell::new(gobject_ptr.cast::<c_void>()),
             owned: Cell::new(None),
+            lent: true,
+            lifetime: None,
+            weak: glib::WeakRef::new(),
+            wrapper: RefCell::new(std::rc::Weak::new()),
         }
         .into();
 
@@ -315,8 +494,18 @@ impl Handle {
         }
 
         match &self.inner.kind {
-            HandleKind::Object { ptr, .. } => ptr.get().is_null(),
-            HandleKind::Field { owner, .. } => owner.is_invalidated(),
+            HandleKind::Object { ptr, lifetime, .. } => {
+                ptr.get().is_null()
+                    || lifetime
+                        .as_ref()
+                        .is_some_and(|ended| ended.load(Ordering::Acquire))
+            }
+            HandleKind::Field { owner, .. } | HandleKind::Pointer { owner, .. } => {
+                owner.is_invalidated()
+            }
+            HandleKind::Function { owner, .. } => {
+                owner.as_ref().is_some_and(Handle::is_invalidated)
+            }
             _ => false,
         }
     }
@@ -330,7 +519,12 @@ impl Handle {
             HandleKind::Boxed(_) => HandleClass::Boxed,
             HandleKind::Fundamental(_) => HandleClass::Fundamental,
             HandleKind::Struct { .. } => HandleClass::Struct,
-            HandleKind::Borrowed(_) | HandleKind::Field { .. } => HandleClass::Opaque,
+            HandleKind::Borrowed(_)
+            | HandleKind::Static(_)
+            | HandleKind::Field { .. }
+            | HandleKind::Pointer { .. }
+            | HandleKind::CallbackData { .. } => HandleClass::Opaque,
+            HandleKind::Function { .. } => HandleClass::Function,
         }
     }
 
@@ -355,6 +549,10 @@ impl Handle {
 
     #[must_use]
     pub fn as_gobject_ptr(&self) -> Option<*mut glib::gobject_ffi::GObject> {
+        if self.is_invalidated() {
+            return None;
+        }
+
         let HandleKind::Object { ptr, .. } = &self.inner.kind else {
             return None;
         };
@@ -414,6 +612,57 @@ impl Handle {
         }
     }
 
+    pub(crate) fn track_wrapper(&self, wrapper: &Rc<crate::value::wrapper::WrapperHandle>) {
+        if let HandleKind::Object { wrapper: slot, .. } = &self.inner.kind {
+            slot.replace(Rc::downgrade(wrapper));
+        }
+    }
+
+    pub(crate) fn acquire_lease(&self) -> anyhow::Result<Option<glib::Object>> {
+        anyhow::ensure!(!self.is_invalidated(), "{INVALIDATED_HANDLE}");
+        match &self.inner.kind {
+            HandleKind::Object { lent: true, .. } => Ok(None),
+            HandleKind::Object {
+                ptr,
+                owned,
+                weak,
+                wrapper,
+                ..
+            } => {
+                let held = owned.take();
+                let acquired = held.clone();
+                owned.set(held);
+                if let Some(object) = acquired.or_else(|| weak.upgrade()) {
+                    return Ok(Some(object));
+                }
+                if wrapper
+                    .borrow()
+                    .upgrade()
+                    .is_some_and(|wrapper| wrapper.is_reachable())
+                {
+                    use glib::translate::FromGlibPtrNone as _;
+                    return Ok(Some(unsafe {
+                        glib::Object::from_glib_none(ptr.get().cast::<glib::gobject_ffi::GObject>())
+                    }));
+                }
+                anyhow::bail!("{INVALIDATED_HANDLE}")
+            }
+            HandleKind::Field { owner, .. }
+            | HandleKind::Pointer { owner, .. }
+            | HandleKind::Function {
+                owner: Some(owner), ..
+            } => owner.acquire_lease(),
+            _ => Ok(None),
+        }
+    }
+
+    pub(crate) fn retain_lease(&self) -> anyhow::Result<()> {
+        if let Some(object) = self.acquire_lease()? {
+            LeaseScope::retain(object)?;
+        }
+        Ok(())
+    }
+
     /// Releases the reference the handle owns, for a caller that wants the handle to stop holding
     /// its instance alive rather than to take the instance over.
     pub fn release_owned(&self) {
@@ -430,7 +679,12 @@ impl Handle {
 
         match &self.inner.kind {
             HandleKind::Object { ptr, .. } => ptr.get(),
-            HandleKind::Struct { ptr, .. } | HandleKind::Borrowed(ptr) => *ptr,
+            HandleKind::Struct { ptr, .. }
+            | HandleKind::Borrowed(ptr)
+            | HandleKind::Static(ptr)
+            | HandleKind::Pointer { ptr, .. }
+            | HandleKind::Function { ptr, .. }
+            | HandleKind::CallbackData { ptr, .. } => *ptr,
             HandleKind::Boxed(boxed) => boxed.as_ptr(),
             HandleKind::Fundamental(fundamental) => fundamental.as_ptr(),
             HandleKind::Field { owner, offset } => {
@@ -452,7 +706,12 @@ impl Handle {
             HandleKind::Boxed(_) => Boxed::SIZE_HINT,
             HandleKind::Fundamental(_) => Fundamental::SIZE_HINT,
             HandleKind::Struct { .. } => STRUCT_SIZE_HINT,
-            HandleKind::Borrowed(_) | HandleKind::Field { .. } => 0,
+            HandleKind::Borrowed(_)
+            | HandleKind::Static(_)
+            | HandleKind::Field { .. }
+            | HandleKind::Pointer { .. }
+            | HandleKind::Function { .. }
+            | HandleKind::CallbackData { .. } => 0,
         }
     }
 }
@@ -465,6 +724,7 @@ impl Drop for HandleKind {
                     glib::idle_add_local_once(move || surface::release(object));
                 }
             }
+            Self::CallbackData { ptr, destroy } => unsafe { destroy(*ptr) },
             Self::Struct { ptr, free_fn } => {
                 if ptr.is_null() {
                     return;

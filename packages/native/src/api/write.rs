@@ -4,7 +4,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::{byte_count_from_f64, handle_memory_ptr, native_result};
+use crate::api::{byte_count_from_f64, handle_memory_range, native_result};
 use crate::ffi::codec::{Codec, PtrWriter as _, SlotInit};
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
@@ -17,9 +17,7 @@ struct DisplacedField<'a> {
 
 impl DisplacedField<'_> {
     fn release(mut self) {
-        if let Some(transfer) = self.transfer.take() {
-            transfer.release_now();
-        }
+        drop(self.transfer.take());
     }
 }
 
@@ -53,7 +51,13 @@ pub(crate) fn write_field_at<'e>(
     offset: usize,
     value: Unknown<'_>,
 ) -> Result<Unknown<'e>> {
-    let field_ptr = handle_memory_ptr(handle, "field write")?.wrapping_byte_add(offset);
+    let _leases = crate::handle::LeaseScope::open();
+    let field_ptr = handle_memory_range(
+        handle,
+        offset,
+        field_codec.field_size().unwrap_or(0),
+        "field write",
+    )?;
     let store = handle.field_store();
     let displaced = store.and_then(|(fields, base)| {
         let offset = base + offset;
@@ -77,8 +81,11 @@ pub(crate) fn write_field_at<'e>(
         displaced.release();
     }
 
-    if let (Some(transfer), Some((fields, base))) = (transfer, store) {
-        fields.adopt(base + offset, transfer);
+    if let Some(transfer) = transfer {
+        match store {
+            Some((fields, base)) => fields.adopt(base + offset, transfer),
+            None => transfer.disarm(),
+        }
     }
 
     ().into_unknown(env)

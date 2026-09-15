@@ -1,6 +1,6 @@
-import type { Descriptor } from "@gtkx/native";
 import { type AnyClass, getParentClass, walkClassChain } from "@gtkx/utils";
 import type { Arg } from "./arg.js";
+import type { Descriptor } from "./descriptor-types.js";
 import { isCallerAllocatedOut } from "./callback.js";
 import { foldedLengthSources } from "./folded-lengths.js";
 import { getInterfaceVfuncRegistry, getVfuncRegistry, type VfuncDescriptor } from "./registry.js";

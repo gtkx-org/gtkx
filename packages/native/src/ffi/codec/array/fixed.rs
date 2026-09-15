@@ -1,6 +1,6 @@
 use super::super::prelude::*;
 use super::ArrayCodec;
-use super::container::{ArrayContainer, BufferViewSupport};
+use super::container::{ArrayContainer, ArrayRead, BufferViewSupport};
 use super::null_terminated::NullTerminatedArrayEncoder;
 
 #[derive(Debug, Clone)]
@@ -40,9 +40,9 @@ impl ArrayContainer for FixedArrayCodec {
         codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
-        transfer: Ownership,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
-        codec.decode_length_bounded(env, self.name(), stash, self.fixed_size as usize, transfer)
+        codec.decode_length_bounded(env, self.name(), stash, self.fixed_size as usize, read)
     }
 
     fn buffer_view_support(&self) -> BufferViewSupport {

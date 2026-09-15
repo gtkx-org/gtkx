@@ -7,20 +7,22 @@ type Level = {
     expandableFlags: boolean[];
 };
 
+type SectionIdentity = Pick<ListSection, "id" | "value">;
+
 type CollectionIndex = {
     isTree: boolean;
     groups: Level[];
     childLevel: (level: Level, slot: number) => Level | undefined;
     levelFor: (levelPath: string) => Level | undefined;
     itemAt: (levelPath: string, slot: number) => ListItem | undefined;
-    sectionFor: (levelPath: string) => unknown;
+    sectionFor: (levelPath: string) => SectionIdentity | undefined;
 };
 
 type IndexState = {
     isTree: boolean;
     groups: Level[];
     levels: Map<string, Level>;
-    sectionValues: Map<string, unknown>;
+    sections: Map<string, SectionIdentity>;
 };
 
 type ParentItem = ListItem & { children: ListItem[] };
@@ -96,7 +98,7 @@ function buildGroups(state: IndexState, source: ListItem[], sections: ListSectio
 
     return sections.map((section, group) => {
         const path = encodePart(String(group));
-        state.sectionValues.set(path, section.value);
+        state.sections.set(path, { id: section.id, value: section.value });
 
         return newLevel(state, path, section.data);
     });
@@ -125,7 +127,7 @@ function createCollectionIndex(
         isTree: isTreeSource(source, sections, isFlat),
         groups: [],
         levels: new Map(),
-        sectionValues: new Map(),
+        sections: new Map(),
     };
 
     state.groups = buildGroups(state, source, sections);
@@ -136,8 +138,8 @@ function createCollectionIndex(
         childLevel: (level, slot) => childLevel(state, level, slot),
         levelFor: (levelPath) => levelFor(state, levelPath),
         itemAt: (levelPath, slot) => levelFor(state, levelPath)?.items[slot],
-        sectionFor: (levelPath) => state.sectionValues.get(levelPath),
+        sectionFor: (levelPath) => state.sections.get(levelPath),
     };
 }
 
-export { createCollectionIndex, type CollectionIndex, type Level };
+export { createCollectionIndex, type CollectionIndex, type Level, type SectionIdentity };

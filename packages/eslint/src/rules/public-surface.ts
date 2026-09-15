@@ -1,5 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join, resolve, sep } from "node:path";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { basename, join, resolve, sep } from "node:path";
 import ts from "typescript";
 import { resolveEntrypoints } from "../api-entrypoints.js";
 
@@ -19,16 +19,44 @@ type Surface = {
     scope: Scope;
 };
 
-type Walker = {
-    checker: ts.TypeChecker;
-    keys: Set<string>;
-    scope: Scope;
-    symbols: Set<ts.Symbol>;
+type SurfaceFiles = {
+    entries: string[];
+    extras: string[];
 };
 
-const MAX_DEPTH = 60;
-const MAX_HOPS = 6;
-const MAX_MEMBER_DEPTH = 8;
+type SurfaceBuild = {
+    missing: Set<string>;
+    sources: Map<string, SourceSnapshot>;
+    surface: Surface;
+    version: number;
+};
+
+type SourceProgram = {
+    inputs: Map<string, SourceSnapshot>;
+    missing: Set<string>;
+    program: ts.Program;
+};
+
+type SourceSnapshot = {
+    modified: bigint;
+    size: bigint;
+    text: string;
+};
+
+type ProgramSurface = {
+    baselineVersion: number;
+    surface: Surface;
+};
+
+type Walker = {
+    activeSignatures: Set<ts.SignatureDeclaration>;
+    checker: ts.TypeChecker;
+    keys: Set<string>;
+    program: ts.Program;
+    scope: Scope;
+    symbols: Set<ts.Symbol>;
+    types: Set<ts.Type>;
+};
 
 const MEMBER_KINDS: Set<ts.SyntaxKind> = new Set([
     ts.SyntaxKind.CallSignature,
@@ -53,7 +81,8 @@ const DOCUMENTABLE_KINDS: Set<ts.SyntaxKind> = new Set([
     ts.SyntaxKind.VariableStatement,
 ]);
 
-const surfaces: Map<string, Surface> = new Map();
+const baselineSurfaces: Map<string, SurfaceBuild> = new Map();
+const programSurfaces: WeakMap<ts.Program, Map<string, ProgramSurface>> = new WeakMap();
 
 const getDeclarationKey = (node: ts.Node): string =>
     `${node.getSourceFile().fileName}:${String(node.pos)}`;
@@ -72,12 +101,46 @@ const isOwnSource = (scope: Scope, file: ts.SourceFile): boolean => isInScope(sc
 const resolveEntryFiles = (root: string, entrypoints: string[]): string[] =>
     resolveEntrypoints(root, entrypoints, "source").map((entry) => resolve(entry.dir, entry.path));
 
-const createProgram = (root: string, files: string[]): ts.Program => {
-    const raw = readFileSync(join(root, "tsconfig.base.json"), "utf8");
-    const base = JSON.parse(raw) as { compilerOptions: Record<string, unknown> };
-    const { options } = ts.convertCompilerOptionsFromJson(base.compilerOptions, root);
+const resolveSurfaceFiles = (options: SurfaceOptions): SurfaceFiles => ({
+    entries: resolveEntryFiles(options.root, options.entrypoints),
+    extras: options.modules.map((path) => resolve(options.root, path)),
+});
 
-    return ts.createProgram(files, { ...options, composite: false, incremental: false, noEmit: true });
+const createProgram = (root: string, files: string[], overlay?: ts.Program): SourceProgram => {
+    const configFile = join(root, "tsconfig.base.json");
+    const raw = readFileSync(configFile, "utf8");
+    const inputs = new Map([[configFile, sourceSnapshot(configFile, raw)]]);
+    const base = JSON.parse(raw) as { compilerOptions: Record<string, unknown> };
+    const converted = ts.convertCompilerOptionsFromJson(base.compilerOptions, root);
+    const options = { ...converted.options, composite: false, incremental: false, noEmit: true };
+
+    const host = ts.createCompilerHost(options);
+    const missing: Set<string> = new Set(
+        files.filter((fileName) => overlay?.getSourceFile(fileName) === undefined && !host.fileExists(fileName)),
+    );
+    const scope = { declared: new Set(files), root };
+    const fileExists = host.fileExists.bind(host);
+    host.fileExists = (fileName): boolean => {
+        const hasSource = overlay?.getSourceFile(fileName) !== undefined || fileExists(fileName);
+
+        if (!hasSource && (isInScope(scope, fileName) || basename(fileName) === "package.json")) {
+            missing.add(fileName);
+        }
+
+        return hasSource;
+    };
+    const readFile = host.readFile.bind(host);
+    host.readFile = (fileName): string | undefined => {
+        const text = overlay?.getSourceFile(fileName)?.text ?? readFile(fileName);
+
+        if (text !== undefined && basename(fileName) === "package.json") {
+            inputs.set(fileName, sourceSnapshot(fileName, text));
+        }
+
+        return text;
+    };
+
+    return { inputs, missing, program: ts.createProgram(files, options, host) };
 };
 
 const isRestrictedModifier = (modifier: ts.ModifierLike): boolean =>
@@ -91,70 +154,118 @@ const isHiddenMember = (node: ts.Node): boolean => {
     return isNamedPrivately || (modifiers ?? []).some((modifier) => isRestrictedModifier(modifier));
 };
 
-const childTypeNodes = (node: ts.TypeNode): ts.TypeNode[] => {
-    if (ts.isUnionTypeNode(node) || ts.isIntersectionTypeNode(node)) {
-        return [...node.types];
-    }
-
-    if (ts.isArrayTypeNode(node)) {
-        return [node.elementType];
-    }
-
-    return ts.isParenthesizedTypeNode(node) || ts.isFunctionTypeNode(node) ? [node.type] : [];
-};
-
-const collectTypeLiterals = (node: ts.TypeNode | undefined, out: ts.TypeLiteralNode[], depth: number): void => {
-    if (node === undefined || depth > MAX_MEMBER_DEPTH) {
-        return;
-    }
-
-    if (ts.isTypeLiteralNode(node)) {
-        out.push(node);
-
-        return;
-    }
-
-    for (const child of childTypeNodes(node)) {
-        collectTypeLiterals(child, out, depth + 1);
-    }
-};
-
-const literalsIn = (node: ts.TypeNode | undefined): ts.TypeLiteralNode[] => {
-    const literals: ts.TypeLiteralNode[] = [];
-    collectTypeLiterals(node, literals, 0);
-
-    return literals;
-};
-
 const ownMembers = (node: ts.Node): ts.Node[] => {
     if (ts.isInterfaceDeclaration(node) || ts.isClassDeclaration(node) || ts.isTypeLiteralNode(node)) {
         return [...node.members];
     }
 
-    if (!ts.isTypeAliasDeclaration(node)) {
-        return [];
-    }
-
-    return literalsIn(node.type).flatMap((literal) => [...literal.members]);
+    return [];
 };
 
-const markMember = (member: ts.Node, walker: Walker, depth: number): void => {
+const markMember = (member: ts.Node, walker: Walker): void => {
     walker.keys.add(getDeclarationKey(member));
-    const nested = literalsIn((member as { type?: ts.TypeNode }).type);
+    markDeclarationTypeLiterals(member, walker);
+    const name = (member as ts.NamedDeclaration).name;
 
-    for (const literal of nested) {
-        markMembers(literal, walker, depth + 1);
+    if (name !== undefined) {
+        visitSymbol(walker.checker.getSymbolAtLocation(name), walker);
     }
 };
 
-function markMembers(node: ts.Node, walker: Walker, depth: number): void {
-    if (depth > MAX_MEMBER_DEPTH) {
+const isFilterUtility = (node: ts.TypeReferenceNode, walker: Walker): boolean => {
+    if (!ts.isIdentifier(node.typeName) || (node.typeName.text !== "Exclude" && node.typeName.text !== "Extract")) {
+        return false;
+    }
+
+    const declarations = walker.checker.getSymbolAtLocation(node.typeName)?.declarations ?? [];
+
+    return declarations.some((declaration) => walker.program.isSourceFileDefaultLibrary(declaration.getSourceFile()));
+};
+
+const didVisitConditionalResults = (node: ts.Node, visit: (type: ts.Node) => void): boolean => {
+    if (!ts.isConditionalTypeNode(node)) {
+        return false;
+    }
+
+    visit(node.trueType);
+    visit(node.falseType);
+
+    return true;
+};
+
+const didVisitFilterSource = (
+    node: ts.Node,
+    walker: Walker,
+    visit: (type: ts.Node) => void,
+): boolean => {
+    if (!ts.isTypeReferenceNode(node) || !isFilterUtility(node, walker)) {
+        return false;
+    }
+
+    const source = node.typeArguments?.[0];
+
+    if (source !== undefined) {
+        visit(source);
+    }
+
+    return true;
+};
+
+function markTypeLiterals(node: ts.TypeNode | undefined, walker: Walker): void {
+    if (node === undefined) {
         return;
     }
 
+    const visit = (type: ts.Node): void => {
+        if (ts.isTypeLiteralNode(type)) {
+            markMembers(type, walker);
+
+            return;
+        }
+
+        if (didVisitConditionalResults(type, visit)) {
+            return;
+        }
+
+        if (didVisitFilterSource(type, walker, visit)) {
+            return;
+        }
+
+        type.forEachChild(visit);
+    };
+
+    visit(node);
+}
+
+const declarationTypeNodes = (node: ts.Node): (ts.TypeNode | undefined)[] => {
+    const declaration = node as {
+        heritageClauses?: ts.NodeArray<ts.HeritageClause>;
+        parameters?: ts.NodeArray<ts.ParameterDeclaration>;
+        type?: ts.TypeNode;
+        typeParameters?: ts.NodeArray<ts.TypeParameterDeclaration>;
+    };
+    const parameterTypes = (declaration.parameters ?? []).map((parameter) => parameter.type);
+    const typeParameterTypes = (declaration.typeParameters ?? []).flatMap((parameter) => [
+        parameter.constraint,
+        parameter.default,
+    ]);
+    const heritageTypes = (declaration.heritageClauses ?? []).flatMap((clause) =>
+        clause.types.flatMap((type) => [...(type.typeArguments ?? [])]),
+    );
+
+    return [declaration.type, ...parameterTypes, ...typeParameterTypes, ...heritageTypes];
+};
+
+const markDeclarationTypeLiterals = (node: ts.Node, walker: Walker): void => {
+    for (const type of declarationTypeNodes(node)) {
+        markTypeLiterals(type, walker);
+    }
+};
+
+function markMembers(node: ts.Node, walker: Walker): void {
     for (const member of ownMembers(node)) {
         if (!isHiddenMember(member)) {
-            markMember(member, walker, depth);
+            markMember(member, walker);
         }
     }
 }
@@ -177,7 +288,7 @@ const getHeritageName = (node: ts.Node): ts.EntityName | undefined =>
 const getEntityName = (node: ts.Node): ts.EntityName | undefined =>
     getReferencedName(node) ?? getHeritageName(node);
 
-const collectEntityNames = (node: ts.Node, out: ts.EntityName[]): void => {
+const collectTypeEntityNames = (node: ts.TypeNode, out: ts.EntityName[]): void => {
     const visit = (child: ts.Node): void => {
         const name = getEntityName(child);
 
@@ -188,35 +299,55 @@ const collectEntityNames = (node: ts.Node, out: ts.EntityName[]): void => {
         child.forEachChild(visit);
     };
 
-    node.forEachChild(visit);
+    visit(node);
 };
 
-const resolveAlias = (symbol: ts.Symbol, checker: ts.TypeChecker): ts.Symbol => {
-    if ((symbol.flags & ts.SymbolFlags.Alias) === 0) {
-        return symbol;
+const heritageNamesIn = (node: ts.Node): ts.EntityName[] => {
+    const declaration = node as { heritageClauses?: ts.NodeArray<ts.HeritageClause> };
+
+    return (declaration.heritageClauses ?? [])
+        .flatMap((clause) => [...clause.types])
+        .map((type) => getHeritageName(type))
+        .filter((name) => name !== undefined);
+};
+
+const collectEntityNames = (node: ts.Node, out: ts.EntityName[]): void => {
+    const types = declarationTypeNodes(node).filter((type) => type !== undefined);
+    const members = ownMembers(node).filter((member) => !isHiddenMember(member));
+
+    for (const type of types) {
+        collectTypeEntityNames(type, out);
     }
 
-    try {
-        return checker.getAliasedSymbol(symbol);
-    } catch {
-        return symbol;
+    out.push(...heritageNamesIn(node));
+
+    for (const member of members) {
+        collectEntityNames(member, out);
     }
 };
 
-const walkDeclaration = (node: ts.Node, walker: Walker, depth: number): void => {
-    markMembers(node, walker, 0);
+const resolveAlias = (symbol: ts.Symbol, checker: ts.TypeChecker): ts.Symbol =>
+    (symbol.flags & ts.SymbolFlags.Alias) === 0 ? symbol : checker.getAliasedSymbol(symbol);
+
+const walkDeclaration = (node: ts.Node, walker: Walker): void => {
+    markMembers(node, walker);
+    markDeclarationTypeLiterals(node, walker);
     const names: ts.EntityName[] = [];
     collectEntityNames(node, names);
 
     for (const name of names) {
         const target = ts.isQualifiedName(name) ? name.right : name;
-        visitSymbol(walker.checker.getSymbolAtLocation(target), walker, depth + 1);
+        visitSymbol(walker.checker.getSymbolAtLocation(target), walker);
     }
 };
 
 const readTypeArguments = (type: ts.Type, checker: ts.TypeChecker): ts.Type[] => {
-    const objectFlags = (type as ts.ObjectType).objectFlags;
-    const isReference = (type.flags & ts.TypeFlags.Object) !== 0 && (objectFlags & ts.ObjectFlags.Reference) !== 0;
+    if ((type.flags & ts.TypeFlags.Object) === 0) {
+        return [];
+    }
+
+    const objectType = type as ts.ObjectType;
+    const isReference = (objectType.objectFlags & ts.ObjectFlags.Reference) !== 0;
 
     return isReference ? [...checker.getTypeArguments(type as ts.TypeReference)] : [];
 };
@@ -227,19 +358,30 @@ const relatedTypes = (type: ts.Type, checker: ts.TypeChecker): ts.Type[] => {
     return [...(type.aliasTypeArguments ?? []), ...readTypeArguments(type, checker), ...members];
 };
 
-const followSignature = (signature: ts.Signature, walker: Walker, depth: number, hops: number): void => {
-    for (const parameter of signature.parameters) {
-        followType(walker.checker.getTypeOfSymbol(parameter), walker, depth, hops + 1);
+const followSignature = (signature: ts.Signature, walker: Walker): void => {
+    const declaration = signature.getDeclaration();
+
+    if (walker.activeSignatures.has(declaration)) {
+        return;
     }
 
-    followType(walker.checker.getReturnTypeOfSignature(signature), walker, depth, hops + 1);
+    walker.activeSignatures.add(declaration);
+
+    for (const parameter of signature.parameters) {
+        followType(walker.checker.getTypeOfSymbol(parameter), walker);
+    }
+
+    followType(walker.checker.getReturnTypeOfSignature(signature), walker);
+    walker.activeSignatures.delete(declaration);
 };
 
-const followSignatures = (type: ts.Type, walker: Walker, depth: number, hops: number): void => {
-    const signatures = walker.checker.getSignaturesOfType(type, ts.SignatureKind.Call);
+const followSignatures = (type: ts.Type, walker: Walker): void => {
+    const signatures = [ts.SignatureKind.Call, ts.SignatureKind.Construct].flatMap((kind) =>
+        walker.checker.getSignaturesOfType(type, kind),
+    );
 
     for (const signature of signatures) {
-        followSignature(signature, walker, depth, hops);
+        followSignature(signature, walker);
     }
 };
 
@@ -249,25 +391,46 @@ const hasOwnDeclarations = (symbol: ts.Symbol | undefined, scope: Scope): boolea
     return declarations.some((node) => isOwnSource(scope, node.getSourceFile()));
 };
 
-function followType(type: ts.Type | undefined, walker: Walker, depth: number, hops: number): void {
-    if (type === undefined || hops > MAX_HOPS || depth > MAX_DEPTH) {
+const followInferredMembers = (type: ts.Type, walker: Walker): void => {
+    const declarations = type.getSymbol()?.declarations ?? [];
+    const hasInferredMembers = declarations.some((node) =>
+        isOwnSource(walker.scope, node.getSourceFile()) &&
+        (ts.isObjectLiteralExpression(node) || ts.isClassExpression(node)),
+    );
+
+    if (!hasInferredMembers) {
         return;
     }
 
-    visitSymbol(type.aliasSymbol, walker, depth);
+    for (const member of walker.checker.getPropertiesOfType(type)) {
+        if ((member.declarations ?? []).every((node) => !isHiddenMember(node))) {
+            visitSymbol(member, walker);
+        }
+    }
+};
+
+function followType(type: ts.Type | undefined, walker: Walker): void {
+    if (type === undefined || walker.types.has(type)) {
+        return;
+    }
+
+    walker.types.add(type);
+    visitSymbol(type.aliasSymbol, walker);
 
     if (hasOwnDeclarations(type.symbol, walker.scope)) {
-        visitSymbol(type.symbol, walker, depth);
+        visitSymbol(type.symbol, walker);
     }
+
+    followInferredMembers(type, walker);
 
     for (const related of relatedTypes(type, walker.checker)) {
-        followType(related, walker, depth, hops + 1);
+        followType(related, walker);
     }
 
-    followSignatures(type, walker, depth, hops);
+    followSignatures(type, walker);
 }
 
-const visitDeclarations = (symbol: ts.Symbol, walker: Walker, depth: number): void => {
+const visitDeclarations = (symbol: ts.Symbol, walker: Walker): void => {
     const declarations = symbol.declarations ?? [];
 
     for (const node of declarations) {
@@ -275,21 +438,17 @@ const visitDeclarations = (symbol: ts.Symbol, walker: Walker, depth: number): vo
 
         if (isOwnSource(walker.scope, node.getSourceFile()) && !walker.keys.has(key)) {
             walker.keys.add(key);
-            walkDeclaration(node, walker, depth);
+            walkDeclaration(node, walker);
         }
     }
 };
 
-const followSymbolType = (symbol: ts.Symbol, walker: Walker, depth: number): void => {
-    try {
-        followType(walker.checker.getTypeOfSymbol(symbol), walker, depth + 1, 0);
-    } catch {
-        return;
-    }
+const followSymbolType = (symbol: ts.Symbol, walker: Walker): void => {
+    followType(walker.checker.getTypeOfSymbol(symbol), walker);
 };
 
-function visitSymbol(symbol: ts.Symbol | undefined, walker: Walker, depth: number): void {
-    if (symbol === undefined || depth > MAX_DEPTH) {
+function visitSymbol(symbol: ts.Symbol | undefined, walker: Walker): void {
+    if (symbol === undefined) {
         return;
     }
 
@@ -300,8 +459,8 @@ function visitSymbol(symbol: ts.Symbol | undefined, walker: Walker, depth: numbe
     }
 
     walker.symbols.add(resolved);
-    visitDeclarations(resolved, walker, depth);
-    followSymbolType(resolved, walker, depth);
+    visitDeclarations(resolved, walker);
+    followSymbolType(resolved, walker);
 }
 
 const markWholeModule = (file: ts.SourceFile, walker: Walker): void => {
@@ -321,7 +480,7 @@ const walkModuleExports = (file: ts.SourceFile | undefined, walker: Walker): voi
     const exported = symbol === undefined ? [] : walker.checker.getExportsOfModule(symbol);
 
     for (const entry of exported) {
-        visitSymbol(entry, walker, 0);
+        visitSymbol(entry, walker);
     }
 };
 
@@ -335,13 +494,19 @@ const markEntry = (file: ts.SourceFile | undefined, walker: Walker): void => {
     walkModuleExports(file, walker);
 };
 
-const buildSurface = (options: SurfaceOptions): Surface => {
-    const entries = resolveEntryFiles(options.root, options.entrypoints);
-    const extras = options.modules.map((path) => resolve(options.root, path));
+const buildSurface = (options: SurfaceOptions, files: SurfaceFiles, program: ts.Program): Surface => {
+    const { entries, extras } = files;
     const declared = new Set([...entries, ...extras]);
-    const program = createProgram(options.root, [...declared]);
     const scope: Scope = { declared, root: options.root };
-    const walker: Walker = { checker: program.getTypeChecker(), keys: new Set(), scope, symbols: new Set() };
+    const walker: Walker = {
+        activeSignatures: new Set(),
+        checker: program.getTypeChecker(),
+        keys: new Set(),
+        program,
+        scope,
+        symbols: new Set(),
+        types: new Set(),
+    };
 
     for (const entry of entries) {
         markEntry(program.getSourceFile(entry), walker);
@@ -358,16 +523,97 @@ const buildSurface = (options: SurfaceOptions): Surface => {
     return { keys: walker.keys, scope };
 };
 
-const publicSurfaceFor = (options: SurfaceOptions): Surface => {
-    const key = JSON.stringify(options);
-    const cached = surfaces.get(key);
+const surfaceKey = (options: SurfaceOptions, files: SurfaceFiles): string => JSON.stringify([options, files]);
 
-    if (cached !== undefined) {
+const hasMatchingSource = (file: ts.SourceFile, baseline: SurfaceBuild): boolean => {
+    const original = baseline.sources.get(file.fileName);
+
+    return original === undefined ? !baseline.missing.has(file.fileName) : original.text === file.text;
+};
+
+const hasSameSources = (current: ts.Program, baseline: SurfaceBuild): boolean =>
+    current
+        .getSourceFiles()
+        .filter((file) => isInScope(baseline.surface.scope, file.fileName))
+        .every((file) => hasMatchingSource(file, baseline));
+
+const sourceSnapshot = (fileName: string, text: string): SourceSnapshot => {
+    const status = statSync(fileName, { bigint: true });
+
+    return { modified: status.mtimeNs, size: status.size, text };
+};
+
+const snapshotSources = (program: ts.Program, surface: Surface): Map<string, SourceSnapshot> =>
+    new Map(
+        program
+            .getSourceFiles()
+            .filter((file) => isInScope(surface.scope, file.fileName))
+            .map((file) => [file.fileName, sourceSnapshot(file.fileName, file.text)]),
+    );
+
+const hasSameDiskSources = (baseline: SurfaceBuild): boolean =>
+    [...baseline.missing].every((fileName) => !existsSync(fileName)) &&
+    [...baseline.sources].every(([fileName, snapshot]) => {
+        const current = statSync(fileName, { bigint: true, throwIfNoEntry: false });
+
+        return current?.mtimeNs === snapshot.modified && current.size === snapshot.size;
+    });
+
+const baselineSurface = (options: SurfaceOptions, files: SurfaceFiles, key: string): SurfaceBuild => {
+    const cached = baselineSurfaces.get(key);
+
+    if (cached !== undefined && hasSameDiskSources(cached)) {
         return cached;
     }
 
-    const surface = buildSurface(options);
-    surfaces.set(key, surface);
+    const { inputs, missing, program } = createProgram(options.root, [...files.entries, ...files.extras]);
+    const surface = buildSurface(options, files, program);
+    const sources = snapshotSources(program, surface);
+
+    for (const [fileName, input] of inputs) {
+        sources.set(fileName, input);
+    }
+
+    const built = {
+        missing,
+        sources,
+        surface,
+        version: (cached?.version ?? 0) + 1,
+    };
+    baselineSurfaces.set(key, built);
+
+    return built;
+};
+
+const buildForProgram = (
+    options: SurfaceOptions,
+    files: SurfaceFiles,
+    program: ts.Program,
+    baseline: SurfaceBuild,
+): Surface => {
+    if (hasSameSources(program, baseline)) {
+        return baseline.surface;
+    }
+
+    const overlay = createProgram(options.root, [...files.entries, ...files.extras], program);
+
+    return buildSurface(options, files, overlay.program);
+};
+
+const publicSurfaceFor = (options: SurfaceOptions, program: ts.Program): Surface => {
+    const files = resolveSurfaceFiles(options);
+    const key = surfaceKey(options, files);
+    const baseline = baselineSurface(options, files, key);
+    const cachedSurfaces = programSurfaces.get(program) ?? new Map<string, ProgramSurface>();
+    const cached = cachedSurfaces.get(key);
+
+    if (cached?.baselineVersion === baseline.version) {
+        return cached.surface;
+    }
+
+    const surface = buildForProgram(options, files, program, baseline);
+    cachedSurfaces.set(key, { baselineVersion: baseline.version, surface });
+    programSurfaces.set(program, cachedSurfaces);
 
     return surface;
 };

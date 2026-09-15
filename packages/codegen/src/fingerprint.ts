@@ -1,9 +1,16 @@
+import type { ElementPropsExport, ModuleExport } from "@gtkx/react/config";
 import { createHash, type Hash } from "node:crypto";
 import { type Dirent, existsSync, readdirSync, readFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import packageManifest from "../package.json" with { type: "json" };
+import {
+    hasFreshPropsDependencies,
+    isPropsDependencies,
+    type PropsDependencies,
+} from "./docs/props-dependencies.js";
 import { EXTERNAL_NAMESPACES } from "./gir/external-namespaces.js";
+import { locateGirFile } from "./gir/libraries.js";
 import { arrayGuard, hasFields, isNumber, isString } from "./guards.js";
 import { readJsonFile } from "./json.js";
 
@@ -21,12 +28,11 @@ type GiFingerprint = {
     girPath: string[];
 };
 
-type ModuleExport = { module: string; export: string };
-
 type DocsFingerprintInput = {
+    resolveFrom: string;
     basePath: string;
     linkStyle: string;
-    props: Record<string, ModuleExport>;
+    props: Record<string, ElementPropsExport>;
     omittedProps: Record<string, string[]>;
     acceptedChildTypes: Record<string, string[]>;
 };
@@ -34,13 +40,14 @@ type DocsFingerprintInput = {
 type DocsFingerprint = {
     value: string;
     gi: GiFingerprint;
+    props: PropsDependencies;
 };
 
 type JsxFingerprintInput = {
     reactVersion: string;
     components: Record<string, ModuleExport>;
     lazyElements: string[];
-    props: Record<string, ModuleExport>;
+    props: Record<string, ElementPropsExport>;
     omittedProps: Record<string, string[]>;
 };
 
@@ -56,16 +63,7 @@ const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OVERRIDES_ROOT = join(PACKAGE_ROOT, "overrides");
 const codegenHashCache: { value: string | undefined } = { value: undefined };
 
-const compareOrdinal = (a: string, b: string): number => {
-    if (a < b) {
-        return -1;
-    }
-
-    return a > b ? 1 : 0;
-};
-
-const sortOrdinal = (values: string[]): string[] => values.toSorted(compareOrdinal);
-const sortAlpha = (values: string[]): string => sortOrdinal(values).join(",");
+const sortAlpha = (values: string[]): string => values.toSorted().join(",");
 
 const filesUnder = (root: string): string[] => {
     if (!existsSync(root)) {
@@ -78,7 +76,7 @@ const filesUnder = (root: string): string[] => {
 };
 
 const hashTree = (hash: Hash, label: string, root: string): void => {
-    const files = sortOrdinal(filesUnder(root));
+    const files = filesUnder(root).toSorted();
 
     for (const file of files) {
         hash.update("\n");
@@ -138,11 +136,10 @@ const installedVersion = (name: string): string | undefined => {
 };
 
 const dependencyVersions = (): string[] =>
-    sortOrdinal(
-        Object.entries(packageManifest.dependencies)
-            .filter(([name]) => !name.startsWith("@types/"))
-            .map(([name, range]) => `${name}@${installedVersion(name) ?? range}`),
-    );
+    Object.entries(packageManifest.dependencies)
+        .filter(([name]) => !name.startsWith("@types/"))
+        .map(([name, range]) => `${name}@${installedVersion(name) ?? range}`)
+        .toSorted();
 
 const hashPackageCode = (hash: Hash, label: string, root: string): void => {
     const source = join(root, "src");
@@ -178,12 +175,12 @@ const hashGi = (inputs: GiInputs): string => {
     hash.update("\n");
     hash.update(JSON.stringify(EXTERNAL_NAMESPACES));
     hash.update("\n");
-    hash.update(sortAlpha(inputs.libraries));
+    hash.update(JSON.stringify(inputs.libraries));
     hash.update("\n");
-    hash.update(sortAlpha(inputs.girPath));
+    hash.update(JSON.stringify(inputs.girPath));
     hash.update("\n");
     hash.update(String(inputs.storeVersion));
-    const girFiles = sortOrdinal(inputs.girFiles);
+    const girFiles = inputs.girFiles.toSorted();
 
     for (const file of girFiles) {
         hash.update("\n");
@@ -213,7 +210,7 @@ const isGiFingerprint = (value: unknown): value is GiFingerprint =>
     });
 
 const isDocsFingerprint = (value: unknown): value is DocsFingerprint =>
-    hasFields<DocsFingerprint>(value, { value: isString, gi: isGiFingerprint });
+    hasFields<DocsFingerprint>(value, { value: isString, gi: isGiFingerprint, props: isPropsDependencies });
 
 const isJsxFingerprint = (value: unknown): value is JsxFingerprint =>
     hasFields<JsxFingerprint>(value, { value: isString, intrinsicElementCount: isNumber });
@@ -224,7 +221,9 @@ const recordedGiValue = (sentinel: GiFingerprint, inputs: GiInputs): string | un
     }
 
     try {
-        return hashGi({ ...inputs, girFiles: sentinel.girFiles, libraries: sentinel.libraries });
+        const girFiles = sentinel.girFiles.map((file) => locateGirFile(basename(file, ".gir"), inputs.girPath));
+
+        return hashGi({ ...inputs, girFiles });
     } catch {
         return undefined;
     }
@@ -233,31 +232,40 @@ const recordedGiValue = (sentinel: GiFingerprint, inputs: GiInputs): string | un
 const isGiStoreFresh = (giStoreDir: string, inputs: GiInputs): boolean => {
     const sentinel = readSentinel(giStoreDir);
 
-    return isGiFingerprint(sentinel) && recordedGiValue(sentinel, inputs) === sentinel.value;
+    return isGiFingerprint(sentinel) && isGiFingerprintFresh(sentinel, inputs);
 };
 
-const hasMatchingRecordedInputs = (sentinel: GiFingerprint, inputs: GiInputs): boolean =>
-    sortAlpha(sentinel.libraries) === sortAlpha(inputs.libraries) &&
-    sortAlpha(sentinel.girPath) === sortAlpha(inputs.girPath);
+const isGiFingerprintFresh = (fingerprint: GiFingerprint, inputs: GiInputs): boolean =>
+    recordedGiValue(fingerprint, inputs) === fingerprint.value;
 
-const hashDocs = (giValue: string, input: DocsFingerprintInput): string =>
+const hasMatchingRecordedInputs = (sentinel: GiFingerprint, inputs: GiInputs): boolean =>
+    JSON.stringify(sentinel.libraries) === JSON.stringify(inputs.libraries) &&
+    JSON.stringify(sentinel.girPath) === JSON.stringify(inputs.girPath);
+
+const hashDocs = (giValue: string, input: DocsFingerprintInput, propsValue: string): string =>
     createHash("sha256")
         .update(
             JSON.stringify([
                 giValue,
+                input.resolveFrom,
+                propsValue,
                 input.basePath,
                 input.linkStyle,
-                serializeModuleExports(input.props),
+                serializeElementProps(input.props),
                 serializeStringLists(input.omittedProps),
                 serializeStringLists(input.acceptedChildTypes),
             ]),
         )
         .digest("hex");
 
-const computeDocsFingerprint = (inputs: GiInputs, input: DocsFingerprintInput): DocsFingerprint => {
+const computeDocsFingerprint = (
+    inputs: GiInputs,
+    input: DocsFingerprintInput,
+    props: PropsDependencies,
+): DocsFingerprint => {
     const gi = computeGiFingerprint(inputs);
 
-    return { value: hashDocs(gi.value, input), gi };
+    return { value: hashDocs(gi.value, input, props.value), gi, props };
 };
 
 const isDocsOutputFresh = (outDir: string, inputs: GiInputs, input: DocsFingerprintInput): boolean => {
@@ -269,14 +277,25 @@ const isDocsOutputFresh = (outDir: string, inputs: GiInputs, input: DocsFingerpr
 
     const giValue = recordedGiValue(sentinel.gi, inputs);
 
-    return giValue !== undefined && hashDocs(giValue, input) === sentinel.value;
+    return giValue !== undefined &&
+        hashDocs(giValue, input, sentinel.props.value) === sentinel.value &&
+        hasFreshPropsDependencies(sentinel.props);
 };
 
 const serializeModuleExports = (map: Record<string, ModuleExport>): [string, string, string][] =>
-    sortOrdinal(Object.keys(map)).map((type) => [type, map[type]?.module ?? "", map[type]?.export ?? ""]);
+    Object.keys(map).toSorted().map((type) => [type, map[type]?.module ?? "", map[type]?.export ?? ""]);
+
+const serializeElementProps = (map: Record<string, ElementPropsExport>): [string, string, string, string, string][] =>
+    Object.keys(map).toSorted().map((type) => [
+        type,
+        map[type]?.module ?? "",
+        map[type]?.export ?? "",
+        map[type]?.composition ?? "",
+        sortAlpha(map[type]?.constructOnly ?? []),
+    ]);
 
 const serializeStringLists = (map: Record<string, string[]>): [string, string][] =>
-    sortOrdinal(Object.keys(map)).map((type) => [type, sortAlpha(map[type] ?? [])]);
+    Object.keys(map).toSorted().map((type) => [type, sortAlpha(map[type] ?? [])]);
 
 const hashJsx = (input: JsxFingerprintInput): string =>
     createHash("sha256")
@@ -285,8 +304,8 @@ const hashJsx = (input: JsxFingerprintInput): string =>
                 codegenHash(),
                 input.reactVersion,
                 serializeModuleExports(input.components),
-                sortOrdinal(input.lazyElements),
-                serializeModuleExports(input.props),
+                input.lazyElements.toSorted(),
+                serializeElementProps(input.props),
                 serializeStringLists(input.omittedProps),
             ]),
         )
@@ -317,6 +336,7 @@ export {
     computeGiFingerprint,
     computeDocsFingerprint,
     isGiStoreFresh,
+    isGiFingerprintFresh,
     isDocsOutputFresh,
     computeJsxFingerprint,
     jsxStoreFreshness,

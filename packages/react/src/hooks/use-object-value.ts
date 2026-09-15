@@ -1,6 +1,5 @@
 import { offSignal, onSignal, type SignalHandler } from "@gtkx/runtime";
 import { useCallback, useRef, useSyncExternalStore } from "react";
-import { type RefProp, resolveRefProp } from "../utils/ref-prop.js";
 
 type ObjectValueCache<T extends object, V> = {
     object: T | null;
@@ -9,11 +8,11 @@ type ObjectValueCache<T extends object, V> = {
 };
 
 function useObjectValue<T extends object, V>(
-    object: RefProp<T>,
+    object: T | null | undefined,
     signal: string,
     read: (object: T | null) => V,
 ): V {
-    const resolved = resolveRefProp(object);
+    const resolved = object ?? null;
     const cacheRef = useRef<ObjectValueCache<T, V> | null>(null);
 
     const subscribe = useCallback(
@@ -28,6 +27,7 @@ function useObjectValue<T extends object, V>(
             };
 
             onSignal(resolved, signal, handler);
+            cacheRef.current = null;
 
             return () => {
                 offSignal(resolved, signal, handler);

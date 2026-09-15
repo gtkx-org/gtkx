@@ -1,13 +1,16 @@
-import type { CallDescriptor, Descriptor, ExternalObject, Handle, Ref } from "@gtkx/native";
-import { call, bind as nativeBind } from "@gtkx/native";
+import type { CallDescriptor, ExternalObject, Handle, Ref } from "@gtkx/native";
+import { bind as nativeBind } from "@gtkx/native";
+import type { Descriptor } from "./descriptor-types.js";
 import type { RefSeeds } from "./vfunc-seeds.js";
 import { type Arg, isCallerAllocatedArg, isOutputArg, isRefArg, isUnpackedArg, requiresInputArg } from "./arg.js";
+import { createCall } from "./call.js";
 import { wrapCallbackValue } from "./callback.js";
 import { boxedT, isGtypeDescriptor, refT } from "./descriptors.js";
 import { checkError } from "./error.js";
 import { LIB } from "./library.js";
 import { fromNative, toNative } from "./native-value.js";
 import { getHandle } from "./registry.js";
+import { toAbi } from "./scalar-plan.js";
 import { hasSurfacedPrimary, packTupleResult } from "./tuple.js";
 import { TYPE_INVALID } from "./type.js";
 import { fromValue, getValueType } from "./value.js";
@@ -208,7 +211,7 @@ const returnReader = (spec: FnSpec): ((nativeResult: unknown) => unknown) =>
         : (nativeResult) => fromNative(spec.returns, nativeResult);
 
 const directCallable = (
-    descriptor: ExternalObject<CallDescriptor>,
+    invoke: ReturnType<typeof createCall>,
     readReturn: (nativeResult: unknown) => unknown,
     hasPrimary: boolean,
     plans: ArgSpec[],
@@ -219,7 +222,7 @@ const directCallable = (
     const marshal = (inputs: unknown[]): unknown => {
         assertRequiredInputs(required, inputs);
 
-        return readReturn(call(descriptor, resizeInputs(inputs, argCount)));
+        return readReturn(invoke(resizeInputs(inputs, argCount)));
     };
 
     if (hasPrimary) {
@@ -242,9 +245,10 @@ function fromNativeCallable(
     const outPlans = plans.filter((plan) => plan.isOutParam);
     const arePassThrough = plans.every((plan, index) => isPassThroughPlan(plan, index));
     const readReturn = returnReader(spec);
+    const invoke = createCall(descriptor, buildNativeArgTypes(args, canThrow), returnDescriptor);
 
     if (!canThrow && arePassThrough) {
-        return directCallable(descriptor, readReturn, hasPrimary, plans);
+        return directCallable(invoke, readReturn, hasPrimary, plans);
     }
 
     const required = requiredInputs(plans);
@@ -258,7 +262,7 @@ function fromNativeCallable(
             const nativeValues = buildNativeValues(plans, inputs, getRefSeeds?.());
             const errorRef: Ref = { value: null };
             nativeValues.push(errorRef);
-            const nativeResult = call(descriptor, nativeValues);
+            const nativeResult = invoke(nativeValues);
             checkError(errorRef);
 
             return shape(inputs, nativeValues, nativeResult);
@@ -269,7 +273,7 @@ function fromNativeCallable(
         assertRequiredInputs(required, inputs);
         const nativeValues = buildNativeValues(plans, inputs, getRefSeeds?.());
 
-        return shape(inputs, nativeValues, call(descriptor, nativeValues));
+        return shape(inputs, nativeValues, invoke(nativeValues));
     };
 }
 
@@ -279,7 +283,10 @@ const bindNativeCallable = (
     spec: FnSpec,
 ): ((...inputs: unknown[]) => unknown) => {
     const nativeArgTypes = buildNativeArgTypes(spec.args, spec.canThrow ?? false);
-    const descriptor = nativeBind(sharedLibrary, symbol, nativeArgTypes, spec.returns, spec.fixedArgCount);
+    const descriptor = nativeBind(
+        sharedLibrary, symbol, nativeArgTypes.map((argument) => toAbi(argument)),
+        toAbi(spec.returns), spec.fixedArgCount,
+    );
 
     return fromNativeCallable(descriptor, spec);
 };

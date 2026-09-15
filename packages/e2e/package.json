@@ -6,6 +6,7 @@
     "type": "module",
     "devDependencies": {
         "@gtkx/cairo": "workspace:*",
+        "@gtkx/cli": "workspace:*",
         "@gtkx/config": "workspace:*",
         "@gtkx/css": "workspace:*",
         "@gtkx/gl": "workspace:*",
@@ -21,7 +22,7 @@
         "targets": {
             "lint": {
                 "dependsOn": [
-                    "gtkx:codegen",
+                    "codegen",
                     "@gtkx/gl:codegen",
                     "test-fixtures"
                 ],
@@ -44,29 +45,49 @@
                 ],
                 "cache": true,
                 "inputs": [
-                    "nodeTests"
+                    "nodeTests",
+                    "{workspaceRoot}/packages/native/tests/**/*",
+                    "{workspaceRoot}/packages/native/vitest.config.ts",
+                    "{workspaceRoot}/packages/native/package.json",
+                    "{workspaceRoot}/packages/native/*.js"
                 ],
                 "outputs": []
             },
             "test": {
+                "command": "vitest run --exclude '**/tests/testing/query-perf.test.tsx' && vitest run --config tests/native/vitest.config.ts",
                 "dependsOn": [
                     "test-fixtures",
-                    "@gtkx/native:build"
+                    "@gtkx/native:build",
+                    "codegen"
                 ],
                 "cache": true,
                 "inputs": [
                     "nodeTests"
                 ],
                 "options": {
-                    "command": "vitest run --exclude '**/tests/testing/query-perf.test.tsx' && vitest run --config tests/native/vitest.config.ts"
+                    "cwd": "{projectRoot}"
                 }
             },
             "typecheck": {
                 "dependsOn": [
                     "build",
                     "^typecheck",
-                    "gtkx:codegen",
+                    "codegen",
                     "test-fixtures"
+                ]
+            },
+            "codegen": {
+                "command": "gtkx codegen",
+                "options": {
+                    "cwd": "{projectRoot}"
+                },
+                "cache": false,
+                "dependsOn": [
+                    "gtkx:codegen",
+                    "@gtkx/cli:build"
+                ],
+                "outputs": [
+                    "{projectRoot}/node_modules/.gtkx/**/*.{js,d.ts,json}"
                 ]
             }
         },

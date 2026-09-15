@@ -6,7 +6,6 @@ type ActionEntry = {
     id: number;
     name: string;
     args: string[];
-    timestamp: number;
     error?: string;
 };
 
@@ -81,7 +80,6 @@ class ActionStore {
     private entries: ActionEntry[] = [];
     private readonly listeners: Set<() => void> = new Set();
     private nextId = 0;
-    private readonly limit: number;
 
     getSnapshot = (): ActionEntry[] => this.entries;
 
@@ -97,14 +95,6 @@ class ActionStore {
         this.publish([]);
     };
 
-    constructor(limit: number = DEFAULT_HISTORY_LIMIT) {
-        if (!Number.isSafeInteger(limit) || limit < 1) {
-            throw new RangeError("Action history needs a positive integer limit");
-        }
-
-        this.limit = limit;
-    }
-
     private publish(entries: ActionEntry[]): void {
         this.entries = entries;
 
@@ -118,10 +108,9 @@ class ActionStore {
             id: this.nextId++,
             name,
             args: args.slice(0, 8).map((value) => formatArgument(value)),
-            timestamp: Date.now(),
             ...(error !== undefined && { error: error.message.slice(0, MAX_ARGUMENT_LENGTH) }),
         };
-        this.publish([...this.entries, entry].slice(-this.limit));
+        this.publish([...this.entries, entry].slice(-DEFAULT_HISTORY_LIMIT));
     }
 }
 

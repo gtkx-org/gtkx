@@ -19,8 +19,7 @@ beforeEach(() => {
         filter: "all",
         searchMode: false,
         searchQuery: "",
-        dialog: "none",
-        taskToDelete: null,
+        dialog: { kind: "none" },
     });
 });
 

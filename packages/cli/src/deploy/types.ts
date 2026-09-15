@@ -154,7 +154,7 @@ type DeployPayload = {
     settings: DeploySettings;
     node: NodeRuntime | null;
     stage: StagedFile[];
-    notices: NoticeSection[];
+    notices: Record<DeployTargetName, NoticeSection[]>;
     overlays: Record<DeployTargetName, StagedFile[]>;
 };
 

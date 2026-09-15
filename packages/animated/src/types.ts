@@ -1,3 +1,4 @@
+import type { ConstructOnlyPropNames } from "@gtkx/react/internal";
 import type { FluidValue } from "@react-spring/shared";
 import type { ComponentPropsWithRef, ElementType, FunctionComponent, JSX } from "react";
 
@@ -5,7 +6,7 @@ import type { ComponentPropsWithRef, ElementType, FunctionComponent, JSX } from 
 type AnimatedItems<T> = [Exclude<Extract<T, Iterable<unknown>>, string>] extends [never]
     ? never
     : Exclude<Extract<T, Iterable<unknown>>, string> extends Iterable<infer Item>
-        ? Iterable<AnimatedProp<Item>>
+        ? readonly AnimatedProp<Item>[]
         : never;
 
 /** A prop value that an animated component also accepts as a spring or an interpolation. */
@@ -22,12 +23,11 @@ type AnimatedStyle<T> = {
 };
 
 /**
- * The props of an animated component: every prop of the wrapped component, each also accepting a
- * {@link FluidValue} such as a `SpringValue` or an `Interpolation`, while `ref` and `key` keep
- * their original types.
+ * The props of an animated component: mutable props also accept a {@link FluidValue}, while
+ * construct-only props, `ref`, and `key` keep their original types.
  */
 type AnimatedProps<Props extends object> = {
-    [P in keyof Props]: P extends "key" | "ref"
+    [P in keyof Props]: P extends "key" | "ref" | ConstructOnlyPropNames<Props>
         ? Props[P]
         : P extends "style"
             ? AnimatedProp<Props[P]> | AnimatedStyle<NonNullable<Props[P]>>

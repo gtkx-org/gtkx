@@ -4,6 +4,7 @@ import { resolveNodeVersion, sourcePathFor } from "../node-runtime/index.js";
 import { licenseBesideNode } from "../node-runtime/license.js";
 import { NODE_FILENAME } from "../payload/launcher.js";
 import { nodeLicenseDestination } from "../payload/stage.js";
+import { nodeExtensionFor } from "../targets/flatpak-sources.js";
 import { copyrightLines, readLicenseText } from "./text.js";
 
 const TITLE = "Node.js runtime";
@@ -28,8 +29,6 @@ const MISSING_LICENSE =
     "Cannot read a license file for the Node.js runtime this deploy bundles. An official release unpacks it " +
     'next to the binary, so point `deploy.node.path` at one, or use `deploy.node.source: "download"`, and ' +
     "the notices carry it.";
-
-const isSourceMode = (settings: DeploySettings): boolean => settings.deploy.flatpak?.mode === "source";
 
 const versionFor = (settings: DeploySettings, node: NodeRuntime | null): string =>
     node?.version ?? resolveNodeVersion(settings);
@@ -59,17 +58,9 @@ const extensionSummary = (settings: DeploySettings): string[] => [
     "not in the package you received.",
 ];
 
-const carriedSummary = (settings: DeploySettings, text: string | null): string[] => {
-    if (isSourceMode(settings)) {
-        return [...MISSING_SUMMARY, ...extensionSummary(settings)];
-    }
-
-    return text === null ? MISSING_SUMMARY : CARRIED_SUMMARY;
-};
-
-const summaryFor = (settings: DeploySettings, text: string | null): string[] => [
+const summaryFor = (text: string | null): string[] => [
     ...SUMMARY,
-    ...carriedSummary(settings, text),
+    ...(text === null ? MISSING_SUMMARY : CARRIED_SUMMARY),
 ];
 
 const warnMissingLicense = (node: NodeRuntime | null, text: string | null): void => {
@@ -87,7 +78,7 @@ const nodeNotices = (settings: DeploySettings, node: NodeRuntime | null): Notice
     return {
         title: TITLE,
         files: [`lib/${settings.binaryName}/${NODE_FILENAME}`],
-        summary: summaryFor(settings, text),
+        summary: summaryFor(text),
         notices: [{
             subject: `Node.js ${versionFor(settings, node)}`,
             license: LICENSE_NAME,
@@ -98,4 +89,17 @@ const nodeNotices = (settings: DeploySettings, node: NodeRuntime | null): Notice
     };
 };
 
-export { nodeNotices };
+const sdkNodeNotices = (settings: DeploySettings): NoticeSection => ({
+    title: TITLE,
+    files: [`lib/${settings.binaryName}/${NODE_FILENAME}`],
+    summary: [...SUMMARY, ...MISSING_SUMMARY, ...extensionSummary(settings)],
+    notices: [{
+        subject: `Node.js (${nodeExtensionFor(settings)})`,
+        license: LICENSE_NAME,
+        source: SOURCE_URL,
+        copyright: [],
+        text: null,
+    }],
+});
+
+export { nodeNotices, sdkNodeNotices };

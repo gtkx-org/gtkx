@@ -3,9 +3,7 @@ import { type ConfigLoader, createConfigLoader } from "./loader.ts";
 import { GTKX_CONFIG_VIRTUAL_ID, renderConfigModule, RESOLVED_GTKX_CONFIG_VIRTUAL_ID } from "./virtual.ts";
 import { viteProjectRoot } from "./vite-root.ts";
 
-/** State the plugin carries from Vite's `config` hook to the virtual module it serves. */
 type PluginState = {
-    /** Project root taken from Vite's `config` hook, falling back to the working directory. */
     root: string;
 };
 

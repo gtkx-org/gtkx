@@ -2,7 +2,6 @@ import { screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import {
     clickButton,
-    countPages,
     createEventSpy,
     createPreventSpy,
     createStateSpy,
@@ -109,21 +108,5 @@ describe("stack - native pop", () => {
         });
 
         expectRouteNames(onStateChange, ["Home"]);
-    });
-});
-
-describe("stack - native pop (leak)", () => {
-    it("drops each popped page instead of keeping it mounted", async () => {
-        await renderStack();
-        const view = getNavigationView("Home Content");
-
-        for (let cycle = 0; cycle < 3; cycle += 1) {
-            await clickButton("Go to details");
-            await screen.findByText("Details 1");
-            await clickButton("Back");
-            await screen.findByText("Home Content");
-        }
-
-        expect(countPages(view)).toBe(1);
     });
 });

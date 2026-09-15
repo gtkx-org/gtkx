@@ -28,133 +28,56 @@ type WalkOptions = {
     visit?: RowVisitor | undefined;
 };
 
-type LevelFrame = {
-    level: Level;
-    cursor: number;
-};
-
-type WalkFrame = LevelFrame & {
-    open: Set<number> | undefined;
-    marked: Set<number> | undefined;
-};
-
 type WalkState = {
-    options: WalkOptions;
-    stack: WalkFrame[];
-    row: VisibleRow;
+    position: number;
     order: VisibleOrder;
 };
 
-type OpenFrame = LevelFrame & {
-    owner: ListItem | null;
-};
+function walkLevel(options: WalkOptions, level: Level, state: WalkState): void {
+    const open = options.slots.get(level.path);
+    const marked = options.marks?.get(level.path);
 
-type OpenWalk = {
-    index: CollectionIndex;
-    ids: Set<string>;
-    paths: Set<string>;
-    stack: OpenFrame[];
-    ancestors: Set<ListItem>;
-};
+    for (const [slot, item] of level.items.entries()) {
+        const isOpen = open?.has(slot) ?? false;
+        options.visit?.({ item, position: state.position, isOpen, isMarked: marked?.has(slot) ?? false });
+        state.position += 1;
 
-const NO_ITEM: ListItem = { id: "", value: undefined };
+        if (!isOpen) {
+            continue;
+        }
 
-function advanceStack<F extends LevelFrame>(
-    stack: F[],
-    onSlot: (frame: F, slot: number) => void,
-    onLeave?: (frame: F) => void,
-): void {
-    const frame = stack.at(-1);
+        const child = options.index.childLevel(level, slot);
 
-    if (frame === undefined) {
-        return;
-    }
-
-    if (frame.cursor >= frame.level.items.length) {
-        stack.pop();
-        onLeave?.(frame);
-
-        return;
-    }
-
-    const slot = frame.cursor;
-    frame.cursor += 1;
-    onSlot(frame, slot);
-}
-
-function frameFor(options: WalkOptions, level: Level): WalkFrame {
-    return { level, cursor: 0, open: options.slots.get(level.path), marked: options.marks?.get(level.path) };
-}
-
-function descend(state: WalkState, level: Level, slot: number): void {
-    const child = state.options.index.childLevel(level, slot);
-
-    if (child === undefined) {
-        return;
-    }
-
-    state.order.expandedPaths.push(child.path);
-    state.order.expandedIds.push(state.row.item.id);
-    state.stack.push(frameFor(state.options, child));
-}
-
-function visitSlot(state: WalkState, frame: WalkFrame, slot: number): void {
-    const item = frame.level.items[slot];
-
-    if (item === undefined) {
-        return;
-    }
-
-    const { row } = state;
-    row.item = item;
-    row.isOpen = frame.open?.has(slot) ?? false;
-    row.isMarked = frame.marked?.has(slot) ?? false;
-    state.options.visit?.(row);
-    row.position += 1;
-
-    if (row.isOpen) {
-        descend(state, frame.level, slot);
+        if (child !== undefined) {
+            state.order.expandedPaths.push(child.path);
+            state.order.expandedIds.push(item.id);
+            walkLevel(options, child, state);
+        }
     }
 }
 
 function walkVisible(options: WalkOptions): VisibleOrder {
-    const order: VisibleOrder = { expandedPaths: [], expandedIds: [] };
-    const row: VisibleRow = { item: NO_ITEM, position: 0, isOpen: false, isMarked: false };
-    const frames = options.index.groups.map((level) => frameFor(options, level));
-    const state: WalkState = { options, stack: frames.toReversed(), row, order };
+    const state: WalkState = { position: 0, order: { expandedPaths: [], expandedIds: [] } };
 
-    const onSlot = (frame: WalkFrame, slot: number): void => {
-        visitSlot(state, frame, slot);
-    };
-
-    while (state.stack.length > 0) {
-        advanceStack(state.stack, onSlot);
+    for (const level of options.index.groups) {
+        walkLevel(options, level, state);
     }
 
-    return order;
+    return state.order;
 }
 
-function openSlot(walk: OpenWalk, frame: OpenFrame, slot: number): void {
-    const item = frame.level.items[slot];
+function expandLevel(index: CollectionIndex, level: Level, ids: Set<string>, paths: Set<string>): void {
+    for (const [slot, item] of level.items.entries()) {
+        if (!ids.has(item.id)) {
+            continue;
+        }
 
-    if (item === undefined || !walk.ids.has(item.id) || walk.ancestors.has(item)) {
-        return;
-    }
+        const child = index.childLevel(level, slot);
 
-    const child = walk.index.childLevel(frame.level, slot);
-
-    if (child === undefined) {
-        return;
-    }
-
-    walk.paths.add(child.path);
-    walk.ancestors.add(item);
-    walk.stack.push({ level: child, cursor: 0, owner: item });
-}
-
-function leaveOpenFrame(walk: OpenWalk, frame: OpenFrame): void {
-    if (frame.owner !== null) {
-        walk.ancestors.delete(frame.owner);
+        if (child !== undefined) {
+            paths.add(child.path);
+            expandLevel(index, child, ids, paths);
+        }
     }
 }
 
@@ -165,19 +88,8 @@ function expandedPathsFor(index: CollectionIndex, ids: Set<string>): Set<string>
         return paths;
     }
 
-    const frames = index.groups.map((level) => ({ level, cursor: 0, owner: null }));
-    const walk: OpenWalk = { index, ids, paths, stack: frames.toReversed(), ancestors: new Set() };
-
-    const onSlot = (frame: OpenFrame, slot: number): void => {
-        openSlot(walk, frame, slot);
-    };
-
-    const onLeave = (frame: OpenFrame): void => {
-        leaveOpenFrame(walk, frame);
-    };
-
-    while (walk.stack.length > 0) {
-        advanceStack(walk.stack, onSlot, onLeave);
+    for (const level of index.groups) {
+        expandLevel(index, level, ids, paths);
     }
 
     return paths;

@@ -46,7 +46,10 @@ const renderSection = (section: NoticeSection): string[] => [
     ...section.notices.flatMap((notice) => renderNotice(notice)),
 ];
 
-const renderNotices = (settings: DeploySettings, sections: NoticeSection[]): string =>
-    [...introFor(settings), "", ...sections.flatMap((section) => renderSection(section)), ""].join("\n");
+const renderNoticeSections = (sections: NoticeSection[]): string =>
+    [...sections.flatMap((section) => renderSection(section)), ""].join("\n");
 
-export { renderNotices };
+const renderNotices = (settings: DeploySettings, sections: NoticeSection[]): string =>
+    [...introFor(settings), "", renderNoticeSections(sections)].join("\n");
+
+export { renderNotices, renderNoticeSections };

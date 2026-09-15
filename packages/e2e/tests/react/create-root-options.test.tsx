@@ -1,7 +1,7 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { CaughtErrorInfo, Root, RootOptions } from "@gtkx/react";
 import type { ReactNode, RefObject } from "react";
-import { GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { createRoot, rootElement } from "@gtkx/react";
 import { act, waitFor } from "@gtkx/testing";
 import { Component, createRef, useId } from "react";
@@ -109,8 +109,21 @@ describe("createRoot options", () => {
     });
 
     it("gives every useId call under one root a distinct identifier", async () => {
-        const first = await renderIdentifier({ identifierPrefix: "gtkx" });
-        const second = await renderIdentifier({ identifierPrefix: "gtkx" });
+        const firstRef = createRef<Gtk.Label>();
+        const secondRef = createRef<Gtk.Label>();
+        const root = openRoot({ identifierPrefix: "gtkx" });
+
+        await act(() => {
+            root.render(
+                <GtkBox>
+                    <Identified labelRef={firstRef} />
+                    <Identified labelRef={secondRef} />
+                </GtkBox>,
+            );
+        });
+
+        const first = firstRef.current?.getLabel();
+        const second = secondRef.current?.getLabel();
 
         expect(first).toBeTruthy();
         expect(second).toBeTruthy();
@@ -126,7 +139,7 @@ describe("createRoot options", () => {
 
     it("keeps the default container working when only options are given", async () => {
         const labelRef = createRef<Gtk.Label>();
-        const root = createRoot(rootElement, { identifierPrefix: "defaulted" });
+        const root = createRoot(undefined, { identifierPrefix: "defaulted" });
         mounted.push(root);
 
         await act(() => {

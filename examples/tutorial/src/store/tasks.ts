@@ -13,6 +13,7 @@ export type TasksSlice = {
     restore: (id: string) => void;
     deleteForever: (id: string) => void;
     reorder: (draggedId: string, targetId: string) => void;
+    markNotified: (id: string, due: string) => void;
 };
 
 const patch = (tasks: Task[], id: string, fields: Partial<Task>): Task[] =>
@@ -36,9 +37,10 @@ export const createTasksSlice: StateCreator<Store, Mutators, [], TasksSlice> = (
                     important: false,
                     deleted: false,
                     due: null,
-                    position: state.tasks.length,
+                    position: (state.tasks.at(-1)?.position ?? -1) + 1,
                     createdAt: new Date().toISOString(),
                     completedAt: null,
+                    lastNotifiedDue: null,
                 },
             ],
         }));
@@ -58,10 +60,8 @@ export const createTasksSlice: StateCreator<Store, Mutators, [], TasksSlice> = (
             const tasks = [...state.tasks];
             const from = tasks.findIndex((task) => task.id === draggedId);
             const to = tasks.findIndex((task) => task.id === targetId);
-            if (from < 0 || to < 0 || from === to) return {};
-            const [moved] = tasks.splice(from, 1);
-            if (moved === undefined) return {};
-            tasks.splice(to, 0, moved);
+            tasks.splice(to, 0, ...tasks.splice(from, 1));
             return { tasks: tasks.map((task, index) => ({ ...task, position: index })) };
         }),
+    markNotified: (id, due) => set((state) => ({ tasks: patch(state.tasks, id, { lastNotifiedDue: due }) })),
 });

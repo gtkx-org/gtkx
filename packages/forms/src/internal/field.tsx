@@ -1,17 +1,11 @@
-import type { RefCallBack } from "react-hook-form";
+import type { ControllerFieldState, ControllerRenderProps, UseControllerProps } from "react-hook-form";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkEventControllerFocus } from "@gtkx/jsx/gtk";
-import { omit } from "@gtkx/utils";
+import { useMergedRef } from "@gtkx/react/internal";
+import { type DistributedOmit, omit } from "@gtkx/utils";
 import { type ReactElement, type ReactNode, type Ref, type RefCallback, useCallback } from "react";
 
-type FormFieldPropName =
-    | "control" |
-    "defaultValue" |
-    "disabled" |
-    "exact" |
-    "name" |
-    "rules" |
-    "shouldUnregister";
+type FormFieldPropName = keyof UseControllerProps;
 
 type FieldWidget = {
     grabFocus: () => boolean;
@@ -25,16 +19,12 @@ type FieldWidgetOptions<Widget extends FieldWidget> = {
     tooltipText?: string | null | undefined;
 };
 
-type FieldBinding = {
-    ref: RefCallBack;
-    disabled?: boolean | undefined;
-    onBlur: () => void;
-};
+type FieldBinding = Pick<ControllerRenderProps, "ref" | "disabled" | "onBlur">;
 
-type FieldState = { invalid: boolean; error?: { message?: string | undefined } | undefined };
+type FieldState = Pick<ControllerFieldState, "invalid" | "error">;
 
 type FieldWidgetBinding<Widget extends FieldWidget> = {
-    ref: RefCallback<Widget>;
+    ref: Ref<Widget>;
     controllers: ReactElement;
     cssClasses: string[] | null | undefined;
     sensitive: boolean | null | undefined;
@@ -52,14 +42,6 @@ const FORM_FIELD_PROP_NAMES: FormFieldPropName[] = [
     "shouldUnregister",
 ];
 
-const setRef = <Widget,>(ref: Ref<Widget> | undefined, widget: Widget | null): void => {
-    if (typeof ref === "function") {
-        ref(widget);
-    } else if (ref !== undefined && ref !== null) {
-        ref.current = widget;
-    }
-};
-
 const withErrorClass = (
     cssClasses: string[] | null | undefined,
     isInvalid: boolean,
@@ -71,19 +53,15 @@ const withErrorClass = (
     return [...(cssClasses ?? []), "error"];
 };
 
-const useFieldWidgetRef = <Widget extends FieldWidget>({
+const useControllerRef = <Widget extends FieldWidget>({
     field: { ref: controllerRef },
-    forwardedRef,
     select,
 }: {
     field: FieldBinding;
-    forwardedRef: Ref<Widget> | undefined;
     select: ((widget: Widget) => void) | undefined;
 }): RefCallback<Widget> =>
     useCallback(
         (widget) => {
-            setRef(forwardedRef, widget);
-
             if (widget === null) {
                 controllerRef(null);
 
@@ -101,7 +79,7 @@ const useFieldWidgetRef = <Widget extends FieldWidget>({
                 }),
             });
         },
-        [controllerRef, forwardedRef, select],
+        [controllerRef, select],
     );
 
 const useFieldWidget = <Widget extends FieldWidget>(
@@ -110,7 +88,7 @@ const useFieldWidget = <Widget extends FieldWidget>(
     props: FieldWidgetOptions<Widget>,
     select?: (widget: Widget) => void,
 ): FieldWidgetBinding<Widget> => ({
-    ref: useFieldWidgetRef({ field, forwardedRef: props.ref, select }),
+    ref: useMergedRef(props.ref, useControllerRef({ field, select })),
     controllers: (
         <>
             {props.controllers}
@@ -129,6 +107,6 @@ const selectText = (row: { selectRegion: (start: number, end: number) => void })
 
 const widgetProps = <Props extends Partial<Record<FormFieldPropName, unknown>>>(
     props: Props,
-): Omit<Props, FormFieldPropName> => omit(props, FORM_FIELD_PROP_NAMES);
+): DistributedOmit<Props, FormFieldPropName> => omit(props, FORM_FIELD_PROP_NAMES);
 
 export { selectText, useFieldWidget, widgetProps };

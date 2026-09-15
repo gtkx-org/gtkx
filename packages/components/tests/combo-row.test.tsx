@@ -4,13 +4,13 @@ import { ComboRow } from "@gtkx/components";
 import { GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type ReactNode, type Ref } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 type ProbeProps = {
     comboRef: Ref<Adw.ComboRow>;
 };
 
-type ComboShellProps = Omit<ComboRowProps<string, string>, "ref" | "title"> & ProbeProps;
+type ComboShellProps = ComboRowProps<string, string> & ProbeProps;
 
 const items = [
     { id: "title", value: "By title" },
@@ -115,5 +115,31 @@ describe("render - ComboRow", () => {
         await render(<TemplatedComboProbe comboRef={ref} />);
         expect(await screen.findAllByText("Sorted by date")).toHaveLength(1);
         expect(screen.queryAllByText("By date")).toHaveLength(0);
+    });
+});
+
+describe("ComboRow controlled selection", () => {
+    it("restores selectedId after the user selects another item", async () => {
+        const ref = createRef<Adw.ComboRow>();
+        const onSelectionChanged = vi.fn();
+        await render(
+            <ComboShell
+                comboRef={ref}
+                items={items}
+                selectedId="title"
+                onSelectionChanged={onSelectionChanged}
+            />,
+        );
+
+        if (ref.current === null) {
+            throw new TypeError("Expected a ComboRow");
+        }
+
+        await userEvent.selectOptions(ref.current, 1);
+
+        await waitFor(() => {
+            expect(onSelectionChanged).toHaveBeenCalledExactlyOnceWith("date");
+            expect(ref.current).toHaveObjectProperty("selected", 0);
+        });
     });
 });

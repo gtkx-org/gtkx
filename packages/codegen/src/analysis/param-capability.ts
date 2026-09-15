@@ -8,11 +8,11 @@ import {
     isFixedArrayCallerOut,
     isHandlePassedInPlace,
     isRecordInout,
-    underlyingType,
 } from "../store/gi/param-marshal.js";
 import { recordInlineSize } from "../store/gi/record-layout.js";
 import { isScalarRef, isUnownableStruct, transferOwnership } from "./descriptor-render.js";
 import { closureAndDestroyIndices } from "./param-structure.js";
+import { underlyingType } from "./type-shape.js";
 
 type UnmarshalableSubject = GirCallable & { instance?: GirParameter | undefined };
 
@@ -47,7 +47,7 @@ const isPointerElement = (context: ModuleContext, element: TypeId): boolean => {
         return false;
     }
 
-    const type = underlyingType(context, element);
+    const type = underlyingType(context.library, element);
 
     return type !== undefined && isPointerType(context, type);
 };
@@ -84,7 +84,7 @@ const baseIndirection = (context: ModuleContext, ref: TypeId | undefined): numbe
         return 0;
     }
 
-    const type = ref === undefined ? undefined : underlyingType(context, ref);
+    const type = ref === undefined ? undefined : underlyingType(context.library, ref);
 
     return type === undefined ? undefined : typeIndirection(context, type);
 };
@@ -118,7 +118,7 @@ const marshalledIndirection = (context: ModuleContext, parameter: GirParameter):
 };
 
 const hasCallerSuppliedLength = (context: ModuleContext, parameter: GirParameter): boolean => {
-    const type = parameter.type === undefined ? undefined : underlyingType(context, parameter.type);
+    const type = parameter.type === undefined ? undefined : underlyingType(context.library, parameter.type);
 
     return type?.kind === "carray" && type.lengthParameterIndex !== undefined;
 };
@@ -151,13 +151,13 @@ const isTypeErasedCallback = (context: ModuleContext, parameter: GirParameter): 
         return false;
     }
 
-    const type = parameter.type === undefined ? undefined : underlyingType(context, parameter.type);
+    const type = parameter.type === undefined ? undefined : underlyingType(context.library, parameter.type);
 
     return type?.kind === "callback" && type.value.parameters.length === 0;
 };
 
 const isCallbackParam = (context: ModuleContext, parameter: GirParameter): boolean => {
-    const type = parameter.type === undefined ? undefined : underlyingType(context, parameter.type);
+    const type = parameter.type === undefined ? undefined : underlyingType(context.library, parameter.type);
 
     return type?.kind === "callback";
 };
@@ -192,7 +192,7 @@ const isRefusedTransfer = (
         return false;
     }
 
-    const type = underlyingType(context, ref);
+    const type = underlyingType(context.library, ref);
 
     return type?.kind === "record" && isUnownableStruct(context, type);
 };
@@ -211,7 +211,7 @@ const isByValueRecord = (context: ModuleContext, ref: TypeId | undefined, cType:
         return false;
     }
 
-    const type = underlyingType(context, ref);
+    const type = underlyingType(context.library, ref);
 
     if (type?.kind !== "record") {
         return false;
@@ -260,4 +260,4 @@ const hasUnmarshalableParam = (context: ModuleContext, callable: UnmarshalableSu
     hasDetachedCallback(context, callable.parameters) ||
     callable.parameters.some((parameter) => isUnmarshalableCallParam(context, parameter));
 
-export { hasUnmarshalableParam };
+export { hasDetachedClosure, hasUnmarshalableParam };

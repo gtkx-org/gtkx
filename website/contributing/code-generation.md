@@ -29,8 +29,8 @@ The main outputs are:
 | Output | Contents |
 | --- | --- |
 | `@gtkx/gi/<namespace>` | JavaScript classes, records, interfaces, constants, functions, bootstrap code, and their `.d.ts` declarations. |
-| `@gtkx/jsx/<namespace>` | React element components and prop declarations, with references to the corresponding GI classes and metadata. |
-| JSX metadata and element records | Property names, flags and defaults; signal mappings; generated element configuration. |
+| `@gtkx/jsx/<namespace>` | React element components and prop declarations, with references to the corresponding GI classes. |
+| Class metadata and element records | Property names, flags and defaults; signal mappings; generated element configuration. |
 | `.gtkx/reference` | The project's generated element reference, when reference generation is enabled. |
 
 The stores normally live under `node_modules/.gtkx/gi` and `node_modules/.gtkx/jsx`, with package links under `node_modules/@gtkx`. They are generated packages; there are no handwritten `packages/gi` or `packages/jsx` source packages to edit.
@@ -65,7 +65,9 @@ When investigating a binding, compare the GIR signature, the generated JavaScrip
 
 Each namespace has its main binding module and a bootstrap module. The bootstrap imports dependent namespace bootstraps, applies runtime overrides, and performs required registration or retention work. The public namespace barrel imports that bootstrap. The generated package marks bootstrap, override, and index modules as side effects so bundling can preserve initialization while eliminating unused exports where possible.
 
-Overrides under [`packages/codegen/overrides`](https://github.com/gtkx-org/gtkx/tree/main/packages/codegen/overrides) patch core types such as GObject objects, values, and parameter specifications. Their `.ts.ejs` files are read into the generated store as source modules. The [override boundary](/contributing/principles#keep-overrides-as-wiring) requires these modules to wire runtime implementations into the generated API, including non-introspectable functions. Existing implementation logic in templates is subject to that rule; binding behavior belongs in `@gtkx/runtime`. Cairo is handled as an external namespace by `@gtkx/cairo`, rather than receiving an ordinary generated GI namespace module.
+Overrides under [`packages/codegen/overrides`](https://github.com/gtkx-org/gtkx/tree/main/packages/codegen/overrides) wire runtime implementations into generated types, including non-introspectable functions and upstream compatibility fixes. One catalog drives template discovery, bootstrap imports, and barrel exports. The templates contain declarations and wiring; [binding behavior belongs in runtime](/contributing/principles#keep-overrides-as-wiring). Cairo uses the external `@gtkx/cairo` namespace.
+
+Public class declarations include the interfaces runtime installs as mixins. Signal methods inherit shared runtime types, with generated metadata describing each class's signals. Strict installed-consumer checks validate the complete declaration graph alongside actual generated imports, so workspace linking and skipped library checks cannot conceal invalid declarations.
 
 GI methods generally defer descriptor construction and native binding through runtime factories. Native symbol lookup itself is lazy in the addon. Importing a namespace and calling one of its methods therefore have different initialization costs; see [Native Runtime](/contributing/native-runtime).
 
@@ -75,9 +77,9 @@ The JSX pipeline uses the same parsed library to identify element classes and de
 
 [`packages/react/src/element-config.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/element-config.ts) is deliberately usable without loading native bindings. It describes which props an element adds or omits, which component factory wraps it, and whether its parent creates the underlying object. Runtime attachment and update behavior lives separately in `element-behaviors.ts`.
 
-Generated element components call the renderer's `createElementComponent` factory with the GType name, class reference, and metadata reference. Keeping those references in the component preserves the class registration and metadata needed when a production bundle removes unused code. An inherited wrapper can add application, window, or dialog lifecycle behavior.
+Generated element components call the renderer's `createElementComponent` factory with the GType name and class reference. Each generated class registers its property and signal metadata, so retaining the class also preserves that metadata in production bundles and application subclasses. An inherited wrapper can add application, window, or dialog lifecycle behavior.
 
-The main sources are [`store/jsx/pipeline.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/jsx/pipeline.ts), [`store/jsx/element-components.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/jsx/element-components.ts), and [`store/jsx/metadata.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/jsx/metadata.ts). The [React Renderer](/contributing/react-renderer) page follows these outputs into a mounted tree.
+The main sources are [`store/jsx/pipeline.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/jsx/pipeline.ts), [`store/jsx/element-components.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/jsx/element-components.ts), and [`store/gi/element-metadata.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/gi/element-metadata.ts). The [React Renderer](/contributing/react-renderer) page follows these outputs into a mounted tree.
 
 ## Store placement, freshness, and publication
 

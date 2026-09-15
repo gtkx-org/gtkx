@@ -138,10 +138,11 @@ const appendScalarAliases = (builder: ModuleBuilder, docs: GlDocContext): void =
         }
 
         seen.add(scalar.tsAlias);
+        const primitive = scalar.tsPrimitive ?? "number";
 
         builder.appendDeclaration({
             name: scalar.tsAlias,
-            code: `${scalarJsDoc(scalar.tsAlias, docs)}\nexport type ${scalar.tsAlias} = number;`,
+            code: `${scalarJsDoc(scalar.tsAlias, docs)}\nexport type ${scalar.tsAlias} = ${primitive};`,
         });
     }
 };

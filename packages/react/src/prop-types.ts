@@ -1,10 +1,21 @@
-/* eslint-disable gtkx/no-library-prefix */
 import type * as Adw from "@gtkx/gi/adw";
 import type * as Gdk from "@gtkx/gi/gdk";
 import type * as GLib from "@gtkx/gi/glib";
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { CSSProperties, ReactNode } from "react";
+
+declare const constructOnlyProps: unique symbol;
+
+type ConstructOnlyMetadata<ConstructOnly extends PropertyKey> = Readonly<Record<ConstructOnly, true>>;
+
+type GeneratedElementProps<Props, ConstructOnly extends PropertyKey = never> = Props & {
+    readonly [constructOnlyProps]?: ConstructOnlyMetadata<ConstructOnly>;
+};
+
+type ConstructOnlyPropNames<Props> = typeof constructOnlyProps extends keyof Props
+    ? keyof NonNullable<Props[typeof constructOnlyProps]>
+    : never;
 
 /** One entry of a `GMenu`'s `items` prop; `submenu` and `section` nest further menus. */
 type MenuItem = {
@@ -203,13 +214,31 @@ type ActionMapProps = {
 type MenuProps = {
     /** Entries the menu is rebuilt from whenever they change. */
     items?: MenuItem[] | null | undefined;
+} & ChildrenProps;
+
+type MenuItemProps = Pick<MenuItem, "label" | "action"> & {
+    submenu?: ReactNode;
+    section?: ReactNode;
 };
+
+type AdwToggleGroupProps = ChildrenProps & (
+    | { active?: Adw.ToggleGroup["active"] | undefined; activeName?: never } |
+    { activeName?: Adw.ToggleGroup["activeName"] | undefined; active?: never }
+);
 
 /** Props of a `Gtk.ShortcutController` element. */
 type GtkShortcutControllerProps = {
     /** `Gtk.Shortcut` elements the controller watches for. */
     shortcuts?: ReactNode | null | undefined;
 };
+
+type GtkCallbackActionElementProps = {
+    callback: Gtk.ShortcutFunc;
+} & GeneratedElementProps<object, "callback">;
+
+type GtkShortcutTriggerElementProps = {
+    accelerator: string;
+} & GeneratedElementProps<object, "accelerator">;
 
 /** Props of a `Gtk.Overlay` element, whose `children` is the widget the overlays sit above. */
 type GtkOverlayProps = {
@@ -375,6 +404,10 @@ type AdwMultiLayoutViewProps = {
 };
 
 export {
+    type ConstructOnlyMetadata,
+    type ConstructOnlyPropNames,
+    type GeneratedElementProps,
+    type constructOnlyProps,
     type MenuItem,
     type VflConstraints,
     type ScaleMark,
@@ -390,7 +423,11 @@ export {
     type ActionGroupProps,
     type ActionMapProps,
     type MenuProps,
+    type MenuItemProps,
+    type AdwToggleGroupProps,
     type GtkShortcutControllerProps,
+    type GtkCallbackActionElementProps,
+    type GtkShortcutTriggerElementProps,
     type GtkOverlayProps,
     type GtkTextChildAnchorProps,
     type GtkConstraintLayoutProps,

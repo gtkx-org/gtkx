@@ -1,9 +1,6 @@
 import type { Plugin } from "vitest/config";
 import { assertSupportedNodeVersion, createConfigLoader } from "@gtkx/config/internal";
 import createConfigPlugin from "@gtkx/config/vite-plugin";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.ts";
 import { reapStaleHeadlessDisplaysAtStartup } from "./reap-headless-displays.ts";
 
@@ -16,15 +13,8 @@ type PluginOptions = Partial<HeadlessOptions> & Partial<Record<"configFile", str
 const GTKX_INLINE_DEPS: RegExp[] = [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/];
 const DEFAULT_TIMEOUT = 30_000;
 
-const workerPreloadUrl = (): URL => {
-    const sibling = join(import.meta.dirname, "worker-preload.js");
-    const path = existsSync(sibling) ? sibling : join(import.meta.dirname, "..", "dist", "worker-preload.js");
-
-    return pathToFileURL(path);
-};
-
 const headlessPreloadSpecifier = (options: Partial<HeadlessOptions>): string => {
-    const url = workerPreloadUrl();
+    const url = new URL("worker-preload.js", import.meta.url);
 
     for (const [key, value] of Object.entries(options)) {
         url.searchParams.set(key, value);

@@ -1,9 +1,9 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { ComponentType, ReactNode, RefObject } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 type DemoProps = {
     onClose?: () => void;
-    window: RefObject<Gtk.Window | null>;
+    window: Gtk.Window | null;
 };
 
 type DemoProviderProps = DemoProps & {

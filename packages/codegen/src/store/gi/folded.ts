@@ -27,23 +27,15 @@ const declareFoldedClass = (options: FoldedClassOptions): void => {
         .map((statement) => indent(statement, 1))
         .join("\n");
 
-    if (!hasInstanceInterface) {
+    if (hasInstanceInterface) {
         context.declare({
             name: className,
-            code: `${doc}export const ${className}: typeof ${localName} = /* @__PURE__ */ (() => {\n${body}\n})();`,
-            owner,
+            code: `export interface ${className} extends ${localName} {}`,
         });
-
-        return;
     }
 
-    context.declare({
-        name: className,
-        code: `export interface ${className} extends ${localName} {}`,
-    });
-
-    context.addRuntimeTypeImport("WrapperClass");
-    const constType = `WrapperClass<typeof ${localName}, ${className}>`;
+    const wrapperType = context.addRuntimeTypeImport(hasInstanceInterface ? "WrapperClass" : "InterfaceClass");
+    const constType = `${wrapperType}<typeof ${localName}, ${className}>`;
 
     context.declare({
         name: className,

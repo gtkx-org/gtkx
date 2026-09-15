@@ -1,5 +1,6 @@
-import type { ArrayKind, Descriptor, Ownership } from "@gtkx/native";
+import type { ArrayKind, Ownership } from "@gtkx/native";
 import type { AnyClass } from "@gtkx/utils";
+import type { Descriptor } from "./descriptor-types.js";
 
 /** Descriptor variant for a `gint8`. */
 type Int8Descriptor = Extract<Descriptor, { kind: "int8" }>;
@@ -103,23 +104,15 @@ type BoxedOptions = {
 };
 
 /** Callback result, closure ownership, and lifetime options. */
-type CallbackOptions = {
-    /** The callee also takes a destroy notify, which frees the closure once it is done with it. */
-    hasDestroy?: boolean;
-    /** Signature of that destroy notify; defaults to `destroyNotify`, a one-argument `GDestroyNotify`. */
-    destroyKind?: CallbackDescriptor["destroyKind"];
-    /** The callee also takes a `user_data` pointer; without one the closure can never be freed. */
-    hasUserData?: boolean;
-    /** Position of `user_data` among the callback's own arguments, dropped before the closure is called. */
-    userDataIndex?: number;
-    /** Converts a thrown value to the callback's trailing `GError**`. */
-    canThrow?: boolean;
-    /** Lifetime of the closure; defaults to `notified` when `hasDestroy` is set and `call` otherwise. */
-    scope?: CallbackDescriptor["scope"];
+type CallbackOptions = Pick<
+    CallbackDescriptor,
+    "hasDestroy" | "hasUserData" | "userDataIndex" | "canThrow"
+> & {
+    [Key in "destroyKind" | "scope"]?: CallbackDescriptor[Key] | undefined;
 };
 
 /** The lengths and strides a C array layout needs beyond its element type. */
-type ArrayOptions = {
+type ArrayOptions = Pick<ArrayDescriptor, "elementOwnership"> & {
     /** Stride in bytes between elements stored inline in the array. */
     elementSize?: number | undefined;
     /** Position of the argument whose buffer a cursor array points into. */
@@ -216,7 +209,7 @@ const booleanT: BooleanDescriptor = { kind: "boolean" };
 const voidT: VoidDescriptor = { kind: "void" };
 /** Descriptor for a `gunichar`, marshalled as a single-character string or a codepoint number. */
 const unicharT: UnicharDescriptor = { kind: "unichar" };
-/** Descriptor for an opaque `gpointer`, taken from a typed array's memory or a numeric address. */
+/** Descriptor for an opaque `gpointer`. */
 const bufferT: BufferDescriptor = { kind: "buffer" };
 const fundamentalLifecycles: Map<string, FundamentalLifecycle> = new Map();
 
@@ -449,7 +442,11 @@ const fundamentalT = (
     return result;
 };
 
-const applyArrayBounds = (result: ArrayDescriptor, options: ArrayOptions): void => {
+const applyArrayMetadata = (result: ArrayDescriptor, options: ArrayOptions): void => {
+    if (options.elementOwnership !== undefined) {
+        result.elementOwnership = options.elementOwnership;
+    }
+
     if (options.baseParamIndex !== undefined) {
         result.baseParamIndex = options.baseParamIndex;
     }
@@ -476,7 +473,7 @@ const arrayT = (
         return result;
     }
 
-    applyArrayBounds(result, options);
+    applyArrayMetadata(result, options);
 
     if (options.elementSize !== undefined) {
         result.elementSize = options.elementSize;
@@ -498,7 +495,7 @@ const arrayT = (
 };
 
 const preserveArrayNull = (descriptor: ArrayDescriptor): ArrayDescriptor => {
-    Reflect.set(descriptor, "preserveNull", true);
+    descriptor.preserveNull = true;
 
     return descriptor;
 };

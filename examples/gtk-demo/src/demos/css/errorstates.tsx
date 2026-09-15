@@ -3,6 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { AdwDialog, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
 import {
     GtkAdjustment,
+    GtkCallbackAction,
     GtkEntry,
     GtkGrid,
     GtkGridLayoutChild,
@@ -10,6 +11,7 @@ import {
     GtkScale,
     GtkShortcut,
     GtkShortcutController,
+    GtkShortcutTrigger,
     GtkSwitch,
 } from "@gtkx/jsx/gtk";
 import { type ReactNode, useState } from "react";
@@ -286,12 +288,16 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                             scope={Gtk.ShortcutScope.MANAGED}
                             shortcuts={(
                                 <GtkShortcut
-                                    trigger={Gtk.ShortcutTrigger.parseString("<Control>m")}
-                                    action={Gtk.CallbackAction.new(() => {
-                                        modeSwitch?.activate();
+                                    trigger={<GtkShortcutTrigger accelerator="<Control>m" />}
+                                    action={(
+                                        <GtkCallbackAction
+                                            callback={() => {
+                                                modeSwitch?.activate();
 
-                                        return true;
-                                    })}
+                                                return true;
+                                            }}
+                                        />
+                                    )}
                                 />
                             )}
                         />

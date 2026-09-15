@@ -54,7 +54,6 @@ type ManifestInput = {
 type RawFile = { relativePath: string; content: string };
 
 type WriteStoreParams = Pick<StoreOptions, "storeDir" | "linkDir"> & {
-    compileDependencies?: Record<string, string>;
     files: SourceModule[];
     manifest: Manifest;
     owner: string | undefined;
@@ -123,7 +122,6 @@ const buildTempStore = (tmp: string, params: WriteStoreParams, owner: string | u
         storeDir: tmp,
         files: params.files,
         packageName: params.manifest.name,
-        dependencies: params.compileDependencies,
     });
     const rawFiles = params.rawFiles ?? [];
 

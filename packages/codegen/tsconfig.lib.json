@@ -2,10 +2,19 @@
     "extends": "../../tsconfig.lib.json",
     "references": [
       {
+        "path": "../cairo/tsconfig.lib.json"
+      },
+      {
         "path": "../utils/tsconfig.lib.json"
       },
       {
+        "path": "../runtime/tsconfig.lib.json"
+      },
+      {
         "path": "../react/tsconfig.lib.json"
+      },
+      {
+        "path": "../native/tsconfig.lib.json"
       }
     ]
 }

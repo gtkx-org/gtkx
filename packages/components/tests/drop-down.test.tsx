@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from "react";
-import { DropDown } from "@gtkx/components";
+import { ComboRow, DropDown } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwPreferencesGroup } from "@gtkx/jsx/adw";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
@@ -132,9 +133,39 @@ describe("DropDown", () => {
 });
 
 describe("DropDown controlled selection", () => {
+    it("restores selectedId after the user selects another item", async () => {
+        const ref = dropDownRef();
+        const onSelectionChanged = vi.fn();
+
+        await render(
+            <DropDown ref={ref} selectedId="b" onSelectionChanged={onSelectionChanged} items={abcItems()} />,
+        );
+        await userEvent.selectOptions(ref.current, 2);
+
+        await waitFor(() => {
+            expect(onSelectionChanged).toHaveBeenCalledExactlyOnceWith("c");
+            expect(ref.current).toHaveObjectProperty("selected", 1);
+        });
+    });
+
     it("reports the new effective id when the selected item is removed", async () => {
         await expectRemovalReported({ initialPosition: 0, removedId: "a" });
         await expectRemovalReported({ selectedId: "b", initialPosition: 1, removedId: "b" });
+    });
+
+    it("reports null when the model becomes empty", async () => {
+        const ref = dropDownRef();
+        const onSelectionChanged = vi.fn();
+        const draw = (items: IdItem[]): ReactNode => (
+            <DropDown ref={ref} selectedId="a" onSelectionChanged={onSelectionChanged} items={items} />
+        );
+        const { rerender } = await render(draw(abcItems().slice(0, 1)));
+        await rerender(draw([]));
+
+        await waitFor(() => {
+            expect(ref.current).toHaveObjectProperty("selected", Gtk.INVALID_LIST_POSITION);
+            expect(onSelectionChanged).toHaveBeenCalledExactlyOnceWith(null);
+        });
     });
 
     it("stays quiet when a controlled apply lands on the requested id", async () => {
@@ -173,15 +204,52 @@ describe("DropDown sections", () => {
         await screen.findAllByText("Alpha");
         expect(screen.queryAllByText("Letters")).toHaveLength(0);
     });
+});
 
-    it("renders item labels as direct cell children", async () => {
-        const ref = dropDownRef();
-        await render(<DropDown ref={ref} items={valueItems(["Alpha", "Beta"])} />);
-        const labels = await screen.findAllByText("Alpha");
-        expect(ref.current).toHaveDisplayValue("Alpha");
+const renderValue = (element: ReactNode) => render(<AdwPreferencesGroup>{element}</AdwPreferencesGroup>);
 
-        for (const label of labels) {
-            expect(label.getParent()).not.toBeInstanceOf(Gtk.Box);
-        }
+describe.each([DropDown, ComboRow])("dropdown value rendering", (Component) => {
+    it.each([
+        ["text", "text"],
+        [0, "0"],
+        [false, "false"],
+        [42n, "42"],
+        [Symbol("choice"), "Symbol(choice)"],
+    ])("displays primitive %s as text", async (value, text) => {
+        await renderValue(<Component items={[{ id: "choice", value }]} />);
+        expect(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX)).toHaveDisplayValue(text);
+    });
+
+    it.each([null, undefined, ""])("leaves an empty display for %s", async (value) => {
+        await renderValue(<Component items={[{ id: "choice", value }]} />);
+        expect(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX)).toHaveDisplayValue("");
+    });
+
+    it("uses custom renderers for structured values and popup rows", async () => {
+        await renderValue(
+            <Component
+                items={[
+                    { id: "choice", value: { label: "Choice" } },
+                    { id: "other", value: { label: "Other" } },
+                ]}
+                renderItem={({ item }) => <GtkLabel>{`Selected: ${item.label}`}</GtkLabel>}
+                renderListItem={({ item }) => <GtkLabel>{`Option: ${item.label}`}</GtkLabel>}
+            />,
+        );
+        const combo = screen.getByRole(Gtk.AccessibleRole.COMBO_BOX);
+        expect(combo).toHaveDisplayValue("Selected: Choice");
+        await userEvent.click(combo);
+        expect(await screen.findByText("Option: Choice")).toBeVisible();
+    });
+
+    it("propagates renderer errors", async () => {
+        await expect(renderValue(
+            <Component
+                items={[{ id: "choice", value: { label: "Choice" } }]}
+                renderItem={() => {
+                    throw new Error("Render failed");
+                }}
+            />,
+        )).rejects.toThrow();
     });
 });

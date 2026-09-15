@@ -61,12 +61,6 @@ describe("layout effects during commit", () => {
         const checkB = createRef<Gtk.CheckButton>();
         const onToggledB = vi.fn();
 
-        await act(() => {
-            rootB.render(<GtkCheckButton ref={checkB} label="b" onToggled={onToggledB} />);
-        });
-
-        onToggledB.mockClear();
-
         const CrossRootEmitter = () => {
             useLayoutEffect(() => {
                 checkB.current?.emit("toggled");
@@ -75,15 +69,23 @@ describe("layout effects during commit", () => {
             return <GtkLabel>a</GtkLabel>;
         };
 
-        await act(() => {
-            rootA.render(<CrossRootEmitter />);
-        });
+        try {
+            await act(() => {
+                rootB.render(<GtkCheckButton ref={checkB} label="b" onToggled={onToggledB} />);
+            });
 
-        expect(onToggledB).toHaveBeenCalledTimes(1);
+            onToggledB.mockClear();
 
-        await act(() => {
-            rootA.unmount();
-            rootB.unmount();
-        });
+            await act(() => {
+                rootA.render(<CrossRootEmitter />);
+            });
+
+            expect(onToggledB).toHaveBeenCalledTimes(1);
+        } finally {
+            await act(() => {
+                rootA.unmount();
+                rootB.unmount();
+            });
+        }
     });
 });

@@ -22,6 +22,7 @@ import {
     renderStaticHead,
 } from "./callables.js";
 import { annotationSpec, getDoc } from "./doc-spec.js";
+import { appendElementMetadata } from "./element-metadata.js";
 import { declareFoldedClass, localClassName } from "./folded.js";
 import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
@@ -146,6 +147,8 @@ const generateFoldedInterface = (
         gtypeExpr,
         layout: renderInterfaceLayout(context, iface, callables),
     });
+
+    appendElementMetadata(context, iface);
 
     const signalRegistration = renderSignalRegistration(context, iface, localName);
 
@@ -279,14 +282,14 @@ const prerequisiteRef = (context: ModuleContext, iface: GirClass, name: string):
         return undefined;
     }
 
-    return omittedTypeRef(ref, prerequisiteConflicts(context.library, iface, base));
+    return omittedTypeRef(ref, prerequisiteConflicts(context, iface, base));
 };
 
 const rootPrerequisiteRef = (context: ModuleContext, iface: GirClass): string => {
     const ref = context.qualify("GObject", "Object");
     const base = resolveClassOrInterface(context.library, "GObject", "Object");
 
-    return base === undefined ? ref : omittedTypeRef(ref, prerequisiteConflicts(context.library, iface, base));
+    return base === undefined ? ref : omittedTypeRef(ref, prerequisiteConflicts(context, iface, base));
 };
 
 const interfaceTypeExtends = (context: ModuleContext, iface: GirClass): string => {
@@ -451,7 +454,7 @@ const renderInterfaceClass = (
     const members: string[] = [];
 
     if (gtypeExpr !== undefined) {
-        members.push(gtypeMemberDeclaration(context), renderInterfaceHasInstance(context, className, gtypeExpr));
+        members.push(gtypeMemberDeclaration(context));
     }
 
     members.push(
@@ -480,15 +483,6 @@ const renderInterfaceBrand = (context: ModuleContext, className: string, implRef
     return (
         `${renderJsDoc(undefined, BRAND_NOTE)}declare static __impl__: ` +
         `${local}<${implRef}, ${className}>["__impl__"];`
-    );
-};
-
-const renderInterfaceHasInstance = (context: ModuleContext, className: string, gtypeExpr: string): string => {
-    context.addRuntimeImport("valueIsA");
-
-    return renderBlock(
-        `static [Symbol.hasInstance](value: unknown): value is ${className}`,
-        `return valueIsA(value, ${gtypeExpr});`,
     );
 };
 

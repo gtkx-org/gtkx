@@ -242,7 +242,7 @@ describe("host-config - children", () => {
             expect(getLabelTexts(boxRef)).toEqual(["A", "B", "C"]);
         });
 
-        it("falls back to append when before not found", async () => {
+        it("appends a child after existing siblings", async () => {
             const boxRef = createRef<Gtk.Box>();
             const { rerender } = await renderChildren(["A", "B"], buildLabelBox(boxRef));
             await rerender(["A", "B", "C"]);
@@ -267,10 +267,13 @@ describe("host-config - children", () => {
             });
         });
 
-        it("inserts root level window before sibling", async () => {
+        it("adds a root window while preserving the existing window", async () => {
             const { rerender } = await renderApplication(titledWindows(["First"]));
+            const first = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "First" });
             await rerender(titledWindows(["Second", "First"]));
             expect(await screen.findAllByRole(Gtk.AccessibleRole.WINDOW)).toHaveLength(2);
+            expect(screen.getByRole(Gtk.AccessibleRole.WINDOW, { name: "First" })).toBe(first);
+            expect(screen.getByRole(Gtk.AccessibleRole.WINDOW, { name: "Second" })).toBeRooted();
         });
     });
 
@@ -356,16 +359,12 @@ describe("host-config - text instances", () => {
         expect(await screen.findByText("Updated")).toHaveTextContent(/^Updated$/);
     });
 
-    it("handles empty string", async () => {
-        const ref = createRef<Gtk.Box>();
-
-        await render(
-            <GtkBox ref={ref} orientation={Gtk.Orientation.VERTICAL}>
-
-            </GtkBox>,
-        );
-
-        expect(within(ref.current as Gtk.Box).queryByRole(Gtk.AccessibleRole.LABEL)).toBeNull();
+    it("renders an empty string child in a label", async () => {
+        const ref = createRef<Gtk.Label>();
+        const text = "";
+        await render(<GtkLabel ref={ref}>{text}</GtkLabel>);
+        expect(ref.current).toBeRooted();
+        expect(ref.current?.getText()).toBe("");
     });
 
     it("handles unicode text", async () => {

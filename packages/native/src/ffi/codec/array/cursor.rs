@@ -2,7 +2,7 @@ use anyhow::bail;
 
 use super::super::prelude::*;
 use super::ArrayCodec;
-use super::container::ArrayContainer;
+use super::container::{ArrayContainer, ArrayRead};
 use crate::ffi::codec::Codec;
 
 #[derive(Debug, Clone)]
@@ -68,7 +68,7 @@ impl ArrayContainer for CursorArrayCodec {
         _codec: &ArrayCodec,
         _env: &'e Env,
         _stash: &ffi::Stash,
-        _transfer: Ownership,
+        _read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
         bail!(
             "A cursor array cannot be decoded without the buffer of parameter {}",
@@ -83,14 +83,14 @@ impl ArrayContainer for CursorArrayCodec {
         stash: &ffi::Stash,
         ffi_args: &[ffi::Stash],
         arg_codecs: &[Codec],
-        transfer: Ownership,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr(self.name())? else {
-            return codec.decode_null(env);
+            return Ok(value::js_null(env)?);
         };
         let length = self.remaining_items(codec, ptr, ffi_args, arg_codecs)?;
 
-        codec.decode_length_bounded(env, self.name(), stash, length, transfer)
+        codec.decode_length_bounded(env, self.name(), stash, length, read)
     }
 
     fn name(&self) -> &'static str {

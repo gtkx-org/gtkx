@@ -1,10 +1,12 @@
 import { bind, call, init, keepAlive, quit } from "@gtkx/native";
 import { expect, test } from "vitest";
 
+const encoder = new TextEncoder();
+
 const GLIB = "libglib-2.0.so.0";
 
-const duplicate = bind(GLIB, "g_strdup", [{ kind: "string", ownership: "borrowed" }], {
-    kind: "string",
+const duplicate = bind(GLIB, "g_strdup", [{ kind: "bytes", ownership: "borrowed" }], {
+    kind: "bytes",
     ownership: "full",
 });
 
@@ -16,7 +18,7 @@ const idleAdd = bind(
         {
             kind: "callback",
             argDescriptors: [],
-            returnDescriptor: { kind: "boolean" },
+            returnDescriptor: { kind: "int32" },
             hasDestroy: true,
             hasUserData: true,
             scope: "notified",
@@ -37,7 +39,7 @@ const queueIdle = (onDispatch: () => void): void => {
         () => {
             onDispatch();
 
-            return false;
+            return 0;
         },
     ]);
 };
@@ -141,10 +143,10 @@ test("quitting from inside a glib dispatch stops later idle sources from dispatc
 
 test("a bound call still succeeds while the main loop integration is torn down", () => {
     quit();
-    const duplicated = call(duplicate, ["torn down"]);
+    const duplicated = call(duplicate, [encoder.encode("torn down")]).value;
     init();
 
-    expect(duplicated).toBe("torn down");
+    expect(duplicated).toEqual(encoder.encode("torn down"));
 });
 
 test("glib idle sources keep dispatching while the keep alive is on", async () => {

@@ -1,13 +1,10 @@
 import { sortStrings } from "@gtkx/utils";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 
-/** A namespace found on the GIR path, taken from the name of its `.gir` file. */
 type GirNamespace = {
-    /** Namespace the file describes, such as `Gtk`. */
     name: string;
-    /** API version the file describes, such as `4.0`. */
     version: string;
-    /** Name and version joined the way a `libraries` entry spells them, such as `Gtk-4.0`. */
     identifier: string;
 };
 
@@ -18,6 +15,21 @@ const GIR_LIBRARY_PATTERN = /^[A-Za-z][A-Za-z0-9]*-\d+(?:\.\d+)*$/;
 const DEFAULT_LIBRARIES: string[] = ["Adw-1"];
 const TRANSITIVE_GTK_LIBRARY = "Gtk-4.0";
 const GIR_FILE_SUFFIX = ".gir";
+
+const locateGirFile = (identifier: string, girPath: string[]): string => {
+    const filename = `${identifier}${GIR_FILE_SUFFIX}`;
+
+    for (const directory of girPath) {
+        const candidate = join(directory, filename);
+
+        if (existsSync(candidate)) {
+            return candidate;
+        }
+    }
+
+    const tried = girPath.map((directory) => join(directory, filename)).join(", ");
+    throw new Error(`GIR file ${filename} not found on girPath. Tried: ${tried}`);
+};
 
 /**
  * Expands a `libraries` config value into the GIR identifiers to generate from, adding Adwaita when the
@@ -117,4 +129,4 @@ const compareVersions = (a: string, b: string): number => {
     return 0;
 };
 
-export { resolveBoundLibraries, resolveLibraries, discoverGirNamespaces, type LibrarySelection };
+export { resolveBoundLibraries, resolveLibraries, discoverGirNamespaces, locateGirFile, type LibrarySelection };

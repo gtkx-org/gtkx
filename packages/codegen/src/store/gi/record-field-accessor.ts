@@ -136,11 +136,14 @@ const isMarshalableField = (context: ModuleContext, field: GirField): boolean =>
     return isValueMarshalable(context, type.namespace.name, type.value);
 };
 
-const isEmittableField = (context: ModuleContext, field: GirField): field is GirField & { type: TypeId } =>
+const isPublicField = (context: ModuleContext, field: GirField): field is GirField & { type: TypeId } =>
+    field.introspectable &&
     !field.private &&
     field.type !== undefined &&
-    !isInlineCallbackRef(context.library, field.type) &&
-    isMarshalableField(context, field);
+    !isInlineCallbackRef(context.library, field.type);
+
+const isEmittableField = (context: ModuleContext, field: GirField): field is GirField & { type: TypeId } =>
+    isPublicField(context, field) && isMarshalableField(context, field);
 
 const emitFieldWrite = (context: ModuleContext, spec: FieldWriteSpec): string => {
     const { descriptor, slot, targetExpr, valueExpr } = spec;
@@ -490,7 +493,7 @@ const visitInlineStructSlot = (
 ): void => {
     const { field, slot } = entry;
 
-    if (field.private || field.type === undefined || isInlineCallbackRef(context.library, field.type)) {
+    if (!isPublicField(context, field)) {
         return;
     }
 

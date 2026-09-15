@@ -36,7 +36,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 />
 ```
 
-Nesting `ListItem.children` turns the same component into a tree, with `expandedIds` and `onExpandedChange` driving expansion.
+Nesting `ListItem.children` turns the same component into an acyclic tree, with `expandedIds` and `onExpandedChange` driving expansion. Keep item IDs stable and unique across the collection, including nested items. Section IDs must be unique among sections.
 
 To group rows under headers, pass `sections` in place of `items`: each `ListSection` carries its own `data` array of items, and `renderHeader` draws the header above each group. `ColumnView` and `DropDown` accept the same pair.
 
@@ -69,7 +69,7 @@ Nesting `ListItem.children` turns a `ColumnView` into a tree as well, driven by 
 
 ### DropDown
 
-`DropDown<T, S>` takes `items`, or `sections` plus `renderHeader`, with single controlled selection through `selectedId` and `onSelectionChanged`. `renderItem` is optional and draws both the button face and the popup rows, `renderListItem` overrides the popup rows on their own, and with neither given each value is shown as a label.
+`DropDown<T, S>` takes `items`, or `sections` plus `renderHeader`, with single controlled selection through `selectedId` and `onSelectionChanged`. Primitive values display as labels by default; `null` and `undefined` leave the display empty. Objects and other structured values require `renderItem`, which draws both the selected value and the popup rows. Use `renderListItem` to override only the popup rows.
 
 ```tsx
 import { DropDown } from "@gtkx/components";
@@ -77,11 +77,15 @@ import { DropDown } from "@gtkx/components";
 <DropDown
     items={SOURCE_TYPES.map((type) => ({ id: type, value: type }))}
     selectedId={sourceType}
-    onSelectionChanged={(id) => setSourceType(id)}
+    onSelectionChanged={(id) => {
+        if (id !== null) setSourceType(id);
+    }}
 />
 ```
 
-`ComboRow<T, S>` from `@gtkx/components/adw` takes the same collection props and renders an `Adw.ComboRow`, presenting the choice as a row inside a preferences group, as the tutorial's [preferences chapter](/tutorial/preferences-and-theming) does.
+The callback receives `null` when the model becomes empty.
+
+`ComboRow<T, S>` from `@gtkx/components` takes the same collection props and renders an `Adw.ComboRow`, presenting the choice as a row inside a preferences group, as the tutorial's [preferences chapter](/tutorial/preferences-and-theming) does.
 
 ### GtkListBox
 

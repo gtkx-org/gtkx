@@ -1,5 +1,5 @@
-import { camelCase, sanitizeIdentifier, upperFirst } from "@gtkx/utils";
-import type { ParsedKey, ParsedSchema, ParsedSchemaFile } from "./parser.js";
+import { camelCase, sanitizeIdentifier, sourceStringLiteral, upperFirst } from "@gtkx/utils";
+import type { ParsedSchema, ParsedSchemaFile } from "./parser.js";
 
 type NamedSchema = {
     schema: ParsedSchema;
@@ -21,13 +21,8 @@ const GTKX_ENV_MODULE_HEADER = `/**
  * \`gtkx codegen\`, \`gtkx dev\`, and \`gtkx build\`; do not edit.
  */`;
 
-const ENUM_KIND = "enum";
-const FLAGS_KIND = "flags";
 const ID_SEPARATOR = /[._]/;
 const NAME_SEPARATOR = "_";
-
-const toJsStringLiteral = (value: string): string =>
-    JSON.stringify(value).replaceAll("\u{2028}", String.raw`\u2028`).replaceAll("\u{2029}", String.raw`\u2029`);
 
 const getExportName = (schemaId: string): string =>
     sanitizeIdentifier(schemaId.split(ID_SEPARATOR).map((part) => camelCase(part)).join(NAME_SEPARATOR));
@@ -55,22 +50,35 @@ const getNamedSchemas = (file: ParsedSchemaFile): NamedSchema[] => {
     });
 };
 
-const runtimeKindForKey = (key: ParsedKey): string => {
-    if (key.enumId !== null) {
-        return ENUM_KIND;
-    }
-
-    if (key.flagsId !== null) {
-        return FLAGS_KIND;
-    }
-
-    return key.variantType ?? "";
-};
-
 const getRuntimeKeys = (schema: ParsedSchema): string => {
     const entries = schema.keys.map(
-        (key) => `${toJsStringLiteral(key.name)}: ${toJsStringLiteral(runtimeKindForKey(key))}`,
+        (key) => `${sourceStringLiteral(key.name)}: ${sourceStringLiteral(key.kind)}`,
     );
+
+    return `{ ${entries.join(", ")} }`;
+};
+
+const renderKeyValues = (values: NonNullable<ParsedSchema["keys"][number]["values"]>, isType: boolean): string => {
+    if (Array.isArray(values)) {
+        const literal = `[${values.map((value) => sourceStringLiteral(value)).join(", ")}]`;
+
+        return isType ? `readonly ${literal}` : literal;
+    }
+
+    const entries = Object.entries(values).map(([nick, number]) => {
+        const name = sourceStringLiteral(nick);
+        const key = isType ? `readonly ${name}` : `[${name}]`;
+
+        return `${key}: ${String(number)}`;
+    });
+
+    return `{ ${entries.join(", ")} }`;
+};
+
+const getRuntimeValues = (schema: ParsedSchema): string => {
+    const entries = schema.keys.flatMap((key) => key.values === null
+        ? []
+        : [`${sourceStringLiteral(key.name)}: ${renderKeyValues(key.values, false)}`]);
 
     return `{ ${entries.join(", ")} }`;
 };
@@ -81,24 +89,28 @@ const renderRuntimeModule = (file: ParsedSchemaFile): string => {
 
     for (const [index, { schema, exportName }] of named.entries()) {
         const keysName = `keys_${String(index)}`;
-        const id = toJsStringLiteral(schema.id);
-        lines.push(`const ${keysName} = ${getRuntimeKeys(schema)};`);
+        const valuesName = `values_${String(index)}`;
+        const id = sourceStringLiteral(schema.id);
+        lines.push(
+            `const ${keysName} = ${getRuntimeKeys(schema)};`,
+            `const ${valuesName} = ${getRuntimeValues(schema)};`,
+        );
 
         if (schema.path === null) {
             lines.push(
-                `export const ${exportName} = { id: ${id}, keys: ${keysName}, ` +
-                `at: (path) => ({ id: ${id}, path, keys: ${keysName} }) };`,
+                `export const ${exportName} = { id: ${id}, keys: ${keysName}, values: ${valuesName}, ` +
+                `at: (path) => ({ id: ${id}, path, keys: ${keysName}, values: ${valuesName} }) };`,
             );
         } else {
-            lines.push(`export const ${exportName} = { id: ${id}, path: null, keys: ${keysName} };`);
+            lines.push(
+                `export const ${exportName} = { id: ${id}, path: null, keys: ${keysName}, values: ${valuesName} };`,
+            );
         }
     }
 
     const first = named[0];
 
-    if (first !== undefined) {
-        lines.push(`export default ${first.exportName};`);
-    }
+    lines.push(first === undefined ? "export {};" : `export default ${first.exportName};`);
 
     return lines.join("\n");
 };
@@ -133,7 +145,23 @@ const renderKeysType = (name: string, schema: ParsedSchema): string[] => {
             lines.push(`        /** ${sanitizeSummary(key.summary)} */`);
         }
 
-        lines.push(`        ${toJsStringLiteral(key.name)}: ${toJsStringLiteral(runtimeKindForKey(key))};`);
+        lines.push(`        ${sourceStringLiteral(key.name)}: ${sourceStringLiteral(key.kind)};`);
+    }
+
+    lines.push("    };");
+
+    return lines;
+};
+
+const renderValuesType = (name: string, schema: ParsedSchema): string[] => {
+    const lines = [`    type ${name}Values = {`];
+
+    for (const key of schema.keys) {
+        if (key.values === null) {
+            continue;
+        }
+
+        lines.push(`        readonly ${sourceStringLiteral(key.name)}: ${renderKeyValues(key.values, true)};`);
     }
 
     lines.push("    };");
@@ -145,13 +173,14 @@ const boundRefTypeLines = (interfaceName: string, indent: string): string[] => [
     `${indent}id: string;`,
     `${indent}path: string | null;`,
     `${indent}keys: ${interfaceName};`,
+    `${indent}values: ${interfaceName}Values;`,
 ];
 
 const renderSchemaConst = ({ schema, exportName }: NamedSchema, interfaceName: string): string[] => {
     if (schema.path !== null) {
         return [
             `    const ${exportName}: {`,
-            `        id: ${toJsStringLiteral(schema.id)};`,
+            `        id: ${sourceStringLiteral(schema.id)};`,
             ...boundRefTypeLines(interfaceName, " ".repeat(8)).slice(1),
             "    };",
         ];
@@ -159,8 +188,9 @@ const renderSchemaConst = ({ schema, exportName }: NamedSchema, interfaceName: s
 
     return [
         `    const ${exportName}: {`,
-        `        id: ${JSON.stringify(schema.id)};`,
+        `        id: ${sourceStringLiteral(schema.id)};`,
         `        keys: ${interfaceName};`,
+        `        values: ${interfaceName}Values;`,
         "        at(path: string): {",
         ...boundRefTypeLines(interfaceName, " ".repeat(12)),
         "        };",
@@ -169,7 +199,7 @@ const renderSchemaConst = ({ schema, exportName }: NamedSchema, interfaceName: s
 };
 
 const renderFileModule = (file: ParsedSchemaFile, usedNames: Set<string>): string[] => {
-    const lines = [`declare module ${toJsStringLiteral(file.fileName)} {`];
+    const lines = [`declare module ${sourceStringLiteral(file.fileName)} {`];
     const exportNames: string[] = [];
 
     for (const [index, named] of getNamedSchemas(file).entries()) {
@@ -178,13 +208,20 @@ const renderFileModule = (file: ParsedSchemaFile, usedNames: Set<string>): strin
         }
 
         const interfaceName = allocateInterfaceName(named.schema.id, usedNames);
-        lines.push(...renderKeysType(interfaceName, named.schema), "", ...renderSchemaConst(named, interfaceName));
+        lines.push(
+            ...renderKeysType(interfaceName, named.schema),
+            ...renderValuesType(interfaceName, named.schema),
+            "",
+            ...renderSchemaConst(named, interfaceName),
+        );
         exportNames.push(named.exportName);
     }
 
     const [firstExport] = exportNames;
 
-    if (firstExport !== undefined) {
+    if (firstExport === undefined) {
+        lines.push("    export {};");
+    } else {
         lines.push("", `    export { ${exportNames.join(", ")} };`, `    export default ${firstExport};`);
     }
 
@@ -194,7 +231,7 @@ const renderFileModule = (file: ParsedSchemaFile, usedNames: Set<string>): strin
 };
 
 const renderResourceModule = (specifier: string): string => [
-    `declare module ${toJsStringLiteral(specifier)} {`,
+    `declare module ${sourceStringLiteral(specifier)} {`,
     "    const path: string;",
     "    export { path };",
     "    export default path;",
@@ -202,14 +239,14 @@ const renderResourceModule = (specifier: string): string => [
 ].join("\n");
 
 const renderIconModule = (specifier: string): string => [
-    `declare module ${toJsStringLiteral(specifier)} {`,
+    `declare module ${sourceStringLiteral(specifier)} {`,
     "    const iconName: string;",
     "    export default iconName;",
     "}",
 ].join("\n");
 
 const renderBlockedAssetModule = (specifier: string): string => [
-    `declare module ${toJsStringLiteral(specifier)} {`,
+    `declare module ${sourceStringLiteral(specifier)} {`,
     "    const assetImportRequiresResourceOrUrlQuery: {",
     "        readonly __gtkxAssetImportRequiresResourceOrUrlQuery: unique symbol;",
     "    };",
@@ -225,9 +262,7 @@ const renderEnvModule = (
     const assets = assetDeclarations ?? { blocked: [], icons: [], resources: [] };
     const usedNames: Set<string> = new Set();
 
-    const schemas = files
-        .filter((file) => file.schemas.length > 0)
-        .map((file) => renderFileModule(file, usedNames).join("\n"));
+    const schemas = files.map((file) => renderFileModule(file, usedNames).join("\n"));
 
     const blocked = assets.blocked.map((specifier) => renderBlockedAssetModule(specifier));
     const icons = assets.icons.map((specifier) => renderIconModule(specifier));

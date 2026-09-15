@@ -1,23 +1,28 @@
-import type { Descriptor } from "@gtkx/native";
+import type { ExternalObject, Handle } from "@gtkx/native";
 import {
     registerClass as nativeRegisterClass,
     type RegisterClassInterface as NativeRegisterClassInterface,
     type RegisterClassOptions as NativeRegisterClassOptions,
-    type RegisterClassSignal as NativeRegisterClassSignal,
     type RegisterClassVfunc as NativeRegisterClassVfunc,
 } from "@gtkx/native";
 import { type AnyClass, getParentClass, kebabCase, walkClassChain } from "@gtkx/utils";
+import type { Descriptor } from "./descriptor-types.js";
+import type { Camelized, Dashed, ReadableProperties, WritableProperties } from "./property-types.js";
+import { bind } from "./bind.js";
 import { wrapCallback } from "./callback.js";
+import { type ClassSignal, prepareClassSignals } from "./class-signals.js";
+import { stringT, structT, voidT } from "./descriptors.js";
+import { registerElementMetadata } from "./element-metadata.js";
 import { insertMixinLayer } from "./mixin.js";
 import {
     buildPropertyDispatch,
     GET_PROPERTY_VFUNC,
+    installClassProperties,
     makeGetProperty,
     makeSetProperty,
     type PropertyDispatch,
     type PropertySpec,
     SET_PROPERTY_VFUNC,
-    toNativeProperties,
 } from "./properties.js";
 import {
     descriptorFreePropertySpec,
@@ -34,6 +39,7 @@ import {
     type VfuncDescriptor,
     wrapHandle,
 } from "./registry.js";
+import { adaptCallback, toAbi } from "./scalar-plan.js";
 import {
     classSignalMember,
     naturalSignalMember,
@@ -55,6 +61,7 @@ import {
     TYPE_INVALID,
     TYPE_NONE,
     type TypedClass,
+    typeFromName,
     typeFundamental,
     typeInterfacePrerequisites,
     typeInterfaces,
@@ -68,16 +75,6 @@ type Interface<TImpl, TInstance = object> = AnyClass & {
     /** Type-level slot holding the interface's `Impl` type; no value ever carries it. */
     __impl__: (impl: Partial<TImpl> & object) => TInstance;
 };
-
-/** Converts underscores in a property name to canonical dashes. */
-type Dashed<TName extends string> = TName extends `${infer THead}_${infer TTail}`
-    ? Dashed<`${THead}-${TTail}`>
-    : TName;
-
-/** Converts a dashed property name to its JavaScript spelling. */
-type Camelized<TName extends string> = TName extends `${infer THead}-${infer TTail}`
-    ? `${THead}${Capitalize<Camelized<TTail>>}`
-    : TName;
 
 /** Property-map keys in the camelCase spelling hooks use. */
 type InstalledNames<TProperties> = string extends keyof TProperties
@@ -139,24 +136,8 @@ type RegisteredInstance<
         : TInstance extends { __signalEmit__?: infer TMap }
             ? NonNullable<TMap>
             : object,
-    TPropertySurface = TInstance extends { [propertyMapOverride]?: infer TResolver }
-        ? TResolver extends () => infer TMap
-            ? NonNullable<TMap>
-            : TInstance extends { __properties__?: infer TMap }
-                ? NonNullable<TMap>
-                : object
-        : TInstance extends { __properties__?: infer TMap }
-            ? NonNullable<TMap>
-            : object,
-    TWritablePropertySurface = TInstance extends { [writablePropertyMapOverride]?: infer TResolver }
-        ? TResolver extends () => infer TMap
-            ? NonNullable<TMap>
-            : TInstance extends { __writableProperties__?: infer TMap }
-                ? NonNullable<TMap>
-                : object
-        : TInstance extends { __writableProperties__?: infer TMap }
-            ? NonNullable<TMap>
-            : object,
+    TPropertySurface = ReadableProperties<TInstance>,
+    TWritablePropertySurface = WritableProperties<TInstance>,
     TNaturalInstanceMembers extends PropertyKey = TInstance extends {
         [naturalSignalMember]?: infer TMembers;
     }
@@ -288,28 +269,12 @@ type RegisteredInstance<
                     : TSignalEmitSurface,
                     TPropertySurface &
                     Omit<
-                        TInterfaceInstance extends { [propertyMapOverride]?: infer TResolver }
-                            ? TResolver extends () => infer TMap
-                                ? NonNullable<TMap>
-                                : TInterfaceInstance extends { __properties__?: infer TMap }
-                                    ? NonNullable<TMap>
-                                    : object
-                            : TInterfaceInstance extends { __properties__?: infer TMap }
-                                ? NonNullable<TMap>
-                                : object,
+                        ReadableProperties<TInterfaceInstance>,
                         keyof TPropertySurface
                     >,
                     TWritablePropertySurface &
                     Omit<
-                        TInterfaceInstance extends { [writablePropertyMapOverride]?: infer TResolver }
-                            ? TResolver extends () => infer TMap
-                                ? NonNullable<TMap>
-                                : TInterfaceInstance extends { __writableProperties__?: infer TMap }
-                                    ? NonNullable<TMap>
-                                    : object
-                            : TInterfaceInstance extends { __writableProperties__?: infer TMap }
-                                ? NonNullable<TMap>
-                                : object,
+                        WritableProperties<TInterfaceInstance>,
                         keyof TWritablePropertySurface
                     >,
                     TNaturalInstanceMembers,
@@ -443,7 +408,7 @@ type PropertyVfuncSpec = {
 };
 
 type ArgPatch = { isCallerAllocated: true } | { isCallScoped: true };
-type DeclaredSignals = { native: NativeRegisterClassSignal[]; table: Map<string, DeclaredSignalTypes> };
+type DeclaredSignals = { native: ClassSignal[]; table: Map<string, DeclaredSignalTypes> };
 
 const INSTANCE_ARG_INDEX = 0;
 const VALUE_ARG_INDEX = 2;
@@ -497,6 +462,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
     const name = resolveTypeName(klass, options);
     const declaredTypes = resolveInterfaceTypes(klass, options.implements ?? []);
     assertInterfacePrerequisites(klass, parentType, declaredTypes);
+    sortInterfaceTypes(parentType, declaredTypes);
     const adoptedTypes = declaredTypes.filter((gtype) => !typeIsA(parentType, gtype));
     const properties = options.properties ?? {};
     const signals = resolveDeclaredSignals(klass, options.signals ?? {});
@@ -514,10 +480,14 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
     const interfaceBindings = discoverInterfaceBindings(methods, parentType, declaredTypes, claimedMethodNames);
     assertClaimedVfuncs(klass, methods, claimedMethodNames, interfaceBindings);
 
-    const nativeOptions = withNativeSignals(
-        toNativeOptions(classVfuncs, interfaceBindings, properties, options),
-        signals.native,
-    );
+    const installSignals = prepareClassSignals(signals.native, parentType, declaredTypes);
+    const setCssName = prepareCssName(parentType, options.cssName);
+    const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings, options);
+    nativeOptions.initialize = (handle, type) => {
+        setCssName(handle);
+        installSignals(type);
+        installClassProperties(handle, properties, adoptedTypes);
+    };
 
     const newType: bigint = nativeRegisterClass(name, parentType, nativeOptions);
     registerClassType(klass, newType);
@@ -525,6 +495,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
     installSignalOverrides(newType, methods);
     applyInterfaceMixins(klass, adoptedTypes, inheritedNames);
     installDeclaredSignalMethods(klass, signals.table);
+    registerElementMetadata(name, {}, dispatch.elementProperties);
     invokeClassInit(options, newType);
 
     return klass;
@@ -709,7 +680,7 @@ function discoverClassVfuncs(klass: AnyClass, methods: MethodTable): DiscoveredV
 
 function wrapVfunc(
     fn: VfuncFn,
-    argDescriptors: NativeRegisterClassVfunc["argDescriptors"],
+    argDescriptors: Descriptor[],
     descriptor: VfuncDescriptor,
 ): VfuncFn {
     return wrapCallback(
@@ -943,13 +914,13 @@ function resolveDeclaredSignal(
     klass: AnyClass,
     name: string,
     spec: SignalSpec,
-): { native: NativeRegisterClassSignal; declared: DeclaredSignalTypes } {
+): { native: ClassSignal; declared: DeclaredSignalTypes } {
     const paramTypes = (spec.paramTypes ?? []).map((entry, index) =>
         resolveSignalGType(klass, name, `parameter ${String(index)}`, entry),
     );
 
     const returnType = resolveSignalReturnType(klass, name, spec);
-    const native: NativeRegisterClassSignal = { name, paramTypes };
+    const native: ClassSignal = { name, paramTypes };
     const declared: DeclaredSignalTypes = { paramTypes };
 
     if (spec.flags !== undefined) {
@@ -969,7 +940,7 @@ function resolveDeclaredSignal(
 }
 
 function resolveDeclaredSignals(klass: AnyClass, signals: Record<string, SignalSpec>): DeclaredSignals {
-    const native: NativeRegisterClassSignal[] = [];
+    const native: ClassSignal[] = [];
     const table: Map<string, DeclaredSignalTypes> = new Map();
 
     for (const [name, spec] of Object.entries(signals)) {
@@ -1011,10 +982,17 @@ function installDeclaredSignalMethods(
     });
 }
 
+const toNativeVfunc = (descriptor: DiscoveredVfunc): NativeRegisterClassVfunc => ({
+    ...descriptor,
+    argDescriptors: descriptor.argDescriptors.map((descriptor) => toAbi(descriptor)),
+    returnDescriptor: toAbi(descriptor.returnDescriptor),
+    fn: adaptCallback(descriptor, descriptor.fn as (...args: unknown[]) => unknown),
+});
+
 function toNativeInterface(binding: InterfaceVfuncBinding): NativeRegisterClassInterface {
     const nativeInterface: NativeRegisterClassInterface = {
         type: binding.gtype,
-        vfuncs: [...binding.vfuncs],
+        vfuncs: binding.vfuncs.map((descriptor) => toNativeVfunc(descriptor)),
     };
 
     const vtableSize = binding.vfuncs[0]?.vtableSize;
@@ -1026,49 +1004,54 @@ function toNativeInterface(binding: InterfaceVfuncBinding): NativeRegisterClassI
     return nativeInterface;
 }
 
-function withNativeSignals(
-    options: NativeRegisterClassOptions | undefined,
-    signals: NativeRegisterClassSignal[],
-): NativeRegisterClassOptions | undefined {
-    if (signals.length === 0) {
-        return options;
+const widgetClassSetCssName = bind(
+    "libgtk-4.so.1", "gtk_widget_class_set_css_name", [structT("borrowed"), stringT("borrowed")], voidT,
+);
+
+function prepareCssName(parentType: bigint, name: string | undefined): (handle: ExternalObject<Handle>) => void {
+    if (name !== undefined && !typeIsA(parentType, typeFromName("GtkWidget"))) {
+        throw new TypeError("cssName requires a GtkWidget parent");
     }
 
-    return { ...options, signals };
+    return (handle) => {
+        if (name !== undefined) {
+            widgetClassSetCssName(handle, name);
+        }
+    };
 }
 
-function applyNativeTypeOptions(options: NativeRegisterClassOptions, source: AnyRegisterClassOptions): void {
-    if (source.abstract ?? false) {
-        options.abstract = true;
-    }
-
-    if (source.cssName !== undefined) {
-        options.cssName = source.cssName;
+function sortInterfaceTypes(parentType: bigint, types: bigint[]): void {
+    const pending = new Set(types);
+    types.length = 0;
+    while (pending.size > 0) {
+        const ready = [...pending].filter((type) => typeInterfacePrerequisites(type).every((prerequisite) =>
+            typeIsA(parentType, prerequisite) || types.includes(prerequisite)));
+        if (ready.length === 0) {
+            throw new TypeError("Interface prerequisites cannot be satisfied");
+        }
+        for (const type of ready) {
+            pending.delete(type);
+            types.push(type);
+        }
     }
 }
 
 function toNativeOptions(
     classVfuncs: DiscoveredVfunc[],
     interfaceBindings: InterfaceVfuncBinding[],
-    properties: Record<string, PropertySpec>,
     source: AnyRegisterClassOptions,
-): NativeRegisterClassOptions | undefined {
-    const options: NativeRegisterClassOptions = {};
-    applyNativeTypeOptions(options, source);
-
-    if (Object.keys(properties).length > 0) {
-        options.properties = toNativeProperties(properties);
-    }
+): NativeRegisterClassOptions {
+    const options: NativeRegisterClassOptions = { flags: source.abstract === true ? 16 : 0 };
 
     if (classVfuncs.length > 0) {
-        options.vfuncs = [...classVfuncs];
+        options.vfuncs = classVfuncs.map((descriptor) => toNativeVfunc(descriptor));
     }
 
     if (interfaceBindings.length > 0) {
         options.interfaces = interfaceBindings.map((binding) => toNativeInterface(binding));
     }
 
-    return Object.keys(options).length > 0 ? options : undefined;
+    return options;
 }
 
 export { type Interface, registerClass, type SignalGType, type SignalSpec };

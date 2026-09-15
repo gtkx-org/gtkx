@@ -43,17 +43,7 @@ npm run dev
 
 The stable starter is a GTK counter. An Adwaita-first app replaces that shell with `AdwApplication`, `AdwApplicationWindow`, `AdwToolbarView`, and `AdwHeaderBar`, as [Your First Window](/tutorial/your-first-window) does. `npm create gtkx -- my-app --yes --application-id com.example.myapp` skips the prompts instead.
 
-### If the install stops on a fresh release
-
-pnpm holds back packages published in the last 24 hours, so scaffolding on the day a GTKX version ships can stop with `ERR_PNPM_NO_MATURE_MATCHING_VERSION` or `ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION`. The scaffolder prints the exact versions pnpm rejected and the `pnpm add` commands that finish the install. Run those once the versions clear the window, or allow them up front in `pnpm-workspace.yaml`:
-
-```yaml
-minimumReleaseAgeExclude:
-  - '@gtkx/react@1.0.0'
-  - '@gtkx/runtime@1.0.0'
-```
-
-The key belongs at the top level of the file, alongside `packages:` and `allowBuilds:`, never nested inside either. pnpm names only the versions the command it stopped on had to resolve, so a later run can name more; add each one to the same list.
+For pnpm's restrictions on installing recently published versions, see the [pnpm documentation](https://pnpm.io/settings/dependency-resolution#minimumreleaseage).
 
 ## The dev loop
 
@@ -94,5 +84,5 @@ Shutting down is the mirror image. `quit()` from `@gtkx/react` unmounts every ro
 
 ## Next
 
-- [Configuration and Codegen](/guide/configuration-and-codegen): how codegen works, and what [every config option](/guide/configuration-and-codegen#every-option) does.
+- [Configuration and Codegen](/guide/configuration-and-codegen): how codegen works, with [other settings](/guide/configuration-and-codegen#every-option) linked to their reference.
 - [Tutorial](/tutorial/): build Tasks, a complete GNOME task manager, end to end.

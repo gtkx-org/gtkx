@@ -124,10 +124,10 @@ function useExpansion(options: ExpansionOptions): ItemsChangeHandler {
     const context: ExpansionContext = { collection, last, onExpandedChange };
 
     const markDrift = useControlledSync({
-        ids: expandedIds,
-        collection,
-        apply: (ids) => {
-            applyControlledExpansion(context, ids);
+        value: expandedIds,
+        source: collection,
+        apply: (value) => {
+            applyControlledExpansion(context, value);
         },
     });
 

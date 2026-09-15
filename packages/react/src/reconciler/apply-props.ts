@@ -2,12 +2,13 @@ import type { SignalHandler } from "@gtkx/runtime";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { coerceObjectProperty, getInstanceType, signalForHandlerName, TYPE_INVALID } from "@gtkx/runtime";
-import { drain, isDeepEqual, kebabCase, lowerFirst, unsanitizeIdentifier } from "@gtkx/utils";
+import { isDeepEqual, kebabCase, lowerFirst, unsanitizeIdentifier } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
 import { getPropertyName, hasProperty, type TypeInfo, typeInfoFor } from "./metadata.js";
-import { type ElementNode, getOrCreateContext, type SignalTarget } from "./node.js";
+import { type ElementNode, type SignalTarget } from "./node.js";
 import { applyWrite, connectHandler, disconnectHandler } from "./signals.js";
+import { updateStyle } from "./style.js";
 import { bufferText, hasSameText, isContentPaintableProp, markTextDirty, TEXT_PROP } from "./text.js";
 
 type PropDelta = { name: string; value: unknown; prevValue: unknown };
@@ -17,10 +18,7 @@ type PropChange = { prev: Props; next: Props };
 const REACT_RESERVED_PROPS = new Set(["children", "ref", "key"]);
 const NOTIFY_PREFIX = "onNotify";
 const HANDLER_NAME = /^on[A-Z]/;
-const flushDirty: Set<ElementNode> = new Set();
 const accessibleDirty: Map<ElementNode, Props> = new Map();
-const mapWatched: WeakMap<ElementNode, () => void> = new WeakMap();
-const pendingMap: Set<ElementNode> = new Set();
 
 const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
 const notifiedAccessor = (name: string): string => lowerFirst(name.slice(NOTIFY_PREFIX.length));
@@ -62,6 +60,7 @@ const isReservedName = (name: string, info: TypeInfo): boolean =>
     REACT_RESERVED_PROPS.has(name) ||
     (isHandlerName(name) && !hasProperty(info, name)) ||
     (isAccessibleProp(name) && !hasProperty(info, name)) ||
+    info.createProps.has(name) ||
     info.constructOnly.has(name);
 
 const isSkippedValueName = (name: string, info: TypeInfo, consumed: Set<string>): boolean =>
@@ -175,7 +174,7 @@ const collectConsumed = (ctx: BehaviorUpdateContext, behavior: ElementBehavior):
         return;
     }
 
-    const result = behavior.update(ctx.node.object, ctx.prev, ctx.next, getOrCreateContext(ctx.node, behavior));
+    const result = behavior.update(ctx.node.object, ctx.prev, ctx.next);
 
     if (result === undefined) {
         return;
@@ -239,33 +238,6 @@ const applyHandlers = (target: SignalTarget, info: TypeInfo, prev: Props, next: 
     });
 };
 
-const markFlush = (node: ElementNode): void => {
-    if (typeInfoFor(node.typeName).hasFlush) {
-        flushDirty.add(node);
-    }
-};
-
-const eachBehavior = (node: ElementNode, visit: (behavior: ElementBehavior, context: unknown) => void): void => {
-    for (const behavior of typeInfoFor(node.typeName).behaviors) {
-        visit(behavior, getOrCreateContext(node, behavior));
-    }
-};
-
-const flushBehaviors = (): void => {
-    drain(flushDirty, (node) => {
-        eachBehavior(node, (behavior, context) => behavior.flush?.(node.object, context));
-    });
-};
-
-const teardownBehaviors = (node: ElementNode): void => {
-    flushDirty.delete(node);
-    unwatchMap(node);
-
-    for (const [behavior, context] of node.contexts) {
-        behavior.teardown?.(node.object, context);
-    }
-};
-
 const applyAccessible = (object: GObject.Object, prev: Props | null, next: Props): void => {
     if (object instanceof Gtk.Accessible) {
         applyAccessibleProps(object, prev, next);
@@ -278,67 +250,31 @@ const markAccessible = (node: ElementNode, prev: Props): void => {
     }
 };
 
-const hasAccessibleProp = (props: Props): boolean => {
-    for (const name in props) {
-        if (isAccessibleProp(name)) {
-            return true;
-        }
-    }
-
-    return false;
-};
-
-const watchMap = (node: ElementNode): void => {
-    const { object } = node;
-
-    if (mapWatched.has(node) || !(object instanceof Gtk.Widget) || !hasAccessibleProp(node.props)) {
-        return;
-    }
-
-    const onMapped = (): undefined => {
-        pendingMap.add(node);
-        setTimeout(settleAccessible, 0);
-    };
-
-    object.on("map", onMapped);
-
-    mapWatched.set(node, () => {
-        object.off("map", onMapped);
-    });
-};
-
-const unwatchMap = (node: ElementNode): void => {
-    mapWatched.get(node)?.();
-    mapWatched.delete(node);
-    pendingMap.delete(node);
-    accessibleDirty.delete(node);
-};
-
-const settleAccessible = (): void => {
-    drain(pendingMap, (node) => {
-        if (node.object instanceof Gtk.Widget && node.object.getMapped()) {
-            applyAccessible(node.object, null, node.props);
-        }
-    });
-};
-
 const flushAccessible = (): void => {
     for (const [node, prev] of accessibleDirty) {
         applyAccessible(node.object, prev, node.props);
-        watchMap(node);
     }
 
     accessibleDirty.clear();
 };
 
+const discardAccessible = (node: ElementNode): void => {
+    accessibleDirty.delete(node);
+};
+
 const applyElementProps = (node: ElementNode, prev: Props, next: Props): void => {
     const info = typeInfoFor(node.typeName);
     const consumed = runBehaviorUpdates(node, info, prev, next);
+    if (node.object instanceof Gtk.Widget) {
+        updateStyle(node.object, prev, next, node);
+        consumed.add("style");
+        consumed.add("cssClasses");
+    }
+
     applyValueEntries(node, info, { prev, next }, consumed);
     restoreActionableSensitivity(node, info, prev, next);
     applyHandlers(node, info, prev, next);
     markAccessible(node, prev);
-    markFlush(node);
     node.props = next;
 };
 
@@ -361,11 +297,8 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
 };
 
 export {
-    markFlush,
+    discardAccessible,
     flushAccessible,
-    settleAccessible,
-    flushBehaviors,
-    teardownBehaviors,
     applyElementProps,
     applyAdoptedProps,
     assertPropsCanChange,

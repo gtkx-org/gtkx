@@ -12,7 +12,7 @@ import {
     AdwToggle,
     AdwToggleGroup,
 } from "@gtkx/jsx/adw";
-import { GtkStringList } from "@gtkx/jsx/gtk";
+import { GtkAdjustment, GtkStringList } from "@gtkx/jsx/gtk";
 import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { renderChildren } from "@gtkx/testing/internal";
 import { createRef } from "react";
@@ -20,7 +20,6 @@ import { describe, expect, it, vi } from "vitest";
 
 type ListenerClearedCase<Widget> = {
     renderRow: (ref: RefObject<Widget | null>, handler: Mock | null) => ReactElement;
-    afterMount?: (row: Widget) => void;
     fireFirst: (row: Widget) => void | Promise<void>;
     fireSecond: (row: Widget) => void | Promise<void>;
 };
@@ -51,7 +50,6 @@ const THREE_VIEW_GROUP = (
 
 const expectListenerClearedWhenHandlerNull = async <Widget,>({
     renderRow,
-    afterMount,
     fireFirst,
     fireSecond,
 }: ListenerClearedCase<Widget>) => {
@@ -65,7 +63,6 @@ const expectListenerClearedWhenHandlerNull = async <Widget,>({
         throw new Error("expected ref");
     }
 
-    afterMount?.(row);
     handler.mockClear();
     await act(() => fireFirst(row));
     expect(handler).toHaveBeenCalledTimes(1);
@@ -88,13 +85,6 @@ function App({ shouldShowBehavior }: { shouldShowBehavior: boolean }) {
         </AdwPreferencesPage>
     );
 }
-
-const installAdjustment = (row: Adw.SpinRow, lower: number, upper: number, value: number) => {
-    const adjustment = Gtk.Adjustment.new(value, lower, upper, 1, 10, 0);
-    row.setAdjustment(adjustment);
-
-    return adjustment;
-};
 
 const getSwitch = (isChecked: boolean): Gtk.Widget =>
     screen.getByRole(Gtk.AccessibleRole.SWITCH, { checked: isChecked, as: Gtk.Switch });
@@ -172,11 +162,12 @@ describe("render - PreferencesPage", () => {
 
 describe("render - SpinRow", () => {
     it("creates a SpinRow with a value", async () => {
-        const adjustment = Gtk.Adjustment.new(5, 0, 100, 1, 10, 0);
-
         await render(
             <AdwPreferencesGroup>
-                <AdwSpinRow title="Quantity" adjustment={adjustment} />
+                <AdwSpinRow
+                    title="Quantity"
+                    adjustment={<GtkAdjustment value={5} lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
+                />
             </AdwPreferencesGroup>,
         );
 
@@ -190,7 +181,12 @@ describe("render - SpinRow", () => {
 
         await render(
             <AdwPreferencesGroup>
-                <AdwSpinRow ref={ref} title="Q" value={1} onNotifyValue={onValueChanged} />
+                <AdwSpinRow
+                    ref={ref}
+                    title="Q"
+                    adjustment={<GtkAdjustment value={1} lower={0} upper={10} stepIncrement={1} pageIncrement={10} />}
+                    onNotifyValue={onValueChanged}
+                />
             </AdwPreferencesGroup>,
         );
 
@@ -199,8 +195,6 @@ describe("render - SpinRow", () => {
         if (!row) {
             throw new Error("expected ref");
         }
-
-        installAdjustment(row, 0, 10, 1);
 
         await act(() => {
             row.setValue(7);
@@ -215,15 +209,22 @@ describe("render - SpinRow", () => {
         await expectListenerClearedWhenHandlerNull<Adw.SpinRow>({
             renderRow: (ref, handler) => (
                 <AdwPreferencesGroup>
-                    <AdwSpinRow ref={ref} title="Q" value={1} onNotifyValue={handler} />
+                    <AdwSpinRow
+                        ref={ref}
+                        title="Q"
+                        adjustment={
+                            <GtkAdjustment value={1} lower={0} upper={10} stepIncrement={1} pageIncrement={10} />
+                        }
+                        onNotifyValue={handler}
+                    />
                 </AdwPreferencesGroup>
             ),
-            afterMount: (row) => installAdjustment(row, 0, 10, 1),
             fireFirst: (row) => {
                 row.setValue(2);
             },
             fireSecond: (row) => {
                 row.setValue(5);
+                expect(row.getValue()).toBe(5);
             },
         });
     });

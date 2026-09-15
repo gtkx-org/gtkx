@@ -15,7 +15,6 @@ import {
     collectInterfaceProperties,
     effectiveNaturalSignalMemberNames,
     forEachAncestor,
-    hasNaturalMember,
     resolvePrerequisiteReference,
 } from "../../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
@@ -65,31 +64,26 @@ const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] 
 
     context.addRuntimeInternalImport("connectSignalByName");
     context.addRuntimeInternalImport("emitSignalByName");
-    context.addRuntimeInternalImport("signalEmitMapOverride");
-    context.addRuntimeInternalImport("signalMapOverride");
     const receiver = context.addRuntimeInternalTypeImport("SignalMethodReceiver");
-    const effectiveEmissionMap =
-        "(TThis extends { [signalEmitMapOverride]?: infer TResolver } " +
-        `? TResolver extends () => infer TMap ? NonNullable<TMap> : Object${SIGNAL_EMIT_SUFFIX} ` +
-        `: Object${SIGNAL_EMIT_SUFFIX})`;
-    const effectiveHandlerMap =
-        "(TThis extends { [signalMapOverride]?: infer TResolver } " +
-        `? TResolver extends () => infer TMap ? NonNullable<TMap> : Object${SIGNALS_SUFFIX} ` +
-        `: Object${SIGNALS_SUFFIX})`;
+    const handlerMap = context.addRuntimeInternalTypeImport("SignalMap");
+    const signalName = context.addRuntimeInternalTypeImport("SignalName");
+    const emissionName = context.addRuntimeInternalTypeImport("SignalEmitName");
+    const args = context.addRuntimeInternalTypeImport("SignalEmitArguments");
+    const result = context.addRuntimeInternalTypeImport("SignalEmitResult");
 
     return [
         renderBlock(
-            `connect<TThis, K extends keyof ${effectiveHandlerMap}>(` +
+            `connect<TThis, K extends ${signalName}<TThis>>(` +
             `this: TThis & ${receiver}<TThis, "connect">, ` +
-            `signal: K, handler: ${effectiveHandlerMap}[K], isAfter?: boolean): number`,
+            `signal: K, handler: ${handlerMap}<TThis>[K], isAfter?: boolean): number`,
             "return connectSignalByName(this, signal, handler, isAfter);",
         ),
         renderBlock(
-            `emit<TThis, K extends keyof ${effectiveEmissionMap}>(` +
+            `emit<K extends ${emissionName}<TThis>, TThis = this>(` +
             `this: TThis & ${receiver}<TThis, "emit">, ` +
-            `sigName: K, ...args: ${effectiveEmissionMap}[K]["args"]): ` +
-            `${effectiveEmissionMap}[K]["result"]`,
-            "return emitSignalByName(this, sigName, args);",
+            `sigName: K, ...args: ${args}<TThis, K>): ` +
+            `${result}<TThis, K>`,
+            `return emitSignalByName(this, sigName, args) as ${result}<TThis, K>;`,
         ),
     ];
 };
@@ -181,7 +175,7 @@ const renderSignalDeclarations = (
     ) {
         declarations.push({
             name: className,
-            code: renderSignalConnectInterface(context, klass, className),
+            code: renderSignalMetadataInterface(context, klass, className),
         });
     }
 
@@ -260,7 +254,7 @@ const gobjectObjectMapRef = (context: ModuleContext, suffix: string): string => 
     return `${context.addCrossNamespaceImport("GObject")}.Object${suffix}`;
 };
 
-const renderSignalConnectInterface = (
+const renderSignalMetadataInterface = (
     context: ModuleContext,
     klass: GirClass,
     className: string,
@@ -273,36 +267,6 @@ const renderSignalConnectInterface = (
         `__signalEmit__?: ${emitMap};`,
     ];
     appendSignalMemberMetadata({ context, klass, map, emitMap, lines });
-    const receiver = context.addRuntimeInternalTypeImport("SignalMethodReceiver");
-
-    if (!hasNaturalMember(context, klass, "connect")) {
-        lines.push(
-            `connect<TThis, K extends keyof ${map}>(this: TThis & ${receiver}<TThis, "connect">, ` +
-            `signal: K, handler: ${map}[K], isAfter?: boolean): number;`,
-        );
-    }
-
-    if (!hasNaturalMember(context, klass, "emit")) {
-        lines.push(
-            `emit<K extends keyof ${emitMap}, TThis = this>(this: TThis & ${receiver}<TThis, "emit">, ` +
-            `sigName: K, ...args: ${emitMap}[K]["args"]): ${emitMap}[K]["result"];`,
-        );
-    }
-
-    const chainable = (methods: string[], trailing: string): void => {
-        for (const method of methods) {
-            if (!hasNaturalMember(context, klass, method)) {
-                lines.push(
-                    `${method}<TThis, K extends keyof ${map}>(` +
-                    `this: TThis & ${receiver}<TThis, ${sourceStringLiteral(method)}>, ` +
-                    `signal: K, handler: ${map}[K]${trailing}): TThis;`,
-                );
-            }
-        }
-    };
-
-    chainable(["on", "once"], ", isAfter?: boolean");
-    chainable(["off"], "");
 
     return renderBracedOrEmpty(`export interface ${className}`, lines.join("\n"));
 };

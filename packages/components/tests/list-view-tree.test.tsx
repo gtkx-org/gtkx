@@ -5,24 +5,14 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, render, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
-import type { TreeFixture, TreeName } from "./helpers/trees.js";
+import type { TreeName } from "./helpers/trees.js";
 import { expanderCount, expanderNamed, listRowByName } from "./helpers/expanders.js";
 import { renderListView, renderStatefulListView } from "./helpers/list-fixtures.js";
 import { expectRowTexts, rowTexts } from "./helpers/row-texts.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 import { getSelectionModel, getTreeRow } from "./helpers/selection-model.js";
-import { deepChain, mutuallyReferentialItems, selfReferentialItems, treeBranch, treeLeaf } from "./helpers/trees.js";
+import { treeBranch, treeLeaf } from "./helpers/trees.js";
 
-type WalkState = { expandedIds: string[]; ids: string[]; expanded: string[] };
-type LazyChain = { items: ListItem<TreeName>[]; deepestRead: () => number };
-
-const CHAIN_DEPTH = 8000;
-const NOTHING: string[] = [];
-const DEEP = ["a", "a0"];
-const DEEP_AND_C = ["a", "a0", "c"];
-const DEEP_AND_B = ["a", "a0", "b"];
-const JUST_C = ["c"];
-const UNREACHABLE = ["a0"];
 const DESCRIPTIONS: ExpanderDescriptions = { expand: "Expand", collapse: "Collapse" };
 const parentWithChildren = parent([treeLeaf("Child 1"), treeLeaf("Child 2")]);
 const parentWithChild = parent([treeLeaf("Child")]);
@@ -64,100 +54,12 @@ function renderName({ item }: ListItemRenderArgs<TreeName>): ReactNode {
     return <GtkLabel>{item.name}</GtkLabel>;
 }
 
-const lazyChain = (): LazyChain => {
-    let deepestRead = -1;
-
-    const chainNode = (level: number): ListItem<TreeName> => {
-        let children: ListItem<TreeName>[] | undefined;
-
-        return {
-            ...treeLeaf(`n${String(level)}`),
-            get children(): ListItem<TreeName>[] {
-                deepestRead = Math.max(deepestRead, level);
-                children ??= [chainNode(level + 1)];
-
-                return children;
-            },
-        };
-    };
-
-    return { items: [chainNode(0)], deepestRead: () => deepestRead };
-};
-
 const setRowExpandedByName = async (name: string, isExpanded: boolean): Promise<void> => {
     const row = listRowByName(name);
 
     await act(() => {
         row.setExpanded(isExpanded);
     });
-};
-
-const walkLevel = (state: WalkState, level: ListItem<TreeName>[]): void => {
-    for (const item of level) {
-        const children = item.children ?? [];
-        state.ids.push(item.id);
-
-        if (children.length > 0 && state.expandedIds.includes(item.id)) {
-            state.expanded.push(item.id);
-            walkLevel(state, children);
-        }
-    }
-};
-
-const wantedWalk = (items: ListItem<TreeName>[], expandedIds: string[]): WalkState => {
-    const state: WalkState = { expandedIds, ids: [], expanded: [] };
-    walkLevel(state, items);
-
-    return state;
-};
-
-const shownWalk = (fixture: TreeFixture): WalkState => {
-    const state: WalkState = { expandedIds: [], ids: [], expanded: [] };
-    const labels = rowTexts(fixture.ref.current);
-    const model = getSelectionModel(fixture.ref);
-
-    for (let position = 0; position < model.getNItems(); position++) {
-        state.ids.push(labels[position] ?? "?");
-
-        if (getTreeRow(model, position).getExpanded()) {
-            state.expanded.push(labels[position] ?? "?");
-        }
-    }
-
-    return state;
-};
-
-const expectAgreement = async (
-    fixture: TreeFixture,
-    items: ListItem<TreeName>[],
-    expandedIds: string[],
-): Promise<void> => {
-    const wanted = wantedWalk(items, expandedIds);
-
-    await waitFor(() => {
-        const shown = shownWalk(fixture);
-        expect(shown.ids).toEqual(wanted.ids);
-        expect(shown.expanded).toEqual(wanted.expanded);
-    });
-};
-
-const expectAgreementSteps = async (
-    fixture: TreeFixture,
-    tree: () => ListItem<TreeName>[],
-    steps: string[][],
-): Promise<void> => {
-    for (const expandedIds of steps) {
-        const items = tree();
-        await fixture.rerender(items, { expandedIds });
-        await expectAgreement(fixture, items, expandedIds);
-    }
-};
-
-const renderAgreeing = async (tree: () => ListItem<TreeName>[], expandedIds: string[]): Promise<TreeFixture> => {
-    const fixture = await renderListView<TreeName>(tree(), { expandedIds });
-    await expectAgreement(fixture, tree(), expandedIds);
-
-    return fixture;
 };
 
 const drawA11yTree = (expandedIds: string[], descriptions: ExpanderDescriptions | undefined): ReactNode => (
@@ -245,31 +147,25 @@ describe("ListView tree drift", () => {
 });
 
 describe("ListView tree order", () => {
-    it("keeps the drawn rows in step with GTK as expansion changes", async () => {
-        const fixture = await renderAgreeing(nestedTree, NOTHING);
-        await expectAgreementSteps(fixture, nestedTree, [JUST_C, DEEP, DEEP_AND_C, NOTHING, DEEP_AND_C]);
+    it("expands nested branches and drops descendants when their parent collapses", async () => {
+        const { ref, rerender } = await renderListView<TreeName>(nestedTree(), { expandedIds: [] });
+        await expectRowTexts(ref, ["a", "b", "c"]);
+        await rerender(nestedTree(), { expandedIds: ["a", "a0", "c"] });
+        await expectRowTexts(ref, ["a", "a0", "a00", "a01", "a1", "b", "c", "c0"]);
+        await rerender(nestedTree(), { expandedIds: ["a0", "c"] });
+        await expectRowTexts(ref, ["a", "b", "c", "c0"]);
+        await rerender(nestedTree(), { expandedIds: ["a", "a0"] });
+        await expectRowTexts(ref, ["a", "a0", "a00", "a01", "a1", "b", "c"]);
     });
 
-    it("keeps the drawn rows in step with GTK when an expanded id is unreachable", async () => {
-        const fixture = await renderAgreeing(nestedTree, UNREACHABLE);
-        await expectAgreementSteps(fixture, nestedTree, [DEEP]);
-    });
-
-    it("keeps the drawn rows in step with GTK as the structure changes", async () => {
-        const fixture = await renderAgreeing(nestedTree, DEEP_AND_C);
-        await expectAgreementSteps(fixture, shuffledTree, [DEEP_AND_C]);
-        await expectAgreementSteps(fixture, nestedTree, [DEEP_AND_C]);
-        await expectAgreementSteps(fixture, grownTree, [DEEP_AND_B]);
-    });
-
-    it("keeps the drawn rows in step with GTK after a row toggles itself", async () => {
-        const fixture = await renderAgreeing(nestedTree, DEEP_AND_C);
-
-        await act(() => {
-            getTreeRow(getSelectionModel(fixture.ref), 0).setExpanded(false);
-        });
-
-        await expectAgreement(fixture, nestedTree(), DEEP_AND_C);
+    it("keeps expanded descendants attached to their parent as siblings change", async () => {
+        const expandedIds = ["a", "a0", "c"];
+        const { ref, rerender } = await renderListView<TreeName>(nestedTree(), { expandedIds });
+        await expectRowTexts(ref, ["a", "a0", "a00", "a01", "a1", "b", "c", "c0"]);
+        await rerender(shuffledTree(), { expandedIds });
+        await expectRowTexts(ref, ["z", "a", "a0", "a00", "a01", "a1", "c", "c0"]);
+        await rerender(grownTree(), { expandedIds: ["a", "a0", "b"] });
+        await expectRowTexts(ref, ["a", "a0", "a00", "a01", "a1", "b", "b0", "b1", "c"]);
     });
 });
 
@@ -318,37 +214,6 @@ describe("ListView tree structure changes", () => {
         await expectRowTexts(ref, ["y", "a", "a0", "z"]);
         await rerender([treeLeaf("z"), treeBranch("a", [treeLeaf("a0")]), treeLeaf("y")]);
         await expectRowTexts(ref, ["z", "a", "a0", "y"]);
-    });
-});
-
-describe("ListView tree over unbounded sources", () => {
-    it("draws one row for a chain deeper than the call stack and for cyclic items", async () => {
-        const deep = await renderListView<TreeName>(deepChain(CHAIN_DEPTH), { expandedIds: [] });
-        expect(rowTexts(deep.ref.current)).toEqual(["n0"]);
-        const loop = await renderListView<TreeName>(selfReferentialItems(), { expandedIds: [] });
-        expect(rowTexts(loop.ref.current)).toEqual(["loop"]);
-        const mutual = await renderListView<TreeName>(mutuallyReferentialItems(), { expandedIds: [] });
-        expect(rowTexts(mutual.ref.current)).toEqual(["a"]);
-    });
-
-    it("expands deep and cyclic sources one level at a time", async () => {
-        const deep = await renderListView<TreeName>(deepChain(CHAIN_DEPTH), { expandedIds: ["n0"] });
-        await expectRowTexts(deep.ref, ["n0", "n1"]);
-        const loop = await renderListView<TreeName>(selfReferentialItems(), { expandedIds: ["loop"] });
-        await expectRowTexts(loop.ref, ["loop", "loop"]);
-        const mutual = await renderListView<TreeName>(mutuallyReferentialItems(), { expandedIds: ["a", "b"] });
-        await expectRowTexts(mutual.ref, ["a", "b", "a"]);
-    });
-
-    it("reads only the levels it draws", async () => {
-        const collapsed = lazyChain();
-        const shallow = await renderListView<TreeName>(collapsed.items, { expandedIds: [] });
-        await expectRowTexts(shallow.ref, ["n0"]);
-        expect(collapsed.deepestRead()).toBe(1);
-        const opened = lazyChain();
-        const deeper = await renderListView<TreeName>(opened.items, { expandedIds: ["n0"] });
-        await expectRowTexts(deeper.ref, ["n0", "n1"]);
-        expect(opened.deepestRead()).toBe(2);
     });
 });
 

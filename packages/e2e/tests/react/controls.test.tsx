@@ -49,13 +49,6 @@ const expectDefaultRange = (): void => {
     expectSliderRange(0, 0, 100);
 };
 
-const expectMarksTransition = async (initialMarks: ScaleMark[], updatedMarks: ScaleMark[]): Promise<void> => {
-    const { rerender } = await render(<ScaleWithMarks marks={initialMarks} />);
-    expectDefaultRange();
-    await rerender(<ScaleWithMarks marks={updatedMarks} />);
-    expectDefaultRange();
-};
-
 const ScaleWithAdjustment = ({
     config,
     scaleRef,
@@ -128,24 +121,35 @@ describe("render - Scale marks", () => {
     it("creates Scale widget without marks", async () => {
         await render(<ScaleWithMarks />);
         expectDefaultRange();
+        const scale = screen.getByRole(Gtk.AccessibleRole.SLIDER);
+        expect(scale).not.toHaveClass("marks-before");
+        expect(scale).not.toHaveClass("marks-after");
     });
 
     it("creates Scale widget with marks", async () => {
         await render(<ScaleWithMarks marks={MIN_MID_MAX_MARKS} />);
-        expectDefaultRange();
+        expect(screen.getByText("Min")).toBeVisible();
+        expect(screen.getByText("Mid")).toBeVisible();
+        expect(screen.getByText("Max")).toBeVisible();
     });
 
-    it("sets mark position", async () => {
-        await render(
-            <ScaleWithMarks
-                marks={[
-                    { value: 0, position: Gtk.PositionType.TOP, markup: "Top" },
-                    { value: 100, position: Gtk.PositionType.BOTTOM, markup: "Bottom" },
-                ]}
-            />,
+    it("moves a mark from above the scale to below it", async () => {
+        const { rerender } = await render(
+            <ScaleWithMarks marks={[{ value: 50, position: Gtk.PositionType.TOP, markup: "Middle" }]} />,
+        );
+        const scale = screen.getByRole(Gtk.AccessibleRole.SLIDER);
+        expect(screen.getByText("Middle")).toBeVisible();
+        expect(scale).toHaveClass("marks-before");
+        expect(scale).not.toHaveClass("marks-after");
+
+        await rerender(
+            <ScaleWithMarks marks={[{ value: 50, position: Gtk.PositionType.BOTTOM, markup: "Middle" }]} />,
         );
 
-        expectDefaultRange();
+        expect(screen.getByRole(Gtk.AccessibleRole.SLIDER)).toBe(scale);
+        expect(screen.getByText("Middle")).toBeVisible();
+        expect(scale).toHaveClass("marks-after");
+        expect(scale).not.toHaveClass("marks-before");
     });
 
     it("sets marks without labels", async () => {
@@ -161,28 +165,69 @@ describe("render - Scale marks", () => {
             />,
         );
 
-        expectDefaultRange();
+        const scale = screen.getByRole(Gtk.AccessibleRole.SLIDER);
+        expect(scale).toHaveClass("marks-after");
+        expect(scale).not.toHaveClass("marks-before");
     });
 
     it("updates marks when props change", async () => {
-        await expectMarksTransition(
-            [
-                { value: 0, position: Gtk.PositionType.BOTTOM, markup: "Start" },
-                { value: 100, position: Gtk.PositionType.BOTTOM, markup: "End" },
-            ],
-            [
-                { value: 0, position: Gtk.PositionType.BOTTOM, markup: "Begin" },
-                { value: 100, position: Gtk.PositionType.BOTTOM, markup: "End" },
-            ],
+        const { rerender } = await render(
+            <ScaleWithMarks
+                marks={[
+                    { value: 0, position: Gtk.PositionType.BOTTOM, markup: "Start" },
+                    { value: 100, position: Gtk.PositionType.BOTTOM, markup: "End" },
+                ]}
+            />,
         );
+        const scale = screen.getByRole(Gtk.AccessibleRole.SLIDER);
+        expect(screen.getByText("Start")).toBeVisible();
+        expect(screen.getByText("End")).toBeVisible();
+
+        await rerender(
+            <ScaleWithMarks
+                marks={[
+                    { value: 0, position: Gtk.PositionType.BOTTOM, markup: "Begin" },
+                    { value: 100, position: Gtk.PositionType.BOTTOM, markup: "End" },
+                ]}
+            />,
+        );
+
+        expect(screen.getByRole(Gtk.AccessibleRole.SLIDER)).toBe(scale);
+        expect(screen.getByText("Begin")).toBeVisible();
+        expect(screen.getByText("End")).toBeVisible();
+        expect(screen.queryByText("Start")).toBeNull();
     });
 
     it("removes marks when array changes", async () => {
-        await expectMarksTransition(MIN_MID_MAX_MARKS, MIN_MAX_MARKS);
+        const { rerender } = await render(<ScaleWithMarks marks={MIN_MID_MAX_MARKS} />);
+        const scale = screen.getByRole(Gtk.AccessibleRole.SLIDER);
+        expect(screen.getByText("Mid")).toBeVisible();
+
+        await rerender(<ScaleWithMarks marks={MIN_MAX_MARKS} />);
+
+        expect(screen.getByRole(Gtk.AccessibleRole.SLIDER)).toBe(scale);
+        expect(screen.getByText("Min")).toBeVisible();
+        expect(screen.getByText("Max")).toBeVisible();
+        expect(screen.queryByText("Mid")).toBeNull();
+
+        await rerender(<ScaleWithMarks marks={[]} />);
+
+        expect(screen.queryByText("Min")).toBeNull();
+        expect(screen.queryByText("Max")).toBeNull();
+        expect(scale).not.toHaveClass("marks-after");
     });
 
     it("handles inserting marks in the middle", async () => {
-        await expectMarksTransition(MIN_MAX_MARKS, MIN_MID_MAX_MARKS);
+        const { rerender } = await render(<ScaleWithMarks marks={MIN_MAX_MARKS} />);
+        const scale = screen.getByRole(Gtk.AccessibleRole.SLIDER);
+        expect(screen.queryByText("Mid")).toBeNull();
+
+        await rerender(<ScaleWithMarks marks={MIN_MID_MAX_MARKS} />);
+
+        expect(screen.getByRole(Gtk.AccessibleRole.SLIDER)).toBe(scale);
+        expect(screen.getByText("Min")).toBeVisible();
+        expect(screen.getByText("Mid")).toBeVisible();
+        expect(screen.getByText("Max")).toBeVisible();
     });
 });
 
@@ -347,9 +392,11 @@ describe("render - LevelBar", () => {
             return <GtkLevelBar ref={ref} offsets={[{ name: "threshold", value }]} />;
         }
 
-        await render(<App value={0.5} />);
+        const { rerender } = await render(<App value={0.5} />);
+        const widget = ref.current;
         expect(ref.current?.getOffsetValue("threshold")[1]).toBe(0.5);
-        await render(<App value={0.75} />);
+        await rerender(<App value={0.75} />);
+        expect(ref.current).toBe(widget);
         expect(ref.current?.getOffsetValue("threshold")[1]).toBe(0.75);
     });
 
@@ -360,10 +407,12 @@ describe("render - LevelBar", () => {
             return <GtkLevelBar ref={ref} offsets={[{ name, value: 0.5 }]} />;
         }
 
-        await render(<App name="old-name" />);
+        const { rerender } = await render(<App name="old-name" />);
+        const widget = ref.current;
         expect(ref.current?.getOffsetValue("old-name")[0]).toBe(true);
         expect(ref.current?.getOffsetValue("new-name")[0]).toBe(false);
-        await render(<App name="new-name" />);
+        await rerender(<App name="new-name" />);
+        expect(ref.current).toBe(widget);
         expect(ref.current?.getOffsetValue("old-name")[0]).toBe(false);
         expect(ref.current?.getOffsetValue("new-name")[0]).toBe(true);
     });
@@ -382,26 +431,23 @@ describe("render - LevelBar", () => {
             return <GtkLevelBar ref={ref} offsets={offsets} />;
         }
 
-        await render(<App shouldShowExtra={true} />);
+        const { rerender } = await render(<App shouldShowExtra={true} />);
+        const widget = ref.current;
         expect(ref.current?.getOffsetValue("always")[0]).toBe(true);
         expect(ref.current?.getOffsetValue("extra")[0]).toBe(true);
-        await render(<App shouldShowExtra={false} />);
+        await rerender(<App shouldShowExtra={false} />);
+        expect(ref.current).toBe(widget);
         expect(ref.current?.getOffsetValue("always")[0]).toBe(true);
         expect(ref.current?.getOffsetValue("extra")[0]).toBe(false);
     });
 
-    it("flushes an in-place mutation of a reused offset object", async () => {
+    it("updates an offset value while retaining its name", async () => {
         const ref = createRef<Gtk.LevelBar>();
         const offset = { name: "threshold", value: 0.5 };
 
-        function App() {
-            return <GtkLevelBar ref={ref} offsets={[offset]} />;
-        }
-
-        const { rerender } = await render(<App />);
+        const { rerender } = await render(<GtkLevelBar ref={ref} offsets={[offset]} />);
         expect(ref.current?.getOffsetValue("threshold")[1]).toBe(0.5);
-        offset.value = 0.9;
-        await rerender(<App />);
+        await rerender(<GtkLevelBar ref={ref} offsets={[{ ...offset, value: 0.9 }]} />);
         expect(ref.current?.getOffsetValue("threshold")[1]).toBeCloseTo(0.9, 12);
     });
 });
@@ -427,31 +473,37 @@ describe("render - Calendar > basic", () => {
 describe("render - Calendar > marks updates", () => {
     it("updates marks when prop changes", async () => {
         const ref = createRef<Gtk.Calendar>();
-        await render(<MarkedCalendar calendarRef={ref} days={[15]} />);
+        const { rerender } = await render(<MarkedCalendar calendarRef={ref} days={[15]} />);
+        const widget = ref.current;
         expect(ref.current?.getDayIsMarked(15)).toBe(true);
         expect(ref.current?.getDayIsMarked(20)).toBe(false);
-        await render(<MarkedCalendar calendarRef={ref} days={[20]} />);
+        await rerender(<MarkedCalendar calendarRef={ref} days={[20]} />);
+        expect(ref.current).toBe(widget);
         expect(ref.current?.getDayIsMarked(15)).toBe(false);
         expect(ref.current?.getDayIsMarked(20)).toBe(true);
     });
 
     it("removes marks when array changes", async () => {
         const ref = createRef<Gtk.Calendar>();
-        await render(<MarkedCalendar calendarRef={ref} days={[15, 20]} />);
+        const { rerender } = await render(<MarkedCalendar calendarRef={ref} days={[15, 20]} />);
+        const widget = ref.current;
         expect(ref.current?.getDayIsMarked(15)).toBe(true);
         expect(ref.current?.getDayIsMarked(20)).toBe(true);
-        await render(<MarkedCalendar calendarRef={ref} days={[15]} />);
+        await rerender(<MarkedCalendar calendarRef={ref} days={[15]} />);
+        expect(ref.current).toBe(widget);
         expect(ref.current?.getDayIsMarked(15)).toBe(true);
         expect(ref.current?.getDayIsMarked(20)).toBe(false);
     });
 
     it("handles adding marks dynamically", async () => {
         const ref = createRef<Gtk.Calendar>();
-        await render(<MarkedCalendar calendarRef={ref} days={[10, 20]} />);
+        const { rerender } = await render(<MarkedCalendar calendarRef={ref} days={[10, 20]} />);
+        const widget = ref.current;
         expect(ref.current?.getDayIsMarked(10)).toBe(true);
         expect(ref.current?.getDayIsMarked(15)).toBe(false);
         expect(ref.current?.getDayIsMarked(20)).toBe(true);
-        await render(<MarkedCalendar calendarRef={ref} days={[10, 15, 20]} />);
+        await rerender(<MarkedCalendar calendarRef={ref} days={[10, 15, 20]} />);
+        expect(ref.current).toBe(widget);
         expect(ref.current?.getDayIsMarked(10)).toBe(true);
         expect(ref.current?.getDayIsMarked(15)).toBe(true);
         expect(ref.current?.getDayIsMarked(20)).toBe(true);
@@ -500,11 +552,15 @@ describe("render - ScrolledWindow", () => {
             );
         }
 
-        await render(<App hPolicyProp={Gtk.PolicyType.AUTOMATIC} vPolicyProp={Gtk.PolicyType.AUTOMATIC} />);
+        const { rerender } = await render(
+            <App hPolicyProp={Gtk.PolicyType.AUTOMATIC} vPolicyProp={Gtk.PolicyType.AUTOMATIC} />,
+        );
+        const widget = ref.current;
         let [hPolicy, vPolicy] = ref.current?.getPolicy() ?? [];
         expect(hPolicy).toBe(Gtk.PolicyType.AUTOMATIC);
         expect(vPolicy).toBe(Gtk.PolicyType.AUTOMATIC);
-        await render(<App hPolicyProp={Gtk.PolicyType.NEVER} vPolicyProp={Gtk.PolicyType.ALWAYS} />);
+        await rerender(<App hPolicyProp={Gtk.PolicyType.NEVER} vPolicyProp={Gtk.PolicyType.ALWAYS} />);
+        expect(ref.current).toBe(widget);
         [hPolicy, vPolicy] = ref.current?.getPolicy() ?? [];
         expect(hPolicy).toBe(Gtk.PolicyType.NEVER);
         expect(vPolicy).toBe(Gtk.PolicyType.ALWAYS);
@@ -536,10 +592,11 @@ describe("render - ScrolledWindow", () => {
     });
 
     it("updates child when changed", async () => {
-        await render(<App text="Initial" />);
+        const { rerender } = await render(<App text="Initial" />);
         expect(screen.getByText("Initial")).toHaveTextContent(/^Initial$/);
-        await render(<App text="Updated" />);
+        await rerender(<App text="Updated" />);
         expect(screen.getByText("Updated")).toHaveTextContent(/^Updated$/);
+        expect(screen.queryByText("Initial")).toBeNull();
     });
 });
 
@@ -566,10 +623,12 @@ describe("render - DrawingArea", () => {
             return <GtkDrawingArea ref={ref} contentWidth={width} contentHeight={height} />;
         }
 
-        await render(<App width={100} height={50} />);
+        const { rerender } = await render(<App width={100} height={50} />);
+        const widget = ref.current;
         expect(ref.current).toHaveObjectProperty("contentWidth", 100);
         expect(ref.current).toHaveObjectProperty("contentHeight", 50);
-        await render(<App width={200} height={100} />);
+        await rerender(<App width={200} height={100} />);
+        expect(ref.current).toBe(widget);
         expect(ref.current).toHaveObjectProperty("contentWidth", 200);
         expect(ref.current).toHaveObjectProperty("contentHeight", 100);
     });

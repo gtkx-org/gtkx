@@ -3,15 +3,17 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkColumnView, GtkColumnViewColumn, GtkCustomSorter, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
 import { useSignal } from "@gtkx/react";
 import { omit } from "@gtkx/utils";
-import { useLayoutEffect, useRef } from "react";
+import { useMemo, useRef } from "react";
 import type { CellSize } from "./internal/cells.js";
 import type { Collection } from "./internal/collection.js";
 import type { ColumnViewColumn, ColumnViewProps, ExpanderDescriptions, SortProps } from "./types.js";
 import { ItemPortals, useItemCells, useRowProps, useSectionHeader } from "./internal/cells.js";
+import { useControlledSync } from "./internal/controlled-sync.js";
 import { useCollection } from "./internal/use-collection.js";
 import { useWidgetRef } from "./internal/use-widget-ref.js";
 
 type SortTarget = { view: Gtk.ColumnView; column: Gtk.ColumnViewColumn | null };
+type SortRequest = Pick<SortProps, "sortColumn" | "sortOrder">;
 
 type ColumnCellsProps = {
     column: ColumnViewColumn<never>;
@@ -43,7 +45,6 @@ const COLUMN_VIEW_PROPS = [
     "sortOrder",
     "onSortChanged",
     "estimatedItemHeight",
-    "children",
     "ref",
 ] as const satisfies (keyof ColumnViewProps)[];
 
@@ -93,16 +94,18 @@ const applySort = (
     }
 };
 
-const emitSortChanged = (
+const didEmitSortChanged = (
     sorter: Gtk.ColumnViewSorter | null,
     sorting: RefObject<boolean>,
     sort: SortProps,
-): void => {
+): boolean => {
     if (sorter === null || sorting.current) {
-        return;
+        return false;
     }
 
     sort.onSortChanged?.(sorter.getPrimarySortColumn()?.getId() ?? null, sorter.getPrimarySortOrder());
+
+    return true;
 };
 
 const syncSort = (
@@ -124,16 +127,24 @@ const useColumnSorting = (view: Gtk.ColumnView | null, sort: SortProps, columns:
     const sorting = useRef(false);
     const sorter = view?.getSorter() ?? null;
     const columnSorter = sorter instanceof Gtk.ColumnViewSorter ? sorter : null;
-
-    useSignal(columnSorter, "changed", (): void => {
-        emitSortChanged(columnSorter, sorting, sort);
+    const { sortColumn, sortOrder } = sort;
+    const request = useMemo<SortRequest>(() => ({ sortColumn, sortOrder }), [sortColumn, sortOrder]);
+    const markDrift = useControlledSync({
+        value: request,
+        source: columns,
+        target: view,
+        apply: (value) => {
+            syncSort(sorting, view, value.sortColumn, value.sortOrder);
+        },
     });
 
-    const { sortColumn, sortOrder } = sort;
+    useSignal(columnSorter, "changed", (): void => {
+        const didEmit = didEmitSortChanged(columnSorter, sorting, sort);
 
-    useLayoutEffect(() => {
-        syncSort(sorting, view, sortColumn, sortOrder);
-    }, [view, sortColumn, sortOrder, columns]);
+        if (sortColumn !== undefined && didEmit) {
+            markDrift();
+        }
+    });
 };
 
 const ColumnCells = ({

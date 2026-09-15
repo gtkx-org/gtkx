@@ -1,6 +1,6 @@
 import { sortStringsBy } from "@gtkx/utils";
 import { mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import {
     computeDocsFingerprint,
     type DocsFingerprintInput,
@@ -14,9 +14,12 @@ import { arrayGuard, hasFields, isString } from "../guards.js";
 import { readJsonFile } from "../json.js";
 import { setAcceptedChildTypes } from "../store/jsx/accepted-child-types.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
+import { isMountableElement } from "../store/jsx/generated-elements.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
 import { type ElementPageContext, renderElementPage } from "./element-page.js";
+import { createPropsCatalog, type PropsCatalog } from "./handwritten-props.js";
+import { freshDeclarationDir } from "./props-program.js";
 import { elementSlug, firstSentence, namespaceOrder } from "./render.js";
 
 type DocsElementLink = {
@@ -37,6 +40,8 @@ type DocsOptions = {
     libraries: string[];
     girPath: string[];
     outDir: string;
+    resolveFrom?: string;
+    declarationDir?: string;
     basePath?: string;
     linkStyle?: DocsLinkStyle;
     props?: ElementProps;
@@ -68,15 +73,21 @@ const MANIFEST_GENERATOR = "gtkx-docs";
 const ROOT_INDEX_FILENAME = "index.md";
 const DEFAULT_BASE_PATH = "/reference";
 
-const namespaceIndexPage = (namespace: DocsNamespace, elements: GlibNamedClass[]): string => {
-    const rows = elements.map((entry, index) => {
-        const link = namespace.elements[index]?.link ?? "";
-        const description = firstSentence(entry.klass.doc).replaceAll("|", String.raw`\|`);
+const namespaceIndexPage = (
+    namespace: DocsNamespace,
+    entries: GlibNamedClass[],
+    linkByGlibName: ReadonlyMap<string, string>,
+): string => {
+    const rows = (elements: GlibNamedClass[]): string[] =>
+        elements.map((entry) => {
+            const link = linkByGlibName.get(entry.glibName) ?? "";
+            const description = firstSentence(entry.klass.doc).replaceAll("|", String.raw`\|`);
 
-        return `| [${entry.glibName}](${link}) | ${description} |`;
-    });
-
-    const description = `Reference pages for the JSX elements in the ${namespace.name} namespace.`;
+            return `| [${entry.glibName}](${link}) | ${description} |`;
+        });
+    const elements = entries.filter(isMountableElement);
+    const bases = entries.filter((entry) => !isMountableElement(entry));
+    const description = `Reference pages for JSX elements and inherited base props in the ${namespace.name} namespace.`;
 
     return [
         "---",
@@ -90,7 +101,19 @@ const namespaceIndexPage = (namespace: DocsNamespace, elements: GlibNamedClass[]
         "",
         "| Element | Description |",
         "| --- | --- |",
-        ...rows,
+        ...rows(elements),
+        ...(bases.length === 0
+            ? []
+            : [
+                    "",
+                    "## Abstract bases",
+                    "",
+                    "These types supply inherited props and metadata, without exporting JSX components.",
+                    "",
+                    "| Base | Description |",
+                    "| --- | --- |",
+                    ...rows(bases),
+                ]),
         "",
     ].join("\n");
 };
@@ -108,6 +131,9 @@ const fileIndexPage = (namespaces: DocsNamespace[], libraries: string[]): string
         `Every JSX element generated from ${librariesList} by \`gtkx codegen\` has a page here, regenerated ` +
         "whenever the GIR libraries or the project's element configuration change. These pages describe " +
         "this project's bindings exactly, so they are the authority on props, signals, and method signatures.",
+        "",
+        "Abstract base pages document the props inherited by concrete elements; these base types cannot " +
+        "be rendered themselves.",
         "",
         "Every path here is from the project root, ready to read as-is.",
         "",
@@ -148,6 +174,8 @@ const rootIndexPage = (namespaces: DocsNamespace[], libraries: string[], linkSty
         `${librariesList}, together with the namespaces they pull in. It is produced by \`gtkx docs\` ` +
         "using the same pipeline that generates the `@gtkx/jsx` and `@gtkx/gi` bindings, so every page " +
         "matches the types your editor sees.",
+        "",
+        "Abstract base pages document inherited props without offering a renderable JSX component.",
         "",
         "Each element page lists:",
         "",
@@ -237,7 +265,10 @@ const namespacePages = (input: {
         name,
         directory,
         link: linkStyle === "file" ? `${basePath}/${directory}/index.md` : `${basePath}/${directory}/`,
-        elements: elements.map((entry) => ({ text: entry.glibName, link: linkByGlibName.get(entry.glibName) ?? "" })),
+        elements: elements.filter(isMountableElement).map((entry) => ({
+            text: entry.glibName,
+            link: linkByGlibName.get(entry.glibName) ?? "",
+        })),
     };
 
     const pages: Page[] = elements.map((entry) => ({
@@ -245,23 +276,26 @@ const namespacePages = (input: {
         content: renderElementPage(entry, pageContext),
     }));
 
-    pages.push({ path: `${directory}/index.md`, content: namespaceIndexPage(docs, elements) });
+    pages.push({ path: `${directory}/index.md`, content: namespaceIndexPage(docs, elements, linkByGlibName) });
 
     return { docs, pages };
 };
 
-const generatePages = (
-    options: DocsOptions,
-    basePath: string,
-    linkStyle: DocsLinkStyle,
-    library: Library,
-): GeneratedDocs => {
+const generatePages = (input: {
+    options: DocsOptions;
+    basePath: string;
+    linkStyle: DocsLinkStyle;
+    library: Library;
+    props: PropsCatalog;
+}): GeneratedDocs => {
+    const { options, basePath, linkStyle, library, props } = input;
     const intrinsicElements = collectIntrinsicElementClasses(library);
     const byNamespace = groupElementsByNamespace(intrinsicElements);
     const linkByGlibName = buildElementLinks(intrinsicElements, basePath, linkStyle);
     const pageContext: ElementPageContext = {
         library,
         linkFor: (glibName) => linkByGlibName.get(glibName),
+        handwrittenProps: props.byType,
     };
     const pages: Page[] = [];
     const namespaces: DocsNamespace[] = [];
@@ -378,7 +412,8 @@ const writePages = (outDir: string, pages: Page[]): void => {
 };
 
 const docsFingerprintInput = (options: DocsOptions): DocsFingerprintInput => ({
-    basePath: options.basePath ?? DEFAULT_BASE_PATH,
+    resolveFrom: resolve(options.resolveFrom ?? process.cwd()),
+    basePath: (options.basePath ?? DEFAULT_BASE_PATH).replace(/(?<!\/)\/+$/, ""),
     linkStyle: options.linkStyle ?? "url",
     props: options.props ?? {},
     omittedProps: options.omittedProps ?? {},
@@ -401,13 +436,20 @@ const writeDocs = (options: DocsOptions): DocsResult => {
 
     assertOwnedOutDir(options, previous);
     const library = Library.load(options.libraries, options.girPath);
-    const { pages, namespaces } = generatePages(options, input.basePath, linkStyle, library);
+    const props = createPropsCatalog({
+        library,
+        props: input.props,
+        resolveFrom: input.resolveFrom,
+        declarationDir: options.declarationDir ??
+            freshDeclarationDir(input.resolveFrom, giInputs(options, library.girFiles)),
+    });
+    const { pages, namespaces } = generatePages({ options, basePath: input.basePath, linkStyle, library, props });
     clearOutDir(options, previous);
     mkdirSync(options.outDir, { recursive: true });
     const manifest: DocsManifest = { generator: MANIFEST_GENERATOR, namespaces };
     writeFileSync(manifestPath, JSON.stringify(manifest));
     writePages(options.outDir, pages);
-    const fingerprint = computeDocsFingerprint(giInputs(options, library.girFiles), input);
+    const fingerprint = computeDocsFingerprint(giInputs(options, library.girFiles), input, props.dependencies);
     writeFileSync(join(options.outDir, FINGERPRINT_FILENAME), JSON.stringify(fingerprint));
 
     return { isRegenerated: true, namespaces };

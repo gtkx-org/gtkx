@@ -19,10 +19,12 @@ type SignalMethodReceiver<T, K extends PropertyKey> = T extends {
         : unknown
     : unknown;
 
+export { installComboRowFactoryOverride } from "./combo-row.js";
 export { preserveArrayNull } from "./descriptors.js";
 /** @internal */
 export { registerElementMetadata } from "./element-metadata.js";
 export {
+    type ElementPropertyEntry,
     elementMetadataVersion,
     registeredElementProperties,
     registeredElementSignals,
@@ -30,27 +32,51 @@ export {
 export { createErrorDomain } from "./error.js";
 export { markSyntheticSignalMembers };
 export { type ApplicationInstance, getApplicationInstance } from "./lifecycle.js";
+export { registerConstructFactory } from "./object.js";
+export {
+    createTypeClassPeek,
+    objectDisconnect,
+    objectOff,
+    objectOn,
+    objectOnce,
+    paramSpecGetters,
+    regexMatch,
+    regexMatchAll,
+    regexMatchAllFull,
+    regexMatchFull,
+    valueGetBoxed,
+    valueSetBoxed,
+} from "./override-methods.js";
+export { createParamSpecOverride, type ParamSpecOverride } from "./param-spec-override.js";
 export {
     descriptorFreePropertySpec,
     propertyMapOverride,
     writablePropertyMapOverride,
 } from "./property-brand.js";
+export type { ReadableProperties, WritableProperties } from "./property-types.js";
 export { getExactWrapperClass, resolveWrapperClass } from "./registry.js";
 export type { SignalMethodReceiver };
+export { installSidebarModeOverride } from "./sidebar.js";
 export {
     classSignalMember,
     naturalSignalMember,
     signalEmitMapOverride,
     signalMapOverride,
 } from "./signal-brand.js";
-export { hasSignalListener } from "./signal.js";
 export { emitSignalByName, signalConnect, signalEmit };
+export { hasSignalListener } from "./signal.js";
 export {
     canonicalDetailedSignalName,
     canonicalSignalName,
     connectSignalByName,
     installSignalDispatch,
+    type SignalEmitArguments,
+    type SignalEmitName,
+    type SignalEmitResult,
+    type SignalMap,
+    type SignalName,
 } from "./signal.js";
+export { installTextViewBufferOverride } from "./text-view.js";
 export { resolveType } from "./type.js";
 export {
     fromValue,

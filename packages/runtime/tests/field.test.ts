@@ -197,3 +197,77 @@ describe("t.field error paths", () => {
         expect(() => bound.read(alloc(0))).toThrow();
     });
 });
+
+describe("semantic scalar fields", () => {
+    it("shares boolean conversions across bound, strided and direct accesses", () => {
+        const handle = alloc(12);
+        const bound = t.field(t.boolean, 0);
+        bound.write(handle, true);
+        t.fieldAt(t.boolean).write(handle, 4, false);
+        write(handle, t.int32, 8, -7);
+        expect(bound.read(handle)).toBe(true);
+        expect(read(handle, t.boolean, 4)).toBe(false);
+        expect(t.fieldAt(t.boolean).read(handle, 8)).toBe(true);
+        expect(() => {
+            bound.write(handle, 1);
+        }).toThrow();
+    });
+
+    it("writes Unicode scalars with the same representation as native functions", () => {
+        const handle = alloc(8);
+        const upper = t.bind("libglib-2.0.so.0", "g_unichar_toupper", [t.unichar], t.unichar);
+        const character = t.field(t.unichar, 0);
+        character.write(handle, upper("a"));
+        expect(character.read(handle)).toBe("A");
+        expect(read(handle, t.uint32, 0)).toBe(65);
+        write(handle, t.unichar, 4, "\u{10FFFF}");
+        expect(t.fieldAt(t.unichar).read(handle, 4)).toBe("\u{10FFFF}");
+        for (const invalid of ["ab", -1, 0xD8_00, 0x11_00_00, true]) {
+            expect(() => {
+                character.write(handle, invalid);
+            }).toThrow();
+        }
+        write(handle, t.uint32, 0, 0x11_00_00);
+        expect(() => character.read(handle)).toThrow();
+    });
+
+    it("validates enum membership before changing a native field", () => {
+        const handle = alloc(4);
+        const enumeration = t.enum("libgtk-4.so.1", "gtk_orientation_get_type", false);
+        const bound = t.field(enumeration, 0);
+        bound.write(handle, 1);
+        expect(read(handle, enumeration, 0)).toBe(1);
+        for (const invalid of [-1, 2, 0x1_00_00_00_00, 0.5]) {
+            expect(() => {
+                bound.write(handle, invalid);
+            }).toThrow();
+            expect(bound.read(handle)).toBe(1);
+        }
+        const wrongKind = t.field(t.flags("libgtk-4.so.1", "gtk_orientation_get_type", false), 0);
+        expect(() => {
+            wrongKind.write(handle, 1);
+        }).toThrow();
+        const unregistered = t.field(t.enum("", "", true, [-1, 2]), 0);
+        unregistered.write(handle, -1);
+        expect(unregistered.read(handle)).toBe(-1);
+        expect(() => {
+            unregistered.write(handle, 0);
+        }).toThrow();
+    });
+
+    it("checks registered and explicit flags masks including the high bit", () => {
+        const handle = alloc(4);
+        const flags = t.field(t.flags("libgio-2.0.so.0", "g_file_create_flags_get_type", false), 0);
+        flags.write(handle, 3);
+        expect(flags.read(handle)).toBe(3);
+        expect(() => {
+            flags.write(handle, 4);
+        }).toThrow();
+        const high = t.field(t.flags("", "", false, 0x80_00_00_01), 0);
+        high.write(handle, 0x80_00_00_01);
+        expect(high.read(handle)).toBe(0x80_00_00_01);
+        expect(() => {
+            high.write(handle, 2);
+        }).toThrow();
+    });
+});

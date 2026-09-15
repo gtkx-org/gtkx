@@ -1,7 +1,7 @@
 import type { ParamSpec } from "@gtkx/gi/gobject";
-import type { RefProp } from "@gtkx/react";
 import type { RenderHookResult } from "@gtkx/testing";
 import type { ComponentProps, ForwardedRef, ReactNode } from "react";
+import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import { ParamFlags, paramSpecInt, paramSpecString } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -10,7 +10,7 @@ import { useProperty, useSignal } from "@gtkx/react";
 import { registerClass } from "@gtkx/runtime";
 import { act, render, renderHook, waitFor } from "@gtkx/testing";
 import { createRef, forwardRef, memo } from "react";
-import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import { createTypeNameFactory } from "../helpers/unique-name.js";
 
 type Reading = InstanceType<typeof Reading>;
@@ -21,7 +21,7 @@ type ReadingProperty = "celsius" | "dewPoint";
 type HumidityProperty = "dewPoint" | "heatIndex";
 type AddressableNames<T extends GObject.Object> = keyof NonNullable<T["__properties__"]> & keyof T;
 type IsConstructible<T> = T extends new (...args: never) => unknown ? true : false;
-type LabelTargetProps = { object: RefProp<Gtk.Label> };
+type LabelTargetProps = { object: Gtk.Label | null | undefined };
 type LabelTargetResult = RenderHookResult<string | undefined, LabelTargetProps>;
 type TickProbeProps = { button: Gtk.Button; tick: number; seen: number[] };
 
@@ -66,7 +66,7 @@ const Humidity = registerClass(
         typeName: uniqueName("GtkxUsePropertyHumidity"),
         properties: {
             "dew-point": paramSpecInt("dew-point", null, null, 0, 255, 0, ParamFlags.READWRITE),
-            // eslint-disable-next-line @typescript-eslint/naming-convention
+
             heat_index: paramSpecInt("heat-index", null, null, 0, 255, 0, ParamFlags.READWRITE),
         },
     },
@@ -144,7 +144,7 @@ const renderMountedLabel = async (props: ComponentProps<typeof GtkLabel>): Promi
     return deref(ref);
 };
 
-const renderLabelTarget = async (object: RefProp<Gtk.Label>): Promise<LabelTargetResult> =>
+const renderLabelTarget = async (object: Gtk.Label | null | undefined): Promise<LabelTargetResult> =>
     renderHook(({ object: target }: LabelTargetProps) => useProperty(target, "label"), {
         initialProps: { object },
     });
@@ -233,45 +233,32 @@ describe("useProperty", () => {
 
     it("cleans up signal on unmount", async () => {
         const label = await renderMountedLabel({ label: "Test" });
+        const notifySignal = GObject.signalLookup("notify", Gtk.Label);
+        const labelDetail = GLib.quarkFromString("label");
+        expect(GObject.signalHasHandlerPending(label, notifySignal, labelDetail, true)).toBe(false);
+
         const { result, unmount } = await renderHook(() => useProperty(label, "label"));
         expect(result.current).toBe("Test");
+        expect(GObject.signalHasHandlerPending(label, notifySignal, labelDetail, true)).toBe(true);
         await unmount();
+        expect(GObject.signalHasHandlerPending(label, notifySignal, labelDetail, true)).toBe(false);
 
         await act(() => {
             label.setLabel("Changed");
         });
 
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        expect(result.current).toBe("Test");
+        expect(label.getLabel()).toBe("Changed");
     });
 });
 
 describe("useProperty (targets)", () => {
-    it("reads through a ref target and updates on change", async () => {
+    it("follows an object as it appears and clears", async () => {
         const label = new Gtk.Label({ label: "Hello" });
-        const ref: { current: Gtk.Label | null } = { current: label };
-        const { result } = await renderHook(() => useProperty(ref, "label"));
-        expect(result.current).toBe("Hello");
-
-        await act(() => {
-            label.setLabel("After");
-        });
-
-        await waitFor(() => {
-            expect(result.current).toBe("After");
-        });
-    });
-
-    it("follows a ref as it is populated and cleared", async () => {
-        const label = new Gtk.Label({ label: "Hello" });
-        const ref: { current: Gtk.Label | null } = { current: null };
-        const { result, rerender } = await renderLabelTarget(ref);
+        const { result, rerender } = await renderLabelTarget(null);
         expect(result.current).toBeUndefined();
-        ref.current = label;
-        await rerender({ object: ref });
+        await rerender({ object: label });
         expect(result.current).toBe("Hello");
-        ref.current = null;
-        await rerender({ object: ref });
+        await rerender({ object: null });
         expect(result.current).toBeUndefined();
     });
 
@@ -397,6 +384,10 @@ describe("useProperty (registration)", () => {
 
 describe("useProperty (addressable names)", () => {
     it("types an installed property with the value type the class declares", () => {
+        expectTypeOf(useProperty<Gtk.Label, "label">).parameter(0)
+            .toEqualTypeOf<Gtk.Label | null | undefined>();
+        expectTypeOf(useSignal<Gtk.Button, "clicked">).parameter(0)
+            .toEqualTypeOf<Gtk.Button | null | undefined>();
         expectTypeOf(useCelsius).returns.toEqualTypeOf<number | undefined>();
         expectTypeOf(useInstalledCaption).returns.toEqualTypeOf<string | undefined>();
         expectTypeOf(useInheritedLabel).returns.toEqualTypeOf<string | undefined>();
@@ -425,7 +416,10 @@ describe("useProperty (addressable names)", () => {
 describe("useSignal (emission)", () => {
     it("fires the handler on emission", async () => {
         const button = new Gtk.Button();
-        const handler = vi.fn();
+        const calls: unknown[][] = [];
+        const handler = (...args: unknown[]): void => {
+            calls.push(args);
+        };
 
         await renderHook(() => {
             useSignal(button, "clicked", handler);
@@ -435,13 +429,18 @@ describe("useSignal (emission)", () => {
             button.emit("clicked");
         });
 
-        expect(handler).toHaveBeenCalledTimes(1);
+        expect(calls).toHaveLength(1);
     });
 
     it("reads the latest handler without resubscribing", async () => {
         const button = new Gtk.Button();
-        const first = vi.fn();
-        const second = vi.fn();
+        const seen: string[] = [];
+        const first = (): void => {
+            seen.push("first");
+        };
+        const second = (): void => {
+            seen.push("second");
+        };
 
         const { rerender } = await renderHook(
             ({ handler }: { handler: () => void }) => {
@@ -456,8 +455,7 @@ describe("useSignal (emission)", () => {
             button.emit("clicked");
         });
 
-        expect(first).not.toHaveBeenCalled();
-        expect(second).toHaveBeenCalledTimes(1);
+        expect(seen).toEqual(["second"]);
     });
 
     it("passes the emission arguments to the handler", async () => {
@@ -485,7 +483,10 @@ describe("useSignal (emission)", () => {
 describe("useSignal (targets)", () => {
     it("stays inactive for a null target and subscribes when one appears", async () => {
         const button = new Gtk.Button();
-        const handler = vi.fn();
+        const calls: unknown[][] = [];
+        const handler = (...args: unknown[]): void => {
+            calls.push(args);
+        };
 
         const { rerender } = await renderHook(
             ({ target }: { target: Gtk.Button | null }) => {
@@ -498,49 +499,39 @@ describe("useSignal (targets)", () => {
             button.emit("clicked");
         });
 
-        expect(handler).not.toHaveBeenCalled();
+        expect(calls).toHaveLength(0);
         await rerender({ target: button });
 
         await act(() => {
             button.emit("clicked");
         });
 
-        expect(handler).toHaveBeenCalledTimes(1);
-    });
-
-    it("subscribes to the object held by a ref", async () => {
-        const button = new Gtk.Button();
-        const ref: { current: Gtk.Button | null } = { current: button };
-        const handler = vi.fn();
-
-        await renderHook(() => {
-            useSignal(ref, "clicked", handler);
-        });
-
-        await act(() => {
-            button.emit("clicked");
-        });
-
-        expect(handler).toHaveBeenCalledTimes(1);
+        expect(calls).toHaveLength(1);
     });
 });
 
 describe("useSignal (options and lifecycle)", () => {
     it("invokes the handler immediately when isImmediate is set", async () => {
         const button = new Gtk.Button();
-        const handler = vi.fn();
+        const calls: unknown[][] = [];
+        const handler = (...args: unknown[]): void => {
+            calls.push(args);
+        };
 
         await renderHook(() => {
             useSignal(button, "clicked", handler, { isImmediate: true });
         });
 
-        expect(handler).toHaveBeenCalledTimes(1);
-        expect(handler).toHaveBeenCalledWith();
+        expect(calls).toHaveLength(1);
+        expect(calls).toEqual([[]]);
     });
 
     it("subscribes detailed signal names", async () => {
         const label = new Gtk.Label();
-        const handler = vi.fn();
+        const calls: unknown[][] = [];
+        const handler = (...args: unknown[]): void => {
+            calls.push(args);
+        };
 
         await renderHook(() => {
             useSignal(label, "notify::label", handler);
@@ -551,13 +542,16 @@ describe("useSignal (options and lifecycle)", () => {
         });
 
         await waitFor(() => {
-            expect(handler).toHaveBeenCalled();
+            expect(calls).toHaveLength(1);
         });
     });
 
     it("unsubscribes on unmount", async () => {
         const button = new Gtk.Button();
-        const handler = vi.fn();
+        const calls: unknown[][] = [];
+        const handler = (...args: unknown[]): void => {
+            calls.push(args);
+        };
 
         const { unmount } = await renderHook(() => {
             useSignal(button, "clicked", handler);
@@ -569,12 +563,15 @@ describe("useSignal (options and lifecycle)", () => {
             button.emit("clicked");
         });
 
-        expect(handler).not.toHaveBeenCalled();
+        expect(calls).toHaveLength(0);
     });
 
     it("resubscribes when the signal name changes", async () => {
         const button = new Gtk.Button();
-        const handler = vi.fn();
+        const calls: unknown[][] = [];
+        const handler = (...args: unknown[]): void => {
+            calls.push(args);
+        };
 
         const { rerender } = await renderHook(
             ({ signal }: { signal: "clicked" | "activate" }) => {
@@ -589,13 +586,13 @@ describe("useSignal (options and lifecycle)", () => {
             button.emit("clicked");
         });
 
-        expect(handler).not.toHaveBeenCalled();
+        expect(calls).toHaveLength(0);
 
         await act(() => {
             button.emit("activate");
         });
 
-        expect(handler).toHaveBeenCalledTimes(1);
+        expect(calls).toHaveLength(1);
     });
 });
 

@@ -15,6 +15,7 @@ import {
 } from "../store/gi/property-accessor.js";
 import { acceptedChildTypesFor } from "../store/jsx/accepted-child-types.js";
 import { elementPropTypeFor } from "../store/jsx/element-prop-imports.js";
+import { isMountableElement } from "../store/jsx/generated-elements.js";
 import {
     getGlibName,
     type GlibNamedClass,
@@ -22,9 +23,8 @@ import {
     newlyImplementedInterfaces,
     signalHandlerName,
 } from "../store/jsx/intrinsic-elements.js";
-import { isOmittedProp } from "../store/jsx/omitted-props.js";
+import { isOmittedProp, omittedPropKeysFor, omittedPropNamesFor } from "../store/jsx/omitted-props.js";
 import { isObjectProp } from "../store/jsx/props.js";
-import { handwrittenPropsFor } from "./handwritten-props.js";
 import {
     annotationNotes,
     classMethodEntries,
@@ -46,12 +46,10 @@ import {
     staticSectionBlocks,
 } from "./render.js";
 
-/** Shared state an element's reference page renders from. */
 type ElementPageContext = {
-    /** Parsed GIR the element, its ancestors, and the interfaces it implements are read from. */
     library: Library;
-    /** Resolves a GLib type name to the URL of its page, undefined when it has none. */
     linkFor: (glibName: string) => string | undefined;
+    handwrittenProps: ReadonlyMap<string, HandwrittenProp[]>;
 };
 
 type MemberOwner = {
@@ -82,8 +80,13 @@ const frontmatter = (entry: GlibNamedClass): string => {
     return `---\ndescription: ${JSON.stringify(description)}\n---`;
 };
 
-const importBlock = (entry: GlibNamedClass): string =>
-    `\`\`\`tsx\nimport { ${entry.glibName} } from "@gtkx/jsx/${namespaceDirectory(entry.namespace)}";\n\`\`\``;
+const importBlock = (entry: GlibNamedClass): string => {
+    const specifier = `@gtkx/jsx/${namespaceDirectory(entry.namespace)}`;
+
+    return isMountableElement(entry)
+        ? `\`\`\`tsx\nimport { ${entry.glibName} } from "${specifier}";\n\`\`\``
+        : `\`\`\`ts\nimport type { ${entry.glibName}Props } from "${specifier}";\n\`\`\``;
+};
 
 const glibLabel = (context: ElementPageContext, glibName: string): string => {
     const link = context.linkFor(glibName);
@@ -234,6 +237,7 @@ const handwrittenPropEntries = (
     context: ElementPageContext,
     owner: MemberOwner,
     seen: Set<string>,
+    omitted: string[],
 ): MetaDocEntry[] => {
     const declared = owner.glibName === undefined ? undefined : elementPropTypeFor(owner.glibName);
 
@@ -242,8 +246,10 @@ const handwrittenPropEntries = (
     }
 
     const entries: MetaDocEntry[] = [];
+    const props = (context.handwrittenProps.get(declared.type) ?? [])
+        .filter((prop) => !omitted.includes(prop.name));
 
-    for (const prop of handwrittenPropsFor(declared)) {
+    for (const prop of props) {
         if (seen.has(prop.name)) {
             continue;
         }
@@ -255,14 +261,19 @@ const handwrittenPropEntries = (
     return entries;
 };
 
-const propJsName = (property: GirProperty, owner: MemberOwner, seen: Set<string>): string | undefined => {
+const propJsName = (
+    property: GirProperty,
+    owner: MemberOwner,
+    seen: Set<string>,
+    element: string,
+): string | undefined => {
     if (!property.introspectable) {
         return undefined;
     }
 
     const jsName = toCamelIdentifier(property.name);
 
-    if (seen.has(jsName) || isOmittedProp(owner.glibName, jsName)) {
+    if (seen.has(jsName) || isOmittedProp(owner.glibName, jsName) || isOmittedProp(element, jsName)) {
         return undefined;
     }
 
@@ -271,12 +282,18 @@ const propJsName = (property: GirProperty, owner: MemberOwner, seen: Set<string>
     return jsName;
 };
 
-const ownerPropEntries = (context: ElementPageContext, owner: MemberOwner, seen: Set<string>): MetaDocEntry[] => {
-    const entries: MetaDocEntry[] = [...handwrittenPropEntries(context, owner, seen)];
+const ownerPropEntries = (
+    context: ElementPageContext,
+    owner: MemberOwner,
+    seen: Set<string>,
+    element: string,
+): MetaDocEntry[] => {
+    const omitted = owner.glibName === element ? [] : omittedPropKeysFor(element);
+    const entries: MetaDocEntry[] = [...handwrittenPropEntries(context, owner, seen, omitted)];
     const setup = propertyAccessorSetup(context, owner);
 
     for (const property of owner.klass.properties) {
-        const jsName = propJsName(property, owner, seen);
+        const jsName = propJsName(property, owner, seen, element);
 
         if (jsName !== undefined) {
             entries.push(propertyEntry({
@@ -296,7 +313,7 @@ const propertyEntries = (entry: GlibNamedClass, context: ElementPageContext, see
     const entries: MetaDocEntry[] = [];
 
     for (const owner of memberOwners(entry, context)) {
-        entries.push(...ownerPropEntries(context, owner, seen));
+        entries.push(...ownerPropEntries(context, owner, seen, entry.glibName));
     }
 
     return entries;
@@ -306,6 +323,13 @@ const propsSection = (entry: GlibNamedClass, context: ElementPageContext, selfTy
     const seen: Set<string> = new Set();
     const entries = propertyEntries(entry, context, seen);
 
+    const omitted = omittedPropNamesFor(entry.glibName).map((name) => `\`${name}\``);
+    const omissionNote = omitted.length === 0
+        ? []
+        : [
+                `GIR props omitted from this element: ${omitted.join(", ")}. ` +
+                "Their notify handlers are omitted too; configured props can replace them.",
+            ];
     const intro = [
         `\`ref\` receives the \`${selfType}\` instance.`,
         "Every mutable property also has an `onNotify<Prop>` handler prop called with the new value " +
@@ -314,10 +338,10 @@ const propsSection = (entry: GlibNamedClass, context: ElementPageContext, selfTy
     ].join(" ");
 
     if (entries.length === 0) {
-        return ["## Props", intro];
+        return ["## Props", intro, ...omissionNote];
     }
 
-    return ["## Props", intro, ...sortedMetaBlocks(entries)];
+    return ["## Props", intro, ...omissionNote, ...sortedMetaBlocks(entries)];
 };
 
 const ownerSignalEntries = (
@@ -410,6 +434,12 @@ const renderElementPage = (entry: GlibNamedClass, context: ElementPageContext): 
         docMarkdown(entry.klass.doc),
         ...gtkxNotes(entry),
         ...annotationNotes(entry.klass.annotations),
+        ...(isMountableElement(entry)
+            ? []
+            : [
+                    `Abstract base: \`${entry.glibName}Props\` supplies inherited props for concrete elements. ` +
+                    `\`${entry.glibName}\` does not export a renderable JSX component.`,
+                ]),
         importBlock(entry),
         ...hierarchySection(entry, context),
         ...staticMethodsSection(entry, context, selfType),

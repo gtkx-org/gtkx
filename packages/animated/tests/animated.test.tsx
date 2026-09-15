@@ -1,5 +1,12 @@
-import type { ReactNode, Ref, RefObject } from "react";
-import { animated, type AnimatedElementMap, config, useSpring } from "@gtkx/animated";
+import type { ComponentProps, ReactNode, Ref, RefObject } from "react";
+import {
+    animated,
+    type AnimatedElementMap,
+    type AnimatedProps,
+    config,
+    type FluidValue,
+    useSpring,
+} from "@gtkx/animated";
 import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -7,19 +14,25 @@ import {
     GtkAdjustment,
     GtkBox,
     GtkButton,
+    type GtkButtonProps,
+    GtkDropDown,
     GtkFixed,
     GtkFixedLayoutChild,
+    type GtkKeyvalTriggerProps,
     GtkLabel,
     GtkSpinButton,
+    GtkStringList,
+    type GtkStringListProps,
 } from "@gtkx/jsx/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it, vi } from "vitest";
 
 type OpacityProps = { labelRef: RefObject<Gtk.Label | null>; to: number; duration?: number };
 type SwitchProps = { labelRef: RefObject<Gtk.Label | null>; mode: "first" | "second" | "static" };
 type ForwardingProps = { ref?: Ref<Gtk.Label | null>; opacity?: number; renders: number[] };
 type OpaqueProps = { opacity?: number; renders: number[] };
+type ForwardingTextProps = { ref?: Ref<Gtk.Label | null>; children?: ReactNode; renders: number[] };
 
 const ANIMATED = { areAnimationsEnabled: true };
 const AnimatedAdjustment = animated(GtkAdjustment);
@@ -28,11 +41,13 @@ const AnimatedButton = animated(GtkButton);
 const AnimatedFixedLayoutChild = animated(GtkFixedLayoutChild);
 const AnimatedLabel: AnimatedElementMap["GtkLabel"] = animated(GtkLabel);
 const AnimatedSpinButton = animated(GtkSpinButton);
+const AnimatedStringList = animated(GtkStringList);
 const SLOW = { duration: 400 };
 const LONG = { duration: 1500 };
 const SETTLE = { timeout: 3000 };
 const AnimatedForwarding = animated(Forwarding);
 const AnimatedOpaque = animated(Opaque);
+const AnimatedForwardingText = animated(ForwardingText);
 
 const translate = (x: number): Gsk.Transform | null => Gsk.Transform.new().translate(new Graphene.Point({ x, y: 0 }));
 
@@ -96,6 +111,16 @@ const MixedText = (): ReactNode => {
             {value.to((current) => Math.round(current).toFixed(0))}
             {" items"}
         </AnimatedLabel>
+    );
+};
+
+const PlaceholderText = ({ renders }: { renders: number[] }): ReactNode => {
+    const { value } = useSpring({ from: { value: 0 }, to: { value: 7 }, config: SLOW });
+
+    return (
+        <AnimatedForwardingText renders={renders}>
+            {[false, undefined, value.to((current) => Math.round(current).toFixed(0)), null, 1n, " items"]}
+        </AnimatedForwardingText>
     );
 };
 
@@ -187,6 +212,12 @@ function Opaque({ opacity, renders }: OpaqueProps): ReactNode {
     return <GtkLabel opacity={opacity} label="opaque" />;
 }
 
+function ForwardingText({ ref, children, renders }: ForwardingTextProps): ReactNode {
+    renders.push(1);
+
+    return <GtkLabel ref={ref}>{children}</GtkLabel>;
+}
+
 const expectOpacity = (label: Gtk.Label | null, opacity: number): Promise<void> =>
     waitFor(() => {
         expect(label?.getOpacity()).toBeCloseTo(opacity, 2);
@@ -273,6 +304,13 @@ describe("animated - interpolations and shorthands", () => {
     it("animates fluid text nested inside arrays of children", async () => {
         await render(<NestedText />, ANIMATED);
         expect(await screen.findByText("3 of 3 done")).toBeVisible();
+    });
+
+    it("writes React text placeholders without re-rendering a ref-forwarding component", async () => {
+        const renders: number[] = [];
+        await render(<PlaceholderText renders={renders} />, ANIMATED);
+        expect(await screen.findByText("71 items")).toBeVisible();
+        expect(renders).toEqual([1]);
     });
 
     it("animates several properties at once", async () => {
@@ -370,12 +408,38 @@ describe("animated - props without a native setter", () => {
     });
 });
 
+describe("animated - generated prop contracts", () => {
+    it("keeps construct-only props static while mutable props accept springs", async () => {
+        type Strings = ComponentProps<typeof AnimatedStringList>["strings"];
+        type NamedStrings = AnimatedProps<GtkStringListProps>["strings"];
+        type InheritedCssName = AnimatedProps<GtkButtonProps>["cssName"];
+        type Keyval = AnimatedProps<GtkKeyvalTriggerProps>["keyval"];
+        type Opacity = ComponentProps<typeof AnimatedLabel>["opacity"];
+        const listRef = createRef<Gtk.StringList>();
+
+        expectTypeOf<FluidValue<string[]>>().not.toExtend<Strings>();
+        expectTypeOf<FluidValue<string[]>>().not.toExtend<NamedStrings>();
+        expectTypeOf<FluidValue<string>>().not.toExtend<InheritedCssName>();
+        expectTypeOf<FluidValue<number>>().not.toExtend<Keyval>();
+        expectTypeOf<FluidValue<number>>().toExtend<Opacity>();
+        await render(
+            <GtkDropDown model={<AnimatedStringList ref={listRef} strings={["First", "Second"]} />} />,
+            ANIMATED,
+        );
+        expect(listRef.current?.getString(1)).toBe("Second");
+    });
+
+    it("accepts animated readonly arrays without accepting general iterables", () => {
+        type Children = ComponentProps<typeof AnimatedLabel>["children"];
+        type Item = FluidValue<string> | string;
+
+        expectTypeOf<readonly Item[]>().toExtend<Children>();
+        expectTypeOf<Set<Item>>().not.toExtend<Children>();
+    });
+});
+
 describe("animated - error paths", () => {
     it("rejects a label that mixes an animated label prop with text children", async () => {
         await expect(render(<AnimatedLabel label="one">two</AnimatedLabel>)).rejects.toThrow();
-    });
-
-    it("throws when asked to wrap something that is not a component", () => {
-        expect(() => animated(undefined as never)).toThrow();
     });
 });

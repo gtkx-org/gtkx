@@ -87,6 +87,16 @@ Correct generated behavior in its source model, generator, configuration, or run
 
 Share an implementation when its contract is shared. Keep the resulting abstraction as small as that contract requires; speculative generality makes the code harder to understand without removing a real duplication.
 
+## Prefer maintained dependencies over custom implementations
+
+Strive for the least amount of hand-written code. When a well-maintained third-party package implements the behavior we need, or a useful part of it, prefer that package over building and maintaining an equivalent implementation ourselves.
+
+Check the dependencies already in use before adding another one. Evaluate maintenance, compatibility, and the supported contract before choosing a package; an abandoned or unsuitable dependency does not satisfy this principle. Keep GTKX-specific code focused on the integration and behavior the dependency does not provide.
+
+Apply this rule during reviews as well as when adding features. Existing custom implementations should be replaced when a maintained dependency fits their contract. Familiarity with the current code is not a reason to preserve duplication.
+
+Keep compatibility workarounds until official upstream releases include the fixes. Remove them when GTKX's supported versions no longer need them.
+
 ## Prefer simple code and trust the types
 
 Use the simplest implementation that satisfies the supported contract. Trust the type system completely. Express invariants through types, constructors, ownership, and control flow, then use them directly.
@@ -133,9 +143,19 @@ See [Testing](/contributing/testing) for the existing suites and commands.
 
 Use clear names, direct control flow, and small, well-defined responsibilities so the implementation explains itself. Comments must not compensate for code that is difficult to follow.
 
+GTKX is GLib-first, so omit the `G` prefix from our own identifiers: use `useObjectValue`, for example. GTK prefixes are welcome when they make a name clearer. Preserve upstream names when referencing native APIs.
+
 Reserve code comments for public API documentation. Explain why an API or constraint exists and what consumers need to understand about its contract. Do not narrate what the code already does.
 
 Comments must describe the current API without recounting earlier implementations. Deprecation documentation is the exception, where the transition is part of the public contract.
+
+## Write focused, consistent documentation
+
+Write in a human, concise style that is easy to follow. Use plain language, explain one idea at a time, and keep terminology and page structure consistent within each section. Include the context a reader needs to use GTKX without repeating it across pages.
+
+Guides and tutorials explain GTKX concepts and workflows. Use small examples that support the task; leave complete API specifications, type definitions, and exhaustive member lists to the API reference. Link to the reference when readers need those details.
+
+Keep the scope on GTKX. Assume readers know the underlying languages and libraries, and link to their official documentation when background is needed. For example, show how React state drives a GTKX widget without teaching React state itself. Explain GTKX's integration with React, GTK, and Adwaita; let those projects document their own behavior.
 
 ## Keep production code focused on consumers
 

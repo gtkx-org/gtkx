@@ -1,9 +1,11 @@
 import { alloc, bind, call, copy, type ExternalObject, type Handle, read, resolveType, write } from "@gtkx/native";
 import { expect, test } from "vitest";
 
+const encoder = new TextEncoder();
+
 const GOBJECT = "libgobject-2.0.so.0";
 
-const typeFromName = bind(GOBJECT, "g_type_from_name", [{ kind: "string", ownership: "borrowed" }], {
+const typeFromName = bind(GOBJECT, "g_type_from_name", [{ kind: "bytes", ownership: "borrowed" }], {
     kind: "biguint64",
 });
 
@@ -37,18 +39,18 @@ test("a single-byte allocation round-trips its only byte", () => {
 test("an allocation carrying a boxed gtype holds a usable GValue", () => {
     const value = alloc(24, resolveType(GOBJECT, "g_value_get_type"));
 
-    call(valueInit, [value, call(typeFromName, ["gint"])]);
+    call(valueInit, [value, call(typeFromName, [encoder.encode("gint")]).value]);
     call(valueSetInt, [value, 42]);
 
-    expect(call(valueGetInt, [value])).toBe(42);
+    expect(call(valueGetInt, [value]).value).toBe(42);
 });
 
 test("an allocation carrying a boxed gtype exposes the type tag it was initialized with", () => {
     const value = alloc(24, resolveType(GOBJECT, "g_value_get_type"));
 
-    call(valueInit, [value, call(typeFromName, ["gint"])]);
+    call(valueInit, [value, call(typeFromName, [encoder.encode("gint")]).value]);
 
-    expect(read(value, { kind: "biguint64" }, 0)).toBe(call(typeFromName, ["gint"]));
+    expect(read(value, { kind: "biguint64" }, 0)).toBe(call(typeFromName, [encoder.encode("gint")]).value);
 });
 
 test("a registered non-boxed gtype allocates plain writable memory", () => {
@@ -170,13 +172,13 @@ test("float64 round-trips exactly", () => {
     expect(read(block, { kind: "float64" }, 8)).toBe(-Number.MAX_VALUE);
 });
 
-test("a boolean round-trips at a non-zero offset", () => {
+test("a gboolean storage word round-trips at a non-zero offset", () => {
     const block = alloc(16);
 
-    write(block, { kind: "boolean" }, 8, true);
+    write(block, { kind: "int32" }, 8, 1);
 
-    expect(read(block, { kind: "boolean" }, 0)).toBe(false);
-    expect(read(block, { kind: "boolean" }, 8)).toBe(true);
+    expect(read(block, { kind: "int32" }, 0)).toBe(0);
+    expect(read(block, { kind: "int32" }, 8)).toBe(1);
 });
 
 test("writes at distinct offsets do not disturb each other", () => {
@@ -207,7 +209,7 @@ test("the same byte reads back differently through a signed and an unsigned code
 
     expect(read(block, { kind: "uint8" }, 0)).toBe(255);
     expect(read(block, { kind: "int8" }, 0)).toBe(-1);
-    expect(read(block, { kind: "boolean" }, 0)).toBe(true);
+    expect(read(block, { kind: "int32" }, 0)).toBe(255);
 });
 
 test("an all-ones 64-bit slot reads back as minus one through int64", () => {
@@ -254,27 +256,27 @@ test("writing null stores zero", () => {
     expect(read(block, { kind: "int32" }, 0)).toBe(0);
 });
 
-test("a string round-trips through a pointer slot", () => {
+test("a byte buffer round-trips through a pointer slot", () => {
     const block = alloc(8);
 
-    write(block, { kind: "string", ownership: "full" }, 0, "hello");
+    write(block, { kind: "bytes", ownership: "full" }, 0, encoder.encode("hello"));
 
-    expect(read(block, { kind: "string", ownership: "borrowed" }, 0)).toBe("hello");
+    expect(read(block, { kind: "bytes", ownership: "borrowed" }, 0)).toEqual(encoder.encode("hello"));
 });
 
-test("rewriting a string slot replaces the string it held", () => {
+test("rewriting a byte slot replaces the bytes it held", () => {
     const block = alloc(8);
 
-    write(block, { kind: "string", ownership: "full" }, 0, "first");
-    write(block, { kind: "string", ownership: "full" }, 0, "second");
+    write(block, { kind: "bytes", ownership: "full" }, 0, encoder.encode("first"));
+    write(block, { kind: "bytes", ownership: "full" }, 0, encoder.encode("second"));
 
-    expect(read(block, { kind: "string", ownership: "borrowed" }, 0)).toBe("second");
+    expect(read(block, { kind: "bytes", ownership: "borrowed" }, 0)).toEqual(encoder.encode("second"));
 });
 
-test("a string read from a zero-filled pointer slot yields null", () => {
+test("reading a byte buffer from a zero-filled pointer slot yields null", () => {
     const block = alloc(8);
 
-    expect(read(block, { kind: "string", ownership: "borrowed" }, 0)).toBeNull();
+    expect(read(block, { kind: "bytes", ownership: "borrowed" }, 0)).toBeNull();
 });
 
 test("an inline struct reads back as a handle aliasing the memory it came from", () => {
@@ -341,16 +343,10 @@ test("a write of a non-numeric value throws", () => {
     expect(() => write(block, { kind: "int32" }, 0, "nope")).toThrow();
 });
 
-test("a non-string write to a string slot throws", () => {
+test("a non-byte write to a byte slot throws", () => {
     const block = alloc(8);
 
-    expect(() => write(block, { kind: "string", ownership: "full" }, 0, 5)).toThrow();
-});
-
-test("a unichar write into raw memory throws", () => {
-    const block = alloc(8);
-
-    expect(() => write(block, { kind: "unichar" }, 0, 65)).toThrow();
+    expect(() => write(block, { kind: "bytes", ownership: "full" }, 0, 5)).toThrow();
 });
 
 test("a write at a fractional offset throws", () => {
@@ -458,11 +454,11 @@ test("a copy carries a boxed allocation's contents into another", () => {
     const source = alloc(24, gvalueType);
     const destination = alloc(24, gvalueType);
 
-    call(valueInit, [source, call(typeFromName, ["gint"])]);
+    call(valueInit, [source, call(typeFromName, [encoder.encode("gint")]).value]);
     call(valueSetInt, [source, 99]);
     copy(destination, source, 24);
 
-    expect(call(valueGetInt, [destination])).toBe(99);
+    expect(call(valueGetInt, [destination]).value).toBe(99);
 });
 
 test("a fractional copy size throws", () => {

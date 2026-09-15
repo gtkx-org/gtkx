@@ -1,8 +1,10 @@
 import { useSetting } from "@gtkx/react";
+import { useAppSettings } from "../components/settings.js";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
-import { type SortOrder, SortValue } from "../types.js";
+import { sortOrderFromSetting, type SortOrder, sortOrderToSetting } from "../settings.js";
 
 export const useSortOrder = (): [SortOrder, (order: SortOrder) => void] => {
-    const [value, setValue] = useSetting(schema, "sort-order");
-    return [SortValue[value] as SortOrder, (order) => setValue(SortValue[order])];
+    const settings = useAppSettings();
+    const [value, setValue] = useSetting(settings, schema, "sort-order");
+    return [sortOrderFromSetting(value), (order) => setValue(sortOrderToSetting(order))];
 };

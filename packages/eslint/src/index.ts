@@ -110,12 +110,13 @@ const NAMING_CONVENTION = [
     { selector: "typeParameter", format: null, custom: { regex: "^T?[A-Z][a-zA-Z0-9]*$", match: true } },
     { selector: "enumMember", format: ["UPPER_CASE", "PascalCase"] },
     {
-        selector: ["objectLiteralProperty", "typeProperty"],
+        selector: "typeProperty",
         format: ["camelCase", "PascalCase", "UPPER_CASE"],
         leadingUnderscore: "allowSingleOrDouble",
         trailingUnderscore: "allowSingleOrDouble",
     },
-    { selector: ["objectLiteralProperty", "typeProperty"], format: null, modifiers: ["requiresQuotes"] },
+    { selector: "objectLiteralProperty", format: null },
+    { selector: "typeProperty", format: null, modifiers: ["requiresQuotes"] },
 ];
 
 const SOURCE_EXTENDS = [
@@ -192,7 +193,6 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "gtkx/brand-naming": "error",
     "gtkx/no-comments": "error",
     "gtkx/no-inline-exports": "error",
-    "gtkx/no-library-prefix": "error",
     "max-lines-per-function": ["error", { max: 50, skipBlankLines: true, skipComments: true }],
     "max-params": ["error", { max: 4 }],
     "perfectionist/sort-exports": [
@@ -210,6 +210,7 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "sonarjs/cognitive-complexity": ["error", 5],
     "sonarjs/deprecation": "off",
     "sonarjs/prefer-read-only-props": "off",
+    "sonarjs/redundant-type-aliases": "off",
     "unicorn/filename-case": ["error", { case: "kebabCase" }],
     "unicorn/import-style": ["error", { styles: { path: { default: false, named: true } } }],
     "unicorn/name-replacements": "off",
@@ -283,7 +284,6 @@ const config = (root: string, surface: PublicApi): FlatConfig[] => [
     },
     { files: ["**/*.d.ts"], rules: { "@typescript-eslint/consistent-type-definitions": "off" } },
     ...scopeTo(JS_SOURCES, [tseslint.configs.disableTypeChecked]),
-    { files: JS_SOURCES },
 ];
 
 export { config };

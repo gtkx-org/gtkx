@@ -1,17 +1,20 @@
-import { type Descriptor, type ExternalObject, type Handle, newObject } from "@gtkx/native";
+import { type ExternalObject, type Handle, newObject } from "@gtkx/native";
 import { type AnyClass, getParentClass } from "@gtkx/utils";
+import type { Descriptor } from "./descriptor-types.js";
+import type { ReadableProperties, WritableProperties } from "./property-types.js";
 import { bind } from "./bind.js";
 import { objectT, stringT, voidT } from "./descriptors.js";
 import { LIB, VALUE_T } from "./library.js";
 import {
-    coercePropertyValue,
+    coerceConstructPropertyValue,
     type ConstructProperty,
     constructPropertyFor,
     readableObjectPropertyFor,
     writableObjectPropertyFor,
 } from "./properties.js";
-import { propertyMapOverride, writablePropertyMapOverride } from "./property-brand.js";
+import { propertyWriteComplete } from "./property-brand.js";
 import { getHandle, registerWrapper } from "./registry.js";
+import { TYPE_OBJECT, typeIsA } from "./type.js";
 import { fromObjectPropertyValue, fromValueForDescriptor, newValueForDescriptor, toValue } from "./value.js";
 
 /**
@@ -23,6 +26,7 @@ type ConstructBinding = [name: string, descriptor: Descriptor];
 type ConstructBindings = Record<string, ConstructBinding>;
 type ResolvedBindings = { generation: number; bindings: ConstructBindings };
 
+const constructFactories: WeakMap<object, () => object> = new WeakMap();
 const declaredBindings: WeakMap<AnyClass, ConstructBindings> = new WeakMap();
 const resolvedBindings: WeakMap<AnyClass, ResolvedBindings> = new WeakMap();
 const declarations = { generation: 0 };
@@ -102,6 +106,10 @@ function registerConstructProperties(cls: AnyClass, bindings: ConstructBindings)
     declarations.generation += 1;
 }
 
+function registerConstructFactory<T extends object>(cls: AnyClass<T>, factory: () => T): void {
+    constructFactories.set(cls, factory);
+}
+
 function constructPropertyForEntry(
     source: { gtype: bigint; bindings: ConstructBindings; wrapper: object },
     name: string,
@@ -117,7 +125,10 @@ function constructPropertyForEntry(
         return constructPropertyFor(source.gtype, name, value, source.wrapper);
     }
 
-    return { name: binding[0], value: toValue(binding[1], coercePropertyValue(source.gtype, binding[0], value)) };
+    return {
+        name: binding[0],
+        value: toValue(binding[1], coerceConstructPropertyValue(source.gtype, binding[0], value)),
+    };
 }
 
 /**
@@ -148,6 +159,10 @@ function constructPropertyForEntry(
  * the wrapper the object already had.
  */
 function newObjectWithProperties<T extends object>(gtype: bigint, props: object, wrapper: T): T {
+    if (!typeIsA(gtype, TYPE_OBJECT)) {
+        throw new TypeError("Object construction requires a GObject type");
+    }
+
     const names: string[] = [];
     const values: ExternalObject<Handle>[] = [];
     const bindings = constructBindingsFor(wrapper.constructor as AnyClass | undefined);
@@ -162,7 +177,8 @@ function newObjectWithProperties<T extends object>(gtype: bigint, props: object,
         }
     }
 
-    const existing = newObject(gtype, names, values, wrapper, registerWrapper);
+    const existing = constructFactories.get(wrapper.constructor)?.() ??
+        newObject(gtype, names, values, wrapper, registerWrapper);
 
     if (existing !== null) {
         return existing as T;
@@ -181,11 +197,7 @@ function newObjectWithProperties<T extends object>(gtype: bigint, props: object,
  */
 function getProperty<
     TObject extends { __properties__: object },
-    TPropertyMap extends object = TObject extends { [propertyMapOverride]?: infer TResolver }
-        ? TResolver extends () => infer TMap
-            ? Extract<NonNullable<TMap>, object>
-            : TObject["__properties__"]
-        : TObject["__properties__"],
+    TPropertyMap extends object = Extract<ReadableProperties<TObject>, object>,
     TName extends Extract<keyof NoInfer<TPropertyMap>, string> = Extract<keyof NoInfer<TPropertyMap>, string>,
 >(obj: TObject, propertyName: TName): NoInfer<TPropertyMap>[TName];
 function getProperty(obj: object, propertyName: string, descriptor: Descriptor): unknown;
@@ -222,11 +234,7 @@ function getProperty(obj: object, propertyName: string, descriptor?: Descriptor)
  */
 function setProperty<
     TObject extends { __writableProperties__: object },
-    TPropertyMap extends object = TObject extends { [writablePropertyMapOverride]?: infer TResolver }
-        ? TResolver extends () => infer TMap
-            ? Extract<NonNullable<TMap>, object>
-            : TObject["__writableProperties__"]
-        : TObject["__writableProperties__"],
+    TPropertyMap extends object = Extract<WritableProperties<TObject>, object>,
     TName extends Extract<keyof NoInfer<TPropertyMap>, string> = Extract<keyof NoInfer<TPropertyMap>, string>,
 >(obj: TObject, propertyName: TName, jsValue: NoInfer<TPropertyMap>[TName]): void;
 function setProperty(obj: object, propertyName: string, descriptor: Descriptor, jsValue: unknown): void;
@@ -239,17 +247,18 @@ function setProperty(
     if (arguments.length === 3) {
         const property = writableObjectPropertyFor(obj, propertyName, descriptorOrValue);
         gObjectSetProperty(getHandle(obj), property.name, property.value);
-
-        return;
+    } else {
+        gObjectSetProperty(getHandle(obj), propertyName, toValue(descriptorOrValue as Descriptor, jsValue));
     }
 
-    gObjectSetProperty(getHandle(obj), propertyName, toValue(descriptorOrValue as Descriptor, jsValue));
+    (obj as { [propertyWriteComplete]?: (name: string) => void })[propertyWriteComplete]?.(propertyName);
 }
 
 export {
     newObjectWithProperties,
     getProperty,
     registerConstructProperties,
+    registerConstructFactory,
     setProperty,
     type ConstructBinding,
     type ConstructBindings,

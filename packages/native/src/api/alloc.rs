@@ -13,7 +13,7 @@ fn boxed_type_from_bigint(gtype: Option<BigInt>) -> Result<Option<glib::Type>> {
     Ok(type_.is_a(glib::Type::BOXED).then_some(type_))
 }
 
-fn alloc_handle(size: usize, type_: Option<glib::Type>) -> Handle {
+pub(crate) fn alloc_handle(size: usize, type_: Option<glib::Type>) -> Handle {
     let ptr = unsafe { g_malloc0(size) };
     let handle = match type_ {
         Some(type_) => Handle::from(Boxed::from_glib_full(type_, ptr)),

@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <namespace name="VfuncOutputs" version="1.0" shared-library="libvfuncoutputs.so.0"
+             c:identifier-prefixes="VfuncOutputs" c:symbol-prefixes="vfunc_outputs">
+    <interface name="Folded" c:type="VfuncOutputsFolded"
+               glib:type-name="VfuncOutputsFolded" glib:get-type="vfunc_outputs_folded_get_type"
+               glib:type-struct="FoldedInterface">
+      <prerequisite name="GObject.Object"/>
+    </interface>
+    <record name="FoldedInterface" c:type="VfuncOutputsFoldedInterface" glib:is-gtype-struct-for="Folded">
+      <field name="parent_interface"><type name="GObject.TypeInterface" c:type="GTypeInterface"/></field>
+      <field name="read">
+        <callback name="read">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters>
+            <parameter name="self" transfer-ownership="none"><type name="Folded" c:type="VfuncOutputsFolded*"/></parameter>
+            <parameter name="values" direction="out" transfer-ownership="full">
+              <array length="2" zero-terminated="0" c:type="gint**"><type name="gint" c:type="gint"/></array>
+            </parameter>
+            <parameter name="length" direction="out" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter>
+          </parameters>
+        </callback>
+      </field>
+    </record>
+    <interface name="Counted" c:type="VfuncOutputsCounted"
+               glib:type-name="VfuncOutputsCounted" glib:get-type="vfunc_outputs_counted_get_type"
+               glib:type-struct="CountedInterface">
+      <prerequisite name="GObject.Object"/>
+    </interface>
+    <record name="CountedInterface" c:type="VfuncOutputsCountedInterface" glib:is-gtype-struct-for="Counted">
+      <field name="parent_interface"><type name="GObject.TypeInterface" c:type="GTypeInterface"/></field>
+      <field name="read">
+        <callback name="read">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters>
+            <parameter name="self" transfer-ownership="none"><type name="Counted" c:type="VfuncOutputsCounted*"/></parameter>
+            <parameter name="values" direction="out" transfer-ownership="full">
+              <array fixed-size="2" zero-terminated="0" c:type="gint**"><type name="gint" c:type="gint"/></array>
+            </parameter>
+            <parameter name="length" direction="out" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter>
+          </parameters>
+        </callback>
+      </field>
+    </record>
+    <class name="Combined" c:type="VfuncOutputsCombined" parent="GObject.Object"
+           glib:type-name="VfuncOutputsCombined" glib:get-type="vfunc_outputs_combined_get_type">
+      <implements name="Folded"/>
+      <implements name="Counted"/>
+    </class>
+    <class name="Reversed" c:type="VfuncOutputsReversed" parent="GObject.Object"
+           glib:type-name="VfuncOutputsReversed" glib:get-type="vfunc_outputs_reversed_get_type">
+      <implements name="Counted"/>
+      <implements name="Folded"/>
+    </class>
+  </namespace>
+</repository>

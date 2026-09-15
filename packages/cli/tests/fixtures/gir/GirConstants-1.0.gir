@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0" xmlns:c="http://www.gtk.org/introspection/c/1.0">
+  <namespace name="GirConstants" version="1.0">
+    <constant name="TEXT" value="token"><type name="utf8" c:type="gchar*"/></constant>
+    <constant name="PADDED" value="  token, "><type name="utf8" c:type="gchar*"/></constant>
+    <constant name="SPACES" value="   "><type name="utf8" c:type="gchar*"/></constant>
+    <constant name="EMPTY" value=""><type name="utf8" c:type="gchar*"/></constant>
+    <constant name="ENTITIES" value=" &amp;&lt;&gt;&quot;&apos; "><type name="utf8" c:type="gchar*"/></constant>
+    <constant name="ENABLED" value=" 1 "><type name="gboolean" c:type="gboolean"/></constant>
+    <constant name="DISABLED" value=" 0 "><type name="gboolean" c:type="gboolean"/></constant>
+    <constant name="COUNT" value=" 42 "><type name="gint" c:type="gint"/></constant>
+    <constant name="IDENTIFIER" value=" 9007199254740993 "><type name="guint64" c:type="guint64"/></constant>
+  </namespace>
+</repository>

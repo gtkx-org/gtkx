@@ -1,10 +1,11 @@
-use std::ffi::c_char;
+use std::ffi::{CStr, c_char};
 
 use anyhow::bail;
 
 use super::prelude::*;
 use crate::ffi::codec::Codec;
 use crate::ffi::{StashData, StashStorage};
+use crate::value::TypedView;
 
 #[derive(Debug, Clone)]
 pub struct RefCodec {
@@ -43,16 +44,13 @@ impl RefCodec {
             Codec::Integer(_)
             | Codec::BigInt(_)
             | Codec::Float(_)
-            | Codec::EnumFlags(_)
-            | Codec::String(_)
-            | Codec::Boolean(_)
+            | Codec::Bytes(_)
             | Codec::Object(_)
             | Codec::Boxed(_)
             | Codec::Struct(_)
             | Codec::Fundamental(_)
             | Codec::Array(_)
-            | Codec::HashTable(_)
-            | Codec::Unichar(_) => true,
+            | Codec::HashTable(_) => true,
         }
     }
 
@@ -66,10 +64,39 @@ impl RefCodec {
             _ => bail_expected!("a Ref", "ref"),
         }
     }
+
+    fn encode_scalar_storage(
+        &self,
+        value: Unknown<'_>,
+        retain_for_async: bool,
+    ) -> anyhow::Result<ffi::Stash> {
+        if matches!(value.get_type()?, ValueType::Null | ValueType::Undefined) {
+            return Ok(ffi::Stash::Ptr(std::ptr::null_mut()));
+        }
+        let handle: &External<crate::handle::Handle> = value::read_napi(value)?;
+        let size = self
+            .inner_codec
+            .field_size()
+            .ok_or_else(|| anyhow::anyhow!("The reference has no declared storage size"))?;
+        let ptr = crate::api::handle_memory_range(handle, 0, size, "scalar reference")?;
+        let retained = if retain_for_async {
+            handle.retain_owned()?
+        } else {
+            (**handle).clone()
+        };
+
+        Ok(ffi::Stash::Storage(StashStorage::new(
+            ptr,
+            StashData::Handle(retained),
+        )))
+    }
 }
 
 impl Encoder for RefCodec {
     fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        if self.inner_codec.is_scalar() {
+            return self.encode_scalar_storage(value, false);
+        }
         let Some(inner) = Self::inner_value(env, value)? else {
             return Ok(ffi::Stash::Ptr(std::ptr::null_mut()));
         };
@@ -95,6 +122,20 @@ impl Encoder for RefCodec {
                     )));
                 }
 
+                if array_codec.is_byte_array()
+                    && let Some(view) = TypedView::from_unknown(env, inner)?
+                {
+                    let ffi::Stash::Storage(storage) = array_codec.encode(env, inner)? else {
+                        bail!("Expected Storage from GByteArray encode")
+                    };
+
+                    return Ok(if view.length() == 0 {
+                        Self::null_ptr_stash()
+                    } else {
+                        Self::ptr_slot_stash(storage)
+                    });
+                }
+
                 if inner_type == ValueType::Object
                     && inner.is_array()?
                     && Array::from_unknown(inner)?.len() > 0
@@ -114,20 +155,14 @@ impl Encoder for RefCodec {
                     bail!("Expected Array, Null, or Undefined for Ref<Array>")
                 }
             }
-            Codec::String(string_codec) => {
-                let inner_string = if is_nullish {
-                    None
-                } else if inner_type == ValueType::String {
-                    Some(value::read_napi::<String>(inner)?)
-                } else {
-                    bail!("Expected a String, Null, or length for Ref<String>")
-                };
+            Codec::Bytes(bytes_codec) => {
+                let inner_bytes = super::bytes::read_bytes(inner)?;
 
-                let buffer_size = match (&string_codec.length, &inner_string) {
+                let buffer_size = match (&bytes_codec.length, &inner_bytes) {
                     (Some(len), _) => {
                         anyhow::ensure!(
                             *len > 0,
-                            "A Ref<String> buffer length must be at least 1 to hold the trailing NUL byte"
+                            "A Ref<Bytes> buffer length must be at least 1 to hold the trailing NUL byte"
                         );
                         *len
                     }
@@ -136,8 +171,7 @@ impl Encoder for RefCodec {
                 };
 
                 let mut buffer: Vec<u8> = Self::zeroed_buffer(buffer_size)?;
-                if let Some(content) = inner_string.as_deref() {
-                    let bytes = content.as_bytes();
+                if let Some(bytes) = inner_bytes.as_deref() {
                     let copy_len = bytes.len().min(buffer_size.saturating_sub(1));
                     buffer[..copy_len].copy_from_slice(&bytes[..copy_len]);
                 }
@@ -148,14 +182,16 @@ impl Encoder for RefCodec {
                     StashData::Buffer(buffer),
                 )))
             }
-            _ => {
-                if is_nullish {
-                    Ok(Self::zeroed_scalar_stash())
-                } else {
-                    let encoded = self.inner_codec.encode(env, inner)?;
-                    Self::scalar_out_stash(&encoded)
-                }
-            }
+            _ if is_nullish => Ok(Self::null_ptr_stash()),
+            _ => bail!("Expected Null for Ref<HashTable>"),
+        }
+    }
+
+    fn encode_owned(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        if self.inner_codec.is_scalar() {
+            self.encode_scalar_storage(value, true)
+        } else {
+            self.encode(env, value)
         }
     }
 
@@ -193,7 +229,7 @@ impl Decoder for RefCodec {
         }
 
         match &*self.inner_codec {
-            Codec::String(string_codec) => Self::decode_ref_string(env, storage, string_codec),
+            Codec::Bytes(bytes_codec) => Self::decode_ref_bytes(env, storage, bytes_codec),
             Codec::HashTable(_) => {
                 let actual_ptr = unsafe { *(storage.ptr() as *const *mut c_void) };
                 self.inner_codec.decode(env, &ffi::Stash::Ptr(actual_ptr))
@@ -228,7 +264,7 @@ impl Decoder for RefCodec {
             };
 
             if actual_ptr.is_null() {
-                return array_codec.decode_null(env);
+                return Ok(value::js_null(env)?);
             }
 
             let ptr_stash = ffi::Stash::Ptr(actual_ptr);
@@ -255,7 +291,7 @@ impl RefCodec {
         let mut buffer: Vec<u8> = Vec::new();
         buffer
             .try_reserve_exact(size)
-            .map_err(|_| anyhow::anyhow!("Cannot allocate a {size}-byte Ref<String> buffer"))?;
+            .map_err(|_| anyhow::anyhow!("Cannot allocate a {size}-byte Ref<Bytes> buffer"))?;
         buffer.resize(size, 0);
 
         Ok(buffer)
@@ -275,40 +311,32 @@ impl RefCodec {
         ffi::Stash::Storage(StashStorage::new(ptr, StashData::PtrSlot(slot, inner)))
     }
 
-    fn scalar_out_stash(encoded: &ffi::Stash) -> anyhow::Result<ffi::Stash> {
-        let storage = StashStorage::from(vec![0u64]);
-        unsafe { encoded.write_scalar_to_ptr(storage.ptr())? };
-        Ok(ffi::Stash::Storage(storage))
-    }
-
-    fn zeroed_scalar_stash() -> ffi::Stash {
-        ffi::Stash::Storage(StashStorage::from(vec![0u64]))
-    }
-
-    fn decode_ref_string<'e>(
+    fn decode_ref_bytes<'e>(
         env: &'e Env,
         storage: &StashStorage,
-        string_codec: &super::StringCodec,
+        bytes_codec: &super::BytesCodec,
     ) -> anyhow::Result<Unknown<'e>> {
         if storage.ptr().is_null() {
             return Ok(value::js_null(env)?);
         }
 
-        if let StashData::Buffer(_) = storage.data() {
-            let string = unsafe { lossy_c_string(storage.ptr() as *const c_char) };
-            Ok(string.into_unknown(env)?)
+        if let StashData::Buffer(buffer) = storage.data() {
+            let source = CStr::from_bytes_until_nul(buffer)?.to_bytes();
+            let bytes = unsafe { value::js_byte_array(env, source.as_ptr(), source.len()) };
+            Ok(bytes?)
         } else {
             let str_ptr = unsafe { *(storage.ptr() as *const *const c_char) };
             if str_ptr.is_null() {
                 return Ok(value::js_null(env)?);
             }
-            let string = unsafe { lossy_c_string(str_ptr) };
+            let source = unsafe { CStr::from_ptr(str_ptr) }.to_bytes();
+            let bytes = unsafe { value::js_byte_array(env, source.as_ptr(), source.len()) };
 
-            if string_codec.ownership.is_full() {
+            if bytes_codec.ownership.is_full() {
                 unsafe { glib::ffi::g_free(str_ptr as *mut c_void) };
             }
 
-            Ok(string.into_unknown(env)?)
+            Ok(bytes?)
         }
     }
 }

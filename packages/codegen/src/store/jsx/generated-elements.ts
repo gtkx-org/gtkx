@@ -3,6 +3,7 @@ import type { GlibNamedClass } from "./intrinsic-elements.js";
 import { namespaceDirectory } from "../../gir/namespace.js";
 import { arrayGuard, hasFields, isBoolean, isString } from "../../guards.js";
 import { readJsonFile } from "../../json.js";
+import { factoryElementPropTypeFor } from "./element-prop-imports.js";
 
 /** One element the `@gtkx/jsx` store binds. */
 type GeneratedElement = {
@@ -21,13 +22,16 @@ type GeneratedElement = {
 
 const ELEMENTS_FILENAME = "elements.json";
 
+const isMountableElement = (entry: GlibNamedClass): boolean =>
+    !entry.klass.isAbstract || factoryElementPropTypeFor(entry.glibName) !== undefined;
+
 const collectGeneratedElements = (intrinsicElements: GlibNamedClass[]): GeneratedElement[] =>
     intrinsicElements
         .map((entry) => ({
             namespace: entry.namespace.name,
             directory: namespaceDirectory(entry.namespace),
             glibName: entry.glibName,
-            isMountable: !entry.klass.isAbstract,
+            isMountable: isMountableElement(entry),
         }))
         .toSorted((a, b) => a.glibName.localeCompare(b.glibName));
 
@@ -63,6 +67,7 @@ const readGeneratedElements = (jsxStoreDir: string): GeneratedElement[] => {
 export {
     ELEMENTS_FILENAME,
     collectGeneratedElements,
+    isMountableElement,
     readGeneratedElements,
     renderGeneratedElements,
     type GeneratedElement,

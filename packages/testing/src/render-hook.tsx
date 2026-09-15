@@ -50,9 +50,9 @@ async function renderHook<Result, Props>(
 
     return {
         result: resultRef as { current: Result },
-        rerender: async (newProps?: Props) => {
-            if (newProps !== undefined) {
-                currentProps = newProps;
+        rerender: async (...args: [] | [Props]) => {
+            if (args.length === 1) {
+                [currentProps] = args;
             }
 
             await renderResult.rerender(<TestComponent props={currentProps} />);

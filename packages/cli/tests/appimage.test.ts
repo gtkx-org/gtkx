@@ -1,224 +1,109 @@
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DeployPayload, DeploySettings, StagedFile } from "../src/deploy/types.js";
-import { appimageTarget } from "../src/deploy/targets/appimage.js";
+import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { createCliProject, runCli, runCliOrThrow } from "./cli-project.js";
 
-const TOOLING = vi.hoisted(() => ({ runtime: "", tool: "" }));
 const APPLICATION_ID = "com.gtkx.appimage-probe";
-const BINARY_NAME = "appimage-probe";
-const FILE_MODE = 0o644;
-
-const TOOL_SOURCE = `#!/bin/sh
-app_dir=""
-artifact=""
-for argument in "$@"; do
-    app_dir="$artifact"
-    artifact="$argument"
-done
-for extension in svg png xpm; do
-    icon="$app_dir/${APPLICATION_ID}.$extension"
-    if [ -f "$icon" ]; then
-        cp "$icon" "$artifact"
-        exit 0
-    fi
-done
-exit 1
-`;
-
-const STATE: { root: string; settings: DeploySettings | null } = { root: "", settings: null };
-
-const deployPaths = (root: string): DeploySettings["paths"] => {
-    const outDir = join(root, "build");
-    const archDir = join(outDir, "x64");
-
-    return {
-        applicationIcon: { kind: "none" },
-        dist: join(root, "dist"),
-        licenseFile: null,
-        metadata: join(archDir, "metadata"),
-        outDir,
-        output: join(outDir, "out"),
-        overlay: join(archDir, "overlay"),
-        root,
-        runtime: join(archDir, "runtime"),
-        schemaFiles: [],
-        stage: join(archDir, "stage"),
-        targets: join(archDir, "targets"),
-    };
-};
-
-const deploySettings = (root: string): DeploySettings => {
-    return {
-        applicationId: APPLICATION_ID,
-        arch: { appimage: "x86_64", deb: "amd64", flatpak: "x86_64", node: "x64", rpm: "x86_64" },
-        binaryName: BINARY_NAME,
-        branding: null,
-        categories: [],
-        configFile: join(root, "gtkx.config.ts"),
-        contentRating: {},
-        copyright: "",
-        deploy: {
-            categories: ["Utility"],
-            description: ["AppImage icon selection probe."],
-            developer: { name: "GTKX" },
-            name: "AppImage Probe",
-            summary: "Probes AppImage icon selection",
-        },
-        description: ["AppImage icon selection probe."],
-        desktopActions: [],
-        desktopEntry: {},
-        developer: { email: null, id: null, name: "GTKX" },
-        execArgs: [],
-        execToken: null,
-        extraFiles: [],
-        fileAssociations: [],
-        genericName: null,
-        homepage: null,
-        isDbusActivatable: false,
-        keywords: [],
-        libraries: [],
+const ARTIFACT_NAME = "appimage-probe.AppImage";
+const APPLICATION_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">' +
+    '<rect width="128" height="128" fill="#3584e4"/></svg>\n';
+const ACTION_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">' +
+    '<circle cx="64" cy="64" r="48" fill="#e01b24"/></svg>\n';
+const CONFIG = `export default {
+    applicationId: "${APPLICATION_ID}",
+    applicationIcon: "icons",
+    codegen: false,
+    deploy: {
+        name: "AppImage Probe",
+        binaryName: "appimage-probe",
+        developer: { name: "GTKX" },
+        summary: "Exercises AppImage icon selection",
+        description: ["An application that verifies the icons packaged in an AppImage."],
+        categories: ["Utility"],
         license: "MPL-2.0",
         metadataLicense: "CC0-1.0",
-        mimeTypes: [],
-        minimumLibraryVersions: {},
-        name: "AppImage Probe",
-        paths: deployPaths(root),
-        protocols: [],
-        releases: [],
-        screenshots: [],
-        summary: "Probes AppImage icon selection",
-        urls: {},
-        versions: { debRevision: "1", epoch: null, packageVersion: "1.0.0", rpmRelease: "1", upstream: "1.0.0" },
-    };
+        node: { source: "host" },
+        appimage: { fileName: "${ARTIFACT_NAME}" },
+    },
+};\n`;
+const ENTRY = 'process.stdout.write("AppImage probe\\n");\n';
+const RASTER_192 = readFileSync(new URL("fixtures/appimage/icon-192.png", import.meta.url));
+const RASTER_512 = readFileSync(new URL("fixtures/appimage/icon-512.png", import.meta.url));
+
+const iconPath = (size: string, context: string, extension: string): string =>
+    `icons/hicolor/${size}/${context}/${APPLICATION_ID}.${extension}`;
+
+const withCompression = (compression: string): string =>
+    CONFIG.replace("appimage: {", () => `appimage: { compression: ${JSON.stringify(compression)},`);
+
+const extractedIcon = (
+    icons: Record<string, string | Buffer>,
+    extension: string,
+    config = CONFIG,
+): Buffer => {
+    using project = createCliProject({
+        prefix: "gtkx-appimage-icons-",
+        config,
+        files: { "src/index.ts": ENTRY, ...icons },
+        hasStore: true,
+    });
+    runCliOrThrow(project, ["deploy", "--target", "appimage"]);
+    const artifact = join(project.root, "build", "out", ARTIFACT_NAME);
+    const filename = `${APPLICATION_ID}.${extension}`;
+    const extracted = spawnSync(artifact, ["--appimage-extract", filename], {
+        cwd: project.root,
+        encoding: "utf8",
+        timeout: 60_000,
+    });
+    expect(extracted.status).toBe(0);
+
+    return readFileSync(join(project.root, "squashfs-root", filename));
 };
-
-const currentSettings = (): DeploySettings => {
-    const settings = STATE.settings;
-
-    if (settings === null) {
-        throw new Error("AppImage test setup did not run");
-    }
-
-    return settings;
-};
-
-const stageFile = (settings: DeploySettings, rel: string, contents: string): StagedFile => {
-    const abs = join(settings.paths.stage, rel);
-    mkdirSync(dirname(abs), { recursive: true });
-    writeFileSync(abs, contents);
-    chmodSync(abs, FILE_MODE);
-
-    return { abs, mode: FILE_MODE, rel };
-};
-
-const payloadWith = (settings: DeploySettings, icons: StagedFile[]): DeployPayload => {
-    const desktop = stageFile(
-        settings,
-        join("share", "applications", `${APPLICATION_ID}.desktop`),
-        "[Desktop Entry]\nType=Application\n",
-    );
-
-    return {
-        node: null,
-        notices: [],
-        overlays: { appimage: [], deb: [], flatpak: [], rpm: [] },
-        settings,
-        stage: [desktop, ...icons],
-    };
-};
-
-const artifactContents = async (payload: DeployPayload): Promise<string> => {
-    const [artifact] = await appimageTarget.pack(payload, []);
-
-    if (artifact === undefined) {
-        throw new Error("AppImage target produced no artifact");
-    }
-
-    return readFileSync(artifact.path, "utf8");
-};
-
-const setup = (): void => {
-    STATE.root = mkdtempSync(join(tmpdir(), "gtkx-appimage-icons-"));
-    STATE.settings = deploySettings(STATE.root);
-    TOOLING.tool = join(STATE.root, "appimagetool");
-    TOOLING.runtime = join(STATE.root, "runtime");
-    writeFileSync(TOOLING.tool, TOOL_SOURCE);
-    writeFileSync(TOOLING.runtime, "runtime\n");
-    chmodSync(TOOLING.tool, 0o755);
-};
-
-const teardown = (): void => {
-    rmSync(STATE.root, { force: true, recursive: true });
-    STATE.settings = null;
-};
-
-const packageScalableIcon = (): Promise<string> => {
-    const settings = currentSettings();
-
-    const icon = stageFile(
-        settings,
-        join("share", "icons", "hicolor", "scalable", "apps", `${APPLICATION_ID}.svg`),
-        "scalable-icon\n",
-    );
-
-    return artifactContents(payloadWith(settings, [icon]));
-};
-
-const packageLargestRaster = (): Promise<string> => {
-    const settings = currentSettings();
-
-    const scaled = stageFile(
-        settings,
-        join("share", "icons", "hicolor", "128x128@2", "apps", `${APPLICATION_ID}.png`),
-        "scaled-256px\n",
-    );
-
-    const unscaled = stageFile(
-        settings,
-        join("share", "icons", "hicolor", "192x192", "apps", `${APPLICATION_ID}.png`),
-        "unscaled-192px\n",
-    );
-
-    const otherContext = stageFile(
-        settings,
-        join("share", "icons", "hicolor", "scalable", "actions", `${APPLICATION_ID}.svg`),
-        "unrelated-action\n",
-    );
-
-    return artifactContents(payloadWith(settings, [unscaled, otherContext, scaled]));
-};
-
-const packageOtherContext = (): Promise<unknown> => {
-    const settings = currentSettings();
-
-    const otherContext = stageFile(
-        settings,
-        join("share", "icons", "hicolor", "scalable", "actions", `${APPLICATION_ID}.svg`),
-        "unrelated-action\n",
-    );
-
-    return appimageTarget.pack(payloadWith(settings, [otherContext]), []);
-};
-
-vi.mock("../src/deploy/vendored/appimagetool.js", () => ({
-    resolveAppimageTooling: () => Promise.resolve({ runtime: TOOLING.runtime, tool: TOOLING.tool }),
-}));
 
 describe("AppImage application icons", () => {
-    beforeEach(setup);
-    afterEach(teardown);
-
-    it("packages a scalable application icon", async () => {
-        await expect(packageScalableIcon()).resolves.toBe("scalable-icon\n");
+    it("packages a scalable application icon ahead of raster and action icons", () => {
+        const icon = extractedIcon({
+            [iconPath("scalable", "apps", "svg")]: APPLICATION_ICON,
+            [iconPath("512x512", "apps", "png")]: RASTER_512,
+            [iconPath("scalable", "actions", "svg")]: ACTION_ICON,
+        }, "svg");
+        expect(icon).toEqual(Buffer.from(APPLICATION_ICON));
     });
 
-    it("chooses effective raster size and ignores another icon context", async () => {
-        await expect(packageLargestRaster()).resolves.toBe("scaled-256px\n");
+    it("chooses effective raster size and ignores another icon context", () => {
+        const icon = extractedIcon({
+            [iconPath("128x128@4", "apps", "png")]: RASTER_512,
+            [iconPath("192x192", "apps", "png")]: RASTER_192,
+            [iconPath("scalable", "actions", "svg")]: ACTION_ICON,
+        }, "png");
+        expect(icon).toEqual(RASTER_512);
     });
 
-    it("rejects a same-named icon outside the application context", async () => {
-        await expect(packageOtherContext()).rejects.toThrow();
+    it("packages an explicitly configured zstd AppImage", () => {
+        const icon = extractedIcon({
+            [iconPath("scalable", "apps", "svg")]: APPLICATION_ICON,
+        }, "svg", withCompression("zstd"));
+        expect(icon).toEqual(Buffer.from(APPLICATION_ICON));
+    });
+
+    it.each(["gzip", "xz"])("rejects unsupported %s compression while loading configuration", (compression) => {
+        using project = createCliProject({
+            prefix: "gtkx-appimage-unsupported-compression-",
+            config: withCompression(compression),
+            files: { "src/index.ts": ENTRY, [iconPath("scalable", "apps", "svg")]: APPLICATION_ICON },
+            hasStore: true,
+        });
+        expect(runCli(project, ["build"]).status).not.toBe(0);
+    });
+
+    it("rejects a same-named icon outside the application context", () => {
+        using project = createCliProject({
+            prefix: "gtkx-appimage-unrelated-icon-",
+            config: CONFIG,
+            files: { "src/index.ts": ENTRY, [iconPath("scalable", "actions", "svg")]: ACTION_ICON },
+            hasStore: true,
+        });
+        expect(runCli(project, ["deploy", "--target", "appimage"]).status).not.toBe(0);
     });
 });

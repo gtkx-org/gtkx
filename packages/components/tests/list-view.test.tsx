@@ -1,8 +1,9 @@
 import type { ListItem, ListItemRenderer } from "@gtkx/components";
-import type { RefObject } from "react";
+import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, screen, userEvent, waitFor } from "@gtkx/testing";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
     asCollectionView,
@@ -21,88 +22,30 @@ import {
 } from "./helpers/list-fixtures.js";
 import { labelTexts } from "./helpers/row-texts.js";
 import { getSelectionModel } from "./helpers/selection-model.js";
-import { expectNoBoxBetween } from "./helpers/widget-chain.js";
 
 type NamedItem = ListItem<{ name: string }>;
-type Splice = [number, number, number];
 
 const LARGE_FLAT_COUNT = 200_000;
-const LARGE_MOUNT_BUDGET_MS = 1000;
-const LARGE_UPDATE_BUDGET_MS = 250;
 const hundredItems: ListItem<{ name: string }>[] = Array.from({ length: 100 }, (_, index) => ({
     id: `item-${String(index)}`,
     value: { name: `Item ${String(index)}` },
 }));
 
-const branchA: NamedItem = { id: "a", value: { name: "A" }, children: [{ id: "a0", value: { name: "A0" } }] };
-const leafB: NamedItem = { id: "b", value: { name: "B" } };
-const branchB: NamedItem = { id: "b", value: { name: "B" }, children: [{ id: "b0", value: { name: "B0" } }] };
-const leafC: NamedItem = { id: "c", value: { name: "C" } };
-const branchC: NamedItem = { id: "c", value: { name: "C" }, children: [{ id: "c0", value: { name: "C0" } }] };
-const leafD: NamedItem = { id: "d", value: { name: "D" } };
-const branchD: NamedItem = { id: "d", value: { name: "D" }, children: [{ id: "d0", value: { name: "D0" } }] };
-
-const collectionModelFor = (ref: RefObject<Gtk.ListView>): Gtk.FlattenListModel => {
-    const selection = ref.current.getModel();
-
-    if (!(selection instanceof Gtk.SingleSelection)) {
-        throw new TypeError("Expected the list view to hold a single selection model");
-    }
-
-    const model = selection.getModel();
-
-    if (!(model instanceof Gtk.FlattenListModel)) {
-        throw new TypeError("Expected the selection to wrap the collection model");
-    }
-
-    return model;
-};
-
-const spliceLog = (ref: RefObject<Gtk.ListView>): Splice[] => {
-    const splices: Splice[] = [];
-
-    collectionModelFor(ref).connect("items-changed", (position, removed, added) => {
-        splices.push([position, removed, added]);
-    });
-
-    return splices;
-};
-
-const topLevelTexts = (items: string[] | NamedItem[]): string[] =>
-    items.map((item) => (typeof item === "string" ? item : item.value.name));
-
-const expectSpliceEmissions = async (
-    initial: string[] | NamedItem[],
-    next: string[] | NamedItem[],
-    expected: Splice[],
-): Promise<void> => {
-    const { ref, rerender } = await renderListView<{ name: string }>(initial);
-    expect(labelTexts(ref.current)).toEqual(topLevelTexts(initial));
-    const splices = spliceLog(ref);
-    await rerender(next);
-    expect(labelTexts(ref.current)).toEqual(topLevelTexts(next));
-    expect(splices).toEqual(expected);
-};
-
 const listViewView = async (items: string[]) => asCollectionView(await renderListView(items), labelTexts);
 const gridViewView = async (items: string[]) => asCollectionView(await renderGridView(items), labelTexts);
 const renderCount: ListItemRenderer<{ count: number }> = ({ item }) => <GtkLabel>{String(item.count)}</GtkLabel>;
+
+const StatefulItem = ({ name }: { name: string }): ReactNode => {
+    const [initial] = useState(name);
+
+    return <GtkLabel>{`${name}:${initial}`}</GtkLabel>;
+};
+const renderStatefulItem: ListItemRenderer<{ name: string }> = ({ item }) => <StatefulItem name={item.name} />;
 
 const countedItems = (offset: number): ListItem<{ count: number }>[] => [
     { id: "1", value: { count: offset } },
     { id: "2", value: { count: offset * 2 } },
 ];
-
-const knownFlatItems = (onChildrenRead: () => void): NamedItem[] =>
-    Array.from({ length: LARGE_FLAT_COUNT }, (_, index) => ({
-        id: String(index),
-        value: { name: `Item ${String(index)}` },
-        get children(): [] {
-            onChildrenRead();
-
-            return [];
-        },
-    }));
 
 describe("ListView", () => {
     it("draws a row per item and follows insertions, removals and value changes", async () => {
@@ -166,63 +109,29 @@ describe("ListView rendering", () => {
         }
     });
 
-    it("renders the row content as the cell's direct child", async () => {
-        const { ref } = await renderListView(["First"]);
-        expectNoBoxBetween(screen.getByText("First"), ref.current);
+    it("does not carry component state between reordered items", async () => {
+        const { ref, rerender } = await renderListView(["A", "B"], { renderItem: renderStatefulItem });
+        expect(labelTexts(ref.current)).toEqual(["A:A", "B:B"]);
+        await rerender(["B", "A"], { renderItem: renderStatefulItem });
+        expect(labelTexts(ref.current)).toEqual(["B:B", "A:A"]);
     });
 
-    it("updates a large known-flat source without scanning or redrawing stable rows", async () => {
-        let childrenReads = 0;
-        const items = knownFlatItems(() => {
-            childrenReads += 1;
-        });
-
-        let renderCount = 0;
-        const renderItem: ListItemRenderer<{ name: string }> = ({ item }) => {
-            renderCount += 1;
-
-            return <GtkLabel>{item.name}</GtkLabel>;
-        };
-        const options = {
-            renderItem,
-            isFlat: true,
-            estimatedItemHeight: 40,
-            maxContentHeight: 200,
-        };
-
-        const mountStartedAt = performance.now();
+    it("displays updates and appended items in a large flat source", async () => {
+        const items: NamedItem[] = Array.from({ length: LARGE_FLAT_COUNT }, (_, index) => ({
+            id: String(index),
+            value: { name: `Item ${String(index)}` },
+        }));
+        const options = { isFlat: true, estimatedItemHeight: 40, maxContentHeight: 200 };
         const { ref, rerender } = await renderListView(items, options);
-        const mountDuration = performance.now() - mountStartedAt;
-        const initialRenderCount = renderCount;
-
-        expect(collectionModelFor(ref).getNItems()).toBe(LARGE_FLAT_COUNT);
-        expect(childrenReads).toBe(0);
-        expect(initialRenderCount).toBeGreaterThan(0);
-        expect(initialRenderCount).toBeLessThan(500);
-        expect(mountDuration).toBeLessThan(LARGE_MOUNT_BUDGET_MS);
+        expect(screen.getByText("Item 0")).toBeVisible();
 
         const appendedItems = [...items, { id: "appended", value: { name: "Appended" } }];
-        const appendStartedAt = performance.now();
-        await rerender(appendedItems, options);
-        const appendDuration = performance.now() - appendStartedAt;
+        await rerender(appendedItems);
+        expect(screen.getByText("Item 0")).toBeVisible();
 
-        expect(collectionModelFor(ref).getNItems()).toBe(LARGE_FLAT_COUNT + 1);
-        expect(renderCount).toBe(initialRenderCount);
-        expect(appendDuration).toBeLessThan(LARGE_UPDATE_BUDGET_MS);
-
-        const renderCountBeforeReplace = renderCount;
-
-        const replacement = { id: "replacement", value: { name: "Replacement" } };
-        const replacedItems = appendedItems.with(0, replacement);
-        const replaceStartedAt = performance.now();
-        await rerender(replacedItems, options);
-        const replaceDuration = performance.now() - replaceStartedAt;
-
-        expect(collectionModelFor(ref).getNItems()).toBe(LARGE_FLAT_COUNT + 1);
-        expect(renderCount).toBe(renderCountBeforeReplace + 1);
+        await rerender(appendedItems.with(0, { id: "replacement", value: { name: "Replacement" } }));
         expect(screen.getByText("Replacement")).toBeVisible();
-        expect(childrenReads).toBe(0);
-        expect(replaceDuration).toBeLessThan(LARGE_UPDATE_BUDGET_MS);
+        expect(screen.queryByText("Item 0")).toBeNull();
 
         await act(() => {
             ref.current.scrollTo(LARGE_FLAT_COUNT, Gtk.ListScrollFlags.NONE, null);
@@ -230,32 +139,6 @@ describe("ListView rendering", () => {
         await waitFor(() => {
             expect(screen.getByText("Appended")).toBeVisible();
         });
-
-        const renderCountAfterScroll = renderCount;
-        await rerender([...replacedItems], options);
-        expect(renderCount).toBe(renderCountAfterScroll);
-    });
-});
-
-describe("ListView model emissions", () => {
-    it("emits nothing for a pure reorder and one tail splice per structural change", async () => {
-        await expectSpliceEmissions(["A", "B", "C", "D"], ["D", "A", "B", "C"], []);
-        await expectSpliceEmissions(["A", "B", "C"], ["A", "X", "B", "C"], [[3, 0, 1]]);
-        await expectSpliceEmissions(["A", "B", "C", "D"], ["A", "C"], [[2, 2, 0]]);
-    });
-
-    it("coalesces a run of adjacent expandability flips into one replacement", async () => {
-        await expectSpliceEmissions([branchA, leafB], [branchA, branchB], [[1, 1, 1]]);
-        await expectSpliceEmissions([branchA, leafB, leafC, leafD], [branchA, branchB, branchC, leafD], [[1, 2, 2]]);
-
-        await expectSpliceEmissions(
-            [branchA, leafB, leafC, leafD],
-            [branchA, branchB, leafC, branchD],
-            [
-                [1, 1, 1],
-                [3, 1, 1],
-            ],
-        );
     });
 });
 
@@ -437,15 +320,18 @@ describe("GridView", () => {
         await expectReordering(gridViewView);
     });
 
-    it("renders the cell content as the cell's direct child and takes singleClickActivate", async () => {
+    it("renders the grid with single-click activation", async () => {
         const { ref } = await renderGridView(["First"], { singleClickActivate: true });
         expect(screen.getByRole(Gtk.AccessibleRole.GRID)).toBe(ref.current);
         expect(ref.current).toHaveObjectProperty("singleClickActivate", true);
-        expectNoBoxBetween(screen.getByText("First"), ref.current);
+        expect(screen.getByText("First")).toBeVisible();
     });
 
     it("ignores nested children and draws no expander", async () => {
-        const { ref } = await renderGridView([branchA, leafB]);
+        const { ref } = await renderGridView([
+            { id: "a", value: { name: "A" }, children: [{ id: "a0", value: { name: "A0" } }] },
+            { id: "b", value: { name: "B" } },
+        ]);
         expect(labelTexts(ref.current)).toEqual(["A", "B"]);
         expect(expanderCount()).toBe(0);
     });

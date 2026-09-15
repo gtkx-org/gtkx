@@ -1,11 +1,7 @@
 import { sortStrings, sourceStringLiteral } from "@gtkx/utils";
 import type { ModuleContext } from "../../writer/context.js";
 import { namespaceDirectory } from "../../gir/namespace.js";
-
-const PATCHING_OVERRIDES: Record<string, string[]> = {
-    glib: ["./overrides/regex.js"],
-    gobject: ["./overrides/object.js", "./overrides/param-spec-getters.js", "./overrides/value.js"],
-};
+import { renderOverrideImports } from "./overrides.js";
 
 const CORE_WRAPPERS: Record<string, string[]> = {
     glib: ["Error", "Variant"],
@@ -16,9 +12,6 @@ const renderDependencyImports = (context: ModuleContext): string[] => [
     ...sortStrings(context.dependencies).map((dependency) => `import "../${dependency}/bootstrap.js";`),
     ...sortStrings(context.externalDependencies).map((packageName) => `import ${sourceStringLiteral(packageName)};`),
 ];
-
-const renderOverrideImports = (directory: string): string[] =>
-    (PATCHING_OVERRIDES[directory] ?? []).map((override) => `import ${sourceStringLiteral(override)};`);
 
 const renderRuntimeImport = (context: ModuleContext, coreWrappers: string[]): string[] => {
     const runtimeImports = new Set(context.bootstrapRuntimeImports);

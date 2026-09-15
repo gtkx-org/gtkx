@@ -5,6 +5,7 @@
         "-internal"
     ],
     "ignore": [
+        "packages/cli/tests/fixtures/configured-props/**",
         "packages/eslint/tests/fixtures/**",
         "packages/native/index.js"
     ],
@@ -17,6 +18,9 @@
         "**/gtkx.config.ts": [
             "exports"
         ],
+        "scripts/gtkx.bootstrap.ts": [
+            "exports"
+        ],
         "packages/e2e/elements.ts": [
             "exports"
         ],
@@ -27,8 +31,30 @@
             "exports",
             "types"
         ],
+        "packages/runtime/src/param-spec-override.ts": [
+            "exports",
+            "types"
+        ],
         "packages/cli/src/refresh-runtime.ts": [
             "exports"
+        ],
+        "packages/runtime/src/override-methods.ts": [
+            "exports"
+        ],
+        "packages/runtime/src/object.ts": [
+            "exports"
+        ],
+        "packages/runtime/src/text-view.ts": [
+            "exports"
+        ],
+        "packages/runtime/src/combo-row.ts": [
+            "exports"
+        ],
+        "packages/runtime/src/sidebar.ts": [
+            "exports"
+        ],
+        "packages/runtime/src/signal.ts": [
+            "types"
         ]
     },
     "workspaces": {
@@ -40,6 +66,11 @@
             "ignoreDependencies": [
                 "@gtkx/cairo",
                 "@gtkx/native"
+            ]
+        },
+        "scripts": {
+            "entry": [
+                "gtkx.bootstrap.ts!"
             ]
         },
         "packages/codegen": {
@@ -123,7 +154,8 @@
         },
         "packages/cli": {
             "entry": [
-                "src/global.d.ts!"
+                "src/global.d.ts!",
+                "tests/fixtures/react-compiler/index.tsx"
             ]
         },
         "packages/vitest": {

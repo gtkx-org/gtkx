@@ -28,6 +28,7 @@ RUN apt-get update \
         libgtksourceview-5-dev \
         libwebkitgtk-6.0-dev \
         libgirepository1.0-dev \
+        libostree-dev \
         gobject-introspection \
         gvfs \
         libgles2 \

@@ -4,14 +4,14 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkFixed, GtkFixedLayoutChild, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import { at } from "../../transform.js";
 import { useTickCallback } from "../../use-tick-callback.js";
 import sourceCode from "./fixed2.tsx?raw";
 
 type FixedTransformRefs = {
-    fixedRef: React.RefObject<Gtk.Fixed | null>;
+    fixed: Gtk.Fixed | null;
     labelRef: React.RefObject<Gtk.Label | null>;
     startTimeRef: React.RefObject<number | null>;
 };
@@ -59,7 +59,7 @@ function computeFixedTransform(
 }
 
 function updateFixedTransform(refs: FixedTransformRefs, frameClock: Gdk.FrameClock) {
-    const fixed = refs.fixedRef.current;
+    const fixed = refs.fixed;
     const label = refs.labelRef.current;
 
     if (!fixed || !label) {
@@ -76,17 +76,17 @@ function updateFixedTransform(refs: FixedTransformRefs, frameClock: Gdk.FrameClo
 function Fixed2Demo() {
     const startTimeRef = useRef<number | null>(null);
     const labelRef = useRef<Gtk.Label | null>(null);
-    const fixedRef = useRef<Gtk.Fixed | null>(null);
+    const [fixed, setFixed] = useState<Gtk.Fixed | null>(null);
 
-    useTickCallback(fixedRef, (_widget, frameClock) => {
-        updateFixedTransform({ fixedRef, labelRef, startTimeRef }, frameClock);
+    useTickCallback(fixed, (_widget, frameClock) => {
+        updateFixedTransform({ fixed, labelRef, startTimeRef }, frameClock);
 
         return GLib.SOURCE_CONTINUE;
     });
 
     return (
         <GtkScrolledWindow name="scrolled" hexpand vexpand>
-            <GtkFixed name="fixed" ref={fixedRef} hexpand vexpand overflow={Gtk.Overflow.VISIBLE}>
+            <GtkFixed name="fixed" ref={setFixed} hexpand vexpand overflow={Gtk.Overflow.VISIBLE}>
                 <GtkFixedLayoutChild transform={at(0, 0)}>
                     <GtkLabel
                         ref={(node) => {

@@ -1,19 +1,21 @@
 import type { ReactElement, ReactNode, RefObject } from "react";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { PropertyExpression, StringObject } from "@gtkx/gi/gtk";
 import {
     GtkColumnViewColumn,
     GtkCustomSorter,
     GtkDropDown,
+    GtkListView,
     GtkMultiSelection,
     GtkNoSelection,
     GtkSingleSelection,
     GtkStringList,
 } from "@gtkx/jsx/gtk";
 import { getClassType } from "@gtkx/runtime";
-import { render, screen, userEvent } from "@gtkx/testing";
+import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createRef } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { attachClickGesture } from "../helpers/click-gesture.js";
 import {
     BUTTON_LABEL,
@@ -31,7 +33,6 @@ import {
     LEAF_ROOT,
     newTree,
     renderTree,
-    resetTree,
     ROOT_NAMES,
 } from "../helpers/tree-list-render.js";
 
@@ -77,8 +78,10 @@ const singleSelectionFrom = (view: Gtk.ListView | Gtk.GridView | Gtk.ColumnView 
     return model;
 };
 
-const singleSelectionElement = (): ReactElement => <GtkSingleSelection model={Gtk.StringList.new(ITEM_NAMES)} />;
-const noSelectionElement = (): ReactElement => <GtkNoSelection model={Gtk.StringList.new(ITEM_NAMES)} />;
+const singleSelectionElement = (): ReactElement => (
+    <GtkSingleSelection model={<GtkStringList strings={ITEM_NAMES} />} />
+);
+const noSelectionElement = (): ReactElement => <GtkNoSelection model={<GtkStringList strings={ITEM_NAMES} />} />;
 
 const renderSelectableList = (): Promise<RefObject<Gtk.ListView | null>> =>
     renderListView({ model: singleSelectionElement() });
@@ -99,7 +102,7 @@ const columnElements = (): ReactNode => (
 
 const renderColumns = (onActivate?: () => void): Promise<RefObject<Gtk.ColumnView | null>> =>
     renderColumnView(
-        <GtkMultiSelection model={Gtk.StringList.new(ITEM_NAMES)} />,
+        <GtkMultiSelection model={<GtkStringList strings={ITEM_NAMES} />} />,
         columnElements(),
         onActivate === undefined ? {} : { isSingleClickActivating: true, onActivate },
     );
@@ -229,7 +232,9 @@ describe("pointing at a list view row", () => {
     });
 
     it("selects the row through a pointer click token", async () => {
-        const ref = await renderListView({ model: <GtkMultiSelection model={Gtk.StringList.new(ITEM_NAMES)} /> });
+        const ref = await renderListView({
+            model: <GtkMultiSelection model={<GtkStringList strings={ITEM_NAMES} />} />,
+        });
         await userEvent.pointer(await rowAt(2), "click");
         const selection = ref.current?.getModel() as Gtk.MultiSelection;
         expect(selection.isSelected(2)).toBe(true);
@@ -283,10 +288,79 @@ describe("activating a list view row", () => {
 describe("clicking a button inside a list view row", () => {
     it("activates the button without selecting the row", async () => {
         const onClicked = vi.fn();
-        await renderListView({ model: noSelectionElement(), factory: buttonFactory(onClicked) });
+        const ref = await renderListView({
+            model: singleSelectionElement(),
+            factory: buttonFactory(onClicked),
+        });
+        const selection = singleSelectionFrom(ref.current);
+        expect(selection.getSelected()).toBe(0);
         const buttons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON, { name: BUTTON_LABEL });
-        await userEvent.click(widgetAt(buttons, 0));
+        await userEvent.click(widgetAt(buttons, 1));
         expect(onClicked).toHaveBeenCalledTimes(1);
+        expect(onClicked).toHaveBeenLastCalledWith("beta");
+        expect(selection.getSelected()).toBe(0);
+        expect(selection.getSelection().getSize()).toBe(1n);
+    });
+});
+
+describe("list item factory lifecycle", () => {
+    it("rebinds a button to native model updates without retaining earlier callbacks", async () => {
+        const model = Gtk.StringList.new(["first"]);
+        const firstHandler = vi.fn();
+        const secondHandler = vi.fn();
+        const ref = createRef<Gtk.ListView>();
+
+        const { rerender, unmount } = await render(
+            <GtkListView
+                ref={ref}
+                model={<GtkSingleSelection model={model} />}
+                factory={buttonFactory(firstHandler)}
+            />,
+        );
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: BUTTON_LABEL });
+        await userEvent.click(button);
+        expect(firstHandler).toHaveBeenCalledTimes(1);
+        expect(firstHandler).toHaveBeenLastCalledWith("first");
+
+        await act(() => {
+            model.splice(0, 1, ["second"]);
+        });
+        const reboundButton = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: BUTTON_LABEL });
+        await userEvent.click(reboundButton);
+        expect(firstHandler).toHaveBeenCalledTimes(2);
+        expect(firstHandler).toHaveBeenLastCalledWith("second");
+
+        await rerender(
+            <GtkListView
+                ref={ref}
+                model={<GtkSingleSelection model={model} />}
+                factory={buttonFactory(secondHandler)}
+            />,
+        );
+        expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: BUTTON_LABEL })).toBe(reboundButton);
+        await userEvent.click(reboundButton);
+        expect(firstHandler).toHaveBeenCalledTimes(2);
+        expect(secondHandler).toHaveBeenCalledTimes(1);
+        expect(secondHandler).toHaveBeenLastCalledWith("second");
+
+        await act(() => {
+            model.splice(0, 1, []);
+        });
+        expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON, { name: BUTTON_LABEL })).toBeNull();
+        await expect(userEvent.click(reboundButton)).rejects.toThrow();
+
+        await act(() => {
+            model.append("restored");
+        });
+        const restoredButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: BUTTON_LABEL });
+        await userEvent.click(restoredButton);
+        expect(firstHandler).toHaveBeenCalledTimes(2);
+        expect(secondHandler).toHaveBeenCalledTimes(2);
+        expect(secondHandler).toHaveBeenLastCalledWith("restored");
+        await unmount();
+        const clickedSignal = GObject.signalLookup("clicked", Gtk.Button);
+        expect(GObject.signalHasHandlerPending(reboundButton, clickedSignal, 0, true)).toBe(false);
+        expect(GObject.signalHasHandlerPending(restoredButton, clickedSignal, 0, true)).toBe(false);
     });
 });
 
@@ -391,8 +465,6 @@ describe("clicking the row that carries the column headers", () => {
         expectUnsorted(ref);
     });
 });
-
-beforeEach(resetTree);
 
 describe("clicking a tree expander", () => {
     it("expands the row behind it and leaves the enclosing row unselected", async () => {

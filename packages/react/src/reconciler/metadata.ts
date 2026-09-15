@@ -10,22 +10,22 @@ import {
 } from "@gtkx/runtime";
 import {
     elementMetadataVersion,
+    type ElementPropertyEntry,
     registeredElementProperties,
     registeredElementSignals,
 } from "@gtkx/runtime/internal";
-import { properties, type PropertyEntry, signals, userEventSignals } from "virtual:gtkx-config";
-import { deferredProps, type ElementBehavior, ELEMENTS } from "./registry.js";
+import { userEventSignals } from "virtual:gtkx-config";
+import { type ElementBehavior, ELEMENTS } from "./registry.js";
 
 type TypeInfo = {
     typeName: string;
-    properties: Record<string, PropertyEntry>;
+    properties: Record<string, ElementPropertyEntry>;
     signals: Record<string, string>;
     userEventSignals: Set<string>;
     behaviors: ElementBehavior[];
-    deferred: Set<string>;
+    createProps: Set<string>;
     declaredConstructOnly: Set<string>;
     isLazy: boolean;
-    hasFlush: boolean;
     constructOnly: Set<string>;
     construct: Set<string>;
     defaults: Record<string, unknown>;
@@ -91,12 +91,19 @@ const addAll = <T>(target: Set<T>, source: Iterable<T> | undefined): void => {
 };
 
 const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
-    Object.assign(info.signals, registeredElementSignals[ancestor] ?? signals[ancestor] ?? {});
+    const config = ELEMENTS[ancestor];
+    Object.assign(info.signals, registeredElementSignals[ancestor] ?? {});
     addAll(info.userEventSignals, userEventSignals[ancestor]);
-    info.behaviors.push(...(ELEMENTS[ancestor]?.behaviors ?? []));
+
+    if (config?.props?.composition === "factory" && ancestor !== info.typeName) {
+        return;
+    }
+
+    info.behaviors.push(...(config?.behaviors ?? []));
+    addAll(info.declaredConstructOnly, config?.props?.constructOnly);
 };
 
-const resolveProperty = (info: TypeInfo, name: string, entry: PropertyEntry): void => {
+const resolveProperty = (info: TypeInfo, name: string, entry: ElementPropertyEntry): void => {
     if ((entry[FLAGS] & CONSTRUCT_ONLY) !== 0) {
         info.constructOnly.add(name);
     }
@@ -117,17 +124,26 @@ const resolveProperties = (info: TypeInfo): void => {
 };
 
 const applyBehaviorFlags = (info: TypeInfo, behavior: ElementBehavior): void => {
-    if (behavior.flush !== undefined) {
-        info.hasFlush = true;
-    }
-
-    addAll(info.deferred, deferredProps(behavior));
     addAll(info.declaredConstructOnly, behavior.constructOnly);
 };
 
 const resolveBehaviorFlags = (info: TypeInfo): void => {
     for (const behavior of info.behaviors) {
         applyBehaviorFlags(info, behavior);
+    }
+};
+
+const resolveCreateProps = (info: TypeInfo): void => {
+    const config = ELEMENTS[info.typeName];
+    const behaviors = config?.behaviors ?? [];
+
+    for (const behavior of behaviors) {
+        if (behavior.create === undefined) {
+            continue;
+        }
+
+        addAll(info.createProps, config?.props?.constructOnly);
+        addAll(info.createProps, behavior.constructOnly);
     }
 };
 
@@ -140,10 +156,9 @@ const buildTypeInfo = (name: string): TypeInfo => {
         signals: {},
         userEventSignals: new Set(),
         behaviors: [],
-        deferred: new Set(),
+        createProps: new Set(),
         declaredConstructOnly: new Set(),
         isLazy: false,
-        hasFlush: false,
         constructOnly: new Set(),
         construct: new Set(),
         defaults: {},
@@ -154,10 +169,11 @@ const buildTypeInfo = (name: string): TypeInfo => {
     }
 
     resolveBehaviorFlags(info);
+    resolveCreateProps(info);
     info.isLazy = chain.some((ancestor) => ELEMENTS[ancestor]?.isLazy === true);
 
     for (const ancestor of chain.toReversed()) {
-        Object.assign(info.properties, registeredElementProperties[ancestor] ?? properties[ancestor] ?? {});
+        Object.assign(info.properties, registeredElementProperties[ancestor] ?? {});
     }
 
     resolveProperties(info);

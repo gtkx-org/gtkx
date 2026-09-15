@@ -6,14 +6,11 @@ import {
     createApplication,
     getClassType,
     getInstanceType,
-    offSignal,
-    onSignal,
     TYPE_INVALID,
     typeIsA,
 } from "@gtkx/runtime";
-import { isDeepEqual, kebabCase, structuredClone, unsanitizeIdentifier } from "@gtkx/utils";
+import { isDeepEqual } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
-import { getPropertyName } from "./metadata.js";
 import { applyWrite } from "./signals.js";
 import { hasSameText } from "./text.js";
 
@@ -26,28 +23,10 @@ type SlotHooks<P extends GObject.Object, C extends GObject.Object> = {
 
 type ValueApply<P extends GObject.Object, V> = (object: P, value: V) => void;
 
-type ListHooks<P extends GObject.Object, I, H> = {
-    add?: (parent: P, item: I) => H;
-    remove?: (parent: P, item: I, handle: H) => void;
+type ListHooks<P extends GObject.Object, I> = {
+    add: (parent: P, item: I) => void;
+    remove?: (parent: P, item: I) => void;
     clear?: (parent: P) => void;
-};
-
-type ListEntry = { item: unknown; handle: unknown };
-type ListState = { snapshot: unknown[]; entries: ListEntry[] };
-type DeferredState = { desired: unknown; isPresent: boolean; isScheduled: boolean; disconnect: (() => void) | null };
-type CanApply<P extends GObject.Object, V> = (object: P, value: V) => boolean;
-
-type DeferredOps<P extends GObject.Object, V> = {
-    canApply?: CanApply<P, V> | undefined;
-    parse?: ((value: unknown) => V | undefined) | undefined;
-    read: (object: P) => unknown;
-    write: (object: P, value: V) => void;
-    signal?: string | undefined;
-};
-
-type DeferredHooks<P extends GObject.Object, V> = Omit<DeferredOps<P, V>, "read" | "write"> & {
-    read?: ((object: P) => unknown) | undefined;
-    write?: ((object: P, value: V) => void) | undefined;
 };
 
 type ChildSetter = GObject.Object & { setChild: (child: Gtk.Widget | null) => void };
@@ -60,8 +39,6 @@ type BoxLike = GObject.Object & {
     insertChildAfter: (child: Gtk.Widget, sibling: Gtk.Widget | null) => unknown;
     reorderChildAfter: (child: Gtk.Widget, sibling: Gtk.Widget | null) => void;
 };
-
-type RowCache = WeakMap<GObject.Object, Gtk.Widget>;
 
 type IndexedChildHost<C extends GObject.Object> = GObject.Object & {
     remove: (child: C) => void;
@@ -133,62 +110,50 @@ const slot = <P extends GObject.Object, C extends GObject.Object>(
 const value = <P extends GObject.Object, V>(
     prop: string,
     apply: ValueApply<P, V>,
+    defaultValue?: V,
 ): ElementBehavior<P> => ({
     update: (object, prev, next) => {
-        if (!Object.is(prev[prop], next[prop]) && next[prop] !== undefined) {
-            apply(object, next[prop] as V);
+        const nextValue = next[prop] === undefined ? defaultValue : next[prop];
+
+        if (nextValue !== undefined && !Object.is(prev[prop], next[prop])) {
+            apply(object, nextValue as V);
         }
 
         return [prop];
     },
 });
 
-const teardownList = <P extends GObject.Object, I, H>(
-    object: P,
-    entries: ListEntry[],
-    hooks: ListHooks<P, I, H>,
-): void => {
+const clearList = <P extends GObject.Object, I>(object: P, items: I[], hooks: ListHooks<P, I>): void => {
     if (hooks.clear !== undefined) {
         hooks.clear(object);
 
         return;
     }
 
-    for (const entry of entries) {
-        hooks.remove?.(object, entry.item as I, entry.handle as H);
+    for (const item of items) {
+        hooks.remove?.(object, item);
     }
 };
 
-const listUpdate = <P extends GObject.Object, I, H>(
+const list = <P extends GObject.Object, I>(
     prop: string,
-    hooks: ListHooks<P, I, H>,
-): NonNullable<ElementBehavior<P>["update"]> => {
-    const { add } = hooks;
-
-    return (object, _prev, next, context) => {
-        const state = context as ListState;
-        const raw = next[prop];
-        const items: unknown[] = Array.isArray(raw) ? raw : [];
-
-        if (isDeepEqual(state.snapshot, items)) {
-            return [prop];
-        }
-
-        teardownList(object, state.entries, hooks);
-        state.entries = items.map((item) => ({ item, handle: add?.(object, item as I) }));
-        state.snapshot = structuredClone(items);
-
-        return [prop];
-    };
-};
-
-const list = <P extends GObject.Object, I, H = void>(
-    prop: string,
-    hooks: ListHooks<P, I, H>,
+    hooks: ListHooks<P, I>,
 ): ElementBehavior<P> => {
     const behavior: ElementBehavior<P> = {
-        initialize: (): ListState => ({ snapshot: [], entries: [] }),
-        update: listUpdate(prop, hooks),
+        update: (object, prev, next) => {
+            const previous = (prev[prop] as I[] | null | undefined) ?? [];
+            const current = (next[prop] as I[] | null | undefined) ?? [];
+
+            if (!isDeepEqual(previous, current)) {
+                clearList(object, previous, hooks);
+
+                for (const item of current) {
+                    hooks.add(object, item);
+                }
+            }
+
+            return [prop];
+        },
     };
 
     if (hooks.remove === undefined && hooks.clear === undefined) {
@@ -197,105 +162,6 @@ const list = <P extends GObject.Object, I, H = void>(
 
     return behavior;
 };
-
-const settleDeferred = <P extends GObject.Object, V>(
-    object: P,
-    state: DeferredState,
-    prop: string,
-    ops: DeferredOps<P, V>,
-): void => {
-    if (!state.isPresent || Object.is(ops.read(object), state.desired)) {
-        return;
-    }
-
-    const desired = state.desired as V;
-
-    if (ops.canApply !== undefined && !ops.canApply(object, desired)) {
-        return;
-    }
-
-    applyWrite(prop, () => {
-        ops.write(object, desired);
-    });
-};
-
-const scheduleSettle = <P extends GObject.Object, V>(
-    object: P,
-    state: DeferredState,
-    prop: string,
-    ops: DeferredOps<P, V>,
-): void => {
-    if (state.isScheduled) {
-        return;
-    }
-
-    state.isScheduled = true;
-
-    queueMicrotask(() => {
-        state.isScheduled = false;
-
-        if (state.disconnect !== null) {
-            settleDeferred(object, state, prop, ops);
-        }
-    });
-};
-
-const watchDrift = <P extends GObject.Object, V>(
-    object: P,
-    state: DeferredState,
-    prop: string,
-    ops: DeferredOps<P, V>,
-): void => {
-    if (state.disconnect !== null) {
-        return;
-    }
-
-    const signal = ops.signal ?? `notify::${getPropertyName(object, prop) ?? unsanitizeIdentifier(kebabCase(prop))}`;
-
-    const handler = (): undefined => {
-        scheduleSettle(object, state, prop, ops);
-    };
-
-    onSignal(object, signal, handler);
-
-    state.disconnect = (): void => {
-        offSignal(object, signal, handler);
-    };
-};
-
-const deferredBehavior = <P extends GObject.Object, V>(prop: string, ops: DeferredOps<P, V>): ElementBehavior<P> => ({
-    deferred: [prop],
-    initialize: (): DeferredState => ({ desired: undefined, isPresent: false, isScheduled: false, disconnect: null }),
-    update: (_object, _prev, next, context) => {
-        const state = context as DeferredState;
-        state.desired = ops.parse === undefined ? next[prop] : ops.parse(next[prop]);
-        state.isPresent = state.desired !== undefined;
-
-        return [prop];
-    },
-    flush: (object, context) => {
-        const state = context as DeferredState;
-        settleDeferred(object, state, prop, ops);
-        watchDrift(object, state, prop, ops);
-    },
-    teardown: (_object, context) => {
-        const state = context as DeferredState;
-        state.disconnect?.();
-        state.disconnect = null;
-    },
-});
-
-const deferredWith = <P extends GObject.Object, V>(prop: string, hooks: DeferredHooks<P, V>): ElementBehavior<P> =>
-    deferredBehavior<P, V>(prop, {
-        ...hooks,
-        read: hooks.read ?? ((object) => Reflect.get(object, prop)),
-        write: hooks.write ?? ((object, value) => {
-            Reflect.set(object, prop, value);
-        }),
-    });
-
-const deferred = <P extends GObject.Object, V>(prop: string, canApply?: CanApply<P, V>): ElementBehavior<P> =>
-    deferredWith<P, V>(prop, { canApply });
 
 const controlledText = (prop: string): ElementBehavior =>
     value(prop, (object, next) => {
@@ -390,55 +256,25 @@ const indexedSlot = <P extends IndexedChildHost<C>, C extends GObject.Object>(
         },
     });
 
-const wrappedRow = <W extends Gtk.Widget>(
-    Wrapper: new (props: Props) => W,
-    setChild: (wrapper: W, inner: Gtk.Widget) => void,
-    rows: RowCache,
-    child: Gtk.Widget,
-): Gtk.Widget => {
-    if (child instanceof Wrapper) {
-        return child;
-    }
+const rowSlot = <P extends Gtk.Widget & IndexedChildHost<Gtk.Widget>>(): ElementBehavior<P> =>
+    slot<P, Gtk.Widget>("children", Gtk.Widget, {
+        attach: (parent, child, info) => {
+            parent.insert((info.adopted as Gtk.Widget | null) ?? child, info.index);
+            const row = child.getParent();
 
-    const existing = rows.get(child);
-
-    if (existing !== undefined) {
-        return existing;
-    }
-
-    const wrapper = new Wrapper({});
-    setChild(wrapper, child);
-    rows.set(child, wrapper);
-
-    return wrapper;
-};
-
-const removeWrappedRow = (
-    Wrapper: new (props: Props) => Gtk.Widget,
-    parent: IndexedChildHost<Gtk.Widget>,
-    child: Gtk.Widget,
-    rows: RowCache,
-): void => {
-    const row = child instanceof Wrapper ? child : rows.get(child);
-
-    if (row !== undefined) {
-        parent.remove(row);
-    }
-};
-
-const wrappingIndexedSlot = <W extends Gtk.Widget, P extends IndexedChildHost<Gtk.Widget>>(
-    Wrapper: new (props: Props) => W,
-    setChild: (wrapper: W, inner: Gtk.Widget) => void,
-): ElementBehavior<P> => ({
-    ...slot<P, Gtk.Widget>("children", Gtk.Widget, {
-        attach: (parent, child, info) =>
-            parent.insert(wrappedRow(Wrapper, setChild, info.context as RowCache, child), info.index),
-        detach: (parent, child, info) => {
-            removeWrappedRow(Wrapper, parent, child, info.context as RowCache);
+            return row === parent ? child : row;
         },
-    }),
-    initialize: (): RowCache => new WeakMap(),
-});
+        detach: (parent, _child, info) => {
+            parent.remove(info.adopted as Gtk.Widget);
+        },
+        reorder: (parent, _child, info) => {
+            const row = info.adopted as Gtk.Widget;
+            parent.remove(row);
+            parent.insert(row, info.index);
+
+            return row;
+        },
+    });
 
 const applicationCreator = <P extends GObject.Object & CommandLineApplication, C extends Props>(
     base: ApplicationClass<P, C>,
@@ -452,8 +288,6 @@ export {
     slot,
     value,
     list,
-    deferred,
-    deferredWith,
     controlledText,
     childSetterSlot,
     contentSetterSlot,
@@ -461,5 +295,5 @@ export {
     methodSlot,
     setterSlot,
     indexedSlot,
-    wrappingIndexedSlot,
+    rowSlot,
 };

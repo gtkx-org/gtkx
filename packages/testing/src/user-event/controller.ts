@@ -74,9 +74,9 @@ const getController = <T extends Gtk.EventController>(
     widget: Gtk.Accessible,
     controllerType: ControllerConstructor<T>,
 ): T => {
-    const [controller] = getAllControllers(widget, controllerType);
+    const controller = queryController(widget, controllerType);
 
-    if (controller === undefined) {
+    if (controller === null) {
         throw new Error(`No ${controllerType.name} controller is attached to the widget`);
     }
 

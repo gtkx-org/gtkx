@@ -3,6 +3,9 @@ const classSignalMember: unique symbol = Symbol("gtkx.classSignalMember");
 const signalMapOverride: unique symbol = Symbol("gtkx.signalMapOverride");
 const signalEmitMapOverride: unique symbol = Symbol("gtkx.signalEmitMapOverride");
 
+type SignalArguments<T> = T extends { args: infer TArgs extends unknown[] } ? TArgs : never;
+type SignalResult<T> = T extends { result: infer TResult } ? TResult : never;
+
 type ResolvedSignalMap<T, TFallback> = T extends {
     [signalMapOverride]?: infer TResolver;
 }
@@ -25,5 +28,7 @@ export {
     signalEmitMapOverride,
     type ResolvedSignalEmitMap,
     type ResolvedSignalMap,
+    type SignalArguments,
+    type SignalResult,
     signalMapOverride,
 };

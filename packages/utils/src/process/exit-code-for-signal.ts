@@ -1,9 +1,7 @@
-function exitCodeForSignal(signal: NodeJS.Signals | null): number {
-    if (!signal) {
-        return 0;
-    }
+import { constants } from "node:os";
 
-    return signal === "SIGINT" ? 130 : 143;
+function exitCodeForSignal(signal: NodeJS.Signals | null): number {
+    return signal === null ? 0 : 128 + constants.signals[signal];
 }
 
 export { exitCodeForSignal };

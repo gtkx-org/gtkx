@@ -1,4 +1,4 @@
-import { upperFirst } from "./upper-first.ts";
+import { upperFirst } from "es-toolkit";
 import { mapWordSegments } from "./word-segments.ts";
 
 function pascalCase(str: string): string {

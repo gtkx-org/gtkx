@@ -21,7 +21,7 @@ impl std::fmt::Debug for StashStorage {
 }
 
 #[derive(Debug)]
-#[must_use = "a PendingTransfer owns memory and leaks unless it is stored or released"]
+#[must_use]
 pub struct PendingTransfer {
     ptr: *mut c_void,
     release: ReleaseKind,
@@ -32,7 +32,7 @@ pub enum ReleaseKind {
     GFree,
     ObjectUnref,
     BoxedFree(glib::Type),
-    Fundamental(UnrefFn),
+    Function(UnrefFn),
     StrFreeV,
     StringElements,
     HashTableUnref,
@@ -48,7 +48,13 @@ impl PendingTransfer {
         Self { ptr, release }
     }
 
-    pub fn release_now(self) {
+    pub fn disarm(mut self) {
+        self.ptr = std::ptr::null_mut();
+    }
+}
+
+impl Drop for PendingTransfer {
+    fn drop(&mut self) {
         if self.ptr.is_null() {
             return;
         }
@@ -63,7 +69,7 @@ impl PendingTransfer {
                 ReleaseKind::BoxedFree(type_) => {
                     glib::gobject_ffi::g_boxed_free(type_.into_glib(), self.ptr);
                 }
-                ReleaseKind::Fundamental(unref) => unref(self.ptr),
+                ReleaseKind::Function(unref) => unref(self.ptr),
                 ReleaseKind::StrFreeV => {
                     glib::ffi::g_strfreev(self.ptr.cast::<*mut std::ffi::c_char>());
                 }
@@ -218,6 +224,7 @@ pub struct GPtrArrayData {
 #[derive(Debug)]
 pub enum StashData {
     Unit,
+    Handle(crate::handle::Handle),
     U8Vec(Vec<u8>),
     I8Vec(Vec<i8>),
     U16Vec(Vec<u16>),
@@ -237,7 +244,6 @@ pub enum StashData {
     GByteArray(Option<glib::ByteArray>),
     Buffer(Vec<u8>),
     PtrSlot(Vec<*mut c_void>, Option<Box<StashStorage>>),
-    StrV(glib::StrV),
     HashTable(HashTableData),
     CallerAllocation(CallerAllocation),
 }
@@ -300,7 +306,7 @@ impl StashStorage {
     #[must_use]
     pub fn with_pending_transfer(self, ptr: *mut c_void, release: ReleaseKind) -> Self {
         let mut transfers = self.pending_transfer.take();
-        transfers.push(PendingTransfer { ptr, release });
+        transfers.push(PendingTransfer::new(ptr, release));
         self.pending_transfer.set(transfers);
         self
     }
@@ -314,7 +320,9 @@ impl StashStorage {
     }
 
     pub fn disarm_pending_transfer(&self) {
-        self.pending_transfer.set(Vec::new());
+        for pending in self.pending_transfer.take() {
+            pending.disarm();
+        }
 
         if let StashData::PtrSlot(_, Some(inner)) = &self.data {
             inner.disarm_pending_transfer();
@@ -336,7 +344,7 @@ impl StashStorage {
     }
 
     pub fn owns_element_buffer(&self) -> bool {
-        self.byte_len().is_some()
+        matches!(self.data, StashData::Handle(_)) || self.byte_len().is_some()
     }
 
     pub fn byte_len(&self) -> Option<usize> {
@@ -353,6 +361,7 @@ impl StashStorage {
             StashData::F64Vec(v) => Some(size_of_val(v.as_slice())),
             StashData::CallerAllocation(allocation) => Some(allocation.byte_len),
             StashData::Unit
+            | StashData::Handle(_)
             | StashData::StringArray(_, _)
             | StashData::ObjectArray(_, _)
             | StashData::List(_)
@@ -361,7 +370,6 @@ impl StashStorage {
             | StashData::GPtrArray(_)
             | StashData::GByteArray(_)
             | StashData::PtrSlot(_, _)
-            | StashData::StrV(_)
             | StashData::HashTable(_) => None,
         }
     }
@@ -409,9 +417,7 @@ impl StashStorage {
 
 impl Drop for StashStorage {
     fn drop(&mut self) {
-        for pending in self.pending_transfer.take() {
-            pending.release_now();
-        }
+        drop(self.pending_transfer.take());
         match &self.data {
             StashData::HashTable(data) => self.free_hashtable(data),
             StashData::List(data) => Self::free_list(data),
@@ -419,6 +425,7 @@ impl Drop for StashStorage {
             StashData::GPtrArray(data) => Self::free_gptrarray(data),
             StashData::GByteArray(_)
             | StashData::Unit
+            | StashData::Handle(_)
             | StashData::U8Vec(_)
             | StashData::I8Vec(_)
             | StashData::U16Vec(_)
@@ -434,7 +441,6 @@ impl Drop for StashStorage {
             | StashData::CString(_)
             | StashData::Buffer(_)
             | StashData::PtrSlot(_, _)
-            | StashData::StrV(_)
             | StashData::CallerAllocation(_) => {}
         }
     }

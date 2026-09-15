@@ -27,7 +27,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, useMemo, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 type Constructor<T> = abstract new (...args: never[]) => T;
 
@@ -196,7 +196,12 @@ function GuideBox({ boxRef, isShown }: { boxRef: RefObject<Gtk.Box | null>; isSh
     );
 }
 
-function VflBox({ boxRef, lines }: { boxRef: RefObject<Gtk.Box | null>; lines: string[] }) {
+function VflBox({ boxRef, lines, hasDescription = true, constraints }: {
+    boxRef: RefObject<Gtk.Box | null>;
+    lines: string[];
+    hasDescription?: boolean;
+    constraints?: ReactNode;
+}) {
     const [a, setA] = useState<Gtk.Button | null>(null);
     const [b, setB] = useState<Gtk.Button | null>(null);
 
@@ -208,7 +213,12 @@ function VflBox({ boxRef, lines }: { boxRef: RefObject<Gtk.Box | null>; lines: s
     return (
         <GtkBox
             ref={boxRef}
-            layoutManager={<GtkConstraintLayout vfl={views && [{ lines, hspacing: 8, vspacing: 8, views }]} />}
+            layoutManager={(
+                <GtkConstraintLayout
+                    constraints={constraints}
+                    vfl={hasDescription && views ? [{ lines, hspacing: 8, vspacing: 8, views }] : undefined}
+                />
+            )}
         >
             <GtkButton ref={setA} label="A" />
             <GtkButton ref={setB} label="B" />
@@ -499,6 +509,18 @@ describe("render - GtkConstraint props", () => {
 });
 
 describe("render - GtkConstraint lifecycle", () => {
+    it("removes constraints before unmounting their entire layout subtree", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        const { unmount } = await render(<WidthBox boxRef={boxRef} constant={100} />);
+        const layout = layoutFrom(boxRef);
+        const constraint = onlyConstraint(boxRef);
+
+        await unmount();
+
+        expect(collectConstraints(layout)).toHaveLength(0);
+        expect(constraint.isAttached()).toBe(false);
+    });
+
     it("recreates the constraint when its key changes with a construct-only prop", async () => {
         const boxRef = createRef<Gtk.Box>();
         const { rerender } = await render(<WidthBox boxRef={boxRef} constant={100} />);
@@ -562,6 +584,41 @@ describe("render - GtkConstraintLayout vfl", () => {
         expect(initial).toBeGreaterThanOrEqual(5);
         await rerender(<VflBox boxRef={boxRef} lines={WIDER_VFL_LINES} />);
         expect(collectConstraints(layoutFrom(boxRef)).length).toBeGreaterThan(initial);
+    });
+
+    it("removes only its described constraints when the prop goes away", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        const constraintRef = createRef<Gtk.Constraint>();
+        const constraints = (
+            <GtkConstraint
+                ref={constraintRef}
+                targetAttribute={A.WIDTH}
+                relation={R.GE}
+                constant={0}
+                strength={S.REQUIRED}
+            />
+        );
+        const { rerender } = await render(<VflBox boxRef={boxRef} lines={VFL_LINES} constraints={constraints} />);
+        const layout = layoutFrom(boxRef);
+        const independent = constraintRef.current;
+        expect(independent?.isAttached()).toBe(true);
+        expect(collectConstraints(layout).length).toBeGreaterThan(1);
+        expect(collectConstraints(layout)).toContain(independent);
+        await rerender(
+            <VflBox boxRef={boxRef} lines={VFL_LINES} constraints={constraints} hasDescription={false} />,
+        );
+        const remaining = onlyConstraint(boxRef);
+        expect(remaining).toBe(independent);
+        expect(remaining.isAttached()).toBe(true);
+    });
+
+    it("releases described constraints when the entire layout subtree unmounts", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        const { unmount } = await render(<VflBox boxRef={boxRef} lines={VFL_LINES} />);
+        const layout = layoutFrom(boxRef);
+        expect(collectConstraints(layout).length).toBeGreaterThan(0);
+        await unmount();
+        expect(collectConstraints(layout)).toEqual([]);
     });
 
     it("rejects a description that names an unknown view", async () => {
@@ -713,16 +770,18 @@ describe("render - GtkOverlayLayoutChild", () => {
         expect(button).toHaveObjectProperty("parent", overlay);
     });
 
-    it("toggles clipOverlay in place", async () => {
+    it("toggles clipOverlay while preserving the button and its parent", async () => {
         const overlayRef = createRef<Gtk.Overlay>();
         const { rerender } = await render(<ClippedOverlayApp overlayRef={overlayRef} shouldClip={false} />);
         const overlay = overlayRef.current as Gtk.Overlay;
         const button = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Clipped" });
-        const addOverlay = vi.spyOn(overlay, "addOverlay");
+        expect(button).toHaveObjectProperty("parent", overlay);
         expect(overlay.getClipOverlay(button)).toBe(false);
         await rerender(<ClippedOverlayApp overlayRef={overlayRef} shouldClip={true} />);
+        expect(overlayRef.current).toBe(overlay);
+        expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Clipped" })).toBe(button);
+        expect(button).toHaveObjectProperty("parent", overlay);
         expect(overlay.getClipOverlay(button)).toBe(true);
-        expect(addOverlay).not.toHaveBeenCalled();
     });
 
     it("keeps the main child mounted when an overlay appears and disappears", async () => {
@@ -849,6 +908,34 @@ describe("render - AdwMultiLayoutView", () => {
 });
 
 describe("render - SizeGroup widgets", () => {
+    it("replaces equally configured widget instances in a group", async () => {
+        const first = createRef<Gtk.Label>();
+        const second = createRef<Gtk.Label>();
+        const group = createRef<Gtk.SizeGroup>();
+        const view = (widgets: Gtk.Widget[]): ReactElement => (
+            <GtkBox>
+                <GtkSizeGroup ref={group} widgets={widgets} />
+                <GtkLabel ref={first} label="Same" />
+                <GtkLabel ref={second} label="Same" />
+            </GtkBox>
+        );
+        const { rerender } = await render(view([]));
+        const firstWidget = first.current;
+        const secondWidget = second.current;
+
+        if (firstWidget === null || secondWidget === null) {
+            throw new Error("Labels did not mount");
+        }
+
+        for (const widget of [firstWidget, firstWidget, secondWidget]) {
+            await rerender(view([widget]));
+            expect(group.current?.getWidgets()).toHaveLength(1);
+            expect(group.current?.getWidgets()[0]).toBe(widget);
+        }
+        await rerender(view([]));
+        expect(group.current?.getWidgets()).toEqual([]);
+    });
+
     it("stretches every member to the widest member's natural size", async () => {
         await expectGroupOfTwoIsWide();
     });

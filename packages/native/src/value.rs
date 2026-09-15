@@ -3,7 +3,7 @@ use std::ffi::c_void;
 use napi::bindgen_prelude::*;
 use napi::{Env, ValueType};
 
-use crate::handle::{Handle, INVALIDATED_HANDLE};
+use crate::handle::{Handle, HandleClass, INVALIDATED_HANDLE};
 
 mod closure;
 mod view;
@@ -32,9 +32,28 @@ pub fn handle_ptr_checked(
     type_name: &str,
     check: impl FnOnce(&Handle) -> anyhow::Result<()>,
 ) -> anyhow::Result<*mut c_void> {
+    extract_handle_ptr(value, type_name, |handle| {
+        anyhow::ensure!(
+            handle.class() != HandleClass::Function,
+            "The {type_name} handle references a function instead of data memory"
+        );
+        check(handle)
+    })
+}
+
+pub fn opaque_ptr(value: Unknown<'_>, type_name: &str) -> anyhow::Result<*mut c_void> {
+    extract_handle_ptr(value, type_name, |_| Ok(()))
+}
+
+fn extract_handle_ptr(
+    value: Unknown<'_>,
+    type_name: &str,
+    check: impl FnOnce(&Handle) -> anyhow::Result<()>,
+) -> anyhow::Result<*mut c_void> {
     match value.get_type()? {
         ValueType::External => {
             let external: &External<Handle> = read_napi(value)?;
+            external.retain_lease()?;
             anyhow::ensure!(
                 !external.is_invalidated(),
                 "The {type_name} handle refers to nothing: {INVALIDATED_HANDLE}"
@@ -85,12 +104,13 @@ pub unsafe fn js_byte_array(env: &Env, data: *const u8, len: usize) -> Result<Un
     checked_array_length(len)?;
 
     let bytes = if len == 0 || data.is_null() {
-        Vec::new()
+        &[]
     } else {
-        unsafe { std::slice::from_raw_parts(data, len) }.to_vec()
+        unsafe { std::slice::from_raw_parts(data, len) }
     };
-
-    Uint8Array::new(bytes).into_unknown(env)
+    let mut output = Uint8ArraySlice::copy_from(env, bytes)?;
+    unsafe { output.as_mut() }.copy_from_slice(bytes);
+    output.into_unknown(env)
 }
 
 pub fn js_array<'e>(env: &'e Env, items: Vec<Unknown<'e>>) -> Result<Unknown<'e>> {

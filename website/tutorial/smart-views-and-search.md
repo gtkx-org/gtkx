@@ -4,13 +4,11 @@ description: "Derive All Tasks, Today, Important, and Trash, count them, and fil
 
 # Smart Views, Filters, and Search
 
-In [A Layout That Collapses](/tutorial/an-adaptive-layout) the two panes learned to fold into one on a narrow window, and the content pane learned what to show when nothing is selected.
-
-The sidebar reaches a list, but not everything due today, everything you starred, or everything you deleted. None of that needs new state. A task already carries `due`, `important`, and `deleted`, so each view is a filter over the array you have.
+The adaptive layout from [A Layout That Collapses](/tutorial/an-adaptive-layout) is ready for more views. This chapter adds All Tasks, Today, Important, and Trash to the sidebar, then filters and searches the selected view. Each view derives from the existing tasks.
 
 ## A selection that is not always a list
 
-`Selection` had one shape, so the sidebar could compare `selection.listId` and be done. A smart view is a selection with no list behind it, so the union gets a second variant.
+Extend `Selection` to describe a smart view as well as a user list.
 
 Add them to `src/types.ts`:
 
@@ -23,11 +21,7 @@ Add them to `src/types.ts`:
 +export type Filter = "all" | "open" | "done";
 ```
 
-`Filter` goes in the same edit because the header gets a filter later on this page.
-
-`Selection` is the `Tasks` route's param type, so widening the union widens what the route can carry. The `navigate` call the sidebar already makes takes a smart view without a second code path, and a screen reading `route.params` gets the wider type from the same declaration.
-
-That breaks every expression that read `selection.listId`: the active sidebar row, the title the `Tasks` screen puts on its page, and the list a new task joins. Each has to handle both variants now. These are questions about your data, not a component's job.
+`Selection` remains the `Tasks` route's param type. Update the selected sidebar row, page title, and destination for new tasks to handle both variants. `Filter` will control the header's All, Open, and Done choices.
 
 ## Derived data belongs in a function
 
@@ -102,9 +96,7 @@ export const visibleTasks = (tasks: Task[], selection: Selection, options: Visib
         .sort((a, b) => a.position - b.position);
 ```
 
-The independent checks compose into one visible list. Trash is the only view that shows deleted tasks, so it is the only one that ignores the `deleted` flag instead of excluding on it. The `switch` has no `default` branch on purpose: add a smart view to the union and TypeScript reports that this function no longer returns on every path, so you find out at compile time.
-
-`.filter` returns a fresh array, so sorting it in place is safe. Position is the manual order a task carries. Sorting by due date or title arrives with the preferences in [Preferences and the System Theme](/tutorial/preferences-and-theming).
+Trash selects deleted tasks; the other views exclude them. The query searches titles and notes, and the filter selects completion state. Results retain the manual `position` order. Sorting by due date or title arrives in [Preferences and the System Theme](/tutorial/preferences-and-theming).
 
 `isToday` is about dates rather than tasks, so it goes in `src/format.ts` beside `escapeMarkup`:
 
@@ -132,7 +124,7 @@ const lists = useStore((state) => state.lists);
 const visible = visibleTasks(tasks, selection, { query: searchQuery, filter });
 ```
 
-Do not move that work into the selector. Zustand uses the selector result as React's external-store snapshot, which React compares with `Object.is`. `state.tasks` is the same array object until something writes to it, so the comparison holds. A selector that builds a fresh array or object produces a different snapshot even when the store has not changed, which can trigger an infinite render loop in zustand 5.
+Keep the derived arrays outside these store selectors. Zustand requires stable selector results; its [computed selector guidance](https://zustand.docs.pmnd.rs/learn/guides/prevent-rerenders-with-use-shallow) covers that constraint and `useShallow` when you need a computed selection.
 
 ## Counting what is still open
 
@@ -208,7 +200,7 @@ const buildEntries = (lists: TaskList[], counts: SidebarCounts): Entry[] => [
 ];
 ```
 
-Trash sits last because that is where GNOME puts it. The icon names are standard symbolic ones your icon theme already ships, so they need no assets from you.
+Place Trash after the user's lists. These entries use symbolic icons from the system icon theme.
 
 An entry carries the `Selection` it stands for, so the row that draws it and the `navigate` behind it read the same value.
 
@@ -230,7 +222,7 @@ export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lis
 };
 ```
 
-`useSelection` returns `null` while the content stack is empty, so `activeKey` is nullable and no entry can match it. `findIndex` then comes back `-1`, which `selectedIndex` already reads as no row. The sync between GTK4's own selection and the navigation state is the one you wrote in [Lists and a Sidebar](/tutorial/lists-and-the-sidebar) and leaned on in [A Layout That Collapses](/tutorial/an-adaptive-layout), and nothing about it changes here. Only what feeds it does: keys instead of list ids.
+When the content stack is empty, `activeIndex` is `-1`, so `selectedIndex` clears the native selection. Otherwise, selection keys match the current route to its sidebar row.
 
 `onRowSelected` looks up an entry rather than a list, and navigates to whatever selection that entry carries:
 
@@ -281,7 +273,7 @@ Each row now picks its prefix and gets a badge:
 ))}
 ```
 
-`dimmed` mutes the badge against the row title, since a count is secondary. `numeric` asks the font for tabular figures, where every digit takes the same width, so a badge going from 9 to 10 to 9 does not make the row jitter. A count of zero renders no badge: a slot given `undefined` mounts nothing.
+`dimmed` makes the badge secondary to the title, and `numeric` gives its digits equal width. A zero count leaves the `suffix` slot empty.
 
 The imports the file needs now:
 
@@ -298,8 +290,6 @@ The imports the file needs now:
 +import type { Selection, TaskList } from "../types.js";
 ```
 
-`Entry` names both `Selection` and `TaskList`, so this file imports your own types for the first time.
-
 The title the `Tasks` screen asks for takes the same treatment. In `src/components/window.tsx`:
 
 ```diff
@@ -311,7 +301,7 @@ The title the `Tasks` screen asks for takes the same treatment. In `src/componen
  })}
 ```
 
-The view the app launches on needs rethinking too. A default selection is a default for the route, so it is `initialParams` rather than a field, and the value earns a name of its own in `src/navigation.ts`, since the commands in [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts) reach for it again:
+Make All Tasks the initial route selection. Define it in `src/navigation.ts` so later commands can reuse it:
 
 ```diff
  export type RootParamList = {
@@ -334,11 +324,9 @@ Then in `src/components/window.tsx`:
 +initialParams={ALL_TASKS}
 ```
 
-All Tasks is now the launch view. Personal was the only sensible default while lists were the only thing to select. Now that a smart view can span every list, opening on everything you have is a better landing.
-
 ## Filtering the visible list
 
-A view answers which tasks, and a filter answers in what state. They are different questions, so they get different controls: the view is the sidebar, the filter is the header.
+The header filter narrows the selected view to all, open, or completed tasks.
 
 Add it to the UI slice in `src/store/ui.ts`:
 
@@ -358,9 +346,9 @@ Add it to the UI slice in `src/store/ui.ts`:
 +    setFilter: (filter) => set({ filter }),
 ```
 
-`Filter` is the first type this slice borrows from your own model, so `import type { Filter } from "../types.js";` joins the imports at the top of the file.
+Add `import type { Filter } from "../types.js";` to the imports.
 
-The filter is what the interface is currently doing, so it lives in the UI slice, which `partialize` excludes, and it starts at All on every launch. The sort order in [Preferences and the System Theme](/tutorial/preferences-and-theming) is a choice you made about the application, so it goes to GSettings and persists. Decide which kind a piece of state is before choosing where it lives.
+Keep the filter in the UI slice, which persistence excludes, so every launch starts on All. The persistent sort preference comes later in [Preferences and the System Theme](/tutorial/preferences-and-theming).
 
 Pass it through in `src/components/task-list.tsx`:
 
@@ -375,9 +363,7 @@ Pass it through in `src/components/task-list.tsx`:
 
 ## Widgets that live in a header bar
 
-The filter control belongs in the `Tasks` screen's header bar, and a screen's header bar is described by its `options`. Those options are a plain object, or a plain callback returning one. No hooks run inside them, and it is `Window` that writes them, so the closure sees only what `Window` itself has read. Put a control that tracks live state in there and `Window` has to subscribe to that state: flip the filter and the whole window renders again, navigator and screens included, to redraw one segmented control.
-
-**A header widget that shows live state is its own component.** The subscription then sits where the widget is, and the option holds an element that never changes.
+The screen's `options` accepts elements for its header slots. Give the filter its own component so it can subscribe to the store without adding a subscription to `Window`. Hooks belong in that component, not in the options callback.
 
 Create `src/components/task-filter.tsx`:
 
@@ -405,9 +391,9 @@ export const TaskFilter = () => {
 };
 ```
 
-`AdwToggleGroup` is the Adwaita segmented control. Each `AdwToggle` carries a `name`, and the group reports the active one through its `active-name` property. Reading `activeName` from the store and writing it back from `onNotifyActiveName` is the controlled-widget pairing you used for the completion checkbox in [Completing, Starring, and Deleting](/tutorial/completing-and-deleting): the value prop says what should be shown, the signal reports what the widget did.
+`AdwToggleGroup` displays the named toggles as a segmented control. Pair `activeName` with `onNotifyActiveName` to keep the native selection and store filter in sync.
 
-The guard exists because `onNotify` handlers hand you the raw property value, `string | null` here. `Filter` is narrower than `string`, so the check is what makes the assignment safe. It is a genuine type guard, so no cast appears in this file.
+The handler narrows the native string value to one of the app's three filter names.
 
 `headerTitle` puts a widget where the page title would be drawn. In `src/components/window.tsx`:
 
@@ -420,7 +406,7 @@ The guard exists because `onNotify` handlers hand you the raw property value, `s
  })}
 ```
 
-`title` stays even though the bar no longer draws it, because it names the page, and the back button reads that name once the layout is collapsed. It is also the one option here that does read live state through `Window`, in `lists`. That is fine: `lists` changes when you add or rename a list, not while you use the app.
+Keep `title` to name the page for navigation, even though the segmented control occupies its header title slot.
 
 ## Searching titles and notes
 
@@ -454,7 +440,7 @@ More fields in `src/store/ui.ts`:
 
 `searchMode` is whether the bar is revealed, and `searchQuery` is what is in it. `resetSearch` clears both together, since switching views with a stale search still applied would show an empty pane for no visible reason.
 
-Nothing calls it yet. Switching views is one action with two halves, and the sidebar row that starts it is where both belong:
+Call `resetSearch` when the sidebar selects a view:
 
 ```tsx
 // src/components/sidebar.tsx
@@ -473,7 +459,7 @@ Nothing calls it yet. Switching views is one action with two halves, and the sid
                 }}
 ```
 
-Clearing the search belongs to the act of choosing a view, not to the screen that shows one. An effect in `TasksScreen` watching its own params would look equivalent and is not: effects also run on mount, so the app would clear the search once at every startup. Writing to a persisted store on startup means writing to disk on startup, which fails on any machine where that directory is not yet writable, and it takes the whole app down with it.
+The selection handler clears the search and then navigates. Keeping those steps together avoids a separate screen effect for the same interaction.
 
 The key does the other half, in `src/components/tasks-screen.tsx`:
 
@@ -493,9 +479,7 @@ export const TasksScreen = ({ route }: SplitViewScreenProps<RootParamList, "Task
 }; // [!code ++]
 ```
 
-`navigate("Tasks", entry.selection)` keeps the same route on the stack and swaps its params, so React sees the same `TaskList` in the same position and updates it in place, scroll position and half-typed add row and all. A changed key throws that tree away and mounts a fresh one, so every view opens at the top.
-
-`selectionKey` earns its second job here. One string stands for a whole selection, which makes it usable as a React key, where a fresh params object holding the same values would look like a change and throw the list away for nothing.
+Navigating to a different selection updates the existing route's params. Keying `TaskList` by that selection gives each view a fresh scroll position and add row. See React's [state reset guidance](https://react.dev/learn/preserving-and-resetting-state#resetting-a-form-with-a-key) for how keys control this reset.
 
 The bar itself goes above the scroller in `src/components/task-list.tsx`, so it pushes the list down rather than floating over it:
 
@@ -521,13 +505,13 @@ The bar itself goes above the scroller in `src/components/task-list.tsx`, so it 
 
 `GtkBox`, `GtkSearchBar`, and `GtkSearchEntry` join the import from `@gtkx/jsx/gtk`, and `searchMode`, `searchQuery`, and their two setters come off the store the way `filter` did.
 
-`GtkSearchBar` is a revealer with GNOME's search behavior built in, including dismissal on Escape. That dismissal is why `searchModeEnabled` is paired with `onNotifySearchModeEnabled`: the bar closes itself, and if that never reached the store the next render would reopen it. `?? false` handles the nullable notify value.
+`GtkSearchBar` handles native search dismissal, including Escape. Pair `searchModeEnabled` with `onNotifySearchModeEnabled` so closing the bar also updates the store.
 
 Escape is also the key that leaves a page, which the navigator answers. The two do not collide: a key event reaches the focused widget first, so while you are typing in the search entry Escape closes the bar and travels no further. With the bar gone it is the page's key again, the one that took you back to the sidebar in [A Layout That Collapses](/tutorial/an-adaptive-layout).
 
-`GtkSearchEntry` emits `search-changed` on a short delay rather than on every keystroke, so a long query does not refilter the array once per character.
+`GtkSearchEntry` delays `search-changed` while typing, so the query follows GTK's search timing.
 
-The button that reveals it reads `searchMode` to know what to write back, which is live state, so it is a component of its own for the reason the filter is. Create `src/components/search-button.tsx`:
+Keep the search button's store subscription in its own header component. Create `src/components/search-button.tsx`:
 
 ```tsx
 import { GtkButton } from "@gtkx/jsx/gtk";
@@ -624,8 +608,6 @@ const empty = emptyState(selection, searchQuery);
 const listId = addListId(selection, lists);
 ```
 
-Pure functions over selected arrays and one prop. No new state, and nothing written to disk.
-
 `listId` is the last of the expressions the union broke. The add row still reads `selection.listId`, which no longer type-checks and would file the task under the wrong list from a smart view, so point it at the derived value:
 
 ```diff
@@ -647,9 +629,9 @@ Save, and the sidebar in the open window redraws: All Tasks, Today, Important, y
 - Click **Today**. Only tasks due today are listed. Click **Trash**, and the task you deleted earlier is there, with a badge counting it.
 - Set the header filter to **Done**, and the list narrows to completed tasks. Set it to **Open** and they disappear. Switch to another view and the filter stays where you put it.
 - Click the search button and type `report`. The list narrows as you type. Type `zzz`: the card empties and the note reads **No Results**, with your query quoted back.
-- With the search still open, click another view in the sidebar. The bar closes and the query is gone, because the screen saw its params change. Click **Trash** with nothing in it and the note reads **Trash Is Empty** instead.
+- With the search still open, click another view in the sidebar. Its selection handler closes the bar and clears the query. Click **Trash** with nothing in it and the note reads **Trash Is Empty** instead.
 
-`filter` joined the UI slice on this page, so confirm the new field inherited the exclusion you established in [Lists and a Sidebar](/tutorial/lists-and-the-sidebar). Leave it on **Done**, quit the app, and start it again: it comes back on **All**. The view comes back on All Tasks for a reason of its own, since navigation state is never written to disk either, so every launch starts at the `initialParams` you just changed.
+Leave the filter on **Done**, then restart the app. It returns to **All** because the UI slice is excluded from persistence. Navigation state is also temporary in this app, so the selected view returns to All Tasks.
 
 ## Checkpoint
 

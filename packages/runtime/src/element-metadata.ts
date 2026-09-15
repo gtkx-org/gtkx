@@ -6,19 +6,20 @@ const state = { version: 0 };
 
 const registerElementMetadata = (
     name: string,
-    _parent: string | undefined,
     ownSignals: Record<string, string>,
     ownProperties: Record<string, ElementPropertyEntry>,
-): string => {
+): void => {
     registeredElementSignals[name] = ownSignals;
     registeredElementProperties[name] = ownProperties;
     state.version += 1;
-
-    return name;
 };
 
 const elementMetadataVersion = (): number => state.version;
 
-/** @internal */
-export { type ElementPropertyEntry, registerElementMetadata };
-export { elementMetadataVersion, registeredElementProperties, registeredElementSignals };
+export {
+    type ElementPropertyEntry,
+    registerElementMetadata,
+    elementMetadataVersion,
+    registeredElementProperties,
+    registeredElementSignals,
+};

@@ -5,7 +5,7 @@ description: "Animate Adwaita and GTK4 widgets in a GNOME app with GTKX's React 
 
 # Animations
 
-`@gtkx/animated` brings [React Spring](https://www.react-spring.dev) to GTKX's native GNOME applications. It uses React Spring's engine with a GTK target, which lets the same primitives animate both libadwaita application surfaces and their underlying GTK4 widgets. The hooks and components are the ones the React Spring docs describe, and the `animated` components are GTKX widgets whose props accept springs. It installs separately:
+`@gtkx/animated` adapts [React Spring](https://www.react-spring.dev) to GTKX. Learn how to create and control springs in the React Spring docs; this guide covers how those values reach native GTKX elements. Install the package separately:
 
 ```bash
 npm install @gtkx/animated@beta
@@ -13,7 +13,7 @@ npm install @gtkx/animated@beta
 
 ## Animated components
 
-`animated(Component)` returns the same component with props that also take a `SpringValue` or an `Interpolation`. Wrap an element once, at module scope, and hand the result the values a hook returns:
+`animated(Component)` wraps a GTKX element so its mutable props accept values from React Spring. Create the wrapper at module scope, then pass it the values a hook returns:
 
 ```tsx
 import { animated, useSpring } from "@gtkx/animated";
@@ -28,11 +28,11 @@ export const FadeIn = () => {
 };
 ```
 
-This works for every generated JSX element, whichever library it comes from, and for components of your own. The wrapper of a given component is created once and reused, so wrapping the same component again returns the same wrapper. Wrap at module scope all the same: the React Hooks lint rule flags a component created during render, and a component *defined* during render gets a fresh wrapper each time, which remounts it on every render.
+This works for every generated JSX element and for components of your own. Keeping the wrapper at module scope also gives React a stable component type, so it does not remount between renders.
 
 The call form also works for elements that are not widgets, such as `GtkAdjustment`, and components of your own, while letting a production bundle retain only the components it reaches.
 
-Each frame, the current values are written straight onto the widget through its `ref`, so the component does not re-render while the spring runs. Every GObject property a widget exposes as a prop can be animated this way: `opacity`, the margins, `widthRequest` and `heightRequest`, `spacing`, a `Gtk.Adjustment`'s `value`, a progress bar's `fraction`, and so on. A `label` or a text child can be an interpolation too:
+Each frame, the current values are written straight onto the widget through its `ref`, so the component does not re-render while the spring runs. Writable GObject props such as `opacity`, margins, size requests, and adjustment values can be animated this way. Construct-only props remain static, and TypeScript rejects springs passed to them. Labels and text children also accept animated values:
 
 ```tsx
 const { count } = useSpring({ from: { count: 0 }, to: { count: 100 } });
@@ -110,39 +110,13 @@ export const Slide = ({ isOpen }: { isOpen: boolean }) => {
 
 Elsewhere, animate the margins, the size requests, a `Gtk.Paned`'s `position`, or a CSS `transform` through `style`, which moves what the widget paints without disturbing the layout around it.
 
-## Transitions and the rest of React Spring
+## React Spring APIs
 
-`useTransition` mounts and unmounts widgets with enter and leave animations, `useTrail` staggers a list, `useSprings` drives several springs at once, `useChain` sequences them, and `useSpringRef` hands you imperative control. The `Spring`, `Trail`, and `Transition` components are the render-prop forms. `config`, `easings`, `to`, `SpringValue`, `Controller`, and the types are all exported from `@gtkx/animated`:
-
-```tsx
-import { animated, useTransition } from "@gtkx/animated";
-import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
-
-const AnimatedLabel = animated(GtkLabel);
-
-export const Toasts = ({ messages }: { messages: string[] }) => {
-    const transitions = useTransition(messages, {
-        from: { opacity: 0, marginTop: 16 },
-        enter: { opacity: 1, marginTop: 0 },
-        leave: { opacity: 0, marginTop: 16 },
-    });
-
-    return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            {transitions((styles, message) => (
-                <AnimatedLabel opacity={styles.opacity} marginTop={styles.marginTop} label={message} />
-            ))}
-        </GtkBox>
-    );
-};
-```
-
-The hooks that read the DOM, `useScroll`, `useResize`, and `useInView`, have no GTK counterpart and are not exported.
+`@gtkx/animated` re-exports React Spring's platform-neutral APIs. Use the [React Spring documentation](https://www.react-spring.dev) to choose and configure hooks, transitions, and controllers, then pass their animated values to GTKX props as shown above. Browser hooks that depend on the DOM have no GTK counterpart and are not exported.
 
 ## The frame clock
 
-Frames come from GTK's frame clock: animations advance in the update phase of the newest mapped window's clock, so writes land before that window lays out and paints, in step with the display. When the driving window goes away, another mapped window takes over; when no window is mapped, or the clock stops ticking, a timer paces the frames instead, so a spring always reaches its target and its `onRest` always fires.
+Frames advance during the update phase of a mapped window's GTK frame clock, before layout and painting. GTKX keeps using that window while it can supply frames, switching to another mapped window or a timer when necessary.
 
 ## Reduced motion
 

@@ -1,15 +1,15 @@
 import type { Config } from "@gtkx/config";
 import { mergeOmittedProps } from "@gtkx/codegen";
-import { writeDocs } from "@gtkx/codegen/internal";
-import { isAgentReferenceEnabled, resolveOmittedProps } from "@gtkx/config/internal";
+import { readBuiltinElementsForDocs, writeDocs } from "@gtkx/codegen/internal";
+import { isAgentReferenceEnabled, resolveElementProps, resolveOmittedProps } from "@gtkx/config/internal";
 import { join } from "node:path";
-import { resolveDocsElements } from "../internal/docs-elements.js";
 
 type WriteReferenceOptions = {
     root: string;
     config: Config;
     girPath: string[];
     libraries: string[];
+    declarationDir: string;
     isForced?: boolean;
 };
 
@@ -29,15 +29,17 @@ const writeReference = async (options: WriteReferenceOptions): Promise<Reference
         return SKIPPED;
     }
 
-    const builtin = await resolveDocsElements(root);
+    const builtin = await readBuiltinElementsForDocs();
 
     const { isRegenerated, namespaces } = writeDocs({
         libraries,
         girPath,
         outDir: join(root, REFERENCE_PATH),
+        resolveFrom: root,
+        declarationDir: options.declarationDir,
         basePath: REFERENCE_PATH,
         linkStyle: "file",
-        props: builtin.props,
+        props: { ...builtin.props, ...resolveElementProps(config.elements) },
         acceptedChildTypes: builtin.acceptedChildTypes,
         omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
         isForced: options.isForced === true,

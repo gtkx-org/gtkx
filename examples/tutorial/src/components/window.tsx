@@ -4,20 +4,20 @@ import { useTranslation } from "@gtkx/i18n";
 import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage, AdwToastOverlay } from "@gtkx/jsx/adw";
 import { GtkButton } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
-import { quit, useApplication, useBindSetting, useSetting } from "@gtkx/react";
-import { useCallback, useEffect, useRef } from "react";
+import { quit, useBindSetting, useSetting } from "@gtkx/react";
+import { useEffect, useRef, useState } from "react";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useReminders } from "../hooks/use-reminders.js";
-import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
-import { buildReminder } from "../notifications.js";
+import { ALL_TASKS, navigationRef, openPendingTask, Split } from "../navigation.js";
+import { ReminderNotification } from "../notifications.js";
 import { useStore } from "../store/index.js";
 import { selectionTitle } from "../store/selectors.js";
 import { applyColorScheme } from "../theme.js";
-import type { Task } from "../types.js";
 import { AppShortcuts } from "./app-shortcuts.js";
 import { Dialogs } from "./dialogs.js";
 import { MainMenu } from "./main-menu.js";
 import { SearchButton } from "./search-button.js";
+import { useAppSettings } from "./settings.js";
 import { Sidebar } from "./sidebar.js";
 import { TaskButtons } from "./task-buttons.js";
 import { TaskFilter } from "./task-filter.js";
@@ -40,35 +40,34 @@ const NothingSelected = () => {
 
 export const Window = () => {
     const { t } = useTranslation();
-    const application = useApplication();
     const lists = useStore((state) => state.lists);
     const tasks = useStore((state) => state.tasks);
     const collapsed = useStore((state) => state.collapsed);
     const setCollapsed = useStore((state) => state.setCollapsed);
     const showDialog = useStore((state) => state.showDialog);
 
-    const [colorScheme] = useSetting(schema, "color-scheme");
-    const [reminderMinutes] = useSetting(schema, "reminder-minutes");
-    const windowRef = useRef<Adw.ApplicationWindow | null>(null);
+    const settings = useAppSettings();
+    const [colorScheme] = useSetting(settings, schema, "color-scheme");
+    const [reminderMinutes] = useSetting(settings, schema, "reminder-minutes");
+    const [window, setWindow] = useState<Adw.ApplicationWindow | null>(null);
     const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
 
-    useBindSetting({ schema, key: "window-width", object: windowRef, property: "defaultWidth" });
-    useBindSetting({ schema, key: "window-height", object: windowRef, property: "defaultHeight" });
+    useBindSetting({ settings, schema, key: "window-width", object: window, property: "defaultWidth" });
+    useBindSetting({ settings, schema, key: "window-height", object: window, property: "defaultHeight" });
 
     useEffect(() => {
         applyColorScheme(colorScheme);
     }, [colorScheme]);
 
-    const sendReminder = useCallback(
-        (task: Task) => application.sendNotification(task.id, buildReminder(task)),
-        [application],
-    );
-    useReminders(tasks, reminderMinutes, sendReminder);
+    const reminders = useReminders(tasks, reminderMinutes);
 
     return (
         <ToastProvider overlayRef={toastOverlayRef}>
+            {reminders.map((reminder) => (
+                <ReminderNotification key={`${reminder.id}:${reminder.due}`} {...reminder} />
+            ))}
             <AdwApplicationWindow
-                ref={windowRef}
+                ref={setWindow}
                 title={t("Tasks")}
                 widthRequest={360}
                 heightRequest={294}
@@ -84,7 +83,7 @@ export const Window = () => {
                 controllers={<AppShortcuts />}
             >
                 <AdwToastOverlay ref={toastOverlayRef}>
-                    <NavigationContainer ref={navigationRef}>
+                    <NavigationContainer ref={navigationRef} onReady={openPendingTask}>
                         <Split.Navigator
                             initialRouteName="Tasks"
                             collapsed={collapsed}

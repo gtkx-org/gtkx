@@ -3,20 +3,16 @@ import { t } from "@gtkx/i18n";
 import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { useSetting } from "@gtkx/react";
+import { useAppSettings } from "./settings.js";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useSortOrder } from "../hooks/use-sort-order.js";
-
-type Scheme = "default" | "light" | "dark";
-type Sort = "manual" | "due-date" | "title" | "created";
-
-const isScheme = (value: string): value is Scheme => value === "default" || value === "light" || value === "dark";
-const isSort = (value: string): value is Sort =>
-    value === "manual" || value === "due-date" || value === "title" || value === "created";
+import { colorSchemeItems, type ColorScheme, type SortOrder, sortOrderItems } from "../settings.js";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
-    const [scheme, setScheme] = useSetting(schema, "color-scheme");
+    const settings = useAppSettings();
+    const [scheme, setScheme] = useSetting(settings, schema, "color-scheme");
     const [sortOrder, setSortOrder] = useSortOrder();
-    const [reminderMinutes, setReminderMinutes] = useSetting(schema, "reminder-minutes");
+    const [reminderMinutes, setReminderMinutes] = useSetting(settings, schema, "reminder-minutes");
 
     return (
         <AdwPreferencesDialog onClosed={onClose} title={t("Preferences")}>
@@ -24,36 +20,23 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
                 <AdwPreferencesGroup title={t("Appearance")}>
                     <ComboRow
                         title={t("Theme")}
-                        items={[
-                            { id: "default", value: t("Follow system") },
-                            { id: "light", value: t("Light") },
-                            { id: "dark", value: t("Dark") },
-                        ]}
+                        items={colorSchemeItems()}
                         selectedId={scheme}
-                        onSelectionChanged={(id) => {
-                            if (isScheme(id)) setScheme(id);
-                        }}
+                        onSelectionChanged={(id) => setScheme(id as ColorScheme)}
                     />
                 </AdwPreferencesGroup>
                 <AdwPreferencesGroup title={t("Tasks")}>
                     <ComboRow
                         title={t("Sort order")}
-                        items={[
-                            { id: "manual", value: t("Manual") },
-                            { id: "due-date", value: t("Due date") },
-                            { id: "title", value: t("Title") },
-                            { id: "created", value: t("Date created") },
-                        ]}
+                        items={sortOrderItems()}
                         selectedId={sortOrder}
-                        onSelectionChanged={(id) => {
-                            if (isSort(id)) setSortOrder(id);
-                        }}
+                        onSelectionChanged={(id) => setSortOrder(id as SortOrder)}
                     />
                     <AdwSpinRow
                         title={t("Reminder lead time")}
                         subtitle={t("Minutes before a task is due")}
                         adjustment={<GtkAdjustment value={reminderMinutes} lower={0} upper={1440} stepIncrement={5} />}
-                        onNotifyValue={(value) => setReminderMinutes(value ?? 30)}
+                        onNotifyValue={(value) => setReminderMinutes(value as number)}
                     />
                 </AdwPreferencesGroup>
             </AdwPreferencesPage>

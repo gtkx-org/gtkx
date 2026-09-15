@@ -22,6 +22,21 @@ const useCounter = (initial: number) => {
 };
 
 describe("renderHook", () => {
+    it("accepts explicit undefined props while preserving omitted props", async () => {
+        const { result, rerender } = await renderHook<string | undefined, string | undefined>((value) => value, {
+            initialProps: "initial",
+        });
+
+        await rerender();
+        expect(result.current).toBe("initial");
+        await rerender(undefined);
+        expect(result.current).toBeUndefined();
+        await rerender("updated");
+        expect(result.current).toBe("updated");
+        await rerender();
+        expect(result.current).toBe("updated");
+    });
+
     it("returns the hook result and keeps it current as its state changes", async () => {
         const { result } = await renderHook(() => useState({ count: 0 }));
         expect(result.current[0]).toEqual({ count: 0 });

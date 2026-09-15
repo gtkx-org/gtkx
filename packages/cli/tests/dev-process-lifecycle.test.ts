@@ -5,7 +5,7 @@ import { mkdirSync, readdirSync, readFileSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { createCliProject, STORE_LIBRARIES } from "./cli-project.js";
+import { createCliProject, startCli, STORE_LIBRARIES } from "./cli-project.js";
 
 type ProcessIdentity = {
     pid: number;
@@ -24,6 +24,9 @@ const READY_MARKER = "gtkx-wrapper-ready";
 const OWNER_ENV = "GTKX_DEV_PROCESS_OWNER";
 const ENTRY_SOURCE = String.raw`process.stdout.write("${READY_MARKER}\n");
 setInterval(() => undefined, 1000);
+`;
+const BLOCKED_ENTRY_SOURCE = String.raw`process.stdout.write("${READY_MARKER}\n");
+Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0);
 `;
 
 const processIdentity = (pid: number): ProcessIdentity | undefined => {
@@ -102,6 +105,16 @@ const captureOutput = (child: ChildProcess): (() => string) => {
     return () => output;
 };
 
+const waitForReady = async (child: ChildProcess, output: () => string): Promise<void> => {
+    await waitUntil(() => {
+        if (child.exitCode !== null || child.signalCode !== null) {
+            throw new Error(output());
+        }
+
+        return output().includes(READY_MARKER);
+    });
+};
+
 const installCliBin = (nodeModules: string): void => {
     const packagePath = join(nodeModules, "@gtkx", "cli");
     const binPath = join(nodeModules, ".bin", "gtkx");
@@ -165,7 +178,7 @@ const expectWrapperShutdown = async (signal: "SIGTERM" | "SIGKILL"): Promise<voi
     const output = captureOutput(child);
 
     try {
-        await waitUntil(() => output().includes(READY_MARKER));
+        await waitForReady(child, output);
         const processes = ownedProcesses(owner);
         expect(processes.some((entry) => entry.pid === child.pid)).toBe(true);
         expect(processes.some((entry) => entry.args.some((argument) => argument.includes("gtkx-dev-runner")))).toBe(
@@ -181,6 +194,50 @@ const expectWrapperShutdown = async (signal: "SIGTERM" | "SIGKILL"): Promise<voi
     }
 };
 
+const expectDevShutdown = async (
+    entry: string,
+    signal: NodeJS.Signals,
+    target: "supervisor" | "runner",
+    exitCode: number,
+): Promise<void> => {
+    using project = createCliProject({
+        prefix: "gtkx-dev-shutdown-",
+        config: "export default { applicationId: \"com.gtkx.devshutdown\", " +
+            `libraries: ${JSON.stringify(STORE_LIBRARIES)} };\n`,
+        files: { "src/index.tsx": entry },
+        hasStore: true,
+    });
+    const owner = randomBytes(12).toString("hex");
+    const child = startCli(project, ["dev"], { [OWNER_ENV]: owner });
+    const output = captureOutput(child);
+
+    try {
+        await waitForReady(child, output);
+        const runner = ownedProcesses(owner).find((processEntry) =>
+            processEntry.args.some((argument) => argument.includes("gtkx-dev-runner")),
+        );
+
+        if (runner === undefined) {
+            throw new Error("Development runner did not start");
+        }
+
+        if (target === "runner") {
+            process.kill(runner.pid, signal);
+        } else {
+            child.kill(signal);
+        }
+
+        await waitUntil(() => child.exitCode !== null || child.signalCode !== null);
+        expect(child.exitCode).toBe(exitCode);
+        await expect.poll(() => isRunning(runner), { timeout: 2000 }).toBe(false);
+        await expect
+            .poll(() => ownedProcesses(owner).filter((processEntry) => isRunning(processEntry)), { timeout: 2000 })
+            .toEqual([]);
+    } finally {
+        await killOwned(owner);
+    }
+};
+
 describe("gtkx dev process ownership", () => {
     it("stops through a catchable npx wrapper signal", async () => {
         await expectWrapperShutdown("SIGTERM");
@@ -188,5 +245,21 @@ describe("gtkx dev process ownership", () => {
 
     it("stops when its npx wrapper is hard-killed", async () => {
         await expectWrapperShutdown("SIGKILL");
+    });
+
+    it("exits successfully after a graceful supervisor shutdown", async () => {
+        await expectDevShutdown(ENTRY_SOURCE, "SIGTERM", "supervisor", 0);
+    });
+
+    it("preserves the exit status of a signal-terminated runner", async () => {
+        await expectDevShutdown(ENTRY_SOURCE, "SIGKILL", "runner", 137);
+    });
+
+    it.each([
+        ["SIGINT", 130],
+        ["SIGTERM", 143],
+        ["SIGHUP", 129],
+    ] as const)("kills an unresponsive runner after %s shutdown", async (signal, exitCode) => {
+        await expectDevShutdown(BLOCKED_ENTRY_SOURCE, signal, "supervisor", exitCode);
     });
 });

@@ -28,7 +28,7 @@ Start with the principles and architecture overview to understand the required b
 
 ## Find the right place to contribute
 
-Changes often cross package boundaries. A binding issue can start in GIR parsing or generation; a prop update can pass through generated JSX metadata, the renderer, the TypeScript runtime, and the Rust bridge. The architecture pages explain that path so you can locate the layer responsible before editing.
+Changes often cross package boundaries. A binding issue can start in GIR parsing or generation; a prop update can pass through generated class metadata, the renderer, the TypeScript runtime, and the Rust bridge. The architecture pages explain that path so you can locate the layer responsible before editing.
 
 Documentation and examples are part of the project too. The website lives in `website/`, and the runnable applications in `examples/` demonstrate the public APIs. See [Development Setup](/contributing/development) for the corresponding commands.
 

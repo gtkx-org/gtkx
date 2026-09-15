@@ -73,9 +73,7 @@ const resolvePackage = (projectRoot: string, packageName: string): ResolvedPacka
         }
     }
 
-    const unscoped = packageName.replace(/^@[^/]+\//, "");
-
-    return loadPackage(join(projectRoot, "packages", unscoped, "package.json"), join(projectRoot, "node_modules"));
+    return null;
 };
 
 const canImport = (fromNodeModules: string, targetNodeModules: string): boolean =>

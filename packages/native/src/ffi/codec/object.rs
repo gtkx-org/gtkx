@@ -6,7 +6,6 @@ use glib::{self};
 
 use super::prelude::*;
 use crate::handle::{Handle, HandleClass};
-use crate::value::wrapper;
 
 unsafe fn keeps_own_construction_ref(gobject_ptr: *mut glib::gobject_ffi::GObject) -> bool {
     unsafe { glib::types::instance_of::<glib::InitiallyUnowned>(gobject_ptr.cast()) }
@@ -46,11 +45,6 @@ pub(crate) unsafe fn tracked_gobject_value(
 
     let object: glib::Object = unsafe { from_glib_full(gobject_ptr) };
 
-    if let Some(existing) = unsafe { wrapper::wrapper_value(env, gobject_ptr) } {
-        drop(object);
-        return Ok(existing.into_unknown(env)?);
-    }
-
     Ok(value::handle_to_unknown(
         env,
         Handle::decoded_gobject(object),
@@ -61,14 +55,19 @@ pub(crate) unsafe fn call_scoped_gobject_value(
     env: &Env,
     gobject_ptr: *mut glib::gobject_ffi::GObject,
 ) -> anyhow::Result<Unknown<'_>> {
-    if let Some(existing) = unsafe { wrapper::wrapper_value(env, gobject_ptr) } {
-        return Ok(existing.into_unknown(env)?);
-    }
-
     Ok(value::handle_to_unknown(
         env,
         Handle::borrowed_gobject(gobject_ptr),
     )?)
+}
+
+pub(super) unsafe extern "C" fn g_object_unref_wrapper(ptr: *mut c_void) {
+    if ptr.is_null() {
+        return;
+    }
+    unsafe {
+        glib::gobject_ffi::g_object_unref(ptr.cast::<glib::gobject_ffi::GObject>());
+    }
 }
 
 unsafe fn object_ref_full(ptr: *mut c_void) -> *mut c_void {
@@ -153,10 +152,11 @@ impl Encoder for ObjectCodec {
         Ok(())
     }
 
-    fn transfer_release(&self) -> Option<ffi::ReleaseKind> {
-        self.ownership
+    fn owned_release(&self) -> anyhow::Result<Option<ffi::ReleaseKind>> {
+        Ok(self
+            .ownership
             .is_full()
-            .then_some(ffi::ReleaseKind::ObjectUnref)
+            .then_some(ffi::ReleaseKind::ObjectUnref))
     }
 
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {

@@ -1,7 +1,8 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { Context, ImageSurface, RecordingSurface, Status, Surface, SurfaceType } from "@gtkx/cairo";
 import { GtkDrawingArea } from "@gtkx/jsx/gtk";
-import { render, waitFor } from "@gtkx/testing";
+import { render, screenshot, waitFor } from "@gtkx/testing";
+import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 
 type SurfaceClass = abstract new (...args: never[]) => Surface;
@@ -47,6 +48,37 @@ const drawOnce = async (): Promise<Frame> => {
 };
 
 describe("a drawing area rendered from React", () => {
+    it.each([null, undefined])("removes the drawing callback when changed to %s", async (drawFunc) => {
+        const areaRef = createRef<Gtk.DrawingArea>();
+        const frames: Frame[] = [];
+        const { rerender, container } = await render(
+            <GtkDrawingArea
+                ref={areaRef}
+                contentWidth={FRAME_SIZE}
+                contentHeight={FRAME_SIZE}
+                drawFunc={(_area, cr, width, height) => {
+                    frames.push(captureFrame(cr, width, height));
+                }}
+            />,
+        );
+
+        await waitFor(() => {
+            expect(frames.length).toBeGreaterThan(0);
+        });
+        await rerender(
+            <GtkDrawingArea
+                ref={areaRef}
+                contentWidth={FRAME_SIZE}
+                contentHeight={FRAME_SIZE}
+                drawFunc={drawFunc}
+            />,
+        );
+        const drawnFrames = frames.length;
+        areaRef.current?.queueDraw();
+        await screenshot(container);
+        expect(frames).toHaveLength(drawnFrames);
+    });
+
     it("hands the draw callback a Context whose target wraps as its concrete surface class", async () => {
         const frame = await drawOnce();
         expect(frame.cr).toBeInstanceOf(Context);

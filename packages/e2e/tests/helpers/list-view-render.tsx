@@ -1,9 +1,10 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { ReactElement, ReactNode, RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkColumnView, GtkGridView, GtkListView, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
+import { GtkButton, GtkColumnView, GtkGridView, GtkLabel, GtkListView, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
+import { createPortal } from "@gtkx/react";
 import { render } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, useState, useSyncExternalStore } from "react";
 
 type ViewOptions = {
     isSingleClickActivating?: boolean;
@@ -18,45 +19,112 @@ type ListViewOptions = ViewOptions & {
 const ITEM_NAMES = ["alpha", "beta", "gamma"];
 const BUTTON_LABEL = "Open";
 
-const setupChild = (object: GObject.Object, createChild: () => Gtk.Widget): void => {
-    if (object instanceof Gtk.ListItem) {
-        object.setChild(createChild());
-    }
+type ItemEntry = { host: Gtk.ListItem; key: string; item: GObject.Object | null };
+type ItemRenderer = (item: GObject.Object) => ReactNode;
+
+type ItemStore = {
+    getSnapshot: () => ItemEntry[];
+    subscribe: (listener: () => void) => () => void;
+    setup: (object: GObject.Object) => void;
+    bind: (object: GObject.Object) => void;
+    unbind: (object: GObject.Object) => void;
+    teardown: (object: GObject.Object) => void;
 };
 
-const setupListItem = (object: GObject.Object): void => {
-    setupChild(object, () => new Gtk.Label());
-};
+const createItemStore = (): ItemStore => {
+    let entries: ItemEntry[] = [];
+    let nextKey = 0;
+    const listeners: Set<() => void> = new Set();
 
-const setupButtonItem = (object: GObject.Object): void => {
-    setupChild(object, () => new Gtk.Button({ label: BUTTON_LABEL }));
-};
+    const update = (next: ItemEntry[]): void => {
+        entries = next;
 
-const getItemChild = (object: GObject.Object): Gtk.Widget | null =>
-    object instanceof Gtk.ListItem ? object.getChild() : null;
-
-const bindListItem = (object: GObject.Object): void => {
-    const child = getItemChild(object);
-    const item = object instanceof Gtk.ListItem ? object.getItem() : null;
-
-    if (child instanceof Gtk.Label && item instanceof Gtk.StringObject) {
-        child.setLabel(item.getString());
-    }
-};
-
-const itemFactory = (): ReactElement => <GtkSignalListItemFactory onSetup={setupListItem} onBind={bindListItem} />;
-
-const buttonFactory = (onClicked: () => void): ReactElement => {
-    const bindButtonItem = (object: GObject.Object): void => {
-        const child = getItemChild(object);
-
-        if (child instanceof Gtk.Button) {
-            child.connect("clicked", onClicked);
+        for (const listener of listeners) {
+            listener();
         }
     };
 
-    return <GtkSignalListItemFactory onSetup={setupButtonItem} onBind={bindButtonItem} />;
+    const setup = (object: GObject.Object): void => {
+        if (object instanceof Gtk.ListItem) {
+            update([...entries, { host: object, key: String(nextKey++), item: null }]);
+        }
+    };
+
+    const updateItem = (object: GObject.Object, item: GObject.Object | null): void => {
+        update(entries.map((entry) => entry.host === object ? { ...entry, item } : entry));
+    };
+
+    const bind = (object: GObject.Object): void => {
+        if (object instanceof Gtk.ListItem) {
+            updateItem(object, object.getItem());
+        }
+    };
+
+    const unbind = (object: GObject.Object): void => {
+        updateItem(object, null);
+    };
+
+    const teardown = (object: GObject.Object): void => {
+        update(entries.filter((entry) => entry.host !== object));
+    };
+
+    return {
+        getSnapshot: () => entries,
+        subscribe: (listener) => {
+            listeners.add(listener);
+
+            return () => {
+                listeners.delete(listener);
+            };
+        },
+        setup,
+        bind,
+        unbind,
+        teardown,
+    };
 };
+
+function ItemFactory({ renderItem }: { renderItem: ItemRenderer }): ReactNode {
+    const [store] = useState(createItemStore);
+    const entries = useSyncExternalStore(store.subscribe, store.getSnapshot);
+
+    return (
+        <>
+            <GtkSignalListItemFactory
+                onSetup={store.setup}
+                onBind={store.bind}
+                onUnbind={store.unbind}
+                onTeardown={store.teardown}
+            />
+            {entries.map((entry) => createPortal(
+                entry.item === null ? null : renderItem(entry.item), entry.host, entry.key,
+            ))}
+        </>
+    );
+}
+
+const renderLabel = (item: GObject.Object): ReactNode => (
+    item instanceof Gtk.StringObject ? <GtkLabel>{item.getString()}</GtkLabel> : null
+);
+
+const renderButton = (item: GObject.Object, onClicked: (name: string) => void): ReactNode => (
+    item instanceof Gtk.StringObject
+        ? (
+                <GtkButton
+                    label={BUTTON_LABEL}
+                    onClicked={() => {
+                        onClicked(item.getString());
+                    }}
+                />
+            )
+        : null
+);
+
+const itemFactory = (): ReactElement => <ItemFactory renderItem={renderLabel} />;
+
+const buttonFactory = (onClicked: (name: string) => void): ReactElement => (
+    <ItemFactory renderItem={(item) => renderButton(item, onClicked)} />
+);
 
 const viewProps = (options: ViewOptions): Record<string, unknown> => ({
     singleClickActivate: options.isSingleClickActivating ?? false,
@@ -101,4 +169,13 @@ const renderColumnView = async (
     return ref;
 };
 
-export { BUTTON_LABEL, ITEM_NAMES, buttonFactory, itemFactory, renderColumnView, renderGridView, renderListView };
+export {
+    BUTTON_LABEL,
+    ITEM_NAMES,
+    ItemFactory,
+    buttonFactory,
+    itemFactory,
+    renderColumnView,
+    renderGridView,
+    renderListView,
+};

@@ -2,6 +2,7 @@ import { sanitizeTypeIdentifier } from "@gtkx/utils";
 import type { CArrayType, TypeId } from "../../gir/type-id.js";
 import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { underlyingType } from "../../analysis/type-shape.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter } from "../../gir/parameter.js";
 import { recordInlineSize } from "./record-layout.js";
 import { isConstructibleRecord } from "./value-marshalable.js";
@@ -21,18 +22,8 @@ const isHandlePassedInPlace = (context: ModuleContext, parameter: GirParameter):
     );
 };
 
-const underlyingType = (context: ModuleContext, ref: TypeId): GirType | undefined => {
-    const type = context.library.typeFor(ref);
-
-    if (type?.kind !== "alias") {
-        return type;
-    }
-
-    return type.value.target === undefined ? undefined : underlyingType(context, type.value.target);
-};
-
 const underlyingParamKind = (context: ModuleContext, parameter: GirParameter): GirType["kind"] | undefined =>
-    parameter.type === undefined ? undefined : underlyingType(context, parameter.type)?.kind;
+    parameter.type === undefined ? undefined : underlyingType(context.library, parameter.type)?.kind;
 
 const resolvedTypeName = (context: ModuleContext, ref: TypeId | undefined): TypeName | undefined => {
     let current = ref;
@@ -69,7 +60,7 @@ const recordCallerOutAllocation = (
 
 const callerOutAllocation = (context: ModuleContext, parameter: GirParameter): CallerOutAllocation | undefined => {
     const name = resolvedTypeName(context, parameter.type);
-    const type = parameter.type === undefined ? undefined : underlyingType(context, parameter.type);
+    const type = parameter.type === undefined ? undefined : underlyingType(context.library, parameter.type);
 
     if (name === undefined || type === undefined) {
         return undefined;
@@ -109,7 +100,7 @@ const hasInlineElementStride = (context: ModuleContext, array: CArrayType): bool
         return false;
     }
 
-    const element = underlyingType(context, array.element);
+    const element = underlyingType(context.library, array.element);
 
     if (element === undefined) {
         return false;
@@ -149,7 +140,7 @@ const isFixedArrayCallerOut = (context: ModuleContext, parameter: GirParameter):
         return false;
     }
 
-    const type = parameter.type === undefined ? undefined : underlyingType(context, parameter.type);
+    const type = parameter.type === undefined ? undefined : underlyingType(context.library, parameter.type);
 
     return (
         type?.kind === "carray" &&
@@ -215,5 +206,4 @@ export {
     isRecordInout,
     isHandlePassing,
     renderCallerOutInstance,
-    underlyingType,
 };

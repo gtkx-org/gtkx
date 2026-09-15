@@ -17,6 +17,9 @@
         "dev": "gtkx dev",
         "build": "gtkx build",
         "codegen": "gtkx codegen",
+<% if (shouldIncludeTesting) { -%>
+        "test": "vitest run",
+<% } -%>
 <% if (isTypescript) { -%>
         "typecheck": "gtkx codegen && tsc",
 <% } -%>

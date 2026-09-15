@@ -1,11 +1,10 @@
 import { mergeOmittedProps, resolveGirPath, resolveLibraries } from "@gtkx/codegen";
-import { writeDocs } from "@gtkx/codegen/internal";
+import { readBuiltinElementsForDocs, writeDocs } from "@gtkx/codegen/internal";
 import { loadConfig } from "@gtkx/config";
-import { resolveOmittedProps } from "@gtkx/config/internal";
+import { resolveElementProps, resolveOmittedProps } from "@gtkx/config/internal";
 import { info, isPathInside } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
-import { resolveDocsElements } from "../internal/docs-elements.js";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
 const docs = defineCommand({
@@ -47,7 +46,7 @@ const docs = defineCommand({
             );
         }
 
-        const girPath = resolveGirPath(config.girPath);
+        const girPath = resolveGirPath(config.girPath, cwd);
 
         if (girPath.length === 0) {
             throw new Error(
@@ -60,14 +59,15 @@ const docs = defineCommand({
         const libraries = resolveLibraries(config.libraries);
         const startedAt = Date.now();
         const outDir = resolveOutDir(cwd, args.out);
-        const builtin = await resolveDocsElements(cwd);
+        const builtin = await readBuiltinElementsForDocs();
 
         const { isRegenerated, namespaces } = writeDocs({
             libraries,
             girPath,
             outDir,
+            resolveFrom: cwd,
             basePath: args["base-path"],
-            props: builtin.props,
+            props: { ...builtin.props, ...resolveElementProps(config.elements) },
             acceptedChildTypes: builtin.acceptedChildTypes,
             omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
             isForced: args.force,

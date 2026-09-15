@@ -1,4 +1,5 @@
 import { type InterfaceDescriptor, type ReplyError, sessionBus } from "@homebridge/dbus-native";
+import packageManifest from "../package.json" with { type: "json" };
 
 const NOTIFICATIONS_NAME = "org.freedesktop.Notifications";
 const NOTIFICATIONS_PATH = "/org/freedesktop/Notifications";
@@ -15,6 +16,7 @@ const DESCRIPTOR: InterfaceDescriptor = {
         ],
         CloseNotification: ["u", "", ["id"], []],
         GetCapabilities: ["", "as", [], ["capabilities"]],
+        GetServerInformation: ["", "ssss", [], ["name", "vendor", "version", "spec_version"]],
     },
     signals: {
         NotificationClosed: ["uu", "id", "reason"],
@@ -88,17 +90,36 @@ const startNotificationService = async (busAddress: string): Promise<() => void>
 
 class NotificationService extends EventTarget {
     private lastId = 0;
+    private readonly activeIds: Set<number> = new Set();
 
-    CloseNotification = (): void => undefined;
+    CloseNotification(id: number): Error | undefined {
+        if (!this.activeIds.delete(id)) {
+            return new Error("Unknown notification");
+        }
 
-    Notify(): number {
-        this.lastId += 1;
+        this.emit("NotificationClosed", id, 3);
 
-        return this.lastId;
+        return undefined;
+    }
+
+    emit(name: string, ...args: unknown[]): boolean {
+        return this.dispatchEvent(new CustomEvent(name, { detail: args }));
+    }
+
+    Notify(_appName: string, replacesId: number): number {
+        const id = replacesId === 0 ? this.lastId + 1 : replacesId;
+        this.lastId = Math.max(this.lastId, id);
+        this.activeIds.add(id);
+
+        return id;
     }
 
     GetCapabilities(): string[] {
-        return ["body", "actions"];
+        return [];
+    }
+
+    GetServerInformation(): string[] {
+        return ["GTKX Test Notifications", "GTKX", packageManifest.version, "1.3"];
     }
 }
 

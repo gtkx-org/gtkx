@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
+const EXPLICIT_LICENSE_PREFIX = "SEE LICENSE IN ";
 const LICENSE_FILE = /^(?:licen[cs]e|copying|notice)(?:[-._].*)?$/i;
 const COPYRIGHT_LINE = /^(?:Copyright\b|©)/;
 const MAX_COPYRIGHT_LINES = 20;
@@ -14,14 +15,17 @@ const readLicenseText = (path: string): string | null => {
     }
 };
 
-const licenseFilesIn = (dir: string): string[] =>
+const licenseFilesIn = (dir: string, explicitFile: string | null): string[] =>
     readdirSync(dir, { withFileTypes: true })
-        .filter((entry) => entry.isFile() && LICENSE_FILE.test(entry.name))
+        .filter((entry) => entry.isFile() && (LICENSE_FILE.test(entry.name) || entry.name === explicitFile))
         .map((entry) => entry.name)
         .toSorted((left, right) => left.localeCompare(right));
 
-const licenseTextIn = (dir: string): string | null => {
-    const texts = licenseFilesIn(dir)
+const licenseTextIn = (dir: string, license: string | null = null): string | null => {
+    const explicitFile = license?.startsWith(EXPLICIT_LICENSE_PREFIX)
+        ? license.slice(EXPLICIT_LICENSE_PREFIX.length)
+        : null;
+    const texts = licenseFilesIn(dir, explicitFile)
         .map((name) => readLicenseText(join(dir, name)))
         .filter((text) => text !== null);
 

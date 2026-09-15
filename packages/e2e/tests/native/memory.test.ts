@@ -1,6 +1,7 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
+import { type Descriptor, registerClass, t } from "@gtkx/runtime";
 import { expect, test } from "vitest";
 import { didSettle, drainAfterEachTest, drainGC } from "./helpers/memory.js";
 
@@ -16,12 +17,22 @@ drainAfterEachTest();
 
 const RSS_BUDGET = (process.env.GTKX_ASAN_RUNTIME === undefined ? 40 : 256) * 1024 * 1024;
 const THROWING_RSS_BUDGET = 256 * 1024 * 1024;
-const WARMUP = 2000;
+const OWNED_STRING: Descriptor = { kind: "string", ownership: "full" };
+const freeStringList = t.bind("libglib-2.0.so.0", "g_list_free_full", [
+    { kind: "array", arrayKind: "glist", itemDescriptor: OWNED_STRING, ownership: "full" },
+    { kind: "callback", argDescriptors: [OWNED_STRING], returnDescriptor: { kind: "void" }, scope: "call" },
+], { kind: "void" });
+
+const receiveString = (text: string): number => text.length;
+
+const failStringCallback = (): never => {
+    throw new Error("Callback failure");
+};
 
 const settle = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
 
 const hammer = async (iterations: number, body: () => unknown): Promise<number> => {
-    for (let round = 0; round < WARMUP; round += 1) {
+    for (let round = 0; round < iterations; round += 1) {
         body();
     }
 
@@ -117,6 +128,61 @@ test("transfer full string arguments stay bounded over twenty thousand calls", a
             GIMarshallingTests.filenameCopy("const ♥ utf8");
         }),
     ).toBeLessThan(RSS_BUDGET);
+});
+
+test.each([
+    { label: "empty", strings: [] },
+    { label: "null", strings: null },
+    { label: "Unicode and empty strings", strings: ["const ♥ utf8", "", "café"] },
+])("transfer full callbacks receive a list of $label strings", ({ strings }) => {
+    const received: string[] = [];
+
+    freeStringList(strings, (text: string) => {
+        received.push(text);
+    });
+
+    expect(received).toEqual(strings ?? []);
+});
+
+test("transfer full callback string arguments stay bounded over twenty thousand calls", async () => {
+    const strings = ["♥".repeat(16_384)];
+
+    expect(await hammer(20_000, () => freeStringList(strings, receiveString))).toBeLessThan(RSS_BUDGET);
+});
+
+test("throwing string callbacks do not accumulate over twenty thousand failures", async () => {
+    const strings = ["♥".repeat(16_384)];
+    const invoke = (): void => {
+        freeStringList(strings, failStringCallback);
+    };
+
+    expect(invoke).toThrow();
+
+    expect(await hammer(20_000, () => didThrow(invoke))).toBeLessThan(THROWING_RSS_BUDGET);
+});
+
+test("borrowed and full string callback returns stay bounded over twenty thousand calls", async () => {
+    const text = "♥".repeat(16_384);
+
+    class StringReturns extends GIMarshallingTests.Object {
+        override vfuncMethodStrArgOutRet(value: string): [string, number] {
+            return [value, value.length];
+        }
+
+        override vfuncVfuncStaticName(): string {
+            return text;
+        }
+    }
+
+    const Registered = registerClass(StringReturns, { typeName: `GtkxMemoryStringReturns${String(process.pid)}` });
+    const instance = new Registered({});
+    expect(instance.methodStrArgOutRet(text)).toEqual([text, text.length]);
+    expect(GIMarshallingTests.Object.vfuncStaticTypedName(Registered)).toBe(text);
+
+    expect(await hammer(20_000, () => {
+        instance.methodStrArgOutRet(text);
+        GIMarshallingTests.Object.vfuncStaticTypedName(Registered);
+    })).toBeLessThan(RSS_BUDGET);
 });
 
 test("C array returns of both transfers stay bounded over ten thousand calls", async () => {

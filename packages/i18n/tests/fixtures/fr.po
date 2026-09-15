@@ -36,6 +36,24 @@ msgctxt "menu"
 msgid "Open"
 msgstr "Ouvrir"
 
+msgid "Open"
+msgstr "Ouvrir"
+
+msgctxt "technical"
+msgid "Open"
+msgstr "Open"
+
+msgid "{{count}} item"
+msgid_plural "{{count}} items"
+msgstr[0] "{{count}} élément"
+msgstr[1] "{{count}} éléments"
+
+msgctxt "technical"
+msgid "{{count}} item"
+msgid_plural "{{count}} items"
+msgstr[0] "{{count}} item"
+msgstr[1] "{{count}} items"
+
 msgctxt "fruit"
 msgid "{{count}} apple"
 msgid_plural "{{count}} apples"

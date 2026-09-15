@@ -1,27 +1,29 @@
-import { FileError, Error as GError, quarkFromString } from "@gtkx/gi/glib";
-import { createErrorDomain } from "@gtkx/runtime/internal";
+import {
+    ConvertError,
+    convertErrorQuark,
+    FileError,
+    fileErrorFromErrno,
+    fileErrorQuark,
+    Error as GError,
+} from "@gtkx/gi/glib";
+import { constants } from "node:os";
 import { describe, expect, it } from "vitest";
 
-const FILE_ERROR_DOMAIN = 0xB_E1;
-const FILE_ERROR_NOENT = 5;
-
-const gerrorIn = (domain: number): GError => GError.newLiteral(domain, FILE_ERROR_NOENT, "missing file");
-
-describe("createErrorDomain", () => {
-    it("exposes enum members and matches errors from its domain", () => {
-        const domain = createErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
-        expect(domain.NOENT).toBe(FILE_ERROR_NOENT);
-        expect(gerrorIn(FILE_ERROR_DOMAIN)).toBeInstanceOf(domain);
+describe("generated error domains", () => {
+    it("exposes enum members matching native error codes", () => {
+        expect(fileErrorFromErrno(constants.errno.ENOENT)).toBe(FileError.NOENT);
+        expect(fileErrorFromErrno(constants.errno.EACCES)).toBe(FileError.ACCES);
     });
 
     it("rejects values outside its domain", () => {
-        const domain = createErrorDomain(() => FILE_ERROR_DOMAIN, { NOENT: FILE_ERROR_NOENT });
-        expect(gerrorIn(FILE_ERROR_DOMAIN + 1)).not.toBeInstanceOf(domain);
-        expect(new Error("plain")).not.toBeInstanceOf(domain);
+        const foreign = GError.newLiteral(convertErrorQuark(), ConvertError.NO_CONVERSION, "conversion failed");
+        for (const value of [foreign, new Error("plain"), null, 42]) {
+            expect(value).not.toBeInstanceOf(FileError);
+        }
     });
 
     it("matches a generated error-domain enum by its GLib quark", () => {
-        const gerror = GError.newLiteral(quarkFromString("g-file-error-quark"), FileError.NOENT, "missing file");
+        const gerror = GError.newLiteral(fileErrorQuark(), FileError.NOENT, "missing file");
         expect(gerror).toBeInstanceOf(FileError);
     });
 });

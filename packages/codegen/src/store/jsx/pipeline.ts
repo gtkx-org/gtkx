@@ -9,7 +9,6 @@ import { collectGeneratedElements, type GeneratedElement } from "./generated-ele
 import { buildGirIndex } from "./gir-index.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "./intrinsic-elements.js";
 import { generateJsxSection } from "./jsx.js";
-import { generateMetadata } from "./metadata.js";
 import { type OmittedProps, setOmittedProps } from "./omitted-props.js";
 
 type JsxNamespaceFile = {
@@ -19,7 +18,6 @@ type JsxNamespaceFile = {
 
 type JsxFiles = {
     namespaces: JsxNamespaceFile[];
-    metadata: string;
     intrinsicElementCount: number;
     elements: GeneratedElement[];
 };
@@ -33,6 +31,7 @@ type JsxGenerationOptions = {
 
 type NamespaceFilesOptions = {
     library: Library;
+    girIndex: ReturnType<typeof buildGirIndex>;
     intrinsicElements: GlibNamedClass[];
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
     lazyByNamespace: Map<string, LazyElementSpec[]>;
@@ -40,6 +39,7 @@ type NamespaceFilesOptions = {
 };
 
 type JsxNamespaceContext = {
+    girIndex: ReturnType<typeof buildGirIndex>;
     lazyElements: LazyElementSpec[];
     intrinsicElements: GlibNamedClass[];
     intrinsicElementByGlibName: Map<string, GlibNamedClass>;
@@ -56,15 +56,14 @@ const generateJsxFiles = (library: Library, options: JsxGenerationOptions = {}):
 
     const { namespaces, intrinsicElementCount } = generateNamespaceFiles({
         library,
+        girIndex,
         intrinsicElements,
         intrinsicElementByGlibName,
         lazyByNamespace,
         components: options.components ?? {},
     });
 
-    const metadata = generateMetadata(library);
-
-    return { namespaces, metadata, intrinsicElementCount, elements: collectGeneratedElements(intrinsicElements) };
+    return { namespaces, intrinsicElementCount, elements: collectGeneratedElements(intrinsicElements) };
 };
 
 const orderedIntrinsicNamespaces = (intrinsicElements: GlibNamedClass[]): GirNamespace[] => {
@@ -80,13 +79,14 @@ const orderedIntrinsicNamespaces = (intrinsicElements: GlibNamedClass[]): GirNam
 const generateNamespaceFiles = (
     options: NamespaceFilesOptions,
 ): { namespaces: JsxNamespaceFile[]; intrinsicElementCount: number } => {
-    const { library, intrinsicElements, intrinsicElementByGlibName, lazyByNamespace, components } = options;
+    const { library, girIndex, intrinsicElements, intrinsicElementByGlibName, lazyByNamespace, components } = options;
 
     const namespaces: JsxNamespaceFile[] = [];
     let intrinsicElementCount = 0;
 
     for (const namespace of orderedIntrinsicNamespaces(intrinsicElements)) {
         const { source, count } = generateJsxNamespace(namespace, library, {
+            girIndex,
             lazyElements: lazyByNamespace.get(namespace.name) ?? [],
             intrinsicElements,
             intrinsicElementByGlibName,
@@ -105,7 +105,7 @@ const generateJsxNamespace = (
     library: Library,
     context: JsxNamespaceContext,
 ): { source: string; count: number } => {
-    const { lazyElements, intrinsicElements, intrinsicElementByGlibName, components } = context;
+    const { girIndex, lazyElements, intrinsicElements, intrinsicElementByGlibName, components } = context;
     const targetDirectory = namespaceDirectory(targetNamespace);
     const imports = new ImportsBuilder();
     imports.addSideEffect(`@gtkx/gi/${targetDirectory}`);
@@ -124,6 +124,7 @@ const generateJsxNamespace = (
         imports,
         intrinsicElements,
         intrinsicElementByGlibName,
+        girIndex,
     });
 
     const body = [imports.toSource().trimEnd(), "", jsxSection];

@@ -30,18 +30,11 @@ const KNOWN_LIBRARIES: Record<string, PlatformLibrary> = {
 };
 
 const SUMMARY = [
-    "Not one of the libraries below is included in this package. GTKX reaches them through GObject",
-    "introspection, so they are resolved when the application runs: from the host system for a deb, an rpm",
-    "or an AppImage, and from the GNOME runtime for a flatpak. Your platform distributes them to you under",
-    "their own terms; this package does not distribute them at all.",
-    "The GTKX native addon does link GLib, GObject and GIO dynamically against the copies already installed",
-    "on the system, which makes the addon a work that uses those libraries, and section 6 of the LGPL asks",
-    "such a work to carry a notice, the license, and the copyright notices. This is the notice it asks for,",
-    "and the license itself is published at",
-    `${LGPL_URL},`,
-    "and the copyright notice of each library is published with its sources, at the address listed beside",
-    "it below. Linking against an installed shared library is the mechanism section 6(b) allows, so the",
-    "source of the libraries does not have to travel with this package.",
+    "GTKX loads these native libraries through generated FFI bindings. Debian, RPM and AppImage",
+    "deployments use the host's libraries; Flatpak uses its configured runtime. GTKX does not bundle",
+    "these platform dependencies. Its native addon also links dynamically to GLib, GObject and GIO.",
+    "The sources and license identifiers are listed below. Copyright notices accompany each library's",
+    `sources. The LGPL 2.1 text is available at ${LGPL_URL}.`,
 ];
 
 const noticeFor = (library: PlatformLibrary): Notice => ({

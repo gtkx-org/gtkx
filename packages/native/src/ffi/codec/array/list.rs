@@ -1,8 +1,8 @@
 use std::ffi::CString;
 
 use super::super::prelude::*;
-use super::container::ArrayContainer;
-use super::{ArrayCodec, ArrayKindEncoder, dup_strings_to_glib, transfer_items};
+use super::container::{ArrayContainer, ArrayRead};
+use super::{ArrayCodec, ArrayKindEncoder, dup_bytes_to_glib, transfer_items};
 use crate::ffi::codec::Codec;
 use crate::ffi::{StashData, StashStorage};
 
@@ -14,6 +14,31 @@ pub(crate) struct ListArrayCodec {
 impl ListArrayCodec {
     pub(super) fn new(ops: &'static ffi::ListOps) -> Self {
         Self { ops }
+    }
+
+    pub(super) fn release_kind(&self) -> ffi::ReleaseKind {
+        self.ops.pending
+    }
+}
+
+impl ListArrayCodec {
+    fn nodes(&self, ptr: *mut c_void) -> impl Iterator<Item = *mut c_void> {
+        let ops = self.ops;
+        let mut current = ptr;
+        std::iter::from_fn(move || {
+            if current.is_null() {
+                return None;
+            }
+            let node = unsafe { (ops.node)(current) };
+            current = node.next;
+            Some(node.data)
+        })
+    }
+
+    pub(super) fn release_items(&self, ptr: *mut c_void, release: ffi::ReleaseKind) {
+        for item in self.nodes(ptr) {
+            drop(ffi::PendingTransfer::new(item, release));
+        }
     }
 }
 
@@ -32,25 +57,15 @@ impl ArrayContainer for ListArrayCodec {
         codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
-        transfer: Ownership,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
         let ops = self.ops;
         let Some(ptr) = stash.as_non_null_ptr(ops.label)? else {
-            return codec.decode_null(env);
+            return Ok(value::js_null(env)?);
         };
 
-        let mut current = ptr;
-        let nodes = std::iter::from_fn(move || {
-            if current.is_null() {
-                return None;
-            }
-            let node = unsafe { (ops.node)(current) };
-            current = node.next;
-            Some(node.data)
-        });
-
-        let is_full = transfer.is_full();
-        codec.decode_ptr_iter(env, nodes, move || {
+        let is_full = read.transfer().is_full();
+        codec.decode_ptr_iter(env, self.nodes(ptr), read, move || {
             if is_full {
                 unsafe { (ops.free)(ptr) };
             }
@@ -67,9 +82,9 @@ fn string_list_parts(
     dup_items: bool,
 ) -> anyhow::Result<(Vec<CString>, Vec<*mut c_void>)> {
     if dup_items {
-        Ok((Vec::new(), dup_strings_to_glib(array)?))
+        Ok((Vec::new(), dup_bytes_to_glib(array)?))
     } else {
-        let cstrings = ArrayCodec::extract_strings(array)?;
+        let cstrings = ArrayCodec::extract_byte_strings(array)?;
         let ptrs = cstrings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
         Ok((cstrings, ptrs))
     }
@@ -99,7 +114,7 @@ impl ListEncoder {
 }
 
 impl ArrayKindEncoder for ListEncoder {
-    fn encode_strings(
+    fn encode_byte_strings(
         &self,
         array: &[Unknown<'_>],
         dup_items: bool,

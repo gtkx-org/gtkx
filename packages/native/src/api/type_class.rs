@@ -4,6 +4,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::api::type_from_bigint;
+use crate::api::vtable::query_type;
 use crate::handle::Handle;
 
 fn class_pointer(type_: glib::Type) -> Result<Handle> {
@@ -20,7 +21,11 @@ fn class_pointer(type_: glib::Type) -> Result<Handle> {
 
     let class_ptr = unsafe { gobject_ffi::g_type_class_ref(raw) };
 
-    Ok(Handle::process_static(class_ptr.cast()))
+    let handle = Handle::process_static(class_ptr.cast());
+    Ok(match query_type(type_) {
+        Some(query) => handle.with_allocated_bytes(query.class_size as usize),
+        None => handle,
+    })
 }
 
 /// Returns a handle over the class struct of `gtype`, taking a class reference that is

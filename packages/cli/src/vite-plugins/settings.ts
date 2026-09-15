@@ -7,13 +7,13 @@ import type { AssetEmitter } from "./asset-emitter.js";
 import { outputRootUrlExpression, prependBanner } from "../internal/banner.js";
 import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } from "../internal/staging-dir.js";
 import { compileSchemas } from "../settings/compile.js";
-import { parseSchemaXml, SchemaParseError } from "../settings/parser.js";
 import { renderRuntimeModule } from "../settings/render.js";
 import {
     assertUniqueSchemaBasenames,
     emitSchemaEnv,
     prependSchemaDir,
     projectRelativeSchemaPath,
+    readProjectSchema,
     SCHEMA_SUFFIX,
     stageSchema,
 } from "../settings/schema.js";
@@ -21,15 +21,11 @@ import { createVirtualNamespace } from "./virtual-module.js";
 
 type PluginState = {
     schemaDir: RetainedStagingDir;
-    rootDir: string | null;
+    rootDir: string;
     isBuild: boolean;
     schemaEnvTimer: ReturnType<typeof setTimeout> | null;
     trackedSchemas: Map<string, string>;
     buildSchemas: Set<string>;
-};
-
-type PluginContext = AssetEmitter & {
-    error: (message: string) => never;
 };
 
 type SchemaResolveContext = Parameters<typeof resolveToVirtual>[0];
@@ -76,10 +72,6 @@ const compileSchemaDir = (state: PluginState): void => {
 };
 
 const syncSchemaEnv = (state: PluginState): void => {
-    if (state.rootDir === null) {
-        return;
-    }
-
     try {
         emitSchemaEnv(state.rootDir);
     } catch (error_) {
@@ -107,7 +99,7 @@ const scheduleSchemaEnvSync = (state: PluginState): void => {
 
 const applyResolvedConfig = (state: PluginState, config: ResolvedConfig): void => {
     state.isBuild = config.command === "build";
-    state.rootDir = typeof config.root === "string" ? config.root : null;
+    state.rootDir = config.root;
     syncSchemaEnv(state);
 };
 
@@ -128,30 +120,14 @@ const registerSchemaForMode = (state: PluginState, filePath: string, id: string)
     info(`Compiled GSettings schema: ${fileName}`);
 };
 
-const loadSchemaModule = (ctx: PluginContext, state: PluginState, id: string): string | undefined => {
+const loadSchemaModule = (state: PluginState, id: string): string | undefined => {
     if (!isVirtual(id)) {
         return undefined;
     }
 
     const filePath = fromVirtualId(id);
-    const xml = readFileSync(filePath, "utf8");
-    const fileName = basename(filePath);
     registerSchemaForMode(state, filePath, id);
-    let parsed: ReturnType<typeof parseSchemaXml>;
-
-    try {
-        parsed = parseSchemaXml(xml, fileName);
-    } catch (error) {
-        if (!(error instanceof SchemaParseError)) {
-            throw error;
-        }
-
-        ctx.error(error.message);
-    }
-
-    if (parsed.schemas.length === 0) {
-        ctx.error(`No <schema id="..."> found in ${fileName}`);
-    }
+    const parsed = readProjectSchema(state.rootDir, filePath);
 
     return renderRuntimeModule(parsed);
 };
@@ -198,11 +174,11 @@ const buildSchemaPaths = (rootDir: string, schemaFiles: string[]): string[] =>
     });
 
 const emitBuildSchemas = (
-    ctx: PluginContext,
+    ctx: AssetEmitter,
     state: PluginState,
     buildManifest: BuildManifestCollector | undefined,
 ): void => {
-    if (!state.isBuild || state.rootDir === null) {
+    if (!state.isBuild) {
         return;
     }
 
@@ -278,7 +254,7 @@ const watchSchemaFiles = (state: PluginState, server: ViteDevServer): void => {
 function gtkxSettings(buildManifest?: BuildManifestCollector): Plugin {
     const state: PluginState = {
         schemaDir: createRetainedStagingDir(SCHEMA_STAGING_PREFIX),
-        rootDir: null,
+        rootDir: process.cwd(),
         isBuild: false,
         schemaEnvTimer: null,
         trackedSchemas: new Map(),
@@ -317,7 +293,7 @@ function gtkxSettings(buildManifest?: BuildManifestCollector): Plugin {
             filter: { id: VIRTUAL_ID_RE },
 
             handler(id) {
-                return loadSchemaModule(this, state, id);
+                return loadSchemaModule(state, id);
             },
         },
 

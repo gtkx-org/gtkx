@@ -1,8 +1,9 @@
 use anyhow::bail;
 
+use super::bytes::bytes_to_glib_full;
+use super::object::g_object_unref_wrapper;
 use super::prelude::*;
-use super::string::str_to_glib_full;
-use crate::ffi::codec::{BigIntCodec, Codec, EnumFlagsCodec, FloatCodec, IntegerCodec};
+use crate::ffi::codec::{BigIntCodec, Codec, FloatCodec, IntegerCodec};
 use crate::ffi::{HashTableData, StashData, StashStorage};
 
 type CVoidPtr = *mut c_void;
@@ -11,7 +12,7 @@ type CVoidPtr = *mut c_void;
 /// the one left to release it.
 fn entry_ownership_is_full(codec: &Codec) -> bool {
     match codec {
-        Codec::String(string) => string.ownership.is_full(),
+        Codec::Bytes(bytes) => bytes.ownership.is_full(),
         Codec::Object(object) => object.ownership.is_full(),
         Codec::Boxed(boxed) => boxed.ownership.is_full(),
         Codec::Fundamental(fundamental) => fundamental.ownership.is_full(),
@@ -22,10 +23,8 @@ fn entry_ownership_is_full(codec: &Codec) -> bool {
 
 #[derive(Clone, Debug)]
 pub enum HashTableEntryCodec {
-    String,
+    Bytes,
     Integer(IntegerCodec),
-    EnumFlags(EnumFlagsCodec),
-    Boolean,
     Float(FloatCodec),
     BigInt(BigIntCodec),
     Handle(Box<Codec>),
@@ -38,10 +37,8 @@ impl HashTableEntryCodec {
             return Some(Self::Handle(Box::new(codec.clone())));
         }
         match codec {
-            Codec::String(_) => Some(Self::String),
+            Codec::Bytes(_) => Some(Self::Bytes),
             Codec::Integer(integer) => Some(Self::Integer(*integer)),
-            Codec::EnumFlags(enum_flags) => Some(Self::EnumFlags(enum_flags.clone())),
-            Codec::Boolean(_) => Some(Self::Boolean),
             Codec::Float(float) => Some(Self::Float(*float)),
             Codec::BigInt(bigint) => Some(Self::BigInt(*bigint)),
             Codec::Array(array_codec) => array_codec.ptr_array_item().map(Self::PtrArray),
@@ -57,7 +54,7 @@ impl HashTableEntryCodec {
 
     pub fn hash_and_equal(&self) -> anyhow::Result<(glib::ffi::GHashFunc, glib::ffi::GEqualFunc)> {
         match self {
-            Self::String => Ok((Some(glib::ffi::g_str_hash), Some(glib::ffi::g_str_equal))),
+            Self::Bytes => Ok((Some(glib::ffi::g_str_hash), Some(glib::ffi::g_str_equal))),
             Self::Float(FloatCodec::F64) => Ok((
                 Some(glib::ffi::g_double_hash),
                 Some(glib::ffi::g_double_equal),
@@ -68,11 +65,7 @@ impl HashTableEntryCodec {
             Self::BigInt(_) => bail!(
                 "A 64-bit integer cannot be a GHashTable key: g_int64_hash dereferences every key the table is handed, including the ones the callee passes beside it, and only the entries encoded here are boxed"
             ),
-            Self::Integer(_)
-            | Self::EnumFlags(_)
-            | Self::Boolean
-            | Self::Handle(_)
-            | Self::PtrArray(_) => Ok((
+            Self::Integer(_) | Self::Handle(_) | Self::PtrArray(_) => Ok((
                 Some(glib::ffi::g_direct_hash),
                 Some(glib::ffi::g_direct_equal),
             )),
@@ -81,8 +74,8 @@ impl HashTableEntryCodec {
 
     pub fn free_func(&self) -> anyhow::Result<glib::ffi::GDestroyNotify> {
         match self {
-            Self::String | Self::Float(_) | Self::BigInt(_) => Ok(Some(glib::ffi::g_free)),
-            Self::Integer(_) | Self::EnumFlags(_) | Self::Boolean => Ok(None),
+            Self::Bytes | Self::Float(_) | Self::BigInt(_) => Ok(Some(glib::ffi::g_free)),
+            Self::Integer(_) => Ok(None),
             Self::Handle(codec) => Self::transferred_entry_destroy(codec),
             Self::PtrArray(_) => Ok(Some(g_ptr_array_unref_wrapper)),
         }
@@ -123,24 +116,11 @@ impl HashTableEntryCodec {
 
     pub fn encode(&self, value: Unknown<'_>) -> anyhow::Result<*mut c_void> {
         match self {
-            Self::String => {
-                let ValueType::String = value.get_type()? else {
-                    bail!("Expected string in GHashTable")
-                };
-                Ok(str_to_glib_full(&value::read_napi::<String>(value)?)?.cast::<c_void>())
+            Self::Bytes => {
+                let bytes = super::array::read_bytes_item(value)?;
+                Ok(bytes_to_glib_full(&bytes)?.cast::<c_void>())
             }
             Self::Integer(integer) => Self::pointer_word(*integer, value),
-            Self::EnumFlags(enum_flags) => {
-                enum_flags.validate(value)?;
-
-                Self::pointer_word(enum_flags.storage, value)
-            }
-            Self::Boolean => match value.get_type()? {
-                ValueType::Boolean => {
-                    Ok(isize::from(value::read_napi::<bool>(value)?) as *mut c_void)
-                }
-                _ => bail!("Expected boolean in GHashTable"),
-            },
             Self::Float(float) => {
                 let ValueType::Number = value.get_type()? else {
                     bail!("Expected number in GHashTable for float")
@@ -189,15 +169,6 @@ impl HashTableEntryCodec {
 unsafe extern "C" fn g_ptr_array_unref_wrapper(ptr: *mut c_void) {
     unsafe {
         glib::ffi::g_ptr_array_unref(ptr.cast::<glib::ffi::GPtrArray>());
-    }
-}
-
-unsafe extern "C" fn g_object_unref_wrapper(ptr: *mut c_void) {
-    if ptr.is_null() {
-        return;
-    }
-    unsafe {
-        glib::gobject_ffi::g_object_unref(ptr.cast::<glib::gobject_ffi::GObject>());
     }
 }
 
@@ -359,7 +330,7 @@ impl HashTableCodec {
     /// pointer itself owns no memory.
     fn retains_entries(&self, encoder: &HashTableEntryCodec, codec: &Codec) -> bool {
         self.ownership.is_full()
-            && (matches!(encoder, HashTableEntryCodec::String) || encoder.is_boxed())
+            && (matches!(encoder, HashTableEntryCodec::Bytes) || encoder.is_boxed())
             && !entry_ownership_is_full(codec)
     }
 }
@@ -471,7 +442,28 @@ impl PtrWriter for HashTableCodec {
         unsafe { ret.store(table) };
     }
 
-    write_container_value_to_ptr!("hash table", "hashtable pointer write", |_| {
-        ffi::ReleaseKind::HashTableUnref
-    });
+    fn write_value_to_ptr(
+        &self,
+        env: &Env,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+        init: SlotInit,
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
+        write_container_value(
+            slot,
+            value,
+            init,
+            self.ownership,
+            "hashtable pointer write",
+            |value| self.encode(env, value),
+            || {
+                Ok(|ptr| {
+                    drop(ffi::PendingTransfer::new(
+                        ptr,
+                        ffi::ReleaseKind::HashTableUnref,
+                    ));
+                })
+            },
+        )
+    }
 }

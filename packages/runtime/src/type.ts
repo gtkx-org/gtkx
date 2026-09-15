@@ -1,4 +1,5 @@
-import { type Descriptor, resolveType as nativeResolveType } from "@gtkx/native";
+import { resolveType as nativeResolveType } from "@gtkx/native";
+import type { Descriptor } from "./descriptor-types.js";
 import { bind } from "./bind.js";
 import {
     type ArrayDescriptor,

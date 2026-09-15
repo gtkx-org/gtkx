@@ -7,6 +7,7 @@ import {
     GtkAdjustment,
     GtkBox,
     GtkButton,
+    GtkCallbackAction,
     GtkCheckButton,
     GtkColorDialog,
     GtkColorDialogButton,
@@ -23,6 +24,7 @@ import {
     GtkScrolledWindow,
     GtkShortcut,
     GtkShortcutController,
+    GtkShortcutTrigger,
     GtkStack,
     GtkStackPage,
     GtkTextView,
@@ -1291,30 +1293,32 @@ function useEditViewFocus(state: FontFeaturesState) {
     }, [viewMode, editTextViewRef, editScrolledWindowRef]);
 }
 
-const createEscapeAction = (state: FontFeaturesState) =>
-    Gtk.CallbackAction.new(() => {
-        if (state.viewMode !== "edit") {
-            return false;
-        }
+const didHandleEscape = (state: FontFeaturesState): boolean => {
+    if (state.viewMode !== "edit") {
+        return false;
+    }
 
-        const tv = state.editTextViewRef.current;
+    const tv = state.editTextViewRef.current;
 
-        if (tv) {
-            const buffer = tv.getBuffer();
-            buffer.setText(state.savedTextRef.current, -1);
-        }
+    if (tv) {
+        const buffer = tv.getBuffer();
+        buffer.setText(state.savedTextRef.current, -1);
+    }
 
-        state.setPreviewText(state.savedTextRef.current);
-        state.setViewMode("plain");
+    state.setPreviewText(state.savedTextRef.current);
+    state.setViewMode("plain");
 
-        return true;
-    });
+    return true;
+};
 
 const FontFeaturesEscapeController = ({ state }: { state: FontFeaturesState }) => (
     <GtkShortcutController
         scope={Gtk.ShortcutScope.MANAGED}
         shortcuts={(
-            <GtkShortcut trigger={Gtk.ShortcutTrigger.parseString("Escape")} action={createEscapeAction(state)} />
+            <GtkShortcut
+                trigger={<GtkShortcutTrigger accelerator="Escape" />}
+                action={<GtkCallbackAction callback={() => didHandleEscape(state)} />}
+            />
         )}
     />
 );

@@ -10,10 +10,11 @@ type Frame = { size: number; pixels: Uint8Array; error: number; status: number }
 const FRAME_SIZE = 4;
 const CHANNELS = 4;
 const RED_PIXEL = [255, 0, 0, 255];
+const GREEN_PIXEL = [0, 255, 0, 255];
 
 const VERTEX_SOURCE = `#version 300 es
 precision mediump float;
-in vec3 aPos;
+layout(location = 0) in vec3 aPos;
 uniform float uScale;
 void main() { gl_Position = vec4(aPos * uScale, 1.0); }`;
 
@@ -119,18 +120,24 @@ const drawnFrame = (): Frame => {
     const pixels = new Uint8Array(FRAME_SIZE * FRAME_SIZE * CHANNELS);
     gl.readPixels(0, 0, FRAME_SIZE, FRAME_SIZE, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
     const error = gl.getError();
+    const status = gl.getProgramiv(program, gl.LINK_STATUS);
+    gl.useProgram(0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, 0);
+    gl.bindVertexArray(0);
+    gl.deleteBuffer(buffer);
+    gl.deleteVertexArray(vertexArray);
+    gl.deleteProgram(program);
     releaseOffscreenFrame(frame.framebuffer, frame.renderbuffer);
 
-    return { size: FRAME_SIZE, pixels, error, status: gl.getProgramiv(program, gl.LINK_STATUS) };
+    return { size: FRAME_SIZE, pixels, error, status };
 };
 
-const rejectedShader = (): { status: number; log: string } => {
+const rejectedShader = (): number => {
     const shader = compileShader(gl.FRAGMENT_SHADER, "this is not a shader");
     const status = gl.getShaderiv(shader, gl.COMPILE_STATUS);
-    const log = gl.getShaderInfoLog(shader);
     gl.deleteShader(shader);
 
-    return { status, log };
+    return status;
 };
 
 describe("a GL area rendered from React", () => {
@@ -145,12 +152,67 @@ describe("a GL area rendered from React", () => {
         const frame = await inGlContext(drawnFrame);
         expect(frame.status).toBe(gl.TRUE);
         expect(frame.error).toBe(gl.NO_ERROR);
-        expect([...frame.pixels].some((channel) => channel > 0)).toBe(true);
+        expect([...frame.pixels.slice(0, CHANNELS)]).toEqual(GREEN_PIXEL);
     });
 
     it("reports a shader the driver refuses to compile", async () => {
-        const shader = await inGlContext(rejectedShader);
-        expect(shader.status).toBe(gl.FALSE);
-        expect(shader.log.length).toBeGreaterThan(0);
+        const status = await inGlContext(rejectedShader);
+        expect(status).toBe(gl.FALSE);
+    });
+
+    it("passes the required full-width timeout to a server-side sync wait", async () => {
+        const result = await inGlContext(() => {
+            const sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+            gl.waitSync(sync, 0, gl.TIMEOUT_IGNORED);
+            gl.deleteSync(sync);
+            const query = gl.genQuery();
+            gl.queryCounter(query, gl.TIMESTAMP);
+            gl.finish();
+            const timestamp = gl.getQueryObjectui64v(query, gl.QUERY_RESULT);
+            const signedTimestamp = gl.getQueryObjecti64v(query, gl.QUERY_RESULT);
+            gl.deleteQuery(query);
+
+            return { error: gl.getError(), timestamp, signedTimestamp };
+        });
+
+        expect(result.error).toBe(gl.NO_ERROR);
+        expect(typeof result.timestamp).toBe("bigint");
+        expect(result.timestamp).toBeGreaterThan(0n);
+        expect(result.signedTimestamp).toBe(result.timestamp);
+    });
+
+    it("delivers debug messages without changing the context's debug state", async () => {
+        const result = await inGlContext(() => {
+            let message: gl.DebugMessage | null = null;
+            gl.disable(gl.DEBUG_OUTPUT);
+            gl.debugMessageCallback((received) => {
+                message = received;
+            });
+            const wasEnabledByCallback = gl.isEnabled(gl.DEBUG_OUTPUT);
+            gl.enable(gl.DEBUG_OUTPUT);
+            gl.enable(gl.DEBUG_OUTPUT_SYNCHRONOUS);
+            gl.debugMessageInsert(
+                gl.DEBUG_SOURCE_APPLICATION,
+                gl.DEBUG_TYPE_MARKER,
+                7,
+                gl.DEBUG_SEVERITY_NOTIFICATION,
+                -1,
+                "GTKX debug message",
+            );
+            gl.debugMessageCallback(null);
+            gl.disable(gl.DEBUG_OUTPUT_SYNCHRONOUS);
+            gl.disable(gl.DEBUG_OUTPUT);
+
+            return { wasEnabledByCallback, message };
+        });
+
+        expect(result.wasEnabledByCallback).toBe(false);
+        expect(result.message).toEqual({
+            source: gl.DEBUG_SOURCE_APPLICATION,
+            type: gl.DEBUG_TYPE_MARKER,
+            id: 7,
+            severity: gl.DEBUG_SEVERITY_NOTIFICATION,
+            message: "GTKX debug message",
+        });
     });
 });

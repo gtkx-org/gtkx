@@ -1,11 +1,11 @@
-import gtkx from "@gtkx/vitest";
+import gtkx from "@gtkx/cli/vitest-plugin";
 import { configDefaults, defineConfig, mergeConfig } from "vitest/config";
 import { sourceResolveConfig } from "../../vitest.config.base.js";
 
 export default mergeConfig(
     sourceResolveConfig,
     defineConfig({
-        plugins: [gtkx()],
+        plugins: [...gtkx()],
         test: {
             name: "e2e",
             include: ["tests/**/*.test.{ts,tsx}"],

@@ -13,6 +13,7 @@ type QueryContainer = Gtk.Accessible | Gtk.EventController | Gtk.LayoutManager |
  */
 type Container = QueryContainer | Gtk.Application | typeof TOPLEVELS;
 type WidgetClass<T extends object> = abstract new (...args: never[]) => T;
+type ChildContainer = Pick<Gtk.Widget, "getFirstChild">;
 
 /** Container sentinel that widens a query to every toplevel window currently open. */
 const TOPLEVELS: unique symbol = Symbol("gtkx.toplevels");
@@ -52,7 +53,7 @@ const traverseWidgetTree = function* (
     }
 };
 
-const children = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
+const children = function* (widget: ChildContainer): Generator<Gtk.Widget> {
     let child = widget.getFirstChild();
 
     while (child) {
@@ -168,5 +169,6 @@ export {
     relationCandidates,
     roots,
     traverse,
+    type ChildContainer,
     type Container,
 };

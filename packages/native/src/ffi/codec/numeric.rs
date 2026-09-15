@@ -253,14 +253,9 @@ pub fn lossless_f64(value: i128, context: &str) -> anyhow::Result<f64> {
     Ok(value as f64)
 }
 
-fn coerce_number(value: Unknown<'_>, label: &str, allow_object: bool) -> anyhow::Result<f64> {
+fn coerce_number(value: Unknown<'_>, label: &str) -> anyhow::Result<f64> {
     match value.get_type()? {
         ValueType::Number => Ok(value::read_napi::<f64>(value)?),
-        #[allow(clippy::cast_precision_loss)]
-        ValueType::External if allow_object => {
-            let ptr = value::handle_ptr(value, label)?;
-            Ok(ptr as usize as f64)
-        }
         ValueType::Null | ValueType::Undefined => Ok(0.0),
         other => bail!("Expected a Number for {label}, got {other:?}"),
     }
@@ -373,7 +368,7 @@ impl IntegerCodec {
     }
 
     fn number_from_value(value: Unknown<'_>) -> anyhow::Result<f64> {
-        coerce_number(value, "integer codec", true)
+        coerce_number(value, "integer codec")
     }
 
     pub(super) unsafe fn write_return_widened(self, ret: *mut c_void, value: f64) {
@@ -521,7 +516,7 @@ impl FloatCodec {
     }
 
     fn number_from_value(value: Unknown<'_>) -> anyhow::Result<f64> {
-        coerce_number(value, "float type", false)
+        coerce_number(value, "float type")
     }
 
     unsafe fn write_return_widened(self, ret: *mut c_void, value: f64) {

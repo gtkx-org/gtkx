@@ -4,7 +4,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::{byte_count_from_f64, handle_memory_ptr, native_result};
+use crate::api::{byte_count_from_f64, handle_memory_range, native_result};
 use crate::ffi::codec::{Codec, Decoder as _, ReadCtx};
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
@@ -24,15 +24,18 @@ pub(crate) fn read_field_at<'e>(
     field_codec: &Codec,
     offset: usize,
 ) -> Result<Unknown<'e>> {
-    let base_ptr = handle_memory_ptr(handle, "field read")?;
+    let _leases = crate::handle::LeaseScope::open();
+    let size = field_codec.field_size();
+    let field_ptr = handle_memory_range(handle, offset, size.unwrap_or(0), "field read")?;
 
     if field_codec.is_inline() {
-        return value::handle_to_unknown(env, Handle::field(handle, offset));
+        return value::handle_to_unknown(env, Handle::field(handle, offset, size));
     }
 
-    let field_ptr = base_ptr.wrapping_byte_add(offset).cast_const();
-
-    native_result("field read", decode_field(env, field_ptr, field_codec))
+    native_result(
+        "field read",
+        decode_field(env, field_ptr.cast_const(), field_codec),
+    )
 }
 
 /// Reads and decodes a value at `offset` bytes into the handle's memory, using `fieldDescriptor`

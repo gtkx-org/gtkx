@@ -1,4 +1,5 @@
 import { sortStrings } from "@gtkx/utils";
+import type { SourceModule } from "../compile.js";
 import type { JsxNamespaceFile } from "./jsx/pipeline.js";
 import type { PreparedStore, RawFile } from "./store-fs.js";
 import { buildManifest, namespaceBarrel, prepareStore, type StoreOptions, subpathExport } from "./store-fs.js";
@@ -6,10 +7,8 @@ import { buildManifest, namespaceBarrel, prepareStore, type StoreOptions, subpat
 type WriteJsxStoreParams = {
     options: StoreOptions;
     namespaces: JsxNamespaceFile[];
-    metadata: string;
     externalPackages: string[];
     rawFiles: RawFile[];
-    giStoreDir: string;
 };
 
 const jsxPeerDependencies = (externalPackages: string[]): Record<string, string> => {
@@ -20,13 +19,10 @@ const jsxPeerDependencies = (externalPackages: string[]): Record<string, string>
 };
 
 const writeJsxStore = (params: WriteJsxStoreParams): PreparedStore => {
-    const { options, namespaces, metadata, externalPackages, rawFiles } = params;
+    const { options, namespaces, externalPackages, rawFiles } = params;
 
-    const namespaceExports: Record<string, unknown> = {
-        "./metadata": subpathExport("metadata"),
-    };
-
-    const files = [{ fileName: "metadata.ts", source: metadata }];
+    const namespaceExports: Record<string, unknown> = {};
+    const files: SourceModule[] = [];
 
     for (const { directory, source } of namespaces) {
         files.push({ fileName: `${directory}/${directory}.tsx`, source }, namespaceBarrel(directory));
@@ -37,7 +33,6 @@ const writeJsxStore = (params: WriteJsxStoreParams): PreparedStore => {
         storeDir: options.storeDir,
         linkDir: options.linkDir,
         owner: options.owner,
-        compileDependencies: { "@gtkx/gi": params.giStoreDir },
         files,
         manifest: buildManifest({
             name: "@gtkx/jsx",

@@ -4,10 +4,10 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::ffi::codec::{
-    ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BooleanCodec, BoxedCodec, BufferCodec,
-    CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind, EnumFlagsCodec,
-    EnumFlagsKind, FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec, ObjectCodec,
-    Ownership, RefCodec, StringCodec, StructCodec, UnicharCodec, VoidCodec,
+    ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BoxedCodec, BufferCodec, BytesCodec,
+    CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind,
+    ElementOwnership, FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec, ObjectCodec,
+    Ownership, RefCodec, StructCodec, VoidCodec,
 };
 
 const MAX_DESCRIPTOR_DEPTH: u32 = 32;
@@ -64,7 +64,7 @@ impl FromNapiValue for Descriptors {
     }
 }
 
-fn string_length(length: Option<i64>) -> Result<Option<usize>> {
+fn byte_capacity(length: Option<i64>) -> Result<Option<usize>> {
     let Some(length) = length else {
         return Ok(None);
     };
@@ -98,22 +98,7 @@ pub enum Descriptor {
     Biguint64,
     Float32,
     Float64,
-    Enum {
-        shared_library: String,
-        get_type_fn_name: String,
-        is_signed: bool,
-        /// Member values of an enumeration with no registered `GType`, which the GIR is the only
-        /// source of. `None` leaves the membership check to the `GType`'s `GEnumClass`.
-        members: Option<Vec<i32>>,
-    },
-    Flags {
-        shared_library: String,
-        get_type_fn_name: String,
-        is_signed: bool,
-        mask: Option<u32>,
-    },
-    Boolean,
-    String {
+    Bytes {
         ownership: Ownership,
         length: Option<i64>,
         /// Whether the instance holding the slot owns the string in it, so that a write releases
@@ -126,7 +111,6 @@ pub enum Descriptor {
         /// `GType` name of the declared type, which an argument's instance must be one of.
         type_name: Option<String>,
     },
-    Unichar,
     Void,
     Buffer,
     Boxed {
@@ -162,6 +146,7 @@ pub enum Descriptor {
         item_descriptor: NestedDescriptor,
         array_kind: ArrayKind,
         ownership: Ownership,
+        element_ownership: Option<ElementOwnership>,
         base_param_index: Option<u32>,
         size_param_index: Option<u32>,
         fixed_size: Option<u32>,
@@ -169,7 +154,6 @@ pub enum Descriptor {
         is_bytes: Option<bool>,
         is_caller_allocated: Option<bool>,
         is_zero_terminated: Option<bool>,
-        preserve_null: Option<bool>,
     },
     Hashtable {
         #[napi(ts_type = "Descriptor")]
@@ -218,43 +202,15 @@ impl Descriptor {
             Self::Biguint64 => Codec::BigInt(BigIntCodec::U64),
             Self::Float32 => Codec::Float(FloatCodec::F32),
             Self::Float64 => Codec::Float(FloatCodec::F64),
-            Self::Boolean => Codec::Boolean(BooleanCodec),
-            Self::Unichar => Codec::Unichar(UnicharCodec),
             Self::Void => Codec::Void(VoidCodec),
             Self::Buffer => Codec::Buffer(BufferCodec),
-            Self::Enum {
-                shared_library,
-                get_type_fn_name,
-                is_signed,
-                members,
-            } => Self::enum_flags(
-                EnumFlagsKind::Enum,
-                shared_library,
-                get_type_fn_name,
-                is_signed,
-                None,
-                members,
-            ),
-            Self::Flags {
-                shared_library,
-                get_type_fn_name,
-                is_signed,
-                mask,
-            } => Self::enum_flags(
-                EnumFlagsKind::Flags,
-                shared_library,
-                get_type_fn_name,
-                is_signed,
-                mask,
-                None,
-            ),
-            Self::String {
+            Self::Bytes {
                 ownership,
                 length,
                 has_owned_storage,
-            } => Codec::String(StringCodec {
+            } => Codec::Bytes(BytesCodec {
                 ownership,
-                length: string_length(length)?,
+                length: byte_capacity(length)?,
                 has_owned_storage: has_owned_storage.unwrap_or(false),
             }),
             Self::Object {
@@ -336,6 +292,7 @@ impl Descriptor {
                 item_descriptor,
                 array_kind,
                 ownership,
+                element_ownership,
                 base_param_index,
                 size_param_index,
                 fixed_size,
@@ -343,7 +300,6 @@ impl Descriptor {
                 is_bytes,
                 is_caller_allocated,
                 is_zero_terminated,
-                preserve_null,
             } => {
                 let mut codec = ArrayCodec::new(
                     item_descriptor.into_codec()?,
@@ -356,7 +312,7 @@ impl Descriptor {
                     },
                     element_size.map(|n| n as usize),
                     is_bytes.unwrap_or(false),
-                    preserve_null.unwrap_or(false),
+                    element_ownership.unwrap_or_default(),
                 )
                 .map_err(|error| Error::from_reason(error.to_string()))?;
                 if is_zero_terminated.unwrap_or(false) {
@@ -422,28 +378,6 @@ impl Descriptor {
                 inout.unwrap_or(false),
             )?),
             _ => unreachable!("descriptors without nested descriptors are handled by into_codec"),
-        })
-    }
-
-    fn enum_flags(
-        kind: EnumFlagsKind,
-        shared_library: String,
-        get_type_fn_name: String,
-        is_signed: bool,
-        mask: Option<u32>,
-        members: Option<Vec<i32>>,
-    ) -> Codec {
-        Codec::EnumFlags(EnumFlagsCodec {
-            kind,
-            shared_library,
-            get_type_fn_name,
-            storage: if is_signed {
-                IntegerCodec::I32
-            } else {
-                IntegerCodec::U32
-            },
-            mask,
-            members,
         })
     }
 

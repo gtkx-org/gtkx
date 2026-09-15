@@ -1,22 +1,28 @@
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { fileSetContents, getUserDataDir } from "@gtkx/gi/glib";
+import type { StateStorage } from "zustand/middleware";
+import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
-const directory = join(process.env.XDG_DATA_HOME ?? join(homedir(), ".local", "share"), "com.gtkx.tutorial");
+const directory = join(getUserDataDir(), "com.gtkx.tutorial");
 const file = join(directory, "tasks.json");
 
-export const fileStorage = {
-    getItem: (): string | null => {
+export const fileStorage: StateStorage = {
+    getItem: () => {
         try {
             return readFileSync(file, "utf8");
-        } catch {
-            return null;
+        } catch (error) {
+            if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+                return null;
+            }
+
+            throw error;
         }
     },
-    setItem: (_name: string, value: string): void => {
+    setItem: (_name, value) => {
         mkdirSync(directory, { recursive: true });
-        writeFileSync(`${file}.tmp`, value);
-        renameSync(`${file}.tmp`, file);
+        fileSetContents(file, Buffer.from(value));
     },
-    removeItem: (): void => rmSync(file, { force: true }),
+    removeItem: () => {
+        rmSync(file, { force: true });
+    },
 };

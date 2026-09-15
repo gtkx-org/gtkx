@@ -12,30 +12,26 @@ use crate::{ffi, value};
 
 mod array;
 mod bigint;
-mod boolean;
 mod boxed;
 mod buffer;
+mod bytes;
 mod callback;
-mod enum_flags;
 mod fundamental;
 mod hashtable;
 mod numeric;
 mod object;
 mod prelude;
 mod r#ref;
-mod string;
 mod r#struct;
-mod unichar;
 mod void;
 
-pub use array::{ArrayBounds, ArrayCodec, ArrayKind};
+pub use array::{ArrayBounds, ArrayCodec, ArrayKind, ElementOwnership};
 pub use bigint::BigIntCodec;
-pub use boolean::BooleanCodec;
 pub use boxed::BoxedCodec;
 pub use buffer::BufferCodec;
+pub use bytes::{BytesCodec, bytes_to_glib_full, read_bytes};
 pub(crate) use callback::CallbackReleasePolicy;
 pub use callback::{CallbackCodec, CallbackScope, DestroyNotifyKind};
-pub use enum_flags::{EnumFlagsCodec, EnumFlagsKind};
 pub use fundamental::FundamentalCodec;
 pub use hashtable::{HashTableCodec, HashTableEntryCodec};
 pub use numeric::{FloatCodec, IntegerCodec, lossless_f64};
@@ -44,9 +40,7 @@ pub(crate) use object::{
     acquire_construction_ref, release_construction_ref, tracked_gobject_value,
 };
 pub use r#ref::RefCodec;
-pub use string::{StringCodec, str_to_glib_full};
 pub use r#struct::StructCodec;
-pub use unichar::UnicharCodec;
 pub use void::VoidCodec;
 
 pub(crate) trait IntegerBacked {
@@ -187,8 +181,12 @@ pub trait Encoder {
         let ptr = value::handle_ptr_checked(value, self.object_ptr_context(), |handle| {
             self.check_instance(handle)
         })?;
+        if ptr.is_null() {
+            return Ok(ffi::Stash::Ptr(ptr));
+        }
+        let release = self.transfer_release()?;
         let transferred = unsafe { self.ref_for_transfer(ptr)? };
-        match self.transfer_release() {
+        match release {
             Some(release) if !transferred.is_null() => {
                 Ok(prelude::full_transfer_stash(transferred, release))
             }
@@ -210,8 +208,12 @@ pub trait Encoder {
         Ok(())
     }
 
-    fn transfer_release(&self) -> Option<ffi::ReleaseKind> {
-        None
+    fn owned_release(&self) -> anyhow::Result<Option<ffi::ReleaseKind>> {
+        Ok(None)
+    }
+
+    fn transfer_release(&self) -> anyhow::Result<Option<ffi::ReleaseKind>> {
+        self.owned_release()
     }
 
     fn libffi_type(&self) -> libffi::Type {
@@ -430,10 +432,8 @@ pub enum Codec {
     Integer(IntegerCodec),
     BigInt(BigIntCodec),
     Float(FloatCodec),
-    EnumFlags(EnumFlagsCodec),
-    String(StringCodec),
+    Bytes(BytesCodec),
     Void(VoidCodec),
-    Boolean(BooleanCodec),
     Object(ObjectCodec),
     Boxed(BoxedCodec),
     Struct(StructCodec),
@@ -443,17 +443,26 @@ pub enum Codec {
     HashTable(HashTableCodec),
     Callback(CallbackCodec),
     Ref(RefCodec),
-    Unichar(UnicharCodec),
 }
 
 impl Codec {
+    pub(crate) fn field_size(&self) -> Option<usize> {
+        match self {
+            Self::Struct(codec) if codec.inline => codec.size,
+            Self::Boxed(codec) if codec.inline => codec.size,
+            Self::Fundamental(codec) if codec.inline => None,
+            Self::Void(_) => Some(0),
+            _ => Some(unsafe { (*self.libffi_type().as_raw_ptr()).size }),
+        }
+    }
+
     #[must_use]
     pub fn transfer(&self) -> Ownership {
         match self {
             Self::Object(codec) => codec.ownership,
             Self::Boxed(codec) => codec.ownership,
             Self::Struct(codec) => codec.ownership,
-            Self::String(codec) => codec.ownership,
+            Self::Bytes(codec) => codec.ownership,
             Self::Array(codec) => codec.ownership,
             Self::HashTable(codec) => codec.ownership,
             Self::Fundamental(codec) => codec.ownership,
@@ -461,12 +470,9 @@ impl Codec {
             Self::Integer(_)
             | Self::BigInt(_)
             | Self::Float(_)
-            | Self::EnumFlags(_)
             | Self::Void(_)
-            | Self::Boolean(_)
             | Self::Buffer(_)
-            | Self::Callback(_)
-            | Self::Unichar(_) => Ownership::Borrowed,
+            | Self::Callback(_) => Ownership::Borrowed,
         }
     }
 
@@ -480,15 +486,7 @@ impl Codec {
 
     #[must_use]
     pub fn is_scalar(&self) -> bool {
-        matches!(
-            self,
-            Codec::Integer(_)
-                | Codec::BigInt(_)
-                | Codec::Float(_)
-                | Codec::EnumFlags(_)
-                | Codec::Boolean(_)
-                | Codec::Unichar(_)
-        )
+        matches!(self, Codec::Integer(_) | Codec::BigInt(_) | Codec::Float(_))
     }
 }
 
@@ -498,13 +496,8 @@ impl std::fmt::Display for Codec {
             Self::Integer(kind) => write!(f, "Integer({kind:?})"),
             Self::BigInt(kind) => write!(f, "BigInt({kind:?})"),
             Self::Float(kind) => write!(f, "Float({kind:?})"),
-            Self::EnumFlags(t) => match t.kind {
-                EnumFlagsKind::Enum => write!(f, "Enum({})", t.get_type_fn_name),
-                EnumFlagsKind::Flags => write!(f, "Flags({})", t.get_type_fn_name),
-            },
-            Self::String(_) => write!(f, "String"),
+            Self::Bytes(_) => write!(f, "Bytes"),
             Self::Void(_) => write!(f, "Void"),
-            Self::Boolean(_) => write!(f, "Boolean"),
             Self::Object(_) => write!(f, "Object"),
             Self::Boxed(t) => write!(f, "Boxed({})", t.type_name),
             Self::Struct(t) => write!(f, "Struct({})", t.ownership),
@@ -514,7 +507,6 @@ impl std::fmt::Display for Codec {
             Self::HashTable(_) => write!(f, "HashTable"),
             Self::Callback(_) => write!(f, "Callback"),
             Self::Ref(t) => write!(f, "Ref({})", t.inner_codec()),
-            Self::Unichar(_) => write!(f, "Unichar"),
         }
     }
 }

@@ -25,11 +25,6 @@ type SlotRun = {
     length: number;
 };
 
-type LevelSync = {
-    store: LevelStore;
-    level: Level;
-};
-
 type ModelState = {
     root: Gio.ListStore;
     rootModels: GObject.Object[];
@@ -51,7 +46,6 @@ type CollectionModel = {
 const STORE_CLASS_KEY = Symbol.for("gtkx.components.lazy-level-store");
 const SLOTS_KEY = Symbol.for("gtkx.components.lazy-level-store.slots");
 const EMPTY_INDEX = createCollectionIndex(undefined, undefined, true);
-const SLOTS = sharedSlots();
 
 const newRootStore = (): Gio.ListStore => new Gio.ListStore({ itemType: GObject.TYPE_OBJECT });
 
@@ -88,7 +82,7 @@ function slotRefFor(value: GObject.Object | null): SlotRef | null {
         return null;
     }
 
-    const ref = SLOTS.get(item);
+    const ref = sharedSlots().get(item);
 
     return ref === undefined || ref.slot === -1 ? null : ref;
 }
@@ -194,44 +188,7 @@ function emitFlips(store: LevelStore, flipped: Set<number>): void {
     }
 }
 
-function childSync(
-    context: SyncContext,
-    store: LevelStore,
-    slot: number,
-    flipped: Set<number>,
-): LevelSync | undefined {
-    const child = store.childStores.get(slot) ?? null;
-
-    if (child === null || flipped.has(slot)) {
-        return undefined;
-    }
-
-    const level = context.index.childLevel(store.level, slot);
-
-    return level === undefined ? undefined : { store: child, level };
-}
-
-function childSyncs(context: SyncContext, store: LevelStore, overlap: number, flipped: Set<number>): LevelSync[] {
-    const syncs: LevelSync[] = [];
-    const slots = store.childStores.keys().toArray().toSorted((left, right) => left - right);
-
-    for (const slot of slots) {
-        if (slot >= overlap) {
-            continue;
-        }
-
-        const sync = childSync(context, store, slot, flipped);
-
-        if (sync !== undefined) {
-            syncs.push(sync);
-        }
-    }
-
-    return syncs;
-}
-
-function syncEntry(context: SyncContext, entry: LevelSync): LevelSync[] {
-    const { store, level } = entry;
+function syncLevel(context: SyncContext, store: LevelStore, level: Level): void {
     const previous = store.level;
     const previousLength = previous.items.length;
     const overlap = Math.min(previousLength, level.items.length);
@@ -242,17 +199,15 @@ function syncEntry(context: SyncContext, entry: LevelSync): LevelSync[] {
     emitTailSplice(store, previousLength, level.items.length);
     emitFlips(store, flipped);
 
-    return childSyncs(context, store, overlap, flipped);
-}
+    for (const [slot, child] of store.childStores) {
+        if (slot >= overlap || flipped.has(slot)) {
+            continue;
+        }
 
-function syncLevel(context: SyncContext, store: LevelStore, level: Level): void {
-    const pending: LevelSync[] = [{ store, level }];
+        const childLevel = context.index.childLevel(level, slot);
 
-    while (pending.length > 0) {
-        const entry = pending.pop();
-
-        if (entry !== undefined) {
-            pending.push(...syncEntry(context, entry).toReversed());
+        if (childLevel !== undefined) {
+            syncLevel(context, child, childLevel);
         }
     }
 }
@@ -427,7 +382,7 @@ class LazyLevelStore extends GObject.Object implements Gio.ListModelImpl {
         const created = Gtk.StringObject.new("");
         this.refs.set(position, ref);
         this.objects.set(position, created);
-        SLOTS.set(created, ref);
+        sharedSlots().set(created, ref);
 
         return created;
     }

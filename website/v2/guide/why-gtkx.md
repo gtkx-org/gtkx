@@ -1,32 +1,32 @@
 ---
 title: "Why GTKX"
-description: "Why GTKX is the React framework for Linux, why it is Adwaita-first, and why it runs on Node.js."
+description: "Native GTK and Adwaita apps with React, TypeScript, and Node.js."
 ---
 
 # Why GTKX
 
-The GNOME application platform pairs GTK4 with libadwaita: GTK supplies the widget toolkit, rendering, and accessibility, while Adwaita supplies adaptive application surfaces and GNOME design patterns. GTKX treats that complete stack as its foundation. New projects start from `Adw-1` as the sole codegen root and use `AdwApplication` and `AdwApplicationWindow`; Adwaita's GIR include brings in GTK4, so every underlying GTK widget remains available when it is the right building block.
+GTKX builds native Linux applications with React and TypeScript. JSX describes the Adwaita and GTK widgets, and React keeps the native interface in sync with application state.
 
-libadwaita and GTK4 are mature, and GtkBuilder XML can lay out an interface and bind properties into it. The widget tree it builds is still fixed: keeping that structure in sync with your application state is left to imperative code you write yourself, and nothing refreshes the interface as you work. GTKX adds that missing declarative layer and the tooling around it:
+Start application shells with `AdwApplication` and `AdwApplicationWindow`. GTKX 2 uses `Adw-1` as its default GIR root; Adwaita’s GIR include brings in `Gtk-4.0`.
 
-- a React reconciler that exposes the GNOME object graph as JSX elements,
-- a CLI for scaffolding, development, and production builds,
-- a dev server with Fast Refresh that patches your running UI in place,
-- CSS-in-JS styling, React Spring animations, React Navigation stack, tab, drawer, and split view navigators, high-level list and grid components, and dialogs that present on mount,
-- a Testing Library-style API for querying and driving your widgets in tests,
-- and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
+GTKX generates ESM bindings and TypeScript declarations from the same GIR data. The classes, method signatures, and JSX props reflect the native libraries selected for your project.
+
+## Development tools
+
+- The CLI scaffolds projects, builds applications, and runs a development server with Fast Refresh.
+- [CSS](/v2/guide/css) lets you author GTK styles in JavaScript; [animations](/v2/guide/animations) adapt React Spring to native widget props.
+- [Navigation](/v2/guide/navigation) integrates React Navigation with native stack, tab, drawer, and split view layouts.
+- [Components](/v2/guide/components) provide declarative lists and grids. [Adwaita dialogs](/v2/guide/modals-and-portals) present when mounted and close when unmounted.
+- [Testing tools](/v2/guide/testing) query and drive native widgets; the [MCP server](/v2/guide/mcp) exposes the running app to coding agents.
 
 ## Why Node.js
 
-GJS is GNOME's own JavaScript runtime, separate from Node.js, so native modules, npm packages, and Node.js tooling are out of reach. node-gtk runs on Node.js but is lightly maintained, with weak types and GTK3-era documentation and examples. GTKX generates the TypeScript types and the native calls from the same GObject-Introspection data, so they cannot drift apart.
+A GTKX app runs on Node.js, with access to its standard library and compatible npm packages. Generated GLib and Gio bindings are available alongside them for native file objects, settings, actions, notifications, and other platform APIs.
 
-A GTKX app is an ordinary Node.js process, so you do everyday work with the Node standard library and npm. Use `node:fs` for files, `fetch` for HTTP, `setTimeout` and `setInterval` for timers, and any package on the registry for the rest. The generated GLib and Gio bindings come in only where the GNOME platform itself is the point: GSettings, desktop notifications, actions, and the `Gio.File` objects a file dialog hands back.
-
-The GNOME UI stack and JavaScript share a single thread, so keep widget work on it.
+Keep widget work on the UI thread. Move expensive work off that thread so the application stays responsive.
 
 ## Next
 
-- [Getting Started](/v2/guide/getting-started): scaffold an app and run the dev loop.
-- [Configuration and Codegen](/v2/guide/configuration-and-codegen): how `gtkx.config.ts` drives codegen, and how GIR becomes the typed JSX prop model behind every intrinsic element.
-- [Tutorial](/v2/tutorial/): build Tasks, a complete GNOME task manager, from your first window to Flathub submission.
-- [Components](/v2/guide/components): the high-level components in `@gtkx/components` and the hooks in `@gtkx/react`.
+- [Getting Started](/v2/guide/getting-started): scaffold an app and run it.
+- [Configuration and Codegen](/v2/guide/configuration-and-codegen): select libraries and generate bindings.
+- [Tutorial](/v2/tutorial/): build Tasks, a native GNOME task manager.

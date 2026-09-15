@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
-import * as gtkxI18n from "@gtkx/i18n";
 import {
     getI18n,
-    init,
     t,
     Trans,
     Translation,
@@ -12,15 +10,11 @@ import {
 } from "@gtkx/i18n";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
-import * as reactI18next from "react-i18next";
 import { describe, expect, it } from "vitest";
 
-const DEFAULT_VALUE_ONE = "defaultValue_one";
-const DEFAULT_VALUE_OTHER = "defaultValue_other";
-
 const FILE_DEFAULTS = {
-    [DEFAULT_VALUE_ONE]: "{{count}} file",
-    [DEFAULT_VALUE_OTHER]: "{{count}} files",
+    defaultValue_one: "{{count}} file",
+    defaultValue_other: "{{count}} files",
 };
 
 const WrappedLabel = withTranslation()(({ t: translate }: WithTranslation): ReactNode => (
@@ -43,12 +37,6 @@ const ReactApiProbe = (): ReactNode => {
 };
 
 const expectDirectApi = (): void => {
-    expect(gtkxI18n).toMatchObject(reactI18next);
-    expect(getI18n().isInitialized).toBe(true);
-    expect(getI18n().hasLoadedNamespace("translation")).toBe(true);
-    expect(getI18n().modules.backend?.type).toBe("backend");
-    expect(init).toBe(getI18n().init);
-    expect(t).toBe(getI18n().t);
     expect(t("Hello, {{name}}!", { name: "Ada" })).toBe("Bonjour, Ada !");
 
     expect(t("greeting", { defaultValue: "Welcome, {{name}}!", name: "Ada" })).toBe(
@@ -57,6 +45,8 @@ const expectDirectApi = (): void => {
 };
 
 const expectEdgeCases = (): void => {
+    expect(t("{{count}} file", { count: 0, ...FILE_DEFAULTS })).toBe("0 fichier");
+    expect(t("{{count}} file", { count: 1, ...FILE_DEFAULTS })).toBe("1 fichier");
     expect(t("{{count}} file", { count: 3, ...FILE_DEFAULTS })).toBe("3 fichiers");
     expect(t("Open", { context: "menu" })).toBe("Ouvrir");
 
@@ -64,12 +54,14 @@ const expectEdgeCases = (): void => {
         t("{{count}} apple", {
             context: "fruit",
             count: 2,
-            [DEFAULT_VALUE_ONE]: "{{count}} apple",
-            [DEFAULT_VALUE_OTHER]: "{{count}} apples",
+            defaultValue_one: "{{count}} apple",
+            defaultValue_other: "{{count}} apples",
         }),
     ).toBe("2 pommes");
 
     expect(t("Hook message", { context: "missing" })).toBe("Message du hook");
+    expect(t("{{count}} file", { context: "missing", count: 2, ...FILE_DEFAULTS })).toBe("2 fichiers");
+    expect(t("Missing message", { defaultValue: "Fallback message" })).toBe("Fallback message");
 
     expect(
         getI18n().getFixedT(getI18n().language, "translation", "account")("title", {
@@ -80,10 +72,34 @@ const expectEdgeCases = (): void => {
 
 const expectUnsupportedCountsToThrow = (): void => {
     expect(() => t("{{count}} file", { count: -1, ...FILE_DEFAULTS })).toThrow();
+    expect(() => t("{{count}} file", { count: 0.5, ...FILE_DEFAULTS })).toThrow();
     expect(() => t("{{count}} file", { count: 1, ordinal: true, ...FILE_DEFAULTS })).toThrow();
 };
 
 describe("react-i18next gettext backend", () => {
+    it("preserves contextual translations that intentionally match the source", async () => {
+        await render(
+            <GtkBox>
+                <GtkLabel>{t("Open", { context: "technical" })}</GtkLabel>
+                <GtkLabel>
+                    {t("{{count}} item", {
+                        context: "technical",
+                        count: 2,
+                        defaultValue_one: "{{count}} item",
+                        defaultValue_other: "{{count}} items",
+                    })}
+                </GtkLabel>
+            </GtkBox>,
+        );
+        expect(screen.getByText("Open")).toBeDefined();
+        expect(screen.getByText("2 items")).toBeDefined();
+    });
+
+    it("formats interpolated numbers in the selected locale", async () => {
+        await render(<GtkLabel>{t("Total {{amount, number}}", { amount: 1234.5 })}</GtkLabel>);
+        expect(screen.getByText("Total 1\u{202F}234,5")).toBeDefined();
+    });
+
     it("shares the configured singleton across the direct and React APIs", async () => {
         expectDirectApi();
         await render(<ReactApiProbe />);

@@ -1,38 +1,22 @@
-use std::ffi::c_char;
+use std::ffi::{CStr, c_char};
 
 use super::super::prelude::*;
-use super::container::{ArrayContainer, BufferViewSupport};
+use super::container::{ArrayContainer, ArrayRead, BufferViewSupport};
 use super::item::ItemCodec;
-use super::{
-    ArrayCodec, ArrayKindEncoder, build_js_array, dup_strings_to_glib, read_string_item,
-    transfer_items,
-};
+use super::{ArrayCodec, ArrayKindEncoder, build_js_array, dup_bytes_to_glib, transfer_items};
 use crate::ffi::codec::Codec;
 use crate::ffi::{StashData, StashStorage};
 
-fn gstring_ptrs_to_unknowns<'e>(
-    env: &'e Env,
-    items: &[glib::GStringPtr],
-) -> anyhow::Result<Unknown<'e>> {
+fn byte_ptrs_to_unknowns<'e>(env: &'e Env, items: &[*const c_char]) -> anyhow::Result<Unknown<'e>> {
     let unknowns = items
         .iter()
-        .map(|item| {
-            let string = unsafe { lossy_c_string(item.as_ptr()) };
-            Ok(string.into_unknown(env)?)
+        .map(|&item| {
+            let source = unsafe { CStr::from_ptr(item) }.to_bytes();
+            let bytes = unsafe { value::js_byte_array(env, source.as_ptr(), source.len()) };
+            Ok(bytes?)
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
     build_js_array(env, unknowns)
-}
-
-fn build_strv(array: &[Unknown<'_>]) -> anyhow::Result<glib::StrV> {
-    let mut strv = glib::StrV::with_capacity(array.len());
-    for &v in array {
-        let s = read_string_item(v)?;
-        let gstring = glib::GString::from_string_checked(s)
-            .map_err(|_| anyhow::anyhow!("String contains an interior NUL byte"))?;
-        strv.push(gstring);
-    }
-    Ok(strv)
 }
 
 fn leak_container_to_callee(ptrs: &[*mut c_void]) -> *mut c_void {
@@ -48,6 +32,19 @@ fn zero_terminated_len(base: *const u8, stride: usize) -> usize {
         }
         len += 1;
     }
+}
+
+pub(super) fn terminated_ptrs(ptr: *mut c_void) -> impl Iterator<Item = *mut c_void> {
+    let ptr_array = ptr as *const *mut c_void;
+    let mut i = 0isize;
+    std::iter::from_fn(move || {
+        let item_ptr = unsafe { *ptr_array.offset(i) };
+        if item_ptr.is_null() {
+            return None;
+        }
+        i += 1;
+        Some(item_ptr)
+    })
 }
 
 #[derive(Debug, Clone)]
@@ -75,7 +72,7 @@ impl ArrayContainer for NullTerminatedArrayCodec {
 pub(super) struct NullTerminatedArrayEncoder;
 
 impl ArrayKindEncoder for NullTerminatedArrayEncoder {
-    fn encode_strings(
+    fn encode_byte_strings(
         &self,
         array: &[Unknown<'_>],
         dup_items: bool,
@@ -83,20 +80,26 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
     ) -> anyhow::Result<ffi::Stash> {
         match (ownership, dup_items) {
             (Ownership::Borrowed, false) => {
-                let strv = build_strv(array)?;
-                let ptr = strv.as_ptr() as *mut c_void;
+                let strings = ArrayCodec::extract_byte_strings(array)?;
+                let mut ptrs: Vec<*mut c_void> = strings
+                    .iter()
+                    .map(|string| string.as_ptr() as *mut c_void)
+                    .collect();
+                ptrs.push(std::ptr::null_mut());
+                let ptr = ptrs.as_mut_ptr().cast::<c_void>();
                 Ok(ffi::Stash::Storage(StashStorage::new(
                     ptr,
-                    StashData::StrV(strv),
+                    StashData::StringArray(strings, ptrs),
                 )))
             }
             (Ownership::Full, true) => {
-                let strv = build_strv(array)?;
-                let container = strv.into_raw().cast::<c_void>();
+                let mut ptrs = dup_bytes_to_glib(array)?;
+                ptrs.push(std::ptr::null_mut());
+                let container = leak_container_to_callee(&ptrs);
                 Ok(full_transfer_stash(container, ffi::ReleaseKind::StrFreeV))
             }
             (Ownership::Full, false) => {
-                let cstrings = ArrayCodec::extract_strings(array)?;
+                let cstrings = ArrayCodec::extract_byte_strings(array)?;
                 let mut ptrs: Vec<*mut c_void> =
                     cstrings.iter().map(|s| s.as_ptr() as *mut c_void).collect();
                 ptrs.push(std::ptr::null_mut());
@@ -107,7 +110,7 @@ impl ArrayKindEncoder for NullTerminatedArrayEncoder {
                 ))
             }
             (Ownership::Borrowed, true) => {
-                let mut ptrs = dup_strings_to_glib(array)?;
+                let mut ptrs = dup_bytes_to_glib(array)?;
                 ptrs.push(std::ptr::null_mut());
                 let ptr = ptrs.as_mut_ptr().cast::<c_void>();
                 Ok(ffi::Stash::Storage(
@@ -150,46 +153,45 @@ impl ArrayCodec {
         env: &'e Env,
         name: &str,
         stash: &ffi::Stash,
-        transfer: Ownership,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
         let ffi::Stash::Ptr(ptr) = stash else {
             anyhow::bail!("A {name} can only be decoded from a raw pointer")
         };
         if ptr.is_null() {
-            return self.decode_null(env);
+            return Ok(value::js_null(env)?);
         }
         if self.is_bytes {
-            return Self::decode_zero_terminated_bytes(env, *ptr, transfer);
+            return Self::decode_zero_terminated_bytes(env, *ptr, read.transfer());
         }
         if let Some(stride) = self.inline_element_size() {
             return Self::decode_zero_terminated_contiguous(
                 env,
                 stride,
                 *ptr,
-                transfer,
-                |env, base, len| self.decode_inline(env, stride, base, len),
+                read.transfer(),
+                |env, base, len| self.decode_inline(env, stride, base, len, read),
             );
         }
 
         if matches!(&*self.item_codec, Codec::Array(_)) {
-            return self.decode_null_terminated_ptr_array(env, *ptr, transfer);
+            return self.decode_null_terminated_ptr_array(env, *ptr, read);
         }
 
         match self.item_codec("array")? {
-            ItemCodec::String => self.decode_null_terminated_string_array(env, *ptr, transfer),
-            ItemCodec::Pointer => self.decode_null_terminated_ptr_array(env, *ptr, transfer),
-            codec @ (ItemCodec::Integer(_)
-            | ItemCodec::EnumFlags(_)
-            | ItemCodec::BigInt(_)
-            | ItemCodec::Float(_)
-            | ItemCodec::Boolean
-            | ItemCodec::Unichar) => Self::decode_zero_terminated_contiguous(
-                env,
-                codec.element_size(),
-                *ptr,
-                transfer,
-                |env, base, len| self.decode_contiguous(env, codec, base, len),
-            ),
+            ItemCodec::Bytes => {
+                self.decode_null_terminated_string_array(env, *ptr, read.transfer())
+            }
+            ItemCodec::Pointer => self.decode_null_terminated_ptr_array(env, *ptr, read),
+            codec @ (ItemCodec::Integer(_) | ItemCodec::BigInt(_) | ItemCodec::Float(_)) => {
+                Self::decode_zero_terminated_contiguous(
+                    env,
+                    codec.element_size(),
+                    *ptr,
+                    read.transfer(),
+                    |env, base, len| self.decode_contiguous(env, codec, base, len, read),
+                )
+            }
         }
     }
 
@@ -217,21 +219,12 @@ impl ArrayCodec {
         &self,
         env: &'e Env,
         ptr: *mut c_void,
-        transfer: Ownership,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
-        let ptr_array = ptr as *const *mut c_void;
-        let mut i = 0isize;
-        let items = std::iter::from_fn(move || {
-            let item_ptr = unsafe { *ptr_array.offset(i) };
-            if item_ptr.is_null() {
-                return None;
-            }
-            i += 1;
-            Some(item_ptr)
-        });
+        let items = terminated_ptrs(ptr);
 
-        let is_full = transfer.is_full();
-        self.decode_ptr_iter(env, items, move || {
+        let is_full = read.transfer().is_full();
+        self.decode_ptr_iter(env, items, read, move || {
             if is_full {
                 unsafe { glib::ffi::g_free(ptr) };
             }
@@ -259,18 +252,20 @@ impl ArrayCodec {
         ptr: *mut c_void,
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
-        let items_full = matches!(&*self.item_codec, Codec::String(string_codec) if string_codec.ownership.is_full());
+        let items_full = matches!(&*self.item_codec, Codec::Bytes(bytes_codec) if bytes_codec.ownership.is_full());
 
-        if transfer.is_full() {
-            let strv = if items_full {
-                unsafe { glib::StrV::from_glib_full(ptr.cast::<*mut c_char>()) }
-            } else {
-                unsafe { glib::StrV::from_glib_container(ptr.cast::<*const c_char>()) }
-            };
-            gstring_ptrs_to_unknowns(env, &strv)
-        } else {
-            let borrowed = unsafe { glib::StrVRef::from_glib_borrow(ptr as *const *const c_char) };
-            gstring_ptrs_to_unknowns(env, borrowed)
-        }
+        let _storage = transfer.is_full().then(|| {
+            full_transfer_stash(
+                ptr,
+                if items_full {
+                    ffi::ReleaseKind::StrFreeV
+                } else {
+                    ffi::ReleaseKind::GFree
+                },
+            )
+        });
+        let length = unsafe { glib::ffi::g_strv_length(ptr.cast::<*mut c_char>()) } as usize;
+        let items = unsafe { std::slice::from_raw_parts(ptr.cast::<*const c_char>(), length) };
+        byte_ptrs_to_unknowns(env, items)
     }
 }

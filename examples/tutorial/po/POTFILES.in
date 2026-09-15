@@ -7,6 +7,7 @@ src/components/main-menu.tsx
 src/components/new-list-dialog.tsx
 src/components/preferences.tsx
 src/components/search-button.tsx
+src/components/settings.tsx
 src/components/shortcuts.tsx
 src/components/sidebar.tsx
 src/components/task-buttons.tsx
@@ -24,7 +25,8 @@ src/hooks/use-reminders.ts
 src/hooks/use-sort-order.ts
 src/index.tsx
 src/navigation.ts
-src/notifications.ts
+src/notifications.tsx
+src/settings.ts
 src/store/index.ts
 src/store/lists.ts
 src/store/seed.ts

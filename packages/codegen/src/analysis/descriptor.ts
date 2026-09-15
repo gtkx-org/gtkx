@@ -1,105 +1,41 @@
+import type { Ownership } from "@gtkx/native";
+import type { Descriptor, t } from "@gtkx/runtime";
 import { sourceStringLiteral } from "@gtkx/utils";
 import type { GirCursorBounds } from "../gir/parameter.js";
 import { joinArgs, pure } from "../writer/emit.js";
 
-type Ownership = "borrowed" | "full";
+type RuntimeDescriptors = typeof t;
+type DescriptorName = keyof RuntimeDescriptors;
+type ScalarDescriptorName = {
+    [K in DescriptorName]: RuntimeDescriptors[K] extends Descriptor
+        ? keyof RuntimeDescriptors[K] extends "kind"
+            ? Exclude<K, "buffer" | "void">
+            : never
+        : never;
+}[DescriptorName];
 
-type DescriptorName =
-    | "bind" |
-    "int8" |
-    "uint8" |
-    "int16" |
-    "uint16" |
-    "int32" |
-    "uint32" |
-    "int64" |
-    "uint64" |
-    "bigint64" |
-    "biguint64" |
-    "gtype" |
-    "float32" |
-    "float64" |
-    "boolean" |
-    "void" |
-    "unichar" |
-    "buffer" |
-    "string" |
-    "object" |
-    "boxed" |
-    "struct" |
-    "fundamental" |
-    "ref" |
-    "hashTable" |
-    "enum" |
-    "flags" |
-    "array" |
-    "list" |
-    "slist" |
-    "ptrArray" |
-    "gArray" |
-    "byteArray" |
-    "sizedArray" |
-    "fixedArray" |
-    "cursorArray" |
-    "callback" |
-    "fn";
-
-type DescriptorNames = { [K in DescriptorName]: `t.${K}` };
-
-type ScalarDescriptorName =
-    | "boolean" |
-    "int8" |
-    "uint8" |
-    "int16" |
-    "uint16" |
-    "int32" |
-    "uint32" |
-    "int64" |
-    "uint64" |
-    "bigint64" |
-    "biguint64" |
-    "float32" |
-    "float64" |
-    "unichar";
-
-type BoxedOptions = {
-    ownership: Ownership;
-    sharedLibrary: string | undefined;
-    getTypeFnName: string;
-    freeFnName: string | undefined;
-    isCallerAllocated: boolean;
-    isInline?: boolean;
-    size: number | undefined;
-    fallbackClass?: string | undefined;
+type SourceOptions<TOptions, TExpressions extends keyof TOptions = never> = {
+    [K in keyof TOptions]: (K extends TExpressions ? string : TOptions[K]) | undefined;
 };
 
-type StructOptions = {
-    size: number | string | undefined;
-    wrapperClass: string | undefined;
-    isCallerAllocated: boolean;
-    isInline?: boolean;
-    sharedLibrary?: string | undefined;
-    copyFnName?: string | undefined;
-    freeFnName?: string | undefined;
+type RuntimeBoxedOptions = NonNullable<Parameters<RuntimeDescriptors["boxed"]>[1]>;
+type BoxedOptions = SourceOptions<RuntimeBoxedOptions, "fallbackClass"> &
+    Required<Pick<RuntimeBoxedOptions, "ownership" | "getTypeFnName" | "isCallerAllocated">>;
+
+type RuntimeStructOptions = NonNullable<Parameters<RuntimeDescriptors["struct"]>[1]>;
+type StructOptions = SourceOptions<Omit<RuntimeStructOptions, "size">, "wrapperClass"> & {
+    size?: RuntimeStructOptions["size"] | string;
 };
 
-type FundamentalOptions = {
-    ownership: Ownership;
-    typeName: string | undefined;
-    wrapperClass: string | undefined;
-    fallbackClass?: string | undefined;
-    isCallerAllocated?: boolean | undefined;
-    isInline?: boolean | undefined;
-};
+type RuntimeFundamentalOptions = NonNullable<Parameters<RuntimeDescriptors["fundamental"]>[3]>;
+type FundamentalOptions = SourceOptions<RuntimeFundamentalOptions, "wrapperClass" | "fallbackClass"> &
+    Required<Pick<RuntimeFundamentalOptions, "ownership">>;
 
-type ListDescriptorName = "list" | "slist" | "ptrArray" | "gArray";
+type ListDescriptorName = Extract<DescriptorName, "list" | "slist" | "ptrArray" | "gArray">;
 
-type ArrayLayout = {
-    elementSize?: number | undefined;
-    isBytes: boolean;
-    isCallerAllocated?: boolean | undefined;
-    isZeroTerminated?: boolean | undefined;
-};
+type RuntimeArrayOptions = NonNullable<Parameters<RuntimeDescriptors["array"]>[3]>;
+type ArrayLayout = Pick<RuntimeArrayOptions, "elementSize" | "isCallerAllocated" | "isZeroTerminated"> &
+    Required<Pick<RuntimeArrayOptions, "isBytes">>;
 
 type BindArgs = {
     libExpr: string;
@@ -108,13 +44,11 @@ type BindArgs = {
     returnType: string;
 };
 
+type RuntimeFnSpec = Extract<Parameters<RuntimeDescriptors["fn"]>[2], { args: unknown }>;
 type FnSpecParts = {
     args: string;
     returns: string;
-    isReturnSkipped: boolean;
-    isReturnUnpacked: boolean;
-    canThrow: boolean;
-};
+} & Required<Pick<RuntimeFnSpec, "isReturnSkipped" | "isReturnUnpacked" | "canThrow">>;
 
 type CallbackSpecParts = {
     argTypes: string[];
@@ -125,56 +59,18 @@ type CallbackSpecParts = {
 const SKIPPED_RETURN_ENTRY = "isReturnSkipped: true";
 const UNPACKED_RETURN_ENTRY = "isReturnUnpacked: true";
 
-const T: DescriptorNames = {
-    bind: "t.bind",
-    int8: "t.int8",
-    uint8: "t.uint8",
-    int16: "t.int16",
-    uint16: "t.uint16",
-    int32: "t.int32",
-    uint32: "t.uint32",
-    int64: "t.int64",
-    uint64: "t.uint64",
-    bigint64: "t.bigint64",
-    biguint64: "t.biguint64",
-    gtype: "t.gtype",
-    float32: "t.float32",
-    float64: "t.float64",
-    boolean: "t.boolean",
-    void: "t.void",
-    unichar: "t.unichar",
-    buffer: "t.buffer",
-    string: "t.string",
-    object: "t.object",
-    boxed: "t.boxed",
-    struct: "t.struct",
-    fundamental: "t.fundamental",
-    ref: "t.ref",
-    hashTable: "t.hashTable",
-    enum: "t.enum",
-    flags: "t.flags",
-    array: "t.array",
-    list: "t.list",
-    slist: "t.slist",
-    ptrArray: "t.ptrArray",
-    gArray: "t.gArray",
-    byteArray: "t.byteArray",
-    sizedArray: "t.sizedArray",
-    fixedArray: "t.fixedArray",
-    cursorArray: "t.cursorArray",
-    callback: "t.callback",
-    fn: "t.fn",
-};
+const descriptorName = <TName extends DescriptorName>(name: TName): `t.${TName}` => `t.${name}`;
 
-const tVoid: string = T.void;
-const tBoolean: string = T.boolean;
-const tUint8: string = T.uint8;
-const tUint64: string = T.uint64;
-const tBiguint64: string = T.biguint64;
-const tGtype: string = T.gtype;
-const tBuffer: string = T.buffer;
+const tVoid: string = descriptorName("void");
+const tBoolean: string = descriptorName("boolean");
+const tUint8: string = descriptorName("uint8");
+const tUint64: string = descriptorName("uint64");
+const tBiguint64: string = descriptorName("biguint64");
+const tGtype: string = descriptorName("gtype");
+const tBuffer: string = descriptorName("buffer");
 
-const call = (name: DescriptorName, args: (string | undefined)[]): string => `${T[name]}(${joinArgs(args)})`;
+const call = (name: DescriptorName, args: (string | undefined)[]): string =>
+    `${descriptorName(name)}(${joinArgs(args)})`;
 
 const optionsObject = (parts: (string | undefined)[]): string | undefined => {
     const present = parts.filter((part): part is string => part !== undefined);
@@ -185,7 +81,7 @@ const optionsObject = (parts: (string | undefined)[]): string | undefined => {
 const optionalLiteralEntry = (key: string, value: string | undefined): string | undefined =>
     value === undefined ? undefined : `${key}: ${sourceStringLiteral(value)}`;
 
-const tScalar = (name: ScalarDescriptorName): string => T[name];
+const tScalar = (name: ScalarDescriptorName): string => descriptorName(name);
 
 const tString = (ownership: Ownership, length?: string, hasOwnedStorage = false): string =>
     call("string", [
@@ -388,7 +284,8 @@ export {
     tBind,
     tFn,
     type ArrayLayout,
-    type Ownership,
     type ScalarDescriptorName,
     type ListDescriptorName,
 };
+
+export type { Ownership } from "@gtkx/native";

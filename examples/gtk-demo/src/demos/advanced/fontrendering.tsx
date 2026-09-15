@@ -19,6 +19,7 @@ import * as PangoCairo from "@gtkx/gi/pangocairo";
 import {
     GtkBox,
     GtkButton,
+    GtkCallbackAction,
     GtkCheckButton,
     GtkDrawingArea,
     GtkEntry,
@@ -32,6 +33,7 @@ import {
     GtkSeparator,
     GtkShortcut,
     GtkShortcutController,
+    GtkShortcutTrigger,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
 import { createContext, type RefObject, useContext, useEffect, useRef, useState } from "react";
@@ -439,11 +441,7 @@ function useFontRenderingState() {
 
     const pixelAlphaRef = useRef(1);
     const outlineAlphaRef = useRef(0);
-    const drawingAreaRef = useRef<Gtk.DrawingArea | null>(null);
-
-    const setDrawingArea = (node: Gtk.DrawingArea | null) => {
-        drawingAreaRef.current = node;
-    };
+    const [drawingArea, setDrawingArea] = useState<Gtk.DrawingArea | null>(null);
 
     return {
         mode,
@@ -464,7 +462,7 @@ function useFontRenderingState() {
         setOverlays,
         pixelAlphaRef,
         outlineAlphaRef,
-        drawingAreaRef,
+        drawingArea,
         setDrawingArea,
     };
 }
@@ -566,12 +564,12 @@ const advanceOverlayAnimation = ({
 };
 
 function useOverlayAnimation(state: FontRenderingState) {
-    const { overlays, pixelAlphaRef, outlineAlphaRef, drawingAreaRef } = state;
+    const { overlays, pixelAlphaRef, outlineAlphaRef, drawingArea } = state;
     const animationRef = useRef<OverlayAnimation | null>(null);
     const [isAnimating, setIsAnimating] = useState(false);
 
     useEffect(() => {
-        if (!drawingAreaRef.current) {
+        if (!drawingArea) {
             return;
         }
 
@@ -583,9 +581,9 @@ function useOverlayAnimation(state: FontRenderingState) {
             animationRef,
             setIsAnimating,
         });
-    }, [overlays.shouldShowPixels, overlays.shouldShowOutlines, pixelAlphaRef, outlineAlphaRef, drawingAreaRef]);
+    }, [overlays.shouldShowPixels, overlays.shouldShowOutlines, pixelAlphaRef, outlineAlphaRef, drawingArea]);
 
-    useTickCallback(isAnimating ? drawingAreaRef : null, (widget, frameClock) =>
+    useTickCallback(isAnimating ? drawingArea : null, (widget, frameClock) =>
         advanceOverlayAnimation({
             widget,
             frameClock,
@@ -1094,20 +1092,28 @@ const FontRenderingZoomShortcuts = ({ zoomIn, zoomOut }: ZoomShortcutsProps) => 
         shortcuts={(
             <>
                 <GtkShortcut
-                    trigger={Gtk.ShortcutTrigger.parseString("<Control>plus")}
-                    action={Gtk.CallbackAction.new(() => {
-                        zoomIn();
+                    trigger={<GtkShortcutTrigger accelerator="<Control>plus" />}
+                    action={(
+                        <GtkCallbackAction
+                            callback={() => {
+                                zoomIn();
 
-                        return true;
-                    })}
+                                return true;
+                            }}
+                        />
+                    )}
                 />
                 <GtkShortcut
-                    trigger={Gtk.ShortcutTrigger.parseString("<Control>minus")}
-                    action={Gtk.CallbackAction.new(() => {
-                        zoomOut();
+                    trigger={<GtkShortcutTrigger accelerator="<Control>minus" />}
+                    action={(
+                        <GtkCallbackAction
+                            callback={() => {
+                                zoomOut();
 
-                        return true;
-                    })}
+                                return true;
+                            }}
+                        />
+                    )}
                 />
             </>
         )}

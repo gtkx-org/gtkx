@@ -1,59 +1,11 @@
+import { isKeyword, isStrictBindReservedWord } from "@babel/helper-validator-identifier";
 import { escapeIdentifierStart } from "./escape-identifier-start.ts";
 import { escapeReserved } from "./escape-reserved.ts";
 
-const RESERVED: Set<string> = new Set([
-    "arguments",
-    "await",
-    "break",
-    "case",
-    "catch",
-    "class",
-    "const",
-    "continue",
-    "debugger",
-    "default",
-    "delete",
-    "do",
-    "else",
-    "enum",
-    "eval",
-    "export",
-    "extends",
-    "false",
-    "finally",
-    "for",
-    "function",
-    "if",
-    "implements",
-    "import",
-    "in",
-    "instanceof",
-    "interface",
-    "let",
-    "new",
-    "null",
-    "package",
-    "private",
-    "protected",
-    "public",
-    "return",
-    "static",
-    "super",
-    "switch",
-    "this",
-    "throw",
-    "true",
-    "try",
-    "typeof",
-    "var",
-    "void",
-    "while",
-    "with",
-    "yield",
-]);
+const isReservedIdentifier = (name: string): boolean => isKeyword(name) || isStrictBindReservedWord(name, true);
 
 function sanitizeIdentifier(name: string): string {
-    return escapeIdentifierStart(escapeReserved(name, RESERVED));
+    return escapeIdentifierStart(escapeReserved(name, isReservedIdentifier));
 }
 
-export { RESERVED, sanitizeIdentifier };
+export { isReservedIdentifier, sanitizeIdentifier };

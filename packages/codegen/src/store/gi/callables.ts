@@ -55,6 +55,16 @@ type StaticMember = {
     name: string;
 };
 
+type MemberSignature = {
+    signature: string;
+    returnType: string;
+};
+
+type MemberSignatureOptions = {
+    finishFn: GirFunction | undefined;
+    returnTypeOverride?: string | undefined;
+};
+
 type InstanceMemberRenderer = (
     context: ModuleContext,
     callable: GirFunction,
@@ -236,6 +246,18 @@ const renderCallableMember = (
     return `${doc}${renderBlock(header, body)}`;
 };
 
+const constructorReturnOverride = (
+    context: ModuleContext,
+    callable: GirFunction,
+    override: string | undefined,
+): string | undefined => {
+    if (override === undefined) {
+        return undefined;
+    }
+
+    return renderMethodReturnType(context, callable, override);
+};
+
 const renderStaticEntry = (
     context: ModuleContext,
     callable: GirFunction,
@@ -261,7 +283,7 @@ const renderStaticEntry = (
     return renderCallableMember(context, callable, {
         resolveName: options.resolveName,
         isStatic: true,
-        returnTypeOverride: options.returnTypeOverride,
+        returnTypeOverride: constructorReturnOverride(context, callable, options.returnTypeOverride),
     });
 };
 
@@ -318,12 +340,11 @@ function instanceMemberRenderer(
     };
 }
 
-const memberSignatureText = (
+const memberSignature = (
     context: ModuleContext,
     callable: GirFunction,
-    name: string,
-    options: { finishFn: GirFunction | undefined; returnTypeOverride?: string | undefined },
-): string => {
+    options: MemberSignatureOptions,
+): MemberSignature => {
     const promisified =
         options.finishFn === undefined ? undefined : renderPromisifiedSignature(context, callable, options.finishFn);
 
@@ -332,8 +353,25 @@ const memberSignatureText = (
     const returnType =
         promisified?.returnType ?? options.returnTypeOverride ?? renderMethodReturnType(context, callable);
 
+    return { signature, returnType };
+};
+
+const memberSignatureText = (
+    context: ModuleContext,
+    callable: GirFunction,
+    name: string,
+    options: MemberSignatureOptions,
+): string => {
+    const { signature, returnType } = memberSignature(context, callable, options);
+
     return `${name}(${signature}): ${returnType}`;
 };
+
+const renderInstanceMethodReturnType = (
+    context: ModuleContext,
+    callable: GirFunction,
+    scope: InstanceScope,
+): string => memberSignature(context, callable, { finishFn: matchFinishFunction(context, callable, scope) }).returnType;
 
 const matchFinishFunction = (
     context: ModuleContext,
@@ -432,7 +470,7 @@ const renderStaticSignature = (
         name,
         signature: memberSignatureText(context, callable, name, {
             finishFn,
-            returnTypeOverride: options?.returnTypeOverride,
+            returnTypeOverride: constructorReturnOverride(context, callable, options?.returnTypeOverride),
         }),
     };
 };
@@ -547,6 +585,7 @@ const renderPlainTypeMembers = (
 
 export {
     renderInstanceMethodSignature,
+    renderInstanceMethodReturnType,
     renderClassInstanceMember,
     instanceMemberSpec,
     instanceMemberNote,

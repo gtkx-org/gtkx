@@ -1,14 +1,10 @@
-function omit<T extends object, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
-    const excluded: Set<PropertyKey> = new Set(keys);
-    const result: Record<string, unknown> = {};
+import type { DistributedOmit } from "type-fest";
+import { omit as omitKeys } from "es-toolkit";
 
-    for (const [key, value] of Object.entries(obj)) {
-        if (!excluded.has(key)) {
-            result[key] = value;
-        }
-    }
-
-    return result as Omit<T, K>;
+function omit<T extends object, K extends keyof T>(obj: T, keys: K[]): DistributedOmit<T, K> {
+    return omitKeys(obj, keys) as DistributedOmit<T, K>;
 }
 
 export { omit };
+
+export type { DistributedOmit } from "type-fest";

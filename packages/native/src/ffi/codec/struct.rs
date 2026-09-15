@@ -29,6 +29,17 @@ pub struct StructCodec {
 }
 
 impl Encoder for StructCodec {
+    fn owned_release(&self) -> anyhow::Result<Option<ffi::ReleaseKind>> {
+        if self.ownership.is_borrowed() {
+            return Ok(None);
+        }
+        self.ensure_transfer(self.ownership)?;
+        Ok(Some(self.free_fn()?.map_or(
+            ffi::ReleaseKind::GFree,
+            ffi::ReleaseKind::Function,
+        )))
+    }
+
     fn object_ptr_context(&self) -> &'static str {
         "Struct object"
     }
@@ -150,7 +161,9 @@ impl StructCodec {
         let Some(size) = self.size else {
             bail!("Cannot write an inline struct field whose size is unknown")
         };
-        let src_ptr = value::handle_ptr(value, "Struct field write")?;
+        let src_ptr = value::handle_ptr_checked(value, "Struct field write", |handle| {
+            handle.check_range(0, size)
+        })?;
         if src_ptr.is_null() {
             bail!("Cannot write null into an inline struct field")
         }
@@ -167,7 +180,9 @@ impl StructCodec {
         init: SlotInit,
         size: usize,
     ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
-        let src_ptr = value::handle_ptr(value, "Struct field write")?;
+        let src_ptr = value::handle_ptr_checked(value, "Struct field write", |handle| {
+            handle.check_range(0, size)
+        })?;
         if src_ptr.is_null() {
             unsafe { slot.store(std::ptr::null_mut()) };
             return Ok(None);

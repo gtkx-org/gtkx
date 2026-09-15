@@ -3,9 +3,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { arch, platform } from "node:os";
 import { dirname, join } from "node:path";
+import { BINDING_FILENAME } from "../deploy/native-addon.js";
 import { stripQuery } from "./strip-query.js";
-
-const BINDING_FILENAME = "gtkx.node";
 
 function resolveBinaryPath(projectRequire: ReturnType<typeof createRequire>, currentArch: string): string {
     const nativeRoot = dirname(projectRequire.resolve("@gtkx/native/package.json"));

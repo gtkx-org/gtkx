@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { ROOT_DIR, runAsync, verifyAppStarts, verifyBuiltAppStarts, withRegistry } from "./e2e-registry.js";
 
 const TUTORIAL_DIR = join(ROOT_DIR, "examples", "tutorial");
@@ -175,6 +176,14 @@ async function deployTutorial(env: NodeJS.ProcessEnv): Promise<void> {
             args: [],
             env: FRENCH_ENV,
         });
+
+        await runAsync(process.execPath, [
+            ...process.execArgv,
+            fileURLToPath(new URL("tutorial-activation.ts", import.meta.url)),
+            prefix,
+            APPLICATION_ID,
+            BINARY_NAME,
+        ], { cwd: ROOT_DIR, env });
 
         console.log(`tutorial: the localized ${BINARY_NAME} packages contain their catalog and start`);
     } finally {

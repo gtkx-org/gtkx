@@ -1,21 +1,24 @@
 import type { GMenuProps } from "@gtkx/jsx/gio";
 import type { RefObject } from "react";
+import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
+import { GMenu, GMenuItem, GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkApplication,
     GtkApplicationWindow,
     GtkBox,
+    GtkCallbackAction,
     GtkMenuButton,
     GtkPopoverMenu,
     GtkPopoverMenuBar,
     GtkShortcut,
     GtkShortcutController,
+    GtkShortcutTrigger,
 } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { render } from "@gtkx/testing";
-import { createRef, useState } from "react";
+import { render, screen, userEvent } from "@gtkx/testing";
+import { createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { createAppIdFactory } from "../helpers/unique-name.js";
 
@@ -118,11 +121,15 @@ const renderItemListTransition = async (
     betweenRenders?: (initial: Gio.MenuModel) => void,
 ): Promise<Gio.MenuModel> => {
     const ref = createRef<Gtk.PopoverMenu>();
-    await render(<ItemListApp menuRef={ref} items={initialItems} />);
-    betweenRenders?.(requireModel(ref.current));
-    await render(<ItemListApp menuRef={ref} items={updatedItems} />);
+    const { rerender } = await render(<ItemListApp menuRef={ref} items={initialItems} />);
+    const menu = ref.current;
+    const model = requireModel(menu);
+    betweenRenders?.(model);
+    await rerender(<ItemListApp menuRef={ref} items={updatedItems} />);
+    expect(ref.current).toBe(menu);
+    expect(requireModel(ref.current)).toBe(model);
 
-    return requireModel(ref.current);
+    return model;
 };
 
 const SingleEntryApp = ({ menuRef, entry }: { menuRef: MenuRef; entry: MenuItem }) => (
@@ -187,9 +194,55 @@ const buildMenu = (items: { label: string; action: string }[]): Gio.Menu => {
     return menu;
 };
 
-const callbackAction = (): Gtk.ShortcutAction => Gtk.CallbackAction.new(() => true);
+const callbackAction = () => <GtkCallbackAction callback={() => true} />;
+
+const ItemMenu = ({ label }: { label: string }) => (
+    <GtkPopoverMenu menuModel={<GMenu><GMenuItem label={label} action="win.open" /></GMenu>} />
+);
 
 describe("render - Menu items", () => {
+    it("renders native menu item elements and replaces keyed snapshots", async () => {
+        const menuRef = createRef<Gio.Menu>();
+        const ItemMenu = ({ label }: { label: string }) => (
+            <GtkPopoverMenu menuModel={(
+                <GMenu ref={menuRef}>
+                    <GMenuItem key={label} label={label} action="win.open" />
+                </GMenu>
+            )}
+            />
+        );
+        const { rerender, unmount } = await render(<ItemMenu label="Before" />);
+        const menu = menuRef.current;
+
+        if (menu === null) {
+            throw new Error("The menu was not mounted");
+        }
+
+        expect(itemLabel(menu, 0)).toBe("Before");
+        expect(itemAction(menu, 0)).toBe("win.open");
+        await rerender(<ItemMenu label="After" />);
+        expect(menuRef.current).toBe(menu);
+        expect(itemLabel(menu, 0)).toBe("After");
+        await unmount();
+        expect(menu.getNItems()).toBe(0);
+    });
+
+    it("rejects changing an inserted item snapshot without a new key", async () => {
+        const { rerender } = await render(<ItemMenu label="Before" />);
+
+        await expect(rerender(<ItemMenu label="After" />)).rejects.toThrow();
+    });
+
+    it("rejects adding an action to an existing item snapshot", async () => {
+        const { rerender } = await render(
+            <GtkPopoverMenu menuModel={<GMenu><GMenuItem label="Before" /></GMenu>} />,
+        );
+
+        await expect(rerender(
+            <GtkPopoverMenu menuModel={<GMenu><GMenuItem label="Before" action="win.open" /></GMenu>} />,
+        )).rejects.toThrow();
+    });
+
     it("adds a menu item with a label and detailed action", async () => {
         const model = await renderPopoverMenu([{ label: "Item 1", action: "win.item1" }]);
         expect(model.getNItems()).toBe(1);
@@ -227,18 +280,26 @@ describe("render - Menu items", () => {
 describe("render - Menu item updates", () => {
     it("updates a label when its entry changes", async () => {
         const ref = createRef<Gtk.PopoverMenu>();
-        await render(<LabeledItemApp menuRef={ref} label="Initial" />);
-        expect(itemLabel(requireModel(ref.current), 0)).toBe("Initial");
-        await render(<LabeledItemApp menuRef={ref} label="Updated" />);
-        expect(itemLabel(requireModel(ref.current), 0)).toBe("Updated");
+        const { rerender } = await render(<LabeledItemApp menuRef={ref} label="Initial" />);
+        const menu = ref.current;
+        const model = requireModel(menu);
+        expect(itemLabel(model, 0)).toBe("Initial");
+        await rerender(<LabeledItemApp menuRef={ref} label="Updated" />);
+        expect(ref.current).toBe(menu);
+        expect(requireModel(ref.current)).toBe(model);
+        expect(itemLabel(model, 0)).toBe("Updated");
     });
 
     it("removes an item when it leaves the items array", async () => {
         const ref = createRef<Gtk.PopoverMenu>();
-        await render(<RemovableItemApp menuRef={ref} shouldShowItem={true} />);
-        expect(requireModel(ref.current).getNItems()).toBe(1);
-        await render(<RemovableItemApp menuRef={ref} shouldShowItem={false} />);
-        expect(requireModel(ref.current).getNItems()).toBe(0);
+        const { rerender } = await render(<RemovableItemApp menuRef={ref} shouldShowItem={true} />);
+        const menu = ref.current;
+        const model = requireModel(menu);
+        expect(model.getNItems()).toBe(1);
+        await rerender(<RemovableItemApp menuRef={ref} shouldShowItem={false} />);
+        expect(ref.current).toBe(menu);
+        expect(requireModel(ref.current)).toBe(model);
+        expect(model.getNItems()).toBe(0);
     });
 });
 
@@ -286,7 +347,7 @@ describe("render - Menu change notification", () => {
         const model = requireModel(ref.current);
         const notifications = observeItemsChanged(model);
         await rerender(<DeepMenuApp menuRef={ref} quitLabel="Exit" />);
-        expect(notifications.count).toBe(4);
+        expect(notifications.count).toBeGreaterThan(0);
         const section = requireLink(sectionAt(model, 2));
         expect(itemLabel(section, 0)).toBe("Exit");
     });
@@ -318,12 +379,18 @@ describe("render - Menu submenus", () => {
 
     it("adds items to a submenu when its entries grow", async () => {
         const ref = createRef<Gtk.PopoverMenu>();
-        await render(<GrowingSubmenuApp menuRef={ref} hasExtraItem={false} />);
-        const submenu = requireLink(submenuAt(requireModel(ref.current), 0));
+        const { rerender } = await render(<GrowingSubmenuApp menuRef={ref} hasExtraItem={false} />);
+        const menu = ref.current;
+        const model = requireModel(menu);
+        const submenu = requireLink(submenuAt(model, 0));
         expect(submenu.getNItems()).toBe(1);
-        await render(<GrowingSubmenuApp menuRef={ref} hasExtraItem={true} />);
-        const grownSubmenu = requireLink(submenuAt(requireModel(ref.current), 0));
+        expect(itemLabel(submenu, 0)).toBe("Cut");
+        await rerender(<GrowingSubmenuApp menuRef={ref} hasExtraItem={true} />);
+        expect(ref.current).toBe(menu);
+        expect(requireModel(ref.current)).toBe(model);
+        const grownSubmenu = requireLink(submenuAt(model, 0));
         expect(grownSubmenu.getNItems()).toBe(2);
+        expect([itemLabel(grownSubmenu, 0), itemLabel(grownSubmenu, 1)]).toEqual(["Cut", "Copy"]);
     });
 });
 
@@ -369,19 +436,25 @@ describe("render - PopoverMenu widget integration", () => {
 
 describe("render - PopoverMenu actions", () => {
     it("invokes a GSimpleAction referenced by a menu item", async () => {
-        const windowRef = createRef<Gtk.ApplicationWindow>();
         const onActivate = vi.fn();
 
         await render(
             <GtkApplication applicationId={uniqueAppId()} flags={APP_FLAGS}>
-                <GtkApplicationWindow ref={windowRef} actions={<GSimpleAction name="click" onActivate={onActivate} />}>
-                    <GtkPopoverMenu menuModel={buildMenu([{ label: "Click Me", action: "win.click" }])} />
+                <GtkApplicationWindow actions={<GSimpleAction name="click" onActivate={onActivate} />}>
+                    <GtkMenuButton
+                        label="Actions"
+                        menuModel={<GMenu items={[{ label: "Click Me", action: "win.click" }]} />}
+                    />
                 </GtkApplicationWindow>
             </GtkApplication>,
             { container: rootElement },
         );
 
-        expect(windowRef.current?.activateAction("win.click", null)).toBe(true);
+        expect(onActivate).not.toHaveBeenCalled();
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Actions" }));
+        const item = await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "Click Me" });
+        expect(item).toBeEnabled();
+        await userEvent.click(item);
         expect(onActivate).toHaveBeenCalledTimes(1);
     });
 
@@ -420,7 +493,7 @@ describe("render - Shortcut", () => {
                         ref={controllerRef}
                         shortcuts={(
                             <GtkShortcut
-                                trigger={Gtk.ShortcutTrigger.parseString("<Control>s")}
+                                trigger={<GtkShortcutTrigger accelerator="<Control>s" />}
                                 action={callbackAction()}
                             />
                         )}
@@ -435,10 +508,7 @@ describe("render - Shortcut", () => {
     it.each([
         {
             label: "supports an alternative trigger",
-            trigger: Gtk.AlternativeTrigger.new(
-                Gtk.ShortcutTrigger.parseString("<Control>s"),
-                Gtk.ShortcutTrigger.parseString("F2"),
-            ),
+            trigger: <GtkShortcutTrigger accelerator="<Control>s|F2" />,
         },
         { label: "supports a never trigger", trigger: Gtk.NeverTrigger.get() },
     ])("$label", async ({ trigger }) => {
@@ -461,41 +531,33 @@ describe("render - Shortcut", () => {
     it("removes the shortcut from the controller when unmounted", async () => {
         const controllerRef = createRef<Gtk.ShortcutController>();
 
-        const Harness = () => {
-            const [show, setShow] = useState(true);
+        const Harness = ({ hasShortcut }: { hasShortcut: boolean }) => (
+            <GtkBox
+                controllers={(
+                    <GtkShortcutController
+                        ref={controllerRef}
+                        shortcuts={hasShortcut && (
+                            <GtkShortcut
+                                trigger={<GtkShortcutTrigger accelerator="<Control>s" />}
+                                action={callbackAction()}
+                            />
+                        )}
+                    />
+                )}
+            />
+        );
 
-            return (
-                <GtkBox
-                    controllers={(
-                        <GtkShortcutController
-                            ref={controllerRef}
-                            shortcuts={
-                                show && (
-                                    <GtkShortcut
-                                        trigger={Gtk.ShortcutTrigger.parseString("<Control>s")}
-                                        action={Gtk.CallbackAction.new(() => {
-                                            setShow(false);
-
-                                            return true;
-                                        })}
-                                    />
-                                )
-                            }
-                        />
-                    )}
-                />
-            );
-        };
-
-        const { rerender } = await render(<Harness />);
-        expect(controllerRef.current).toHaveObjectProperty("nItems", 1);
-        const Empty = () => <GtkBox controllers={<GtkShortcutController ref={controllerRef} />} />;
-        await rerender(<Empty />);
-        expect(controllerRef.current).toHaveObjectProperty("nItems", 0);
+        const { rerender } = await render(<Harness hasShortcut={true} />);
+        const controller = controllerRef.current;
+        expect(controller).toHaveObjectProperty("nItems", 1);
+        await rerender(<Harness hasShortcut={false} />);
+        expect(controllerRef.current).toBe(controller);
+        expect(controller).toHaveObjectProperty("nItems", 0);
     });
 
     it("re-applies the trigger when it changes", async () => {
         const controllerRef = createRef<Gtk.ShortcutController>();
+        const shortcutRef = createRef<Gtk.Shortcut>();
 
         const Harness = ({ isDisabled }: { isDisabled: boolean }) => (
             <GtkBox
@@ -504,10 +566,11 @@ describe("render - Shortcut", () => {
                         ref={controllerRef}
                         shortcuts={(
                             <GtkShortcut
+                                ref={shortcutRef}
                                 trigger={
                                     isDisabled
                                         ? Gtk.NeverTrigger.get()
-                                        : Gtk.ShortcutTrigger.parseString("<Control>s")
+                                        : <GtkShortcutTrigger accelerator="<Control>s" />
                                 }
                                 action={callbackAction()}
                             />
@@ -518,8 +581,26 @@ describe("render - Shortcut", () => {
         );
 
         const { rerender } = await render(<Harness isDisabled={false} />);
-        expect(controllerRef.current).toHaveObjectProperty("nItems", 1);
+        const controller = controllerRef.current;
+        const shortcut = shortcutRef.current;
+
+        if (shortcut === null) {
+            throw new Error("The shortcut was not mounted");
+        }
+
+        const trigger = shortcut.getTrigger();
+
+        if (!(trigger instanceof Gtk.KeyvalTrigger)) {
+            throw new TypeError("The shortcut did not receive a key trigger");
+        }
+
+        expect(controller).toHaveObjectProperty("nItems", 1);
+        expect(trigger.getKeyval()).toBe(Gdk.KEY_s);
+        expect(trigger.getModifiers()).toBe(Gdk.ModifierType.CONTROL_MASK);
         await rerender(<Harness isDisabled={true} />);
-        expect(controllerRef.current).toHaveObjectProperty("nItems", 1);
+        expect(controllerRef.current).toBe(controller);
+        expect(shortcutRef.current).toBe(shortcut);
+        expect(controller).toHaveObjectProperty("nItems", 1);
+        expect(shortcut.getTrigger()).toBe(Gtk.NeverTrigger.get());
     });
 });

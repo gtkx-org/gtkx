@@ -147,6 +147,8 @@ describe("state matchers", () => {
     it("read emptiness, validity and containment", async () => {
         const box = await renderNamedBox("empty-box");
         expect(box).toBeEmptyWidget();
+        await render(<GtkLabel name="empty-label" />);
+        expect(screen.getByName("empty-label")).toBeEmptyWidget();
         expect(box).not.toContainElement(null);
         expect(await renderLabel("Filled")).not.toBeEmptyWidget();
         await render(<GtkEntry name="bad" accessibleInvalid={Gtk.AccessibleInvalidState.TRUE} />);
@@ -227,6 +229,14 @@ describe("state matchers", () => {
 });
 
 describe("toHaveClass", () => {
+    it.each([/pill/g, /pill/y])("reuses a class pattern without carrying its cursor: %s", async (pattern) => {
+        await render(<GtkLabel name="styled" cssClasses={["pill"]}>Styled</GtkLabel>);
+        const widget = screen.getByName("styled");
+        expect(widget).toHaveClass(pattern);
+        expect(widget).toHaveClass(pattern);
+        expect(widget).not.toHaveClass(/absent/g);
+    });
+
     it("matches a single class, a whitespace separated list, a pattern and the whole set", async () => {
         const button = await renderStyledButton(["suggested-action", "pill"]);
         expect(button).toHaveClass();

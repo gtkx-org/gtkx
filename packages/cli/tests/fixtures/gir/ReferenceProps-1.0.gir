@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <namespace name="ReferenceProps" version="1.0" shared-library="libreferenceprops.so.0"
+             c:identifier-prefixes="ReferenceProps" c:symbol-prefixes="reference_props">
+    <class name="Probe" c:symbol-prefix="probe" c:type="ReferencePropsProbe" parent="GObject.Object"
+           glib:type-name="ReferencePropsProbe" glib:get-type="reference_props_probe_get_type">
+      <method name="get_value" c:identifier="reference_props_probe_get_value">
+        <return-value transfer-ownership="none">
+          <type name="utf8" c:type="const gchar*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Probe" c:type="ReferencePropsProbe*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+    </class>
+  </namespace>
+</repository>

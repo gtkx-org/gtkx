@@ -12,7 +12,7 @@ import { type FontSlant, FontType, type FontWeight, type Status } from "./enums.
 import { bindCairo, cairoGType, FONT_FACE_FULL_T, FONT_FACE_T } from "./lib.js";
 
 /** One of the `FtSynthesize` styles a FreeType font face synthesizes. */
-type FtSynthesize = (typeof FtSynthesize)[keyof typeof FtSynthesize];
+type FtSynthesize = number;
 
 const FONT_FACE_TYPE = cairoGType("cairo_gobject_font_face_get_type");
 const cairoFontFaceStatus = bindCairo("cairo_font_face_status", [FONT_FACE_T], t.int32);
@@ -26,7 +26,7 @@ const cairoToyFontFaceGetFamily = bindCairo("cairo_toy_font_face_get_family", [F
 
 const cairoToyFontFaceCreate = bindCairo(
     "cairo_toy_font_face_create",
-    [t.string("full"), t.int32, t.int32],
+    [t.string("borrowed"), t.int32, t.int32],
     FONT_FACE_FULL_T,
 );
 

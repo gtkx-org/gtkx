@@ -1,3 +1,4 @@
+import type { RequestOptions } from "@modelcontextprotocol/sdk/shared/protocol.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
@@ -180,8 +181,12 @@ const startAppSession = async (): Promise<AppSession> => {
     };
 };
 
-const callTool = (client: Client, name: string, args: Record<string, unknown> = {}): Promise<CallToolResult> =>
-    client.callTool({ name, arguments: args }) as Promise<CallToolResult>;
+const callTool = (
+    client: Client,
+    name: string,
+    args: Record<string, unknown> = {},
+    options?: RequestOptions,
+): Promise<CallToolResult> => client.callTool({ name, arguments: args }, undefined, options) as Promise<CallToolResult>;
 
 const contentText = (result: CallToolResult): string => {
     const [entry] = result.content;
@@ -193,8 +198,13 @@ const contentText = (result: CallToolResult): string => {
     return entry.text;
 };
 
-const callText = async (client: Client, name: string, args: Record<string, unknown> = {}): Promise<string> => {
-    const result = await callTool(client, name, args);
+const callText = async (
+    client: Client,
+    name: string,
+    args: Record<string, unknown> = {},
+    options?: RequestOptions,
+): Promise<string> => {
+    const result = await callTool(client, name, args, options);
 
     if (result.isError === true) {
         throw new Error(contentText(result));
@@ -231,8 +241,13 @@ const readWidgetProps = (
     options: Record<string, unknown> = {},
 ): Promise<WidgetProps> => callJson<WidgetProps>(client, "gtkx_get_widget_props", { widgetId, ...options });
 
-const isToolFailure = async (client: Client, name: string, args: Record<string, unknown>): Promise<boolean> => {
-    const result = await callTool(client, name, args);
+const isToolFailure = async (
+    client: Client,
+    name: string,
+    args: Record<string, unknown>,
+    options?: RequestOptions,
+): Promise<boolean> => {
+    const result = await callTool(client, name, args, options);
 
     return result.isError === true;
 };

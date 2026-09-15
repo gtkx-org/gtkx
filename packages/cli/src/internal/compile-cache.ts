@@ -1,4 +1,4 @@
-import * as nodeModule from "node:module";
+import { enableCompileCache } from "node:module";
 import { join } from "node:path";
 import { cacheRoot } from "./cache-root.js";
 
@@ -10,11 +10,7 @@ const enableToolchainCompileCache = (): void => {
         return;
     }
 
-    if (typeof nodeModule.enableCompileCache !== "function") {
-        return;
-    }
-
-    nodeModule.enableCompileCache(join(cacheRoot(), COMPILE_CACHE_SEGMENT));
+    enableCompileCache(join(cacheRoot(), COMPILE_CACHE_SEGMENT));
 };
 
 export { COMPILE_CACHE_SEGMENT, enableToolchainCompileCache };

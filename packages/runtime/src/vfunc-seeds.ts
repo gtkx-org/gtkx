@@ -1,4 +1,4 @@
-import type { Descriptor } from "@gtkx/native";
+import type { Descriptor } from "./descriptor-types.js";
 
 type RefSeeds = Map<number, unknown>;
 

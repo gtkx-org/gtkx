@@ -91,12 +91,12 @@
         "@gtkx/css": "workspace:*",
         "@gtkx/runtime": "workspace:*",
         "@gtkx/utils": "workspace:*",
+        "@types/react-reconciler": "^0.33.0",
         "react-merge-refs": "^3.0.2",
         "react-reconciler": "^0.33.0"
     },
     "devDependencies": {
-        "@types/react": "catalog:",
-        "@types/react-reconciler": "^0.33.0"
+        "@types/react": "catalog:"
     },
     "peerDependencies": {
         "@types/react": "^19.2",

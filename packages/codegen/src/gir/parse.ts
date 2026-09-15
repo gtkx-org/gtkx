@@ -1,7 +1,9 @@
+import { type XMLMetaData, XMLParser } from "fast-xml-parser";
 import { createXmlParser, parseXmlFile } from "../xml.js";
 
-/** An element of the parsed GIR XML: attributes under `@_`-prefixed keys, children under their tag names. */
-type RawNode = Record<string, unknown>;
+type RawNode = Record<PropertyKey, unknown>;
+
+const XML_NODE_METADATA = XMLParser.getMetaDataSymbol().valueOf();
 
 const GIR_LABEL = "GIR file";
 
@@ -39,7 +41,8 @@ const RESERVED_TAG_RENAMES: Map<string, string> = new Map([["constructor", GIR_C
 const RENAMED_MULTI_TAGS: Set<string> = new Set([...MULTI_TAGS].map((tag) => renameReservedTag(tag)));
 
 const PARSER = createXmlParser({
-    trimValues: true,
+    trimValues: false,
+    captureMetaData: true,
     transformTagName: renameReservedTag,
     isArray: (name) => RENAMED_MULTI_TAGS.has(name),
 });
@@ -57,7 +60,7 @@ const parseGirFile = (path: string): RawNode =>
         preserveIllegalControls: true,
     }) as RawNode;
 
-const attr = (node: RawNode | undefined, name: string): string | undefined => {
+const rawAttr = (node: RawNode | undefined, name: string): string | undefined => {
     if (node === undefined) {
         return undefined;
     }
@@ -66,6 +69,8 @@ const attr = (node: RawNode | undefined, name: string): string | undefined => {
 
     return typeof value === "string" ? value : undefined;
 };
+
+const attr = (node: RawNode | undefined, name: string): string | undefined => rawAttr(node, name)?.trim();
 
 const isAttrTrue = (node: RawNode | undefined, name: string, isTrueByDefault = false): boolean => {
     const value = attr(node, name);
@@ -119,6 +124,16 @@ const getChildren = (node: RawNode | undefined, tag: string): RawNode[] => {
 
     return [value as RawNode];
 };
+
+const nodePosition = (node: RawNode): number => {
+    const metadata = node[XML_NODE_METADATA] as Required<XMLMetaData>;
+
+    return metadata.startIndex;
+};
+
+const getOrderedChildren = (node: RawNode, tags: string[]): { tag: string; node: RawNode }[] =>
+    tags.flatMap((tag) => getChildren(node, tag).map((child) => ({ tag, node: child })))
+        .toSorted((left, right) => nodePosition(left.node) - nodePosition(right.node));
 
 const getChild = (node: RawNode | undefined, tag: string): RawNode | undefined => {
     if (node === undefined) {
@@ -177,11 +192,13 @@ export {
     GIR_CONSTRUCTOR_TAG,
     parseGirFile,
     attr,
+    rawAttr,
     isAttrTrue,
     nameAttr,
     intAttr,
     parseEnumAttr,
     getChildren,
+    getOrderedChildren,
     getChild,
     getDoc,
     getDocDeprecated,

@@ -1,4 +1,5 @@
-import { alloc, type Descriptor, type ExternalObject, getType, type Handle, read, write } from "@gtkx/native";
+import { alloc, type ExternalObject, getType, type Handle } from "@gtkx/native";
+import type { Descriptor } from "./descriptor-types.js";
 import { bind, createBindCache } from "./bind.js";
 import {
     type ArrayDescriptor,
@@ -7,6 +8,7 @@ import {
     biguint64T,
     booleanT,
     boxedT,
+    bufferT,
     byteArrayT,
     float32T,
     float64T,
@@ -19,11 +21,12 @@ import {
     objectT,
     preserveArrayNull,
     stringT,
+    structT,
     uint8T,
     uint32T,
-    uint64T,
     voidT,
 } from "./descriptors.js";
+import { read, write } from "./field.js";
 import { LIB, PARAM_T, VALUE_SIZE, VALUE_T, VARIANT_T } from "./library.js";
 import { toNative } from "./native-value.js";
 import {
@@ -133,7 +136,10 @@ const objectValueType = bindValueType("object", objectT("borrowed"));
 const objectValueFundamentals: Set<bigint> = new Set([TYPE_OBJECT, TYPE_INTERFACE]);
 const paramValueType = bindValueType("param", PARAM_T);
 const variantValueType = bindValueType("variant", VARIANT_T);
-const pointerValueType = bindValueType("pointer", uint64T);
+const pointerValueType: ValueType = {
+    set: bind(LIB, "g_value_set_pointer", [VALUE_T, bufferT], voidT),
+    get: bind(LIB, "g_value_get_pointer", [VALUE_T], structT("borrowed")),
+};
 const strvDescriptor = arrayT(stringT("borrowed"));
 const nullableStrvDescriptor = preserveArrayNull(arrayT(stringT("borrowed")));
 const setStrvBoxed = bind(LIB, "g_value_set_boxed", [VALUE_T, strvDescriptor], voidT);
@@ -156,9 +162,10 @@ const nullableStrvValueType: ValueType = {
 };
 
 const setByteArrayBoxed = bind(LIB, "g_value_set_boxed", [VALUE_T, byteArrayT()], voidT);
-const getBoxedPointer = bind(LIB, "g_value_get_boxed", [VALUE_T], uint64T);
-const getBytesBoxed = bind(LIB, "g_value_get_boxed", [VALUE_T], byteArrayT());
-const getByteItemsBoxed = bind(LIB, "g_value_get_boxed", [VALUE_T], arrayT(uint8T, "gbytearray"));
+const getBytesBoxed = bind(LIB, "g_value_get_boxed", [VALUE_T], preserveArrayNull(byteArrayT()));
+const getByteItemsBoxed = bind(
+    LIB, "g_value_get_boxed", [VALUE_T], preserveArrayNull(arrayT(uint8T, "gbytearray")),
+);
 
 const PLAIN_VALUE_TYPES: Partial<Record<Descriptor["kind"], ValueType>> = {
     boolean: booleanValueType,
@@ -258,11 +265,7 @@ const boxedValueType = (type: bigint): ValueType => {
     return { set: setBoxedBind(name), get: dupBoxedBind(name) };
 };
 
-const byteArrayValueGetterFor = (isBytes: boolean): ValueGetter => {
-    const get = isBytes ? getBytesBoxed : getByteItemsBoxed;
-
-    return (value) => (getBoxedPointer(value) ? get(value) : null);
-};
+const byteArrayValueGetterFor = (isBytes: boolean): ValueGetter => isBytes ? getBytesBoxed : getByteItemsBoxed;
 
 const byteArrayValueType = (descriptor: ArrayDescriptor): ValueType => ({
     set: setByteArrayValue,
@@ -535,7 +538,7 @@ function setPointerValue(value: ExternalObject<Handle>, nativeValue: unknown): v
         throw new Error("G_TYPE_POINTER non-null values cannot be marshalled from JS");
     }
 
-    pointerValueType.set(value, 0);
+    pointerValueType.set(value, null);
 }
 
 function handleSetter(target: ValueType): ValueType["set"] {
@@ -811,7 +814,6 @@ function outValueForDescriptor(
     initial?: unknown,
 ): { value: ExternalObject<Handle>; read: () => unknown } {
     const storage = alloc(8);
-    write(storage, uint64T, 0, 0);
 
     if (initial !== undefined) {
         write(storage, descriptor, 0, initial);

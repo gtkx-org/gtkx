@@ -8,11 +8,16 @@ import type { TypeId } from "../gir/type-id.js";
 import type { ModuleContext } from "../writer/context.js";
 import { ancestorChain, type ResolvedAncestor, resolveInterfaces } from "../gir/ancestry.js";
 import { isEmittableEntity } from "../gir/emittable.js";
+import {
+    type InstanceScope,
+    instanceScope,
+    isEmittableCallable,
+    renderInstanceMethodReturnType,
+} from "../store/gi/callables.js";
 import { memberName, methodExportName } from "../store/gi/method.js";
 import { type InheritedAccessorTypes, resolveAccessorTypes } from "../store/gi/property-accessor.js";
 import { vfuncMemberNames } from "../store/gi/vtable.js";
 import { comparisonContextFor } from "../writer/comparison-context.js";
-import { hasUnmarshalableParam } from "./param-capability.js";
 import { inputParameters } from "./param-structure.js";
 import { renderTsType } from "./ts-type.js";
 
@@ -27,24 +32,12 @@ type DeclaredAccessorType = { type: string; owner: string };
 type DeclaredAccessorTypes = { read: DeclaredAccessorType | undefined; write: DeclaredAccessorType | undefined };
 type MethodSignature = { returnType: string; arity: number };
 
-type InheritedMethod = {
-    method: GirFunction;
-    namespaceName: string;
-};
-
-type InheritedMethods = {
-    returnTypes: Map<string, string>;
-    definitions: Map<string, InheritedMethod>;
-};
+type InheritedMethod = { method: GirFunction; returnType: string };
+type InheritedMethods = Map<string, InheritedMethod>;
 
 type ParameterPair = {
     own: GirParameter;
     inherited: GirParameter;
-};
-
-type InheritedMatch = {
-    inheritedReturn: string;
-    inheritedMethod: InheritedMethod;
 };
 
 const RESERVED_SIGNAL_MEMBERS = new Set([
@@ -189,15 +182,17 @@ const recordAncestorSignatures = (
     klass: GirClass,
     signatures: Map<string, MethodSignature>,
 ): void => {
+    const scope = instanceScope(klass.name, klass);
+
     for (const method of klass.methods) {
         const name = memberName(method.name);
 
-        if (!method.introspectable || signatures.has(name)) {
+        if (!isEmittableCallable(context, method) || signatures.has(name)) {
             continue;
         }
 
         signatures.set(name, {
-            returnType: renderTsType(context, method.returnValue.type, method.returnValue.nullable),
+            returnType: renderInstanceMethodReturnType(comparisonContextFor(context), method, scope),
             arity: inputParameters(context.library, method).length,
         });
     }
@@ -219,9 +214,10 @@ const ancestorClassMethodNames = (context: ModuleContext, klass: GirClass): Set<
 const mergeOmissionName = (
     context: ModuleContext,
     method: GirFunction,
+    scope: InstanceScope,
     ancestors: Map<string, MethodSignature>,
 ): string | undefined => {
-    if (!method.introspectable) {
+    if (!isEmittableCallable(context, method)) {
         return undefined;
     }
 
@@ -232,7 +228,7 @@ const mergeOmissionName = (
         return undefined;
     }
 
-    const returnType = renderTsType(context, method.returnValue.type, method.returnValue.nullable);
+    const returnType = renderInstanceMethodReturnType(comparisonContextFor(context), method, scope);
     const arity = inputParameters(context.library, method).length;
 
     return ancestor.returnType !== returnType || ancestor.arity !== arity ? name : undefined;
@@ -252,9 +248,10 @@ const classChainVfuncNames = (context: ModuleContext, klass: GirClass): Set<stri
 
 const methodMergeOmissions = (context: ModuleContext, klass: GirClass, iface: GirClass): string[] => {
     const ancestors = ancestorClassMethodSignatures(context, klass);
+    const scope = instanceScope(iface.name, iface);
 
     return iface.methods
-        .map((method) => mergeOmissionName(context, method, ancestors))
+        .map((method) => mergeOmissionName(context, method, scope, ancestors))
         .filter((name): name is string => name !== undefined);
 };
 
@@ -268,12 +265,35 @@ const vfuncMergeOmissions = (
     return vfuncMemberNames(context, iface.namespaceName, iface.klass).filter((name) => claimed.has(name));
 };
 
+const propertyMergeOmissions = (context: ModuleContext, klass: GirClass, iface: GirClass): string[] => {
+    const declared = new Map(klass.properties.map((property) => [property.name, property]));
+    const omitted: string[] = [];
+
+    for (const property of iface.properties) {
+        const own = declared.get(property.name);
+
+        if (own === undefined) {
+            continue;
+        }
+
+        const ownTypes = resolveAccessorTypes(context, own);
+        const interfaceTypes = resolveAccessorTypes(context, property);
+
+        if (ownTypes?.readType !== interfaceTypes?.readType || ownTypes?.writeType !== interfaceTypes?.writeType) {
+            omitted.push(toCamelIdentifier(property.name));
+        }
+    }
+
+    return omitted;
+};
+
 const collectInterfaceMergeOmissions = (
     context: ModuleContext,
     klass: GirClass,
     iface: { klass: GirClass; namespaceName: string },
 ): string[] => [
     ...methodMergeOmissions(context, klass, iface.klass),
+    ...propertyMergeOmissions(context, klass, iface.klass),
     ...vfuncMergeOmissions(context, klass, iface),
 ];
 
@@ -341,69 +361,53 @@ const collectInheritedPropertyTypes = (
     return types;
 };
 
-const isAvailableMethod = (context: ModuleContext, method: GirFunction): boolean =>
-    method.introspectable &&
-    method.shadowedBy === undefined &&
-    method.cIdentifier !== undefined &&
-    !hasUnmarshalableParam(context, method);
-
 const collectInheritedMethods = (context: ModuleContext, klass: GirClass): InheritedMethods => {
-    const accumulator: InheritedMethods = {
-        returnTypes: new Map<string, string>(),
-        definitions: new Map<string, InheritedMethod>(),
-    };
+    const accumulator: InheritedMethods = new Map();
+    const inheritedInterfaces: ResolvedAncestor[][] = [];
 
     forEachAncestor(context, klass, (ancestor, interfaces) => {
-        absorbInheritedMethods(context, ancestor, accumulator);
-
-        for (const iface of interfaces) {
-            absorbInheritedMethods(context, iface, accumulator);
-        }
+        absorbInheritedMethods(context, ancestor.klass, accumulator);
+        inheritedInterfaces.push(interfaces);
     });
+
+    for (const interfaces of inheritedInterfaces.toReversed()) {
+        for (const iface of interfaces) {
+            absorbInheritedMethods(context, iface.klass, accumulator);
+        }
+    }
 
     return accumulator;
 };
 
 const absorbInheritedMethods = (
     context: ModuleContext,
-    resolved: { klass: GirClass; namespaceName: string },
+    klass: GirClass,
     accumulator: InheritedMethods,
 ): void => {
-    const { returnTypes, definitions } = accumulator;
+    const scope = instanceScope(klass.name, klass);
 
-    for (const method of resolved.klass.methods) {
-        if (!isAvailableMethod(context, method)) {
+    for (const method of klass.methods) {
+        if (!isEmittableCallable(context, method)) {
             continue;
         }
 
         const name = methodExportName(method);
 
-        if (returnTypes.has(name)) {
+        if (accumulator.has(name)) {
             continue;
         }
 
-        definitions.set(name, { method, namespaceName: resolved.namespaceName });
-        returnTypes.set(name, renderTsType(context, method.returnValue.type, method.returnValue.nullable));
+        accumulator.set(name, {
+            method,
+            returnType: renderInstanceMethodReturnType(comparisonContextFor(context), method, scope),
+        });
     }
-};
-
-const inheritedMatch = (inherited: InheritedMethods, name: string): InheritedMatch | undefined => {
-    const inheritedReturn = inherited.returnTypes.get(name);
-    const inheritedMethod = inherited.definitions.get(name);
-
-    return inheritedReturn === undefined || inheritedMethod === undefined
-        ? undefined
-        : { inheritedReturn, inheritedMethod };
 };
 
 const isCallbackType = (context: ModuleContext, ref: TypeId | undefined): boolean =>
     ref !== undefined && context.library.typeFor(ref)?.kind === "callback";
 
 const areParametersComparable = (context: ModuleContext, pair: ParameterPair): boolean => {
-    if (isCallbackType(context, pair.own.type) && isCallbackType(context, pair.inherited.type)) {
-        return true;
-    }
-
     const scratch = comparisonContextFor(context);
 
     return renderTsType(scratch, pair.own.type) === renderTsType(scratch, pair.inherited.type);
@@ -474,46 +478,44 @@ const hasParameterConflict = (context: ModuleContext, own: GirFunction, inherite
 const hasMethodConflict = (
     context: ModuleContext,
     callable: GirFunction,
-    match: InheritedMatch,
+    scope: InstanceScope,
+    inherited: InheritedMethod,
 ): boolean => {
-    const ownReturn = renderTsType(context, callable.returnValue.type, callable.returnValue.nullable);
+    const scratch = comparisonContextFor(context);
 
     return (
-        match.inheritedReturn !== ownReturn ||
-        hasParameterConflict(context, callable, match.inheritedMethod.method)
+        inherited.returnType !== renderInstanceMethodReturnType(scratch, callable, scope) ||
+        hasParameterConflict(context, callable, inherited.method)
     );
 };
 
 const shadowedInstanceMemberName = (
     context: ModuleContext,
     callable: GirFunction,
+    scope: InstanceScope,
     inherited: InheritedMethods,
 ): string | undefined => {
-    if (
-        !callable.introspectable ||
-        callable.shadowedBy !== undefined ||
-        callable.cIdentifier === undefined ||
-        hasUnmarshalableParam(context, callable)
-    ) {
+    if (!isEmittableCallable(context, callable)) {
         return undefined;
     }
 
     const name = methodExportName(callable);
-    const match = inheritedMatch(inherited, name);
+    const match = inherited.get(name);
 
-    return RESERVED_SIGNAL_MEMBERS.has(name) || (match !== undefined && hasMethodConflict(context, callable, match))
+    return RESERVED_SIGNAL_MEMBERS.has(name) ||
+        (match !== undefined && hasMethodConflict(context, callable, scope, match))
         ? name
         : undefined;
 };
 
 const naturalSignalMemberNames = (context: ModuleContext, klass: GirClass): string[] =>
     klass.methods
-        .filter((method) => isAvailableMethod(context, method))
+        .filter((method) => isEmittableCallable(context, method))
         .map((method) => methodExportName(method))
         .filter((name) => RESERVED_SIGNAL_MEMBERS.has(name));
 
 const hasOwnNaturalMember = (context: ModuleContext, klass: GirClass, name: string): boolean =>
-    klass.methods.some((method) => isAvailableMethod(context, method) && methodExportName(method) === name);
+    klass.methods.some((method) => isEmittableCallable(context, method) && methodExportName(method) === name);
 
 const hasNaturalInterfaceMember = (
     context: ModuleContext,

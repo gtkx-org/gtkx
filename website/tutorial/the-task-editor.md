@@ -4,11 +4,11 @@ description: "Navigate into a task and edit its title, importance, due date, and
 
 # Opening a Task
 
-In [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) you sliced the store by view, filter, and query. A task on screen is still just a title, with no way to see or set `notes`, `due`, `createdAt`, and `completedAt`. This page gives one task a screen of its own and writes every field through a single store action.
+In [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) you filtered the task list. This chapter adds an editor for a task's title, importance, due date, and notes, along with its creation and completion timestamps.
 
 ## A task is a route
 
-Which task is open is not a field anywhere. It is a page on the content stack, carrying that task's id in its params and sitting above the task list you opened it from. That is the whole of it: pushing the page opens the editor, popping it closes the editor, and the back button, <kbd>Escape</kbd>, <kbd>Alt</kbd>+<kbd>Left</kbd>, and the touchpad back gesture all pop. The code you would otherwise write to close the editor, and the state that code would read, is the navigator's job.
+The editor is a page on the content stack, with the task's id in its route params. GTKX's navigator provides the Adwaita back button, keyboard shortcuts, and gestures for returning to the list.
 
 In `src/navigation.ts`, add the route to the param list:
 
@@ -20,7 +20,7 @@ In `src/navigation.ts`, add the route to the param list:
  };
 ```
 
-`Sidebar` and `TasksScreen` are typed with `SplitViewScreenProps`, so each one already has a `navigation` object checked against `RootParamList`. The row that opens a task is not a screen. It sits inside one and reaches navigation with `useNavigation()`, which has no screen props to infer a param list from, so on its own it accepts no route name at all. Declaring the root navigator once settles it for every component in the app.
+`TaskRow` will use `useNavigation()` to open the editor. Declare the root navigator so the hook uses this app's route types, as the screen props already do.
 
 In `src/navigation.ts`, under `Split`:
 
@@ -35,7 +35,7 @@ declare module "@react-navigation/core" {
 }
 ```
 
-The augmentation names `@react-navigation/core` because that is the module declaring the `RootNavigator` interface, and `@gtkx/navigation` re-exports the core API around its own navigators. It is a type declaration and compiles to nothing.
+The declaration targets `@react-navigation/core`, which owns `RootNavigator`. GTKX re-exports its navigation API and supplies the native navigators; see the [navigation guide](/guide/navigation) for that integration.
 
 An `AdwActionRow` responds to clicks only once you mark it `activatable`, which makes the whole row a target. `onActivated` then fires when the row is clicked or takes Return from the keyboard.
 
@@ -85,7 +85,7 @@ export const TaskScreen = ({ route }: SplitViewScreenProps<RootParamList, "Task"
 };
 ```
 
-Params are values written into navigation state, where they sit until something navigates again, so an id is the right size for them. Looking the task up from that id keeps the editor live: every store write produces a new task object, the screen finds it, and the fields you are about to add redraw without a subscription of their own. Going back needs no teardown either, because the navigator pops the page and unmounts the screen along with it.
+The route carries an id, and the screen subscribes to the matching task so store edits reach the form.
 
 The lookup can miss, which is why the screen renders `null` rather than assuming a task. Deleting a task for good while its page is open is that case, and [Deleting Without Fear](/tutorial/trash-and-toasts) pops the page as part of the delete.
 
@@ -107,7 +107,7 @@ With no `options` on it yet, the page takes its header bar title from the route 
 
 ## One action, many fields
 
-Adding `setTitle`, `setNotes`, and `setDue` next to `setDone` and `setImportant` means a new action for every control the editor grows. Take a patch instead: an object holding whichever fields changed, merged into the task.
+Add `updateTask` for the fields edited by the form.
 
 In `src/store/tasks.ts`, add `updateTask` to the slice type and to the creator:
 
@@ -122,11 +122,11 @@ In `src/store/tasks.ts`, add `updateTask` to the slice type and to the creator:
 +    updateTask: (id, fields) => set((state) => ({ tasks: patch(state.tasks, id, fields) })),
 ```
 
-`Pick` lists exactly the fields the editor may touch, so a typo like `dueDate` is a type error and a write to `id`, `createdAt`, or `done` will not compile. `Partial` makes each field optional, so a caller sends only what changed. `setDone` and `setImportant` stay, because they are not free-form edits, and `setDone` also stamps `completedAt`.
+The patch accepts `title`, `notes`, `due`, and `listId`. Keep the existing completion and importance actions; `setDone` also updates `completedAt`. For the type syntax, see TypeScript's [utility types](https://www.typescriptlang.org/docs/handbook/utility-types.html).
 
 ## The form
 
-`@gtkx/forms` connects Adwaita form rows to React Hook Form: the form owns the values, while the rows still look and behave like native widgets. The scaffolder did not install it. From `tasks/`:
+`@gtkx/forms` connects Adwaita form rows to [React Hook Form](https://react-hook-form.com/docs/useform). Install it from `tasks/`:
 
 ::: code-group
 
@@ -142,9 +142,9 @@ pnpm add @gtkx/forms
 
 It belongs in `dependencies`, because the form and its state run in the shipped application.
 
-The editor is a scroller wrapping an `AdwClamp`, which caps content width and centers it so the form stays readable in a wide window. `AdwPreferencesGroup` is the container Adwaita uses for a titled block of rows. It draws the boxed-list frame, so rows placed in it get the rounded card, the separators, and the spacing without any styling of your own.
+An `AdwClamp` keeps the form readable in a wide window. Group its native form rows in `AdwPreferencesGroup` for Adwaita's card styling and spacing.
 
-Only the title and importance use the form. `TaskFields` keeps that boundary visible in the type, and `defaultValues` seeds both fields from the task. `FormProvider` makes the form available to every GTKX form row beneath it, so the rows need a `name` but no individually threaded `control` prop.
+Only title and importance use React Hook Form here. GTKX's form rows select their fields by `name` under `FormProvider`; the [forms guide](/guide/forms) covers their native widget bindings.
 
 Create `src/components/task-detail.tsx`:
 
@@ -196,7 +196,7 @@ Above the return, build that submission:
     };
 ```
 
-`handleSubmit` reads the form value rather than reaching into the native entry. After the store accepts it, `resetField` makes that submitted title the field's new default and clears its dirty state. The zero-argument wrapper matters because an Adwaita signal passes its widget to the callback, while React Hook Form's returned submit function optionally accepts a web event; this is a native signal, so it calls the submit function with no event.
+After saving, `resetField` makes the title the new default. Wrap [`handleSubmit`](https://react-hook-form.com/docs/useform/handlesubmit) in a zero-argument callback: the native signal supplies an Adwaita widget, while React Hook Form's submit function expects an optional web event.
 
 In `src/components/task-detail.tsx`, fill the first group:
 
@@ -214,7 +214,7 @@ In `src/components/task-detail.tsx`, fill the first group:
                     </FormProvider>
 ```
 
-The generic ties `name` to `TaskFields`, so a misspelled field or a field with the wrong value type fails at compile time. `EntryRow` preserves the native Apply and activation callbacks; by the time either fires, the row's text notifications have already updated React Hook Form. That leaves the form in charge of the draft and the store in charge of the committed title.
+`EntryRow` updates the form before forwarding its native Apply and activation signals. The form holds the title draft until either handler saves it to the store.
 
 ### Importance
 
@@ -230,7 +230,7 @@ In `src/components/task-detail.tsx`, add the row under the title:
                             />
 ```
 
-A notify handler receives the new value first, and that value is nullable because the property is read back through the generic GObject machinery, which can return nothing. `?? false` settles it, and every `onNotify*` handler in the app has the same shape. The form row has already received the same change by the time this callback persists it.
+`onNotifyActive` receives the new property value first. The form row has already received the change when this callback saves it to the store.
 
 The switch writes through `setImportant`, the same action the star uses, so flipping it also relights the star in the list. The reverse direction matters too: the header's star can change the store while the form is open. Import `useEffect` from React and reset just the importance field when its stored value changes:
 
@@ -292,7 +292,7 @@ In `src/components/task-detail.tsx`, add the due row to the group:
                             />
 ```
 
-The date crosses two type systems, so it converts at both ends. The store keeps an ISO string, which survives a round trip through JSON, while `GtkCalendar` wants a `GLib.DateTime`. Build one at the top of the component, where a task with no due date gets none.
+The store keeps an ISO string, while `GtkCalendar` uses `GLib.DateTime`. Convert the stored date at the top of the component:
 
 In `src/components/task-detail.tsx`:
 
@@ -339,7 +339,7 @@ In `src/components/task-row.tsx`, add the subtitle:
              activatable
 ```
 
-Pass `?? undefined` rather than the `null`: an `AdwActionRow` given an empty subtitle still reserves the line, and the row grows taller than its neighbors. Given `undefined`, the prop is not set and the row stays single-line.
+Use `undefined` when there is no date to show in the subtitle.
 
 ### Notes
 
@@ -376,7 +376,7 @@ In `src/components/task-detail.tsx`, add a block after the group:
                     </GtkBox>
 ```
 
-`text` makes the buffer controlled: `onChanged` writes each edit to the store, and the store feeds `text` back. GTKX skips a write when the buffer already holds that value, so a keystroke round-trip leaves the cursor and the undo history alone. `getText` reads the range as a start and end iterator, the trailing `false` leaves out invisible markup, and `enableUndo` gives the notes field its own Ctrl+Z and Ctrl+Shift+Z.
+`onChanged` writes each edit to the store, which feeds `text` back. GTKX skips writes when the buffer already holds that value, preserving the cursor and undo history. `enableUndo` enables native undo; [`getText`](https://docs.gtk.org/gtk4/method.TextBuffer.get_text.html) reads the buffer between its start and end iterators, excluding invisible text when its last argument is `false`.
 
 The `card` style class gives the scroller the framed look Adwaita uses for a content box. You supply the padding yourself.
 
@@ -417,7 +417,7 @@ In `src/components/task-detail.tsx`, add the final group:
 
 ## Switching tasks cleanly
 
-The editor holds state outside the task object: React Hook Form's field values, where the cursor sits in the title entry, the buffer's undo stack, and which month the calendar shows. Open one task, go back, open another, and React sees the same `TaskDetail` in the same position and just updates its props. The form and widgets survive, and so does all that state. Activating a row while an editor is already open is the same problem without the trip through the list, since `navigate` swaps the params of the page on the stack rather than pushing a second one.
+When navigation changes the id on an existing editor page, reset the form draft and native widget state for the new task. This includes the text buffer's undo history and the calendar's displayed month.
 
 In `src/components/task-screen.tsx`, give the editor a key:
 
@@ -426,13 +426,13 @@ In `src/components/task-screen.tsx`, give the editor a key:
 +    return task ? <TaskDetail key={task.id} task={task} /> : null;
 ```
 
-A changed key tells React to throw the old tree away and build a new one, so `useForm` reads the new task's defaults and the new task gets fresh widgets: a cursor at the start, an empty undo history, and a calendar opened on its own month. This is the same tool `TasksScreen` uses to reset the list's scroll position when the route's params change.
+The task id [resets the editor with a key](https://react.dev/learn/preserving-and-resetting-state#resetting-a-form-with-a-key), giving it fresh form values and widgets. `TasksScreen` uses the same approach for the list's scroll position.
 
 ## The task's header bar
 
-There is no back button to build, and nothing to call when it is pressed. The navigator gives every content page a header bar, and Adwaita draws the back button on any page with a page beneath it. <kbd>Escape</kbd> and <kbd>Alt</kbd>+<kbd>Left</kbd> pop that same page. What the bar still needs is the task's title and the two commands that belong with an open task.
+Add the task's title and commands to the header bar supplied by the navigator.
 
-A screen's `options` is a plain object or a plain callback over `{ route, navigation, theme }`. No hooks run in it, and it is `Window` that evaluates it, so this is the case from [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) again: a header widget that shows live state is its own component, subscribing where the widget is. The title tracks the committed `task.title` after Apply or Return, and the star tracks `task.important` as either control flips it. Neither needs to drag the whole window into re-rendering while a title draft changes.
+As with the filter and search controls, put store subscriptions in header components and pass their elements through the screen's `options`.
 
 Create `src/components/task-title.tsx`:
 
@@ -447,7 +447,7 @@ export const TaskTitle = ({ id }: { id: string }) => {
 };
 ```
 
-`headerTitle` takes a string or an element. A string is wrapped in an `AdwWindowTitle` for you, and an element is used as the title widget as it stands, which is why this component supplies the `AdwWindowTitle` itself. That is the widget a header bar wants for plain text, and it handles the title typography Adwaita expects.
+`TaskTitle` supplies an `AdwWindowTitle` to the `headerTitle` slot for native header typography.
 
 Create `src/components/task-buttons.tsx`:
 
@@ -476,7 +476,7 @@ export const TaskButtons = ({ id }: { id: string }) => {
 };
 ```
 
-Both take the id and look the task up, the same way the screen does, and both render nothing when the lookup fails. A header widget outlives its task by a moment when that task is deleted, so neither one may assume it is there.
+These components also handle a missing task during deletion: the title falls back to "Task" and the buttons disappear.
 
 In `src/components/window.tsx`, give the screen its options:
 
@@ -497,7 +497,7 @@ In `src/components/window.tsx`, give the screen its options:
 +/>
 ```
 
-`headerEnd` packs widgets at the end of the bar and `headerStart` at the start, after the back button. Nothing goes in `headerStart` here, because getting out of the editor is the one thing you do not have to wire.
+`headerEnd` puts the task buttons at the trailing end of the bar.
 
 Deleting from here leaves the editor open over a task that is now in the trash. Leave that gap for now: [Deleting Without Fear](/tutorial/trash-and-toasts) gives every delete an undo toast and a confirmation, and pops the page along the way.
 
@@ -506,10 +506,9 @@ Deleting from here leaves the editor open over a task that is now in the trash. 
 Save the files. The window on your desktop already has the editor in it.
 
 1. Click any task row. The content pane becomes a form with Title, Important, and Due at the top, a Notes box, and a Created timestamp at the bottom. The header bar shows the task's title, with the navigator's back arrow on the left.
-2. Start changing the title without applying it, then click the star in the header. The Important switch follows the star and the unfinished title stays in the entry. Press Enter: the header title updates immediately. Click the back arrow and the list is showing again, with the new title on the row. Press <kbd>Escape</kbd> or <kbd>Alt</kbd>+<kbd>Left</kbd> from an open task and it closes the same way, with none of your code involved.
-3. Open a task and click Set date. A calendar drops down; pick today. The button reads `Today at 6:00 PM`, a clear button appears beside it, and going back puts the same text under the row's title. Open the task again and click the clear button: the subtitle disappears from the row entirely rather than leaving a blank gap.
+2. Start changing the title without applying it, then click the star in the header. The Important switch follows the star and the unfinished title stays in the entry. Return to the title and press Enter: the header title updates. Use the back arrow, <kbd>Escape</kbd>, or <kbd>Alt</kbd>+<kbd>Left</kbd> to return to the list.
+3. Open a task and click Set date. Pick today: the button shows today's date at 18:00 in your locale's time format, and a clear button appears beside it. The task row shows the same due date. Clear the date and the subtitle disappears.
 4. Type into Notes and press Ctrl+Z: the last thing you typed is undone. Go back, open a different task, and the notes box holds that task's notes with none of the previous undo history. Press Ctrl+Z there and nothing happens.
-5. Open a task, then click a different row without going back first. The editor shows the second task, and one press of the back arrow still reaches the list, because the second row swapped the page's params rather than stacking a page on it.
 
 The store still persists on every write, so what the editor sets is on disk before you go anywhere. After setting a due date, read it back:
 

@@ -18,6 +18,18 @@ const bindExtentsToPixels = (isConsumed: boolean) =>
 const pangoRect = (): Pango.Rectangle => new Pango.Rectangle({ x: 2048, y: 1024, width: 3072, height: 2048 });
 
 describe("consumed caller-allocated inout parameters", () => {
+    it("generated calls mutate the supplied records without returning them", () => {
+        const convert: (...args: Parameters<typeof Pango.extentsToPixels>) => unknown = Pango.extentsToPixels;
+        const inclusive = pangoRect();
+        const nearest = pangoRect();
+        expect(convert(inclusive, nearest)).toBeUndefined();
+        expect([inclusive.x, inclusive.y, inclusive.width, inclusive.height]).toEqual([2, 1, 3, 2]);
+        expect([nearest.x, nearest.y, nearest.width, nearest.height]).toEqual([2, 1, 3, 2]);
+        const lone = pangoRect();
+        expect(convert(undefined, lone)).toBeUndefined();
+        expect([lone.x, lone.y, lone.width, lone.height]).toEqual([2, 1, 3, 2]);
+    });
+
     it("mutates the caller's instances in place and packs nothing into the result", () => {
         const extentsToPixels = bindExtentsToPixels(true);
         const inclusive = pangoRect();

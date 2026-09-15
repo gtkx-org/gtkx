@@ -3,5 +3,11 @@ import base from "../../gtkx.config.base.js";
 
 export default mergeConfig(
     base,
-    defineConfig({ applicationId: "org.gtkx.e2e", elements: { behaviors: "./elements.ts" } }),
+    defineConfig({
+        applicationId: "org.gtkx.e2e",
+        elements: { behaviors: "./elements.ts" },
+        codegen: false,
+        reactCompiler: false,
+        agents: { rules: false, reference: false },
+    }),
 );

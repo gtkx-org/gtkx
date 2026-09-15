@@ -1,13 +1,42 @@
+import { parse } from "postcss";
+
 const AT_RULE_KEYWORDS: Set<string> = new Set(["define-color", "import", "keyframes", "media"]);
-const AT_IDENTIFIER_PATTERN = /@([A-Za-z_][\w-]*)/g;
 const NAMED_COLOR_TOKEN = "gtkx-named-color__";
-const NAMED_COLOR_TOKEN_PATTERN = new RegExp(String.raw`${NAMED_COLOR_TOKEN}([\w-]+)`, "g");
 
-const escapeNamedColors = (input: string): string =>
-    input.replaceAll(AT_IDENTIFIER_PATTERN, (match, name: string) =>
-        AT_RULE_KEYWORDS.has(name) ? match : `${NAMED_COLOR_TOKEN}${name}`,
-    );
+type NamedColorEscaping = { css: string; restore: (rule: string) => string };
 
-const restoreNamedColors = (rule: string): string => rule.replaceAll(NAMED_COLOR_TOKEN_PATTERN, "@$1");
+const availableToken = (input: string): string => {
+    let token = NAMED_COLOR_TOKEN;
 
-export { escapeNamedColors, restoreNamedColors };
+    while (input.includes(token)) {
+        token += "_";
+    }
+
+    return token;
+};
+
+const escapeNamedColors = (input: string): NamedColorEscaping => {
+    const token = availableToken(input);
+    const root = parse(input);
+    const escape = (value: string): string => value.replaceAll("@", () => token);
+
+    root.walkDecls((declaration) => {
+        declaration.value = escape(declaration.value);
+    });
+
+    root.walkAtRules((rule) => {
+        const name = rule.name.toLowerCase();
+
+        if (AT_RULE_KEYWORDS.has(name)) {
+            rule.name = name;
+        }
+
+        if (name === "define-color") {
+            rule.params = escape(rule.params);
+        }
+    });
+
+    return { css: root.toString(), restore: (rule) => rule.replaceAll(token, "@") };
+};
+
+export { escapeNamedColors };

@@ -1,24 +1,26 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { indexBeforeOrEnd } from "@gtkx/utils";
+import { drain, indexBeforeOrEnd } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
-import { applyAdoptedProps, markFlush } from "./apply-props.js";
+import { applyAdoptedProps } from "./apply-props.js";
 import { typeInfoFor } from "./metadata.js";
 import {
     DEFAULT_SLOT,
     ELEMENT_KIND,
     type ElementNode,
-    getOrCreateContext,
     LAZY_KIND,
+    type LazyNode,
     lazyTarget,
     leafElement,
     type PlaceableNode,
     type PlacedChild,
 } from "./node.js";
-import { applyMutation, applyWrite } from "./signals.js";
+import { applyMutation, applyWrite, disconnectAllHandlers } from "./signals.js";
 import { markTextDirty } from "./text.js";
 
 type AttachContext = { parent: ElementNode; entry: PlacedChild; index: number; sibling: GObject.Object | null };
+
+const pendingAdoptions: Set<LazyNode> = new Set();
 
 const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {
     const leaf = leafElement(node);
@@ -40,13 +42,12 @@ const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {
 const siblingAt = (entries: PlacedChild[], index: number): GObject.Object | null =>
     index > 0 ? (entries[index - 1]?.object ?? null) : null;
 
-const placeInfo = (entry: PlacedChild, index: number, sibling: GObject.Object | null, context: unknown): PlaceInfo => ({
+const placeInfo = (entry: PlacedChild, index: number, sibling: GObject.Object | null): PlaceInfo => ({
     slot: entry.slot,
     index,
     sibling,
     adopted: entry.adopted,
     props: entry.node.props,
-    context,
 });
 
 const adoptedFrom = (parent: ElementNode, entry: PlacedChild, behavior: ElementBehavior, claim: unknown): void => {
@@ -64,8 +65,35 @@ const applyLazyProps = (entry: PlacedChild): void => {
         return;
     }
 
+    replaceAdopted(entry.node, entry.adopted);
     applyAdoptedProps(lazyTarget(entry.node, entry.adopted), {}, entry.node.props);
-    entry.node.adopted = entry.adopted;
+    notifyAdoption(entry.node);
+};
+
+const replaceAdopted = (node: LazyNode, object: GObject.Object | null): void => {
+    if (node.adopted === object) {
+        return;
+    }
+
+    if (node.adopted !== null) {
+        disconnectAllHandlers(lazyTarget(node, node.adopted));
+    }
+
+    node.adopted = object;
+};
+
+const notifyAdoption = (node: LazyNode): void => {
+    if (node.adoptionListeners.size > 0) {
+        pendingAdoptions.add(node);
+    }
+};
+
+const flushAdoptions = (): void => {
+    drain(pendingAdoptions, (node) => {
+        for (const notify of node.adoptionListeners) {
+            notify();
+        }
+    });
 };
 
 const wireBufferView = (node: PlaceableNode, parent: ElementNode): void => {
@@ -96,8 +124,7 @@ const didAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
         return false;
     }
 
-    const context = getOrCreateContext(ctx.parent, behavior);
-    const claim = attach(ctx.parent.object, ctx.entry.object, placeInfo(ctx.entry, ctx.index, ctx.sibling, context));
+    const claim = attach(ctx.parent.object, ctx.entry.object, placeInfo(ctx.entry, ctx.index, ctx.sibling));
 
     if (claim === undefined) {
         return false;
@@ -140,14 +167,14 @@ const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sib
     });
 };
 
-const detachInfo = (entry: PlacedChild, context: unknown): DetachInfo => ({
+const detachInfo = (entry: PlacedChild, index: number): DetachInfo => ({
+    index,
     slot: entry.slot,
     adopted: entry.adopted,
     props: entry.node.props,
-    context,
 });
 
-const runDetach = (parent: ElementNode, entry: PlacedChild): void => {
+const runDetach = (parent: ElementNode, entry: PlacedChild, index: number): void => {
     const behavior = entry.behavior;
 
     if (behavior === null) {
@@ -156,18 +183,23 @@ const runDetach = (parent: ElementNode, entry: PlacedChild): void => {
         return;
     }
 
-    behavior.detach?.(parent.object, entry.object, detachInfo(entry, getOrCreateContext(parent, behavior)));
+    behavior.detach?.(parent.object, entry.object, detachInfo(entry, index));
 };
 
-const detachEntry = (parent: ElementNode, entry: PlacedChild): void => {
+const detachEntry = (parent: ElementNode, entry: PlacedChild, index: number): void => {
     applyMutation(() => {
-        runDetach(parent, entry);
+        runDetach(parent, entry, index);
     });
+
+    if (entry.node.kind === LAZY_KIND) {
+        replaceAdopted(entry.node, null);
+        notifyAdoption(entry.node);
+    }
 };
 
 const rebuild = (parent: ElementNode, entries: PlacedChild[]): void => {
     for (const entry of entries) {
-        detachEntry(parent, entry);
+        detachEntry(parent, entry, 0);
     }
 
     for (const [index, entry] of entries.entries()) {
@@ -199,8 +231,7 @@ const moveEntry = (parent: ElementNode, entry: PlacedChild, entries: PlacedChild
         return;
     }
 
-    const context = getOrCreateContext(parent, behavior);
-    const claim = reorder(parent.object, entry.object, placeInfo(entry, index, siblingAt(entries, index), context));
+    const claim = reorder(parent.object, entry.object, placeInfo(entry, index, siblingAt(entries, index)));
     adoptedFrom(parent, entry, behavior, claim);
     applyLazyProps(entry);
 };
@@ -246,8 +277,6 @@ const placeChild = (
     } else {
         placeNew(parent, entry, entries, index);
     }
-
-    markFlush(parent);
 };
 
 const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): void => {
@@ -266,41 +295,18 @@ const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): v
     const [entry] = entries.splice(index, 1);
 
     if (entry !== undefined) {
-        detachEntry(parent, entry);
-    }
-
-    markFlush(parent);
-};
-
-const isAttachedWidget = (parent: ElementNode, entry: PlacedChild): boolean =>
-    parent.object instanceof Gtk.Widget &&
-    entry.object instanceof Gtk.Widget &&
-    entry.object.getParent() === parent.object;
-
-const teardownEntry = (parent: ElementNode, entry: PlacedChild): void => {
-    const child = leafElement(entry.node);
-
-    if (child !== null) {
-        teardownPlacements(child);
-    }
-
-    if (isAttachedWidget(parent, entry)) {
-        detachEntry(parent, entry);
+        detachEntry(parent, entry, index);
     }
 };
 
-const teardownEntries = (parent: ElementNode, entries: PlacedChild[]): void => {
-    for (const entry of entries) {
-        teardownEntry(parent, entry);
-    }
-};
-
-function teardownPlacements(parent: ElementNode): void {
+const teardownPlacements = (parent: ElementNode): void => {
     for (const entries of parent.placements.values()) {
-        teardownEntries(parent, entries);
+        for (const entry of entries) {
+            detachEntry(parent, entry, 0);
+        }
     }
 
     parent.placements.clear();
-}
+};
 
-export { placeChild, teardownPlacements, unplaceChild };
+export { flushAdoptions, placeChild, teardownPlacements, unplaceChild };

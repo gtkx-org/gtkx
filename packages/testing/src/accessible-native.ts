@@ -11,7 +11,7 @@ type PropertyReader = (accessible: Gtk.Accessible, property: Gtk.AccessiblePrope
 type NativeCall = (...inputs: unknown[]) => unknown;
 type CheckArg = typeof DOUBLE_ARG | typeof INT_ARG | typeof OBJECT_ARG | typeof STRING_ARG;
 
-const LIB = "libgtk-4.so.1";
+const GTK_LIB = "libgtk-4.so.1";
 const MAX_RELATION_TARGETS = 8;
 const relationBindings: Map<number, CheckRelation> = new Map();
 
@@ -109,7 +109,7 @@ const checkPropertyDouble = buildAccessibleCheck(CHECK_PROPERTY, [DOUBLE_ARG]) a
 const checkPropertyString = buildAccessibleCheck(CHECK_PROPERTY, [STRING_ARG]) as CheckString;
 
 function buildAccessibleCheck(symbol: string, varargs: CheckArg[]): NativeCall {
-    return t.fn(LIB, symbol, {
+    return t.fn(GTK_LIB, symbol, {
         args: [OBJECT_ARG, INT_ARG, ...varargs],
         returns: t.string("full"),
         fixedArgCount: 2,
