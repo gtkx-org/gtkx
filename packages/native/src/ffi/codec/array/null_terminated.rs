@@ -34,6 +34,19 @@ fn zero_terminated_len(base: *const u8, stride: usize) -> usize {
     }
 }
 
+pub(super) fn terminated_ptrs(ptr: *mut c_void) -> impl Iterator<Item = *mut c_void> {
+    let ptr_array = ptr as *const *mut c_void;
+    let mut i = 0isize;
+    std::iter::from_fn(move || {
+        let item_ptr = unsafe { *ptr_array.offset(i) };
+        if item_ptr.is_null() {
+            return None;
+        }
+        i += 1;
+        Some(item_ptr)
+    })
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct NullTerminatedArrayCodec;
 
@@ -208,16 +221,7 @@ impl ArrayCodec {
         ptr: *mut c_void,
         read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
-        let ptr_array = ptr as *const *mut c_void;
-        let mut i = 0isize;
-        let items = std::iter::from_fn(move || {
-            let item_ptr = unsafe { *ptr_array.offset(i) };
-            if item_ptr.is_null() {
-                return None;
-            }
-            i += 1;
-            Some(item_ptr)
-        });
+        let items = terminated_ptrs(ptr);
 
         let is_full = read.transfer().is_full();
         self.decode_ptr_iter(env, items, read, move || {

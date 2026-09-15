@@ -4,6 +4,7 @@ use anyhow::bail;
 pub use container::{ArrayBounds, ArrayKind};
 use container::{ArrayContainer, ArrayContainerCodec, ArrayRead, ViewEncoding};
 use item::ItemCodec;
+use null_terminated::terminated_ptrs;
 
 use super::bytes::bytes_to_glib_full;
 use super::prelude::*;
@@ -173,6 +174,16 @@ impl ArrayCodec {
             _ => None,
         };
 
+        let terminated_elements =
+            if matches!(self.container, ArrayContainerCodec::NullTerminated(_))
+                && self.inline_element_size().is_none()
+                && self.item_codec.is_handle_backed()
+            {
+                self.item_codec.owned_release()?
+            } else {
+                None
+            };
+
         let contiguous_elements = if self.inline_element_size().is_none()
             && matches!(
                 self.container,
@@ -198,6 +209,11 @@ impl ArrayCodec {
                 let items =
                     unsafe { std::slice::from_raw_parts(ptr.cast::<*mut c_void>(), length) };
                 for &ptr in items {
+                    drop(ffi::PendingTransfer::new(ptr, item));
+                }
+            }
+            if let Some(item) = terminated_elements {
+                for ptr in terminated_ptrs(ptr) {
                     drop(ffi::PendingTransfer::new(ptr, item));
                 }
             }
