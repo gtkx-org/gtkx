@@ -355,7 +355,11 @@ describe("render - TextView", () => {
             expect(getBufferText(buffer)).toBe("Bold Text");
             const tagTable = buffer.getTagTable();
             const boldTag = tagTable.lookup("bold");
-            expect(boldTag).not.toBeNull();
+            expect(boldTag).toHaveObjectProperty("weight", Pango.Weight.BOLD);
+            expect(boldTag).toHaveObjectProperty("weightSet", true);
+            expect(hasTagAtOffset(buffer, "bold", 0)).toBe(true);
+            expect(hasTagAtOffset(buffer, "bold", 8)).toBe(true);
+            expect(hasTagAtOffset(buffer, "bold", 9)).toBe(false);
         });
 
         it("renders text with underline", async () => {
@@ -368,7 +372,11 @@ describe("render - TextView", () => {
             expect(getBufferText(buffer)).toBe("Underlined");
             const tagTable = buffer.getTagTable();
             const tag = tagTable.lookup("underlined");
-            expect(tag).not.toBeNull();
+            expect(tag).toHaveObjectProperty("underline", Pango.Underline.SINGLE);
+            expect(tag).toHaveObjectProperty("underlineSet", true);
+            expect(hasTagAtOffset(buffer, "underlined", 0)).toBe(true);
+            expect(hasTagAtOffset(buffer, "underlined", 9)).toBe(true);
+            expect(hasTagAtOffset(buffer, "underlined", 10)).toBe(false);
         });
     });
 
@@ -723,7 +731,7 @@ describe("render - TextChildAnchor identity", () => {
         const { buffer, rerender } = await renderAnchorContent(() => buildAnchorContent("First"));
         await rerender(buildAnchorContent("Second"));
         expect(anchorAtOffset(buffer, 7)).not.toBeNull();
-        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON)).toBeRooted();
+        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" })).toBeRooted();
         expect(getBufferText(buffer)).toBe("before  after");
     });
 });
