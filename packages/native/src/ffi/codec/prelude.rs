@@ -79,7 +79,7 @@ macro_rules! write_container_value_to_ptr {
             if !previous.is_null() {
                 let release: fn(&Self) -> $crate::ffi::ReleaseKind = $release;
 
-                $crate::ffi::PendingTransfer::new(previous, release(self)).release_now();
+                drop($crate::ffi::PendingTransfer::new(previous, release(self)));
             }
 
             ::std::result::Result::Ok(::std::option::Option::None)

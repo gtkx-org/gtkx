@@ -264,12 +264,6 @@ fn pointer_word(value: f64) -> *mut c_void {
     value as isize as *mut c_void
 }
 
-fn release_transfers(transfers: Vec<ffi::PendingTransfer>) {
-    for transfer in transfers {
-        transfer.release_now();
-    }
-}
-
 fn transfer_items(
     handles: &[crate::handle::Handle],
     item_codec: &Codec,
@@ -281,16 +275,9 @@ fn transfer_items(
         handle.retain_lease()?;
         let ptr = handle.as_ptr();
         if ptr.is_null() {
-            release_transfers(acquired);
             bail!("GObject in {context} has a null pointer");
         }
-        let element = match unsafe { item_codec.ref_for_transfer(ptr) } {
-            Ok(element) => element,
-            Err(err) => {
-                release_transfers(acquired);
-                return Err(err);
-            }
-        };
+        let element = unsafe { item_codec.ref_for_transfer(ptr) }?;
         if let Some(release) = item_codec.transfer_release() {
             acquired.push(ffi::PendingTransfer::new(element, release));
         }

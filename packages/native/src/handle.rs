@@ -101,15 +101,7 @@ impl FieldStore {
         };
         let previous = std::mem::replace(&mut entry.1, transfer);
         drop(allocations);
-        previous.release_now();
-    }
-}
-
-impl Drop for FieldStore {
-    fn drop(&mut self) {
-        for (_, transfer) in self.allocations.get_mut().drain(..) {
-            transfer.release_now();
-        }
+        drop(previous);
     }
 }
 

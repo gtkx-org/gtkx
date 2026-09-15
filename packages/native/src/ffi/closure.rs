@@ -124,9 +124,7 @@ impl Drop for ClosureData {
         for (_, ptr) in self.retained_bytes.get_mut().drain() {
             unsafe { glib::ffi::g_free(ptr.cast()) };
         }
-        for transfer in self.retained_transfers.get_mut().drain(..) {
-            transfer.release_now();
-        }
+        self.retained_transfers.get_mut().clear();
     }
 }
 

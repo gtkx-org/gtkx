@@ -17,9 +17,7 @@ struct DisplacedField<'a> {
 
 impl DisplacedField<'_> {
     fn release(mut self) {
-        if let Some(transfer) = self.transfer.take() {
-            transfer.release_now();
-        }
+        drop(self.transfer.take());
     }
 }
 
@@ -83,8 +81,11 @@ pub(crate) fn write_field_at<'e>(
         displaced.release();
     }
 
-    if let (Some(transfer), Some((fields, base))) = (transfer, store) {
-        fields.adopt(base + offset, transfer);
+    if let Some(transfer) = transfer {
+        match store {
+            Some((fields, base)) => fields.adopt(base + offset, transfer),
+            None => transfer.disarm(),
+        }
     }
 
     ().into_unknown(env)
