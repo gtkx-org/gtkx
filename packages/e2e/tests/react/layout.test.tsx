@@ -27,7 +27,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, useMemo, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 type Constructor<T> = abstract new (...args: never[]) => T;
 
@@ -196,10 +196,11 @@ function GuideBox({ boxRef, isShown }: { boxRef: RefObject<Gtk.Box | null>; isSh
     );
 }
 
-function VflBox({ boxRef, lines, hasDescription = true }: {
+function VflBox({ boxRef, lines, hasDescription = true, constraints }: {
     boxRef: RefObject<Gtk.Box | null>;
     lines: string[];
     hasDescription?: boolean;
+    constraints?: ReactNode;
 }) {
     const [a, setA] = useState<Gtk.Button | null>(null);
     const [b, setB] = useState<Gtk.Button | null>(null);
@@ -214,6 +215,7 @@ function VflBox({ boxRef, lines, hasDescription = true }: {
             ref={boxRef}
             layoutManager={(
                 <GtkConstraintLayout
+                    constraints={constraints}
                     vfl={hasDescription && views ? [{ lines, hspacing: 8, vspacing: 8, views }] : undefined}
                 />
             )}
@@ -586,11 +588,28 @@ describe("render - GtkConstraintLayout vfl", () => {
 
     it("removes only its described constraints when the prop goes away", async () => {
         const boxRef = createRef<Gtk.Box>();
-        const { rerender } = await render(<VflBox boxRef={boxRef} lines={VFL_LINES} />);
+        const constraintRef = createRef<Gtk.Constraint>();
+        const constraints = (
+            <GtkConstraint
+                ref={constraintRef}
+                targetAttribute={A.WIDTH}
+                relation={R.GE}
+                constant={0}
+                strength={S.REQUIRED}
+            />
+        );
+        const { rerender } = await render(<VflBox boxRef={boxRef} lines={VFL_LINES} constraints={constraints} />);
         const layout = layoutFrom(boxRef);
-        expect(collectConstraints(layout).length).toBeGreaterThan(0);
-        await rerender(<VflBox boxRef={boxRef} lines={VFL_LINES} hasDescription={false} />);
-        expect(collectConstraints(layout)).toEqual([]);
+        const independent = constraintRef.current;
+        expect(independent?.isAttached()).toBe(true);
+        expect(collectConstraints(layout).length).toBeGreaterThan(1);
+        expect(collectConstraints(layout)).toContain(independent);
+        await rerender(
+            <VflBox boxRef={boxRef} lines={VFL_LINES} constraints={constraints} hasDescription={false} />,
+        );
+        const remaining = onlyConstraint(boxRef);
+        expect(remaining).toBe(independent);
+        expect(remaining.isAttached()).toBe(true);
     });
 
     it("releases described constraints when the entire layout subtree unmounts", async () => {
@@ -751,16 +770,18 @@ describe("render - GtkOverlayLayoutChild", () => {
         expect(button).toHaveObjectProperty("parent", overlay);
     });
 
-    it("toggles clipOverlay in place", async () => {
+    it("toggles clipOverlay while preserving the button and its parent", async () => {
         const overlayRef = createRef<Gtk.Overlay>();
         const { rerender } = await render(<ClippedOverlayApp overlayRef={overlayRef} shouldClip={false} />);
         const overlay = overlayRef.current as Gtk.Overlay;
         const button = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Clipped" });
-        const addOverlay = vi.spyOn(overlay, "addOverlay");
+        expect(button).toHaveObjectProperty("parent", overlay);
         expect(overlay.getClipOverlay(button)).toBe(false);
         await rerender(<ClippedOverlayApp overlayRef={overlayRef} shouldClip={true} />);
+        expect(overlayRef.current).toBe(overlay);
+        expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Clipped" })).toBe(button);
+        expect(button).toHaveObjectProperty("parent", overlay);
         expect(overlay.getClipOverlay(button)).toBe(true);
-        expect(addOverlay).not.toHaveBeenCalled();
     });
 
     it("keeps the main child mounted when an overlay appears and disappears", async () => {

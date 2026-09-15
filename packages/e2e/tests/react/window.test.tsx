@@ -279,7 +279,9 @@ describe("render - Window", () => {
             }
 
             const { rerender } = await renderInApplication(<App width={200} height={150} />, appId);
-            const [initialWidth, initialHeight] = ref.current?.getDefaultSize() ?? [0, 0];
+            const window = ref.current;
+            expect(window).toBeRooted();
+            expect(window?.getDefaultSize()).toEqual([200, 150]);
 
             await rerender(
                 <GtkApplication applicationId={appId} flags={APP_FLAGS}>
@@ -287,9 +289,8 @@ describe("render - Window", () => {
                 </GtkApplication>,
             );
 
-            const [updatedWidth, updatedHeight] = ref.current?.getDefaultSize() ?? [0, 0];
-            expect(updatedWidth).toBeGreaterThanOrEqual(initialWidth);
-            expect(updatedHeight).toBeGreaterThanOrEqual(initialHeight);
+            expect(ref.current).toBe(window);
+            expect(window?.getDefaultSize()).toEqual([400, 300]);
         });
 
         it("handles partial size (only width)", async () => {
