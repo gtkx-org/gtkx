@@ -105,14 +105,28 @@ impl ArrayCodec {
         matches!(self.container, ArrayContainerCodec::PtrArray(_)).then(|| self.item_codec.clone())
     }
 
-    fn container_release(&self) -> ffi::ReleaseKind {
+    fn container_release(&self) -> anyhow::Result<impl FnOnce(*mut c_void) + '_> {
         let release = self.container.release_kind();
-        match (&*self.item_codec, release) {
+        let release = match (&*self.item_codec, release) {
             (Codec::Bytes(item), ffi::ReleaseKind::GFree) if item.ownership.is_full() => {
                 ffi::ReleaseKind::StrFreeV
             }
             _ => release,
-        }
+        };
+        let elements = match &self.container {
+            ArrayContainerCodec::List(list) => {
+                self.item_codec.owned_release()?.map(|item| (list, item))
+            }
+            _ => None,
+        };
+
+        Ok(move |ptr| {
+            let container = ffi::PendingTransfer::new(ptr, release);
+            if let Some((list, item)) = elements {
+                list.release_items(ptr, item);
+            }
+            drop(container);
+        })
     }
 }
 
@@ -176,6 +190,11 @@ impl Decoder for ArrayCodec {
     ) -> anyhow::Result<Unknown<'e>> {
         if ptr.is_null() {
             return Ok(value::js_null(env)?);
+        }
+        if transfer.is_borrowed()
+            && let ArrayContainerCodec::List(list) = &self.container
+        {
+            return list.decode_borrowed(self, env, &ffi::Stash::Ptr(ptr));
         }
         self.container
             .decode(self, env, &ffi::Stash::Ptr(ptr), transfer)
@@ -641,11 +660,29 @@ impl ArrayCodec {
         &self,
         env: &'e Env,
         ptrs: impl Iterator<Item = *mut c_void>,
+        borrow_items: bool,
         release: impl FnOnce(),
     ) -> anyhow::Result<Unknown<'e>> {
         let mut values = Vec::with_capacity(ptrs.size_hint().0);
         let result = ptrs.into_iter().try_for_each(|item_ptr| {
-            values.push(self.decode_ptr_item(env, item_ptr)?);
+            let value = if borrow_items
+                && (self.item_codec.is_handle_backed()
+                    || matches!(&*self.item_codec, Codec::Bytes(_)))
+            {
+                let decoded = unsafe {
+                    self.item_codec
+                        .read(env, ReadCtx::value(item_ptr, "list element"))
+                }?;
+                if !item_ptr.is_null() && self.item_codec.is_handle_backed() {
+                    let handle: &External<crate::handle::Handle> = value::read_napi(decoded)?;
+                    value::handle_to_unknown(env, handle.retain_owned()?)?
+                } else {
+                    decoded
+                }
+            } else {
+                self.decode_ptr_item(env, item_ptr)?
+            };
+            values.push(value);
             anyhow::Ok(())
         });
         release();

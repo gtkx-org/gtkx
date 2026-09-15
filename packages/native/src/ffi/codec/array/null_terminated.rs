@@ -218,7 +218,7 @@ impl ArrayCodec {
         });
 
         let is_full = transfer.is_full();
-        self.decode_ptr_iter(env, items, move || {
+        self.decode_ptr_iter(env, items, false, move || {
             if is_full {
                 unsafe { glib::ffi::g_free(ptr) };
             }

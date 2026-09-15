@@ -80,7 +80,7 @@ impl RefCodec {
             .ok_or_else(|| anyhow::anyhow!("The reference has no declared storage size"))?;
         let ptr = crate::api::handle_memory_range(handle, 0, size, "scalar reference")?;
         let retained = if retain_for_async {
-            handle.retain_for_async()?
+            handle.retain_owned()?
         } else {
             (**handle).clone()
         };

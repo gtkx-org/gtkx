@@ -52,7 +52,7 @@ impl ArrayContainer for GPtrArrayCodec {
         let items = (0..len).map(move |i| unsafe { *pdata.add(i) });
 
         let is_full = transfer.is_full();
-        codec.decode_ptr_iter(env, items, move || {
+        codec.decode_ptr_iter(env, items, false, move || {
             if is_full {
                 unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };
             }

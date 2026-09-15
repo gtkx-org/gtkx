@@ -450,7 +450,12 @@ impl PtrWriter for HashTableCodec {
         unsafe { ret.store(table) };
     }
 
-    write_container_value_to_ptr!("hash table", "hashtable pointer write", |_| {
-        ffi::ReleaseKind::HashTableUnref
+    write_container_value_to_ptr!("hash table", "hashtable pointer write", |_: &Self| {
+        Ok::<_, anyhow::Error>(|ptr| {
+            drop(ffi::PendingTransfer::new(
+                ptr,
+                ffi::ReleaseKind::HashTableUnref,
+            ));
+        })
     });
 }

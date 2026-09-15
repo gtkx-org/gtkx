@@ -849,8 +849,9 @@ fn seed_ref<'e>(
         }
         Codec::Array(array_codec) if !array_codec.is_length_bounded() => {
             let value_ptr = unsafe { inner_ptr.cast::<*mut c_void>().read_unaligned() };
-            unsafe { array_codec.read_value(env, value_ptr, "ref seed", Ownership::Borrowed) }
-                .report_err("callback: failed to seed ref")
+            return unsafe {
+                array_codec.read_value(env, value_ptr, "ref seed", Ownership::Borrowed)
+            };
         }
         _ => None,
     };

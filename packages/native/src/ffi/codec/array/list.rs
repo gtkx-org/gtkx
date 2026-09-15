@@ -21,6 +21,57 @@ impl ListArrayCodec {
     }
 }
 
+impl ListArrayCodec {
+    fn nodes(&self, ptr: *mut c_void) -> impl Iterator<Item = *mut c_void> {
+        let ops = self.ops;
+        let mut current = ptr;
+        std::iter::from_fn(move || {
+            if current.is_null() {
+                return None;
+            }
+            let node = unsafe { (ops.node)(current) };
+            current = node.next;
+            Some(node.data)
+        })
+    }
+
+    pub(super) fn release_items(&self, ptr: *mut c_void, release: ffi::ReleaseKind) {
+        for item in self.nodes(ptr) {
+            drop(ffi::PendingTransfer::new(item, release));
+        }
+    }
+
+    pub(super) fn decode_borrowed<'e>(
+        &self,
+        codec: &ArrayCodec,
+        env: &'e Env,
+        stash: &ffi::Stash,
+    ) -> anyhow::Result<Unknown<'e>> {
+        self.decode_items(codec, env, stash, Ownership::Borrowed, true)
+    }
+
+    fn decode_items<'e>(
+        &self,
+        codec: &ArrayCodec,
+        env: &'e Env,
+        stash: &ffi::Stash,
+        transfer: Ownership,
+        borrow_items: bool,
+    ) -> anyhow::Result<Unknown<'e>> {
+        let ops = self.ops;
+        let Some(ptr) = stash.as_non_null_ptr(ops.label)? else {
+            return Ok(value::js_null(env)?);
+        };
+
+        let is_full = transfer.is_full();
+        codec.decode_ptr_iter(env, self.nodes(ptr), borrow_items, move || {
+            if is_full {
+                unsafe { (ops.free)(ptr) };
+            }
+        })
+    }
+}
+
 impl ArrayContainer for ListArrayCodec {
     fn encode(
         &self,
@@ -38,27 +89,7 @@ impl ArrayContainer for ListArrayCodec {
         stash: &ffi::Stash,
         transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
-        let ops = self.ops;
-        let Some(ptr) = stash.as_non_null_ptr(ops.label)? else {
-            return Ok(value::js_null(env)?);
-        };
-
-        let mut current = ptr;
-        let nodes = std::iter::from_fn(move || {
-            if current.is_null() {
-                return None;
-            }
-            let node = unsafe { (ops.node)(current) };
-            current = node.next;
-            Some(node.data)
-        });
-
-        let is_full = transfer.is_full();
-        codec.decode_ptr_iter(env, nodes, move || {
-            if is_full {
-                unsafe { (ops.free)(ptr) };
-            }
-        })
+        self.decode_items(codec, env, stash, transfer, false)
     }
 
     fn name(&self) -> &'static str {

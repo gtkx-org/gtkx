@@ -65,6 +65,12 @@ macro_rules! write_container_value_to_ptr {
                 )
             );
 
+            let prepare_release = $release;
+            let release = if init.is_initialized() && !unsafe { slot.load() }.is_null() {
+                Some(prepare_release(self)?)
+            } else {
+                None
+            };
             let encoded = $crate::ffi::codec::Encoder::encode(self, env, value)?;
             let container = $crate::ffi::codec::prelude::transfer_container(encoded, $label)?;
 
@@ -76,10 +82,8 @@ macro_rules! write_container_value_to_ptr {
 
             let previous = unsafe { slot.swap(container) };
 
-            if !previous.is_null() {
-                let release: fn(&Self) -> $crate::ffi::ReleaseKind = $release;
-
-                drop($crate::ffi::PendingTransfer::new(previous, release(self)));
+            if let Some(release) = release {
+                release(previous);
             }
 
             ::std::result::Result::Ok(::std::option::Option::None)
