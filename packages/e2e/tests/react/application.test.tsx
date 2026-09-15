@@ -6,7 +6,7 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GSimpleAction } from "@gtkx/jsx/gio";
+import { GMenu, GMenuItem, GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkEntry, GtkLabel } from "@gtkx/jsx/gtk";
 import { createRoot, quit, rootElement, useApplication } from "@gtkx/react";
 import { act, render, userEvent } from "@gtkx/testing";
@@ -115,20 +115,33 @@ const requireWidget = <T,>(widget: T | null, name: string): T => {
     return widget;
 };
 
-const buildMenubar = (entries: { label: string; items: { label: string; action: string }[] }[]): Gio.Menu => {
-    const menubar = Gio.Menu.new();
+const renderMenu = async (
+    entries: { label: string; items: { label: string; action: string }[] }[],
+): Promise<Gio.Menu> => {
+    const ref = createRef<Gio.Menu>();
+    const root = createRoot({ ...rootElement });
+    mounted.push(root);
+    await act(() => {
+        root.render(
+            <GMenu ref={ref}>
+                {entries.map((entry) => (
+                    <GMenuItem
+                        key={entry.label}
+                        label={entry.label}
+                        submenu={(
+                            <GMenu>
+                                {entry.items.map((item) => (
+                                    <GMenuItem key={item.action} label={item.label} action={item.action} />
+                                ))}
+                            </GMenu>
+                        )}
+                    />
+                ))}
+            </GMenu>,
+        );
+    });
 
-    for (const entry of entries) {
-        const submenu = Gio.Menu.new();
-
-        for (const item of entry.items) {
-            submenu.append(item.label, item.action);
-        }
-
-        menubar.appendSubmenu(entry.label, submenu);
-    }
-
-    return menubar;
+    return requireWidget(ref.current, "Menubar");
 };
 
 const MenubarApp = ({
@@ -241,8 +254,8 @@ const parseGreeting = async (args: string[]): Promise<string[]> => {
     return parsed;
 };
 
-const fileMenu = (items: string[]): Gio.Menu =>
-    buildMenubar([{ label: "File", items: items.map((label) => ({ label, action: `win.${label}` })) }]);
+const fileMenu = (items: string[]): Promise<Gio.Menu> =>
+    renderMenu([{ label: "File", items: items.map((label) => ({ label, action: `win.${label}` })) }]);
 
 const createActivateMock = () => vi.fn<(parameter: GLib.Variant | null) => void>();
 
@@ -377,7 +390,7 @@ describe("render - Application", () => {
     describe("menubar slot", () => {
         it("sets menubar from a GMenu", async () => {
             const app = await renderApp(
-                buildMenubar([
+                await renderMenu([
                     {
                         label: "File",
                         items: [
@@ -396,7 +409,7 @@ describe("render - Application", () => {
 
         it("clears menubar when the GMenu is removed", async () => {
             const ref = createRef<Gtk.Application>();
-            const rerender = await renderMenubar(ref, fileMenu(["New"]));
+            const rerender = await renderMenubar(ref, await fileMenu(["New"]));
             expect(ref.current?.getMenubar()).not.toBeNull();
             await rerender(null);
             expect(ref.current?.getMenubar()).toBeNull();
@@ -404,9 +417,9 @@ describe("render - Application", () => {
 
         it("updates menubar when items change", async () => {
             const ref = createRef<Gtk.Application>();
-            const rerender = await renderMenubar(ref, fileMenu(["New", "Open"]));
+            const rerender = await renderMenubar(ref, await fileMenu(["New", "Open"]));
             expect(submenuSize(ref.current)).toBe(2);
-            await rerender(fileMenu(["New", "Open", "Save"]));
+            await rerender(await fileMenu(["New", "Open", "Save"]));
             expect(submenuSize(ref.current)).toBe(3);
         });
     });
