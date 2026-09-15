@@ -443,7 +443,7 @@ describe("render - PopoverMenu actions", () => {
                 <GtkApplicationWindow actions={<GSimpleAction name="click" onActivate={onActivate} />}>
                     <GtkMenuButton
                         label="Actions"
-                        menuModel={buildMenu([{ label: "Click Me", action: "win.click" }])}
+                        menuModel={<GMenu items={[{ label: "Click Me", action: "win.click" }]} />}
                     />
                 </GtkApplicationWindow>
             </GtkApplication>,
