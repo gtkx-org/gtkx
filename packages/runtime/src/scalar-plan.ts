@@ -67,23 +67,6 @@ const encodeByteArray: Conversion = (value) => {
     });
 };
 
-const byteArrayPlan = (descriptor: Extract<Descriptor, { kind: "array" }>): ScalarPlan => {
-    const { preserveNull = false, ...abi } = descriptor;
-    const decode: Conversion = descriptor.isBytes === true ? identity : (value) => [...value as Uint8Array];
-
-    return {
-        abi: { ...abi, itemDescriptor: toAbi(descriptor.itemDescriptor), isBytes: true },
-        encode: encodeByteArray,
-        decode(value) {
-            if (value === null) {
-                return preserveNull ? null : decode(new Uint8Array());
-            }
-
-            return decode(value);
-        },
-    };
-};
-
 const enumClass = (descriptor: EnumDescriptor): ExternalObject<Handle> => {
     let library = classHandles.get(descriptor.sharedLibrary);
     if (library === undefined) {
@@ -199,6 +182,39 @@ const mapCollection = (convert: Conversion): Conversion => {
         : (value as readonly unknown[]).values().map((item) => convert(item)).toArray();
 };
 
+const byteOutputLayouts: Set<Extract<Descriptor, { kind: "array" }>["arrayKind"]> = new Set([
+    "array", "sized", "fixed", "cursor", "garray",
+]);
+
+const hasByteTransport = (descriptor: Extract<Descriptor, { kind: "array" }>, item: NativeDescriptor): boolean =>
+    descriptor.arrayKind === "gbytearray" || (item.kind === "uint8" && byteOutputLayouts.has(descriptor.arrayKind));
+
+const arrayPlan = (descriptor: Extract<Descriptor, { kind: "array" }>): ScalarPlan => {
+    const item = compileDescriptor(descriptor.itemDescriptor);
+    const { preserveNull = false, ...layout } = descriptor;
+    const isByteArray = descriptor.arrayKind === "gbytearray";
+    const shouldUseByteTransport = hasByteTransport(descriptor, item.abi);
+    const decode: Conversion = shouldUseByteTransport && descriptor.isBytes !== true
+        ? (value) => [...value as Uint8Array]
+        : mapCollection(item.decode);
+
+    return {
+        abi: { ...layout, itemDescriptor: item.abi, ...(shouldUseByteTransport && { isBytes: true }) },
+        encode: isByteArray ? encodeByteArray : mapCollection(item.encode),
+        decode(value) {
+            if (value === null) {
+                if (preserveNull) {
+                    return null;
+                }
+
+                return descriptor.isBytes === true ? new Uint8Array() : [];
+            }
+
+            return decode(value);
+        },
+    };
+};
+
 const refConversion = (convert: Conversion): Conversion => (value) => {
     if (value == null) {
         return value;
@@ -305,24 +321,7 @@ const mapEntries = (key: Conversion, item: Conversion): Conversion => {
 const nestedPlan = (descriptor: NestedDescriptor): ScalarPlan => {
     switch (descriptor.kind) {
         case "array": {
-            if (descriptor.arrayKind === "gbytearray") {
-                return byteArrayPlan(descriptor);
-            }
-            const item = compileDescriptor(descriptor.itemDescriptor);
-            const { preserveNull = false, ...layout } = descriptor;
-            const decode = mapCollection(item.decode);
-
-            return {
-                abi: { ...layout, itemDescriptor: item.abi },
-                encode: mapCollection(item.encode),
-                decode(value) {
-                    if (value !== null || preserveNull) {
-                        return decode(value);
-                    }
-
-                    return descriptor.isBytes === true ? new Uint8Array() : [];
-                },
-            };
+            return arrayPlan(descriptor);
         }
         case "hashtable": {
             const key = compileDescriptor(descriptor.keyDescriptor);
