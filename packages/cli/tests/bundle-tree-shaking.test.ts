@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
     type AppProbe,
-    type AppProject,
     buildAppProject,
     createAppProject,
     probeAppProject,
@@ -41,6 +40,7 @@ process.stdout.write("used-component=" + typeof GtkButton + "\n");
 `;
 
 describe("gtkx build (tree shaking)", () => {
+    const cleanup = new DisposableStack();
     let probe: AppProbe;
     let bundle: string;
 
@@ -53,11 +53,14 @@ describe("gtkx build (tree shaking)", () => {
             prefix: "gtkx-bundle-tree-shaking-",
         });
 
+        cleanup.defer(() => {
+            removeAppProject(probe.project);
+        });
         bundle = readFileSync(join(probe.project.root, probe.reported), "utf8");
     }, BUILD_TIMEOUT);
 
     afterAll(() => {
-        removeAppProject(probe.project);
+        cleanup.dispose();
     });
 
     it("registers the classes the app imports", () => {
@@ -77,23 +80,26 @@ describe("gtkx build (tree shaking)", () => {
 });
 
 describe("gtkx build (metadata tree shaking)", () => {
-    let project: AppProject;
+    const cleanup = new DisposableStack();
     let bundle: string;
 
     beforeAll(async () => {
-        project = createAppProject({
+        const project = createAppProject({
             applicationId: "com.gtkx.climetadataprobe",
             entry: REACT_APP_ENTRY,
             files: { "gtkx.config.mjs": APP_CONFIG },
             prefix: "gtkx-bundle-metadata-",
         });
 
+        cleanup.defer(() => {
+            removeAppProject(project);
+        });
         const reported = await buildAppProject({ project, outDir: OUT_DIR });
         bundle = readFileSync(join(project.root, reported), "utf8");
     }, BUILD_TIMEOUT);
 
     afterAll(() => {
-        removeAppProject(project);
+        cleanup.dispose();
     });
 
     it("keeps the metadata of the elements the app imports", () => {

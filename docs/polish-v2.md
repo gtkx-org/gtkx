@@ -819,7 +819,13 @@ Generated construction for GTK's activate, mnemonic and nothing actions now dele
 
 All 11 declarative shortcut cases pass, including direct construction, shared JSX references, removal, remounting and keyboard activation. A running consumer was inspected through its widget tree and screenshot, confirming each action's native behavior and an independent callback shortcut. Builds, full lint and typechecking pass. Knip now recognizes the copied React compiler fixture entry and the generated-only runtime factory export. The constructor review covered 29 files, 6,306 lines, with partial supporting reads recorded separately. Broader constructor and factory-prop contracts remain open.
 
-The combined CLI run passes 575 cases but fails nine cases across five files. Those older build tests execute source plugins through Vitest, whose module resolution does not match the Node URLs used for cache hashing. They need to exercise the built CLI without adding a production source-extension fallback. The remaining workspace checkpoint is still running.
+The combined checkpoint passes build, full lint, typechecking, all 45 non-CLI test/build tasks and the website build. The website completes in 431 seconds. The CLI run passed 575 cases but failed nine cases across five files because older build tests executed source plugins through Vitest, whose module resolution differs from Node's cache-hashing URLs.
+
+Those five suites now build through the public CLI and the existing isolated consumer fixture. Environment overrides apply only to the child process. Acquired fixture resources are registered for cleanup before later setup can fail. All 26 affected canonical cases, types, lint and independent review pass. The complete CLI suite still needs a fresh checkpoint; no production source-extension fallback was added.
+
+### JSX generation repeat review
+
+All 12 JSX store modules and the JSX store writer were read completely, 1,799 lines, with the element reference renderer. A public generated consumer confirms that omitting `label` from GtkToggleButton still leaves the inherited GtkButton prop accepted. The parent and child-without-label controls pass. Inherited property omissions and the existing distinction between factory property bags and complete element props remain open.
 
 ### Latest remote checkpoint
 
