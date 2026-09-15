@@ -1,10 +1,8 @@
-import { resolveExecutable } from "@gtkx/utils";
-import { execFileSync } from "node:child_process";
-import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { type CliProject, createCliProject, runCli } from "./cli-project.js";
+import { createCliProject, runCli } from "./cli-project.js";
 import { fixtureConfig } from "./codegen-helpers.js";
+import { compileNativeFixture, runNativeConsumer } from "./native-consumer.js";
 import { isolateTypeConsumer, typecheckSource } from "./type-consumer.js";
 
 const FIXTURE = fileURLToPath(new URL("fixtures/async-pair.c", import.meta.url));
@@ -62,28 +60,6 @@ try {
 }
 `;
 
-const compileFixture = (project: CliProject): void => {
-    const flags = execFileSync(resolveExecutable("pkg-config"), ["--cflags", "--libs", "gio-2.0"], {
-        encoding: "utf8",
-    }).trim().split(/\s+/);
-    execFileSync(resolveExecutable("cc"), [
-        "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror", FIXTURE,
-        "-o", join(project.root, "libasyncpair.so.0"), ...flags,
-    ]);
-};
-
-const runConsumer = (project: CliProject): void => {
-    const libraryPath = [project.root, process.env.LD_LIBRARY_PATH]
-        .filter((entry) => entry !== undefined && entry !== "")
-        .join(":");
-    execFileSync(process.execPath, ["--conditions=source", "--import=tsx", "probe.ts"], {
-        cwd: project.root,
-        env: { ...process.env, LD_LIBRARY_PATH: libraryPath },
-        stdio: "pipe",
-        timeout: 30_000,
-    });
-};
-
 describe("generated async consumers", () => {
     it("resolves paired finishes and leaves external owners to callbacks", () => {
         using project = createCliProject({
@@ -92,9 +68,9 @@ describe("generated async consumers", () => {
             files: { "probe.ts": CONSUMER },
         });
         expect(runCli(project, ["codegen"]).status).toBe(0);
-        compileFixture(project);
+        compileNativeFixture(project, FIXTURE, "libasyncpair.so.0", "gio-2.0");
         expect(() => {
-            runConsumer(project);
+            runNativeConsumer(project);
         }).not.toThrow();
         isolateTypeConsumer(project);
         expect(typecheckSource(project, CONSUMER)).toBe(0);
