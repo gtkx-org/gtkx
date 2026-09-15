@@ -48,8 +48,8 @@ impl PendingTransfer {
         Self { ptr, release }
     }
 
-    pub fn disarm(self) {
-        std::mem::forget(self);
+    pub fn disarm(mut self) {
+        self.ptr = std::ptr::null_mut();
     }
 }
 
