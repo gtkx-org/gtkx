@@ -95,8 +95,6 @@ type ProbeProps = {
 const FALSE = 0;
 const INPUT_ERROR = -1;
 const ROOT_NAMES = ["first", "second"];
-const portalTarget = new Gtk.Box();
-const handlePortalToggled = vi.fn();
 const DewPointProbe = createElementComponent<DewPointProps>("GtkxDewPointLabel");
 
 const BeaconLabel = registerClass(class Beacon extends Gtk.Label {}, {
@@ -111,11 +109,16 @@ const BeaconLabel = registerClass(class Beacon extends Gtk.Label {}, {
 const BeaconProbe = createElementComponent<BeaconProps>("GtkxBeaconLabel");
 const Level2Probe = createElementComponent<Level2Props>("GtkxLevel2Label");
 
-const makeAdjustment = () => Gtk.Adjustment.new(0, 0, 1000, 1, 10, 0);
-
 const renderSpinButton = async (onInput?: ComponentProps<typeof GtkSpinButton>["onInput"]): Promise<Gtk.SpinButton> => {
     const spinRef = createRef<Gtk.SpinButton>();
-    await render(<GtkSpinButton ref={spinRef} adjustment={makeAdjustment()} onInput={onInput} />);
+
+    await render(
+        <GtkSpinButton
+            ref={spinRef}
+            adjustment={<GtkAdjustment value={0} lower={0} upper={1000} stepIncrement={1} pageIncrement={10} />}
+            onInput={onInput}
+        />,
+    );
 
     return spinRef.current as Gtk.SpinButton;
 };
@@ -140,21 +143,17 @@ const renderOverlayWithChild = async (mainLabel: string): Promise<Gtk.Overlay> =
     const overlayRef = createRef<Gtk.Overlay>();
 
     await render(
-        <GtkOverlay ref={overlayRef} widthRequest={200} heightRequest={200}>
+        <GtkOverlay
+            ref={overlayRef}
+            widthRequest={200}
+            heightRequest={200}
+            overlays={<GtkBox name="overlay-child" widthRequest={40} heightRequest={20} />}
+        >
             <GtkLabel>{mainLabel}</GtkLabel>
         </GtkOverlay>,
     );
 
-    const overlay = overlayRef.current as Gtk.Overlay;
-
-    await act(() => {
-        const child = Gtk.Box.new(Gtk.Orientation.HORIZONTAL, 0);
-        child.setName("overlay-child");
-        child.setSizeRequest(40, 20);
-        overlay.addOverlay(child);
-    });
-
-    return overlay;
+    return overlayRef.current as Gtk.Overlay;
 };
 
 const renderSnippetView = async (spec: string, initialText?: string): Promise<SnippetView> => {
@@ -247,8 +246,16 @@ const ToggleProbe = ({ activeName, onNotifyActive, onNotifyActiveName }: ToggleP
     </AdwToggleGroup>
 );
 
-const PortalHost = ({ isActive }: { isActive: boolean }) =>
-    createPortal(<GtkCheckButton active={isActive} onToggled={handlePortalToggled} />, portalTarget);
+const PortalHost = ({ isActive, onToggled }: { isActive: boolean; onToggled: () => void }) => {
+    const [target, setTarget] = useState<Gtk.Box | null>(null);
+
+    return (
+        <>
+            <GtkBox ref={setTarget} />
+            {target && createPortal(<GtkCheckButton active={isActive} onToggled={onToggled} />, target)}
+        </>
+    );
+};
 
 class DewPointLabel extends Gtk.Label {
     declare dewPoint: number;
@@ -518,10 +525,17 @@ describe("user event signals", () => {
     });
 
     it("suppresses a blockable signal inside a portal while the owning root commits", async () => {
-        const { rerender } = await render(<PortalHost isActive={false} />);
-        handlePortalToggled.mockClear();
-        await rerender(<PortalHost isActive />);
+        const handlePortalToggled = vi.fn();
+        const { rerender } = await render(<PortalHost isActive={false} onToggled={handlePortalToggled} />);
+        const button = screen.getByRole(Gtk.AccessibleRole.CHECKBOX);
+        expect(button).not.toBeChecked();
+        await rerender(<PortalHost isActive onToggled={handlePortalToggled} />);
+        expect(screen.getByRole(Gtk.AccessibleRole.CHECKBOX)).toBe(button);
+        expect(button).toBeChecked();
         expect(handlePortalToggled).not.toHaveBeenCalled();
+        await userEvent.click(button);
+        expect(button).not.toBeChecked();
+        expect(handlePortalToggled).toHaveBeenCalledTimes(1);
     });
 
     it("delivers lifecycle signals emitted by the commit itself", async () => {
