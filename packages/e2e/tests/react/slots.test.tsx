@@ -23,10 +23,21 @@ import { createApplicationRenderer } from "../helpers/application-render.js";
 
 const renderApplication = createApplicationRenderer("org.gtkx.portaltest");
 
+const mountedRef = <T,>(ref: RefObject<T | null>): T => {
+    const widget = ref.current;
+
+    if (widget === null) {
+        throw new Error("expected the widget to be mounted");
+    }
+
+    return widget;
+};
+
 const expectPanedStartChild = async (label: string) => {
     const panedRef = createRef<Gtk.Paned>();
     const labelRef = createRef<Gtk.Label>();
     await render(<GtkPaned ref={panedRef} startChild={<GtkLabel ref={labelRef}>{label}</GtkLabel>} />);
+    expect(panedRef.current).toContainElement(labelRef.current);
     expect(panedRef.current).toHaveObjectProperty("startChild", labelRef.current);
 };
 
@@ -58,6 +69,9 @@ const renderActionRowWithPrefixAndSuffix = async (prefixLabel: string, suffixLab
         }),
     );
 
+    expect(rowRef.current).toContainElement(prefixRef.current);
+    expect(rowRef.current).toContainElement(suffixRef.current);
+
     return { rowRef, prefixRef, suffixRef };
 };
 
@@ -88,8 +102,11 @@ const expectTwoLabelSlotMounts = async (build: (labels: ReactNode) => ReactNode)
     const firstRef = createRef<Gtk.Label>();
     const secondRef = createRef<Gtk.Label>();
     await render(build(twoLabelFragment(firstRef, secondRef)));
-    expect(firstRef.current).not.toBeNull();
-    expect(secondRef.current).not.toBeNull();
+    const first = mountedRef(firstRef);
+    const second = mountedRef(secondRef);
+    expect(first).toBeRooted();
+    expect(second).toBeRooted();
+    expect(first.getParent()).toBe(second.getParent());
 };
 
 const expectIndividualChildRemoval = async (
@@ -98,11 +115,18 @@ const expectIndividualChildRemoval = async (
     secondRef: RefObject<Gtk.Label | null>,
 ) => {
     const { rerender } = await render(renderApp(true));
-    expect(firstRef.current).not.toBeNull();
-    expect(secondRef.current).not.toBeNull();
+    const first = mountedRef(firstRef);
+    const second = mountedRef(secondRef);
+    const parent = first.getParent();
+    expect(first).toBeRooted();
+    expect(second).toBeRooted();
+    expect(second.getParent()).toBe(parent);
     await rerender(renderApp(false));
-    expect(firstRef.current).not.toBeNull();
+    expect(firstRef.current).toBe(first);
+    expect(first.getParent()).toBe(parent);
+    expect(first).toBeRooted();
     expect(secondRef.current).toBeNull();
+    expect(second.getParent()).toBeNull();
 };
 
 function SwapKeyedApp({
@@ -243,6 +267,7 @@ describe("render - Slot", () => {
             <GtkHeaderBar ref={headerBarRef} titleWidget={<GtkLabel ref={titleRef}>Custom Title</GtkLabel>} />,
         );
 
+        expect(headerBarRef.current).toContainElement(titleRef.current);
         expect(headerBarRef.current).toHaveObjectProperty("titleWidget", titleRef.current);
     });
 
@@ -259,20 +284,27 @@ describe("render - Slot", () => {
 
     it("clears slot when child removed", async () => {
         const headerBarRef = createRef<Gtk.HeaderBar>();
+        const titleRef = createRef<Gtk.Label>();
 
         function App({ shouldShowTitle }: { shouldShowTitle: boolean }) {
             return (
                 <GtkHeaderBar
                     ref={headerBarRef}
-                    titleWidget={shouldShowTitle ? <GtkLabel>Title</GtkLabel> : undefined}
+                    titleWidget={shouldShowTitle ? <GtkLabel ref={titleRef}>Title</GtkLabel> : undefined}
                 />
             );
         }
 
-        await render(<App shouldShowTitle />);
-        expect(headerBarRef.current?.getTitleWidget()).not.toBeNull();
-        await render(<App shouldShowTitle={false} />);
-        expect(headerBarRef.current?.getTitleWidget()).toBeNull();
+        const { rerender } = await render(<App shouldShowTitle />);
+        const headerBar = mountedRef(headerBarRef);
+        const title = mountedRef(titleRef);
+        expect(headerBar).toContainElement(title);
+        expect(headerBar.getTitleWidget()).toBe(title);
+        await rerender(<App shouldShowTitle={false} />);
+        expect(headerBarRef.current).toBe(headerBar);
+        expect(headerBar.getTitleWidget()).toBeNull();
+        expect(titleRef.current).toBeNull();
+        expect(title.getParent()).toBeNull();
     });
 
     it("updates slot when child changes", async () => {
@@ -301,10 +333,17 @@ describe("render - Slot", () => {
             );
         }
 
-        await render(<App isFirst={true} />);
-        expect(headerBarRef.current).toHaveObjectProperty("titleWidget", label1Ref.current);
-        await render(<App isFirst={false} />);
-        expect(headerBarRef.current).toHaveObjectProperty("titleWidget", label2Ref.current);
+        const { rerender } = await render(<App isFirst={true} />);
+        const headerBar = mountedRef(headerBarRef);
+        const first = mountedRef(label1Ref);
+        expect(headerBar).toContainElement(first);
+        expect(headerBar.getTitleWidget()).toBe(first);
+        await rerender(<App isFirst={false} />);
+        expect(headerBarRef.current).toBe(headerBar);
+        expect(headerBar).toContainElement(label2Ref.current);
+        expect(headerBar.getTitleWidget()).toBe(label2Ref.current);
+        expect(label1Ref.current).toBeNull();
+        expect(first.getParent()).toBeNull();
     });
 
     it("handles Paned.StartChild slot", async () => {
@@ -326,6 +365,7 @@ describe("render - Slot", () => {
             />,
         );
 
+        expect(menuButtonRef.current).toContainElement(popoverRef.current);
         expect(menuButtonRef.current).toHaveObjectProperty("popover", popoverRef.current);
     });
 
@@ -342,6 +382,8 @@ describe("render - Slot", () => {
             />,
         );
 
+        expect(panedRef.current).toContainElement(startRef.current);
+        expect(panedRef.current).toContainElement(endRef.current);
         expect(panedRef.current).toHaveObjectProperty("startChild", startRef.current);
         expect(panedRef.current).toHaveObjectProperty("endChild", endRef.current);
     });
@@ -368,9 +410,10 @@ describe("render - ContainerProp", () => {
             expect(suffixRef.current).not.toBeNull();
         });
 
-        it("removes prefix and suffix children", async () => {
+        it("removes suffix children while retaining the first", async () => {
             const rowRef = createRef<Adw.ActionRow>();
-            const labelRefs = [createRef<Gtk.Label>(), createRef<Gtk.Label>(), createRef<Gtk.Label>()];
+            const firstRef = createRef<Gtk.Label>();
+            const labelRefs = [firstRef, createRef<Gtk.Label>(), createRef<Gtk.Label>()];
 
             function App({ count }: { count: number }) {
                 return (
@@ -391,11 +434,19 @@ describe("render - ContainerProp", () => {
             }
 
             const { rerender } = await render(<App count={3} />);
-            expect(labelRefs[0]?.current).not.toBeNull();
-            expect(labelRefs[1]?.current).not.toBeNull();
-            expect(labelRefs[2]?.current).not.toBeNull();
+            const row = mountedRef(rowRef);
+            const first = mountedRef(firstRef);
+            const labels = labelRefs.map((labelRef) => mountedRef(labelRef));
+            for (const label of labels) {
+                expect(row).toContainElement(label);
+            }
             await rerender(<App count={1} />);
-            expect(labelRefs[0]?.current).not.toBeNull();
+            expect(rowRef.current).toBe(row);
+            expect(firstRef.current).toBe(first);
+            expect(row).toContainElement(first);
+            for (const label of labels.slice(1)) {
+                expect(label.getParent()).toBeNull();
+            }
             expect(labelRefs[1]?.current).toBeNull();
             expect(labelRefs[2]?.current).toBeNull();
         });
@@ -404,14 +455,14 @@ describe("render - ContainerProp", () => {
             const rowRef = createRef<Adw.ActionRow>();
             const prefixRef = createRef<Gtk.Label>();
             await render(actionRowInListBox(rowRef, { prefix: <GtkLabel ref={prefixRef}>Prefix</GtkLabel> }));
-            expect(prefixRef.current).not.toBeNull();
+            expect(rowRef.current).toContainElement(prefixRef.current);
         });
 
         it("adds child as suffix via suffix", async () => {
             const rowRef = createRef<Adw.ActionRow>();
             const suffixRef = createRef<Gtk.Label>();
             await render(actionRowInListBox(rowRef, { suffix: <GtkLabel ref={suffixRef}>Suffix</GtkLabel> }));
-            expect(suffixRef.current).not.toBeNull();
+            expect(rowRef.current).toContainElement(suffixRef.current);
         });
 
         it("combines prefix and suffix", async () => {
@@ -433,11 +484,17 @@ describe("render - ContainerProp", () => {
             }
 
             const { rerender } = await render(<App shouldShowPrefix={true} />);
-            expect(prefixRef.current).not.toBeNull();
-            expect(alwaysRef.current).not.toBeNull();
+            const row = mountedRef(rowRef);
+            const prefix = mountedRef(prefixRef);
+            const always = mountedRef(alwaysRef);
+            expect(row).toContainElement(prefix);
+            expect(row).toContainElement(always);
             await rerender(<App shouldShowPrefix={false} />);
+            expect(rowRef.current).toBe(row);
             expect(prefixRef.current).toBeNull();
-            expect(alwaysRef.current).not.toBeNull();
+            expect(prefix.getParent()).toBeNull();
+            expect(alwaysRef.current).toBe(always);
+            expect(row).toContainElement(always);
         });
 
         it("adds multiple children as prefix via prefix", async () => {
@@ -540,16 +597,19 @@ describe("render - ContainerProp", () => {
 
         it("removes nested rows when unmounted", async () => {
             const expanderRef = createRef<Adw.ExpanderRow>();
+            const alwaysRef = createRef<Adw.ActionRow>();
+            const conditionalRef = createRef<Adw.ActionRow>();
 
             function App({ shouldShowRow }: { shouldShowRow: boolean }) {
                 return (
                     <AdwExpanderRow
                         ref={expanderRef}
+                        expanded
                         title="Settings"
                         rows={(
                             <>
-                                <AdwActionRow title="Always" />
-                                {shouldShowRow && <AdwActionRow title="Conditional" />}
+                                <AdwActionRow ref={alwaysRef} title="Always" />
+                                {shouldShowRow && <AdwActionRow ref={conditionalRef} title="Conditional" />}
                             </>
                         )}
                     />
@@ -557,9 +617,18 @@ describe("render - ContainerProp", () => {
             }
 
             const { rerender } = await render(<App shouldShowRow={true} />);
-            expect(expanderRef.current).not.toBeNull();
+            const expander = mountedRef(expanderRef);
+            const always = mountedRef(alwaysRef);
+            const conditional = mountedRef(conditionalRef);
+            expect(expander).toContainElement(always);
+            expect(expander).toContainElement(conditional);
             await rerender(<App shouldShowRow={false} />);
-            expect(expanderRef.current).not.toBeNull();
+            expect(expanderRef.current).toBe(expander);
+            expect(alwaysRef.current).toBe(always);
+            expect(expander).toContainElement(always);
+            expect(conditionalRef.current).toBeNull();
+            expect(conditional.getParent()).toBeNull();
+            expect(within(expander).queryByText("Conditional")).toBeNull();
         });
 
         it("adds action widgets to ExpanderRow", async () => {
@@ -591,6 +660,7 @@ describe("render - ContainerProp", () => {
             await render(
                 <AdwExpanderRow
                     ref={ref}
+                    expanded
                     title="Complex"
                     suffix={(
                         <>
@@ -608,7 +678,15 @@ describe("render - ContainerProp", () => {
                 />,
             );
 
-            expect(ref.current).not.toBeNull();
+            const expander = mountedRef(ref);
+            const queries = within(expander);
+            const first = await queries.findByText("Row 1");
+            const second = await queries.findByText("Row 2");
+            const third = await queries.findByText("Row 3");
+            expect(first).toAppearBefore(second);
+            expect(second).toAppearBefore(third);
+            expect(queries.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Action 1" })).toBeRooted();
+            expect(queries.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Action 2" })).toBeRooted();
         });
     });
 
@@ -641,8 +719,8 @@ describe("render - ContainerProp", () => {
                 }),
             );
 
-            expect(startRef.current).not.toBeNull();
-            expect(endRef.current).not.toBeNull();
+            expect(headerBarRef.current).toContainElement(startRef.current);
+            expect(headerBarRef.current).toContainElement(endRef.current);
         });
 
         it("removes packed child", async () => {
@@ -661,11 +739,17 @@ describe("render - ContainerProp", () => {
             }
 
             const { rerender } = await render(<App shouldShowStart={true} />);
-            expect(startRef.current).not.toBeNull();
-            expect(alwaysRef.current).not.toBeNull();
+            const headerBar = mountedRef(headerBarRef);
+            const start = mountedRef(startRef);
+            const always = mountedRef(alwaysRef);
+            expect(headerBar).toContainElement(start);
+            expect(headerBar).toContainElement(always);
             await rerender(<App shouldShowStart={false} />);
+            expect(headerBarRef.current).toBe(headerBar);
             expect(startRef.current).toBeNull();
-            expect(alwaysRef.current).not.toBeNull();
+            expect(start.getParent()).toBeNull();
+            expect(alwaysRef.current).toBe(always);
+            expect(headerBar).toContainElement(always);
         });
 
         it("packs multiple children at start via start", async () => {
@@ -687,12 +771,23 @@ describe("render - ContainerProp", () => {
                 throw new Error("expected the header bar to be mounted");
             }
 
-            const buttonCount = (): number => within(headerBar).getAllByRole(Gtk.AccessibleRole.BUTTON).length;
-            const initialCount = buttonCount();
+            const queries = within(headerBar);
+            const search = queries.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Search" });
+            const retainedButton = queries.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete" });
+            const initialCount = queries.getAllByRole(Gtk.AccessibleRole.BUTTON).length;
             await rerender(<SwapKeyedApp headerBarRef={headerBarRef} shouldShowBack={true} />);
-            expect(buttonCount()).toBe(initialCount);
+            expect(headerBarRef.current).toBe(headerBar);
+            const back = queries.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" });
+            expect(queries.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Search" })).toBeNull();
+            expect(search.getParent()).toBeNull();
+            expect(queries.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete" })).toBe(retainedButton);
+            expect(queries.getAllByRole(Gtk.AccessibleRole.BUTTON)).toHaveLength(initialCount);
             await rerender(<SwapKeyedApp headerBarRef={headerBarRef} shouldShowBack={false} />);
-            expect(buttonCount()).toBe(initialCount);
+            expect(queries.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Search" })).toBeRooted();
+            expect(queries.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" })).toBeNull();
+            expect(back.getParent()).toBeNull();
+            expect(queries.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete" })).toBe(retainedButton);
+            expect(queries.getAllByRole(Gtk.AccessibleRole.BUTTON)).toHaveLength(initialCount);
         });
 
         it("reorders children in start via insertBefore", async () => {
@@ -727,19 +822,32 @@ describe("render - ContainerProp", () => {
 
     describe("AdwToolbarView (topBar/bottomBar)", () => {
         it("adds child to top bar via topBar", async () => {
-            const { toolbarRef, contentRef } = await renderToolbarWithSingleBar({ topBar: <AdwHeaderBar /> });
-            expect(contentRef.current).not.toBeNull();
-            expect(toolbarRef.current?.getContent()).not.toBeNull();
+            const barRef = createRef<Adw.HeaderBar>();
+            const { toolbarRef, contentRef } = await renderToolbarWithSingleBar({
+                topBar: <AdwHeaderBar ref={barRef} />,
+            });
+            const toolbar = mountedRef(toolbarRef);
+            expect(toolbar).toContainElement(barRef.current);
+            expect(toolbar).toContainElement(contentRef.current);
+            expect(toolbar.getContent()).toBe(contentRef.current);
+            expect(toolbar.getTopBarHeight()).toBeGreaterThan(0);
         });
 
         it("adds child to bottom bar via bottomBar", async () => {
-            const { toolbarRef, contentRef } = await renderToolbarWithSingleBar({ bottomBar: <AdwHeaderBar /> });
-            expect(contentRef.current).not.toBeNull();
-            expect(toolbarRef.current?.getContent()).not.toBeNull();
+            const barRef = createRef<Adw.HeaderBar>();
+            const { toolbarRef, contentRef } = await renderToolbarWithSingleBar({
+                bottomBar: <AdwHeaderBar ref={barRef} />,
+            });
+            const toolbar = mountedRef(toolbarRef);
+            expect(toolbar).toContainElement(barRef.current);
+            expect(toolbar).toContainElement(contentRef.current);
+            expect(toolbar.getContent()).toBe(contentRef.current);
+            expect(toolbar.getBottomBarHeight()).toBeGreaterThan(0);
         });
 
         it("handles multiple top bars", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
+            const firstTopRef = createRef<Adw.HeaderBar>();
             const secondTopRef = createRef<Gtk.Label>();
             const contentRef = createRef<Gtk.Label>();
 
@@ -748,7 +856,7 @@ describe("render - ContainerProp", () => {
                     ref={toolbarRef}
                     topBar={(
                         <>
-                            <AdwHeaderBar />
+                            <AdwHeaderBar ref={firstTopRef} />
                             <GtkLabel ref={secondTopRef}>Second Top Bar</GtkLabel>
                         </>
                     )}
@@ -757,32 +865,50 @@ describe("render - ContainerProp", () => {
                 </AdwToolbarView>,
             );
 
-            expect(secondTopRef.current).not.toBeNull();
-            expect(contentRef.current).not.toBeNull();
+            expect(toolbarRef.current).toContainElement(firstTopRef.current);
+            expect(toolbarRef.current).toContainElement(secondTopRef.current);
+            expect(toolbarRef.current).toContainElement(contentRef.current);
+            expect(firstTopRef.current).toAppearBefore(mountedRef(secondTopRef));
         });
 
-        it("handles dynamic toolbar addition", async () => {
+        it("handles dynamic toolbar addition and removal", async () => {
             const toolbarRef = createRef<Adw.ToolbarView>();
             const contentRef = createRef<Gtk.Label>();
+            const topRef = createRef<Adw.HeaderBar>();
 
             function App({ shouldShowTop }: { shouldShowTop: boolean }) {
                 return (
-                    <AdwToolbarView ref={toolbarRef} topBar={shouldShowTop ? <AdwHeaderBar /> : null}>
+                    <AdwToolbarView ref={toolbarRef} topBar={shouldShowTop ? <AdwHeaderBar ref={topRef} /> : null}>
                         <GtkLabel ref={contentRef}>Content</GtkLabel>
                     </AdwToolbarView>
                 );
             }
 
             const { rerender } = await render(<App shouldShowTop={false} />);
+            const toolbar = mountedRef(toolbarRef);
+            const content = mountedRef(contentRef);
+            expect(topRef.current).toBeNull();
+            expect(toolbar.getTopBarHeight()).toBe(0);
             await rerender(<App shouldShowTop={true} />);
-            expect(contentRef.current).not.toBeNull();
-            expect(toolbarRef.current?.getContent()).not.toBeNull();
+            const top = mountedRef(topRef);
+            expect(toolbarRef.current).toBe(toolbar);
+            expect(toolbar).toContainElement(top);
+            expect(toolbar.getTopBarHeight()).toBeGreaterThan(0);
+            expect(contentRef.current).toBe(content);
+            expect(toolbar.getContent()).toBe(content);
+            await rerender(<App shouldShowTop={false} />);
+            expect(toolbarRef.current).toBe(toolbar);
+            expect(topRef.current).toBeNull();
+            expect(top.getParent()).toBeNull();
+            expect(toolbar.getTopBarHeight()).toBe(0);
+            expect(contentRef.current).toBe(content);
+            expect(toolbar.getContent()).toBe(content);
         });
     });
 });
 
 describe("createPortal", () => {
-    it("renders children at root level when no container specified", async () => {
+    it("renders window children into the application container", async () => {
         await renderPortalWindow("Portal Window");
 
         const portalWindow = await screen.findByRole(Gtk.AccessibleRole.WINDOW, {
@@ -823,15 +949,28 @@ describe("createPortal", () => {
         expect(stackChildOrder(stackRef.current as Gtk.Stack)).toEqual(["b", "portal", "a"]);
     });
 
-    it("preserves key when provided", async () => {
-        await renderPortalWindow("Keyed Window", "my-key");
-
-        const keyedWindow = await screen.findByRole(Gtk.AccessibleRole.WINDOW, {
-            name: "Keyed Window",
+    it("retains a window for a stable portal key and remounts for a new key", async () => {
+        const { rerender } = await renderPortalWindow("Keyed Window", "first");
+        const first = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Keyed Window", hidden: true });
+        await rerender(
+            <Portal portalKey="first">
+                <GtkApplicationWindow title="Updated Window" />
+            </Portal>,
+        );
+        expect(screen.getByRole(Gtk.AccessibleRole.WINDOW, { name: "Updated Window", hidden: true })).toBe(first);
+        await rerender(
+            <Portal portalKey="second">
+                <GtkApplicationWindow title="Replacement Window" />
+            </Portal>,
+        );
+        const replacement = await screen.findByRole(Gtk.AccessibleRole.WINDOW, {
+            name: "Replacement Window",
             hidden: true,
         });
-
-        expect(keyedWindow).toBeRooted();
+        expect(replacement).not.toBe(first);
+        expect(replacement).toBeRooted();
+        expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW, { name: "Updated Window", hidden: true })).toBeNull();
+        expect(screen.getAllByRole(Gtk.AccessibleRole.WINDOW, { hidden: true })).toEqual([replacement]);
     });
 
     it("unmounts portal children when portal is removed", async () => {
@@ -846,9 +985,10 @@ describe("createPortal", () => {
 
     it("updates portal children when props change", async () => {
         const { rerender } = await renderApplication(<TitledPortal title="First" />);
-        expect(await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "First", hidden: true })).toBeRooted();
+        const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "First", hidden: true });
+        expect(window).toBeRooted();
         await rerender(<TitledPortal title="Second" />);
-        expect(await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Second", hidden: true })).toBeRooted();
+        expect(await screen.findByRole(Gtk.AccessibleRole.WINDOW, { name: "Second", hidden: true })).toBe(window);
     });
 
     it("handles multiple portals to same container", async () => {
