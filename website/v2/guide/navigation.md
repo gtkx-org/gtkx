@@ -1,19 +1,26 @@
 ---
 title: "Navigation"
-description: "Stack, tab, drawer, and split view navigation with @gtkx/navigation: React Navigation's core rendered with libadwaita's navigation view, view stack, and split views."
+description: "Choose an Adwaita navigator and connect its pages, headers, and native back controls."
 ---
 
 # Navigation
 
-GTKX is Adwaita-first, so `@gtkx/navigation` brings [React Navigation](https://reactnavigation.org) to the native navigation surfaces of the GNOME platform. It uses React Navigation 7's core, `@react-navigation/core` and `@react-navigation/routers`, with navigators drawn by libadwaita: a stack is an `AdwNavigationView`, tabs are an `AdwViewStack` behind an `AdwViewSwitcher`, a drawer is an `AdwOverlaySplitView`, and a split view is an `AdwNavigationSplitView`. There is no React Native in it. The hooks, actions, and types are the ones the React Navigation docs describe, and the package re-exports all of `@react-navigation/core`, so one import covers everything. It installs separately:
+`@gtkx/navigation` renders [React Navigation](https://reactnavigation.org) with Adwaita widgets. Install it alongside GTKX:
 
 ```bash
 npm install @gtkx/navigation@beta
 ```
 
-Every navigator draws itself with libadwaita widgets. GTKX 2 uses `Adw-1` as its sole default GIR root, so every generated store includes the `@gtkx/jsx/adw` bindings the package needs; Adwaita's GIR include brings GTK4 along transitively.
+Choose a navigator for the layout:
 
-The navigators, their options, and the re-exported core API are in the [@gtkx/navigation reference](/v2/reference/@gtkx/navigation/).
+| Navigator | Use it for | Native surface |
+| --- | --- | --- |
+| Stack | Moving through a sequence of pages | `AdwNavigationView` |
+| Tabs | Switching between a few peer sections | `AdwViewStack` and a view switcher |
+| Drawer | Choosing an application section from a sidebar | `AdwOverlaySplitView` |
+| Split view | Keeping a selection beside its detail pages | `AdwNavigationSplitView` |
+
+Scaffolded applications already generate the Adwaita bindings these navigators need. The package re-exports React Navigation's core hooks, actions and types. Use its [navigation documentation](https://reactnavigation.org/docs/navigation-object/) for those shared concepts and the [GTKX reference](/v2/reference/@gtkx/navigation/) for navigator options.
 
 ## NavigationContainer
 
@@ -35,9 +42,9 @@ export const App = () => (
 );
 ```
 
-It takes `initialState` to restore a saved state, `onStateChange` to observe every change, `onReady` for the first render, and `onUnhandledAction` for an action no navigator handled. A `ref`, created with `createNavigationContainerRef` or `useNavigationContainerRef`, exposes the same navigation API outside the tree: `ref.current?.navigate("Note", { id: "42" })` from a menu action or a notification handler.
+The container's default theme follows Adwaita's current dark and high-contrast settings. Pass `theme` to override the values supplied to `useTheme` and screen options; this does not change the native color scheme.
 
-The container hands a `theme` to `useTheme` and to option callbacks. The default one tracks Adwaita's style manager live, so it is `{ dark, highContrast }` for the application as it is right now. Pass `theme` to override it, or `DefaultTheme` and `DarkTheme` for fixed light and dark values.
+State restoration and navigation outside the tree use React Navigation's [container API](https://reactnavigation.org/docs/navigation-container/).
 
 ## Stack navigator
 
@@ -54,24 +61,14 @@ const Stack = createStackNavigator<NotesParams>();
 
 const List = ({ navigation }: StackScreenProps<NotesParams, "List">) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-        <GtkButton
-            label="Open note 42"
-            onClicked={() => {
-                navigation.navigate("Note", { id: "42" });
-            }}
-        />
+        <GtkButton label="Open note 42" onClicked={() => navigation.navigate("Note", { id: "42" })} />
     </GtkBox>
 );
 
 const Note = ({ route, navigation }: StackScreenProps<NotesParams, "Note">) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
         <GtkLabel>{`Showing note ${route.params.id}`}</GtkLabel>
-        <GtkButton
-            label="Done"
-            onClicked={() => {
-                navigation.goBack();
-            }}
-        />
+        <GtkButton label="Done" onClicked={() => navigation.goBack()} />
     </GtkBox>
 );
 
@@ -83,9 +80,11 @@ export const Notes = () => (
 );
 ```
 
-A screen renders one root widget. The navigator places it in a container that takes a single child, so a screen with several widgets wraps them in a `GtkBox`. `Stack.Screen` takes the screen as `component`, as a `children` render callback that receives the same `route` and `navigation`, or as `getComponent` for a lazy import; `initialParams` fills in params a `navigate` call leaves out.
+Each screen renders one root widget; wrap several widgets in a container such as `GtkBox`.
 
-`navigation.navigate` goes to a route, pushing it when it is not already on the stack. `push` always pushes a new page, `goBack` and `pop` pop one, `popTo` pops to a named route, `popToTop` returns to the first page, and `replace` swaps the current page. The same actions are available as `StackActions` for `navigation.dispatch`. Pushes and pops animate; `replace` and `reset` switch pages without a transition.
+The stack uses React Navigation's routing behavior. In the example, `navigate("Note", { id })` updates the current Note screen or pushes one from another screen. Returning to an earlier route is a separate action, such as `popTo`. See the [navigation API](https://reactnavigation.org/docs/navigation-object/) for route identity and action behavior.
+
+Pushes and pops use Adwaita transitions. Replacing or resetting the stack switches pages without a transition.
 
 ### Headers
 
@@ -104,31 +103,13 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 />;
 ```
 
-`headerTitle` replaces the title: a string becomes an `AdwWindowTitle`, an element is used as the title widget. `headerStart` and `headerEnd` pack widgets at either end of the bar. `headerBackVisible: false` hides the back button while leaving the page poppable, and `headerShown: false` removes the header bar altogether, which is the right choice for a screen that hosts another navigator. `header` replaces the whole bar; it receives `{ route, navigation, options, back }`, where `back` carries the title of the page below, when there is one:
+Use `headerStart` and `headerEnd` for actions in the native header bar. `headerTitle` replaces its title widget, and `header` replaces the bar. Set `headerShown: false` on a screen that contains another navigator to let the inner navigator own the header.
 
-```tsx
-import { AdwHeaderBar, AdwWindowTitle } from "@gtkx/jsx/adw";
-
-<Stack.Navigator
-    screenOptions={{
-        header: ({ options, route, back }) => (
-            <AdwHeaderBar
-                showBackButton={back !== undefined}
-                titleWidget={<AdwWindowTitle title={options.title ?? route.name} subtitle={back?.title ?? ""} />}
-            />
-        ),
-    }}
->
-    <Stack.Screen name="List" component={List} />
-    <Stack.Screen name="Note" component={Note} />
-</Stack.Navigator>;
-```
-
-`screenOptions` on the navigator applies to every screen, as an object or as a callback that receives `{ route, navigation, theme }`; a screen's own `options` win over it.
+Set shared defaults through the navigator's `screenOptions`; a screen's `options` take precedence. See the [header options reference](/v2/reference/@gtkx/navigation/type-aliases/HeaderOptions).
 
 ### Native back controls
 
-Users pop a page the way they pop any Adwaita page: the header bar's back button, Escape, Alt+Left, the mouse back button, and a swipe from the edge all work without wiring. `popOnEscape={false}` on the navigator turns the Escape key off, and `canPop: false` on a screen makes its page stay put against all of them. `animation: "none"` on a screen pushes and pops it without the transition.
+The header back button, Escape, Alt+Left, mouse back button and swipe gestures use the native Adwaita behavior. Set `popOnEscape={false}` to disable the navigator's Escape handling, `canPop: false` to prevent native back navigation, or `animation: "none"` to skip a page's transition. `headerBackVisible: false` hides only the header button.
 
 A native pop dispatches `StackActions.pop()` through the navigator, so it takes the same route as `navigation.goBack()`, and `usePreventRemove` sees it. When a listener prevents the removal, the page slides back into place and the callback runs with the action that was attempted:
 
@@ -177,27 +158,11 @@ const Compose = () => {
 };
 ```
 
-Dispatching the saved action carries the pop through: React Navigation marks the action it handed to the callback as already offered to this screen, so re-dispatching it skips the guard.
+Dispatch the action supplied to the callback after confirmation. React Navigation documents the rest of the [removal guard lifecycle](https://reactnavigation.org/docs/preventing-going-back/).
 
 ### Transition events
 
-A stack screen emits `transitionStart` when its page starts showing or hiding and `transitionEnd` when the move is over; `data.closing` is `true` on the way out. Subscribe with `navigation.addListener` inside the screen, or with `listeners` on the screen element:
-
-```tsx
-<Stack.Screen
-    name="Note"
-    component={Note}
-    listeners={{
-        transitionEnd: ({ data }) => {
-            if (!data.closing) {
-                markAsRead();
-            }
-        },
-    }}
-/>;
-```
-
-The events fire at the page's own show and hide signals, so they follow the real transition, animated or not.
+Stack screens emit `transitionStart` and `transitionEnd` from their native page signals. Their `closing` value distinguishes a page leaving from one arriving. Screen `listeners` can observe them whether animation is enabled or disabled.
 
 ## Tab navigator
 
@@ -226,27 +191,11 @@ export const Mail = ({ unread }: { unread: number }) => (
 );
 ```
 
-`tabBarLabel` is the switcher's label, defaulting to `title`, then to the route name; `tabBarIcon` is an icon name; `tabBarBadge` is the badge number, hidden at `0`; and `needsAttention` highlights the tab. `lazy`, on by default, mounts a screen the first time its tab is focused, so a heavy tab costs nothing until it is opened; `lazy: false` mounts it at startup. `animation: "fade"` crossfades between pages, and the default `"none"` switches instantly. `popToTopOnBlur` pops a nested stack back to its first screen when the tab loses focus. The router's `backBehavior` decides what `goBack` does across tabs, as in React Navigation.
+The switcher uses each screen's label, icon, badge and attention options. Tabs mount when first focused unless `lazy: false` is set. Set `animation: "fade"` for a crossfade.
 
-Tabs share the stack's header options. `headerShown`, `headerStart`, and `headerEnd` apply to the focused tab's header bar, and a custom `header` receives `{ route, navigation, options, viewSwitcher }`, where `viewSwitcher` is the element to place in the bar when the switcher belongs at the top. With `headerShown: false` a top switcher stays as the top bar on its own. `headerTitle` is the bar's title widget, which is where a top switcher goes, so it replaces the switcher; set it only with `tabBarPosition="bottom"`, or place the switcher yourself in a custom `header`.
+With a top switcher, leave the header's title widget available for it. To supply `headerTitle`, move the switcher to the bottom or place it explicitly through a custom `header`. Hiding the header leaves a top switcher visible on its own.
 
-Selecting a tab emits `tabPress` before the switch, and `preventDefault` keeps the current tab:
-
-```tsx
-<Tabs.Screen
-    name="Archive"
-    component={Archive}
-    listeners={{
-        tabPress: (event) => {
-            if (!isSignedIn) {
-                event.preventDefault();
-            }
-        },
-    }}
-/>;
-```
-
-`navigation.navigate("Archive")` and `navigation.jumpTo("Archive")` switch tabs from code.
+User selection emits `tabPress`, which a screen listener can prevent. Programmatic selection uses React Navigation's tab actions. The [tab options reference](/v2/reference/@gtkx/navigation/type-aliases/TabNavigationOptions) covers the remaining settings.
 
 ## Drawer navigator
 
@@ -271,13 +220,11 @@ export const App = ({ isNarrow }: { isNarrow: boolean }) => (
 );
 ```
 
-`drawerLabel` is the row's text, defaulting to `title`, then to the route name, and `drawerIcon` is the icon name shown next to it. `lazy` and `popToTopOnBlur` work as they do for tabs, and the header options shape the content's header bar in the same way.
+Set `collapsed` when the layout needs an overlay sidebar; the sidebar then closes after a selection. In a wide layout it stays beside the content. `defaultStatus` controls its initial visibility, and `pinSidebar` preserves visibility across collapse changes.
 
-`collapsed` makes the sidebar overlay the content instead of sitting beside it, and closes it after a row is activated; `pinSidebar` stops collapsing and uncollapsing from changing whether the sidebar is shown, leaving that to `defaultStatus` and the drawer actions. `sidebarPosition` puts it at the `"start"` or the `"end"`, and `minSidebarWidth`, `maxSidebarWidth`, and `sidebarWidthFraction` size it. The drawer starts open, or closed when `collapsed`; `defaultStatus` sets it explicitly. While it is not collapsed the sidebar is a pane rather than an overlay, so navigating leaves it in place and `goBack` from a screen never reopens it.
+Native opening and dismissal update the drawer's navigation state, so gestures and React Navigation's drawer actions stay in sync. See the [drawer configuration reference](/v2/reference/@gtkx/navigation/type-aliases/DrawerNavigationConfig) for sizing and placement.
 
-The drawer's open state is navigation state. `navigation.openDrawer()`, `closeDrawer()`, and `toggleDrawer()` on a drawer screen's navigation object change it, as does dispatching `DrawerActions.toggleDrawer()` from any screen nested below the drawer, and a user dragging or dismissing the sidebar dispatches the same actions back, so the split view and the state never disagree.
-
-`drawerContent` replaces the whole sidebar. It receives `{ state, navigation, descriptors }`, and `DrawerItemList` renders the default list from those same props, so a custom sidebar can keep the list and add a header or footer around it:
+`drawerContent` can wrap the default `DrawerItemList` with application-specific content:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
@@ -303,12 +250,11 @@ Activating a row emits `drawerItemPress`, which `preventDefault` cancels, before
 
 ## Split view navigator
 
-`createSplitViewNavigator` renders an `AdwNavigationSplitView`: a sidebar of data beside a stack of content pages, the master and detail layout of Adwaita's own list applications, folded into a single pane on a window too narrow for two. The first screen declared is the sidebar and stays in its pane; every other screen is a page of the content stack, drawn by the same `AdwNavigationView` the stack navigator uses:
+`createSplitViewNavigator` keeps its first screen in the sidebar and places the other screens in a content stack. Use it when the sidebar selects data, such as a folder whose messages appear beside it:
 
 ```tsx
-import * as Gtk from "@gtkx/gi/gtk";
 import { AdwStatusPage } from "@gtkx/jsx/adw";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkButton } from "@gtkx/jsx/gtk";
 import { createSplitViewNavigator, type SplitViewScreenProps } from "@gtkx/navigation";
 
 type MailParams = { Folders: undefined; Messages: { folder: string }; Message: { id: string } };
@@ -316,42 +262,7 @@ type MailParams = { Folders: undefined; Messages: { folder: string }; Message: {
 const Split = createSplitViewNavigator<MailParams>();
 
 const Folders = ({ navigation }: SplitViewScreenProps<MailParams, "Folders">) => (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-        <GtkButton
-            label="Inbox"
-            onClicked={() => {
-                navigation.navigate("Messages", { folder: "inbox" });
-            }}
-        />
-        <GtkButton
-            label="Archive"
-            onClicked={() => {
-                navigation.navigate("Messages", { folder: "archive" });
-            }}
-        />
-    </GtkBox>
-);
-
-const Messages = ({ route, navigation }: SplitViewScreenProps<MailParams, "Messages">) => (
-    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-        <GtkLabel>{`Messages in ${route.params.folder}`}</GtkLabel>
-        <GtkButton
-            label="Open the first one"
-            onClicked={() => {
-                navigation.navigate("Message", { id: "1" });
-            }}
-        />
-        <GtkButton
-            label="Clear selection"
-            onClicked={() => {
-                navigation.goBack();
-            }}
-        />
-    </GtkBox>
-);
-
-const Message = ({ route }: SplitViewScreenProps<MailParams, "Message">) => (
-    <GtkLabel>{`Message ${route.params.id}`}</GtkLabel>
+    <GtkButton label="Inbox" onClicked={() => navigation.navigate("Messages", { folder: "inbox" })} />
 );
 
 export const Mail = ({ isNarrow }: { isNarrow: boolean }) => (
@@ -375,13 +286,13 @@ export const Mail = ({ isNarrow }: { isNarrow: boolean }) => (
 );
 ```
 
-Selecting something in the sidebar is a `navigate` to a content route carrying the selection as params. In this navigator `navigate` selects: it returns to the named route with the new params and drops whatever sat above it, so picking a second folder swaps what the content pane shows instead of piling a page on top of it, and it opens a route that is not on the stack yet by pushing it. Use `push` where a second copy of a page is the point. The sidebar route is pinned at the bottom of the stack, so `pop`, `popToTop`, `replace`, and `reset` reach only the content pages and the sidebar never leaves; `goBack` from the first content page empties the content stack and brings the placeholder back.
+In a split view, `navigate` selects a content route: it updates that route and removes pages above it. Choosing another folder therefore replaces the selection instead of adding another folder page. Use `push` to keep multiple copies of a content page.
 
-`contentPlaceholder` is what fills the content pane while no content route is open, which is where the navigator starts. `AdwStatusPage` is the Adwaita convention for that state, an icon over a title and a line of explanation, centered in the pane.
+The sidebar stays pinned beneath the content routes. Going back from the first content page clears the selection and restores `contentPlaceholder`. An `initialRouteName` naming a content screen opens that screen instead of starting with the placeholder.
 
-The screen options are the stack's, and they mean the same thing here. `title` names the page and its header bar, `headerTitle`, `headerStart`, and `headerEnd` shape that bar, `header` replaces it, `headerShown: false` removes it, `headerBackVisible: false` hides its back button, `canPop: false` keeps a content page in place, and `animation: "none"` drops its transition. The sidebar gets a header bar of its own from its options, without a back button. Content pages emit `transitionStart` and `transitionEnd` the way stack pages do, with `data.closing` set on the way out, for the pushes and pops within the content stack. The first selection is not one of those: it fills an empty pane rather than moving between pages, so it reports no transition.
+Content pages use the stack's headers, back controls and transition events. The first selection fills an empty pane and emits no page transition. The sidebar has its own header without a back button.
 
-`collapsed` folds the two panes into one, and Adwaita decides when from an `AdwBreakpoint` on the window:
+Drive `collapsed` from a window breakpoint so the panes adapt to the available width:
 
 ```tsx
 import * as Adw from "@gtkx/gi/adw";
@@ -398,12 +309,8 @@ export const App = () => {
             breakpoints={(
                 <AdwBreakpoint
                     condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
-                    onApply={() => {
-                        setIsNarrow(true);
-                    }}
-                    onUnapply={() => {
-                        setIsNarrow(false);
-                    }}
+                    onApply={() => setIsNarrow(true)}
+                    onUnapply={() => setIsNarrow(false)}
                 />
             )}
         >
@@ -415,13 +322,9 @@ export const App = () => {
 };
 ```
 
-Once collapsed, libadwaita holds both panes in one navigation view, so the back button and Escape at the first content page return to the sidebar in a single press rather than stepping through an empty pane. The navigator hears the split view giving up its content and pops the stack to match, which is all the narrow case needs.
+In a collapsed split view, Back or Escape from the first content page returns directly to the sidebar. Sizing and sidebar placement are covered by the [split view configuration reference](/v2/reference/@gtkx/navigation/type-aliases/SplitViewNavigationConfig).
 
-`minSidebarWidth`, `maxSidebarWidth`, and `sidebarWidthFraction` size the sidebar pane, `sidebarPosition` puts it at the `"start"` or the `"end"`, and `popOnEscape={false}` turns the Escape key off for the content pages as it does for a stack. `initialRouteName` naming a content screen opens that screen at startup, with the sidebar underneath it, in place of the placeholder.
-
-Focus follows the stack rather than the panes. Side by side, the focused route is the open content page, so `useIsFocused` in the sidebar reads `false` while its widgets sit in plain view, and a `useFocusEffect` there stops as soon as something is selected. A sidebar that reloads itself watches its data, or `useNavigationState`, instead of its own focus.
-
-The drawer navigator answers a different question. Its sidebar is a list of the navigator's own screens and overlays the content once the window is narrow, so it moves between an app's top level sections; the split view's sidebar is a screen with its own widgets and its own state, in a pane that collapses into the content rather than covering it, so it pairs a list with whatever that list selects.
+Focus follows the selected content route even when the sidebar remains visible. A sidebar's `useFocusEffect` therefore stops when a content page is selected; refresh sidebar data based on the data source or navigation state instead.
 
 ## Nesting navigators
 
@@ -463,9 +366,7 @@ import { DrawerActions } from "@gtkx/navigation";
         headerStart: (
             <GtkButton
                 iconName="sidebar-show-symbolic"
-                onClicked={() => {
-                    navigation.dispatch(DrawerActions.toggleDrawer());
-                }}
+                onClicked={() => navigation.dispatch(DrawerActions.toggleDrawer())}
             />
         ),
     })}
@@ -475,62 +376,19 @@ import { DrawerActions } from "@gtkx/navigation";
 </Stack.Navigator>;
 ```
 
-Navigating into a nested navigator takes the `NavigatorScreenParams` form: `navigation.navigate("Notes", { screen: "Note", params: { id: "42" } })`.
+Route parameters and actions follow React Navigation's [nesting rules](https://reactnavigation.org/docs/nesting-navigators/).
 
 ## Hooks
 
-The hooks come from `@react-navigation/core` and work unchanged. `useNavigation` returns the navigation object of the nearest screen, `useRoute` its route, `useIsFocused` whether that screen is the focused one, and `useFocusEffect` runs an effect while it is, cleaning up when it loses focus, so a screen can poll only while it is on screen:
-
-```tsx
-import { useFocusEffect } from "@gtkx/navigation";
-import { useCallback } from "react";
-
-const Inbox = () => {
-    useFocusEffect(
-        useCallback(() => {
-            const timer = setInterval(refresh, 30_000);
-
-            return () => {
-                clearInterval(timer);
-            };
-        }, []),
-    );
-
-    return <Messages />;
-};
-```
-
-`useNavigationState` selects from the navigator's state, and `usePreventRemove` is the guard shown above. `useTheme` returns the container's theme, `{ dark, highContrast }` by default, and re-renders when Adwaita's style manager changes, which is where a screen picks a symbolic icon variant or a color for a drawing.
+Use the hooks re-exported from `@gtkx/navigation`. React Navigation documents [screen focus effects](https://reactnavigation.org/docs/use-focus-effect/) and [navigation access](https://reactnavigation.org/docs/use-navigation/). GTKX's `useTheme` value follows the Adwaita state described above.
 
 ## Static configuration
 
-React Navigation's static API describes the tree as an object, and `createStaticNavigation` turns it into a component that renders a `NavigationContainer` around it. Params are inferred from each screen's `route.params` prop type:
-
-```tsx
-import type { StaticScreenProps } from "@gtkx/navigation";
-import { GtkLabel } from "@gtkx/jsx/gtk";
-import { createStackNavigator, createStaticNavigation } from "@gtkx/navigation";
-
-const Note = ({ route }: StaticScreenProps<{ id: string }>) => <GtkLabel>{`Note ${route.params.id}`}</GtkLabel>;
-
-const RootStack = createStackNavigator({
-    initialRouteName: "List",
-    screens: {
-        List: { screen: List, options: { title: "Notes" } },
-        Note,
-    },
-});
-
-const Navigation = createStaticNavigation(RootStack);
-
-export const App = () => <Navigation onReady={() => console.log("ready")} />;
-```
-
-`Navigation` takes the container's props. `createStackScreen`, `createTabScreen`, `createDrawerScreen`, and `createSplitViewScreen` declare one screen's config with the matching navigator's options typed, for a tree assembled across modules.
+The navigators also accept React Navigation's [static configuration](https://reactnavigation.org/docs/static-configuration/). Import `createStaticNavigation` from `@gtkx/navigation`; the resulting component includes GTKX's `NavigationContainer`.
 
 ## Typing the root param list
 
-`useNavigation()`, a container `ref`, and the static API's `navigate` calls are typed against the root param list, which is empty until the app declares it: with nothing declared, `navigate` from `useNavigation()` accepts no route name at all. Declare it once through the `RootNavigator` interface, as the React Navigation docs describe:
+Declare the root navigator once to type `useNavigation()` and navigation refs throughout the application:
 
 ```ts
 import { createStackNavigator } from "@gtkx/navigation";
@@ -546,11 +404,11 @@ declare module "@react-navigation/core" {
 }
 ```
 
-The augmentation names `@react-navigation/core` because that is the module declaring the interface. It works for a navigator created with the static API too, where the param list is inferred from the `screens`. A screen that belongs to one nested navigator names that navigator's param list instead, `useNavigation<StackNavigationProp<NotesParams>>()`, and a screen component typed with `StackScreenProps`, `TabScreenProps`, `DrawerScreenProps`, or `SplitViewScreenProps` already has its `navigation` and `route` typed without either.
+GTKX uses the interface declared by `@react-navigation/core`, so augment that module. The same pattern works with a static navigator. See React Navigation's [TypeScript guide](https://reactnavigation.org/docs/typescript/) for nested screens and inferred route parameters.
 
 ## Testing
 
-Navigation tests drive the widgets the way a user does. `render` from `@gtkx/testing` disables animations unless it is given `areAnimationsEnabled: true`, so a push or a pop is complete as soon as the click resolves, and only the visible page is mapped: query it with `findByText`, and assert the one that left with `queryByText` returning `null`. The back button answers to the role `BUTTON` and the name `Back`; a view switcher's tabs answer to the role `TAB` and their label:
+Drive the rendered widgets with `@gtkx/testing`. Animations are disabled by default, and queries find the visible page:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
@@ -571,20 +429,9 @@ it("opens a note and comes back", async () => {
     await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
     expect(screen.queryByText("Showing note 42")).toBeNull();
 });
-
-it("switches tabs from the view switcher", async () => {
-    await render(
-        <NavigationContainer>
-            <Mail unread={0} />
-        </NavigationContainer>,
-    );
-
-    await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Archived" }));
-    await screen.findByText("Nothing archived");
-});
 ```
 
-`userEvent.keyboard(widget, "{Escape}")` pops a page the way the key does, and a container `ref` inside `act` drives navigation imperatively when no button is involved.
+For tab navigation, query the view switcher's `Gtk.AccessibleRole.TAB` and its label. `userEvent.keyboard(widget, "{Escape}")` exercises native back navigation. See [Testing](/v2/guide/testing) for setup and query behavior.
 
 ## Next
 
