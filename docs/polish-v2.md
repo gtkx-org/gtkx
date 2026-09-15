@@ -35,7 +35,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | --- | ---: | --- |
 | `native` | 99 | API folder read; memory access fixed in batch 1; ownership migration open |
 | `runtime` | 115 | Initial call/callback path read; ParamSpec override migrated; remaining conversion/ownership work open |
-| `codegen` | 144 | All override templates, GIR, analysis, writer, direct store, reference and Khronos modules and compile entry read; metadata, imports, inheritance, GIR parsing/freshness, reference props and GL buffer types fixed; remaining constructor contracts pending |
+| `codegen` | 144 | All override templates, GIR, analysis, writer, direct store, reference and Khronos modules and compile entry read; metadata, imports, inheritance, GIR parsing/freshness, reference props and GL buffer types fixed; broader constructor contracts and remaining inventory pending |
 | `react` | 47 | Core reconciler read; nullable drag icon fixed; lifecycle and metadata migrations open |
 | `components` | 50 | All files read; all initial findings resolved; repeat review continues |
 | `animated` | 19 | All files read; text, prop contracts, dead code, tests and guides fixed; upstream ref compatibility retained |
@@ -918,6 +918,22 @@ The next source review confirms related borrowed-seed ownership in non-list poin
 ### Compiler factory investigation
 
 U18 records an observed React Compiler closure-hoisting failure with a standalone compiler example and public compiled GTKX application controls. The named-function and compiler-disabled controls render the expected native label; the arrow factory raises ReferenceError. React's documented component-hook-factories rule rejects this pattern, and the existing upstream report remains unconfirmed. This does not establish a supported GTKX application regression. Evidence and that limitation are recorded in `~/UPSTREAM.md`; no production workaround or external post was added.
+
+### Installed tutorial action activation
+
+The open-task action now queues navigation before activating the application. The application activation handler presents an existing window, while its declarative window mounts on a service launch. Completing a task keeps the operation in the background. The tutorial chapter contains the exact updated App implementation and explains this GTKX lifecycle.
+
+Three retained integration cases use the real private desktop bus and native application windows. They verify the selected task, window identity across repeated actions and activation, persisted completion before a window exists, and rejection of an incompatible action target. Their final assertions pass with canonical tutorial types. Supplemental test lint passes with the fixture API's empty destructured parameter allowed; the repository's existing tutorial lint exclusion remains unchanged.
+
+The publication workflow now tests cold activation of the actual extracted Debian package. Its private bus loads the relocated installed service; repeated activation keeps the same process and window, cold completion persists without creating a window, and later activation opens that same process. Both bus-aware and observed-process cleanup cover failures. The complete workflow passes fresh installation, build, launch, types, all 43 application cases, all three French cases, localized AppImage/deb/rpm checks and Flatpak manifests. Full repository typechecking and lint pass. The chapter's production website build passes.
+
+The live consumer was also inspected through MCP task selection, native window trees and screenshots. All owned application, bus and compositor processes were stopped. GNOME Shell notification-card interaction and focus policy remain separate desktop validation work; no production bus configuration workaround was added.
+
+### Required shortcut constructor inputs
+
+A repeat source audit reads 28 implementation/test files, 6,138 lines, plus four generated reference pages. Direct CallbackAction construction remains concrete even though its native factory initializes a required callback. SignalAction, NamedAction and AlternativeTrigger also expose optional/nullable inputs that their native construction contracts require. Generic property validation checks supplied entries and native critical handling occurs after construction; these checks do not establish the missing preconditions.
+
+The existing singleton fixes and configured factory JSX props remain consistent. The next correction must distinguish factory-only construction from valid property-based construction and retain required inputs in both GI and JSX types. This is a source-confirmed finding; no invalid native construction or reproduction was executed.
 
 ### Latest remote checkpoint
 

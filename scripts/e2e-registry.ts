@@ -758,6 +758,7 @@ export {
     runAsync,
     startRegistry,
     withRegistry,
+    loadHeadlessDisplay,
     verifyAppStarts,
     verifyBuiltAppStarts,
     type RegistryContext,

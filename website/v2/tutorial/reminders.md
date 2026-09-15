@@ -145,17 +145,23 @@ Each task/due pair gets its own notification object. After dispatch updates the 
 Update `src/app.tsx`, keeping its `App` export:
 
 ```tsx
+import type * as Adw from "@gtkx/gi/adw";
 import * as GLib from "@gtkx/gi/glib";
 import { AdwApplication } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
+import { useState } from "react";
 import { SettingsProvider } from "./components/settings.js";
 import { Window } from "./components/window.js";
 import { ALL_TASKS, openTask } from "./navigation.js";
 import { useStore } from "./store/index.js";
 
 export function App() {
+    const [application, setApplication] = useState<Adw.Application | null>(null);
+
     return (
         <AdwApplication
+            ref={setApplication}
+            onActivate={() => application?.getActiveWindow()?.present()}
             actionAccels={[
                 { detailedActionName: "win.new", accels: ["<Control>n"] },
                 { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
@@ -175,6 +181,7 @@ export function App() {
                         parameterType={GLib.VariantType.new("s")}
                         onActivate={(parameter) => {
                             openTask(ALL_TASKS, (parameter as GLib.Variant).getString()[0]);
+                            application?.activate();
                         }}
                     />
                 </>
@@ -189,6 +196,8 @@ export function App() {
 ```
 
 The `actions` prop mounts `GSimpleAction` elements on the application. Their names and string parameters match the targets supplied by `ReminderNotification`.
+
+Activating an action is separate from activating the application. `open-task` queues navigation and then calls `activate()` so a service launch mounts its window. The application's `onActivate` handler presents an existing window; a newly mounted `AdwApplicationWindow` presents itself. `complete-task` updates the persistent task data without opening a window.
 
 An action may arrive before the navigation container mounts. In `src/navigation.ts`, add `pendingTask`, replace `openTask`, and add `openPendingTask`:
 
