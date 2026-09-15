@@ -140,7 +140,7 @@ const buildInArg = (options: BuildArgOptions, name: string, track: (alias: strin
             return inArg(name, arrayInTsType(plan.scalar, param.group), descriptor);
         }
         case "buffer": {
-            return inArg(name, `ArrayBufferView | ${track("GLintptr")} | null`, tBuffer);
+            return inArg(name, `ArrayBufferView | ${track("GLpointer")} | null`, tBuffer);
         }
         case "byte-offset": {
             return inArg(name, track("GLintptr"), tUint64);

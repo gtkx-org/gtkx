@@ -35,7 +35,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | --- | ---: | --- |
 | `native` | 99 | API folder read; memory access fixed in batch 1; ownership migration open |
 | `runtime` | 115 | Initial call/callback path read; ParamSpec override migrated; remaining conversion/ownership work open |
-| `codegen` | 144 | All override templates, GIR, analysis, writer, direct store and reference modules and compile entry read; metadata, imports, inheritance, GIR parsing/freshness and configured reference props fixed; remaining generator folders pending |
+| `codegen` | 144 | All override templates, GIR, analysis, writer, direct store, reference and Khronos modules and compile entry read; metadata, imports, inheritance, GIR parsing/freshness, reference props and GL buffer types fixed; remaining constructor contracts pending |
 | `react` | 47 | Core reconciler read; nullable drag icon fixed; lifecycle and metadata migrations open |
 | `components` | 50 | All files read; all initial findings resolved; repeat review continues |
 | `animated` | 19 | All files read; text, prop contracts, dead code, tests and guides fixed; upstream ref compatibility retained |
@@ -885,6 +885,12 @@ The 25 new public cases cover byte returns, fields, references and callbacks, pl
 
 The GL debug callback descriptor now supplies the native registration function's user-data argument and describes the callback's ignored user-data value as a pointer. Clearing the callback consequently supplies both required null pointers. This is a source-confirmed ABI correction, validated by the existing five ordinary GL integration cases and the combined checkpoint above. No pre-fix malformed call or stress probe was run. The explicit callback lifetime is unchanged; GL5 remains open.
 
+### Khronos generation and buffer consumer types
+
+All 13 Khronos TypeScript modules were read completely, 2,789 lines, with the package generator, public GL tests and native buffer codec. The generic buffer parameter union admitted numbers while rejecting the opaque handles accepted by native. It now uses the existing GLpointer alias. Explicit byte-offset parameters retain their numeric descriptors and declarations.
+
+A strict public consumer rejects mapped-buffer handles before regeneration and accepts them afterward. Typed views, empty views and null remain accepted; numeric generic-buffer inputs are now rejected. Explicit numeric offsets still compile and bigint offsets remain rejected. These compiler checks disable native addons. The canonical package build, affected lint, all five ordinary GL integration cases and independent source review pass. No native pointer probe was run; GL5 remains open.
+
 ### Final v2 guide coverage
 
 Animations, CSS, OpenGL and Storybook were read completely, 530 baseline lines, with 39 complete supporting files totaling 3,829 lines. Together with the recorded earlier batches, all 20 v2 guides now have explicit full-read evidence. CSS and Storybook have no additional confirmed finding in this scope.
@@ -920,6 +926,10 @@ At `fdb77c7c`, every main CI job passes, including all 591 CLI tests across 55 f
 Copilot reviewed 275 of 705 files and added no new inline comments. Its summary repeats the nullable action, manifest replacement and callback lifetime concerns already tracked. The declared string action parameter and existing malformed-manifest coverage retain their recorded dispositions; GL callback lifetime remains open. This partial review does not close the audit, and no reply was posted.
 
 At `e99630eb`, every main CI job and CodeQL pass, including CLI tests, types, lint, documentation, publication and sanitizers. The Sonar coverage and quality-gate run also passes. Copilot reviewed 278 of 730 files and added no inline comments. Its summary retains manifest replacement and GL callback concerns and mentions unknown signal handling. The signal conversion callers receive actual Node child-exit signals or the explicitly handled Linux signals; unsupported signal names do not justify an extra production fallback. No review reply was posted.
+
+At `fce4428b`, non-CLI tests, types, lint, documentation, publication, sanitizers and CodeQL pass. The CLI job reaches its 45-minute limit after 517 passing cases across 42 completed files, with no failed case reported. Its two preceding complete runs took about 39 and 41 minutes; new consumer suites increase the work. The job budget is now 60 minutes, preserving its worker count and individual test deadlines. Sonar remains in progress.
+
+Copilot reviewed 267 of 753 files and identified the borrowed array-seed ownership issue. The list correction is validated; the non-list decoder and initialized displacement stages remain open. GitHub code quality also flagged a computed `__proto__` data property in the settings integration test. The JavaScript contract and standalone controls confirm a false positive; U19 in `~/UPSTREAM.md` records the evidence without a production workaround or suppression. No review reply or upstream report was posted.
 
 ## Next work
 
