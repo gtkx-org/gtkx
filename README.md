@@ -23,7 +23,8 @@
   <a href="https://gtkx.dev">Homepage</a> &middot;
   <a href="https://gtkx.dev/guide/getting-started">Documentation</a> &middot;
   <a href="https://github.com/gtkx-org/gtkx/tree/main/examples">Examples</a> &middot;
-  <a href="https://gtkx.dev/contributing/">Contributing</a>
+  <a href="https://gtkx.dev/contributing/">Contributing</a> &middot;
+  <a href="https://github.com/sponsors/gtkx-org">Sponsor</a>
 </p>
 
 ---
@@ -167,6 +168,14 @@ Explore the [example apps](https://github.com/gtkx-org/gtkx/tree/main/examples):
 ## Status
 
 GTKX is stable and ready for production use.
+
+## Funding
+
+GTKX is developed and maintained as an open-source project. Sponsorships help cover recurring project costs such as continuous integration and development tooling.
+
+**[Sponsor GTKX on GitHub →](https://github.com/sponsors/gtkx-org)**
+
+GTKX is fiscally hosted by [Open Source Collective](https://oscollective.org/). Project contributions and expenses are managed transparently through [Open Collective](https://opencollective.com/gtkx).
 
 ## Contributing
 
