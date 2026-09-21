@@ -75,7 +75,7 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@babel/core": "^8.0.5",
+        "@babel/core": "^8.0.6",
         "@babel/preset-typescript": "^8.0.1",
         "@gtkx/codegen": "workspace:*",
         "@gtkx/config": "workspace:*",
