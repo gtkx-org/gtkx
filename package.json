@@ -179,7 +179,7 @@
         "knip": "^6.37.0",
         "nx": "^23.2.1",
         "react": "catalog:",
-        "tsx": "^4.23.13",
+        "tsx": "^4.23.15",
         "typescript": "catalog:",
         "verdaccio": "^6.10.3",
         "vitest": "catalog:"
