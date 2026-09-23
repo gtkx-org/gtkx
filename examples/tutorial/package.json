@@ -33,7 +33,7 @@
         "@gtkx/cli": "^2.0.0-beta.10",
         "@gtkx/config": "^2.0.0-beta.10",
         "@gtkx/testing": "^2.0.0-beta.10",
-        "@types/node": "^26.6.0",
+        "@types/node": "^26.6.2",
         "@types/react": "^19.3.0",
         "typescript": "^6.0.3",
         "vitest": "^5.0.1"

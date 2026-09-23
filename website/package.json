@@ -22,7 +22,7 @@
         "typescript": "catalog:",
         "vite": "catalog:",
         "vitepress": "^2.0.0-alpha.20",
-        "vue": "^3.5.42"
+        "vue": "^3.5.43"
     },
     "nx": {
         "implicitDependencies": [

@@ -213,7 +213,16 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "unicorn/filename-case": ["error", { case: "kebabCase" }],
     "unicorn/import-style": ["error", { styles: { path: { default: false, named: true } } }],
     "unicorn/name-replacements": "off",
+    "unicorn/no-immediate-mutation": "off",
     "unicorn/no-null": "off",
+    "unicorn/prefer-combined-guards": "off",
+    "unicorn/prefer-continue": "off",
+    "unicorn/prefer-early-return": "off",
+    "unicorn/prefer-group-by": "off",
+    "unicorn/prefer-iterator-helpers": "off",
+    "unicorn/prefer-minimal-ternary": "off",
+    "unicorn/prefer-set-methods": "off",
+    "unicorn/prefer-ternary": "off",
     "unicorn/single-line-block-comment-style": ["error", "single-line"],
 };
 
