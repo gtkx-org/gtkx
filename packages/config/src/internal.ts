@@ -12,7 +12,7 @@ export {
     resolveOmittedProps,
 } from "./config.ts";
 export { createConfigLoader } from "./loader.ts";
-export { assertSupportedNodeVersion, MINIMUM_NODE_VERSION } from "./node-version.ts";
+export { assertSupportedNodeVersion, DEFAULT_NODE_VERSION, MINIMUM_NODE_VERSION } from "./node-version.ts";
 export { resourceBasePath } from "./resource-base-path.ts";
 export { viteProjectRoot } from "./vite-root.ts";
 export { SUPPORTED_EXTENSIONS as CONFIG_EXTENSIONS } from "c12";

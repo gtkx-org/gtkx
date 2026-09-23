@@ -1,4 +1,4 @@
-import { MINIMUM_NODE_VERSION } from "@gtkx/config/internal";
+import { DEFAULT_NODE_VERSION, MINIMUM_NODE_VERSION } from "@gtkx/config/internal";
 import { info, tryResolveExecutable, warn } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { chmodSync, copyFileSync, existsSync, mkdirSync, statSync } from "node:fs";
@@ -20,7 +20,6 @@ type StagedRuntime = {
 type NodeSource = "download" | "host" | "path";
 
 const BYTES_PER_MIB = 1024 * 1024;
-const DEFAULT_NODE_VERSION = "26.8.2";
 const EXECUTABLE_MODE = 0o755;
 const NODE_FILENAME = "node";
 const VERSION_PROBE_TIMEOUT_MS = 10_000;

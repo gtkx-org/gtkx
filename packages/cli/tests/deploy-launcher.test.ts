@@ -1,4 +1,4 @@
-import { MINIMUM_NODE_VERSION } from "@gtkx/config/internal";
+import { DEFAULT_NODE_VERSION } from "@gtkx/config/internal";
 import { spawnSync } from "node:child_process";
 import { chmodSync, copyFileSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -77,7 +77,7 @@ describe("gtkx deploy (generated launcher)", () => {
                 join(project.root, "build", process.arch, "overlay", "deb", "share", "doc", BINARY_NAME, "copyright"),
                 "utf8",
             ),
-        ).toContain(`Node.js ${MINIMUM_NODE_VERSION}`);
+        ).toContain(`Node.js ${DEFAULT_NODE_VERSION}`);
     });
 
     it.each([
