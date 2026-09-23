@@ -20,7 +20,7 @@ const viewFor = (row: Gtk.Widget): Gtk.Widget | null => {
 const isViewSingleClickActivating = (row: Gtk.Widget): boolean => {
     const view = viewFor(row);
 
-    return view === null ? false : callBooleanGetter(view, SINGLE_CLICK_ACTIVATE_GETTER) ?? false;
+    return view !== null && (callBooleanGetter(view, SINGLE_CLICK_ACTIVATE_GETTER) ?? false);
 };
 
 const selectRow = (row: Gtk.Widget): void => {

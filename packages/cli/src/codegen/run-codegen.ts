@@ -250,13 +250,12 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
 const ensureGeneratedIn = async (
     context: CodegenContext,
     options: EnsureGeneratedOptions = {},
-): Promise<boolean> => (isPreflightSkipped(options) ? false : generate(context, options));
+): Promise<boolean> => !isPreflightSkipped(options) && generate(context, options);
 
 /* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether codegen ran */
 const ensureGenerated = async (cwd: string, options: EnsureGeneratedOptions = {}): Promise<boolean> =>
-    isPreflightSkipped(options)
-        ? false
-        : generate(await resolveCodegenContext(cwd, options.mode, options.configFile), options);
+    !isPreflightSkipped(options) &&
+    generate(await resolveCodegenContext(cwd, options.mode, options.configFile), options);
 
 const resolveConfigWatch = async (
     cwd: string,

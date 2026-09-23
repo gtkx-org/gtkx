@@ -349,10 +349,7 @@ const isOptionEnabled = async (
     isInteractive: boolean | undefined,
     message: string,
 ): Promise<boolean> =>
-    value ??
-    (isInteractive
-        ? guardCancellation(await p.confirm({ message, initialValue: true }))
-        : true);
+    value ?? (!isInteractive || guardCancellation(await p.confirm({ message, initialValue: true })));
 
 const formatFileList = (heading: string, files: string[]): string => {
     const indentedFiles = files.map((file) => `  ${file}`).join("\n");

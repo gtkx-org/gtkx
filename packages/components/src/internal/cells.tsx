@@ -374,7 +374,7 @@ function itemIdentity(
     return {
         item,
         position: entry.host.getPosition(),
-        isExpanded: item === undefined ? false : (expandedIds?.includes(item.id) ?? false),
+        isExpanded: item !== undefined && (expandedIds?.includes(item.id) ?? false),
     };
 }
 

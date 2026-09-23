@@ -158,7 +158,7 @@ const settleScaffoldFailure = (error: unknown): void => {
 };
 
 const runCreate = async (args: CreateCommandArgs, rawArgs: string[]): Promise<void> => {
-    const isInteractive = args["no-interactive"] || args.yes ? false : process.stdin.isTTY;
+    const isInteractive = !args["no-interactive"] && !args.yes && process.stdin.isTTY;
 
     try {
         assertKnownArguments(rawArgs);

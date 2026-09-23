@@ -57,13 +57,12 @@ function isValueSafeRef(scope: Scope, ref: TypeId | undefined, cType: string | u
 
     const type = scope.context.library.typeFor(ref);
 
-    return type === undefined ? false : isValueSafeType(scope, type);
+    return type !== undefined && isValueSafeType(scope, type);
 }
 
 const isValueSafeField = (scope: Scope, field: GirField): boolean =>
-    field.inlineMembers === undefined
-        ? isValueSafeRef(scope, field.type, field.cType)
-        : field.inlineMembers.every((member) => isValueSafeField(scope, member));
+    field.inlineMembers?.every((member) => isValueSafeField(scope, member)) ??
+    isValueSafeRef(scope, field.type, field.cType);
 
 function isValueSafeRecord(scope: Scope, namespaceName: string, record: GirRecord): boolean {
     const key = recordKey(namespaceName, record);

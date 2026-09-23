@@ -118,9 +118,10 @@ const useFieldWidget = <Widget extends FieldWidget>(
         </>
     ),
     cssClasses: withErrorClass(props.cssClasses, state.invalid),
-    sensitive: field.disabled === true ? false : props.sensitive,
+    sensitive: field.disabled !== true && props.sensitive,
     tooltipText: state.invalid && state.error?.message !== undefined ? state.error.message : props.tooltipText,
-    accessibleInvalid: state.invalid ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE,
+    accessibleInvalid:
+        (state.invalid && Gtk.AccessibleInvalidState.TRUE) || Gtk.AccessibleInvalidState.FALSE,
 });
 
 const selectText = (row: { selectRegion: (start: number, end: number) => void }): void => {

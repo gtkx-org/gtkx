@@ -587,7 +587,7 @@ describe("headless display process ownership", () => {
             });
             guarded.stdin?.end();
             await guardedExit;
-            expect(decoy.pid === undefined ? false : isPidRunning(decoy.pid)).toBe(true);
+            expect(decoy.pid !== undefined && isPidRunning(decoy.pid)).toBe(true);
         } finally {
             guarded.kill("SIGKILL");
             decoy.kill("SIGKILL");

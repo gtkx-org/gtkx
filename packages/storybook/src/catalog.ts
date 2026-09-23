@@ -80,7 +80,7 @@ const explicitControls = (
             continue;
         }
 
-        controls[argument] = { ...annotation, control: control === false ? false : annotation?.control ?? control };
+        controls[argument] = { ...annotation, control: control !== false && (annotation?.control ?? control) };
     }
 
     return controls;
