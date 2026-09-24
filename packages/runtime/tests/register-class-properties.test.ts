@@ -78,7 +78,7 @@ const makeTagsClass = () => {
 
 const makeAnchorClass = () => {
     class Anchor extends GObject {
-        declare target: number | null;
+        declare target: null;
     }
 
     registerClass(Anchor, {
@@ -197,7 +197,7 @@ describe("registerClass — properties a pointer or string-array type backs", ()
         const anchor = new Anchor();
 
         expect(() => {
-            anchor.target = 1;
+            Reflect.set(anchor, "target", 1);
         }).toThrow();
 
         expect(anchor.target).toBeNull();

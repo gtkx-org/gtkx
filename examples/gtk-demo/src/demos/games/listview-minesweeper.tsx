@@ -1,6 +1,7 @@
 import { GridView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkHeaderBar, GtkImage, GtkLabel } from "@gtkx/jsx/gtk";
+import { randomInt } from "node:crypto";
 import { existsSync } from "node:fs";
 import { createContext, useContext, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
@@ -78,18 +79,11 @@ const createEmptyCells = (): Cell[] => {
     return cells;
 };
 
-const randomIndex = (limit: number): number => {
-    const buffer = new Uint32Array(1);
-    crypto.getRandomValues(buffer);
-
-    return Math.floor(((buffer[0] ?? 0) / 2 ** 32) * limit);
-};
-
 const placeMines = (cells: Cell[]): void => {
     let minesPlaced = 0;
 
     while (minesPlaced < MINE_COUNT) {
-        const cell = cells[randomIndex(cells.length)];
+        const cell = cells[randomInt(cells.length)];
 
         if (cell && !cell.isMine) {
             cell.isMine = true;

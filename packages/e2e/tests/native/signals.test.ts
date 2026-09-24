@@ -271,10 +271,11 @@ test("array signal arguments decode to JS arrays", () => {
 test("a handler's return value reaches the emitter even for a void declared marshaller", () => {
     const obj = new Regress.TestObj({});
     obj.connect("sig-with-uint64-prop", () => 99n);
-    obj.connect("sig-with-int64-prop", () => 77n);
+    obj.connect("sig-with-int64-prop", () => 77);
 
     expect(obj.emit("sig-with-uint64-prop", 7n)).toBe(99n);
-    expect(obj.emit("sig-with-int64-prop", 42n)).toBe(77n);
+    const emitted: bigint = obj.emit("sig-with-int64-prop", 42);
+    expect(emitted).toBe(77n);
     expect(obj.emit("sig-with-uint64-prop", 0n)).toBe(99n);
 });
 

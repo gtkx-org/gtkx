@@ -15,7 +15,7 @@ import { GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { quit, rootElement } from "@gtkx/react";
 import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type ReactElement, type Ref, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 type DialogKind = "about" | "shortcuts" | "none";
 
@@ -60,7 +60,7 @@ const headerStart = (buttonRef: Ref<Gtk.Button | null>, isDetail: boolean, onBac
     return (
         <>
             <GtkButton ref={buttonRef} iconName="list-add-symbolic" actionName="win.new" />
-            <GtkButton iconName="system-search-symbolic" onClicked={vi.fn()} />
+            <GtkButton iconName="system-search-symbolic" onClicked={() => null} />
         </>
     );
 };
@@ -71,7 +71,7 @@ const ReuseShell = ({ buttonRef, isDetail, onBack }: {
     onBack: () => void;
 }) => (
     <AdwApplication applicationId={REUSE_APP_ID} flags={Gio.ApplicationFlags.NON_UNIQUE}>
-        <AdwApplicationWindow actions={<GSimpleAction name="new" onActivate={vi.fn()} />}>
+        <AdwApplicationWindow actions={<GSimpleAction name="new" onActivate={() => null} />}>
             <AdwToolbarView topBar={<AdwHeaderBar start={headerStart(buttonRef, isDetail, onBack)} />}>
                 <GtkLabel>Body</GtkLabel>
             </AdwToolbarView>
@@ -117,7 +117,10 @@ describe("tutorial regressions", () => {
             throw new Error("application was not captured");
         }
 
-        const shutdownHandler = vi.fn();
+        let shutdownCount = 0;
+        const shutdownHandler = (): void => {
+            shutdownCount += 1;
+        };
         app.on("shutdown", shutdownHandler);
 
         await act(() => {
@@ -125,13 +128,16 @@ describe("tutorial regressions", () => {
         });
 
         await waitFor(() => {
-            expect(shutdownHandler).toHaveBeenCalledTimes(1);
+            expect(shutdownCount).toBe(1);
         });
     });
 
     it("keeps the details back button enabled and clickable", async () => {
         const buttonRef = createRef<Gtk.Button>();
-        const onBack = vi.fn();
+        let backCount = 0;
+        const onBack = (): void => {
+            backCount += 1;
+        };
         await render(detailShell(buttonRef, onBack));
         expect(buttonRef.current).toBeEnabled();
 
@@ -139,12 +145,15 @@ describe("tutorial regressions", () => {
             await userEvent.click(buttonRef.current);
         }
 
-        expect(onBack).toHaveBeenCalledTimes(1);
+        expect(backCount).toBe(1);
     });
 
     it("keeps a reused header start button sensitive after replacing actionName with onClicked", async () => {
         const buttonRef = createRef<Gtk.Button>();
-        const onBack = vi.fn();
+        let backCount = 0;
+        const onBack = (): void => {
+            backCount += 1;
+        };
 
         const { rerender } = await render(<ReuseShell buttonRef={buttonRef} isDetail={false} onBack={onBack} />, {
             container: rootElement,
@@ -158,13 +167,13 @@ describe("tutorial regressions", () => {
 
         expect(button).toBeEnabled();
         expect(button).toHaveObjectProperty("actionName", "win.new");
-        expect(onBack).not.toHaveBeenCalled();
+        expect(backCount).toBe(0);
         await rerender(<ReuseShell buttonRef={buttonRef} isDetail={true} onBack={onBack} />);
         expect(buttonRef.current).toBe(button);
         expect(button).toBeEnabled();
         expect(button).toHaveObjectProperty("actionName", null);
         await userEvent.click(button);
-        expect(onBack).toHaveBeenCalledTimes(1);
+        expect(backCount).toBe(1);
     });
 
     it("opens a second dialog while the first one's onClosed clears the state that mounted it", async () => {

@@ -1,9 +1,12 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GListStore } from "@gtkx/jsx/gio";
 import {
     GtkButton,
     GtkCallbackAction,
+    GtkFileDialog,
+    GtkFileFilter,
     GtkHeaderBar,
     GtkImage,
     GtkShortcut,
@@ -11,12 +14,14 @@ import {
     GtkShortcutTrigger,
     GtkVideo,
 } from "@gtkx/jsx/gtk";
-import { useSignal } from "@gtkx/react";
-import { createContext, useContext, useState } from "react";
+import { createPortal, rootElement, useSignal } from "@gtkx/react";
+import { createContext, useContext, useEffect, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import bbbPngPath from "../../../data/demos/media/bbb.png?resource";
 import gtkLogoPath from "../../../data/demos/media/gtk-logo.webm?resource";
 import gtkLogoCursorPath from "../../../data/demos/media/gtk_logo_cursor.png?resource";
+import { isCancellation } from "../../is-cancellation.js";
+import { useCancellable } from "../../use-cancellable.js";
 import sourceCode from "./video-player.tsx?raw";
 
 type VideoPlayerContextValue = {
@@ -36,7 +41,7 @@ const VideoPlayerContext = createContext<VideoPlayerContextValue | null>(null);
 const videoPlayerDemo: Demo = {
     id: "video-player",
     title: "Video Player",
-    description: "This is a simple video player using just GTK widgets.",
+    description: "A small GTKX video player with file selection, sample media and fullscreen controls.",
     keywords: ["GtkVideo", "GtkMediaStream", "GtkMediaFile", "GdkPaintable", "GtkMediaControls"],
     component: VideoPlayerDemo,
     titlebar: VideoPlayerTitlebar,
@@ -58,30 +63,17 @@ const toggleFullscreen = (win: Gtk.Window | null) => {
     }
 };
 
-const openVideoDialog = async (window: Gtk.Window | null, setVideoFile: (f: Gio.File) => void) => {
-    const dialog = new Gtk.FileDialog();
-    dialog.setTitle("Select a video");
-    const filters = Gio.ListStore.new(Gtk.FileFilter.prototype.__type__);
-    const allFilter = new Gtk.FileFilter();
-    allFilter.setName("All Files");
-    allFilter.addPattern("*");
-    filters.append(allFilter);
-    const imageFilter = new Gtk.FileFilter();
-    imageFilter.setName("Images");
-    imageFilter.addMimeType("image/*");
-    filters.append(imageFilter);
-    const videoFilter = new Gtk.FileFilter();
-    videoFilter.setName("Video");
-    videoFilter.addMimeType("video/*");
-    filters.append(videoFilter);
-    dialog.setFilters(filters);
-    dialog.setDefaultFilter(videoFilter);
-
+const openVideoDialog = async (
+    dialog: Gtk.FileDialog,
+    window: Gtk.Window | null,
+    cancellable: Gio.Cancellable,
+    setVideoFile: (f: Gio.File) => void,
+) => {
     try {
-        const file = await dialog.open(window, null);
+        const file = await dialog.open(window, cancellable);
         setVideoFile(file);
     } catch (error) {
-        if (error instanceof Error) {
+        if (!isCancellation(error) && error instanceof Error) {
             console.error(error.message);
         }
     }
@@ -97,11 +89,44 @@ const useVideoPlayerContext = (): VideoPlayerContextValue => {
     return ctx;
 };
 
+function useVideoFileDialog() {
+    const [dialog, setDialog] = useState<Gtk.FileDialog | null>(null);
+    const [filters, setFilters] = useState<Gio.ListStore | null>(null);
+    const [allFilter, setAllFilter] = useState<Gtk.FileFilter | null>(null);
+    const [imageFilter, setImageFilter] = useState<Gtk.FileFilter | null>(null);
+    const [videoFilter, setVideoFilter] = useState<Gtk.FileFilter | null>(null);
+    const cancellable = useCancellable();
+
+    useEffect(() => {
+        if (filters !== null && allFilter !== null && imageFilter !== null && videoFilter !== null) {
+            filters.splice(0, filters.getNItems(), [allFilter, imageFilter, videoFilter]);
+        }
+    }, [allFilter, filters, imageFilter, videoFilter]);
+
+    const portal = createPortal(
+        <>
+            <GtkFileFilter ref={setAllFilter} name="All Files" patterns={["*"]} />
+            <GtkFileFilter ref={setImageFilter} name="Images" mimeTypes={["image/*"]} />
+            <GtkFileFilter ref={setVideoFilter} name="Video" mimeTypes={["video/*"]} />
+            <GListStore ref={setFilters} itemType={Gtk.FileFilter.prototype.__type__} />
+            <GtkFileDialog ref={setDialog} title="Select a video" filters={filters} defaultFilter={videoFilter} />
+            {cancellable.element}
+        </>,
+        rootElement,
+    );
+
+    return { dialog, cancellable, portal };
+}
+
 function VideoPlayerProvider({ window, children }: DemoProviderProps) {
     const [videoFile, setVideoFile] = useState<Gio.File | null>(null);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const logoPaintable = Gdk.Texture.newFromResource(gtkLogoCursorPath);
-    const bbbPaintable = Gdk.Texture.newFromResource(bbbPngPath);
+    const [logoPaintable] = useState(() => Gdk.Texture.newFromResource(gtkLogoCursorPath));
+    const [bbbPaintable] = useState(() => Gdk.Texture.newFromResource(bbbPngPath));
+    const [logoFile] = useState(() => Gio.File.newForUri(`resource://${gtkLogoPath}`));
+    const [bbbFile] = useState(() =>
+        Gio.File.newForUri("https://download.blender.org/peach/trailer/trailer_400p.ogg"));
+    const { dialog, cancellable, portal } = useVideoFileDialog();
 
     useSignal(window, "notify::fullscreened", () => {
         setIsFullscreen(window?.isFullscreen() ?? false);
@@ -110,15 +135,17 @@ function VideoPlayerProvider({ window, children }: DemoProviderProps) {
     });
 
     const handleOpen = () => {
-        void openVideoDialog(window, setVideoFile);
+        if (dialog !== null && cancellable.cancellable !== null) {
+            void openVideoDialog(dialog, window, cancellable.cancellable, setVideoFile).finally(cancellable.renew);
+        }
     };
 
     const handleLogo = () => {
-        setVideoFile(Gio.File.newForUri(`resource://${gtkLogoPath}`));
+        setVideoFile(logoFile);
     };
 
     const handleBBB = () => {
-        setVideoFile(Gio.File.newForUri("https://download.blender.org/peach/trailer/trailer_400p.ogg"));
+        setVideoFile(bbbFile);
     };
 
     const handleFullscreen = () => window?.fullscreen();
@@ -139,7 +166,12 @@ function VideoPlayerProvider({ window, children }: DemoProviderProps) {
         handleToggleFullscreen,
     };
 
-    return <VideoPlayerContext.Provider value={value}>{children}</VideoPlayerContext.Provider>;
+    return (
+        <>
+            {portal}
+            <VideoPlayerContext.Provider value={value}>{children}</VideoPlayerContext.Provider>
+        </>
+    );
 }
 
 function VideoPlayerTitlebar() {

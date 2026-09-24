@@ -152,7 +152,6 @@ test("size and ssize enforce the 2^53 precision guard", () => {
 test("unix scalar typedefs round trip", () => {
     expect(GIMarshallingTests.timeTReturn()).toBe(1_234_567_890n);
     GIMarshallingTests.timeTIn(1_234_567_890n);
-    // @ts-expect-error the parameter is declared bigint, and the binding widens it to a plain number
     GIMarshallingTests.timeTIn(1_234_567_890);
     expect(GIMarshallingTests.timeTOut()).toBe(1_234_567_890n);
     expect(GIMarshallingTests.timeTInout(1_234_567_890n)).toBe(0n);
@@ -173,7 +172,6 @@ test("unix scalar typedefs round trip", () => {
     expect(RegressUnix.testPidt(12_345)).toBe(12_345);
     expect(RegressUnix.testUidt(65_534)).toBe(65_534);
     expect(() => {
-        // @ts-expect-error a fractional number is not a time_t
         GIMarshallingTests.timeTIn(1_234_567_890.5);
     }).toThrow();
     expect(() => RegressUnix.testGidt(-1)).toThrow();
@@ -235,17 +233,13 @@ test("booleans round trip and reject non-boolean input", () => {
 test("unichar values round trip as single-character strings", () => {
     expect(Regress.testUnichar("A")).toBe("A");
     expect(Regress.testUnichar("\u{10FFFF}")).toBe("\u{10FFFF}");
-    // @ts-expect-error a number is not a unichar string
     expect(Regress.testUnichar(66)).toBe("B");
     expect(Regress.testUnichar("")).toBe("\u{0}");
     expect(Regress.testUnichar(String.fromCodePoint(0xD8_00))).toBe("\u{FFFD}");
     expect(Regress.testUnichar(String.fromCodePoint(0xDC_00))).toBe("\u{FFFD}");
     expect(() => Regress.testUnichar("ab")).toThrow();
-    // @ts-expect-error a number is not a unichar string
     expect(() => Regress.testUnichar(0x11_00_00)).toThrow();
-    // @ts-expect-error a number is not a unichar string
     expect(() => Regress.testUnichar(-1)).toThrow();
-    // @ts-expect-error a number is not a unichar string
     expect(() => Regress.testUnichar(65.5)).toThrow();
     // @ts-expect-error a boolean is not a unichar string
     expect(() => Regress.testUnichar(true)).toThrow();
@@ -289,29 +283,20 @@ test("floats round trip including non-finite values", () => {
 });
 
 test("64-bit arguments accept exactly representable plain numbers", () => {
-    // @ts-expect-error the parameter is declared bigint, and the binding widens it to a plain number
-    expect(Regress.testInt64(2 ** 53)).toBe(9_007_199_254_740_992n);
-    // @ts-expect-error the parameter is declared bigint, and the binding widens it to a plain number
+    const returned: bigint = Regress.testInt64(2 ** 53);
+    expect(returned).toBe(9_007_199_254_740_992n);
     expect(Regress.testInt64(-(2 ** 53))).toBe(-9_007_199_254_740_992n);
-    // @ts-expect-error the parameter is declared bigint, and the binding widens it to a plain number
     expect(Regress.testInt64(2 ** 53 - 1)).toBe(9_007_199_254_740_991n);
-    // @ts-expect-error the parameter is declared bigint, and the binding widens it to a plain number
     expect(Regress.testLong(12)).toBe(12n);
-    // @ts-expect-error the parameter is declared bigint, and the binding widens it to a plain number
     expect(GIMarshallingTests.timeTInout(1_234_567_890)).toBe(0n);
-    // @ts-expect-error a plain number beyond 2^53 is not an exact 64-bit integer
     expect(() => Regress.testInt64(2 ** 53 + 2)).toThrow();
-    // @ts-expect-error a plain number beyond 2^53 is not an exact 64-bit integer
     expect(() => Regress.testInt64(-(2 ** 53) - 2)).toThrow();
-    // @ts-expect-error a fractional number is not a 64-bit integer
     expect(() => Regress.testInt64(1.5)).toThrow();
 });
 
 test("plain numbers are accepted where a 64-bit integer is expected", () => {
-    // @ts-expect-error the element is declared bigint, and the binding widens it to a plain number
     GIMarshallingTests.arrayInt64In([-1, 0, 1, 2]);
     GIMarshallingTests.arrayUint64In([-1n, 0n, 1n, 2n].map((value) => BigInt.asUintN(64, value)));
-    // @ts-expect-error the element is declared bigint, and the binding widens it to a plain number
     expect(Regress.testArrayGint64In([1, 2, 3, 4])).toBe(10n);
 });
 
@@ -329,17 +314,28 @@ test("void returns give undefined", () => {
     expect(booleanInFalse(false)).toBeUndefined();
 });
 
-test("null coerces to zero and missing arguments throw", () => {
-    // @ts-expect-error the int parameter is not nullable
-    expect(Regress.testInt(null)).toBe(0);
-    // @ts-expect-error the int64 parameter is not nullable
-    expect(Regress.testInt64(null)).toBe(0n);
-    // @ts-expect-error the unichar parameter is not nullable
-    expect(Regress.testUnichar(null)).toBe("\u{0}");
-    // @ts-expect-error the int parameter is not optional
-    expect(() => Regress.testInt()).toThrow();
-    // @ts-expect-error the int parameter is not optional
-    expect(() => Regress.testInt()).toThrow();
+test("nullish numeric arguments throw", () => {
+    for (const value of [null, undefined]) {
+        expect(() => {
+            Reflect.apply(Regress.testInt, null, [value]);
+        }).toThrow();
+        expect(() => {
+            Reflect.apply(Regress.testInt64, null, [value]);
+        }).toThrow();
+        expect(() => {
+            Reflect.apply(Regress.testUnichar, null, [value]);
+        }).toThrow();
+    }
+
+    expect(() => {
+        Reflect.apply(Regress.testInt, null, []);
+    }).toThrow();
+    expect(() => {
+        Reflect.apply(Regress.testInt64, null, []);
+    }).toThrow();
+    expect(() => {
+        Reflect.apply(Regress.testUnichar, null, []);
+    }).toThrow();
 });
 
 test("integer arguments reject fractional and out-of-range values", () => {

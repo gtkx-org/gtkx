@@ -20,18 +20,17 @@ import {
     GtkProgressBar,
     GtkRevealer,
     GtkScrolledWindow,
+    GtkSignalListItemFactory,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
 import { useSignal } from "@gtkx/react";
 import { registerClass } from "@gtkx/runtime";
 import {
     createContext,
-    useCallback,
     useContext,
     useEffect,
     useEffectEvent,
     useLayoutEffect,
-    useMemo,
     useRef,
     useState,
 } from "react";
@@ -454,15 +453,11 @@ function bindSwatchItem(listItem: Gtk.ListItem): void {
     }
 }
 
-function createSimpleColorFactory(): Gtk.SignalListItemFactory {
-    const factory = Gtk.SignalListItemFactory.new();
-    factory.on("setup", listItemHandler(setupSwatchItem));
-    factory.on("bind", listItemHandler(bindSwatchItem));
+const SimpleColorFactory = () => (
+    <GtkSignalListItemFactory onSetup={listItemHandler(setupSwatchItem)} onBind={listItemHandler(bindSwatchItem)} />
+);
 
-    return factory;
-}
-
-function createDetailCell(): { box: Gtk.Box; cell: DetailCell } {
+function createDetailCell(): Gtk.Box {
     const area = new Gtk.DrawingArea();
     area.setContentWidth(48);
     area.setContentHeight(48);
@@ -488,7 +483,7 @@ function createDetailCell(): { box: Gtk.Box; cell: DetailCell } {
     box.append(rgbLabel);
     box.append(hsvLabel);
 
-    return { box, cell: { area, nameLabel, rgbLabel, hsvLabel } };
+    return box;
 }
 
 function bindDetailCell(cell: DetailCell, item: ColorItem): void {
@@ -498,44 +493,27 @@ function bindDetailCell(cell: DetailCell, item: ColorItem): void {
     cell.hsvLabel.setLabel(`<b>H:</b> ${String(item.h)} <b>S:</b> ${String(item.s)} <b>V:</b> ${String(item.v)}`);
 }
 
-function bindDetailItem(cells: WeakMap<Gtk.ListItem, DetailCell>, listItem: Gtk.ListItem): void {
-    const cell = cells.get(listItem);
-    const item = listItem.getItem();
+function getDetailCell(listItem: Gtk.ListItem): DetailCell {
+    const box = listItem.getChild() as Gtk.Box;
+    const area = box.getFirstChild() as Gtk.DrawingArea;
+    const nameLabel = area.getNextSibling() as Gtk.Label;
+    const rgbLabel = nameLabel.getNextSibling() as Gtk.Label;
+    const hsvLabel = rgbLabel.getNextSibling() as Gtk.Label;
 
-    if (cell !== undefined && item instanceof ColorObject) {
-        bindDetailCell(cell, item.colorItem);
-    }
+    return { area, nameLabel, rgbLabel, hsvLabel };
 }
 
-function createDetailColorFactory(): Gtk.SignalListItemFactory {
-    const cells: WeakMap<Gtk.ListItem, DetailCell> = new WeakMap();
-    const factory = Gtk.SignalListItemFactory.new();
-
-    factory.on(
-        "setup",
-        listItemHandler((listItem) => {
-            const { box, cell } = createDetailCell();
-            cells.set(listItem, cell);
-            listItem.setChild(box);
-        }),
-    );
-
-    factory.on(
-        "bind",
-        listItemHandler((listItem) => {
-            bindDetailItem(cells, listItem);
-        }),
-    );
-
-    factory.on(
-        "teardown",
-        listItemHandler((listItem) => {
-            cells.delete(listItem);
-        }),
-    );
-
-    return factory;
-}
+const DetailColorFactory = () => (
+    <GtkSignalListItemFactory
+        onSetup={listItemHandler((listItem) => {
+            listItem.setChild(createDetailCell());
+        })}
+        onBind={listItemHandler((listItem) => {
+            const item = listItem.getItem() as ColorObject;
+            bindDetailCell(getDetailCell(listItem), item.colorItem);
+        })}
+    />
+);
 
 function getCompareFn(mode: SortMode): ((a: ColorObject, b: ColorObject) => number) | null {
     switch (mode) {
@@ -725,39 +703,19 @@ function useColorsLimitFill(models: ColorsModels, colorLimit: ColorLimit, sortMo
 
 const formatItemCount = (count: number): string => `${count.toLocaleString("en-US")} /`;
 
-function useStoreCountLabel(model: Gio.ListModel, labelRef: React.RefObject<Gtk.Label | null>): void {
+function useStoreItemCount(model: Gio.ListModel): number {
+    const [itemCount, setItemCount] = useState(() => model.getNItems());
+
     useSignal(
         model,
         "items-changed",
         () => {
-            labelRef.current?.setLabel(formatItemCount(model.getNItems()));
+            setItemCount(model.getNItems());
         },
         { isImmediate: true },
     );
-}
 
-function useStoreProgressBar(
-    model: Gio.ListModel,
-    colorLimit: ColorLimit,
-    progressBarRef: React.RefObject<Gtk.ProgressBar | null>,
-): void {
-    const update = useCallback(() => {
-        const bar = progressBarRef.current;
-
-        if (!bar) {
-            return;
-        }
-
-        const itemCount = model.getNItems();
-        bar.setFraction(Math.min(1, itemCount / colorLimit));
-        bar.setVisible(itemCount > 0 && itemCount < colorLimit);
-    }, [model, colorLimit, progressBarRef]);
-
-    useSignal(model, "items-changed", update, { isImmediate: true });
-
-    useEffect(() => {
-        update();
-    }, [update]);
+    return itemCount;
 }
 
 function collectSelectedColors(selection: Gtk.MultiSelection): ColorItem[] {
@@ -920,8 +878,7 @@ const SelectionInfoPanel = ({ selectedColors, averageColor }: SelectionInfoPanel
 
 const ColorsHeaderStart = () => {
     const { state, models, computed } = useColorsContext();
-    const countLabelRef = useRef<Gtk.Label | null>(null);
-    useStoreCountLabel(models.sortModel, countLabelRef);
+    const itemCount = useStoreItemCount(models.sortModel);
 
     return (
         <>
@@ -935,8 +892,8 @@ const ColorsHeaderStart = () => {
                 }}
             />
             <GtkButton label="_Refill" useUnderline onClicked={computed.handleRefill} />
-            <GtkLabel ref={countLabelRef} attributes={getTnumAttrs()} widthChars={8} xalign={1}>
-                {formatItemCount(models.sortModel.getNItems())}
+            <GtkLabel attributes={getTnumAttrs()} widthChars={8} xalign={1}>
+                {formatItemCount(itemCount)}
             </GtkLabel>
             <DropDown
                 name="limit-dropdown"
@@ -980,15 +937,12 @@ const ColorsHeaderEnd = () => {
 };
 
 const ColorsProgressBar = ({ model, colorLimit }: ColorsProgressBarProps) => {
-    const progressBarRef = useRef<Gtk.ProgressBar | null>(null);
-    useStoreProgressBar(model, colorLimit, progressBarRef);
+    const itemCount = useStoreItemCount(model);
 
     return (
         <GtkProgressBar
-            ref={(node) => {
-                progressBarRef.current = node;
-            }}
-            visible={false}
+            fraction={Math.min(1, itemCount / colorLimit)}
+            visible={itemCount > 0 && itemCount < colorLimit}
             halign={Gtk.Align.FILL}
             valign={Gtk.Align.START}
         />
@@ -1008,11 +962,6 @@ const ColorsGridOverlay = () => {
         sortMode: state.sortMode,
         refillToken: state.refillToken,
     });
-
-    const factory = useMemo(
-        () => (computed.showDetails ? createDetailColorFactory() : createSimpleColorFactory()),
-        [computed.showDetails],
-    );
 
     return (
         <GtkOverlay
@@ -1034,7 +983,7 @@ const ColorsGridOverlay = () => {
                     enableRubberband
                     cssClasses={computed.gridCssClasses}
                     model={models.selection}
-                    factory={factory}
+                    factory={computed.showDetails ? <DetailColorFactory /> : <SimpleColorFactory />}
                 />
             </GtkScrolledWindow>
         </GtkOverlay>

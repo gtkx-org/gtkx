@@ -1,41 +1,23 @@
-<script setup lang="ts">
-withDefaults(defineProps<{ interactive?: boolean; glow?: boolean; padding?: string; href?: string }>(), {
-    interactive: false,
-    glow: false,
-    padding: "1.5rem",
-});
-</script>
-
 <template>
-  <component
-    :is="href ? 'a' : 'div'"
-    :href="href"
-    class="card"
-    :class="{ 'card--interactive': interactive, 'card--glow': glow }"
-    :style="{ padding }"
-  >
-    <span v-if="glow" class="card__glow" />
+  <div class="card">
+    <span class="card__glow" />
     <div class="card__body"><slot /></div>
-  </component>
+  </div>
 </template>
 
 <style scoped>
 .card {
   position: relative;
-  display: block;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  color: inherit;
-  text-decoration: none;
+  overflow: hidden;
+  padding: 1.6rem;
   transition: var(--transition-colors), transform var(--dur-base) var(--ease-out),
     box-shadow var(--dur-base) var(--ease-out);
 }
-.card--glow {
-  overflow: hidden;
-}
-.card--interactive:hover {
+.card:hover {
   border-color: var(--brand);
   box-shadow: var(--shadow-lg);
   transform: translateY(-3px);
@@ -48,7 +30,7 @@ withDefaults(defineProps<{ interactive?: boolean; glow?: boolean; padding?: stri
   pointer-events: none;
   transition: opacity var(--dur-base) var(--ease-standard);
 }
-.card--interactive:hover .card__glow {
+.card:hover .card__glow {
   opacity: 1;
 }
 .card__body {

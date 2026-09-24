@@ -2,12 +2,12 @@ import { t } from "@gtkx/i18n";
 import { GMenu } from "@gtkx/jsx/gio";
 import { GtkMenuButton } from "@gtkx/jsx/gtk";
 
-export const MainMenu = () => (
+const MainMenu = () => (
     <GtkMenuButton
         primary
         iconName="open-menu-symbolic"
         tooltipText={t("Main Menu")}
-        menuModel={
+        menuModel={(
             <GMenu
                 items={[
                     { section: [{ label: t("New Task"), action: "win.new" }] },
@@ -20,6 +20,10 @@ export const MainMenu = () => (
                     { section: [{ label: t("About Tasks"), action: "win.about" }] },
                 ]}
             />
-        }
+        )}
     />
 );
+
+export {
+    MainMenu,
+};

@@ -9,38 +9,46 @@ import { openTaskId } from "../navigation.js";
 import { useStore } from "../store/index.js";
 import { useRequestDeleteTask } from "./dialogs.js";
 
-const shortcut = (accelerator: string, run: () => boolean) => (
+const shortcut = (accelerator: string, didRun: () => boolean) => (
     <GtkShortcut
         trigger={<GtkShortcutTrigger accelerator={accelerator} />}
-        action={<GtkCallbackAction callback={run} />}
+        action={<GtkCallbackAction callback={didRun} />}
     />
 );
 
-export const AppShortcuts = () => {
+const didToggleSearch = (): boolean => {
+    const { searchMode, setSearchMode } = useStore.getState();
+    setSearchMode(!searchMode);
+
+    return true;
+};
+
+const AppShortcuts = () => {
     const requestDeleteTask = useRequestDeleteTask();
 
-    const toggleSearch = (): boolean => {
-        const { searchMode, setSearchMode } = useStore.getState();
-        setSearchMode(!searchMode);
-        return true;
-    };
-
-    const deleteOpenTask = (): boolean => {
+    const didDeleteOpenTask = (): boolean => {
         const task = useStore.getState().tasks.find((candidate) => candidate.id === openTaskId());
-        if (!task) return false;
+        if (!task) {
+            return false;
+        }
         requestDeleteTask(task);
+
         return true;
     };
 
     return (
         <GtkShortcutController
             scope={Gtk.ShortcutScope.GLOBAL}
-            shortcuts={
+            shortcuts={(
                 <>
-                    {shortcut("<Control>f", toggleSearch)}
-                    {shortcut("Delete", deleteOpenTask)}
+                    {shortcut("<Control>f", didToggleSearch)}
+                    {shortcut("Delete", didDeleteOpenTask)}
                 </>
-            }
+            )}
         />
     );
+};
+
+export {
+    AppShortcuts,
 };

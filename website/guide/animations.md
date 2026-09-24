@@ -32,7 +32,7 @@ This works for every element in `@gtkx/jsx` and for components of your own. Keep
 
 Property access such as `animated.GtkLabel` remains available in GTKX 1.6 for compatibility, but is deprecated and removed in 2.0. Import the component and use the call form above. It works for elements that are not widgets, such as `GtkAdjustment`, and components of your own, while letting a production bundle retain only the components it reaches.
 
-Each frame, the current values are written straight onto the widget through its `ref`, so the component does not re-render while the spring runs. Writable GObject props such as `opacity`, margins, size requests, and adjustment values can be animated this way. Construct-only props remain static, and TypeScript rejects springs passed to them. The `style` prop, labels, and text children also accept animated values:
+Each frame, the current values are written straight onto the widget through its `ref`, so the component does not re-render while the spring runs. Writable GObject props such as `opacity`, margins, size requests, and adjustment values can be animated this way. The `style` prop, labels, and text children also accept animated values:
 
 ```tsx
 const { count } = useSpring({ from: { count: 0 }, to: { count: 100 } });
@@ -118,7 +118,7 @@ Elsewhere, animate the margins, the size requests, a `Gtk.Paned`'s `position`, o
 
 ## The frame clock
 
-Frames come from GTK's frame clock: animations advance in the update phase of the newest mapped window's clock, so writes land before that window lays out and paints, in step with the display. When the driving window goes away, another mapped window takes over; when no window is mapped, or the clock stops ticking, a timer paces the frames instead, so a spring always reaches its target and its `onRest` always fires.
+Frames advance during the update phase of a mapped window's GTK frame clock, before layout and painting. GTKX keeps using that window while it can supply frames, switching to another mapped window or a timer when necessary.
 
 ## Reduced motion
 

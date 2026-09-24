@@ -51,13 +51,13 @@ const renderSurface = async (): Promise<Gtk.Widget> => {
 
 describe("fireEvent", () => {
     it("emits the signal once per call and resolves after each emission", async () => {
-        const { handleClick, button } = await renderClickButton();
+        const { clicks, button } = await renderClickButton();
         const emission = fireEvent(button, "clicked");
         await emission;
-        expect(handleClick).toHaveBeenCalledTimes(1);
+        expect(clicks.count).toBe(1);
         await fireEvent(button, "clicked");
         await fireEvent(button, "clicked");
-        expect(handleClick).toHaveBeenCalledTimes(3);
+        expect(clicks.count).toBe(3);
     });
 });
 

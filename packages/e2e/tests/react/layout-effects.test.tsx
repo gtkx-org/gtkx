@@ -4,7 +4,7 @@ import { GtkBox, GtkButton, GtkCheckButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { createRoot, rootElement } from "@gtkx/react";
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createRef, useLayoutEffect, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const adjustCommittedLabel = (label: Gtk.Label | null): void => {
     if (!label) {
@@ -36,7 +36,10 @@ describe("layout effects during commit", () => {
     });
 
     it("keeps signals flowing after a layout effect spawns a synchronous re-render", async () => {
-        const onClicked = vi.fn();
+        let clickCount = 0;
+        const onClicked = (): void => {
+            clickCount += 1;
+        };
 
         const Trigger = () => {
             const [armed, setArmed] = useState(false);
@@ -50,7 +53,7 @@ describe("layout effects during commit", () => {
 
         await render(<Trigger />);
         await userEvent.click(await screen.findByText("armed"));
-        expect(onClicked).toHaveBeenCalledTimes(1);
+        expect(clickCount).toBe(1);
     });
 
     it("keeps one root's signals flowing while another root is inside its commit window", async () => {
@@ -59,7 +62,10 @@ describe("layout effects during commit", () => {
         const rootA = createRoot(containerA);
         const rootB = createRoot(containerB);
         const checkB = createRef<Gtk.CheckButton>();
-        const onToggledB = vi.fn();
+        let toggledCount = 0;
+        const onToggledB = (): void => {
+            toggledCount += 1;
+        };
 
         const CrossRootEmitter = () => {
             useLayoutEffect(() => {
@@ -74,13 +80,13 @@ describe("layout effects during commit", () => {
                 rootB.render(<GtkCheckButton ref={checkB} label="b" onToggled={onToggledB} />);
             });
 
-            onToggledB.mockClear();
+            toggledCount = 0;
 
             await act(() => {
                 rootA.render(<CrossRootEmitter />);
             });
 
-            expect(onToggledB).toHaveBeenCalledTimes(1);
+            expect(toggledCount).toBe(1);
         } finally {
             await act(() => {
                 rootA.unmount();

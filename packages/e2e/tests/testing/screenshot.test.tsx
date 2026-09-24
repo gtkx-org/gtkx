@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel, GtkMenuButton, GtkPopover, GtkWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { act, render, screen, screenshot, waitFor } from "@gtkx/testing";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { mkdtempDisposableSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRef } from "react";
@@ -170,8 +170,8 @@ describe("screenshot", () => {
 
     it("writes the PNG to the requested file, creating missing directories", async () => {
         const { container } = await render(<GtkLabel>Saved</GtkLabel>);
-        const directory = mkdtempSync(join(tmpdir(), "gtkx-screenshots-"));
-        const path = join(directory, "nested", "shot.png");
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-screenshots-"));
+        const path = join(directory.path, "nested", "shot.png");
         const result = await screenshot(container, { path });
         expect(readFileSync(path).toString("base64")).toBe(result.data);
     });

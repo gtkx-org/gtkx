@@ -115,7 +115,10 @@ describe("generated HarfBuzz deserializer cursors", () => {
         for (const name of ["bufferDeserializeUnicode", "bufferDeserializeGlyphs"]) {
             const page = reference.lookup(`HarfBuzz.${name}`, "function");
             expect(page.outcome).toBe("page");
-            expect(page).toHaveProperty("markdown", expect.stringContaining("buf: Uint8Array | number[]"));
+            expect(page).toHaveProperty(
+                "markdown",
+                expect.stringContaining("buf: Uint8Array | Uint8ClampedArray | number[]"),
+            );
             expect(page).toHaveProperty("markdown", expect.stringContaining("[HarfBuzz.bool_t, Uint8Array]"));
         }
     });

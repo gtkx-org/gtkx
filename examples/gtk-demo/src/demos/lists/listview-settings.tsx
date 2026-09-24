@@ -61,14 +61,14 @@ type KeyInfoColumnSpec = {
 type CommitKeyInfoEditArgs = {
     keyInfo: KeyInfo;
     newText: string;
-    widget: Gtk.Widget;
+    widget: Gtk.EditableLabel;
     state: ListViewSettingsState;
 };
 
 type KeyEditContext = {
     keyInfo: KeyInfo;
     newText: string;
-    widget: Gtk.Widget;
+    widget: Gtk.EditableLabel;
     settings: Gio.Settings;
     schema: Gio.SettingsSchema;
     setKeyInfos: ListViewSettingsState["setKeyInfos"];
@@ -79,17 +79,17 @@ type SettingsColumnViewProps = {
     onSearchChanged: (entry: Gtk.SearchEntry) => void;
     onStopSearch: () => void;
     filteredKeyInfos: KeyInfo[];
-    onValueEdit: (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) => void;
+    onValueEdit: (keyInfo: KeyInfo, newText: string, widget: Gtk.EditableLabel) => void;
 };
 
 type SettingsColumnsProps = {
     columnVisibility: ColumnVisibility;
-    onValueEdit: (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) => void;
+    onValueEdit: (keyInfo: KeyInfo, newText: string, widget: Gtk.EditableLabel) => void;
 };
 
 type SettingsContextValue = {
     state: ListViewSettingsState;
-    handleValueEdit: (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) => void;
+    handleValueEdit: (keyInfo: KeyInfo, newText: string, widget: Gtk.EditableLabel) => void;
 };
 
 const settingsByNode: Map<string, Gio.Settings> = new Map();
@@ -362,6 +362,7 @@ function writeKeyValue(context: KeyEditContext) {
     const schemaKey = schema.getKey(keyInfo.name);
 
     if (!schemaKey.rangeCheck(variant)) {
+        widget.setText(keyInfo.value);
         widget.errorBell();
 
         return;
@@ -389,6 +390,7 @@ function commitKeyInfoEdit({ keyInfo, newText, widget, state }: CommitKeyInfoEdi
         writeKeyValue({ keyInfo, newText, widget, settings, schema, setKeyInfos });
     } catch (error) {
         logError(error);
+        widget.setText(keyInfo.value);
         widget.errorBell();
     }
 }
@@ -528,7 +530,7 @@ function useSettingsContext(): SettingsContextValue {
 function ListViewSettingsProvider({ children }: DemoProviderProps) {
     const state = useListViewSettingsState();
 
-    const handleValueEdit = (keyInfo: KeyInfo, newText: string, widget: Gtk.Widget) => {
+    const handleValueEdit = (keyInfo: KeyInfo, newText: string, widget: Gtk.EditableLabel) => {
         commitKeyInfoEdit({ keyInfo, newText, widget, state });
     };
 

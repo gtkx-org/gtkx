@@ -1,5 +1,4 @@
 import type { ReactElement, ReactNode } from "react";
-import type { Mock } from "vitest";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
@@ -27,8 +26,7 @@ type TabName = "First" | "Second" | "Third";
 type NestedParams = { Home: undefined; Details: undefined };
 type TabListeners = ScreenListeners<TabNavigationState<ParamListBase>, TabNavigationEventMap>;
 type TabRenderer = () => ReactNode;
-type StateSpy = Mock<(state: NavigationState | undefined) => void>;
-type TabPressSpy = Mock<(event: { target?: string }) => void>;
+type StateHistory = (NavigationState | undefined)[];
 
 type TabsAppProps = {
     navigator?: Omit<TabNavigatorProps, "children">;
@@ -36,7 +34,7 @@ type TabsAppProps = {
     listeners?: Partial<Record<TabName, TabListeners>>;
     renderers?: Partial<Record<TabName, TabRenderer>>;
     names?: TabName[];
-    onStateChange?: StateSpy;
+    onStateChange?: (state: NavigationState | undefined) => void;
 };
 
 type TabScreenConfig = {
@@ -46,7 +44,7 @@ type TabScreenConfig = {
     renderer: TabRenderer | undefined;
 };
 
-type SpyPageProps = {
+type MountProbeProps = {
     text: string;
     onMount: () => void;
 };
@@ -79,7 +77,7 @@ const TabPage = ({ route, navigation }: TabScreenProps<ParamListBase>): ReactNod
     </GtkBox>
 );
 
-const SpyPage = ({ text, onMount }: SpyPageProps): ReactNode => {
+const MountProbe = ({ text, onMount }: MountProbeProps): ReactNode => {
     useEffect(() => {
         onMount();
     }, [onMount]);
@@ -156,16 +154,16 @@ const getStackPage = (text: string, title: string): Adw.ViewStackPage => {
     throw new Error(`The view stack has no page titled ${title}`);
 };
 
-const lastState = (onStateChange: StateSpy): NavigationState | undefined => onStateChange.mock.lastCall?.[0];
+const lastState = (states: readonly (NavigationState | undefined)[]): NavigationState | undefined => states.at(-1);
 
-const focusedRouteName = (onStateChange: StateSpy): string | undefined => {
-    const state = lastState(onStateChange);
+const focusedRouteName = (states: readonly (NavigationState | undefined)[]): string | undefined => {
+    const state = lastState(states);
 
     return state === undefined ? undefined : state.routes[state.index]?.name;
 };
 
-const focusedRouteKey = (onStateChange: StateSpy): string | undefined => {
-    const state = lastState(onStateChange);
+const focusedRouteKey = (states: readonly (NavigationState | undefined)[]): string | undefined => {
+    const state = lastState(states);
 
     return state === undefined ? undefined : state.routes[state.index]?.key;
 };
@@ -193,9 +191,8 @@ export {
     focusedRouteName,
     lastState,
     NestedStackScreen,
-    SpyPage,
-    type StateSpy,
-    type TabPressSpy,
+    MountProbe,
+    type StateHistory,
     TabsApp,
 };
 

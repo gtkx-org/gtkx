@@ -7,7 +7,6 @@ import type {
     StackNavigationProp,
 } from "@gtkx/navigation";
 import type { ReactNode } from "react";
-import type { Mock } from "vitest";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
@@ -18,9 +17,9 @@ import { expect } from "vitest";
 
 import { getAncestor } from "./widget-ancestors.js";
 
-type StateSpy = Mock<(state: NavigationState | undefined) => void>;
+type StateHistory = (NavigationState | undefined)[];
 type ScreenConfig = { name: string; text: string; options?: DrawerNavigationOptions };
-type MountSpyProps = { text: string; onMount: () => void };
+type MountProbeProps = { text: string; onMount: () => void };
 
 const Drawer = createDrawerNavigator();
 const NestedStack = createStackNavigator();
@@ -69,7 +68,7 @@ const DrawerScreen = ({ text }: { text: string }): ReactNode => {
     );
 };
 
-const MountSpy = ({ text, onMount }: MountSpyProps): ReactNode => {
+const MountProbe = ({ text, onMount }: MountProbeProps): ReactNode => {
     useEffect(() => {
         onMount();
     }, [onMount]);
@@ -136,8 +135,8 @@ const expectHeaderTitle = (title: string): void => {
     expect(within(headerBar).getByText(title)).toBeVisible();
 };
 
-const lastState = (spy: StateSpy): NavigationState => {
-    const state = spy.mock.lastCall?.[0];
+const lastState = (states: readonly (NavigationState | undefined)[]): NavigationState => {
+    const state = states.at(-1);
 
     if (state === undefined) {
         throw new Error("onStateChange has not reported a state yet");
@@ -179,7 +178,7 @@ export {
     expectHeaderTitle,
     INBOX,
     lastState,
-    MountSpy,
+    MountProbe,
     NestedStackScreen,
     querySidebarLabel,
     routeKey,
@@ -187,5 +186,6 @@ export {
     sidebarList,
     sidebarRow,
     splitView,
+    type StateHistory,
     toggleButton,
 };

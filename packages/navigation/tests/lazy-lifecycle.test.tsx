@@ -8,7 +8,7 @@ import {
 } from "@gtkx/navigation";
 import { act, render, screen } from "@gtkx/testing";
 import { expect, test } from "vitest";
-import { SpyPage } from "./helpers/tab-fixtures.js";
+import { MountProbe } from "./helpers/tab-fixtures.js";
 
 type Params = { First: undefined; Second: undefined };
 
@@ -21,7 +21,7 @@ test.each(["tabs", "drawer"])("a removed %s route starts lazy again when its sav
     const onMount = (): void => {
         mounts += 1;
     };
-    const renderSecond = (): ReactNode => <SpyPage text="Second Content" onMount={onMount} />;
+    const renderSecond = (): ReactNode => <MountProbe text="Second Content" onMount={onMount} />;
     const ref = createNavigationContainerRef<Params>();
     const routes = [{ key: "first", name: "First" }, { key: "second", name: "Second" }];
 

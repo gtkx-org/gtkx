@@ -168,19 +168,24 @@ test("foo enum helpers convert between ints and members", () => {
     expect(Regress.fooEnumTypeReturnv(2)).toBe(Regress.FooEnumType.ALPHA);
 });
 
-test("null is accepted as zero where the C side expects zero flags", () => {
-    // @ts-expect-error the flags parameter is not nullable
-    GIMarshallingTests.flagsInZero(null);
-    // @ts-expect-error the flags parameter is not nullable
-    GIMarshallingTests.noTypeFlagsInZero(null);
-
-    const object = new GIMarshallingTests.PropertiesAccessorsObject({});
-    // @ts-expect-error the flags parameter is not nullable
-    object.setFlags(null);
-    expect(object.getFlags()).toBe(0);
-});
-
 test("enum arguments reject wrong types and out-of-range values", () => {
+    const object = new GIMarshallingTests.PropertiesAccessorsObject({});
+
+    for (const value of [null, undefined]) {
+        expect(() => {
+            Reflect.apply(GIMarshallingTests.enumIn, null, [value]);
+        }).toThrow();
+        expect(() => {
+            Reflect.apply(GIMarshallingTests.flagsInZero, null, [value]);
+        }).toThrow();
+        expect(() => {
+            Reflect.apply(GIMarshallingTests.noTypeFlagsInZero, null, [value]);
+        }).toThrow();
+        expect(() => {
+            Reflect.apply(object.setFlags.bind(object), null, [value]);
+        }).toThrow();
+    }
+
     expect(() => {
         // @ts-expect-error 1.5 is not an Enum member
         GIMarshallingTests.enumIn(1.5);

@@ -2,27 +2,23 @@
 withDefaults(
     defineProps<{
         variant?: "primary" | "secondary" | "ghost";
-        size?: "sm" | "md" | "lg";
-        href?: string;
-        fullWidth?: boolean;
-        disabled?: boolean;
+        size?: "md" | "lg";
+        href: string;
     }>(),
-    { variant: "primary", size: "md", fullWidth: false, disabled: false },
+    { variant: "primary", size: "md" },
 );
 </script>
 
 <template>
-  <component
-    :is="href ? 'a' : 'button'"
+  <a
     :href="href"
-    :disabled="href ? undefined : disabled"
     class="btn"
-    :class="[`btn--${variant}`, `btn--${size}`, { 'btn--full': fullWidth }]"
+    :class="[`btn--${variant}`, `btn--${size}`]"
   >
     <slot name="icon-left" />
     <slot />
     <slot name="icon-right" />
-  </component>
+  </a>
 </template>
 
 <style scoped>
@@ -41,23 +37,8 @@ withDefaults(
   transition: var(--transition-colors), transform var(--dur-fast) var(--ease-standard),
     box-shadow var(--dur-fast) var(--ease-standard);
 }
-.btn--full {
-  display: flex;
-  width: 100%;
-}
 .btn:active {
   transform: translateY(1px);
-}
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.btn--sm {
-  height: 32px;
-  padding: 0 0.75rem;
-  gap: 0.4rem;
-  font-size: var(--text-sm);
-  border-radius: var(--radius-sm);
 }
 .btn--md {
   height: 40px;

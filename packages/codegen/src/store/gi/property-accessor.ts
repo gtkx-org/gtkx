@@ -3,7 +3,7 @@ import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { isEmittableProperty } from "../../analysis/property-admission.js";
-import { renderTsType } from "../../analysis/ts-type.js";
+import { renderParameterTsType, renderTsType } from "../../analysis/ts-type.js";
 import { isUnboundedArray, primitiveCategoryFor, underlyingType } from "../../analysis/type-shape.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderBlock } from "../../writer/emit.js";
@@ -52,11 +52,21 @@ const isNullablePropertyType = (context: ModuleContext, type: TypeId | undefined
     return !NON_NULLABLE_KINDS.has(resolved.kind);
 };
 
-const declaredPropertyType = (context: ModuleContext, property: GirProperty): string =>
-    renderTsType(
+const isNullableProperty = (context: ModuleContext, property: GirProperty): boolean =>
+    property.defaultValue === "NULL" || isNullablePropertyType(context, property.type);
+
+const declaredReadType = (context: ModuleContext, property: GirProperty): string =>
+    renderTsType(context, property.type, isNullableProperty(context, property));
+
+const declaredWriteType = (context: ModuleContext, property: GirProperty): string =>
+    renderParameterTsType(
         context,
         property.type,
-        property.defaultValue === "NULL" || isNullablePropertyType(context, property.type),
+        {
+            isNullable: isNullableProperty(context, property),
+            isValueWidened: false,
+            canAcceptTypedArrayViews: property.transferOwnership === "none",
+        },
     );
 
 const canAccessPropertyWithoutDescriptor = (context: ModuleContext, ref: TypeId | undefined): boolean => {
@@ -118,14 +128,13 @@ const resolvePropertyMetadata = (
         return undefined;
     }
 
-    const declared = declaredPropertyType(context, property);
     const hasGetter = property.readable;
 
     return {
         property,
         jsName,
-        readType: inheritedTypes?.readType ?? declared,
-        writeType: inheritedTypes?.writeType ?? declared,
+        readType: inheritedTypes?.readType ?? declaredReadType(context, property),
+        writeType: inheritedTypes?.writeType ?? declaredWriteType(context, property),
         hasGetter,
         isWritable,
         supportsDescriptorFreeAccess: canAccessPropertyWithoutDescriptor(context, property.type),
@@ -247,6 +256,7 @@ const renderGenericSetBody = (context: ModuleContext, property: GirProperty): st
 };
 
 export {
+    isNullableProperty,
     propertyDoc,
     resolveAccessor,
     resolvePropertyMetadata,

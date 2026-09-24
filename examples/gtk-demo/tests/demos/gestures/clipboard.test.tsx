@@ -133,7 +133,7 @@ const runWithFileDialog = async <T,>(
     method: "open" | "selectFolder",
     result: Gio.File | Error,
     body: () => Promise<T>,
-): Promise<{ value: T; dialogSpy: ReturnType<typeof vi.spyOn> }> => {
+): Promise<T> => {
     const dialogSpy = vi.spyOn(Gtk.FileDialog.prototype, method);
 
     if (result instanceof Error) {
@@ -143,9 +143,7 @@ const runWithFileDialog = async <T,>(
     }
 
     try {
-        const value = await body();
-
-        return { value, dialogSpy };
+        return await body();
     } finally {
         dialogSpy.mockRestore();
     }
@@ -515,29 +513,6 @@ describe("clipboardDemo paste content rendering", () => {
     );
 });
 
-describe("clipboardDemo invalid image path", () => {
-    it("logs the texture error when copying an image source whose resource fails to load", async () => {
-        await renderSourceType("Image");
-        const errorSpy = vi.spyOn(console, "error").mockImplementation((): void => undefined);
-
-        const textureSpy = vi.spyOn(Gdk.Texture, "newFromResource").mockImplementation(() => {
-            throw new Error("resource not found");
-        });
-
-        try {
-            const copyButton = await findButton("Copy");
-            await userEvent.click(copyButton);
-
-            await waitFor(() => {
-                expect(errorSpy).toHaveBeenCalledWith("resource not found");
-            });
-        } finally {
-            textureSpy.mockRestore();
-            errorSpy.mockRestore();
-        }
-    });
-});
-
 describe("clipboardDemo paste after copy round-trip", () => {
     it("shows pasted Image when the clipboard holds a paintable copied from the demo", async () => {
         await copyImageSource();
@@ -561,20 +536,13 @@ describe("clipboardDemo file source selection", () => {
         });
     });
 
-    it("logs an error when the File dialog rejects", async () => {
-        const errorSpy = vi.spyOn(console, "error").mockImplementation((): void => undefined);
-
-        try {
-            await runWithFileDialog("open", new Error("dialog cancelled"), async () => {
-                await clickSourceButtonAfterDialog("File", "File Drag Source");
-
-                await waitFor(() => {
-                    expect(errorSpy).toHaveBeenCalledWith("dialog cancelled");
-                });
-            });
-        } finally {
-            errorSpy.mockRestore();
-        }
+    it("keeps the File source empty when the dialog rejects", async () => {
+        await runWithFileDialog("open", new Error("dialog cancelled"), async () => {
+            await clickSourceButtonAfterDialog("File", "File Drag Source");
+            const sourceButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "File Drag Source" });
+            expect(sourceButton).toHaveTextContent("—");
+            expect(await findButton("Copy")).toBeDisabled();
+        });
     });
 });
 

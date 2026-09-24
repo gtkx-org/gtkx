@@ -2,4 +2,4 @@
 __default__: patch
 ---
 
-Polish GTKX 2.0 foundations, framework packages, navigation, forms, components, tutorials, code generation, development tooling, deployment, native ownership, integration testing, and runtime contracts.
+Polish GTKX 2.0 foundations, framework packages, navigation, forms, components, tutorials, code generation, development tooling, deployment, native ownership, integration testing, runtime contracts, examples, and declarative integration.

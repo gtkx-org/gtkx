@@ -4,11 +4,12 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import { GtkBox, GtkHeaderBar, GtkLabel, type GtkWidgetProps } from "@gtkx/jsx/gtk";
-import { createElementComponent } from "@gtkx/react/internal";
+import { createElementComponent } from "@gtkx/react";
 import { registerClass } from "@gtkx/runtime";
 import { randomInt } from "node:crypto";
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
+import { buildRgba } from "../../build-rgba.js";
 import sourceCode from "./frames.tsx?raw";
 
 type ColorWidgetProps = GtkWidgetProps<ColorWidget>;
@@ -28,7 +29,7 @@ const framesDemo: Demo = {
     title: "Benchmark/Frames",
     description:
         "This demo is intentionally as simple as possible, to see what framerate the windowing " +
-        "system can deliver on its own.\n\nIt does nothing but change the drawn color, for every frame.",
+        "system can deliver on its own.\n\nIt does nothing but change the drawn color on every frame.",
     keywords: [],
     component: FramesDemo,
     titlebar: FramesTitlebar,
@@ -40,25 +41,9 @@ const framesDemo: Demo = {
 
 const randomUnit = (): number => randomInt(RANDOM_UNIT_STEPS) / RANDOM_UNIT_STEPS;
 
-const randomColor = (): Gdk.RGBA => {
-    const rgba = new Gdk.RGBA();
-    rgba.red = randomUnit();
-    rgba.green = randomUnit();
-    rgba.blue = randomUnit();
-    rgba.alpha = 1;
+const randomColor = (): Gdk.RGBA => buildRgba(randomUnit(), randomUnit(), randomUnit(), 1);
 
-    return rgba;
-};
-
-const blackColor = (): Gdk.RGBA => {
-    const rgba = new Gdk.RGBA();
-    rgba.red = 0;
-    rgba.green = 0;
-    rgba.blue = 0;
-    rgba.alpha = 1;
-
-    return rgba;
-};
+const blackColor = (): Gdk.RGBA => buildRgba(0, 0, 0, 1);
 
 function useFramesState() {
     const [colorWidget, setColorWidget] = useState<ColorWidget | null>(null);
@@ -138,8 +123,6 @@ class ColorWidget extends Gtk.Widget {
 
     constructor(props: ConstructorParameters<typeof Gtk.Widget>[0] = {}) {
         super(props);
-        this.setHexpand(true);
-        this.setVexpand(true);
 
         this.addTickCallback((widget, frameClock) => {
             const time = Number(frameClock.getFrameTime());

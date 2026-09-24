@@ -7,13 +7,13 @@ import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { collectInterfaceProperties } from "../../analysis/inheritance.js";
 import { inputParameters, parameterIdentifier } from "../../analysis/param-structure.js";
 import { isEmittableProperty } from "../../analysis/property-admission.js";
-import { renderTsType } from "../../analysis/ts-type.js";
+import { renderParameterTsType } from "../../analysis/ts-type.js";
 import { ancestorChain, resolveInterfaces } from "../../gir/ancestry.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderBlock, renderBraced, renderBracedOrEmpty } from "../../writer/emit.js";
 import { type Callables, staticMembers } from "./callables.js";
 import { parentCompanionRef } from "./companion.js";
-import { propertyDoc } from "./property-accessor.js";
+import { isNullableProperty, propertyDoc } from "./property-accessor.js";
 
 type ClassConstructorSpec = {
     klass: GirClass;
@@ -64,7 +64,15 @@ const renderConstructorPropsInterface = (context: ModuleContext, klass: GirClass
 
         const isRequired = required.has(property.name);
         const name = `${toCamelIdentifier(property.name)}${isRequired ? "" : "?"}`;
-        const type = renderTsType(context, property.type, !isRequired);
+        const type = renderParameterTsType(
+            context,
+            property.type,
+            {
+                isNullable: !isRequired && isNullableProperty(context, property),
+                isValueWidened: false,
+                canAcceptTypedArrayViews: property.transferOwnership === "none",
+            },
+        );
 
         return `${propertyDoc(property)}${name}: ${type}${isRequired ? "" : " | undefined"};`;
     });

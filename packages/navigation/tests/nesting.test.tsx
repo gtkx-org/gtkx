@@ -4,7 +4,7 @@ import { GtkBox } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
     Details,
     DrawerWithStack,
@@ -171,8 +171,14 @@ describe("nesting - drawer containing a stack", () => {
 
 describe("nesting - focus", () => {
     it("runs useFocusEffect on focus and its cleanup on blur", async () => {
-        const onFocus = vi.fn();
-        const onBlur = vi.fn();
+        let focusEvents = 0;
+        let blurEvents = 0;
+        const onFocus = (): void => {
+            focusEvents += 1;
+        };
+        const onBlur = (): void => {
+            blurEvents += 1;
+        };
 
         await render(
             <NavigationContainer>
@@ -184,14 +190,14 @@ describe("nesting - focus", () => {
         );
 
         await screen.findByText("Home Content");
-        expect(onFocus).toHaveBeenCalledTimes(1);
-        expect(onBlur).not.toHaveBeenCalled();
+        expect(focusEvents).toBe(1);
+        expect(blurEvents).toBe(0);
         await clickButton("Go to details");
         await screen.findByText("Details 42");
-        expect(onBlur).toHaveBeenCalledTimes(1);
+        expect(blurEvents).toBe(1);
         await clickButton("Back");
         await screen.findByText("Home Content");
-        expect(onFocus).toHaveBeenCalledTimes(2);
+        expect(focusEvents).toBe(2);
     });
 
     it("reflects the focused page through useIsFocused", async () => {

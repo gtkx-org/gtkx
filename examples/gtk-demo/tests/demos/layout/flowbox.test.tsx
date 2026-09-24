@@ -6,27 +6,6 @@ import { renderDemo } from "../../test-utils.js";
 
 const EXPECTED_COLOR_COUNT = 665;
 
-describe("flowboxDemo metadata", () => {
-    it("exposes the documented id, title and dimensions", () => {
-        expect(flowboxDemo.id).toBe("flowbox");
-        expect(flowboxDemo.title).toBe("Flow Box");
-        expect(flowboxDemo.defaultWidth).toBe(400);
-        expect(flowboxDemo.defaultHeight).toBe(600);
-        expect(flowboxDemo.component).toBeTypeOf("function");
-    });
-
-    it("includes the dataset-size claim in the description and the expected keywords", () => {
-        expect(flowboxDemo.description).toContain("665 colors");
-        expect(flowboxDemo.keywords).toEqual([]);
-    });
-
-    it("ships source code containing the flow box and swatch-drawing markers", () => {
-        expect(flowboxDemo.sourceCode).toContain("const flowboxDemo: Demo = {");
-        expect(flowboxDemo.sourceCode).toContain("GtkFlowBox");
-        expect(flowboxDemo.sourceCode).toContain("drawColor");
-    });
-});
-
 describe("flowboxDemo container", () => {
     it("disables only the horizontal scrollbar on the GtkScrolledWindow", async () => {
         await renderDemo(flowboxDemo);

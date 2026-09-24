@@ -15,6 +15,7 @@ import {
     GtkFixed,
     GtkFixedLayoutChild,
     GtkGestureClick,
+    GtkGestureLongPress,
     GtkGestureRotate,
     GtkImage,
     GtkLabel,
@@ -27,7 +28,6 @@ import { useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import trashSvgPath from "../../../data/demos/gestures/user-trash-opening.gpa?resource";
 import { at } from "../../transform.js";
-import { useContextMenuGesture } from "../../use-context-menu-gesture.js";
 import { useImperativeDragVisibility } from "../../use-imperative-drag-visibility.js";
 import sourceCode from "./dnd.tsx?raw";
 
@@ -89,9 +89,7 @@ type CanvasDropArgs = {
 
 type DndCanvasControllersProps = {
     dnd: DndState;
-    gestureRef: React.RefObject<Gtk.GestureClick | null>;
-    onPressed: (nPress: number, x: number, y: number) => void;
-    onReleased: (nPress: number, x: number, y: number) => void;
+    onContextMenu: (x: number, y: number) => void;
 };
 
 type DndTrashZoneProps = {
@@ -890,24 +888,34 @@ const DndSwatchPalette = () => (
     </GtkScrolledWindow>
 );
 
-const DndCanvasControllers = ({ dnd, gestureRef, onPressed, onReleased }: DndCanvasControllersProps) => (
-    <>
-        <GtkDropTarget
-            types={[GObject.TYPE_STRING]}
-            actions={Gdk.DragAction.MOVE}
-            onMotion={() => Gdk.DragAction.MOVE}
-            onDrop={(value: GObject.Value, dropX: number, dropY: number) =>
-                dnd.handlers.didHandleCanvasDrop(value, dropX, dropY)}
-        />
-        <GtkGestureClick ref={gestureRef} button={0} onPressed={onPressed} onReleased={onReleased} />
-    </>
-);
+const DndCanvasControllers = ({ dnd, onContextMenu }: DndCanvasControllersProps) => {
+    const handleClick = (_nPress: number, x: number, y: number) => {
+        onContextMenu(x, y);
+    };
+    const handleLongPress = (x: number, y: number, self: Gtk.GestureLongPress) => {
+        self.setState(Gtk.EventSequenceState.CLAIMED);
+        onContextMenu(x, y);
+    };
+
+    return (
+        <>
+            <GtkDropTarget
+                types={[GObject.TYPE_STRING]}
+                actions={Gdk.DragAction.MOVE}
+                onMotion={() => Gdk.DragAction.MOVE}
+                onDrop={(value: GObject.Value, dropX: number, dropY: number) =>
+                    dnd.handlers.didHandleCanvasDrop(value, dropX, dropY)}
+            />
+            <GtkGestureClick button={Gdk.BUTTON_SECONDARY} onPressed={handleClick} />
+            <GtkGestureLongPress touchOnly onPressed={handleLongPress} />
+        </>
+    );
+};
 
 function DndDemo() {
     const dnd = useDndState();
     useItemBoundsObserver(dnd.items, dnd.refs);
     useEntryFocusEffect(dnd.editState, dnd.refs.entryRef);
-    const contextMenuGesture = useContextMenuGesture({ onContextMenu: dnd.handlers.handleContextMenu });
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
@@ -919,9 +927,7 @@ function DndDemo() {
                 controllers={(
                     <DndCanvasControllers
                         dnd={dnd}
-                        gestureRef={contextMenuGesture.ref}
-                        onPressed={contextMenuGesture.onPressed}
-                        onReleased={contextMenuGesture.onReleased}
+                        onContextMenu={dnd.handlers.handleContextMenu}
                     />
                 )}
             >

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: gtkx-tutorial 1.0.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-15 00:51+0200\n"
+"POT-Creation-Date: 2026-09-23 07:11+0200\n"
 "PO-Revision-Date: 2026-08-26 23:34+0200\n"
 "Last-Translator: GTKX contributors\n"
 "Language-Team: French\n"
@@ -17,20 +17,20 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-#: src/components/about.tsx:9 src/components/preferences.tsx:28
-#: src/components/shortcuts.tsx:12 src/components/window.tsx:71
-#: src/components/window.tsx:99 src/store/selectors.ts:18
+#: src/components/about.tsx:11 src/components/preferences.tsx:30
+#: src/components/shortcuts.tsx:12 src/components/window.tsx:90
+#: src/components/window.tsx:134 src/store/selectors.ts:18
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.desktop:3
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:4
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:25
 msgid "Tasks"
 msgstr "Tâches"
 
-#: src/components/about.tsx:17
+#: src/components/about.tsx:19
 msgid "GTKX Contributors"
 msgstr "Contributeurs GTKX"
 
-#: src/components/about.tsx:18
+#: src/components/about.tsx:20
 msgid "A GNOME task manager built with GTKX to showcase React and Adwaita."
 msgstr "Un gestionnaire de tâches GNOME construit avec GTKX pour présenter React et Adwaita."
 
@@ -43,7 +43,7 @@ msgid "“{{title}}” will be permanently deleted. This cannot be undone."
 msgstr "« {{title}} » sera définitivement supprimée. Cette action est irréversible."
 
 #: src/components/delete-confirmation.tsx:19
-#: src/components/new-list-dialog.tsx:25
+#: src/components/new-list-dialog.tsx:53
 msgid "Cancel"
 msgstr "Annuler"
 
@@ -51,11 +51,11 @@ msgstr "Annuler"
 msgid "Delete"
 msgstr "Supprimer"
 
-#: src/components/dialogs.tsx:25
+#: src/components/dialogs.tsx:26
 msgid "“{{title}}” moved to Trash"
 msgstr "« {{title}} » a été déplacée dans la corbeille"
 
-#: src/components/dialogs.tsx:26
+#: src/components/dialogs.tsx:27
 msgid "Undo"
 msgstr "Annuler"
 
@@ -80,21 +80,21 @@ msgstr "Raccourcis clavier"
 msgid "About Tasks"
 msgstr "À propos de Tâches"
 
-#: src/components/new-list-dialog.tsx:21 src/components/window.tsx:103
+#: src/components/new-list-dialog.tsx:24
+msgid "Color {{color}}"
+msgstr "Couleur {{color}}"
+
+#: src/components/new-list-dialog.tsx:49 src/components/window.tsx:49
 msgid "New List"
 msgstr "Nouvelle liste"
 
-#: src/components/new-list-dialog.tsx:28
+#: src/components/new-list-dialog.tsx:56
 msgid "Add"
 msgstr "Ajouter"
 
-#: src/components/new-list-dialog.tsx:40
+#: src/components/new-list-dialog.tsx:70
 msgid "List name"
 msgstr "Nom de la liste"
-
-#: src/components/new-list-dialog.tsx:52
-msgid "Color {{color}}"
-msgstr "Couleur {{color}}"
 
 #: src/components/preferences.tsx:19 src/components/shortcuts.tsx:6
 msgid "General"
@@ -108,15 +108,15 @@ msgstr "Apparence"
 msgid "Theme"
 msgstr "Thème"
 
-#: src/components/preferences.tsx:30
+#: src/components/preferences.tsx:32
 msgid "Sort order"
 msgstr "Ordre de tri"
 
-#: src/components/preferences.tsx:36
+#: src/components/preferences.tsx:40
 msgid "Reminder lead time"
 msgstr "Délai du rappel"
 
-#: src/components/preferences.tsx:37
+#: src/components/preferences.tsx:41
 msgid "Minutes before a task is due"
 msgstr "Minutes avant l’échéance d’une tâche"
 
@@ -136,7 +136,7 @@ msgstr "Rechercher des tâches"
 msgid "Keyboard shortcuts"
 msgstr "Raccourcis clavier"
 
-#: src/components/shortcuts.tsx:13 src/components/task-row.tsx:87
+#: src/components/shortcuts.tsx:13 src/components/task-row.tsx:81
 msgid "Delete task"
 msgstr "Supprimer la tâche"
 
@@ -152,8 +152,8 @@ msgstr "Toutes les tâches"
 msgid "Today"
 msgstr "Aujourd’hui"
 
-#: src/components/sidebar.tsx:35 src/components/task-buttons.tsx:18
-#: src/components/task-detail.tsx:61 src/store/selectors.ts:9
+#: src/components/sidebar.tsx:35 src/components/task-buttons.tsx:20
+#: src/components/task-detail.tsx:112 src/store/selectors.ts:9
 msgid "Important"
 msgstr "Prioritaire"
 
@@ -161,110 +161,106 @@ msgstr "Prioritaire"
 msgid "Trash"
 msgstr "Corbeille"
 
-#: src/components/task-buttons.tsx:23
+#: src/components/task-buttons.tsx:27
 msgid "Delete (Delete)"
 msgstr "Supprimer (Suppr)"
 
-#: src/components/task-detail.tsx:54 src/settings.ts:18
-msgid "Title"
-msgstr "Titre"
-
-#: src/components/task-detail.tsx:65
+#: src/components/task-detail.tsx:44
 msgid "Due"
 msgstr "Échéance"
 
-#: src/components/task-detail.tsx:72
+#: src/components/task-detail.tsx:52
 msgid "Clear due date"
 msgstr "Effacer l’échéance"
 
-#: src/components/task-detail.tsx:77
+#: src/components/task-detail.tsx:60
 msgid "Set date"
 msgstr "Définir une date"
 
-#: src/components/task-detail.tsx:106
+#: src/components/task-detail.tsx:104 src/settings.ts:18
+msgid "Title"
+msgstr "Titre"
+
+#: src/components/task-detail.tsx:129
 msgid "Notes"
 msgstr "Notes"
 
-#: src/components/task-detail.tsx:134
+#: src/components/task-detail.tsx:155
 msgid "Created"
 msgstr "Création"
 
-#: src/components/task-detail.tsx:140
+#: src/components/task-detail.tsx:162
 msgid "Completed"
 msgstr "Terminée"
 
-#: src/components/task-filter.tsx:17
+#: src/components/task-filter.tsx:20
 msgid "All"
 msgstr "Toutes"
 
-#: src/components/task-filter.tsx:18
+#: src/components/task-filter.tsx:21
 msgid "Open"
 msgstr "À faire"
 
-#: src/components/task-filter.tsx:19
+#: src/components/task-filter.tsx:22
 msgid "Done"
 msgstr "Terminées"
 
-#: src/components/task-list.tsx:36
+#: src/components/task-list.tsx:27
 msgid "Search tasks…"
 msgstr "Rechercher des tâches…"
 
-#: src/components/task-list.tsx:46
+#: src/components/task-list.tsx:50
 msgid "Add a task…"
 msgstr "Ajouter une tâche…"
 
-#: src/components/task-row.tsx:70
-msgid "Mark complete"
-msgstr "Marquer comme terminée"
-
-#: src/components/task-row.tsx:80
+#: src/components/task-row.tsx:72
 msgid "Toggle important"
 msgstr "Basculer la priorité"
+
+#: src/components/task-row.tsx:98
+msgid "Mark complete"
+msgstr "Marquer comme terminée"
 
 #: src/components/task-title.tsx:8
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:24
 msgid "Task"
 msgstr "Tâche"
 
-#: src/components/window.tsx:35
+#: src/components/window.tsx:36
 msgid "Nothing Selected"
 msgstr "Aucune sélection"
 
-#: src/components/window.tsx:36
+#: src/components/window.tsx:37
 msgid "Pick a list or a smart view in the sidebar"
 msgstr "Choisissez une liste ou une vue intelligente dans la barre latérale"
 
-#: src/components/window.tsx:120
+#: src/components/window.tsx:64
 msgid "New Task (Ctrl+N)"
 msgstr "Nouvelle tâche (Ctrl+N)"
 
-#: src/format.ts:15
-msgid "Today at {{time}}"
-msgstr "Aujourd’hui à {{time}}"
-
-#: src/format.ts:16
-msgid "Tomorrow at {{time}}"
-msgstr "Demain à {{time}}"
-
-#: src/format.ts:17
-msgid "Yesterday at {{time}}"
-msgstr "Hier à {{time}}"
-
-#: src/format.ts:19
+#: src/format.ts:6
 msgid "{{count}} day ago"
 msgid_plural "{{count}} days ago"
 msgstr[0] "Il y a {{count}} jour"
 msgstr[1] "Il y a {{count}} jours"
 
-#: src/format.ts:29
-msgid "Never"
-msgstr "Jamais"
+#: src/format.ts:15
+msgid "Yesterday at {{time}}"
+msgstr "Hier à {{time}}"
 
-#: src/notifications.tsx:21
+#: src/format.ts:18
+msgid "Today at {{time}}"
+msgstr "Aujourd’hui à {{time}}"
+
+#: src/format.ts:21
+msgid "Tomorrow at {{time}}"
+msgstr "Demain à {{time}}"
+
+#: src/notifications.tsx:39
 msgid "Due {{date}}"
 msgstr "Échéance : {{date}}"
 
-#: src/notifications.tsx:23
+#: src/notifications.tsx:41
 msgid "Mark Complete"
 msgstr "Marquer comme terminée"
 
@@ -292,83 +288,83 @@ msgstr "Échéance"
 msgid "Date created"
 msgstr "Date de création"
 
-#: src/store/seed.ts:32
+#: src/store/seed.ts:21
 msgid "Personal"
 msgstr "Personnel"
 
-#: src/store/seed.ts:33
+#: src/store/seed.ts:22
 msgid "Work"
 msgstr "Travail"
 
-#: src/store/seed.ts:34
+#: src/store/seed.ts:23
 msgid "Shopping"
 msgstr "Courses"
 
-#: src/store/seed.ts:41
+#: src/store/seed.ts:30
 msgid "Welcome to Tasks"
 msgstr "Bienvenue dans Tâches"
 
-#: src/store/seed.ts:44
+#: src/store/seed.ts:33
 msgid "This is your first task. Tick the checkbox to complete it, or open it to add notes and a due date."
 msgstr "Voici votre première tâche. Cochez la case pour la terminer, ou ouvrez-la pour ajouter des notes et une échéance."
 
-#: src/store/seed.ts:50
+#: src/store/seed.ts:39
 msgid "Water the plants"
 msgstr "Arroser les plantes"
 
-#: src/store/seed.ts:55
+#: src/store/seed.ts:44
 msgid "Prepare the weekly report"
 msgstr "Préparer le rapport hebdomadaire"
 
-#: src/store/seed.ts:56
+#: src/store/seed.ts:45
 msgid "Review pull requests"
 msgstr "Relire les demandes de fusion"
 
-#: src/store/seed.ts:57
+#: src/store/seed.ts:46
 msgid "Buy oat milk"
 msgstr "Acheter du lait d’avoine"
 
-#: src/store/seed.ts:61
+#: src/store/seed.ts:50
 msgid "Order birthday gift"
 msgstr "Commander un cadeau d’anniversaire"
 
-#: src/store/selectors.ts:118
+#: src/store/selectors.ts:139
 msgid "No Tasks Yet"
 msgstr "Aucune tâche"
 
-#: src/store/selectors.ts:119
+#: src/store/selectors.ts:140
 msgid "Add a task above to get started"
 msgstr "Ajoutez une tâche ci-dessus pour commencer"
 
-#: src/store/selectors.ts:123
+#: src/store/selectors.ts:144
 msgid "Nothing Due Today"
 msgstr "Aucune échéance aujourd’hui"
 
-#: src/store/selectors.ts:124
+#: src/store/selectors.ts:145
 msgid "Tasks due today appear here"
 msgstr "Les tâches dues aujourd’hui apparaissent ici"
 
-#: src/store/selectors.ts:128
+#: src/store/selectors.ts:149
 msgid "No Important Tasks"
 msgstr "Aucune tâche prioritaire"
 
-#: src/store/selectors.ts:129
+#: src/store/selectors.ts:150
 msgid "Star a task to find it here"
 msgstr "Ajoutez une étoile à une tâche pour la retrouver ici"
 
-#: src/store/selectors.ts:133
+#: src/store/selectors.ts:154
 msgid "Trash Is Empty"
 msgstr "La corbeille est vide"
 
-#: src/store/selectors.ts:134
+#: src/store/selectors.ts:155
 msgid "Deleted tasks appear here"
 msgstr "Les tâches supprimées apparaissent ici"
 
-#: src/store/selectors.ts:142
+#: src/store/selectors.ts:163
 msgid "No Results"
 msgstr "Aucun résultat"
 
-#: src/store/selectors.ts:143
+#: src/store/selectors.ts:164
 msgid "No tasks match “{{query}}”"
 msgstr "Aucune tâche ne correspond à « {{query}} »"
 

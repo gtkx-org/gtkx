@@ -144,23 +144,9 @@ A package carries software its author did not write: the Node.js runtime, GTKX i
 | `deb` | `share/doc/<binaryName>/copyright`, in the [machine-readable copyright format](https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/), with a `Files:` stanza per file it carries |
 | `rpm`, `appimage`, `flatpak` | `share/licenses/<binaryName>/THIRD-PARTY-NOTICES`, beside your own `LICENSE` |
 
-Each source is collected on its own:
+The notices cover Node.js, GTKX and its linked Rust crates, and the JavaScript dependencies reached by the application bundle. They also identify native libraries that the package uses from the host or Flatpak runtime. When a bundled dependency has no usable license information, GTKX keeps it in the notice and prints a warning for you to resolve.
 
-- **The bundled Node.js.** Its `LICENSE` is extracted from the release archive the deploy already downloaded and verified. That one file is the aggregate notice covering V8, OpenSSL, ICU, libuv, zlib, brotli, llhttp, and everything else Node.js embeds. With `deploy.node.source: "host"` or `"path"` there is no archive, so the license is looked for beside the binary, at `<dir>/LICENSE` and `<dir>/../LICENSE`, which is where an official release unpacks it. A file found there is taken only when its text names Node.js, so pointing `deploy.node.path` at a binary inside your own project does not publish your project's `LICENSE` as Node's. When no Node.js license is found, the deploy warns and the notices name the runtime with a link to its license in place of the text.
-- **GTKX.** The MPL-2.0 notice, the GTKX modules that went into the bundle, and a pointer to the source of the release they came from, which is what section 3.2(a) of that license asks you to give whoever receives the executable. The native addon also statically links Rust crates GTKX did not write, so the section says so and names the licenses they carry — MIT, Apache-2.0, ISC, and Unicode-3.0 — with a pointer to the manifest that records which crates and which versions went in.
-- **The JavaScript dependencies.** `gtkx build` records which packages the module graph of `dist/bundle.mjs` actually reaches, resolving every module id back through the pnpm symlinks to the package that owns it, and writes each one's name, version, and directory relative to `dist/` to the `packages` array in `dist/gtkx-schemas.json`. The deploy reads each package's license file, or its SPDX identifier when it ships no file, and reproduces what it finds, holder by holder. A package that declares neither is still listed, and the deploy warns naming it, because terms nobody recorded are the one thing generated notices cannot settle for you. A package whose recorded directory is no longer there — a pruned `node_modules`, or a `dist/` moved to another machine — is still listed by the name and version the build recorded, with a warning of its own, rather than dropped.
-- **The introspected libraries.** GTK, libadwaita, GtkSourceView, and WebKitGTK are reached through GObject introspection and resolved when the app runs, from the host system or from the GNOME runtime. No copy of them is in the package. The native addon does link GLib, GObject, and GIO against the copies already installed on the machine, which makes it a work that uses those libraries, so the section carries what LGPL-2.1 section 6 asks of one: the notice that they are used and covered by that license, the address the license itself is published at, and the address each library's own copyright notice is published at. Linking against an installed shared library is the mechanism section 6(b) allows, so their source does not have to travel with the package.
-
-`dist/gtkx-schemas.json` is versioned build metadata, identified by `generator: "gtkx-build"` and
-`formatVersion: 1`, and never reaches a package. Its `schemas` array records the raw schema files reached by the
-module graph so deploy can install them, while its `packages` array records the dependencies used for notices.
-Schema paths are relative to the project root; package directories are relative to `dist/` and can contain `..`
-when a dependency lives in a workspace or package-manager store.
-The separate `gschemas.compiled` is runtime data and does reach the package. `--skip-build` reads the metadata
-out of the `dist/` it packages, so a tree built by an older `gtkx build` has to be built once more.
-`--print-manifests` downloads nothing, so a preview carries the link to the Node.js license rather than its text.
-
-`deploy.flatpak.mode: "source"` builds in the sandbox instead of packaging a staged tree, so the notices ride along as an inline source and install exactly where the prebuilt mode installs them. That build takes its runtime from the Node SDK extension rather than from an archive. It installs the license file that extension ships as `share/licenses/<binaryName>/node/LICENSE` when the extension ships one, and installs nothing when it does not, which is what the notices say: they name the license and the address it is published at rather than claiming a file is there.
+Keep the complete `dist/` directory when using `--skip-build`, and rebuild after changing dependencies so the packaged notices match the bundle. Source-mode Flatpaks take Node.js from the SDK extension and describe that runtime in the same notice.
 
 ## Tools you need installed
 
@@ -199,21 +185,11 @@ Fix it in gtkx.config.ts:
 
 `--skip-build` packages what is already in `dist/` instead of rebuilding, and `--out` changes the output directory, which defaults to `build`.
 
-## Escape hatches
+## Customize a package
 
-The generated files are complete, but nothing is a dead end:
+Keep packaging adjustments in `deploy`. You can add desktop metadata, Flatpak permissions and build steps, package dependencies, extra files, maintainer scripts, and signing. Set minimum native-library versions when the application uses APIs newer than a distribution's baseline. Flatpak builds in containers can also disable `rofiles-fuse` when FUSE is unavailable.
 
-- `deploy.desktopEntry` adds or overrides desktop entry keys.
-- `deploy.flatpak.finishArgs` adds sandbox permissions to the defaults `--share=ipc`, `--socket=wayland`, `--socket=fallback-x11`, and `--device=dri`, which grant a window and hardware rendering and nothing else. Yours follow the defaults, and duplicates collapse. To drop a default, ask for its negation: `--nosocket=wayland`, `--unshare=ipc`, `--nodevice=dri`. `gtkx deploy` warns when the result grants no display socket, and when an app declaring `WebKit-6.0` has no `--share=network`.
-- `deploy.flatpak.cleanup` adds cleanup patterns to the defaults `/include`, `/share/pkgconfig`, `*.la`, and `*.a`. There is no negation for a pattern; an empty array turns cleanup off altogether, for a project that has to keep its headers or static libraries in the prefix.
-- `deploy.flatpak.modules` and `deploy.flatpak.buildCommands` add modules and build steps.
-- `deploy.depends` and `deploy.relations` add package relationships per format. They only ever add, so they can tighten a generated relation but never loosen one.
-- `deploy.minimumLibraryVersions` requires a library at a version or later: `{ "Gtk-4.0": "4.14" }` writes `libgtk-4-1 (>= 4.14)` and `gtk4 >= 4.14`. Name as many segments as you need — `"4.18.6"` pins a patch release, for a fix a distribution backported. A library you leave out is required by name alone, which installs on a host whose copy is older than the one you built against; GTK and libadwaita resolve symbol by symbol when the app runs, so such a host starts the app and then dies at the first call its older copy does not export. Set a minimum for every library whose newer API you rely on.
-- `deploy.extraFiles` maps prefix-relative destinations to source paths, each resolved against the project root. An entry keeps its source file's executable bit and is installed `644` otherwise. Write `{ source: "tools/helper", mode: "755" }` in place of a plain path to set the mode yourself.
-- `deploy.scripts` supplies maintainer scripts. Without them the packages rely on the distribution's own triggers to refresh the desktop, icon, and schema caches, which is what a well-behaved package should do.
-- `deploy.signing` signs the `.deb`, the `.rpm`, the Flatpak repository, or the AppImage.
-
-If the build stops at `Failure spawning rofiles-fuse`, it is running somewhere FUSE is unavailable, such as a container. Set `deploy.flatpak.shouldUseRofilesFuse: false`.
+Use `defineConfig` completion and the [`@gtkx/config` reference](/reference/@gtkx/config/) for the available options and their exact shapes.
 
 ## Publishing on Flathub
 
@@ -227,4 +203,4 @@ The lockfile in your project root picks which package manager the sandbox instal
 
 ## Next
 
-The [API reference](/reference/) documents every package.
+The [API reference](/reference/) documents GTKX's public TypeScript APIs.

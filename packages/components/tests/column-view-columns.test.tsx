@@ -7,7 +7,7 @@ import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { getWidgetText, render, within } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 
 type MenuItem = NonNullable<GMenuProps["items"]>[number];
@@ -166,8 +166,14 @@ describe("ColumnView header menu installation", () => {
 describe("ColumnView header menu actions", () => {
     it("activates each column's header actions through its action group", async () => {
         const ref = createRef<Gtk.ColumnView>();
-        const nameSort = vi.fn();
-        const roleHide = vi.fn();
+        let nameSortCount = 0;
+        let roleHideCount = 0;
+        const nameSort = (): void => {
+            nameSortCount++;
+        };
+        const roleHide = (): void => {
+            roleHideCount++;
+        };
         const [firstNameAction = { id: "sort", label: "Sort" }] = NAME_ACTIONS;
         const [firstRoleAction = { id: "hide", label: "Hide" }] = ROLE_ACTIONS;
 
@@ -192,7 +198,7 @@ describe("ColumnView header menu actions", () => {
 
         expect(view.activateAction("name.sort", null)).toBe(true);
         expect(view.activateAction("role.hide", null)).toBe(true);
-        expect(nameSort).toHaveBeenCalledTimes(1);
-        expect(roleHide).toHaveBeenCalledTimes(1);
+        expect(nameSortCount).toBe(1);
+        expect(roleHideCount).toBe(1);
     });
 });

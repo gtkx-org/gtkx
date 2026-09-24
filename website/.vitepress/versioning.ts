@@ -18,6 +18,11 @@ type DocumentationVersion = {
     reference: ReferenceSource;
 };
 
+type VersionLink = {
+    href: string;
+    samePage: boolean;
+};
+
 type VersionPageLookup = (version: DocumentationVersion, path: string) => boolean;
 
 const GUIDE_ROOT = "guide/why-gtkx";
@@ -231,6 +236,12 @@ const normalizeDocumentationPath = (path: string): string => {
         .replace(/\.html$/, "");
 };
 
+const isDocumentationPath = (path: string): boolean => {
+    const pathname = path.startsWith("/") ? path : `/${path}`;
+
+    return /^(guide|tutorial|reference)\//.test(normalizeDocumentationPath(pathname));
+};
+
 const sectionRoot = (path: string): string | undefined => {
     if (path.startsWith(TUTORIAL_ROOT)) {
         return TUTORIAL_ROOT;
@@ -268,6 +279,7 @@ export {
     featuredVersion,
     GUIDE_ROOT,
     guideItems,
+    isDocumentationPath,
     normalizeDocumentationPath,
     REFERENCE_ROOT,
     resolveVersionPath,
@@ -277,5 +289,6 @@ export {
     tutorialItems,
     versionById,
     versionForPath,
+    type VersionLink,
     versions,
 };

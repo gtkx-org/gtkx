@@ -132,11 +132,15 @@ describe("nullish handed to the constructor", () => {
 });
 
 describe("nullish written to a generated property of a wrapped type", () => {
-    it("marshals null through the descriptor where an installed property refuses it", () => {
+    it.each([null, undefined])("refuses %s", (value) => {
         const label = new Gtk.Label();
-        label.widthRequest = 40;
-        Reflect.set(label, "widthRequest", null);
-        expect(label.widthRequest).toBe(0);
-        expect(new Gtk.Label({ widthRequest: null }).widthRequest).toBe(0);
+
+        expect(() => Reflect.set(label, "widthRequest", value)).toThrow();
+    });
+
+    it("refuses null handed to the constructor", () => {
+        expect(() => {
+            Reflect.construct(Gtk.Label, [{ widthRequest: null }]);
+        }).toThrow();
     });
 });

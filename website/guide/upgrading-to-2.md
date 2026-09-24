@@ -1,43 +1,15 @@
 ---
 title: "Upgrading to 2.0"
-description: "What GTKX 2.0 removes, how the 1.6 deprecation warnings tell you which of it reaches your project, and how to clear each one before you upgrade."
+description: "Prepare a GTKX 1.6 application, then move it to GTKX 2.0."
 ---
 
 # Upgrading to 2.0
 
-GTKX 2.0 makes the behaviors previewed in 1.6 unconditional and removes the compatibility APIs deprecated during 1.x. The beta also removes the bare `@gtkx/jsx` entry point, a packaging change made after 1.6; split those imports by namespace before upgrading. New feature work resumes at 2.1.
+GTKX 1.6 can enable most 2.0 behavior before the package upgrade. Adopt those changes one at a time, then update every `@gtkx/*` package together and finish the checklist below.
 
-Clear the future-flag warnings and deprecated symbols on 1.6 first, then migrate any bare JSX imports. The lists to clear are found in different ways: the future flags, which the CLI prints on every run, and the deprecated symbols, which your editor strikes through.
+## Prepare on 1.6
 
-## Deprecated symbols and future flags
-
-**Deprecated symbols** are the ordinary kind. An old name and a new name coexist, the old one carries a `@deprecated` tag, your editor strikes it through on hover, and 2.0 deletes it. You find them by reading the tooltip.
-
-**Future flags** are the other kind. They change the type of a symbol that keeps its name, so there is no old name to tag and nothing for an editor to strike through. That is why 1.6 warns about them from the CLI instead: without the warning, 2.0 would change what your code returns with no prior signal.
-
-## Start here: read the warning
-
-Run any command that loads your configuration — `gtkx build`, `gtkx dev`, `gtkx codegen`. If flags are unset, one block prints on stderr:
-
-```
-[gtkx] warn 2 of 7 future flags are unset. Their behavior becomes the default in GTKX 2.0.
-
-  [gtkx-v2-byte-arrays]       future: { v2ByteArrays: true }
-    Byte sequences come back as number[]. In 2.0 they come back as Uint8Array. `Array.isArray` and `JSON.stringify` change silently; grep for them.
-
-  [gtkx-v2-inout-returns]     future: { v2InoutReturns: true }
-    Inout records repeat in the return value. In 2.0 the repeated entry is dropped.
-
-  Set one flag at a time and run tsc: it reports every affected call site except where noted above.
-  Guide    https://gtkx.dev/guide/upgrading-to-2
-  Silence  deprecations: { silence: ["gtkx-v2-byte-arrays"] }
-```
-
-Each line is one flag you have not adopted. A project with no unset flags has nothing to do here; a project that silences every pending warning still has those flags to adopt.
-
-## Adopt one flag at a time
-
-Most flags are caught statically, so you rarely have to guess what they touch. Set one in `gtkx.config.ts`, run `tsc`, and fix what it reports:
+Run `gtkx build`, `gtkx dev`, or `gtkx codegen` and read the future-flag warning. Set one reported flag in `gtkx.config.ts`, run `tsc --noEmit`, and fix the affected call sites before enabling the next:
 
 ```ts
 export default defineConfig({
@@ -46,156 +18,102 @@ export default defineConfig({
 });
 ```
 
-Flipping a flag changes every affected call site at once — there is no partial adoption within a single flag. What you control is the order and the pace: the flags are independent, and one per sitting is the shape this is built for.
+Work through all seven flags:
 
-Setting a flag never changes behavior for anyone else; it moves your project onto the 2.0 semantics ahead of time.
+- `v2ByteArrays` returns GIR byte sequences as `Uint8Array`. Check array mutation, `Array.isArray`, and JSON serialization.
+- `v2ValueReturns` unwraps returned `GObject.Value` instances and types their contents as `unknown`; narrow the value where it is used.
+- `v2FinishResults` removes a leading success boolean from promisified finish results when failure already rejects.
+- `v2InoutReturns` stops repeating an inout record or boxed value in the return tuple. The object passed in is still mutated.
+- `v2ResourceImports` replaces `#data/` imports with relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports. Run `gtkx build` to find stale specifiers.
+- `v2DefaultLibraries` binds Adwaita and GTK by default. Remove `Adw-1` and `Gtk-4.0` from `libraries`, then run the application and check its appearance.
+- `v2TreeShaking` retains only generated classes reached by the production bundle. Import a class as a value when `GObject.typeFromName` must find it, and replace side-effect-only generated-module imports.
 
-[`v2ResourceImports`](#v2resourceimports) and [`v2DefaultLibraries`](#v2defaultlibraries) do not announce themselves through `tsc`, so read their sections before setting either. The first changes import specifiers rather than types, and the build reports what is left to migrate. The second binds another library, which nothing reports at all — run the app and look at it.
+Silencing a warning only hides it. The behavior still changes in 2.0. The [future-flags guide](/guide/configuration-and-codegen#future-flags) explains the less common resource and tree-shaking cases.
 
-### `v2ByteArrays`
+Replace `libraries: "*"` with the additional GIR roots the project actually uses. An explicit list keeps generated bindings stable across development machines.
 
-GIR byte sequences become `Uint8Array` instead of `number[]`. Parameters accept both either way, so passing values *in* never breaks; what changes is what comes *back*. `tsc` flags the array methods a `Uint8Array` does not have, such as `.push` and `.concat`.
+## Update the runtime and configuration
 
-`Array.isArray` and `JSON.stringify` change silently rather than failing to compile, because both accept anything: `Array.isArray(result)` flips from `true` to `false`, and `JSON.stringify(result)` writes `{"0":72,"1":105}` where it used to write `[72,105]`. Grep for both on byte-sequence results before you flip the flag.
+GTKX 2.0 requires Node.js 26.7 or newer and ESM. Set `"type": "module"` in `package.json` and stop loading GTKX packages through `require()`. Projects with translation catalogs also need GNU gettext 0.25 or newer.
 
-### `v2ValueReturns`
+After upgrading the packages, delete the `future` block and the corresponding `gtkx-v2-*` entries from `deprecations.silence`. A graduated flag left at `true` is accepted temporarily with a warning; `false` is rejected because the old behavior no longer exists.
 
-Bindings that return a `GValue` hand back what it holds, typed `unknown`. Assert the type you asked for at the call site: `(await clipboard.readValueAsync(Gio.File, 0, null)) as Gio.File`. `tsc` flags every return site, since `unknown` cannot be used without an assertion.
-
-### `v2FinishResults`
-
-Promisified async methods drop the leading success boolean, which was always `true` on the pairs this covers. `const [, contents] = await file.loadContentsAsync(null)` becomes `const [contents] = ...`, and a call left with one out parameter resolves to that value directly.
-
-### `v2InoutReturns`
-
-An inout record or boxed parameter stops repeating in the return value. It was always the same object you already passed in, mutated in place. `Gsk.Path.getNext(point)` returns `boolean` rather than `[boolean, PathPoint]`.
-
-### `v2ResourceImports`
-
-The `#data/` import map is replaced by relative, query-suffixed imports. Remove `"imports": { "#data/*": "./data/*" }` from `package.json`, then rewrite each import:
+Adwaita is the sole default GIR root in 2.0, and its GIR include supplies GTK transitively. Do not name either `Adw-1` or `Gtk-4.0` in `libraries`; list only additional roots:
 
 ```ts
-// Before
-import logoUri from "#data/logo.png";
-import schema from "#data/com.example.Tasks.gschema.xml";
+import { defineConfig } from "@gtkx/config";
 
-// After, from src/app.tsx
-import logoPath from "../data/logo.png?resource";
-import schema from "../data/com.example.Tasks.gschema.xml";
-```
-
-Assets take a query suffix; settings schemas do not, and stay query-free relative imports that carry their
-generated types. `tsc` cannot drive this migration, because the change is in the specifier rather than the
-type. The build takes over instead: it fails on every specifier that still needs attention, one at a time.
-
-### `v2DefaultLibraries`
-
-With this stable flag, `Adw-1` is bound alongside `Gtk-4.0` whether or not `libraries` names it, so the list
-becomes the libraries you want *on top of* Adwaita and GTK. In 2.0, `Adw-1` becomes the sole default root and
-its GIR include supplies `Gtk-4.0`. Drop both identifiers from `libraries`; naming either is a configuration
-error.
-
-This is the flag nothing reports. Elsewhere the compiler catches the change, or the build does; here both
-stay silent, so the check is yours to make.
-
-Binding Adwaita does not by itself change how an application behaves — an app that only imports
-`@gtkx/jsx/gtk` never evaluates the Adwaita module. What changes is the build: codegen needs the Adwaita
-introspection data, every deb and rpm gains a libadwaita relation, and every NOTICE file gains its LGPL
-entry. The moment something *does* import the Adwaita module, `adw_init` restyles the application and
-libadwaita becomes a hard runtime requirement. Turn the flag on, run the app, and look at it.
-
-### `v2TreeShaking`
-
-Each generated class registers itself as part of its own definition, so the bundler drops the classes your
-app never reaches — registrations included — and `gtkx build` ships only the widgets you render, the classes
-your code touches, and what their signatures reference. There is nothing for `tsc` to report: flip the flag,
-rebuild, and the bundle shrinks. Three edges to know about: a bare `import "@gtkx/gi/gtk"` no longer retains
-anything by itself (import a value from the namespace instead); rendering an element whose component was
-never imported throws instead of silently constructing the wrong class; and in a production bundle
-`GObject.typeFromName` resolves only the types the bundle registered — GLib's own contract — so import a
-class if you need its name to resolve (dev and tests never bundle and keep every type registered). Dynamic uses of the `animated` value
-itself — spreading it, `Object.keys(animated)` — keep every widget in the bundle, and `gtkx build` warns
-about the file; member access and the call form stay fully shakeable while the flag rewrites them, and
-member access is itself deprecated (see the table below).
-
-The [configuration guide](/guide/configuration-and-codegen#future-flags) explains each migration, including the `?icon` and `?url` forms.
-
-## Stop binding every installed library
-
-`libraries: "*"` is deprecated and 2.0 removes it. What it resolves to depends on which introspection
-packages the build host happens to have installed, so the generated store — and every type your code compiles
-against — changes with the machine. Replace it with the libraries the project actually needs, remembering
-that under `v2DefaultLibraries` Adwaita and GTK are already bound:
-
-```diff
- export default defineConfig({
--    libraries: "*",
-+    libraries: ["WebKit-6.0"],
-     applicationId: "com.example.Tasks",
- });
-```
-
-Codegen names the wildcard on each run while it still works, and `gtkx codegen --force` prints the resolved
-list, which is the set to copy from.
-
-## Split JSX imports by namespace
-
-The bare `@gtkx/jsx` entry point works in 1.6 but is removed in 2.0. Import each element from the namespace that declares it:
-
-```diff
--import { AdwHeaderBar, GtkBox, GtkButton } from "@gtkx/jsx";
-+import { AdwHeaderBar } from "@gtkx/jsx/adw";
-+import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
-```
-
-Namespace subpaths remain public and prevent an import from evaluating unrelated generated libraries.
-
-## Clear the deprecated symbols
-
-These carry a `@deprecated` tag, so your editor strikes them through on hover. TypeScript has no compiler
-diagnostic for deprecated usage, so there is no `tsc` flag that lists them — the editor, or a search for the
-names below, is how you find them.
-
-The generated store also carries thousands of *upstream* GObject deprecations, which 2.0 does not touch:
-`Adw.Leaflet`, `Gtk.Dialog`, and the rest are GNOME's own deprecations and keep working. GTKX's own are the
-ones whose tag ends in **`Removed in v2`**. Searching the store for that phrase gives the exact inventory.
-
-| Deprecated | Since | Replacement |
-| --- | --- | --- |
-| `addEventListener` / `removeEventListener` on any GObject | 1.2 | `on` / `off` |
-| `Gdk.RGBA.create(css)` | 1.3 | `new RGBA()` then `parse`, checking what `parse` returns, or `new RGBA({ red, green, blue, alpha })` |
-| `Graphene.Point.create(x, y)` | 1.3 | `new Point({ x, y })` |
-| `Graphene.Rect.create(x, y, width, height)` | 1.3 | `new Rect()` then `init(x, y, width, height)` |
-| `Graphene.Size.create(width, height)` | 1.3 | `new Size({ width, height })` |
-| `GObject.buildValue(gtype, populate)` | 1.3 | Pass the value itself, or `new Value()` and `init` |
-| The `@gtkx/gi/cairo` subpath | 1.3 | Import from `@gtkx/cairo` |
-| The `*ConstructorProps` type aliases in `@gtkx/cairo` | 1.3 | None — the stub constructors they described are gone |
-| Property access on `animated` (`animated.GtkLabel`) | 1.6 | Import the component and call `animated(GtkLabel)` — the wrapper is cached, so the call is free to repeat. In 2.0 `animated` is only callable, and the build-time rewrite that kept property access shakeable is deleted with it; `gtkx build` names each file still using property access |
-| `AnimatedElements` | 1.6 | `AnimatedElementMap` |
-
-`Gdk.RGBA.create` is the one worth reading twice: it swallows a color string GDK cannot parse and leaves you
-with transparent black. Its replacement makes you check.
-
-## Silencing, and what it does not do
-
-A flag you have read and decided to defer can be silenced by its id so it stops printing:
-
-```ts
 export default defineConfig({
     applicationId: "com.example.Tasks",
-    deprecations: { silence: ["gtkx-v2-inout-returns"] },
+    libraries: ["WebKit-6.0"],
 });
 ```
 
-Silencing is an acknowledgement, not a migration. The behavior still changes in 2.0, and a silenced project gets the same breakage an unwarned one would. Use it to keep the block readable while you work through the other flags, not as a way to close the ticket.
+The `"*"` wildcard is removed.
 
-## What 2.0 does not do
+## Update imports
 
-2.0 ships no new features, no new bindings, and no new configuration. It removes the deprecated paths listed above and the bare JSX entry point, deletes the `future` block, and makes the opted-in behavior the only behavior. Anything held back during the freeze ships in 2.1.
+The bare `@gtkx/jsx` entry point is removed. Import elements from the namespace that declares them:
 
-The `deprecations` block stays: it is the mechanism, not one of the corrections. Its `silence` list only accepts ids the CLI currently reports, so an entry naming a flag 2.0 removed becomes a configuration error, and the fix is to delete the line.
+```tsx
+import { AdwHeaderBar } from "@gtkx/jsx/adw";
+import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
+```
 
-## Next
+Adwaita components now come from the main components package. Import `ComboRow`, `ToastProvider`, `useToast`, and `useToastOverlay` from `@gtkx/components` instead of `@gtkx/components/adw`. The internal `@gtkx/react/adw` subpath is also removed; `@gtkx/react` registers Adwaita elements itself.
 
-- [Configuration and Codegen](/guide/configuration-and-codegen#future-flags): what each flag changes.
-- The [API reference](/reference/) documents every package.
+Import `createElementComponent` from `@gtkx/react` instead of `@gtkx/react/config`. The config subpath remains for renderer behavior and element registration APIs.
+
+## Move GObject ownership into JSX
+
+The settings hooks no longer create a `Gio.Settings` instance. Render `GSettings` from `@gtkx/jsx/gio` in the root portal, capture the instance with a state callback ref, and mount its consumers once it is available. Pass that instance first to `useSetting`, and add it as the `settings` option to `useBindSetting`. The [2.0 settings tutorial](/v2/tutorial/preferences-and-theming#create-the-settings-instance) shows the complete ownership pattern.
+
+`useProperty`, `useSignal`, and `useBindSetting` now take a mounted instance rather than a mutable ref object. Store callback-ref values in state and pass the value to the hook so subscriptions follow replacement and unmounting. Remove imports of the deleted `RefProp` type. See [Properties and the hooks](/v2/guide/subclassing#properties-and-the-hooks) for the pattern.
+
+## Give form choices explicit values
+
+A form `ComboRow` now controls a non-nullable string field. Replace `null` or `undefined` defaults with an item ID that exists in the choices. GTKX preserves that ID while an asynchronous source is empty, so reloading choices does not alter the form value or dirty state. See [Choose a row](/v2/guide/forms#choose-a-row).
+
+## Update internationalization
+
+GTKX 2 delegates extraction and resource typing to `i18next-cli`. Keep translation calls in ESM files and use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`. Replace aliases, `i18n.t(...)` calls, dynamic keys, CommonJS declarations, and ICU components with those static forms.
+
+Replace the removed positional plural overload with `count`, `defaultValue_one`, and `defaultValue_other` options. Run codegen after migrating. Generated declarations now use i18next's `CustomTypeOptions`, so remove uses of GTKX's `TranslationRegistry` and import shared types from `i18next` or `react-i18next`.
+
+## Replace removed APIs
+
+Your editor marks the 1.6 compatibility APIs as deprecated. Replace each GTKX deprecation whose annotation ends in `Removed in v2`:
+
+| Replace | With |
+| --- | --- |
+| `object.addEventListener(name, handler)` | `object.on(name, handler)` |
+| `object.removeEventListener(name, handler)` | `object.off(name, handler)` |
+| `Gdk.RGBA.create(css)` | Construct an `RGBA`, then check `parse(css)` |
+| `Graphene.Point.create(x, y)` | `new Graphene.Point({ x, y })` |
+| `Graphene.Rect.create(x, y, width, height)` | `new Graphene.Rect().init(x, y, width, height)` |
+| `Graphene.Size.create(width, height)` | `new Graphene.Size({ width, height })` |
+| `GObject.buildValue(...)` | Pass the JavaScript value, or initialize a `GObject.Value` |
+| `getObjectProperty(...)` | `getProperty(...)` |
+| `setObjectProperty(...)` | `setProperty(...)` |
+| `@gtkx/gi/cairo` | `@gtkx/cairo` |
+| `@gtkx/components/adw` | `@gtkx/components` |
+| `animated.GtkLabel` | `animated(GtkLabel)` |
+| `AnimatedElements` | `AnimatedElementMap` |
+
+The cairo stub-constructor `*ConstructorProps` aliases have no replacement because those constructors are removed. Upstream GTK and Adwaita deprecations are separate and remain available when the upstream library still provides them.
+
+Generated methods that expose unmanaged native addresses are also omitted. Replace `GLib.Bytes.getRegion` with `getData` or `newFromBytes`, use `GLib.Variant.getDataAsBytes` instead of `getData`, and close a `Gio.MemoryOutputStream` before calling `stealAsBytes` instead of `getData` or `stealData`.
+
+`@gtkx/gl` no longer exposes `getDebugMessageLog` or `debugMessageCallback`, whose native contracts require caller-owned memory or callback lifetime management. Remove those calls; the shader, program, and pipeline info-log helpers remain available. Replace `clientWaitSyncLoop` with the generated `clientWaitSync`, which accepts the full timeout as a `bigint`.
+
+## Verify the upgrade
+
+```bash
+gtkx codegen --force
+tsc --noEmit
+gtkx build
+```
+
+Run the application and inspect every main flow. GTKX 2 initializes Adwaita for every application, and production builds now retain only the generated bindings they reach.
+
+For 2.0 behavior after the migration, see [Configuration and Codegen](/v2/guide/configuration-and-codegen) and the [2.0 API reference](/v2/reference/).

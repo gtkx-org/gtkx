@@ -1,8 +1,8 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, queryController, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { act, queryAllControllers, queryController, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { describe, expect, it } from "vitest";
 import { dndDemo } from "../../../src/demos/gestures/dnd.js";
 import { makeRgbaValue, makeStringValue, renderDemo } from "../../test-utils.js";
 
@@ -20,23 +20,18 @@ const openInlineEntryForItem1 = async (): Promise<Gtk.Entry> => {
 };
 
 const triggerContextMenu = async (canvas: Gtk.Fixed, x: number, y: number): Promise<void> => {
-    const gestureClick = queryController(canvas, Gtk.GestureClick);
+    const gestureClick = queryAllControllers(canvas, Gtk.GestureClick).find(
+        (gesture) => gesture.getButton() === Gdk.BUTTON_SECONDARY,
+    );
     expect(gestureClick).toBeInstanceOf(Gtk.GestureClick);
 
     if (!gestureClick) {
         return;
     }
 
-    const fakeEvent = { triggersContextMenu: () => true };
-    const getCurrentEventSpy = vi.spyOn(gestureClick, "getCurrentEvent").mockReturnValue(fakeEvent as never);
-
-    try {
-        await act(() => {
-            gestureClick.emit("pressed", 1, x, y);
-        });
-    } finally {
-        getCurrentEventSpy.mockRestore();
-    }
+    await act(() => {
+        gestureClick.emit("pressed", 1, x, y);
+    });
 };
 
 const findMenuButton = async (name: string): Promise<Gtk.Button> =>
@@ -126,6 +121,14 @@ describe("dndDemo initial canvas", () => {
         expect(screen.queryByName("context-menu")).toBeNull();
         const canvas = await findCanvas();
         await triggerContextMenu(canvas, 50, 50);
+        const popover = await screen.findByName("context-menu", { as: Gtk.Popover });
+        expect(popover).toBeVisible();
+    });
+
+    it("opens the context menu after a touch long press", async () => {
+        await renderDemo(dndDemo);
+        const canvas = await findCanvas();
+        await userEvent.longPress(canvas, 50, 50);
         const popover = await screen.findByName("context-menu", { as: Gtk.Popover });
         expect(popover).toBeVisible();
     });
@@ -309,26 +312,10 @@ describe("dndDemo context menu", () => {
 });
 
 describe("dndDemo non-context-menu click is ignored", () => {
-    it("does not open the context menu when the press event reports no context-menu trigger", async () => {
+    it("does not open the context menu for a primary click", async () => {
         await renderDemo(dndDemo);
         const canvas = await findCanvas();
-        const gestureClick = queryController(canvas, Gtk.GestureClick);
-        expect(gestureClick).toBeInstanceOf(Gtk.GestureClick);
-
-        if (!gestureClick) {
-            return;
-        }
-
-        const fakeEvent = { triggersContextMenu: () => false };
-        const spy = vi.spyOn(gestureClick, "getCurrentEvent").mockReturnValue(fakeEvent as never);
-
-        try {
-            await act(() => {
-                gestureClick.emit("pressed", 1, 100, 100);
-            });
-        } finally {
-            spy.mockRestore();
-        }
+        await userEvent.click(canvas);
 
         expect(screen.queryByName("context-menu")).toBeNull();
     });

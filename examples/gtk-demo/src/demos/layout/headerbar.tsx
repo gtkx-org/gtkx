@@ -8,8 +8,7 @@ const headerbarDemo: Demo = {
     description:
         "GtkHeaderBar is a container that is suitable for implementing window titlebars. One of its " +
         "features is that it can position a title centered with regard to the full width, regardless " +
-        "of variable-width content at the left or right." +
-        "\n\nIt is commonly used with gtk_window_set_titlebar()",
+        "of variable-width content at the left or right. This demo supplies one through the demo's titlebar component.",
     keywords: ["GtkWindowHandle", "GtkWindowControls"],
     component: HeaderBarDemo,
     titlebar: HeaderBarTitlebar,

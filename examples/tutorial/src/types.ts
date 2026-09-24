@@ -1,10 +1,10 @@
-export type TaskList = {
+type TaskList = {
     id: string;
     name: string;
     color: string;
 };
 
-export type Task = {
+type Task = {
     id: string;
     listId: string;
     title: string;
@@ -19,12 +19,22 @@ export type Task = {
     lastNotifiedDue: string | null;
 };
 
-export type SmartView = "all" | "today" | "important" | "trash";
+type SmartView = "all" | "today" | "important" | "trash";
 
-export type Selection = { kind: "smart"; view: SmartView } | { kind: "list"; listId: string };
+type Selection = { kind: "smart"; view: SmartView } | { kind: "list"; listId: string };
 
-export type Filter = "all" | "open" | "done";
+type Filter = "all" | "open" | "done";
 
-export type DialogKind = "none" | "about" | "shortcuts" | "preferences" | "new-list";
+type DialogKind = "none" | "about" | "shortcuts" | "preferences" | "new-list";
 
-export type DialogState = { kind: DialogKind } | { kind: "delete-task"; task: Task };
+type DialogState = { kind: DialogKind } | { kind: "delete-task"; task: Task };
+
+export {
+    type DialogKind,
+    type DialogState,
+    type Filter,
+    type Selection,
+    type SmartView,
+    type Task,
+    type TaskList,
+};

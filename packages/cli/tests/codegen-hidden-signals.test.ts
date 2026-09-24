@@ -67,7 +67,7 @@ export const supported = (
 const opened = (files: Gio.File[], count: number, hint: string) => {
     return { files, count, hint };
 };
-const changed = (keys: GLib.Quark[] | null, count: number): boolean => {
+const changed = (keys: GLib.Quark[] | Uint32Array | null, count: number): boolean => {
     return keys === null || keys.length === count;
 };
 export const applicationProps: GApplicationProps = { onOpen: opened };

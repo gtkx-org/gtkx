@@ -1,172 +1,72 @@
 ---
 title: "OpenGL"
-description: "Draw with OpenGL inside a GNOME app using GTKX's generated bindings and GtkGLArea integration."
+description: "Use GTKX's OpenGL bindings inside a GtkGLArea."
 ---
 
 # OpenGL
 
-Inside GTKX's Adwaita application surfaces, `@gtkx/gl` draws OpenGL from TypeScript against a `Gtk.GLArea` that mounts like any other widget. It installs separately:
+`@gtkx/gl` provides OpenGL bindings for drawing inside a `GtkGLArea`. Install it alongside your application:
 
 ```bash
 npm install @gtkx/gl
 ```
 
-## What the package contains
+This guide covers GTKX integration. Use the [Khronos OpenGL reference](https://registry.khronos.org/OpenGL-Refpages/gl4/) for the rendering API and the [GTKX GL reference](/reference/@gtkx/gl/) for available bindings.
 
-The OpenGL 4.6 core profile, behind one namespaced import:
+## Draw in a widget
 
-```ts
-import * as gl from "@gtkx/gl";
-```
-
-Commands drop the `gl` prefix and lowercase the first letter (`glCompileShader` becomes `compileShader`); enums drop `GL_` and keep their case (`GL_TRIANGLES` becomes `TRIANGLES`).
-
-The generic state queries (`getIntegerv` and its siblings) are not exported: use the typed getters `getShaderiv`, `getProgramiv`, and `getBufferParameteriv`.
-
-Every object family has a singular helper next to the plural one: `genBuffer()` returns one name where `genBuffers(n)` returns an array, and `deleteBuffer(name)` deletes one.
-
-`getShaderInfoLog` and `getProgramInfoLog` return the driver's diagnostics as a string. The [@gtkx/gl reference](/reference/@gtkx/gl/) lists every supported command, enum, and type.
-
-## The GtkGLArea signal flow
-
-`GtkGLArea` is the element you draw into. GTK4 gives it a `Gdk.GLContext` and a framebuffer, then emits these signals:
-
-- `onRealize` fires when the area gets its context: compile shaders and upload geometry.
-- `onResize` receives the framebuffer width and height: set `viewport`.
-- `onRender` receives the `Gdk.GLContext`, draws, and returns `true` to stop the signal.
-- `onUnrealize` fires when the area loses its context: delete every GL object created.
-
-Like every JSX `on*` prop, these handlers receive the area that emitted the signal as their final argument.
-
-`onRender` and `onResize` already run with the context current. Everywhere else, including `onRealize`, `onUnrealize`, and a handler that recompiles a shader, call `area.makeCurrent()` first. Skipping it fails silently or corrupts another context. In `onRealize`, stop when `area.getError()` reports a context that failed to initialize.
-
-Realization follows when the widget is shown, not when the component mounts, so props that configure the context apply before realize: `allowedApis` restricts which APIs may be chosen, so `allowedApis={Gdk.GLAPI.GLES}` asks for an OpenGL ES context, and `hasDepthBuffer` and `hasStencilBuffer` add those attachments to the framebuffer. `area.getApi()` reports which API was granted.
-
-## A simple example
-
-Compiling a shader uses the naming rules, a typed getter, and an info log override at once:
-
-```ts
-const compileShader = (type: number, source: string, name: string): number => {
-    const shader = gl.createShader(type);
-    gl.shaderSource(shader, 1, [source], [-1]);
-    gl.compileShader(shader);
-    if (!gl.getShaderiv(shader, gl.COMPILE_STATUS)) {
-        const log = gl.getShaderInfoLog(shader);
-        gl.deleteShader(shader);
-        throw new Error(`${name} shader compilation failed: ${log}`);
-    }
-    return shader;
-};
-```
-
-Geometry uploads pass the byte length next to the typed-array view:
-
-```ts
-const createVertexBuffer = (data: number[]): { vao: number; vbo: number } => {
-    const vao = gl.genVertexArray();
-    gl.bindVertexArray(vao);
-    const vbo = gl.genBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-    const view = new Float32Array(data);
-    gl.bufferData(gl.ARRAY_BUFFER, view.byteLength, view, gl.STATIC_DRAW);
-
-    return { vao, vbo };
-};
-```
-
-`initGL` picks the GL or the GLES shader sources from the API it is handed, compiles both, and links them into a program. It then calls `createVertexBuffer`, declares the attribute layout with `vertexAttribPointer` and `enableVertexAttribArray`, and reads the uniform with `gl.getUniformLocation(program, "mvp")`.
-
-The component keeps the area and the GL state in refs:
+Place a `GtkGLArea` inside your application's JSX tree. Its `onRender` handler runs with the area's GL context and framebuffer ready for drawing:
 
 ```tsx
 import * as Gdk from "@gtkx/gi/gdk";
-import * as Gtk from "@gtkx/gi/gtk";
 import * as gl from "@gtkx/gl";
 import { GtkGLArea } from "@gtkx/jsx/gtk";
-import { useRef, useState } from "react";
 
-type GLState = { program: number; vao: number; vbo: number; mvpLocation: number };
-
-const GLAreaDemo = () => {
-    const glAreaRef = useRef<Gtk.GLArea | null>(null);
-    const glStateRef = useRef<GLState | null>(null);
-    const [rotationX, setRotationX] = useState(0);
-
-    const handleRealize = (area: Gtk.GLArea) => {
-        area.makeCurrent();
-        if (area.getError()) return;
-        glStateRef.current = initGL(area.getApi());
-    };
-
-    const handleUnrealize = (area: Gtk.GLArea) => {
-        area.makeCurrent();
-        const state = glStateRef.current;
-        if (!state) return;
-        gl.deleteBuffer(state.vbo);
-        gl.deleteVertexArray(state.vao);
-        gl.deleteProgram(state.program);
-        glStateRef.current = null;
-    };
-
-    const handleRender = () => {
-        const state = glStateRef.current;
-        if (!state) return Gdk.EVENT_STOP;
-        gl.clearColor(0.5, 0.5, 0.5, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.useProgram(state.program);
-        gl.uniformMatrix4fv(state.mvpLocation, 1, false, createRotationMatrix(rotationX, 0, 0));
-        gl.bindVertexArray(state.vao);
-        gl.drawArrays(gl.TRIANGLES, 0, 3);
-        gl.flush();
-        return Gdk.EVENT_STOP;
-    };
-
-    return (
-        <GtkGLArea
-            ref={glAreaRef}
-            hexpand
-            vexpand
-            onRealize={handleRealize}
-            onUnrealize={handleUnrealize}
-            onRender={handleRender}
-            onResize={(width, height) => gl.viewport(0, 0, width, height)}
-        />
-    );
-};
+export const ColorArea = () => (
+    <GtkGLArea
+        hexpand
+        vexpand
+        onRender={() => {
+            gl.clearColor(0.5, 0.5, 0.5, 1);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            return Gdk.EVENT_STOP;
+        }}
+    />
+);
 ```
 
-The GLSL sources, `initGL`, and `createRotationMatrix`, along with the Gears demo and a Shadertoy player, live in `examples/gtk-demo/src/demos/opengl`.
+GTK presents the result as part of the surrounding widget tree. Returning `Gdk.EVENT_STOP` marks the render signal as handled. As with other GTKX signals, handlers can receive the emitting area as their final argument.
 
-## The context and React state
+For complete shader and geometry setup, see the [GLArea, Gears and Shadertoy examples](https://github.com/gtkx-org/gtkx/tree/v1.6.0/examples/gtk-demo/src/demos/opengl).
 
-GL object names belong in refs, not state. A re-render does not repaint the area; `area.queueRender()` does, so a control that changes the scene sets its state and queues a render:
+## Use the bindings
 
-```ts
-const handleAxisChanged = (value: number) => {
-    setRotationX((value * Math.PI) / 180);
-    glAreaRef.current?.queueRender();
-};
-```
+The bindings are generated from the OpenGL 4.6 core registry. Commands omit the `gl` prefix and start with a lowercase letter; constants omit `GL_`. For example, use `gl.compileShader` and `gl.TRIANGLES`.
 
-`autoRender` is on by default, so the render signal is emitted every time the widget draws. `autoRender={false}` preserves the previous frame until `queueRender()` is called.
+Object creation and deletion also have singular helpers: `gl.genBuffer()` returns one name, while `gl.genBuffers(count)` returns an array. Pass typed-array views directly for geometry uploads, alongside the byte length required by the command.
 
-Continuous animation runs off a tick callback registered with `Gtk.Widget.addTickCallback` that calls `queueRender()`, not off React state.
+Generic state queries such as `getIntegerv` are not exported. Use the available typed queries for the object you are inspecting, such as `getShaderiv` or `getProgramiv`. Shader and program info-log helpers return the driver's diagnostics as strings.
 
-`area.setError()` makes the widget render an error state of its own instead of drawing:
+## Manage context resources
 
-```ts
-import * as GLib from "@gtkx/gi/glib";
+Create shaders and buffers in `onRealize`, after calling `area.makeCurrent()` and checking `area.getError()`. Realization follows the native widget's lifecycle, so it can happen after the React component mounts. Keep GL object names in refs and delete those resources in `onUnrealize`, making the area's context current first.
 
-const SHADER_ERROR = GLib.quarkFromString("my-app-shader-error-quark");
+`onRender` and `onResize` already run with the context current. Call `makeCurrent()` before issuing GL commands from other handlers. GTK sets the viewport when the area resizes; use `onResize` for other size-dependent state, such as a camera's aspect ratio.
 
-area.setError(GLib.Error.newLiteral(SHADER_ERROR, 0, `Fragment shader compile error:\n${log}`));
-```
+Configure the context through JSX before realization. `allowedApis` selects GL or GLES, while `hasDepthBuffer` and `hasStencilBuffer` request framebuffer attachments. Use `area.getApi()` to choose rendering code compatible with the context that was created. See [GTK's GLArea documentation](https://docs.gtk.org/gtk4/class.GLArea.html) for the native lifecycle and context options.
 
-`GLib.Error.newLiteral(domain, code, message)` builds a GError, and `GLib.quarkFromString` registers (or looks up) a quark for an error domain of your own: pick a unique, descriptive string, conventionally ending in `-quark`. Pass `null` to `setError` to clear it once the shader compiles.
+## Request another frame
 
-[Error Handling](/guide/error-handling) covers matching the GErrors bindings throw.
+Changing React state does not itself repaint the GL scene. Obtain the area through its `ref` and call `queueRender()` when the scene needs drawing again.
+
+With the default `autoRender`, GTK emits the render signal whenever the widget draws. With `autoRender={false}`, ordinary redraws reuse the previous frame; resizing the area or calling `queueRender()` requests a new one.
+
+For continuous animation, use a GTK tick callback to advance the scene and call `queueRender()`. Tie its registration and removal to the mounted area's lifetime.
+
+## Show an error
+
+Pass a `GLib.Error` to `area.setError()` to display an error inside the widget, and pass `null` to clear it after recovery. Context initialization failures are available through `area.getError()`. See [Error Handling](/guide/error-handling) for errors raised by binding calls.
 
 ## Next
 
-Continue with [Testing](/guide/testing) to see how the reconciler renders and asserts on widgets.
+Continue with [Testing](/guide/testing) for native widget queries and interaction tests.

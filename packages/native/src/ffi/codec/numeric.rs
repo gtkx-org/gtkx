@@ -216,12 +216,17 @@ macro_rules! impl_numeric_codecs {
         impl PtrWriter for $kind {
             fn write_return_to_ptr(
                 &self,
-                _env: &Env,
+                env: &Env,
                 ret: ffi::Slot,
                 value: &std::result::Result<Unknown<'_>, ()>,
             ) {
                 let n = match value {
-                    Ok(unknown) => <$kind>::number_from_value(*unknown).unwrap_or(0.0),
+                    Ok(unknown) => <$kind>::number_from_value(*unknown)
+                        .and_then(|number| self.checked_to_stash(number).map(|_| number))
+                        .unwrap_or_else(|error| {
+                            reject_callback_return(*env, &error);
+                            0.0
+                        }),
                     Err(()) => 0.0,
                 };
                 unsafe { self.write_return_widened(ret.as_ptr(), n) };
@@ -256,7 +261,6 @@ pub fn lossless_f64(value: i128, context: &str) -> anyhow::Result<f64> {
 fn coerce_number(value: Unknown<'_>, label: &str) -> anyhow::Result<f64> {
     match value.get_type()? {
         ValueType::Number => Ok(value::read_napi::<f64>(value)?),
-        ValueType::Null | ValueType::Undefined => Ok(0.0),
         other => bail!("Expected a Number for {label}, got {other:?}"),
     }
 }

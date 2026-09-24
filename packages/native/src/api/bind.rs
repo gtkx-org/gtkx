@@ -211,6 +211,12 @@ pub fn bind(
     fixed_arg_count: Option<u32>,
 ) -> Result<External<CallDescriptor>> {
     let (arg_codecs, return_codec) = into_codecs(arg_descriptors, return_descriptor)?;
+    if fixed_arg_count.is_some_and(|count| count as usize > arg_codecs.len()) {
+        return Err(Error::new(
+            Status::InvalidArg,
+            "fixedArgCount exceeds the number of argument descriptors",
+        ));
+    }
 
     Ok(External::new(prepare(
         CallTarget::Symbol {

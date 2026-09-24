@@ -257,7 +257,7 @@ const constructorReturnOverride = (
         return undefined;
     }
 
-    return renderMethodReturnType(context, callable, override);
+    return renderMethodReturnType(context, callable, { primaryTypeOverride: override });
 };
 
 const renderStaticEntry = (

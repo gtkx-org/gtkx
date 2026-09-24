@@ -4,6 +4,23 @@ import api from "./api.json" with { type: "json" };
 export default [
     ...config(import.meta.dirname, api),
     {
+        files: ["examples/tutorial/src/gtkx-env.d.ts"],
+        rules: {
+            "@typescript-eslint/triple-slash-reference": "off",
+        },
+    },
+    {
+        files: ["examples/tutorial/src/navigation.ts"],
+        rules: { "@typescript-eslint/consistent-type-definitions": "off" },
+    },
+    {
+        files: [
+            "examples/tutorial/tests/application-actions.test.tsx",
+            "examples/tutorial/tests/notifications.test.tsx",
+        ],
+        rules: { "no-empty-pattern": "off" },
+    },
+    {
         files: [
             "packages/runtime/tests/fixtures/process-exit-owner.ts",
             "packages/runtime/tests/fixtures/process-exit-closure.ts",

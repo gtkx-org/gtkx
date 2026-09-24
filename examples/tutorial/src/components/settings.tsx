@@ -6,7 +6,7 @@ import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 
 const SettingsContext = createContext<Gio.Settings | null>(null);
 
-export const SettingsProvider = ({ children }: { children: ReactNode }) => {
+const SettingsProvider = ({ children }: { children: ReactNode }) => {
     const [settings, setSettings] = useState<Gio.Settings | null>(null);
 
     return (
@@ -17,11 +17,16 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
     );
 };
 
-export const useAppSettings = (): Gio.Settings => {
+const useAppSettings = (): Gio.Settings => {
     const settings = use(SettingsContext);
     if (settings === null) {
         throw new Error("SettingsProvider is required");
     }
 
     return settings;
+};
+
+export {
+    SettingsProvider,
+    useAppSettings,
 };

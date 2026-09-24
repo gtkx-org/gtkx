@@ -22,11 +22,9 @@ test("boxed struct constructs with defaults and props", () => {
 });
 
 test("boxed struct long field accepts plain numbers", () => {
-    // @ts-expect-error the long field is declared bigint, and the binding widens it to a plain number
     const s = new GIMarshallingTests.BoxedStruct({ long: 42 });
     expect(s.long).toBe(42n);
     s.inv();
-    // @ts-expect-error the long field is declared bigint, and the binding widens it to a plain number
     s.long = 43;
     expect(s.long).toBe(43n);
 });
@@ -323,11 +321,9 @@ test("a boxed field rejects a value of an unrelated boxed type", () => {
 test("boxed field writes reject invalid values", () => {
     // @ts-expect-error a string is not a long field value
     expect(() => new GIMarshallingTests.BoxedStruct({ long: "x" })).toThrow();
-    // @ts-expect-error a fractional number is not a long field value
     expect(() => new GIMarshallingTests.BoxedStruct({ long: 1.5 })).toThrow();
     const s = new GIMarshallingTests.BoxedStruct({});
     expect(() => {
-        // @ts-expect-error a fractional number is not a long field value
         s.long = 1.5;
     }).toThrow();
     expect(() => {

@@ -14,7 +14,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 type AdjustmentConfig = ComponentProps<typeof GtkAdjustment>;
 type MarkedCalendarProps = { calendarRef: Ref<Gtk.Calendar>; days: number[] };
@@ -30,9 +30,14 @@ const MIN_MID_MAX_MARKS = [
     { value: 100, position: Gtk.PositionType.BOTTOM, markup: "Max" },
 ];
 
-const noopDraw = vi.fn<Gtk.DrawingAreaDrawFunc>();
-const drawFunc1 = vi.fn<Gtk.DrawingAreaDrawFunc>();
-const drawFunc2 = vi.fn<Gtk.DrawingAreaDrawFunc>();
+const drawCounts = { first: 0, second: 0 };
+const noopDraw: Gtk.DrawingAreaDrawFunc = () => null;
+const drawFunc1: Gtk.DrawingAreaDrawFunc = () => {
+    drawCounts.first += 1;
+};
+const drawFunc2: Gtk.DrawingAreaDrawFunc = () => {
+    drawCounts.second += 1;
+};
 
 const ScaleWithMarks = ({ marks }: { marks?: ScaleMark[] }) => (
     <GtkScale adjustment={<GtkAdjustment value={0} lower={0} upper={100} />} marks={marks} />
@@ -313,7 +318,10 @@ describe("render - adjustment element", () => {
 
     it("fires onValueChanged when the value changes", async () => {
         const ref = createRef<Gtk.Scale>();
-        const onValueChanged = vi.fn();
+        const values: number[] = [];
+        const onValueChanged = (value: number): void => {
+            values.push(value);
+        };
 
         await render(
             <ScaleWithAdjustment
@@ -326,13 +334,16 @@ describe("render - adjustment element", () => {
         ref.current?.getAdjustment().setValue(75);
 
         await waitFor(() => {
-            expect(onValueChanged).toHaveBeenCalledWith(75);
+            expect(values).toContain(75);
         });
     });
 
     it("stops firing onValueChanged when cleared", async () => {
         const ref = createRef<Gtk.Scale>();
-        const onValueChanged = vi.fn();
+        const values: number[] = [];
+        const onValueChanged = (value: number): void => {
+            values.push(value);
+        };
 
         const { rerender } = await render(
             <ScaleWithAdjustment
@@ -345,14 +356,13 @@ describe("render - adjustment element", () => {
         ref.current?.getAdjustment().setValue(60);
 
         await waitFor(() => {
-            expect(onValueChanged).toHaveBeenCalledWith(60);
+            expect(values).toContain(60);
         });
 
-        const callCount = onValueChanged.mock.calls.length;
+        const callCount = values.length;
         await rerender(<ScaleWithAdjustment config={{ value: 60, lower: 0, upper: 100 }} scaleRef={ref} />);
         ref.current?.getAdjustment().setValue(70);
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        expect(onValueChanged.mock.calls).toHaveLength(callCount);
+        expect(values).toHaveLength(callCount);
     });
 });
 
@@ -635,6 +645,8 @@ describe("render - DrawingArea", () => {
 
     it("updates draw function when prop changes", async () => {
         const ref = createRef<Gtk.DrawingArea>();
+        drawCounts.first = 0;
+        drawCounts.second = 0;
 
         function App({ drawFunc }: { drawFunc: Gtk.DrawingAreaDrawFunc }) {
             return <GtkDrawingArea ref={ref} contentWidth={40} contentHeight={40} drawFunc={drawFunc} />;
@@ -644,19 +656,19 @@ describe("render - DrawingArea", () => {
         const area = ref.current;
 
         await waitFor(() => {
-            expect(drawFunc1).toHaveBeenCalled();
+            expect(drawCounts.first).toBeGreaterThan(0);
         });
 
-        drawFunc1.mockClear();
+        drawCounts.first = 0;
         await rerender(<App drawFunc={drawFunc2} />);
         expect(ref.current).toBe(area);
         area?.queueDraw();
 
         await waitFor(() => {
-            expect(drawFunc2).toHaveBeenCalled();
+            expect(drawCounts.second).toBeGreaterThan(0);
         });
 
-        expect(drawFunc1).not.toHaveBeenCalled();
+        expect(drawCounts.first).toBe(0);
     });
 
     it("sets widget properties alongside drawFunc", async () => {

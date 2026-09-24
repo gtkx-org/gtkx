@@ -1,10 +1,10 @@
 import { createNavigationContainerRef } from "@gtkx/navigation";
 import { act, render, screen, waitFor, within } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
     buildStack,
     clickButton,
-    createStateSpy,
+    createStateLog,
     doubleClickButton,
     expectHidden,
     expectRouteNames,
@@ -20,12 +20,12 @@ import {
 
 describe("stack - navigation", () => {
     it("pushes a page on navigate and hides the previous one", async () => {
-        const onStateChange = createStateSpy();
-        await renderStack({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderStack({ container: { onStateChange: stateLog.record } });
         await clickButton("Go to details");
         await screen.findByText("Details 1");
         expectHidden("Home Content");
-        expectRouteNames(onStateChange, ["Home", "Details"]);
+        expectRouteNames(stateLog, ["Home", "Details"]);
     });
 
     it("shows the page title in the header bar and pops with Back", async () => {
@@ -55,8 +55,8 @@ describe("stack - navigation", () => {
     });
 
     it("pushes twice then pops to top", async () => {
-        const onStateChange = createStateSpy();
-        await renderStack({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderStack({ container: { onStateChange: stateLog.record } });
         await clickButton("Push details");
         await clickButton("Push details");
         await screen.findByText("Details 2");
@@ -64,17 +64,17 @@ describe("stack - navigation", () => {
         await screen.findByText("Home Content");
         expectHidden("Details 1");
         expectHidden("Details 2");
-        expectRouteNames(onStateChange, ["Home"]);
+        expectRouteNames(stateLog, ["Home"]);
     });
 
     it("replaces the visible page", async () => {
-        const onStateChange = createStateSpy();
-        await renderStack({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderStack({ container: { onStateChange: stateLog.record } });
         await clickButton("Replace with details");
         await screen.findByText("Details 1");
         expectHidden("Home Content");
         expect(queryBackButton()).toBeNull();
-        expectRouteNames(onStateChange, ["Details"]);
+        expectRouteNames(stateLog, ["Details"]);
     });
 
     it("passes params to the screen and updates them with setParams", async () => {
@@ -87,12 +87,12 @@ describe("stack - navigation", () => {
     });
 
     it("updates params instead of pushing a copy when navigating to the focused route", async () => {
-        const onStateChange = createStateSpy();
-        await renderStack({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderStack({ container: { onStateChange: stateLog.record } });
         await clickButton("Go to details");
         await clickButton("Navigate to details");
         await screen.findByText("Details 5");
-        expectRouteNames(onStateChange, ["Home", "Details"]);
+        expectRouteNames(stateLog, ["Home", "Details"]);
         await clickButton("Back");
         await screen.findByText("Home Content");
     });
@@ -107,25 +107,25 @@ describe("stack - navigation", () => {
     });
 
     it("resets to a new root", async () => {
-        const onStateChange = createStateSpy();
-        await renderStack({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderStack({ container: { onStateChange: stateLog.record } });
         await clickButton("Go to details");
         await clickButton("Reset to settings");
         await screen.findByText("Settings Content");
         expectHidden("Details 1");
         expectHidden("Home Content");
         expect(queryBackButton()).toBeNull();
-        expectRouteNames(onStateChange, ["Settings"]);
+        expectRouteNames(stateLog, ["Settings"]);
     });
 
     it("reports every stack state to onStateChange", async () => {
-        const onStateChange = createStateSpy();
-        await renderStack({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderStack({ container: { onStateChange: stateLog.record } });
         await clickButton("Go to details");
         await clickButton("Back");
         await screen.findByText("Home Content");
 
-        expect(onStateChange.mock.calls.map(([state]) => getRouteNames(state))).toEqual([
+        expect(stateLog.states.map((state) => getRouteNames(state))).toEqual([
             ["Home", "Details"],
             ["Home"],
         ]);
@@ -178,32 +178,35 @@ describe("stack - edge cases", () => {
 
     it("ignores Back, Escape and goBack on the root page", async () => {
         const ref = createNavigationContainerRef<RootParams>();
-        const onUnhandledAction = vi.fn();
+        let unhandledActions = 0;
+        const onUnhandledAction = (): void => {
+            unhandledActions += 1;
+        };
         await renderStack({ container: { ref, onUnhandledAction } });
         expect(queryBackButton()).toBeNull();
         expect(ref.canGoBack()).toBe(false);
         await pressKeys("Home Content", "{Escape}");
         await clickButton("Go back");
         expectVisible("Home Content");
-        expect(onUnhandledAction).toHaveBeenCalledTimes(1);
+        expect(unhandledActions).toBe(1);
     });
 
     it("pushes one page on a rapid double click with navigate", async () => {
-        const onStateChange = createStateSpy();
-        await renderStack({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderStack({ container: { onStateChange: stateLog.record } });
         await doubleClickButton("Go to details");
         await screen.findByText("Details 1");
-        expectRouteNames(onStateChange, ["Home", "Details"]);
+        expectRouteNames(stateLog, ["Home", "Details"]);
         await clickButton("Back");
         await screen.findByText("Home Content");
     });
 
     it("pushes two pages on a rapid double click with push", async () => {
-        const onStateChange = createStateSpy();
-        await renderStack({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderStack({ container: { onStateChange: stateLog.record } });
         await doubleClickButton("Push details");
         await screen.findByText("Details 1");
-        expectRouteNames(onStateChange, ["Home", "Details", "Details"]);
+        expectRouteNames(stateLog, ["Home", "Details", "Details"]);
         await clickButton("Back");
         await screen.findByText("Details 1");
         await clickButton("Back");

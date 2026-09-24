@@ -14,7 +14,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, useState } from "react";
-import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import { expanderCount, expanderNamed } from "./helpers/expanders.js";
 import { expectRowTexts } from "./helpers/row-texts.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
@@ -208,7 +208,10 @@ describe("ListView sections", () => {
     });
 
     it("selects the row named by selectedIds once a section arrives", async () => {
-        const onSelectionChanged = vi.fn();
+        let selectedIds: string[] = [];
+        const onSelectionChanged = (ids: string[]): void => {
+            selectedIds = ids;
+        };
         const from = { groups: firstSectionOnly, expandedIds: ["p1"] };
         const { ref, to } = await renderFixture(from, { onSelectionChanged });
         await to({ groups: sections, expandedIds: [], selectedIds: ["x1"] });
@@ -216,7 +219,7 @@ describe("ListView sections", () => {
 
         await waitFor(() => {
             expect(selectedPositions(ref)).toEqual([soloPosition]);
-            expect(onSelectionChanged).toHaveBeenLastCalledWith(["x1"]);
+            expect(selectedIds).toEqual(["x1"]);
         });
     });
 });
@@ -249,14 +252,17 @@ describe("ListView sectioned trees", () => {
     });
 
     it("collapses a nested row when expandedIds empties and reports it", async () => {
-        const onExpandedChange = vi.fn();
+        let expandedIds: string[] = ["p1"];
+        const onExpandedChange = (ids: string[]): void => {
+            expandedIds = ids;
+        };
         const from = { groups: firstSectionOnly, expandedIds: ["p1"] };
         const { ref, to } = await renderFixture(from, { onExpandedChange });
         await to({ groups: sections, expandedIds: [] });
         await expectRowTexts(ref, collapsedRows);
 
         await waitFor(() => {
-            expect(onExpandedChange).toHaveBeenLastCalledWith([]);
+            expect(expandedIds).toEqual([]);
         });
     });
 

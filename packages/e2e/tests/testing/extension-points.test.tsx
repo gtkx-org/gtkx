@@ -21,7 +21,7 @@ import {
     userEvent,
     within,
 } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { VBox } from "./widget-fixtures.js";
 
 type QueryWidgetType = NonNullable<MatcherOptions["as"]>;
@@ -60,16 +60,19 @@ const renderTooltipped = async (first: string, second?: string): Promise<Gtk.Wid
 
 describe("createEvent", () => {
     it("records an emission with its arguments without delivering it", async () => {
-        const clicked = vi.fn();
+        let clickCount = 0;
+        const clicked = (): void => {
+            clickCount += 1;
+        };
         await render(<GtkButton label="Recorded" onClicked={clicked} />);
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
         const event = createEvent(button, "clicked");
         expect(event.target).toBe(button);
         expect(event.signalName).toBe("clicked");
         expect(event.args).toEqual([]);
-        expect(clicked).not.toHaveBeenCalled();
+        expect(clickCount).toBe(0);
         await fireEvent(event);
-        expect(clicked).toHaveBeenCalledTimes(1);
+        expect(clickCount).toBe(1);
         expect(createEvent(button, "state-flags-changed", Gtk.StateFlags.ACTIVE).args).toEqual([Gtk.StateFlags.ACTIVE]);
     });
 

@@ -11,7 +11,6 @@ import type {
 } from "@gtkx/navigation";
 import type { RenderResult } from "@gtkx/testing";
 import type { ComponentProps, ReactNode } from "react";
-import type { Mock } from "vitest";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
@@ -23,7 +22,7 @@ import {
 } from "@gtkx/navigation";
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createContext, useContext, useEffect, useState } from "react";
-import { expect, vi } from "vitest";
+import { expect } from "vitest";
 
 import { getAncestor } from "./widget-ancestors.js";
 
@@ -36,13 +35,22 @@ type RootParams = {
 };
 
 type StackEvent = { type: string; route: string; isClosing?: boolean };
-type EventSpy = Mock<(event: StackEvent) => void>;
-type PreventSpy = Mock<(data: { action: NavigationAction }) => void>;
-type StateSpy = Mock<(state: NavigationState | undefined) => void>;
+type StateLog = {
+    states: (NavigationState | undefined)[];
+    record: (state: NavigationState | undefined) => void;
+};
+type EventLog = {
+    events: StackEvent[];
+    record: (event: StackEvent) => void;
+};
+type PreventLog = {
+    actions: NavigationAction[];
+    record: (data: { action: NavigationAction }) => void;
+};
 
-type Spies = {
-    onEvent?: EventSpy;
-    onPrevent?: PreventSpy;
+type Callbacks = {
+    onEvent?: (event: StackEvent) => void;
+    onPrevent?: (data: { action: NavigationAction }) => void;
 };
 
 type NavigatorProps = Partial<Omit<ComponentProps<typeof Stack.Navigator>, "children">>;
@@ -54,19 +62,19 @@ type StackOptions = {
     settings?: StackNavigationOptions;
     container?: Partial<NavigationContainerProps<RootParams>>;
     isAnimated?: boolean;
-    spies?: Spies;
+    callbacks?: Callbacks;
 };
 
 type Actions = [string, () => void][];
 
 const Stack = createStackNavigator<RootParams>();
-const SpyContext = createContext<Spies>({});
+const CallbackContext = createContext<Callbacks>({});
 
 const useEventRecorder = <RouteName extends keyof RootParams>(
     navigation: StackNavigationProp<RootParams, RouteName>,
     route: string,
 ): void => {
-    const { onEvent } = useContext(SpyContext);
+    const { onEvent } = useContext(CallbackContext);
 
     useEffect(() => {
         if (onEvent === undefined) {
@@ -193,7 +201,7 @@ const Settings = ({ navigation, route }: StackScreenProps<RootParams, "Settings"
 };
 
 const Compose = ({ navigation, route }: StackScreenProps<RootParams, "Compose">): ReactNode => {
-    const { onPrevent } = useContext(SpyContext);
+    const { onPrevent } = useContext(CallbackContext);
     const [pendingAction, setPendingAction] = useState<NavigationAction | null>(null);
     useEventRecorder(navigation, route.name);
 
@@ -218,7 +226,7 @@ const Compose = ({ navigation, route }: StackScreenProps<RootParams, "Compose">)
 };
 
 const Draft = ({ navigation, route }: StackScreenProps<RootParams, "Draft">): ReactNode => {
-    const { onPrevent } = useContext(SpyContext);
+    const { onPrevent } = useContext(CallbackContext);
     useEventRecorder(navigation, route.name);
 
     usePreventRemove(true, ({ data }) => {
@@ -250,7 +258,7 @@ const CustomHeader = ({ route, options, back, navigation }: StackHeaderProps): R
 );
 
 const buildStack = (options: StackOptions = {}): ReactNode => (
-    <SpyContext value={options.spies ?? {}}>
+    <CallbackContext value={options.callbacks ?? {}}>
         <NavigationContainer {...options.container}>
             <Stack.Navigator {...options.navigator}>
                 <Stack.Screen name="Home" component={Home} options={options.home} />
@@ -264,7 +272,7 @@ const buildStack = (options: StackOptions = {}): ReactNode => (
                 <Stack.Screen name="Draft" component={Draft} />
             </Stack.Navigator>
         </NavigationContainer>
-    </SpyContext>
+    </CallbackContext>
 );
 
 const renderStack = (options: StackOptions = {}): Promise<RenderResult> =>
@@ -286,9 +294,38 @@ const RefApp = (): ReactNode => {
     );
 };
 
-const createStateSpy = (): StateSpy => vi.fn<(state: NavigationState | undefined) => void>();
-const createEventSpy = (): EventSpy => vi.fn<(event: StackEvent) => void>();
-const createPreventSpy = (): PreventSpy => vi.fn<(data: { action: NavigationAction }) => void>();
+const createStateLog = (): StateLog => {
+    const states: (NavigationState | undefined)[] = [];
+
+    return {
+        states,
+        record: (state) => {
+            states.push(state);
+        },
+    };
+};
+
+const createEventLog = (): EventLog => {
+    const events: StackEvent[] = [];
+
+    return {
+        events,
+        record: (event) => {
+            events.push(event);
+        },
+    };
+};
+
+const createPreventLog = (): PreventLog => {
+    const actions: NavigationAction[] = [];
+
+    return {
+        actions,
+        record: ({ action }) => {
+            actions.push(action);
+        },
+    };
+};
 
 const clickButton = async (name: string): Promise<void> => {
     await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name }));
@@ -332,8 +369,8 @@ const isStackState = (state: NavigationState): state is StackNavigationState<Par
 const getPreloadedKeys = (state: NavigationState | undefined): string[] =>
     state !== undefined && isStackState(state) ? state.preloadedRoutes.map((route) => route.key) : [];
 
-const expectRouteNames = (onStateChange: StateSpy, names: string[]): void => {
-    expect(getRouteNames(onStateChange.mock.lastCall?.[0])).toEqual(names);
+const expectRouteNames = (stateLog: StateLog, names: string[]): void => {
+    expect(getRouteNames(stateLog.states.at(-1))).toEqual(names);
 };
 
 const expectVisible = (text: string): void => {
@@ -347,9 +384,9 @@ const expectHidden = (text: string): void => {
 export {
     buildStack,
     clickButton,
-    createEventSpy,
-    createPreventSpy,
-    createStateSpy,
+    createEventLog,
+    createPreventLog,
+    createStateLog,
     CustomHeader,
     doubleClickButton,
     expectHidden,
@@ -368,5 +405,4 @@ export {
     renderStack,
     type RootParams,
     Stack,
-    type StackEvent,
 };

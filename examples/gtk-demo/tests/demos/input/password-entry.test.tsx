@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { fireEvent, queryController, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { passwordEntryDemo } from "../../../src/demos/input/password-entry.js";
 import { findWidget, renderDemo, type RenderDemoOptions } from "../../test-utils.js";
 
@@ -72,8 +72,12 @@ describe("passwordEntryDemo done button", () => {
     });
 
     it("invokes onClose when the Done button is activated with matching passwords", async () => {
-        const onClose = vi.fn();
-        await typePasswords("abc", "abc", { onClose });
+        let closeCount = 0;
+        await typePasswords("abc", "abc", {
+            onClose: () => {
+                closeCount += 1;
+            },
+        });
 
         const button = await waitFor(async () => {
             const candidate = await findDoneButton();
@@ -85,7 +89,7 @@ describe("passwordEntryDemo done button", () => {
         await userEvent.click(button);
 
         await waitFor(() => {
-            expect(onClose).toHaveBeenCalled();
+            expect(closeCount).toBe(1);
         });
     });
 });

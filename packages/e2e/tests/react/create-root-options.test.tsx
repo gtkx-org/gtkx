@@ -5,7 +5,7 @@ import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { createRoot, rootElement } from "@gtkx/react";
 import { act, waitFor } from "@gtkx/testing";
 import { Component, createRef, useId } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 type LabelProps = { labelRef: RefObject<Gtk.Label | null> };
 type BoundaryProps = LabelProps & { children: ReactNode };
@@ -167,10 +167,13 @@ describe("createRoot options", () => {
     });
 
     it("hands an error React recovered from to onRecoverableError", async () => {
-        const onRecoverableError = vi.fn();
+        let recoverableErrorCount = 0;
+        const onRecoverableError = (): void => {
+            recoverableErrorCount += 1;
+        };
 
         expect(await renderRecovering({ onRecoverableError })).toBe("recovered");
-        expect(onRecoverableError).toHaveBeenCalledTimes(1);
+        expect(recoverableErrorCount).toBe(1);
     });
 
     it("still commits the retried tree when no callbacks are given", async () => {
@@ -178,13 +181,16 @@ describe("createRoot options", () => {
     });
 
     it("hands an uncaught render error to onUncaughtError instead of rethrowing it", async () => {
-        const onUncaughtError = vi.fn();
+        let uncaughtErrorCount = 0;
+        const onUncaughtError = (): void => {
+            uncaughtErrorCount += 1;
+        };
         const root = openRoot({ onUncaughtError });
 
         root.render(<Exploding />);
 
         await waitFor(() => {
-            expect(onUncaughtError).toHaveBeenCalledTimes(1);
+            expect(uncaughtErrorCount).toBe(1);
         });
     });
 });

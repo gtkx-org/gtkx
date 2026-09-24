@@ -175,9 +175,11 @@ describe("t.field error paths", () => {
         const bound = t.field(t.int32, 0);
         const handle = alloc(4);
 
-        expect(() => {
-            bound.write(handle, "not a number");
-        }).toThrow();
+        for (const value of ["not a number", null, undefined]) {
+            expect(() => {
+                bound.write(handle, value);
+            }).toThrow();
+        }
     });
 
     it("refuses a value outside the field's range", () => {

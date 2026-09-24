@@ -53,6 +53,12 @@ type SignalMemberMetadataOptions = {
     lines: string[];
 };
 
+type SignalResultTypeOptions = {
+    shouldIncludeCallerAllocated: boolean;
+    isOptOut: boolean;
+    direction: "from-native" | "to-native";
+};
+
 type NamedMember = { name: string };
 
 const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
@@ -326,24 +332,40 @@ const appendSignalMemberMetadata = (options: SignalMemberMetadataOptions): void 
 };
 
 const renderSignalHandlerType = (context: ModuleContext, signal: GirCallable): string => {
-    const params = renderHandlerParameters(signal.parameters, (ref, nullable) => renderTsType(context, ref, nullable));
+    const params = renderHandlerParameters(
+        signal.parameters,
+        (ref, nullable) => renderTsType(context, ref, nullable),
+    );
 
-    return `(${params.join(", ")}) => ${renderResultType(context, signal, false, true)}`;
+    return `(${params.join(", ")}) => ${renderResultType(context, signal, {
+        shouldIncludeCallerAllocated: false,
+        isOptOut: true,
+        direction: "to-native",
+    })}`;
 };
 
 const renderResultType = (
     context: ModuleContext,
     signal: GirCallable,
-    shouldIncludeCallerAllocated: boolean,
-    isOptOut: boolean,
-): string =>
-    renderHandlerResultType({
+    options: SignalResultTypeOptions,
+): string => {
+    const { shouldIncludeCallerAllocated, isOptOut, direction } = options;
+
+    return renderHandlerResultType({
         library: context.library,
         signal,
-        renderType: (ref, nullable) => renderTsType(context, ref, nullable),
+        renderType: (ref, nullable, transfer) =>
+            direction === "to-native"
+                ? renderParameterTsType(context, ref, {
+                        isNullable: nullable,
+                        isValueWidened: false,
+                        canAcceptTypedArrayViews: transfer === "none",
+                    })
+                : renderTsType(context, ref, nullable),
         shouldIncludeCallerAllocated,
         isOptOut,
     });
+};
 
 const renderSignalEmitEntry = (context: ModuleContext, signal: GirCallable): string | undefined => {
     if (!canEmitSignal(context.library, signal)) {
@@ -351,11 +373,18 @@ const renderSignalEmitEntry = (context: ModuleContext, signal: GirCallable): str
     }
     const args = renderHandlerParameters(
         signal.parameters,
-        (ref, nullable) => renderParameterTsType(context, ref, nullable),
+        (ref, nullable, transfer) => renderParameterTsType(context, ref, {
+            isNullable: nullable,
+            canAcceptTypedArrayViews: transfer === "none",
+        }),
         isCallerAllocatedOut,
     );
 
-    const result = renderResultType(context, signal, true, false);
+    const result = renderResultType(context, signal, {
+        shouldIncludeCallerAllocated: true,
+        isOptOut: false,
+        direction: "from-native",
+    });
 
     return `{ args: [${args.join(", ")}]; result: ${result} }`;
 };

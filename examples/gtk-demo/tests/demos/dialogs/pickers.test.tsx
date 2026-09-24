@@ -89,7 +89,6 @@ describe("pickersDemo file buttons", () => {
 describe("pickersDemo handlers", () => {
     it("opens a FileDialog when the select-file button is clicked and ignores a dismissal", async () => {
         const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open").mockRejectedValue(dismissedError());
-        const errorSpy = vi.spyOn(console, "error");
 
         try {
             const selectFile = await renderSelectFileButton();
@@ -98,16 +97,14 @@ describe("pickersDemo handlers", () => {
             await waitFor(() => {
                 expect(openSpy).toHaveBeenCalled();
             });
-
-            expect(errorSpy).not.toHaveBeenCalled();
+            expect(await screen.findByText("None")).toBeVisible();
+            expect(await screen.findByName("open-file-button")).toBeDisabled();
         } finally {
-            errorSpy.mockRestore();
             openSpy.mockRestore();
         }
     });
 
     it("launches the https://www.gtk.org URI when the 'www.gtk.org' button is clicked", async () => {
-        const newSpy = vi.spyOn(Gtk.UriLauncher, "new");
         const launchSpy = vi.spyOn(Gtk.UriLauncher.prototype, "launch").mockResolvedValue(true);
 
         try {
@@ -124,9 +121,9 @@ describe("pickersDemo handlers", () => {
                 expect(launchSpy).toHaveBeenCalled();
             });
 
-            expect(newSpy).toHaveBeenCalledWith("https://www.gtk.org");
+            const launcher = launchSpy.mock.contexts[0] as Gtk.UriLauncher | undefined;
+            expect(launcher?.getUri()).toBe("https://www.gtk.org");
         } finally {
-            newSpy.mockRestore();
             launchSpy.mockRestore();
         }
     });

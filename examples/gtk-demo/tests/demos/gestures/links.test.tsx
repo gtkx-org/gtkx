@@ -1,9 +1,8 @@
-import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { screen } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { describe, expect, it } from "vitest";
 import { linksDemo } from "../../../src/demos/gestures/links.js";
 import { renderDemo } from "../../test-utils.js";
 
@@ -32,29 +31,20 @@ describe("linksDemo", () => {
 });
 
 describe("linksDemo activate-link handler", () => {
-    it("returns true and presents the keynav alert dialog when the 'keynav' link is activated", async () => {
+    it("presents and closes the keynav alert dialog when the keynav link is activated", async () => {
         const label = await renderLinksLabel();
-        const choose = vi.spyOn(Adw.AlertDialog.prototype, "choose").mockResolvedValue("ok");
-        const setHeading = vi.spyOn(Adw.AlertDialog.prototype, "setHeading");
-        const setBody = vi.spyOn(Adw.AlertDialog.prototype, "setBody");
-
-        try {
-            const isHandled = label.emit("activate-link", "keynav");
-            expect(isHandled).toBe(true);
-            expect(choose).toHaveBeenCalledTimes(1);
-            expect(choose.mock.calls[0]?.[0]).toBe(await screen.findByRole(Gtk.AccessibleRole.WINDOW));
-            expect(setHeading).toHaveBeenCalledWith("Keyboard navigation");
-            expect(String(setBody.mock.calls[0]?.[0])).toContain("keyboard navigation");
-        } finally {
-            choose.mockRestore();
-            setHeading.mockRestore();
-            setBody.mockRestore();
-        }
+        expect(label.emit("activate-link", "keynav")).toBe(true);
+        const dialog = await screen.findByRole(Gtk.AccessibleRole.ALERT_DIALOG);
+        expect(within(dialog).getByText("Keyboard navigation")).toBeVisible();
+        expect(within(dialog).getByText(/using a program .* via keyboard input/)).toBeVisible();
+        await userEvent.click(within(dialog).getByRole(Gtk.AccessibleRole.BUTTON, { name: "OK" }));
+        await waitFor(() => {
+            expect(screen.queryByRole(Gtk.AccessibleRole.ALERT_DIALOG)).toBeNull();
+        });
     });
 
     it("defers to default handling for a non-keynav link without presenting an alert dialog", async () => {
         const label = await renderLinksLabel();
-        const choose = vi.spyOn(Adw.AlertDialog.prototype, "choose").mockResolvedValue("ok");
         let isReachedDefault = false;
 
         const stop = label.connect("activate-link", () => {
@@ -63,13 +53,9 @@ describe("linksDemo activate-link handler", () => {
             return Gdk.EVENT_STOP;
         });
 
-        try {
-            label.emit("activate-link", "https://www.flathub.org/");
-            expect(isReachedDefault).toBe(true);
-            expect(choose).not.toHaveBeenCalled();
-        } finally {
-            label.disconnect(stop);
-            choose.mockRestore();
-        }
+        label.emit("activate-link", "https://www.flathub.org/");
+        expect(isReachedDefault).toBe(true);
+        expect(screen.queryByRole(Gtk.AccessibleRole.ALERT_DIALOG)).toBeNull();
+        label.disconnect(stop);
     });
 });

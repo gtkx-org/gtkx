@@ -4,7 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { NavigationContainer, useNavigation } from "@gtkx/navigation";
 import { act, render, screen, userEvent } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
     Drawer,
     drawerScreens,
@@ -14,6 +14,7 @@ import {
     querySidebarLabel,
     SETTINGS,
     splitView,
+    type StateHistory,
     toggleButton,
 } from "./helpers/drawer-fixtures.js";
 
@@ -63,18 +64,22 @@ const renderDrawer = async (isCollapsed: boolean, onUnhandledAction?: () => void
 
 describe("drawer - going back", () => {
     it("leaves a closed sidebar closed when a screen goes back", async () => {
-        const onUnhandledAction = vi.fn();
-        await renderDrawer(false, onUnhandledAction);
+        let unhandledActions = 0;
+        await renderDrawer(false, () => {
+            unhandledActions += 1;
+        });
         await userEvent.click(toggleButton());
         expect(querySidebarLabel("Settings")).toBeNull();
         await clickButton("Go back");
         expect(querySidebarLabel("Settings")).toBeNull();
-        expect(onUnhandledAction).toHaveBeenCalledTimes(1);
+        expect(unhandledActions).toBe(1);
     });
 
     it("goes back through the screen history while the sidebar is closed", async () => {
-        const onUnhandledAction = vi.fn();
-        await renderDrawer(false, onUnhandledAction);
+        let unhandledActions = 0;
+        await renderDrawer(false, () => {
+            unhandledActions += 1;
+        });
         await clickButton("Go to settings");
         await screen.findByText("Settings Content");
         await userEvent.click(toggleButton());
@@ -82,7 +87,7 @@ describe("drawer - going back", () => {
         await clickButton("Go back");
         await screen.findByText("Inbox Content");
         expect(querySidebarLabel("Settings")).toBeNull();
-        expect(onUnhandledAction).not.toHaveBeenCalled();
+        expect(unhandledActions).toBe(0);
     });
 
     it("closes an overlaid sidebar when a screen goes back", async () => {
@@ -111,10 +116,14 @@ describe("drawer - collapsing", () => {
 
 describe("drawer - sidebar sync", () => {
     it("follows the split view when the sidebar is dismissed outside navigation", async () => {
-        const onStateChange = vi.fn();
+        const states: StateHistory = [];
 
         await render(
-            <NavigationContainer onStateChange={onStateChange}>
+            <NavigationContainer
+                onStateChange={(state) => {
+                    states.push(state);
+                }}
+            >
                 <Drawer.Navigator collapsed>{drawerScreens([INBOX, SETTINGS])}</Drawer.Navigator>
             </NavigationContainer>,
         );
@@ -126,13 +135,13 @@ describe("drawer - sidebar sync", () => {
             view.setShowSidebar(true);
         });
 
-        expect(getDrawerStatus(lastState(onStateChange))).toBe("open");
+        expect(getDrawerStatus(lastState(states))).toBe("open");
 
         await act(() => {
             view.setShowSidebar(false);
         });
 
-        expect(getDrawerStatus(lastState(onStateChange))).toBe("closed");
+        expect(getDrawerStatus(lastState(states))).toBe("closed");
     });
 
     it("follows the latest consecutive drawer action before rendering", async () => {

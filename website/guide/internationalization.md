@@ -46,7 +46,7 @@ const label = t("{{count}} file", {
 });
 ```
 
-Gettext chooses the translated form using the catalog's plural rule. Counts must be non-negative safe integers. GTKX extraction requires both source forms and rejects i18next options that cannot be represented by this gettext entry, such as ordinal plurals and zero-specific defaults.
+Gettext chooses the translated form using the catalog's plural rule. Counts must be non-negative; numeric counts must be safe integers. GTKX extraction requires both source forms and rejects i18next options that cannot be represented by this gettext entry, such as ordinal plurals and zero-specific defaults.
 
 Use `context` when the same source text has different meanings:
 
@@ -75,11 +75,9 @@ See [react-i18next's documentation](https://react.i18next.com/latest/usetranslat
 
 ## Keep messages extractable
 
-Use ESM and the original names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`. Direct calls and explicit `i18nKey` props need string-literal keys. Source defaults and contexts must also be statically known. A `Trans` component can derive its source from static children when `i18nKey` is omitted.
+Keep message keys, defaults, contexts, and `Trans` children static so GTKX can extract them at build time. GTKX follows ESM imports and aliases from `@gtkx/i18n` and `i18next`. Dynamic keys and tagged templates cannot be extracted.
 
-GTKX rejects aliases, member calls such as `i18n.t(...)`, and dynamic keys during extraction. CommonJS, tagged templates, and ICU MessageFormat are not extraction forms. These restrictions keep the catalog aligned with the calls that reach gettext.
-
-Generated declarations under `node_modules/.gtkx` extend the upstream translation types. They check message keys and their required interpolation, count, and context options. Run codegen after adding messages; do not edit the declarations.
+Generated declarations under `node_modules/.gtkx` let TypeScript check message keys and their required interpolation, count, and context options. Run codegen after adding messages; do not edit the declarations.
 
 ## Develop and build
 
@@ -93,7 +91,7 @@ Select the process locale before launch:
 LANG=fr_FR.UTF-8 LANGUAGE=fr gtkx dev
 ```
 
-Gettext translations follow the startup environment. Intl-based formatting uses the process's default locale. Changing i18next's language does not change libc's active gettext locale; restart the process to change the application's translation language.
+Gettext translations follow the startup environment. Changing i18next's language does not change libc's active gettext locale; restart the process to change the application's translation language.
 
 ## Translate package metadata
 

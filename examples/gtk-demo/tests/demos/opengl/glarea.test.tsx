@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, waitFor } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { screen, screenshot, userEvent, waitFor } from "@gtkx/testing";
+import { describe, expect, it } from "vitest";
 import { glareaDemo } from "../../../src/demos/opengl/glarea.js";
 import { renderDemo } from "../../test-utils.js";
 
@@ -34,10 +34,10 @@ describe("glareaDemo", () => {
 });
 
 describe("glareaDemo interaction", () => {
-    it("queues a re-render of the GL area when each axis slider's value changes", async () => {
+    it("updates the rendered frame when the axis sliders change", async () => {
         await renderDemo(glareaDemo);
         const glArea = await screen.findByName("gl-area", { as: Gtk.GLArea });
-        const queueRenderSpy = vi.spyOn(glArea, "queueRender");
+        const before = await screenshot(glArea);
         const scales = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
 
         for (const scale of scales) {
@@ -49,8 +49,8 @@ describe("glareaDemo interaction", () => {
             });
         }
 
-        expect(queueRenderSpy).toHaveBeenCalledTimes(3);
-        queueRenderSpy.mockRestore();
+        const after = await screenshot(glArea);
+        expect(after.data).not.toBe(before.data);
     });
 
     it("destroys the host window when the Quit button is clicked", async () => {

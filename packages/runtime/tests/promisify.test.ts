@@ -1,94 +1,33 @@
-import type { ExternalObject, Handle } from "@gtkx/native";
 import * as GdkPixbuf from "@gtkx/gi/gdkpixbuf";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
-import * as Gtk from "@gtkx/gi/gtk";
-import { getHandle, promisify, setHandle, trimFinish } from "@gtkx/runtime";
-import { assert, describe, expect, it } from "vitest";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, assert, describe, expect, it } from "vitest";
 
-const handle = (id: number): ExternalObject<Handle> => {
-    const token: object = { id };
+const directory = mkdtempSync(join(tmpdir(), "gtkx-promisify-"));
 
-    return token as ExternalObject<Handle>;
-};
-
-const gobjectHandle = (): ExternalObject<Handle> => getHandle(new Gtk.Label({ label: "" }));
-
-const invokeCallback = (...args: unknown[]): void => {
-    (args.at(-1) as (source: ExternalObject<Handle>, result: ExternalObject<Handle>) => void)(
-        handle(1),
-        gobjectHandle(),
-    );
-};
-
-const throwOnFinish = (failure: Error) => (): never => {
-    throw failure;
-};
-
-describe("promisify", () => {
-    it("forwards leading args, the resolved cancellable and the callback to the async fn", async () => {
-        const calls: unknown[][] = [];
-
-        const asyncFn = (...args: unknown[]): void => {
-            calls.push(args);
-            invokeCallback(...args);
-        };
-
-        const cancellable = {};
-        const cancellableHandle = handle(99);
-        setHandle(cancellable, cancellableHandle);
-        const value = await promisify(asyncFn, () => "done", cancellable, "a", "b");
-        expect(value).toBe("done");
-        const args = calls[0] ?? [];
-        expect(args.slice(0, 3)).toEqual(["a", "b", cancellableHandle]);
-        expect(typeof args[3]).toBe("function");
-    });
-
-    it("forwards the already-wrapped GAsyncResult straight to the finish callable", async () => {
-        const asyncResult = new Gtk.Label({ label: "" });
-
-        const asyncFn = (...args: unknown[]): void => {
-            (args.at(-1) as (source: object | null, result: object) => void)(null, asyncResult);
-        };
-
-        const resolvedHandle = await promisify(asyncFn, (result: object) => getHandle(result), undefined);
-        expect(resolvedHandle).toBe(getHandle(asyncResult));
-    });
-
-    it("rejects with the error thrown by the finish callable", () => {
-        const failure = new Error("boom");
-
-        return expect(promisify(invokeCallback, throwOnFinish(failure), undefined)).rejects.toBe(failure);
-    });
-});
-
-describe("trimFinish", () => {
-    it("hands a single remaining value back bare", () => {
-        const finish = trimFinish((result: { value: string }): [boolean, string] => [true, result.value]);
-        expect(finish({ value: "done" })).toBe("done");
-    });
-
-    it("keeps several remaining values a tuple", () => {
-        const finish = trimFinish((): [boolean, string, number] => [true, "done", 3]);
-        expect(finish({})).toEqual(["done", 3]);
-    });
-
-    it("rejects a boolean-only finish at the type level", () => {
-        // @ts-expect-error a finish result must carry a value beyond the success boolean
-        const finish = trimFinish((): [boolean] => [true]);
-        expect(finish).toBeTypeOf("function");
-    });
-
-    it("throws when the wrapped finish throws", () => {
-        const finish = trimFinish((): [boolean, string] => {
-            throw new Error("boom");
-        });
-
-        expect(() => finish({})).toThrow();
-    });
+afterAll(() => {
+    rmSync(directory, { force: true, recursive: true });
 });
 
 describe("generated promisified bindings", () => {
+    it.each([
+        { name: "content", contents: "hello" },
+        { name: "empty", contents: "" },
+    ])("returns the public load result for a $name file", async ({ name, contents }) => {
+        const path = join(directory, name);
+        writeFileSync(path, contents);
+        const [bytes] = await Gio.File.newForPath(path).loadContentsAsync(null);
+
+        expect(new TextDecoder().decode(bytes)).toBe(contents);
+    });
+
+    it("rejects when the native asynchronous operation fails", async () => {
+        await expect(Gio.File.newForPath(join(directory, "missing")).loadContentsAsync(null)).rejects.toThrow();
+    });
+
     it("resolves an instance async method against its annotated static finish", async () => {
         const pixbuf = GdkPixbuf.Pixbuf.new(GdkPixbuf.Colorspace.RGB, false, 8, 2, 2);
         assert(pixbuf);

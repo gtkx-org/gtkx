@@ -68,7 +68,7 @@ Use the `wrapper` option for context providers. `rerender` updates the rendered 
 
 Prefer `screen.getByRole` with a `Gtk.AccessibleRole` enum and an accessible name. `screen` searches open toplevel windows, including dialogs and popovers. Use `within(container)` to restrict a query to a subtree.
 
-`getBy*` requires one match, `queryBy*` returns `null` when none exists, and `findBy*` waits for a match. Use `findBy*` when an asynchronous operation changes the UI. The `*AllBy*` variants return multiple matches. Other query families match label text, placeholders, display values, or the widget's `name` prop; see the [query reference](/reference/@gtkx/testing/).
+GTKX follows [Testing Library's query conventions](https://testing-library.com/docs/queries/about/). Other query families match label text, placeholders, display values, or the widget's `name` prop; see the [query reference](/reference/@gtkx/testing/).
 
 Queries exclude widgets that are not mapped, including content on inactive stack pages. The `hidden` option on role queries only includes widgets excluded from the accessibility tree; it does not include unmapped widgets.
 
@@ -87,7 +87,7 @@ await user.click(saveButton);
 
 Use `slide(range, value)` for a slider. `drag` drives authored drag gestures and cannot drive a range's native slider. The [interaction reference](/reference/@gtkx/testing/) covers the available helpers.
 
-`fireEvent(object, signalName, ...args)` emits a GObject signal directly. Use it when testing a signal handler or a tree without a visible window. Wrap state changes made outside these helpers in `act`.
+`fireEvent(object, signalName, ...args)` emits a GObject signal directly. It returns a promise, so await it. Use it when testing a signal handler or a tree without a visible window. Wrap state changes made outside these helpers in `act`.
 
 For asynchronous assertions, use `waitFor`; for a widget leaving the tree, use `waitForElementToBeRemoved`. Their timeout defaults to one second and can be changed per call or through `configure`.
 
@@ -97,7 +97,7 @@ Use widget matchers such as `toHaveTextContent`, `toHaveAccessibleName`, `toBeCh
 
 `screen.debug()` prints the widget tree, and `screen.logRoles()` groups widgets by accessible role. Capture the active window with `await screen.screenshot({ path: "test.png" })`, or pass a widget to `screenshot` to capture a subtree. The [MCP server](/guide/mcp) provides the same inspection tools during development.
 
-GLib criticals and addon panics fail the running test as uncaught exceptions. Warnings alone do not fail tests. See [Error Handling](/guide/error-handling#failures-nothing-can-throw) for the failure channels.
+GLib criticals and addon panics fail the running test as uncaught exceptions. Warnings alone do not fail tests. See [Error Handling](/guide/error-handling#fatal-errors) for the failure channels.
 
 ## Next
 

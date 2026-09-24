@@ -1,7 +1,7 @@
 import type { ListItem } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { userEvent, waitFor } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { TreeName } from "./helpers/trees.js";
 import { expanderNamed } from "./helpers/expanders.js";
 import { renderListView, renderStatefulListView } from "./helpers/list-fixtures.js";
@@ -34,7 +34,10 @@ describe("ListView tree identity", () => {
     });
 
     it("tells apart id sets that join to the same spelling", async () => {
-        const onSelectionChanged = vi.fn();
+        let selectedIds: string[] = [];
+        const onSelectionChanged = (ids: string[]): void => {
+            selectedIds = ids;
+        };
         const items = [named("a b", "AB"), named("a", "A"), named("b", "B")];
 
         const { rerender } = await renderListView<TreeName>(items, {
@@ -44,19 +47,22 @@ describe("ListView tree identity", () => {
         });
 
         await waitFor(() => {
-            expect(onSelectionChanged).toHaveBeenLastCalledWith(["a", "b"]);
+            expect(selectedIds).toEqual(["a", "b"]);
         });
 
         await rerender(items, { selected: ["a b"] });
 
         await waitFor(() => {
-            expect(onSelectionChanged).toHaveBeenLastCalledWith(["a b"]);
+            expect(selectedIds).toEqual(["a b"]);
         });
     });
 });
 describe("ListView tree selection while rows shift", () => {
     it("keeps reporting the selected id after a controlled expansion moves it down", async () => {
-        const onSelectionChanged = vi.fn();
+        let selectedIds: string[] = [];
+        const onSelectionChanged = (ids: string[]): void => {
+            selectedIds = ids;
+        };
         const items = shiftingTree();
 
         const options = {
@@ -80,11 +86,14 @@ describe("ListView tree selection while rows shift", () => {
             expect(model.isSelected(1)).toBe(false);
         });
 
-        expect(onSelectionChanged).toHaveBeenLastCalledWith(["y"]);
+        expect(selectedIds).toEqual(["y"]);
     });
 
     it("keeps reporting the selected id after the widget expands a branch on its own", async () => {
-        const onSelectionChanged = vi.fn();
+        let selectedIds: string[] = [];
+        const onSelectionChanged = (ids: string[]): void => {
+            selectedIds = ids;
+        };
         const items = shiftingTree();
 
         const { ref } = await renderStatefulListView<TreeName>(items, {
@@ -105,6 +114,6 @@ describe("ListView tree selection while rows shift", () => {
             expect(getSelectionModel(ref).isSelected(2)).toBe(true);
         });
 
-        expect(onSelectionChanged).toHaveBeenLastCalledWith(["y"]);
+        expect(selectedIds).toEqual(["y"]);
     });
 });

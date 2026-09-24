@@ -4,7 +4,7 @@ import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, render, userEvent, waitFor } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { TreeName } from "./helpers/trees.js";
 import { expanderCount, expanderNamed, listRowByName } from "./helpers/expanders.js";
 import { renderListView, renderStatefulListView } from "./helpers/list-fixtures.js";
@@ -106,13 +106,16 @@ describe("ListView tree expansion", () => {
     });
 
     it("expands and collapses the row whose expander the user clicks and reports it", async () => {
-        const onExpandedChange = vi.fn();
+        let expandedIds: string[] = [];
+        const onExpandedChange = (ids: string[]): void => {
+            expandedIds = ids;
+        };
         const { ref } = await renderStatefulListView<TreeName>(parentWithChildren, { onExpandedChange });
         await userEvent.click(expanderNamed("Parent"));
         await expectRowTexts(ref, ["Parent", "Child 1", "Child 2"]);
 
         await waitFor(() => {
-            expect(onExpandedChange).toHaveBeenCalledWith(["parent"]);
+            expect(expandedIds).toEqual(["parent"]);
         });
 
         await userEvent.click(expanderNamed("Parent"));

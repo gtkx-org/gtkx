@@ -1,6 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { fireEvent, screen, userEvent, within } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { screen, screenshot, userEvent, within } from "@gtkx/testing";
+import { describe, expect, it } from "vitest";
 import { drawingAreaDemo } from "../../../src/demos/drawing/drawingarea.js";
 import { renderDemo } from "../../test-utils.js";
 
@@ -63,15 +63,12 @@ describe("drawingAreaDemo rendering", () => {
 });
 
 describe("drawingAreaDemo gestures", () => {
-    it(
-        "paints the brush once per drag phase (begin, update, end) after the scribble surface is initialised",
-        async () => {
-            await renderDemo(drawingAreaDemo);
-            const scribble = await screen.findByName("scribble-area", { as: Gtk.DrawingArea });
-            await fireEvent(scribble, "resize", 100, 100);
-            const queueDraw = vi.spyOn(scribble, "queueDraw");
-            await userEvent.drag(scribble, 5, 5, { startX: 10, startY: 10, steps: 1 });
-            expect(queueDraw).toHaveBeenCalledTimes(3);
-        },
-    );
+    it("paints a visible brush stroke when the user drags across the scribble area", async () => {
+        await renderDemo(drawingAreaDemo);
+        const scribble = await screen.findByName("scribble-area", { as: Gtk.DrawingArea });
+        const before = await screenshot(scribble);
+        await userEvent.drag(scribble, 5, 5, { startX: 10, startY: 10, steps: 1 });
+        const after = await screenshot(scribble);
+        expect(after.data).not.toBe(before.data);
+    });
 });

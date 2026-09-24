@@ -1,14 +1,16 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { t } from "@gtkx/i18n";
 import { AdwAboutDialog } from "@gtkx/jsx/adw";
+import { applicationId } from "virtual:gtkx-config";
+import packageManifest from "../../package.json" with { type: "json" };
 
-export const About = ({ onClose }: { onClose: () => void }) => {
+const About = ({ onClose }: { onClose: () => void }) => {
     return (
         <AdwAboutDialog
             onClosed={onClose}
             applicationName={t("Tasks")}
-            applicationIcon="com.gtkx.tutorial"
-            version="1.0.0"
+            applicationIcon={applicationId}
+            version={packageManifest.version}
             developerName="GTKX"
             website="https://gtkx.dev"
             issueUrl="https://github.com/gtkx-org/gtkx/issues"
@@ -18,4 +20,8 @@ export const About = ({ onClose }: { onClose: () => void }) => {
             comments={t("A GNOME task manager built with GTKX to showcase React and Adwaita.")}
         />
     );
+};
+
+export {
+    About,
 };

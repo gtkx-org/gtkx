@@ -46,10 +46,8 @@ describe.each(bigIntegers)("$name 64-bit hash table values", ({ descriptor, valu
         expect(source.size).toBe(0);
     });
 
-    it("preserves zero normalization for empty scalar seeds", () => {
-        expect(roundtrip(new Map([["null", null], ["undefined", undefined]]))).toEqual(
-            new Map([["null", 0n], ["undefined", 0n]]),
-        );
+    it.each([null, undefined])("rejects %s scalar entries", (value) => {
+        expect(() => roundtrip(new Map([["invalid", value]]))).toThrow();
     });
 
     it("rejects invalid scalar entries and preserves the input", () => {

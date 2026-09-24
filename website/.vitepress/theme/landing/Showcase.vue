@@ -7,8 +7,8 @@ import Icon from "../components/Icon.vue";
     <div class="show__head section-head">
       <h2 class="show__title section-title">A comprehensive tutorial</h2>
       <p class="section-sub">
-        The docs walk you through creating Tasks, a complete GNOME app: adaptive split view, GSettings,
-        notifications, and shipped as a Flatpak.
+        The docs walk you through creating Tasks, a complete GNOME app with an adaptive split view, GSettings,
+        notifications, and Flatpak packaging.
       </p>
     </div>
     <a class="show__frame" href="/tutorial/">

@@ -1,7 +1,7 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { errorstatesDemo } from "../../../src/demos/css/errorstates.js";
 import { renderDemo } from "../../test-utils.js";
 
@@ -108,11 +108,15 @@ describe("errorstatesDemo switch and scale", () => {
 
 describe("errorstatesDemo dialog lifecycle", () => {
     it("fires the onClose callback when the dialog is closed", async () => {
-        const onClose = vi.fn();
-        await renderDemo(errorstatesDemo, { onClose });
+        let closeCount = 0;
+        await renderDemo(errorstatesDemo, {
+            onClose: () => {
+                closeCount += 1;
+            },
+        });
         const dialog = await screen.findByRole(Gtk.AccessibleRole.DIALOG, { as: Adw.Dialog });
-        expect(onClose).not.toHaveBeenCalled();
+        expect(closeCount).toBe(0);
         dialog.close();
-        expect(onClose).toHaveBeenCalledTimes(1);
+        expect(closeCount).toBe(1);
     });
 });

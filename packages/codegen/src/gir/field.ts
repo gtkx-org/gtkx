@@ -1,7 +1,7 @@
 import type { ParseContext, TypeId } from "./type-id.js";
 import { documentedFromNode, type GirAnnotations } from "./annotations.js";
-import { attr, getChild, getOrderedChildren, intAttr, isAttrTrue, type RawNode } from "./parse.js";
-import { typeRefFromNode } from "./type-ref.js";
+import { getOrderedChildren, intAttr, isAttrTrue, type RawNode } from "./parse.js";
+import { typeCTypeFromNode, typeRefFromNode } from "./type-ref.js";
 
 type GirField = {
     name: string;
@@ -21,7 +21,7 @@ type GirField = {
 const fieldFromNode = (node: RawNode, context: ParseContext): GirField => ({
     ...documentedFromNode(node),
     type: typeRefFromNode(node, context),
-    cType: attr(getChild(node, "type"), "c:type"),
+    cType: typeCTypeFromNode(node),
     readable: isAttrTrue(node, "readable", true),
     writable: isAttrTrue(node, "writable", false),
     private: isAttrTrue(node, "private", false),

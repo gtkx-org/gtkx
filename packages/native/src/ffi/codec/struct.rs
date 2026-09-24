@@ -200,7 +200,7 @@ impl StructCodec {
             bail!("Struct field write into null pointer slot")
         }
         unsafe {
-            std::ptr::copy_nonoverlapping(src_ptr.cast::<u8>(), dest_ptr.cast::<u8>(), size);
+            std::ptr::copy(src_ptr.cast::<u8>(), dest_ptr.cast::<u8>(), size);
         }
         Ok(None)
     }

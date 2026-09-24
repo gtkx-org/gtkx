@@ -22,7 +22,7 @@ import {
     type WrapperComponent,
 } from "@gtkx/testing";
 import { Component, createContext, createRef, useContext, useEffect, useLayoutEffect, useState } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { withHostWindow, withStolenActivation } from "./widget-fixtures.js";
 
 const NON_UNIQUE = Gio.ApplicationFlags.NON_UNIQUE;
@@ -209,10 +209,12 @@ describe("render", () => {
         await render(<Strict />, { isReactStrictMode: true });
         expect(renders.plain).toBe(1);
         expect(renders.strict).toBeGreaterThan(1);
-        const onRecoverableError = vi.fn();
+        let recoverableErrors = 0;
 
         const { getFirstButton } = await render(<GtkButton label="Custom" />, {
-            onRecoverableError,
+            onRecoverableError: () => {
+                recoverableErrors += 1;
+            },
             queries: {
                 getFirstButton: (container: Container): Gtk.Widget | null =>
                     queryAllByRole(container, Gtk.AccessibleRole.BUTTON)[0] ?? null,
@@ -220,23 +222,27 @@ describe("render", () => {
         });
 
         expect(getFirstButton()).toHaveTextContent("Custom");
-        expect(onRecoverableError).not.toHaveBeenCalled();
+        expect(recoverableErrors).toBe(0);
     });
 
     it("throws when the tree throws, reporting it to onCaughtError", async () => {
-        const onCaughtError = vi.fn<(error: unknown, errorInfo: CaughtErrorInfo) => void>();
+        const caughtErrors: CaughtErrorInfo[] = [];
 
         await expect(
             render(
                 <ErrorBoundary>
                     <Thrower />
                 </ErrorBoundary>,
-                { onCaughtError },
+                {
+                    onCaughtError: (_error, errorInfo) => {
+                        caughtErrors.push(errorInfo);
+                    },
+                },
             ),
         ).rejects.toThrow();
 
-        expect(onCaughtError).toHaveBeenCalled();
-        expect(onCaughtError.mock.calls[0]?.[1].errorBoundary).toBeInstanceOf(ErrorBoundary);
+        expect(caughtErrors).toHaveLength(1);
+        expect(caughtErrors[0]?.errorBoundary).toBeInstanceOf(ErrorBoundary);
     });
 });
 

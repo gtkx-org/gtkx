@@ -2,20 +2,18 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
-import nodeEditorSvgPath from "../../../data/demos/drawing/org.gtk.gtk4.NodeEditor.Devel.svg?resource";
+import animatedGpaPath from "../../../data/demos/drawing/animated.gpa?resource";
 import { paintableSvgDemo } from "../../../src/demos/drawing/paintable-svg.js";
 import { findButton, renderDemo } from "../../test-utils.js";
 
-type PictureState = { picture: Gtk.Picture; initial: ReturnType<Gtk.Picture["getPaintable"]> };
-
-const renderAndFindPicture = async (): Promise<Gtk.Picture> => {
-    await renderDemo(paintableSvgDemo);
+const renderAndFindPicture = async (isReactStrictMode = false): Promise<Gtk.Picture> => {
+    await renderDemo(paintableSvgDemo, { isReactStrictMode });
 
     return screen.findByName("picture", { as: Gtk.Picture });
 };
 
-const renderAndFindSvgPicture = async (): Promise<{ picture: Gtk.Picture; svg: Gtk.Svg }> => {
-    const picture = await renderAndFindPicture();
+const renderAndFindSvgPicture = async (isReactStrictMode = false): Promise<{ picture: Gtk.Picture; svg: Gtk.Svg }> => {
+    const picture = await renderAndFindPicture(isReactStrictMode);
 
     await waitFor(() => {
         expect(picture.getPaintable()).toBeInstanceOf(Gtk.Svg);
@@ -24,13 +22,12 @@ const renderAndFindSvgPicture = async (): Promise<{ picture: Gtk.Picture; svg: G
     return { picture, svg: picture.getPaintable() as Gtk.Svg };
 };
 
-const openPictureFileDialog = async (): Promise<PictureState> => {
-    const { picture } = await renderAndFindSvgPicture();
-    const initial = picture.getPaintable();
+const openPictureFileDialog = async (isReactStrictMode = false): Promise<Gtk.Picture> => {
+    const { picture } = await renderAndFindSvgPicture(isReactStrictMode);
     const openButton = await findButton("Open");
     await userEvent.click(openButton);
 
-    return { picture, initial };
+    return picture;
 };
 
 describe("paintableSvgDemo rendering", () => {
@@ -42,8 +39,7 @@ describe("paintableSvgDemo rendering", () => {
     });
 
     it("renders a GtkPicture displaying the SVG paintable", async () => {
-        const { picture, svg } = await renderAndFindSvgPicture();
-        expect(picture).toHaveObjectProperty("paintable", svg);
+        const { picture } = await renderAndFindSvgPicture();
         expect(picture).toBeRooted();
     });
 
@@ -56,8 +52,7 @@ describe("paintableSvgDemo rendering", () => {
     });
 
     it("loads the bundled SVG and attaches it to the picture", async () => {
-        const { picture, svg } = await renderAndFindSvgPicture();
-        expect(picture).toHaveObjectProperty("paintable", svg);
+        const { svg } = await renderAndFindSvgPicture();
         expect(svg.getIntrinsicWidth()).toBe(128);
         expect(svg.getIntrinsicHeight()).toBe(128);
     });
@@ -65,40 +60,35 @@ describe("paintableSvgDemo rendering", () => {
 
 describe("paintableSvgDemo open dialog", () => {
     it("invokes the file picker and replaces the picture's paintable when a new file is chosen", async () => {
-        const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
-        openSpy.mockResolvedValue(Gio.File.newForUri(`resource://${nodeEditorSvgPath}`));
+        const openSpy = vi
+            .spyOn(Gtk.FileDialog.prototype, "open")
+            .mockImplementation((_window, cancellable) =>
+                cancellable?.isCancelled() === false
+                    ? Promise.resolve(Gio.File.newForUri(`resource://${animatedGpaPath}`))
+                    : Promise.reject(new Error("cancelled")));
 
         try {
-            const { picture, initial } = await openPictureFileDialog();
+            const picture = await openPictureFileDialog(true);
 
             await waitFor(() => {
-                expect(openSpy).toHaveBeenCalled();
-            });
-
-            await waitFor(() => {
-                expect(picture).not.toHaveObjectProperty("paintable", initial);
+                expect(picture.getPaintable()?.getIntrinsicWidth()).toBe(64);
+                expect(picture.getPaintable()?.getIntrinsicHeight()).toBe(64);
             });
         } finally {
             openSpy.mockRestore();
         }
     });
 
-    it("logs an error and leaves the picture unchanged when the file picker is dismissed", async () => {
-        const errorSpy = vi.spyOn(console, "error").mockImplementation((): void => undefined);
+    it("leaves the picture unchanged when the file picker is dismissed", async () => {
         const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
         openSpy.mockRejectedValue(new Error("dismissed"));
 
         try {
-            const { picture, initial } = await openPictureFileDialog();
-
-            await waitFor(() => {
-                expect(errorSpy).toHaveBeenCalledWith("dismissed");
-            });
-
-            expect(picture).toHaveObjectProperty("paintable", initial);
+            const picture = await openPictureFileDialog();
+            expect(picture.getPaintable()?.getIntrinsicWidth()).toBe(128);
+            expect(picture.getPaintable()?.getIntrinsicHeight()).toBe(128);
         } finally {
             openSpy.mockRestore();
-            errorSpy.mockRestore();
         }
     });
 });

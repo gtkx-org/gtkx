@@ -5,7 +5,7 @@ const features = [
     {
         icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",
         title: "GNOME in JSX",
-        body: "libadwaita, GTK4, and every GObject-derived class are available through typed JSX. Compose the whole native object graph declaratively."
+        body: "GTKX generates typed JSX elements for supported GObject classes from libadwaita and GTK4. Compose native object graphs declaratively."
     },
     {
         icon: "M13 2 3 14h7l-1 8 10-12h-7z",
@@ -15,7 +15,7 @@ const features = [
     {
         icon: "M4 17l6-6-6-6M12 19h8",
         title: "Typed end to end",
-        body: "Every class, signal, enum and property is generated from GIRs and available to your IDE with full type information."
+        body: "Supported classes, signals, enums and properties are generated from GIRs and available to your IDE with full type information."
     },
     {
         icon: "M9 11l3 3 8-8M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
@@ -38,7 +38,7 @@ const features = [
 <template>
   <section id="features" class="features">
     <div class="features__grid">
-      <Card v-for="f in features" :key="f.title" interactive glow padding="1.6rem">
+      <Card v-for="f in features" :key="f.title">
         <span class="features__icon">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path :d="f.icon" />

@@ -6,7 +6,7 @@ import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { inputParameters, parameterIdentifier } from "../../analysis/param-structure.js";
-import { renderTsType } from "../../analysis/ts-type.js";
+import { renderParameterTsType } from "../../analysis/ts-type.js";
 import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import { type Callables, staticMembers } from "./callables.js";
 import { getDoc } from "./doc-spec.js";
@@ -56,7 +56,7 @@ const renderRecordConstructorProp = (context: ModuleContext, entry: RecordFieldS
         return undefined;
     }
 
-    return `${getDoc(field)}${name}?: ${renderTsType(context, field.type, true)};`;
+    return `${getDoc(field)}${name}?: ${renderParameterTsType(context, field.type, { isValueWidened: false })};`;
 };
 
 const renderRecordConstructorPropsInterface = (

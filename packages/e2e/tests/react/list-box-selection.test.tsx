@@ -3,7 +3,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel, GtkListBox, GtkListBoxRow } from "@gtkx/jsx/gtk";
 import { act, render } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 type BoxProbeProps = {
     boxRef: RefObject<Gtk.ListBox | null>;
@@ -93,7 +93,10 @@ describe("list box selection", () => {
     });
 
     it("does not report its own write as a row the user selected", async () => {
-        const handleRowSelected = vi.fn();
+        let selectionCount = 0;
+        const handleRowSelected = (): void => {
+            selectionCount += 1;
+        };
 
         const { boxRef, rerender } = await renderProbe({
             count: 3,
@@ -101,27 +104,30 @@ describe("list box selection", () => {
             onRowSelected: handleRowSelected,
         });
 
-        handleRowSelected.mockClear();
+        selectionCount = 0;
 
         await rerender(
             <BoxProbe boxRef={boxRef} count={3} selectedIndex={2} onRowSelected={handleRowSelected} />,
         );
 
         expect(getSelectedIndex(boxRef.current)).toBe(2);
-        expect(handleRowSelected).not.toHaveBeenCalled();
+        expect(selectionCount).toBe(0);
     });
 
     it("does not report the row it puts back as a selection the user made", async () => {
-        const onRowSelected = vi.fn();
+        let selectionCount = 0;
+        const onRowSelected = (): void => {
+            selectionCount += 1;
+        };
         const { boxRef } = await renderProbe({ count: 3, selectedIndex: 1, onRowSelected });
         const box = boxRef.current as Gtk.ListBox;
-        onRowSelected.mockClear();
+        selectionCount = 0;
 
         await act(() => {
             box.selectRow(box.getRowAtIndex(2));
         });
 
         expect(getSelectedIndex(box)).toBe(1);
-        expect(onRowSelected).toHaveBeenCalledTimes(1);
+        expect(selectionCount).toBe(1);
     });
 });

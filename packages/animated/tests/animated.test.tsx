@@ -26,7 +26,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, expectTypeOf, it, vi } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 
 type OpacityProps = { labelRef: RefObject<Gtk.Label | null>; to: number; duration?: number };
 type SwitchProps = { labelRef: RefObject<Gtk.Label | null>; mode: "first" | "second" | "static" };
@@ -356,14 +356,17 @@ describe("animated - transforms and wrappers", () => {
 
 describe("animated - signal handlers", () => {
     it("does not echo animated writes through user-event handlers", async () => {
-        const onValueChanged = vi.fn();
+        let changeCount = 0;
+        const onValueChanged = (): void => {
+            changeCount += 1;
+        };
         await render(<Controlled onValueChanged={onValueChanged} />, ANIMATED);
 
         await waitFor(() => {
             expect(screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON)).toHaveValue(50);
         });
 
-        expect(onValueChanged).not.toHaveBeenCalled();
+        expect(changeCount).toBe(0);
     });
 });
 

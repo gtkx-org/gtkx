@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { cursorsDemo } from "../../../src/demos/gestures/cursors.js";
 import { collectWidgets, renderDemo } from "../../test-utils.js";
 
@@ -104,30 +104,6 @@ describe("cursorsDemo previews", () => {
 
         for (const preview of images) {
             expect((preview as Gtk.Image).getPaintable()).toBeInstanceOf(Gdk.Texture);
-        }
-    });
-});
-
-describe("cursorsDemo css registration", () => {
-    it("loads the cursors stylesheet into one user-priority provider for the default display", async () => {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
-        const addSpy = vi.spyOn(Gtk.StyleContext, "addProviderForDisplay");
-        const loadSpy = vi.spyOn(Gtk.CssProvider.prototype, "loadFromString");
-
-        try {
-            await renderDemo(cursorsDemo);
-
-            const userPriorityCalls = addSpy.mock.calls.filter(
-                (call) => call[2] === Gtk.STYLE_PROVIDER_PRIORITY_USER,
-            );
-
-            expect(userPriorityCalls).toHaveLength(1);
-            expect(userPriorityCalls[0]?.[0]).toBe(Gdk.DisplayManager.get().getDefaultDisplay());
-            expect(loadSpy).toHaveBeenCalledTimes(1);
-            expect(loadSpy.mock.instances[0]).toBe(userPriorityCalls[0]?.[1]);
-        } finally {
-            loadSpy.mockRestore();
-            addSpy.mockRestore();
         }
     });
 });

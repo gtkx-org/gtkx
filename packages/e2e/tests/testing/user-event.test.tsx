@@ -33,12 +33,15 @@ import {
 } from "@gtkx/jsx/gtk";
 import { type BoundQueries, queryAllControllers, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it, type Mock, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
+    callCounter,
+    type CallCounter,
     renderClickButton,
     renderDragAndDropPair,
     renderGesturedLabel,
     renderShortcutHost,
+    returningCallCounter,
     type ShortcutHostOptions,
 } from "./event-render-setup.js";
 import { bufferText } from "./text-buffer-helpers.js";
@@ -49,9 +52,12 @@ type KeyProbeOptions = {
     fieldPhase?: Gtk.PropagationPhase;
 };
 
+type KeyPressHandler = NonNullable<ComponentProps<typeof GtkEventControllerKey>["onKeyPressed"]>;
+type KeyPress = Parameters<KeyPressHandler>;
+
 type KeyProbe = {
-    handleAncestorPressed: Mock<() => boolean>;
-    handleFieldPressed: Mock<() => boolean>;
+    ancestorPresses: KeyPress[];
+    fieldPresses: KeyPress[];
 };
 
 type DropCapture<T> = {
@@ -214,23 +220,33 @@ const delegateKeyPressOrder = async (phase?: Gtk.PropagationPhase): Promise<stri
     return order;
 };
 
-const pressShortcutFromField = async (options: Omit<ShortcutHostOptions, "trigger">): Promise<Mock<() => boolean>> => {
-    const { findByName, onActivate } = await renderShortcutHost({
+const pressShortcutFromField = async (options: Omit<ShortcutHostOptions, "trigger">): Promise<CallCounter> => {
+    const { findByName, activations } = await renderShortcutHost({
         trigger: <GtkShortcutTrigger accelerator="F5" />,
         ...options,
     });
 
     await userEvent.keyboard(await findByName("field"), "{F5}");
 
-    return onActivate;
+    return activations;
 };
 
-const pressShortcutOverStoppingField = (phase: Gtk.PropagationPhase): Promise<Mock<() => boolean>> =>
+const pressShortcutOverStoppingField = (phase: Gtk.PropagationPhase): Promise<CallCounter> =>
     pressShortcutFromField({ phase, children: <GtkEntry name="field" controllers={stoppingKeyController} /> });
 
 const pressKeyOnProbe = async (input: string, options: KeyProbeOptions = {}): Promise<KeyProbe> => {
-    const handleAncestorPressed = vi.fn(() => options.ancestorResult ?? Gdk.EVENT_PROPAGATE);
-    const handleFieldPressed = vi.fn(() => Gdk.EVENT_PROPAGATE);
+    const ancestorPresses: KeyPress[] = [];
+    const fieldPresses: KeyPress[] = [];
+    const handleAncestorPressed: KeyPressHandler = (...args) => {
+        ancestorPresses.push(args);
+
+        return options.ancestorResult ?? Gdk.EVENT_PROPAGATE;
+    };
+    const handleFieldPressed: KeyPressHandler = (...args) => {
+        fieldPresses.push(args);
+
+        return Gdk.EVENT_PROPAGATE;
+    };
 
     const field = await renderKeyControllerTree(
         <GtkEventControllerKey propagationPhase={options.ancestorPhase} onKeyPressed={handleAncestorPressed} />,
@@ -239,7 +255,7 @@ const pressKeyOnProbe = async (input: string, options: KeyProbeOptions = {}): Pr
 
     await userEvent.keyboard(field, input);
 
-    return { handleAncestorPressed, handleFieldPressed };
+    return { ancestorPresses, fieldPresses };
 };
 
 const renderSelectedEntryPair = async (text: string): Promise<{ source: Gtk.Editable; dest: Gtk.Widget }> => {
@@ -333,11 +349,11 @@ const renderDragSelfCapture = async <T,>(read: (self: Gtk.GestureDrag) => T) => 
 
 describe("userEvent.click", () => {
     it("emits clicked and toggles the state of checkboxes, switches and toggle buttons", async () => {
-        const { handleClick, button } = await renderClickButton();
+        const { clicks, button } = await renderClickButton();
         await userEvent.click(button);
 
         await waitFor(() => {
-            expect(handleClick).toHaveBeenCalledTimes(1);
+            expect(clicks.count).toBe(1);
         });
 
         const { findByRole } = await renderScoped(
@@ -357,13 +373,13 @@ describe("userEvent.click", () => {
     });
 
     it("repeats the emission for a double and a triple click", async () => {
-        const handleClick = vi.fn();
-        await render(<GtkButton label="Repeat" onClicked={handleClick} />);
+        const clicks = callCounter();
+        await render(<GtkButton label="Repeat" onClicked={clicks.callback} />);
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Repeat" });
         await userEvent.dblClick(button);
-        expect(handleClick).toHaveBeenCalledTimes(2);
+        expect(clicks.count).toBe(2);
         await userEvent.tripleClick(button);
-        expect(handleClick).toHaveBeenCalledTimes(5);
+        expect(clicks.count).toBe(5);
     });
 
     it("selects a list row whose class defines activate", async () => {
@@ -386,8 +402,8 @@ describe("userEvent.click", () => {
     });
 
     it("delivers a pointer click on a row to a gesture authored on its list", async () => {
-        const handlePressed = vi.fn<(nPress: number, x: number, y: number) => void>();
-        const handleReleased = vi.fn();
+        const presses: [number, number, number][] = [];
+        const releases = callCounter();
         const activations: string[] = [];
 
         await render(
@@ -395,7 +411,14 @@ describe("userEvent.click", () => {
                 onRowActivated={(row) => {
                     activations.push(row.getName());
                 }}
-                controllers={<GtkGestureClick onPressed={handlePressed} onReleased={handleReleased} />}
+                controllers={(
+                    <GtkGestureClick
+                        onPressed={(nPress, x, y) => {
+                            presses.push([nPress, x, y]);
+                        }}
+                        onReleased={releases.callback}
+                    />
+                )}
             >
                 <GtkListBoxRow name="first">
                     <GtkLabel>First</GtkLabel>
@@ -409,9 +432,9 @@ describe("userEvent.click", () => {
         const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Second", as: Gtk.ListBoxRow });
         await userEvent.pointer(row, "click");
         expect(activations).toEqual(["second"]);
-        expect(handlePressed).toHaveBeenCalledTimes(1);
-        expect(handleReleased).toHaveBeenCalledTimes(1);
-        const [, x, y] = handlePressed.mock.calls[0] ?? [];
+        expect(presses).toHaveLength(1);
+        expect(releases.count).toBe(1);
+        const [, x, y] = presses[0] ?? [];
         const list = row.getParent();
 
         if (list === null) {
@@ -689,37 +712,61 @@ describe("userEvent.selectOptions", () => {
 
 describe("userEvent gestures", () => {
     it("emit rotate, zoom, swipe and long press on the widget's own gesture controllers", async () => {
-        const handleAngleChanged = vi.fn<(angle: number, delta: number) => void>();
-        const rotateGesture = <GtkGestureRotate onAngleChanged={handleAngleChanged} />;
+        const angleChanges: [number, number][] = [];
+        const rotateGesture = (
+            <GtkGestureRotate
+                onAngleChanged={(angle, delta) => {
+                    angleChanges.push([angle, delta]);
+                }}
+            />
+        );
         const rotated = await renderGesturedLabel("rotated", "Rotate me", rotateGesture);
         await userEvent.rotate(rotated, 1.25);
-        expect(handleAngleChanged).toHaveBeenLastCalledWith(1.25, 1.25, expect.anything());
+        expect(angleChanges.at(-1)).toEqual([1.25, 1.25]);
         await userEvent.rotate(rotated, 2, 0.5);
-        expect(handleAngleChanged).toHaveBeenLastCalledWith(2, 0.5, expect.anything());
-        const handleScaleChanged = vi.fn<(scale: number) => void>();
-        const zoomGesture = <GtkGestureZoom onScaleChanged={handleScaleChanged} />;
+        expect(angleChanges.at(-1)).toEqual([2, 0.5]);
+        const scaleChanges: number[] = [];
+        const zoomGesture = (
+            <GtkGestureZoom
+                onScaleChanged={(scale) => {
+                    scaleChanges.push(scale);
+                }}
+            />
+        );
         const zoomed = await renderGesturedLabel("zoomed", "Zoom me", zoomGesture);
         await userEvent.zoom(zoomed, 1.5);
-        expect(handleScaleChanged.mock.calls[0]?.[0]).toBe(1.5);
-        const handleSwipe = vi.fn<(vx: number, vy: number) => void>();
-        const swiped = await renderGesturedLabel("swiped", "Swipe me", <GtkGestureSwipe onSwipe={handleSwipe} />);
+        expect(scaleChanges).toEqual([1.5]);
+        const swipes: [number, number][] = [];
+        const swiped = await renderGesturedLabel(
+            "swiped",
+            "Swipe me",
+            <GtkGestureSwipe
+                onSwipe={(velocityX, velocityY) => {
+                    swipes.push([velocityX, velocityY]);
+                }}
+            />,
+        );
         await userEvent.swipe(swiped, 200, -100);
-        expect(handleSwipe.mock.calls[0]?.slice(0, 2)).toEqual([200, -100]);
+        expect(swipes).toEqual([[200, -100]]);
     });
 
     it("emit a long press at the given coordinates, defaulting to the origin", async () => {
-        const handlePressed = vi.fn<(x: number, y: number) => void>();
+        const presses: [number, number][] = [];
 
         const label = await renderGesturedLabel(
             "long-pressed",
             "Long press me",
-            <GtkGestureLongPress onPressed={handlePressed} />,
+            <GtkGestureLongPress
+                onPressed={(x, y) => {
+                    presses.push([x, y]);
+                }}
+            />,
         );
 
         await userEvent.longPress(label, 50, 75);
-        expect(handlePressed.mock.calls[0]?.slice(0, 2)).toEqual([50, 75]);
+        expect(presses[0]).toEqual([50, 75]);
         await userEvent.longPress(label);
-        expect(handlePressed.mock.calls[1]?.slice(0, 2)).toEqual([0, 0]);
+        expect(presses[1]).toEqual([0, 0]);
     });
 
     it("throws when the widget carries no matching gesture controller", async () => {
@@ -783,50 +830,57 @@ describe("userEvent.drag", () => {
 
 describe("controller fan-out", () => {
     it("delivers a click to every gesture controller alongside the widget's own, at its center", async () => {
-        const handleClick = vi.fn();
-        const handlePressed = vi.fn<(nPress: number, x: number, y: number) => void>();
-        const handleReleased = vi.fn();
+        const clicks = callCounter();
+        const presses: [number, number, number][] = [];
+        const releases = callCounter();
 
         await render(
             <GtkButton
                 label="Fan out"
-                onClicked={handleClick}
-                controllers={<GtkGestureClick onPressed={handlePressed} onReleased={handleReleased} />}
+                onClicked={clicks.callback}
+                controllers={(
+                    <GtkGestureClick
+                        onPressed={(nPress, x, y) => {
+                            presses.push([nPress, x, y]);
+                        }}
+                        onReleased={releases.callback}
+                    />
+                )}
             />,
         );
 
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Fan out" });
         await userEvent.click(button);
-        expect(handleClick).toHaveBeenCalledTimes(1);
-        expect(handlePressed).toHaveBeenCalledTimes(1);
-        expect(handleReleased).toHaveBeenCalledTimes(1);
-        const [, x, y] = handlePressed.mock.calls[0] ?? [];
+        expect(clicks.count).toBe(1);
+        expect(presses).toHaveLength(1);
+        expect(releases.count).toBe(1);
+        const [, x, y] = presses[0] ?? [];
         expect(x).toBe(button.getWidth() / 2);
         expect(y).toBe(button.getHeight() / 2);
         expect(x).toBeGreaterThan(0);
     });
 
     it("delivers hover and drag sequences to every controller of their kind", async () => {
-        const firstEnter = vi.fn();
-        const secondEnter = vi.fn();
-        const firstLeave = vi.fn();
-        const secondLeave = vi.fn();
+        const firstEnter = callCounter();
+        const secondEnter = callCounter();
+        const firstLeave = callCounter();
+        const secondLeave = callCounter();
 
         const hovered = await renderGesturedLabel(
             "hovered",
             "Hover me",
             <>
-                <GtkEventControllerMotion onEnter={firstEnter} onLeave={firstLeave} />
-                <GtkEventControllerMotion onEnter={secondEnter} onLeave={secondLeave} />
+                <GtkEventControllerMotion onEnter={firstEnter.callback} onLeave={firstLeave.callback} />
+                <GtkEventControllerMotion onEnter={secondEnter.callback} onLeave={secondLeave.callback} />
             </>,
         );
 
         await userEvent.hover(hovered);
         await userEvent.unhover(hovered);
-        expect(firstEnter).toHaveBeenCalledTimes(1);
-        expect(secondEnter).toHaveBeenCalledTimes(1);
-        expect(firstLeave).toHaveBeenCalledTimes(1);
-        expect(secondLeave).toHaveBeenCalledTimes(1);
+        expect(firstEnter.count).toBe(1);
+        expect(secondEnter.count).toBe(1);
+        expect(firstLeave.count).toBe(1);
+        expect(secondLeave.count).toBe(1);
         const firstEvents: string[] = [];
         const secondEvents: string[] = [];
 
@@ -845,24 +899,24 @@ describe("controller fan-out", () => {
     });
 
     it("delivers key events to every key controller", async () => {
-        const firstPressed = vi.fn();
-        const secondPressed = vi.fn();
+        const firstPressed = returningCallCounter(Gdk.EVENT_PROPAGATE);
+        const secondPressed = returningCallCounter(Gdk.EVENT_PROPAGATE);
 
         const { findByName } = await renderScoped(
             <GtkEntry
                 name="multi-key"
                 controllers={(
                     <>
-                        <GtkEventControllerKey onKeyPressed={firstPressed} />
-                        <GtkEventControllerKey onKeyPressed={secondPressed} />
+                        <GtkEventControllerKey onKeyPressed={firstPressed.callback} />
+                        <GtkEventControllerKey onKeyPressed={secondPressed.callback} />
                     </>
                 )}
             />,
         );
 
         await userEvent.keyboard(await findByName("multi-key"), "{F5}");
-        expect(firstPressed).toHaveBeenCalledTimes(1);
-        expect(secondPressed).toHaveBeenCalledTimes(1);
+        expect(firstPressed.count).toBe(1);
+        expect(secondPressed.count).toBe(1);
     });
 });
 
@@ -892,11 +946,19 @@ describe("userEvent.drop", () => {
 });
 
 describe("userEvent.dragAndDrop", () => {
-    it("fires drop on the target after verifying the source's DragSource", async () => {
+    it("runs the source drag lifecycle around the target drop", async () => {
         const handleDrop = dropHandler((value) => value.getString());
-        const { source, target } = await renderDragAndDropPair({ onDrop: handleDrop.onDrop });
+        const begins = callCounter();
+        const ends = callCounter();
+        const { source, target } = await renderDragAndDropPair({
+            onDrop: handleDrop.onDrop,
+            onDragBegin: begins.callback,
+            onDragEnd: ends.callback,
+        });
         await userEvent.dragAndDrop(source, target, "payload");
         expect(handleDrop.calls[0]?.[0]).toBe("payload");
+        expect(begins.count).toBe(1);
+        expect(ends.count).toBe(1);
     });
 
     it("throws when the source has no DragSource controller", async () => {
@@ -909,9 +971,9 @@ describe("userEvent.keyboard: shortcuts", () => {
     it("activates keyval and alternative triggers, and ignores keys that do not match", async () => {
         const keyval = await renderShortcutHost({ trigger: <GtkShortcutTrigger accelerator="F5" /> });
         await userEvent.keyboard(keyval.host, "{F5}");
-        expect(keyval.onActivate).toHaveBeenCalledTimes(1);
+        expect(keyval.activations.count).toBe(1);
         await userEvent.keyboard(keyval.host, "{F9}");
-        expect(keyval.onActivate).toHaveBeenCalledTimes(1);
+        expect(keyval.activations.count).toBe(1);
 
         const alternative = await renderShortcutHost({
             trigger: <GtkShortcutTrigger accelerator="F6|F7" />,
@@ -919,36 +981,41 @@ describe("userEvent.keyboard: shortcuts", () => {
 
         await userEvent.keyboard(alternative.host, "{F6}");
         await userEvent.keyboard(alternative.host, "{F7}");
-        expect(alternative.onActivate).toHaveBeenCalledTimes(2);
+        expect(alternative.activations.count).toBe(2);
     });
 
     it("retains a held modifier across calls until it is released", async () => {
-        const { host, onActivate } = await renderShortcutHost({
+        const { host, activations } = await renderShortcutHost({
             trigger: <GtkShortcutTrigger accelerator="<Shift>F5" />,
         });
 
         await userEvent.keyboard(host, "{Shift>}");
         await userEvent.keyboard(host, "{F5}");
-        expect(onActivate).toHaveBeenCalledTimes(1);
+        expect(activations.count).toBe(1);
         await userEvent.keyboard(host, "{/Shift}");
         await userEvent.keyboard(host, "{F5}");
-        expect(onActivate).toHaveBeenCalledTimes(1);
+        expect(activations.count).toBe(1);
     });
 
     it("honors the shortcut's scope and the sensitivity of its host", async () => {
         const sibling = <GtkEntry name="field" />;
-        expect(await pressShortcutFromField({ scope: Gtk.ShortcutScope.GLOBAL, sibling })).toHaveBeenCalledTimes(1);
-        expect(await pressShortcutFromField({ scope: Gtk.ShortcutScope.LOCAL, sibling })).not.toHaveBeenCalled();
+        const global = await pressShortcutFromField({ scope: Gtk.ShortcutScope.GLOBAL, sibling });
+        const local = await pressShortcutFromField({ scope: Gtk.ShortcutScope.LOCAL, sibling });
+        const insensitive = await pressShortcutFromField({
+            scope: Gtk.ShortcutScope.GLOBAL,
+            isSensitive: false,
+            sibling,
+        });
 
-        expect(
-            await pressShortcutFromField({ scope: Gtk.ShortcutScope.GLOBAL, isSensitive: false, sibling }),
-        ).not.toHaveBeenCalled();
+        expect(global.count).toBe(1);
+        expect(local.count).toBe(0);
+        expect(insensitive.count).toBe(0);
     });
 
     it("runs a global-scope shortcut at the root, behind the key controllers above its host", async () => {
         const order: string[] = [];
 
-        const onActivate = await pressShortcutFromField({
+        const activations = await pressShortcutFromField({
             scope: Gtk.ShortcutScope.GLOBAL,
             isHandled: false,
             treeControllers: recordingKeyController(order, "above host"),
@@ -956,12 +1023,15 @@ describe("userEvent.keyboard: shortcuts", () => {
         });
 
         expect(order).toEqual(["above host"]);
-        expect(onActivate).toHaveBeenCalledTimes(1);
+        expect(activations.count).toBe(1);
     });
 
     it("runs a capture-phase shortcut ahead of the target's key controllers, and a bubble one behind", async () => {
-        expect(await pressShortcutOverStoppingField(Gtk.PropagationPhase.CAPTURE)).toHaveBeenCalled();
-        expect(await pressShortcutOverStoppingField(Gtk.PropagationPhase.BUBBLE)).not.toHaveBeenCalled();
+        const capture = await pressShortcutOverStoppingField(Gtk.PropagationPhase.CAPTURE);
+        const bubble = await pressShortcutOverStoppingField(Gtk.PropagationPhase.BUBBLE);
+
+        expect(capture.count).toBe(1);
+        expect(bubble.count).toBe(0);
     });
 
     it("does not continue an Enter press into a newly focused default button", async () => {
@@ -1046,31 +1116,37 @@ describe("userEvent.keyboard: key controller propagation", () => {
     it("delivers presses and releases, with the held modifiers, to an ancestor's key controller", async () => {
         const pressed = await pressKeyOnProbe("{Escape}");
 
-        expect(pressed.handleAncestorPressed).toHaveBeenCalledWith(
+        expect(pressed.ancestorPresses).toContainEqual([
             Gdk.KEY_Escape,
             0,
             0,
             expect.any(Gtk.EventControllerKey),
-        );
+        ]);
 
-        const handleKeyReleased = vi.fn();
-        const field = await renderKeyControllerTree(<GtkEventControllerKey onKeyReleased={handleKeyReleased} />);
+        const releases: [number, number, Gdk.ModifierType][] = [];
+        const field = await renderKeyControllerTree(
+            <GtkEventControllerKey
+                onKeyReleased={(keyval, keycode, state) => {
+                    releases.push([keyval, keycode, state]);
+                }}
+            />,
+        );
         await userEvent.keyboard(field, "{Escape}");
-        expect(handleKeyReleased).toHaveBeenCalledWith(Gdk.KEY_Escape, 0, 0, expect.any(Gtk.EventControllerKey));
+        expect(releases).toEqual([[Gdk.KEY_Escape, 0, 0]]);
         const modified = await pressKeyOnProbe("{Control>}s{/Control}");
 
-        expect(modified.handleAncestorPressed).toHaveBeenCalledWith(
+        expect(modified.ancestorPresses).toContainEqual([
             Gdk.KEY_s,
             0,
             Gdk.ModifierType.CONTROL_MASK,
             expect.any(Gtk.EventControllerKey),
-        );
+        ]);
     });
 
     it("skips a controller whose phase is none, and adds none to a widget that carries none", async () => {
         const probe = await pressKeyOnProbe("{Escape}", { fieldPhase: Gtk.PropagationPhase.NONE });
-        expect(probe.handleFieldPressed).not.toHaveBeenCalled();
-        expect(probe.handleAncestorPressed).toHaveBeenCalled();
+        expect(probe.fieldPresses).toHaveLength(0);
+        expect(probe.ancestorPresses).toHaveLength(1);
         const field = await renderKeyControllerTree(null);
         await userEvent.keyboard(field, "{Escape}");
         expect(queryAllControllers(field, Gtk.EventControllerKey)).toHaveLength(0);
@@ -1085,8 +1161,8 @@ describe("userEvent.keyboard: key controller propagation", () => {
             ancestorResult: Gdk.EVENT_STOP,
         });
 
-        expect(probe.handleAncestorPressed).toHaveBeenCalled();
-        expect(probe.handleFieldPressed).not.toHaveBeenCalled();
+        expect(probe.ancestorPresses).toHaveLength(1);
+        expect(probe.fieldPresses).toHaveLength(0);
     });
 });
 
@@ -1103,10 +1179,10 @@ describe("userEvent.keyboard: editable delegate", () => {
     });
 
     it("lets the delegate's built-in key binding consume the press before an ancestor's controller", async () => {
-        const handleKeyPressed = vi.fn(() => Gdk.EVENT_PROPAGATE);
+        const keyPresses = returningCallCounter(Gdk.EVENT_PROPAGATE);
 
         await render(
-            <GtkBox name="ancestor" controllers={<GtkEventControllerKey onKeyPressed={handleKeyPressed} />}>
+            <GtkBox name="ancestor" controllers={<GtkEventControllerKey onKeyPressed={keyPresses.callback} />}>
                 <GtkEntry name="field" text="hello" />
             </GtkBox>,
         );
@@ -1115,16 +1191,16 @@ describe("userEvent.keyboard: editable delegate", () => {
         field.setPosition(5);
         await userEvent.keyboard(field, "{ArrowLeft}");
         expect(field.getPosition()).toBe(4);
-        expect(handleKeyPressed).not.toHaveBeenCalled();
+        expect(keyPresses.count).toBe(0);
     });
 
     it("activates an editable widget on Return alone", async () => {
-        const handleActivate = vi.fn();
-        await render(<GtkEntry name="field" onActivate={handleActivate} />);
+        const activations = callCounter();
+        await render(<GtkEntry name="field" onActivate={activations.callback} />);
         const field = await screen.findByName("field");
         await userEvent.keyboard(field, "{Escape}");
-        expect(handleActivate).not.toHaveBeenCalled();
+        expect(activations.count).toBe(0);
         await userEvent.keyboard(field, "{Enter}");
-        expect(handleActivate).toHaveBeenCalledTimes(1);
+        expect(activations.count).toBe(1);
     });
 });

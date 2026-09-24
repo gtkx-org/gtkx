@@ -129,17 +129,15 @@ test("PropertiesObject scalar properties round trip at their bounds", () => {
 });
 
 test("64-bit properties accept plain safe-integer numbers", () => {
-    const po = new GIMarshallingTests.PropertiesObject({});
-    // @ts-expect-error the property is declared bigint, and the binding widens it to a plain number
+    const po = new GIMarshallingTests.PropertiesObject({ someInt64: 41 });
+    expect(po.someInt64).toBe(41n);
     po.someInt64 = 42;
-    expect(po.someInt64).toBe(42n);
-    // @ts-expect-error the property is declared bigint, and the binding widens it to a plain number
+    const exact: bigint = po.someInt64;
+    expect(exact).toBe(42n);
     po.someUint64 = 43;
     expect(po.someUint64).toBe(43n);
-    // @ts-expect-error the property is declared bigint, and the binding widens it to a plain number
     po.someLong = -44;
     expect(po.someLong).toBe(-44n);
-    // @ts-expect-error the property is declared bigint, and the binding widens it to a plain number
     po.someUlong = 45;
     expect(po.someUlong).toBe(45n);
 });

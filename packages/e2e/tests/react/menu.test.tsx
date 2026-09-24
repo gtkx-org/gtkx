@@ -19,7 +19,7 @@ import {
 import { rootElement } from "@gtkx/react";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createAppIdFactory } from "../helpers/unique-name.js";
 
 type MenuRef = RefObject<Gtk.PopoverMenu | null>;
@@ -436,7 +436,10 @@ describe("render - PopoverMenu widget integration", () => {
 
 describe("render - PopoverMenu actions", () => {
     it("invokes a GSimpleAction referenced by a menu item", async () => {
-        const onActivate = vi.fn();
+        let activationCount = 0;
+        const onActivate = (): void => {
+            activationCount += 1;
+        };
 
         await render(
             <GtkApplication applicationId={uniqueAppId()} flags={APP_FLAGS}>
@@ -450,12 +453,12 @@ describe("render - PopoverMenu actions", () => {
             { container: rootElement },
         );
 
-        expect(onActivate).not.toHaveBeenCalled();
+        expect(activationCount).toBe(0);
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Actions" }));
         const item = await screen.findByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "Click Me" });
         expect(item).toBeEnabled();
         await userEvent.click(item);
-        expect(onActivate).toHaveBeenCalledTimes(1);
+        expect(activationCount).toBe(1);
     });
 
     it("removes a menu item's action when it unmounts", async () => {
@@ -468,7 +471,7 @@ describe("render - PopoverMenu actions", () => {
                     <GtkApplicationWindow
                         ref={windowRef}
                         actions={isEnabled && (
-                            <GSimpleAction name="toggle" onActivate={vi.fn()} />
+                            <GSimpleAction name="toggle" onActivate={() => null} />
                         )}
                     />
                 </GtkApplication>

@@ -78,6 +78,9 @@ const REJECTED: Record<string, string> = {
     "pointer-alias": "export type Value = ScalarPointers.PointerAlias;",
     "own-pointer-alias": "export type Value = ScalarPointers.OwnPointer;",
     "nested-alias": "export type Value = ScalarPointers.PointerList;",
+    "pointer-constant": "export const value = ScalarPointers.RAW_POINTER;",
+    "direct-scalar-pointer-constant": "export const value = ScalarPointers.DIRECT_SCALAR_POINTER;",
+    "aliased-pointer-constant": "export const value = ScalarPointers.ALIASED_POINTER;",
     "callback-input": "export type Callback = ScalarPointers.InputScalar;",
     "callback-return": "export type Callback = ScalarPointers.ReturnScalar;",
     "callback-consumer": "export type Method = ScalarPointers.Probe[\"useRaw\"];",
@@ -208,6 +211,9 @@ describe("generated scalar C pointer omissions", () => {
     it("omits pointer aliases and callback references while retaining scalar callbacks", () => {
         for (const name of ["IntPointer", "PointerAlias", "PointerList", "OwnPointer"]) {
             expect(reference.lookup(`ScalarPointers.${name}`, "alias").outcome).toBe("notFound");
+        }
+        for (const name of ["RAW_POINTER", "DIRECT_SCALAR_POINTER", "ALIASED_POINTER"]) {
+            expect(reference.lookup(`ScalarPointers.${name}`, "constant").outcome).toBe("notFound");
         }
         for (const name of ["InputScalar", "ReturnScalar"]) {
             expect(reference.lookup(`ScalarPointers.${name}`, "callback").outcome).toBe("notFound");

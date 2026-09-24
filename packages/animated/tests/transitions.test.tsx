@@ -13,7 +13,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 type ItemsProps = { items: string[]; onDestroyed: (item: string) => void };
 type TrailProps = { refs: RefObject<Gtk.Label | null>[] };
@@ -102,7 +102,10 @@ const expectOpacity = (label: Gtk.Label | null, opacity: number): Promise<void> 
 
 describe("transitions - useTransition", () => {
     it("fades items in, keeps leaving items until they fade out, then drops them", async () => {
-        const onDestroyed = vi.fn();
+        const destroyed: string[] = [];
+        const onDestroyed = (item: string): void => {
+            destroyed.push(item);
+        };
         const { rerender } = await render(<Items items={["one"]} onDestroyed={onDestroyed} />, ANIMATED);
         const one = screen.getByText("one");
         await expectOpacity(one as Gtk.Label, 1);
@@ -110,7 +113,7 @@ describe("transitions - useTransition", () => {
         expect(screen.getByText("one")).toBe(one);
 
         await waitFor(() => {
-            expect(onDestroyed).toHaveBeenCalledWith("one");
+            expect(destroyed).toEqual(["one"]);
         });
 
         expect(screen.queryByText("one")).toBeNull();
@@ -162,18 +165,24 @@ describe("transitions - lifecycle", () => {
     });
 
     it("lets the spring finish after its animated widget unmounts", async () => {
-        const onRest = vi.fn();
+        let restCount = 0;
+        const onRest = (): void => {
+            restCount += 1;
+        };
         const { rerender } = await render(<Detachable isShown onRest={onRest} />, ANIMATED);
         await rerender(<Detachable isShown={false} onRest={onRest} />);
         expect(screen.getByText("gone")).toBeVisible();
 
         await waitFor(() => {
-            expect(onRest).toHaveBeenCalledTimes(1);
+            expect(restCount).toBe(1);
         }, SETTLE);
     });
 
     it("settles the spring once when the whole tree unmounts mid-flight", async () => {
-        const onRest = vi.fn();
+        let restCount = 0;
+        const onRest = (): void => {
+            restCount += 1;
+        };
         const { unmount } = await render(<Detachable isShown onRest={onRest} />, ANIMATED);
         const label = screen.getByText("detachable");
 
@@ -184,7 +193,7 @@ describe("transitions - lifecycle", () => {
         await unmount();
 
         await waitFor(() => {
-            expect(onRest).toHaveBeenCalledTimes(1);
+            expect(restCount).toBe(1);
         });
     });
 });

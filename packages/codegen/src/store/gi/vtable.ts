@@ -35,7 +35,7 @@ import {
     renderHandlerResultType,
 } from "../../analysis/param-structure.js";
 import { hasUnsupportedScalarParameter } from "../../analysis/scalar-pointer.js";
-import { renderTsType } from "../../analysis/ts-type.js";
+import { renderParameterTsType, renderTsType } from "../../analysis/ts-type.js";
 import { typeKey } from "../../analysis/type-key.js";
 import {
     hasPrimitivePointer,
@@ -585,7 +585,12 @@ const vfuncSlotSignature = (context: ModuleContext, slot: VtableSlot, isOptional
     const returnType = renderHandlerResultType({
         library: context.library,
         signal: { ...slot.callback, parameters },
-        renderType,
+        renderType: (ref, nullable, transfer) =>
+            renderParameterTsType(context, ref, {
+                isNullable: nullable,
+                isValueWidened: false,
+                canAcceptTypedArrayViews: transfer === "none",
+            }),
         shouldIncludeCallerAllocated: true,
         isOptOut: false,
         shouldExcludeOut: (parameter) => folded.has(parameter),

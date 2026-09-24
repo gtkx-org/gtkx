@@ -63,7 +63,7 @@ type ShadertoyGLAreaPanelProps = {
     setGLArea: (area: Gtk.GLArea | null) => void;
     handleRender: (context: Gdk.GLContext, self: Gtk.GLArea) => boolean;
     handleResize: (width: number, height: number) => void;
-    handleUnrealize: () => void;
+    handleUnrealize: (area: Gtk.GLArea) => void;
     dragHandlers: ReturnType<typeof useShadertoyDrag>;
 };
 
@@ -1333,7 +1333,8 @@ const ShaderPreview = ({ shaderCode }: { shaderCode: string }) => {
     useTickCallback(glArea, tickCallback);
     const { handleRender, handleResize } = useShadertoyFrame(glStateRef, animRef, resolutionRef, shaderCode);
 
-    const handleUnrealize = () => {
+    const handleUnrealize = (area: Gtk.GLArea) => {
+        area.makeCurrent();
         releaseShaderState(glStateRef);
     };
 
@@ -1643,7 +1644,8 @@ function useShadertoyProgram(
         compileShadertoyShader({ glArea, glStateRef, animRef, imageShader: compiledCode });
     }, [compiledCode, glArea, glStateRef, animRef]);
 
-    return () => {
+    return (area: Gtk.GLArea) => {
+        area.makeCurrent();
         releaseShaderState(glStateRef);
     };
 }

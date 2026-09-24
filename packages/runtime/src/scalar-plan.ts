@@ -14,14 +14,18 @@ import { callbackFailure } from "./callback-error.js";
 import { isGtypeDescriptor } from "./descriptors.js";
 import { normalizeHashTableEntries } from "./hash-table.js";
 import { LIB } from "./library.js";
-import { compileOutputStorage, type OutputStorage, type StorageHandle } from "./output-storage.js";
+import {
+    compileOutputStorage,
+    isScalarStorageDescriptor,
+    type OutputStorage,
+    type StorageHandle,
+} from "./output-storage.js";
 
 type Conversion = (value: unknown) => unknown;
 type ScalarPlan = {
     abi: NativeDescriptor;
     encode: Conversion;
     decode: Conversion;
-    defaultReturn?: unknown;
     inner?: ScalarPlan;
     storage?: OutputStorage;
 };
@@ -42,6 +46,21 @@ const typeT: NativeDescriptor = { kind: "biguint64" };
 const pointerT: NativeDescriptor = { kind: "struct", ownership: "borrowed" };
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
+const signalDefaultReturn: unique symbol = Symbol("signalDefaultReturn");
+
+const defaultAbiReturn = (descriptor: NativeDescriptor): unknown => {
+    if (descriptor.kind === "bigint64" || descriptor.kind === "biguint64") {
+        return 0n;
+    }
+    if (isScalarStorageDescriptor(descriptor)) {
+        return 0;
+    }
+    if (descriptor.kind === "void") {
+        return undefined;
+    }
+
+    return null;
+};
 
 const stringPlan = (descriptor: Extract<Descriptor, { kind: "string" }>): ScalarPlan => ({
     abi: { ...descriptor, kind: "bytes" },
@@ -134,9 +153,6 @@ const enumPlan = (descriptor: EnumDescriptor): ScalarPlan => {
     return {
         abi,
         encode(value) {
-            if (value == null) {
-                return 0;
-            }
             if (typeof value !== "number" || !Number.isSafeInteger(value)) {
                 throw new TypeError("Expected an integer enumeration value");
             }
@@ -163,7 +179,7 @@ const codepoint = (value: number): number => {
 };
 
 const encodeUnichar: Conversion = (value) => {
-    if (value == null || value === "") {
+    if (value === "") {
         return 0;
     }
     if (typeof value === "number") {
@@ -295,31 +311,39 @@ const referencePlan = (descriptor: Extract<Descriptor, { kind: "ref" }>): Scalar
     };
 };
 
+const writeCallbackOutputs = (plans: ScalarPlan[], values: unknown[], decoded: unknown[]): void => {
+    const outputs = plans.flatMap((plan, index) =>
+        plan.inner !== undefined && values[index] != null
+            ? [{
+                    index,
+                    storage: plan.storage,
+                    value: plan.inner.encode((decoded[index] as Ref).value),
+                }]
+            : []);
+
+    for (const output of outputs) {
+        if (output.storage === undefined) {
+            (values[output.index] as Ref).value = output.value;
+        } else {
+            output.storage.write(values[output.index] as StorageHandle, output.value);
+        }
+    }
+};
+
 const adaptCallback = (shape: CallbackShape, callback: Callback): Callback => {
     const args = shape.argDescriptors
         .filter((_, index) => index !== shape.userDataIndex)
-        .map((descriptor) => ({ descriptor, plan: compileDescriptor(descriptor) }));
+        .map((descriptor) => compileDescriptor(descriptor));
     const result = compileDescriptor(shape.returnDescriptor);
 
     const invoke: Callback = (...values) => {
-        const decoded = args.map(({ plan }, index) => plan.decode(values[index]));
+        const decoded = args.map((plan, index) => plan.decode(values[index]));
         const returned = callback(...decoded);
-        const encodedReturn = result.encode(returned ?? result.defaultReturn);
-        const outputs = args.flatMap(({ plan }, index) =>
-            plan.inner !== undefined && values[index] != null
-                ? [{
-                        index,
-                        storage: plan.storage,
-                        value: plan.inner.encode((decoded[index] as Ref).value),
-                    }]
-                : []);
-        for (const output of outputs) {
-            if (output.storage === undefined) {
-                (values[output.index] as Ref).value = output.value;
-            } else {
-                output.storage.write(values[output.index] as StorageHandle, output.value);
-            }
+        if (returned === signalDefaultReturn) {
+            return defaultAbiReturn(result.abi);
         }
+        const encodedReturn = result.encode(returned);
+        writeCallbackOutputs(args, values, decoded);
 
         return encodedReturn;
     };
@@ -422,7 +446,6 @@ const nestedPlan = (descriptor: NestedDescriptor): ScalarPlan => {
 
 const booleanPlan: ScalarPlan = {
     abi: integerT,
-    defaultReturn: false,
     encode(value) {
         if (typeof value !== "boolean") {
             throw new TypeError("Expected a boolean");
@@ -486,4 +509,4 @@ const compileDescriptor = (descriptor: Descriptor): ScalarPlan => buildPlan(desc
 
 const toAbi = (descriptor: Descriptor): NativeDescriptor => compileDescriptor(descriptor).abi;
 
-export { adaptCallback, compileDescriptor, toAbi };
+export { adaptCallback, compileDescriptor, signalDefaultReturn, toAbi };

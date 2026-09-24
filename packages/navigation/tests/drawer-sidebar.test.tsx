@@ -4,7 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { DrawerItemList, NavigationContainer } from "@gtkx/navigation";
 import { fireEvent, render, screen, userEvent, within } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
     ARCHIVE,
     Drawer,
@@ -87,7 +87,12 @@ describe("drawer - sidebar", () => {
     });
 
     it("hands state, navigation and descriptors to a custom drawerContent", async () => {
-        const drawerContent = vi.fn(CustomContent);
+        let contentProps: DrawerContentProps | undefined;
+        const drawerContent = (props: DrawerContentProps): ReactNode => {
+            contentProps = props;
+
+            return <CustomContent {...props} />;
+        };
 
         await render(
             <NavigationContainer>
@@ -96,9 +101,10 @@ describe("drawer - sidebar", () => {
         );
 
         await screen.findByText("Routes: 2");
-        const props = drawerContent.mock.calls[0]?.[0];
-        expect(Object.keys(props?.descriptors ?? {})).toEqual(props?.state.routes.map((route) => route.key));
-        expect(props?.navigation.getState().routeNames).toEqual(["Inbox", "Settings"]);
+        expect(Object.keys(contentProps?.descriptors ?? {})).toEqual(
+            contentProps?.state.routes.map((route) => route.key),
+        );
+        expect(contentProps?.navigation.getState().routeNames).toEqual(["Inbox", "Settings"]);
         await userEvent.click(sidebarRow("Settings"));
         await screen.findByText("Settings Content");
     });

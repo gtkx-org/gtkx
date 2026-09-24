@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
 import { render, screen, userEvent } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
     ARCHIVE,
     Drawer,
@@ -13,6 +13,7 @@ import {
     SETTINGS,
     sidebarList,
     sidebarRow,
+    type StateHistory,
     toggleButton,
 } from "./helpers/drawer-fixtures.js";
 
@@ -24,12 +25,22 @@ const clickButton = async (name: string): Promise<void> => {
 
 describe("drawer - events", () => {
     it("emits drawerItemPress targeted at the activated route", async () => {
-        const onStateChange = vi.fn();
-        const onItemPress = vi.fn<(event: TargetEvent) => void>();
+        const states: StateHistory = [];
+        const itemPressTargets: (string | undefined)[] = [];
 
         await render(
-            <NavigationContainer onStateChange={onStateChange}>
-                <Drawer.Navigator screenListeners={{ drawerItemPress: onItemPress }}>
+            <NavigationContainer
+                onStateChange={(state) => {
+                    states.push(state);
+                }}
+            >
+                <Drawer.Navigator
+                    screenListeners={{
+                        drawerItemPress: (event: TargetEvent) => {
+                            itemPressTargets.push(event.target);
+                        },
+                    }}
+                >
                     {drawerScreens([INBOX, SETTINGS])}
                 </Drawer.Navigator>
             </NavigationContainer>,
@@ -38,15 +49,18 @@ describe("drawer - events", () => {
         await screen.findByText("Inbox Content");
         await userEvent.click(sidebarRow("Settings"));
         await screen.findByText("Settings Content");
-        expect(onItemPress).toHaveBeenCalledTimes(1);
-        expect(onItemPress.mock.calls[0]?.[0].target).toBe(routeKey(lastState(onStateChange), "Settings"));
+        expect(itemPressTargets).toEqual([routeKey(lastState(states), "Settings")]);
     });
 
     it("keeps the current screen and row when drawerItemPress is prevented", async () => {
-        const onStateChange = vi.fn();
+        const states: StateHistory = [];
 
         await render(
-            <NavigationContainer onStateChange={onStateChange}>
+            <NavigationContainer
+                onStateChange={(state) => {
+                    states.push(state);
+                }}
+            >
                 <Drawer.Navigator
                     screenListeners={{
                         drawerItemPress: (event) => {
@@ -64,17 +78,30 @@ describe("drawer - events", () => {
         expect(screen.getByText("Inbox Content")).toBeVisible();
         expect(screen.queryByText("Settings Content")).toBeNull();
         expect(sidebarList().getSelectedRow()).toBe(sidebarRow("Inbox"));
-        expect(onStateChange).not.toHaveBeenCalled();
+        expect(states).toEqual([]);
     });
 
     it("emits blur on the previous route and focus on the next one", async () => {
-        const onStateChange = vi.fn();
-        const onFocus = vi.fn<(event: TargetEvent) => void>();
-        const onBlur = vi.fn<(event: TargetEvent) => void>();
+        const states: StateHistory = [];
+        const focusTargets: (string | undefined)[] = [];
+        const blurTargets: (string | undefined)[] = [];
 
         await render(
-            <NavigationContainer onStateChange={onStateChange}>
-                <Drawer.Navigator screenListeners={{ focus: onFocus, blur: onBlur }}>
+            <NavigationContainer
+                onStateChange={(state) => {
+                    states.push(state);
+                }}
+            >
+                <Drawer.Navigator
+                    screenListeners={{
+                        focus: (event: TargetEvent) => {
+                            focusTargets.push(event.target);
+                        },
+                        blur: (event: TargetEvent) => {
+                            blurTargets.push(event.target);
+                        },
+                    }}
+                >
                     {drawerScreens([INBOX, SETTINGS])}
                 </Drawer.Navigator>
             </NavigationContainer>,
@@ -83,10 +110,9 @@ describe("drawer - events", () => {
         await screen.findByText("Inbox Content");
         await userEvent.click(sidebarRow("Settings"));
         await screen.findByText("Settings Content");
-        const state = lastState(onStateChange);
-        expect(onBlur).toHaveBeenCalledTimes(1);
-        expect(onBlur.mock.calls[0]?.[0].target).toBe(routeKey(state, "Inbox"));
-        expect(onFocus.mock.lastCall?.[0].target).toBe(routeKey(state, "Settings"));
+        const state = lastState(states);
+        expect(blurTargets).toEqual([routeKey(state, "Inbox")]);
+        expect(focusTargets.at(-1)).toBe(routeKey(state, "Settings"));
     });
 
     it("pops a nested stack to its first screen on blur with popToTopOnBlur", async () => {

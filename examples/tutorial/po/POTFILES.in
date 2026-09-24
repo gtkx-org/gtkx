@@ -32,6 +32,7 @@ src/store/lists.ts
 src/store/seed.ts
 src/store/selectors.ts
 src/store/storage.ts
+src/store/task.ts
 src/store/tasks.ts
 src/store/ui.ts
 src/styles.ts

@@ -8,13 +8,12 @@ import { execFile } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
+import { applicationId, resourceBasePath } from "virtual:gtkx-config";
 import { beforeEach, describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
 import { useStore } from "../src/store/index.js";
 
 const call = promisify(execFile);
-const applicationId = "com.gtkx.tutorial";
-const objectPath = "/com/gtkx/tutorial";
 
 async function callApplication(method: string, signature: string, ...args: string[]): Promise<void> {
     const address = process.env.DBUS_SESSION_BUS_ADDRESS;
@@ -25,7 +24,7 @@ async function callApplication(method: string, signature: string, ...args: strin
         `--address=${address}`,
         "call",
         applicationId,
-        objectPath,
+        resourceBasePath,
         "org.freedesktop.Application",
         method,
         signature,

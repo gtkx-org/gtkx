@@ -6,36 +6,49 @@ import { fileStorage } from "./storage.js";
 import { createTasksSlice, type TasksSlice } from "./tasks.js";
 import { createUiSlice, type UiSlice } from "./ui.js";
 
-export type Store = TasksSlice & ListsSlice & UiSlice;
+type Store = TasksSlice & ListsSlice & UiSlice;
 
-export type PersistedState = { lists: TaskList[]; tasks: Task[] };
+type PersistedState = { lists: TaskList[]; tasks: Task[] };
 
-export type Mutators = [["zustand/persist", unknown]];
+type Mutators = [["zustand/persist", unknown]];
 
-let hydrationError: unknown;
+const throwHydrationError = (error: unknown): never => {
+    throw error;
+};
 
-export const useStore = create<Store>()(
-    persist(
-        (...a) => ({
-            ...createTasksSlice(...a),
-            ...createListsSlice(...a),
-            ...createUiSlice(...a),
-        }),
-        {
-            name: "tasks",
-            version: 1,
-            storage: createJSONStorage(() => fileStorage),
-            partialize: (state): PersistedState => ({ lists: state.lists, tasks: state.tasks }),
-            migrate: () => {
-                throw new Error("Unsupported task data version");
+const createStore = () => {
+    let hydrationError: unknown;
+    const recordHydrationError = (_state: Store | undefined, error: unknown): void => {
+        hydrationError = error;
+    };
+    const store = create<Store>()(
+        persist(
+            (...a) => ({
+                ...createTasksSlice(...a),
+                ...createListsSlice(...a),
+                ...createUiSlice(...a),
+            }),
+            {
+                name: "tasks",
+                version: 1,
+                storage: createJSONStorage(() => fileStorage),
+                partialize: (state): PersistedState => ({ lists: state.lists, tasks: state.tasks }),
+                migrate: () => {
+                    throw new Error("Unsupported task data version");
+                },
+                onRehydrateStorage: () => recordHydrationError,
             },
-            onRehydrateStorage: () => (_state, error) => {
-                hydrationError = error;
-            },
-        },
-    ),
-);
+        ),
+    );
 
-if (hydrationError !== undefined) {
-    throw hydrationError;
-}
+    return hydrationError === undefined ? store : throwHydrationError(hydrationError);
+};
+
+const useStore = createStore();
+
+export {
+    type Mutators,
+    type PersistedState,
+    type Store,
+    useStore,
+};

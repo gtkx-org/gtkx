@@ -2,8 +2,8 @@ import * as Adw from "@gtkx/gi/adw";
 import { t } from "@gtkx/i18n";
 import schema from "../data/com.gtkx.tutorial.gschema.xml";
 
-export type ColorScheme = typeof schema.values["color-scheme"][number];
-export type SortOrder = keyof typeof schema.values["sort-order"];
+type ColorScheme = typeof schema.values["color-scheme"][number];
+type SortOrder = keyof typeof schema.values["sort-order"];
 type SortOrderValue = typeof schema.values["sort-order"][SortOrder];
 
 const COLOR_SCHEMES = {
@@ -14,22 +14,32 @@ const COLOR_SCHEMES = {
 
 const SORT_ORDERS = {
     manual: () => t("Manual"),
-    "due-date": () => t("Due date"),
+    ["due-date"]: () => t("Due date"),
     title: () => t("Title"),
     created: () => t("Date created"),
 } satisfies Record<SortOrder, () => string>;
 
 const sortOrderIds = Object.keys(SORT_ORDERS) as SortOrder[];
 
-export const colorSchemeItems = (): { id: string; value: string }[] =>
+const colorSchemeItems = (): { id: string; value: string }[] =>
     Object.entries(COLOR_SCHEMES).map(([id, choice]) => ({ id, value: choice.label() }));
 
-export const sortOrderItems = (): { id: string; value: string }[] =>
+const sortOrderItems = (): { id: string; value: string }[] =>
     sortOrderIds.map((id) => ({ id, value: SORT_ORDERS[id]() }));
 
-export const colorSchemeValue = (id: string): Adw.ColorScheme => COLOR_SCHEMES[id as ColorScheme].value;
+const colorSchemeValue = (id: string): Adw.ColorScheme => COLOR_SCHEMES[id as ColorScheme].value;
 
-export const sortOrderFromSetting = (value: SortOrderValue): SortOrder =>
+const sortOrderFromSetting = (value: SortOrderValue): SortOrder =>
     sortOrderIds.find((id) => schema.values["sort-order"][id] === value) as SortOrder;
 
-export const sortOrderToSetting = (order: SortOrder): SortOrderValue => schema.values["sort-order"][order];
+const sortOrderToSetting = (order: SortOrder): SortOrderValue => schema.values["sort-order"][order];
+
+export {
+    type ColorScheme,
+    colorSchemeItems,
+    colorSchemeValue,
+    type SortOrder,
+    sortOrderFromSetting,
+    sortOrderItems,
+    sortOrderToSetting,
+};

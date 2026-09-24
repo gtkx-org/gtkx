@@ -189,13 +189,14 @@ Create `src/components/about.tsx`:
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAboutDialog } from "@gtkx/jsx/adw";
+import { applicationId } from "virtual:gtkx-config";
 
 export const About = ({ onClose }: { onClose: () => void }) => {
     return (
         <AdwAboutDialog
             onClosed={onClose}
             applicationName="Tasks"
-            applicationIcon="com.gtkx.tutorial"
+            applicationIcon={applicationId}
             version="1.0.0"
             developerName="GTKX"
             website="https://gtkx.dev"
@@ -209,7 +210,7 @@ export const About = ({ onClose }: { onClose: () => void }) => {
 };
 ```
 
-`applicationIcon` matches the application ID. The scaffold's `applicationIcon` configuration makes its icon available during development and in builds; [packaging](/v2/tutorial/packaging) installs it with the application.
+`applicationId` comes from the generated project configuration, so the dialog and application shell use the same identity. The scaffold's `applicationIcon` configuration makes its icon available during development and in builds; [packaging](/v2/tutorial/packaging) installs it with the application.
 
 Create `src/components/shortcuts.tsx`:
 

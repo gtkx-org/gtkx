@@ -3,7 +3,7 @@ import * as GtkSource from "@gtkx/gi/gtksource";
 import { GtkSourceBuffer, type GtkSourceBufferProps, GtkSourceView } from "@gtkx/jsx/gtksource";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type ReactElement, type ReactNode, type RefObject } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { getSourceBuffer } from "../helpers/buffer-text.js";
 import { expectNoBufferChangedOnReconcile } from "../helpers/text-buffer-view-render.js";
 
@@ -82,22 +82,28 @@ describe("render - SourceView", () => {
 
         it("calls onNotifyCanUndo when undo state changes", async () => {
             const ref = createRef<GtkSource.View>();
-            const onNotifyCanUndo = vi.fn();
+            let notificationCount = 0;
+            const onNotifyCanUndo = (): void => {
+                notificationCount += 1;
+            };
             await renderUndoableSourceViewAfterUserAction(ref, { onNotifyCanUndo });
 
             await waitFor(() => {
-                expect(onNotifyCanUndo).toHaveBeenCalled();
+                expect(notificationCount).toBeGreaterThan(0);
             });
         });
 
         it("calls onNotifyCanRedo when redo state changes", async () => {
             const ref = createRef<GtkSource.View>();
-            const onNotifyCanRedo = vi.fn();
+            let notificationCount = 0;
+            const onNotifyCanRedo = (): void => {
+                notificationCount += 1;
+            };
             const buffer = await renderUndoableSourceViewAfterUserAction(ref, { onNotifyCanRedo });
             buffer.undo();
 
             await waitFor(() => {
-                expect(onNotifyCanRedo).toHaveBeenCalled();
+                expect(notificationCount).toBeGreaterThan(0);
             });
         });
     });
@@ -168,12 +174,15 @@ describe("render - SourceView", () => {
 
     describe("callbacks", () => {
         it("calls onChanged when text changes programmatically", async () => {
-            const onChanged = vi.fn();
+            const changedBuffers: GtkSource.Buffer[] = [];
+            const onChanged = (buffer: GtkSource.Buffer): void => {
+                changedBuffers.push(buffer);
+            };
             const buffer = await renderSourceBuffer(<GtkSourceBuffer onChanged={onChanged} />);
             buffer.setText("New text", -1);
 
             await waitFor(() => {
-                expect(onChanged).toHaveBeenCalledWith(buffer);
+                expect(changedBuffers).toContain(buffer);
             });
         });
 
@@ -184,7 +193,10 @@ describe("render - SourceView", () => {
         });
 
         it("calls onCursorMoved when cursor position changes", async () => {
-            const onCursorMoved = vi.fn();
+            let cursorMoveCount = 0;
+            const onCursorMoved = (): void => {
+                cursorMoveCount += 1;
+            };
 
             const buffer = await renderSourceBuffer(
                 <GtkSourceBuffer onCursorMoved={onCursorMoved}>Some text here</GtkSourceBuffer>,
@@ -194,12 +206,15 @@ describe("render - SourceView", () => {
             buffer.placeCursor(iter);
 
             await waitFor(() => {
-                expect(onCursorMoved).toHaveBeenCalled();
+                expect(cursorMoveCount).toBeGreaterThan(0);
             });
         });
 
         it("calls onHighlightUpdated when highlighting updates", async () => {
-            const onHighlightUpdated = vi.fn();
+            let highlightUpdateCount = 0;
+            const onHighlightUpdated = (): void => {
+                highlightUpdateCount += 1;
+            };
 
             const buffer = await renderSourceBuffer(
                 <GtkSourceBuffer language={getLanguage("js")} onHighlightUpdated={onHighlightUpdated}>
@@ -210,13 +225,16 @@ describe("render - SourceView", () => {
             buffer.setText("function foo() { return 42; }", -1);
 
             await waitFor(() => {
-                expect(onHighlightUpdated).toHaveBeenCalled();
+                expect(highlightUpdateCount).toBeGreaterThan(0);
             });
         });
 
-        it("removes callback when set to null", async () => {
+        it("removes callback when the prop is removed", async () => {
             const ref = createRef<GtkSource.View>();
-            const onChanged = vi.fn();
+            let changeCount = 0;
+            const onChanged = (): void => {
+                changeCount += 1;
+            };
 
             function App({ hasCallback }: { hasCallback: boolean }) {
                 return (
@@ -232,14 +250,13 @@ describe("render - SourceView", () => {
             buffer.setText("Change 1", -1);
 
             await waitFor(() => {
-                expect(onChanged).toHaveBeenCalled();
+                expect(changeCount).toBeGreaterThan(0);
             });
 
-            const callCountBeforeRemoval = onChanged.mock.calls.length;
+            const callCountBeforeRemoval = changeCount;
             await rerender(<App hasCallback={false} />);
             buffer.setText("Change 2", -1);
-            await new Promise((resolve) => setTimeout(resolve, 50));
-            expect(onChanged.mock.calls).toHaveLength(callCountBeforeRemoval);
+            expect(changeCount).toBe(callCountBeforeRemoval);
         });
     });
 

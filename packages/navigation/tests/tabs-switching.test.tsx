@@ -1,13 +1,13 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
     expectSelectedTab,
     expectUnselectedTab,
     findTab,
     focusedRouteName,
     lastState,
-    type StateSpy,
+    type StateHistory,
     TabsApp,
 } from "./helpers/tab-fixtures.js";
 
@@ -29,8 +29,14 @@ describe("tabs - switching", () => {
     });
 
     it("switches tabs with navigate from a screen", async () => {
-        const onStateChange: StateSpy = vi.fn();
-        await render(<TabsApp onStateChange={onStateChange} />);
+        const states: StateHistory = [];
+        await render(
+            <TabsApp
+                onStateChange={(state) => {
+                    states.push(state);
+                }}
+            />,
+        );
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Navigate to Second" }));
         await screen.findByText("Second Content");
         expect(screen.queryByText("First Content")).toBeNull();
@@ -40,12 +46,18 @@ describe("tabs - switching", () => {
         });
 
         expectUnselectedTab("First Tab");
-        expect(focusedRouteName(onStateChange)).toBe("Second");
+        expect(focusedRouteName(states)).toBe("Second");
     });
 
     it("switches tabs with jumpTo from a screen", async () => {
-        const onStateChange: StateSpy = vi.fn();
-        await render(<TabsApp onStateChange={onStateChange} />);
+        const states: StateHistory = [];
+        await render(
+            <TabsApp
+                onStateChange={(state) => {
+                    states.push(state);
+                }}
+            />,
+        );
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Jump to Third" }));
         await screen.findByText("Third Content");
         expect(screen.queryByText("First Content")).toBeNull();
@@ -54,17 +66,23 @@ describe("tabs - switching", () => {
             expectSelectedTab("Third Tab");
         });
 
-        expect(focusedRouteName(onStateChange)).toBe("Third");
+        expect(focusedRouteName(states)).toBe("Third");
     });
 
     it("reports tab states to onStateChange", async () => {
-        const onStateChange: StateSpy = vi.fn();
-        await render(<TabsApp onStateChange={onStateChange} />);
+        const states: StateHistory = [];
+        await render(
+            <TabsApp
+                onStateChange={(state) => {
+                    states.push(state);
+                }}
+            />,
+        );
         await userEvent.click(await findTab("Third Tab"));
         await screen.findByText("Third Content");
-        expect(onStateChange).toHaveBeenCalledTimes(1);
-        expect(lastState(onStateChange)?.type).toBe("tab");
-        expect(focusedRouteName(onStateChange)).toBe("Third");
+        expect(states).toHaveLength(1);
+        expect(lastState(states)?.type).toBe("tab");
+        expect(focusedRouteName(states)).toBe("Third");
     });
 
     it("selects the initial route", async () => {

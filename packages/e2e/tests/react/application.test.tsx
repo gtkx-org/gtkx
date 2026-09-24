@@ -1,7 +1,6 @@
 import type { Root, RootElement } from "@gtkx/react";
 import type { ActionAccel, MainOption } from "@gtkx/react/internal";
 import type { ReactNode, RefObject } from "react";
-import type { Mock } from "vitest";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
@@ -12,7 +11,7 @@ import { createRoot, quit, rootElement, useApplication } from "@gtkx/react";
 import { act, render, userEvent } from "@gtkx/testing";
 import process from "node:process";
 import { createRef, useEffect } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { startApplicationOwner, stopApplicationOwners } from "../helpers/application-owner.js";
 import { createApplicationRenderer } from "../helpers/application-render.js";
 import { createAppIdFactory } from "../helpers/unique-name.js";
@@ -25,12 +24,12 @@ type AccelsAppProps = {
     isAppScoped: boolean;
 };
 
-type ActivateMock = ReturnType<typeof createActivateMock>;
+type ActivateHandler = (parameter: GLib.Variant | null) => void;
 
 type Harness = {
     label: Gtk.Label;
     entry: Gtk.Entry;
-    onActivate: ActivateMock;
+    activations: (GLib.Variant | null)[];
 };
 
 type AccelsAppProps2 = {
@@ -49,7 +48,7 @@ type ProbeProps = { onCleanup: () => void };
 
 type ProbeRoot = {
     root: Root;
-    onCleanup: Mock;
+    cleanups: { count: number };
     mount: () => Promise<void>;
 };
 
@@ -80,7 +79,7 @@ const APP_FLAGS2 = Gio.ApplicationFlags.NON_UNIQUE;
 const uniqueAppId2 = createAppIdFactory("org.gtkx.accelkeyboard");
 const APP_FLAGS3 = Gio.ApplicationFlags.NON_UNIQUE;
 const uniqueAppId3 = createAppIdFactory("org.gtkx.actionaccelstest");
-const noop = vi.fn();
+const noop = (): null => null;
 const newWindowAction = <GSimpleAction name="new" onActivate={noop} />;
 const renderApplication = createApplicationRenderer("org.gtkx.useapplicationtest");
 const uniqueAppId4 = createAppIdFactory("org.gtkx.remoteapp");
@@ -257,8 +256,6 @@ const parseGreeting = async (args: string[]): Promise<string[]> => {
 const fileMenu = (items: string[]): Promise<Gio.Menu> =>
     renderMenu([{ label: "File", items: items.map((label) => ({ label, action: `win.${label}` })) }]);
 
-const createActivateMock = () => vi.fn<(parameter: GLib.Variant | null) => void>();
-
 const AccelsApp = ({ labelRef, entryRef, actionAccels, actions, isAppScoped }: AccelsAppProps): ReactNode => (
     <GtkApplication
         applicationId={uniqueAppId2()}
@@ -282,12 +279,15 @@ const AccelsApp = ({ labelRef, entryRef, actionAccels, actions, isAppScoped }: A
 const renderHarness = async (
     accels: string[],
     detailedActionName: string,
-    action: (onActivate: ActivateMock) => ReactNode,
+    action: (onActivate: ActivateHandler) => ReactNode,
     isAppScoped = false,
 ): Promise<Harness> => {
     const labelRef = createRef<Gtk.Label>();
     const entryRef = createRef<Gtk.Entry>();
-    const onActivate = createActivateMock();
+    const activations: (GLib.Variant | null)[] = [];
+    const onActivate: ActivateHandler = (parameter) => {
+        activations.push(parameter);
+    };
 
     await render(
         <AccelsApp
@@ -303,15 +303,15 @@ const renderHarness = async (
     return {
         label: requireWidget(labelRef.current, "label"),
         entry: requireWidget(entryRef.current, "entry"),
-        onActivate,
+        activations,
     };
 };
 
-const simpleAction = (name: string) => (onActivate: ActivateMock) => (
+const simpleAction = (name: string) => (onActivate: ActivateHandler) => (
     <GSimpleAction name={name} onActivate={onActivate} />
 );
 
-const targetedAction = (name: string) => (onActivate: ActivateMock) => (
+const targetedAction = (name: string) => (onActivate: ActivateHandler) => (
     <GSimpleAction name={name} parameterType={GLib.VariantType.new("s")} onActivate={onActivate} />
 );
 
@@ -373,11 +373,14 @@ const Probe2 = ({ onCleanup }: ProbeProps): ReactNode => {
 const createProbeRoot = (): ProbeRoot => {
     const container: RootElement = { ...rootElement };
     const root = createRoot(container);
-    const onCleanup = vi.fn();
+    const cleanups = { count: 0 };
+    const onCleanup = (): void => {
+        cleanups.count += 1;
+    };
 
     return {
         root,
-        onCleanup,
+        cleanups,
         mount: async () => {
             await act(() => {
                 root.render(<Probe2 onCleanup={onCleanup} />);
@@ -452,51 +455,51 @@ describe("render - Application main options", () => {
 
 describe("userEvent.keyboard dispatches application accelerators", () => {
     it("activates a window-scoped action bound through actionAccels", async () => {
-        const { label, onActivate } = await renderHarness(["<Control>s"], "win.save", simpleAction("save"));
+        const { label, activations } = await renderHarness(["<Control>s"], "win.save", simpleAction("save"));
         label.grabFocus();
         await userEvent.keyboard(label, "{Control>}s{/Control}");
-        expect(onActivate).toHaveBeenCalledTimes(1);
+        expect(activations).toHaveLength(1);
     });
 
     it("activates an application-scoped action bound through actionAccels", async () => {
         const harness = await renderHarness(["<Control>k"], "app.palette", simpleAction("palette"), true);
         harness.label.grabFocus();
         await userEvent.keyboard(harness.label, "{Control>}k{/Control}");
-        expect(harness.onActivate).toHaveBeenCalledTimes(1);
+        expect(harness.activations).toHaveLength(1);
     });
 
     it("activates an accelerator carrying an action target", async () => {
         const harness = await renderHarness(["<Control><Shift>d"], "app.mode::dark", targetedAction("mode"), true);
         harness.label.grabFocus();
         await userEvent.keyboard(harness.label, "{Control>}{Shift>}d{/Shift}{/Control}");
-        expect(harness.onActivate).toHaveBeenCalledTimes(1);
-        expect(harness.onActivate.mock.calls[0]?.[0]?.getString()[0]).toBe("dark");
+        expect(harness.activations).toHaveLength(1);
+        expect(harness.activations[0]?.getString()[0]).toBe("dark");
     });
 });
 
 describe("userEvent.keyboard prefers application accelerators over local shortcuts", () => {
     it("takes priority over a class shortcut on the focused widget", async () => {
-        const { label, onActivate } = await renderHarness(["<Control>f"], "win.find", simpleAction("find"));
+        const { label, activations } = await renderHarness(["<Control>f"], "win.find", simpleAction("find"));
         label.grabFocus();
         await userEvent.keyboard(label, "{Control>}f{/Control}");
-        expect(onActivate).toHaveBeenCalledTimes(1);
+        expect(activations).toHaveLength(1);
     });
 
     it("takes priority over a shortcut on an editable's delegate", async () => {
         const action = simpleAction("select-all-items");
-        const { entry, onActivate } = await renderHarness(["<Control>a"], "win.select-all-items", action);
+        const { entry, activations } = await renderHarness(["<Control>a"], "win.select-all-items", action);
         entry.grabFocus();
         entry.selectRegion(0, 0);
         await userEvent.keyboard(entry, "{Control>}a{/Control}");
-        expect(onActivate).toHaveBeenCalledTimes(1);
+        expect(activations).toHaveLength(1);
         expect(entry.getSelectionBounds()[0]).toBe(false);
     });
 
     it("leaves unbound key combinations to the widget's own shortcuts", async () => {
-        const { entry, onActivate } = await renderHarness(["<Control>s"], "win.save", simpleAction("save"));
+        const { entry, activations } = await renderHarness(["<Control>s"], "win.save", simpleAction("save"));
         entry.grabFocus();
         await userEvent.keyboard(entry, "{Control>}a{/Control}");
-        expect(onActivate).not.toHaveBeenCalled();
+        expect(activations).toEqual([]);
         expect(entry.getSelectionBounds()[0]).toBe(true);
     });
 });
@@ -589,11 +592,11 @@ describe.each(TEARDOWNS)("quit after $name", (teardown) => {
             teardown.tearDown(probe.root);
         });
 
-        expect(probe.onCleanup).toHaveBeenCalledTimes(1);
+        expect(probe.cleanups.count).toBe(1);
         await probe.mount();
-        probe.onCleanup.mockClear();
+        probe.cleanups.count = 0;
         expect(await act(() => quit())).toBe(Gdk.EVENT_STOP);
-        expect(probe.onCleanup).toHaveBeenCalledTimes(1);
+        expect(probe.cleanups.count).toBe(1);
     });
 });
 

@@ -102,7 +102,11 @@ const hypertextDemo: Demo = {
 };
 
 function sayWord(word: string): void {
-    spawn(tryResolveExecutable(SPEAK_COMMAND) ?? SPEAK_COMMAND, [word], { stdio: "ignore" });
+    const command = tryResolveExecutable(SPEAK_COMMAND);
+
+    if (command) {
+        spawn(command, [word], { stdio: "ignore" });
+    }
 }
 
 function InlineIcon({ iconName, size }: { iconName: string; size: number }) {

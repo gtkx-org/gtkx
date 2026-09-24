@@ -1,8 +1,9 @@
 import { t } from "@gtkx/i18n";
 import { AdwToggle, AdwToggleGroup } from "@gtkx/jsx/adw";
+import type { Filter } from "../types.js";
 import { useStore } from "../store/index.js";
 
-export const TaskFilter = () => {
+const TaskFilter = () => {
     const filter = useStore((state) => state.filter);
     const setFilter = useStore((state) => state.setFilter);
 
@@ -11,7 +12,9 @@ export const TaskFilter = () => {
             activeName={filter}
             cssClasses={["round"]}
             onNotifyActiveName={(name) => {
-                if (name === "all" || name === "open" || name === "done") setFilter(name);
+                if (name !== null) {
+                    setFilter(name as Filter);
+                }
             }}
         >
             <AdwToggle name="all" label={t("All")} />
@@ -19,4 +22,8 @@ export const TaskFilter = () => {
             <AdwToggle name="done" label={t("Done")} />
         </AdwToggleGroup>
     );
+};
+
+export {
+    TaskFilter,
 };

@@ -103,13 +103,13 @@ const devices = [
         id: "digital2",
         title: "Digital Output",
         icon: "audio-card-symbolic",
-        description: "Thinkpad Tunderbolt 3 Dock USB Audio",
+        description: "ThinkPad Thunderbolt 3 Dock USB Audio",
     },
     {
         id: "analog",
         title: "Analog Output",
         icon: "audio-card-symbolic",
-        description: "Thinkpad Tunderbolt 3 Dock USB Audio",
+        description: "ThinkPad Thunderbolt 3 Dock USB Audio",
     },
 ];
 

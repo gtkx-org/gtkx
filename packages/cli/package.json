@@ -86,6 +86,7 @@
         "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",
         "@swc/core": "^1.16.2",
+        "@types/react-refresh": "^0.14.7",
         "babel-plugin-react-compiler": "^1.0.0",
         "citty": "^0.2.2",
         "confbox": "^0.3.1",
@@ -107,7 +108,6 @@
         "@types/babel__core": "^7.20.5",
         "@types/gettext-parser": "^9.0.0",
         "@types/hosted-git-info": "^3.0.5",
-        "@types/react-refresh": "^0.14.7",
         "@types/semver": "^7.8.0",
         "@types/spdx-expression-parse": "^4.0.0",
         "vitest": "catalog:"

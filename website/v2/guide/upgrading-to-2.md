@@ -56,6 +56,18 @@ Adwaita is part of the core packages. `ComboRow`, `ToastProvider`, `useToast`, a
 import { ComboRow, ToastProvider, useToast } from "@gtkx/components";
 ```
 
+Import `createElementComponent` from `@gtkx/react` instead of `@gtkx/react/config`. The config subpath remains for renderer behavior and element registration APIs.
+
+## Move GObject ownership into JSX
+
+The settings hooks no longer create a `Gio.Settings` instance. Render `GSettings` from `@gtkx/jsx/gio` in the root portal, capture the instance with a state callback ref, and mount its consumers once it is available. Pass that instance first to `useSetting`, and add it as the `settings` option to `useBindSetting`. The [settings tutorial](/v2/tutorial/preferences-and-theming#create-the-settings-instance) shows the complete ownership pattern.
+
+`useProperty`, `useSignal`, and `useBindSetting` now take a mounted instance rather than a mutable ref object. Store callback-ref values in state and pass the value to the hook so subscriptions follow replacement and unmounting. Remove imports of the deleted `RefProp` type. See [Properties and the hooks](/v2/guide/subclassing#properties-and-the-hooks) for the pattern.
+
+## Give form choices explicit values
+
+A form `ComboRow` now controls a non-nullable string field. Replace `null` or `undefined` defaults with an item ID that exists in the choices. GTKX preserves that ID while an asynchronous source is empty, so reloading choices does not alter the form value or dirty state. See [Choose a row](/v2/guide/forms#choose-a-row).
+
 ## Update internationalization
 
 GTKX now delegates extraction and resource typing to `i18next-cli`. Keep catalog declarations in ESM files and use the exact names `t`, `useTranslation`, `Trans`, or `TransWithoutContext`; replace imported aliases, `i18n.t` member calls, dynamic keys, and CommonJS declarations with those static forms.
@@ -83,12 +95,18 @@ Run codegen after migrating. The generated declaration now uses i18next's standa
 | `Graphene.Rect.create(x, y, width, height)` | `new Graphene.Rect().init(x, y, width, height)` |
 | `Graphene.Size.create(width, height)` | `new Graphene.Size({ width, height })` |
 | `GObject.buildValue(...)` | Pass the JavaScript value, or initialize `new GObject.Value()` |
+| `getObjectProperty(...)` | `getProperty(...)` |
+| `setObjectProperty(...)` | `setProperty(...)` |
 | `@gtkx/gi/cairo` | `@gtkx/cairo` |
 | `@gtkx/components/adw` | `@gtkx/components` |
 | `animated.GtkLabel` | `animated(GtkLabel)` |
 | `AnimatedElements` | `AnimatedElementMap` |
 
 The cairo stub-constructor `*ConstructorProps` aliases have no replacement because their constructors no longer exist.
+
+Generated methods that expose unmanaged native addresses are also omitted. Replace `GLib.Bytes.getRegion` with `getData` or `newFromBytes`, use `GLib.Variant.getDataAsBytes` instead of `getData`, and close a `Gio.MemoryOutputStream` before calling `stealAsBytes` instead of `getData` or `stealData`.
+
+`@gtkx/gl` no longer exposes `getDebugMessageLog` or `debugMessageCallback`, whose native contracts require caller-owned memory or callback lifetime management. Remove those calls; the shader, program, and pipeline info-log helpers remain available. Replace `clientWaitSyncLoop` with the generated `clientWaitSync`, which accepts the full timeout as a `bigint`.
 
 ## Verify the upgrade
 

@@ -18,6 +18,7 @@ Create the file dialog through JSX and keep its instance in a callback ref. The 
 ```tsx
 import type * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { GCancellable } from "@gtkx/jsx/gio";
 import { GtkButton, GtkFileDialog } from "@gtkx/jsx/gtk";
 import { createPortal, rootElement, useParentWindow } from "@gtkx/react";
 import { useState } from "react";
@@ -30,25 +31,48 @@ type OpenButtonProps = {
 const OpenButton = ({ onFile, onError }: OpenButtonProps) => {
     const parentWindow = useParentWindow();
     const [dialog, setDialog] = useState<Gtk.FileDialog | null>(null);
+    const [cancellable, setCancellable] = useState<Gio.Cancellable | null>(null);
+    const [cancellableGeneration, setCancellableGeneration] = useState(0);
+    const [isOpening, setIsOpening] = useState(false);
 
-    const open = async (fileDialog: Gtk.FileDialog) => {
+    const open = async (fileDialog: Gtk.FileDialog, current: Gio.Cancellable) => {
+        setIsOpening(true);
+
         try {
-            onFile(await fileDialog.open(parentWindow));
+            onFile(await fileDialog.open(parentWindow, current));
         } catch (error) {
-            if (error instanceof Gtk.DialogError && error.code === Gtk.DialogError.DISMISSED) return;
+            if (
+                error instanceof Gtk.DialogError &&
+                (error.code === Gtk.DialogError.DISMISSED || error.code === Gtk.DialogError.CANCELLED)
+            ) {
+                return;
+            }
+
             onError(error);
+        } finally {
+            setIsOpening(false);
+            setCancellableGeneration((generation) => generation + 1);
         }
     };
 
     return (
         <>
             {createPortal(<GtkFileDialog ref={setDialog} />, rootElement)}
+            {createPortal(
+                <GCancellable key={cancellableGeneration} ref={setCancellable} />,
+                rootElement,
+            )}
             <GtkButton
                 iconName="document-open-symbolic"
-                sensitive={dialog !== null}
+                sensitive={dialog !== null && cancellable !== null && !isOpening}
                 onClicked={() => {
-                    if (dialog) void open(dialog);
+                    if (dialog && cancellable) void open(dialog, cancellable);
                 }}
+            />
+            <GtkButton
+                iconName="process-stop-symbolic"
+                sensitive={isOpening && cancellable !== null}
+                onClicked={() => cancellable?.cancel()}
             />
         </>
     );
@@ -59,31 +83,11 @@ Dismissing this dialog rejects with `Gtk.DialogError.DISMISSED`. Match the gener
 
 ## Cancellation with Gio.Cancellable
 
-Promisified methods retain their `Gio.Cancellable` argument. Render a `GCancellable` from `@gtkx/jsx/gio` alongside the dialog in the portal and capture its instance with a callback ref. Pass those instances into an operation such as this timeout:
+Promisified methods retain their `Gio.Cancellable` argument. The example renders `GCancellable` from `@gtkx/jsx/gio` in the root portal, captures it with a state callback ref, and passes that instance into `open`.
 
-```ts
-import type * as Gio from "@gtkx/gi/gio";
-import * as Gtk from "@gtkx/gi/gtk";
+Cancellation rejects the promise. GIO operations report `Gio.IOErrorEnum.CANCELLED`; GTK dialogs use `Gtk.DialogError.CANCELLED`.
 
-const openWithTimeout = async (
-    dialog: Gtk.FileDialog,
-    parent: Gtk.Window | null,
-    cancellable: Gio.Cancellable,
-) => {
-    const timeoutId = setTimeout(() => cancellable.cancel(), 20_000);
-
-    try {
-        return await dialog.open(parent, cancellable);
-    } catch (error) {
-        if (error instanceof Gtk.DialogError && error.code === Gtk.DialogError.CANCELLED) return null;
-        throw error;
-    } finally {
-        clearTimeout(timeoutId);
-    }
-};
-```
-
-Cancellation rejects the promise. GIO operations report `Gio.IOErrorEnum.CANCELLED`; GTK dialogs use `Gtk.DialogError.CANCELLED`. The cancellable's reuse and reset rules belong to [Gio.Cancellable](https://docs.gtk.org/gio/class.Cancellable.html).
+A cancelled instance stays cancelled. Before starting another operation, replace its JSX element, for example by changing its key, and wait for the callback ref to receive the fresh instance. The same rule applies after unmount cleanup or React effect replay cancels an operation.
 
 ## Callback-only methods and external finish owners
 

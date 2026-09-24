@@ -1,24 +1,39 @@
+import type * as GLib from "@gtkx/gi/glib";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkButton, GtkGestureClick, GtkHeaderBar, GtkPicture } from "@gtkx/jsx/gtk";
-import { createContext, useContext, useState } from "react";
+import { GListStore } from "@gtkx/jsx/gio";
+import {
+    GtkButton,
+    GtkFileDialog,
+    GtkFileFilter,
+    GtkGestureClick,
+    GtkHeaderBar,
+    GtkPicture,
+    GtkSvg,
+} from "@gtkx/jsx/gtk";
+import { createPortal, rootElement } from "@gtkx/react";
+import { createContext, useContext, useEffect, useLayoutEffect, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import nodeEditorSvgPath from "../../../data/demos/drawing/org.gtk.gtk4.NodeEditor.Devel.svg?resource";
+import { isCancellation } from "../../is-cancellation.js";
+import { useCancellable } from "../../use-cancellable.js";
 import sourceCode from "./paintable-svg.tsx?raw";
 
 type PaintableSvgContextValue = {
-    svg: Gtk.Svg | null;
+    source: SvgSource;
     handleOpen: () => void;
 };
+
+type ResourceSvgSource = { id: number; kind: "resource"; resource: string };
+type BytesSvgSource = { id: number; kind: "bytes"; bytes: GLib.Bytes };
+type SvgSource = ResourceSvgSource | BytesSvgSource;
 
 const PaintableSvgContext = createContext<PaintableSvgContextValue | null>(null);
 
 const paintableSvgDemo: Demo = {
     id: "paintable-svg",
     title: "Paintable/SVG",
-    description:
-        "This demo shows using GtkSvg to display an SVG image in a GtkPicture that can be scaled by resizing " +
-        "the window.",
+    description: "A generated GtkSvg element displays a scalable image and loads another SVG from a file dialog.",
     keywords: [],
     component: PaintableSvgDemo,
     titlebar: PaintableSvgTitlebar,
@@ -29,11 +44,11 @@ const paintableSvgDemo: Demo = {
     windowTitle: "Paintable — SVG",
 };
 
-const loadSvgFromFile = (file: Gio.File): Gtk.Svg | null => {
+const loadSvgFromFile = (file: Gio.File): GLib.Bytes | null => {
     try {
         const [bytes] = file.loadBytes(null);
 
-        return Gtk.Svg.newFromBytes(bytes);
+        return bytes;
     } catch (error) {
         if (error instanceof Error) {
             console.error(error.message);
@@ -43,21 +58,15 @@ const loadSvgFromFile = (file: Gio.File): Gtk.Svg | null => {
     }
 };
 
-const pickSvgFile = async (window: Gtk.Window | null): Promise<Gio.File | null> => {
-    const dialog = new Gtk.FileDialog();
-    dialog.setTitle("Open svg image");
-    const filter = new Gtk.FileFilter();
-    filter.addMimeType("image/svg+xml");
-    filter.addMimeType("image/x-gtk-path-animation");
-    filter.addPattern("*.gpa");
-    const filters = Gio.ListStore.new(Gtk.FileFilter.prototype.__type__);
-    filters.append(filter);
-    dialog.setFilters(filters);
-
+const pickSvgFile = async (
+    dialog: Gtk.FileDialog,
+    window: Gtk.Window | null,
+    cancellable: Gio.Cancellable,
+): Promise<Gio.File | null> => {
     try {
-        return await dialog.open(window, null);
+        return await dialog.open(window, cancellable);
     } catch (error) {
-        if (error instanceof Error) {
+        if (!isCancellation(error) && error instanceof Error) {
             console.error(error.message);
         }
 
@@ -75,30 +84,72 @@ const usePaintableSvgContext = (): PaintableSvgContextValue => {
     return ctx;
 };
 
+function useSvgFileDialog() {
+    const [dialog, setDialog] = useState<Gtk.FileDialog | null>(null);
+    const [filter, setFilter] = useState<Gtk.FileFilter | null>(null);
+    const [filters, setFilters] = useState<Gio.ListStore | null>(null);
+    const cancellable = useCancellable();
+
+    useEffect(() => {
+        if (filters !== null && filter !== null) {
+            filters.splice(0, filters.getNItems(), [filter]);
+        }
+    }, [filter, filters]);
+
+    const portal = createPortal(
+        <>
+            <GtkFileFilter
+                ref={setFilter}
+                mimeTypes={["image/svg+xml", "image/x-gtk-path-animation"]}
+                patterns={["*.gpa"]}
+            />
+            <GListStore ref={setFilters} itemType={Gtk.FileFilter.prototype.__type__} />
+            <GtkFileDialog ref={setDialog} title="Open svg image" filters={filters} defaultFilter={filter} />
+            {cancellable.element}
+        </>,
+        rootElement,
+    );
+
+    return { dialog, cancellable, portal };
+}
+
 function PaintableSvgProvider({ window, children }: DemoProviderProps) {
-    const [svg, setSvg] = useState<Gtk.Svg | null>(() =>
-        loadSvgFromFile(Gio.File.newForUri(`resource://${nodeEditorSvgPath}`)));
+    const [source, setSource] = useState<SvgSource>({ id: 0, kind: "resource", resource: nodeEditorSvgPath });
+    const { dialog, cancellable, portal } = useSvgFileDialog();
 
     const handleOpen = async () => {
-        const file = await pickSvgFile(window);
-
-        if (!file) {
+        if (dialog === null || cancellable.cancellable === null) {
             return;
         }
 
-        const next = loadSvgFromFile(file);
+        try {
+            const file = await pickSvgFile(dialog, window, cancellable.cancellable);
 
-        if (next) {
-            setSvg(next);
+            if (!file) {
+                return;
+            }
+
+            const bytes = loadSvgFromFile(file);
+
+            if (bytes) {
+                setSource((current) => ({ id: current.id + 1, kind: "bytes", bytes }));
+            }
+        } finally {
+            cancellable.renew();
         }
     };
 
     const value = {
-        svg,
+        source,
         handleOpen: () => void handleOpen(),
     };
 
-    return <PaintableSvgContext.Provider value={value}>{children}</PaintableSvgContext.Provider>;
+    return (
+        <>
+            {portal}
+            <PaintableSvgContext.Provider value={value}>{children}</PaintableSvgContext.Provider>
+        </>
+    );
 }
 
 function PaintableSvgTitlebar() {
@@ -113,7 +164,14 @@ function PaintableSvgTitlebar() {
 }
 
 function PaintableSvgDemo() {
-    const { svg } = usePaintableSvgContext();
+    const { source } = usePaintableSvgContext();
+    const [svg, setSvg] = useState<Gtk.Svg | null>(null);
+
+    useLayoutEffect(() => {
+        if (svg !== null && source.kind === "bytes") {
+            svg.loadFromBytes(source.bytes);
+        }
+    }, [source, svg]);
 
     const handlePressed = () => {
         if (!svg) {
@@ -127,7 +185,13 @@ function PaintableSvgDemo() {
     return (
         <GtkPicture
             name="picture"
-            paintable={svg}
+            paintable={(
+                <GtkSvg
+                    key={source.id}
+                    ref={setSvg}
+                    {...(source.kind === "resource" ? { resource: source.resource } : {})}
+                />
+            )}
             widthRequest={16}
             heightRequest={16}
             controllers={<GtkGestureClick onPressed={handlePressed} />}

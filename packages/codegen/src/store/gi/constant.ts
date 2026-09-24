@@ -1,16 +1,26 @@
 import { sanitizeIdentifier, sourceStringLiteral } from "@gtkx/utils";
+import type { Library } from "../../gir/library.js";
 import type { GirConstant } from "../../gir/namespace.js";
 import type { PrimitiveCategory } from "../../gir/primitives.js";
 import type { ModuleContext } from "../../writer/context.js";
-import { primitiveCategoryThroughAliases } from "../../analysis/type-shape.js";
+import {
+    hasPrimitivePointer,
+    hasScalarPointer,
+    primitiveCategoryThroughAliases,
+} from "../../analysis/type-shape.js";
 import { isEmittableEntity } from "../../gir/emittable.js";
 import { getDoc } from "./doc-spec.js";
 
 const TRUE_VALUES: Set<string> = new Set(["true", "1"]);
-const BIGINT_CATEGORIES: Set<PrimitiveCategory> = new Set(["bigint64", "biguint64", "gtype", "pointer"]);
+const BIGINT_CATEGORIES: Set<PrimitiveCategory> = new Set(["bigint64", "biguint64", "gtype"]);
+
+const isEmittableConstant = (library: Library, constant: GirConstant): boolean =>
+    isEmittableEntity(constant) &&
+    !hasPrimitivePointer(library, constant.type) &&
+    !hasScalarPointer(library, constant.type, constant.cType);
 
 const generateConstant = (context: ModuleContext, constant: GirConstant): void => {
-    if (!isEmittableEntity(constant)) {
+    if (!isEmittableConstant(context.library, constant)) {
         return;
     }
 
@@ -49,4 +59,4 @@ const numericConstantLiteral = (constant: GirConstant, category: PrimitiveCatego
 
 const isNumericLiteral = (value: string): boolean => /^-?(?:\d+|\d*\.\d+)$/.test(value);
 
-export { generateConstant, constantLiteral };
+export { generateConstant, constantLiteral, isEmittableConstant };

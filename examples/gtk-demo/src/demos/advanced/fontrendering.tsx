@@ -175,6 +175,7 @@ const PANGO_SCALE = 1024;
 const DEFAULT_TEXT = "Fonts render";
 const ZWNJ = "‌";
 const ANIMATION_DURATION_US = 500_000;
+const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 const FontRenderingContext = createContext<FontRenderingContextValue | null>(null);
 
 const hintStyleOptions = [
@@ -190,7 +191,7 @@ const fontRenderingDemo: Demo = {
     description:
         "Demonstrates various aspects of font rendering, such as hinting, antialiasing and grid " +
         "alignment.\n\nThe demo lets you explore font rendering options interactively to get a feeling for " +
-        "they affect the shape and positioning of the glyphs.",
+        "how they affect the shape and positioning of the glyphs.",
     keywords: [],
     component: FontRenderingDemo,
     titlebar: FontRenderingTitlebar,
@@ -267,30 +268,38 @@ const createTextLayout = (context: Pango.Context, fontDesc: Pango.FontDescriptio
 
 const repeatedGlyphText = (ch: string): string => `${ch}${ZWNJ}${ch}${ZWNJ}${ch}${ZWNJ}${ch}`;
 
-const setupGridLayout = (
+const createGridLayout = (
     context: Pango.Context,
     fontDesc: Pango.FontDescription,
     text: string,
-): { logicalRect: Pango.Rectangle; ch: string; iter: Pango.LayoutIter } | null => {
-    let ch = text[0] ?? " ";
-    const layout = createTextLayout(context, fontDesc, repeatedGlyphText(ch));
-    let [, logicalRect] = layout.getPixelExtents();
-    const iter = layout.getIter();
-    const glyphItem = iter.getRun();
+): { layout: Pango.Layout; logicalRect: Pango.Rectangle; glyphs: Pango.GlyphString; ch: string } | null => {
+    const build = (ch: string) => {
+        const layout = createTextLayout(context, fontDesc, repeatedGlyphText(ch));
+        const glyphs = layout.getIter().getRun()?.glyphs;
 
-    if (!glyphItem?.glyphs) {
+        return glyphs ? { layout, glyphs } : null;
+    };
+
+    let ch = graphemeSegmenter.segment(text).containing(0)?.segment ?? " ";
+    let result = build(ch);
+
+    if (!result) {
         return null;
     }
 
-    if (glyphItem.glyphs.numGlyphs < 8) {
+    if (result.glyphs.numGlyphs < 8) {
         ch = "a";
-        layout.setText(repeatedGlyphText(ch), -1);
-        [, logicalRect] = layout.getPixelExtents();
+        result = build(ch);
+
+        if (!result) {
+            return null;
+        }
     }
 
-    enlargeGlyphWidths(glyphItem.glyphs);
+    const [, logicalRect] = result.layout.getPixelExtents();
+    enlargeGlyphWidths(result.glyphs);
 
-    return { logicalRect, ch, iter };
+    return { ...result, logicalRect, ch };
 };
 
 const withMeasurementContext = <T,>(inputs: MeasurementInputs, body: (pangoContext: Pango.Context) => T): T => {
@@ -325,7 +334,7 @@ const measureTextSurface = (inputs: MeasurementInputs): { width: number; height:
 
 const measureGridSurface = (inputs: MeasurementInputs): { width: number; height: number } => {
     const result = withMeasurementContext(inputs, (pangoContext) => {
-        const layoutSetup = setupGridLayout(pangoContext, inputs.fontDesc, inputs.text);
+        const layoutSetup = createGridLayout(pangoContext, inputs.fontDesc, inputs.text);
 
         if (!layoutSetup) {
             return null;
@@ -358,39 +367,31 @@ const renderSmallSurface = ({
     fontDesc: Pango.FontDescription;
     ch: string;
     shouldHintMetrics: boolean;
-}): { iter: Pango.LayoutIter } | null => {
+}): Pango.Layout | null => {
     const { cr: smallCr, pangoContext: smallCtx } = createFontContext({
         surface: small,
         fontOptions,
         shouldHintMetrics,
     });
 
-    const smallLayout = createTextLayout(smallCtx, fontDesc, repeatedGlyphText(ch));
-    let [, smallLogical] = smallLayout.getPixelExtents();
-    const smallIter = smallLayout.getIter();
-    const smallGlyphItem = smallIter.getRun();
+    const gridLayout = createGridLayout(smallCtx, fontDesc, ch);
 
-    if (!smallGlyphItem?.glyphs) {
+    if (!gridLayout) {
         return null;
     }
 
-    if (smallGlyphItem.glyphs.numGlyphs < 8) {
-        smallLayout.setText(repeatedGlyphText("a"), -1);
-        [, smallLogical] = smallLayout.getPixelExtents();
-    }
-
-    enlargeGlyphWidths(smallGlyphItem.glyphs);
+    const { layout, logicalRect, glyphs } = gridLayout;
     smallCr.setSourceRgb(1, 1, 1);
     smallCr.paint();
     smallCr.setSourceRgb(0, 0, 0);
 
     for (let j = 0; j < 4; j++) {
-        applyGlyphOffsets(smallGlyphItem.glyphs, j);
-        smallCr.moveTo(0, j * smallLogical.height);
-        PangoCairo.showLayout(smallCr, smallLayout);
+        applyGlyphOffsets(glyphs, j);
+        smallCr.moveTo(0, j * logicalRect.height);
+        PangoCairo.showLayout(smallCr, layout);
     }
 
-    return { iter: smallIter };
+    return layout;
 };
 
 const paintSmallSurface = ({
@@ -611,9 +612,7 @@ const drawSmallSurface = (ctx: DrawTextModeContext) => {
     smallCr.translate(10, 10);
     PangoCairo.showLayout(smallCr, smallLayout);
     PangoCairo.layoutPath(smallCr, smallLayout);
-    smallCr.save();
     smallCr.newPath();
-    smallCr.restore();
     const scaledWidth = surfaceWidth * state.scale;
     const scaledHeight = surfaceHeight * state.scale;
     const offsetX = Math.max(0, Math.floor((ctx.width - scaledWidth) / 2));
@@ -758,6 +757,7 @@ const computeTextLayout = ({
         width: Math.ceil(inkRect.width / PANGO_SCALE),
         height: Math.ceil(inkRect.height / PANGO_SCALE),
     };
+    offscreen.finish();
 
     return { inkPixel, logicalRect, baseline, target };
 };
@@ -811,9 +811,11 @@ function useDrawGridMode(state: FontRenderingState) {
         const target = cr.getTarget();
         const tmpSurface = Surface.createSimilar(target, Content.COLOR_ALPHA, 1, 1);
         const { pangoContext } = createFontContext({ surface: tmpSurface, fontOptions, shouldHintMetrics });
-        const layoutSetup = setupGridLayout(pangoContext, fontDesc, text);
+        const layoutSetup = createGridLayout(pangoContext, fontDesc, text);
 
         if (!layoutSetup) {
+            tmpSurface.finish();
+
             return;
         }
 
@@ -821,9 +823,9 @@ function useDrawGridMode(state: FontRenderingState) {
         const surfaceWidth = Math.round((logicalRect.width * 3) / 2);
         const surfaceHeight = logicalRect.height * 4;
         const small = Surface.createSimilar(target, Content.COLOR_ALPHA, surfaceWidth, surfaceHeight);
-        const smallSetup = renderSmallSurface({ small, fontOptions, fontDesc, ch, shouldHintMetrics });
+        const smallLayout = renderSmallSurface({ small, fontOptions, fontDesc, ch, shouldHintMetrics });
 
-        if (!smallSetup) {
+        if (!smallLayout) {
             small.finish();
             tmpSurface.finish();
 

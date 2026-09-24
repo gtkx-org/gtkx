@@ -11,7 +11,7 @@ import { hasCallbackType } from "../../analysis/callback-shape.js";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { tStruct } from "../../analysis/descriptor.js";
 import { hasUnsupportedHashTableSlot } from "../../analysis/hash-table-admission.js";
-import { renderTsType } from "../../analysis/ts-type.js";
+import { renderParameterTsType, renderTsType } from "../../analysis/ts-type.js";
 import {
     hasPrimitivePointer,
     hasScalarPointer,
@@ -85,7 +85,8 @@ type StructArrayTarget = {
 type StructArrayAccessorOptions = {
     context: ModuleContext;
     jsName: string;
-    tsType: string;
+    readType: string;
+    writeType: string;
     elementDescriptor: string;
     offset: number;
     lengthExpr: string;
@@ -108,7 +109,8 @@ type StructArrayElements = {
 type AccessorOptions = {
     context: ModuleContext;
     jsName: string;
-    tsType: string;
+    readType: string;
+    writeType: string;
     descriptor: string;
     slot: FieldSlot;
     fieldType: TypeId;
@@ -124,7 +126,8 @@ type InlineArrayResolution = {
 type InlineArrayAccessorOptions = {
     context: ModuleContext;
     jsName: string;
-    tsType: string;
+    readType: string;
+    writeType: string;
     descriptor: string;
     offset: number;
     resolution: InlineArrayResolution;
@@ -299,12 +302,14 @@ const renderRecordFieldAccessor = (
         }),
     );
 
-    const tsType = renderTsType(context, field.type);
+    const readType = renderTsType(context, field.type);
+    const writeType = renderParameterTsType(context, field.type, { isValueWidened: false });
 
     const accessorOptions: AccessorOptions = {
         context,
         jsName,
-        tsType,
+        readType,
+        writeType,
         descriptor,
         slot: slot.slot,
         fieldType: field.type,
@@ -618,21 +623,21 @@ const appendElementWriteStatements = (context: ModuleContext, options: ElementWr
 };
 
 const structArrayGetterBlock = (options: StructArrayAccessorOptions): string => {
-    const { context, jsName, tsType, elementDescriptor, offset, lengthExpr, elementSize, elementFields } = options;
+    const { context, jsName, readType, elementDescriptor, offset, lengthExpr, elementSize, elementFields } = options;
     const element = renderElementReadObject(context, elementFields, 0);
     const loop = [`const __base = __index * ${String(elementSize)};`, `__result.push(${element});`].join("\n");
     const handleType = "ReturnType<typeof getHandle>";
 
     const body = [
         `const __array = read(getHandle(this), ${elementDescriptor}, ${String(offset)}) as ${handleType};`,
-        `const __result: ${tsType} = [];`,
+        `const __result: ${readType} = [];`,
         `for (let __index = 0; __index < ${lengthExpr}; __index++) {`,
         indent(loop, 1),
         "}",
         "return __result;",
     ].join("\n");
 
-    return renderBlock(`get ${jsName}(): ${tsType}`, body);
+    return renderBlock(`get ${jsName}(): ${readType}`, body);
 };
 
 const structArraySetterStatements = (context: ModuleContext, options: StructArrayAccessorOptions): string => {
@@ -660,7 +665,7 @@ const structArraySetterStatements = (context: ModuleContext, options: StructArra
 
 const structArraySetterBlock = (options: StructArrayAccessorOptions): string =>
     renderBlock(
-        `set ${options.jsName}(__value: ${options.tsType})`,
+        `set ${options.jsName}(__value: ${options.writeType})`,
         structArraySetterStatements(options.context, options),
     );
 
@@ -743,8 +748,8 @@ const inlineArrayElementOffset = (options: InlineArrayAccessorOptions): string =
     `${String(options.offset)} + __index * ${String(options.resolution.stride)}`;
 
 const inlineArrayGetterBlock = (options: InlineArrayAccessorOptions): string => {
-    const { context, jsName, tsType, descriptor, resolution } = options;
-    const container = resolution.isTypedByteArray ? `new ${tsType}(${String(resolution.count)})` : "[]";
+    const { context, jsName, readType, descriptor, resolution } = options;
+    const container = resolution.isTypedByteArray ? `new ${readType}(${String(resolution.count)})` : "[]";
 
     const element = wrapReturnValue(context, {
         ref: resolution.element,
@@ -753,18 +758,18 @@ const inlineArrayGetterBlock = (options: InlineArrayAccessorOptions): string => 
     });
 
     const body = [
-        `const __result: ${tsType} = ${container};`,
+        `const __result: ${readType} = ${container};`,
         `for (let __index = 0; __index < ${String(resolution.count)}; __index++) {`,
         indent(`__result[__index] = ${element};`, 1),
         "}",
         "return __result;",
     ].join("\n");
 
-    return renderBlock(`get ${jsName}(): ${tsType}`, body);
+    return renderBlock(`get ${jsName}(): ${readType}`, body);
 };
 
 const inlineArraySetterBlock = (options: InlineArrayAccessorOptions): string => {
-    const { jsName, tsType, descriptor, resolution } = options;
+    const { jsName, writeType, descriptor, resolution } = options;
     const count = String(resolution.count);
 
     const write =
@@ -777,7 +782,7 @@ const inlineArraySetterBlock = (options: InlineArrayAccessorOptions): string => 
         "}",
     ].join("\n");
 
-    return renderBlock(`set ${jsName}(__value: ${tsType})`, body);
+    return renderBlock(`set ${jsName}(__value: ${writeType})`, body);
 };
 
 const renderInlineArrayAccessor = (context: ModuleContext, target: StructArrayTarget): string | undefined => {
@@ -795,7 +800,8 @@ const renderInlineArrayAccessor = (context: ModuleContext, target: StructArrayTa
     const options: InlineArrayAccessorOptions = {
         context,
         jsName,
-        tsType: renderTsType(context, field.type, false),
+        readType: renderTsType(context, field.type, false),
+        writeType: renderParameterTsType(context, field.type, { isValueWidened: false }),
         descriptor: context.hoistDescriptor(
             renderDescriptor(context, resolution.element, "none", { isInline: true, isReceived: true }),
         ),
@@ -835,7 +841,8 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     const options: StructArrayAccessorOptions = {
         context,
         jsName,
-        tsType: renderTsType(context, fieldType, false),
+        readType: renderTsType(context, fieldType, false),
+        writeType: renderParameterTsType(context, fieldType, { isValueWidened: false }),
         elementDescriptor: tStruct("borrowed", {
             size: `${lengthExpr} * ${String(elementSize)}`,
             wrapperClass: undefined,
@@ -863,7 +870,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
 };
 
 const getterBlock = (options: AccessorOptions): string => {
-    const { context, jsName, tsType, descriptor, slot, fieldType } = options;
+    const { context, jsName, readType, descriptor, slot, fieldType } = options;
     context.addRuntimeImport("read");
     context.addRuntimeImport("getHandle");
 
@@ -878,15 +885,15 @@ const getterBlock = (options: AccessorOptions): string => {
 
         const body = `return ${wrapped};`;
 
-        return renderBlock(`get ${jsName}(): ${tsType}`, body);
+        return renderBlock(`get ${jsName}(): ${readType}`, body);
     }
 
     const mask = bitMask(slot.bitWidth);
     const shift = slot.bitOffset ?? 0;
     const readUnit = `const __unit = read(getHandle(this), ${descriptor}, ${String(slot.byteOffset)}) as number;`;
-    const body = `${readUnit}\nreturn (((__unit >>> ${String(shift)}) & ${String(mask)}) >>> 0) as ${tsType};`;
+    const body = `${readUnit}\nreturn (((__unit >>> ${String(shift)}) & ${String(mask)}) >>> 0) as ${readType};`;
 
-    return renderBlock(`get ${jsName}(): ${tsType}`, body);
+    return renderBlock(`get ${jsName}(): ${readType}`, body);
 };
 
 const setterBody = (context: ModuleContext, descriptor: string, slot: FieldSlot): string => {
@@ -897,7 +904,7 @@ const setterBody = (context: ModuleContext, descriptor: string, slot: FieldSlot)
 
 const setterBlock = (options: AccessorOptions): string =>
     renderBlock(
-        `set ${options.jsName}(value: ${options.tsType})`,
+        `set ${options.jsName}(value: ${options.writeType})`,
         setterBody(options.context, options.descriptor, options.slot),
     );
 

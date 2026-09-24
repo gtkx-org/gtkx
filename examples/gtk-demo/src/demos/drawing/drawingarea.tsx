@@ -1,7 +1,7 @@
 import { Content, Context, Format, ImageSurface, Operator, Surface } from "@gtkx/cairo";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkDrawingArea, GtkFrame, GtkGestureDrag, GtkLabel } from "@gtkx/jsx/gtk";
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./drawingarea.tsx?raw";
 
@@ -18,9 +18,8 @@ const drawingAreaDemo: Demo = {
     title: "Drawing Area",
     description:
         "GtkDrawingArea is a blank area where you can draw custom displays of various kinds.\n\nThis demo has two " +
-        "drawing areas. The checkerboard area shows how you can just draw something; all you have to do is set a " +
-        'function via gtk_drawing_area_set_draw_func(), as shown here.\n\nThe "scribble" area is a bit more ' +
-        "advanced, and shows how to handle events such as button presses and mouse motion. Click the mouse and drag " +
+        "drawing areas. The checkerboard uses the drawFunc prop for static content. The scribble area combines " +
+        "drawing with pointer gestures. Click the mouse and drag " +
         "in the scribble area to draw squiggles. Resize the window to clear the area.",
     keywords: ["GtkDrawingArea"],
     component: DrawingAreaDemo,
@@ -111,6 +110,9 @@ const drawKnockoutGroups = (_self: Gtk.DrawingArea, cr: Context, width: number, 
     overlayCr.paint();
     cr.setSourceSurface(overlay, 0, 0);
     cr.paint();
+    circles.finish();
+    punch.finish();
+    overlay.finish();
 };
 
 const createSurface = (width: number, height: number): ImageSurface => {
@@ -163,7 +165,22 @@ const ScribbleArea = ({ accessibleLabelledBy }: { accessibleLabelledBy?: Gtk.Wid
     const surfaceRef = useRef<ImageSurface | null>(null);
     const startPointRef = useRef({ x: 0, y: 0 });
 
+    useLayoutEffect(() => {
+        const area = ref.current;
+
+        if (area && !surfaceRef.current && area.getWidth() > 0 && area.getHeight() > 0) {
+            surfaceRef.current = createSurface(area.getWidth(), area.getHeight());
+            area.queueDraw();
+        }
+
+        return () => {
+            surfaceRef.current?.finish();
+            surfaceRef.current = null;
+        };
+    }, []);
+
     const handleResize = (width: number, height: number) => {
+        surfaceRef.current?.finish();
         surfaceRef.current = createSurface(width, height);
     };
 

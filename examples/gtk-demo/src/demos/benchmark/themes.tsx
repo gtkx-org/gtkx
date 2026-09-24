@@ -42,7 +42,7 @@ const themesDemo: Demo = {
     id: "themes",
     title: "Benchmark/Themes",
     description:
-        "This demo continuously switches themes, like some of you.\n\nWarning: This demo involves " +
+        "This demo continuously switches between light, dark, and high-contrast themes.\n\nWarning: It involves " +
         "rapidly flashing changes and may be hazardous to photosensitive viewers.",
     keywords: [],
     component: ThemesDemo,
@@ -130,9 +130,8 @@ const respondToWarning = (controls: ThemesControls, response: string): void => {
     }
 };
 
-const ThemesBody = ({ boxRef }: { boxRef: React.RefObject<Gtk.Box | null> }) => (
+const ThemesBody = () => (
     <GtkBox
-        ref={boxRef}
         orientation={Gtk.Orientation.VERTICAL}
         spacing={10}
         marginStart={10}
@@ -217,7 +216,6 @@ function useThemesCycling(window: Gtk.Window | null) {
     const [showWarning, setShowWarning] = useState(false);
     const fpsAttrs = useFpsAttrs();
     const themeIndexRef = useRef(0);
-    const boxRef = useRef<Gtk.Box | null>(null);
     const originalSettingsRef = useRef<{ themeName: string; colorScheme: Adw.ColorScheme } | null>(null);
     const fpsRef = useRef("");
     const controls = { window, originalSettingsRef, fpsRef, setIsRunning, setFps, setShowWarning };
@@ -238,7 +236,7 @@ function useThemesCycling(window: Gtk.Window | null) {
         respondToWarning(controls, response);
     };
 
-    return { isRunning, fps, showWarning, fpsAttrs, boxRef, handleToggle, handleWarningResponse };
+    return { isRunning, fps, showWarning, fpsAttrs, handleToggle, handleWarningResponse };
 }
 
 function useThemes(): ThemesContextValue {
@@ -286,7 +284,7 @@ function ThemesDemo() {
 
     return (
         <>
-            <ThemesBody boxRef={cycling.boxRef} />
+            <ThemesBody />
             {cycling.showWarning && <ThemesWarningDialog onResponse={cycling.handleWarningResponse} />}
         </>
     );

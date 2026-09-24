@@ -133,7 +133,6 @@ test("64-bit integer hash tables accept exactly representable numbers", () => {
         ["1", 1],
         ["2", 2 ** 32],
     ]);
-    // @ts-expect-error the value type is declared bigint, and the binding widens it to a plain number
     GIMarshallingTests.ghashtableInt64In(numbers);
     expect(numbers.values().toArray()).toEqual([-1, 0, 1, 2 ** 32]);
 });
@@ -150,7 +149,6 @@ test("64-bit integer hash tables reject out-of-range and wrong typed values", ()
         GIMarshallingTests.ghashtableInt64In(new Map([["0", "nope"]]));
     }).toThrow();
     expect(() => {
-        // @ts-expect-error a fractional number is not a 64-bit integer value
         GIMarshallingTests.ghashtableInt64In(new Map([["0", 1.5]]));
     }).toThrow();
 });

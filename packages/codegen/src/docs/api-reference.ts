@@ -11,6 +11,7 @@ import { externalPackageFor } from "../gir/external-namespaces.js";
 import { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { dedupeCallables } from "../store/gi/callables.js";
+import { isEmittableConstant } from "../store/gi/constant.js";
 import { isEmittableNamespaceFunction, namespaceFunctionExportName } from "../store/gi/function.js";
 import { setAcceptedChildTypes } from "../store/jsx/accepted-child-types.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
@@ -289,13 +290,15 @@ const valueEntries = (namespace: GirNamespace, library: Library): GiSymbolEntry[
             doc: alias.doc,
             alias,
         })),
-    ...namespace.constants.map<GiSymbolEntry>((constant) => ({
-        kind: "constant",
-        namespace,
-        name: sanitizeIdentifier(constant.name),
-        doc: constant.doc,
-        constant,
-    })),
+    ...namespace.constants
+        .filter((constant) => isEmittableConstant(library, constant))
+        .map<GiSymbolEntry>((constant) => ({
+            kind: "constant",
+            namespace,
+            name: sanitizeIdentifier(constant.name),
+            doc: constant.doc,
+            constant,
+        })),
 ];
 
 const narrowToExactMatches = (candidates: SymbolEntry[], trimmed: string, isQualified: boolean): SymbolEntry[] => {
