@@ -83,7 +83,13 @@ function isValueSafeRecord(scope: Scope, namespaceName: string, record: GirRecor
 const isValueMarshalable = (context: ValueMarshalContext, namespaceName: string, record: GirRecord): boolean =>
     isValueSafeRecord({ context, seen: new Set<string>() }, namespaceName, record);
 
+const isValueMarshalableRef = (
+    context: ValueMarshalContext,
+    ref: TypeId | undefined,
+    cType: string | undefined,
+): boolean => isValueSafeRef({ context, seen: new Set<string>() }, ref, cType);
+
 const isConstructibleRecord = (context: ValueMarshalContext, namespaceName: string, record: GirRecord): boolean =>
     !isOpaqueRecord(record) && (hasOwnCopySemantics(record) || isValueMarshalable(context, namespaceName, record));
 
-export { isConstructibleRecord, isValueMarshalable };
+export { isConstructibleRecord, isValueMarshalable, isValueMarshalableRef };

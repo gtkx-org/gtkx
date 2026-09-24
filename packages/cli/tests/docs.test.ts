@@ -93,6 +93,21 @@ describe("project-relative GIR paths", () => {
         expect(readPage(project, DOCUMENTED_PAGE)).toContain(requested);
         expect(readFileSync(join(project.root, ".gtkx/reference", DOCUMENTED_PAGE), "utf8")).toContain(requested);
     });
+
+    it("uses the selected configuration file", () => {
+        const selectedConfig = "gtkx.docs.config.ts";
+        using project = createCliProject({
+            prefix: "gtkx-cli-docs-selected-config-",
+            config: config(", codegen: false"),
+            files: {
+                "gir/Documented-1.0.gir": readFileSync(join(FIXTURE_GIR, "Documented-1.0.gir")),
+                [selectedConfig]: config(', girPath: ["./gir"]', ["Documented-1.0"]),
+            },
+        });
+
+        expect(runDocs(project, ["--config", selectedConfig])).toBe(0);
+        expect(readPage(project, DOCUMENTED_PAGE)).toContain("Holds a short piece of text");
+    });
 });
 
 describe("gtkx docs", () => {

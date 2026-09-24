@@ -87,6 +87,8 @@ describe("custom element rules from gtkx.config.ts", () => {
         const { rerender } = await render(<GtkLabel ref={labelRef} cursorName="pointer" />);
         await rerender(<GtkLabel ref={labelRef} cursorName="text" />);
         expect(labelRef.current?.getCursor()).toHaveObjectProperty("name", "text");
+        await rerender(<GtkLabel ref={labelRef} />);
+        expect(labelRef.current?.getCursor()).toBeNull();
     });
 
     it("places children through a declared container prop", async () => {

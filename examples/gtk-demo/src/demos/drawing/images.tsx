@@ -1,5 +1,4 @@
 import * as Gdk from "@gtkx/gi/gdk";
-import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GThemedIcon } from "@gtkx/jsx/gio";
 import {
@@ -21,7 +20,6 @@ import animatedSvgPath from "../../../data/demos/drawing/animated.gpa?resource";
 import floppyBuddyWebmPath from "../../../data/demos/drawing/floppybuddy.webm?resource";
 import gtkLogoSvgPath from "../../../data/demos/drawing/gtk-logo.svg?resource";
 import statefulSvgPath from "../../../data/demos/drawing/stateful.gpa?resource";
-import gtkLogoWebmPath from "../../../data/demos/media/gtk-logo.webm?resource";
 import sourceCode from "./images.tsx?raw";
 
 const imagesDemo: Demo = {
@@ -35,7 +33,7 @@ const imagesDemo: Demo = {
     sourceCode,
 };
 
-function useAnimationPaintable(): Gtk.MediaFile | null {
+function useAnimationStream(): Gtk.MediaFile | null {
     const [animation, setAnimation] = useState<Gtk.MediaFile | null>(null);
 
     useEffect(() => {
@@ -48,8 +46,6 @@ function useAnimationPaintable(): Gtk.MediaFile | null {
             }
 
             paintable = Gtk.MediaFile.newForResource(floppyBuddyWebmPath);
-            paintable.setLoop(true);
-            paintable.play();
             setAnimation(paintable);
         });
 
@@ -154,7 +150,7 @@ const PathAnimationPanel = () => {
     );
 };
 
-const ResourcesColumn = ({ animationPaintable }: { animationPaintable: Gtk.MediaFile | null }) => (
+const ResourcesColumn = ({ animation }: { animation: Gtk.MediaFile | null }) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
         <ImagesPanel title="Image from a resource">
             <GtkImage accessibleLabel="GTK logo" resource={gtkLogoSvgPath} iconSize={Gtk.IconSize.LARGE} />
@@ -163,7 +159,7 @@ const ResourcesColumn = ({ animationPaintable }: { animationPaintable: Gtk.Media
             <GtkPicture
                 name="animation-picture"
                 accessibleLabel="Animated Floppy Buddy"
-                paintable={animationPaintable}
+                paintable={animation}
                 canShrink
                 widthRequest={150}
                 heightRequest={150}
@@ -173,41 +169,43 @@ const ResourcesColumn = ({ animationPaintable }: { animationPaintable: Gtk.Media
     </GtkBox>
 );
 
-const VideoColumn = ({ parentWindow }: { parentWindow: Gtk.Window | null }) => {
-    const [videoFile] = useState(() => Gio.File.newForUri(`resource://${gtkLogoWebmPath}`));
-
-    return (
+const VideoColumn = ({
+    animation,
+    parentWindow,
+}: {
+    animation: Gtk.MediaFile | null;
+    parentWindow: Gtk.Window | null;
+}) => (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
+        <ImagesPanel title="Displaying video">
+            <GtkVideo
+                name="animation-video"
+                accessibleLabel="Floppy Buddy video"
+                autoplay
+                loop
+                widthRequest={200}
+                heightRequest={150}
+                mediaStream={animation}
+            />
+        </ImagesPanel>
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-            <ImagesPanel title="Displaying video">
-                <GtkVideo
-                    name="logo-video"
-                    accessibleLabel="GTK logo video"
-                    autoplay
-                    loop
-                    widthRequest={200}
-                    heightRequest={150}
-                    file={videoFile}
-                />
-            </ImagesPanel>
-            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
-                <GtkLabel cssClasses={["heading"]}>GtkWidgetPaintable</GtkLabel>
-                <GtkPicture
-                    name="widget-paintable-picture"
-                    accessibleLabel="GTK Demo window snapshot"
-                    paintable={<GtkWidgetPaintable widget={parentWindow} />}
-                    widthRequest={100}
-                    heightRequest={100}
-                    canShrink
-                    valign={Gtk.Align.START}
-                />
-            </GtkBox>
+            <GtkLabel cssClasses={["heading"]}>GtkWidgetPaintable</GtkLabel>
+            <GtkPicture
+                name="widget-paintable-picture"
+                accessibleLabel="GTK Demo window snapshot"
+                paintable={<GtkWidgetPaintable widget={parentWindow} />}
+                widthRequest={100}
+                heightRequest={100}
+                canShrink
+                valign={Gtk.Align.START}
+            />
         </GtkBox>
-    );
-};
+    </GtkBox>
+);
 
 function ImagesDemo() {
     const parentWindow = useParentWindow();
-    const animation = useAnimationPaintable();
+    const animation = useAnimationStream();
     const [isInsensitive, setIsInsensitive] = useState(false);
 
     return (
@@ -220,12 +218,12 @@ function ImagesDemo() {
             marginBottom={16}
         >
             <GtkBox name="image-strip" spacing={16} sensitive={!isInsensitive}>
-                <ResourcesColumn animationPaintable={animation} />
+                <ResourcesColumn animation={animation} />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                     <StatefulIconPanel />
                     <PathAnimationPanel />
                 </GtkBox>
-                <VideoColumn parentWindow={parentWindow} />
+                <VideoColumn animation={animation} parentWindow={parentWindow} />
             </GtkBox>
 
             <GtkToggleButton

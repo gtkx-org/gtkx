@@ -1,3 +1,4 @@
+import { once } from "node:events";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 
@@ -10,26 +11,17 @@ if (mode === "conflict") {
 }
 
 const worker = new Worker(task, willLinger ? { workerData: "linger" } : {});
+const reportEvent: unknown[] = await once(worker, "message");
 
-const nextMessage = () =>
-    new Promise((resolve, reject) => {
-        worker.once("message", resolve);
-        worker.once("error", reject);
-    });
-
-const report = await nextMessage();
-
-process.stdout.write(`REPORT ${JSON.stringify(report)}\n`);
+process.stdout.write(`REPORT ${JSON.stringify(reportEvent[0])}\n`);
 
 if (mode === "terminate") {
     worker.postMessage("quit");
-    process.stdout.write(`ACK ${String(await nextMessage())}\n`);
+    const acknowledgementEvent: unknown[] = await once(worker, "message");
+    process.stdout.write(`ACK ${String(acknowledgementEvent[0])}\n`);
     process.stdout.write(`TERMINATED ${String(await worker.terminate())}\n`);
 } else {
-    const code = await new Promise<number>((resolve, reject) => {
-        worker.once("exit", resolve);
-        worker.once("error", reject);
-    });
+    const exitEvent: unknown[] = await once(worker, "exit");
 
-    process.stdout.write(`EXITED ${String(code)}\n`);
+    process.stdout.write(`EXITED ${String(exitEvent[0])}\n`);
 }

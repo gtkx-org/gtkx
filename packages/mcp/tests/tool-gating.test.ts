@@ -9,6 +9,7 @@ type ListedTool = { name: string; annotations?: Annotations };
 const LIBRARIES = ["GtkSource-5", "WebKit-6.0"];
 const ACTION_TOOLS = ["gtkx_click", "gtkx_type", "gtkx_fire_event"];
 const CONFIG_NAME = "gtkx.config.mjs";
+const SELECTED_CONFIG_NAME = "gtkx.selected.config.mjs";
 const state: { servers: McpServer[]; projects: string[] } = { servers: [], projects: [] };
 
 const configSource = (mcp: string): string =>
@@ -87,5 +88,17 @@ describe("gtkx-mcp tool gating", () => {
         const names = getNames(await getTools(root, ["--tools", "gtkx_search_api,gtkx_list_api"]));
         expect(names).toEqual(expect.arrayContaining(["gtkx_search_api", "gtkx_list_api"]));
         expect(names).not.toContain("gtkx_list_apps");
+    });
+
+    it("uses the selected configuration for server settings", async () => {
+        const root = projectWith("");
+        writeFileSync(join(root, SELECTED_CONFIG_NAME), configSource(", mcp: { readOnly: true }"));
+        const names = getNames(await getTools(root, ["--config", SELECTED_CONFIG_NAME]));
+
+        expect(names).toContain("gtkx_get_widget_tree");
+
+        for (const name of ACTION_TOOLS) {
+            expect(names).not.toContain(name);
+        }
     });
 });

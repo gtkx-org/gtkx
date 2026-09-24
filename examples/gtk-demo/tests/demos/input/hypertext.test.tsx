@@ -36,8 +36,8 @@ const recordSpeech = (): Disposable & { path: string; done: string } => {
     const done = join(directory, "done");
     const originalPath = process.env.PATH;
     writeFileSync(join(directory, "espeak-ng"), `#!${process.execPath}
-const { spawnSync } = require("node:child_process");
-const { writeFileSync } = require("node:fs");
+import { spawnSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
 const result = spawnSync(${JSON.stringify(executable)}, ["-w", ${JSON.stringify(path)}, ...process.argv.slice(2)]);
 if (result.status !== 0) process.exit(result.status ?? 1);
 writeFileSync(${JSON.stringify(done)}, "");

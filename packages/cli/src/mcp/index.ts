@@ -1,7 +1,7 @@
 import { McpClient } from "./client.js";
 
 type McpClientController = {
-    start: (applicationId: string) => Promise<McpClient>;
+    start: (applicationId: string, configFile: string) => Promise<McpClient>;
     stop: () => void;
 };
 
@@ -22,12 +22,12 @@ function createMcpClientController(): McpClientController {
     let current: McpClient | null = null;
 
     return {
-        start: async (applicationId: string): Promise<McpClient> => {
+        start: async (applicationId: string, configFile: string): Promise<McpClient> => {
             if (current) {
                 return current;
             }
 
-            const client = new McpClient({ applicationId });
+            const client = new McpClient({ applicationId, configFile });
             current = client;
             await connectQuietly(client);
 

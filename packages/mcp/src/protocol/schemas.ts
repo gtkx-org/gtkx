@@ -32,11 +32,13 @@ type ServerInitiatedMethod = keyof typeof ServerRequestParamsSchemas;
 const RegisterParamsSchema: z.ZodObject<
     {
         applicationId: z.ZodString;
+        configFile: z.ZodOptional<z.ZodString>;
         pid: z.ZodNumber;
         projectRoot: z.ZodOptional<z.ZodString>;
     }
 > = z.object({
     applicationId: z.string(),
+    configFile: z.string().optional(),
     pid: z.number(),
     projectRoot: z.string().optional(),
 });

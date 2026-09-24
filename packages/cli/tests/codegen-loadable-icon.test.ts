@@ -11,7 +11,7 @@ const CONSUMER = IMPORTS + `import assert from "node:assert/strict";
 import { mkdtempDisposableSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { keepAlive } from "@gtkx/native";
+import { keepAlive } from "@gtkx/runtime";
 import { getHandle, promisify, quit, registerClass, t } from "@gtkx/runtime";
 
 type Loaded = ReturnType<Gio.LoadableIcon["load"]>;

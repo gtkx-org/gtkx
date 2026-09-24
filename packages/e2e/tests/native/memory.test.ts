@@ -29,8 +29,6 @@ const failStringCallback = (): never => {
     throw new Error("Callback failure");
 };
 
-const settle = (): Promise<void> => new Promise((resolve) => setImmediate(resolve));
-
 const hammer = async (iterations: number, body: () => unknown): Promise<number> => {
     for (let round = 0; round < iterations; round += 1) {
         body();
@@ -46,21 +44,6 @@ const hammer = async (iterations: number, body: () => unknown): Promise<number> 
     await drainGC();
 
     return process.memoryUsage().rss - rss;
-};
-
-const wasCollected = async (ref: WeakRef<object>, rounds = 40): Promise<boolean> => {
-    for (let round = 0; round < rounds; round += 1) {
-        globalThis.gc?.();
-        await settle();
-        const isGone = ref.deref() === undefined;
-        await settle();
-
-        if (isGone) {
-            return true;
-        }
-    }
-
-    return false;
 };
 
 const didThrow = (call: () => void): boolean => {
@@ -475,9 +458,9 @@ test("dropped object, boxed and fundamental wrappers are collected", async () =>
         return value;
     });
 
-    expect(await wasCollected(objectRef)).toBe(true);
-    expect(await wasCollected(boxedRef)).toBe(true);
-    expect(await wasCollected(fundamentalRef)).toBe(true);
+    expect(await didSettle(() => objectRef.deref() === undefined, 40)).toBe(true);
+    expect(await didSettle(() => boxedRef.deref() === undefined, 40)).toBe(true);
+    expect(await didSettle(() => fundamentalRef.deref() === undefined, 40)).toBe(true);
     expect(await didSettle(() => finalized === 3)).toBe(true);
     expect(finalized).toBe(3);
 });
@@ -486,6 +469,6 @@ test("a wrapper handed back by C is collected once nothing holds it", async () =
     const returnedRef = trackWeakly(() => GIMarshallingTests.Object.fullReturn());
     const outRef = trackWeakly(() => GIMarshallingTests.Object.fullOut());
 
-    expect(await wasCollected(returnedRef)).toBe(true);
-    expect(await wasCollected(outRef)).toBe(true);
+    expect(await didSettle(() => returnedRef.deref() === undefined, 40)).toBe(true);
+    expect(await didSettle(() => outRef.deref() === undefined, 40)).toBe(true);
 });

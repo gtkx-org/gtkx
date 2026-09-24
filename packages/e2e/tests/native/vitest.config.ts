@@ -18,12 +18,6 @@ const libraryPath = [fixtureLibraries, process.env.LD_LIBRARY_PATH]
     .filter((entry) => entry !== undefined && entry !== "")
     .join(":");
 
-/**
- * Cheap heap checking for the ordinary run: perturbing freed memory turns a use-after-free read
- * into obvious garbage, and glibc's malloc debugger catches an overrun or a delayed double free at
- * the next allocation. The sanitizer lane preloads its own runtime and checks far more, so it must
- * not have a second allocator wrapper layered underneath.
- */
 const heapChecking = (): Record<string, string> => {
     if (process.env.GTKX_ASAN_RUNTIME !== undefined) {
         return {};

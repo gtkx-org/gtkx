@@ -85,7 +85,7 @@
                 ]
             },
             "coverage": {
-                "command": "rm -rf coverage/subprocess && GTKX_COVERAGE_DIR=\"$PWD/coverage/subprocess\" vitest run --coverage --exclude '**/tests/testing/query-perf.test.tsx' && NODE_OPTIONS=--max-old-space-size=8192 tsx ./scripts/subprocess-coverage.ts && rm -rf coverage/subprocess",
+                "command": "rm -rf coverage/subprocess && GTKX_COVERAGE_DIR=\"$PWD/coverage/subprocess\" vitest run --coverage && NODE_OPTIONS=--max-old-space-size=8192 tsx ./scripts/subprocess-coverage.ts && rm -rf coverage/subprocess",
                 "cache": true,
                 "dependsOn": [
                     "coverage-dependencies"
@@ -117,7 +117,7 @@
                 ]
             },
             "coverage-shard": {
-                "command": "GTKX_COVERAGE_DIR=\"$PWD/coverage/subprocess\" vitest run --coverage --shard=\"$GTKX_COVERAGE_SHARD/$GTKX_COVERAGE_SHARDS\" --reporter=dot --reporter=blob --outputFile.blob=\"coverage-artifacts/vitest/blob-$GTKX_COVERAGE_SHARD.json\" --exclude '**/tests/testing/query-perf.test.tsx' && GTKX_SUBPROCESS_COVERAGE_REPORT_DIR=\"$PWD/coverage-artifacts/subprocess-report/$GTKX_COVERAGE_SHARD\" NODE_OPTIONS=--max-old-space-size=8192 tsx ./scripts/subprocess-coverage.ts && rm -rf coverage/subprocess",
+                "command": "GTKX_COVERAGE_DIR=\"$PWD/coverage/subprocess\" vitest run --coverage --shard=\"$GTKX_COVERAGE_SHARD/$GTKX_COVERAGE_SHARDS\" --reporter=dot --reporter=blob --outputFile.blob=\"coverage-artifacts/vitest/blob-$GTKX_COVERAGE_SHARD.json\" && GTKX_SUBPROCESS_COVERAGE_REPORT_DIR=\"$PWD/coverage-artifacts/subprocess-report/$GTKX_COVERAGE_SHARD\" NODE_OPTIONS=--max-old-space-size=8192 tsx ./scripts/subprocess-coverage.ts && rm -rf coverage/subprocess",
                 "cache": false,
                 "dependsOn": [
                     "coverage-dependencies"

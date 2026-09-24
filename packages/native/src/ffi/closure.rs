@@ -237,14 +237,21 @@ impl ClosureState {
     }
 
     pub(crate) fn hold(&self) {
-        self.holds.set(self.holds.get() + 1);
+        self.holds.set(
+            self.holds
+                .get()
+                .checked_add(1)
+                .expect("callback state hold overflow"),
+        );
     }
 
     pub(crate) unsafe fn release(state: *mut Self) {
         if state.is_null() {
             return;
         }
-        let holds = unsafe { (*state).holds.get() }.saturating_sub(1);
+        let holds = unsafe { (*state).holds.get() }
+            .checked_sub(1)
+            .expect("callback state hold underflow");
         unsafe { (*state).holds.set(holds) };
         if holds == 0 {
             drop(unsafe { Box::from_raw(state) });
@@ -349,16 +356,25 @@ struct InFlightGuard<'a>(&'a ClosureData);
 
 impl<'a> InFlightGuard<'a> {
     fn enter(data: &'a ClosureData) -> Self {
-        data.in_flight.set(data.in_flight.get() + 1);
+        data.in_flight.set(
+            data.in_flight
+                .get()
+                .checked_add(1)
+                .expect("callback invocation depth overflow"),
+        );
         Self(data)
     }
 }
 
 impl Drop for InFlightGuard<'_> {
     fn drop(&mut self) {
-        self.0
-            .in_flight
-            .set(self.0.in_flight.get().saturating_sub(1));
+        self.0.in_flight.set(
+            self.0
+                .in_flight
+                .get()
+                .checked_sub(1)
+                .expect("callback invocation depth underflow"),
+        );
     }
 }
 
@@ -828,9 +844,11 @@ unsafe fn read_callback_arg<'e>(
     } else {
         std::ptr::null_mut()
     };
-    let owner = if codec.scope == CallbackScope::Notified && codec.has_destroy {
+    let owner = if codec.scope == CallbackScope::Notified
+        && let Some(destroy_kind) = codec.destroy
+    {
         anyhow::ensure!(
-            codec.destroy_kind == DestroyNotifyKind::DestroyNotify,
+            destroy_kind == DestroyNotifyKind::DestroyNotify,
             "A decoded callback requires a data-only destroy notify"
         );
         let destroy_slot = slot + 1 + usize::from(codec.has_user_data);

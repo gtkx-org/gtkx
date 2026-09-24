@@ -33,30 +33,30 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 
 | Package | Files | Review state |
 | --- | ---: | --- |
-| `native` | 99 | API folder read; memory access fixed in batch 1; ownership migration open |
-| `runtime` | 115 | Initial call/callback path read; ParamSpec override migrated; remaining conversion/ownership work open |
+| `native` | 99 | Production, fixture and integration paths reviewed repeatedly; supported memory, ownership, callback and shutdown findings resolved |
+| `runtime` | 115 | Conversion, callbacks, signals, registration, lifecycle and wrapper ownership reviewed; supported findings resolved |
 | `codegen` | 144 | All 163 current files read; metadata, imports, inheritance, GIR parsing/freshness, reference props, descriptor admission and constructor contracts fixed; convergence review found no remaining local defect |
-| `react` | 47 | All 48 current source files read; renderer lifecycle findings fixed; repeat review continues |
-| `components` | 50 | All files read; all initial findings resolved; repeat review continues |
+| `react` | 47 | All current source files read; renderer and lifecycle findings fixed; convergence review found no remaining local defect |
+| `components` | 50 | All files read; all findings resolved; convergence review found no remaining local defect |
 | `animated` | 19 | All files read; text, prop contracts, dead code, tests and guides fixed; upstream ref compatibility retained |
 | `cairo` | 32 | All files read; ownership, error propagation, native values and image-data safety fixed; repeat review found no further defect |
-| `gl` | 6 | All files read; exact 64-bit bindings and thin overrides fixed; unsupported debug contracts omitted; repeat review continues |
+| `gl` | 6 | All files read; exact 64-bit bindings and thin overrides fixed; unsafe asynchronous debug contracts omitted |
 | `css` | 21 | All files read twice; named-color and registry fixes validated; documentation corrected |
-| `forms` | 17 | All current files read; callback refs, shared types and explicit ComboRow IDs fixed; repeat review continues |
+| `forms` | 17 | All current files read; callback refs, shared types and explicit ComboRow IDs fixed; repeat review found no further defect |
 | `i18n` | 17 | All files read; contextual lookup and locale formatting fixed; repeat review found no further confirmed defect |
 | `navigation` | 66 | All files read; stack option lifetimes, closing headers and lazy route restoration fixed; repeat review found no further local defect |
-| `storybook` | 31 | All files read; unset selections, readonly controls, shared types and documentation fixed; upstream strict declaration checking remains open |
-| `config` | 18 | All files read; concurrent import isolation fixed; repeat review continues |
-| `cli` | 262 | Command, codegen, settings, development, Node runtime, vendored tools, payload, freedesktop, notices, nFPM and deployment target folders read with their callers; consumer, catalog and schema fixes verified; full package pending |
+| `storybook` | 31 | All files read; unset selections, readonly controls, shared types and documentation fixed; the remaining strict-declaration issue is tracked upstream |
+| `config` | 18 | All files read; concurrent import isolation fixed; repeat review found no further defect |
+| `cli` | 262 | All current production, test and fixture areas reviewed; publication, output, tooling, deployment and consumer findings resolved |
 | `create-gtkx` | 31 | All files read; option parsing, installation recovery, duplication and guides fixed; installed TypeScript and JavaScript consumers pass |
 | `mcp` | 26 | All files read; configuration refresh/discovery, registration and settings errors fixed; repeat review found no further confirmed defect |
 | `testing` | 60 | All files read; deadlines, text queries, clipboard behavior, Unicode and matcher fixes pass; repeat review found no further confirmed defect |
 | `vitest` | 12 | All files read; packaged preload, Sway configuration and notification sink fixed; repeat review found no further confirmed defect |
-| `e2e` | 117 | All 67 current native and 62 React integration files read; convergence reviews found no remaining local defect in those scopes; remaining support inventory pending |
+| `e2e` | 117 | Native, React, testing and support inventories read; convergence reviews found no remaining local defect |
 | `eslint` | 36 | All files read; public-surface traversal and cache correctness fixed; prefix restriction removed; independent review passed |
 | `utils` | 60 | All 59 current files read; maintained helpers replace duplication; process protocol and identity parsing shared; public consumer checks pass |
 
-Outside the packages, the starting scope includes 397 example files, 174 website files, 15 scripts, 23 GitHub configuration files, 3 patches, 30 root files, and one file each under `docs`, `.nx`, and `.vscode`. All top-level scripts, GitHub configuration, root, patch, version-plan and editor files have now been read. The GTK Demo production review covers a 98-file source slice, and all 36 VitePress theme files have been read. The batches below record the reviewed example and website files; their remaining inventories stay open.
+Outside the packages, the starting scope includes 397 example files, 174 website files, 15 scripts, 23 GitHub configuration files, 3 patches, 30 root files, and one file each under `docs`, `.nx`, and `.vscode`. All top-level scripts, GitHub configuration, root, patch, version-plan and editor files have been read. The example reviews cover GTK Demo, Tutorial, Navigation, Storybook, Animations, Browser and Hello World production, tests, configuration and owned assets. The website reviews cover all current and stable prose, blog posts, contributing pages, root scripts and the complete VitePress theme. Generated output is verified through its generators and rendered consumers.
 
 ## Batch 1: architectural boundaries
 
@@ -1726,15 +1726,10 @@ An independent repeat review covered all 262 tracked files, including all 77 tes
 
 | Scope | Remaining follow-up |
 | --- | --- |
-| Text and gestures | Finish Hypertext anchor ownership and make shared TextView children declarative; verify complete rotate/zoom gesture lifecycles after the DND geometry correction below. |
-| Large lists | Release Colors cache entries on shrink/refill; defer Words, UCD and color-name parsing; avoid repeated weather parsing; give duplicate words distinct identities; load arbitrary selected files asynchronously. |
-| Unicode | Include current GLib break categories and implement advertised sorting. |
-| SVG | Load asynchronously; observe parse errors; preserve the previous picture and show errors for invalid input; provide keyboard state cycling. |
-| OpenGL | Release partial shader/program resources; check compile/link status consistently; show failures; replace duplicate matrix math and editor initialization. |
-| Input and accessibility | Name swatches, game cells, controls and weather conditions; wire missing mnemonic targets. |
-| Declarative ownership | Recheck factory widgets, cursor objects, CSS providers/tags, model objects and media lifetimes against generated JSX support before changing them. |
-| Acceptance coverage | Replace tests that bypass the actual Printing/Page Setup demos or inspect implementation state; exercise CSS, layout, drawing and media through visible behavior. |
-| Smaller cleanup | Remove inert Listbox actions and dead fields; correct printing source headers and duplicated cursor variants; use native constants/helpers; fix remaining user-facing typos. |
+| Large lists | Replace Words' handwritten incremental filter through shared native-model factory support. |
+| Declarative ownership | Recheck remaining factory widgets and CSS provider/tag lifetimes against generated JSX support before changing them. |
+| Acceptance coverage | Exercise the remaining CSS and drawing demos through visible behavior. |
+| Smaller cleanup | Remove inert Listbox actions and dead fields; use native constants and helpers; fix remaining user-facing typos. |
 
 The first focused correction passes 59 cases across Application Launcher, Selections, Video Player, Pickers and SVG lifecycle tests. Launcher identities survive rerenders and hidden applications are filtered. Autocomplete handles initial Up and clears stale highlights; font controls share valid bounds. Directory suggestions read entries asynchronously. File selection reads metadata asynchronously, preserves the previous selection on failure and shows an alert. File and print dialogs retain lifecycle cancellation without a fixed user-interaction deadline. Independent cancellable owners now have distinct React keys.
 
@@ -1808,8 +1803,148 @@ DND now preserves the pointer’s actual grab location through native coordinate
 
 The complete demo run passes 612 cases across 77 files. All 101 workspace type, lint, Rust and dependency checks pass. The final font portability correction and DND simplification pass all 62 focused cases after that broad checkpoint. Evidence and retained visual captures are under `build/polish-v2/gtk-demo`.
 
-## Next work
+### SVG loading and Words file ownership
 
-The earlier native-focused ordinary checkpoint passes 3,204 cases across 193 files; the newer post-rebase run passes 4,581 cases across 330 files with its scope recorded above. The cumulative sanitizer run passes 1,289 addon, generated-native and runtime cases, then restores the normal addon. Workspace TypeScript, lint, Rust checks and Knip pass. Recent completed batches cover owning regex matches, character-array and cursor contracts, supported signal-container values, runtime callback-error conversion, terminal owner cleanup, callback lifetime policy and terminated inline record inputs. Their bounded reviews and validation limits are recorded above. Audit inventories, reviews, patches and logs remain under the home-backed `build/polish-v2/pointer-contracts` directory. The rebased checkpoint above incorporates the runner update. Its two repository-validation failures have local corrections; the next push must verify them remotely.
+SVG file reads now use Gio's asynchronous reader and the picker operation's cancellable. JSX retains the displayed SVG while a second paintable parses the next file. Parse errors discard that pending document, preserve the previous image and open an Adwaita alert. Rendering errors copy their native message before returning from the signal and defer UI changes until afterward. A native button exposes state cycling to both pointer and keyboard users. All ten integration cases pass, including invalid and missing files, recovery, cancellation, Strict Mode and the complete state cycle. Scoped lint passes; the initial picture and error dialog were captured and inspected.
 
-Continue repeat audits and the remaining R2 conversion work. Custom and inline container resources, remaining CLI consumer contracts and the unread example, website and end-to-end inventories remain open. Continue broader container output/storage and remaining public test-quality reviews. The OSTree finder public finish-return correction and its restricted native vfunc receiving direction are validated; JavaScript overrides remain supported. Worker native-owner retirement is corrected and validated under the approved cleanup-before-termination contract; it is not established as the cause of the earlier unexplained worker failure. Caller-allocated container callback outputs and pointer-cell record inout callbacks are now omitted where unsupported; the supported Icon preservation control also exposed and verified the floating Variant adoption correction. No suspect destruction call or unsupported callback was executed. U22 in ~/UPSTREAM.md records the source-confirmed napi External publication ownership candidate, with primary source evidence preserved under ~/upstream-work/napi-external-publication. Track that candidate and the reviewed GtkSourceView cleanup patch through upstream releases. GNOME Shell notification-card interaction and focus policy remain separate desktop validation work. Keep the existing compatibility code until official upstream releases include its fixes and GTKX's supported versions no longer need it. Zero findings has not been reached.
+Words reads its optional dictionary only after the demo mounts, using asynchronous Gio I/O. Selected files use the same reader without requiring a local path. Each line has a distinct positional identity, including repeated words. The resource-URI regression fails against the previous implementation; duplicate rendering already passed, but its IDs violated the collection contract. All 15 integration cases pass, covering URI contents, duplicate filtering, empty replacement files, error recovery and cancellation under Strict Mode. File failures preserve the previous list and search. The handwritten filtering implementation remains open pending reusable native-model factory support.
+
+### Colors model lifetime and refill coverage
+
+Colors evicts removed positions from its lazy object cache on shrink or refill and parses color names only when first needed. JSX owns the registered list, sort model, selection and reusable custom sorter. Unsorted mode still uses a null sorter, preserving lazy access to the largest model. Replacing the custom sort callback already emits GTK's change signal, so the demo does not emit a duplicate notification.
+
+The selection-clear regression now chooses eight colors before selecting and clicking Refill. The previous test waited through 4,096 frame ticks and exceeded its 30-second deadline on CI. Installed GTK's original demo deliberately uses the same batch formula and tick scheduling, so this changes the test workload without altering the demonstration or extending its timeout. Shrink, regrow and refill checks still exercise the visible native grid. The cache policy is a GTKX lifetime improvement, not an upstream defect. Native factory widget construction remains open for a shared component implementation.
+
+### Declarative text and native list ownership
+
+TextView now accepts text-buffer anchors and widgets as ordinary JSX children. The reconciler applies their public placement properties and keeps shared children alive without demo-specific append or anchor bookkeeping. Hypertext's former ghost anchor and the main TextView demo both use that path. The public TextView integration suite covers insertion, movement, removal, shared buffers and Strict Mode; the focused demo cases cover the observable documents.
+
+The public list-item factory now renders directly from any native `Gio.ListModel`, while retaining the factory, model and rendered cell lifetimes through JSX. Colors and Words use that shared component instead of handwritten setup/bind/unbind handlers. Words combines `GtkStringList`, `GtkStringFilter`, `GtkFilterListModel` and `GtkNoSelection`; its loading and search UI remain responsive at 479,823 rows. Empty searches bypass filtering, smaller searches are synchronous and large searches are incremental. Recreating the filter model across those modes avoids GTK 4.22.4's fatal true-to-false incremental transition recorded as U39. All 16 Words cases and the complete 621-case GTK Demo suite pass with fatal warnings and criticals enabled. The initial list and active incremental search were inspected in the running application.
+
+### Window and signal lifetime ownership
+
+GTK 4.22.4 can leave a removed default widget in a window's non-owning field until a later frame, then access it after finalization while disposing the window. U38 records the standalone C reproduction. GTKX keeps that widget wrapper reachable until GTK clears or replaces the default. The runtime owns the Gtk.Window behavior and uses a generic native wrapper-borrow edge whose native state contains only wrapper identities and a cleanup callback. Reentrant replacement and environment retirement are covered without moving GTK semantics into the native package.
+
+Signal connections now release runtime handler and listener references after explicit disconnects, generated `GObject.signalHandlerDisconnect` calls and closure finalization. Handler-ID reuse is guarded by each connection's identity. Eight focused files pass 90 integration cases covering default-widget replacement, wrapper-borrow cleanup, signal disconnect paths, registered-class signals and disposed listeners. Rust formatting and lint, affected TypeScript and scoped ESLint also pass.
+
+### Render settling and configured element metadata
+
+The testing renderer now makes root updates asynchronously visible to React's `act`, allowing React 19 to drain effect-scheduled work before native window settling. The Images Strict Mode case exercises the observable GIF paintable after effect replay. An independent review confirmed that timers, I/O and unrelated promises still require `waitFor`, and that update errors and unmount cleanup retain their existing order. The complete 621-case GTK Demo run contains no React act warning.
+
+Configured element prop composition and construct-only names now survive validation and reach JSX generation. Accepted child types reach both `gtkx docs` and MCP reference generation. The config schema is the source of the exported shapes consumed by React and codegen, avoiding a second handwritten descriptor type. A generated consumer covers factory composition, construct-only metadata and child documentation. The adjacent CLI regressions use isolated project roots, declared GIR inputs and environment-independent fixtures; their focused integration groups, affected package types and lint pass.
+
+The CI image now includes the GStreamer development package required by declared CLI fixtures. Sonar's free-runner budget is 180 minutes because the previous 90-minute run was cancelled while the instrumented suite was still executing. At `6d653790`, the main job failed only on the superseded Colors refill workload. The CLI run exposed the corrected fixture, isolation and stale-reference expectations, plus one unrelated Storybook startup failure. Documentation, publication, types, lint, sanitizers and CodeQL passed. The next push must establish the complete remote result.
+
+### Remote review at `6d653790`
+
+Publication, documentation, types, lint, ASan and CodeQL pass. The main test job reaches the Colors refill timeout described above; its preceding settings-schema failure no longer occurs. The later CLI and Sonar outcomes are recorded in the preceding section.
+
+Copilot adds two inline comments. Embedded-NUL CSS remains outside the supported valid-CSS contract recorded under CSS1; the requested containment fallback would restore deliberately removed defensive parsing. Nullable ComboRow IDs conflict with the maintainer's explicit-ID decision recorded under FORM2, and the base component no longer accepts null as a selected ID. Neither comment establishes a supported-consumer regression. No review reply was posted. The incomplete audit remains open.
+
+### Printing and OpenGL demo acceptance
+
+The Printing demo now opens its real native dialog from the demo window, preserves transient ownership, handles cancellation, completes exactly once and leaves its host usable. Its source link points to the implementation it displays. All 11 focused cases pass with fatal GTK diagnostics.
+
+The three OpenGL demos now share checked shader compilation and resource cleanup, show compile and link failures, propagate render results correctly and use Graphene for rotations. Shadertoy owns its buffer declaratively and resets time, frame and delta when the same shader restarts. Gears keeps one coherent render state and binds attributes explicitly. All 15 focused rendered cases pass with fatal diagnostics, alongside both GTK Demo TypeScript projects and scoped lint.
+
+### Layout, cursors and gesture lifecycle
+
+All eight layout demos and their tests were read. Decorative faces, swatches, pictures and labels are absent from the accessibility tree; 665 color buttons and all icon controls have useful names. Overlay resources remain stable across rerenders, FlowBox no longer maintains a defensive color cache, and SizeGroup uses finite row identities, nonempty options and explicit controlled selections. An unused duplicate image was removed. The final layout run passes 50 cases with fatal diagnostics, and a post-review Overlay rerun passes all five cases. FlowBox, HeaderBar, Overlay and SizeGroup were captured and inspected.
+
+Cursor variants once again include GTK's callback cursor and distinct fallback chains. Rotate and zoom drawing now records signal values while the native gesture is active, uses the rotation delta rather than the absolute finger angle and resets on gesture end. The testing helper supplies the synthetic zoom center during signal dispatch without changing production behavior. The two demo files pass 11 cases, the corrected gesture file passes five cases, and the shared user-event suite passes 51 cases with fatal diagnostics. Captures confirm centered zoom and a 45-degree rotation.
+
+### Unicode datasets and demo accessibility
+
+The UCD demo now decodes its bundled `a(us)` GVariant instead of guessing its byte layout. It exposes the actual 33,796 records, implements ascending and descending codepoint sorting and includes the six current GLib line-break categories. UCD and the 70,128-row weather dataset parse once through the maintained `es-toolkit` helper. Weather conditions, color swatches, average colors, Minesweeper cells, text views and embedded controls now expose useful names. Hypertext uses a native keyboard-accessible speaker button, search results use a live status role, and four ListBox labels plus Font Rendering's Hinting label target their controls.
+
+The final accessibility run passes 142 cases across 14 files with fatal diagnostics. Hypertext, UCD, Weather, List Box/Controls and Font Rendering were captured and inspected. No visual or upstream defect remains in that reviewed scope.
+
+### Dialog, media and constraint convergence
+
+Picker errors no longer clear an unrelated metadata selection, and canceled metadata work cannot publish a late failure. The icon-only file actions have matching tooltips and accessible descriptions. All five dialog sources and four suites were read; 37 cases pass with fatal diagnostics, and Pickers was visually inspected.
+
+Video sample buttons create a fresh `Gio.File` for each activation, so choosing the same sample restarts playback. The video and header controls are named, child images are presentational and their tooltips track their actions. Three byte-identical GTK logo cursor assets now have one shared source. Media, Expander and Cursor validation passes 14 cases across three files with fatal diagnostics; the Video Player capture is clean.
+
+All constraint sources, tests and helpers were read against the current GTK implementations. The VFL demo now reuses the shared constraint container instead of duplicating its host and children. All eight constraint cases and three Strict Mode captures pass with fatal diagnostics, with no remaining geometry or lifecycle finding.
+
+### Button, navigation and drawing convergence
+
+The button demos now keep text-buffer content declarative, expose the Scale value to assistive technology and give Spinner one direct active-state contract. The focused native suites and visual checks pass with fatal diagnostics.
+
+The three navigation demos and their tests were read completely. Revealer uses one controlled transition and accessible state, Sidebar follows its native selection and Stack uses stable page identities without defensive fallback branches. Their interaction suites and captures pass with fatal diagnostics.
+
+The drawing review replaces the unsupported GIF animation path with a bundled WebM while retaining the GIF as a static texture example. SVG paintables use valid standard markup, explicit durations and map/unmap playback ownership. Drawing resources, sources and suites pass with fatal diagnostics; all eight Images cases and the affected SVG and DrawingArea cases pass, and the animated and stateful outputs were inspected.
+
+### Games, CSS and advanced-demo convergence
+
+Minesweeper now treats its board as an activation surface rather than a selected collection, and its state transition no longer maintains redundant branches. All six game cases pass with fatal diagnostics, and both initial and activated boards were inspected.
+
+All CSS demo sources, styles, resources and tests were read. Editors and previews have useful accessible names, split-pane placement matches the visible layout, blend modes respond to the native selection interaction, selection survives controlled updates and error-state examples use their intended state. The final eight-file run passes 32 cases with fatal diagnostics, and the changed demos were inspected.
+
+The advanced-demo repeat review removes the unused Cairo rendering path, uses the callback-supplied widget, names interactive font controls and fixes the remaining markup text. Four native files pass 73 cases with fatal diagnostics, and the changed Font Rendering, Markup and Text Mask outputs were inspected.
+
+### Gesture, benchmark and list convergence
+
+All six gesture demos, six suites and 40 owned assets were read with their consumers and current GTK implementations. Callback cursors honor requested size and scale, Clipboard accepts empty text and displays remote URIs, DND state is mount-local and uses Adwaita's actual theme state, negative angles normalize in the visible editor and duplicate artwork is removed. The full gesture run passes 89 cases with fatal diagnostics. Clipboard, cursors and rotated DND were inspected with no remaining finding.
+
+Both benchmark demos expose their changing frame-rate text as status output, and the custom Frames surface has an image role and name. All ten benchmark cases pass with fatal diagnostics; both windows were captured and inspected.
+
+All 11 list demos, 11 matching suites, their resources and shared collection consumers were read. Inert message controls and dead fields are removed, real selections survive view changes, display-only collections use no-selection models, dropdown values keep their typed objects and accessible controls have useful names. Tests observe rendered rows and selection state rather than native model internals. All 128 cases pass with fatal diagnostics, and all nine materially changed demos were inspected without a visual defect.
+
+### Reference generation correction
+
+The post-checkpoint documentation job identified two exported APIs whose referenced support types are intentionally internal. Components and React now declare those exact types in their TypeDoc configuration. Fresh reference generation completes without warnings; the remote checkpoint remains pending.
+
+### Stable documentation and standalone examples
+
+The stable guide and tutorial now follow the same concise, GTKX-specific writing standard as the v2 pages. Fifteen long chapters remove duplicated React, GNOME and API-reference material while preserving the complete GTKX workflow and links to the authoritative third-party documentation. A final terminology pass aligns current and stable codegen, testing, MCP, Storybook and smart-view descriptions with the implemented behavior.
+
+Animations, Browser and Hello World were reread with their complete consumers. Animation labels and preset bounds now derive from their authored data. Browser and Hello World have native acceptance coverage for their rendered application behavior, and Browser uses actual response data and progress state rather than demo-only shortcuts. The standalone example checks and affected types and lint pass.
+
+### Runtime and reconciler boundary convergence
+
+Application shutdown, exit callbacks and parent-death arming now live in runtime-facing modules, leaving native with the host and memory primitives required to implement them. Reconciler lifecycle contracts use the existing React commit and effect phases, and public list factories, property notifications and registered GTypes flow through shared runtime abstractions instead of local copies. Generated call descriptors remain consumer-supplied; runtime has no libgirepository dependency.
+
+A repeat import-boundary review finds only three intentional native relationships outside runtime and native itself: codegen's erased canonical ownership type, CLI's internal process-death primitive and generated GL's erased opaque memory-handle types. Executable generated calls still bind through runtime. Real development-process lifecycle coverage exercises graceful and forced wrapper death; no marshalling, signal, type-system or GLib policy has leaked into CLI or codegen.
+
+### CLI and binding-store convergence
+
+Output-directory replacement, codegen staging and generated-store publication now share the smallest filesystem transactions needed by their public consumers. Removed lock and recovery machinery addressed monorepo or unsupported concurrent-writer scenarios rather than framework consumers. Docs, MCP and development commands honor the selected configuration consistently, and optional project text reads share one helper.
+
+The publication regression suite covers current paired stores and the legacy independent beta layout. Migrating old links preserves modules that consumers have already resolved while publishing the new generation atomically. All six publication cases pass, along with affected CLI and codegen types and lint. This closes the remaining binding-store compatibility finding without retaining obsolete staging abstractions.
+
+### End-to-end and native-test convergence
+
+All end-to-end support helpers, fixtures and project configuration were read after the native and React test inventories. Shared helpers now own application lifetime, native fixture compilation, PNG decoding, selection state, signal cleanup and process completion. Tests observe rendered or public native behavior, and fixed delays were removed where an observable completion boundary exists. The resulting focused non-native run passes 297 cases plus 29 application-ownership cases.
+
+Native fixture and sanitizer setup now derives the host Rust target and resolves the actual AddressSanitizer ELF selected by the compiler instead of assuming an architecture or soname. The sanitizer checkpoint passes all 424 native cases and 851 native end-to-end cases, then the normal addon is restored. The ordinary focused native run passes 145 cases; affected types and lint also pass.
+
+Generated record-array fields retain readable getters but omit setters when a record leaf owns resources. A setter would copy pointers out of temporary packed storage and then free their backing values. Scalar arrays remain writable. Synthetic string-leaf coverage and the installed `GObject.EnumClass.values` surface verify the omission; 66 focused codegen cases, types, lint and generated-diff checks pass. CSS demo color tuples also use their exact three-number type rather than an unchecked indexed array.
+
+### Supported resource boundary disposition
+
+The final R2 pass rechecked full-transfer arrays, nested containers, custom resources and inline resources against real admitted producers. For valid leaves in a live Node environment, Bytes copying, object publication, struct metadata, boxed and fundamental resolution and null values complete without a data-dependent decode failure. The only remaining short-circuit cases require malformed producer ABI or lifetimes, missing or incompatible libraries, the explicit oversized-array exclusion, N-API allocation failure, environment teardown or private fault injection. Per-leaf tail guards would therefore add defensive production machinery for unsupported states.
+
+`GioUnix.DesktopAppInfo.search` is the only admitted installed nested resource output. Its valid `gchar***` path frees every child with `g_strfreev` and the outer vector with `g_free`. Polkit's nested raw-pointer result remains outside admission, and no real custom or inline producer carries independently owned nested resources. The archived ownership report records this supported-input disposition. No production change or artificial failure test is justified, and no actionable supported-consumer R2 finding remains in the reviewed surface.
+
+### Remaining mock inventory
+
+The final repository scan finds 26 `vi.spyOn` declarations in seven GTK Demo suites and no `vi.mock`, `vi.fn`, Jest mock or other test mock. Every remaining spy isolates an allowed external boundary: native file choosers and filesystem timing, URI or installed-application launch, the folder manager, printing, or audible media playback. The tests keep the selected files, Gio reads, parsing, filtering, clipboard and drag operations, rendered widgets and error UI real.
+
+All seven tests and their complete production consumers were reread. Replacing these seams would block on interactive native UI, start external applications or devices, use the network, or play audio. The four dialog-heavy files pass all 83 focused cases. No mock can be removed without making the suite interactive, nondeterministic or externally destructive.
+
+### Post-rebase validation
+
+The branch is rebased onto `origin/main` at `c9f37b8e`. A frozen install accepts all 1,374 supply-chain entries. Fresh uncached validation passes all 30 typecheck projects and 35 dependencies, and all 34 lint projects and 35 dependencies.
+
+Post-rebase execution exposed and resolved isolated-consumer dependency links, Node 26 executable-fixture loading, nested native teardown ordering, duplicate GTK Demo media pipelines and declarative window application ownership. The corrected generated-consumer group passes 186 cases, its configuration subprocess group passes 28, the complete GTK Demo suite passes 621, and the complete end-to-end checkpoint passes 1,252 regular and 851 native cases. The equivalent two-pipeline GJS failure is recorded as U40 in `~/UPSTREAM.md`; its C control remains clean, while the responsible upstream component remains unconfirmed.
+
+A first complete CLI run passed 1,163 of 1,165 cases; two generated GTK consumers lost access to their headless displays under parallel execution. Test-only per-project temporary roots now isolate CLI, nested Vitest, Storybook and direct development subprocesses that can start or clean a headless display. Focused post-fix checks pass 50 headless, cleanup and preflight cases plus eight nested Vitest, process-lifecycle and Storybook cases, and two independent audits find no remaining cleanup path that shares the global temporary root. The final normal-concurrency run passes all 99 files and 1,165 cases. The fresh uncached build graph passes all 37 tasks across 26 projects, and root reference generation is up to date.
+
+The final AddressSanitizer checkpoint passes all 424 native cases and 851 native end-to-end cases without an unsuppressed finding. Its restoration step rebuilds the ordinary addon; the restored ELF has no `libasan` dependency and imports successfully. No local validation finding remains.
+
+## Convergence checkpoint
+
+Every production, test, fixture, documentation, example, script and configuration area in the starting inventory has now been read through its recorded package or bounded review. Repeat passes close the native/runtime boundary, generated surfaces, reconciler, CLI, end-to-end support, website content and example acceptance inventories. The remaining resource-decoding hypotheses require unsupported producer data or host failure, and the remaining mocks isolate permitted external seams. This source checkpoint has zero known actionable local findings.
+
+Unsupported raw-pointer, retaining-callback and unsafe container shapes stay omitted from generated APIs. Upstream issues and reproductions remain recorded in `~/UPSTREAM.md`; required compatibility code stays in place until supported upstream releases contain the corresponding fixes. The branch is rebased onto `origin/main` at `c9f37b8e`, and fresh local validation is clean. Remote CI and review remain pending until the maintainer pushes the branch. Any concrete supported-consumer failure found there reopens the relevant audit scope.

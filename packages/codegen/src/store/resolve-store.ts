@@ -2,7 +2,6 @@ import { isPathWithin } from "@gtkx/utils";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { StoreOptions } from "./store-fs.js";
-import { sweepStagingDirs } from "../staging.js";
 
 /**
  * Where a project's generated stores live, ready to spread into `runCodegen`. `jsx` is null when the
@@ -79,12 +78,11 @@ const resolvePackage = (projectRoot: string, packageName: string): ResolvedPacka
 const canImport = (fromNodeModules: string, targetNodeModules: string): boolean =>
     isPathWithin(dirname(targetNodeModules), dirname(fromNodeModules));
 
-const storeOptions = (nodeModules: string, name: string, version: string, owner: string): StoreOptions => {
+const storeOptions = (nodeModules: string, name: string, version: string): StoreOptions => {
     return {
         storeDir: join(nodeModules, STORE_DIR, name),
         linkDir: join(nodeModules, SCOPE, name),
         version,
-        owner,
     };
 };
 
@@ -157,23 +155,6 @@ const getShadowingStorePaths = (projectRoot: string): string[] => {
     return storePaths(nodeModules);
 };
 
-const stagingRoots = (projectRoot: string): string[] => {
-    const nodeModules = join(projectRoot, "node_modules");
-    const anchored = findStoreNodeModules(projectRoot);
-
-    return anchored === null || anchored === nodeModules ? [nodeModules] : [nodeModules, anchored];
-};
-
-const sweepProjectStaging = (projectRoot: string): void => {
-    const root = resolve(projectRoot);
-
-    for (const nodeModules of stagingRoots(root)) {
-        for (const name of STORE_NAMES) {
-            sweepStagingDirs(join(nodeModules, STORE_DIR, name));
-        }
-    }
-};
-
 /**
  * Resolves where a project's `@gtkx/gi` and `@gtkx/jsx` stores belong, from the project root alone. The
  * result supplies every `runCodegen` input except `libraries` and `girPath`, so a caller that has
@@ -197,16 +178,15 @@ const sweepProjectStaging = (projectRoot: string): void => {
  */
 const resolveStore = (projectRoot: string): ResolvedStore => {
     const root = resolve(projectRoot);
-    const owner = realpathSync(root);
     const runtime = resolveRuntime(root);
     const react = resolvePackage(root, "@gtkx/react");
     const nodeModules = storeNodeModules(runtime, react);
     checkConsumers(root, nodeModules);
 
     return {
-        gi: storeOptions(nodeModules, "gi", runtime.version, owner),
-        jsx: react === null ? null : storeOptions(nodeModules, "jsx", react.version, owner),
+        gi: storeOptions(nodeModules, "gi", runtime.version),
+        jsx: react === null ? null : storeOptions(nodeModules, "jsx", react.version),
     };
 };
 
-export { getShadowingStorePaths, resolveStore, sweepProjectStaging, type ResolvedStore };
+export { getShadowingStorePaths, resolveStore, type ResolvedStore };

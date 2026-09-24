@@ -1,11 +1,11 @@
-import type * as WebKit from "@gtkx/gi/webkit";
 import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
+import * as WebKit from "@gtkx/gi/webkit";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { WebKitSettings } from "@gtkx/jsx/webkit";
+import { WebKitSettings, WebKitWebView } from "@gtkx/jsx/webkit";
 import { createPortal, rootElement, useProperty } from "@gtkx/react";
-import { render, screen, userEvent } from "@gtkx/testing";
-import { useState } from "react";
+import { act, render, screen, userEvent } from "@gtkx/testing";
+import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 
 const Probe = (): ReactNode => {
@@ -32,5 +32,27 @@ describe("property names (digit segments)", () => {
         await screen.findByText("accel true");
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Disable acceleration" }));
         expect(await screen.findByText("accel false")).toBeVisible();
+    });
+});
+
+describe("property notify values", () => {
+    it("reads a property whose camelCase accessor collides with a method", async () => {
+        const webViewRef = createRef<WebKit.WebView>();
+        const values: (boolean | null)[] = [];
+
+        await render(
+            <WebKitWebView
+                ref={webViewRef}
+                onNotifyIsLoading={(value) => {
+                    values.push(value);
+                }}
+            />,
+        );
+
+        await act(() => {
+            webViewRef.current?.notify("is-loading");
+        });
+
+        expect(values).toEqual([false]);
     });
 });

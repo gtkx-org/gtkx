@@ -4,9 +4,8 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import { getWrapper, setWrapper } from "@gtkx/native";
 import { getHandle, registerClass } from "@gtkx/runtime";
-import { spawn } from "node:child_process";
 import { expect, test } from "vitest";
-import { childEnv, fixtureArgs } from "./helpers/child-process.js";
+import { runFixture } from "./helpers/child-process.js";
 import { didSettle, drainAfterEachTest, drainGC } from "./helpers/memory.js";
 
 drainAfterEachTest();
@@ -54,11 +53,7 @@ const churnAllocations = () => {
     return junk.at(-1);
 };
 
-const isCollected = async (weak: WeakRef<object>): Promise<boolean> => {
-    await drainGC();
-
-    return weak.deref() === undefined;
-};
+const isCollected = (weak: WeakRef<object>): boolean => weak.deref() === undefined;
 
 const detach = (factory: () => object): WeakRef<object> => new WeakRef(factory());
 
@@ -75,19 +70,6 @@ const matchWithoutKeepingTheRegex = () => {
 
     return { matched, info, weak: new WeakRef(regex) };
 };
-
-const runKeepAliveFixture = (mode: string): Promise<number | null> =>
-    new Promise((resolve, reject) => {
-        const child = spawn(process.execPath, [...fixtureArgs("lifecycle-keep-alive.ts"), mode], {
-            env: childEnv(),
-            stdio: "ignore",
-        });
-
-        child.once("error", reject);
-        child.once("close", (code) => {
-            resolve(code);
-        });
-    });
 
 test("a handle hands back the wrapper that was last set on it", () => {
     const object = new Regress.TestObj({ int: 3 });
@@ -354,11 +336,13 @@ test("a source removed before its deadline never runs", async () => {
 });
 
 test("a pending timeout alone does not keep the process alive", async () => {
-    expect(await runKeepAliveFixture("released")).toBe(7);
+    const run = await runFixture("lifecycle-keep-alive.ts", { args: ["released"] });
+    expect(run.code).toBe(7);
 });
 
 test("keeping alive holds the process open until the pending timeout fires", async () => {
-    expect(await runKeepAliveFixture("held")).toBe(0);
+    const run = await runFixture("lifecycle-keep-alive.ts", { args: ["held"] });
+    expect(run.code).toBe(0);
 });
 
 test("the wrapper and source APIs reject values of the wrong type", () => {

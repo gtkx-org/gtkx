@@ -271,7 +271,7 @@ export const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lis
                                     accessibleRole={Gtk.AccessibleRole.PRESENTATION}
                                 />
                             ) : (
-                                <GtkImage iconName={entry.icon} />
+                                <GtkImage iconName={entry.icon} accessibleRole={Gtk.AccessibleRole.PRESENTATION} />
                             )
                         }
                         suffix={

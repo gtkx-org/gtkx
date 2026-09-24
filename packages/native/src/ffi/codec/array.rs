@@ -414,8 +414,9 @@ impl PtrWriter for ArrayCodec {
         ret: ffi::Slot,
         value: &std::result::Result<Unknown<'_>, ()>,
     ) {
-        let container =
-            encode_and_leak_container(value, "array vfunc return", |v| self.encode(env, v));
+        let container = encode_transferred_container(*env, value, "array vfunc return", |v| {
+            self.encode(env, v)
+        });
         unsafe { ret.store(container) };
     }
 

@@ -5,9 +5,9 @@ use napi_derive::napi;
 
 use crate::ffi::codec::{
     ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BoxedCodec, BufferCodec, BytesCodec,
-    CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind,
-    ElementOwnership, FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec, ObjectCodec,
-    Ownership, RefCodec, StructCodec, VoidCodec,
+    CallbackCodec, CallbackScope, Codec, DestroyNotifyKind, ElementOwnership, FloatCodec,
+    FundamentalCodec, HashTableCodec, IntegerCodec, ObjectCodec, Ownership, RefCodec, StructCodec,
+    VoidCodec,
 };
 
 const MAX_DESCRIPTOR_DEPTH: u32 = 32;
@@ -40,7 +40,12 @@ impl DepthGuard {
 
 impl Drop for DepthGuard {
     fn drop(&mut self) {
-        DESCRIPTOR_DEPTH.set(DESCRIPTOR_DEPTH.get().saturating_sub(1));
+        DESCRIPTOR_DEPTH.set(
+            DESCRIPTOR_DEPTH
+                .get()
+                .checked_sub(1)
+                .expect("descriptor depth guard underflow"),
+        );
     }
 }
 
@@ -185,30 +190,27 @@ pub enum Descriptor {
     },
 }
 
-fn callback_lifetime(
-    scope: CallbackScope,
+fn validate_callback_lifetime(
+    scope: &CallbackScope,
     has_destroy: bool,
     has_user_data: bool,
     release_with_completion: bool,
-) -> Result<(CallbackScope, CallbackReleasePolicy)> {
-    let scope = if scope == CallbackScope::Notified && !has_destroy {
-        CallbackScope::Forever
-    } else {
-        scope
-    };
-    if release_with_completion && (scope != CallbackScope::Forever || has_destroy || !has_user_data)
+) -> Result<()> {
+    if scope == &CallbackScope::Notified && !has_destroy {
+        return Err(Error::new(
+            Status::InvalidArg,
+            "A notified callback requires a destroy notifier",
+        ));
+    }
+    if release_with_completion
+        && (scope != &CallbackScope::Forever || has_destroy || !has_user_data)
     {
         return Err(Error::new(
             Status::InvalidArg,
             "A completion-tied callback requires retained scope, user data and no destroy notifier",
         ));
     }
-    let policy = if release_with_completion {
-        CallbackReleasePolicy::AsyncCompletion
-    } else {
-        CallbackReleasePolicy::Scope
-    };
-    Ok((scope, policy))
+    Ok(())
 }
 
 impl NestedDescriptor {
@@ -394,11 +396,12 @@ impl Descriptor {
             } => {
                 let has_destroy = has_destroy.unwrap_or(false);
                 let has_user_data = has_user_data.unwrap_or(false);
-                let (scope, release_policy) = callback_lifetime(
-                    scope,
+                let release_with_completion = release_with_completion.unwrap_or(false);
+                validate_callback_lifetime(
+                    &scope,
                     has_destroy,
                     has_user_data,
-                    release_with_completion.unwrap_or(false),
+                    release_with_completion,
                 )?;
                 Codec::Callback(CallbackCodec {
                     arg_codecs: arg_descriptors
@@ -407,13 +410,12 @@ impl Descriptor {
                         .map(Self::into_codec)
                         .collect::<Result<Vec<_>>>()?,
                     return_codec: return_descriptor.into_codec()?,
-                    has_destroy,
-                    destroy_kind: destroy_kind.unwrap_or_default(),
+                    destroy: has_destroy.then(|| destroy_kind.unwrap_or_default()),
                     has_user_data,
                     user_data_index: user_data_index.map(|n| n as usize),
                     can_throw: can_throw.unwrap_or(false),
                     scope,
-                    release_policy,
+                    release_with_completion,
                 })
             }
             Self::Ref {

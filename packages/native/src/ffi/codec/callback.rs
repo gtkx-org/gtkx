@@ -18,12 +18,6 @@ pub enum CallbackScope {
     Forever,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum CallbackReleasePolicy {
-    Scope,
-    AsyncCompletion,
-}
-
 /// Signature of the destroy the callee is handed: `destroyNotify` is a `GDestroyNotify`, taking the
 /// user data alone, and `closureNotify` is a `GClosureNotify`, taking the user data and the
 /// `GClosure` being finalized.
@@ -39,13 +33,12 @@ pub enum DestroyNotifyKind {
 pub struct CallbackCodec {
     pub arg_codecs: Vec<Codec>,
     pub return_codec: Box<Codec>,
-    pub has_destroy: bool,
-    pub destroy_kind: DestroyNotifyKind,
+    pub destroy: Option<DestroyNotifyKind>,
     pub has_user_data: bool,
     pub user_data_index: Option<usize>,
     pub can_throw: bool,
     pub scope: CallbackScope,
-    pub(crate) release_policy: CallbackReleasePolicy,
+    pub(crate) release_with_completion: bool,
 }
 
 impl DestroyNotifyKind {
@@ -78,7 +71,7 @@ impl Encoder for CallbackCodec {
         if self.has_user_data {
             types.push(libffi::Type::pointer());
         }
-        if self.has_destroy {
+        if self.destroy.is_some() {
             types.push(libffi::Type::pointer());
         }
     }
@@ -107,9 +100,9 @@ impl Encoder for CallbackCodec {
         );
         let fn_ptr = state.code_ptr;
 
-        let destroy = self.has_destroy.then(|| {
+        let destroy = self.destroy.map(|kind| {
             if self.scope == CallbackScope::Notified {
-                self.destroy_kind.entry_point()
+                kind.entry_point()
             } else {
                 std::ptr::null_mut()
             }
@@ -129,7 +122,7 @@ impl Encoder for CallbackCodec {
             )));
         }
 
-        let is_immortal = self.release_policy != CallbackReleasePolicy::AsyncCompletion
+        let is_immortal = !self.release_with_completion
             && (self.scope == CallbackScope::Forever
                 || (self.scope == CallbackScope::Notified && !has_user_data));
         let value = ffi::CallbackValue::new_pending_transfer(fn_ptr, has_user_data, destroy, state);
@@ -149,7 +142,7 @@ impl PtrWriter for CallbackCodec {}
 impl CallbackCodec {
     #[must_use]
     pub(crate) fn can_release_with_async_completion(&self) -> bool {
-        self.release_policy == CallbackReleasePolicy::AsyncCompletion
+        self.release_with_completion
     }
 
     fn null_callback_value(&self) -> ffi::Stash {
@@ -157,7 +150,7 @@ impl CallbackCodec {
             std::ptr::null_mut(),
             std::ptr::null_mut(),
             self.has_user_data,
-            if self.has_destroy {
+            if self.destroy.is_some() {
                 Some(std::ptr::null_mut())
             } else {
                 None

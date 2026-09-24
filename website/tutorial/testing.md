@@ -101,7 +101,7 @@ describe("Tasks", () => {
 
         await userEvent.click(await screen.findByText("Open"));
         const source = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
-        const target = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Review pull requests/ });
+        const target = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Prepare the weekly report/ });
 
         await expect(userEvent.dragAndDrop(source, target, "t2")).rejects.toThrow();
     });

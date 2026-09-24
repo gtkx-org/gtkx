@@ -64,6 +64,16 @@ for (const { name, list, isSingly } of layouts) {
         expect(field.read(holder)).toEqual(initialStrings);
     });
 
+    test(`${name} fields reject transferred containers with borrowed strings`, () => {
+        const holder = holderFor(isSingly, 0);
+        const field = t.field(list(t.string(), "full"), 0);
+
+        expect(() => {
+            field.write(holder, replacementStrings);
+        }).toThrow();
+        expect(field.read(holder)).toEqual(initialStrings);
+    });
+
     test(`${name} owned object lists release displaced references`, () => {
         const before = finalizedObjects();
         const holder = holderFor(isSingly, 1);

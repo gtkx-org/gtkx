@@ -49,6 +49,14 @@
         <type name="gpointer" c:type="gpointer"/>
       </field>
     </record>
+    <record name="TextSpan" c:type="InlineArrayTextSpan" c:symbol-prefix="text_span">
+      <field name="text" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </field>
+      <field name="length" writable="1">
+        <type name="guint" c:type="guint"/>
+      </field>
+    </record>
     <record name="Chain" c:type="InlineArrayChain" c:symbol-prefix="chain">
       <field name="n_links" writable="1">
         <type name="guint" c:type="guint"/>
@@ -56,6 +64,14 @@
       <field name="links" writable="1">
         <array length="0" zero-terminated="0" c:type="InlineArraySpan*">
           <type name="Span" c:type="InlineArraySpan"/>
+        </array>
+      </field>
+      <field name="n_text_links" writable="1">
+        <type name="guint" c:type="guint"/>
+      </field>
+      <field name="text_links" writable="1">
+        <array length="2" zero-terminated="0" c:type="InlineArrayTextSpan*">
+          <type name="TextSpan" c:type="InlineArrayTextSpan"/>
         </array>
       </field>
     </record>

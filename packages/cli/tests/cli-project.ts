@@ -47,7 +47,14 @@ const WORKSPACE_PACKAGES = [
     "utils",
 ];
 
-const REGISTRY_PACKAGES = ["@types", "csstype", "react", "tsx"];
+const REGISTRY_PACKAGES = {
+    "@types": WORKSPACE_MODULES,
+    c12: join(WORKSPACE_ROOT, "packages", "config", "node_modules"),
+    csstype: WORKSPACE_MODULES,
+    react: WORKSPACE_MODULES,
+    tsx: WORKSPACE_MODULES,
+    zod: join(WORKSPACE_ROOT, "packages", "config", "node_modules"),
+};
 const STORE_LIBRARIES = workspaceConfig.libraries;
 const MANIFEST = { name: "gtkx-cli-project", version: "1.0.0", type: "module" };
 const DEFAULT_EXPORT = "export default {";
@@ -81,8 +88,8 @@ const installPeers = (nodeModules: string, omitPackages: string[]): void => {
         linkInto(nodeModules, join(SCOPE, name), join(WORKSPACE_ROOT, "packages", name));
     }
 
-    for (const name of REGISTRY_PACKAGES) {
-        linkInto(nodeModules, name, join(WORKSPACE_MODULES, name));
+    for (const [name, source] of Object.entries(REGISTRY_PACKAGES)) {
+        linkInto(nodeModules, name, join(source, name));
     }
 };
 

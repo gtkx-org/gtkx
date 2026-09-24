@@ -9,15 +9,17 @@ type DecodedPng = {
 
 const RGBA_CHANNELS = 4;
 
-const decodePngSize = (base64Data: string): { width: number; height: number } => {
-    const bytes = Buffer.from(base64Data, "base64");
+const textureFromPng = (base64Data: string): Gdk.Texture =>
+    Gdk.Texture.newFromBytes(GLib.Bytes.new(Buffer.from(base64Data, "base64")));
 
-    return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+const decodePngSize = (base64Data: string): { width: number; height: number } => {
+    const texture = textureFromPng(base64Data);
+
+    return { width: texture.getWidth(), height: texture.getHeight() };
 };
 
 const decodePng = (base64Data: string): DecodedPng => {
-    const encoded = GLib.Bytes.new(Buffer.from(base64Data, "base64"));
-    const texture = Gdk.Texture.newFromBytes(encoded);
+    const texture = textureFromPng(base64Data);
     const downloader = Gdk.TextureDownloader.new(texture);
     downloader.setFormat(Gdk.MemoryFormat.R8G8B8A8);
     const [downloaded, stride] = downloader.downloadBytes();

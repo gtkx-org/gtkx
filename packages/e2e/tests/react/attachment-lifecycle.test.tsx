@@ -1,10 +1,25 @@
 import type * as Gio from "@gtkx/gi/gio";
 import type * as Gtk from "@gtkx/gi/gtk";
 import { GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
-import { GtkBox, GtkFlowBox, GtkGestureClick, GtkLabel, GtkListBox, GtkStack, GtkStackPage } from "@gtkx/jsx/gtk";
-import { render } from "@gtkx/testing";
+import {
+    GtkBox,
+    GtkCallbackAction,
+    GtkDropDown,
+    GtkFlowBox,
+    GtkGestureClick,
+    GtkLabel,
+    GtkListBox,
+    GtkShortcut,
+    GtkShortcutController,
+    GtkShortcutTrigger,
+    GtkStack,
+    GtkStackPage,
+    GtkStringList,
+} from "@gtkx/jsx/gtk";
+import { cleanup, render, userEvent } from "@gtkx/testing";
 import { createRef, useLayoutEffect } from "react";
 import { describe, expect, it } from "vitest";
+import { gcUntil } from "../helpers/native-utils.js";
 
 describe("native attachments when an entire subtree unmounts", () => {
     it.each(["list", "flow"])("retains native %s rows through reorder and unmount", async (kind) => {
@@ -58,6 +73,73 @@ describe("native attachments when an entire subtree unmounts", () => {
         await unmount();
 
         expect(group?.hasAction("run")).toBe(false);
+    });
+
+    it("keeps later native operations valid after collecting a nested object prop", async () => {
+        const collectNestedModel = async (): Promise<WeakRef<Gtk.StringList>> => {
+            const modelRef = createRef<Gtk.StringList>();
+            const dropdownRef = createRef<Gtk.DropDown>();
+            await render(
+                <GtkBox sensitive={false}>
+                    <GtkDropDown
+                        ref={dropdownRef}
+                        model={<GtkStringList ref={modelRef} strings={["First", "Second"]} />}
+                    />
+                </GtkBox>,
+            );
+            const model = modelRef.current;
+            const dropdown = dropdownRef.current;
+
+            if (model === null || dropdown === null) {
+                throw new Error("The nested drop-down was not mounted");
+            }
+
+            await expect(userEvent.selectOptions(dropdown, 1)).rejects.toThrow();
+            const released = new WeakRef(model);
+            await render(<GtkListBox><GtkLabel>Second tree</GtkLabel></GtkListBox>);
+            globalThis.gc?.();
+            await cleanup();
+
+            return released;
+        };
+
+        const released = await collectNestedModel();
+        await gcUntil(() => released.deref() === undefined);
+        expect(released.deref()).toBeUndefined();
+
+        const hostRef = createRef<Gtk.Box>();
+        let activations = 0;
+        await render(
+            <GtkBox
+                ref={hostRef}
+                controllers={(
+                    <GtkShortcutController
+                        shortcuts={(
+                            <GtkShortcut
+                                trigger={<GtkShortcutTrigger accelerator="F5" />}
+                                action={(
+                                    <GtkCallbackAction
+                                        callback={() => {
+                                            activations += 1;
+
+                                            return true;
+                                        }}
+                                    />
+                                )}
+                            />
+                        )}
+                    />
+                )}
+            />,
+        );
+        const host = hostRef.current;
+
+        if (host === null) {
+            throw new Error("The shortcut host was not mounted");
+        }
+
+        await userEvent.keyboard(host, "{F5}");
+        expect(activations).toBe(1);
     });
 });
 

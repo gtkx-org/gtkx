@@ -135,9 +135,14 @@ describe("imagesDemo media widgets", () => {
 
     it("renders a GtkVideo widget configured to autoplay and loop", async () => {
         await renderDemo(imagesDemo);
-        const video = await screen.findByName("logo-video", { as: Gtk.Video });
+        const picture = await screen.findByName("animation-picture", { as: Gtk.Picture });
+        const video = await screen.findByName("animation-video", { as: Gtk.Video });
         expect(video).toHaveObjectProperty("autoplay", true);
         expect(video).toHaveObjectProperty("loop", true);
+
+        await waitFor(() => {
+            expect(video.getMediaStream()).toBe(picture.getPaintable());
+        });
     });
 
     it("creates the widget paintable for the host window after mount", async () => {

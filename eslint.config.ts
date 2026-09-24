@@ -44,6 +44,8 @@ export default [
             "packages/runtime/src/registry.ts",
             "packages/runtime/src/descriptor-types.ts",
             "packages/runtime/src/field.ts",
+            "packages/runtime/src/lifecycle.ts",
+            "packages/runtime/src/log.ts",
             "packages/runtime/src/object.ts",
             "packages/runtime/src/register-class.ts",
             "packages/runtime/src/signal-brand.ts",

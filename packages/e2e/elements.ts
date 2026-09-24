@@ -8,8 +8,8 @@ export default mergeElementConfigs(defineElements({
                 update: (widget: Gtk.Widget, prev, next) => {
                     const name = next.cursorName;
 
-                    if (typeof name === "string" && !Object.is(prev.cursorName, name)) {
-                        widget.setCursorFromName(name);
+                    if (!Object.is(prev.cursorName, name)) {
+                        widget.setCursorFromName(typeof name === "string" ? name : null);
                     }
 
                     return ["cursorName"];

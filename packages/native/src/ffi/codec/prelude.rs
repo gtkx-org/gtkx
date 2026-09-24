@@ -8,7 +8,6 @@ pub(super) use super::{
     Decoder, Encoder, IntegerBacked, Ownership, PtrWriter, ReadCtx, ReadSource, SlotInit,
 };
 use crate::handle::Handle;
-use crate::host::error_reporter::ReportErr as _;
 pub(super) use crate::{ffi, value};
 
 macro_rules! bail_expected {
@@ -76,7 +75,7 @@ where
         None
     };
     let encoded = encode(value)?;
-    let container = transfer_container(encoded, context)?;
+    let container = transfer_container(&encoded, context)?;
 
     if !init.is_initialized() {
         unsafe { slot.store(container) };
@@ -224,24 +223,45 @@ where
     Ok(None)
 }
 
-fn aliases_stash_backing(stash: &ffi::Stash) -> bool {
+fn retains_transfer_backing(stash: &ffi::Stash) -> bool {
     let ffi::Stash::Storage(storage) = stash else {
-        return true;
+        return matches!(stash, ffi::Stash::Ptr(ptr) if !ptr.is_null());
     };
+    if storage.byte_len().is_some() {
+        return true;
+    }
     match storage.data() {
-        ffi::StashData::Unit | ffi::StashData::ObjectArray(_, _) => false,
-        ffi::StashData::List(list) => matches!(
-            &list.payload,
-            ffi::ListPayload::Strings {
-                items_duped: false,
-                ..
-            }
-        ),
-        _ => true,
+        ffi::StashData::StringArray(strings, ptrs) => {
+            !strings.is_empty()
+                || (!ptrs.is_empty() && storage.ptr() == ptrs.as_ptr().cast_mut().cast())
+        }
+        ffi::StashData::ObjectArray(_, ptrs) => {
+            !ptrs.is_empty() && storage.ptr() == ptrs.as_ptr().cast_mut().cast()
+        }
+        ffi::StashData::List(list) => {
+            list.should_free
+                || matches!(
+                    &list.payload,
+                    ffi::ListPayload::Strings {
+                        strings,
+                        items_duped: false,
+                        ..
+                    } if !strings.is_empty()
+                )
+        }
+        ffi::StashData::GArray(array) => array.should_free,
+        ffi::StashData::GPtrArray(array) => array.should_free,
+        ffi::StashData::GByteArray(array) => array.is_some(),
+        ffi::StashData::HashTable(table) => table.owns_table || !table.retained_entries.is_empty(),
+        ffi::StashData::Handle(_) | ffi::StashData::CString(_) | ffi::StashData::PtrSlot(_, _) => {
+            true
+        }
+        _ => false,
     }
 }
 
-pub(super) fn encode_and_leak_container<F>(
+pub(super) fn encode_transferred_container<F>(
+    env: Env,
     value: &std::result::Result<Unknown<'_>, ()>,
     context: &'static str,
     encode: F,
@@ -253,17 +273,20 @@ where
         return std::ptr::null_mut();
     };
     encode(*unknown)
-        .and_then(|stash| transfer_container(stash, context))
-        .report_err(context)
-        .unwrap_or(std::ptr::null_mut())
+        .and_then(|stash| transfer_container(&stash, context))
+        .unwrap_or_else(|error| {
+            reject_callback_return(env, &error.context(context));
+            std::ptr::null_mut()
+        })
 }
 
-pub(super) fn transfer_container(stash: ffi::Stash, context: &str) -> anyhow::Result<*mut c_void> {
+pub(super) fn transfer_container(stash: &ffi::Stash, context: &str) -> anyhow::Result<*mut c_void> {
     let container = stash.as_ptr(context)?;
+    anyhow::ensure!(
+        !retains_transfer_backing(stash),
+        "{context}: a transferred container cannot retain native backing"
+    );
     stash.disarm_pending_transfer();
-    if aliases_stash_backing(&stash) {
-        std::mem::forget(stash);
-    }
     Ok(container)
 }
 

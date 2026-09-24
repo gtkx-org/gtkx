@@ -1,8 +1,8 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
+import { setImmediate } from "node:timers/promises";
 
 const GC_ROUNDS = 30;
-const GC_PAUSE_MS = 10;
 
 const collectGarbage = () => {
     if (!globalThis.gc) {
@@ -15,7 +15,7 @@ const collectGarbage = () => {
 const settle = async () => {
     for (let round = 0; round < GC_ROUNDS; round += 1) {
         collectGarbage();
-        await new Promise((resolve) => setTimeout(resolve, GC_PAUSE_MS));
+        await setImmediate();
     }
 };
 

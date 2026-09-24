@@ -32,6 +32,25 @@ describe("gtkx_list_api", () => {
             state.server.client, "gtkx_list_api", { namespace: "Absent" }, REQUEST_OPTIONS,
         )).toBe(true);
     });
+
+    it("uses the configuration selected when the server starts", async () => {
+        const project = createProject();
+        const selected = "gtkx.selected.config.mjs";
+        writeFileSync(
+            join(project, selected),
+            'export default { applicationId: "org.gtkx.selected", libraries: ["GtkSource-5"] };\n',
+        );
+        const server = await startServer(project, undefined, ["--config", selected]);
+
+        try {
+            const reference = await callText(server.client, "gtkx_list_api", {}, REQUEST_OPTIONS);
+            expect(reference).toContain("GtkSource");
+            expect(reference).not.toContain("WebKit");
+        } finally {
+            await server.stop();
+            rmSync(project, { recursive: true, force: true });
+        }
+    });
 });
 
 describe("gtkx_search_api", () => {

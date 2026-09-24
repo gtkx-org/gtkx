@@ -5,7 +5,7 @@ import { resolveAcceptedChildTypes, resolveElementProps, resolveOmittedProps } f
 import { info, isPathInside } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
-import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
+import { configArg, cwdArg, resolveCwd } from "../internal/entry-arg.js";
 
 const docs = defineCommand({
     meta: {
@@ -33,11 +33,12 @@ const docs = defineCommand({
                 "and the element props the project configures",
             default: false,
         },
+        ...configArg,
         ...cwdArg,
     },
     async run({ args }) {
         const cwd = resolveCwd(args);
-        const { config } = await loadConfig(cwd);
+        const { config } = await loadConfig(cwd, { configFile: args.config });
 
         if (config.codegen === false) {
             throw new Error(

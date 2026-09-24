@@ -111,7 +111,7 @@ Use widget matchers such as `toHaveTextContent`, `toHaveAccessibleName`, `toBeCh
 
 A critical raised during a generated binding call throws or rejects, so an error-path test can catch it. Criticals outside a binding call and addon panics fail the test as uncaught exceptions; a GLib `ERROR` aborts the worker. See [Error Handling](/v2/guide/error-handling#errors-outside-binding-calls).
 
-Warnings do not fail tests automatically. To make them failures, subscribe through `onLog` from `@gtkx/native`, collect warning records, and check them during teardown. Delivery is asynchronous: yield with `setImmediate` from `node:timers/promises` before checking or unsubscribing. Unsubscribing stops new records but does not cancel records already queued.
+Warnings do not fail tests automatically. To make them failures, subscribe through `onLog` from `@gtkx/runtime`, collect warning records, and check them during teardown. Delivery is asynchronous: yield with `setImmediate` from `node:timers/promises` before checking or unsubscribing. Unsubscribing stops new records but does not cancel records already queued.
 
 ## Next
 

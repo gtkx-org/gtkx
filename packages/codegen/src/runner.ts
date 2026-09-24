@@ -9,14 +9,12 @@ import { isGiStoreFresh } from "./fingerprint.js";
 import { runGiCodegen } from "./gi.js";
 import { Library } from "./gir/library.js";
 import { generateGlModules, type GlGenerationReport } from "./khronos/pipeline.js";
-import { acquireStoreLocks, sweepStagingDirs } from "./staging.js";
 import {
     discardPreparedStore,
     ensureStoreLink,
     type PreparedStore,
     publishPreparedStore,
     publishStorePair,
-    reclaimStoreArtifacts,
     type StoreOptions,
 } from "./store/store-fs.js";
 
@@ -85,26 +83,14 @@ type GiStoreResult = { isRegenerated: boolean; namespaces: number; store: Prepar
  */
 const runCodegen = async (options: CodegenRunnerOptions): Promise<CodegenRunnerResult> => {
     const start = Date.now();
-    const stores = [options.gi.storeDir];
+    const store = await emitStores(options);
 
-    if (options.jsx !== undefined) {
-        stores.push(options.jsx.storeDir);
-    }
-
-    const release = await acquireStoreLocks(stores);
-
-    try {
-        const store = await emitStores(options);
-
-        return {
-            isRegenerated: store.isRegenerated,
-            namespaces: store.namespaces,
-            intrinsicElements: store.intrinsicElements,
-            duration: Date.now() - start,
-        };
-    } finally {
-        release();
-    }
+    return {
+        isRegenerated: store.isRegenerated,
+        namespaces: store.namespaces,
+        intrinsicElements: store.intrinsicElements,
+        duration: Date.now() - start,
+    };
 };
 
 const moduleExportNames = (path: string): Set<string> => {
@@ -184,12 +170,6 @@ const emitJsxStore = async (input: {
 
 const prepareStores = (stores: (StoreOptions | undefined)[]): void => {
     const resolved = stores.filter((store): store is StoreOptions => store !== undefined);
-
-    for (const store of resolved) {
-        sweepStagingDirs(store.storeDir);
-    }
-
-    reclaimStoreArtifacts(resolved);
 
     for (const store of resolved) {
         ensureStoreLink(store);

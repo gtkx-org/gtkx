@@ -48,7 +48,7 @@ impl Owner {
         let mut queue = self
             .queue
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+            .expect("remote release queue lock poisoned");
         if queue.closed {
             return;
         }
@@ -80,7 +80,7 @@ impl Owner {
             let mut queue = self
                 .queue
                 .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
+                .expect("remote release queue lock poisoned");
             queue.source.take();
             std::mem::take(&mut queue.pending)
         };
@@ -94,7 +94,7 @@ impl Owner {
             let mut queue = self
                 .queue
                 .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
+                .expect("remote release queue lock poisoned");
             queue.closed = true;
             (queue.source.take(), std::mem::take(&mut queue.pending))
         };
@@ -121,7 +121,7 @@ pub(crate) fn install() {
     });
     *CURRENT_OWNER
         .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(owner);
+        .expect("current release owner lock poisoned") = Some(owner);
 }
 
 pub(crate) fn owner() -> Arc<Owner> {
@@ -144,7 +144,7 @@ pub(crate) fn is_retiring() -> bool {
 pub(crate) fn invoke_current(context: &'static str, work: impl FnOnce() + Send + 'static) {
     let owner = CURRENT_OWNER
         .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .expect("current release owner lock poisoned")
         .clone();
     if let Some(owner) = owner {
         owner.invoke(context, work);
@@ -215,7 +215,7 @@ pub(crate) fn retire() {
     if let Some(owner) = owner {
         let mut current = CURRENT_OWNER
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+            .expect("current release owner lock poisoned");
         if current
             .as_ref()
             .is_some_and(|current| Arc::ptr_eq(current, &owner))

@@ -661,10 +661,10 @@ describe("userEvent click - selection notifications", () => {
 
         const listBox = refs[0]?.current?.getParent() as Gtk.ListBox;
         const reported: boolean[][] = [];
-
-        listBox.on("selected-rows-changed", () => {
+        const recordSelection = (): void => {
             reported.push(getSelection(refs));
-        });
+        };
+        listBox.on("selected-rows-changed", recordSelection);
 
         await userEvent.click(screen.getByText("Row 1"));
 
@@ -680,6 +680,7 @@ describe("userEvent click - selection notifications", () => {
             [false, true, true],
             [false, false, true],
         ]);
+        listBox.off("selected-rows-changed", recordSelection);
     });
 });
 

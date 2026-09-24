@@ -1,6 +1,8 @@
 import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
-import { dirname, join } from "node:path";
+import { mkdtempDisposableSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, dirname, join } from "node:path";
 import { RUST_NIGHTLY } from "./rust-nightly.js";
 
 const WORKSPACE_ROOT = join(import.meta.dirname, "..");
@@ -13,15 +15,44 @@ const NATIVE_CONFIGS = [
 const BUILD_ARGS = ["--filter", "@gtkx/native", "exec", "napi", "build", "--platform", "--release", "--esm",
     "--no-dts-cache", "--no-const-enum"];
 
+const nativeTarget = (): string => {
+    const output = execFileSync(resolveExecutable("rustc"), ["-vV"], {
+        encoding: "utf8",
+        env: { ...process.env, RUSTUP_TOOLCHAIN: RUST_NIGHTLY },
+    });
+    const host = output.split("\n").find((line) => line.startsWith("host: "))?.slice("host: ".length);
+
+    if (host === undefined) {
+        throw new Error("The Rust compiler did not report its host target");
+    }
+
+    return host;
+};
+
 const asanRuntime = (): string => {
     const gcc = resolveExecutable("gcc");
-    const printed = execFileSync(gcc, ["-print-file-name=libasan.so.8"], { encoding: "utf8" }).trim();
+    const linkerInput = execFileSync(gcc, ["-print-file-name=libasan.so"], { encoding: "utf8" }).trim();
 
-    if (printed === "libasan.so.8") {
+    if (linkerInput === "libasan.so") {
         throw new Error("The AddressSanitizer runtime is missing; install libasan");
     }
 
-    return printed;
+    using temporary = mkdtempDisposableSync(join(tmpdir(), "gtkx-asan-runtime-"));
+    const trace = execFileSync(
+        resolveExecutable("ld"),
+        ["--trace", linkerInput, "--entry=0", "-o", join(temporary.path, "probe")],
+        { encoding: "utf8" },
+    );
+    const runtime = trace
+        .trim()
+        .split("\n")
+        .findLast((path) => basename(path).startsWith("libasan.so"));
+
+    if (runtime === undefined) {
+        throw new Error("The linker did not resolve the AddressSanitizer runtime");
+    }
+
+    return runtime;
 };
 
 const run = (command: string, args: string[], env: NodeJS.ProcessEnv): void => {
@@ -29,9 +60,10 @@ const run = (command: string, args: string[], env: NodeJS.ProcessEnv): void => {
 };
 
 const runtime = asanRuntime();
+const target = nativeTarget();
 
 try {
-    run("pnpm", [...BUILD_ARGS, "--target", "x86_64-unknown-linux-gnu"], {
+    run("pnpm", [...BUILD_ARGS, "--target", target], {
         ...process.env,
         RUSTFLAGS: "-Zsanitizer=address",
         RUSTUP_TOOLCHAIN: RUST_NIGHTLY,

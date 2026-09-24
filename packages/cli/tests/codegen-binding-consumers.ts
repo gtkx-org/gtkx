@@ -90,6 +90,9 @@ export const update = (chain: Chain): Span[] => {
     return chain.links;
 };
 `,
+            "resource-records.ts": `import type { Chain, TextSpan } from "@gtkx/gi/inlinearray";
+export const read = (chain: Chain): TextSpan[] => chain.textLinks;
+`,
         },
         rejected: {
             "numeric-elements.ts": `import type { Frame } from "@gtkx/gi/inlinearray";
@@ -118,6 +121,9 @@ export const update = (chain: Chain): void => { chain.links = [1]; };
 `,
             "sized-record-constructor.ts": `import { Chain } from "@gtkx/gi/inlinearray";
 export const chain = new Chain();
+`,
+            "resource-record-write.ts": `import type { Chain } from "@gtkx/gi/inlinearray";
+export const update = (chain: Chain): void => { chain.textLinks = chain.textLinks; };
 `,
         },
     },

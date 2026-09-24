@@ -7,8 +7,9 @@ export type { Descriptor } from "./descriptor-types.js";
 export { createErrorDomain, type ErrorDomain } from "./error.js";
 export { type Field, type StridedField } from "./field.js";
 export { read, write } from "./field.js";
-export { onExit, quit, quitApplication, runApplication, type RunApplicationResult } from "./lifecycle.js";
+export { keepAlive, onExit, quit, quitApplication, runApplication, type RunApplicationResult } from "./lifecycle.js";
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
+export { type LogLevel, type LogListener, type LogSubscription, onLog } from "./log.js";
 export { installMixins, type Mixin } from "./mixin.js";
 export { fromNative, toHashTableEntries, toNative } from "./native-value.js";
 export {

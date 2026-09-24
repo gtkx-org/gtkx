@@ -15,6 +15,7 @@ import type {
 import { BUILTIN_ELEMENTS, CONTENT_SETTER_TYPES, SINGLE_CHILD_TYPES } from "./element-config.js";
 import {
     applicationCreator,
+    beforeParentDetach,
     boxSlot,
     childMatcher,
     childSetterSlot,
@@ -332,12 +333,12 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkConstraintLayout: {
         behaviors: [
-            methodSlot<Gtk.ConstraintLayout, Gtk.Constraint>(
+            beforeParentDetach(methodSlot<Gtk.ConstraintLayout, Gtk.Constraint>(
                 "constraints", Gtk.Constraint, "addConstraint", "removeConstraint",
-            ),
-            methodSlot<Gtk.ConstraintLayout, Gtk.ConstraintGuide>(
+            )),
+            beforeParentDetach(methodSlot<Gtk.ConstraintLayout, Gtk.ConstraintGuide>(
                 "guides", Gtk.ConstraintGuide, "addGuide", "removeGuide",
-            ),
+            )),
 
         ],
     },
@@ -426,9 +427,9 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkDropTarget: {
         behaviors: [
-            value<Gtk.DropTarget, GObject.Type[]>("types", (target, types) => {
+            value<Gtk.DropTarget, GObject.Type[] | null>("types", (target, types) => {
                 target.setGtypes(types);
-            }),
+            }, null),
         ],
     },
     GtkDrawingArea: {
@@ -443,7 +444,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [
             value<Gtk.DragSource, DragSourceIcon | null>("icon", (source, icon) => {
                 source.setIcon(icon?.paintable ?? null, icon?.hotX ?? 0, icon?.hotY ?? 0);
-            }),
+            }, null),
         ],
     },
     GtkEditable: {

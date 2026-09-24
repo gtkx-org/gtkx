@@ -49,6 +49,16 @@ type ChildClass<C extends GObject.Object> =
     (abstract new (...args: never[]) => C) |
     { [Symbol.hasInstance]: (value: unknown) => value is C };
 
+const BEFORE_PARENT_DETACH: WeakSet<ElementBehavior> = new WeakSet();
+
+const beforeParentDetach = (behavior: ElementBehavior): ElementBehavior => {
+    BEFORE_PARENT_DETACH.add(behavior);
+
+    return behavior;
+};
+
+const shouldDetachBeforeParent = (behavior: ElementBehavior): boolean => BEFORE_PARENT_DETACH.has(behavior);
+
 const childClassType = (cls: ChildClass<GObject.Object>): bigint =>
     typeof cls === "function" ? getClassType(cls) : TYPE_INVALID;
 
@@ -222,7 +232,13 @@ const methodSlot = <P extends GObject.Object, C extends GObject.Object>(
         };
     }
 
-    return slot<P, C>(slotName, childClass, hooks);
+    const behavior = slot<P, C>(slotName, childClass, hooks);
+
+    if (remove === undefined) {
+        behavior.constructOnly = [slotName];
+    }
+
+    return behavior;
 };
 
 const setterSlot = <P extends GObject.Object, C extends GObject.Object>(
@@ -284,7 +300,9 @@ const applicationCreator = <P extends GObject.Object & CommandLineApplication, C
 
 export {
     applicationCreator,
+    beforeParentDetach,
     childMatcher,
+    shouldDetachBeforeParent,
     slot,
     value,
     list,

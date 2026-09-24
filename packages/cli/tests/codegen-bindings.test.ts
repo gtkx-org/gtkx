@@ -75,6 +75,11 @@ export const action: GSimpleActionProps = { name: "open" };
 const REJECTED_NAMED_PROPS_PROBE = `import type { GBindingGroupProps } from "@gtkx/jsx/gobject";
 export const group: GBindingGroupProps = { key: {} };
 `;
+const GTYPE_PROP_PROBE = [
+    'import * as Gio from "@gtkx/gi/gio";',
+    'import { GListStore } from "@gtkx/jsx/gio";',
+    "export const store = <GListStore itemType={Gio.SimpleAction} />;",
+].join("\n");
 
 describe("gtkx codegen (libraries the generated types have to escape)", () => {
     const state: { project: CliProject; status: number | null } = {
@@ -147,6 +152,7 @@ describe("gtkx codegen (configured props imports)", () => {
                 "named.ts": NAMED_PROPS_PROBE,
                 "shared.ts": SHARED_IMPORT_PROBE,
                 "rejected.ts": REJECTED_NAMED_PROPS_PROBE,
+                "gtype.tsx": GTYPE_PROP_PROBE,
             },
         });
         status = runCli(project, ["codegen"]).status;
@@ -156,14 +162,13 @@ describe("gtkx codegen (configured props imports)", () => {
         removeCliProject(project);
     });
 
-    it("exposes props imported by name from another package", () => {
+    it.each([
+        ["props imported by name from another package", "named.ts"],
+        ["named props with runtime and type-only GI namespaces", "shared.ts"],
+        ["a registered class for a GType JSX property", "gtype.tsx"],
+    ])("accepts %s", (_description, file) => {
         expect(status).toBe(0);
-        expect(typecheckFile(project, "named.ts")).toBe(0);
-    });
-
-    it("combines named props imports with runtime and type-only GI namespaces", () => {
-        expect(status).toBe(0);
-        expect(typecheckFile(project, "shared.ts")).toBe(0);
+        expect(typecheckFile(project, file)).toBe(0);
     });
 
     it("rejects values incompatible with the imported props", () => {

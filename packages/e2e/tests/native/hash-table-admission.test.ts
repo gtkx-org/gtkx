@@ -38,6 +38,16 @@ test("nested GPtrArray hash values validate their native wrappers and recover", 
     expect(value.getInt()).toBe(42);
 });
 
+test("transferred callback tables reject borrowed string storage", () => {
+    const descriptor = { ...t.hashTable(t.string(), t.string(), "full"), preserveNull: true };
+    const roundtrip = t.fn(library, "gtkx_numeric_table_ref_callback", () => ({
+        args: [{ type: t.callback([], descriptor, { scope: "call" }) }], returns: descriptor,
+    }));
+
+    expect(roundtrip(() => null)).toBeNull();
+    expect(() => roundtrip(() => new Map([["key", "value"]]))).toThrow();
+});
+
 describe.each(scalars)("$name hash table admission", ({ kind, descriptor, value }) => {
     const borrowed = t.hashTable(t.string(), descriptor, "borrowed");
     const full = t.hashTable(t.string("full"), descriptor, "full");

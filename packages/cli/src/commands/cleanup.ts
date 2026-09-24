@@ -2,7 +2,6 @@ import { info } from "@gtkx/utils";
 import { findStaleHeadlessDisplays, reapStaleHeadlessDisplays } from "@gtkx/vitest/headless";
 import { defineCommand } from "citty";
 import { findStaleCompileCaches, reapStaleCompileCaches } from "../internal/compile-cache-store.js";
-import { cwdArg } from "../internal/entry-arg.js";
 
 const DISPLAY_LABEL = "stale headless runtime directories";
 const COMPILE_CACHE_LABEL = "stale compile cache directories";
@@ -23,7 +22,6 @@ const cleanup = defineCommand({
             type: "boolean",
             description: "List stale directories without removing them",
         },
-        ...cwdArg,
     },
     run({ args }) {
         const displays = findStaleHeadlessDisplays();

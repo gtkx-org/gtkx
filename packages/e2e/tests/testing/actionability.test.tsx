@@ -20,6 +20,7 @@ import {
     GtkShortcutTrigger,
     GtkStack,
     GtkStackPage,
+    GtkStringList,
     GtkSwitch,
     GtkWindow,
 } from "@gtkx/jsx/gtk";
@@ -327,7 +328,7 @@ describe("userEvent actionability - insensitive targets", () => {
     it("refuses to select or deselect on an insensitive drop-down or list box", async () => {
         await render(
             <GtkBox sensitive={false}>
-                <GtkDropDown model={Gtk.StringList.new(["Option A", "Option B"])} />
+                <GtkDropDown model={<GtkStringList strings={["Option A", "Option B"]} />} />
             </GtkBox>,
         );
 

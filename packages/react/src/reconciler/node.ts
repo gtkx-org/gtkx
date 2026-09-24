@@ -31,6 +31,7 @@ type PlacedChild = {
 
 type ElementNode = SignalTarget & {
     kind: typeof ELEMENT_KIND;
+    isMounted: boolean;
     props: Props;
     children: PlaceableNode[];
     placements: Map<string, PlacedChild[]>;
@@ -104,6 +105,7 @@ const createElementNode = (
     contentKind: ContentKind | null,
 ): ElementNode => ({
     kind: ELEMENT_KIND,
+    isMounted: false,
     typeName,
     object,
     props: {},

@@ -104,6 +104,8 @@ test.each([false, true])("contiguous byte callback outputs preserve their shape 
     const invoke = t.bind(library, "gtkx_u8_callback_return", [t.callback([], fixed, { scope: "call" })], fixed);
     const expected = bytesFor(isBytes, contents);
     expect(invoke(() => contents)).toEqual(expected);
+    expect(invoke(() => null)).toEqual(bytesFor(isBytes, []));
+    expect(() => invoke(() => Uint8Array.from(contents))).toThrow();
 
     for (const isInout of [false, true]) {
         const sized = { ...t.sizedArray(t.uint8, 1, "full", { isBytes }), preserveNull: true };

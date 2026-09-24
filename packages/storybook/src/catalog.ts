@@ -1,3 +1,4 @@
+import { normalizeError } from "@gtkx/utils";
 import type { Args, ArgTypes, ComponentMeta, ComposedStory, Preview, StoryAnnotations } from "./types.js";
 import { composeStories } from "./compose.js";
 import { storyNameFromExport } from "./upstream.js";
@@ -58,8 +59,6 @@ type CachedStories = {
 type LoadedSource = StoryLoadError | { source: StorySource; cached: CachedStories };
 
 const EMPTY_PREVIEW: Preview = {};
-
-const normalizeError = (cause: unknown): Error => cause instanceof Error ? cause : new Error(String(cause));
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
     value !== null && typeof value === "object" && !Array.isArray(value);

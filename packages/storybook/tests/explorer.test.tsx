@@ -3,11 +3,10 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAlertDialog, AdwWindow } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { rootElement, useApplication, useParentWindow } from "@gtkx/react";
+import { Storybook, StoryCatalog } from "@gtkx/storybook/explorer";
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
-import { StoryCatalog } from "../src/catalog.js";
-import { Storybook } from "../src/explorer-view.js";
 import * as counterStories from "./fixtures/counter.stories.js";
 
 const loadCounter = async (): Promise<StoryCatalog> => {
@@ -184,13 +183,15 @@ describe("native story explorer", () => {
         }]);
         const result = await showExplorer(catalog);
         const window = screen.getByRole(Gtk.AccessibleRole.WINDOW, { name: "Story window" });
+        const explorer = screen.getByRole(Gtk.AccessibleRole.WINDOW, { name: "GTKX Storybook" });
         expect(window).toBeVisible();
 
-        if (!(window instanceof Gtk.Window)) {
-            throw new TypeError("Expected story window");
+        if (!(window instanceof Gtk.Window) || !(explorer instanceof Gtk.Window)) {
+            throw new TypeError("Expected story windows");
         }
 
-        expect(window.getTransientFor()).toBe(screen.getByRole(Gtk.AccessibleRole.WINDOW, { name: "GTKX Storybook" }));
+        expect(window.getApplication()).toBe(explorer.getApplication());
+        expect(window.getTransientFor()).toBe(explorer);
         await userEvent.click(screen.getByName("storybook-story-windows--second"));
         expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW, { name: "Story window" })).toBeNull();
         await userEvent.click(screen.getByName("storybook-story-windows--first"));

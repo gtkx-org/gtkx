@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
-import { keepAlive } from "@gtkx/native";
+import { keepAlive } from "@gtkx/runtime";
 
 const completion = { hasEntered: false };
 

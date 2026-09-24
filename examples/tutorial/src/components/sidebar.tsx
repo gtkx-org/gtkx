@@ -66,7 +66,7 @@ const SidebarRow = ({ entry }: { entry: Entry }) => (
                         />
                     )
                 : (
-                        <GtkImage iconName={entry.icon} />
+                        <GtkImage iconName={entry.icon} accessibleRole={Gtk.AccessibleRole.PRESENTATION} />
                     )
         }
         suffix={

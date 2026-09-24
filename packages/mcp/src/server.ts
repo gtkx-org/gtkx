@@ -1,7 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { loadConfig } from "@gtkx/config";
 import { configDependenciesFor, type McpSettings, resolveMcpSettings } from "@gtkx/config/internal";
-import { createLogger, installGracefulShutdown, type Logger } from "@gtkx/utils";
+import { createLogger, errorCode, installGracefulShutdown, type Logger } from "@gtkx/utils";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { existsSync } from "node:fs";
@@ -27,6 +27,7 @@ import {
 import {
     buildReferenceTools,
     createReferenceProvider,
+    type ReferenceProject,
     type ReferenceProvider,
     registerReferenceResources,
 } from "./reference.js";
@@ -36,12 +37,14 @@ import { selectTools } from "./tool-filter.js";
 import { defineTool, imageContent, registerTool, textContent, textError, type Tool } from "./tool.js";
 
 type CreateMcpServerOptions = {
+    project?: ReferenceProject;
     socketPath?: string;
     version: string;
     settings?: McpSettings;
 };
 
 type ServerOptions = {
+    configFile?: string;
     cwd?: string;
     tools?: string[];
     isReadOnly?: boolean;
@@ -64,6 +67,7 @@ type ServerLifecycle = {
 
 type AppWindow = { id: string; title: string | null };
 type AppWithWindows = AppInfo & { windows?: AppWindow[] };
+type ResolvedServer = { project?: ReferenceProject; settings: McpSettings };
 
 const { version } = packageManifest;
 const log: Logger = createLogger("mcp");
@@ -204,7 +208,7 @@ const connectStdio = async (mcpServer: McpServer, stop: () => Promise<void>): Pr
 
 const logSocketError = (event: Event): void => {
     const error = (event as ConnectionErrorEvent).detail;
-    const code = (error as NodeJS.ErrnoException).code;
+    const code = errorCode(error);
 
     if (code === "EPIPE" || code === "ECONNRESET") {
         return;
@@ -529,33 +533,51 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     });
 
     const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version }, { instructions: INSTRUCTIONS });
-    const referenceProvider = createReferenceProvider({ getAppRoot: () => appRouter.getProjectRoot() });
+    const referenceProvider = createReferenceProvider({
+        getAppProject: () => {
+            const app = appRouter.getProject();
+
+            if (app?.projectRoot === undefined) {
+                return;
+            }
+
+            return {
+                root: app.projectRoot,
+                ...(app.configFile !== undefined && { configFile: app.configFile }),
+            };
+        },
+        ...(options.project !== undefined && { project: options.project }),
+    });
     registerTools(mcpServer, appRouter, referenceProvider, options.settings ?? DEFAULT_SETTINGS);
     registerReferenceResources(mcpServer, referenceProvider);
 
     return createServerHandle(socketServer, mcpServer, appRouter, socketPath);
 };
 
-const configuredSettings = async (cwd: string): Promise<McpSettings> => {
-    try {
-        const { config } = await loadConfig(cwd);
+const configuredServer = async (options: ServerOptions): Promise<ResolvedServer> => {
+    const cwd = resolve(options.cwd ?? process.cwd());
+    let settings = DEFAULT_SETTINGS;
+    let project: ReferenceProject | undefined;
 
-        return resolveMcpSettings(config);
+    try {
+        const loaded = await loadConfig(cwd, { configFile: options.configFile });
+        settings = resolveMcpSettings(loaded.config);
+        project = { root: loaded.root, configFile: loaded.configFile };
     } catch (error) {
-        if (configDependenciesFor(error).some((path) => existsSync(resolve(cwd, path)))) {
+        if (
+            options.configFile !== undefined ||
+            configDependenciesFor(error).some((path) => existsSync(resolve(cwd, path)))
+        ) {
             throw error;
         }
-
-        return DEFAULT_SETTINGS;
     }
-};
-
-const resolveSettings = async (options: ServerOptions): Promise<McpSettings> => {
-    const configured = await configuredSettings(options.cwd ?? process.cwd());
 
     return {
-        tools: options.tools ?? configured.tools,
-        isReadOnly: options.isReadOnly ?? configured.isReadOnly,
+        ...(project !== undefined && { project }),
+        settings: {
+            tools: options.tools ?? settings.tools,
+            isReadOnly: options.isReadOnly ?? settings.isReadOnly,
+        },
     };
 };
 
@@ -566,6 +588,8 @@ const parseServerArgs = (argv: string[]): ServerOptions => {
     const { values } = parseArgs({
         args: argv,
         options: {
+            config: { type: "string" },
+            cwd: { type: "string" },
             tools: { type: "string", multiple: true },
             "read-only": { type: "boolean" },
         },
@@ -575,14 +599,16 @@ const parseServerArgs = (argv: string[]): ServerOptions => {
     const tools = values.tools === undefined ? undefined : splitPatterns(values.tools);
 
     return {
+        ...(values.config !== undefined && { configFile: values.config }),
+        ...(values.cwd !== undefined && { cwd: values.cwd }),
         ...(tools !== undefined && { tools }),
         ...(values["read-only"] !== undefined && { isReadOnly: values["read-only"] }),
     };
 };
 
 async function main(options: ServerOptions = {}): Promise<void> {
-    const settings = await resolveSettings(options);
-    const server = createMcpServer({ version, settings });
+    const configured = await configuredServer(options);
+    const server = createMcpServer({ version, ...configured });
 
     installGracefulShutdown({
         onSignal: () => server.stop(),

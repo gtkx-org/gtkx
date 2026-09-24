@@ -3,10 +3,10 @@ import type { ReactNode, RefObject } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwAlertDialog, AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+import { AdwAlertDialog, AdwApplication, AdwApplicationWindow, AdwBreakpoint } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkLabel, GtkWindow } from "@gtkx/jsx/gtk";
-import { rootElement, useParentWindow } from "@gtkx/react";
+import { rootElement, useApplication, useParentWindow } from "@gtkx/react";
 import { act, render as baseRender, render, screen, waitFor } from "@gtkx/testing";
 import { Activity, createRef, Suspense, use, useEffect, useRef, useState } from "react";
 import { describe, expect, it } from "vitest";
@@ -17,6 +17,7 @@ type Captured = { label: Gtk.Label | null; calls: number };
 type ProbeProps = { slot: string };
 type Captured2 = { widget: Gtk.Widget | null };
 type DeferredPromise = { promise: Promise<string>; resolve: () => void };
+type ApplicationCaptureProps = { onCapture: (application: Gtk.Application) => void };
 
 const APP_FLAGS = Gio.ApplicationFlags.NON_UNIQUE;
 const uniqueAppId = createAppIdFactory("org.gtkx.windowtest");
@@ -24,6 +25,16 @@ const renderApplication = createApplicationRenderer("org.gtkx.windowchildref");
 const uniqueAppId2 = createAppIdFactory("org.gtkx.topleveparentingtest");
 const captured: Record<string, Gtk.Window | null> = {};
 const renderApplication2 = createApplicationRenderer("org.gtkx.useparentwindowtest");
+
+const ApplicationCapture = ({ onCapture }: ApplicationCaptureProps): null => {
+    const application = useApplication();
+
+    useEffect(() => {
+        onCapture(application);
+    }, [application, onCapture]);
+
+    return null;
+};
 
 const renderInApplication = (element: ReactNode, appId: string = uniqueAppId()) =>
     baseRender(
@@ -230,6 +241,44 @@ describe("render - Window", () => {
             expect(ref.current?.getApplication()).not.toBeNull();
         });
 
+        it("defaults ordinary windows to the current app and preserves explicit null", async () => {
+            const applicationRef = createRef<Gtk.Application>();
+            const defaultWindowRef = createRef<Gtk.Window>();
+            const unownedWindowRef = createRef<Gtk.Window>();
+
+            await baseRender(
+                <GtkApplication ref={applicationRef} applicationId={uniqueAppId()} flags={APP_FLAGS}>
+                    <GtkWindow ref={defaultWindowRef} />
+                    <GtkWindow ref={unownedWindowRef} application={null} />
+                </GtkApplication>,
+                { container: rootElement },
+            );
+
+            expect(defaultWindowRef.current?.getApplication()).toBe(applicationRef.current);
+            expect(unownedWindowRef.current?.getApplication()).toBeNull();
+        });
+
+        it("preserves an explicit alternate application", async () => {
+            const alternateId = uniqueAppId();
+            const windowRef = createRef<Gtk.Window>();
+
+            const AlternateWindow = (): ReactNode => {
+                const [application, setApplication] = useState<Gtk.Application | null>(null);
+
+                return (
+                    <>
+                        <GtkApplication applicationId={alternateId} flags={APP_FLAGS}>
+                            <ApplicationCapture onCapture={setApplication} />
+                        </GtkApplication>
+                        {application === null ? null : <GtkWindow ref={windowRef} application={application} />}
+                    </>
+                );
+            };
+
+            await renderInApplication(<AlternateWindow />);
+            expect(windowRef.current?.getApplication()?.getApplicationId()).toBe(alternateId);
+        });
+
         it("preserves Adwaita classes when cssClasses is set", async () => {
             const ref = createRef<Adw.ApplicationWindow>();
             await renderAdw(<AdwApplicationWindow ref={ref} cssClasses={["devel"]} />);
@@ -364,6 +413,28 @@ describe("render - Window", () => {
         );
 
         expect(windowRef.current).toHaveObjectProperty("content", labelRef.current);
+    });
+
+    it("rejects removing a breakpoint from a window whose native API only adds them", async () => {
+        const appId = uniqueAppId();
+        const breakpointRef = createRef<Adw.Breakpoint>();
+        const tree = (hasBreakpoint: boolean) => (
+            <AdwApplication applicationId={appId} flags={APP_FLAGS}>
+                <AdwApplicationWindow
+                    breakpoints={hasBreakpoint
+                        ? (
+                                <AdwBreakpoint
+                                    ref={breakpointRef}
+                                    condition={Adw.BreakpointCondition.parse("max-width: 1px")}
+                                />
+                            )
+                        : undefined}
+                />
+            </AdwApplication>
+        );
+        const { rerender } = await baseRender(tree(true), { container: rootElement });
+        expect(breakpointRef.current).not.toBeNull();
+        await expect(rerender(tree(false))).rejects.toThrow();
     });
 
     it("replaces child widget", async () => {

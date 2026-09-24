@@ -1,7 +1,9 @@
 import type { ReactElement, ReactNode, RefObject } from "react";
+import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { PropertyExpression, StringObject } from "@gtkx/gi/gtk";
+import { GListStore } from "@gtkx/jsx/gio";
 import {
     GtkColumnViewColumn,
     GtkCustomSorter,
@@ -170,6 +172,17 @@ const expectCollapsed = ({ tree, expander }: TreeFixture): void => {
     expect(expander.getListRow()?.getExpanded()).toBe(false);
     expect(tree.getNItems()).toBe(ROOT_NAMES.length);
 };
+
+describe("GType element props", () => {
+    it("accepts a registered class", async () => {
+        const ref = createRef<Gtk.DropDown>();
+        await render(<GtkDropDown ref={ref} model={<GListStore itemType={Gtk.Label} />} />);
+        const model = ref.current?.getModel();
+
+        expect(model).toBeInstanceOf(Gio.ListStore);
+        expect(model?.getItemType()).toBe(getClassType(Gtk.Label));
+    });
+});
 
 describe("clicking a list view row", () => {
     it("selects the row the click lands on", async () => {

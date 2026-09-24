@@ -68,7 +68,7 @@ The reference tools document the project's `@gtkx/gi/*` and `@gtkx/jsx/*` module
 
 Use `gtkx_search_api` to find a symbol, then `gtkx_get_api_docs` to read its page. Qualified names such as `Adw.Toast` and JSX names such as `AdwToast` are accepted. These are the same bindings covered by the [generated element reference](/v2/guide/configuration-and-codegen).
 
-The server uses the project containing its working directory, falling back to a connected app's project. Pass `projectRoot` to select another project. Clients that browse MCP resources can access the reference there too. Projects with `codegen: false` have no generated bindings to document.
+Without an explicit `projectRoot`, reference tools use a connected app's resolved project and configuration. Before an app connects, they use the project and configuration selected when the server started. Pass `--config` when starting the server or `projectRoot` on a reference tool to select another source. Clients that browse MCP resources can access the active reference too. Projects with `codegen: false` have no generated bindings to document.
 
 ## Choose the available tools
 

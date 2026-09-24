@@ -1,5 +1,5 @@
 import * as GLib from "@gtkx/gi/glib";
-import { keepAlive } from "@gtkx/native";
+import { keepAlive } from "@gtkx/runtime";
 
 const seen = { hasFired: false };
 

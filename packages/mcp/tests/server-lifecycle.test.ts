@@ -35,6 +35,7 @@ type ServerState = {
     rawServers: ChildProcessWithoutNullStreams[];
 };
 type FakeApp = { socket: Socket; hasFlooded: () => boolean; hasRegistered: () => boolean };
+type AppProject = { configFile: string; projectRoot: string };
 
 const SOCKET_TIMEOUT_MS = 10_000;
 const SHUTDOWN_TIMEOUT_MS = 3000;
@@ -154,7 +155,11 @@ const stopRawServers = async (): Promise<void> => {
 
 const encode = (message: Record<string, unknown>): string => `${JSON.stringify(message)}\n`;
 
-const connectFakeApp = async (socketPath: string, applicationId: string = PROBE_APP_ID): Promise<FakeApp> => {
+const connectFakeApp = async (
+    socketPath: string,
+    applicationId: string = PROBE_APP_ID,
+    project?: AppProject,
+): Promise<FakeApp> => {
     const socket = createConnection(socketPath);
     state.apps.push(socket);
     await once(socket, "connect");
@@ -180,7 +185,7 @@ const connectFakeApp = async (socketPath: string, applicationId: string = PROBE_
             jsonrpc: "2.0",
             id: 1,
             method: "app.register",
-            params: { applicationId, pid: process.pid },
+            params: { applicationId, pid: process.pid, ...project },
         }),
     );
 
@@ -327,6 +332,22 @@ describe("a running MCP server", () => {
         expect(listed.tools.map((tool) => tool.name)).toContain("gtkx_get_widget_tree");
         expect(await callJson(server.client, "gtkx_list_apps")).toEqual([]);
         expect(await isToolFailure(server.client, "gtkx_get_widget_tree", { appTimeout: 0 })).toBe(true);
+    });
+
+    it("uses the configuration selected by a connected application for its reference", async () => {
+        const root = projectRoot();
+        const configFile = join(root, "gtkx.selected.config.mjs");
+        writeFileSync(
+            configFile,
+            'export default { applicationId: "org.gtkx.selected", libraries: ["GtkSource-5"] };\n',
+        );
+        const server = await trackedServer();
+        const app = await connectFakeApp(server.socketPath, PROBE_APP_ID, { configFile, projectRoot: root });
+        await waitUntil(app.hasRegistered);
+        const reference = await callText(server.client, "gtkx_list_api");
+
+        expect(reference).toContain("GtkSource");
+        expect(reference).not.toContain("WebKit");
     });
 
     it("waits for the requested application instead of using an earlier registration", async () => {

@@ -3,6 +3,9 @@
     "exclude": ["${configDir}/tests/native/vitest.config.ts"],
     "references": [
         {
+            "path": "../components/tsconfig.lib.json"
+        },
+        {
             "path": "../config/tsconfig.lib.json"
         },
         {

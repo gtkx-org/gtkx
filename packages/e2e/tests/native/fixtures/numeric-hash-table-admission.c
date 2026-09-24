@@ -48,7 +48,8 @@ void gtkx_numeric_table_visit_owned(guint kind, GtkxNumericTableInput callback) 
 }
 
 GHashTable *gtkx_numeric_table_ref_callback(GtkxNumericTableReturn callback) {
-    return g_hash_table_ref(callback());
+    GHashTable *table = callback();
+    return table == NULL ? NULL : g_hash_table_ref(table);
 }
 
 gboolean gtkx_numeric_table_accept_return(GtkxNumericTableReturn callback) {

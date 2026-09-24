@@ -32,6 +32,10 @@ void gtkx_collection_visit(int state, void (*callback)(char **)) {
     callback(gtkx_collection_strings(state));
 }
 
+char **gtkx_collection_callback_return(char **(*callback)(void)) {
+    return callback();
+}
+
 int gtkx_collection_visit_ref(int state, void (*callback)(char ***)) {
     if (state == 3) {
         callback(NULL);

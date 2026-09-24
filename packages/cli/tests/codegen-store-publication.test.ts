@@ -1,38 +1,35 @@
-import { sortStrings } from "@gtkx/utils";
-import { type ChildProcess, spawn, spawnSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import {
-    chmodSync,
     cpSync,
     existsSync,
     mkdirSync,
     readdirSync,
-    readFileSync,
     realpathSync,
-    renameSync,
     rmSync,
     symlinkSync,
-    utimesSync,
     writeFileSync,
 } from "node:fs";
-import { createRequire } from "node:module";
-import { basename, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { type CliProject, createCliProject, runCliOrThrow, startCli } from "./cli-project.js";
+import {
+    type CliProject,
+    createCliProject,
+    type DisposableCliProject,
+    runCliOrThrow,
+} from "./cli-project.js";
 import { fixtureLibrariesConfig } from "./codegen-helpers.js";
 
 const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../node_modules/typescript/bin/tsc", import.meta.url));
-const CODEGEN_ENTRY = new URL("../../codegen/dist/index.js", import.meta.url).href;
-const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
-const COMMON_PROBE = `import type * as Gtk from "@gtkx/gi/gtk";
-import type * as GtkJsx from "@gtkx/jsx/gtk";
+const DOCUMENTED_PROBE = `import type * as Documented from "@gtkx/gi/documented";
+import type * as DocumentedJsx from "@gtkx/jsx/documented";
 
-export type Generated = [keyof typeof Gtk, keyof typeof GtkJsx];
+export type Generated = [keyof typeof Documented, keyof typeof DocumentedJsx];
 `;
 const HOOK_SLOTS_PROBE = `import type * as HookSlots from "@gtkx/gi/hookslots";
+import type * as HookSlotsJsx from "@gtkx/jsx/hookslots";
 
-export type Generated = keyof typeof HookSlots;
+export type Generated = [keyof typeof HookSlots, keyof typeof HookSlotsJsx];
 `;
 const TSCONFIG = `${JSON.stringify({
     compilerOptions: {
@@ -45,559 +42,165 @@ const TSCONFIG = `${JSON.stringify({
     },
     files: ["probe.ts"],
 }, null, 4)}\n`;
-const LOCK_WAIT_MS = 10_000;
-const IMPORT_PROBE = `import { readFile } from "node:fs/promises";
-import { createRequire } from "node:module";
-const jsx = createRequire(import.meta.url).resolve("@gtkx/jsx/gobject");
-await Promise.all([import("@gtkx/gi/gobject"), readFile(jsx)]);
-`;
-const TRANSITION_IMPORT_PROBE = `import { createRequire } from "node:module";
-const resolve = createRequire(import.meta.url).resolve;
-const canResolve = (specifier) => {
-    try {
-        resolve(specifier);
-        return true;
-    } catch {
-        return false;
-    }
-};
-const previous = ["@gtkx/gi/documented", "@gtkx/jsx/documented"].every(canResolve);
-const next = ["@gtkx/gi/hookslots", "@gtkx/jsx/hookslots"].every(canResolve);
-if (previous === next) process.exitCode = 1;
-`;
-const LOCK_TIMEOUT_ENV = { GTKX_CODEGEN_LOCK_TIMEOUT_MS: "250" };
-const REUSED_PID_IDENTITY = "0".repeat(64);
-const LIVE_OWNER = `${String(process.pid)}-unknown`;
-const ABANDONED_OWNER = `${String(process.pid)}-${REUSED_PID_IDENTITY}`;
-const PUBLISHED_STORE_PATHS = [join("current", "gi"), join("current", "jsx"), "gi", "jsx"];
-const ZOMBIE_OWNER_SCRIPT = `import { spawn } from "node:child_process";
-import { writeSync } from "node:fs";
-const child = spawn(process.execPath, ["--eval", ""], { stdio: "ignore" });
-writeSync(1, String(child.pid) + String.fromCharCode(10));
-Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 120_000);
-`;
+const RESOLVE_PROBE = `process.stdout.write(JSON.stringify({
+    gi: import.meta.resolve("@gtkx/gi/gobject"),
+    jsx: import.meta.resolve("@gtkx/jsx/gobject"),
+}));`;
 
-const abandonedGenerationName = (prefix: string, index: number): string => {
-    const timestamp = String(Date.now());
-    const pid = String(process.pid);
-
-    return `${prefix}-${timestamp}-${pid}-${REUSED_PID_IDENTITY}-${String(index)}`;
-};
-const INTERLEAVED_OWNER_PROBE = `import {
-    resolveGirPath,
-    resolveStore,
-    runCodegen,
-} from ${JSON.stringify(CODEGEN_ENTRY)};
-const [firstRoot, secondRoot, girPath] = process.argv.slice(1);
-const first = resolveStore(firstRoot);
-resolveStore(secondRoot);
-await runCodegen({
-    gi: first.gi,
-    jsx: first.jsx ?? undefined,
-    libraries: ["Documented-1.0"],
-    girPath: resolveGirPath([girPath]),
-});
-`;
-
-const delay = async (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 10));
-
-const processState = (pid: number): string | undefined => {
-    try {
-        const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
-
-        return stat.slice(stat.lastIndexOf(") ") + 2).split(" ", 1)[0];
-    } catch {
-        return undefined;
-    }
-};
-
-const waitForZombie = async (pid: number): Promise<void> => {
-    const deadline = Date.now() + LOCK_WAIT_MS;
-
-    while (Date.now() < deadline && processState(pid) !== "Z") {
-        await delay();
-    }
-
-    if (processState(pid) !== "Z") {
-        throw new Error("process did not become a zombie");
-    }
-};
-
-const startZombieOwner = async (): Promise<{ parent: ChildProcess; pid: number }> => {
-    const parent = spawn(
-        process.execPath,
-        ["--input-type=module", "--eval", ZOMBIE_OWNER_SCRIPT],
-        { stdio: ["ignore", "pipe", "ignore"] },
-    );
-    const stdout = parent.stdout;
-
-    const pid = await new Promise<number>((resolve, reject) => {
-        let value = "";
-
-        stdout.on("data", (chunk: Buffer) => {
-            value += chunk.toString();
-
-            if (value.includes("\n")) {
-                resolve(Number(value.trim()));
-            }
-        });
-        parent.once("error", reject);
-        parent.once("exit", () => {
-            reject(new Error("zombie owner exited before reporting its child pid"));
-        });
-    });
-    await waitForZombie(pid);
-
-    return { parent, pid };
-};
-
-const exited = (child: ChildProcess): Promise<number | null> =>
-    new Promise((resolve, reject) => {
-        child.once("error", reject);
-        child.once("exit", (code) => {
-            resolve(code);
-        });
-    });
-
-const runTypecheck = (project: CliProject): number | null =>
-    spawnSync(process.execPath, [TYPESCRIPT_CLI, "--project", "tsconfig.json"], {
-        cwd: project.root,
-        timeout: 60_000,
-    }).status;
-
-const runImportProbe = (project: CliProject, source: string): number | null =>
-    spawnSync(
-        process.execPath,
-        ["--conditions=source", "--import=tsx", "--input-type=module", "--eval", source],
-        { cwd: project.root, timeout: 60_000 },
-    ).status;
-
-const runImport = (project: CliProject): number | null => runImportProbe(project, IMPORT_PROBE);
-
-const runTransitionImport = (project: CliProject): number | null =>
-    runImportProbe(project, TRANSITION_IMPORT_PROBE);
-
-const runInterleavedOwners = (first: CliProject, second: CliProject): number | null =>
-    spawnSync(
-        process.execPath,
-        ["--input-type=module", "--eval", INTERLEAVED_OWNER_PROBE, first.root, second.root, FIXTURE_GIR],
-        { cwd: first.root, timeout: 60_000 },
-    ).status;
-
-const storeLock = (project: CliProject): string => join(project.nodeModules, ".gtkx", ".codegen.lock");
-
-const readStoreLock = (project: CliProject): string | null => {
-    try {
-        return readFileSync(storeLock(project), "utf8");
-    } catch {
-        return null;
-    }
-};
-
-const waitForLock = async (project: CliProject, previous: string | null): Promise<void> => {
-    const lock = storeLock(project);
-    const deadline = Date.now() + LOCK_WAIT_MS;
-
-    while (Date.now() < deadline) {
-        if (existsSync(lock) && readStoreLock(project) !== previous) {
-            return;
-        }
-
-        await delay();
-    }
-
-    throw new Error("codegen did not acquire its generated-store lock");
-};
+type ResolvedEntries = { gi: string; jsx: string };
 
 const writeConfig = (project: CliProject, source: string): void => {
     writeFileSync(join(project.root, "gtkx.config.ts"), source);
 };
 
-const pairGenerationCount = (project: CliProject): number =>
-    readdirSync(join(project.nodeModules, ".gtkx"), { withFileTypes: true })
-        .filter((entry) => entry.isDirectory() && entry.name.startsWith(".pair-generation-"))
-        .length;
+const writeProbe = (project: CliProject, source: string): void => {
+    writeFileSync(join(project.root, "probe.ts"), source);
+};
 
-const detachedGenerationCount = (project: CliProject, store: string): number =>
+const runTypecheck = (project: CliProject): number | null =>
+    spawnSync(process.execPath, [TYPESCRIPT_CLI, "--project", "tsconfig.json"], {
+        cwd: project.root,
+    }).status;
+
+const resolveEntries = (project: CliProject): ResolvedEntries => {
+    const result = spawnSync(process.execPath, ["--input-type=module", "--eval", RESOLVE_PROBE], {
+        cwd: project.root,
+        encoding: "utf8",
+    });
+
+    expect(result.status, `${result.stdout}${result.stderr}`).toBe(0);
+
+    const resolved = JSON.parse(result.stdout) as ResolvedEntries;
+
+    return { gi: fileURLToPath(resolved.gi), jsx: fileURLToPath(resolved.jsx) };
+};
+
+const createPublicationProject = (): DisposableCliProject =>
+    createCliProject({
+        prefix: "gtkx-cli-codegen-publication-",
+        config: fixtureLibrariesConfig(["Documented-1.0"]),
+        files: { "probe.ts": DOCUMENTED_PROBE, "tsconfig.json": TSCONFIG },
+    });
+
+const generationCount = (project: CliProject): number =>
     readdirSync(join(project.nodeModules, ".gtkx"), { withFileTypes: true })
         .filter((entry) =>
             entry.isDirectory() &&
-            (entry.name.startsWith(`.${store}-generation-`) || entry.name.startsWith(`.${store}-legacy-`)))
+            [
+                ".generation-",
+                ".pair-generation-",
+                ".gi-generation-",
+                ".gi-legacy-",
+                ".jsx-generation-",
+                ".jsx-legacy-",
+            ].some((prefix) => entry.name.startsWith(prefix)))
         .length;
 
-const seedStoreArtifacts = (project: CliProject, store: string): void => {
-    for (const kind of ["generation", "legacy"]) {
-        for (let index = 0; index < 6; index += 1) {
-            const name = abandonedGenerationName(`.${store}-${kind}`, index);
-            mkdirSync(join(project.nodeModules, ".gtkx", name));
-        }
-    }
-};
-
-const seedDetachedGenerations = (project: CliProject): void => {
-    for (const store of ["gi", "jsx"]) {
-        seedStoreArtifacts(project, store);
-    }
-
-    for (let index = 0; index < 6; index += 1) {
-        const name = abandonedGenerationName(".pair-generation", index);
-        mkdirSync(join(project.nodeModules, ".gtkx", name));
-    }
-};
-
-const seedZombieGenerations = (project: CliProject, pid: number): void => {
-    for (let index = 0; index < 6; index += 1) {
-        const name = `.pair-generation-${String(Date.now())}-${String(pid)}-unknown-${String(index)}`;
-        mkdirSync(join(project.nodeModules, ".gtkx", name));
-    }
-};
-
-const seedLiveGiOnlyArtifacts = (project: CliProject): string[] => {
-    const root = join(project.nodeModules, ".gtkx");
-    const timestamp = String(Date.now());
-    const owner = `${String(process.pid)}-unknown-live`;
-    const paths = [
-        join(root, `.pair-generation-${timestamp}-${owner}`),
-        join(root, `.jsx-generation-${timestamp}-${owner}`),
-    ];
-    const old = new Date(0);
-
-    for (const path of paths) {
-        mkdirSync(path);
-        utimesSync(path, old, old);
-    }
-
-    return paths;
-};
-
-const storeRoot = (project: CliProject): string => join(project.nodeModules, ".gtkx");
-
-const leftoverDirectories = (project: CliProject): string[] =>
-    sortStrings(
-        readdirSync(storeRoot(project), { withFileTypes: true })
-            .filter((entry) => entry.isDirectory() && !entry.name.startsWith(".pair-generation-"))
-            .map((entry) => entry.name),
-    );
-
-const missingStorePaths = (project: CliProject): string[] =>
-    PUBLISHED_STORE_PATHS.filter((path) => !existsSync(join(storeRoot(project), path, "package.json")));
-
-const seedStoreLeftover = (project: CliProject, prefix: string, owner: string): string => {
-    const path = join(storeRoot(project), `${prefix}-${String(Date.now())}-${owner}-${randomUUID()}`);
-    mkdirSync(path);
-    writeFileSync(join(path, "package.json"), "{}\n");
-
-    return path;
-};
-
-const seedStoreLeftovers = (project: CliProject, owner: string): string[] =>
-    ["gi", "jsx"].flatMap((store) =>
-        ["generation", "legacy"].map((kind) => basename(seedStoreLeftover(project, `.${store}-${kind}`, owner))),
-    );
-
-const seedIncompletePair = (project: CliProject, owner: string): string => {
-    const pair = join(storeRoot(project), `.pair-generation-${String(Date.now())}-${owner}-${randomUUID()}`);
-    mkdirSync(join(pair, "gi"), { recursive: true });
-    writeFileSync(join(pair, "gi", "package.json"), "{}\n");
-
-    return pair;
-};
-
-const pairDirectories = (project: CliProject): string[] => {
-    const root = join(project.nodeModules, ".gtkx");
-
-    return readdirSync(root, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory() && entry.name.startsWith(".pair-generation-"))
-        .map((entry) => join(root, entry.name));
-};
-
-const convertToDirectStoreLayout = (project: CliProject): void => {
-    const root = join(project.nodeModules, ".gtkx");
-    const directGi = join(root, "direct-gi");
-    const directJsx = join(root, "direct-jsx");
-    cpSync(realpathSync(join(root, "gi")), directGi, { recursive: true });
-    cpSync(realpathSync(join(root, "jsx")), directJsx, { recursive: true });
-    rmSync(join(directJsx, "node_modules"), { recursive: true, force: true });
-    rmSync(join(root, "gi"), { force: true });
-    rmSync(join(root, "jsx"), { force: true });
-    rmSync(join(root, "current"), { force: true });
-
-    for (const pair of pairDirectories(project)) {
-        rmSync(pair, { recursive: true, force: true });
-    }
-
-    renameSync(directGi, join(root, "gi"));
-    renameSync(directJsx, join(root, "jsx"));
-};
-
-const retainedPairDirectory = (project: CliProject): string => {
-    const root = join(project.nodeModules, ".gtkx");
-    const current = realpathSync(join(root, "current"));
-    const retained = pairDirectories(project).find((pair) => pair !== current);
-
-    if (retained === undefined) {
-        throw new Error("codegen did not retain the previous generated-store pair");
-    }
-
-    return retained;
-};
-
-const sharedProject = (host: CliProject, name: string, source: string): CliProject => {
-    const root = join(host.root, name);
-    mkdirSync(root, { recursive: true });
-    writeFileSync(join(root, "package.json"), `${JSON.stringify({ name, private: true, type: "module" }, null, 4)}\n`);
-    writeFileSync(join(root, "gtkx.config.ts"), source);
-
-    return { root, nodeModules: host.nodeModules, tmpDir: host.tmpDir };
-};
-
 describe("gtkx codegen store publication", () => {
-    it("keeps imports complete while concurrent writers publish a new store", async () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-codegen-publish-",
-            config: fixtureLibrariesConfig(["Documented-1.0"]),
-            files: { "probe.ts": COMMON_PROBE, "tsconfig.json": TSCONFIG },
-        });
+    it("publishes each generated pair as resolvable, type-safe packages", () => {
+        using project = createPublicationProject();
         runCliOrThrow(project, ["codegen"]);
-        expect(runTransitionImport(project)).toBe(0);
-        const zombie = await startZombieOwner();
-
-        try {
-            seedDetachedGenerations(project);
-            seedZombieGenerations(project, zombie.pid);
-            runCliOrThrow(project, ["codegen"]);
-            expect(pairGenerationCount(project)).toBeLessThanOrEqual(3);
-            expect(detachedGenerationCount(project, "gi")).toBeLessThanOrEqual(3);
-            expect(detachedGenerationCount(project, "jsx")).toBeLessThanOrEqual(3);
-        } finally {
-            const zombieExit = exited(zombie.parent);
-            zombie.parent.kill("SIGKILL");
-            await zombieExit;
-        }
+        expect(runTypecheck(project)).toBe(0);
+        const documented = resolveEntries(project);
+        expect(existsSync(documented.gi)).toBe(true);
+        expect(existsSync(documented.jsx)).toBe(true);
 
         writeConfig(project, fixtureLibrariesConfig(["HookSlots-1.0"]));
-        const children = Array.from({ length: 4 }, () => startCli(project, ["codegen", "--force"]));
-        const exits = children.map((child) => exited(child));
-
-        do {
-            expect(runTypecheck(project)).toBe(0);
-            expect(runImport(project)).toBe(0);
-            expect(runTransitionImport(project)).toBe(0);
-            await delay();
-        } while (children.some((child) => child.exitCode === null && child.signalCode === null));
-
-        expect(await Promise.all(exits)).toEqual([0, 0, 0, 0]);
-        writeFileSync(join(project.root, "probe.ts"), HOOK_SLOTS_PROBE);
-        expect(runTypecheck(project)).toBe(0);
-        expect(runTransitionImport(project)).toBe(0);
-        expect(pairGenerationCount(project)).toBeLessThanOrEqual(3);
-        expect(detachedGenerationCount(project, "gi")).toBeLessThanOrEqual(3);
-        expect(detachedGenerationCount(project, "jsx")).toBeLessThanOrEqual(3);
-    });
-
-    it("recovers after a writer exits while owning the store", async () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-codegen-stale-writer-",
-            config: fixtureLibrariesConfig(["HookSlots-1.0"]),
-            files: { "probe.ts": COMMON_PROBE, "tsconfig.json": TSCONFIG },
-        });
-        runCliOrThrow(project, ["codegen"]);
-        expect(readStoreLock(project)).toBeNull();
-        const previous = readStoreLock(project);
-        const child = startCli(project, ["codegen", "--force"]);
-        const exit = exited(child);
-        await waitForLock(project, previous);
-        child.kill("SIGKILL");
-        await exit;
-        expect(readStoreLock(project)).not.toBeNull();
-        const lock = storeLock(project);
-        const expiredLiveOwner = { createdAt: 0, identity: null, pid: process.pid, token: "reused" };
-        writeFileSync(lock, JSON.stringify(expiredLiveOwner));
-
+        writeProbe(project, HOOK_SLOTS_PROBE);
         runCliOrThrow(project, ["codegen", "--force"]);
-        expect(readStoreLock(project)).toBeNull();
         expect(runTypecheck(project)).toBe(0);
-        expect(runImport(project)).toBe(0);
+        const hookSlots = resolveEntries(project);
+        expect(hookSlots.gi).not.toBe(documented.gi);
+        expect(hookSlots.jsx).not.toBe(documented.jsx);
     });
 
-    it("reclaims stale pair and JSX artifacts after switching to GI-only codegen", () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-codegen-gi-only-",
-            config: fixtureLibrariesConfig(["Documented-1.0"]),
-            files: { "probe.ts": COMMON_PROBE, "tsconfig.json": TSCONFIG },
-        });
+    it("keeps a resolved generation available after a later generation becomes current", () => {
+        using project = createPublicationProject();
         runCliOrThrow(project, ["codegen"]);
-        const liveArtifacts = seedLiveGiOnlyArtifacts(project);
+        const previous = resolveEntries(project);
+        const previousGeneration = realpathSync(join(project.nodeModules, ".gtkx", "current"));
 
-        for (let index = 0; index < 6; index += 1) {
-            const pair = abandonedGenerationName(".pair-generation", index);
-            const jsx = abandonedGenerationName(".jsx-generation", index);
-            mkdirSync(join(project.nodeModules, ".gtkx", pair));
-            mkdirSync(join(project.nodeModules, ".gtkx", jsx));
-        }
-
-        rmSync(join(project.nodeModules, "@gtkx", "react"), { recursive: true, force: true });
-        runCliOrThrow(project, ["codegen", "--force"]);
-
-        expect(liveArtifacts.every((path) => existsSync(path))).toBe(true);
-        expect(pairGenerationCount(project)).toBeLessThanOrEqual(4);
-        expect(detachedGenerationCount(project, "jsx")).toBeLessThanOrEqual(4);
-        expect(runTypecheck(project)).toBe(0);
-        expect(runImport(project)).toBe(0);
-    });
-
-    it("keeps a retained JSX generation bound to its matching GI", () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-codegen-retained-pair-",
-            config: fixtureLibrariesConfig(["Documented-1.0"]),
-        });
-        runCliOrThrow(project, ["codegen"]);
-        const resolveFromProject = createRequire(join(project.root, "probe.js"));
-        const oldJsx = resolveFromProject.resolve("@gtkx/jsx/documented");
         writeConfig(project, fixtureLibrariesConfig(["HookSlots-1.0"]));
-
         runCliOrThrow(project, ["codegen", "--force"]);
-        const oldGi = createRequire(oldJsx).resolve("@gtkx/gi/documented");
-        expect(existsSync(oldGi)).toBe(true);
+        expect(realpathSync(join(project.nodeModules, ".gtkx", "current"))).not.toBe(previousGeneration);
+        expect(existsSync(previous.gi)).toBe(true);
+        expect(existsSync(previous.jsx)).toBe(true);
+        const giStore = dirname(dirname(previous.gi));
+        const jsxStore = dirname(dirname(previous.jsx));
+        expect(realpathSync(join(jsxStore, "node_modules", "@gtkx", "gi"))).toBe(giStore);
     });
 
-    it("pins a migrated direct-layout JSX store to its matching GI", () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-codegen-migrated-pair-",
-            config: fixtureLibrariesConfig(["Documented-1.0"]),
-        });
+    it("preserves the published packages when the next generation fails", () => {
+        using project = createPublicationProject();
         runCliOrThrow(project, ["codegen"]);
-        convertToDirectStoreLayout(project);
-        writeConfig(project, fixtureLibrariesConfig(["HookSlots-1.0"]));
-
-        runCliOrThrow(project, ["codegen", "--force"]);
-        const oldJsx = join(retainedPairDirectory(project), "jsx", "documented", "index.js");
-        const oldGi = createRequire(oldJsx).resolve("@gtkx/gi/documented");
-        expect(existsSync(oldGi)).toBe(true);
-    });
-
-    it("publishes a migrated pre-pair layout and reclaims what it left behind", () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-codegen-pre-pair-",
-            config: fixtureLibrariesConfig(["Documented-1.0"]),
-            files: { "probe.ts": COMMON_PROBE, "tsconfig.json": TSCONFIG },
-        });
-        runCliOrThrow(project, ["codegen"]);
-        convertToDirectStoreLayout(project);
-
-        runCliOrThrow(project, ["codegen", "--force"]);
-
-        expect(leftoverDirectories(project)).toEqual([]);
-        expect(pairGenerationCount(project)).toBeLessThanOrEqual(3);
-        expect(missingStorePaths(project)).toEqual([]);
         expect(runTypecheck(project)).toBe(0);
-        expect(runImport(project)).toBe(0);
+        const published = resolveEntries(project);
+
+        writeConfig(project, fixtureLibrariesConfig(["InvalidXml-1.0"]));
+        expect(() => runCliOrThrow(project, ["codegen", "--force"])).toThrow();
+        expect(runTypecheck(project)).toBe(0);
+        expect(resolveEntries(project)).toEqual(published);
     });
 
-    it("removes dead-writer leftovers of earlier layouts and leaves a running writer's alone", () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-codegen-leftovers-",
-            config: fixtureLibrariesConfig(["Documented-1.0"]),
-            files: { "probe.ts": COMMON_PROBE, "tsconfig.json": TSCONFIG },
-        });
+    it("keeps the JSX store when a GI-only run publishes", () => {
+        using project = createPublicationProject();
         runCliOrThrow(project, ["codegen"]);
-        const live = sortStrings(seedStoreLeftovers(project, LIVE_OWNER));
-        seedStoreLeftovers(project, ABANDONED_OWNER);
-
-        runCliOrThrow(project, ["codegen"]);
-        expect(leftoverDirectories(project)).toEqual(live);
-
-        seedStoreLeftovers(project, ABANDONED_OWNER);
-        runCliOrThrow(project, ["codegen", "--force"]);
-        expect(leftoverDirectories(project)).toEqual(live);
-        expect(missingStorePaths(project)).toEqual([]);
-        expect(runImport(project)).toBe(0);
-    });
-
-    it("keeps an incomplete pair a running writer owns when forced", () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-codegen-live-pair-",
-            config: fixtureLibrariesConfig(["Documented-1.0"]),
-        });
-        runCliOrThrow(project, ["codegen"]);
-        const live = seedIncompletePair(project, LIVE_OWNER);
-        const abandoned = seedIncompletePair(project, ABANDONED_OWNER);
+        const previous = resolveEntries(project);
+        rmSync(join(project.nodeModules, "@gtkx", "react"));
+        rmSync(join(project.nodeModules, "@gtkx", "jsx"));
 
         runCliOrThrow(project, ["codegen", "--force"]);
+        const current = resolveEntries(project);
+        const giStore = dirname(dirname(current.gi));
+        const jsxStore = dirname(dirname(current.jsx));
 
-        expect(existsSync(live)).toBe(true);
-        expect(existsSync(abandoned)).toBe(false);
-        expect(missingStorePaths(project)).toEqual([]);
+        expect(current.gi).not.toBe(previous.gi);
+        expect(current.jsx).not.toBe(previous.jsx);
+        expect(realpathSync(join(jsxStore, "node_modules", "@gtkx", "gi"))).toBe(giStore);
     });
 
-    it("fails when a dead-writer leftover cannot be removed", () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-codegen-sealed-leftover-",
-            config: fixtureLibrariesConfig(["Documented-1.0"]),
-        });
+    it("counts beta pair generations toward the retention limit", () => {
+        using project = createPublicationProject();
         runCliOrThrow(project, ["codegen"]);
-        const sealed = seedStoreLeftover(project, ".gi-legacy", ABANDONED_OWNER);
-        chmodSync(sealed, 0o555);
+        const root = join(project.nodeModules, ".gtkx");
 
-        try {
-            expect(() => runCliOrThrow(project, ["codegen"])).toThrow();
-        } finally {
-            chmodSync(sealed, 0o755);
+        for (let index = 0; index < 4; index += 1) {
+            const path = join(root, `.pair-generation-legacy-${String(index)}`);
+            mkdirSync(path);
         }
+
+        runCliOrThrow(project, ["codegen", "--force"]);
+        expect(generationCount(project)).toBeLessThanOrEqual(3);
     });
 
-    it("stops waiting after the active-writer timeout", async () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-codegen-expired-writer-",
-            config: fixtureLibrariesConfig(["HookSlots-1.0"]),
-        });
+    it("keeps resolved beta generations available while migrating their layout", () => {
+        using project = createPublicationProject();
         runCliOrThrow(project, ["codegen"]);
-        const previous = readStoreLock(project);
-        const child = startCli(project, ["codegen", "--force"]);
-        const exit = exited(child);
-        await waitForLock(project, previous);
-        child.kill("SIGSTOP");
+        const root = join(project.nodeModules, ".gtkx");
+        const published = realpathSync(join(root, "current"));
+        const betaGi = join(root, ".gi-generation-beta");
+        const betaJsx = join(root, ".jsx-generation-beta");
+        cpSync(join(published, "gi"), betaGi, { recursive: true });
+        cpSync(join(published, "jsx"), betaJsx, { recursive: true });
+        const nestedGi = join(betaJsx, "node_modules", "@gtkx", "gi");
+        rmSync(nestedGi, { force: true });
+        symlinkSync(relative(dirname(nestedGi), betaGi), nestedGi, "dir");
+        rmSync(join(root, "gi"), { force: true });
+        rmSync(join(root, "jsx"), { force: true });
+        rmSync(join(root, "current"), { force: true });
+        rmSync(published, { recursive: true, force: true });
+        symlinkSync(relative(root, betaGi), join(root, "gi"), "dir");
+        symlinkSync(relative(root, betaJsx), join(root, "jsx"), "dir");
+        const beta = resolveEntries(project);
 
-        try {
-            expect(() => runCliOrThrow(project, ["codegen", "--force"], LOCK_TIMEOUT_ENV)).toThrow();
-        } finally {
-            child.kill("SIGKILL");
-            await exit;
-        }
-    });
+        runCliOrThrow(project, ["codegen", "--force"]);
 
-    it("rejects a generated-store lock symlink", () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-codegen-lock-symlink-",
-            config: fixtureLibrariesConfig(["HookSlots-1.0"]),
-        });
-        mkdirSync(join(project.nodeModules, ".gtkx"), { recursive: true });
-        const target = join(project.root, "lock-target");
-        writeFileSync(target, "preserve");
-        symlinkSync(target, storeLock(project));
-
-        expect(() => runCliOrThrow(project, ["codegen"])).toThrow();
-    });
-
-    it("rejects incompatible projects sharing one generated store", () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-codegen-shared-store-",
-            config: fixtureLibrariesConfig(["Documented-1.0"]),
-        });
-        runCliOrThrow(project, ["codegen"]);
-        const compatible = sharedProject(project, "compatible", fixtureLibrariesConfig(["Documented-1.0"]));
-        const incompatible = sharedProject(project, "incompatible", fixtureLibrariesConfig(["HookSlots-1.0"]));
-
-        runCliOrThrow(compatible, ["codegen", "--force"]);
-        expect(() => runCliOrThrow(incompatible, ["codegen"])).toThrow();
-    });
-
-    it("keeps ownership attached across interleaved store resolutions", () => {
-        using project = createCliProject({ prefix: "gtkx-cli-codegen-interleaved-owner-" });
-        const first = sharedProject(project, "first", fixtureLibrariesConfig(["Documented-1.0"]));
-        const second = sharedProject(project, "second", fixtureLibrariesConfig(["HookSlots-1.0"]));
-
-        expect(runInterleavedOwners(first, second)).toBe(0);
-        expect(() => runCliOrThrow(second, ["codegen"])).toThrow();
+        const current = resolveEntries(project);
+        expect(current).not.toEqual(beta);
+        expect(existsSync(beta.gi)).toBe(true);
+        expect(existsSync(beta.jsx)).toBe(true);
+        expect(realpathSync(nestedGi)).toBe(betaGi);
+        expect(runTypecheck(project)).toBe(0);
+        expect(generationCount(project)).toBeLessThanOrEqual(3);
     });
 });

@@ -1,24 +1,31 @@
+import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const FIXTURE_ARGS = ["--conditions=source", "--import", "tsx"];
+const FIXTURE_TIMEOUT = 30_000;
+
+type FixtureRun = {
+    code: number | null;
+    output: string;
+    signal: NodeJS.Signals | null;
+};
+
+type FixtureOptions = {
+    args?: string[];
+    env?: NodeJS.ProcessEnv;
+    nodeArgs?: string[];
+    timeout?: number;
+};
 
 const fixturePath = (name: string): string =>
     fileURLToPath(new URL(`../fixtures/${name}`, import.meta.url));
 
-/**
- * Arguments that run a fixture as a child process, compiled the way the rest of the workspace
- * runs TypeScript entry points.
- */
 const fixtureArgs = (name: string, nodeArgs: string[] = []): string[] => [
     ...FIXTURE_ARGS,
     ...nodeArgs,
     fixturePath(name),
 ];
 
-/**
- * The environment a fixture child runs in. The sanitizer checks leaks per test in the parent, so
- * a child must not also check at exit: its own exit code is what several tests assert on.
- */
 const childEnv = (overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv => {
     const environment: NodeJS.ProcessEnv = { ...process.env, ...overrides };
 
@@ -29,4 +36,29 @@ const childEnv = (overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv => {
     return environment;
 };
 
-export { childEnv, fixtureArgs };
+const runFixture = (
+    name: string,
+    { args = [], env = childEnv(), nodeArgs = [], timeout = FIXTURE_TIMEOUT }: FixtureOptions = {},
+): Promise<FixtureRun> =>
+    new Promise((resolve, reject) => {
+        const child = spawn(process.execPath, [...fixtureArgs(name, nodeArgs), ...args], {
+            env,
+            killSignal: "SIGKILL",
+            stdio: ["ignore", "pipe", "pipe"],
+            timeout,
+        });
+        const chunks: Buffer[] = [];
+
+        child.stdout.on("data", (chunk: Buffer) => {
+            chunks.push(chunk);
+        });
+        child.stderr.on("data", (chunk: Buffer) => {
+            chunks.push(chunk);
+        });
+        child.once("error", reject);
+        child.once("close", (code, signal) => {
+            resolve({ code, output: Buffer.concat(chunks).toString("utf8"), signal });
+        });
+    });
+
+export { childEnv, fixtureArgs, runFixture };

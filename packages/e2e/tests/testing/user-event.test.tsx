@@ -7,6 +7,7 @@ import { AdwActionRow, AdwSidebar, AdwSidebarItem, AdwSidebarSection } from "@gt
 import {
     GtkBox,
     GtkButton,
+    GtkCallbackAction,
     GtkCheckButton,
     GtkDropDown,
     GtkDropTarget,
@@ -25,6 +26,7 @@ import {
     GtkShortcut,
     GtkShortcutController,
     GtkShortcutTrigger,
+    GtkStringList,
     GtkSwitch,
     GtkTextBuffer,
     GtkTextTag,
@@ -118,7 +120,7 @@ const renderUnfocusedEntry = async (name: string, text: string): Promise<Gtk.Ent
 };
 
 const renderDropDown = async (options: string[]): Promise<Gtk.Widget> => {
-    const { findByRole } = await renderScoped(<GtkDropDown model={Gtk.StringList.new(options)} />);
+    const { findByRole } = await renderScoped(<GtkDropDown model={<GtkStringList strings={options} />} />);
 
     return findByRole(Gtk.AccessibleRole.COMBO_BOX);
 };
@@ -1106,7 +1108,6 @@ describe("userEvent.keyboard: shortcuts", () => {
         const onClicked = () => {
             clicks += 1;
         };
-        const enter = Gtk.ShortcutTrigger.parseString("Return");
         const handleDefault = () => {
             defaultActivations += 1;
             const button = buttonRef.current;
@@ -1119,7 +1120,6 @@ describe("userEvent.keyboard: shortcuts", () => {
 
             return true;
         };
-        const activateDefault = Gtk.CallbackAction.new(handleDefault);
         const onActivated = () => {
             activations += 1;
             const button = buttonRef.current;
@@ -1137,7 +1137,12 @@ describe("userEvent.keyboard: shortcuts", () => {
                 orientation={Gtk.Orientation.VERTICAL}
                 controllers={(
                     <GtkShortcutController
-                        shortcuts={<GtkShortcut trigger={enter} action={activateDefault} />}
+                        shortcuts={(
+                            <GtkShortcut
+                                trigger={<GtkShortcutTrigger accelerator="Return" />}
+                                action={<GtkCallbackAction callback={handleDefault} />}
+                            />
+                        )}
                     />
                 )}
             >

@@ -78,7 +78,7 @@ fn register_toggle_owner() -> usize {
     let id = next_identity(&NEXT_NOTIFICATION);
     TOGGLE_OWNERS
         .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .expect("toggle owner lock poisoned")
         .insert(id, release_queue::owner());
     id
 }
@@ -324,7 +324,7 @@ pub unsafe fn schedule_cleanup(
         handle.generation.set(0);
         TOGGLE_OWNERS
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .expect("toggle owner lock poisoned")
             .remove(&handle.notification_id);
         LIVE_TOGGLE_REFS.with_borrow_mut(|live| {
             live.remove(&(gobject as usize));
@@ -360,7 +360,7 @@ unsafe extern "C" fn on_toggle_notify(
         let notification_id = data as usize;
         let owner = TOGGLE_OWNERS
             .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .expect("toggle owner lock poisoned")
             .get(&notification_id)
             .cloned();
         let Some(owner) = owner else {

@@ -1,5 +1,6 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { readOptionalText } from "../internal/read-optional-text.js";
 
 type ClientName = "claude" | "cursor" | "vscode" | "opencode" | "codex";
 type ServerEntry = Record<string, unknown>;
@@ -66,20 +67,8 @@ const isClientName = (value: string): value is ClientName => CLIENT_NAMES.has(va
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === "object" && value !== null && !Array.isArray(value);
 
-const readOrUndefined = (path: string): string | undefined => {
-    try {
-        return readFileSync(path, "utf8");
-    } catch (error) {
-        if (error instanceof Error && (error as NodeJS.ErrnoException).code === "ENOENT") {
-            return undefined;
-        }
-
-        throw error;
-    }
-};
-
 const readJson = (path: string): Record<string, unknown> | undefined => {
-    const source = readOrUndefined(path);
+    const source = readOptionalText(path);
 
     if (source === undefined) {
         return undefined;

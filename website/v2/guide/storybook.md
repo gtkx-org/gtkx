@@ -25,7 +25,7 @@ export default defineConfig({
 });
 ```
 
-Patterns are relative to the GTKX project root. Your `gtkx.config.ts` still defines GIR libraries, resources, and application settings. Start the explorer with `npx gtkx storybook`; add `--headless --size 1280x900` when you need a private display.
+Patterns are relative to the GTKX project root. Your `gtkx.config.ts` still defines GIR libraries, resources, and application settings. Start the explorer with `npx gtkx storybook`; add `--headless --size 1280x900` when you need a private display. `--config` selects another GTKX configuration, while `--storybook-config` selects another Storybook configuration.
 
 ## Define stories
 

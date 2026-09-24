@@ -2,7 +2,8 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { drain, indexBeforeOrEnd } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
-import { applyAdoptedProps } from "./apply-props.js";
+import { applyAdoptedProps, assertSlotCanChange } from "./apply-props.js";
+import { shouldDetachBeforeParent } from "./behaviors.js";
 import { typeInfoFor } from "./metadata.js";
 import {
     DEFAULT_SLOT,
@@ -197,6 +198,34 @@ const detachEntry = (parent: ElementNode, entry: PlacedChild, index: number): vo
     }
 };
 
+const isBeforeParentEntry = (entry: PlacedChild): boolean =>
+    entry.behavior !== null && shouldDetachBeforeParent(entry.behavior);
+
+const detachBeforeParentEntries = (
+    parent: ElementNode,
+    entries: PlacedChild[],
+    release: (node: PlaceableNode) => void,
+): void => {
+    const remaining = entries.filter((entry, index) => {
+        if (!isBeforeParentEntry(entry)) {
+            return true;
+        }
+
+        detachEntry(parent, entry, index);
+        release(entry.node);
+
+        return false;
+    });
+
+    entries.splice(0, entries.length, ...remaining);
+};
+
+const teardownBeforeParent = (parent: ElementNode, release: (node: PlaceableNode) => void): void => {
+    for (const entries of parent.placements.values()) {
+        detachBeforeParentEntries(parent, entries, release);
+    }
+};
+
 const rebuild = (parent: ElementNode, entries: PlacedChild[]): void => {
     for (const entry of entries) {
         detachEntry(parent, entry, 0);
@@ -263,6 +292,10 @@ const placeChild = (
         return;
     }
 
+    if (parent.isMounted) {
+        assertSlotCanChange(parent.typeName, slot);
+    }
+
     const isMove = existing !== -1;
 
     if (isMove) {
@@ -292,6 +325,10 @@ const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): v
         return;
     }
 
+    if (parent.isMounted) {
+        assertSlotCanChange(parent.typeName, slot);
+    }
+
     const [entry] = entries.splice(index, 1);
 
     if (entry !== undefined) {
@@ -309,4 +346,4 @@ const teardownPlacements = (parent: ElementNode): void => {
     parent.placements.clear();
 };
 
-export { flushAdoptions, placeChild, teardownPlacements, unplaceChild };
+export { flushAdoptions, placeChild, teardownBeforeParent, teardownPlacements, unplaceChild };

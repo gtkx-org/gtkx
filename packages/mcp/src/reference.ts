@@ -29,8 +29,12 @@ type ReferenceApi = Pick<
 
 type ProjectSource = "argument" | "workingDirectory" | "app";
 
-type ResolvedProject = {
+type ReferenceProject = {
+    configFile?: string;
     root: string;
+};
+
+type ResolvedProject = ReferenceProject & {
     source: ProjectSource;
 };
 
@@ -39,8 +43,9 @@ type ScopedReference = ResolvedProject & {
 };
 
 type ReferenceProviderOptions = {
-    getAppRoot: () => string | undefined;
+    getAppProject: () => ReferenceProject | undefined;
     getWorkingDirectory?: () => string;
+    project?: ReferenceProject;
 };
 
 type ReferenceProvider = {
@@ -100,7 +105,7 @@ const SYMBOL_DESCRIPTION =
 const PROJECT_ROOT_DESCRIPTION =
     "Directory of the GTKX project whose bindings to document, absolute or relative to the working directory. " +
     "Any directory inside the project works; its `gtkx.config.ts` decides the documented libraries. Omit to use " +
-    "the project containing the working directory, falling back to a connected app's project.";
+    "a connected app's selected project, falling back to the project containing the working directory.";
 
 const projectRootShape = {
     projectRoot: z.string().optional().describe(PROJECT_ROOT_DESCRIPTION),
@@ -169,11 +174,22 @@ const projectAt = (candidate: string, source: ProjectSource): ResolvedProject =>
 
 const resolveProject = (
     workingDirectory: string,
-    getAppRoot: () => string | undefined,
+    getAppProject: () => ReferenceProject | undefined,
+    project: ReferenceProject | undefined,
     projectRoot: string | undefined,
 ): ResolvedProject => {
     if (projectRoot !== undefined) {
         return projectAt(projectRoot, "argument");
+    }
+
+    const app = getAppProject();
+
+    if (app !== undefined) {
+        return { ...app, source: "app" };
+    }
+
+    if (project !== undefined) {
+        return { ...project, source: "workingDirectory" };
     }
 
     const discovered = findProjectRoot(workingDirectory);
@@ -182,15 +198,11 @@ const resolveProject = (
         return { root: discovered, source: "workingDirectory" };
     }
 
-    const appRoot = getAppRoot();
-
-    return appRoot === undefined
-        ? { root: resolve(workingDirectory), source: "workingDirectory" }
-        : projectAt(appRoot, "app");
+    return { root: resolve(workingDirectory), source: "workingDirectory" };
 };
 
-const loadReference = async (requestedRoot: string): Promise<LoadedReference> => {
-    const loaded = await loadConfig(requestedRoot);
+const loadReference = async (project: ReferenceProject): Promise<LoadedReference> => {
+    const loaded = await loadConfig(project.root, { configFile: project.configFile });
     const { config, root } = loaded;
 
     if (config.codegen === false) {
@@ -232,14 +244,16 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
     return { reference, root, watched };
 };
 
-const startLoad = (cache: ReferenceCache, root: string): CacheEntry => {
-    const entry: CacheEntry = { pending: loadReference(root), verifiedAt: Date.now(), failedAt: undefined };
+const projectKey = (project: ReferenceProject): string => JSON.stringify([project.root, project.configFile]);
+
+const startLoad = (cache: ReferenceCache, project: ReferenceProject): CacheEntry => {
+    const entry: CacheEntry = { pending: loadReference(project), verifiedAt: Date.now(), failedAt: undefined };
 
     void entry.pending.catch(() => {
         entry.failedAt = Date.now();
     });
 
-    cache.set(root, entry);
+    cache.set(projectKey(project), entry);
 
     return entry;
 };
@@ -247,20 +261,21 @@ const startLoad = (cache: ReferenceCache, root: string): CacheEntry => {
 const isRetryDue = (entry: CacheEntry): boolean =>
     entry.failedAt !== undefined && Date.now() - entry.failedAt >= FAILURE_RETRY_MS;
 
-const resolveEntry = (cache: ReferenceCache, root: string): CacheEntry => {
-    const entry = cache.get(root) ?? startLoad(cache, root);
+const resolveEntry = (cache: ReferenceCache, project: ReferenceProject): CacheEntry => {
+    const key = projectKey(project);
+    const entry = cache.get(key) ?? startLoad(cache, project);
 
-    return isRetryDue(entry) ? startLoad(cache, root) : entry;
+    return isRetryDue(entry) ? startLoad(cache, project) : entry;
 };
 
-const revalidate = (cache: ReferenceCache, root: string, entry: CacheEntry): CacheEntry => {
-    const current = cache.get(root);
+const revalidate = (cache: ReferenceCache, project: ReferenceProject, entry: CacheEntry): CacheEntry => {
+    const current = cache.get(projectKey(project));
 
-    return current === undefined || current === entry ? startLoad(cache, root) : current;
+    return current === undefined || current === entry ? startLoad(cache, project) : current;
 };
 
-const currentReference = async (cache: ReferenceCache, root: string): Promise<LoadedReference> => {
-    const entry = resolveEntry(cache, root);
+const currentReference = async (cache: ReferenceCache, project: ReferenceProject): Promise<LoadedReference> => {
+    const entry = resolveEntry(cache, project);
     const loaded = await entry.pending;
 
     if (Date.now() - entry.verifiedAt < FRESHNESS_INTERVAL_MS) {
@@ -273,7 +288,7 @@ const currentReference = async (cache: ReferenceCache, root: string): Promise<Lo
         return loaded;
     }
 
-    return revalidate(cache, root, entry).pending;
+    return revalidate(cache, project, entry).pending;
 };
 
 const createReferenceProvider = (options: ReferenceProviderOptions): ReferenceProvider => {
@@ -281,10 +296,10 @@ const createReferenceProvider = (options: ReferenceProviderOptions): ReferencePr
     const getWorkingDirectory = options.getWorkingDirectory ?? (() => process.cwd());
 
     const resolve = (projectRoot?: string): ResolvedProject =>
-        resolveProject(getWorkingDirectory(), options.getAppRoot, projectRoot);
+        resolveProject(getWorkingDirectory(), options.getAppProject, options.project, projectRoot);
 
     const load = async (project: ResolvedProject): Promise<ScopedReference> => {
-        const loaded = await currentReference(cache, project.root);
+        const loaded = await currentReference(cache, project);
 
         return { reference: loaded.reference, root: loaded.root, source: project.source };
     };
@@ -576,5 +591,6 @@ export {
     createReferenceProvider,
     buildReferenceTools,
     registerReferenceResources,
+    type ReferenceProject,
     type ReferenceProvider,
 };

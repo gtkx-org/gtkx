@@ -9,10 +9,20 @@ const getBufferText = (buffer: Gtk.TextBuffer): string => {
     return buffer.getText(startIter, endIter, true);
 };
 
-const getSourceBuffer = (ref: RefObject<GtkSource.View | null>): GtkSource.Buffer =>
-    ref.current?.getBuffer() as GtkSource.Buffer;
+const getSourceBuffer = (ref: RefObject<GtkSource.View | null>): GtkSource.Buffer => {
+    if (ref.current === null) {
+        throw new Error("Source view did not mount");
+    }
 
-const getTextBuffer = (ref: RefObject<Gtk.TextView | null>): Gtk.TextBuffer =>
-    ref.current?.getBuffer() as Gtk.TextBuffer;
+    return ref.current.getBuffer() as GtkSource.Buffer;
+};
+
+const getTextBuffer = (ref: RefObject<Gtk.TextView | null>): Gtk.TextBuffer => {
+    if (ref.current === null) {
+        throw new Error("Text view did not mount");
+    }
+
+    return ref.current.getBuffer();
+};
 
 export { getBufferText, getSourceBuffer, getTextBuffer };

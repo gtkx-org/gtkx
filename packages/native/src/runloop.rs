@@ -323,7 +323,7 @@ unsafe extern "C" fn on_poll(_handle: *mut c_void, _status: c_int, _events: c_in
 fn context_owner() -> std::sync::MutexGuard<'static, Option<ThreadId>> {
     CONTEXT_OWNER
         .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .expect("GLib context owner lock poisoned")
 }
 
 fn clear_context_owner() {

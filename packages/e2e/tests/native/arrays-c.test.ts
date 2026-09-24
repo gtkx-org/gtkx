@@ -107,6 +107,16 @@ test.each([false, true])("array callback arguments preserve their null policy (%
     expect(seen).toEqual([preserveNull ? null : [], [], ["one", "two"]]);
 });
 
+test("transferred string-array callback returns reject borrowed strings", () => {
+    const descriptor = { ...t.array(t.string(), "array", "full"), preserveNull: true };
+    const invoke = t.bind(collectionLibrary, "gtkx_collection_callback_return", [
+        t.callback([], descriptor, { scope: "call" }),
+    ], descriptor);
+
+    expect(invoke(() => null)).toBeNull();
+    expect(() => invoke(() => ["one", "two"])).toThrow();
+});
+
 test.each([false, true])("inout array callbacks distinguish null values from absent slots (%s)", (preserveNull) => {
     const descriptor = { ...t.array(t.string("full"), "array", "full"), preserveNull };
     const visit = t.bind(collectionLibrary, "gtkx_collection_visit_ref", [

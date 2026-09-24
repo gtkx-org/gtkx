@@ -68,13 +68,13 @@ Prefer JSX for object creation and child placement. The [generated element refer
 
 ## Passing a GType
 
-GTKX accepts a registered class wherever a binding takes a GType:
+GTKX accepts a registered class wherever a binding or JSX property takes a GType:
 
-```ts
-import * as Gio from "@gtkx/gi/gio";
+```tsx
 import * as Gtk from "@gtkx/gi/gtk";
+import { GListStore } from "@gtkx/jsx/gio";
 
-const store = Gio.ListStore.new(Gtk.Label);
+<GListStore itemType={Gtk.Label} />;
 ```
 
 Generated classes and interfaces, and subclasses registered with `registerClass`, can be passed this way. A plain JavaScript subclass has no registration of its own. Returned GTypes and signal handler arguments remain `bigint` values.

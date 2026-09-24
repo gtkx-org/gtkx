@@ -73,7 +73,7 @@ const createDevRunnerDeps = (
             return mergeTestingModule(publicApi, internals);
         });
 
-        return startMcpClient(applicationId);
+        return startMcpClient(applicationId, configFile);
     },
     stopMcpClient,
     watchApplicationShutdown: (onShutdown) => {

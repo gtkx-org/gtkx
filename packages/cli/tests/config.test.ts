@@ -33,6 +33,10 @@ const HEAD = `export default { applicationId: "${APPLICATION_ID}"`;
 
 const REJECTED_CONFIGS: RejectedConfig[] = [
     { title: "an application id that is not a valid identifier", config: "export default { applicationId: 1 };\n" },
+    {
+        title: "an application id beginning with a digit",
+        config: 'export default { applicationId: "1org.gtkx.App" };\n',
+    },
     { title: "user event signals that are not a table", config: `${HEAD}, userEventSignals: 5 };\n` },
     { title: "an elements section that is not an object", config: `${HEAD}, elements: "all" };\n` },
     { title: "a deploy section that is not shaped like one", config: `${HEAD}, deploy: { categories: 5 } };\n` },
@@ -106,6 +110,13 @@ describe("gtkx.config.ts", () => {
         using project = createCliProject({ prefix: "gtkx-cli-config-graduated-", config, hasStore: true });
 
         expect(runCli(project, ["codegen"]).status).toBe(0);
+    });
+
+    it.each(["-org.gtkx.Edge", "org.-gtkx.Edge"])("accepts the GLib application id %s", (applicationId) => {
+        const config = `export default { applicationId: ${JSON.stringify(applicationId)}, codegen: false };\n`;
+        using project = buildWith(config);
+
+        expect(readFileSync(join(project.root, BUNDLE), "utf8")).toContain(applicationId);
     });
 });
 

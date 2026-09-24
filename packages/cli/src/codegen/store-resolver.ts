@@ -1,7 +1,6 @@
 import { resolveStore } from "@gtkx/codegen";
 import { type Config, loadConfig } from "@gtkx/config";
 import { configDependenciesFor } from "@gtkx/config/internal";
-import { realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -12,7 +11,6 @@ type CodegenStore = {
     jsxStoreDir: string;
     jsxLinkDir: string;
     runtimeVersion: string;
-    owner: string;
     react: CodegenReactPackage | null;
 };
 
@@ -55,7 +53,6 @@ const resolveCodegenStore = (dir: string): CodegenStore => {
         jsxStoreDir: store.jsx?.storeDir ?? siblingStore(store.gi.storeDir),
         jsxLinkDir: store.jsx?.linkDir ?? siblingStore(store.gi.linkDir),
         runtimeVersion: store.gi.version,
-        owner: store.gi.owner ?? realpathSync(dir),
         react:
             hasReactRuntime && store.jsx !== null
                 ? { version: store.jsx.version }

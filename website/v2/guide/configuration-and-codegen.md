@@ -33,7 +33,7 @@ For shared configuration, `mergeConfig(base, override)` applies the override ove
 
 ### Selecting another configuration
 
-`gtkx dev`, `gtkx codegen`, `gtkx build`, and `gtkx deploy` accept `--config`:
+`gtkx dev`, `gtkx codegen`, `gtkx build`, `gtkx deploy`, `gtkx docs`, `gtkx storybook`, and `gtkx mcp` accept `--config`:
 
 ```bash
 gtkx dev --config gtkx.enterprise.config.ts
@@ -45,6 +45,8 @@ The path is relative to the project root selected by `--cwd` and must stay insid
 Development watches the selected config and its local dependencies, including shared config layers and imported data. Changes regenerate bindings and restart the app. If a reload fails, the current app keeps running until the configuration is fixed.
 
 Builds use the selected configuration throughout generation and bundling. `gtkx deploy --skip-build --config ...` rejects a bundle created with another config file or different production settings.
+
+`gtkx docs` uses the selected GIR libraries and element settings. Storybook uses it for generated bindings; `--storybook-config` selects the Storybook configuration separately. The MCP server uses it for tool settings and its generated reference until a live app supplies its resolved project.
 
 ## What codegen emits
 
@@ -90,13 +92,13 @@ Native methods keep their generated camelCase names, even when a name overlaps a
 
 ## Passing a GType
 
-GTKX accepts a registered class wherever a binding takes a GType:
+GTKX accepts a registered class wherever a binding or JSX property takes a GType:
 
-```ts
-import * as Gio from "@gtkx/gi/gio";
+```tsx
 import * as Gtk from "@gtkx/gi/gtk";
+import { GListStore } from "@gtkx/jsx/gio";
 
-const store = Gio.ListStore.new(Gtk.Label);
+<GListStore itemType={Gtk.Label} />;
 ```
 
 Generated classes and interfaces, and subclasses registered with `registerClass`, can be passed this way. A plain JavaScript subclass has no registration of its own. Returned GTypes and signal handler arguments remain `bigint` values.

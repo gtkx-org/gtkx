@@ -7,7 +7,7 @@ import {
     resolveMcpSocketPath,
     type Result,
 } from "@gtkx/mcp/internal";
-import { error, errorMessage, info, normalizeError } from "@gtkx/utils";
+import { error, errorCode, errorMessage, info, normalizeError } from "@gtkx/utils";
 import * as net from "node:net";
 import { dispatch } from "./handlers.js";
 import { WidgetRegistry } from "./widget-registry.js";
@@ -15,6 +15,7 @@ import { WidgetRegistry } from "./widget-registry.js";
 type McpClientOptions = {
     socketPath?: string;
     applicationId: string;
+    configFile: string;
 };
 
 type ConnectCallbacks = {
@@ -58,6 +59,7 @@ class McpClient {
     private connection: ProtocolConnection | null = null;
     private socketPath: string;
     private applicationId: string;
+    private configFile: string;
     private reconnectTimer: NodeJS.Timeout | null = null;
     private hasConnected = false;
     private isStopping = false;
@@ -67,6 +69,7 @@ class McpClient {
     constructor(options: McpClientOptions) {
         this.socketPath = resolveMcpSocketPath(options.socketPath);
         this.applicationId = options.applicationId;
+        this.configFile = options.configFile;
     }
 
     private handleClose(): void {
@@ -81,7 +84,7 @@ class McpClient {
     }
 
     private handleSocketError(socketError: Error): void {
-        const code = (socketError as NodeJS.ErrnoException).code;
+        const code = errorCode(socketError);
 
         if (isConnectionClosedError(socketError) || (code !== undefined && DISCONNECT_ERROR_CODES.has(code))) {
             this.scheduleReconnect();
@@ -145,6 +148,7 @@ class McpClient {
             "app.register",
             {
                 applicationId: this.applicationId,
+                configFile: this.configFile,
                 pid: process.pid,
                 projectRoot: process.cwd(),
             },

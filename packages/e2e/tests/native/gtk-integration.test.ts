@@ -5,12 +5,10 @@ import * as Graphene from "@gtkx/gi/graphene";
 import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getClassType, registerClass, typeFromName } from "@gtkx/runtime";
-import { spawn } from "node:child_process";
 import { assert, expect, test } from "vitest";
-import { childEnv, fixtureArgs } from "./helpers/child-process.js";
+import { childEnv, runFixture } from "./helpers/child-process.js";
 import { drainAfterEachTest, drainGC } from "./helpers/memory.js";
 
-type SurfaceRun = { exitCode: number | null; output: string };
 type ObservedConstruction = { seen: GObject.Object | null; window: Gtk.Window };
 type FundamentalClass = new (props: object) => unknown;
 
@@ -24,33 +22,11 @@ const toplevels = Gtk.Window.getToplevels();
 
 drainAfterEachTest();
 
-const runSurfaceRelease = (scenario: string): Promise<SurfaceRun> =>
-    new Promise((resolve) => {
-        const child = spawn(process.execPath, [...fixtureArgs("surface-release.ts", ["--expose-gc"]), scenario], {
-            env: childEnv({ G_DEBUG: "fatal-warnings" }),
-            stdio: ["ignore", "pipe", "pipe"],
-        });
-
-        let output = "";
-
-        const append = (chunk: Buffer): void => {
-            output += chunk.toString();
-        };
-
-        child.stdout.on("data", append);
-        child.stderr.on("data", append);
-        child.once("close", (exitCode) => {
-            resolve({ exitCode, output });
-        });
-    });
-
-const pause = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-
-const settleFrames = async (rounds = 20): Promise<void> => {
-    for (let round = 0; round < rounds; round += 1) {
-        await pause(10);
-    }
-};
+const runSurfaceRelease = (scenario: string) => runFixture("surface-release.ts", {
+    args: [scenario],
+    env: childEnv({ G_DEBUG: "fatal-warnings" }),
+    nodeArgs: ["--expose-gc"],
+});
 
 const constructObserved = (construct: () => Gtk.Window): ObservedConstruction => {
     let seen: GObject.Object | null = null;
@@ -143,20 +119,20 @@ const detachReplay = (): WeakRef<Gsk.RenderReplay> => new WeakRef(Gsk.RenderRepl
 
 test("a surface dropped without ever being destroyed releases without a warning", async () => {
     const run = await runSurfaceRelease("undestroyed");
-    expect(run.exitCode).toBe(0);
+    expect(run.code).toBe(0);
     expect(run.output).toMatch(/SETTLED/);
 });
 
 test("a surface whose window was destroyed first releases without a warning", async () => {
     const run = await runSurfaceRelease("predestroyed");
-    expect(run.exitCode).toBe(0);
+    expect(run.code).toBe(0);
     expect(run.output).toMatch(/PREDESTROYED true/);
     expect(run.output).toMatch(/SETTLED/);
 });
 
 test("a surface held across collection rounds releases without a warning", async () => {
     const run = await runSurfaceRelease("held");
-    expect(run.exitCode).toBe(0);
+    expect(run.code).toBe(0);
     expect(run.output).toMatch(/HELD false/);
     expect(run.output).toMatch(/SETTLED/);
 });
@@ -251,13 +227,15 @@ test("a presented toplevel lends its compute size and takes the size the callbac
     const window = new Gtk.Window({ title: "lent-boxed", defaultWidth: 160, defaultHeight: 120 });
     window.present();
     const bounds: number[][] = [];
+    const computed = Promise.withResolvers<undefined>();
 
     getToplevel(window).connect("compute-size", (size) => {
         bounds.push(size.getBounds());
         size.setSize(321, 234);
+        computed.resolve(undefined);
     });
 
-    await settleFrames();
+    await computed.promise;
     const width = getToplevel(window).getWidth();
     const height = getToplevel(window).getHeight();
     window.destroy();

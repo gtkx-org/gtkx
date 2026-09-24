@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { onLog } from "@gtkx/native";
+import { onLog } from "@gtkx/runtime";
 import { expect, test } from "vitest";
 
 type LogRecord = { level: string; domain: string; message: string };

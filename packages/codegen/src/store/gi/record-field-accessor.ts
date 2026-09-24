@@ -29,7 +29,7 @@ import {
     type RecordFieldSlot,
 } from "./record-layout.js";
 import { wrapReturnValue } from "./return-wrap.js";
-import { isValueMarshalable } from "./value-marshalable.js";
+import { isValueMarshalable, isValueMarshalableRef } from "./value-marshalable.js";
 
 type FieldWriteSpec = {
     descriptor: string;
@@ -56,6 +56,7 @@ type RecordFieldEntry = {
 };
 
 type InlineFieldVisit = {
+    cType: string | undefined;
     jsName: string;
     descriptor: string;
     offset: number;
@@ -99,6 +100,7 @@ type StructArrayResolution = {
     elementFields: GirField[];
     lengthExpr: string;
     elementSize: number;
+    isWritable: boolean;
 };
 
 type StructArrayElements = {
@@ -231,6 +233,9 @@ const isStorableFieldType = (context: ModuleContext, ref: TypeId): boolean => {
 const hasArrayAccessor = (context: ModuleContext, target: StructArrayTarget): boolean =>
     resolveInlineArray(context, target) !== undefined || resolveStructArray(context, target) !== undefined;
 
+const hasWritableArrayAccessor = (context: ModuleContext, target: StructArrayTarget): boolean =>
+    resolveInlineArray(context, target) !== undefined || resolveStructArray(context, target)?.isWritable === true;
+
 const admitAccessibleField = (
     context: ModuleContext,
     slot: RecordFieldSlot,
@@ -247,7 +252,8 @@ const admitAccessibleField = (
     const target: StructArrayTarget = { field, jsName, slot: slot.slot, siblingFields };
     const hasArray = hasArrayAccessor(context, target);
     const hasAccessor = hasArray || isAccessibleFieldType(context, field.type);
-    const isSettable = field.writable && (hasArray || isStorableFieldType(context, field.type));
+    const isSettable =
+        field.writable && (hasWritableArrayAccessor(context, target) || isStorableFieldType(context, field.type));
 
     return hasAccessor ? { ...admitted, isSettable } : undefined;
 };
@@ -524,7 +530,7 @@ const visitInlineStructSlot = (
             hasOwnedStorage: hasOwnedFieldStorage(field),
         }),
     );
-    visitors.leaf({ jsName, descriptor, offset, slot, type: field.type });
+    visitors.leaf({ cType: field.cType, jsName, descriptor, offset, slot, type: field.type });
 };
 
 const visitInlineStructFields = (
@@ -553,6 +559,21 @@ const inlineLeafCount = (context: ModuleContext, fields: GirField[]): number => 
     });
 
     return count;
+};
+
+const hasOnlyValueMarshalableLeaves = (context: ModuleContext, fields: GirField[]): boolean => {
+    let isMarshalable = true;
+
+    visitInlineStructFields(context, fields, 0, {
+        leaf: ({ cType, type }) => {
+            isMarshalable &&= isValueMarshalableRef(context, type, cType);
+        },
+        nested: (_jsName, nested) => {
+            isMarshalable &&= hasOnlyValueMarshalableLeaves(context, nested);
+        },
+    });
+
+    return isMarshalable;
 };
 
 const elementAccessExpr = (descriptor: string, offset: number): string =>
@@ -741,6 +762,7 @@ const resolveStructArray = (context: ModuleContext, target: StructArrayTarget): 
         elementFields: elements.elementFields,
         lengthExpr: shape.lengthExpr,
         elementSize: shape.elementSize,
+        isWritable: hasOnlyValueMarshalableLeaves(context, elements.elementFields),
     };
 };
 
@@ -860,7 +882,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
         blocks.push(structArrayGetterBlock(options));
     }
 
-    if (field.writable) {
+    if (field.writable && resolution.isWritable) {
         context.addRuntimeInternalImport("fixedArrayEntries");
         context.addRuntimeImport("write");
         blocks.push(structArraySetterBlock(options));

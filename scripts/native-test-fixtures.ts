@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveGirPath, runCodegen } from "../packages/codegen/src/index.ts";
 
-type PackageManifest = { version?: string };
+type PackageManifest = { version: string };
 
 const REPOSITORY = "https://github.com/GNOME/gobject-introspection-tests.git";
 const REVISION = "5987255086f59ca271a3a0aa53fbbb15b189be65";
@@ -66,5 +66,5 @@ await runCodegen({
         "GioUnix-2.0",
     ],
     girPath: resolveGirPath([buildDir]),
-    gi: { storeDir, linkDir, version: runtimeManifest.version ?? "0.0.0" },
+    gi: { storeDir, linkDir, version: runtimeManifest.version },
 });

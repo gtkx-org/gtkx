@@ -10,11 +10,14 @@ type TypeSource = {
 const gtypeTsType = (context: ModuleContext): string =>
     context.namespace.name === "GObject" ? "Type" : PRIMITIVE_TS_TYPE.gtype;
 
+const gtypeInputTsType = (gtype: string, anyClass: string, typedClass: string): string =>
+    `${gtype} | ${anyClass}<${typedClass}>`;
+
 const gtypeParamTsType = (context: ModuleContext): string => {
     context.addRuntimeTypeImport("AnyClass");
     context.addRuntimeTypeImport("TypedClass");
 
-    return `${gtypeTsType(context)} | AnyClass<TypedClass>`;
+    return gtypeInputTsType(gtypeTsType(context), "AnyClass", "TypedClass");
 };
 
 const gtypeMemberDeclaration = (context: ModuleContext): string => `declare __type__: ${gtypeTsType(context)};`;
@@ -64,4 +67,4 @@ const renderSourceGtype = (context: ModuleContext, source: TypeSource): string |
         ? undefined
         : renderGtypeExpression(context, source.glibGetType, source.glibTypeName);
 
-export { gtypeTsType, gtypeParamTsType, gtypeMemberDeclaration, renderSourceGtype };
+export { gtypeTsType, gtypeInputTsType, gtypeParamTsType, gtypeMemberDeclaration, renderSourceGtype };

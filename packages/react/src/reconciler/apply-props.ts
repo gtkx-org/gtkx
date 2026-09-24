@@ -148,6 +148,14 @@ const propChangeError = (typeName: string, name: string): Error =>
         `changes with '${name}' and React will build a new one.`,
     );
 
+const assertSlotCanChange = (typeName: string, name: string): void => {
+    const info = typeInfoFor(typeName);
+
+    if (info.constructOnly.has(name) || info.declaredConstructOnly.has(name)) {
+        throw propChangeError(typeName, name);
+    }
+};
+
 const hasAppliedValue = (value: unknown): boolean => (Array.isArray(value) ? value.length > 0 : value !== undefined);
 
 const isConstructOnlyChange = (info: TypeInfo, name: string, change: PropChange): boolean =>
@@ -301,5 +309,6 @@ export {
     flushAccessible,
     applyElementProps,
     applyAdoptedProps,
+    assertSlotCanChange,
     assertPropsCanChange,
 };

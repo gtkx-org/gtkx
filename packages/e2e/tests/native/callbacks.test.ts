@@ -349,12 +349,14 @@ test.each(completionInvokers)("a $name side callback is released with its async 
 
 test("an async ready callback handed to C is invoked from the main loop", async () => {
     const seen: [GObject.Object | null, string][] = [];
+    const completion = Promise.withResolvers<undefined>();
     Regress.testAsyncReadyCallback((source, result) => {
         seen.push([source, result instanceof Gio.AsyncResult ? "result" : typeof result]);
+        completion.resolve(undefined);
     });
     expect(seen).toEqual([]);
 
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    await completion.promise;
     expect(seen).toHaveLength(1);
     expect(seen[0]?.[0]).toBeNull();
     expect(seen[0]?.[1]).toBe("result");

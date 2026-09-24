@@ -1,6 +1,16 @@
-import type * as GObject from "@gtkx/gi/gobject";
+import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkAdjustment, GtkBox, GtkListView, GtkScale, GtkTextView } from "@gtkx/jsx/gtk";
+import {
+    GtkAdjustment,
+    GtkBox,
+    GtkGestureDrag,
+    GtkListView,
+    GtkNoSelection,
+    GtkScale,
+    GtkStringList,
+    GtkTextBuffer,
+    GtkTextView,
+} from "@gtkx/jsx/gtk";
 import {
     fireEvent,
     getAllControllers,
@@ -13,38 +23,12 @@ import {
 } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
+import { itemFactory } from "../helpers/list-view-render.js";
 import { renderClickButton } from "./event-render-setup.js";
 import { bufferText, caretOffset } from "./text-buffer-helpers.js";
 
-const setupLabelItem = (listItem: GObject.Object): void => {
-    if (listItem instanceof Gtk.ListItem) {
-        listItem.setChild(new Gtk.Label());
-    }
-};
-
-const bindLabelItem = (listItem: GObject.Object): void => {
-    if (!(listItem instanceof Gtk.ListItem)) {
-        return;
-    }
-
-    const label = listItem.getChild();
-    const item = listItem.getItem();
-
-    if (label instanceof Gtk.Label && item instanceof Gtk.StringObject) {
-        label.setLabel(item.getString());
-    }
-};
-
-const stringLabelFactory = (): Gtk.SignalListItemFactory => {
-    const factory = Gtk.SignalListItemFactory.new();
-    factory.on("setup", setupLabelItem);
-    factory.on("bind", bindLabelItem);
-
-    return factory;
-};
-
-const renderSurface = async (): Promise<Gtk.Widget> => {
-    await render(<GtkBox name="surface" />);
+const renderSurface = async (controllers?: ReactNode): Promise<Gtk.Widget> => {
+    await render(<GtkBox name="surface" controllers={controllers} />);
 
     return screen.findByName("surface");
 };
@@ -82,9 +66,8 @@ describe("keyboard drives real widget key bindings", () => {
     });
 
     it("moves the TextView caret and undoes typing via keyboard", async () => {
-        await render(<GtkTextView />);
+        await render(<GtkTextView buffer={<GtkTextBuffer enableUndo />} />);
         const view = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
-        view.getBuffer().setEnableUndo(true);
         view.grabFocus();
         await userEvent.type(view, "hello");
         expect(bufferText(view)).toBe("hello");
@@ -106,8 +89,8 @@ describe("keyboard drives real widget key bindings", () => {
         await render(
             <GtkListView
                 ref={ref}
-                model={Gtk.NoSelection.new(Gtk.StringList.new(["Alpha", "Beta"]))}
-                factory={stringLabelFactory()}
+                model={<GtkNoSelection model={<GtkStringList strings={["Alpha", "Beta"]} />} />}
+                factory={itemFactory()}
                 onActivate={(position) => {
                     activated.push(position);
                 }}
@@ -125,9 +108,8 @@ describe("keyboard drives real widget key bindings", () => {
 
 describe("event controller helpers", () => {
     it("find the controllers attached to a widget", async () => {
-        const surface = await renderSurface();
-        const gesture = new Gtk.GestureDrag();
-        surface.addController(gesture);
+        const surface = await renderSurface(<GtkGestureDrag />);
+        const gesture = getController(surface, Gtk.GestureDrag);
         expect(getController(surface, Gtk.GestureDrag)).toBe(gesture);
         expect(getAllControllers(surface, Gtk.GestureDrag)).toEqual([gesture]);
         expect(queryController(surface, Gtk.GestureDrag)).toBe(gesture);

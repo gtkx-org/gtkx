@@ -72,6 +72,7 @@
     "dependencies": {
         "@gtkx/components": "workspace:*",
         "@gtkx/react": "workspace:*",
+        "@gtkx/utils": "workspace:*",
         "storybook": "10.6.0"
     },
     "peerDependencies": {

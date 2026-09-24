@@ -58,10 +58,10 @@ The shared Vitest configuration derives its worker limit from available CPU para
 GTKX_MAX_WORKERS=2 pnpm nx run @gtkx/e2e:test
 ```
 
-The query performance suite is excluded from the ordinary end-to-end target and the root coverage target. Run it deliberately when changing query performance:
+Large-tree query behavior runs in the ordinary end-to-end suite. Run it alone when changing query traversal:
 
 ```bash
-pnpm exec vitest run --project e2e packages/e2e/tests/testing/query-perf.test.tsx
+pnpm exec vitest run --project e2e packages/e2e/tests/testing/query-large-tree.test.tsx
 ```
 
 ## How native tests run headlessly
@@ -100,7 +100,7 @@ For native memory and lifetime changes, an additional target builds the addon wi
 pnpm nx run @gtkx/e2e:test:asan
 ```
 
-This target currently builds for `x86_64-unknown-linux-gnu` and requires the pinned nightly Rust toolchain and the `libasan.so.8` runtime. The script rebuilds the ordinary addon in its `finally` block after the test process finishes. Run this separately from other builds or tests that load the addon, since it replaces the same native binary during the run.
+This target builds for the host Rust target and requires the pinned nightly Rust toolchain and the system AddressSanitizer runtime. The script rebuilds the ordinary addon in its `finally` block after the test process finishes. Run this separately from other builds or tests that load the addon, since it replaces the same native binary during the run.
 
 ## Consumer and packaging checks
 

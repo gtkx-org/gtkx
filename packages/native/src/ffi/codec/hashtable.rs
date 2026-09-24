@@ -452,8 +452,9 @@ impl PtrWriter for HashTableCodec {
         ret: ffi::Slot,
         value: &std::result::Result<Unknown<'_>, ()>,
     ) {
-        let table =
-            encode_and_leak_container(value, "hashtable vfunc return", |v| self.encode(env, v));
+        let table = encode_transferred_container(*env, value, "hashtable vfunc return", |v| {
+            self.encode(env, v)
+        });
         unsafe { ret.store(table) };
     }
 

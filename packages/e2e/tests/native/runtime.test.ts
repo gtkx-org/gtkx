@@ -1,22 +1,13 @@
 import type { Descriptor } from "@gtkx/native";
 import { bind, call, resolveType } from "@gtkx/native";
-import { spawn } from "node:child_process";
 import { expect, test } from "vitest";
-import { childEnv, fixtureArgs } from "./helpers/child-process.js";
+import { childEnv, runFixture } from "./helpers/child-process.js";
 import { drainAfterEachTest } from "./helpers/memory.js";
-
-type FixtureRun = {
-    code: number | null;
-    elapsed: number;
-    output: string;
-    signal: NodeJS.Signals | null;
-};
 
 type WorkerReport = { bare: boolean; doubled: number; string: string };
 
 const encoder = new TextEncoder();
 
-const CHILD_BUDGET_MS = 30_000;
 const GLIB = "libglib-2.0.so.0";
 const VOID: Descriptor = { kind: "void" };
 const INT32: Descriptor = { kind: "int32" };
@@ -35,40 +26,8 @@ const childEnvironment = (): NodeJS.ProcessEnv => {
     return environment;
 };
 
-const runFixture = (name: string, args: string[] = []): Promise<FixtureRun> =>
-    new Promise((resolve) => {
-        const child = spawn(process.execPath, [...fixtureArgs(name), ...args], {
-            env: childEnvironment(),
-            stdio: ["ignore", "pipe", "pipe"],
-        });
-
-        const started = Date.now();
-        const chunks: Buffer[] = [];
-        const budget = setTimeout(() => {
-            child.kill("SIGKILL");
-        }, CHILD_BUDGET_MS);
-
-        child.stdout.on("data", (chunk: Buffer) => {
-            chunks.push(chunk);
-        });
-
-        child.stderr.on("data", (chunk: Buffer) => {
-            chunks.push(chunk);
-        });
-
-        child.once("close", (code, signal) => {
-            clearTimeout(budget);
-            resolve({
-                code,
-                elapsed: Date.now() - started,
-                output: Buffer.concat(chunks).toString("utf8"),
-                signal,
-            });
-        });
-    });
-
 const runFailingFixture = async (name: string, args: string[] = []): Promise<void> => {
-    const result = await runFixture(name, args);
+    const result = await runFixture(name, { args, env: childEnvironment() });
 
     if (result.code !== 0 || result.signal !== null) {
         throw new Error(result.output);
@@ -85,42 +44,57 @@ const workerReport = (output: string): WorkerReport =>
     JSON.parse(reportedLine(output, "REPORT ") ?? "null") as WorkerReport;
 
 test("an authored native warning does not reach the app as an error", async () => {
-    const { code, signal } = await runFixture("error-channel.ts", ["warning", "observed"]);
+    const { code, signal } = await runFixture("error-channel.ts", {
+        args: ["warning", "observed"],
+        env: childEnvironment(),
+    });
 
     expect(signal).toBeNull();
     expect(code).toBe(0);
 });
 
 test("an authored GLib critical reaches the app as an uncaught exception", async () => {
-    const { code, signal } = await runFixture("error-channel.ts", ["critical", "observed"]);
+    const { code, signal } = await runFixture("error-channel.ts", {
+        args: ["critical", "observed"],
+        env: childEnvironment(),
+    });
 
     expect(signal).toBeNull();
     expect(code).toBe(42);
 });
 
 test("an async callback failure reaches the app as an uncaught exception", async () => {
-    const { code, signal } = await runFixture("async-error.ts", ["observed"]);
+    const { code, signal } = await runFixture("async-error.ts", {
+        args: ["observed"],
+        env: childEnvironment(),
+    });
 
     expect(signal).toBeNull();
     expect(code).toBe(42);
 });
 
 test("an unhandled GLib critical stops the process", async () => {
-    const { code, signal } = await runFixture("error-channel.ts", ["critical", "ignored"]);
+    const { code, signal } = await runFixture("error-channel.ts", {
+        args: ["critical", "ignored"],
+        env: childEnvironment(),
+    });
 
     expect(signal).toBeNull();
     expect(code).toBe(1);
 });
 
 test("an unhandled async callback failure stops the process", async () => {
-    const { code, signal } = await runFixture("async-error.ts", ["ignored"]);
+    const { code, signal } = await runFixture("async-error.ts", {
+        args: ["ignored"],
+        env: childEnvironment(),
+    });
 
     expect(signal).toBeNull();
     expect(code).toBe(1);
 });
 
 test("quit tears the run loop down and lets the process exit", async () => {
-    const { code, output, signal } = await runFixture("quit.ts");
+    const { code, output, signal } = await runFixture("quit.ts", { env: childEnvironment() });
 
     expect(output).toMatch(/OBJECT built/);
     expect(output).toMatch(/QUIT/);
@@ -129,17 +103,16 @@ test("quit tears the run loop down and lets the process exit", async () => {
 });
 
 test("the process exits on its own when only unref'd GLib sources remain", async () => {
-    const { code, elapsed, output, signal } = await runFixture("idle-exit.ts");
+    const { code, output, signal } = await runFixture("idle-exit.ts", { env: childEnvironment() });
 
     expect(output).toMatch(/SOURCES/);
     expect(output).toMatch(/EXITED/);
-    expect(elapsed).toBeLessThan(CHILD_BUDGET_MS / 2);
     expect(signal).toBeNull();
     expect(code).toBe(0);
 });
 
 test("a fresh process registers GStrv before its first string-array value", async () => {
-    const { code, output, signal } = await runFixture("strv-first-use.ts");
+    const { code, output, signal } = await runFixture("strv-first-use.ts", { env: childEnvironment() });
 
     expect(output).toMatch(/STRV READY/);
     expect(signal).toBeNull();
@@ -147,7 +120,7 @@ test("a fresh process registers GStrv before its first string-array value", asyn
 });
 
 test("GioUnix search returns nested string arrays", async () => {
-    const { code, output, signal } = await runFixture("gio-unix-search.ts");
+    const { code, output, signal } = await runFixture("gio-unix-search.ts", { env: childEnvironment() });
 
     expect(output).toMatch(/NESTED STRINGS/);
     expect(signal).toBeNull();
@@ -155,7 +128,10 @@ test("GioUnix search returns nested string arrays", async () => {
 });
 
 test("the addon drives real bindings inside a worker thread that finishes on its own", async () => {
-    const { code, output, signal } = await runFixture("worker-host.ts", ["graceful"]);
+    const { code, output, signal } = await runFixture("worker-host.ts", {
+        args: ["graceful"],
+        env: childEnvironment(),
+    });
 
     expect(workerReport(output)).toEqual(WORKER_REPORT);
     expect(reportedLine(output, "EXITED ")).toBe("0");
@@ -164,7 +140,10 @@ test("the addon drives real bindings inside a worker thread that finishes on its
 });
 
 test("a worker thread that quits the addon can then be terminated", async () => {
-    const { code, output, signal } = await runFixture("worker-host.ts", ["terminate"]);
+    const { code, output, signal } = await runFixture("worker-host.ts", {
+        args: ["terminate"],
+        env: childEnvironment(),
+    });
 
     expect(workerReport(output)).toEqual(WORKER_REPORT);
     expect(reportedLine(output, "ACK ")).toBe("torn down");

@@ -1,4 +1,4 @@
-import { keepAlive, quit as nativeQuit } from "@gtkx/native";
+import { keepAlive as nativeKeepAlive, quit as nativeQuit } from "@gtkx/native";
 import { isDerivedApplication, type LocalCommandLineApplication, shutDownThroughRun } from "./application-class.js";
 import { claimDefaultApplication, releaseDefaultApplication } from "./default-application.js";
 
@@ -45,6 +45,9 @@ const shutdownCallbacks: (() => void)[] = [];
 const startedApplications: WeakSet<object> = new WeakSet();
 const registeredApplications: WeakSet<object> = new WeakSet();
 const shutDownApplications: WeakSet<object> = new WeakSet();
+const keepAlive = (isEnabled: boolean): void => {
+    nativeKeepAlive(isEnabled);
+};
 /**
  * Runs every registered exit callback and shuts down the native runtime. Safe to
  * call more than once; only the first call takes effect.
@@ -231,6 +234,7 @@ const quitApplication = (application: ApplicationLike): void => {
 
 export {
     getApplicationInstance,
+    keepAlive,
     onExit,
     quit,
     runApplication,

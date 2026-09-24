@@ -1,6 +1,5 @@
 import * as GLib from "@gtkx/gi/glib";
-import { keepAlive } from "@gtkx/native";
-import { quit, t } from "@gtkx/runtime";
+import { keepAlive, quit, t } from "@gtkx/runtime";
 import assert from "node:assert/strict";
 import { setImmediate } from "node:timers/promises";
 

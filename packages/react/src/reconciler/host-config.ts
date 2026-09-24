@@ -29,7 +29,7 @@ import {
     TEXT_KIND,
     type TextNode,
 } from "./node.js";
-import { flushAdoptions, teardownPlacements } from "./placement.js";
+import { flushAdoptions, teardownBeforeParent, teardownPlacements } from "./placement.js";
 import { isRootElement, type RootElement } from "./root-element.js";
 import { disconnectAllHandlers } from "./signals.js";
 import { flushStyles, releaseCssClasses, releaseStyle } from "./style.js";
@@ -81,6 +81,7 @@ const hostConfig = {
     finalizeInitialChildren: (instance: Instance, _type: string, props: Props): boolean => {
         if (instance.kind === ELEMENT_KIND) {
             validateContentMix(instance, props);
+            instance.isMounted = true;
         }
 
         return false;
@@ -111,8 +112,9 @@ const hostConfig = {
         attachToContainer(container, child, before);
     },
     removeChild: (parent: Instance, child: AnyNode): void => {
-        detachSubtree(child);
+        prepareSubtreeDetach(child);
         detachChild(parent, child);
+        detachSubtree(child);
     },
     removeChildFromContainer: (container: Container, child: AnyNode): void => {
         detachFromContainer(container, child);
@@ -191,17 +193,18 @@ const detachElement = (instance: ElementNode): void => {
     discardAccessible(instance);
     releaseTextResource(instance);
 
-    for (const entries of instance.placements.values()) {
-        for (const entry of entries) {
-            detachSubtree(entry.node);
+    const placedChildren = Array.from(instance.placements.values(), (entries) => entries.map((entry) => entry.node));
+    teardownPlacements(instance);
+
+    for (const entries of placedChildren) {
+        for (const child of entries) {
+            detachSubtree(child);
         }
     }
 
     for (const child of instance.content) {
         detachSubtree(child);
     }
-
-    teardownPlacements(instance);
 
     if (instance.object instanceof Gtk.Widget) {
         releaseCssClasses(instance.object, instance);
@@ -231,6 +234,30 @@ const detachSubtree = (instance: AnyNode): void => {
     }
 };
 
+const prepareElementDetach = (instance: ElementNode): void => {
+    for (const entries of instance.placements.values()) {
+        for (const entry of entries) {
+            prepareSubtreeDetach(entry.node);
+        }
+    }
+
+    for (const child of instance.content) {
+        prepareSubtreeDetach(child);
+    }
+
+    teardownBeforeParent(instance, detachSubtree);
+};
+
+const prepareSubtreeDetach = (instance: AnyNode): void => {
+    if (instance.kind === ELEMENT_KIND) {
+        prepareElementDetach(instance);
+    } else if (instance.kind !== TEXT_KIND) {
+        for (const child of instance.children) {
+            prepareSubtreeDetach(child);
+        }
+    }
+};
+
 const updateInstance = (instance: Instance, prev: Props, next: Props): void => {
     if (instance.kind === ELEMENT_KIND) {
         assertPropsCanChange(instance.typeName, prev, next);
@@ -256,11 +283,13 @@ const attachToContainer = (container: Container, child: AnyNode, before: AnyNode
 };
 
 const detachFromContainer = (container: Container, child: AnyNode): void => {
-    detachSubtree(child);
+    prepareSubtreeDetach(child);
 
     if (!isRootElement(container)) {
         detachChild(getOrCreateContainerNode(container), child);
     }
+
+    detachSubtree(child);
 };
 
 const getPublicInstance = (instance: Instance): object => {
@@ -284,7 +313,10 @@ const adoptContainer = (container: GObject.Object): ElementNode => {
         throw new Error("Cannot adopt a container whose GType has no registered name");
     }
 
-    return createElementNode(name, container, priority.withDiscrete, null);
+    const node = createElementNode(name, container, priority.withDiscrete, null);
+    node.isMounted = true;
+
+    return node;
 };
 
 const getOrCreateContainerNode = (container: GObject.Object): ElementNode =>

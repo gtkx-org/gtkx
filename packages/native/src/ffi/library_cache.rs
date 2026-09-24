@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock, PoisonError};
+use std::sync::{Mutex, OnceLock};
 
 use libloading::os::unix::{Library, RTLD_GLOBAL, RTLD_NOW};
 
@@ -227,7 +227,7 @@ impl FfiCache {
         let mut cache = FFI_CACHE
             .get_or_init(|| Mutex::new(Self::default()))
             .lock()
-            .unwrap_or_else(PoisonError::into_inner);
+            .expect("FFI cache lock poisoned");
 
         f(&mut cache)
     }

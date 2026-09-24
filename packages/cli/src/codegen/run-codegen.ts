@@ -1,5 +1,5 @@
 import { runCodegen as runCodegenCore } from "@gtkx/codegen";
-import { getShadowingStorePaths, sweepProjectStaging } from "@gtkx/codegen/internal";
+import { getShadowingStorePaths } from "@gtkx/codegen/internal";
 import { type Config, loadConfig } from "@gtkx/config";
 import {
     configDependenciesFor,
@@ -77,7 +77,6 @@ const removeStores = (paths: string[]): void => {
 };
 
 const removeShadowingStores = (cwd: string): void => {
-    sweepProjectStaging(cwd);
     removeStores(getShadowingStorePaths(cwd));
 };
 
@@ -88,7 +87,6 @@ const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsI
         storeDir: store.giStoreDir,
         linkDir: store.giLinkDir,
         version: store.runtimeVersion,
-        owner: store.owner,
     },
     jsx:
         store.react === null
@@ -97,7 +95,6 @@ const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsI
                     storeDir: store.jsxStoreDir,
                     linkDir: store.jsxLinkDir,
                     version: store.react.version,
-                    owner: store.owner,
                 },
     userComponents: resolveElementComponents(elements),
     userProps: resolveElementProps(elements),

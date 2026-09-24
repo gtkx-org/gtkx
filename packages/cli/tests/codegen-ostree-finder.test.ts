@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as Gio from "@gtkx/gi/gio";
 import * as OSTree from "@gtkx/gi/ostree";
-import { keepAlive } from "@gtkx/native";
+import { keepAlive } from "@gtkx/runtime";
 import { quit, toVariant } from "@gtkx/runtime";
 
 using temporary = mkdtempDisposableSync(join(tmpdir(), "gtkx-ostree-finder-values-"));

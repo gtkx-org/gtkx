@@ -1,5 +1,6 @@
 import * as GObject from "@gtkx/gi/gobject";
 import { getSignalBaseName, offSignal, onSignal, type SignalHandler } from "@gtkx/runtime";
+import { getObjectProperty } from "@gtkx/runtime/internal";
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { Dispatch, HandlerRecord, SignalTarget } from "./node.js";
 import { type TypeInfo, typeInfoFor } from "./metadata.js";
@@ -75,7 +76,7 @@ const invokeHandler = (
 
     return property === null
         ? record.handler(...args, record.object)
-        : record.handler(Reflect.get(record.object, property), record.object);
+        : record.handler(getObjectProperty(record.object, property), record.object);
 };
 
 const wrapHandler = (

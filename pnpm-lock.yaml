@@ -778,6 +778,9 @@ importers:
       '@gtkx/cli':
         specifier: workspace:*
         version: link:../cli
+      '@gtkx/components':
+        specifier: workspace:*
+        version: link:../components
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config
@@ -1059,6 +1062,9 @@ importers:
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react
+      '@gtkx/utils':
+        specifier: workspace:*
+        version: link:../utils
       react:
         specifier: ^19.3
         version: 19.3.0

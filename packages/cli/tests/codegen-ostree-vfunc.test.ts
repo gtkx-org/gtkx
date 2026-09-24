@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as Gio from "@gtkx/gi/gio";
 import * as OSTree from "@gtkx/gi/ostree";
-import { keepAlive } from "@gtkx/native";
+import { keepAlive } from "@gtkx/runtime";
 import { callParent, callVfunc, quit, registerClass } from "@gtkx/runtime";
 
 class ParentFinder extends OSTree.RepoFinderConfig {

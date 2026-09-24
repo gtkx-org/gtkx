@@ -101,3 +101,10 @@ test("native callback completion retention requires a userdata companion", () =>
     ], voidType)).toThrow();
     expect(parseWithHook(() => 1, null).value).toBe(1);
 });
+
+test("native notified callbacks require a destroy notifier", () => {
+    expect(() => bind(GLIB, "g_free", [{
+        kind: "callback", argDescriptors: [], returnDescriptor: voidType,
+        hasUserData: true, scope: "notified",
+    }], voidType)).toThrow();
+});

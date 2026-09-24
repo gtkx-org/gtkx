@@ -20,6 +20,7 @@ import { ancestorChain } from "../../gir/ancestry.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { annotationSpec, selfHandlerSpec } from "../gi/doc-spec.js";
+import { gtypeInputTsType } from "../gi/gtype-binding.js";
 import { getGlibName, giNamespaceAlias, isIntrinsicElementClass, signalHandlerName } from "./intrinsic-elements.js";
 import { isOmittedProp } from "./omitted-props.js";
 
@@ -326,6 +327,18 @@ const reactTarget = (
     isInput: boolean,
     canAcceptTypedArrayViews: boolean,
 ): TsTypeTarget => {
+    const renderGtype = (): string => {
+        context.imports.set("GObject", giNamespaceAlias("GObject"));
+        const type = `${giNamespaceAlias("GObject")}.Type`;
+
+        return isInput
+            ? gtypeInputTsType(
+                    type,
+                    'import("@gtkx/runtime").AnyClass',
+                    'import("@gtkx/runtime").TypedClass',
+                )
+            : type;
+    };
     const target = recordTypeTarget(
         context.library,
         (name) => {
@@ -333,11 +346,7 @@ const reactTarget = (
 
             return `${giNamespaceAlias(name.namespaceName)}.${name.typeName}`;
         },
-        () => {
-            context.imports.set("GObject", giNamespaceAlias("GObject"));
-
-            return `${giNamespaceAlias("GObject")}.Type`;
-        },
+        renderGtype,
         { isInput, canAcceptTypedArrayViews },
     );
 

@@ -120,10 +120,10 @@ A nested variant stays a `GLib.Variant` unless recursive unpacking is requested.
 
 ## Keeping a helper process alive
 
-An application element, normally `AdwApplication`, keeps GTKX's GLib integration referenced automatically. A plain Node helper has no application lifecycle, so pending GIO work alone does not keep the process alive. Add `@gtkx/native` as a direct dependency and hold the integration around the operation:
+An application element, normally `AdwApplication`, keeps GTKX's GLib integration referenced automatically. A plain Node helper has no application lifecycle, so pending GIO work alone does not keep the process alive. Hold the integration around the operation:
 
 ```ts
-import { keepAlive } from "@gtkx/native";
+import { keepAlive } from "@gtkx/runtime";
 
 keepAlive(true);
 try {

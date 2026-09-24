@@ -7,10 +7,9 @@ use crate::host::log_writer::{self, LogRecord};
 type Listener<'a> = Function<'a, FnArgs<(String, String, String)>, ()>;
 
 /// Registers `listener` for every `GLib` log record the process writes, whichever thread logs it,
-/// and returns the id `removeLogListener` takes. The public `onLog` wrapper in `main.js` pairs the
-/// two into a subscription. Records are queued to the JavaScript thread and delivered
-/// asynchronously; a level `GLib` treats as fatal aborts the process before the queued delivery
-/// runs, and removing a listener does not cancel records already queued for it.
+/// and returns the id `removeLogListener` takes. Records are queued to the JavaScript thread and
+/// delivered asynchronously; a level `GLib` treats as fatal aborts the process before the queued
+/// delivery runs, and removing a listener does not cancel records already queued for it.
 #[allow(clippy::needless_pass_by_value)]
 #[napi(js_name = "addLogListener", catch_unwind)]
 pub fn add_log_listener(

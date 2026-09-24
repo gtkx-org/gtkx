@@ -27,6 +27,7 @@ export const returnPure: InlineRecordArrays.ReturnPure = () => [
     new InlineRecordArrays.Pure(),
     new InlineRecordArrays.Pure(),
 ];
+export const enumValues = (typeClass: GObject.EnumClass): GObject.EnumValue[] => typeClass.values;
 export type TransferredCallback = InlineRecordArrays.TakeValueArray;
 export type Values = GObject.Value[];
 export type WritevVfunc = Gio.OutputStream["vfuncWritevAsync"];
@@ -59,6 +60,9 @@ export const value = HarfBuzz.otNameListNames;
 `,
     "resource-return-callback": `import type * as InlineRecordArrays from "@gtkx/gi/inlinerecordarrays";
 export type Value = InlineRecordArrays.ReturnStringSlots;
+`,
+    "resource-field-array-write": `import type * as GObject from "@gtkx/gi/gobject";
+export const update = (typeClass: GObject.EnumClass): void => { typeClass.values = typeClass.values; };
 `,
     "retained-borrowed-return-callback": `import type * as InlineRecordArrays from "@gtkx/gi/inlinerecordarrays";
 export type Value = InlineRecordArrays.ReturnBorrowedValues;

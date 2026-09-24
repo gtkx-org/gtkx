@@ -57,7 +57,7 @@ type ResolvedConfig = {
     lazyElements: string[];
 };
 
-const APPLICATION_ID_PATTERN = /^[A-Za-z_][A-Za-z0-9_-]*(\.[A-Za-z_][A-Za-z0-9_-]*)+$/;
+const APPLICATION_ID_PATTERN = /^[A-Za-z_-][A-Za-z0-9_-]*(\.[A-Za-z_-][A-Za-z0-9_-]*)+$/;
 const APPLICATION_ID_MAX_LENGTH = 255;
 const IMPLICIT_LIBRARIES: Set<string> = new Set(["Adw-1", "Gtk-4.0"]);
 /** Compilation modes `babel-plugin-react-compiler` accepts. */

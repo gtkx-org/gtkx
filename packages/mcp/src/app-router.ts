@@ -189,8 +189,10 @@ class AppRouter extends EventTarget {
         return first.done ? undefined : first.value;
     }
 
-    getProjectRoot(): string | undefined {
-        return this.getDefaultApp()?.info.projectRoot;
+    getProject(): Pick<AppInfo, "configFile" | "projectRoot"> | undefined {
+        const info = this.getDefaultApp()?.info;
+
+        return info === undefined ? undefined : { configFile: info.configFile, projectRoot: info.projectRoot };
     }
 
     dispose(): void {

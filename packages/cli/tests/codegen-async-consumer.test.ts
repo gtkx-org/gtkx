@@ -13,7 +13,7 @@ const FIXTURE = fileURLToPath(new URL("fixtures/async-pair.c", import.meta.url))
 const CONSUMER = `import assert from "node:assert/strict";
 import { Client, Job, Pool, queryAsync, Sack } from "@gtkx/gi/asyncpair";
 import * as Gio from "@gtkx/gi/gio";
-import { keepAlive } from "@gtkx/native";
+import { keepAlive } from "@gtkx/runtime";
 import { quit } from "@gtkx/runtime";
 
 const completeThroughOwner = (start: (callback: Gio.AsyncReadyCallback) => void): Promise<void> =>

@@ -1,6 +1,8 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { errorCode } from "@gtkx/utils";
+import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { REFERENCE_PATH } from "../codegen/reference.js";
+import { readOptionalText } from "./read-optional-text.js";
 
 type AgentRulesResult = {
     isWritten: boolean;
@@ -83,23 +85,8 @@ const nextContents = (contents: string): string => {
     return replaceBlock(contents, renderBlock(heading));
 };
 
-const errorCode = (error: unknown): string | undefined =>
-    error instanceof Error ? (error as NodeJS.ErrnoException).code : undefined;
-
-const readOrUndefined = (path: string): string | undefined => {
-    try {
-        return readFileSync(path, "utf8");
-    } catch (error) {
-        if (errorCode(error) === "ENOENT") {
-            return undefined;
-        }
-
-        throw error;
-    }
-};
-
 const hasWritten = (path: string, contents: string): boolean => {
-    if (readOrUndefined(path) === contents) {
+    if (readOptionalText(path) === contents) {
         return false;
     }
 
@@ -124,7 +111,7 @@ const hasWrittenClaudeImport = (root: string): boolean => {
 
 const upsertAgentRules = (root: string): AgentRulesResult => {
     const agentsPath = join(root, AGENTS_FILENAME);
-    const existing = readOrUndefined(agentsPath) ?? "";
+    const existing = readOptionalText(agentsPath) ?? "";
     const files: string[] = [];
 
     if (hasWritten(agentsPath, nextContents(existing))) {

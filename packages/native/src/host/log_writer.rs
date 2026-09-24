@@ -115,9 +115,7 @@ pub(crate) fn remove_listener(id: u32) {
 }
 
 fn listeners() -> MutexGuard<'static, HashMap<u32, LogListener>> {
-    LISTENERS
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
+    LISTENERS.lock().expect("log listener lock poisoned")
 }
 
 fn notify_listeners(level: LogLevel, fields: &[LogField<'_>]) {

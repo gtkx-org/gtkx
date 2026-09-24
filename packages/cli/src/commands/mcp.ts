@@ -1,6 +1,6 @@
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
-import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
+import { configArg, cwdArg, resolveCwd } from "../internal/entry-arg.js";
 import { type ClientName, type ClientResult, CLIENTS, isClientName, writeClientConfig } from "../mcp/client-config.js";
 
 const clientList = CLIENTS.map((client) => client.name).join(", ");
@@ -46,6 +46,7 @@ const mcp = defineCommand({
             type: "boolean",
             description: "Register only the tools that read state, leaving out the ones that drive the app",
         },
+        ...configArg,
         ...cwdArg,
     },
     subCommands: { init },
@@ -54,6 +55,7 @@ const mcp = defineCommand({
 
         await runMcpServer({
             cwd: resolveCwd(args),
+            configFile: args.config,
             ...(args.tools !== undefined && { tools: splitPatterns(args.tools) }),
             ...(args["read-only"] !== undefined && { isReadOnly: args["read-only"] }),
         });
