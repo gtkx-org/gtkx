@@ -17,6 +17,7 @@ const APP_FILE = "src/app.tsx";
 const OBSERVATION_FILE = "observation.json";
 const CHILD_FILE = "src/child.tsx";
 const CHILD_OBSERVATION_FILE = "child.json";
+const ENV_FILE = "node_modules/.gtkx/env.d.ts";
 const RELOAD_TIMEOUT = 60_000;
 const INVALID_SETTLE_MS = 2000;
 const ENTRY = `import { createRoot } from "@gtkx/react";
@@ -123,8 +124,10 @@ it("restarts for changed schema imports while preserving ordinary refresh and re
         const ordinary = await observedPhase("ordinary");
         expect(ordinary.pid).toBe(initial.pid);
         expect(ordinary.state).toBe(initial.state);
+        const typesBeforeInvalid = readFileSync(join(project.root, ENV_FILE), "utf8");
         writeFileSync(join(project.root, APP_FILE), `${component("invalid-source", ["First"])}\nconst =`);
         await expectPreserved(ordinary);
+        expect(readFileSync(join(project.root, ENV_FILE), "utf8")).toBe(typesBeforeInvalid);
         for (const phase of ["child-first-edit", "child-second-edit"]) {
             writeFileSync(join(project.root, CHILD_FILE), component(phase, [], false));
             await expect.poll(observeChild, { timeout: RELOAD_TIMEOUT }).toMatchObject({ phase });

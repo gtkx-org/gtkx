@@ -239,14 +239,19 @@ const didWriteChanges = (path: string, content: string): boolean => {
 };
 
 const emitSchemaEnv = (rootDir: string): SchemaEnvResult => {
-    const { imports } = discoverProjectImports(rootDir);
+    const path = schemaEnvPath(rootDir);
+    const { imports, isComplete } = discoverProjectImports(rootDir);
+
+    if (!isComplete) {
+        return { path, isWritten: false };
+    }
+
     const importedFiles = findImportedSchemaFiles(imports);
     assertUniqueSchemaBasenames(importedFiles);
     const imported = parseProjectSchemas(importedFiles, getRelativeModuleSpecifier);
     const assets = findAssetModuleSpecifiers(imports);
     const references = existsSync(i18nTypesPath(rootDir)) ? [`./${I18N_TYPES_FILENAME}`] : [];
     const content = renderEnvModule(imported, assets, { references });
-    const path = schemaEnvPath(rootDir);
     const isWritten = didWriteChanges(path, content);
 
     return { path, isWritten };

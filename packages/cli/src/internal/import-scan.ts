@@ -149,14 +149,18 @@ const writeCache = (path: string, cache: ScanCache): void => {
 };
 
 const scanFile = (path: string, previous: ScanIndex, index: ScanIndex): "changed" | "unchanged" | "invalid" => {
+    const cached = previous.get(path);
     const code = readSource(path);
 
     if (code === null) {
+        if (cached !== undefined) {
+            index.set(path, cached);
+        }
+
         return "invalid";
     }
 
     const hash = hashSource(code);
-    const cached = previous.get(path);
 
     if (cached?.hash === hash) {
         index.set(path, cached);
@@ -167,6 +171,10 @@ const scanFile = (path: string, previous: ScanIndex, index: ScanIndex): "changed
     const sources = importSourcesIn(path, code);
 
     if (sources === null) {
+        if (cached !== undefined) {
+            index.set(path, cached);
+        }
+
         return "invalid";
     }
 
@@ -201,7 +209,7 @@ const discoverProjectImports = (root: string): ProjectImports => {
     const previous = cache.get(dir) ?? new Map<string, ScannedFile>();
     const { index, isChanged, isComplete } = scanSourceDir(dir, previous);
 
-    if (isChanged || !cache.has(dir)) {
+    if (isComplete && (isChanged || !cache.has(dir))) {
         cache.set(dir, index);
         writeCache(path, cache);
     }
