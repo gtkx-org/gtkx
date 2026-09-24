@@ -129,7 +129,10 @@ const parseSidebar = (source: string): DefaultTheme.SidebarItem[] => {
 const referenceSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] => {
     const manifest = join(versionDirectory(version), REFERENCE_ROOT, "typedoc-sidebar.json");
 
-    return rewriteReferenceSidebar(version, parseSidebar(readFileSync(manifest, "utf8")));
+    return rewriteReferenceSidebar(version, parseSidebar(readFileSync(manifest, "utf8"))).map(({ text, link }) => ({
+        text,
+        link,
+    }));
 };
 
 const referenceSidebars = new Map(versions.map((version) => [version.id, referenceSidebar(version)]));
