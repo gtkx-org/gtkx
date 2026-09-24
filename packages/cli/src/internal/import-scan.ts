@@ -148,16 +148,20 @@ const writeCache = (path: string, cache: ScanCache): void => {
     writeAtomically(path, JSON.stringify(cachePayload(cache)));
 };
 
+const retainCached = (path: string, cached: ScannedFile | undefined, index: ScanIndex): "invalid" => {
+    if (cached !== undefined) {
+        index.set(path, cached);
+    }
+
+    return "invalid";
+};
+
 const scanFile = (path: string, previous: ScanIndex, index: ScanIndex): "changed" | "unchanged" | "invalid" => {
     const cached = previous.get(path);
     const code = readSource(path);
 
     if (code === null) {
-        if (cached !== undefined) {
-            index.set(path, cached);
-        }
-
-        return "invalid";
+        return retainCached(path, cached, index);
     }
 
     const hash = hashSource(code);
@@ -171,11 +175,7 @@ const scanFile = (path: string, previous: ScanIndex, index: ScanIndex): "changed
     const sources = importSourcesIn(path, code);
 
     if (sources === null) {
-        if (cached !== undefined) {
-            index.set(path, cached);
-        }
-
-        return "invalid";
+        return retainCached(path, cached, index);
     }
 
     index.set(path, { hash, sources });
