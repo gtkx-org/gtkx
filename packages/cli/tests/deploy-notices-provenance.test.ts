@@ -91,6 +91,7 @@ describe("bundled dependency notice provenance", () => {
         ["MIT", "LICENSE"],
         ["SEE LICENSE IN terms.txt", "terms.txt"],
         ["SEE LICENSE IN copyright terms.txt", "copyright terms.txt"],
+        ["SEE LICENSE IN licenses/terms.txt", "licenses/terms.txt"],
         ["SEE LICENSE IN LICENSE", "LICENSE"],
     ])("carries package terms declared with %s", (license, licenseFile) => {
         using project = createCliProject({

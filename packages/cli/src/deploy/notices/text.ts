@@ -15,11 +15,17 @@ const readLicenseText = (path: string): string | null => {
     }
 };
 
-const licenseFilesIn = (dir: string, explicitFile: string | null): string[] =>
-    readdirSync(dir, { withFileTypes: true })
-        .filter((entry) => entry.isFile() && (LICENSE_FILE.test(entry.name) || entry.name === explicitFile))
-        .map((entry) => entry.name)
-        .toSorted((left, right) => left.localeCompare(right));
+const licenseFilesIn = (dir: string, explicitFile: string | null): string[] => {
+    const files = readdirSync(dir, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && LICENSE_FILE.test(entry.name))
+        .map((entry) => entry.name);
+
+    if (explicitFile !== null) {
+        files.push(explicitFile);
+    }
+
+    return [...new Set(files)].toSorted((left, right) => left.localeCompare(right));
+};
 
 const licenseTextIn = (dir: string, license: string | null = null): string | null => {
     const explicitFile = license?.startsWith(EXPLICIT_LICENSE_PREFIX)

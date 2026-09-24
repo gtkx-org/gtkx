@@ -13,7 +13,7 @@ import {
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
-import { type CliProject, createCliProject, runCli, runCliOrThrow, startCli } from "./cli-project.js";
+import { type CliProject, coverageTimeout, createCliProject, runCli, runCliOrThrow, startCli } from "./cli-project.js";
 import { isolateTypeConsumer } from "./type-consumer.js";
 
 type PackageManifest = { name: string; files: string[]; dependencies: Record<string, string> };
@@ -239,7 +239,7 @@ describe("configured element prop reference", () => {
         });
 
         try {
-            await expect.poll(() => existsSync(ready), { timeout: 60_000 }).toBe(true);
+            await expect.poll(() => existsSync(ready), { timeout: coverageTimeout(60_000) }).toBe(true);
             writeFileSync(declaration, BASE_DECLARATION);
             writeFileSync(released, "");
             const status = await closed;

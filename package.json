@@ -67,9 +67,8 @@
                     }
                 ]
             },
-            "coverage": {
-                "command": "rm -rf coverage/subprocess && GTKX_COVERAGE_DIR=\"$PWD/coverage/subprocess\" vitest run --coverage --exclude '**/tests/testing/query-perf.test.tsx' && NODE_OPTIONS=--max-old-space-size=8192 tsx ./scripts/subprocess-coverage.ts && rm -rf coverage/subprocess",
-                "cache": true,
+            "coverage-dependencies": {
+                "executor": "nx:noop",
                 "dependsOn": [
                     "codegen",
                     "@gtkx/e2e:test-fixtures",
@@ -83,6 +82,13 @@
                     "@gtkx/i18n:build",
                     "@gtkx/navigation:build",
                     "@gtkx/storybook:build"
+                ]
+            },
+            "coverage": {
+                "command": "rm -rf coverage/subprocess && GTKX_COVERAGE_DIR=\"$PWD/coverage/subprocess\" vitest run --coverage --exclude '**/tests/testing/query-perf.test.tsx' && NODE_OPTIONS=--max-old-space-size=8192 tsx ./scripts/subprocess-coverage.ts && rm -rf coverage/subprocess",
+                "cache": true,
+                "dependsOn": [
+                    "coverage-dependencies"
                 ],
                 "inputs": [
                     "sharedGlobals",
@@ -95,7 +101,8 @@
                     "{workspaceRoot}/examples/gtk-demo/**/*",
                     "{workspaceRoot}/examples/storybook/**/*",
                     {
-                        "dependentTasksOutputFiles": "**/*.{js,d.ts,json}"
+                        "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
+                        "transitive": true
                     },
                     {
                         "externalDependencies": [
@@ -108,6 +115,17 @@
                 "outputs": [
                     "{workspaceRoot}/coverage/**"
                 ]
+            },
+            "coverage-shard": {
+                "command": "GTKX_COVERAGE_DIR=\"$PWD/coverage/subprocess\" vitest run --coverage --shard=\"$GTKX_COVERAGE_SHARD/$GTKX_COVERAGE_SHARDS\" --reporter=blob --outputFile=\"coverage-artifacts/vitest/blob-$GTKX_COVERAGE_SHARD.json\" --exclude '**/tests/testing/query-perf.test.tsx' && GTKX_SUBPROCESS_COVERAGE_REPORT_DIR=\"$PWD/coverage-artifacts/subprocess-report/$GTKX_COVERAGE_SHARD\" NODE_OPTIONS=--max-old-space-size=8192 tsx ./scripts/subprocess-coverage.ts && rm -rf coverage/subprocess",
+                "cache": false,
+                "dependsOn": [
+                    "coverage-dependencies"
+                ]
+            },
+            "coverage-merge": {
+                "command": "GTKX_COVERAGE_MERGE=1 NODE_OPTIONS=--max-old-space-size=8192 vitest --merge-reports=coverage-artifacts/vitest --coverage",
+                "cache": false
             },
             "lint": {
                 "command": "eslint . --ignore-pattern packages --ignore-pattern examples --ignore-pattern website",

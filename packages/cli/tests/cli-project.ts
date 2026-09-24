@@ -25,7 +25,9 @@ const WORKSPACE_MODULES = join(WORKSPACE_ROOT, "node_modules");
 const CLI_ENTRY = join(WORKSPACE_ROOT, "packages", "cli", "dist", "cli.js");
 const CLI_ARGV = ["--enable-source-maps", CLI_ENTRY];
 const COVERAGE_SLOWDOWN = 3;
-const CLI_TIMEOUT = 300_000 * (process.env.GTKX_COVERAGE_DIR === undefined ? 1 : COVERAGE_SLOWDOWN);
+const coverageTimeout = (timeout: number): number =>
+    timeout * (process.env.GTKX_COVERAGE_DIR === undefined ? 1 : COVERAGE_SLOWDOWN);
+const CLI_TIMEOUT = coverageTimeout(300_000);
 const STORE_DIR = ".gtkx";
 const SCOPE = "@gtkx";
 const STORE_NAMES = ["gi", "jsx"];
@@ -217,6 +219,7 @@ export {
     type CliProject,
     type CliProjectOptions,
     cliEnvironment,
+    coverageTimeout,
     createCliProject,
     type DisposableCliProject,
     initGitRepo,

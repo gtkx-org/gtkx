@@ -8,7 +8,8 @@ import { fileURLToPath } from "node:url";
 const WORKSPACE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const TEMP_DIR = join(WORKSPACE_ROOT, "coverage", "subprocess");
 const BATCH_DIR = join(WORKSPACE_ROOT, "coverage", "subprocess-batches");
-const REPORT_DIR = join(WORKSPACE_ROOT, "coverage", "subprocess-report");
+const REPORT_DIR = process.env.GTKX_SUBPROCESS_COVERAGE_REPORT_DIR ??
+    join(WORKSPACE_ROOT, "coverage", "subprocess-report");
 const INCLUDES = ["packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"];
 const PROFILES_PER_BATCH = 48;
 const BATCH_HEAP = "--max-old-space-size=2048";

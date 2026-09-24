@@ -28,23 +28,60 @@ env:
   NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
 
 jobs:
-  sonarcloud:
+  coverage:
+    name: coverage (${{ matrix.shard }}/${{ matrix.total }})
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+        total: [4]
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 120
     env:
+      GTKX_COVERAGE_SHARD: ${{ matrix.shard }}
+      GTKX_COVERAGE_SHARDS: ${{ matrix.total }}
       GTKX_MAX_WORKERS: "3"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Generate coverage
+        uses: ./.github/actions/run-ci-command
+        with:
+          command: pnpm exec nx run gtkx:coverage-shard
+          image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
+          extra-env: GTKX_COVERAGE_SHARD GTKX_COVERAGE_SHARDS GTKX_MAX_WORKERS
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: sonar-coverage-${{ matrix.shard }}
+          path: coverage-artifacts
+          if-no-files-found: error
+          retention-days: 1
+
+  sonarcloud:
+    needs: coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      - name: Generate coverage
+      - name: Download coverage
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          pattern: sonar-coverage-*
+          merge-multiple: true
+          path: coverage-artifacts
+
+      - name: Merge coverage
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm exec nx run gtkx:coverage
+          command: pnpm exec nx run gtkx:coverage-merge
           image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
-          extra-env: GTKX_MAX_WORKERS
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2

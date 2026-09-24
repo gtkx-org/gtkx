@@ -11,6 +11,7 @@
 /CLAUDE.md
 build/
 coverage/
+coverage-artifacts/
 dist/
 gschemas.compiled
 node_modules/
