@@ -1,15 +1,17 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import { basename, dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { listviewFilebrowserDemo } from "../../../src/demos/lists/listview-filebrowser.js";
 import { renderDemo } from "../../test-utils.js";
 
 type ScrollAxis = { adjustment: Gtk.Adjustment; isHorizontal: boolean };
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../../../..");
 const originalCwd = process.cwd();
+const fixtureParent = mkdtempSync(join(tmpdir(), "gtkx-filebrowser-"));
+const fixtureRoot = join(fixtureParent, "project");
 const SCROLL_STEP = 200;
 const MAX_SCROLL_STEPS = 80;
 
@@ -105,11 +107,15 @@ const orderedNames = async (grid: Gtk.GridView): Promise<string[]> => {
 };
 
 beforeAll(() => {
-    process.chdir(repoRoot);
+    mkdirSync(join(fixtureRoot, "examples", "gtk-demo"), { recursive: true });
+    mkdirSync(join(fixtureRoot, "packages"));
+    writeFileSync(join(fixtureRoot, "package.json"), "{}");
+    process.chdir(fixtureRoot);
 });
 
 afterAll(() => {
     process.chdir(originalCwd);
+    rmSync(fixtureParent, { recursive: true, force: true });
 });
 
 describe("listviewFilebrowserDemo header bar", () => {
