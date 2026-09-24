@@ -1,9 +1,12 @@
 import type { ListItem } from "@gtkx/components";
 import { ListView } from "@gtkx/components";
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import {
     GtkBox,
     GtkButton,
+    GtkFileDialog,
     GtkHeaderBar,
     GtkInscription,
     GtkOverlay,
@@ -12,11 +15,14 @@ import {
     GtkScrolledWindow,
     GtkSearchEntry,
 } from "@gtkx/jsx/gtk";
+import { createPortal, rootElement } from "@gtkx/react";
 import { existsSync, readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import { useDemo } from "../../context/demo-context.js";
+import { isCancellation } from "../../is-cancellation.js";
+import { useCancellable } from "../../use-cancellable.js";
 import sourceCode from "./listview-words.tsx?raw";
 
 type FilterState = {
@@ -50,6 +56,8 @@ type WordsContextValue = {
     filteredItems: ListItem<string>[];
     filterProgress: number;
     handleOpen: () => void;
+    loadError: string | null;
+    dismissLoadError: () => void;
 };
 
 type WordsListProps = {
@@ -73,8 +81,8 @@ const listviewWordsDemo: Demo = {
     id: "listview-words",
     title: "Lists/Words",
     description:
-        "This demo shows filtering a long list - of words.\n\nYou should have the file " +
-        "`/usr/share/dict/words` installed for this demo to work.",
+        "Filter a large word list while GTKX reports progress. The demo loads `/usr/share/dict/words` when " +
+        "available and uses a small built-in list otherwise.",
     keywords: ["GtkListView", "GtkFilterListModel", "GtkInscription"],
     component: ListViewWordsDemo,
     titlebar: ListViewWordsTitlebar,
@@ -85,7 +93,7 @@ const listviewWordsDemo: Demo = {
 };
 
 function logError(error: unknown) {
-    if (error instanceof Error) {
+    if (!isCancellation(error) && error instanceof Error) {
         console.error(error.message);
     }
 }
@@ -117,27 +125,25 @@ async function loadWordsFromFile(
     filePath: string,
     setWords: (words: string[]) => void,
     setSearchText: (text: string) => void,
+    reportError: (message: string) => void,
 ) {
     try {
         const text = await readFile(filePath, "utf8");
         setWords(splitWords(text));
         setSearchText("");
     } catch (error) {
-        const dialog = new Gtk.AlertDialog();
-        dialog.setMessage(`Failure reading words from '${filePath}': ${String(error)}`);
-        dialog.show(null);
+        reportError(`Failure reading words from '${filePath}': ${String(error)}`);
     }
 }
 
 async function openWordsFile(
+    dialog: Gtk.FileDialog,
     window: Gtk.Window | null,
+    cancellable: Gio.Cancellable,
     loadFile: (filePath: string) => Promise<void>,
 ) {
-    const dialog = new Gtk.FileDialog();
-    dialog.setTitle("Open file");
-
     try {
-        const file = await dialog.open(window, null);
+        const file = await dialog.open(window, cancellable);
         const path = file.getPath();
 
         if (path) {
@@ -300,11 +306,17 @@ const WordsList = ({ filteredItems, filterProgress }: WordsListProps) => (
 function ListViewWordsProvider({ window, children }: DemoProviderProps) {
     const [words, setWords] = useState(initialWords);
     const [searchText, setSearchText] = useState("");
+    const [fileDialog, setFileDialog] = useState<Gtk.FileDialog | null>(null);
+    const [loadError, setLoadError] = useState<string | null>(null);
+    const cancellable = useCancellable();
     const scan = useMemo(() => scanWords(words), [words]);
     const { filteredItems, filterProgress } = useFilteredWords(scan, searchText);
 
     const handleOpen = () => {
-        void openWordsFile(window, (filePath) => loadWordsFromFile(filePath, setWords, setSearchText));
+        if (fileDialog !== null && cancellable.cancellable !== null) {
+            void openWordsFile(fileDialog, window, cancellable.cancellable, (filePath) =>
+                loadWordsFromFile(filePath, setWords, setSearchText, setLoadError)).finally(cancellable.renew);
+        }
     };
 
     const value = {
@@ -313,9 +325,24 @@ function ListViewWordsProvider({ window, children }: DemoProviderProps) {
         filteredItems,
         filterProgress,
         handleOpen,
+        loadError,
+        dismissLoadError: () => {
+            setLoadError(null);
+        },
     };
 
-    return <WordsContext.Provider value={value}>{children}</WordsContext.Provider>;
+    return (
+        <>
+            {createPortal(
+                <>
+                    <GtkFileDialog ref={setFileDialog} title="Open file" />
+                    {cancellable.element}
+                </>,
+                rootElement,
+            )}
+            <WordsContext.Provider value={value}>{children}</WordsContext.Provider>
+        </>
+    );
 }
 
 function ListViewWordsTitlebar() {
@@ -325,7 +352,7 @@ function ListViewWordsTitlebar() {
 }
 
 function ListViewWordsDemo() {
-    const { searchText, setSearchText, filteredItems, filterProgress } = useWordsContext();
+    const { searchText, setSearchText, filteredItems, filterProgress, loadError, dismissLoadError } = useWordsContext();
     const { setWindowTitle } = useDemo();
 
     useEffect(() => {
@@ -337,18 +364,30 @@ function ListViewWordsDemo() {
     }, [filteredItems.length, setWindowTitle]);
 
     return (
-        <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
-            <GtkSearchEntry
-                name="search-entry"
-                text={searchText}
-                placeholderText="Search words..."
-                onSearchChanged={(entry: Gtk.SearchEntry) => {
-                    setSearchText(entry.getText());
-                }}
-                hexpand
-            />
-            <WordsList filteredItems={filteredItems} filterProgress={filterProgress} />
-        </GtkBox>
+        <>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0} vexpand hexpand>
+                <GtkSearchEntry
+                    name="search-entry"
+                    text={searchText}
+                    placeholderText="Search words..."
+                    onSearchChanged={(entry: Gtk.SearchEntry) => {
+                        setSearchText(entry.getText());
+                    }}
+                    hexpand
+                />
+                <WordsList filteredItems={filteredItems} filterProgress={filterProgress} />
+            </GtkBox>
+            {loadError !== null && (
+                <AdwAlertDialog
+                    heading="Could not load words"
+                    body={loadError}
+                    responses={[{ id: "ok", label: "_OK" }]}
+                    defaultResponse="ok"
+                    closeResponse="ok"
+                    onClosed={dismissLoadError}
+                />
+            )}
+        </>
     );
 }
 

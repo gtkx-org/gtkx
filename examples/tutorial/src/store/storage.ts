@@ -1,12 +1,13 @@
-import { fileSetContents, getUserDataDir } from "@gtkx/gi/glib";
 import type { StateStorage } from "zustand/middleware";
+import { fileSetContents, getUserDataDir } from "@gtkx/gi/glib";
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { applicationId } from "virtual:gtkx-config";
 
-const directory = join(getUserDataDir(), "com.gtkx.tutorial");
+const directory = join(getUserDataDir(), applicationId);
 const file = join(directory, "tasks.json");
 
-export const fileStorage: StateStorage = {
+const fileStorage: StateStorage = {
     getItem: () => {
         try {
             return readFileSync(file, "utf8");
@@ -25,4 +26,8 @@ export const fileStorage: StateStorage = {
     removeItem: () => {
         rmSync(file, { force: true });
     },
+};
+
+export {
+    fileStorage,
 };

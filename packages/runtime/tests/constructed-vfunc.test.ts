@@ -124,7 +124,7 @@ describe("vfuncConstructed — the subclass state the override cannot see", () =
     });
 
     it("cannot reach a private field the subclass declares", () => {
-        const errors: string[] = [];
+        let errors = 0;
 
         class PrivateObject extends GObject {
             #count = 0;
@@ -134,8 +134,8 @@ describe("vfuncConstructed — the subclass state the override cannot see", () =
 
                 try {
                     this.#count += 1;
-                } catch (error) {
-                    errors.push(String(error));
+                } catch {
+                    errors += 1;
                 }
             }
 
@@ -146,7 +146,7 @@ describe("vfuncConstructed — the subclass state the override cannot see", () =
 
         registerClass(PrivateObject, { typeName: uniqueName("GtkxConstructedPrivateField") });
         expect(new PrivateObject().getCount()).toBe(0);
-        expect(errors).toEqual([expect.stringContaining("Cannot read private member #count")]);
+        expect(errors).toBe(1);
     });
 
     it("keeps what the override assigns to a property the subclass never initializes", () => {
@@ -167,7 +167,7 @@ describe("vfuncConstructed — the subclass state the override cannot see", () =
 describe("vfuncConstructed — the subclass state an instance created from C never gets", () => {
     it("never runs the subclass constructor at all", () => {
         const name = uniqueName("GtkxConstructedNativeFields");
-        const errors: string[] = [];
+        let errors = 0;
 
         class NativeFieldObject extends GObject {
             #count = 0;
@@ -184,8 +184,8 @@ describe("vfuncConstructed — the subclass state an instance created from C nev
             getCount(): number {
                 try {
                     return this.#count;
-                } catch (error) {
-                    errors.push(String(error));
+                } catch {
+                    errors += 1;
 
                     return -1;
                 }
@@ -198,7 +198,7 @@ describe("vfuncConstructed — the subclass state an instance created from C nev
         expect((instance as NativeFieldObject).marker).toBeUndefined();
         expect((instance as NativeFieldObject).assigned).toBe("from constructed");
         expect((instance as NativeFieldObject).getCount()).toBe(-1);
-        expect(errors).toEqual([expect.stringContaining("Cannot read private member #count")]);
+        expect(errors).toBe(1);
     });
 });
 

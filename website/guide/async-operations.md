@@ -5,41 +5,75 @@ description: "Awaiting promisified GIO calls, canceling them, and keeping long w
 
 # Async Operations
 
-GIO async methods return promises, so you `await` them like any other promise.
+GTKX turns compatible GIO async/finish pairs into promises. By default in GTKX 1.6, `loadContentsAsync` resolves to the native success flag, a numeric byte array, and the optional etag. A failed call rejects, so callers can skip the success flag when destructuring. A call whose C return is void and that has a single out-parameter resolves to that value directly instead of a tuple.
 
-A promisified method resolves to the C function's return value first, then its out-parameters, as a tuple:
-
-```ts
-loadContentsAsync(cancellable?: Cancellable | null): Promise<[boolean, number[], string | null]>;
-```
-
-A failed call rejects, so the leading success boolean can be skipped with `const [, contents] = await file.loadContentsAsync(null);`. A call whose C return is void and that has a single out-parameter resolves to that value directly instead of a tuple.
-
-Under the [`v2FinishResults` future flag](/guide/configuration-and-codegen#future-flags) the boolean is dropped from the promise entirely: `loadContentsAsync` resolves to `[Uint8Array, string | null]`, and a call left with a single out-parameter, such as `replaceContentsAsync`, resolves to that value directly. The finish methods themselves, like `loadContentsFinish`, keep the boolean.
+The [`v2FinishResults` future flag](/guide/configuration-and-codegen#future-flags) removes only the redundant success flag. The separate `v2ByteArrays` flag changes the contents to a `Uint8Array`. With both enabled, `loadContentsAsync` resolves to the contents and optional etag, while `replaceContentsAsync` resolves to its etag directly. Explicit finish methods keep their native return shape.
 
 ## Awaiting async operations
 
 GTK4 reports a dismissed dialog as an error rather than as a return value, so a `catch` matching `Gtk.DialogError.DISMISSED` returns quietly:
 
 ```tsx
-import * as Gio from "@gtkx/gi/gio";
+import type * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkButton } from "@gtkx/jsx/gtk";
-import { useParentWindow } from "@gtkx/react";
+import { GCancellable } from "@gtkx/jsx/gio";
+import { GtkButton, GtkFileDialog } from "@gtkx/jsx/gtk";
+import { createPortal, rootElement, useParentWindow } from "@gtkx/react";
+import { useState } from "react";
 
-const OpenButton = ({ onFile }: { onFile: (file: Gio.File) => void }) => {
+type OpenButtonProps = {
+    onFile: (file: Gio.File) => void;
+    onError: (error: unknown) => void;
+};
+
+const OpenButton = ({ onFile, onError }: OpenButtonProps) => {
     const parentWindow = useParentWindow();
+    const [dialog, setDialog] = useState<Gtk.FileDialog | null>(null);
+    const [cancellable, setCancellable] = useState<Gio.Cancellable | null>(null);
+    const [cancellableGeneration, setCancellableGeneration] = useState(0);
+    const [isOpening, setIsOpening] = useState(false);
 
-    const handleOpen = async () => {
+    const open = async (fileDialog: Gtk.FileDialog, current: Gio.Cancellable) => {
+        setIsOpening(true);
+
         try {
-            onFile(await new Gtk.FileDialog().open(parentWindow, null));
+            onFile(await fileDialog.open(parentWindow, current));
         } catch (error) {
-            if (error instanceof Gtk.DialogError && error.code === Gtk.DialogError.DISMISSED) return;
-            throw error;
+            if (
+                error instanceof Gtk.DialogError &&
+                (error.code === Gtk.DialogError.DISMISSED || error.code === Gtk.DialogError.CANCELLED)
+            ) {
+                return;
+            }
+
+            onError(error);
+        } finally {
+            setIsOpening(false);
+            setCancellableGeneration((generation) => generation + 1);
         }
     };
 
-    return <GtkButton iconName="document-open-symbolic" onClicked={() => void handleOpen()} />;
+    return (
+        <>
+            {createPortal(<GtkFileDialog ref={setDialog} />, rootElement)}
+            {createPortal(
+                <GCancellable key={cancellableGeneration} ref={setCancellable} />,
+                rootElement,
+            )}
+            <GtkButton
+                iconName="document-open-symbolic"
+                sensitive={dialog !== null && cancellable !== null && !isOpening}
+                onClicked={() => {
+                    if (dialog !== null && cancellable !== null) void open(dialog, cancellable);
+                }}
+            />
+            <GtkButton
+                iconName="process-stop-symbolic"
+                sensitive={isOpening && cancellable !== null}
+                onClicked={() => cancellable?.cancel()}
+            />
+        </>
+    );
 };
 ```
 
@@ -47,26 +81,11 @@ Outside production, the rejection's `cause` carries the stack captured where the
 
 ## Cancellation with Gio.Cancellable
 
-Every promisified call accepts an optional `Gio.Cancellable` as its last argument. Canceling rejects the pending promise rather than leaving it hanging: GIO operations reject with code `CANCELLED` in the `Gio.IOErrorEnum` domain, GTK4 dialogs with `CANCELLED` in their own `Gtk.DialogError` domain.
+When a native async function takes a `Gio.Cancellable`, its promisified form accepts one as the last argument. The example renders `GCancellable` from `@gtkx/jsx/gio` in the root portal, captures it with a state callback ref, and passes that instance into `open`.
 
-```ts
-import * as Gio from "@gtkx/gi/gio";
-import * as Gtk from "@gtkx/gi/gtk";
+Canceling rejects the pending promise. GIO operations report `Gio.IOErrorEnum.CANCELLED`; GTK4 dialogs use `Gtk.DialogError.CANCELLED`.
 
-const openWithTimeout = async (parent: Gtk.Window | null) => {
-    const cancellable = new Gio.Cancellable();
-    const timeoutId = setTimeout(() => cancellable.cancel(), 20_000);
-
-    try {
-        return await new Gtk.FileDialog().open(parent, cancellable);
-    } catch (error) {
-        if (error instanceof Gtk.DialogError && error.code === Gtk.DialogError.CANCELLED) return null;
-        throw error;
-    } finally {
-        clearTimeout(timeoutId);
-    }
-};
-```
+A cancelled instance stays cancelled. Before starting another operation, replace its JSX element, for example by changing its key, and wait for the callback ref to receive the fresh instance. The same rule applies after unmount cleanup or React effect replay cancels an operation.
 
 ## Moving work to a worker
 
@@ -81,7 +100,7 @@ worker.on("message", (rows) => setRows(rows));
 
 The specifier has to be relative and has to name the worker source file as it exists on disk, and the `new URL(...)` has to sit directly inside the `new Worker(...)` call, otherwise `gtkx build` fails.
 
-During `gtkx dev` and Vitest, Node loads the worker and its imports directly rather than from a bundle. Relative imports in that graph must therefore name their `.ts` source files and use syntax supported by Node's type stripping; enums and parameter properties are not available. `gtkx build` bundles the graph and can accept code that native dev or test loading cannot, so exercise each worker in Vitest as well as building it.
+During `gtkx dev` and Vitest, Node loads the worker and its imports directly rather than from a bundle. Relative imports in that graph must therefore name their `.ts` source files and use syntax supported by Node's type stripping; enums and parameter properties are not available. The 1.6 scaffold uses `NodeNext` with `noEmit`, so add `"allowImportingTsExtensions": true` to `compilerOptions` before importing those source files. `gtkx build` bundles the graph and can accept code that native dev or test loading cannot, so exercise each worker in Vitest as well as building it.
 
 A worker runs no GTK code: it computes and posts results back for the main thread to render.
 

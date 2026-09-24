@@ -4,13 +4,13 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
 import { render, screen, userEvent } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
     Drawer,
     drawerScreens,
     expectHeaderTitle,
     INBOX,
-    MountSpy,
+    MountProbe,
     SETTINGS,
     sidebarRow,
     toggleButton,
@@ -117,46 +117,55 @@ describe("drawer - header", () => {
     });
 
     it("mounts screens on first focus by default", async () => {
-        const onInboxMount = vi.fn();
-        const onSettingsMount = vi.fn();
+        let inboxMounts = 0;
+        let settingsMounts = 0;
+        const onInboxMount = (): void => {
+            inboxMounts += 1;
+        };
+        const onSettingsMount = (): void => {
+            settingsMounts += 1;
+        };
 
         await render(
             <NavigationContainer>
                 <Drawer.Navigator>
                     <Drawer.Screen name="Inbox">
-                        {() => <MountSpy text="Inbox Content" onMount={onInboxMount} />}
+                        {() => <MountProbe text="Inbox Content" onMount={onInboxMount} />}
                     </Drawer.Screen>
                     <Drawer.Screen name="Settings">
-                        {() => <MountSpy text="Settings Content" onMount={onSettingsMount} />}
+                        {() => <MountProbe text="Settings Content" onMount={onSettingsMount} />}
                     </Drawer.Screen>
                 </Drawer.Navigator>
             </NavigationContainer>,
         );
 
         await screen.findByText("Inbox Content");
-        expect(onInboxMount).toHaveBeenCalled();
-        expect(onSettingsMount).not.toHaveBeenCalled();
+        expect(inboxMounts).toBe(1);
+        expect(settingsMounts).toBe(0);
         await userEvent.click(sidebarRow("Settings"));
         await screen.findByText("Settings Content");
-        expect(onSettingsMount).toHaveBeenCalled();
+        expect(settingsMounts).toBe(1);
     });
 
     it("mounts a screen at startup when lazy is false", async () => {
-        const onSettingsMount = vi.fn();
+        let settingsMounts = 0;
+        const onSettingsMount = (): void => {
+            settingsMounts += 1;
+        };
 
         await render(
             <NavigationContainer>
                 <Drawer.Navigator>
                     {drawerScreens([INBOX])}
                     <Drawer.Screen name="Settings" options={{ lazy: false }}>
-                        {() => <MountSpy text="Settings Content" onMount={onSettingsMount} />}
+                        {() => <MountProbe text="Settings Content" onMount={onSettingsMount} />}
                     </Drawer.Screen>
                 </Drawer.Navigator>
             </NavigationContainer>,
         );
 
         await screen.findByText("Inbox Content");
-        expect(onSettingsMount).toHaveBeenCalled();
+        expect(settingsMounts).toBe(1);
         expect(screen.queryByText("Settings Content")).toBeNull();
     });
 });

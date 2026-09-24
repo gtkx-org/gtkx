@@ -5,9 +5,9 @@ import { callbackFromNode, type GirCallback } from "./callback.js";
 import { classFromNode, type GirClass } from "./class.js";
 import { enumFromNode, type GirEnum } from "./enum.js";
 import { functionFromNode, type GirFunction } from "./function.js";
-import { attr, getChild, getChildren, nameAttr, rawAttr, type RawNode } from "./parse.js";
+import { attr, getChildren, nameAttr, rawAttr, type RawNode } from "./parse.js";
 import { type GirRecord, isVtableRecord, recordFromNode } from "./record.js";
-import { typeRefFromNode } from "./type-ref.js";
+import { typeCTypeFromNode, typeRefFromNode } from "./type-ref.js";
 
 type GirConstant = {
     name: string;
@@ -15,6 +15,7 @@ type GirConstant = {
     annotations: GirAnnotations;
     value: string;
     type: TypeId | undefined;
+    cType: string | undefined;
 };
 
 type GirAlias = {
@@ -103,7 +104,7 @@ const aliasFromNode = (node: RawNode, context: ParseContext): GirAlias => {
         ...documentedFromNode(node),
         cType,
         target: cType === "GType" ? context.addPrimitive("gtype") : typeRefFromNode(node, context),
-        targetCType: attr(getChild(node, "type"), "c:type"),
+        targetCType: typeCTypeFromNode(node),
     };
 };
 
@@ -119,6 +120,7 @@ const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNode, cont
         ...documentedFromNode(constant),
         value: rawAttr(constant, "value") ?? "",
         type: typeRefFromNode(constant, context),
+        cType: typeCTypeFromNode(constant),
     }));
 
     shell.aliases = getChildren(namespaceNode, "alias").map((alias) => aliasFromNode(alias, context));

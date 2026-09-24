@@ -4,7 +4,7 @@ import { ComboRow } from "@gtkx/components";
 import { GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type ReactNode, type Ref } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 type ProbeProps = {
     comboRef: Ref<Adw.ComboRow>;
@@ -121,7 +121,10 @@ describe("render - ComboRow", () => {
 describe("ComboRow controlled selection", () => {
     it("restores selectedId after the user selects another item", async () => {
         const ref = createRef<Adw.ComboRow>();
-        const onSelectionChanged = vi.fn();
+        const selectionChanges: (string | null)[] = [];
+        const onSelectionChanged = (id: string | null): void => {
+            selectionChanges.push(id);
+        };
         await render(
             <ComboShell
                 comboRef={ref}
@@ -138,7 +141,7 @@ describe("ComboRow controlled selection", () => {
         await userEvent.selectOptions(ref.current, 1);
 
         await waitFor(() => {
-            expect(onSelectionChanged).toHaveBeenCalledExactlyOnceWith("date");
+            expect(selectionChanges).toEqual(["date"]);
             expect(ref.current).toHaveObjectProperty("selected", 0);
         });
     });

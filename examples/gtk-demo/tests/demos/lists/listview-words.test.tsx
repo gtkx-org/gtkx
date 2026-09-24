@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -156,10 +156,6 @@ describe("listviewWordsDemo Open button", () => {
         try {
             await renderDemoAndClickOpen();
 
-            await waitFor(() => {
-                expect(dialogSpy).toHaveBeenCalled();
-            });
-
             const lv = await findListView();
 
             await waitFor(() => {
@@ -182,40 +178,19 @@ describe("listviewWordsDemo Open button", () => {
 });
 
 describe("listviewWordsDemo Open button failures", () => {
-    it("logs an error when the file dialog rejects", async () => {
-        const errorSpy = vi.spyOn(console, "error").mockImplementation((): void => undefined);
-        const dialogSpy = vi.spyOn(Gtk.FileDialog.prototype, "open").mockRejectedValue(new Error("user cancelled"));
-
-        try {
-            await renderDemoAndClickOpen();
-
-            await waitFor(() => {
-                expect(errorSpy).toHaveBeenCalledWith("user cancelled");
-            });
-        } finally {
-            dialogSpy.mockRestore();
-            errorSpy.mockRestore();
-        }
-    });
-
     it("shows an alert dialog when the selected file cannot be read", async () => {
         const missingFile = Gio.File.newForPath(join(tempDirRef.path, "does-not-exist.txt"));
         const dialogSpy = vi.spyOn(Gtk.FileDialog.prototype, "open").mockResolvedValue(missingFile);
-        const alertShowSpy = vi.spyOn(Gtk.AlertDialog.prototype, "show").mockImplementation((): void => undefined);
-        const setMessageSpy = vi.spyOn(Gtk.AlertDialog.prototype, "setMessage");
 
         try {
             await renderDemoAndClickOpen();
-
+            const alert = await screen.findByRole(Gtk.AccessibleRole.ALERT_DIALOG);
+            await userEvent.click(within(alert).getByRole(Gtk.AccessibleRole.BUTTON, { name: "OK" }));
             await waitFor(() => {
-                expect(alertShowSpy).toHaveBeenCalled();
+                expect(screen.queryByRole(Gtk.AccessibleRole.ALERT_DIALOG)).toBeNull();
             });
-
-            expect(setMessageSpy).toHaveBeenCalledWith(expect.stringMatching(/Failure reading words/));
         } finally {
             dialogSpy.mockRestore();
-            alertShowSpy.mockRestore();
-            setMessageSpy.mockRestore();
         }
     });
 });

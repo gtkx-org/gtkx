@@ -16,7 +16,7 @@ import {
     GtkRevealer,
     GtkScrolledWindow,
 } from "@gtkx/jsx/gtk";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import appleRedPath from "../../../data/demos/css/apple-red.png?resource";
 import sourceCode from "./listbox.tsx?raw";
@@ -44,7 +44,7 @@ type MessageRowProps = {
 
 type MessageExtraButtonsProps = {
     message: Message;
-    extraButtonsRef: React.RefObject<Gtk.Box | null>;
+    isVisible: boolean;
     onFavorite: (id: number) => void;
     onReshare: (id: number) => void;
 };
@@ -228,8 +228,8 @@ const MessageMoreMenuButton = () => (
     />
 );
 
-const MessageExtraButtons = ({ message, extraButtonsRef, onFavorite, onReshare }: MessageExtraButtonsProps) => (
-    <GtkBox ref={extraButtonsRef} spacing={6} visible={false}>
+const MessageExtraButtons = ({ message, isVisible, onFavorite, onReshare }: MessageExtraButtonsProps) => (
+    <GtkBox spacing={6} visible={isVisible}>
         <GtkButton label="Reply" receivesDefault hasFrame={false} />
         <GtkButton
             label="Reshare"
@@ -254,7 +254,7 @@ const MessageExtraButtons = ({ message, extraButtonsRef, onFavorite, onReshare }
 const MessageActions = ({
     message,
     isExpanded,
-    extraButtonsRef,
+    isVisible,
     onToggleExpand,
     onFavorite,
     onReshare,
@@ -272,7 +272,7 @@ const MessageActions = ({
             />
             <MessageExtraButtons
                 message={message}
-                extraButtonsRef={extraButtonsRef}
+                isVisible={isVisible}
                 onFavorite={onFavorite}
                 onReshare={onReshare}
             />
@@ -302,12 +302,13 @@ const MessageDetails = ({ message, isExpanded }: { message: Message; isExpanded:
 );
 
 const MessageRow = ({ message, isExpanded, onToggleExpand, onFavorite, onReshare }: MessageRowProps) => {
-    const extraButtonsRef = useRef<Gtk.Box>(null);
+    const [areExtraButtonsVisible, setAreExtraButtonsVisible] = useState(false);
 
     const handleStateFlagsChanged = (_previousFlags: Gtk.StateFlags, row: Gtk.Widget) => {
         const flags = row.getStateFlags();
-        const isVisible = (flags & Gtk.StateFlags.PRELIGHT) !== 0 || (flags & Gtk.StateFlags.SELECTED) !== 0;
-        extraButtonsRef.current?.setVisible(isVisible);
+        setAreExtraButtonsVisible(
+            (flags & Gtk.StateFlags.PRELIGHT) !== 0 || (flags & Gtk.StateFlags.SELECTED) !== 0,
+        );
     };
 
     return (
@@ -320,7 +321,7 @@ const MessageRow = ({ message, isExpanded, onToggleExpand, onFavorite, onReshare
                 <MessageActions
                     message={message}
                     isExpanded={isExpanded}
-                    extraButtonsRef={extraButtonsRef}
+                    isVisible={areExtraButtonsVisible}
                     onToggleExpand={onToggleExpand}
                     onFavorite={onFavorite}
                     onReshare={onReshare}

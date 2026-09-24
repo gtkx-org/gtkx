@@ -10,6 +10,7 @@ import {
 } from "./folded-lengths.js";
 import { fromNative, toNative } from "./native-value.js";
 import { describeValueKind, getHandle } from "./registry.js";
+import { signalDefaultReturn } from "./scalar-plan.js";
 import { splitTupleResult } from "./tuple.js";
 import { copyValue } from "./value.js";
 import { popSeedFrame, pushSeedFrame, type RefSeeds } from "./vfunc-seeds.js";
@@ -45,6 +46,7 @@ type CallbackPlan = {
     lengthSources: LengthSources;
     hasOutParams: boolean;
     hasRefOutParams: boolean;
+    isSignal: boolean;
     foldedInputIndices: ReadonlySet<number>;
 };
 
@@ -237,17 +239,33 @@ const trimCallbackInputs = (plan: CallbackPlan, wrapped: unknown[]): unknown[] =
 const nativeReturn = (plan: CallbackPlan, primary: unknown): unknown =>
     toNative(plan.returnDescriptor, plan.hasPrimary ? primary : undefined);
 
+const runCallbackWithoutOutputs = (
+    plan: CallbackPlan,
+    thisArg: unknown,
+    rawArgs: unknown[],
+): unknown => {
+    const result = plan.fn.apply(thisArg, trimCallbackInputs(plan, rawArgs));
+
+    return result === undefined && plan.isSignal && plan.hasPrimary
+        ? signalDefaultReturn
+        : nativeReturn(plan, result);
+};
+
 const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
     const { effectiveTypes } = plan;
     wrapCallbackArgs(effectiveTypes, rawArgs);
     const thisArg = getThisArg(plan.isInstanceBound, rawArgs);
 
     if (!plan.hasOutParams) {
-        return nativeReturn(plan, plan.fn.apply(thisArg, trimCallbackInputs(plan, rawArgs)));
+        return runCallbackWithoutOutputs(plan, thisArg, rawArgs);
     }
 
     const { inputs, outParams } = partitionCallbackArgs(plan, rawArgs);
     const result = applyCallback(plan, thisArg, inputs, outParams);
+
+    if (result === undefined && plan.isSignal && plan.hasPrimary) {
+        return signalDefaultReturn;
+    }
 
     if (outParams.length === 0) {
         return nativeReturn(plan, result);
@@ -308,6 +326,7 @@ function wrapCallback(fn: Callback, spec: CallbackSpec, kind: CallbackKind): Cal
         lengthSources: planLengthSources(spec, hasFoldedLengths),
         hasOutParams: haveOutParamArgs(effectiveTypes, start),
         hasRefOutParams: haveRefOutParamArgs(effectiveTypes, start),
+        isSignal: kind === "signal",
         foldedInputIndices: planFoldedInputIndices(spec, hasFoldedInputs),
     };
 

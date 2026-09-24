@@ -4,8 +4,8 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { queryAllByObjectProperty, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
-import { expectSelectedTab, findTab, getAncestor, getStackPage, SpyPage, TabsApp } from "./helpers/tab-fixtures.js";
+import { describe, expect, it } from "vitest";
+import { expectSelectedTab, findTab, getAncestor, getStackPage, MountProbe, TabsApp } from "./helpers/tab-fixtures.js";
 
 const CustomHeader = ({ viewSwitcher }: TabHeaderProps): ReactNode => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
@@ -89,22 +89,28 @@ describe("tabs - options", () => {
     });
 
     it("mounts a lazy tab on first focus", async () => {
-        const onMount = vi.fn();
-        const renderSecond = (): ReactNode => <SpyPage text="Second Content" onMount={onMount} />;
+        let mounts = 0;
+        const onMount = (): void => {
+            mounts += 1;
+        };
+        const renderSecond = (): ReactNode => <MountProbe text="Second Content" onMount={onMount} />;
         await render(<TabsApp renderers={{ Second: renderSecond }} />);
         await screen.findByText("First Content");
-        expect(onMount).not.toHaveBeenCalled();
+        expect(mounts).toBe(0);
         await userEvent.click(await findTab("Second Tab"));
         await screen.findByText("Second Content");
-        expect(onMount).toHaveBeenCalledTimes(1);
+        expect(mounts).toBe(1);
     });
 
     it("mounts a non-lazy tab at startup", async () => {
-        const onMount = vi.fn();
-        const renderSecond = (): ReactNode => <SpyPage text="Second Content" onMount={onMount} />;
+        let mounts = 0;
+        const onMount = (): void => {
+            mounts += 1;
+        };
+        const renderSecond = (): ReactNode => <MountProbe text="Second Content" onMount={onMount} />;
         await render(<TabsApp renderers={{ Second: renderSecond }} options={{ Second: { lazy: false } }} />);
         await screen.findByText("First Content");
-        expect(onMount).toHaveBeenCalledTimes(1);
+        expect(mounts).toBe(1);
         expect(screen.queryByText("Second Content")).toBeNull();
     });
 

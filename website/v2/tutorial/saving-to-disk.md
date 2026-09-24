@@ -19,8 +19,9 @@ import { fileSetContents, getUserDataDir } from "@gtkx/gi/glib";
 import type { StateStorage } from "zustand/middleware";
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { applicationId } from "virtual:gtkx-config";
 
-const directory = join(getUserDataDir(), "com.gtkx.tutorial");
+const directory = join(getUserDataDir(), applicationId);
 const file = join(directory, "tasks.json");
 
 export const fileStorage: StateStorage = {

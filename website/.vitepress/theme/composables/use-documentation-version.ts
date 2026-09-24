@@ -1,11 +1,13 @@
 import { useData } from "vitepress";
 import { computed, type ComputedRef } from "vue";
-import { documentationLink, type DocumentationVersion, GUIDE_ROOT, rootVersion, versions } from "../../versioning.js";
-
-type VersionLink = {
-    href: string;
-    samePage: boolean;
-};
+import {
+    documentationLink,
+    type DocumentationVersion,
+    GUIDE_ROOT,
+    rootVersion,
+    type VersionLink,
+    versions,
+} from "../../versioning.js";
 
 type VersionContext = {
     version: ComputedRef<DocumentationVersion>;
@@ -13,25 +15,18 @@ type VersionContext = {
     isSamePage: (target: DocumentationVersion) => boolean;
 };
 
-const isVersionLink = (value: unknown): value is VersionLink =>
-    typeof value === "object" && value !== null && "href" in value && typeof value.href === "string";
-
-const readLinks = (value: unknown): Map<string, VersionLink> => {
-    if (typeof value !== "object" || value === null) {
-        return new Map();
-    }
-
-    return new Map(Object.entries(value).filter((entry): entry is [string, VersionLink] => isVersionLink(entry[1])));
+type DocumentationFrontmatter = {
+    versionId?: string;
+    versionLinks?: Record<string, VersionLink>;
 };
 
 const useDocumentationVersion = (): VersionContext => {
     const { frontmatter } = useData();
-    const links = computed(() => readLinks(frontmatter.value.versionLinks));
-    const version = computed(() => {
-        const declared: unknown = frontmatter.value.versionId;
-
-        return versions.find((entry) => entry.id === declared) ?? rootVersion;
-    });
+    const documentation = computed<DocumentationFrontmatter>(() => frontmatter.value);
+    const links = computed(() => new Map(Object.entries(documentation.value.versionLinks ?? {})));
+    const version = computed(
+        () => versions.find((entry) => entry.id === documentation.value.versionId) ?? rootVersion,
+    );
 
     return {
         version,

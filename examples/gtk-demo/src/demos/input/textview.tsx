@@ -15,8 +15,8 @@ import {
     GtkTextChildAnchor,
     GtkTextTag,
     GtkTextView,
+    GtkWindow,
 } from "@gtkx/jsx/gtk";
-import { useParentWindow } from "@gtkx/react";
 import { type RefObject, useLayoutEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import { lookupIconPaintable } from "../icon-paintable.js";
@@ -91,8 +91,10 @@ function createNuclearTexture(): Gdk.Texture {
     builder.setHeight(size);
     builder.setStride(stride);
     builder.setFormat(Gdk.MemoryFormat.B8G8R8A8_PREMULTIPLIED);
+    const texture = builder.build();
+    surface.finish();
 
-    return builder.build();
+    return texture;
 }
 
 function findChildAnchors(buffer: Gtk.TextBuffer): Gtk.TextChildAnchor[] {
@@ -145,9 +147,9 @@ function attachWidgetClones(view: Gtk.TextView, anchors: Gtk.TextChildAnchor[], 
     }
 }
 
-function recursiveAttachView(depth: number, view: Gtk.TextView, anchor: Gtk.TextChildAnchor) {
+function recursiveAttachView(depth: number, view: Gtk.TextView, anchor: Gtk.TextChildAnchor): Gtk.Frame | null {
     if (depth > 4) {
-        return;
+        return null;
     }
 
     const childView = new Gtk.TextView();
@@ -157,43 +159,8 @@ function recursiveAttachView(depth: number, view: Gtk.TextView, anchor: Gtk.Text
     frame.setChild(childView);
     view.addChildAtAnchor(frame, anchor);
     recursiveAttachView(depth + 1, childView, anchor);
-}
 
-function handleEasterEgg(parentWindow: Gtk.Window | null, windowRef: RefObject<Gtk.Window | null>) {
-    if (windowRef.current) {
-        windowRef.current.present();
-
-        return;
-    }
-
-    const buffer = new Gtk.TextBuffer();
-    const iter = buffer.getStartIter();
-    buffer.insert(iter, "This buffer is shared by a set of nested text views.\n Nested view:\n", -1);
-    const anchor = buffer.createChildAnchor(iter);
-    buffer.insert(iter, "\nDon't do this in production applications, please.\n", -1);
-    const view = new Gtk.TextView();
-    view.setBuffer(buffer);
-    view.setWrapMode(Gtk.WrapMode.WORD);
-    recursiveAttachView(0, view, anchor);
-    const win = new Gtk.Window();
-    windowRef.current = win;
-
-    if (parentWindow) {
-        win.setTransientFor(parentWindow);
-        win.setModal(true);
-    }
-
-    win.on("close-request", () => {
-        windowRef.current = null;
-
-        return Gdk.EVENT_PROPAGATE;
-    });
-
-    const sw = new Gtk.ScrolledWindow();
-    sw.setChild(view);
-    win.setChild(sw);
-    win.setDefaultSize(300, 400);
-    win.present();
+    return frame;
 }
 
 const TextViewIntroSection = () => (
@@ -501,70 +468,117 @@ function SecondaryTextView({ textView2Ref, sharedBuffer }: SecondaryTextViewProp
     );
 }
 
-function destroyEasterEggWindow(windowRef: RefObject<Gtk.Window | null>) {
-    if (!windowRef.current) {
-        return;
-    }
-
-    windowRef.current.destroy();
-    windowRef.current = null;
-}
-
 function attachSecondaryWidgets(
     textView: Gtk.TextView | null,
     sharedBuffer: Gtk.TextBuffer | null,
-    parentWindow: Gtk.Window | null,
-    easterEggWindowRef: RefObject<Gtk.Window | null>,
+    onClickMe: () => void,
 ) {
     if (!textView || !sharedBuffer) {
         return;
     }
 
     const anchors = findChildAnchors(sharedBuffer);
+    attachWidgetClones(textView, anchors, onClickMe);
+}
 
-    attachWidgetClones(textView, anchors, () => {
-        handleEasterEgg(parentWindow, easterEggWindowRef);
-    });
+function EasterEggWindow({ windowRef, onClose }: { windowRef: RefObject<Gtk.Window | null>; onClose: () => void }) {
+    const [textView, setTextView] = useState<Gtk.TextView | null>(null);
+    const [anchor, setAnchor] = useState<Gtk.TextChildAnchor | null>(null);
 
-    return () => {
-        destroyEasterEggWindow(easterEggWindowRef);
-    };
+    useLayoutEffect(() => {
+        if (!textView || !anchor) {
+            return;
+        }
+
+        const frame = recursiveAttachView(0, textView, anchor);
+
+        if (!frame) {
+            return;
+        }
+
+        return () => {
+            textView.remove(frame);
+        };
+    }, [textView, anchor]);
+
+    return (
+        <GtkWindow
+            ref={windowRef}
+            defaultWidth={300}
+            defaultHeight={400}
+            modal
+            onCloseRequest={() => {
+                onClose();
+
+                return Gdk.EVENT_STOP;
+            }}
+        >
+            <GtkScrolledWindow>
+                <GtkTextView
+                    ref={setTextView}
+                    wrapMode={Gtk.WrapMode.WORD}
+                    buffer={(
+                        <GtkTextBuffer>
+                            {"This buffer is shared by a set of nested text views.\n Nested view:\n"}
+                            <GtkTextChildAnchor ref={setAnchor} />
+                            {"\nDon't do this in production applications, please.\n"}
+                        </GtkTextBuffer>
+                    )}
+                />
+            </GtkScrolledWindow>
+        </GtkWindow>
+    );
 }
 
 function TextViewDemo() {
-    const parentWindow = useParentWindow();
     const textView1Ref = useRef<Gtk.TextView | null>(null);
     const textView2Ref = useRef<Gtk.TextView | null>(null);
     const easterEggWindowRef = useRef<Gtk.Window | null>(null);
     const [sharedBuffer, setSharedBuffer] = useState<Gtk.TextBuffer | null>(null);
+    const [isEasterEggOpen, setIsEasterEggOpen] = useState(false);
     const [iconPaintable] = useState(() => lookupIconPaintable("drive-harddisk", 32));
     const [nuclearPaintable] = useState(createNuclearTexture);
 
     const handleClickMe = () => {
-        handleEasterEgg(parentWindow, easterEggWindowRef);
+        if (easterEggWindowRef.current) {
+            easterEggWindowRef.current.present();
+
+            return;
+        }
+
+        setIsEasterEggOpen(true);
     };
 
-    useLayoutEffect(
-        () => attachSecondaryWidgets(textView2Ref.current, sharedBuffer, parentWindow, easterEggWindowRef),
-        [sharedBuffer, parentWindow],
-    );
+    useLayoutEffect(() => {
+        attachSecondaryWidgets(textView2Ref.current, sharedBuffer, handleClickMe);
+    }, [sharedBuffer]);
 
     return (
-        <GtkPaned
-            orientation={Gtk.Orientation.VERTICAL}
-            resizeStartChild={false}
-            resizeEndChild
-            startChild={(
-                <PrimaryTextView
-                    textView1Ref={textView1Ref}
-                    setSharedBuffer={setSharedBuffer}
-                    iconPaintable={iconPaintable}
-                    nuclearPaintable={nuclearPaintable}
-                    onClickMe={handleClickMe}
+        <>
+            <GtkPaned
+                orientation={Gtk.Orientation.VERTICAL}
+                resizeStartChild={false}
+                resizeEndChild
+                startChild={(
+                    <PrimaryTextView
+                        textView1Ref={textView1Ref}
+                        setSharedBuffer={setSharedBuffer}
+                        iconPaintable={iconPaintable}
+                        nuclearPaintable={nuclearPaintable}
+                        onClickMe={handleClickMe}
+                    />
+                )}
+                endChild={<SecondaryTextView textView2Ref={textView2Ref} sharedBuffer={sharedBuffer} />}
+            />
+            {isEasterEggOpen && (
+                <EasterEggWindow
+                    windowRef={easterEggWindowRef}
+                    onClose={() => {
+                        setIsEasterEggOpen(false);
+                    }}
                 />
             )}
-            endChild={<SecondaryTextView textView2Ref={textView2Ref} sharedBuffer={sharedBuffer} />}
-        />
+        </>
     );
 }
 

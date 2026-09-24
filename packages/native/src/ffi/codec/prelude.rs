@@ -2,7 +2,7 @@ use std::ffi::c_char;
 pub(super) use std::ffi::c_void;
 
 pub(super) use napi::bindgen_prelude::*;
-pub(super) use napi::{Env, ValueType};
+pub(super) use napi::{Env, Status, ValueType};
 
 pub(super) use super::{
     Decoder, Encoder, IntegerBacked, Ownership, PtrWriter, ReadCtx, ReadSource, SlotInit,
@@ -17,6 +17,13 @@ macro_rules! bail_expected {
     };
 }
 pub(super) use bail_expected;
+
+pub(super) fn reject_callback_return(env: Env, error: &anyhow::Error) {
+    crate::host::callback_error::CallbackErrorScope::deliver(
+        env,
+        Error::new(Status::InvalidArg, error.to_string()),
+    );
+}
 
 macro_rules! reject_return_codec {
     ($kind:expr) => {

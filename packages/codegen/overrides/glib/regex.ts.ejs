@@ -26,7 +26,7 @@ declare module "../glib.js" {
          * @returns Tuple of:
          *
          * - `result`: `true` if the string matched, `false` otherwise
-         * - `matchInfo`: pointer to location where to store the `GMatchInfo`, or `null` if you do not need it
+         * - `matchInfo`: owning match context for fetching matched ranges
          * @throws A `GLib.Error` carrying the failing operation's domain, code, and message.
          * @since 2.14
          */
@@ -46,7 +46,7 @@ declare module "../glib.js" {
          * @returns Tuple of:
          *
          * - `result`: `true` if the string matched, `false` otherwise
-         * - `matchInfo`: pointer to location where to store the `GMatchInfo`, or `null` if you do not need it
+         * - `matchInfo`: owning match context for fetching matched ranges
          * @throws A `GLib.Error` carrying the failing operation's domain, code, and message.
          * @since 2.14
          */

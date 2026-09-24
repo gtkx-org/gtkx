@@ -1,56 +1,62 @@
+import type { ChildProcess } from "node:child_process";
 import * as Gtk from "@gtkx/gi/gtk";
 import { quitApplication, runApplication } from "@gtkx/runtime";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { countSignal, createApplication, createApplicationFrom } from "./helpers/application.js";
+import { spawnWithParentDeathSignal } from "@gtkx/utils";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { createApplicationFrom } from "./helpers/application.js";
+import { collectOutput, waitForMarker } from "./helpers/child-output.js";
 
-const nativeMock = vi.hoisted(() => ({ keepAlive: vi.fn() }));
+const FIXTURE = fileURLToPath(new URL("fixtures/application-keep-alive.ts", import.meta.url));
+const FIXTURE_ARGS = ["--conditions=source", "--import", "tsx", FIXTURE];
+const READY_MARKER = "READY";
+const STOPPED_MARKER = "STOPPED";
+const TIMEOUT_MS = 20_000;
 
-vi.mock("@gtkx/native", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@gtkx/native")>();
+const waitForClose = (child: ChildProcess): Promise<number | null> =>
+    new Promise((resolve, reject) => {
+        child.once("error", reject);
+        child.once("close", resolve);
+    });
 
-    return { ...actual, keepAlive: nativeMock.keepAlive };
-});
+const runHeldApplication = async (mode: "activated" | "service"): Promise<string> => {
+    const child = spawnWithParentDeathSignal(process.execPath, [...FIXTURE_ARGS, mode], {
+        stdio: ["pipe", "pipe", "pipe"],
+    });
+    const read = collectOutput(child);
+    const closed = waitForClose(child);
 
-afterEach(() => {
-    nativeMock.keepAlive.mockClear();
-});
+    try {
+        await waitForMarker({
+            child,
+            read,
+            marker: READY_MARKER,
+            subject: "the application keep-alive fixture",
+            timeoutMs: TIMEOUT_MS,
+        });
+        child.stdin?.end("quit\n");
+        expect(await closed).toBe(0);
+
+        return read();
+    } finally {
+        child.kill("SIGTERM");
+    }
+};
 
 describe("runApplication — holding the native loop alive", () => {
-    it("holds the loop from activation until shutdown releases it", () => {
-        const application = createApplication();
-        expect(runApplication(application, ["probe"])).toEqual({ isPrimary: true, exitStatus: 0 });
-        expect(nativeMock.keepAlive).toHaveBeenLastCalledWith(true);
-        quitApplication(application);
-        expect(nativeMock.keepAlive).toHaveBeenLastCalledWith(false);
+    it("holds an activated application until shutdown", async () => {
+        expect(await runHeldApplication("activated")).toContain(STOPPED_MARKER);
     });
 
-    it("holds the loop for a registered application that never activated", () => {
-        const application = createApplication();
-        const activations = countSignal(application, "activate");
+    it("holds a registered service before activation", async () => {
+        expect(await runHeldApplication("service")).toContain(STOPPED_MARKER);
+    });
 
-        expect(runApplication(application, ["probe", "--gapplication-service"])).toEqual({
-            isPrimary: true,
-            exitStatus: 0,
+    it("exits naturally when command-line handling registers nothing", async () => {
+        const child = spawnWithParentDeathSignal(process.execPath, [...FIXTURE_ARGS, "rejected"], {
+            stdio: "ignore",
         });
-
-        expect(activations()).toBe(0);
-        expect(nativeMock.keepAlive).toHaveBeenCalledExactlyOnceWith(true);
-        quitApplication(application);
-    });
-
-    it("leaves the loop alone when the command line registered nothing", () => {
-        const application = createApplication();
-        expect(runApplication(application, ["probe", "--nope"])).toEqual({ isPrimary: false, exitStatus: 1 });
-        expect(nativeMock.keepAlive).not.toHaveBeenCalled();
-    });
-
-    it("holds the loop again on every later activation", () => {
-        const application = createApplication();
-        runApplication(application, ["probe"]);
-        nativeMock.keepAlive.mockClear();
-        application.activate();
-        expect(nativeMock.keepAlive).toHaveBeenCalledExactlyOnceWith(true);
-        quitApplication(application);
+        expect(await waitForClose(child)).toBe(1);
     });
 });
 

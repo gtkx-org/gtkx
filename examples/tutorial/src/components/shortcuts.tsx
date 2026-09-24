@@ -1,7 +1,7 @@
 import { t } from "@gtkx/i18n";
 import { AdwShortcutsDialog, AdwShortcutsItem, AdwShortcutsSection } from "@gtkx/jsx/adw";
 
-export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
+const Shortcuts = ({ onClose }: { onClose: () => void }) => (
     <AdwShortcutsDialog onClosed={onClose}>
         <AdwShortcutsSection title={t("General")}>
             <AdwShortcutsItem title={t("New task")} accelerator="<Control>n" />
@@ -15,3 +15,7 @@ export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
         </AdwShortcutsSection>
     </AdwShortcutsDialog>
 );
+
+export {
+    Shortcuts,
+};

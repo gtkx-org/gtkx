@@ -5,11 +5,11 @@ import { GtkBox, GtkLabel, GtkListBox, GtkListBoxRow, GtkNotebook, GtkNotebookPa
 import { getWidgetText, render, screen, userEvent } from "@gtkx/testing";
 import { renderChildren } from "@gtkx/testing/internal";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { buildLabelNotebook, buildPlainNotebook } from "../helpers/notebook-render.js";
 
 type NotebookPageMetadata = Pick<GtkNotebookPageElementProps, "tabLabel" | "tabExpand" | "tabFill">;
-type NotebookFixture = { notebook: Gtk.Notebook; onSwitchPage: ReturnType<typeof vi.fn> };
+type NotebookFixture = { notebook: Gtk.Notebook; switchPageCalls: unknown[][] };
 
 const TAB_LABELS = ["Tab one", "Tab two", "Tab three"];
 
@@ -53,7 +53,10 @@ const renderPage = async (pageProps: NotebookPageMetadata) => {
     return notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
 };
 
-const notebookElement = (ref: RefObject<Gtk.Notebook | null>, onSwitchPage: () => void): ReactNode => (
+const notebookElement = (
+    ref: RefObject<Gtk.Notebook | null>,
+    onSwitchPage: (...args: unknown[]) => void,
+): ReactNode => (
     <GtkNotebook ref={ref} onSwitchPage={onSwitchPage}>
         {TAB_LABELS.map((label, index) => (
             <GtkNotebookPage key={label} tabLabel={label}>
@@ -65,10 +68,13 @@ const notebookElement = (ref: RefObject<Gtk.Notebook | null>, onSwitchPage: () =
 
 const renderFixture = async (wrap: (book: ReactNode) => ReactNode = (book) => book): Promise<NotebookFixture> => {
     const ref = createRef<Gtk.Notebook>();
-    const onSwitchPage = vi.fn();
+    const switchPageCalls: unknown[][] = [];
+    const onSwitchPage = (...args: unknown[]): void => {
+        switchPageCalls.push(args);
+    };
     await render(wrap(notebookElement(ref, onSwitchPage)));
 
-    return { notebook: ref.current as Gtk.Notebook, onSwitchPage };
+    return { notebook: ref.current as Gtk.Notebook, switchPageCalls };
 };
 
 const renderAndClick = async (text: string): Promise<NotebookFixture> => {
@@ -284,9 +290,9 @@ describe("render - NotebookPage", () => {
 
 describe("clicking a notebook tab", () => {
     it("switches to the page whose tab label is clicked", async () => {
-        const { notebook, onSwitchPage } = await renderAndClick("Tab two");
+        const { notebook, switchPageCalls } = await renderAndClick("Tab two");
         expect(notebook.getCurrentPage()).toBe(1);
-        expect(onSwitchPage).toHaveBeenCalledWith(expect.anything(), 1, notebook);
+        expect(switchPageCalls).toEqual([[expect.anything(), 1, notebook]]);
     });
 
     it("switches to the page whose tab widget is clicked", async () => {
@@ -307,15 +313,18 @@ describe("clicking a notebook tab", () => {
     });
 
     it("leaves the page alone when the page content is clicked", async () => {
-        const { notebook, onSwitchPage } = await renderAndClick("Page 0");
+        const { notebook, switchPageCalls } = await renderAndClick("Page 0");
         expect(notebook.getCurrentPage()).toBe(0);
-        expect(onSwitchPage).not.toHaveBeenCalled();
+        expect(switchPageCalls).toEqual([]);
     });
 });
 
 describe("clicking a notebook tab nested in another widget", () => {
     it("switches the page of a notebook nested in a row instead of activating the row", async () => {
-        const onRowActivated = vi.fn();
+        let rowActivationCount = 0;
+        const onRowActivated = (): void => {
+            rowActivationCount += 1;
+        };
 
         const { notebook } = await renderFixture((book) => (
             <GtkListBox selectionMode={Gtk.SelectionMode.SINGLE} onRowActivated={onRowActivated}>
@@ -325,7 +334,7 @@ describe("clicking a notebook tab nested in another widget", () => {
 
         await userEvent.click(screen.getByText("Tab two"));
         expect(notebook.getCurrentPage()).toBe(1);
-        expect(onRowActivated).not.toHaveBeenCalled();
+        expect(rowActivationCount).toBe(0);
     });
 
     it("switches the innermost notebook when its tab is nested in another notebook", async () => {

@@ -14,6 +14,7 @@ import {
     GtkDrawingArea,
     GtkDropTarget,
     GtkEntry,
+    GtkFileDialog,
     GtkImage,
     GtkLabel,
     GtkSeparator,
@@ -21,19 +22,22 @@ import {
     GtkStackPage,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { useParentWindow, useProperty } from "@gtkx/react";
+import { createPortal, rootElement, useParentWindow, useProperty } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import floppyBuddyPath from "../../../data/demos/gestures/floppybuddy.gif?resource";
 import demo4LogoPath from "../../../data/demos/gestures/org.gtk.Demo4.svg?resource";
 import portlandRosePath from "../../../data/demos/gestures/portland-rose.jpg?resource";
 import { buildRgba } from "../../build-rgba.js";
+import { isCancellation } from "../../is-cancellation.js";
+import { useCancellable } from "../../use-cancellable.js";
 import sourceCode from "./clipboard.tsx?raw";
 
 type SourceType = "Text" | "Color" | "Image" | "File" | "Folder";
 type PastedContentType = "" | "Text" | "Color" | "Image" | "File";
 type SetPastedContent = React.Dispatch<React.SetStateAction<PastedContent>>;
 type ClipboardState = ReturnType<typeof useClipboardState>;
+type ClipboardTextures = ReturnType<typeof useClipboardTextures>;
 
 type PastedContent = {
     type: PastedContentType;
@@ -97,6 +101,26 @@ type ClipboardPasteSectionProps = {
     onDrop: (value: GObject.Value) => boolean;
 };
 
+type FileDialogRequest = {
+    dialog: Gtk.FileDialog;
+    window: Gtk.Window | null;
+    cancellable: Gio.Cancellable;
+    kind: "file" | "folder";
+    setSourceFile: (file: Gio.File) => void;
+};
+
+type ClipboardDialogObjects = {
+    parentWindow: Gtk.Window | null;
+    file: ClipboardFileDialog;
+    folder: ClipboardFileDialog;
+};
+
+type ClipboardFileDialog = {
+    dialog: Gtk.FileDialog | null;
+    cancellable: Gio.Cancellable | null;
+    renew: () => void;
+};
+
 const gdkRgbaType = Gdk.RGBA.prototype.__type__;
 const gdkPaintableType = Gdk.Paintable.prototype.__type__;
 const gfileType = Gio.File.prototype.__type__;
@@ -108,8 +132,7 @@ const clipboardDemo: Demo = {
     id: "clipboard",
     title: "Clipboard",
     description:
-        "GdkClipboard is used for clipboard handling. This demo shows how to copy and paste text, images, " +
-        "colors or files to and from the clipboard.\n\nYou can also use Drag-And-Drop to copy the data from " +
+        "Copy and paste text, images, colors and files with GdkClipboard. The same content can be dragged from " +
         "the source to the target.",
     keywords: ["drag-and-drop", "dnd"],
     component: ClipboardDemo,
@@ -117,7 +140,7 @@ const clipboardDemo: Demo = {
 };
 
 const logError = (error: unknown) => {
-    if (error instanceof Error) {
+    if (!isCancellation(error) && error instanceof Error) {
         console.error(error.message);
     }
 };
@@ -182,9 +205,9 @@ function useClipboardState() {
 }
 
 function useClipboardTextures() {
-    const portlandRoseTexture = Gdk.Texture.newFromResource(portlandRosePath);
-    const floppyBuddyTexture = Gdk.Texture.newFromResource(floppyBuddyPath);
-    const demo4LogoTexture = Gdk.Texture.newFromResource(demo4LogoPath);
+    const [portlandRoseTexture] = useState(() => Gdk.Texture.newFromResource(portlandRosePath));
+    const [floppyBuddyTexture] = useState(() => Gdk.Texture.newFromResource(floppyBuddyPath));
+    const [demo4LogoTexture] = useState(() => Gdk.Texture.newFromResource(demo4LogoPath));
 
     return { portlandRoseTexture, floppyBuddyTexture, demo4LogoTexture };
 }
@@ -214,35 +237,22 @@ const fileValue = (file: Gio.File): GObject.Value => {
     return value;
 };
 
-const createImageProvider = (selectedImage: number) => {
-    const path = imagePathForIndex(selectedImage);
+const textureForIndex = (index: number, textures: ClipboardTextures) =>
+    [textures.portlandRoseTexture, textures.floppyBuddyTexture, textures.demo4LogoTexture][index] ??
+    textures.portlandRoseTexture;
 
-    try {
-        return Gdk.ContentProvider.newForValue(paintableValue(Gdk.Texture.newFromResource(path)));
-    } catch (error) {
-        logError(error);
-
-        return null;
-    }
-};
-
-function useDragProviders(state: ClipboardState) {
+function useDragProviders(state: ClipboardState, textures: ClipboardTextures) {
     const { sourceText, sourceColor, selectedImage, sourceFile } = state;
     const createTextDragProvider = () => Gdk.ContentProvider.newForValue(sourceText);
     const createColorDragProvider = () => Gdk.ContentProvider.newForValue(sourceColor);
-    const createImageDragProvider = () => createImageProvider(selectedImage);
+    const createImageDragProvider = () =>
+        Gdk.ContentProvider.newForValue(paintableValue(textureForIndex(selectedImage, textures)));
 
     const createFileDragProvider = () =>
         sourceFile ? Gdk.ContentProvider.newForValue(fileValue(sourceFile)) : null;
 
     return { createTextDragProvider, createColorDragProvider, createImageDragProvider, createFileDragProvider };
 }
-
-const imagePathForIndex = (index: number) => {
-    const paths = [portlandRosePath, floppyBuddyPath, demo4LogoPath];
-
-    return paths[index] ?? portlandRosePath;
-};
 
 const copyTextToClipboard = (clipboard: Gdk.Clipboard, sourceText: string) => {
     setClipboardValue(clipboard, sourceText);
@@ -252,14 +262,8 @@ const copyColorToClipboard = (clipboard: Gdk.Clipboard, sourceColor: Gdk.RGBA) =
     setClipboardValue(clipboard, sourceColor);
 };
 
-const copyImageToClipboard = (clipboard: Gdk.Clipboard, selectedImage: number) => {
-    const path = imagePathForIndex(selectedImage);
-
-    try {
-        setClipboardValue(clipboard, paintableValue(Gdk.Texture.newFromResource(path)));
-    } catch (error) {
-        logError(error);
-    }
+const copyImageToClipboard = (clipboard: Gdk.Clipboard, selectedImage: number, textures: ClipboardTextures) => {
+    setClipboardValue(clipboard, paintableValue(textureForIndex(selectedImage, textures)));
 };
 
 const copyFileToClipboard = (clipboard: Gdk.Clipboard, sourceFile: Gio.File) => {
@@ -272,7 +276,7 @@ const copySourceToClipboard = ({
     sourceColor,
     selectedImage,
     sourceFile,
-}: CopySourceArgs) => {
+}: CopySourceArgs, textures: ClipboardTextures) => {
     const clipboard = getClipboard();
 
     if (!clipboard) {
@@ -289,7 +293,7 @@ const copySourceToClipboard = ({
             break;
         }
         case "Image": {
-            copyImageToClipboard(clipboard, selectedImage);
+            copyImageToClipboard(clipboard, selectedImage, textures);
             break;
         }
         case "File":
@@ -329,21 +333,41 @@ const pasteFromClipboard = async (setPastedContent: SetPastedContent): Promise<v
     }
 };
 
-function useClipboardHandlers(state: ClipboardState, parentWindow: Gtk.Window | null) {
+function useClipboardHandlers(
+    state: ClipboardState,
+    textures: ClipboardTextures,
+    { parentWindow, file, folder }: ClipboardDialogObjects,
+) {
     const { setSourceFile, setPastedContent } = state;
 
     const handleCopy = () => {
-        copySourceToClipboard(state);
+        copySourceToClipboard(state, textures);
     };
 
     const handlePaste = () => pasteFromClipboard(setPastedContent);
 
     const handleFileSelect = () => {
-        void openFileDialog(parentWindow, "file", setSourceFile);
+        if (file.dialog !== null && file.cancellable !== null) {
+            void openFileDialog({
+                dialog: file.dialog,
+                window: parentWindow,
+                cancellable: file.cancellable,
+                kind: "file",
+                setSourceFile,
+            }).finally(file.renew);
+        }
     };
 
     const handleFolderSelect = () => {
-        void openFileDialog(parentWindow, "folder", setSourceFile);
+        if (folder.dialog !== null && folder.cancellable !== null) {
+            void openFileDialog({
+                dialog: folder.dialog,
+                window: parentWindow,
+                cancellable: folder.cancellable,
+                kind: "folder",
+                setSourceFile,
+            }).finally(folder.renew);
+        }
     };
 
     const didHandleDrop = (value: GObject.Value) => didHandleClipboardDrop(value, setPastedContent);
@@ -450,15 +474,12 @@ async function tryPasteText(
     return true;
 }
 
-const openFileDialog = async (
-    window: Gtk.Window | null,
-    kind: "file" | "folder",
-    setSourceFile: (f: Gio.File) => void,
-) => {
-    const dialog = new Gtk.FileDialog();
-
+const openFileDialog = async ({ dialog, window, cancellable, kind, setSourceFile }: FileDialogRequest) => {
     try {
-        const file = kind === "file" ? await dialog.open(window, null) : await dialog.selectFolder(window, null);
+        const file =
+            kind === "file"
+                ? await dialog.open(window, cancellable)
+                : await dialog.selectFolder(window, cancellable);
         setSourceFile(file);
     } catch (error) {
         logError(error);
@@ -762,47 +783,72 @@ const ClipboardPasteSection = ({ pastedContent, canPaste, onPaste, onDrop }: Cli
     </GtkBox>
 );
 
+function useClipboardFileDialog() {
+    const [dialog, setDialog] = useState<Gtk.FileDialog | null>(null);
+    const cancellable = useCancellable();
+
+    const portal = createPortal(
+        <>
+            <GtkFileDialog ref={setDialog} />
+            {cancellable.element}
+        </>,
+        rootElement,
+    );
+
+    return { dialog, cancellable: cancellable.cancellable, renew: cancellable.renew, portal };
+}
+
 function ClipboardDemo() {
     const state = useClipboardState();
     const textures = useClipboardTextures();
-    const providers = useDragProviders(state);
+    const providers = useDragProviders(state, textures);
     const parentWindow = useParentWindow();
-    const clipboardHandlers = useClipboardHandlers(state, parentWindow);
+    const fileDialog = useClipboardFileDialog();
+    const folderDialog = useClipboardFileDialog();
+    const clipboardHandlers = useClipboardHandlers(state, textures, {
+        parentWindow,
+        file: fileDialog,
+        folder: folderDialog,
+    });
     const formats = useProperty(getClipboard(), "formats");
     const canPaste = formats ? canPasteFrom(formats) : false;
 
     return (
-        <GtkBox
-            orientation={Gtk.Orientation.VERTICAL}
-            spacing={12}
-            marginStart={12}
-            marginEnd={12}
-            marginTop={12}
-            marginBottom={12}
-        >
-            <GtkLabel wrap maxWidthChars={40}>
-                {"“Copy” will copy the selected data the clipboard, “Paste” will show the current clipboard " +
-                    "contents. You can also drag the data to the bottom."}
-            </GtkLabel>
+        <>
+            {fileDialog.portal}
+            {folderDialog.portal}
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                spacing={12}
+                marginStart={12}
+                marginEnd={12}
+                marginTop={12}
+                marginBottom={12}
+            >
+                <GtkLabel wrap maxWidthChars={40}>
+                    {"“Copy” will copy the selected data the clipboard, “Paste” will show the current clipboard " +
+                        "contents. You can also drag the data to the bottom."}
+                </GtkLabel>
 
-            <ClipboardSourceSection
-                state={state}
-                textures={textures}
-                providers={providers}
-                onCopy={clipboardHandlers.handleCopy}
-                onFileSelect={clipboardHandlers.handleFileSelect}
-                onFolderSelect={clipboardHandlers.handleFolderSelect}
-            />
+                <ClipboardSourceSection
+                    state={state}
+                    textures={textures}
+                    providers={providers}
+                    onCopy={clipboardHandlers.handleCopy}
+                    onFileSelect={clipboardHandlers.handleFileSelect}
+                    onFolderSelect={clipboardHandlers.handleFolderSelect}
+                />
 
-            <GtkSeparator />
+                <GtkSeparator />
 
-            <ClipboardPasteSection
-                pastedContent={state.pastedContent}
-                canPaste={canPaste}
-                onPaste={clipboardHandlers.handlePaste}
-                onDrop={clipboardHandlers.didHandleDrop}
-            />
-        </GtkBox>
+                <ClipboardPasteSection
+                    pastedContent={state.pastedContent}
+                    canPaste={canPaste}
+                    onPaste={clipboardHandlers.handlePaste}
+                    onDrop={clipboardHandlers.didHandleDrop}
+                />
+            </GtkBox>
+        </>
     );
 }
 

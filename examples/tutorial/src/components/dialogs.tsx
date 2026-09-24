@@ -9,13 +9,14 @@ import { NewListDialog } from "./new-list-dialog.js";
 import { Preferences } from "./preferences.js";
 import { Shortcuts } from "./shortcuts.js";
 
-export const useRequestDeleteTask = (): ((task: Task) => void) => {
+const useRequestDeleteTask = (): ((task: Task) => void) => {
     const { show } = useToast();
 
     return (task) => {
         const { moveToTrash, restore, askDeleteTask } = useStore.getState();
         if (task.deleted) {
             askDeleteTask(task);
+
             return;
         }
         closeTaskIfOpen(task.id);
@@ -24,28 +25,43 @@ export const useRequestDeleteTask = (): ((task: Task) => void) => {
             useMarkup: false,
             title: t("“{{title}}” moved to Trash", { title: task.title }),
             buttonLabel: t("Undo"),
-            onButtonClicked: () => restore(task.id),
+            onButtonClicked: () => {
+                restore(task.id);
+            },
         });
     };
 };
 
-export const Dialogs = () => {
+const Dialogs = () => {
     const dialog = useStore((state) => state.dialog);
     const showDialog = useStore((state) => state.showDialog);
-    const close = () => showDialog("none");
+    const close = () => {
+        showDialog("none");
+    };
 
     switch (dialog.kind) {
-        case "about":
+        case "about": {
             return <About onClose={close} />;
-        case "shortcuts":
+        }
+        case "shortcuts": {
             return <Shortcuts onClose={close} />;
-        case "preferences":
+        }
+        case "preferences": {
             return <Preferences onClose={close} />;
-        case "new-list":
+        }
+        case "new-list": {
             return <NewListDialog />;
-        case "delete-task":
+        }
+        case "delete-task": {
             return <DeleteConfirmation task={dialog.task} />;
-        case "none":
+        }
+        case "none": {
             return null;
+        }
     }
+};
+
+export {
+    Dialogs,
+    useRequestDeleteTask,
 };

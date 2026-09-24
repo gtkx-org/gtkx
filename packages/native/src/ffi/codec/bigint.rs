@@ -58,7 +58,6 @@ impl BigIntCodec {
                 }
                 Ok(n as i128)
             }
-            ValueType::Null | ValueType::Undefined => Ok(0),
             _ => bail_expected!("a BigInt", self.name()),
         }
     }
@@ -199,17 +198,20 @@ impl Decoder for BigIntCodec {
 impl PtrWriter for BigIntCodec {
     fn write_return_to_ptr(
         &self,
-        _env: &Env,
+        env: &Env,
         ret: ffi::Slot,
         value: &std::result::Result<Unknown<'_>, ()>,
     ) {
-        let int = match value {
-            Ok(unknown) => self.integer_from_value(*unknown).unwrap_or(0),
-            Err(()) => 0,
+        let stash = match value {
+            Ok(unknown) => self
+                .integer_from_value(*unknown)
+                .and_then(|integer| self.checked_to_stash(integer))
+                .unwrap_or_else(|error| {
+                    reject_callback_return(*env, &error);
+                    self.zero_stash()
+                }),
+            Err(()) => self.zero_stash(),
         };
-        let stash = self
-            .checked_to_stash(int)
-            .unwrap_or_else(|_| self.zero_stash());
         let _ = unsafe { stash.write_scalar_to_ptr(ret.as_ptr()) };
     }
 

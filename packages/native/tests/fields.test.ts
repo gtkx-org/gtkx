@@ -85,6 +85,60 @@ test("a bound float field round-trips a fractional value", () => {
     expect(readField(FLOAT64, block, 8)).toBe(0.5);
 });
 
+test("a fixed float array reads unaligned native storage", () => {
+    const values = bindField({
+        kind: "array",
+        arrayKind: "fixed",
+        ownership: "borrowed",
+        itemDescriptor: { kind: "float64" },
+        fixedSize: 2,
+    });
+    const source = alloc(17);
+    writeField(FLOAT64, source, 1, 1.25);
+    writeField(FLOAT64, source, 9, -2.5);
+    const data = read(source, { kind: "struct", ownership: "borrowed", isInline: true }, 1);
+    const field = alloc(8);
+    write(field, { kind: "struct", ownership: "borrowed" }, 0, data);
+
+    expect(readField(values, field, 0)).toEqual([1.25, -2.5]);
+});
+
+test("a fixed pointer array reads unaligned native storage", () => {
+    const values = bindField({
+        kind: "array",
+        arrayKind: "fixed",
+        ownership: "borrowed",
+        itemDescriptor: { kind: "struct", ownership: "borrowed", size: 4 },
+        fixedSize: 2,
+    });
+    const first = alloc(4);
+    const second = alloc(4);
+    writeField(INT32, first, 0, 17);
+    writeField(INT32, second, 0, 29);
+    const source = alloc(17);
+    write(source, { kind: "struct", ownership: "borrowed" }, 1, first);
+    write(source, { kind: "struct", ownership: "borrowed" }, 9, second);
+    const data = read(source, { kind: "struct", ownership: "borrowed", isInline: true }, 1);
+    const field = alloc(8);
+    write(field, { kind: "struct", ownership: "borrowed" }, 0, data);
+
+    const items = readField(values, field, 0) as ExternalObject<Handle>[];
+    expect(items.map((item) => readField(INT32, item, 0))).toEqual([17, 29]);
+});
+
+test("a struct pointer field accepts overlapping source storage", () => {
+    const target = alloc(12);
+    writeField(INT32, target, 4, 17);
+    writeField(INT32, target, 8, 29);
+    const source = read(target, { kind: "struct", ownership: "borrowed", isInline: true, size: 8 }, 4);
+    const field = alloc(8);
+    write(field, { kind: "struct", ownership: "borrowed" }, 0, target);
+
+    write(field, { kind: "struct", ownership: "borrowed", size: 8 }, 0, source);
+
+    expect([readField(INT32, target, 0), readField(INT32, target, 4)]).toEqual([17, 29]);
+});
+
 test("a bound borrowed byte field reads back the bytes written at the same offset", () => {
     const block = alloc(16);
 
@@ -167,15 +221,6 @@ test("writing null into a byte field clears it back to null", () => {
     writeField(BYTES, block, 0, null);
 
     expect(readField(BYTES, block, 0)).toBeNull();
-});
-
-test("writing null into a numeric field stores zero", () => {
-    const block = alloc(16);
-
-    writeField(INT32, block, 0, 123);
-    writeField(INT32, block, 0, null);
-
-    expect(readField(INT32, block, 0)).toBe(0);
 });
 
 test("one bound descriptor serves distinct handles without carrying state between them", () => {

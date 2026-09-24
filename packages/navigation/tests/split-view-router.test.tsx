@@ -3,10 +3,10 @@ import type { ReactNode } from "react";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { createNavigationContainerRef, NavigationContainer, StackActions } from "@gtkx/navigation";
 import { act, render, screen } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
     clickButton,
-    createStateSpy,
+    createStateLog,
     expectHidden,
     expectRouteNames,
     expectVisible,
@@ -35,21 +35,21 @@ const GatedSplit = ({ hasLists, onStateChange }: GatedSplitProps): ReactNode => 
 
 describe("split view - router", () => {
     it("keeps the sidebar at the root when a replace targets the first content route", async () => {
-        const onStateChange = createStateSpy();
-        await renderSplit({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderSplit({ container: { onStateChange: stateLog.record } });
         await clickButton("Open personal");
         await screen.findByText("Tasks personal");
         await clickButton("Replace with task");
         await screen.findByText("Task 9");
         expectHidden("Tasks personal");
         expectVisible("Lists Content");
-        expectRouteNames(onStateChange, ["Lists", "Task"]);
+        expectRouteNames(stateLog, ["Lists", "Task"]);
     });
 
     it("puts the sidebar back when a replace targets the sidebar route itself", async () => {
         const ref = createNavigationContainerRef<Params>();
-        const onStateChange = createStateSpy();
-        await renderSplit({ container: { onStateChange, ref } });
+        const stateLog = createStateLog();
+        await renderSplit({ container: { onStateChange: stateLog.record, ref } });
         await screen.findByText("Nothing Selected");
 
         await act(() => {
@@ -59,29 +59,29 @@ describe("split view - router", () => {
         await screen.findByText("Task 4");
         expectHidden("Nothing Selected");
         expectVisible("Lists Content");
-        expectRouteNames(onStateChange, ["Lists", "Task"]);
+        expectRouteNames(stateLog, ["Lists", "Task"]);
     });
 
     it("keeps the sidebar usable after a reset that omits it", async () => {
-        const onStateChange = createStateSpy();
-        await renderSplit({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderSplit({ container: { onStateChange: stateLog.record } });
         await clickButton("Open personal");
         await clickButton("Reset to task");
         await screen.findByText("Task 3");
         expectHidden("Tasks personal");
         expectVisible("Lists Content");
-        expectRouteNames(onStateChange, ["Lists", "Task"]);
+        expectRouteNames(stateLog, ["Lists", "Task"]);
         await clickButton("Go back");
         await screen.findByText("Nothing Selected");
         await clickButton("Open work");
         await screen.findByText("Tasks work");
-        expectRouteNames(onStateChange, ["Lists", "Tasks"]);
+        expectRouteNames(stateLog, ["Lists", "Tasks"]);
     });
 
     it("leaves only the sidebar on the stack after popToTop", async () => {
         const ref = createNavigationContainerRef<Params>();
-        const onStateChange = createStateSpy();
-        await renderSplit({ container: { onStateChange, ref } });
+        const stateLog = createStateLog();
+        await renderSplit({ container: { onStateChange: stateLog.record, ref } });
         await clickButton("Open personal");
         await clickButton("Open task");
         await screen.findByText("Task 7");
@@ -93,12 +93,15 @@ describe("split view - router", () => {
         await screen.findByText("Nothing Selected");
         expectHidden("Task 7");
         expectVisible("Lists Content");
-        expectRouteNames(onStateChange, ["Lists"]);
+        expectRouteNames(stateLog, ["Lists"]);
     });
 
     it("ignores goBack and Escape while only the sidebar is on the stack", async () => {
         const ref = createNavigationContainerRef<Params>();
-        const onUnhandledAction = vi.fn();
+        let unhandledActions = 0;
+        const onUnhandledAction = (): void => {
+            unhandledActions += 1;
+        };
         await renderSplit({ container: { onUnhandledAction, ref } });
         await screen.findByText("Nothing Selected");
         expect(ref.canGoBack()).toBe(false);
@@ -110,29 +113,29 @@ describe("split view - router", () => {
 
         expectVisible("Nothing Selected");
         expectVisible("Lists Content");
-        expect(onUnhandledAction).toHaveBeenCalledTimes(1);
+        expect(unhandledActions).toBe(1);
     });
 
     it("restores the sidebar under an initialState that omits it", async () => {
-        const onStateChange = createStateSpy();
+        const stateLog = createStateLog();
         const initialState = { index: 0, routes: [{ name: "Task", params: { id: "3" } }] };
-        await renderSplit({ container: { initialState, onStateChange } });
+        await renderSplit({ container: { initialState, onStateChange: stateLog.record } });
         await screen.findByText("Task 3");
         expectVisible("Lists Content");
         expectHidden("Nothing Selected");
         await clickButton("Go back");
         await screen.findByText("Nothing Selected");
         expectVisible("Lists Content");
-        expectRouteNames(onStateChange, ["Lists"]);
+        expectRouteNames(stateLog, ["Lists"]);
     });
 
     it("takes a new sidebar route when the first screen is swapped out", async () => {
-        const onStateChange = createStateSpy();
-        const { rerender } = await render(<GatedSplit hasLists onStateChange={onStateChange} />);
+        const stateLog = createStateLog();
+        const { rerender } = await render(<GatedSplit hasLists onStateChange={stateLog.record} />);
         await screen.findByText("Lists Content");
-        await rerender(<GatedSplit hasLists={false} onStateChange={onStateChange} />);
+        await rerender(<GatedSplit hasLists={false} onStateChange={stateLog.record} />);
         await screen.findByText("Tasks Content");
         expectHidden("Lists Content");
-        expectRouteNames(onStateChange, ["Tasks"]);
+        expectRouteNames(stateLog, ["Tasks"]);
     });
 });

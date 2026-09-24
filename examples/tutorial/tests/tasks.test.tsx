@@ -2,17 +2,16 @@ import * as Adw from "@gtkx/gi/adw";
 import { getUserDataDir } from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { rootElement } from "@gtkx/react";
-import { act, fireEvent, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { applicationId } from "virtual:gtkx-config";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
-import { ALL_TASKS, openTask } from "../src/navigation.js";
-import { useStore } from "../src/store/index.js";
 
 const openWaterThePlants = async (): Promise<void> => {
     const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
-    await fireEvent(row, "activated");
+    await userEvent.click(row);
     await screen.findByText("Notes");
 };
 
@@ -31,7 +30,7 @@ describe("Tasks", () => {
         await userEvent.keyboard(entry, "{Enter}");
 
         expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Buy milk & café" })).toBeDefined();
-        const file = join(getUserDataDir(), "com.gtkx.tutorial", "tasks.json");
+        const file = join(getUserDataDir(), applicationId, "tasks.json");
         const saved: unknown = JSON.parse(readFileSync(file, "utf8"));
         expect(saved).toHaveProperty("state.tasks", expect.arrayContaining([
             expect.objectContaining({ title: "Buy milk & café" }),
@@ -94,11 +93,17 @@ describe("Tasks", () => {
         expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
     });
 
-    it("opens a notification target requested before navigation mounts", async () => {
-        openTask(ALL_TASKS, "t2");
+    it("keeps the Delete key available while editing a task title", async () => {
         await render(<App />, { container: rootElement });
 
+        await openWaterThePlants();
+        const title = await findTitleEntry();
+        await userEvent.click(title);
+        await userEvent.keyboard(title, "{Delete}");
+
         expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
+        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeDefined();
     });
 
     it("goes back to the list from the editor", async () => {
@@ -126,7 +131,7 @@ describe("Tasks", () => {
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New Task (Ctrl+N)" }));
 
         expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
-        expect(useStore.getState().tasks.some((task) => task.title === "New Task")).toBe(true);
+        expect(await findTitleEntry()).toHaveTextContent("New Task");
     });
 
     it("returns to the list when the open task is moved to trash", async () => {
@@ -136,7 +141,8 @@ describe("Tasks", () => {
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete (Delete)" }));
 
         expect(screen.queryByText("Notes")).toBeNull();
-        expect(useStore.getState().tasks.find((task) => task.id === "t2")?.deleted).toBe(true);
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Trash/ }));
+        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeDefined();
     });
 
     it("permanently deletes a task through the Trash confirmation", async () => {
@@ -184,7 +190,6 @@ describe("Tasks", () => {
         await render(<App />, { container: rootElement });
 
         const source = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ });
-        source.grabFocus();
         await userEvent.keyboard(source, "{Alt>}{ArrowDown}{/Alt}");
 
         const [first, second] = await screen.findAllByRole(Gtk.AccessibleRole.LIST_ITEM, {
@@ -240,16 +245,14 @@ describe("Tasks", () => {
     it("keeps one color selected when the same swatch is clicked repeatedly", async () => {
         await render(<App />, { container: rootElement });
 
-        await act(() => {
-            useStore.getState().showDialog("new-list");
-        });
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New List" }));
 
         const orange = await screen.findByLabelText("Color #e66100");
         await userEvent.click(orange);
         await userEvent.click(orange);
 
-        expect(orange).toHaveObjectProperty("active", true);
-        expect(await screen.findByLabelText("Color #3584e4")).toHaveObjectProperty("active", false);
+        expect(orange).toBePressed();
+        expect(await screen.findByLabelText("Color #3584e4")).not.toBePressed();
     });
 });
 
@@ -264,7 +267,7 @@ describe("task form - happy path", () => {
         await userEvent.click(importantSwitch(true));
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
         const updated = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the balcony/ });
-        await fireEvent(updated, "activated");
+        await userEvent.click(updated);
         const reopenedTitle = await findTitleEntry();
         expect(reopenedTitle.getText()).toBe("Water the balcony");
         expect(importantSwitch(false)).not.toBeChecked();
@@ -272,7 +275,24 @@ describe("task form - happy path", () => {
 });
 
 describe("task form - edge cases", () => {
-    it("syncs Important changes without replacing a dirty title or leaking it to another task", async () => {
+    it("rejects a blank title and trims a valid title", async () => {
+        await render(<App />, { container: rootElement });
+        await openWaterThePlants();
+        const title = await findTitleEntry();
+        await userEvent.clear(title);
+        await userEvent.type(title, " ".repeat(3));
+        await userEvent.keyboard(title, "{Enter}");
+
+        expect(title).toBeInvalid();
+
+        await userEvent.type(title, "  Water the balcony  ");
+        await userEvent.keyboard(title, "{Enter}");
+
+        expect(title).toHaveTextContent("Water the balcony");
+        expect(title).toBeValid();
+    });
+
+    it("keeps an unapplied title local while editing importance and another task", async () => {
         await render(<App />, { container: rootElement });
         await openWaterThePlants();
         const title = await findTitleEntry();
@@ -281,39 +301,31 @@ describe("task form - edge cases", () => {
         await userEvent.click(importantSwitch(true));
         expect(title.getText()).toBe("Unapplied draft");
         expect(importantSwitch(false)).not.toBeChecked();
-        expect(useStore.getState().tasks.find((task) => task.id === "t2")?.title).toBe("Water the plants");
-
-        await act(() => {
-            useStore.getState().setImportant("t2", true);
-        });
-
-        await waitFor(() => {
-            expect(importantSwitch(true)).toBeChecked();
-        });
-
-        expect(title.getText()).toBe("Unapplied draft");
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
         expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Water the plants/ })).toBeDefined();
         expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Unapplied draft/ })).toBeNull();
         const otherTask = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Review pull requests/ });
-        await fireEvent(otherTask, "activated");
+        await userEvent.click(otherTask);
         const otherTitle = await findTitleEntry();
         expect(otherTitle.getText()).toBe("Review pull requests");
     });
 });
 
 describe("literal deletion toasts", () => {
-    it.each(["Ordinary task", "<b>Read</b>", "Read & < café"])("deletes and restores the literal task %s", async (title) => {
-        await render(<App />, { container: rootElement });
-        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
-        await userEvent.type(entry, title);
-        await userEvent.keyboard(entry, "{Enter}");
-        const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title });
-        await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
-        expect(await screen.findByText(`“${title}” moved to Trash`)).toHaveTextContent(`“${title}” moved to Trash`);
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Undo" }));
-        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title })).toHaveAccessibleName(title);
-    });
+    it.each(["Ordinary task", "<b>Read</b>", "Read & < café"])(
+        "deletes and restores the literal task %s",
+        async (title) => {
+            await render(<App />, { container: rootElement });
+            const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+            await userEvent.type(entry, title);
+            await userEvent.keyboard(entry, "{Enter}");
+            const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title });
+            await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
+            expect(await screen.findByText(`“${title}” moved to Trash`)).toHaveTextContent(`“${title}” moved to Trash`);
+            await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Undo" }));
+            expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title })).toHaveAccessibleName(title);
+        },
+    );
 });
 
 describe("manual order after permanent deletion", () => {

@@ -1,9 +1,22 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkPicture, GtkSwitch, GtkToggleButton, GtkVideo } from "@gtkx/jsx/gtk";
+import { AdwAlertDialog } from "@gtkx/jsx/adw";
+import { GThemedIcon } from "@gtkx/jsx/gio";
+import {
+    GtkBox,
+    GtkFrame,
+    GtkImage,
+    GtkLabel,
+    GtkPicture,
+    GtkSvg,
+    GtkSwitch,
+    GtkToggleButton,
+    GtkVideo,
+    GtkWidgetPaintable,
+} from "@gtkx/jsx/gtk";
 import { useParentWindow } from "@gtkx/react";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Demo } from "../types.js";
 import animatedSvgPath from "../../../data/demos/drawing/animated.gpa?resource";
 import gtkLogoSvgPath from "../../../data/demos/drawing/gtk-logo.svg?resource";
@@ -16,52 +29,71 @@ const imagesDemo: Demo = {
     id: "images",
     title: "Images",
     description:
-        "GtkImage and GtkPicture are used to display an image; the image can be in a number of formats.\n\n" +
-        "GtkImage is the widget used to display icons or images that should be sized and styled like an icon, " +
-        "while GtkPicture is used for images that should be displayed as-is.\n\n" +
-        "This demo code shows some of the more obscure cases, in the simple case a call to " +
-        "gtk_picture_new_for_file() or gtk_image_new_from_icon_name() is all you need.",
+        "GTKX can display resources, animated paintables, video and snapshots of existing widgets. GtkImage " +
+        "fits icon-sized content, while GtkPicture lets visual content scale with its available space.",
     keywords: ["GdkPaintable", "GtkWidgetPaintable"],
     component: ImagesDemo,
     sourceCode,
 };
 
-const loadSvgPaintable = (resourcePath: string): Gtk.Svg => {
-    const bytes = Gio.resourcesLookupData(resourcePath, Gio.ResourceLookupFlags.NONE);
+type GifState = { kind: "loading" } |
+    { kind: "ready"; paintable: Gtk.MediaFile } |
+    { kind: "error"; message: string };
 
-    return Gtk.Svg.newFromBytes(bytes);
-};
+function useGifPaintable(): GifState {
+    const [gif, setGif] = useState<GifState>({ kind: "loading" });
 
-const createGifPaintable = (): Gtk.MediaFile | null => {
-    try {
-        const mediaFile = Gtk.MediaFile.newForResource(floppybuddyGifPath);
-        mediaFile.play();
+    useEffect(() => {
+        let isActive = true;
+        let paintable: Gtk.MediaFile | undefined;
 
-        return mediaFile;
-    } catch (error) {
-        const dialog = new Gtk.AlertDialog();
-        dialog.setMessage(`Failure loading GIF '${floppybuddyGifPath}': ${String(error)}`);
-        dialog.show(null);
+        queueMicrotask(() => {
+            if (!isActive) {
+                return;
+            }
 
-        return null;
-    }
-};
+            try {
+                paintable = Gtk.MediaFile.newForResource(floppybuddyGifPath);
+                paintable.play();
+                setGif({ kind: "ready", paintable });
+            } catch (error) {
+                paintable?.pause();
+                paintable?.clear();
+                paintable = undefined;
+                setGif({ kind: "error", message: `Failure loading GIF '${floppybuddyGifPath}': ${String(error)}` });
+            }
+        });
 
-const SvgImage = ({ name, svg }: { name?: string; svg: Gtk.Svg }) => (
+        return () => {
+            isActive = false;
+            paintable?.pause();
+            paintable?.clear();
+        };
+    }, []);
+
+    return gif;
+}
+
+const SvgImage = ({ name, resource, state }: { name?: string; resource: string; state?: number }) => (
     <GtkImage
         name={name}
-        paintable={svg}
+        paintable={<GtkSvg resource={resource} state={state} />}
         pixelSize={128}
         onRealize={(image) => {
             const clock = image.getFrameClock();
+            const svg = image.getPaintable();
 
-            if (clock) {
+            if (clock && svg instanceof Gtk.Svg) {
                 svg.setFrameClock(clock);
                 svg.play();
             }
         }}
-        onUnrealize={() => {
-            svg.pause();
+        onUnrealize={(image) => {
+            const svg = image.getPaintable();
+
+            if (svg instanceof Gtk.Svg) {
+                svg.pause();
+            }
         }}
     />
 );
@@ -76,31 +108,29 @@ const ImagesPanel = ({ title, children }: { title: string; children: React.React
 );
 
 const SymbolicIconPanel = () => {
-    const [symbolicIcon] = useState(() =>
-        Gio.ThemedIcon.newWithDefaultFallbacks("battery-level-10-charging-symbolic"));
-
     return (
         <ImagesPanel title="Symbolic themed icon">
-            <GtkImage gicon={symbolicIcon} iconSize={Gtk.IconSize.LARGE} />
+            <GtkImage
+                gicon={<GThemedIcon name="battery-level-10-charging-symbolic" useDefaultFallbacks />}
+                iconSize={Gtk.IconSize.LARGE}
+            />
         </ImagesPanel>
     );
 };
 
 const StatefulIconPanel = () => {
-    const [svg] = useState(() => loadSvgPaintable(statefulSvgPath));
     const [isOn, setIsOn] = useState(false);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
             <ImagesPanel title="Stateful icon">
-                <SvgImage name="stateful-icon-image" svg={svg} />
+                <SvgImage name="stateful-icon-image" resource={statefulSvgPath} state={isOn ? 1 : 0} />
             </ImagesPanel>
             <GtkSwitch
                 halign={Gtk.Align.START}
                 active={isOn}
                 onStateSet={(value) => {
                     setIsOn(value);
-                    svg.setState(value ? 1 : 0);
 
                     return Gdk.EVENT_STOP;
                 }}
@@ -110,11 +140,9 @@ const StatefulIconPanel = () => {
 };
 
 const PathAnimationPanel = () => {
-    const [svg] = useState(() => loadSvgPaintable(animatedSvgPath));
-
     return (
         <ImagesPanel title="Path animation">
-            <SvgImage name="path-animation-image" svg={svg} />
+            <SvgImage name="path-animation-image" resource={animatedSvgPath} />
         </ImagesPanel>
     );
 };
@@ -137,8 +165,8 @@ const ResourcesColumn = ({ gifPaintable }: { gifPaintable: Gtk.MediaFile | null 
     </GtkBox>
 );
 
-const VideoColumn = ({ widgetPaintable }: { widgetPaintable: Gtk.WidgetPaintable | null }) => {
-    const videoFile = Gio.File.newForUri(`resource://${gtkLogoWebmPath}`);
+const VideoColumn = ({ parentWindow }: { parentWindow: Gtk.Window | null }) => {
+    const [videoFile] = useState(() => Gio.File.newForUri(`resource://${gtkLogoWebmPath}`));
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
@@ -149,7 +177,7 @@ const VideoColumn = ({ widgetPaintable }: { widgetPaintable: Gtk.WidgetPaintable
                 <GtkLabel cssClasses={["heading"]}>GtkWidgetPaintable</GtkLabel>
                 <GtkPicture
                     name="widget-paintable-picture"
-                    paintable={widgetPaintable}
+                    paintable={<GtkWidgetPaintable widget={parentWindow} />}
                     widthRequest={100}
                     heightRequest={100}
                     canShrink
@@ -162,9 +190,9 @@ const VideoColumn = ({ widgetPaintable }: { widgetPaintable: Gtk.WidgetPaintable
 
 function ImagesDemo() {
     const parentWindow = useParentWindow();
-    const [gifPaintable] = useState(createGifPaintable);
+    const gif = useGifPaintable();
+    const [isGifErrorDismissed, setIsGifErrorDismissed] = useState(false);
     const [isInsensitive, setIsInsensitive] = useState(false);
-    const widgetPaintable = useMemo(() => Gtk.WidgetPaintable.new(parentWindow), [parentWindow]);
 
     return (
         <GtkBox
@@ -176,12 +204,12 @@ function ImagesDemo() {
             marginBottom={16}
         >
             <GtkBox name="image-strip" spacing={16} sensitive={!isInsensitive}>
-                <ResourcesColumn gifPaintable={gifPaintable} />
+                <ResourcesColumn gifPaintable={gif.kind === "ready" ? gif.paintable : null} />
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                     <StatefulIconPanel />
                     <PathAnimationPanel />
                 </GtkBox>
-                <VideoColumn widgetPaintable={widgetPaintable} />
+                <VideoColumn parentWindow={parentWindow} />
             </GtkBox>
 
             <GtkToggleButton
@@ -195,6 +223,18 @@ function ImagesDemo() {
                     setIsInsensitive(btn.getActive());
                 }}
             />
+            {!isGifErrorDismissed && gif.kind === "error" && (
+                <AdwAlertDialog
+                    heading="Could not load animation"
+                    body={gif.message}
+                    responses={[{ id: "ok", label: "_OK" }]}
+                    defaultResponse="ok"
+                    closeResponse="ok"
+                    onClosed={() => {
+                        setIsGifErrorDismissed(true);
+                    }}
+                />
+            )}
         </GtkBox>
     );
 }

@@ -1,5 +1,4 @@
 import type { ComponentProps, ReactNode, RefObject } from "react";
-import type { Mock } from "vitest";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
@@ -24,10 +23,12 @@ import {
 } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { createRef, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createApplicationRenderer } from "../helpers/application-render.js";
+import { recordCalls, type RecordedCalls } from "../helpers/record-calls.js";
 
 type LabelProps = ComponentProps<typeof GtkLabel>;
+type PressArgs = Parameters<NonNullable<ComponentProps<typeof GtkGestureClick>["onPressed"]>>;
 
 const renderInApp = createApplicationRenderer("org.gtkx.widgettest");
 
@@ -62,16 +63,16 @@ const labelCount = (container: Gtk.Widget | null): number => {
 
 const findClickButton = () => screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Click" });
 
-const expectClickCallCount = async (button: Gtk.Widget, handler: Mock, times: number): Promise<void> => {
+const expectClickCallCount = async (button: Gtk.Widget, handler: RecordedCalls, times: number): Promise<void> => {
     await userEvent.click(button);
 
     await waitFor(() => {
-        expect(handler).toHaveBeenCalledTimes(times);
+        expect(handler.calls).toHaveLength(times);
     });
 };
 
-const renderClickButtonAndClick = async (): Promise<Mock> => {
-    const handleClick = vi.fn();
+const renderClickButtonAndClick = async (): Promise<RecordedCalls<[Gtk.Button]>> => {
+    const handleClick = recordCalls<[Gtk.Button]>();
     await render(<GtkButton onClicked={handleClick} label="Click" />);
     const button = await findClickButton();
     await userEvent.click(button);
@@ -87,11 +88,16 @@ const renderSwitchAndClick = async (props: ComponentProps<typeof GtkSwitch>): Pr
     return switchWidget;
 };
 
-const renderStateSetSwitchAndClick = async (): Promise<Mock> => {
-    const handleStateSet = vi.fn(() => Gdk.EVENT_PROPAGATE);
-    await renderSwitchAndClick({ onStateSet: handleStateSet });
+const renderStateSetSwitchAndClick = async (): Promise<RecordedCalls<[boolean, Gtk.Switch]>> => {
+    const calls = recordCalls<[boolean, Gtk.Switch]>();
+    const shouldSetState = (isState: boolean, self: Gtk.Switch): boolean => {
+        calls(isState, self);
 
-    return handleStateSet;
+        return Gdk.EVENT_PROPAGATE;
+    };
+    await renderSwitchAndClick({ onStateSet: shouldSetState });
+
+    return calls;
 };
 
 const labelItems = (items: string[]): ReactNode => items.map((item) => <GtkLabel key={item}>{item}</GtkLabel>);
@@ -428,30 +434,30 @@ describe("widget - signals", () => {
             const handleClick = await renderClickButtonAndClick();
 
             await waitFor(() => {
-                expect(handleClick).toHaveBeenCalledTimes(1);
+                expect(handleClick.calls).toHaveLength(1);
             });
         });
 
         it("connects onActivate handler to activate signal", async () => {
-            const handleActivate = vi.fn();
+            const handleActivate = recordCalls();
             await render(<GtkEntry onActivate={handleActivate} placeholderText="Search" />);
             const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
             await userEvent.keyboard(entry, "{Enter}");
-            expect(handleActivate).toHaveBeenCalledTimes(1);
+            expect(handleActivate.calls).toHaveLength(1);
         });
 
         it("connects onStateSet handler to state-set signal", async () => {
             const handleStateSet = await renderStateSetSwitchAndClick();
 
             await waitFor(() => {
-                expect(handleStateSet).toHaveBeenCalledTimes(1);
+                expect(handleStateSet.calls).toHaveLength(1);
             });
         });
     });
 
     describe("disconnection", () => {
         it("disconnects handler when prop removed", async () => {
-            const handleClick = vi.fn();
+            const handleClick = recordCalls();
             const { rerender } = await render(<ClickButton onClicked={handleClick} />);
             const button = await findClickButton();
             await expectClickCallCount(button, handleClick, 1);
@@ -460,7 +466,7 @@ describe("widget - signals", () => {
         });
 
         it("disconnects handler when widget unmounted", async () => {
-            const handleClick = vi.fn();
+            const handleClick = recordCalls();
             const { rerender } = await render(<OptionalClickButton isMounted={true} />);
             const button = await findClickButton();
             const clickedSignal = GObject.signalLookup("clicked", Gtk.Button);
@@ -478,8 +484,8 @@ describe("widget - signals", () => {
 
     describe("updates", () => {
         it("replaces handler when function reference changes", async () => {
-            const handler1 = vi.fn();
-            const handler2 = vi.fn();
+            const handler1 = recordCalls();
+            const handler2 = recordCalls();
 
             function App({ shouldUseHandler1 }: { shouldUseHandler1: boolean }) {
                 return <GtkButton onClicked={shouldUseHandler1 ? handler1 : handler2} label="Click" />;
@@ -488,14 +494,14 @@ describe("widget - signals", () => {
             const { rerender } = await render(<App shouldUseHandler1={true} />);
             const button = await findClickButton();
             await expectClickCallCount(button, handler1, 1);
-            expect(handler2).not.toHaveBeenCalled();
+            expect(handler2.calls).toEqual([]);
             await rerender(<App shouldUseHandler1={false} />);
             await expectClickCallCount(button, handler2, 1);
-            expect(handler1).toHaveBeenCalledTimes(1);
+            expect(handler1.calls).toHaveLength(1);
         });
 
         it("maintains handler when function reference is stable", async () => {
-            const handleClick = vi.fn();
+            const handleClick = recordCalls();
 
             function App({ label }: { label: string }) {
                 return <GtkButton onClicked={handleClick} label={label} />;
@@ -513,7 +519,7 @@ describe("widget - signals", () => {
             const handleStateSet = await renderStateSetSwitchAndClick();
 
             await waitFor(() => {
-                expect(handleStateSet).toHaveBeenCalledWith(true, expect.any(Gtk.Switch));
+                expect(handleStateSet.calls).toContainEqual([true, expect.any(Gtk.Switch)]);
             });
         });
 
@@ -521,7 +527,7 @@ describe("widget - signals", () => {
             const handleClick = await renderClickButtonAndClick();
 
             await waitFor(() => {
-                expect(handleClick).toHaveBeenCalledWith(expect.any(Gtk.Button));
+                expect(handleClick.calls).toContainEqual([expect.any(Gtk.Button)]);
             });
         });
     });
@@ -552,7 +558,7 @@ describe("widget - signals", () => {
     describe("event controllers", () => {
         describe("motion controller", () => {
             it("connects onEnter handler", async () => {
-                const handleEnter = vi.fn();
+                const handleEnter = recordCalls();
 
                 await render(
                     <GtkButton label="Hover Me" controllers={<GtkEventControllerMotion onEnter={handleEnter} />} />,
@@ -560,11 +566,11 @@ describe("widget - signals", () => {
 
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hover Me" });
                 await userEvent.hover(button);
-                expect(handleEnter).toHaveBeenCalledTimes(1);
+                expect(handleEnter.calls).toHaveLength(1);
             });
 
             it("connects onLeave handler", async () => {
-                const handleLeave = vi.fn();
+                const handleLeave = recordCalls();
 
                 await render(
                     <GtkButton label="Hover Me" controllers={<GtkEventControllerMotion onLeave={handleLeave} />} />,
@@ -573,11 +579,11 @@ describe("widget - signals", () => {
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hover Me" });
                 await userEvent.hover(button);
                 await userEvent.unhover(button);
-                expect(handleLeave).toHaveBeenCalledTimes(1);
+                expect(handleLeave.calls).toHaveLength(1);
             });
 
             it("disconnects motion handlers when controller removed", async () => {
-                const handleEnter = vi.fn();
+                const handleEnter = recordCalls();
 
                 function App({ hasController }: { hasController: boolean }) {
                     return (
@@ -591,17 +597,17 @@ describe("widget - signals", () => {
                 const { rerender } = await render(<App hasController={true} />);
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Hover" });
                 await userEvent.hover(button);
-                expect(handleEnter).toHaveBeenCalledTimes(1);
+                expect(handleEnter.calls).toHaveLength(1);
                 await rerender(<App hasController={false} />);
                 await userEvent.unhover(button);
                 await userEvent.hover(button);
-                expect(handleEnter).toHaveBeenCalledTimes(1);
+                expect(handleEnter.calls).toHaveLength(1);
             });
         });
 
         describe("click controller", () => {
             it("connects onPressed handler", async () => {
-                const handlePressed = vi.fn();
+                const handlePressed = recordCalls();
 
                 await render(
                     <GtkButton label="Press Me" controllers={<GtkGestureClick onPressed={handlePressed} />} />,
@@ -609,11 +615,11 @@ describe("widget - signals", () => {
 
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Press Me" });
                 await userEvent.pointer(button, "down");
-                expect(handlePressed).toHaveBeenCalledTimes(1);
+                expect(handlePressed.calls).toHaveLength(1);
             });
 
             it("connects onReleased handler", async () => {
-                const handleReleased = vi.fn();
+                const handleReleased = recordCalls();
 
                 await render(
                     <GtkButton label="Release Me" controllers={<GtkGestureClick onReleased={handleReleased} />} />,
@@ -621,37 +627,50 @@ describe("widget - signals", () => {
 
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Release Me" });
                 await userEvent.pointer(button, "click");
-                expect(handleReleased).toHaveBeenCalledTimes(1);
+                expect(handleReleased.calls).toHaveLength(1);
             });
 
             it("passes coordinates to press handler", async () => {
-                const handlePressed = vi.fn();
+                const handlePressed = recordCalls<PressArgs>();
                 await render(<GtkButton label="Press" controllers={<GtkGestureClick onPressed={handlePressed} />} />);
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Press" });
                 await userEvent.pointer(button, "down");
-                expect(handlePressed).toHaveBeenCalled();
-                const [nPress, x, y] = handlePressed.mock.calls[0] as [number, number, number];
-                expect(typeof nPress).toBe("number");
-                expect(typeof x).toBe("number");
-                expect(typeof y).toBe("number");
+                expect(handlePressed.calls.length).toBeGreaterThan(0);
+                expect(handlePressed.calls.every(([nPress]) => typeof nPress === "number")).toBe(true);
+                expect(handlePressed.calls.every(([, x]) => typeof x === "number")).toBe(true);
+                expect(handlePressed.calls.every((args) => typeof args[2] === "number")).toBe(true);
+                expect(handlePressed.calls.every((args) => args[3] instanceof Gtk.GestureClick)).toBe(true);
             });
         });
 
         describe("key controller", () => {
             it("connects onKeyPressed handler", async () => {
-                const handleKeyPressed = vi.fn(() => Gdk.EVENT_PROPAGATE);
-                await renderKeyControllerAndType(<GtkEventControllerKey onKeyPressed={handleKeyPressed} />);
-                expect(handleKeyPressed).toHaveBeenCalled();
+                const keyPresses = recordCalls();
+                await renderKeyControllerAndType(
+                    <GtkEventControllerKey
+                        onKeyPressed={() => {
+                            keyPresses();
+
+                            return Gdk.EVENT_PROPAGATE;
+                        }}
+                    />,
+                );
+                expect(keyPresses.calls.length).toBeGreaterThan(0);
             });
 
             it("connects onKeyReleased handler", async () => {
-                const handleKeyReleased = vi.fn();
+                const handleKeyReleased = recordCalls();
                 await renderKeyControllerAndType(<GtkEventControllerKey onKeyReleased={handleKeyReleased} />);
-                expect(handleKeyReleased).toHaveBeenCalled();
+                expect(handleKeyReleased.calls.length).toBeGreaterThan(0);
             });
 
             it("disconnects key handlers when controller removed", async () => {
-                const handleKeyPressed = vi.fn(() => Gdk.EVENT_PROPAGATE);
+                const keyPresses = recordCalls();
+                const shouldPropagateKey = (): boolean => {
+                    keyPresses();
+
+                    return Gdk.EVENT_PROPAGATE;
+                };
 
                 function App({ hasController }: { hasController: boolean }) {
                     return (
@@ -659,7 +678,7 @@ describe("widget - signals", () => {
                             label="Focus me"
                             canFocus
                             focusable
-                            controllers={hasController && <GtkEventControllerKey onKeyPressed={handleKeyPressed} />}
+                            controllers={hasController && <GtkEventControllerKey onKeyPressed={shouldPropagateKey} />}
                         />
                     );
                 }
@@ -667,30 +686,33 @@ describe("widget - signals", () => {
                 const { rerender } = await render(<App hasController={true} />);
                 const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
                 await userEvent.keyboard(button, "a");
-                expect(handleKeyPressed).toHaveBeenCalledTimes(1);
+                expect(keyPresses.calls).toHaveLength(1);
                 await rerender(<App hasController={false} />);
                 await userEvent.keyboard(button, "b");
-                expect(handleKeyPressed).toHaveBeenCalledTimes(1);
+                expect(keyPresses.calls).toHaveLength(1);
             });
         });
     });
 
     describe("onNotify", () => {
         it("connects onNotify handler for property changes", async () => {
-            const handleNotify = vi.fn();
+            const handleNotify = recordCalls();
             await renderSwitchAndClick({ onNotify: handleNotify });
 
             await waitFor(() => {
-                expect(handleNotify).toHaveBeenCalled();
+                expect(handleNotify.calls.length).toBeGreaterThan(0);
             });
         });
 
         it("receives the changed ParamSpec and source widget in callback", async () => {
-            const handleNotify = vi.fn();
+            const handleNotify = recordCalls<[GObject.ParamSpec, Gtk.Switch]>();
             await renderSwitchAndClick({ onNotify: handleNotify });
 
             await waitFor(() => {
-                expect(handleNotify).toHaveBeenCalledWith(expect.any(GObject.ParamSpec), expect.any(Gtk.Switch));
+                expect(handleNotify.calls).toContainEqual([
+                    expect.any(GObject.ParamSpec),
+                    expect.any(Gtk.Switch),
+                ]);
             });
         });
     });

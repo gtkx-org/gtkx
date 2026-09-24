@@ -1,7 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
 import { render, screen, userEvent } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
     Drawer,
     drawerScreens,
@@ -12,6 +12,7 @@ import {
     SETTINGS,
     sidebarRow,
     splitView,
+    type StateHistory,
     toggleButton,
 } from "./helpers/drawer-fixtures.js";
 
@@ -21,10 +22,14 @@ const clickButton = async (name: string): Promise<void> => {
 
 describe("drawer - status", () => {
     it("closes and reopens the sidebar from the Toggle Sidebar button", async () => {
-        const onStateChange = vi.fn();
+        const states: StateHistory = [];
 
         await render(
-            <NavigationContainer onStateChange={onStateChange}>
+            <NavigationContainer
+                onStateChange={(state) => {
+                    states.push(state);
+                }}
+            >
                 <Drawer.Navigator>{drawerScreens([INBOX, SETTINGS])}</Drawer.Navigator>
             </NavigationContainer>,
         );
@@ -33,11 +38,11 @@ describe("drawer - status", () => {
         expect(querySidebarLabel("Settings")).not.toBeNull();
         await userEvent.click(toggleButton());
         expect(querySidebarLabel("Settings")).toBeNull();
-        expect(lastState(onStateChange).type).toBe("drawer");
-        expect(getDrawerStatus(lastState(onStateChange))).toBe("closed");
+        expect(lastState(states).type).toBe("drawer");
+        expect(getDrawerStatus(lastState(states))).toBe("closed");
         await userEvent.click(toggleButton());
         expect(querySidebarLabel("Settings")).not.toBeNull();
-        expect(getDrawerStatus(lastState(onStateChange))).toBe("open");
+        expect(getDrawerStatus(lastState(states))).toBe("open");
     });
 
     it("opens, closes and toggles the drawer through DrawerActions dispatched from a screen", async () => {
@@ -60,10 +65,14 @@ describe("drawer - status", () => {
     });
 
     it("starts with the sidebar hidden when defaultStatus is closed", async () => {
-        const onStateChange = vi.fn();
+        const states: StateHistory = [];
 
         await render(
-            <NavigationContainer onStateChange={onStateChange}>
+            <NavigationContainer
+                onStateChange={(state) => {
+                    states.push(state);
+                }}
+            >
                 <Drawer.Navigator defaultStatus="closed">{drawerScreens([INBOX, SETTINGS])}</Drawer.Navigator>
             </NavigationContainer>,
         );
@@ -71,7 +80,7 @@ describe("drawer - status", () => {
         await screen.findByText("Inbox Content");
         expect(querySidebarLabel("Inbox")).toBeNull();
         expect(splitView()).toHaveObjectProperty("show-sidebar", false);
-        expect(onStateChange).not.toHaveBeenCalled();
+        expect(states).toEqual([]);
     });
 
     it("starts closed when collapsed and overlays the content when opened", async () => {
@@ -140,10 +149,14 @@ describe("drawer - status", () => {
     });
 
     it("closes the drawer when a row is activated while collapsed", async () => {
-        const onStateChange = vi.fn();
+        const states: StateHistory = [];
 
         await render(
-            <NavigationContainer onStateChange={onStateChange}>
+            <NavigationContainer
+                onStateChange={(state) => {
+                    states.push(state);
+                }}
+            >
                 <Drawer.Navigator collapsed>{drawerScreens([INBOX, SETTINGS])}</Drawer.Navigator>
             </NavigationContainer>,
         );
@@ -153,6 +166,6 @@ describe("drawer - status", () => {
         await userEvent.click(sidebarRow("Settings"));
         await screen.findByText("Settings Content");
         expect(querySidebarLabel("Inbox")).toBeNull();
-        expect(getDrawerStatus(lastState(onStateChange))).toBe("closed");
+        expect(getDrawerStatus(lastState(states))).toBe("closed");
     });
 });

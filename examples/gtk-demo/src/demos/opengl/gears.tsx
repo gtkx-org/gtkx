@@ -1,5 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GLib from "@gtkx/gi/glib";
+import * as Graphene from "@gtkx/gi/graphene";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as gl from "@gtkx/gl";
 import {
@@ -67,6 +68,8 @@ type ToothPoints = {
     p6y: number;
 };
 
+type GearColor = [number, number, number, number];
+
 type GLState = {
     program: number;
     vao: number;
@@ -82,14 +85,14 @@ type GLState = {
 
 type DrawGearParams = {
     uniforms: GLState["uniforms"];
-    projection: number[];
-    transform: number[];
+    projection: Graphene.Matrix;
+    transform: Graphene.Matrix;
     gear: GearGeometry;
     vbo: number;
     x: number;
     y: number;
     angle: number;
-    color: number[];
+    color: GearColor;
 };
 
 type GearsState = ReturnType<typeof useGearsState>;
@@ -139,7 +142,7 @@ void main() {
     fragColor = Color;
 }`;
 
-const GEAR_COLORS = [
+const GEAR_COLORS: GearColor[] = [
     [0.8, 0.1, 0, 1],
     [0, 0.8, 0.2, 1],
     [0.2, 0.2, 1, 1],
@@ -307,95 +310,19 @@ function createGear({
     return { vertices: builder.vertices, nvertices: builder.vi, strips: builder.strips };
 }
 
-function mat4Cell(a: number[], b: number[], row: number, column: number): number {
-    let sum = 0;
+const translationMatrix = (x: number, y: number, z: number): Graphene.Matrix => {
+    const point = new Graphene.Point3D();
+    point.init(x, y, z);
 
-    for (let k = 0; k < 4; k++) {
-        sum += (b[row * 4 + k] ?? 0) * (a[k * 4 + column] ?? 0);
-    }
+    return new Graphene.Matrix().initTranslate(point);
+};
 
-    return sum;
-}
+const rotationMatrix = (angle: number, x: number, y: number, z: number): Graphene.Matrix => {
+    const axis = new Graphene.Vec3();
+    axis.init(x, y, z);
 
-function mat4Multiply(a: number[], b: number[]): number[] {
-    const result: number[] = [];
-
-    for (let i = 0; i < 4; i++) {
-        for (let j = 0; j < 4; j++) {
-            result.push(mat4Cell(a, b, i, j));
-        }
-    }
-
-    return result;
-}
-
-function mat4Translate(m: number[], x: number, y: number, z: number): number[] {
-    return mat4Multiply(m, [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1]);
-}
-
-function mat4Rotate(m: number[], { angle, x, y, z }: { angle: number; x: number; y: number; z: number }): number[] {
-    const s = Math.sin(angle);
-    const c = Math.cos(angle);
-
-    return mat4Multiply(m, [
-        x * x * (1 - c) + c,
-        y * x * (1 - c) + z * s,
-        x * z * (1 - c) - y * s,
-        0,
-        x * y * (1 - c) - z * s,
-        y * y * (1 - c) + c,
-        y * z * (1 - c) + x * s,
-        0,
-        x * z * (1 - c) + y * s,
-        y * z * (1 - c) - x * s,
-        z * z * (1 - c) + c,
-        0,
-        0,
-        0,
-        0,
-        1,
-    ]);
-}
-
-function mat4Perspective(fovy: number, aspect: number, zNear: number, zFar: number): number[] {
-    const f = 1 / Math.tan(fovy / 2);
-    const dz = zFar - zNear;
-
-    return [f / aspect, 0, 0, 0, 0, f, 0, 0, 0, 0, -(zFar + zNear) / dz, -1, 0, 0, (-2 * zNear * zFar) / dz, 0];
-}
-
-function mat4Transpose(m: number[]): number[] {
-    const at = (i: number) => m[i] ?? 0;
-
-    return [
-        at(0),
-        at(4),
-        at(8),
-        at(12),
-        at(1),
-        at(5),
-        at(9),
-        at(13),
-        at(2),
-        at(6),
-        at(10),
-        at(14),
-        at(3),
-        at(7),
-        at(11),
-        at(15),
-    ];
-}
-
-function mat4Invert(m: number[]): number[] {
-    const t = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, -(m[12] ?? 0), -(m[13] ?? 0), -(m[14] ?? 0), 1];
-    const r = [...m];
-    r[12] = 0;
-    r[13] = 0;
-    r[14] = 0;
-
-    return mat4Multiply(mat4Transpose(r), t);
-}
+    return new Graphene.Matrix().initRotate(angle, axis);
+};
 
 const createGearsProgram = (): number => {
     const vs = gl.createShader(gl.VERTEX_SHADER);
@@ -462,13 +389,12 @@ function initGL(): GLState {
 
 function drawGear(params: DrawGearParams) {
     const { uniforms, projection, transform, gear, vbo, x, y, angle, color } = params;
-    let modelView = mat4Translate(transform, x, y, 0);
-    modelView = mat4Rotate(modelView, { angle: (2 * Math.PI * angle) / 360, x: 0, y: 0, z: 1 });
-    const mvp = mat4Multiply(projection, modelView);
-    gl.uniformMatrix4fv(uniforms.mvp, 1, false, mvp);
-    const normalMatrix = mat4Transpose(mat4Invert(modelView));
-    gl.uniformMatrix4fv(uniforms.normalMatrix, 1, false, normalMatrix);
-    gl.uniform4f(uniforms.materialColor, color[0] ?? 0, color[1] ?? 0, color[2] ?? 0, color[3] ?? 0);
+    const modelView = rotationMatrix(angle, 0, 0, 1).multiply(translationMatrix(x, y, 0)).multiply(transform);
+    const mvp = modelView.multiply(projection);
+    gl.uniformMatrix4fv(uniforms.mvp, 1, false, mvp.toFloat());
+    const [, inverseModelView] = modelView.inverse();
+    gl.uniformMatrix4fv(uniforms.normalMatrix, 1, false, inverseModelView.transpose().toFloat());
+    gl.uniform4f(uniforms.materialColor, color[0], color[1], color[2], color[3]);
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 6 * 4, 0);
     gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 6 * 4, 3 * 4);
@@ -592,12 +518,14 @@ function useGearsAnimation(fpsRef: React.RefObject<number>, setFps: (fps: number
 }
 
 function useGearsUnrealize(glStateRef: React.RefObject<GLState | null>) {
-    return () => {
+    return (area: Gtk.GLArea) => {
         const state = glStateRef.current;
 
         if (!state) {
             return;
         }
+
+        area.makeCurrent();
 
         for (const vbo of state.gearVbos) {
             gl.deleteBuffer(vbo);
@@ -637,7 +565,7 @@ const resolveGLState = (
     return glStateRef.current;
 };
 
-const drawAllGears = (state: GLState, transform: number[], projection: number[], angle: number) => {
+const drawAllGears = (state: GLState, transform: Graphene.Matrix, projection: Graphene.Matrix, angle: number) => {
     const configs = [
         { idx: 0, x: -3, y: -2, angle },
         { idx: 1, x: 3.1, y: -2, angle: -2 * angle - 9 },
@@ -665,21 +593,17 @@ const drawAllGears = (state: GLState, transform: number[], projection: number[],
     }
 };
 
-const computeViewTransform = (rotation: ViewRotation): number[] => {
-    let transform = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-    transform = mat4Translate(transform, 0, 0, -20);
-    transform = mat4Rotate(transform, { angle: (rotation.x * 2 * Math.PI) / 360, x: 1, y: 0, z: 0 });
-    transform = mat4Rotate(transform, { angle: (rotation.y * 2 * Math.PI) / 360, x: 0, y: 1, z: 0 });
-    transform = mat4Rotate(transform, { angle: (rotation.z * 2 * Math.PI) / 360, x: 0, y: 0, z: 1 });
-
-    return transform;
-};
+const computeViewTransform = (rotation: ViewRotation): Graphene.Matrix =>
+    rotationMatrix(rotation.z, 0, 0, 1)
+        .multiply(rotationMatrix(rotation.y, 0, 1, 0))
+        .multiply(rotationMatrix(rotation.x, 1, 0, 0))
+        .multiply(translationMatrix(0, 0, -20));
 
 const renderGearsFrame = ({ glState, area, rotation, angle }: RenderFrameParams): void => {
     const scale = area.getScaleFactor();
     const width = area.getWidth() * scale;
     const height = area.getHeight() * scale;
-    const projection = mat4Perspective(Math.PI / 3, width / height, 1, 1024);
+    const projection = new Graphene.Matrix().initPerspective(60, width / height, 1, 1024);
     gl.viewport(0, 0, width, height);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);

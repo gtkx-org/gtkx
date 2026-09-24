@@ -11,7 +11,7 @@ import {
     parseEnumAttr,
     type RawNode,
 } from "./parse.js";
-import { typeRefFromNode } from "./type-ref.js";
+import { typeCTypeFromNode, typeRefFromNode } from "./type-ref.js";
 
 type ParameterDirection = "in" | "out" | "inout";
 type ParameterTransfer = "none" | "full" | "container" | "elements";
@@ -83,7 +83,7 @@ const hasOptionalAttr = (node: RawNode): boolean =>
     isAttrTrue(node, "optional") || (!isInDirection(node) && isAttrTrue(node, "allow-none"));
 
 const parameterCType = (node: RawNode): string | undefined =>
-    attr(getChild(node, "type"), "c:type") ?? attr(getChild(node, "array"), "c:type");
+    typeCTypeFromNode(node) ?? attr(getChild(node, "array"), "c:type");
 
 const parameterFromNode = (node: RawNode, context: ParseContext): GirParameter => ({
     name: nameAttr(node),

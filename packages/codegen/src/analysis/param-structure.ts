@@ -3,7 +3,13 @@ import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { TypeId } from "../gir/type-id.js";
 import type { JsDocParam } from "../writer/doc-tags.js";
-import { type GirCallable, type GirParameter, isCallerAllocatedOut, isOutParameter } from "../gir/parameter.js";
+import {
+    type GirCallable,
+    type GirParameter,
+    isCallerAllocatedOut,
+    isOutParameter,
+    type ParameterTransfer,
+} from "../gir/parameter.js";
 import { isCellInout, isVoidPrimaryReturn } from "./descriptor-render.js";
 
 type InputParameter = {
@@ -14,7 +20,7 @@ type InputParameter = {
 type HandlerResultOptions = {
     library: Library;
     signal: GirCallable;
-    renderType: (ref: TypeId | undefined, isNullable: boolean) => string;
+    renderType: (ref: TypeId | undefined, isNullable: boolean, transfer: ParameterTransfer) => string;
     shouldIncludeCallerAllocated: boolean;
     isOptOut: boolean;
     shouldExcludeOut?: (parameter: GirParameter) => boolean;
@@ -221,12 +227,16 @@ const renamesWithInstance = (parameters: GirParameter[], instance: GirParameter 
 
 const renderHandlerParameters = (
     parameters: GirParameter[],
-    renderType: (ref: TypeId | undefined, isNullable: boolean) => string,
+    renderType: (ref: TypeId | undefined, isNullable: boolean, transfer: ParameterTransfer) => string,
     shouldExclude: (parameter: GirParameter) => boolean = () => false,
 ): string[] =>
     handlerParameters(parameters, shouldExclude).map(
         (parameter, index) =>
-            `${parameterIdentifier(parameter, index)}: ${renderType(parameter.type, parameter.nullable)}`,
+            `${parameterIdentifier(parameter, index)}: ${renderType(
+                parameter.type,
+                parameter.nullable,
+                parameter.transferOwnership,
+            )}`,
     );
 
 const foldOutParamShape = (primary: string | undefined, outTypes: string[]): string => {
@@ -279,7 +289,11 @@ const renderHandlerResultType = (options: HandlerResultOptions): string => {
 
     const primary = isVoidPrimaryReturn(library, signal.returnValue)
         ? undefined
-        : renderType(signal.returnValue.type, signal.returnValue.nullable);
+        : renderType(
+                signal.returnValue.type,
+                signal.returnValue.nullable,
+                signal.returnValue.transferOwnership,
+            );
 
     const outTypes = signal.parameters
         .filter(
@@ -287,7 +301,7 @@ const renderHandlerResultType = (options: HandlerResultOptions): string => {
                 isHandlerOutParameter({ library, parameter, shouldIncludeCallerAllocated }) &&
                 !shouldExcludeOut(parameter),
         )
-        .map((parameter) => renderType(parameter.type, parameter.nullable));
+        .map((parameter) => renderType(parameter.type, parameter.nullable, parameter.transferOwnership));
 
     if (outTypes.length === 0) {
         return scalarResultType(primary, isOptOut);

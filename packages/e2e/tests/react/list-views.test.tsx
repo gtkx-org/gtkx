@@ -15,7 +15,7 @@ import {
 import { getClassType } from "@gtkx/runtime";
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { attachClickGesture } from "../helpers/click-gesture.js";
 import {
     BUTTON_LABEL,
@@ -244,14 +244,20 @@ describe("pointing at a list view row", () => {
 
 describe("activating a list view row", () => {
     it("does not activate the row when the view does not activate on a single click", async () => {
-        const onActivate = vi.fn();
+        let activationCount = 0;
+        const onActivate = (): void => {
+            activationCount += 1;
+        };
         await renderListView({ model: noSelectionElement(), onActivate });
         await userEvent.click(await rowAt(1));
-        expect(onActivate).not.toHaveBeenCalled();
+        expect(activationCount).toBe(0);
     });
 
     it("activates and selects the row when the view activates on a single click", async () => {
-        const onActivate = vi.fn();
+        let activationCount = 0;
+        const onActivate = (): void => {
+            activationCount += 1;
+        };
 
         const ref = await renderListView({
             model: singleSelectionElement(),
@@ -260,19 +266,25 @@ describe("activating a list view row", () => {
         });
 
         await userEvent.click(await rowAt(1));
-        expect(onActivate).toHaveBeenCalledTimes(1);
+        expect(activationCount).toBe(1);
         expect(singleSelectionFrom(ref.current).getSelected()).toBe(1);
     });
 
     it("activates the row once on a double click", async () => {
-        const onActivate = vi.fn();
+        let activationCount = 0;
+        const onActivate = (): void => {
+            activationCount += 1;
+        };
         await renderListView({ model: singleSelectionElement(), onActivate });
         await userEvent.dblClick(await rowAt(1));
-        expect(onActivate).toHaveBeenCalledTimes(1);
+        expect(activationCount).toBe(1);
     });
 
     it("activates the row once per press when the view activates on a single click", async () => {
-        const onActivate = vi.fn();
+        let activationCount = 0;
+        const onActivate = (): void => {
+            activationCount += 1;
+        };
 
         await renderListView({
             model: singleSelectionElement(),
@@ -281,13 +293,16 @@ describe("activating a list view row", () => {
         });
 
         await userEvent.tripleClick(await rowAt(1));
-        expect(onActivate).toHaveBeenCalledTimes(3);
+        expect(activationCount).toBe(3);
     });
 });
 
 describe("clicking a button inside a list view row", () => {
     it("activates the button without selecting the row", async () => {
-        const onClicked = vi.fn();
+        const clickedItems: string[] = [];
+        const onClicked = (item: string): void => {
+            clickedItems.push(item);
+        };
         const ref = await renderListView({
             model: singleSelectionElement(),
             factory: buttonFactory(onClicked),
@@ -296,8 +311,7 @@ describe("clicking a button inside a list view row", () => {
         expect(selection.getSelected()).toBe(0);
         const buttons = await screen.findAllByRole(Gtk.AccessibleRole.BUTTON, { name: BUTTON_LABEL });
         await userEvent.click(widgetAt(buttons, 1));
-        expect(onClicked).toHaveBeenCalledTimes(1);
-        expect(onClicked).toHaveBeenLastCalledWith("beta");
+        expect(clickedItems).toEqual(["beta"]);
         expect(selection.getSelected()).toBe(0);
         expect(selection.getSelection().getSize()).toBe(1n);
     });
@@ -306,8 +320,14 @@ describe("clicking a button inside a list view row", () => {
 describe("list item factory lifecycle", () => {
     it("rebinds a button to native model updates without retaining earlier callbacks", async () => {
         const model = Gtk.StringList.new(["first"]);
-        const firstHandler = vi.fn();
-        const secondHandler = vi.fn();
+        const firstItems: string[] = [];
+        const secondItems: string[] = [];
+        const firstHandler = (item: string): void => {
+            firstItems.push(item);
+        };
+        const secondHandler = (item: string): void => {
+            secondItems.push(item);
+        };
         const ref = createRef<Gtk.ListView>();
 
         const { rerender, unmount } = await render(
@@ -319,16 +339,14 @@ describe("list item factory lifecycle", () => {
         );
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: BUTTON_LABEL });
         await userEvent.click(button);
-        expect(firstHandler).toHaveBeenCalledTimes(1);
-        expect(firstHandler).toHaveBeenLastCalledWith("first");
+        expect(firstItems).toEqual(["first"]);
 
         await act(() => {
             model.splice(0, 1, ["second"]);
         });
         const reboundButton = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: BUTTON_LABEL });
         await userEvent.click(reboundButton);
-        expect(firstHandler).toHaveBeenCalledTimes(2);
-        expect(firstHandler).toHaveBeenLastCalledWith("second");
+        expect(firstItems).toEqual(["first", "second"]);
 
         await rerender(
             <GtkListView
@@ -339,9 +357,8 @@ describe("list item factory lifecycle", () => {
         );
         expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: BUTTON_LABEL })).toBe(reboundButton);
         await userEvent.click(reboundButton);
-        expect(firstHandler).toHaveBeenCalledTimes(2);
-        expect(secondHandler).toHaveBeenCalledTimes(1);
-        expect(secondHandler).toHaveBeenLastCalledWith("second");
+        expect(firstItems).toEqual(["first", "second"]);
+        expect(secondItems).toEqual(["second"]);
 
         await act(() => {
             model.splice(0, 1, []);
@@ -354,9 +371,8 @@ describe("list item factory lifecycle", () => {
         });
         const restoredButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: BUTTON_LABEL });
         await userEvent.click(restoredButton);
-        expect(firstHandler).toHaveBeenCalledTimes(2);
-        expect(secondHandler).toHaveBeenCalledTimes(2);
-        expect(secondHandler).toHaveBeenLastCalledWith("restored");
+        expect(firstItems).toEqual(["first", "second"]);
+        expect(secondItems).toEqual(["second", "restored"]);
         await unmount();
         const clickedSignal = GObject.signalLookup("clicked", Gtk.Button);
         expect(GObject.signalHasHandlerPending(reboundButton, clickedSignal, 0, true)).toBe(false);
@@ -453,10 +469,13 @@ describe("clicking the row that carries the column headers", () => {
     });
 
     it("does not activate the view that activates on a single click", async () => {
-        const onActivate = vi.fn();
+        let activationCount = 0;
+        const onActivate = (): void => {
+            activationCount += 1;
+        };
         await renderColumns(onActivate);
         await userEvent.click(headerRowFor(NAME_TITLE));
-        expect(onActivate).not.toHaveBeenCalled();
+        expect(activationCount).toBe(0);
     });
 
     it("leaves the sorter alone when it takes a pointer click token", async () => {
@@ -530,6 +549,6 @@ describe("GtkDropDown - expression prop", () => {
             <GtkDropDown ref={ref} expression={expression} model={<GtkStringList strings={["a", "b"]} />} />,
         );
 
-        expect(ref.current?.getExpression()).not.toBeNull();
+        expect(ref.current?.getExpression()).toBe(expression);
     });
 });

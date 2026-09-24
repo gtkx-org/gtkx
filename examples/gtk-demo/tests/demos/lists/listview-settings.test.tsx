@@ -1,7 +1,6 @@
-import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { act, screen, userEvent, waitFor } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { listviewSettingsDemo } from "../../../src/demos/lists/listview-settings.js";
 import { collectWidgets, findInactiveSearchToggle, openSearchEntry, renderDemo } from "../../test-utils.js";
 
@@ -9,6 +8,12 @@ type FilteredToZeroState = {
     columnView: Gtk.ColumnView;
     full: number;
     entry: Gtk.SearchEntry;
+};
+
+type BooleanEditableSelection = {
+    sidebar: Gtk.ListView;
+    index: number;
+    editable: Gtk.EditableLabel;
 };
 
 const titledColumn = (candidate: unknown): [string, Gtk.ColumnViewColumn] | null => {
@@ -68,7 +73,7 @@ const booleanEditableAtRow = async (sidebar: Gtk.ListView, index: number): Promi
     return booleanEditableIn(await findColumnView());
 };
 
-const selectSchemaWithBooleanKey = async (): Promise<Gtk.EditableLabel> => {
+const selectSchemaWithBooleanKey = async (): Promise<BooleanEditableSelection> => {
     const sidebar = await screen.findByName("sidebar", { as: Gtk.ListView });
     const rowCount = sidebar.getModel()?.getNItems() ?? 0;
 
@@ -76,7 +81,7 @@ const selectSchemaWithBooleanKey = async (): Promise<Gtk.EditableLabel> => {
         const editable = await booleanEditableAtRow(sidebar, index);
 
         if (editable !== undefined) {
-            return editable;
+            return { sidebar, index, editable };
         }
     }
 
@@ -245,66 +250,53 @@ describe("listviewSettingsDemo schema interactions", () => {
 
 describe("listviewSettingsDemo value editing", () => {
     it("commits a valid edited boolean value to GSettings and reflects it in the row", async () => {
-        const setValueSpy = vi.spyOn(Gio.Settings.prototype, "setValue").mockReturnValue(true);
+        await renderDemo(listviewSettingsDemo);
+        const { sidebar, index, editable: target } = await selectSchemaWithBooleanKey();
+        const flipped = target.getText() === "true" ? "false" : "true";
 
-        try {
-            await renderDemo(listviewSettingsDemo);
-            const target = await selectSchemaWithBooleanKey();
-            const flipped = target.getText() === "true" ? "false" : "true";
-            setValueSpy.mockClear();
+        await act(() => {
+            target.startEditing();
+        });
+        await userEvent.clear(target);
+        await userEvent.type(target, flipped);
+        await act(() => {
+            target.stopEditing(true);
+        });
 
-            await act(() => {
-                target.startEditing();
-            });
-            await userEvent.clear(target);
-            await userEvent.type(target, flipped);
-            await act(() => {
-                target.stopEditing(true);
-            });
+        await waitFor(() => {
+            expect(target).toHaveObjectProperty("text", flipped);
+        });
 
-            await waitFor(() => {
-                expect(target).toHaveObjectProperty("text", flipped);
-            });
+        await userEvent.selectOptions(sidebar, index === 0 ? 1 : 0);
+        await userEvent.selectOptions(sidebar, index);
+        const columnView = await findColumnView();
 
-            expect(setValueSpy).toHaveBeenCalled();
-            const isCommitted = setValueSpy.mock.calls.some((call) => (call[1]).print(false) === flipped);
-            expect(isCommitted).toBe(true);
-        } finally {
-            setValueSpy.mockRestore();
-        }
+        await waitFor(() => {
+            expect(booleanEditableIn(columnView)).toHaveObjectProperty("text", flipped);
+        });
     });
 
-    it("rejects an unparseable edited value with an error bell and writes nothing", async () => {
-        const setValueSpy = vi.spyOn(Gio.Settings.prototype, "setValue").mockReturnValue(true);
+    it("restores the displayed value after rejecting an unparseable edit", async () => {
+        await renderDemo(listviewSettingsDemo);
+        const columnView = await selectFirstSchemaWithKeys();
+        const [target] = collectWidgets(columnView, Gtk.EditableLabel);
 
-        try {
-            await renderDemo(listviewSettingsDemo);
-            const columnView = await selectFirstSchemaWithKeys();
-            const [target] = collectWidgets(columnView, Gtk.EditableLabel);
-
-            if (!target) {
-                throw new Error("the selected schema exposes no editable value cell");
-            }
-
-            const errorBellSpy = vi.spyOn(target, "errorBell");
-            setValueSpy.mockClear();
-            await act(() => {
-                target.startEditing();
-            });
-            await userEvent.clear(target);
-            await userEvent.type(target, "!!not-a-valid-variant!!");
-            await act(() => {
-                target.stopEditing(true);
-            });
-
-            await waitFor(() => {
-                expect(errorBellSpy).toHaveBeenCalled();
-            });
-
-            expect(setValueSpy).not.toHaveBeenCalled();
-            errorBellSpy.mockRestore();
-        } finally {
-            setValueSpy.mockRestore();
+        if (!target) {
+            throw new Error("the selected schema exposes no editable value cell");
         }
+
+        const original = target.getText();
+        await act(() => {
+            target.startEditing();
+        });
+        await userEvent.clear(target);
+        await userEvent.type(target, "!!not-a-valid-variant!!");
+        await act(() => {
+            target.stopEditing(true);
+        });
+
+        await waitFor(() => {
+            expect(target).toHaveObjectProperty("text", original);
+        });
     });
 });

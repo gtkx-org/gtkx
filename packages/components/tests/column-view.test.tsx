@@ -5,7 +5,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, getWidgetText, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
     asCollectionView,
     expectFiltering,
@@ -277,19 +277,22 @@ describe("ColumnView estimated item size", () => {
 
 describe("ColumnView sorting", () => {
     it("reports the column and the order when the user clicks a sortable header", async () => {
-        const onSortChanged = vi.fn();
+        const sortChanges: [string | null, Gtk.SortType][] = [];
+        const onSortChanged = (column: string | null, order: Gtk.SortType): void => {
+            sortChanges.push([column, order]);
+        };
         await renderColumnView(personRows(null), { columns: personColumns, onSortChanged });
         const header = screen.getByRole(Gtk.AccessibleRole.COLUMN_HEADER, { name: "Name" });
         await userEvent.click(header);
 
         await waitFor(() => {
-            expect(onSortChanged).toHaveBeenCalledWith("name", Gtk.SortType.ASCENDING);
+            expect(sortChanges.at(-1)).toEqual(["name", Gtk.SortType.ASCENDING]);
         });
 
         await userEvent.click(header);
 
         await waitFor(() => {
-            expect(onSortChanged).toHaveBeenCalledWith("name", Gtk.SortType.DESCENDING);
+            expect(sortChanges.at(-1)).toEqual(["name", Gtk.SortType.DESCENDING]);
         });
     });
 
@@ -306,7 +309,10 @@ describe("ColumnView sorting", () => {
     });
 
     it("restores the controlled sort after the user selects another column", async () => {
-        const onSortChanged = vi.fn();
+        const sortChanges: [string | null, Gtk.SortType][] = [];
+        const onSortChanged = (column: string | null, order: Gtk.SortType): void => {
+            sortChanges.push([column, order]);
+        };
         const { ref } = await renderColumnView(personRows("name"), {
             columns: personColumns,
             sortColumn: "name",
@@ -316,7 +322,7 @@ describe("ColumnView sorting", () => {
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.COLUMN_HEADER, { name: "Salary" }));
 
         await waitFor(() => {
-            expect(onSortChanged).toHaveBeenCalledExactlyOnceWith("salary", Gtk.SortType.ASCENDING);
+            expect(sortChanges).toEqual([["salary", Gtk.SortType.ASCENDING]]);
             expect(primarySort(ref.current)).toEqual(["name", Gtk.SortType.ASCENDING]);
         });
     });
@@ -324,10 +330,13 @@ describe("ColumnView sorting", () => {
 
 describe("ColumnView selection", () => {
     it("applies a selectedIds change after mount and reports it once", async () => {
-        const onSelectionChanged = vi.fn();
+        const selectionChanges: string[][] = [];
+        const onSelectionChanged = (ids: string[]): void => {
+            selectionChanges.push(ids);
+        };
         const options = { columns: personColumns, selectionMode: Gtk.SelectionMode.MULTIPLE, onSelectionChanged };
         const { ref, rerender } = await renderColumnView(personRows(null), { ...options, selected: [] });
-        onSelectionChanged.mockClear();
+        selectionChanges.length = 0;
         await rerender(personRows(null), { ...options, selected: ["Charlie", "Bob"] });
 
         await waitFor(() => {
@@ -338,7 +347,7 @@ describe("ColumnView selection", () => {
             expect(model.isSelected(2)).toBe(true);
         });
 
-        expect(onSelectionChanged.mock.calls).toEqual([[["Charlie", "Bob"]]]);
+        expect(selectionChanges).toEqual([["Charlie", "Bob"]]);
     });
 });
 

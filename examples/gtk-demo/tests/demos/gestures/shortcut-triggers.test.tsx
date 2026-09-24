@@ -1,20 +1,31 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, within } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { screen, within } from "@gtkx/testing";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
 import { shortcutTriggersDemo } from "../../../src/demos/gestures/shortcut-triggers.js";
 import { renderDemo } from "../../test-utils.js";
 
-const expectShortcutLog = async (labelName: string, keys: string, message: string): Promise<void> => {
-    const logSpy = vi.spyOn(console, "log").mockImplementation((): void => undefined);
+const OUTPUT_FIXTURE = fileURLToPath(new URL("../../fixtures/shortcut-output.tsx", import.meta.url));
+const OUTPUT_FIXTURE_ARGS = ["--conditions=source", "--import", "tsx", OUTPUT_FIXTURE];
+const OUTPUT_FIXTURE_TSCONFIG = fileURLToPath(new URL("../../../../../tsconfig.base.json", import.meta.url));
 
-    try {
-        await renderDemo(shortcutTriggersDemo);
-        const label = await screen.findByName(labelName, { as: Gtk.Label });
-        await userEvent.keyboard(label, keys);
-        expect(logSpy).toHaveBeenCalledWith(message);
-    } finally {
-        logSpy.mockRestore();
+const runShortcut = (scenario: "ctrl-g" | "x"): string => {
+    const result = spawnSync(process.execPath, OUTPUT_FIXTURE_ARGS, {
+        encoding: "utf8",
+        env: {
+            ...process.env,
+            GTKX_SHORTCUT_SCENARIO: scenario,
+            TSX_TSCONFIG_PATH: OUTPUT_FIXTURE_TSCONFIG,
+        },
+        timeout: 20_000,
+    });
+
+    if (result.status !== 0) {
+        throw new Error(result.stderr);
     }
+
+    return result.stdout;
 };
 
 describe("shortcutTriggersDemo rendering", () => {
@@ -44,12 +55,11 @@ describe("shortcutTriggersDemo rendering", () => {
     });
 });
 
-describe("shortcutTriggersDemo activation handlers", () => {
-    it("logs the Ctrl-G activation message when the Ctrl-G shortcut fires", async () => {
-        await expectShortcutLog("label-ctrl-g", "{Control>}g{/Control}", "activated Press Ctrl-G");
-    });
-
-    it("logs the Press-X activation message when the X shortcut fires", async () => {
-        await expectShortcutLog("label-x", "x", "activated Press X");
+describe("shortcutTriggersDemo activation", () => {
+    it.each([
+        ["ctrl-g", "activated Press Ctrl-G"],
+        ["x", "activated Press X"],
+    ] as const)("activates the %s shortcut", (scenario, output) => {
+        expect(runShortcut(scenario).trim()).toBe(output);
     });
 });

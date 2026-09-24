@@ -66,8 +66,6 @@ test("strings containing NUL are rejected before native calls", () => {
 
 test("nullable string parameters and returns carry null", () => {
     Regress.testUtf8NullIn(null);
-    // @ts-expect-error the nullable parameter is not declared optional
-    Regress.testUtf8NullIn();
     expect(Regress.testUtf8NullOut()).toBeNull();
     expect(Regress.testReturnAllowNone()).toBeNull();
     expect(Regress.testReturnNullable()).toBeNull();

@@ -4,6 +4,9 @@ import { type CArrayType, LIST_FLAVOR_BY_NAME, type ListFlavor, type ParseContex
 
 const LIST_FLAVOR_BY_NAME_LOOKUP: Map<string, ListFlavor> = new Map(Object.entries(LIST_FLAVOR_BY_NAME));
 
+const typeCTypeFromNode = (parent: RawNode | undefined): string | undefined =>
+    attr(getChild(parent, "type"), "c:type");
+
 function getElementRef(node: RawNode, context: ParseContext): TypeId {
     const arrayNode = getChild(node, "array");
 
@@ -118,4 +121,4 @@ const splitOptionalNamespace = (name: string): [string | undefined, string] => {
     return [name.slice(0, dot), name.slice(dot + 1)];
 };
 
-export { typeRefFromNode, splitOptionalNamespace };
+export { typeCTypeFromNode, typeRefFromNode, splitOptionalNamespace };

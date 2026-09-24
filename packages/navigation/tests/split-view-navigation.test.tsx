@@ -7,7 +7,7 @@ import { render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import {
     clickButton,
-    createStateSpy,
+    createStateLog,
     expectHidden,
     expectRouteNames,
     expectVisible,
@@ -47,54 +47,54 @@ const expectStateRouteNames = (state: NavigationState | undefined, names: string
 
 describe("split view - navigation", () => {
     it("fills the content pane and hides the placeholder when a list is selected", async () => {
-        const onStateChange = createStateSpy();
-        await renderSplit({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderSplit({ container: { onStateChange: stateLog.record } });
         await screen.findByText("Nothing Selected");
         await clickButton("Open personal");
         await screen.findByText("Tasks personal");
         expectHidden("Nothing Selected");
         expectVisible("Lists Content");
-        expectRouteNames(onStateChange, ["Lists", "Tasks"]);
+        expectRouteNames(stateLog, ["Lists", "Tasks"]);
     });
 
     it("keeps the sidebar visible while a detail covers the list", async () => {
-        const onStateChange = createStateSpy();
-        await renderSplit({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderSplit({ container: { onStateChange: stateLog.record } });
         await clickButton("Open personal");
         await clickButton("Open task");
         await screen.findByText("Task 7");
         expectHidden("Tasks personal");
         expectVisible("Lists Content");
-        expectRouteNames(onStateChange, ["Lists", "Tasks", "Task"]);
+        expectRouteNames(stateLog, ["Lists", "Tasks", "Task"]);
     });
 
     it("returns from the detail to the list with goBack", async () => {
-        const onStateChange = createStateSpy();
-        await renderSplit({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderSplit({ container: { onStateChange: stateLog.record } });
         await clickButton("Open personal");
         await clickButton("Open task");
         await screen.findByText("Task 7");
         await clickButton("Go back");
         await screen.findByText("Tasks personal");
         expectHidden("Task 7");
-        expectRouteNames(onStateChange, ["Lists", "Tasks"]);
+        expectRouteNames(stateLog, ["Lists", "Tasks"]);
     });
 
     it("returns from the list to the placeholder with the sidebar still visible", async () => {
-        const onStateChange = createStateSpy();
-        await renderSplit({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderSplit({ container: { onStateChange: stateLog.record } });
         await clickButton("Open personal");
         await screen.findByText("Tasks personal");
         await clickButton("Go back");
         await screen.findByText("Nothing Selected");
         expectHidden("Tasks personal");
         expectVisible("Lists Content");
-        expectRouteNames(onStateChange, ["Lists"]);
+        expectRouteNames(stateLog, ["Lists"]);
     });
 
     it("replaces the content and drops the detail when the sidebar reopens the same route", async () => {
-        const onStateChange = createStateSpy();
-        await renderSplit({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderSplit({ container: { onStateChange: stateLog.record } });
         await clickButton("Open personal");
         await clickButton("Open task");
         await screen.findByText("Task 7");
@@ -102,19 +102,19 @@ describe("split view - navigation", () => {
         await screen.findByText("Tasks work");
         expectHidden("Task 7");
         expectHidden("Tasks personal");
-        expectRouteNames(onStateChange, ["Lists", "Tasks"]);
+        expectRouteNames(stateLog, ["Lists", "Tasks"]);
     });
 
     it("clears the content pane back to the placeholder with popToTop", async () => {
-        const onStateChange = createStateSpy();
-        await renderSplit({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderSplit({ container: { onStateChange: stateLog.record } });
         await clickButton("Open personal");
         await screen.findByText("Tasks personal");
         await clickButton("Pop to top");
         await screen.findByText("Nothing Selected");
         expectHidden("Tasks personal");
         expectVisible("Lists Content");
-        expectRouteNames(onStateChange, ["Lists"]);
+        expectRouteNames(stateLog, ["Lists"]);
     });
 
     it("opens on the content route named by initialRouteName with the sidebar pinned below it", async () => {
@@ -127,14 +127,14 @@ describe("split view - navigation", () => {
     });
 
     it("pops the route named by initialRouteName back to the placeholder", async () => {
-        const onStateChange = createStateSpy();
-        await render(initialApp({ onStateChange }));
+        const stateLog = createStateLog();
+        await render(initialApp({ onStateChange: stateLog.record }));
         await screen.findByText("Tasks personal");
-        expect(onStateChange).not.toHaveBeenCalled();
+        expect(stateLog.states).toEqual([]);
         await clickButton("Go back");
         await screen.findByText("Nothing Selected");
         expectHidden("Tasks personal");
         expectVisible("Lists Content");
-        expectRouteNames(onStateChange, ["Lists"]);
+        expectRouteNames(stateLog, ["Lists"]);
     });
 });

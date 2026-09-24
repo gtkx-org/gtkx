@@ -74,7 +74,8 @@ import type * as GObject from "@gtkx/gi/gobject";
 import * as HiddenProperties from "@gtkx/gi/hiddenproperties";
 import { GMemoryOutputStream } from "@gtkx/jsx/gio";
 import { HiddenPropertiesProbe, HiddenPropertiesChild, HiddenPropertiesRawOnly,
-    HiddenPropertiesRawChild } from "@gtkx/jsx/hiddenproperties";
+    HiddenPropertiesRawChild, type HiddenPropertiesProbeProps,
+    type HiddenPropertiesChildProps } from "@gtkx/jsx/hiddenproperties";
 import { registerClass } from "@gtkx/runtime";
 `;
 const ACCEPTED = IMPORTS + `
@@ -97,8 +98,10 @@ export const create = (owner: GObject.Object, bytes: GLib.Bytes, typeId: bigint)
     const child = new HiddenProperties.Child(props);
     const nullable: HiddenProperties.ProbeConstructorProps = { owner: null, bytes: null, names: null };
     const values: (bigint | null)[] = [];
-    const view = <HiddenPropertiesProbe {...props} onNotifyCount={(value) => values.push(value)} />;
-    const childView = <HiddenPropertiesChild {...nullable} count={0n} onNotifyCount={() => undefined} />;
+    const viewProps: HiddenPropertiesProbeProps = { count: 7n, typeId, owner, bytes, names: ["one"] };
+    const childViewProps: HiddenPropertiesChildProps = { owner: null, bytes: null, names: null, count: 0n };
+    const view = <HiddenPropertiesProbe {...viewProps} onNotifyCount={(value) => values.push(value)} />;
+    const childView = <HiddenPropertiesChild {...childViewProps} onNotifyCount={() => undefined} />;
     return { probe, child, view, childView };
 };
 class CustomProbe extends HiddenProperties.Probe {}

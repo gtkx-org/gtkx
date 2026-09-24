@@ -13,13 +13,15 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import schema from "../data/com.gtkx.tutorial.gschema.xml";
 import { App } from "../src/app.js";
 import { useStore } from "../src/store/index.js";
 
 const call = promisify(execFile);
 const service = "org.freedesktop.Notifications";
 const objectPath = "/org/freedesktop/Notifications";
-const settings = Gio.Settings.new("com.gtkx.tutorial");
+const busctl = "/usr/bin/busctl";
+const settings = Gio.Settings.new(schema.id);
 
 type Notification = [
     app: string,
@@ -32,38 +34,72 @@ type Notification = [
     expires: number,
 ];
 
-const test = it.extend<{ notifications: Notification[] }>({
+type NotificationLog = Notification[] & { withdrawals: number };
+
+const testDue = (index: number, offset: number, due: string): string | null => {
+    if (index === 3) {
+        return new Date(Date.now() + offset).toISOString();
+    }
+
+    return index === 4 ? null : due;
+};
+
+const rejectAfterExit = async (exited: Promise<void>): Promise<never> => {
+    await exited;
+    throw new Error("The reminder application exited before mounting");
+};
+
+const test = it.extend<{ notifications: NotificationLog }>({
     notifications: async ({}, run) => {
         const address = process.env.DBUS_SESSION_BUS_ADDRESS;
-        if (address === undefined) throw new Error("The notification test needs its headless session bus");
+        if (address === undefined) {
+            throw new Error("The notification test needs its headless session bus");
+        }
         const args = [`--address=${address}`, "--json=short"];
-        const child = spawn("busctl", [...args, `--match=type='method_call',interface='${service}'`, "monitor"], {
+        const child = spawn(busctl, [...args, `--match=type='method_call',interface='${service}'`, "monitor"], {
             stdio: ["ignore", "pipe", "inherit"],
         });
-        const notifications: Notification[] = [];
+        const notifications: NotificationLog = Object.assign([], { withdrawals: 0 });
         let informationCalls = 0;
         let isStopping = false;
         let failure: Error | undefined;
-        const exited = new Promise<void>((resolve) => {
+        const exited: Promise<void> = new Promise((resolve) => {
             child.once("error", (error) => {
                 failure = error;
             });
             child.once("close", (code, signal) => {
-                if (!isStopping) failure = new Error(`Notification monitor exited: ${String(code ?? signal)}`);
+                if (!isStopping) {
+                    failure = new Error(`Notification monitor exited: ${String(code ?? signal)}`);
+                }
                 resolve();
             });
         });
         const lines = createInterface({ input: child.stdout });
         lines.on("line", (line) => {
-            const message: { member: string; payload: { data: Notification } } = JSON.parse(line);
-            if (message.member === "Notify") notifications.push(message.payload.data);
-            if (message.member === "GetServerInformation") informationCalls += 1;
+            const message = JSON.parse(line) as { member: string; payload: { data: unknown } };
+            switch (message.member) {
+                case "Notify": {
+                    notifications.push(message.payload.data as Notification);
+                    break;
+                }
+                case "CloseNotification": {
+                    notifications.withdrawals += 1;
+                    break;
+                }
+                case "GetServerInformation": {
+                    informationCalls += 1;
+                    break;
+                }
+            }
         });
         const synchronize = async (): Promise<void> => {
             const previous = informationCalls;
             await expect.poll(async () => {
-                if (failure !== undefined) throw failure;
-                await call("busctl", [...args, "call", service, objectPath, service, "GetServerInformation"]);
+                if (failure !== undefined) {
+                    throw failure;
+                }
+                await call(busctl, [...args, "call", service, objectPath, service, "GetServerInformation"]);
+
                 return informationCalls;
             }).toBeGreaterThan(previous);
         };
@@ -71,7 +107,9 @@ const test = it.extend<{ notifications: Notification[] }>({
         try {
             await synchronize();
             await run(notifications);
-            if (failure !== undefined) throw failure;
+            if (failure !== undefined) {
+                throw failure;
+            }
         } finally {
             isStopping = true;
             child.kill();
@@ -100,7 +138,9 @@ describe("desktop reminders", () => {
         useStore.getState().updateTask("t2", { due });
 
         const first = await render(<StrictMode><App /></StrictMode>, { container: rootElement });
-        await waitFor(() => expect(notifications).toHaveLength(1));
+        await waitFor(() => {
+            expect(notifications).toHaveLength(1);
+        });
         await first.unmount();
         await render(<App />, { container: rootElement });
         await act(() => {
@@ -109,7 +149,9 @@ describe("desktop reminders", () => {
                 title: "Water the balcony",
             });
         });
-        await waitFor(() => expect(notifications.at(-1)?.[3]).toBe("Water the balcony"));
+        await waitFor(() => {
+            expect(notifications.at(-1)?.[3]).toBe("Water the balcony");
+        });
         expect(notifications.map((notification) => notification[3])).toEqual([
             "Water the plants",
             "Water the balcony",
@@ -124,8 +166,10 @@ describe("desktop reminders", () => {
 
         await render(<App />, { container: rootElement });
 
-        await waitFor(() => expect(notifications).toHaveLength(2));
-        expect(notifications.map((notification) => notification[3]).sort()).toEqual([
+        await waitFor(() => {
+            expect(notifications).toHaveLength(2);
+        });
+        expect(notifications.map((notification) => notification[3]).toSorted((a, b) => a.localeCompare(b))).toEqual([
             "Review pull requests",
             "Water the plants",
         ]);
@@ -139,7 +183,7 @@ describe("desktop reminders", () => {
         useStore.setState((state) => ({
             tasks: state.tasks.map((task, index) => ({
                 ...task,
-                due: index === 3 ? new Date(Date.now() + offset).toISOString() : index === 4 ? null : due,
+                due: testDue(index, offset, due),
                 done: index === 0,
                 deleted: index === 1,
                 lastNotifiedDue: index === 2 ? due : null,
@@ -147,35 +191,51 @@ describe("desktop reminders", () => {
         }));
 
         await render(<App />, { container: rootElement });
-        await waitFor(() => expect(notifications.at(-1)?.[3]).toBe("Order birthday gift"));
+        await waitFor(() => {
+            expect(notifications.at(-1)?.[3]).toBe("Order birthday gift");
+        });
 
         expect(notifications.map((message) => message[3])).toEqual(["Order birthday gift"]);
     });
 
     test.for([
-        { name: "completion", change: () => useStore.getState().setDone("t4", true) },
-        { name: "trash", change: () => useStore.getState().moveToTrash("t4") },
-        { name: "removal", change: () => useStore.getState().deleteForever("t4") },
+        { name: "completion", change: () => {
+            useStore.getState().setDone("t4", true);
+        } },
+        { name: "trash", change: () => {
+            useStore.getState().moveToTrash("t4");
+        } },
+        { name: "removal", change: () => {
+            useStore.getState().deleteForever("t4");
+        } },
         {
             name: "rescheduling",
-            change: () => useStore.getState().updateTask("t4", {
-                due: new Date(Date.now() + 3_600_000).toISOString(),
-            }),
+            change: () => {
+                useStore.getState().updateTask("t4", {
+                    due: new Date(Date.now() + 3_600_000).toISOString(),
+                });
+            },
         },
     ])("honors $name before a pending reminder dispatches", async ({ change }, { notifications }) => {
         const due = new Date(Date.now() - 1000).toISOString();
-        for (const id of ["t2", "t4", "t6"]) useStore.getState().updateTask(id, { due });
+        for (const id of ["t2", "t4", "t6"]) {
+            useStore.getState().updateTask(id, { due });
+        }
         const unsubscribe = useStore.subscribe((state) => {
-            if (state.tasks.some((task) => task.id === "t2" && task.lastNotifiedDue === due)) {
-                unsubscribe();
-                change();
+            if (state.tasks.every((task) => !(task.id === "t2" && task.lastNotifiedDue === due))) {
+                return;
             }
+
+            unsubscribe();
+            change();
         });
 
         try {
             await render(<App />, { container: rootElement });
-            await waitFor(() => expect(notifications.some((message) => message[3] === "Order birthday gift"))
-                .toBe(true));
+            await waitFor(() => {
+                expect(notifications.some((message) => message[3] === "Order birthday gift"))
+                    .toBe(true);
+            });
             expect(notifications.map((message) => message[3])).toEqual([
                 "Water the plants",
                 "Order birthday gift",
@@ -185,20 +245,87 @@ describe("desktop reminders", () => {
         }
     });
 
+    test.for([
+        {
+            name: "completion",
+            change: async () => {
+                const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Review pull requests" });
+                await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.CHECKBOX));
+            },
+            expectedCompletion: true,
+        },
+        {
+            name: "trash",
+            change: async () => {
+                const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Review pull requests" });
+                await userEvent.click(within(row).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Delete task" }));
+            },
+            expectedCompletion: null,
+        },
+        {
+            name: "permanent removal",
+            change: async () => act(() => {
+                useStore.getState().deleteForever("t4");
+            }),
+            expectedCompletion: null,
+        },
+        {
+            name: "rescheduling",
+            change: async () => act(() => {
+                useStore.getState().updateTask("t4", {
+                    due: new Date(Date.now() + 3_600_000).toISOString(),
+                });
+            }),
+            expectedCompletion: false,
+        },
+    ])("withdraws and rejects stale actions after $name", async ({ change, expectedCompletion }, { notifications }) => {
+        const due = new Date(Date.now() - 1000).toISOString();
+        useStore.getState().updateTask("t4", { due });
+        await render(<App />, { container: rootElement });
+        await waitFor(() => {
+            expect(notifications.at(-1)?.[3]).toBe("Review pull requests");
+        });
+
+        await change();
+        await waitFor(() => {
+            expect(notifications.withdrawals).toBe(1);
+        });
+
+        const target = GLib.Variant.newTuple([GLib.Variant.newString("t4"), GLib.Variant.newString(due)]);
+        const window = screen.getByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
+        await act(() => {
+            expect(window.activateAction("app.open-reminder", target)).toBe(true);
+            expect(window.activateAction("app.complete-reminder", target)).toBe(true);
+        });
+        expect(screen.queryByText("Notes")).toBeNull();
+
+        const row = screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Review pull requests" });
+        const isCompleted = row === null
+            ? null
+            : within(row).queryByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true }) !== null;
+        expect(isCompleted).toBe(expectedCompletion);
+    });
+
     test("uses the current title when a pending reminder dispatches", async ({ notifications }) => {
         const due = new Date(Date.now() - 1000).toISOString();
-        for (const id of ["t2", "t4", "t6"]) useStore.getState().updateTask(id, { due });
+        for (const id of ["t2", "t4", "t6"]) {
+            useStore.getState().updateTask(id, { due });
+        }
         const unsubscribe = useStore.subscribe((state) => {
-            if (state.tasks.some((task) => task.id === "t2" && task.lastNotifiedDue === due)) {
-                unsubscribe();
-                state.updateTask("t4", { title: "Review the new pull requests" });
+            if (state.tasks.every((task) => !(task.id === "t2" && task.lastNotifiedDue === due))) {
+                return;
             }
+
+            unsubscribe();
+            state.updateTask("t4", { title: "Review the new pull requests" });
         });
 
         try {
             await render(<App />, { container: rootElement });
-            await waitFor(() => expect(notifications.some((message) => message[3] === "Order birthday gift"))
-                .toBe(true));
+            await waitFor(() => {
+                expect(notifications.some((message) => message[3] === "Order birthday gift"))
+                    .toBe(true);
+            });
             expect(notifications.map((message) => message[3])).toEqual([
                 "Water the plants",
                 "Review the new pull requests",
@@ -209,11 +336,14 @@ describe("desktop reminders", () => {
         }
     });
 
-    test("catches a nonzero reminder after the application resumes past its due window", async ({ notifications, signal }) => {
+    test("catches a nonzero reminder after the application resumes past its due window", async (
+        { notifications, signal },
+    ) => {
         const project = fileURLToPath(new URL("..", import.meta.url));
         const output = mkdtempSync(join(project, ".gtkx-reminder-"));
         const dataHome = mkdtempSync(join(tmpdir(), "gtkx-reminder-data-"));
-        const cli = join(dirname(fileURLToPath(import.meta.resolve("@gtkx/cli/package.json"))), "bin", "gtkx.js");
+        const cliManifest = fileURLToPath(import.meta.resolve("@gtkx/cli/package.json"));
+        const cli = join(dirname(cliManifest), "bin", "gtkx.js");
         try {
             await call(process.execPath, [
                 cli,
@@ -230,21 +360,27 @@ describe("desktop reminders", () => {
                 killSignal: "SIGKILL",
                 stdio: ["ignore", "ignore", "inherit", "ipc"],
             });
-            const exited = new Promise<void>((resolve) => child.once("close", () => resolve()));
-            const ready = new Promise<{ due: number }>((resolve, reject) => {
+            const exited: Promise<void> = new Promise((resolve) => child.once("close", () => {
+                resolve();
+            }));
+            const ready: Promise<{ due: number }> = new Promise((resolve, reject) => {
                 child.once("message", resolve);
                 child.once("error", reject);
             });
             try {
                 const { due } = await Promise.race([
                     ready,
-                    exited.then(() => { throw new Error("The reminder application exited before mounting"); }),
+                    rejectAfterExit(exited),
                 ]);
-                await waitFor(() => expect(notifications.map((message) => message[3])).toEqual(["Review pull requests"]));
+                await waitFor(() => {
+                    expect(notifications.map((message) => message[3])).toEqual(["Review pull requests"]);
+                });
                 child.kill("SIGSTOP");
                 await delay(due + 65_000 - Date.now(), undefined, { signal });
                 child.kill("SIGCONT");
-                await waitFor(() => expect(notifications.at(-1)?.[3]).toBe("Water the plants"), { timeout: 10_000 });
+                await waitFor(() => {
+                    expect(notifications.at(-1)?.[3]).toBe("Water the plants");
+                }, { timeout: 10_000 });
                 expect(notifications.map((message) => message[3])).toEqual([
                     "Review pull requests",
                     "Water the plants",
@@ -260,10 +396,13 @@ describe("desktop reminders", () => {
         }
     }, 180_000);
 
-    test("serializes reminder content and routes its application actions", async ({ notifications }) => {
-        useStore.getState().updateTask("t2", { due: new Date(Date.now() - 1000).toISOString() });
+    test("serializes reminder content and routes its open action", async ({ notifications }) => {
+        const due = new Date(Date.now() - 1000).toISOString();
+        useStore.getState().updateTask("t2", { due });
         await render(<App />, { container: rootElement });
-        await waitFor(() => expect(notifications).toHaveLength(1));
+        await waitFor(() => {
+            expect(notifications).toHaveLength(1);
+        });
         const [notification] = notifications;
         expect(notification[3]).toBe("Water the plants");
         expect(notification[4]).toMatch(/^Due /);
@@ -272,15 +411,32 @@ describe("desktop reminders", () => {
         expect(notification[6].urgency).toEqual({ type: "y", data: 1 });
 
         const window = screen.getByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
+        const target = GLib.Variant.newTuple([GLib.Variant.newString("t2"), GLib.Variant.newString(due)]);
         await act(() => {
-            expect(window.activateAction("app.open-task", GLib.Variant.newString("t2"))).toBe(true);
+            expect(window.activateAction("app.open-reminder", target)).toBe(true);
         });
         expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
-        await act(() => {
-            expect(window.activateAction("app.complete-task", GLib.Variant.newString("t2"))).toBe(true);
+        await waitFor(() => {
+            expect(notifications.withdrawals).toBe(1);
         });
-        expect(await screen.findByText("Completed")).toHaveTextContent("Completed");
-        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
+    });
+
+    test("completes from a reminder action and withdraws once", async ({ notifications }) => {
+        const due = new Date(Date.now() - 1000).toISOString();
+        useStore.getState().updateTask("t2", { due });
+        await render(<App />, { container: rootElement });
+        await waitFor(() => {
+            expect(notifications).toHaveLength(1);
+        });
+
+        const window = screen.getByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
+        const target = GLib.Variant.newTuple([GLib.Variant.newString("t2"), GLib.Variant.newString(due)]);
+        await act(() => {
+            expect(window.activateAction("app.complete-reminder", target)).toBe(true);
+        });
+        await waitFor(() => {
+            expect(notifications.withdrawals).toBe(1);
+        });
         const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Water the plants" });
         expect(within(row).getByRole(Gtk.AccessibleRole.CHECKBOX)).toBeChecked();
     });

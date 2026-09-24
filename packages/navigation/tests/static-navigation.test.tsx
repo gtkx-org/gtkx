@@ -12,7 +12,7 @@ import {
     createTabScreen,
 } from "@gtkx/navigation";
 import { act, render, screen, userEvent } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
     expectText,
     FirstTabPage,
@@ -85,9 +85,16 @@ describe("static - navigation", () => {
     });
 
     it("accepts onStateChange and a ref", async () => {
-        const onStateChange = vi.fn<(state: NavigationState | undefined) => void>();
+        const states: (NavigationState | undefined)[] = [];
         const ref = createNavigationContainerRef();
-        await render(<App onStateChange={onStateChange} ref={ref} />);
+        await render(
+            <App
+                onStateChange={(state) => {
+                    states.push(state);
+                }}
+                ref={ref}
+            />,
+        );
         await screen.findByText("Home Content");
         expect(ref.isReady()).toBe(true);
 
@@ -96,9 +103,9 @@ describe("static - navigation", () => {
         });
 
         await screen.findByText("Details 5");
-        expect(onStateChange).toHaveBeenCalledTimes(1);
+        expect(states).toHaveLength(1);
 
-        expect(onStateChange.mock.calls[0]?.[0]).toMatchObject({
+        expect(states[0]).toMatchObject({
             index: 1,
             routes: [{ name: "Home" }, { name: "Details", params: { id: "5" } }],
         });
@@ -133,11 +140,17 @@ describe("static - screen factories", () => {
 
 describe("static - nesting and gating", () => {
     it("skips a screen whose if callback returns false", async () => {
-        const onUnhandledAction = vi.fn();
-        await render(<GatedApp onUnhandledAction={onUnhandledAction} />);
+        let unhandledActions = 0;
+        await render(
+            <GatedApp
+                onUnhandledAction={() => {
+                    unhandledActions += 1;
+                }}
+            />,
+        );
         await screen.findByText("Home Content");
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Go to details" }));
-        expect(onUnhandledAction).toHaveBeenCalledTimes(1);
+        expect(unhandledActions).toBe(1);
         expect(screen.queryByText("Details 42")).toBeNull();
         await screen.findByText("Home Content");
     });

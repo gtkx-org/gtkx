@@ -82,7 +82,6 @@ const NX_CONFIGS: FlatConfig[] = [
 const IGNORES = [
     "**/*.vue",
     ".claude/**",
-    "examples/tutorial/**",
     "packages/native/npm/**",
     "packages/native/target/**",
     "packages/native/artifacts/**",

@@ -13,6 +13,7 @@ import {
     type DocumentationVersion,
     GUIDE_ROOT,
     guideItems,
+    isDocumentationPath,
     normalizeDocumentationPath,
     REFERENCE_ROOT,
     resolveVersionPath,
@@ -21,6 +22,7 @@ import {
     TUTORIAL_ROOT,
     tutorialItems,
     versionForPath,
+    type VersionLink,
     versions,
 } from "./versioning.js";
 
@@ -123,7 +125,11 @@ const rewriteReferenceSidebar = (
 const parseSidebar = (source: string): DefaultTheme.SidebarItem[] => {
     const parsed: unknown = JSON.parse(source);
 
-    return Array.isArray(parsed) ? (parsed as DefaultTheme.SidebarItem[]) : [];
+    if (!Array.isArray(parsed)) {
+        throw new TypeError("The generated TypeDoc sidebar must be an array.");
+    }
+
+    return parsed as DefaultTheme.SidebarItem[];
 };
 
 const referenceSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] => {
@@ -245,18 +251,10 @@ const getPageImage = (frontmatter: Record<string, unknown>): string =>
 const getOgType = (relativePath: string): string =>
     relativePath !== "blog/index.md" && relativePath.startsWith("blog/") ? "article" : "website";
 
-const isDocumentationRoute = (route: string): boolean =>
-    /^(guide|tutorial|reference)\//.test(normalizeDocumentationPath(`/${route}`));
-
 const documentationTitle = (route: string): string => {
     const { label } = versionForPath(`/${route}`);
 
-    return isDocumentationRoute(route) ? `GTKX ${label}` : title;
-};
-
-type VersionLink = {
-    href: string;
-    samePage: boolean;
+    return isDocumentationPath(route) ? `GTKX ${label}` : title;
 };
 
 const counterpartLink = (target: DocumentationVersion, route: string): VersionLink => ({
@@ -275,7 +273,7 @@ const versionLinks = (route: string): Record<string, VersionLink> => {
 const canonicalRoute = (route: string): string => {
     const version = versionForPath(`/${route}`);
 
-    if (version.status !== "old" || !isDocumentationRoute(route)) {
+    if (version.status !== "old" || !isDocumentationPath(route)) {
         return route;
     }
 

@@ -1,5 +1,4 @@
 import type { ReactElement, RefObject } from "react";
-import type { Mock } from "vitest";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -16,10 +15,12 @@ import { GtkAdjustment, GtkStringList } from "@gtkx/jsx/gtk";
 import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { renderChildren } from "@gtkx/testing/internal";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+
+type Listener = () => void;
 
 type ListenerClearedCase<Widget> = {
-    renderRow: (ref: RefObject<Widget | null>, handler: Mock | null) => ReactElement;
+    renderRow: (ref: RefObject<Widget | null>, handler: Listener | null) => ReactElement;
     fireFirst: (row: Widget) => void | Promise<void>;
     fireSecond: (row: Widget) => void | Promise<void>;
 };
@@ -53,9 +54,12 @@ const expectListenerClearedWhenHandlerNull = async <Widget,>({
     fireFirst,
     fireSecond,
 }: ListenerClearedCase<Widget>) => {
-    const handler = vi.fn();
+    let callCount = 0;
+    const handler = (): void => {
+        callCount += 1;
+    };
     const ref = createRef<Widget>();
-    const Harness = ({ active }: { active: Mock | null }) => renderRow(ref, active);
+    const Harness = ({ active }: { active: Listener | null }) => renderRow(ref, active);
     const { rerender } = await render(<Harness active={handler} />);
     const row = ref.current;
 
@@ -63,12 +67,12 @@ const expectListenerClearedWhenHandlerNull = async <Widget,>({
         throw new Error("expected ref");
     }
 
-    handler.mockClear();
+    callCount = 0;
     await act(() => fireFirst(row));
-    expect(handler).toHaveBeenCalledTimes(1);
+    expect(callCount).toBe(1);
     await rerender(<Harness active={null} />);
     await act(() => fireSecond(row));
-    expect(handler).toHaveBeenCalledTimes(1);
+    expect(callCount).toBe(1);
 };
 
 function App({ shouldShowBehavior }: { shouldShowBehavior: boolean }) {
@@ -176,7 +180,10 @@ describe("render - SpinRow", () => {
     });
 
     it("invokes onValueChanged when the value is updated programmatically", async () => {
-        const onValueChanged = vi.fn();
+        const values: (number | null)[] = [];
+        const onValueChanged = (value: number | null): void => {
+            values.push(value);
+        };
         const ref = createRef<Adw.SpinRow>();
 
         await render(
@@ -200,9 +207,7 @@ describe("render - SpinRow", () => {
             row.setValue(7);
         });
 
-        expect(onValueChanged).toHaveBeenCalled();
-        const lastCall = onValueChanged.mock.calls.at(-1);
-        expect(lastCall?.[0]).toBe(7);
+        expect(values.at(-1)).toBe(7);
     });
 
     it("removes the listener when onValueChanged is set to null", async () => {
@@ -257,7 +262,10 @@ describe("render - SwitchRow", () => {
     });
 
     it("invokes onActiveChanged when toggled", async () => {
-        const onActiveChanged = vi.fn();
+        const activeValues: (boolean | null)[] = [];
+        const onActiveChanged = (isActive: boolean | null): void => {
+            activeValues.push(isActive);
+        };
 
         await render(
             <AdwPreferencesGroup>
@@ -266,9 +274,7 @@ describe("render - SwitchRow", () => {
         );
 
         await userEvent.click(getSwitch(false));
-        expect(onActiveChanged).toHaveBeenCalled();
-        const lastCall = onActiveChanged.mock.calls.at(-1);
-        expect(lastCall?.[0]).toBe(true);
+        expect(activeValues.at(-1)).toBe(true);
     });
 
     it("clears the listener when onActiveChanged becomes null", async () => {

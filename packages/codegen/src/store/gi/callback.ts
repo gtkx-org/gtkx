@@ -22,8 +22,8 @@ const callbackSignature = (context: ModuleContext, callback: GirCallback): Callb
     return {
         fn,
         options: { excludedParameters },
-        signature: renderMethodSignature(context, fn, excludedParameters),
-        returnType: renderMethodReturnType(context, fn, undefined, excludedParameters),
+        signature: renderMethodSignature(context, fn, excludedParameters, "from-native"),
+        returnType: renderMethodReturnType(context, fn, { excludedParameters, direction: "to-native" }),
     };
 };
 

@@ -10,8 +10,8 @@ export default defineConfig({
         summary: "Manage your tasks and to-dos",
         description: [
             "A GNOME task manager built with GTKX, demonstrating how to build React-based Adwaita applications.",
-            "It shows an adaptive sidebar layout, boxed lists, a task editor, GSettings-backed preferences, "
-            + "undo toasts, drag-to-reorder, desktop notifications, and local JSON persistence.",
+            "It shows an adaptive sidebar layout, boxed lists, a task editor, GSettings-backed preferences, " +
+            "undo toasts, drag-to-reorder, desktop notifications, and local JSON persistence.",
         ],
         categories: ["Office", "ProjectManagement"],
         keywords: ["Task", "Tasks", "Todo", "To-do", "Checklist"],

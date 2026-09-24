@@ -1,0 +1,159 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GLib" version="2.0"/>
+  <include name="GObject" version="2.0"/>
+  <package name="directionaltypes-1.0"/>
+  <namespace name="DirectionalTypes"
+             version="1.0"
+             shared-library="libdirectionaltypes.so.0"
+             c:identifier-prefixes="DirectionalTypes"
+             c:symbol-prefixes="directional_types">
+    <callback name="Transform" c:type="DirectionalTypesTransform">
+      <return-value transfer-ownership="none">
+        <type name="gint64" c:type="gint64"/>
+      </return-value>
+      <parameters>
+        <parameter name="value" transfer-ownership="none">
+          <type name="gint64" c:type="gint64"/>
+        </parameter>
+        <parameter name="extra" direction="out" caller-allocates="0" transfer-ownership="none">
+          <type name="guint64" c:type="guint64*"/>
+        </parameter>
+      </parameters>
+    </callback>
+    <function name="borrow_values" c:identifier="directional_types_borrow_values">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="values" transfer-ownership="none">
+          <array length="1" zero-terminated="0" c:type="const gint32*">
+            <type name="gint32" c:type="gint32"/>
+          </array>
+        </parameter>
+        <parameter name="length" transfer-ownership="none">
+          <type name="gsize" c:type="gsize"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="take_values" c:identifier="directional_types_take_values">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="values" transfer-ownership="full">
+          <array length="1" zero-terminated="0" c:type="gint32*">
+            <type name="gint32" c:type="gint32"/>
+          </array>
+        </parameter>
+        <parameter name="length" transfer-ownership="none">
+          <type name="gsize" c:type="gsize"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="return_values" c:identifier="directional_types_return_values">
+      <return-value transfer-ownership="full">
+        <array length="0" zero-terminated="0" c:type="gint32*">
+          <type name="gint32" c:type="gint32"/>
+        </array>
+      </return-value>
+      <parameters>
+        <parameter name="length" direction="out" caller-allocates="0" transfer-ownership="full">
+          <type name="gsize" c:type="gsize*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="use_transform" c:identifier="directional_types_use_transform">
+      <return-value transfer-ownership="none">
+        <type name="none" c:type="void"/>
+      </return-value>
+      <parameters>
+        <parameter name="transform" transfer-ownership="none" scope="call">
+          <type name="Transform" c:type="DirectionalTypesTransform"/>
+        </parameter>
+      </parameters>
+    </function>
+    <record name="Frame"
+            c:type="DirectionalTypesFrame"
+            c:symbol-prefix="frame"
+            glib:type-name="DirectionalTypesFrame"
+            glib:get-type="directional_types_frame_get_type">
+      <field name="value" writable="1">
+        <type name="gint64" c:type="gint64"/>
+      </field>
+    </record>
+    <class name="Probe"
+           c:symbol-prefix="probe"
+           c:type="DirectionalTypesProbe"
+           parent="GObject.Object"
+           glib:type-name="DirectionalTypesProbe"
+           glib:get-type="directional_types_probe_get_type"
+           glib:type-struct="ProbeClass">
+      <property name="value" readable="1" writable="1" transfer-ownership="none">
+        <type name="gint64" c:type="gint64"/>
+      </property>
+      <method name="accept" c:identifier="directional_types_probe_accept">
+        <return-value transfer-ownership="none">
+          <type name="gint64" c:type="gint64"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Probe" c:type="DirectionalTypesProbe*"/>
+          </instance-parameter>
+          <parameter name="value" transfer-ownership="none">
+            <type name="gint64" c:type="gint64"/>
+          </parameter>
+        </parameters>
+      </method>
+      <virtual-method name="transform">
+        <return-value transfer-ownership="none">
+          <type name="gint64" c:type="gint64"/>
+        </return-value>
+        <parameters>
+          <parameter name="value" transfer-ownership="none">
+            <type name="gint64" c:type="gint64"/>
+          </parameter>
+          <parameter name="extra" direction="out" caller-allocates="0" transfer-ownership="none">
+            <type name="guint64" c:type="guint64*"/>
+          </parameter>
+        </parameters>
+      </virtual-method>
+      <glib:signal name="changed" when="last">
+        <return-value transfer-ownership="none">
+          <type name="gint64" c:type="gint64"/>
+        </return-value>
+        <parameters>
+          <parameter name="value" transfer-ownership="none">
+            <type name="gint64" c:type="gint64"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+    </class>
+    <record name="ProbeClass" c:type="DirectionalTypesProbeClass" glib:is-gtype-struct-for="Probe">
+      <field name="parent_class">
+        <type name="GObject.ObjectClass" c:type="GObjectClass"/>
+      </field>
+      <field name="transform">
+        <callback name="transform">
+          <return-value transfer-ownership="none">
+            <type name="gint64" c:type="gint64"/>
+          </return-value>
+          <parameters>
+            <parameter name="self" transfer-ownership="none">
+              <type name="Probe" c:type="DirectionalTypesProbe*"/>
+            </parameter>
+            <parameter name="value" transfer-ownership="none">
+              <type name="gint64" c:type="gint64"/>
+            </parameter>
+            <parameter name="extra" direction="out" caller-allocates="0" transfer-ownership="none">
+              <type name="guint64" c:type="guint64*"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+    </record>
+  </namespace>
+</repository>

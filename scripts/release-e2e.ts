@@ -183,6 +183,14 @@ async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, vari
 
     await runAsync("npm", scaffoldArgs, { cwd: consumerRoot, env: scaffoldEnv });
     const appDir = join(consumerRoot, variant.appName);
+
+    if (variant.isTypescript) {
+        writeFileSync(
+            join(appDir, "src", "cli-public-types.ts"),
+            'import { isRefreshBoundary } from "@gtkx/cli/refresh-runtime";\nisRefreshBoundary({});\n',
+        );
+    }
+
     await runAsync("git", ["rev-parse", "--verify", "HEAD"], { cwd: appDir, env });
     await runAsync("npm", ["run", "build"], { cwd: appDir, env });
     await verifyBuiltAppStarts(appDir);

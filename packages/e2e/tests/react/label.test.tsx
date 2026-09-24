@@ -1,11 +1,14 @@
-import type { Mock } from "vitest";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { useEffect, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
-const noop: () => void = vi.fn();
+type ClickCounter = { count: number };
+
+const missingIncrement = (): never => {
+    throw new Error("the increment callback was not installed");
+};
 
 const SIBLING_LABELS = (
     <GtkBox>
@@ -43,11 +46,18 @@ function PropOrChildrenLabel({ shouldUseProp }: { shouldUseProp: boolean }) {
     return shouldUseProp ? <GtkLabel label="From prop" /> : <GtkLabel>From children</GtkLabel>;
 }
 
-const renderSaveButton = async (): Promise<Mock> => {
-    const onClicked = vi.fn();
-    await render(<GtkButton label="Save" onClicked={onClicked} />);
+const renderSaveButton = async (): Promise<ClickCounter> => {
+    const counter = { count: 0 };
+    await render(
+        <GtkButton
+            label="Save"
+            onClicked={() => {
+                counter.count += 1;
+            }}
+        />,
+    );
 
-    return onClicked;
+    return counter;
 };
 
 describe("render - Label text children", () => {
@@ -87,7 +97,7 @@ describe("render - Label text children", () => {
     });
 
     it("updates through state-driven rerenders", async () => {
-        let increment = noop;
+        let increment: () => void = missingIncrement;
 
         function App() {
             const [count, setCount] = useState(0);
@@ -147,14 +157,14 @@ describe("byText", () => {
 
 describe("userEvent.click upward resolution", () => {
     it("clicking a button's internal label activates the button", async () => {
-        const onClicked = await renderSaveButton();
+        const counter = await renderSaveButton();
         await userEvent.click(await screen.findByText("Save"));
-        expect(onClicked).toHaveBeenCalledTimes(1);
+        expect(counter.count).toBe(1);
     });
 
     it("clicking a button found by role and name activates it", async () => {
-        const onClicked = await renderSaveButton();
+        const counter = await renderSaveButton();
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" }));
-        expect(onClicked).toHaveBeenCalledTimes(1);
+        expect(counter.count).toBe(1);
     });
 });

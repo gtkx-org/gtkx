@@ -22,7 +22,7 @@ import { rootElement } from "@gtkx/react";
 import { act, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { renderChildren } from "@gtkx/testing/internal";
 import { createRef, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { expectDialogModalProp, expectDialogTitleTracksProp } from "../helpers/dialog-button-render.js";
 import { createAppIdFactory } from "../helpers/unique-name.js";
 
@@ -255,7 +255,10 @@ describe("Dialog - render prop and lifecycle", () => {
 
     it("fires onClosed when the dialog closes", async () => {
         const dialogRef = createRef<Adw.AlertDialog>();
-        const onClose = vi.fn();
+        let closeCount = 0;
+        const onClose = (): void => {
+            closeCount += 1;
+        };
 
         await render(
             <InApp>
@@ -276,13 +279,16 @@ describe("Dialog - render prop and lifecycle", () => {
         });
 
         await waitFor(() => {
-            expect(onClose).toHaveBeenCalledTimes(1);
+            expect(closeCount).toBe(1);
             expect(dialog).not.toBeRooted();
         });
     });
 
     it("does not fire onClose when React unmounts the dialog", async () => {
-        const onClose = vi.fn();
+        let closeCount = 0;
+        const onClose = (): void => {
+            closeCount += 1;
+        };
 
         const App = ({ isOpen }: { isOpen: boolean }) => (
             <InApp>{isOpen ? <AdwAlertDialog onClosed={onClose} heading="Unmounted" /> : null}</InApp>
@@ -290,7 +296,7 @@ describe("Dialog - render prop and lifecycle", () => {
 
         const { rerender } = await render(<App isOpen={true} />);
         await rerender(<App isOpen={false} />);
-        expect(onClose).not.toHaveBeenCalled();
+        expect(closeCount).toBe(0);
     });
 });
 

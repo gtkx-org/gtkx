@@ -201,8 +201,9 @@ export const TaskDetail = ({ task }: { task: Task }) => {
     }, [resetField, task.important]);
 
     const saveTitle = form.handleSubmit(({ title }) => {
-        updateTask(task.id, { title });
-        resetField("title", { defaultValue: title });
+        const normalized = title.trim();
+        updateTask(task.id, { title: normalized });
+        resetField("title", { defaultValue: normalized });
     });
     const submitTitle = (): void => {
         void saveTitle();
@@ -218,6 +219,7 @@ export const TaskDetail = ({ task }: { task: Task }) => {
                                 name="title"
                                 title="Title"
                                 showApplyButton
+                                rules={{ validate: (title) => title.trim().length > 0 }}
                                 onApply={submitTitle}
                                 onEntryActivated={submitTitle}
                             />
@@ -314,7 +316,7 @@ export const TaskDetail = ({ task }: { task: Task }) => {
 };
 ```
 
-`submitTitle` invokes the form's submit handler without passing the native signal's widget as a web event. Resetting only the importance field lets the header star update the switch without replacing an unfinished title.
+`submitTitle` invokes the form's submit handler without passing the native signal's widget as a web event. Blank titles stay invalid and unsaved; accepted titles are trimmed. Resetting only the importance field lets the header star update the switch without replacing an unfinished title.
 
 The calendar is JSX in the menu button's `popover` slot. Its native date is a `GLib.DateTime`; the selected day becomes an ISO string at 6 PM local time. `GLib.DateTime` is a boxed value, so creating it for a property does not create a GObject outside JSX.
 
@@ -394,7 +396,7 @@ Deleting here currently moves the task to Trash while leaving its editor open. [
 ## Run it
 
 1. Open a task. Its editor should show Title, Important, Due, Notes, and Created.
-2. Edit the title without applying it, then toggle the header star. The switch should follow while your title draft remains. Press Enter to save it.
+2. Enter a blank title and confirm it remains unsaved. Then enter a padded title, toggle the header star, and press Enter. The switch should follow without replacing the draft, and the saved title should be trimmed.
 3. Pick a due date, return to the list, and check its subtitle. Reopen the task and clear the date; the subtitle should disappear.
 4. Type notes and use Ctrl+Z. Go back and open another task; its notes and undo history should be independent.
 5. Close an editor with the back button, Escape, and Alt+Left on separate visits.

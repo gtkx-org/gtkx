@@ -30,7 +30,6 @@ test("SimpleStruct returnv returns a copy detached from the C singleton", () => 
 
 test("SimpleStruct field writes land in the native memory C reads", () => {
     const struct = new GIMarshallingTests.SimpleStruct({});
-    // @ts-expect-error the long field is declared bigint, and the binding widens it to a plain number
     struct.long = 6;
     struct.int8 = 7;
     expect(struct.long).toBe(6n);
@@ -105,7 +104,6 @@ test("many structs released by their own free function survive collection", asyn
 });
 
 test("a pointer registered struct rejects field writes it cannot hold", () => {
-    // @ts-expect-error a fractional number is not a long field value
     expect(() => new GIMarshallingTests.PointerStruct({ long: 1.5 })).toThrow();
     // @ts-expect-error a string is not a long field value
     expect(() => new GIMarshallingTests.PointerStruct({ long: "nope" })).toThrow();
@@ -272,7 +270,9 @@ test("plain object literals are rejected where a struct is expected", () => {
 });
 
 test("null is rejected for inline struct fields", () => {
-    expect(() => new GIMarshallingTests.NestedStruct({ simpleStruct: null })).toThrow();
+    expect(() => {
+        Reflect.construct(GIMarshallingTests.NestedStruct, [{ simpleStruct: null }]);
+    }).toThrow();
     const nested = new GIMarshallingTests.NestedStruct({});
     expect(() => {
         // @ts-expect-error an inline struct field is not nullable
@@ -293,7 +293,6 @@ test("struct field writes reject out-of-range and mistyped values", () => {
         simple.int8 = Symbol("nope");
     }).toThrow();
     expect(() => {
-        // @ts-expect-error a fractional number is not a long field value
         simple.long = 1.5;
     }).toThrow();
     // @ts-expect-error a string is not a long field value

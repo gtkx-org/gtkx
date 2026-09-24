@@ -139,12 +139,8 @@ function constructPropertyForEntry(
  * that name, dashed or camelCased, and is skipped when the type installs none.
  * A value that ParamSpec would refuse throws before GObject sees it: a `TypeError`
  * for a read-only property and for a value of a type the property cannot hold, and
- * a `RangeError` for a value the ParamSpec rejects. A value marshalled through a
- * declared descriptor is converted rather than checked, so a `null` handed to a
- * numeric one of those lands 0 rather than being refused, and a number is fitted to
- * the property first, as `coerceObjectProperty` does: truncated toward zero for a
- * whole-number property and clamped to the range its `GObject.ParamSpec` allows.
- * Properties whose value is `undefined` are skipped. A type registered with
+ * a `RangeError` for a value the ParamSpec rejects. Properties whose value is
+ * `undefined` are skipped. A type registered with
  * `registerClass` binds the wrapper before its `constructed` slot runs, so an
  * override of that slot already sees a usable instance.
  * When construction returns an object that already has a wrapper — it reached
@@ -221,11 +217,7 @@ function getProperty(obj: object, propertyName: string, descriptor?: Descriptor)
 
 /**
  * Writes a JavaScript value to a GObject property, converting it to native form
- * using the descriptor. The descriptor converts what it is given rather than checking it against
- * the property's `GObject.ParamSpec`, so `null` and `undefined` written to a numeric or enum
- * property land 0, and a fractional number written to a whole-number property is truncated toward
- * zero, where the same writes to a property installed through `registerClass` are refused with a
- * `TypeError`.
+ * using the descriptor.
  *
  * @param obj The object to write to.
  * @param propertyName The property name.

@@ -281,8 +281,13 @@ impl ArrayCodec {
     ) {
         let container = ffi::PendingTransfer::new(ptr, release);
         if let Some((length, item)) = contiguous_elements {
-            let items = unsafe { std::slice::from_raw_parts(ptr.cast::<*mut c_void>(), length) };
-            for &ptr in items {
+            for index in 0..length {
+                let ptr = unsafe {
+                    ptr.cast::<u8>()
+                        .add(index * size_of::<*mut c_void>())
+                        .cast::<*mut c_void>()
+                        .read_unaligned()
+                };
                 drop(ffi::PendingTransfer::new(ptr, item));
             }
         }
@@ -785,24 +790,36 @@ impl ArrayCodec {
                 .into_iter()
                 .map(|v| super::bigint::bigint_to_unknown(env, v))
                 .collect(),
-            ItemCodec::Float(FloatCodec::F32) => {
-                unsafe { std::slice::from_raw_parts(data.cast::<f32>(), len) }
-                    .iter()
-                    .map(|&v| Ok(f64::from(v).into_unknown(env)?))
-                    .collect()
-            }
-            ItemCodec::Float(FloatCodec::F64) => {
-                unsafe { std::slice::from_raw_parts(data.cast::<f64>(), len) }
-                    .iter()
-                    .map(|&v| Ok(v.into_unknown(env)?))
-                    .collect()
-            }
-            ItemCodec::Pointer | ItemCodec::Bytes => {
-                let ptrs = unsafe { std::slice::from_raw_parts(data.cast::<*mut c_void>(), len) };
-                ptrs.iter()
-                    .map(|&item_ptr| self.decode_array_item(env, item_ptr, read))
-                    .collect()
-            }
+            ItemCodec::Float(FloatCodec::F32) => (0..len)
+                .map(|index| {
+                    let value = unsafe {
+                        data.add(index * size_of::<f32>())
+                            .cast::<f32>()
+                            .read_unaligned()
+                    };
+                    Ok(f64::from(value).into_unknown(env)?)
+                })
+                .collect(),
+            ItemCodec::Float(FloatCodec::F64) => (0..len)
+                .map(|index| {
+                    let value = unsafe {
+                        data.add(index * size_of::<f64>())
+                            .cast::<f64>()
+                            .read_unaligned()
+                    };
+                    Ok(value.into_unknown(env)?)
+                })
+                .collect(),
+            ItemCodec::Pointer | ItemCodec::Bytes => (0..len)
+                .map(|index| {
+                    let item_ptr = unsafe {
+                        data.add(index * size_of::<*mut c_void>())
+                            .cast::<*mut c_void>()
+                            .read_unaligned()
+                    };
+                    self.decode_array_item(env, item_ptr, read)
+                })
+                .collect(),
         }
     }
 

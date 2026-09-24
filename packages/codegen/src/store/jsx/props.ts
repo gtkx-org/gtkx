@@ -45,6 +45,12 @@ type SignalRenderOptions = {
     selfType: string;
 };
 
+type ReactPropTypeOptions = {
+    isNullable?: boolean;
+    isInput?: boolean;
+    canAcceptTypedArrayViews?: boolean;
+};
+
 type PropEntryCollector = {
     propLines: string[];
     imports: Map<string, string>;
@@ -98,7 +104,15 @@ const renderObjectPropType = (
 };
 
 const appendPropertyLines = (state: PropCollectorState, property: GirProperty, jsName: string): void => {
-    const tsType = renderReactPropType(state.types, property.type, false);
+    const readType = renderReactPropType(state.types, property.type);
+    const writeType = renderReactPropType(
+        state.types,
+        property.type,
+        {
+            isInput: true,
+            canAcceptTypedArrayViews: property.transferOwnership === "none",
+        },
+    );
     const spec = annotationSpec(property.annotations);
     const doc = renderJsDoc(property.doc, undefined, spec);
     const isRequired = state.requiredProps.has(property.name);
@@ -106,17 +120,17 @@ const appendPropertyLines = (state: PropCollectorState, property: GirProperty, j
     const nullable = isRequired ? "" : " | null | undefined";
 
     if (isObjectProp(state.owner.library, property)) {
-        const objectType = renderObjectPropType(state, property, jsName, tsType);
+        const objectType = renderObjectPropType(state, property, jsName, writeType);
         state.propLines.push(`${doc}${name}: ${objectType}${nullable};`);
 
         return;
     }
 
     if (isConstructableProperty(property)) {
-        state.propLines.push(`${doc}${name}: ${tsType}${nullable};`);
+        state.propLines.push(`${doc}${name}: ${writeType}${nullable};`);
     }
 
-    const handlerType = `((value: ${tsType} | null, self: Self) => void) | null | undefined`;
+    const handlerType = `((value: ${readType} | null, self: Self) => void) | null | undefined`;
 
     state.propLines.push(
         `${notifyDoc(property, jsName, spec)}onNotify${upperFirst(jsName)}?: ${handlerType};`,
@@ -281,14 +295,20 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
     const { types, signal, selfType } = options;
 
     const params = [
-        ...renderHandlerParameters(signal.parameters, (ref, nullable) => renderReactPropType(types, ref, nullable)),
+        ...renderHandlerParameters(signal.parameters, (ref, nullable) =>
+            renderReactPropType(types, ref, { isNullable: nullable })),
         `self: ${selfType}`,
     ];
 
     const result = renderHandlerResultType({
         library: types.library,
         signal,
-        renderType: (ref, nullable) => renderReactPropType(types, ref, nullable),
+        renderType: (ref, nullable, transfer) =>
+            renderReactPropType(types, ref, {
+                isNullable: nullable,
+                isInput: true,
+                canAcceptTypedArrayViews: transfer === "none",
+            }),
         shouldIncludeCallerAllocated: false,
         isOptOut: true,
     });
@@ -296,7 +316,11 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
     return `(${params.join(", ")}) => ${result}`;
 };
 
-const reactTarget = (context: PropTypeRenderContext): TsTypeTarget =>
+const reactTarget = (
+    context: PropTypeRenderContext,
+    isInput: boolean,
+    canAcceptTypedArrayViews: boolean,
+): TsTypeTarget =>
     recordTypeTarget(
         context.library,
         (name) => {
@@ -309,10 +333,20 @@ const reactTarget = (context: PropTypeRenderContext): TsTypeTarget =>
 
             return `${giNamespaceAlias("GObject")}.Type`;
         },
+        { isInput, canAcceptTypedArrayViews },
     );
 
-const renderReactPropType = (context: PropTypeRenderContext, ref: TypeId | undefined, isNullable: boolean): string => {
-    const base = renderBaseType(context.library, reactTarget(context), ref);
+const renderReactPropType = (
+    context: PropTypeRenderContext,
+    ref: TypeId | undefined,
+    options: ReactPropTypeOptions = {},
+): string => {
+    const {
+        isNullable = false,
+        isInput = false,
+        canAcceptTypedArrayViews = true,
+    } = options;
+    const base = renderBaseType(context.library, reactTarget(context, isInput, canAcceptTypedArrayViews), ref);
 
     return isNullable ? `${base} | null` : base;
 };

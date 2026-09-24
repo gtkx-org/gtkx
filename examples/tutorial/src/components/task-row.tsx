@@ -16,7 +16,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { useNavigation } from "@gtkx/navigation";
 import { createPortal, rootElement } from "@gtkx/react";
-import { useRef, useState } from "react";
+import { type RefObject, useRef, useState } from "react";
 import type { Task } from "../types.js";
 import { formatDue } from "../format.js";
 import { useStore } from "../store/index.js";
@@ -29,24 +29,112 @@ type TaskRowProps = {
     nextId?: string;
 };
 
-export const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) => {
+const didHandleReorderKey = (
+    task: Task,
+    adjacent: { previousId?: string; nextId?: string },
+    key: { keyval: number; state: Gdk.ModifierType },
+): boolean => {
+    if ((key.state & Gdk.ModifierType.ALT_MASK) === 0) {
+        return Gdk.EVENT_PROPAGATE;
+    }
+    if (key.keyval !== Gdk.KEY_Up && key.keyval !== Gdk.KEY_Down) {
+        return Gdk.EVENT_PROPAGATE;
+    }
+    const targetId = key.keyval === Gdk.KEY_Up ? adjacent.previousId : adjacent.nextId;
+    if (targetId === undefined) {
+        return Gdk.EVENT_PROPAGATE;
+    }
+    useStore.getState().reorder(task.id, targetId);
+
+    return Gdk.EVENT_STOP;
+};
+
+const didDropTask = (task: Task, value: GObject.Value): boolean => {
+    const draggedId = value.getString();
+    if (draggedId === null || useStore.getState().tasks.every((candidate) => candidate.id !== draggedId)) {
+        return false;
+    }
+    useStore.getState().reorder(draggedId, task.id);
+
+    return true;
+};
+
+const TaskActions = ({ task }: { task: Task }) => {
+    const requestDeleteTask = useRequestDeleteTask();
+    const setImportant = useStore((state) => state.setImportant);
+
+    return (
+        <>
+            <GtkToggleButton
+                valign={Gtk.Align.CENTER}
+                iconName={task.important ? "starred-symbolic" : "non-starred-symbolic"}
+                active={task.important}
+                accessibleLabel={t("Toggle important")}
+                cssClasses={["flat"]}
+                onToggled={(self) => {
+                    setImportant(task.id, self.active);
+                }}
+            />
+            <GtkButton
+                valign={Gtk.Align.CENTER}
+                iconName="user-trash-symbolic"
+                accessibleLabel={t("Delete task")}
+                cssClasses={["flat"]}
+                onClicked={() => {
+                    requestDeleteTask(task);
+                }}
+            />
+        </>
+    );
+};
+
+const TaskCompletion = ({ task }: { task: Task }) => {
+    const setDone = useStore((state) => state.setDone);
+
+    return (
+        <GtkCheckButton
+            valign={Gtk.Align.CENTER}
+            active={task.done}
+            accessibleLabel={t("Mark complete")}
+            onToggled={(self) => {
+                setDone(task.id, self.active);
+            }}
+        />
+    );
+};
+
+type ReorderControllersProps = Pick<TaskRowProps, "nextId" | "previousId" | "task"> & {
+    paintableRef: RefObject<Gtk.WidgetPaintable | null>;
+};
+
+const ReorderControllers = ({ task, previousId, nextId, paintableRef }: ReorderControllersProps) => (
+    <>
+        <GtkDragSource
+            actions={Gdk.DragAction.MOVE}
+            onPrepare={(x, y, self) => {
+                self.setIcon(paintableRef.current, Math.round(x), Math.round(y));
+
+                return Gdk.ContentProvider.newForValue(task.id);
+            }}
+        />
+        <GtkDropTarget
+            actions={Gdk.DragAction.MOVE}
+            types={[GObject.TYPE_STRING]}
+            onDrop={(value) => didDropTask(task, value)}
+        />
+        <GtkEventControllerKey
+            onKeyPressed={(keyval, _keycode, state) =>
+                didHandleReorderKey(task, { previousId, nextId }, { keyval, state })}
+        />
+    </>
+);
+
+const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) => {
     const [row, setRow] = useState<Adw.ActionRow | null>(null);
     const paintableRef = useRef<Gtk.WidgetPaintable | null>(null);
-    const requestDeleteTask = useRequestDeleteTask();
     const navigation = useNavigation();
-    const setDone = useStore((state) => state.setDone);
-    const setImportant = useStore((state) => state.setImportant);
-    const reorder = useStore((state) => state.reorder);
     const escapedTitle = markupEscapeText(task.title, -1);
     const title = task.done ? `<s>${escapedTitle}</s>` : escapedTitle;
-    const handleReorderKey = (keyval: number, state: Gdk.ModifierType): boolean => {
-        if ((state & Gdk.ModifierType.ALT_MASK) === 0) return Gdk.EVENT_PROPAGATE;
-        if (keyval !== Gdk.KEY_Up && keyval !== Gdk.KEY_Down) return Gdk.EVENT_PROPAGATE;
-        const targetId = keyval === Gdk.KEY_Up ? previousId : nextId;
-        if (targetId === undefined) return Gdk.EVENT_PROPAGATE;
-        reorder(task.id, targetId);
-        return Gdk.EVENT_STOP;
-    };
 
     return (
         <>
@@ -62,65 +150,28 @@ export const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) 
                 subtitle={formatDue(task.due) ?? undefined}
                 activatable
                 accessibleKeyShortcuts={canReorder ? "Alt+Up Alt+Down" : null}
-                onActivated={() => navigation.navigate("Task", { id: task.id })}
-                prefix={
-                    <GtkCheckButton
-                        valign={Gtk.Align.CENTER}
-                        active={task.done}
-                        accessibleLabel={t("Mark complete")}
-                        onToggled={(self) => setDone(task.id, self.active)}
-                    />
-                }
-                suffix={
-                    <>
-                        <GtkToggleButton
-                            valign={Gtk.Align.CENTER}
-                            iconName={task.important ? "starred-symbolic" : "non-starred-symbolic"}
-                            active={task.important}
-                            accessibleLabel={t("Toggle important")}
-                            cssClasses={["flat"]}
-                            onToggled={(self) => setImportant(task.id, self.active)}
-                        />
-                        <GtkButton
-                            valign={Gtk.Align.CENTER}
-                            iconName="user-trash-symbolic"
-                            accessibleLabel={t("Delete task")}
-                            cssClasses={["flat"]}
-                            onClicked={() => requestDeleteTask(task)}
-                        />
-                    </>
-                }
+                onActivated={() => {
+                    navigation.navigate("Task", { id: task.id });
+                }}
+                prefix={<TaskCompletion task={task} />}
+                suffix={<TaskActions task={task} />}
                 controllers={
-                    canReorder ? (
-                        <>
-                            <GtkDragSource
-                                actions={Gdk.DragAction.MOVE}
-                                onPrepare={(x, y, self) => {
-                                    self.setIcon(paintableRef.current, Math.round(x), Math.round(y));
-                                    return Gdk.ContentProvider.newForValue(task.id);
-                                }}
-                            />
-                            <GtkDropTarget
-                                actions={Gdk.DragAction.MOVE}
-                                types={[GObject.TYPE_STRING]}
-                                onDrop={(value) => {
-                                    const draggedId = value.getString();
-                                    if (
-                                        draggedId === null ||
-                                        !useStore.getState().tasks.some((candidate) => candidate.id === draggedId)
-                                    )
-                                        return false;
-                                    reorder(draggedId, task.id);
-                                    return true;
-                                }}
-                            />
-                            <GtkEventControllerKey
-                                onKeyPressed={(keyval, _keycode, state) => handleReorderKey(keyval, state)}
-                            />
-                        </>
-                    ) : undefined
+                    canReorder
+                        ? (
+                                <ReorderControllers
+                                    task={task}
+                                    previousId={previousId}
+                                    nextId={nextId}
+                                    paintableRef={paintableRef}
+                                />
+                            )
+                        : undefined
                 }
             />
         </>
     );
+};
+
+export {
+    TaskRow,
 };

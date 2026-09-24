@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-15 00:51+0200\n"
+"POT-Creation-Date: 2026-09-23 07:11+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,20 +18,20 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: src/components/about.tsx:9 src/components/preferences.tsx:28
-#: src/components/shortcuts.tsx:12 src/components/window.tsx:71
-#: src/components/window.tsx:99 src/store/selectors.ts:18
+#: src/components/about.tsx:11 src/components/preferences.tsx:30
+#: src/components/shortcuts.tsx:12 src/components/window.tsx:90
+#: src/components/window.tsx:134 src/store/selectors.ts:18
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.desktop:3
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:4
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:25
 msgid "Tasks"
 msgstr ""
 
-#: src/components/about.tsx:17
+#: src/components/about.tsx:19
 msgid "GTKX Contributors"
 msgstr ""
 
-#: src/components/about.tsx:18
+#: src/components/about.tsx:20
 msgid "A GNOME task manager built with GTKX to showcase React and Adwaita."
 msgstr ""
 
@@ -44,7 +44,7 @@ msgid "“{{title}}” will be permanently deleted. This cannot be undone."
 msgstr ""
 
 #: src/components/delete-confirmation.tsx:19
-#: src/components/new-list-dialog.tsx:25
+#: src/components/new-list-dialog.tsx:53
 msgid "Cancel"
 msgstr ""
 
@@ -52,11 +52,11 @@ msgstr ""
 msgid "Delete"
 msgstr ""
 
-#: src/components/dialogs.tsx:25
+#: src/components/dialogs.tsx:26
 msgid "“{{title}}” moved to Trash"
 msgstr ""
 
-#: src/components/dialogs.tsx:26
+#: src/components/dialogs.tsx:27
 msgid "Undo"
 msgstr ""
 
@@ -81,20 +81,20 @@ msgstr ""
 msgid "About Tasks"
 msgstr ""
 
-#: src/components/new-list-dialog.tsx:21 src/components/window.tsx:103
+#: src/components/new-list-dialog.tsx:24
+msgid "Color {{color}}"
+msgstr ""
+
+#: src/components/new-list-dialog.tsx:49 src/components/window.tsx:49
 msgid "New List"
 msgstr ""
 
-#: src/components/new-list-dialog.tsx:28
+#: src/components/new-list-dialog.tsx:56
 msgid "Add"
 msgstr ""
 
-#: src/components/new-list-dialog.tsx:40
+#: src/components/new-list-dialog.tsx:70
 msgid "List name"
-msgstr ""
-
-#: src/components/new-list-dialog.tsx:52
-msgid "Color {{color}}"
 msgstr ""
 
 #: src/components/preferences.tsx:19 src/components/shortcuts.tsx:6
@@ -109,15 +109,15 @@ msgstr ""
 msgid "Theme"
 msgstr ""
 
-#: src/components/preferences.tsx:30
+#: src/components/preferences.tsx:32
 msgid "Sort order"
 msgstr ""
 
-#: src/components/preferences.tsx:36
+#: src/components/preferences.tsx:40
 msgid "Reminder lead time"
 msgstr ""
 
-#: src/components/preferences.tsx:37
+#: src/components/preferences.tsx:41
 msgid "Minutes before a task is due"
 msgstr ""
 
@@ -137,7 +137,7 @@ msgstr ""
 msgid "Keyboard shortcuts"
 msgstr ""
 
-#: src/components/shortcuts.tsx:13 src/components/task-row.tsx:87
+#: src/components/shortcuts.tsx:13 src/components/task-row.tsx:81
 msgid "Delete task"
 msgstr ""
 
@@ -153,8 +153,8 @@ msgstr ""
 msgid "Today"
 msgstr ""
 
-#: src/components/sidebar.tsx:35 src/components/task-buttons.tsx:18
-#: src/components/task-detail.tsx:61 src/store/selectors.ts:9
+#: src/components/sidebar.tsx:35 src/components/task-buttons.tsx:20
+#: src/components/task-detail.tsx:112 src/store/selectors.ts:9
 msgid "Important"
 msgstr ""
 
@@ -162,64 +162,64 @@ msgstr ""
 msgid "Trash"
 msgstr ""
 
-#: src/components/task-buttons.tsx:23
+#: src/components/task-buttons.tsx:27
 msgid "Delete (Delete)"
 msgstr ""
 
-#: src/components/task-detail.tsx:54 src/settings.ts:18
-msgid "Title"
-msgstr ""
-
-#: src/components/task-detail.tsx:65
+#: src/components/task-detail.tsx:44
 msgid "Due"
 msgstr ""
 
-#: src/components/task-detail.tsx:72
+#: src/components/task-detail.tsx:52
 msgid "Clear due date"
 msgstr ""
 
-#: src/components/task-detail.tsx:77
+#: src/components/task-detail.tsx:60
 msgid "Set date"
 msgstr ""
 
-#: src/components/task-detail.tsx:106
+#: src/components/task-detail.tsx:104 src/settings.ts:18
+msgid "Title"
+msgstr ""
+
+#: src/components/task-detail.tsx:129
 msgid "Notes"
 msgstr ""
 
-#: src/components/task-detail.tsx:134
+#: src/components/task-detail.tsx:155
 msgid "Created"
 msgstr ""
 
-#: src/components/task-detail.tsx:140
+#: src/components/task-detail.tsx:162
 msgid "Completed"
 msgstr ""
 
-#: src/components/task-filter.tsx:17
+#: src/components/task-filter.tsx:20
 msgid "All"
 msgstr ""
 
-#: src/components/task-filter.tsx:18
+#: src/components/task-filter.tsx:21
 msgid "Open"
 msgstr ""
 
-#: src/components/task-filter.tsx:19
+#: src/components/task-filter.tsx:22
 msgid "Done"
 msgstr ""
 
-#: src/components/task-list.tsx:36
+#: src/components/task-list.tsx:27
 msgid "Search tasks…"
 msgstr ""
 
-#: src/components/task-list.tsx:46
+#: src/components/task-list.tsx:50
 msgid "Add a task…"
 msgstr ""
 
-#: src/components/task-row.tsx:70
-msgid "Mark complete"
+#: src/components/task-row.tsx:72
+msgid "Toggle important"
 msgstr ""
 
-#: src/components/task-row.tsx:80
-msgid "Toggle important"
+#: src/components/task-row.tsx:98
+msgid "Mark complete"
 msgstr ""
 
 #: src/components/task-title.tsx:8
@@ -227,45 +227,41 @@ msgstr ""
 msgid "Task"
 msgstr ""
 
-#: src/components/window.tsx:35
+#: src/components/window.tsx:36
 msgid "Nothing Selected"
 msgstr ""
 
-#: src/components/window.tsx:36
+#: src/components/window.tsx:37
 msgid "Pick a list or a smart view in the sidebar"
 msgstr ""
 
-#: src/components/window.tsx:120
+#: src/components/window.tsx:64
 msgid "New Task (Ctrl+N)"
 msgstr ""
 
-#: src/format.ts:15
-msgid "Today at {{time}}"
-msgstr ""
-
-#: src/format.ts:16
-msgid "Tomorrow at {{time}}"
-msgstr ""
-
-#: src/format.ts:17
-msgid "Yesterday at {{time}}"
-msgstr ""
-
-#: src/format.ts:19
+#: src/format.ts:6
 msgid "{{count}} day ago"
 msgid_plural "{{count}} days ago"
 msgstr[0] ""
 msgstr[1] ""
 
-#: src/format.ts:29
-msgid "Never"
+#: src/format.ts:15
+msgid "Yesterday at {{time}}"
 msgstr ""
 
-#: src/notifications.tsx:21
+#: src/format.ts:18
+msgid "Today at {{time}}"
+msgstr ""
+
+#: src/format.ts:21
+msgid "Tomorrow at {{time}}"
+msgstr ""
+
+#: src/notifications.tsx:39
 msgid "Due {{date}}"
 msgstr ""
 
-#: src/notifications.tsx:23
+#: src/notifications.tsx:41
 msgid "Mark Complete"
 msgstr ""
 
@@ -293,85 +289,85 @@ msgstr ""
 msgid "Date created"
 msgstr ""
 
-#: src/store/seed.ts:32
+#: src/store/seed.ts:21
 msgid "Personal"
 msgstr ""
 
-#: src/store/seed.ts:33
+#: src/store/seed.ts:22
 msgid "Work"
 msgstr ""
 
-#: src/store/seed.ts:34
+#: src/store/seed.ts:23
 msgid "Shopping"
 msgstr ""
 
-#: src/store/seed.ts:41
+#: src/store/seed.ts:30
 msgid "Welcome to Tasks"
 msgstr ""
 
-#: src/store/seed.ts:44
+#: src/store/seed.ts:33
 msgid ""
 "This is your first task. Tick the checkbox to complete it, or open it to add "
 "notes and a due date."
 msgstr ""
 
-#: src/store/seed.ts:50
+#: src/store/seed.ts:39
 msgid "Water the plants"
 msgstr ""
 
-#: src/store/seed.ts:55
+#: src/store/seed.ts:44
 msgid "Prepare the weekly report"
 msgstr ""
 
-#: src/store/seed.ts:56
+#: src/store/seed.ts:45
 msgid "Review pull requests"
 msgstr ""
 
-#: src/store/seed.ts:57
+#: src/store/seed.ts:46
 msgid "Buy oat milk"
 msgstr ""
 
-#: src/store/seed.ts:61
+#: src/store/seed.ts:50
 msgid "Order birthday gift"
 msgstr ""
 
-#: src/store/selectors.ts:118
+#: src/store/selectors.ts:139
 msgid "No Tasks Yet"
 msgstr ""
 
-#: src/store/selectors.ts:119
+#: src/store/selectors.ts:140
 msgid "Add a task above to get started"
 msgstr ""
 
-#: src/store/selectors.ts:123
+#: src/store/selectors.ts:144
 msgid "Nothing Due Today"
 msgstr ""
 
-#: src/store/selectors.ts:124
+#: src/store/selectors.ts:145
 msgid "Tasks due today appear here"
 msgstr ""
 
-#: src/store/selectors.ts:128
+#: src/store/selectors.ts:149
 msgid "No Important Tasks"
 msgstr ""
 
-#: src/store/selectors.ts:129
+#: src/store/selectors.ts:150
 msgid "Star a task to find it here"
 msgstr ""
 
-#: src/store/selectors.ts:133
+#: src/store/selectors.ts:154
 msgid "Trash Is Empty"
 msgstr ""
 
-#: src/store/selectors.ts:134
+#: src/store/selectors.ts:155
 msgid "Deleted tasks appear here"
 msgstr ""
 
-#: src/store/selectors.ts:142
+#: src/store/selectors.ts:163
 msgid "No Results"
 msgstr ""
 
-#: src/store/selectors.ts:143
+#: src/store/selectors.ts:164
 msgid "No tasks match “{{query}}”"
 msgstr ""
 

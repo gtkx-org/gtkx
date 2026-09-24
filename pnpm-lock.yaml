@@ -537,6 +537,9 @@ importers:
       '@swc/core':
         specifier: ^1.16.2
         version: 1.16.2
+      '@types/react-refresh':
+        specifier: ^0.14.7
+        version: 0.14.7
       babel-plugin-react-compiler:
         specifier: ^1.0.0
         version: 1.0.0
@@ -598,9 +601,6 @@ importers:
       '@types/hosted-git-info':
         specifier: ^3.0.5
         version: 3.0.5
-      '@types/react-refresh':
-        specifier: ^0.14.7
-        version: 0.14.7
       '@types/semver':
         specifier: ^7.8.0
         version: 7.8.0
@@ -957,9 +957,6 @@ importers:
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils
-      '@gtkx/vitest':
-        specifier: workspace:*
-        version: link:../vitest
       '@napi-rs/cli':
         specifier: ^3.10.4
         version: 3.10.4(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@26.5.1)(supports-color@7.2.0)

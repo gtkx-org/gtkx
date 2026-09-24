@@ -4,7 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { act, screen, userEvent, waitFor } from "@gtkx/testing";
 import { useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
     asCollectionView,
     expectFiltering,
@@ -92,10 +92,15 @@ describe("ListView", () => {
 
 describe("ListView rendering", () => {
     it("hands the renderer the item and redraws when the renderer changes", async () => {
-        const renderItem = vi.fn<ListItemRenderer<{ name: string }>>(({ item }) => <GtkLabel>{item.name}</GtkLabel>);
+        let renderedItemName: string | undefined;
+        const renderItem: ListItemRenderer<{ name: string }> = ({ item }) => {
+            renderedItemName = item.name;
+
+            return <GtkLabel>{item.name}</GtkLabel>;
+        };
         const items = namedItems([["1", "Test"]]);
         const { ref, rerender } = await renderListView(items, { renderItem });
-        expect(renderItem).toHaveBeenCalledWith(expect.objectContaining({ item: { name: "Test" } }));
+        expect(renderedItemName).toBe("Test");
         await rerender(items, { renderItem: ({ item }) => <GtkLabel>{`Second: ${item.name}`}</GtkLabel> });
         expect(labelTexts(ref.current)).toEqual(["Second: Test"]);
     });
@@ -144,10 +149,13 @@ describe("ListView rendering", () => {
 
 describe("ListView selection", () => {
     it("selects the row named by selectedIds and reports what it selected", async () => {
-        const onSelectionChanged = vi.fn();
+        let selectedIds: string[] = [];
+        const onSelectionChanged = (ids: string[]): void => {
+            selectedIds = ids;
+        };
         const { ref, rerender } = await renderListView(firstSecondItems, { selected: ["2"], onSelectionChanged });
         const model = getSelectionModel(ref);
-        expect(onSelectionChanged).toHaveBeenCalledWith(["2"]);
+        expect(selectedIds).toEqual(["2"]);
 
         await waitFor(() => {
             expect(model.isSelected(1)).toBe(true);
@@ -269,7 +277,10 @@ describe("ListView selection modes", () => {
 
 describe("ListView selection across many rows", () => {
     it("selects every row when selectedIds names the whole list", async () => {
-        const onSelectionChanged = vi.fn();
+        let selectedIds: string[] = [];
+        const onSelectionChanged = (ids: string[]): void => {
+            selectedIds = ids;
+        };
         const everyId = hundredItems.map((item) => item.id);
 
         const { ref } = await renderListView(hundredItems, {
@@ -285,11 +296,14 @@ describe("ListView selection across many rows", () => {
             expect(selection.getMaximum()).toBe(hundredItems.length - 1);
         });
 
-        expect(onSelectionChanged).toHaveBeenLastCalledWith(everyId);
+        expect(selectedIds).toEqual(everyId);
     });
 
     it("narrows a whole-list selection to scattered rows and then to none", async () => {
-        const onSelectionChanged = vi.fn();
+        let selectedIds: string[] = [];
+        const onSelectionChanged = (ids: string[]): void => {
+            selectedIds = ids;
+        };
         const options = { selectionMode: Gtk.SelectionMode.MULTIPLE, onSelectionChanged };
         const everyId = hundredItems.map((item) => item.id);
         const scattered = ["item-0", "item-50", "item-99"];
@@ -304,14 +318,14 @@ describe("ListView selection across many rows", () => {
             expect(selection.contains(99)).toBe(true);
         });
 
-        expect(onSelectionChanged).toHaveBeenLastCalledWith(scattered);
+        expect(selectedIds).toEqual(scattered);
         await rerender(hundredItems, { ...options, selected: [] });
 
         await waitFor(() => {
             expect(getSelectionModel(ref).getSelection().getSize()).toBe(0n);
         });
 
-        expect(onSelectionChanged).toHaveBeenLastCalledWith([]);
+        expect(selectedIds).toEqual([]);
     });
 });
 

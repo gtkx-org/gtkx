@@ -218,6 +218,10 @@ test("a variadic binding formats the arguments past its fixed argument count", (
     expect(call(strdupPrintf, values).value).toEqual(encoder.encode("gtk-x"));
 });
 
+test("a variadic binding rejects a fixed argument count beyond its descriptors", () => {
+    expect(() => bind(GLIB, "g_strdup_printf", [BORROWED_BYTES], OWNED_BYTES, 2)).toThrow();
+});
+
 test("a call taking no arguments returns the value the seeded callee computes", () => {
     call(randomSetSeed, [42]);
     const first = call(randomInt, []).value;

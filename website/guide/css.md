@@ -36,7 +36,7 @@ import { GtkButton } from "@gtkx/jsx/gtk";
 
 A declaration in `style` takes precedence over the same declaration supplied through `cssClasses`. GTKX adds a generated class to apply the style; leave that class under GTKX's control.
 
-Use `style` for values that change with an individual widget. GTKX batches these updates through a shared style provider, but frequent changes still make GTK recalculate styles. Prefer native animated properties or CSS transitions when they express the effect. See [Animations](/guide/animations) for animated styles.
+Use `style` for values that change with an individual widget. GTKX applies its rules through a provider scoped to that widget, and frequent changes still make GTK recalculate styles. Prefer native animated properties or CSS transitions when they express the effect. See [Animations](/guide/animations) for animated styles.
 
 ## Create reusable classes
 

@@ -74,9 +74,9 @@ You can also import `FormProvider` from `@gtkx/forms` to supply the control to r
 
 The rows retain their native props, children, refs and signal handlers. React Hook Form owns the value, so configure a spin row's range through a JSX `GtkAdjustment`, and use `setValue` or `reset` to change its current value. Those form updates do not echo back as user edits.
 
-`ComboRow` shares the [collection component's sources and renderers](/guide/components#dropdown). Item IDs remain stable when items move or their labels change. Strings and other primitive values have a default display; structured values require `renderItem`. Passing `control` also lets TypeScript infer item and section types for renderers.
+`ComboRow` shares the [collection component's sources and renderers](/guide/components#dropdown). Item IDs remain stable when items move or their labels change. Values have a default text display; pass `renderItem` for application presentation. Passing `control` also lets TypeScript infer item and section types for renderers.
 
-A form `ComboRow` uses a non-nullable string field. Supply an explicit default ID that exists in its choices. An empty source preserves that ID, so asynchronously reloaded choices restore the selection without changing the form's value or dirty state. See the [React Hook Form defaults guidance](https://react-hook-form.com/docs/useform#defaultValues) for asynchronous defaults and resets.
+Give a form `ComboRow` an explicit default ID that exists in its choices. An empty source preserves that ID, so asynchronously reloaded choices restore the selection without changing the form's value or dirty state. See the [React Hook Form defaults guidance](https://react-hook-form.com/docs/useform#defaultValues) for asynchronous defaults and resets.
 
 ## Native validation feedback
 
@@ -86,7 +86,7 @@ The rows do not add a persistent error label. Render one beside the row when you
 
 ## Focus and disabled fields
 
-Form focus operations, including focus on the first invalid field, reach the native row through `grabFocus()`. Text and spin rows also support `setFocus(name, { shouldSelect: true })`. Forwarded refs receive the native row and preserve React callback-ref cleanup.
+Form focus operations, including focus on the first invalid field, reach the native row through `grabFocus()`. Text and spin rows also support `setFocus(name, { shouldSelect: true })`. Forwarded refs receive the native row.
 
 Leaving the row's native subtree marks the field touched and supports blur validation. Moving focus between widgets inside the same row does not. Any controllers passed through `controllers` remain attached alongside this tracking.
 

@@ -11,5 +11,5 @@
         "types": ["node", "react"],
         "noEmit": true
     },
-    "include": ["src/**/*", "tests/**/*"]
+    "include": ["src/**/*", "tests/**/*", "*.config.ts"]
 }

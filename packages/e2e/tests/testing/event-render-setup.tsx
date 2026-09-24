@@ -14,15 +14,50 @@ import {
     GtkShortcutController,
 } from "@gtkx/jsx/gtk";
 import { render, within } from "@gtkx/testing";
-import { type Mock, vi } from "vitest";
+
+type CallCounter = {
+    count: number;
+    callback: () => void;
+};
+
+type ReturningCallCounter<Result> = {
+    count: number;
+    callback: () => Result;
+};
+
+const callCounter = (): CallCounter => {
+    const counter: CallCounter = {
+        count: 0,
+        callback: () => {
+            counter.count += 1;
+        },
+    };
+
+    return counter;
+};
+
+const returningCallCounter = <Result,>(result: Result): ReturningCallCounter<Result> => {
+    const counter: ReturningCallCounter<Result> = {
+        count: 0,
+        callback: () => {
+            counter.count += 1;
+
+            return result;
+        },
+    };
+
+    return counter;
+};
 
 type RenderedClickButton = {
-    handleClick: Mock;
+    clicks: CallCounter;
     button: Gtk.Widget;
 };
 
 type DragAndDropPairOptions = {
     onDrop: ComponentProps<typeof GtkDropTarget>["onDrop"];
+    onDragBegin?: ComponentProps<typeof GtkDragSource>["onDragBegin"];
+    onDragEnd?: ComponentProps<typeof GtkDragSource>["onDragEnd"];
     isSourceSensitive?: boolean;
     hasDragSource?: boolean;
 };
@@ -46,15 +81,15 @@ type ShortcutHostOptions = {
 type RenderedShortcutHost = {
     host: Gtk.Widget;
     findByName: BoundQueries["findByName"];
-    onActivate: Mock<() => boolean>;
+    activations: ReturningCallCounter<boolean>;
 };
 
 async function renderClickButton(label = "Click me"): Promise<RenderedClickButton> {
-    const handleClick = vi.fn();
-    const { container } = await render(<GtkButton label={label} onClicked={handleClick} />);
+    const clicks = callCounter();
+    const { container } = await render(<GtkButton label={label} onClicked={clicks.callback} />);
     const button = await within(container).findByRole(Gtk.AccessibleRole.BUTTON, { name: label });
 
-    return { handleClick, button };
+    return { clicks, button };
 }
 
 async function renderGesturedLabel(
@@ -73,7 +108,7 @@ async function renderGesturedLabel(
 }
 
 async function renderShortcutHost(options: ShortcutHostOptions): Promise<RenderedShortcutHost> {
-    const onActivate = vi.fn(() => options.isHandled ?? true);
+    const activations = returningCallCounter(options.isHandled ?? true);
 
     const { container } = await render(
         <GtkBox name="tree" orientation={Gtk.Orientation.VERTICAL} controllers={options.treeControllers}>
@@ -87,7 +122,7 @@ async function renderShortcutHost(options: ShortcutHostOptions): Promise<Rendere
                         shortcuts={(
                             <GtkShortcut
                                 trigger={options.trigger}
-                                action={<GtkCallbackAction callback={onActivate} />}
+                                action={<GtkCallbackAction callback={activations.callback} />}
                             />
                         )}
                     />
@@ -101,7 +136,7 @@ async function renderShortcutHost(options: ShortcutHostOptions): Promise<Rendere
 
     const { findByName } = within(container);
 
-    return { host: await findByName("host"), findByName, onActivate };
+    return { host: await findByName("host"), findByName, activations };
 }
 
 async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<RenderedDragAndDropPair> {
@@ -111,7 +146,15 @@ async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<R
                 name="drag-source"
                 sensitive={options.isSourceSensitive ?? true}
                 controllers={
-                    options.hasDragSource === false ? undefined : <GtkDragSource actions={Gdk.DragAction.COPY} />
+                    options.hasDragSource === false
+                        ? undefined
+                        : (
+                                <GtkDragSource
+                                    actions={Gdk.DragAction.COPY}
+                                    onDragBegin={options.onDragBegin}
+                                    onDragEnd={options.onDragEnd}
+                                />
+                            )
                 }
             >
                 Drag me
@@ -139,9 +182,12 @@ async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<R
 }
 
 export {
+    callCounter,
     renderClickButton,
     renderDragAndDropPair,
     renderGesturedLabel,
     renderShortcutHost,
+    returningCallCounter,
+    type CallCounter,
     type ShortcutHostOptions,
 };

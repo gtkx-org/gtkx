@@ -1,10 +1,9 @@
 import { ListView } from "@gtkx/components";
-import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
-import { useParentWindow } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-applauncher.tsx?raw";
@@ -43,17 +42,7 @@ function renderAppItem({ item }: { item: AppItem }) {
     );
 }
 
-function presentLaunchError(app: AppItem, error: unknown, parentWindow: Gtk.Window | null) {
-    const dialog = new Adw.AlertDialog();
-    dialog.setHeading(`Could not launch ${app.name}`);
-    dialog.setBody(error instanceof Error ? error.message : String(error));
-    dialog.addResponse("ok", "_OK");
-    dialog.setDefaultResponse("ok");
-    dialog.setCloseResponse("ok");
-    dialog.present(parentWindow);
-}
-
-function launchApp(app: AppItem, parentWindow: Gtk.Window | null) {
+function launchApp(app: AppItem, onError: (error: unknown) => void) {
     const display = Gdk.Display.getDefault();
 
     if (!display) {
@@ -69,13 +58,13 @@ function launchApp(app: AppItem, parentWindow: Gtk.Window | null) {
     try {
         app.appInfo.launch(null, context);
     } catch (error) {
-        presentLaunchError(app, error, parentWindow);
+        onError(error);
     }
 }
 
 function ListViewApplauncherDemo() {
-    const parentWindow = useParentWindow();
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [launchError, setLaunchError] = useState<{ app: AppItem; error: unknown } | null>(null);
 
     const apps = Gio.AppInfo.getAll().map((app) => ({
         appInfo: app,
@@ -88,23 +77,39 @@ function ListViewApplauncherDemo() {
         const app = apps[position];
 
         if (app) {
-            launchApp(app, parentWindow);
+            launchApp(app, (error) => {
+                setLaunchError({ app, error });
+            });
         }
     };
 
     return (
-        <GtkScrolledWindow name="scrolled" vexpand hexpand>
-            <ListView
-                name="list-view"
-                estimatedItemHeight={48}
-                selectionMode={Gtk.SelectionMode.SINGLE}
-                selectedIds={selectedIds}
-                onSelectionChanged={setSelectedIds}
-                onActivate={handleActivate}
-                renderItem={renderAppItem}
-                items={apps.map((app) => ({ id: app.id, value: app }))}
-            />
-        </GtkScrolledWindow>
+        <>
+            <GtkScrolledWindow name="scrolled" vexpand hexpand>
+                <ListView
+                    name="list-view"
+                    estimatedItemHeight={48}
+                    selectionMode={Gtk.SelectionMode.SINGLE}
+                    selectedIds={selectedIds}
+                    onSelectionChanged={setSelectedIds}
+                    onActivate={handleActivate}
+                    renderItem={renderAppItem}
+                    items={apps.map((app) => ({ id: app.id, value: app }))}
+                />
+            </GtkScrolledWindow>
+            {launchError !== null && (
+                <AdwAlertDialog
+                    heading={`Could not launch ${launchError.app.name}`}
+                    body={launchError.error instanceof Error ? launchError.error.message : String(launchError.error)}
+                    responses={[{ id: "ok", label: "_OK" }]}
+                    defaultResponse="ok"
+                    closeResponse="ok"
+                    onClosed={() => {
+                        setLaunchError(null);
+                    }}
+                />
+            )}
+        </>
     );
 }
 

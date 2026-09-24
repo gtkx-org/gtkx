@@ -308,7 +308,7 @@ const FEATURE_GROUPS: FeatureGroup[] = [
 const SS_RE = /^ss(\d{2})$/;
 const CV_RE = /^cv(\d{2})$/;
 const WATERFALL_SIZES = [7, 8, 9, 10, 12, 14, 16, 20, 24, 30, 40, 50, 60, 70, 90];
-const ALPHABET_SAMPLES = ["abcdefghijklmnopqrstuvwxzy", "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "0123456789", "!@#$%^&*/?;"];
+const ALPHABET_SAMPLES = ["abcdefghijklmnopqrstuvwxyz", "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "0123456789", "!@#$%^&*/?;"];
 const SIZE_BOUNDS: NumberBounds = { min: 7, max: 100 };
 const LETTER_SPACING_BOUNDS: NumberBounds = { min: -1024, max: 8192 };
 const LINE_HEIGHT_BOUNDS: NumberBounds = { min: 0.75, max: 2.5 };
@@ -443,7 +443,6 @@ function useFontFeaturesState() {
     const previewLabelRef = useRef<Gtk.Label | null>(null);
     const editTextViewRef = useRef<Gtk.TextView | null>(null);
     const editScrolledWindowRef = useRef<Gtk.ScrolledWindow | null>(null);
-    const containerRef = useRef<Gtk.Box | null>(null);
 
     return {
         fontDesc,
@@ -473,7 +472,6 @@ function useFontFeaturesState() {
         previewLabelRef,
         editTextViewRef,
         editScrolledWindowRef,
-        containerRef,
     };
 }
 
@@ -1137,21 +1135,39 @@ const FontFeaturesPreviewSettingsRow = ({
     </GtkBox>
 );
 
-const setViewModeWhenActive = (btn: Gtk.ToggleButton, mode: ViewMode, setViewMode: (mode: ViewMode) => void) => {
-    if (btn.getActive()) {
-        setViewMode(mode);
-    }
-};
-
 function useViewModeToggleHandlers(state: FontFeaturesState) {
-    const { previewText, setViewMode, savedTextRef } = state;
+    const { viewMode, previewText, setPreviewText, setViewMode, savedTextRef, editTextViewRef } = state;
+
+    const commitEditedText = () => {
+        const buffer = editTextViewRef.current?.getBuffer();
+
+        if (buffer) {
+            setPreviewText(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false));
+        }
+    };
 
     const handlePlainToggled = (btn: Gtk.ToggleButton) => {
-        setViewModeWhenActive(btn, "plain", setViewMode);
+        if (!btn.getActive()) {
+            return;
+        }
+
+        if (viewMode === "edit") {
+            commitEditedText();
+        }
+
+        setViewMode("plain");
     };
 
     const handleWaterfallToggled = (btn: Gtk.ToggleButton) => {
-        setViewModeWhenActive(btn, "waterfall", setViewMode);
+        if (!btn.getActive()) {
+            return;
+        }
+
+        if (viewMode === "edit") {
+            commitEditedText();
+        }
+
+        setViewMode("waterfall");
     };
 
     const handleEditToggled = (btn: Gtk.ToggleButton) => {
@@ -1160,6 +1176,7 @@ function useViewModeToggleHandlers(state: FontFeaturesState) {
         }
 
         savedTextRef.current = previewText;
+        editTextViewRef.current?.getBuffer().setText(previewText, -1);
         setViewMode("edit");
     };
 
@@ -1357,14 +1374,13 @@ function FontFeaturesTitlebar() {
 
 function FontFeaturesDemo() {
     const { state, styles, handlers } = useFontFeatures();
-    const { containerRef } = state;
     usePreviewSelectionTracking(state.previewLabelRef, state.setPreviewSelection);
     useEditViewFocus(state);
     const previewAttributes = usePreviewAttributes(styles.pangoFontFeaturesString, state.previewSelection);
     const stackPage = state.viewMode === "edit" ? "entry" : "label";
 
     return (
-        <GtkBox ref={containerRef} controllers={<FontFeaturesEscapeController state={state} />}>
+        <GtkBox controllers={<FontFeaturesEscapeController state={state} />}>
             <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                 <GtkViewport cssClasses={["view"]}>
                     <FontFeaturesSidebar state={state} handlers={handlers} />

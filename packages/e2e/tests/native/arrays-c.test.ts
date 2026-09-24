@@ -160,7 +160,6 @@ test("a zero-terminated length-bounded array terminates a typed-array argument t
     const view = new Int32Array([-1, 0, 1, 2]);
 
     for (let round = 0; round < 64; round += 1) {
-        // @ts-expect-error the parameter is declared number[], and the binding also takes a matching typed array
         GIMarshallingTests.arrayInLenZeroTerminated(view);
     }
 
@@ -194,7 +193,8 @@ test("zero-terminated length-bounded arrays still validate their elements", () =
 
 test("variable-length int arrays come back complete", () => {
     expect(GIMarshallingTests.arrayOut()).toEqual([-1, 0, 1, 2]);
-    expect(GIMarshallingTests.arrayReturn()).toEqual([-1, 0, 1, 2]);
+    const returned: number[] = GIMarshallingTests.arrayReturn();
+    expect(returned).toEqual([-1, 0, 1, 2]);
     expect(Regress.testArrayIntOut()).toEqual([0, 1, 2, 3, 4]);
     expect(Regress.testArrayIntFullOut()).toEqual([0, 1, 2, 3, 4]);
     expect(Regress.testArrayIntNoneOut()).toEqual([1, 2, 3, 4, 5]);
@@ -228,6 +228,8 @@ test("integer elements marshal at every width", () => {
     expect(Regress.testArrayGint64In([1n, 2n, 3n, 4n])).toBe(10n);
     GIMarshallingTests.arrayInt64In([-1n, 0n, 1n, 2n]);
     GIMarshallingTests.arrayUint64In([BigInt.asUintN(64, -1n), 0n, 1n, 2n]);
+    GIMarshallingTests.arrayInt64In(new BigInt64Array([-1n, 0n, 1n, 2n]));
+    GIMarshallingTests.arrayUint64In(new BigUint64Array([2n ** 64n - 1n, 0n, 1n, 2n]));
 });
 
 test("uint8 data is accepted from buffers typed arrays and plain arrays", () => {
@@ -239,15 +241,16 @@ test("uint8 data is accepted from buffers typed arrays and plain arrays", () => 
     GIMarshallingTests.arrayUint8In(view);
     expect([...view]).toEqual([97, 98, 99, 100]);
 
+    const clamped = new Uint8ClampedArray([97, 98, 99, 100]);
+    GIMarshallingTests.arrayUint8In(clamped);
+    expect([...clamped]).toEqual([97, 98, 99, 100]);
+
     GIMarshallingTests.arrayUint8In([97, 98, 99, 100]);
 });
 
 test("typed-array views pass through when the element type matches", () => {
-    // @ts-expect-error the parameter is declared number[], and the binding also takes a matching typed array
     GIMarshallingTests.arrayIn(new Int32Array([-1, 0, 1, 2]));
-    // @ts-expect-error the parameter is declared number[], and the binding also takes a matching typed array
     GIMarshallingTests.arrayFixedIntIn(new Int32Array([-1, 0, 1, 2]));
-    // @ts-expect-error the parameter is declared number[], and the binding also takes a matching typed array
     expect(Regress.testArrayIntIn(new Int32Array([1, 2, 3, 4]))).toBe(10);
 });
 
@@ -474,7 +477,6 @@ test("fixed-size arrays reject wrong element counts", () => {
         GIMarshallingTests.arrayFixedIntIn([-1, 0, 1, 2, 3]);
     }).toThrow();
     expect(() => {
-        // @ts-expect-error the parameter is declared number[], and the binding also takes a matching typed array
         GIMarshallingTests.arrayFixedIntIn(new Int32Array([-1, 0, 1]));
     }).toThrow();
     expect(() => Regress.testArrayFixedSizeIntIn([1, 2, 3])).toThrow();

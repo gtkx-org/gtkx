@@ -30,7 +30,8 @@ import { createElementComponent, createPortal } from "@gtkx/react";
 import { registerClass } from "@gtkx/runtime";
 import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, useLayoutEffect, useState } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import { recordCalls } from "../helpers/record-calls.js";
 
 type SnippetView = {
     view: GtkSource.View;
@@ -49,7 +50,7 @@ type BeaconProps = {
     ref?: Ref<InstanceType<typeof BeaconLabel>>;
     label?: string;
     onFlipped?: () => void;
-    onDataChanged?: (payload: string) => void;
+    onDataChanged?: (payload: string, self: InstanceType<typeof BeaconLabel>) => void;
     onActivateLink?: (uri: string) => boolean;
 };
 
@@ -333,8 +334,10 @@ describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocat
     it("writes a handler's returned GdkRectangle tuple back through the caller-allocated boxed", async () => {
         const overlay = await renderOverlayWithChild("Main Content");
         const child = screen.getByName("overlay-child");
+        const childPositions = recordCalls<[Gtk.Widget, Gdk.Rectangle]>();
 
-        const handleGetChildPosition = vi.fn((_widget: Gtk.Widget, allocation: Gdk.Rectangle) => {
+        const hasChildPosition = (widget: Gtk.Widget, allocation: Gdk.Rectangle): boolean => {
+            childPositions(widget, allocation);
             expect(allocation).toBeInstanceOf(Gdk.Rectangle);
             allocation.x = 11;
             allocation.y = 22;
@@ -342,11 +345,11 @@ describe("signal out-parameters - GtkOverlay::get-child-position (caller-allocat
             allocation.height = 44;
 
             return true;
-        });
+        };
 
-        overlay.connect("get-child-position", handleGetChildPosition);
+        overlay.connect("get-child-position", hasChildPosition);
         const [handled, allocation] = overlay.emit("get-child-position", child);
-        expect(handleGetChildPosition).toHaveBeenCalled();
+        expect(childPositions.calls.length).toBeGreaterThan(0);
         expect(handled).toBe(true);
         expect([allocation.x, allocation.y, allocation.width, allocation.height]).toEqual([11, 22, 33, 44]);
     });
@@ -430,17 +433,17 @@ describe("signal connect()/emit() - notify::<property> detailed signal", () => {
         );
 
         const label = labelRef.current as Gtk.Label;
-        const onLabelNotify = vi.fn();
+        const onLabelNotify = recordCalls();
         label.connect("notify::label", onLabelNotify);
         label.setLabel("changed");
 
         await waitFor(() => {
-            expect(onLabelNotify).toHaveBeenCalledTimes(1);
+            expect(onLabelNotify.calls).toHaveLength(1);
         });
 
-        onLabelNotify.mockClear();
+        onLabelNotify.calls.length = 0;
         label.setXalign(1);
-        expect(onLabelNotify).not.toHaveBeenCalled();
+        expect(onLabelNotify.calls).toEqual([]);
     });
 
     it("routes a typed emit('notify::<property>', pspec) to the detailed handler", async () => {
@@ -465,13 +468,13 @@ describe("signal connect()/emit() - notify::<property> detailed signal", () => {
             throw new Error("expected the notify handler to capture a ParamSpec");
         }
 
-        const onLabelEmit = vi.fn();
-        const onOtherEmit = vi.fn();
+        const onLabelEmit = recordCalls();
+        const onOtherEmit = recordCalls();
         label.connect("notify::label", onLabelEmit);
         label.connect("notify::xalign", onOtherEmit);
         label.emit("notify::label", pspec);
-        expect(onLabelEmit).toHaveBeenCalledTimes(1);
-        expect(onOtherEmit).not.toHaveBeenCalled();
+        expect(onLabelEmit.calls).toHaveLength(1);
+        expect(onOtherEmit.calls).toEqual([]);
     });
 });
 
@@ -499,146 +502,156 @@ describe("reentrant signal commits", () => {
 
 describe("user event signals", () => {
     it("suppresses onChanged while a commit writes text, then delivers user edits", async () => {
-        const handleChanged = vi.fn();
+        const handleChanged = recordCalls();
         const { rerender } = await render(<GtkEntry text="first" onChanged={handleChanged} />);
         await rerender(<GtkEntry text="second" onChanged={handleChanged} />);
-        expect(handleChanged).not.toHaveBeenCalled();
+        expect(handleChanged.calls).toEqual([]);
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
         await userEvent.type(entry, "!");
 
         await waitFor(() => {
-            expect(handleChanged).toHaveBeenCalled();
+            expect(handleChanged.calls.length).toBeGreaterThan(0);
         });
     });
 
     it("suppresses the notify of the property a commit writes, then delivers user changes", async () => {
-        const handleNotifyActive = vi.fn();
+        const handleNotifyActive = recordCalls<[boolean | null, Gtk.Switch]>();
         const { rerender } = await render(<GtkSwitch active={false} onNotifyActive={handleNotifyActive} />);
         await rerender(<GtkSwitch active onNotifyActive={handleNotifyActive} />);
-        expect(handleNotifyActive).not.toHaveBeenCalled();
+        expect(handleNotifyActive.calls).toEqual([]);
         const switchWidget = await screen.findByRole(Gtk.AccessibleRole.SWITCH);
         await userEvent.click(switchWidget);
 
         await waitFor(() => {
-            expect(handleNotifyActive).toHaveBeenCalledWith(false, expect.any(Gtk.Switch));
+            expect(handleNotifyActive.calls).toContainEqual([false, expect.any(Gtk.Switch)]);
         });
     });
 
     it("suppresses a blockable signal inside a portal while the owning root commits", async () => {
-        const handlePortalToggled = vi.fn();
+        const handlePortalToggled = recordCalls();
         const { rerender } = await render(<PortalHost isActive={false} onToggled={handlePortalToggled} />);
         const button = screen.getByRole(Gtk.AccessibleRole.CHECKBOX);
         expect(button).not.toBeChecked();
         await rerender(<PortalHost isActive onToggled={handlePortalToggled} />);
         expect(screen.getByRole(Gtk.AccessibleRole.CHECKBOX)).toBe(button);
         expect(button).toBeChecked();
-        expect(handlePortalToggled).not.toHaveBeenCalled();
+        expect(handlePortalToggled.calls).toEqual([]);
         await userEvent.click(button);
         expect(button).not.toBeChecked();
-        expect(handlePortalToggled).toHaveBeenCalledTimes(1);
+        expect(handlePortalToggled.calls).toHaveLength(1);
     });
 
     it("delivers lifecycle signals emitted by the commit itself", async () => {
-        const handleMap = vi.fn();
-        const handleRealize = vi.fn();
+        const handleMap = recordCalls();
+        const handleRealize = recordCalls();
         await render(<GtkEntry onMap={handleMap} onRealize={handleRealize} />);
 
         await waitFor(() => {
-            expect(handleMap).toHaveBeenCalled();
-            expect(handleRealize).toHaveBeenCalled();
+            expect(handleMap.calls.length).toBeGreaterThan(0);
+            expect(handleRealize.calls.length).toBeGreaterThan(0);
         });
     });
 
     it("delivers the notify of a property the widget changes in reaction to a commit write", async () => {
-        const handlers = { onNotifyText: vi.fn(), onNotifyCursorPosition: vi.fn() };
+        const handlers = {
+            onNotifyText: recordCalls(),
+            onNotifyCursorPosition: recordCalls<[number | null, Gtk.TextBuffer]>(),
+        };
         const { rerender } = await render(<BufferProbe text="first" {...handlers} />);
-        handlers.onNotifyText.mockClear();
-        handlers.onNotifyCursorPosition.mockClear();
+        handlers.onNotifyText.calls.length = 0;
+        handlers.onNotifyCursorPosition.calls.length = 0;
         await rerender(<BufferProbe text="a longer second line" {...handlers} />);
 
         await waitFor(() => {
-            expect(handlers.onNotifyCursorPosition).toHaveBeenCalledWith(20, expect.any(Gtk.TextBuffer));
+            expect(handlers.onNotifyCursorPosition.calls).toContainEqual([20, expect.any(Gtk.TextBuffer)]);
         });
 
-        expect(handlers.onNotifyText).not.toHaveBeenCalled();
+        expect(handlers.onNotifyText.calls).toEqual([]);
     });
 
     it("delivers the notify of a property a deferred prop write changes", async () => {
-        const handlers = { onNotifyActive: vi.fn(), onNotifyActiveName: vi.fn() };
+        const handlers = {
+            onNotifyActive: recordCalls<[number | null, Adw.ToggleGroup]>(),
+            onNotifyActiveName: recordCalls(),
+        };
         const { rerender } = await render(<ToggleProbe activeName="one" {...handlers} />);
-        handlers.onNotifyActive.mockClear();
-        handlers.onNotifyActiveName.mockClear();
+        handlers.onNotifyActive.calls.length = 0;
+        handlers.onNotifyActiveName.calls.length = 0;
         await rerender(<ToggleProbe activeName="two" {...handlers} />);
 
         await waitFor(() => {
-            expect(handlers.onNotifyActive).toHaveBeenCalledWith(1, expect.any(Adw.ToggleGroup));
+            expect(handlers.onNotifyActive.calls).toContainEqual([1, expect.any(Adw.ToggleGroup)]);
         });
 
-        expect(handlers.onNotifyActiveName).not.toHaveBeenCalled();
+        expect(handlers.onNotifyActiveName.calls).toEqual([]);
     });
 
     it("delivers a delegate's notify of a property the commit did not write", async () => {
-        const handlers = { onNotifyText: vi.fn(), onNotifyBufferText: vi.fn(), onNotifyLength: vi.fn() };
+        const handlers = {
+            onNotifyText: recordCalls(),
+            onNotifyBufferText: recordCalls(),
+            onNotifyLength: recordCalls<[number | null, Gtk.EntryBuffer]>(),
+        };
         const { rerender } = await render(<EntryProbe text="first" {...handlers} />);
-        handlers.onNotifyText.mockClear();
-        handlers.onNotifyBufferText.mockClear();
-        handlers.onNotifyLength.mockClear();
+        handlers.onNotifyText.calls.length = 0;
+        handlers.onNotifyBufferText.calls.length = 0;
+        handlers.onNotifyLength.calls.length = 0;
         await rerender(<EntryProbe text="a much longer second" {...handlers} />);
 
         await waitFor(() => {
-            expect(handlers.onNotifyLength).toHaveBeenCalledWith(20, expect.any(Gtk.EntryBuffer));
+            expect(handlers.onNotifyLength.calls).toContainEqual([20, expect.any(Gtk.EntryBuffer)]);
         });
 
-        expect(handlers.onNotifyText).not.toHaveBeenCalled();
-        expect(handlers.onNotifyBufferText).not.toHaveBeenCalled();
+        expect(handlers.onNotifyText.calls).toEqual([]);
+        expect(handlers.onNotifyBufferText.calls).toEqual([]);
     });
 
     it("tells a bare onNotify about the reacting property and not about the written one", async () => {
-        const handleNotify = vi.fn<(pspec: GObject.ParamSpec, self: Gtk.TextBuffer) => void>();
+        const handleNotify = recordCalls<[GObject.ParamSpec, Gtk.TextBuffer]>();
         const { rerender } = await render(<BufferProbe text="first" onNotify={handleNotify} />);
-        handleNotify.mockClear();
+        handleNotify.calls.length = 0;
         await rerender(<BufferProbe text="second" onNotify={handleNotify} />);
-        const notified = handleNotify.mock.calls.map(([pspec]) => pspec.getName());
+        const notified = handleNotify.calls.map(([pspec]) => pspec.getName());
         expect(notified).toContain("cursor-position");
         expect(notified).not.toContain("text");
     });
 
     it("suppresses a delegate's notify of the property a commit writes", async () => {
-        const handlers = { onNotifyValue: vi.fn(), onNotifyText: vi.fn() };
+        const handlers = { onNotifyValue: recordCalls(), onNotifyText: recordCalls() };
         const { rerender } = await render(<SpinProbe value={10} {...handlers} />);
-        handlers.onNotifyValue.mockClear();
-        handlers.onNotifyText.mockClear();
+        handlers.onNotifyValue.calls.length = 0;
+        handlers.onNotifyText.calls.length = 0;
         await rerender(<SpinProbe value={42} {...handlers} />);
 
         await waitFor(() => {
-            expect(handlers.onNotifyText).toHaveBeenCalled();
+            expect(handlers.onNotifyText.calls.length).toBeGreaterThan(0);
         });
 
-        expect(handlers.onNotifyValue).not.toHaveBeenCalled();
+        expect(handlers.onNotifyValue.calls).toEqual([]);
     });
 
     it("suppresses every notify while a commit attaches a child", async () => {
-        const handleValue = vi.fn();
+        const handleValue = recordCalls();
         await render(<SpinProbe value={30} onNotifyValue={handleValue} />);
-        expect(handleValue).not.toHaveBeenCalled();
+        expect(handleValue.calls).toEqual([]);
     });
 
     it("suppresses every notify while a commit detaches a child", async () => {
-        const handleValue = vi.fn();
+        const handleValue = recordCalls();
         const { rerender } = await render(<SpinProbe value={30} onNotifyValue={handleValue} />);
-        handleValue.mockClear();
+        handleValue.calls.length = 0;
         await rerender(<SpinProbe value={30} hasAdjustment={false} onNotifyValue={handleValue} />);
-        expect(handleValue).not.toHaveBeenCalled();
+        expect(handleValue.calls).toEqual([]);
     });
 
     it("suppresses the notify of a written property whose prop name is not already camelCase", async () => {
-        const handlers = { onNotify: vi.fn(), onNotifyDewPoint: vi.fn() };
+        const handlers = { onNotify: recordCalls(), onNotifyDewPoint: recordCalls() };
         const { rerender } = await render(<DewPointProbe dew-point={1} {...handlers} />);
-        handlers.onNotify.mockClear();
-        handlers.onNotifyDewPoint.mockClear();
+        handlers.onNotify.calls.length = 0;
+        handlers.onNotifyDewPoint.calls.length = 0;
         await rerender(<DewPointProbe dew-point={2} {...handlers} />);
-        expect(handlers.onNotify).not.toHaveBeenCalled();
-        expect(handlers.onNotifyDewPoint).not.toHaveBeenCalled();
+        expect(handlers.onNotify.calls).toEqual([]);
+        expect(handlers.onNotifyDewPoint.calls).toEqual([]);
     });
 
     it("keeps delivering notify after a commit throws while attaching a child", async () => {
@@ -650,20 +663,20 @@ describe("user event signals", () => {
             ),
         ).rejects.toThrow();
 
-        const handleText = vi.fn();
+        const handleText = recordCalls();
         const { rerender } = await render(<SpinProbe value={10} onNotifyText={handleText} />);
-        handleText.mockClear();
+        handleText.calls.length = 0;
         await rerender(<SpinProbe value={42} onNotifyText={handleText} />);
 
         await waitFor(() => {
-            expect(handleText).toHaveBeenCalled();
+            expect(handleText.calls.length).toBeGreaterThan(0);
         });
     });
 });
 
 describe("handler props - a property name codegen escaped", () => {
     it("connects the notify handler of an escaped property name", async () => {
-        const handleNotify = vi.fn();
+        const handleNotify = recordCalls();
         const shortcutRef = createRef<Gtk.Shortcut>();
 
         await render(
@@ -689,14 +702,14 @@ describe("handler props - a property name codegen escaped", () => {
         });
 
         await waitFor(() => {
-            expect(handleNotify).toHaveBeenCalled();
+            expect(handleNotify.calls.length).toBeGreaterThan(0);
         });
     });
 });
 
 describe("handler props - a signal only the registered type carries", () => {
     it("connects a handler prop to a signal the class declared", async () => {
-        const handleFlipped = vi.fn();
+        const handleFlipped = recordCalls();
         const beaconRef = createRef<InstanceType<typeof BeaconLabel>>();
         await render(<BeaconProbe ref={beaconRef} label="beacon" onFlipped={handleFlipped} />);
         expect(beaconRef.current).toBeInstanceOf(BeaconLabel);
@@ -705,11 +718,11 @@ describe("handler props - a signal only the registered type carries", () => {
             beaconRef.current?.emit("flipped");
         });
 
-        expect(handleFlipped).toHaveBeenCalled();
+        expect(handleFlipped.calls.length).toBeGreaterThan(0);
     });
 
     it("reads a multi-word handler prop as the dashed signal the class declared", async () => {
-        const handleDataChanged = vi.fn();
+        const handleDataChanged = recordCalls<[string, InstanceType<typeof BeaconLabel>]>();
         const beaconRef = createRef<InstanceType<typeof BeaconLabel>>();
         await render(<BeaconProbe ref={beaconRef} label="beacon" onDataChanged={handleDataChanged} />);
 
@@ -717,11 +730,11 @@ describe("handler props - a signal only the registered type carries", () => {
             beaconRef.current?.emit("data-changed", "payload");
         });
 
-        expect(handleDataChanged).toHaveBeenCalledWith("payload", beaconRef.current);
+        expect(handleDataChanged.calls).toContainEqual(["payload", beaconRef.current]);
     });
 
     it("connects a declared signal whose handler prop only arrives on a later render", async () => {
-        const handleFlipped = vi.fn();
+        const handleFlipped = recordCalls();
         const beaconRef = createRef<InstanceType<typeof BeaconLabel>>();
         const { rerender } = await render(<BeaconProbe ref={beaconRef} label="beacon" />);
         await rerender(<BeaconProbe ref={beaconRef} label="beacon" onFlipped={handleFlipped} />);
@@ -730,33 +743,40 @@ describe("handler props - a signal only the registered type carries", () => {
             beaconRef.current?.emit("flipped");
         });
 
-        expect(handleFlipped).toHaveBeenCalled();
+        expect(handleFlipped.calls.length).toBeGreaterThan(0);
     });
 
     it("still connects a signal the registered class inherits", async () => {
-        const handleActivateLink = vi.fn(() => true);
+        const activateLinks = recordCalls<[string]>();
+        const shouldActivateLink = (uri: string): boolean => {
+            activateLinks(uri);
+
+            return true;
+        };
         const beaconRef = createRef<InstanceType<typeof BeaconLabel>>();
-        await render(<BeaconProbe ref={beaconRef} label="beacon" onActivateLink={handleActivateLink} />);
+        await render(<BeaconProbe ref={beaconRef} label="beacon" onActivateLink={shouldActivateLink} />);
 
         await act(() => {
             beaconRef.current?.emit("activate-link", "https://gtkx.dev");
         });
 
-        expect(handleActivateLink).toHaveBeenCalled();
+        expect(activateLinks.calls.length).toBeGreaterThan(0);
     });
 
     it("throws for a handler prop naming no signal of the element", async () => {
-        await expect(render(<BeaconProbe {...{ onDataChangd: vi.fn() }} label="beacon" />)).rejects.toThrow();
+        await expect(render(<BeaconProbe {...{ onDataChangd: recordCalls() }} label="beacon" />)).rejects.toThrow();
     });
 
     it("throws for a handler prop whose signal name is not a valid one", async () => {
-        await expect(render(<BeaconProbe {...{ "onFlipped.twice": vi.fn() }} label="beacon" />)).rejects.toThrow();
+        await expect(
+            render(<BeaconProbe {...{ "onFlipped.twice": recordCalls() }} label="beacon" />),
+        ).rejects.toThrow();
     });
 });
 
 describe("user event signals (digit boundaries)", () => {
     it("connects a handler prop naming a signal whose word starts with a digit", async () => {
-        const handleLevel = vi.fn();
+        const handleLevel = recordCalls();
         const beaconRef = createRef<InstanceType<typeof BeaconLabel>>();
         await render(<BeaconProbe {...{ onLevel2Changed: handleLevel }} ref={beaconRef} label="beacon" />);
 
@@ -764,13 +784,13 @@ describe("user event signals (digit boundaries)", () => {
             beaconRef.current?.emit("level-2-changed", "up");
         });
 
-        expect(handleLevel).toHaveBeenCalledTimes(1);
+        expect(handleLevel.calls).toHaveLength(1);
     });
 });
 
 describe("user event signals (registered digit properties)", () => {
     it("notifies an onNotify handler for a property the accessor cannot spell", async () => {
-        const handleNotify = vi.fn();
+        const handleNotify = recordCalls();
         const labelRef = createRef<Level2Label>();
         await render(<Level2Probe ref={labelRef} level2Depth={1} onNotifyLevel2Depth={handleNotify} />);
 
@@ -780,6 +800,6 @@ describe("user event signals (registered digit properties)", () => {
             }
         });
 
-        expect(handleNotify).toHaveBeenCalled();
+        expect(handleNotify.calls.length).toBeGreaterThan(0);
     });
 });

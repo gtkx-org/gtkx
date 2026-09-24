@@ -2,9 +2,9 @@ import { screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import {
     clickButton,
-    createEventSpy,
-    createPreventSpy,
-    createStateSpy,
+    createEventLog,
+    createPreventLog,
+    createStateLog,
     expectHidden,
     expectRouteNames,
     expectVisible,
@@ -29,15 +29,15 @@ describe("stack - native pop", () => {
     });
 
     it("reports the transition of the page it pops", async () => {
-        const onEvent = createEventSpy();
-        await renderStack({ isAnimated: true, spies: { onEvent } });
+        const eventLog = createEventLog();
+        await renderStack({ isAnimated: true, callbacks: { onEvent: eventLog.record } });
         await clickButton("Go to details");
         await screen.findByText("Details 1");
-        onEvent.mockClear();
+        eventLog.events.length = 0;
         await clickButton("Back");
 
         await waitFor(() => {
-            expect(onEvent.mock.calls.flat()).toContainEqual({
+            expect(eventLog.events).toContainEqual({
                 type: "transitionEnd",
                 route: "Details",
                 isClosing: true,
@@ -46,15 +46,15 @@ describe("stack - native pop", () => {
     });
 
     it("reports the transition of a page popped from a screen", async () => {
-        const onEvent = createEventSpy();
-        await renderStack({ isAnimated: true, spies: { onEvent } });
+        const eventLog = createEventLog();
+        await renderStack({ isAnimated: true, callbacks: { onEvent: eventLog.record } });
         await clickButton("Go to details");
         await screen.findByText("Details 1");
-        onEvent.mockClear();
+        eventLog.events.length = 0;
         await clickButton("Go back");
 
         await waitFor(() => {
-            expect(onEvent.mock.calls.flat()).toContainEqual({
+            expect(eventLog.events).toContainEqual({
                 type: "transitionEnd",
                 route: "Details",
                 isClosing: true,
@@ -63,9 +63,13 @@ describe("stack - native pop", () => {
     });
 
     it("keeps the page when the prevent callback changes the route params", async () => {
-        const onPrevent = createPreventSpy();
-        const onStateChange = createStateSpy();
-        await renderStack({ isAnimated: true, spies: { onPrevent }, container: { onStateChange } });
+        const preventLog = createPreventLog();
+        const stateLog = createStateLog();
+        await renderStack({
+            isAnimated: true,
+            callbacks: { onPrevent: preventLog.record },
+            container: { onStateChange: stateLog.record },
+        });
         await clickButton("Go to draft");
         await screen.findByText("Draft empty");
         await clickButton("Back");
@@ -74,13 +78,13 @@ describe("stack - native pop", () => {
             expectVisible("Draft unsaved");
         });
 
-        expect(onPrevent).toHaveBeenCalledTimes(1);
-        expectRouteNames(onStateChange, ["Home", "Draft"]);
+        expect(preventLog.actions).toHaveLength(1);
+        expectRouteNames(stateLog, ["Home", "Draft"]);
     });
 
     it("restores the pages when a multi-page pop is prevented", async () => {
-        const onStateChange = createStateSpy();
-        await renderStack({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderStack({ container: { onStateChange: stateLog.record } });
         await clickButton("Go to details");
         await clickButton("Push compose");
         await screen.findByText("Compose Content");
@@ -91,12 +95,12 @@ describe("stack - native pop", () => {
             expectVisible("Compose Content");
         });
 
-        expectRouteNames(onStateChange, ["Home", "Details", "Compose"]);
+        expectRouteNames(stateLog, ["Home", "Details", "Compose"]);
     });
 
     it("follows the stack when the user pops several pages at once", async () => {
-        const onStateChange = createStateSpy();
-        await renderStack({ container: { onStateChange } });
+        const stateLog = createStateLog();
+        await renderStack({ container: { onStateChange: stateLog.record } });
         await clickButton("Go to details");
         await clickButton("Push details");
         await screen.findByText("Details 2");
@@ -107,6 +111,6 @@ describe("stack - native pop", () => {
             expectVisible("Home Content");
         });
 
-        expectRouteNames(onStateChange, ["Home"]);
+        expectRouteNames(stateLog, ["Home"]);
     });
 });

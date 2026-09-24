@@ -23,13 +23,13 @@ function TextmaskDemo() {
     const drawingAreaRef = useRef<Gtk.DrawingArea>(null);
 
     const drawFunc = (_self: Gtk.DrawingArea, cr: Context, width: number, height: number) => {
-        cr.save();
         const widget = drawingAreaRef.current;
 
         if (!widget) {
             return;
         }
 
+        cr.save();
         const layout = widget.createPangoLayout("");
         const fontDesc = Pango.FontDescription.fromString("sans bold 34");
         layout.setFontDescription(fontDesc);

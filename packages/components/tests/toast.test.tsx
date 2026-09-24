@@ -11,7 +11,7 @@ import { AdwToastOverlay } from "@gtkx/jsx/adw";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, renderHook, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, type ReactNode, type RefObject, useLayoutEffect } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 type Handles = { toast: ToastController; overlay: ToastOverlayController };
 
@@ -72,34 +72,46 @@ describe("render - toast (useToast / useToastOverlay)", () => {
 
     it("invokes onButtonClicked when the toast button is activated", async () => {
         const { handles } = await renderToastHost();
-        const onButtonClicked = vi.fn();
+        let clickCount = 0;
+        const onButtonClicked = (): void => {
+            clickCount += 1;
+        };
         handles.toast.show({ title: "Undoable", buttonLabel: "Undo", onButtonClicked });
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Undo" }));
-        expect(onButtonClicked).toHaveBeenCalledTimes(1);
+        expect(clickCount).toBe(1);
     });
 
     it("dismisses a single toast and reports it through onDismissed", async () => {
         const { handles } = await renderToastHost();
-        const onDismissed = vi.fn();
+        let dismissCount = 0;
+        const onDismissed = (): void => {
+            dismissCount += 1;
+        };
         const toast = handles.toast.show({ title: "Bye", onDismissed });
         handles.toast.dismiss(toast);
 
         await waitFor(() => {
-            expect(onDismissed).toHaveBeenCalledTimes(1);
+            expect(dismissCount).toBe(1);
         });
     });
 
     it("dismisses every toast through dismissAll", async () => {
         const { handles } = await renderToastHost();
-        const onFirst = vi.fn();
-        const onSecond = vi.fn();
+        let firstCount = 0;
+        let secondCount = 0;
+        const onFirst = (): void => {
+            firstCount += 1;
+        };
+        const onSecond = (): void => {
+            secondCount += 1;
+        };
         handles.toast.show({ title: "First", onDismissed: onFirst });
         handles.toast.show({ title: "Second", onDismissed: onSecond });
         handles.overlay.dismissAll();
 
         await waitFor(() => {
-            expect(onFirst).toHaveBeenCalledTimes(1);
-            expect(onSecond).toHaveBeenCalledTimes(1);
+            expect(firstCount).toBe(1);
+            expect(secondCount).toBe(1);
         });
     });
 

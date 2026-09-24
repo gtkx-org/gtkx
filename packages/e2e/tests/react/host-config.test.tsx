@@ -17,7 +17,7 @@ import { rootElement } from "@gtkx/react";
 import { getWidgetText, render, screen, waitFor, within } from "@gtkx/testing";
 import { renderChildren } from "@gtkx/testing/internal";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createApplicationRenderer } from "../helpers/application-render.js";
 import { buildPlainNotebook } from "../helpers/notebook-render.js";
 
@@ -556,11 +556,14 @@ describe("Root.unmount", () => {
             throw new Error("application was not captured");
         }
 
-        const shutdownHandler = vi.fn();
+        let shutdownCount = 0;
+        const shutdownHandler = (): void => {
+            shutdownCount += 1;
+        };
         app.on("shutdown", shutdownHandler);
         expect(app.getIsRegistered()).toBe(true);
         await unmount();
-        expect(shutdownHandler).toHaveBeenCalledTimes(1);
+        expect(shutdownCount).toBe(1);
         expect(app.getIsRegistered()).toBe(false);
     });
 });

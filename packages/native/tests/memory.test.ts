@@ -247,15 +247,6 @@ test("float64 stores a NaN", () => {
     expect(read(block, { kind: "float64" }, 0)).toBeNaN();
 });
 
-test("writing null stores zero", () => {
-    const block = alloc(8);
-
-    write(block, { kind: "int32" }, 0, 1234);
-    write(block, { kind: "int32" }, 0, null);
-
-    expect(read(block, { kind: "int32" }, 0)).toBe(0);
-});
-
 test("a byte buffer round-trips through a pointer slot", () => {
     const block = alloc(8);
 

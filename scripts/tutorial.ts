@@ -192,13 +192,14 @@ async function deployTutorial(env: NodeJS.ProcessEnv): Promise<void> {
 }
 
 async function validateTutorial(env: NodeJS.ProcessEnv): Promise<void> {
+    await runAsync("pnpm", ["exec", "eslint", "examples/tutorial"], { cwd: ROOT_DIR, env });
     await runAsync("npm", ["run", "build"], { cwd: TUTORIAL_DIR, env });
     requireFile(join(TUTORIAL_DIR, "dist", "locale", "fr", "LC_MESSAGES", `${APPLICATION_ID}.mo`));
     await verifyBuiltAppStarts(TUTORIAL_DIR);
     await runAsync("npm", ["run", "typecheck"], { cwd: TUTORIAL_DIR, env });
     await runAsync("npm", ["run", "test"], { cwd: TUTORIAL_DIR, env });
     await deployTutorial(env);
-    console.log("tutorial: install, build, run, typecheck, test, and deploy succeeded");
+    console.log("tutorial: install, lint, build, run, typecheck, test, and deploy succeeded");
 }
 
 async function main(): Promise<void> {

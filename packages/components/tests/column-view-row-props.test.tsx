@@ -5,7 +5,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen, within } from "@gtkx/testing";
 import { createRef } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { allRows, dataRows } from "./helpers/column-rows.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 
@@ -163,14 +163,24 @@ describe("ColumnView rowProps", () => {
 
 describe("ColumnView rowProps arguments", () => {
     it("receives the arguments the cell renderer receives, depth and expansion included", async () => {
-        const flatRowProps = vi.fn<ListRowPropsResolver<Person>>(() => ({}));
+        const flatCalls: ListItemRenderArgs<Person>[] = [];
+        const flatRowProps: ListRowPropsResolver<Person> = (args) => {
+            flatCalls.push(args);
+
+            return {};
+        };
         await renderRowView(flatItems, flatRowProps);
-        expect(flatRowProps).toHaveBeenCalledWith({ item: { name: "First" }, index: 0 });
-        expect(flatRowProps).toHaveBeenCalledWith({ item: { name: "Second" }, index: 1 });
-        const treeRowProps = vi.fn<ListRowPropsResolver<Person>>(() => ({}));
+        expect(flatCalls).toContainEqual({ item: { name: "First" }, index: 0 });
+        expect(flatCalls).toContainEqual({ item: { name: "Second" }, index: 1 });
+        const treeCalls: ListItemRenderArgs<Person>[] = [];
+        const treeRowProps: ListRowPropsResolver<Person> = (args) => {
+            treeCalls.push(args);
+
+            return {};
+        };
         await renderRowView(treeItems, treeRowProps, ["1"]);
-        expect(treeRowProps).toHaveBeenCalledWith({ item: { name: "Parent" }, index: 0, depth: 0, isExpanded: true });
-        expect(treeRowProps).toHaveBeenCalledWith({ item: { name: "Child" }, index: 1, depth: 1 });
+        expect(treeCalls).toContainEqual({ item: { name: "Parent" }, index: 0, depth: 0, isExpanded: true });
+        expect(treeCalls).toContainEqual({ item: { name: "Child" }, index: 1, depth: 1 });
     });
 });
 

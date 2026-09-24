@@ -78,7 +78,7 @@ await render(<App />, { container: rootElement });
 
 Prefer `screen.getByRole` with a `Gtk.AccessibleRole` enum and an accessible name. `screen` searches open toplevel windows, including dialogs and popovers. Use `within(container)` to restrict a query to a subtree.
 
-`getBy*` requires one match, `queryBy*` returns `null` when none exists, and `findBy*` waits for a match. Use `findBy*` when an asynchronous operation changes the UI. The `*AllBy*` variants return multiple matches. Other query families match label text, placeholders, display values, or the widget's `name` prop; see the [query reference](/v2/reference/@gtkx/testing/).
+GTKX follows [Testing Library's query conventions](https://testing-library.com/docs/queries/about/). Other query families match label text, placeholders, display values, or the widget's `name` prop; see the [query reference](/v2/reference/@gtkx/testing/).
 
 Queries exclude widgets that are not mapped, including content on inactive stack pages. The `hidden` option on role queries only includes widgets excluded from the accessibility tree; it does not include unmapped widgets.
 

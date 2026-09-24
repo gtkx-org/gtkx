@@ -10,7 +10,7 @@ const entryUndoDemo: Demo = {
     description:
         "GtkEntry can provide basic Undo/Redo support using standard keyboard accelerators such as " +
         "Control+z to undo and Control+Shift+z to redo. Additionally, Control+y can be used to redo." +
-        "\n\nUse gtk_entry_set_enable_undo() to enable undo/redo support.",
+        "\n\nSet the enableUndo prop to enable it.",
     keywords: [],
     component: EntryUndoDemo,
     sourceCode,

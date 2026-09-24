@@ -6,8 +6,6 @@ import {
     getFundamentalWrapper,
     getWrapper,
     type Handle,
-    init,
-    keepAlive,
     newObject,
     resolveType,
     setFundamentalWrapper,
@@ -19,8 +17,6 @@ const encoder = new TextEncoder();
 
 const GOBJECT = "libgobject-2.0.so.0";
 const READWRITE = 3;
-
-init();
 
 const OBJECT_TYPE = resolveType(GOBJECT, "g_object_get_type");
 
@@ -241,28 +237,5 @@ test("caching a primitive as a fundamental wrapper throws", () => {
 
     expect(() => {
         setFundamentalWrapper(fundamentalHandle(), notAnObject as object);
-    }).toThrow();
-});
-
-test("the event loop keep-alive accepts alternating and repeated states", () => {
-    expect(() => {
-        keepAlive(true);
-        keepAlive(true);
-        keepAlive(false);
-        keepAlive(false);
-    }).not.toThrow();
-});
-
-test("a non-boolean event loop keep-alive state throws", () => {
-    const notABoolean: unknown = "yes";
-
-    expect(() => {
-        keepAlive(notABoolean as boolean);
-    }).toThrow();
-});
-
-test("an event loop keep-alive state left out throws", () => {
-    expect(() => {
-        (keepAlive as () => void)();
     }).toThrow();
 });

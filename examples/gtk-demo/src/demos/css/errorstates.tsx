@@ -77,10 +77,8 @@ const errorstatesDemo: Demo = {
     id: "errorstates",
     title: "Error States",
     description:
-        "GtkLabel and GtkEntry can indicate errors if you set the .error style class on them.\n\n" +
-        "This examples shows how this can be used in a dialog for input validation.\n\n" +
-        "It also shows how pass callbacks and objects to GtkBuilder with GtkBuilderScope and " +
-        "gtk_builder_expose_object().",
+        "GtkLabel and GtkEntry can indicate validation errors through the error CSS class.\n\n" +
+        "This demo applies it to several fields controlled through JSX in a dialog.",
     keywords: [],
     component: ErrorstatesDemo,
     sourceCode,

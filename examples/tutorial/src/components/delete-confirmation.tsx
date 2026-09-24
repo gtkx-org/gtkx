@@ -5,7 +5,7 @@ import type { Task } from "../types.js";
 import { closeTaskIfOpen } from "../navigation.js";
 import { useStore } from "../store/index.js";
 
-export const DeleteConfirmation = ({ task }: { task: Task }) => {
+const DeleteConfirmation = ({ task }: { task: Task }) => {
     const deleteForever = useStore((state) => state.deleteForever);
     const showDialog = useStore((state) => state.showDialog);
 
@@ -28,4 +28,8 @@ export const DeleteConfirmation = ({ task }: { task: Task }) => {
             }}
         />
     );
+};
+
+export {
+    DeleteConfirmation,
 };

@@ -2,23 +2,19 @@ import { screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import {
     clickButton,
-    createEventSpy,
-    createPreventSpy,
+    createEventLog,
+    createPreventLog,
     expectHidden,
     expectVisible,
     pressKeys,
     renderStack,
-    type StackEvent,
 } from "./helpers/stack-fixtures.js";
-
-const getEvents = (onEvent: ReturnType<typeof createEventSpy>): StackEvent[] =>
-    onEvent.mock.calls.map(([event]) => event);
 
 describe("stack - events", () => {
     it("emits transition events to the outgoing page and ends the incoming one", async () => {
-        const onEvent = createEventSpy();
-        await renderStack({ isAnimated: true, spies: { onEvent } });
-        onEvent.mockClear();
+        const eventLog = createEventLog();
+        await renderStack({ isAnimated: true, callbacks: { onEvent: eventLog.record } });
+        eventLog.events.length = 0;
         await clickButton("Go to details");
         await screen.findByText("Details 1");
 
@@ -26,34 +22,33 @@ describe("stack - events", () => {
             expectHidden("Home Content");
         });
 
-        const events = getEvents(onEvent);
-        expect(events).toContainEqual({ type: "transitionStart", route: "Home", isClosing: true });
-        expect(events).toContainEqual({ type: "transitionEnd", route: "Home", isClosing: true });
-        expect(events).toContainEqual({ type: "transitionEnd", route: "Details", isClosing: false });
+        expect(eventLog.events).toContainEqual({ type: "transitionStart", route: "Home", isClosing: true });
+        expect(eventLog.events).toContainEqual({ type: "transitionEnd", route: "Home", isClosing: true });
+        expect(eventLog.events).toContainEqual({ type: "transitionEnd", route: "Details", isClosing: false });
     });
 
     it("emits transitionStart with closing false to the incoming page", async () => {
-        const onEvent = createEventSpy();
-        await renderStack({ isAnimated: true, spies: { onEvent } });
+        const eventLog = createEventLog();
+        await renderStack({ isAnimated: true, callbacks: { onEvent: eventLog.record } });
         await clickButton("Go to details");
 
         await waitFor(() => {
             expectHidden("Home Content");
         });
 
-        expect(getEvents(onEvent)).toContainEqual({ type: "transitionStart", route: "Details", isClosing: false });
+        expect(eventLog.events).toContainEqual({ type: "transitionStart", route: "Details", isClosing: false });
     });
 
     it("removes the popped page after the transition", async () => {
-        const onEvent = createEventSpy();
-        await renderStack({ isAnimated: true, spies: { onEvent } });
+        const eventLog = createEventLog();
+        await renderStack({ isAnimated: true, callbacks: { onEvent: eventLog.record } });
         await clickButton("Go to details");
 
         await waitFor(() => {
             expectHidden("Home Content");
         });
 
-        onEvent.mockClear();
+        eventLog.events.length = 0;
         await clickButton("Back");
         await screen.findByText("Home Content");
 
@@ -61,18 +56,18 @@ describe("stack - events", () => {
             expectHidden("Details 1");
         });
 
-        expect(getEvents(onEvent)).toContainEqual({ type: "transitionEnd", route: "Details", isClosing: true });
+        expect(eventLog.events).toContainEqual({ type: "transitionEnd", route: "Details", isClosing: true });
     });
 
     it("emits focus and blur on push and pop", async () => {
-        const onEvent = createEventSpy();
-        await renderStack({ spies: { onEvent } });
-        onEvent.mockClear();
+        const eventLog = createEventLog();
+        await renderStack({ callbacks: { onEvent: eventLog.record } });
+        eventLog.events.length = 0;
         await clickButton("Go to details");
         await screen.findByText("Details 1");
         await clickButton("Back");
         await screen.findByText("Home Content");
-        const focusEvents = getEvents(onEvent).filter(({ type }) => type === "focus" || type === "blur");
+        const focusEvents = eventLog.events.filter(({ type }) => type === "focus" || type === "blur");
 
         expect(focusEvents).toEqual([
             { type: "blur", route: "Home", isClosing: undefined },
@@ -90,8 +85,8 @@ describe("stack - events", () => {
     });
 
     it("keeps the page visible when usePreventRemove prevents Back", async () => {
-        const onPrevent = createPreventSpy();
-        await renderStack({ spies: { onPrevent } });
+        const preventLog = createPreventLog();
+        await renderStack({ callbacks: { onPrevent: preventLog.record } });
         await clickButton("Go to compose");
         await screen.findByText("Compose Content");
         await clickButton("Back");
@@ -102,13 +97,13 @@ describe("stack - events", () => {
         });
 
         expectHidden("Home Content");
-        expect(onPrevent).toHaveBeenCalledTimes(1);
-        expect(onPrevent.mock.calls[0]?.[0].action.type).toBe("POP");
+        expect(preventLog.actions).toHaveLength(1);
+        expect(preventLog.actions[0]?.type).toBe("POP");
     });
 
     it("keeps the page visible when usePreventRemove prevents Escape", async () => {
-        const onPrevent = createPreventSpy();
-        await renderStack({ spies: { onPrevent } });
+        const preventLog = createPreventLog();
+        await renderStack({ callbacks: { onPrevent: preventLog.record } });
         await clickButton("Go to compose");
         await pressKeys("Compose Content", "{Escape}");
 
@@ -117,12 +112,12 @@ describe("stack - events", () => {
         });
 
         expectHidden("Home Content");
-        expect(onPrevent).toHaveBeenCalledTimes(1);
+        expect(preventLog.actions).toHaveLength(1);
     });
 
     it("pops once the prevented action is dispatched again", async () => {
-        const onPrevent = createPreventSpy();
-        await renderStack({ spies: { onPrevent } });
+        const preventLog = createPreventLog();
+        await renderStack({ callbacks: { onPrevent: preventLog.record } });
         await clickButton("Go to compose");
         await clickButton("Back");
 
@@ -133,7 +128,7 @@ describe("stack - events", () => {
         await clickButton("Discard");
         await screen.findByText("Home Content");
         expectHidden("Compose Content");
-        expect(onPrevent).toHaveBeenCalledTimes(1);
+        expect(preventLog.actions).toHaveLength(1);
     });
 
     it("pops without animating when animation is none", async () => {

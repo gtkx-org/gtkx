@@ -45,4 +45,15 @@ describe("generated signal types", () => {
 
         expect(emitSignatures).toEqual([true, true, true, true, true, true]);
     });
+
+    it("uses false when a boolean signal handler opts out", () => {
+        const spin = Gtk.SpinButton.newWithRange(0, 10, 1);
+        let calls = 0;
+        spin.connect("output", () => {
+            calls += 1;
+        });
+
+        expect(spin.emit("output")).toBe(false);
+        expect(calls).toBe(1);
+    });
 });

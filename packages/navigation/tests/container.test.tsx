@@ -1,4 +1,9 @@
-import type { EventListenerCallback, NavigationAction, NavigationContainerEventMap } from "@gtkx/navigation";
+import type {
+    EventListenerCallback,
+    NavigationAction,
+    NavigationContainerEventMap,
+    NavigationState,
+} from "@gtkx/navigation";
 import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
@@ -12,7 +17,7 @@ import {
     useNavigationState,
 } from "@gtkx/navigation";
 import { act, render, screen, userEvent } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
     Details,
     Home,
@@ -81,37 +86,45 @@ const StateReader = (): ReactNode => {
 
 describe("container - callbacks", () => {
     it("calls onReady once after mount and not again on navigation", async () => {
-        const onReady = vi.fn();
+        let readyEvents = 0;
 
         await render(
-            <NavigationContainer onReady={onReady}>
+            <NavigationContainer
+                onReady={() => {
+                    readyEvents += 1;
+                }}
+            >
                 <RootStack />
             </NavigationContainer>,
         );
 
         await screen.findByText("Home Content");
-        expect(onReady).toHaveBeenCalledTimes(1);
+        expect(readyEvents).toBe(1);
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Go to details" }));
         await screen.findByText("Details 42");
-        expect(onReady).toHaveBeenCalledTimes(1);
+        expect(readyEvents).toBe(1);
     });
 
     it("calls onStateChange with the root state on navigation but not on mount", async () => {
-        const onStateChange = vi.fn();
+        const states: (NavigationState | undefined)[] = [];
 
         await render(
-            <NavigationContainer onStateChange={onStateChange}>
+            <NavigationContainer
+                onStateChange={(state) => {
+                    states.push(state);
+                }}
+            >
                 <RootStack />
             </NavigationContainer>,
         );
 
         await screen.findByText("Home Content");
-        expect(onStateChange).not.toHaveBeenCalled();
+        expect(states).toEqual([]);
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Go to details" }));
         await screen.findByText("Details 42");
-        expect(onStateChange).toHaveBeenCalledTimes(1);
+        expect(states).toHaveLength(1);
 
-        expect(onStateChange).toHaveBeenCalledWith(
+        expect(states[0]).toEqual(
             expect.objectContaining({
                 type: "stack",
                 index: 1,
@@ -182,7 +195,10 @@ describe("container - ref", () => {
 
     it("notifies state listeners until they unsubscribe", async () => {
         const ref = createNavigationContainerRef<RootParams>();
-        const listener = vi.fn<EventListenerCallback<NavigationContainerEventMap, "state">>();
+        const stateEvents: Parameters<EventListenerCallback<NavigationContainerEventMap, "state">>[0][] = [];
+        const listener: EventListenerCallback<NavigationContainerEventMap, "state"> = (event) => {
+            stateEvents.push(event);
+        };
 
         await render(
             <NavigationContainer ref={ref}>
@@ -198,8 +214,8 @@ describe("container - ref", () => {
         });
 
         await screen.findByText("Details 1");
-        expect(listener).toHaveBeenCalledTimes(1);
-        expect(listener.mock.calls[0]?.[0].data.state).toMatchObject({ type: "stack", index: 1 });
+        expect(stateEvents).toHaveLength(1);
+        expect(stateEvents[0]?.data.state).toMatchObject({ type: "stack", index: 1 });
         unsubscribe();
 
         await act(() => {
@@ -207,7 +223,7 @@ describe("container - ref", () => {
         });
 
         await screen.findByText("Home Content");
-        expect(listener).toHaveBeenCalledTimes(1);
+        expect(stateEvents).toHaveLength(1);
     });
 
     it("reports not ready again after unmount", async () => {
@@ -228,11 +244,16 @@ describe("container - ref", () => {
 
 describe("container - unhandled actions", () => {
     it("calls onUnhandledAction when no navigator handles the action", async () => {
-        const onUnhandledAction = vi.fn<(action: NavigationAction) => void>();
+        const unhandledActions: NavigationAction[] = [];
         const ref = createNavigationContainerRef();
 
         await render(
-            <NavigationContainer ref={ref} onUnhandledAction={onUnhandledAction}>
+            <NavigationContainer
+                ref={ref}
+                onUnhandledAction={(action) => {
+                    unhandledActions.push(action);
+                }}
+            >
                 <RootStack />
             </NavigationContainer>,
         );
@@ -243,32 +264,40 @@ describe("container - unhandled actions", () => {
             ref.dispatch(CommonActions.navigate("Missing"));
         });
 
-        expect(onUnhandledAction).toHaveBeenCalledTimes(1);
-        expect(onUnhandledAction.mock.calls[0]?.[0]).toMatchObject({ type: "NAVIGATE", payload: { name: "Missing" } });
+        expect(unhandledActions).toHaveLength(1);
+        expect(unhandledActions[0]).toMatchObject({ type: "NAVIGATE", payload: { name: "Missing" } });
         await screen.findByText("Home Content");
     });
 
     it("does not call onUnhandledAction for handled actions", async () => {
-        const onUnhandledAction = vi.fn();
+        let unhandledActions = 0;
 
         await render(
-            <NavigationContainer onUnhandledAction={onUnhandledAction}>
+            <NavigationContainer
+                onUnhandledAction={() => {
+                    unhandledActions += 1;
+                }}
+            >
                 <RootStack />
             </NavigationContainer>,
         );
 
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Go to details" }));
         await screen.findByText("Details 42");
-        expect(onUnhandledAction).not.toHaveBeenCalled();
+        expect(unhandledActions).toBe(0);
     });
 });
 
 describe("container - independent trees", () => {
     it("hosts an independent container inside a screen", async () => {
-        const onStateChange = vi.fn();
+        let stateChanges = 0;
 
         await render(
-            <NavigationContainer onStateChange={onStateChange}>
+            <NavigationContainer
+                onStateChange={() => {
+                    stateChanges += 1;
+                }}
+            >
                 <Stack.Navigator>
                     <Stack.Screen name="Home" component={IndependentScreen} />
                     <Stack.Screen name="Details" component={Details} />
@@ -279,7 +308,7 @@ describe("container - independent trees", () => {
         await screen.findByText("Parent: none");
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Go to details" }));
         await screen.findByText("Details 42");
-        expect(onStateChange).not.toHaveBeenCalled();
+        expect(stateChanges).toBe(0);
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" }));
         await screen.findByText("Home Content");
     });

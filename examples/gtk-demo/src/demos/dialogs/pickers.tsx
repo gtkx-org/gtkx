@@ -8,19 +8,56 @@ import {
     GtkColorDialog,
     GtkColorDialogButton,
     GtkDropTarget,
+    GtkFileDialog,
+    GtkFileLauncher,
     GtkFontDialog,
     GtkFontDialogButton,
     GtkGrid,
     GtkGridLayoutChild,
     GtkLabel,
+    GtkPrintDialog,
+    GtkUriLauncher,
 } from "@gtkx/jsx/gtk";
-import { useParentWindow } from "@gtkx/react";
+import { createPortal, rootElement, useParentWindow } from "@gtkx/react";
 import { type ReactNode, useState } from "react";
 import type { Demo } from "../types.js";
+import { isCancellation } from "../../is-cancellation.js";
+import { type CancellableHandle, useCancellable } from "../../use-cancellable.js";
 import sourceCode from "./pickers.tsx?raw";
 
 type FilePickerState = ReturnType<typeof useFilePickerState>;
 type PickerHandlers = ReturnType<typeof useFilePickerHandlers>;
+
+type PickerObjects = {
+    fileDialog: Gtk.FileDialog | null;
+    fileLauncher: Gtk.FileLauncher | null;
+    printDialog: Gtk.PrintDialog | null;
+    uriLauncher: Gtk.UriLauncher | null;
+};
+
+type PickerCancellables = {
+    openFile: CancellableHandle;
+    launchApp: CancellableHandle;
+    openFolder: CancellableHandle;
+    printFile: CancellableHandle;
+    launchUri: CancellableHandle;
+};
+
+type OpenFileRequest = {
+    fileDialog: Gtk.FileDialog;
+    parentWindow: Gtk.Window | null;
+    cancellable: Gio.Cancellable;
+    state: FilePickerState;
+    renewCancellable: () => void;
+};
+
+type PrintFileRequest = {
+    printDialog: Gtk.PrintDialog;
+    parentWindow: Gtk.Window | null;
+    cancellable: Gio.Cancellable;
+    state: FilePickerState;
+    renewCancellable: () => void;
+};
 
 type PickerLabelProps = {
     row: number;
@@ -61,9 +98,8 @@ const pickersDemo: Demo = {
     id: "pickers",
     title: "Pickers and Launchers",
     description:
-        "The dialogs are mainly intended for use in preference dialogs. They allow to select colors, fonts and " +
-        "files. There is also a print dialog.\n\nThe launchers let you open files or URIs in applications that can " +
-        "handle them.",
+        "Generated GTKX dialogs choose colors, fonts and files or start a print job. Launchers open selected " +
+        "files, their folders and web addresses with installed applications.",
     keywords: [
         "GtkColorDialog",
         "GtkFontDialog",
@@ -76,11 +112,6 @@ const pickersDemo: Demo = {
     sourceCode,
 };
 
-const isCancellation = (error: unknown): boolean =>
-    (error instanceof Gtk.DialogError &&
-        (error.code === Gtk.DialogError.DISMISSED || error.code === Gtk.DialogError.CANCELLED)) ||
-        (error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.CANCELLED);
-
 const reportPickerError = (error: unknown): void => {
     if (isCancellation(error)) {
         return;
@@ -91,9 +122,11 @@ const reportPickerError = (error: unknown): void => {
     }
 };
 
-const runWithTimeout = async (action: (cancellable: Gio.Cancellable) => Promise<void>) => {
-    const cancellable = new Gio.Cancellable();
-
+const runWithTimeout = async (
+    cancellable: Gio.Cancellable,
+    action: (cancellable: Gio.Cancellable) => Promise<void>,
+    renewCancellable: () => void,
+) => {
     const timeoutId = setTimeout(() => {
         cancellable.cancel();
     }, DIALOG_TIMEOUT_SECONDS * 1000);
@@ -102,19 +135,26 @@ const runWithTimeout = async (action: (cancellable: Gio.Cancellable) => Promise<
         await action(cancellable);
     } finally {
         clearTimeout(timeoutId);
+        renewCancellable();
     }
 };
 
-const launchFile = async (selectedFile: Gio.File | null, action: (launcher: Gtk.FileLauncher) => Promise<void>) => {
-    if (!selectedFile) {
+const launchFile = async (
+    launcher: Gtk.FileLauncher | null,
+    cancellable: Gio.Cancellable | null,
+    action: (launcher: Gtk.FileLauncher, cancellable: Gio.Cancellable) => Promise<void>,
+    renewCancellable: () => void,
+) => {
+    if (launcher === null || cancellable === null) {
         return;
     }
 
     try {
-        const launcher = Gtk.FileLauncher.new(selectedFile);
-        await action(launcher);
+        await action(launcher, cancellable);
     } catch (error) {
         reportPickerError(error);
+    } finally {
+        renewCancellable();
     }
 };
 
@@ -146,12 +186,11 @@ const clearFileSelection = (error: unknown, state: FilePickerState): void => {
 };
 
 const requestFile = async (
+    fileDialog: Gtk.FileDialog,
     parentWindow: Gtk.Window | null,
     cancellable: Gio.Cancellable,
     state: FilePickerState,
 ) => {
-    const fileDialog = new Gtk.FileDialog();
-
     try {
         const file = await fileDialog.open(parentWindow, cancellable);
         state.setFile(file);
@@ -160,48 +199,79 @@ const requestFile = async (
     }
 };
 
-const openFile = (parentWindow: Gtk.Window | null, state: FilePickerState) =>
-    runWithTimeout(async (cancellable) => {
-        await requestFile(parentWindow, cancellable, state);
-    });
+const openFile = ({ fileDialog, parentWindow, cancellable, state, renewCancellable }: OpenFileRequest) =>
+    runWithTimeout(cancellable, async (current) => {
+        await requestFile(fileDialog, parentWindow, current, state);
+    }, renewCancellable);
 
-const launchApp = (parentWindow: Gtk.Window | null, selectedFile: Gio.File | null) =>
-    launchFile(selectedFile, async (l) => {
-        await l.launch(parentWindow, null);
-    });
+const launchApp = (
+    parentWindow: Gtk.Window | null,
+    launcher: Gtk.FileLauncher | null,
+    cancellable: CancellableHandle,
+) =>
+    launchFile(
+        launcher,
+        cancellable.cancellable,
+        async (current, currentCancellable) => {
+            await current.launch(parentWindow, currentCancellable);
+        },
+        cancellable.renew,
+    );
 
-const openFolder = (parentWindow: Gtk.Window | null, selectedFile: Gio.File | null) =>
-    launchFile(selectedFile, async (l) => {
-        await l.openContainingFolder(parentWindow, null);
-    });
+const openFolder = (
+    parentWindow: Gtk.Window | null,
+    launcher: Gtk.FileLauncher | null,
+    cancellable: CancellableHandle,
+) =>
+    launchFile(
+        launcher,
+        cancellable.cancellable,
+        async (current, currentCancellable) => {
+            await current.openContainingFolder(parentWindow, currentCancellable);
+        },
+        cancellable.renew,
+    );
 
-const runPrintDialog = async (parentWindow: Gtk.Window | null, file: Gio.File, cancellable: Gio.Cancellable) => {
+const runPrintDialog = async (
+    printDialog: Gtk.PrintDialog,
+    parentWindow: Gtk.Window | null,
+    file: Gio.File,
+    cancellable: Gio.Cancellable,
+) => {
     try {
-        const printDialog = new Gtk.PrintDialog();
         await printDialog.printFile(parentWindow, null, file, cancellable);
     } catch (error) {
         reportPickerError(error);
     }
 };
 
-const printFile = async (parentWindow: Gtk.Window | null, state: FilePickerState) => {
+const printFile = async ({ printDialog, parentWindow, cancellable, state, renewCancellable }: PrintFileRequest) => {
     const { selectedFile, isPdf } = state;
 
     if (!selectedFile || !isPdf) {
         return;
     }
 
-    await runWithTimeout(async (cancellable) => {
-        await runPrintDialog(parentWindow, selectedFile, cancellable);
-    });
+    await runWithTimeout(cancellable, async (current) => {
+        await runPrintDialog(printDialog, parentWindow, selectedFile, current);
+    }, renewCancellable);
 };
 
-const launchUri = async (parentWindow: Gtk.Window | null) => {
+const launchUri = async (
+    parentWindow: Gtk.Window | null,
+    launcher: Gtk.UriLauncher | null,
+    cancellable: CancellableHandle,
+) => {
+    if (launcher === null || cancellable.cancellable === null) {
+        return;
+    }
+
     try {
-        const launcher = Gtk.UriLauncher.new("https://www.gtk.org");
-        await launcher.launch(parentWindow, null);
+        await launcher.launch(parentWindow, cancellable.cancellable);
     } catch (error) {
         reportPickerError(error);
+    } finally {
+        cancellable.renew();
     }
 };
 
@@ -220,14 +290,37 @@ function useFilePickerState() {
     return { selectedFile, setSelectedFile, fileName, setFileName, isPdf, setIsPdf, setFile };
 }
 
-function useFilePickerHandlers(parentWindow: Gtk.Window | null, state: FilePickerState) {
+function useFilePickerHandlers(
+    parentWindow: Gtk.Window | null,
+    state: FilePickerState,
+    objects: PickerObjects,
+    cancellables: PickerCancellables,
+) {
     return {
         handleFileDrop: (value: GObject.Value) => didAcceptFileDrop(value, state.setFile),
-        handleOpenFile: () => openFile(parentWindow, state),
-        handleLaunchApp: () => launchApp(parentWindow, state.selectedFile),
-        handleOpenFolder: () => openFolder(parentWindow, state.selectedFile),
-        handlePrintFile: () => printFile(parentWindow, state),
-        handleLaunchUri: () => launchUri(parentWindow),
+        handleOpenFile: () =>
+            objects.fileDialog !== null && cancellables.openFile.cancellable !== null
+                ? openFile({
+                        fileDialog: objects.fileDialog,
+                        parentWindow,
+                        cancellable: cancellables.openFile.cancellable,
+                        state,
+                        renewCancellable: cancellables.openFile.renew,
+                    })
+                : Promise.resolve(),
+        handleLaunchApp: () => launchApp(parentWindow, objects.fileLauncher, cancellables.launchApp),
+        handleOpenFolder: () => openFolder(parentWindow, objects.fileLauncher, cancellables.openFolder),
+        handlePrintFile: () =>
+            objects.printDialog !== null && cancellables.printFile.cancellable !== null
+                ? printFile({
+                        printDialog: objects.printDialog,
+                        parentWindow,
+                        cancellable: cancellables.printFile.cancellable,
+                        state,
+                        renewCancellable: cancellables.printFile.renew,
+                    })
+                : Promise.resolve(),
+        handleLaunchUri: () => launchUri(parentWindow, objects.uriLauncher, cancellables.launchUri),
     };
 }
 
@@ -354,31 +447,75 @@ const UriPickerRow = ({ uriButtonWidget, setUriButtonWidget, onLaunchUri }: UriR
     </>
 );
 
+function usePickerObjects(selectedFile: Gio.File | null) {
+    const [fileDialog, setFileDialog] = useState<Gtk.FileDialog | null>(null);
+    const [fileLauncher, setFileLauncher] = useState<Gtk.FileLauncher | null>(null);
+    const [printDialog, setPrintDialog] = useState<Gtk.PrintDialog | null>(null);
+    const [uriLauncher, setUriLauncher] = useState<Gtk.UriLauncher | null>(null);
+    const openFile = useCancellable();
+    const launchApp = useCancellable();
+    const openFolder = useCancellable();
+    const printFile = useCancellable();
+    const launchUri = useCancellable();
+
+    const portal = createPortal(
+        <>
+            <GtkFileDialog ref={setFileDialog} />
+            {selectedFile !== null && <GtkFileLauncher ref={setFileLauncher} file={selectedFile} />}
+            <GtkPrintDialog ref={setPrintDialog} />
+            <GtkUriLauncher ref={setUriLauncher} uri="https://www.gtk.org" />
+            {openFile.element}
+            {launchApp.element}
+            {openFolder.element}
+            {printFile.element}
+            {launchUri.element}
+        </>,
+        rootElement,
+    );
+
+    return {
+        objects: { fileDialog, fileLauncher, printDialog, uriLauncher },
+        cancellables: { openFile, launchApp, openFolder, printFile, launchUri },
+        portal,
+    };
+}
+
 function PickersDemo() {
     const parentWindow = useParentWindow();
     const fileState = useFilePickerState();
-    const handlers = useFilePickerHandlers(parentWindow, fileState);
     const [colorWidget, setColorWidget] = useState<Gtk.ColorDialogButton | null>(null);
     const [fontWidget, setFontWidget] = useState<Gtk.FontDialogButton | null>(null);
     const [fileButtonWidget, setFileButtonWidget] = useState<Gtk.Button | null>(null);
     const [uriButtonWidget, setUriButtonWidget] = useState<Gtk.Button | null>(null);
+    const { objects, cancellables, portal } = usePickerObjects(fileState.selectedFile);
+    const handlers = useFilePickerHandlers(parentWindow, fileState, objects, cancellables);
 
     return (
-        <GtkGrid rowSpacing={6} columnSpacing={6} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
-            <ColorPickerRow colorWidget={colorWidget} setColorWidget={setColorWidget} />
-            <FontPickerRow fontWidget={fontWidget} setFontWidget={setFontWidget} />
-            <FilePickerRow
-                fileState={fileState}
-                handlers={handlers}
-                fileButtonWidget={fileButtonWidget}
-                setFileButtonWidget={setFileButtonWidget}
-            />
-            <UriPickerRow
-                uriButtonWidget={uriButtonWidget}
-                setUriButtonWidget={setUriButtonWidget}
-                onLaunchUri={handlers.handleLaunchUri}
-            />
-        </GtkGrid>
+        <>
+            {portal}
+            <GtkGrid
+                rowSpacing={6}
+                columnSpacing={6}
+                marginStart={20}
+                marginEnd={20}
+                marginTop={20}
+                marginBottom={20}
+            >
+                <ColorPickerRow colorWidget={colorWidget} setColorWidget={setColorWidget} />
+                <FontPickerRow fontWidget={fontWidget} setFontWidget={setFontWidget} />
+                <FilePickerRow
+                    fileState={fileState}
+                    handlers={handlers}
+                    fileButtonWidget={fileButtonWidget}
+                    setFileButtonWidget={setFileButtonWidget}
+                />
+                <UriPickerRow
+                    uriButtonWidget={uriButtonWidget}
+                    setUriButtonWidget={setUriButtonWidget}
+                    onLaunchUri={handlers.handleLaunchUri}
+                />
+            </GtkGrid>
+        </>
     );
 }
 

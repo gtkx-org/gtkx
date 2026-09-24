@@ -1,7 +1,9 @@
+import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { t, toValueHandle, wrapHandle } from "@gtkx/runtime";
 import { toValue } from "@gtkx/runtime/internal";
+import { runInAct } from "../act.js";
 import { getAllControllers } from "./controller.js";
 import { dispatchOnControllers, dispatchOnOrCreateControllers } from "./dispatch.js";
 import { wrapEvent } from "./event-wrapper.js";
@@ -201,18 +203,79 @@ const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: DragOpt
     });
 };
 
-const emitDrop = (target: Gtk.Widget, content: DropContent, options: DropOptions): void => {
+const didEmitAcceptedDrop = (target: Gtk.Widget, content: DropContent, options: DropOptions): boolean => {
     const dropTargets = getAllControllers(target, Gtk.DropTarget);
+    let isAccepted = false;
 
     for (const dropTarget of dropTargets) {
-        dropTarget.emit("drop", buildDropValue(content), options.x ?? 0, options.y ?? 0);
+        isAccepted = dropTarget.emit("drop", buildDropValue(content), options.x ?? 0, options.y ?? 0) || isAccepted;
     }
+
+    return isAccepted;
+};
+
+type ActiveDrag = {
+    source: Gtk.DragSource;
+    drag: Gdk.Drag;
+};
+
+type DragEnvironment = {
+    surface: Gdk.Surface;
+    device: Gdk.Device;
+    fallback: Gdk.ContentProvider;
+};
+
+const resolveDragEnvironment = (widget: Gtk.Widget, content: DropContent): DragEnvironment => {
+    const surface = widget.getNative()?.getSurface() ?? null;
+    const device = widget.getDisplay().getDefaultSeat()?.getPointer() ?? null;
+
+    if (surface === null || device === null) {
+        throw new Error("The drag source has no surface or pointer device");
+    }
+
+    return { surface, device, fallback: Gdk.ContentProvider.newForValue(buildDropValue(content)) };
+};
+
+const beginDragSource = (source: Gtk.DragSource, environment: DragEnvironment): ActiveDrag => {
+    const provider = source.emit("prepare", 0, 0) ?? source.getContent() ?? environment.fallback;
+    const drag = Gdk.Drag.begin(environment.surface, environment.device, provider, source.getActions(), 0, 0);
+
+    if (drag === null) {
+        throw new Error("The display refused to begin the drag");
+    }
+
+    source.emit("drag-begin", drag);
+
+    return { source, drag };
+};
+
+const endDragSources = (activeDrags: ActiveDrag[], isAccepted: boolean): void => {
+    for (const { source, drag } of activeDrags) {
+        drag.dropDone(isAccepted);
+        source.emit("drag-end", drag, false);
+    }
+};
+
+const beginDragSources = (widget: Gtk.Widget, sources: Gtk.DragSource[], content: DropContent): ActiveDrag[] => {
+    const environment = resolveDragEnvironment(widget, content);
+    const activeDrags: ActiveDrag[] = [];
+
+    try {
+        for (const source of sources) {
+            activeDrags.push(beginDragSource(source, environment));
+        }
+    } catch (error) {
+        endDragSources(activeDrags, false);
+        throw error;
+    }
+
+    return activeDrags;
 };
 
 /** Drops content on a widget. */
 const drop = (widget: Gtk.Widget, content: DropContent, options: DropOptions = {}): Promise<void> =>
     wrapEvent(widget, () => {
-        emitDrop(widget, content, options);
+        didEmitAcceptedDrop(widget, content, options);
     });
 
 /** Drags content from one widget and drops it on another. */
@@ -222,13 +285,22 @@ const dragAndDrop = async (
     content: DropContent,
     options: DropOptions = {},
 ): Promise<void> => {
+    let activeDrags: ActiveDrag[] = [];
+    let isAccepted = false;
+
     await wrapEvent(source, () => {
-        getAllControllers(source, Gtk.DragSource);
+        activeDrags = beginDragSources(source, getAllControllers(source, Gtk.DragSource), content);
     });
 
-    await wrapEvent(target, () => {
-        emitDrop(target, content, options);
-    });
+    try {
+        await wrapEvent(target, () => {
+            isAccepted = didEmitAcceptedDrop(target, content, options);
+        });
+    } finally {
+        await runInAct(() => {
+            endDragSources(activeDrags, isAccepted);
+        });
+    }
 };
 
 export {

@@ -8,14 +8,13 @@ import type {
 } from "@gtkx/navigation";
 import type { RenderResult } from "@gtkx/testing";
 import type { ComponentProps, ReactNode } from "react";
-import type { Mock } from "vitest";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { createSplitViewNavigator, NavigationContainer, usePreventRemove } from "@gtkx/navigation";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { createContext, useContext, useEffect } from "react";
-import { expect, vi } from "vitest";
+import { expect } from "vitest";
 
 import { getAncestor } from "./widget-ancestors.js";
 
@@ -27,11 +26,23 @@ type Params = {
 };
 
 type SplitEvent = { type: string; route: string; isClosing?: boolean };
-type EventSpy = Mock<(event: SplitEvent) => void>;
-type PreventSpy = Mock<(data: { action: NavigationAction }) => void>;
-type StateSpy = Mock<(state: NavigationState | undefined) => void>;
+type StateLog = {
+    states: (NavigationState | undefined)[];
+    record: (state: NavigationState | undefined) => void;
+};
+type EventLog = {
+    events: SplitEvent[];
+    record: (event: SplitEvent) => void;
+};
+type PreventLog = {
+    actions: NavigationAction[];
+    record: (data: { action: NavigationAction }) => void;
+};
 type NavigatorProps = Partial<Omit<ComponentProps<typeof Split.Navigator>, "children">>;
-type Spies = { onEvent?: EventSpy; onPrevent?: PreventSpy };
+type Callbacks = {
+    onEvent?: (event: SplitEvent) => void;
+    onPrevent?: (data: { action: NavigationAction }) => void;
+};
 
 type SplitOptions = {
     navigator?: NavigatorProps;
@@ -39,17 +50,17 @@ type SplitOptions = {
     tasks?: SplitViewNavigationOptions;
     container?: Partial<NavigationContainerProps<Params>>;
     isAnimated?: boolean;
-    spies?: Spies;
+    callbacks?: Callbacks;
 };
 
 const Split = createSplitViewNavigator<Params>();
-const SpyContext = createContext<Spies>({});
+const CallbackContext = createContext<Callbacks>({});
 
 const useEventRecorder = <RouteName extends keyof Params>(
     navigation: SplitViewNavigationProp<Params, RouteName>,
     route: string,
 ): void => {
-    const { onEvent } = useContext(SpyContext);
+    const { onEvent } = useContext(CallbackContext);
 
     useEffect(() => {
         if (onEvent === undefined) {
@@ -158,7 +169,7 @@ const Task = ({ navigation, route }: SplitViewScreenProps<Params, "Task">): Reac
 };
 
 const Draft = ({ navigation, route }: SplitViewScreenProps<Params, "Draft">): ReactNode => {
-    const { onPrevent } = useContext(SpyContext);
+    const { onPrevent } = useContext(CallbackContext);
     useEventRecorder(navigation, route.name);
 
     usePreventRemove(true, ({ data }) => {
@@ -169,7 +180,7 @@ const Draft = ({ navigation, route }: SplitViewScreenProps<Params, "Draft">): Re
 };
 
 const buildSplit = (options: SplitOptions = {}): ReactNode => (
-    <SpyContext value={options.spies ?? {}}>
+    <CallbackContext value={options.callbacks ?? {}}>
         <NavigationContainer {...options.container}>
             <Split.Navigator contentPlaceholder={<GtkLabel>Nothing Selected</GtkLabel>} {...options.navigator}>
                 <Split.Screen name="Lists" component={Lists} options={{ title: "Lists", ...options.lists }} />
@@ -178,7 +189,7 @@ const buildSplit = (options: SplitOptions = {}): ReactNode => (
                 <Split.Screen name="Draft" component={Draft} />
             </Split.Navigator>
         </NavigationContainer>
-    </SpyContext>
+    </CallbackContext>
 );
 
 const renderSplit = (options: SplitOptions = {}): Promise<RenderResult> =>
@@ -195,13 +206,42 @@ const pressKeys = async (text: string, keys: string): Promise<void> => {
     await userEvent.keyboard(await screen.findByText(text), keys);
 };
 
-const createStateSpy = (): StateSpy => vi.fn<(state: NavigationState | undefined) => void>();
-const createEventSpy = (): EventSpy => vi.fn<(event: SplitEvent) => void>();
-const createPreventSpy = (): PreventSpy => vi.fn<(data: { action: NavigationAction }) => void>();
+const createStateLog = (): StateLog => {
+    const states: (NavigationState | undefined)[] = [];
+
+    return {
+        states,
+        record: (state) => {
+            states.push(state);
+        },
+    };
+};
+
+const createEventLog = (): EventLog => {
+    const events: SplitEvent[] = [];
+
+    return {
+        events,
+        record: (event) => {
+            events.push(event);
+        },
+    };
+};
+
+const createPreventLog = (): PreventLog => {
+    const actions: NavigationAction[] = [];
+
+    return {
+        actions,
+        record: ({ action }) => {
+            actions.push(action);
+        },
+    };
+};
 const getRouteNames = (state: NavigationState | undefined): string[] => state?.routes.map((route) => route.name) ?? [];
 
-const expectRouteNames = (onStateChange: StateSpy, names: string[]): void => {
-    expect(getRouteNames(onStateChange.mock.lastCall?.[0])).toEqual(names);
+const expectRouteNames = (stateLog: StateLog, names: string[]): void => {
+    expect(getRouteNames(stateLog.states.at(-1))).toEqual(names);
 };
 
 const expectVisible = (text: string): void => {
@@ -215,9 +255,9 @@ const expectHidden = (text: string): void => {
 export {
     buildSplit,
     clickButton,
-    createEventSpy,
-    createPreventSpy,
-    createStateSpy,
+    createEventLog,
+    createPreventLog,
+    createStateLog,
     expectHidden,
     expectRouteNames,
     expectVisible,
@@ -225,7 +265,6 @@ export {
     pressKeys,
     renderSplit,
     Split,
-    type SplitEvent,
     splitView,
 };
 

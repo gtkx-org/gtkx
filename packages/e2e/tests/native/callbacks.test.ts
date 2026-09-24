@@ -180,12 +180,24 @@ test("void callbacks run and report no value to C", () => {
         noptr += 1;
     });
     expect(noptr).toBe(1);
+});
 
-    // @ts-expect-error a callback declared to return a number reports 0 when it returns nothing
-    expect(Regress.testCallback(() => {
-        noptr += 1;
-    })).toBe(0);
-    expect(noptr).toBe(2);
+test("scalar callbacks reject missing return values", () => {
+    let isToggled = false;
+    const missingScalarReturn = (): void => {
+        isToggled = !isToggled;
+    };
+
+    expect(() => {
+        Reflect.apply(Regress.testCallback, null, [missingScalarReturn]);
+    }).toThrow();
+    expect(() => {
+        Reflect.apply(GIMarshallingTests.callbackReturnValueOnly, null, [missingScalarReturn]);
+    }).toThrow();
+});
+
+test.each([1.5, 2 ** 31])("an integer callback rejects %s", (value) => {
+    expect(() => Regress.testCallback(() => value)).toThrow();
 });
 
 test("nullable callback arguments accept null and leave C untouched", () => {
@@ -399,7 +411,6 @@ test("a gerror only lent to a callback is revoked when the callback returns", ()
 
 test("callback return values and out parameters come back from the call", () => {
     expect(GIMarshallingTests.callbackReturnValueOnly(() => 42n)).toBe(42n);
-    // @ts-expect-error a number widens into the bigint the slot declares
     expect(GIMarshallingTests.callbackReturnValueOnly(() => 42)).toBe(42n);
     expect(GIMarshallingTests.callbackOneOutParameter(() => 43.5)).toBe(43.5);
     expect(GIMarshallingTests.callbackMultipleOutParameters(() => [1.5, 2.5])).toEqual([1.5, 2.5]);
@@ -414,19 +425,14 @@ const callWithScalarOutput = t.bind(
     t.void,
 );
 
-test.each([false, true])("a callback's unset scalar output becomes zero (explicit null: %s)", (explicitNull) => {
+test.each([false, true])("a callback rejects an unset scalar output (explicit null: %s)", (explicitNull) => {
     const output = { value: 7 };
-    const observed: unknown[] = [];
 
-    callWithScalarOutput((reference: Ref) => {
-        observed.push(reference.value);
+    expect(() => callWithScalarOutput((reference: Ref) => {
         if (explicitNull) {
             reference.value = null;
         }
-    }, output);
-
-    expect(observed).toEqual([null]);
-    expect(output.value).toBe(0);
+    }, output)).toThrow();
 });
 
 test("a throwing scalar callback leaves the caller's Ref unchanged", () => {
@@ -470,15 +476,6 @@ test("an omitted scalar callback output keeps its Ref wrapper without accessing 
     }, null);
 
     expect(observed).toEqual([null]);
-});
-
-test("out parameter tuples pad missing entries and ignore extra ones", () => {
-    // @ts-expect-error a short tuple where two out parameters are declared
-    expect(GIMarshallingTests.callbackMultipleOutParameters(() => [1.5])).toEqual([1.5, 0]);
-    // @ts-expect-error a long tuple where two out parameters are declared
-    expect(GIMarshallingTests.callbackMultipleOutParameters(() => [1.5, 2.5, 3.5])).toEqual([1.5, 2.5]);
-    // @ts-expect-error a short tuple where three out parameters are declared
-    expect(GIMarshallingTests.callbackReturnValueAndMultipleOutParameters(() => [9n])).toEqual([9n, 0n, 0n]);
 });
 
 test("a boxed lent to a callback is mutable and its changes are visible to C", () => {

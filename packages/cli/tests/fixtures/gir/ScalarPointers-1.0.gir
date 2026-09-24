@@ -12,6 +12,9 @@
     </alias>
     <alias name="OwnPointer" c:type="gint*"><type name="gint" c:type="gint"/></alias>
     <alias name="Count" c:type="ScalarPointersCount"><type name="guint64" c:type="guint64"/></alias>
+    <constant name="RAW_POINTER" value="0"><type name="gpointer" c:type="gpointer"/></constant>
+    <constant name="DIRECT_SCALAR_POINTER" value="0"><type name="gint" c:type="gint*"/></constant>
+    <constant name="ALIASED_POINTER" value="0"><type name="PointerAlias" c:type="ScalarPointersPointerAlias"/></constant>
     <enumeration name="Mode" c:type="ScalarPointersMode">
       <member name="first" value="0" c:identifier="SCALAR_POINTERS_MODE_FIRST"/>
       <member name="second" value="1" c:identifier="SCALAR_POINTERS_MODE_SECOND"/>

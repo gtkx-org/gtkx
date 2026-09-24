@@ -1,11 +1,21 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwApplication } from "@gtkx/jsx/adw";
 import { GtkApplicationWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { render, type RenderResult, screen, userEvent, waitFor, type WidgetType } from "@gtkx/testing";
+import {
+    render,
+    type RenderResult,
+    screen,
+    type ScreenshotResult,
+    userEvent,
+    waitFor,
+    type WidgetType,
+} from "@gtkx/testing";
+import { Buffer } from "node:buffer";
 import { type ComponentType, useState } from "react";
 import { expect } from "vitest";
 import type { Demo, DemoProps, DemoProviderProps } from "../src/demos/types.js";
@@ -14,6 +24,7 @@ import { DemoProvider, useDemo } from "../src/context/demo-context.js";
 type RenderDemoOptions = {
     onClose?: () => void;
     areAnimationsEnabled?: boolean;
+    isReactStrictMode?: boolean;
 };
 
 type DemoShellProps = Pick<DemoProps, "onClose"> & {
@@ -161,7 +172,7 @@ const DemoShell = ({ Component, Provider, Titlebar, demo, ...callbacks }: DemoSh
 };
 
 const renderDemo = async (demo: Demo, options: RenderDemoOptions = {}): Promise<RenderResult> => {
-    const { areAnimationsEnabled, ...callbacks } = options;
+    const { areAnimationsEnabled, isReactStrictMode, ...callbacks } = options;
     const Component = demo.component;
     if (Component === undefined) {
         throw new Error("Demo has no component");
@@ -180,6 +191,7 @@ const renderDemo = async (demo: Demo, options: RenderDemoOptions = {}): Promise<
         {
             areAnimationsEnabled: areAnimationsEnabled === true,
             container: rootElement,
+            isReactStrictMode,
         },
     );
 };
@@ -248,6 +260,28 @@ const getChildren = (widget: Gtk.Widget): Gtk.Widget[] => {
     return children;
 };
 
+const screenshotColors = (screenshot: ScreenshotResult): Set<string> => {
+    const encoded = GLib.Bytes.new(Buffer.from(screenshot.data, "base64"));
+    const texture = Gdk.Texture.newFromBytes(encoded);
+    const downloader = Gdk.TextureDownloader.new(texture);
+    downloader.setFormat(Gdk.MemoryFormat.R8G8B8A8);
+    const [downloaded] = downloader.downloadBytes();
+    const pixels = downloaded.getData();
+
+    if (pixels === null) {
+        throw new TypeError("GDK returned no screenshot pixels");
+    }
+
+    const colors: Set<string> = new Set();
+
+    for (let offset = 0; offset + 3 < pixels.length; offset += 4) {
+        const pixel = pixels.slice(offset, offset + 4);
+        colors.add(pixel.join(","));
+    }
+
+    return colors;
+};
+
 export {
     activateSearchBar,
     collectWidgets,
@@ -265,5 +299,6 @@ export {
     openSearchEntry,
     readBufferText,
     renderDemo,
+    screenshotColors,
     type RenderDemoOptions,
 };

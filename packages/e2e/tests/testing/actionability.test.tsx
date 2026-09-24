@@ -28,8 +28,14 @@ import { act, configure, getConfig, render, screen, userEvent, waitFor } from "@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { createRef, useState } from "react";
-import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
-import { renderDragAndDropPair, renderGesturedLabel, renderShortcutHost } from "./event-render-setup.js";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished } from "vitest";
+import {
+    callCounter,
+    renderDragAndDropPair,
+    renderGesturedLabel,
+    renderShortcutHost,
+    returningCallCounter,
+} from "./event-render-setup.js";
 
 const initialConfig = { ...getConfig() };
 const liveDrags: Set<object> = new Set();
@@ -55,7 +61,7 @@ const renderInsensitiveGesturedLabel = (name: string, label: string, gesture: Re
     renderGesturedLabel(name, label, gesture, false);
 
 const renderRemovableButton = async () => {
-    const handleClick = vi.fn();
+    const clicks = callCounter();
     const removableRef = createRef<Gtk.Button>();
 
     const Toggler = (): ReactNode => {
@@ -69,7 +75,9 @@ const renderRemovableButton = async () => {
                         setIsRemovableShown(false);
                     }}
                 />
-                {isRemovableShown ? <GtkButton ref={removableRef} label="Removable" onClicked={handleClick} /> : null}
+                {isRemovableShown && (
+                    <GtkButton ref={removableRef} label="Removable" onClicked={clicks.callback} />
+                )}
             </GtkBox>
         );
     };
@@ -78,7 +86,7 @@ const renderRemovableButton = async () => {
     const removable = removableRef.current as Gtk.Button;
     await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" }));
 
-    return { handleClick, removable };
+    return { clicks, removable };
 };
 
 const MainWindow = ({ onClick, children }: { onClick: () => void; children?: ReactNode }): ReactNode => (
@@ -92,11 +100,11 @@ const MainWindow = ({ onClick, children }: { onClick: () => void; children?: Rea
 );
 
 const renderMainWindow = async (tree: (onClick: () => void) => ReactNode) => {
-    const handleMainClick = vi.fn();
-    await render(tree(handleMainClick), { container: rootElement });
+    const clicks = callCounter();
+    await render(tree(clicks.callback), { container: rootElement });
     const mainButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Bump main" });
 
-    return { handleMainClick, mainButton };
+    return { clicks, mainButton };
 };
 
 const findMappedWindow = async (name: string): Promise<Gtk.Window> => {
@@ -219,18 +227,18 @@ const showDragIcon = async (): Promise<Gtk.DragIcon> => {
 };
 
 const renderDragIconButton = async (isButtonVisible: boolean) => {
-    const handleClick = vi.fn();
+    const clicks = callCounter();
     const buttonRef = createRef<Gtk.Button>();
     const icon = await showDragIcon();
 
-    await render(<GtkButton ref={buttonRef} label="Dragged" visible={isButtonVisible} onClicked={handleClick} />, {
+    await render(<GtkButton ref={buttonRef} label="Dragged" visible={isButtonVisible} onClicked={clicks.callback} />, {
         container: icon,
     });
 
     const button = buttonRef.current as Gtk.Button;
     expect(button.getRoot()).toBe(icon);
 
-    return { button, handleClick };
+    return { button, clicks };
 };
 
 const renderModalDialog = async (dialogContent: ReactNode) => {
@@ -249,25 +257,25 @@ describe("userEvent actionability - insensitive targets", () => {
     setupShortTimeout();
 
     it("refuses every pointer helper on an insensitive button, and on one inside an insensitive box", async () => {
-        const handleClick = vi.fn();
-        await render(<GtkButton label="Disabled" sensitive={false} onClicked={handleClick} />);
+        const clicks = callCounter();
+        await render(<GtkButton label="Disabled" sensitive={false} onClicked={clicks.callback} />);
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Disabled" });
         await expect(userEvent.click(button)).rejects.toThrow();
         await expect(userEvent.dblClick(button)).rejects.toThrow();
         await expect(userEvent.pointer(button, "click")).rejects.toThrow();
         await expect(userEvent.tab(button)).rejects.toThrow();
-        expect(handleClick).not.toHaveBeenCalled();
-        const handleNested = vi.fn();
+        expect(clicks.count).toBe(0);
+        const nestedClicks = callCounter();
 
         await render(
             <GtkBox sensitive={false}>
-                <GtkButton label="Nested" onClicked={handleNested} />
+                <GtkButton label="Nested" onClicked={nestedClicks.callback} />
             </GtkBox>,
         );
 
         const nested = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Nested" });
         await expect(userEvent.click(nested)).rejects.toThrow();
-        expect(handleNested).not.toHaveBeenCalled();
+        expect(nestedClicks.count).toBe(0);
     });
 
     it("refuses to toggle an insensitive switch or checkbox", async () => {
@@ -285,8 +293,6 @@ describe("userEvent actionability - insensitive targets", () => {
         expect(toggle.getActive()).toBe(false);
         expect(checkbox.getActive()).toBe(false);
     });
-
-    setupShortTimeout();
 
     it("refuses to type into, clear or paste into an insensitive entry", async () => {
         await render(<GtkEntry sensitive={false} text="before" />);
@@ -318,8 +324,6 @@ describe("userEvent actionability - insensitive targets", () => {
         expect(scrolledWindow.getVadjustment().getValue()).toBe(0);
     });
 
-    setupShortTimeout();
-
     it("refuses to select or deselect on an insensitive drop-down or list box", async () => {
         await render(
             <GtkBox sensitive={false}>
@@ -345,61 +349,57 @@ describe("userEvent actionability - insensitive targets", () => {
 
     it("refuses keyboard input on an insensitive shortcut host without activating its shortcut", async () => {
         const trigger = <GtkShortcutTrigger accelerator="F5" />;
-        const { host, onActivate } = await renderShortcutHost({ trigger, isSensitive: false });
+        const { host, activations } = await renderShortcutHost({ trigger, isSensitive: false });
         await expect(userEvent.keyboard(host, "{F5}")).rejects.toThrow();
-        expect(onActivate).not.toHaveBeenCalled();
+        expect(activations.count).toBe(0);
     });
 
-    setupShortTimeout();
-
     it("refuses every gesture helper on an insensitive widget without emitting its signals", async () => {
-        const handleEnter = vi.fn();
+        const enters = callCounter();
 
         const hovered = await renderInsensitiveGesturedLabel(
             "hovered",
             "Hover me",
-            <GtkEventControllerMotion onEnter={handleEnter} />,
+            <GtkEventControllerMotion onEnter={enters.callback} />,
         );
 
         await expect(userEvent.hover(hovered)).rejects.toThrow();
-        expect(handleEnter).not.toHaveBeenCalled();
-        const handlePressed = vi.fn();
+        expect(enters.count).toBe(0);
+        const presses = callCounter();
 
         const pressed = await renderInsensitiveGesturedLabel(
             "long-pressed",
             "Long press me",
-            <GtkGestureLongPress onPressed={handlePressed} />,
+            <GtkGestureLongPress onPressed={presses.callback} />,
         );
 
         await expect(userEvent.longPress(pressed)).rejects.toThrow();
-        expect(handlePressed).not.toHaveBeenCalled();
-        const handleDragBegin = vi.fn();
+        expect(presses.count).toBe(0);
+        const dragBegins = callCounter();
 
         const dragged = await renderInsensitiveGesturedLabel(
             "dragged",
             "Drag me",
-            <GtkGestureDrag onDragBegin={handleDragBegin} />,
+            <GtkGestureDrag onDragBegin={dragBegins.callback} />,
         );
 
         await expect(userEvent.drag(dragged, 10, 10)).rejects.toThrow();
-        expect(handleDragBegin).not.toHaveBeenCalled();
+        expect(dragBegins.count).toBe(0);
     });
 
-    setupShortTimeout();
-
     it("refuses to drop onto an insensitive target and to drag from an insensitive source", async () => {
-        const handleDrop = vi.fn().mockReturnValue(true);
+        const drops = returningCallCounter(true);
 
         const target = await renderInsensitiveGesturedLabel(
             "drop-zone",
             "Drop here",
-            <GtkDropTarget types={[GObject.TYPE_STRING]} actions={Gdk.DragAction.COPY} onDrop={handleDrop} />,
+            <GtkDropTarget types={[GObject.TYPE_STRING]} actions={Gdk.DragAction.COPY} onDrop={drops.callback} />,
         );
 
         await expect(userEvent.drop(target, "payload")).rejects.toThrow();
-        const pair = await renderDragAndDropPair({ onDrop: handleDrop, isSourceSensitive: false });
+        const pair = await renderDragAndDropPair({ onDrop: drops.callback, isSourceSensitive: false });
         await expect(userEvent.dragAndDrop(pair.source, pair.target, "payload")).rejects.toThrow();
-        expect(handleDrop).not.toHaveBeenCalled();
+        expect(drops.count).toBe(0);
     });
 });
 
@@ -407,10 +407,10 @@ describe("userEvent actionability - targets outside a mapped toplevel", () => {
     setupShortTimeout();
 
     it("refuses a widget whose conditional render was removed", async () => {
-        const { handleClick, removable } = await renderRemovableButton();
+        const { clicks, removable } = await renderRemovableButton();
         expect(removable.getRoot()).toBeNull();
         await expect(userEvent.click(removable)).rejects.toThrow();
-        expect(handleClick).not.toHaveBeenCalled();
+        expect(clicks.count).toBe(0);
     });
 
     it("refuses a widget rendered into a container that is outside any window", async () => {
@@ -424,20 +424,18 @@ describe("userEvent actionability - targets outside a mapped toplevel", () => {
     });
 
     it("refuses a widget whose render was unmounted", async () => {
-        const handleClick = vi.fn();
+        const clicks = callCounter();
         const buttonRef = createRef<Gtk.Button>();
-        const { unmount } = await render(<GtkButton ref={buttonRef} label="Gone" onClicked={handleClick} />);
+        const { unmount } = await render(<GtkButton ref={buttonRef} label="Gone" onClicked={clicks.callback} />);
         const button = buttonRef.current as Gtk.Button;
         await unmount();
         expect(button.getRoot()).toBeNull();
         await expect(userEvent.click(button)).rejects.toThrow();
-        expect(handleClick).not.toHaveBeenCalled();
+        expect(clicks.count).toBe(0);
     });
 
-    setupShortTimeout();
-
     it("refuses a widget on a stack page that is not visible", async () => {
-        const handleClick = vi.fn();
+        const clicks = callCounter();
         const concealedRef = createRef<Gtk.Button>();
 
         await render(
@@ -446,7 +444,7 @@ describe("userEvent actionability - targets outside a mapped toplevel", () => {
                     <GtkButton label="Shown" />
                 </GtkStackPage>
                 <GtkStackPage name="hidden-page">
-                    <GtkButton ref={concealedRef} label="Concealed" onClicked={handleClick} />
+                    <GtkButton ref={concealedRef} label="Concealed" onClicked={clicks.callback} />
                 </GtkStackPage>
             </GtkStack>,
         );
@@ -454,54 +452,52 @@ describe("userEvent actionability - targets outside a mapped toplevel", () => {
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Shown" }));
         expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Concealed", hidden: true })).toBeNull();
         await expect(userEvent.click(concealedRef.current as Gtk.Button)).rejects.toThrow();
-        expect(handleClick).not.toHaveBeenCalled();
+        expect(clicks.count).toBe(0);
     });
 
     it("refuses a button whose window is hidden, and clicks it once the window is shown again", async () => {
-        const { handleMainClick, main, mainButton } = await renderHiddenMainWindow();
+        const { clicks, main, mainButton } = await renderHiddenMainWindow();
         await expect(userEvent.click(mainButton)).rejects.toThrow();
-        expect(handleMainClick).not.toHaveBeenCalled();
+        expect(clicks.count).toBe(0);
 
         await act(() => {
             main.present();
         });
 
         await userEvent.click(mainButton);
-        expect(handleMainClick).toHaveBeenCalledTimes(1);
+        expect(clicks.count).toBe(1);
     });
 
     it("clicks inside a drag icon, whose root is no window", async () => {
-        const { button, handleClick } = await renderDragIconButton(true);
+        const { button, clicks } = await renderDragIconButton(true);
 
         await waitFor(() => {
             expect(button.getMapped()).toBe(true);
         });
 
         await userEvent.click(button);
-        expect(handleClick).toHaveBeenCalledTimes(1);
+        expect(clicks.count).toBe(1);
     });
 
-    setupShortTimeout();
-
     it("refuses an unmapped button inside a drag icon", async () => {
-        const { button, handleClick } = await renderDragIconButton(false);
+        const { button, clicks } = await renderDragIconButton(false);
         await expect(userEvent.click(button)).rejects.toThrow();
-        expect(handleClick).not.toHaveBeenCalled();
+        expect(clicks.count).toBe(0);
     });
 });
 
 describe("userEvent actionability - background toplevels", () => {
     it("drives a window another toplevel of this process has taken the activation from", async () => {
-        const { handleMainClick, mainButton } = await renderBackgroundedMainWindow();
+        const { clicks, mainButton } = await renderBackgroundedMainWindow();
         await userEvent.click(mainButton);
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
         await userEvent.type(entry, "typed");
-        expect(handleMainClick).toHaveBeenCalledTimes(1);
+        expect(clicks.count).toBe(1);
         expect(entry.getText()).toBe("beforetyped");
     });
 
     it("drives a window a client outside this process has taken the activation from", async () => {
-        const { handleMainClick, main, mainButton } = await renderSoleMainWindow();
+        const { clicks, main, mainButton } = await renderSoleMainWindow();
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
 
         await withActivationHeldOutsideThisProcess(main, async () => {
@@ -509,7 +505,7 @@ describe("userEvent actionability - background toplevels", () => {
             await userEvent.type(entry, "typed");
         });
 
-        expect(handleMainClick).toHaveBeenCalledTimes(1);
+        expect(clicks.count).toBe(1);
         expect(entry.getText()).toBe("beforetyped");
     });
 });
@@ -518,37 +514,37 @@ describe("userEvent actionability - modal toplevels", () => {
     setupShortTimeout();
 
     it("refuses a window a modal toplevel holds the grab over", async () => {
-        const { handleMainClick, mainButton } = await renderModalDialog(<GtkLabel>Blocking</GtkLabel>);
+        const { clicks, mainButton } = await renderModalDialog(<GtkLabel>Blocking</GtkLabel>);
         await expect(userEvent.click(mainButton)).rejects.toThrow();
-        expect(handleMainClick).not.toHaveBeenCalled();
+        expect(clicks.count).toBe(0);
     });
 
     it("drives the modal toplevel itself", async () => {
-        const handleConfirm = vi.fn();
-        await renderModalDialog(<GtkButton label="Confirm" onClicked={handleConfirm} />);
+        const confirmations = callCounter();
+        await renderModalDialog(<GtkButton label="Confirm" onClicked={confirmations.callback} />);
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Confirm" }));
-        expect(handleConfirm).toHaveBeenCalledTimes(1);
+        expect(confirmations.count).toBe(1);
     });
 
     it("drives a window a modal toplevel of another window group cannot grab", async () => {
-        const { dialog, handleMainClick, mainButton } = await renderModalDialog(<GtkLabel>Blocking</GtkLabel>);
+        const { dialog, clicks, mainButton } = await renderModalDialog(<GtkLabel>Blocking</GtkLabel>);
 
         await act(() => {
             Gtk.WindowGroup.new().addWindow(dialog);
         });
 
         await userEvent.click(mainButton);
-        expect(handleMainClick).toHaveBeenCalledTimes(1);
+        expect(clicks.count).toBe(1);
     });
 
     it("drives a modal toplevel stacked on another modal toplevel", async () => {
-        const handleConfirm = vi.fn();
+        const confirmations = callCounter();
 
         const { dialog } = await renderModalDialog(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkLabel>Blocking</GtkLabel>
                 <GtkWindow title="Nested" modal defaultWidth={120} defaultHeight={80}>
-                    <GtkButton label="Confirm" onClicked={handleConfirm} />
+                    <GtkButton label="Confirm" onClicked={confirmations.callback} />
                 </GtkWindow>
             </GtkBox>,
         );
@@ -556,17 +552,17 @@ describe("userEvent actionability - modal toplevels", () => {
         const nested = await findMappedWindow("Nested");
         expect(nested.getTransientFor()).toBe(dialog);
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Confirm" }));
-        expect(handleConfirm).toHaveBeenCalledTimes(1);
+        expect(confirmations.count).toBe(1);
     });
 });
 
 describe("userEvent actionability - ready widgets", () => {
     it("dispatches repeatedly on a mapped, sensitive widget", async () => {
-        const handleClick = vi.fn();
-        await render(<GtkButton label="Ready" onClicked={handleClick} />);
+        const clicks = callCounter();
+        await render(<GtkButton label="Ready" onClicked={clicks.callback} />);
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Ready" });
         await userEvent.click(button);
         await userEvent.click(button);
-        expect(handleClick).toHaveBeenCalledTimes(2);
+        expect(clicks.count).toBe(2);
     });
 });

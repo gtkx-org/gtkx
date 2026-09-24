@@ -22,9 +22,9 @@ import CodeBlock from "../components/CodeBlock.vue";
 
     <div class="how__step  how__step--rev">
       <div class="how__text">
-        <h3 class="how__name">If it is a GObject, you can write it in JSX</h3>
+        <h3 class="how__name">Constructible GObjects become JSX elements</h3>
         <p class="how__body">
-          Element types are GObject type names. Nested GObjects go in props,
+          Codegen emits element types for supported GObject classes. Nested GObjects go in props,
           so a header bar or an adjustment is an element too, not an object you build on the side.
         </p>
       </div>

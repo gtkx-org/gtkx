@@ -2,13 +2,14 @@ import type { StateCreator } from "zustand";
 import type { Task } from "../types.js";
 import type { Mutators, Store } from "./index.js";
 import { seedTasks } from "./seed.js";
+import { createTask } from "./task.js";
 
-export type TasksSlice = {
+type TasksSlice = {
     tasks: Task[];
     addTask: (listId: string, title: string) => string | null;
-    setDone: (id: string, done: boolean) => void;
-    setImportant: (id: string, important: boolean) => void;
-    updateTask: (id: string, fields: Partial<Pick<Task, "title" | "notes" | "due" | "listId">>) => void;
+    setDone: (id: string, isDone: boolean) => void;
+    setImportant: (id: string, isImportant: boolean) => void;
+    updateTask: (id: string, fields: Partial<Pick<Task, "title" | "notes" | "due">>) => void;
     moveToTrash: (id: string) => void;
     restore: (id: string) => void;
     deleteForever: (id: string) => void;
@@ -19,38 +20,38 @@ export type TasksSlice = {
 const patch = (tasks: Task[], id: string, fields: Partial<Task>): Task[] =>
     tasks.map((task) => (task.id === id ? { ...task, ...fields } : task));
 
-export const createTasksSlice: StateCreator<Store, Mutators, [], TasksSlice> = (set) => ({
+const createTasksSlice: StateCreator<Store, Mutators, [], TasksSlice> = (set) => ({
     tasks: seedTasks,
     addTask: (listId, title) => {
         const trimmed = title.trim();
-        if (trimmed === "") return null;
+        if (trimmed === "") {
+            return null;
+        }
         const id = crypto.randomUUID();
         set((state) => ({
             tasks: [
                 ...state.tasks,
-                {
+                createTask({
                     id,
                     listId,
                     title: trimmed,
-                    notes: "",
-                    done: false,
-                    important: false,
-                    deleted: false,
-                    due: null,
                     position: (state.tasks.at(-1)?.position ?? -1) + 1,
-                    createdAt: new Date().toISOString(),
-                    completedAt: null,
-                    lastNotifiedDue: null,
-                },
+                }),
             ],
         }));
+
         return id;
     },
-    setDone: (id, done) =>
+    setDone: (id, isDone) =>
         set((state) => ({
-            tasks: patch(state.tasks, id, { done, completedAt: done ? new Date().toISOString() : null }),
+            tasks: patch(state.tasks, id, {
+                done: isDone,
+                completedAt: isDone ? new Date().toISOString() : null,
+            }),
         })),
-    setImportant: (id, important) => set((state) => ({ tasks: patch(state.tasks, id, { important }) })),
+    setImportant: (id, isImportant) => set((state) => ({
+        tasks: patch(state.tasks, id, { important: isImportant }),
+    })),
     updateTask: (id, fields) => set((state) => ({ tasks: patch(state.tasks, id, fields) })),
     moveToTrash: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: true }) })),
     restore: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: false }) })),
@@ -61,7 +62,13 @@ export const createTasksSlice: StateCreator<Store, Mutators, [], TasksSlice> = (
             const from = tasks.findIndex((task) => task.id === draggedId);
             const to = tasks.findIndex((task) => task.id === targetId);
             tasks.splice(to, 0, ...tasks.splice(from, 1));
+
             return { tasks: tasks.map((task, index) => ({ ...task, position: index })) };
         }),
     markNotified: (id, due) => set((state) => ({ tasks: patch(state.tasks, id, { lastNotifiedDue: due }) })),
 });
+
+export {
+    createTasksSlice,
+    type TasksSlice,
+};

@@ -41,6 +41,26 @@ type InputParameterOptions = {
     shouldSkip: (parameter: GirParameter) => boolean;
     isOptionalExtra: (parameter: GirParameter) => boolean;
     isNullableExtra: (parameter: GirParameter) => boolean;
+    direction: TypeDirection;
+};
+
+type TypeDirection = "from-native" | "to-native";
+
+type ParameterAnnotationOptions = {
+    isForcedNullable?: boolean;
+    direction?: TypeDirection;
+};
+
+type ReturnedTsTypeOptions = {
+    isNullable: boolean;
+    transferOwnership: GirParameter["transferOwnership"];
+    direction: TypeDirection;
+};
+
+type MethodReturnTypeOptions = {
+    primaryTypeOverride?: string;
+    excludedParameters?: ReadonlySet<GirParameter>;
+    direction?: TypeDirection;
 };
 
 type CallExpressionOptions = {
@@ -119,11 +139,13 @@ const renderMethodSignature = (
     context: ModuleContext,
     fn: GirFunction,
     excludedParameters: ReadonlySet<GirParameter> = new Set(),
+    direction: TypeDirection = "to-native",
 ): string =>
     renderInputParameters(context, fn, {
         shouldSkip: (parameter) => excludedParameters.has(parameter),
         isOptionalExtra: () => false,
         isNullableExtra: () => false,
+        direction,
     });
 
 const closureAnnotation = (context: ModuleContext, base: string): string => {
@@ -145,20 +167,27 @@ const parameterAnnotation = (
     context: ModuleContext,
     fn: GirFunction,
     parameter: GirParameter,
-    isForcedNullable = false,
+    options: ParameterAnnotationOptions = {},
 ): string => {
+    const { isForcedNullable = false, direction = "to-native" } = options;
     const comparator = itemComparatorTsType(context, fn, parameter);
 
     if (comparator !== undefined) {
         return comparator;
     }
 
-    const base = renderParameterTsType(
-        context,
-        parameter.type,
-        parameter.nullable || isForcedNullable,
-        isValueRead(parameter),
-    );
+    const isNullable = parameter.nullable || isForcedNullable;
+    const base = direction === "to-native"
+        ? renderParameterTsType(
+                context,
+                parameter.type,
+                {
+                    isNullable,
+                    isValueWidened: isValueRead(parameter),
+                    canAcceptTypedArrayViews: parameter.transferOwnership === "none",
+                },
+            )
+        : renderTsType(context, parameter.type, isNullable);
 
     return requiresClosureAnnotation(context, fn, parameter) ? closureAnnotation(context, base) : base;
 };
@@ -184,7 +213,15 @@ const renderInputParameters = (context: ModuleContext, fn: GirFunction, options:
             hasSeenOptional = true;
         }
 
-        const annotation = parameterAnnotation(context, fn, parameter, options.isNullableExtra(parameter));
+        const annotation = parameterAnnotation(
+            context,
+            fn,
+            parameter,
+            {
+                isForcedNullable: options.isNullableExtra(parameter),
+                direction: options.direction,
+            },
+        );
         parts.push(formatParameterPart(name, annotation, hasSeenOptional));
     }
 
@@ -220,30 +257,67 @@ const returnedOutParameters = (
 const isUnwrappedValue = (context: ModuleContext, ref: TypeId | undefined): boolean =>
     ref !== undefined && isValueType(context, ref);
 
-const renderReturnedTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable: boolean): string =>
-    isUnwrappedValue(context, ref) ? "unknown" : renderTsType(context, ref, isNullable);
+const renderReturnedTsType = (
+    context: ModuleContext,
+    ref: TypeId | undefined,
+    options: ReturnedTsTypeOptions,
+): string => {
+    if (isUnwrappedValue(context, ref)) {
+        return "unknown";
+    }
+
+    const { isNullable, transferOwnership, direction } = options;
+
+    return direction === "to-native"
+        ? renderParameterTsType(context, ref, {
+                isNullable,
+                isValueWidened: false,
+                canAcceptTypedArrayViews: transferOwnership === "none",
+            })
+        : renderTsType(context, ref, isNullable);
+};
 
 const isUnpackedOutParameter = (context: ModuleContext, parameter: GirParameter): boolean =>
     isCallerAllocatedOut(parameter) &&
     isCollectibleCallerOut(context, parameter) &&
     isUnwrappedValue(context, parameter.type);
 
-const renderOutTsType = (context: ModuleContext, parameter: GirParameter): string =>
-    isUnpackedOutParameter(context, parameter)
-        ? "unknown"
-        : renderTsType(context, parameter.type, parameter.nullable);
+const renderOutTsType = (context: ModuleContext, parameter: GirParameter, direction: TypeDirection): string => {
+    if (isUnpackedOutParameter(context, parameter)) {
+        return "unknown";
+    }
+
+    if (direction === "to-native") {
+        return renderParameterTsType(context, parameter.type, {
+            isNullable: parameter.nullable,
+            isValueWidened: false,
+            canAcceptTypedArrayViews: parameter.transferOwnership === "none",
+        });
+    }
+
+    return renderTsType(context, parameter.type, parameter.nullable);
+};
 
 const primaryReturnType = (
     context: ModuleContext,
     fn: GirFunction,
     override: string | undefined,
+    direction: TypeDirection,
 ): string | undefined => {
     if (shouldOmitPrimaryReturn(context.library, fn.returnValue)) {
         return undefined;
     }
 
     if (override === undefined) {
-        return renderReturnedTsType(context, fn.returnValue.type, fn.returnValue.nullable);
+        return renderReturnedTsType(
+            context,
+            fn.returnValue.type,
+            {
+                isNullable: fn.returnValue.nullable,
+                transferOwnership: fn.returnValue.transferOwnership,
+                direction,
+            },
+        );
     }
 
     return fn.returnValue.nullable ? `${override} | null` : override;
@@ -252,17 +326,21 @@ const primaryReturnType = (
 const renderMethodReturnType = (
     context: ModuleContext,
     fn: GirFunction,
-    primaryTypeOverride?: string,
-    excludedParameters: ReadonlySet<GirParameter> = new Set(),
+    options: MethodReturnTypeOptions = {},
 ): string => {
+    const {
+        primaryTypeOverride,
+        excludedParameters = new Set<GirParameter>(),
+        direction = "from-native",
+    } = options;
     const outs = returnedOutParameters(context, fn, excludedParameters);
-    const primary = primaryReturnType(context, fn, primaryTypeOverride);
+    const primary = primaryReturnType(context, fn, primaryTypeOverride, direction);
 
     if (outs.length === 0) {
         return primary ?? "void";
     }
 
-    const outTypes = outs.map(({ parameter }) => renderOutTsType(context, parameter));
+    const outTypes = outs.map(({ parameter }) => renderOutTsType(context, parameter, direction));
 
     return foldOutParamShape(primary, outTypes);
 };
@@ -528,12 +606,14 @@ const renderPromisifiedSignature = (
         isOptionalExtra: (parameter) =>
             isCancellable(context, parameter) || isSideCallbackParameter(context, parameter),
         isNullableExtra: (parameter) => isSideCallbackParameter(context, parameter),
+        direction: "to-native",
     });
 
     const finishReturn = shouldTrimFinishBoolean(context, finishFn)
         ? foldOutParamShape(
                 undefined,
-                returnedOutParameters(context, finishFn).map(({ parameter }) => renderOutTsType(context, parameter)),
+                returnedOutParameters(context, finishFn).map(({ parameter }) =>
+                    renderOutTsType(context, parameter, "from-native")),
             )
         : renderMethodReturnType(context, finishFn);
 
