@@ -193,7 +193,7 @@ impl ArrayCodec {
             }
             _ => release,
         };
-        let elements = match &self.container {
+        let list_elements = match &self.container {
             ArrayContainerCodec::List(list) => {
                 self.item_codec.owned_release()?.map(|item| (list, item))
             }
@@ -241,39 +241,57 @@ impl ArrayCodec {
         };
 
         Ok(move |ptr| {
-            let container = ffi::PendingTransfer::new(ptr, release);
-            if let Some((length, item)) = contiguous_elements {
-                let items =
-                    unsafe { std::slice::from_raw_parts(ptr.cast::<*mut c_void>(), length) };
-                for &ptr in items {
-                    drop(ffi::PendingTransfer::new(ptr, item));
-                }
-            }
-            if let Some(item) = terminated_elements {
-                for ptr in terminated_ptrs(ptr) {
-                    drop(ffi::PendingTransfer::new(ptr, item));
-                }
-            }
-            if let Some((list, item)) = elements {
-                list.release_items(ptr, item);
-            }
-            if let Some(item) = separate_elements {
-                match &self.container {
-                    ArrayContainerCodec::PtrArray(_) => {
-                        for ptr in ptr_array::GPtrArrayCodec::items(ptr) {
-                            drop(ffi::PendingTransfer::new(ptr, item));
-                        }
-                    }
-                    ArrayContainerCodec::GArray(_) => {
-                        for ptr in garray::GArrayCodec::items(ptr) {
-                            drop(ffi::PendingTransfer::new(ptr, item));
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            drop(container);
+            self.release_container_value(
+                ptr,
+                release,
+                contiguous_elements,
+                terminated_elements,
+                list_elements,
+                separate_elements,
+            );
         })
+    }
+
+    fn release_container_value(
+        &self,
+        ptr: *mut c_void,
+        release: ffi::ReleaseKind,
+        contiguous_elements: Option<(usize, ffi::ReleaseKind)>,
+        terminated_elements: Option<ffi::ReleaseKind>,
+        list_elements: Option<(&list::ListArrayCodec, ffi::ReleaseKind)>,
+        separate_elements: Option<ffi::ReleaseKind>,
+    ) {
+        let container = ffi::PendingTransfer::new(ptr, release);
+        if let Some((length, item)) = contiguous_elements {
+            let items = unsafe { std::slice::from_raw_parts(ptr.cast::<*mut c_void>(), length) };
+            for &ptr in items {
+                drop(ffi::PendingTransfer::new(ptr, item));
+            }
+        }
+        if let Some(item) = terminated_elements {
+            for ptr in terminated_ptrs(ptr) {
+                drop(ffi::PendingTransfer::new(ptr, item));
+            }
+        }
+        if let Some((list, item)) = list_elements {
+            list.release_items(ptr, item);
+        }
+        if let Some(item) = separate_elements {
+            match &self.container {
+                ArrayContainerCodec::PtrArray(_) => {
+                    for ptr in ptr_array::GPtrArrayCodec::items(ptr) {
+                        drop(ffi::PendingTransfer::new(ptr, item));
+                    }
+                }
+                ArrayContainerCodec::GArray(_) => {
+                    for ptr in garray::GArrayCodec::items(ptr) {
+                        drop(ffi::PendingTransfer::new(ptr, item));
+                    }
+                }
+                _ => {}
+            }
+        }
+        drop(container);
     }
 }
 
