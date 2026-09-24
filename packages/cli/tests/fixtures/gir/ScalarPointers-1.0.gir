@@ -1,0 +1,166 @@
+<?xml version="1.0"?>
+<repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"
+    xmlns:c="http://www.gtk.org/introspection/c/1.0"
+    xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <namespace name="ScalarPointers" version="1.0" shared-library="libscalarpointers.so.0"
+      c:identifier-prefixes="ScalarPointers" c:symbol-prefixes="scalar_pointers">
+    <alias name="IntPointer" c:type="ScalarPointersIntPointer"><type name="gint" c:type="gint*"/></alias>
+    <alias name="PointerAlias" c:type="ScalarPointersPointerAlias"><type name="IntPointer" c:type="ScalarPointersIntPointer"/></alias>
+    <alias name="PointerList" c:type="ScalarPointersPointerList">
+      <type name="GLib.List" c:type="GList*"><type name="PointerAlias" c:type="ScalarPointersPointerAlias"/></type>
+    </alias>
+    <alias name="OwnPointer" c:type="gint*"><type name="gint" c:type="gint"/></alias>
+    <alias name="Count" c:type="ScalarPointersCount"><type name="guint64" c:type="guint64"/></alias>
+    <enumeration name="Mode" c:type="ScalarPointersMode">
+      <member name="first" value="0" c:identifier="SCALAR_POINTERS_MODE_FIRST"/>
+      <member name="second" value="1" c:identifier="SCALAR_POINTERS_MODE_SECOND"/>
+    </enumeration>
+    <callback name="InputScalar" c:type="ScalarPointersInputScalar">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="value" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter></parameters>
+    </callback>
+    <callback name="ReturnScalar" c:type="ScalarPointersReturnScalar">
+      <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean*"/></return-value>
+      <parameters></parameters>
+    </callback>
+    <callback name="InoutScalar" c:type="ScalarPointersInoutScalar">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="value" transfer-ownership="none" direction="inout"><type name="gint" c:type="gint*"/></parameter></parameters>
+    </callback>
+    <callback name="OutScalar" c:type="ScalarPointersOutScalar">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="value" transfer-ownership="none" direction="out" caller-allocates="0"><type name="gint" c:type="gint*"/></parameter></parameters>
+    </callback>
+    <class name="Probe" parent="GObject.Object" c:type="ScalarPointersProbe"
+        glib:type-name="ScalarPointersProbe" glib:get-type="scalar_pointers_probe_get_type"
+        glib:type-struct="ProbeClass">
+      <property name="pointer" writable="1" transfer-ownership="none"><type name="PointerAlias" c:type="ScalarPointersPointerAlias"/></property>
+      <property name="count" writable="1" transfer-ownership="none"><type name="Count" c:type="ScalarPointersCount"/></property>
+      <method name="take_erased" c:identifier="scalar_pointers_probe_take_erased">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="value" transfer-ownership="none"><type name="gint" c:type="gconstpointer"/></parameter></parameters>
+      </method>
+      <method name="read_erased" c:identifier="scalar_pointers_probe_read_erased">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="value" transfer-ownership="none" direction="out" caller-allocates="0"><type name="gint" c:type="gpointer"/></parameter></parameters>
+      </method>
+      <method name="edit_erased" c:identifier="scalar_pointers_probe_edit_erased">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="value" transfer-ownership="none" direction="inout"><type name="gint" c:type="gpointer"/></parameter></parameters>
+      </method>
+      <method name="take_direct" c:identifier="scalar_pointers_probe_take_direct">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="value" transfer-ownership="none"><type name="gint" c:type="const gint*"/></parameter></parameters>
+      </method>
+      <method name="take_alias" c:identifier="scalar_pointers_probe_take_alias">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="value" transfer-ownership="none"><type name="PointerAlias" c:type="ScalarPointersPointerAlias"/></parameter></parameters>
+      </method>
+      <method name="take_pointers" c:identifier="scalar_pointers_probe_take_pointers">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="values" transfer-ownership="none"><array fixed-size="2" zero-terminated="0" c:type="gint**"><type name="gint" c:type="gint*"/></array></parameter></parameters>
+      </method>
+      <method name="take_nested" c:identifier="scalar_pointers_probe_take_nested">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="values" transfer-ownership="none"><type name="PointerList" c:type="GList*"/></parameter></parameters>
+      </method>
+      <method name="take_mode" c:identifier="scalar_pointers_probe_take_mode">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="mode" transfer-ownership="none"><type name="Mode" c:type="ScalarPointersMode*"/></parameter></parameters>
+      </method>
+      <method name="take_type" c:identifier="scalar_pointers_probe_take_type">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="type" transfer-ownership="none"><type name="GObject.Type" c:type="GType*"/></parameter></parameters>
+      </method>
+      <method name="read_pointer" c:identifier="scalar_pointers_probe_read_pointer">
+        <return-value transfer-ownership="none"><type name="guint8" c:type="const guint8*"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter></parameters>
+      </method>
+      <method name="discard_pointer" c:identifier="scalar_pointers_probe_discard_pointer">
+        <return-value transfer-ownership="none" skip="1"><type name="gint" c:type="gint*"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter></parameters>
+      </method>
+      <method name="read_alias" c:identifier="scalar_pointers_probe_read_alias">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="value" transfer-ownership="none" direction="out" caller-allocates="0"><type name="PointerAlias" c:type="ScalarPointersPointerAlias*"/></parameter></parameters>
+      </method>
+      <method name="read_number" c:identifier="scalar_pointers_probe_read_number">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="value" transfer-ownership="none" direction="out" caller-allocates="0"><type name="gint" c:type="gint*"/></parameter></parameters>
+      </method>
+      <method name="edit_number" c:identifier="scalar_pointers_probe_edit_number">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="value" transfer-ownership="none" direction="inout"><type name="gint" c:type="gint*"/></parameter></parameters>
+      </method>
+      <method name="read_array" c:identifier="scalar_pointers_probe_read_array">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="values" transfer-ownership="none" direction="out" caller-allocates="0"><array fixed-size="2" zero-terminated="0" c:type="gint**"><type name="gint" c:type="gint*"/></array></parameter></parameters>
+      </method>
+      <method name="read_count" c:identifier="scalar_pointers_probe_read_count">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="value" transfer-ownership="none" direction="out" caller-allocates="0"><type name="Count" c:type="guint64*"/></parameter></parameters>
+      </method>
+      <method name="use_values" c:identifier="scalar_pointers_probe_use_values">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="mode" transfer-ownership="none"><type name="Mode" c:type="ScalarPointersMode"/></parameter><parameter name="type" transfer-ownership="none"><type name="GObject.Type" c:type="GType"/></parameter><parameter name="text" transfer-ownership="none"><type name="utf8" c:type="const gchar*"/></parameter><parameter name="object" transfer-ownership="none"><type name="GObject.Object" c:type="GObject*"/></parameter></parameters>
+      </method>
+      <method name="take_array" c:identifier="scalar_pointers_probe_take_array">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="values" transfer-ownership="none"><array fixed-size="2" zero-terminated="0" c:type="const gint*"><type name="gint" c:type="gint"/></array></parameter></parameters>
+      </method>
+      <method name="use_raw" c:identifier="scalar_pointers_probe_use_raw">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="callback" transfer-ownership="none" scope="call"><type name="InputScalar" c:type="ScalarPointersInputScalar"/></parameter></parameters>
+      </method>
+      <method name="use_inout" c:identifier="scalar_pointers_probe_use_inout">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></instance-parameter><parameter name="callback" transfer-ownership="none" scope="call"><type name="InoutScalar" c:type="ScalarPointersInoutScalar"/></parameter></parameters>
+      </method>
+      <glib:signal name="scalar-pointer" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="value" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="scalar-return" when="last">
+        <return-value transfer-ownership="none"><type name="gint" c:type="gint*"/></return-value>
+        <parameters></parameters>
+      </glib:signal>
+      <glib:signal name="integer" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="value" transfer-ownership="none"><type name="Count" c:type="ScalarPointersCount"/></parameter></parameters>
+      </glib:signal>
+    </class>
+    <record name="ProbeClass" c:type="ScalarPointersProbeClass" glib:is-gtype-struct-for="Probe">
+      <field name="parent_class"><type name="GObject.ObjectClass" c:type="GObjectClass"/></field>
+      <field name="raw_input">
+        <callback name="raw_input">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters>
+            <parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></parameter>
+            <parameter name="value" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter>
+          </parameters>
+        </callback>
+      </field>
+      <field name="safe_out">
+        <callback name="safe_out">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters>
+            <parameter name="self" transfer-ownership="none"><type name="Probe" c:type="ScalarPointersProbe*"/></parameter>
+            <parameter name="value" direction="out" caller-allocates="0" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter>
+          </parameters>
+        </callback>
+      </field>
+    </record>
+    <record name="Frame" c:type="ScalarPointersFrame" glib:type-name="ScalarPointersFrame"
+        glib:get-type="scalar_pointers_frame_get_type">
+      <field name="before" writable="1"><type name="gint" c:type="gint"/></field>
+      <field name="direct" writable="1"><type name="gint" c:type="gint*"/></field>
+      <field name="alias" writable="1"><type name="PointerAlias" c:type="ScalarPointersPointerAlias"/></field>
+      <field name="pointers" writable="1"><array fixed-size="2" zero-terminated="0"><type name="gint" c:type="gint*"/></array></field>
+      <field name="after" writable="1"><type name="guint64" c:type="guint64"/></field>
+    </record>
+    <function name="read_scalar" c:identifier="scalar_pointers_read_scalar">
+      <return-value transfer-ownership="none"><type name="gint" c:type="gint*"/></return-value>
+    </function>
+  </namespace>
+</repository>

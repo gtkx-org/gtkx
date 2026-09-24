@@ -17,7 +17,9 @@ import {
     elementBasePropTypeFor,
     elementPropTypeFor,
     factoryElementPropTypeFor,
+    inheritablePropsNameFor,
 } from "./element-prop-imports.js";
+import { isMountableElement } from "./generated-elements.js";
 import {
     ancestorGlibNames,
     collectInterfacePropsClasses,
@@ -29,6 +31,7 @@ import {
     newlyImplementedInterfaces,
     type ResolvedQualifiedInterface,
 } from "./intrinsic-elements.js";
+import { omittedPropKeysFor } from "./omitted-props.js";
 import { buildElementPropsEntries, buildInterfacePropsEntries } from "./props.js";
 
 type GenerateJsxOptions = {
@@ -69,16 +72,6 @@ const addGiNamespace = (imports: ImportsBuilder, namespaceName: string, alias: s
 
 const addReactBuiltin = (imports: ImportsBuilder, name: string): void => {
     imports.addNamed("react", name, true);
-};
-
-const addFactoryPropImports = (imports: ImportsBuilder, entries: GlibNamedClass[]): void => {
-    for (const entry of entries) {
-        const props = factoryElementPropTypeFor(entry.glibName);
-
-        if (props !== undefined) {
-            imports.addNamed(props.module, props.export, true);
-        }
-    }
 };
 
 const propLineName = (line: string): string | undefined => {
@@ -163,14 +156,12 @@ const generateJsxSection = (
         addReactBuiltin(imports, "ReactElement");
     }
 
-    addFactoryPropImports(imports, namespaceElements);
-
     const source = [
         constLines.join("\n\n"),
         "",
         propBlocks.join("\n\n"),
         "",
-        renderJsxAugmentation(namespaceElements, options.girIndex, imports),
+        renderJsxAugmentation(namespaceElements),
     ].join("\n");
 
     return { source, intrinsicCount: intrinsicElementConsts.length };
@@ -294,6 +285,19 @@ const renderPropsDeclaration = (name: string, parents: string[], body: string, i
     return renderBlock(`export interface ${name}${bases}`, body);
 };
 
+const omitInheritedProps = (parents: string[], glibName: string, imports: ImportsBuilder): string[] => {
+    const omitted = omittedPropKeysFor(glibName);
+
+    if (omitted.length === 0 || parents.length === 0) {
+        return parents;
+    }
+
+    imports.addNamed("@gtkx/react/internal", "DistributedOmit", true);
+    const keys = omitted.map((name) => sourceStringLiteral(name)).join(" | ");
+
+    return parents.map((parent) => `DistributedOmit<${parent}, (${keys}) & keyof ${parent}>`);
+};
+
 const renderInterfacePropsBlock = (
     iface: ResolvedQualifiedInterface,
     glib: string,
@@ -316,7 +320,7 @@ const renderInterfacePropsBlock = (
     }
 
     const ownerLines = dedupePropLines(propLines);
-    const prerequisiteExtends = interfacePrerequisiteExtends(iface, context);
+    const prerequisiteExtends = omitInheritedProps(interfacePrerequisiteExtends(iface, context), glib, imports);
     const declared = elementBasePropTypeFor(glib);
 
     if (declared !== undefined) {
@@ -344,27 +348,10 @@ const renderInterfacePropsBlock = (
 
 const renderJsxAugmentation = (
     namespaceElements: GlibNamedClass[],
-    girIndex: GirIndex,
-    imports: ImportsBuilder,
 ): string => {
     const elementLines = namespaceElements
-        .filter((entry) => !entry.klass.isAbstract || factoryElementPropTypeFor(entry.glibName) !== undefined)
-        .map((entry) => {
-            const factoryProps = factoryElementPropTypeFor(entry.glibName);
-            let props = `${entry.glibName}Props`;
-
-            if (factoryProps !== undefined) {
-                props += ` & ${factoryProps.export}`;
-            }
-
-            const constructOnly = constructOnlyPropNames(girIndex, entry);
-
-            if (constructOnly.length > 0) {
-                imports.addNamed("@gtkx/react/internal", "GeneratedElementProps", true);
-            }
-
-            return `${getDoc(entry.klass)}${entry.glibName}: ${renderGeneratedElementProps(props, constructOnly)};`;
-        })
+        .filter(isMountableElement)
+        .map((entry) => `${getDoc(entry.klass)}${entry.glibName}: ${entry.glibName}Props;`)
         .join("\n");
 
     const intrinsicInterface = renderBlock("interface IntrinsicElements", elementLines);
@@ -404,26 +391,45 @@ const renderPropBlock = (
     const extendsList = resolveElementExtends(library, entry, context);
     const selfDefault = `${giNamespaceAlias(entry.namespace.name)}.${sanitizeTypeIdentifier(entry.klass.name)}`;
 
-    const block = `${getDoc(entry.klass)}${renderPropsDeclaration(
-        `${entry.glibName}Props<Self = ${selfDefault}>`,
+    const inherited = renderPropsDeclaration(
+        `${inheritablePropsNameFor(entry.glibName)}<Self = ${selfDefault}>`,
         extendsList,
         ownerLines.join("\n"),
         hasIntersectionProps(entry.klass, entry.namespace, library),
-    )}`;
+    );
+    const block = renderNamedProps(entry, inherited, selfDefault, context);
 
     return { block, objectPropNames };
 };
 
-const resolveElementExtends = (library: Library, entry: GlibNamedClass, context: RenderPropBlockContext): string[] => {
-    const extendsList: string[] = [];
-    const declared = elementBasePropTypeFor(entry.glibName);
+const renderNamedProps = (
+    entry: GlibNamedClass,
+    inherited: string,
+    selfDefault: string,
+    context: RenderPropBlockContext,
+): string => {
+    const factory = factoryElementPropTypeFor(entry.glibName);
+    const doc = getDoc(entry.klass);
 
-    if (declared !== undefined) {
-        const alias = `${declared.export}Base`;
-        context.imports.addNamed(declared.module, declared.export, true, alias);
-        extendsList.push(alias);
+    if (factory === undefined) {
+        return `${doc}${inherited}`;
     }
 
+    context.imports.addNamed(factory.module, factory.export, true);
+    const props = `${inheritablePropsNameFor(entry.glibName)}<Self> & ${factory.export}`;
+    const constructOnly = constructOnlyPropNames(context.girIndex, entry);
+
+    if (constructOnly.length > 0) {
+        context.imports.addNamed("@gtkx/react/internal", "GeneratedElementProps", true);
+    }
+
+    const signature = `export type ${entry.glibName}Props<Self = ${selfDefault}>`;
+
+    return `${inherited}\n\n${doc}${signature} = ${renderGeneratedElementProps(props, constructOnly)};`;
+};
+
+const resolveElementExtends = (library: Library, entry: GlibNamedClass, context: RenderPropBlockContext): string[] => {
+    const extendsList: string[] = [];
     const parentRef = resolveParentPropsRef(library, entry, context);
 
     if (parentRef !== undefined) {
@@ -438,7 +444,16 @@ const resolveElementExtends = (library: Library, entry: GlibNamedClass, context:
         }
     }
 
-    return extendsList;
+    const inherited = omitInheritedProps(extendsList, entry.glibName, context.imports);
+    const declared = elementBasePropTypeFor(entry.glibName);
+
+    if (declared !== undefined) {
+        const alias = `${declared.export}Base`;
+        context.imports.addNamed(declared.module, declared.export, true, alias);
+        inherited.unshift(alias);
+    }
+
+    return inherited;
 };
 
 const resolveParentClassLike = (library: Library, namespaceName: string, parent: string) => {
@@ -482,9 +497,10 @@ const resolveParentPropsRef = (
         return undefined;
     }
 
-    registerCrossNsProps(context.imports, context.targetNamespaceName, resolved.namespace.name, `${parentGlib}Props`);
+    const propsName = inheritablePropsNameFor(parentGlib);
+    registerCrossNsProps(context.imports, context.targetNamespaceName, resolved.namespace.name, propsName);
 
-    return `${parentGlib}Props<Self>`;
+    return `${propsName}<Self>`;
 };
 
 export { generateJsxSection };

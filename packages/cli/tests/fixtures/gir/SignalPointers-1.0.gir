@@ -1,0 +1,114 @@
+<?xml version="1.0"?>
+<repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"
+    xmlns:c="http://www.gtk.org/introspection/c/1.0"
+    xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <include name="Gtk" version="4.0"/>
+  <namespace name="SignalPointers" version="1.0" shared-library="libsignalpointers.so.0"
+      c:identifier-prefixes="SignalPointers" c:symbol-prefixes="signal_pointers">
+    <alias name="DataPointer" c:type="SignalPointersDataPointer"><type name="gpointer" c:type="gpointer"/></alias>
+    <alias name="PointerAlias" c:type="SignalPointersPointerAlias"><type name="DataPointer" c:type="SignalPointersDataPointer"/></alias>
+    <callback name="Predicate" c:type="SignalPointersPredicate">
+      <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+      <parameters><parameter name="count" transfer-ownership="none"><type name="gint" c:type="gint"/></parameter></parameters>
+    </callback>
+    <interface name="Feed" c:type="SignalPointersFeed" glib:type-name="SignalPointersFeed"
+        glib:get-type="signal_pointers_feed_get_type">
+      <prerequisite name="GObject.Object"/>
+      <glib:signal name="iface-raw" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="data" transfer-ownership="none"><type name="PointerAlias" c:type="SignalPointersPointerAlias"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="iface-private" when="last" introspectable="0">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="count" transfer-ownership="none"><type name="gint" c:type="gint"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="shared" when="last">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters><parameter name="interface_count" transfer-ownership="none"><type name="guint64" c:type="guint64"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="iface-safe" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="item" transfer-ownership="none"><type name="GObject.Object" c:type="GObject*"/></parameter></parameters>
+      </glib:signal>
+    </interface>
+    <class name="Probe" parent="GObject.Object" c:type="SignalPointersProbe"
+        glib:type-name="SignalPointersProbe" glib:get-type="signal_pointers_probe_get_type">
+      <implements name="Feed"/>
+      <glib:signal name="direct" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="payload" transfer-ownership="none"><type name="gpointer" c:type="gpointer"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="named-data" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="data" transfer-ownership="none"><type name="gpointer" c:type="gpointer"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="alias" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="value" transfer-ownership="none"><type name="PointerAlias" c:type="SignalPointersPointerAlias"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="nested" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="values" transfer-ownership="none"><type name="GLib.PtrArray" c:type="GPtrArray*"><type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="PointerAlias" c:type="SignalPointersPointerAlias"/></type></type></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="out-pointer" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="value" direction="out" transfer-ownership="none"><type name="gpointer" c:type="gpointer*"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="return-pointer" when="last">
+        <return-value transfer-ownership="none"><type name="PointerAlias" c:type="SignalPointersPointerAlias"/></return-value>
+      </glib:signal>
+      <glib:signal name="skipped-return" when="last">
+        <return-value transfer-ownership="none" skip="1"><type name="gpointer" c:type="gpointer"/></return-value>
+      </glib:signal>
+      <glib:signal name="unknown-array" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="data" transfer-ownership="none"><array zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="callback-value" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="callback" transfer-ownership="none"><type name="Predicate" c:type="SignalPointersPredicate"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="private-signal" when="last" introspectable="0">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="count" transfer-ownership="none"><type name="gint" c:type="gint"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="shared" when="last">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters><parameter name="owner_count" transfer-ownership="none"><type name="guint64" c:type="guint64"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="object" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="item" transfer-ownership="none"><type name="GObject.Object" c:type="gpointer"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="boxed" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="iter" transfer-ownership="none"><type name="Gtk.TextIter" c:type="GtkTextIter*"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="bytes" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="bytes" transfer-ownership="none"><type name="GLib.Bytes" c:type="GBytes*"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="byte-array" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="bytes" transfer-ownership="none"><type name="GLib.ByteArray" c:type="GByteArray*"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="integer" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="data" transfer-ownership="none"><type name="guint64" c:type="guint64"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="array" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="values" transfer-ownership="none"><array fixed-size="2" zero-terminated="0" c:type="gint*"><type name="gint" c:type="gint"/></array></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="closure" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="closure" transfer-ownership="none"><type name="GObject.Closure" c:type="GClosure*"/></parameter></parameters>
+      </glib:signal>
+    </class>
+    <class name="Child" parent="Probe" c:type="SignalPointersChild"
+        glib:type-name="SignalPointersChild" glib:get-type="signal_pointers_child_get_type">
+      <property name="revision" writable="1" transfer-ownership="none"><type name="gint" c:type="gint"/></property>
+    </class>
+  </namespace>
+</repository>

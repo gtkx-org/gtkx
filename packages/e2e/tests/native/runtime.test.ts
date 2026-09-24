@@ -107,15 +107,11 @@ test("a GLib critical reaches the app as an uncaught exception", async () => {
     expect(code).toBe(0);
 });
 
-test("a native panic reaches the app as an uncaught exception", async () => {
-    const { code, output, signal } = await runFixture("error-channel.ts", ["panic", "observed"]);
+test("an async callback failure reaches the app as an uncaught exception", async () => {
+    const { code, signal } = await runFixture("async-error.ts", ["observed"]);
 
-    const observed = observedMessage(output);
-    expect(typeof observed).toBe("string");
-    expect(observed?.length).toBeGreaterThan(0);
-    expect(output).not.toMatch(/SURVIVED/);
     expect(signal).toBeNull();
-    expect(code).toBe(0);
+    expect(code).toBe(42);
 });
 
 test("an unhandled GLib critical stops the process", async () => {
@@ -125,11 +121,11 @@ test("an unhandled GLib critical stops the process", async () => {
     expect(output).not.toMatch(/SURVIVED/);
 });
 
-test("an unhandled native panic stops the process", async () => {
-    const { code, output } = await runFixture("error-channel.ts", ["panic", "ignored"]);
+test("an unhandled async callback failure stops the process", async () => {
+    const { code, signal } = await runFixture("async-error.ts", ["ignored"]);
 
-    expect(code).not.toBe(0);
-    expect(output).not.toMatch(/SURVIVED/);
+    expect(signal).toBeNull();
+    expect(code).toBe(1);
 });
 
 test("quit tears the run loop down and lets the process exit", async () => {

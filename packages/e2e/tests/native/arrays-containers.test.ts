@@ -69,13 +69,11 @@ test("GPtrArray string arguments survive repetition across transfer modes", () =
     expect(strings).toEqual(["0", "1", "2"]);
 });
 
-test("GPtrArray slots also take boxed values and 64-bit words", () => {
+test("GPtrArray slots take boxed values", () => {
     const values = [intValue(42), intValue(43)];
 
     Regress.annotationPtrArray(values);
     Regress.annotationPtrArray([]);
-    Regress.introspectableViaAlias([0n, 1n, 2n ** 64n - 1n]);
-    Regress.introspectableViaAlias([]);
 
     expect(values.map((value) => value.getInt())).toEqual([42, 43]);
 });

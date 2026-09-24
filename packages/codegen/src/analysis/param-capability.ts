@@ -1,20 +1,30 @@
-import type { GirCallable, GirParameter, ParameterTransfer } from "../gir/parameter.js";
+import type { GirFunction } from "../gir/function.js";
+import type { GirParameter, ParameterTransfer } from "../gir/parameter.js";
 import type { CArrayType, TypeId } from "../gir/type-id.js";
 import type { GirType } from "../gir/type.js";
 import type { ModuleContext } from "../writer/context.js";
 import { isCallerAllocatedOut, isInoutParameter } from "../gir/parameter.js";
+import { itemComparatorParameters } from "../store/gi/item-comparators.js";
 import {
     isCollectibleCallerOut,
     isFixedArrayCallerOut,
     isHandlePassedInPlace,
     isRecordInout,
-    underlyingType,
 } from "../store/gi/param-marshal.js";
 import { recordInlineSize } from "../store/gi/record-layout.js";
-import { isScalarRef, isUnownableStruct, transferOwnership } from "./descriptor-render.js";
+import { runtimeOverrideFor } from "../store/gi/runtime-override.js";
+import { hasCallbackType, isSupportedCallback } from "./callback-shape.js";
+import { isUnownableStruct, transferOwnership } from "./descriptor-render.js";
 import { closureAndDestroyIndices } from "./param-structure.js";
-
-type UnmarshalableSubject = GirCallable & { instance?: GirParameter | undefined };
+import { hasUnsupportedScalarParameter } from "./scalar-pointer.js";
+import {
+    cTypePointerDepth,
+    hasPrimitivePointer,
+    hasScalarPointer,
+    hasUnknownLengthArray,
+    isScalarRef,
+    underlyingType,
+} from "./type-shape.js";
 
 const POINTER_DEPTH = 1;
 
@@ -47,7 +57,7 @@ const isPointerElement = (context: ModuleContext, element: TypeId): boolean => {
         return false;
     }
 
-    const type = underlyingType(context, element);
+    const type = underlyingType(context.library, element);
 
     return type !== undefined && isPointerType(context, type);
 };
@@ -84,7 +94,7 @@ const baseIndirection = (context: ModuleContext, ref: TypeId | undefined): numbe
         return 0;
     }
 
-    const type = ref === undefined ? undefined : underlyingType(context, ref);
+    const type = ref === undefined ? undefined : underlyingType(context.library, ref);
 
     return type === undefined ? undefined : typeIndirection(context, type);
 };
@@ -96,7 +106,7 @@ const declaredIndirection = (parameter: GirParameter): number | undefined => {
         return undefined;
     }
 
-    return cType.split("*").length - 1;
+    return cTypePointerDepth(cType);
 };
 
 const marshalledIndirection = (context: ModuleContext, parameter: GirParameter): number | undefined => {
@@ -118,7 +128,7 @@ const marshalledIndirection = (context: ModuleContext, parameter: GirParameter):
 };
 
 const hasCallerSuppliedLength = (context: ModuleContext, parameter: GirParameter): boolean => {
-    const type = parameter.type === undefined ? undefined : underlyingType(context, parameter.type);
+    const type = parameter.type === undefined ? undefined : underlyingType(context.library, parameter.type);
 
     return type?.kind === "carray" && type.lengthParameterIndex !== undefined;
 };
@@ -151,13 +161,13 @@ const isTypeErasedCallback = (context: ModuleContext, parameter: GirParameter): 
         return false;
     }
 
-    const type = parameter.type === undefined ? undefined : underlyingType(context, parameter.type);
+    const type = parameter.type === undefined ? undefined : underlyingType(context.library, parameter.type);
 
     return type?.kind === "callback" && type.value.parameters.length === 0;
 };
 
 const isCallbackParam = (context: ModuleContext, parameter: GirParameter): boolean => {
-    const type = parameter.type === undefined ? undefined : underlyingType(context, parameter.type);
+    const type = parameter.type === undefined ? undefined : underlyingType(context.library, parameter.type);
 
     return type?.kind === "callback";
 };
@@ -192,7 +202,7 @@ const isRefusedTransfer = (
         return false;
     }
 
-    const type = underlyingType(context, ref);
+    const type = underlyingType(context.library, ref);
 
     return type?.kind === "record" && isUnownableStruct(context, type);
 };
@@ -211,7 +221,7 @@ const isByValueRecord = (context: ModuleContext, ref: TypeId | undefined, cType:
         return false;
     }
 
-    const type = underlyingType(context, ref);
+    const type = underlyingType(context.library, ref);
 
     if (type?.kind !== "record") {
         return false;
@@ -253,11 +263,55 @@ const isUnmarshalableCallParam = (context: ModuleContext, parameter: GirParamete
     return hasIndirectionMismatch(context, parameter);
 };
 
-const hasUnmarshalableParam = (context: ModuleContext, callable: UnmarshalableSubject): boolean =>
-    (callable.instance !== undefined && isRefusedParamTransfer(context, callable.instance)) ||
-    isRefusedTransfer(context, callable.returnValue.type, callable.returnValue.transferOwnership) ||
-    isByValueRecord(context, callable.returnValue.type, callable.returnValue.cType) ||
-    hasDetachedCallback(context, callable.parameters) ||
-    callable.parameters.some((parameter) => isUnmarshalableCallParam(context, parameter));
+const hasUnsupportedCallbackParam = (
+    context: ModuleContext,
+    callable: GirFunction,
+    parameter: GirParameter,
+): boolean => {
+    const type = underlyingType(context.library, parameter.type);
 
-export { hasUnmarshalableParam };
+    if (type?.kind !== "callback" || parameter.direction !== "in") {
+        return hasCallbackType(context.library, parameter.type);
+    }
+
+    return !isSupportedCallback(context.library, type.value, itemComparatorParameters(context, callable, parameter));
+};
+
+const hasUnboundPointer = (context: ModuleContext, callable: GirFunction): boolean => {
+    if (runtimeOverrideFor(callable) !== undefined) {
+        return false;
+    }
+
+    if (hasScalarPointer(context.library, callable.returnValue.type, callable.returnValue.cType) ||
+        hasUnknownLengthArray(context.library, callable.returnValue.type) ||
+        hasUnknownLengthArray(context.library, callable.instance?.type) ||
+        hasPrimitivePointer(context.library, callable.returnValue.type) ||
+        hasPrimitivePointer(context.library, callable.instance?.type) ||
+        hasCallbackType(context.library, callable.returnValue.type)) {
+        return true;
+    }
+
+    const claimed = closureAndDestroyIndices(callable);
+
+    return callable.parameters.some((parameter, index) =>
+        !claimed.has(index) && (hasUnsupportedScalarParameter(context.library, parameter) ||
+            hasUnknownLengthArray(context.library, parameter.type) ||
+            hasPrimitivePointer(context.library, parameter.type) ||
+            hasUnsupportedCallbackParam(context, callable, parameter)));
+};
+
+const hasUnmarshalableParam = (context: ModuleContext, callable: GirFunction): boolean => {
+    if (callable.instance !== undefined &&
+        (hasUnsupportedScalarParameter(context.library, callable.instance) ||
+            isRefusedParamTransfer(context, callable.instance))) {
+        return true;
+    }
+
+    return hasUnboundPointer(context, callable) ||
+        isRefusedTransfer(context, callable.returnValue.type, callable.returnValue.transferOwnership) ||
+        isByValueRecord(context, callable.returnValue.type, callable.returnValue.cType) ||
+        hasDetachedCallback(context, callable.parameters) ||
+        callable.parameters.some((parameter) => isUnmarshalableCallParam(context, parameter));
+};
+
+export { hasDetachedClosure, hasUnmarshalableParam };

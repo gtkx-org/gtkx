@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { releaseChangelog, releaseVersion } from "nx/release";
+import { prerelease } from "semver";
 
 type TutorialManifest = {
     dependencies?: Record<string, string>;
@@ -29,13 +30,12 @@ const hasVersionPlans = (): boolean =>
 const hasReleaseIntent = (values: VersionArguments): boolean =>
     values.specifier !== undefined || values.preid !== undefined;
 
-const isPrerelease = (version: string): boolean => version.includes("-");
+const isPrerelease = (version: string): boolean => prerelease(version) !== null;
 
 const prereleaseIdentifier = (version: string): string | undefined => {
-    const at = version.indexOf("-");
-    const identifier = at === -1 ? undefined : version.slice(at + 1).split(".", 1)[0];
+    const identifier = prerelease(version)?.[0];
 
-    return identifier !== undefined && !/^\d+$/.test(identifier) ? identifier : undefined;
+    return typeof identifier === "string" && !/^\d+$/.test(identifier) ? identifier : undefined;
 };
 
 const isOnPrereleaseTrain = (currentVersion: string, values: VersionArguments): boolean =>

@@ -115,7 +115,6 @@ const generateJsxNamespace = (
         lazyElements,
         intrinsicElements,
         components,
-        girIndex,
     });
 
     const excludeNames: Set<string> = new Set(elementComponents.exportedNames);

@@ -1,3 +1,8 @@
-const RETURNS_MISSING_TRANSFER_NONE: Set<string> = new Set(["g_value_reset"]);
+import type { ParameterTransfer } from "./parameter.js";
 
-export { RETURNS_MISSING_TRANSFER_NONE };
+const RETURN_TRANSFER_OVERRIDES: Map<string, ParameterTransfer> = new Map([
+    ["g_value_reset", "none"],
+    ["ostree_sign_get_all", "container"],
+]);
+
+export { RETURN_TRANSFER_OVERRIDES };

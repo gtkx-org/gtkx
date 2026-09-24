@@ -8,7 +8,7 @@ export {
     processGroupIdentity,
     removeCleanupDirectory,
 } from "./kill-process-group.ts";
-export { isProcessAlive } from "./process-status.ts";
+export { isProcessAlive, readProcessStatFields } from "./process-status.ts";
 export { resolveExecutable, tryResolveExecutable } from "./resolve-executable.ts";
 export {
     spawnWithParentDeathSignal,

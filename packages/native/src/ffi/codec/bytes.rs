@@ -28,6 +28,10 @@ pub struct BytesCodec {
 }
 
 impl Encoder for BytesCodec {
+    fn owned_release(&self) -> anyhow::Result<Option<ffi::ReleaseKind>> {
+        Ok(self.ownership.is_full().then_some(ffi::ReleaseKind::GFree))
+    }
+
     fn encode(&self, _env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
         let Some(bytes) = read_bytes(value)? else {
             return Ok(ffi::Stash::Ptr(std::ptr::null_mut()));

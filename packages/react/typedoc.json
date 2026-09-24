@@ -8,6 +8,7 @@
         "SettingValue",
         "SettingsSchema",
         "SettingsSchemaKeys",
+        "SettingsSchemaValues",
         "UseBindSettingOptions",
         "UseSignalOptions"
     ]

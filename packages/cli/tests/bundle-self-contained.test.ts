@@ -197,29 +197,34 @@ const canResolveFromInstall = (installDir: string, specifier: string): boolean =
 };
 
 describe("gtkx build (self-contained bundle)", () => {
-    const state: InstalledBundle = {
-        project: { root: "", entry: "" },
-        installDir: "",
-        source: "",
-        run: { status: null, stdout: "", stderr: "" },
-    };
+    const cleanup = new DisposableStack();
+    let state: InstalledBundle;
 
     beforeAll(async () => {
-        state.project = createAppProject({
+        const project = createAppProject({
             applicationId: "com.gtkx.clibundleprobe",
             entry: APP_ENTRY,
             prefix: "gtkx-bundle-probe-",
         });
+        cleanup.defer(() => {
+            removeAppProject(project);
+        });
 
-        await buildAppProject({ project: state.project, outDir: OUT_DIR });
-        state.installDir = installBundle(join(state.project.root, OUT_DIR));
-        state.source = readFileSync(join(state.installDir, BUNDLE_NAME), "utf8");
-        state.run = runNode(join(state.installDir, BUNDLE_NAME));
+        await buildAppProject({ project, outDir: OUT_DIR });
+        const installDir = installBundle(join(project.root, OUT_DIR));
+        cleanup.defer(() => {
+            rmSync(installDir, { recursive: true, force: true });
+        });
+        state = {
+            project,
+            installDir,
+            source: readFileSync(join(installDir, BUNDLE_NAME), "utf8"),
+            run: runNode(join(installDir, BUNDLE_NAME)),
+        };
     }, BUILD_TIMEOUT);
 
     afterAll(() => {
-        removeAppProject(state.project);
-        rmSync(state.installDir, { recursive: true, force: true });
+        cleanup.dispose();
     });
 
     it("starts where node resolves neither the gtkx packages nor their manifests", () => {

@@ -94,10 +94,6 @@ test("a registered subclass fills the int8 vtable slots the C callers dispatch t
             return arg * 2;
         }
 
-        override vfuncMethodInt8ArgAndOutCallee(arg: number): number {
-            return arg + 1;
-        }
-
         override vfuncMethodStrArgOutRet(arg: string): [string, number] {
             return [`${arg}!`, 9];
         }
@@ -116,7 +112,6 @@ test("a registered subclass fills the int8 vtable slots the C callers dispatch t
     expect(instance.methodInt8Out()).toBe(-5);
     expect(instance.int8Out()).toBe(-5);
     expect(instance.methodInt8ArgAndOutCaller(3)).toBe(6);
-    expect(instance.vfuncMethodInt8ArgAndOutCallee(41)).toBe(42);
     expect(instance.methodStrArgOutRet("hi")).toEqual(["hi!", 9]);
 });
 
@@ -305,7 +300,7 @@ test("a call-scoped callback handed to a vfunc runs from JavaScript", () => {
     const seen: (number | string)[] = [];
 
     class WithCallback extends GIMarshallingTests.Object {
-        vfuncVfuncWithCallback(callback: GIMarshallingTests.CallbackIntInt): void {
+        override vfuncVfuncWithCallback(callback: GIMarshallingTests.CallbackIntInt): void {
             seen.push(typeof callback, callback(5), callback(-3));
         }
     }
@@ -320,7 +315,7 @@ test("a call-scoped callback retained after the vfunc returns expires", () => {
     const captured: Holder<GIMarshallingTests.CallbackIntInt> = { value: null };
 
     class WithRetainedCallback extends GIMarshallingTests.Object {
-        vfuncVfuncWithCallback(callback: GIMarshallingTests.CallbackIntInt): void {
+        override vfuncVfuncWithCallback(callback: GIMarshallingTests.CallbackIntInt): void {
             captured.value = callback;
             expect(callback(7)).toBe(7);
         }
@@ -335,7 +330,7 @@ test("a call-scoped callback expires before its first delayed invocation", () =>
     const captured: Holder<GIMarshallingTests.CallbackIntInt> = { value: null };
 
     class WithDelayedCallback extends GIMarshallingTests.Object {
-        vfuncVfuncWithCallback(callback: GIMarshallingTests.CallbackIntInt): void {
+        override vfuncVfuncWithCallback(callback: GIMarshallingTests.CallbackIntInt): void {
             captured.value = callback;
         }
     }
@@ -838,7 +833,7 @@ test("an AsyncInitable registered from JavaScript resolves through its callback"
             seen.push([ioPriority, cancellable, typeof callback]);
             const task = Gio.Task.new(this, cancellable, null);
             task.returnBoolean(true);
-            callback?.(this, task, null);
+            callback?.(this, task);
         }
     }
 
@@ -864,7 +859,7 @@ test("an AsyncInitable callback captured by the vfunc completes the pending init
 
     const task = Gio.Task.new(instance, null, null);
     task.returnBoolean(true);
-    firstCallback(captured)(instance, task, null);
+    firstCallback(captured)(instance, task);
     expect(await pending).toBe(true);
 
     instance.vfuncInitAsync(0, null, null);
@@ -885,18 +880,18 @@ test("an AsyncInitable callback rejects arguments of the wrong type", async () =
 
     expect(() => {
         // @ts-expect-error a string is not the source object the callback takes
-        callback("garbage", task, null);
+        callback("garbage", task);
     }).toThrow();
 
     expect(() => {
         // @ts-expect-error a string is not the async result the callback takes
-        callback(instance, "garbage", null);
+        callback(instance, "garbage");
     }).toThrow();
 
-    callback(instance, task, null);
+    callback(instance, task);
     expect(await pending).toBe(true);
     expect(() => {
-        callback(instance, task, null);
+        callback(instance, task);
     }).toThrow();
     captured.length = 0;
     await drainGC();

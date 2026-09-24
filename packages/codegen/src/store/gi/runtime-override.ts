@@ -30,7 +30,9 @@ const RUNTIME_OVERRIDES: Map<string, RuntimeOverride> = new Map([
 ]);
 
 const runtimeOverrideFor = (callable: GirFunction): RuntimeOverride | undefined =>
-    callable.cIdentifier === undefined ? undefined : RUNTIME_OVERRIDES.get(callable.cIdentifier);
+    callable.instance === undefined || callable.cIdentifier === undefined
+        ? undefined
+        : RUNTIME_OVERRIDES.get(callable.cIdentifier);
 
 const runtimeOverrideRenames = (callable: GirFunction): Map<string, string> | undefined => {
     const renames = runtimeOverrideFor(callable)?.renames;
@@ -50,4 +52,4 @@ const renderRuntimeOverride = (callable: GirFunction, memberName: string): strin
     return `${memberName}${generics}(${override.signature}): ${override.returnType} {\n    ${override.body}\n}`;
 };
 
-export { renderRuntimeOverride, runtimeOverrideRenames };
+export { renderRuntimeOverride, runtimeOverrideFor, runtimeOverrideRenames, type RuntimeOverride };

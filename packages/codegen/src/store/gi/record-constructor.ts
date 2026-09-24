@@ -6,17 +6,19 @@ import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { inputParameters, parameterIdentifier } from "../../analysis/param-structure.js";
+import { renderTsType } from "../../analysis/ts-type.js";
 import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import { type Callables, staticMembers } from "./callables.js";
 import { getDoc } from "./doc-spec.js";
 import { renderSourceGtype } from "./gtype-binding.js";
 import {
     emitFieldWrite,
-    fieldTsType,
     hasOwnedFieldStorage,
     isEmittableField,
     isInlineField,
+    isPublicField,
     isStorableFieldType,
+    isVisibleField,
 } from "./record-field-accessor.js";
 import { computeRecordFieldSlots, type RecordFieldSlot } from "./record-layout.js";
 import { isConstructibleRecord } from "./value-marshalable.js";
@@ -37,6 +39,26 @@ const isWritableFieldSlot = (context: ModuleContext, entry: RecordFieldSlot): en
     isEmittableField(context, entry.field) &&
     isStorableFieldType(context, entry.field.type);
 
+const renderRecordConstructorProp = (context: ModuleContext, entry: RecordFieldSlot): string | undefined => {
+    const { field } = entry;
+
+    if (!field.writable || !isVisibleField(field)) {
+        return undefined;
+    }
+
+    const name = toCamelIdentifier(field.name);
+
+    if (!isPublicField(context, field)) {
+        return `${name}?: never;`;
+    }
+
+    if (!isWritableFieldSlot(context, entry)) {
+        return undefined;
+    }
+
+    return `${getDoc(field)}${name}?: ${renderTsType(context, field.type, true)};`;
+};
+
 const renderRecordConstructorPropsInterface = (
     context: ModuleContext,
     record: GirRecord,
@@ -44,14 +66,9 @@ const renderRecordConstructorPropsInterface = (
 ): string => {
     const head = `export interface ${className}ConstructorProps`;
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);
-
     const lines = slots
-        .filter((entry): entry is WritableFieldSlot => isWritableFieldSlot(context, entry))
-        .map(
-            (entry) =>
-                `${getDoc(entry.field)}${toCamelIdentifier(entry.field.name)}?: ` +
-                `${fieldTsType(context, entry.field.type, true)};`,
-        );
+        .map((entry) => renderRecordConstructorProp(context, entry))
+        .filter((line) => line !== undefined);
 
     return renderBracedOrEmpty(head, lines.join("\n"));
 };

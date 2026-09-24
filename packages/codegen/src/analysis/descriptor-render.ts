@@ -25,6 +25,7 @@ import {
 import { isRecordInout } from "../store/gi/param-marshal.js";
 import { computeRecordFieldSlots, recordInlineSize } from "../store/gi/record-layout.js";
 import { isValueMarshalable } from "../store/gi/value-marshalable.js";
+import { callbackUserDataIndex } from "./callback-shape.js";
 import {
     type ArrayLayout,
     type ListDescriptorName,
@@ -52,7 +53,14 @@ import {
     tUint64,
     tVoid,
 } from "./descriptor.js";
-import { carrayFor, isByteSequence, isUnboundedArray, primitiveCategoryFor } from "./type-shape.js";
+import {
+    carrayFor,
+    isByteSequence,
+    isScalarRef,
+    isUnboundedArray,
+    primitiveCategoryFor,
+    underlyingType,
+} from "./type-shape.js";
 
 type PrimaryReturnKind = "surfaced" | "void" | "skipped";
 
@@ -266,47 +274,13 @@ const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefined): G
         return undefined;
     }
 
-    const type = context.library.typeFor(ref);
+    const type = underlyingType(context.library, ref);
 
     if (type?.kind !== "callback") {
         return undefined;
     }
 
     return type.value;
-};
-
-const isScalarType = (library: Library, type: GirType): boolean => {
-    switch (type.kind) {
-        case "primitive": {
-            return type.category !== "string" && type.category !== "void";
-        }
-        case "enum": {
-            return true;
-        }
-        case "alias": {
-            return type.value.target !== undefined && isScalarRef(library, type.value.target);
-        }
-        case "callback":
-        case "carray":
-        case "class":
-        case "hashtable":
-        case "interface":
-        case "list":
-        case "record":
-        case "varargs": {
-            return false;
-        }
-    }
-};
-
-const isScalarRef = (library: Library, ref: TypeId | undefined): boolean => {
-    if (ref === undefined) {
-        return false;
-    }
-
-    const type = library.typeFor(ref);
-
-    return type !== undefined && isScalarType(library, type);
 };
 
 const isStrvRef = (library: Library, ref: TypeId | undefined): boolean => {
@@ -351,29 +325,6 @@ const renderParamDescriptor = (
         isCallerAllocated: isCallerAllocatedOut(parameter) || isRecordInout(context, parameter),
         isReceived: true,
     });
-};
-
-const isOpaqueUserData = (library: Library, parameter: GirParameter): boolean =>
-    primitiveCategoryFor(library, parameter.type) === "pointer";
-
-const userDataIndexByName = (library: Library, parameters: GirParameter[]): number | undefined => {
-    let userDataIndex: number | undefined;
-
-    for (const [index, parameter] of parameters.entries()) {
-        const isNamedUserData = parameter.name === "user_data" || parameter.name === "data";
-
-        if (isNamedUserData && isOpaqueUserData(library, parameter)) {
-            userDataIndex = index;
-        }
-    }
-
-    return userDataIndex;
-};
-
-const findUserDataIndex = (library: Library, parameters: GirParameter[]): number | undefined => {
-    const declared = parameters.find((parameter) => parameter.closureIndex !== undefined);
-
-    return declared?.closureIndex ?? userDataIndexByName(library, parameters);
 };
 
 const callbackOptionsArg = (
@@ -429,7 +380,7 @@ const renderCallbackType = (
         returns: renderDescriptor(context, returnValue.type, returnValue.transferOwnership, { isReceived: true }),
         options: callbackOptionsArg(
             owningParameter,
-            findUserDataIndex(context.library, callback.parameters),
+            callbackUserDataIndex(context.library, callback.parameters),
             callback.throws,
         ),
     });
@@ -955,7 +906,6 @@ export {
     primaryReturnKind,
     shouldOmitPrimaryReturn,
     renderDescriptor,
-    isScalarRef,
     isCellInout,
     renderParamDescriptor,
     renderCallbackType,

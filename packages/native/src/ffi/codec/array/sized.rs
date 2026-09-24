@@ -2,7 +2,7 @@ use anyhow::bail;
 
 use super::super::prelude::*;
 use super::ArrayCodec;
-use super::container::{ArrayContainer, BufferViewSupport};
+use super::container::{ArrayContainer, ArrayRead, BufferViewSupport};
 use crate::ffi::codec::Codec;
 
 #[derive(Debug, Clone)]
@@ -14,6 +14,14 @@ impl SizedArrayCodec {
     pub(super) fn new(size_param_index: u32) -> Self {
         Self { size_param_index }
     }
+
+    pub(super) fn extent(
+        &self,
+        ffi_args: &[ffi::Stash],
+        arg_codecs: &[Codec],
+    ) -> anyhow::Result<usize> {
+        ArrayCodec::size_from_args(ffi_args, arg_codecs, self.size_param_index as usize)
+    }
 }
 
 impl ArrayContainer for SizedArrayCodec {
@@ -22,7 +30,7 @@ impl ArrayContainer for SizedArrayCodec {
         _codec: &ArrayCodec,
         _env: &'e Env,
         _stash: &ffi::Stash,
-        _transfer: Ownership,
+        _read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
         bail!(
             "A sized array cannot be decoded without its length parameter (index {})",
@@ -37,11 +45,10 @@ impl ArrayContainer for SizedArrayCodec {
         stash: &ffi::Stash,
         ffi_args: &[ffi::Stash],
         arg_codecs: &[Codec],
-        transfer: Ownership,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
-        let length =
-            ArrayCodec::size_from_args(ffi_args, arg_codecs, self.size_param_index as usize)?;
-        codec.decode_length_bounded(env, self.name(), stash, length, transfer)
+        let length = self.extent(ffi_args, arg_codecs)?;
+        codec.decode_length_bounded(env, self.name(), stash, length, read)
     }
 
     fn buffer_view_support(&self) -> BufferViewSupport {
@@ -113,8 +120,9 @@ impl ArrayCodec {
         env: &'e Env,
         ptr: *mut c_void,
         length: usize,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
-        self.decode_bytes_or_items(env, ptr.cast::<u8>(), length, "sized array")
+        self.decode_bytes_or_items(env, ptr.cast::<u8>(), length, "sized array", read)
     }
 
     fn decode_sized_from_stash<'e>(
@@ -122,6 +130,7 @@ impl ArrayCodec {
         env: &'e Env,
         stash: &ffi::Stash,
         length: usize,
+        read: ArrayRead,
     ) -> Option<anyhow::Result<Unknown<'e>>> {
         let ffi::Stash::Ptr(ptr) = stash else {
             return None;
@@ -129,7 +138,7 @@ impl ArrayCodec {
         if ptr.is_null() {
             return Some(value::js_null(env).map_err(Into::into));
         }
-        Some(self.decode_sized_array(env, *ptr, length))
+        Some(self.decode_sized_array(env, *ptr, length, read))
     }
 
     pub(super) fn decode_length_bounded<'e>(
@@ -138,11 +147,11 @@ impl ArrayCodec {
         name: &str,
         stash: &ffi::Stash,
         length: usize,
-        transfer: Ownership,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
-        match self.decode_sized_from_stash(env, stash, length) {
+        match self.decode_sized_from_stash(env, stash, length, read) {
             Some(result) => result,
-            None => self.decode_null_terminated(env, name, stash, transfer),
+            None => self.decode_null_terminated(env, name, stash, read),
         }
     }
 }

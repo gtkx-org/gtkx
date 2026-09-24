@@ -18,7 +18,12 @@ import {
     renderPromisifiedBody,
     renderPromisifiedSignature,
 } from "./method.js";
-import { renderRuntimeOverride, runtimeOverrideRenames } from "./runtime-override.js";
+import {
+    renderRuntimeOverride,
+    type RuntimeOverride,
+    runtimeOverrideFor,
+    runtimeOverrideRenames,
+} from "./runtime-override.js";
 
 type Callables = {
     constructors: GirFunction[];
@@ -55,10 +60,7 @@ type StaticMember = {
     name: string;
 };
 
-type MemberSignature = {
-    signature: string;
-    returnType: string;
-};
+type MemberSignature = Pick<RuntimeOverride, "signature" | "returnType" | "generics">;
 
 type MemberSignatureOptions = {
     finishFn: GirFunction | undefined;
@@ -151,7 +153,7 @@ const renderBinding = (
 ): { text: string; cIdentifier: string } | undefined => {
     const cIdentifier = getEmittableCIdentifier(context, callable);
 
-    if (cIdentifier === undefined) {
+    if (cIdentifier === undefined || runtimeOverrideFor(callable) !== undefined) {
         return undefined;
     }
 
@@ -345,6 +347,12 @@ const memberSignature = (
     callable: GirFunction,
     options: MemberSignatureOptions,
 ): MemberSignature => {
+    const override = runtimeOverrideFor(callable);
+
+    if (override !== undefined) {
+        return override;
+    }
+
     const promisified =
         options.finishFn === undefined ? undefined : renderPromisifiedSignature(context, callable, options.finishFn);
 
@@ -362,9 +370,9 @@ const memberSignatureText = (
     name: string,
     options: MemberSignatureOptions,
 ): string => {
-    const { signature, returnType } = memberSignature(context, callable, options);
+    const { signature, returnType, generics = "" } = memberSignature(context, callable, options);
 
-    return `${name}(${signature}): ${returnType}`;
+    return `${name}${generics}(${signature}): ${returnType}`;
 };
 
 const renderInstanceMethodReturnType = (

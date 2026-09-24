@@ -1,6 +1,8 @@
 import { sortStrings, sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
+import type { Library } from "../../gir/library.js";
 import type { GirIndex, GirTypeEntry } from "./gir-index.js";
+import { isEmittableProperty } from "../../analysis/property-admission.js";
 import {
     configuredConstructOnlyPropsFor,
     inheritableConfiguredConstructOnlyPropsFor,
@@ -8,14 +10,16 @@ import {
 import { getChain } from "./gir-index.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 
-const constructOnlyNamesFor = (klass: GirClass): string[] =>
-    klass.properties.filter((property) => property.constructOnly).map((property) => toCamelIdentifier(property.name));
+const constructOnlyNamesFor = (library: Library, klass: GirClass): string[] =>
+    klass.properties
+        .filter((property) => property.constructOnly && isEmittableProperty(library, property))
+        .map((property) => toCamelIdentifier(property.name));
 
 const girConstructOnlyPropNames = (context: GirIndex, entry: GirTypeEntry): string[] => {
     const names: Set<string> = new Set();
 
     for (const klass of getChain(context, entry)) {
-        for (const name of constructOnlyNamesFor(klass)) {
+        for (const name of constructOnlyNamesFor(context.library, klass)) {
             names.add(name);
         }
     }

@@ -7,7 +7,7 @@ description: "GTKX's TypeScript runtime, Rust FFI bridge, native ownership model
 
 GTKX's native runtime spans two packages. `@gtkx/runtime` implements JavaScript-facing binding behavior in TypeScript. `@gtkx/native` is a Rust addon that handles the ABI, pointers, native memory, and integration with Node. Generated GI code supplies the signatures and metadata that connect them.
 
-The required boundary keeps [`@gtkx/native` minimal](/contributing/principles#keep-the-native-module-minimal): it supplies memory-safe FFI operations without exposing raw pointers or undefined behavior to JavaScript. [Binding semantics belong to `@gtkx/runtime`](/contributing/principles#put-binding-semantics-in-the-runtime), including marshalling, GValue and GVariant conversion, callback conventions, signal handling, and the GObject type system. The current Rust codecs and registration machinery described below include work that must be evaluated against that boundary; their location does not establish where new binding behavior should go.
+The required boundary keeps [`@gtkx/native` minimal](/contributing/principles#keep-the-native-module-minimal): it supplies memory-safe FFI operations without exposing raw pointers or undefined behavior to JavaScript. [Binding semantics belong to `@gtkx/runtime`](/contributing/principles#put-binding-semantics-in-the-runtime), including marshalling, GValue and GVariant conversion, callback conventions, signal handling, and the GObject type system.
 
 The Rust crate builds a Node addon through napi-rs and uses libffi for native calls, libloading for shared libraries, and the Rust GLib bindings for GLib and GObject operations. Its dependencies and supported addon targets are declared in [`packages/native/Cargo.toml`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/Cargo.toml) and [`packages/native/package.json`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/package.json).
 
@@ -58,11 +58,11 @@ Wrapper finalization schedules cleanup through the GLib context, including remov
 
 Some callback arguments borrow memory valid only for the current invocation. A borrow scope records their handles; leaving the invocation invalidates those handles, including on an error path. Field views inherit their owner's invalidation. Holding the JavaScript wrapper after that point does not extend the native borrow.
 
-Executable targets also use opaque handles. Library symbols remain available with their library, call-scoped callbacks expire when their enclosing call ends, and one-shot callback handles expire before invocation. JavaScript never converts an address into a callable.
+Executable targets also use opaque handles. Library symbols remain available with their library, call-scoped callbacks expire when their enclosing call ends, and one-shot callback handles expire before invocation. The runtime passes those handles directly to the native binding API.
 
 ## Callbacks and signals
 
-Callbacks reverse the FFI direction. A libffi closure provides a C-callable function pointer backed by a retained JavaScript function and descriptor-driven argument conversion. Native code invokes the pointer; the closure decodes inputs, enters JavaScript, writes any out parameters, and encodes the return value.
+Callbacks reverse the FFI direction. A libffi closure supplies the C entry point, and the addon keeps callback state alive during each invocation. Runtime converts incoming values, invokes the JavaScript handler and prepares its return and output values. The addon reads and writes the corresponding ABI storage.
 
 [`ffi/closure.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/ffi/closure.rs) tracks callback invocations in flight and defers destruction when cleanup is requested from inside a callback. One-shot completion callbacks, destroy notifications, and callbacks with no release mechanism have different retention paths. The lifetime of a callback is therefore part of the native signature, not something JavaScript garbage collection can infer by itself.
 
@@ -99,6 +99,8 @@ Only the owning thread can operate this GTKX runtime. Attempting to acquire the 
 [`runtime/src/lifecycle.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/runtime/src/lifecycle.ts) starts GTKX-created applications through GLib's local command-line handling. That preserves GLib option parsing, registration, activation, and forwarding to an existing application instance while keeping Node as the outer loop.
 
 The runtime records whether an application is primary, remote, unregistered, or shut down. React waits for activation before mounting application children, avoiding window creation in a remote process. On teardown, GTKX detaches application windows and reaches GLib's shutdown path through an adapted `g_application_run()` call once it can complete without owning the normal application loop. It also releases the process-wide default application association.
+
+Runtime shutdown runs registered exit callbacks and releases native keep-alive before propagating cleanup errors. A failing callback cannot prevent the remaining cleanup, and repeated or reentrant shutdown does not run it twice.
 
 Errors need to cross the same boundaries as successful results. Throwing native functions report `GError` through an out parameter that the TypeScript runtime turns into an exception. Callback code can propagate a JavaScript exception or convert it to `GError` when the callback's ABI supports one. GLib criticals raised during a bound call are collected and reported after the call returns, and Rust entry points guard unwinding at FFI boundaries.
 

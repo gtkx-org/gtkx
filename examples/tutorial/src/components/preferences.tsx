@@ -6,7 +6,7 @@ import { useSetting } from "@gtkx/react";
 import { useAppSettings } from "./settings.js";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useSortOrder } from "../hooks/use-sort-order.js";
-import { colorSchemeItems, type SortOrder, sortOrderItems } from "../settings.js";
+import { colorSchemeItems, type ColorScheme, type SortOrder, sortOrderItems } from "../settings.js";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {
     const settings = useAppSettings();
@@ -22,7 +22,7 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
                         title={t("Theme")}
                         items={colorSchemeItems()}
                         selectedId={scheme}
-                        onSelectionChanged={(id) => setScheme(id as string)}
+                        onSelectionChanged={(id) => setScheme(id as ColorScheme)}
                     />
                 </AdwPreferencesGroup>
                 <AdwPreferencesGroup title={t("Tasks")}>

@@ -6,7 +6,7 @@ import { HIDDEN_SYMBOLS } from "./hidden-symbols.js";
 import { PARAMETERS_MISSING_NULLABLE_ANNOTATION } from "./nullable-overrides.js";
 import { type GirParameter, type GirReturnValue, parameterFromNode, parseCallable } from "./parameter.js";
 import { attr, getChild, type RawNode } from "./parse.js";
-import { RETURNS_MISSING_TRANSFER_NONE } from "./transfer-overrides.js";
+import { RETURN_TRANSFER_OVERRIDES } from "./transfer-overrides.js";
 import { RETURNS_MISSING_UCS4_ARRAY_TYPE } from "./ucs4-overrides.js";
 
 type GirFunction = {
@@ -93,9 +93,11 @@ const bindMissingUcs4ReturnArray = (fn: GirFunction, context: ParseContext): Gir
     return fn;
 };
 
-const relaxMissingTransferNone = (fn: GirFunction): GirFunction => {
-    if (fn.cIdentifier !== undefined && RETURNS_MISSING_TRANSFER_NONE.has(fn.cIdentifier)) {
-        fn.returnValue.transferOwnership = "none";
+const applyReturnTransfer = (fn: GirFunction): GirFunction => {
+    const transfer = fn.cIdentifier === undefined ? undefined : RETURN_TRANSFER_OVERRIDES.get(fn.cIdentifier);
+
+    if (transfer !== undefined) {
+        fn.returnValue.transferOwnership = transfer;
     }
 
     return fn;
@@ -135,7 +137,7 @@ const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => 
         DECLARED_FUNCTION_NAMES.set(fn, declaredName);
     }
 
-    const relaxed = relaxMissingTransferNone(relaxMissingNullable(fn));
+    const relaxed = applyReturnTransfer(relaxMissingNullable(fn));
 
     return bindMissingUcs4ReturnArray(bindMissingArrayExtent(relaxed), context);
 };

@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GLib" version="2.0"/>
+  <include name="GObject" version="2.0"/>
+  <package name="callbackfields-1.0"/>
+  <namespace name="CallbackFields" version="1.0" shared-library="libcallbackfields.so.0"
+             c:identifier-prefixes="CallbackFields" c:symbol-prefixes="callback_fields">
+    <callback name="Hook" c:type="CallbackFieldsHook">
+      <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+      <parameters>
+        <parameter name="value" transfer-ownership="none"><type name="gint" c:type="gint"/></parameter>
+      </parameters>
+    </callback>
+    <alias name="HookAlias" c:type="CallbackFieldsHookAlias">
+      <type name="Hook" c:type="CallbackFieldsHook"/>
+    </alias>
+    <alias name="HookAliasChain" c:type="CallbackFieldsHookAliasChain">
+      <type name="HookAlias" c:type="CallbackFieldsHookAlias"/>
+    </alias>
+    <record name="Capsule" c:type="CallbackFieldsCapsule" c:symbol-prefix="capsule"
+            glib:type-name="CallbackFieldsCapsule" glib:get-type="callback_fields_capsule_get_type">
+      <field name="before" writable="1"><type name="gint" c:type="gint"/></field>
+      <field name="direct" writable="1"><type name="Hook" c:type="CallbackFieldsHook"/></field>
+      <field name="aliased" writable="1">
+        <type name="HookAliasChain" c:type="CallbackFieldsHookAliasChain"/>
+      </field>
+      <field name="inline_hooks" writable="1">
+        <array fixed-size="2" zero-terminated="0" c:type="CallbackFieldsHook[2]">
+          <type name="Hook" c:type="CallbackFieldsHook"/>
+        </array>
+      </field>
+      <field name="hooks" writable="1">
+        <array fixed-size="2" zero-terminated="0" c:type="CallbackFieldsHookAliasChain*">
+          <type name="HookAliasChain" c:type="CallbackFieldsHookAliasChain"/>
+        </array>
+      </field>
+      <field name="after" writable="1"><type name="guint" c:type="guint"/></field>
+      <method name="read_before" c:identifier="callback_fields_capsule_read_before">
+        <return-value transfer-ownership="none"><type name="gint" c:type="gint"/></return-value>
+        <parameters>
+          <instance-parameter name="capsule" transfer-ownership="none">
+            <type name="Capsule" c:type="CallbackFieldsCapsule*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="read_after" c:identifier="callback_fields_capsule_read_after">
+        <return-value transfer-ownership="none"><type name="guint" c:type="guint"/></return-value>
+        <parameters>
+          <instance-parameter name="capsule" transfer-ownership="none">
+            <type name="Capsule" c:type="CallbackFieldsCapsule*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+    </record>
+    <function name="invoke" c:identifier="callback_fields_invoke">
+      <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+      <parameters>
+        <parameter name="callback" transfer-ownership="none" scope="call" nullable="1">
+          <type name="HookAliasChain" c:type="CallbackFieldsHookAliasChain"/>
+        </parameter>
+        <parameter name="value" transfer-ownership="none"><type name="gint" c:type="gint"/></parameter>
+      </parameters>
+    </function>
+  </namespace>
+</repository>

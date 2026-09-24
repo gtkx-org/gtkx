@@ -2,16 +2,21 @@ import type { Plugin } from "vite";
 import { sortStringsBy } from "@gtkx/utils";
 import { realpathSync } from "node:fs";
 import { dirname } from "node:path";
+import { BINDING_FILENAME } from "../deploy/native-addon.js";
+import { bundledNotices } from "../deploy/notices/bundled.js";
 import { packageNotice } from "../deploy/notices/packages.js";
+import { renderNoticeSections } from "../deploy/notices/render.js";
 import { type PackageManifest, readPackageManifest } from "../deploy/settings/package-manifest.js";
 import {
     BUILD_MANIFEST_FILENAME,
     BUILD_MANIFEST_FORMAT_VERSION,
     BUILD_MANIFEST_GENERATOR,
+    BUILD_NOTICES_FILENAME,
     type BuildManifest,
     type BuildManifestCollector,
     type RecordedPackage,
 } from "../internal/build-manifest.js";
+import { BUNDLE_FILENAME } from "./esm-extension.js";
 import { stripQuery } from "./strip-query.js";
 
 type PackageSource = {
@@ -71,18 +76,24 @@ function gtkxBuildManifest(root: string, collector: BuildManifestCollector, iden
         generateBundle(_options, bundle) {
             const ids = Object.values(bundle).flatMap((output) => (output.type === "chunk" ? output.moduleIds : []));
 
+            const packages = packagesFor(projectRoot, ids);
             const manifest: BuildManifest = {
                 generator: BUILD_MANIFEST_GENERATOR,
                 formatVersion: BUILD_MANIFEST_FORMAT_VERSION,
                 ...identity,
                 schemas: collector.schemas,
-                packages: packagesFor(projectRoot, ids),
+                packages,
             };
 
             this.emitFile({
                 type: "asset",
                 fileName: BUILD_MANIFEST_FILENAME,
                 source: renderManifest(manifest),
+            });
+            this.emitFile({
+                type: "asset",
+                fileName: BUILD_NOTICES_FILENAME,
+                source: renderNoticeSections(bundledNotices(BUNDLE_FILENAME, BINDING_FILENAME, packages)),
             });
         },
     };

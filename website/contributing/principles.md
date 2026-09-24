@@ -22,9 +22,11 @@ The [architecture pages](/contributing/architecture) describe the current implem
 
 ### Keep the native module minimal
 
-`@gtkx/native` should be as lean as possible. Its purpose is to provide a safe FFI layer: manage native allocations and ownership, enforce native memory lifetimes, and perform the ABI operations that require access to native memory. JavaScript must never need to manipulate raw pointers or perform operations that can cause undefined behavior.
+`@gtkx/native` should be as lean as possible. Its purpose is to give `@gtkx/runtime` a safe GLib/GObject binding layer: manage native allocations and ownership, enforce native memory lifetimes, and perform the ABI operations that require access to native memory. JavaScript must never need to manipulate raw pointers or perform operations that can cause undefined behavior.
 
 Keep only the native mechanics necessary to uphold that contract in Rust. Binding policy and the meaning of values belong in `@gtkx/runtime`. A feature does not belong in Rust merely because the library it calls is written in C.
+
+GTKX does not aim to expose every upstream C API. Omit APIs that require raw pointer manipulation, or retain a throwing stub when an explicit unsupported entry point is useful. Do not expand the native layer or invent wrappers merely to make those APIs callable. Keep their implementation, declarations and reference documentation consistent with that support decision.
 
 Native memory safety is the contract of this layer. Redundant checks for states ruled out by the supported type model do not belong here or elsewhere in the framework.
 
@@ -94,6 +96,8 @@ Strive for the least amount of hand-written code. When a well-maintained third-p
 Check the dependencies already in use before adding another one. Evaluate maintenance, compatibility, and the supported contract before choosing a package; an abandoned or unsuitable dependency does not satisfy this principle. Keep GTKX-specific code focused on the integration and behavior the dependency does not provide.
 
 Apply this rule during reviews as well as when adding features. Existing custom implementations should be replaced when a maintained dependency fits their contract. Familiarity with the current code is not a reason to preserve duplication.
+
+Keep compatibility workarounds until official upstream releases include the fixes. Remove them when GTKX's supported versions no longer need them.
 
 ## Prefer simple code and trust the types
 

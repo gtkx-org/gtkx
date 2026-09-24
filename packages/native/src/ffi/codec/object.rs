@@ -61,6 +61,15 @@ pub(crate) unsafe fn call_scoped_gobject_value(
     )?)
 }
 
+pub(super) unsafe extern "C" fn g_object_unref_wrapper(ptr: *mut c_void) {
+    if ptr.is_null() {
+        return;
+    }
+    unsafe {
+        glib::gobject_ffi::g_object_unref(ptr.cast::<glib::gobject_ffi::GObject>());
+    }
+}
+
 unsafe fn object_ref_full(ptr: *mut c_void) -> *mut c_void {
     let obj: glib::Object =
         unsafe { glib::Object::from_glib_none(ptr.cast::<glib::gobject_ffi::GObject>()) };
@@ -143,10 +152,11 @@ impl Encoder for ObjectCodec {
         Ok(())
     }
 
-    fn transfer_release(&self) -> Option<ffi::ReleaseKind> {
-        self.ownership
+    fn owned_release(&self) -> anyhow::Result<Option<ffi::ReleaseKind>> {
+        Ok(self
+            .ownership
             .is_full()
-            .then_some(ffi::ReleaseKind::ObjectUnref)
+            .then_some(ffi::ReleaseKind::ObjectUnref))
     }
 
     unsafe fn ref_for_transfer(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {

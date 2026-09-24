@@ -52,9 +52,9 @@ const DialogShell = ({ shown }: { shown: DialogKind }): ReactElement => {
     );
 };
 
-const headerStart = (buttonRef: Ref<Gtk.Button | null>, isDetail: boolean): ReactElement => {
+const headerStart = (buttonRef: Ref<Gtk.Button | null>, isDetail: boolean, onBack: () => void): ReactElement => {
     if (isDetail) {
-        return <GtkButton ref={buttonRef} iconName="go-previous-symbolic" onClicked={vi.fn()} />;
+        return <GtkButton ref={buttonRef} iconName="go-previous-symbolic" onClicked={onBack} />;
     }
 
     return (
@@ -65,10 +65,14 @@ const headerStart = (buttonRef: Ref<Gtk.Button | null>, isDetail: boolean): Reac
     );
 };
 
-const ReuseShell = ({ buttonRef, isDetail }: { buttonRef: Ref<Gtk.Button | null>; isDetail: boolean }) => (
+const ReuseShell = ({ buttonRef, isDetail, onBack }: {
+    buttonRef: Ref<Gtk.Button | null>;
+    isDetail: boolean;
+    onBack: () => void;
+}) => (
     <AdwApplication applicationId={REUSE_APP_ID} flags={Gio.ApplicationFlags.NON_UNIQUE}>
         <AdwApplicationWindow actions={<GSimpleAction name="new" onActivate={vi.fn()} />}>
-            <AdwToolbarView topBar={<AdwHeaderBar start={headerStart(buttonRef, isDetail)} />}>
+            <AdwToolbarView topBar={<AdwHeaderBar start={headerStart(buttonRef, isDetail, onBack)} />}>
                 <GtkLabel>Body</GtkLabel>
             </AdwToolbarView>
         </AdwApplicationWindow>
@@ -140,14 +144,27 @@ describe("tutorial regressions", () => {
 
     it("keeps a reused header start button sensitive after replacing actionName with onClicked", async () => {
         const buttonRef = createRef<Gtk.Button>();
+        const onBack = vi.fn();
 
-        const { rerender } = await render(<ReuseShell buttonRef={buttonRef} isDetail={false} />, {
+        const { rerender } = await render(<ReuseShell buttonRef={buttonRef} isDetail={false} onBack={onBack} />, {
             container: rootElement,
         });
 
-        expect(buttonRef.current).toBeEnabled();
-        await rerender(<ReuseShell buttonRef={buttonRef} isDetail={true} />);
-        expect(buttonRef.current).toBeEnabled();
+        const button = buttonRef.current;
+
+        if (button === null) {
+            throw new Error("The header button was not mounted");
+        }
+
+        expect(button).toBeEnabled();
+        expect(button).toHaveObjectProperty("actionName", "win.new");
+        expect(onBack).not.toHaveBeenCalled();
+        await rerender(<ReuseShell buttonRef={buttonRef} isDetail={true} onBack={onBack} />);
+        expect(buttonRef.current).toBe(button);
+        expect(button).toBeEnabled();
+        expect(button).toHaveObjectProperty("actionName", null);
+        await userEvent.click(button);
+        expect(onBack).toHaveBeenCalledTimes(1);
     });
 
     it("opens a second dialog while the first one's onClosed clears the state that mounted it", async () => {

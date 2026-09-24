@@ -2,9 +2,12 @@ const HIDDEN_SYMBOLS: Set<string> = new Set([
     "g_action_map_add_action_entries",
     "g_ascii_dtostr",
     "g_ascii_formatd",
+    "g_bytes_get_region",
     "g_file_info_set_attribute",
     "g_file_set_attribute",
     "g_log_set_writer_func",
+    "g_memory_output_stream_get_data",
+    "g_memory_output_stream_steal_data",
     "g_object_get_data",
     "g_object_get_qdata",
     "g_object_set_data",
@@ -34,6 +37,8 @@ const HIDDEN_SYMBOLS: Set<string> = new Set([
     "g_thread_exit",
     "g_thread_new",
     "g_thread_try_new",
+    "g_type_free_instance",
+    "g_variant_get_data",
 ]);
 
 export { HIDDEN_SYMBOLS };

@@ -5,6 +5,7 @@ use anyhow::bail;
 use super::prelude::*;
 use crate::ffi::codec::Codec;
 use crate::ffi::{StashData, StashStorage};
+use crate::value::TypedView;
 
 #[derive(Debug, Clone)]
 pub struct RefCodec {
@@ -79,7 +80,7 @@ impl RefCodec {
             .ok_or_else(|| anyhow::anyhow!("The reference has no declared storage size"))?;
         let ptr = crate::api::handle_memory_range(handle, 0, size, "scalar reference")?;
         let retained = if retain_for_async {
-            handle.retain_for_async()?
+            handle.retain_owned()?
         } else {
             (**handle).clone()
         };
@@ -119,6 +120,20 @@ impl Encoder for RefCodec {
                         allocation.ptr(),
                         StashData::CallerAllocation(allocation),
                     )));
+                }
+
+                if array_codec.is_byte_array()
+                    && let Some(view) = TypedView::from_unknown(env, inner)?
+                {
+                    let ffi::Stash::Storage(storage) = array_codec.encode(env, inner)? else {
+                        bail!("Expected Storage from GByteArray encode")
+                    };
+
+                    return Ok(if view.length() == 0 {
+                        Self::null_ptr_stash()
+                    } else {
+                        Self::ptr_slot_stash(storage)
+                    });
                 }
 
                 if inner_type == ValueType::Object

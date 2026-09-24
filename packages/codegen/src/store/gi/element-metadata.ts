@@ -7,6 +7,8 @@ import type { TypeId } from "../../gir/type-id.js";
 import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { inputParameters } from "../../analysis/param-structure.js";
+import { isEmittableProperty } from "../../analysis/property-admission.js";
+import { isEmittableSignal } from "../../analysis/signal-admission.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { getGlibName, implementedInterfaces, signalHandlerName } from "../jsx/intrinsic-elements.js";
 
@@ -26,7 +28,7 @@ const appendElementMetadata = (context: ModuleContext, klass: GirClass): void =>
         klass,
         ...implementedInterfaces(klass, context.namespace, context.library).map((entry) => entry.klass),
     ];
-    const signals = renderSignalsObject(collectSignals(sources));
+    const signals = renderSignalsObject(collectSignals(context.library, sources));
     const properties = renderPropertiesObject(collectProperties(context.library, sources));
     context.addRuntimeInternalImport("registerElementMetadata");
     context.collectRegistration(
@@ -34,7 +36,12 @@ const appendElementMetadata = (context: ModuleContext, klass: GirClass): void =>
     );
 };
 
-const collectSignalsFromSource = (source: GirClass, seen: Set<string>, signals: [string, string][]): void => {
+const collectSignalsFromSource = (
+    library: Library,
+    source: GirClass,
+    seen: Set<string>,
+    signals: [string, string][],
+): void => {
     for (const signal of source.signals) {
         const handlerName = signalHandlerName(signal.name);
 
@@ -43,16 +50,19 @@ const collectSignalsFromSource = (source: GirClass, seen: Set<string>, signals: 
         }
 
         seen.add(handlerName);
-        signals.push([handlerName, signal.name] as const);
+
+        if (isEmittableSignal(library, signal)) {
+            signals.push([handlerName, signal.name] as const);
+        }
     }
 };
 
-const collectSignals = (sources: GirClass[]): [string, string][] => {
+const collectSignals = (library: Library, sources: GirClass[]): [string, string][] => {
     const seen: Set<string> = new Set();
     const signals: [string, string][] = [];
 
     for (const source of sources) {
-        collectSignalsFromSource(source, seen, signals);
+        collectSignalsFromSource(library, source, seen, signals);
     }
 
     return signals;
@@ -84,12 +94,15 @@ const collectPropertiesFromSource = (
     for (const property of source.properties) {
         const jsName = toCamelIdentifier(property.name);
 
-        if (!property.introspectable || seen.has(jsName)) {
+        if (seen.has(jsName)) {
             continue;
         }
 
         seen.add(jsName);
-        entries.push([jsName, propertyEntryLiteral(library, source, property)]);
+
+        if (isEmittableProperty(library, property)) {
+            entries.push([jsName, propertyEntryLiteral(library, source, property)]);
+        }
     }
 };
 

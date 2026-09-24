@@ -16,7 +16,7 @@ import {
     Value,
 } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { getHandle, getInstanceType, registerClass } from "@gtkx/runtime";
+import { fromValue, getHandle, getInstanceType, registerClass } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 import { isInstanceOfType, pointerValue, stringValue } from "./helpers/gobject.js";
 import { createTypeNameFactory } from "./helpers/unique-name.js";
@@ -789,17 +789,17 @@ describe("registerClass — implements, interface properties a pointer type back
         const top = createToplevelAdopter();
         const read = pointerValue();
         top.getProperty("icon-list", read);
-        expect(read.getPointer()).toBe(0n);
+        expect(fromValue(getHandle(read))).toBeNull();
         top.setProperty("icon-list", pointerValue());
         top.getProperty("icon-list", read);
-        expect(read.getPointer()).toBe(0n);
+        expect(fromValue(getHandle(read))).toBeNull();
     });
 
     it("reads the pointer property GDtlsClientConnection declares", () => {
         const client = new DtlsClient() as DtlsClient & Gio.DtlsClientConnection;
         const read = pointerValue();
         client.getProperty("accepted-cas", read);
-        expect(read.getPointer()).toBe(0n);
+        expect(fromValue(getHandle(read))).toBeNull();
     });
 
     it("reads and writes the string-array property GDtlsConnection declares", () => {

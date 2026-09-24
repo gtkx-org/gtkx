@@ -2,9 +2,11 @@ import { sourceStringLiteral, toCamelIdentifier, uniqBy } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { requiredConstructPropNames } from "../../analysis/construct-properties.js";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { collectInterfaceProperties } from "../../analysis/inheritance.js";
 import { inputParameters, parameterIdentifier } from "../../analysis/param-structure.js";
+import { isEmittableProperty } from "../../analysis/property-admission.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { ancestorChain, resolveInterfaces } from "../../gir/ancestry.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
@@ -54,11 +56,18 @@ const renderConstructorPropsInterface = (context: ModuleContext, klass: GirClass
     const parentRef = parentCompanionRef(context, klass, "ConstructorProps");
     const extendsClause = parentRef === undefined ? "" : ` extends ${parentRef}`;
 
-    const lines = collectConstructableProps(context, klass).map(
-        (property) =>
-            `${propertyDoc(property)}${toCamelIdentifier(property.name)}?: ` +
-            `${renderTsType(context, property.type, true)} | undefined;`,
-    );
+    const required = requiredConstructPropNames(context.library, klass, context.namespace.name);
+    const lines = collectConstructableProps(context, klass).map((property) => {
+        if (!isEmittableProperty(context.library, property)) {
+            return `${toCamelIdentifier(property.name)}?: never;`;
+        }
+
+        const isRequired = required.has(property.name);
+        const name = `${toCamelIdentifier(property.name)}${isRequired ? "" : "?"}`;
+        const type = renderTsType(context, property.type, !isRequired);
+
+        return `${propertyDoc(property)}${name}: ${type}${isRequired ? "" : " | undefined"};`;
+    });
 
     return renderBracedOrEmpty(`export interface ${className}ConstructorProps${extendsClause}`, lines.join("\n"));
 };
@@ -107,10 +116,21 @@ const fundamentalMessage = (qualified: string, hint: string | undefined): string
         : `${reason}; use ${qualified}.${hint} instead.`;
 };
 
+const SINGLETON_ACTIONS: Set<string> = new Set([
+    "Gtk.ActivateAction",
+    "Gtk.MnemonicAction",
+    "Gtk.NothingAction",
+]);
+
 const INITIALIZATION_INTERFACES: Set<string> = new Set(["AsyncInitable", "Initable"]);
+const FACTORY_INITIALIZED_CLASSES: Set<string> = new Set(["Gtk.CallbackAction"]);
 
 const requiresFactoryInitialization = (context: ModuleContext, klass: GirClass): boolean => {
     for (const ancestor of ancestorChain(context.library, klass, context.namespace.name)) {
+        if (FACTORY_INITIALIZED_CLASSES.has(`${ancestor.namespaceName}.${ancestor.klass.name}`)) {
+            return true;
+        }
+
         const interfaces = resolveInterfaces(
             context.library,
             ancestor.namespaceName,
@@ -127,10 +147,10 @@ const requiresFactoryInitialization = (context: ModuleContext, klass: GirClass):
 };
 
 const initializationMessage = (qualified: string, hint: string | undefined): string => {
-    const reason = `Cannot construct ${qualified} with new: it requires Gio factory initialization`;
+    const reason = `Cannot construct ${qualified} with new: it must be initialized by a factory`;
 
     return hint === undefined
-        ? `${reason} through a factory function.`
+        ? `${reason}.`
         : `${reason}; use ${qualified}.${hint} instead.`;
 };
 
@@ -161,6 +181,13 @@ const renderClassConstructor = (context: ModuleContext, spec: ClassConstructorSp
         return renderInitializationGuard(context, spec);
     }
 
+    if (SINGLETON_ACTIONS.has(`${context.namespace.name}.${klass.name}`)) {
+        context.addRuntimeInternalImport("registerConstructFactory");
+        context.collectRegistration(`registerConstructFactory(_${className}, _${className}.get);`);
+
+        return undefined;
+    }
+
     if (!hasParent) {
         return renderRootConstructor(context);
     }
@@ -171,7 +198,7 @@ const renderClassConstructor = (context: ModuleContext, spec: ClassConstructorSp
         return undefined;
     }
 
-    return renderTranslatingConstructor(context, props, className);
+    return renderTranslatingConstructor(context, props, spec);
 };
 
 const renderRootConstructor = (context: ModuleContext): string => {
@@ -194,14 +221,25 @@ const renderConstructBindings = (context: ModuleContext, props: GirProperty[]): 
     return renderBraced(entries.join("\n"));
 };
 
-const renderTranslatingConstructor = (context: ModuleContext, props: GirProperty[], className: string): string => {
-    context.addRuntimeImport("t");
-    context.addRuntimeImport("registerConstructProperties");
-    const bindings = renderConstructBindings(context, props);
-    const target = `_${className}`;
-    context.collectRegistration(`registerConstructProperties(${target}, ${bindings});`);
+const renderTranslatingConstructor = (
+    context: ModuleContext,
+    props: GirProperty[],
+    spec: ClassConstructorSpec,
+): string => {
+    const { klass, className } = spec;
+    const required = requiredConstructPropNames(context.library, klass, context.namespace.name);
+    const defaultProps = required.size === 0 ? " = {}" : "";
+    const admitted = props.filter((property) => isEmittableProperty(context.library, property));
 
-    return renderBlock(`constructor(props: ${className}ConstructorProps = {})`, "super(props);");
+    if (admitted.length > 0) {
+        context.addRuntimeImport("t");
+        context.addRuntimeImport("registerConstructProperties");
+        const bindings = renderConstructBindings(context, admitted);
+        const target = `_${className}`;
+        context.collectRegistration(`registerConstructProperties(${target}, ${bindings});`);
+    }
+
+    return renderBlock(`constructor(props: ${className}ConstructorProps${defaultProps})`, "super(props);");
 };
 
 export {

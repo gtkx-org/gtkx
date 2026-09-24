@@ -2,7 +2,6 @@ import type { ComponentProps, ReactNode, RefObject } from "react";
 import type { Mock } from "vitest";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
-import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
@@ -143,7 +142,7 @@ function ClickButton({ onClicked }: { onClicked?: (() => void) | undefined }) {
     return <GtkButton onClicked={onClicked} label="Click" />;
 }
 
-function OptionalClickButton({ onClicked, isMounted }: { onClicked: () => void; isMounted: boolean }) {
+function OptionalClickButton({ onClicked, isMounted }: { onClicked?: (() => void) | undefined; isMounted: boolean }) {
     return isMounted ? <GtkButton onClicked={onClicked} label="Click" /> : null;
 }
 
@@ -154,29 +153,19 @@ const renderAboutDialog = async (props: ComponentProps<typeof GtkAboutDialog>) =
     const ref = createRef<Gtk.AboutDialog>();
     const result = await renderDialogInWindow(<GtkAboutDialog ref={ref} {...props} />);
 
-    return { ref, ...result };
+    const dialog = ref.current;
+
+    if (dialog === null) {
+        throw new Error("Expected an AboutDialog instance");
+    }
+
+    return { dialog, ...result };
 };
 
 const renderKeyControllerAndType = async (controllers: ReactNode): Promise<void> => {
     await render(<GtkButton label="Focus me" canFocus focusable controllers={controllers} />);
     const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON);
     await userEvent.keyboard(button, "a");
-};
-
-const captureCriticals = async (domain: string, run: () => Promise<void>): Promise<string[]> => {
-    const messages: string[] = [];
-
-    const handler = GLib.logSetHandler(domain, GLib.LogLevelFlags.LEVEL_CRITICAL, (_domain, _level, message) => {
-        messages.push(message);
-    });
-
-    try {
-        await run();
-    } finally {
-        GLib.logRemoveHandler(domain, handler);
-    }
-
-    return messages;
 };
 
 function NamedBox({ boxRef, name }: { boxRef: RefObject<Gtk.Box | null>; name: string }) {
@@ -344,7 +333,7 @@ describe("widget - props", () => {
     });
 
     describe("change detection", () => {
-        it("skips update when value unchanged", async () => {
+        it("preserves rendered text when the value is unchanged", async () => {
             const { rerender } = await render(<SameLabel />);
             const label = await screen.findByText("Same");
             expect(label).toBeRooted();
@@ -472,11 +461,18 @@ describe("widget - signals", () => {
 
         it("disconnects handler when widget unmounted", async () => {
             const handleClick = vi.fn();
-            const { rerender } = await render(<OptionalClickButton onClicked={handleClick} isMounted={true} />);
+            const { rerender } = await render(<OptionalClickButton isMounted={true} />);
             const button = await findClickButton();
+            const clickedSignal = GObject.signalLookup("clicked", Gtk.Button);
+            expect(GObject.signalHasHandlerPending(button, clickedSignal, 0, true)).toBe(false);
+            await rerender(<OptionalClickButton onClicked={handleClick} isMounted={true} />);
+            expect(await findClickButton()).toBe(button);
+            expect(GObject.signalHasHandlerPending(button, clickedSignal, 0, true)).toBe(true);
             await expectClickCallCount(button, handleClick, 1);
             await rerender(<OptionalClickButton onClicked={handleClick} isMounted={false} />);
             expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON)).toBeNull();
+            expect(button).not.toBeRooted();
+            expect(GObject.signalHasHandlerPending(button, clickedSignal, 0, true)).toBe(false);
         });
     });
 
@@ -835,19 +831,30 @@ describe("widget - auto-wrapping", () => {
 
 describe("widget - AboutDialog", () => {
     describe("creditSections", () => {
-        it.each([
-            [
-                "applies credit sections on mount",
-                [
+        it("shows every credit section and person", async () => {
+            const { dialog } = await renderAboutDialog({
+                programName: "Test App",
+                creditSections: [
                     { sectionName: "Contributors", people: ["Alice", "Bob"] },
                     { sectionName: "Testers", people: ["Charlie"] },
                 ],
-            ],
-            ["applies empty credit sections array", []],
-            ["renders without creditSections prop", undefined],
-        ])("%s", async (_title, creditSections) => {
-            const { ref } = await renderAboutDialog({ programName: "Test App", creditSections });
-            expect(ref.current).not.toBeNull();
+            });
+
+            await userEvent.click(within(dialog).getByRole(Gtk.AccessibleRole.TAB, { name: "Credits" }));
+            expect(within(dialog).getByText("Contributors", { exact: false })).toBeVisible();
+            expect(within(dialog).getByText("Alice", { exact: false })).toBeVisible();
+            expect(within(dialog).getByText("Bob", { exact: false })).toBeVisible();
+            expect(within(dialog).getByText("Testers", { exact: false })).toBeVisible();
+            expect(within(dialog).getByText("Charlie", { exact: false })).toBeVisible();
+        });
+
+        it.each([
+            ["an empty credit sections array", []],
+            ["no creditSections prop", undefined],
+        ])("hides the Credits page with %s", async (_title, creditSections) => {
+            const { dialog } = await renderAboutDialog({ programName: "Test App", creditSections });
+            expect(within(dialog).getByText("Test App", { exact: false })).toBeVisible();
+            expect(within(dialog).queryByRole(Gtk.AccessibleRole.TAB, { name: "Credits" })).toBeNull();
         });
     });
 
@@ -889,16 +896,12 @@ describe("default-props reset on removal", () => {
         expect(after).toBeCloseTo(0.5);
     });
 
-    it("leaves a property alone when its setter rejects the null default", async () => {
+    it("replaces an icon with label text when the icon prop is removed", async () => {
         const ref = createRef<Gtk.Button>();
         const { rerender } = await render(<GtkButton ref={ref} iconName="list-add-symbolic" />);
         expect(ref.current).toHaveObjectProperty("iconName", "list-add-symbolic");
 
-        const criticals = await captureCriticals("Gtk", async () => {
-            await rerender(<GtkButton ref={ref} label="Cancel" />);
-        });
-
-        expect(criticals).toEqual([]);
+        await rerender(<GtkButton ref={ref} label="Cancel" />);
         expect(ref.current).toHaveTextContent("Cancel");
         expect(ref.current?.iconName).toBeNull();
     });

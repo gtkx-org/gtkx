@@ -101,15 +101,7 @@ impl FieldStore {
         };
         let previous = std::mem::replace(&mut entry.1, transfer);
         drop(allocations);
-        previous.release_now();
-    }
-}
-
-impl Drop for FieldStore {
-    fn drop(&mut self) {
-        for (_, transfer) in self.allocations.get_mut().drain(..) {
-            transfer.release_now();
-        }
+        drop(previous);
     }
 }
 
@@ -313,7 +305,7 @@ impl Handle {
         }
     }
 
-    pub fn retain_for_async(&self) -> anyhow::Result<Self> {
+    pub fn retain_owned(&self) -> anyhow::Result<Self> {
         anyhow::ensure!(!self.is_invalidated(), "{INVALIDATED_HANDLE}");
         let retained = match &self.inner.kind {
             HandleKind::Object { lent: false, .. } => Self::decoded_gobject(
@@ -324,20 +316,20 @@ impl Handle {
             | HandleKind::Borrowed(_)
             | HandleKind::Function { lent: true, .. }
             | HandleKind::Function { once: true, .. } => {
-                anyhow::bail!("A borrowed native handle cannot escape into an asynchronous call");
+                anyhow::bail!("A borrowed native handle cannot acquire an independent lifetime");
             }
             HandleKind::Fundamental(fundamental) if !fundamental.is_owned() => {
                 anyhow::bail!(
-                    "A borrowed fundamental handle cannot escape into an asynchronous call"
+                    "A borrowed fundamental handle cannot acquire an independent lifetime"
                 );
             }
             HandleKind::Field { owner, offset } => {
-                Self::field(&owner.retain_for_async()?, *offset, self.allocated_bytes())
+                Self::field(&owner.retain_owned()?, *offset, self.allocated_bytes())
             }
-            HandleKind::Pointer { owner, ptr } => Self::pointer(*ptr, &owner.retain_for_async()?),
+            HandleKind::Pointer { owner, ptr } => Self::pointer(*ptr, &owner.retain_owned()?),
             HandleKind::Function { owner, ptr, .. } => Self::function(
                 *ptr,
-                owner.as_ref().map(Handle::retain_for_async).transpose()?,
+                owner.as_ref().map(Handle::retain_owned).transpose()?,
                 false,
                 false,
             ),

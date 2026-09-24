@@ -2,12 +2,12 @@ import { sourceStringLiteral, toCamelIdentifier } from "@gtkx/utils";
 import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
+import { isEmittableProperty } from "../../analysis/property-admission.js";
 import { renderTsType } from "../../analysis/ts-type.js";
-import { isUnboundedArray, primitiveCategoryFor } from "../../analysis/type-shape.js";
+import { isUnboundedArray, primitiveCategoryFor, underlyingType } from "../../analysis/type-shape.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderBlock } from "../../writer/emit.js";
 import { getDoc } from "./doc-spec.js";
-import { underlyingType } from "./param-marshal.js";
 
 type InheritedAccessorTypes = {
     readType: string | undefined;
@@ -64,7 +64,7 @@ const canAccessPropertyWithoutDescriptor = (context: ModuleContext, ref: TypeId 
         return false;
     }
 
-    const type = underlyingType(context, ref);
+    const type = underlyingType(context.library, ref);
 
     if (type === undefined) {
         return false;
@@ -114,7 +114,7 @@ const resolvePropertyMetadata = (
     const jsName = toCamelIdentifier(property.name);
     const isWritable = isConstructableProperty(property) && !property.constructOnly;
 
-    if (!property.introspectable || (!isWritable && !property.readable)) {
+    if (!isEmittableProperty(context.library, property) || (!isWritable && !property.readable)) {
         return undefined;
     }
 
@@ -219,7 +219,7 @@ const renderPropertyAccessorSignature = (args: PropertyAccessorArgs): string | u
 
 const renderPropertyDescriptor = (context: ModuleContext, property: GirProperty): string => {
     const descriptor = renderDescriptor(context, property.type, property.transferOwnership, { isReceived: true });
-    const type = property.type === undefined ? undefined : underlyingType(context, property.type);
+    const type = property.type === undefined ? undefined : underlyingType(context.library, property.type);
 
     if (type?.kind !== "carray" && type?.kind !== "list") {
         return descriptor;

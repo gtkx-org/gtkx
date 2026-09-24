@@ -103,7 +103,7 @@ For example, the search empty state in `src/store/selectors.ts` preserves what t
 description: t("No tasks match “{{query}}”", { query }),
 ```
 
-And `src/notifications.ts` uses the same catalog even when the shell displays the result outside the window:
+In `src/notifications.ts`, translate the body and button inside `buildReminder(task, due)` from the [reminders chapter](/tutorial/reminders#build-the-notification):
 
 ```ts
 notification.setBody(t("Due {{date}}", { date: formatDateTime(due) }));

@@ -70,6 +70,7 @@ worker.on("error", (error) => {
 const printedName = (prefix: string, name: string): string => prefix + name + "\n";
 
 describe("gtkx build (identifier names)", () => {
+    const cleanup = new DisposableStack();
     let probe: AppProbe;
 
     beforeAll(async () => {
@@ -83,10 +84,13 @@ describe("gtkx build (identifier names)", () => {
             outDir: OUT_DIR,
             prefix: "gtkx-bundle-keep-names-",
         });
+        cleanup.defer(() => {
+            removeAppProject(probe.project);
+        });
     }, BUILD_TIMEOUT);
 
     afterAll(() => {
-        removeAppProject(probe.project);
+        cleanup.dispose();
     });
 
     it("keeps every declared name the emitted bundle reads back", () => {

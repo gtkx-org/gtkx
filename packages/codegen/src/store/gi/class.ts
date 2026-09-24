@@ -149,6 +149,11 @@ const classModifier = (context: ModuleContext, klass: GirClass): string =>
 const declareClass = (context: ModuleContext, options: ClassDeclarationOptions): void => {
     const { klass, className, heritage, body, implemented } = options;
     const localName = localClassName(className);
+    context.module.appendDeclaration({
+        name: localName,
+        code: `interface ${localName} extends ${context.qualify("GObject", "TypeInstance")} {}`,
+        isLocal: true,
+    });
     appendInstallMixins(context, localName, implemented);
     appendClassRegistrations(context, klass, localName);
     const signalRegistration = renderSignalRegistration(context, klass, localName);

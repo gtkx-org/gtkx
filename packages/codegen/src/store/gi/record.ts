@@ -26,6 +26,9 @@ type FoldedRecordOptions = {
 const isGErrorRecord = (context: ModuleContext, record: GirRecord): boolean =>
     context.namespace.name === "GLib" && record.glibGetType === "g_error_get_type";
 
+const isTypeInstanceRecord = (context: ModuleContext, record: GirRecord): boolean =>
+    context.namespace.name === "GObject" && record.name === "TypeInstance";
+
 const recordHeritage = (context: ModuleContext, isErrorSubclass: boolean): string => {
     if (!isErrorSubclass) {
         return "";
@@ -115,6 +118,11 @@ const renderRecordMembers = (
     });
 
     members.unshift(renderRecordConstructor(context, { record, className, callables, isErrorSubclass }));
+
+    if (isTypeInstanceRecord(context, record)) {
+        members.unshift("declare private __typeInstance: void;");
+    }
+
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);
 
     for (const slot of slots) {

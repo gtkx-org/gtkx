@@ -2,9 +2,9 @@ import { sanitizeTypeIdentifier } from "@gtkx/utils";
 import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirAlias, GirNamespace } from "../../gir/namespace.js";
+import { isEmittableAlias } from "../../analysis/alias-admission.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import { getParentRef } from "../../gir/ancestry.js";
-import { isEmittableEntity } from "../../gir/emittable.js";
 import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../../gir/primitives.js";
 import { ModuleContext } from "../../writer/context.js";
 import { renderBootstrapModule } from "./bootstrap.js";
@@ -90,7 +90,7 @@ const generateNamespaceMembers = (context: ModuleContext, namespace: GirNamespac
 };
 
 const generateAlias = (context: ModuleContext, alias: GirAlias): void => {
-    if (!isEmittableEntity(alias)) {
+    if (!isEmittableAlias(context.library, alias)) {
         return;
     }
 

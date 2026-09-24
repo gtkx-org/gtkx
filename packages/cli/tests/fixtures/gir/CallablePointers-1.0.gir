@@ -1,0 +1,158 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+    xmlns="http://www.gtk.org/introspection/core/1.0"
+    xmlns:c="http://www.gtk.org/introspection/c/1.0"
+    xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <namespace name="CallablePointers" version="1.0" shared-library="libcallablepointers.so.0"
+      c:identifier-prefixes="CallablePointers" c:symbol-prefixes="callable_pointers">
+    <alias name="DataPointer" c:type="CallablePointersDataPointer">
+      <type name="gpointer" c:type="gpointer"/>
+    </alias>
+    <alias name="PointerAlias" c:type="CallablePointersPointerAlias">
+      <type name="DataPointer" c:type="CallablePointersDataPointer"/>
+    </alias>
+    <class name="Probe" parent="GObject.Object" c:type="CallablePointersProbe"
+        glib:type-name="CallablePointersProbe" glib:get-type="callable_pointers_probe_get_type">
+      <property name="raw-list" writable="1" transfer-ownership="none">
+        <type name="GLib.List" c:type="GList*"><type name="PointerAlias" c:type="CallablePointersPointerAlias"/></type>
+      </property>
+      <property name="raw-array" writable="1" transfer-ownership="none">
+        <array zero-terminated="1" c:type="gpointer*"><type name="gpointer" c:type="gpointer"/></array>
+      </property>
+      <property name="raw-hash" writable="1" transfer-ownership="none">
+        <type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="PointerAlias" c:type="CallablePointersPointerAlias"/></type>
+      </property>
+      <property name="revision" writable="1" transfer-ownership="none"><type name="guint64" c:type="guint64"/></property>
+      <property name="payload" writable="1" transfer-ownership="none"><type name="GLib.ByteArray" c:type="GByteArray*"/></property>
+      <constructor name="new_with_data" c:identifier="callable_pointers_probe_new_with_data">
+        <return-value transfer-ownership="full"><type name="Probe" c:type="CallablePointersProbe*"/></return-value>
+        <parameters>
+          <parameter name="data" nullable="1" transfer-ownership="none"><type name="PointerAlias" c:type="CallablePointersPointerAlias"/></parameter>
+        </parameters>
+      </constructor>
+      <method name="take_direct" c:identifier="callable_pointers_probe_take_direct">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter>
+          <parameter name="data" nullable="1" transfer-ownership="none"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="take_alias" c:identifier="callable_pointers_probe_take_alias">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter>
+          <parameter name="data" nullable="1" transfer-ownership="none"><type name="PointerAlias" c:type="CallablePointersPointerAlias"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_direct" c:identifier="callable_pointers_probe_read_direct">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter>
+          <parameter name="data" direction="out" caller-allocates="0" nullable="1" transfer-ownership="none"><type name="gpointer" c:type="gpointer*"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_alias" c:identifier="callable_pointers_probe_read_alias">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter>
+          <parameter name="data" direction="out" caller-allocates="0" nullable="1" transfer-ownership="none"><type name="PointerAlias" c:type="CallablePointersPointerAlias*"/></parameter>
+        </parameters>
+      </method>
+      <method name="return_direct" c:identifier="callable_pointers_probe_return_direct">
+        <return-value nullable="1" transfer-ownership="none"><type name="gpointer" c:type="gpointer"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter></parameters>
+      </method>
+      <method name="return_alias" c:identifier="callable_pointers_probe_return_alias">
+        <return-value nullable="1" transfer-ownership="none"><type name="PointerAlias" c:type="CallablePointersPointerAlias"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter></parameters>
+      </method>
+      <method name="discard_pointer" c:identifier="callable_pointers_probe_discard_pointer">
+        <return-value nullable="1" skip="1" transfer-ownership="none"><type name="gpointer" c:type="gpointer"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter></parameters>
+      </method>
+      <method name="take_array" c:identifier="callable_pointers_probe_take_array">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter>
+          <parameter name="items" transfer-ownership="none">
+            <array length="1" zero-terminated="0" c:type="gpointer*"><type name="gpointer" c:type="gpointer"/></array>
+          </parameter>
+          <parameter name="length" transfer-ownership="none"><type name="gsize" c:type="gsize"/></parameter>
+        </parameters>
+      </method>
+      <method name="take_list" c:identifier="callable_pointers_probe_take_list">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter>
+          <parameter name="items" transfer-ownership="none">
+            <type name="GLib.List" c:type="GList*"><type name="PointerAlias" c:type="CallablePointersPointerAlias"/></type>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="take_hash_values" c:identifier="callable_pointers_probe_take_hash_values">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter>
+          <parameter name="items" transfer-ownership="none">
+            <type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="PointerAlias" c:type="CallablePointersPointerAlias"/></type>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="read_hash_keys" c:identifier="callable_pointers_probe_read_hash_keys">
+        <return-value transfer-ownership="none">
+          <type name="GLib.HashTable" c:type="GHashTable*"><type name="gpointer" c:type="gpointer"/><type name="utf8" c:type="gchar*"/></type>
+        </return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter></parameters>
+      </method>
+      <method name="take_nested" c:identifier="callable_pointers_probe_take_nested">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter>
+          <parameter name="items" transfer-ownership="none">
+            <type name="GLib.PtrArray" c:type="GPtrArray*"><type name="GLib.List" c:type="GList*"><type name="PointerAlias" c:type="CallablePointersPointerAlias"/></type></type>
+          </parameter>
+        </parameters>
+      </method>
+      <method name="get_count" c:identifier="callable_pointers_probe_get_count">
+        <return-value transfer-ownership="none"><type name="guint64" c:type="guint64"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter></parameters>
+      </method>
+      <method name="echo_type" c:identifier="callable_pointers_probe_echo_type">
+        <return-value transfer-ownership="none"><type name="GType" c:type="GType"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter>
+          <parameter name="type" transfer-ownership="none"><type name="GType" c:type="GType"/></parameter>
+        </parameters>
+      </method>
+      <method name="echo_bytes" c:identifier="callable_pointers_probe_echo_bytes">
+        <return-value transfer-ownership="none"><type name="GLib.Bytes" c:type="GBytes*"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter>
+          <parameter name="bytes" transfer-ownership="none"><type name="GLib.Bytes" c:type="GBytes*"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_bytes" c:identifier="callable_pointers_probe_read_bytes">
+        <return-value transfer-ownership="none"><array length="0" zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter>
+          <parameter name="length" direction="out" caller-allocates="0" transfer-ownership="none"><type name="gsize" c:type="gsize*"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_byte_array" c:identifier="callable_pointers_probe_read_byte_array">
+        <return-value transfer-ownership="none"><type name="GLib.ByteArray" c:type="GByteArray*"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallablePointersProbe*"/></instance-parameter></parameters>
+      </method>
+    </class>
+    <function name="accept_pointer" c:identifier="callable_pointers_accept_pointer">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="data" nullable="1" transfer-ownership="none"><type name="gpointer" c:type="gpointer"/></parameter></parameters>
+    </function>
+    <function name="get_pointer" c:identifier="callable_pointers_get_pointer">
+      <return-value nullable="1" transfer-ownership="none"><type name="PointerAlias" c:type="CallablePointersPointerAlias"/></return-value>
+    </function>
+    <function name="safe_count" c:identifier="callable_pointers_safe_count">
+      <return-value transfer-ownership="none"><type name="guint64" c:type="guint64"/></return-value>
+    </function>
+  </namespace>
+</repository>

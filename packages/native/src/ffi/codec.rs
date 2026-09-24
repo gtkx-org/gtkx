@@ -25,7 +25,7 @@ mod r#ref;
 mod r#struct;
 mod void;
 
-pub use array::{ArrayBounds, ArrayCodec, ArrayKind};
+pub use array::{ArrayBounds, ArrayCodec, ArrayKind, ElementOwnership};
 pub use bigint::BigIntCodec;
 pub use boxed::BoxedCodec;
 pub use buffer::BufferCodec;
@@ -181,8 +181,12 @@ pub trait Encoder {
         let ptr = value::handle_ptr_checked(value, self.object_ptr_context(), |handle| {
             self.check_instance(handle)
         })?;
+        if ptr.is_null() {
+            return Ok(ffi::Stash::Ptr(ptr));
+        }
+        let release = self.transfer_release()?;
         let transferred = unsafe { self.ref_for_transfer(ptr)? };
-        match self.transfer_release() {
+        match release {
             Some(release) if !transferred.is_null() => {
                 Ok(prelude::full_transfer_stash(transferred, release))
             }
@@ -204,8 +208,12 @@ pub trait Encoder {
         Ok(())
     }
 
-    fn transfer_release(&self) -> Option<ffi::ReleaseKind> {
-        None
+    fn owned_release(&self) -> anyhow::Result<Option<ffi::ReleaseKind>> {
+        Ok(None)
+    }
+
+    fn transfer_release(&self) -> anyhow::Result<Option<ffi::ReleaseKind>> {
+        self.owned_release()
     }
 
     fn libffi_type(&self) -> libffi::Type {

@@ -1,5 +1,5 @@
 import { readdirSync, rmSync } from "node:fs";
-import * as nodeModule from "node:module";
+import { getCompileCacheDir } from "node:module";
 import { basename, join } from "node:path";
 import { cacheRoot } from "./cache-root.js";
 import { COMPILE_CACHE_SEGMENT } from "./compile-cache.js";
@@ -7,11 +7,7 @@ import { COMPILE_CACHE_SEGMENT } from "./compile-cache.js";
 const RUNTIME_PREFIX = `v${process.versions.node}-${process.arch}-`;
 
 const currentNamespace = (): string | undefined => {
-    if (typeof nodeModule.getCompileCacheDir !== "function") {
-        return undefined;
-    }
-
-    const dir = nodeModule.getCompileCacheDir();
+    const dir = getCompileCacheDir();
 
     return dir === undefined ? undefined : basename(dir);
 };

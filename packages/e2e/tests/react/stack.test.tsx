@@ -1,7 +1,7 @@
 import type { RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel, GtkStack, GtkStackPage } from "@gtkx/jsx/gtk";
-import { render, screen, waitFor } from "@gtkx/testing";
+import { GtkBox, GtkButton, GtkLabel, GtkStack, GtkStackPage } from "@gtkx/jsx/gtk";
+import { render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { renderChildren } from "@gtkx/testing/internal";
 import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
@@ -16,6 +16,20 @@ const buildTitledPages = (stackRef: RefObject<Gtk.Stack | null>) => (pages: { ke
         ))}
     </GtkStack>
 );
+
+const pageNames = (stack: Gtk.Stack | null): (string | null)[] => {
+    if (stack === null) {
+        throw new Error("expected the stack ref to be assigned");
+    }
+
+    const pages = stack.getPages();
+
+    return Array.from({ length: pages.getNItems() }, (_, index) => {
+        const page = pages.getItem(index);
+
+        return page instanceof Gtk.StackPage ? page.getName() : null;
+    });
+};
 
 describe("render - Stack", () => {
     it("creates Stack widget", async () => {
@@ -74,19 +88,22 @@ describe("render - Stack", () => {
         it("inserts page before existing page", async () => {
             const stackRef = createRef<Gtk.Stack>();
             const { rerender } = await renderChildren(["first", "last"], buildNamedPages(stackRef));
+            const stack = stackRef.current;
+            expect(pageNames(stack)).toEqual(["first", "last"]);
             await rerender(["first", "middle", "last"]);
-            expect(stackRef.current?.getChildByName("first")).not.toBeNull();
-            expect(stackRef.current?.getChildByName("middle")).not.toBeNull();
-            expect(stackRef.current?.getChildByName("last")).not.toBeNull();
+            expect(stackRef.current).toBe(stack);
+            expect(pageNames(stack)).toEqual(["first", "middle", "last"]);
         });
 
         it("removes page", async () => {
             const stackRef = createRef<Gtk.Stack>();
             const { rerender } = await renderChildren(["a", "b", "c"], buildNamedPages(stackRef));
+            const stack = stackRef.current;
+            expect(pageNames(stack)).toEqual(["a", "b", "c"]);
             await rerender(["a", "c"]);
-            expect(stackRef.current?.getChildByName("a")).not.toBeNull();
-            expect(stackRef.current?.getChildByName("b")).toBeNull();
-            expect(stackRef.current?.getChildByName("c")).not.toBeNull();
+            expect(stackRef.current).toBe(stack);
+            expect(pageNames(stack)).toEqual(["a", "c"]);
+            expect(stack?.getChildByName("b")).toBeNull();
         });
 
         it("updates page properties when props change", async () => {
@@ -156,22 +173,40 @@ describe("render - Stack", () => {
             const stackRef = createRef<Gtk.Stack>();
 
             function NavigableStack() {
-                const [page] = useState("page1");
+                const [page, setPage] = useState("page1");
 
                 return (
-                    <GtkStack ref={stackRef} visibleChildName={page}>
-                        <GtkStackPage name="page1">
-                            <GtkLabel>First Page</GtkLabel>
-                        </GtkStackPage>
-                        <GtkStackPage name="page2">
-                            <GtkLabel>Second Page</GtkLabel>
-                        </GtkStackPage>
-                    </GtkStack>
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                        <GtkButton
+                            label="Show second page"
+                            onClicked={() => {
+                                setPage("page2");
+                            }}
+                        />
+                        <GtkStack ref={stackRef} visibleChildName={page}>
+                            <GtkStackPage name="page1">
+                                <GtkLabel>First Page</GtkLabel>
+                            </GtkStackPage>
+                            <GtkStackPage name="page2">
+                                <GtkLabel>Second Page</GtkLabel>
+                            </GtkStackPage>
+                        </GtkStack>
+                    </GtkBox>
                 );
             }
 
             await render(<NavigableStack />);
-            expect(stackRef.current).toHaveObjectProperty("visibleChildName", "page1");
+            const stack = stackRef.current;
+            expect(stack).toHaveObjectProperty("visibleChildName", "page1");
+            expect(screen.getByText("First Page")).toBeVisible();
+            expect(screen.queryByText("Second Page")).toBeNull();
+            await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Show second page" }));
+            await waitFor(() => {
+                expect(stackRef.current).toBe(stack);
+                expect(stack).toHaveObjectProperty("visibleChildName", "page2");
+                expect(screen.getByText("Second Page")).toBeVisible();
+                expect(screen.queryByText("First Page")).toBeNull();
+            });
         });
 
         it("finds content in currently visible page", async () => {
@@ -192,6 +227,11 @@ describe("render - Stack", () => {
             );
 
             expect(stackRef.current).toHaveObjectProperty("visibleChildName", "settings");
+            const content = screen.getByText("Settings Panel");
+            expect(content).toBeVisible();
+            expect(stackRef.current?.getVisibleChild()).toBe(content);
+            expect(screen.queryByText("Welcome Home")).toBeNull();
+            expect(screen.queryByText("About This App")).toBeNull();
         });
     });
 });
@@ -215,9 +255,12 @@ describe("render - StackPage", () => {
     it("removes page from Stack", async () => {
         const stackRef = createRef<Gtk.Stack>();
         const { rerender } = await renderChildren(["a", "b"], buildNamedPages(stackRef));
-        expect(stackRef.current?.getChildByName("b")).not.toBeNull();
+        const stack = stackRef.current;
+        expect(pageNames(stack)).toEqual(["a", "b"]);
         await rerender(["a"]);
-        expect(stackRef.current?.getChildByName("b")).toBeNull();
+        expect(stackRef.current).toBe(stack);
+        expect(pageNames(stack)).toEqual(["a"]);
+        expect(stack?.getChildByName("b")).toBeNull();
     });
 
     it("keeps updated page props after a reorder-triggered rebuild", async () => {

@@ -14,7 +14,7 @@ import {
     Value,
 } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { registerClass, TYPE_POINTER } from "@gtkx/runtime";
+import { fromValue, getHandle, registerClass, TYPE_POINTER } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 import { stringValue, watchNotify } from "./helpers/gobject.js";
 import { createTypeNameFactory } from "./helpers/unique-name.js";
@@ -187,7 +187,7 @@ describe("registerClass — properties a pointer or string-array type backs", ()
         const read = new Value();
         read.init(TYPE_POINTER);
         anchor.getProperty("target", read);
-        expect(read.getPointer()).toBe(0n);
+        expect(fromValue(getHandle(read))).toBeNull();
         anchor.setProperty("target", read);
         expect(anchor.target).toBeNull();
     });

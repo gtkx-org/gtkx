@@ -422,25 +422,17 @@ test("run-first and run-cleanup signals reach their handlers", () => {
 });
 
 test("an interface signal reaches handlers on an implementing instance", () => {
-    const sub = Regress.TestSubObj.new();
-    const pointers: number[] = [];
-    const inherited: boolean[] = [];
-    sub.connect("interface-signal", (ptr) => {
-        pointers.push(ptr);
+    const group = Gio.SimpleActionGroup.new();
+    const names: string[] = [];
+    group.connect("action-added", (name) => {
+        names.push(name);
     });
 
-    sub.connect("test", () => {
-        inherited.push(true);
-    });
+    group.addAction(Gio.SimpleAction.new("open", null));
+    expect(names).toEqual(["open"]);
 
-    sub.emitSignal();
-    expect(pointers).toEqual([0]);
-
-    sub.emit("interface-signal", 5);
-    expect(pointers).toEqual([0, 5]);
-
-    sub.emit("test");
-    expect(inherited).toHaveLength(1);
+    group.emit("action-added", "save");
+    expect(names).toEqual(["open", "save"]);
 });
 
 test("signal ids and names resolve through the GObject signal API", () => {

@@ -2,11 +2,15 @@ import type { RefObject } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
+    GtkActivateAction,
     GtkBox,
+    GtkButton,
     GtkCallbackAction,
     GtkEntry,
     GtkEventControllerKey,
     GtkKeyvalTrigger,
+    GtkMnemonicAction,
+    GtkNothingAction,
     GtkShortcut,
     GtkShortcutController,
     GtkShortcutTrigger,
@@ -51,6 +55,119 @@ const ShortcutTree = ({
 );
 
 describe("declarative shortcuts", () => {
+    it.each([
+        { name: "activate", Action: GtkActivateAction, NativeAction: Gtk.ActivateAction },
+        { name: "mnemonic", Action: GtkMnemonicAction, NativeAction: Gtk.MnemonicAction },
+        { name: "nothing", Action: GtkNothingAction, NativeAction: Gtk.NothingAction },
+    ])("shares the native $name singleton across construction and JSX lifetimes", async ({ Action, NativeAction }) => {
+        const first = createRef<Gtk.ShortcutAction>();
+        const second = createRef<Gtk.ShortcutAction>();
+        const singleton = NativeAction.get();
+        const tree = (isFirstMounted: boolean) => (
+            <GtkBox>
+                {isFirstMounted && (
+                    <GtkButton
+                        label="First"
+                        controllers={(
+                            <GtkShortcutController
+                                shortcuts={(
+                                    <GtkShortcut
+                                        trigger={<GtkShortcutTrigger accelerator="F5" />}
+                                        action={<Action ref={first} />}
+                                    />
+                                )}
+                            />
+                        )}
+                    />
+                )}
+                <GtkButton
+                    label="Second"
+                    controllers={(
+                        <GtkShortcutController
+                            shortcuts={(
+                                <GtkShortcut
+                                    trigger={<GtkShortcutTrigger accelerator="F6" />}
+                                    action={<Action ref={second} />}
+                                />
+                            )}
+                        />
+                    )}
+                />
+            </GtkBox>
+        );
+
+        const constructed = new NativeAction();
+        expect(constructed).toBe(singleton);
+        const { rerender, unmount } = await render(tree(true));
+        expect(first.current).toBe(singleton);
+        expect(second.current).toBe(singleton);
+
+        await rerender(tree(false));
+        expect(first.current).toBeNull();
+        expect(second.current).toBe(singleton);
+
+        await rerender(tree(true));
+        expect(first.current).toBe(singleton);
+        expect(second.current).toBe(singleton);
+
+        await unmount();
+        expect(first.current).toBeNull();
+        expect(second.current).toBeNull();
+        const reconstructed = new NativeAction();
+        expect(reconstructed).toBe(singleton);
+    });
+
+    it.each([
+        { name: "activate", Action: GtkActivateAction, signal: "activate" as const, expectedEvents: 1 },
+        { name: "mnemonic", Action: GtkMnemonicAction, signal: "mnemonic" as const, expectedEvents: 1 },
+        { name: "nothing", Action: GtkNothingAction, signal: "activate" as const, expectedEvents: 0 },
+    ])("preserves native $name activation through keyboard shortcuts", async ({ Action, signal, expectedEvents }) => {
+        const events = { activate: 0, mnemonic: 0 };
+        let controls = 0;
+        const { container } = await render(
+            <GtkButton
+                name="target"
+                label="Target"
+                onActivate={() => {
+                    events.activate += 1;
+                }}
+                onMnemonicActivate={(): undefined => {
+                    events.mnemonic += 1;
+                }}
+                controllers={(
+                    <GtkShortcutController
+                        shortcuts={(
+                            <>
+                                <GtkShortcut
+                                    trigger={<GtkShortcutTrigger accelerator="F5" />}
+                                    action={<Action />}
+                                />
+                                <GtkShortcut
+                                    trigger={<GtkShortcutTrigger accelerator="F6" />}
+                                    action={(
+                                        <GtkCallbackAction
+                                            callback={() => {
+                                                controls += 1;
+
+                                                return true;
+                                            }}
+                                        />
+                                    )}
+                                />
+                            </>
+                        )}
+                    />
+                )}
+            />,
+        );
+        const target = await within(container).findByName("target");
+
+        await userEvent.keyboard(target, "{F5}");
+        await userEvent.keyboard(target, "{F6}");
+        expect(controls).toBe(1);
+        expect(events[signal]).toBe(expectedEvents);
+    });
+
     it("activates, updates callbacks, replaces triggers, and unmounts", async () => {
         const calls: string[] = [];
         const controllerRef = createRef<Gtk.ShortcutController>();

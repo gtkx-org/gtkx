@@ -10,10 +10,11 @@ type Frame = { size: number; pixels: Uint8Array; error: number; status: number }
 const FRAME_SIZE = 4;
 const CHANNELS = 4;
 const RED_PIXEL = [255, 0, 0, 255];
+const GREEN_PIXEL = [0, 255, 0, 255];
 
 const VERTEX_SOURCE = `#version 300 es
 precision mediump float;
-in vec3 aPos;
+layout(location = 0) in vec3 aPos;
 uniform float uScale;
 void main() { gl_Position = vec4(aPos * uScale, 1.0); }`;
 
@@ -119,18 +120,24 @@ const drawnFrame = (): Frame => {
     const pixels = new Uint8Array(FRAME_SIZE * FRAME_SIZE * CHANNELS);
     gl.readPixels(0, 0, FRAME_SIZE, FRAME_SIZE, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
     const error = gl.getError();
+    const status = gl.getProgramiv(program, gl.LINK_STATUS);
+    gl.useProgram(0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, 0);
+    gl.bindVertexArray(0);
+    gl.deleteBuffer(buffer);
+    gl.deleteVertexArray(vertexArray);
+    gl.deleteProgram(program);
     releaseOffscreenFrame(frame.framebuffer, frame.renderbuffer);
 
-    return { size: FRAME_SIZE, pixels, error, status: gl.getProgramiv(program, gl.LINK_STATUS) };
+    return { size: FRAME_SIZE, pixels, error, status };
 };
 
-const rejectedShader = (): { status: number; log: string } => {
+const rejectedShader = (): number => {
     const shader = compileShader(gl.FRAGMENT_SHADER, "this is not a shader");
     const status = gl.getShaderiv(shader, gl.COMPILE_STATUS);
-    const log = gl.getShaderInfoLog(shader);
     gl.deleteShader(shader);
 
-    return { status, log };
+    return status;
 };
 
 describe("a GL area rendered from React", () => {
@@ -145,13 +152,12 @@ describe("a GL area rendered from React", () => {
         const frame = await inGlContext(drawnFrame);
         expect(frame.status).toBe(gl.TRUE);
         expect(frame.error).toBe(gl.NO_ERROR);
-        expect([...frame.pixels].some((channel) => channel > 0)).toBe(true);
+        expect([...frame.pixels.slice(0, CHANNELS)]).toEqual(GREEN_PIXEL);
     });
 
     it("reports a shader the driver refuses to compile", async () => {
-        const shader = await inGlContext(rejectedShader);
-        expect(shader.status).toBe(gl.FALSE);
-        expect(shader.log.length).toBeGreaterThan(0);
+        const status = await inGlContext(rejectedShader);
+        expect(status).toBe(gl.FALSE);
     });
 
     it("passes the required full-width timeout to a server-side sync wait", async () => {

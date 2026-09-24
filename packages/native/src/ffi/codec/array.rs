@@ -1,9 +1,10 @@
 use std::ffi::CString;
 
 use anyhow::bail;
-pub use container::{ArrayBounds, ArrayKind};
-use container::{ArrayContainer, ArrayContainerCodec, ViewEncoding};
+pub use container::{ArrayBounds, ArrayKind, ElementOwnership};
+use container::{ArrayContainer, ArrayContainerCodec, ArrayRead, ViewEncoding};
 use item::ItemCodec;
+use null_terminated::terminated_ptrs;
 
 use super::bytes::bytes_to_glib_full;
 use super::prelude::*;
@@ -25,6 +26,7 @@ mod sized;
 pub struct ArrayCodec {
     pub item_codec: Box<Codec>,
     pub ownership: Ownership,
+    pub(crate) element_ownership: ElementOwnership,
     pub element_size: Option<usize>,
     pub(crate) is_bytes: bool,
     pub(crate) caller_allocated: bool,
@@ -40,6 +42,7 @@ impl ArrayCodec {
         bounds: ArrayBounds,
         element_size: Option<usize>,
         is_bytes: bool,
+        element_ownership: ElementOwnership,
     ) -> anyhow::Result<Self> {
         anyhow::ensure!(
             kind != ArrayKind::Cursor || ownership.is_borrowed(),
@@ -50,9 +53,24 @@ impl ArrayCodec {
             "A byte array descriptor needs a u8 item codec, got {item_codec:?}"
         );
 
+        if element_ownership == ElementOwnership::Container {
+            anyhow::ensure!(
+                matches!(kind, ArrayKind::GPtrArray | ArrayKind::GArray),
+                "Container element ownership requires GPtrArray or GArray"
+            );
+            anyhow::ensure!(
+                matches!(
+                    &*item_codec,
+                    Codec::Integer(_) | Codec::BigInt(_) | Codec::Float(_)
+                ) || item_codec.transfer().is_full(),
+                "Container-owned resources require full item ownership"
+            );
+        }
+
         Ok(Self {
             item_codec,
             ownership,
+            element_ownership,
             element_size,
             is_bytes,
             caller_allocated: false,
@@ -93,19 +111,169 @@ impl ArrayCodec {
         Ok(Some(self.element_stride()? * slots))
     }
 
+    pub(crate) fn is_byte_array(&self) -> bool {
+        matches!(self.container, ArrayContainerCodec::ByteArray(_))
+    }
+
     pub(crate) fn is_length_bounded(&self) -> bool {
         self.container.is_length_bounded()
     }
 
-    pub(crate) fn ptr_array_item(&self) -> Option<Box<Codec>> {
-        matches!(self.container, ArrayContainerCodec::PtrArray(_)).then(|| self.item_codec.clone())
+    pub(crate) fn decode_borrowed_with_context<'e>(
+        &self,
+        env: &'e Env,
+        stash: &ffi::Stash,
+        ffi_args: &[ffi::Stash],
+        arg_codecs: &[Codec],
+    ) -> anyhow::Result<Unknown<'e>> {
+        self.container.decode_with_context(
+            self,
+            env,
+            stash,
+            ffi_args,
+            arg_codecs,
+            ArrayRead::Borrowed,
+        )
     }
 
-    fn container_release(&self) -> ffi::ReleaseKind {
-        match &*self.item_codec {
-            Codec::Bytes(item) if item.ownership.is_full() => ffi::ReleaseKind::StrFreeV,
-            _ => ffi::ReleaseKind::GFree,
+    pub(crate) fn ptr_array_item(&self) -> Option<Box<Codec>> {
+        (matches!(self.container, ArrayContainerCodec::PtrArray(_))
+            && self.element_ownership == ElementOwnership::Separate)
+            .then(|| self.item_codec.clone())
+    }
+
+    fn declared_read(&self, ownership: Ownership) -> ArrayRead {
+        match self.element_ownership {
+            ElementOwnership::Separate => ArrayRead::Declared(ownership),
+            ElementOwnership::Container => ArrayRead::Container(ownership),
         }
+    }
+
+    pub(crate) fn replacement_extent(
+        &self,
+        ffi_args: &[ffi::Stash],
+        arg_codecs: &[Codec],
+    ) -> anyhow::Result<Option<usize>> {
+        match &self.container {
+            ArrayContainerCodec::Sized(sized) => sized.extent(ffi_args, arg_codecs).map(Some),
+            _ => Ok(self.container.fixed_extent()),
+        }
+    }
+
+    pub(crate) fn write_value_with_extent(
+        &self,
+        env: Env,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+        init: SlotInit,
+        old_extent: Option<usize>,
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
+        write_container_value(
+            slot,
+            value,
+            init,
+            self.ownership,
+            "array pointer write",
+            |value| self.encode(&env, value),
+            || self.container_release(old_extent),
+        )
+    }
+
+    fn container_release(
+        &self,
+        old_extent: Option<usize>,
+    ) -> anyhow::Result<impl FnOnce(*mut c_void) + '_> {
+        let release = self.container.release_kind();
+        let release = match (&*self.item_codec, release) {
+            (Codec::Bytes(item), ffi::ReleaseKind::GFree)
+                if item.ownership.is_full()
+                    && matches!(self.container, ArrayContainerCodec::NullTerminated(_)) =>
+            {
+                ffi::ReleaseKind::StrFreeV
+            }
+            _ => release,
+        };
+        let elements = match &self.container {
+            ArrayContainerCodec::List(list) => {
+                self.item_codec.owned_release()?.map(|item| (list, item))
+            }
+            _ => None,
+        };
+
+        let terminated_elements =
+            if matches!(self.container, ArrayContainerCodec::NullTerminated(_))
+                && self.inline_element_size().is_none()
+                && self.item_codec.is_handle_backed()
+            {
+                self.item_codec.owned_release()?
+            } else {
+                None
+            };
+
+        let contiguous_elements = if self.inline_element_size().is_none()
+            && matches!(
+                self.container,
+                ArrayContainerCodec::Sized(_) | ArrayContainerCodec::Fixed(_)
+            ) {
+            self.item_codec
+                .owned_release()?
+                .map(|item| {
+                    old_extent.map(|length| (length, item)).ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Replacing an owned sized-array field needs its original length"
+                        )
+                    })
+                })
+                .transpose()?
+        } else {
+            None
+        };
+
+        let separate_elements = if self.element_ownership == ElementOwnership::Separate
+            && self.inline_element_size().is_none()
+            && matches!(
+                self.container,
+                ArrayContainerCodec::PtrArray(_) | ArrayContainerCodec::GArray(_)
+            ) {
+            self.item_codec.owned_release()?
+        } else {
+            None
+        };
+
+        Ok(move |ptr| {
+            let container = ffi::PendingTransfer::new(ptr, release);
+            if let Some((length, item)) = contiguous_elements {
+                let items =
+                    unsafe { std::slice::from_raw_parts(ptr.cast::<*mut c_void>(), length) };
+                for &ptr in items {
+                    drop(ffi::PendingTransfer::new(ptr, item));
+                }
+            }
+            if let Some(item) = terminated_elements {
+                for ptr in terminated_ptrs(ptr) {
+                    drop(ffi::PendingTransfer::new(ptr, item));
+                }
+            }
+            if let Some((list, item)) = elements {
+                list.release_items(ptr, item);
+            }
+            if let Some(item) = separate_elements {
+                match &self.container {
+                    ArrayContainerCodec::PtrArray(_) => {
+                        for ptr in ptr_array::GPtrArrayCodec::items(ptr) {
+                            drop(ffi::PendingTransfer::new(ptr, item));
+                        }
+                    }
+                    ArrayContainerCodec::GArray(_) => {
+                        for ptr in garray::GArrayCodec::items(ptr) {
+                            drop(ffi::PendingTransfer::new(ptr, item));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            drop(container);
+        })
     }
 }
 
@@ -157,7 +325,8 @@ impl Encoder for ArrayCodec {
 
 impl Decoder for ArrayCodec {
     fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
-        self.container.decode(self, env, stash, self.ownership)
+        self.container
+            .decode(self, env, stash, self.declared_read(self.ownership))
     }
 
     unsafe fn read_value<'e>(
@@ -170,8 +339,13 @@ impl Decoder for ArrayCodec {
         if ptr.is_null() {
             return Ok(value::js_null(env)?);
         }
+        let read = if transfer.is_borrowed() {
+            ArrayRead::Borrowed
+        } else {
+            self.declared_read(transfer)
+        };
         self.container
-            .decode(self, env, &ffi::Stash::Ptr(ptr), transfer)
+            .decode(self, env, &ffi::Stash::Ptr(ptr), read)
     }
 
     fn decode_with_context<'e>(
@@ -181,8 +355,14 @@ impl Decoder for ArrayCodec {
         ffi_args: &[ffi::Stash],
         arg_codecs: &[Codec],
     ) -> anyhow::Result<Unknown<'e>> {
-        self.container
-            .decode_with_context(self, env, stash, ffi_args, arg_codecs, self.ownership)
+        self.container.decode_with_context(
+            self,
+            env,
+            stash,
+            ffi_args,
+            arg_codecs,
+            self.declared_read(self.ownership),
+        )
     }
 }
 
@@ -198,7 +378,15 @@ impl PtrWriter for ArrayCodec {
         unsafe { ret.store(container) };
     }
 
-    write_container_value_to_ptr!("array", "array pointer write", Self::container_release);
+    fn write_value_to_ptr(
+        &self,
+        env: &Env,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+        init: SlotInit,
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
+        self.write_value_with_extent(*env, slot, value, init, self.container.fixed_extent())
+    }
 }
 
 pub(super) fn dup_bytes_to_glib(array: &[Unknown<'_>]) -> anyhow::Result<Vec<*mut c_void>> {
@@ -257,12 +445,6 @@ fn pointer_word(value: f64) -> *mut c_void {
     value as isize as *mut c_void
 }
 
-fn release_transfers(transfers: Vec<ffi::PendingTransfer>) {
-    for transfer in transfers {
-        transfer.release_now();
-    }
-}
-
 fn transfer_items(
     handles: &[crate::handle::Handle],
     item_codec: &Codec,
@@ -274,17 +456,11 @@ fn transfer_items(
         handle.retain_lease()?;
         let ptr = handle.as_ptr();
         if ptr.is_null() {
-            release_transfers(acquired);
             bail!("GObject in {context} has a null pointer");
         }
-        let element = match unsafe { item_codec.ref_for_transfer(ptr) } {
-            Ok(element) => element,
-            Err(err) => {
-                release_transfers(acquired);
-                return Err(err);
-            }
-        };
-        if let Some(release) = item_codec.transfer_release() {
+        let release = item_codec.transfer_release()?;
+        let element = unsafe { item_codec.ref_for_transfer(ptr) }?;
+        if let Some(release) = release {
             acquired.push(ffi::PendingTransfer::new(element, release));
         }
         ptrs.push(element);
@@ -347,11 +523,11 @@ impl ArrayCodec {
         stride: usize,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<Vec<u8>> {
-        let handles = Self::extract_handles(array)?;
-        let mut buffer = vec![0u8; handles.len() * stride];
-        for (index, handle) in handles.iter().enumerate() {
-            handle.retain_lease()?;
-            let ptr = handle.as_ptr();
+        let mut buffer = vec![0u8; array.len() * stride];
+        for (index, &element) in array.iter().enumerate() {
+            let ptr = value::handle_ptr_checked(element, "inline array element", |handle| {
+                handle.check_range(0, stride)
+            })?;
             if ptr.is_null() {
                 bail!("An inline array element has a null pointer");
             }
@@ -367,37 +543,44 @@ impl ArrayCodec {
         Ok(buffer)
     }
 
-    pub(super) fn decode_inline<'e>(
+    fn decode_inline<'e>(
         &self,
         env: &'e Env,
         stride: usize,
         data: *const u8,
         len: usize,
+        read: ArrayRead,
     ) -> anyhow::Result<Vec<Unknown<'e>>> {
         value::checked_array_length(len)?;
 
         (0..len)
-            .map(|index| unsafe {
-                self.item_codec.read(
-                    env,
-                    ReadCtx::value(data.add(index * stride).cast_mut().cast(), "array element"),
-                )
+            .map(|index| {
+                let ptr = unsafe { data.add(index * stride).cast_mut().cast() };
+                if read.borrows_items() {
+                    self.decode_borrowed_item(env, ptr)
+                } else {
+                    unsafe {
+                        self.item_codec
+                            .read(env, ReadCtx::value(ptr, "array element"))
+                    }
+                }
             })
             .collect()
     }
 
-    pub(crate) fn decode_bytes_or_items<'e>(
+    fn decode_bytes_or_items<'e>(
         &self,
         env: &'e Env,
         data: *const u8,
         len: usize,
         context: &str,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
         if self.is_bytes {
             return Ok(unsafe { value::js_byte_array(env, data, len) }?);
         }
 
-        let values = self.decode_contiguous(env, self.item_codec(context)?, data, len)?;
+        let values = self.decode_contiguous(env, self.item_codec(context)?, data, len, read)?;
 
         build_js_array(env, values)
     }
@@ -531,12 +714,13 @@ impl ArrayCodec {
         codec: ItemCodec,
         data: *const u8,
         len: usize,
+        read: ArrayRead,
     ) -> anyhow::Result<Vec<Unknown<'e>>> {
         if len == 0 || data.is_null() {
             return Ok(Vec::new());
         }
         if let Some(stride) = self.inline_element_size() {
-            return self.decode_inline(env, stride, data, len);
+            return self.decode_inline(env, stride, data, len, read);
         }
         value::checked_array_length(len)?;
 
@@ -569,7 +753,7 @@ impl ArrayCodec {
             ItemCodec::Pointer | ItemCodec::Bytes => {
                 let ptrs = unsafe { std::slice::from_raw_parts(data.cast::<*mut c_void>(), len) };
                 ptrs.iter()
-                    .map(|&item_ptr| self.item_codec.decode(env, &ffi::Stash::Ptr(item_ptr)))
+                    .map(|&item_ptr| self.decode_array_item(env, item_ptr, read))
                     .collect()
             }
         }
@@ -642,15 +826,49 @@ impl ArrayCodec {
         })
     }
 
+    fn decode_borrowed_item<'e>(
+        &self,
+        env: &'e Env,
+        item_ptr: *mut c_void,
+    ) -> anyhow::Result<Unknown<'e>> {
+        let decoded = unsafe {
+            self.item_codec
+                .read(env, ReadCtx::value(item_ptr, "array element"))
+        }?;
+        if !item_ptr.is_null() && self.item_codec.is_handle_backed() {
+            let handle: &External<crate::handle::Handle> = value::read_napi(decoded)?;
+            Ok(value::handle_to_unknown(env, handle.retain_owned()?)?)
+        } else {
+            Ok(decoded)
+        }
+    }
+
+    fn decode_array_item<'e>(
+        &self,
+        env: &'e Env,
+        item_ptr: *mut c_void,
+        read: ArrayRead,
+    ) -> anyhow::Result<Unknown<'e>> {
+        if read.borrows_items()
+            && (self.item_codec.is_handle_backed()
+                || matches!(&*self.item_codec, Codec::Bytes(_) | Codec::Array(_)))
+        {
+            self.decode_borrowed_item(env, item_ptr)
+        } else {
+            self.decode_ptr_item(env, item_ptr)
+        }
+    }
+
     fn decode_ptr_iter<'e>(
         &self,
         env: &'e Env,
         ptrs: impl Iterator<Item = *mut c_void>,
+        read: ArrayRead,
         release: impl FnOnce(),
     ) -> anyhow::Result<Unknown<'e>> {
         let mut values = Vec::with_capacity(ptrs.size_hint().0);
         let result = ptrs.into_iter().try_for_each(|item_ptr| {
-            values.push(self.decode_ptr_item(env, item_ptr)?);
+            values.push(self.decode_array_item(env, item_ptr, read)?);
             anyhow::Ok(())
         });
         release();

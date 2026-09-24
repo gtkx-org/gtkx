@@ -35,7 +35,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | --- | ---: | --- |
 | `native` | 99 | API folder read; memory access fixed in batch 1; ownership migration open |
 | `runtime` | 115 | Initial call/callback path read; ParamSpec override migrated; remaining conversion/ownership work open |
-| `codegen` | 144 | All override templates, GIR, analysis, writer, direct store and reference modules and compile entry read; metadata, imports, inheritance, GIR parsing/freshness and configured reference props fixed; remaining generator folders pending |
+| `codegen` | 144 | All override templates, GIR, analysis, writer, direct store, reference and Khronos modules and compile entry read; metadata, imports, inheritance, GIR parsing/freshness, reference props and GL buffer types fixed; broader constructor contracts and remaining inventory pending |
 | `react` | 47 | Core reconciler read; nullable drag icon fixed; lifecycle and metadata migrations open |
 | `components` | 50 | All files read; all initial findings resolved; repeat review continues |
 | `animated` | 19 | All files read; text, prop contracts, dead code, tests and guides fixed; upstream ref compatibility retained |
@@ -47,12 +47,12 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `navigation` | 66 | All files read; stack option lifetimes, closing headers and lazy route restoration fixed; repeat review found no further local defect |
 | `storybook` | 31 | All files read; unset selections, readonly controls, shared types and documentation fixed; upstream strict declaration checking remains open |
 | `config` | 18 | All files read; concurrent import isolation fixed; repeat review continues |
-| `cli` | 262 | Command, codegen, settings, development, Node runtime, vendored tools, payload, freedesktop, notices and nFPM folders read with their callers; consumer, catalog and schema fixes verified; full package pending |
+| `cli` | 262 | Command, codegen, settings, development, Node runtime, vendored tools, payload, freedesktop, notices, nFPM and deployment target folders read with their callers; consumer, catalog and schema fixes verified; full package pending |
 | `create-gtkx` | 31 | All files read; option parsing, installation recovery, duplication and guides fixed; installed TypeScript and JavaScript consumers pass |
 | `mcp` | 26 | All files read; configuration refresh/discovery, registration and settings errors fixed; repeat review found no further confirmed defect |
 | `testing` | 60 | All files read; deadlines, text queries, clipboard behavior, Unicode and matcher fixes pass; repeat review found no further confirmed defect |
 | `vitest` | 12 | All files read; packaged preload, Sway configuration and notification sink fixed; repeat review found no further confirmed defect |
-| `e2e` | 117 | Relevant regression coverage reviewed with each fix; full suite audit pending |
+| `e2e` | 117 | All 43 React integration files read; native/testing regressions reviewed with each fix; remaining inventory pending |
 | `eslint` | 36 | All files read; public-surface traversal and cache correctness fixed; prefix restriction removed; independent review passed |
 | `utils` | 60 | All 59 current files read; maintained helpers replace duplication; process protocol and identity parsing shared; public consumer checks pass |
 
@@ -68,8 +68,8 @@ All 23 files in `packages/native/src/api` were read: `alloc.rs`, `bind.rs`, `bin
 
 | Finding | Evidence and consequence | State |
 | --- | --- | --- |
-| N1: field access loses allocation bounds | Field reads/writes and inline aliases could bypass recorded allocation bounds. A shared range check now covers bound/unbound field access and both sides of copies. Aliases retain their declared size or remaining owner extent. | Fixed; native integration regressions cover exact fits, nested aliases, siblings, invalid offsets and undersized copy sources |
-| N2: JavaScript receives raw native addresses | `symbol_address.rs` returns an address; `bind.rs` accepts one. Runtime closure and decoded-callback paths transport pointers as integers. Opaque ownership and lifetime contracts must replace these together with their callers. | Fixed in batch 2; opaque function/data handles, callback expiry and async owner retention verified, including the 833-test sanitizer checkpoint |
+| N1: field access loses allocation bounds | Field reads/writes and inline aliases could bypass recorded allocation bounds. A shared range check now covers bound/unbound field access and both sides of copies. Aliases retain their declared size or remaining owner extent. | Original field/copy paths, inline-array source checks and measured struct-copy extent propagation fixed |
+| N2: JavaScript receives raw native addresses | `symbol_address.rs` returns an address; `bind.rs` accepts one. Runtime closure and decoded-callback paths transport pointers as integers. Opaque ownership and lifetime contracts must replace these together with their callers. | Initial native/runtime paths, adjacent callback slots and callback record fields fixed; primitive-pointer and remaining callback lowering remain open |
 | N3: native code owns binding policy | `register_class.rs` implemented class, signal, interface and CSS policy; field and call codecs performed value conversion. Runtime now owns class policy and scalar conversion plans while Rust retains native memory and ABI operations. | Partially fixed; remaining storage, container and ownership semantics are tracked by R2 |
 | N4: raw object aliases lack an operation lease | After wrapper collection, a retained handle may coexist with a native worker holding the last reference. Checking the finalization marker does not keep that object alive between pointer extraction and native use. | Fixed; GLib operation leases cover native use and recursive aliases; safe worker regression, 1,501 normal tests and 840 sanitizer tests pass |
 
@@ -727,7 +727,7 @@ All 25 public notice-provenance cases pass, including 15 expression cases coveri
 
 The complete local checkpoint passes build, lint, typechecking, all 46 test/build tasks, fresh published TypeScript and JavaScript consumers, the installed tutorial and all 27 website tasks. The website renders successfully in 426 seconds. This checkpoint includes target-specific Node notices, Debian expression grouping and project-relative package hook scripts.
 
-At `91d37dab`, CI passes the main suite, publication, sanitizers, docs, lint, types and CodeQL. The CLI job reaches its 30-minute job limit after reporting 50 passing files, with localization still unfinished; its log contains no failed test assertion. The CLI job now allows 45 minutes. Individual test deadlines and production behavior are unchanged. Workflow YAML parses successfully. Sonar's separate coverage job remains in progress.
+At `91d37dab`, CI passes the main suite, publication, sanitizers, docs, lint, types and CodeQL. The CLI job reaches its 30-minute job limit after reporting 50 passing files, with localization still unfinished; its log contains no failed test assertion. The CLI job now allows 45 minutes. Individual test deadlines and production behavior are unchanged. Workflow YAML parses successfully. Sonar's separate coverage job subsequently reaches its 45-minute limit after reporting 4,344 passing tests across 356 files, with no failed assertion marker. Its longest completed CLI file takes 2,035 seconds under instrumentation, and the MCP reference file is still unfinished. The coverage job now allows 90 minutes; individual test deadlines are unchanged. The quality gate remains unconfirmed until the next complete run.
 
 Copilot reviewed 277 of 683 files at that commit and added no new comments. This partial review does not close the audit or the previously tracked GL callback finding; no reply was posted.
 
@@ -737,8 +737,424 @@ The 224-line private AppImage fixture and mocked packager are replaced by public
 
 The pinned appimagetool supports only zstd, although GTKX previously accepted gzip and xz. Configuration now preserves default or explicit zstd and rejects unsupported choices during loading. All six public cases pass, alongside the 50-case canonical notice/AppImage checkpoint, build, source/test types, affected lint and independent review. The known upstream compressor limitation is recorded separately in `~/UPSTREAM.md`.
 
+### Source-revision dependency notices
+
+A public Git fixture reproduced source Flatpaks embedding local dependency 2.0 notices while the pinned revision builds dependency 1.0. Ordinary builds now emit `BUNDLED-NOTICES` from the same recorded package snapshot as their JSON build metadata. Source Flatpak installation combines that selected build's notices with SDK and platform sections. The notice identifies the bundled files' installation directory.
+
+Builds require no deployment configuration. Local deployment and `--skip-build` retain their recorded dependency identity, and generic runtime staging excludes both metadata artifacts through one filename set. The native emitter and notice producer share the existing addon filename. Shared section builders and rendering avoid a separate source-mode implementation.
+
+All seven new public cases fail before the correction and pass afterward, covering selected revisions, mixed targets, ordinary builds, empty dependency sets, failed rebuilds, skipped builds and a missing notice artifact. All 50 canonical notice/AppImage cases, build, source/test types, affected lint and independent review pass. The probes execute actual builds and generated install commands; they do not claim a complete Flatpak sandbox build. The subsequent combined publication and tutorial checks also pass.
+
+### Constant aliases and remaining generator leaves
+
+A real GIR scanner fixture declared a 64-bit constant through an alias; GTKX imported it as the rounded number `9007199254740992` instead of `9007199254740993n`. Constant generation now resolves primitive alias chains once, including the existing GType alias rule. Numeric-looking and padded string aliases remain strings, and boolean aliases retain boolean values.
+
+The two public generated-consumer cases pass on the canonical build, checking 14 exports, exact literal types and rejection of a number consumer for a bigint constant. Constant imports and TypeScript checks disable native addons. Source/test types, affected lint and review pass. Comparing 110 generated JavaScript/declaration files changes only the fixture constants and the real GObject constant whose alias requires bigint. Direct occurrence-based type-shape queries retain their existing pointer/void semantics.
+
+Six GI leaves were read completely: constant, enum, generated-libraries, gtype-binding, value-marshalable and companion, 398 baseline lines. A further six files—element-metadata, constructor-props, doc-spec, callable-doc, item-comparators and signal—were read completely, 1,390 lines, with relevant runtime metadata and alias-declaration callers. The broader constructor/factory and metadata work remains open.
+
+Three distinct upstream scanner defects were reproduced without GTKX: floating-point precision loss, eight-bit unsigned wrapping and negative floating-point sign loss. U15–U17 in `~/UPSTREAM.md` contain permanent standalone reproductions and current upstream source references. No GTKX workaround was added for information already lost from GIR input.
+
+### Target paths and staging ownership
+
+All ten deployment target files were read with their configuration and tool callers, 1,162 baseline lines. Public CLI probes reproduced a project-relative custom AppImage runtime failing, an absolute Flatpak lockfile failing, and a lockfile-copy error leaving temporary staging behind.
+
+Configured runtime and lockfile paths now resolve from the project root while preserving absolute paths. The existing staging-directory helper owns both copying and generator execution, including failures. Source Flatpak installation also reuses the canonical native addon filename.
+
+The nine public integration cases cover relative and absolute paths with spaces, default lockfiles, real AppImage extraction, missing inputs, malformed JSON and temporary-directory cleanup. Three fail before the correction and pass afterward; the isolated target/source-notice batch passes all 28 cases. The canonical build, full lint, typecheck and all 46 test/build tasks pass. Independent review is clean. Fresh published TypeScript and JavaScript consumers, the installed tutorial and the production website also pass at `fdb77c7c`; the website completes in 448 seconds. This checkpoint includes the source-revision notices, real AppImage coverage and constant-alias correction.
+
+Revision-free source manifests remain an observation requiring a separate consumer-contract check. Custom Flatpak branch installation was subsequently confirmed and corrected below.
+
+### Native container writes
+
+Source review found that initialized array writes selected cleanup from the element type alone, overlooking the container layout. Replacement now uses the existing GArray, GPtrArray, GByteArray or list cleanup operation; plain C arrays preserve their existing ownership policy. Fallible field and reference writes also finish encoding before replacing the old value. Encoding failures propagate instead of being converted to a successful null write. Callback return defaults remain unchanged.
+
+Independent source review, Rust formatting, Clippy and affected typechecks pass. All 250 existing field, call, runtime reference and generated collection integration cases pass. The complete sanitizer checkpoint passes 377 addon and 509 generated-native cases, then restores the normal addon. These checks do not close every owned-element cleanup combination; list element ownership and callback seed decoding remain under review.
+
+The array codec and all ten container modules were read with hash tables, references, byte/bigint/buffer/struct codecs, stash ownership, allocation/field/call APIs and typed views. Runtime scalar plans, native-value conversion, hash tables, output storage, calls, descriptor types and fields were also read with their public collection tests. This confirms that runtime already owns string conversion. Moving byte-array value normalization is the next bounded R2 slice; native storage, transfer and release remain native responsibilities.
+
+### Runtime byte-array conversion
+
+Runtime conversion plans now pack numeric GByteArray inputs and choose public byte-view or numeric-array output, including the null policy. Rust retains native allocation, view validation, storage, transfer and release. Decoding copies directly into JavaScript-owned bytes while the native owner is alive, removing an intermediate allocation. The required napi U12 compatibility copy remains unchanged.
+
+Eighteen new public integration cases use generated bindings, runtime calls, GValue and fields with real GLib/GIO functions. They cover byte values and offset views, both transfers and output shapes, null and empty values, invalid inputs, reference seeds, callback inputs and outputs, copied values and asynchronous capture. All 126 affected generated/native cases and 40 runtime cases pass, alongside Rust formatting, Clippy, builds, types, lint and independent review. The sanitizer checkpoint passes 377 addon and 527 generated-native cases, then restores the normal addon. No private-helper tests or mocks were added.
+
+This completes the bounded GByteArray conversion slice. Other container conversion and owned-element destruction contracts remain open.
+
+### Supported Node cache APIs
+
+The compile-cache entry and cleanup store now import Node's cache APIs directly. Their availability checks supported Node versions below GTKX's declared minimum. Disabled and unwritable caching retain Node's existing behavior, and cleanup still preserves the active cache directory.
+
+All ten public compile-cache cases, the CLI build, affected typechecks, lint and independent review pass. Six cache/loading modules were read completely, 382 baseline lines, with the public cache and React compiler suites.
+
+Module hashing now uses Node's resolved module URL for the import scanner and React compiler. This removes extension guessing and the shared fallback hash while retaining published JavaScript and explicit TypeScript source execution. Nine public GIR freshness and live schema-import refresh cases pass, as do the canonical source bootstrap, CLI build, typecheck, lint and independent review.
+
+The React compiler suite now builds through the public CLI and runs the resulting Adwaita application. Six cases check rendered labels and button interactions with default or disabled compilation, ordinary TypeScript and createElement modules, changed source with the same cache, an unwritable cache and invalid input. Private builder calls and compiler-output assertions are removed. All six canonical cases, typechecking, lint and independent review pass. The running window was inspected before and after activation, including screenshots and its live widget tree.
+
+### Flatpak branch installation
+
+Flatpak deployment now installs the complete application, architecture and branch reference already selected by its builder and bundler. The target repository persists between builds, so specifying only the application ID becomes ambiguous after building two branches.
+
+A real Flatpak 1.18.2 repository with stable and beta exports reproduces the noninteractive install failure. Explicit references install each selected branch successfully; a missing branch fails. The probe uses an isolated installation and checks the installed references. The public CLI deployment suites, build, typecheck, lint and independent review pass. This validates reference selection and existing manifest behavior; it does not claim a complete SDK build.
+
+### CLI helper repeat audit
+
+Thirteen internal modules were read completely, 768 baseline lines: application/entry arguments, banners and errors, parent-process ownership, XDG data paths, font/icon paths and staging, file listing and agent rules. Supporting reads covered the shared process-stat reader and its process-group and marked-process callers.
+
+CLI parent ownership now reuses the existing utility parser for Linux process statistics. Its ancestor traversal, process-group checks and process identity comparisons remain intact. All seven public development-process lifecycle cases pass, covering wrapper exit, graceful shutdown, signal status and an unresponsive child. Build, affected types, lint and independent review pass. No helper tests or additional parser were introduced.
+
+Default icon selection now narrows its first candidate once, removing an unreachable second missing-icon branch. Missing, unique and ambiguous icon behavior is preserved. All three existing public icon integration cases, build, typecheck, lint and independent review pass.
+
+### Declarative tutorial reminders
+
+Notifications now use the generated JSX element in an application-owned portal. The notification effect reads the current task before sending, so completed, trashed, removed or rescheduled tasks cannot send a stale reminder. Pending reminders retain their task and due-date identity across renders. The sweep cursor also survives rerenders and catches reminders reached while the application process was paused.
+
+Real desktop-bus integration coverage replaces the two mocked notification tests. The complete installed tutorial passes all 40 application cases, including StrictMode, edits, removal, action activation and a real paused-process case. The French suite passes all three cases. Fresh installation, build, launch, typechecking, localized AppImage/deb/rpm packaging and Flatpak manifest checks pass. Supplemental lint covers the tutorial files excluded from workspace lint. The running task window and editor were inspected through their widget trees and screenshots.
+
+The reminder chapter follows the declarative implementation and keeps React explanations in linked upstream documentation. Translation messages are unchanged. The review covered 38 tutorial files, 3,394 baseline lines, plus the generated notification reference and the final implementation, tests and chapter. Native action activation is covered; GNOME Shell interaction and activation after application exit remain separate contracts requiring review.
+
+### Singleton shortcut construction
+
+Generated construction for GTK's activate, mnemonic and nothing actions now delegates to their native singleton getters. Runtime keeps the factory registration and existing wrapper identity behavior; the generated modules only register the three factories. Other classes retain their existing construction path.
+
+All 11 declarative shortcut cases pass, including direct construction, shared JSX references, removal, remounting and keyboard activation. A running consumer was inspected through its widget tree and screenshot, confirming each action's native behavior and an independent callback shortcut. Builds, full lint and typechecking pass. Knip now recognizes the copied React compiler fixture entry and the generated-only runtime factory export. The constructor review covered 29 files, 6,306 lines, with partial supporting reads recorded separately. Broader constructor and factory-prop contracts remain open.
+
+The combined checkpoint passes build, full lint, typechecking, all 45 non-CLI test/build tasks and the website build. The website completes in 431 seconds. The CLI run passed 575 cases but failed nine cases across five files because older build tests executed source plugins through Vitest, whose module resolution differs from Node's cache-hashing URLs.
+
+Those five suites now build through the public CLI and the existing isolated consumer fixture. Environment overrides apply only to the child process. Acquired fixture resources are registered for cleanup before later setup can fail. All 26 affected canonical cases, types, lint and independent review pass. The complete CLI suite still needs a fresh checkpoint; no production source-extension fallback was added.
+
+### JSX generation repeat review
+
+All 12 JSX store modules and the JSX store writer were read completely, 1,799 lines, with the element reference renderer. A public generated consumer confirmed that omitting `label` from GtkToggleButton still left the inherited GtkButton prop accepted. Generated bases now omit inherited native property and notify keys before applying the current element's replacement props. The maintained distributed omission type is re-exported through the existing React internal dependency.
+
+The inherited configured-interface correction now filters omitted properties from references too. Four public omission cases cover class, interface, prerequisite and cross-namespace inheritance, replacement props and discriminated branches. Custom-only union omissions remain outside the documented GObject-property contract.
+
+Named factory property bags now include their own required inputs and match component props and intrinsic JSX. Factory-only base types keep those inputs out of native subclasses. The three added factory cases and all 37 existing consumer and omission cases pass in the canonical checkout. The suites share one public TypeScript consumer launcher. Independent repeat review covers 17 complete files, 2,736 lines, and reports no further findings in this slice.
+
+### Reference output and abstract bases
+
+Reference paths now normalize trailing separators before generating links and fingerprints. Root paths no longer create protocol-relative links. Abstract classes retain their inherited-prop pages and type-only imports, while renderable inventories exclude them. Factory-backed abstract elements remain available. Generation, references and API lookup share the existing mountability rule.
+
+Independent review covers six production files, 2,408 lines, plus the public tests and their shared consumer helper. Isolated public checks pass for four path forms, page hierarchy, API lookup and accepted or rejected JSX imports. All 25 canonical reference cases pass, along with full build, types and lint. The final production website build passes in 441 seconds, including the introduction and controlled-selection prose corrections.
+
+### Pending native allocation ownership
+
+Pending transfers now release through Rust ownership, with explicit disarming after successful handoff. This removes manual cleanup loops while preserving callback lifetime, field replacement, rollback and container backing order. The existing external ownership policy for untracked fields remains unchanged.
+
+Rust formatting and Clippy, a fresh native release build and runtime integration pass. The sanitizer checkpoint passes all 377 addon and 527 generated-native cases, then restores the normal addon. Independent source review is clean for this six-file change. The cleanup removes fragile manual paths; it does not claim a reproduced supported-input memory failure. Broader collection and callback ownership work remains open.
+
+### Schema-derived settings values
+
+Generated schema modules now expose enum and flag nickname mappings and choice values alongside the existing key kinds. `useSetting` derives enum and choice types from that metadata, while flag combinations remain numeric. Manual schema definitions retain their previous behavior. The tutorial derives its preference types and enum values from the XML instead of repeating the schema's ordering and identifiers.
+
+The parser preserves choice and nickname whitespace, resolves declarations across files and inheritance, and accepts GLib's integer literal forms. Runtime rendering reuses the shared JavaScript string encoder. Enum-only schema imports now produce matching empty runtime and declaration modules, allowing them to supply referenced enum definitions without requiring a schema of their own.
+
+All 18 public CLI settings cases and 49 native hook cases pass in the isolated candidate. Full workspace types and lint pass after adding the new private metadata constraint to the existing TypeDoc exclusions. The e2e project uses the public application test plugin and generated schema declarations; its repository configuration shares the root GIR bindings and retains uncompiled runtime tests. Nx excludes that configuration from inference, matching the example projects' bootstrap arrangement.
+
+The first complete suite exposed a stale local e2e binding store left by the configuration attempt. Its links and generation were moved outside the checkout; no production resolver change was needed. All 82 settings and layout cases pass against the shared bindings. The complete CLI checkpoint passes, and the e2e rerun passes all 1,177 application/runtime cases and 527 generated-native cases. Fresh TypeScript and JavaScript consumers pass local-registry installation, codegen, build, launch and tests; the TypeScript consumer also passes typechecking. The installed tutorial passes all 40 application cases and three French cases, plus launch, types, localized AppImage/deb/rpm packaging and Flatpak manifest checks. Translation source locations follow the moved settings declarations; messages are unchanged.
+
+### Guide consistency and native examples
+
+The async, error handling, navigation, subclassing and modals guides now keep complete signatures in the API reference and shared React concepts in upstream documentation. Navigation describes the actual stack selection behavior. Window guidance distinguishes explicit application-window transient parents from the default used by plain windows, and explains the initial null returned by `useParentWindow`.
+
+The new async example owns its file dialog declaratively. Its complete consumer passes strict TypeScript and real MCP interactions for file selection, user dismissal and a 20-second cancellable timeout. Widget trees and screenshots were inspected, and all owned processes were stopped. The four-guide pass checks 24 code fences and 21 local routes; the adjacent modals pass checks four unchanged JSX examples and seven routes. The combined production website build passes.
+
+### GTKX introduction and migration review
+
+Both introduction pages now describe verified GTKX behavior and link to the feature guides. Unsupported comparisons with other projects and the promise that every npm package works are removed. Version-specific default libraries and the UI-thread constraint remain explicit.
+
+The pass reads 17 full files, 1,188 lines, plus supporting implementation excerpts. All 20 local routes resolve. The bounded 2.0 migration review confirms the inspected configuration, runtime minimum, exports and tuple changes; it finds no additional stale contract. There is no new widget example to execute. The final website checkpoint includes these edits.
+
+### Components and Cairo guide review
+
+The two guides were checked against 15 complete implementation and integration files: 17 full files and 2,334 lines in total. The Components guide incorrectly described `onRowSelected` as exclusively reporting user actions. Its shorter explanation now distinguishes GTKX's suppressed writes from other native selection changes, while preserving optional control and pending-row behavior. Existing integration coverage supports this correction. No snippets or links changed. The Cairo guide has no confirmed issue in this scope.
+
+### Remaining GL callback lifetime contract
+
+The repeat lifetime review reads 12 complete core files, 2,263 lines, plus relevant descriptor and handle paths. Current closure dispatch is tied to the Node thread. Callback retirement and native executable-memory reclamation need separate guarantees; clearing a GL callback does not establish the asynchronous completion boundary needed by a reclamation implementation. The [KHR_debug contract](https://registry.khronos.org/OpenGL/extensions/KHR/KHR_debug.txt) permits delayed and foreign-thread delivery when synchronous output is disabled. No driver stress or stale-callback probe was run, and no GL state change is proposed. GL5 remains open.
+
+### Contiguous byte outputs and callback string seeds
+
+Runtime now chooses the public byte-view or numeric-array shape for contiguous uint8 outputs, sharing the GByteArray conversion policy. Native receives its existing byte transport descriptor and retains allocation, storage and transfer responsibilities. Numeric-array inputs remain unchanged. Pointer collections, non-byte arrays and inline records retain their existing paths. The napi U12 compatibility copy remains in place.
+
+String callback inout seeds now copy their borrowed bytes before invoking JavaScript. Runtime still owns UTF-8 conversion, and fixed-capacity string buffers keep their existing behavior. Source review confirmed that lengthless string seeds previously became null; no pre-fix native probe was run.
+
+The 25 new public cases cover byte returns, fields, references and callbacks, plus string seed preservation, replacement, null, empty and Unicode values, and invalid callback outputs. Four native fixture suites share their existing compiler setup through one test helper. All 163 affected native cases, 672 runtime cases and five GL cases pass. Fresh builds, full types and lint, Rust formatting, Clippy and independent review pass; all 59 checked public declaration files remain unchanged. The sanitizer run passes 377 addon and 552 generated-native cases, 929 total, then restores the normal addon.
+
+### GL debug callback arguments
+
+The GL debug callback descriptor now supplies the native registration function's user-data argument and describes the callback's ignored user-data value as a pointer. Clearing the callback consequently supplies both required null pointers. This is a source-confirmed ABI correction, validated by the existing five ordinary GL integration cases and the combined checkpoint above. No pre-fix malformed call or stress probe was run. The explicit callback lifetime is unchanged; GL5 remains open.
+
+### Khronos generation and buffer consumer types
+
+All 13 Khronos TypeScript modules were read completely, 2,789 lines, with the package generator, public GL tests and native buffer codec. The generic buffer parameter union admitted numbers while rejecting the opaque handles accepted by native. It now uses the existing GLpointer alias. Explicit byte-offset parameters retain their numeric descriptors and declarations.
+
+A strict public consumer rejects mapped-buffer handles before regeneration and accepts them afterward. Typed views, empty views and null remain accepted; numeric generic-buffer inputs are now rejected. Explicit numeric offsets still compile and bigint offsets remain rejected. These compiler checks disable native addons. The canonical package build, affected lint, all five ordinary GL integration cases and independent source review pass. No native pointer probe was run; GL5 remains open.
+
+### Final v2 guide coverage
+
+Animations, CSS, OpenGL and Storybook were read completely, 530 baseline lines, with 39 complete supporting files totaling 3,829 lines. Together with the recorded earlier batches, all 20 v2 guides now have explicit full-read evidence. CSS and Storybook have no additional confirmed finding in this scope.
+
+Animation guidance now describes retaining a viable window clock without promising the newest mapped window or unconditional completion. The OpenGL guide focuses on GTKX integration, replaces incomplete rendering fragments with a complete component, and links to the upstream rendering reference and existing examples. It also accounts for resize-triggered rendering when automatic rendering is disabled.
+
+The exact component and its Adwaita consumer pass strict TypeScript. Real MCP interaction resizes the running window from 520×360 to 840×620; inspected screenshots show the gray GL surface filling both sizes. All owned processes were stopped. Independent review confirms context, resize and error contracts. The production website checkpoint passes in 438 seconds, including these two guide edits.
+
+### Contributing architecture repeat review
+
+All nine Contributing pages were read completely, 992 lines, with their navigation and implementation owners. The full supporting inventory totals 25 files and 3,025 lines; all 78 repository link targets resolve. The architecture now identifies the element hook that reapplies accessibility on mapping, and the principles include the established upstream workaround retention policy. Runtime byte conversion, generated settings and JSX descriptions remain consistent with the current implementation. Independent review is clean. The production website checkpoint passes in 439 seconds, including both prose changes.
+
+### Owned list replacement and callback borrowing
+
+Source review confirms that initialized GList and GSList replacement releases list nodes without releasing owned elements. Callback seed decoding borrows the outer list but still uses the elements' original transfer policy. The next correction must address both contracts together: adding element cleanup alone would conflict with seed decoding that consumes those elements.
+
+Initialized replacement now releases owned elements before list nodes. Borrowed field reads and callback seeds copy strings and retain independent handle ownership; noncopyable elements reject reads without consuming the installed list. Ordinary return transfers and separate node/item construction rollback retain their existing behavior. Allocation, traversal and release remain native responsibilities. No stale-memory reproduction or native probe was run.
+
+Destructor lookup happens before acquiring transferred storage and propagates resolution errors. Stored-value cleanup and rollback of newly acquired references share that lookup while preserving their distinct fundamental-reference requirements. Releasable structs carry their declared cleanup into rollback.
+
+The 22 new public GList/GSList cases cover reads, replacement, empty/null values, independent object and record ownership, callback seeds and rejected inputs. Rust formatting, Clippy, the native/runtime build, full workspace types and affected test lint pass. The ordinary checkpoint passes 377 addon, 672 runtime and 102 generated collection/string/callback cases. All 951 sanitizer cases pass, including 574 generated-native cases; the normal addon is restored. Independent production and test reviews are clean.
+
+The next source review confirms related borrowed-seed ownership in non-list pointer arrays. It also identifies nonterminated owned-array replacement selecting string-vector cleanup and GPtrArray replacement lacking a consistent item-destruction contract. These separate stages remain open; successful owned-element replacement tests must follow their corresponding cleanup corrections.
+
+### Borrowed array fields and callback seeds
+
+One internal native read policy now distinguishes ordinary declared transfers from borrowing the entire container and its elements. Sized, fixed, terminated, GPtrArray and pointer-form GArray callback seeds share that policy. Borrowed nested arrays propagate it recursively, and inline record reads retain independent ownership. Ordinary return transfers keep their separate outer and item ownership rules.
+
+All 32 new public cases pass. They observe valid strings, objects, records, boxed values and fundamental references before an ordinary callback exception; native cleanup then leaves only the independently retained values alive. Additional cases cover null/empty containers, inline records and nested field reads. Finalization counters observe cleanup without reading displaced storage. No pre-fix native execution or malformed-layout probe was run.
+
+Rust formatting, Clippy, the native/runtime build, full types and full lint pass. The ordinary checkpoint passes all 377 addon, 672 runtime and 606 generated-native cases. All 983 sanitizer cases pass, followed by restoration of the normal addon. Independent production and test reviews are clean. The subsequent stages address bounded and terminated replacement; GPtrArray/GArray item destruction remains open, so this does not close the complete Copilot ownership finding.
+
+### Original extents for bounded array replacement
+
+Initialized sized-array callbacks now capture the original extent before JavaScript changes the length Ref. Replacement resolves the item destructor before encoding, releases each displaced owned pointer using that captured count, then releases the outer allocation. Fixed fields use their declared extent. String-vector cleanup applies only to terminated string arrays; inline and scalar buffers retain outer-only cleanup. Array and hash-table writes share the same prepare, encode, swap and release sequence.
+
+All 18 new public cases pass, covering growth, shrinkage, clearing, fixed fields and callbacks, copied records, independent object references, null/allocated-empty storage, output-only initialization and rejected JavaScript values. The ordinary checkpoint passes 377 addon, 672 runtime and 624 generated-native cases. All 1,001 sanitizer cases pass, followed by restoration of the normal addon. Rust formatting, Clippy, the CLI build, full workspace types and full lint pass; independent production and fixture reviews are clean.
+
+This preserves individual pointer slots on rejected replacement; it does not make every callback output transactional. The field API supplies no sibling length context, so replacing a populated sized field with owned pointer items rejects before mutation. GPtrArray/GArray destruction remains a separate stage.
+
+### Terminated native handle replacement
+
+Null-terminated object, record, boxed and fundamental arrays now release each displaced owned handle before the outer allocation. Decoder and replacement cleanup share the existing sentinel iterator. Destructor lookup still precedes encoding and replacement; strings retain their separate vector cleanup, and inline/scalar buffers retain their existing policy.
+
+All 14 new public cases pass, covering repeated fields and callback replacement, independent copies/references, null/empty storage, output-only initialization, rejected inputs and failed destructor resolution. The complete ordinary checkpoint passes 377 addon, 672 runtime and 638 generated-native cases. All 1,015 sanitizer cases pass, and the normal addon is restored. Rust checks, build, full workspace types/lint and the additional test typecheck/lint pass. Independent production, fixture and combined consistency reviews are clean.
+
+### Reference-counted container ownership contracts
+
+A further source review reads 12 complete files, 2,267 lines, and traces ten additional sections. Full transfer of a GPtrArray or GArray does not establish exclusive ownership: GLib's ref functions return the same container with another owned reference. Clearing, stealing or changing a destroyer can therefore affect another owner. The current descriptor also cannot distinguish leaves independently transferred to the caller from leaves released by the container's own destroyer.
+
+Both conventions occur in introspectable libraries. OSTree's sign-engine result retains an object-unref destroyer, while AppStream's GI category helper explicitly clears its destroyer before returning. Known received values may use full outer ownership with borrowed, independently retained leaves. Persistent replacement storage needs a separate explicit cleanup contract. Generic cleanup and a decision about the upstream metadata remain open; no shared-container mutation or external report was added.
+
+The existing return-transfer override now gives `ostree_sign_get_all` that container-owned shape. Each returned object gains an independent reference before the outer array releases its own references. The correction preserves the existing `g_value_reset` override and changes no runtime or native policy. Source review covers installed OSTree 2026.4 and upstream 2020.4 and 2025.7; this is a GTKX lowering correction, with no established upstream annotation defect.
+
+All three public generated-consumer cases pass ordinarily and under AddressSanitizer: usable engines, independent repeated enumeration and rejection of an unknown engine. The normal addon is restored. Existing GValue coverage passes all 21 cases, and the CLI build, repository typechecks, affected lint and independent review pass. The CI image now declares the required `libostree-dev` GIR package. No pre-fix native call or fault reproduction was run; generic container ownership remains open.
+
+GPtrArray and GArray descriptors now offer explicit container ownership of their elements, independently of the outer transfer. Reads retain or copy elements before consuming the owned outer reference. Encoders for strings and object references install the native element destructor after successful acquisition; scalars need none. A rejected replacement preserves that slot's storage. Existing aliases retain their contents and destructor. Runtime derives the option from the canonical native descriptor type; existing defaults and the OSTree override are unchanged.
+
+All 36 new public integration cases pass with real native holders and aliases. They cover both layouts, borrowed and owned inputs and returns, field and callback replacement, null and allocated-empty values, rejected writes and noncopyable records. The full native/runtime checkpoint passes 1,729 cases across 109 files. All 1,051 sanitizer cases pass, and the normal addon is restored. Native build, Rust formatting and Clippy, affected TypeScript and lint, and independent production/fixture source reviews pass.
+
+This completes the first explicit container-owned stage. No descriptor infers exclusive ownership from an outer reference count.
+
+The subsequent Separate-element stage releases each independently owned pointer element before one outer reference when replacing an initialized GPtrArray or non-inline GArray. It resolves release operations before acquiring or publishing replacement storage. Native Object aliases explicitly retain their own leaf references as well as the array reference; an outer reference alone does not preserve separately owned leaves.
+
+All 24 new cases and 68 existing focused controls pass. The full ordinary native/runtime checkpoint passes 1,753 cases across 110 files. Final Rust formatting and Clippy, canonical e2e types and affected lint pass. Independent production and fixture reviews are clean. All 1,075 native sanitizer cases pass, followed by the new generated subclass callback consumer under AddressSanitizer; the normal addon is restored. The direct-container GIR inventory covers 73 installed files and 241 occurrences, with no inout declarations. The two existing seed producers that install destroyers now use Container ownership explicitly. Custom and inline resource construction, nested-container ownership, partial decode cleanup and further producer-specific metadata remain open.
+
+Six additional public cases return from the callback without replacing its Ref value, exercising the existing writeback path for unchanged seeds. Both array layouts cover strings, objects and copyable records with null, empty and populated values, retained reads and native release counts. All 30 Separate-container cases pass ordinarily and under AddressSanitizer, with the normal addon restored. No production change was needed for this acceptance coverage.
+
+### Compiler factory investigation
+
+U18 records an observed React Compiler closure-hoisting failure with a standalone compiler example and public compiled GTKX application controls. The named-function and compiler-disabled controls render the expected native label; the arrow factory raises ReferenceError. React's documented component-hook-factories rule rejects this pattern, and the existing upstream report remains unconfirmed. This does not establish a supported GTKX application regression. Evidence and that limitation are recorded in `~/UPSTREAM.md`; no production workaround or external post was added.
+
+### Installed tutorial action activation
+
+The open-task action now queues navigation before activating the application. The application activation handler presents an existing window, while its declarative window mounts on a service launch. Completing a task keeps the operation in the background. The tutorial chapter contains the exact updated App implementation and explains this GTKX lifecycle.
+
+Three retained integration cases use the real private desktop bus and native application windows. They verify the selected task, window identity across repeated actions and activation, persisted completion before a window exists, and rejection of an incompatible action target. Their final assertions pass with canonical tutorial types. Supplemental test lint passes with the fixture API's empty destructured parameter allowed; the repository's existing tutorial lint exclusion remains unchanged.
+
+The publication workflow now tests cold activation of the actual extracted Debian package. Its private bus loads the relocated installed service; repeated activation keeps the same process and window, cold completion persists without creating a window, and later activation opens that same process. Both bus-aware and observed-process cleanup cover failures. The complete workflow passes fresh installation, build, launch, types, all 43 application cases, all three French cases, localized AppImage/deb/rpm checks and Flatpak manifests. Full repository typechecking and lint pass. The chapter's production website build passes.
+
+The live consumer was also inspected through MCP task selection, native window trees and screenshots. All owned application, bus and compositor processes were stopped. GNOME Shell notification-card interaction and focus policy remain separate desktop validation work; no production bus configuration workaround was added.
+
+### Required shortcut constructor inputs
+
+A repeat source audit read 28 implementation/test files, 6,138 lines, plus four generated reference pages. Direct CallbackAction construction was concrete even though its native factory initializes a required callback. SignalAction, NamedAction and AlternativeTrigger also exposed optional/nullable inputs that their native construction contracts require. Generic property validation checks supplied entries and native critical handling occurs after construction; these checks did not establish the missing preconditions.
+
+CallbackAction now follows the existing factory-initialization path: its generated type is abstract, and its JavaScript constructor throws before entering native construction. Its static factory and JSX callback prop retain their behavior. All three strict consumer cases, the public JavaScript guard case and 11 existing shortcut integration cases pass. Independent review is clean. No invalid native construction or pre-fix reproduction was executed.
+
+SignalAction.signalName, NamedAction.actionName and AlternativeTrigger.first/second now share one required-property contract across GI constructors and JSX. Required props remain non-null, and inherited requirements keep constructor arguments mandatory even when a descendant adds optional props. All four generated-consumer cases pass with strict library checking, including a declaration-only inheritance fixture. Existing defaultable concrete triggers remain accepted. Independent source and test reviews are clean. This corrects omitted and nullable inputs; it does not add validation for unsupported upstream string values.
+
+### React integration test repeat audit
+
+All 43 React integration files were read completely across six bounded batches, covering 16,055 baseline lines. Exact paths and hashes are recorded with each audit. Callback spies that observe supplied application handlers are distinct from replacements for external dependencies.
+
+Nine control update/removal cases now rerender their existing root; eight also assert native widget identity. Scale-mark cases observe visible labels, removal and GTK's documented placement classes. All 44 cases pass, with affected types/lint and independent review. The application cases drop an unused stderr implementation replacement and assert native window counts directly; all 24 pass with affected lint and independent review.
+
+Accessibility cases now use public property, state and accessible-name matchers. Exact label assertions exposed two fixture mistakes: a generic role that prohibits naming, and two children competing for a single-child window. A group role and a shared box correct those fixtures without changing production matchers. All 34 cases pass, with affected types/lint and independent review.
+
+Three more navigation update/removal cases now rerender their existing root and retain native identity. Presence assertions require real pages; the NotebookPage case actually removes its prop, the useId case mounts both consumers under one root, and the default-container case omits that argument. All 29 cases pass, with the final default-argument adjustment checked separately. SpinRow fixtures now declare their adjustments through JSX; all 22 preferences cases pass, and the listener-removal case also confirms the second value change. Application menus now use JSX in owned roots while preserving native-object prop coverage; all 24 application cases pass. No production behavior changed.
+
+Eleven dialog transitions now update their mounted objects, and closing a dialog observes the actual native close route. The GL fixture checks a rendered green pixel, declares its shader input location and releases its resources; shader failure checks compilation status without inspecting logs. All 51 dialog and GL cases pass. Property-hook cleanup now checks the public signal subscription before mounting, while mounted and after unmounting, including blocked handlers; all 32 hook cases pass.
+
+Host cases assert rendered behavior, and manually owned layout-effect roots always unmount. Overlay updates retain widget and parent identity; VFL removal preserves an independently installed constraint. All 88 host, layout and layout-effect cases pass. The first VFL fixture encountered a known GTK solver defect, recorded as U20 in `~/UPSTREAM.md`. Its required nonnegative-width constraint preserves the intended test while avoiding the affected branch. GTK 4.24.0 includes the upstream correction; the checked 4.22.5 source remains affected. Window size updates now retain the mounted window and assert exact requested dimensions; all 28 window cases pass. Affected lint, types and independent source reviews pass.
+
+Menu actions now run through visible menu items, and menu/notebook transitions retain their mounted models. Notebook insertion and reordering use exact native page order and actual tab text; GTK's default labels are available through the public NotebookPage tab property. Shortcut removal observes the retained controller, and trigger replacement checks the actual trigger. All 47 menu and notebook cases pass across the affected runs.
+
+TextView and SourceView signal suppression now proves that displayed text changes on the same view and that a subsequent user edit reaches its handler. Text tags check weight, underline and their applied ranges; rebuilt anchors require the updated button label. All 66 text/source cases pass. The four tutorial regressions pass, including identity and actual callback activation after a retained header button loses its action name.
+
+All 12 Sidebar cases check real mode writes and rooted suffixes while preserving native property, GValue and Breakpoint routes. All 37 signal cases pass with declarative adjustment, overlay and portal-target fixtures; the portal case checks both commit suppression and subsequent user activation. All 79 widget cases pass with public subscription cleanup, visible credit sections and removal of log-output assertions. Settings cleanup and target replacement inspect real detailed-signal connections, while slot tests observe native attachment, retained siblings, removal, ordering and portal key lifetimes. All 86 settings/slot cases pass. Affected types, lint and independent reviews pass.
+
+Stack tests now observe native page order and user-driven controlled navigation; all 18 pass. Style cases use public color, authored classes and measurements without generated-class assertions; all 21 pass. A retained widget is reattached through a native-object-valued JSX prop before measuring its reset style, allowing GTK's rooted CSS lifecycle to refresh its size cache. The earlier detached measurement assumption was a test error, with no production defect established.
+
+List, grid, tree and accessibility fixtures now share a declarative item factory. A per-factory external store records native setup, bind, unbind and teardown events for React portals. Tests observe native model replacement, current callback delivery, selection preservation, disappearance, recovery and subscription cleanup on explicit React unmount. They preserve GTK's pooling lifetime rather than requiring immediate destruction when a model entry disappears. All 87 affected cases pass, followed by all 938 cases across the 43 React files and the shared ComboRow display-value consumer. Affected lint, types and independent reviews pass. These fixture corrections establish no separate production regression.
+
+A four-file follow-up preserves intentional native menu props, snippet assembly without a generated child slot and synchronous tree-model factory returns. Ordinary menu action setup and the WebKit settings property observer now use JSX; all 27 affected cases pass. Moving a snippet fixture's buffer ownership into JSX exposed text-mark cleanup criticals after the assertions completed. That tentative buffer change was withdrawn pending the upstream correction below.
+
+The generated `newv` consumer now asserts successful object construction and three rejected JavaScript calls without inspecting error wording or classes. The guard is confirmed before native entry, and the corrected consumer passes.
+
+### Generated async and marshalling consumers
+
+Preparing an actual generated GTask consumer exposed a source-confirmed argument bug: promise wrappers inserted a cancellable argument even when the GIR function declared none, displacing its completion callback. The shared generator now uses its existing argument adapter for that shape. Instance, static and namespace methods retain their public signatures; runtime and native policy are unchanged.
+
+Generated adapters and native descriptors were inspected against the fixture's C signatures before its first execution. The consumer covers result tuples, plain values, constructed objects, cancellation, requested errors and callbacks whose finish belongs to another source object. Six emitted-string cases now compile strict accepted and rejected public consumers for byte sequences, GValues, async finishes and consumed inout records. Their declaration-only fixtures remain separate from real native execution. All 15 generated-consumer cases pass, alongside 13 runtime async/Pango controls and 117 byte-array, container and GValue controls. The compiler helper now rejects abnormal termination instead of accepting it as an expected type error. The CLI build, affected types, lint and independent reviews pass.
+
+A follow-up reads three complete CLI binding/type/throws suites, 848 lines, with 436 supporting helper and GIR lines. The older compiler wrappers now distinguish abnormal termination from ordinary rejected consumers, preserve each suite's strict compiler options and share the existing process helper. StaticNarrow consumers use the public generated package export. All 77 cases across the three affected suites pass, with affected types and lint. The two emitted-descriptor assertions are replaced by a public generated consumer and a real native fixture. The fixture returns a numeric result that distinguishes native GError propagation from an ordinary false result, alongside callback success, replacement, recovery and strict accepted/rejected declarations. Both throws-suite cases and the existing async fixture control pass; this change is committed at `cd470d45`.
+
+The 17 former binding cases are replaced by public compiler consumers, with existing native coverage and declaration-only gaps recorded separately. All 48 binding cases pass across the initial run and the focused correction. The corrected consumer receives an abstract Chain rather than constructing it; a separate rejected program preserves its construction boundary. These test findings do not by themselves establish additional production defects.
+
+Preparing those consumers exposed a separate production issue: undecoded virtual-method callback slots lowered function and user-data pointers to `biguint64` descriptors and exposed them as `bigint`. The existing synthetic tests asserted that output, so agreement with those tests did not establish the required safe contract.
+
+The applied correction routes adjacent notified callbacks through the existing opaque callback decoder, folds their data and destroy slots, and omits unsupported layouts and callback returns from both metadata and public members. One shared alias resolver keeps callable aliases consistent with those decisions. The CLI build passes; emitted JavaScript and declarations match the real fixture ABI, including compile-time checks of the native slot offsets. The public native callback consumer passes, proving nullable delivery, retained use, subclass chain-up, rejected inputs, exception cleanup and exact destruction counts. All 47 additional public type, marshalling, throws and async controls pass. Generic callback and primitive-pointer lowering remain open; no raw-address call or unsupported native layout was executed.
+
+A bounded N2 follow-up reads 19 complete code files, 4,253 lines, and 20 further excerpts. It confirms remaining generic data-pointer returns and named callback record fields; four installed GIR files also yield a machine-only candidate inventory, not a list of confirmed emitted APIs. Callback-field admission needs one shared correction for accessors, constructor inputs and reference output while retaining the physical layout. Generic data pointers still require an explicit extent and lifetime; retaining their containing object does not protect storage that a later operation replaces.
+
+### Record field capability and layout
+
+Callback record fields now share an alias-aware admission rule across accessors, constructor inputs, nested field exposure and API reference output. Direct callbacks, callback aliases and collections of callbacks are omitted until they have a supported callable lifetime contract. Ordinary callback-taking functions remain available. Removing public accessors preserves every physical field slot, so surrounding scalar fields retain their native offsets.
+
+The fixture review also found that fixed-size array fields always contributed inline storage to record layout, even when their enclosing C type declared a pointer. Layout now distinguishes that pointer from an inline array, including inline arrays whose elements are pointers. Source review of the installed introspection scanner confirms that annotated pointer fields can carry both a pointer C type and a fixed size. A machine scan of 73 installed GIR files finds 485 fixed-size fields that retain their inline layout; it establishes no affected installed field or upstream bug.
+
+Both fixtures' generated allocation sizes and accessed offsets match C compile-time assertions before native execution. All 19 public consumer cases pass, covering native values, scalar writes, inline and pointer arrays, callback aliases, null callbacks, rejected inputs and record-reference output. The reference case uses the exported record lookup API; JSX reference output does not create boxed-record pages. Both native consumers also pass under AddressSanitizer, and the normal addon is restored. All 92 existing binding, record, inline-array, vtable and reference controls pass. Fresh generation of installed bindings is followed by 2,937 passing native, runtime and renderer cases across 173 files. Independent production and fixture reviews and affected types and lint pass.
+
+The maintainer clarified that complete upstream API coverage is not a goal. Remaining raw-pointer APIs should be hidden or represented by throwing stubs when they do not fit the supported safe GLib/GObject contract. A tentative byte-copy implementation for three pointer-returning methods was stopped before any shared change or execution.
+
+The existing hidden-symbol list now omits `Bytes.getRegion`, `Variant.getData`, `MemoryOutputStream.getData` and `MemoryOutputStream.stealData` from generated bindings, declarations and reference output. No runtime or native implementation is added. All 11 public consumer checks pass: existing byte APIs, eight rejected uses of omitted members, matching reference pages and native imports with ordinary byte operations. The stream is closed before `stealAsBytes`, which retains its distinct ownership-transfer contract. Fresh generation, builds, workspace typechecking, affected lint and independent source reviews pass. A subsequent check with installed GJS 1.88.1 confirms that its `get_region` exists but returns null for valid full-buffer and subsection requests; GTKX keeps the omission.
+
+### Raw-pointer property admission
+
+One alias-aware admission rule now excludes raw-pointer and non-introspectable properties from generated accessors, binding descriptors, JSX values and notify handlers, element metadata and reference pages. It preserves genuine integers, GType, objects, boxed values and annotated arrays. `MemoryOutputStream.data` previously selected an integer GValue descriptor for a native pointer property; its constructor also exposed non-introspectable destroy and realloc options. No unsupported property was executed to establish that mismatch.
+
+Constructors prohibit unsupported option values through finite optional-never entries. This matters when a class has only omitted properties: it must retain a typed forwarding constructor instead of inheriting the root's broad object parameter. Descendants can still add legitimate properties, and only admitted binding descriptors are registered. The constructor constraint forbids values; it does not claim these keys disappear from TypeScript's `keyof`.
+
+All 24 new public checks pass: strict accepted declarations, 21 independently rejected consumers, class and element reference pages, and ordinary memory-stream operations with prototype absence checks. The alias and inheritance fixture is declaration-only and never loaded as a native library. The final reference oracle passes after removing checks for notify headings the reference renderer never creates. All 24 existing native property controls pass. Independent production and test reviews are clean within this scope.
+
+A separate source review covers 15 complete files, 3,320 lines, and identifies remaining primitive-pointer method inputs, results and collection leaves. `Gio.Task`, `GLib.Source` and generic HashTable methods supply concrete examples. Folded callback companions, typed object comparators and existing runtime overrides need to remain supported when applying a shared callable gate. Callback signatures and unbounded-array fallbacks remain separate open work.
+
+### Pointer callables and record fields
+
+Shared type traversal now rejects primitive pointer inputs, results and nested collection leaves in ordinary callables and properties. Folded callback companions, intrinsic byte arrays, typed handles and the existing GValue boxed overrides remain supported. Override signatures also supply their public reference signatures, preserving `getBoxed<T>()`. All 33 public callable checks pass. Existing null property tests use public runtime value conversion; tests no longer pass numeric words to an untyped pointer array or invoke removed HashTable methods.
+
+Record accessors, constructor writes and references use the same pointer classification. Finite optional-never constructor entries prevent records with only omitted fields from accepting those options. Physical fields still determine layout and copy eligibility. All 21 public field checks pass, including aliases, nested collections, constructor options, native TreeIter copies and matching references. The 19 existing callback-field and layout controls pass. Their native fixtures verify surrounding fields; the declaration-only pointer fixture is never loaded as a native library.
+
+The record review covers 14 complete files, 2,451 lines, with additional excerpts recorded separately. Independent production and consumer reviews are clean within this scope. Unknown-length arrays and namespace lifetime operations remain separate findings.
+
+### Effective callback contracts
+
+Callback descriptors, declarations and reference pages now share their existing user-data selection. This corrects the public arity of AsyncReadyCallback and similar callbacks. Unsupported pointer payloads, results and nested callback contracts are omitted, including Task thread callbacks and generic byte-array comparators. Existing object comparator adaptations run before admission and remain available for ListStore and CustomSorter. Supported vtable callbacks retain their companion and ownership requirements.
+
+All 28 public callback checks pass, including actual source dispatch, normal and cancelled task completion, object comparator identity, rejected consumers and reference signatures. Existing AsyncInitable tests now invoke the actual two-argument callback. Two child-process error cases use ordinary asynchronous completion instead of an unsupported thread callback. Their status checks require the completion callback to have run, and make no assertion about error text. No native callback implementation or new wrapper is added.
+
+The initial callback review covers nine complete files, 1,382 lines; implementation and independent reviews record their additional full reads and excerpts. This does not close all signal, vfunc or callback lifetime work.
+
+### GTypeInstance identity
+
+Omitting its pointer method left TypeInstance structurally empty, allowing unrelated JavaScript values in TypeScript. TypeInstance now owns an erased nominal declaration shared by generated classes and interface instance types. The interface declaration retains that identity when a prerequisite uses Omit. Boxed records remain distinct, and native-created TypeInstance wrappers need no fabricated runtime field.
+
+All 13 public checks pass: objects, fundamentals, interfaces, registered subclasses, rejected non-instances and actual Object/ParamSpec GValue round trips. Six obsolete suppressions are removed from valid fundamental consumers. Seventeen complete files, 3,028 lines, were reviewed with supporting excerpts; independent production and test reviews are clean. This is a declaration correction, not a new validator for arbitrary untyped native calls.
+
+### Namespace instance ownership
+
+The generated `typeFreeInstance` function could directly free storage still retained by GTKX wrappers. It is now omitted through the existing hidden-symbol list. Three public checks pass: a rejected compiler consumer, namespace absence with safe instance inspection, and reference absence. The review follows the GIR, pinned GLib implementation, borrowed argument conversion and wrapper lifetime markers without invoking the deallocator.
+
+Ten complete files, 2,767 lines, were read with supporting excerpts; independent review of the two-file fix is clean. Class and default-interface unref functions are no-ops in the installed GLib, so this review does not claim another active free defect there. Broader method-level destruction and container ownership remain in the R2 audit.
+
+### Unknown-length array admission
+
+Arrays without a declared length, fixed size or terminator are now omitted from callable, callback, alias, property and record-field contracts. Vtable admission uses the same classification. Nested arrays and aliases follow the shared type traversal; intrinsic byte arrays retain their own length. Alias generation and reference output share one admission rule. Physical record layout is unchanged.
+
+All 28 public checks pass, covering accepted bounded arrays, rejected declarations and constructor options, matching references and real native alternatives. Pixbuf's sized `getPixels` shadow, Bytes input, address parsing and UTF-8 cursor results remain supported. The declaration-only fixture is never loaded as a native library; the vtable change has source review rather than a new executable fixture. Independent production and test reviews are clean. Fresh generation is followed by 2,965 passing native, runtime and renderer cases across 176 files, and workspace types, lint, Rust checks and Knip pass.
+
+The installed GIR scan finds 65 unknown-array nodes across 73 files; that discovery count is not a count of previously emitted APIs. Signal admission and scalar types whose C spelling declares a pointer remain separate findings. No new native or runtime implementation is added.
+
+A repeat copy-capability review found that fixed array fields declared as C pointers still qualified plain records for memcpy ownership. Value-safe record classification now distinguishes those pointers from inline arrays, including aliases. This removes automatic constructors and full-transfer results without a supported destructor while preserving explicit boxed copy functions and physical layout. Four new compiler rejections, updated inline/reference controls and all six existing native field-layout cases pass: 12 focused checks in total. Affected types, lint and independent review pass. The new declarations are never executed as native functions; no affected installed record is claimed.
+
+### Signal admission
+
+Generated signal dispatch, handler and emit maps, JSX props, metadata and references now share one admission rule. It omits primitive pointers, unknown-length arrays, callback-valued payloads and non-introspectable signals, including aliases and nested collections. Actual signal parameters named data remain payloads rather than being mistaken for callback user data.
+
+This removes WebKit.BackForwardList.changed, whose GIR exposes a temporary native list as a generic pointer, and the non-introspectable Gtk.TreeModel.rows-reordered JSX prop. Supported object, boxed, byte, integer and annotated-array signals remain available. All 24 public compiler and reference cases pass, including inherited interface signals and supported owner precedence. The synthetic fixture is declaration-only. Fresh generation passes all 2,965 native, runtime and renderer cases, alongside workspace types, lint, Rust checks and Knip. Independent production and consumer source reviews are clean.
+
+The initial review covers 18 complete files, 4,310 lines, with pinned producer evidence and additional excerpts. A machine scan of 73 installed GIRs and 944 signals finds five signals with generic pointer parameters and no callback-valued signal. No unsupported signal was executed. Scalar C-pointer declarations and broader callback retirement remain separate work.
+
+### Scalar C-pointer admission
+
+Scalar types whose C declarations require unsupported pointer storage are now omitted from callable, callback, signal, vtable, alias and record-field contracts. The shared classifier follows aliases and collection elements while preserving typed out/inout parameters, including `gpointer` typedef spelling. Ordinary integers, enums, GType, handles and annotated arrays keep their existing descriptors. Physical record layout is unchanged.
+
+This removes unsupported Hmac buffer methods, Pixbuf.readPixels, ByteArray.data and InputMessage.numControlMessages. Existing byte-based HMAC functions, sized pixel APIs and the Unicode array corrections remain available. All 38 public compiler, reference and native consumer checks pass across the final focused runs. The accepted fixture uses public typeFromName; its initial static-marker assumption was incorrect. The declaration-only fixture is never loaded as a native library.
+
+The broader suite exposed two obsolete tests. Regress.interface-signal is actually registered with G_TYPE_POINTER despite its integer GIR annotation; interface delivery is now tested through Gio.ActionGroup.action-added. The callee-allocated gint8** vfunc has no supported scalar Ref descriptor, and its previous test only called the JavaScript override directly. Its override and direct assertion are removed while the C-dispatched scalar out controls remain. All 69 signal/vfunc checks and the final 2,965 native, runtime and renderer cases pass. Workspace checks pass after the affected type/lint rerun; independent production and test reviews are clean within this scope.
+
+The initial source review covers 12 complete files, 1,318 lines, with further reads, installed-GIR scans and peer inventories recorded separately. Scalar aliases whose C names conceal another typedef and property C metadata not retained by the parser remain review limits. No native copying or numeric-pointer support is added.
+
+### Inline-array source bounds
+
+Array packing now checks each original handle's recorded extent before copying an inline record. The previous path replaced it with an unbounded borrowed handle first, losing that information. The existing handle helper preserves lifetime, invalidation and data-kind checks. No extent is invented for native memory whose size is unknown.
+
+Ten public addon cases cover fixed arrays and GArray packing: exact allocations, bounded aliases, independent copies, rejected undersized or null elements, unchanged destination values after rejection, and supported null and empty containers. Sources remain live, no raw addresses are supplied, and no pre-fix native execution is used. The normal native, runtime and renderer checkpoint passes 2,952 cases across 175 files. All 1,091 native sanitizer cases pass, and the normal addon is restored. Workspace TypeScript, lint, Rust checks and Knip pass. The final test refactor splits the two empty-array assertions into explicit cases for lint; all ten cases pass again, with native types and lint clean. Independent production and fixture reviews are clean.
+
+The measured struct-copy path also retains the size it passes to g_memdup2. Fourteen public addon cases verify independent copies, exact extents, rejected out-of-range access, bounded aliases, null fields and array packing without replacing a valid destination on failure. Custom copy functions and memory with unknown bounds are unchanged. Independent production and test reviews pass. The combined pointer-contract checkpoint passes 2,965 normal native, runtime and renderer cases across 176 files, and all 1,104 sanitizer cases, with the normal addon restored. Workspace types, lint, Rust checks and Knip pass.
+
+### Runtime shutdown and public error contracts
+
+A repeat source review found that one throwing exit callback prevented subsequent callbacks and native shutdown from running. Shutdown now attempts every registered callback and native cleanup before propagating the original error, or an AggregateError when multiple callbacks fail. Reentrant and repeated shutdown still runs once. Five real child-process cases cover ordinary shutdown, order, reentrancy, and one or multiple failures. The children retain native keep-alive until shutdown and must exit naturally. All 12 focused lifecycle cases pass.
+
+Error-domain tests now use generated GLib enums and real GErrors. The callback error fixture passes opaque OptionContext and OptionGroup handles instead of integer addresses, with its C ABI and single native owner reviewed before execution. All three domain cases and four callback error cases pass. The complete runtime suite passes all 678 cases across 67 files, with affected types, lint and independent source reviews.
+
+Four Contributing pages and three callback implementation files were read completely, 1,050 lines. Architecture and callback prose now distinguish runtime value semantics from native ABI/storage ownership, and document the validated shutdown behavior. Callback options now derive their fields from the canonical descriptor, preserving explicit undefined values for scope and destroy kind. Strict accepted and rejected public consumers, affected types and lint pass. Runtime defaults and execution are unchanged. GL callback retirement and asynchronous delivery remain open.
+
+### GtkSourceView snippet mark cleanup
+
+U21 in `~/UPSTREAM.md` records a GtkSourceView cleanup defect. Finalizing a snippet removes its text marks, while chunks retain references to those marks. If the buffer then goes away, chunk cleanup attempts to delete already-detached marks. The installed 5.20.0 source and checked upstream master share that implementation.
+
+A minimal upstream patch checks the mark's deletion state before removing it and always releases its reference. The reviewed patch builds against the official source in `~/upstream-work/gtksource-snippet-marks`, without installing libraries or changing the environment configuration. After verifying the actual loaded library path in both the parent and test worker, all 37 signal cases pass with the previously withdrawn JSX-buffer fixture and no unhandled cleanup errors. The system library is unchanged and the canonical default-buffer fixture remains. The patch, source hashes, review and validation evidence are retained for upstream; no external report was posted.
+
+### Root configuration repeat audit
+
+All 29 human-maintained root files were read again, 1,799 lines, with exact paths and hashes recorded. Supporting release and animation callers bring the full-read scope to 2,808 lines. No new root configuration defect was confirmed. The generated lockfile was parsed structurally, checking 31 importers and 265 dependency entries against manifests; it was not claimed as a complete line-by-line read.
+
+The release script now uses the existing maintained semver dependency to parse prereleases, retaining the policy against unnamed numeric channels, including identifiers larger than JavaScript's safe integer range. Seven isolated fixtures exercise the real release script and Nx: beta increments, channel changes, stable releases, build metadata, both numeric rejection paths and dry runs. They verify release artifacts or unchanged files as appropriate, with no remote publication. All seven pass, alongside the frozen install, full repository types and lint.
+
+### Latest remote checkpoint
+
+At `fdb77c7c`, every main CI job passes, including all 591 CLI tests across 55 files in 2,172 seconds. The expanded CLI budget accommodates that run. CodeQL passes. The instrumented suite passes all 4,930 tests across 382 files in 3,175 seconds; Sonar analysis and its quality-gate check both pass. The 90-minute coverage budget accommodates the complete run.
+
+Copilot reviewed 275 of 705 files and added no new inline comments. Its summary repeats the nullable action, manifest replacement and callback lifetime concerns already tracked. The declared string action parameter and existing malformed-manifest coverage retain their recorded dispositions; GL callback lifetime remains open. This partial review does not close the audit, and no reply was posted.
+
+At `e99630eb`, every main CI job and CodeQL pass, including CLI tests, types, lint, documentation, publication and sanitizers. The Sonar coverage and quality-gate run also passes. Copilot reviewed 278 of 730 files and added no inline comments. Its summary retains manifest replacement and GL callback concerns and mentions unknown signal handling. The signal conversion callers receive actual Node child-exit signals or the explicitly handled Linux signals; unsupported signal names do not justify an extra production fallback. No review reply was posted.
+
+At `fce4428b`, non-CLI tests, types, lint, documentation, publication, sanitizers and CodeQL pass. The CLI job reaches its 45-minute limit after 517 passing cases across 42 completed files, with no failed case reported. Its two preceding complete runs took about 39 and 41 minutes; new consumer suites increase the work. The job budget is now 60 minutes, preserving its worker count and individual test deadlines. Sonar passes all 5,000 instrumented cases and completes coverage in 64 minutes. Its scan workflow succeeds, but the separate quality gate fails the new-code reliability requirement: rust:S9168 flags `PendingTransfer::disarm` using `mem::forget`. The pointer has intentionally transferred to its native owner. Clearing the guard's pointer before its existing destructor runs makes that relinquished ownership explicit. Local Rust, integration and sanitizer checks pass; a new remote gate is pending.
+
+Copilot reviewed 267 of 753 files and identified the borrowed array-seed ownership issue. The list, array decoder, bounded replacement and terminated-handle corrections are validated; reference-counted container destruction remains open. GitHub code quality also flagged a computed `__proto__` data property in the settings integration test. The JavaScript contract and standalone controls confirm a false positive; U19 in `~/UPSTREAM.md` records the evidence without a production workaround or suppression. No review reply or upstream report was posted.
+
+At `c820078f`, every main CI job and CodeQL pass. The CLI suite completes all 616 cases across 59 files in 3,010 seconds, within its revised budget. Sonar's 5,091 instrumented cases across 393 files pass in 2,759 seconds; both the scan workflow and separate quality gate pass, with no new issues. Copilot reviewed 265 of 770 files and added no inline comments; its summary repeats manifest persistence, GL callback lifetime, byte-array decoding and direct Storybook composition concerns. The malformed-manifest public consumer already verifies retry behavior. A separate byte-array source review covers 20 complete files, 3,754 lines, plus nine excerpts, 1,699 lines, and finds no supported ownership defect: owned results retain their cleanup guard through copying, while borrowed reads retain their owners. The NAPI copy compatibility remains necessary. All 14 public Storybook composition edge and error cases pass; typed direct composition and unknown module validation have distinct entry contracts, with no supported-input bug established. GL callback lifetime remains open. No review reply was posted.
+
+At `80498349`, every main CI job and CodeQL pass. The CLI suite completes all 620 cases across 61 files in 2,529 seconds. The Sonar workflow and separate quality gate also pass. Copilot declined this revision because the PR exceeds its 300-file review limit. This is a review limitation, not a clean assessment. Bounded independent source reviews continue, and no review reply was posted.
+
+At `85604874`, the main test job reports one toolbar-height failure after 1,177 passing renderer cases. Its attachment assertion passed, but the height was read before the next GTK allocation. The test now waits for the actual positive height after addition and zero height after removal, preserving its identity, attachment and content checks. All 49 slot cases and the broader 2,937-case local checkpoint pass. The change adds no production delay or timeout extension. Types, lint, publication, sanitizers, docs and CodeQL pass remotely. The CLI suite passes all 635 cases across 62 files in 3,385 seconds, within its existing job budget. The Sonar run on `linux-8-core` was cancelled after the maintainer reported the free-runner change merged. Its scan and quality gate remain unconfirmed. Further pushes wait until the branch includes that runner change; the rebase will follow the maintainer's instruction.
+
+Copilot reviewed 246 of 817 files and raised one tutorial context concern: a translated notification snippet used `due` without showing its enclosing function. The preceding reminders chapter defines that parameter. The prose now names and links `buildReminder(task, due)`, and the assembled function passes strict public TypeScript checking. No review reply was posted. This partial review does not establish convergence.
+
+The CLI job budget is now 90 minutes. Its last remote run took 56 minutes before the additional public compiler and reference coverage in this batch. The worker count and individual test deadlines are unchanged. YAML parsing and the job settings check pass locally; the expanded suite still needs a remote checkpoint after the runner update is incorporated.
+
 ## Next work
 
-The combined validation pass removed a private descriptor alias from the public documentation graph, an unused codegen export and redundant internal tags. Native lifecycle fixtures now narrow the nullable regex factory result through one constructor helper; all 20 lifecycle cases and the full e2e typecheck pass. Knip and affected-file lint pass. The website build exposed a link to a native API reference that is not published; removing it restored the build. The subsequent website and sanitizer checkpoints include the collection and codegen changes. At `2decda13`, fresh TypeScript and JavaScript consumers pass local-registry installation, build, launch and tests; TypeScript also passes typechecking. The installed tutorial passes build, launch, types, all 19 application tests, localized AppImage/deb/rpm checks and Flatpak manifest validation. These publication checks precede the store freshness and tutorial storage changes. PR checks and follow-up review are in progress.
+The latest ordinary native, runtime and renderer checkpoint passes 2,965 cases across 176 files. The preceding native checkpoint passes all 1,104 sanitizer cases, with the normal addon restored. The 95 new callable, field, callback and TypeInstance consumer checks pass, alongside the earlier property and layout controls. The subsequent namespace lifetime omission passes three focused checks; all 28 unknown-array and 24 signal consumer checks pass. The pointer-array copy correction passes 12 focused checks, including four new rejections. All 38 scalar-pointer consumer cases pass across the final focused runs, followed by 69 signal/vfunc controls and the complete ordinary suite. Workspace TypeScript, lint, Rust checks and Knip pass after the affected checks are rerun. Audit inventories, reviews, patches and validation logs for this batch are preserved under the home-backed `build/polish-v2/pointer-contracts` directory. The local changes still require their own remote checkpoint.
 
-Continue repeat audits alongside the remaining R2 container and ownership stages; the string conversion stage is complete. Follow with GL callback release, the broader constructor/factory-prop contract, declarative notifications and schema-driven settings types. Keep the TextView, Sidebar, ComboRow, Cairo image-data and React Spring compatibility code until official upstream releases contain the fixes. Continue source and documentation audits after each coherent change; zero findings has not been reached and the remaining inventory still needs review.
+Continue repeat audits and the remaining R2 conversion work. Callback exceptions during owned-value decoding and object construction, remaining signal/vfunc lowering, custom and inline container resources, GL callback retirement and asynchronous delivery, remaining CLI consumer contracts and the unread inventory remain open. U22 in ~/UPSTREAM.md records the source-confirmed napi External publication ownership candidate, with primary source evidence preserved under ~/upstream-work/napi-external-publication. Track that candidate and the reviewed GtkSourceView cleanup patch through upstream releases. GNOME Shell notification-card interaction and focus policy remain separate desktop validation work. Keep the existing compatibility code until official upstream releases include its fixes and GTKX's supported versions no longer need it. Zero findings has not been reached.

@@ -32,4 +32,5 @@ export { isRootElement } from "./reconciler/root-element.js";
 export { createReconcilerRoot, type ReconcilerRoot, setReconcilerErrorHandler } from "./reconciler/root.js";
 export { applyWrite } from "./reconciler/signals.js";
 export { applyStyle } from "./reconciler/style.js";
-export type { SettingsSchema, SettingsSchemaKeys, SettingValue } from "./utils/settings.js";
+export type { SettingsSchema, SettingsSchemaKeys, SettingsSchemaValues, SettingValue } from "./utils/settings.js";
+export type { DistributedOmit } from "@gtkx/utils";

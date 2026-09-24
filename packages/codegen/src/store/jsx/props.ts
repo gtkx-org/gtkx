@@ -5,8 +5,11 @@ import type { GirNamespace } from "../../gir/namespace.js";
 import type { GirCallable } from "../../gir/parameter.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { JsDocSpec } from "../../writer/doc.js";
+import { requiredConstructPropNames } from "../../analysis/construct-properties.js";
 import { forEachAncestor } from "../../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
+import { isEmittableProperty } from "../../analysis/property-admission.js";
+import { isEmittableSignal } from "../../analysis/signal-admission.js";
 import { recordTypeTarget, renderBaseType, type TsTypeTarget } from "../../analysis/ts-type.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderJsDoc } from "../../writer/doc.js";
@@ -55,6 +58,7 @@ type PropCollectorState = {
     propLines: string[];
     objectPropNames: string[];
     seen: Set<string>;
+    requiredProps: Set<string>;
 };
 
 type InterfacePropsOptions = {
@@ -81,16 +85,19 @@ const appendPropertyLines = (state: PropCollectorState, property: GirProperty, j
     const tsType = renderReactPropType(state.types, property.type, false);
     const spec = annotationSpec(property.annotations);
     const doc = renderJsDoc(property.doc, undefined, spec);
+    const isRequired = state.requiredProps.has(property.name);
+    const name = `${jsName}${isRequired ? "" : "?"}`;
+    const nullable = isRequired ? "" : " | null | undefined";
 
     if (isObjectProp(state.owner.library, property)) {
-        state.propLines.push(`${doc}${jsName}?: ${tsType} | ReactElement | null | undefined;`);
+        state.propLines.push(`${doc}${name}: ${tsType} | ReactElement${nullable};`);
         state.objectPropNames.push(jsName);
 
         return;
     }
 
     if (isConstructableProperty(property)) {
-        state.propLines.push(`${doc}${jsName}?: ${tsType} | null | undefined;`);
+        state.propLines.push(`${doc}${name}: ${tsType}${nullable};`);
     }
 
     const handlerType = `((value: ${tsType} | null, self: Self) => void) | null | undefined`;
@@ -101,10 +108,6 @@ const appendPropertyLines = (state: PropCollectorState, property: GirProperty, j
 };
 
 const acceptCollectorProperty = (state: PropCollectorState, property: GirProperty): void => {
-    if (!property.introspectable) {
-        return;
-    }
-
     const jsName = toCamelIdentifier(property.name);
 
     if (state.seen.has(jsName) || isOmittedProp(getGlibName(state.owner.klass), jsName)) {
@@ -112,7 +115,10 @@ const acceptCollectorProperty = (state: PropCollectorState, property: GirPropert
     }
 
     state.seen.add(jsName);
-    appendPropertyLines(state, property, jsName);
+
+    if (isEmittableProperty(state.owner.library, property)) {
+        appendPropertyLines(state, property, jsName);
+    }
 };
 
 const acceptCollectorSignal = (state: PropCollectorState, signal: GirCallable): void => {
@@ -123,6 +129,11 @@ const acceptCollectorSignal = (state: PropCollectorState, signal: GirCallable): 
     }
 
     state.seen.add(handlerName);
+
+    if (!isEmittableSignal(state.owner.library, signal)) {
+        return;
+    }
+
     const signature = renderSignalHandler({ types: state.types, signal, selfType: "Self" });
     const doc = renderJsDoc(signal.doc, undefined, selfHandlerSpec(signal));
     state.propLines.push(`${doc}${handlerName}?: (${signature}) | undefined;`);
@@ -139,6 +150,7 @@ const createPropEntryCollector = (owner: IntrinsicElementScope): PropEntryCollec
         propLines: [],
         objectPropNames: [],
         seen: new Set<string>(),
+        requiredProps: requiredConstructPropNames(library, owner.klass, owner.namespace.name),
     };
 
     return {

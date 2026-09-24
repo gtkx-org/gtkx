@@ -4,12 +4,8 @@ import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import { t } from "@gtkx/runtime";
-import { resolveExecutable } from "@gtkx/utils";
-import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterAll, beforeAll, expect, test } from "vitest";
+import { expect, test } from "vitest";
+import { fixtureLibrary } from "./helpers/fixture-library.js";
 import { drainAfterEachTest } from "./helpers/memory.js";
 
 drainAfterEachTest();
@@ -17,22 +13,7 @@ drainAfterEachTest();
 const UNICHARS = ["c", "o", "n", "s", "t", " ", "♥", " ", "u", "t", "f", "8"];
 
 const unalignedPattern = Array.from({ length: 32 }, (_, index) => (index + 1) % 8);
-const temporary = mkdtempSync(join(tmpdir(), "gtkx-collection-values-"));
-const collectionLibrary = join(temporary, "libgtkx-collection-values.so");
-
-beforeAll(() => {
-    const flags = execFileSync(resolveExecutable("pkg-config"), ["--cflags", "--libs", "glib-2.0"], {
-        encoding: "utf8",
-    }).trim().split(/\s+/);
-    execFileSync(resolveExecutable("cc"), [
-        "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror",
-        join(import.meta.dirname, "fixtures/collection-values.c"), "-o", collectionLibrary, ...flags,
-    ]);
-});
-
-afterAll(() => {
-    rmSync(temporary, { recursive: true, force: true });
-});
+const collectionLibrary = fixtureLibrary("collection-values");
 
 test.each([false, true])("array returns and outputs preserve their null policy (%s)", (preserveNull) => {
     const descriptor = { ...t.array(t.string()), preserveNull };

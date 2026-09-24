@@ -17,7 +17,8 @@ const hasOwnCopySemantics = (record: GirRecord): boolean =>
 const isOpaqueRecord = (record: GirRecord): boolean => record.opaque || record.disguised;
 
 const isValueSafeArray = (scope: Scope, type: Extract<GirType, { kind: "carray" }>): boolean =>
-    type.fixedSize !== undefined && isValueSafeRef(scope, type.element, type.elementCType);
+    type.fixedSize !== undefined && type.arrayCType?.endsWith("*") !== true &&
+    isValueSafeRef(scope, type.element, type.elementCType);
 
 const isValueSafeAlias = (scope: Scope, type: Extract<GirType, { kind: "alias" }>): boolean =>
     isValueSafeRef(scope, type.value.target, type.value.targetCType);

@@ -1,5 +1,5 @@
 import type * as Gio from "@gtkx/gi/gio";
-import type { SettingsSchema, SettingsSchemaKeys, SettingValue } from "@gtkx/react/internal";
+import type { SettingsSchema, SettingsSchemaKeys, SettingsSchemaValues, SettingValue } from "@gtkx/react/internal";
 import type { RenderHookResult } from "@gtkx/testing";
 import { GSettings } from "@gtkx/jsx/gio";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
@@ -29,20 +29,20 @@ const resetSettingsKey = async (schemaId: string, key: string): Promise<void> =>
     settings.reset(key);
 };
 
-const renderSetting = async <K extends SettingsSchemaKeys, P extends keyof K>(
-    schema: SettingsSchema<K>,
+const renderSetting = async <K extends SettingsSchemaKeys, P extends keyof K, V extends SettingsSchemaValues>(
+    schema: SettingsSchema<K, V>,
     key: P & string,
-): Promise<RenderHookResult<[SettingValue<K, P>, (value: SettingValue<K, P>) => void], undefined>> => {
+): Promise<RenderHookResult<[SettingValue<K, P, V>, (value: SettingValue<K, P, V>) => void], undefined>> => {
     const settings = await renderSettings(schema.id, schema.path);
 
-    return renderHook(() => useSetting<K, P>(settings, schema, key));
+    return renderHook(() => useSetting(settings, schema, key));
 };
 
-const expectSettingRoundTrip = async <K extends SettingsSchemaKeys, P extends keyof K>(
-    schema: SettingsSchema<K>,
+const expectSettingRoundTrip = async <K extends SettingsSchemaKeys, P extends keyof K, V extends SettingsSchemaValues>(
+    schema: SettingsSchema<K, V>,
     key: P & string,
-    initial: SettingValue<K, P>,
-    next: SettingValue<K, P>,
+    initial: SettingValue<K, P, V>,
+    next: SettingValue<K, P, V>,
 ): Promise<void> => {
     await resetSettingsKey(schema.id, key);
     const { result } = await renderSetting(schema, key);

@@ -60,6 +60,13 @@ const sidebarFixture = (mode: Adw.SidebarMode = Adw.SidebarMode.SIDEBAR) => {
     return { sidebarRef, itemRef, suffixRef, Fixture };
 };
 
+const expectSuffix = (item: Adw.SidebarItem | null, suffix: Adw.Spinner | null): void => {
+    expect(item).toBeInstanceOf(Adw.SidebarItem);
+    expect(suffix).toBeInstanceOf(Adw.Spinner);
+    expect(suffix).toBeRooted();
+    expect(item?.getSuffix()).toBe(suffix);
+};
+
 describe("Sidebar native mode compatibility", () => {
     it.each(WRITES)("keeps suffix updates usable after a $name mode write", async ({ write }) => {
         const { sidebarRef, itemRef, suffixRef, Fixture } = sidebarFixture();
@@ -70,15 +77,18 @@ describe("Sidebar native mode compatibility", () => {
             throw new Error("Sidebar did not mount");
         }
 
+        expect(sidebar.getMode()).toBe(Adw.SidebarMode.SIDEBAR);
         await act(() => {
             write(sidebar, Adw.SidebarMode.PAGE);
         });
+        expect(sidebar.getMode()).toBe(Adw.SidebarMode.PAGE);
         await rerender(<Fixture hasSuffix={true} />);
-        expect(itemRef.current?.getSuffix()).toBe(suffixRef.current);
-        expect(suffixRef.current?.getParent()).not.toBeNull();
+        expect(sidebarRef.current).toBe(sidebar);
+        expectSuffix(itemRef.current, suffixRef.current);
         await act(() => {
             write(sidebar, Adw.SidebarMode.SIDEBAR);
         });
+        expect(sidebar.getMode()).toBe(Adw.SidebarMode.SIDEBAR);
         await rerender(<Fixture />);
         expect(itemRef.current?.getSuffix()).toBeNull();
         await unmount();
@@ -97,20 +107,21 @@ describe("Sidebar native mode compatibility", () => {
         expect(() => {
             Reflect.apply(write, undefined, [sidebar, "invalid"]);
         }).toThrow();
+        expect(sidebar.getMode()).toBe(Adw.SidebarMode.SIDEBAR);
         await act(() => {
             write(sidebar, Adw.SidebarMode.PAGE);
         });
+        expect(sidebar.getMode()).toBe(Adw.SidebarMode.PAGE);
         await rerender(<Fixture hasSuffix={true} />);
-        expect(itemRef.current?.getSuffix()).toBe(suffixRef.current);
-        expect(suffixRef.current?.getParent()).not.toBeNull();
+        expect(sidebarRef.current).toBe(sidebar);
+        expectSuffix(itemRef.current, suffixRef.current);
     });
 
     it("starts in page mode with declared sections and suffixes", async () => {
         const { sidebarRef, itemRef, suffixRef, Fixture } = sidebarFixture(Adw.SidebarMode.PAGE);
         await render(<Fixture hasSuffix={true} />);
         expect(sidebarRef.current?.getMode()).toBe(Adw.SidebarMode.PAGE);
-        expect(itemRef.current?.getSuffix()).toBe(suffixRef.current);
-        expect(suffixRef.current?.getParent()).not.toBeNull();
+        expectSuffix(itemRef.current, suffixRef.current);
     });
 
     it("keeps suffix updates usable after a native breakpoint changes mode", async () => {
@@ -136,6 +147,7 @@ describe("Sidebar native mode compatibility", () => {
             throw new Error("The breakpoint and sidebar did not mount");
         }
 
+        expect(sidebar.getMode()).toBe(Adw.SidebarMode.SIDEBAR);
         breakpoint.addSetter(sidebar, "mode", modeValue(Adw.SidebarMode.PAGE));
         await act(() => {
             breakpoint.setCondition(Adw.BreakpointCondition.parse("max-width: 10000px"));
@@ -145,7 +157,7 @@ describe("Sidebar native mode compatibility", () => {
         });
         await rerender(<Bin hasSuffix={true} />);
         expect(sidebar.getMode()).toBe(Adw.SidebarMode.PAGE);
-        expect(itemRef.current?.getSuffix()).toBe(suffixRef.current);
-        expect(suffixRef.current?.getParent()).not.toBeNull();
+        expect(sidebarRef.current).toBe(sidebar);
+        expectSuffix(itemRef.current, suffixRef.current);
     });
 });

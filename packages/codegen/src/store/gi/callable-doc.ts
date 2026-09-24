@@ -1,6 +1,6 @@
 import { toCamelIdentifier } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
-import type { GirCallable } from "../../gir/parameter.js";
+import type { GirCallable, GirParameter } from "../../gir/parameter.js";
 import type { ModuleContext } from "../../writer/context.js";
 import type { JsDocSpec } from "../../writer/doc.js";
 import { shouldOmitPrimaryReturn } from "../../analysis/descriptor-render.js";
@@ -17,6 +17,7 @@ import { annotationSpec, THROWS_TEXT } from "./doc-spec.js";
 import { isCallbackParameter, returnedOutParameters, shouldTrimFinishBoolean } from "./method.js";
 
 type CallableDocOptions = {
+    excludedParameters?: ReadonlySet<GirParameter>;
     finishFn?: GirFunction | undefined;
     renames?: Map<string, string> | undefined;
 };
@@ -90,8 +91,13 @@ const tupleReturnsText = (primary: string | undefined, outs: InputParameter[]): 
     return bullets.length === 0 ? undefined : `Tuple of:\n\n${bullets.join("\n")}`;
 };
 
-const returnsText = (context: ModuleContext, fn: GirFunction, isPrimaryTrimmed: boolean): string | undefined => {
-    const outs = returnedOutParameters(context, fn);
+const returnsText = (
+    context: ModuleContext,
+    fn: GirFunction,
+    isPrimaryTrimmed: boolean,
+    excludedParameters: ReadonlySet<GirParameter> | undefined,
+): string | undefined => {
+    const outs = returnedOutParameters(context, fn, excludedParameters);
     const isPrimaryOmitted = isPrimaryTrimmed || shouldOmitPrimaryReturn(context.library, fn.returnValue);
     const primary = isPrimaryOmitted ? undefined : fn.returnValue.doc;
 
@@ -126,13 +132,15 @@ const callableSpec = (context: ModuleContext, callable: GirFunction, options: Ca
     params: documentedParameters(
         context.library,
         callable,
-        (parameter) => options.finishFn !== undefined && isCallbackParameter(context, parameter),
+        (parameter) => options.excludedParameters?.has(parameter) === true ||
+            (options.finishFn !== undefined && isCallbackParameter(context, parameter)),
         options.renames,
     ),
     returns: returnsText(
         context,
         options.finishFn ?? callable,
         options.finishFn !== undefined && shouldTrimFinishBoolean(context, options.finishFn),
+        options.excludedParameters,
     ),
     throws: canCallableThrow(callable, options.finishFn) ? THROWS_TEXT : undefined,
 });

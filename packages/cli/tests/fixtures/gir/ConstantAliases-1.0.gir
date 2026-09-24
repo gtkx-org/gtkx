@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0" xmlns:c="http://www.gtk.org/introspection/c/1.0">
+  <namespace name="ConstantAliases" version="1.0">
+    <alias name="Signed" c:type="ConstantAliasesSigned"><type name="gint64" c:type="gint64"/></alias>
+    <alias name="Unsigned" c:type="ConstantAliasesUnsigned"><type name="guint64" c:type="guint64"/></alias>
+    <alias name="Count" c:type="ConstantAliasesCount"><type name="Signed" c:type="ConstantAliasesSigned"/></alias>
+    <alias name="Flag" c:type="ConstantAliasesFlag"><type name="gboolean" c:type="gboolean"/></alias>
+    <alias name="Text" c:type="ConstantAliasesText"><type name="utf8" c:type="gchar*"/></alias>
+    <alias name="Integer" c:type="ConstantAliasesInteger"><type name="gint" c:type="gint"/></alias>
+    <alias name="Type" c:type="GType"><type name="gsize" c:type="gsize"/></alias>
+    <alias name="ObjectType" c:type="ConstantAliasesObjectType"><type name="Type" c:type="GType"/></alias>
+    <constant name="WIDE_SIGNED" value="9007199254740993"><type name="Signed" c:type="ConstantAliasesSigned"/></constant>
+    <constant name="MIN_SIGNED" value="-9223372036854775808"><type name="Count" c:type="ConstantAliasesCount"/></constant>
+    <constant name="MAX_UNSIGNED" value="18446744073709551615"><type name="Unsigned" c:type="ConstantAliasesUnsigned"/></constant>
+    <constant name="ENABLED" value="1"><type name="Flag" c:type="ConstantAliasesFlag"/></constant>
+    <constant name="DISABLED" value="0"><type name="Flag" c:type="ConstantAliasesFlag"/></constant>
+    <constant name="NUMERIC_TEXT" value="42"><type name="Text" c:type="ConstantAliasesText"/></constant>
+    <constant name="PADDED_TEXT" value="  word, "><type name="Text" c:type="ConstantAliasesText"/></constant>
+    <constant name="COUNT" value="42"><type name="Integer" c:type="ConstantAliasesInteger"/></constant>
+    <constant name="OBJECT_TYPE" value="80"><type name="ObjectType" c:type="ConstantAliasesObjectType"/></constant>
+    <constant name="DIRECT_SIGNED" value="-9007199254740993"><type name="gint64" c:type="gint64"/></constant>
+    <constant name="DIRECT_UNSIGNED" value="9007199254740993"><type name="guint64" c:type="guint64"/></constant>
+    <constant name="DIRECT_NUMBER" value="23"><type name="gint" c:type="gint"/></constant>
+    <constant name="DIRECT_BOOLEAN" value="1"><type name="gboolean" c:type="gboolean"/></constant>
+    <constant name="DIRECT_TEXT" value="24"><type name="utf8" c:type="gchar*"/></constant>
+  </namespace>
+</repository>

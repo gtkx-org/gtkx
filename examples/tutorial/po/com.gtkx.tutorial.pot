@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-14 22:16+0200\n"
+"POT-Creation-Date: 2026-09-15 00:51+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -19,8 +19,8 @@ msgstr ""
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
 #: src/components/about.tsx:9 src/components/preferences.tsx:28
-#: src/components/shortcuts.tsx:12 src/components/window.tsx:78
-#: src/components/window.tsx:106 src/store/selectors.ts:18
+#: src/components/shortcuts.tsx:12 src/components/window.tsx:71
+#: src/components/window.tsx:99 src/store/selectors.ts:18
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.desktop:3
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:4
 #: po/.gtkx-metadata/com.gtkx.tutorial.template.metainfo.xml:25
@@ -81,7 +81,7 @@ msgstr ""
 msgid "About Tasks"
 msgstr ""
 
-#: src/components/new-list-dialog.tsx:21 src/components/window.tsx:110
+#: src/components/new-list-dialog.tsx:21 src/components/window.tsx:103
 msgid "New List"
 msgstr ""
 
@@ -166,7 +166,7 @@ msgstr ""
 msgid "Delete (Delete)"
 msgstr ""
 
-#: src/components/task-detail.tsx:54 src/settings.ts:13
+#: src/components/task-detail.tsx:54 src/settings.ts:18
 msgid "Title"
 msgstr ""
 
@@ -227,15 +227,15 @@ msgstr ""
 msgid "Task"
 msgstr ""
 
-#: src/components/window.tsx:36
+#: src/components/window.tsx:35
 msgid "Nothing Selected"
 msgstr ""
 
-#: src/components/window.tsx:37
+#: src/components/window.tsx:36
 msgid "Pick a list or a smart view in the sidebar"
 msgstr ""
 
-#: src/components/window.tsx:127
+#: src/components/window.tsx:120
 msgid "New Task (Ctrl+N)"
 msgstr ""
 
@@ -261,35 +261,35 @@ msgstr[1] ""
 msgid "Never"
 msgstr ""
 
-#: src/notifications.ts:9
+#: src/notifications.tsx:21
 msgid "Due {{date}}"
 msgstr ""
 
-#: src/notifications.ts:11
+#: src/notifications.tsx:23
 msgid "Mark Complete"
 msgstr ""
 
-#: src/settings.ts:5
+#: src/settings.ts:10
 msgid "Follow system"
 msgstr ""
 
-#: src/settings.ts:6
+#: src/settings.ts:11
 msgid "Light"
 msgstr ""
 
-#: src/settings.ts:7
+#: src/settings.ts:12
 msgid "Dark"
 msgstr ""
 
-#: src/settings.ts:11
+#: src/settings.ts:16
 msgid "Manual"
 msgstr ""
 
-#: src/settings.ts:12
+#: src/settings.ts:17
 msgid "Due date"
 msgstr ""
 
-#: src/settings.ts:14
+#: src/settings.ts:19
 msgid "Date created"
 msgstr ""
 

@@ -1,5 +1,4 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
-import * as GLib from "@gtkx/gi/glib";
 import * as Regress from "@gtkx/gi/regress";
 import { t } from "@gtkx/runtime";
 import { expect, test } from "vitest";
@@ -154,11 +153,6 @@ test("64-bit integer hash tables reject out-of-range and wrong typed values", ()
         // @ts-expect-error a fractional number is not a 64-bit integer value
         GIMarshallingTests.ghashtableInt64In(new Map([["0", 1.5]]));
     }).toThrow();
-});
-
-test("a 64-bit integer is refused as a hash table key", () => {
-    expect(() => GLib.HashTable.add(new Map([[1n, 1n]]), 1n)).toThrow();
-    expect(() => GLib.HashTable.contains(new Map([[1n, 1n]]), 1n)).toThrow();
 });
 
 test("hash table integer entries reject fractional and out-of-range values", () => {

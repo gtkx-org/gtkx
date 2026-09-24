@@ -1,6 +1,6 @@
+import type * as GObject from "@gtkx/gi/gobject";
 import type { ReactNode, RefObject } from "react";
 import * as Adw from "@gtkx/gi/adw";
-import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow, AdwComboRow, AdwPreferencesGroup, AdwPreferencesPage } from "@gtkx/jsx/adw";
 import {
@@ -14,21 +14,15 @@ import {
     GtkProgressBar,
     GtkScale,
     GtkScrollbar,
-    GtkSignalListItemFactory,
     GtkStringList,
     GtkSwitch,
     GtkTextView,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
 import { getWidgetText, render, screen, waitFor } from "@gtkx/testing";
-import {
-    readAccessibleFlag,
-    readAccessibleRelation,
-    readAccessibleState,
-    readAccessibleString,
-} from "@gtkx/testing/internal";
 import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
+import { ItemFactory } from "../helpers/list-view-render.js";
 import { gcUntil } from "../helpers/native-utils.js";
 
 type AccessibleProbeProps = { show: boolean; ariaRef: RefObject<Gtk.Label | null> };
@@ -36,32 +30,6 @@ type AccessibleProbeProps = { show: boolean; ariaRef: RefObject<Gtk.Label | null
 const AccessibleProbe = ({ show, ariaRef }: AccessibleProbeProps): ReactNode => (
     <GtkBox>{show ? <GtkLabel ref={ariaRef} label="watched" accessibleLabel="a11y" /> : null}</GtkBox>
 );
-
-const descendants = (widget: Gtk.Widget): Gtk.Accessible[] => {
-    const found: Gtk.Accessible[] = [];
-    let child = widget.getFirstChild();
-
-    while (child) {
-        found.push(child, ...descendants(child));
-        child = child.getNextSibling();
-    }
-
-    return found;
-};
-
-const getAccessible = (current: Gtk.Accessible | null): Gtk.Accessible => {
-    if (!current) {
-        throw new Error("Expected rendered widget");
-    }
-
-    return current;
-};
-
-const hasAccessibleProperty = (ref: RefObject<Gtk.Accessible | null>, property: Gtk.AccessibleProperty): boolean =>
-    Gtk.testAccessibleHasProperty(getAccessible(ref.current), property);
-
-const hasAccessibleState = (ref: RefObject<Gtk.Accessible | null>, state: Gtk.AccessibleState): boolean =>
-    Gtk.testAccessibleHasState(getAccessible(ref.current), state);
 
 const expectLabelSelection = async (text: string, range: [number, number], expected: string): Promise<void> => {
     const ref = createRef<Gtk.Label>();
@@ -71,20 +39,9 @@ const expectLabelSelection = async (text: string, range: [number, number], expec
     expect(label).toHaveSelection(expected);
 };
 
-const setUpItemLabel = (object: GObject.Object): void => {
-    if (object instanceof Gtk.ListItem) {
-        object.setChild(new Gtk.Label());
-    }
-};
-
-const bindItemLabel = (object: GObject.Object): void => {
-    const child = object instanceof Gtk.ListItem ? object.getChild() : null;
-    const item = object instanceof Gtk.ListItem ? object.getItem() : null;
-
-    if (child instanceof Gtk.Label && item instanceof Gtk.StringObject) {
-        child.setLabel(`Language: ${item.getString()}`);
-    }
-};
+const renderItemLabel = (item: GObject.Object): ReactNode => (
+    item instanceof Gtk.StringObject ? <GtkLabel>{`Language: ${item.getString()}`}</GtkLabel> : null
+);
 
 const renderPlaceholderEntry = async (rendered: string, accessible: string): Promise<Gtk.Entry | null> => {
     const ref = createRef<Gtk.Entry>();
@@ -111,7 +68,7 @@ describe("reading accessible attributes from GTK", () => {
     it("reads a string property back verbatim", async () => {
         const ref = createRef<Gtk.Label>();
         await render(<GtkLabel ref={ref} accessibleLabel="Written by React" />);
-        expect(readAccessibleString(getAccessible(ref.current), Gtk.AccessibleProperty.LABEL)).toBe("Written by React");
+        expect(ref.current).toHaveAccessibleProperty(Gtk.AccessibleProperty.LABEL, "Written by React");
     });
 
     it("reads a boolean state GTK does not maintain itself", async () => {
@@ -125,17 +82,15 @@ describe("reading accessible attributes from GTK", () => {
             </GtkBox>,
         );
 
-        expect(readAccessibleFlag(getAccessible(set.current), Gtk.AccessibleState.BUSY)).toBe(true);
-        expect(readAccessibleFlag(getAccessible(unset.current), Gtk.AccessibleState.BUSY)).toBeNull();
+        expect(set.current).toHaveAccessibleState(Gtk.AccessibleState.BUSY, true);
+        expect(unset.current).not.toHaveAccessibleState(Gtk.AccessibleState.BUSY);
     });
 
     it("reads a tristate state as its enum member", async () => {
         const ref = createRef<Gtk.Label>();
         await render(<GtkLabel ref={ref} accessibleChecked={Gtk.AccessibleTristate.MIXED} />);
 
-        expect(readAccessibleState(getAccessible(ref.current), Gtk.AccessibleState.CHECKED)).toBe(
-            Gtk.AccessibleTristate.MIXED,
-        );
+        expect(ref.current).toHaveAccessibleState(Gtk.AccessibleState.CHECKED, Gtk.AccessibleTristate.MIXED);
     });
 });
 
@@ -145,7 +100,7 @@ describe("holding accessible props against GTK's own writes", () => {
         await render(<GtkLabel ref={ref} accessibleHidden />);
 
         await waitFor(() => {
-            expect(readAccessibleFlag(getAccessible(ref.current), Gtk.AccessibleState.HIDDEN)).toBe(true);
+            expect(ref.current).toHaveAccessibleState(Gtk.AccessibleState.HIDDEN, true);
         });
     });
 
@@ -161,7 +116,7 @@ describe("holding accessible props against GTK's own writes", () => {
         await rerender(<App isShown />);
 
         await waitFor(() => {
-            expect(readAccessibleFlag(getAccessible(ref.current), Gtk.AccessibleState.HIDDEN)).toBe(true);
+            expect(ref.current).toHaveAccessibleState(Gtk.AccessibleState.HIDDEN, true);
         });
     });
 
@@ -180,29 +135,26 @@ describe("holding accessible props against GTK's own writes", () => {
         await rerender(<App isAuthored isHidden={false} isShown />);
 
         await waitFor(() => {
-            expect(readAccessibleFlag(getAccessible(ref.current), Gtk.AccessibleState.HIDDEN)).toBe(false);
+            expect(ref.current).toHaveAccessibleState(Gtk.AccessibleState.HIDDEN, false);
         });
 
         await rerender(<App isAuthored={false} isHidden={false} isShown={false} />);
         await rerender(<App isAuthored={false} isHidden={false} isShown />);
 
         await waitFor(() => {
-            expect(readAccessibleFlag(getAccessible(ref.current), Gtk.AccessibleState.HIDDEN)).not.toBe(true);
+            expect(ref.current).not.toHaveAccessibleState(Gtk.AccessibleState.HIDDEN, true);
         });
     });
 });
 
-describe("resolving relation targets without reading the print string", () => {
-    it("resolves the LABELLED_BY GTK writes on a button to its own label", async () => {
+describe("accessible names from label relations", () => {
+    it("names a button from its label", async () => {
         const ref = createRef<Gtk.Button>();
         await render(<GtkButton ref={ref} label="Press me" />);
-        const button = ref.current as Gtk.Widget;
-        const targets = readAccessibleRelation(button, Gtk.AccessibleRelation.LABELLED_BY, [descendants(button)]);
-        expect(targets).toHaveLength(1);
-        expect(targets[0]).toHaveTextContent("Press me");
+        expect(ref.current).toHaveAccessibleName("Press me");
     });
 
-    it("resolves a relation carrying more than one target", async () => {
+    it("combines every label in a labelled-by relation", async () => {
         const first = createRef<Gtk.Label>();
         const second = createRef<Gtk.Label>();
         const subject = createRef<Gtk.Box>();
@@ -212,83 +164,77 @@ describe("resolving relation targets without reading the print string", () => {
                 <GtkBox>
                     <GtkLabel ref={first}>First</GtkLabel>
                     <GtkLabel ref={second}>Second</GtkLabel>
-                    <GtkBox ref={subject} accessibleLabelledBy={labels} />
+                    <GtkBox ref={subject} accessibleRole={Gtk.AccessibleRole.GROUP} accessibleLabelledBy={labels} />
                 </GtkBox>
             );
         }
 
         const { rerender } = await render(<App labels={[]} />);
-        const both = [first.current as Gtk.Label, second.current as Gtk.Label];
-        await rerender(<App labels={both} />);
-
-        const resolved = readAccessibleRelation(
-            subject.current as Gtk.Accessible,
-            Gtk.AccessibleRelation.LABELLED_BY,
-            [both],
-        );
-
-        expect(resolved).toHaveLength(2);
-        expect(resolved).toEqual(expect.arrayContaining(both));
+        const firstLabel = first.current;
+        const secondLabel = second.current;
+        if (firstLabel === null || secondLabel === null) {
+            throw new Error("The relation labels must be mounted");
+        }
+        await rerender(<App labels={[firstLabel, secondLabel]} />);
+        expect(subject.current).toHaveAccessibleName("First Second");
     });
 });
 
 describe("accessible props - states GTK collects as boolean or undefined", () => {
-    it("renders accessibleExpanded, accessibleSelected and accessibleVisited without an FFI error", async () => {
+    it("publishes expanded, selected and visited states", async () => {
         const ref = createRef<Gtk.Label>();
         await render(<GtkLabel ref={ref} accessibleExpanded accessibleSelected accessibleVisited />);
-        expect(hasAccessibleState(ref, Gtk.AccessibleState.EXPANDED)).toBe(true);
-        expect(hasAccessibleState(ref, Gtk.AccessibleState.SELECTED)).toBe(true);
-        expect(hasAccessibleState(ref, Gtk.AccessibleState.VISITED)).toBe(true);
+        expect(ref.current).toHaveAccessibleState(Gtk.AccessibleState.EXPANDED, true);
+        expect(ref.current).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, true);
+        expect(ref.current).toHaveAccessibleState(Gtk.AccessibleState.VISITED, true);
     });
 });
 
 describe("accessible props - GValue marshaling regression", () => {
-    it("sets accessibleLabel (string) without crashing", async () => {
+    it("publishes an authored accessible label", async () => {
         const ref = createRef<Gtk.Button>();
         await render(<GtkButton ref={ref} accessibleLabel="Zoom in" />);
-        expect(hasAccessibleProperty(ref, Gtk.AccessibleProperty.LABEL)).toBe(true);
+        expect(ref.current).toHaveAccessibleProperty(Gtk.AccessibleProperty.LABEL, "Zoom in");
     });
 
-    it("sets accessibleHasPopup (boolean) without crashing", async () => {
+    it("publishes an authored popup state", async () => {
         const ref = createRef<Gtk.Button>();
         await render(<GtkButton ref={ref} accessibleHasPopup />);
-        expect(hasAccessibleProperty(ref, Gtk.AccessibleProperty.HAS_POPUP)).toBe(true);
+        expect(ref.current).toHaveAccessibleProperty(Gtk.AccessibleProperty.HAS_POPUP, true);
     });
 
-    it("sets accessibleKeyShortcuts (string) without crashing", async () => {
+    it("publishes authored keyboard shortcuts", async () => {
         const ref = createRef<Gtk.Switch>();
         await render(<GtkSwitch ref={ref} accessibleKeyShortcuts="Control+M" />);
-        expect(hasAccessibleProperty(ref, Gtk.AccessibleProperty.KEY_SHORTCUTS)).toBe(true);
+        expect(ref.current).toHaveAccessibleProperty(Gtk.AccessibleProperty.KEY_SHORTCUTS, "Control+M");
     });
 
-    it("sets accessibleInvalid (token) without crashing", async () => {
+    it("publishes an authored invalid state", async () => {
         const ref = createRef<Gtk.Entry>();
         await render(<GtkEntry ref={ref} accessibleInvalid={Gtk.AccessibleInvalidState.TRUE} />);
-        expect(Gtk.testAccessibleHasState(getAccessible(ref.current), Gtk.AccessibleState.INVALID)).toBe(true);
+        expect(ref.current).toHaveAccessibleState(Gtk.AccessibleState.INVALID, Gtk.AccessibleInvalidState.TRUE);
     });
 
-    it("sets accessibleLabelledBy (reference list) without crashing", async () => {
+    it("names an entry from its referenced label", async () => {
         const entryRef = createRef<Gtk.Entry>();
 
         function App() {
             const [label, setLabel] = useState<Gtk.Label | null>(null);
 
             return (
-                <>
+                <GtkBox>
                     <GtkLabel ref={setLabel}>Description</GtkLabel>
                     <GtkEntry ref={entryRef} accessibleLabelledBy={label ? [label] : undefined} />
-                </>
+                </GtkBox>
             );
         }
 
         await render(<App />);
 
-        expect(Gtk.testAccessibleHasRelation(getAccessible(entryRef.current), Gtk.AccessibleRelation.LABELLED_BY)).toBe(
-            true,
-        );
+        expect(entryRef.current).toHaveAccessibleName("Description");
     });
 
-    it("updates a string accessible prop across renders without crashing", async () => {
+    it("updates an authored accessible label across renders", async () => {
         const ref = createRef<Gtk.Button>();
 
         function App({ label }: { label: string }) {
@@ -296,9 +242,11 @@ describe("accessible props - GValue marshaling regression", () => {
         }
 
         const { rerender } = await render(<App label="First" />);
+        expect(ref.current).toHaveAccessibleProperty(Gtk.AccessibleProperty.LABEL, "First");
         await rerender(<App label="Second" />);
+        expect(ref.current).toHaveAccessibleProperty(Gtk.AccessibleProperty.LABEL, "Second");
         await rerender(<App label="Third" />);
-        expect(hasAccessibleProperty(ref, Gtk.AccessibleProperty.LABEL)).toBe(true);
+        expect(ref.current).toHaveAccessibleProperty(Gtk.AccessibleProperty.LABEL, "Third");
     });
 
     it("combines multiple accessible props on the same widget", async () => {
@@ -313,9 +261,9 @@ describe("accessible props - GValue marshaling regression", () => {
             />,
         );
 
-        expect(hasAccessibleProperty(ref, Gtk.AccessibleProperty.LABEL)).toBe(true);
-        expect(hasAccessibleProperty(ref, Gtk.AccessibleProperty.HAS_POPUP)).toBe(true);
-        expect(hasAccessibleProperty(ref, Gtk.AccessibleProperty.DESCRIPTION)).toBe(true);
+        expect(ref.current).toHaveAccessibleProperty(Gtk.AccessibleProperty.LABEL, "Zoom in");
+        expect(ref.current).toHaveAccessibleProperty(Gtk.AccessibleProperty.HAS_POPUP, true);
+        expect(ref.current).toHaveAccessibleProperty(Gtk.AccessibleProperty.DESCRIPTION, "Increase font size");
     });
 
     it("clears an accessible prop when set to undefined", async () => {
@@ -326,9 +274,9 @@ describe("accessible props - GValue marshaling regression", () => {
         }
 
         const { rerender } = await render(<App label="With label" />);
-        expect(hasAccessibleProperty(ref, Gtk.AccessibleProperty.LABEL)).toBe(true);
+        expect(ref.current).toHaveAccessibleProperty(Gtk.AccessibleProperty.LABEL, "With label");
         await rerender(<App label={undefined} />);
-        expect(hasAccessibleProperty(ref, Gtk.AccessibleProperty.LABEL)).toBe(false);
+        expect(ref.current).not.toHaveAccessibleProperty(Gtk.AccessibleProperty.LABEL);
     });
 });
 
@@ -368,7 +316,7 @@ describe("accessible reads beyond the concrete classes", () => {
             <GtkDropDown
                 ref={ref}
                 model={<GtkStringList strings={["English", "French"]} />}
-                factory={<GtkSignalListItemFactory onSetup={setUpItemLabel} onBind={bindItemLabel} />}
+                factory={<ItemFactory renderItem={renderItemLabel} />}
             />,
         );
 

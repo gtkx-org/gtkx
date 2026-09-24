@@ -148,20 +148,8 @@ const NO_FONT_ENTRY = `globalThis.process.stdout.write(
 );
 `;
 
-const buildWithNodeEnv = async (project: AppProject, nodeEnv: string): Promise<string> => {
-    const previous = process.env.NODE_ENV;
-    process.env.NODE_ENV = nodeEnv;
-
-    try {
-        return await buildAppProject({ project, outDir: OUT_DIR });
-    } finally {
-        if (previous === undefined) {
-            delete process.env.NODE_ENV;
-        } else {
-            process.env.NODE_ENV = previous;
-        }
-    }
-};
+const buildWithNodeEnv = (project: AppProject, nodeEnv: string): Promise<string> =>
+    buildAppProject({ project, outDir: OUT_DIR, environment: { NODE_ENV: nodeEnv } });
 
 const runWithoutDataEnvironment = (file: string): AppRun => {
     const env = deployedEnvironment();

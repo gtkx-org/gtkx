@@ -17,24 +17,6 @@ import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { TwoNavigationPages } from "../helpers/navigation-view-render.js";
 
-function ReorderablePageApp({
-    notebookRef,
-    contentRef,
-    isReorderable,
-}: {
-    notebookRef: RefObject<Gtk.Notebook | null>;
-    contentRef: RefObject<Gtk.Label | null>;
-    isReorderable: boolean;
-}) {
-    return (
-        <GtkNotebook ref={notebookRef}>
-            <GtkNotebookPage tabLabel="Page" reorderable={isReorderable}>
-                <GtkLabel ref={contentRef}>Content</GtkLabel>
-            </GtkNotebookPage>
-        </GtkNotebook>
-    );
-}
-
 const getItemTitles = (sidebar: Adw.Sidebar | null): string[] => {
     const titles: string[] = [];
 
@@ -84,7 +66,7 @@ describe("render - NavigationPage", () => {
         );
 
         await screen.findByText("Home Content");
-        expect(viewRef.current?.findPage("home")).not.toBeNull();
+        expect(viewRef.current?.findPage("home")).toBeInstanceOf(Adw.NavigationPage);
     });
 
     it("adds page with title", async () => {
@@ -111,8 +93,8 @@ describe("render - NavigationPage", () => {
             </AdwNavigationView>,
         );
 
-        expect(viewRef.current?.findPage("page1")).not.toBeNull();
-        expect(viewRef.current?.findPage("page2")).not.toBeNull();
+        expect(viewRef.current?.findPage("page1")).toBeInstanceOf(Adw.NavigationPage);
+        expect(viewRef.current?.findPage("page2")).toBeInstanceOf(Adw.NavigationPage);
     });
 
     it("sets canPop property", async () => {
@@ -149,10 +131,14 @@ describe("render - NavigationPage", () => {
             );
         }
 
-        await render(<App shouldShowPage={true} />);
-        expect(viewRef.current?.findPage("removable")).not.toBeNull();
-        await render(<App shouldShowPage={false} />);
-        expect(viewRef.current?.findPage("removable")).toBeNull();
+        const { rerender } = await render(<App shouldShowPage={true} />);
+        const view = viewRef.current;
+        expect(view?.findPage("removable")).toBeInstanceOf(Adw.NavigationPage);
+
+        await rerender(<App shouldShowPage={false} />);
+
+        expect(viewRef.current).toBe(view);
+        expect(view?.findPage("removable")).toBeNull();
     });
 
     it("updates page title when prop changes", async () => {
@@ -168,11 +154,15 @@ describe("render - NavigationPage", () => {
             );
         }
 
-        await render(<App title="Initial Title" />);
-        let page = viewRef.current?.findPage("dynamic");
+        const { rerender } = await render(<App title="Initial Title" />);
+        const view = viewRef.current;
+        const page = view?.findPage("dynamic");
         expect(page).toHaveObjectProperty("title", "Initial Title");
-        await render(<App title="Updated Title" />);
-        page = viewRef.current?.findPage("dynamic");
+
+        await rerender(<App title="Updated Title" />);
+
+        expect(viewRef.current).toBe(view);
+        expect(view?.findPage("dynamic")).toBe(page);
         expect(page).toHaveObjectProperty("title", "Updated Title");
     });
 
@@ -189,11 +179,15 @@ describe("render - NavigationPage", () => {
             );
         }
 
-        await render(<App canPop={true} />);
-        let page = viewRef.current?.findPage("page");
+        const { rerender } = await render(<App canPop={true} />);
+        const view = viewRef.current;
+        const page = view?.findPage("page");
         expect(page).toHaveObjectProperty("canPop", true);
-        await render(<App canPop={false} />);
-        page = viewRef.current?.findPage("page");
+
+        await rerender(<App canPop={false} />);
+
+        expect(viewRef.current).toBe(view);
+        expect(view?.findPage("page")).toBe(page);
         expect(page).toHaveObjectProperty("canPop", false);
     });
 });
@@ -230,9 +224,13 @@ describe("render - NavigationSplitView", () => {
         }
 
         const { rerender } = await render(<App shouldShowContent={true} />);
-        expect(viewRef.current?.getContent()).not.toBeNull();
+        const view = viewRef.current;
+        expect(view?.getContent()).toBeInstanceOf(Adw.NavigationPage);
+
         await rerender(<App shouldShowContent={false} />);
-        expect(viewRef.current?.getContent()).toBeNull();
+
+        expect(viewRef.current).toBe(view);
+        expect(view?.getContent()).toBeNull();
     });
 });
 
@@ -274,21 +272,28 @@ describe("render - page adoption > NotebookPage", () => {
     });
 
     it("resets a page prop to its default when it is removed", async () => {
-        const notebookRef = createRef<Gtk.Notebook>();
-        const contentRef = createRef<Gtk.Label>();
+        const pageRef = createRef<Gtk.NotebookPage>();
 
         const { rerender } = await render(
-            <ReorderablePageApp notebookRef={notebookRef} contentRef={contentRef} isReorderable={true} />,
+            <GtkNotebook>
+                <GtkNotebookPage ref={pageRef} tabLabel="Page" reorderable>
+                    <GtkLabel>Content</GtkLabel>
+                </GtkNotebookPage>
+            </GtkNotebook>,
         );
 
-        let page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
+        const page = pageRef.current;
         expect(page).toHaveObjectProperty("reorderable", true);
 
         await rerender(
-            <ReorderablePageApp notebookRef={notebookRef} contentRef={contentRef} isReorderable={false} />,
+            <GtkNotebook>
+                <GtkNotebookPage ref={pageRef} tabLabel="Page">
+                    <GtkLabel>Content</GtkLabel>
+                </GtkNotebookPage>
+            </GtkNotebook>,
         );
 
-        page = notebookRef.current?.getPage(contentRef.current as Gtk.Widget);
+        expect(pageRef.current).toBe(page);
         expect(page).toHaveObjectProperty("reorderable", false);
     });
 });

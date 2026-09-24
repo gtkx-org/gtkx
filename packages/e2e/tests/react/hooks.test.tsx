@@ -1,6 +1,7 @@
 import type { ParamSpec } from "@gtkx/gi/gobject";
 import type { RenderHookResult } from "@gtkx/testing";
 import type { ComponentProps, ForwardedRef, ReactNode } from "react";
+import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import { ParamFlags, paramSpecInt, paramSpecString } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -232,16 +233,21 @@ describe("useProperty", () => {
 
     it("cleans up signal on unmount", async () => {
         const label = await renderMountedLabel({ label: "Test" });
+        const notifySignal = GObject.signalLookup("notify", Gtk.Label);
+        const labelDetail = GLib.quarkFromString("label");
+        expect(GObject.signalHasHandlerPending(label, notifySignal, labelDetail, true)).toBe(false);
+
         const { result, unmount } = await renderHook(() => useProperty(label, "label"));
         expect(result.current).toBe("Test");
+        expect(GObject.signalHasHandlerPending(label, notifySignal, labelDetail, true)).toBe(true);
         await unmount();
+        expect(GObject.signalHasHandlerPending(label, notifySignal, labelDetail, true)).toBe(false);
 
         await act(() => {
             label.setLabel("Changed");
         });
 
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        expect(result.current).toBe("Test");
+        expect(label.getLabel()).toBe("Changed");
     });
 });
 

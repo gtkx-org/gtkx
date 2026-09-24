@@ -1,7 +1,7 @@
 use anyhow::bail;
 
 use super::super::prelude::*;
-use super::container::ArrayContainer;
+use super::container::{ArrayContainer, ArrayRead, ElementOwnership, free_element_slot};
 use super::item::ItemCodec;
 use super::{ArrayCodec, dup_bytes_to_glib, transfer_items};
 use crate::ffi::codec::Codec;
@@ -14,6 +14,22 @@ fn element_count(len: usize, what: &str) -> anyhow::Result<u32> {
 #[derive(Debug, Clone)]
 pub(crate) struct GArrayCodec;
 
+impl GArrayCodec {
+    fn data(ptr: *mut c_void) -> (*const u8, usize) {
+        let g_array = ptr.cast::<glib::ffi::GArray>();
+        unsafe { ((*g_array).data.cast::<u8>(), (*g_array).len as usize) }
+    }
+
+    pub(super) fn items(ptr: *mut c_void) -> impl Iterator<Item = *mut c_void> {
+        let (data, len) = Self::data(ptr);
+        (0..len).map(move |i| unsafe {
+            data.add(i * size_of::<*mut c_void>())
+                .cast::<*mut c_void>()
+                .read_unaligned()
+        })
+    }
+}
+
 impl ArrayContainer for GArrayCodec {
     fn encode(
         &self,
@@ -21,6 +37,7 @@ impl ArrayContainer for GArrayCodec {
         _env: Env,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<ffi::Stash> {
+        let element_free = codec.container_destroy(true)?;
         let inline_size = codec.inline_element_size();
         let item_size = codec.item_element_size();
         let element_size = codec.element_size.or(item_size).ok_or_else(|| {
@@ -43,13 +60,20 @@ impl ArrayContainer for GArrayCodec {
         let reserved_size = element_count(array.len(), "length")?;
         let g_array = unsafe { glib::ffi::g_array_sized_new(0, 0, element_size, reserved_size) };
 
-        let acquired = match codec.append_items_to_garray(g_array, array) {
+        let mut acquired = match codec.append_items_to_garray(g_array, array) {
             Ok(acquired) => acquired,
             Err(err) => {
                 unsafe { glib::ffi::g_array_unref(g_array) };
                 return Err(err);
             }
         };
+
+        if codec.element_ownership == ElementOwnership::Container {
+            unsafe { glib::ffi::g_array_set_clear_func(g_array, element_free) };
+            for transfer in acquired.drain(..) {
+                transfer.disarm();
+            }
+        }
 
         let should_free = codec.ownership.is_borrowed();
         let storage = StashStorage::new(
@@ -72,18 +96,16 @@ impl ArrayContainer for GArrayCodec {
         codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
-        transfer: Ownership,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr("GArray")? else {
             return Ok(value::js_null(env)?);
         };
 
-        let g_array = ptr as *const glib::ffi::GArray;
-        let data = unsafe { (*g_array).data as *const u8 };
-        let len = unsafe { (*g_array).len as usize };
-        let decoded = codec.decode_bytes_or_items(env, data, len, "GArray");
+        let (data, len) = Self::data(ptr);
+        let decoded = codec.decode_bytes_or_items(env, data, len, "GArray", read);
 
-        if transfer.is_full() {
+        if read.transfer().is_full() {
             let storage_owns = matches!(stash, ffi::Stash::Storage(_));
             if !storage_owns {
                 unsafe { glib::ffi::g_array_unref(ptr.cast::<glib::ffi::GArray>()) };
@@ -161,17 +183,11 @@ impl ArrayCodec {
             }
             ItemCodec::Pointer => self.append_handle_values_to_garray(g_array, array),
             ItemCodec::Bytes => {
-                unsafe extern "C" fn free_garray_string_element(slot: glib::ffi::gpointer) {
-                    unsafe { glib::ffi::g_free(*slot.cast::<glib::ffi::gpointer>()) };
-                }
                 let callee_owns_strings =
                     matches!(&*self.item_codec, Codec::Bytes(s) if s.ownership.is_full());
                 if !callee_owns_strings {
                     unsafe {
-                        glib::ffi::g_array_set_clear_func(
-                            g_array,
-                            Some(free_garray_string_element),
-                        );
+                        glib::ffi::g_array_set_clear_func(g_array, Some(free_element_slot));
                     }
                 }
                 let dups = dup_bytes_to_glib(array)?;

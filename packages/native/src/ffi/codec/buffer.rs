@@ -29,7 +29,7 @@ impl Encoder for BufferCodec {
                 if handle.is_process_static() {
                     return Ok(ffi::Stash::Ptr(pointer));
                 }
-                let retained = handle.retain_for_async()?;
+                let retained = handle.retain_owned()?;
                 Ok(ffi::Stash::Storage(ffi::StashStorage::new(
                     pointer,
                     ffi::StashData::Handle(retained),

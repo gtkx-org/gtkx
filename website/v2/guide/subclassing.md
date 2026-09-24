@@ -160,7 +160,7 @@ Write vfuncs as prototype methods, not arrow-function fields. The `Impl` type ch
 
 Registration adds the interface's public members to instances. Inside the class, declare any added member you call, such as `declare itemsChanged: Gio.ListModel["itemsChanged"];`. Use a base class whose native state agrees with the implementation you provide.
 
-### Throwing out of a slot you fill
+### Reporting a vfunc error
 
 Throw from a vfunc that reports errors through `GError`. GTKX preserves a thrown `GLib.Error` and converts other exceptions into a native error. A slot without an error channel cannot report failure that way; see [Error Handling](/v2/guide/error-handling).
 
@@ -168,10 +168,12 @@ Throw from a vfunc that reports errors through `GError`. GTKX preserves a thrown
 
 Express native object relationships through JSX props and supported child slots. For an object that needs React ownership without native child placement, use [a portal](/v2/guide/modals-and-portals). Add native placement rules through [element configuration](/v2/guide/configuration-and-codegen#advanced-customizing-elements).
 
-## What an override of `constructed` can see
+## Initialization order
 
 `vfuncConstructed` runs after native construct properties are set, while `super()` is still executing. JavaScript field initializers and the constructor body have not run yet. Use declared fields or native properties for state this override needs; private fields are unavailable at that point.
 
 Objects created by native code do not run the JavaScript constructor or its field initializers. Initialize state needed by those instances in `vfuncConstructed`, chaining to the parent. Keep ordinary component setup in React.
 
-Continue with [Components](/v2/guide/components).
+## Next
+
+Continue with [Components](/v2/guide/components) for composing the registered element.

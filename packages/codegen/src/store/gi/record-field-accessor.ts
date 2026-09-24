@@ -7,10 +7,17 @@ import type { FieldSlot } from "../../gir/size.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
-import { isInlineCallbackRef, renderDescriptor } from "../../analysis/descriptor-render.js";
+import { hasCallbackType } from "../../analysis/callback-shape.js";
+import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { tStruct } from "../../analysis/descriptor.js";
 import { renderTsType } from "../../analysis/ts-type.js";
-import { isByteSequence, isUnboundedArray } from "../../analysis/type-shape.js";
+import {
+    hasPrimitivePointer,
+    hasScalarPointer,
+    hasUnknownLengthArray,
+    isByteSequence,
+    isUnboundedArray,
+} from "../../analysis/type-shape.js";
 import { indent, renderBlock } from "../../writer/emit.js";
 import { getDoc } from "./doc-spec.js";
 import {
@@ -136,11 +143,15 @@ const isMarshalableField = (context: ModuleContext, field: GirField): boolean =>
     return isValueMarshalable(context, type.namespace.name, type.value);
 };
 
+const isVisibleField = (field: GirField): field is GirField & { type: TypeId } =>
+    field.introspectable && !field.private && field.type !== undefined;
+
 const isPublicField = (context: ModuleContext, field: GirField): field is GirField & { type: TypeId } =>
-    field.introspectable &&
-    !field.private &&
-    field.type !== undefined &&
-    !isInlineCallbackRef(context.library, field.type);
+    isVisibleField(field) &&
+    !hasCallbackType(context.library, field.type) &&
+    !hasPrimitivePointer(context.library, field.type) &&
+    !hasUnknownLengthArray(context.library, field.type) &&
+    !hasScalarPointer(context.library, field.type, field.cType);
 
 const isEmittableField = (context: ModuleContext, field: GirField): field is GirField & { type: TypeId } =>
     isPublicField(context, field) && isMarshalableField(context, field);
@@ -251,19 +262,11 @@ const resolveRecordFieldEntry = (
 
     return {
         jsName: admitted.jsName,
-        tsType: fieldTsType(context, admitted.field.type),
+        tsType: renderTsType(context, admitted.field.type),
         isWritable: admitted.isSettable,
         doc: admitted.field.doc,
         annotations: admitted.field.annotations,
     };
-};
-
-const fieldTsType = (context: ModuleContext, ref: TypeId | undefined, isNullable = false): string => {
-    if (ref !== undefined && context.library.typeFor(ref)?.kind === "callback") {
-        return isNullable ? "bigint | null" : "bigint";
-    }
-
-    return renderTsType(context, ref, isNullable);
 };
 
 const renderRecordFieldAccessor = (
@@ -295,7 +298,7 @@ const renderRecordFieldAccessor = (
         }),
     );
 
-    const tsType = fieldTsType(context, field.type);
+    const tsType = renderTsType(context, field.type);
 
     const accessorOptions: AccessorOptions = {
         context,
@@ -333,12 +336,10 @@ const isAccessorEligibleType = (context: ModuleContext, ref: TypeId): boolean =>
         case "alias": {
             return true;
         }
-        case "callback": {
-            return context.library.nameFor(ref) !== undefined;
-        }
         case "carray": {
             return type.fixedSize !== undefined && type.arrayCType?.endsWith("*") === true;
         }
+        case "callback":
         case "list":
         case "hashtable":
         case "varargs": {
@@ -899,10 +900,11 @@ const setterBlock = (options: AccessorOptions): string =>
 
 export {
     hasOwnedFieldStorage,
-    fieldTsType,
     isEmittableField,
     isInlineField,
+    isPublicField,
     isStorableFieldType,
+    isVisibleField,
     emitFieldWrite,
     resolveRecordFieldEntry,
     renderRecordFieldAccessor,

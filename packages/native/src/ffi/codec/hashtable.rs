@@ -1,6 +1,7 @@
 use anyhow::bail;
 
 use super::bytes::bytes_to_glib_full;
+use super::object::g_object_unref_wrapper;
 use super::prelude::*;
 use crate::ffi::codec::{BigIntCodec, Codec, FloatCodec, IntegerCodec};
 use crate::ffi::{HashTableData, StashData, StashStorage};
@@ -168,15 +169,6 @@ impl HashTableEntryCodec {
 unsafe extern "C" fn g_ptr_array_unref_wrapper(ptr: *mut c_void) {
     unsafe {
         glib::ffi::g_ptr_array_unref(ptr.cast::<glib::ffi::GPtrArray>());
-    }
-}
-
-unsafe extern "C" fn g_object_unref_wrapper(ptr: *mut c_void) {
-    if ptr.is_null() {
-        return;
-    }
-    unsafe {
-        glib::gobject_ffi::g_object_unref(ptr.cast::<glib::gobject_ffi::GObject>());
     }
 }
 
@@ -450,7 +442,28 @@ impl PtrWriter for HashTableCodec {
         unsafe { ret.store(table) };
     }
 
-    write_container_value_to_ptr!("hash table", "hashtable pointer write", |_| {
-        ffi::ReleaseKind::HashTableUnref
-    });
+    fn write_value_to_ptr(
+        &self,
+        env: &Env,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+        init: SlotInit,
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
+        write_container_value(
+            slot,
+            value,
+            init,
+            self.ownership,
+            "hashtable pointer write",
+            |value| self.encode(env, value),
+            || {
+                Ok(|ptr| {
+                    drop(ffi::PendingTransfer::new(
+                        ptr,
+                        ffi::ReleaseKind::HashTableUnref,
+                    ));
+                })
+            },
+        )
+    }
 }

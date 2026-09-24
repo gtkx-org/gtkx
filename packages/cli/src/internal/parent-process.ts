@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readProcessStatFields } from "@gtkx/utils";
 
 type ProcessIdentity = {
     pid: number;
@@ -16,12 +16,11 @@ const initialParentId = process.ppid;
 const STOPPED_PROCESS_STATES: Set<string> = new Set(["Z", "X", "x"]);
 
 const processIdentity = (pid: number): ProcessIdentity => {
-    const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
-    const fields = stat.slice(stat.lastIndexOf(") ") + 2).split(" ");
-    const state = fields[0];
-    const parentId = Number(fields[1]);
-    const processGroupId = Number(fields[2]);
-    const startTime = fields[19];
+    const fields = readProcessStatFields(pid);
+    const state = fields?.[0];
+    const parentId = Number(fields?.[1]);
+    const processGroupId = Number(fields?.[2]);
+    const startTime = fields?.[19];
 
     if (
         state === undefined ||

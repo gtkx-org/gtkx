@@ -247,6 +247,9 @@ importers:
       '@types/react':
         specifier: 'catalog:'
         version: 19.3.0
+      '@types/semver':
+        specifier: ^7.8.0
+        version: 7.8.0
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 5.0.1(vitest@5.0.1)
@@ -268,6 +271,9 @@ importers:
       react:
         specifier: 'catalog:'
         version: 19.3.0
+      semver:
+        specifier: ^7.8.5
+        version: 7.8.5
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
@@ -748,6 +754,9 @@ importers:
       '@gtkx/cairo':
         specifier: workspace:*
         version: link:../cairo
+      '@gtkx/cli':
+        specifier: workspace:*
+        version: link:../cli
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config

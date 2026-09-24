@@ -7,7 +7,7 @@ description: "How GTKX's generated bindings, React renderer, TypeScript runtime,
 
 GTKX runs React applications in Node.js and renders their interface through native Adwaita and GTK4 objects. React owns component state and reconciliation. Adwaita supplies application structure and adaptive patterns; GTK4 supplies widgets, layout, input, accessibility, and rendering. GTKX connects those systems through generated JavaScript bindings and a Rust native addon.
 
-This section describes the GTKX 2 implementation on the repository's `main` branch. The [Development Principles](/contributing/principles) define the required package boundaries; some existing implementations still span responsibilities that belong in separate layers. Use this page to locate code, then follow the [code generation](/contributing/code-generation), [native runtime](/contributing/native-runtime), and [React renderer](/contributing/react-renderer) pages for the implementation details.
+This section describes GTKX 2 and the package boundaries set by its [development principles](/contributing/principles). Use this page to locate code, then follow the [code generation](/contributing/code-generation), [native runtime](/contributing/native-runtime), and [React renderer](/contributing/react-renderer) pages for the implementation details.
 
 ## The core layers
 
@@ -17,8 +17,8 @@ This section describes the GTKX 2 implementation on the repository's `main` bran
 | Generated JSX | Expose typed React components for the project's native types and retain their GI classes. | Project-generated `@gtkx/jsx/<namespace>` modules. |
 | React renderer | Create native objects, apply prop changes, route children, connect signals, and tear down mounted instances. | [`packages/react`](https://github.com/gtkx-org/gtkx/tree/main/packages/react). |
 | Generated GI bindings | Expose native classes, interfaces, records, enums, callbacks, and functions, and register property and signal metadata with their classes. | Project-generated `@gtkx/gi/<namespace>` modules. |
-| TypeScript runtime | Translate binding descriptions into calls, wrap native values, register types, and coordinate signals and application lifecycle. | [`packages/runtime`](https://github.com/gtkx-org/gtkx/tree/main/packages/runtime). |
-| Native bridge | Marshal values, invoke C symbols, implement callbacks, manage native handles, and integrate GLib with Node's event loop. | [`packages/native`](https://github.com/gtkx-org/gtkx/tree/main/packages/native). |
+| TypeScript runtime | Convert arguments and results, wrap native values, register types, and coordinate callbacks, signals and application lifecycle. | [`packages/runtime`](https://github.com/gtkx-org/gtkx/tree/main/packages/runtime). |
+| Native bridge | Allocate and protect native storage, invoke C symbols and callback entry points, and integrate GLib with Node's event loop. | [`packages/native`](https://github.com/gtkx-org/gtkx/tree/main/packages/native). |
 | Native libraries | Implement the actual GNOME application and widget behavior. | Adwaita, GTK4, GIO, GObject, GLib, and the project's additional libraries. |
 
 The generated GI layer also works without React. A native function call or a registered GObject subclass can use the runtime directly; it does not need to pass through the reconciler. Conversely, a component library usually works through the JSX and GI APIs and does not need to know how the native addon represents a pointer.

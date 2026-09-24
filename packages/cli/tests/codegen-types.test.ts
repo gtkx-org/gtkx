@@ -1,13 +1,10 @@
-import { spawnSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCli, STORE_LIBRARIES } from "./cli-project.js";
-import { isolateTypeConsumer } from "./type-consumer.js";
+import { isolateTypeConsumer, typecheckFile } from "./type-consumer.js";
 
-const WORKSPACE = fileURLToPath(new URL("../../..", import.meta.url));
-const TYPESCRIPT_CLI = join(WORKSPACE, "node_modules/typescript/bin/tsc");
+const COMPILER_OPTIONS = ["--exactOptionalPropertyTypes", "--noUncheckedIndexedAccess"];
 const ACCEPTED = `import type { ComboRowProps, DropDownProps, ListViewProps } from "@gtkx/components";
 import { Dialog, SpinRow, SplitButton } from "@gtkx/gi/adw";
 import { Action, DBusInterfaceSkeleton, type DBusInterfaceInfo, SimpleAction } from "@gtkx/gi/gio";
@@ -243,19 +240,6 @@ const exportNamespaces = (project: CliProject): string => {
     return exports.join("\n");
 };
 
-const typecheck = (project: CliProject, file: string): void => {
-    const result = spawnSync(process.execPath, [
-        TYPESCRIPT_CLI,
-        "--noEmit", "--module", "ESNext", "--moduleResolution", "Bundler", "--target", "ESNext",
-        "--strict", "--exactOptionalPropertyTypes", "--noUncheckedIndexedAccess",
-        "--skipLibCheck", "false", "--types", "node", "--jsx", "react-jsx", file,
-    ], { cwd: project.root, encoding: "utf8" });
-
-    if (result.status !== 0) {
-        throw new Error(`${result.stdout}${result.stderr}`);
-    }
-};
-
 describe("generated declarations in an installed consumer", () => {
     const state: { project: CliProject; status: number | null } = {
         project: { root: "", nodeModules: "", tmpDir: "" },
@@ -289,7 +273,7 @@ describe("generated declarations in an installed consumer", () => {
         "checks public API declarations in %s",
         (file) => {
             expect(state.status).toBe(0);
-            typecheck(state.project, file);
+            expect(typecheckFile(state.project, file, COMPILER_OPTIONS)).toBe(0);
         },
     );
 
@@ -297,9 +281,7 @@ describe("generated declarations in an installed consumer", () => {
         "rejects an incompatible consumer in %s",
         (file) => {
             expect(state.status).toBe(0);
-            expect(() => {
-                typecheck(state.project, file);
-            }).toThrow();
+            expect(typecheckFile(state.project, file, COMPILER_OPTIONS)).not.toBe(0);
         },
     );
 });

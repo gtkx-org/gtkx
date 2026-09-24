@@ -3,6 +3,8 @@ import { resolve } from "node:path";
 import type { GirClass } from "../gir/class.js";
 import type { GirFunction } from "../gir/function.js";
 import type { GirRecord } from "../gir/record.js";
+import { isEmittableAlias } from "../analysis/alias-admission.js";
+import { isSupportedCallback } from "../analysis/callback-shape.js";
 import { computeGiFingerprint, type GiFingerprint, type GiInputs, isGiFingerprintFresh } from "../fingerprint.js";
 import { isEmittableEntity } from "../gir/emittable.js";
 import { externalPackageFor } from "../gir/external-namespaces.js";
@@ -12,6 +14,7 @@ import { dedupeCallables, isEmittableCallable } from "../store/gi/callables.js";
 import { namespaceFunctionExportName } from "../store/gi/function.js";
 import { setAcceptedChildTypes } from "../store/jsx/accepted-child-types.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
+import { isMountableElement } from "../store/jsx/generated-elements.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
 import { type ElementPageContext, renderElementPage } from "./element-page.js";
@@ -259,7 +262,7 @@ const recordEntries = (namespace: GirNamespace): GiSymbolEntry[] => {
     return entries;
 };
 
-const valueEntries = (namespace: GirNamespace): GiSymbolEntry[] => [
+const valueEntries = (namespace: GirNamespace, library: Library): GiSymbolEntry[] => [
     ...namespace.enums
         .filter((enumeration) => enumeration.introspectable)
         .map<GiSymbolEntry>((enumeration) => ({
@@ -270,7 +273,7 @@ const valueEntries = (namespace: GirNamespace): GiSymbolEntry[] => [
             enumeration,
         })),
     ...namespace.callbacks
-        .filter((callback) => callback.introspectable)
+        .filter((callback) => isEmittableEntity(callback) && isSupportedCallback(library, callback))
         .map<GiSymbolEntry>((callback) => ({
             kind: "callback",
             namespace,
@@ -278,13 +281,14 @@ const valueEntries = (namespace: GirNamespace): GiSymbolEntry[] => [
             doc: callback.doc,
             callback,
         })),
-    ...namespace.aliases.map<GiSymbolEntry>((alias) => ({
-        kind: "alias",
-        namespace,
-        name: sanitizeTypeIdentifier(alias.name),
-        doc: alias.doc,
-        alias,
-    })),
+    ...namespace.aliases.filter((alias) => isEmittableAlias(library, alias))
+        .map<GiSymbolEntry>((alias) => ({
+            kind: "alias",
+            namespace,
+            name: sanitizeTypeIdentifier(alias.name),
+            doc: alias.doc,
+            alias,
+        })),
     ...namespace.constants.map<GiSymbolEntry>((constant) => ({
         kind: "constant",
         namespace,
@@ -419,6 +423,8 @@ class ApiReference {
     }
 
     private buildIndex(): void {
+        this.applyElementConfig();
+
         for (const namespace of this.library.namespaces.values()) {
             if (externalPackageFor(namespace.name) !== undefined) {
                 continue;
@@ -427,7 +433,9 @@ class ApiReference {
             this.indexNamespace(namespace);
         }
 
-        for (const element of collectIntrinsicElementClasses(this.library)) {
+        const elements = collectIntrinsicElementClasses(this.library).filter(isMountableElement);
+
+        for (const element of elements) {
             this.add({
                 kind: "element",
                 namespace: element.namespace,
@@ -444,7 +452,7 @@ class ApiReference {
         const entries = [
             ...classEntries(namespace),
             ...recordEntries(namespace),
-            ...valueEntries(namespace),
+            ...valueEntries(namespace, this.library),
         ];
 
         for (const entry of entries) {

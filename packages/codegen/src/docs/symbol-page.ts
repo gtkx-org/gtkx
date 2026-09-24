@@ -1,5 +1,6 @@
 import { sanitizeTypeIdentifier, sortStringsBy, upperFirst } from "@gtkx/utils";
 import type { GirAnnotations } from "../gir/annotations.js";
+import type { GirCallback } from "../gir/callback.js";
 import type { GirClass } from "../gir/class.js";
 import type { EnumMember, GirEnum } from "../gir/enum.js";
 import type { GirFunction } from "../gir/function.js";
@@ -8,9 +9,9 @@ import type { GirRecord } from "../gir/record.js";
 import type { ModuleContext } from "../writer/context.js";
 import type { JsDocSpec } from "../writer/doc.js";
 import { ancestorClassMethodNames } from "../analysis/inheritance.js";
+import { isEmittableSignal } from "../analysis/signal-admission.js";
 import { renderTsType } from "../analysis/ts-type.js";
 import { ancestorChain } from "../gir/ancestry.js";
-import { callbackAsFunction, type GirCallback } from "../gir/callback.js";
 import { type GirAlias, type GirConstant, type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../gir/primitives.js";
 import { callableNote, callableSpec } from "../store/gi/callable-doc.js";
@@ -21,6 +22,7 @@ import {
     renderInstanceMethodSignature,
     renderStaticSignature,
 } from "../store/gi/callables.js";
+import { callbackSignature } from "../store/gi/callback.js";
 import { constantLiteral } from "../store/gi/constant.js";
 import { annotationSpec } from "../store/gi/doc-spec.js";
 import { enumMemberKey } from "../store/gi/enum.js";
@@ -422,6 +424,10 @@ const ownerSignalEntries = (owner: MemberOwner, library: Library, seen: Set<stri
 
         seen.add(signal.name);
 
+        if (!isEmittableSignal(library, signal)) {
+            continue;
+        }
+
         entries.push({
             name: signal.name,
             signature: renderDocsSignalHandlerType(library, signal),
@@ -636,15 +642,14 @@ const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }):
 
 const callbackPage = (entry: GiSymbolBase & { kind: "callback"; callback: GirCallback }, library: Library): string => {
     const docsContext = docsSignatureContext(entry.namespace, library);
-    const fn = callbackAsFunction(entry.callback);
-    const parameters = renderMethodSignature(docsContext, fn);
-    const signature = `type ${entry.name} = (${parameters}) => ${renderMethodReturnType(docsContext, fn)}`;
+    const { fn, options, signature: parameters, returnType } = callbackSignature(docsContext, entry.callback);
+    const signature = `type ${entry.name} = (${parameters}) => ${returnType}`;
 
     return joinSections([
         ...pageHeader(entry, "callback"),
         "## Signature",
         `\`\`\`ts\n${signature}\n\`\`\``,
-        ...pageTagNotes(callableSpec(docsContext, fn, {})),
+        ...pageTagNotes(callableSpec(docsContext, fn, options)),
     ]);
 };
 

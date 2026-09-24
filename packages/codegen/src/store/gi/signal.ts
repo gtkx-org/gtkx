@@ -18,6 +18,8 @@ import {
     resolvePrerequisiteReference,
 } from "../../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
+import { isEmittableProperty } from "../../analysis/property-admission.js";
+import { isEmittableSignal } from "../../analysis/signal-admission.js";
 import { renderParameterTsType, renderTsType } from "../../analysis/ts-type.js";
 import { resolveInterfaces } from "../../gir/ancestry.js";
 import { isCallerAllocatedOut, isOutParameter } from "../../gir/parameter.js";
@@ -111,7 +113,7 @@ const renderSignalRegistration = (
         return undefined;
     }
 
-    const signals = klass.signals.filter((signal) => signal.introspectable);
+    const signals = klass.signals.filter((signal) => isEmittableSignal(context.library, signal));
     const marker = renderSyntheticSignalMarker(context, klass, targetName);
 
     if (signals.length === 0) {
@@ -279,7 +281,7 @@ const classSignalMemberNames = (context: ModuleContext, klass: GirClass): string
     const names: Set<string> = new Set();
     const addSignals = (owner: GirClass): void => {
         for (const signal of owner.signals) {
-            if (signal.introspectable) {
+            if (isEmittableSignal(context.library, signal)) {
                 names.add(signal.name.replaceAll("_", "-"));
             }
         }
@@ -491,12 +493,15 @@ const collectClassSignals = (context: ModuleContext, klass: GirClass): GirSignal
     const consider = (signal: GirSignal): void => {
         const name = camelCase(signal.name);
 
-        if (!signal.introspectable || inheritedNames.has(name) || seen.has(name)) {
+        if (inheritedNames.has(name) || seen.has(name)) {
             return;
         }
 
         seen.add(name);
-        result.push(signal);
+
+        if (isEmittableSignal(context.library, signal)) {
+            result.push(signal);
+        }
     };
 
     for (const signal of klass.signals) {
@@ -548,7 +553,10 @@ const collectNotifyDetails = (context: ModuleContext, klass: GirClass): GirPrope
         }
 
         seen.add(name);
-        result.push(property);
+
+        if (isEmittableProperty(context.library, property)) {
+            result.push(property);
+        }
     };
 
     for (const property of klass.properties) {

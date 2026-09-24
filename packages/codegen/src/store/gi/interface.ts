@@ -4,6 +4,7 @@ import type { GirProperty } from "../../gir/property.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { resolvePrerequisiteReference } from "../../analysis/inheritance.js";
 import { omittedTypeRef, prerequisiteConflicts } from "../../analysis/interface-conflicts.js";
+import { isEmittableProperty } from "../../analysis/property-admission.js";
 import { resolveClassOrInterface, resolveInterfaces } from "../../gir/ancestry.js";
 import { isEmittableEntity } from "../../gir/emittable.js";
 import { declaredTypeNames, type GirNamespace } from "../../gir/namespace.js";
@@ -224,10 +225,6 @@ const renderSlotAccessor = (
 };
 
 const renderSlotBackedProperty = (property: GirProperty, members: Map<string, string>): string | undefined => {
-    if (!property.introspectable) {
-        return undefined;
-    }
-
     const fields = [
         renderSlotAccessor("getter", property.getter, members),
         renderSlotAccessor("setter", property.setter, members),
@@ -248,6 +245,7 @@ const renderSlotBackedProperties = (
     const members = invokerMembers(context, iface, callables);
 
     const entries = iface.properties
+        .filter((property) => isEmittableProperty(context.library, property))
         .map((property) => renderSlotBackedProperty(property, members))
         .filter((entry) => entry !== undefined);
 
@@ -313,7 +311,8 @@ const renderInterfaceType = (
     const members = renderInterfaceTypeMembers(context, iface, callables);
 
     return `${getDoc(iface)}${renderBracedOrEmpty(
-        `export interface ${className} extends ${interfaceTypeExtends(context, iface)}`,
+        `export interface ${className} extends ${context.qualify("GObject", "TypeInstance")}, ` +
+        interfaceTypeExtends(context, iface),
         members.join("\n"),
     )}`;
 };

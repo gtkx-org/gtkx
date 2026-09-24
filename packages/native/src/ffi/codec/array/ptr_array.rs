@@ -1,5 +1,5 @@
 use super::super::prelude::*;
-use super::container::ArrayContainer;
+use super::container::{ArrayContainer, ArrayRead, ElementOwnership};
 use super::item::ItemCodec;
 use super::{ArrayCodec, ArrayKindEncoder, dup_bytes_to_glib, transfer_items};
 use crate::ffi::codec::Codec;
@@ -12,6 +12,15 @@ fn element_count(len: usize) -> anyhow::Result<u32> {
 
 #[derive(Debug, Clone)]
 pub(crate) struct GPtrArrayCodec;
+
+impl GPtrArrayCodec {
+    pub(super) fn items(ptr: *mut c_void) -> impl Iterator<Item = *mut c_void> {
+        let ptr_array = ptr.cast::<glib::ffi::GPtrArray>();
+        let len = unsafe { (*ptr_array).len as usize };
+        let pdata = unsafe { (*ptr_array).pdata };
+        (0..len).map(move |i| unsafe { *pdata.add(i) })
+    }
+}
 
 impl ArrayContainer for GPtrArrayCodec {
     fn encode(
@@ -32,7 +41,11 @@ impl ArrayContainer for GPtrArrayCodec {
             codec.item_codec
         );
 
-        codec.encode_items(env, &GPtrArrayEncoder, array)
+        let encoder = GPtrArrayEncoder {
+            element_free: codec.container_destroy(false)?,
+            owns_elements: codec.element_ownership == ElementOwnership::Container,
+        };
+        codec.encode_items(env, &encoder, array)
     }
 
     fn decode<'e>(
@@ -40,19 +53,15 @@ impl ArrayContainer for GPtrArrayCodec {
         codec: &ArrayCodec,
         env: &'e Env,
         stash: &ffi::Stash,
-        transfer: Ownership,
+        read: ArrayRead,
     ) -> anyhow::Result<Unknown<'e>> {
         let Some(ptr) = stash.as_non_null_ptr("GPtrArray")? else {
             return Ok(value::js_null(env)?);
         };
 
         let ptr_array = ptr.cast::<glib::ffi::GPtrArray>();
-        let len = unsafe { (*ptr_array).len as usize };
-        let pdata = unsafe { (*ptr_array).pdata };
-        let items = (0..len).map(move |i| unsafe { *pdata.add(i) });
-
-        let is_full = transfer.is_full();
-        codec.decode_ptr_iter(env, items, move || {
+        let is_full = read.transfer().is_full();
+        codec.decode_ptr_iter(env, Self::items(ptr), read, move || {
             if is_full {
                 unsafe { glib::ffi::g_ptr_array_unref(ptr_array) };
             }
@@ -64,19 +73,35 @@ impl ArrayContainer for GPtrArrayCodec {
     }
 }
 
-struct GPtrArrayEncoder;
+struct GPtrArrayEncoder {
+    element_free: glib::ffi::GDestroyNotify,
+    owns_elements: bool,
+}
 
 impl GPtrArrayEncoder {
     fn build(
+        &self,
         ptrs: &[*mut c_void],
         element_free: glib::ffi::GDestroyNotify,
         ownership: Ownership,
-        acquired: Vec<ffi::PendingTransfer>,
+        mut acquired: Vec<ffi::PendingTransfer>,
     ) -> anyhow::Result<ffi::Stash> {
+        let initial_free = if self.owns_elements {
+            None
+        } else {
+            element_free
+        };
         let ptr_array =
-            unsafe { glib::ffi::g_ptr_array_new_full(element_count(ptrs.len())?, element_free) };
+            unsafe { glib::ffi::g_ptr_array_new_full(element_count(ptrs.len())?, initial_free) };
         for &ptr in ptrs {
             unsafe { glib::ffi::g_ptr_array_add(ptr_array, ptr) };
+        }
+
+        if self.owns_elements {
+            unsafe { glib::ffi::g_ptr_array_set_free_func(ptr_array, self.element_free) };
+            for transfer in acquired.drain(..) {
+                transfer.disarm();
+            }
         }
 
         let should_free = ownership.is_borrowed();
@@ -109,16 +134,16 @@ impl ArrayKindEncoder for GPtrArrayEncoder {
         // The callee frees the duplicates itself only when it takes both the container and its
         // elements. Everywhere else they stay this side's allocations, and the array's own free
         // function releases them whichever side drops the last reference.
-        if dup_items && ownership.is_full() {
+        if dup_items && (ownership.is_full() || self.owns_elements) {
             let acquired = dups
                 .iter()
                 .map(|&dup| ffi::PendingTransfer::new(dup, ffi::ReleaseKind::GFree))
                 .collect();
 
-            return Self::build(&dups, None, ownership, acquired);
+            return self.build(&dups, None, ownership, acquired);
         }
 
-        Self::build(&dups, Some(glib::ffi::g_free), ownership, Vec::new())
+        self.build(&dups, Some(glib::ffi::g_free), ownership, Vec::new())
     }
 
     fn encode_handles(
@@ -129,7 +154,7 @@ impl ArrayKindEncoder for GPtrArrayEncoder {
     ) -> anyhow::Result<ffi::Stash> {
         let (ptrs, acquired) = transfer_items(&handles, item_codec, "GPtrArray")?;
 
-        Self::build(&ptrs, None, ownership, acquired)
+        self.build(&ptrs, None, ownership, acquired)
     }
 
     fn holds_pointer_slots(&self) -> bool {
@@ -141,6 +166,6 @@ impl ArrayKindEncoder for GPtrArrayEncoder {
         words: Vec<*mut c_void>,
         ownership: Ownership,
     ) -> anyhow::Result<ffi::Stash> {
-        Self::build(&words, None, ownership, Vec::new())
+        self.build(&words, None, ownership, Vec::new())
     }
 }

@@ -1,19 +1,22 @@
 import { spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { build } from "../src/builder.js";
+import {
+    type CliProject,
+    createCliProject,
+    removeCliProject as removeAppProject,
+    runCliOrThrow,
+} from "./cli-project.js";
 
 type AppBuildOptions = {
     project: AppProject;
     outDir: string;
-    cacheDir?: string | undefined;
-    minify?: boolean | undefined;
+    environment?: NodeJS.ProcessEnv | undefined;
 };
 type AppProbe = { emitted: string[]; project: AppProject; reported: string; run: AppRun };
 type AppProbeOptions = AppProjectOptions & { outDir: string };
-type AppProject = { root: string; entry: string };
+type AppProject = CliProject & { entry: string };
 
 type AppProjectOptions = {
     applicationId: string;
@@ -24,12 +27,9 @@ type AppProjectOptions = {
 
 type AppRun = { status: number | null; stdout: string; stderr: string };
 
-const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const RUN_TIMEOUT = 60_000;
 const ENTRY_NAME = "index.mjs";
-const PROJECT_NAME = "gtkx-app-probe";
 const INSTALL_PREFIX = "gtkx-bundle-install-";
-const APP_MANIFEST = `${JSON.stringify({ name: PROJECT_NAME, type: "module" }, null, 4)}\n`;
 
 const appConfig = (applicationId: string): string =>
     [
@@ -49,27 +49,28 @@ const writeFiles = (root: string, files: Record<string, string | Buffer>): void 
 };
 
 const createAppProject = (options: AppProjectOptions): AppProject => {
-    const root = mkdtempSync(join(tmpdir(), options.prefix));
-    const entry = join(root, "src", ENTRY_NAME);
-    mkdirSync(join(root, "src"));
-    symlinkSync(join(WORKSPACE_ROOT, "node_modules"), join(root, "node_modules"), "dir");
-    writeFileSync(join(root, "package.json"), APP_MANIFEST);
-    writeFileSync(join(root, "gtkx.config.mjs"), appConfig(options.applicationId));
-    writeFileSync(entry, options.entry);
-    writeFiles(root, options.files ?? {});
+    const project = createCliProject({
+        prefix: options.prefix,
+        hasStore: true,
+        files: {
+            "gtkx.config.mjs": appConfig(options.applicationId),
+            [join("src", ENTRY_NAME)]: options.entry,
+            ...options.files,
+        },
+    });
 
-    return { root, entry };
+    return { ...project, entry: join(project.root, "src", ENTRY_NAME) };
 };
 
 const buildAppProject = (options: AppBuildOptions): Promise<string> =>
-    build({
-        entry: options.project.entry,
-        vite: {
-            root: options.project.root,
-            logLevel: "warn",
-            ...(options.cacheDir !== undefined && { cacheDir: options.cacheDir }),
-            build: { outDir: options.outDir, emptyOutDir: true, minify: options.minify ?? true },
-        },
+    Promise.try(() => {
+        runCliOrThrow(
+            options.project,
+            ["build", options.project.entry, "--out", options.outDir],
+            options.environment,
+        );
+
+        return join(options.outDir, "bundle.mjs");
     });
 
 const installBundle = (outDir: string, files: Record<string, string> = {}): string => {
@@ -78,11 +79,6 @@ const installBundle = (outDir: string, files: Record<string, string> = {}): stri
     writeFiles(installDir, files);
 
     return installDir;
-};
-
-const removeAppProject = (project: AppProject): void => {
-    rmSync(join(project.root, "node_modules"), { force: true });
-    rmSync(project.root, { recursive: true, force: true });
 };
 
 const deployedEnvironment = (): NodeJS.ProcessEnv => {
@@ -105,15 +101,24 @@ const runNode = (file: string): AppRun => {
 
 const probeAppProject = async (options: AppProbeOptions): Promise<AppProbe> => {
     const project = createAppProject(options);
-    const reported = await buildAppProject({ project, outDir: options.outDir });
 
-    return {
-        emitted: readdirSync(join(project.root, options.outDir), { recursive: true, encoding: "utf8" }),
-        project,
-        reported,
-        run: runNode(join(project.root, reported)),
-    };
+    try {
+        const reported = await buildAppProject({ project, outDir: options.outDir });
+
+        return {
+            emitted: readdirSync(join(project.root, options.outDir), { recursive: true, encoding: "utf8" }),
+            project,
+            reported,
+            run: runNode(join(project.root, reported)),
+        };
+    } catch (error) {
+        removeAppProject(project);
+
+        throw error;
+    }
 };
+
+export { removeCliProject as removeAppProject } from "./cli-project.js";
 
 export {
     type AppProbe,
@@ -124,6 +129,5 @@ export {
     deployedEnvironment,
     installBundle,
     probeAppProject,
-    removeAppProject,
     runNode,
 };

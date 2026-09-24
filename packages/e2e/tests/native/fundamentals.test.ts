@@ -47,14 +47,12 @@ test("the same fundamental instance reaches JS as one wrapper", () => {
     expect(Regress.testFundamentalArgumentOut(sub)).toBe(Regress.testFundamentalArgumentOut(sub));
 
     const value = new GObject.Value();
-    // @ts-expect-error a fundamental is a GTypeInstance the generated type does not declare
     value.initFromInstance(sub);
     expect(fromValue(getHandle(value))).toBe(sub);
     expect(fromValue(getHandle(value))).toBe(fromValue(getHandle(value)));
 
     const noGetSet = Regress.TestFundamentalObjectNoGetSetFunc.new("hello");
     const noGetSetValue = new GObject.Value();
-    // @ts-expect-error a fundamental is a GTypeInstance the generated type does not declare
     noGetSetValue.initFromInstance(noGetSet);
     expect(fromValue(getHandle(noGetSetValue))).toBe(noGetSet);
     expect(fromValue(getHandle(noGetSetValue))).not.toBe(sub);
@@ -103,7 +101,6 @@ test("a fundamental root does not match an unrelated fundamental root", () => {
 test("a GValue round trips a fundamental it was initialized from", () => {
     const sub = Regress.TestFundamentalSubObject.new("foo");
     const value = new GObject.Value();
-    // @ts-expect-error a fundamental is a GTypeInstance the generated type does not declare
     value.initFromInstance(sub);
     const read = fromValue(getHandle(value));
     expect(read).toBe(sub);
@@ -116,7 +113,6 @@ test("a GValue round trips a fundamental it was initialized from", () => {
 
     const noGetSet = Regress.TestFundamentalObjectNoGetSetFunc.new("hello");
     const noGetSetValue = new GObject.Value();
-    // @ts-expect-error a fundamental is a GTypeInstance the generated type does not declare
     noGetSetValue.initFromInstance(noGetSet);
     const readNoGetSet = fromValue(getHandle(noGetSetValue)) as Regress.TestFundamentalObjectNoGetSetFunc;
     expect(readNoGetSet).toBe(noGetSet);
@@ -134,7 +130,6 @@ test("a registered transform turns one fundamental value into another", () => {
 
     const held = Regress.TestFundamentalObjectNoGetSetFunc.new("moved");
     const value = new GObject.Value();
-    // @ts-expect-error a fundamental is a GTypeInstance the generated type does not declare
     value.initFromInstance(held);
     const converted = new GObject.Value();
     converted.init(target);
@@ -155,7 +150,6 @@ test("a fundamental outlives its collected wrapper and revives through a fresh r
     const stash = () => {
         const held = Regress.TestFundamentalObjectNoGetSetFunc.new("kept");
         const value = new GObject.Value();
-        // @ts-expect-error a fundamental is a GTypeInstance the generated type does not declare
         value.initFromInstance(held);
 
         return { value, weak: new WeakRef(held) };

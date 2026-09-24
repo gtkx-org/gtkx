@@ -21,7 +21,7 @@ impl std::fmt::Debug for StashStorage {
 }
 
 #[derive(Debug)]
-#[must_use = "a PendingTransfer owns memory and leaks unless it is stored or released"]
+#[must_use]
 pub struct PendingTransfer {
     ptr: *mut c_void,
     release: ReleaseKind,
@@ -32,7 +32,7 @@ pub enum ReleaseKind {
     GFree,
     ObjectUnref,
     BoxedFree(glib::Type),
-    Fundamental(UnrefFn),
+    Function(UnrefFn),
     StrFreeV,
     StringElements,
     HashTableUnref,
@@ -48,7 +48,13 @@ impl PendingTransfer {
         Self { ptr, release }
     }
 
-    pub fn release_now(self) {
+    pub fn disarm(mut self) {
+        self.ptr = std::ptr::null_mut();
+    }
+}
+
+impl Drop for PendingTransfer {
+    fn drop(&mut self) {
         if self.ptr.is_null() {
             return;
         }
@@ -63,7 +69,7 @@ impl PendingTransfer {
                 ReleaseKind::BoxedFree(type_) => {
                     glib::gobject_ffi::g_boxed_free(type_.into_glib(), self.ptr);
                 }
-                ReleaseKind::Fundamental(unref) => unref(self.ptr),
+                ReleaseKind::Function(unref) => unref(self.ptr),
                 ReleaseKind::StrFreeV => {
                     glib::ffi::g_strfreev(self.ptr.cast::<*mut std::ffi::c_char>());
                 }
@@ -300,7 +306,7 @@ impl StashStorage {
     #[must_use]
     pub fn with_pending_transfer(self, ptr: *mut c_void, release: ReleaseKind) -> Self {
         let mut transfers = self.pending_transfer.take();
-        transfers.push(PendingTransfer { ptr, release });
+        transfers.push(PendingTransfer::new(ptr, release));
         self.pending_transfer.set(transfers);
         self
     }
@@ -314,7 +320,9 @@ impl StashStorage {
     }
 
     pub fn disarm_pending_transfer(&self) {
-        self.pending_transfer.set(Vec::new());
+        for pending in self.pending_transfer.take() {
+            pending.disarm();
+        }
 
         if let StashData::PtrSlot(_, Some(inner)) = &self.data {
             inner.disarm_pending_transfer();
@@ -409,9 +417,7 @@ impl StashStorage {
 
 impl Drop for StashStorage {
     fn drop(&mut self) {
-        for pending in self.pending_transfer.take() {
-            pending.release_now();
-        }
+        drop(self.pending_transfer.take());
         match &self.data {
             StashData::HashTable(data) => self.free_hashtable(data),
             StashData::List(data) => Self::free_list(data),

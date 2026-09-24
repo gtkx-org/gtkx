@@ -17,5 +17,6 @@
         {
             "path": "../vitest/tsconfig.lib.json"
         }
-    ]
+    ],
+    "files": ["./node_modules/.gtkx/env.d.ts"]
 }

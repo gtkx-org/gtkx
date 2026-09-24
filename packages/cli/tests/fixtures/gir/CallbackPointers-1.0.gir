@@ -1,0 +1,196 @@
+<?xml version="1.0"?>
+<repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"
+    xmlns:c="http://www.gtk.org/introspection/c/1.0"
+    xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="Gio" version="2.0"/>
+  <namespace name="CallbackPointers" version="1.0" shared-library="libcallbackpointers.so.0"
+      c:identifier-prefixes="CallbackPointers" c:symbol-prefixes="callback_pointers">
+    <alias name="DataPointer" c:type="CallbackPointersDataPointer"><type name="gpointer" c:type="gpointer"/></alias>
+    <alias name="RawAlias" c:type="CallbackPointersRawAlias"><type name="RawInput" c:type="CallbackPointersRawInput"/></alias>
+    <alias name="SafeAlias" c:type="CallbackPointersSafeAlias"><type name="SafeNamed" c:type="CallbackPointersSafeNamed"/></alias>
+    <alias name="CompareAlias" c:type="CallbackPointersCompareAlias"><type name="GLib.CompareDataFunc" c:type="GCompareDataFunc"/></alias>
+    <callback name="RawInput" c:type="CallbackPointersRawInput">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="payload" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+      </parameters>
+    </callback>
+    <callback name="AliasInput" c:type="CallbackPointersAliasInput">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="payload" transfer-ownership="none" nullable="1"><type name="DataPointer" c:type="CallbackPointersDataPointer"/></parameter>
+      </parameters>
+    </callback>
+    <callback name="RawOutput" c:type="CallbackPointersRawOutput">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="payload" transfer-ownership="none" direction="out" caller-allocates="0" nullable="1"><type name="gpointer" c:type="gpointer*"/></parameter>
+      </parameters>
+    </callback>
+    <callback name="RawReturn" c:type="CallbackPointersRawReturn">
+      <return-value transfer-ownership="none"><type name="gpointer" c:type="gpointer"/></return-value>
+      <parameters>
+        <parameter name="count" transfer-ownership="none"><type name="guint" c:type="guint"/></parameter>
+      </parameters>
+    </callback>
+    <callback name="SkippedReturn" c:type="CallbackPointersSkippedReturn">
+      <return-value skip="1" transfer-ownership="none"><type name="gpointer" c:type="gpointer"/></return-value>
+      <parameters><parameter name="count" transfer-ownership="none"><type name="guint" c:type="guint"/></parameter></parameters>
+    </callback>
+    <callback name="CollectionInput" c:type="CallbackPointersCollectionInput">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="values" transfer-ownership="none"><type name="GLib.List" c:type="GList*"><type name="DataPointer" c:type="CallbackPointersDataPointer"/></type></parameter>
+      </parameters>
+    </callback>
+    <callback name="NestedCallback" c:type="CallbackPointersNestedCallback">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="callback" transfer-ownership="none" scope="call"><type name="SafeNamed" c:type="CallbackPointersSafeNamed"/></parameter>
+      </parameters>
+    </callback>
+    <callback name="CallbackReturn" c:type="CallbackPointersCallbackReturn">
+      <return-value transfer-ownership="none"><type name="SafeNamed" c:type="CallbackPointersSafeNamed"/></return-value>
+      <parameters>
+        <parameter name="count" transfer-ownership="none"><type name="guint" c:type="guint"/></parameter>
+      </parameters>
+    </callback>
+    <callback name="SafeFolded" c:type="CallbackPointersSafeFolded">
+      <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+      <parameters>
+        <parameter name="source_object" transfer-ownership="none" nullable="1"><type name="GObject.Object" c:type="gpointer"/></parameter>
+        <parameter name="count" transfer-ownership="none"><type name="guint" c:type="guint"/></parameter>
+        <parameter name="data" transfer-ownership="none" closure="2" nullable="1"><type name="DataPointer" c:type="CallbackPointersDataPointer"/></parameter>
+      </parameters>
+    </callback>
+    <callback name="SafeNamed" c:type="CallbackPointersSafeNamed">
+      <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+      <parameters>
+        <parameter name="source_object" transfer-ownership="none" nullable="1"><type name="GObject.Object" c:type="gpointer"/></parameter>
+        <parameter name="count" transfer-ownership="none"><type name="guint" c:type="guint"/></parameter>
+        <parameter name="data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+      </parameters>
+    </callback>
+    <callback name="SafeBytes" c:type="CallbackPointersSafeBytes">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="bytes" transfer-ownership="none"><array length="1" zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array></parameter>
+        <parameter name="length" transfer-ownership="none"><type name="gsize" c:type="gsize"/></parameter>
+        <parameter name="data" transfer-ownership="none" closure="2" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+      </parameters>
+    </callback>
+    <class name="Probe" parent="GObject.Object" c:type="CallbackPointersProbe"
+        glib:type-name="CallbackPointersProbe" glib:get-type="callback_pointers_probe_get_type">
+      <method name="use_raw" c:identifier="callback_pointers_probe_use_raw">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackPointersProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call" closure="1"><type name="RawInput" c:type="CallbackPointersRawInput"/></parameter>
+          <parameter name="data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_alias" c:identifier="callback_pointers_probe_use_alias">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackPointersProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call" closure="1"><type name="RawAlias" c:type="CallbackPointersRawAlias"/></parameter>
+          <parameter name="data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_output" c:identifier="callback_pointers_probe_use_output">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackPointersProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call" closure="1"><type name="RawOutput" c:type="CallbackPointersRawOutput"/></parameter>
+          <parameter name="data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_return" c:identifier="callback_pointers_probe_use_return">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackPointersProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call" closure="1"><type name="RawReturn" c:type="CallbackPointersRawReturn"/></parameter>
+          <parameter name="data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_skipped" c:identifier="callback_pointers_probe_use_skipped">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackPointersProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call" closure="1"><type name="SkippedReturn" c:type="CallbackPointersSkippedReturn"/></parameter>
+          <parameter name="data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_collection" c:identifier="callback_pointers_probe_use_collection">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackPointersProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call" closure="1"><type name="CollectionInput" c:type="CallbackPointersCollectionInput"/></parameter>
+          <parameter name="data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_nested" c:identifier="callback_pointers_probe_use_nested">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackPointersProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call" closure="1"><type name="NestedCallback" c:type="CallbackPointersNestedCallback"/></parameter>
+          <parameter name="data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_callback_return" c:identifier="callback_pointers_probe_use_callback_return">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackPointersProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call" closure="1"><type name="CallbackReturn" c:type="CallbackPointersCallbackReturn"/></parameter>
+          <parameter name="data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_safe" c:identifier="callback_pointers_probe_use_safe">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackPointersProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call" closure="1"><type name="SafeFolded" c:type="CallbackPointersSafeFolded"/></parameter>
+          <parameter name="data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_named" c:identifier="callback_pointers_probe_use_named">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackPointersProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call" closure="1"><type name="SafeAlias" c:type="CallbackPointersSafeAlias"/></parameter>
+          <parameter name="data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_bytes" c:identifier="callback_pointers_probe_use_bytes">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackPointersProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call" closure="1"><type name="SafeBytes" c:type="CallbackPointersSafeBytes"/></parameter>
+          <parameter name="data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+      <constructor name="new_with_raw" c:identifier="callback_pointers_probe_new_with_raw">
+        <return-value transfer-ownership="full"><type name="Probe" c:type="CallbackPointersProbe*"/></return-value>
+        <parameters><parameter name="callback" transfer-ownership="none" scope="call" closure="1"><type name="RawInput" c:type="CallbackPointersRawInput"/></parameter>
+          <parameter name="data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter></parameters>
+      </constructor>
+    </class>
+    <class name="Store" parent="GObject.Object" c:type="CallbackPointersStore"
+        glib:type-name="CallbackPointersStore" glib:get-type="callback_pointers_store_get_type">
+      <implements name="Gio.ListModel"/>
+      <method name="sort_with_alias" c:identifier="callback_pointers_store_sort_with_alias">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Store" c:type="CallbackPointersStore*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call" closure="1"><type name="CompareAlias" c:type="CallbackPointersCompareAlias"/></parameter>
+          <parameter name="data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+        </parameters>
+      </method>
+    </class>
+    <function name="use_raw" c:identifier="callback_pointers_use_raw">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="callback" transfer-ownership="none" scope="call" closure="1"><type name="RawInput" c:type="CallbackPointersRawInput"/></parameter>
+          <parameter name="data" transfer-ownership="none" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter></parameters>
+    </function>
+  </namespace>
+</repository>

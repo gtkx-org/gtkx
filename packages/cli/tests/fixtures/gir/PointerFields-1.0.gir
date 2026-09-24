@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"
+    xmlns:c="http://www.gtk.org/introspection/c/1.0"
+    xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <namespace name="PointerFields" version="1.0" shared-library="libpointerfields.so.0"
+      c:identifier-prefixes="PointerFields" c:symbol-prefixes="pointer_fields">
+    <alias name="DataPointer" c:type="PointerFieldsDataPointer">
+      <type name="gpointer" c:type="gpointer"/>
+    </alias>
+    <alias name="PointerAlias" c:type="PointerFieldsPointerAlias">
+      <type name="DataPointer" c:type="PointerFieldsDataPointer"/>
+    </alias>
+    <record name="Mixed" c:type="PointerFieldsMixed" glib:type-name="PointerFieldsMixed"
+        glib:get-type="pointer_fields_mixed_get_type">
+      <field name="before" writable="1"><type name="gint" c:type="gint"/></field>
+      <field name="direct" writable="1"><type name="gpointer" c:type="gpointer"/></field>
+      <field name="aliased" writable="1"><type name="PointerAlias" c:type="PointerFieldsPointerAlias"/></field>
+      <field name="inline_pointers" writable="1">
+        <array fixed-size="2" zero-terminated="0" c:type="gpointer[2]">
+          <type name="gpointer" c:type="gpointer"/>
+        </array>
+      </field>
+      <field name="pointed_pointers" writable="1">
+        <array fixed-size="2" zero-terminated="0" c:type="gpointer*">
+          <type name="PointerAlias" c:type="PointerFieldsPointerAlias"/>
+        </array>
+      </field>
+      <field name="list" writable="1">
+        <type name="GLib.List" c:type="GList*"><type name="PointerAlias" c:type="PointerFieldsPointerAlias"/></type>
+      </field>
+      <field name="keys" writable="1">
+        <type name="GLib.HashTable" c:type="GHashTable*">
+          <type name="gpointer" c:type="gpointer"/><type name="utf8" c:type="gchar*"/>
+        </type>
+      </field>
+      <field name="values" writable="1">
+        <type name="GLib.HashTable" c:type="GHashTable*">
+          <type name="utf8" c:type="gchar*"/><type name="gpointer" c:type="gpointer"/>
+        </type>
+      </field>
+      <field name="after" writable="1"><type name="guint64" c:type="guint64"/></field>
+      <field name="type" writable="1"><type name="GType" c:type="GType"/></field>
+      <field name="bytes" writable="1"><type name="GLib.Bytes" c:type="GBytes*"/></field>
+      <field name="buffer" writable="1">
+        <array fixed-size="4" zero-terminated="0" c:type="guint8[4]"><type name="guint8" c:type="guint8"/></array>
+      </field>
+      <field name="numbers" writable="1">
+        <array fixed-size="2" zero-terminated="0" c:type="gint[2]"><type name="gint" c:type="gint"/></array>
+      </field>
+    </record>
+    <record name="PointerOnly" c:type="PointerFieldsPointerOnly" glib:type-name="PointerFieldsPointerOnly"
+        glib:get-type="pointer_fields_pointer_only_get_type">
+      <field name="data" writable="1"><type name="PointerAlias" c:type="PointerFieldsPointerAlias"/></field>
+    </record>
+  </namespace>
+</repository>

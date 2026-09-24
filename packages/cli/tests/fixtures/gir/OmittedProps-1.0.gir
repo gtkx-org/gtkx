@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <namespace name="OmittedProps" version="1.0" shared-library="libomittedprops.so.0"
+             c:identifier-prefixes="OmittedProps" c:symbol-prefixes="omitted_props">
+    <interface name="Parent" c:type="OmittedPropsParent"
+               glib:type-name="OmittedPropsParent" glib:get-type="omitted_props_parent_get_type">
+      <prerequisite name="GObject.Object"/>
+      <property name="value" readable="1" writable="1" transfer-ownership="none">
+        <type name="gint" c:type="gint"/>
+      </property>
+    </interface>
+    <interface name="Child" c:type="OmittedPropsChild"
+               glib:type-name="OmittedPropsChild" glib:get-type="omitted_props_child_get_type">
+      <prerequisite name="Parent"/>
+      <property name="active" readable="1" writable="1" transfer-ownership="none">
+        <type name="gboolean" c:type="gboolean"/>
+      </property>
+    </interface>
+    <class name="Holder" c:type="OmittedPropsHolder" parent="GObject.Object"
+           glib:type-name="OmittedPropsHolder" glib:get-type="omitted_props_holder_get_type">
+      <implements name="Parent"/>
+      <implements name="Child"/>
+    </class>
+  </namespace>
+</repository>

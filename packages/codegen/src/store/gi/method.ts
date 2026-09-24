@@ -115,9 +115,13 @@ const arrayLengthArgument = (source: GirParameter, sourceIndex: number): string 
     return source.nullable || source.optional ? `(${identifier}?.length ?? 0)` : `${identifier}.length`;
 };
 
-const renderMethodSignature = (context: ModuleContext, fn: GirFunction): string =>
+const renderMethodSignature = (
+    context: ModuleContext,
+    fn: GirFunction,
+    excludedParameters: ReadonlySet<GirParameter> = new Set(),
+): string =>
     renderInputParameters(context, fn, {
-        shouldSkip: () => false,
+        shouldSkip: (parameter) => excludedParameters.has(parameter),
         isOptionalExtra: () => false,
         isNullableExtra: () => false,
     });
@@ -196,12 +200,16 @@ const isReturnedOutParameter = (context: ModuleContext, parameter: GirParameter)
         (isCollectibleCallerOut(context, parameter) || isFixedArrayCallerOut(context, parameter))) ||
         (isInoutParameter(parameter) && !isInPlaceInout(context, parameter));
 
-const returnedOutParameters = (context: ModuleContext, fn: GirFunction): InputParameter[] => {
+const returnedOutParameters = (
+    context: ModuleContext,
+    fn: GirFunction,
+    excludedParameters: ReadonlySet<GirParameter> = new Set(),
+): InputParameter[] => {
     const folded = foldedLengthIndices(context.library, fn);
     const result: InputParameter[] = [];
 
     for (const [index, parameter] of fn.parameters.entries()) {
-        if (isReturnedOutParameter(context, parameter) && !folded.has(index)) {
+        if (isReturnedOutParameter(context, parameter) && !folded.has(index) && !excludedParameters.has(parameter)) {
             result.push({ parameter, index });
         }
     }
@@ -241,8 +249,13 @@ const primaryReturnType = (
     return fn.returnValue.nullable ? `${override} | null` : override;
 };
 
-const renderMethodReturnType = (context: ModuleContext, fn: GirFunction, primaryTypeOverride?: string): string => {
-    const outs = returnedOutParameters(context, fn);
+const renderMethodReturnType = (
+    context: ModuleContext,
+    fn: GirFunction,
+    primaryTypeOverride?: string,
+    excludedParameters: ReadonlySet<GirParameter> = new Set(),
+): string => {
+    const outs = returnedOutParameters(context, fn, excludedParameters);
     const primary = primaryReturnType(context, fn, primaryTypeOverride);
 
     if (outs.length === 0) {
@@ -333,13 +346,14 @@ const renderPromisifiedBody = (
     finishTarget: { fn: GirFunction; expression: string },
     bindingExpression: string,
 ): string => {
-    if (hasSideCallback(context, asyncFn)) {
+    const cancellableIndex = findCancellableIndex(context, asyncFn.parameters);
+
+    if (cancellableIndex < 0 || hasSideCallback(context, asyncFn)) {
         return renderAdaptedPromisifiedBody(context, asyncFn, finishTarget, bindingExpression);
     }
 
     context.addRuntimeImport("promisify");
     const finish = promisifiedFinishExpression(context, finishTarget.fn, finishTarget.expression);
-    const cancellableIndex = findCancellableIndex(context, asyncFn.parameters);
 
     const promisifyContext: PromisifyContext = {
         context,

@@ -41,6 +41,9 @@
         "packages/runtime/src/override-methods.ts": [
             "exports"
         ],
+        "packages/runtime/src/object.ts": [
+            "exports"
+        ],
         "packages/runtime/src/text-view.ts": [
             "exports"
         ],
@@ -151,7 +154,8 @@
         },
         "packages/cli": {
             "entry": [
-                "src/global.d.ts!"
+                "src/global.d.ts!",
+                "tests/fixtures/react-compiler/index.tsx"
             ]
         },
         "packages/vitest": {

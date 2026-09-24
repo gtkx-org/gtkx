@@ -155,7 +155,7 @@ const arrayLayout = (
     ref: Extract<GirType, { kind: "carray" }>,
     visited: Set<string>,
 ): FieldLayout => {
-    if (ref.fixedSize === undefined) {
+    if (ref.fixedSize === undefined || ref.arrayCType?.endsWith("*") === true) {
         return POINTER_LAYOUT;
     }
 

@@ -1,159 +1,123 @@
+import { spawn } from "node:child_process";
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type AppProject, buildAppProject, createAppProject, removeAppProject } from "./app-project.js";
+import { describe, expect, it } from "vitest";
+import { type CliProject, createCliProject, type DisposableCliProject, runCli, runCliOrThrow } from "./cli-project.js";
 
-const BUILD_TIMEOUT = 300_000;
-const APPLICATION_ID = "com.gtkx.clireactcompiler";
-const COMPONENT_PATH = join("src", "counter.tsx");
-const LABEL_PATH = join("src", "label.ts");
-const BANNER_PATH = join("src", "banner.tsx");
-const CACHE_DIR = "cache";
-const OUT_DIR = "dist";
+type AppRun = { status: number | null; signal: NodeJS.Signals | null; reports: unknown[] };
+
+const SOURCES = ["index.tsx", "banner.tsx", "label.ts"];
 const READ_ONLY_CACHE = "read-only-cache";
-const READ_ONLY_MODE = 0o500;
-const COMPILER_RUNTIME = "react-compiler-runtime";
 const FIRST_LABEL = "first-build";
 const SECOND_LABEL = "second-build";
-const PLAIN_LABEL = "plain-typescript";
-const BANNER_LABEL = "create-element";
-const MEMO_CACHE_SLOT = "$[0]";
+const sources = Object.fromEntries(SOURCES.map((name) => [
+    `src/${name}`,
+    readFileSync(new URL(`fixtures/react-compiler/${name}`, import.meta.url), "utf8"),
+]));
 
-const APP_ENTRY = String.raw`import { render } from "./counter.tsx";
+const createProject = (settings = "", cacheDir = "cache"): DisposableCliProject => createCliProject({
+    prefix: "gtkx-react-compiler-",
+    config: `export default { applicationId: "com.gtkx.clireactcompiler", codegen: false, ${settings} };`,
+    hasStore: true,
+    files: { ...sources, "vite.config.mjs": `export default { cacheDir: ${JSON.stringify(cacheDir)} };` },
+});
 
-process.stdout.write(render() + "\n");
-`;
-
-const BANNER_ENTRY = String.raw`import { Banner } from "./banner.tsx";
-
-process.stdout.write(Banner({ text: "banner" }).props.children + "\n");
-`;
-
-const BANNER_SOURCE = `import React from "react";
-
-function Banner(props: { text: string }) {
-    const parts: Array<string> = [props.text, ${JSON.stringify(BANNER_LABEL)}];
-
-    return React.createElement("label", null, parts.join("-"));
-}
-
-export { Banner };
-`;
-
-const LABEL_SOURCE = `type Label = { text: string };
-
-const label: Label = { text: ${JSON.stringify(PLAIN_LABEL)} };
-
-export { type Label, label };
-`;
-
-const component = (text: string): string =>
-    `import { useState } from "react";
-import { label } from "./label.js";
-
-const Counter = () => {
-    const [count] = useState(0);
-    const rows = [label.text, ${JSON.stringify(text)}, String(count)];
-
-    return rows.join("-");
-};
-
-const render = (): string => Counter();
-
-export { render };
-`;
-
-const createProject = (prefix: string, text: string): AppProject =>
-    createAppProject({
-        applicationId: APPLICATION_ID,
-        entry: APP_ENTRY,
-        files: { [COMPONENT_PATH]: component(text), [LABEL_PATH]: LABEL_SOURCE },
-        prefix,
+const runApp = (project: CliProject): Promise<AppRun> => new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [join(project.root, "dist/bundle.mjs")], {
+        cwd: join(project.root, "dist"),
+        stdio: ["ignore", "ignore", "inherit", "ipc"],
     });
+    const reports: unknown[] = [];
+    const timeout = setTimeout(() => {
+        child.kill("SIGKILL");
+    }, 30_000);
 
-const buildProject = async (project: AppProject, cacheDir: string): Promise<string> => {
-    const reported = await buildAppProject({ project, outDir: OUT_DIR, cacheDir, minify: false });
+    child.on("message", (message) => {
+        reports.push(message);
+        if (reports.length < 3) {
+            child.send({ action: "increment" });
+        }
+    });
+    child.once("error", reject);
+    child.once("close", (status, signal) => {
+        clearTimeout(timeout);
+        resolve({ status, signal, reports });
+    });
+});
 
-    return readFileSync(join(project.root, reported), "utf8");
-};
+const renderedCounters = (label: string): unknown[] => [0, 1, 2].map((count) => ({
+    counter: `plain-typescript-${label}-${String(count)}`,
+    banner: "banner-create-element",
+}));
 
 describe("gtkx build (React Compiler)", () => {
-    let project: AppProject;
-    let first: string;
-    let second: string;
+    it("preserves rendered state and interactions with the default compiler", async () => {
+        using project = createProject();
+        runCliOrThrow(project, ["build"]);
 
-    beforeAll(async () => {
-        project = createProject("gtkx-react-compiler-", FIRST_LABEL);
-        const cacheDir = join(project.root, CACHE_DIR);
-        first = await buildProject(project, cacheDir);
-        writeFileSync(join(project.root, COMPONENT_PATH), component(SECOND_LABEL));
-        second = await buildProject(project, cacheDir);
-    }, BUILD_TIMEOUT);
+        const result = await runApp(project);
 
-    afterAll(() => {
-        removeAppProject(project);
+        expect(result.status).toBe(0);
+        expect(result.signal).toBeNull();
+        expect(result.reports).toEqual(renderedCounters(FIRST_LABEL));
     });
 
-    it("memoizes a component the compiler infers", () => {
-        expect(first).toContain(COMPILER_RUNTIME);
-        expect(first).toContain(MEMO_CACHE_SLOT);
-        expect(first).toContain(FIRST_LABEL);
+    it("builds an interactive application with the compiler disabled", async () => {
+        using project = createProject("reactCompiler: false");
+        runCliOrThrow(project, ["build"]);
+
+        const result = await runApp(project);
+
+        expect(result.status).toBe(0);
+        expect(result.signal).toBeNull();
+        expect(result.reports).toEqual(renderedCounters(FIRST_LABEL));
     });
 
-    it("bundles a module the compiler skips", () => {
-        expect(first).toContain(PLAIN_LABEL);
+    it("renders changed component code after rebuilding with the same cache", async () => {
+        using project = createProject();
+        runCliOrThrow(project, ["build"]);
+        const first = await runApp(project);
+        expect(first.status).toBe(0);
+        expect(first.reports).toEqual(renderedCounters(FIRST_LABEL));
+
+        const entry = join(project.root, "src/index.tsx");
+        writeFileSync(entry, readFileSync(entry, "utf8").replace(FIRST_LABEL, () => SECOND_LABEL));
+        runCliOrThrow(project, ["build"]);
+        const second = await runApp(project);
+
+        expect(second.status).toBe(0);
+        expect(second.signal).toBeNull();
+        expect(second.reports).toEqual(renderedCounters(SECOND_LABEL));
     });
 
-    it("recompiles a changed component instead of replaying the cached transform", () => {
-        expect(second).toContain(SECOND_LABEL);
-        expect(second).not.toContain(FIRST_LABEL);
-        expect(second).toContain(MEMO_CACHE_SLOT);
-    });
-});
+    it("builds an interactive application when its cache is not writable", async () => {
+        using project = createProject("", READ_ONLY_CACHE);
+        const cache = join(project.root, READ_ONLY_CACHE);
+        mkdirSync(cache);
+        chmodSync(cache, 0o500);
 
-describe("gtkx build (React Compiler inference)", () => {
-    let project: AppProject;
-    let bundle: string;
+        try {
+            runCliOrThrow(project, ["build"]);
+            const result = await runApp(project);
 
-    beforeAll(async () => {
-        project = createAppProject({
-            applicationId: APPLICATION_ID,
-            entry: BANNER_ENTRY,
-            files: { [BANNER_PATH]: BANNER_SOURCE },
-            prefix: "gtkx-react-compiler-inference-",
-        });
-
-        bundle = await buildProject(project, join(project.root, CACHE_DIR));
-    }, BUILD_TIMEOUT);
-
-    afterAll(() => {
-        removeAppProject(project);
+            expect(result.status).toBe(0);
+            expect(result.signal).toBeNull();
+            expect(result.reports).toEqual(renderedCounters(FIRST_LABEL));
+        } finally {
+            chmodSync(cache, 0o700);
+        }
     });
 
-    it("leaves a createElement component the compiler does not infer unmemoized", () => {
-        expect(bundle).toContain(BANNER_LABEL);
-        expect(bundle).not.toContain(COMPILER_RUNTIME);
-        expect(bundle).not.toContain(MEMO_CACHE_SLOT);
-    });
-});
+    it("rejects an invalid compiler configuration", () => {
+        using project = createProject("reactCompiler: { compilationMode: \"unsupported\" }");
 
-describe("gtkx build (React Compiler cache failures)", () => {
-    let project: AppProject;
-
-    beforeAll(() => {
-        project = createProject("gtkx-react-compiler-readonly-", FIRST_LABEL);
-        mkdirSync(join(project.root, READ_ONLY_CACHE));
-        chmodSync(join(project.root, READ_ONLY_CACHE), READ_ONLY_MODE);
+        expect(runCli(project, ["build"]).status).not.toBe(0);
     });
 
-    afterAll(() => {
-        removeAppProject(project);
+    it("rejects invalid component syntax", () => {
+        using project = createProject();
+        writeFileSync(join(project.root, "src/index.tsx"), "export const App = () => <;");
+
+        expect(runCli(project, ["build"]).status).not.toBe(0);
     });
-
-    it("builds with a cache directory it cannot write", async () => {
-        const bundle = await buildProject(project, join(project.root, READ_ONLY_CACHE));
-
-        expect(bundle).toContain(COMPILER_RUNTIME);
-        expect(bundle).toContain(MEMO_CACHE_SLOT);
-    }, BUILD_TIMEOUT);
 });

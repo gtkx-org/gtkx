@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GLib" version="2.0"/>
+  <include name="GObject" version="2.0"/>
+  <package name="fieldlayout-1.0"/>
+  <namespace name="FieldLayout" version="1.0" shared-library="libfieldlayout.so.0"
+             c:identifier-prefixes="FieldLayout" c:symbol-prefixes="field_layout">
+    <record name="Sample" c:type="FieldLayoutSample" c:symbol-prefix="sample"
+            glib:type-name="FieldLayoutSample" glib:get-type="field_layout_sample_get_type">
+      <field name="before" writable="1"><type name="gint" c:type="gint"/></field>
+      <field name="inline_values" writable="1">
+        <array fixed-size="3" zero-terminated="0">
+          <type name="gint" c:type="gint"/>
+        </array>
+      </field>
+      <field name="values" writable="1">
+        <array fixed-size="3" zero-terminated="0" c:type="gint*">
+          <type name="gint" c:type="gint"/>
+        </array>
+      </field>
+      <field name="after" writable="1"><type name="gint" c:type="gint"/></field>
+      <constructor name="new" c:identifier="field_layout_sample_new">
+        <return-value transfer-ownership="full"><type name="Sample" c:type="FieldLayoutSample*"/></return-value>
+        <parameters>
+          <parameter name="blank" transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></parameter>
+        </parameters>
+      </constructor>
+      <method name="read_before" c:identifier="field_layout_sample_read_before">
+        <return-value transfer-ownership="none"><type name="gint" c:type="gint"/></return-value>
+        <parameters>
+          <instance-parameter name="sample" transfer-ownership="none">
+            <type name="Sample" c:type="FieldLayoutSample*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="read_after" c:identifier="field_layout_sample_read_after">
+        <return-value transfer-ownership="none"><type name="gint" c:type="gint"/></return-value>
+        <parameters>
+          <instance-parameter name="sample" transfer-ownership="none">
+            <type name="Sample" c:type="FieldLayoutSample*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+      <method name="read_inline_total" c:identifier="field_layout_sample_read_inline_total">
+        <return-value transfer-ownership="none"><type name="gint" c:type="gint"/></return-value>
+        <parameters>
+          <instance-parameter name="sample" transfer-ownership="none">
+            <type name="Sample" c:type="FieldLayoutSample*"/>
+          </instance-parameter>
+        </parameters>
+      </method>
+    </record>
+  </namespace>
+</repository>

@@ -1,0 +1,138 @@
+<?xml version="1.0"?>
+<repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"
+    xmlns:c="http://www.gtk.org/introspection/c/1.0"
+    xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <namespace name="UnknownArrays" version="1.0" shared-library="libunknownarrays.so.0"
+      c:identifier-prefixes="UnknownArrays" c:symbol-prefixes="unknown_arrays">
+    <alias name="RawBytes" c:type="UnknownArraysRawBytes">
+      <array zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array>
+    </alias>
+    <alias name="RawAlias" c:type="UnknownArraysRawAlias"><type name="RawBytes" c:type="UnknownArraysRawBytes"/></alias>
+    <alias name="NestedRaw" c:type="UnknownArraysNestedRaw">
+      <type name="GLib.List" c:type="GList*"><type name="RawAlias" c:type="UnknownArraysRawAlias"/></type>
+    </alias>
+    <alias name="IntrinsicBytes" c:type="UnknownArraysIntrinsicBytes"><type name="GLib.ByteArray" c:type="GByteArray*"/></alias>
+    <alias name="NestedBytes" c:type="UnknownArraysNestedBytes">
+      <type name="GLib.PtrArray" c:type="GPtrArray*"><type name="IntrinsicBytes" c:type="UnknownArraysIntrinsicBytes"/></type>
+    </alias>
+    <callback name="RawCallback" c:type="UnknownArraysRawCallback">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="bytes" transfer-ownership="none"><type name="RawAlias" c:type="UnknownArraysRawAlias"/></parameter></parameters>
+    </callback>
+    <alias name="CallbackAlias" c:type="UnknownArraysCallbackAlias"><type name="RawCallback" c:type="UnknownArraysRawCallback"/></alias>
+    <callback name="SizedCallback" c:type="UnknownArraysSizedCallback">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="bytes" transfer-ownership="none"><array length="1" zero-terminated="0" c:type="const guint8*"><type name="guint8" c:type="guint8"/></array></parameter>
+        <parameter name="length" transfer-ownership="none"><type name="gsize" c:type="gsize"/></parameter>
+      </parameters>
+    </callback>
+    <class name="Probe" parent="GObject.Object" c:type="UnknownArraysProbe"
+        glib:type-name="UnknownArraysProbe" glib:get-type="unknown_arrays_probe_get_type">
+      <property name="data" writable="1" transfer-ownership="none"><type name="RawAlias" c:type="UnknownArraysRawAlias"/></property>
+      <property name="nested" writable="1" transfer-ownership="none"><type name="NestedRaw" c:type="UnknownArraysNestedRaw"/></property>
+      <property name="count" writable="1" transfer-ownership="none"><type name="guint64" c:type="guint64"/></property>
+      <property name="payload" writable="1" transfer-ownership="none"><type name="GLib.ByteArray" c:type="GByteArray*"/></property>
+      <method name="take_direct" c:identifier="unknown_arrays_probe_take_direct">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="UnknownArraysProbe*"/></instance-parameter>
+          <parameter name="data" transfer-ownership="none"><array zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array></parameter>
+        </parameters>
+      </method>
+      <method name="read_alias" c:identifier="unknown_arrays_probe_read_alias">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="UnknownArraysProbe*"/></instance-parameter>
+          <parameter name="data" direction="out" caller-allocates="0" transfer-ownership="none"><type name="RawAlias" c:type="guint8**"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_nested" c:identifier="unknown_arrays_probe_read_nested">
+        <return-value transfer-ownership="none"><type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="NestedRaw" c:type="UnknownArraysNestedRaw"/></type></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="UnknownArraysProbe*"/></instance-parameter></parameters>
+      </method>
+      <method name="discard_array" c:identifier="unknown_arrays_probe_discard_array">
+        <return-value skip="1" transfer-ownership="none"><array zero-terminated="0" c:type="gint*"><type name="gint" c:type="gint"/></array></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="UnknownArraysProbe*"/></instance-parameter></parameters>
+      </method>
+      <method name="use_raw" c:identifier="unknown_arrays_probe_use_raw">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="UnknownArraysProbe*"/></instance-parameter>
+          <parameter name="callback" scope="call" transfer-ownership="none"><type name="CallbackAlias" c:type="UnknownArraysCallbackAlias"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_sized" c:identifier="unknown_arrays_probe_use_sized">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="UnknownArraysProbe*"/></instance-parameter>
+          <parameter name="callback" scope="call" transfer-ownership="none"><type name="SizedCallback" c:type="UnknownArraysSizedCallback"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_sized" c:identifier="unknown_arrays_probe_read_sized">
+        <return-value transfer-ownership="none"><array length="0" zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="UnknownArraysProbe*"/></instance-parameter>
+          <parameter name="length" direction="out" caller-allocates="0" transfer-ownership="none"><type name="gsize" c:type="gsize*"/></parameter>
+        </parameters>
+      </method>
+      <method name="read_fixed" c:identifier="unknown_arrays_probe_read_fixed">
+        <return-value transfer-ownership="none"><array fixed-size="2" zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="UnknownArraysProbe*"/></instance-parameter></parameters>
+      </method>
+      <method name="read_terminated" c:identifier="unknown_arrays_probe_read_terminated">
+        <return-value transfer-ownership="none"><array zero-terminated="1" c:type="guint8*"><type name="guint8" c:type="guint8"/></array></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="UnknownArraysProbe*"/></instance-parameter></parameters>
+      </method>
+      <method name="read_intrinsic" c:identifier="unknown_arrays_probe_read_intrinsic">
+        <return-value transfer-ownership="none"><type name="GLib.ByteArray" c:type="GByteArray*"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="UnknownArraysProbe*"/></instance-parameter></parameters>
+      </method>
+      <method name="read_nested_bytes" c:identifier="unknown_arrays_probe_read_nested_bytes">
+        <return-value transfer-ownership="none"><type name="NestedBytes" c:type="UnknownArraysNestedBytes"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="UnknownArraysProbe*"/></instance-parameter></parameters>
+      </method>
+    </class>
+    <class name="RawOnly" parent="GObject.Object" c:type="UnknownArraysRawOnly"
+        glib:type-name="UnknownArraysRawOnly" glib:get-type="unknown_arrays_raw_only_get_type">
+      <property name="data" writable="1" transfer-ownership="none"><type name="RawAlias" c:type="UnknownArraysRawAlias"/></property>
+    </class>
+    <record name="Frame" c:type="UnknownArraysFrame" glib:type-name="UnknownArraysFrame"
+        glib:get-type="unknown_arrays_frame_get_type">
+      <field name="before" writable="1"><type name="gint" c:type="gint"/></field>
+      <field name="data" writable="1"><type name="RawAlias" c:type="UnknownArraysRawAlias"/></field>
+      <field name="nested" writable="1"><type name="NestedRaw" c:type="UnknownArraysNestedRaw"/></field>
+      <field name="after" writable="1"><type name="gint" c:type="gint"/></field>
+      <field name="buffer" writable="1"><array fixed-size="2" zero-terminated="0" c:type="guint8[2]"><type name="guint8" c:type="guint8"/></array></field>
+    </record>
+    <record name="RawRecord" c:type="UnknownArraysRawRecord" glib:type-name="UnknownArraysRawRecord"
+        glib:get-type="unknown_arrays_raw_record_get_type">
+      <field name="data" writable="1"><type name="RawAlias" c:type="UnknownArraysRawAlias"/></field>
+    </record>
+    <function name="unknown_bytes" c:identifier="unknown_arrays_unknown_bytes">
+      <return-value transfer-ownership="none"><array zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array></return-value>
+    </function>
+    <alias name="FixedPointerBytes" c:type="UnknownArraysFixedPointerBytes">
+      <array fixed-size="2" zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array>
+    </alias>
+    <record name="InlineRecord" c:type="UnknownArraysInlineRecord">
+      <field name="buffer" writable="1"><array fixed-size="2" zero-terminated="0" c:type="guint8[2]"><type name="guint8" c:type="guint8"/></array></field>
+    </record>
+    <record name="FixedPointerRecord" c:type="UnknownArraysFixedPointerRecord">
+      <field name="buffer"><array fixed-size="2" zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array></field>
+    </record>
+    <record name="AliasedPointerRecord" c:type="UnknownArraysAliasedPointerRecord">
+      <field name="buffer"><type name="FixedPointerBytes" c:type="UnknownArraysFixedPointerBytes"/></field>
+    </record>
+    <function name="full_fixed_pointer_record" c:identifier="unknown_arrays_full_fixed_pointer_record">
+      <return-value transfer-ownership="full"><type name="FixedPointerRecord" c:type="UnknownArraysFixedPointerRecord*"/></return-value>
+    </function>
+    <function name="full_aliased_pointer_record" c:identifier="unknown_arrays_full_aliased_pointer_record">
+      <return-value transfer-ownership="full"><type name="AliasedPointerRecord" c:type="UnknownArraysAliasedPointerRecord*"/></return-value>
+    </function>
+    <function name="full_inline_record" c:identifier="unknown_arrays_full_inline_record">
+      <return-value transfer-ownership="full"><type name="InlineRecord" c:type="UnknownArraysInlineRecord*"/></return-value>
+    </function>
+  </namespace>
+</repository>

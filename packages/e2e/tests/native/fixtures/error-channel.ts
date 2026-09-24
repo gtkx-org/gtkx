@@ -1,5 +1,3 @@
-import * as Gio from "@gtkx/gi/gio";
-import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 
 const SETTLE_MS = 3000;
@@ -10,14 +8,6 @@ const provokeCritical = () => {
     const box = Gtk.Box.new(Gtk.Orientation.VERTICAL, 0);
     const stranger = Gtk.Label.new("a widget the box never adopted");
     box.remove(stranger);
-};
-
-const provokePanic = () => {
-    const task = Gio.Task.new(new GObject.Object({}), null, null);
-
-    task.runInThread((worker) => {
-        worker.returnBoolean(true);
-    });
 };
 
 const provokeNothing = () => {
@@ -32,8 +22,6 @@ const provokeNothing = () => {
 const provoke = (mode: string | undefined): void => {
     if (mode === "critical") {
         provokeCritical();
-    } else if (mode === "panic") {
-        provokePanic();
     } else {
         provokeNothing();
     }
