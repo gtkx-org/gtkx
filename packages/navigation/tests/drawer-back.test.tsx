@@ -1,6 +1,8 @@
+import type { DrawerNavigationProp, ParamListBase } from "@gtkx/navigation";
 import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import { NavigationContainer } from "@gtkx/navigation";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { NavigationContainer, useNavigation } from "@gtkx/navigation";
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -17,6 +19,30 @@ import {
 
 const clickButton = async (name: string): Promise<void> => {
     await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name }));
+};
+
+const ConsecutiveDrawerActions = (): ReactNode => {
+    const navigation = useNavigation<DrawerNavigationProp<ParamListBase>>();
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkLabel>Inbox Content</GtkLabel>
+            <GtkButton
+                label="Open then close sidebar"
+                onClicked={() => {
+                    navigation.openDrawer();
+                    navigation.closeDrawer();
+                }}
+            />
+            <GtkButton
+                label="Close then open sidebar"
+                onClicked={() => {
+                    navigation.closeDrawer();
+                    navigation.openDrawer();
+                }}
+            />
+        </GtkBox>
+    );
 };
 
 const drawerTree = (isCollapsed: boolean): ReactNode => (
@@ -107,6 +133,22 @@ describe("drawer - sidebar sync", () => {
         });
 
         expect(getDrawerStatus(lastState(onStateChange))).toBe("closed");
+    });
+
+    it("follows the latest consecutive drawer action before rendering", async () => {
+        await render(
+            <NavigationContainer>
+                <Drawer.Navigator collapsed>
+                    <Drawer.Screen name="Inbox" component={ConsecutiveDrawerActions} />
+                </Drawer.Navigator>
+            </NavigationContainer>,
+        );
+
+        await screen.findByText("Inbox Content");
+        await clickButton("Open then close sidebar");
+        expect(querySidebarLabel("Inbox")).toBeNull();
+        await clickButton("Close then open sidebar");
+        expect(querySidebarLabel("Inbox")).toBeVisible();
     });
 
     it("keeps the sidebar beside the content after navigating while not collapsed", async () => {
