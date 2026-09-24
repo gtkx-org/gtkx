@@ -157,7 +157,7 @@ const settleScaffoldFailure = (error: unknown): void => {
 const runCreate = async (rawArgs: string[]): Promise<void> => {
     try {
         const args = parseCreateArguments(rawArgs);
-        const isInteractive = args.interactive === false || args.yes ? false : process.stdin.isTTY;
+        const isInteractive = args.interactive !== false && !args.yes && process.stdin.isTTY;
         assertSupportedNodeVersion();
         await scaffold({
             name: args.name,
