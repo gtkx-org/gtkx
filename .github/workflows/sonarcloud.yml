@@ -64,6 +64,8 @@ jobs:
     needs: coverage
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      PNPM_CONFIG_NODE_LINKER: hoisted
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -82,6 +84,7 @@ jobs:
         with:
           command: pnpm exec nx run gtkx:coverage-merge
           image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
+          extra-env: PNPM_CONFIG_NODE_LINKER
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2
