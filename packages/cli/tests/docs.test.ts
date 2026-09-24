@@ -84,7 +84,7 @@ describe("project-relative GIR paths", () => {
         for (const args of [["docs", "--out", OUT_DIR], ["codegen"]]) {
             const result = spawnSync(process.execPath, [CLI_ENTRY, ...args, "--cwd", project.root], {
                 cwd: launcher.root,
-                env: cliEnvironment(),
+                env: cliEnvironment(project),
                 encoding: "utf8",
                 timeout: 300_000,
             });
