@@ -4,11 +4,13 @@ description: "Name the app's commands as GActions, reach them from a menu and th
 
 # Menus, Accelerators, and Shortcuts
 
-The editor from [Opening a Task](/tutorial/the-task-editor) is ready for keyboard and menu commands. This chapter adds native GActions that buttons, menu items, and accelerators can share, plus shortcuts for search and deletion.
+In [Opening a Task](/tutorial/the-task-editor) an open task became a route, so a row navigates into the editor and the navigator's own back button leaves it. Every command still needs the pointer, and the header bar is running out of room for buttons.
+
+Take the new-task button. A GNOME app exposes that same command from the button, the primary menu, and a key, and you do not want a copy of the handler for each. Name the command once and let all of them refer to it by name. That name is a GAction.
 
 ## Commands as actions
 
-Declare the window's commands with `GSimpleAction` elements, grouped in a component.
+An action is a named, activatable command that belongs to either the window or the application. GTKX exposes actions as elements, so a group of them is an ordinary component.
 
 Create `src/components/window-actions.tsx`:
 
@@ -38,7 +40,9 @@ export const WindowActions = () => {
 
 Some names are missing, so this file does not compile on its own. `showDialog` joins the store below, where the finished file appears. `currentSelection` and `openTask` are the subject of the next section.
 
-`newTask` reads the store when activated. It gets the current selection from navigation state through a helper added below.
+`newTask` reaches the store through `useStore.getState()` rather than a hook. The handler reads the state at the moment it runs, so the component does not re-render when the lists change. The store is not React state, as [Adding Tasks with a Store](/tutorial/the-task-store) covered, so any function can read it directly.
+
+The selection is not there to read. Since [Lists and a Sidebar](/tutorial/lists-and-the-sidebar) it has been the `Tasks` route's params, and this handler runs from a menu item, a key, and a button, none of which is inside a screen. There is no `route` prop to take it from and no `useNavigation` to call, so the handler asks the navigator the same way it asks the store: through a module-level function.
 
 Mount the group in the window's `actions` slot. In `src/components/window.tsx`:
 
@@ -59,7 +63,7 @@ import { WindowActions } from "./window-actions.js";
 </AdwApplicationWindow>
 ```
 
-Mounting `name="new"` in the window's `actions` slot makes it available as `win.new`. The application's slot uses the `app` prefix instead. These commands operate on this window, so they use `win`.
+**The scope prefix comes from the mount point, not from the name.** The element says `name="new"`, and mounting it in the window's `actions` slot makes the full name `win.new`. The same element in the application's `actions` slot becomes `app.new`. A command that needs a window to act on belongs on the window; a command that makes sense with no window open belongs on the application.
 
 Once a command has a name, a widget can point at it instead of carrying a handler. The New Task button belongs on the task list's header bar, which is the `Tasks` screen's `headerStart` option. In `src/components/window.tsx`:
 
@@ -85,11 +89,11 @@ Once a command has a name, a widget can point at it instead of carrying a handle
  })}
 ```
 
-`actionName` connects the button to the action without an `onClicked` handler. GTK controls its sensitivity from the action's availability and enabled state.
+`actionName` takes the place of `onClicked`, and GTK4 dims the button whenever no window offers that action. It also answers the rule [Smart Views, Filters, and Search](/tutorial/smart-views-and-search) set for header widgets, which sent the filter and the search button into components of their own: this button watches nothing, so putting it straight in the options costs `Window` no renders.
 
 ## Reaching the navigator from outside a screen
 
-Window actions are outside the navigator's screen tree. Use a [navigation ref](https://reactnavigation.org/docs/navigation-ref/) to reach the container from their handlers. GTKX re-exports `createNavigationContainerRef` alongside its navigators.
+`useNavigation` answers only below a screen. A GAction handler is not below one, and neither is a window shortcut or a notification handler, so the navigator needs a handle a plain module can hold. `createNavigationContainerRef` makes one, and the container takes it as its `ref`.
 
 In `src/navigation.ts`:
 
@@ -104,7 +108,7 @@ In `src/navigation.ts`:
 +export const navigationRef = createNavigationContainerRef<RootParamList>();
 ```
 
-The ref exposes the container's navigation methods, typed against `RootParamList`. Add the helpers this app needs at the end of the file:
+The ref exposes the navigation API a screen gets from its `navigation` prop, typed against the same `RootParamList`. Add the questions this app asks it, at the end of the file:
 
 ```ts
 export const currentSelection = (): Selection => {
@@ -125,13 +129,13 @@ export const openTask = (selection: Selection, id: string): void => {
 };
 ```
 
-The helpers check `isReady()` because application actions can arrive before the navigation container mounts. [Reminders That Reach the Desktop](/tutorial/reminders) handles that startup case for desktop notifications.
+Every one of them starts at `isReady()`. Between this module loading and the container's first render the ref points at nothing, and an action can arrive in that gap: [Reminders That Reach the Desktop](/tutorial/reminders) lets the desktop start the app to deliver one. Calling through the ref before the container is mounted reports an error and does nothing, so each helper checks first and answers with a fallback.
 
-`currentSelection` falls back to All Tasks when the content stack has no selection.
+`currentSelection` reads the params `useSelection` reads inside the tree, off the root state rather than off a hook. It falls back to All Tasks because the content stack can be empty, the Nothing Selected state from [A Layout That Collapses](/tutorial/an-adaptive-layout).
 
-`openTaskId` returns the editor's task id, or `null` on other routes. The Delete shortcut uses it below.
+`openTaskId` asks which route the user is looking at and answers `null` for every route but `Task`. Which task is open is a fact the navigator already holds, so no field anywhere mirrors it, and this one question is what gates the Delete key below.
 
-`openTask` selects a list before opening the editor, giving the back button a task list to return to.
+`openTask` navigates twice on purpose. The first call selects the task list you name and drops whatever page sat above it, the second pushes the task's page onto that list. The editor then has a list underneath it, so leaving the editor lands somewhere that makes sense rather than wherever the app happened to be.
 
 Hand the container the ref. In `src/components/window.tsx`:
 
@@ -145,11 +149,11 @@ Hand the container the ref. In `src/components/window.tsx`:
 +<NavigationContainer ref={navigationRef}>
 ```
 
-Keep using screen props and `useNavigation` inside the navigator.
+There is one container, so there is one ref, and it is the only way in from outside. Screens keep using `useNavigation` and their `route`; the ref exists for the code that has neither.
 
 ## Accelerators
 
-Set `actionAccels` on `AdwApplication` to bind keys to actions. A `win` action resolves against the active window.
+An accelerator maps a key combination to an action name. Accelerators register on the application even when they point at window-scoped actions, because the application owns the keyboard mapping. The name still resolves against whichever window has focus, so `win.new` fires the action of the window you are looking at.
 
 In `src/app.tsx`:
 
@@ -164,7 +168,7 @@ In `src/app.tsx`:
 </AdwApplication>
 ```
 
-GTK uses these accelerator strings for both keyboard activation and the hints displayed beside menu items.
+`accels` is an array because one action can answer to several combinations. The string form (`<Control>n`, `<Shift><Control>Delete`, `F10`) is what GTK4 parses everywhere, and a menu item reads it to draw `Ctrl+N` along its right-hand edge. Write the accelerator once and the menu label follows.
 
 ## The primary menu
 
@@ -194,7 +198,7 @@ export const MainMenu = () => (
 );
 ```
 
-The `GMenu` element builds a native menu model from these items. Each section separates a group of commands, and each item names the action it activates. GTK controls menu item sensitivity from those actions.
+`GMenu` takes an `items` array instead of the imperative `append`/`appendSection`/`appendSubmenu` calls. An entry with `section` groups its children and draws a separator between groups, an entry with `submenu` opens a nested menu, and an entry with `label` and `action` is a menu item. The action name is all the wiring it needs: no callback threaded down from the window, and the item goes insensitive by itself when the action is missing.
 
 `primary` marks this button as the window's primary menu, which is what makes F10 open it. You do not register that key yourself.
 
@@ -215,7 +219,7 @@ The editor page fills its own header with the task's title and its buttons, so t
 
 ## Mounting dialogs
 
-Track which dialog is open in the UI slice.
+Menu items open dialogs, so the store has to track which dialog is showing. A dialog is a state, not an event: it is either open or closed, so one field describes it.
 
 In `src/types.ts`:
 
@@ -294,11 +298,13 @@ export const Dialogs = () => {
 };
 ```
 
-GTKX's dialog components present when mounted and dismiss when unmounted. Change the store's `dialog` field to control which one is shown.
+**This is the dialog contract, and every dialog in the rest of the tutorial follows it.** Mounting the component presents the dialog, unmounting it dismisses the dialog. You never call `present` or `close`. You change `dialog` in the store and the reconciler does the rest.
 
-`Dialogs` can sit alongside the navigator inside the window. The dialog components use a portal and present against their containing window, without changing the navigation stack. See [Modals and Portals](/guide/modals-and-portals) for other presentation patterns.
+The widget an Adwaita dialog element creates is not laid out inside the surrounding widget tree, so it does not matter that `Dialogs` sits at the bottom of the window's children, outside the navigator. It renders through a portal, presented against the window that contains it, and presenting one leaves the content stack exactly as it was. [Modals and Portals](/guide/modals-and-portals) covers the general mechanism, including `createPortal` for the cases you drive by hand.
 
 `onClosed` clears the state that mounted the dialog. That signal fires whichever way the dialog goes away, including Escape and the close button, so routing it back to `showDialog("none")` keeps the store's `dialog` field in sync with what is on screen.
+
+Both dialogs are plain Adwaita: each takes the callback and does nothing else.
 
 Create `src/components/about.tsx`:
 
@@ -325,7 +331,7 @@ export const About = ({ onClose }: { onClose: () => void }) => {
 };
 ```
 
-`applicationIcon` uses the app's icon name. This tutorial uses `com.gtkx.tutorial`; if you chose another application ID, use it here too. [Appendix B](/tutorial/packaging) installs the icon alongside the app.
+`applicationIcon` is an icon name, and it is the application ID you chose when you scaffolded the project. Nothing is drawn there until the icon is installed alongside the app, which happens in [Appendix B](/tutorial/packaging).
 
 Create `src/components/shortcuts.tsx`:
 
@@ -347,7 +353,7 @@ export const Shortcuts = ({ onClose }: { onClose: () => void }) => (
 );
 ```
 
-Adwaita displays each `accelerator` as key caps. These items describe shortcuts; their handlers come from `actionAccels`, the controller below, or the navigator's built-in back behavior.
+`accelerator` takes the same string form as `actionAccels`, and Adwaita draws it as key caps. This dialog is documentation rather than wiring: adding an item here does not create the key. Delete is the one you add next. Escape already works, because the navigator gives every content page a back gesture and a key that pops it.
 
 Mount `Dialogs` inside the window. In `src/components/window.tsx`:
 
@@ -365,28 +371,24 @@ import { Dialogs } from "./dialogs.js";
 </AdwApplicationWindow>
 ```
 
-## View-specific shortcuts
+## Keys that are not commands
 
-For this app's search and delete keys, use callback shortcuts on a `GtkShortcutController` in the window's `controllers` slot. The delete handler can leave the key unhandled when no task is open.
+Search and delete need keys too, and neither belongs in a menu. Search is a view state rather than a command, and "Delete task" means nothing with no task open.
+
+**A command you would put in a menu is an action. A key that only makes sense in a particular view state is a shortcut.** Actions are global, named, and discoverable. Shortcuts are local, anonymous, and conditional.
+
+Shortcuts live on a `GtkShortcutController`, which mounts in the window's `controllers` slot.
 
 Create `src/components/app-shortcuts.tsx`:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
-import {
-    GtkCallbackAction,
-    GtkShortcut,
-    GtkShortcutController,
-    GtkShortcutTrigger,
-} from "@gtkx/jsx/gtk";
+import { GtkShortcut, GtkShortcutController } from "@gtkx/jsx/gtk";
 import { openTaskId } from "../navigation.js";
 import { useStore } from "../store/index.js";
 
 const shortcut = (accelerator: string, run: () => boolean) => (
-    <GtkShortcut
-        trigger={<GtkShortcutTrigger accelerator={accelerator} />}
-        action={<GtkCallbackAction callback={run} />}
-    />
+    <GtkShortcut trigger={Gtk.ShortcutTrigger.parseString(accelerator)} action={Gtk.CallbackAction.new(run)} />
 );
 
 export const AppShortcuts = () => {
@@ -417,13 +419,13 @@ export const AppShortcuts = () => {
 };
 ```
 
-`GtkShortcutTrigger` accepts an accelerator string, while `GtkCallbackAction` runs the matching callback. Its return value reports whether the shortcut handled the key.
+A shortcut pairs a trigger with an action. `Gtk.ShortcutTrigger.parseString` reads the same accelerator strings you have been writing, and `Gtk.CallbackAction.new` wraps a function whose return value reports what happened to the key.
 
 `scope={Gtk.ShortcutScope.GLOBAL}` makes these fire wherever focus sits inside the window. Leave it out and the keys work only while focus is on the controller's own widget, which for a window-level controller is almost never what you want.
 
-Returning `false` leaves the key unhandled. On the task list, `openTaskId()` returns `null`, so Delete remains available to the focused widget. Returning `true` marks a shortcut as handled.
+**A shortcut that does not act returns `false`, so the key keeps travelling.** That is the whole gate on Delete. `openTaskId()` is `null` on every route but `Task`, so on the task list the callback finds nothing to delete and reports the key as unhandled, leaving Delete to whatever else wants it. The trigger never changes, so the controller builds its shortcuts once and keeps them for the life of the window.
 
-Leave Escape to the navigator's native back behavior.
+Escape is missing from that list on purpose. Popping a page is the navigator's own behaviour, bound to Escape, `Alt` + `Left`, the mouse back button, and the edge swipe alike, so a shortcut of yours claiming Escape would only get in its way.
 
 Mount the controller in `src/components/window.tsx`:
 
@@ -448,6 +450,8 @@ Delete now has a key behind it, so the trash button in the open task's header ca
  />
 ```
 
+The back button beside it needs nothing: Adwaita draws it, labels it, and gives it the key.
+
 ## Run it
 
 Save the files and try the keyboard.
@@ -455,7 +459,7 @@ Save the files and try the keyboard.
 - Press `Ctrl+N`. A task called "New Task" is added and the editor opens on it, with the title field ready. Press `Ctrl+N` again from inside the editor and it swaps to the newer task, with the list still under both of them.
 - Press `F10`, or click the menu button at the end of the task list header. The primary menu opens, and the New Task item shows `Ctrl+N` along its right-hand edge.
 - Press `Ctrl+question` (`Ctrl+Shift+/` on a US layout). The keyboard shortcuts dialog appears. Press `Escape` to dismiss it, then press `Ctrl+question` again to bring it back.
-- With a task open, press `Escape` to return to the list. Press `Escape` on the task list and nothing happens while both panes are visible. Drag the window narrow and the same key takes you back to the sidebar.
+- With a task open, press `Escape`. The editor closes and the list is showing again, from code you did not write. Press `Escape` on the task list and nothing happens while both panes are visible. Drag the window narrow and the same key takes you back to the sidebar.
 - With a task open, press `Delete`. The task moves to Trash, with no warning and the editor still on it. [Deleting Without Fear](/tutorial/trash-and-toasts) closes that gap next.
 
 ## Next
