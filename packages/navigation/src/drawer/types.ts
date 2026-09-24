@@ -74,8 +74,8 @@ type DrawerHeaderProps = {
 };
 
 /** Navigation helpers of the drawer navigator itself. */
-type DrawerNavigationHelpers = Omit<NavigationHelpers<ParamListBase, DrawerNavigationEventMap>, "getState"> &
-    DrawerActionHelpers<ParamListBase> & Pick<DrawerNavigationProp<ParamListBase>, "getState">;
+type DrawerNavigationHelpers = NavigationHelpers<ParamListBase, DrawerNavigationEventMap> &
+    DrawerActionHelpers<ParamListBase>;
 
 /** Descriptor of one drawer route. */
 type DrawerDescriptor = Descriptor<
