@@ -239,7 +239,8 @@ jobs:
           command: &fix-ci-command NODE_OPTIONS=--disable-warning=DEP0040 pnpm exec nx fix-ci
           install: "false"
 
-  test:
+  test-core:
+    name: test (core)
     needs: [changes, image-manifest]
     if: *code-changed
     runs-on: ubuntu-latest
@@ -251,7 +252,7 @@ jobs:
       - name: Run tests
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm exec nx run-many -t test --exclude @gtkx/cli
+          command: pnpm exec nx run-many -t test --exclude @gtkx/cli,@gtkx/mcp
           image-ref: ${{ needs.image-manifest.outputs.ref }}
 
       - name: Report failures to Nx Cloud
@@ -262,6 +263,52 @@ jobs:
           command: *fix-ci-command
           install: "false"
 
+  test-mcp:
+    name: test (mcp)
+    needs: [changes, image-manifest]
+    if: *code-changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GTKX_MAX_WORKERS: "2"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run the MCP tests
+        uses: ./.github/actions/run-ci-command
+        with:
+          command: pnpm exec nx run @gtkx/mcp:test
+          image-ref: ${{ needs.image-manifest.outputs.ref }}
+          extra-env: GTKX_MAX_WORKERS
+
+      - name: Report failures to Nx Cloud
+        if: *fix-ci
+        continue-on-error: true
+        uses: ./.github/actions/run-in-container
+        with:
+          command: *fix-ci-command
+          install: "false"
+
+  test:
+    needs: [changes, test-core, test-mcp]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check test jobs
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CODE_CHANGED: ${{ needs.changes.outputs.code }}
+          CORE_RESULT: ${{ needs.test-core.result }}
+          MCP_RESULT: ${{ needs.test-mcp.result }}
+        run: |
+          test "$CHANGES_RESULT" = "success"
+          if [ "$CODE_CHANGED" = "true" ]; then
+            test "$CORE_RESULT" = "success"
+            test "$MCP_RESULT" = "success"
+          fi
+
   test-cli-shard:
     name: test-cli (${{ matrix.shard }}/${{ matrix.total }})
     needs: [changes, image-manifest]
@@ -269,8 +316,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
-        total: [6]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+        total: [19]
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -384,7 +431,8 @@ jobs:
           NX_BASE: ${{ github.event.pull_request.base.sha }}
           NX_HEAD: ${{ github.event.pull_request.head.sha }}
 
-  publish-e2e:
+  publish-consumer-e2e:
+    name: publish-e2e (consumer)
     needs: [changes, image-manifest]
     if: *code-changed
     runs-on: ubuntu-latest
@@ -399,9 +447,37 @@ jobs:
           command: pnpm release-e2e
           image-ref: ${{ needs.image-manifest.outputs.ref }}
 
+  publish-tutorial-e2e:
+    name: publish-e2e (tutorial)
+    needs: [changes, image-manifest]
+    if: *code-changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
       - name: Publish to Verdaccio, then install, build, and run the tutorial app
-        uses: ./.github/actions/run-in-container
+        uses: ./.github/actions/run-ci-command
         with:
           command: pnpm tutorial
-          mount-cargo-cache: "true"
-          mount-pnpm-store: "true"
+          image-ref: ${{ needs.image-manifest.outputs.ref }}
+
+  publish-e2e:
+    needs: [changes, publish-consumer-e2e, publish-tutorial-e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check publish acceptance jobs
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CODE_CHANGED: ${{ needs.changes.outputs.code }}
+          CONSUMER_RESULT: ${{ needs.publish-consumer-e2e.result }}
+          TUTORIAL_RESULT: ${{ needs.publish-tutorial-e2e.result }}
+        run: |
+          test "$CHANGES_RESULT" = "success"
+          if [ "$CODE_CHANGED" = "true" ]; then
+            test "$CONSUMER_RESULT" = "success"
+            test "$TUTORIAL_RESULT" = "success"
+          fi
