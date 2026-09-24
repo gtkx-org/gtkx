@@ -28,7 +28,7 @@ const runCodegen = (project: CliProject): number | null => runCli(project, ["cod
 
 describe("gtkx codegen writing agent-facing files", () => {
     const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
+        project: { root: "", nodeModules: "", tmpDir: "" },
         status: null,
     };
 
@@ -87,7 +87,7 @@ describe("gtkx codegen writing agent-facing files", () => {
 });
 
 describe("gtkx codegen with agent files turned off", () => {
-    const state: { project: CliProject } = { project: { root: "", nodeModules: "" } };
+    const state: { project: CliProject } = { project: { root: "", nodeModules: "", tmpDir: "" } };
 
     beforeAll(() => {
         state.project = createCliProject({

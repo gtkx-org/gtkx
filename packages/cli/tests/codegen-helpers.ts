@@ -213,7 +213,7 @@ const fixtureLibrariesConfig = (libraries: string[] | undefined): string => {
 };
 
 const initialRunState = (): CodegenRunState => ({
-    project: { root: "", nodeModules: "" },
+    project: { root: "", nodeModules: "", tmpDir: "" },
     status: null,
 });
 

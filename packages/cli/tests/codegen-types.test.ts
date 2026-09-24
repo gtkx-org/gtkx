@@ -195,7 +195,7 @@ const typecheck = (project: CliProject, file: string): void => {
 
 describe("generated declarations in an installed consumer", () => {
     const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
+        project: { root: "", nodeModules: "", tmpDir: "" },
         status: null,
     };
 

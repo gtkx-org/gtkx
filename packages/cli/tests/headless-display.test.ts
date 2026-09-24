@@ -8,6 +8,7 @@ import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import {
     chmodSync,
     existsSync,
+    mkdirSync,
     mkdtempSync,
     readFileSync,
     rmSync,
@@ -31,6 +32,7 @@ import {
 
 type DisplayProbe = {
     child: ChildProcess;
+    root: string;
     runtimeDir: string;
     processes: ProcessEntry[];
     processGroups: ProcessGroupIdentity[];
@@ -38,6 +40,7 @@ type DisplayProbe = {
 };
 type WatchedDisplayProbe = {
     owner: ChildProcess;
+    root: string;
     worker: Pick<ProcessEntry, "pid" | "startTime">;
     runtimeDir: string;
     processes: ProcessEntry[];
@@ -249,45 +252,57 @@ const displayExecutable = (probe: DisplayProbe, name: string): ProcessEntry =>
     displayProcess(probe, (entry) => entry.args[0]?.endsWith(`/${name}`) === true);
 
 const startDisplayProbe = async (compositor: "sway" | "weston" = "sway"): Promise<DisplayProbe> => {
+    const root = mkdtempSync(join(tmpdir(), "gtkx-display-probe-"));
     const child = spawn(process.execPath, [...NODE_TYPESCRIPT_ARGS, headlessProbe(compositor)], {
         cwd: process.cwd(),
-        env: process.env,
+        env: { ...process.env, TMPDIR: root },
         stdio: ["ignore", "pipe", "pipe"],
     });
-    const ready = JSON.parse(await firstOutputLine(child)) as { runtimeDir?: string };
-    const runtimeDir = ready.runtimeDir;
-    const parentId = child.pid;
 
-    if (runtimeDir === undefined || parentId === undefined) {
-        throw new Error("Headless display probe returned no runtime identity");
+    try {
+        const ready = JSON.parse(await firstOutputLine(child)) as { runtimeDir?: string };
+        const runtimeDir = ready.runtimeDir;
+        const parentId = child.pid;
+
+        if (runtimeDir === undefined || parentId === undefined) {
+            throw new Error("Headless display probe returned no runtime identity");
+        }
+
+        const processes = ownedDisplayProcesses(runtimeDir);
+        const guardProcess = childProcesses(parentId).find((entry) =>
+            entry.args.some((argument) => argument.includes("process-guard")),
+        );
+        const guard = guardProcess === undefined ? undefined : processGroupIdentity(guardProcess.pid);
+        const processGroups = ownedProcessGroups(processes);
+
+        if (guard === undefined || processes.length < 2 || processGroups.length < 2) {
+            throw new Error("Headless display probe returned no owned processes");
+        }
+
+        return { child, root, runtimeDir, processes, processGroups, guard };
+    } catch (error) {
+        child.kill("SIGKILL");
+        rmSync(root, { recursive: true, force: true });
+        throw error;
     }
-
-    const processes = ownedDisplayProcesses(runtimeDir);
-    const guardProcess = childProcesses(parentId).find((entry) =>
-        entry.args.some((argument) => argument.includes("process-guard")),
-    );
-    const guard = guardProcess === undefined ? undefined : processGroupIdentity(guardProcess.pid);
-    const processGroups = ownedProcessGroups(processes);
-
-    if (guard === undefined || processes.length < 2 || processGroups.length < 2) {
-        throw new Error("Headless display probe returned no owned processes");
-    }
-
-    return { child, runtimeDir, processes, processGroups, guard };
 };
 
-const startVitestDisplayProbe = async (): Promise<WatchedDisplayProbe & { root: string }> => {
+const startVitestDisplayProbe = async (): Promise<WatchedDisplayProbe> => {
     const root = mkdtempSync(join(tmpdir(), "gtkx-vitest-owner-"));
+    const projectRoot = join(root, "project");
+    const runtimeRoot = join(root, "tmp");
     const readyPath = join(root, "ready.json");
-    writeFileSync(join(root, "package.json"), '{"type":"module"}\n');
+    mkdirSync(projectRoot);
+    mkdirSync(runtimeRoot);
+    writeFileSync(join(projectRoot, "package.json"), '{"type":"module"}\n');
     writeFileSync(
-        join(root, "vitest.config.ts"),
+        join(projectRoot, "vitest.config.ts"),
         `import gtkx from ${JSON.stringify(VITEST_DIST_PLUGIN_MODULE)};
 export default { plugins: [gtkx()], test: { include: ["slow.test.ts"], maxWorkers: 1 } };
 `,
     );
     writeFileSync(
-        join(root, "slow.test.ts"),
+        join(projectRoot, "slow.test.ts"),
         `import { writeFileSync } from "node:fs";
 it("waits", async () => {
     const ready = { workerPid: process.pid, runtimeDir: process.env.XDG_RUNTIME_DIR };
@@ -297,8 +312,8 @@ it("waits", async () => {
 `,
     );
     const owner = spawn(process.execPath, [VITEST_ENTRY, "run", "--config", "vitest.config.ts"], {
-        cwd: root,
-        env: process.env,
+        cwd: projectRoot,
+        env: { ...process.env, TMPDIR: runtimeRoot },
         stdio: "ignore",
     });
 
@@ -353,7 +368,7 @@ const stopProbe = (probe: DisplayProbe): void => {
 
     killProcessGroup(probe.guard);
     killOwnedProcessGroups(probe.processGroups);
-    rmSync(probe.runtimeDir, { recursive: true, force: true });
+    rmSync(probe.root, { recursive: true, force: true });
 };
 
 const stopWatchedProbe = (probe: WatchedDisplayProbe): void => {
@@ -364,7 +379,7 @@ const stopWatchedProbe = (probe: WatchedDisplayProbe): void => {
     }
 
     killOwnedProcessGroups(probe.processGroups);
-    rmSync(probe.runtimeDir, { recursive: true, force: true });
+    rmSync(probe.root, { recursive: true, force: true });
 };
 
 const staleSwayConfig = (size: string): string =>
@@ -457,7 +472,7 @@ const startupOutcome = async (
 
     const child = spawn(process.execPath, [...NODE_TYPESCRIPT_ARGS, startupProbe(compositor)], {
         cwd: process.cwd(),
-        env: { ...process.env, PATH: `${root}:${process.env.PATH ?? ""}` },
+        env: { ...process.env, PATH: `${root}:${process.env.PATH ?? ""}`, TMPDIR: root },
         stdio: ["ignore", "pipe", "pipe"],
     });
 
@@ -523,7 +538,6 @@ describe("headless display process ownership", () => {
             expect(existsSync(probe.runtimeDir)).toBe(false);
         } finally {
             stopWatchedProbe(probe);
-            rmSync(probe.root, { recursive: true, force: true });
         }
     });
 
@@ -764,7 +778,7 @@ describe("headless runtime cleanup", () => {
             const staleTime = new Date(Date.now() - 10_000);
             utimesSync(probe.runtimeDir, staleTime, staleTime);
             using project = createCliProject({ prefix: "gtkx-headless-cleanup-live-" });
-            runCliOrThrow(project, ["cleanup"]);
+            runCliOrThrow(project, ["cleanup"], { TMPDIR: probe.root });
             expect(probe.processes.every((entry) => isRunning(entry))).toBe(true);
             expect(existsSync(probe.runtimeDir)).toBe(true);
         } finally {
@@ -779,7 +793,7 @@ describe("headless runtime cleanup", () => {
             const staleTime = new Date(Date.now() - 10_000);
             utimesSync(probe.runtimeDir, staleTime, staleTime);
             using project = createCliProject({ prefix: "gtkx-headless-cleanup-weston-live-" });
-            runCliOrThrow(project, ["cleanup"]);
+            runCliOrThrow(project, ["cleanup"], { TMPDIR: probe.root });
             expect(probe.processes.some((entry) => entry.args[0]?.endsWith("/weston") === true)).toBe(true);
             expect(probe.processes.every((entry) => isRunning(entry))).toBe(true);
             expect(existsSync(probe.runtimeDir)).toBe(true);

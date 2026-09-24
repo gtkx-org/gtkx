@@ -33,13 +33,15 @@ import {
 
 const nestedProject = (parent: CliProject): CliProject => {
     const root = join(parent.root, "application");
+    const tmpDir = join(parent.tmpDir, "application");
     mkdirSync(root);
+    mkdirSync(tmpDir);
 
     for (const name of ["package.json", "gtkx.config.ts"]) {
         cpSync(join(parent.root, name), join(root, name));
     }
 
-    return { root, nodeModules: join(root, "node_modules") };
+    return { root, nodeModules: join(root, "node_modules"), tmpDir };
 };
 
 const installNestedPackages = (parent: CliProject, project: CliProject): void => {
@@ -162,7 +164,7 @@ describe("gtkx codegen (Storybook dependency placement)", () => {
 });
 
 describe("gtkx codegen (a project that installed the workspace store)", () => {
-    const state: { project: CliProject } = { project: { root: "", nodeModules: "" } };
+    const state: { project: CliProject } = { project: { root: "", nodeModules: "", tmpDir: "" } };
 
     beforeAll(() => {
         state.project = createCliProject({
@@ -184,7 +186,7 @@ describe("gtkx codegen (a project that installed the workspace store)", () => {
 });
 
 describe("gtkx codegen (a project that generates no store)", () => {
-    const state: { project: CliProject } = { project: { root: "", nodeModules: "" } };
+    const state: { project: CliProject } = { project: { root: "", nodeModules: "", tmpDir: "" } };
 
     beforeAll(() => {
         state.project = createCliProject({

@@ -62,7 +62,7 @@ const readPage = (project: CliProject, name: string): string => readFileSync(joi
 
 describe("gtkx docs", () => {
     const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
+        project: { root: "", nodeModules: "", tmpDir: "" },
         status: null,
     };
 
@@ -227,7 +227,7 @@ describe("gtkx docs", () => {
 });
 
 describe("gtkx docs (directories it refuses to write to)", () => {
-    const state: { project: CliProject } = { project: { root: "", nodeModules: "" } };
+    const state: { project: CliProject } = { project: { root: "", nodeModules: "", tmpDir: "" } };
 
     beforeAll(() => {
         state.project = createCliProject({ prefix: "gtkx-cli-docs-out-", config: config(), hasStore: true });

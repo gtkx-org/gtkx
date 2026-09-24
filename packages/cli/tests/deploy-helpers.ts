@@ -768,7 +768,7 @@ const stubGenerator = (): string => {
 
 const deployProbe = (setup: DeploySetup): DeployProbe => {
     const { args, executables = [], ...options } = setup;
-    const probe: DeployProbe = { project: { root: "", nodeModules: "" }, status: null, output: "" };
+    const probe: DeployProbe = { project: { root: "", nodeModules: "", tmpDir: "" }, status: null, output: "" };
 
     beforeAll(() => {
         probe.project = createCliProject({ ...options, hasStore: true });

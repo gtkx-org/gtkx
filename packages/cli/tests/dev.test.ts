@@ -534,7 +534,7 @@ const expectWatchReload = async (project: CliProject, session: DevSession): Prom
 };
 
 const createDevState = (): DevState => ({
-    project: { root: "", nodeModules: "" },
+    project: { root: "", nodeModules: "", tmpDir: "" },
     session: { output: () => "", isRunning: () => false, stop: () => Promise.resolve(true) },
 });
 

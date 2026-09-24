@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import workspaceConfig from "../../../gtkx.config.base.js";
 
-type CliProject = { root: string; nodeModules: string };
+type CliProject = { root: string; nodeModules: string; tmpDir: string };
 type DisposableCliProject = CliProject & Disposable;
 type CliRun = { status: number | null; output: string; stdout: string; stderr: string };
 
@@ -109,7 +109,10 @@ const installStore = (nodeModules: string, shouldShareStore: boolean): void => {
 };
 
 const createCliProject = (options: CliProjectOptions): DisposableCliProject => {
-    const temporary = mkdtempDisposableSync(join(tmpdir(), options.prefix));
+    using resources = new DisposableStack();
+    const temporaryRoot = tmpdir();
+    const temporary = resources.use(mkdtempDisposableSync(join(temporaryRoot, options.prefix)));
+    const tmpDir = resources.use(mkdtempDisposableSync(join(temporaryRoot, `${options.prefix}tmp-`))).path;
     const root = temporary.path;
     const nodeModules = join(root, "node_modules");
     mkdirSync(join(nodeModules, SCOPE), { recursive: true });
@@ -126,8 +129,10 @@ const createCliProject = (options: CliProjectOptions): DisposableCliProject => {
         writeFileSync(join(root, "gtkx.config.ts"), projectConfig(options.config, options.hasAgentReference === true));
     }
 
-    return { root, nodeModules, [Symbol.dispose]: () => {
-        temporary.remove();
+    const owned = resources.move();
+
+    return { root, nodeModules, tmpDir, [Symbol.dispose]: () => {
+        owned.dispose();
     } };
 };
 
@@ -136,6 +141,7 @@ const listProjectFiles = (project: CliProject, directory: string): string[] =>
 
 const removeCliProject = (project: CliProject): void => {
     rmSync(project.root, { recursive: true, force: true });
+    rmSync(project.tmpDir, { recursive: true, force: true });
 };
 
 const runProjectGit = (project: CliProject, args: string[]): void => {
@@ -152,8 +158,8 @@ const initGitRepo = (project: CliProject, tag: string): void => {
     runProjectGit(project, ["tag", tag]);
 };
 
-const cliEnvironment = (): NodeJS.ProcessEnv => {
-    const environment = { ...process.env };
+const cliEnvironment = (project: CliProject): NodeJS.ProcessEnv => {
+    const environment: NodeJS.ProcessEnv = { ...process.env, TMPDIR: project.tmpDir };
     delete environment.NODE_ENV;
     delete environment.NODE_PATH;
     delete environment.GTKX_DEPRECATIONS_SHOWN;
@@ -170,7 +176,7 @@ const runCli = (project: CliProject, args: string[], overrides: NodeJS.ProcessEn
     const result = spawnSync(process.execPath, [...CLI_ARGV, ...args, "--cwd", project.root], {
         cwd: WORKSPACE_ROOT,
         encoding: "utf8",
-        env: { ...cliEnvironment(), ...overrides },
+        env: { ...cliEnvironment(project), ...overrides },
         timeout: CLI_TIMEOUT,
     });
 
@@ -202,7 +208,7 @@ const runCliOrThrow = (project: CliProject, args: string[], overrides: NodeJS.Pr
 const startCli = (project: CliProject, args: string[], overrides: NodeJS.ProcessEnv = {}): ChildProcess =>
     spawn(process.execPath, [...CLI_ARGV, ...args, "--cwd", project.root], {
         cwd: WORKSPACE_ROOT,
-        env: { ...cliEnvironment(), ...overrides },
+        env: { ...cliEnvironment(project), ...overrides },
         stdio: ["ignore", "pipe", "pipe"],
     });
 

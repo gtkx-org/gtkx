@@ -19,7 +19,7 @@ const init = (project: CliProject, client: string): number | null =>
     runCli(project, ["mcp", "init", "--client", client]).status;
 
 describe("gtkx mcp init", () => {
-    const state: { project: CliProject } = { project: { root: "", nodeModules: "" } };
+    const state: { project: CliProject } = { project: { root: "", nodeModules: "", tmpDir: "" } };
 
     beforeAll(() => {
         state.project = createCliProject({ prefix: "gtkx-cli-mcp-", config: config() });

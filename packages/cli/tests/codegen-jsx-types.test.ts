@@ -42,7 +42,7 @@ const typecheck = (project: CliProject, file: string): number | null => spawnSyn
 
 describe("gtkx codegen JSX prop contracts", () => {
     const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
+        project: { root: "", nodeModules: "", tmpDir: "" },
         status: null,
     };
 

@@ -1,4 +1,6 @@
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
+import { mkdtempDisposableSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -24,15 +26,19 @@ const versionPreload = (version: string): string => {
     return `data:text/javascript,${encodeURIComponent(source)}`;
 };
 
-const runEntry = (entry: Entry, version?: string): SpawnSyncReturns<string> =>
-    spawnSync(
+const runEntry = (entry: Entry, version?: string): SpawnSyncReturns<string> => {
+    using temporary = mkdtempDisposableSync(join(tmpdir(), "gtkx-node-version-"));
+
+    return spawnSync(
         process.execPath,
         [...(version === undefined ? [] : ["--import", versionPreload(version)]), ...entry.arguments],
         {
             cwd: CLI_PACKAGE,
             encoding: "utf8",
+            env: { ...process.env, TMPDIR: temporary.path },
         },
     );
+};
 
 const runEntryOrThrow = (entry: Entry, version: string): void => {
     const result = runEntry(entry, version);

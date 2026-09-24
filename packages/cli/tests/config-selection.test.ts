@@ -3,7 +3,7 @@ import { existsSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { type CliProject, createCliProject, runCliOrThrow, startCli } from "./cli-project.js";
+import { cliEnvironment, type CliProject, createCliProject, runCliOrThrow, startCli } from "./cli-project.js";
 import {
     PINNED_SOURCE,
     PNPM_PIN,
@@ -119,6 +119,7 @@ const runVitestOrThrow = (project: CliProject): void => {
     const result = spawnSync(process.execPath, [VITEST_ENTRY, "run", "--config", VITEST_CONFIG], {
         cwd: project.root,
         encoding: "utf8",
+        env: cliEnvironment(project),
         timeout: PROCESS_TIMEOUT,
     });
 

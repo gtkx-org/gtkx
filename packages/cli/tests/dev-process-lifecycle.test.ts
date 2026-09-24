@@ -5,7 +5,7 @@ import { mkdirSync, readdirSync, readFileSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { createCliProject, STORE_LIBRARIES } from "./cli-project.js";
+import { cliEnvironment, createCliProject, STORE_LIBRARIES } from "./cli-project.js";
 
 type ProcessIdentity = {
     pid: number;
@@ -155,7 +155,7 @@ const expectWrapperShutdown = async (signal: "SIGTERM" | "SIGKILL"): Promise<voi
         cwd: project.root,
         detached: true,
         env: {
-            ...process.env,
+            ...cliEnvironment(project),
             [OWNER_ENV]: owner,
             NPM_CONFIG_OFFLINE: "true",
             NPM_CONFIG_UPDATE_NOTIFIER: "false",

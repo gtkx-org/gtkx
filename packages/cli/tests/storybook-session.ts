@@ -59,7 +59,7 @@ const startStorybookSession = async (
     args: string[] = [],
 ): Promise<StorybookSession> => {
     const temporary = mkdtempDisposableSync(join(tmpdir(), "gtkx-storybook-mcp-"));
-    const inherited = Object.fromEntries(Object.entries(cliEnvironment()).filter(
+    const inherited = Object.fromEntries(Object.entries(cliEnvironment(project)).filter(
         (entry): entry is [string, string] => entry[1] !== undefined,
     ));
     const environment = {

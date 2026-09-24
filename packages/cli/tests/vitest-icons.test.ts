@@ -105,7 +105,7 @@ const runVitest = (project: CliProject): VitestRun => {
     const result = spawnSync(process.execPath, [VITEST_ENTRY, "run"], {
         cwd: project.root,
         encoding: "utf8",
-        env: cliEnvironment(),
+        env: cliEnvironment(project),
         killSignal: "SIGKILL",
         timeout: RUN_TIMEOUT,
     });

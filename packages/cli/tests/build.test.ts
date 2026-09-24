@@ -487,7 +487,7 @@ const runTypecheck = (project: CliProject, configFile: string): number | null =>
 
 describe("gtkx build", () => {
     const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
+        project: { root: "", nodeModules: "", tmpDir: "" },
         status: null,
     };
 
@@ -548,7 +548,7 @@ describe("gtkx build", () => {
 
 describe("gtkx codegen (asset import declarations)", () => {
     const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
+        project: { root: "", nodeModules: "", tmpDir: "" },
         status: null,
     };
 
@@ -780,7 +780,7 @@ describe("gtkx build (invalid application icons)", () => {
 });
 
 describe("gtkx build (projects it refuses to build)", () => {
-    const state: { project: CliProject } = { project: { root: "", nodeModules: "" } };
+    const state: { project: CliProject } = { project: { root: "", nodeModules: "", tmpDir: "" } };
 
     beforeAll(() => {
         state.project = createCliProject({

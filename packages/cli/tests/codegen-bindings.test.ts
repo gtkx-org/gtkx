@@ -91,7 +91,7 @@ const typecheckGenerated = (project: CliProject, file = "probe.ts"): void => {
 
 describe("gtkx codegen (libraries the generated types have to escape)", () => {
     const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
+        project: { root: "", nodeModules: "", tmpDir: "" },
         status: null,
     };
 
@@ -155,7 +155,7 @@ describe("gtkx codegen (libraries the generated types have to escape)", () => {
 
 describe("gtkx codegen (where the documentation goes)", () => {
     const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
+        project: { root: "", nodeModules: "", tmpDir: "" },
         status: null,
     };
 
@@ -204,7 +204,7 @@ describe("gtkx codegen (where the documentation goes)", () => {
 
 describe("gtkx codegen (record fields and the GType a type registers)", () => {
     const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
+        project: { root: "", nodeModules: "", tmpDir: "" },
         status: null,
     };
 

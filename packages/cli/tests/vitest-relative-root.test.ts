@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { createCliProject, STORE_LIBRARIES } from "./cli-project.js";
+import { cliEnvironment, createCliProject, STORE_LIBRARIES } from "./cli-project.js";
 
 const APPLICATION_ID = "com.gtkx.clirelativeroot";
 const APP_DIR = "app";
@@ -122,7 +122,7 @@ describe("gtkx vitest plugin (a root given relative to the working directory)", 
         const result = spawnSync(process.execPath, [VITEST_ENTRY, "run", "--root", APP_DIR], {
             cwd: project.root,
             encoding: "utf8",
-            env: process.env,
+            env: { ...cliEnvironment(project), GTKX_DISABLE_PREFLIGHT: "0" },
             killSignal: "SIGKILL",
             timeout: RUN_TIMEOUT,
         });

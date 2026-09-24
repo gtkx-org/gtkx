@@ -18,7 +18,7 @@ import {
 } from "./deploy-helpers.js";
 
 describe("gtkx deploy (a store inventory it cannot use)", () => {
-    const project: CliProject = { root: "", nodeModules: "" };
+    const project: CliProject = { root: "", nodeModules: "", tmpDir: "" };
     const statuses: (number | null)[] = [];
     const dependencies: string[][] = [];
 
@@ -32,6 +32,7 @@ describe("gtkx deploy (a store inventory it cannot use)", () => {
 
         project.root = created.root;
         project.nodeModules = created.nodeModules;
+        project.tmpDir = created.tmpDir;
         runCli(project, ["deploy", "--print-manifests", "--target", "deb"]);
         const inventory = join(project.root, LIBRARIES_INVENTORY);
 

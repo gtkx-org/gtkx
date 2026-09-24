@@ -122,7 +122,7 @@ describe("gtkx cleanup (compile cache)", () => {
         using cacheHome = mkdtempDisposableSync(join(tmpdir(), CACHE_HOME_PREFIX));
         const stale = seedNamespace(cacheHome.path, STALE_NAMESPACE);
 
-        const run = runBin(CLI_BIN, ["cleanup"], { XDG_CACHE_HOME: cacheHome.path });
+        const run = runBin(CLI_BIN, ["cleanup"], { TMPDIR: cacheHome.path, XDG_CACHE_HOME: cacheHome.path });
 
         expect(run.status).toBe(0);
         expect(existsSync(stale)).toBe(false);
@@ -141,7 +141,10 @@ describe("gtkx cleanup (compile cache)", () => {
         }
 
         expect(seededNamespaces(cacheHome.path)).toHaveLength(2);
-        expect(runBin(CLI_BIN, ["cleanup"], { XDG_CACHE_HOME: cacheHome.path }).status).toBe(0);
+        expect(runBin(CLI_BIN, ["cleanup"], {
+            TMPDIR: cacheHome.path,
+            XDG_CACHE_HOME: cacheHome.path,
+        }).status).toBe(0);
         expect(seededNamespaces(cacheHome.path)).toEqual(live);
     });
 
@@ -152,6 +155,7 @@ describe("gtkx cleanup (compile cache)", () => {
 
         const run = runBin(CLI_BIN, ["cleanup"], {
             GTKX_DISABLE_COMPILE_CACHE: "1",
+            TMPDIR: cacheHome.path,
             XDG_CACHE_HOME: cacheHome.path,
         });
 
@@ -164,7 +168,10 @@ describe("gtkx cleanup (compile cache)", () => {
         using cacheHome = mkdtempDisposableSync(join(tmpdir(), CACHE_HOME_PREFIX));
         const stale = seedNamespace(cacheHome.path, STALE_NAMESPACE);
 
-        const run = runBin(CLI_BIN, ["cleanup", "--dry-run"], { XDG_CACHE_HOME: cacheHome.path });
+        const run = runBin(CLI_BIN, ["cleanup", "--dry-run"], {
+            TMPDIR: cacheHome.path,
+            XDG_CACHE_HOME: cacheHome.path,
+        });
 
         expect(run.status).toBe(0);
         expect(existsSync(stale)).toBe(true);
@@ -173,6 +180,9 @@ describe("gtkx cleanup (compile cache)", () => {
     it("succeeds when there is no compile cache to clean", () => {
         using cacheHome = mkdtempDisposableSync(join(tmpdir(), CACHE_HOME_PREFIX));
 
-        expect(runBin(CLI_BIN, ["cleanup"], { XDG_CACHE_HOME: cacheHome.path }).status).toBe(0);
+        expect(runBin(CLI_BIN, ["cleanup"], {
+            TMPDIR: cacheHome.path,
+            XDG_CACHE_HOME: cacheHome.path,
+        }).status).toBe(0);
     });
 });
