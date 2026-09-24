@@ -242,7 +242,7 @@ const BlendModeList = ({ onRowActivated }: BlendModeListProps) => (
     <GtkScrolledWindow vexpand hasFrame minContentWidth={150}>
         <GtkListBox name="blend-list" onRowActivated={onRowActivated} onRealize={selectAndFocusNormalRow}>
             {BLEND_MODES.map((mode) => (
-                <GtkListBoxRow key={mode.id}>
+                <GtkListBoxRow key={mode.id} accessibleLabel={mode.name}>
                     <GtkLabel xalign={0}>{mode.name}</GtkLabel>
                 </GtkListBoxRow>
             ))}

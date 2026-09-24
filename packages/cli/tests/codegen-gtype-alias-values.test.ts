@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { createCliProject, runCliOrThrow } from "./cli-project.js";
-import { runNativeConsumer } from "./native-consumer.js";
+import { runNativeConsumer } from "./type-consumer.js";
 
 const CONFIG = `export default {
     applicationId: "org.gtkx.gtypealiases",

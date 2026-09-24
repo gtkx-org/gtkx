@@ -113,7 +113,11 @@ function collectLabel(setLabels: Dispatch<SetStateAction<Gtk.Widget[]>>): LabelR
 }
 
 const LabeledRow = ({ labelText, labelRef, hasUnderline, isActivatable, children }: LabeledRowProps) => (
-    <GtkListBoxRow selectable={false} activatable={isActivatable}>
+    <GtkListBoxRow
+        selectable={false}
+        activatable={isActivatable}
+        accessibleLabel={labelText.replace("_", "")}
+    >
         <GtkBox>
             <GtkLabel
                 ref={labelRef}

@@ -1,3 +1,4 @@
+import type { Config } from "@gtkx/config";
 import type * as GObject from "@gtkx/gi/gobject";
 
 /** The props of a host element or node, as React passes them through the reconciler. */
@@ -28,6 +29,8 @@ type DetachInfo = {
     props: Props;
 };
 
+type ProjectElementConfig = NonNullable<NonNullable<Config["elements"]>["config"]>[string];
+
 type ElementBehavior<T extends GObject.Object = GObject.Object> = {
     /** Builds the GObject from its construct props, for types whose constructor does more than set properties. */
     create?: (props: Props) => GObject.Object;
@@ -50,17 +53,8 @@ type ElementBehavior<T extends GObject.Object = GObject.Object> = {
 };
 
 /** A named export in a module, referenced as plain data (the module is never imported at runtime). */
-type ModuleExport = {
-    /** Specifier the export is imported from. */
-    module: string;
-    /** Identifier the module exports it under. */
-    export: string;
-};
-
-type ElementPropsExport = ModuleExport & {
-    composition?: "factory" | "intersection";
-    constructOnly?: string[];
-};
+type ModuleExport = NonNullable<ProjectElementConfig["component"]>;
+type ElementPropsExport = NonNullable<ProjectElementConfig["props"]>;
 
 /** How one GLib type is rendered. */
 type ElementConfig<T extends GObject.Object = GObject.Object> = {

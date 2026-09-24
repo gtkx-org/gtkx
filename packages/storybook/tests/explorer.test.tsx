@@ -184,13 +184,15 @@ describe("native story explorer", () => {
         }]);
         const result = await showExplorer(catalog);
         const window = screen.getByRole(Gtk.AccessibleRole.WINDOW, { name: "Story window" });
+        const explorer = screen.getByRole(Gtk.AccessibleRole.WINDOW, { name: "GTKX Storybook" });
         expect(window).toBeVisible();
 
-        if (!(window instanceof Gtk.Window)) {
-            throw new TypeError("Expected story window");
+        if (!(window instanceof Gtk.Window) || !(explorer instanceof Gtk.Window)) {
+            throw new TypeError("Expected story windows");
         }
 
-        expect(window.getTransientFor()).toBe(screen.getByRole(Gtk.AccessibleRole.WINDOW, { name: "GTKX Storybook" }));
+        expect(window.getApplication()).toBe(explorer.getApplication());
+        expect(window.getTransientFor()).toBe(explorer);
         await userEvent.click(screen.getByName("storybook-story-windows--second"));
         expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW, { name: "Story window" })).toBeNull();
         await userEvent.click(screen.getByName("storybook-story-windows--first"));

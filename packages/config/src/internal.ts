@@ -5,6 +5,7 @@ export {
     isAgentReferenceEnabled,
     isAgentRulesEnabled,
     isValidApplicationId,
+    resolveAcceptedChildTypes,
     resolveElementComponents,
     resolveElementProps,
     resolveLazyElements,

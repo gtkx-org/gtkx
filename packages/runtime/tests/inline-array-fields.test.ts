@@ -17,18 +17,22 @@ describe("Gdk.TimeCoord.axes", () => {
         expect(coord.time).toBe(42);
     });
 
-    it("drops the elements past the fixed size and leaves the ones a short array omits", () => {
+    it.each([
+        { axes: [...AXES, 99] },
+        { axes: AXES.slice(0, -1) },
+    ])("refuses arrays that do not contain 12 axes", ({ axes }) => {
         const coord = new Gdk.TimeCoord({ time: 7 });
-        coord.axes = [...AXES, 99];
+        coord.axes = AXES;
+        expect(() => {
+            coord.axes = axes;
+        }).toThrow();
         expect(coord.axes).toEqual(AXES);
         expect(coord.time).toBe(7);
-        coord.axes = [-1, -2];
-        expect(coord.axes).toEqual([-1, -2, ...AXES.slice(2)]);
     });
 
     it("refuses an element that is not a number", () => {
         const coord = new Gdk.TimeCoord();
-        expect(() => Reflect.set(coord, "axes", [0, "two"])).toThrow();
+        expect(() => Reflect.set(coord, "axes", ["zero", ...AXES.slice(1)])).toThrow();
     });
 });
 
@@ -49,25 +53,20 @@ describe("Gsk.RoundedRect.corner", () => {
         expect(rect.bounds.size.width).toBe(0);
     });
 
-    it("keeps the corners it is not given when the array is short or too long", () => {
+    it.each([2, 5])("refuses arrays that do not contain four corners", (length) => {
         const rect = new Gsk.RoundedRect();
-        rect.corner = [new Graphene.Size({ width: 1, height: 1 }), new Graphene.Size({ width: 2, height: 2 })];
-        expect(rect.corner.map((corner) => corner.width)).toEqual([1, 2, 0, 0]);
-
-        rect.corner = [
-            new Graphene.Size({ width: 3, height: 3 }),
-            new Graphene.Size({ width: 4, height: 4 }),
-            new Graphene.Size({ width: 5, height: 5 }),
-            new Graphene.Size({ width: 6, height: 6 }),
-            new Graphene.Size({ width: 7, height: 7 }),
-        ];
-
-        expect(rect.corner.map((corner) => corner.width)).toEqual([3, 4, 5, 6]);
+        const corners = Array.from({ length }, (_, index) =>
+            new Graphene.Size({ width: index + 1, height: index + 1 }));
+        expect(() => {
+            rect.corner = corners;
+        }).toThrow();
+        expect(rect.corner.map((corner) => corner.width)).toEqual([0, 0, 0, 0]);
     });
 
     it("refuses a corner that is not a record", () => {
         const rect = new Gsk.RoundedRect();
-        expect(() => Reflect.set(rect, "corner", [null])).toThrow();
+        const size = new Graphene.Size();
+        expect(() => Reflect.set(rect, "corner", [null, size, size, size])).toThrow();
     });
 });
 

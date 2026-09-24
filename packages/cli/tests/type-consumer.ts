@@ -1,6 +1,6 @@
 import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync, spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { CliProject } from "./cli-project.js";
@@ -65,6 +65,11 @@ const copyTypeDependencies = (project: CliProject): void => {
     cpSync(formPackage, join(project.nodeModules, "react-hook-form"), { recursive: true });
     const taggedTag = realpathSync(join(dirname(typeFest), "tagged-tag"));
     cpSync(taggedTag, join(project.nodeModules, "tagged-tag"), { recursive: true });
+
+    for (const name of ["c12", "zod"]) {
+        const source = realpathSync(join(WORKSPACE, "packages/config/node_modules", name));
+        symlinkSync(source, join(project.nodeModules, name), "dir");
+    }
 
     for (const name of ["node", "react"]) {
         const source = realpathSync(join(WORKSPACE, "node_modules", "@types", name));

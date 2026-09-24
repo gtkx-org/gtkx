@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createCliProject, runCliOrThrow } from "./cli-project.js";
-import { runNativeConsumer } from "./native-consumer.js";
-import { isolateTypeConsumer, typecheckFile } from "./type-consumer.js";
+import { isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
 const CONFIG = 'export default { applicationId: "org.gtkx.ostreefinder", libraries: ["OSTree-1.0"],' +
     " agents: { reference: false, rules: false } };";

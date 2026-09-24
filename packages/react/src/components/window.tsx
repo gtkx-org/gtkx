@@ -1,11 +1,13 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { type ElementType, type ReactNode, use } from "react";
+import { ApplicationContext } from "../hooks/use-application.js";
 import { ParentWindowContext } from "../hooks/use-parent-window.js";
 import { createPresentedComponent, type PresentedProps } from "../hooks/use-presented-instance.js";
 import { applyMutation } from "../reconciler/signals.js";
 import { createPortaledComponent } from "./portaled.js";
 
 type WindowComponentProps = PresentedProps<Gtk.Window> & {
+    application?: Gtk.Application | null | undefined;
     // eslint-disable-next-line gtkx/accessor-naming
     transientFor?: Gtk.Window | null | undefined;
 };
@@ -33,17 +35,25 @@ const createPresentedWindowComponent = (Component: ElementType): ((props: Presen
         ),
     });
 
-const withDefaultTransientFor = (Component: ElementType): ((props: WindowComponentProps) => ReactNode) => {
+const withWindowDefaults = (Component: ElementType): ((props: WindowComponentProps) => ReactNode) => {
     return (props: WindowComponentProps): ReactNode => {
+        const application = use(ApplicationContext);
         const parent = use(ParentWindowContext);
-        const isDefaulted = props.transientFor === undefined && parent !== null;
+        const hasDefaultApplication = props.application === undefined && application !== null;
+        const hasDefaultParent = props.transientFor === undefined && parent !== null;
 
-        return <Component {...(isDefaulted ? { ...props, transientFor: parent } : props)} />;
+        return (
+            <Component
+                {...props}
+                {...(hasDefaultApplication ? { application } : {})}
+                {...(hasDefaultParent ? { transientFor: parent } : {})}
+            />
+        );
     };
 };
 
 const createWindowComponent = (Component: ElementType): ((props: unknown) => ReactNode) =>
-    createPortaledComponent(withDefaultTransientFor(createPresentedWindowComponent(Component)));
+    createPortaledComponent(withWindowDefaults(createPresentedWindowComponent(Component)));
 
 export { createPresentedWindowComponent };
 /** @internal */
