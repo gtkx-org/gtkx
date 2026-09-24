@@ -562,7 +562,7 @@ importers:
         specifier: ^0.19.0
         version: 0.19.0
       semver:
-        specifier: ^7.8.5
+        specifier: ^7.8.4
         version: 7.8.5
       spdx-expression-parse:
         specifier: ^5.0.0
