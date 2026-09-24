@@ -46,15 +46,12 @@ const PACK_TYPES = { start: Gtk.PackType.START, end: Gtk.PackType.END } as const
 
 const useSidebarSync = (navigation: DrawerNavigationHelpers): ((isShown: boolean | null) => void) =>
     useCallback((isShown: boolean | null) => {
-        const current = navigation.getState();
-        const isOpen = getDrawerStatus(current) === "open";
-
-        if (isShown === null || isShown === isOpen) {
+        if (isShown === null) {
             return;
         }
 
         const action = isShown ? DrawerActions.openDrawer() : DrawerActions.closeDrawer();
-        navigation.dispatch({ ...action, target: current.key });
+        navigation.dispatch({ ...action, target: navigation.getState().key });
     }, [navigation]);
 
 const useCloseOnNavigate = (
@@ -69,7 +66,7 @@ const useCloseOnNavigate = (
         const hasChanged = previousKeyRef.current !== focusedKey;
         previousKeyRef.current = focusedKey;
 
-        if (hasChanged && isCollapsed && getDrawerStatus(navigation.getState()) === "open") {
+        if (hasChanged && isCollapsed) {
             navigation.dispatch({ ...DrawerActions.closeDrawer(), target: navigation.getState().key });
         }
     }, [focusedKey, isCollapsed, navigation]);
