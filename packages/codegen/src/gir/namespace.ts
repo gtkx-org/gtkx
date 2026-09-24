@@ -96,6 +96,17 @@ const createNamespaceShell = (header: NamespaceHeader, id: number): GirNamespace
     aliases: [],
 });
 
+const aliasFromNode = (node: RawNode, context: ParseContext): GirAlias => {
+    const cType = attr(node, "c:type");
+
+    return {
+        ...documentedFromNode(node),
+        cType,
+        target: cType === "GType" ? context.addPrimitive("gtype") : typeRefFromNode(node, context),
+        targetCType: attr(getChild(node, "type"), "c:type"),
+    };
+};
+
 const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNode, context: ParseContext): void => {
     shell.classes = getChildren(namespaceNode, "class").map((klass) => classFromNode(klass, false, context));
     shell.interfaces = getChildren(namespaceNode, "interface").map((iface) => classFromNode(iface, true, context));
@@ -110,12 +121,7 @@ const populateNamespaceBody = (shell: GirNamespace, namespaceNode: RawNode, cont
         type: typeRefFromNode(constant, context),
     }));
 
-    shell.aliases = getChildren(namespaceNode, "alias").map((alias) => ({
-        ...documentedFromNode(alias),
-        cType: attr(alias, "c:type"),
-        target: typeRefFromNode(alias, context),
-        targetCType: attr(getChild(alias, "type"), "c:type"),
-    }));
+    shell.aliases = getChildren(namespaceNode, "alias").map((alias) => aliasFromNode(alias, context));
 };
 
 const splitPrefixes = (raw: string | undefined): string[] =>

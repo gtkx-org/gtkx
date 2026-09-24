@@ -29,24 +29,31 @@ const recordFromNode = (
     isVtable: boolean,
     isUnion: boolean,
     context: ParseContext,
-): GirRecord => ({
-    isVtable,
-    ...documentedFromNode(node),
-    name: attr(node, "name") ?? attr(node, "glib:name") ?? "",
-    cType: attr(node, "c:type"),
-    glibTypeName: attr(node, "glib:type-name"),
-    glibGetType: attr(node, "glib:get-type"),
-    copyFunc: attr(node, "copy-function"),
-    freeFunc: attr(node, "free-function"),
-    disguised: isAttrTrue(node, "disguised"),
-    opaque: isAttrTrue(node, "opaque"),
-    introspectable: isAttrTrue(node, "introspectable", true),
-    fields: collectFields(node, context),
-    methods: getChildren(node, "method").map((method) => functionFromNode(method, context)),
-    constructors: getChildren(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),
-    functions: getChildren(node, "function").map((fn) => functionFromNode(fn, context)),
-    isUnion,
-});
+): GirRecord => {
+    const freeFunc = attr(node, "free-function");
+    const methods = getChildren(node, "method")
+        .map((method) => functionFromNode(method, context))
+        .filter((method) => freeFunc === undefined || method.cIdentifier !== freeFunc);
+
+    return {
+        isVtable,
+        ...documentedFromNode(node),
+        name: attr(node, "name") ?? attr(node, "glib:name") ?? "",
+        cType: attr(node, "c:type"),
+        glibTypeName: attr(node, "glib:type-name"),
+        glibGetType: attr(node, "glib:get-type"),
+        copyFunc: attr(node, "copy-function"),
+        freeFunc,
+        disguised: isAttrTrue(node, "disguised"),
+        opaque: isAttrTrue(node, "opaque"),
+        introspectable: isAttrTrue(node, "introspectable", true),
+        fields: collectFields(node, context),
+        methods,
+        constructors: getChildren(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),
+        functions: getChildren(node, "function").map((fn) => functionFromNode(fn, context)),
+        isUnion,
+    };
+};
 
 const isVtableRecord = (node: RawNode): boolean => attr(node, "glib:is-gtype-struct-for") !== undefined;
 

@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"
+    xmlns:c="http://www.gtk.org/introspection/c/1.0">
+  <include name="GObject" version="2.0"/>
+  <namespace name="GTypeAliases" version="1.0" shared-library="libgobject-2.0.so.0"
+      c:identifier-prefixes="GTypeAliases" c:symbol-prefixes="g_type">
+    <alias name="TypeWord" c:type="GType"><type name="gsize" c:type="gsize"/></alias>
+    <alias name="TypeWordChain" c:type="gsize"><type name="TypeWord" c:type="GType"/></alias>
+    <function name="fundamental" c:identifier="g_type_fundamental">
+      <return-value transfer-ownership="none"><type name="TypeWordChain" c:type="GType"/></return-value>
+      <parameters><parameter name="type_id" transfer-ownership="none"><type name="TypeWord" c:type="GType"/></parameter></parameters>
+    </function>
+    <function name="name" c:identifier="g_type_name">
+      <return-value transfer-ownership="none" nullable="1"><type name="utf8" c:type="const gchar*"/></return-value>
+      <parameters><parameter name="type" transfer-ownership="none"><type name="TypeWordChain" c:type="GType"/></parameter></parameters>
+    </function>
+  </namespace>
+</repository>

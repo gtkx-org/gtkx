@@ -148,6 +148,8 @@ During `gtkx dev` and Vitest, Node loads the worker's source directly. Its relat
 
 Only one thread in a process can own GTKX's GLib integration. An application's main thread owns it, so application workers must use Node APIs and send data back to the main thread; they cannot import generated GI modules or make GTKX native calls. A standalone worker can initialize GTKX when no other thread has done so. Conflicting initialization fails during bootstrap.
 
+Before terminating a worker that owns GTKX, finish its native operations or cancel them and await completion. Disconnect signal handlers and remove other native callback registrations while the worker can still run cleanup. Then call `quit()` from `@gtkx/runtime` and send a cleanup-complete message to the parent. The parent must wait for that message before calling `worker.terminate()`. Calling `quit()` alone does not cancel pending operations or await their callbacks; terminating a worker with live native work or registrations is unsupported.
+
 ## Next
 
 Continue with [Error Handling](/v2/guide/error-handling) for matching GLib error domains and codes.

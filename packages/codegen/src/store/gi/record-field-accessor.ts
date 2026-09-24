@@ -10,6 +10,7 @@ import type { ModuleContext } from "../../writer/context.js";
 import { hasCallbackType } from "../../analysis/callback-shape.js";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { tStruct } from "../../analysis/descriptor.js";
+import { hasUnsupportedHashTableSlot } from "../../analysis/hash-table-admission.js";
 import { renderTsType } from "../../analysis/ts-type.js";
 import {
     hasPrimitivePointer,
@@ -147,7 +148,7 @@ const isVisibleField = (field: GirField): field is GirField & { type: TypeId } =
     field.introspectable && !field.private && field.type !== undefined;
 
 const isPublicField = (context: ModuleContext, field: GirField): field is GirField & { type: TypeId } =>
-    isVisibleField(field) &&
+    isVisibleField(field) && !hasUnsupportedHashTableSlot(context.library, field.type) &&
     !hasCallbackType(context.library, field.type) &&
     !hasPrimitivePointer(context.library, field.type) &&
     !hasUnknownLengthArray(context.library, field.type) &&
@@ -650,8 +651,8 @@ const structArraySetterStatements = (context: ModuleContext, options: StructArra
     return [
         `const __descriptor = ${elementDescriptor};`,
         `const __array = read(getHandle(this), __descriptor, ${String(offset)}) as ReturnType<typeof getHandle>;`,
-        "for (const [__index, __element] of __value.entries()) {",
-        indent(`if (__index >= ${lengthExpr}) {\n    break;\n}\n\n${loop}`, 1),
+        `for (const [__index, __element] of fixedArrayEntries(__value, ${lengthExpr})) {`,
+        indent(loop, 1),
         "}",
         `write(getHandle(this), __descriptor, ${String(offset)}, __array);`,
     ].join("\n");
@@ -771,8 +772,8 @@ const inlineArraySetterBlock = (options: InlineArrayAccessorOptions): string => 
         `toNative(${descriptor}, __element));`;
 
     const body = [
-        "for (const [__index, __element] of __value.entries()) {",
-        indent(`if (__index >= ${count}) {\n    break;\n}\n\n${write}`, 1),
+        `for (const [__index, __element] of fixedArrayEntries(__value, ${count})) {`,
+        indent(write, 1),
         "}",
     ].join("\n");
 
@@ -809,6 +810,7 @@ const renderInlineArrayAccessor = (context: ModuleContext, target: StructArrayTa
     }
 
     if (field.writable) {
+        context.addRuntimeInternalImport("fixedArrayEntries");
         context.addRuntimeImport("write");
         context.addRuntimeImport("toNative");
         blocks.push(inlineArraySetterBlock(options));
@@ -852,6 +854,7 @@ const renderStructArrayAccessor = (context: ModuleContext, target: StructArrayTa
     }
 
     if (field.writable) {
+        context.addRuntimeInternalImport("fixedArrayEntries");
         context.addRuntimeImport("write");
         blocks.push(structArraySetterBlock(options));
     }

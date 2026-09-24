@@ -29,7 +29,7 @@ import {
 } from "@gtkx/jsx/gtk";
 import { quit, useParentWindow } from "@gtkx/react";
 import * as path from "node:path/posix";
-import { type ComponentType, useEffect, useState } from "react";
+import { type ComponentType, useEffect, useRef, useState } from "react";
 import type { Demo as DemoDefinition, DemoProviderProps } from "./demos/types.js";
 import logoResourcePath from "../data/icons/org.gtk.Demo4.svg?resource";
 import { EmptyState } from "./components/empty-state.js";
@@ -40,6 +40,11 @@ import { demos } from "./demos/index.js";
 
 type DemoWindowProps = {
     onClose: () => void;
+};
+
+type OpenDemoWindow = DemoWindowProps & {
+    id: number;
+    demo: DemoDefinition;
 };
 
 type DemoWindowSizing = {
@@ -92,8 +97,7 @@ type MainWindowChrome = ReturnType<typeof useMainWindowChrome>;
 
 type MainWindowContentProps = {
     chrome: MainWindowChrome;
-    demoWindows: number[];
-    onCloseWindow: (id: number) => void;
+    demoWindows: OpenDemoWindow[];
     onSearchChanged: (query: string) => void;
 };
 
@@ -341,19 +345,24 @@ const AboutDialog = ({ onClose }: AboutDialogProps) => (
 );
 
 const useDemoWindows = () => {
-    const [demoWindows, setDemoWindows] = useState<number[]>([]);
-    const [nextWindowId, setNextWindowId] = useState(1);
-
-    const openWindow = () => {
-        setDemoWindows((prev) => [...prev, nextWindowId]);
-        setNextWindowId((prev) => prev + 1);
-    };
+    const [demoWindows, setDemoWindows] = useState<OpenDemoWindow[]>([]);
+    const nextWindowId = useRef(1);
 
     const closeWindow = (id: number) => {
-        setDemoWindows((prev) => prev.filter((w) => w !== id));
+        setDemoWindows((prev) => prev.filter((window) => window.id !== id));
     };
 
-    return { demoWindows, openWindow, closeWindow };
+    const openWindow = (demo: DemoDefinition) => {
+        const id = nextWindowId.current;
+        nextWindowId.current += 1;
+        const onClose = () => {
+            closeWindow(id);
+        };
+
+        setDemoWindows((prev) => [...prev, { id, demo, onClose }]);
+    };
+
+    return { demoWindows, openWindow };
 };
 
 function useMainWindowChrome() {
@@ -433,7 +442,7 @@ const renderMainWindowActions = ({ onKeyboardShortcuts, onShowAbout }: MainWindo
     </>
 );
 
-const MainWindowContent = ({ chrome, demoWindows, onCloseWindow, onSearchChanged }: MainWindowContentProps) => (
+const MainWindowContent = ({ chrome, demoWindows, onSearchChanged }: MainWindowContentProps) => (
     <>
         <MainWindowBody
             isSearchActive={chrome.isSearchActive}
@@ -442,13 +451,10 @@ const MainWindowContent = ({ chrome, demoWindows, onCloseWindow, onSearchChanged
             onNotebookPageChange={chrome.setNotebookPage}
             onSearchChanged={onSearchChanged}
         />
-        {demoWindows.map((id) => (
-            <DemoWindow
-                key={id}
-                onClose={() => {
-                    onCloseWindow(id);
-                }}
-            />
+        {demoWindows.map(({ id, demo, onClose }) => (
+            <DemoProvider key={id} demos={[demo]}>
+                <DemoWindow onClose={onClose} />
+            </DemoProvider>
         ))}
         {chrome.showAbout && <AboutDialog onClose={chrome.closeAbout} />}
         {chrome.showShortcuts && <ShortcutsDialog onClose={chrome.closeShortcuts} />}
@@ -458,7 +464,7 @@ const MainWindowContent = ({ chrome, demoWindows, onCloseWindow, onSearchChanged
 const MainWindow = () => {
     const { currentDemo, setSearchQuery } = useDemo();
     const chrome = useMainWindowChrome();
-    const { demoWindows, openWindow, closeWindow } = useDemoWindows();
+    const { demoWindows, openWindow } = useDemoWindows();
     const windowTitle = currentDemo ? parseTitle(currentDemo.title).displayTitle : "GTK Demo";
 
     const handleRun = () => {
@@ -466,7 +472,7 @@ const MainWindow = () => {
             return;
         }
 
-        openWindow();
+        openWindow(currentDemo);
     };
 
     return (
@@ -494,7 +500,6 @@ const MainWindow = () => {
                 <MainWindowContent
                     chrome={chrome}
                     demoWindows={demoWindows}
-                    onCloseWindow={closeWindow}
                     onSearchChanged={setSearchQuery}
                 />
             </AdwToolbarView>

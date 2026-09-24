@@ -83,6 +83,14 @@ const REJECTED: Record<string, string> = {
     "namespace-export": "export const invoke = () => GObject.typeGetQdata(GObject.TYPE_OBJECT, 0);",
     "namespace-free": "export const invoke = (instance: GObject.TypeInstance) => " +
         "GObject.typeFreeInstance(instance);",
+    "enum-register-static": "export const invoke = (values: GObject.EnumValue[]) => " +
+        "GObject.enumRegisterStatic('GtkxUnsafeEnum', values);",
+    "flags-register-static": "export const invoke = (values: GObject.FlagsValue[]) => " +
+        "GObject.flagsRegisterStatic('GtkxUnsafeFlags', values);",
+    "type-module-register-enum": "export const invoke = " +
+        "(module: GObject.TypeModule, values: GObject.EnumValue[]) => module.registerEnum('GtkxUnsafeEnum', values);",
+    "type-module-register-flags": "export const invoke = (module: GObject.TypeModule, " +
+        "values: GObject.FlagsValue[]) => module.registerFlags('GtkxUnsafeFlags', values);",
 };
 const NATIVE_CONSUMER = `import assert from "node:assert/strict";
 import * as GLib from "@gtkx/gi/glib";
@@ -106,6 +114,11 @@ try {
     assert.equal("getHashTable" in GLib.HashTableIter.prototype, false);
     assert.equal("typeGetQdata" in GObject, false);
     assert.equal("typeFreeInstance" in GObject, false);
+    assert.equal("enumRegisterStatic" in GObject, false);
+    assert.equal("flagsRegisterStatic" in GObject, false);
+    assert.equal("registerEnum" in GObject.TypeModule.prototype, false);
+    assert.equal("registerFlags" in GObject.TypeModule.prototype, false);
+    assert.equal(typeof GObject.TypeModule.prototype.registerType, "function");
     assert.equal(typeof Gio.Task.prototype.getSourceObject, "function");
     assert.equal(typeof Gio.Task.prototype.getContext, "function");
     assert.equal(typeof GLib.Source.prototype.setCallback, "function");
@@ -200,10 +213,15 @@ describe("generated raw-pointer callable omissions", () => {
         expect(reference.lookup("CallablePointers.safeCount", "function").outcome).toBe("page");
         for (const name of [
             "CallablePointers.acceptPointer", "CallablePointers.getPointer", "GObject.typeGetQdata",
-            "GObject.typeFreeInstance",
+            "GObject.typeFreeInstance", "GObject.enumRegisterStatic", "GObject.flagsRegisterStatic",
         ]) {
             expect(reference.lookup(name, "function").outcome).toBe("notFound");
         }
+        const typeModule = reference.lookup("GObject.TypeModule", "class");
+        expect(typeModule.outcome).toBe("page");
+        expect(typeModule).toHaveProperty("markdown", expect.not.stringContaining("### `registerEnum`"));
+        expect(typeModule).toHaveProperty("markdown", expect.not.stringContaining("### `registerFlags`"));
+        expect(typeModule).toHaveProperty("markdown", expect.stringContaining("### `registerType`"));
     });
 
     it("imports the remaining public exports and exercises safe boxed values and comparators", () => {

@@ -401,18 +401,18 @@ describe("screen", () => {
 });
 
 describe("within", () => {
-    it("scopes the whole bound-query surface to the container, and nests", async () => {
+    it("scopes role, name and text queries to nested containers", async () => {
         await render(
             <VBox>
                 <GtkFrame name="outer-frame" label="Section A">
                     <GtkFrame name="inner-frame">
                         <VBox>
-                            <GtkButton label="Submit" />
-                            <GtkButton label="Submit" />
+                            <GtkButton name="submit-first" label="Submit" />
+                            <GtkButton name="submit-second" label="Submit" />
                         </VBox>
                     </GtkFrame>
                 </GtkFrame>
-                <GtkLabel>Outside</GtkLabel>
+                <GtkButton name="outside" label="Outside" />
             </VBox>,
         );
 
@@ -420,8 +420,13 @@ describe("within", () => {
         const inner = await within(outer).findByName("inner-frame");
         const bound = within(inner);
         expect(await bound.findAllByText("Submit")).toHaveLength(2);
-        expect(typeof bound.queryByRole).toBe("function");
-        expect(typeof bound.queryAllByName).toBe("function");
+        expect(bound.getAllByRole(Gtk.AccessibleRole.BUTTON).map((button) => button.getName()))
+            .toEqual(["submit-first", "submit-second"]);
+        expect(bound.queryAllByName(/^submit-/)).toHaveLength(2);
+        expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Outside" }))
+            .toBe(screen.getByName("outside"));
+        expect(bound.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Outside" })).toBeNull();
+        expect(bound.queryAllByName("outside")).toEqual([]);
         await expect(bound.findByText("Outside", { timeout: 100 })).rejects.toThrow();
     });
 });

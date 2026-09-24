@@ -12,7 +12,7 @@ import {
     readAccessibleString,
 } from "./accessible-native.js";
 import { EDITABLE_ROLES, isEditable, readEditableText } from "./editable.js";
-import { isNameFromAuthor, isNameProhibited } from "./role-naming.js";
+import { isNameFromAuthor, isNameFromContent, isNameProhibited } from "./role-naming.js";
 import { type ChildContainer, children, descendants, relationCandidates } from "./traversal.js";
 import { callBooleanGetter, callStringGetter, getCallableMethod } from "./widget-getters.js";
 import { requireWidget } from "./widget-target.js";
@@ -205,7 +205,9 @@ const tabPanelTitle = (widget: Gtk.Widget): string | null => {
 };
 
 const nameFromAuthor = (widget: Gtk.Widget): string | null =>
-    getWidgetLabelledByText(widget) ?? readAccessibleString(widget, Gtk.AccessibleProperty.LABEL);
+    getWidgetLabelledByText(widget) ??
+    readAccessibleString(widget, Gtk.AccessibleProperty.LABEL) ??
+    readFirstText(widget, ["getTitle"]);
 
 const nameFromContent = (widget: Gtk.Widget): string | null => {
     const ownText = getWidgetText(widget);
@@ -219,6 +221,22 @@ const nameFromContent = (widget: Gtk.Widget): string | null => {
     return childLabels.length > 0 ? childLabels.join(" ") : null;
 };
 
+const nameFromAllowedSources = (widget: Gtk.Widget, role: Gtk.AccessibleRole): string | null => {
+    const authored = isNameFromAuthor(role) ? nameFromAuthor(widget) : null;
+
+    if (authored) {
+        return authored;
+    }
+
+    const content = isNameFromContent(role) ? nameFromContent(widget) : null;
+
+    if (content) {
+        return content;
+    }
+
+    return isNameFromAuthor(role) ? callStringGetter(widget, "getTooltipText") : null;
+};
+
 const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
     const role = widget.getAccessibleRole();
 
@@ -230,13 +248,7 @@ const getWidgetAccessibleName = (widget: Gtk.Widget): string | null => {
         return tabPanelTitle(widget);
     }
 
-    const authored = isNameFromAuthor(role) ? nameFromAuthor(widget) : null;
-
-    if (authored) {
-        return authored;
-    }
-
-    return nameFromContent(widget) ?? callStringGetter(widget, "getTooltipText");
+    return nameFromAllowedSources(widget, role);
 };
 
 const getWidgetName = (widget: Gtk.Widget): string | null => widget.getName();

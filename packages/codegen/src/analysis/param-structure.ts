@@ -116,7 +116,7 @@ const arrayLengthSources = (library: Library, fn: GirCallable): Map<number, numb
     for (const [index, parameter] of fn.parameters.entries()) {
         const lengthIndex = carrayLengthIndex(library, parameter.type);
 
-        if (lengthIndex !== undefined) {
+        if (lengthIndex !== undefined && parameter.cursor === undefined) {
             map.set(lengthIndex, index);
         }
     }

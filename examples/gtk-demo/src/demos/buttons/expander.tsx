@@ -33,6 +33,7 @@ const expanderDemo: Demo = {
     keywords: ["gtkexpander"],
     component: ExpanderDemo,
     sourceCode,
+    isResizable: false,
 };
 
 const DetailsView = ({ texture }: { texture: Gdk.Texture }) => (

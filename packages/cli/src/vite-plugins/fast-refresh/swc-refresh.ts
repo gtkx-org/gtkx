@@ -1,35 +1,61 @@
 import type { Plugin } from "vite";
 import { type Output, type Options as SwcOptions, transform } from "@swc/core";
 import { fileURLToPath } from "node:url";
+import type { sourceLanguage } from "../../internal/source-imports.js";
 import {
     REFRESH_ID_FILTER,
     REFRESH_REG,
     REFRESH_RUNTIME_ID_RE,
     REFRESH_RUNTIME_SPECIFIER,
     REFRESH_SIG,
-    shouldTransformForRefresh,
+    refreshSourceLanguage,
 } from "./refresh-filter.js";
 
-const buildSwcOptions = (id: string): SwcOptions => {
-    const isTsx = id.endsWith(".tsx");
-    const isTs = id.endsWith(".ts") || isTsx;
+type SourceLanguage = NonNullable<ReturnType<typeof sourceLanguage>>;
+type RefreshLanguage = Exclude<SourceLanguage, "ts">;
 
-    return {
-        filename: id,
-        sourceFileName: id,
-        sourceMaps: true,
-        jsc: {
-            parser: isTs ? { syntax: "typescript", tsx: isTsx } : { syntax: "ecmascript", jsx: true },
-            transform: {
-                react: {
-                    runtime: "automatic",
-                    development: true,
-                    refresh: true,
-                },
+const buildTypeStripOptions = (id: string): SwcOptions => ({
+    filename: id,
+    sourceFileName: id,
+    sourceMaps: true,
+    jsc: {
+        parser: { syntax: "typescript", tsx: false },
+        target: "es2022",
+    },
+});
+
+const buildRefreshOptions = (
+    id: string,
+    language: RefreshLanguage,
+    inputSourceMap?: string,
+): SwcOptions => ({
+    ...(inputSourceMap !== undefined && { inputSourceMap }),
+    filename: id,
+    sourceFileName: id,
+    sourceMaps: true,
+    jsc: {
+        parser: language === "tsx"
+            ? { syntax: "typescript", tsx: true }
+            : { syntax: "ecmascript", jsx: true },
+        transform: {
+            react: {
+                runtime: "automatic",
+                development: true,
+                refresh: true,
             },
-            target: "es2022",
         },
-    };
+        target: "es2022",
+    },
+});
+
+const transformForRefresh = async (code: string, id: string, language: SourceLanguage): Promise<Output> => {
+    if (language !== "ts") {
+        return transform(code, buildRefreshOptions(id, language));
+    }
+
+    const stripped = await transform(code, buildTypeStripOptions(id));
+
+    return transform(stripped.code, buildRefreshOptions(id, "jsx", stripped.map));
 };
 
 const buildRefreshResult = (result: Output): { code: string; map?: string } =>
@@ -40,7 +66,7 @@ const injectRefreshRegistration = (
     id: string,
     transformOptions: { ssr?: boolean | undefined } | undefined,
 ): { code: string; map: null } | undefined => {
-    if (!shouldTransformForRefresh(id, transformOptions)) {
+    if (refreshSourceLanguage(id, transformOptions) === undefined) {
         return;
     }
 
@@ -66,11 +92,13 @@ function gtkxSwcRefresh(): Plugin {
             filter: { id: REFRESH_ID_FILTER },
 
             async handler(code, id, transformOptions) {
-                if (!shouldTransformForRefresh(id, transformOptions)) {
+                const language = refreshSourceLanguage(id, transformOptions);
+
+                if (language === undefined) {
                     return;
                 }
 
-                const result = await transform(code, buildSwcOptions(id));
+                const result = await transformForRefresh(code, id, language);
 
                 return buildRefreshResult(result);
             },

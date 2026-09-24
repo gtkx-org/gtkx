@@ -95,5 +95,6 @@ const NAMING: Partial<Record<Gtk.AccessibleRole, number>> = {
 const namingFor = (role: Gtk.AccessibleRole): number => NAMING[role] ?? 0;
 const isNameProhibited = (role: Gtk.AccessibleRole): boolean => (namingFor(role) & PROHIBITED) !== 0;
 const isNameFromAuthor = (role: Gtk.AccessibleRole): boolean => (namingFor(role) & FROM_AUTHOR) !== 0;
+const isNameFromContent = (role: Gtk.AccessibleRole): boolean => (namingFor(role) & FROM_CONTENT) !== 0;
 
-export { isNameFromAuthor, isNameProhibited };
+export { isNameFromAuthor, isNameFromContent, isNameProhibited };

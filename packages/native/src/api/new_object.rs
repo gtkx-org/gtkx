@@ -10,6 +10,7 @@ use crate::api::{handle_newtype, native_result, type_from_bigint};
 use crate::ffi::codec::{
     Ownership, acquire_construction_ref, release_construction_ref, tracked_gobject_value,
 };
+use crate::host::callback_error::CallbackErrorScope;
 use crate::host::log_writer::CriticalTrap;
 use crate::value::{pending_wrapper, wrapper};
 
@@ -189,15 +190,27 @@ pub fn new_object<'env>(
     #[napi(ts_arg_type = "(handle: ExternalObject<Handle>, wrapper: object) => void")]
     associate: Associator<'env>,
 ) -> Result<Option<Object<'env>>> {
-    let type_ = type_from_bigint(&gtype, "new_object:")?;
-    ensure_instantiable(type_)?;
-    let properties = ConstructProperties::new(names, &values)?;
-    let guard = unsafe { pending_wrapper::push(type_.into_glib(), wrapper.raw(), associate.raw()) };
-    let (ptr, critical) = unsafe { construct(type_, &properties) }?;
-    let existing = finish_construction(env, ptr, &guard, type_, &wrapper, &associate)?;
+    let _errors = CallbackErrorScope::open(*env);
+    let result = (|| {
+        let type_ = type_from_bigint(&gtype, "new_object:")?;
+        ensure_instantiable(type_)?;
+        let properties = ConstructProperties::new(names, &values)?;
+        let guard =
+            unsafe { pending_wrapper::push(type_.into_glib(), wrapper.raw(), associate.raw()) };
+        let (ptr, critical) = unsafe { construct(type_, &properties) }?;
+        let existing = finish_construction(env, ptr, &guard, type_, &wrapper, &associate)?;
 
-    match critical {
-        Some(message) => Err(Error::new(Status::GenericFailure, message)),
-        None => Ok(existing),
+        match critical {
+            Some(message) => Err(Error::new(Status::GenericFailure, message)),
+            None => Ok(existing),
+        }
+    })();
+    drop(values);
+    if CallbackErrorScope::has_error() {
+        return Err(Error::new(
+            Status::GenericFailure,
+            "A native callback threw an exception",
+        ));
     }
+    result
 }

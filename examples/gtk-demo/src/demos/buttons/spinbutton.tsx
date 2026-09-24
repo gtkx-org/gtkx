@@ -64,8 +64,8 @@ const parseTimeOfDay = (text: string): number | null => {
         return null;
     }
 
-    const hours = parseDecimal(parts[0] ?? "");
-    const minutes = parseDecimal(parts[1] ?? "");
+    const hours = parseDecimal(parts[0] as string);
+    const minutes = parseDecimal(parts[1] as string);
 
     if (!isValidTimeOfDay(hours, minutes)) {
         return null;
@@ -83,11 +83,7 @@ const handleHexInput = (spin: Gtk.SpinButton): [number, number] => {
     }
 
     const sign = match[1] === "-" ? -1 : 1;
-    const parsed = sign * Number.parseInt(match[2] ?? "", 16);
-
-    if (Number.isNaN(parsed)) {
-        return [GTK_INPUT_ERROR, 0];
-    }
+    const parsed = sign * Number.parseInt(match[2] as string, 16);
 
     return [1, parsed];
 };
@@ -134,7 +130,7 @@ const handleMonthInput = (spin: Gtk.SpinButton): [number, number] => {
 const handleMonthOutput = (spin: Gtk.SpinButton) => {
     const value = spin.getValue();
     const index = Math.round(value) - 1;
-    spin.setText(MONTHS[index] ?? "January");
+    spin.setText(MONTHS[index] as string);
 
     return true;
 };

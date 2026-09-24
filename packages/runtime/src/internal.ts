@@ -30,6 +30,7 @@ export {
     registeredElementSignals,
 } from "./element-metadata.js";
 export { createErrorDomain } from "./error.js";
+export { fixedArrayEntries } from "./field.js";
 export { markSyntheticSignalMembers };
 export { type ApplicationInstance, getApplicationInstance } from "./lifecycle.js";
 export { registerConstructFactory } from "./object.js";
@@ -44,6 +45,7 @@ export {
     regexMatchAll,
     regexMatchAllFull,
     regexMatchFull,
+    regexReplaceEval,
     valueGetBoxed,
     valueSetBoxed,
 } from "./override-methods.js";
@@ -54,6 +56,7 @@ export {
     writablePropertyMapOverride,
 } from "./property-brand.js";
 export type { ReadableProperties, WritableProperties } from "./property-types.js";
+export { installMatchInfo } from "./regex.js";
 export { getExactWrapperClass, resolveWrapperClass } from "./registry.js";
 export type { SignalMethodReceiver };
 export { installSidebarModeOverride } from "./sidebar.js";
@@ -73,6 +76,7 @@ export {
     type SignalEmitArguments,
     type SignalEmitName,
     type SignalEmitResult,
+    type SignalHandlerId,
     type SignalMap,
     type SignalName,
 } from "./signal.js";

@@ -7,7 +7,10 @@ import { findButton, renderDemo } from "../../test-utils.js";
 const renderSpinners = async (): Promise<Gtk.Spinner[]> => {
     await renderDemo(spinnerDemo);
 
-    return await screen.findAllByRole(Gtk.AccessibleRole.PROGRESS_BAR, { as: Gtk.Spinner });
+    const spinners = await screen.findAllByRole(Gtk.AccessibleRole.PROGRESS_BAR, { as: Gtk.Spinner });
+    expect(spinners).toHaveLength(2);
+
+    return spinners;
 };
 
 const findEntries = async (): Promise<Gtk.Entry[]> =>
@@ -15,7 +18,8 @@ const findEntries = async (): Promise<Gtk.Entry[]> =>
 
 const expectSpinning = async (areSpinning: boolean): Promise<void> => {
     await waitFor(() => {
-        const spinners = screen.queryAllByRole(Gtk.AccessibleRole.PROGRESS_BAR, { as: Gtk.Spinner });
+        const spinners = screen.getAllByRole(Gtk.AccessibleRole.PROGRESS_BAR, { as: Gtk.Spinner });
+        expect(spinners).toHaveLength(2);
         expect(spinners.every((s) => s.getSpinning() === areSpinning)).toBe(true);
     });
 };

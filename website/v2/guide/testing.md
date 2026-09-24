@@ -107,7 +107,7 @@ Use widget matchers such as `toHaveTextContent`, `toHaveAccessibleName`, `toBeCh
 
 `screen.debug()` prints the widget tree, and `screen.logRoles()` groups widgets by accessible role. Capture the active window with `await screen.screenshot({ path: "test.png" })`, or pass a widget to `screenshot` to capture a subtree. The [MCP server](/v2/guide/mcp) provides the same inspection tools during development.
 
-A critical raised during a generated binding call throws or rejects, so an error-path test can catch it. Criticals outside a binding call and addon panics fail the test as uncaught exceptions; a GLib `ERROR` aborts the worker. See [Error Handling](/v2/guide/error-handling#failures-nothing-can-throw).
+A critical raised during a generated binding call throws or rejects, so an error-path test can catch it. Criticals outside a binding call and addon panics fail the test as uncaught exceptions; a GLib `ERROR` aborts the worker. See [Error Handling](/v2/guide/error-handling#errors-outside-binding-calls).
 
 Warnings do not fail tests automatically. To make them failures, subscribe through `onLog` from `@gtkx/native`, collect warning records, and check them during teardown. Delivery is asynchronous: yield with `setImmediate` from `node:timers/promises` before checking or unsubscribing. Unsubscribing stops new records but does not cancel records already queued.
 

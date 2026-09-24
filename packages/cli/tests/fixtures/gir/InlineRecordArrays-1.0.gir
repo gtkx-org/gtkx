@@ -1,0 +1,200 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+    xmlns="http://www.gtk.org/introspection/core/1.0"
+    xmlns:c="http://www.gtk.org/introspection/c/1.0"
+    xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="Gio" version="2.0"/>
+  <include name="GObject" version="2.0"/>
+  <namespace name="InlineRecordArrays" version="1.0" shared-library="libinline-record-arrays.so.0"
+      c:identifier-prefixes="InlineRecordArrays" c:symbol-prefixes="inline_record_arrays">
+    <record name="Pure" c:type="InlineRecordArraysPure" c:symbol-prefix="pure">
+      <field name="count" writable="1"><type name="gint" c:type="gint"/></field>
+      <field name="weight" writable="1"><type name="gdouble" c:type="gdouble"/></field>
+    </record>
+    <record name="StringSlot" c:type="InlineRecordArraysStringSlot" c:symbol-prefix="string_slot">
+      <field name="text" writable="1"><type name="utf8" c:type="gchar*"/></field>
+      <field name="count" writable="1"><type name="gint" c:type="gint"/></field>
+    </record>
+    <callback name="LentStringSlots" c:type="InlineRecordArraysLentStringSlots">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="slots" transfer-ownership="none">
+          <array fixed-size="2" zero-terminated="0" c:type="const InlineRecordArraysStringSlot*">
+            <type name="StringSlot" c:type="InlineRecordArraysStringSlot"/>
+          </array>
+        </parameter>
+      </parameters>
+    </callback>
+    <callback name="ReturnStringSlots" c:type="InlineRecordArraysReturnStringSlots">
+      <return-value transfer-ownership="full">
+        <array fixed-size="2" zero-terminated="0" c:type="InlineRecordArraysStringSlot*">
+          <type name="StringSlot" c:type="InlineRecordArraysStringSlot"/>
+        </array>
+      </return-value>
+    </callback>
+    <callback name="ReturnBorrowedValues" c:type="InlineRecordArraysReturnBorrowedValues">
+      <return-value transfer-ownership="none">
+        <array fixed-size="2" zero-terminated="0" c:type="const GValue*">
+          <type name="GObject.Value" c:type="GValue"/>
+        </array>
+      </return-value>
+    </callback>
+    <callback name="FillBorrowedValues" c:type="InlineRecordArraysFillBorrowedValues">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="values" direction="out" transfer-ownership="none">
+          <array fixed-size="2" zero-terminated="0" c:type="GValue**">
+            <type name="GObject.Value" c:type="GValue"/>
+          </array>
+        </parameter>
+      </parameters>
+    </callback>
+    <callback name="TakeValueArray" c:type="InlineRecordArraysTakeValueArray">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="values" transfer-ownership="full">
+          <array name="GLib.Array" c:type="GArray*">
+            <type name="GObject.Value" c:type="GValue"/>
+          </array>
+        </parameter>
+      </parameters>
+    </callback>
+    <callback name="ReturnPure" c:type="InlineRecordArraysReturnPure">
+      <return-value transfer-ownership="full">
+        <array fixed-size="2" zero-terminated="0" c:type="InlineRecordArraysPure*">
+          <type name="Pure" c:type="InlineRecordArraysPure"/>
+        </array>
+      </return-value>
+    </callback>
+    <function name="borrow_values" c:identifier="inline_record_arrays_borrow_values">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="values" transfer-ownership="none">
+          <array fixed-size="2" zero-terminated="0" c:type="const GValue*">
+            <type name="GObject.Value" c:type="GValue"/>
+          </array>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="take_values" c:identifier="inline_record_arrays_take_values">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="values" transfer-ownership="full">
+          <array fixed-size="2" zero-terminated="0" c:type="GValue*">
+            <type name="GObject.Value" c:type="GValue"/>
+          </array>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="take_value_array" c:identifier="inline_record_arrays_take_value_array">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="values" transfer-ownership="full">
+          <array name="GLib.Array" c:type="GArray*">
+            <type name="GObject.Value" c:type="GValue"/>
+          </array>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="return_values" c:identifier="inline_record_arrays_return_values">
+      <return-value transfer-ownership="full">
+        <array fixed-size="2" zero-terminated="0" c:type="GValue*">
+          <type name="GObject.Value" c:type="GValue"/>
+        </array>
+      </return-value>
+    </function>
+    <function name="return_container_values" c:identifier="inline_record_arrays_return_container_values">
+      <return-value transfer-ownership="container">
+        <array fixed-size="2" zero-terminated="0" c:type="GValue*">
+          <type name="GObject.Value" c:type="GValue"/>
+        </array>
+      </return-value>
+    </function>
+    <function name="fill_values" c:identifier="inline_record_arrays_fill_values">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none">
+          <array fixed-size="2" zero-terminated="0" c:type="GValue*">
+            <type name="GObject.Value" c:type="GValue"/>
+          </array>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="borrow_values_async" c:identifier="inline_record_arrays_borrow_values_async"
+        glib:finish-func="inline_record_arrays_borrow_values_finish">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="values" transfer-ownership="none">
+          <array fixed-size="2" zero-terminated="0" c:type="const GValue*">
+            <type name="GObject.Value" c:type="GValue"/>
+          </array>
+        </parameter>
+        <parameter name="cancellable" transfer-ownership="none" nullable="1" allow-none="1">
+          <type name="Gio.Cancellable" c:type="GCancellable*"/>
+        </parameter>
+        <parameter name="callback" transfer-ownership="none" scope="async" closure="3">
+          <type name="Gio.AsyncReadyCallback" c:type="GAsyncReadyCallback"/>
+        </parameter>
+        <parameter name="user_data" transfer-ownership="none" nullable="1" allow-none="1">
+          <type name="gpointer" c:type="gpointer"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="borrow_values_finish" c:identifier="inline_record_arrays_borrow_values_finish">
+      <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+      <parameters>
+        <parameter name="result" transfer-ownership="none">
+          <type name="Gio.AsyncResult" c:type="GAsyncResult*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="borrow_string_slots" c:identifier="inline_record_arrays_borrow_string_slots">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="slots" transfer-ownership="none">
+          <array fixed-size="2" zero-terminated="0" c:type="const InlineRecordArraysStringSlot*">
+            <type name="StringSlot" c:type="InlineRecordArraysStringSlot"/>
+          </array>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="borrowed_values" c:identifier="inline_record_arrays_borrowed_values">
+      <return-value transfer-ownership="none">
+        <array fixed-size="2" zero-terminated="0" c:type="const GValue*">
+          <type name="GObject.Value" c:type="GValue"/>
+        </array>
+      </return-value>
+    </function>
+    <function name="borrowed_string_slots" c:identifier="inline_record_arrays_borrowed_string_slots">
+      <return-value transfer-ownership="none">
+        <array fixed-size="2" zero-terminated="0" c:type="const InlineRecordArraysStringSlot*">
+          <type name="StringSlot" c:type="InlineRecordArraysStringSlot"/>
+        </array>
+      </return-value>
+    </function>
+    <function name="return_value_array" c:identifier="inline_record_arrays_return_value_array">
+      <return-value transfer-ownership="full">
+        <array name="GLib.Array" c:type="GArray*">
+          <type name="GObject.Value" c:type="GValue"/>
+        </array>
+      </return-value>
+    </function>
+    <function name="return_pure" c:identifier="inline_record_arrays_return_pure">
+      <return-value transfer-ownership="full">
+        <array fixed-size="2" zero-terminated="0" c:type="InlineRecordArraysPure*">
+          <type name="Pure" c:type="InlineRecordArraysPure"/>
+        </array>
+      </return-value>
+    </function>
+    <function name="take_pure" c:identifier="inline_record_arrays_take_pure">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="values" transfer-ownership="full">
+          <array fixed-size="2" zero-terminated="0" c:type="InlineRecordArraysPure*">
+            <type name="Pure" c:type="InlineRecordArraysPure"/>
+          </array>
+        </parameter>
+      </parameters>
+    </function>
+  </namespace>
+</repository>

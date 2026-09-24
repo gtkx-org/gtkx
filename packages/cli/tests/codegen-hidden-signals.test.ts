@@ -12,6 +12,7 @@ const CONFIG = `export default {
 };`;
 const IMPORTS = `import * as SignalPointers from "@gtkx/gi/signalpointers";
 import * as GObject from "@gtkx/gi/gobject";
+import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Soup from "@gtkx/gi/soup";
@@ -19,6 +20,7 @@ import * as WebKit from "@gtkx/gi/webkit";
 import { SignalPointersProbe, SignalPointersChild, type SignalPointersFeedProps } from "@gtkx/jsx/signalpointers";
 import type { WebKitBackForwardListProps } from "@gtkx/jsx/webkit";
 import type { GtkTreeModelProps } from "@gtkx/jsx/gtk";
+import type { GApplicationProps, GSettingsProps } from "@gtkx/jsx/gio";
 `;
 const ACCEPTED = IMPORTS + `
 export const connect = (probe: SignalPointers.Probe, child: SignalPointers.Child, feed: SignalPointers.Feed) => {
@@ -33,7 +35,6 @@ export const connect = (probe: SignalPointers.Probe, child: SignalPointers.Child
     child.connect("shared", (count: bigint) => count > 0n);
     const shared: boolean = probe.emit("shared", 1n);
     child.emit("integer", 2n);
-    probe.emit("array", [1, 2]);
     const integerArgs: Parameters<SignalPointers.ProbeSignals["integer"]> = [1n];
     const sharedArgs: Parameters<SignalPointers.FeedSignals["shared"]> = [2n];
     const predicate: SignalPointers.Predicate = (count) => count > 0;
@@ -63,8 +64,32 @@ export const supported = (
     } };
     return { length: history.getLength(), historyProps, treeProps };
 };
+const opened = (files: Gio.File[], count: number, hint: string) => {
+    return { files, count, hint };
+};
+const changed = (keys: GLib.Quark[] | null, count: number): boolean => {
+    return keys === null || keys.length === count;
+};
+export const applicationProps: GApplicationProps = { onOpen: opened };
+export const settingsProps: GSettingsProps = { onChangeEvent: changed };
+export const containerSignals = (
+    application: Gio.Application, settings: Gio.Settings, mount: Gio.MountOperation, message: Soup.Message,
+) => {
+    application.connect("open", opened);
+    application.on("open", opened);
+    settings.connect("change-event", changed);
+    settings.on("change-event", changed);
+    mount.emit("ask-question", "Choose", ["Continue"]);
+    mount.emit("show-processes", "Busy", [1], ["Cancel"]);
+    message.emit("content-sniffed", "text/plain", new Map([["charset", "utf-8"]]));
+};
 `;
 const REJECTED: Record<string, string> = {
+    "fixed-array-emit": "export const emit = (probe: SignalPointers.Probe) => probe.emit(\"array\", [1, 2]);",
+    "application-array-emit": "export const emit = (application: Gio.Application) => " +
+        "application.emit(\"open\", [], 0, \"\");",
+    "settings-array-emit": "export const emit = (settings: Gio.Settings) => " +
+        "settings.emit(\"change-event\", null, 0);",
     "direct-connect": "export const connect = (probe: SignalPointers.Probe) => " +
         "probe.connect(\"direct\", () => undefined);",
     "direct-emit": "export const emit = (probe: SignalPointers.Probe) => probe.emit(\"direct\", 0n);",
@@ -167,6 +192,20 @@ describe("generated unsupported signal omissions", () => {
             expect(feed).toHaveProperty("markdown", expect.not.stringContaining(`### \`${name}\``));
         }
         expect(reference.lookup("SignalPointers.Predicate", "callback").outcome).toBe("page");
+    });
+
+    it("retains pointer-array handlers in class and JSX reference pages", () => {
+        for (const [owner, signal, element, handler] of [
+            ["Gio.Application", "open", "GApplication", "onOpen"],
+            ["Gio.Settings", "change-event", "GSettings", "onChangeEvent"],
+        ] as const) {
+            const page = reference.lookup(owner, "class");
+            const props = reference.lookup(element, "element");
+            expect(page.outcome).toBe("page");
+            expect(props.outcome).toBe("page");
+            expect(page).toHaveProperty("markdown", expect.stringContaining(`### \`${signal}\``));
+            expect(props).toHaveProperty("markdown", expect.stringContaining(`### \`${handler}\``));
+        }
     });
 
     it("omits the installed WebKit pointer signal and non-introspectable TreeModel signal", () => {

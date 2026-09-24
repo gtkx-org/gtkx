@@ -721,7 +721,7 @@ impl Drop for HandleKind {
         match self {
             Self::Object { owned, .. } => {
                 if let Some(object) = owned.take() {
-                    glib::idle_add_local_once(move || surface::release(object));
+                    crate::host::release_queue::defer(move || surface::release(object));
                 }
             }
             Self::CallbackData { ptr, destroy } => unsafe { destroy(*ptr) },

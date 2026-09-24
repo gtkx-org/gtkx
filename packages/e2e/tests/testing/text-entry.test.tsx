@@ -1,5 +1,7 @@
+import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkPasswordEntry, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
+import { AdwPasswordEntryRow } from "@gtkx/jsx/adw";
+import { GtkEntry, GtkPasswordEntry, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
 import { getWidgetText, prettyWidget, render, screen, userEvent } from "@gtkx/testing";
 import { type ReactNode, useState } from "react";
 import { describe, expect, it } from "vitest";
@@ -64,22 +66,46 @@ describe("controlled GtkTextBuffer through the text prop", () => {
 });
 
 describe("password entry", () => {
-    it("reads its text like any other entry, in queries, matchers and dumps", async () => {
-        await render(<GtkPasswordEntry name="password" text={SECRET} />);
-        const entry = await screen.findByName("password");
-        expect(getWidgetText(entry)).toBe(SECRET);
-        expect(prettyWidget(entry)).toContain(SECRET);
-        expect(entry).toHaveDisplayValue(SECRET);
-        expect(entry).toHaveAccessibleName(SECRET);
-        expect(await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: SECRET })).not.toBeNull();
-    });
-
-    it("reports its selection and reads no text when it is empty", async () => {
+    it("keeps its value available without exposing it as a name or debug text", async () => {
         await render(<GtkPasswordEntry name="password" text={SECRET} />);
         const entry = await screen.findByName("password", { as: Gtk.PasswordEntry });
+        expect(getWidgetText(entry)).toBe(SECRET);
+        expect(entry).toHaveDisplayValue(SECRET);
+        expect(entry).not.toHaveAccessibleName();
+        expect(prettyWidget(entry)).not.toContain(SECRET);
+        expect(screen.queryByRole(Gtk.AccessibleRole.TEXT_BOX, { name: SECRET })).toBeNull();
+        expect(() => screen.getByRole(Gtk.AccessibleRole.TEXT_BOX, { name: SECRET })).toThrow();
+        expect(screen.getByRole(Gtk.AccessibleRole.TEXT_BOX)).toBe(entry);
+    });
+
+    it("uses an authored name, reports its selection and reads no text when it is empty", async () => {
+        await render(<GtkPasswordEntry name="password" accessibleLabel="Account password" text={SECRET} />);
+        const entry = await screen.findByName("password", { as: Gtk.PasswordEntry });
+        expect(screen.getByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Account password" })).toBe(entry);
+        expect(entry).toHaveAccessibleName("Account password");
         entry.selectRegion(0, -1);
         expect(entry).toHaveSelection(SECRET);
         await render(<GtkPasswordEntry name="empty" text="" />);
         expect(getWidgetText(await screen.findByName("empty"))).toBeNull();
+    });
+
+    it("redacts a regular entry whose text visibility is disabled", async () => {
+        await render(<GtkEntry name="concealed" text={SECRET} visibility={false} />);
+        const entry = await screen.findByName("concealed", { as: Gtk.Entry });
+        expect(getWidgetText(entry)).toBe(SECRET);
+        expect(entry).toHaveDisplayValue(SECRET);
+        expect(entry).not.toHaveAccessibleName();
+        expect(prettyWidget(entry)).not.toContain(SECRET);
+    });
+
+    it("uses an Adwaita password row title as its authored name without dumping its value", async () => {
+        await render(<AdwPasswordEntryRow title="Account password" text={SECRET} />);
+        const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { as: Adw.PasswordEntryRow });
+        const field = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Account password" });
+        expect(getWidgetText(row)).toBe(SECRET);
+        expect(field).toHaveDisplayValue(SECRET);
+        expect(row).toHaveAccessibleName(/Account password/);
+        expect(prettyWidget(row)).toContain("Account password");
+        expect(prettyWidget(row)).not.toContain(SECRET);
     });
 });

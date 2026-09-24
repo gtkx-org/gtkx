@@ -5,7 +5,21 @@ import { createRoot, quit } from "@gtkx/react";
 import process from "node:process";
 import { useEffect, useRef, useState } from "react";
 import { Banner } from "./banner.js";
+import { getJavascriptRenders, JavascriptBanner } from "./javascript-banner.mjs";
 import { label } from "./label.js";
+import { getTypescriptRenders, TypescriptBanner } from "./typescript-banner.mjs";
+
+const ExtensionBanners = ({ revision }: { revision: number }) => {
+    "use no memo";
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <JavascriptBanner />
+            <TypescriptBanner />
+            <GtkLabel label={String(revision)} />
+        </GtkBox>
+    );
+};
 
 const App = () => {
     const [count, setCount] = useState(0);
@@ -26,7 +40,12 @@ const App = () => {
     }, []);
 
     useEffect(() => {
-        process.send?.({ counter: counter.current?.getLabel(), banner: banner.current?.getLabel() });
+        process.send?.({
+            counter: counter.current?.getLabel(),
+            banner: banner.current?.getLabel(),
+            javascriptRenders: getJavascriptRenders(),
+            typescriptRenders: getTypescriptRenders(),
+        });
         if (count === 2) {
             quit();
         }
@@ -38,6 +57,7 @@ const App = () => {
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                     <GtkLabel ref={counter} label={rows.join("-")} />
                     <Banner ref={banner} text="banner" />
+                    <ExtensionBanners revision={count} />
                     <GtkButton
                         ref={button}
                         label="Increment"

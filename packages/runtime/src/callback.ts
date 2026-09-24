@@ -4,6 +4,7 @@ import type { CallbackDescriptor, RefDescriptor } from "./descriptors.js";
 import {
     foldedLengthArgIndices,
     foldedLengthSources,
+    foldedValueLength,
     type LengthSource,
     type LengthSources,
 } from "./folded-lengths.js";
@@ -50,7 +51,7 @@ type CallbackPlan = {
 const CALLBACK_TRAITS: Record<CallbackKind, CallbackTraits> = {
     callback: { isInstanceBound: false, hasInstanceArg: false, hasFoldedLengths: true, hasFoldedInputs: true },
     signal: { isInstanceBound: false, hasInstanceArg: true, hasFoldedLengths: false, hasFoldedInputs: false },
-    vfunc: { isInstanceBound: true, hasInstanceArg: true, hasFoldedLengths: true, hasFoldedInputs: false },
+    vfunc: { isInstanceBound: true, hasInstanceArg: true, hasFoldedLengths: true, hasFoldedInputs: true },
 };
 
 const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, source: object): void => {
@@ -148,17 +149,11 @@ const groupOutParams = (outParams: OutParam[], lengthSources: LengthSources): Ou
     return groups;
 };
 
-const getLength = (value: unknown): number => {
-    const length = (value as { length?: unknown } | null | undefined)?.length;
-
-    return typeof length === "number" ? length : 0;
-};
-
 const lengthSourceValue = (source: LengthSource, outValues: OutValues, primary: unknown): unknown =>
     source.kind === "return" ? primary : outValues.get(source.argIndex);
 
 const foldedLength = (sources: LengthSource[], outValues: OutValues, primary: unknown): number =>
-    Math.min(...sources.map((source) => getLength(lengthSourceValue(source, outValues, primary))));
+    Math.min(...sources.map((source) => foldedValueLength(lengthSourceValue(source, outValues, primary))));
 
 const resolveOutValues = (groups: OutParamGroups, values: unknown[], primary: unknown): OutValues => {
     const outValues: OutValues = new Map();

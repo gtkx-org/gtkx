@@ -365,6 +365,7 @@ pub fn install(env: &Env) -> napi::Result<()> {
     }
 
     *context_owner() = Some(thread::current().id());
+    crate::host::release_queue::install();
 
     let prepare = alloc_uv_handle(UV_PREPARE);
     let rc = unsafe { (uv.prepare_init)(uv_loop, prepare) };
@@ -413,7 +414,10 @@ pub fn install(env: &Env) -> napi::Result<()> {
     // no chance to tear the loop down. Node still pumps this thread's uv loop while it disposes the
     // worker, and a prepare handle that is still started would call back into an environment that
     // is already gone.
-    env.add_env_cleanup_hook((), |()| teardown())?;
+    env.add_env_cleanup_hook((), |()| {
+        crate::host::release_queue::retire();
+        teardown();
+    })?;
 
     Ok(())
 }

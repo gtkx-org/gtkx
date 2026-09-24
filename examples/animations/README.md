@@ -7,4 +7,4 @@ pnpm --filter animations dev
 pnpm --filter animations test
 ```
 
-Run commands from the repository root after `pnpm install` and `pnpm build`. See the [animations guide](https://gtkx.dev/guide/animations) and [React Spring](https://react-spring.dev/).
+Run commands from the repository root after `pnpm install` and `pnpm build`. See the [animations guide](https://gtkx.dev/v2/guide/animations) and [React Spring](https://react-spring.dev/).

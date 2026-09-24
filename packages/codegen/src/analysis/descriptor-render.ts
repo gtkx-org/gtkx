@@ -6,6 +6,7 @@ import type { PrimitiveCategory } from "../gir/primitives.js";
 import type { EntityType, GirType } from "../gir/type.js";
 import type { ModuleContext } from "../writer/context.js";
 import {
+    deriveElementTransfer,
     type GirCursorBounds,
     type GirParameter,
     type GirReturnValue,
@@ -104,6 +105,7 @@ type FundamentalDescriptor = {
     fallbackClass?: string | undefined;
     isCallerAllocated?: boolean | undefined;
     isInline?: boolean | undefined;
+    isValueSafe?: boolean | undefined;
 };
 
 type AncestorFundamental = {
@@ -125,6 +127,7 @@ type FundamentalRecordOptions = {
     fallbackClass?: string | undefined;
     isCallerAllocated: boolean;
     isInline: boolean;
+    isValueSafe: boolean;
 };
 
 const LIST_HELPERS: Record<Exclude<ListFlavor, "gbytearray">, ListDescriptorName> = {
@@ -150,9 +153,6 @@ const transferOwnership = (transfer: ParameterTransfer): Ownership => {
 
     return "borrowed";
 };
-
-const deriveElementTransfer = (transfer: ParameterTransfer): ParameterTransfer =>
-    transfer === "container" ? "none" : transfer;
 
 const isVoidRef = (library: Library, ref: TypeId | undefined): boolean =>
     ref === undefined || primitiveCategoryFor(library, ref) === "void";
@@ -617,6 +617,7 @@ const structExpression = (
         sharedLibrary: lib,
         copyFnName: lib === undefined ? undefined : refFunc,
         freeFnName: lib === undefined ? undefined : unrefFunc,
+        isValueSafe: isCopyable,
     });
 };
 
@@ -633,6 +634,7 @@ const fundamentalRecordExpression = (options: FundamentalRecordOptions): string 
         fallbackClass,
         isCallerAllocated: options.isCallerAllocated,
         isInline: options.isInline,
+        isValueSafe: options.isValueSafe,
     });
 };
 
@@ -649,6 +651,7 @@ const boxedRecordExpression = (options: {
     const record = resolved.value;
     const glibName = record.glibTypeName ?? record.cType ?? record.name;
     const { size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
+    const isValueSafe = isValueMarshalable(context, resolved.namespace.name, record);
 
     return tBoxed(glibName, {
         ownership,
@@ -657,6 +660,7 @@ const boxedRecordExpression = (options: {
         freeFnName: record.freeFunc,
         isCallerAllocated,
         isInline,
+        isValueSafe,
         size: size > 0 ? size : undefined,
         fallbackClass: fallbackClassThunk(context, resolved.namespace.name, record.name, options.isReceived),
     });
@@ -727,6 +731,7 @@ const fundamentalRecordPath = (
                 ? fallbackClassThunk(context, resolved.namespace.name, record.name, placement.isReceived === true)
                 : undefined,
         ...recordLayout(placement),
+        isValueSafe: isValueMarshalable(context, resolved.namespace.name, record),
     });
 };
 

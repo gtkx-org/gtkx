@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { useParentWindow } from "@gtkx/react";
-import { useEffect } from "react";
+import { GtkPrintSettings } from "@gtkx/jsx/gtk";
+import { createPortal, rootElement, useParentWindow } from "@gtkx/react";
+import { useEffect, useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
 import sourceCode from "./pagesetup.tsx?raw";
 
@@ -16,20 +17,19 @@ const pageSetupDemo: Demo = {
 
 function PageSetupDemo({ onClose }: DemoProps) {
     const parentWindow = useParentWindow();
+    const [settings, setSettings] = useState<Gtk.PrintSettings | null>(null);
 
     useEffect(() => {
-        if (!parentWindow) {
+        if (parentWindow === null || settings === null) {
             return;
         }
-
-        const settings = new Gtk.PrintSettings();
 
         Gtk.printRunPageSetupDialogAsync(parentWindow, null, settings, () => {
             onClose?.();
         });
-    }, [parentWindow, onClose]);
+    }, [parentWindow, settings, onClose]);
 
-    return null;
+    return createPortal(<GtkPrintSettings ref={setSettings} />, rootElement);
 }
 
 export { pageSetupDemo };

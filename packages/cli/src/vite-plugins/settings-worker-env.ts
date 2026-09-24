@@ -19,10 +19,11 @@ function gtkxSettingsWorkerEnv(configFile?: string): Plugin {
             }
 
             process.env.GTKX_DEV_SCHEMA_DIR = dir;
+            const existing = config.test?.env?.GSETTINGS_SCHEMA_DIR ?? process.env.GSETTINGS_SCHEMA_DIR;
 
             return {
                 test: {
-                    env: { GSETTINGS_SCHEMA_DIR: prependSchemaDir(dir, process.env.GSETTINGS_SCHEMA_DIR) },
+                    env: { GSETTINGS_SCHEMA_DIR: prependSchemaDir(dir, existing) },
                 },
             };
         },

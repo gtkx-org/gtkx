@@ -72,6 +72,20 @@ test("GPtrArray string arguments survive repetition across transfer modes", () =
 test("GPtrArray slots take boxed values", () => {
     const values = [intValue(42), intValue(43)];
 
+    expect(() => {
+        Reflect.apply(
+            Regress.annotationPtrArray,
+            Regress,
+            [[new Regress.TestObj({})]],
+        );
+    }).toThrow();
+    expect(() => {
+        Reflect.apply(
+            Regress.annotationPtrArray,
+            Regress,
+            [[new GIMarshallingTests.BoxedStruct({ long: 42n })]],
+        );
+    }).toThrow();
     Regress.annotationPtrArray(values);
     Regress.annotationPtrArray([]);
 

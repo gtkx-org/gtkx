@@ -2,8 +2,9 @@
 import { computed } from "vue";
 
 type IconEl = { d?: string; cx?: number; cy?: number; r?: number };
+type IconDefinition = { fill?: boolean; els: IconEl[] };
 
-const ICONS: Record<string, { fill?: boolean; els: IconEl[] }> = {
+const ICONS = {
     arrow: { els: [{ d: "M5 12h14M13 6l6 6-6 6" }] },
     github: {
         fill: true,
@@ -31,10 +32,12 @@ const ICONS: Record<string, { fill?: boolean; els: IconEl[] }> = {
         ],
     },
     external: { els: [{ d: "M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" }] },
-};
+} satisfies Record<string, IconDefinition>;
 
-const props = withDefaults(defineProps<{ name: string; size?: number }>(), { size: 18 });
-const def = computed(() => ICONS[props.name] ?? ICONS.arrow);
+type IconName = keyof typeof ICONS;
+
+const props = withDefaults(defineProps<{ name: IconName; size?: number }>(), { size: 18 });
+const def = computed<IconDefinition>(() => ICONS[props.name]);
 </script>
 
 <template>

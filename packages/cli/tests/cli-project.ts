@@ -8,7 +8,7 @@ import workspaceConfig from "../../../gtkx.config.base.js";
 
 type CliProject = { root: string; nodeModules: string; tmpDir: string };
 type DisposableCliProject = CliProject & Disposable;
-type CliRun = { status: number | null; output: string; stdout: string; stderr: string };
+type CliRun = { status: number; output: string; stdout: string; stderr: string };
 
 type CliProjectOptions = {
     prefix: string;

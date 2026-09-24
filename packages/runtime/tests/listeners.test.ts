@@ -1,17 +1,25 @@
 import type { Object as GObject } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { describe, expect, it, type Mock, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 type ClickedHandler = () => void;
 type RegisterClicked = (button: Gtk.Button, handler: ClickedHandler) => GObject;
-type ClickedTarget = { button: Gtk.Button; handler: Mock<ClickedHandler> };
-
-const chainingHandler = vi.fn();
+type ClickedTarget = { button: Gtk.Button; handler: ClickedHandler; calls: () => number };
 
 const onClicked: RegisterClicked = (button, handler) => button.on("clicked", handler);
 const onceClicked: RegisterClicked = (button, handler) => button.once("clicked", handler);
 const offClicked: RegisterClicked = (button, handler) => button.off("clicked", handler);
-const createClickedTarget = (): ClickedTarget => ({ button: new Gtk.Button(), handler: vi.fn() });
+const createClickedTarget = (): ClickedTarget => {
+    let calls = 0;
+
+    return {
+        button: new Gtk.Button(),
+        handler: () => {
+            calls += 1;
+        },
+        calls: () => calls,
+    };
+};
 
 const applyClicked = (target: ClickedTarget, operation: RegisterClicked, count: number): void => {
     for (let index = 0; index < count; index += 1) {
@@ -20,23 +28,23 @@ const applyClicked = (target: ClickedTarget, operation: RegisterClicked, count: 
 };
 
 const expectEmissionCalls = (target: ClickedTarget, expected: number): void => {
-    target.handler.mockClear();
+    const previousCalls = target.calls();
     target.button.emit("clicked");
-    expect(target.handler).toHaveBeenCalledTimes(expected);
+    expect(target.calls() - previousCalls).toBe(expected);
 };
 
 const expectRemovableHandlerNeverFires = (register: RegisterClicked): void => {
     const target = createClickedTarget();
     register(target.button, target.handler);
     offClicked(target.button, target.handler);
-    expect(target.handler).not.toHaveBeenCalled();
+    expectEmissionCalls(target, 0);
 };
 
 const expectRegisterReturnsButton = (register: RegisterClicked): void => {
-    const button = new Gtk.Button();
-    const result = register(button, chainingHandler);
+    const { button, handler } = createClickedTarget();
+    const result = register(button, handler);
     expect(result).toBe(button);
-    button.off("clicked", chainingHandler);
+    button.off("clicked", handler);
 };
 
 const expectBalancedRegistrationsLeaveNothingConnected = (
@@ -94,14 +102,18 @@ describe("on/off", () => {
 
     it("removes every connection of a detail signal the same handler was registered on twice", () => {
         const button = new Gtk.Button();
-        const handler = vi.fn();
+        let calls = 0;
+        const handler = (): void => {
+            calls += 1;
+        };
         button.on("notify::label", handler);
         button.on("notify::label", handler);
+        button.setLabel("initial");
+        expect(calls).toBe(2);
         button.off("notify::label", handler);
         button.off("notify::label", handler);
-        handler.mockClear();
         button.setLabel("changed");
-        expect(handler).not.toHaveBeenCalled();
+        expect(calls).toBe(2);
     });
 });
 

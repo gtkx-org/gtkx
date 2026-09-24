@@ -10,6 +10,7 @@ use napi_derive::napi;
 use crate::handle::Handle;
 use crate::{ffi, value};
 
+mod admission;
 mod array;
 mod bigint;
 mod boxed;
@@ -25,13 +26,14 @@ mod r#ref;
 mod r#struct;
 mod void;
 
+pub(crate) use admission::{validate_call_signature, validate_callback_signature};
 pub use array::{ArrayBounds, ArrayCodec, ArrayKind, ElementOwnership};
 pub use bigint::BigIntCodec;
 pub use boxed::BoxedCodec;
 pub use buffer::BufferCodec;
 pub use bytes::{BytesCodec, bytes_to_glib_full, read_bytes};
-pub(crate) use callback::CallbackReleasePolicy;
 pub use callback::{CallbackCodec, CallbackScope, DestroyNotifyKind};
+pub(crate) use callback::{CallbackReleasePolicy, validate_callback_outputs};
 pub use fundamental::FundamentalCodec;
 pub use hashtable::{HashTableCodec, HashTableEntryCodec};
 pub use numeric::{FloatCodec, IntegerCodec, lossless_f64};
@@ -178,9 +180,7 @@ impl SlotInit {
 #[enum_dispatch]
 pub trait Encoder {
     fn encode(&self, _env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
-        let ptr = value::handle_ptr_checked(value, self.object_ptr_context(), |handle| {
-            self.check_instance(handle)
-        })?;
+        let ptr = self.checked_handle_ptr(value, self.object_ptr_context(), |_| Ok(()))?;
         if ptr.is_null() {
             return Ok(ffi::Stash::Ptr(ptr));
         }
@@ -206,6 +206,21 @@ pub trait Encoder {
     /// default accepts anything, for a codec whose value carries no type of its own.
     fn check_instance(&self, _handle: &Handle) -> anyhow::Result<()> {
         Ok(())
+    }
+
+    fn checked_handle_ptr<C>(
+        &self,
+        value: Unknown<'_>,
+        context: &str,
+        check: C,
+    ) -> anyhow::Result<*mut c_void>
+    where
+        C: FnOnce(&Handle) -> anyhow::Result<()>,
+    {
+        value::handle_ptr_checked(value, context, |handle| {
+            self.check_instance(handle)?;
+            check(handle)
+        })
     }
 
     fn owned_release(&self) -> anyhow::Result<Option<ffi::ReleaseKind>> {
@@ -446,6 +461,18 @@ pub enum Codec {
 }
 
 impl Codec {
+    pub(crate) fn validate_outbound_hash_tables(&self) -> anyhow::Result<()> {
+        match self {
+            Self::HashTable(table) => table.validate_outbound_hash_tables(),
+            Self::Array(array) => array.item_codec.validate_outbound_hash_tables(),
+            Self::Ref(reference) => reference.inner_codec().validate_outbound_hash_tables(),
+            Self::Callback(callback) => {
+                validate_callback_outputs(&callback.arg_codecs, &callback.return_codec)
+            }
+            _ => Ok(()),
+        }
+    }
+
     pub(crate) fn field_size(&self) -> Option<usize> {
         match self {
             Self::Struct(codec) if codec.inline => codec.size,

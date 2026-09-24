@@ -74,14 +74,14 @@ const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | u
     });
 };
 
-const isMovedOntoEmittedMember = (context: ModuleContext, fn: GirFunction): boolean => {
+const isMovedOntoEmittedMember = (context: ModuleContext, namespaceName: string, fn: GirFunction): boolean => {
     const [typeName, memberName] = fn.movedTo?.split(".") ?? [];
 
     if (typeName === undefined || memberName === undefined) {
         return false;
     }
 
-    const resolved = context.library.resolveType(context.namespace.name, typeName);
+    const resolved = context.library.resolveType(namespaceName, typeName);
 
     if (resolved?.kind !== "class" && resolved?.kind !== "interface" && resolved?.kind !== "record") {
         return false;
@@ -92,15 +92,19 @@ const isMovedOntoEmittedMember = (context: ModuleContext, fn: GirFunction): bool
     return members.some((member) => member.name === memberName);
 };
 
-const canEmitNamespaceFunction = (context: ModuleContext, fn: GirFunction): boolean =>
+const isEmittableNamespaceFunction = (
+    context: ModuleContext,
+    namespaceName: string,
+    fn: GirFunction,
+): boolean =>
     fn.introspectable &&
-    !isMovedOntoEmittedMember(context, fn) &&
+    !isMovedOntoEmittedMember(context, namespaceName, fn) &&
     fn.shadowedBy === undefined &&
     fn.cIdentifier !== undefined &&
     !hasUnmarshalableParam(context, fn);
 
 const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
-    if (!canEmitNamespaceFunction(context, fn)) {
+    if (!isEmittableNamespaceFunction(context, context.namespace.name, fn)) {
         return;
     }
 
@@ -141,7 +145,11 @@ const matchNamespaceFinish = (context: ModuleContext, fn: GirFunction): Namespac
     const finishFn = matchAsyncFinish(context.library, fn, context.namespace.functions);
     const cIdentifier = finishFn?.cIdentifier;
 
-    if (finishFn === undefined || cIdentifier === undefined || !canEmitNamespaceFunction(context, finishFn)) {
+    if (
+        finishFn === undefined ||
+        cIdentifier === undefined ||
+        !isEmittableNamespaceFunction(context, context.namespace.name, finishFn)
+    ) {
         return undefined;
     }
 
@@ -230,4 +238,9 @@ const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, ex
     }
 };
 
-export { renderFnExpression, generateNamespaceFunction, namespaceFunctionExportName };
+export {
+    renderFnExpression,
+    generateNamespaceFunction,
+    isEmittableNamespaceFunction,
+    namespaceFunctionExportName,
+};

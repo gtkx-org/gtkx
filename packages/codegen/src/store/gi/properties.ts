@@ -92,9 +92,21 @@ const renderClassPropertyMap = (options: ClassPropertyMapOptions): Declaration =
     const omitted = parentRef === undefined || ownKeys.length === 0
         ? parentRef
         : `Omit<${parentRef}, ${ownKeys.join(" | ")}>`;
-    const extendsClause = omitted === undefined ? "" : ` extends ${omitted}`;
+    const accepted = accessors.filter((accessor) => spec.accepts(accessor));
+    const acceptedNames = new Set(accepted.map((accessor) => accessor.jsName));
+    const unavailableKeys = klass.properties
+        .map((property) => toCamelIdentifier(property.name))
+        .filter((name) => !acceptedNames.has(name))
+        .map((name) => sourceStringLiteral(name));
+    const bases = omitted === undefined ? [] : [omitted];
+
+    if (parentRef !== undefined && unavailableKeys.length > 0) {
+        bases.push(`Record<Extract<keyof ${parentRef}, ${unavailableKeys.join(" | ")}>, never>`);
+    }
+
+    const extendsClause = bases.length === 0 ? "" : ` extends ${bases.join(", ")}`;
     const entries = [
-        ...accessors.filter((accessor) => spec.accepts(accessor)).map((accessor) => propertyEntry(accessor, spec)),
+        ...accepted.map((accessor) => propertyEntry(accessor, spec)),
         ...interfaceEntries(context, klass, spec),
     ];
     const map = `${className}${spec.suffix}`;

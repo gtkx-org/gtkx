@@ -6,6 +6,7 @@
     "include": [
         "tests/**/*.ts",
         "tests/**/*.tsx",
+        "tests/**/*.mts",
         "../../gtkx.config.base.ts"
     ],
     "references": [

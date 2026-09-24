@@ -39,8 +39,8 @@ function TrailDemo() {
             />
             {trail.map((styles, index) => (
                 <AnimatedLabel
-                    key={items[index] ?? String(index)}
-                    label={items[index] ?? ""}
+                    key={items[index]}
+                    label={items[index]}
                     opacity={styles.opacity}
                     marginStart={styles.marginStart}
                     halign={Gtk.Align.START}

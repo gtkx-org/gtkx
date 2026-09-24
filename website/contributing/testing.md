@@ -7,7 +7,7 @@ description: "Find the right GTKX test suite, run native integration checks, and
 
 GTKX's tests exercise several boundaries: React updates becoming native widgets, generated JavaScript calling C libraries, CLI commands producing runnable applications, and published packages being installed by consumers. A failure can sit at any of these boundaries, so choosing the suite matters as much as choosing the package you changed.
 
-This page describes the existing verification infrastructure and how to run it. The [testing principles](/contributing/principles#test-behavior-at-the-right-level) define how coverage should be written: integration and acceptance tests by default, with justified unit tests for pure, complex, high-value logic. Existing test placement and mocks remain subject to those standards. The [application testing guide](/v2/guide/testing) documents the rendering, query, interaction, and assertion APIs used by component and application tests.
+This page describes the existing verification infrastructure and how to run it. The [testing principles](/contributing/principles#test-behavior-at-the-right-level) define how coverage should be written: integration and acceptance tests by default, with an explicitly justified exception for extremely complex logic requiring exhaustive unit-level coverage. Existing test placement and mocks remain subject to those standards. The [application testing guide](/v2/guide/testing) documents the rendering, query, interaction, and assertion APIs used by component and application tests.
 
 ## Where coverage lives
 

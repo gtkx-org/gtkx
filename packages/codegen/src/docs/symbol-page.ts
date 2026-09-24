@@ -10,10 +10,9 @@ import type { ModuleContext } from "../writer/context.js";
 import type { JsDocSpec } from "../writer/doc.js";
 import { ancestorClassMethodNames } from "../analysis/inheritance.js";
 import { isEmittableSignal } from "../analysis/signal-admission.js";
-import { renderTsType } from "../analysis/ts-type.js";
+import { renderAliasTargetTsType } from "../analysis/ts-type.js";
 import { ancestorChain } from "../gir/ancestry.js";
 import { type GirAlias, type GirConstant, type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
-import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../gir/primitives.js";
 import { callableNote, callableSpec } from "../store/gi/callable-doc.js";
 import {
     dedupeCallables,
@@ -655,8 +654,7 @@ const callbackPage = (entry: GiSymbolBase & { kind: "callback"; callback: GirCal
 
 const aliasPage = (entry: GiSymbolBase & { kind: "alias"; alias: GirAlias }, library: Library): string => {
     const docsContext = docsSignatureContext(entry.namespace, library);
-    const category = entry.alias.cType === undefined ? undefined : primitiveCategory(entry.alias.cType);
-    const target = category === "gtype" ? PRIMITIVE_TS_TYPE.gtype : renderTsType(docsContext, entry.alias.target);
+    const target = renderAliasTargetTsType(docsContext, entry.alias.target);
 
     return joinSections([...pageHeader(entry, "alias"), `\`\`\`ts\ntype ${entry.name} = ${target}\n\`\`\``]);
 };

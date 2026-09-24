@@ -31,8 +31,21 @@ const acceptsActionRow: typeof Adw.ActionRow extends QueryWidgetType ? true : fa
 const rejectsFileIcon: typeof Gio.FileIcon extends QueryWidgetType ? false : true = true;
 const rejectsObjectShape: ObjectOnlyConstructor extends QueryWidgetType ? false : true = true;
 
-const queryAllByTooltip = (container: Container, text: string): Gtk.Widget[] =>
-    queryAllByObjectProperty("tooltip-text", container, text);
+const queryAllByTooltip = (
+    container: Container,
+    text: string,
+    options?: MatcherOptions<Gtk.Widget>,
+): Gtk.Widget[] => queryAllByObjectProperty("tooltip-text", container, text, options);
+
+const [queryByTooltip, getAllByTooltip, getByTooltip, findAllByTooltip, findByTooltip] = buildQueries<
+    [text: string, options?: MatcherOptions<Gtk.Widget>],
+    Gtk.Widget
+>(
+    queryAllByTooltip,
+    (container, matches, text) =>
+        getElementError(`Found ${String(matches.length)} widgets tooltipped '${text}'`, container),
+    (container, text) => getElementError(`No widget is tooltipped '${text}'`, container),
+);
 
 const renderTooltipped = async (first: string, second?: string): Promise<Gtk.Widget> => {
     const { container } = await render(
@@ -76,13 +89,6 @@ describe("buildQueries", () => {
     });
 
     it("derives the five variants from a queryAllBy function", async () => {
-        const [queryByTooltip, getAllByTooltip, getByTooltip, findAllByTooltip, findByTooltip] = buildQueries(
-            queryAllByTooltip,
-            (container, matches, text) =>
-                getElementError(`Found ${String(matches.length)} widgets tooltipped '${text}'`, container),
-            (container, text) => getElementError(`No widget is tooltipped '${text}'`, container),
-        );
-
         const container = await renderTooltipped("only");
         expect(getByTooltip(container, "only")).toHaveTextContent("One");
         expect(getAllByTooltip(container, "only")).toHaveLength(1);
@@ -92,6 +98,38 @@ describe("buildQueries", () => {
         expect(() => getByTooltip(container, "absent")).toThrow();
         const shared = await renderTooltipped("shared", "shared");
         expect(() => getByTooltip(shared, "shared")).toThrow();
+    });
+
+    it("keeps every custom-query match when the widgets have different preferred queries", async () => {
+        const container = await renderTooltipped("shared", "shared");
+        const expected = within(container).getAllByRole(Gtk.AccessibleRole.BUTTON, { as: Gtk.Button, suggest: true });
+        expect(expected.map((button) => button.getLabel())).toEqual(["One", "Two"]);
+
+        expect(getAllByTooltip(container, "shared", { suggest: true })).toEqual(expected);
+        await expect(findAllByTooltip(container, "shared", { suggest: true })).resolves.toEqual(expected);
+    });
+
+    it("enforces a shared preferred query unless suggestions are disabled", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkButton label="Shared" tooltipText="same" />
+                <GtkButton label="Shared" tooltipText="same" />
+            </VBox>,
+        );
+        const expected = within(container).getAllByRole(Gtk.AccessibleRole.BUTTON, { name: "Shared" });
+        expect(expected).toHaveLength(2);
+
+        expect(() => getAllByTooltip(container, "same", { suggest: true })).toThrow();
+        await expect(findAllByTooltip(container, "same", { suggest: true, timeout: 100 })).rejects.toThrow();
+        expect(getAllByTooltip(container, "same", { suggest: false })).toEqual(expected);
+        await expect(findAllByTooltip(container, "same", { suggest: false })).resolves.toEqual(expected);
+    });
+
+    it("keeps missing custom-query results as errors with suggestions enabled", async () => {
+        const container = await renderTooltipped("present");
+
+        expect(() => getAllByTooltip(container, "absent", { suggest: true })).toThrow();
+        await expect(findAllByTooltip(container, "absent", { suggest: true, timeout: 100 })).rejects.toThrow();
     });
 });
 

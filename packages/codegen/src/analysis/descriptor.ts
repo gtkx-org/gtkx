@@ -81,6 +81,9 @@ const optionsObject = (parts: (string | undefined)[]): string | undefined => {
 const optionalLiteralEntry = (key: string, value: string | undefined): string | undefined =>
     value === undefined ? undefined : `${key}: ${sourceStringLiteral(value)}`;
 
+const optionalTrueEntry = (key: string, value: boolean | undefined): string | undefined =>
+    value === true ? `${key}: true` : undefined;
+
 const tScalar = (name: ScalarDescriptorName): string => descriptorName(name);
 
 const tString = (ownership: Ownership, length?: string, hasOwnedStorage = false): string =>
@@ -107,6 +110,7 @@ const tBoxed = (glibName: string, options: BoxedOptions): string =>
             optionalLiteralEntry("freeFnName", options.freeFnName),
             options.isCallerAllocated ? "isCallerAllocated: true" : undefined,
             options.isInline === true ? "isInline: true" : undefined,
+            optionalTrueEntry("isValueSafe", options.isValueSafe),
             options.size === undefined ? undefined : `size: ${String(options.size)}`,
             options.fallbackClass === undefined ? undefined : `fallbackClass: ${options.fallbackClass}`,
         ]),
@@ -120,6 +124,7 @@ const tStruct = (ownership: Ownership, options: StructOptions): string =>
             options.wrapperClass === undefined ? undefined : `wrapperClass: ${options.wrapperClass}`,
             options.isCallerAllocated ? "isCallerAllocated: true" : undefined,
             options.isInline === true ? "isInline: true" : undefined,
+            optionalTrueEntry("isValueSafe", options.isValueSafe),
             optionalLiteralEntry("sharedLibrary", options.sharedLibrary),
             optionalLiteralEntry("copyFnName", options.copyFnName),
             optionalLiteralEntry("freeFnName", options.freeFnName),
@@ -141,6 +146,7 @@ const tFundamental = (lib: string, refFunc: string, unrefFunc: string, options: 
             options.fallbackClass === undefined ? undefined : `fallbackClass: ${options.fallbackClass}`,
             options.isCallerAllocated === true ? "isCallerAllocated: true" : undefined,
             options.isInline === true ? "isInline: true" : undefined,
+            optionalTrueEntry("isValueSafe", options.isValueSafe),
         ]),
     ]);
 

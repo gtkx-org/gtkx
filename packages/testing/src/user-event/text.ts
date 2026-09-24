@@ -78,22 +78,36 @@ const focusEditable = (widget: EditableTarget): void => {
     }
 };
 
+const runTextBufferUserAction = (buffer: Gtk.TextBuffer, action: () => void): void => {
+    try {
+        buffer.beginUserAction();
+        action();
+    } finally {
+        buffer.endUserAction();
+    }
+};
+
 const insertTextViewText = (widget: Gtk.TextView, text: string, kind: InsertKind): void => {
     const buffer = widget.getBuffer();
     const length = getSelectionLength(buffer);
-    buffer.beginUserAction();
+    const isSeparateInsertion = kind === "typing" && length > SINGLE_CHARACTER_LENGTH;
+    const insert = (): void => {
+        widget.emit("insert-at-cursor", text);
+    };
 
-    if (length > 0) {
-        widget.emit("delete-from-cursor", Gtk.DeleteType.CHARS, SELECTION_DELETE_COUNT);
-
-        if (kind === "typing" && length > SINGLE_CHARACTER_LENGTH) {
-            buffer.endUserAction();
-            buffer.beginUserAction();
+    runTextBufferUserAction(buffer, () => {
+        if (length > 0) {
+            widget.emit("delete-from-cursor", Gtk.DeleteType.CHARS, SELECTION_DELETE_COUNT);
         }
-    }
 
-    widget.emit("insert-at-cursor", text);
-    buffer.endUserAction();
+        if (!isSeparateInsertion) {
+            insert();
+        }
+    });
+
+    if (isSeparateInsertion) {
+        runTextBufferUserAction(buffer, insert);
+    }
 };
 
 const insertDelegateText = (target: Gtk.Text, text: string): void => {
@@ -114,7 +128,7 @@ const insertPlainText = (widget: Gtk.Editable, text: string): void => {
     }
 
     const position = widget.getPosition();
-    const newPosition = widget.insertText(text, text.length, position);
+    const newPosition = widget.insertText(text, -1, position);
     widget.setPosition(newPosition);
 };
 

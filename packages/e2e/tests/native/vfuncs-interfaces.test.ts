@@ -521,13 +521,13 @@ test("a second interface with the same slot name is adopted alongside the first"
 });
 
 test("an interface slot taking a variant array is dispatched from C", () => {
-    const seen: [number[], number][] = [];
+    const seen: number[][] = [];
 
     class Collector extends GObject.Object implements GIMarshallingTests.Interface3Impl {
         declare testVariantArrayIn: GIMarshallingTests.Interface3["testVariantArrayIn"];
 
-        vfuncTestVariantArrayIn(values: GLib.Variant[], count: number): void {
-            seen.push([values.map((variant) => variant.getInt32()), count]);
+        vfuncTestVariantArrayIn(values: GLib.Variant[]): void {
+            seen.push(values.map((variant) => variant.getInt32()));
         }
     }
 
@@ -538,10 +538,10 @@ test("an interface slot taking a variant array is dispatched from C", () => {
 
     const instance = new Registered({});
     instance.testVariantArrayIn([GLib.Variant.newInt32(1), GLib.Variant.newInt32(2)]);
-    expect(seen).toEqual([[[1, 2], 2]]);
+    expect(seen).toEqual([[1, 2]]);
 
     instance.testVariantArrayIn([]);
-    expect(seen[1]).toEqual([[], 0]);
+    expect(seen[1]).toEqual([]);
 });
 
 test("a class adopting no slot keeps the interface default implementation", () => {
@@ -615,7 +615,7 @@ test("registerClass installs declared properties with generated and custom acces
     instance.plain = 12;
     expect(instance.plain).toBe(12);
     expect(notified).toEqual(["plain"]);
-    GObject.signalHandlerDisconnect(instance, BigInt(id));
+    GObject.signalHandlerDisconnect(instance, id);
 });
 
 test("a registered property hidden by an own method keeps separate storage", () => {

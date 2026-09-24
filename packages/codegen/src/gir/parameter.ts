@@ -14,7 +14,7 @@ import {
 import { typeRefFromNode } from "./type-ref.js";
 
 type ParameterDirection = "in" | "out" | "inout";
-type ParameterTransfer = "none" | "full" | "container";
+type ParameterTransfer = "none" | "full" | "container" | "elements";
 type CallbackScope = "call" | "notified" | "async" | "forever";
 
 type GirCursorBounds = {
@@ -64,6 +64,14 @@ const SCOPES: Set<CallbackScope> = new Set(["call", "notified", "async", "foreve
 
 const transferOwnership = (node: RawNode): ParameterTransfer =>
     parseEnumAttr(attr(node, "transfer-ownership"), TRANSFERS, "none", "transfer-ownership");
+
+const deriveElementTransfer = (transfer: ParameterTransfer): ParameterTransfer => {
+    if (transfer === "container") {
+        return "none";
+    }
+
+    return transfer === "elements" ? "full" : transfer;
+};
 
 const isInDirection = (node: RawNode): boolean =>
     parseEnumAttr(attr(node, "direction"), DIRECTIONS, "in", "direction") === "in";
@@ -138,6 +146,7 @@ const parseCallable = (node: RawNode, context: ParseContext): GirCallable => {
 };
 
 export {
+    deriveElementTransfer,
     transferOwnership,
     parameterFromNode,
     isOutParameter,

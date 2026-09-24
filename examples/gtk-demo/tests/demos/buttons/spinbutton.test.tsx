@@ -4,8 +4,6 @@ import { describe, expect, it } from "vitest";
 import { spinbuttonDemo } from "../../../src/demos/buttons/spinbutton.js";
 import { renderDemo } from "../../test-utils.js";
 
-const TIME_DISPLAY_PATTERN = /^\d{2}:\d{2}$/;
-
 const FIRST_RENDER_FORMATS = [
     { field: "hex", name: "hex_spin", displayValue: "0x00" },
     { field: "time", name: "time_spin", displayValue: "00:00" },
@@ -109,7 +107,7 @@ describe("spinbuttonDemo custom input parsing", () => {
         expect(await screen.findByDisplayValue("0x00")).toBe(hexButton);
     });
 
-    it("rejects text that does not match the hex regex instead of committing it verbatim", async () => {
+    it("resets invalid hexadecimal input to zero under the native update policy", async () => {
         const hexButton = await renderSpinButton("hex_spin");
         await commitText(hexButton, "0x05");
 
@@ -120,10 +118,8 @@ describe("spinbuttonDemo custom input parsing", () => {
         await commitText(hexButton, "not-a-number");
 
         await waitFor(() => {
-            expect(hexButton.getText()).toMatch(/^0x[0-9A-Fa-f]{2}$/);
+            expect(hexButton).toHaveValue(0);
         });
-
-        expect(hexButton).not.toHaveObjectProperty("text", "not-a-number");
     });
 });
 
@@ -134,16 +130,14 @@ describe("spinbuttonDemo time input parsing", () => {
         expect(screen.getByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 750 } })).toBe(timeButton);
     });
 
-    it.each(REJECTED_TIME_TEXTS)("rejects time strings $label and keeps the previous value", async ({ text }) => {
+    it.each(REJECTED_TIME_TEXTS)("resets time strings $label to zero", async ({ text }) => {
         const timeButton = await renderSpinButton("time_spin");
         await establishTimeValue(timeButton);
         await commitText(timeButton, text);
 
         await waitFor(() => {
-            expect(timeButton.getText()).toMatch(TIME_DISPLAY_PATTERN);
+            expect(timeButton).toHaveValue(0);
         });
-
-        expect(timeButton).not.toHaveObjectProperty("text", text);
     });
 });
 

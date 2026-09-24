@@ -23,6 +23,7 @@ pub struct BoxedCodec {
     pub caller_allocated: bool,
     pub size: Option<usize>,
     pub inline: bool,
+    pub value_safe: bool,
 }
 
 unsafe fn write_inline_value(

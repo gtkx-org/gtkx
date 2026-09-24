@@ -3,9 +3,8 @@ import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirAlias, GirNamespace } from "../../gir/namespace.js";
 import { isEmittableAlias } from "../../analysis/alias-admission.js";
-import { renderTsType } from "../../analysis/ts-type.js";
+import { renderAliasTargetTsType } from "../../analysis/ts-type.js";
 import { getParentRef } from "../../gir/ancestry.js";
-import { PRIMITIVE_TS_TYPE, primitiveCategory } from "../../gir/primitives.js";
 import { ModuleContext } from "../../writer/context.js";
 import { renderBootstrapModule } from "./bootstrap.js";
 import { generateCallback } from "./callback.js";
@@ -94,8 +93,7 @@ const generateAlias = (context: ModuleContext, alias: GirAlias): void => {
         return;
     }
 
-    const category = alias.cType === undefined ? undefined : primitiveCategory(alias.cType);
-    const targetType = category === "gtype" ? PRIMITIVE_TS_TYPE.gtype : renderTsType(context, alias.target);
+    const targetType = renderAliasTargetTsType(context, alias.target);
     const doc = getDoc(alias);
     const name = sanitizeTypeIdentifier(alias.name);
 

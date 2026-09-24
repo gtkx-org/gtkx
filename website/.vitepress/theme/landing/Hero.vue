@@ -82,10 +82,6 @@ const cmd = "npm create gtkx";
   margin: 1.4rem 0 1.8rem;
   max-width: 32rem;
 }
-.hero__lede strong {
-  color: var(--text-1);
-  font-weight: 600;
-}
 .hero__actions {
   width: max-content;
   max-width: 100%;

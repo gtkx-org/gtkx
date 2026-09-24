@@ -66,21 +66,27 @@ const getQueryFamily = (queryAllBy: { name: string }): string => queryAllBy.name
 
 const maybeThrowSuggestion = (options: {
     container: Container;
-    match: object;
+    matches: readonly object[];
     queryName: string;
     variant: Variant;
     shouldSuggest: boolean | undefined;
 }): void => {
-    const { container, match, queryName, variant, shouldSuggest } = options;
+    const { container, matches, queryName, variant, shouldSuggest } = options;
 
     if (!(shouldSuggest ?? getConfig().throwSuggestions)) {
         return;
     }
 
-    const suggestion = getSuggestedQuery(requireWidget(match), variant);
+    const suggestions = matches.map((match) => getSuggestedQuery(requireWidget(match), variant));
+    const [suggestion] = suggestions;
 
-    if (suggestion && suggestion.queryName !== queryName) {
-        throw suggestionError(suggestion.toString(), container);
+    if (!suggestion || suggestion.queryName === queryName) {
+        return;
+    }
+    const suggestedQuery = suggestion.toString();
+
+    if (suggestions.every((candidate) => candidate?.toString() === suggestedQuery)) {
+        throw suggestionError(suggestedQuery, container);
     }
 };
 
@@ -158,7 +164,7 @@ const wrapSingleWithSuggestion =
             if (match) {
                 maybeThrowSuggestion({
                     container,
-                    match,
+                    matches: [match],
                     queryName,
                     variant,
                     shouldSuggest: extractShouldSuggest(args),
@@ -176,17 +182,13 @@ const wrapAllWithSuggestion =
     ): QueryAllBy<Args, Element> =>
         (container, ...args) => {
             const matches = query(container, ...args);
-            const [first] = matches;
-
-            if (first !== undefined) {
-                maybeThrowSuggestion({
-                    container,
-                    match: first,
-                    queryName,
-                    variant,
-                    shouldSuggest: extractShouldSuggest(args),
-                });
-            }
+            maybeThrowSuggestion({
+                container,
+                matches,
+                queryName,
+                variant,
+                shouldSuggest: extractShouldSuggest(args),
+            });
 
             return matches;
         };
@@ -241,7 +243,7 @@ const buildQueries = <
 
         maybeThrowSuggestion({
             container,
-            match,
+            matches: [match],
             queryName,
             variant: "get",
             shouldSuggest: extractShouldSuggest(args),

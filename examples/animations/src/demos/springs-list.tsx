@@ -12,7 +12,7 @@ const presets = [
     [0.45, 0.7, 0.3, 0.95],
 ] as const;
 
-const barCount = 4;
+const barCount = presets[0].length;
 
 const springsListDemo: Demo = {
     id: "springs-list",
@@ -23,8 +23,11 @@ const springsListDemo: Demo = {
     component: SpringsListDemo,
 };
 
-const targetFor = (presetIndex: number, barIndex: number): number =>
-    presets[presetIndex % presets.length]?.[barIndex] ?? 0;
+const targetFor = (presetIndex: number, barIndex: number): number => {
+    const preset = presets[presetIndex] as (typeof presets)[number];
+
+    return preset[barIndex] as number;
+};
 
 function SpringsListDemo() {
     const [presetIndex, setPresetIndex] = useState(0);

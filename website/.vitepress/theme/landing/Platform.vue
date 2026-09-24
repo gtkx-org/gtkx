@@ -76,13 +76,6 @@ const active = computed(() => STEPS[tab.value]);
   align-items: center;
   gap: 1rem;
 }
-.platform__blurb {
-  font-family: var(--font-body);
-  font-size: var(--text-md);
-  color: var(--text-2);
-  margin: 0;
-  text-align: center;
-}
 .platform__tabpanel {
   width: 100%;
 }

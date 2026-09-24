@@ -7,6 +7,7 @@ use napi::{Env, sys};
 use napi_derive::napi;
 
 use crate::handle::Handle;
+use crate::host::panic_handler::guard_ffi_boundary;
 use crate::value::wrapper;
 
 struct FinalizeData {
@@ -17,19 +18,22 @@ struct FinalizeData {
 }
 
 unsafe extern "C" fn on_wrapper_finalize(
-    _env: sys::napi_env,
+    env: sys::napi_env,
     finalize_data: *mut c_void,
     _finalize_hint: *mut c_void,
 ) {
-    let mut data = unsafe { Box::from_raw(finalize_data.cast::<FinalizeData>()) };
-    unsafe {
-        wrapper::schedule_cleanup(
-            data.wrapper_handle.take(),
-            data.generation,
-            data.gobject_ptr,
-            data.napi_ref,
-        );
-    }
+    guard_ffi_boundary("wrapper finalization", || {
+        let mut data = unsafe { Box::from_raw(finalize_data.cast::<FinalizeData>()) };
+        unsafe {
+            wrapper::schedule_cleanup(
+                env,
+                data.wrapper_handle.take(),
+                data.generation,
+                data.gobject_ptr,
+                data.napi_ref,
+            );
+        }
+    });
 }
 
 /// Attaches the JavaScript `wrapper` object to the handle's `GObject` and registers a finalizer

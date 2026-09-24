@@ -236,6 +236,7 @@ describe("gtkx codegen virtual function output shapes", () => {
                 "interfaces.ts": `import type { Counted, Folded } from "@gtkx/gi/vfuncoutputs";
 export const folded = (value: Folded): number[] => value.vfuncRead();
 export const counted = (value: Counted): [number[], number] => value.vfuncRead();
+export const write = (value: Folded): void => value.vfuncWrite([1, 2, 3]);
 `,
                 "combined.ts": `import type { Combined, Reversed } from "@gtkx/gi/vfuncoutputs";
 export const first = (value: Combined): number[] => value.vfuncRead();
@@ -243,6 +244,9 @@ export const reversed = (value: Reversed): [number[], number] => value.vfuncRead
 `,
                 "rejected.ts": `import type { Combined } from "@gtkx/gi/vfuncoutputs";
 export const read = (value: Combined): [number[], number] => value.vfuncRead();
+`,
+                "rejected-input-length.ts": `import type { Folded } from "@gtkx/gi/vfuncoutputs";
+export const write = (value: Folded): void => value.vfuncWrite([1, 2, 3], 3);
 `,
             },
         });
@@ -262,6 +266,12 @@ export const read = (value: Combined): [number[], number] => value.vfuncRead();
     it("rejects an extra tuple element for a folded array length", () => {
         expect(() => {
             typecheck(project, "rejected.ts");
+        }).toThrow();
+    });
+
+    it("rejects a caller-supplied input array length", () => {
+        expect(() => {
+            typecheck(project, "rejected-input-length.ts");
         }).toThrow();
     });
 });

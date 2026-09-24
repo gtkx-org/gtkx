@@ -181,38 +181,8 @@ describe("a GL area rendered from React", () => {
         expect(result.signedTimestamp).toBe(result.timestamp);
     });
 
-    it("delivers debug messages without changing the context's debug state", async () => {
-        const result = await inGlContext(() => {
-            let message: gl.DebugMessage | null = null;
-            gl.disable(gl.DEBUG_OUTPUT);
-            gl.debugMessageCallback((received) => {
-                message = received;
-            });
-            const wasEnabledByCallback = gl.isEnabled(gl.DEBUG_OUTPUT);
-            gl.enable(gl.DEBUG_OUTPUT);
-            gl.enable(gl.DEBUG_OUTPUT_SYNCHRONOUS);
-            gl.debugMessageInsert(
-                gl.DEBUG_SOURCE_APPLICATION,
-                gl.DEBUG_TYPE_MARKER,
-                7,
-                gl.DEBUG_SEVERITY_NOTIFICATION,
-                -1,
-                "GTKX debug message",
-            );
-            gl.debugMessageCallback(null);
-            gl.disable(gl.DEBUG_OUTPUT_SYNCHRONOUS);
-            gl.disable(gl.DEBUG_OUTPUT);
-
-            return { wasEnabledByCallback, message };
-        });
-
-        expect(result.wasEnabledByCallback).toBe(false);
-        expect(result.message).toEqual({
-            source: gl.DEBUG_SOURCE_APPLICATION,
-            type: gl.DEBUG_TYPE_MARKER,
-            id: 7,
-            severity: gl.DEBUG_SEVERITY_NOTIFICATION,
-            message: "GTKX debug message",
-        });
+    it("omits unsupported driver debug entrypoints", () => {
+        expect(gl).not.toHaveProperty("debugMessageCallback");
+        expect(gl).not.toHaveProperty("getDebugMessageLog");
     });
 });

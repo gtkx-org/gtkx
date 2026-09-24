@@ -1,4 +1,5 @@
 import type { PrimitiveCategory } from "./primitives.js";
+import type { GirRecord } from "./record.js";
 import type { CArrayType, HashTableType, ListType, ParseContext, TypeId } from "./type-id.js";
 import type { GirType } from "./type.js";
 import { callbackFromNode } from "./callback.js";
@@ -10,6 +11,7 @@ import {
     parseNamespaceHeader,
     populateNamespaceBody,
 } from "./namespace.js";
+import { relaxMissingNullable } from "./nullable-overrides.js";
 import { parseGirFile, type RawNode } from "./parse.js";
 import { splitOptionalNamespace } from "./type-ref.js";
 
@@ -222,6 +224,18 @@ class Library {
 
         for (const value of shell.records) {
             this.addType(nsId, value.name, { kind: "record", namespace: shell, value });
+
+            this.relaxRecordCallbacks(shell.name, value);
+        }
+    }
+
+    private relaxRecordCallbacks(namespaceName: string, record: GirRecord): void {
+        for (const field of record.fields) {
+            const type = field.type === undefined ? undefined : this.typeFor(field.type);
+
+            if (type?.kind === "callback") {
+                relaxMissingNullable(type.value, `${namespaceName}.${record.name}.${field.name}`);
+            }
         }
     }
 

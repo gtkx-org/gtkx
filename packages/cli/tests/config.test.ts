@@ -40,6 +40,17 @@ const REJECTED_CONFIGS: RejectedConfig[] = [
     { title: "a wildcard library selection", config: `${HEAD}, libraries: "*" };\n` },
     { title: "a disabled graduated future", config: `${HEAD}, future: { v2ByteArrays: false } };\n` },
     { title: "an unknown future", config: `${HEAD}, future: { v2ByteArrrays: true } };\n` },
+    { title: "an unknown root option", config: `${HEAD}, libaries: ["Gio-2.0"] };\n` },
+    {
+        title: "an unknown React Compiler option",
+        config: `${HEAD}, reactCompiler: { panicTreshold: "all_errors" } };\n`,
+    },
+    {
+        title: "an unknown element option",
+        config: `${HEAD}, elements: { config: { GtkButton: { lazy: true } } } };\n`,
+    },
+    { title: "an unknown agent option", config: `${HEAD}, agents: { rule: false } };\n` },
+    { title: "an unknown MCP option", config: `${HEAD}, mcp: { readonly: true } };\n` },
     {
         title: "a retired deprecation id",
         config: `${HEAD}, deprecations: { silence: ["gtkx-v2-byte-arrays"] } };\n`,

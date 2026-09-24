@@ -20,9 +20,9 @@ function SwitchRow<
         <AdwSwitchRow
             {...rowProps}
             {...binding}
-            active={field.value === true}
+            active={field.value ?? false}
             onNotifyActive={(active, row) => {
-                field.onChange(active === true);
+                field.onChange(active ?? false);
                 rowProps.onNotifyActive?.(active, row);
             }}
         />

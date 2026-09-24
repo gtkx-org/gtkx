@@ -122,6 +122,7 @@ pub enum Descriptor {
         is_caller_allocated: Option<bool>,
         size: Option<u32>,
         is_inline: Option<bool>,
+        is_value_safe: Option<bool>,
     },
     Struct {
         ownership: Ownership,
@@ -131,6 +132,7 @@ pub enum Descriptor {
         shared_library: Option<String>,
         copy_fn_name: Option<String>,
         free_fn_name: Option<String>,
+        is_value_safe: Option<bool>,
     },
     Fundamental {
         ownership: Ownership,
@@ -140,6 +142,7 @@ pub enum Descriptor {
         type_name: Option<String>,
         is_caller_allocated: Option<bool>,
         is_inline: Option<bool>,
+        is_value_safe: Option<bool>,
     },
     Array {
         #[napi(ts_type = "Descriptor")]
@@ -172,7 +175,8 @@ pub enum Descriptor {
         has_user_data: Option<bool>,
         user_data_index: Option<u32>,
         can_throw: Option<bool>,
-        scope: Option<CallbackScope>,
+        scope: CallbackScope,
+        release_with_completion: Option<bool>,
     },
     Ref {
         #[napi(ts_type = "Descriptor")]
@@ -181,9 +185,46 @@ pub enum Descriptor {
     },
 }
 
+fn callback_lifetime(
+    scope: CallbackScope,
+    has_destroy: bool,
+    has_user_data: bool,
+    release_with_completion: bool,
+) -> Result<(CallbackScope, CallbackReleasePolicy)> {
+    let scope = if scope == CallbackScope::Notified && !has_destroy {
+        CallbackScope::Forever
+    } else {
+        scope
+    };
+    if release_with_completion && (scope != CallbackScope::Forever || has_destroy || !has_user_data)
+    {
+        return Err(Error::new(
+            Status::InvalidArg,
+            "A completion-tied callback requires retained scope, user data and no destroy notifier",
+        ));
+    }
+    let policy = if release_with_completion {
+        CallbackReleasePolicy::AsyncCompletion
+    } else {
+        CallbackReleasePolicy::Scope
+    };
+    Ok((scope, policy))
+}
+
 impl NestedDescriptor {
     fn into_codec(self) -> Result<Box<Codec>> {
         Ok(Box::new((*self.0).into_codec()?))
+    }
+
+    fn into_hash_table_key(self) -> Result<Box<Codec>> {
+        let codec = self.into_codec()?;
+        if matches!(codec.as_ref(), Codec::BigInt(_)) {
+            return Err(Error::new(
+                Status::InvalidArg,
+                "BigInt GHashTable keys have no supported storage contract",
+            ));
+        }
+        Ok(codec)
     }
 }
 
@@ -239,6 +280,7 @@ impl Descriptor {
                 is_caller_allocated,
                 size,
                 is_inline,
+                is_value_safe,
             } => Codec::Boxed(BoxedCodec {
                 ownership,
                 type_name,
@@ -248,6 +290,7 @@ impl Descriptor {
                 caller_allocated: is_caller_allocated.unwrap_or(false),
                 size: size.map(|n| n as usize),
                 inline: is_inline.unwrap_or(false),
+                value_safe: is_value_safe.unwrap_or(false),
             }),
             Self::Struct {
                 ownership,
@@ -257,6 +300,7 @@ impl Descriptor {
                 shared_library,
                 copy_fn_name,
                 free_fn_name,
+                is_value_safe,
             } => Codec::Struct(StructCodec {
                 ownership,
                 size: size.map(|n| n as usize),
@@ -265,6 +309,7 @@ impl Descriptor {
                 shared_library,
                 copy_fn_name,
                 free_fn_name,
+                value_safe: is_value_safe.unwrap_or(false),
             }),
             Self::Fundamental {
                 ownership,
@@ -274,6 +319,7 @@ impl Descriptor {
                 type_name: _,
                 is_caller_allocated,
                 is_inline,
+                is_value_safe,
             } => Codec::Fundamental(FundamentalCodec {
                 ownership,
                 shared_library,
@@ -281,6 +327,7 @@ impl Descriptor {
                 unref_fn_name,
                 caller_allocated: is_caller_allocated.unwrap_or(false),
                 inline: is_inline.unwrap_or(false),
+                value_safe: is_value_safe.unwrap_or(false),
             }),
             nested => nested.into_nested_codec()?,
         })
@@ -330,7 +377,7 @@ impl Descriptor {
                 value_descriptor,
                 ownership,
             } => Codec::HashTable(HashTableCodec {
-                key_codec: key_descriptor.into_codec()?,
+                key_codec: key_descriptor.into_hash_table_key()?,
                 value_codec: value_descriptor.into_codec()?,
                 ownership,
             }),
@@ -343,17 +390,16 @@ impl Descriptor {
                 user_data_index,
                 can_throw,
                 scope,
+                release_with_completion,
             } => {
                 let has_destroy = has_destroy.unwrap_or(false);
                 let has_user_data = has_user_data.unwrap_or(false);
-                let release_policy = if matches!(scope.as_ref(), Some(CallbackScope::Notified))
-                    && !has_destroy
-                    && has_user_data
-                {
-                    CallbackReleasePolicy::AsyncCompletion
-                } else {
-                    CallbackReleasePolicy::Scope
-                };
+                let (scope, release_policy) = callback_lifetime(
+                    scope,
+                    has_destroy,
+                    has_user_data,
+                    release_with_completion.unwrap_or(false),
+                )?;
                 Codec::Callback(CallbackCodec {
                     arg_codecs: arg_descriptors
                         .0
@@ -366,7 +412,7 @@ impl Descriptor {
                     has_user_data,
                     user_data_index: user_data_index.map(|n| n as usize),
                     can_throw: can_throw.unwrap_or(false),
-                    scope: Self::callback_scope(scope, has_destroy, has_user_data),
+                    scope,
                     release_policy,
                 })
             }
@@ -379,19 +425,5 @@ impl Descriptor {
             )?),
             _ => unreachable!("descriptors without nested descriptors are handled by into_codec"),
         })
-    }
-
-    fn callback_scope(
-        scope: Option<CallbackScope>,
-        has_destroy: bool,
-        has_user_data: bool,
-    ) -> CallbackScope {
-        match scope {
-            Some(CallbackScope::Notified) if !has_destroy => CallbackScope::Forever,
-            Some(scope) => scope,
-            None if !has_user_data && !has_destroy => CallbackScope::Forever,
-            None if has_destroy => CallbackScope::Notified,
-            None => CallbackScope::Call,
-        }
     }
 }

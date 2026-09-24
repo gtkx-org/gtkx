@@ -2,6 +2,7 @@ import type { AnyClass } from "@gtkx/utils";
 import { bindVfunc, type BindVfuncOptions } from "@gtkx/native";
 import { type Arg, isCallerAllocatedArg, requiresInputArg } from "./arg.js";
 import { buildNativeArgTypes, fromNativeCallable } from "./fn.js";
+import { foldedInputLengthSources, foldedValueLength } from "./folded-lengths.js";
 import { toNative } from "./native-value.js";
 import {
     getClassType,
@@ -20,6 +21,8 @@ import { findClassVfuncDescriptor, findInterfaceVfuncDescriptor, vfuncArgs } fro
 type Invoker = (instance: object, inputs: unknown[]) => unknown;
 type InvokerCache = WeakMap<AnyClass, Map<string, Invoker>>;
 type ResolvedSlot = { descriptor: VfuncDescriptor; interfaceType?: bigint };
+type VfuncInput = { kind: "value"; arg: Arg; inputIndex: number } |
+    { kind: "length"; arg: Arg; sourceInputIndex: number };
 
 const NO_BASELINE = -1;
 
@@ -34,6 +37,33 @@ const vfuncInvokers: InvokerCache = new WeakMap();
 function toNativeInput(arg: Arg, input: unknown): unknown {
     return isCallerAllocatedArg(arg) ? input : toNative(arg.type, input);
 }
+
+function vfuncInputs(args: Arg[], descriptor: VfuncDescriptor): VfuncInput[] {
+    const sources = foldedInputLengthSources(descriptor);
+    const required = args
+        .map((arg, descriptorIndex) => ({ arg, descriptorIndex }))
+        .filter(({ arg }) => requiresInputArg(arg))
+        .slice(1);
+    const publicInputIndex = (descriptorIndex: number): number =>
+        required.filter((input) => input.descriptorIndex < descriptorIndex && !sources.has(input.descriptorIndex))
+            .length;
+
+    return required.map(({ arg, descriptorIndex }) => {
+        const sourceDescriptorIndex = sources.get(descriptorIndex);
+
+        if (sourceDescriptorIndex === undefined) {
+            return { kind: "value", arg, inputIndex: publicInputIndex(descriptorIndex) };
+        }
+
+        return { kind: "length", arg, sourceInputIndex: publicInputIndex(sourceDescriptorIndex) };
+    });
+}
+
+const marshalVfuncInput = (input: VfuncInput, values: unknown[]): unknown =>
+    toNativeInput(
+        input.arg,
+        input.kind === "value" ? values[input.inputIndex] : foldedValueLength(values[input.sourceInputIndex]),
+    );
 
 function bindOptionsFor(
     slot: ResolvedSlot,
@@ -67,10 +97,16 @@ function bindOptionsFor(
 
 function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, caller: string): Invoker {
     const { descriptor } = slot;
+
+    if (descriptor.canCall === false) {
+        throw new Error(`${caller}: ${descriptor.className}.${descriptor.vfuncName} cannot be called`);
+    }
+
     const args = vfuncArgs(descriptor);
     const canThrow = descriptor.canThrow === true;
     const label = `${descriptor.className}.${descriptor.vfuncName}`;
-    const [, ...inputArgs] = args.filter(requiresInputArg);
+    const inputPlan = vfuncInputs(args, descriptor);
+    const inputCount = inputPlan.filter((input) => input.kind === "value").length;
     let pendingSeeds: RefSeeds | undefined;
 
     const takeRefSeeds = (): RefSeeds | undefined => {
@@ -91,14 +127,14 @@ function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, call
     );
 
     return (instance, inputs) => {
-        if (inputs.length !== inputArgs.length) {
+        if (inputs.length !== inputCount) {
             throw new Error(
-                `${caller}: ${label} expects ${String(inputArgs.length)} arguments, ` +
+                `${caller}: ${label} expects ${String(inputCount)} arguments, ` +
                 `received ${String(inputs.length)}`,
             );
         }
 
-        const nativeInputs = inputArgs.map((arg, index) => toNativeInput(arg, inputs[index]));
+        const nativeInputs = inputPlan.map((input) => marshalVfuncInput(input, inputs));
         pendingSeeds = SEEDED_SLOTS[label] ?? seedsFor(descriptor.argDescriptors, instance);
 
         return shaped(getHandle(instance), ...nativeInputs);

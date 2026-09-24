@@ -79,6 +79,8 @@ describe("renderHook", () => {
         });
 
         expect(counter.result.current.count).toBe(11);
+        await counter.rerender({ initial: 100 });
+        expect(counter.result.current.count).toBe(11);
 
         await act(() => {
             counter.result.current.decrement();
@@ -92,9 +94,16 @@ describe("renderHook", () => {
 
         const first = memo.result.current;
         expect(first()).toBe(1);
+        await memo.rerender({ value: 1 });
+        expect(memo.result.current).toBe(first);
         await memo.rerender({ value: 2 });
         expect(memo.result.current()).toBe(2);
         expect(memo.result.current).not.toBe(first);
+
+        const reference = await renderHook(() => useRef({ value: 1 }));
+        const firstRef = reference.result.current;
+        await reference.rerender();
+        expect(reference.result.current).toBe(firstRef);
     });
 
     it("runs and cleans up effects on every prop change and on unmount", async () => {

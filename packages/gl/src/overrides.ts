@@ -1,52 +1,9 @@
 import { t } from "@gtkx/runtime";
-import type {
-    DebugSeverity,
-    DebugSource,
-    DebugType,
-    GLenum,
-    GLint,
-    GLuint,
-} from "./generated/types.js";
+import type { GLenum, GLint, GLuint } from "./generated/types.js";
 import { getProgramiv, getProgramPipelineiv, getShaderiv, LIB } from "./generated/commands.js";
 import { INFO_LOG_LENGTH } from "./generated/enums.js";
 
 type LengthQuery = (id: GLuint, pname: GLenum) => GLint;
-type DebugCallbackArgs = [GLenum, GLenum, GLuint, GLenum, number, string];
-
-/**
- * A debug message reported by the GL driver.
- */
-type DebugMessage = {
-    /** The origin of the message (API, window system, shader compiler, and so on). */
-    source: DebugSource;
-    /** The category of the message (error, deprecated behavior, performance, and so on). */
-    type: DebugType;
-    /** The driver-assigned identifier of the message. */
-    id: GLuint;
-    /** The severity level of the message. */
-    severity: DebugSeverity;
-    /** The human-readable message text. */
-    message: string;
-};
-
-/**
- * Callback invoked for each GL debug message reported by the driver.
- * @param message - The message reported by the driver.
- */
-type DebugMessageCallback = (message: DebugMessage) => void;
-
-const glDebugMessageCallbackBinding = t.bind(
-    LIB,
-    "glDebugMessageCallback",
-    [
-        t.callback([t.uint32, t.uint32, t.uint32, t.uint32, t.int32, t.string("borrowed"), t.buffer], t.void, {
-            hasUserData: true,
-            userDataIndex: 6,
-            scope: "forever",
-        }),
-    ],
-    t.void,
-);
 
 const readInfoLog = (symbol: string, id: GLuint, query: LengthQuery): string => {
     const length = query(id, INFO_LOG_LENGTH);
@@ -95,29 +52,4 @@ function getProgramPipelineInfoLog(pipeline: GLuint): string {
     return readInfoLog("glGetProgramPipelineInfoLog", pipeline, getProgramPipelineiv);
 }
 
-/**
- * Installs a callback that receives GL debug messages.
- * Passing null removes any previously installed callback.
- * @param callback The handler to invoke for each debug message, or null to clear it.
- */
-function debugMessageCallback(callback: DebugMessageCallback | null): void {
-    if (callback === null) {
-        glDebugMessageCallbackBinding(null);
-
-        return;
-    }
-
-    glDebugMessageCallbackBinding((...args: DebugCallbackArgs) => {
-        const [source, type, id, severity, , message] = args;
-        callback({ source, type, id, severity, message });
-    });
-}
-
-export {
-    getShaderInfoLog,
-    getProgramInfoLog,
-    getProgramPipelineInfoLog,
-    debugMessageCallback,
-    type DebugMessage,
-    type DebugMessageCallback,
-};
+export { getShaderInfoLog, getProgramInfoLog, getProgramPipelineInfoLog };

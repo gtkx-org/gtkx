@@ -12,6 +12,7 @@ pub struct FundamentalCodec {
     pub unref_fn_name: String,
     pub caller_allocated: bool,
     pub inline: bool,
+    pub value_safe: bool,
 }
 
 impl FundamentalCodec {

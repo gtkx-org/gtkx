@@ -31,7 +31,7 @@ const renderStack = async (): Promise<StackFixture> => {
                 <GtkButton label="On top" />
             </GtkStackPage>
             <GtkStackPage name="second">
-                <GtkButton label="Behind" />
+                <GtkButton name="behind-button" label="Behind" />
             </GtkStackPage>
         </GtkStack>,
     );
@@ -74,7 +74,7 @@ describe("queries over a Gtk.Stack", () => {
     it("skips a widget on a non-visible page, whatever the query family", async () => {
         await renderStack();
         expect(screen.queryByText("Behind")).toBeNull();
-        expect(screen.queryByName("Behind")).toBeNull();
+        expect(screen.queryByName("behind-button")).toBeNull();
         expect(screen.queryByLabelText("Behind")).toBeNull();
         expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Behind" })).toBeNull();
         expect(screen.queryByText("On top")).not.toBeNull();
@@ -93,6 +93,8 @@ describe("queries over a Gtk.Stack", () => {
         });
 
         await screen.findByText("Behind");
+        expect(screen.getByName("behind-button"))
+            .toBe(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Behind" }));
         expect(screen.queryByText("On top")).toBeNull();
     });
 });

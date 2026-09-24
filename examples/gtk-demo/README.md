@@ -9,4 +9,4 @@ pnpm --filter gtk-demo dev
 pnpm vitest run --project gtk-demo
 ```
 
-See the [GTKX guides](https://gtkx.dev/guide/components) and the demos under `src/demos`.
+See the [GTKX guides](https://gtkx.dev/v2/guide/components) and the demos under `src/demos`.

@@ -7,4 +7,4 @@ pnpm --filter navigation dev
 pnpm --filter navigation test
 ```
 
-Run from the repository root after `pnpm install` and `pnpm build`. See the [navigation guide](https://gtkx.dev/guide/navigation) and [React Navigation](https://reactnavigation.org/docs/getting-started).
+Run from the repository root after `pnpm install` and `pnpm build`. See the [navigation guide](https://gtkx.dev/v2/guide/navigation) and [React Navigation](https://reactnavigation.org/docs/getting-started).

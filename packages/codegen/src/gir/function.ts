@@ -3,10 +3,10 @@ import type { ParseContext } from "./type-id.js";
 import { type CursorParameterNames, PARAMETERS_MISSING_ARRAY_EXTENT } from "./cursor-overrides.js";
 import { FUNCTIONS_MISSING_FINISH_FUNC } from "./finish-overrides.js";
 import { HIDDEN_SYMBOLS } from "./hidden-symbols.js";
-import { PARAMETERS_MISSING_NULLABLE_ANNOTATION } from "./nullable-overrides.js";
+import { relaxMissingNullable } from "./nullable-overrides.js";
 import { type GirParameter, type GirReturnValue, parameterFromNode, parseCallable } from "./parameter.js";
 import { attr, getChild, type RawNode } from "./parse.js";
-import { RETURN_TRANSFER_OVERRIDES } from "./transfer-overrides.js";
+import { PARAMETER_TRANSFER_OVERRIDES, RETURN_TRANSFER_OVERRIDES } from "./transfer-overrides.js";
 import { RETURNS_MISSING_UCS4_ARRAY_TYPE } from "./ucs4-overrides.js";
 
 type GirFunction = {
@@ -26,24 +26,6 @@ type GirFunction = {
 
 const DECLARED_FUNCTION_NAMES: WeakMap<GirFunction, string> = new WeakMap();
 
-const relaxParameters = (parameters: GirParameter[], names: string[]): void => {
-    for (const parameter of parameters) {
-        if (names.includes(parameter.name)) {
-            parameter.nullable = true;
-        }
-    }
-};
-
-const relaxMissingNullable = (fn: GirFunction): GirFunction => {
-    const names = fn.cIdentifier === undefined ? undefined : PARAMETERS_MISSING_NULLABLE_ANNOTATION.get(fn.cIdentifier);
-
-    if (names !== undefined) {
-        relaxParameters(fn.parameters, names);
-    }
-
-    return fn;
-};
-
 const parameterIndexFor = (parameters: GirParameter[], name: string): number => {
     const index = parameters.findIndex((parameter) => parameter.name === name);
 
@@ -54,24 +36,41 @@ const parameterIndexFor = (parameters: GirParameter[], name: string): number => 
     return index;
 };
 
-const bindCursorParameters = (parameters: GirParameter[], corrections: CursorParameterNames[]): void => {
+const bindCursorParameters = (
+    parameters: GirParameter[],
+    corrections: CursorParameterNames[],
+    context: ParseContext,
+): void => {
     for (const names of corrections) {
         const parameter = parameters[parameterIndexFor(parameters, names.cursor)];
 
-        if (parameter !== undefined) {
-            parameter.cursor = {
-                baseIndex: parameterIndexFor(parameters, names.base),
-                lengthIndex: parameterIndexFor(parameters, names.length),
-            };
+        if (parameter === undefined) {
+            continue;
+        }
+        parameter.cursor = {
+            baseIndex: parameterIndexFor(parameters, names.base),
+            lengthIndex: parameterIndexFor(parameters, names.length),
+        };
+        if (names.isMissingArrayType === true) {
+            parameter.type = context.addContainer({
+                kind: "carray",
+                element: context.addPrimitive("uint8"),
+                elementCType: "char",
+                arrayCType: parameter.cType,
+                lengthParameterIndex: parameter.cursor.lengthIndex,
+                fixedSize: undefined,
+                isZeroTerminated: false,
+            });
+            parameter.transferOwnership = "none";
         }
     }
 };
 
-const bindMissingArrayExtent = (fn: GirFunction): GirFunction => {
+const bindMissingArrayExtent = (fn: GirFunction, context: ParseContext): GirFunction => {
     const corrections = fn.cIdentifier === undefined ? undefined : PARAMETERS_MISSING_ARRAY_EXTENT.get(fn.cIdentifier);
 
     if (corrections !== undefined) {
-        bindCursorParameters(fn.parameters, corrections);
+        bindCursorParameters(fn.parameters, corrections, context);
     }
 
     return fn;
@@ -98,6 +97,22 @@ const applyReturnTransfer = (fn: GirFunction): GirFunction => {
 
     if (transfer !== undefined) {
         fn.returnValue.transferOwnership = transfer;
+    }
+
+    return fn;
+};
+
+const applyParameterTransfers = (fn: GirFunction): GirFunction => {
+    if (fn.cIdentifier === undefined) {
+        return fn;
+    }
+
+    for (const parameter of fn.parameters) {
+        const transfer = PARAMETER_TRANSFER_OVERRIDES.get(`${fn.cIdentifier}:${parameter.name}`);
+
+        if (transfer !== undefined) {
+            parameter.transferOwnership = transfer;
+        }
     }
 
     return fn;
@@ -137,9 +152,10 @@ const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => 
         DECLARED_FUNCTION_NAMES.set(fn, declaredName);
     }
 
-    const relaxed = applyReturnTransfer(relaxMissingNullable(fn));
+    relaxMissingNullable(fn, cIdentifier);
+    const relaxed = applyParameterTransfers(applyReturnTransfer(fn));
 
-    return bindMissingUcs4ReturnArray(bindMissingArrayExtent(relaxed), context);
+    return bindMissingUcs4ReturnArray(bindMissingArrayExtent(relaxed, context), context);
 };
 
 const declaredFunctionName = (fn: GirFunction): string => DECLARED_FUNCTION_NAMES.get(fn) ?? fn.name;

@@ -53,6 +53,7 @@ export {
     emitSignal,
     getSignalBaseName,
     type SignalHandler,
+    type SignalHandlerId,
     signalForHandlerName,
 } from "./signal.js";
 export { t } from "./t.js";

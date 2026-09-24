@@ -16,7 +16,7 @@ function PasswordEntryRow<
 
     const binding = useFieldWidget<Adw.PasswordEntryRow>(field, fieldState, rowProps, selectText);
 
-    const value = typeof field.value === "string" ? field.value : "";
+    const value = field.value ?? "";
 
     return (
         <AdwPasswordEntryRow

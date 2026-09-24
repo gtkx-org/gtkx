@@ -1,0 +1,320 @@
+<?xml version="1.0"?>
+<repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"
+    xmlns:c="http://www.gtk.org/introspection/c/1.0"
+    xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GObject" version="2.0"/>
+  <namespace name="NumericTables" version="1.0" shared-library="libnumerictables.so.0"
+      c:identifier-prefixes="NumericTables" c:symbol-prefixes="numeric_tables">
+    <alias name="SignedCell" c:type="NumericTablesSignedCell"><type name="gint64" c:type="gint64"/></alias>
+    <alias name="UnsignedCell" c:type="NumericTablesUnsignedCell"><type name="guint64" c:type="guint64"/></alias>
+    <alias name="FloatCell" c:type="NumericTablesFloatCell"><type name="gfloat" c:type="gfloat"/></alias>
+    <alias name="TypeWord" c:type="GType"><type name="gsize" c:type="gsize"/></alias>
+    <alias name="TypeWordChain" c:type="NumericTablesTypeWordChain"><type name="TypeWord" c:type="GType"/></alias>
+    <alias name="SizeWord" c:type="NumericTablesSizeWord"><type name="gsize" c:type="gsize"/></alias>
+    <constant name="TYPE_WORD_BIT" value="1" c:type="NUMERIC_TABLES_TYPE_WORD_BIT"><type name="TypeWordChain" c:type="NumericTablesTypeWordChain"/></constant>
+    <constant name="SIZE_WORD_LIMIT" value="8" c:type="NUMERIC_TABLES_SIZE_WORD_LIMIT"><type name="SizeWord" c:type="NumericTablesSizeWord"/></constant>
+    <alias name="Table" c:type="NumericTablesTable"><type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="UnsignedCell" c:type="NumericTablesUnsignedCell"/></type></alias>
+    <alias name="TableAlias" c:type="NumericTablesTableAlias"><type name="Table" c:type="NumericTablesTable"/></alias>
+    <alias name="NestedTables" c:type="NumericTablesNestedTables"><type name="GLib.List" c:type="GList*"><type name="TableAlias" c:type="NumericTablesTableAlias"/></type></alias>
+    <alias name="TypeId" c:type="NumericTablesTypeId"><type name="GType" c:type="GType"/></alias>
+    <alias name="TypeTable" c:type="NumericTablesTypeTable"><type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="TypeId" c:type="NumericTablesTypeId"/></type></alias>
+    <alias name="TypeTableAlias" c:type="NumericTablesTypeTableAlias"><type name="TypeTable" c:type="NumericTablesTypeTable"/></alias>
+    <enumeration name="Key" c:type="NumericTablesKey">
+      <member name="first" value="0" c:identifier="NUMERIC_TABLES_KEY_FIRST"/>
+      <member name="second" value="1" c:identifier="NUMERIC_TABLES_KEY_SECOND"/>
+    </enumeration>
+    <callback name="OwnedInput" c:type="NumericTablesOwnedInput">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="full"><type name="TableAlias" c:type="NumericTablesTableAlias"/></parameter></parameters>
+    </callback>
+    <callback name="BorrowedReturn" c:type="NumericTablesBorrowedReturn">
+      <return-value transfer-ownership="none"><type name="TableAlias" c:type="NumericTablesTableAlias"/></return-value>
+    </callback>
+    <callback name="OwnedReturn" c:type="NumericTablesOwnedReturn">
+      <return-value transfer-ownership="full"><type name="TableAlias" c:type="NumericTablesTableAlias"/></return-value>
+    </callback>
+    <callback name="ContainerReturn" c:type="NumericTablesContainerReturn">
+      <return-value transfer-ownership="container"><type name="TableAlias" c:type="NumericTablesTableAlias"/></return-value>
+    </callback>
+    <callback name="OwnedOutput" c:type="NumericTablesOwnedOutput">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="full" direction="out" caller-allocates="0"><type name="TableAlias" c:type="GHashTable**"/></parameter></parameters>
+    </callback>
+    <callback name="OwnedInout" c:type="NumericTablesOwnedInout">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="full" direction="inout"><type name="TableAlias" c:type="GHashTable**"/></parameter></parameters>
+    </callback>
+    <callback name="OwnedInputWithData" c:type="NumericTablesOwnedInputWithData">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="full"><type name="TableAlias" c:type="NumericTablesTableAlias"/></parameter><parameter name="user_data" transfer-ownership="none"><type name="gpointer" c:type="gpointer"/></parameter></parameters>
+    </callback>
+    <callback name="BorrowedInputWithData" c:type="NumericTablesBorrowedInputWithData">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="none"><type name="TableAlias" c:type="NumericTablesTableAlias"/></parameter><parameter name="user_data" transfer-ownership="none"><type name="gpointer" c:type="gpointer"/></parameter></parameters>
+    </callback>
+    <alias name="OwnedReturnAlias" c:type="NumericTablesOwnedReturnAlias"><type name="OwnedReturn" c:type="NumericTablesOwnedReturn"/></alias>
+    <function name="take_borrowed" c:identifier="numeric_tables_take_borrowed">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="none"><type name="TableAlias" c:type="NumericTablesTableAlias"/></parameter></parameters>
+    </function>
+    <function name="take_signed_borrowed" c:identifier="numeric_tables_take_signed_borrowed">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="none"><type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="SignedCell" c:type="NumericTablesSignedCell"/></type></parameter></parameters>
+    </function>
+    <function name="take_full" c:identifier="numeric_tables_take_full">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="full"><type name="TableAlias" c:type="NumericTablesTableAlias"/></parameter></parameters>
+    </function>
+    <function name="take_container" c:identifier="numeric_tables_take_container">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="container"><type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="FloatCell" c:type="NumericTablesFloatCell"/></type></parameter></parameters>
+    </function>
+    <function name="take_key" c:identifier="numeric_tables_take_key">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="full"><type name="GLib.HashTable" c:type="GHashTable*"><type name="gdouble" c:type="gdouble"/><type name="gint" c:type="gint"/></type></parameter></parameters>
+    </function>
+    <function name="take_type" c:identifier="numeric_tables_take_type">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="full"><type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="GType" c:type="GType"/></type></parameter></parameters>
+    </function>
+    <function name="take_nested_full" c:identifier="numeric_tables_take_nested_full">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="tables" transfer-ownership="full"><type name="NestedTables" c:type="GList*"/></parameter></parameters>
+    </function>
+    <function name="take_words" c:identifier="numeric_tables_take_words">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="full"><type name="GLib.HashTable" c:type="GHashTable*"><type name="gsize" c:type="gsize"/><type name="gssize" c:type="gssize"/></type></parameter></parameters>
+    </function>
+    <function name="take_enum" c:identifier="numeric_tables_take_enum">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="full"><type name="GLib.HashTable" c:type="GHashTable*"><type name="Key" c:type="NumericTablesKey"/><type name="utf8" c:type="gchar*"/></type></parameter></parameters>
+    </function>
+    <function name="take_type_word_alias" c:identifier="numeric_tables_take_type_word_alias">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="full"><type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="TypeWord" c:type="GType"/></type></parameter></parameters>
+    </function>
+    <function name="read_full" c:identifier="numeric_tables_read_full">
+      <return-value transfer-ownership="full"><type name="TableAlias" c:type="NumericTablesTableAlias"/></return-value>
+    </function>
+    <function name="read_out" c:identifier="numeric_tables_read_out">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="full" direction="out" caller-allocates="0"><type name="TableAlias" c:type="GHashTable**"/></parameter></parameters>
+    </function>
+    <function name="read_nested" c:identifier="numeric_tables_read_nested">
+      <return-value transfer-ownership="full"><type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="TableAlias" c:type="NumericTablesTableAlias"/></type></return-value>
+    </function>
+    <function name="use_owned_input" c:identifier="numeric_tables_use_owned_input">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="callback" transfer-ownership="none" scope="call"><type name="OwnedInput" c:type="NumericTablesOwnedInput"/></parameter></parameters>
+    </function>
+    <function name="use_borrowed_return" c:identifier="numeric_tables_use_borrowed_return">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="callback" transfer-ownership="none" scope="call"><type name="BorrowedReturn" c:type="NumericTablesBorrowedReturn"/></parameter></parameters>
+    </function>
+    <function name="use_owned_return" c:identifier="numeric_tables_use_owned_return">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="callback" transfer-ownership="none" scope="call"><type name="OwnedReturnAlias" c:type="NumericTablesOwnedReturnAlias"/></parameter></parameters>
+    </function>
+    <function name="use_owned_output" c:identifier="numeric_tables_use_owned_output">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="callback" transfer-ownership="none" scope="call"><type name="OwnedOutput" c:type="NumericTablesOwnedOutput"/></parameter></parameters>
+    </function>
+    <alias name="KeyTable" c:type="NumericTablesKeyTable"><type name="GLib.HashTable" c:type="GHashTable*"><type name="UnsignedCell" c:type="NumericTablesUnsignedCell"/><type name="gint" c:type="gint"/></type></alias>
+    <alias name="KeyTableAlias" c:type="NumericTablesKeyTableAlias"><type name="KeyTable" c:type="NumericTablesKeyTable"/></alias>
+    <callback name="KeyInput" c:type="NumericTablesKeyInput">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="full"><type name="KeyTableAlias" c:type="NumericTablesKeyTableAlias"/></parameter></parameters>
+    </callback>
+    <callback name="TypeInput" c:type="NumericTablesTypeInput">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="full"><type name="TypeTableAlias" c:type="NumericTablesTypeTableAlias"/></parameter></parameters>
+    </callback>
+    <callback name="KeyReturn" c:type="NumericTablesKeyReturn">
+      <return-value transfer-ownership="none"><type name="KeyTableAlias" c:type="NumericTablesKeyTableAlias"/></return-value>
+    </callback>
+    <callback name="TypeReturn" c:type="NumericTablesTypeReturn">
+      <return-value transfer-ownership="none"><type name="TypeTableAlias" c:type="NumericTablesTypeTableAlias"/></return-value>
+    </callback>
+    <callback name="KeyOutput" c:type="NumericTablesKeyOutput">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="none" direction="out" caller-allocates="0"><type name="KeyTableAlias" c:type="GHashTable**"/></parameter></parameters>
+    </callback>
+    <callback name="TypeOutput" c:type="NumericTablesTypeOutput">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="none" direction="out" caller-allocates="0"><type name="TypeTableAlias" c:type="GHashTable**"/></parameter></parameters>
+    </callback>
+    <function name="take_key_borrowed" c:identifier="numeric_tables_take_key_borrowed">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="none"><type name="KeyTableAlias" c:type="NumericTablesKeyTableAlias"/></parameter></parameters>
+    </function>
+    <function name="take_type_borrowed" c:identifier="numeric_tables_take_type_borrowed">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="none"><type name="TypeTableAlias" c:type="NumericTablesTypeTableAlias"/></parameter></parameters>
+    </function>
+    <function name="read_signed_keys" c:identifier="numeric_tables_read_signed_keys">
+      <return-value transfer-ownership="none"><type name="GLib.HashTable" c:type="GHashTable*"><type name="gint64" c:type="gint64"/><type name="gint" c:type="gint"/></type></return-value>
+    </function>
+    <function name="read_type_keys" c:identifier="numeric_tables_read_type_keys">
+      <return-value transfer-ownership="full"><type name="GLib.HashTable" c:type="GHashTable*"><type name="GType" c:type="GType"/><type name="gint" c:type="gint"/></type></return-value>
+    </function>
+    <function name="read_key_out" c:identifier="numeric_tables_read_key_out">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="full" direction="out" caller-allocates="0"><type name="KeyTableAlias" c:type="GHashTable**"/></parameter></parameters>
+    </function>
+    <function name="read_type_out" c:identifier="numeric_tables_read_type_out">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="full" direction="out" caller-allocates="0"><type name="TypeTableAlias" c:type="GHashTable**"/></parameter></parameters>
+    </function>
+    <function name="read_key_arrays" c:identifier="numeric_tables_read_key_arrays">
+      <return-value transfer-ownership="full"><type name="GLib.PtrArray" c:type="GPtrArray*"><type name="KeyTableAlias" c:type="NumericTablesKeyTableAlias"/></type></return-value>
+    </function>
+    <function name="read_type_arrays" c:identifier="numeric_tables_read_type_arrays">
+      <return-value transfer-ownership="full"><type name="GLib.PtrArray" c:type="GPtrArray*"><type name="TypeTableAlias" c:type="NumericTablesTypeTableAlias"/></type></return-value>
+    </function>
+    <function name="read_double_keys" c:identifier="numeric_tables_read_double_keys">
+      <return-value transfer-ownership="full"><type name="GLib.HashTable" c:type="GHashTable*"><type name="gdouble" c:type="gdouble"/><type name="gint" c:type="gint"/></type></return-value>
+    </function>
+    <function name="take_type_word_keys" c:identifier="numeric_tables_take_type_word_keys">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="table" transfer-ownership="none"><type name="GLib.HashTable" c:type="GHashTable*"><type name="TypeWord" c:type="GType"/><type name="gint" c:type="gint"/></type></parameter></parameters>
+    </function>
+    <function name="use_key_input" c:identifier="numeric_tables_use_key_input">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="callback" transfer-ownership="none" scope="call"><type name="KeyInput" c:type="NumericTablesKeyInput"/></parameter></parameters>
+    </function>
+    <function name="use_type_input" c:identifier="numeric_tables_use_type_input">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="callback" transfer-ownership="none" scope="call"><type name="TypeInput" c:type="NumericTablesTypeInput"/></parameter></parameters>
+    </function>
+    <function name="read_types" c:identifier="numeric_tables_read_types">
+      <return-value transfer-ownership="full"><type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="GType" c:type="GType"/></type></return-value>
+    </function>
+    <function name="read_nested_types" c:identifier="numeric_tables_read_nested_types">
+      <return-value transfer-ownership="none"><type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="TypeTableAlias" c:type="NumericTablesTypeTableAlias"/></type></return-value>
+    </function>
+    <function name="identity_type" c:identifier="numeric_tables_identity_type">
+      <return-value transfer-ownership="none"><type name="GType" c:type="GType"/></return-value>
+      <parameters><parameter name="value" transfer-ownership="none"><type name="GType" c:type="GType"/></parameter></parameters>
+    </function>
+    <function name="identity_type_word" c:identifier="numeric_tables_identity_type_word">
+      <return-value transfer-ownership="none"><type name="TypeWord" c:type="GType"/></return-value>
+      <parameters><parameter name="value" transfer-ownership="none"><type name="TypeWord" c:type="GType"/></parameter></parameters>
+    </function>
+    <function name="identity_type_word_chain" c:identifier="numeric_tables_identity_type_word_chain">
+      <return-value transfer-ownership="none"><type name="TypeWordChain" c:type="NumericTablesTypeWordChain"/></return-value>
+      <parameters><parameter name="value" transfer-ownership="none"><type name="TypeWordChain" c:type="NumericTablesTypeWordChain"/></parameter></parameters>
+    </function>
+    <function name="identity_size_word" c:identifier="numeric_tables_identity_size_word">
+      <return-value transfer-ownership="none"><type name="SizeWord" c:type="NumericTablesSizeWord"/></return-value>
+      <parameters><parameter name="value" transfer-ownership="none"><type name="SizeWord" c:type="NumericTablesSizeWord"/></parameter></parameters>
+    </function>
+    <function name="read_type_word_chain" c:identifier="numeric_tables_read_type_word_chain">
+      <return-value transfer-ownership="none"><type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="TypeWordChain" c:type="NumericTablesTypeWordChain"/></type></return-value>
+    </function>
+    <record name="Frame" c:type="NumericTablesFrame" glib:type-name="NumericTablesFrame" glib:get-type="numeric_tables_frame_get_type">
+      <field name="before" writable="1"><type name="gint" c:type="gint"/></field>
+      <field name="keyed" writable="1"><type name="KeyTableAlias" c:type="NumericTablesKeyTableAlias"/></field>
+      <field name="typed" writable="1"><type name="TypeTableAlias" c:type="NumericTablesTypeTableAlias"/></field>
+      <field name="after" writable="1"><type name="gint" c:type="gint"/></field>
+    </record>
+    <class name="Probe" parent="GObject.Object" c:type="NumericTablesProbe"
+        glib:type-name="NumericTablesProbe" glib:get-type="numeric_tables_probe_get_type"
+        glib:type-struct="ProbeClass">
+      <property name="count" writable="1" transfer-ownership="none"><type name="gint" c:type="gint"/></property>
+      <property name="type-word" writable="1" transfer-ownership="none"><type name="TypeWord" c:type="GType"/></property>
+      <property name="chain-word" writable="1" transfer-ownership="none"><type name="TypeWordChain" c:type="NumericTablesTypeWordChain"/></property>
+      <property name="size-word" writable="1" transfer-ownership="none"><type name="SizeWord" c:type="NumericTablesSizeWord"/></property>
+      <property name="keyed" writable="1" transfer-ownership="none"><type name="KeyTableAlias" c:type="NumericTablesKeyTableAlias"/></property>
+      <property name="typed" writable="1" transfer-ownership="none"><type name="TypeTableAlias" c:type="NumericTablesTypeTableAlias"/></property>
+      <glib:signal name="changed" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="count" transfer-ownership="none"><type name="gint" c:type="gint"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="keyed" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="table" transfer-ownership="none"><type name="KeyTableAlias" c:type="NumericTablesKeyTableAlias"/></parameter></parameters>
+      </glib:signal>
+      <glib:signal name="typed" when="last">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><parameter name="table" transfer-ownership="none"><type name="TypeTableAlias" c:type="NumericTablesTypeTableAlias"/></parameter></parameters>
+      </glib:signal>
+      <method name="take_full" c:identifier="numeric_tables_probe_take_full">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="NumericTablesProbe*"/></instance-parameter><parameter name="table" transfer-ownership="full"><type name="TableAlias" c:type="NumericTablesTableAlias"/></parameter></parameters>
+      </method>
+      <method name="take_borrowed" c:identifier="numeric_tables_probe_take_borrowed">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters><instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="NumericTablesProbe*"/></instance-parameter><parameter name="table" transfer-ownership="none"><type name="TableAlias" c:type="NumericTablesTableAlias"/></parameter></parameters>
+      </method>
+    </class>
+    <record name="ProbeClass" c:type="NumericTablesProbeClass" glib:is-gtype-struct-for="Probe">
+      <field name="parent_class"><type name="GObject.ObjectClass" c:type="GObjectClass"/></field>
+      <field name="key_input">
+        <callback name="key_input">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters><parameter name="self" transfer-ownership="none"><type name="Probe" c:type="NumericTablesProbe*"/></parameter><parameter name="table" transfer-ownership="none"><type name="KeyTableAlias" c:type="NumericTablesKeyTableAlias"/></parameter></parameters>
+        </callback>
+      </field>
+      <field name="type_input">
+        <callback name="type_input">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters><parameter name="self" transfer-ownership="none"><type name="Probe" c:type="NumericTablesProbe*"/></parameter><parameter name="table" transfer-ownership="none"><type name="TypeTableAlias" c:type="NumericTablesTypeTableAlias"/></parameter></parameters>
+        </callback>
+      </field>
+      <field name="key_result">
+        <callback name="key_result">
+          <return-value transfer-ownership="none"><type name="KeyTableAlias" c:type="NumericTablesKeyTableAlias"/></return-value>
+          <parameters><parameter name="self" transfer-ownership="none"><type name="Probe" c:type="NumericTablesProbe*"/></parameter></parameters>
+        </callback>
+      </field>
+      <field name="type_result">
+        <callback name="type_result">
+          <return-value transfer-ownership="none"><type name="TypeTableAlias" c:type="NumericTablesTypeTableAlias"/></return-value>
+          <parameters><parameter name="self" transfer-ownership="none"><type name="Probe" c:type="NumericTablesProbe*"/></parameter></parameters>
+        </callback>
+      </field>
+      <field name="count">
+        <callback name="count">
+          <return-value transfer-ownership="none"><type name="gint" c:type="gint"/></return-value>
+          <parameters><parameter name="self" transfer-ownership="none"><type name="Probe" c:type="NumericTablesProbe*"/></parameter></parameters>
+        </callback>
+      </field>
+      <field name="borrowed_input">
+        <callback name="borrowed_input">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters><parameter name="self" transfer-ownership="none"><type name="Probe" c:type="NumericTablesProbe*"/></parameter><parameter name="table" transfer-ownership="none"><type name="TableAlias" c:type="NumericTablesTableAlias"/></parameter></parameters>
+        </callback>
+      </field>
+      <field name="owned_input">
+        <callback name="owned_input">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters><parameter name="self" transfer-ownership="none"><type name="Probe" c:type="NumericTablesProbe*"/></parameter><parameter name="table" transfer-ownership="full"><type name="TableAlias" c:type="NumericTablesTableAlias"/></parameter></parameters>
+        </callback>
+      </field>
+      <field name="owned_result">
+        <callback name="owned_result">
+          <return-value transfer-ownership="full"><type name="TableAlias" c:type="NumericTablesTableAlias"/></return-value>
+          <parameters><parameter name="self" transfer-ownership="none"><type name="Probe" c:type="NumericTablesProbe*"/></parameter></parameters>
+        </callback>
+      </field>
+      <field name="owned_output">
+        <callback name="owned_output">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters><parameter name="self" transfer-ownership="none"><type name="Probe" c:type="NumericTablesProbe*"/></parameter><parameter name="table" transfer-ownership="full" direction="out" caller-allocates="0"><type name="TableAlias" c:type="GHashTable**"/></parameter></parameters>
+        </callback>
+      </field>
+      <field name="decoded_borrowed">
+        <callback name="decoded_borrowed">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters><parameter name="self" transfer-ownership="none"><type name="Probe" c:type="NumericTablesProbe*"/></parameter><parameter name="operation" transfer-ownership="none" closure="2" scope="call"><type name="BorrowedInputWithData" c:type="NumericTablesBorrowedInputWithData"/></parameter><parameter name="user_data" transfer-ownership="none"><type name="gpointer" c:type="gpointer"/></parameter></parameters>
+        </callback>
+      </field>
+      <field name="decoded_owned">
+        <callback name="decoded_owned">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters><parameter name="self" transfer-ownership="none"><type name="Probe" c:type="NumericTablesProbe*"/></parameter><parameter name="operation" transfer-ownership="none" closure="2" scope="call"><type name="OwnedInputWithData" c:type="NumericTablesOwnedInputWithData"/></parameter><parameter name="user_data" transfer-ownership="none"><type name="gpointer" c:type="gpointer"/></parameter></parameters>
+        </callback>
+      </field>
+    </record>
+  </namespace>
+</repository>

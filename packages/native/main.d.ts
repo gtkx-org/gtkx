@@ -19,6 +19,7 @@ declare module "./index.js" {
      */
     export type FieldDescriptor = { _opaque: "FieldDescriptor" };
     export type Ref = { value: unknown };
+    export type CallbackFailure = { nativeError: ExternalObject<Handle>; thrown: unknown };
 }
 
 type LogLevel = "error" | "critical" | "warning" | "message" | "info" | "debug";

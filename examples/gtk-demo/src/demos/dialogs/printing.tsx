@@ -1,10 +1,10 @@
-import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { useParentWindow } from "@gtkx/react";
-import { useEffect } from "react";
+import { useState } from "react";
 import type { Demo, DemoProps } from "../types.js";
-import { configurePrintOperation } from "./print-operation.js";
-import sourceCode from "./print-operation.ts?raw";
+import { PrintOperation } from "./print-operation.js";
+import sourceCode from "./print-operation.tsx?raw";
 
 const printingDemo: Demo = {
     id: "printing",
@@ -16,34 +16,50 @@ const printingDemo: Demo = {
     isDialogOnly: true,
 };
 
-const runPrintOperation = (parentWindow: Gtk.Window | null, source: string, onDone: () => void) => {
-    const printOp = configurePrintOperation(source);
-
-    printOp.on("done", () => {
-        onDone();
-    });
-
+const operationError = (operation: Gtk.PrintOperation): string => {
     try {
-        printOp.run(Gtk.PrintOperationAction.PRINT_DIALOG, parentWindow);
+        operation.getError();
     } catch (error) {
-        const dialog = new Adw.AlertDialog();
-        dialog.setHeading(String(error));
-        dialog.addResponse("ok", "_OK");
-        dialog.setDefaultResponse("ok");
-        dialog.setCloseResponse("ok");
-        dialog.present(parentWindow);
-        onDone();
+        return String(error);
     }
+
+    return "Printing failed";
 };
 
 function PrintingDemo({ onClose }: DemoProps) {
     const parentWindow = useParentWindow();
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        runPrintOperation(parentWindow, sourceCode, () => onClose?.());
-    }, [parentWindow, onClose]);
-
-    return null;
+    return (
+        <>
+            {parentWindow !== null && (
+                <PrintOperation
+                    source={sourceCode}
+                    action={Gtk.PrintOperationAction.PRINT_DIALOG}
+                    parent={parentWindow}
+                    onError={(failure) => {
+                        setError(String(failure));
+                    }}
+                    onDone={(result, current) => {
+                        if (result === Gtk.PrintOperationResult.ERROR) {
+                            setError(operationError(current));
+                        } else {
+                            onClose?.();
+                        }
+                    }}
+                />
+            )}
+            {error !== null && (
+                <AdwAlertDialog
+                    heading={error}
+                    responses={[{ id: "ok", label: "_OK" }]}
+                    defaultResponse="ok"
+                    closeResponse="ok"
+                    onClosed={onClose}
+                />
+            )}
+        </>
+    );
 }
 
 export { printingDemo };

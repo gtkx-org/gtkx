@@ -4,14 +4,15 @@ import {
     disconnectSignal,
     isSignalHandlerConnected,
     type SignalHandler,
+    type SignalHandlerId,
 } from "./signal.js";
 
-const listenerTable: WeakMap<object, Map<string, Map<SignalHandler, number[]>>> = new WeakMap();
+const listenerTable: WeakMap<object, Map<string, Map<SignalHandler, SignalHandlerId[]>>> = new WeakMap();
 
-const findListenerHandlerId = (instance: object, signal: string, handler: SignalHandler): number | undefined =>
+const findListenerHandlerId = (instance: object, signal: string, handler: SignalHandler): SignalHandlerId | undefined =>
     listenerTable.get(instance)?.get(canonicalDetailedSignalName(signal))?.get(handler)?.at(-1);
 
-const trackListener = (instance: object, signal: string, handler: SignalHandler, handlerId: number): void => {
+const trackListener = (instance: object, signal: string, handler: SignalHandler, handlerId: SignalHandlerId): void => {
     const key = canonicalDetailedSignalName(signal);
     let bySignal = listenerTable.get(instance);
 
@@ -37,7 +38,7 @@ const trackListener = (instance: object, signal: string, handler: SignalHandler,
     handlerIds.push(handlerId);
 };
 
-const removeTrackedHandlerId = (handlerIds: number[], handlerId: number): number => {
+const removeTrackedHandlerId = (handlerIds: SignalHandlerId[], handlerId: SignalHandlerId): number => {
     const index = handlerIds.lastIndexOf(handlerId);
 
     if (index !== -1) {
@@ -47,7 +48,7 @@ const removeTrackedHandlerId = (handlerIds: number[], handlerId: number): number
     return handlerIds.length;
 };
 
-const untrackHandlerId = (instance: object, signal: string, handlerId: number): void => {
+const untrackHandlerId = (instance: object, signal: string, handlerId: SignalHandlerId): void => {
     const key = canonicalDetailedSignalName(signal);
     const bySignal = listenerTable.get(instance);
     const byHandler = bySignal?.get(key);
@@ -91,7 +92,7 @@ function onSignal(instance: object, signal: string, handler: SignalHandler, isAf
  * @param isAfter When true, run the handler after the default handler.
  */
 function onceSignal(instance: object, signal: string, handler: SignalHandler, isAfter?: boolean): void {
-    let handlerId = 0;
+    let handlerId = 0n;
 
     const wrapped: SignalHandler = (...args) => {
         untrackHandlerId(instance, signal, handlerId);

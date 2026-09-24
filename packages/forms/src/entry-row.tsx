@@ -16,7 +16,7 @@ function EntryRow<
 
     const binding = useFieldWidget<Adw.EntryRow>(field, fieldState, rowProps, selectText);
 
-    const value = typeof field.value === "string" ? field.value : "";
+    const value = field.value ?? "";
 
     return (
         <AdwEntryRow

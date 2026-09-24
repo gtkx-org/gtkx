@@ -17,6 +17,8 @@ import { quit } from "@gtkx/runtime";
 try {
     assert.equal("getRegion" in GLib.Bytes.prototype, false);
     assert.equal("getData" in GLib.Variant.prototype, false);
+    assert.equal("newFromData" in Gio.MemoryInputStream, false);
+    assert.equal("addData" in Gio.MemoryInputStream.prototype, false);
     assert.equal("getData" in Gio.MemoryOutputStream.prototype, false);
     assert.equal("stealData" in Gio.MemoryOutputStream.prototype, false);
     const values = new Uint8Array([0, 255, 3]);
@@ -25,6 +27,14 @@ try {
     assert.deepEqual(data, values);
     assert.deepEqual(GLib.Bytes.newFromBytes(bytes, 1, 2).getData(), new Uint8Array([255, 3]));
     assert.deepEqual(GLib.Bytes.new([]).getData(), new Uint8Array());
+    const input = Gio.MemoryInputStream.newFromBytes(bytes);
+    input.addBytes(GLib.Bytes.new([4, 5]));
+    assert.deepEqual(input.readBytes(5, null).getData(), new Uint8Array([0, 255, 3, 4, 5]));
+    assert.equal(input.close(null), true);
+    const emptyInput = Gio.MemoryInputStream.newFromBytes(GLib.Bytes.new([]));
+    emptyInput.addBytes(GLib.Bytes.new([]));
+    assert.deepEqual(emptyInput.readBytes(1, null).getData(), new Uint8Array());
+    assert.equal(emptyInput.close(null), true);
     const variant = GLib.Variant.newBoolean(true);
     const serialized: GLib.Bytes = variant.getDataAsBytes();
     assert.deepEqual(serialized.getData(), new Uint8Array([1]));
@@ -62,6 +72,18 @@ export type StealMethod = MemoryOutputStream["stealData"];
     "stream-member.ts": `import type { MemoryOutputStream } from "@gtkx/gi/gio";
 export type DataMethod = MemoryOutputStream["getData"];
 `,
+    "input-stream-constructor-call.ts": `import * as Gio from "@gtkx/gi/gio";
+export const stream = Gio.MemoryInputStream.newFromData([1], null);
+`,
+    "input-stream-constructor-member.ts": `import * as Gio from "@gtkx/gi/gio";
+export const constructor = Gio.MemoryInputStream.newFromData;
+`,
+    "input-stream-method-call.ts": `import type { MemoryInputStream } from "@gtkx/gi/gio";
+export const add = (stream: MemoryInputStream) => stream.addData([1], null);
+`,
+    "input-stream-method-member.ts": `import type { MemoryInputStream } from "@gtkx/gi/gio";
+export type AddMethod = MemoryInputStream["addData"];
+`,
 };
 
 describe("generated data-pointer method omissions", () => {
@@ -98,6 +120,8 @@ describe("generated data-pointer method omissions", () => {
         for (const { owner, omitted, retained } of [
             { owner: "GLib.Bytes", omitted: "getRegion", retained: "getData" },
             { owner: "GLib.Variant", omitted: "getData", retained: "getDataAsBytes" },
+            { owner: "Gio.MemoryInputStream", omitted: "newFromData", retained: "newFromBytes" },
+            { owner: "Gio.MemoryInputStream", omitted: "addData", retained: "addBytes" },
             { owner: "Gio.MemoryOutputStream", omitted: "getData", retained: "stealAsBytes" },
             { owner: "Gio.MemoryOutputStream", omitted: "stealData", retained: "stealAsBytes" },
         ]) {

@@ -20,6 +20,15 @@ impl Fundamental {
     /// `unref_fn` is `Some`, it must be the release function for that exact instance type; it is
     /// called once on drop, and the caller must not release the transferred reference itself.
     pub unsafe fn from_glib_full(ptr: *mut c_void, unref_fn: Option<UnrefFn>) -> Self {
+        if !ptr.is_null()
+            && unref_fn.is_some_and(|unref_fn| {
+                let variant_unref: unsafe extern "C" fn(*mut glib::ffi::GVariant) =
+                    glib::ffi::g_variant_unref;
+                std::ptr::fn_addr_eq(unref_fn, variant_unref)
+            })
+        {
+            unsafe { glib::ffi::g_variant_take_ref(ptr.cast()) };
+        }
         Self {
             ptr,
             owned: true,

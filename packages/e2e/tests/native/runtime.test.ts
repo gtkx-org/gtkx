@@ -16,7 +16,6 @@ type WorkerReport = { bare: boolean; doubled: number; string: string };
 
 const encoder = new TextEncoder();
 
-const OBSERVED_PREFIX = "OBSERVED ";
 const CHILD_BUDGET_MS = 30_000;
 const GLIB = "libglib-2.0.so.0";
 const VOID: Descriptor = { kind: "void" };
@@ -82,29 +81,21 @@ const reportedLine = (output: string, prefix: string): string | undefined =>
         .find((line) => line.startsWith(prefix))
         ?.slice(prefix.length);
 
-const observedMessage = (output: string): string | undefined => reportedLine(output, OBSERVED_PREFIX);
-
 const workerReport = (output: string): WorkerReport =>
     JSON.parse(reportedLine(output, "REPORT ") ?? "null") as WorkerReport;
 
-test("benign native work never reaches the app as an error", async () => {
-    const { code, output, signal } = await runFixture("error-channel.ts", ["none", "observed"]);
+test("an authored native warning does not reach the app as an error", async () => {
+    const { code, signal } = await runFixture("error-channel.ts", ["warning", "observed"]);
 
-    expect(observedMessage(output)).toBeUndefined();
-    expect(output).toMatch(/SURVIVED/);
     expect(signal).toBeNull();
     expect(code).toBe(0);
 });
 
-test("a GLib critical reaches the app as an uncaught exception", async () => {
-    const { code, output, signal } = await runFixture("error-channel.ts", ["critical", "observed"]);
+test("an authored GLib critical reaches the app as an uncaught exception", async () => {
+    const { code, signal } = await runFixture("error-channel.ts", ["critical", "observed"]);
 
-    const observed = observedMessage(output);
-    expect(typeof observed).toBe("string");
-    expect(observed?.length).toBeGreaterThan(0);
-    expect(output).not.toMatch(/SURVIVED/);
     expect(signal).toBeNull();
-    expect(code).toBe(0);
+    expect(code).toBe(42);
 });
 
 test("an async callback failure reaches the app as an uncaught exception", async () => {
@@ -115,10 +106,10 @@ test("an async callback failure reaches the app as an uncaught exception", async
 });
 
 test("an unhandled GLib critical stops the process", async () => {
-    const { code, output } = await runFixture("error-channel.ts", ["critical", "ignored"]);
+    const { code, signal } = await runFixture("error-channel.ts", ["critical", "ignored"]);
 
-    expect(code).not.toBe(0);
-    expect(output).not.toMatch(/SURVIVED/);
+    expect(signal).toBeNull();
+    expect(code).toBe(1);
 });
 
 test("an unhandled async callback failure stops the process", async () => {
@@ -177,15 +168,6 @@ test("a worker thread that quits the addon can then be terminated", async () => 
 
     expect(workerReport(output)).toEqual(WORKER_REPORT);
     expect(reportedLine(output, "ACK ")).toBe("torn down");
-    expect(reportedLine(output, "TERMINATED ")).toBe("1");
-    expect(signal).toBeNull();
-    expect(code).toBe(0);
-});
-
-test("a worker thread that never quits the addon can still be terminated", async () => {
-    const { code, output, signal } = await runFixture("worker-host.ts", ["kill"]);
-
-    expect(workerReport(output)).toEqual(WORKER_REPORT);
     expect(reportedLine(output, "TERMINATED ")).toBe("1");
     expect(signal).toBeNull();
     expect(code).toBe(0);

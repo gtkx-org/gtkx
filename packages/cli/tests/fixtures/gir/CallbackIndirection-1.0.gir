@@ -1,0 +1,173 @@
+<?xml version="1.0"?>
+<repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"
+    xmlns:c="http://www.gtk.org/introspection/c/1.0"
+    xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="GtkSource" version="5"/>
+  <namespace name="CallbackIndirection" version="1.0" shared-library="libcallbackindirection.so.0"
+      c:identifier-prefixes="CallbackIndirection" c:symbol-prefixes="callback_indirection">
+    <record name="Cell" c:type="CallbackIndirectionCell">
+      <field name="value" writable="1"><type name="gint" c:type="gint"/></field>
+    </record>
+    <alias name="CellAlias" c:type="CallbackIndirectionCellAlias"><type name="Cell" c:type="CallbackIndirectionCell"/></alias>
+    <alias name="CellChain" c:type="CallbackIndirectionCellChain"><type name="CellAlias" c:type="CallbackIndirectionCellAlias"/></alias>
+    <alias name="CallbackAlias" c:type="CallbackIndirectionCallbackAlias"><type name="AliasPointer" c:type="CallbackIndirectionAliasPointer"/></alias>
+    <callback name="CellPointer" c:type="CallbackIndirectionCellPointer">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="value" direction="inout" caller-allocates="0" transfer-ownership="full"><type name="Cell" c:type="CallbackIndirectionCell**"/></parameter></parameters>
+    </callback>
+    <callback name="AliasPointer" c:type="CallbackIndirectionAliasPointer">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="value" direction="inout" caller-allocates="0" transfer-ownership="full"><type name="CellChain" c:type="CallbackIndirectionCellChain**"/></parameter></parameters>
+    </callback>
+    <callback name="ObjectPointer" c:type="CallbackIndirectionObjectPointer">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="value" direction="inout" caller-allocates="0" transfer-ownership="full"><type name="GObject.Object" c:type="GObject**"/></parameter></parameters>
+    </callback>
+    <callback name="InterfacePointer" c:type="CallbackIndirectionInterfacePointer">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="value" direction="inout" caller-allocates="0" transfer-ownership="full"><type name="Gio.Icon" c:type="GIcon**"/></parameter></parameters>
+    </callback>
+    <callback name="InPlace" c:type="CallbackIndirectionInPlace">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="value" direction="inout" caller-allocates="0" transfer-ownership="full"><type name="Cell" c:type="CallbackIndirectionCell*"/></parameter></parameters>
+    </callback>
+    <callback name="AliasedInPlace" c:type="CallbackIndirectionAliasedInPlace">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="value" direction="inout" caller-allocates="0" transfer-ownership="full"><type name="CellChain" c:type="CallbackIndirectionCellChain*"/></parameter></parameters>
+    </callback>
+    <callback name="Unspelled" c:type="CallbackIndirectionUnspelled">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="value" direction="inout" caller-allocates="0" transfer-ownership="full"><type name="Cell"/></parameter></parameters>
+    </callback>
+    <callback name="OutRecord" c:type="CallbackIndirectionOutRecord">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="value" direction="out" caller-allocates="0" transfer-ownership="full"><type name="Gtk.TextIter" c:type="GtkTextIter**"/></parameter></parameters>
+    </callback>
+    <callback name="Scalar" c:type="CallbackIndirectionScalar">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="value" direction="inout" caller-allocates="0" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter></parameters>
+    </callback>
+    <callback name="Array" c:type="CallbackIndirectionArray">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="values" direction="inout" caller-allocates="0" transfer-ownership="full"><array length="1" zero-terminated="0" c:type="gint**"><type name="gint" c:type="gint"/></array></parameter>
+        <parameter name="length" direction="inout" caller-allocates="0" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter>
+      </parameters>
+    </callback>
+    <class name="Probe" parent="GObject.Object" c:type="CallbackIndirectionProbe"
+        glib:type-name="CallbackIndirectionProbe" glib:get-type="callback_indirection_probe_get_type"
+        glib:type-struct="ProbeClass">
+      <method name="use_cell" c:identifier="callback_indirection_probe_use_cell">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackIndirectionProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call"><type name="CellPointer" c:type="CallbackIndirectionCellPointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_alias" c:identifier="callback_indirection_probe_use_alias">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackIndirectionProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call"><type name="CallbackAlias" c:type="CallbackIndirectionCallbackAlias"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_object" c:identifier="callback_indirection_probe_use_object">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackIndirectionProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call"><type name="ObjectPointer" c:type="CallbackIndirectionObjectPointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_interface" c:identifier="callback_indirection_probe_use_interface">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackIndirectionProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call"><type name="InterfacePointer" c:type="CallbackIndirectionInterfacePointer"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_in_place" c:identifier="callback_indirection_probe_use_in_place">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackIndirectionProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call"><type name="InPlace" c:type="CallbackIndirectionInPlace"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_aliased_in_place" c:identifier="callback_indirection_probe_use_aliased_in_place">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackIndirectionProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call"><type name="AliasedInPlace" c:type="CallbackIndirectionAliasedInPlace"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_out_record" c:identifier="callback_indirection_probe_use_out_record">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackIndirectionProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call"><type name="OutRecord" c:type="CallbackIndirectionOutRecord"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_scalar" c:identifier="callback_indirection_probe_use_scalar">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackIndirectionProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call"><type name="Scalar" c:type="CallbackIndirectionScalar"/></parameter>
+        </parameters>
+      </method>
+      <method name="use_array" c:identifier="callback_indirection_probe_use_array">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallbackIndirectionProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call"><type name="Array" c:type="CallbackIndirectionArray"/></parameter>
+        </parameters>
+      </method>
+    </class>
+    <record name="ProbeClass" c:type="CallbackIndirectionProbeClass" glib:is-gtype-struct-for="Probe">
+      <field name="parent_class"><type name="GObject.ObjectClass" c:type="GObjectClass"/></field>
+      <field name="cell">
+        <callback name="cell" c:type="CallbackIndirectionCell">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters>
+            <parameter name="self" direction="in" caller-allocates="0" transfer-ownership="none"><type name="Probe" c:type="CallbackIndirectionProbe*"/></parameter>
+            <parameter name="value" direction="inout" caller-allocates="0" transfer-ownership="full"><type name="Cell" c:type="CallbackIndirectionCell**"/></parameter>
+          </parameters>
+        </callback>
+      </field>
+      <field name="alias">
+        <callback name="alias" c:type="CallbackIndirectionAlias">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters>
+            <parameter name="self" direction="in" caller-allocates="0" transfer-ownership="none"><type name="Probe" c:type="CallbackIndirectionProbe*"/></parameter>
+            <parameter name="value" direction="inout" caller-allocates="0" transfer-ownership="full"><type name="CellChain" c:type="CallbackIndirectionCellChain**"/></parameter>
+          </parameters>
+        </callback>
+      </field>
+      <field name="in_place">
+        <callback name="in_place" c:type="CallbackIndirectionIn_Place">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters>
+            <parameter name="self" direction="in" caller-allocates="0" transfer-ownership="none"><type name="Probe" c:type="CallbackIndirectionProbe*"/></parameter>
+            <parameter name="value" direction="inout" caller-allocates="0" transfer-ownership="full"><type name="Cell" c:type="CallbackIndirectionCell*"/></parameter>
+          </parameters>
+        </callback>
+      </field>
+      <field name="out_record">
+        <callback name="out_record" c:type="CallbackIndirectionOut_Record">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters>
+            <parameter name="self" direction="in" caller-allocates="0" transfer-ownership="none"><type name="Probe" c:type="CallbackIndirectionProbe*"/></parameter>
+            <parameter name="value" direction="out" caller-allocates="0" transfer-ownership="full"><type name="Gtk.TextIter" c:type="GtkTextIter**"/></parameter>
+          </parameters>
+        </callback>
+      </field>
+      <field name="scalar">
+        <callback name="scalar" c:type="CallbackIndirectionScalar">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters>
+            <parameter name="self" direction="in" caller-allocates="0" transfer-ownership="none"><type name="Probe" c:type="CallbackIndirectionProbe*"/></parameter>
+            <parameter name="value" direction="inout" caller-allocates="0" transfer-ownership="none"><type name="gint" c:type="gint*"/></parameter>
+          </parameters>
+        </callback>
+      </field>
+    </record>
+  </namespace>
+</repository>

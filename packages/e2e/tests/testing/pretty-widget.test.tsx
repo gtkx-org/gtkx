@@ -4,15 +4,39 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GMenu } from "@gtkx/jsx/gio";
 import { GtkButton, GtkMenuButton } from "@gtkx/jsx/gtk";
 import { getHandle, registerClass, wrapHandle } from "@gtkx/runtime";
-import { logWidget, prettyRoles, prettyWidget, render, screen, userEvent } from "@gtkx/testing";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { prettyRoles, prettyWidget, render, screen, userEvent } from "@gtkx/testing";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
 import { VBox } from "./widget-fixtures.js";
 
 const ANONYMOUS_TYPE_NAME = "GtkxAnonymousTagProbe";
 const AnonymousBox = registerClass(class extends Gtk.Box {}, { typeName: ANONYMOUS_TYPE_NAME });
+const OUTPUT_FIXTURE = fileURLToPath(new URL("../fixtures/pretty-widget-output.tsx", import.meta.url));
+const OUTPUT_FIXTURE_ARGS = ["--conditions=source", "--import", "tsx", OUTPUT_FIXTURE];
+const OUTPUT_FIXTURE_TSCONFIG = fileURLToPath(new URL("../../../../tsconfig.base.json", import.meta.url));
+const OUTPUT_FIXTURE_TIMEOUT = 20_000;
 
-const spyOnConsoleLog = () => vi.spyOn(console, "log").mockImplementation(vi.fn());
 const wrapAs = <T extends object>(object: GObject.Object, cls: AnyClass<T>): T => wrapHandle(getHandle(object), cls);
+
+const runOutputFixture = (scenario: "debug" | "logWidget"): string => {
+    const result = spawnSync(process.execPath, [...OUTPUT_FIXTURE_ARGS, scenario], {
+        encoding: "utf8",
+        env: { ...process.env, TSX_TSCONFIG_PATH: OUTPUT_FIXTURE_TSCONFIG },
+        timeout: OUTPUT_FIXTURE_TIMEOUT,
+    });
+
+    if (result.status !== 0) {
+        throw new Error(result.stderr);
+    }
+
+    return result.stdout;
+};
+
+const outputSection = (output: string, name: string): string =>
+    output.split(`BEGIN ${name}\n`)[1]?.split(`END ${name}\n`)[0] ?? "";
+
+const occurrenceCount = (value: string, search: string): number => value.split(search).length - 1;
 
 const openMenuPopover = async (): Promise<Gtk.Widget> => {
     await render(
@@ -36,38 +60,24 @@ const openMenuPopover = async (): Promise<Gtk.Widget> => {
 
 class UnregisteredButton extends Gtk.Button {}
 
-afterEach(() => {
-    vi.restoreAllMocks();
-});
-
 describe("logWidget", () => {
-    it("logs the formatted tree, one call per widget, honoring formatting options", async () => {
-        const { container } = await render(
-            <VBox>
-                <GtkButton label="One" />
-                <GtkButton label="Two" />
-            </VBox>,
-        );
+    it("logs the formatted tree, one call per widget, honoring formatting options", () => {
+        const output = runOutputFixture("logWidget");
+        const single = outputSection(output, "single");
+        const list = outputSection(output, "list");
 
-        const log = spyOnConsoleLog();
-        logWidget(container);
-        expect(log).toHaveBeenCalledTimes(1);
-        expect(log.mock.calls[0]?.[0]).toContain("button");
-        logWidget([container, container]);
-        expect(log).toHaveBeenCalledTimes(3);
-        logWidget(container, { maxLength: 0 });
-        expect(log).toHaveBeenLastCalledWith("");
+        expect(single).toContain("<Box");
+        expect(occurrenceCount(single, 'name="log-root"')).toBe(1);
+        expect(occurrenceCount(list, 'name="log-root"')).toBe(2);
+        expect(outputSection(output, "empty")).toBe("\n");
     });
 
-    it("is reachable through the render result and through the screen", async () => {
-        const { container, debug } = await render(<GtkButton label="Default" />);
-        const log = spyOnConsoleLog();
-        debug();
-        expect(log.mock.calls[0]?.[0]).toContain("button");
-        debug(container, { maxLength: 0 });
-        expect(log).toHaveBeenLastCalledWith("");
-        screen.debug();
-        expect(log).toHaveBeenCalledTimes(3);
+    it("is reachable through the render result and through the screen", () => {
+        const output = runOutputFixture("debug");
+
+        expect(outputSection(output, "result")).toContain("<Box");
+        expect(outputSection(output, "empty")).toBe("\n");
+        expect(outputSection(output, "screen")).toContain("<Box");
     });
 });
 

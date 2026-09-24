@@ -329,6 +329,39 @@ test("an expression reached through a method, a property and a GValue is one wra
     expect(Gtk.valueGetExpression(expressionValue(expression))).toBe(expression);
 });
 
+test("a closure expression owns its parameter expressions", () => {
+    const parameter = Gtk.ConstantExpression.newForValue("parameter");
+    const expression = Gtk.ClosureExpression.new(typeFromName("gchararray"), () => "closure", [parameter]);
+    const value = new GObject.Value();
+
+    expect(expression.evaluate(null, value)).toBe(true);
+    expect(value.getString()).toBe("closure");
+});
+
+test("a try expression retains candidates while using a fallback", () => {
+    const expression = Gtk.TryExpression.new([
+        stringExpression(),
+        Gtk.ConstantExpression.newForValue("fallback"),
+    ]);
+    const value = new GObject.Value();
+
+    expect(expression.evaluate(null, value)).toBe(true);
+    expect(value.getString()).toBe("fallback");
+});
+
+test("expression arrays reject values without native expression handles", () => {
+    expect(() => {
+        Reflect.apply(Gtk.ClosureExpression.new, Gtk.ClosureExpression, [
+            typeFromName("gchararray"),
+            () => "closure",
+            [{}],
+        ]);
+    }).toThrow();
+    expect(() => {
+        Reflect.apply(Gtk.TryExpression.new, Gtk.TryExpression, [[{}]]);
+    }).toThrow();
+});
+
 test("fundamental arguments reject plain objects", () => {
     // @ts-expect-error a plain object is not a render node
     expect(() => Gsk.ContainerNode.new([{}])).toThrow();

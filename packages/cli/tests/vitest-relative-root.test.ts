@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -49,8 +49,19 @@ const DYNAMIC_SOURCE =
     '    (await import("../data/probe-dynamic.ttc?font")).default;\n\n' +
     "export { dynamicFontFamily };\n";
 
-const CONFIG =
-    `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)} };\n`;
+const CONFIG = `export default {
+    agents: { reference: false },
+    applicationId: "${APPLICATION_ID}",
+    libraries: ${JSON.stringify(STORE_LIBRARIES)},
+};
+`;
+
+const MISSING_LIBRARY_CONFIG = `export default {
+    agents: { reference: false },
+    applicationId: "com.gtkx.clirootmissing",
+    libraries: ["GtkxAbsentLibrary-1.0"],
+};
+`;
 
 const VITEST_CONFIG = `import gtkx from ${JSON.stringify(VITEST_PLUGIN_MODULE)};
 
@@ -97,10 +108,9 @@ it("rejects a font import the staging scan cannot reach", async () => {
 `;
 
 describe("gtkx vitest plugin (a root given relative to the working directory)", () => {
-    it("completes the run", () => {
+    it("uses the selected root without a working-directory configuration", () => {
         using project = createCliProject({
             prefix: "gtkx-cli-relative-root-",
-            config: CONFIG,
             hasStore: true,
             files: {
                 [join(APP_DIR, "gtkx.config.ts")]: CONFIG,
@@ -129,5 +139,39 @@ describe("gtkx vitest plugin (a root given relative to the working directory)", 
 
         expect(result.signal).toBeNull();
         expect(result.status, `${result.stdout}${result.stderr}`).toBe(0);
+    });
+
+    it("rejects a missing library from the selected root and recovers after correction", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-relative-root-missing-library-",
+            config: CONFIG,
+            hasStore: true,
+            files: {
+                [join(APP_DIR, "gtkx.config.ts")]: MISSING_LIBRARY_CONFIG,
+                [join(APP_DIR, "vitest.config.ts")]: VITEST_CONFIG,
+                [join(APP_DIR, TEST_FILE)]: `import * as GLib from "@gtkx/gi/glib";
+import { expect, it } from "vitest";
+it("uses the generated bindings", () => { expect(GLib.MAJOR_VERSION).toBe(2); });
+`,
+            },
+        });
+        const run = () => spawnSync(process.execPath, [VITEST_ENTRY, "run", "--root", APP_DIR], {
+            cwd: project.root,
+            encoding: "utf8",
+            env: { ...cliEnvironment(project), GTKX_DISABLE_PREFLIGHT: "0" },
+            killSignal: "SIGKILL",
+            timeout: RUN_TIMEOUT,
+        });
+
+        const rejected = run();
+        expect(rejected.error).toBeUndefined();
+        expect(rejected.signal).toBeNull();
+        expect(rejected.status).toBe(1);
+
+        writeFileSync(join(project.root, APP_DIR, "gtkx.config.ts"), CONFIG);
+        const recovered = run();
+        expect(recovered.error).toBeUndefined();
+        expect(recovered.signal).toBeNull();
+        expect(recovered.status).toBe(0);
     });
 });

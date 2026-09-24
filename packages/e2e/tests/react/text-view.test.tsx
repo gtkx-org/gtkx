@@ -126,6 +126,27 @@ const buildToggleContent =
             </>
         );
 
+const buildCollidingTags = (
+    viewRef: RefObject<Gtk.TextView | null>,
+    firstRef: RefObject<Gtk.TextTag | null>,
+    secondRef: RefObject<Gtk.TextTag | null>,
+    isMounted: boolean,
+) => (
+    <GtkTextView
+        ref={viewRef}
+        buffer={(
+            <GtkTextBuffer>
+                {isMounted && (
+                    <>
+                        <GtkTextTag ref={firstRef} name="shared">first</GtkTextTag>
+                        <GtkTextTag ref={secondRef} name="shared">second</GtkTextTag>
+                    </>
+                )}
+            </GtkTextBuffer>
+        )}
+    />
+);
+
 const buildAnchorView = (hasAnchor: boolean) => (
     <GtkTextView
         buffer={(
@@ -149,6 +170,23 @@ const buildMarkedView = (viewRef: RefObject<Gtk.TextView | null>, markRef: RefOb
             <GtkTextBuffer>
                 AB
                 <GtkTextMark ref={markRef} />
+                CD
+            </GtkTextBuffer>
+        )}
+    />
+);
+
+const buildOptionalMarkedView = (
+    viewRef: RefObject<Gtk.TextView | null>,
+    markRef: RefObject<Gtk.TextMark | null>,
+    hasMark: boolean,
+) => (
+    <GtkTextView
+        ref={viewRef}
+        buffer={(
+            <GtkTextBuffer>
+                AB
+                {hasMark && <GtkTextMark ref={markRef} />}
                 CD
             </GtkTextBuffer>
         )}
@@ -416,6 +454,18 @@ describe("render - TextView", () => {
             expect(hasTagAtOffset(buffer, "removable", 5)).toBe(true);
             await rerender(false);
             expect(getBufferText(buffer)).toBe("StartEnd");
+            expect(buffer.getTagTable().lookup("removable")).toBeNull();
+        });
+
+        it("unmounts declarative tags that shared a native name", async () => {
+            const viewRef = createRef<Gtk.TextView>();
+            const firstRef = createRef<Gtk.TextTag>();
+            const secondRef = createRef<Gtk.TextTag>();
+            const { rerender } = await render(buildCollidingTags(viewRef, firstRef, secondRef, true));
+            const buffer = getTextBuffer(viewRef);
+            expect(buffer.getTagTable().lookup("shared")).toBe(secondRef.current);
+            await rerender(buildCollidingTags(viewRef, firstRef, secondRef, false));
+            expect(buffer.getTagTable().lookup("shared")).toBeNull();
         });
 
         it("reorders tags correctly", async () => {
@@ -478,6 +528,16 @@ describe("render - TextView", () => {
             expect(getBufferText(buffer)).toBe("BBBAAA");
             const mark = requireMark(markRef);
             expect(buffer.getIterAtMark(mark).getOffset()).toBe(3);
+        });
+
+        it("deletes a GtkTextMark when it unmounts", async () => {
+            const markRef = createRef<Gtk.TextMark>();
+            const viewRef = createRef<Gtk.TextView>();
+            const { rerender } = await render(buildOptionalMarkedView(viewRef, markRef, true));
+            const mark = requireMark(markRef);
+            expect(mark.getBuffer()).toBe(getTextBuffer(viewRef));
+            await rerender(buildOptionalMarkedView(viewRef, markRef, false));
+            expect(mark.getBuffer()).toBeNull();
         });
 
         it("removes the embedded widget when its anchor unmounts", async () => {

@@ -221,14 +221,13 @@ test("notify fires for the changed property and disconnect stops it", () => {
     const id = po.connect("notify::some-int", (pspec) => {
         seen.push(pspec.getName());
     });
-    expect(typeof id).toBe("number");
+    expect(typeof id).toBe("bigint");
     po.someInt = 7;
     expect(seen).toEqual(["some-int"]);
     po.someString = "unrelated";
     expect(seen).toEqual(["some-int"]);
     po.someInt = 8;
     expect(seen).toEqual(["some-int", "some-int"]);
-    // @ts-expect-error connect hands back a number and the disconnect parameter is declared bigint
     GObject.signalHandlerDisconnect(po, id);
     po.someInt = 9;
     expect(seen).toEqual(["some-int", "some-int"]);
@@ -408,7 +407,6 @@ test("PropertiesAccessorsObject property accessors set values and notify", () =>
     ao.setInt(4);
     expect(ao.someInt).toBe(4);
     expect(seen).toEqual(["some-int", "some-int"]);
-    // @ts-expect-error connect hands back a number and the disconnect parameter is declared bigint
     GObject.signalHandlerDisconnect(ao, id);
 });
 
@@ -534,7 +532,6 @@ test("TestObj string property notifies and matches its accessor methods", () => 
     obj.setString("def");
     expect(obj.string).toBe("def");
     expect(seen).toEqual(["string", "def" === obj.string ? "string" : "missing"]);
-    // @ts-expect-error connect hands back a number and the disconnect parameter is declared bigint
     GObject.signalHandlerDisconnect(obj, id);
 });
 

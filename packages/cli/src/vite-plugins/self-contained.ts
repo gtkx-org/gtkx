@@ -3,7 +3,7 @@ import { type NodePath, parseSync, type Scope, traverse } from "@babel/core";
 import { isBuiltin } from "node:module";
 import { posix } from "node:path";
 
-type BindingKind = "factory" | "module" | "require" | "url";
+type BindingKind = "factory" | "module" | "require";
 
 type ResolvedBinding = NonNullable<ReturnType<Scope["getBinding"]>>;
 
@@ -19,7 +19,6 @@ type Chunk = {
 const REQUIRE_FACTORY = "createRequire";
 const REQUIRE_BINDING = "require";
 const RESOLVE_PROPERTY = "resolve";
-const URL_PROPERTY = "url";
 const MODULE_BUILTINS = new Set(["module", "node:module"]);
 const OUTPUT_DIRECTORY = ".";
 const RELATIVE_SPECIFIER = /^\.\.?(?:\/|$)/;
@@ -64,16 +63,6 @@ const memberName = (path: NodePath): string | null => {
 
 const isImportMeta = (path: NodePath): boolean =>
     path.isMetaProperty() && path.node.meta.name === "import" && path.node.property.name === "meta";
-
-const isDirectMetaUrl = (path: NodePath): boolean => {
-    if (!path.isMemberExpression() || memberName(path) !== URL_PROPERTY) {
-        return false;
-    }
-
-    const object = path.get("object");
-
-    return isImportMeta(object);
-};
 
 const bindingKind = (binding: ResolvedBinding, seen: Set<ResolvedBinding>): BindingKind | null => {
     if (seen.has(binding)) {
@@ -153,10 +142,6 @@ const isRequireFactoryCall = (path: NodePath, seen: Set<ResolvedBinding>): boole
 };
 
 const expressionKind = (path: NodePath, seen: Set<ResolvedBinding>): BindingKind | null => {
-    if (isDirectMetaUrl(path)) {
-        return "url";
-    }
-
     if (path.isIdentifier()) {
         return nameKind(path.scope, path.node.name, seen);
     }
@@ -172,21 +157,9 @@ const expressionKind = (path: NodePath, seen: Set<ResolvedBinding>): BindingKind
     return isRequireFactoryCall(path, seen) ? "require" : null;
 };
 
-const isMetaUrl = (path: NodePath): boolean =>
-    isDirectMetaUrl(path) ||
-    (path.isIdentifier() && nameKind(path.scope, path.node.name, new Set()) === "url");
-
 const isRequireExpression = (path: NodePath, seen: Set<ResolvedBinding> = new Set()): boolean =>
     isRequireFactoryCall(path, seen) ||
     (path.isIdentifier() && nameKind(path.scope, path.node.name, seen) === "require");
-
-const hasMetaUrlArgument = (path: NodePath): boolean => {
-    if (!path.isCallExpression()) {
-        return false;
-    }
-
-    return path.get("arguments").some((argument) => isMetaUrl(argument));
-};
 
 const isResolveMember = (path: NodePath): boolean => {
     if (!path.isMemberExpression() || memberName(path) !== RESOLVE_PROPERTY) {
@@ -205,7 +178,7 @@ const isResolvingCall = (path: NodePath): boolean => {
 
     const callee = path.get("callee");
 
-    return hasMetaUrlArgument(path) || isRequireExpression(callee) || isResolveMember(callee);
+    return isRequireExpression(callee) || isResolveMember(callee);
 };
 
 const literalString = (path: NodePath): string | null => {

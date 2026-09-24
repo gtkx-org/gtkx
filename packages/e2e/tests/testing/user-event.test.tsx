@@ -400,7 +400,7 @@ describe("userEvent.click", () => {
                 <GtkListBoxRow name="first">
                     <GtkLabel>First</GtkLabel>
                 </GtkListBoxRow>
-                <GtkListBoxRow name="second">
+                <GtkListBoxRow name="second" accessibleLabel="Second">
                     <GtkLabel>Second</GtkLabel>
                 </GtkListBoxRow>
             </GtkListBox>,
@@ -438,10 +438,7 @@ describe("userEvent.click", () => {
             </AdwSidebar>,
         );
 
-        const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, {
-            name: "Files",
-            as: Gtk.ListBoxRow,
-        });
+        const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { as: Gtk.ListBoxRow });
 
         await userEvent.click(row);
         await userEvent.pointer(row, "click");

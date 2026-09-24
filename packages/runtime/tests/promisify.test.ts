@@ -1,6 +1,7 @@
 import type { ExternalObject, Handle } from "@gtkx/native";
 import * as GdkPixbuf from "@gtkx/gi/gdkpixbuf";
 import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getHandle, promisify, setHandle, trimFinish } from "@gtkx/runtime";
 import { assert, describe, expect, it } from "vitest";
@@ -100,8 +101,10 @@ describe("generated promisified bindings", () => {
     it("resolves an instance async method against a name-matched static finish", async () => {
         const firstOutput = Gio.MemoryOutputStream.newResizable();
         const secondOutput = Gio.MemoryOutputStream.newResizable();
-        const first = Gio.SimpleIOStream.new(Gio.MemoryInputStream.newFromData([1, 2, 3, 4], null), firstOutput);
-        const second = Gio.SimpleIOStream.new(Gio.MemoryInputStream.newFromData([5, 6], null), secondOutput);
+        const firstInput = Gio.MemoryInputStream.newFromBytes(GLib.Bytes.new([1, 2, 3, 4]));
+        const secondInput = Gio.MemoryInputStream.newFromBytes(GLib.Bytes.new([5, 6]));
+        const first = Gio.SimpleIOStream.new(firstInput, firstOutput);
+        const second = Gio.SimpleIOStream.new(secondInput, secondOutput);
         const isSpliced = await first.spliceAsync(second, Gio.IOStreamSpliceFlags.NONE, 0);
         expect(isSpliced).toBe(true);
         expect(secondOutput.getDataSize()).toBe(4);

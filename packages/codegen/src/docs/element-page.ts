@@ -26,7 +26,7 @@ import {
     signalHandlerName,
 } from "../store/jsx/intrinsic-elements.js";
 import { isOmittedProp, omittedPropKeysFor, omittedPropNamesFor } from "../store/jsx/omitted-props.js";
-import { isObjectProp } from "../store/jsx/props.js";
+import { isReactElementProp } from "../store/jsx/props.js";
 import {
     annotationNotes,
     classMethodEntries,
@@ -145,9 +145,9 @@ const memberOwners = (entry: GlibNamedClass, context: ElementPageContext): Membe
 
 const propertyEntry = (options: PropertyEntryOptions): MetaDocEntry => {
     const { context, owner, property, jsName, hiddenAccessor } = options;
-    const isObject = isObjectProp(context.library, property);
+    const isElement = isReactElementProp(context.library, property);
     const baseType = renderDocsType(context.library, property.type, false);
-    const type = isObject ? `${baseType} | ReactElement` : baseType;
+    const type = isElement ? `${baseType} | ReactElement` : baseType;
 
     const accessNotes = [
         ...(isConstructableProperty(property)

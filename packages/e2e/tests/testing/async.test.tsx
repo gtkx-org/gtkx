@@ -59,7 +59,6 @@ const createDynamicComponent = (removableContent: ReactNode) => () => {
     );
 };
 
-const customTimeout = (): Error => new Error("custom");
 const renderRemovable = async (removableContent: ReactNode): Promise<Gtk.Widget> => {
     const DynamicComponent = createDynamicComponent(removableContent);
     await render(<DynamicComponent />);
@@ -221,12 +220,20 @@ describe("waitFor", () => {
     });
 
     it("routes a custom onTimeout through waitFor and through a find query", async () => {
-        await expect(waitFor(failingCallback, { timeout: 100, onTimeout: customTimeout })).rejects.toThrow();
+        let timeoutCalls = 0;
+
+        const onTimeout = (): Error => {
+            timeoutCalls += 1;
+
+            return new Error("custom");
+        };
+
+        await expect(waitFor(failingCallback, { timeout: 100, onTimeout })).rejects.toThrow();
+        expect(timeoutCalls).toBe(1);
         const { container } = await render(<GtkLabel>Present</GtkLabel>);
 
-        await expect(
-            findByText(container, "Missing", { timeout: 100, onTimeout: customTimeout }),
-        ).rejects.toThrow();
+        await expect(findByText(container, "Missing", { timeout: 100, onTimeout })).rejects.toThrow();
+        expect(timeoutCalls).toBe(2);
     });
 });
 

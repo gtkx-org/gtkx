@@ -2,6 +2,13 @@ import type { GirCallback } from "../gir/callback.js";
 import type { Library } from "../gir/library.js";
 import type { GirParameter } from "../gir/parameter.js";
 import type { TypeId } from "../gir/type-id.js";
+import { isCallerAllocatedContainer } from "./caller-allocated.js";
+import { hasTransferredNumericHashTable, hasUnsupportedHashTableSlot } from "./hash-table-admission.js";
+import {
+    hasUnsupportedCallbackInlineRecordArray,
+    hasUnsupportedInlineRecordArray,
+} from "./inline-record-array-admission.js";
+import { hasInoutHandleIndirectionMismatch } from "./inout-handle.js";
 import { hasUnsupportedScalarParameter } from "./scalar-pointer.js";
 import {
     hasPrimitivePointer,
@@ -46,10 +53,19 @@ const isSupportedCallback = (
     callback: GirCallback,
     adaptedParameters: ReadonlySet<GirParameter> = new Set(),
 ): boolean => {
-    if (!callback.introspectable || hasScalarPointer(library, callback.returnValue.type, callback.returnValue.cType) ||
+    if (!callback.introspectable ||
+        hasUnsupportedHashTableSlot(library, callback.returnValue.type) ||
+        hasTransferredNumericHashTable(library, callback.returnValue.type, callback.returnValue.transferOwnership) ||
+        hasScalarPointer(library, callback.returnValue.type, callback.returnValue.cType) ||
         hasUnknownLengthArray(library, callback.returnValue.type) ||
         hasPrimitivePointer(library, callback.returnValue.type) ||
-        hasCallbackType(library, callback.returnValue.type)) {
+        hasCallbackType(library, callback.returnValue.type) ||
+        hasUnsupportedInlineRecordArray(
+            { library },
+            callback.returnValue.type,
+            callback.returnValue.transferOwnership,
+            { direction: "to-native", isRetained: true },
+        )) {
         return false;
     }
 
@@ -57,8 +73,13 @@ const isSupportedCallback = (
 
     return callback.parameters.every((parameter) =>
         ignored.has(parameter) || adaptedParameters.has(parameter) ||
-        (!hasUnsupportedScalarParameter(library, parameter) && !hasUnknownLengthArray(library, parameter.type) &&
-            !hasPrimitivePointer(library, parameter.type) &&
+        ((parameter.direction === "in" ||
+            !hasTransferredNumericHashTable(library, parameter.type, parameter.transferOwnership)) &&
+            !isCallerAllocatedContainer(library, parameter) &&
+            !hasInoutHandleIndirectionMismatch(library, parameter) &&
+            !hasUnsupportedCallbackInlineRecordArray({ library }, parameter) &&
+            !hasUnsupportedScalarParameter(library, parameter) && !hasUnknownLengthArray(library, parameter.type) &&
+            !hasPrimitivePointer(library, parameter.type) && !hasUnsupportedHashTableSlot(library, parameter.type) &&
             !hasCallbackType(library, parameter.type)));
 };
 

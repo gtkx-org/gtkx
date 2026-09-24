@@ -16,6 +16,7 @@ import { isRunning, processEntries, type ProcessEntry, waitUntil } from "./proce
 
 type DevSession = { output: () => string; isRunning: () => boolean; stop: () => Promise<boolean> };
 type DevState = { project: CliProject; session: DevSession };
+type DevObservation = { pid: number; revision: string };
 type InactiveResourceIcon = { mode: "inactive" };
 type ResourceIconSource = string | null | false | InactiveResourceIcon;
 
@@ -29,9 +30,7 @@ const START_TIMEOUT = 120_000;
 const RELOAD_TIMEOUT = 120_000;
 const STOP_TIMEOUT = 15_000;
 const SETTLE_DELAY = POLL_INTERVAL * 10;
-const FULL_RESTART = "Full restart (process restart)";
-const CATALOG_CHANGED = "Translation catalog changed";
-const APPLICATION_ERROR = "Application error";
+const OBSERVATIONS_FILE = "node_modules/.gtkx/dev-observations.jsonl";
 const FONT_FAMILY = "Red Hat Mono";
 const FONT_ASSET = join("data", "probe.woff2");
 const ADDED_FONT_FAMILY = "Red Hat Text";
@@ -45,14 +44,15 @@ const PACKAGE_FONT_MANIFEST = `${JSON.stringify({
     version: "1.0.0",
     exports: { "./probe.woff": "./probe.woff" },
 }, null, 4)}\n`;
-const FONT_IMPORT_ADDED = "Font import added";
 
 const fontFixture = (name: string): Buffer =>
     readFileSync(fileURLToPath(new URL(`fixtures/${name}`, import.meta.url)));
 const APP_MODULE = join("src", "app.tsx");
 const ENTRY_MODULE = join("src", "index.tsx");
+const JAVASCRIPT_REFRESH_MODULE = join("src", "javascript-refresh.mjs");
 const MESSAGES_MODULE = join("src", "messages.ts");
 const RESOURCE_ICON_MODULE = join("src", "resource-icon.ts");
+const TYPESCRIPT_REFRESH_MODULE = join("src", "typescript-refresh.mts");
 const FIRST_ASSET = join("data", "first.data");
 const SECOND_ASSET = join("data", "second.data");
 const LINGUAS = join("po", "LINGUAS");
@@ -70,6 +70,8 @@ const LOOPED_LINK = "49";
 const LOOPED_TARGET = "b259:49";
 const WATCH_APPLICATION_ID = "com.gtkx.clidev.watch";
 const WATCH_MARKER = "dev-watch";
+const JAVASCRIPT_REFRESH_MARKER = "dev-javascript-refresh";
+const TYPESCRIPT_REFRESH_MARKER = "dev-typescript-refresh";
 const WATCH_ENTRY_MODULE = join("src", "index.ts");
 const RESOURCE_ICON_NAME = "gtkx-dev-probe-symbolic";
 const RESOURCE_ICON_PATH = `/com/gtkx/clidev/icons/scalable/actions/${RESOURCE_ICON_NAME}.svg`;
@@ -139,13 +141,15 @@ const APP_HEAD_START = `import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { t } from "@gtkx/i18n";
-import { GtkApplication, GtkApplicationWindow, GtkLabel } from "@gtkx/jsx/gtk";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { GtkApplication, GtkApplicationWindow, GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
+import { appendFileSync, existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { useEffect } from "react";
 import firstResourcePath from "../data/first.data?resource";
 import firstFile from "../data/first.data?url";
+import { JavascriptRefresh } from "./javascript-refresh.mjs";
 import { translatedMessage } from "./messages.js";
+import { TypescriptRefresh } from "./typescript-refresh.mjs";
 import secondResourcePath from "../data/second.data?resource";
 import fontFamily from "../data/probe.woff2?font";
 import packageFontFamily from "probe-fonts/probe.woff?font";
@@ -166,6 +170,7 @@ const resourceText = (path: string) => Buffer.from(
 
 const App = () => {
     useEffect(() => {
+        appendFileSync("${OBSERVATIONS_FILE}", JSON.stringify({ pid: process.pid, revision: REVISION }) + "\n");
         const display = Gdk.Display.getDefault();
         const hasIcon = display !== null && Gtk.IconTheme.getForDisplay(display).hasIcon("${APPLICATION_ID}");
         let resourceIconRevision = "missing";
@@ -190,7 +195,11 @@ const App = () => {
     return (
         <GtkApplication>
             <GtkApplicationWindow title="Probe">
-                <GtkLabel label="probe" />
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <GtkLabel label="probe" />
+                    <JavascriptRefresh />
+                    <TypescriptRefresh />
+                </GtkBox>
             </GtkApplicationWindow>
         </GtkApplication>
     );
@@ -229,6 +238,36 @@ const appSource = (
     iconFile: ResourceIconSource = null,
     translationKey = "translation",
 ): string => `${appHead(iconFile)}${JSON.stringify(revision)}${appBody(translationKey)}`;
+
+const javascriptRefreshSource = (revision: string): string => String.raw`import { GtkLabel } from "@gtkx/jsx/gtk";
+import { createElement, useEffect } from "react";
+
+const JavascriptRefresh = () => {
+    useEffect(() => {
+        process.stdout.write("${JAVASCRIPT_REFRESH_MARKER} ${revision} " + String(process.pid) + "\n");
+    });
+
+    return createElement(GtkLabel, { label: ${JSON.stringify(revision)} });
+};
+
+export { JavascriptRefresh };
+`;
+
+const typescriptRefreshSource = (revision: string): string => String.raw`import { GtkLabel } from "@gtkx/jsx/gtk";
+import { createElement, useEffect } from "react";
+
+const TypescriptRefresh = () => {
+    const revision: string = ${JSON.stringify(revision)};
+
+    useEffect(() => {
+        process.stdout.write("${TYPESCRIPT_REFRESH_MARKER} " + revision + " " + String(process.pid) + "\n");
+    });
+
+    return createElement(GtkLabel, { label: revision });
+};
+
+export { TypescriptRefresh };
+`;
 
 const config = (): string =>
     `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(STORE_LIBRARIES)}, ` +
@@ -358,6 +397,10 @@ const waitForOutput = async (session: DevSession, needle: string, timeout: numbe
 
 const occurrences = (source: string, needle: string): number => source.split(needle).length - 1;
 
+const observations = (project: CliProject): DevObservation[] =>
+    readFileSync(join(project.root, OBSERVATIONS_FILE), "utf8").trim().split("\n")
+        .map((line) => JSON.parse(line) as DevObservation);
+
 const waitForOccurrences = async (
     session: DevSession,
     needle: string,
@@ -397,13 +440,16 @@ const waitForFileContent = async (path: string, needle: string, timeout: number)
 const expectSingleRestart = async (state: DevState, change: () => void): Promise<string> => {
     const priorOutput = state.session.output();
     const priorRuns = occurrences(priorOutput, READY_MARKER);
+    const previous = observations(state.project);
+    const previousPids = new Set(previous.map(({ pid }) => pid));
     change();
     await waitForOccurrences(state.session, READY_MARKER, priorRuns + 1, RELOAD_TIMEOUT);
     await delay(SETTLE_DELAY);
     const output = state.session.output().slice(priorOutput.length);
+    const currentPids = new Set(observations(state.project).slice(previous.length).map(({ pid }) => pid));
     expect(occurrences(output, READY_MARKER)).toBe(1);
-    expect(occurrences(output, FULL_RESTART)).toBe(1);
-    expect(output).not.toContain(APPLICATION_ERROR);
+    expect(currentPids.size).toBe(1);
+    expect(currentPids.intersection(previousPids).size).toBe(0);
 
     return output;
 };
@@ -416,7 +462,6 @@ const expectAddedFontRestart = async (state: DevState): Promise<void> => {
         ).replace('" " + packageFontFamily + " "', '" " + packageFontFamily + " " + addedFamily + " "'));
     });
 
-    expect(restarted).toContain(FONT_IMPORT_ADDED);
     expect(restarted).toContain(ADDED_FONT_FAMILY);
 };
 
@@ -427,7 +472,6 @@ const expectCatalogRestarts = async (state: DevState): Promise<void> => {
         writeFileSync(join(state.project.root, IT_CATALOG), italianCatalog("translation-two"));
     });
 
-    expect(translated).toContain(CATALOG_CHANGED);
     expect(translated).toContain("translation-two");
 
     const refreshed = await expectSingleRestart(state, () => {
@@ -468,11 +512,26 @@ const expectInactiveIconRecovery = async (state: DevState): Promise<void> => {
     await expectResourceIconReload(state, "icon-restored", null, "true icon-one");
 };
 
+const expectModuleRefresh = async (
+    state: DevState,
+    modulePath: string,
+    source: string,
+    marker: string,
+): Promise<void> => {
+    const initialPid = observations(state.project).at(-1)?.pid;
+    writeFileSync(join(state.project.root, modulePath), source);
+    const output = await waitForOutput(state.session, `${marker} two`, RELOAD_TIMEOUT);
+    expect(output).toContain(`${marker} two ${String(initialPid)}`);
+    expect(state.session.isRunning()).toBe(true);
+};
+
 const devProjectFiles = (): Record<string, string | Buffer> => ({
     [ENTRY_MODULE]: ENTRY_SOURCE,
     [APP_MODULE]: appSource("one"),
+    [JAVASCRIPT_REFRESH_MODULE]: javascriptRefreshSource("one"),
     [MESSAGES_MODULE]: MESSAGES_SOURCE,
     [RESOURCE_ICON_MODULE]: RESOURCE_ICON_MODULE_SOURCE,
+    [TYPESCRIPT_REFRESH_MODULE]: typescriptRefreshSource("one"),
     [FONT_ASSET]: fontFixture("probe.woff2"),
     [ADDED_FONT_ASSET]: fontFixture("probe.otf"),
     [join(PACKAGE_FONT_DIR, "package.json")]: PACKAGE_FONT_MANIFEST,
@@ -530,7 +589,6 @@ const expectWatchReload = async (project: CliProject, session: DevSession): Prom
 
     expect(await waitForOutput(session, `${WATCH_MARKER} two`, RELOAD_TIMEOUT)).toContain(`${WATCH_MARKER} two`);
     expect(session.isRunning()).toBe(true);
-    expect(session.output()).not.toContain(APPLICATION_ERROR);
 };
 
 const createDevState = (): DevState => ({
@@ -557,7 +615,26 @@ describe("gtkx dev", () => {
             `${READY_MARKER} one`,
         );
         expect(state.session.isRunning()).toBe(true);
-        expect(state.session.output()).not.toContain(APPLICATION_ERROR);
+    });
+
+    it("refreshes an .mjs component without restarting the application", async () => {
+        await waitForOutput(state.session, `${JAVASCRIPT_REFRESH_MARKER} one`, START_TIMEOUT);
+        await expectModuleRefresh(
+            state,
+            JAVASCRIPT_REFRESH_MODULE,
+            javascriptRefreshSource("two"),
+            JAVASCRIPT_REFRESH_MARKER,
+        );
+    });
+
+    it("refreshes an .mts component without restarting the application", async () => {
+        await waitForOutput(state.session, `${TYPESCRIPT_REFRESH_MARKER} one`, START_TIMEOUT);
+        await expectModuleRefresh(
+            state,
+            TYPESCRIPT_REFRESH_MODULE,
+            typescriptRefreshSource("two"),
+            TYPESCRIPT_REFRESH_MARKER,
+        );
     });
 
     it("starts the application, and reloads it when a component changes", async () => {
@@ -566,12 +643,14 @@ describe("gtkx dev", () => {
         );
 
         expect(state.session.output()).toContain(`${FONT_FAMILY} ${PACKAGE_FONT_FAMILY} 2`);
+        const initialPid = observations(state.project).find(({ revision }) => revision === "one")?.pid;
 
         writeApp(state.project, appSource("two", null, "Source refresh"));
 
         expect(await waitForOutput(state.session, `${READY_MARKER} two`, RELOAD_TIMEOUT)).toContain(
             `${READY_MARKER} two`,
         );
+        expect(observations(state.project)).toContainEqual({ pid: initialPid, revision: "two" });
         expect(
             await waitForFileContent(
                 join(state.project.root, POT),
@@ -599,7 +678,6 @@ describe("gtkx dev", () => {
         });
 
         expect(output).toContain("Second module message");
-        expect(output).not.toContain(CATALOG_CHANGED);
         expect(readFileSync(join(state.project.root, IT_CATALOG), "utf8")).toMatch(/^msgid "Second module message"$/m);
     });
 
@@ -622,6 +700,7 @@ describe("gtkx dev", () => {
     });
 
     it("stays up when a component stops compiling, and reloads it once it compiles again", async () => {
+        const previousPid = observations(state.project).at(-1)?.pid;
         writeApp(state.project, BROKEN_SOURCE);
         await delay(POLL_INTERVAL * 5);
         expect(state.session.isRunning()).toBe(true);
@@ -631,6 +710,7 @@ describe("gtkx dev", () => {
             `true ${RESOURCE_ICON_NAME} true icon-one`;
 
         expect(await waitForOutput(state.session, recovered, RELOAD_TIMEOUT)).toContain(recovered);
+        expect(observations(state.project)).toContainEqual({ pid: previousPid, revision: "three" });
 
         const priorPot = await waitForFileContent(
             join(state.project.root, POT),
@@ -650,11 +730,10 @@ describe("gtkx dev", () => {
         expect(readFileSync(join(state.project.root, POT), "utf8")).toBe(priorPot);
         expect(readFileSync(join(state.project.root, GENERATED_I18N_RESOURCES), "utf8")).toBe(priorTypes);
 
-        const restored = await expectSingleRestart(state, () => {
+        await expectSingleRestart(state, () => {
             writeFileSync(join(state.project.root, MESSAGES_MODULE), MESSAGES_SOURCE);
         });
 
-        expect(restored).not.toContain(CATALOG_CHANGED);
         expect(readFileSync(join(state.project.root, IT_CATALOG), "utf8")).toMatch(/^msgid "Plain module message"$/m);
     });
 

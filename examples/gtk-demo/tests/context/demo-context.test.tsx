@@ -1,164 +1,144 @@
-import type { ReactNode } from "react";
-import { act, render, renderHook } from "@gtkx/testing";
-import { describe, expect, it } from "vitest";
-import type { Demo, TreeItem } from "../../src/demos/types.js";
-import { DemoProvider, parseTitle, useDemo } from "../../src/context/demo-context.js";
+import * as Gtk from "@gtkx/gi/gtk";
+import { render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { assert, describe, expect, it } from "vitest";
+import type { Demo } from "../../src/demos/types.js";
+import { Sidebar } from "../../src/components/sidebar.js";
+import { button, drawSidebar, expander, fixedSlash, intro, standalone } from "../sidebar-fixture.js";
 
-type Category = Extract<TreeItem, { type: "category" }>;
+const rowLabels = (sidebar: Gtk.ListView): (string | null)[] =>
+    within(sidebar).queryAllByText(/./, { as: Gtk.Inscription }).map((label) => label.getText());
 
-const intro: Demo = { id: "intro", title: "GTK Demo", description: "Introduction", keywords: [] };
-const standalone: Demo = { id: "stand", title: "Standalone", description: "No category", keywords: [] };
+const sidebarWidget = (): Gtk.ListView => screen.getByName("sidebar-list", { as: Gtk.ListView });
 
-const button: Demo = {
-    id: "button",
-    title: "Buttons / Button",
-    description: "Button description",
-    keywords: ["click", "action"],
-    component: () => null,
-};
+const searchWidget = (): Gtk.SearchEntry => screen.getByRole(Gtk.AccessibleRole.SEARCH_BOX, { as: Gtk.SearchEntry });
 
-const expander: Demo = {
-    id: "expander",
-    title: "Buttons / Expander",
-    description: "An expandable widget",
-    keywords: ["disclosure"],
-};
-
-const fixedSlash: Demo = {
-    id: "fixed",
-    title: "Layout/Fixed",
-    description: "Fixed layout",
-    keywords: [],
-};
-
-const buildWrapper = (demos: Demo[]) => {
-    return ({ children }: { children: ReactNode }) => <DemoProvider demos={demos}>{children}</DemoProvider>;
-};
-
-const captureContext = async (demos: Demo[]) => {
-    const { result } = await renderHook(() => useDemo(), { wrapper: buildWrapper(demos) });
-
-    return result.current;
-};
-
-const captureFiltered = async (demos: Demo[], query: string): Promise<TreeItem[]> => {
-    const { result } = await renderHook(() => useDemo(), { wrapper: buildWrapper(demos) });
-
-    await act(() => {
-        result.current.setSearchQuery(query);
+describe("DemoProvider sidebar presentation", () => {
+    it("renders plain and categorized titles in order with the introduction selected", async () => {
+        await render(drawSidebar([intro, standalone, button, expander, fixedSlash]));
+        const sidebar = sidebarWidget();
+        expect(rowLabels(sidebar)).toEqual([
+            "GTK Demo", "Buttons", "Button", "Expander", "Layout", "Fixed", "Standalone",
+        ]);
+        const model = sidebar.getModel();
+        assert(model !== null);
+        expect(model.getNItems()).toBe(7);
+        expect(model.getSelection().getSize()).toBe(1n);
+        expect(model.isSelected(0)).toBe(true);
     });
 
-    return result.current.filteredTreeItems;
-};
-
-const UnboundConsumer = () => {
-    useDemo();
-
-    return null;
-};
-
-const firstCategory = (items: TreeItem[]): Category | undefined =>
-    items.find((item): item is Category => item.type === "category");
-
-const findCategory = (items: TreeItem[], title: string): Category | undefined =>
-    items.find((item): item is Category => item.type === "category" && item.title === title);
-
-const childDemoIds = (category: Category | undefined): (string | null)[] | undefined =>
-    category?.children.map((child) => (child.type === "demo" ? child.demo.id : null));
-
-const treeLabels = (items: TreeItem[]): string[] =>
-    items.map((item) => (item.type === "category" ? item.title : item.displayTitle));
-
-describe("parseTitle", () => {
-    it("returns category=null for a plain title", () => {
-        expect(parseTitle("Plain")).toEqual({ category: null, displayTitle: "Plain" });
-    });
-
-    it("splits on ' / ' when both spaces are present", () => {
-        expect(parseTitle("Buttons / Button")).toEqual({ category: "Buttons", displayTitle: "Button" });
-    });
-
-    it("falls back to splitting on a bare '/'", () => {
-        expect(parseTitle("Layout/Fixed")).toEqual({ category: "Layout", displayTitle: "Fixed" });
-    });
-});
-
-describe("useDemo", () => {
-    it("throws when used outside a DemoProvider", async () => {
-        await expect(render(<UnboundConsumer />)).rejects.toThrow();
-    });
-});
-
-describe("DemoProvider", () => {
-    it("pins the intro at the top of the tree", async () => {
-        const ctx = await captureContext([intro, standalone, button]);
-        expect(ctx.treeItems[0]).toEqual({ type: "demo", demo: intro, displayTitle: "GTK Demo" });
-    });
-
-    it("groups demos with a category under a category node", async () => {
-        const ctx = await captureContext([intro, button, expander]);
-        const buttonsCategory = firstCategory(ctx.treeItems);
-        expect(buttonsCategory?.title).toBe("Buttons");
-        expect(childDemoIds(buttonsCategory)).toEqual(["button", "expander"]);
-    });
-
-    it("recognizes bare '/' titles as categorized", async () => {
-        const ctx = await captureContext([intro, fixedSlash]);
-        expect(findCategory(ctx.treeItems, "Layout")).toBeDefined();
-    });
-
-    it("sorts top-level demos and categories alphabetically", async () => {
+    it("keeps the introduction first and sorts top-level demos and categories", async () => {
         const zebra: Demo = { id: "zebra", title: "Zebra", description: "z", keywords: [] };
         const aardvark: Demo = { id: "aardvark", title: "Aardvark", description: "a", keywords: [] };
-        const ctx = await captureContext([intro, zebra, aardvark, button]);
-        expect(treeLabels(ctx.treeItems)).toEqual(["GTK Demo", "Aardvark", "Buttons", "Zebra"]);
+        await render(drawSidebar([intro, zebra, button, aardvark]));
+        expect(rowLabels(sidebarWidget())).toEqual(["GTK Demo", "Aardvark", "Buttons", "Button", "Zebra"]);
     });
 
-    it("uses the pinned intro as the initial currentDemo", async () => {
-        const ctx = await captureContext([intro, button]);
-        expect(ctx.currentDemo?.id).toBe("intro");
+    it("selects the first demo inside a category when there is no top-level demo", async () => {
+        await render(drawSidebar([button, expander]));
+        const sidebar = sidebarWidget();
+        expect(rowLabels(sidebar)).toEqual(["Buttons", "Button", "Expander"]);
+        const model = sidebar.getModel();
+        assert(model !== null);
+        expect(model.getSelection().getSize()).toBe(1n);
+        expect(model.isSelected(1)).toBe(true);
     });
 
-    it("walks into the first category when no top-level demos exist", async () => {
-        const ctx = await captureContext([button, expander]);
-        expect(ctx.currentDemo?.id).toBe("button");
+    it("renders an empty list without selection before and after a search", async () => {
+        await render(drawSidebar([], true));
+        const sidebar = sidebarWidget();
+        const model = sidebar.getModel();
+        assert(model !== null);
+        expect(rowLabels(sidebar)).toEqual([]);
+        expect(model.getNItems()).toBe(0);
+        expect(model.getSelection().getSize()).toBe(0n);
+        const search = searchWidget();
+        await userEvent.type(search, "missing");
+        await userEvent.clear(search);
+        expect(rowLabels(sidebar)).toEqual([]);
+        expect(model.getNItems()).toBe(0);
+        expect(model.getSelection().getSize()).toBe(0n);
     });
 
-    it("returns currentDemo=null when the demos list is empty", async () => {
-        const ctx = await captureContext([]);
-        expect(ctx.currentDemo).toBeNull();
+    it("moves the native selection when a different demo row is clicked", async () => {
+        await render(drawSidebar([intro, button, expander, standalone]));
+        const sidebar = sidebarWidget();
+        const model = sidebar.getModel();
+        assert(model !== null);
+        await userEvent.click(within(sidebar).getByText("Standalone"));
+        expect(model.getSelection().getSize()).toBe(1n);
+        expect(model.isSelected(4)).toBe(true);
+        await userEvent.click(within(sidebar).getByText("Button"));
+        expect(model.getSelection().getSize()).toBe(1n);
+        expect(model.isSelected(2)).toBe(true);
+    });
+
+    it("rejects rendering Sidebar without its provider", async () => {
+        const searches: string[] = [];
+        await expect(render(
+            <Sidebar
+                isSearchActive={false}
+                onSearchChanged={(query) => {
+                    searches.push(query);
+                }}
+            />,
+        )).rejects.toThrow();
+        expect(searches).toEqual([]);
     });
 });
 
-describe("filteredTreeItems", () => {
-    it("returns the full tree when the query is whitespace-only", async () => {
-        const filtered = await captureFiltered([intro, button, expander], " ".repeat(3));
-        expect(filtered.length).toBeGreaterThan(0);
-        expect(filtered[0]).toEqual({ type: "demo", demo: intro, displayTitle: "GTK Demo" });
+describe("DemoProvider sidebar search", () => {
+    it.each([
+        ["title", "Expander"],
+        ["description", "expandable widget"],
+        ["keyword", "disclosure"],
+        ["case-insensitive title", "eXpAnDeR"],
+    ])("shows only the matching demo and its category for a %s search", async (_field, query) => {
+        await render(drawSidebar([intro, button, expander, standalone], true));
+        const sidebar = sidebarWidget();
+        await userEvent.type(searchWidget(), query);
+        await waitFor(() => {
+            expect(rowLabels(sidebar)).toEqual(["Buttons", "Expander"]);
+        });
+        const model = sidebar.getModel();
+        assert(model !== null);
+        expect(model.getNItems()).toBe(2);
     });
 
-    it("matches against title", async () => {
-        const filtered = await captureFiltered([intro, button, expander], "Expander");
-        expect(childDemoIds(findCategory(filtered, "Buttons"))).toEqual(["expander"]);
+    it("restores every displayed row for a whitespace-only query", async () => {
+        await render(drawSidebar([intro, button, expander, standalone], true));
+        const sidebar = sidebarWidget();
+        const search = searchWidget();
+        await userEvent.type(search, "disclosure");
+        await waitFor(() => {
+            expect(rowLabels(sidebar)).toEqual(["Buttons", "Expander"]);
+        });
+        await userEvent.clear(search);
+        await userEvent.type(search, " ".repeat(3));
+        expect(search.getText()).toBe(" ".repeat(3));
+        await waitFor(() => {
+            expect(rowLabels(sidebar)).toEqual(["GTK Demo", "Buttons", "Button", "Expander", "Standalone"]);
+        });
     });
 
-    it("matches against description", async () => {
-        const filtered = await captureFiltered([intro, button, expander], "expandable widget");
-        expect(findCategory(filtered, "Buttons")).toBeDefined();
-    });
-
-    it("matches against keywords", async () => {
-        const filtered = await captureFiltered([intro, button, expander], "disclosure");
-        expect(findCategory(filtered, "Buttons")).toBeDefined();
-    });
-
-    it("drops categories whose children no longer match", async () => {
-        const filtered = await captureFiltered([intro, button, expander], "zzznevermatch");
-        expect(firstCategory(filtered)).toBeUndefined();
-    });
-
-    it("matches top-level demos", async () => {
-        const filtered = await captureFiltered([intro, standalone, button], "Standalone");
-        expect(filtered.some((item) => item.type === "demo" && item.demo.id === "stand")).toBe(true);
+    it("removes all rows for no match and recovers top-level and full results", async () => {
+        await render(drawSidebar([intro, button, expander, standalone], true));
+        const sidebar = sidebarWidget();
+        const search = searchWidget();
+        await userEvent.type(search, "zzznevermatch");
+        await waitFor(() => {
+            expect(rowLabels(sidebar)).toEqual([]);
+        });
+        const model = sidebar.getModel();
+        assert(model !== null);
+        expect(model.getNItems()).toBe(0);
+        await userEvent.clear(search);
+        await userEvent.type(search, "Standalone");
+        await waitFor(() => {
+            expect(rowLabels(sidebar)).toEqual(["Standalone"]);
+        });
+        await userEvent.clear(search);
+        await waitFor(() => {
+            expect(rowLabels(sidebar)).toEqual(["GTK Demo", "Buttons", "Button", "Expander", "Standalone"]);
+        });
     });
 });

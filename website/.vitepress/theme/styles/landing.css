@@ -26,10 +26,6 @@
     margin: 0;
 }
 
-.accent {
-    color: var(--brand);
-}
-
 .section-head {
     text-align: center;
     max-width: 42rem;
@@ -63,34 +59,12 @@
     }
 }
 
-@media (max-width: 640px) {
-    .stack-sm {
-        grid-template-columns: 1fr !important;
-    }
-}
-
-.l-code {
-    font-family: var(--font-mono);
-    font-size: 0.9em;
-    color: var(--code-text);
-    background: var(--code-bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xs);
-    padding: 0.05em 0.35em;
-}
-
 .tcmd {
     color: rgba(235, 235, 245, 0.9);
 }
 .tprompt {
     color: var(--red-400);
     padding-right: 0.5em;
-}
-.tout {
-    color: var(--success);
-}
-.terr {
-    color: var(--red-400);
 }
 .tdim {
     color: var(--text-3);

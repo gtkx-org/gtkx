@@ -89,12 +89,15 @@ function arrayTypeRefFromNode(arrayNode: RawNode, context: ParseContext): TypeId
     }
 
     const elementNode = getChild(arrayNode, "type");
+    const arrayCType = attr(arrayNode, "c:type");
+    const isCharacterArray = attr(elementNode, "name") === "utf8" &&
+        /^(?:const\s+)?(?:gchar|char)\s*\*$/u.test(arrayCType ?? "");
 
     const carray: CArrayType = {
         kind: "carray",
-        element,
+        element: isCharacterArray ? context.addPrimitive("uint8") : element,
         elementCType: elementNode === undefined ? undefined : attr(elementNode, "c:type"),
-        arrayCType: attr(arrayNode, "c:type"),
+        arrayCType,
         lengthParameterIndex: intAttr(arrayNode, "length"),
         fixedSize: intAttr(arrayNode, "fixed-size"),
         isZeroTerminated: isAttrTrue(arrayNode, "zero-terminated", true),

@@ -13,7 +13,7 @@ import {
 } from "../gir/type-id.js";
 import { gtypeParamTsType, gtypeTsType } from "../store/gi/gtype-binding.js";
 import { isValueTypeName } from "../store/gi/param-marshal.js";
-import { isByteSequence } from "./type-shape.js";
+import { isByteSequence, primitiveCategoryThroughAliases } from "./type-shape.js";
 
 type ReferenceName = {
     namespaceName: string;
@@ -171,6 +171,11 @@ const renderTsType = (context: ModuleContext, ref: TypeId | undefined, isNullabl
         isGtypeWidened: false,
     });
 
+const renderAliasTargetTsType = (context: ModuleContext, target: TypeId | undefined): string =>
+    primitiveCategoryThroughAliases(context.library, target) === "gtype"
+        ? PRIMITIVE_TS_TYPE.gtype
+        : renderTsType(context, target);
+
 const renderParameterTsType = (
     context: ModuleContext,
     ref: TypeId | undefined,
@@ -207,4 +212,11 @@ const recordTypeTarget = (
     return target;
 };
 
-export { renderBaseType, renderParameterTsType, renderTsType, recordTypeTarget, type TsTypeTarget };
+export {
+    renderAliasTargetTsType,
+    renderBaseType,
+    renderParameterTsType,
+    renderTsType,
+    recordTypeTarget,
+    type TsTypeTarget,
+};

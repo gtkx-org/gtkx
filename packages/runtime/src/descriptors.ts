@@ -101,7 +101,7 @@ type BoxedOptions = {
     size?: number;
     /** Returns the wrapper class of the declared type, used when none is registered for the GType. */
     fallbackClass?: () => AnyClass;
-};
+} & Pick<BoxedDescriptor, "isValueSafe">;
 
 /** Callback result, closure ownership, and lifetime options. */
 type CallbackOptions = Pick<
@@ -151,7 +151,7 @@ type FundamentalOptions = {
     isCallerAllocated?: boolean;
     /** The value is embedded in the containing struct rather than reached through a pointer. */
     isInline?: boolean;
-};
+} & Pick<FundamentalDescriptor, "isValueSafe">;
 
 type FundamentalLifecycle = {
     sharedLibrary: string;
@@ -175,7 +175,7 @@ type StructOptions = {
     copyFnName?: string;
     /** Function releasing an instance, used instead of `g_free` when the struct declares one. */
     freeFnName?: string;
-};
+} & Pick<StructDescriptor, "isValueSafe">;
 
 /** Descriptor for a `gint8`, marshalled as a number. */
 const int8T: Int8Descriptor = { kind: "int8" };
@@ -339,6 +339,10 @@ const applyBoxedOptions = (result: BoxedDescriptor, options: BoxedOptions): void
     if (options.size !== undefined) {
         result.size = options.size;
     }
+
+    if (options.isValueSafe === true) {
+        result.isValueSafe = true;
+    }
 };
 
 /** Builds a descriptor for a `GBoxed` value of the named type. */
@@ -390,6 +394,10 @@ const structT = (ownership: Ownership = "borrowed", options: StructOptions = {})
         result.isInline = true;
     }
 
+    if (options.isValueSafe === true) {
+        result.isValueSafe = true;
+    }
+
     applyStructLifecycle(result, options);
 
     return result;
@@ -437,6 +445,10 @@ const fundamentalT = (
 
     if (options.isInline) {
         result.isInline = true;
+    }
+
+    if (options.isValueSafe === true) {
+        result.isValueSafe = true;
     }
 
     return result;

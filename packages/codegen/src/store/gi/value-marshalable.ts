@@ -5,7 +5,8 @@ import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { type GirRecord, isBoxedRecord } from "../../gir/record.js";
 
-type Scope = { context: ModuleContext; seen: Set<string> };
+type ValueMarshalContext = Pick<ModuleContext, "library">;
+type Scope = { context: ValueMarshalContext; seen: Set<string> };
 
 const POINTER_CATEGORIES: Set<PrimitiveCategory> = new Set<PrimitiveCategory>(["string", "pointer"]);
 
@@ -79,10 +80,10 @@ function isValueSafeRecord(scope: Scope, namespaceName: string, record: GirRecor
     return isSafe;
 }
 
-const isValueMarshalable = (context: ModuleContext, namespaceName: string, record: GirRecord): boolean =>
+const isValueMarshalable = (context: ValueMarshalContext, namespaceName: string, record: GirRecord): boolean =>
     isValueSafeRecord({ context, seen: new Set<string>() }, namespaceName, record);
 
-const isConstructibleRecord = (context: ModuleContext, namespaceName: string, record: GirRecord): boolean =>
+const isConstructibleRecord = (context: ValueMarshalContext, namespaceName: string, record: GirRecord): boolean =>
     !isOpaqueRecord(record) && (hasOwnCopySemantics(record) || isValueMarshalable(context, namespaceName, record));
 
 export { isConstructibleRecord, isValueMarshalable };

@@ -1,7 +1,7 @@
 import type { Library } from "../gir/library.js";
+import type { PrimitiveCategory } from "../gir/primitives.js";
 import type { CArrayType, ListType, TypeId } from "../gir/type-id.js";
 import type { GirType } from "../gir/type.js";
-import { primitiveCategory, type PrimitiveCategory } from "../gir/primitives.js";
 import { hasUnknownArrayLength } from "../gir/type-id.js";
 
 const resolvedTypeFor = (library: Library, ref: TypeId | undefined): GirType | undefined =>
@@ -33,15 +33,9 @@ const primitiveCategoryFor = (library: Library, ref: TypeId | undefined): Primit
 };
 
 const primitiveCategoryThroughAliases = (library: Library, ref: TypeId | undefined): PrimitiveCategory | undefined => {
-    const type = resolvedTypeFor(library, ref);
+    const type = underlyingType(library, ref);
 
-    if (type?.kind !== "alias") {
-        return primitiveCategoryFor(library, ref);
-    }
-
-    const category = type.value.cType === undefined ? undefined : primitiveCategory(type.value.cType);
-
-    return category === "gtype" ? category : primitiveCategoryThroughAliases(library, type.value.target);
+    return type?.kind === "primitive" ? type.category : undefined;
 };
 
 const isUnboundedArray = (type: CArrayType): boolean =>

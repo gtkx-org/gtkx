@@ -6,4 +6,4 @@ The smallest complete GTKX app: a native GNOME window built with Adwaita, React 
 pnpm --filter hello-world dev
 ```
 
-Run from the repository root after `pnpm install` and `pnpm build`. Continue with [Getting Started](https://gtkx.dev/guide/getting-started).
+Run from the repository root after `pnpm install` and `pnpm build`. Continue with [Getting Started](https://gtkx.dev/v2/guide/getting-started).

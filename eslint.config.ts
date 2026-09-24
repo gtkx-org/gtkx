@@ -4,6 +4,13 @@ import api from "./api.json" with { type: "json" };
 export default [
     ...config(import.meta.dirname, api),
     {
+        files: [
+            "packages/runtime/tests/fixtures/process-exit-owner.ts",
+            "packages/runtime/tests/fixtures/process-exit-closure.ts",
+        ],
+        rules: { "unicorn/no-process-exit": "off" },
+    },
+    {
         files: ["packages/codegen/src/fingerprint.ts"],
         rules: {
             "unicorn/require-array-sort-compare": "off",

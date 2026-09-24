@@ -1,18 +1,11 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { configure, fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import { afterEach, beforeAll, describe, expect, it, type MockInstance, vi } from "vitest";
-import { parseTitle } from "../src/context/demo-context.js";
+import { beforeAll, describe, expect, it } from "vitest";
 import { demos } from "../src/demos/index.js";
+import { expectInspectorOpened, findAddedWindow } from "./native-dialogs.js";
 import { createAppRenderer } from "./render-app.js";
 import { findButton, findWidget } from "./test-utils.js";
-
-type PrintOperationRunSpy = MockInstance<Gtk.PrintOperation["run"]>;
-
-type DialogHooks = {
-    printRun: PrintOperationRunSpy;
-    pageSetup: ReturnType<typeof vi.fn>;
-};
 
 type DemoTally = {
     windowDemosRun: number;
@@ -22,15 +15,11 @@ type DemoTally = {
 type DemoSweep = {
     sidebar: Gtk.ListView;
     mainWindow: Gtk.ApplicationWindow;
-    hooks: DialogHooks;
     dialogTitles: Set<string>;
     tally: DemoTally;
 };
 
 const renderApp = createAppRenderer("org.gtkx.gtkdemoe2e");
-
-const toplevelWindows = async (): Promise<Gtk.Window[]> =>
-    await screen.findAllByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
 
 const demoWindows = (): Gtk.Window[] => screen.queryAllByName("demo-window", { as: Gtk.Window });
 
@@ -42,16 +31,6 @@ const requireOnlyDemoWindow = (windows: Gtk.Window[], title: string): Gtk.Window
     }
 
     return win;
-};
-
-const getActionName = (widget: Gtk.Widget): string | null => {
-    const getter: unknown = Reflect.get(widget, "getActionName");
-
-    if (typeof getter !== "function") {
-        return null;
-    }
-
-    return (getter as () => string | null).call(widget) ?? null;
 };
 
 const readWindowTitle = (window: Gtk.Window): string => window.getTitle() ?? "";
@@ -73,7 +52,7 @@ const closeDemoWindow = async (window: Gtk.Window): Promise<void> => {
         return;
     }
 
-    const closeButton = findWidget(window, Gtk.Widget, (w) => getActionName(w) === "window.close");
+    const closeButton = findWidget(window, Gtk.Button, (button) => button.getActionName() === "window.close");
 
     if (closeButton) {
         await userEvent.click(closeButton);
@@ -131,9 +110,8 @@ const exerciseErrorStatesDialog = async (): Promise<void> => {
     await dismissDialog(dialog);
 };
 
-const exerciseDialogDemo = async (title: string, run: Gtk.Button, hooks: DialogHooks): Promise<void> => {
-    const windowsBefore = await toplevelWindows();
-    const baseline = windowsBefore.length;
+const exerciseDialogDemo = async (title: string, run: Gtk.Button, mainWindow: Gtk.Window): Promise<void> => {
+    const previous = new Set(Gtk.Window.listToplevels());
     await userEvent.click(run);
 
     if (title === "Error States") {
@@ -142,14 +120,14 @@ const exerciseDialogDemo = async (title: string, run: Gtk.Button, hooks: DialogH
         return;
     }
 
-    const spy = title === "Printing" ? hooks.printRun : hooks.pageSetup;
-
+    const dialog = await findAddedWindow(previous);
+    expect(dialog.getTitle()).toBe(title === "Printing" ? "Print" : title);
+    expect(dialog.getTransientFor()).toBe(mainWindow);
+    await userEvent.click(within(dialog).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Cancel" }));
     await waitFor(() => {
-        expect(spy, `"${title}" did not trigger its dialog`).toHaveBeenCalled();
+        expect(Gtk.Window.listToplevels()).not.toContain(dialog);
     });
-
-    const windowsAfter = await toplevelWindows();
-    expect(windowsAfter.length, `"${title}" leaked a top-level window`).toBe(baseline);
+    expect(mainWindow).toBeVisible();
 };
 
 const openMenuItem = async (menuButton: Gtk.MenuButton, name: string): Promise<void> => {
@@ -158,33 +136,8 @@ const openMenuItem = async (menuButton: Gtk.MenuButton, name: string): Promise<v
     await userEvent.click(item);
 };
 
-function emitPrintDone(printRun: PrintOperationRunSpy): Gtk.PrintOperationResult {
-    const operation = printRun.mock.contexts.at(-1);
-
-    if (operation instanceof Gtk.PrintOperation) {
-        operation.emit("done", Gtk.PrintOperationResult.APPLY);
-    }
-
-    return Gtk.PrintOperationResult.APPLY;
-}
-
-function stubPrintOperationRun(): PrintOperationRunSpy {
-    const printRun = vi.spyOn(Gtk.PrintOperation.prototype, "run");
-    printRun.mockImplementation(() => emitPrintDone(printRun));
-
-    return printRun;
-}
-
-function stubPageSetupDialog(): ReturnType<typeof vi.fn> {
-    return vi
-        .spyOn(Gtk, "printRunPageSetupDialogAsync")
-        .mockImplementation((_parent, _pageSetup, _settings, done) => {
-            done(new Gtk.PageSetup());
-        });
-}
-
 function dialogOnlyTitles(): Set<string> {
-    return new Set(demos.filter((d) => d.isDialogOnly).map((d) => parseTitle(d.title).displayTitle));
+    return new Set(["Error States", "Page Setup", "Printing"]);
 }
 
 function countWindowDemos(): number {
@@ -238,7 +191,7 @@ const exerciseDemoAtRow = async (sweep: DemoSweep, position: number, previousTit
     }
 
     if (sweep.dialogTitles.has(title)) {
-        await exerciseDialogDemo(title, run, sweep.hooks);
+        await exerciseDialogDemo(title, run, sweep.mainWindow);
         sweep.tally.dialogDemosRun.add(title);
 
         return title;
@@ -267,12 +220,10 @@ const exerciseMainMenu = async (): Promise<void> => {
     const [shortcutLabel] = await screen.findAllByText("Search demos");
     expect(shortcutLabel).toBeRooted();
     await dismissDialog(await screen.findByRole(Gtk.AccessibleRole.DIALOG));
-    const inspector = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation((): void => undefined);
-    await openMenuItem(menuButton, "Inspector Shift+Ctrl+I");
-
-    await waitFor(() => {
-        expect(inspector).toHaveBeenCalledWith(true);
+    await expectInspectorOpened(async () => {
+        await openMenuItem(menuButton, "Inspector Shift+Ctrl+I");
     });
+    expect(screen.getByName("main-window")).toBeVisible();
 };
 
 describe("gtk-demo end-to-end", () => {
@@ -280,12 +231,7 @@ describe("gtk-demo end-to-end", () => {
         configure({ asyncUtilTimeout: 20_000 });
     });
 
-    afterEach(() => {
-        vi.restoreAllMocks();
-    });
-
     it("opens every demo, exercises the search bar, and invokes each main menu action", async () => {
-        const hooks: DialogHooks = { printRun: stubPrintOperationRun(), pageSetup: stubPageSetupDialog() };
         await renderApp();
         const mainWindow = await screen.findByName("main-window", { as: Adw.ApplicationWindow });
         const sidebar = await screen.findByName("sidebar-list", { as: Gtk.ListView });
@@ -294,7 +240,7 @@ describe("gtk-demo end-to-end", () => {
         const dialogTitles = dialogOnlyTitles();
         const expectedWindowDemos = countWindowDemos();
         const tally: DemoTally = { windowDemosRun: 0, dialogDemosRun: new Set() };
-        await exerciseEveryDemo({ sidebar, mainWindow, hooks, dialogTitles, tally }, model);
+        await exerciseEveryDemo({ sidebar, mainWindow, dialogTitles, tally }, model);
         expect(tally.windowDemosRun, "not every window demo was exercised").toBe(expectedWindowDemos);
         expect(tally.dialogDemosRun).toEqual(dialogTitles);
         await exerciseMainMenu();

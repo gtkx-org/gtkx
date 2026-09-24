@@ -10,24 +10,28 @@ type Camelized<TName extends string> = TName extends `${infer THead}-${infer TTa
     ? `${THead}${Capitalize<Camelized<TTail>>}`
     : TName;
 
+type AvailableProperties<TMap> = {
+    [K in keyof TMap as [TMap[K]] extends [never] ? never : K]: TMap[K];
+};
+
 type ReadableProperties<TInstance> = TInstance extends { [propertyMapOverride]?: infer TResolver }
     ? TResolver extends () => infer TMap
-        ? NonNullable<TMap>
+        ? AvailableProperties<NonNullable<TMap>>
         : TInstance extends { __properties__?: infer TMap }
-            ? NonNullable<TMap>
+            ? AvailableProperties<NonNullable<TMap>>
             : object
     : TInstance extends { __properties__?: infer TMap }
-        ? NonNullable<TMap>
+        ? AvailableProperties<NonNullable<TMap>>
         : object;
 
 type WritableProperties<TInstance> = TInstance extends { [writablePropertyMapOverride]?: infer TResolver }
     ? TResolver extends () => infer TMap
-        ? NonNullable<TMap>
+        ? AvailableProperties<NonNullable<TMap>>
         : TInstance extends { __writableProperties__?: infer TMap }
-            ? NonNullable<TMap>
+            ? AvailableProperties<NonNullable<TMap>>
             : object
     : TInstance extends { __writableProperties__?: infer TMap }
-        ? NonNullable<TMap>
+        ? AvailableProperties<NonNullable<TMap>>
         : object;
 
 export { type Dashed, type Camelized, type ReadableProperties, type WritableProperties };

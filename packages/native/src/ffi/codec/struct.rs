@@ -26,6 +26,7 @@ pub struct StructCodec {
     pub shared_library: Option<String>,
     pub copy_fn_name: Option<String>,
     pub free_fn_name: Option<String>,
+    pub value_safe: bool,
 }
 
 impl Encoder for StructCodec {

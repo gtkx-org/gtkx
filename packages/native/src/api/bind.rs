@@ -7,7 +7,7 @@ use napi_derive::napi;
 
 use super::vtable::{VfuncVtable, query_type, resolve_vfunc_slot, validate_vfunc_offset};
 use crate::api::{native_result, type_from_bigint};
-use crate::ffi::codec::{Codec, Encoder as _};
+use crate::ffi::codec::{Codec, Encoder as _, validate_call_signature};
 use crate::ffi::descriptor::Descriptor;
 use crate::ffi::library_cache::FfiCache;
 use crate::handle::Handle;
@@ -145,8 +145,11 @@ fn into_codecs(
         .into_iter()
         .map(Descriptor::into_codec)
         .collect::<Result<Vec<_>>>()?;
+    let return_codec = return_descriptor.into_codec()?;
+    validate_call_signature(&arg_codecs, &return_codec)
+        .map_err(|error| Error::from_reason(error.to_string()))?;
 
-    Ok((arg_codecs, return_descriptor.into_codec()?))
+    Ok((arg_codecs, return_codec))
 }
 
 fn vfunc_vtable(

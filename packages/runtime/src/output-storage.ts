@@ -20,8 +20,10 @@ const scalarKinds: Set<Descriptor["kind"]> = new Set([
     "bigint64", "biguint64", "float32", "float64",
 ]);
 
+const isScalarStorageDescriptor = (descriptor: Descriptor): boolean => scalarKinds.has(descriptor.kind);
+
 const compileOutputStorage = (descriptor: Descriptor): OutputStorage | undefined => {
-    if (!scalarKinds.has(descriptor.kind)) {
+    if (!isScalarStorageDescriptor(descriptor)) {
         return undefined;
     }
     const field = bindField(descriptor);
@@ -42,4 +44,4 @@ const compileOutputStorage = (descriptor: Descriptor): OutputStorage | undefined
     };
 };
 
-export { compileOutputStorage, type OutputStorage, type StorageHandle };
+export { compileOutputStorage, isScalarStorageDescriptor, type OutputStorage, type StorageHandle };

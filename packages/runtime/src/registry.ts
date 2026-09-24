@@ -84,6 +84,7 @@ type VfuncDescriptor = {
      * or it passes one argument fewer than the implementation reads.
      */
     canThrow?: boolean;
+    canCall?: boolean;
 };
 
 /**

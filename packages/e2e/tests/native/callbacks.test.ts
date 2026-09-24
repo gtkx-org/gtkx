@@ -15,33 +15,56 @@ type NotifiedCallback = WeakRef<Regress.TestCallbackUserData>;
 
 const VOID: Descriptor = { kind: "void" };
 const BORROWED_OBJECT = (typeName: string): Descriptor => ({ kind: "object", ownership: "borrowed", typeName });
+const SIDE_CALLBACK: Extract<Descriptor, { kind: "callback" }> = {
+    kind: "callback",
+    argDescriptors: [{ kind: "biguint64" }],
+    returnDescriptor: { kind: "int32" },
+    hasUserData: true,
+    userDataIndex: 0,
+    scope: "forever",
+    releaseWithCompletion: true,
+};
+const completionTiedArgs = (side: Extract<Descriptor, { kind: "callback" }>): Descriptor[] => [
+    BORROWED_OBJECT("RegressTestObj"),
+    { kind: "int32" },
+    BORROWED_OBJECT("GCancellable"),
+    side,
+    ...(side.hasDestroy === true ? [] : [{ kind: "buffer" } as const]),
+    {
+        kind: "callback",
+        argDescriptors: [BORROWED_OBJECT("GObject"), BORROWED_OBJECT("GAsyncResult"), { kind: "biguint64" }],
+        returnDescriptor: VOID,
+        hasUserData: true,
+        userDataIndex: 2,
+        scope: "async",
+    },
+];
 const completionTiedFunction = bind(
+    "libregress.so", "regress_test_obj_function2", completionTiedArgs(SIDE_CALLBACK), VOID,
+);
+
+const runtimeCompletionTiedFunction = t.bind(
     "libregress.so",
     "regress_test_obj_function2",
     [
-        BORROWED_OBJECT("RegressTestObj"),
-        { kind: "int32" },
-        BORROWED_OBJECT("GCancellable"),
-        {
-            kind: "callback",
-            argDescriptors: [{ kind: "biguint64" }],
-            returnDescriptor: { kind: "int32" },
-            hasUserData: true,
-            userDataIndex: 0,
-            scope: "notified",
-        },
-        { kind: "buffer" },
-        {
-            kind: "callback",
-            argDescriptors: [BORROWED_OBJECT("GObject"), BORROWED_OBJECT("GAsyncResult"), { kind: "biguint64" }],
-            returnDescriptor: VOID,
-            hasUserData: true,
-            userDataIndex: 2,
-            scope: "async",
-        },
+        t.object("borrowed"),
+        t.int32,
+        t.object("borrowed"),
+        t.callback([t.biguint64], t.int32, { hasUserData: true, userDataIndex: 0, scope: "notified" }),
+        t.buffer,
+        t.callback([t.object("borrowed"), t.object("borrowed"), t.biguint64], t.void, {
+            hasUserData: true, userDataIndex: 2, scope: "async",
+        }),
     ],
-    VOID,
+    t.void,
 );
+const completionInvokers = [
+    { name: "native", invoke: (values: unknown[]) => call(completionTiedFunction, values, 5) },
+    { name: "runtime", invoke: (values: unknown[]) => runtimeCompletionTiedFunction(...values) },
+];
+const defaultUserDataCallback = t.bind("libregress.so", "regress_test_callback_user_data", [
+    t.callback([t.biguint64], t.int32, { hasUserData: true, userDataIndex: 0 }),
+], t.int32);
 
 drainAfterEachTest();
 
@@ -77,9 +100,21 @@ const registerAsync = (counter: Counter, value: number): NotifiedCallback => {
     return new WeakRef(callback);
 };
 
+const invokeDefaultUserDataCallback = (counter: Counter): WeakRef<() => number> => {
+    const callback = (): number => {
+        counter.calls += 1;
+
+        return 17;
+    };
+    expect(defaultUserDataCallback(callback)).toBe(17);
+
+    return new WeakRef(callback);
+};
+
 const registerCompletionTied = (
     obj: Regress.TestObj,
     counter: Counter,
+    invoke: (values: unknown[]) => unknown,
 ): { completion: Promise<undefined>; weak: NotifiedCallback } => {
     const { promise, resolve } = Promise.withResolvers<undefined>();
     const callback = (): number => {
@@ -88,7 +123,7 @@ const registerCompletionTied = (
         return 1;
     };
 
-    call(completionTiedFunction, [
+    invoke([
         getHandle(obj),
         0,
         null,
@@ -97,7 +132,7 @@ const registerCompletionTied = (
         () => {
             resolve(undefined);
         },
-    ], 5);
+    ]);
 
     return { completion: promise, weak: new WeakRef(callback) };
 };
@@ -286,10 +321,10 @@ test("async scope callbacks are deferred until the async queue is thawed", async
     expect(weak.deref()).toBeUndefined();
 });
 
-test("a notified side callback is released with its async completion", async () => {
+test.each(completionInvokers)("a $name side callback is released with its async completion", async ({ invoke }) => {
     const obj = new Regress.TestObj({});
     const counter: Counter = { calls: 0 };
-    const { completion, weak } = registerCompletionTied(obj, counter);
+    const { completion, weak } = registerCompletionTied(obj, counter, invoke);
 
     expect(counter.calls).toBe(1);
     await drainGC();
@@ -657,4 +692,26 @@ test("the binding survives a callback out parameter failure", () => {
     expect(() => GIMarshallingTests.callbackMultipleOutParameters(() => ["a", "b"])).toThrow();
     expect(GIMarshallingTests.callbackReturnValueOnly(() => 42n)).toBe(42n);
     expect(GIMarshallingTests.callbackMultipleOutParameters(() => [1.5, 2.5])).toEqual([1.5, 2.5]);
+});
+
+test("a runtime callback with only user data defaults to the call lifetime", async () => {
+    const counter: Counter = { calls: 0 };
+    const weak = invokeDefaultUserDataCallback(counter);
+    expect(counter.calls).toBe(1);
+    await drainGC(5);
+    expect(weak.deref()).toBeUndefined();
+    expect(() => defaultUserDataCallback(() => {
+        throw new Error("Callback failure");
+    })).toThrow();
+    expect(defaultUserDataCallback(() => 21)).toBe(21);
+});
+
+test.each([
+    { name: "call scope", descriptor: { ...SIDE_CALLBACK, scope: "call" } as const },
+    { name: "async scope", descriptor: { ...SIDE_CALLBACK, scope: "async" } as const },
+    { name: "destroy notifier", descriptor: { ...SIDE_CALLBACK, hasDestroy: true } as const },
+])("native completion retention rejects a side callback with $name", ({ descriptor }) => {
+    expect(() => bind(
+        "libregress.so", "regress_test_obj_function2", completionTiedArgs(descriptor), VOID,
+    )).toThrow();
 });

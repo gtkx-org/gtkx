@@ -90,9 +90,11 @@ The integration uses three kinds of libuv handle:
 
 Each prepare callback iterates the GLib context without blocking, stopping when there is no work or the current four-millisecond dispatch budget expires. It then queries GLib's next deadline and descriptors, updates poll handles, and arms the timer. The budget limits a batch of iterations; it cannot interrupt a long-running callback. Native dispatch runs within Node callback scopes so JavaScript callbacks and microtasks participate in Node's execution model.
 
-The handles are normally unreferenced, so merely importing GTKX does not keep an otherwise idle Node process alive. Application activation requests a keep-alive reference; shutdown releases it. Environment cleanup tears down the integration even if JavaScript shutdown code cannot run, as when a worker is terminated.
+The handles are normally unreferenced, so merely importing GTKX does not keep an otherwise idle Node process alive. Application activation requests a keep-alive reference; shutdown releases it. Environment cleanup releases the event-loop integration and its dispatch resources.
 
 Only the owning thread can operate this GTKX runtime. Attempting to acquire the context from another thread while it is owned fails. Worker communication should carry plain data back to the owner; native objects and GTK operations stay there.
+
+A standalone worker can initialize GTKX when no other thread has done so. Before terminating an owning worker, finish native operations or cancel them and await completion. Disconnect signal handlers and remove other native callback registrations, then call `quit()` from `@gtkx/runtime`. The worker must report cleanup completion before its parent calls `worker.terminate()`. `quit()` does not cancel operations or await their callbacks. Terminating a worker with live native operations or registrations is unsupported.
 
 ## Application lifecycle and errors
 
@@ -102,6 +104,6 @@ The runtime records whether an application is primary, remote, unregistered, or 
 
 Runtime shutdown runs registered exit callbacks and releases native keep-alive before propagating cleanup errors. A failing callback cannot prevent the remaining cleanup, and repeated or reentrant shutdown does not run it twice.
 
-Errors need to cross the same boundaries as successful results. Throwing native functions report `GError` through an out parameter that the TypeScript runtime turns into an exception. Callback code can propagate a JavaScript exception or convert it to `GError` when the callback's ABI supports one. GLib criticals raised during a bound call are collected and reported after the call returns, and Rust entry points guard unwinding at FFI boundaries.
+Errors need to cross the same boundaries as successful results. Throwing native functions report `GError` through an out parameter that the TypeScript runtime turns into an exception. Runtime converts callback exceptions into owned `GError` values when the signature supplies an error slot. Native retains error-slot ABI metadata, validates and copies the supplied handle, and preserves the original exception when the error slot is absent or occupied. The direct addon transport is `CallbackFailure` in [`native/main.d.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/main.d.ts). GLib criticals raised during a bound call are collected and reported after the call returns, and Rust entry points guard unwinding at FFI boundaries.
 
 The relevant sources are [`runtime/src/error.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/runtime/src/error.ts), [`native/src/host/log_writer.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/host/log_writer.rs), and [`native/src/host/panic_handler.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/host/panic_handler.rs). The [Error Handling guide](/v2/guide/error-handling) explains which errors an application's React boundaries can catch and which occur outside rendering.

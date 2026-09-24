@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 
 const mode = process.argv[2];
-const willLinger = mode === "terminate" || mode === "kill";
+const willLinger = mode === "terminate";
 const task = fileURLToPath(new URL("worker-task.ts", import.meta.url));
 
 if (mode === "conflict") {
@@ -24,8 +24,6 @@ process.stdout.write(`REPORT ${JSON.stringify(report)}\n`);
 if (mode === "terminate") {
     worker.postMessage("quit");
     process.stdout.write(`ACK ${String(await nextMessage())}\n`);
-    process.stdout.write(`TERMINATED ${String(await worker.terminate())}\n`);
-} else if (mode === "kill") {
     process.stdout.write(`TERMINATED ${String(await worker.terminate())}\n`);
 } else {
     const code = await new Promise<number>((resolve, reject) => {

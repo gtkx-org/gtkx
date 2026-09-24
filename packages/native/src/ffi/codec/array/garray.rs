@@ -140,18 +140,19 @@ impl ArrayCodec {
         g_array: *mut glib::ffi::GArray,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<Vec<ffi::PendingTransfer>> {
-        let handles = Self::extract_handles(array)?;
+        let handles = self.extract_handles(array)?;
         let (ptrs, acquired) = transfer_items(&handles, &self.item_codec, "GArray")?;
         unsafe { Self::append_vals(g_array, ptrs.as_ptr().cast::<c_void>(), ptrs.len()) }?;
         Ok(acquired)
     }
 
     fn append_inline_values_to_garray(
+        &self,
         g_array: *mut glib::ffi::GArray,
         stride: usize,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<Vec<ffi::PendingTransfer>> {
-        let buffer = ArrayCodec::inline_element_buffer(stride, array)?;
+        let buffer = self.inline_element_buffer(stride, array)?;
         unsafe { Self::append_vals(g_array, buffer.as_ptr().cast::<c_void>(), array.len()) }?;
 
         Ok(Vec::new())
@@ -163,7 +164,7 @@ impl ArrayCodec {
         array: &[Unknown<'_>],
     ) -> anyhow::Result<Vec<ffi::PendingTransfer>> {
         if let Some(stride) = self.inline_element_size() {
-            return Self::append_inline_values_to_garray(g_array, stride, array);
+            return self.append_inline_values_to_garray(g_array, stride, array);
         }
         match self.item_codec("GArray")? {
             ItemCodec::Integer(kind) => {

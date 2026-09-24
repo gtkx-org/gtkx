@@ -1,5 +1,16 @@
-import { regexMatch, regexMatchAll, regexMatchAllFull, regexMatchFull } from "@gtkx/runtime/internal";
-import { type MatchInfo, Regex, type RegexMatchFlags } from "../glib.js";
+import {
+    installMatchInfo,
+    regexMatch,
+    regexMatchAll,
+    regexMatchAllFull,
+    regexMatchFull,
+    regexReplaceEval,
+} from "@gtkx/runtime/internal";
+import { MatchInfo as RawMatchInfo, Regex, type RegexEvalCallback, type RegexMatchFlags } from "../glib.js";
+
+export abstract class MatchInfo extends RawMatchInfo {}
+
+installMatchInfo(MatchInfo, RawMatchInfo);
 
 declare module "../glib.js" {
     interface Regex {
@@ -21,6 +32,7 @@ declare module "../glib.js" {
          */
         matchFull(string: string, startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
         matchFull(string: string[], startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
+        matchFull(string: Uint8Array | number[], startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
         /**
          * Using the DFA algorithm, scans for all the possible matches in `string`,
          * including overlapping ones.
@@ -40,6 +52,10 @@ declare module "../glib.js" {
          */
         matchAllFull(string: string, startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
         matchAllFull(string: string[], startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
+        matchAllFull(string: Uint8Array | number[], startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
+        replaceEval(string: string, startPosition: number, matchOptions: RegexMatchFlags, eval_: RegexEvalCallback): string;
+        replaceEval(string: string[], startPosition: number, matchOptions: RegexMatchFlags, eval_: RegexEvalCallback): string;
+        replaceEval(string: Uint8Array | number[], startPosition: number, matchOptions: RegexMatchFlags, eval_: RegexEvalCallback): string;
     }
 }
 
@@ -47,3 +63,4 @@ Regex.prototype.match = regexMatch<MatchInfo>;
 Regex.prototype.matchAll = regexMatchAll<MatchInfo>;
 Regex.prototype.matchFull = regexMatchFull<MatchInfo>;
 Regex.prototype.matchAllFull = regexMatchAllFull<MatchInfo>;
+Regex.prototype.replaceEval = regexReplaceEval;

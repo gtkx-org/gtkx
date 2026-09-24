@@ -1,28 +1,27 @@
+import { SOURCE_ID_RE, sourceLanguage } from "../../internal/source-imports.js";
+import { stripQuery } from "../strip-query.js";
+
 const REFRESH_REG = "$RefreshReg$";
 const REFRESH_SIG = "$RefreshSig$";
 const REFRESH_RUNTIME_SPECIFIER = "@gtkx/cli/refresh-runtime";
-const REFRESH_INCLUDE = /\.[tj]sx?$/;
+const REFRESH_INCLUDE = SOURCE_ID_RE;
 const REFRESH_EXCLUDE = /node_modules|[/\\]dist[/\\]|[/\\]\.gtkx[/\\]/;
 const REFRESH_ID_FILTER = { include: REFRESH_INCLUDE, exclude: REFRESH_EXCLUDE };
 const REFRESH_RUNTIME_ID_RE = new RegExp(`^${REFRESH_RUNTIME_SPECIFIER}$`);
 
-const shouldTransformForRefresh = (
+const refreshSourceLanguage = (
     id: string,
     transformOptions: { ssr?: boolean | undefined } | undefined,
-): boolean => {
+): ReturnType<typeof sourceLanguage> => {
     if (!transformOptions?.ssr) {
-        return false;
-    }
-
-    if (!REFRESH_INCLUDE.test(id)) {
-        return false;
+        return;
     }
 
     if (REFRESH_EXCLUDE.test(id)) {
-        return false;
+        return;
     }
 
-    return true;
+    return sourceLanguage(stripQuery(id));
 };
 
 export {
@@ -31,5 +30,5 @@ export {
     REFRESH_RUNTIME_ID_RE,
     REFRESH_RUNTIME_SPECIFIER,
     REFRESH_SIG,
-    shouldTransformForRefresh,
+    refreshSourceLanguage,
 };

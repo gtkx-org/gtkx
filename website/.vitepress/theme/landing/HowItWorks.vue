@@ -35,7 +35,7 @@ import CodeBlock from "../components/CodeBlock.vue";
       <div class="how__text">
         <h3 class="how__name">Vanilla Node, real npm</h3>
         <p class="how__body">
-          Your app is a plain Node program, so every npm package and Node API is available to it.
+          Your app is a plain Node program, with Node APIs and compatible npm packages available to it.
         </p>
       </div>
       <CodeBlock title="package.json" :snippet="snippets.ecosystem" />

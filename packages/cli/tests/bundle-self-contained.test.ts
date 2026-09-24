@@ -36,6 +36,7 @@ const SHARED_NAME = "totals.mjs";
 const SHARED_SOURCE_PATH = join("src", SHARED_NAME);
 const ESM_EXTENSION = ".mjs";
 const SCRIPT_EXTENSIONS = new Set([".cjs", ".js", ".mjs"]);
+const MODULE_URL_LABEL = "module-url";
 
 const APP_ENTRY = String.raw`import { createRoot } from "@gtkx/react";
 
@@ -54,6 +55,8 @@ createRoot();
 
 process.stdout.write("${VERSION_PREFIX}" + injected.join(",") + "\n");
 `;
+
+const MODULE_URL_ENTRY = `console.log("${MODULE_URL_LABEL}", import.meta.url);`;
 
 const WORKER_APP_ENTRY = `import { Worker } from "node:worker_threads";
 import { createRoot } from "@gtkx/react";
@@ -130,6 +133,12 @@ process.stdout.write("started\n");
 `;
 
 const RESOLVER_SYNTAX_CASES: ResolverSyntaxCase[] = [
+    {
+        title: "import.meta.resolve",
+        entry: 'globalThis.__gtkxResolve = () => import.meta.resolve("missing");',
+        applicationId: "com.gtkx.clibundlemetaresolve",
+        prefix: "gtkx-bundle-meta-resolve-",
+    },
     {
         title: "a mutable resolver binding",
         entry: resolverSyntaxEntry(
@@ -239,6 +248,23 @@ describe("gtkx build (self-contained bundle)", () => {
         expect(state.source).toMatch(versionLiteral(reactManifest().version));
         expect(state.source).not.toMatch(/rendererVersion:\s*[\w$]+\(/);
     });
+
+    it("allows application code to observe its module URL", async () => {
+        const project = createAppProject({
+            applicationId: "com.gtkx.clibundleurl",
+            entry: MODULE_URL_ENTRY,
+            prefix: "gtkx-bundle-url-",
+        });
+
+        try {
+            await buildAppProject({ project, outDir: OUT_DIR });
+            const run = runNode(join(project.root, OUT_DIR, BUNDLE_NAME));
+            expect(run.status).toBe(0);
+            expect(run.stdout.trim()).toMatch(/^module-url file:/);
+        } finally {
+            removeAppProject(project);
+        }
+    }, BUILD_TIMEOUT);
 });
 
 describe("gtkx build (worker chunks)", () => {

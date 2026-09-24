@@ -127,7 +127,7 @@ Keep state and ownership consistent with that execution model. The [main-loop in
 
 Integration and acceptance tests are the default. Drive the feature through the interface a consumer uses: render and interact with widgets, invoke generated bindings against real native libraries, or build and run a consumer application. Around 90% of the suite should exercise behavior at these levels.
 
-Pure modules with complex, high-value logic should receive unit tests where exhaustive case coverage provides meaningful value. Justify that choice explicitly. Purity alone is not enough, and the exception does not make routine helpers worth unit testing.
+Only extremely complex logic requiring exhaustive case coverage may justify unit tests. Argue that exception explicitly. Purity alone is not enough, and the exception does not make routine helpers worth unit testing.
 
 At every level, assert the subject's observable contract. Do not test private helpers, intermediate values, or implementation details. A test should remain valid when the implementation changes while its contract stays the same.
 

@@ -779,24 +779,20 @@ function assertCanonicalNames(klass: AnyClass, properties: Record<string, Proper
     }
 }
 
-function buildAccessor(klass: AnyClass, name: string, pspec: PropertySpec): DeclaredAccessor {
-    const accessor: DeclaredAccessor = {
+function buildAccessor(name: string, pspec: PropertySpec): DeclaredAccessor {
+    return {
         ...checkFor(getHandle(pspec), name),
         memberName: camelCase(name),
         storage: Symbol(`gtkx:property:${name}`),
         hasMemberAccessor: false,
     };
-
-    installAccessors(klass, accessor);
-
-    return accessor;
 }
 
 function buildAccessors(source: PropertyDispatchSource): DeclaredAccessor[] {
     const { klass, properties } = source;
     assertCanonicalNames(klass, properties);
 
-    return Object.entries(properties).map(([name, pspec]) => buildAccessor(klass, name, pspec));
+    return Object.entries(properties).map(([name, pspec]) => buildAccessor(name, pspec));
 }
 
 function addInterfaceDelegates(delegates: Map<string, InterfaceProperty>, gtype: bigint): void {
@@ -833,7 +829,6 @@ function recordDeclaredNames(klass: AnyClass, accessors: DeclaredAccessor[]): vo
 
 function buildPropertyDispatch(source: PropertyDispatchSource): PropertyDispatch {
     const declared = buildAccessors(source);
-    recordDeclaredNames(source.klass, declared);
 
     const elementProperties = Object.fromEntries(declared.map((accessor) => {
         const entry: ElementPropertyEntry = [accessor.propertyName, accessor.flags];
@@ -845,6 +840,16 @@ function buildPropertyDispatch(source: PropertyDispatchSource): PropertyDispatch
     }));
 
     return { accessors: [...declared], delegates: interfaceDelegatesFor(source.adoptedTypes), elementProperties };
+}
+
+function installPropertyDispatch(klass: AnyClass, dispatch: PropertyDispatch): void {
+    const declared = dispatch.accessors.filter((accessor) => accessor.isInterfaceProperty !== true);
+
+    for (const accessor of declared) {
+        installAccessors(klass, accessor);
+    }
+
+    recordDeclaredNames(klass, declared);
 }
 
 /**
@@ -904,6 +909,7 @@ export {
     readableObjectPropertyFor,
     SET_PROPERTY_VFUNC,
     installClassProperties,
+    installPropertyDispatch,
     writableObjectPropertyFor,
     type ConstructProperty,
     type PropertyDispatch,

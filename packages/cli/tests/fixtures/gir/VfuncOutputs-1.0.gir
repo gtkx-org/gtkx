@@ -25,6 +25,18 @@
           </parameters>
         </callback>
       </field>
+      <field name="write">
+        <callback name="write">
+          <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+          <parameters>
+            <parameter name="self" transfer-ownership="none"><type name="Folded" c:type="VfuncOutputsFolded*"/></parameter>
+            <parameter name="length" transfer-ownership="none"><type name="gint" c:type="gint"/></parameter>
+            <parameter name="values" transfer-ownership="none">
+              <array length="1" zero-terminated="0" c:type="const gint*"><type name="gint" c:type="gint"/></array>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
     </record>
     <interface name="Counted" c:type="VfuncOutputsCounted"
                glib:type-name="VfuncOutputsCounted" glib:get-type="vfunc_outputs_counted_get_type"

@@ -14,9 +14,10 @@ function gtkxFontWorkerEnv(configFile?: string): Plugin {
         async config(config: UserConfig) {
             const loaded = await loadConfig.load(viteProjectRoot(config));
             const shareDir = stageProjectFonts(loaded.root);
+            const existing = config.test?.env?.XDG_DATA_DIRS ?? process.env.XDG_DATA_DIRS;
 
             return {
-                test: { env: { XDG_DATA_DIRS: prependXdgDataDir(shareDir, process.env.XDG_DATA_DIRS) } },
+                test: { env: { XDG_DATA_DIRS: prependXdgDataDir(shareDir, existing) } },
             };
         },
     };

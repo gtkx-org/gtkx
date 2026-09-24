@@ -1,13 +1,14 @@
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::ffi::{CString, c_char, c_void};
+use std::rc::{Rc, Weak};
+use std::sync::Arc;
 
 use ::libffi::{low as libffi_low, middle as libffi};
 use glib::prelude::StaticType as _;
-use glib::translate::IntoGlib as _;
 use napi::bindgen_prelude::{
-    BigInt, Either, External, FromNapiValue as _, Function, JsObjectValue, JsValue,
-    JsValuesTupleIntoVec, Null, Object, ToNapiValue as _, Unknown,
+    Either, External, Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Null, Object,
+    ToNapiValue as _, Unknown,
 };
 use napi::{Env, Status, ValueType};
 use napi_derive::napi;
@@ -18,9 +19,11 @@ use crate::ffi::codec::{
     PtrWriter as _, ReadCtx, SlotInit, bytes_to_glib_full, read_bytes,
 };
 use crate::handle::{BorrowScope, Handle};
+use crate::host::callback_error::CallbackErrorScope;
 use crate::host::error_reporter::ReportErr;
 use crate::host::node_env;
 use crate::host::panic_handler::guard_ffi_boundary;
+use crate::host::release_queue::{self, Owner};
 use crate::value::{self, ClosureHandle};
 
 #[napi(object, object_from_js = false)]
@@ -76,7 +79,9 @@ fn call_js_function<'e>(
 }
 
 pub struct ClosureData {
-    pub js_fn: ClosureHandle,
+    js_fn: RefCell<Option<ClosureHandle>>,
+    owner: Arc<Owner>,
+    native_parent: Cell<*mut c_void>,
     pub arg_codecs: Vec<Codec>,
     pub return_codec: Codec,
     pub user_data_index: Option<usize>,
@@ -102,7 +107,9 @@ impl ClosureData {
         is_oneshot: bool,
     ) -> Self {
         Self {
-            js_fn,
+            js_fn: RefCell::new(Some(js_fn)),
+            owner: release_queue::owner(),
+            native_parent: Cell::new(std::ptr::null_mut()),
             arg_codecs,
             return_codec,
             user_data_index,
@@ -119,12 +126,28 @@ impl ClosureData {
     }
 }
 
-impl Drop for ClosureData {
-    fn drop(&mut self) {
-        for (_, ptr) in self.retained_bytes.get_mut().drain() {
+impl ClosureData {
+    pub(crate) fn set_native_parent(&self, parent: *mut c_void) {
+        self.native_parent.set(parent);
+    }
+
+    fn release_retained(&self) {
+        for (_, ptr) in self.retained_bytes.borrow_mut().drain() {
             unsafe { glib::ffi::g_free(ptr.cast()) };
         }
-        self.retained_transfers.get_mut().clear();
+        self.retained_containers.borrow_mut().clear();
+        self.retained_transfers.borrow_mut().clear();
+    }
+}
+
+impl Drop for ClosureData {
+    fn drop(&mut self) {
+        let _ = LIVE_CALLBACKS.try_with(|callbacks| {
+            callbacks
+                .borrow_mut()
+                .remove(&(std::ptr::from_ref(self) as usize));
+        });
+        self.release_retained();
     }
 }
 
@@ -142,7 +165,7 @@ impl std::fmt::Debug for ClosureData {
 pub struct ClosureState {
     closure: std::mem::ManuallyDrop<libffi::Closure<'static>>,
     pub code_ptr: *mut c_void,
-    data: *mut ClosureData,
+    data: Rc<ClosureData>,
     holds: Cell<u32>,
 }
 
@@ -157,18 +180,18 @@ impl std::fmt::Debug for ClosureState {
 impl Drop for ClosureState {
     fn drop(&mut self) {
         unsafe { std::mem::ManuallyDrop::drop(&mut self.closure) };
-        drop(unsafe { Box::from_raw(self.data) });
     }
 }
 
 thread_local! {
+    static LIVE_CALLBACKS: RefCell<HashMap<usize, Weak<ClosureData>>> = RefCell::new(HashMap::new());
     static IMMORTAL_CLOSURES: RefCell<Vec<*mut ClosureState>> = const { RefCell::new(Vec::new()) };
 }
 
 impl ClosureState {
     #[must_use]
     pub fn data_ref(&self) -> &ClosureData {
-        unsafe { &*self.data }
+        &self.data
     }
 
     /// Records a closure the caller has no way to release, so that it stays reachable for the
@@ -183,8 +206,12 @@ impl ClosureState {
     }
 
     pub fn new(data: ClosureData) -> Self {
-        let data = Box::into_raw(Box::new(data));
-        let data_ref: &'static ClosureData = unsafe { &*data };
+        let data = Rc::new(data);
+        let data_ptr = Rc::as_ptr(&data);
+        LIVE_CALLBACKS.with_borrow_mut(|callbacks| {
+            callbacks.insert(data_ptr as usize, Rc::downgrade(&data));
+        });
+        let data_ref: &'static ClosureData = unsafe { &*data_ptr };
 
         let mut cif_arg_types: Vec<libffi::Type> = Vec::with_capacity(data_ref.arg_codecs.len());
         for codec in &data_ref.arg_codecs {
@@ -260,18 +287,22 @@ impl ClosureState {
     pub unsafe extern "C" fn destroy(user_data: *mut c_void) {
         guard_ffi_boundary("callback destroy notify", || {
             let state_ptr = user_data.cast::<Self>();
-            if !state_ptr.is_null() && unsafe { (*state_ptr).data_ref() }.defer_destroy() {
+            if state_ptr.is_null() {
                 return;
             }
-
-            if node_env::is_installed_on_current_thread() {
-                unsafe { Self::release(state_ptr) };
+            let owner = Arc::clone(&unsafe { (*state_ptr).data_ref() }.owner);
+            if owner.is_current_thread() {
+                if !unsafe { (*state_ptr).data_ref() }.defer_destroy() {
+                    unsafe { Self::release(state_ptr) };
+                }
                 return;
             }
-
-            let state_address = user_data as usize;
-            node_env::invoke_on_install_thread("callback destroy notify", move || {
-                unsafe { Self::release(state_address as *mut Self) };
+            let state_address = state_ptr as usize;
+            owner.invoke("callback destroy notify", move || {
+                let state_ptr = state_address as *mut Self;
+                if !unsafe { (*state_ptr).data_ref() }.defer_destroy() {
+                    unsafe { Self::release(state_ptr) };
+                }
             });
         });
     }
@@ -550,9 +581,18 @@ impl ClosureData {
         let read = unsafe { self.read_args(&env, args) };
         let _lent = LentMemory(scope.close());
 
+        if CallbackErrorScope::has_error() {
+            self.write_return(&env, result, &Err(()));
+            return state_ptr;
+        }
+
         let outcome: Result<(), CallbackError> = (|| {
             let ClosureArgs { js_args, ref_slots } = read.map_err(CallbackError::Infrastructure)?;
-            let return_value = call_js_function(&env, &self.js_fn, &js_args)?;
+            let js_fn = self.js_fn.borrow();
+            let js_fn = js_fn.as_ref().ok_or_else(|| {
+                CallbackError::Infrastructure(anyhow::anyhow!("callback environment has ended"))
+            })?;
+            let return_value = call_js_function(&env, js_fn, &js_args)?;
             self.flush_refs(&env, &ref_slots)?;
             let ret = if capture_result {
                 Ok(return_value)
@@ -576,7 +616,7 @@ impl ClosureData {
                     Status::GenericFailure,
                     format!("callback: {e:#} (return type: {})", self.return_codec),
                 );
-                unsafe { self.deliver_thrown(&env, error, args) };
+                CallbackErrorScope::deliver(env, error);
             }
         }
 
@@ -585,10 +625,34 @@ impl ClosureData {
 
     unsafe fn deliver_thrown(&self, env: &Env, error: napi::Error, args: *const *const c_void) {
         if !self.can_throw {
-            unsafe { napi::JsError::from(error).throw_into(env.raw()) };
+            CallbackErrorScope::deliver(*env, error);
             return;
         }
 
+        let thrown = match error.into_unknown(env) {
+            Ok(thrown) => thrown,
+            Err(error) => {
+                CallbackErrorScope::deliver(*env, error);
+                return;
+            }
+        };
+        let (native_error, original) = match callback_failure(env, thrown) {
+            Ok(Some(failure)) => failure,
+            Ok(None) => {
+                CallbackErrorScope::deliver(
+                    *env,
+                    napi::Error::from_unknown_without_coercion(thrown),
+                );
+                return;
+            }
+            Err(error) => {
+                CallbackErrorScope::deliver(
+                    *env,
+                    napi::Error::new(Status::InvalidArg, error.to_string()),
+                );
+                return;
+            }
+        };
         let error_arg = unsafe { *args.add(self.total_ffi_slots()) };
         let error_out = unsafe {
             error_arg
@@ -597,11 +661,11 @@ impl ClosureData {
         };
 
         if error_out.is_null() || !unsafe { *error_out }.is_null() {
-            unsafe { napi::JsError::from(error).throw_into(env.raw()) };
+            CallbackErrorScope::deliver(*env, napi::Error::from_unknown_without_coercion(original));
             return;
         }
 
-        unsafe { *error_out = gerror_from_thrown(env, error) };
+        unsafe { *error_out = glib::ffi::g_error_copy(native_error) };
     }
 
     fn write_return(&self, env: &Env, result: *mut c_void, value: &Result<Unknown<'_>, ()>) {
@@ -716,63 +780,28 @@ impl ClosureData {
     }
 }
 
-fn js_error_quark() -> u32 {
-    glib::Quark::from_str("gtkx-js-error-quark").into_glib()
-}
-
-fn new_gerror(domain: u32, code: i32, message: &str) -> *mut glib::ffi::GError {
-    let c_message = CString::new(message.as_bytes()).unwrap_or_default();
-    unsafe { glib::ffi::g_error_new_literal(domain, code, c_message.as_ptr()) }
-}
-
-fn wrapped_gerror_parts(env: &Env, thrown: Unknown<'_>) -> Option<(u32, i32, String)> {
-    if thrown.get_type().ok()? != ValueType::Object {
-        return None;
+fn callback_failure<'e>(
+    env: &'e Env,
+    thrown: Unknown<'e>,
+) -> anyhow::Result<Option<(*mut glib::ffi::GError, Unknown<'e>)>> {
+    if thrown.get_type()? != ValueType::Object {
+        return Ok(None);
     }
-    let obj = Object::from_raw(env.raw(), thrown.raw());
-    let type_tag: Unknown<'_> = obj.get_named_property("__type__").ok()?;
-    if type_tag.get_type().ok()? != ValueType::BigInt {
-        return None;
+    let object = Object::from_raw(env.raw(), thrown.raw());
+    let handle: Unknown<'e> = object.get_named_property("nativeError")?;
+    if handle.get_type()? != ValueType::External {
+        return Ok(None);
     }
-    let (gtype, lossless) = value::read_napi::<BigInt>(type_tag).ok()?.get_i128();
-    let gerror_gtype = i128::try_from(glib::Error::static_type().into_glib()).ok()?;
-    if !lossless || gtype != gerror_gtype {
-        return None;
-    }
-    let domain: u32 = obj.get_named_property("domain").ok()?;
-    let code: i32 = obj.get_named_property("code").ok()?;
-    let message: String = obj.get_named_property("message").ok()?;
-
-    Some((domain, code, message))
-}
-
-fn thrown_message(env: &Env, thrown: Unknown<'_>) -> String {
-    let value_type = thrown.get_type().unwrap_or(ValueType::Unknown);
-    match value_type {
-        ValueType::Object => Object::from_raw(env.raw(), thrown.raw())
-            .get_named_property::<String>("message")
-            .ok()
-            .filter(|message| !message.is_empty())
-            .unwrap_or_else(|| String::from("JavaScript exception with no message")),
-        ValueType::String => value::read_napi::<String>(thrown)
-            .unwrap_or_else(|_| String::from("JavaScript string exception")),
-        _ => format!("JavaScript {value_type:?} value thrown"),
-    }
-}
-
-fn gerror_from_thrown(env: &Env, error: napi::Error) -> *mut glib::ffi::GError {
-    let raw = unsafe { napi::JsError::from(error).into_value(env.raw()) };
-    match unsafe { Unknown::from_napi_value(env.raw(), raw) } {
-        Ok(thrown) => match wrapped_gerror_parts(env, thrown) {
-            Some((domain, code, message)) => new_gerror(domain, code, &message),
-            None => new_gerror(js_error_quark(), 0, &thrown_message(env, thrown)),
-        },
-        Err(_) => new_gerror(
-            js_error_quark(),
-            0,
-            "JavaScript exception could not be read",
-        ),
-    }
+    let pointer = value::handle_ptr_checked(handle, "GError", |handle| {
+        anyhow::ensure!(
+            handle.boxed_type() == Some(glib::Error::static_type()),
+            "Expected a boxed GError handle"
+        );
+        Ok(())
+    })?;
+    anyhow::ensure!(!pointer.is_null(), "Expected a non-null GError handle");
+    let original = object.get_named_property("thrown")?;
+    Ok(Some((pointer.cast(), original)))
 }
 
 fn ffi_slot_count(codec: &Codec) -> usize {
@@ -873,21 +902,48 @@ fn read_ref_value<'e>(env: &'e Env, ref_obj: Unknown<'e>) -> Option<Unknown<'e>>
 }
 
 unsafe extern "C" fn closure_entry(
-    _cif: &libffi_low::ffi_cif,
+    cif: &libffi_low::ffi_cif,
     result: &mut u64,
     args: *const *const c_void,
     data: &ClosureData,
 ) {
     *result = 0;
-    let state_ptr = guard_ffi_boundary("callback entry", || unsafe {
-        data.handle_call(args, (&raw mut *result).cast::<c_void>())
-    })
-    .flatten();
-    if let Some(ptr) = state_ptr {
-        glib::idle_add_local_once(move || {
-            guard_ffi_boundary("callback one-shot cleanup", || {
-                unsafe { ClosureState::release(ptr) };
+    guard_ffi_boundary("callback entry", || {
+        if release_queue::is_retiring() || data.js_fn.borrow().is_none() {
+            let parent = data.native_parent.get();
+            if !parent.is_null() {
+                unsafe {
+                    libffi_low::call_return_into(
+                        std::ptr::from_ref(cif).cast_mut(),
+                        libffi_low::CodePtr(parent),
+                        args.cast_mut().cast(),
+                        std::ptr::from_mut(result).cast(),
+                    );
+                }
+            }
+            return;
+        }
+        let state_ptr = unsafe { data.handle_call(args, (&raw mut *result).cast::<c_void>()) };
+        if let Some(ptr) = state_ptr {
+            release_queue::defer(move || {
+                guard_ffi_boundary("callback one-shot cleanup", || {
+                    unsafe { ClosureState::release(ptr) };
+                });
             });
-        });
+        }
+    });
+}
+
+pub(crate) fn retire_callbacks() {
+    let callbacks: Vec<_> = LIVE_CALLBACKS
+        .with_borrow_mut(std::mem::take)
+        .into_values()
+        .filter_map(|callback| callback.upgrade())
+        .collect();
+    for callback in &callbacks {
+        callback.js_fn.borrow_mut().take();
+    }
+    for callback in callbacks {
+        callback.release_retained();
     }
 }

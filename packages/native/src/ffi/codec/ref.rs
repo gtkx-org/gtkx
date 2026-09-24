@@ -65,6 +65,22 @@ impl RefCodec {
         }
     }
 
+    fn encode_fixed_bytes(value: Unknown<'_>, length: usize) -> anyhow::Result<ffi::Stash> {
+        let Some(mut buffer) = super::bytes::read_bytes(value)? else {
+            return Ok(ffi::Stash::Ptr(std::ptr::null_mut()));
+        };
+        anyhow::ensure!(
+            length > 0 && buffer.len() == length,
+            "Expected a fixed Ref<Bytes> buffer of {length} bytes"
+        );
+        CStr::from_bytes_until_nul(&buffer)?;
+        let ptr = buffer.as_mut_ptr().cast::<c_void>();
+        Ok(ffi::Stash::Storage(StashStorage::new(
+            ptr,
+            StashData::Buffer(buffer),
+        )))
+    }
+
     fn encode_scalar_storage(
         &self,
         value: Unknown<'_>,
@@ -96,6 +112,11 @@ impl Encoder for RefCodec {
     fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
         if self.inner_codec.is_scalar() {
             return self.encode_scalar_storage(value, false);
+        }
+        if let Codec::Bytes(bytes) = &*self.inner_codec
+            && let Some(length) = bytes.length
+        {
+            return Self::encode_fixed_bytes(value, length);
         }
         let Some(inner) = Self::inner_value(env, value)? else {
             return Ok(ffi::Stash::Ptr(std::ptr::null_mut()));
@@ -155,32 +176,12 @@ impl Encoder for RefCodec {
                     bail!("Expected Array, Null, or Undefined for Ref<Array>")
                 }
             }
-            Codec::Bytes(bytes_codec) => {
-                let inner_bytes = super::bytes::read_bytes(inner)?;
-
-                let buffer_size = match (&bytes_codec.length, &inner_bytes) {
-                    (Some(len), _) => {
-                        anyhow::ensure!(
-                            *len > 0,
-                            "A Ref<Bytes> buffer length must be at least 1 to hold the trailing NUL byte"
-                        );
-                        *len
-                    }
-                    (None, Some(s)) => s.len() + 1,
-                    (None, None) => return Ok(Self::null_ptr_stash()),
-                };
-
-                let mut buffer: Vec<u8> = Self::zeroed_buffer(buffer_size)?;
-                if let Some(bytes) = inner_bytes.as_deref() {
-                    let copy_len = bytes.len().min(buffer_size.saturating_sub(1));
-                    buffer[..copy_len].copy_from_slice(&bytes[..copy_len]);
-                }
-
-                let ptr = buffer.as_mut_ptr().cast::<c_void>();
-                Ok(ffi::Stash::Storage(StashStorage::new(
-                    ptr,
-                    StashData::Buffer(buffer),
-                )))
+            Codec::Bytes(_) => {
+                anyhow::ensure!(
+                    is_nullish,
+                    "Expected Null for a Ref<Bytes> without a length"
+                );
+                Ok(Self::null_ptr_stash())
             }
             _ if is_nullish => Ok(Self::null_ptr_stash()),
             _ => bail!("Expected Null for Ref<HashTable>"),
@@ -287,16 +288,6 @@ impl Decoder for RefCodec {
 impl PtrWriter for RefCodec {}
 
 impl RefCodec {
-    fn zeroed_buffer(size: usize) -> anyhow::Result<Vec<u8>> {
-        let mut buffer: Vec<u8> = Vec::new();
-        buffer
-            .try_reserve_exact(size)
-            .map_err(|_| anyhow::anyhow!("Cannot allocate a {size}-byte Ref<Bytes> buffer"))?;
-        buffer.resize(size, 0);
-
-        Ok(buffer)
-    }
-
     fn null_ptr_stash() -> ffi::Stash {
         Self::slot_stash(std::ptr::null_mut(), None)
     }

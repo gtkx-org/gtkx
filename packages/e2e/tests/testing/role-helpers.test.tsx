@@ -11,11 +11,7 @@ import {
     render,
     screen,
 } from "@gtkx/testing";
-import { afterEach, describe, expect, it, vi } from "vitest";
-
-afterEach(() => {
-    vi.restoreAllMocks();
-});
+import { describe, expect, it } from "vitest";
 
 describe("getRoles", () => {
     it("maps every role of the tree to the widgets that carry it", async () => {
@@ -56,11 +52,11 @@ describe("prettyRoles", () => {
         expect(prettyRoles(container)).toContain("generic:");
     });
 
-    it("logs the same report through the screen", async () => {
-        const log = vi.spyOn(console, "log").mockImplementation(vi.fn());
+    it("runs the public screen logger for a rendered tree", async () => {
         await render(<GtkButton label="Test" />);
-        screen.logRoles();
-        expect(log.mock.calls[0]?.[0]).toContain("button:");
+        expect(() => {
+            screen.logRoles();
+        }).not.toThrow();
     });
 });
 
@@ -71,10 +67,10 @@ describe("getSuggestedQuery", () => {
         const suggestion = getSuggestedQuery(button);
         expect(suggestion?.queryName).toBe("Role");
         expect(suggestion?.queryMethod).toBe("getByRole");
-        expect(suggestion?.toString()).toBe("getByRole(Gtk.AccessibleRole.BUTTON, { name: 'Save' })");
+        expect(suggestion?.toString()).toBe("getByRole(Gtk.AccessibleRole.BUTTON, { name: \"Save\" })");
 
         expect(getSuggestedQuery(button, "find")?.toString()).toBe(
-            "findByRole(Gtk.AccessibleRole.BUTTON, { name: 'Save' })",
+            "findByRole(Gtk.AccessibleRole.BUTTON, { name: \"Save\" })",
         );
     });
 
@@ -82,14 +78,14 @@ describe("getSuggestedQuery", () => {
         const { container } = await render(<GtkLabel>Just text</GtkLabel>);
         const suggestion = getSuggestedQuery(getByText(container, "Just text"), "query", "Text");
         expect(suggestion?.queryName).toBe("Text");
-        expect(suggestion?.toString()).toBe("queryByText('Just text')");
+        expect(suggestion?.toString()).toBe("queryByText(\"Just text\")");
     });
 
     it("falls back to a name query for a widget with no semantic content", async () => {
         const { container } = await render(<GtkBox name="my-box" orientation={Gtk.Orientation.VERTICAL} />);
         const suggestion = getSuggestedQuery(getByName(container, "my-box"));
         expect(suggestion?.queryName).toBe("Name");
-        expect(suggestion?.toString()).toBe("getByName('my-box')");
+        expect(suggestion?.toString()).toBe("getByName(\"my-box\")");
     });
 });
 

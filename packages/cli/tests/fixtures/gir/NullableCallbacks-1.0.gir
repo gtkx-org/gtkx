@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"
+    xmlns:c="http://www.gtk.org/introspection/c/1.0"
+    xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="Gtk" version="4.0"/>
+  <namespace name="NullableCallbacks" version="1.0" shared-library="libnullablecallbacks.so.0"
+      c:identifier-prefixes="NullableCallbacks" c:symbol-prefixes="nullable_callbacks">
+    <alias name="PageSetupAlias" c:type="NullableCallbacksPageSetupAlias">
+      <type name="Gtk.PageSetupDoneFunc" c:type="GtkPageSetupDoneFunc"/>
+    </alias>
+    <callback name="PageSetupDoneFunc" c:type="NullableCallbacksPageSetupDoneFunc">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="page_setup" transfer-ownership="none"><type name="Gtk.PageSetup" c:type="GtkPageSetup*"/></parameter>
+        <parameter name="data" transfer-ownership="none" closure="1" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+      </parameters>
+    </callback>
+    <callback name="NullableSetup" c:type="NullableCallbacksNullableSetup">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="page_setup" transfer-ownership="none" nullable="1"><type name="Gtk.PageSetup" c:type="GtkPageSetup*"/></parameter>
+        <parameter name="data" transfer-ownership="none" closure="1" nullable="1"><type name="gpointer" c:type="gpointer"/></parameter>
+      </parameters>
+    </callback>
+  </namespace>
+</repository>

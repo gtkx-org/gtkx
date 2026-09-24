@@ -1,6 +1,7 @@
 import type { ExternalObject, Handle, Ref } from "@gtkx/native";
+import { isError } from "./callback-error.js";
 import { getWrapperClass, wrapHandle } from "./registry.js";
-import { getErrorType, isTypedClass } from "./type.js";
+import { getErrorType } from "./type.js";
 
 /**
  * A wrapped `GError` thrown across the FFI boundary: a JavaScript `Error` that also identifies its
@@ -34,8 +35,6 @@ function checkError(error: Ref): void {
     throw gerror;
 }
 
-const isError = (value: unknown): value is ErrorLike => isTypedClass(value) && value.__type__ === getErrorType();
-
 /**
  * Builds an error domain enum object from its members and a lazy resolver for the
  * domain quark, giving it an `instanceof` check that matches wrapped GLib errors of
@@ -62,4 +61,4 @@ function createErrorDomain<const T extends Record<string, number>>(
     return enumObject as ErrorDomain<T>;
 }
 
-export { checkError, createErrorDomain, type ErrorDomain };
+export { checkError, createErrorDomain, type ErrorDomain, type ErrorLike };

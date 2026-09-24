@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { type ElementType, type ReactElement, type ReactNode, use } from "react";
+import { type ElementType, type ReactNode, use } from "react";
 import { ParentWindowContext } from "../hooks/use-parent-window.js";
 import { createPresentedComponent, type PresentedProps } from "../hooks/use-presented-instance.js";
 import { applyMutation } from "../reconciler/signals.js";
@@ -7,7 +7,7 @@ import { createPortaledComponent } from "./portaled.js";
 
 type WindowComponentProps = PresentedProps<Gtk.Window> & {
     // eslint-disable-next-line gtkx/accessor-naming
-    transientFor?: Gtk.Window | ReactElement | null | undefined;
+    transientFor?: Gtk.Window | null | undefined;
 };
 
 const presentWindow = (window: Gtk.Window): void => {

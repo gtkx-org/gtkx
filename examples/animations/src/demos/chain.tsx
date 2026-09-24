@@ -96,14 +96,14 @@ function ChainPanel({ opacity, trail }: ChainPanelProps) {
         >
             {trail.map((styles, index) => (
                 <AnimatedLabel
-                    key={ITEMS[index] ?? String(index)}
+                    key={ITEMS[index]}
                     opacity={styles.opacity}
                     marginStart={styles.marginStart}
                     marginTop={6}
                     marginBottom={6}
                     marginEnd={12}
                     halign={Gtk.Align.START}
-                    label={ITEMS[index] ?? ""}
+                    label={ITEMS[index]}
                 />
             ))}
         </AnimatedBox>

@@ -11,7 +11,7 @@ import { type ErrorInfo, type ReactNode, StrictMode } from "react";
 import type { RenderResult } from "./bound-queries.js";
 import type { QueryMap, RenderOptions, ScreenshotOptions } from "./types.js";
 import { runInAct, runWithActEnvironment } from "./act.js";
-import { addToCleanupQueue, runCleanup } from "./cleanup-registry.js";
+import { addToCleanupQueue, runCleanup, runCleanupCallbacks } from "./cleanup-registry.js";
 import { getConfig } from "./config.js";
 import { scheduleWhenWindowReady } from "./frame-sync.js";
 import { createHarnessWindow, presentHarnessWindow } from "./harness-window.js";
@@ -90,15 +90,16 @@ const disposeActiveRender = async (active: ActiveRender): Promise<void> => {
     }
 
     await active.root.unmount(async (root) => {
-        await update(null, root);
-        active.window?.destroy();
+        try {
+            await update(null, root);
+        } finally {
+            active.window?.destroy();
+        }
     });
 };
 
 const disposeAllActiveRenders = async (): Promise<void> => {
-    for (const active of activeRenders) {
-        await disposeActiveRender(active);
-    }
+    await runCleanupCallbacks(activeRenders.values().map((active) => () => disposeActiveRender(active)));
 };
 
 const handleError = (error: unknown): void => {

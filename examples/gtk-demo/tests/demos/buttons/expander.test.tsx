@@ -48,7 +48,7 @@ describe("expanderDemo rendering", () => {
         await renderDemo(expanderDemo);
         const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
         const expander = await screen.findByName("expander", { as: Gtk.Expander });
-        window.setResizable(false);
+        expect(window).toHaveObjectProperty("resizable", false);
         await userEvent.click(expander);
 
         await waitFor(() => {

@@ -59,9 +59,12 @@ test("the test signal runs its connected handler with no arguments", () => {
         calls.push(args);
     });
 
-    expect(typeof handlerId).toBe("number");
-    // @ts-expect-error connect hands back a number and the handler-id parameter is declared bigint
+    expect(typeof handlerId).toBe("bigint");
     expect(GObject.signalHandlerIsConnected(obj, handlerId)).toBe(true);
+    GObject.signalHandlerBlock(obj, handlerId);
+    expect(emit("test")).toBeUndefined();
+    expect(calls).toEqual([]);
+    GObject.signalHandlerUnblock(obj, handlerId);
     expect(emit("test")).toBeUndefined();
     expect(calls).toEqual([[]]);
 
@@ -109,15 +112,12 @@ test("a disconnected handler no longer runs", () => {
     expect(kept).toHaveLength(1);
 
     obj.disconnect(handlerId);
-    // @ts-expect-error connect hands back a number and the handler-id parameter is declared bigint
     expect(GObject.signalHandlerIsConnected(obj, handlerId)).toBe(false);
     obj.emit("test");
     expect(runs).toHaveLength(1);
     expect(kept).toHaveLength(2);
 
-    // @ts-expect-error connect hands back a number and the handler-id parameter is declared bigint
     GObject.signalHandlerDisconnect(obj, keptId);
-    // @ts-expect-error connect hands back a number and the handler-id parameter is declared bigint
     expect(GObject.signalHandlerIsConnected(obj, keptId)).toBe(false);
     obj.emit("test");
     expect(kept).toHaveLength(2);

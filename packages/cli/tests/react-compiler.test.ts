@@ -6,7 +6,7 @@ import { type CliProject, createCliProject, type DisposableCliProject, runCli, r
 
 type AppRun = { status: number | null; signal: NodeJS.Signals | null; reports: unknown[] };
 
-const SOURCES = ["index.tsx", "banner.tsx", "label.ts"];
+const SOURCES = ["index.tsx", "banner.tsx", "javascript-banner.mjs", "label.ts", "typescript-banner.mts"];
 const READ_ONLY_CACHE = "read-only-cache";
 const FIRST_LABEL = "first-build";
 const SECOND_LABEL = "second-build";
@@ -45,9 +45,11 @@ const runApp = (project: CliProject): Promise<AppRun> => new Promise((resolve, r
     });
 });
 
-const renderedCounters = (label: string): unknown[] => [0, 1, 2].map((count) => ({
+const renderedCounters = (label: string, isCompiled = true): unknown[] => [0, 1, 2].map((count) => ({
     counter: `plain-typescript-${label}-${String(count)}`,
     banner: "banner-create-element",
+    javascriptRenders: isCompiled ? 1 : count + 1,
+    typescriptRenders: isCompiled ? 1 : count + 1,
 }));
 
 describe("gtkx build (React Compiler)", () => {
@@ -70,7 +72,7 @@ describe("gtkx build (React Compiler)", () => {
 
         expect(result.status).toBe(0);
         expect(result.signal).toBeNull();
-        expect(result.reports).toEqual(renderedCounters(FIRST_LABEL));
+        expect(result.reports).toEqual(renderedCounters(FIRST_LABEL, false));
     });
 
     it("renders changed component code after rebuilding with the same cache", async () => {

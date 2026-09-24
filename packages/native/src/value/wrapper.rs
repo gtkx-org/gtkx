@@ -1,8 +1,10 @@
 use std::cell::{Cell, RefCell};
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::ffi::c_void;
 use std::ptr::NonNull;
 use std::rc::Rc;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, LazyLock, Mutex};
 
 use glib::prelude::ObjectExt as _;
 use glib::translate::{Borrowed, from_glib_borrow};
@@ -12,16 +14,18 @@ use napi::{Env, sys};
 use crate::handle::surface;
 use crate::host::node_env;
 use crate::host::panic_handler::guard_ffi_boundary;
+use crate::host::release_queue::{self, Owner};
 
 pub struct WrapperHandle {
     napi_ref: Cell<sys::napi_ref>,
     generation: Cell<u64>,
     wrapper_strong: Cell<bool>,
+    notification_id: usize,
 }
 
 impl WrapperHandle {
     pub(crate) fn is_reachable(&self) -> bool {
-        if self.generation.get() == 0 {
+        if self.napi_ref.get().is_null() {
             return false;
         }
         let mut value = std::ptr::null_mut();
@@ -46,7 +50,22 @@ pub(crate) unsafe fn track_handle(
 }
 
 thread_local! {
-    static LIVE_TOGGLE_REFS: RefCell<HashSet<usize>> = RefCell::new(HashSet::new());
+    static LIVE_TOGGLE_REFS: RefCell<HashMap<usize, usize>> = RefCell::new(HashMap::new());
+}
+
+static NEXT_NOTIFICATION: AtomicUsize = AtomicUsize::new(1);
+static TOGGLE_OWNERS: LazyLock<Mutex<HashMap<usize, Arc<Owner>>>> =
+    LazyLock::new(|| Mutex::new(HashMap::new()));
+
+fn register_toggle_owner() -> usize {
+    let id = NEXT_NOTIFICATION
+        .try_update(Ordering::Relaxed, Ordering::Relaxed, |id| id.checked_add(1))
+        .expect("toggle notification identities exhausted");
+    TOGGLE_OWNERS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .insert(id, release_queue::owner());
+    id
 }
 
 fn quark() -> glib::Quark {
@@ -64,7 +83,7 @@ unsafe fn handle_qdata(
 }
 
 fn apply_wrapper_level(handle: &WrapperHandle, napi_ref: sys::napi_ref, strong: bool) {
-    if handle.wrapper_strong.replace(strong) == strong {
+    if napi_ref.is_null() || handle.wrapper_strong.replace(strong) == strong {
         return;
     }
     let mut count: u32 = 0;
@@ -117,10 +136,6 @@ pub unsafe fn wrapper_value(
     unsafe { Object::from_napi_value(env.raw(), raw_value) }.ok()
 }
 
-fn delete_reference(napi_ref: sys::napi_ref) {
-    unsafe { sys::napi_delete_reference(node_env::env().raw(), napi_ref) };
-}
-
 fn release_outgoing_ref(napi_ref: sys::napi_ref, was_strong: bool) {
     if napi_ref.is_null() || !was_strong {
         return;
@@ -155,18 +170,19 @@ pub unsafe fn install(
             napi_ref: Cell::new(napi_ref),
             generation: Cell::new(1),
             wrapper_strong: Cell::new(true),
+            notification_id: register_toggle_owner(),
         });
         unsafe {
             borrow_object(gobject).set_qdata::<Rc<WrapperHandle>>(quark(), Rc::clone(&handle));
         }
         LIVE_TOGGLE_REFS.with_borrow_mut(|live| {
-            live.insert(gobject as usize);
+            live.insert(gobject as usize, handle.notification_id);
         });
         unsafe {
             glib::gobject_ffi::g_object_add_toggle_ref(
                 gobject,
                 Some(on_toggle_notify),
-                std::ptr::null_mut(),
+                toggle_data(&handle),
             );
         }
         (handle, 1)
@@ -180,62 +196,86 @@ pub unsafe fn install(
 /// It must be called on the thread `install` ran on, whose main context dispatches the callback,
 /// because the qdata it steals holds a non-`Send` `Rc`.
 pub unsafe fn schedule_cleanup(
+    env: sys::napi_env,
     handle: Option<Rc<WrapperHandle>>,
     generation: u64,
     gobject: *mut glib::gobject_ffi::GObject,
     napi_ref: sys::napi_ref,
 ) {
-    glib::idle_add_local_once(move || {
-        guard_ffi_boundary("wrapper cleanup", || {
-            let Some(handle) = handle else {
-                delete_reference(napi_ref);
-                return;
-            };
-
-            if handle.generation.get() != generation {
-                delete_reference(napi_ref);
-                return;
-            }
-
-            handle.generation.set(0);
-            LIVE_TOGGLE_REFS.with_borrow_mut(|live| {
-                live.remove(&(gobject as usize));
-            });
-            unsafe {
-                drop(borrow_object(gobject).steal_qdata::<Rc<WrapperHandle>>(quark()));
-            }
-            delete_reference(napi_ref);
-            let borrowed = unsafe { borrow_object(gobject) };
-            let doomed_surface = surface::awaits_destroy(&borrowed).then(|| (*borrowed).clone());
-            unsafe {
-                glib::gobject_ffi::g_object_remove_toggle_ref(
-                    gobject,
-                    Some(on_toggle_notify),
-                    std::ptr::null_mut(),
-                );
-            }
-            if let Some(object) = doomed_surface {
-                surface::release(object);
-            }
+    if let Some(handle) = &handle
+        && handle.generation.get() == generation
+    {
+        handle.napi_ref.set(std::ptr::null_mut());
+        handle.wrapper_strong.set(false);
+    }
+    unsafe { sys::napi_delete_reference(env, napi_ref) };
+    release_queue::defer(move || {
+        let Some(handle) = handle else {
+            return;
+        };
+        if handle.generation.get() != generation {
+            return;
+        }
+        handle.generation.set(0);
+        TOGGLE_OWNERS
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .remove(&handle.notification_id);
+        LIVE_TOGGLE_REFS.with_borrow_mut(|live| {
+            live.remove(&(gobject as usize));
         });
+        unsafe {
+            drop(borrow_object(gobject).steal_qdata::<Rc<WrapperHandle>>(quark()));
+        }
+        let borrowed = unsafe { borrow_object(gobject) };
+        let doomed_surface = surface::awaits_destroy(&borrowed).then(|| (*borrowed).clone());
+        unsafe {
+            glib::gobject_ffi::g_object_remove_toggle_ref(
+                gobject,
+                Some(on_toggle_notify),
+                toggle_data(&handle),
+            );
+        }
+        if let Some(object) = doomed_surface {
+            surface::release(object);
+        }
     });
 }
 
+fn toggle_data(handle: &WrapperHandle) -> *mut c_void {
+    handle.notification_id as *mut c_void
+}
+
 unsafe extern "C" fn on_toggle_notify(
-    _data: *mut c_void,
+    data: *mut c_void,
     gobject: *mut glib::gobject_ffi::GObject,
     is_last_ref: glib::ffi::gboolean,
 ) {
-    if node_env::is_installed_on_current_thread() {
-        guard_ffi_boundary("toggle-reference notify", || unsafe {
-            apply_toggle(gobject, is_last_ref == 0);
-        });
-        return;
-    }
+    guard_ffi_boundary("toggle-reference notify", || {
+        let notification_id = data as usize;
+        let owner = TOGGLE_OWNERS
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get(&notification_id)
+            .cloned();
+        let Some(owner) = owner else {
+            return;
+        };
+        if owner.is_current_thread() {
+            if release_queue::is_retiring()
+                || !LIVE_TOGGLE_REFS
+                    .with_borrow(|live| live.get(&(gobject as usize)) == Some(&notification_id))
+            {
+                return;
+            }
+            unsafe { apply_toggle(gobject, is_last_ref == 0) };
+            return;
+        }
 
-    let gobject_ptr = gobject as usize;
-    node_env::invoke_on_install_thread("toggle-reference resync", move || {
-        resync_wrapper_level(gobject_ptr);
+        let gobject_ptr = gobject as usize;
+        owner.invoke("toggle-reference resync", move || {
+            resync_wrapper_level(gobject_ptr, notification_id);
+        });
     });
 }
 
@@ -248,8 +288,11 @@ unsafe fn apply_toggle(gobject: *mut glib::gobject_ffi::GObject, strong: bool) {
     apply_wrapper_level(handle, napi_ref, strong);
 }
 
-fn resync_wrapper_level(gobject_ptr: usize) {
-    if !LIVE_TOGGLE_REFS.with_borrow(|live| live.contains(&gobject_ptr)) {
+fn resync_wrapper_level(gobject_ptr: usize, notification_id: usize) {
+    if release_queue::is_retiring() {
+        return;
+    }
+    if !LIVE_TOGGLE_REFS.with_borrow(|live| live.get(&gobject_ptr) == Some(&notification_id)) {
         return;
     }
     let gobject = gobject_ptr as *mut glib::gobject_ffi::GObject;

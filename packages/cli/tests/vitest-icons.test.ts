@@ -31,12 +31,28 @@ const UNUSABLE_ICON_ASSET = join("data", "application.txt");
 const THEME_DIR = join("data", "icons");
 const THEME_APPS_DIR = join(THEME_DIR, "hicolor", "scalable", "apps");
 const THEME_PROBE_ICON = "gtkx-icon-theme-probe";
+const CUSTOM_DATA_ICON = "gtkx-configured-data-icon";
+const CUSTOM_ICON_PATH = join("extra-share", "icons", "hicolor", "scalable", "apps", `${CUSTOM_DATA_ICON}.svg`);
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"/>\n';
 
 const testProject = (name: string): string =>
-    `        { plugins: [gtkx()], test: { name: ${JSON.stringify(name)}, include: [${JSON.stringify(TEST_FILE)}] } },`;
+    `        {
+            plugins: [gtkx()],
+            test: {
+                name: ${JSON.stringify(name)},
+                include: [${JSON.stringify(TEST_FILE)}],
+                env: { XDG_DATA_DIRS: customDataDirs },
+            },
+        },`;
 
 const VITEST_CONFIG = `import gtkx from ${JSON.stringify(VITEST_PLUGIN_MODULE)};
+import { fileURLToPath } from "node:url";
+
+const customDataDirs = [
+    fileURLToPath(new URL("./extra-share", import.meta.url)),
+    "/usr/local/share",
+    "/usr/share",
+].join(":");
 
 export default {
     test: {
@@ -130,11 +146,13 @@ describe("gtkx vitest plugin (application icons)", () => {
             files: {
                 [VITEST_CONFIG_FILE]: VITEST_CONFIG,
                 [ICON_ASSET]: SVG,
+                [CUSTOM_ICON_PATH]: SVG,
                 [join(THEME_APPS_DIR, `${APPLICATION_ID}.svg`)]: SVG,
                 [join(THEME_APPS_DIR, `${THEME_PROBE_ICON}.svg`)]: SVG,
                 [FONT_ASSET]: fontFixture("probe.woff2"),
                 [TEST_FILE]: testSource("finds the configured icon file by application ID", [
                     { name: APPLICATION_ID, present: true },
+                    { name: CUSTOM_DATA_ICON, present: true },
                 ]),
             },
         });
@@ -147,6 +165,7 @@ describe("gtkx vitest plugin (application icons)", () => {
             testSource("finds every icon in the configured theme directory", [
                 { name: APPLICATION_ID, present: true },
                 { name: THEME_PROBE_ICON, present: true },
+                { name: CUSTOM_DATA_ICON, present: true },
             ]),
         );
 

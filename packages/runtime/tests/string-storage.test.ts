@@ -17,6 +17,42 @@ test.each([
     expect(output.value).toBe(expected);
 });
 
+test.each([
+    { capacity: 16, seed: "\u{FEFF}café", suffix: " ♥", expected: "\u{FEFF}café ♥", attempted: 12n },
+    { capacity: 8, seed: null, suffix: "gtkx", expected: "gtkx", attempted: 4n },
+    { capacity: 8, seed: undefined, suffix: "gtkx", expected: "gtkx", attempted: 4n },
+    { capacity: 8, seed: "", suffix: "gtkx", expected: "gtkx", attempted: 4n },
+    { capacity: 4, seed: "abcdef", suffix: "", expected: "abc", attempted: 3n },
+    { capacity: 5, seed: "café", suffix: "", expected: "caf\u{FFFD}", attempted: 4n },
+    { capacity: 1, seed: "gtkx", suffix: "x", expected: "", attempted: 1n },
+])("a native append preserves the $capacity-byte seed $seed", ({ capacity, seed, suffix, expected, attempted }) => {
+    const append = t.bind("libglib-2.0.so.0", "g_strlcat", [
+        t.ref(t.string("borrowed", capacity), true), t.string(), t.biguint64,
+    ], t.biguint64);
+    const output = { value: seed };
+
+    expect(append(output, suffix, BigInt(capacity))).toBe(attempted);
+    expect(output.value).toBe(expected);
+});
+
+test.each([null, undefined])("an absent string reference remains a null native argument (%s)", (value) => {
+    const compare = t.bind("libglib-2.0.so.0", "g_strcmp0", [
+        t.ref(t.string("borrowed", 8)), t.string(),
+    ], t.int32);
+
+    expect(compare(value, null)).toBe(0);
+});
+
+test.each(["a\0b", 42, {}, new Uint8Array([1])])("invalid seeds remain unchanged after rejection (%s)", (seed) => {
+    const append = t.bind("libglib-2.0.so.0", "g_strlcat", [
+        t.ref(t.string("borrowed", 8), true), t.string(), t.biguint64,
+    ], t.biguint64);
+    const output = { value: seed };
+
+    expect(() => append(output, "gtkx", 8n)).toThrow();
+    expect(output.value).toBe(seed);
+});
+
 test("a string buffer without space for its terminator throws", () => {
     const copy = t.bind("libglib-2.0.so.0", "g_strlcpy", [
         t.ref(t.string("borrowed", 0)), t.string(), t.biguint64,
@@ -41,7 +77,10 @@ test("a native writer that removes the buffer terminator throws", () => {
         t.ref(t.string("borrowed", 4)), t.int32, t.biguint64,
     ], t.void);
 
-    expect(() => fill({ value: "" }, 97, 4n)).toThrow();
+    const output = { value: "old" };
+
+    expect(() => fill(output, 97, 4n)).toThrow();
+    expect(output.value).toBe("old");
 });
 
 test("string fields preserve UTF-8, empty strings and null through replacement", () => {

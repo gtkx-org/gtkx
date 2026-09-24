@@ -33,6 +33,21 @@ type StridedField = {
     write: (handle: ExternalObject<Handle>, offset: number, value: unknown) => void;
 };
 
+type FixedArrayValue<T> = {
+    readonly length: number;
+    entries: () => Iterable<[number, T]>;
+};
+
+const fixedArrayEntries = <T>(value: FixedArrayValue<T>, expectedLength: number): Iterable<[number, T]> => {
+    if (value.length !== expectedLength) {
+        throw new RangeError(
+            `Expected an array of exactly ${String(expectedLength)} elements, got ${String(value.length)}`,
+        );
+    }
+
+    return value.entries();
+};
+
 /**
  * Binds a struct field whose offset is only known per access, compiling `descriptor` once into an
  * accessor that reads and writes it wherever it is pointed. Use it to walk records stored one
@@ -88,4 +103,4 @@ const write = (handle: ExternalObject<Handle>, descriptor: Descriptor, offset: n
     nativeWrite(handle, plan.abi, offset, plan.encode(value));
 };
 
-export { read, write, field, type Field, fieldAt, type StridedField };
+export { read, write, field, type Field, fieldAt, fixedArrayEntries, type StridedField };

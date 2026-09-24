@@ -284,6 +284,28 @@ test("two constructions of the same type yield distinct instances", () => {
     expect(construct(gtype).handle).not.toBe(construct(gtype).handle);
 });
 
+test("an association failure returns to the constructing caller", () => {
+    const constructed: boolean[] = [];
+    const gtype = registerClass(uniqueName(), objectType, {
+        vfuncs: [{
+            byteOffset: CONSTRUCTED_OFFSET,
+            argDescriptors: [OBJECT],
+            returnDescriptor: VOID,
+            fn: () => {
+                constructed.push(true);
+            },
+        }],
+    });
+
+    expect(() => newObject(gtype, [], [], {}, () => {
+        throw new Error("association failed");
+    })).toThrow();
+    expect(constructed).toEqual([]);
+
+    expect(getType(construct(gtype).handle)).toBe(gtype);
+    expect(constructed).toEqual([true]);
+});
+
 test("registering the same name twice throws", () => {
     const name = uniqueName();
 

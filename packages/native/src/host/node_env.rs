@@ -2,7 +2,8 @@ use std::cell::Cell;
 
 use napi::{Env, Status, sys};
 
-use super::panic_handler::guard_ffi_boundary;
+use super::callback_error::CallbackErrorScope;
+use super::release_queue;
 
 thread_local! {
     static NODE_ENV: Cell<sys::napi_env> = const { Cell::new(std::ptr::null_mut()) };
@@ -43,10 +44,13 @@ unsafe fn install_dispatch_context(raw: sys::napi_env) -> napi::Result<()> {
         )?;
 
         let mut resource_ref: sys::napi_ref = std::ptr::null_mut();
-        check(
+        if let Err(error) = check(
             sys::napi_create_reference(raw, resource, 1, &raw mut resource_ref),
             "retain the dispatch resource object",
-        )?;
+        ) {
+            sys::napi_async_destroy(raw, async_context);
+            return Err(error);
+        }
 
         ASYNC_CONTEXT.set(async_context);
         RESOURCE_REF.set(resource_ref);
@@ -67,18 +71,28 @@ pub fn install(env: Env) -> napi::Result<()> {
     // Registered before the runloop's own hook and therefore, since Node drains them
     // last-registered-first, run after it: nothing may reach the async context or the resource
     // reference once the environment they belong to is gone.
-    env.add_env_cleanup_hook((), |()| uninstall())?;
+    if let Err(error) = env.add_env_cleanup_hook((), |()| uninstall()) {
+        uninstall();
+        return Err(error);
+    }
 
     Ok(())
 }
 
-/// Forgets the environment this thread was installed on, for a thread whose environment is going
-/// away. Only thread-locals are cleared: a cleanup hook must not call into JavaScript, and Node
-/// reclaims the async context and the resource reference itself.
 fn uninstall() {
+    let raw = NODE_ENV.get();
+    if raw.is_null() {
+        return;
+    }
+
+    release_queue::retire();
+    let async_context = ASYNC_CONTEXT.replace(std::ptr::null_mut());
+    let resource_ref = RESOURCE_REF.replace(std::ptr::null_mut());
+    unsafe {
+        sys::napi_async_destroy(raw, async_context);
+        sys::napi_delete_reference(raw, resource_ref);
+    }
     NODE_ENV.set(std::ptr::null_mut());
-    ASYNC_CONTEXT.set(std::ptr::null_mut());
-    RESOURCE_REF.set(std::ptr::null_mut());
 }
 
 pub fn is_installed_on_current_thread() -> bool {
@@ -87,7 +101,7 @@ pub fn is_installed_on_current_thread() -> bool {
 
 pub fn try_env() -> Option<Env> {
     let raw = NODE_ENV.with(Cell::get);
-    if raw.is_null() {
+    if raw.is_null() || release_queue::is_retiring() {
         None
     } else {
         Some(Env::from_raw(raw))
@@ -103,14 +117,7 @@ pub fn env() -> Env {
 }
 
 pub fn invoke_on_install_thread(context: &'static str, work: impl FnOnce() + Send + 'static) {
-    let pending = Cell::new(Some(work));
-    let source = glib::idle_source_new(Some(context), glib::Priority::DEFAULT, move || {
-        if let Some(work) = pending.take() {
-            guard_ffi_boundary(context, work);
-        }
-        glib::ControlFlow::Break
-    });
-    source.attach(Some(&glib::MainContext::default()));
+    release_queue::invoke_current(context, work);
 }
 
 pub fn run_dispatch_scope(dispatch: impl FnOnce()) {
@@ -131,7 +138,10 @@ pub fn run_dispatch_scope(dispatch: impl FnOnce()) {
             &raw mut callback_scope,
         ) == sys::Status::napi_ok;
 
-        dispatch();
+        {
+            let _errors = CallbackErrorScope::open(Env::from_raw(raw));
+            dispatch();
+        }
 
         report_pending_exception(raw);
 

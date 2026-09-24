@@ -235,6 +235,20 @@ test("regress string hash tables return as maps in every transfer mode", () => {
     Regress.testGhashNothingIn(Regress.testGhashNothingReturn());
 });
 
+test("boxed hash table entries reject object wrappers and recover", () => {
+    expect(() => {
+        Reflect.apply(
+            Regress.testGhashGvalueIn,
+            Regress,
+            [new Map([["value", new Regress.TestObj({})]])],
+        );
+    }).toThrow();
+
+    const values = Regress.testGhashGvalueReturn();
+    Regress.testGhashGvalueIn(values);
+    expect(values.size).toBeGreaterThan(0);
+});
+
 test("nested hash tables decode as maps of maps", () => {
     const nested = Regress.testGhashNestedEverythingReturn();
     expect(nested instanceof Map).toBeTruthy();

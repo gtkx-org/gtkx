@@ -1,103 +1,128 @@
 import * as Gio from "@gtkx/gi/gio";
-import * as GLib from "@gtkx/gi/glib";
-import { signalHandlerIsConnected } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { registerClass } from "@gtkx/runtime";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
+import { gcUntil } from "./helpers/native-utils.js";
+import { createTypeNameFactory } from "./helpers/unique-name.js";
 
-const GOBJECT_DOMAIN = "GLib-GObject";
+type Registration = "on" | "once";
+type Handler = () => void;
 
-const captureCriticals = (run: () => void): string[] => {
-    const messages: string[] = [];
-
-    const handler = GLib.logSetHandler(
-        GOBJECT_DOMAIN,
-        GLib.LogLevelFlags.LEVEL_CRITICAL,
-        (_domain, _level, message) => {
-            messages.push(message);
-        },
-    );
-
-    try {
-        run();
-    } finally {
-        GLib.logRemoveHandler(GOBJECT_DOMAIN, handler);
-    }
-
-    return messages;
-};
-
+const REGISTRATIONS: Registration[] = ["on", "once"];
+const uniqueName = createTypeNameFactory("_");
 const newAction = (name: string): Gio.SimpleAction => new Gio.SimpleAction({ name });
 
-describe("handler ids across disposal", () => {
-    it("dispose destroys every handler, so each tracked id goes stale", () => {
-        const action = newAction("stale-id");
-        const handlerId = action.connect("activate", vi.fn());
-        expect(signalHandlerIsConnected(action, BigInt(handlerId))).toBe(true);
-        action.runDispose();
-        expect(signalHandlerIsConnected(action, BigInt(handlerId))).toBe(false);
+const newDialog = (): Gtk.NativeDialog => {
+    class ProbeDialog extends Gtk.NativeDialog {}
+    registerClass(ProbeDialog, { typeName: uniqueName("GtkxDisposedListenersDialog") });
+
+    return new ProbeDialog();
+};
+
+const disposeActionHandler = (
+    action: Gio.SimpleAction,
+    registration: Registration,
+    calls: string[],
+): WeakRef<Handler> => {
+    const handler = (): void => {
+        calls.push("activate");
+    };
+    action[registration]("activate", handler);
+    action.runDispose();
+    expect(action.off("activate", handler)).toBe(action);
+    expect(action.off("activate", handler)).toBe(action);
+
+    return new WeakRef(handler);
+};
+
+const destroyDialogHandler = (dialog: Gtk.NativeDialog, calls: string[]): WeakRef<Handler> => {
+    const handler = (): void => {
+        calls.push("response");
+    };
+    dialog.on("response", handler);
+    dialog.destroy();
+    expect(dialog.off("response", handler)).toBe(dialog);
+    expect(dialog.off("response", handler)).toBe(dialog);
+
+    return new WeakRef(handler);
+};
+
+describe("listener cleanup after disposal", () => {
+    it.each(REGISTRATIONS)("releases a pending %s callback with its emitter retained", async (registration) => {
+        const action = newAction(`retained-${registration}`);
+        const emitter = new WeakRef(action);
+        const calls: string[] = [];
+        const handler = disposeActionHandler(action, registration, calls);
+
+        await gcUntil(() => handler.deref() === undefined);
+
+        expect(handler.deref()).toBeUndefined();
+        expect(emitter.deref()).toBe(action);
+        expect(calls).toEqual([]);
     });
 
-    it("never hands a destroyed handler id to a later connection on the same emitter", () => {
-        const action = newAction("id-reuse");
-        const staleId = action.connect("activate", vi.fn());
-        action.runDispose();
-        const laterIds = [action.connect("activate", vi.fn()), action.connect("activate", vi.fn())];
-        expect(laterIds).not.toContain(staleId);
-        expect(Math.min(...laterIds)).toBeGreaterThan(staleId);
+    it.each(REGISTRATIONS)("keeps another emitter's callback connected after %s cleanup", (registration) => {
+        const disposed = newAction(`disposed-${registration}`);
+        const healthy = newAction(`healthy-${registration}`);
+        const calls: string[] = [];
+        const handler = (): void => {
+            calls.push("activate");
+        };
+        disposed[registration]("activate", handler);
+        healthy.on("activate", handler);
+
+        try {
+            healthy.activate(null);
+            expect(calls).toEqual(["activate"]);
+            disposed.runDispose();
+            expect(disposed.off("activate", handler)).toBe(disposed);
+            expect(disposed.off("activate", handler)).toBe(disposed);
+            healthy.activate(null);
+            expect(calls).toEqual(["activate", "activate"]);
+            healthy.off("activate", handler);
+            healthy.activate(null);
+            expect(calls).toEqual(["activate", "activate"]);
+        } finally {
+            healthy.off("activate", handler);
+        }
     });
 
-    it("leaves a later handler connected when a stale record is disconnected", () => {
-        const action = newAction("stale-disconnect");
-        const stale = vi.fn();
-        action.on("activate", stale);
-        action.runDispose();
-        const liveId = action.connect("activate", vi.fn());
-        captureCriticals(() => action.off("activate", stale));
-        expect(signalHandlerIsConnected(action, BigInt(liveId))).toBe(true);
-    });
-});
+    it("releases a response callback while retaining the destroyed native dialog", async () => {
+        const dialog = newDialog();
+        const emitter = new WeakRef(dialog);
+        const calls: string[] = [];
+        const handler = destroyDialogHandler(dialog, calls);
 
-describe("listener records that outlive their emitter's disposal", () => {
-    it("off() does not disconnect a handler that dispose already destroyed", () => {
-        const action = newAction("off-after-dispose");
-        const handler = vi.fn();
-        action.on("activate", handler);
+        await gcUntil(() => handler.deref() === undefined);
 
-        const criticals = captureCriticals(() => {
-            action.runDispose();
-            action.off("activate", handler);
-        });
-
-        expect(criticals).toEqual([]);
+        expect(handler.deref()).toBeUndefined();
+        expect(emitter.deref()).toBe(dialog);
+        expect(calls).toEqual([]);
     });
 
-    it("off() does not disconnect a pending once() handler that dispose already destroyed", () => {
-        const action = newAction("once-after-dispose");
-        const handler = vi.fn();
-        action.once("activate", handler);
-
-        const criticals = captureCriticals(() => {
-            action.runDispose();
-            action.off("activate", handler);
-        });
-
-        expect(criticals).toEqual([]);
-        expect(handler).not.toHaveBeenCalled();
-    });
-
-    it("off() does not disconnect a handler destroyed by GtkNativeDialog.destroy()", () => {
-        class ProbeDialog extends Gtk.NativeDialog {}
-        registerClass(ProbeDialog, { typeName: "GtkxDisposedListenersDialog" });
-        const dialog = new ProbeDialog();
-        const handler = vi.fn();
+    it("keeps another emitter's callback connected after native dialog cleanup", () => {
+        const dialog = newDialog();
+        const healthy = newAction("healthy-dialog");
+        const calls: string[] = [];
+        const handler = (): void => {
+            calls.push("activate");
+        };
         dialog.on("response", handler);
+        healthy.on("activate", handler);
 
-        const criticals = captureCriticals(() => {
+        try {
+            healthy.activate(null);
+            expect(calls).toEqual(["activate"]);
             dialog.destroy();
-            dialog.off("response", handler);
-        });
-
-        expect(criticals).toEqual([]);
+            expect(dialog.off("response", handler)).toBe(dialog);
+            expect(dialog.off("response", handler)).toBe(dialog);
+            healthy.activate(null);
+            expect(calls).toEqual(["activate", "activate"]);
+            healthy.off("activate", handler);
+            healthy.activate(null);
+            expect(calls).toEqual(["activate", "activate"]);
+        } finally {
+            healthy.off("activate", handler);
+        }
     });
 });

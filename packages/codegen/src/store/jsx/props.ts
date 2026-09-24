@@ -11,6 +11,7 @@ import { renderHandlerParameters, renderHandlerResultType } from "../../analysis
 import { isEmittableProperty } from "../../analysis/property-admission.js";
 import { isEmittableSignal } from "../../analysis/signal-admission.js";
 import { recordTypeTarget, renderBaseType, type TsTypeTarget } from "../../analysis/ts-type.js";
+import { ancestorChain } from "../../gir/ancestry.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderJsDoc } from "../../writer/doc.js";
 import { annotationSpec, selfHandlerSpec } from "../gi/doc-spec.js";
@@ -81,6 +82,21 @@ const notifyDoc = (property: GirProperty, jsName: string, spec: JsDocSpec): stri
     return renderJsDoc(text, undefined, spec);
 };
 
+const renderObjectPropType = (
+    state: PropCollectorState,
+    property: GirProperty,
+    jsName: string,
+    tsType: string,
+): string => {
+    if (!isReactElementProp(state.owner.library, property)) {
+        return tsType;
+    }
+
+    state.objectPropNames.push(jsName);
+
+    return `${tsType} | ReactElement`;
+};
+
 const appendPropertyLines = (state: PropCollectorState, property: GirProperty, jsName: string): void => {
     const tsType = renderReactPropType(state.types, property.type, false);
     const spec = annotationSpec(property.annotations);
@@ -90,8 +106,8 @@ const appendPropertyLines = (state: PropCollectorState, property: GirProperty, j
     const nullable = isRequired ? "" : " | null | undefined";
 
     if (isObjectProp(state.owner.library, property)) {
-        state.propLines.push(`${doc}${name}: ${tsType} | ReactElement${nullable};`);
-        state.objectPropNames.push(jsName);
+        const objectType = renderObjectPropType(state, property, jsName, tsType);
+        state.propLines.push(`${doc}${name}: ${objectType}${nullable};`);
 
         return;
     }
@@ -244,6 +260,23 @@ const isObjectProp = (library: Library, property: GirProperty): boolean => {
     return isGObjectType(library, property.type);
 };
 
+const isReactElementProp = (library: Library, property: GirProperty): boolean => {
+    if (!isObjectProp(library, property)) {
+        return false;
+    }
+
+    const resolved = property.type === undefined ? undefined : library.typeFor(property.type);
+
+    if (resolved?.kind !== "class") {
+        return true;
+    }
+
+    return !ancestorChain(library, resolved.value, resolved.namespace.name).some(
+        ({ klass, namespaceName }) =>
+            namespaceName === "Gtk" && (klass.name === "Window" || klass.name === "Application"),
+    );
+};
+
 const renderSignalHandler = (options: SignalRenderOptions): string => {
     const { types, signal, selfType } = options;
 
@@ -284,4 +317,4 @@ const renderReactPropType = (context: PropTypeRenderContext, ref: TypeId | undef
     return isNullable ? `${base} | null` : base;
 };
 
-export { buildElementPropsEntries, buildInterfacePropsEntries, isObjectProp };
+export { buildElementPropsEntries, buildInterfacePropsEntries, isReactElementProp };

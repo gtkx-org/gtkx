@@ -17,7 +17,6 @@ import {
     sizedArrayT,
     stringT,
     uint32T,
-    uint64T,
     voidT,
 } from "./descriptors.js";
 import { LIB, VALUE_SIZE, VALUE_T } from "./library.js";
@@ -38,6 +37,7 @@ import {
 
 /** Function invoked when a connected GObject signal is emitted. */
 type SignalHandler = (...args: unknown[]) => unknown;
+type SignalHandlerId = bigint;
 
 const isSignalHandler = (value: unknown): value is SignalHandler => typeof value === "function";
 
@@ -65,7 +65,7 @@ type SignalConnector = (
     signal: string,
     handler: SignalHandler,
     isAfter?: boolean,
-) => number;
+) => SignalHandlerId;
 type SignalEmitter = (instance: object, signal: string, args: unknown[]) => unknown;
 type SignalDispatch = {
     connect: SignalConnector;
@@ -112,7 +112,7 @@ type EmitArg = Arg & {
     value?: unknown;
 };
 
-const connectionTable: WeakMap<object, Map<string, Set<number>>> = new WeakMap();
+const connectionTable: WeakMap<object, Map<string, Set<SignalHandlerId>>> = new WeakMap();
 const signalDispatchTable: Map<number, SignalDispatch> = new Map();
 const pendingSignalDispatches: Map<string, PendingSignalDispatch[]> = new Map();
 const gQuarkFromString = bind(LIB, "g_quark_from_string", [stringT("borrowed")], uint32T);
@@ -131,18 +131,23 @@ const gSignalEmitv = bind(
 const gSignalHandlerIsConnected = bind(
     LIB,
     "g_signal_handler_is_connected",
-    [objectT("borrowed"), uint64T],
+    [objectT("borrowed"), biguint64T],
     booleanT,
 );
 
-const gSignalHandlerDisconnect = bind(LIB, "g_signal_handler_disconnect", [objectT("borrowed"), uint64T], voidT);
+const gSignalHandlerDisconnect = bind(
+    LIB,
+    "g_signal_handler_disconnect",
+    [objectT("borrowed"), biguint64T],
+    voidT,
+);
 const CLOSURE_T = boxedT("GClosure", { sharedLibrary: LIB, getTypeFnName: "g_closure_get_type" });
 
 const gSignalConnectClosure = bind(
     LIB,
     "g_signal_connect_closure",
     [objectT("borrowed"), stringT("borrowed"), CLOSURE_T, booleanT],
-    uint64T,
+    biguint64T,
 );
 
 const gSignalOverrideClassClosure = bind(
@@ -178,15 +183,15 @@ function getSignalDetailQuark(signal: string): number {
     return gQuarkFromString(signal.slice(detailIndex + 2)) as number;
 }
 
-const isSignalHandlerConnected = (instance: object, handlerId: number): boolean =>
+const isSignalHandlerConnected = (instance: object, handlerId: SignalHandlerId): boolean =>
     gSignalHandlerIsConnected(getHandle(instance), handlerId) as boolean;
 
-const trackConnection = (instance: object, signal: string, handlerId: number): void => {
-    const bySignal = connectionTable.getOrInsertComputed(instance, () => new Map<string, Set<number>>());
-    bySignal.getOrInsertComputed(signal, () => new Set<number>()).add(handlerId);
+const trackConnection = (instance: object, signal: string, handlerId: SignalHandlerId): void => {
+    const bySignal = connectionTable.getOrInsertComputed(instance, () => new Map<string, Set<SignalHandlerId>>());
+    bySignal.getOrInsertComputed(signal, () => new Set<SignalHandlerId>()).add(handlerId);
 };
 
-const untrackConnection = (instance: object, handlerId: number): void => {
+const untrackConnection = (instance: object, handlerId: SignalHandlerId): void => {
     const bySignal = connectionTable.get(instance);
 
     if (bySignal === undefined) {
@@ -207,12 +212,12 @@ const untrackConnection = (instance: object, handlerId: number): void => {
  * @param instance Emitter the handler was connected to.
  * @param handlerId Id {@link connectSignal} returned for the handler.
  */
-const disconnectSignal = (instance: object, handlerId: number): void => {
+const disconnectSignal = (instance: object, handlerId: SignalHandlerId): void => {
     untrackConnection(instance, handlerId);
     gSignalHandlerDisconnect(getHandle(instance), handlerId);
 };
 
-const hasLiveConnection = (instance: object, handlerIds: Set<number>): boolean => {
+const hasLiveConnection = (instance: object, handlerIds: Set<SignalHandlerId>): boolean => {
     let isLive = false;
 
     for (const handlerId of handlerIds) {
@@ -289,13 +294,13 @@ const getSignalId = (instance: object, signal: string): number =>
  * @param signal Signal name, optionally including a `::detail` suffix.
  * @param spec Callback descriptor, handler function, and whether to run after the default handler.
  */
-function connectSignal(instance: object, signal: string, spec: SignalConnectSpec): number {
+function connectSignal(instance: object, signal: string, spec: SignalConnectSpec): SignalHandlerId {
     const { callback, handler, isAfter } = spec;
     const wrapped = wrapCallback(handler, callback, "signal");
     const type: bigint = (instance as TypedClass).__type__;
     const key = `${String(type)}\0${getSignalBaseName(signal)}`;
     const closure = newCCallbackClosure(key, callback, wrapped);
-    const handlerId = gSignalConnectClosure(getHandle(instance), signal, closure, isAfter) as number;
+    const handlerId = gSignalConnectClosure(getHandle(instance), signal, closure, isAfter) as SignalHandlerId;
     trackConnection(instance, canonicalSignalName(signal), handlerId);
 
     return handlerId;
@@ -305,9 +310,14 @@ function overrideSignalClassClosure(type: bigint, signalId: number, handler: Sig
     gSignalOverrideClassClosure(signalId, type, toClosure(handler));
 }
 
-function connectClosureSignal(instance: object, signal: string, handler: SignalHandler, isAfter: boolean): number {
+function connectClosureSignal(
+    instance: object,
+    signal: string,
+    handler: SignalHandler,
+    isAfter: boolean,
+): SignalHandlerId {
     const closure = toClosure((...args: unknown[]) => Reflect.apply(handler, null, args.slice(1)));
-    const handlerId = gSignalConnectClosure(getHandle(instance), signal, closure, isAfter) as number;
+    const handlerId = gSignalConnectClosure(getHandle(instance), signal, closure, isAfter) as SignalHandlerId;
     trackConnection(instance, canonicalSignalName(signal), handlerId);
 
     return handlerId;
@@ -479,7 +489,7 @@ function signalConnect<T extends object, K extends SignalName<NoInfer<T>>>(
     signal: K,
     handler: SignalMap<NoInfer<T>>[K],
     isAfter?: boolean,
-): number {
+): SignalHandlerId {
     return connectSignalByName(instance, signal, handler, isAfter);
 }
 
@@ -488,7 +498,7 @@ function connectSignalByName(
     signal: string,
     handler: unknown,
     isAfter?: boolean,
-): number {
+): SignalHandlerId {
     if (!isSignalHandler(handler)) {
         throw new TypeError("connectSignal: handler must be a function");
     }
@@ -532,6 +542,7 @@ export {
     type SignalEmitName,
     type SignalEmitResult,
     type SignalHandler,
+    type SignalHandlerId,
     type SignalMap,
     type SignalName,
 };

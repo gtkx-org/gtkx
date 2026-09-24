@@ -1,3 +1,4 @@
+import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { sortStringsBy } from "@gtkx/utils";
 import { type Config, format, type NewPlugin, type PrettyFormatOptions } from "@vitest/pretty-format";
@@ -176,13 +177,27 @@ const formatBody = (widget: Gtk.Widget, indentation: string, depth: number, ctx:
     return formatCollapsedChildrenLine(widget, indentation, ctx.config, collapseReason);
 };
 
+const isPasswordWidget = (widget: Gtk.Widget): boolean =>
+    widget instanceof Gtk.PasswordEntry ||
+    widget instanceof Adw.PasswordEntryRow ||
+    (widget instanceof Gtk.Entry && !widget.getVisibility()) ||
+    (widget instanceof Gtk.Text && !widget.getVisibility());
+
+const printableText = (widget: Gtk.Widget): string | null => {
+    if (widget instanceof Adw.PasswordEntryRow) {
+        return widget.getTitle() || null;
+    }
+
+    return isPasswordWidget(widget) ? null : getWidgetText(widget);
+};
+
 const formatWidget = (widget: Gtk.Widget, indentation: string, depth: number, ctx: FormatContext): string => {
     const { config } = ctx;
     const tag = getTypeTag(widget);
     const attrs = formatAttrs(buildAttrs(widget, ctx.getId), config.colors);
     const openTag = `${paint(config.colors.tag, "<" + tag)}${attrs}${paint(config.colors.tag, ">")}`;
     const closeTag = paint(config.colors.tag, `</${tag}>`);
-    const text = getWidgetText(widget);
+    const text = printableText(widget);
     const openLine = `${indentation}${openTag}${config.spacingOuter}`;
 
     if (!text && !widget.getFirstChild()) {
@@ -190,7 +205,7 @@ const formatWidget = (widget: Gtk.Widget, indentation: string, depth: number, ct
     }
 
     const textLine = text ? `${indentation}${config.indent}${text}${config.spacingOuter}` : "";
-    const body = formatBody(widget, indentation, depth, ctx);
+    const body = isPasswordWidget(widget) ? "" : formatBody(widget, indentation, depth, ctx);
 
     return `${openLine}${textLine}${body}${indentation}${closeTag}${config.spacingOuter}`;
 };

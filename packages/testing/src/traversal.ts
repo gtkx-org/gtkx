@@ -127,8 +127,14 @@ const resolveRoot = (container: QueryContainer): Gtk.Widget | null => {
 };
 
 const roots = function* (container: Container): Generator<Gtk.Widget> {
-    if (container === TOPLEVELS || isApplication(container)) {
+    if (container === TOPLEVELS) {
         yield* Gtk.Window.listToplevels();
+
+        return;
+    }
+
+    if (isApplication(container)) {
+        yield* container.getWindows();
 
         return;
     }

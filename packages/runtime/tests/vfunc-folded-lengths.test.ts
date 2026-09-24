@@ -1,6 +1,7 @@
 import * as Adw from "@gtkx/gi/adw";
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { registerClass } from "@gtkx/runtime";
+import { quitApplication, registerClass } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
 function createSwipeable(typeName: string, snapPoints: () => number[]): Adw.Swipeable {
@@ -32,6 +33,37 @@ describe("vfunc return arrays whose length parameter is folded away", () => {
         expect(pager.getSnapPoints()).toEqual([]);
         points = [0, 0.5, 0.75, 1];
         expect(pager.getSnapPoints()).toEqual([0, 0.5, 0.75, 1]);
+    });
+});
+
+describe("vfunc input arrays whose length parameter is folded away", () => {
+    it("derives the native length for overrides and parent calls", () => {
+        const received: [string[], string][] = [];
+
+        class OpeningApplication extends Gio.Application {
+            override vfuncOpen(files: Gio.File[], hint: string): void {
+                received.push([files.map((file) => file.getPath() ?? ""), hint]);
+                super.vfuncOpen(files, hint);
+            }
+        }
+
+        registerClass(OpeningApplication, { typeName: `GtkxFoldedOpen_${String(process.pid)}` });
+        const application = new OpeningApplication({
+            applicationId: `org.gtkx.folded-open-${String(process.pid)}`,
+            flags: Gio.ApplicationFlags.NON_UNIQUE | Gio.ApplicationFlags.HANDLES_OPEN,
+        });
+
+        try {
+            expect(application.register(null)).toBe(true);
+            application.open([Gio.File.newForPath("/one"), Gio.File.newForPath("/two")], "first");
+            application.open([Gio.File.newForPath("/three")], "second");
+            expect(received).toEqual([
+                [["/one", "/two"], "first"],
+                [["/three"], "second"],
+            ]);
+        } finally {
+            quitApplication(application);
+        }
     });
 });
 

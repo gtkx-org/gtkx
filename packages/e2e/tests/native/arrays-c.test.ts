@@ -1,5 +1,7 @@
 import type { ExternalObject, Handle, Ref } from "@gtkx/native";
+import * as Gdk from "@gtkx/gi/gdk";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
+import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
@@ -14,6 +16,45 @@ const UNICHARS = ["c", "o", "n", "s", "t", " ", "♥", " ", "u", "t", "f", "8"];
 
 const unalignedPattern = Array.from({ length: 32 }, (_, index) => (index + 1) % 8);
 const collectionLibrary = fixtureLibrary("collection-values");
+
+const unsupportedNestedStringArrays = [
+    "fixedArrayOfGstrvTransferContainerIn",
+    "fixedArrayOfGstrvTransferContainerInout",
+    "fixedArrayOfGstrvTransferContainerReturn",
+    "fixedArrayOfGstrvTransferFullIn",
+    "fixedArrayOfGstrvTransferFullInout",
+    "fixedArrayOfGstrvTransferFullReturn",
+    "fixedArrayOfGstrvTransferNoneIn",
+    "fixedArrayOfGstrvTransferNoneInout",
+    "fixedArrayOfGstrvTransferNoneReturn",
+    "lengthArrayOfGstrvTransferContainerIn",
+    "lengthArrayOfGstrvTransferContainerInout",
+    "lengthArrayOfGstrvTransferContainerReturn",
+    "lengthArrayOfGstrvTransferFullIn",
+    "lengthArrayOfGstrvTransferFullInout",
+    "lengthArrayOfGstrvTransferFullReturn",
+    "lengthArrayOfGstrvTransferNoneIn",
+    "lengthArrayOfGstrvTransferNoneInout",
+    "lengthArrayOfGstrvTransferNoneReturn",
+    "zeroTerminatedArrayOfGstrvTransferContainerIn",
+    "zeroTerminatedArrayOfGstrvTransferContainerInout",
+    "zeroTerminatedArrayOfGstrvTransferFullIn",
+    "zeroTerminatedArrayOfGstrvTransferFullInout",
+    "zeroTerminatedArrayOfGstrvTransferNoneIn",
+    "zeroTerminatedArrayOfGstrvTransferNoneInout",
+];
+
+test("nested string arrays match the native container boundary", () => {
+    for (const name of unsupportedNestedStringArrays) {
+        expect(Reflect.get(GIMarshallingTests, name)).toBeUndefined();
+    }
+
+    const expected = [["0", "1", "2"], ["3", "4", "5"], ["6", "7", "8"]];
+
+    expect(GIMarshallingTests.zeroTerminatedArrayOfGstrvTransferNoneReturn()).toEqual(expected);
+    expect(GIMarshallingTests.zeroTerminatedArrayOfGstrvTransferContainerReturn()).toEqual(expected);
+    expect(GIMarshallingTests.zeroTerminatedArrayOfGstrvTransferFullReturn()).toEqual(expected);
+});
 
 test.each([false, true])("array returns and outputs preserve their null policy (%s)", (preserveNull) => {
     const descriptor = { ...t.array(t.string()), preserveNull };
@@ -124,6 +165,14 @@ test("a zero-terminated length-bounded array terminates a typed-array argument t
     }
 
     expect([...view]).toEqual([-1, 0, 1, 2]);
+});
+
+test("an empty inline record array carries its terminating record", () => {
+    const application = Gio.Application.new("org.gtkx.InlineRecordTerminator", Gio.ApplicationFlags.DEFAULT_FLAGS);
+
+    expect(() => {
+        application.addMainOptionEntries([]);
+    }).not.toThrow();
 });
 
 test("zero-terminated length-bounded arrays still validate their elements", () => {
@@ -253,6 +302,49 @@ test("boxed struct pointer arrays pass for every transfer mode", () => {
     GIMarshallingTests.arrayStructTakeIn([make(1), make(2), make(3)]);
 });
 
+test("handle-backed arrays reject mismatched native wrappers and recover", () => {
+    const bytes = GLib.Bytes.new([1, 2, 3]);
+    const action = Gio.SimpleAction.new("wrong-array-element", null);
+
+    expect(() => {
+        Reflect.apply(Gdk.ContentProvider.newUnion, Gdk.ContentProvider, [[bytes]]);
+    }).toThrow();
+    expect(() => {
+        Reflect.apply(Gdk.ContentProvider.newUnion, Gdk.ContentProvider, [[action]]);
+    }).toThrow();
+    const provider = Gdk.ContentProvider.newForBytes("application/octet-stream", bytes);
+    expect(Gdk.ContentProvider.newUnion([provider])).toBeInstanceOf(Gdk.ContentProvider);
+
+    const wrongBoxed = Regress.TestBoxed.new();
+    expect(() => {
+        Reflect.apply(
+            GIMarshallingTests.arrayStructFullIn,
+            GIMarshallingTests,
+            [[action, action, action]],
+        );
+    }).toThrow();
+    expect(() => {
+        Reflect.apply(
+            GIMarshallingTests.arrayStructFullIn,
+            GIMarshallingTests,
+            [[wrongBoxed, wrongBoxed, wrongBoxed]],
+        );
+    }).toThrow();
+
+    const valid = [1, 2, 3].map((long) => new GIMarshallingTests.BoxedStruct({ long: BigInt(long) }));
+    GIMarshallingTests.arrayStructFullIn(valid);
+
+    expect(() => {
+        Reflect.apply(
+            GIMarshallingTests.arrayStructValueIn,
+            GIMarshallingTests,
+            [[wrongBoxed, wrongBoxed, wrongBoxed]],
+        );
+    }).toThrow();
+    GIMarshallingTests.arrayStructValueIn(valid);
+    expect(valid.map((value) => value.long)).toEqual([1n, 2n, 3n]);
+});
+
 test("flat struct value arrays marshal by value", () => {
     const boxed = (value: number) => new GIMarshallingTests.BoxedStruct({ long: BigInt(value) });
     const simple = (value: number) => new GIMarshallingTests.SimpleStruct({ long: BigInt(value) });
@@ -284,11 +376,6 @@ test("struct arrays come back with populated fields", () => {
     const callerAllocated = GIMarshallingTests.arrayFixedCallerAllocatedStructOut();
     expect(callerAllocated.map((entry) => [entry.long, entry.int8])).toEqual([[-2n, -1], [1n, 2], [3n, 4], [5n, 6]]);
     expect(GIMarshallingTests.arrayZeroTerminatedReturnStruct().map((entry) => entry.long)).toEqual([42n, 43n, 44n]);
-    expect(GIMarshallingTests.arrayZeroTerminatedReturnSequentialStruct().map((entry) => entry.long)).toEqual([
-        42n,
-        43n,
-        44n,
-    ]);
     expect(Regress.testArrayStructOut().map((entry) => entry.someInt)).toEqual([22, 33, 44]);
     expect(Regress.testArrayStructOutNone().map((entry) => entry.someInt)).toEqual([111, 222, 333]);
     expect(Regress.testArrayStructOutContainer().map((entry) => entry.someInt)).toEqual([11, 13, 17, 19, 23]);

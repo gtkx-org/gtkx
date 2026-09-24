@@ -9,12 +9,23 @@ import type { TypeId } from "../../gir/type-id.js";
 import type { ModuleContext } from "../../writer/context.js";
 import type { JsDocSpec } from "../../writer/doc.js";
 import { hasCallbackType, isSupportedCallback } from "../../analysis/callback-shape.js";
+import { isCallerAllocatedContainer } from "../../analysis/caller-allocated.js";
 import {
     isInlineCallbackRef,
     renderCallbackType,
     renderDescriptor,
     renderParamDescriptor,
 } from "../../analysis/descriptor-render.js";
+import {
+    hasTransferredNumericHashTable,
+    hasTransferredNumericHashTableInput,
+    hasUnsupportedHashTableSlot,
+} from "../../analysis/hash-table-admission.js";
+import {
+    hasUnsupportedCallbackInlineRecordArray,
+    hasUnsupportedInlineRecordArray,
+} from "../../analysis/inline-record-array-admission.js";
+import { hasInoutHandleIndirectionMismatch } from "../../analysis/inout-handle.js";
 import { hasDetachedClosure } from "../../analysis/param-capability.js";
 import {
     foldedLengthParameters,
@@ -48,6 +59,7 @@ type VtableSlot = {
     callback: GirCallback;
     vfunc: GirVirtualMethod | undefined;
     byteOffset: number;
+    canCall: boolean;
 };
 
 type VfuncMemberOptions = {
@@ -109,11 +121,13 @@ const PUBLIC_SLOT_NOTE = "Calling it from anywhere else re-enters the slot on a 
 const vfuncMemberName = (fieldName: string): string => `vfunc${pascalCase(fieldName)}`;
 
 const vfuncOverrideNote = (slot: VtableSlot, isProtected: boolean): string =>
-    [
-        `Invokes the \`${slot.field.name}\` vtable slot. Override it on a class passed to \`registerClass\``,
-        `and chain up with \`super.${slot.key}()\`.`,
-        isProtected ? PROTECTED_SLOT_NOTE : PUBLIC_SLOT_NOTE,
-    ].join("\n");
+    slot.canCall
+        ? [
+                `Invokes the \`${slot.field.name}\` vtable slot. Override it on a class passed to \`registerClass\``,
+                `and chain up with \`super.${slot.key}()\`.`,
+                isProtected ? PROTECTED_SLOT_NOTE : PUBLIC_SLOT_NOTE,
+            ].join("\n")
+        : `Fills the \`${slot.field.name}\` vtable slot. Override it on a class passed to \`registerClass\`.`;
 
 const vfuncRequirementNote = (slot: VtableSlot, ownerRef: string): string =>
     [
@@ -148,6 +162,7 @@ const isDecodedCallbackParam = (context: ModuleContext, parameter: GirParameter,
     const type = underlyingType(context.library, parameter.type);
 
     return type?.kind === "callback" && isSupportedCallback(context.library, type.value) &&
+        type.value.parameters.every((input) => !hasTransferredNumericHashTableInput(context.library, input)) &&
         parameter.closureIndex !== undefined && !hasDetachedClosure(parameter, index);
 };
 
@@ -239,10 +254,10 @@ const vtableSlotEntry = (
 
 const collectVtableSlots = (
     context: ModuleContext,
-    fields: GirField[],
-    isUnion: boolean,
+    namespaceName: string,
+    record: GirRecord,
 ): { slots: VtableSlot[]; vtableSize: number } => {
-    const { slots, size } = computeRecordFieldSlots(context, fields, isUnion);
+    const { slots, size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
     const entries: VtableSlot[] = [];
     const claimedNames: Set<string> = new Set();
 
@@ -251,7 +266,14 @@ const collectVtableSlots = (
 
         if (entry !== undefined) {
             claimedNames.add(entry.key);
-            entries.push({ ...entry, field, vfunc: undefined, byteOffset: slot.byteOffset });
+            entries.push({
+                ...entry,
+                field,
+                vfunc: undefined,
+                byteOffset: slot.byteOffset,
+                canCall:
+                    `${namespaceName}.${record.name}.${field.name}` !== "OSTree.RepoFinderInterface.resolve_finish",
+            });
         }
     }
 
@@ -262,7 +284,7 @@ const resolveVtableRecord = (
     context: ModuleContext,
     namespaceName: string,
     klass: GirClass,
-): { typeStruct: string; record: GirRecord } | undefined => {
+): { namespaceName: string; typeStruct: string; record: GirRecord } | undefined => {
     const typeStruct = klass.glibTypeStruct;
     const resolved = typeStruct === undefined ? undefined : context.library.resolveType(namespaceName, typeStruct);
 
@@ -270,7 +292,7 @@ const resolveVtableRecord = (
         return undefined;
     }
 
-    return { typeStruct, record: resolved.value };
+    return { namespaceName: resolved.namespace.name, typeStruct, record: resolved.value };
 };
 
 const attachVirtualMethods = (slots: VtableSlot[], klass: GirClass): VtableSlot[] => {
@@ -288,7 +310,7 @@ const buildVtable = (context: ModuleContext, namespaceName: string, klass: GirCl
         return undefined;
     }
 
-    const { slots, vtableSize } = collectVtableSlots(context, resolved.record.fields, resolved.record.isUnion);
+    const { slots, vtableSize } = collectVtableSlots(context, resolved.namespaceName, resolved.record);
 
     if (slots.length === 0) {
         return undefined;
@@ -472,16 +494,27 @@ const callableVfuncSlots = (context: ModuleContext, namespaceName: string, klass
 const hasCallableVfuncSlots = (context: ModuleContext, namespaceName: string, klass: GirClass): boolean =>
     callableVfuncSlots(context, namespaceName, klass).length > 0;
 
-const slotDoc = (slot: VtableSlot): string | undefined => slot.vfunc?.doc ?? slot.field.doc ?? slot.callback.doc;
+const slotDoc = (slot: VtableSlot): string | undefined => {
+    const doc = slot.vfunc?.doc ?? slot.field.doc ?? slot.callback.doc;
+
+    return slot.canCall
+        ? doc
+        : [
+                doc,
+                "Calling the native implementation through this member, `super`, `callVfunc` or `callParent` throws. " +
+                "Overriding it remains supported.",
+            ].filter(Boolean).join("\n\n");
+};
 
 const slotDocParameters = (context: ModuleContext, slot: VtableSlot): GirParameter[] => {
     const plan = slotParamPlan(context, slot.callback);
     const [, ...parameters] = slot.callback.parameters;
     const vfuncParameters = slot.vfunc?.parameters ?? [];
+    const folded = foldedLengthParameters(context.library, slot.callback);
 
     return parameters
         .map((parameter, index) => ({ parameter, index }))
-        .filter(({ index }) => plan.argIndexMap.has(index + 1))
+        .filter(({ parameter, index }) => plan.argIndexMap.has(index + 1) && !folded.has(parameter))
         .map(({ parameter, index }) => ({
             ...parameter,
             doc: vfuncParameters[index]?.doc ?? parameter.doc,
@@ -527,6 +560,13 @@ const renderVfuncMembers = (options: VfuncMembersOptions): string[] => {
 
 const isCallableSlot = (slot: VtableSlot): boolean => !UNCALLABLE_SLOT_KEYS.has(slot.key);
 
+const vfuncInputParameters = (context: ModuleContext, slot: VtableSlot): GirParameter[] => {
+    const [, ...parameters] = slotParamPlan(context, slot.callback).parameters;
+    const folded = foldedLengthParameters(context.library, slot.callback);
+
+    return handlerParameters(parameters, (parameter) => folded.has(parameter));
+};
+
 const vfuncSlotSignature = (context: ModuleContext, slot: VtableSlot, isOptional = false): VfuncSignature => {
     const plan = slotParamPlan(context, slot.callback);
     const [, ...parameters] = plan.parameters;
@@ -534,7 +574,7 @@ const vfuncSlotSignature = (context: ModuleContext, slot: VtableSlot, isOptional
     const renderType = (ref: TypeId | undefined, isNullable: boolean): string =>
         renderTsType(context, ref, isNullable);
 
-    const signature = handlerParameters(parameters)
+    const signature = vfuncInputParameters(context, slot)
         .map(
             (parameter, index) =>
                 `${parameterIdentifier(parameter, index)}: ${renderType(parameter.type, parameter.nullable)}`)
@@ -564,9 +604,7 @@ const renderVfuncMember = (options: VfuncMemberOptions): string => {
         return `${doc}${declaration};`;
     }
 
-    const [, ...parameters] = slotParamPlan(context, slot.callback).parameters;
-
-    const inputs = handlerParameters(parameters).map((parameter, index) =>
+    const inputs = vfuncInputParameters(context, slot).map((parameter, index) =>
         parameterIdentifier(parameter, index));
 
     const call = `callVfunc(${ownerRef}, ${sourceStringLiteral(slot.key)}, this, [${inputs.join(", ")}])`;
@@ -576,7 +614,7 @@ const renderVfuncMember = (options: VfuncMemberOptions): string => {
 };
 
 const isEligibleVtableParam = (context: ModuleContext, param: GirParameter): boolean => {
-    if (param.isVarargs) {
+    if (param.isVarargs || isCallerAllocatedContainer(context.library, param)) {
         return false;
     }
 
@@ -585,10 +623,20 @@ const isEligibleVtableParam = (context: ModuleContext, param: GirParameter): boo
 
 const isVtableSlotEligible = (context: ModuleContext, callback: GirCallback): boolean => {
     if (!callback.introspectable ||
+        hasUnsupportedHashTableSlot(context.library, callback.returnValue.type) ||
+        hasTransferredNumericHashTable(
+            context.library, callback.returnValue.type, callback.returnValue.transferOwnership,
+        ) ||
         hasScalarPointer(context.library, callback.returnValue.type, callback.returnValue.cType) ||
         hasUnknownLengthArray(context.library, callback.returnValue.type) ||
         hasPrimitivePointer(context.library, callback.returnValue.type) ||
-        hasCallbackType(context.library, callback.returnValue.type)) {
+        hasCallbackType(context.library, callback.returnValue.type) ||
+        hasUnsupportedInlineRecordArray(
+            context,
+            callback.returnValue.type,
+            callback.returnValue.transferOwnership,
+            { direction: "to-native", isRetained: true },
+        )) {
         return false;
     }
 
@@ -596,6 +644,10 @@ const isVtableSlotEligible = (context: ModuleContext, callback: GirCallback): bo
 
     return plan.parameters.every((parameter) =>
         isEligibleVtableParam(context, parameter) &&
+        !hasUnsupportedCallbackInlineRecordArray(context, parameter) &&
+        !hasUnsupportedHashTableSlot(context.library, parameter.type) &&
+        !hasTransferredNumericHashTable(context.library, parameter.type, parameter.transferOwnership) &&
+        !hasInoutHandleIndirectionMismatch(context.library, parameter) &&
         !hasUnsupportedScalarParameter(context.library, parameter) &&
         !hasPrimitivePointer(context.library, parameter.type) &&
         !hasUnknownLengthArray(context.library, parameter.type) &&
@@ -628,6 +680,10 @@ const renderVtableSlotDescriptor = (context: ModuleContext, vtable: Vtable, slot
     }
 
     lines.push(`argDescriptors: [${argDescriptors}],`, `returnDescriptor: ${returnDescriptor},`);
+
+    if (!slot.canCall) {
+        lines.push("canCall: false,");
+    }
 
     if (callback.throws) {
         lines.push("canThrow: true,");

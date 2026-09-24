@@ -38,6 +38,7 @@ import {
     enclosingHost,
     flushTextHosts,
     markTextDirty,
+    releaseTextResource,
     validateContentMix,
 } from "./text.js";
 
@@ -188,6 +189,7 @@ function createPriorityTracker(): PriorityTracker {
 const detachElement = (instance: ElementNode): void => {
     disconnectAllHandlers(instance);
     discardAccessible(instance);
+    releaseTextResource(instance);
 
     for (const entries of instance.placements.values()) {
         for (const entry of entries) {

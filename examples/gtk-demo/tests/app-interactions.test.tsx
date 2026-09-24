@@ -3,8 +3,9 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { Buffer } from "node:buffer";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import logoResourcePath from "../data/icons/org.gtk.Demo4.svg?resource";
+import { expectInspectorOpened } from "./native-dialogs.js";
 import { createAppRenderer } from "./render-app.js";
 
 const renderDemo = createAppRenderer("org.gtkx.gtkdemoint");
@@ -30,20 +31,6 @@ const expectShortcutsDialogShown = async (): Promise<void> => {
     expect(shortcutLabel).toBeRooted();
 };
 
-const expectInteractiveDebugging = async (activate: () => Promise<void>): Promise<void> => {
-    const debugSpy = vi.spyOn(Gtk.Window, "setInteractiveDebugging").mockImplementation((): void => undefined);
-
-    try {
-        await activate();
-
-        await waitFor(() => {
-            expect(debugSpy).toHaveBeenCalledWith(true);
-        });
-    } finally {
-        debugSpy.mockRestore();
-    }
-};
-
 describe("App resources", () => {
     it("bundles the application icon into the GResource so AdwAboutDialog can resolve it", async () => {
         await renderDemo();
@@ -55,11 +42,12 @@ describe("App resources", () => {
 });
 
 describe("App action accelerators", () => {
-    it("activates Gtk.Window.setInteractiveDebugging when Ctrl+Shift+I is pressed", async () => {
-        await expectInteractiveDebugging(async () => {
-            const body = await renderMainWindowBody();
+    it("opens the native Inspector when Ctrl+Shift+I is pressed", async () => {
+        const body = await renderMainWindowBody();
+        await expectInspectorOpened(async () => {
             await userEvent.keyboard(body, "{Control>}{Shift>}i{/Shift}{/Control}");
         });
+        expect(screen.getByName("main-window")).toBeVisible();
     });
 
     it("opens the keyboard shortcuts dialog when Ctrl+? is pressed", async () => {

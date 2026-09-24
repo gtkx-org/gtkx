@@ -80,7 +80,7 @@ const applicationIdSchema = z
 
 const reactCompilerSchema = z.union([
     z.boolean(),
-    z.object({
+    z.strictObject({
         compilationMode: z.enum(COMPILATION_MODES).optional(),
         panicThreshold: z.enum(PANIC_THRESHOLDS).optional(),
     }),
@@ -97,7 +97,7 @@ const userEventSignalsSchema = z.record(
     { error: "must be a record of GLib type names to signal name arrays" },
 );
 
-const moduleExportSchema = z.object(
+const moduleExportSchema = z.strictObject(
     {
         module: z.string({ error: "must be a module specifier" }).min(1, { error: "must be a module specifier" }),
         export: z.string({ error: "must be an export name" }).min(1, { error: "must be an export name" }),
@@ -105,7 +105,7 @@ const moduleExportSchema = z.object(
     { error: "must be a { module, export } object" },
 );
 
-const elementConfigSchema = z.object({
+const elementConfigSchema = z.strictObject({
     component: moduleExportSchema.optional(),
     props: moduleExportSchema.optional(),
     isLazy: z.boolean({ error: "must be a boolean" }).optional(),
@@ -119,7 +119,7 @@ const elementConfigSchema = z.object({
         .optional(),
 });
 
-const elementsSchema = z.object({
+const elementsSchema = z.strictObject({
     behaviors: z
         .string({ error: "must be a path to a module exporting element behaviors" })
         .min(1, { error: "must be a path to a module exporting element behaviors" })
@@ -127,12 +127,12 @@ const elementsSchema = z.object({
     config: z.record(z.string(), elementConfigSchema).optional(),
 });
 
-const agentsSchema = z.object({
+const agentsSchema = z.strictObject({
     rules: z.boolean({ error: "must be a boolean" }).optional(),
     reference: z.boolean({ error: "must be a boolean" }).optional(),
 });
 
-const mcpSchema = z.object({
+const mcpSchema = z.strictObject({
     tools: z
         .array(z.string({ error: "must be a tool name pattern" }).min(1, { error: "must be a tool name pattern" }), {
             error: "must be an array of tool name patterns",
@@ -153,7 +153,7 @@ const graduatedFutureSchema = z
     })
     .strict();
 
-const deprecationsSchema = z.object({
+const deprecationsSchema = z.strictObject({
     silence: z
         .array(z.never({ error: "does not name a current deprecation" }), {
             error: "must be an array of current deprecation ids",
@@ -162,7 +162,7 @@ const deprecationsSchema = z.object({
 });
 
 /** Schema every `gtkx.config.ts` is validated against, and the source of the {@link Config} type. */
-const configSchema = z.object({
+const configSchema = z.strictObject({
     libraries: librariesSchema.optional(),
     girPath: z.array(z.string(), { error: "must be an array of strings if provided" }).optional(),
     applicationId: applicationIdSchema,

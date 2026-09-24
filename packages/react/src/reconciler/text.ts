@@ -214,6 +214,7 @@ const detachTag = (tag: Gtk.TextTag, table: Gtk.TextTagTable, name: string | nul
 
     if (existing !== null && existing !== tag) {
         table.remove(existing);
+        tagTables.delete(existing);
     }
 };
 
@@ -232,6 +233,39 @@ const ensureTag = (table: Gtk.TextTagTable, node: ElementNode): void => {
     }
 
     tagTables.set(tag, table);
+};
+
+const releaseTag = (tag: Gtk.TextTag): void => {
+    const table = tagTables.get(tag);
+
+    if (table === undefined) {
+        return;
+    }
+
+    applyMutation(() => {
+        table.remove(tag);
+    });
+    tagTables.delete(tag);
+};
+
+const releaseMark = (mark: Gtk.TextMark): void => {
+    const buffer = mark.getBuffer();
+
+    if (buffer === null) {
+        return;
+    }
+
+    applyMutation(() => {
+        buffer.deleteMark(mark);
+    });
+};
+
+const releaseTextResource = (node: ElementNode): void => {
+    if (node.contentKind === "tag" && node.object instanceof Gtk.TextTag) {
+        releaseTag(node.object);
+    } else if (node.object instanceof Gtk.TextMark) {
+        releaseMark(node.object);
+    }
 };
 
 const insertTag = (build: BufferBuild, node: ElementNode): void => {
@@ -408,6 +442,7 @@ export {
     enclosingHost,
     addContent,
     removeContent,
+    releaseTextResource,
     validateContentMix,
     flushTextHosts,
     didUpdateTextSurgically,

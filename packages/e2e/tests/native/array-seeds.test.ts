@@ -11,6 +11,7 @@ const contents = [3, 7];
 const strings = ["\u{FEFF}café", "♥"];
 const copyableValue = t.struct("full", {
     sharedLibrary: library, copyFnName: "gtkx_array_value_copy", freeFnName: "gtkx_array_value_free",
+    isValueSafe: true,
 });
 const boxedValue = t.boxed("GtkxArraySeedValue", {
     ownership: "full", sharedLibrary: library, getTypeFnName: "gtkx_array_value_get_type",

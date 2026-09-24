@@ -8,7 +8,10 @@ import {
     read as nativeRead,
     type Ref,
 } from "@gtkx/native";
+import { isArrayBuffer, isUint8Array } from "node:util/types";
 import type { Descriptor } from "./descriptor-types.js";
+import { callbackFailure } from "./callback-error.js";
+import { isGtypeDescriptor } from "./descriptors.js";
 import { normalizeHashTableEntries } from "./hash-table.js";
 import { LIB } from "./library.js";
 import { compileOutputStorage, type OutputStorage, type StorageHandle } from "./output-storage.js";
@@ -23,7 +26,12 @@ type ScalarPlan = {
     storage?: OutputStorage;
 };
 type Callback = (...args: unknown[]) => unknown;
-type CallbackShape = { argDescriptors: Descriptor[]; returnDescriptor: Descriptor; userDataIndex?: number };
+type CallbackShape = {
+    argDescriptors: Descriptor[];
+    returnDescriptor: Descriptor;
+    userDataIndex?: number;
+    canThrow?: boolean;
+};
 type EnumDescriptor = Extract<Descriptor, { kind: "enum" | "flags" }>;
 
 const identity: Conversion = (value) => value;
@@ -215,13 +223,35 @@ const arrayPlan = (descriptor: Extract<Descriptor, { kind: "array" }>): ScalarPl
     };
 };
 
-const refConversion = (convert: Conversion): Conversion => (value) => {
-    if (value == null) {
-        return value;
+const fixedRefBuffer = (value: unknown, length: number): Uint8Array => {
+    if (length === 0) {
+        throw new RangeError("A string reference needs room for its terminator");
     }
-    const inner: unknown = Reflect.get(value, "value");
+    const buffer = new Uint8Array(length);
+    if (value == null) {
+        return buffer;
+    }
+    if (!isUint8Array(value) || !isArrayBuffer(value.buffer)) {
+        throw new TypeError("Expected a Uint8Array with an ArrayBuffer backing store");
+    }
+    buffer.set(value.subarray(0, length - 1));
 
-    return { value: inner == null ? inner : convert(inner) };
+    return buffer;
+};
+
+const refConversion = (convert: Conversion, length?: number): Conversion => {
+    const wrap: Conversion = length === undefined
+        ? (value) => ({ value })
+        : (value) => fixedRefBuffer(value, length);
+
+    return (value) => {
+        if (value == null) {
+            return value;
+        }
+        const inner: unknown = Reflect.get(value, "value");
+
+        return wrap(inner == null ? inner : convert(inner));
+    };
 };
 
 const referencePlan = (descriptor: Extract<Descriptor, { kind: "ref" }>): ScalarPlan => {
@@ -233,7 +263,7 @@ const referencePlan = (descriptor: Extract<Descriptor, { kind: "ref" }>): Scalar
         return {
             abi,
             inner,
-            encode: refConversion(inner.encode),
+            encode: refConversion(inner.encode, inner.abi.kind === "bytes" ? inner.abi.length : undefined),
             decode(value) {
                 if (value == null) {
                     return { value: null };
@@ -271,7 +301,7 @@ const adaptCallback = (shape: CallbackShape, callback: Callback): Callback => {
         .map((descriptor) => ({ descriptor, plan: compileDescriptor(descriptor) }));
     const result = compileDescriptor(shape.returnDescriptor);
 
-    return (...values) => {
+    const invoke: Callback = (...values) => {
         const decoded = args.map(({ plan }, index) => plan.decode(values[index]));
         const returned = callback(...decoded);
         const encodedReturn = result.encode(returned ?? result.defaultReturn);
@@ -292,6 +322,24 @@ const adaptCallback = (shape: CallbackShape, callback: Callback): Callback => {
         }
 
         return encodedReturn;
+    };
+
+    if (shape.canThrow !== true) {
+        return invoke;
+    }
+
+    return (...values) => {
+        try {
+            return invoke(...values);
+        } catch (error) {
+            let failure: Error;
+            try {
+                failure = callbackFailure(error);
+            } catch {
+                throw error;
+            }
+            throw failure;
+        }
     };
 };
 
@@ -318,12 +366,31 @@ const mapEntries = (key: Conversion, item: Conversion): Conversion => {
     };
 };
 
+const callbackScope = (
+    descriptor: Extract<Descriptor, { kind: "callback" }>,
+): Extract<NativeDescriptor, { kind: "callback" }>["scope"] => {
+    if (descriptor.scope === "notified" && descriptor.hasDestroy !== true) {
+        return "forever";
+    }
+    if (descriptor.scope !== undefined) {
+        return descriptor.scope;
+    }
+    if (descriptor.hasDestroy === true) {
+        return "notified";
+    }
+
+    return descriptor.hasUserData === true ? "call" : "forever";
+};
+
 const nestedPlan = (descriptor: NestedDescriptor): ScalarPlan => {
     switch (descriptor.kind) {
         case "array": {
             return arrayPlan(descriptor);
         }
         case "hashtable": {
+            if (isGtypeDescriptor(descriptor.valueDescriptor)) {
+                throw new TypeError("GType hash-table values are not supported");
+            }
             const key = compileDescriptor(descriptor.keyDescriptor);
             const item = compileDescriptor(descriptor.valueDescriptor);
 
@@ -340,6 +407,9 @@ const nestedPlan = (descriptor: NestedDescriptor): ScalarPlan => {
             return {
                 abi: {
                     ...descriptor,
+                    scope: callbackScope(descriptor),
+                    releaseWithCompletion: descriptor.scope === "notified" &&
+                        descriptor.hasDestroy !== true && descriptor.hasUserData === true,
                     argDescriptors: descriptor.argDescriptors.map((descriptor) => toAbi(descriptor)),
                     returnDescriptor: toAbi(descriptor.returnDescriptor),
                 },

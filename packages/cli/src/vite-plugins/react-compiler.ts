@@ -7,6 +7,8 @@ import {
     createReactCompilerCache,
     type ReactCompilerCache,
 } from "../internal/react-compiler-cache.js";
+import { SOURCE_ID_RE, sourceLanguage } from "../internal/source-imports.js";
+import { stripQuery } from "./strip-query.js";
 
 type ReactCompilerState = {
     cache: ReactCompilerCache | null;
@@ -16,12 +18,9 @@ type ReactCompilerState = {
 
 type BabelToolchain = Awaited<ReturnType<typeof loadBabelToolchain>>;
 
-const SOURCE_EXTENSION = /\.[jt]sx?$/;
-const TYPESCRIPT_EXTENSION = /\.tsx?$/;
 const NODE_MODULES = /(?:^|\/)node_modules\//;
 const MEMOIZABLE_SOURCE = /use[A-Z0-9]|use memo|use forget/;
 const JSX_MARK = "<";
-const PLAIN_TYPESCRIPT = ".ts";
 const ALL_FUNCTIONS = "all";
 const babel: { toolchain: Promise<BabelToolchain> | undefined } = { toolchain: undefined };
 
@@ -42,7 +41,9 @@ const loadBabelToolchain = async () => {
 const babelToolchain = (): Promise<BabelToolchain> => (babel.toolchain ??= loadBabelToolchain());
 
 const isProjectSource = (root: string, id: string): boolean => {
-    if (!SOURCE_EXTENSION.test(id)) {
+    const path = stripQuery(id);
+
+    if (sourceLanguage(path) === undefined) {
         return false;
     }
 
@@ -62,19 +63,28 @@ const isMemoizable = (code: string, id: string, options: ResolvedReactCompilerOp
         return true;
     }
 
-    return !id.endsWith(PLAIN_TYPESCRIPT) && code.includes(JSX_MARK);
+    return sourceLanguage(stripQuery(id)) !== "ts" && code.includes(JSX_MARK);
 };
 
 const compileSource = async (code: string, id: string, options: ResolvedReactCompilerOptions) => {
+    const path = stripQuery(id);
+    const language = sourceLanguage(path);
+
+    if (language === undefined) {
+        return;
+    }
+
     const toolchain = await babelToolchain();
+    const isTypescript = language === "ts" || language === "tsx";
+    const hasJsx = language === "jsx" || language === "tsx";
 
     const result = await toolchain.transformAsync(code, {
-        filename: id,
+        filename: path,
         babelrc: false,
         configFile: false,
         sourceMaps: true,
-        parserOpts: { plugins: id.endsWith(PLAIN_TYPESCRIPT) ? [] : ["jsx"] },
-        presets: TYPESCRIPT_EXTENSION.test(id) ? [toolchain.presetTypescript] : [],
+        parserOpts: { plugins: hasJsx ? ["jsx"] : [] },
+        presets: isTypescript ? [toolchain.presetTypescript] : [],
         plugins: [[toolchain.reactCompiler, options]],
     });
 
@@ -129,7 +139,7 @@ function gtkxReactCompiler(loadConfig: ConfigLoader = createConfigLoader()): Plu
         },
 
         transform: {
-            filter: { id: { include: SOURCE_EXTENSION, exclude: NODE_MODULES } },
+            filter: { id: { include: SOURCE_ID_RE, exclude: NODE_MODULES } },
 
             async handler(code, id) {
                 const options = state.options;

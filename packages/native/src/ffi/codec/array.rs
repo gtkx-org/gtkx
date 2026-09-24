@@ -119,6 +119,24 @@ impl ArrayCodec {
         self.container.is_length_bounded()
     }
 
+    pub(crate) fn has_inline_record_items(&self) -> bool {
+        self.inline_element_size().is_some()
+    }
+
+    pub(crate) fn is_flat_inline_container(&self) -> bool {
+        matches!(
+            self.container,
+            ArrayContainerCodec::NullTerminated(_)
+                | ArrayContainerCodec::Sized(_)
+                | ArrayContainerCodec::Fixed(_)
+                | ArrayContainerCodec::Cursor(_)
+        )
+    }
+
+    pub(crate) fn is_garray_container(&self) -> bool {
+        matches!(self.container, ArrayContainerCodec::GArray(_))
+    }
+
     pub(crate) fn decode_borrowed_with_context<'e>(
         &self,
         env: &'e Env,
@@ -504,11 +522,13 @@ impl ArrayCodec {
             .collect()
     }
 
-    fn extract_handles(array: &[Unknown<'_>]) -> anyhow::Result<Vec<crate::handle::Handle>> {
+    fn extract_handles(&self, array: &[Unknown<'_>]) -> anyhow::Result<Vec<crate::handle::Handle>> {
         array
             .iter()
             .map(|&v| {
-                let ptr = value::handle_ptr(v, "array element")?;
+                let ptr = self
+                    .item_codec
+                    .checked_handle_ptr(v, "array element", |_| Ok(()))?;
                 Ok(crate::handle::Handle::from_glib_borrow(ptr))
             })
             .collect()
@@ -538,14 +558,17 @@ impl ArrayCodec {
     }
 
     pub(super) fn inline_element_buffer(
+        &self,
         stride: usize,
         array: &[Unknown<'_>],
     ) -> anyhow::Result<Vec<u8>> {
         let mut buffer = vec![0u8; array.len() * stride];
         for (index, &element) in array.iter().enumerate() {
-            let ptr = value::handle_ptr_checked(element, "inline array element", |handle| {
-                handle.check_range(0, stride)
-            })?;
+            let ptr =
+                self.item_codec
+                    .checked_handle_ptr(element, "inline array element", |handle| {
+                        handle.check_range(0, stride)
+                    })?;
             if ptr.is_null() {
                 bail!("An inline array element has a null pointer");
             }
@@ -672,6 +695,9 @@ impl ArrayCodec {
         array: &[Unknown<'_>],
         zero_terminated: bool,
     ) -> anyhow::Result<ffi::Stash> {
+        let terminate_inline = zero_terminated;
+        let zero_terminated =
+            zero_terminated || (array.is_empty() && self.container.is_length_bounded());
         match self.item_codec("array")? {
             ItemCodec::Integer(kind) => {
                 let numbers = Self::extract_terminated_numbers(array, zero_terminated)?;
@@ -712,12 +738,15 @@ impl ArrayCodec {
             }
             ItemCodec::Pointer => {
                 if let Some(element_size) = self.inline_element_size() {
-                    let buffer = Self::inline_element_buffer(element_size, array)?;
+                    let mut buffer = self.inline_element_buffer(element_size, array)?;
+                    if terminate_inline {
+                        buffer.resize(buffer.len() + element_size, 0);
+                    }
                     return self.finish_scalar_storage(buffer.into());
                 }
 
                 encoder.encode_handles(
-                    Self::extract_handles(array)?,
+                    self.extract_handles(array)?,
                     &self.item_codec,
                     self.ownership,
                 )
@@ -801,7 +830,7 @@ impl ArrayCodec {
             view.kind(),
             self.item_codec
         );
-        if self.zero_terminated {
+        if self.zero_terminated || view.length() == 0 {
             // The terminator cannot be written into the JavaScript buffer, so a zero-terminated
             // array always hands the callee a copy carrying one zero element past the view.
             return Ok(ffi::Stash::Storage(terminated_view_storage(view)));

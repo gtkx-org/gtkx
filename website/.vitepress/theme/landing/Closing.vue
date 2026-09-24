@@ -44,10 +44,6 @@ import { LICENSE, REPO_URL } from "./content";
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
 }
-.oss__text .overline {
-  color: var(--text-brand);
-  margin-bottom: 0.6rem;
-}
 .oss__title {
   font-family: var(--font-display);
   font-weight: 800;

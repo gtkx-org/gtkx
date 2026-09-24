@@ -1,41 +1,15 @@
-import * as Gtk from "@gtkx/gi/gtk";
+import * as GLib from "@gtkx/gi/glib";
+import { toVariant } from "@gtkx/runtime";
 
-const SETTLE_MS = 3000;
-const BENIGN_CSS = "gtkx-error-channel-probe { not-a-property: nonsense }";
-
-const provokeCritical = () => {
-    Gtk.init();
-    const box = Gtk.Box.new(Gtk.Orientation.VERTICAL, 0);
-    const stranger = Gtk.Label.new("a widget the box never adopted");
-    box.remove(stranger);
-};
-
-const provokeNothing = () => {
-    Gtk.init();
-    const box = Gtk.Box.new(Gtk.Orientation.VERTICAL, 0);
-    const label = Gtk.Label.new("a widget the box adopted");
-    box.append(label);
-    box.remove(label);
-    Gtk.CssProvider.new().loadFromString(BENIGN_CSS);
-};
-
-const provoke = (mode: string | undefined): void => {
-    if (mode === "critical") {
-        provokeCritical();
-    } else {
-        provokeNothing();
-    }
-};
-
-const settle = setTimeout(() => {
-    process.stdout.write("SURVIVED\n");
-}, SETTLE_MS);
+const fields = toVariant("a{sv}", { MESSAGE: toVariant("s", "Authored diagnostic") });
+const level =
+    process.argv[2] === "critical" ? GLib.LogLevelFlags.LEVEL_CRITICAL : GLib.LogLevelFlags.LEVEL_WARNING;
 
 if (process.argv[3] === "observed") {
-    process.on("uncaughtException", (error) => {
-        clearTimeout(settle);
-        process.stdout.write(`OBSERVED ${error.message}\n`);
+    process.once("uncaughtException", () => {
+        process.exitCode = 42;
     });
 }
 
-provoke(process.argv[2]);
+GLib.logVariant("gtkx-error-channel", level, fields);
+process.exitCode = 0;

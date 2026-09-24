@@ -219,16 +219,18 @@ test("a fixed-size array field round-trips exactly its own length", () => {
     expect(struct.justInt).toBe(5);
 });
 
-test("a fixed-size array field writes as far as the value reaches", () => {
+const mismatchedFixedArrays: [number[]][] = [
+    [[9, 8]],
+    [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]],
+    [[]],
+];
+
+test.each(mismatchedFixedArrays)("a fixed-size array field rejects the mismatched length %#", (value) => {
     const struct = new Regress.TestStructFixedArray({});
-    struct.array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-    expect(struct.array).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
-    struct.array = [9, 8];
-    expect(struct.array).toEqual([9, 8, 3, 4, 5, 6, 7, 8, 9, 10]);
-
-    struct.array = [];
-    expect(struct.array).toEqual([9, 8, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(() => {
+        struct.array = value;
+    }).toThrow();
 });
 
 test("the fixed-size argument path rejects the same length mismatch", () => {

@@ -7,12 +7,17 @@ import {
     booleanT,
     type BoxedDescriptor,
     type FundamentalDescriptor,
+    type HashTableDescriptor,
+    isGtypeDescriptor,
+    type ObjectDescriptor,
     refT,
     sizedArrayT,
     stringT,
     uint32T,
 } from "./descriptors.js";
 import { LIB } from "./library.js";
+import { isScalarStorageDescriptor } from "./output-storage.js";
+import { toAbi } from "./scalar-plan.js";
 
 /** Object tagged with its GLib type through a `__type__` GType field. */
 type TypedClass = {
@@ -229,7 +234,22 @@ const resolveFundamentalType = (descriptor: FundamentalDescriptor): bigint => {
 
 const getByteArrayType = (): bigint => resolveType(LIB, "g_byte_array_get_type");
 
+const isScalarGArray = (descriptor: ArrayDescriptor): boolean =>
+    descriptor.arrayKind === "garray" && isScalarStorageDescriptor(toAbi(descriptor.itemDescriptor));
+
+const isObjectPtrArray = (descriptor: ArrayDescriptor): descriptor is ArrayDescriptor & {
+    itemDescriptor: ObjectDescriptor;
+} => descriptor.arrayKind === "gptrarray" && descriptor.itemDescriptor.kind === "object";
+
 function resolveArrayType(descriptor: ArrayDescriptor): bigint {
+    if (isObjectPtrArray(descriptor)) {
+        return resolveType(LIB, "g_ptr_array_get_type");
+    }
+
+    if (isScalarGArray(descriptor)) {
+        return resolveType(LIB, "g_array_get_type");
+    }
+
     if (descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array") {
         return getStrvType();
     }
@@ -253,8 +273,16 @@ function resolveEnumOrFlagsType(descriptor: Extract<Descriptor, { kind: "enum" |
     return resolveType(descriptor.sharedLibrary, descriptor.getTypeFnName);
 }
 
+const isStringHashTable = (descriptor: Descriptor): descriptor is HashTableDescriptor =>
+    descriptor.kind === "hashtable" &&
+    descriptor.keyDescriptor.kind === "string" && descriptor.valueDescriptor.kind === "string";
+
 function resolveDescriptorType(descriptor: Descriptor): bigint {
-    if (descriptor.kind === "biguint64" && "type" in descriptor) {
+    if (isStringHashTable(descriptor)) {
+        return resolveType(LIB, "g_hash_table_get_type");
+    }
+
+    if (isGtypeDescriptor(descriptor)) {
         return TYPE_GTYPE;
     }
 
@@ -311,6 +339,9 @@ export {
     TYPE_VARIANT,
     TYPE_UNICHAR,
     getByteArrayType,
+    isScalarGArray,
+    isObjectPtrArray,
+    isStringHashTable,
     getErrorType,
     getStrvType,
     isResolvableDescriptor,

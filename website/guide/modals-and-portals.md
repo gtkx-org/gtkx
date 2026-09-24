@@ -106,7 +106,7 @@ Children fill the dialog's extra slot, below the heading and body and above the 
 
 `useParentWindow()` from `@gtkx/react` returns the `Gtk.Window` provided by the nearest window ancestor, or `null` when there is none. It resolves through the React tree, so a dialog portaled out of a window's subtree still finds that window.
 
-The tutorial builds these surfaces in [Mounting dialogs](/tutorial/actions-menus-shortcuts#mounting-dialogs), [Confirming a permanent delete](/tutorial/trash-and-toasts#confirming-a-permanent-delete), and [A dialog that is a form](/tutorial/trash-and-toasts#a-dialog-that-is-a-form). The exported API is in the [@gtkx/react reference](/reference/@gtkx/react/).
+The tutorial builds these surfaces in [Mounting dialogs](/tutorial/actions-menus-shortcuts#mounting-dialogs), [Confirming a permanent delete](/tutorial/trash-and-toasts#model-the-confirmation), and [A dialog that is a form](/tutorial/trash-and-toasts#add-the-new-list-dialog). The exported API is in the [@gtkx/react reference](/reference/@gtkx/react/).
 
 ## Next
 

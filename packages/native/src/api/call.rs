@@ -11,6 +11,7 @@ use super::native_result;
 use crate::ffi::closure::ClosureData;
 use crate::ffi::codec::{CallbackScope, Codec, Decoder as _, Encoder as _};
 use crate::ffi::{self};
+use crate::host::callback_error::CallbackErrorScope;
 use crate::host::log_writer::CriticalTrap;
 
 #[napi(object, object_from_js = false)]
@@ -26,6 +27,21 @@ pub struct CallResult<'env> {
 }
 
 fn execute_call<'e>(
+    env: &'e Env,
+    descriptor: &CallDescriptor,
+    values: &[Unknown<'e>],
+    completion_index: Option<usize>,
+) -> anyhow::Result<CallResult<'e>> {
+    let _errors = CallbackErrorScope::open(*env);
+    let result = execute_call_inner(env, descriptor, values, completion_index);
+    anyhow::ensure!(
+        !CallbackErrorScope::has_error(),
+        "A native callback threw an exception"
+    );
+    result
+}
+
+fn execute_call_inner<'e>(
     env: &'e Env,
     descriptor: &CallDescriptor,
     values: &[Unknown<'e>],

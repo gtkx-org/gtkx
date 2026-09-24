@@ -29,11 +29,18 @@ const parseOutputs = t.fn("libc.so.6", "sscanf", {
 });
 
 describe("runtime native call results", () => {
-    it("updates a bound ref while returning the native primary result", () => {
-        const end: { value: unknown } = { value: null };
+    it.each([null, undefined])("updates an empty bound ref while returning the native primary result (%s)", (value) => {
+        const end: { value: unknown } = { value };
 
         expect(parseInteger("12abc", end, 10)).toBe(12n);
         expect(end.value).toBe("abc");
+    });
+
+    it.each(["", "café"])("rejects an initialized no-length string ref without changing its value (%s)", (value) => {
+        const end = { value };
+
+        expect(() => parseInteger("12abc", end, 10)).toThrow();
+        expect(end.value).toBe(value);
     });
 
     it("permits an omitted ref", () => {

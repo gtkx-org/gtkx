@@ -15,8 +15,10 @@ import {
     type FundamentalDescriptor,
     fundamentalLifecycleFor,
     fundamentalT,
+    hashTableT,
     int8T,
     int32T,
+    isGtypeDescriptor,
     type ObjectDescriptor,
     objectT,
     preserveArrayNull,
@@ -28,7 +30,7 @@ import {
 } from "./descriptors.js";
 import { read, write } from "./field.js";
 import { LIB, PARAM_T, VALUE_SIZE, VALUE_T, VARIANT_T } from "./library.js";
-import { toNative } from "./native-value.js";
+import { fromNative, toNative } from "./native-value.js";
 import {
     INT32_MAXIMUM,
     INT32_MINIMUM,
@@ -51,7 +53,10 @@ import {
 import {
     getByteArrayType,
     getStrvType,
+    isObjectPtrArray,
     isResolvableDescriptor,
+    isScalarGArray,
+    isStringHashTable,
     resolveBoxedType,
     resolveDescriptorType,
     resolveFundamentalType,
@@ -428,9 +433,60 @@ function setWrappedBoxedValue(value: ExternalObject<Handle>, type: bigint, boxed
     setBoxedBind(getBoxedTypeName(type))(value, boxed === null ? null : getHandle(boxed));
 }
 
+const stringHashTableDescriptor = hashTableT(stringT("borrowed"), stringT("borrowed"), "borrowed");
+const stringHashTableValueType: ValueType = {
+    set: bind(LIB, "g_value_set_boxed", [VALUE_T, stringHashTableDescriptor], voidT),
+    get: bind(LIB, "g_value_get_boxed", [VALUE_T], stringHashTableDescriptor),
+};
+
+const scalarGArrayValueTypes: WeakMap<ArrayDescriptor, ValueType> = new WeakMap();
+
+const scalarGArrayValueType = (descriptor: ArrayDescriptor): ValueType =>
+    scalarGArrayValueTypes.getOrInsertComputed(descriptor, () => {
+        const borrowed: ArrayDescriptor = { ...descriptor, ownership: "borrowed" };
+
+        return {
+            set: bind(LIB, "g_value_set_boxed", [VALUE_T, borrowed], voidT),
+            get: bind(LIB, "g_value_get_boxed", [VALUE_T], borrowed),
+        };
+    });
+
+const objectPtrArrayValueTypes: WeakMap<ArrayDescriptor, ValueType> = new WeakMap();
+
+const objectPtrArrayValueType = (descriptor: ArrayDescriptor & { itemDescriptor: ObjectDescriptor }): ValueType =>
+    objectPtrArrayValueTypes.getOrInsertComputed(descriptor, () => {
+        const borrowed: ArrayDescriptor = {
+            ...descriptor,
+            ownership: "borrowed",
+            itemDescriptor: { ...descriptor.itemDescriptor, ownership: "borrowed" },
+            elementOwnership: "separate",
+        };
+        const ownedItems: ArrayDescriptor = {
+            ...borrowed,
+            itemDescriptor: { ...descriptor.itemDescriptor, ownership: "full" },
+            elementOwnership: "container",
+        };
+
+        return {
+            set: bind(LIB, "g_value_set_boxed", [VALUE_T, ownedItems], voidT),
+            get: bind(LIB, "g_value_get_boxed", [VALUE_T], borrowed),
+        };
+    });
+
+const strvValueTypeFor = (descriptor: ArrayDescriptor): ValueType =>
+    descriptor.preserveNull === true ? nullableStrvValueType : strvValueType;
+
 const arrayValueType = (descriptor: ArrayDescriptor): ValueType => {
+    if (isObjectPtrArray(descriptor)) {
+        return objectPtrArrayValueType(descriptor);
+    }
+
+    if (isScalarGArray(descriptor)) {
+        return scalarGArrayValueType(descriptor);
+    }
+
     if (descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array") {
-        return descriptor.preserveNull === true ? nullableStrvValueType : strvValueType;
+        return strvValueTypeFor(descriptor);
     }
 
     if (descriptor.arrayKind === "gbytearray") {
@@ -449,7 +505,11 @@ const resolveEnumOrFlagsValueType = (descriptor: Extract<Descriptor, { kind: "en
 };
 
 const resolveValueType = (descriptor: Descriptor): ValueType => {
-    if (descriptor.kind === "biguint64" && "type" in descriptor) {
+    if (isStringHashTable(descriptor)) {
+        return stringHashTableValueType;
+    }
+
+    if (isGtypeDescriptor(descriptor)) {
         return typeValueType;
     }
 
@@ -765,18 +825,27 @@ const arrayValueGetterForDescriptor = (descriptor: ArrayDescriptor): ValueGetter
         return byteArrayValueGetterFor(descriptor.isBytes === true);
     }
 
-    return descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array"
+    return isScalarGArray(descriptor) ||
+        (descriptor.itemDescriptor.kind === "string" && descriptor.arrayKind === "array")
         ? arrayValueType(descriptor).get
         : undefined;
 };
 
 const fromArrayValueForDescriptor = (descriptor: ArrayDescriptor, value: ExternalObject<Handle>): unknown => {
+    if (isObjectPtrArray(descriptor)) {
+        return fromNative(descriptor, objectPtrArrayValueType(descriptor).get(value));
+    }
+
     const get = arrayValueGetterForDescriptor(descriptor);
 
     return get === undefined ? fromValue(value) : get(value);
 };
 
 const fromValueForDescriptor = (descriptor: Descriptor, value: ExternalObject<Handle>): unknown => {
+    if (isStringHashTable(descriptor)) {
+        return fromNative(descriptor, stringHashTableValueType.get(value));
+    }
+
     if (descriptor.kind === "array") {
         return fromArrayValueForDescriptor(descriptor, value);
     }

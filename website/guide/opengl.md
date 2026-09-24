@@ -25,7 +25,7 @@ The generic state queries (`getIntegerv` and its siblings) are not exported: use
 
 Every object family has a singular helper next to the plural one: `genBuffer()` returns one name where `genBuffers(n)` returns an array, and `deleteBuffer(name)` deletes one.
 
-`getShaderInfoLog` and `getProgramInfoLog` return the driver's diagnostics as a string. The [@gtkx/gl reference](/reference/@gtkx/gl/) lists every command, enum, and type, including the `debugMessageCallback` override.
+`getShaderInfoLog` and `getProgramInfoLog` return the driver's diagnostics as a string. The [@gtkx/gl reference](/reference/@gtkx/gl/) lists every supported command, enum, and type.
 
 ## The GtkGLArea signal flow
 

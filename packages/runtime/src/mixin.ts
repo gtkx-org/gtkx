@@ -1,4 +1,5 @@
 import { type AnyClass, getParentClass } from "@gtkx/utils";
+import type { SignalHandlerId } from "./signal.js";
 
 /**
  * The signal plumbing every base class passed to a {@link Mixin} provides, so mixed-in interface
@@ -6,7 +7,7 @@ import { type AnyClass, getParentClass } from "@gtkx/utils";
  */
 type MixinReceiver = {
     /** Connects a handler to a signal and returns its handler id. */
-    connect(signal: string, handler: (...args: unknown[]) => unknown, isAfter?: boolean): number;
+    connect(signal: string, handler: (...args: unknown[]) => unknown, isAfter?: boolean): SignalHandlerId;
     /** Emits a signal with the given arguments and returns whatever the emission produced. */
     emit(signal: string, ...args: unknown[]): unknown;
 };
@@ -85,8 +86,8 @@ function copyLayerMembers(target: AnyClass, layer: object, inheritedOverrides: S
 function installMixins(target: AnyClass, mixins: Mixin[], inheritedOverrideNames: Iterable<string> = []): void {
     const inheritedOverrides = new Set(inheritedOverrideNames);
     const empty: AnyClass<MixinReceiver> = class {
-        connect(): number {
-            return 0;
+        connect(): SignalHandlerId {
+            return 0n;
         }
 
         emit(): unknown {

@@ -1,9 +1,9 @@
 import type { AnyClass } from "@gtkx/utils";
 import { offSignal, onceSignal, onSignal } from "./listeners.js";
 import { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from "./param-spec.js";
-import { matchAllRegex, matchRegex } from "./regex.js";
+import { matchAllRegex, matchRegex, type RegexEvalArgs, replaceRegexEval } from "./regex.js";
 import { getHandle, peekTypeClass } from "./registry.js";
-import { disconnectSignal, type SignalHandler } from "./signal.js";
+import { disconnectSignal, type SignalHandler, type SignalHandlerId } from "./signal.js";
 import { getBoxedValue, setBoxedValue } from "./value.js";
 
 type ParamSpecReceiver = {
@@ -30,7 +30,7 @@ function regexMatchAll<TMatchInfo extends object>(
 
 function regexMatchFull<TMatchInfo extends object>(
     this: object,
-    subject: string | string[],
+    subject: Parameters<typeof matchRegex>[1],
     startPosition: number,
     matchOptions: number,
 ): [boolean, TMatchInfo] {
@@ -39,17 +39,21 @@ function regexMatchFull<TMatchInfo extends object>(
 
 function regexMatchAllFull<TMatchInfo extends object>(
     this: object,
-    subject: string | string[],
+    subject: Parameters<typeof matchRegex>[1],
     startPosition: number,
     matchOptions: number,
 ): [boolean, TMatchInfo] {
     return matchAllRegex<TMatchInfo>(this, subject, startPosition, matchOptions);
 }
 
+function regexReplaceEval(this: object, ...[subject, startPosition, matchOptions, shouldStop]: RegexEvalArgs): string {
+    return replaceRegexEval({ regex: this, subject, startPosition, matchOptions }, shouldStop);
+}
+
 const createTypeClassPeek = <TClassStruct extends object>(classStruct: AnyClass<TClassStruct>, base?: AnyClass) =>
     (type: bigint | AnyClass): TClassStruct => peekTypeClass(type, base) as typeof classStruct.prototype;
 
-function objectDisconnect(this: object, handlerId: number): void {
+function objectDisconnect(this: object, handlerId: SignalHandlerId): void {
     disconnectSignal(this, handlerId);
 }
 
@@ -133,6 +137,7 @@ export {
     regexMatchAll,
     regexMatchAllFull,
     regexMatchFull,
+    regexReplaceEval,
     valueGetBoxed,
     valueSetBoxed,
 };

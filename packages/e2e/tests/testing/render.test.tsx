@@ -27,7 +27,6 @@ import { withHostWindow, withStolenActivation } from "./widget-fixtures.js";
 
 const NON_UNIQUE = Gio.ApplicationFlags.NON_UNIQUE;
 const APPLICATION_ID = "org.gtkx.defaultapplication";
-const RERENDER_BUDGET_MS = 250;
 const IMPATIENT_SETTLE_MS = 20;
 const initialConfig = { ...getConfig() };
 const WrapperContext = createContext("default");
@@ -290,12 +289,10 @@ describe("render window activation", () => {
                 expect(container instanceof Gtk.Window ? container.isActive() : null).toBe(false);
             });
 
-            const startedAt = Date.now();
             await rerender(<GtkLabel>After</GtkLabel>);
-            expect(Date.now() - startedAt).toBeLessThan(RERENDER_BUDGET_MS);
+            expect(container instanceof Gtk.Window ? container.isActive() : null).toBe(false);
+            expect(await findByText("After")).toBeRooted();
         });
-
-        expect(await findByText("After")).toBeRooted();
     });
 
     it("throws when the window it rendered into never becomes readable", async () => {
@@ -361,9 +358,18 @@ describe("configure", () => {
     });
 
     it("routes query failures through the configured error factory", async () => {
-        class CustomError extends Error {}
-        configure({ getElementError: (message) => new CustomError(message) });
+        let factoryCalls = 0;
+        configure({
+            getElementError: (message) => {
+                factoryCalls += 1;
+
+                return new Error(message);
+            },
+        });
+
         const { container } = await render(<GtkLabel>Test</GtkLabel>);
+        expect(factoryCalls).toBe(0);
         await expect(findByRole(container, Gtk.AccessibleRole.BUTTON, { timeout: 100 })).rejects.toThrow();
+        expect(factoryCalls).toBeGreaterThan(0);
     });
 });

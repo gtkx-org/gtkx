@@ -1,0 +1,190 @@
+<?xml version="1.0"?>
+<repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"
+    xmlns:c="http://www.gtk.org/introspection/c/1.0"
+    xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="Gdk" version="4.0"/>
+  <include name="Gio" version="2.0"/>
+  <namespace name="CallerContainers" version="1.0" shared-library="libcallercontainers.so.0"
+      c:identifier-prefixes="CallerContainers" c:symbol-prefixes="caller_containers">
+    <alias name="FixedBytes" c:type="CallerContainersFixedBytes"><array fixed-size="4" zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array></alias>
+    <alias name="Tokens" c:type="CallerContainersTokens"><array name="GLib.PtrArray" c:type="GPtrArray*"><type name="utf8" c:type="gchar*"/></array></alias>
+    <alias name="OutAlias" c:type="CallerContainersOutAlias"><type name="PtrOut" c:type="CallerContainersPtrOut"/></alias>
+    <callback name="PtrOut" c:type="CallerContainersPtrOut">
+      <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+      <parameters><parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none"><array name="GLib.PtrArray" c:type="GPtrArray*"><type name="utf8" c:type="gchar*"/></array></parameter></parameters>
+    </callback>
+    <callback name="AliasOut" c:type="CallerContainersAliasOut">
+      <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+      <parameters><parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none"><type name="Tokens" c:type="CallerContainersTokens"/></parameter></parameters>
+    </callback>
+    <callback name="HashOut" c:type="CallerContainersHashOut">
+      <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+      <parameters><parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none"><type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="utf8" c:type="gchar*"/></type></parameter></parameters>
+    </callback>
+    <callback name="OptionalBytesOut" c:type="CallerContainersOptionalBytesOut">
+      <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+      <parameters><parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none" optional="1" allow-none="1"><array name="GLib.ByteArray" c:type="GByteArray*"><type name="guint8" c:type="guint8"/></array></parameter></parameters>
+    </callback>
+    <callback name="Input" c:type="CallerContainersInput">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="values" transfer-ownership="none"><array name="GLib.PtrArray" c:type="GPtrArray*"><type name="utf8" c:type="gchar*"/></array></parameter></parameters>
+    </callback>
+    <callback name="SizedOut" c:type="CallerContainersSizedOut">
+      <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+      <parameters><parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none"><array length="1" zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array></parameter><parameter name="length" transfer-ownership="none"><type name="guint" c:type="guint"/></parameter></parameters>
+    </callback>
+    <callback name="FixedOut" c:type="CallerContainersFixedOut">
+      <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+      <parameters><parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none"><array fixed-size="4" zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array></parameter></parameters>
+    </callback>
+    <callback name="AliasedBytesOut" c:type="CallerContainersAliasedBytesOut">
+      <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+      <parameters><parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none"><type name="FixedBytes" c:type="CallerContainersFixedBytes"/></parameter></parameters>
+    </callback>
+    <callback name="ByteInput" c:type="CallerContainersByteInput">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="values" transfer-ownership="none"><array length="1" zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array></parameter>
+        <parameter name="length" transfer-ownership="none"><type name="guint" c:type="guint"/></parameter>
+      </parameters>
+    </callback>
+    <class name="Probe" parent="GObject.Object" c:type="CallerContainersProbe"
+        glib:type-name="CallerContainersProbe" glib:get-type="caller_containers_probe_get_type" glib:type-struct="ProbeClass">
+      <method name="use_fill_tokens" c:identifier="caller_containers_probe_use_fill_tokens">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallerContainersProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call"><type name="PtrOut" c:type="CallerContainersPtrOut"/></parameter>
+        </parameters>
+      </method>
+      <virtual-method name="fill_tokens">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters><parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none"><array name="GLib.PtrArray" c:type="GPtrArray*"><type name="utf8" c:type="gchar*"/></array></parameter></parameters>
+      </virtual-method>
+      <method name="use_fill_alias" c:identifier="caller_containers_probe_use_fill_alias">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallerContainersProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call"><type name="AliasOut" c:type="CallerContainersAliasOut"/></parameter>
+        </parameters>
+      </method>
+      <virtual-method name="fill_alias">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters><parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none"><type name="Tokens" c:type="CallerContainersTokens"/></parameter></parameters>
+      </virtual-method>
+      <method name="use_fill_hash" c:identifier="caller_containers_probe_use_fill_hash">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallerContainersProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call"><type name="HashOut" c:type="CallerContainersHashOut"/></parameter>
+        </parameters>
+      </method>
+      <virtual-method name="fill_hash">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters><parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none"><type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="utf8" c:type="gchar*"/></type></parameter></parameters>
+      </virtual-method>
+      <method name="use_fill_bytes" c:identifier="caller_containers_probe_use_fill_bytes">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallerContainersProbe*"/></instance-parameter>
+          <parameter name="callback" transfer-ownership="none" scope="call"><type name="OptionalBytesOut" c:type="CallerContainersOptionalBytesOut"/></parameter>
+        </parameters>
+      </method>
+      <virtual-method name="fill_bytes">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters><parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none" optional="1" allow-none="1"><array name="GLib.ByteArray" c:type="GByteArray*"><type name="guint8" c:type="guint8"/></array></parameter></parameters>
+      </virtual-method>
+      <method name="accept" c:identifier="caller_containers_probe_accept">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallerContainersProbe*"/></instance-parameter>
+          <parameter name="values" transfer-ownership="none"><array name="GLib.PtrArray" c:type="GPtrArray*"><type name="utf8" c:type="gchar*"/></array></parameter>
+        </parameters>
+      </method>
+    </class>
+    <record name="ProbeClass" c:type="CallerContainersProbeClass" glib:is-gtype-struct-for="Probe">
+      <field name="parent_class"><type name="GObject.ObjectClass" c:type="GObjectClass"/></field>
+      <field name="fill_tokens"><callback name="fill_tokens">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallerContainersProbe*"/></parameter>
+          <parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none"><array name="GLib.PtrArray" c:type="GPtrArray*"><type name="utf8" c:type="gchar*"/></array></parameter>
+        </parameters>
+      </callback></field>
+      <field name="fill_alias"><callback name="fill_alias">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallerContainersProbe*"/></parameter>
+          <parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none"><type name="Tokens" c:type="CallerContainersTokens"/></parameter>
+        </parameters>
+      </callback></field>
+      <field name="fill_hash"><callback name="fill_hash">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallerContainersProbe*"/></parameter>
+          <parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none"><type name="GLib.HashTable" c:type="GHashTable*"><type name="utf8" c:type="gchar*"/><type name="utf8" c:type="gchar*"/></type></parameter>
+        </parameters>
+      </callback></field>
+      <field name="fill_bytes"><callback name="fill_bytes">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallerContainersProbe*"/></parameter>
+          <parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none" optional="1" allow-none="1"><array name="GLib.ByteArray" c:type="GByteArray*"><type name="guint8" c:type="guint8"/></array></parameter>
+        </parameters>
+      </callback></field>
+      <field name="fill_sized"><callback name="fill_sized">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallerContainersProbe*"/></parameter>
+          <parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none"><array length="2" zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array></parameter>
+          <parameter name="length" transfer-ownership="none"><type name="guint" c:type="guint"/></parameter>
+        </parameters>
+      </callback></field>
+      <field name="fill_fixed"><callback name="fill_fixed">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallerContainersProbe*"/></parameter>
+          <parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none"><array fixed-size="4" zero-terminated="0" c:type="guint8*"><type name="guint8" c:type="guint8"/></array></parameter>
+        </parameters>
+      </callback></field>
+      <field name="fill_aliased_bytes"><callback name="fill_aliased_bytes">
+        <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+        <parameters>
+          <parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallerContainersProbe*"/></parameter>
+          <parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none"><type name="FixedBytes" c:type="CallerContainersFixedBytes"/></parameter>
+        </parameters>
+      </callback></field>
+      <field name="accept"><callback name="accept">
+        <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+        <parameters>
+          <parameter name="self" transfer-ownership="none"><type name="Probe" c:type="CallerContainersProbe*"/></parameter>
+          <parameter name="values" transfer-ownership="none"><array name="GLib.PtrArray" c:type="GPtrArray*"><type name="utf8" c:type="gchar*"/></array></parameter>
+        </parameters>
+      </callback></field>
+    </record>
+    <function name="fill_fixed" c:identifier="caller_containers_fill_fixed">
+      <return-value transfer-ownership="none"><type name="gboolean" c:type="gboolean"/></return-value>
+      <parameters><parameter name="values" direction="out" caller-allocates="1" transfer-ownership="none">
+        <array fixed-size="2" zero-terminated="0" c:type="gint*"><type name="gint" c:type="gint"/></array>
+      </parameter></parameters>
+    </function>
+    <function name="fill_record" c:identifier="caller_containers_fill_record">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="rectangle" direction="out" caller-allocates="1" transfer-ownership="none">
+        <type name="Gdk.Rectangle" c:type="GdkRectangle*"/>
+      </parameter></parameters>
+    </function>
+    <function name="use_fill_sized" c:identifier="caller_containers_use_fill_sized">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="callback" transfer-ownership="none" scope="call"><type name="SizedOut" c:type="CallerContainersSizedOut"/></parameter></parameters>
+    </function>
+    <function name="use_fill_fixed" c:identifier="caller_containers_use_fill_fixed">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="callback" transfer-ownership="none" scope="call"><type name="FixedOut" c:type="CallerContainersFixedOut"/></parameter></parameters>
+    </function>
+    <function name="use_fill_aliased_bytes" c:identifier="caller_containers_use_fill_aliased_bytes">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters><parameter name="callback" transfer-ownership="none" scope="call"><type name="AliasedBytesOut" c:type="CallerContainersAliasedBytesOut"/></parameter></parameters>
+    </function>
+  </namespace>
+</repository>

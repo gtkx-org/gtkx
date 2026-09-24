@@ -19,7 +19,7 @@ import {
 } from "../../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
 import { isEmittableProperty } from "../../analysis/property-admission.js";
-import { isEmittableSignal } from "../../analysis/signal-admission.js";
+import { canEmitSignal, isEmittableSignal } from "../../analysis/signal-admission.js";
 import { renderParameterTsType, renderTsType } from "../../analysis/ts-type.js";
 import { resolveInterfaces } from "../../gir/ancestry.js";
 import { isCallerAllocatedOut, isOutParameter } from "../../gir/parameter.js";
@@ -35,7 +35,7 @@ type SignalMapSpec = {
     className: string;
     isParentlessObjectSubclass: boolean;
     suffix: string;
-    renderEntry: (context: ModuleContext, signal: GirCallable) => string;
+    renderEntry: (context: ModuleContext, signal: GirCallable) => string | undefined;
 };
 
 type EmitArgOptions = {
@@ -68,6 +68,7 @@ const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] 
     context.addRuntimeInternalImport("emitSignalByName");
     const receiver = context.addRuntimeInternalTypeImport("SignalMethodReceiver");
     const handlerMap = context.addRuntimeInternalTypeImport("SignalMap");
+    const handlerId = context.addRuntimeInternalTypeImport("SignalHandlerId");
     const signalName = context.addRuntimeInternalTypeImport("SignalName");
     const emissionName = context.addRuntimeInternalTypeImport("SignalEmitName");
     const args = context.addRuntimeInternalTypeImport("SignalEmitArguments");
@@ -77,7 +78,7 @@ const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] 
         renderBlock(
             `connect<TThis, K extends ${signalName}<TThis>>(` +
             `this: TThis & ${receiver}<TThis, "connect">, ` +
-            `signal: K, handler: ${handlerMap}<TThis>[K], isAfter?: boolean): number`,
+            `signal: K, handler: ${handlerMap}<TThis>[K], isAfter?: boolean): ${handlerId}`,
             "return connectSignalByName(this, signal, handler, isAfter);",
         ),
         renderBlock(
@@ -125,8 +126,10 @@ const renderSignalRegistration = (
     context.addRuntimeInternalImport("canonicalSignalName");
     context.addRuntimeInternalImport("installSignalDispatch");
     context.addRuntimeImport("t");
+    const handlerId = context.addRuntimeInternalTypeImport("SignalHandlerId");
     const connectCases = signals.map((signal) => renderConnectCase(context, signal));
-    const emitCases = signals.map((signal) => renderEmitCase(context, signal));
+    const emitCases = signals.filter((signal) => canEmitSignal(context.library, signal))
+        .map((signal) => renderEmitCase(context, signal));
     const connectDefault = "default:\n    throw new globalThis.Error(\"Unknown signal '\" + signal + \"'\");";
     const emitDefault = "default:\n    throw new globalThis.Error(\"Unknown signal '\" + sigName + \"'\");";
     const connectBody = indent([...connectCases, connectDefault].join("\n"), 1);
@@ -135,7 +138,8 @@ const renderSignalRegistration = (
     const emitSwitch = `switch (canonicalSignalName(sigName)) {\n${emitBody}\n}`;
     const members = [
         renderBlock(
-            `connect(instance: object, signal: string, handler: ${SIGNAL_HANDLER_TYPE}, isAfter?: boolean): number`,
+            `connect(instance: object, signal: string, handler: ${SIGNAL_HANDLER_TYPE}, ` +
+            `isAfter?: boolean): ${handlerId}`,
             connectSwitch,
         ),
         renderBlock("emit(instance: object, sigName: string, args: unknown[]): unknown", emitSwitch),
@@ -192,6 +196,9 @@ const renderSignalMap = (spec: SignalMapSpec): string => {
 
     const signalEntries = signals.flatMap((signal) => {
         const value = renderEntry(context, signal);
+        if (value === undefined) {
+            return [];
+        }
         const entry = `${signalDoc(signal)}${sourceStringLiteral(signal.name)}: ${value};`;
 
         if (!signal.isDetailed) {
@@ -338,7 +345,10 @@ const renderResultType = (
         isOptOut,
     });
 
-const renderSignalEmitEntry = (context: ModuleContext, signal: GirCallable): string => {
+const renderSignalEmitEntry = (context: ModuleContext, signal: GirCallable): string | undefined => {
+    if (!canEmitSignal(context.library, signal)) {
+        return undefined;
+    }
     const args = renderHandlerParameters(
         signal.parameters,
         (ref, nullable) => renderParameterTsType(context, ref, nullable),

@@ -29,7 +29,7 @@ const parseKeyFile = (contents: string) => {
 
 Checking a domain narrows the value to an error with `domain` and `code`. Check `error instanceof GLib.Error` when you need its native methods, such as `matches` or `copy`. The generated reference describes each library's domains and codes.
 
-For a native callback that expects an error value, see the `GLib.Error.newLiteral` example in [OpenGL](/v2/guide/opengl).
+For a native callback that expects an error value, create one through the generated `GLib.Error` API.
 
 ## Criticals during binding calls
 

@@ -8,6 +8,10 @@ use crate::ffi::{HashTableData, StashData, StashStorage};
 
 type CVoidPtr = *mut c_void;
 
+fn is_boxed_scalar(codec: &Codec) -> bool {
+    matches!(codec, Codec::Float(_) | Codec::BigInt(_))
+}
+
 /// Whether a hash table entry codec takes ownership of what it encodes, so that the callee is
 /// the one left to release it.
 fn entry_ownership_is_full(codec: &Codec) -> bool {
@@ -44,12 +48,6 @@ impl HashTableEntryCodec {
             Codec::Array(array_codec) => array_codec.ptr_array_item().map(Self::PtrArray),
             _ => None,
         }
-    }
-
-    /// Whether the element is too wide, or too fractional, for the table's pointer slot, so that
-    /// it is held behind a `g_malloc`ed copy the table's destroy notify frees.
-    fn is_boxed(&self) -> bool {
-        matches!(self, Self::Float(_) | Self::BigInt(_))
     }
 
     pub fn hash_and_equal(&self) -> anyhow::Result<(glib::ffi::GHashFunc, glib::ffi::GEqualFunc)> {
@@ -130,7 +128,7 @@ impl HashTableEntryCodec {
             }
             Self::BigInt(bigint) => boxed_entry(&bigint.entry_stash(value)?),
             Self::Handle(codec) => {
-                let ptr = value::handle_ptr(value, "GHashTable entry")?;
+                let ptr = codec.checked_handle_ptr(value, "GHashTable entry", |_| Ok(()))?;
                 unsafe { codec.ref_for_transfer(ptr) }
             }
             Self::PtrArray(item_codec) => {
@@ -146,7 +144,8 @@ impl HashTableEntryCodec {
                         let item: Unknown<'_> = items
                             .get(i)?
                             .ok_or_else(|| anyhow::anyhow!("GPtrArray element {i} is missing"))?;
-                        let item_ptr = value::handle_ptr(item, "GPtrArray element")?;
+                        let item_ptr =
+                            item_codec.checked_handle_ptr(item, "GPtrArray element", |_| Ok(()))?;
                         let item_ptr = if item_ptr.is_null() {
                             item_ptr
                         } else {
@@ -216,6 +215,16 @@ pub struct HashTableCodec {
 }
 
 impl HashTableCodec {
+    pub(crate) fn validate_outbound_hash_tables(&self) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            !self.ownership.is_full()
+                || (!is_boxed_scalar(&self.key_codec) && !is_boxed_scalar(&self.value_codec)),
+            "Transferred numeric GHashTable entries have no supported ownership policy"
+        );
+        self.key_codec.validate_outbound_hash_tables()?;
+        self.value_codec.validate_outbound_hash_tables()
+    }
+
     fn tuple(value: Unknown<'_>) -> anyhow::Result<(Unknown<'_>, Unknown<'_>)> {
         anyhow::ensure!(
             value.is_array()?,
@@ -330,7 +339,7 @@ impl HashTableCodec {
     /// pointer itself owns no memory.
     fn retains_entries(&self, encoder: &HashTableEntryCodec, codec: &Codec) -> bool {
         self.ownership.is_full()
-            && (matches!(encoder, HashTableEntryCodec::Bytes) || encoder.is_boxed())
+            && (matches!(encoder, HashTableEntryCodec::Bytes) || is_boxed_scalar(codec))
             && !entry_ownership_is_full(codec)
     }
 }
@@ -344,6 +353,7 @@ impl Encoder for HashTableCodec {
             };
         }
 
+        self.validate_outbound_hash_tables()?;
         let array: Array<'_> = value::read_napi(value)?;
         let mut tuples = Vec::with_capacity(array.len() as usize);
         for i in 0..array.len() {
@@ -397,9 +407,14 @@ impl HashTableCodec {
                     let key_value = self
                         .key_codec
                         .read(env, ReadCtx::value(key_ptr, "hash table key"))?;
-                    let val_value = self
-                        .value_codec
-                        .read(env, ReadCtx::value(value_ptr, "hash table value"))?;
+                    let value_context = if matches!(self.value_codec.as_ref(), Codec::BigInt(_))
+                        && !value_ptr.is_null()
+                    {
+                        ReadCtx::slot(value_ptr, "hash table value")
+                    } else {
+                        ReadCtx::value(value_ptr, "hash table value")
+                    };
+                    let val_value = self.value_codec.read(env, value_context)?;
                     pairs.push(value::js_array(env, vec![key_value, val_value])?);
                 }
             }

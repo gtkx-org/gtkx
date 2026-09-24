@@ -57,6 +57,19 @@ impl DestroyNotifyKind {
     }
 }
 
+pub(crate) fn validate_callback_outputs(
+    arg_codecs: &[Codec],
+    return_codec: &Codec,
+) -> anyhow::Result<()> {
+    return_codec.validate_outbound_hash_tables()?;
+    for codec in arg_codecs {
+        if let Codec::Ref(reference) = codec {
+            reference.inner_codec().validate_outbound_hash_tables()?;
+        }
+    }
+    Ok(())
+}
+
 impl Encoder for CallbackCodec {
     reject_return_codec!("Callback");
 
@@ -72,7 +85,10 @@ impl Encoder for CallbackCodec {
 
     fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
         let js_fn = match value.get_type()? {
-            ValueType::Function => ClosureHandle::from_js_value(env, &value)?,
+            ValueType::Function => {
+                validate_callback_outputs(&self.arg_codecs, &self.return_codec)?;
+                ClosureHandle::from_js_value(env, &value)?
+            }
             ValueType::Null | ValueType::Undefined => {
                 return Ok(self.null_callback_value());
             }

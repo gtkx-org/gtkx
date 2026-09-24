@@ -4,6 +4,7 @@ import {
     objectOn,
     objectOnce,
     type SignalMap,
+    type SignalHandlerId,
     type SignalMethodReceiver,
     type SignalName,
 } from "@gtkx/runtime/internal";
@@ -19,7 +20,7 @@ declare module "../gobject.js" {
          *
          * @param handlerId Id of the handler to disconnect.
          */
-        disconnect<TThis>(this: TThis & SignalMethodReceiver<TThis, "disconnect">, handlerId: number): void;
+        disconnect<TThis>(this: TThis & SignalMethodReceiver<TThis, "disconnect">, handlerId: SignalHandlerId): void;
 
         /**
          * Connects a handler that runs on every emission of `sigName`, remembering it so `off` can

@@ -56,7 +56,7 @@ const roleSuggestion = (widget: Gtk.Widget, variant: Variant): Suggestion | unde
         return makeSuggestion("Role", variant, roleText);
     }
 
-    return makeSuggestion("Role", variant, `${roleText}, { name: '${name}' }`);
+    return makeSuggestion("Role", variant, `${roleText}, { name: ${JSON.stringify(name)} }`);
 };
 
 const textSuggestion = (queryName: Method, variant: Variant, value: string | null): Suggestion | undefined => {
@@ -64,7 +64,7 @@ const textSuggestion = (queryName: Method, variant: Variant, value: string | nul
         return undefined;
     }
 
-    return makeSuggestion(queryName, variant, `'${value}'`);
+    return makeSuggestion(queryName, variant, JSON.stringify(value));
 };
 
 /**

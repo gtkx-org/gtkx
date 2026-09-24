@@ -138,13 +138,47 @@ test("a bigint64 return carries a value beyond the safe integer range", () => {
         .toBe(9_223_372_036_854_775_807n);
 });
 
-test("a ref result identifies its argument while leaving the input untouched", () => {
-    const end = Object.freeze({ value: null });
+test.each([null, undefined])("a ref result identifies its argument and preserves its seed (%s)", (value) => {
+    const end = Object.freeze({ value });
     const result = call(asciiStrtoll, [encoder.encode("12abc"), end, 10]);
 
     expect(result.value).toBe(12n);
     expect(result.outputs).toEqual([{ index: 1, value: encoder.encode("abc") }]);
-    expect(end.value).toBeNull();
+    expect(end.value).toBe(value);
+});
+
+test.each([new Uint8Array(), encoder.encode("café")])("a no-length byte ref rejects a seed (%s)", (value) => {
+    const end = { value };
+
+    expect(() => call(asciiStrtoll, [encoder.encode("12abc"), end, 10])).toThrow();
+    expect(end.value).toBe(value);
+});
+
+test.each(["gtkx", ""])("fixed byte references carry bounded text (%s)", (text) => {
+    const bytes = encoder.encode(`${text}\0`);
+    const compare = bind(GLIB, "g_strcmp0", [
+        { kind: "ref", innerDescriptor: { ...BORROWED_BYTES, length: bytes.length } },
+        BORROWED_BYTES,
+    ], { kind: "int32" });
+
+    expect(call(compare, [bytes, encoder.encode(text)])).toEqual({
+        value: 0,
+        outputs: [{ index: 0, value: encoder.encode(text) }],
+    });
+});
+
+test.each([
+    { name: "short storage", bytes: new Uint8Array(3), length: 4 },
+    { name: "long storage", bytes: new Uint8Array(5), length: 4 },
+    { name: "unterminated storage", bytes: encoder.encode("gtkx"), length: 4 },
+    { name: "zero capacity", bytes: new Uint8Array(), length: 0 },
+])("fixed byte references reject $name before native entry", ({ bytes, length }) => {
+    const compare = bind(GLIB, "g_strcmp0", [
+        { kind: "ref", innerDescriptor: { ...BORROWED_BYTES, length } },
+        BORROWED_BYTES,
+    ], { kind: "int32" });
+
+    expect(() => call(compare, [bytes, encoder.encode("gtkx")])).toThrow();
 });
 
 test("an omitted ref produces no output entry", () => {

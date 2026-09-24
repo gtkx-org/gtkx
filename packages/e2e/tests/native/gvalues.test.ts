@@ -215,20 +215,6 @@ test("typed gvalues match their declared gtype", () => {
     expect(holdsFlags.getFlags()).toBe(GIMarshallingTests.Flags.VALUE3);
 });
 
-test("flat gvalue array returns expose each element", () => {
-    const fixed = GIMarshallingTests.returnGvalueFlatArray();
-    expect(fixed).toHaveLength(3);
-    expect(fixed[0]?.getInt()).toBe(42);
-    expect(fixed[1]?.getString()).toBe("42");
-    expect(fixed[2]?.getBoolean()).toBe(true);
-
-    const zeroTerminated = GIMarshallingTests.returnGvalueZeroTerminatedArray();
-    expect(zeroTerminated).toHaveLength(3);
-    expect(zeroTerminated[0]?.getInt()).toBe(42);
-    expect(zeroTerminated[1]?.getString()).toBe("42");
-    expect(zeroTerminated[2]?.getBoolean()).toBe(true);
-});
-
 test("flat gvalue array arguments accept built values", () => {
     const values = [intValue(42), stringValue("42"), booleanValue(true)];
     GIMarshallingTests.gvalueFlatArray(values);

@@ -125,11 +125,16 @@ describe("t.field edge cases", () => {
         expect(rect.origin.x).toBe(5);
     });
 
-    it("carries a boxed field's ownership across the binding", () => {
+    it("reads an owned string field and clears its slot", () => {
         const handle = alloc(8);
         const bound = t.field(t.string("full"), 0);
-        bound.write(handle, "held");
-        expect(bound.read(handle)).toBe("held");
+        try {
+            bound.write(handle, "held");
+            expect(bound.read(handle)).toBe("held");
+        } finally {
+            bound.write(handle, null);
+        }
+        expect(bound.read(handle)).toBeNull();
     });
 
     it("reaches an inline field bound at a non-zero offset", () => {
@@ -139,12 +144,17 @@ describe("t.field edge cases", () => {
         expect(rect.size.width).toBe(3);
     });
 
-    it("replaces an owned string rather than leaking the one it overwrites", () => {
+    it("replaces an owned string and clears its slot", () => {
         const handle = alloc(8);
         const bound = t.field(t.string("full"), 0);
-        bound.write(handle, "first");
-        bound.write(handle, "second");
-        expect(bound.read(handle)).toBe("second");
+        try {
+            bound.write(handle, "first");
+            bound.write(handle, "second");
+            expect(bound.read(handle)).toBe("second");
+        } finally {
+            bound.write(handle, null);
+        }
+        expect(bound.read(handle)).toBeNull();
     });
 });
 

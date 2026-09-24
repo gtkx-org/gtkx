@@ -77,9 +77,9 @@ describe("vfunc out parameters that carry GVariant data", () => {
         const [isKnown, isEnabled, parameterType, stateType, , state] = group.queryAction("known");
         expect(isKnown).toBe(true);
         expect(isEnabled).toBe(true);
-        expect(parameterType.dupString()).toBe("s");
-        expect(stateType.dupString()).toBe("i");
-        expect(state.getString()).toEqual(["state", 5]);
+        expect(parameterType?.dupString()).toBe("s");
+        expect(stateType?.dupString()).toBe("i");
+        expect(state?.getString()).toEqual(["state", 5]);
         expect(group.queryAction("other")[0]).toBe(false);
     });
 });

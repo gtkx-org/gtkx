@@ -11,7 +11,7 @@ const OVERRIDES: Record<string, Override[]> = {
         { module: "sidebar", exports: "*", patchesPrototype: true },
         { module: "combo-row", exports: "*", patchesPrototype: true },
     ],
-    glib: [{ module: "regex", exports: "*", patchesPrototype: true }],
+    glib: [{ module: "regex", exports: ["MatchInfo"], patchesPrototype: true }],
     gobject: [
         { module: "object", exports: "*", patchesPrototype: true },
         { module: "object-class", exports: ["ObjectClass"] },

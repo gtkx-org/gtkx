@@ -18,6 +18,7 @@ import {
     buildPropertyDispatch,
     GET_PROPERTY_VFUNC,
     installClassProperties,
+    installPropertyDispatch,
     makeGetProperty,
     makeSetProperty,
     type PropertyDispatch,
@@ -54,6 +55,7 @@ import {
     installSignalDispatch,
     overrideSignalClassClosure,
     signalForHandlerName,
+    type SignalHandlerId,
     signalIdFor,
 } from "./signal.js";
 import {
@@ -97,7 +99,7 @@ Pick<
             signal: DeclaredSignalName<TSignals>,
             handler: (...args: never[]) => unknown,
             isAfter?: boolean,
-        ): number;
+        ): SignalHandlerId;
         emit(sigName: DeclaredSignalName<TSignals>, ...args: unknown[]): unknown;
         on(sigName: DeclaredSignalName<TSignals>, callback: (...args: never[]) => unknown, isAfter?: boolean): unknown;
         once(
@@ -493,6 +495,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
     registerClassType(klass, newType);
     markDerivedClass(klass);
     installSignalOverrides(newType, methods);
+    installPropertyDispatch(klass, dispatch);
     applyInterfaceMixins(klass, adoptedTypes, inheritedNames);
     installDeclaredSignalMethods(klass, signals.table);
     registerElementMetadata(name, {}, dispatch.elementProperties);
@@ -965,7 +968,7 @@ function installDeclaredSignalMethods(
         table.get(canonicalSignalName(signal));
 
     installSignalDispatch(klass, table.keys().toArray(), {
-        connect(instance, signal, handler, isAfter): number {
+        connect(instance, signal, handler, isAfter): SignalHandlerId {
             findDeclared(signal);
 
             return connectClosureSignal(instance, signal, handler, isAfter ?? false);

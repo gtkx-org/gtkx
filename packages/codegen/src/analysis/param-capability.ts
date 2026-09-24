@@ -15,6 +15,13 @@ import { recordInlineSize } from "../store/gi/record-layout.js";
 import { runtimeOverrideFor } from "../store/gi/runtime-override.js";
 import { hasCallbackType, isSupportedCallback } from "./callback-shape.js";
 import { isUnownableStruct, transferOwnership } from "./descriptor-render.js";
+import { hasTransferredNumericHashTableInput, hasUnsupportedHashTableSlot } from "./hash-table-admission.js";
+import { hasUnsupportedInlineRecordArray } from "./inline-record-array-admission.js";
+import { inoutHandleIndirection } from "./inout-handle.js";
+import {
+    hasUnsupportedNestedArrayOutput,
+    hasUnsupportedNestedArrayParameter,
+} from "./nested-array-admission.js";
 import { closureAndDestroyIndices } from "./param-structure.js";
 import { hasUnsupportedScalarParameter } from "./scalar-pointer.js";
 import {
@@ -110,6 +117,12 @@ const declaredIndirection = (parameter: GirParameter): number | undefined => {
 };
 
 const marshalledIndirection = (context: ModuleContext, parameter: GirParameter): number | undefined => {
+    const handleDepth = inoutHandleIndirection(context.library, parameter);
+
+    if (handleDepth !== undefined) {
+        return handleDepth;
+    }
+
     const base = baseIndirection(context, parameter.type);
 
     if (base === undefined) {
@@ -277,32 +290,85 @@ const hasUnsupportedCallbackParam = (
     return !isSupportedCallback(context.library, type.value, itemComparatorParameters(context, callable, parameter));
 };
 
+const hasAsyncCallback = (context: ModuleContext, callable: GirFunction): boolean =>
+    callable.parameters.some((parameter) =>
+        parameter.direction === "in" &&
+        parameter.scope === "async" &&
+        underlyingType(context.library, parameter.type)?.kind === "callback");
+
+const hasUnsupportedInlineRecordArrayParameter = (
+    context: ModuleContext,
+    callable: GirFunction,
+    parameter: GirParameter,
+): boolean => {
+    const hasOutIndirection = parameter.direction !== "in" && !isCallerAllocatedOut(parameter);
+
+    if (parameter.direction !== "out" && hasUnsupportedInlineRecordArray(
+        context,
+        parameter.type,
+        parameter.transferOwnership,
+        {
+            direction: "to-native",
+            hasOutIndirection,
+            isCallerAllocated: parameter.direction === "inout",
+            isRetained: hasAsyncCallback(context, callable),
+        },
+    )) {
+        return true;
+    }
+
+    return parameter.direction !== "in" && hasUnsupportedInlineRecordArray(
+        context,
+        parameter.type,
+        parameter.transferOwnership,
+        {
+            direction: "from-native",
+            hasOutIndirection,
+            isCallerAllocated: parameter.callerAllocates || parameter.direction === "inout",
+        },
+    );
+};
+
 const hasUnboundPointer = (context: ModuleContext, callable: GirFunction): boolean => {
     if (runtimeOverrideFor(callable) !== undefined) {
         return false;
     }
 
-    if (hasScalarPointer(context.library, callable.returnValue.type, callable.returnValue.cType) ||
+    if (hasUnsupportedHashTableSlot(context.library, callable.returnValue.type) ||
+        hasUnsupportedHashTableSlot(context.library, callable.instance?.type) ||
+        hasUnsupportedNestedArrayOutput(context.library, callable.returnValue.type) ||
+        hasScalarPointer(context.library, callable.returnValue.type, callable.returnValue.cType) ||
         hasUnknownLengthArray(context.library, callable.returnValue.type) ||
         hasUnknownLengthArray(context.library, callable.instance?.type) ||
         hasPrimitivePointer(context.library, callable.returnValue.type) ||
         hasPrimitivePointer(context.library, callable.instance?.type) ||
-        hasCallbackType(context.library, callable.returnValue.type)) {
+        hasCallbackType(context.library, callable.returnValue.type) ||
+        hasUnsupportedInlineRecordArray(
+            context,
+            callable.returnValue.type,
+            callable.returnValue.transferOwnership,
+            { direction: "from-native" },
+        )) {
         return true;
     }
 
     const claimed = closureAndDestroyIndices(callable);
 
     return callable.parameters.some((parameter, index) =>
-        !claimed.has(index) && (hasUnsupportedScalarParameter(context.library, parameter) ||
+        !claimed.has(index) && (hasUnsupportedHashTableSlot(context.library, parameter.type) ||
+            hasTransferredNumericHashTableInput(context.library, parameter) ||
+            hasUnsupportedNestedArrayParameter(context.library, parameter) ||
+            hasUnsupportedScalarParameter(context.library, parameter) ||
             hasUnknownLengthArray(context.library, parameter.type) ||
             hasPrimitivePointer(context.library, parameter.type) ||
+            hasUnsupportedInlineRecordArrayParameter(context, callable, parameter) ||
             hasUnsupportedCallbackParam(context, callable, parameter)));
 };
 
 const hasUnmarshalableParam = (context: ModuleContext, callable: GirFunction): boolean => {
     if (callable.instance !== undefined &&
-        (hasUnsupportedScalarParameter(context.library, callable.instance) ||
+        (hasTransferredNumericHashTableInput(context.library, callable.instance) ||
+            hasUnsupportedScalarParameter(context.library, callable.instance) ||
             isRefusedParamTransfer(context, callable.instance))) {
         return true;
     }

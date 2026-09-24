@@ -12,6 +12,7 @@ import {
     runCliOrThrow,
     STORE_LIBRARIES,
 } from "./cli-project.js";
+import { typecheckProject } from "./type-consumer.js";
 
 type AppRun = { status: number | null; stdout: string; stderr: string };
 type BrokenEntry = { title: string; args: string[] };
@@ -74,7 +75,6 @@ const DIRECT_ICON_RESOURCE_PATH = `/com/gtkx/clibuild/icons/${DIRECT_ICON_NAME}.
 const PACKAGE_ICON_RESOURCE_PATH = `/com/gtkx/clibuild/icons/16x16/actions/${PACKAGE_ICON_NAME}.svg`;
 const FIXED_VARIANT_RESOURCE_PATH = `/com/gtkx/clibuild/icons/16x16/actions/${VARIANT_ICON_NAME}.png`;
 const SCALABLE_VARIANT_RESOURCE_PATH = `/com/gtkx/clibuild/icons/scalable/actions/${VARIANT_ICON_NAME}.svg`;
-const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../node_modules/typescript/bin/tsc", import.meta.url));
 const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16"/></svg>\n';
 
 const BROKEN_SCHEMA = `<?xml version="1.0" encoding="UTF-8"?>
@@ -492,13 +492,6 @@ const runApp = (project: CliProject): AppRun => {
     return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 };
 
-const runTypecheck = (project: CliProject, configFile: string): number | null =>
-    spawnSync(process.execPath, [TYPESCRIPT_CLI, "--project", configFile], {
-        cwd: project.root,
-        encoding: "utf8",
-        timeout: RUN_TIMEOUT,
-    }).status;
-
 describe("gtkx build", () => {
     const state: { project: CliProject; status: number | null } = {
         project: { root: "", nodeModules: "", tmpDir: "" },
@@ -582,11 +575,11 @@ describe("gtkx codegen (asset import declarations)", () => {
 
     it("types an explicit resource import as a path", () => {
         expect(state.status).toBe(0);
-        expect(runTypecheck(state.project, "tsconfig.explicit.json")).toBe(0);
+        expect(typecheckProject(state.project, "tsconfig.explicit.json", RUN_TIMEOUT)).toBe(0);
     });
 
     it("makes a used bare asset import fail typechecking", () => {
-        expect(runTypecheck(state.project, "tsconfig.bare.json")).not.toBe(0);
+        expect(typecheckProject(state.project, "tsconfig.bare.json", RUN_TIMEOUT)).not.toBe(0);
     });
 });
 

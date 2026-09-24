@@ -6,6 +6,7 @@
     ],
     "ignore": [
         "packages/cli/tests/fixtures/configured-props/**",
+        "packages/cli/tests/fixtures/react-compiler/*.d.mts",
         "packages/eslint/tests/fixtures/**",
         "packages/native/index.js"
     ],
@@ -31,6 +32,9 @@
             "exports",
             "types"
         ],
+        "packages/runtime/src/field.ts": [
+            "exports"
+        ],
         "packages/runtime/src/param-spec-override.ts": [
             "exports",
             "types"
@@ -51,6 +55,9 @@
             "exports"
         ],
         "packages/runtime/src/sidebar.ts": [
+            "exports"
+        ],
+        "packages/runtime/src/regex.ts": [
             "exports"
         ],
         "packages/runtime/src/signal.ts": [

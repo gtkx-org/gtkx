@@ -216,6 +216,10 @@ const planSelectedCommand = (registry: ReturnType<typeof loadGlRegistry>, name: 
         return { command: name, reason: "override-owned" };
     }
 
+    if (name === "glGetDebugMessageLog") {
+        return { command: name, reason: "unsupported-shape" };
+    }
+
     const plan = planCommand(command, PLAN_POLICY);
 
     if (!plan.isOk) {

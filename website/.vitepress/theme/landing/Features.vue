@@ -30,7 +30,7 @@ const features = [
     {
         icon: "M4 4h16v16H4zM9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M1 9h3M1 15h3M20 9h3M20 15h3",
         title: "Powered by Rust",
-        body: "A native Rust core translates your GLib/GObject calls to the native architecture at runtime."
+        body: "A lean Rust layer owns native memory and gives the JavaScript runtime a safe GLib/GObject FFI."
     },
 ];
 </script>
@@ -56,9 +56,6 @@ const features = [
   max-width: var(--container-lg);
   margin: 0 auto;
   padding: clamp(2.5rem, 5vw, 4.5rem) clamp(1rem, 4vw, 2.5rem);
-}
-.features__head {
-  margin-bottom: clamp(2rem, 4vw, 3.5rem);
 }
 .features__grid {
   display: grid;

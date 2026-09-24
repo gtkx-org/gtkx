@@ -1,9 +1,8 @@
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCli } from "./cli-project.js";
+import { isolateTypeConsumer, typecheckFile } from "./type-consumer.js";
 
-const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../node_modules/typescript/bin/tsc", import.meta.url));
+const COMPILER_OPTIONS = ["--skipLibCheck", "true"];
 const CONFIG = 'export default { applicationId: "org.gtkx.jsxcontracts" };\n';
 const ACCEPTED = `import type { AdwToggleGroupProps } from "@gtkx/jsx/adw";
 import type { GtkLabelProps } from "./node_modules/.gtkx/jsx/gtk/gtk.js";
@@ -40,22 +39,6 @@ const REJECTED_UNION_CONSUMER = `${UNION_CONSUMER}
 export const invalid = (props: LabelProps) => omit(props, ["onSelect"]).onSelect();
 `;
 
-const typecheck = (project: CliProject, file: string): number | null => spawnSync(
-    process.execPath,
-    [
-        TYPESCRIPT_CLI,
-        "--noEmit",
-        "--module", "ESNext",
-        "--moduleResolution", "Bundler",
-        "--target", "ESNext",
-        "--strict",
-        "--skipLibCheck", "true",
-        "--types", "node",
-        file,
-    ],
-    { cwd: project.root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-).status;
-
 describe("gtkx codegen JSX prop contracts", () => {
     const state: { project: CliProject; status: number | null } = {
         project: { root: "", nodeModules: "", tmpDir: "" },
@@ -74,6 +57,7 @@ describe("gtkx codegen JSX prop contracts", () => {
             },
         });
         state.status = runCli(state.project, ["codegen"]).status;
+        isolateTypeConsumer(state.project);
     });
 
     afterAll(() => {
@@ -82,17 +66,17 @@ describe("gtkx codegen JSX prop contracts", () => {
 
     it("accepts each selection form and preserves interface augmentation", () => {
         expect(state.status).toBe(0);
-        expect(typecheck(state.project, "accepted.ts")).toBe(0);
+        expect(typecheckFile(state.project, "accepted.ts", COMPILER_OPTIONS)).toBe(0);
     });
 
     it("rejects naming and indexing the same controlled selection together", () => {
         expect(state.status).toBe(0);
-        expect(typecheck(state.project, "rejected.ts")).not.toBe(0);
+        expect(typecheckFile(state.project, "rejected.ts", COMPILER_OPTIONS)).not.toBe(0);
     });
 
     it("preserves discriminated consumer props when extracting widget props", () => {
         expect(state.status).toBe(0);
-        expect(typecheck(state.project, "union-consumer.ts")).toBe(0);
-        expect(typecheck(state.project, "rejected-union-consumer.ts")).not.toBe(0);
+        expect(typecheckFile(state.project, "union-consumer.ts", COMPILER_OPTIONS)).toBe(0);
+        expect(typecheckFile(state.project, "rejected-union-consumer.ts", COMPILER_OPTIONS)).not.toBe(0);
     });
 });

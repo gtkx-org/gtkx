@@ -1,72 +1,97 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { fromNative, getHandle, t } from "@gtkx/runtime";
+import { type Descriptor, getHandle, t } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
-const rectangleFfi = t.boxed("GdkRectangle", {
+const roundtripTable = (key: Descriptor, value: Descriptor): ((table: unknown) => unknown) =>
+    t.fn("libglib-2.0.so.0", "g_hash_table_ref", () => ({
+        args: [{ type: t.hashTable(key, value, "borrowed"), isRequired: true }],
+        returns: t.hashTable(key, value, "full"),
+    }));
+
+const stringTable = roundtripTable(t.string(), t.string());
+const rectangle = t.boxed("GdkRectangle", {
     ownership: "borrowed",
     sharedLibrary: "libgtk-4.so.1",
     getTypeFnName: "gdk_rectangle_get_type",
 });
+const pageRange = t.struct("borrowed", { size: 8, wrapperClass: Gtk.PageRange });
 
-const stringTable = t.hashTable(t.string("borrowed"), t.string("borrowed"));
-const widgetListTable = t.hashTable(t.string("borrowed"), t.list(t.object("borrowed")));
+describe("native hash-table return values", () => {
+    it("returns an independent map of string entries", () => {
+        const source = new Map([["k", "v"]]);
+        const result = stringTable(source);
 
-describe("fromNative — hash-table entries are wrapped recursively", () => {
-    it("passes string keys and values straight through", () => {
-        const map = fromNative(stringTable, [["k", "v"]]);
-        expect(map).toBeInstanceOf(Map);
-        expect((map as Map<string, string>).get("k")).toBe("v");
+        expect(result).toEqual(source);
+        expect(result).not.toBe(source);
     });
 
-    it("wraps a GObject value, returning the identity-tracked instance", () => {
-        const label = new Gtk.Label({});
-        const map = fromNative(t.hashTable(t.string("borrowed"), t.object("borrowed")), [["a", getHandle(label)]]);
-        expect((map as Map<string, unknown>).get("a")).toBe(label);
+    it("preserves GObject identity through a native table", () => {
+        const label = new Gtk.Label({ label: "held" });
+        const roundtrip = roundtripTable(t.string(), t.object("borrowed"));
+        const result = roundtrip(new Map([["a", getHandle(label)]])) as Map<string, Gtk.Label>;
+
+        expect(result.get("a")).toBe(label);
+        expect(result.get("a")?.label).toBe("held");
     });
 
-    it("self-resolves a boxed value reached through a hash table, with no threaded class", () => {
+    it("returns a copied boxed value with its registered wrapper", () => {
         const rect = new Gdk.Rectangle({ width: 7 });
-        const map = fromNative(t.hashTable(t.string("borrowed"), rectangleFfi), [["r", getHandle(rect)]]);
-        const wrapped = (map as Map<string, Gdk.Rectangle>).get("r");
-        expect(wrapped).toBeInstanceOf(Gdk.Rectangle);
-        expect(wrapped?.width).toBe(7);
+        const roundtrip = roundtripTable(t.string(), rectangle);
+        const result = roundtrip(new Map([["r", getHandle(rect)]])) as Map<string, Gdk.Rectangle>;
+        rect.width = 19;
+
+        expect(result.get("r")).toBeInstanceOf(Gdk.Rectangle);
+        expect(result.get("r")?.width).toBe(7);
     });
 
-    it("self-resolves a plain struct (no GType) value from its descriptor", () => {
+    it("returns a copied plain struct value through its declared wrapper", () => {
         const range = new Gtk.PageRange({ start: 3 });
+        const roundtrip = roundtripTable(t.string(), pageRange);
+        const result = roundtrip(new Map([["r", getHandle(range)]])) as Map<string, Gtk.PageRange>;
+        range.start = 12;
 
-        const map = fromNative(
-            t.hashTable(t.string("borrowed"), t.struct("borrowed", { wrapperClass: Gtk.PageRange })),
-            [["r", getHandle(range)]],
-        );
-
-        const wrapped = (map as Map<string, Gtk.PageRange>).get("r");
-        expect(wrapped).toBeInstanceOf(Gtk.PageRange);
-        expect(wrapped?.start).toBe(3);
+        expect(result.get("r")).toBeInstanceOf(Gtk.PageRange);
+        expect(result.get("r")?.start).toBe(3);
     });
 
-    it("self-resolves a plain struct (no GType) used as a key", () => {
+    it("returns a copied plain struct key through its declared wrapper", () => {
         const range = new Gtk.PageRange({ end: 8 });
+        const roundtrip = roundtripTable(pageRange, t.string());
+        const result = roundtrip(new Map([[getHandle(range), "v"]])) as Map<Gtk.PageRange, string>;
+        const [key] = result.keys();
+        range.end = 21;
 
-        const map = fromNative(
-            t.hashTable(t.struct("borrowed", { wrapperClass: Gtk.PageRange }), t.string("borrowed")),
-            [[getHandle(range), "v"]],
-        );
-
-        const [key] = (map as Map<Gtk.PageRange, string>).keys();
         expect(key).toBeInstanceOf(Gtk.PageRange);
         expect(key?.end).toBe(8);
+        expect(result.values().toArray()).toEqual(["v"]);
     });
 
-    it("recurses into an array-valued entry, wrapping each element", () => {
-        const first = new Gtk.Label({});
-        const second = new Gtk.Label({});
-        const map = fromNative(widgetListTable, [["widgets", [getHandle(first), getHandle(second)]]]);
-        expect((map as Map<string, unknown[]>).get("widgets")).toEqual([first, second]);
+    it("wraps objects inside a native pointer-array table value", () => {
+        const first = new Gtk.Label({ label: "first" });
+        const second = new Gtk.Label({ label: "second" });
+        const roundtrip = roundtripTable(t.string(), t.ptrArray(t.object("borrowed")));
+        const result = roundtrip(
+            new Map([["widgets", [getHandle(first), getHandle(second)]]]),
+        ) as Map<string, Gtk.Label[]>;
+
+        expect(result.get("widgets")).toEqual([first, second]);
+        expect(result.get("widgets")?.map((widget) => widget.label)).toEqual(["first", "second"]);
     });
 
-    it("maps a null hash table to null", () => {
-        expect(fromNative(stringTable, null)).toBeNull();
+    it("returns an independent empty map", () => {
+        const source = new Map();
+        const result = stringTable(source);
+
+        expect(result).toEqual(new Map());
+        expect(result).not.toBe(source);
+    });
+
+    it("rejects invalid inputs before entry and recovers", () => {
+        expect(() => stringTable(null)).toThrow();
+        expect(() => stringTable(undefined)).toThrow();
+        expect(() => stringTable({ k: "v" })).toThrow();
+        expect(() => stringTable(new Map([["k", "invalid\0value"]]))).toThrow();
+        expect(stringTable(new Map([["recovered", "value"]]))).toEqual(new Map([["recovered", "value"]]));
     });
 });

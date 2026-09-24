@@ -16,7 +16,7 @@ function SpinRow<
 
     const binding = useFieldWidget<Adw.SpinRow>(field, fieldState, rowProps, selectText);
 
-    const value = typeof field.value === "number" ? field.value : 0;
+    const value = field.value ?? 0;
 
     return (
         <AdwSpinRow

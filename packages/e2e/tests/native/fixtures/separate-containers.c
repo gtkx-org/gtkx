@@ -138,3 +138,73 @@ const gchar *gtkx_separate_holder_get_string(GtkxSeparateHolder *holder, guint i
 void gtkx_separate_holder_visit(GtkxSeparateHolder *holder, GtkxSeparateCallback callback) {
     callback(&holder->values);
 }
+
+typedef void (*GtkxSeparateVoidCallback)(void);
+typedef void (*GtkxSeparateOwnedCallback)(gpointer values);
+
+static gpointer holder_take(GtkxSeparateHolder *holder) {
+    gpointer values = holder->values;
+    holder->values = NULL;
+    return values;
+}
+
+gpointer gtkx_separate_holder_return_after_callback(GtkxSeparateHolder *holder, GtkxSeparateVoidCallback callback) {
+    callback();
+    return holder_take(holder);
+}
+
+void gtkx_separate_holder_out_after_callback(GtkxSeparateHolder *holder, GtkxSeparateVoidCallback callback,
+                                           gpointer *values) {
+    callback();
+    *values = holder_take(holder);
+}
+
+void gtkx_separate_visit_owned(guint layout, guint kind, GtkxSeparateOwnedCallback callback) {
+    for (guint i = 0; i < 2; i++) {
+        GtkxSeparateHolder *holder = gtkx_separate_holder_new(layout, kind, 2);
+        gpointer values = holder_take(holder);
+        gtkx_separate_holder_free(holder);
+        callback(values);
+    }
+}
+
+typedef void (*GtkxSeparateOwnedDataCallback)(gpointer values, gpointer data);
+
+typedef struct {
+    guint layout;
+    GtkxSeparateOwnedDataCallback callback;
+    gpointer data;
+    GDestroyNotify destroy;
+} GtkxSeparateIdle;
+
+static gboolean dispatch_owned_idle(gpointer data) {
+    GtkxSeparateIdle *idle = data;
+    for (guint i = 0; i < 2; i++) {
+        GtkxSeparateHolder *holder = gtkx_separate_holder_new(idle->layout, 1, 2);
+        gpointer values = holder_take(holder);
+        gtkx_separate_holder_free(holder);
+        idle->callback(values, idle->data);
+    }
+    return G_SOURCE_REMOVE;
+}
+
+static void free_owned_idle(gpointer data) {
+    GtkxSeparateIdle *idle = data;
+    idle->destroy(idle->data);
+    g_free(idle);
+}
+
+guint gtkx_separate_schedule_owned(guint layout, GtkxSeparateOwnedDataCallback callback,
+                                  gpointer data, GDestroyNotify destroy) {
+    GtkxSeparateIdle *idle = g_new(GtkxSeparateIdle, 1);
+    idle->layout = layout;
+    idle->callback = callback;
+    idle->data = data;
+    idle->destroy = destroy;
+    return g_idle_add_full(G_PRIORITY_DEFAULT_IDLE, dispatch_owned_idle, idle, free_owned_idle);
+}
+
+void gtkx_separate_cancel_idle(guint source_id) {
+    GSource *source = g_main_context_find_source_by_id(g_main_context_default(), source_id);
+    if (source != NULL) g_source_destroy(source);
+}

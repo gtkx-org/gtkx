@@ -242,6 +242,26 @@ test("fundamental arrays reject elements that carry no native handle", () => {
     expect(() => Regress.testArrayOfFundamentalObjectsIn([Regress.TestFundamentalSubObject.new("a"), {}])).toThrow();
 });
 
+test("fundamental arrays reject other native families and recover", () => {
+    expect(() => {
+        Reflect.apply(
+            Regress.testArrayOfFundamentalObjectsIn,
+            Regress,
+            [[new Regress.TestObj({})]],
+        );
+    }).toThrow();
+    expect(() => {
+        Reflect.apply(
+            Regress.testArrayOfFundamentalObjectsIn,
+            Regress,
+            [[new GIMarshallingTests.BoxedStruct({ long: 1n })]],
+        );
+    }).toThrow();
+
+    const valid = Regress.TestFundamentalSubObject.new("valid-after-rejection");
+    expect(Regress.testArrayOfFundamentalObjectsIn([valid])).toBe(true);
+});
+
 test("fundamental constructors reject data that is not a string", () => {
     // @ts-expect-error a number is not fundamental data
     expect(() => Regress.TestFundamentalSubObject.new(42)).toThrow();

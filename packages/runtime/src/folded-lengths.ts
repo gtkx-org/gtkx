@@ -15,6 +15,18 @@ const sizedArrayLengthIndex = (descriptor: Descriptor): number | undefined =>
 const outArgLengthIndex = (descriptor: Descriptor | undefined): number | undefined =>
     descriptor?.kind === "ref" ? sizedArrayLengthIndex(descriptor.innerDescriptor) : undefined;
 
+const inputArgLengthIndex = (descriptor: Descriptor | undefined): number | undefined => {
+    if (descriptor === undefined) {
+        return undefined;
+    }
+
+    if (descriptor.kind === "ref") {
+        return descriptor.inout === true ? sizedArrayLengthIndex(descriptor.innerDescriptor) : undefined;
+    }
+
+    return sizedArrayLengthIndex(descriptor);
+};
+
 const effectiveArgIndex = (argIndex: number | undefined, userDataIndex: number | undefined): number | undefined => {
     if (argIndex === undefined || userDataIndex === undefined || argIndex < userDataIndex) {
         return argIndex;
@@ -65,6 +77,27 @@ const foldedLengthArgIndices = (spec: FoldedLengthSpec): ReadonlySet<number> => 
     return indices;
 };
 
+const foldedInputLengthSources = (spec: FoldedLengthSpec): ReadonlyMap<number, number> => {
+    const sources: Map<number, number> = new Map();
+
+    for (const [declaredIndex, descriptor] of spec.argDescriptors.entries()) {
+        const lengthIndex = effectiveArgIndex(inputArgLengthIndex(descriptor), spec.userDataIndex);
+        const sourceIndex = effectiveArgIndex(declaredIndex, spec.userDataIndex);
+
+        if (lengthIndex !== undefined && sourceIndex !== undefined) {
+            sources.set(lengthIndex, sourceIndex);
+        }
+    }
+
+    return sources;
+};
+
+const foldedValueLength = (value: unknown): number => {
+    const length = (value as { length?: unknown } | null | undefined)?.length;
+
+    return typeof length === "number" ? length : 0;
+};
+
 const foldedLengthSources = (spec: FoldedLengthSpec): LengthSources => {
     const sources: LengthSources = new Map();
     const returnLengthIndex = effectiveArgIndex(sizedArrayLengthIndex(spec.returnDescriptor), spec.userDataIndex);
@@ -74,4 +107,11 @@ const foldedLengthSources = (spec: FoldedLengthSpec): LengthSources => {
     return sources;
 };
 
-export { foldedLengthArgIndices, foldedLengthSources, type LengthSource, type LengthSources };
+export {
+    foldedInputLengthSources,
+    foldedLengthArgIndices,
+    foldedLengthSources,
+    foldedValueLength,
+    type LengthSource,
+    type LengthSources,
+};

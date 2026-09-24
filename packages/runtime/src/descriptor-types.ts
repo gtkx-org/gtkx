@@ -17,7 +17,11 @@ type Descriptor =
         keyDescriptor: Descriptor;
         valueDescriptor: Descriptor;
     }) |
-    (Omit<Extract<NativeDescriptor, { kind: "callback" }>, "argDescriptors" | "returnDescriptor"> & {
+    (Omit<
+        Extract<NativeDescriptor, { kind: "callback" }>,
+        "argDescriptors" | "returnDescriptor" | "scope" | "releaseWithCompletion"
+    > & {
+        scope?: Extract<NativeDescriptor, { kind: "callback" }>["scope"];
         argDescriptors: Descriptor[];
         returnDescriptor: Descriptor;
     }) |

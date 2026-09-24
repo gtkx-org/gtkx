@@ -10,8 +10,8 @@ import { isEmittableEntity } from "../gir/emittable.js";
 import { externalPackageFor } from "../gir/external-namespaces.js";
 import { Library } from "../gir/library.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
-import { dedupeCallables, isEmittableCallable } from "../store/gi/callables.js";
-import { namespaceFunctionExportName } from "../store/gi/function.js";
+import { dedupeCallables } from "../store/gi/callables.js";
+import { isEmittableNamespaceFunction, namespaceFunctionExportName } from "../store/gi/function.js";
 import { setAcceptedChildTypes } from "../store/jsx/accepted-child-types.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
 import { isMountableElement } from "../store/jsx/generated-elements.js";
@@ -201,7 +201,7 @@ const functionEntry = (
     docsContext: ReturnType<typeof docsSignatureContext>,
     fn: GirFunction,
 ): GiSymbolEntry | undefined => {
-    if (!isEmittableCallable(docsContext, fn)) {
+    if (!isEmittableNamespaceFunction(docsContext, namespace.name, fn)) {
         return undefined;
     }
 

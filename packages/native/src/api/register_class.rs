@@ -9,11 +9,12 @@ use napi_derive::napi;
 use crate::api::vtable::{query_type, validate_vfunc_offset};
 use crate::api::{native_result, type_from_bigint};
 use crate::ffi::closure::{ClosureData, ClosureState};
-use crate::ffi::codec::Codec;
+use crate::ffi::codec::{Codec, validate_callback_signature};
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
+use crate::host::callback_error::CallbackErrorScope;
+use crate::host::node_env;
 use crate::host::panic_handler::guard_ffi_boundary;
-use crate::host::{error_reporter, node_env};
 use crate::value::{self, ClosureHandle, pending_wrapper};
 
 pub struct VfuncCallback(ClosureHandle);
@@ -42,8 +43,6 @@ pub struct RegisterClassVfunc {
     pub arg_descriptors: Vec<Descriptor>,
     /// Descriptor for the value the JavaScript implementation returns.
     pub return_descriptor: Descriptor,
-    /// The slot's C signature ends with a `GError**`, which receives a `GError` built from
-    /// whatever the JavaScript implementation throws.
     pub can_throw: Option<bool>,
     /// The JavaScript function that implements the vfunc.
     #[napi(ts_type = "(...args: never[]) => unknown")]
@@ -78,7 +77,7 @@ impl TryFrom<RegisterClassVfunc> for ResolvedVfunc {
     type Error = Error;
 
     fn try_from(vfunc: RegisterClassVfunc) -> Result<Self> {
-        Ok(Self {
+        let resolved = Self {
             byte_offset: vfunc.byte_offset as usize,
             js_fn: vfunc.r#fn.0,
             arg_codecs: vfunc
@@ -88,7 +87,10 @@ impl TryFrom<RegisterClassVfunc> for ResolvedVfunc {
                 .collect::<Result<_>>()?,
             return_codec: vfunc.return_descriptor.into_codec()?,
             can_throw: vfunc.can_throw.unwrap_or(false),
-        })
+        };
+        validate_callback_signature(&resolved.arg_codecs, &resolved.return_codec)
+            .map_err(|error| Error::from_reason(error.to_string()))?;
+        Ok(resolved)
     }
 }
 
@@ -177,6 +179,7 @@ impl ResolvedVfunc {
                 .cast::<u8>()
                 .add(byte_offset)
                 .cast::<*mut c_void>();
+            state.data_ref().set_native_parent(slot.read());
             slot.write(state.code_ptr);
         }
         state
@@ -252,9 +255,7 @@ unsafe fn adopt_pending_wrapper(instance: *mut gobject_ffi::GTypeInstance) {
     };
 
     if let Err(error) = unsafe { associate_pending_wrapper(gobject, wrapper, associate) } {
-        error_reporter::report_str(&format!(
-            "instance init: binding the wrapper failed: {error}"
-        ));
+        CallbackErrorScope::deliver(node_env::env(), error);
     }
 }
 

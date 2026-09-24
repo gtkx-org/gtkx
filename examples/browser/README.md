@@ -8,4 +8,4 @@ Install the WebKitGTK 6 development package, then run from the repository root:
 pnpm --filter browser dev
 ```
 
-See [Configuration and Codegen](https://gtkx.dev/guide/configuration-and-codegen) and [CSS](https://gtkx.dev/guide/css).
+See [Configuration and Codegen](https://gtkx.dev/v2/guide/configuration-and-codegen) and [CSS](https://gtkx.dev/v2/guide/css).
