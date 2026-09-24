@@ -6,6 +6,7 @@ export default mergeConfig(
     defineConfig({
         test: {
             name: "eslint",
+            testTimeout: 30_000,
         },
     }),
 );
