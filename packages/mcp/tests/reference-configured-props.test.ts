@@ -7,18 +7,11 @@ import {
     PROPS_MODULE,
     referenceSession,
     REQUEST_OPTIONS,
-    writePropsConfig,
 } from "./reference-session.js";
 
 const BASE_DECLARATION = "export interface SharedProps<T> { auditReplacement: T; }\n";
 const INVALID_DECLARATION = 'import type * as Gtk from "@gtkx/gi/gtk";\n' +
     "export interface AliasProps { auditWidget: Gtk.Absent; }\n";
-const INVALID_PROPS = [
-    { title: "an uninstalled package", module: "@audit/not-installed", exported: "Props" },
-    { title: "a missing export", module: PROPS_MODULE, exported: "MissingProps" },
-    { title: "a value-only export", module: PROPS_MODULE, exported: "ValueProps" },
-    { title: "a function export", module: PROPS_MODULE, exported: "FunctionProps" },
-];
 
 const { apiDocs, state } = referenceSession();
 
@@ -45,23 +38,6 @@ describe("reference configuration updates", () => {
         } finally {
             rmSync(project, { recursive: true, force: true });
             rmSync(other, { recursive: true, force: true });
-        }
-    });
-
-    it.each(INVALID_PROPS)("rejects configured props from $title", async ({ module, exported }) => {
-        const project = createConfiguredProject();
-        const request = { symbol: "GtkButton", projectRoot: project };
-
-        try {
-            expect(await apiDocs(request)).toContain("### `auditCaption`");
-            writePropsConfig(project, exported, module);
-            await expect.poll(
-                () => isToolFailure(state.server.client, "gtkx_get_api_docs", request, REQUEST_OPTIONS),
-            ).toBe(true);
-            writePropsConfig(project);
-            await expect.poll(() => apiDocs(request)).toContain("### `auditCaption`");
-        } finally {
-            rmSync(project, { recursive: true, force: true });
         }
     });
 

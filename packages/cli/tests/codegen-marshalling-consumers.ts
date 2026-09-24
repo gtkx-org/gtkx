@@ -11,7 +11,7 @@ const EXACT_TYPES = `type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends
 type Expect<T extends true> = T;
 `;
 
-const MARSHALLING_CONSUMERS: MarshallingConsumer[] = [
+const VALUE_MARSHALLING_CONSUMERS: MarshallingConsumer[] = [
     {
         title: "represents byte sequences as typed arrays",
         library: "ByteSeq-1.0",
@@ -68,6 +68,36 @@ export const signatures: [
         ],
     },
     {
+        title: "mutates caller-allocated inout records without returning them again",
+        library: "InoutBox-1.0",
+        imports: `${EXACT_TYPES}import type { Spot, Walker } from "@gtkx/gi/inoutbox";
+declare const walker: Walker;
+declare const spot: Spot;
+`,
+        accepted: `export const stepped: boolean = walker.step(spot);
+walker.recenter(spot);
+export const located: [boolean, string] = walker.locate(spot);
+export const advanced: [boolean, number] = walker.advance(2);
+export const signatures: [
+    Expect<Equal<ReturnType<Walker["step"]>, boolean>>,
+    Expect<Equal<ReturnType<Walker["recenter"]>, void>>,
+    Expect<Equal<ReturnType<Walker["locate"]>, [boolean, string]>>,
+    Expect<Equal<ReturnType<Walker["advance"]>, [boolean, number]>>,
+] = [true, true, true, true];
+`,
+        rejected: [
+            "walker.step();",
+            "walker.recenter(null);",
+            "export const result: [boolean, Spot] = walker.step(spot);",
+            "export const result: Spot = walker.recenter(spot);",
+            "export const result: [boolean, Spot, string] = walker.locate(spot);",
+            "walker.advance(spot);",
+        ],
+    },
+];
+
+const ASYNC_MARSHALLING_CONSUMERS: MarshallingConsumer[] = [
+    {
         title: "trims the leading success value from finish results",
         library: "AsyncPair-1.0",
         imports: `${EXACT_TYPES}import { Job, queryAsync } from "@gtkx/gi/asyncpair";
@@ -118,6 +148,9 @@ export const signatures: [
             "export const result: void = sack.fetchAsync();",
         ],
     },
+];
+
+const CALLBACK_MARSHALLING_CONSUMERS: MarshallingConsumer[] = [
     {
         title: "keeps the callback form when no finish method of the class can be paired",
         library: "AsyncPair-1.0",
@@ -149,33 +182,11 @@ export const signatures: [
             "export const result: Promise<boolean> = pool.drainAsync(null, callback);",
         ],
     },
-    {
-        title: "mutates caller-allocated inout records without returning them again",
-        library: "InoutBox-1.0",
-        imports: `${EXACT_TYPES}import type { Spot, Walker } from "@gtkx/gi/inoutbox";
-declare const walker: Walker;
-declare const spot: Spot;
-`,
-        accepted: `export const stepped: boolean = walker.step(spot);
-walker.recenter(spot);
-export const located: [boolean, string] = walker.locate(spot);
-export const advanced: [boolean, number] = walker.advance(2);
-export const signatures: [
-    Expect<Equal<ReturnType<Walker["step"]>, boolean>>,
-    Expect<Equal<ReturnType<Walker["recenter"]>, void>>,
-    Expect<Equal<ReturnType<Walker["locate"]>, [boolean, string]>>,
-    Expect<Equal<ReturnType<Walker["advance"]>, [boolean, number]>>,
-] = [true, true, true, true];
-`,
-        rejected: [
-            "walker.step();",
-            "walker.recenter(null);",
-            "export const result: [boolean, Spot] = walker.step(spot);",
-            "export const result: Spot = walker.recenter(spot);",
-            "export const result: [boolean, Spot, string] = walker.locate(spot);",
-            "walker.advance(spot);",
-        ],
-    },
 ];
 
-export { MARSHALLING_CONSUMERS };
+export {
+    ASYNC_MARSHALLING_CONSUMERS,
+    CALLBACK_MARSHALLING_CONSUMERS,
+    type MarshallingConsumer,
+    VALUE_MARSHALLING_CONSUMERS,
+};
