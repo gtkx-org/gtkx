@@ -37,7 +37,6 @@ const DBUS_INVOCATION_PAGE = "gio/d-bus-method-invocation.md";
 const FILE_ENUMERATOR_PAGE = "gio/file-enumerator.md";
 const WINDOW_PAGE = "gtk/window.md";
 const DBUS_CONNECTION_PAGE = "gio/d-bus-connection.md";
-const PIXBUF_PAGE = "gdkpixbuf/pixbuf.md";
 const SIDEBAR_PAGE = "adw/sidebar.md";
 const APPLICATION_PAGE = "adw/application.md";
 const MENU_ITEM_PAGE = "gio/menu-item.md";
@@ -217,11 +216,6 @@ describe("gtkx docs", () => {
         expect(dbusConnectionPage).not.toContain("`GDestroyNotify`");
         expect(dbusConnectionPage).not.toContain("free data that the filter might be using");
         expect(dbusConnectionPage).not.toContain("\n".repeat(3));
-        const pixbufPage = readPage(state.project, PIXBUF_PAGE);
-        expect(pixbufPage).toContain(
-            "Since you are providing a pre-allocated pixel buffer, you must also\nspecify a way to free that data.",
-        );
-        expect(pixbufPage).toContain("your destroy notification function will be called");
         const sidebar = readPage(state.project, SIDEBAR_PAGE);
         expect(sidebar).toContain("This remains a React `ReactNode` slot");
         expect(sidebar).toContain(
@@ -321,6 +315,10 @@ describe("gtkx docs (ordinary prose that starts with free)", () => {
         expect(page).toContain("The items are not freed.");
         expect(page).toContain("The data contained in the resulting `GBytes` is always zero-terminated.");
         expect(page).toContain("rather than handed to `g_free()`");
+        expect(page).toContain(
+            "Since you are providing a pre-allocated note buffer, you must also specify a way to free that data.",
+        );
+        expect(page).toContain("your destroy notification function will be called");
         expect(page).toContain("**Returns** a list of cell renderers.");
         expect(page).toContain("Describes clause details.");
         expect(page).toContain("Returns the label of the note, if any.");

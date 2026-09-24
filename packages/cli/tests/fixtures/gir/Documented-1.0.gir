@@ -119,7 +119,11 @@ The items are not freed, so if the memory was dynamically allocated, it should b
 The data contained in the resulting #GBytes is always zero-terminated. The resulting #GBytes should be
 freed with g_bytes_unref() when no longer in use.
 
-Buffers are recycled internally rather than handed to g_free().</doc>
+Buffers are recycled internally rather than handed to g_free().
+
+Since you are providing a pre-allocated note buffer, you must also specify a way to free that data.
+
+When the note is finalized, your destroy notification function will be called.</doc>
         <return-value transfer-ownership="full">
           <doc xml:space="preserve">a list of cell renderers. The list must be freed with g_list_free().</doc>
           <array zero-terminated="1" c:type="gchar**">
