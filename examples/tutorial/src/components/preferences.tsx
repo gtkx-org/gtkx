@@ -9,8 +9,9 @@ import { useSortOrder } from "../hooks/use-sort-order.js";
 type Scheme = "default" | "light" | "dark";
 type Sort = "manual" | "due-date" | "title" | "created";
 
-const isScheme = (value: string): value is Scheme => value === "default" || value === "light" || value === "dark";
-const isSort = (value: string): value is Sort =>
+const isScheme = (value: string | null): value is Scheme =>
+    value === "default" || value === "light" || value === "dark";
+const isSort = (value: string | null): value is Sort =>
     value === "manual" || value === "due-date" || value === "title" || value === "created";
 
 export const Preferences = ({ onClose }: { onClose: () => void }) => {

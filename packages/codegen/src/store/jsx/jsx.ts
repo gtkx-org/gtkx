@@ -348,9 +348,7 @@ const renderJsxAugmentation = (
     imports: ImportsBuilder,
 ): string => {
     const elementLines = namespaceElements
-        .filter(
-            (entry) => entry.klass.isAbstract ? factoryElementPropTypeFor(entry.glibName) !== undefined : true,
-        )
+        .filter((entry) => !entry.klass.isAbstract || factoryElementPropTypeFor(entry.glibName) !== undefined)
         .map((entry) => {
             const factoryProps = factoryElementPropTypeFor(entry.glibName);
             let props = `${entry.glibName}Props`;
