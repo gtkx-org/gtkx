@@ -7,12 +7,12 @@ runs:
     - name: Create pnpm store directory
       shell: bash
       run: |
-        mkdir -p "$HOME/.local/share/pnpm/store"
+        mkdir -p "$GITHUB_WORKSPACE/node_modules/.pnpm-store"
 
     - name: Restore pnpm store cache
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
-        path: ~/.local/share/pnpm/store
-        key: pnpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+        path: ${{ github.workspace }}/node_modules/.pnpm-store
+        key: pnpm-store-v11-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
         restore-keys: |
-          pnpm-${{ runner.os }}-${{ runner.arch }}-
+          pnpm-store-v11-${{ runner.os }}-${{ runner.arch }}-

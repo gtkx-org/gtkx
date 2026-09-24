@@ -262,9 +262,15 @@ jobs:
           command: *fix-ci-command
           install: "false"
 
-  test-cli:
+  test-cli-shard:
+    name: test-cli (${{ matrix.shard }}/${{ matrix.total }})
     needs: [changes, image-manifest]
     if: *code-changed
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+        total: [4]
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -276,7 +282,7 @@ jobs:
       - name: Run the CLI tests
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm exec nx run @gtkx/cli:test
+          command: pnpm exec nx run @gtkx/cli:test -- --shard=${{ matrix.shard }}/${{ matrix.total }}
           image-ref: ${{ needs.image-manifest.outputs.ref }}
           extra-env: GTKX_MAX_WORKERS
 
@@ -287,6 +293,23 @@ jobs:
         with:
           command: *fix-ci-command
           install: "false"
+
+  test-cli:
+    needs: [changes, test-cli-shard]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check CLI test shards
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CODE_CHANGED: ${{ needs.changes.outputs.code }}
+          SHARDS_RESULT: ${{ needs.test-cli-shard.result }}
+        run: |
+          test "$CHANGES_RESULT" = "success"
+          if [ "$CODE_CHANGED" = "true" ]; then
+            test "$SHARDS_RESULT" = "success"
+          fi
 
   asan:
     needs: [changes, image-manifest]
@@ -381,4 +404,3 @@ jobs:
         with:
           command: pnpm tutorial
           mount-cargo-cache: "true"
-          mount-pnpm-store: "true"

@@ -11,9 +11,6 @@ inputs:
   mount-cargo-cache:
     description: Mount $HOME/.cargo/{registry,git} into the container so `setup-cargo-cache` data is reused
     default: "false"
-  mount-pnpm-store:
-    description: Mount $HOME/.local/share/pnpm/store into the container so `setup-pnpm-cache` data is reused
-    default: "false"
   extra-env:
     description: Extra environment variables to forward as `-e NAME` flags (whitespace-separated, names only)
     default: ""
@@ -27,7 +24,6 @@ runs:
         INPUT_COMMAND: ${{ inputs.command }}
         INPUT_INSTALL: ${{ inputs.install }}
         INPUT_MOUNT_CARGO_CACHE: ${{ inputs.mount-cargo-cache }}
-        INPUT_MOUNT_PNPM_STORE: ${{ inputs.mount-pnpm-store }}
         INPUT_EXTRA_ENV: ${{ inputs.extra-env }}
         WORKSPACE: ${{ github.workspace }}
       run: |
@@ -45,10 +41,6 @@ runs:
         if [ "$INPUT_MOUNT_CARGO_CACHE" = "true" ]; then
           PODMAN_ARGS+=(-v "$HOME/.cargo/registry:/usr/local/cargo/registry")
           PODMAN_ARGS+=(-v "$HOME/.cargo/git:/usr/local/cargo/git")
-        fi
-
-        if [ "$INPUT_MOUNT_PNPM_STORE" = "true" ]; then
-          PODMAN_ARGS+=(-v "$HOME/.local/share/pnpm/store:/ci-home/.local/share/pnpm/store")
         fi
 
         for var in NODE_VERSION ADWAITA_VERSION GTK4_VERSION VERSION NX_CLOUD_ACCESS_TOKEN \
@@ -70,7 +62,7 @@ runs:
         TRUST_WORKSPACE="git config --global --add safe.directory /workspace"
 
         if [ "$INPUT_INSTALL" = "true" ]; then
-          FULL_COMMAND="$TRUST_WORKSPACE && pnpm install --frozen-lockfile && $INPUT_COMMAND"
+          FULL_COMMAND="$TRUST_WORKSPACE && pnpm install --store-dir=/workspace/node_modules/.pnpm-store --frozen-lockfile && $INPUT_COMMAND"
         else
           FULL_COMMAND="$TRUST_WORKSPACE && $INPUT_COMMAND"
         fi
