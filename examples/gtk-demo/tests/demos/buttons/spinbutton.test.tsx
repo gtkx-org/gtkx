@@ -15,6 +15,8 @@ const REJECTED_TIME_TEXTS = [
     { label: "with out-of-range hours", text: "25:00" },
     { label: "with out-of-range minutes", text: "10:99" },
     { label: "with non-numeric components", text: "aa:bb" },
+    { label: "with trailing text in the hour", text: "12hours:30" },
+    { label: "with trailing text in the minute", text: "12:30minutes" },
 ];
 
 const renderSpinButton = async (name: string): Promise<Gtk.SpinButton> => {
@@ -153,7 +155,7 @@ describe("spinbuttonDemo month input parsing", () => {
         expect(await screen.findByDisplayValue("April")).toBe(monthButton);
     });
 
-    it("rejects month text that matches no known month prefix and keeps the previous value", async () => {
+    it.each(["xyz", ""])("rejects invalid month input %j and keeps the previous value", async (text) => {
         const monthButton = await renderSpinButton("month_spin");
         await commitText(monthButton, "apr");
 
@@ -161,7 +163,7 @@ describe("spinbuttonDemo month input parsing", () => {
             expect(monthButton).toHaveObjectProperty("value", 4);
         });
 
-        await commitText(monthButton, "xyz");
+        await commitText(monthButton, text);
         expect(monthButton).toHaveObjectProperty("value", 4);
     });
 });

@@ -3,9 +3,11 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import {
+    GtkBox,
     GtkButton,
     GtkEntry,
     GtkEntryBuffer,
+    GtkLabel,
     GtkTextBuffer,
     GtkTextChildAnchor,
     GtkTextMark,
@@ -33,6 +35,8 @@ type AnchorFixture = {
 
 type TextProps = (text: string) => { text: string } | { buffer: ReactElement };
 type ControlledEntryProps = { entryRef: RefObject<Gtk.Entry | null>; initial: string; textProps: TextProps };
+type SharedAnchorViewsProps = { hasAnchor: boolean; hasSecondaryView: boolean };
+type ChangingAnchorViewProps = { useSecondAnchor: boolean };
 
 const CARRIERS: [string, TextProps][] = [["text prop", directText], ["entry buffer", bufferedText]];
 
@@ -251,6 +255,81 @@ const buildMixedContent = (paintable: Gdk.Paintable): ReactNode => (
     <GtkTextChildAnchor paintable={paintable}>
         <GtkButton label="Nope" />
     </GtkTextChildAnchor>
+);
+
+const SharedAnchorViews = ({ hasAnchor, hasSecondaryView }: SharedAnchorViewsProps) => {
+    const [buffer, setBuffer] = useState<Gtk.TextBuffer | null>(null);
+    const [anchor, setAnchor] = useState<Gtk.TextChildAnchor | null>(null);
+    const [primaryClicks, setPrimaryClicks] = useState(0);
+    const [secondaryClicks, setSecondaryClicks] = useState(0);
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkTextView
+                name="primary-view"
+                buffer={(
+                    <GtkTextBuffer ref={setBuffer}>
+                        before
+                        {hasAnchor && (
+                            <GtkTextChildAnchor ref={setAnchor}>
+                                <GtkButton
+                                    name="primary-anchor-child"
+                                    label={`Primary ${String(primaryClicks)}`}
+                                    onClicked={() => {
+                                        setPrimaryClicks((count) => count + 1);
+                                    }}
+                                />
+                            </GtkTextChildAnchor>
+                        )}
+                        after
+                    </GtkTextBuffer>
+                )}
+            />
+            {hasSecondaryView && buffer && (
+                <GtkTextView name="secondary-view" buffer={buffer}>
+                    {anchor && (
+                        <GtkButton
+                            textChildAnchor={anchor}
+                            name="secondary-anchor-child"
+                            label={`Secondary ${String(secondaryClicks)}`}
+                            onClicked={() => {
+                                setSecondaryClicks((count) => count + 1);
+                            }}
+                        />
+                    )}
+                </GtkTextView>
+            )}
+            <GtkLabel name="primary-clicks">{String(primaryClicks)}</GtkLabel>
+            <GtkLabel name="secondary-clicks">{String(secondaryClicks)}</GtkLabel>
+        </GtkBox>
+    );
+};
+
+const ChangingAnchorView = ({ useSecondAnchor }: ChangingAnchorViewProps) => {
+    const [firstAnchor, setFirstAnchor] = useState<Gtk.TextChildAnchor | null>(null);
+    const [secondAnchor, setSecondAnchor] = useState<Gtk.TextChildAnchor | null>(null);
+    const anchor = useSecondAnchor ? secondAnchor : firstAnchor;
+
+    return (
+        <GtkTextView
+            buffer={(
+                <GtkTextBuffer>
+                    <GtkTextChildAnchor ref={setFirstAnchor} />
+                    <GtkTextChildAnchor ref={setSecondAnchor} />
+                </GtkTextBuffer>
+            )}
+        >
+            {anchor && <GtkButton name="changing-anchor-child" textChildAnchor={anchor} />}
+        </GtkTextView>
+    );
+};
+
+const buildReplacementAnchorView = (replacement: string) => (
+    <GtkTextView buffer={<GtkTextBuffer><GtkTextChildAnchor replacement={replacement} /></GtkTextBuffer>} />
+);
+
+const buildSharedAnchorViews = (hasSecondaryView: boolean, hasAnchor = true) => (
+    <SharedAnchorViews hasSecondaryView={hasSecondaryView} hasAnchor={hasAnchor} />
 );
 
 const hasTagAtOffset2 = (buffer: Gtk.TextBuffer, tagName: string, offset: number): boolean => {
@@ -793,6 +872,81 @@ describe("render - TextChildAnchor identity", () => {
         expect(anchorAtOffset(buffer, 7)).not.toBeNull();
         expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Second" })).toBeRooted();
         expect(getBufferText(buffer)).toBe("before  after");
+    });
+
+    it("inserts the replacement character from the owning anchor constructor", async () => {
+        const anchorRef = createRef<Gtk.TextChildAnchor>();
+        const viewRef = createRef<Gtk.TextView>();
+        await render(
+            <GtkTextView
+                ref={viewRef}
+                buffer={(
+                    <GtkTextBuffer>
+                        before
+                        <GtkTextChildAnchor ref={anchorRef} replacement="👻" />
+                        after
+                    </GtkTextBuffer>
+                )}
+            />,
+        );
+        const buffer = getTextBuffer(viewRef);
+        expect(getBufferText(buffer)).toBe("before👻after");
+        expect(anchorAtOffset(buffer, 6)).toBe(anchorRef.current);
+    });
+
+    it("rejects changing the replacement of an existing anchor", async () => {
+        const { rerender } = await render(buildReplacementAnchorView("👻"));
+        await expect(rerender(buildReplacementAnchorView("🙂"))).rejects.toThrow();
+    });
+});
+
+describe("render - TextChildAnchor view ownership", () => {
+    it("attaches distinct interactive widgets to two views of one buffer", async () => {
+        await render(<SharedAnchorViews hasSecondaryView hasAnchor />, { isReactStrictMode: true });
+        const primaryView = await screen.findByName("primary-view", { as: Gtk.TextView });
+        const secondaryView = await screen.findByName("secondary-view", { as: Gtk.TextView });
+        const primary = await screen.findByName("primary-anchor-child", { as: Gtk.Button });
+        const secondary = await screen.findByName("secondary-anchor-child", { as: Gtk.Button });
+        expect(primary.getParent()).toBe(primaryView);
+        expect(secondary.getParent()).toBe(secondaryView);
+        expect(primary).not.toBe(secondary);
+        await userEvent.click(primary);
+        await userEvent.click(secondary);
+        expect(screen.getByName("primary-clicks")).toHaveTextContent("1");
+        expect(screen.getByName("secondary-clicks")).toHaveTextContent("1");
+    });
+
+    it("removes one view's widget without disturbing the other view", async () => {
+        const { rerender } = await render(buildSharedAnchorViews(true));
+        const primary = await screen.findByName("primary-anchor-child", { as: Gtk.Button });
+        await screen.findByName("secondary-anchor-child", { as: Gtk.Button });
+        await rerender(buildSharedAnchorViews(false));
+        expect(screen.queryByName("secondary-anchor-child")).toBeNull();
+        expect(primary).toBeRooted();
+        await userEvent.click(primary);
+        expect(screen.getByName("primary-clicks")).toHaveTextContent("1");
+        await rerender(buildSharedAnchorViews(true));
+        const secondary = await screen.findByName("secondary-anchor-child", { as: Gtk.Button });
+        expect(secondary.getParent()).toBe(screen.getByName("secondary-view"));
+    });
+
+    it("removes a shared anchor while its secondary view remains", async () => {
+        const { rerender } = await render(buildSharedAnchorViews(true));
+        const secondaryView = await screen.findByName("secondary-view", { as: Gtk.TextView });
+        await screen.findByName("secondary-anchor-child", { as: Gtk.Button });
+        await rerender(buildSharedAnchorViews(true, false));
+        expect(secondaryView).toBeRooted();
+        expect(screen.queryByName("primary-anchor-child")).toBeNull();
+        expect(screen.queryByName("secondary-anchor-child")).toBeNull();
+        await rerender(buildSharedAnchorViews(true));
+        const secondary = await screen.findByName("secondary-anchor-child", { as: Gtk.Button });
+        expect(secondary.getParent()).toBe(secondaryView);
+    });
+
+    it("rejects changing a widget's text anchor", async () => {
+        const { rerender } = await render(<ChangingAnchorView useSecondAnchor={false} />);
+        await screen.findByName("changing-anchor-child", { as: Gtk.Button });
+        await expect(rerender(<ChangingAnchorView useSecondAnchor />)).rejects.toThrow();
     });
 });
 

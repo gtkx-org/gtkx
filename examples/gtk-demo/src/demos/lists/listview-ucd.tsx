@@ -4,6 +4,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkInscription, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { once } from "@gtkx/utils";
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import ucdDataPath from "../../../data/demos/lists/ucdnames.data?resource";
@@ -21,11 +22,6 @@ type UcdSection = {
     entries: UcdEntry[];
 };
 
-type UcdCursor = {
-    buffer: Buffer;
-    offset: number;
-};
-
 type ScriptGrouping = {
     sections: UcdSection[];
     script: string;
@@ -35,6 +31,17 @@ type ScriptGrouping = {
 type CharacterData = {
     sections: UcdSection[];
     flat: UcdEntry[];
+    codepoints: UcdEntry[];
+};
+
+type UcdSort = {
+    column: string | null;
+    order: Gtk.SortType;
+};
+
+type DisplayedCharacterData = {
+    entries: UcdEntry[];
+    sections: UcdSection[];
 };
 
 const UNICODE_TYPE_NAMES = [
@@ -114,6 +121,12 @@ const BREAK_TYPE_NAMES = [
     "Emoji Base",
     "Emoji Modifier",
     "Zero Width Joiner",
+    "Aksara",
+    "Aksara Pre-Base",
+    "Aksara Start",
+    "Virama Final",
+    "Virama",
+    "Unambiguous Hyphen",
 ];
 
 const COMBINING_CLASS_NAMES: Record<number, string> = {
@@ -178,8 +191,6 @@ const COMBINING_CLASS_NAMES: Record<number, string> = {
 
 const scriptDisplayNames = new Intl.DisplayNames("en", { type: "script" });
 
-const characters = parseUcdData();
-
 const ucdCodepointColumn: ColumnViewColumn<UcdEntry> = {
     id: "codepoint",
     title: "Codepoint",
@@ -231,15 +242,16 @@ const ucdCombiningClassColumn = inscriptionColumn(
     (item) => COMBINING_CLASS_NAMES[GLib.unicharCombiningClass(item.char)] ?? "Unknown",
 );
 
-const getCharacterData = (() => {
-    let cache: CharacterData | undefined;
+const ucdColumns: ColumnViewColumn<UcdEntry>[] = [
+    ucdCodepointColumn,
+    ucdCharColumn,
+    ucdNameColumn,
+    ucdTypeColumn,
+    ucdBreakTypeColumn,
+    ucdCombiningClassColumn,
+];
 
-    return (): CharacterData => {
-        cache ??= buildCharacterData();
-
-        return cache;
-    };
-})();
+const getCharacterData = once(buildCharacterData);
 
 const listviewUcdDemo: Demo = {
     id: "listview-ucd",
@@ -270,49 +282,10 @@ function getScriptName(value: GLib.UnicodeScript): string {
     return scriptDisplayNames.of(code) ?? "Unknown";
 }
 
-function readUcdBuffer(): Buffer {
+function readUcdVariant(): GLib.Variant {
     const bytes = Gio.resourcesLookupData(ucdDataPath, Gio.ResourceLookupFlags.NONE);
-    const data = bytes.getData();
 
-    if (!data) {
-        throw new Error(`UCD data resource is empty: ${ucdDataPath}`);
-    }
-
-    return Buffer.from(data);
-}
-
-function nextCodepoint(cursor: UcdCursor, lastCp: number): number | null {
-    if (cursor.offset + 4 > cursor.buffer.length) {
-        return null;
-    }
-
-    const cp = cursor.buffer.readUInt32LE(cursor.offset);
-
-    if (cp > 0x10_FF_FF || cp < lastCp) {
-        return null;
-    }
-
-    cursor.offset += 4;
-
-    return cp;
-}
-
-function readName(cursor: UcdCursor): string | null {
-    let end = cursor.offset;
-
-    while (end < cursor.buffer.length && cursor.buffer[end] !== 0) {
-        end++;
-    }
-
-    if (end >= cursor.buffer.length) {
-        return null;
-    }
-
-    const name = cursor.buffer.subarray(cursor.offset, end).toString("utf8");
-    const afterName = end + 1;
-    cursor.offset = afterName + ((4 - (afterName % 4)) % 4);
-
-    return name;
+    return GLib.Variant.newFromBytes(GLib.VariantType.new("a(us)"), bytes, true);
 }
 
 function appendUcdEntry(entries: UcdEntry[], cp: number, name: string) {
@@ -331,19 +304,15 @@ function appendUcdEntry(entries: UcdEntry[], cp: number, name: string) {
 }
 
 function parseUcdData(): UcdEntry[] {
-    const cursor: UcdCursor = { buffer: readUcdBuffer(), offset: 0 };
+    const data = readUcdVariant();
     const entries: UcdEntry[] = [];
-    let cp = nextCodepoint(cursor, -1);
 
-    while (cp !== null) {
-        const name = readName(cursor);
-
-        if (name === null) {
-            break;
-        }
+    for (let index = 0; index < data.nChildren(); index++) {
+        const record = data.getChildValue(index);
+        const cp = record.getChildValue(0).getUint32();
+        const [name] = record.getChildValue(1).getString();
 
         appendUcdEntry(entries, cp, name);
-        cp = nextCodepoint(cursor, cp);
     }
 
     return entries;
@@ -394,9 +363,10 @@ function groupByScript(entries: UcdEntry[]): UcdSection[] {
 }
 
 function buildCharacterData(): CharacterData {
-    const sections = groupByScript(characters);
+    const codepoints = parseUcdData().toSorted((a, b) => a.codepoint - b.codepoint);
+    const sections = groupByScript(codepoints);
 
-    return { sections, flat: sections.flatMap((section) => section.entries) };
+    return { sections, flat: sections.flatMap((section) => section.entries), codepoints };
 }
 
 function inscriptionColumn(id: string, title: string, label: (item: UcdEntry) => string): ColumnViewColumn<UcdEntry> {
@@ -430,14 +400,28 @@ const renderUcdHeader = ({ section: script }: { section: string }) => (
     </GtkLabel>
 );
 
+function displayCharacterData(data: CharacterData, sort: UcdSort): DisplayedCharacterData {
+    if (sort.column !== "codepoint") {
+        return { entries: data.flat, sections: data.sections };
+    }
+
+    const entries = sort.order === Gtk.SortType.DESCENDING ? data.codepoints.toReversed() : data.codepoints;
+
+    return { entries, sections: [{ script: "", entries }] };
+}
+
 function ListViewUcdDemo() {
     const [selectedChar, setSelectedChar] = useState("");
-    const { sections: characterSections, flat: flatSorted } = getCharacterData();
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const [sort, setSort] = useState<UcdSort>({ column: null, order: Gtk.SortType.ASCENDING });
+    const isCodepointSorted = sort.column === "codepoint";
+    const { entries: displayedEntries, sections: displayedSections } = displayCharacterData(getCharacterData(), sort);
 
     const handleActivate = (position: number) => {
-        const entry = flatSorted[position];
+        const entry = displayedEntries[position];
 
         if (entry) {
+            setSelectedIds([entry.codepointStr]);
             setSelectedChar(entry.char);
         }
     };
@@ -450,20 +434,21 @@ function ListViewUcdDemo() {
                     showColumnSeparators
                     estimatedItemHeight={32}
                     onActivate={handleActivate}
-                    renderHeader={renderUcdHeader}
-                    sections={characterSections.map((section) => ({
+                    selectionMode={Gtk.SelectionMode.SINGLE}
+                    selectedIds={selectedIds}
+                    onSelectionChanged={setSelectedIds}
+                    sortColumn={sort.column}
+                    sortOrder={sort.order}
+                    onSortChanged={(column, order) => {
+                        setSort({ column, order });
+                    }}
+                    renderHeader={isCodepointSorted ? null : renderUcdHeader}
+                    sections={displayedSections.map((section) => ({
                         id: section.script,
                         value: section.script,
                         data: section.entries.map((entry) => ({ id: entry.codepointStr, value: entry })),
                     }))}
-                    columns={[
-                        ucdCodepointColumn,
-                        ucdCharColumn,
-                        ucdNameColumn,
-                        ucdTypeColumn,
-                        ucdBreakTypeColumn,
-                        ucdCombiningClassColumn,
-                    ]}
+                    columns={ucdColumns}
                 />
             </GtkScrolledWindow>
             <GtkLabel name="selected-char" cssClasses={[css`font-size: 80px;`]} hexpand widthChars={2}>

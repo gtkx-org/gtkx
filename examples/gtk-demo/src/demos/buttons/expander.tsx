@@ -1,4 +1,3 @@
-import type * as GObject from "@gtkx/gi/gobject";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -14,7 +13,7 @@ import {
 import { useParentWindow } from "@gtkx/react";
 import { useState } from "react";
 import type { Demo } from "../types.js";
-import gtkLogoCursorPath from "../../../data/demos/buttons/gtk_logo_cursor.png?resource";
+import gtkLogoCursorPath from "../../../data/demos/gtk_logo_cursor.png?resource";
 import sourceCode from "./expander.tsx?raw";
 
 const DETAILS_TEXT =
@@ -71,14 +70,8 @@ function ExpanderDemo() {
     const [texture] = useState(() => Gdk.Texture.newFromResource(gtkLogoCursorPath));
     const parentWindow = useParentWindow();
 
-    const handleExpandedNotify = (pspec: GObject.ParamSpec, self: Gtk.Expander) => {
-        if (pspec.getName() !== "expanded") {
-            return;
-        }
-
-        if (parentWindow) {
-            parentWindow.setResizable(self.getExpanded());
-        }
+    const handleExpandedNotify = (_expanded: boolean | null, self: Gtk.Expander) => {
+        parentWindow?.setResizable(self.getExpanded());
     };
 
     return (
@@ -95,7 +88,7 @@ function ExpanderDemo() {
                 Here are some more details but not the full story
             </GtkLabel>
 
-            <GtkExpander name="expander" label="Details:" vexpand onNotify={handleExpandedNotify}>
+            <GtkExpander name="expander" label="Details:" vexpand onNotifyExpanded={handleExpandedNotify}>
                 <DetailsView texture={texture} />
             </GtkExpander>
         </GtkBox>

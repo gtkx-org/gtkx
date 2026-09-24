@@ -17,9 +17,9 @@ describe("headerbarDemo metadata", () => {
 describe("headerbarDemo header content", () => {
     it("renders the navigation buttons with the symbolic icons and tooltips", async () => {
         await renderDemo(headerbarDemo);
-        const back = await screen.findByName("back-button", { as: Gtk.Button });
-        const forward = await screen.findByName("forward-button", { as: Gtk.Button });
-        const checkOut = await screen.findByName("check-out-button", { as: Gtk.Button });
+        const back = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Back", as: Gtk.Button });
+        const forward = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Forward", as: Gtk.Button });
+        const checkOut = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Check out", as: Gtk.Button });
         expect(back).toHaveObjectProperty("iconName", "go-previous-symbolic");
         expect(forward).toHaveObjectProperty("iconName", "go-next-symbolic");
         expect(checkOut).toHaveObjectProperty("iconName", "mail-send-receive-symbolic");

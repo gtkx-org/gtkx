@@ -600,7 +600,7 @@ const runDeploy = async (options: DeployOptions): Promise<void> => {
     const plan = await regenerate(options, planned);
     const settings = settingsFor(plan, options, plan.arches[0]);
     const buildOutDir = options.shouldSkipBuild ? null : resolveBuildOutDir(settings.paths.root, settings.paths.dist);
-    prepareDeployOutDir(settings.paths.root, settings.paths.outDir);
+    using preparedDeployOutput = prepareDeployOutDir(settings.paths.root, settings.paths.outDir);
     const metadata = await buildApplication({ options, plan, settings, buildOutDir });
     const artifacts: DeployArtifact[] = [];
 
@@ -608,6 +608,7 @@ const runDeploy = async (options: DeployOptions): Promise<void> => {
         artifacts.push(...await deployArch({ options, plan, arch, metadata }));
     }
 
+    preparedDeployOutput.commit();
     finish(options, settings, artifacts);
 };
 

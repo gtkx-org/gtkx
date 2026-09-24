@@ -67,12 +67,12 @@ function useFramesState() {
         };
     }, [colorWidget]);
 
-    const fpsAttrs = (() => {
+    const [fpsAttrs] = useState(() => {
         const attrs = Pango.AttrList.new();
         attrs.insert(Pango.AttrFontFeatures.new("tnum=1"));
 
         return attrs;
-    })();
+    });
 
     return { setColorWidget, fps, fpsAttrs };
 }
@@ -97,7 +97,14 @@ function FramesTitlebar() {
     const { fps, fpsAttrs } = useFrames();
 
     return (
-        <GtkHeaderBar name="frames-header" end={<GtkLabel attributes={fpsAttrs}>{`${fps.toFixed(2)} fps`}</GtkLabel>} />
+        <GtkHeaderBar
+            name="frames-header"
+            end={(
+                <GtkLabel accessibleRole={Gtk.AccessibleRole.STATUS} attributes={fpsAttrs}>
+                    {`${fps.toFixed(2)} fps`}
+                </GtkLabel>
+            )}
+        />
     );
 }
 
@@ -106,7 +113,14 @@ function FramesDemo() {
 
     return (
         <GtkBox>
-            <GtkxFramesColorWidget name="color-widget" ref={setColorWidget} hexpand vexpand />
+            <GtkxFramesColorWidget
+                name="color-widget"
+                ref={setColorWidget}
+                accessibleRole={Gtk.AccessibleRole.IMG}
+                accessibleLabel="Changing color"
+                hexpand
+                vexpand
+            />
         </GtkBox>
     );
 }

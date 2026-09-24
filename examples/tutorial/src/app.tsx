@@ -54,7 +54,6 @@ const ApplicationActions = ({ application }: { application: Adw.Application | nu
                 }
                 openTask(ALL_TASKS, task.id);
                 application?.activate();
-                application?.withdrawNotification(task.id);
             }}
         />
     </>

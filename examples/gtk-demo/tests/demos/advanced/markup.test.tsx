@@ -33,14 +33,20 @@ describe("markupDemo initial state", () => {
     it("populates the source text view buffer with the raw markup content", async () => {
         await renderDemo(markupDemo);
         await clickSourceToggle();
-        const source = await screen.findByName("source-view", { as: Gtk.TextView });
+        const source = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, {
+            name: "Markup source",
+            as: Gtk.TextView,
+        });
         expect(source).toHaveDisplayValue(/Text sizes:/);
         expect(source).toHaveDisplayValue(/<span size="xx-small">/);
     });
 
     it("populates the formatted view with parsed markup, stripping the raw span tags", async () => {
         await renderDemo(markupDemo);
-        const formatted = await screen.findByName("formatted-view", { as: Gtk.TextView });
+        const formatted = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, {
+            name: "Formatted markup",
+            as: Gtk.TextView,
+        });
         expect(formatted).toHaveDisplayValue(/Text sizes:/);
         const formattedText = readBufferText(formatted);
         expect(formattedText).not.toContain("<span");

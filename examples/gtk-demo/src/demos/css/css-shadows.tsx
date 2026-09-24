@@ -1,10 +1,10 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkPaned, GtkScrolledWindow, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkPaned, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
+import { CssEditor } from "./css-editor.js";
 import sourceCode from "./css-shadows.tsx?raw";
 import cssviewCssPath from "./cssview.css?url";
 import resetCssPath from "./reset.css?url";
-import { useCssEditor } from "./use-css-editor.js";
 
 const DEFAULT_CSS = `/* You can edit the text in this window to change the
  * appearance of this Window.
@@ -64,11 +64,8 @@ const cssShadowsDemo: Demo = {
 };
 
 function CssShadowsDemo() {
-    const { textViewRef, onChanged } = useCssEditor(DEFAULT_CSS);
-
     return (
         <GtkPaned
-            name="paned"
             orientation={Gtk.Orientation.VERTICAL}
             resizeStartChild={false}
             startChild={(
@@ -80,11 +77,7 @@ function CssShadowsDemo() {
             )}
             endChild={(
                 <GtkScrolledWindow>
-                    <GtkTextView
-                        name="text-view"
-                        ref={textViewRef}
-                        buffer={<GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>}
-                    />
+                    <CssEditor defaultCss={DEFAULT_CSS} />
                 </GtkScrolledWindow>
             )}
         />

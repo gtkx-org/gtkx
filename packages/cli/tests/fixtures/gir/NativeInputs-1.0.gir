@@ -1,0 +1,87 @@
+<?xml version="1.0"?>
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <include name="Gio" version="2.0"/>
+  <namespace name="NativeInputs" version="1.0" shared-library="libnativeinputs.so"
+             c:identifier-prefixes="NativeInputs" c:symbol-prefixes="native_inputs">
+    <alias name="Context" c:type="GAppLaunchContext">
+      <type name="Gio.AppLaunchContext" c:type="GAppLaunchContext"/>
+    </alias>
+    <callback name="Transform" c:type="NativeInputsTransform">
+      <return-value transfer-ownership="none">
+        <type name="Gio.AppLaunchContext" c:type="GAppLaunchContext*"/>
+      </return-value>
+      <parameters>
+        <parameter name="context" transfer-ownership="none">
+          <type name="Gio.AppLaunchContext" c:type="GAppLaunchContext*"/>
+        </parameter>
+      </parameters>
+    </callback>
+    <function name="use_transform" c:identifier="native_inputs_use_transform">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="transform" transfer-ownership="none" scope="call">
+          <type name="Transform" c:type="NativeInputsTransform"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="use_context" c:identifier="native_inputs_use_context">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="context" transfer-ownership="none">
+          <type name="Context" c:type="GAppLaunchContext*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <class name="Probe" c:type="NativeInputsProbe" c:symbol-prefix="probe"
+           parent="GObject.Object" glib:type-name="NativeInputsProbe"
+           glib:get-type="native_inputs_probe_get_type" glib:type-struct="ProbeClass">
+      <property name="context" readable="1" writable="1" transfer-ownership="none">
+        <type name="Gio.AppLaunchContext" c:type="GAppLaunchContext*"/>
+      </property>
+      <virtual-method name="transform">
+        <return-value transfer-ownership="none">
+          <type name="Gio.AppLaunchContext" c:type="GAppLaunchContext*"/>
+        </return-value>
+        <parameters>
+          <instance-parameter name="self" transfer-ownership="none">
+            <type name="Probe" c:type="NativeInputsProbe*"/>
+          </instance-parameter>
+          <parameter name="context" transfer-ownership="none">
+            <type name="Gio.AppLaunchContext" c:type="GAppLaunchContext*"/>
+          </parameter>
+        </parameters>
+      </virtual-method>
+      <glib:signal name="transform" when="last">
+        <return-value transfer-ownership="none">
+          <type name="Gio.AppLaunchContext" c:type="GAppLaunchContext*"/>
+        </return-value>
+        <parameters>
+          <parameter name="context" transfer-ownership="none">
+            <type name="Gio.AppLaunchContext" c:type="GAppLaunchContext*"/>
+          </parameter>
+        </parameters>
+      </glib:signal>
+    </class>
+    <record name="ProbeClass" c:type="NativeInputsProbeClass" glib:is-gtype-struct-for="Probe">
+      <field name="parent_class"><type name="GObject.ObjectClass" c:type="GObjectClass"/></field>
+      <field name="transform">
+        <callback name="transform">
+          <return-value transfer-ownership="none">
+            <type name="Gio.AppLaunchContext" c:type="GAppLaunchContext*"/>
+          </return-value>
+          <parameters>
+            <parameter name="self" transfer-ownership="none">
+              <type name="Probe" c:type="NativeInputsProbe*"/>
+            </parameter>
+            <parameter name="context" transfer-ownership="none">
+              <type name="Gio.AppLaunchContext" c:type="GAppLaunchContext*"/>
+            </parameter>
+          </parameters>
+        </callback>
+      </field>
+    </record>
+  </namespace>
+</repository>

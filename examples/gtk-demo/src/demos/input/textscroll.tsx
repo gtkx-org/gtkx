@@ -82,7 +82,7 @@ function startAutoScroll(
 
     const buffer = textView.getBuffer();
     const markName = isScrollToEnd ? "end" : "scroll";
-    buffer.createMark(markName, buffer.getEndIter(), isScrollToEnd);
+    buffer.createMark(markName, buffer.getEndIter(), !isScrollToEnd);
 
     const timeoutId = setInterval(
         () => {
@@ -103,7 +103,11 @@ function AutoScrollTextView({ isScrollToEnd }: { isScrollToEnd: boolean }) {
 
     return (
         <GtkScrolledWindow hexpand>
-            <GtkTextView ref={textViewRef} name={isScrollToEnd ? "text-view-end" : "text-view-scroll"} />
+            <GtkTextView
+                ref={textViewRef}
+                name={isScrollToEnd ? "text-view-end" : "text-view-scroll"}
+                accessibleLabel={isScrollToEnd ? "Scroll to end" : "Scroll to bottom"}
+            />
         </GtkScrolledWindow>
     );
 }

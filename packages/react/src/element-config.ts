@@ -65,7 +65,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         props: internal("ChildrenProps"),
     },
     GtkTextChildAnchor: {
-        props: internal("GtkTextChildAnchorProps"),
+        props: { ...internal("GtkTextChildAnchorProps"), constructOnly: ["replacement"] },
     },
     GtkGridLayoutChild: {
         isLazy: true,
@@ -86,7 +86,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         props: internal("ActionGroupProps"),
     },
     GtkWidget: {
-        props: internal("GtkWidgetProps"),
+        props: { ...internal("GtkWidgetProps"), constructOnly: ["textChildAnchor"] },
     },
     GtkBox: {
         props: internal("ChildrenProps"),
@@ -122,7 +122,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
         },
     },
     GtkTextView: {
-        acceptedChildTypes: ["GtkTextBuffer"],
+        acceptedChildTypes: ["GtkTextBuffer", "GtkWidget"],
         props: internal("ChildrenProps"),
     },
     GActionMap: {

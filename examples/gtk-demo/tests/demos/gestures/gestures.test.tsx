@@ -45,4 +45,20 @@ describe("gesturesDemo", () => {
         await userEvent.longPress(drawingArea, 150, 150);
         expect(await paintWindow()).not.toBe(baseline);
     });
+
+    it("paints the rotation gesture", async () => {
+        await renderDemo(gesturesDemo);
+        const drawingArea = await findDrawingArea();
+        const baseline = await paintWindow();
+        await userEvent.rotate(drawingArea, 0, Math.PI / 4);
+        expect(await paintWindow()).not.toBe(baseline);
+    });
+
+    it("paints the zoom gesture", async () => {
+        await renderDemo(gesturesDemo);
+        const drawingArea = await findDrawingArea();
+        const baseline = await paintWindow();
+        await userEvent.zoom(drawingArea, 1.5);
+        expect(await paintWindow()).not.toBe(baseline);
+    });
 });

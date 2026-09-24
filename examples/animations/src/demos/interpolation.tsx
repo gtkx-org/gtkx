@@ -42,6 +42,7 @@ function InterpolationDemo() {
                 name="interpolation-progress"
                 hexpand
                 fraction={value.to((current) => current / 100)}
+                accessibleLabel="Interpolation progress"
             />
             <AnimatedBox
                 name="interpolation-bar"

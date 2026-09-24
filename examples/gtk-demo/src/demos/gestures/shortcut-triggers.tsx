@@ -1,5 +1,6 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import {
+    GtkBox,
     GtkCallbackAction,
     GtkLabel,
     GtkListBox,
@@ -7,16 +8,14 @@ import {
     GtkShortcutController,
     GtkShortcutTrigger,
 } from "@gtkx/jsx/gtk";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./shortcut-triggers.tsx?raw";
 
 const shortcutTriggersDemo: Demo = {
     id: "shortcut-triggers",
     title: "Shortcuts",
-    description:
-        "GtkShortcut is the abstraction used by GTK to handle shortcuts from keyboard or other input " +
-        "devices.\n\nShortcut triggers can be used to weave complex sequences of key presses into " +
-        "sophisticated mechanisms to activate shortcuts.\n\nThis demo code shows creative ways to do that.",
+    description: "This demo maps keyboard shortcut triggers to actions.",
     keywords: ["GtkShortcutController"],
     component: ShortcutTriggersDemo,
     sourceCode,
@@ -24,48 +23,65 @@ const shortcutTriggersDemo: Demo = {
     isResizable: false,
 };
 
-const logAction = (message: string) => (): boolean => {
-    console.log(message);
-
-    return true;
+type ShortcutLabelProps = {
+    name: string;
+    accelerator: string;
+    children: string;
+    onActivate: () => boolean;
 };
 
+const ShortcutLabel = ({ name, accelerator, children, onActivate }: ShortcutLabelProps) => (
+    <GtkLabel
+        name={name}
+        controllers={(
+            <GtkShortcutController
+                scope={Gtk.ShortcutScope.GLOBAL}
+                shortcuts={(
+                    <GtkShortcut
+                        trigger={<GtkShortcutTrigger accelerator={accelerator} />}
+                        action={<GtkCallbackAction callback={onActivate} />}
+                    />
+                )}
+            />
+        )}
+    >
+        {children}
+    </GtkLabel>
+);
+
 function ShortcutTriggersDemo() {
+    const [status, setStatus] = useState("No shortcut activated");
+    const activate = (message: string) => (): boolean => {
+        setStatus(message);
+
+        return true;
+    };
+
     return (
-        <GtkListBox name="list-box" marginTop={6} marginBottom={6} marginStart={6} marginEnd={6}>
-            <GtkLabel
-                name="label-ctrl-g"
-                controllers={(
-                    <GtkShortcutController
-                        scope={Gtk.ShortcutScope.GLOBAL}
-                        shortcuts={(
-                            <GtkShortcut
-                                trigger={<GtkShortcutTrigger accelerator="<Control>g" />}
-                                action={<GtkCallbackAction callback={logAction("activated Press Ctrl-G")} />}
-                            />
-                        )}
-                    />
-                )}
-            >
-                Press Ctrl-G
+        <GtkBox
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={6}
+            marginTop={6}
+            marginBottom={6}
+            marginStart={6}
+            marginEnd={6}
+        >
+            <GtkListBox name="list-box" selectionMode={Gtk.SelectionMode.NONE}>
+                <ShortcutLabel
+                    name="label-ctrl-g"
+                    accelerator="<Control>g"
+                    onActivate={activate("Ctrl-G activated")}
+                >
+                    Press Ctrl-G
+                </ShortcutLabel>
+                <ShortcutLabel name="label-x" accelerator="x" onActivate={activate("X activated")}>
+                    Press X
+                </ShortcutLabel>
+            </GtkListBox>
+            <GtkLabel name="shortcut-status" accessibleRole={Gtk.AccessibleRole.STATUS}>
+                {status}
             </GtkLabel>
-            <GtkLabel
-                name="label-x"
-                controllers={(
-                    <GtkShortcutController
-                        scope={Gtk.ShortcutScope.GLOBAL}
-                        shortcuts={(
-                            <GtkShortcut
-                                trigger={<GtkShortcutTrigger accelerator="x" />}
-                                action={<GtkCallbackAction callback={logAction("activated Press X")} />}
-                            />
-                        )}
-                    />
-                )}
-            >
-                Press X
-            </GtkLabel>
-        </GtkListBox>
+        </GtkBox>
     );
 }
 

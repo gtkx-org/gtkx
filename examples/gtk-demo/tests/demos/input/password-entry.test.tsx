@@ -1,8 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { fireEvent, queryController, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { screen, screenshot, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { passwordEntryDemo } from "../../../src/demos/input/password-entry.js";
-import { findWidget, renderDemo, type RenderDemoOptions } from "../../test-utils.js";
+import { renderDemo, type RenderDemoOptions } from "../../test-utils.js";
 
 const findPasswordFields = async (): Promise<{ password: Gtk.PasswordEntry; confirm: Gtk.PasswordEntry }> => {
     const password = await screen.findByName("password-entry", { as: Gtk.PasswordEntry });
@@ -13,8 +13,6 @@ const findPasswordFields = async (): Promise<{ password: Gtk.PasswordEntry; conf
 
 const findDoneButton = async (): Promise<Gtk.Button> =>
     screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Done", as: Gtk.Button });
-
-const isPeekImage = (widget: Gtk.Image): boolean => widget.getIconName() === "view-reveal-symbolic";
 
 const typePasswords = async (
     password: string,
@@ -39,16 +37,15 @@ describe("passwordEntryDemo form behavior", () => {
         await renderDemo(passwordEntryDemo);
         const { password } = await findPasswordFields();
         await userEvent.type(password, "s3cret");
-        const innerText = findWidget(password, Gtk.Text);
-        const peek = findWidget(password, Gtk.Image, isPeekImage);
-        expect(innerText).not.toBeNull();
-        expect(peek).not.toBeNull();
-        const gesture = queryController(peek as Gtk.Image, Gtk.GestureClick);
-        expect(gesture).not.toBeNull();
-        expect(innerText as Gtk.Text).toHaveObjectProperty("visibility", false);
-        await fireEvent(gesture as Gtk.GestureClick, "pressed", 1, 0, 0);
-        await fireEvent(gesture as Gtk.GestureClick, "released", 1, 0, 0);
-        expect(innerText as Gtk.Text).toHaveObjectProperty("visibility", true);
+        const peek = within(password).getByRole(Gtk.AccessibleRole.IMG, { as: Gtk.Image });
+
+        const hidden = await screenshot(password);
+        await userEvent.pointer(peek, "click");
+        const revealed = await screenshot(password);
+        expect(revealed.data).not.toBe(hidden.data);
+        await userEvent.pointer(peek, "click");
+        const hiddenAgain = await screenshot(password);
+        expect(hiddenAgain.data).not.toBe(revealed.data);
     });
 });
 

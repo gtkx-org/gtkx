@@ -325,10 +325,11 @@ type RegisteredClass<
     TProperties,
     TSignals,
     TInterfaces extends readonly Interface<TClass["prototype"]>[],
-> =
-    TClass extends abstract new (...args: infer TArgs) => infer TInstance
-        ? RegisteredParts<TClass, TArgs, RegisteredInstance<TInstance, TProperties, TSignals, TInterfaces>>
-        : never;
+> = RegisteredParts<
+    TClass,
+    ConstructorParameters<TClass>,
+    RegisteredInstance<InstanceType<TClass>, TProperties, TSignals, TInterfaces>
+>;
 
 /** A numeric GType or a generated or registered wrapper class. */
 type SignalGType = bigint | AnyClass<TypedClass>;
@@ -1057,4 +1058,4 @@ function toNativeOptions(
     return options;
 }
 
-export { type Interface, registerClass, type SignalGType, type SignalSpec };
+export { type Interface, registerClass, type RegisteredClass, type SignalGType, type SignalSpec };

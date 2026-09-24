@@ -31,7 +31,7 @@ const drawPageHeader = ({
     cr.stroke();
     const headerLayout = context.createPangoLayout();
     headerLayout.setFontDescription(Pango.FontDescription.fromString("sans 14"));
-    headerLayout.setText("printing.tsx", -1);
+    headerLayout.setText("print-operation.tsx", -1);
     let [, logicalRect] = headerLayout.getPixelExtents();
     let textWidth = logicalRect.width;
     let textHeight = logicalRect.height;

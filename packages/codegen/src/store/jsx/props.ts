@@ -10,7 +10,12 @@ import { forEachAncestor } from "../../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
 import { isEmittableProperty } from "../../analysis/property-admission.js";
 import { isEmittableSignal } from "../../analysis/signal-admission.js";
-import { recordTypeTarget, renderBaseType, type TsTypeTarget } from "../../analysis/ts-type.js";
+import {
+    isNativeInstanceType,
+    recordTypeTarget,
+    renderBaseType,
+    type TsTypeTarget,
+} from "../../analysis/ts-type.js";
 import { ancestorChain } from "../../gir/ancestry.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderJsDoc } from "../../writer/doc.js";
@@ -320,8 +325,8 @@ const reactTarget = (
     context: PropTypeRenderContext,
     isInput: boolean,
     canAcceptTypedArrayViews: boolean,
-): TsTypeTarget =>
-    recordTypeTarget(
+): TsTypeTarget => {
+    const target = recordTypeTarget(
         context.library,
         (name) => {
             context.imports.set(name.namespaceName, giNamespaceAlias(name.namespaceName));
@@ -335,6 +340,18 @@ const reactTarget = (
         },
         { isInput, canAcceptTypedArrayViews },
     );
+
+    return {
+        ...target,
+        renderNamed: (resolved, name) => {
+            const qualified = target.renderNamed(resolved, name);
+
+            return isInput && isNativeInstanceType(context.library, resolved)
+                ? `import("@gtkx/runtime").NativeInstance<${qualified}>`
+                : qualified;
+        },
+    };
+};
 
 const renderReactPropType = (
     context: PropTypeRenderContext,

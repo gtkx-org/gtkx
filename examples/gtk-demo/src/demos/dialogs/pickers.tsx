@@ -1,7 +1,10 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import * as Pango from "@gtkx/gi/pango";
+import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import {
     GtkBox,
     GtkButton,
@@ -19,7 +22,7 @@ import {
     GtkUriLauncher,
 } from "@gtkx/jsx/gtk";
 import { createPortal, rootElement, useParentWindow } from "@gtkx/react";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useEffectEvent, useState } from "react";
 import type { Demo } from "../types.js";
 import { isCancellation } from "../../is-cancellation.js";
 import { type CancellableHandle, useCancellable } from "../../use-cancellable.js";
@@ -91,8 +94,15 @@ type UriRowProps = {
     onLaunchUri: () => Promise<void>;
 };
 
+const reportPickerError = (failure: unknown, receive: (message: string) => void): void => {
+    if (isCancellation(failure)) {
+        return;
+    }
+
+    receive(failure instanceof Error ? failure.message : String(failure));
+};
+
 const gfileType = Gio.File.prototype.__type__;
-const DIALOG_TIMEOUT_SECONDS = 20;
 
 const pickersDemo: Demo = {
     id: "pickers",
@@ -112,39 +122,13 @@ const pickersDemo: Demo = {
     sourceCode,
 };
 
-const reportPickerError = (error: unknown): void => {
-    if (isCancellation(error)) {
-        return;
-    }
-
-    if (error instanceof Error) {
-        console.error(error.message);
-    }
-};
-
-const runWithTimeout = async (
-    cancellable: Gio.Cancellable,
-    action: (cancellable: Gio.Cancellable) => Promise<void>,
-    renewCancellable: () => void,
-) => {
-    const timeoutId = setTimeout(() => {
-        cancellable.cancel();
-    }, DIALOG_TIMEOUT_SECONDS * 1000);
-
-    try {
-        await action(cancellable);
-    } finally {
-        clearTimeout(timeoutId);
-        renewCancellable();
-    }
-};
-
 const launchFile = async (
     launcher: Gtk.FileLauncher | null,
-    cancellable: Gio.Cancellable | null,
+    handle: CancellableHandle,
     action: (launcher: Gtk.FileLauncher, cancellable: Gio.Cancellable) => Promise<void>,
-    renewCancellable: () => void,
+    onError: (error: unknown) => void,
 ) => {
+    const { cancellable } = handle;
     if (launcher === null || cancellable === null) {
         return;
     }
@@ -152,9 +136,9 @@ const launchFile = async (
     try {
         await action(launcher, cancellable);
     } catch (error) {
-        reportPickerError(error);
+        onError(error);
     } finally {
-        renewCancellable();
+        handle.renew();
     }
 };
 
@@ -165,24 +149,13 @@ const didAcceptFileDrop = (value: GObject.Value, setFile: (file: Gio.File) => vo
 
     const file = value.getObject();
 
-    if (file && file instanceof Gio.File) {
+    if (file instanceof Gio.File) {
         setFile(file);
 
         return true;
     }
 
     return false;
-};
-
-const clearFileSelection = (error: unknown, state: FilePickerState): void => {
-    if (isCancellation(error)) {
-        return;
-    }
-
-    reportPickerError(error);
-    state.setSelectedFile(null);
-    state.setFileName("None");
-    state.setIsPdf(false);
 };
 
 const requestFile = async (
@@ -195,55 +168,47 @@ const requestFile = async (
         const file = await fileDialog.open(parentWindow, cancellable);
         state.setFile(file);
     } catch (error) {
-        clearFileSelection(error, state);
+        state.reportError(error);
     }
 };
 
-const openFile = ({ fileDialog, parentWindow, cancellable, state, renewCancellable }: OpenFileRequest) =>
-    runWithTimeout(cancellable, async (current) => {
-        await requestFile(fileDialog, parentWindow, current, state);
-    }, renewCancellable);
+const openFile = async ({ fileDialog, parentWindow, cancellable, state, renewCancellable }: OpenFileRequest) => {
+    try {
+        await requestFile(fileDialog, parentWindow, cancellable, state);
+    } finally {
+        renewCancellable();
+    }
+};
 
 const launchApp = (
     parentWindow: Gtk.Window | null,
     launcher: Gtk.FileLauncher | null,
     cancellable: CancellableHandle,
+    onError: (error: unknown) => void,
 ) =>
     launchFile(
         launcher,
-        cancellable.cancellable,
+        cancellable,
         async (current, currentCancellable) => {
             await current.launch(parentWindow, currentCancellable);
         },
-        cancellable.renew,
+        onError,
     );
 
 const openFolder = (
     parentWindow: Gtk.Window | null,
     launcher: Gtk.FileLauncher | null,
     cancellable: CancellableHandle,
+    onError: (error: unknown) => void,
 ) =>
     launchFile(
         launcher,
-        cancellable.cancellable,
+        cancellable,
         async (current, currentCancellable) => {
             await current.openContainingFolder(parentWindow, currentCancellable);
         },
-        cancellable.renew,
+        onError,
     );
-
-const runPrintDialog = async (
-    printDialog: Gtk.PrintDialog,
-    parentWindow: Gtk.Window | null,
-    file: Gio.File,
-    cancellable: Gio.Cancellable,
-) => {
-    try {
-        await printDialog.printFile(parentWindow, null, file, cancellable);
-    } catch (error) {
-        reportPickerError(error);
-    }
-};
 
 const printFile = async ({ printDialog, parentWindow, cancellable, state, renewCancellable }: PrintFileRequest) => {
     const { selectedFile, isPdf } = state;
@@ -252,15 +217,20 @@ const printFile = async ({ printDialog, parentWindow, cancellable, state, renewC
         return;
     }
 
-    await runWithTimeout(cancellable, async (current) => {
-        await runPrintDialog(printDialog, parentWindow, selectedFile, current);
-    }, renewCancellable);
+    try {
+        await printDialog.printFile(parentWindow, null, selectedFile, cancellable);
+    } catch (error) {
+        state.reportError(error);
+    } finally {
+        renewCancellable();
+    }
 };
 
 const launchUri = async (
     parentWindow: Gtk.Window | null,
     launcher: Gtk.UriLauncher | null,
     cancellable: CancellableHandle,
+    onError: (error: unknown) => void,
 ) => {
     if (launcher === null || cancellable.cancellable === null) {
         return;
@@ -269,25 +239,102 @@ const launchUri = async (
     try {
         await launcher.launch(parentWindow, cancellable.cancellable);
     } catch (error) {
-        reportPickerError(error);
+        onError(error);
     } finally {
         cancellable.renew();
     }
 };
 
+type SelectedFile = { file: Gio.File; isPdf: boolean };
+
+type FileMetadataProps = {
+    file: Gio.File;
+    onSelected: (selection: SelectedFile) => void;
+    onError: (error: unknown) => void;
+};
+
+function FileMetadata({ file, onSelected, onError }: FileMetadataProps) {
+    const { cancellable, element } = useCancellable();
+    const reportResult = useEffectEvent((info: Gio.FileInfo) => {
+        const contentType = info.getContentType();
+        onSelected({ file, isPdf: contentType !== null && Gio.contentTypeIsA(contentType, "application/pdf") });
+    });
+    const reportError = useEffectEvent(onError);
+
+    useEffect(() => {
+        if (cancellable === null) {
+            return;
+        }
+
+        const flags = Gio.FileQueryInfoFlags.NONE;
+        void file.queryInfoAsync("standard::content-type", flags, GLib.PRIORITY_DEFAULT, cancellable)
+            .then((info) => {
+                if (!cancellable.isCancelled()) {
+                    reportResult(info);
+                }
+
+                return null;
+            })
+            .catch((error: unknown) => {
+                if (!cancellable.isCancelled()) {
+                    reportError(error);
+                }
+            });
+    }, [file, cancellable]);
+
+    return createPortal(element, rootElement);
+}
+
 function useFilePickerState() {
-    const [selectedFile, setSelectedFile] = useState<Gio.File | null>(null);
-    const [fileName, setFileName] = useState("None");
-    const [isPdf, setIsPdf] = useState(false);
-
-    const setFile = (file: Gio.File) => {
-        setSelectedFile(file);
-        setFileName(file.getBasename() ?? file.getUri());
-        const info = file.queryInfo("standard::content-type", 0, null);
-        setIsPdf(info.getContentType() === "application/pdf");
+    const [selection, setSelection] = useState<SelectedFile | null>(null);
+    const [pending, setPending] = useState<{ file: Gio.File; id: string } | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const reportError = (failure: unknown) => {
+        reportPickerError(failure, setError);
     };
+    const element = (
+        <>
+            {pending !== null && (
+                <FileMetadata
+                    key={pending.id}
+                    file={pending.file}
+                    onSelected={(value) => {
+                        setSelection(value);
+                        setPending(null);
+                    }}
+                    onError={(failure) => {
+                        reportPickerError(failure, (message) => {
+                            setPending(null);
+                            setError(message);
+                        });
+                    }}
+                />
+            )}
+            {error !== null && (
+                <AdwAlertDialog
+                    heading="Could not complete the operation"
+                    body={error}
+                    responses={[{ id: "ok", label: "_OK" }]}
+                    closeResponse="ok"
+                    defaultResponse="ok"
+                    onClosed={() => {
+                        setError(null);
+                    }}
+                />
+            )}
+        </>
+    );
 
-    return { selectedFile, setSelectedFile, fileName, setFileName, isPdf, setIsPdf, setFile };
+    return {
+        selectedFile: selection?.file ?? null,
+        fileName: selection === null ? "None" : selection.file.getBasename() ?? selection.file.getUri(),
+        isPdf: selection?.isPdf ?? false,
+        setFile: (file: Gio.File) => {
+            setPending({ file, id: crypto.randomUUID() });
+        },
+        reportError,
+        element,
+    };
 }
 
 function useFilePickerHandlers(
@@ -308,8 +355,9 @@ function useFilePickerHandlers(
                         renewCancellable: cancellables.openFile.renew,
                     })
                 : Promise.resolve(),
-        handleLaunchApp: () => launchApp(parentWindow, objects.fileLauncher, cancellables.launchApp),
-        handleOpenFolder: () => openFolder(parentWindow, objects.fileLauncher, cancellables.openFolder),
+        handleLaunchApp: () => launchApp(parentWindow, objects.fileLauncher, cancellables.launchApp, state.reportError),
+        handleOpenFolder: () =>
+            openFolder(parentWindow, objects.fileLauncher, cancellables.openFolder, state.reportError),
         handlePrintFile: () =>
             objects.printDialog !== null && cancellables.printFile.cancellable !== null
                 ? printFile({
@@ -320,7 +368,7 @@ function useFilePickerHandlers(
                         renewCancellable: cancellables.printFile.renew,
                     })
                 : Promise.resolve(),
-        handleLaunchUri: () => launchUri(parentWindow, objects.uriLauncher, cancellables.launchUri),
+        handleLaunchUri: () => launchUri(parentWindow, objects.uriLauncher, cancellables.launchUri, state.reportError),
     };
 }
 
@@ -373,6 +421,7 @@ const FileActionButtons = ({ fileState, handlers }: FileActionButtonsProps) => (
             iconName="system-run-symbolic"
             accessibleLabel="Open File"
             accessibleHasPopup
+            tooltipText="Open File"
             halign={Gtk.Align.END}
             sensitive={fileState.selectedFile !== null}
             onClicked={() => void handlers.handleLaunchApp()}
@@ -382,6 +431,7 @@ const FileActionButtons = ({ fileState, handlers }: FileActionButtonsProps) => (
             iconName="folder-symbolic"
             accessibleLabel="Open in Folder"
             accessibleHasPopup
+            tooltipText="Open in Folder"
             halign={Gtk.Align.END}
             sensitive={fileState.selectedFile !== null}
             onClicked={() => void handlers.handleOpenFolder()}
@@ -390,6 +440,7 @@ const FileActionButtons = ({ fileState, handlers }: FileActionButtonsProps) => (
             name="print-button"
             iconName="printer-symbolic"
             accessibleLabel="Print File"
+            accessibleHasPopup
             tooltipText="Print File"
             sensitive={fileState.isPdf}
             onClicked={() => void handlers.handlePrintFile()}
@@ -404,7 +455,7 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
         </PickerLabel>
         <GtkGridLayoutChild column={1} row={2}>
             <GtkBox spacing={6}>
-                <GtkLabel xalign={0} ellipsize={2} hexpand>
+                <GtkLabel xalign={0} ellipsize={Pango.EllipsizeMode.END} hexpand>
                     {fileState.fileName}
                 </GtkLabel>
                 <GtkButton
@@ -413,6 +464,7 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
                     iconName="document-open-symbolic"
                     accessibleLabel="Select File"
                     accessibleHasPopup
+                    tooltipText="Select File"
                     onClicked={() => void handlers.handleOpenFile()}
                     controllers={(
                         <GtkDropTarget
@@ -493,6 +545,7 @@ function PickersDemo() {
     return (
         <>
             {portal}
+            {fileState.element}
             <GtkGrid
                 rowSpacing={6}
                 columnSpacing={6}

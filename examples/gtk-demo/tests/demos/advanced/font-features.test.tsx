@@ -1,7 +1,7 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { act, fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { act, screen, screenshot, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { fontFeaturesDemo } from "../../../src/demos/advanced/font-features.js";
 import { renderDemo } from "../../test-utils.js";
@@ -22,19 +22,49 @@ const renderExpandedFeatures = async (): Promise<void> => {
     await expandFeatures();
 };
 
-const findFeatureCheck = async (name: string): Promise<Gtk.Widget> =>
+const findFeatureCheck = async (name: string): Promise<Gtk.CheckButton> =>
     await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name });
+
+const findFeatureRadio = async (name: string): Promise<Gtk.CheckButton> =>
+    await screen.findByRole(Gtk.AccessibleRole.RADIO, { name, as: Gtk.CheckButton });
+
+const findPreview = async (): Promise<Gtk.Label> => await screen.findByName("preview-label", { as: Gtk.Label });
+
+const requirePreviewAttribute = (label: Gtk.Label, type: Pango.AttrType): Pango.Attribute => {
+    const attribute = label.getAttributes()?.getAttributes().find((candidate) => candidate.klass.type === type);
+
+    if (!attribute) {
+        throw new Error("Missing preview attribute");
+    }
+
+    return attribute;
+};
+
+const requireFontDescription = (label: Gtk.Label): Pango.FontDescription => {
+    const fontAttribute = requirePreviewAttribute(label, Pango.AttrType.FONT_DESC).asFontDesc();
+
+    if (!fontAttribute) {
+        throw new Error("Invalid font description attribute");
+    }
+
+    return fontAttribute.desc;
+};
 
 const findSettingsLabel = async (): Promise<Gtk.Label> => await screen.findByName("settings", { as: Gtk.Label });
 
-const commitEntryValue = async (name: string, value: string): Promise<Gtk.Entry> => {
-    await renderDemo(fontFeaturesDemo);
+const activateEntryValue = async (name: string, value: string): Promise<Gtk.Entry> => {
     const entry = await screen.findByName(name, { as: Gtk.Entry });
     await userEvent.clear(entry);
     await userEvent.type(entry, value);
     await userEvent.keyboard(entry, "{Enter}");
 
     return entry;
+};
+
+const commitEntryValue = async (name: string, value: string): Promise<Gtk.Entry> => {
+    await renderDemo(fontFeaturesDemo);
+
+    return await activateEntryValue(name, value);
 };
 
 const renderColorButtons = async (): Promise<{ fg: Gtk.ColorDialogButton; bg: Gtk.ColorDialogButton }> => {
@@ -87,11 +117,15 @@ describe("fontFeaturesDemo rendering", () => {
         expect(label).toHaveTextContent("Grumpy wizards");
     });
 
-    it("renders three Slider/Entry rows bound to the initial Size, Letterspacing, Line Height values", async () => {
+    it("labels the initial size, letter spacing, and line-height controls", async () => {
         await renderDemo(fontFeaturesDemo);
-        expect(await screen.findByName("size_entry")).toHaveDisplayValue("14");
-        expect(await screen.findByName("letterspacing_entry")).toHaveDisplayValue("0");
-        expect(await screen.findByName("line_height_entry")).toHaveDisplayValue("1");
+        expect(await screen.findByRole(Gtk.AccessibleRole.SLIDER, { name: "Size" })).toHaveValue(14);
+        expect(await screen.findByRole(Gtk.AccessibleRole.SLIDER, { name: "Letterspacing" })).toHaveValue(0);
+        expect(await screen.findByRole(Gtk.AccessibleRole.SLIDER, { name: "Line Height" })).toHaveValue(1);
+        await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Size" });
+        await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Letterspacing" });
+        await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Line Height" });
+        await screen.findByRole(Gtk.AccessibleRole.GROUP, { name: "Font" });
     });
 
     it("renders the settings label empty initially", async () => {
@@ -111,8 +145,17 @@ describe("fontFeaturesDemo view mode buttons", () => {
     it("switches to waterfall mode and renders multiple sized labels", async () => {
         const { waterfall } = await renderViewToggles();
         await userEvent.click(waterfall);
-        const waterfallLabels = await screen.findAllByName("waterfall-label");
+        const waterfallLabels = await screen.findAllByName("waterfall-label", { as: Gtk.Label });
         expect(waterfallLabels).toHaveLength(15);
+        const first = waterfallLabels[0];
+        const last = waterfallLabels.at(-1);
+
+        if (!first || !last) {
+            throw new Error("Missing waterfall labels");
+        }
+
+        expect(Pango.unitsToDouble(requireFontDescription(first).getSize())).toBe(7);
+        expect(Pango.unitsToDouble(requireFontDescription(last).getSize())).toBe(90);
     });
 
     it("switches back to plain mode", async () => {
@@ -155,6 +198,9 @@ describe("fontFeaturesDemo feature toggling", () => {
     it("activates Kerning when its checkbox is toggled", async () => {
         const settings = await activateKerningFeature();
         expect(settings).toHaveTextContent("kern=1");
+        const feature = requirePreviewAttribute(await findPreview(), Pango.AttrType.FONT_FEATURES);
+        expect(feature.startIndex).toBe(Pango.ATTR_INDEX_FROM_TEXT_BEGINNING);
+        expect(feature.endIndex).toBe(Pango.ATTR_INDEX_TO_TEXT_END);
     });
 
     it("cycles Kerning from active to explicitly-disabled on the second click (kern=0)", async () => {
@@ -169,12 +215,40 @@ describe("fontFeaturesDemo feature toggling", () => {
 
     it("selects a non-default radio value to enable a feature", async () => {
         await renderExpandedFeatures();
-        const liningFigures = await findFeatureCheck("Lining Figures");
+        const liningFigures = await findFeatureRadio("Lining Figures");
+        const oldstyleFigures = await findFeatureRadio("Oldstyle Figures");
         await userEvent.click(liningFigures);
         const settings = await findSettingsLabel();
 
         await waitFor(() => {
             expect(settings).toHaveTextContent("lnum=1");
+        });
+
+        expect(liningFigures).toBeChecked();
+        expect(oldstyleFigures).not.toBeChecked();
+        await userEvent.click(oldstyleFigures);
+
+        await waitFor(() => {
+            expect(liningFigures).not.toBeChecked();
+            expect(oldstyleFigures).toBeChecked();
+            expect(settings).toHaveTextContent("onum=1");
+        });
+    });
+
+    it("applies features to the selected UTF-8 byte range", async () => {
+        await renderDemo(fontFeaturesDemo);
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Paragraph" }));
+        const preview = await findPreview();
+        preview.grabFocus();
+        await userEvent.keyboard(preview, "{Home}{Shift>}{ArrowRight}{/Shift}");
+        expect(preview.getSelectionBounds()).toEqual([true, 0, 1]);
+        await expandFeatures();
+        await userEvent.click(await findFeatureCheck("Kerning"));
+
+        await waitFor(() => {
+            const feature = requirePreviewAttribute(preview, Pango.AttrType.FONT_FEATURES);
+            expect(feature.startIndex).toBe(0);
+            expect(feature.endIndex).toBe(2);
         });
     });
 });
@@ -196,26 +270,90 @@ describe("fontFeaturesDemo titlebar", () => {
             expect(settings).not.toHaveTextContent();
         });
     });
+
+    it("restores the initial font and presentation", async () => {
+        await renderExpandedFeatures();
+        const preview = await findPreview();
+        const initial = await screenshot(preview);
+        await activateEntryValue("size_entry", "24");
+        await activateEntryValue("letterspacing_entry", "0.5");
+        await activateEntryValue("line_height_entry", "1.5");
+        await userEvent.click(await findFeatureCheck("Kerning"));
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Reset" }));
+
+        await waitFor(() => {
+            expect(screen.getByName("size_entry")).toHaveDisplayValue("14");
+            expect(screen.getByName("letterspacing_entry")).toHaveDisplayValue("0");
+            expect(screen.getByName("line_height_entry")).toHaveDisplayValue("1");
+            expect(screen.getByName("font-description")).toHaveTextContent("Sans 14");
+        });
+
+        const reset = await screenshot(preview);
+        expect(reset.data).toBe(initial.data);
+    });
 });
 
 describe("fontFeaturesDemo size entry", () => {
-    it("accepts a valid size entry value", async () => {
-        const sizeEntry = await commitEntryValue("size_entry", "24");
+    it("renders a valid size through the native font description", async () => {
+        await renderDemo(fontFeaturesDemo);
+        const preview = await findPreview();
+        const before = await screenshot(preview);
+        const sizeEntry = await activateEntryValue("size_entry", "24");
         expect(sizeEntry).toHaveDisplayValue("24");
+
+        await waitFor(() => {
+            const desc = requireFontDescription(preview);
+            expect(desc.getFamily()).toBe("Sans");
+            expect(Pango.unitsToDouble(desc.getSize())).toBe(24);
+        });
+
+        const after = await screenshot(preview);
+        expect(after.data).not.toBe(before.data);
+    });
+
+    it.each(["7", "100"])("accepts the supported %s point boundary", async (value) => {
+        const sizeEntry = await commitEntryValue("size_entry", value);
+        const preview = await findPreview();
+        expect(sizeEntry).toHaveDisplayValue(value);
+        expect(Pango.unitsToDouble(requireFontDescription(preview).getSize())).toBe(Number(value));
     });
 
     it("ignores out-of-range size values without crashing the preview", async () => {
         await commitEntryValue("size_entry", "9999");
-        const sliders = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER);
-        const sizeSlider = sliders[0] as Gtk.Scale;
+        const sizeSlider = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { name: "Size", as: Gtk.Scale });
         expect(sizeSlider.getValue()).toBe(14);
     });
 });
 
 describe("fontFeaturesDemo letterspacing entry", () => {
-    it("accepts a valid letterspacing entry", async () => {
-        const letterspacingEntry = await commitEntryValue("letterspacing_entry", "512");
-        expect(letterspacingEntry).toHaveDisplayValue("512");
+    it("converts pixel spacing to native Pango units and renders it", async () => {
+        await renderDemo(fontFeaturesDemo);
+        const preview = await findPreview();
+        const before = await screenshot(preview);
+        const letterspacingEntry = await activateEntryValue("letterspacing_entry", "0.5");
+        expect(letterspacingEntry).toHaveDisplayValue("0.5");
+        const spacing = requirePreviewAttribute(preview, Pango.AttrType.LETTER_SPACING).asInt();
+
+        if (!spacing) {
+            throw new Error("Invalid letter-spacing attribute");
+        }
+
+        expect(spacing.value).toBe(Pango.unitsFromDouble(0.5));
+        const after = await screenshot(preview);
+        expect(after.data).not.toBe(before.data);
+    });
+
+    it.each(["-1", "8"])("accepts the supported %s pixel boundary", async (value) => {
+        const entry = await commitEntryValue("letterspacing_entry", value);
+        expect(entry).toHaveDisplayValue(value);
+        expect(await screen.findByRole(Gtk.AccessibleRole.SLIDER, { name: "Letterspacing" })).toHaveValue(
+            Number(value),
+        );
+    });
+
+    it("ignores spacing outside the supported range", async () => {
+        await commitEntryValue("letterspacing_entry", "8.1");
+        expect(await screen.findByRole(Gtk.AccessibleRole.SLIDER, { name: "Letterspacing" })).toHaveValue(0);
     });
 });
 
@@ -223,12 +361,27 @@ describe("fontFeaturesDemo line-height entry", () => {
     it("accepts a valid line-height entry", async () => {
         const lineHeightEntry = await commitEntryValue("line_height_entry", "1.5");
         expect(lineHeightEntry).toHaveDisplayValue("1.5");
+        const preview = await findPreview();
+        const lineHeight = requirePreviewAttribute(preview, Pango.AttrType.LINE_HEIGHT).asFloat();
+
+        if (!lineHeight) {
+            throw new Error("Invalid line-height attribute");
+        }
+
+        expect(lineHeight.value).toBe(1.5);
+    });
+
+    it.each(["0.75", "2.5"])("accepts the supported %s line-height boundary", async (value) => {
+        const entry = await commitEntryValue("line_height_entry", value);
+        expect(entry).toHaveDisplayValue(value);
     });
 
     it("ignores invalid line-height values", async () => {
         await commitEntryValue("line_height_entry", "0.1");
-        const sliders = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER);
-        const lineHeightSlider = sliders[2] as Gtk.Scale;
+        const lineHeightSlider = await screen.findByRole(Gtk.AccessibleRole.SLIDER, {
+            name: "Line Height",
+            as: Gtk.Scale,
+        });
         expect(lineHeightSlider.getValue()).toBe(1);
     });
 });
@@ -239,7 +392,7 @@ describe("fontFeaturesDemo color swap", () => {
         expect(isRgbaEqual(fg, 0, 0, 0)).toBe(true);
         expect(isRgbaEqual(bg, 1, 1, 1)).toBe(true);
         const swap = await screen.findByName("swap-colors", { as: Gtk.Button });
-        await fireEvent(swap, "clicked");
+        await userEvent.click(swap);
 
         await waitFor(() => {
             expect(isRgbaEqual(fg, 1, 1, 1)).toBe(true);
@@ -265,7 +418,7 @@ describe("fontFeaturesDemo color swap", () => {
         });
 
         const swap = await screen.findByName("swap-colors", { as: Gtk.Button });
-        await fireEvent(swap, "clicked");
+        await userEvent.click(swap);
 
         await waitFor(() => {
             expect(isRgbaEqual(bg, 1, 0, 0)).toBe(true);
@@ -273,28 +426,10 @@ describe("fontFeaturesDemo color swap", () => {
     });
 });
 
-describe("fontFeaturesDemo font button", () => {
-    it("derives the size from a selected font description", async () => {
-        await renderDemo(fontFeaturesDemo);
-        const fontButton = await screen.findByName("font-button", { as: Gtk.FontDialogButton });
-
-        await act(() => {
-            fontButton.setFontDesc(Pango.FontDescription.fromString("Sans 30"));
-        });
-
-        const sizeEntry = await screen.findByName("size_entry", { as: Gtk.Entry });
-
-        await waitFor(() => {
-            expect(sizeEntry).toHaveDisplayValue("30");
-        });
-    });
-});
-
 describe("fontFeaturesDemo sliders", () => {
     it("updates the size via the Size scale and reflects it in the entry", async () => {
         await renderDemo(fontFeaturesDemo);
-        const sliders = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER);
-        const sizeSlider = sliders[0] as Gtk.Scale;
+        const sizeSlider = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { name: "Size", as: Gtk.Scale });
         expect(sizeSlider.getValue()).toBe(14);
         sizeSlider.grabFocus();
         await userEvent.keyboard(sizeSlider, "{PageUp}");
@@ -311,7 +446,88 @@ describe("fontFeaturesDemo sliders", () => {
     });
 });
 
+describe("fontFeaturesDemo font button", () => {
+    it("changes the face through its native chooser while retaining the controlled size", async () => {
+        await renderDemo(fontFeaturesDemo);
+        const fontButton = await screen.findByName("font-button", { as: Gtk.FontDialogButton });
+        await userEvent.click(within(fontButton).getByRole(Gtk.AccessibleRole.BUTTON));
+
+        const dialog = await waitFor(() => {
+            const windows = Gtk.Window.getToplevels();
+
+            for (let index = 0; index < windows.getNItems(); index += 1) {
+                const window = windows.getItem(index);
+
+                if (window instanceof Gtk.Window && window.getAccessibleRole() === Gtk.AccessibleRole.DIALOG) {
+                    return window;
+                }
+            }
+
+            throw new Error("Missing font dialog");
+        });
+
+        const chooser = within(dialog);
+        const faceName = "DejaVu Sans Mono Bold Oblique";
+        const faceList = chooser.getByRole(Gtk.AccessibleRole.LIST);
+        let face = chooser.queryByText(faceName);
+
+        for (let step = 0; face === null && step < 20; step += 1) {
+            await userEvent.scroll(faceList, { y: 250 });
+            face = chooser.queryByText(faceName);
+        }
+
+        if (!face) {
+            throw new Error("Missing DejaVu font face");
+        }
+
+        await userEvent.click(face);
+        await userEvent.click(chooser.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Select" }));
+        expect(await screen.findByName("font-description")).toHaveTextContent(`${faceName} 14`);
+
+        await activateEntryValue("size_entry", "24");
+        const preview = await findPreview();
+
+        await waitFor(() => {
+            const desc = requireFontDescription(preview);
+            expect(desc.getFamily()).toBe("DejaVu Sans Mono");
+            expect(desc.getWeight()).toBe(Pango.Weight.BOLD);
+            expect(desc.getStyle()).toBe(Pango.Style.OBLIQUE);
+            expect(Pango.unitsToDouble(desc.getSize())).toBe(24);
+        });
+    });
+});
+
 describe("fontFeaturesDemo edit mode Escape", () => {
+    it("keeps edited text while native font settings change and commits it", async () => {
+        await enterEditMode();
+        const textView = await screen.findByName("edit_textview", { as: Gtk.TextView });
+        const buffer = textView.getBuffer();
+        textView.grabFocus();
+        await userEvent.type(textView, "Edited ");
+        await userEvent.click(await screen.findByName("size_entry", { as: Gtk.Entry }));
+        const before = await screenshot(textView);
+        await activateEntryValue("size_entry", "24");
+        await activateEntryValue("letterspacing_entry", "0.5");
+        await activateEntryValue("line_height_entry", "1.5");
+        await expandFeatures();
+        await userEvent.click(await findFeatureCheck("Kerning"));
+
+        await waitFor(() => {
+            const text = buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false);
+            expect(text).toContain("Edited ");
+            expect(screen.getByName("settings")).toHaveTextContent("kern=1");
+        });
+
+        const after = await screenshot(textView);
+        expect(after.data).not.toBe(before.data);
+
+        await userEvent.click(await screen.findByName("plain_toggle", { as: Gtk.ToggleButton }));
+        const preview = await findPreview();
+        expect(preview.getText()).toContain("Edited ");
+        expect(Pango.unitsToDouble(requireFontDescription(preview).getSize())).toBe(24);
+        expect(requirePreviewAttribute(preview, Pango.AttrType.FONT_FEATURES).startIndex).toBe(0);
+    });
+
     it("reverts edits and returns to plain view when Escape is pressed", async () => {
         const stack = await enterEditMode();
         expect(stack).toHaveObjectProperty("visibleChildName", "entry");

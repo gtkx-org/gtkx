@@ -1,10 +1,14 @@
 import { ListView } from "@gtkx/components";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import * as Pango from "@gtkx/gi/pango";
+import { GSettings } from "@gtkx/jsx/gio";
 import {
     GtkBox,
     GtkEntry,
+    GtkEventControllerFocus,
     GtkHeaderBar,
     GtkLabel,
     GtkScrolledWindow,
@@ -12,7 +16,8 @@ import {
     GtkSearchEntry,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { createContext, useContext, useRef, useState } from "react";
+import { createPortal, rootElement } from "@gtkx/react";
+import { createContext, useCallback, useContext, useRef, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-settings2.tsx?raw";
 
@@ -20,11 +25,10 @@ type KeyItem = {
     id: string;
     name: string;
     value: string;
-    defaultValue: string;
-    description: string;
     schemaId: string;
     summary: string;
-    valueType: string;
+    schemaKey: Gio.SettingsSchemaKey;
+    settings: Gio.Settings;
 };
 
 type SchemaKeys = {
@@ -32,36 +36,16 @@ type SchemaKeys = {
     keys: KeyItem[];
 };
 
-type KeysState = React.RefObject<Map<string, string>>;
-
-type SchemaKeysListViewProps = {
-    filteredSchemaKeys: SchemaKeys[];
-    keysState: KeysState;
-    onValueEdit: (key: KeyItem, entry: Gtk.Entry) => void;
-};
-
 type Settings2ContextValue = {
+    searchText: string;
     isSearchActive: boolean;
     setIsSearchActive: (isEnabled: boolean) => void;
     setSearchText: (text: string) => void;
     filteredSchemaKeys: SchemaKeys[];
-    keysState: KeysState;
     handleSearchChanged: (entry: Gtk.SearchEntry) => void;
     handleStopSearch: () => void;
     handleValueEdit: (key: KeyItem, entry: Gtk.Entry) => void;
 };
-
-const revertingEntries: WeakSet<Gtk.Entry> = new WeakSet();
-
-const getAllSchemaKeys = (() => {
-    let cache: SchemaKeys[] | undefined;
-
-    return (): SchemaKeys[] => {
-        cache ??= loadAllSchemaKeys();
-
-        return cache;
-    };
-})();
 
 const Settings2Context = createContext<Settings2ContextValue | null>(null);
 
@@ -82,92 +66,38 @@ const listviewSettings2Demo: Demo = {
     defaultHeight: 480,
 };
 
-function logError(error: unknown) {
-    if (error instanceof Error) {
-        console.error(error.message);
-    }
+function loadKeyItem(schema: Gio.SettingsSchema, settings: Gio.Settings, name: string): KeyItem {
+    const schemaId = schema.getId();
+    const schemaKey = schema.getKey(name);
+
+    return {
+        id: `${schemaId}/${name}`,
+        name,
+        value: settings.getValue(name).print(false),
+        schemaId,
+        summary: schemaKey.getSummary() ?? "",
+        schemaKey,
+        settings,
+    };
 }
 
-function loadKeyItem(schemaId: string, schema: Gio.SettingsSchema, settings: Gio.Settings, name: string): KeyItem {
-    try {
-        const variant = settings.getValue(name);
-        const valueStr = variant.print(false);
-        const schemaKey = schema.getKey(name);
-
-        return {
-            id: `${schemaId}/${name}`,
-            name,
-            value: valueStr,
-            defaultValue: schemaKey.getDefaultValue().print(false),
-            description: schemaKey.getDescription() ?? "",
-            schemaId,
-            summary: schemaKey.getSummary() ?? "",
-            valueType: schemaKey.getValueType().dupString(),
-        };
-    } catch (error) {
-        logError(error);
-
-        return {
-            id: `${schemaId}/${name}`,
-            name,
-            value: "<error>",
-            defaultValue: "",
-            description: "",
-            schemaId,
-            summary: "",
-            valueType: "",
-        };
-    }
-}
-
-function loadSchemaKeysFor(source: Gio.SettingsSchemaSource, schemaId: string): KeyItem[] | null {
-    try {
-        const schema = source.lookup(schemaId, true);
-
-        if (!schema) {
-            return null;
+function SchemaSettings({ schemaId, onLoaded }: {
+    schemaId: string;
+    onLoaded: (schema: SchemaKeys) => void;
+}) {
+    const handleRef = useCallback((settings: Gio.Settings | null) => {
+        if (!settings) {
+            return;
         }
 
-        const settings = Gio.Settings.new(schemaId);
-        const keys = schema.listKeys().map((name) => loadKeyItem(schemaId, schema, settings, name));
-        keys.sort((a, b) => a.name.localeCompare(b.name));
+        const schema = GObject.getProperty(settings, "settingsSchema") as Gio.SettingsSchema;
+        const keys = schema.listKeys()
+            .toSorted((a, b) => a.localeCompare(b))
+            .map((name) => loadKeyItem(schema, settings, name));
+        onLoaded({ schemaId, keys });
+    }, [schemaId, onLoaded]);
 
-        return keys;
-    } catch (error) {
-        logError(error);
-
-        return null;
-    }
-}
-
-function compareSchemaIds(a: string, b: string): number {
-    if (a === b) {
-        return 0;
-    }
-
-    return a < b ? -1 : 1;
-}
-
-function loadAllSchemaKeys(): SchemaKeys[] {
-    const source = Gio.SettingsSchemaSource.getDefault();
-
-    if (!source) {
-        return [];
-    }
-
-    const [nonRelocatable] = source.listSchemas(true);
-    const schemaIds = nonRelocatable.toSorted(compareSchemaIds);
-    const result: SchemaKeys[] = [];
-
-    for (const schemaId of schemaIds) {
-        const schemaKeys = loadSchemaKeysFor(source, schemaId);
-
-        if (schemaKeys && schemaKeys.length > 0) {
-            result.push({ schemaId, keys: schemaKeys });
-        }
-    }
-
-    return result;
+    return createPortal(<GSettings schemaId={schemaId} ref={handleRef} />, rootElement);
 }
 
 function getSearchString(key: KeyItem): string {
@@ -184,99 +114,85 @@ function matchSchemaKeys(schema: SchemaKeys, searchText: string): SchemaKeys | n
     return { schemaId: schema.schemaId, keys: matchingKeys };
 }
 
-function filterSchemaKeys(searchText: string): SchemaKeys[] {
+function filterSchemaKeys(allSchemaKeys: SchemaKeys[], searchText: string): SchemaKeys[] {
     if (!searchText) {
-        return getAllSchemaKeys();
+        return allSchemaKeys;
     }
 
-    return getAllSchemaKeys()
+    return allSchemaKeys
         .map((schema) => matchSchemaKeys(schema, searchText))
         .filter((schema): schema is SchemaKeys => schema !== null);
 }
 
-function revertEntry(entry: Gtk.Entry, key: KeyItem, keysState: KeysState) {
-    entry.errorBell();
-    revertingEntries.add(entry);
+function applySettingValue(key: KeyItem, entry: Gtk.Entry): string {
+    const variant = GLib.Variant.parse(key.schemaKey.getValueType(), entry.getText(), null, null);
 
-    try {
-        entry.setText(keysState.current.get(key.id) ?? key.value);
-    } finally {
-        revertingEntries.delete(entry);
+    if (!key.schemaKey.rangeCheck(variant) || !key.settings.setValue(key.name, variant)) {
+        throw new Error("Cannot save this setting");
     }
+
+    return variant.print(false);
 }
 
-function isWithinSchemaRange(variant: GLib.Variant, key: KeyItem): boolean {
-    const source = Gio.SettingsSchemaSource.getDefault();
-
-    if (!source) {
-        return true;
-    }
-
-    const schema = source.lookup(key.schemaId, true);
-
-    if (!schema) {
-        return true;
-    }
-
-    const schemaKey = schema.getKey(key.name);
-
-    return schemaKey.rangeCheck(variant);
+function replaceKeyValue(schemas: SchemaKeys[], keyId: string, value: string): SchemaKeys[] {
+    return schemas.map((schema) => ({
+        ...schema,
+        keys: schema.keys.map((item) => item.id === keyId ? { ...item, value } : item),
+    }));
 }
 
-function applySettingValue(key: KeyItem, entry: Gtk.Entry, keysState: KeysState) {
-    const variantType = GLib.VariantType.new(key.valueType);
-    const variant = GLib.Variant.parse(variantType, entry.getText(), null, null);
+function SettingEntry({ item, onValueEdit }: {
+    item: KeyItem;
+    onValueEdit: (key: KeyItem, entry: Gtk.Entry) => void;
+}) {
+    const entryRef = useRef<Gtk.Entry | null>(null);
 
-    if (!isWithinSchemaRange(variant, key)) {
-        revertEntry(entry, key, keysState);
-
-        return;
-    }
-
-    const settings = Gio.Settings.new(key.schemaId);
-    settings.setValue(key.name, variant);
-    keysState.current.set(key.id, variant.print(false));
-}
-
-function commitSettingValue(key: KeyItem, entry: Gtk.Entry, keysState: KeysState) {
-    if (revertingEntries.has(entry) || !key.valueType) {
-        return;
-    }
-
-    try {
-        applySettingValue(key, entry, keysState);
-    } catch (error) {
-        logError(error);
-        revertEntry(entry, key, keysState);
-    }
+    return (
+        <GtkEntry
+            ref={entryRef}
+            text={item.value}
+            accessibleLabel={`Value for ${item.schemaId}/${item.name}`}
+            halign={Gtk.Align.END}
+            hexpand
+            onActivate={(entry) => {
+                onValueEdit(item, entry);
+            }}
+            controllers={(
+                <GtkEventControllerFocus
+                    onLeave={() => {
+                        if (entryRef.current) {
+                            onValueEdit(item, entryRef.current);
+                        }
+                    }}
+                />
+            )}
+        />
+    );
 }
 
 function renderSchemaHeader({ section: schemaId }: { section: string }) {
     return <GtkLabel xalign={0}>{schemaId}</GtkLabel>;
 }
 
-const SchemaKeysListView = ({ filteredSchemaKeys, keysState, onValueEdit }: SchemaKeysListViewProps) => (
-    <GtkScrolledWindow name="scrolled">
+const SchemaKeysListView = ({ filteredSchemaKeys, onValueEdit }: {
+    filteredSchemaKeys: SchemaKeys[];
+    onValueEdit: (key: KeyItem, entry: Gtk.Entry) => void;
+}) => (
+    <GtkScrolledWindow name="scrolled" vexpand>
         <ListView
             name="list-view"
             vexpand
+            selectionMode={Gtk.SelectionMode.NONE}
             cssClasses={["rich-list"]}
             renderItem={({ item: key }: { item: KeyItem }) => (
                 <GtkBox>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                         <GtkLabel xalign={0}>{key.name}</GtkLabel>
-                        <GtkLabel cssClasses={["dim-label"]} xalign={0} ellipsize={3}>
+                        <GtkLabel cssClasses={["dim-label"]} xalign={0} ellipsize={Pango.EllipsizeMode.END}>
                             {key.summary}
                         </GtkLabel>
                     </GtkBox>
-                    <GtkEntry
-                        text={keysState.current.get(key.id) ?? key.value}
-                        halign={Gtk.Align.END}
-                        hexpand
-                        onChanged={(entry: Gtk.Entry) => {
-                            onValueEdit(key, entry);
-                        }}
-                    />
+                    <SettingEntry item={key} onValueEdit={onValueEdit} />
                 </GtkBox>
             )}
             renderHeader={renderSchemaHeader}
@@ -302,34 +218,59 @@ function useSettings2Context(): Settings2ContextValue {
 function ListViewSettings2Provider({ children }: DemoProviderProps) {
     const [searchText, setSearchText] = useState("");
     const [isSearchActive, setIsSearchActive] = useState(false);
-    const keysState = useRef(new Map<string, string>());
+    const [schemaIds] = useState(() =>
+        Gio.SettingsSchemaSource.getDefault()?.listSchemas(true)[0].toSorted((a, b) => a.localeCompare(b)) ?? [],
+    );
+    const [allSchemaKeys, setAllSchemaKeys] = useState<SchemaKeys[]>([]);
+    const handleSchemaLoaded = useCallback((schema: SchemaKeys) => {
+        setAllSchemaKeys((previous) => [...previous.filter((item) => item.schemaId !== schema.schemaId), schema]
+            .toSorted((a, b) => a.schemaId.localeCompare(b.schemaId)));
+    }, []);
 
     const handleSearchChanged = (entry: Gtk.SearchEntry) => {
-        setSearchText(entry.getText().toLowerCase());
+        setSearchText(entry.getText());
     };
 
     const handleStopSearch = () => {
+        setIsSearchActive(false);
         setSearchText("");
     };
 
-    const filteredSchemaKeys = filterSchemaKeys(searchText);
+    const filteredSchemaKeys = filterSchemaKeys(allSchemaKeys, searchText.toLowerCase());
 
     const handleValueEdit = (key: KeyItem, entry: Gtk.Entry) => {
-        commitSettingValue(key, entry, keysState);
+        if (entry.getText() === key.value) {
+            return;
+        }
+
+        try {
+            const value = applySettingValue(key, entry);
+            setAllSchemaKeys((previous) => replaceKeyValue(previous, key.id, value));
+        } catch {
+            entry.setText(key.value);
+            entry.errorBell();
+        }
     };
 
     const value = {
+        searchText,
         isSearchActive,
         setIsSearchActive,
         setSearchText,
         filteredSchemaKeys,
-        keysState,
         handleSearchChanged,
         handleStopSearch,
         handleValueEdit,
     };
 
-    return <Settings2Context.Provider value={value}>{children}</Settings2Context.Provider>;
+    return (
+        <Settings2Context.Provider value={value}>
+            {schemaIds.map((schemaId) => (
+                <SchemaSettings key={schemaId} schemaId={schemaId} onLoaded={handleSchemaLoaded} />
+            ))}
+            {children}
+        </Settings2Context.Provider>
+    );
 }
 
 function ListViewSettings2Titlebar() {
@@ -341,6 +282,7 @@ function ListViewSettings2Titlebar() {
                 <GtkToggleButton
                     name="search-toggle"
                     iconName="system-search-symbolic"
+                    accessibleLabel="Search settings"
                     active={isSearchActive}
                     onToggled={(btn) => {
                         setIsSearchActive(btn.getActive());
@@ -353,7 +295,7 @@ function ListViewSettings2Titlebar() {
 }
 
 function ListViewSettings2Demo() {
-    const { isSearchActive, filteredSchemaKeys, keysState, handleSearchChanged, handleStopSearch, handleValueEdit } =
+    const { searchText, isSearchActive, filteredSchemaKeys, handleSearchChanged, handleStopSearch, handleValueEdit } =
         useSettings2Context();
 
     return (
@@ -361,13 +303,14 @@ function ListViewSettings2Demo() {
             <GtkSearchBar name="search-bar" searchModeEnabled={isSearchActive}>
                 <GtkSearchEntry
                     name="search-entry"
+                    accessibleLabel="Search settings"
+                    text={searchText}
                     onSearchChanged={handleSearchChanged}
                     onStopSearch={handleStopSearch}
                 />
             </GtkSearchBar>
             <SchemaKeysListView
                 filteredSchemaKeys={filteredSchemaKeys}
-                keysState={keysState}
                 onValueEdit={handleValueEdit}
             />
         </GtkBox>

@@ -67,6 +67,33 @@ describe("listviewUcdDemo column view", () => {
         await scrollToGlyph(columnView, "!");
         expect(await screen.findByText("!")).toHaveTextContent("!");
     });
+
+    it("sorts every character by codepoint in both directions", async () => {
+        await renderDemo(listviewUcdDemo);
+        const header = await screen.findByRole(Gtk.AccessibleRole.COLUMN_HEADER, { name: "Codepoint" });
+        await userEvent.click(header);
+
+        await waitFor(() => {
+            expect(firstCodepointText()).toBe("0x0001");
+        });
+
+        await userEvent.click(header);
+
+        await waitFor(() => {
+            expect(firstCodepointText()).toBe("0x10fffd");
+        });
+    });
+
+    it("renders break categories added by current GLib", async () => {
+        await renderDemo(listviewUcdDemo);
+        const columnView = await screen.findByName("column-view", { as: Gtk.ColumnView });
+        const header = await screen.findByRole(Gtk.AccessibleRole.COLUMN_HEADER, { name: "Codepoint" });
+        await userEvent.click(header);
+        columnView.scrollTo(1405, null, Gtk.ListScrollFlags.NONE, null);
+
+        expect(await screen.findByText("0x058a")).toBeVisible();
+        expect(await screen.findByText("Unambiguous Hyphen")).toBeVisible();
+    });
 });
 
 describe("listviewUcdDemo selection", () => {
@@ -83,5 +110,9 @@ describe("listviewUcdDemo selection", () => {
         await waitFor(() => {
             expect(preview).toHaveObjectProperty("label", expectedChar);
         });
+
+        expect(await screen.findByRole(Gtk.AccessibleRole.ROW, { selected: true })).toHaveTextContent(
+            firstCodepoint,
+        );
     });
 });

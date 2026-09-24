@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, userEvent, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { scaleDemo } from "../../../src/demos/buttons/scale.js";
 import { renderDemo } from "../../test-utils.js";
@@ -19,6 +19,9 @@ describe("scaleDemo", () => {
         const scales = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
         expect(scales).toHaveLength(3);
         expect(screen.getAllByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 2, max: 4 } })).toHaveLength(3);
+        expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { name: "Plain" })).toBe(scales[0]);
+        expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { name: "Marks" })).toBe(scales[1]);
+        expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { name: "Discrete" })).toBe(scales[2]);
 
         for (const scale of scales) {
             expect(scale).toHaveObjectProperty("drawValue", false);
@@ -45,19 +48,6 @@ describe("scaleDemo value changes", () => {
 
         await waitFor(() => {
             expect(plain.getValue()).toBeCloseTo(3.4);
-        });
-    });
-
-    it("updates the plain scale's value when the adjustment changes", async () => {
-        const scales = await renderScaleRows();
-        const plain = scales[0] as Gtk.Scale;
-
-        await act(() => {
-            plain.getAdjustment().setValue(3.5);
-        });
-
-        await waitFor(() => {
-            expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 3.5 } })).toBe(plain);
         });
     });
 

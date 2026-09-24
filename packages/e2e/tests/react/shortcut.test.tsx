@@ -73,7 +73,12 @@ describe("declarative shortcuts", () => {
                                 shortcuts={(
                                     <GtkShortcut
                                         trigger={<GtkShortcutTrigger accelerator="F5" />}
-                                        action={<Action ref={first} />}
+                                        action={(
+                                            <Action ref={(instance: Gtk.ShortcutAction | null) => {
+                                                first.current = instance;
+                                            }}
+                                            />
+                                        )}
                                     />
                                 )}
                             />
@@ -87,7 +92,12 @@ describe("declarative shortcuts", () => {
                             shortcuts={(
                                 <GtkShortcut
                                     trigger={<GtkShortcutTrigger accelerator="F6" />}
-                                    action={<Action ref={second} />}
+                                    action={(
+                                        <Action ref={(instance: Gtk.ShortcutAction | null) => {
+                                            second.current = instance;
+                                        }}
+                                        />
+                                    )}
                                 />
                             )}
                         />

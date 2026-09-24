@@ -75,6 +75,8 @@
                 "packages/e2e/vitest.config.ts",
                 "examples/gtk-demo/*",
                 "examples/animations/*",
+                "examples/browser/*",
+                "examples/hello-world/*",
                 "examples/navigation/*",
                 "examples/storybook/*"
             ]

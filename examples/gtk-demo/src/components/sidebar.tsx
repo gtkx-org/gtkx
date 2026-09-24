@@ -1,13 +1,20 @@
 import { type ExpanderDescriptions, type ListItem, type ListItemRenderer, ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkInscription, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } from "@gtkx/jsx/gtk";
-import type { TreeItem } from "../demos/types.js";
+import { useState } from "react";
+import type { Demo, TreeItem } from "../demos/types.js";
 import { collectExpandableIds } from "../collect-expandable-ids.js";
 import { useDemo } from "../context/demo-context.js";
 
 type SidebarProps = {
     isSearchActive: boolean;
+    onDemoActivated: (demo: Demo) => void;
+    onSearchActiveChange: (isActive: boolean) => void;
     onSearchChanged: (text: string) => void;
+};
+
+type SidebarSearchProps = Pick<SidebarProps, "isSearchActive" | "onSearchActiveChange" | "onSearchChanged"> & {
+    searchQuery: string;
 };
 
 const EMPTY_SELECTION: string[] = [];
@@ -31,37 +38,74 @@ const renderItem: ListItemRenderer<TreeItem> = ({ item }) => {
     return <GtkInscription text={text} natChars={25} textOverflow={Gtk.InscriptionOverflow.ELLIPSIZE_END} />;
 };
 
-const Sidebar = ({ isSearchActive, onSearchChanged }: SidebarProps) => {
+function collectVisibleItems(items: ListItem<TreeItem>[], expandedIds: Set<string>): ListItem<TreeItem>[] {
+    const visible: ListItem<TreeItem>[] = [];
+
+    for (const item of items) {
+        visible.push(item);
+
+        if (item.children && expandedIds.has(item.id)) {
+            visible.push(...collectVisibleItems(item.children, expandedIds));
+        }
+    }
+
+    return visible;
+}
+
+const SidebarSearch = ({ isSearchActive, onSearchActiveChange, onSearchChanged, searchQuery }: SidebarSearchProps) => (
+    <GtkSearchBar name="sidebar-search-bar" searchModeEnabled={isSearchActive}>
+        <GtkSearchEntry
+            accessibleLabel="Search demos"
+            placeholderText="Search demos"
+            text={searchQuery}
+            onSearchChanged={(entry: Gtk.SearchEntry) => {
+                onSearchChanged(entry.getText());
+            }}
+            onStopSearch={() => {
+                onSearchActiveChange(false);
+            }}
+        />
+    </GtkSearchBar>
+);
+
+function selectedDemo(ids: string[], demos: Demo[]): Demo | undefined {
+    const selectedId = ids[0];
+
+    return selectedId?.startsWith("demo-") ? demos.find((demo) => demo.id === selectedId.slice(5)) : undefined;
+}
+
+const Sidebar = ({ isSearchActive, onDemoActivated, onSearchActiveChange, onSearchChanged }: SidebarProps) => {
     const { filteredTreeItems, currentDemo, setCurrentDemo, searchQuery, demos } = useDemo();
     const items = filteredTreeItems.map((item) => treeItemToData(item));
-    const expandedIds = collectExpandableIds(items);
+    const [expandedIds, setExpandedIds] = useState(() => collectExpandableIds(items));
+    const visibleExpandedIds = searchQuery.trim() ? collectExpandableIds(items) : expandedIds;
     const selected = currentDemo ? [`demo-${currentDemo.id}`] : EMPTY_SELECTION;
 
     const handleSelectionChanged = (ids: string[]) => {
-        const selectedId = ids[0];
-
-        if (!selectedId?.startsWith("demo-")) {
-            return;
-        }
-
-        const demoId = selectedId.slice(5);
-        const demo = demos.find((d) => d.id === demoId);
+        const demo = selectedDemo(ids, demos);
 
         if (demo) {
             setCurrentDemo(demo);
         }
     };
 
+    const handleActivate = (position: number) => {
+        const item = collectVisibleItems(items, new Set(visibleExpandedIds))[position]?.value;
+
+        if (item?.type === "demo") {
+            setCurrentDemo(item.demo);
+            onDemoActivated(item.demo);
+        }
+    };
+
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkSearchBar name="sidebar-search-bar" searchModeEnabled={isSearchActive}>
-                <GtkSearchEntry
-                    text={searchQuery}
-                    onSearchChanged={(entry: Gtk.SearchEntry) => {
-                        onSearchChanged(entry.getText());
-                    }}
-                />
-            </GtkSearchBar>
+            <SidebarSearch
+                isSearchActive={isSearchActive}
+                onSearchActiveChange={onSearchActiveChange}
+                onSearchChanged={onSearchChanged}
+                searchQuery={searchQuery}
+            />
             <GtkScrolledWindow
                 vexpand
                 hscrollbarPolicy={Gtk.PolicyType.NEVER}
@@ -69,13 +113,15 @@ const Sidebar = ({ isSearchActive, onSearchChanged }: SidebarProps) => {
                 cssClasses={["sidebar"]}
             >
                 <ListView
-                    name="sidebar-list"
+                    accessibleLabel="Demos"
                     cssClasses={["navigation-sidebar"]}
-                    expandedIds={expandedIds}
+                    expandedIds={visibleExpandedIds}
+                    onExpandedChange={searchQuery.trim() ? undefined : setExpandedIds}
                     expanderDescriptions={EXPANDER_DESCRIPTIONS}
                     selectionMode={Gtk.SelectionMode.SINGLE}
                     selectedIds={selected}
                     onSelectionChanged={handleSelectionChanged}
+                    onActivate={handleActivate}
                     renderItem={renderItem}
                     items={items}
                 />

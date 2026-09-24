@@ -1,8 +1,8 @@
-import { GtkScrolledWindow, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
+import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import sourceCode from "./css-basics.tsx?raw";
+import { CssEditor } from "./css-editor.js";
 import resetCssPath from "./reset.css?url";
-import { useCssEditor } from "./use-css-editor.js";
 
 const DEFAULT_CSS = `/* You can edit the text in this window to change the
  * appearance of this Window.
@@ -39,7 +39,7 @@ const cssBasicsDemo: Demo = {
     id: "css-basics",
     title: "Theming/CSS Basics",
     description:
-        "GTK themes are written using CSS. Every widget is build of multiple items that you can style very " +
+        "GTK themes are written using CSS. Every widget is built from multiple elements that you can style " +
         "similarly to a regular website.",
     keywords: [],
     component: CssBasicsDemo,
@@ -50,15 +50,9 @@ const cssBasicsDemo: Demo = {
 };
 
 function CssBasicsDemo() {
-    const { textViewRef, onChanged } = useCssEditor(DEFAULT_CSS);
-
     return (
-        <GtkScrolledWindow name="scrolled" hexpand vexpand>
-            <GtkTextView
-                name="text-view"
-                ref={textViewRef}
-                buffer={<GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>}
-            />
+        <GtkScrolledWindow hexpand vexpand>
+            <CssEditor defaultCss={DEFAULT_CSS} />
         </GtkScrolledWindow>
     );
 }

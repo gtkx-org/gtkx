@@ -1,10 +1,14 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { screen, screenshot, userEvent, waitFor, within } from "@gtkx/testing";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import animatedGpaPath from "../../../data/demos/drawing/animated.gpa?resource";
+import statefulGpaPath from "../../../data/demos/drawing/stateful.gpa?resource";
 import { paintableSvgDemo } from "../../../src/demos/drawing/paintable-svg.js";
-import { findButton, renderDemo } from "../../test-utils.js";
+import { findButton, makeDialogDismissedError, renderDemo } from "../../test-utils.js";
 
 const renderAndFindPicture = async (isReactStrictMode = false): Promise<Gtk.Picture> => {
     await renderDemo(paintableSvgDemo, { isReactStrictMode });
@@ -59,13 +63,42 @@ describe("paintableSvgDemo rendering", () => {
 });
 
 describe("paintableSvgDemo open dialog", () => {
+    it.each(["invalid", "missing"])("keeps the image after an %s file and allows recovery", async (kind) => {
+        const directory = mkdtempSync(join(tmpdir(), "gtkx-svg-"));
+        const path = join(directory, "image.svg");
+        const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
+
+        if (kind === "invalid") {
+            writeFileSync(path, "<svg><not-closed");
+        }
+
+        openSpy.mockResolvedValueOnce(Gio.File.newForPath(path));
+        openSpy.mockResolvedValueOnce(Gio.File.newForUri(`resource://${statefulGpaPath}`));
+
+        try {
+            const picture = await renderAndFindPicture();
+            const before = await screenshot(picture);
+            await userEvent.click(await findButton("Open"));
+            const alert = await screen.findByRole(Gtk.AccessibleRole.ALERT_DIALOG);
+            expect(picture.getPaintable()?.getIntrinsicWidth()).toBe(128);
+            const after = await screenshot(picture);
+            expect(after.data).toBe(before.data);
+            await userEvent.click(within(alert).getByRole(Gtk.AccessibleRole.BUTTON, { name: "OK" }));
+            await userEvent.click(await findButton("Open"));
+
+            await waitFor(() => {
+                expect(picture.getPaintable()?.getIntrinsicWidth()).toBe(70);
+            });
+        } finally {
+            openSpy.mockRestore();
+            rmSync(directory, { recursive: true });
+        }
+    });
+
     it("invokes the file picker and replaces the picture's paintable when a new file is chosen", async () => {
         const openSpy = vi
             .spyOn(Gtk.FileDialog.prototype, "open")
-            .mockImplementation((_window, cancellable) =>
-                cancellable?.isCancelled() === false
-                    ? Promise.resolve(Gio.File.newForUri(`resource://${animatedGpaPath}`))
-                    : Promise.reject(new Error("cancelled")));
+            .mockResolvedValue(Gio.File.newForUri(`resource://${animatedGpaPath}`));
 
         try {
             const picture = await openPictureFileDialog(true);
@@ -79,14 +112,23 @@ describe("paintableSvgDemo open dialog", () => {
         }
     });
 
-    it("leaves the picture unchanged when the file picker is dismissed", async () => {
+    it("keeps the picture on dismissal and allows another file in Strict Mode", async () => {
         const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open");
-        openSpy.mockRejectedValue(new Error("dismissed"));
+        openSpy.mockRejectedValueOnce(makeDialogDismissedError());
+        openSpy.mockResolvedValueOnce(Gio.File.newForUri(`resource://${statefulGpaPath}`));
 
         try {
-            const picture = await openPictureFileDialog();
+            const picture = await openPictureFileDialog(true);
             expect(picture.getPaintable()?.getIntrinsicWidth()).toBe(128);
             expect(picture.getPaintable()?.getIntrinsicHeight()).toBe(128);
+            const openButton = await findButton("Open");
+            await waitFor(() => {
+                expect(openButton).toBeEnabled();
+            });
+            await userEvent.click(openButton);
+            await waitFor(() => {
+                expect(picture.getPaintable()?.getIntrinsicWidth()).toBe(70);
+            });
         } finally {
             openSpy.mockRestore();
         }
@@ -94,23 +136,60 @@ describe("paintableSvgDemo open dialog", () => {
 });
 
 describe("paintableSvgDemo gesture", () => {
-    it("cycles the SVG state when the picture is pressed", async () => {
-        const { picture, svg } = await renderAndFindSvgPicture();
-        const initialState = svg.getState();
-        await userEvent.pointer(picture, "[MouseLeft]");
+    it("advances the image through keyboard activation", async () => {
+        const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open")
+            .mockResolvedValue(Gio.File.newForUri(`resource://${statefulGpaPath}`));
 
-        await waitFor(() => {
-            expect(svg).not.toHaveObjectProperty("state", initialState);
-        });
+        try {
+            const picture = await openPictureFileDialog();
+            await waitFor(() => {
+                expect(picture.getPaintable()?.getIntrinsicWidth()).toBe(70);
+            });
+
+            const before = await screenshot(picture);
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Next SVG state" });
+            await userEvent.keyboard(button, "{Enter}");
+
+            await waitFor(async () => {
+                const after = await screenshot(picture);
+                expect(after.data).not.toBe(before.data);
+            });
+        } finally {
+            openSpy.mockRestore();
+        }
     });
 
-    it("wraps the SVG state from 63 back to 0 when the picture is pressed at the upper bound", async () => {
-        const { picture, svg } = await renderAndFindSvgPicture();
-        svg.setState(63);
-        await userEvent.pointer(picture, "[MouseLeft]");
+    it("advances the visible SVG frame and wraps after a complete cycle", async () => {
+        const openSpy = vi
+            .spyOn(Gtk.FileDialog.prototype, "open")
+            .mockResolvedValue(Gio.File.newForUri(`resource://${statefulGpaPath}`));
 
-        await waitFor(() => {
-            expect(svg).toHaveObjectProperty("state", 0);
-        });
+        try {
+            const picture = await openPictureFileDialog();
+
+            await waitFor(() => {
+                expect(picture.getPaintable()?.getIntrinsicWidth()).toBe(70);
+            });
+
+            const initial = await screenshot(picture);
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Next SVG state" });
+            await userEvent.click(button);
+
+            await waitFor(async () => {
+                const next = await screenshot(picture);
+                expect(next.data).not.toBe(initial.data);
+            });
+
+            for (let state = 1; state < 64; state++) {
+                await userEvent.click(button);
+            }
+
+            await waitFor(async () => {
+                const wrapped = await screenshot(picture);
+                expect(wrapped.data).toBe(initial.data);
+            });
+        } finally {
+            openSpy.mockRestore();
+        }
     });
 });

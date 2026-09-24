@@ -85,13 +85,13 @@ describe("cursorsDemo cursor assignments and tooltips", () => {
         expect(cursors[2]?.getName()).toBeNull();
         expect(cursors[2]?.getFallback()?.getName()).toBe("default");
         expect(cursors[3]?.getName()).toBeNull();
-        expect(cursors[3]?.getFallback()?.getName()).toBe("default");
+        expect(cursors[3]?.getFallback()?.getName()).toBe("gtk-logo");
 
         expect(frames.map((f) => f.getTooltipText())).toEqual([
             'The "gtk-logo" named cursor',
             "An image cursor for the GTK logo",
-            'An image cursor falling back to the "default" cursor',
-            'An image cursor falling back to the "default" cursor',
+            "A callback cursor for the GTK logo",
+            'An image cursor falling back to the "gtk-logo" cursor',
         ]);
     });
 });

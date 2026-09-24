@@ -73,8 +73,9 @@ const settleWindow = async (
 };
 
 const update = async (element: ReactNode, root: ReconcilerRoot): Promise<void> => {
-    await runInAct(() => {
+    await runInAct(async () => {
         root.update(element);
+        await Promise.resolve();
     });
 
     if (reconcilerErrors.lastError) {

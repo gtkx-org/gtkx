@@ -333,6 +333,15 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@gtkx/testing':
+        specifier: workspace:*
+        version: link:../../packages/testing
+      vite:
+        specifier: ^8.3.0
+        version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@types/node@26.5.1)(@vitest/coverage-v8@5.0.1)(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   examples/gtk-demo:
     dependencies:
@@ -398,6 +407,15 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@gtkx/testing':
+        specifier: workspace:*
+        version: link:../../packages/testing
+      vite:
+        specifier: ^8.3.0
+        version: 8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.1(@types/node@26.5.1)(@vitest/coverage-v8@5.0.1)(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.1))
 
   examples/navigation:
     dependencies:

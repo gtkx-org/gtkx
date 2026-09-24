@@ -91,3 +91,4 @@ export {
     outValueForBoxedDescriptor,
     toValue,
 } from "./value.js";
+export { installWindowDefaultWidgetOverride } from "./window.js";

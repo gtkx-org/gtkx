@@ -102,11 +102,13 @@ describe("generated socket receive address nullability", () => {
         const page = reference.lookup("Gio.Socket", "class");
         expect(page.outcome).toBe("page");
         expect(page).toHaveProperty("markdown", expect.stringContaining(
-            "receiveBytesFrom(size: number, timeoutUs: bigint | number, cancellable: Gio.Cancellable | null): " +
+            "receiveBytesFrom(size: number, timeoutUs: bigint | number, " +
+            "cancellable: NativeInstance<Gio.Cancellable> | null): " +
             "[GLib.Bytes, Gio.SocketAddress | null]",
         ));
         expect(page).toHaveProperty("markdown", expect.stringContaining(
-            "receiveMessage(vectors: Gio.InputVector[], flags: number, cancellable: Gio.Cancellable | null): " +
+            "receiveMessage(vectors: Gio.InputVector[], flags: number, " +
+            "cancellable: NativeInstance<Gio.Cancellable> | null): " +
             "[number, Gio.SocketAddress | null, Gio.SocketControlMessage[] | null, number]",
         ));
     });

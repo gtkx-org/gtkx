@@ -1,7 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { ReactElement, ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkSignalListItemFactory, GtkTreeExpander } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkSignalListItemFactory, GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal, useProperty } from "@gtkx/react";
 import { Fragment, memo, useInsertionEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type {
@@ -152,6 +152,23 @@ type HeaderPortalsProps = {
     registry: CellRegistry<Gtk.ListHeader>;
     render: ListSectionRenderer<never>;
     collection: Collection;
+};
+
+type NativeItemKeyStore = {
+    keyFor: (item: GObject.Object) => string;
+};
+
+type NativeItemCellProps<T extends GObject.Object> = {
+    entry: CellEntry<Gtk.ListItem>;
+    render: ListItemRenderer<T>;
+    keys: NativeItemKeyStore;
+    size: CellSize;
+};
+
+type NativeItemPortalsProps<T extends GObject.Object> = {
+    registry: CellRegistry<Gtk.ListItem>;
+    render: ListItemRenderer<T>;
+    size: CellSize;
 };
 
 type SectionHeaderSlot = {
@@ -446,6 +463,27 @@ function createItemIdentityStore(): ItemIdentityStore {
     };
 }
 
+function createNativeItemKeyStore(): NativeItemKeyStore {
+    const keys: WeakMap<GObject.Object, string> = new WeakMap();
+    let serial = 0;
+
+    return {
+        keyFor: (item) => {
+            const current = keys.get(item);
+
+            if (current !== undefined) {
+                return current;
+            }
+
+            serial += 1;
+            const key = `gtkx-native-item-${String(serial)}`;
+            keys.set(item, key);
+
+            return key;
+        },
+    };
+}
+
 function renderedIdentity(entry: CellEntry<PositionedHost>, slot: ItemSlot | null): ItemIdentity {
     return {
         itemKey: slot?.itemKey ?? "",
@@ -626,6 +664,27 @@ function HeaderCellImpl({ entry, render, collection }: HeaderCellProps): ReactNo
     return createPortal(headerBody(slotRefFor(item), render, collection), entry.host, entry.key);
 }
 
+function NativeItemCell<T extends GObject.Object>({
+    entry,
+    render,
+    keys,
+    size,
+}: NativeItemCellProps<T>): ReactNode {
+    const position = useProperty(entry.host, "position");
+    const item = useProperty(entry.host, "item") ?? null;
+    let body: ReactNode = null;
+
+    if (item !== null && position !== undefined) {
+        const content = render({ item: item as T, index: position });
+        const child = content == null || typeof content === "boolean"
+            ? <GtkBox widthRequest={size.width} heightRequest={size.height} />
+            : content;
+        body = <Fragment key={keys.keyFor(item)}>{child}</Fragment>;
+    }
+
+    return createPortal(body, entry.host, entry.key);
+}
+
 function headerBody(
     ref: SlotRef | null,
     render: ListSectionRenderer<never>,
@@ -695,6 +754,15 @@ const HeaderPortals = ({ registry, render, collection }: HeaderPortalsProps): Re
         <HeaderCell key={entry.key} entry={entry} render={render} collection={collection} />
     ));
 
+function NativeItemPortals<T extends GObject.Object>({ registry, render, size }: NativeItemPortalsProps<T>): ReactNode {
+    const entries = usePortalEntries(registry);
+    const [keys] = useState(createNativeItemKeyStore);
+
+    return entries.map((entry) => (
+        <NativeItemCell key={entry.key} entry={entry} render={render} keys={keys} size={size} />
+    ));
+}
+
 const useSectionHeader = (
     render: ListSectionRenderer<never> | null | undefined,
     collection: Collection,
@@ -736,5 +804,6 @@ export {
     useRowProps,
     useSectionHeader,
     ItemPortals,
+    NativeItemPortals,
     type CellSize,
 };

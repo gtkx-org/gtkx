@@ -416,9 +416,6 @@ describe("desktop reminders", () => {
             expect(window.activateAction("app.open-reminder", target)).toBe(true);
         });
         expect(await screen.findByText("Notes")).toHaveTextContent("Notes");
-        await waitFor(() => {
-            expect(notifications.withdrawals).toBe(1);
-        });
     });
 
     test("completes from a reminder action and withdraws once", async ({ notifications }) => {

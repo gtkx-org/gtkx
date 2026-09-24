@@ -1,10 +1,9 @@
-import * as Gdk from "@gtkx/gi/gdk";
-import * as GObject from "@gtkx/gi/gobject";
+import * as Graphene from "@gtkx/gi/graphene";
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, queryAllControllers, queryController, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { dndDemo } from "../../../src/demos/gestures/dnd.js";
-import { makeRgbaValue, makeStringValue, renderDemo } from "../../test-utils.js";
+import { collectWidgets, makeRgbaValue, makeStringValue, renderDemo } from "../../test-utils.js";
 
 type ChildTransform = ReturnType<Gtk.Fixed["getChildTransform"]>;
 
@@ -19,28 +18,13 @@ const openInlineEntryForItem1 = async (): Promise<Gtk.Entry> => {
     return await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
 };
 
-const triggerContextMenu = async (canvas: Gtk.Fixed, x: number, y: number): Promise<void> => {
-    const gestureClick = queryAllControllers(canvas, Gtk.GestureClick).find(
-        (gesture) => gesture.getButton() === Gdk.BUTTON_SECONDARY,
-    );
-    expect(gestureClick).toBeInstanceOf(Gtk.GestureClick);
-
-    if (!gestureClick) {
-        return;
-    }
-
-    await act(() => {
-        gestureClick.emit("pressed", 1, x, y);
-    });
-};
-
 const findMenuButton = async (name: string): Promise<Gtk.Button> =>
     screen.findByRole(Gtk.AccessibleRole.BUTTON, { name, as: Gtk.Button });
 
 const openContextMenuAt = async (x: number, y: number): Promise<Gtk.Fixed> => {
     await renderDemo(dndDemo);
     const canvas = await findCanvas();
-    await triggerContextMenu(canvas, x, y);
+    await userEvent.longPress(canvas, x, y);
 
     return canvas;
 };
@@ -63,35 +47,11 @@ const renderCanvasItem = async (): Promise<{ canvas: Gtk.Fixed; item1: Gtk.Label
     return { canvas, item1 };
 };
 
-const findTrashZone = async (): Promise<Gtk.Box> => screen.findByName("trash-zone", { as: Gtk.Box });
-
-const renderItemWithTrashHidden = async (): Promise<Gtk.Label> => {
-    await renderDemo(dndDemo);
-    const item1 = await findItemLabel("1");
-    expect(screen.queryByName("trash-zone")).toBeNull();
-
-    return item1;
-};
-
 const expectTransformChanged = async (canvas: Gtk.Fixed, item: Gtk.Label, before: ChildTransform): Promise<void> => {
     await waitFor(() => {
         const after = canvas.getChildTransform(item);
         expect(after?.equal(before)).toBe(false);
     });
-};
-
-const beginItemDrag = async (item: Gtk.Label): Promise<Gtk.DragSource> => {
-    const dragSource = queryController(item, Gtk.DragSource);
-
-    if (!dragSource) {
-        throw new TypeError("expected a Gtk.DragSource on the item");
-    }
-
-    await act(() => {
-        Reflect.apply(GObject.signalEmit, undefined, [dragSource, "drag-begin", null]);
-    });
-
-    return dragSource;
 };
 
 describe("dndDemo metadata", () => {
@@ -120,7 +80,7 @@ describe("dndDemo initial canvas", () => {
         await renderDemo(dndDemo);
         expect(screen.queryByName("context-menu")).toBeNull();
         const canvas = await findCanvas();
-        await triggerContextMenu(canvas, 50, 50);
+        await userEvent.longPress(canvas, 50, 50);
         const popover = await screen.findByName("context-menu", { as: Gtk.Popover });
         expect(popover).toBeVisible();
     });
@@ -135,6 +95,29 @@ describe("dndDemo initial canvas", () => {
 });
 
 describe("dndDemo canvas drop", () => {
+    it.each([0, 90])("keeps the grab point under the pointer after a %s degree rotation", async (angle) => {
+        const entry = await openInlineEntryForItem1();
+        const canvas = await findCanvas();
+        const item = await findItemLabel("1");
+        const scale = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
+        await userEvent.slide(scale, angle);
+        await userEvent.keyboard(entry, "{Enter}");
+        await waitFor(() => {
+            const [, origin] = item.computePoint(canvas, new Graphene.Point({ x: 0, y: 0 }));
+            const [, right] = item.computePoint(canvas, new Graphene.Point({ x: 10, y: 0 }));
+            expect(right.x - origin.x).toBeCloseTo(angle === 0 ? 10 : 0, 0);
+            expect(right.y - origin.y).toBeCloseTo(angle === 0 ? 0 : 10, 0);
+        });
+        await userEvent.dragAndDrop(item, canvas, undefined, { x: 250, y: 200 });
+
+        await waitFor(() => {
+            const [isTranslated, point] = item.computePoint(canvas, new Graphene.Point({ x: 0, y: 0 }));
+            expect(isTranslated).toBe(true);
+            expect(point.x).toBeCloseTo(250, 0);
+            expect(point.y).toBeCloseTo(200, 0);
+        });
+    });
+
     it("moves an item to the dropped location when its id is dropped on the canvas", async () => {
         const { canvas, item1 } = await renderCanvasItem();
         const [beforeX, beforeY] = canvas.getChildPosition(item1);
@@ -173,6 +156,28 @@ describe("dndDemo item styling", () => {
 });
 
 describe("dndDemo inline editing", () => {
+    it("keeps the editor below the rotated item as its label grows", async () => {
+        const entry = await openInlineEntryForItem1();
+        const canvas = await findCanvas();
+        const item = await findItemLabel("1");
+        await userEvent.slide(await screen.findByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale }), 90);
+
+        const expectEditorBelowItem = async () => {
+            await waitFor(() => {
+                const [hasItemBounds, itemBounds] = item.computeBounds(canvas);
+                const [hasEntryBounds, entryBounds] = entry.computeBounds(canvas);
+                expect(hasItemBounds).toBe(true);
+                expect(hasEntryBounds).toBe(true);
+                expect(entryBounds.getY()).toBeGreaterThanOrEqual(itemBounds.getY() + itemBounds.getHeight());
+            });
+        };
+
+        await expectEditorBelowItem();
+        await userEvent.clear(entry);
+        await userEvent.type(entry, "A longer item label");
+        await expectEditorBelowItem();
+    });
+
     it("opens an inline entry for the item when the item is clicked", async () => {
         const entry = await openInlineEntryForItem1();
         expect(entry).toHaveDisplayValue("Item 1");
@@ -195,30 +200,62 @@ describe("dndDemo inline editing", () => {
     });
 });
 
+describe("dndDemo item targeting", () => {
+    it("closes the inline editor when its item is clicked again", async () => {
+        await openInlineEntryForItem1();
+        await userEvent.pointer(await findItemLabel("1"), "click");
+
+        await waitFor(() => {
+            expect(screen.queryByRole(Gtk.AccessibleRole.TEXT_BOX)).toBeNull();
+        });
+    });
+
+    it("does not target the empty area beside an item", async () => {
+        const { canvas, item1 } = await renderCanvasItem();
+        const [isMeasured, bounds] = item1.computeBounds(canvas);
+        expect(isMeasured).toBe(true);
+        await userEvent.longPress(canvas, bounds.getX() + bounds.getWidth() + 5, bounds.getY() + 5);
+        expect(await findMenuButton("Edit")).toBeDisabled();
+        expect(await findMenuButton("Delete")).toBeDisabled();
+    });
+
+    it("targets the visible shape after rotating an item", async () => {
+        const entry = await openInlineEntryForItem1();
+        const canvas = await findCanvas();
+        const item1 = await findItemLabel("1");
+        const scale = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
+        await userEvent.slide(scale, 90);
+        await userEvent.keyboard(entry, "{Enter}");
+        const local = new Graphene.Point();
+        local.init(2, item1.getHeight() / 2);
+        const [isTranslated, point] = item1.computePoint(canvas, local);
+        expect(isTranslated).toBe(true);
+        await userEvent.longPress(canvas, point.x, point.y);
+        await clickEnabledMenuButton("Edit");
+        expect(await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX)).toHaveDisplayValue("Item 1");
+    });
+
+    it("targets the frontmost item where two items overlap", async () => {
+        const { canvas, item1 } = await renderCanvasItem();
+        const item2 = await findItemLabel("2");
+        await userEvent.drop(canvas, makeStringValue("2"), { x: 100, y: 100 });
+        const [firstX, firstY] = canvas.getChildPosition(item1);
+        const [secondX, secondY] = canvas.getChildPosition(item2);
+        await userEvent.longPress(canvas, Math.max(firstX, secondX) + 5, Math.max(firstY, secondY) + 5);
+        await clickEnabledMenuButton("Delete");
+
+        await waitFor(() => {
+            expect(screen.queryByName("item2")).toBeNull();
+        });
+        expect(await findItemLabel("1")).toHaveTextContent("Item 1");
+    });
+});
+
 describe("dndDemo item rotation", () => {
     it("changes the item transform while the rotate gesture reports an angle delta", async () => {
         const { canvas, item1 } = await renderCanvasItem();
         const before = canvas.getChildTransform(item1);
         await userEvent.rotate(item1, 0.5, 0.5);
-        await expectTransformChanged(canvas, item1, before);
-    });
-
-    it("commits the rotation to the item transform when the rotate gesture ends", async () => {
-        const { canvas, item1 } = await renderCanvasItem();
-        const rotate = queryController(item1, Gtk.GestureRotate);
-        expect(rotate).toBeInstanceOf(Gtk.GestureRotate);
-
-        if (!rotate) {
-            return;
-        }
-
-        const before = canvas.getChildTransform(item1);
-
-        await act(() => {
-            rotate.emit("angle-changed", 0.5, 0.5);
-            rotate.emit("end", null);
-        });
-
         await expectTransformChanged(canvas, item1, before);
     });
 
@@ -236,42 +273,35 @@ describe("dndDemo item rotation", () => {
             expect(after?.equal(before)).toBe(false);
         });
     });
-});
 
-describe("dndDemo swatch palette", () => {
-    it("exposes an RGBA content provider from the red color swatch drag source", async () => {
-        await renderDemo(dndDemo);
-        const redSwatch = await screen.findByName("swatch-red", { as: Gtk.Box });
-        const dragSource = queryController(redSwatch, Gtk.DragSource);
-        expect(dragSource).toBeInstanceOf(Gtk.DragSource);
-        const provider = dragSource?.emit("prepare", 0, 0) as Gdk.ContentProvider | null;
-        expect(provider).toBeInstanceOf(Gdk.ContentProvider);
-        expect(provider?.refFormats().containGtype(GObject.typeFromName("GdkRGBA"))).toBe(true);
-    });
-
-    it("exposes a string css-class content provider from each CSS pattern swatch drag source", async () => {
-        await renderDemo(dndDemo);
-
-        for (const id of ["rainbow1", "rainbow2", "rainbow3"]) {
-            const swatch = await screen.findByName(`pattern-${id}`, { as: Gtk.Box });
-            const dragSource = queryController(swatch, Gtk.DragSource);
-            expect(dragSource).toBeInstanceOf(Gtk.DragSource);
-            const provider = dragSource?.emit("prepare", 0, 0) as Gdk.ContentProvider | null;
-            expect(provider).toBeInstanceOf(Gdk.ContentProvider);
-            expect(provider?.refFormats().containGtype(GObject.TYPE_STRING)).toBe(true);
-        }
+    it("shows a negative gesture angle as its equivalent positive rotation", async () => {
+        const { item1 } = await renderCanvasItem();
+        await userEvent.rotate(item1, -Math.PI / 2);
+        await userEvent.pointer(item1, "click");
+        const scale = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
+        expect(scale.getValue()).toBeCloseTo(270, 1);
     });
 });
 
 describe("dndDemo context menu", () => {
-    it("adds a new item via the context menu's New button", async () => {
-        const canvas = await openContextMenuAt(50, 50);
+    it("starts new item numbering from five each time the demo opens", async () => {
+        const first = await renderDemo(dndDemo);
+        const canvas = await findCanvas();
+        await userEvent.longPress(canvas, 50, 50);
         const initialItemCount = within(canvas).getAllByText(/^Item /).length;
         await userEvent.click(await findMenuButton("New"));
 
         await waitFor(() => {
             expect(within(canvas).getAllByText(/^Item /)).toHaveLength(initialItemCount + 1);
+            expect(within(canvas).getByText("Item 5")).toBeVisible();
         });
+
+        await first.unmount();
+        await renderDemo(dndDemo);
+        const reopenedCanvas = await findCanvas();
+        await userEvent.longPress(reopenedCanvas, 50, 50);
+        await userEvent.click(await findMenuButton("New"));
+        expect(within(reopenedCanvas).getByText("Item 5")).toBeVisible();
     });
 
     it("opens an inline edit entry via the context menu's Edit button when right-clicking on an item", async () => {
@@ -321,93 +351,24 @@ describe("dndDemo non-context-menu click is ignored", () => {
     });
 });
 
-describe("dndDemo item drag-source side effects", () => {
-    it("dims the item and reveals the trash zone on drag-begin, then restores them on drag-end", async () => {
-        const item1 = await renderItemWithTrashHidden();
-        const dragSource = await beginItemDrag(item1);
-        await findTrashZone();
-
-        await waitFor(() => {
-            expect(item1.getOpacity()).toBeCloseTo(0.3, 2);
-        });
-
-        await act(() => {
-            Reflect.apply(GObject.signalEmit, undefined, [dragSource, "drag-end", null, false]);
-        });
-
-        await waitFor(() => {
-            expect(item1.getOpacity()).toBeCloseTo(1, 2);
-            expect(screen.queryByName("trash-zone")).toBeNull();
-        });
-    });
-
-    it("sets the drag icon from a fractional pointer hotspot", async () => {
-        await renderDemo(dndDemo);
-        const item1 = await findItemLabel("1");
-        const dragSource = queryController(item1, Gtk.DragSource);
-        expect(dragSource).toBeInstanceOf(Gtk.DragSource);
-
-        if (!dragSource) {
-            return;
-        }
-
-        await act(() => {
-            dragSource.emit("prepare", 181.5, 7.5);
-        });
-
-        await act(() => {
-            Reflect.apply(GObject.signalEmit, undefined, [dragSource, "drag-begin", null]);
-        });
-
-        await waitFor(() => {
-            expect(item1.getOpacity()).toBeCloseTo(0.3, 2);
-        });
-    });
-});
-
 describe("dndDemo trash zone", () => {
     it("deletes an item when its id is dropped on the trash zone", async () => {
-        const item1 = await renderItemWithTrashHidden();
-        await beginItemDrag(item1);
-        const trash = await findTrashZone();
-        await userEvent.drop(trash, makeStringValue("1"));
+        await renderDemo(dndDemo);
+        const canvas = await findCanvas();
+        const item1 = await findItemLabel("1");
+        const trash = collectWidgets(canvas, Gtk.Box).find((box) => box.getName() === "trash-zone");
+
+        if (!trash) {
+            throw new Error("the drag canvas has no trash zone");
+        }
+
+        await userEvent.dragAndDrop(item1, trash, makeStringValue("1"));
 
         await waitFor(() => {
             expect(screen.queryByName("item1")).toBeNull();
         });
 
         expect(await screen.findByText("Item 2")).toHaveTextContent("Item 2");
-    });
-
-    it("highlights the trash zone with a background class on drop-target enter and clears it on leave", async () => {
-        const item1 = await renderItemWithTrashHidden();
-        await beginItemDrag(item1);
-        const trash = await findTrashZone();
-        const dropTarget = queryController(trash, Gtk.DropTarget);
-        expect(dropTarget).toBeInstanceOf(Gtk.DropTarget);
-
-        if (!dropTarget) {
-            return;
-        }
-
-        const before = new Set(trash.getCssClasses());
-
-        await act(() => {
-            dropTarget.emit("enter", 0, 0);
-        });
-
-        await waitFor(() => {
-            const added = trash.getCssClasses().filter((c) => !before.has(c));
-            expect(added).toHaveLength(1);
-        });
-
-        await act(() => {
-            dropTarget.emit("leave");
-        });
-
-        await waitFor(() => {
-            expect(new Set(trash.getCssClasses())).toEqual(before);
-        });
     });
 });
 

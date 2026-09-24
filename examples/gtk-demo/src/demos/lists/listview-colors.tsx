@@ -1,5 +1,6 @@
 import type { Context } from "@gtkx/cairo";
-import { DropDown, GridView, type ListItemRenderer } from "@gtkx/components";
+import type { GListStoreProps } from "@gtkx/jsx/gio";
+import { DropDown, GridView, ListItemFactory, type ListItemRenderer } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
@@ -9,28 +10,32 @@ import * as Pango from "@gtkx/gi/pango";
 import {
     GtkBox,
     GtkButton,
+    GtkCustomSorter,
     GtkDrawingArea,
     GtkGrid,
     GtkGridLayoutChild,
     GtkGridView,
     GtkHeaderBar,
     GtkLabel,
+    GtkMultiSelection,
     GtkOverlay,
     GtkOverlayLayoutChild,
     GtkProgressBar,
     GtkRevealer,
     GtkScrolledWindow,
-    GtkSignalListItemFactory,
+    GtkSortListModel,
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
-import { useSignal } from "@gtkx/react";
+import { createElementComponent, createPortal, rootElement, useSignal } from "@gtkx/react";
 import { registerClass } from "@gtkx/runtime";
 import {
     createContext,
+    type ReactNode,
     useContext,
     useEffect,
     useEffectEvent,
     useLayoutEffect,
+    useMemo,
     useRef,
     useState,
 } from "react";
@@ -84,17 +89,11 @@ type SwatchGeometry = {
     b: number;
 };
 
-type DetailCell = {
-    area: Gtk.DrawingArea;
-    nameLabel: Gtk.Label;
-    rgbLabel: Gtk.Label;
-    hsvLabel: Gtk.Label;
-};
-
 type ColorList = InstanceType<typeof ColorList>;
 
 type ColorsModels = {
     colors: ColorList;
+    sorter: Gtk.CustomSorter;
     sortModel: Gtk.SortListModel;
     selection: Gtk.MultiSelection;
 };
@@ -176,7 +175,16 @@ const COMPACT_CSS_CLASSES = [css`&.view > child { padding: 1px; }`];
 const EMPTY_CSS_CLASSES: string[] = [];
 const FILL_BATCH_DIVISOR = 4096;
 const FILL_BATCH_MAX = 4096;
-const colorNameMap = buildColorNameMap();
+
+const getColorNameMap = (() => {
+    let cache: Map<number, string> | undefined;
+
+    return (): Map<number, string> => {
+        cache ??= buildColorNameMap();
+
+        return cache;
+    };
+})();
 
 const ColorObject = registerClass(
     class extends GObject.Object {
@@ -202,6 +210,36 @@ const ColorList = registerClass(
     class extends Gio.ListStore {
         size = 0;
         cache: Map<number, InstanceType<typeof ColorObject>> = new Map();
+
+        truncateCache(size: number): void {
+            for (const position of this.cache.keys()) {
+                if (position >= size) {
+                    this.cache.delete(position);
+                }
+            }
+        }
+
+        setSize(size: number): void {
+            const previous = this.size;
+
+            if (size === previous) {
+                return;
+            }
+
+            if (size < previous) {
+                this.truncateCache(size);
+            }
+
+            this.size = size;
+
+            if (size > previous) {
+                this.itemsChanged(previous, 0, size - previous);
+
+                return;
+            }
+
+            this.itemsChanged(size, previous - size, 0);
+        }
 
         override vfuncGetItemType(): bigint {
             return ColorObject.prototype.__type__;
@@ -230,6 +268,8 @@ const ColorList = registerClass(
     },
     { typeName: "GtkxDemoColorList" },
 );
+
+const ColorListElement = createElementComponent<GListStoreProps<ColorList>>("GtkxDemoColorList", ColorList);
 
 const getTnumAttrs = (() => {
     let cache: Pango.AttrList | undefined;
@@ -359,7 +399,7 @@ function buildColorNameMap(): Map<number, string> {
 function generateColorName(r: number, g: number, b: number): string {
     const hex = `${componentToHex(r)}${componentToHex(g)}${componentToHex(b)}`.toUpperCase();
 
-    return colorNameMap.get(colorKey(r, g, b)) ?? `#${hex}`;
+    return getColorNameMap().get(colorKey(r, g, b)) ?? `#${hex}`;
 }
 
 function describeColor(color: ColorObject): ColorItem {
@@ -421,99 +461,56 @@ function drawColorSwatch(cr: Context, { width, height, r, g, b }: SwatchGeometry
     cr.fill();
 }
 
-function bindColorSwatch(area: Gtk.DrawingArea, item: ColorItem): void {
-    area.setDrawFunc((_area, cr, w, h) => {
-        drawColorSwatch(cr, { width: w, height: h, r: item.r, g: item.g, b: item.b });
-    });
-
-    area.queueDraw();
-}
-
-function listItemHandler(handler: (listItem: Gtk.ListItem) => void) {
-    return (listItem: GObject.Object) => {
-        if (listItem instanceof Gtk.ListItem) {
-            handler(listItem);
-        }
-    };
-}
-
-function setupSwatchItem(listItem: Gtk.ListItem): void {
-    const area = new Gtk.DrawingArea();
-    area.setContentWidth(32);
-    area.setContentHeight(32);
-    listItem.setChild(area);
-}
-
-function bindSwatchItem(listItem: Gtk.ListItem): void {
-    const area = listItem.getChild();
-    const item = listItem.getItem();
-
-    if (area instanceof Gtk.DrawingArea && item instanceof ColorObject) {
-        bindColorSwatch(area, item.colorItem);
-    }
-}
-
-const SimpleColorFactory = () => (
-    <GtkSignalListItemFactory onSetup={listItemHandler(setupSwatchItem)} onBind={listItemHandler(bindSwatchItem)} />
-);
-
-function createDetailCell(): Gtk.Box {
-    const area = new Gtk.DrawingArea();
-    area.setContentWidth(48);
-    area.setContentHeight(48);
-    const nameLabel = new Gtk.Label();
-    nameLabel.setUseMarkup(true);
-    nameLabel.setCssClasses(["caption"]);
-    nameLabel.setEllipsize(Pango.EllipsizeMode.END);
-    nameLabel.setMaxWidthChars(10);
-    const rgbLabel = new Gtk.Label();
-    rgbLabel.setUseMarkup(true);
-    rgbLabel.setCssClasses(DETAIL_LABEL_CSS);
-    const hsvLabel = new Gtk.Label();
-    hsvLabel.setUseMarkup(true);
-    hsvLabel.setCssClasses(DETAIL_LABEL_CSS);
-    const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 4 });
-    box.setHalign(Gtk.Align.CENTER);
-    box.setMarginStart(2);
-    box.setMarginEnd(2);
-    box.setMarginTop(2);
-    box.setMarginBottom(2);
-    box.append(area);
-    box.append(nameLabel);
-    box.append(rgbLabel);
-    box.append(hsvLabel);
-
-    return box;
-}
-
-function bindDetailCell(cell: DetailCell, item: ColorItem): void {
-    bindColorSwatch(cell.area, item);
-    cell.nameLabel.setLabel(`<b>${item.name}</b>`);
-    cell.rgbLabel.setLabel(`<b>R:</b> ${String(item.r)} <b>G:</b> ${String(item.g)} <b>B:</b> ${String(item.b)}`);
-    cell.hsvLabel.setLabel(`<b>H:</b> ${String(item.h)} <b>S:</b> ${String(item.s)} <b>V:</b> ${String(item.v)}`);
-}
-
-function getDetailCell(listItem: Gtk.ListItem): DetailCell {
-    const box = listItem.getChild() as Gtk.Box;
-    const area = box.getFirstChild() as Gtk.DrawingArea;
-    const nameLabel = area.getNextSibling() as Gtk.Label;
-    const rgbLabel = nameLabel.getNextSibling() as Gtk.Label;
-    const hsvLabel = rgbLabel.getNextSibling() as Gtk.Label;
-
-    return { area, nameLabel, rgbLabel, hsvLabel };
-}
-
-const DetailColorFactory = () => (
-    <GtkSignalListItemFactory
-        onSetup={listItemHandler((listItem) => {
-            listItem.setChild(createDetailCell());
-        })}
-        onBind={listItemHandler((listItem) => {
-            const item = listItem.getItem() as ColorObject;
-            bindDetailCell(getDetailCell(listItem), item.colorItem);
-        })}
+const ColorSwatch = ({ item, size }: { item: ColorItem; size: number }) => (
+    <GtkDrawingArea
+        contentWidth={size}
+        contentHeight={size}
+        accessibleRole={Gtk.AccessibleRole.IMG}
+        accessibleLabel={item.name}
+        drawFunc={(_area, cr, width, height) => {
+            drawColorSwatch(cr, { width, height, r: item.r, g: item.g, b: item.b });
+        }}
     />
 );
+
+const renderSimpleColor: ListItemRenderer<ColorObject> = ({ item }) => (
+    <ColorSwatch item={item.colorItem} size={32} />
+);
+
+const renderDetailedColor: ListItemRenderer<ColorObject> = ({ item }) => {
+    const color = item.colorItem;
+
+    return (
+        <GtkBox
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={4}
+            halign={Gtk.Align.CENTER}
+            marginStart={2}
+            marginEnd={2}
+            marginTop={2}
+            marginBottom={2}
+        >
+            <ColorSwatch item={color} size={48} />
+            <GtkLabel
+                label={`<b>${color.name}</b>`}
+                useMarkup
+                cssClasses={["caption"]}
+                ellipsize={Pango.EllipsizeMode.END}
+                maxWidthChars={10}
+            />
+            <GtkLabel
+                label={`<b>R:</b> ${String(color.r)} <b>G:</b> ${String(color.g)} <b>B:</b> ${String(color.b)}`}
+                useMarkup
+                cssClasses={DETAIL_LABEL_CSS}
+            />
+            <GtkLabel
+                label={`<b>H:</b> ${String(color.h)} <b>S:</b> ${String(color.s)} <b>V:</b> ${String(color.v)}`}
+                useMarkup
+                cssClasses={DETAIL_LABEL_CSS}
+            />
+        </GtkBox>
+    );
+};
 
 function getCompareFn(mode: SortMode): ((a: ColorObject, b: ColorObject) => number) | null {
     switch (mode) {
@@ -553,24 +550,6 @@ function getCompareFn(mode: SortMode): ((a: ColorObject, b: ColorObject) => numb
     }
 }
 
-function setColorCount(colors: ColorList, size: number): void {
-    const previous = colors.size;
-
-    if (size === previous) {
-        return;
-    }
-
-    colors.size = size;
-
-    if (size > previous) {
-        colors.itemsChanged(previous, 0, size - previous);
-
-        return;
-    }
-
-    colors.itemsChanged(size, previous - size, 0);
-}
-
 function compareColorObjects(
     cmp: (a: ColorObject, b: ColorObject) => number,
     a: GObject.Object | null,
@@ -583,30 +562,48 @@ function compareColorObjects(
     return 0;
 }
 
-function sorterFor(mode: SortMode): Gtk.Sorter | null {
-    const cmp = getCompareFn(mode);
+function useColorsModels(): { element: ReactNode; models: ColorsModels | null } {
+    const [colors, setColors] = useState<ColorList | null>(null);
+    const [sorter, setSorter] = useState<Gtk.CustomSorter | null>(null);
+    const [sortModel, setSortModel] = useState<Gtk.SortListModel | null>(null);
+    const [selection, setSelection] = useState<Gtk.MultiSelection | null>(null);
+    const models = useMemo(
+        () => colors && sorter && sortModel && selection ? { colors, sorter, sortModel, selection } : null,
+        [colors, sorter, sortModel, selection],
+    );
+    const element = createPortal(
+        <>
+            <GtkMultiSelection
+                ref={setSelection}
+                model={
+                    (
+                        <GtkSortListModel
+                            ref={setSortModel}
+                            incremental
+                            model={<ColorListElement ref={setColors} itemType={ColorObject.prototype.__type__} />}
+                        />
+                    )
+                }
+            />
+            <GtkCustomSorter ref={setSorter} />
+        </>,
+        rootElement,
+    );
 
-    if (!cmp) {
-        return null;
-    }
-
-    return Gtk.CustomSorter.new((a, b) => compareColorObjects(cmp, a, b));
-}
-
-function useColorsModels(): ColorsModels {
-    const [models] = useState<ColorsModels>(() => {
-        const colors = new ColorList({ itemType: ColorObject.prototype.__type__ });
-        const sortModel = Gtk.SortListModel.new(colors, null);
-        sortModel.setIncremental(true);
-
-        return { colors, sortModel, selection: new Gtk.MultiSelection({ model: sortModel }) };
-    });
-
-    return models;
+    return { element, models };
 }
 
 function reorderStore(models: ColorsModels, mode: SortMode): void {
-    models.sortModel.setSorter(sorterFor(mode));
+    const cmp = getCompareFn(mode);
+
+    if (cmp === null) {
+        models.sortModel.setSorter(null);
+
+        return;
+    }
+
+    models.sorter.setSortFunc((a, b) => compareColorObjects(cmp, a, b));
+    models.sortModel.setSorter(models.sorter);
 }
 
 function useColorsSortMode(models: ColorsModels, mode: SortMode): void {
@@ -616,11 +613,11 @@ function useColorsSortMode(models: ColorsModels, mode: SortMode): void {
 }
 
 function clearStore(models: ColorsModels): void {
-    setColorCount(models.colors, 0);
+    models.colors.setSize(0);
 }
 
 function fillSynchronously(models: ColorsModels, colorLimit: ColorLimit, sortMode: SortMode): void {
-    setColorCount(models.colors, colorLimit);
+    models.colors.setSize(colorLimit);
     reorderStore(models, sortMode);
 }
 
@@ -640,7 +637,7 @@ function fillNextChunk(progress: FillProgress): SourceResult {
     }
 
     const next = Math.min(progress.colorLimit, progress.appended + progress.increment);
-    setColorCount(progress.models.colors, next);
+    progress.models.colors.setSize(next);
     progress.appended = next;
 
     if (next >= progress.colorLimit) {
@@ -810,15 +807,7 @@ function useColorsContext(): ColorsContextValue {
     return ctx;
 }
 
-const renderSelectionItem: ListItemRenderer<ColorItem> = ({ item }) => (
-    <GtkDrawingArea
-        contentWidth={8}
-        contentHeight={8}
-        drawFunc={(_self, cr, w, h) => {
-            drawColorSwatch(cr, { width: w, height: h, r: item.r, g: item.g, b: item.b });
-        }}
-    />
-);
+const renderSelectionItem: ListItemRenderer<ColorItem> = ({ item }) => <ColorSwatch item={item} size={8} />;
 
 const SelectionColorsGrid = ({ selectedColors }: { selectedColors: ColorItem[] }) => (
     <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
@@ -826,6 +815,7 @@ const SelectionColorsGrid = ({ selectedColors }: { selectedColors: ColorItem[] }
             maxColumns={200}
             cssClasses={SELECTION_GRID_CSS}
             estimatedItemHeight={32}
+            selectionMode={Gtk.SelectionMode.NONE}
             renderItem={renderSelectionItem}
             items={selectedColors.map((c) => ({ id: c.id, value: c }))}
         />
@@ -836,6 +826,8 @@ const SelectionAverageSwatch = ({ averageColor }: { averageColor: AverageColor }
     <GtkDrawingArea
         contentWidth={32}
         contentHeight={32}
+        accessibleRole={Gtk.AccessibleRole.IMG}
+        accessibleLabel={`Average color ${averageColor.hex}`}
         drawFunc={(_self, cr, w, h) => {
             drawColorSwatch(cr, {
                 width: w,
@@ -897,6 +889,7 @@ const ColorsHeaderStart = () => {
             </GtkLabel>
             <DropDown
                 name="limit-dropdown"
+                accessibleLabel="Color count"
                 selectedId={String(state.colorLimit)}
                 onSelectionChanged={computed.handleLimitChange}
                 items={COLOR_LIMITS.map((l) => ({ id: l.id, value: l.label }))}
@@ -914,6 +907,7 @@ const ColorsHeaderEnd = () => {
                 <GtkLabel>Sort by:</GtkLabel>
                 <DropDown
                     name="sort-dropdown"
+                    accessibleLabel="Sort colors by"
                     selectedId={state.sortMode}
                     onSelectionChanged={(id) => {
                         state.setSortMode(id as SortMode);
@@ -925,6 +919,7 @@ const ColorsHeaderEnd = () => {
                 <GtkLabel>Show:</GtkLabel>
                 <DropDown
                     name="display-dropdown"
+                    accessibleLabel="Color display"
                     selectedId={state.displayFactory}
                     onSelectionChanged={(id) => {
                         state.setDisplayFactory(id as DisplayFactory);
@@ -941,6 +936,7 @@ const ColorsProgressBar = ({ model, colorLimit }: ColorsProgressBarProps) => {
 
     return (
         <GtkProgressBar
+            accessibleLabel="Loading colors"
             fraction={Math.min(1, itemCount / colorLimit)}
             visible={itemCount > 0 && itemCount < colorLimit}
             halign={Gtk.Align.FILL}
@@ -983,16 +979,19 @@ const ColorsGridOverlay = () => {
                     enableRubberband
                     cssClasses={computed.gridCssClasses}
                     model={models.selection}
-                    factory={computed.showDetails ? <DetailColorFactory /> : <SimpleColorFactory />}
+                    factory={(
+                        <ListItemFactory<ColorObject>
+                            renderItem={computed.showDetails ? renderDetailedColor : renderSimpleColor}
+                        />
+                    )}
                 />
             </GtkScrolledWindow>
         </GtkOverlay>
     );
 };
 
-function ListViewColorsProvider({ children }: DemoProviderProps) {
+function ColorsReadyProvider({ models, children }: { models: ColorsModels; children: ReactNode }) {
     const state = useColorsState();
-    const models = useColorsModels();
     useColorsSortMode(models, state.sortMode);
     const computed = useColorsComputed(state, models);
 
@@ -1003,6 +1002,17 @@ function ListViewColorsProvider({ children }: DemoProviderProps) {
     };
 
     return <ColorsContext.Provider value={value}>{children}</ColorsContext.Provider>;
+}
+
+function ListViewColorsProvider({ children }: DemoProviderProps) {
+    const { element, models } = useColorsModels();
+
+    return (
+        <>
+            {element}
+            {models === null ? null : <ColorsReadyProvider models={models}>{children}</ColorsReadyProvider>}
+        </>
+    );
 }
 
 function ColorsHeader() {

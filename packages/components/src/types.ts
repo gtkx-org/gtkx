@@ -1,4 +1,5 @@
 import type * as Adw from "@gtkx/gi/adw";
+import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { AdwComboRowProps, AdwToastProps } from "@gtkx/jsx/adw";
 import type {
@@ -89,6 +90,10 @@ type ItemSizeProps = {
     estimatedItemHeight?: number | undefined;
     /** Width in pixels every cell asks for until its contents render; unset lets each cell size itself. */
     estimatedItemWidth?: number | undefined;
+};
+
+type ListItemFactoryProps<T extends GObject.Object> = ItemSizeProps & {
+    renderItem: ListItemRenderer<T>;
 };
 
 /** The flat-collection hint shared by {@link ListView} and {@link ColumnView}. */
@@ -315,6 +320,7 @@ export {
     type ListRowProps,
     type ListSectionRenderArgs,
     type ListItemRenderer,
+    type ListItemFactoryProps,
     type ListRowPropsResolver,
     type ListSectionRenderer,
     type ColumnViewColumn,

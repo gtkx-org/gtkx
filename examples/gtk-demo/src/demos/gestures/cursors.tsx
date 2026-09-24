@@ -1,7 +1,9 @@
 import * as Gdk from "@gtkx/gi/gdk";
+import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkFrame, GtkImage, GtkLabel, GtkListBox, GtkListBoxRow, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
+import gtkLogoSvgPath from "../../../data/demos/drawing/gtk-logo.svg?resource";
 import aliasPath from "../../../data/demos/gestures/cursors/alias_cursor.png?resource";
 import allResizePath from "../../../data/demos/gestures/cursors/all_resize_cursor.png?resource";
 import allScrollPath from "../../../data/demos/gestures/cursors/all_scroll_cursor.png?resource";
@@ -16,7 +18,6 @@ import eResizePath from "../../../data/demos/gestures/cursors/e_resize_cursor.pn
 import ewResizePath from "../../../data/demos/gestures/cursors/ew_resize_cursor.png?resource";
 import grabPath from "../../../data/demos/gestures/cursors/grab_cursor.png?resource";
 import grabbingPath from "../../../data/demos/gestures/cursors/grabbing_cursor.png?resource";
-import gtkLogoPath from "../../../data/demos/gestures/cursors/gtk_logo_cursor.png?resource";
 import helpPath from "../../../data/demos/gestures/cursors/help_cursor.png?resource";
 import movePath from "../../../data/demos/gestures/cursors/move_cursor.png?resource";
 import nResizePath from "../../../data/demos/gestures/cursors/n_resize_cursor.png?resource";
@@ -40,7 +41,8 @@ import wResizePath from "../../../data/demos/gestures/cursors/w_resize_cursor.pn
 import waitPath from "../../../data/demos/gestures/cursors/wait_cursor.png?resource";
 import zoomInPath from "../../../data/demos/gestures/cursors/zoom_in_cursor.png?resource";
 import zoomOutPath from "../../../data/demos/gestures/cursors/zoom_out_cursor.png?resource";
-import { useCssResource } from "../../use-css-resource.js";
+import gtkLogoPath from "../../../data/demos/gtk_logo_cursor.png?resource";
+import { CssResource } from "../../css-resource.js";
 import cursorsCss from "./cursors.css?raw";
 import sourceCode from "./cursors.tsx?raw";
 
@@ -133,6 +135,31 @@ function getCursorTexture(info: CursorInfo): Gdk.Texture {
     return texture;
 }
 
+const gtkLogoTextureCallback: Gdk.CursorGetTextureCallback = (_cursor, cursorSize, scale) => {
+    const scaledSize = Math.ceil(cursorSize * scale);
+    const display = Gdk.Display.getDefault();
+    const snapshot = Gtk.Snapshot.new();
+    Gtk.Svg.newFromResource(gtkLogoSvgPath).snapshot(snapshot, scaledSize, scaledSize);
+    const node = snapshot.toNode();
+
+    if (display === null || node === null) {
+        return [null, 0, 0, 0, 0];
+    }
+
+    const renderer = Gsk.CairoRenderer.new();
+    renderer.realizeForDisplay(display);
+    const texture = renderer.renderTexture(node, null);
+    renderer.unrealize();
+
+    return [
+        texture,
+        cursorSize,
+        cursorSize,
+        Math.round((18 * cursorSize) / 32),
+        Math.round((2 * cursorSize) / 32),
+    ];
+};
+
 const buildCursorVariants = (info: CursorInfo) => {
     const texture = getCursorTexture(info);
     const named = Gdk.Cursor.newFromName(info.name, null);
@@ -140,10 +167,15 @@ const buildCursorVariants = (info: CursorInfo) => {
 
     if (info.name === "gtk-logo") {
         const defaultFallback = Gdk.Cursor.newFromName("default", null);
-        const imageWithDefaultFallback = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, defaultFallback);
-        const imageWithFallback = Gdk.Cursor.newFromTexture(texture, info.hotX, info.hotY, defaultFallback);
+        const callback = Gdk.Cursor.newFromCallback(gtkLogoTextureCallback, defaultFallback);
+        const imageWithFallback = Gdk.Cursor.newFromTexture(
+            texture,
+            info.hotX,
+            info.hotY,
+            Gdk.Cursor.newFromName(info.name, null),
+        );
 
-        return [named, image, imageWithDefaultFallback, imageWithFallback] as const;
+        return [named, image, callback, imageWithFallback] as const;
     }
 
     const namedWithFallback = Gdk.Cursor.newFromName(
@@ -166,8 +198,8 @@ const buildCursorTooltips = (info: CursorInfo): [string, string, string, string]
         ? [
                 "The \"gtk-logo\" named cursor",
                 "An image cursor for the GTK logo",
-                "An image cursor falling back to the \"default\" cursor",
-                "An image cursor falling back to the \"default\" cursor",
+                "A callback cursor for the GTK logo",
+                "An image cursor falling back to the \"gtk-logo\" cursor",
             ]
         : [
                 `The "${info.name}" named cursor`,
@@ -179,11 +211,18 @@ const buildCursorTooltips = (info: CursorInfo): [string, string, string, string]
 const CursorPreview = ({ info }: { info: CursorInfo }) => {
     const texture = getCursorTexture(info);
 
-    return <GtkImage paintable={texture} />;
+    return <GtkImage paintable={texture} accessibleLabel={`${info.name} cursor preview`} />;
 };
 
 const CursorFrame = ({ cursor, tooltip }: { cursor: Gdk.Cursor | null; tooltip: string }) => (
-    <GtkFrame widthRequest={32} heightRequest={32} cssClasses={["cursorbg"]} cursor={cursor} tooltipText={tooltip} />
+    <GtkFrame
+        widthRequest={32}
+        heightRequest={32}
+        cssClasses={["cursorbg"]}
+        cursor={cursor}
+        tooltipText={tooltip}
+        accessibleLabel={tooltip}
+    />
 );
 
 const CursorRow = ({ info }: { info: CursorInfo }) => {
@@ -217,24 +256,25 @@ const CursorGroup = ({ rows }: { rows: CursorInfo[] }) => (
 );
 
 function CursorsDemo() {
-    useCssResource(cursorsCss);
-
     return (
-        <GtkScrolledWindow name="scrolled" hscrollbarPolicy={Gtk.PolicyType.NEVER} propagateNaturalHeight hexpand>
-            <GtkBox
-                orientation={Gtk.Orientation.VERTICAL}
-                marginStart={60}
-                marginEnd={60}
-                marginTop={60}
-                marginBottom={60}
-                spacing={10}
-                halign={Gtk.Align.CENTER}
-            >
-                {GROUPS.map((rows) => (
-                    <CursorGroup key={rows[0]?.name ?? ""} rows={rows} />
-                ))}
-            </GtkBox>
-        </GtkScrolledWindow>
+        <>
+            <CssResource css={cursorsCss} />
+            <GtkScrolledWindow name="scrolled" hscrollbarPolicy={Gtk.PolicyType.NEVER} propagateNaturalHeight hexpand>
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    marginStart={60}
+                    marginEnd={60}
+                    marginTop={60}
+                    marginBottom={60}
+                    spacing={10}
+                    halign={Gtk.Align.CENTER}
+                >
+                    {GROUPS.map((rows) => (
+                        <CursorGroup key={rows[0]?.name ?? ""} rows={rows} />
+                    ))}
+                </GtkBox>
+            </GtkScrolledWindow>
+        </>
     );
 }
 

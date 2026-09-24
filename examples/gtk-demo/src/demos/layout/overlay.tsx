@@ -49,7 +49,14 @@ const renderNumbersLabel = () => (
             canTarget={false}
             spacing={10}
         >
-            <GtkLabel name="numbers-label" useMarkup canTarget={false} marginTop={8} marginBottom={8}>
+            <GtkLabel
+                name="numbers-label"
+                useMarkup
+                canTarget={false}
+                accessibleRole={Gtk.AccessibleRole.PRESENTATION}
+                marginTop={8}
+                marginBottom={8}
+            >
                 {"<span foreground='blue' weight='ultrabold' font='40'>Numbers</span>"}
             </GtkLabel>
         </GtkBox>
@@ -61,6 +68,7 @@ const renderLuckyNumberEntry = (value: string, onChanged: (entry: Gtk.Entry) => 
         <GtkEntry
             text={value}
             placeholderText="Your Lucky Number"
+            accessibleLabel="Lucky number"
             halign={Gtk.Align.CENTER}
             valign={Gtk.Align.CENTER}
             marginTop={8}

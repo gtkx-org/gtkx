@@ -1,6 +1,6 @@
 import type * as Gio from "@gtkx/gi/gio";
 import { GCancellable } from "@gtkx/jsx/gio";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 
 type CancellableHandle = {
     cancellable: Gio.Cancellable | null;
@@ -9,6 +9,7 @@ type CancellableHandle = {
 };
 
 function useCancellable(): CancellableHandle {
+    const id = useId();
     const [cancellable, setCancellable] = useState<Gio.Cancellable | null>(null);
     const [generation, setGeneration] = useState(0);
 
@@ -32,7 +33,7 @@ function useCancellable(): CancellableHandle {
 
     return {
         cancellable,
-        element: <GCancellable key={generation} ref={setCancellable} />,
+        element: <GCancellable key={`${id}:${String(generation)}`} ref={setCancellable} />,
         renew: () => {
             setGeneration((current) => current + 1);
         },

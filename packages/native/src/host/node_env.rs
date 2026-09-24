@@ -86,6 +86,7 @@ fn uninstall() {
     }
 
     release_queue::retire();
+    crate::value::wrapper::retire_borrows();
     let async_context = ASYNC_CONTEXT.replace(std::ptr::null_mut());
     let resource_ref = RESOURCE_REF.replace(std::ptr::null_mut());
     unsafe {

@@ -46,6 +46,7 @@ RUN apt-get update \
         hicolor-icon-theme \
         librsvg2-common \
         desktop-file-utils \
+        espeak-ng \
         flatpak-builder \
         appstream \
         dpkg-dev \

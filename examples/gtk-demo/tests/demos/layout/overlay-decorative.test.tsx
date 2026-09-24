@@ -1,17 +1,23 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent } from "@gtkx/testing";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { overlayDecorativeDemo } from "../../../src/demos/layout/overlay-decorative.js";
 import { renderDemo } from "../../test-utils.js";
 
-type MarginTargets = { scale: Gtk.Scale; textView: Gtk.TextView; topMarginTag: Gtk.TextTag };
+type MarginTargets = { scale: Gtk.Scale; textView: Gtk.TextView };
 
 const renderMarginTargets = async (): Promise<MarginTargets> => {
-    await renderDemo(overlayDecorativeDemo);
-    const scale = await screen.findByName("margin-scale", { as: Gtk.Scale });
-    const textView = await screen.findByName("text-view", { as: Gtk.TextView });
+    await renderDemo(overlayDecorativeDemo, { isReactStrictMode: true });
+    const scale = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { name: "Text margin", as: Gtk.Scale });
+    const textView = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Diary", as: Gtk.TextView });
 
-    return { scale, textView, topMarginTag: textView.getBuffer().getTagTable().lookup("top-margin") as Gtk.TextTag };
+    return { scale, textView };
+};
+
+const textPosition = (textView: Gtk.TextView): { x: number; y: number } => {
+    const location = textView.getIterLocation(textView.getBuffer().getStartIter());
+
+    return { x: location.x, y: location.y };
 };
 
 describe("overlayDecorativeDemo overlay structure", () => {
@@ -42,17 +48,22 @@ describe("overlayDecorativeDemo overlay structure", () => {
         expect(first).toHaveObjectProperty("halign", Gtk.Align.START);
         expect(first).toHaveObjectProperty("valign", Gtk.Align.START);
         expect(first).toHaveObjectProperty("canTarget", false);
+        expect(first.getAccessibleRole()).toBe(Gtk.AccessibleRole.PRESENTATION);
         expect(second).toHaveObjectProperty("halign", Gtk.Align.END);
         expect(second).toHaveObjectProperty("valign", Gtk.Align.END);
         expect(second).toHaveObjectProperty("canTarget", false);
+        expect(second.getAccessibleRole()).toBe(Gtk.AccessibleRole.PRESENTATION);
     });
 });
 
 describe("overlayDecorativeDemo scale behavior", () => {
     it("initialises the scale at 100 with a 0..100 range and step of 1", async () => {
         await renderDemo(overlayDecorativeDemo);
-        const scale = await screen.findByName("margin-scale", { as: Gtk.Scale });
-        await screen.findByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 100, min: 0, max: 100 } });
+        const scale = await screen.findByRole(Gtk.AccessibleRole.SLIDER, {
+            name: "Text margin",
+            value: { now: 100, min: 0, max: 100 },
+            as: Gtk.Scale,
+        });
         const adjustment = scale.getAdjustment();
         expect(adjustment).toHaveObjectProperty("stepIncrement", 1);
         expect(scale).toHaveObjectProperty("drawValue", false);
@@ -61,20 +72,23 @@ describe("overlayDecorativeDemo scale behavior", () => {
         expect(scale).toHaveObjectProperty("tooltipText", "Margin");
     });
 
-    it("syncs the TextView left margin and top-margin tag when the scale value changes", async () => {
-        const { scale, textView, topMarginTag } = await renderMarginTargets();
-        expect(textView).toHaveObjectProperty("leftMargin", 100);
-        expect(topMarginTag).toHaveObjectProperty("pixelsAboveLines", 100);
+    it("moves the rendered diary text toward the top-left as the margin decreases", async () => {
+        const { scale, textView } = await renderMarginTargets();
+        expect(textPosition(textView)).toEqual({ x: 100, y: 100 });
         await userEvent.slide(scale, 25);
-        expect(textView).toHaveObjectProperty("leftMargin", 25);
-        expect(topMarginTag).toHaveObjectProperty("pixelsAboveLines", 25);
+
+        await waitFor(() => {
+            expect(textPosition(textView)).toEqual({ x: 25, y: 25 });
+        });
     });
 
-    it("rounds non-integer margins for both the left margin and the top-margin tag", async () => {
-        const { scale, textView, topMarginTag } = await renderMarginTargets();
+    it("rounds non-integer slider positions in the rendered text geometry", async () => {
+        const { scale, textView } = await renderMarginTargets();
         await userEvent.slide(scale, 37.7);
-        expect(textView).toHaveObjectProperty("leftMargin", 38);
-        expect(topMarginTag).toHaveObjectProperty("pixelsAboveLines", 38);
+
+        await waitFor(() => {
+            expect(textPosition(textView)).toEqual({ x: 38, y: 38 });
+        });
     });
 });
 
@@ -83,7 +97,7 @@ describe("overlayDecorativeDemo text content", () => {
         await renderDemo(overlayDecorativeDemo);
 
         expect(await screen.findByDisplayValue(/Dear diary\.\.\./)).toBe(
-            await screen.findByName("text-view", { as: Gtk.TextView }),
+            await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Diary", as: Gtk.TextView }),
         );
     });
 });

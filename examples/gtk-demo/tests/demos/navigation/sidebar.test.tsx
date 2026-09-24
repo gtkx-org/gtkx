@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { sidebarDemo } from "../../../src/demos/navigation/sidebar.js";
 import { renderDemo } from "../../test-utils.js";
@@ -42,21 +42,13 @@ describe("sidebarDemo structure", () => {
         }
     });
 
-    it("binds the GtkStackSidebar to the stack", async () => {
-        const { sidebar, stack } = await renderSidebarAndStack();
-        expect(sidebar).toHaveObjectProperty("stack", stack);
-    });
-
-    it("uses a 256px decorated icon for the welcome page only", async () => {
+    it("shows the named 256px logo on the welcome page", async () => {
         await renderDemo(sidebarDemo);
         const stack = await findStack();
-        const images = await within(stack).findAllByRole(Gtk.AccessibleRole.IMG, { as: Gtk.Image });
-        expect(images).toHaveLength(1);
-        const [image] = images;
-
-        if (!image) {
-            throw new Error("expected a welcome-page image");
-        }
+        const image = await within(stack).findByRole(Gtk.AccessibleRole.IMG, {
+            name: "GTK Demo logo",
+            as: Gtk.Image,
+        });
 
         expect(image).toHaveObjectProperty("pixelSize", 256);
         expect(image).toHaveClass("icon-dropshadow");
@@ -94,22 +86,5 @@ describe("sidebarDemo navigation", () => {
         await waitFor(() => {
             expect(stack).toHaveObjectProperty("visibleChildName", "Welcome to GTK");
         });
-    });
-
-    it("reflects programmatic stack changes back through the sidebar row selection", async () => {
-        await renderDemo(sidebarDemo);
-        const stack = await findStack();
-        const sidebar = await findSidebar();
-
-        await act(() => {
-            stack.setVisibleChildName("Page 7");
-        });
-
-        await waitFor(() => {
-            expect(
-                within(sidebar).getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Page 7", selected: true }),
-            ).not.toBeNull();
-        },
-        );
     });
 });

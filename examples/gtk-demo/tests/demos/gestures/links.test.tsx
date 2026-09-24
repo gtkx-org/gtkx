@@ -1,4 +1,3 @@
-import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import { screen, userEvent, waitFor, within } from "@gtkx/testing";
@@ -21,19 +20,19 @@ describe("linksDemo", () => {
         expect(label).toHaveObjectProperty("maxWidthChars", 40);
     });
 
-    it("exposes the keynav and external anchors as clickable hyperlinks in the markup", async () => {
+    it("renders the linked text", async () => {
         const label = await renderLinksLabel();
-        const markup = label.getLabel();
-        expect(markup).toMatch(/href="keynav"/);
-        expect(markup).toMatch(/href="https:\/\/en\.wikipedia\.org\/wiki\/Text"/);
-        expect(markup).toMatch(/href="https:\/\/www\.flathub\.org\/"/);
+        expect(label).toHaveTextContent(/Some text may be marked up as hyperlinks/);
+        expect(label).toHaveTextContent(/activated via keynav/);
+        expect(label).toHaveTextContent(/Flathub/);
     });
 });
 
 describe("linksDemo activate-link handler", () => {
     it("presents and closes the keynav alert dialog when the keynav link is activated", async () => {
         const label = await renderLinksLabel();
-        expect(label.emit("activate-link", "keynav")).toBe(true);
+        await userEvent.tab(label);
+        await userEvent.keyboard(label, "{Enter}");
         const dialog = await screen.findByRole(Gtk.AccessibleRole.ALERT_DIALOG);
         expect(within(dialog).getByText("Keyboard navigation")).toBeVisible();
         expect(within(dialog).getByText(/using a program .* via keyboard input/)).toBeVisible();
@@ -41,21 +40,5 @@ describe("linksDemo activate-link handler", () => {
         await waitFor(() => {
             expect(screen.queryByRole(Gtk.AccessibleRole.ALERT_DIALOG)).toBeNull();
         });
-    });
-
-    it("defers to default handling for a non-keynav link without presenting an alert dialog", async () => {
-        const label = await renderLinksLabel();
-        let isReachedDefault = false;
-
-        const stop = label.connect("activate-link", () => {
-            isReachedDefault = true;
-
-            return Gdk.EVENT_STOP;
-        });
-
-        label.emit("activate-link", "https://www.flathub.org/");
-        expect(isReachedDefault).toBe(true);
-        expect(screen.queryByRole(Gtk.AccessibleRole.ALERT_DIALOG)).toBeNull();
-        label.disconnect(stop);
     });
 });

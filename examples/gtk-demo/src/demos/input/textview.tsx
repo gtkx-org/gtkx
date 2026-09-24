@@ -8,6 +8,7 @@ import {
     GtkAdjustment,
     GtkButton,
     GtkEntry,
+    GtkFrame,
     GtkPaned,
     GtkScale,
     GtkScrolledWindow,
@@ -17,7 +18,7 @@ import {
     GtkTextView,
     GtkWindow,
 } from "@gtkx/jsx/gtk";
-import { type RefObject, useLayoutEffect, useRef, useState } from "react";
+import { type RefObject, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import { lookupIconPaintable } from "../icon-paintable.js";
 import sourceCode from "./textview.tsx?raw";
@@ -28,21 +29,38 @@ type ImagesSectionProps = {
 };
 
 type PrimaryTextViewProps = {
-    textView1Ref: RefObject<Gtk.TextView | null>;
     setSharedBuffer: (buffer: Gtk.TextBuffer | null) => void;
+    anchorSetters: TextViewAnchorSetters;
     iconPaintable: Gtk.IconPaintable | null;
     nuclearPaintable: Gdk.Texture;
     onClickMe: () => void;
 };
 
 type SecondaryTextViewProps = {
-    textView2Ref: RefObject<Gtk.TextView | null>;
     sharedBuffer: Gtk.TextBuffer | null;
+    anchors: TextViewAnchors;
+    onClickMe: () => void;
+};
+
+type TextViewAnchors = {
+    button: Gtk.TextChildAnchor | null;
+    dropdown: Gtk.TextChildAnchor | null;
+    scale: Gtk.TextChildAnchor | null;
+    entry: Gtk.TextChildAnchor | null;
+};
+
+type TextViewAnchorSetters = {
+    [Key in keyof TextViewAnchors]: (anchor: TextViewAnchors[Key]) => void;
 };
 
 const SCALE_XX_SMALL = 0.5787037037037;
 const SCALE_X_LARGE = 1.44;
 const headingProps = { weight: Pango.Weight.BOLD, size: 15 * Pango.SCALE } as const;
+const widgetOptions = [
+    { id: "opt1", value: "Option 1" },
+    { id: "opt2", value: "Option 2" },
+    { id: "opt3", value: "Option 3" },
+];
 
 const textviewDemo: Demo = {
     id: "textview",
@@ -95,72 +113,6 @@ function createNuclearTexture(): Gdk.Texture {
     surface.finish();
 
     return texture;
-}
-
-function findChildAnchors(buffer: Gtk.TextBuffer): Gtk.TextChildAnchor[] {
-    const anchors: Gtk.TextChildAnchor[] = [];
-    const iter = buffer.getStartIter();
-
-    do {
-        const anchor = iter.getChildAnchor();
-
-        if (anchor) {
-            anchors.push(anchor);
-        }
-    } while (iter.forwardChar());
-
-    return anchors;
-}
-
-function attachButtonClone(view: Gtk.TextView, anchor: Gtk.TextChildAnchor, onClickMe?: () => void) {
-    const btn = new Gtk.Button();
-    btn.setLabel("Click Me");
-
-    if (onClickMe) {
-        btn.on("clicked", onClickMe);
-    }
-
-    view.addChildAtAnchor(btn, anchor);
-}
-
-function attachWidgetClones(view: Gtk.TextView, anchors: Gtk.TextChildAnchor[], onClickMe?: () => void) {
-    if (anchors[0]) {
-        attachButtonClone(view, anchors[0], onClickMe);
-    }
-
-    if (anchors[1]) {
-        const dd = Gtk.DropDown.newFromStrings(["Option 1", "Option 2", "Option 3"]);
-        view.addChildAtAnchor(dd, anchors[1]);
-    }
-
-    if (anchors[2]) {
-        const adj = Gtk.Adjustment.new(0, 0, 100, 1, 10, 0);
-        const scale = Gtk.Scale.new(Gtk.Orientation.HORIZONTAL, adj);
-        scale.setSizeRequest(100, -1);
-        view.addChildAtAnchor(scale, anchors[2]);
-    }
-
-    if (anchors[3]) {
-        const entry = new Gtk.Entry();
-        entry.setWidthChars(10);
-        view.addChildAtAnchor(entry, anchors[3]);
-    }
-}
-
-function recursiveAttachView(depth: number, view: Gtk.TextView, anchor: Gtk.TextChildAnchor): Gtk.Frame | null {
-    if (depth > 4) {
-        return null;
-    }
-
-    const childView = new Gtk.TextView();
-    childView.setBuffer(view.getBuffer());
-    childView.setSizeRequest(260 - 20 * depth, -1);
-    const frame = new Gtk.Frame();
-    frame.setChild(childView);
-    view.addChildAtAnchor(frame, anchor);
-    recursiveAttachView(depth + 1, childView, anchor);
-
-    return frame;
 }
 
 const TextViewIntroSection = () => (
@@ -387,34 +339,40 @@ const TextViewInternationalSection = () => (
     </>
 );
 
-const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => {
+const TextViewWidgetsSection = ({
+    onClickMe,
+    anchorSetters: {
+        button: setButtonAnchor,
+        dropdown: setDropdownAnchor,
+        scale: setScaleAnchor,
+        entry: setEntryAnchor,
+    },
+}: {
+    onClickMe: () => void;
+    anchorSetters: TextViewAnchorSetters;
+}) => {
     return (
         <>
             {"\n\nYou can put widgets in the buffer: Here's a button: "}
-            <GtkTextChildAnchor>
+            <GtkTextChildAnchor ref={setButtonAnchor}>
                 <GtkButton label="Click Me" onClicked={onClickMe} />
             </GtkTextChildAnchor>
             {" and a menu: "}
-            <GtkTextChildAnchor>
-                <DropDown
-                    items={[
-                        { id: "opt1", value: "Option 1" },
-                        { id: "opt2", value: "Option 2" },
-                        { id: "opt3", value: "Option 3" },
-                    ]}
-                />
+            <GtkTextChildAnchor ref={setDropdownAnchor}>
+                <DropDown accessibleLabel="Menu" items={widgetOptions} />
             </GtkTextChildAnchor>
             {" and a scale: "}
-            <GtkTextChildAnchor>
+            <GtkTextChildAnchor ref={setScaleAnchor}>
                 <GtkScale
+                    accessibleLabel="Scale"
                     orientation={Gtk.Orientation.HORIZONTAL}
                     adjustment={<GtkAdjustment lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
                     widthRequest={100}
                 />
             </GtkTextChildAnchor>
             {" finally a text entry: "}
-            <GtkTextChildAnchor>
-                <GtkEntry widthChars={10} />
+            <GtkTextChildAnchor ref={setEntryAnchor}>
+                <GtkEntry accessibleLabel="Text entry" widthChars={10} />
             </GtkTextChildAnchor>
             {
                 ".\n\nThis demo doesn't demonstrate all the GtkTextBuffer features; it leaves out, " +
@@ -426,8 +384,8 @@ const TextViewWidgetsSection = ({ onClickMe }: { onClickMe: () => void }) => {
 };
 
 function PrimaryTextView({
-    textView1Ref,
     setSharedBuffer,
+    anchorSetters,
     iconPaintable,
     nuclearPaintable,
     onClickMe,
@@ -435,8 +393,8 @@ function PrimaryTextView({
     return (
         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
             <GtkTextView
-                ref={textView1Ref}
                 name="text-view-1"
+                accessibleLabel="Primary text view"
                 wrapMode={Gtk.WrapMode.WORD}
                 buffer={(
                     <GtkTextBuffer ref={setSharedBuffer}>
@@ -450,7 +408,7 @@ function PrimaryTextView({
                         <TextViewWrappingSection />
                         <TextViewJustificationSection />
                         <TextViewInternationalSection />
-                        <TextViewWidgetsSection onClickMe={onClickMe} />
+                        <TextViewWidgetsSection onClickMe={onClickMe} anchorSetters={anchorSetters} />
                     </GtkTextBuffer>
                 )}
             />
@@ -458,48 +416,79 @@ function PrimaryTextView({
     );
 }
 
-function SecondaryTextView({ textView2Ref, sharedBuffer }: SecondaryTextViewProps) {
+const SecondaryTextViewWidgets = ({ anchors, onClickMe }: Pick<SecondaryTextViewProps, "anchors" | "onClickMe">) => (
+    <>
+        {anchors.button && (
+            <GtkButton key="button" textChildAnchor={anchors.button} label="Click Me" onClicked={onClickMe} />
+        )}
+        {anchors.dropdown && (
+            <DropDown
+                key="dropdown"
+                textChildAnchor={anchors.dropdown}
+                accessibleLabel="Menu"
+                items={widgetOptions}
+            />
+        )}
+        {anchors.scale && (
+            <GtkScale
+                key="scale"
+                textChildAnchor={anchors.scale}
+                accessibleLabel="Scale"
+                orientation={Gtk.Orientation.HORIZONTAL}
+                adjustment={<GtkAdjustment lower={0} upper={100} stepIncrement={1} pageIncrement={10} />}
+                widthRequest={100}
+            />
+        )}
+        {anchors.entry && (
+            <GtkEntry key="entry" textChildAnchor={anchors.entry} accessibleLabel="Text entry" widthChars={10} />
+        )}
+    </>
+);
+
+const SecondaryTextView = ({ sharedBuffer, anchors, onClickMe }: SecondaryTextViewProps) => (
+    <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
+        {sharedBuffer && (
+            <GtkTextView
+                name="text-view-2"
+                accessibleLabel="Secondary text view"
+                wrapMode={Gtk.WrapMode.WORD}
+                buffer={sharedBuffer}
+            >
+                <SecondaryTextViewWidgets anchors={anchors} onClickMe={onClickMe} />
+            </GtkTextView>
+        )}
+    </GtkScrolledWindow>
+);
+
+function NestedTextView({
+    depth,
+    buffer,
+    anchor,
+}: {
+    depth: number;
+    buffer: Gtk.TextBuffer;
+    anchor: Gtk.TextChildAnchor;
+}) {
+    if (depth > 4) {
+        return null;
+    }
+
     return (
-        <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.AUTOMATIC} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
-            {sharedBuffer && (
-                <GtkTextView ref={textView2Ref} name="text-view-2" wrapMode={Gtk.WrapMode.WORD} buffer={sharedBuffer} />
-            )}
-        </GtkScrolledWindow>
+        <GtkFrame textChildAnchor={anchor}>
+            <GtkTextView
+                buffer={buffer}
+                widthRequest={260 - 20 * depth}
+                accessibleLabel={`Nested text view ${String(depth + 1)}`}
+            >
+                <NestedTextView depth={depth + 1} buffer={buffer} anchor={anchor} />
+            </GtkTextView>
+        </GtkFrame>
     );
 }
 
-function attachSecondaryWidgets(
-    textView: Gtk.TextView | null,
-    sharedBuffer: Gtk.TextBuffer | null,
-    onClickMe: () => void,
-) {
-    if (!textView || !sharedBuffer) {
-        return;
-    }
-
-    const anchors = findChildAnchors(sharedBuffer);
-    attachWidgetClones(textView, anchors, onClickMe);
-}
-
 function EasterEggWindow({ windowRef, onClose }: { windowRef: RefObject<Gtk.Window | null>; onClose: () => void }) {
-    const [textView, setTextView] = useState<Gtk.TextView | null>(null);
+    const [buffer, setBuffer] = useState<Gtk.TextBuffer | null>(null);
     const [anchor, setAnchor] = useState<Gtk.TextChildAnchor | null>(null);
-
-    useLayoutEffect(() => {
-        if (!textView || !anchor) {
-            return;
-        }
-
-        const frame = recursiveAttachView(0, textView, anchor);
-
-        if (!frame) {
-            return;
-        }
-
-        return () => {
-            textView.remove(frame);
-        };
-    }, [textView, anchor]);
 
     return (
         <GtkWindow
@@ -515,26 +504,39 @@ function EasterEggWindow({ windowRef, onClose }: { windowRef: RefObject<Gtk.Wind
         >
             <GtkScrolledWindow>
                 <GtkTextView
-                    ref={setTextView}
+                    accessibleLabel="Shared nested text"
                     wrapMode={Gtk.WrapMode.WORD}
                     buffer={(
-                        <GtkTextBuffer>
+                        <GtkTextBuffer ref={setBuffer}>
                             {"This buffer is shared by a set of nested text views.\n Nested view:\n"}
                             <GtkTextChildAnchor ref={setAnchor} />
                             {"\nDon't do this in production applications, please.\n"}
                         </GtkTextBuffer>
                     )}
-                />
+                >
+                    {buffer && anchor && <NestedTextView depth={0} buffer={buffer} anchor={anchor} />}
+                </GtkTextView>
             </GtkScrolledWindow>
         </GtkWindow>
     );
 }
 
+function useTextViewAnchors(): { anchors: TextViewAnchors; anchorSetters: TextViewAnchorSetters } {
+    const [button, setButton] = useState<Gtk.TextChildAnchor | null>(null);
+    const [dropdown, setDropdown] = useState<Gtk.TextChildAnchor | null>(null);
+    const [scale, setScale] = useState<Gtk.TextChildAnchor | null>(null);
+    const [entry, setEntry] = useState<Gtk.TextChildAnchor | null>(null);
+
+    return {
+        anchors: { button, dropdown, scale, entry },
+        anchorSetters: { button: setButton, dropdown: setDropdown, scale: setScale, entry: setEntry },
+    };
+}
+
 function TextViewDemo() {
-    const textView1Ref = useRef<Gtk.TextView | null>(null);
-    const textView2Ref = useRef<Gtk.TextView | null>(null);
     const easterEggWindowRef = useRef<Gtk.Window | null>(null);
     const [sharedBuffer, setSharedBuffer] = useState<Gtk.TextBuffer | null>(null);
+    const { anchors, anchorSetters } = useTextViewAnchors();
     const [isEasterEggOpen, setIsEasterEggOpen] = useState(false);
     const [iconPaintable] = useState(() => lookupIconPaintable("drive-harddisk", 32));
     const [nuclearPaintable] = useState(createNuclearTexture);
@@ -549,10 +551,6 @@ function TextViewDemo() {
         setIsEasterEggOpen(true);
     };
 
-    useLayoutEffect(() => {
-        attachSecondaryWidgets(textView2Ref.current, sharedBuffer, handleClickMe);
-    }, [sharedBuffer]);
-
     return (
         <>
             <GtkPaned
@@ -561,14 +559,16 @@ function TextViewDemo() {
                 resizeEndChild
                 startChild={(
                     <PrimaryTextView
-                        textView1Ref={textView1Ref}
                         setSharedBuffer={setSharedBuffer}
+                        anchorSetters={anchorSetters}
                         iconPaintable={iconPaintable}
                         nuclearPaintable={nuclearPaintable}
                         onClickMe={handleClickMe}
                     />
                 )}
-                endChild={<SecondaryTextView textView2Ref={textView2Ref} sharedBuffer={sharedBuffer} />}
+                endChild={(
+                    <SecondaryTextView sharedBuffer={sharedBuffer} anchors={anchors} onClickMe={handleClickMe} />
+                )}
             />
             {isEasterEggOpen && (
                 <EasterEggWindow

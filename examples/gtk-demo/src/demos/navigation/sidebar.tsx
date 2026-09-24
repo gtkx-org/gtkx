@@ -1,4 +1,3 @@
-import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkHeaderBar, GtkImage, GtkLabel, GtkStack, GtkStackPage, GtkStackSidebar } from "@gtkx/jsx/gtk";
 import { useState } from "react";
@@ -32,23 +31,23 @@ const sidebarDemo: Demo = {
 };
 
 function SidebarDemo() {
-    const demoIcon = Gio.FileIcon.new(Gio.File.newForUri(`resource://${demoIconPath}`));
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
 
     return (
         <GtkBox>
-            {stack && <GtkStackSidebar name="sidebar" stack={stack} />}
+            {stack && <GtkStackSidebar name="sidebar" stack={stack} accessibleLabel="Demo pages" />}
             <GtkStack ref={setStack} name="stack" transitionType={Gtk.StackTransitionType.SLIDE_UP_DOWN} hexpand>
                 {pages.map((title, index) => (
                     <GtkStackPage key={title} name={title} title={title}>
                         {index === 0
                             ? (
                                     <GtkImage
-                                        gicon={demoIcon}
+                                        resource={demoIconPath}
                                         pixelSize={256}
                                         cssClasses={["icon-dropshadow"]}
                                         halign={Gtk.Align.CENTER}
                                         valign={Gtk.Align.CENTER}
+                                        accessibleLabel="GTK Demo logo"
                                     />
                                 )
                             : (

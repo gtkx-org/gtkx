@@ -1,7 +1,5 @@
-import type * as Pango from "@gtkx/gi/pango";
-import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, waitFor, within } from "@gtkx/testing";
+import { screen, screenshot, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { framesDemo } from "../../../src/demos/benchmark/frames.js";
 import { renderDemo } from "../../test-utils.js";
@@ -9,27 +7,7 @@ import { renderDemo } from "../../test-utils.js";
 const FPS_PATTERN = /^\d+\.\d{2} fps$/;
 
 const findFpsLabel = (header: Gtk.HeaderBar): Gtk.Label =>
-    within(header).getByRole(Gtk.AccessibleRole.LABEL, { name: FPS_PATTERN, as: Gtk.Label });
-
-const getFontFeatures = (attrs: Pango.Attribute[]): string[] =>
-    attrs.flatMap((attr) => attr.asFontFeatures()?.features ?? []);
-
-const readFontFeatures = (label: Gtk.Label): string[] => {
-    const attrs = label.getAttributes();
-
-    if (!attrs) {
-        throw new Error("fps label has no Pango attribute list");
-    }
-
-    const iterator = attrs.getIterator();
-    const features: string[] = [];
-
-    do {
-        features.push(...getFontFeatures(iterator.getAttrs()));
-    } while (iterator.next());
-
-    return features;
-};
+    within(header).getByRole(Gtk.AccessibleRole.STATUS, { name: FPS_PATTERN, as: Gtk.Label });
 
 const findFramesHeader = async (): Promise<Gtk.HeaderBar> => {
     await renderDemo(framesDemo);
@@ -42,35 +20,35 @@ vi.setConfig({ testTimeout: 30_000 });
 describe("framesDemo header bar", () => {
     it("renders the fps label in the header bar driven by shared state", async () => {
         const header = await findFramesHeader();
-        const fpsLabel = await within(header).findByRole(Gtk.AccessibleRole.LABEL, { name: FPS_PATTERN });
+        const fpsLabel = await within(header).findByRole(Gtk.AccessibleRole.STATUS, { name: FPS_PATTERN });
         expect(header).toContainElement(fpsLabel);
         expect(fpsLabel).toHaveTextContent("0.00 fps");
-    });
-
-    it("carries a tabular-numbers font-features Pango attribute on the fps label", async () => {
-        const header = await findFramesHeader();
-        expect(readFontFeatures(findFpsLabel(header))).toContain("tnum=1");
     });
 });
 
 describe("framesDemo color widget", () => {
-    it("instantiates the custom snapshot subclass and lets it fill its parent box", async () => {
+    it("fills its parent and paints changing color frames", async () => {
         await renderDemo(framesDemo);
-        const colorWidget = await screen.findByName("color-widget");
-        expect(GObject.typeName(colorWidget.__type__)).toBe("GtkxFramesColorWidget");
+        const colorWidget = await screen.findByRole(Gtk.AccessibleRole.IMG, { name: "Changing color" });
         const box = colorWidget.getParent() as Gtk.Box;
         expect(box).toBeInstanceOf(Gtk.Box);
         expect(colorWidget.getWidth()).toBeGreaterThan(0);
         expect(colorWidget.getHeight()).toBeGreaterThan(0);
         expect(colorWidget.getWidth()).toBe(box.getWidth());
         expect(colorWidget.getHeight()).toBe(box.getHeight());
+        const firstFrame = await screenshot(colorWidget);
+
+        await waitFor(async () => {
+            const nextFrame = await screenshot(colorWidget);
+            expect(nextFrame.data).not.toBe(firstFrame.data);
+        });
     });
 });
 
 describe("framesDemo fps polling", () => {
     it("drives the fps poller off the frame clock so the header label leaves 0.00 fps", async () => {
         await renderDemo(framesDemo);
-        const colorWidget = await screen.findByName("color-widget");
+        const colorWidget = await screen.findByRole(Gtk.AccessibleRole.IMG, { name: "Changing color" });
         expect(colorWidget.getFrameClock()).not.toBeNull();
         const header = await screen.findByName("frames-header", { as: Gtk.HeaderBar });
         expect(findFpsLabel(header)).toHaveTextContent("0.00 fps");

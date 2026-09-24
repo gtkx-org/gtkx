@@ -1,144 +1,113 @@
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewSettings2Demo } from "../../../src/demos/lists/listview-settings2.js";
-import { activateSearchBar, openSearchEntry, renderDemo } from "../../test-utils.js";
+import { openSearchEntry, renderDemo } from "../../test-utils.js";
 
-const listModel = async (): Promise<Gtk.SelectionModel> => {
-    const listView = await screen.findByName("list-view", { as: Gtk.ListView });
+const schemaId = "org.gtkx.test.settings";
 
-    return listView.getModel() as Gtk.SelectionModel;
+const findValueEntry = async (key: string): Promise<Gtk.Entry> => {
+    const search = await openSearchEntry();
+    await userEvent.type(search, key);
+
+    return await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, {
+        name: `Value for ${schemaId}/${key}`,
+        as: Gtk.Entry,
+    });
 };
 
-const schemaHeaderLabels = (): string[] =>
-    screen
-        .queryAllByText(/^[^\s.]+\.\S+$/, { as: Gtk.Label })
-        .map((l) => l.getLabel())
-        .filter((text) => !text.includes(" "));
-
-const renderListModel = async (): Promise<Gtk.SelectionModel> => {
-    await renderDemo(listviewSettings2Demo);
-
-    return await listModel();
+const replaceValue = async (entry: Gtk.Entry, text: string) => {
+    await userEvent.clear(entry);
+    await userEvent.type(entry, text);
 };
 
-describe("listviewSettings2Demo layout", () => {
-    it("installs a search toggle in the header bar starting inactive", async () => {
+describe("listviewSettings2Demo", () => {
+    it("groups settings into visible schema sections", async () => {
         await renderDemo(listviewSettings2Demo);
-        const toggle = await screen.findByName("search-toggle", { as: Gtk.ToggleButton });
-        expect(toggle).not.toBePressed();
+        const search = await openSearchEntry();
+        await userEvent.type(search, schemaId);
+        expect(await screen.findByText(schemaId)).toBeVisible();
+        expect(await screen.findByText("clock-format")).toBeVisible();
     });
 
-    it("renders a search bar in disabled mode by default", async () => {
+    it("clears the search and closes its toggle when Escape is pressed", async () => {
         await renderDemo(listviewSettings2Demo);
-        const bar = await screen.findByName("search-bar", { as: Gtk.SearchBar });
-        expect(bar).toHaveObjectProperty("searchModeEnabled", false);
-    });
-
-    it("renders a list view with the rich-list css class", async () => {
-        await renderDemo(listviewSettings2Demo);
-        const listView = await screen.findByName("list-view", { as: Gtk.ListView });
-        expect(listView).toHaveClass("rich-list");
-    });
-
-    it("wraps the list view directly inside the scrolled window", async () => {
-        await renderDemo(listviewSettings2Demo);
-        const sw = await screen.findByName("scrolled", { as: Gtk.ScrolledWindow });
-        const listView = await screen.findByName("list-view", { as: Gtk.ListView });
-        expect(sw).toHaveObjectProperty("child", listView);
-    });
-
-    it("places the search entry inside the search bar", async () => {
-        await renderDemo(listviewSettings2Demo);
-        const bar = await screen.findByName("search-bar", { as: Gtk.SearchBar });
-        expect(within(bar).queryByName("search-entry")).toBeNull();
-        const entry = await openSearchEntry();
-        expect(bar).toContainElement(entry);
-    });
-
-    it("groups the keys into per-schema sections with schema-id headings", async () => {
-        await renderDemo(listviewSettings2Demo);
-        await screen.findByName("list-view");
-        const headers = schemaHeaderLabels();
-        expect(headers.length).toBeGreaterThan(0);
-    });
-});
-
-describe("listviewSettings2Demo search and editing", () => {
-    it("enables the search bar when the titlebar search toggle is activated", async () => {
-        await renderDemo(listviewSettings2Demo);
-        const { bar } = await activateSearchBar();
-        expect(bar).toHaveObjectProperty("searchModeEnabled", true);
-    });
-
-    it("narrows the list model to the matching schema when the search term matches a subset", async () => {
-        const model = await renderListModel();
-        const initial = model.getNItems();
-        const headers = schemaHeaderLabels();
-        expect(headers.length).toBeGreaterThan(0);
-        const token = (headers[0]?.split(".").pop() ?? "").toLowerCase();
-        expect(token.length).toBeGreaterThan(0);
-        const entry = await openSearchEntry();
-        await userEvent.type(entry, token);
-        expect(entry).toHaveDisplayValue(token);
-
+        const list = await screen.findByName("list-view", { as: Gtk.ListView });
+        const search = await openSearchEntry();
+        await userEvent.type(search, "zzqxnomatchforanyschemaorkey");
         await waitFor(() => {
-            expect(model.getNItems()).toBeLessThan(initial);
+            expect(within(list).queryAllByRole(Gtk.AccessibleRole.TEXT_BOX)).toHaveLength(0);
         });
-
-        expect(model.getNItems()).toBeGreaterThan(0);
-        expect(schemaHeaderLabels().every((header) => header.toLowerCase().includes(token))).toBe(true);
+        await userEvent.keyboard(search, "{Escape}");
+        await waitFor(() => {
+            expect(screen.getByName("search-toggle", { as: Gtk.ToggleButton })).not.toBePressed();
+            expect(within(list).queryAllByRole(Gtk.AccessibleRole.TEXT_BOX).length).toBeGreaterThan(0);
+        });
+        await openSearchEntry();
+        expect(screen.getByName("search-entry")).toHaveDisplayValue("");
     });
 
-    it("clears the list model to zero when the search text matches no key", async () => {
-        const model = await renderListModel();
-        const entry = await openSearchEntry();
-        await userEvent.type(entry, "zzqxnomatchforanyschemaorkey");
+    it("allows a complete multi-character value before committing on Enter", async () => {
+        const settings = Gio.Settings.new(schemaId);
+        const original = settings.getValue("cursor-size");
 
-        await waitFor(() => {
-            expect(model).toHaveObjectProperty("nItems", 0);
-        });
-    });
-});
-
-describe("listviewSettings2Demo search reset and editing", () => {
-    it("restores the full list model when stop-search is emitted", async () => {
-        const model = await renderListModel();
-        const initial = model.getNItems();
-        const entry = await openSearchEntry();
-        await userEvent.type(entry, "zzqxnomatchforanyschemaorkey");
-
-        await waitFor(() => {
-            expect(model).toHaveObjectProperty("nItems", 0);
-        });
-
-        await userEvent.keyboard(entry, "{Escape}");
-
-        await waitFor(() => {
-            expect(model).toHaveObjectProperty("nItems", initial);
-        });
-    });
-
-    it("turns the search bar off when the search toggle is deactivated", async () => {
-        await renderDemo(listviewSettings2Demo);
-        const { toggle, bar } = await activateSearchBar();
-        await userEvent.click(toggle);
-
-        await waitFor(() => {
-            expect(bar).toHaveObjectProperty("searchModeEnabled", false);
-        });
-    });
-
-    it(
-        "does not blow the trampoline stack when typing invalid characters into a numeric schema-key entry",
-        async () => {
+        try {
             await renderDemo(listviewSettings2Demo);
-            const entries = await screen.findAllByRole(Gtk.AccessibleRole.TEXT_BOX);
-            const entry = entries[0] as Gtk.Entry;
-            const initial = entry.getText();
-            await userEvent.clear(entry);
-            await userEvent.type(entry, "x");
-            expect(entry).toHaveDisplayValue(initial);
-        },
-    );
+            const entry = await findValueEntry("cursor-size");
+            await replaceValue(entry, "48");
+            expect(entry).toHaveDisplayValue("48");
+            expect(settings.getValue("cursor-size").equal(original)).toBe(true);
+            await userEvent.keyboard(entry, "{Enter}");
+            await waitFor(() => {
+                expect(settings.getInt("cursor-size")).toBe(48);
+            });
+        } finally {
+            settings.setValue("cursor-size", original);
+        }
+    });
+
+    it("commits a value when keyboard focus leaves the entry", async () => {
+        const settings = Gio.Settings.new(schemaId);
+        const original = settings.getValue("cursor-size");
+
+        try {
+            await renderDemo(listviewSettings2Demo);
+            const entry = await findValueEntry("cursor-size");
+            await replaceValue(entry, "64");
+            await userEvent.tab(entry);
+            await waitFor(() => {
+                expect(settings.getInt("cursor-size")).toBe(64);
+            });
+        } finally {
+            settings.setValue("cursor-size", original);
+        }
+    });
+
+    it.each(["invalid", "'unsupported'"])("rejects an invalid clock format %s", async (value) => {
+        const settings = Gio.Settings.new(schemaId);
+        const original = settings.getValue("clock-format");
+        await renderDemo(listviewSettings2Demo);
+        const entry = await findValueEntry("clock-format");
+        await replaceValue(entry, value);
+        await userEvent.keyboard(entry, "{Enter}");
+        expect(entry).toHaveDisplayValue(original.print(false));
+        expect(settings.getValue("clock-format").equal(original)).toBe(true);
+    });
+
+    it("reads current settings when the demo is reopened", async () => {
+        const settings = Gio.Settings.new(schemaId);
+        const original = settings.getValue("cursor-size");
+
+        try {
+            const first = await renderDemo(listviewSettings2Demo);
+            await findValueEntry("cursor-size");
+            await first.unmount();
+            settings.setInt("cursor-size", 72);
+            await renderDemo(listviewSettings2Demo);
+            expect(await findValueEntry("cursor-size")).toHaveDisplayValue("72");
+        } finally {
+            settings.setValue("cursor-size", original);
+        }
+    });
 });

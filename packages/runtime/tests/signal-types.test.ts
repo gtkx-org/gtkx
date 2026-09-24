@@ -1,5 +1,6 @@
 import type * as Gdk from "@gtkx/gi/gdk";
 import type * as GObject from "@gtkx/gi/gobject";
+import type { NativeInstance } from "@gtkx/runtime";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 
@@ -39,7 +40,7 @@ describe("generated signal types", () => {
             Expect<Equal<Gtk.ButtonSignalEmit["clicked"]["result"], void>>,
             Expect<Equal<Gtk.SpinButtonSignalEmit["output"]["result"], boolean>>,
             Expect<Equal<Gtk.SpinButtonSignalEmit["input"]["result"], [number, number]>>,
-            Expect<Equal<Gtk.OverlaySignalEmit["get-child-position"]["args"], [widget: Gtk.Widget]>>,
+            Expect<Equal<Gtk.OverlaySignalEmit["get-child-position"]["args"], [widget: NativeInstance<Gtk.Widget>]>>,
             Expect<Equal<Gtk.OverlaySignalEmit["get-child-position"]["result"], [boolean, Gdk.Rectangle]>>,
         ] = [true, true, true, true, true, true];
 

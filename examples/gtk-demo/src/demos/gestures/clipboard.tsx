@@ -26,14 +26,15 @@ import { createPortal, rootElement, useParentWindow, useProperty } from "@gtkx/r
 import { useState } from "react";
 import type { Demo } from "../types.js";
 import floppyBuddyPath from "../../../data/demos/gestures/floppybuddy.gif?resource";
-import demo4LogoPath from "../../../data/demos/gestures/org.gtk.Demo4.svg?resource";
 import portlandRosePath from "../../../data/demos/gestures/portland-rose.jpg?resource";
+import demo4LogoPath from "../../../data/icons/org.gtk.Demo4.svg?resource";
 import { buildRgba } from "../../build-rgba.js";
 import { isCancellation } from "../../is-cancellation.js";
 import { useCancellable } from "../../use-cancellable.js";
 import sourceCode from "./clipboard.tsx?raw";
 
 type SourceType = "Text" | "Color" | "Image" | "File" | "Folder";
+type ImageIndex = 0 | 1 | 2;
 type PastedContentType = "" | "Text" | "Color" | "Image" | "File";
 type SetPastedContent = React.Dispatch<React.SetStateAction<PastedContent>>;
 type ClipboardState = ReturnType<typeof useClipboardState>;
@@ -51,8 +52,9 @@ type CopySourceArgs = {
     sourceType: SourceType;
     sourceText: string;
     sourceColor: Gdk.RGBA;
-    selectedImage: number;
+    selectedImage: ImageIndex;
     sourceFile: Gio.File | null;
+    sourceFolder: Gio.File | null;
 };
 
 type PasteAttempt = (
@@ -73,23 +75,23 @@ type ClipboardSourceSectionProps = {
 type SourcePageImageProps = {
     state: ClipboardState;
     textures: ReturnType<typeof useClipboardTextures>;
-    createImageDragProvider: () => Gdk.ContentProvider | null;
 };
 
 type ImageToggleProps = {
     name: string;
     buttonLabel: string;
     imageLabel: string;
-    index: number;
+    index: ImageIndex;
     state: ClipboardState;
     paintable: Gdk.Texture;
-    createProvider?: () => Gdk.ContentProvider | null;
+    group?: Gtk.ToggleButton | null;
+    toggleRef?: React.Ref<Gtk.ToggleButton>;
 };
 
 type SourcePageFileProps = {
     id: "File" | "Folder";
     label: string;
-    state: ClipboardState;
+    file: Gio.File | null;
     onClick: () => void;
     createFileDragProvider: () => Gdk.ContentProvider | null;
 };
@@ -106,7 +108,7 @@ type FileDialogRequest = {
     window: Gtk.Window | null;
     cancellable: Gio.Cancellable;
     kind: "file" | "folder";
-    setSourceFile: (file: Gio.File) => void;
+    setSource: (file: Gio.File) => void;
 };
 
 type ClipboardDialogObjects = {
@@ -166,13 +168,22 @@ const didApplyColor = (rgba: Gdk.RGBA, setPastedContent: SetPastedContent): bool
     return true;
 };
 
-const canCopySource = (sourceType: SourceType, sourceText: string, sourceFile: Gio.File | null): boolean => {
+const canCopySource = (
+    sourceType: SourceType,
+    sourceText: string,
+    sourceFile: Gio.File | null,
+    sourceFolder: Gio.File | null,
+): boolean => {
     if (sourceType === "Text") {
         return sourceText.length > 0;
     }
 
-    if (sourceType === "File" || sourceType === "Folder") {
+    if (sourceType === "File") {
         return sourceFile !== null;
+    }
+
+    if (sourceType === "Folder") {
+        return sourceFolder !== null;
     }
 
     return true;
@@ -182,10 +193,11 @@ function useClipboardState() {
     const [sourceType, setSourceType] = useState<SourceType>("Text");
     const [sourceText, setSourceText] = useState("Copy this!");
     const [sourceColor, setSourceColor] = useState<Gdk.RGBA>(buildRgba(128 / 255, 0, 128 / 255, 1));
-    const [selectedImage, setSelectedImage] = useState(0);
+    const [selectedImage, setSelectedImage] = useState<ImageIndex>(0);
     const [sourceFile, setSourceFile] = useState<Gio.File | null>(null);
+    const [sourceFolder, setSourceFolder] = useState<Gio.File | null>(null);
     const [pastedContent, setPastedContent] = useState<PastedContent>({ type: "" });
-    const canCopy = canCopySource(sourceType, sourceText, sourceFile);
+    const canCopy = canCopySource(sourceType, sourceText, sourceFile, sourceFolder);
 
     return {
         sourceType,
@@ -198,6 +210,8 @@ function useClipboardState() {
         setSelectedImage,
         sourceFile,
         setSourceFile,
+        sourceFolder,
+        setSourceFolder,
         pastedContent,
         setPastedContent,
         canCopy,
@@ -221,13 +235,16 @@ const canPasteFrom = (formats: Gdk.ContentFormats): boolean =>
     formats.containGtype(gfileType) ||
     formats.containMimeType("image/png");
 
-const paintableValue = (paintable: Gdk.Paintable): GObject.Value => {
+const textureValue = (texture: Gdk.Texture): GObject.Value => {
     const value = new GObject.Value();
-    value.init(gdkPaintableType);
-    value.setObject(paintable);
+    value.init(gdkTextureType);
+    value.setObject(texture);
 
     return value;
 };
+
+const textureProvider = (texture: Gdk.Texture): Gdk.ContentProvider =>
+    Gdk.ContentProvider.newForValue(textureValue(texture));
 
 const fileValue = (file: Gio.File): GObject.Value => {
     const value = new GObject.Value();
@@ -237,21 +254,19 @@ const fileValue = (file: Gio.File): GObject.Value => {
     return value;
 };
 
-const textureForIndex = (index: number, textures: ClipboardTextures) =>
-    [textures.portlandRoseTexture, textures.floppyBuddyTexture, textures.demo4LogoTexture][index] ??
-    textures.portlandRoseTexture;
+const textureForIndex = (index: ImageIndex, textures: ClipboardTextures): Gdk.Texture =>
+    ([textures.portlandRoseTexture, textures.floppyBuddyTexture, textures.demo4LogoTexture] as const)[index];
 
-function useDragProviders(state: ClipboardState, textures: ClipboardTextures) {
-    const { sourceText, sourceColor, selectedImage, sourceFile } = state;
+function useDragProviders(state: ClipboardState) {
+    const { sourceText, sourceColor, sourceFile, sourceFolder } = state;
     const createTextDragProvider = () => Gdk.ContentProvider.newForValue(sourceText);
     const createColorDragProvider = () => Gdk.ContentProvider.newForValue(sourceColor);
-    const createImageDragProvider = () =>
-        Gdk.ContentProvider.newForValue(paintableValue(textureForIndex(selectedImage, textures)));
-
     const createFileDragProvider = () =>
         sourceFile ? Gdk.ContentProvider.newForValue(fileValue(sourceFile)) : null;
+    const createFolderDragProvider = () =>
+        sourceFolder ? Gdk.ContentProvider.newForValue(fileValue(sourceFolder)) : null;
 
-    return { createTextDragProvider, createColorDragProvider, createImageDragProvider, createFileDragProvider };
+    return { createTextDragProvider, createColorDragProvider, createFileDragProvider, createFolderDragProvider };
 }
 
 const copyTextToClipboard = (clipboard: Gdk.Clipboard, sourceText: string) => {
@@ -262,12 +277,14 @@ const copyColorToClipboard = (clipboard: Gdk.Clipboard, sourceColor: Gdk.RGBA) =
     setClipboardValue(clipboard, sourceColor);
 };
 
-const copyImageToClipboard = (clipboard: Gdk.Clipboard, selectedImage: number, textures: ClipboardTextures) => {
-    setClipboardValue(clipboard, paintableValue(textureForIndex(selectedImage, textures)));
+const copyImageToClipboard = (clipboard: Gdk.Clipboard, selectedImage: ImageIndex, textures: ClipboardTextures) => {
+    clipboard.setContent(textureProvider(textureForIndex(selectedImage, textures)));
 };
 
-const copyFileToClipboard = (clipboard: Gdk.Clipboard, sourceFile: Gio.File) => {
-    setClipboardValue(clipboard, fileValue(sourceFile));
+const copyFileToClipboard = (clipboard: Gdk.Clipboard, sourceFile: Gio.File | null) => {
+    if (sourceFile) {
+        setClipboardValue(clipboard, fileValue(sourceFile));
+    }
 };
 
 const copySourceToClipboard = ({
@@ -276,6 +293,7 @@ const copySourceToClipboard = ({
     sourceColor,
     selectedImage,
     sourceFile,
+    sourceFolder,
 }: CopySourceArgs, textures: ClipboardTextures) => {
     const clipboard = getClipboard();
 
@@ -296,12 +314,12 @@ const copySourceToClipboard = ({
             copyImageToClipboard(clipboard, selectedImage, textures);
             break;
         }
-        case "File":
+        case "File": {
+            copyFileToClipboard(clipboard, sourceFile);
+            break;
+        }
         case "Folder": {
-            if (sourceFile) {
-                copyFileToClipboard(clipboard, sourceFile);
-            }
-
+            copyFileToClipboard(clipboard, sourceFolder);
             break;
         }
     }
@@ -338,7 +356,7 @@ function useClipboardHandlers(
     textures: ClipboardTextures,
     { parentWindow, file, folder }: ClipboardDialogObjects,
 ) {
-    const { setSourceFile, setPastedContent } = state;
+    const { setSourceFile, setSourceFolder, setPastedContent } = state;
 
     const handleCopy = () => {
         copySourceToClipboard(state, textures);
@@ -353,7 +371,7 @@ function useClipboardHandlers(
                 window: parentWindow,
                 cancellable: file.cancellable,
                 kind: "file",
-                setSourceFile,
+                setSource: setSourceFile,
             }).finally(file.renew);
         }
     };
@@ -365,7 +383,7 @@ function useClipboardHandlers(
                 window: parentWindow,
                 cancellable: folder.cancellable,
                 kind: "folder",
-                setSourceFile,
+                setSource: setSourceFolder,
             }).finally(folder.renew);
         }
     };
@@ -474,13 +492,13 @@ async function tryPasteText(
     return true;
 }
 
-const openFileDialog = async ({ dialog, window, cancellable, kind, setSourceFile }: FileDialogRequest) => {
+const openFileDialog = async ({ dialog, window, cancellable, kind, setSource }: FileDialogRequest) => {
     try {
         const file =
             kind === "file"
                 ? await dialog.open(window, cancellable)
                 : await dialog.selectFolder(window, cancellable);
-        setSourceFile(file);
+        setSource(file);
     } catch (error) {
         logError(error);
     }
@@ -527,7 +545,7 @@ const didHandleTextDrop = (value: GObject.Value, setPastedContent: SetPastedCont
 
     const text = value.getString();
 
-    if (!text) {
+    if (text === null) {
         return false;
     }
 
@@ -562,24 +580,20 @@ const ClipboardSourceSection = ({
         <GtkStack name="source-stack" visibleChildName={state.sourceType} vexpand>
             <SourcePageText state={state} createTextDragProvider={providers.createTextDragProvider} />
             <SourcePageColor state={state} createColorDragProvider={providers.createColorDragProvider} />
-            <SourcePageImage
-                state={state}
-                textures={textures}
-                createImageDragProvider={providers.createImageDragProvider}
-            />
+            <SourcePageImage state={state} textures={textures} />
             <SourcePageFile
                 id="File"
                 label="File Drag Source"
-                state={state}
+                file={state.sourceFile}
                 onClick={onFileSelect}
                 createFileDragProvider={providers.createFileDragProvider}
             />
             <SourcePageFile
                 id="Folder"
                 label="Folder Drag Source"
-                state={state}
+                file={state.sourceFolder}
                 onClick={onFolderSelect}
-                createFileDragProvider={providers.createFileDragProvider}
+                createFileDragProvider={providers.createFolderDragProvider}
             />
         </GtkStack>
         <GtkButton label="_Copy" useUnderline valign={Gtk.Align.CENTER} sensitive={state.canCopy} onClicked={onCopy} />
@@ -631,42 +645,58 @@ const SourcePageColor = ({
     </GtkStackPage>
 );
 
-const SourcePageImage = ({ state, textures, createImageDragProvider }: SourcePageImageProps) => (
-    <GtkStackPage name="Image">
-        <GtkBox valign={Gtk.Align.CENTER} cssClasses={["linked"]}>
-            <ImageToggle
-                name="image_rose"
-                buttonLabel="Photo Drag Source"
-                imageLabel="Portland Rose Photo"
-                index={0}
-                state={state}
-                paintable={textures.portlandRoseTexture}
-            />
-            <ImageToggle
-                name="image_floppy"
-                buttonLabel="Icon Drag Source"
-                imageLabel="Floppy Buddy Icon"
-                index={1}
-                state={state}
-                paintable={textures.floppyBuddyTexture}
-                createProvider={createImageDragProvider}
-            />
-            <ImageToggle
-                name="image_logo"
-                buttonLabel="SVG Drag Source"
-                imageLabel="gtk-demo logo"
-                index={2}
-                state={state}
-                paintable={textures.demo4LogoTexture}
-                createProvider={createImageDragProvider}
-            />
-        </GtkBox>
-    </GtkStackPage>
-);
+function SourcePageImage({ state, textures }: SourcePageImageProps) {
+    const [firstToggle, setFirstToggle] = useState<Gtk.ToggleButton | null>(null);
 
-const ImageToggle = ({ name, buttonLabel, imageLabel, index, state, paintable, createProvider }: ImageToggleProps) => (
+    return (
+        <GtkStackPage name="Image">
+            <GtkBox valign={Gtk.Align.CENTER} cssClasses={["linked"]}>
+                <ImageToggle
+                    name="image_rose"
+                    buttonLabel="Photo Drag Source"
+                    imageLabel="Portland Rose Photo"
+                    index={0}
+                    state={state}
+                    paintable={textures.portlandRoseTexture}
+                    toggleRef={setFirstToggle}
+                />
+                <ImageToggle
+                    name="image_floppy"
+                    buttonLabel="Icon Drag Source"
+                    imageLabel="Floppy Buddy Icon"
+                    index={1}
+                    state={state}
+                    paintable={textures.floppyBuddyTexture}
+                    group={firstToggle}
+                />
+                <ImageToggle
+                    name="image_logo"
+                    buttonLabel="SVG Drag Source"
+                    imageLabel="gtk-demo logo"
+                    index={2}
+                    state={state}
+                    paintable={textures.demo4LogoTexture}
+                    group={firstToggle}
+                />
+            </GtkBox>
+        </GtkStackPage>
+    );
+}
+
+const ImageToggle = ({
+    name,
+    buttonLabel,
+    imageLabel,
+    index,
+    state,
+    paintable,
+    group,
+    toggleRef,
+}: ImageToggleProps) => (
     <GtkToggleButton
         name={name}
+        ref={toggleRef}
+        group={group}
         accessibleLabel={buttonLabel}
         active={state.selectedImage === index}
         onToggled={(btn) => {
@@ -674,13 +704,15 @@ const ImageToggle = ({ name, buttonLabel, imageLabel, index, state, paintable, c
                 state.setSelectedImage(index);
             }
         }}
-        controllers={createProvider ? <GtkDragSource onPrepare={createProvider} actions={Gdk.DragAction.COPY} /> : null}
+        controllers={(
+            <GtkDragSource onPrepare={() => textureProvider(paintable)} actions={Gdk.DragAction.COPY} />
+        )}
     >
         <GtkImage accessibleLabel={imageLabel} paintable={paintable} cssClasses={["large-icons"]} />
     </GtkToggleButton>
 );
 
-const SourcePageFile = ({ id, label, state, onClick, createFileDragProvider }: SourcePageFileProps) => (
+const SourcePageFile = ({ id, label, file, onClick, createFileDragProvider }: SourcePageFileProps) => (
     <GtkStackPage name={id}>
         <GtkButton
             valign={Gtk.Align.CENTER}
@@ -697,7 +729,7 @@ const SourcePageFile = ({ id, label, state, onClick, createFileDragProvider }: S
             )}
         >
             <GtkLabel xalign={0} ellipsize={1}>
-                {state.sourceFile ? (state.sourceFile.getPath() ?? "—") : "—"}
+                {file ? (file.getPath() ?? file.getUri()) : "—"}
             </GtkLabel>
         </GtkButton>
     </GtkStackPage>
@@ -801,7 +833,7 @@ function useClipboardFileDialog() {
 function ClipboardDemo() {
     const state = useClipboardState();
     const textures = useClipboardTextures();
-    const providers = useDragProviders(state, textures);
+    const providers = useDragProviders(state);
     const parentWindow = useParentWindow();
     const fileDialog = useClipboardFileDialog();
     const folderDialog = useClipboardFileDialog();
@@ -826,7 +858,7 @@ function ClipboardDemo() {
                 marginBottom={12}
             >
                 <GtkLabel wrap maxWidthChars={40}>
-                    {"“Copy” will copy the selected data the clipboard, “Paste” will show the current clipboard " +
+                    {"“Copy” will copy the selected data to the clipboard, “Paste” will show the current clipboard " +
                         "contents. You can also drag the data to the bottom."}
                 </GtkLabel>
 

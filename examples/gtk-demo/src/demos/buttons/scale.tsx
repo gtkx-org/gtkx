@@ -30,6 +30,7 @@ const ScaleRow = ({ label, row, scaleProps }: ScaleRowProps) => (
         </GtkGridLayoutChild>
         <GtkGridLayoutChild column={1} row={row}>
             <GtkScale
+                accessibleLabel={label}
                 widthRequest={200}
                 drawValue={false}
                 hexpand

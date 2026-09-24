@@ -1,8 +1,9 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkConstraintLayout } from "@gtkx/jsx/gtk";
+import { GtkConstraintLayout } from "@gtkx/jsx/gtk";
 import { useMemo } from "react";
 import type { Demo } from "../types.js";
-import { ConstraintChildButtons, useChildButtons } from "./child-buttons.js";
+import { useChildButtons } from "./child-buttons.js";
+import { ConstraintContainer } from "./constraint-helpers.js";
 import sourceCode from "./constraints-vfl.tsx?raw";
 
 const VFL_CONSTRAINTS = [
@@ -42,18 +43,14 @@ function ConstraintsVflDemo() {
     );
 
     return (
-        <GtkBox
-            name="container"
-            hexpand
-            vexpand
+        <ConstraintContainer
+            handlers={handlers}
             layoutManager={(
                 <GtkConstraintLayout
                     vfl={views && [{ lines: VFL_CONSTRAINTS, hspacing: 8, vspacing: 8, views }]}
                 />
             )}
-        >
-            <ConstraintChildButtons {...handlers} />
-        </GtkBox>
+        />
     );
 }
 

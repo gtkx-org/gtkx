@@ -36,7 +36,14 @@ const overlayDecorativeDemo: Demo = {
 
 const decorPicture = ({ name, paintable, align }: DecorPictureOptions): ReactNode => (
     <GtkOverlayLayoutChild key={name}>
-        <GtkPicture name={name} paintable={paintable} halign={align} valign={align} canTarget={false} />
+        <GtkPicture
+            name={name}
+            paintable={paintable}
+            halign={align}
+            valign={align}
+            canTarget={false}
+            accessibleRole={Gtk.AccessibleRole.PRESENTATION}
+        />
     </GtkOverlayLayoutChild>
 );
 
@@ -53,6 +60,7 @@ const marginScale = (margin: number, onMarginChanged: (scale: Gtk.Scale) => void
             marginEnd={20}
             marginBottom={20}
             tooltipText="Margin"
+            accessibleLabel="Text margin"
             adjustment={<GtkAdjustment value={margin} lower={0} upper={100} stepIncrement={1} pageIncrement={1} />}
             onValueChanged={onMarginChanged}
         />
@@ -61,8 +69,8 @@ const marginScale = (margin: number, onMarginChanged: (scale: Gtk.Scale) => void
 
 function OverlayDecorativeDemo() {
     const [margin, setMargin] = useState(100);
-    const decor1 = Gdk.Texture.newFromResource(decor1Path);
-    const decor2 = Gdk.Texture.newFromResource(decor2Path);
+    const [decor1] = useState(() => Gdk.Texture.newFromResource(decor1Path));
+    const [decor2] = useState(() => Gdk.Texture.newFromResource(decor2Path));
 
     const handleMarginChanged = (scale: Gtk.Scale) => {
         setMargin(scale.getValue());
@@ -84,6 +92,7 @@ function OverlayDecorativeDemo() {
             >
                 <GtkTextView
                     name="text-view"
+                    accessibleLabel="Diary"
                     hexpand
                     vexpand
                     leftMargin={Math.round(margin)}

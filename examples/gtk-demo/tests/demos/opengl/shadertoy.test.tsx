@@ -1,11 +1,19 @@
-import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { screen, screenshot, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it, vi } from "vitest";
 import { shadertoyDemo } from "../../../src/demos/opengl/shadertoy.js";
-import { findButton, renderDemo } from "../../test-utils.js";
+import { findButton, renderDemo, screenshotColors } from "../../test-utils.js";
 
 const PRESET_NAMES = ["Alien Planet", "Mandelbrot", "Neon", "Cogs", "Glowing Stars"];
+const RED_SHADER = `void mainImage(out vec4 fragColor, vec2 fragCoord) {
+    fragColor = vec4(1.0, 0.0, 0.0, 1.0);
+}`;
+const GREEN_SHADER = `void mainImage(out vec4 fragColor, vec2 fragCoord) {
+    fragColor = vec4(0.0, 1.0, 0.0, 1.0);
+}`;
+const RESTART_SHADER = `void mainImage(out vec4 fragColor, vec2 fragCoord) {
+    fragColor = iTime < 1.5 ? vec4(1.0, 0.0, 0.0, 1.0) : vec4(0.0, 1.0, 0.0, 1.0);
+}`;
 
 const clickPreset = async (name: string): Promise<void> => {
     await userEvent.click(await findButton(name));
@@ -17,10 +25,21 @@ const renderAndFindSourceView = async (): Promise<Gtk.TextView> => {
     return screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
 };
 
+const replaceSource = async (sourceView: Gtk.TextView, source: string): Promise<void> => {
+    await userEvent.clear(sourceView);
+    await userEvent.paste(sourceView, source);
+};
+
+const waitForColor = async (glArea: Gtk.GLArea, color: string, timeout = 1000): Promise<void> => {
+    await waitFor(async () => {
+        expect(screenshotColors(await screenshot(glArea)).has(color)).toBe(true);
+    }, { timeout });
+};
+
 vi.setConfig({ testTimeout: 30_000 });
 
 describe("shadertoyDemo", () => {
-    it("renders the main GtkGLArea panel configured with an ES context", async () => {
+    it("renders the selected shader in the main panel", async () => {
         await renderDemo(shadertoyDemo);
         const glArea = await screen.findByName("shadertoy-gl-area", { as: Gtk.GLArea });
 
@@ -28,7 +47,7 @@ describe("shadertoyDemo", () => {
             expect(glArea.getWidth()).toBeGreaterThan(0);
         });
 
-        expect(glArea).toHaveObjectProperty("allowedApis", Gdk.GLAPI.GLES);
+        expect(screenshotColors(await screenshot(glArea)).size).toBeGreaterThan(8);
     });
 
     it("seeds the source editor with the Alien Planet fragment shader", async () => {
@@ -86,5 +105,38 @@ describe("shadertoyDemo editor", () => {
         await userEvent.clear(sourceView);
         await userEvent.type(sourceView, "// custom shader");
         expect(await screen.findByDisplayValue("// custom shader")).toBe(sourceView);
+    });
+
+    it("shows a shader failure and recovers after valid source is run", async () => {
+        const sourceView = await renderAndFindSourceView();
+        const glArea = await screen.findByName("shadertoy-gl-area", { as: Gtk.GLArea });
+        await replaceSource(sourceView, RED_SHADER);
+        await userEvent.click(await findButton("Restart the demo"));
+        await waitForColor(glArea, "255,0,0,255");
+        const valid = await screenshot(glArea);
+        await replaceSource(sourceView, "void mainImage(");
+        await userEvent.click(await findButton("Restart the demo"));
+
+        await waitFor(async () => {
+            const failed = await screenshot(glArea);
+            expect(failed.data).not.toBe(valid.data);
+        });
+
+        await replaceSource(sourceView, GREEN_SHADER);
+        await userEvent.click(await findButton("Restart the demo"));
+        await waitForColor(glArea, "0,255,0,255");
+    });
+
+    it("restarts an unchanged shader from its first frame", async () => {
+        const sourceView = await renderAndFindSourceView();
+        const glArea = await screen.findByName("shadertoy-gl-area", { as: Gtk.GLArea });
+        await replaceSource(sourceView, RESTART_SHADER);
+        const restart = await findButton("Restart the demo");
+        expect(restart).toBeEnabled();
+        await userEvent.click(restart);
+        await waitForColor(glArea, "255,0,0,255");
+        await waitForColor(glArea, "0,255,0,255", 3000);
+        await userEvent.click(restart);
+        await waitForColor(glArea, "255,0,0,255");
     });
 });

@@ -196,6 +196,7 @@ type GtkWidgetProps = {
     actionGroups?: ReactNode | null | undefined;
     /** Style declarations applied to this widget alone, outranking any class in `cssClasses`. */
     style?: Style | null | undefined;
+    textChildAnchor?: Gtk.TextChildAnchor | undefined;
 } & ChildrenProps;
 
 /** Props of an action group placed in a widget's `actionGroups` slot. */
@@ -260,6 +261,7 @@ type GtkConstraintLayoutProps = {
 type GtkTextChildAnchorProps = {
     /** Image inserted into the buffer instead of an anchored widget; giving both is an error. */
     paintable?: Gdk.Paintable | null | undefined;
+    replacement?: string | undefined;
 } & ChildrenProps;
 
 /** Props of a `Gtk.HeaderBar` or `Gtk.ActionBar` element. */

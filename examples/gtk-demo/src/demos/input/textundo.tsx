@@ -32,6 +32,7 @@ function TextUndoDemo() {
             vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
         >
             <GtkTextView
+                accessibleLabel="Undo and redo text"
                 wrapMode={Gtk.WrapMode.WORD}
                 pixelsBelowLines={10}
                 leftMargin={20}

@@ -94,7 +94,7 @@ test("an instance of an unregistered subclass wraps as its nearest registered an
 
 test("a fundamental root does not match an unrelated fundamental root", () => {
     const foreign = Regress.TestFundamentalObjectNoGetSetFunc.new("hello");
-    expect(Regress.testFundamentalArgumentIn(foreign)).toBe(false);
+    expect(Reflect.apply(Regress.testFundamentalArgumentIn, undefined, [foreign])).toBe(false);
     expect(foreign.getData()).toBe("hello");
 });
 
@@ -207,13 +207,16 @@ test("instance type inspection needs the declared type a fundamental handle carr
 test("a fundamental argument rejects a handle from another family", () => {
     expect(Regress.testFundamentalArgumentIn(Regress.TestFundamentalSubObject.new("payload"))).toBe(true);
 
-    expect(() => Regress.testFundamentalArgumentIn(new Regress.TestObj({}))).toThrow();
+    expect(() => {
+        Reflect.apply(Regress.testFundamentalArgumentIn, undefined, [new Regress.TestObj({})]);
+    }).toThrow();
     // @ts-expect-error a BoxedStruct is not a TestFundamentalObject
     expect(() => Regress.testFundamentalArgumentIn(new GIMarshallingTests.BoxedStruct({ long: 1n }))).toThrow();
-    expect(() =>
-        Regress.testFundamentalArgumentIn(
+    expect(() => {
+        Reflect.apply(Regress.testFundamentalArgumentIn, undefined, [
             GObject.paramSpecInt("count", null, null, 0, 10, 5, GObject.ParamFlags.READABLE),
-        )).toThrow();
+        ]);
+    }).toThrow();
 });
 
 test("fundamental arguments reject values that carry no native handle", () => {

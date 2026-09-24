@@ -56,7 +56,7 @@ In `src/components/window.tsx`, share an overlay ref with `ToastProvider` and wr
 +</ToastProvider>
 ```
 
-The provider makes this overlay available to `useToast`, including from the window's shortcut controller. The overlay stays around the navigator because that is the surface the toast should cover. See the [components guide](/guide/components) for the toast helpers and React's [context guide](https://react.dev/learn/passing-data-deeply-with-context) for the underlying React pattern.
+The provider makes this overlay available to `useToast`, including from the window's shortcut controller. The overlay stays around the navigator because that is the surface the toast should cover. See the [components guide](/guide/components) for the toast helpers.
 
 Add the two remaining task transitions in `src/store/tasks.ts`:
 
@@ -84,40 +84,24 @@ export type DialogKind = "none" | "about" | "shortcuts" | "new-list";
 export type DialogState = { kind: DialogKind } | { kind: "delete-task"; task: Task };
 ```
 
-This TypeScript [discriminated union](https://www.typescriptlang.org/docs/handbook/2/narrowing.html#discriminated-unions) keeps the task on the only dialog state that needs it, without a nullable fallback.
+This shape keeps the task on the only dialog state that needs it, without a nullable fallback.
 
 Update the UI slice in `src/store/ui.ts`:
 
-```ts
-export type UiSlice = {
-    collapsed: boolean;
-    filter: Filter;
-    searchMode: boolean;
-    searchQuery: string;
-    dialog: DialogState;
-    setCollapsed: (collapsed: boolean) => void;
-    setFilter: (filter: Filter) => void;
-    setSearchMode: (searchMode: boolean) => void;
-    setSearchQuery: (searchQuery: string) => void;
-    resetSearch: () => void;
-    showDialog: (kind: DialogKind) => void;
-    askDeleteTask: (task: Task) => void;
-};
+```diff
+-import type { DialogKind, Filter } from "../types.js";
++import type { DialogKind, DialogState, Filter, Task } from "../types.js";
 
-export const createUiSlice: StateCreator<Store, Mutators, [], UiSlice> = (set) => ({
-    collapsed: false,
-    filter: "all",
-    searchMode: false,
-    searchQuery: "",
-    dialog: { kind: "none" },
-    setCollapsed: (collapsed) => set({ collapsed }),
-    setFilter: (filter) => set({ filter }),
-    setSearchMode: (searchMode) => set({ searchMode }),
-    setSearchQuery: (searchQuery) => set({ searchQuery }),
-    resetSearch: () => set({ searchMode: false, searchQuery: "" }),
-    showDialog: (kind) => set({ dialog: { kind } }),
-    askDeleteTask: (task) => set({ dialog: { kind: "delete-task", task } }),
-});
+-    dialog: DialogKind;
++    dialog: DialogState;
+     showDialog: (dialog: DialogKind) => void;
++    askDeleteTask: (task: Task) => void;
+
+-    dialog: "none",
++    dialog: { kind: "none" },
+-    showDialog: (dialog) => set({ dialog }),
++    showDialog: (kind) => set({ dialog: { kind } }),
++    askDeleteTask: (task) => set({ dialog: { kind: "delete-task", task } }),
 ```
 
 This shape makes the invalid state—an open confirmation with no task—impossible.

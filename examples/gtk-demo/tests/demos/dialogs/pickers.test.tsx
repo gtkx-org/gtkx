@@ -1,4 +1,4 @@
-import { Error as GError, quarkFromString } from "@gtkx/gi/glib";
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { pickersDemo } from "../../../src/demos/dialogs/pickers.js";
-import { makeFileValue, makeStringValue, renderDemo } from "../../test-utils.js";
+import { makeDialogDismissedError, makeFileValue, makeStringValue, renderDemo } from "../../test-utils.js";
 
 const MIN_PDF =
     "%PDF-1.1\n%\u{C2}\u{A5}\u{C2}\u{B1}\u{C3}\u{AB}\n\n" +
@@ -22,9 +22,6 @@ const MIN_PDF =
 
 const TMP_DIR = mkdtempSync(join(tmpdir(), "gtkx-pickers-"));
 const PDF_PATH = join(TMP_DIR, "doc.pdf");
-
-const dismissedError = (): GError =>
-    GError.newLiteral(quarkFromString("gtk-dialog-error-quark"), Gtk.DialogError.DISMISSED, "Dismissed by user");
 
 const renderSelectFileButton = async (): Promise<Gtk.Button> => {
     await renderDemo(pickersDemo);
@@ -75,20 +72,36 @@ describe("pickersDemo file buttons", () => {
         "renders the symbolic-icon Open File, Open in Folder and Print buttons disabled before selecting a file",
         async () => {
             await renderDemo(pickersDemo);
+            const selectFileBtn = await screen.findByName("select-file-button", { as: Gtk.Button });
             const openFileBtn = await screen.findByName("open-file-button", { as: Gtk.Button });
             const openFolderBtn = await screen.findByName("open-folder-button", { as: Gtk.Button });
             const printBtn = await screen.findByName("print-button", { as: Gtk.Button });
             expect(openFileBtn).toBeDisabled();
             expect(openFolderBtn).toBeDisabled();
             expect(printBtn).toBeDisabled();
+            expect(selectFileBtn).toHaveAccessibleDescription("Select File");
+            expect(openFileBtn).toHaveAccessibleDescription("Open File");
+            expect(openFolderBtn).toHaveAccessibleDescription("Open in Folder");
             expect(printBtn).toHaveAccessibleDescription("Print File");
         },
     );
 });
 
 describe("pickersDemo handlers", () => {
+    it("selects a PDF through the file dialog and enables printing", async () => {
+        const open = vi.spyOn(Gtk.FileDialog.prototype, "open").mockResolvedValue(Gio.File.newForPath(PDF_PATH));
+
+        try {
+            await userEvent.click(await renderSelectFileButton());
+            expect(await screen.findByText("doc.pdf")).toBeVisible();
+            expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Print File" })).toBeEnabled();
+        } finally {
+            open.mockRestore();
+        }
+    });
+
     it("opens a FileDialog when the select-file button is clicked and ignores a dismissal", async () => {
-        const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open").mockRejectedValue(dismissedError());
+        const openSpy = vi.spyOn(Gtk.FileDialog.prototype, "open").mockRejectedValue(makeDialogDismissedError());
 
         try {
             const selectFile = await renderSelectFileButton();
@@ -127,9 +140,45 @@ describe("pickersDemo handlers", () => {
             launchSpy.mockRestore();
         }
     });
+
+    it("keeps a pending file selection when another launcher fails", async () => {
+        const info = Gio.File.newForPath(PDF_PATH).queryInfo(
+            "standard::content-type",
+            Gio.FileQueryInfoFlags.NONE,
+            null,
+        );
+        const metadata = Promise.withResolvers<Gio.FileInfo>();
+        const file = Gio.File.newForPath(PDF_PATH);
+        const open = vi.spyOn(Gtk.FileDialog.prototype, "open").mockResolvedValue(file);
+        const queryInfo = vi.spyOn(file, "queryInfoAsync").mockReturnValue(metadata.promise);
+        const launch = vi.spyOn(Gtk.UriLauncher.prototype, "launch").mockRejectedValue(new Error("launch failed"));
+
+        try {
+            await userEvent.click(await renderSelectFileButton());
+            await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "URI:" }));
+            expect(await screen.findByRole(Gtk.AccessibleRole.ALERT_DIALOG)).toBeRooted();
+            await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "OK" }));
+            metadata.resolve(info);
+            expect(await screen.findByText("doc.pdf")).toBeVisible();
+        } finally {
+            open.mockRestore();
+            queryInfo.mockRestore();
+            launch.mockRestore();
+        }
+    });
 });
 
 describe("pickersDemo drop target", () => {
+    it("preserves the selected file when a dropped file cannot be read", async () => {
+        const selectFile = await dropFileOnSelectButton(PDF_PATH);
+        await screen.findByText("doc.pdf");
+        await userEvent.drop(selectFile, makeFileValue(join(TMP_DIR, "missing.pdf")));
+        expect(await screen.findByRole(Gtk.AccessibleRole.ALERT_DIALOG)).toBeRooted();
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "OK" }));
+        expect(await screen.findByText("doc.pdf")).toBeVisible();
+        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Print File" })).toBeEnabled();
+    });
+
     it("accepts a GFile dropped on the select-file button and updates the displayed filename", async () => {
         await dropFileOnSelectButton("/tmp");
 

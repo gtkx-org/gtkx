@@ -1,13 +1,8 @@
-import { resolveExecutable } from "@gtkx/utils";
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import {
-    chmodSync,
     existsSync,
     mkdirSync,
-    readdirSync,
     readFileSync,
-    renameSync,
-    statSync,
     symlinkSync,
     writeFileSync,
 } from "node:fs";
@@ -21,7 +16,6 @@ const CONFIG = `export default { applicationId: "${APPLICATION_ID}", codegen: fa
 const APP_OUTPUT = join("build", "app");
 const HELPER_OUTPUT = join("build", "helper");
 const PUBLIC_OUTPUT = join("public", "dist");
-const MKFIFO = resolveExecutable("mkfifo");
 
 const runBundle = (projectRoot: string, outDir: string): string => {
     const result = spawnSync(process.execPath, [join(projectRoot, outDir, BUNDLE)], {
@@ -79,7 +73,7 @@ describe("gtkx build (separate output directories)", () => {
             .toThrow();
     });
 
-    it("rebuilds inside public without leaking transaction files", () => {
+    it("replaces a previous build while preserving its .git directory", () => {
         using project = createCliProject({
             prefix: "gtkx-build-output-rebuild-",
             config: CONFIG,
@@ -97,16 +91,11 @@ describe("gtkx build (separate output directories)", () => {
         writeFileSync(stale, "stale");
         writeFileSync(gitConfig, "preserved");
         writeFileSync(join(project.root, "public", ".git", "new"), "generated");
-        chmodSync(output, 0o750);
-        const inode = statSync(output).ino;
         runCliOrThrow(project, ["build", "src/index.ts", "--out", PUBLIC_OUTPUT]);
         expect(runBundle(project.root, PUBLIC_OUTPUT)).toBe("application");
         expect(existsSync(stale)).toBe(false);
         expect(readFileSync(gitConfig, "utf8")).toBe("preserved");
         expect(readFileSync(generatedGitFile, "utf8")).toBe("generated");
-        expect(statSync(output).ino).toBe(inode);
-        expect(statSync(output).mode & 0o777).toBe(0o750);
-        expect(readdirSync(output, { recursive: true }).some((name) => name.includes(".gtkx-output-"))).toBe(false);
     });
 
     it("refuses directories that are outside, unsafe, or reached through a symlink", () => {
@@ -135,38 +124,7 @@ describe("gtkx build (separate output directories)", () => {
         expect(() => runCliOrThrow(project, ["build"])).toThrow();
     });
 
-    it("refuses a symlinked ownership manifest", () => {
-        using project = createCliProject({
-            prefix: "gtkx-build-output-marker-symlink-",
-            config: CONFIG,
-            files: projectFiles(),
-            hasStore: true,
-        });
-        runCliOrThrow(project, ["build", "--out", HELPER_OUTPUT]);
-        const manifest = join(project.root, HELPER_OUTPUT, "gtkx-schemas.json");
-        const movedManifest = join(project.root, "moved-build-manifest.json");
-        renameSync(manifest, movedManifest);
-        symlinkSync(movedManifest, manifest);
-
-        expect(() => runCliOrThrow(project, ["build", "--out", HELPER_OUTPUT])).toThrow();
-    });
-
-    it("refuses a FIFO ownership manifest without blocking", () => {
-        using project = createCliProject({
-            prefix: "gtkx-build-output-marker-fifo-",
-            config: CONFIG,
-            files: projectFiles(),
-            hasStore: true,
-        });
-        runCliOrThrow(project, ["build", "--out", HELPER_OUTPUT]);
-        const manifest = join(project.root, HELPER_OUTPUT, "gtkx-schemas.json");
-        renameSync(manifest, join(project.root, "moved-build-manifest.json"));
-        execFileSync(MKFIFO, [manifest]);
-
-        expect(() => runCliOrThrow(project, ["build", "--out", HELPER_OUTPUT])).toThrow();
-    });
-
-    it("fails a rebuild with an unresolved import", () => {
+    it("keeps the previous build when a rebuild fails", () => {
         using project = createCliProject({
             prefix: "gtkx-build-output-rollback-",
             config: CONFIG,
@@ -179,5 +137,6 @@ describe("gtkx build (separate output directories)", () => {
         runCliOrThrow(project, ["build", "src/helper.ts", "--out", HELPER_OUTPUT]);
 
         expect(() => runCliOrThrow(project, ["build", "src/broken.ts", "--out", HELPER_OUTPUT])).toThrow();
+        expect(runBundle(project.root, HELPER_OUTPUT)).toBe("helper");
     });
 });

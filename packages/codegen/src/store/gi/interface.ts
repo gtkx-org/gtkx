@@ -27,6 +27,7 @@ import { appendElementMetadata } from "./element-metadata.js";
 import { declareFoldedClass, localClassName } from "./folded.js";
 import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
 import { methodExportName } from "./method.js";
+import { nativeIdentityMember } from "./native-instance.js";
 import { renderInterfacePropertyDeclarations } from "./properties.js";
 import {
     type PropertyAccessorArgs,
@@ -437,6 +438,7 @@ const renderInterfaceMembers = (
 };
 
 const renderInterfaceTypeMembers = (context: ModuleContext, iface: GirClass, callables: Callables): string[] => [
+    nativeIdentityMember(context, iface.name),
     ...renderInterfaceMembers(context, iface, callables, {
         renderMethod: renderInstanceMethodSignature,
         renderProperty: renderPropertyAccessorSignature,

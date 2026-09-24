@@ -50,9 +50,8 @@ const listviewMinesweeperDemo: Demo = {
     id: "listview-minesweeper",
     title: "Lists/Minesweeper",
     description:
-        "This demo shows how to develop a user interface for small game using a grid view.\n\nIt demonstrates how " +
-        "to use the activate signal and single-press behavior to implement rather different interaction behavior to " +
-        "a typical list.",
+        "This demo shows how to build a small game with a grid view.\n\nIt uses the activate signal and single-press " +
+        "behavior to provide interaction that differs from a typical list.",
     keywords: ["GtkGridView", "GListModel", "game"],
     component: ListViewMinesweeperDemo,
     titlebar: ListViewMinesweeperTitlebar,
@@ -116,19 +115,6 @@ const createBoard = (): Cell[] => {
     return cells;
 };
 
-const revealCell = (index: number, currentBoard: Cell[]): Cell[] => {
-    const cell = currentBoard[index];
-
-    if (!cell || cell.isRevealed) {
-        return currentBoard;
-    }
-
-    const newBoard = [...currentBoard];
-    newBoard[index] = { ...cell, isRevealed: true };
-
-    return newBoard;
-};
-
 const playGameSound = (didWin: boolean, soundStreamRef: React.RefObject<Gtk.MediaFile | null>) => {
     const dataDirs = (process.env.XDG_DATA_DIRS ?? "/usr/local/share:/usr/share").split(":");
     const sound = didWin ? "complete.oga" : "suspend-error.oga";
@@ -147,18 +133,6 @@ const playGameSound = (didWin: boolean, soundStreamRef: React.RefObject<Gtk.Medi
     soundStreamRef.current = stream;
 };
 
-const evaluateBoard = (board: Cell[], index: number): "won" | "lost" | "continue" => {
-    const clickedCell = board[index];
-
-    if (clickedCell?.isMine) {
-        return "lost";
-    }
-
-    const unrevealedSafeCells = board.filter((c) => !c.isRevealed && !c.isMine).length;
-
-    return unrevealedSafeCells === 0 ? "won" : "continue";
-};
-
 const resolveCellClick = (board: Cell[], gameState: GameState, index: number): CellClickOutcome | null => {
     const cell = board[index];
 
@@ -166,10 +140,18 @@ const resolveCellClick = (board: Cell[], gameState: GameState, index: number): C
         return null;
     }
 
-    const nextBoard = revealCell(index, board);
-    const result = evaluateBoard(nextBoard, index);
+    const nextBoard = board.map((current, position) =>
+        position === index ? { ...current, isRevealed: true } : current,
+    );
+    let nextGameState: GameState = "playing";
 
-    return { board: nextBoard, gameState: result === "continue" ? gameState : result };
+    if (cell.isMine) {
+        nextGameState = "lost";
+    } else if (nextBoard.every((current) => current.isMine || current.isRevealed)) {
+        nextGameState = "won";
+    }
+
+    return { board: nextBoard, gameState: nextGameState };
 };
 
 const getCellDisplay = (cell: Cell): string => {
@@ -186,6 +168,26 @@ const getCellDisplay = (cell: Cell): string => {
     }
 
     return String(cell.adjacentMines);
+};
+
+const getCellAccessibleLabel = (cell: Cell): string => {
+    const position = `Row ${String(cell.row + 1)}, column ${String(cell.col + 1)}`;
+
+    if (!cell.isRevealed) {
+        return `${position}, hidden`;
+    }
+
+    if (cell.isMine) {
+        return `${position}, mine`;
+    }
+
+    if (cell.adjacentMines === 0) {
+        return `${position}, empty`;
+    }
+
+    const mines = cell.adjacentMines === 1 ? "mine" : "mines";
+
+    return `${position}, ${String(cell.adjacentMines)} adjacent ${mines}`;
 };
 
 const useMinesweeperContext = (): MinesweeperContextValue => {
@@ -239,7 +241,7 @@ function ListViewMinesweeperTitlebar() {
     return (
         <GtkHeaderBar
             name="minesweeper-header"
-            titleWidget={gameState === "won" ? <GtkImage iconName="trophy-gold" /> : null}
+            titleWidget={gameState === "won" ? <GtkImage iconName="trophy-gold" accessibleLabel="Game won" /> : null}
             start={<GtkButton label="New Game" onClicked={resetGame} />}
         />
     );
@@ -255,12 +257,17 @@ function ListViewMinesweeperDemo() {
                 estimatedItemHeight={32}
                 minColumns={GRID_SIZE}
                 maxColumns={GRID_SIZE}
+                selectionMode={Gtk.SelectionMode.NONE}
                 singleClickActivate
-                onActivate={(position) => {
-                    handleCellClick(position);
-                }}
+                onActivate={handleCellClick}
                 renderItem={({ item }: { item: Cell }) => (
-                    <GtkLabel halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} widthRequest={32} heightRequest={32}>
+                    <GtkLabel
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                        widthRequest={32}
+                        heightRequest={32}
+                        accessibleLabel={getCellAccessibleLabel(item)}
+                    >
                         {getCellDisplay(item)}
                     </GtkLabel>
                 )}

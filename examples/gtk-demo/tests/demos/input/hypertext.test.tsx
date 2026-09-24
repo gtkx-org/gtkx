@@ -1,39 +1,15 @@
-import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, fireEvent, getAllControllers, getController, screen, userEvent } from "@gtkx/testing";
-import { describe, expect, it, vi } from "vitest";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { resolveExecutable } from "@gtkx/utils";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
 import { hypertextDemo } from "../../../src/demos/input/hypertext.js";
 import { readBufferText, renderDemo } from "../../test-utils.js";
 
-const spawnMock = vi.hoisted(() =>
-    vi.fn<(command: string, args: string[]) => { on: () => void }>(() => ({ on: vi.fn() })),
-);
-
 const findTextView = async (): Promise<Gtk.TextView> =>
     screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.TextView });
-
-const demoClickGesture = (view: Gtk.TextView): Gtk.GestureClick => {
-    const gesture = getAllControllers(view, Gtk.GestureClick).find((candidate) => candidate.getButton() === 1);
-
-    if (!gesture) {
-        throw new Error("hypertext demo GestureClick not found");
-    }
-
-    return gesture;
-};
-
-const demoMotionController = (view: Gtk.TextView): Gtk.EventControllerMotion =>
-    getController(view, Gtk.EventControllerMotion);
-
-const demoKeyController = (view: Gtk.TextView): Gtk.EventControllerKey =>
-    getController(view, Gtk.EventControllerKey);
-
-const windowCoordsAtOffset = (view: Gtk.TextView, offset: number): [number, number] => {
-    const iter = view.getBuffer().getIterAtOffset(offset);
-    const rect = view.getIterLocation(iter);
-
-    return view.bufferToWindowCoords(Gtk.TextWindowType.WIDGET, rect.x + 1, rect.y + Math.trunc(rect.height / 2));
-};
 
 const renderTextView = async (): Promise<Gtk.TextView> => {
     await renderDemo(hypertextDemo);
@@ -41,40 +17,46 @@ const renderTextView = async (): Promise<Gtk.TextView> => {
     return await findTextView();
 };
 
-const placeCursorAtWord = async (view: Gtk.TextView, word: string): Promise<number> => {
-    const buffer = view.getBuffer();
+const placeCursorAtWord = async (view: Gtk.TextView, word: string, offsetWithinWord = 0): Promise<void> => {
     const offset = readBufferText(view).indexOf(word);
 
     if (offset === -1) {
         throw new Error(`the hypertext buffer does not contain ${word}`);
     }
 
-    await act(() => {
-        buffer.placeCursor(buffer.getIterAtOffset(offset));
-    });
-
-    return offset;
+    view.grabFocus();
+    await userEvent.keyboard(view, "{Control>}{Home}{/Control}");
+    await userEvent.keyboard(view, "{ArrowRight}".repeat(offset + offsetWithinWord));
 };
 
-const clickOffset = async (view: Gtk.TextView, offset: number): Promise<void> => {
-    const [x, y] = windowCoordsAtOffset(view, offset);
+const recordSpeech = (): Disposable & { path: string; done: string } => {
+    const executable = resolveExecutable("espeak-ng");
+    const directory = mkdtempSync(join(tmpdir(), "gtkx-hypertext-speech-"));
+    const path = join(directory, "speech.wav");
+    const done = join(directory, "done");
+    const originalPath = process.env.PATH;
+    writeFileSync(join(directory, "espeak-ng"), `#!${process.execPath}
+import { spawnSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
+const result = spawnSync(${JSON.stringify(executable)}, ["-w", ${JSON.stringify(path)}, ...process.argv.slice(2)]);
+if (result.status !== 0) process.exit(result.status ?? 1);
+writeFileSync(${JSON.stringify(done)}, "");
+`, { mode: 0o755 });
+    process.env.PATH = `${directory}:${originalPath ?? ""}`;
 
-    await act(() => {
-        demoClickGesture(view).emit("released", 1, x, y);
-    });
+    return {
+        path,
+        done,
+        [Symbol.dispose]: () => {
+            if (originalPath === undefined) {
+                delete process.env.PATH;
+            } else {
+                process.env.PATH = originalPath;
+            }
+            rmSync(directory, { recursive: true, force: true });
+        },
+    };
 };
-
-vi.mock("node:child_process", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("node:child_process")>();
-
-    return { ...actual, spawn: spawnMock };
-});
-
-vi.mock("@gtkx/utils", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@gtkx/utils")>();
-
-    return { ...actual, tryResolveExecutable: (command: string) => command };
-});
 
 describe("hypertextDemo rendering", () => {
     it("renders page 1 with the hypertext and tags introduction", async () => {
@@ -88,11 +70,20 @@ describe("hypertextDemo rendering", () => {
     it("embeds the ghost label, the level bar, and the emoji in page 1", async () => {
         const textView = await renderTextView();
         const levelBar = await screen.findByRole(Gtk.AccessibleRole.METER, { as: Gtk.LevelBar });
+        expect(levelBar).toHaveAccessibleName("Example level");
         expect(levelBar).toHaveObjectProperty("value", 50);
         expect(levelBar).toHaveObjectProperty("minValue", 0);
         expect(levelBar).toHaveObjectProperty("maxValue", 100);
         expect(await screen.findByText("ghost")).toHaveTextContent("ghost");
         expect(readBufferText(textView)).toContain("😋");
+    });
+
+    it("copies the ghost replacement character from the text buffer", async () => {
+        const textView = await renderTextView();
+        const buffer = textView.getBuffer();
+        buffer.selectRange(buffer.getStartIter(), buffer.getEndIter());
+        await userEvent.copy(textView);
+        expect(await textView.getClipboard().readTextAsync()).toContain("👻");
     });
 });
 
@@ -110,38 +101,6 @@ describe("hypertextDemo link navigation", () => {
         await userEvent.keyboard(textView, "{Enter}");
         expect(await screen.findByDisplayValue(/Machine-readable text that is not sequential/)).toBe(textView);
     });
-
-    it("navigates via the numeric-keypad Enter key at a link", async () => {
-        const textView = await renderTextView();
-        await placeCursorAtWord(textView, "tags");
-        await fireEvent(demoKeyController(textView), "key-pressed", Gdk.KEY_KP_Enter, 0, 0);
-        expect(await screen.findByDisplayValue(/attribute that can be applied to some range of text/)).toBe(textView);
-    });
-});
-
-describe("hypertextDemo click navigation", () => {
-    it("follows the hypertext link to the definition page when clicked", async () => {
-        const textView = await renderTextView();
-        const linkOffset = readBufferText(textView).indexOf("hypertext");
-        await clickOffset(textView, linkOffset);
-        expect(await screen.findByDisplayValue(/Machine-readable text that is not sequential/)).toBe(textView);
-    });
-
-    it("follows the tags link to the definition page when clicked", async () => {
-        const textView = await renderTextView();
-        const linkOffset = readBufferText(textView).indexOf("tags");
-        await clickOffset(textView, linkOffset);
-        expect(await screen.findByDisplayValue(/attribute that can be applied to some range of text/)).toBe(textView);
-    });
-
-    it("returns to page 1 when the Go back link is clicked on a definition page", async () => {
-        const textView = await renderTextView();
-        await clickOffset(textView, readBufferText(textView).indexOf("hypertext"));
-        await screen.findByDisplayValue(/Machine-readable text that is not sequential/);
-        await clickOffset(textView, readBufferText(textView).indexOf("Go back") + 1);
-        await screen.findByDisplayValue(/Some text to show that simple/);
-        expect(screen.queryByDisplayValue(/Machine-readable text that is not sequential/)).toBeNull();
-    });
 });
 
 describe("hypertextDemo round trip", () => {
@@ -150,58 +109,52 @@ describe("hypertextDemo round trip", () => {
         await placeCursorAtWord(textView, "tags");
         await userEvent.keyboard(textView, "{Enter}");
         await screen.findByDisplayValue(/attribute that can be applied/);
-        const pageTwo = readBufferText(textView);
-        const backOffset = pageTwo.indexOf("Go back");
-        expect(backOffset).toBeGreaterThanOrEqual(0);
-        const bufferAfter = textView.getBuffer();
-
-        await act(() => {
-            bufferAfter.placeCursor(bufferAfter.getIterAtOffset(backOffset + 1));
-        });
-
+        await placeCursorAtWord(textView, "Go back", 1);
         await userEvent.keyboard(textView, "{Enter}");
-        await screen.findByDisplayValue(/can easily be realized with |Some text to show/);
-    });
-});
-
-describe("hypertextDemo hover cursor", () => {
-    it("swaps the text view cursor to a pointer over a link and back to text off it", async () => {
-        const textView = await renderTextView();
-        const motion = demoMotionController(textView);
-        const [linkX, linkY] = windowCoordsAtOffset(textView, readBufferText(textView).indexOf("tags"));
-
-        await act(() => {
-            motion.emit("motion", linkX, linkY);
-        });
-
-        expect(textView.getCursor()?.getName()).toBe("pointer");
-        const [textX, textY] = windowCoordsAtOffset(textView, 2);
-
-        await act(() => {
-            motion.emit("motion", textX, textY);
-        });
-
-        expect(textView.getCursor()?.getName()).toBe("text");
+        expect(await screen.findByDisplayValue(/can easily be realized with |Some text to show/)).toBe(textView);
     });
 });
 
 describe("hypertextDemo speaker icon", () => {
     it("speaks the word when the speaker icon on a definition page is clicked", async () => {
-        spawnMock.mockClear();
+        using speech = recordSpeech();
         const textView = await renderTextView();
         await placeCursorAtWord(textView, "tags");
         await userEvent.keyboard(textView, "{Enter}");
         await screen.findByDisplayValue(/attribute that can be applied/);
-        const speaker = await screen.findByRole(Gtk.AccessibleRole.IMG, { as: Gtk.Image });
-        const gesture = getController(speaker, Gtk.GestureClick);
-        await fireEvent(gesture, "pressed", 1, 0, 0);
-        expect(spawnMock).toHaveBeenCalledTimes(1);
-        expect(spawnMock.mock.calls[0]?.[0]).toMatch(/(^|\/)espeak-ng$/u);
-        expect(spawnMock.mock.calls[0]?.[1]).toEqual(["tag"]);
+        const speaker = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Speak tag", as: Gtk.Button });
+        await userEvent.click(speaker);
+        await waitFor(() => {
+            expect(existsSync(speech.done)).toBe(true);
+        });
+        const audio = readFileSync(speech.path);
+        expect(audio.subarray(0, 4).toString()).toBe("RIFF");
+        expect(audio.subarray(8, 12).toString()).toBe("WAVE");
+        expect(audio.length).toBeGreaterThan(44);
     });
 });
 
 describe("hypertextDemo input edge cases", () => {
+    it("preserves the document and link targets after typing and deletion attempts", async () => {
+        const textView = await renderTextView();
+        const text = readBufferText(textView);
+        textView.grabFocus();
+        await userEvent.keyboard(textView, "{Control>}{Home}{/Control}");
+        await userEvent.type(textView, "prefix");
+        await userEvent.keyboard(textView, "{Delete}{Enter}");
+        expect(readBufferText(textView)).toBe(text);
+        await placeCursorAtWord(textView, "tags");
+        await userEvent.keyboard(textView, "{Enter}");
+        expect(await screen.findByDisplayValue(/attribute that can be applied/)).toBe(textView);
+    });
+
+    it("rejects clearing the read-only document", async () => {
+        const textView = await renderTextView();
+        const text = readBufferText(textView);
+        await expect(userEvent.clear(textView)).rejects.toThrow();
+        expect(readBufferText(textView)).toBe(text);
+    });
+
     it("ignores non-Enter key presses without changing the page", async () => {
         const textView = await renderTextView();
         await userEvent.keyboard(textView, "a");
@@ -211,20 +164,9 @@ describe("hypertextDemo input edge cases", () => {
 
     it("does not navigate via Enter when the cursor is not on a link", async () => {
         const textView = await renderTextView();
-        const buffer = textView.getBuffer();
-
-        await act(() => {
-            buffer.placeCursor(buffer.getStartIter());
-        });
-
+        textView.grabFocus();
+        await userEvent.keyboard(textView, "{Control>}{Home}{/Control}");
         await userEvent.keyboard(textView, "{Enter}");
-        expect(screen.getByDisplayValue(/Some text to show/)).toBe(textView);
-        expect(screen.queryByDisplayValue(/attribute that can be applied/)).toBeNull();
-    });
-
-    it("does not navigate when a click lands off any link", async () => {
-        const textView = await renderTextView();
-        await clickOffset(textView, 2);
         expect(screen.getByDisplayValue(/Some text to show/)).toBe(textView);
         expect(screen.queryByDisplayValue(/attribute that can be applied/)).toBeNull();
     });

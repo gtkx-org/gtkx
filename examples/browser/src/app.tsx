@@ -5,7 +5,7 @@ import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } fr
 import { GtkBox, GtkButton, GtkEntry, GtkProgressBar } from "@gtkx/jsx/gtk";
 import { WebKitWebView } from "@gtkx/jsx/webkit";
 import { quit } from "@gtkx/react";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type BrowserState = {
     url: string;
@@ -15,35 +15,55 @@ type BrowserState = {
     progress: number;
 };
 
+type AppProps = {
+    initialUrl?: string;
+};
+
+type NavigationButtonProps = {
+    label: string;
+    iconName: string;
+    sensitive?: boolean;
+    onClicked: () => void;
+};
+
 const START_URL = "https://gtkx.dev";
+const BACK_LABEL = "Go back";
+const FORWARD_LABEL = "Go forward";
 
 const urlBarStyle = css`
     min-width: 400px;
 `;
 
-const progressStyle = css`
-    &.hidden {
-        opacity: 0;
-    }
-`;
-
 const normalizeUrl = (targetUrl: string): string => {
     const trimmed = targetUrl.trim();
+    const url = URL.parse(trimmed);
 
-    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-        return trimmed;
+    if (url && !/^localhost:\d+(?:[/?#]|$)/iu.test(trimmed)) {
+        return url.href;
     }
 
-    return `https://${trimmed}`;
+    return URL.parse(`https://${trimmed}`)?.href ?? `https://${trimmed}`;
 };
 
-const navigateTo = (webViewRef: RefObject<WebKit.WebView | null>, targetUrl: string) => {
-    webViewRef.current?.loadUri(normalizeUrl(targetUrl));
+const navigateTo = (webView: WebKit.WebView | null, targetUrl: string) => {
+    webView?.loadUri(normalizeUrl(targetUrl));
 };
 
-const useBrowserController = (webViewRef: RefObject<WebKit.WebView | null>) => {
+const loadActionLabel = (isLoading: boolean): string => isLoading ? "Stop loading" : "Reload";
+
+const NavigationButton = ({ label, iconName, sensitive, onClicked }: NavigationButtonProps) => (
+    <GtkButton
+        iconName={iconName}
+        onClicked={onClicked}
+        sensitive={sensitive}
+        accessibleLabel={label}
+        tooltipText={label}
+    />
+);
+
+const useBrowserController = (webView: WebKit.WebView | null, initialUrl: string) => {
     const [state, setState] = useState<BrowserState>({
-        url: START_URL,
+        url: initialUrl,
         isLoading: false,
         canGoBack: false,
         canGoForward: false,
@@ -51,25 +71,37 @@ const useBrowserController = (webViewRef: RefObject<WebKit.WebView | null>) => {
     });
 
     useEffect(() => {
-        navigateTo(webViewRef, START_URL);
-    }, [webViewRef]);
+        const url = normalizeUrl(initialUrl);
+
+        if (webView && webView.getUri() !== url) {
+            webView.loadUri(url);
+        }
+    }, [webView, initialUrl]);
 
     const setUrl = (url: string) => {
         setState((s) => ({ ...s, url }));
     };
 
     const navigate = (targetUrl: string) => {
-        navigateTo(webViewRef, targetUrl);
+        navigateTo(webView, targetUrl);
     };
 
-    const handleLoadChanged = (loadEvent: WebKit.LoadEvent, webView: WebKit.WebView) => {
+    const handleUri = (url: string | null, webView: WebKit.WebView) => {
         setState((s) => ({
             ...s,
+            url: url ?? s.url,
             canGoBack: webView.canGoBack(),
             canGoForward: webView.canGoForward(),
-            ...(loadEvent === WebKit.LoadEvent.STARTED && { isLoading: true, progress: 0 }),
-            ...(loadEvent === WebKit.LoadEvent.COMMITTED && { url: webView.getUri() }),
-            ...(loadEvent === WebKit.LoadEvent.FINISHED && { isLoading: false, progress: 1 }),
+        }));
+    };
+
+    const handleIsLoading = (isLoading: boolean | null, webView: WebKit.WebView) => {
+        setState((s) => ({
+            ...s,
+            isLoading: isLoading ?? false,
+            progress: isLoading ? 0 : 1,
+            canGoBack: webView.canGoBack(),
+            canGoForward: webView.canGoForward(),
         }));
     };
 
@@ -77,7 +109,7 @@ const useBrowserController = (webViewRef: RefObject<WebKit.WebView | null>) => {
         setState((s) => ({ ...s, progress: progress ?? s.progress }));
     };
 
-    return { state, setUrl, navigate, handleLoadChanged, handleEstimatedLoadProgress };
+    return { state, setUrl, navigate, handleUri, handleIsLoading, handleEstimatedLoadProgress };
 };
 
 const UrlEntry = ({
@@ -97,6 +129,7 @@ const UrlEntry = ({
         onActivate={onActivate}
         hexpand
         cssClasses={[urlBarStyle]}
+        accessibleLabel="Web address"
         placeholderText="Enter URL..."
     />
 );
@@ -117,26 +150,53 @@ const NavigationButtons = ({
     onReloadOrStop: () => void;
 }) => (
     <>
-        <GtkButton iconName="go-previous-symbolic" onClicked={onBack} sensitive={canGoBack} tooltipText="Go back" />
-        <GtkButton
+        <NavigationButton
+            iconName="go-previous-symbolic"
+            onClicked={onBack}
+            sensitive={canGoBack}
+            label={BACK_LABEL}
+        />
+        <NavigationButton
             iconName="go-next-symbolic"
             onClicked={onForward}
             sensitive={canGoForward}
-            tooltipText="Go forward"
+            label={FORWARD_LABEL}
         />
-        <GtkButton
+        <NavigationButton
             iconName={isLoading ? "process-stop-symbolic" : "view-refresh-symbolic"}
             onClicked={onReloadOrStop}
-            tooltipText={isLoading ? "Stop loading" : "Reload"}
+            label={loadActionLabel(isLoading)}
         />
     </>
 );
 
-const BrowserWindow = () => {
-    const webViewRef = useRef<WebKit.WebView | null>(null);
+const LoadingProgress = ({ isLoading, progress }: { isLoading: boolean; progress: number }) => (
+    <GtkProgressBar
+        fraction={progress}
+        visible={isLoading}
+        accessibleLabel="Page loading progress"
+    />
+);
 
-    const { state, setUrl, navigate, handleLoadChanged, handleEstimatedLoadProgress } =
-        useBrowserController(webViewRef);
+const useWebView = () => {
+    const [webView, setWebView] = useState<WebKit.WebView | null>(null);
+    const assignWebView = useCallback((instance: WebKit.WebView | null) => {
+        setWebView(instance);
+
+        return instance
+            ? () => {
+                    instance.stopLoading();
+                }
+            : undefined;
+    }, []);
+
+    return { webView, assignWebView };
+};
+
+const BrowserWindow = ({ initialUrl }: { initialUrl: string }) => {
+    const { webView, assignWebView } = useWebView();
+    const { state, setUrl, navigate, handleUri, handleIsLoading, handleEstimatedLoadProgress } =
+        useBrowserController(webView, initialUrl);
 
     const { url, isLoading, canGoBack, canGoForward, progress } = state;
 
@@ -159,22 +219,23 @@ const BrowserWindow = () => {
                                 canGoBack={canGoBack}
                                 canGoForward={canGoForward}
                                 isLoading={isLoading}
-                                onBack={() => webViewRef.current?.goBack()}
-                                onForward={() => webViewRef.current?.goForward()}
-                                onReloadOrStop={() =>
-                                    isLoading ? webViewRef.current?.stopLoading() : webViewRef.current?.reload()}
+                                onBack={() => webView?.goBack()}
+                                onForward={() => webView?.goForward()}
+                                onReloadOrStop={() => isLoading ? webView?.stopLoading() : webView?.reload()}
                             />
                         )}
                     />
                 )}
             >
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
-                    <GtkProgressBar fraction={progress} cssClasses={[progressStyle, isLoading ? "" : "hidden"]} />
+                    <LoadingProgress isLoading={isLoading} progress={progress} />
                     <WebKitWebView
-                        ref={webViewRef}
+                        ref={assignWebView}
+                        accessibleLabel="Web page"
                         vexpand
                         hexpand
-                        onLoadChanged={handleLoadChanged}
+                        onNotifyUri={handleUri}
+                        onNotifyIsLoading={handleIsLoading}
                         onNotifyEstimatedLoadProgress={handleEstimatedLoadProgress}
                     />
                 </GtkBox>
@@ -183,9 +244,9 @@ const BrowserWindow = () => {
     );
 };
 
-const App = () => (
+const App = ({ initialUrl = START_URL }: AppProps) => (
     <AdwApplication>
-        <BrowserWindow />
+        <BrowserWindow initialUrl={initialUrl} />
     </AdwApplication>
 );
 

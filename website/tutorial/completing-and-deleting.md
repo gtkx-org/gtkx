@@ -125,32 +125,15 @@ export const TaskList = () => {
 
 `TaskRow` receives the task as a prop and selects the store actions it needs.
 
-## The checkbox
+## Connecting native controls
 
-`AdwActionRow` takes leading and trailing widgets through its `prefix` and `suffix` slots. Put the checkbox in `prefix`.
+`prefix` holds the checkbox, and `suffix` holds the fragment with both trailing buttons. GTKX places those elements in the row's native child slots.
 
-`active` comes from the task. `onToggled` receives the checkbox and writes its new state to the store. This pairs the native property with its change signal to keep the widget and application state in sync.
+The checkbox and star pair `active` with `onToggled`: the prop follows the task, and the handler receives the emitting widget and saves its new state. The delete button uses `onClicked` to run its action.
 
-`valign={Gtk.Align.CENTER}` keeps the checkbox centered vertically in the row.
+With `useMarkup`, the row reads its title as markup. Escape the task title with GLib's [`markupEscapeText`](https://docs.gtk.org/glib/func.markup_escape_text.html) before adding the strikethrough. This keeps titles such as `Buy milk & eggs` literal.
 
-## Striking through a completed title
-
-`AdwActionRow` renders its title as [Pango markup](https://docs.gtk.org/Pango/pango_markup.html) when you set `useMarkup`, so wrapping the title in `<s>` gives you a strikethrough without any CSS:
-
-```tsx
-const escapedTitle = markupEscapeText(task.title, -1);
-const title = task.done ? `<s>${escapedTitle}</s>` : escapedTitle;
-```
-
-With `useMarkup` on, the title is parsed as markup rather than shown literally. Escape user text before wrapping it in tags you control. GTKX exposes GLib's [`markupEscapeText`](https://docs.gtk.org/glib/func.markup_escape_text.html), so the app does not need its own escaping routine.
-
-## The star and the trash button
-
-The `suffix` slot takes a fragment containing both trailing controls. The star is a `GtkToggleButton` whose icon and `active` property follow `task.important`. Deleting uses a `GtkButton` with an `onClicked` handler.
-
-The `flat` style class drops the button frame, which keeps the row from looking like a toolbar.
-
-Give these icon-only controls an `accessibleLabel` so screen readers can announce their purpose. The tests in [Appendix A](/tutorial/testing) also use those names to find the controls.
+`accessibleLabel` names the icon-only controls for assistive technology and the queries used in [Testing](/tutorial/testing).
 
 ## Run it
 

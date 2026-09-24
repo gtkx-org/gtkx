@@ -36,6 +36,7 @@ type LabeledRowProps = {
     labelRef: LabelRef;
     hasUnderline?: boolean;
     isActivatable?: boolean;
+    mnemonicWidget?: Gtk.Widget | null;
     children: ReactNode;
 };
 
@@ -112,7 +113,14 @@ function collectLabel(setLabels: Dispatch<SetStateAction<Gtk.Widget[]>>): LabelR
     };
 }
 
-const LabeledRow = ({ labelText, labelRef, hasUnderline, isActivatable, children }: LabeledRowProps) => (
+const LabeledRow = ({
+    labelText,
+    labelRef,
+    hasUnderline,
+    isActivatable,
+    mnemonicWidget,
+    children,
+}: LabeledRowProps) => (
     <GtkListBoxRow
         selectable={false}
         activatable={isActivatable}
@@ -126,6 +134,7 @@ const LabeledRow = ({ labelText, labelRef, hasUnderline, isActivatable, children
                 halign={Gtk.Align.START}
                 valign={Gtk.Align.CENTER}
                 hexpand
+                mnemonicWidget={mnemonicWidget}
             >
                 {labelText}
             </GtkLabel>
@@ -142,6 +151,7 @@ const SwitchRow = ({ labelRef, switchRef, isSwitchActive, setIsSwitchActive }: S
             halign={Gtk.Align.END}
             valign={Gtk.Align.CENTER}
             active={isSwitchActive}
+            accessibleLabel="Switch"
             onStateSet={() => {
                 setIsSwitchActive((previous) => !previous);
 
@@ -161,6 +171,7 @@ const CheckRow = ({ labelRef, checkRef, isCheckActive, setIsCheckActive }: Check
             marginStart={10}
             marginEnd={10}
             active={isCheckActive}
+            accessibleLabel="Check"
             onToggled={() => {
                 setIsCheckActive((previous) => !previous);
             }}
@@ -180,6 +191,8 @@ const ClickHereRow = ({ labelRef, imageRef, imageOpacity }: ClickHereRowProps) =
             marginEnd={10}
             opacity={imageOpacity}
             accessibleRole={Gtk.AccessibleRole.STATUS}
+            accessibleLabel="Selection indicator"
+            accessibleHidden={imageOpacity === 0}
         />
     </LabeledRow>
 );
@@ -222,46 +235,97 @@ function Group1List({ labelRef }: { labelRef: LabelRef }) {
 
 const valueAdjustment = () => <GtkAdjustment value={50} upper={100} stepIncrement={1} pageIncrement={10} />;
 
-const Group2List = ({ labelRef }: { labelRef: LabelRef }) => {
+const ScaleRow = ({ labelRef }: { labelRef: LabelRef }) => {
+    const [scale, setScale] = useState<Gtk.Scale | null>(null);
+
     return (
-        <GtkListBox name="group-2-list" selectionMode={Gtk.SelectionMode.NONE} cssClasses={["rich-list", "boxed-list"]}>
-            <LabeledRow labelText="_Scale" labelRef={labelRef} hasUnderline isActivatable={false}>
-                <GtkScale
-                    name="scale"
-                    halign={Gtk.Align.END}
-                    valign={Gtk.Align.CENTER}
-                    drawValue={false}
-                    widthRequest={150}
-                    adjustment={valueAdjustment()}
-                />
-            </LabeledRow>
-            <LabeledRow labelText="S_pinbutton" labelRef={labelRef} hasUnderline isActivatable={false}>
-                <GtkSpinButton
-                    name="spin"
-                    halign={Gtk.Align.END}
-                    valign={Gtk.Align.CENTER}
-                    adjustment={valueAdjustment()}
-                />
-            </LabeledRow>
-            <LabeledRow labelText="_Dropdown" labelRef={labelRef} hasUnderline isActivatable={false}>
-                <DropDown
-                    name="dropdown"
-                    halign={Gtk.Align.END}
-                    valign={Gtk.Align.CENTER}
-                    items={[
-                        { id: "1", value: "Choice 1" },
-                        { id: "2", value: "Choice 2" },
-                        { id: "3", value: "Choice 3" },
-                        { id: "4", value: "Choice 4" },
-                    ]}
-                />
-            </LabeledRow>
-            <LabeledRow labelText="_Entry" labelRef={labelRef} hasUnderline isActivatable={false}>
-                <GtkEntry name="entry" halign={Gtk.Align.END} valign={Gtk.Align.CENTER} placeholderText="Type here…" />
-            </LabeledRow>
-        </GtkListBox>
+        <LabeledRow labelText="_Scale" labelRef={labelRef} hasUnderline isActivatable={false} mnemonicWidget={scale}>
+            <GtkScale
+                ref={setScale}
+                name="scale"
+                halign={Gtk.Align.END}
+                valign={Gtk.Align.CENTER}
+                drawValue={false}
+                widthRequest={150}
+                adjustment={valueAdjustment()}
+            />
+        </LabeledRow>
     );
 };
+
+const SpinRow = ({ labelRef }: { labelRef: LabelRef }) => {
+    const [spin, setSpin] = useState<Gtk.SpinButton | null>(null);
+
+    return (
+        <LabeledRow
+            labelText="S_pinbutton"
+            labelRef={labelRef}
+            hasUnderline
+            isActivatable={false}
+            mnemonicWidget={spin}
+        >
+            <GtkSpinButton
+                ref={setSpin}
+                name="spin"
+                halign={Gtk.Align.END}
+                valign={Gtk.Align.CENTER}
+                adjustment={valueAdjustment()}
+            />
+        </LabeledRow>
+    );
+};
+
+const DropdownRow = ({ labelRef }: { labelRef: LabelRef }) => {
+    const [dropdown, setDropdown] = useState<Gtk.DropDown | null>(null);
+
+    return (
+        <LabeledRow
+            labelText="_Dropdown"
+            labelRef={labelRef}
+            hasUnderline
+            isActivatable={false}
+            mnemonicWidget={dropdown}
+        >
+            <DropDown
+                ref={setDropdown}
+                name="dropdown"
+                halign={Gtk.Align.END}
+                valign={Gtk.Align.CENTER}
+                items={[
+                    { id: "1", value: "Choice 1" },
+                    { id: "2", value: "Choice 2" },
+                    { id: "3", value: "Choice 3" },
+                    { id: "4", value: "Choice 4" },
+                ]}
+            />
+        </LabeledRow>
+    );
+};
+
+const EntryRow = ({ labelRef }: { labelRef: LabelRef }) => {
+    const [entry, setEntry] = useState<Gtk.Entry | null>(null);
+
+    return (
+        <LabeledRow labelText="_Entry" labelRef={labelRef} hasUnderline isActivatable={false} mnemonicWidget={entry}>
+            <GtkEntry
+                ref={setEntry}
+                name="entry"
+                halign={Gtk.Align.END}
+                valign={Gtk.Align.CENTER}
+                placeholderText="Type here…"
+            />
+        </LabeledRow>
+    );
+};
+
+const Group2List = ({ labelRef }: { labelRef: LabelRef }) => (
+    <GtkListBox name="group-2-list" selectionMode={Gtk.SelectionMode.NONE} cssClasses={["rich-list", "boxed-list"]}>
+        <ScaleRow labelRef={labelRef} />
+        <SpinRow labelRef={labelRef} />
+        <DropdownRow labelRef={labelRef} />
+        <EntryRow labelRef={labelRef} />
+    </GtkListBox>
+);
 
 function ListBoxControlsDemo() {
     const [labels, setLabels] = useState<Gtk.Widget[]>([]);

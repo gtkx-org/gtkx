@@ -51,6 +51,9 @@
         "packages/runtime/src/text-view.ts": [
             "exports"
         ],
+        "packages/runtime/src/window.ts": [
+            "exports"
+        ],
         "packages/runtime/src/combo-row.ts": [
             "exports"
         ],

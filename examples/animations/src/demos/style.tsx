@@ -70,7 +70,7 @@ function StyleDemo() {
             </AnimatedBox>
             <GtkToggleButton
                 name="style-toggle"
-                label="Raise alert"
+                label="Alert"
                 halign={Gtk.Align.START}
                 active={isAlert}
                 onToggled={toggle}

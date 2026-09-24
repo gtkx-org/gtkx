@@ -127,6 +127,7 @@ export const signatures: [
         title: "pairs an externally annotated async method with its class's only generic finish",
         library: "AsyncPair-1.0",
         imports: `${EXACT_TYPES}import type { Cancellable } from "@gtkx/gi/gio";
+import type { NativeInstance } from "@gtkx/runtime";
 import type { Sack } from "@gtkx/gi/asyncpair";
 declare const sack: Sack;
 declare const cancellable: Cancellable;
@@ -136,8 +137,8 @@ declare const cancellable: Cancellable;
     sack.refreshAsync(), sack.refreshAsync(null), sack.refreshAsync(cancellable),
 ];
 export const signatures: [
-    Expect<Equal<Parameters<Sack["fetchAsync"]>, [cancellable?: Cancellable | null]>>,
-    Expect<Equal<Parameters<Sack["refreshAsync"]>, [cancellable?: Cancellable | null]>>,
+    Expect<Equal<Parameters<Sack["fetchAsync"]>, [cancellable?: NativeInstance<Cancellable> | null]>>,
+    Expect<Equal<Parameters<Sack["refreshAsync"]>, [cancellable?: NativeInstance<Cancellable> | null]>>,
     Expect<Equal<ReturnType<Sack["fetchAsync"]>, Promise<boolean>>>,
     Expect<Equal<ReturnType<Sack["refreshAsync"]>, Promise<boolean>>>,
 ] = [true, true, true, true];
@@ -155,6 +156,7 @@ const CALLBACK_MARSHALLING_CONSUMERS: MarshallingConsumer[] = [
         title: "keeps the callback form when no finish method of the class can be paired",
         library: "AsyncPair-1.0",
         imports: `${EXACT_TYPES}import type { AsyncReadyCallback, Cancellable } from "@gtkx/gi/gio";
+import type { NativeInstance } from "@gtkx/runtime";
 import type { Job, Pool } from "@gtkx/gi/asyncpair";
 declare const job: Job;
 declare const pool: Pool;
@@ -169,7 +171,7 @@ export const signatures: [
     Expect<Equal<Parameters<Job["externalAsync"]>, [callback: AsyncReadyCallback | null]>>,
     Expect<Equal<
         Parameters<Pool["drainAsync"]>,
-        [cancellable: Cancellable | null, callback: AsyncReadyCallback | null]
+        [cancellable: NativeInstance<Cancellable> | null, callback: AsyncReadyCallback | null]
     >>,
     Expect<Equal<ReturnType<Job["externalAsync"]>, void>>,
     Expect<Equal<ReturnType<Pool["drainAsync"]>, void>>,

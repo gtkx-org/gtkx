@@ -3,21 +3,21 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import {
+    GtkButton,
     GtkEventControllerKey,
     GtkEventControllerMotion,
     GtkGestureClick,
-    GtkImage,
+    GtkLabel,
     GtkLevelBar,
     GtkScrolledWindow,
     GtkTextBuffer,
     GtkTextChildAnchor,
-    GtkTextMark,
     GtkTextTag,
     GtkTextView,
 } from "@gtkx/jsx/gtk";
 import { tryResolveExecutable } from "@gtkx/utils";
 import { spawn } from "node:child_process";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import { lookupIconPaintable } from "../icon-paintable.js";
 import sourceCode from "./hypertext.tsx?raw";
@@ -49,14 +49,6 @@ type DefinitionPageArgs = {
     title: string;
     phonetic: string;
     definition: string;
-};
-
-type GhostAnchorArgs = {
-    mark: Gtk.TextMark;
-    buffer: Gtk.TextBuffer;
-    view: Gtk.TextView;
-    label: Gtk.Label;
-    anchor: Gtk.TextChildAnchor;
 };
 
 type LinkClickArgs = {
@@ -115,45 +107,6 @@ function InlineIcon({ iconName, size }: { iconName: string; size: number }) {
     return paintable ? <GtkTextChildAnchor paintable={paintable} /> : null;
 }
 
-function removeGhostAnchor({ mark, buffer, view, label, anchor }: GhostAnchorArgs) {
-    if (label.getParent() === view) {
-        view.remove(label);
-    }
-
-    if (mark.getBuffer() !== buffer || anchor.getDeleted()) {
-        return;
-    }
-
-    const start = buffer.getIterAtChildAnchor(anchor);
-    const end = buffer.getIterAtChildAnchor(anchor);
-    end.forwardChar();
-    buffer.delete(start, end);
-}
-
-function attachGhostAnchor(mark: Gtk.TextMark | null, view: Gtk.TextView | null) {
-    const buffer = mark?.getBuffer();
-
-    if (!mark || !buffer || !view) {
-        return;
-    }
-
-    const anchor = Gtk.TextChildAnchor.newWithReplacement("👻");
-    buffer.insertChildAnchor(buffer.getIterAtMark(mark), anchor);
-    const label = new Gtk.Label({ label: "ghost" });
-    view.addChildAtAnchor(label, anchor);
-
-    return () => {
-        removeGhostAnchor({ mark, buffer, view, label, anchor });
-    };
-}
-
-function GhostLabelAnchor({ viewRef }: { viewRef: React.RefObject<Gtk.TextView | null> }) {
-    const markRef = useRef<Gtk.TextMark | null>(null);
-    useEffect(() => attachGhostAnchor(markRef.current, viewRef.current), [viewRef]);
-
-    return <GtkTextMark leftGravity ref={markRef} />;
-}
-
 function createPageBuilder(): PageBuilder {
     const nodes: ReactNode[] = [];
     const links: LinkInfo[] = [];
@@ -184,7 +137,7 @@ function createPageBuilder(): PageBuilder {
     return builder;
 }
 
-function buildPage1(ghostAnchor: ReactNode): PageContent {
+function buildPage1(): PageContent {
     const b = createPageBuilder();
     b.addText("Some text to show that simple ");
     b.addLink("hypertext", "hypertext", 3);
@@ -213,13 +166,23 @@ function buildPage1(ghostAnchor: ReactNode): PageContent {
 
     b.addNode(
         <GtkTextChildAnchor key="levelbar">
-            <GtkLevelBar value={50} minValue={0} maxValue={100} widthRequest={100} />
+            <GtkLevelBar
+                value={50}
+                minValue={0}
+                maxValue={100}
+                widthRequest={100}
+                accessibleLabel="Example level"
+            />
         </GtkTextChildAnchor>,
     );
 
     b.addText(" and labels with ");
     b.skipPlaceholder();
-    b.addNode(ghostAnchor);
+    b.addNode(
+        <GtkTextChildAnchor key="ghost-anchor" replacement="👻">
+            <GtkLabel>ghost</GtkLabel>
+        </GtkTextChildAnchor>,
+    );
     b.addText(" text.");
 
     return { content: b.nodes, linkInfos: b.links };
@@ -246,15 +209,13 @@ function buildDefinitionPage({ title, phonetic, definition }: DefinitionPageArgs
             </GtkTextTag>
             {" / "}
             <GtkTextChildAnchor key="speaker">
-                <GtkImage
+                <GtkButton
                     iconName="audio-volume-high-symbolic"
-                    cursor={Gdk.Cursor.newFromName("pointer", null)}
-                    controllers={(
-                        <GtkGestureClick onPressed={() => {
-                            sayWord(title);
-                        }}
-                        />
-                    )}
+                    hasFrame={false}
+                    accessibleLabel={`Speak ${title}`}
+                    onClicked={() => {
+                        sayWord(title);
+                    }}
                 />
             </GtkTextChildAnchor>
         </GtkTextTag>,
@@ -295,9 +256,9 @@ function buildPage3(): PageContent {
     });
 }
 
-function buildPageContent(currentPage: number, ghostAnchor: ReactNode): PageContent {
+function buildPageContent(currentPage: number): PageContent {
     if (currentPage === 1) {
-        return buildPage1(ghostAnchor);
+        return buildPage1();
     }
 
     if (currentPage === 2) {
@@ -436,8 +397,7 @@ function useHypertextHandlers(
 function HypertextDemo() {
     const [currentPage, setCurrentPage] = useState(1);
     const textViewRef = useRef<Gtk.TextView | null>(null);
-    const ghostAnchor = <GhostLabelAnchor key="ghost-anchor" viewRef={textViewRef} />;
-    const { content, linkInfos } = buildPageContent(currentPage, ghostAnchor);
+    const { content, linkInfos } = buildPageContent(currentPage);
     const findLink = (offset: number) => findLinkAtOffset(linkInfos, offset);
     const handlers = useHypertextHandlers(textViewRef, findLink, setCurrentPage);
 
@@ -445,6 +405,8 @@ function HypertextDemo() {
         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER} vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}>
             <GtkTextView
                 ref={textViewRef}
+                accessibleLabel="Hypertext content"
+                editable={false}
                 wrapMode={Gtk.WrapMode.WORD}
                 topMargin={20}
                 bottomMargin={20}

@@ -9,10 +9,8 @@ import sourceCode from "./links.tsx?raw";
 const linksDemo: Demo = {
     id: "links",
     title: "Links",
-    description:
-        "GtkLabel can show hyperlinks. The default action is to call gtk_show_uri() on their URI, but it is " +
-        "possible to override this with a custom handler.",
-    keywords: [],
+    description: "GtkLabel can open hyperlinks or pass selected URIs to a custom handler.",
+    keywords: ["GtkLabel"],
     component: LinksDemo,
     sourceCode,
     isResizable: false,

@@ -14,7 +14,7 @@ import {
 } from "../gir/type-id.js";
 import { gtypeParamTsType, gtypeTsType } from "../store/gi/gtype-binding.js";
 import { isValueTypeName } from "../store/gi/param-marshal.js";
-import { isByteSequence, primitiveCategoryThroughAliases } from "./type-shape.js";
+import { isByteSequence, primitiveCategoryThroughAliases, underlyingType } from "./type-shape.js";
 
 type ReferenceName = {
     namespaceName: string;
@@ -220,6 +220,27 @@ const renderNamedType = (
     return target.renderNamed(resolved, name);
 };
 
+const isNativeInstanceType = (library: Library, resolved: GirType | undefined): boolean => {
+    const type = resolved?.kind === "alias" ? underlyingType(library, resolved.value.target) : resolved;
+
+    return type?.kind === "class" || type?.kind === "interface";
+};
+
+const renderNamedNumericInput = (
+    library: Library,
+    resolved: GirType | undefined,
+    qualified: string,
+    isInput: boolean,
+): string => {
+    const category = resolved?.kind === "alias"
+        ? primitiveCategoryThroughAliases(library, resolved.value.target)
+        : undefined;
+
+    return category !== undefined && isInput && NUMBER_INPUT_CATEGORIES.has(category)
+        ? `${qualified} | number`
+        : qualified;
+};
+
 const renderNamedModuleType = (
     context: ModuleContext,
     resolved: GirType | undefined,
@@ -234,13 +255,11 @@ const renderNamedModuleType = (
         return `${qualified} | JsValue`;
     }
 
-    const category = resolved?.kind === "alias"
-        ? primitiveCategoryThroughAliases(context.library, resolved.value.target)
-        : undefined;
+    if (options.isInput && isNativeInstanceType(context.library, resolved)) {
+        return `${context.addRuntimeTypeImport("NativeInstance")}<${qualified}>`;
+    }
 
-    return category !== undefined && options.isInput && NUMBER_INPUT_CATEGORIES.has(category)
-        ? `${qualified} | number`
-        : qualified;
+    return renderNamedNumericInput(context.library, resolved, qualified, options.isInput);
 };
 
 const moduleTarget = (context: ModuleContext, options: ModuleTypeOptions): TsTypeTarget => ({
@@ -327,6 +346,7 @@ const recordTypeTarget = (
 };
 
 export {
+    isNativeInstanceType,
     renderAliasTargetTsType,
     renderBaseType,
     renderParameterTsType,

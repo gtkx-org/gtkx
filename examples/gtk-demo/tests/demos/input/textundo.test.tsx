@@ -28,6 +28,7 @@ const renderAndInsert = async (insertedText: string): Promise<EditedTextView> =>
 describe("textundoDemo", () => {
     it("renders a text view with the introductory content and word wrap", async () => {
         const textView = await renderTextView();
+        expect(textView).toHaveAccessibleName("Undo and redo text");
         const initial = readBufferText(textView);
         expect(initial).toContain("GtkTextView supports undo and redo");
         expect(initial).toContain("Control+z");

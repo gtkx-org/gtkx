@@ -69,6 +69,26 @@ const alertDialogExtraChild = setterSlot<Adw.AlertDialog, Gtk.Widget>("children"
 const sidebarSections = indexedSlot<Adw.Sidebar, Adw.SidebarSection>("children", Adw.SidebarSection);
 const sidebarItems = indexedSlot<Adw.SidebarSection, Adw.SidebarItem>("children", Adw.SidebarItem);
 const isWidget = childMatcher(Gtk.Widget);
+const TEXT_CHILD_ANCHOR_PROP = "textChildAnchor";
+
+const textViewAnchorChildren: ElementBehavior<Gtk.TextView> = {
+    attach: (view, child, info) => {
+        const anchor = info.props[TEXT_CHILD_ANCHOR_PROP];
+
+        if (!isWidget(child) || !(anchor instanceof Gtk.TextChildAnchor)) {
+            return;
+        }
+
+        view.addChildAtAnchor(child, anchor);
+
+        return true;
+    },
+    detach: (view, child) => {
+        if (isWidget(child) && child.getParent() === view) {
+            view.remove(child);
+        }
+    },
+};
 
 const scrollableWidget = {
     [Symbol.hasInstance]: (value: unknown): value is Gtk.Scrollable & Gtk.Widget =>
@@ -130,6 +150,9 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkWidget: {
         behaviors: [
+            {
+                update: () => [TEXT_CHILD_ANCHOR_PROP],
+            },
             slot<Gtk.Widget, Gtk.Popover>("children", Gtk.Popover, {
                 attach: (parent, popover) => {
                     popover.setParent(parent);
@@ -205,10 +228,17 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         }],
     },
     GtkTextChildAnchor: {
-        behaviors: [{ create: () => Gtk.TextChildAnchor.new() }],
+        behaviors: [{
+            create: (props) => props.replacement === undefined
+                ? Gtk.TextChildAnchor.new()
+                : Gtk.TextChildAnchor.newWithReplacement(props.replacement as string),
+        }],
     },
     GtkTextView: {
-        behaviors: [setterSlot<Gtk.TextView, Gtk.TextBuffer>("children", Gtk.TextBuffer, "setBuffer")],
+        behaviors: [
+            setterSlot<Gtk.TextView, Gtk.TextBuffer>("children", Gtk.TextBuffer, "setBuffer"),
+            textViewAnchorChildren,
+        ],
     },
     GActionMap: {
         behaviors: [

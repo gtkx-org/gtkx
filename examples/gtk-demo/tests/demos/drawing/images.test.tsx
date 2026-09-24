@@ -1,27 +1,12 @@
-import type * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { screen, screenshot, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { imagesDemo } from "../../../src/demos/drawing/images.js";
 import { renderDemo } from "../../test-utils.js";
 
-const CHECKMARK_PATH = "M 10 35";
-const CROSS_PATH = "M 5 35";
 const TRANSITION_TIMEOUT = 4000;
 
-const renderPaintable = (paintable: Gdk.Paintable): string => {
-    const snapshot = Gtk.Snapshot.new();
-    paintable.snapshot(snapshot, 128, 128);
-    const node = snapshot.toNode();
-
-    return node === null ? "" : String.fromCodePoint(...(node.serialize().getData() ?? []));
-};
-
-const findStatefulSvg = async (): Promise<Gtk.Svg> => {
-    const image = await screen.findByName("stateful-icon-image", { as: Gtk.Image });
-
-    return image.getPaintable() as Gtk.Svg;
-};
+const findStatefulImage = (): Promise<Gtk.Image> => screen.findByName("stateful-icon-image", { as: Gtk.Image });
 
 describe("imagesDemo metadata", () => {
     it("renders the section headings for every image panel", async () => {
@@ -32,6 +17,7 @@ describe("imagesDemo metadata", () => {
             "Animation from a resource",
             "Symbolic themed icon",
             "Stateful icon",
+            "Path animation",
             "Displaying video",
             "GtkWidgetPaintable",
         ];
@@ -79,41 +65,24 @@ describe("imagesDemo toggle", () => {
 });
 
 describe("imagesDemo stateful icon switch", () => {
-    it("drives the SVG paintable between its two states as the switch is flipped", async () => {
+    it("repaints the checkmark as a cross and restores it when switched back", async () => {
         await renderDemo(imagesDemo);
-        const svg = await findStatefulSvg();
-        expect(svg).toBeInstanceOf(Gtk.Svg);
-        expect(svg).toHaveObjectProperty("state", 0);
-        const toggle = await screen.findByRole(Gtk.AccessibleRole.SWITCH, { as: Gtk.Switch });
+        const image = await findStatefulImage();
+        const toggle = await screen.findByRole(Gtk.AccessibleRole.SWITCH, {
+            name: "Stateful icon state",
+            as: Gtk.Switch,
+        });
+        const checkmark = await screenshot(image);
+        expect(image).toHaveAccessibleName("Checkmark");
         expect(toggle).not.toBeChecked();
         await userEvent.click(toggle);
 
-        await waitFor(() => {
-            expect(toggle).toBeChecked();
-        });
-
-        expect(svg).toHaveObjectProperty("state", 1);
-        await userEvent.click(toggle);
-
-        await waitFor(() => {
-            expect(toggle).not.toBeChecked();
-        });
-
-        expect(svg).toHaveObjectProperty("state", 0);
-    });
-
-    it("repaints the icon from the checkmark to the cross as the switch is flipped", async () => {
-        await renderDemo(imagesDemo);
-        const svg = await findStatefulSvg();
-        expect(renderPaintable(svg)).toContain(CHECKMARK_PATH);
-        const toggle = await screen.findByRole(Gtk.AccessibleRole.SWITCH, { as: Gtk.Switch });
-        await userEvent.click(toggle);
-
         await waitFor(
-            () => {
-                const painted = renderPaintable(svg);
-                expect(painted).toContain(CROSS_PATH);
-                expect(painted).not.toContain(CHECKMARK_PATH);
+            async () => {
+                expect(toggle).toBeChecked();
+                expect(image).toHaveAccessibleName("Cross");
+                const painted = await screenshot(image);
+                expect(painted.data).not.toBe(checkmark.data);
             },
             { timeout: TRANSITION_TIMEOUT },
         );
@@ -121,10 +90,27 @@ describe("imagesDemo stateful icon switch", () => {
         await userEvent.click(toggle);
 
         await waitFor(
-            () => {
-                const painted = renderPaintable(svg);
-                expect(painted).toContain(CHECKMARK_PATH);
-                expect(painted).not.toContain(CROSS_PATH);
+            async () => {
+                expect(toggle).not.toBeChecked();
+                expect(image).toHaveAccessibleName("Checkmark");
+                const painted = await screenshot(image);
+                expect(painted.data).toBe(checkmark.data);
+            },
+            { timeout: TRANSITION_TIMEOUT },
+        );
+    });
+});
+
+describe("imagesDemo animation", () => {
+    it("plays the path animation while it is visible", async () => {
+        await renderDemo(imagesDemo, { areAnimationsEnabled: true });
+        const image = await screen.findByName("path-animation-image", { as: Gtk.Image });
+        const firstFrame = await screenshot(image);
+
+        await waitFor(
+            async () => {
+                const nextFrame = await screenshot(image);
+                expect(nextFrame.data).not.toBe(firstFrame.data);
             },
             { timeout: TRANSITION_TIMEOUT },
         );
@@ -132,12 +118,18 @@ describe("imagesDemo stateful icon switch", () => {
 });
 
 describe("imagesDemo media widgets", () => {
-    it("loads the animated GIF as the gif picture's paintable after mount", async () => {
-        await renderDemo(imagesDemo);
-        const gif = await screen.findByName("gif-picture", { as: Gtk.Picture });
+    it("loads the resource animation as the picture's looping paintable", async () => {
+        await renderDemo(imagesDemo, { isReactStrictMode: true });
+        const picture = await screen.findByName("animation-picture", { as: Gtk.Picture });
 
         await waitFor(() => {
-            expect(gif.getPaintable()).not.toBeNull();
+            const paintable = picture.getPaintable() as Gtk.MediaFile;
+            expect(paintable).toBeInstanceOf(Gtk.MediaFile);
+            expect(paintable.prepared).toBe(true);
+            expect(paintable.getError()).toBeNull();
+            expect(paintable.getLoop()).toBe(true);
+            expect(paintable.getIntrinsicWidth()).toBe(80);
+            expect(paintable.getIntrinsicHeight()).toBe(70);
         });
     });
 

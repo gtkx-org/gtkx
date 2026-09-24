@@ -3,41 +3,21 @@ import { screen, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { constraintsDemo } from "../../../src/demos/constraints/constraints.js";
 import { renderDemo } from "../../test-utils.js";
-import { collectConstraints, collectGuides, findChildButtons } from "./constraint-helpers.js";
+import { boundsIn, findChildButtons } from "./constraint-helpers.js";
+
+const EDGE_SPACING = 8;
+const ROW_GAP = 12;
+const MIN_COLUMN_GAP = 10;
+const MAX_COLUMN_GAP = 200;
+const MAX_BUTTON_WIDTH = 200;
 
 type AllocatedLayout = {
     button1: Gtk.Button;
     button2: Gtk.Button;
     button3: Gtk.Button;
     container: Gtk.Box;
+    containerHeight: number;
     containerWidth: number;
-};
-
-const getGridLayout = async (): Promise<Gtk.ConstraintLayout> => {
-    const container = await screen.findByName("container");
-    const layout = container.getLayoutManager();
-    expect(layout).toBeInstanceOf(Gtk.ConstraintLayout);
-
-    return layout as Gtk.ConstraintLayout;
-};
-
-const boundsIn = (widget: Gtk.Widget, container: Gtk.Widget) => {
-    const [ok, rect] = widget.computeBounds(container);
-    expect(ok, "expected computeBounds to succeed").toBe(true);
-
-    return rect;
-};
-
-const findSpacingGuide = (layout: Gtk.ConstraintLayout): Gtk.ConstraintGuide => {
-    const guides = collectGuides(layout);
-    expect(guides).toHaveLength(1);
-    const [guide] = guides;
-
-    if (!guide) {
-        throw new Error("expected the layout to register the 'space' guide");
-    }
-
-    return guide;
 };
 
 const renderAndAllocate = async (): Promise<AllocatedLayout> => {
@@ -49,7 +29,14 @@ const renderAndAllocate = async (): Promise<AllocatedLayout> => {
         expect(button3.getWidth()).toBeGreaterThan(0);
     });
 
-    return { button1, button2, button3, container, containerWidth: container.getWidth() };
+    return {
+        button1,
+        button2,
+        button3,
+        container,
+        containerHeight: container.getHeight(),
+        containerWidth: container.getWidth(),
+    };
 };
 
 const renderAndMeasure = async () => {
@@ -59,75 +46,32 @@ const renderAndMeasure = async () => {
         b1: boundsIn(layout.button1, layout.container),
         b2: boundsIn(layout.button2, layout.container),
         b3: boundsIn(layout.button3, layout.container),
+        containerHeight: layout.containerHeight,
         containerWidth: layout.containerWidth,
     };
 };
 
-describe("constraintsDemo layout", () => {
-    it("caps button1 with a width <= 200 constraint on the layout", async () => {
-        await renderDemo(constraintsDemo);
-        const layout = await getGridLayout();
-        const button1 = await screen.findByName("button1", { as: Gtk.Button });
-
-        const maxWidth = collectConstraints(layout).find(
-            (c) =>
-                c.getTarget() === button1 &&
-                c.getTargetAttribute() === Gtk.ConstraintAttribute.WIDTH &&
-                c.getRelation() === Gtk.ConstraintRelation.LE,
-        );
-
-        expect(maxWidth, "expected a button1 width <= 200 constraint").toBeDefined();
-        expect(maxWidth?.getConstant()).toBe(200);
-        expect(maxWidth?.getSourceAttribute()).toBe(Gtk.ConstraintAttribute.NONE);
-    });
-
-    it("registers a single named spacing guide referenced by the horizontal constraints", async () => {
-        await renderDemo(constraintsDemo);
-        const layout = await getGridLayout();
-        const guide = findSpacingGuide(layout);
-        expect(guide.getName()).toBe("space");
-        const constraints = collectConstraints(layout);
-
-        const button1EndToGuide = constraints.find(
-            (c) =>
-                c.getSource() === guide &&
-                c.getSourceAttribute() === Gtk.ConstraintAttribute.START &&
-                c.getTargetAttribute() === Gtk.ConstraintAttribute.END,
-        );
-
-        const guideEndToButton2 = constraints.find(
-            (c) =>
-                c.getTarget() === guide &&
-                c.getTargetAttribute() === Gtk.ConstraintAttribute.END &&
-                c.getSourceAttribute() === Gtk.ConstraintAttribute.START,
-        );
-
-        expect(button1EndToGuide, "expected button1.end pinned to space.start").toBeDefined();
-        expect(guideEndToButton2, "expected space.end pinned to button2.start").toBeDefined();
-    });
-
-    it("adds exactly the 15 declared constraints to the layout", async () => {
-        await renderDemo(constraintsDemo);
-        const layout = await getGridLayout();
-        expect(collectConstraints(layout)).toHaveLength(15);
-    });
-});
-
 describe("constraintsDemo geometry", () => {
     it("resolves the constraints into the intended allocations", async () => {
-        const { b1, b2, b3, containerWidth } = await renderAndMeasure();
+        const { b1, b2, b3, containerHeight, containerWidth } = await renderAndMeasure();
         expect(b1.getWidth()).toBe(b2.getWidth());
-        expect(b1.getX()).toBe(8);
-        expect(b2.getX() + b2.getWidth()).toBe(containerWidth - 8);
-        expect(b2.getX()).toBeGreaterThan(b1.getX() + b1.getWidth());
-        expect(b3.getX()).toBe(8);
-        expect(b3.getWidth()).toBe(containerWidth - 16);
-        expect(b3.getY()).toBeGreaterThan(b1.getY() + b1.getHeight());
+        expect(b1.getHeight()).toBe(b2.getHeight());
+        expect(b1.getHeight()).toBe(b3.getHeight());
+        expect(b1.getWidth()).toBeLessThanOrEqual(MAX_BUTTON_WIDTH);
+        expect(b1.getX()).toBe(EDGE_SPACING);
+        expect(b1.getY()).toBe(EDGE_SPACING);
+        expect(b2.getX() + b2.getWidth()).toBe(containerWidth - EDGE_SPACING);
+        expect(b2.getX() - (b1.getX() + b1.getWidth())).toBeGreaterThanOrEqual(MIN_COLUMN_GAP);
+        expect(b2.getX() - (b1.getX() + b1.getWidth())).toBeLessThanOrEqual(MAX_COLUMN_GAP);
+        expect(b3.getX()).toBe(EDGE_SPACING);
+        expect(b3.getWidth()).toBe(containerWidth - EDGE_SPACING * 2);
+        expect(b3.getY() - (b1.getY() + b1.getHeight())).toBe(ROW_GAP);
+        expect(b3.getY() + b3.getHeight()).toBe(containerHeight - EDGE_SPACING);
     });
 
     it("recomputes the layout when the window is resized", async () => {
-        const { button1, button2, button3, container, containerWidth } = await renderAndAllocate();
-        const widerWidth = containerWidth + 240;
+        const { button1, button2, button3, container } = await renderAndAllocate();
+        const widerWidth = MAX_BUTTON_WIDTH * 2 + MAX_COLUMN_GAP + EDGE_SPACING * 2;
         const initialButton1Width = boundsIn(button1, container).getWidth();
         const root = container.getRoot();
 
@@ -141,9 +85,13 @@ describe("constraintsDemo geometry", () => {
             expect(container.getWidth()).toBe(widerWidth);
         });
 
-        expect(boundsIn(button3, container).getWidth()).toBe(widerWidth - 16);
+        expect(boundsIn(button3, container).getWidth()).toBe(widerWidth - EDGE_SPACING * 2);
         expect(boundsIn(button1, container).getWidth()).toBeGreaterThan(initialButton1Width);
+        expect(boundsIn(button1, container).getWidth()).toBe(MAX_BUTTON_WIDTH);
         expect(boundsIn(button1, container).getWidth()).toBe(boundsIn(button2, container).getWidth());
+        expect(boundsIn(button2, container).getX() + boundsIn(button2, container).getWidth()).toBe(
+            widerWidth - EDGE_SPACING,
+        );
     });
 });
 

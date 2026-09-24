@@ -12,7 +12,7 @@ type CycleContext = {
     window: Gtk.Window;
 };
 
-const THEME_TITLES = ["Adwaita", "Adwaita (dark)", "HighContrast", "HighContrastInverse"];
+const THEME_TITLES = ["Adwaita", "Adwaita (dark)", "HighContrast", "HighContrastInverse (dark)"];
 const FPS_SETTLE_MS = 1200;
 const FPS_PATTERN = /^\d+\.\d{2} fps$/;
 
@@ -40,7 +40,7 @@ const activateCycleAndAwaitAlert = async (): Promise<CycleContext> => {
 };
 
 const queryFpsLabel = (header: Gtk.HeaderBar): Gtk.Label | null =>
-    within(header).queryByRole(Gtk.AccessibleRole.LABEL, { name: FPS_PATTERN, as: Gtk.Label });
+    within(header).queryByRole(Gtk.AccessibleRole.STATUS, { name: FPS_PATTERN, as: Gtk.Label });
 
 const waitForFpsReadout = async (header: Gtk.HeaderBar): Promise<void> => {
     await waitFor(() => {
@@ -100,7 +100,7 @@ describe("themesDemo", () => {
 describe("themesDemo cycling lifecycle", () => {
     it("cycles themes and drives the fps readout after acceptance", async () => {
         const { cycle, alert, header, window } = await activateCycleAndAwaitAlert();
-        expect(window).toHaveObjectProperty("title", null);
+        expect(window).toHaveObjectProperty("title", "Themes");
         expect(queryFpsLabel(header)).toBeNull();
         await respondToWarning(alert, "OK");
 
@@ -115,10 +115,15 @@ describe("themesDemo cycling lifecycle", () => {
         });
 
         await waitForFpsReadout(header);
+
+        await waitFor(() => {
+            expect(window).toHaveObjectProperty("title", "HighContrastInverse (dark)");
+            expect(Adw.StyleManager.getDefault().getDark()).toBe(true);
+        }, { interval: 1 });
     });
 
     it("does not start cycling when the warning is cancelled", async () => {
-        const { alert, header, window } = await activateCycleAndAwaitAlert();
+        const { cycle, alert, header, window } = await activateCycleAndAwaitAlert();
         await respondToWarning(alert, "Cancel");
 
         await waitFor(() => {
@@ -126,12 +131,13 @@ describe("themesDemo cycling lifecycle", () => {
         });
 
         await new Promise((resolve) => setTimeout(resolve, FPS_SETTLE_MS));
-        expect(window).toHaveObjectProperty("title", null);
+        expect(window).toHaveObjectProperty("title", "Themes");
         expect(queryFpsLabel(header)).toBeNull();
+        expect(cycle).not.toBePressed();
     });
 
     it("stops cycling, clears the fps readout, and unpresses the toggle when unchecked", async () => {
-        const { cycle, alert, header } = await activateCycleAndAwaitAlert();
+        const { cycle, alert, header, window } = await activateCycleAndAwaitAlert();
         await respondToWarning(alert, "OK");
 
         await waitFor(() => {
@@ -146,6 +152,7 @@ describe("themesDemo cycling lifecycle", () => {
         });
 
         expect(screen.queryByName("warning-dialog")).toBeNull();
+        expect(window).toHaveObjectProperty("title", "Themes");
 
         await waitFor(() => {
             expect(queryFpsLabel(header)).toBeNull();

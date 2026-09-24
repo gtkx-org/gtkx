@@ -24,12 +24,14 @@ describe("listboxControlsDemo Group 1 structure", () => {
 
     it("renders the switch initially inactive", async () => {
         await renderDemo(listboxControlsDemo);
-        expect(await screen.findByRole(Gtk.AccessibleRole.SWITCH, { checked: false })).not.toBeChecked();
+        expect(
+            await screen.findByRole(Gtk.AccessibleRole.SWITCH, { name: "Switch", checked: false }),
+        ).not.toBeChecked();
     });
 
     it("renders the check button initially active", async () => {
         await renderDemo(listboxControlsDemo);
-        expect(await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true })).toBeChecked();
+        expect(await screen.findByRole(Gtk.AccessibleRole.CHECKBOX, { name: "Check", checked: true })).toBeChecked();
     });
 
     it("renders the click-here icon initially hidden via opacity", async () => {
@@ -87,6 +89,18 @@ describe("listboxControlsDemo Group 2 controls", () => {
         expect(group2).toContainElement(await screen.findByName("spin", { as: Gtk.SpinButton }));
         expect(group2).toContainElement(await screen.findByName("dropdown", { as: Gtk.DropDown }));
         expect(group2).toContainElement(await screen.findByName("entry", { as: Gtk.Entry }));
+    });
+
+    it("links each mnemonic label to its control", async () => {
+        await renderDemo(listboxControlsDemo);
+        expect(await screen.findByLabelText("Scale", { as: Gtk.Scale })).toBe(await screen.findByName("scale"));
+        expect(await screen.findByLabelText("Spinbutton", { as: Gtk.SpinButton })).toBe(
+            await screen.findByName("spin"),
+        );
+        expect(await screen.findByLabelText("Dropdown", { as: Gtk.DropDown })).toBe(
+            await screen.findByName("dropdown"),
+        );
+        expect(await screen.findByLabelText("Entry", { as: Gtk.Entry })).toBe(await screen.findByName("entry"));
     });
 
     it("seeds the scale and spin button with the expected starting value", async () => {

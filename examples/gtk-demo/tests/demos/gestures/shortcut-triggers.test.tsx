@@ -1,38 +1,15 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, within } from "@gtkx/testing";
-import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { screen, userEvent, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { shortcutTriggersDemo } from "../../../src/demos/gestures/shortcut-triggers.js";
 import { renderDemo } from "../../test-utils.js";
-
-const OUTPUT_FIXTURE = fileURLToPath(new URL("../../fixtures/shortcut-output.tsx", import.meta.url));
-const OUTPUT_FIXTURE_ARGS = ["--conditions=source", "--import", "tsx", OUTPUT_FIXTURE];
-const OUTPUT_FIXTURE_TSCONFIG = fileURLToPath(new URL("../../../../../tsconfig.base.json", import.meta.url));
-
-const runShortcut = (scenario: "ctrl-g" | "x"): string => {
-    const result = spawnSync(process.execPath, OUTPUT_FIXTURE_ARGS, {
-        encoding: "utf8",
-        env: {
-            ...process.env,
-            GTKX_SHORTCUT_SCENARIO: scenario,
-            TSX_TSCONFIG_PATH: OUTPUT_FIXTURE_TSCONFIG,
-        },
-        timeout: 20_000,
-    });
-
-    if (result.status !== 0) {
-        throw new Error(result.stderr);
-    }
-
-    return result.stdout;
-};
 
 describe("shortcutTriggersDemo rendering", () => {
     it("renders the two instruction labels in the listbox", async () => {
         await renderDemo(shortcutTriggersDemo);
         const listBox = await screen.findByName("list-box", { as: Gtk.ListBox });
         expect(within(listBox).getAllByRole(Gtk.AccessibleRole.LIST_ITEM)).toHaveLength(2);
+        expect(listBox).toHaveObjectProperty("selectionMode", Gtk.SelectionMode.NONE);
         expect(await screen.findByName("label-ctrl-g")).toHaveTextContent("Press Ctrl-G");
         expect(await screen.findByName("label-x")).toHaveTextContent("Press X");
     });
@@ -45,21 +22,25 @@ describe("shortcutTriggersDemo rendering", () => {
         expect(rows[1]).toContainElement(await screen.findByName("label-x"));
     });
 
-    it("applies the 6px margins on the listbox container", async () => {
+    it("applies the 6px margins around the shortcut list", async () => {
         await renderDemo(shortcutTriggersDemo);
         const listBox = await screen.findByName("list-box", { as: Gtk.ListBox });
-        expect(listBox).toHaveObjectProperty("marginTop", 6);
-        expect(listBox).toHaveObjectProperty("marginBottom", 6);
-        expect(listBox).toHaveObjectProperty("marginStart", 6);
-        expect(listBox).toHaveObjectProperty("marginEnd", 6);
+        const container = listBox.getParent();
+        expect(container).toHaveObjectProperty("marginTop", 6);
+        expect(container).toHaveObjectProperty("marginBottom", 6);
+        expect(container).toHaveObjectProperty("marginStart", 6);
+        expect(container).toHaveObjectProperty("marginEnd", 6);
     });
 });
 
 describe("shortcutTriggersDemo activation", () => {
     it.each([
-        ["ctrl-g", "activated Press Ctrl-G"],
-        ["x", "activated Press X"],
-    ] as const)("activates the %s shortcut", (scenario, output) => {
-        expect(runShortcut(scenario).trim()).toBe(output);
+        ["label-ctrl-g", "{Control>}g{/Control}", "Ctrl-G activated"],
+        ["label-x", "x", "X activated"],
+    ] as const)("reports the %s shortcut visibly", async (labelName, keys, status) => {
+        await renderDemo(shortcutTriggersDemo);
+        const label = await screen.findByName(labelName);
+        await userEvent.keyboard(label, keys);
+        expect(await screen.findByRole(Gtk.AccessibleRole.STATUS)).toHaveTextContent(status);
     });
 });

@@ -1,7 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
-import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import {
     GtkBox,
     GtkButton,
@@ -12,7 +11,6 @@ import {
     GtkLinkButton,
     GtkListBox,
     GtkListBoxRow,
-    GtkMenuButton,
     GtkRevealer,
     GtkScrolledWindow,
 } from "@gtkx/jsx/gtk";
@@ -28,11 +26,12 @@ type Message = {
     senderNick: string;
     message: string;
     time: number;
-    replyTo: number;
     resentBy: string | null;
     nFavorites: number;
     nReshares: number;
 };
+
+type MessageFields = [string, string, string, string, string, string, string, string, string];
 
 type MessageRowProps = {
     message: Message;
@@ -77,24 +76,19 @@ const listboxDemo: Demo = {
     windowTitle: "List Box — Complex",
 };
 
-function messageField(parts: string[], index: number): string {
-    return parts[index] ?? "";
-}
-
 function parseMessage(line: string): Message {
-    const parts = line.split("|");
-    const resentBy = messageField(parts, 6);
+    const [id, senderName, senderNick, message, time, , resentBy, nFavorites, nReshares] =
+        line.split("|") as MessageFields;
 
     return {
-        id: Number(messageField(parts, 0)),
-        senderName: messageField(parts, 1),
-        senderNick: messageField(parts, 2),
-        message: messageField(parts, 3),
-        time: Number(messageField(parts, 4)),
-        replyTo: Number(messageField(parts, 5)),
+        id: Number(id),
+        senderName,
+        senderNick,
+        message,
+        time: Number(time),
         resentBy: resentBy.length > 0 ? resentBy : null,
-        nFavorites: Number(messageField(parts, 7)),
-        nReshares: Number(messageField(parts, 8)),
+        nFavorites: Number(nFavorites),
+        nReshares: Number(nReshares),
     };
 }
 
@@ -153,6 +147,7 @@ const MessageAvatar = ({ message }: { message: Message }) => (
             heightRequest={32}
             halign={Gtk.Align.CENTER}
             valign={Gtk.Align.START}
+            accessibleRole={Gtk.AccessibleRole.PRESENTATION}
             marginTop={8}
             marginBottom={8}
             marginStart={8}
@@ -164,11 +159,9 @@ const MessageAvatar = ({ message }: { message: Message }) => (
 const MessageHeader = ({ message }: { message: Message }) => (
     <GtkGridLayoutChild column={1} row={0}>
         <GtkBox hexpand baselinePosition={Gtk.BaselinePosition.TOP}>
-            <GtkButton receivesDefault hasFrame={false} valign={Gtk.Align.BASELINE_FILL}>
-                <GtkLabel valign={Gtk.Align.BASELINE_FILL} attributes={boldAttrs}>
-                    {message.senderName}
-                </GtkLabel>
-            </GtkButton>
+            <GtkLabel valign={Gtk.Align.BASELINE_FILL} attributes={boldAttrs}>
+                {message.senderName}
+            </GtkLabel>
             <GtkLabel valign={Gtk.Align.BASELINE_FILL} cssClasses={["dim-label"]}>
                 {message.senderNick}
             </GtkLabel>
@@ -187,50 +180,24 @@ const MessageBody = ({ message }: { message: Message }) => (
     </GtkGridLayoutChild>
 );
 
-const MessageResentBy = ({ message }: { message: Message }) => (
-    <GtkGridLayoutChild column={1} row={2}>
-        <GtkBox visible={message.resentBy !== null}>
-            <GtkImage iconName="media-playlist-repeat" />
-            <GtkLabel>Resent by</GtkLabel>
-            <GtkLinkButton label={message.resentBy ?? ""} receivesDefault hasFrame={false} uri="https://www.gtk.org" />
-        </GtkBox>
-    </GtkGridLayoutChild>
-);
+function MessageResentBy({ message }: { message: Message }) {
+    if (message.resentBy === null) {
+        return null;
+    }
 
-const MessageMoreMenuButton = () => (
-    <GtkMenuButton
-        receivesDefault
-        hasFrame={false}
-        label="More..."
-        menuModel={(
-            <GMenu
-                items={[
-                    {
-                        section: [
-                            { label: "Email message", action: "msg.email" },
-                            { label: "Embed message", action: "msg.embed" },
-                        ],
-                    },
-                ]}
-            />
-        )}
-        actionGroups={(
-            <GSimpleActionGroup
-                prefix="msg"
-                actions={(
-                    <>
-                        <GSimpleAction name="email" onActivate={(): void => undefined} />
-                        <GSimpleAction name="embed" onActivate={(): void => undefined} />
-                    </>
-                )}
-            />
-        )}
-    />
-);
+    return (
+        <GtkGridLayoutChild column={1} row={2}>
+            <GtkBox>
+                <GtkImage iconName="media-playlist-repeat" accessibleRole={Gtk.AccessibleRole.PRESENTATION} />
+                <GtkLabel>Resent by</GtkLabel>
+                <GtkLinkButton label={message.resentBy} receivesDefault hasFrame={false} uri="https://www.gtk.org" />
+            </GtkBox>
+        </GtkGridLayoutChild>
+    );
+}
 
 const MessageExtraButtons = ({ message, isVisible, onFavorite, onReshare }: MessageExtraButtonsProps) => (
     <GtkBox spacing={6} visible={isVisible}>
-        <GtkButton label="Reply" receivesDefault hasFrame={false} />
         <GtkButton
             label="Reshare"
             receivesDefault
@@ -247,7 +214,6 @@ const MessageExtraButtons = ({ message, isVisible, onFavorite, onReshare }: Mess
                 onFavorite(message.id);
             }}
         />
-        <MessageMoreMenuButton />
     </GtkBox>
 );
 
@@ -294,7 +260,6 @@ const MessageDetails = ({ message, isExpanded }: { message: Message; isExpanded:
                 </GtkBox>
                 <GtkBox>
                     <GtkLabel cssClasses={["dim-label"]}>{formatDetailedTime(message.time)}</GtkLabel>
-                    <GtkButton label="Details" receivesDefault hasFrame={false} cssClasses={["dim-label"]} />
                 </GtkBox>
             </GtkBox>
         </GtkRevealer>
@@ -321,7 +286,7 @@ const MessageRow = ({ message, isExpanded, onToggleExpand, onFavorite, onReshare
                 <MessageActions
                     message={message}
                     isExpanded={isExpanded}
-                    isVisible={areExtraButtonsVisible}
+                    isVisible={areExtraButtonsVisible || isExpanded}
                     onToggleExpand={onToggleExpand}
                     onFavorite={onFavorite}
                     onReshare={onReshare}

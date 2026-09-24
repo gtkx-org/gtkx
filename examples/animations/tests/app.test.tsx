@@ -1,7 +1,7 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { rootElement } from "@gtkx/react";
-import { render, type RenderResult, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { render, type RenderResult, screen, userEvent, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { App } from "../src/app.js";
 import { demos } from "../src/demos/index.js";
@@ -34,7 +34,10 @@ describe("App", () => {
 
     it("lists every demo in the sidebar", async () => {
         await renderApp();
-        const sidebar = await screen.findByName("sidebar", { as: Gtk.StackSidebar });
+        const sidebar = await screen.findByRole(Gtk.AccessibleRole.LIST, {
+            name: "Sidebar",
+            as: Gtk.ListBox,
+        });
 
         for (const { title } of demos) {
             expect(sidebar).toContainOneByText(title);
@@ -43,26 +46,16 @@ describe("App", () => {
 
     it("opens every demo from the sidebar", async () => {
         await renderApp();
-        const sidebar = await screen.findByName("sidebar", { as: Gtk.StackSidebar });
-        const stack = sidebar.getStack();
+        const sidebar = await screen.findByRole(Gtk.AccessibleRole.LIST, {
+            name: "Sidebar",
+            as: Gtk.ListBox,
+        });
 
-        if (!stack) {
-            throw new Error("the sidebar has no stack");
-        }
-
-        for (const { id, title } of demos) {
+        for (const { title } of demos) {
             await userEvent.click(await within(sidebar).findByText(title));
-
-            await waitFor(() => {
-                expect(stack).toHaveObjectProperty("visibleChildName", id);
-            });
-
-            const page = stack.getVisibleChild();
-            if (!page) {
-                throw new Error(`the ${title} page is not visible`);
-            }
-
-            expect(await within(page).findByText(title)).toBeVisible();
+            expect(
+                await screen.findByRole(Gtk.AccessibleRole.HEADING, { name: title, as: Gtk.Label }),
+            ).toBeVisible();
         }
     });
 });

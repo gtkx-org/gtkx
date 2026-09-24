@@ -355,7 +355,7 @@ const measureGridSurface = (inputs: MeasurementInputs): { width: number; height:
     return { width: result.width * inputs.scale, height: result.height * inputs.scale };
 };
 
-const renderSmallSurface = ({
+const didRenderSmallSurface = ({
     small,
     fontOptions,
     fontDesc,
@@ -367,7 +367,7 @@ const renderSmallSurface = ({
     fontDesc: Pango.FontDescription;
     ch: string;
     shouldHintMetrics: boolean;
-}): Pango.Layout | null => {
+}): boolean => {
     const { cr: smallCr, pangoContext: smallCtx } = createFontContext({
         surface: small,
         fontOptions,
@@ -377,7 +377,7 @@ const renderSmallSurface = ({
     const gridLayout = createGridLayout(smallCtx, fontDesc, ch);
 
     if (!gridLayout) {
-        return null;
+        return false;
     }
 
     const { layout, logicalRect, glyphs } = gridLayout;
@@ -391,7 +391,7 @@ const renderSmallSurface = ({
         PangoCairo.showLayout(smallCr, layout);
     }
 
-    return layout;
+    return true;
 };
 
 const paintSmallSurface = ({
@@ -611,8 +611,6 @@ const drawSmallSurface = (ctx: DrawTextModeContext) => {
     smallCr.setSourceRgba(0, 0, 0, state.pixelAlphaRef.current);
     smallCr.translate(10, 10);
     PangoCairo.showLayout(smallCr, smallLayout);
-    PangoCairo.layoutPath(smallCr, smallLayout);
-    smallCr.newPath();
     const scaledWidth = surfaceWidth * state.scale;
     const scaledHeight = surfaceHeight * state.scale;
     const offsetX = Math.max(0, Math.floor((ctx.width - scaledWidth) / 2));
@@ -823,9 +821,9 @@ function useDrawGridMode(state: FontRenderingState) {
         const surfaceWidth = Math.round((logicalRect.width * 3) / 2);
         const surfaceHeight = logicalRect.height * 4;
         const small = Surface.createSimilar(target, Content.COLOR_ALPHA, surfaceWidth, surfaceHeight);
-        const smallLayout = renderSmallSurface({ small, fontOptions, fontDesc, ch, shouldHintMetrics });
+        const didRender = didRenderSmallSurface({ small, fontOptions, fontDesc, ch, shouldHintMetrics });
 
-        if (!smallLayout) {
+        if (!didRender) {
             small.finish();
             tmpSurface.finish();
 
@@ -902,6 +900,7 @@ const FontRenderingTextRow = ({ state }: { state: FontRenderingState }) => {
             <GtkGridLayoutChild column={2} row={0}>
                 <GtkEntry
                     name="entry"
+                    accessibleLabel="Text"
                     text={text}
                     onChanged={(entry) => {
                         setText(entry.getText());
@@ -916,6 +915,7 @@ const FontRenderingTextRow = ({ state }: { state: FontRenderingState }) => {
             <GtkGridLayoutChild column={2} row={1}>
                 <GtkFontDialogButton
                     name="font-button"
+                    accessibleLabel="Font"
                     fontDesc={fontDesc}
                     dialog={<GtkFontDialog />}
                     onNotifyFontDesc={(value) => {
@@ -956,15 +956,17 @@ const FontRenderingOverlayChecks = ({ state }: { state: FontRenderingState }) =>
 
 const FontRenderingHintControls = ({ state }: { state: FontRenderingState }) => {
     const { hintStyle, setHintStyle, isAntialiased, setIsAntialiased, shouldHintMetrics, setShouldHintMetrics } = state;
+    const [hintingDropdown, setHintingDropdown] = useState<Gtk.DropDown | null>(null);
 
     return (
         <>
             <GtkGridLayoutChild column={4} row={0} columnSpan={2}>
                 <GtkBox spacing={6}>
-                    <GtkLabel useUnderline cssClasses={["dim-label"]}>
+                    <GtkLabel useUnderline cssClasses={["dim-label"]} mnemonicWidget={hintingDropdown}>
                         _Hinting
                     </GtkLabel>
                     <DropDown
+                        ref={setHintingDropdown}
                         name="hinting"
                         valign={Gtk.Align.CENTER}
                         selectedId={hintStyleOptions.find((o) => o.value === hintStyle)?.id}
@@ -1031,6 +1033,7 @@ const FontRenderingZoomButtons = ({
                     halign={Gtk.Align.CENTER}
                     valign={Gtk.Align.CENTER}
                     accessibleLabel="Zoom in"
+                    tooltipText="Zoom in"
                 />
             </GtkGridLayoutChild>
             <GtkGridLayoutChild column={7} row={1}>
@@ -1043,6 +1046,7 @@ const FontRenderingZoomButtons = ({
                     halign={Gtk.Align.CENTER}
                     valign={Gtk.Align.CENTER}
                     accessibleLabel="Zoom out"
+                    tooltipText="Zoom out"
                 />
             </GtkGridLayoutChild>
         </>

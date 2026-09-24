@@ -190,7 +190,8 @@ const DemoProvider = ({ demos, children }: DemoTreeProviderProps) => {
         setDefaultWidget(null);
     };
 
-    const filteredTreeItems = searchQuery.trim() ? filterTree(treeItems, searchQuery) : treeItems;
+    const normalizedQuery = searchQuery.trim();
+    const filteredTreeItems = normalizedQuery ? filterTree(treeItems, normalizedQuery) : treeItems;
 
     const contextValue = {
         demos,

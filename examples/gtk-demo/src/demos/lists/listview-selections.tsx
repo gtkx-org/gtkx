@@ -1,5 +1,6 @@
 import { DropDown } from "@gtkx/components";
 import * as Gdk from "@gtkx/gi/gdk";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
 import * as PangoCairo from "@gtkx/gi/pangocairo";
@@ -20,7 +21,7 @@ import {
     GtkSeparator,
     GtkSpinButton,
 } from "@gtkx/jsx/gtk";
-import { readdirSync, statSync } from "node:fs";
+import { readdir } from "node:fs/promises";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-selections.tsx?raw";
@@ -61,10 +62,10 @@ type Device = (typeof devices)[number];
 type DirEntry = {
     path: string;
     name: string;
-    icon: string;
+    isDirectory: boolean;
 };
 
-const times = ["1 minute", "2 minutes", "5 minutes", "20 minutes"];
+const times = ["1 minute", "2 minutes", "5 minutes", "20 minutes"] as const;
 
 const minutes = [
     "1 minute",
@@ -80,7 +81,7 @@ const minutes = [
     "45 minutes",
     "50 minutes",
     "55 minutes",
-];
+] as const;
 
 const hours = [
     "1 hour",
@@ -94,7 +95,7 @@ const hours = [
     "10 hours",
     "11 hours",
     "12 hours",
-];
+] as const;
 
 const devices = [
     { id: "digital1", title: "Digital Output", icon: "audio-card-symbolic", description: "Built-in Audio" },
@@ -111,7 +112,7 @@ const devices = [
         icon: "audio-card-symbolic",
         description: "ThinkPad Thunderbolt 3 Dock USB Audio",
     },
-];
+] as const;
 
 const suggestionWords = [
     "GNOME",
@@ -152,16 +153,6 @@ const getFontFamilies = (() => {
     };
 })();
 
-const getDirectoryEntries = (() => {
-    let cache: DirEntry[] | undefined;
-
-    return (): DirEntry[] => {
-        cache ??= loadDirectoryEntries();
-
-        return cache;
-    };
-})();
-
 const listviewSelectionsDemo: Demo = {
     id: "listview-selections",
     title: "Lists/Selections",
@@ -175,12 +166,6 @@ const listviewSelectionsDemo: Demo = {
     windowTitle: "Selections",
     isResizable: false,
 };
-
-function logError(error: unknown) {
-    if (error instanceof Error) {
-        console.error(error.message);
-    }
-}
 
 function loadFontFamilies(): string[] {
     const fontMap = PangoCairo.FontMap.getDefault();
@@ -198,13 +183,9 @@ function loadFontFamilies(): string[] {
     return names.toSorted((a, b) => a.localeCompare(b));
 }
 
-function escapeMarkup(text: string): string {
-    return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
-}
-
 function highlightMatch(word: string, query: string): string {
     if (query.length === 0) {
-        return escapeMarkup(word);
+        return GLib.markupEscapeText(word, -1);
     }
 
     const lower = word.toLowerCase();
@@ -212,12 +193,12 @@ function highlightMatch(word: string, query: string): string {
     const idx = lower.indexOf(queryLower);
 
     if (idx === -1) {
-        return escapeMarkup(word);
+        return GLib.markupEscapeText(word, -1);
     }
 
-    const before = escapeMarkup(word.slice(0, idx));
-    const match = escapeMarkup(word.slice(idx, idx + query.length));
-    const after = escapeMarkup(word.slice(idx + query.length));
+    const before = GLib.markupEscapeText(word.slice(0, idx), -1);
+    const match = GLib.markupEscapeText(word.slice(idx, idx + query.length), -1);
+    const after = GLib.markupEscapeText(word.slice(idx + query.length), -1);
 
     return `${before}<b>${match}</b>${after}`;
 }
@@ -251,7 +232,13 @@ function moveSuggestionSelection(state: SuggestionState, delta: number): void {
         return;
     }
 
-    state.setSelected((current) => (current + delta + state.matches.length) % state.matches.length);
+    state.setSelected((current) => {
+        if (current === -1) {
+            return delta > 0 ? 0 : state.matches.length - 1;
+        }
+
+        return (current + delta + state.matches.length) % state.matches.length;
+    });
 }
 
 function handleSuggestionChanged(state: SuggestionState, entry: Gtk.Entry): void {
@@ -305,15 +292,11 @@ function syncPopoverVisibility(popover: Gtk.Popover | null, isOpen: boolean): vo
 }
 
 function syncSelectedRow(listBox: Gtk.ListBox | null, selected: number): void {
-    if (!listBox || selected < 0) {
+    if (!listBox) {
         return;
     }
 
-    const row = listBox.getRowAtIndex(selected);
-
-    if (row) {
-        listBox.selectRow(row);
-    }
+    listBox.selectRow(selected < 0 ? null : listBox.getRowAtIndex(selected));
 }
 
 const SuggestionEntryView = ({
@@ -350,7 +333,7 @@ const SuggestionEntryView = ({
             <GtkScrolledWindow maxContentHeight={400} propagateNaturalHeight hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                 <GtkListBox
                     ref={listBoxRef}
-                    selectionMode={Gtk.SelectionMode.BROWSE}
+                    selectionMode={Gtk.SelectionMode.SINGLE}
                     onRowActivated={(row) => onRowActivated(row.getIndex())}
                 >
                     {matches.map((word) => (
@@ -410,15 +393,20 @@ const renderSelectableTimeItem = (label: string, selectedId: string) => (
         <GtkLabel xalign={0} hexpand>
             {label}
         </GtkLabel>
-        <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1 : 0} />
+        <GtkImage
+            iconName="object-select-symbolic"
+            opacity={label === selectedId ? 1 : 0}
+            accessibleRole={Gtk.AccessibleRole.PRESENTATION}
+        />
     </GtkBox>
 );
 
 const TimesDropDown = () => {
-    const [selectedId, setSelectedId] = useState(times[0] ?? "");
+    const [selectedId, setSelectedId] = useState<string>(times[0]);
 
     return (
         <DropDown
+            accessibleLabel="Time"
             selectedId={selectedId}
             onSelectionChanged={(id) => {
                 setSelectedId((current) => id ?? current);
@@ -430,10 +418,11 @@ const TimesDropDown = () => {
 };
 
 const TimesSectionedDropDown = () => {
-    const [selectedId, setSelectedId] = useState(minutes[0] ?? "");
+    const [selectedId, setSelectedId] = useState<string>(minutes[0]);
 
     return (
         <DropDown
+            accessibleLabel="Time by unit"
             selectedId={selectedId}
             onSelectionChanged={(id) => {
                 setSelectedId((current) => id ?? current);
@@ -442,7 +431,7 @@ const TimesSectionedDropDown = () => {
             renderListItem={({ item: label }: { item: string }) => renderSelectableTimeItem(label, selectedId)}
             renderHeader={({ section: value }: { section: string }) => (
                 <GtkLabel useMarkup xalign={0} marginTop={10} marginBottom={10}>
-                    {`<big><b>${escapeMarkup(value)}</b></big>`}
+                    {`<big><b>${GLib.markupEscapeText(value, -1)}</b></big>`}
                 </GtkLabel>
             )}
             sections={[
@@ -461,93 +450,101 @@ const TimesSectionedDropDown = () => {
     );
 };
 
-const renderDeviceRow = (label: string, renderDetails: (device: Device) => ReactNode) => {
-    const device = devices.find((d) => d.id === label);
-
-    if (!device) {
-        return <GtkLabel>{label}</GtkLabel>;
-    }
-
-    return (
-        <GtkBox spacing={10}>
-            <GtkImage iconName={device.icon} />
-            {renderDetails(device)}
-        </GtkBox>
-    );
-};
+const renderDeviceRow = (device: Device, renderDetails: (device: Device) => ReactNode) => (
+    <GtkBox spacing={10}>
+        <GtkImage iconName={device.icon} accessibleRole={Gtk.AccessibleRole.PRESENTATION} />
+        {renderDetails(device)}
+    </GtkBox>
+);
 
 const DevicesDropDown = () => {
-    const [selectedId, setSelectedId] = useState(devices[0]?.id ?? "");
+    const [selectedId, setSelectedId] = useState<string>(devices[0].id);
 
     return (
         <DropDown
+            accessibleLabel="Audio output"
             selectedId={selectedId}
             onSelectionChanged={(id) => {
                 setSelectedId((current) => id ?? current);
             }}
-            renderItem={({ item: label }: { item: string }) =>
-                renderDeviceRow(label, (device) => (
+            renderItem={({ item: device }: { item: Device }) =>
+                renderDeviceRow(device, (details) => (
                     <GtkLabel xalign={0} hexpand>
-                        {device.title}
+                        {details.title}
                     </GtkLabel>
                 ))}
-            renderListItem={({ item: label }: { item: string }) =>
-                renderDeviceRow(label, (device) => (
+            renderListItem={({ item: device }: { item: Device }) =>
+                renderDeviceRow(device, (details) => (
                     <>
                         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={2}>
-                            <GtkLabel xalign={0}>{device.title}</GtkLabel>
+                            <GtkLabel xalign={0}>{details.title}</GtkLabel>
                             <GtkLabel xalign={0} cssClasses={["dim-label"]}>
-                                {device.description}
+                                {details.description}
                             </GtkLabel>
                         </GtkBox>
-                        <GtkImage iconName="object-select-symbolic" opacity={label === selectedId ? 1 : 0} />
+                        <GtkImage
+                            iconName="object-select-symbolic"
+                            opacity={device.id === selectedId ? 1 : 0}
+                            accessibleRole={Gtk.AccessibleRole.PRESENTATION}
+                        />
                     </>
                 ))}
-            items={devices.map((d) => ({ id: d.id, value: d.id }))}
+            items={devices.map((device) => ({ id: device.id, value: device }))}
         />
     );
 };
 
-function isDirectoryPath(path: string): boolean {
-    try {
-        return statSync(path).isDirectory();
-    } catch (error) {
-        logError(error);
+async function loadDirectoryEntries(): Promise<DirEntry[]> {
+    const entries = await readdir(process.cwd(), { withFileTypes: true });
 
-        return false;
-    }
+    return entries.map((entry) => ({
+        path: entry.name,
+        name: entry.name,
+        isDirectory: entry.isDirectory(),
+    })).toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
-function toDirEntry(cwd: string, name: string): DirEntry {
-    return {
-        path: name,
-        name,
-        icon: isDirectoryPath(`${cwd}/${name}`) ? "folder-symbolic" : "text-x-generic-symbolic",
-    };
+function useDirectoryEntries() {
+    const [entries, setEntries] = useState<DirEntry[]>([]);
+    const [hasError, setHasError] = useState(false);
+
+    useEffect(() => {
+        void loadDirectoryEntries().then(setEntries).catch(() => {
+            setHasError(true);
+        });
+    }, []);
+
+    return { entries, hasError };
 }
 
-function loadDirectoryEntries(): DirEntry[] {
-    const cwd = process.cwd();
-
-    try {
-        return readdirSync(cwd)
-            .map((name) => toDirEntry(cwd, name))
-            .toSorted((a, b) => a.name.localeCompare(b.name));
-    } catch (error) {
-        logError(error);
-
-        return [];
-    }
-}
+const DirectorySuggestion = ({ entry, onSelect }: { entry: DirEntry; onSelect: (name: string) => void }) => (
+    <GtkButton
+        cssClasses={["flat"]}
+        onClicked={() => {
+            onSelect(entry.name);
+        }}
+    >
+        <GtkBox spacing={8}>
+            <GtkImage
+                iconName={entry.isDirectory ? "folder-symbolic" : "text-x-generic-symbolic"}
+                accessibleLabel={entry.isDirectory ? "Folder" : "File"}
+            />
+            <GtkLabel halign={Gtk.Align.START} hexpand>
+                {entry.name}
+            </GtkLabel>
+        </GtkBox>
+    </GtkButton>
+);
 
 const DirectorySuggestionEntry = () => {
     const [text, setText] = useState("");
-    const entries = getDirectoryEntries();
+    const { entries, hasError } = useDirectoryEntries();
 
     return (
         <GtkBox cssClasses={["linked"]}>
             <GtkEntry
                 name="directory-entry"
+                accessibleLabel="Directory"
                 text={text}
                 hexpand
                 onChanged={(entry) => {
@@ -558,6 +555,7 @@ const DirectorySuggestionEntry = () => {
                 name="directory-menu-button"
                 iconName="pan-down-symbolic"
                 tooltipText="Show suggestions"
+                accessibleLabel="Show directory suggestions"
                 popover={(
                     <GtkPopover hasArrow={false} position={Gtk.PositionType.BOTTOM}>
                         <GtkScrolledWindow
@@ -566,21 +564,13 @@ const DirectorySuggestionEntry = () => {
                             hscrollbarPolicy={Gtk.PolicyType.NEVER}
                         >
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
+                                {hasError && <GtkLabel>Could not read this directory</GtkLabel>}
                                 {entries.map((entry) => (
-                                    <GtkButton
+                                    <DirectorySuggestion
                                         key={entry.path}
-                                        cssClasses={["flat"]}
-                                        onClicked={() => {
-                                            setText(entry.name);
-                                        }}
-                                    >
-                                        <GtkBox spacing={8}>
-                                            <GtkImage iconName={entry.icon} />
-                                            <GtkLabel halign={Gtk.Align.START} hexpand>
-                                                {entry.name}
-                                            </GtkLabel>
-                                        </GtkBox>
-                                    </GtkButton>
+                                        entry={entry}
+                                        onSelect={setText}
+                                    />
                                 ))}
                             </GtkBox>
                         </GtkScrolledWindow>
@@ -590,14 +580,6 @@ const DirectorySuggestionEntry = () => {
         </GtkBox>
     );
 };
-
-function selectFontByIndex(value: number, setFontIndex: (index: number) => void): void {
-    const index = Math.round(value);
-
-    if (index >= 0 && index < getFontFamilies().length) {
-        setFontIndex(index);
-    }
-}
 
 function selectFontById(id: string | null, setFontIndex: (index: number) => void): void {
     if (id === null) {
@@ -619,6 +601,7 @@ const FontsSelector = () => {
         <>
             <DropDown
                 name="fonts-dropdown"
+                accessibleLabel="Font"
                 selectedId={getFontFamilies()[fontIndex] ?? ""}
                 enableSearch={isFontSearchEnabled}
                 onSelectionChanged={(id) => {
@@ -628,13 +611,14 @@ const FontsSelector = () => {
             />
             <GtkSpinButton
                 name="font-spin"
+                accessibleLabel="Font index"
                 halign={Gtk.Align.START}
                 marginStart={20}
                 adjustment={(
-                    <GtkAdjustment value={fontIndex} lower={-1} upper={getFontFamilies().length} stepIncrement={1} />
+                    <GtkAdjustment value={fontIndex} lower={0} upper={getFontFamilies().length - 1} stepIncrement={1} />
                 )}
                 onValueChanged={(spin) => {
-                    selectFontByIndex(spin.getValue(), setFontIndex);
+                    setFontIndex(spin.getValueAsInt());
                 }}
             />
             <GtkCheckButton

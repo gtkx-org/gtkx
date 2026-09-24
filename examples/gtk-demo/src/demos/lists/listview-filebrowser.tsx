@@ -1,18 +1,28 @@
 import { GridView, ListView } from "@gtkx/components";
 import { css } from "@gtkx/css";
 import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkHeaderBar, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
-import { useSignal } from "@gtkx/react";
-import { createContext, useContext, useMemo, useState } from "react";
+import * as Pango from "@gtkx/gi/pango";
+import {
+    GtkBox,
+    GtkButton,
+    GtkDirectoryList,
+    GtkHeaderBar,
+    GtkImage,
+    GtkLabel,
+    GtkScrolledWindow,
+} from "@gtkx/jsx/gtk";
+import { createPortal, rootElement } from "@gtkx/react";
+import { createContext, useCallback, useContext, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
 import sourceCode from "./listview-filebrowser.tsx?raw";
 
 type FileItem = {
-    name: string;
+    file: Gio.File;
     displayName: string;
     isDirectory: boolean;
-    size: number;
+    size: bigint;
     icon: Gio.Icon | null;
     contentType: string | null;
 };
@@ -29,6 +39,11 @@ type FilebrowserContextValue = {
     viewMode: ViewMode;
     setViewMode: (mode: ViewMode) => void;
     files: FileItem[];
+    isLoading: boolean;
+    error: GLib.Error | null;
+    canNavigateUp: boolean;
+    selectedIds: string[];
+    setSelectedIds: (ids: string[]) => void;
     handleActivate: (position: number) => void;
     navigateUp: () => void;
 };
@@ -59,23 +74,7 @@ const listviewFilebrowserDemo: Demo = {
     defaultHeight: 400,
 };
 
-function formatSize(bytes: number): string {
-    if (bytes < 1000) {
-        return `${String(bytes)} bytes`;
-    }
-
-    if (bytes < 1_000_000) {
-        return `${(bytes / 1000).toFixed(1)} kB`;
-    }
-
-    if (bytes < 1_000_000_000) {
-        return `${(bytes / 1_000_000).toFixed(1)} MB`;
-    }
-
-    return `${(bytes / 1_000_000_000).toFixed(1)} GB`;
-}
-
-function collectDirectoryItems(dirList: Gtk.DirectoryList): FileItem[] {
+function collectDirectoryItems(dirList: Gtk.DirectoryList, directory: Gio.File): FileItem[] {
     const items: FileItem[] = [];
     const count = dirList.getNItems();
 
@@ -84,10 +83,10 @@ function collectDirectoryItems(dirList: Gtk.DirectoryList): FileItem[] {
 
         if (info instanceof Gio.FileInfo) {
             items.push({
-                name: info.getName(),
+                file: directory.getChild(info.getName()),
                 displayName: info.getDisplayName(),
                 isDirectory: info.getFileType() === Gio.FileType.DIRECTORY,
-                size: Number(info.getSize()),
+                size: info.getSize(),
                 icon: info.getIcon(),
                 contentType: info.getContentType(),
             });
@@ -105,40 +104,57 @@ function compareFileItems(a: FileItem, b: FileItem): number {
     return a.displayName.localeCompare(b.displayName);
 }
 
-function sortFileItems(items: FileItem[]): FileItem[] {
-    return items.toSorted((a, b) => compareFileItems(a, b));
-}
+type DirectoryContents = {
+    directory: Gio.File | null;
+    files: FileItem[];
+    isLoading: boolean;
+    error: GLib.Error | null;
+};
 
-function navigateInto(item: FileItem | undefined, currentPath: string, setCurrentPath: (path: string) => void) {
-    if (!item?.isDirectory) {
-        return;
-    }
+function useDirectoryFiles(directory: Gio.File) {
+    const [contents, setContents] = useState<DirectoryContents>({
+        directory: null, files: [], isLoading: true, error: null,
+    });
+    const refresh = useCallback((list: Gtk.DirectoryList | null) => {
+        const current = list?.getFile();
 
-    const parent = Gio.File.newForPath(currentPath);
-    const child = parent.getChild(item.name);
-    const childPath = child.getPath();
-
-    if (childPath) {
-        setCurrentPath(childPath);
-    }
-}
-
-function useDirectoryFiles(currentPath: string) {
-    const [files, setFiles] = useState<FileItem[]>([]);
-    const dirList = useMemo(() => Gtk.DirectoryList.new(ATTRIBUTES, Gio.File.newForPath(currentPath)), [currentPath]);
-
-    const refresh = () => {
-        if (dirList.isLoading()) {
+        if (!list || !current) {
             return;
         }
 
-        setFiles(sortFileItems(collectDirectoryItems(dirList)));
+        const isLoading = list.isLoading();
+        setContents({
+            directory: current,
+            files: isLoading ? [] : collectDirectoryItems(list, current).toSorted(compareFileItems),
+            isLoading,
+            error: list.getError(),
+        });
+    }, []);
+    const portal = createPortal(
+        <GtkDirectoryList
+            key={directory.getUri()}
+            ref={refresh}
+            file={directory}
+            attributes={ATTRIBUTES}
+            onNotifyLoading={(_value, list) => {
+                refresh(list);
+            }}
+            onNotifyError={(_value, list) => {
+                refresh(list);
+            }}
+            onItemsChanged={(_position, _removed, _added, list) => {
+                refresh(list);
+            }}
+        />,
+        rootElement,
+    );
+
+    return {
+        portal,
+        ...(contents.directory?.equal(directory)
+            ? contents
+            : { files: [], isLoading: true, error: null }),
     };
-
-    useSignal(dirList, "notify::loading", refresh, { isImmediate: true });
-    useSignal(dirList, "items-changed", refresh);
-
-    return files;
 }
 
 function useFilebrowserContext(): FilebrowserContextValue {
@@ -153,8 +169,19 @@ function useFilebrowserContext(): FilebrowserContextValue {
 
 const GridFileItem = ({ item }: { item: FileItem }) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL} halign={Gtk.Align.CENTER}>
-        <GtkImage gicon={item.icon ?? undefined} iconSize={Gtk.IconSize.LARGE} />
-        <GtkLabel wrap wrapMode={2} lines={2} ellipsize={3} widthChars={10} maxWidthChars={30}>
+        <GtkImage
+            gicon={item.icon ?? undefined}
+            iconSize={Gtk.IconSize.LARGE}
+            accessibleLabel={item.isDirectory ? "Folder" : "File"}
+        />
+        <GtkLabel
+            wrap
+            wrapMode={Pango.WrapMode.WORD_CHAR}
+            lines={2}
+            ellipsize={Pango.EllipsizeMode.END}
+            widthChars={10}
+            maxWidthChars={30}
+        >
             {item.displayName}
         </GtkLabel>
     </GtkBox>
@@ -162,11 +189,15 @@ const GridFileItem = ({ item }: { item: FileItem }) => (
 
 const PagedFileItem = ({ item }: { item: FileItem }) => (
     <GtkBox>
-        <GtkImage gicon={item.icon ?? undefined} iconSize={Gtk.IconSize.LARGE} />
+        <GtkImage
+            gicon={item.icon ?? undefined}
+            iconSize={Gtk.IconSize.LARGE}
+            accessibleLabel={item.isDirectory ? "Folder" : "File"}
+        />
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
             <GtkLabel halign={Gtk.Align.START}>{item.displayName}</GtkLabel>
             <GtkLabel halign={Gtk.Align.START} cssClasses={["dim-label"]}>
-                {item.isDirectory ? "folder" : formatSize(item.size)}
+                {item.isDirectory ? "folder" : GLib.formatSize(item.size)}
             </GtkLabel>
             <GtkLabel halign={Gtk.Align.START} cssClasses={["dim-label"]}>
                 {item.contentType ?? ""}
@@ -177,7 +208,7 @@ const PagedFileItem = ({ item }: { item: FileItem }) => (
 
 const RowFileItem = ({ item }: { item: FileItem }) => (
     <GtkBox>
-        <GtkImage gicon={item.icon ?? undefined} />
+        <GtkImage gicon={item.icon ?? undefined} accessibleLabel={item.isDirectory ? "Folder" : "File"} />
         <GtkLabel halign={Gtk.Align.START}>{item.displayName}</GtkLabel>
     </GtkBox>
 );
@@ -195,45 +226,70 @@ const ListItem = ({ item, mode }: { item: FileItem; mode: ViewMode }) => {
 };
 
 function FilebrowserProvider({ children }: DemoProviderProps) {
-    const [currentPath, setCurrentPath] = useState(() => process.cwd());
+    const [directory, setDirectory] = useState(() => Gio.File.newForPath(process.cwd()));
     const [viewMode, setViewMode] = useState<ViewMode>("list");
-    const files = useDirectoryFiles(currentPath);
+    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+    const { files, isLoading, error, portal } = useDirectoryFiles(directory);
+    const parent = directory.getParent();
 
     const navigateUp = () => {
-        const file = Gio.File.newForPath(currentPath);
-        const parent = file.getParent();
-
-        if (parent) {
-            setCurrentPath(parent.getPath() ?? "/");
+        if (!parent) {
+            return;
         }
+
+        setSelectedIds([]);
+        setDirectory(parent);
     };
 
     const handleActivate = (position: number) => {
-        navigateInto(files[position], currentPath, setCurrentPath);
+        const item = files[position];
+
+        if (item?.isDirectory) {
+            setSelectedIds([]);
+            setDirectory(item.file);
+        }
     };
 
     const value = {
         viewMode,
         setViewMode,
         files,
+        isLoading,
+        error,
+        canNavigateUp: parent !== null,
+        selectedIds,
+        setSelectedIds,
         handleActivate,
         navigateUp,
     };
 
-    return <FilebrowserContext.Provider value={value}>{children}</FilebrowserContext.Provider>;
+    return (
+        <FilebrowserContext.Provider value={value}>
+            {portal}
+            {children}
+        </FilebrowserContext.Provider>
+    );
 }
 
 function renderViewMode({ item }: { item: ViewModeItem }) {
-    return <GtkImage iconName={item.icon} tooltipText={item.label} />;
+    return <GtkImage iconName={item.icon} tooltipText={item.label} accessibleLabel={item.label} />;
 }
 
 function ListViewFilebrowserTitlebar() {
-    const { viewMode, setViewMode, navigateUp } = useFilebrowserContext();
+    const { viewMode, setViewMode, navigateUp, canNavigateUp } = useFilebrowserContext();
 
     return (
         <GtkHeaderBar
             name="filebrowser-header"
-            start={<GtkButton name="up-button" iconName="go-up-symbolic" onClicked={navigateUp} />}
+            start={(
+                <GtkButton
+                    name="up-button"
+                    iconName="go-up-symbolic"
+                    accessibleLabel="Parent directory"
+                    sensitive={canNavigateUp}
+                    onClicked={navigateUp}
+                />
+            )}
             end={(
                 <ListView
                     name="view-switcher"
@@ -264,8 +320,23 @@ function ListViewFilebrowserTitlebar() {
     );
 }
 
+const DirectoryStatus = ({ error, isLoading }: Pick<FilebrowserContextValue, "error" | "isLoading">) => (
+    <GtkBox
+        halign={Gtk.Align.CENTER}
+        valign={Gtk.Align.CENTER}
+        accessibleRole={error === null ? Gtk.AccessibleRole.STATUS : Gtk.AccessibleRole.ALERT}
+    >
+        <GtkLabel wrap>{error?.message ?? (isLoading ? "Loading files…" : "This directory is empty")}</GtkLabel>
+    </GtkBox>
+);
+
 function ListViewFilebrowserDemo() {
-    const { viewMode, files, handleActivate } = useFilebrowserContext();
+    const { viewMode, files, isLoading, error, selectedIds, setSelectedIds, handleActivate } =
+        useFilebrowserContext();
+
+    if (error !== null || isLoading || files.length === 0) {
+        return <DirectoryStatus error={error} isLoading={isLoading} />;
+    }
 
     return (
         <GtkScrolledWindow name="files-scrolled" vexpand hexpand>
@@ -274,9 +345,12 @@ function ListViewFilebrowserDemo() {
                 estimatedItemHeight={viewMode === "grid" ? 80 : 48}
                 maxColumns={15}
                 orientation={viewMode === "grid" ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL}
+                selectionMode={Gtk.SelectionMode.SINGLE}
+                selectedIds={selectedIds}
+                onSelectionChanged={setSelectedIds}
                 onActivate={handleActivate}
                 renderItem={({ item }: { item: FileItem }) => <ListItem item={item} mode={viewMode} />}
-                items={files.map((file) => ({ id: file.name, value: file }))}
+                items={files.map((file) => ({ id: file.file.getUri(), value: file }))}
             />
         </GtkScrolledWindow>
     );

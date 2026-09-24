@@ -17,16 +17,13 @@ const clickTab = async (name: string): Promise<void> => {
 };
 
 describe("stackDemo structure", () => {
-    it("renders a GtkStack containing three pages", async () => {
+    it("renders three named stack switcher tabs", async () => {
         await renderDemo(stackDemo);
+        await screen.findByRole(Gtk.AccessibleRole.TAB_LIST, { name: "Stack pages", as: Gtk.StackSwitcher });
         expect(await screen.findAllByRole(Gtk.AccessibleRole.TAB)).toHaveLength(3);
-    });
-
-    it("renders a GtkStackSwitcher tied to the stack", async () => {
-        await renderDemo(stackDemo);
-        const switcher = await screen.findByRole(Gtk.AccessibleRole.TAB_LIST, { as: Gtk.StackSwitcher });
-        const stack = await findStack();
-        expect(switcher).toHaveObjectProperty("stack", stack);
+        await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Page 1" });
+        await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Page 2" });
+        await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Page 3" });
     });
 
     it("uses crossfade as the stack transition", async () => {
@@ -36,22 +33,10 @@ describe("stackDemo structure", () => {
 });
 
 describe("stackDemo pages", () => {
-    it("declares pages with the expected titles and ids", async () => {
-        const stack = await renderStack();
-        const page1Child = stack.getChildByName("page1");
-        const page2Child = stack.getChildByName("page2");
-        const page3Child = stack.getChildByName("page3");
-        expect(page1Child).toBeInstanceOf(Gtk.Image);
-        expect(page2Child).toBeInstanceOf(Gtk.CheckButton);
-        expect(page3Child).toBeInstanceOf(Gtk.Spinner);
-        await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Page 1" });
-        await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Page 2" });
-
-        if (!page3Child) {
-            throw new Error("expected page3 child");
-        }
-
-        expect(stack.getPage(page3Child)).toHaveObjectProperty("iconName", "face-laugh-symbolic");
+    it("shows the named GTK Demo logo on the first page", async () => {
+        await renderStack();
+        const logo = await screen.findByRole(Gtk.AccessibleRole.IMG, { name: "GTK Demo logo", as: Gtk.Image });
+        expect(logo).toBeVisible();
     });
 
     it("renders the Page 2 check button inside the stack", async () => {
@@ -78,21 +63,16 @@ describe("stackDemo switching", () => {
         });
 
         expect(stack.getVisibleChild()).toBeInstanceOf(Gtk.CheckButton);
-        const tabs = await screen.findAllByRole(Gtk.AccessibleRole.TAB);
-        const page3Tab = tabs[2];
-
-        if (!page3Tab) {
-            throw new Error("expected a third stack switcher tab");
-        }
-
-        await userEvent.click(page3Tab);
+        await clickTab("Page 3");
 
         await waitFor(() => {
             expect(stack).toHaveObjectProperty("visibleChildName", "page3");
         });
 
-        const spinner = stack.getVisibleChild();
-        expect(spinner).toBeInstanceOf(Gtk.Spinner);
+        const spinner = await within(stack).findByRole(Gtk.AccessibleRole.PROGRESS_BAR, {
+            name: "Loading Page 3",
+            as: Gtk.Spinner,
+        });
         expect(spinner).toHaveObjectProperty("spinning", true);
     });
 });

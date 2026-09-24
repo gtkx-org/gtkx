@@ -41,33 +41,9 @@ yarn create gtkx
 
 :::
 
-Answer the prompts like this:
+Choose `tasks` as the project directory and `com.gtkx.tutorial` as the application ID. Enable TypeScript and the testing setup, then choose your package manager. The scaffolder installs dependencies and initializes a Git repository.
 
-```
-┌  Create GTKX App
-│
-◇  Project directory
-│  tasks
-│
-◇  Application ID
-│  com.gtkx.tutorial
-│
-◇  Package manager
-│  npm
-│
-◇  Use TypeScript?
-│  Yes
-│
-◇  Include testing setup (Vitest)?
-│  Yes
-│
-```
-
-It then writes the project, installs the dependencies, initializes a git repository, and prints the commands to start it.
-
-Pick whichever package manager you use. This tutorial writes `npm run` in its commands; substitute freely.
-
-Use `com.gtkx.tutorial` for the application ID, or substitute your own consistently. Later chapters use it for settings, desktop integration, and packaging.
+The commands below use npm; use the equivalent commands for your package manager. If you choose another application ID, substitute it consistently throughout the tutorial.
 
 Start the app:
 
