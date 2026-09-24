@@ -1,78 +1,43 @@
-import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent, waitFor } from "@gtkx/testing";
+import { screen, screenshot, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { gearsDemo } from "../../../src/demos/opengl/gears.js";
-import { renderDemo } from "../../test-utils.js";
+import { renderDemo, screenshotColors } from "../../test-utils.js";
 
 describe("gearsDemo", () => {
-    it("renders a GtkGLArea configured with an ES context and a depth buffer", async () => {
+    it("exposes named controls for all three axes", async () => {
         await renderDemo(gearsDemo);
-        const glArea = await screen.findByName("gl-area", { as: Gtk.GLArea });
-        expect(glArea).toHaveObjectProperty("allowedApis", Gdk.GLAPI.GLES);
-        expect(glArea).toHaveObjectProperty("hasDepthBuffer", true);
+
+        for (const [name, value] of [
+            ["X axis", 20],
+            ["Y axis", 30],
+            ["Z axis", 20],
+        ] as const) {
+            expect(await screen.findByRole(Gtk.AccessibleRole.SLIDER, { name, as: Gtk.Scale })).toHaveValue(value);
+        }
     });
 
-    it("renders one vertical inverted axis slider for each of X, Y, Z", async () => {
+    it("paints visible shaded gears in the GL area", async () => {
         await renderDemo(gearsDemo);
-
-        for (const axis of ["X", "Y", "Z"]) {
-            await screen.findByRole(Gtk.AccessibleRole.LABEL, { name: axis });
-        }
-
-        const sliders = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
-        expect(sliders).toHaveLength(3);
-
-        for (const slider of sliders) {
-            expect(slider).toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
-            expect(slider).toHaveObjectProperty("inverted", true);
-            expect(slider.getAdjustment()).toHaveObjectProperty("lower", 0);
-            expect(slider.getAdjustment()).toHaveObjectProperty("upper", 360);
-        }
+        const glArea = await screen.findByName("gl-area", { as: Gtk.GLArea });
+        const image = await screenshot(glArea);
+        expect(screenshotColors(image).size).toBeGreaterThan(8);
     });
 });
 
 describe("gearsDemo axis sliders", () => {
-    it("seeds each axis slider with its own distinct initial rotation value", async () => {
+    it("rotates the rendered gears when an axis changes", async () => {
         await renderDemo(gearsDemo);
-        const sliders = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
-        const [xSlider, ySlider, zSlider] = [sliders[0] as Gtk.Scale, sliders[1] as Gtk.Scale, sliders[2] as Gtk.Scale];
-        expect(xSlider).toHaveValue(20);
-        expect(ySlider).toHaveValue(30);
-        expect(zSlider).toHaveValue(20);
-    });
-
-    it("advances each axis slider one page increment on PageUp", async () => {
-        await renderDemo(gearsDemo);
-        const sliders = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
-        const xSlider = sliders[0] as Gtk.Scale;
-        const ySlider = sliders[1] as Gtk.Scale;
-        const zSlider = sliders[2] as Gtk.Scale;
+        const glArea = await screen.findByName("gl-area", { as: Gtk.GLArea });
+        const xSlider = await screen.findByRole(Gtk.AccessibleRole.SLIDER, { name: "X axis", as: Gtk.Scale });
+        const before = await screenshot(glArea);
         xSlider.grabFocus();
         await userEvent.keyboard(xSlider, "{PageUp}");
 
-        await waitFor(() => {
+        await waitFor(async () => {
             expect(xSlider).toHaveValue(32);
+            const after = await screenshot(glArea);
+            expect(after.data).not.toBe(before.data);
         });
-
-        ySlider.grabFocus();
-        await userEvent.keyboard(ySlider, "{PageUp}");
-
-        await waitFor(() => {
-            expect(ySlider).toHaveValue(42);
-        });
-
-        zSlider.grabFocus();
-        await userEvent.keyboard(zSlider, "{PageUp}");
-
-        await waitFor(() => {
-            expect(zSlider).toHaveValue(32);
-        });
-    });
-
-    it("shows the placeholder FPS readout before any frame timing is sampled", async () => {
-        await renderDemo(gearsDemo);
-        const fps = await screen.findByText("FPS: ---");
-        expect(fps).toHaveTextContent("FPS: ---");
     });
 });

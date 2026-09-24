@@ -28,7 +28,13 @@ export {
     newParamSpecOverride,
 } from "./properties.js";
 export { matchAllRegex, matchRegex } from "./regex.js";
-export { type Interface, registerClass, type SignalGType, type SignalSpec } from "./register-class.js";
+export {
+    type Interface,
+    registerClass,
+    type RegisteredClass,
+    type SignalGType,
+    type SignalSpec,
+} from "./register-class.js";
 export {
     getClassType,
     getHandle,
@@ -45,6 +51,8 @@ export {
     setHandle,
     wrapHandle,
     type WrapperClass,
+    type NativeIdentity,
+    type NativeInstance,
     type WrapperClassResolver,
 } from "./registry.js";
 export {

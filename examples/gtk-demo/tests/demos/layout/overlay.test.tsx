@@ -21,6 +21,7 @@ describe("overlayDemo grid and labels", () => {
         expect(numbersLabel).toHaveObjectProperty("useMarkup", true);
         expect(numbersLabel).toHaveTextContent("Numbers");
         expect(numbersLabel).toHaveObjectProperty("canTarget", false);
+        expect(numbersLabel.getAccessibleRole()).toBe(Gtk.AccessibleRole.PRESENTATION);
         const box = numbersLabel.getParent();
         expect(box).toBeInstanceOf(Gtk.Box);
         expect(box).toHaveObjectProperty("canTarget", false);
@@ -30,7 +31,7 @@ describe("overlayDemo grid and labels", () => {
 describe("overlayDemo entry behavior", () => {
     it("renders the entry with the placeholder text 'Your Lucky Number' and empty initial value", async () => {
         await renderDemo(overlayDemo);
-        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Lucky number", as: Gtk.Entry });
         expect(screen.getByPlaceholderText("Your Lucky Number")).toBe(entry);
         expect(entry).toHaveDisplayValue("");
     });
@@ -38,7 +39,7 @@ describe("overlayDemo entry behavior", () => {
     it("updates the entry to the clicked number when a grid button is activated", async () => {
         await renderDemo(overlayDemo);
         const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "13" });
-        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Lucky number", as: Gtk.Entry });
         await userEvent.click(button);
 
         await waitFor(() => {
@@ -48,7 +49,7 @@ describe("overlayDemo entry behavior", () => {
 
     it("propagates user-typed text into the entry", async () => {
         await renderDemo(overlayDemo);
-        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Lucky number", as: Gtk.Entry });
         await userEvent.type(entry, "typed");
         expect(entry).toHaveDisplayValue("typed");
     });

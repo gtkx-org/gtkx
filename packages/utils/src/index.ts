@@ -9,4 +9,5 @@ export * from "./process/index.ts";
 export * from "./set/index.ts";
 export * from "./source/index.ts";
 export * from "./string/index.ts";
+export { once } from "es-toolkit/function";
 export type { Primitive } from "type-fest";

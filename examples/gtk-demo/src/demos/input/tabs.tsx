@@ -39,6 +39,7 @@ function TabsDemo() {
             vscrollbarPolicy={Gtk.PolicyType.AUTOMATIC}
         >
             <GtkTextView
+                accessibleLabel="Tab alignment example"
                 wrapMode={Gtk.WrapMode.WORD}
                 topMargin={20}
                 bottomMargin={20}

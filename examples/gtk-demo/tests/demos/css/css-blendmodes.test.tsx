@@ -6,11 +6,9 @@ import { renderDemo } from "../../test-utils.js";
 
 const blendClasses = (grid: Gtk.Grid): string[] => grid.getCssClasses().filter((name) => name.startsWith("gtkx-"));
 
-const activateRow = async (name: string): Promise<void> => {
-    const listbox = await screen.findByName("blend-list", { as: Gtk.ListBox });
+const selectRow = async (name: string): Promise<void> => {
     const row = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name, as: Gtk.ListBoxRow });
     await userEvent.click(row);
-    await userEvent.keyboard(listbox, "{Enter}");
 };
 
 describe("cssBlendmodesDemo rendering", () => {
@@ -37,6 +35,8 @@ describe("cssBlendmodesDemo rendering", () => {
         expect(stack).toBeVisible();
         expect(stack).toHaveObjectProperty("visibleChildName", "page0");
         within(stack).getByText("Duck");
+        within(stack).getByRole(Gtk.AccessibleRole.IMG, { name: "Duck source" });
+        within(stack).getByRole(Gtk.AccessibleRole.IMG, { name: "Blended picture" });
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Blends" }));
         await screen.findByText("Red");
         expect(stack).toHaveObjectProperty("visibleChildName", "page1");
@@ -45,6 +45,8 @@ describe("cssBlendmodesDemo rendering", () => {
         await screen.findByText("Cyan");
         expect(stack).toHaveObjectProperty("visibleChildName", "page2");
         within(stack).getByText("Yellow");
+        within(stack).getByRole(Gtk.AccessibleRole.IMG, { name: "Cyan source" });
+        within(stack).getByRole(Gtk.AccessibleRole.IMG, { name: "Blended CMYK picture" });
     });
 });
 
@@ -55,12 +57,12 @@ describe("cssBlendmodesDemo behavior", () => {
         expect(row).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, true);
     });
 
-    it("regenerates the root grid blend-mode css class when a blend row is activated", async () => {
+    it("regenerates the root grid blend-mode css class when a blend row is selected", async () => {
         await renderDemo(cssBlendmodesDemo);
         const grid = await screen.findByName("blend-root", { as: Gtk.Grid });
         const initialClasses = blendClasses(grid);
         expect(initialClasses).toHaveLength(1);
-        await activateRow("Multiply");
+        await selectRow("Multiply");
 
         await waitFor(() => {
             expect(blendClasses(grid)).not.toEqual(initialClasses);
@@ -73,7 +75,7 @@ describe("cssBlendmodesDemo behavior", () => {
         await renderDemo(cssBlendmodesDemo);
         const grid = await screen.findByName("blend-root", { as: Gtk.Grid });
         const initial = blendClasses(grid);
-        await activateRow("Overlay");
+        await selectRow("Overlay");
         let overlayClasses: string[] = initial;
 
         await waitFor(() => {
@@ -81,7 +83,7 @@ describe("cssBlendmodesDemo behavior", () => {
             expect(overlayClasses).not.toEqual(initial);
         });
 
-        await activateRow("Saturate");
+        await selectRow("Saturation");
 
         await waitFor(() => {
             expect(blendClasses(grid)).not.toEqual(overlayClasses);

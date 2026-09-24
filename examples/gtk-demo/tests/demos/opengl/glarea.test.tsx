@@ -2,30 +2,20 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { screen, screenshot, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { glareaDemo } from "../../../src/demos/opengl/glarea.js";
-import { renderDemo } from "../../test-utils.js";
+import { renderDemo, screenshotColors } from "../../test-utils.js";
 
 describe("glareaDemo", () => {
-    it("renders a GtkGLArea with the configured size hints", async () => {
+    it("paints a colored triangle", async () => {
         await renderDemo(glareaDemo);
         const glArea = await screen.findByName("gl-area", { as: Gtk.GLArea });
-        const [width, height] = glArea.getSizeRequest();
-        expect(width).toBe(100);
-        expect(height).toBe(200);
+        expect(screenshotColors(await screenshot(glArea)).size).toBeGreaterThan(8);
     });
 
-    it("renders three axis sliders and an enabled Quit button", async () => {
+    it("exposes named controls for all three axes and closing the demo", async () => {
         await renderDemo(glareaDemo);
 
-        const scales = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, {
-            value: { min: 0, max: 360 },
-            as: Gtk.Scale,
-        });
-
-        expect(scales).toHaveLength(3);
-
-        for (const scale of scales) {
-            expect(scale.getAdjustment()).toHaveObjectProperty("stepIncrement", 1);
-            expect(scale).toHaveObjectProperty("drawValue", false);
+        for (const name of ["X axis", "Y axis", "Z axis"]) {
+            expect(await screen.findByRole(Gtk.AccessibleRole.SLIDER, { name, as: Gtk.Scale })).toHaveValue(0);
         }
 
         const quit = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Quit", as: Gtk.Button });
@@ -38,7 +28,11 @@ describe("glareaDemo interaction", () => {
         await renderDemo(glareaDemo);
         const glArea = await screen.findByName("gl-area", { as: Gtk.GLArea });
         const before = await screenshot(glArea);
-        const scales = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER, { as: Gtk.Scale });
+        const scales = await Promise.all(
+            ["X axis", "Y axis", "Z axis"].map((name) =>
+                screen.findByRole(Gtk.AccessibleRole.SLIDER, { name, as: Gtk.Scale }),
+            ),
+        );
 
         for (const scale of scales) {
             scale.grabFocus();
@@ -53,23 +47,18 @@ describe("glareaDemo interaction", () => {
         expect(after.data).not.toBe(before.data);
     });
 
-    it("destroys the host window when the Quit button is clicked", async () => {
-        await renderDemo(glareaDemo);
+    it("closes through the demo host when the Quit button is clicked", async () => {
+        let completions = 0;
+        await renderDemo(glareaDemo, { onClose: () => {
+            completions += 1;
+        } });
         await screen.findByRole(Gtk.AccessibleRole.WINDOW);
         const quit = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Quit", as: Gtk.Button });
         await userEvent.click(quit);
 
         await waitFor(() => {
             expect(screen.queryByRole(Gtk.AccessibleRole.WINDOW)).toBeNull();
+            expect(completions).toBe(1);
         });
-    });
-
-    it("labels the axis sliders with X / Y / Z legends", async () => {
-        await renderDemo(glareaDemo);
-        await screen.findByText("X axis");
-        await screen.findByText("Y axis");
-        await screen.findByText("Z axis");
-        const sliders = await screen.findAllByRole(Gtk.AccessibleRole.SLIDER);
-        expect(sliders).toHaveLength(3);
     });
 });

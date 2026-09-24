@@ -91,7 +91,7 @@ GObject.getProperty(new RegisteredVisibility({}), "visible");
 };
 const GIO_TYPE_PROBE = `import type * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
-import { registerClass } from "@gtkx/runtime";
+import { type NativeInstance, registerClass } from "@gtkx/runtime";
 
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 type Expect<T extends true> = T;
@@ -177,7 +177,7 @@ const signatures: [
     Expect<
         Equal<
             Parameters<Gio.Socket["connect"]>,
-            [address: Gio.SocketAddress, cancellable: Gio.Cancellable | null]
+            [address: NativeInstance<Gio.SocketAddress>, cancellable: NativeInstance<Gio.Cancellable> | null]
         >
     >,
     Expect<Equal<ReturnType<Gio.Socket["connect"]>, boolean>>,

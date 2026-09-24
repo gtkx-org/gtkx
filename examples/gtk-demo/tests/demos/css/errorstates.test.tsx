@@ -1,9 +1,9 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import { screen, userEvent } from "@gtkx/testing";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { errorstatesDemo } from "../../../src/demos/css/errorstates.js";
-import { renderDemo } from "../../test-utils.js";
+import { findWidget, renderDemo } from "../../test-utils.js";
 
 type DetailEntries = {
     detailsEntry: Gtk.Entry;
@@ -101,8 +101,12 @@ describe("errorstatesDemo switch and scale", () => {
         await userEvent.click(sw);
         await userEvent.slide(scale, 80);
         expect(sw).toHaveObjectProperty("state", true);
+        expect(screen.queryByRole(Gtk.AccessibleRole.LABEL, { name: "Level too low" })).toBeNull();
+        expect(sw).toBeValid();
         await userEvent.slide(scale, 20);
         expect(sw).toHaveObjectProperty("state", false);
+        expect(await findLevelErrorLabel()).toHaveClass("error");
+        expect(sw).toBeInvalid();
     });
 });
 
@@ -115,8 +119,16 @@ describe("errorstatesDemo dialog lifecycle", () => {
             },
         });
         const dialog = await screen.findByRole(Gtk.AccessibleRole.DIALOG, { as: Adw.Dialog });
+        const close = findWidget(dialog, Gtk.Widget, (widget) => widget.getCssClasses().includes("close"));
+
+        if (close === null) {
+            throw new Error("Dialog has no close button");
+        }
+
         expect(closeCount).toBe(0);
-        dialog.close();
-        expect(closeCount).toBe(1);
+        await userEvent.click(close);
+        await waitFor(() => {
+            expect(closeCount).toBe(1);
+        });
     });
 });

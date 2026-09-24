@@ -1,3 +1,4 @@
+import type { ElementPropsExport } from "@gtkx/react/config";
 import type { Library } from "./gir/library.js";
 import type { PreparedStore, StoreOptions } from "./store/store-fs.js";
 import {
@@ -18,7 +19,7 @@ type RunJsxCodegenOptions = {
     jsx: StoreOptions;
     userComponents: Record<string, ModuleExport>;
     userLazyElements: string[];
-    userProps: Record<string, ModuleExport>;
+    userProps: Record<string, ElementPropsExport>;
     userOmittedProps: OmittedProps;
     isGiRegenerated: boolean;
     isForced: boolean;
@@ -36,7 +37,7 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
     const lazyElements = [...builtin.lazyElements, ...options.userLazyElements];
     const userProps = Object.fromEntries(Object.entries(options.userProps).map(([name, ref]) => [
         name,
-        { ...ref, composition: "intersection" as const },
+        { ...ref, composition: ref.composition ?? "intersection" },
     ]));
     const props = { ...builtin.props, ...userProps };
     const omittedProps = mergeOmittedProps(builtin.omittedProps, options.userOmittedProps);

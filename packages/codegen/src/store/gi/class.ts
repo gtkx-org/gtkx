@@ -47,6 +47,7 @@ import { appendElementMetadata } from "./element-metadata.js";
 import { declareFoldedClass, localClassName } from "./folded.js";
 import { gtypeMemberDeclaration, renderSourceGtype } from "./gtype-binding.js";
 import { memberName, methodExportName } from "./method.js";
+import { nativeIdentityMember } from "./native-instance.js";
 import { renderPropertyDeclarations } from "./properties.js";
 import { renderResolvedPropertyAccessor, resolveAccessor } from "./property-accessor.js";
 import { appendWrapperClassRegistration } from "./registration.js";
@@ -149,9 +150,11 @@ const classModifier = (context: ModuleContext, klass: GirClass): string =>
 const declareClass = (context: ModuleContext, options: ClassDeclarationOptions): void => {
     const { klass, className, heritage, body, implemented } = options;
     const localName = localClassName(className);
+    const instanceBase = context.qualify("GObject", "TypeInstance");
+    const identity = nativeIdentityMember(context, klass.name);
     context.module.appendDeclaration({
         name: localName,
-        code: `interface ${localName} extends ${context.qualify("GObject", "TypeInstance")} {}`,
+        code: `interface ${localName} extends ${instanceBase} {\n    ${identity}\n}`,
         isLocal: true,
     });
     appendInstallMixins(context, localName, implemented);

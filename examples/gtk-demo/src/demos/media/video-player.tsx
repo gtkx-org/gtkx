@@ -17,9 +17,9 @@ import {
 import { createPortal, rootElement, useSignal } from "@gtkx/react";
 import { createContext, useContext, useEffect, useState } from "react";
 import type { Demo, DemoProviderProps } from "../types.js";
+import gtkLogoCursorPath from "../../../data/demos/gtk_logo_cursor.png?resource";
 import bbbPngPath from "../../../data/demos/media/bbb.png?resource";
 import gtkLogoPath from "../../../data/demos/media/gtk-logo.webm?resource";
-import gtkLogoCursorPath from "../../../data/demos/media/gtk_logo_cursor.png?resource";
 import { isCancellation } from "../../is-cancellation.js";
 import { useCancellable } from "../../use-cancellable.js";
 import sourceCode from "./video-player.tsx?raw";
@@ -32,7 +32,6 @@ type VideoPlayerContextValue = {
     handleOpen: () => void;
     handleLogo: () => void;
     handleBBB: () => void;
-    handleFullscreen: () => void;
     handleToggleFullscreen: () => void;
 };
 
@@ -123,9 +122,6 @@ function VideoPlayerProvider({ window, children }: DemoProviderProps) {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [logoPaintable] = useState(() => Gdk.Texture.newFromResource(gtkLogoCursorPath));
     const [bbbPaintable] = useState(() => Gdk.Texture.newFromResource(bbbPngPath));
-    const [logoFile] = useState(() => Gio.File.newForUri(`resource://${gtkLogoPath}`));
-    const [bbbFile] = useState(() =>
-        Gio.File.newForUri("https://download.blender.org/peach/trailer/trailer_400p.ogg"));
     const { dialog, cancellable, portal } = useVideoFileDialog();
 
     useSignal(window, "notify::fullscreened", () => {
@@ -141,14 +137,12 @@ function VideoPlayerProvider({ window, children }: DemoProviderProps) {
     };
 
     const handleLogo = () => {
-        setVideoFile(logoFile);
+        setVideoFile(Gio.File.newForUri(`resource://${gtkLogoPath}`));
     };
 
     const handleBBB = () => {
-        setVideoFile(bbbFile);
+        setVideoFile(Gio.File.newForUri("https://download.blender.org/peach/trailer/trailer_400p.ogg"));
     };
-
-    const handleFullscreen = () => window?.fullscreen();
 
     const handleToggleFullscreen = () => {
         toggleFullscreen(window);
@@ -162,7 +156,6 @@ function VideoPlayerProvider({ window, children }: DemoProviderProps) {
         handleOpen,
         handleLogo,
         handleBBB,
-        handleFullscreen,
         handleToggleFullscreen,
     };
 
@@ -175,19 +168,39 @@ function VideoPlayerProvider({ window, children }: DemoProviderProps) {
 }
 
 function VideoPlayerTitlebar() {
-    const { isFullscreen, logoPaintable, bbbPaintable, handleOpen, handleLogo, handleBBB, handleFullscreen } =
+    const { isFullscreen, logoPaintable, bbbPaintable, handleOpen, handleLogo, handleBBB, handleToggleFullscreen } =
         useVideoPlayerContext();
+    const fullscreenLabel = isFullscreen ? "Exit fullscreen" : "Fullscreen";
 
     return (
         <GtkHeaderBar
             start={(
                 <>
                     <GtkButton name="open-button" label="_Open" useUnderline onClicked={handleOpen} />
-                    <GtkButton name="logo-button" accessibleLabel="GTK Logo" onClicked={handleLogo}>
-                        <GtkImage paintable={logoPaintable} pixelSize={24} />
+                    <GtkButton
+                        name="logo-button"
+                        accessibleLabel="GTK Logo"
+                        tooltipText="GTK Logo"
+                        onClicked={handleLogo}
+                    >
+                        <GtkImage
+                            paintable={logoPaintable}
+                            pixelSize={24}
+                            accessibleRole={Gtk.AccessibleRole.PRESENTATION}
+                        />
                     </GtkButton>
-                    <GtkButton name="bbb-button" accessibleLabel="Big Buck Bunny" onClicked={handleBBB}>
-                        <GtkImage name="bbb-image" paintable={bbbPaintable} pixelSize={24} />
+                    <GtkButton
+                        name="bbb-button"
+                        accessibleLabel="Big Buck Bunny"
+                        tooltipText="Big Buck Bunny"
+                        onClicked={handleBBB}
+                    >
+                        <GtkImage
+                            name="bbb-image"
+                            paintable={bbbPaintable}
+                            pixelSize={24}
+                            accessibleRole={Gtk.AccessibleRole.PRESENTATION}
+                        />
                     </GtkButton>
                 </>
             )}
@@ -195,8 +208,9 @@ function VideoPlayerTitlebar() {
                 <GtkButton
                     name="fullscreen-button"
                     iconName={isFullscreen ? "view-restore-symbolic" : "view-fullscreen-symbolic"}
-                    accessibleLabel="Fullscreen"
-                    onClicked={handleFullscreen}
+                    accessibleLabel={fullscreenLabel}
+                    tooltipText={fullscreenLabel}
+                    onClicked={handleToggleFullscreen}
                 />
             )}
         />
@@ -209,6 +223,8 @@ function VideoPlayerDemo() {
     return (
         <GtkVideo
             name="video"
+            accessibleRole={Gtk.AccessibleRole.GROUP}
+            accessibleLabel="Video player"
             file={videoFile}
             autoplay
             graphicsOffload={Gtk.GraphicsOffloadEnabled.ENABLED}

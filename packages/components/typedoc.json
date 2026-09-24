@@ -9,6 +9,7 @@
         "DropDownComponent",
         "DropDownWidgetProps",
         "GridViewOwnProps",
+        "ItemSizeProps",
         "ListViewOwnProps"
     ]
 }

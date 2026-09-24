@@ -1,12 +1,14 @@
 import * as Gdk from "@gtkx/gi/gdk";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as gl from "@gtkx/gl";
 import { GtkAdjustment, GtkBox, GtkButton, GtkGLArea, GtkLabel, GtkScale } from "@gtkx/jsx/gtk";
-import { useParentWindow } from "@gtkx/react";
 import { useRef, useState } from "react";
-import type { Demo } from "../types.js";
-import { createVertexBuffer, setShaderSource } from "./gl-helpers.js";
+import type { Demo, DemoProps } from "../types.js";
+import { createShaderProgram, createVertexBuffer, rotationMatrix } from "./gl-helpers.js";
 import sourceCode from "./glarea.tsx?raw";
+
+type EventResult = typeof Gdk.EVENT_PROPAGATE | typeof Gdk.EVENT_STOP;
 
 type GLState = {
     program: number;
@@ -74,6 +76,7 @@ void main() {
 }`;
 
 const VERTEX_DATA = [0, 0.5, 0, 1, 1, 0, 0, 1, 0.5, -0.366, 0, 1, 0, 1, 0, 1, -0.5, -0.366, 0, 1, 0, 0, 1, 1];
+const GLAREA_ERROR_DOMAIN = GLib.quarkFromString("gtkx-glarea-error-quark");
 
 const glareaDemo: Demo = {
     id: "glarea",
@@ -86,79 +89,16 @@ const glareaDemo: Demo = {
     defaultHeight: 600,
 };
 
-const createRotationMatrix = (rx: number, ry: number, rz: number): number[] => {
-    const cosX = Math.cos(rx);
-    const sinX = Math.sin(rx);
-    const cosY = Math.cos(ry);
-    const sinY = Math.sin(ry);
-    const cosZ = Math.cos(rz);
-    const sinZ = Math.sin(rz);
-
-    return [
-        cosY * cosZ,
-        cosX * sinZ + sinX * sinY * cosZ,
-        sinX * sinZ - cosX * sinY * cosZ,
-        0,
-        -cosY * sinZ,
-        cosX * cosZ - sinX * sinY * sinZ,
-        sinX * cosZ + cosX * sinY * sinZ,
-        0,
-        sinY,
-        -sinX * cosY,
-        cosX * cosY,
-        0,
-        0,
-        0,
-        0,
-        1,
-    ];
-};
-
-const compileShader = (type: number, source: string, name: string): number => {
-    const shader = gl.createShader(type);
-    setShaderSource(shader, source);
-    gl.compileShader(shader);
-
-    if (!gl.getShaderiv(shader, gl.COMPILE_STATUS)) {
-        const log = gl.getShaderInfoLog(shader);
-        gl.deleteShader(shader);
-        throw new Error(`${name} shader compilation failed: ${log}`);
-    }
-
-    return shader;
-};
-
-const linkProgram = (vertexShader: number, fragmentShader: number): number => {
-    const program = gl.createProgram();
-    gl.attachShader(program, vertexShader);
-    gl.attachShader(program, fragmentShader);
-    gl.bindAttribLocation(program, 0, "in_position");
-    gl.bindAttribLocation(program, 1, "in_color");
-    gl.linkProgram(program);
-
-    if (!gl.getProgramiv(program, gl.LINK_STATUS)) {
-        const log = gl.getProgramInfoLog(program);
-        gl.deleteShader(vertexShader);
-        gl.deleteShader(fragmentShader);
-        throw new Error(`Shader program linking failed: ${log}`);
-    }
-
-    return program;
-};
-
 const initGL = (api: Gdk.GLAPI): GLState => {
     const isGles = api === Gdk.GLAPI.GLES;
-    const vertexShader = compileShader(gl.VERTEX_SHADER, isGles ? VERTEX_SHADER_GLES : VERTEX_SHADER_GL, "Vertex");
-
-    const fragmentShader = compileShader(
-        gl.FRAGMENT_SHADER,
+    const program = createShaderProgram(
+        isGles ? VERTEX_SHADER_GLES : VERTEX_SHADER_GL,
         isGles ? FRAGMENT_SHADER_GLES : FRAGMENT_SHADER_GL,
-        "Fragment",
+        [
+            [0, "in_position"],
+            [1, "in_color"],
+        ],
     );
-
-    const program = linkProgram(vertexShader, fragmentShader);
-    gl.deleteShader(vertexShader);
-    gl.deleteShader(fragmentShader);
     const { vao, vbo } = createVertexBuffer(VERTEX_DATA);
     gl.vertexAttribPointer(0, 4, gl.FLOAT, false, 8 * 4, 0);
     gl.enableVertexAttribArray(0);
@@ -174,9 +114,8 @@ const tryInitGL = (area: Gtk.GLArea): GLState | null => {
     try {
         return initGL(area.getApi());
     } catch (error) {
-        if (error instanceof Error) {
-            console.error(error.message);
-        }
+        const message = error instanceof Error ? error.message : String(error);
+        area.setError(GLib.Error.newLiteral(GLAREA_ERROR_DOMAIN, 0, message));
 
         return null;
     }
@@ -193,11 +132,7 @@ const releaseGLState = (glStateRef: React.RefObject<GLState | null>) => {
     }
 };
 
-const realizeGLArea = (area: Gtk.GLArea | null, glStateRef: React.RefObject<GLState | null>): void => {
-    if (!area) {
-        return;
-    }
-
+const realizeGLArea = (area: Gtk.GLArea, glStateRef: React.RefObject<GLState | null>): void => {
     area.makeCurrent();
 
     if (area.getError()) {
@@ -207,35 +142,32 @@ const realizeGLArea = (area: Gtk.GLArea | null, glStateRef: React.RefObject<GLSt
     glStateRef.current = tryInitGL(area);
 };
 
-const unrealizeGLArea = (area: Gtk.GLArea | null, glStateRef: React.RefObject<GLState | null>): void => {
-    if (area) {
-        area.makeCurrent();
-    }
-
+const unrealizeGLArea = (area: Gtk.GLArea, glStateRef: React.RefObject<GLState | null>): void => {
+    area.makeCurrent();
     releaseGLState(glStateRef);
 };
 
-const renderGLArea = ({ glStateRef, rotationX, rotationY, rotationZ }: RenderGLAreaArgs): void => {
+const renderGLArea = ({ glStateRef, rotationX, rotationY, rotationZ }: RenderGLAreaArgs): EventResult => {
     const state = glStateRef.current;
 
     if (!state) {
-        return;
+        return Gdk.EVENT_PROPAGATE;
     }
 
-    const mvp = createRotationMatrix(rotationX, rotationY, rotationZ);
+    const mvp = rotationMatrix(rotationX, 1, 0, 0)
+        .multiply(rotationMatrix(rotationY, 0, 1, 0))
+        .multiply(rotationMatrix(rotationZ, 0, 0, 1));
     gl.clearColor(0.5, 0.5, 0.5, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.useProgram(state.program);
-    gl.uniformMatrix4fv(state.mvpLocation, 1, false, mvp);
+    gl.uniformMatrix4fv(state.mvpLocation, 1, false, mvp.toFloat());
     gl.bindVertexArray(state.vao);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.bindVertexArray(0);
     gl.useProgram(0);
     gl.flush();
-};
 
-const resizeGLViewport = (width: number, height: number) => {
-    gl.viewport(0, 0, width, height);
+    return Gdk.EVENT_STOP;
 };
 
 const AxisScale = ({ label, onValueChanged }: { label: string; onValueChanged: (value: number) => void }) => {
@@ -247,6 +179,7 @@ const AxisScale = ({ label, onValueChanged }: { label: string; onValueChanged: (
             <GtkScale
                 hexpand
                 drawValue={false}
+                accessibleLabel={label}
                 adjustment={<GtkAdjustment value={0} lower={0} upper={360} stepIncrement={1} pageIncrement={12} />}
                 onValueChanged={(scale) => {
                     onValueChanged(scale.getValue());
@@ -259,28 +192,25 @@ const AxisScale = ({ label, onValueChanged }: { label: string; onValueChanged: (
 const useGLAreaHandlers = (args: UseGLAreaHandlersArgs) => {
     const { glAreaRef, glStateRef, rotationX, rotationY, rotationZ } = args;
 
-    const handleRealize = () => {
-        realizeGLArea(glAreaRef.current, glStateRef);
+    const handleRealize = (area: Gtk.GLArea) => {
+        realizeGLArea(area, glStateRef);
     };
 
-    const handleUnrealize = () => {
-        unrealizeGLArea(glAreaRef.current, glStateRef);
+    const handleUnrealize = (area: Gtk.GLArea) => {
+        unrealizeGLArea(area, glStateRef);
     };
 
-    const renderFrame = () => {
-        renderGLArea({ glStateRef, rotationX, rotationY, rotationZ });
-    };
+    const renderFrame = (): EventResult => renderGLArea({ glStateRef, rotationX, rotationY, rotationZ });
 
     const createAxisHandler = (axisSetter: (v: number) => void) => (value: number) => {
-        axisSetter((value * Math.PI) / 180);
+        axisSetter(value);
         glAreaRef.current?.queueRender();
     };
 
     return { handleRealize, handleUnrealize, renderFrame, createAxisHandler };
 };
 
-function GLAreaDemo() {
-    const parentWindow = useParentWindow();
+function GLAreaDemo({ onClose }: DemoProps) {
     const glAreaRef = useRef<Gtk.GLArea | null>(null);
     const glStateRef = useRef<GLState | null>(null);
     const [rotationX, setRotationX] = useState(0);
@@ -301,6 +231,7 @@ function GLAreaDemo() {
         >
             <GtkGLArea
                 name="gl-area"
+                accessibleLabel="Rotating triangle"
                 ref={glAreaRef}
                 vexpand
                 hexpand
@@ -309,23 +240,14 @@ function GLAreaDemo() {
                 onRealize={handlers.handleRealize}
                 onUnrealize={handlers.handleUnrealize}
                 onRender={() => {
-                    handlers.renderFrame();
-
-                    return Gdk.EVENT_STOP;
+                    return handlers.renderFrame();
                 }}
-                onResize={resizeGLViewport}
             />
             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
                 <AxisScale label="X axis" onValueChanged={handlers.createAxisHandler(setRotationX)} />
                 <AxisScale label="Y axis" onValueChanged={handlers.createAxisHandler(setRotationY)} />
                 <AxisScale label="Z axis" onValueChanged={handlers.createAxisHandler(setRotationZ)} />
-                <GtkButton
-                    label="Quit"
-                    hexpand
-                    onClicked={() => {
-                        parentWindow?.destroy();
-                    }}
-                />
+                <GtkButton label="Quit" hexpand onClicked={onClose} />
             </GtkBox>
         </GtkBox>
     );

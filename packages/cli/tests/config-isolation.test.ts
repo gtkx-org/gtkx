@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createCliProject, runCli } from "./cli-project.js";
+import { createCliProject, runCliOrThrow } from "./cli-project.js";
 import { fixtureLibrariesConfig } from "./codegen-helpers.js";
 
 const CONFIG = `import { applicationId } from "./config-value.mjs";
@@ -89,7 +89,7 @@ describe("renderer configuration before codegen", () => {
         cpSync(new URL("../../react/package.json", import.meta.url), join(reactPackage, "package.json"));
         cpSync(new URL("../../react/dist", import.meta.url), join(reactPackage, "dist"), { recursive: true });
 
-        expect(runCli(project, ["codegen"]).status).toBe(0);
+        runCliOrThrow(project, ["codegen"]);
         expect(existsSync(join(project.nodeModules, "@gtkx/gi/documented/documented.js"))).toBe(true);
         expect(existsSync(join(project.nodeModules, "@gtkx/jsx/documented/documented.js"))).toBe(true);
     });

@@ -50,7 +50,7 @@ function ImperativeDemo() {
                     }}
                 />
             </GtkBox>
-            <AnimatedLevelBar name="imperative-level" minValue={0} maxValue={100} value={progress} hexpand />
+            <AnimatedLevelBar accessibleLabel="Progress" minValue={0} maxValue={100} value={progress} hexpand />
             <AnimatedLabel
                 name="imperative-percent"
                 cssClasses={["title-3"]}

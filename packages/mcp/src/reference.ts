@@ -11,6 +11,7 @@ import { loadConfig } from "@gtkx/config";
 import {
     CONFIG_EXTENSIONS,
     configDependenciesFor,
+    resolveAcceptedChildTypes,
     resolveElementProps,
     resolveOmittedProps,
 } from "@gtkx/config/internal";
@@ -219,7 +220,7 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
         resolveFrom: root,
         props: { ...builtin.props, ...resolveElementProps(config.elements) },
         omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
-        acceptedChildTypes: builtin.acceptedChildTypes,
+        acceptedChildTypes: { ...builtin.acceptedChildTypes, ...resolveAcceptedChildTypes(config.elements) },
     });
 
     const watched = [...new Set([

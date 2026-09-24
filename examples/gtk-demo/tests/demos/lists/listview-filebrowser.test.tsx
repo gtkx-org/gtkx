@@ -1,214 +1,120 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { fireEvent, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { screen, screenshot, userEvent, waitFor, within } from "@gtkx/testing";
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { listviewFilebrowserDemo } from "../../../src/demos/lists/listview-filebrowser.js";
 import { renderDemo } from "../../test-utils.js";
 
-type ScrollAxis = { adjustment: Gtk.Adjustment; isHorizontal: boolean };
-
 const originalCwd = process.cwd();
-const fixtureParent = mkdtempSync(join(tmpdir(), "gtkx-filebrowser-"));
-const fixtureRoot = join(fixtureParent, "project");
-const SCROLL_STEP = 200;
-const MAX_SCROLL_STEPS = 80;
+const fixture = mkdtempSync(join(tmpdir(), "gtkx-filebrowser-"));
+const directory = join(fixture, "files");
+const restricted = join(directory, "restricted");
 
-const waitForPopulatedModel = async (grid: Gtk.GridView): Promise<number> =>
-    waitFor(() => {
-        const count = (grid.getModel() as Gtk.SelectionModel).getNItems();
-        expect(count).toBeGreaterThan(0);
-
-        return count;
-    });
-
-const findFilesGrid = async (): Promise<Gtk.GridView> => await screen.findByName("files-grid", { as: Gtk.GridView });
-
-const renderPopulatedGrid = async (): Promise<Gtk.GridView> => {
+const renderFiles = async (): Promise<Gtk.GridView> => {
     await renderDemo(listviewFilebrowserDemo);
-    const grid = await findFilesGrid();
-    await waitForPopulatedModel(grid);
+    await screen.findByText("zeta.txt");
 
-    return grid;
+    return screen.findByName("files-grid", { as: Gtk.GridView });
 };
 
-const selectViewMode = async (index: number): Promise<Gtk.ListView> => {
-    await renderDemo(listviewFilebrowserDemo);
-    const switcher = await screen.findByName("view-switcher", { as: Gtk.ListView });
-    await userEvent.selectOptions(switcher, index);
-
-    return switcher;
-};
-
-const visibleNames = (grid: Gtk.GridView): string[] =>
-    within(grid)
-        .getAllByRole(Gtk.AccessibleRole.LABEL, { as: Gtk.Label })
-        .map((label) => label.getText());
-
-const findScrolledFiles = (): Promise<Gtk.ScrolledWindow> =>
-    screen.findByName("files-scrolled", { as: Gtk.ScrolledWindow });
-
-const isScrolledToEnd = (adjustment: Gtk.Adjustment): boolean =>
-    adjustment.getValue() >= adjustment.getUpper() - adjustment.getPageSize();
-
-const getScrollAxis = (scrolled: Gtk.ScrolledWindow): ScrollAxis => {
-    const horizontal = scrolled.getHadjustment();
-
-    if (horizontal.getUpper() > horizontal.getPageSize()) {
-        return { adjustment: horizontal, isHorizontal: true };
-    }
-
-    return { adjustment: scrolled.getVadjustment(), isHorizontal: false };
-};
-
-const scrollBy = async (scrolled: Gtk.ScrolledWindow, axis: ScrollAxis, amount: number): Promise<void> => {
-    await userEvent.scroll(scrolled, axis.isHorizontal ? { x: amount } : { y: amount });
-};
-
-const scrollThroughFiles = async (hasArrived: () => boolean): Promise<void> => {
-    const scrolled = await findScrolledFiles();
-    const axis = getScrollAxis(scrolled);
-    await scrollBy(scrolled, axis, -axis.adjustment.getUpper());
-
-    for (let step = 0; step < MAX_SCROLL_STEPS; step++) {
-        if (hasArrived() || isScrolledToEnd(axis.adjustment)) {
-            return;
-        }
-
-        await scrollBy(scrolled, axis, SCROLL_STEP);
-    }
-};
-
-const scrollToEntry = async (grid: Gtk.GridView, name: string): Promise<Gtk.Widget> => {
-    await scrollThroughFiles(() => within(grid).queryAllByText(name).length > 0);
-
-    return within(grid).findByText(name);
-};
-
-const collectNames = (names: string[], grid: Gtk.GridView): void => {
-    for (const name of visibleNames(grid)) {
-        if (!names.includes(name)) {
-            names.push(name);
-        }
-    }
-};
-
-const orderedNames = async (grid: Gtk.GridView): Promise<string[]> => {
-    const names: string[] = [];
-
-    await scrollThroughFiles(() => {
-        collectNames(names, grid);
-
-        return false;
-    });
-
-    return names;
+const openDirectory = async (name: string): Promise<void> => {
+    await userEvent.dblClick(await screen.findByText(name));
 };
 
 beforeAll(() => {
-    mkdirSync(join(fixtureRoot, "examples", "gtk-demo"), { recursive: true });
-    mkdirSync(join(fixtureRoot, "packages"));
-    writeFileSync(join(fixtureRoot, "package.json"), "{}");
-    process.chdir(fixtureRoot);
+    mkdirSync(join(directory, "alpha"), { recursive: true });
+    mkdirSync(join(directory, "empty"));
+    mkdirSync(restricted, { mode: 0o000 });
+    writeFileSync(join(directory, "alpha", "inside.txt"), "child");
+    writeFileSync(join(directory, "alpha.txt"), "first");
+    writeFileSync(join(directory, "zeta.txt"), "last");
+    process.chdir(directory);
 });
 
 afterAll(() => {
     process.chdir(originalCwd);
-    rmSync(fixtureParent, { recursive: true, force: true });
+    chmodSync(restricted, 0o700);
+    rmSync(fixture, { recursive: true });
 });
 
-describe("listviewFilebrowserDemo header bar", () => {
-    it("installs a header bar with the up-button and view-switcher packed into it", async () => {
-        await renderDemo(listviewFilebrowserDemo);
-        const header = await screen.findByName("filebrowser-header", { as: Gtk.HeaderBar });
-        expect(header).toContainElement(await screen.findByName("up-button", { as: Gtk.Button }));
-        expect(header).toContainElement(await screen.findByName("view-switcher", { as: Gtk.ListView }));
+describe("listviewFilebrowserDemo", () => {
+    it("lists directories before files and sorts each group by name", async () => {
+        const grid = await renderFiles();
+        const names = within(grid).getAllByRole(Gtk.AccessibleRole.LABEL, { as: Gtk.Label })
+            .map((label) => label.getText());
+        expect(names).toEqual(["alpha", "empty", "restricted", "alpha.txt", "zeta.txt"]);
+        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Parent directory" })).toBeEnabled();
     });
 
-    it("renders a go-up button in the header bar", async () => {
-        await renderDemo(listviewFilebrowserDemo);
-        const upButton = await screen.findByName("up-button", { as: Gtk.Button });
-        expect(upButton).toHaveObjectProperty("iconName", "go-up-symbolic");
-    });
-
-    it("renders a view-mode list view with three entries", async () => {
-        await renderDemo(listviewFilebrowserDemo);
+    it("changes the rendered layout and shows file details through the view selector", async () => {
+        const grid = await renderFiles();
+        const list = await screenshot(grid);
         const switcher = await screen.findByName("view-switcher", { as: Gtk.ListView });
-        expect(within(switcher).getAllByRole(Gtk.AccessibleRole.IMG)).toHaveLength(3);
-    });
-});
-
-describe("listviewFilebrowserDemo file grid", () => {
-    it("renders the file grid view inside the scrolled window with the working directory listed", async () => {
-        await renderDemo(listviewFilebrowserDemo);
-        const sw = await screen.findByName("files-scrolled", { as: Gtk.ScrolledWindow });
-        const grid = within(sw).getByName("files-grid", { as: Gtk.GridView });
-        expect(sw).toContainElement(grid);
-        await waitForPopulatedModel(grid);
-        expect(await scrollToEntry(grid, "package.json")).toHaveTextContent("package.json");
+        await userEvent.selectOptions(switcher, 1);
+        await waitFor(async () => {
+            const image = await screenshot(grid);
+            expect(image.data).not.toBe(list.data);
+        });
+        await userEvent.selectOptions(switcher, 2);
+        expect(await within(grid).findByText("5 bytes")).toBeVisible();
+        expect(within(grid).getAllByText("folder")).toHaveLength(3);
     });
 
-    it("sorts directories before files, alphabetically within each group", async () => {
-        const grid = await renderPopulatedGrid();
-        const names = await orderedNames(grid);
-        expect(names).toContain("examples");
-        expect(names).toContain("packages");
-        expect(names).toContain("package.json");
-        expect(names.indexOf("examples")).toBeLessThan(names.indexOf("packages"));
-        expect(names.indexOf("packages")).toBeLessThan(names.indexOf("package.json"));
-    });
-});
-
-describe("listviewFilebrowserDemo view modes", () => {
-    it("starts in list view orientation (horizontal)", async () => {
-        await renderDemo(listviewFilebrowserDemo);
-        const grid = await findFilesGrid();
-        expect(grid).toHaveObjectProperty("orientation", Gtk.Orientation.HORIZONTAL);
-    });
-
-    it("switches to grid view: vertical orientation, wrapped item labels, and switcher selection", async () => {
-        const switcher = await selectViewMode(1);
-        const grid = await findFilesGrid();
+    it("keeps the selected file while switching layouts", async () => {
+        const grid = await renderFiles();
+        const switcher = await screen.findByName("view-switcher", { as: Gtk.ListView });
+        await userEvent.selectOptions(grid, 4);
+        await waitFor(() => {
+            expect(within(grid).getByRole(Gtk.AccessibleRole.GRID_CELL, { selected: true })).toHaveTextContent(
+                "zeta.txt",
+            );
+        });
+        await userEvent.selectOptions(switcher, 1);
 
         await waitFor(() => {
-            expect(grid).toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
+            expect(within(grid).getByRole(Gtk.AccessibleRole.GRID_CELL, { selected: true })).toHaveTextContent(
+                "zeta.txt",
+            );
         });
-
-        expect(switcher.getModel()).toHaveObjectProperty("selected", 1);
-        const label = await within(grid).findByText("examples", { as: Gtk.Label });
-        expect(label).toHaveObjectProperty("wrap", true);
     });
 
-    it("switches to paged view mode rendering the folder and content-type labels", async () => {
-        const switcher = await selectViewMode(2);
-        const grid = await findFilesGrid();
-        await waitForPopulatedModel(grid);
-        expect(switcher.getModel()).toHaveObjectProperty("selected", 2);
-        await scrollToEntry(grid, "packages");
-        const folders = within(grid).getAllByText("folder");
-        expect(folders.length).toBeGreaterThan(0);
-        expect(within(grid).getAllByText("inode/directory")).toHaveLength(folders.length);
-    });
-});
-
-describe("listviewFilebrowserDemo navigation", () => {
-    it("navigates to the parent directory when the up button is clicked", async () => {
-        const grid = await renderPopulatedGrid();
-        const currentDirName = basename(process.cwd());
-        expect(within(grid).queryByText(currentDirName)).toBeNull();
-        const upButton = await screen.findByName("up-button", { as: Gtk.Button });
-        await userEvent.click(upButton);
-        await scrollToEntry(grid, currentDirName);
+    it("replaces directory contents when entering a child and returning to its parent", async () => {
+        await renderFiles();
+        await openDirectory("alpha");
+        expect(await screen.findByText("inside.txt")).toBeVisible();
+        expect(screen.queryByText("zeta.txt")).toBeNull();
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Parent directory" }));
+        expect(await screen.findByText("zeta.txt")).toBeVisible();
+        expect(screen.queryByText("inside.txt")).toBeNull();
     });
 
-    it("navigates into a directory when a directory entry is activated", async () => {
-        const grid = await renderPopulatedGrid();
-        const names = await orderedNames(grid);
-        const position = names.indexOf("examples");
-        expect(position).toBeGreaterThanOrEqual(0);
-        grid.grabFocus();
-        await fireEvent(grid, "activate", position);
-        await within(grid).findByText("gtk-demo");
+    it("shows an empty directory without retaining the previous rows", async () => {
+        await renderFiles();
+        await openDirectory("empty");
+        expect(await screen.findByText("This directory is empty")).toBeVisible();
+        expect(screen.queryByName("files-grid")).toBeNull();
+    });
+
+    it("shows an error for an unreadable directory and can navigate back", async () => {
+        await renderFiles();
+        await openDirectory("restricted");
+        expect(await screen.findByRole(Gtk.AccessibleRole.ALERT)).toBeVisible();
+        expect(screen.queryByName("files-grid")).toBeNull();
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Parent directory" }));
+        expect(await screen.findByText("zeta.txt")).toBeVisible();
+        expect(screen.queryByRole(Gtk.AccessibleRole.ALERT)).toBeNull();
+    });
+
+    it("disables parent navigation at the filesystem root", async () => {
+        process.chdir("/");
+
+        try {
+            await renderDemo(listviewFilebrowserDemo);
+            expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Parent directory" })).toBeDisabled();
+        } finally {
+            process.chdir(directory);
+        }
     });
 });

@@ -2,7 +2,7 @@
 
 The stable release is scheduled for 1 December 2026. Work starts from `c7f7134b` on `feat/polish-v2` and follows the [development principles](../website/contributing/principles.md).
 
-This is the working record for reviewing every tracked file. A search result, passing test, or review of a neighboring file does not count as reading a file. The inventory below records the starting scope; the review batches name the files actually read and the findings still open. No package is complete yet.
+This is the working record for reviewing every tracked file. A search result, passing test, or review of a neighboring file does not count as reading a file. The inventory below records the starting scope; the review batches name the files actually read and the findings still open.
 
 ## Working method
 
@@ -35,7 +35,7 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | --- | ---: | --- |
 | `native` | 99 | API folder read; memory access fixed in batch 1; ownership migration open |
 | `runtime` | 115 | Initial call/callback path read; ParamSpec override migrated; remaining conversion/ownership work open |
-| `codegen` | 144 | All override templates, GIR, analysis, writer, direct store, reference and Khronos modules and compile entry read; metadata, imports, inheritance, GIR parsing/freshness, reference props and GL buffer types fixed; broader constructor contracts and remaining inventory pending |
+| `codegen` | 144 | All 163 current files read; metadata, imports, inheritance, GIR parsing/freshness, reference props, descriptor admission and constructor contracts fixed; convergence review found no remaining local defect |
 | `react` | 47 | All 48 current source files read; renderer lifecycle findings fixed; repeat review continues |
 | `components` | 50 | All files read; all initial findings resolved; repeat review continues |
 | `animated` | 19 | All files read; text, prop contracts, dead code, tests and guides fixed; upstream ref compatibility retained |
@@ -52,11 +52,11 @@ Counts are tracked files at the starting commit, including source, tests, fixtur
 | `mcp` | 26 | All files read; configuration refresh/discovery, registration and settings errors fixed; repeat review found no further confirmed defect |
 | `testing` | 60 | All files read; deadlines, text queries, clipboard behavior, Unicode and matcher fixes pass; repeat review found no further confirmed defect |
 | `vitest` | 12 | All files read; packaged preload, Sway configuration and notification sink fixed; repeat review found no further confirmed defect |
-| `e2e` | 117 | All 43 React integration files read; native/testing regressions reviewed with each fix; remaining inventory pending |
+| `e2e` | 117 | All 67 current native and 62 React integration files read; convergence reviews found no remaining local defect in those scopes; remaining support inventory pending |
 | `eslint` | 36 | All files read; public-surface traversal and cache correctness fixed; prefix restriction removed; independent review passed |
 | `utils` | 60 | All 59 current files read; maintained helpers replace duplication; process protocol and identity parsing shared; public consumer checks pass |
 
-Outside the packages, the starting scope includes 397 example files, 174 website files, 15 scripts, 23 GitHub configuration files, 3 patches, 30 root files, and one file each under `docs`, `.nx`, and `.vscode`. All top-level scripts, GitHub configuration, root, patch, version-plan and editor files have now been read. The batches below record the reviewed example and website files; their remaining inventories stay open.
+Outside the packages, the starting scope includes 397 example files, 174 website files, 15 scripts, 23 GitHub configuration files, 3 patches, 30 root files, and one file each under `docs`, `.nx`, and `.vscode`. All top-level scripts, GitHub configuration, root, patch, version-plan and editor files have now been read. The GTK Demo production review covers a 98-file source slice, and all 36 VitePress theme files have been read. The batches below record the reviewed example and website files; their remaining inventories stay open.
 
 ## Batch 1: architectural boundaries
 
@@ -1680,6 +1680,76 @@ The self-contained bundle check now classifies actual `require`, `require.resolv
 
 Pre-fix acceptance runs reproduced redundant renders for both new compiler fixtures, process restarts for both live-edit fixtures and the harmless module-URL build failure. All six compiler cases, 13 self-contained bundle cases and 15 development cases pass after the corrections. CLI library and test TypeScript, affected lint and the final focused live-refresh rerun pass.
 
+### Codegen convergence review
+
+All 163 current files under `packages/codegen` were read completely, 75,673 lines. Raw pointer constants now follow the same admission policy as callables and fields, and unsupported constants disappear from generated JavaScript, declarations and references. C type extraction has one implementation, constructor requiredness follows the generated nullability contract, and the remaining descriptor, GIR, writer, store, reference and override paths keep their established package boundaries.
+
+The focused compiler and consumer run passes 109 cases. The broader codegen checkpoint passes 716 cases across 52 files, alongside source and test types, package lint, whitespace checks and an independent complete-diff review. No remaining local finding was confirmed in this scope.
+
+### Native and React integration convergence reviews
+
+All 67 current native end-to-end files were read completely, 13,453 lines. All 62 current React integration files were also read completely, 17,502 lines. The reviews covered supported generated surfaces, ownership and cleanup behavior, error paths, observable test oracles and the absence of raw-pointer expectations. Existing regressions were traced to their production contracts; neither bounded repeat review established another local defect.
+
+The native and React project checks pass with their existing generated and sanitizer coverage. These test-file reviews close their recorded scopes, not the remaining runtime conversion work or the rest of the end-to-end package support inventory.
+
+### GTK Demo production and lifecycle audit
+
+A 98-file GTK Demo production-source slice was read completely, 99,841 lines and 5,582,822 bytes. The audit replaces handwritten matrix operations with Graphene, derives Unicode script names from GLib and `Intl.DisplayNames`, makes list factories and auxiliary UI state declarative, fixes edit-buffer restoration and grapheme handling, releases Cairo and GL resources symmetrically, and corrects stale C and GtkBuilder prose. The retained audit inventories and current follow-up patch are archived under the home-backed `build/polish-v2/gtk-demo` directory.
+
+The adjacent declarative-resource review moves supported dialogs, launchers, filters, icons, SVGs and paintables into JSX. One shared cancellable owner gives each independent asynchronous operation a fresh native object, cancels it during unmount and survives React Strict Mode effect replay. File, folder, application, print and URI actions retain independent cancellation. The words error dialog now renders inside its parent-window context. MediaFile remains imperative because it has no renderable JSX element; its effect pauses and clears the native stream, and its state excludes impossible loading, success and error combinations.
+
+The application and test TypeScript projects and complete GTK Demo lint pass. The source-audit integration run passes 275 cases across 27 focused files. The lifecycle review passes 80 cases across six files, including a Strict Mode file-selection regression that loads a distinct 64 by 64 asset. Images, Unicode data and gears windows were captured and inspected; the headless media backend produced no GIF or path-animation frame with either the previous or final construction, so this checkpoint makes no visual claim about those two animation frames. Temporary capture code was removed. Independent lifecycle review found no production defect; its remaining wrapper-identity test assertions were replaced with observable image dimensions.
+
+### VitePress theme audit
+
+All 36 files under `website/.vitepress` were read completely, 3,436 lines. Navigation, version switching, reference routing, theme composition and landing-page copy remain concise and GTKX-specific. The feature grid now describes generated GObject-derived classes without claiming that GTKX exposes every upstream symbol. Theme typechecking and lint pass. The remaining website content and generated-output inventories stay open.
+
+The convergence pass limits the version picker to Guide, Tutorial and Reference routes, shares version-link types and route classification between build and browser code, rejects malformed generated sidebars, and corrects the remaining landing-page claims. A complete token and component reachability graph removed 77 unused custom properties and seven unused component inputs. All 82 remaining token names are reachable. Website types, lint, the production build and rendered output inspection pass.
+
+### GTK Demo integration convergence review
+
+All 91 GTK Demo test, helper and configuration files were read completely, 10,541 baseline lines. The review removed direct controller lookup, raw signal emission, native state injection, private model payloads, metadata-only assertions, discarded screenshots and exact cosmetic error checks. Constraint, sorting, scrolling, text, shader, frame and GL coverage now checks rendered geometry, visible content, user interaction or captured pixels. GSettings tests use the in-memory backend, external process checks assert process outcomes, and cancellation paths use real GLib errors.
+
+The scrolling rewrite exposed reversed text-mark gravity that kept the first pane at the top while content was appended; the mark now follows the end of the buffer. Drag-and-drop interaction now supplies a real `Gdk.Drag` to source lifecycle handlers and closes the native operation after the target accepts or rejects the drop. The completed checkpoint passed 588 integration cases across 77 test files, together with both TypeScript projects, complete GTK Demo lint and the focused testing-library drag suite. The follow-up below records the fresh complete run against the shared production host.
+
+### Tutorial convergence corrections
+
+Calendar values now use local dates, task creation has one set of defaults, and reminder actions carry both task identity and due date. Stale actions cannot complete or open a rescheduled task. Sent reminders stay mounted until their task changes, allowing completion, trash, rescheduling and removal to withdraw them once. About uses the package version, React Navigation is a declared direct dependency, and the tutorial participates in shared lint.
+
+The task and application suites pass 33 cases, the notification suite passes 16 cases including suspend/resume, and localization passes three cases. The production build, dependency resolution, tutorial and root TypeScript projects and complete tutorial lint pass. List and task-detail windows were captured and inspected.
+
+The repeat review removes redundant withdrawal after a notification action, since the native action already dismisses it. The calendar uses GLib ISO parsing and local conversion. A separate America/Los_Angeles acceptance run selects September 20, verifies the immediate selection and reopened value, and checks that clearing persists. It fails against the earlier UTC conversion, which reopens September 21, and passes with the correction. All 46 focused task and notification cases pass, including 16 notification cases, alongside the timezone case, tutorial codegen, TypeScript and lint. The open calendar was captured and inspected.
+
+### Fresh GTK Demo follow-up
+
+An independent repeat review covered all 262 tracked files, including all 77 test files. It found concrete behavior defects despite the passing checkpoint. The test helper duplicated the production window host with different sizing, titles, dialog ownership and close behavior. Tests now share the production host. Passing counts alone do not establish convergence.
+
+| Scope | Remaining follow-up |
+| --- | --- |
+| Text and gestures | Finish Hypertext anchor ownership and make shared TextView children declarative; verify complete rotate/zoom gesture lifecycles after the DND geometry correction below. |
+| Large lists | Release Colors cache entries on shrink/refill; defer Words, UCD and color-name parsing; avoid repeated weather parsing; give duplicate words distinct identities; load arbitrary selected files asynchronously. |
+| Unicode | Include current GLib break categories and implement advertised sorting. |
+| SVG | Load asynchronously; observe parse errors; preserve the previous picture and show errors for invalid input; provide keyboard state cycling. |
+| OpenGL | Release partial shader/program resources; check compile/link status consistently; show failures; replace duplicate matrix math and editor initialization. |
+| Input and accessibility | Name swatches, game cells, controls and weather conditions; wire missing mnemonic targets. |
+| Declarative ownership | Recheck factory widgets, cursor objects, CSS providers/tags, model objects and media lifetimes against generated JSX support before changing them. |
+| Acceptance coverage | Replace tests that bypass the actual Printing/Page Setup demos or inspect implementation state; exercise CSS, layout, drawing and media through visible behavior. |
+| Smaller cleanup | Remove inert Listbox actions and dead fields; correct printing source headers and duplicated cursor variants; use native constants/helpers; fix remaining user-facing typos. |
+
+The first focused correction passes 59 cases across Application Launcher, Selections, Video Player, Pickers and SVG lifecycle tests. Launcher identities survive rerenders and hidden applications are filtered. Autocomplete handles initial Up and clears stale highlights; font controls share valid bounds. Directory suggestions read entries asynchronously. File selection reads metadata asynchronously, preserves the previous selection on failure and shows an alert. File and print dialogs retain lifecycle cancellation without a fixed user-interaction deadline. Independent cancellable owners now have distinct React keys.
+
+Fullscreen entry through the titlebar and F11 entry/exit pass in a native window. GTK hides its titlebar while fullscreen, so a second titlebar click is not an available exit path. DND's boxed getter on a string is also not a defect: the runtime deliberately returns null for non-boxed values. MediaFile construction must retain its existing ownership path where no generated JSX constructor is available.
+
+The shared host now preserves production window sizing, titles, dialog ownership and close behavior. Sidebar collapse survives selection, padded searches normalize, hidden filters clear, double-click activation works, and Source Viewer updates declaratively with the Adwaita theme. Both settings viewers resolve actual child schemas, commit complete edits, reject invalid writes and read current values on reopening. File Browser clears stale rows during navigation and exposes loading, empty and error states. Its acceptance tests use temporary filesystem fixtures. Themes restores the original title and settings, handles cancellation and uses dark chrome for HighContrastInverse. Time input rejects trailing junk and empty month input is invalid.
+
+The complete GTK Demo suite passes 593 cases across 77 files after the DND follow-up. That checkpoint’s test, helper and configuration inventory contains 89 files, 9,478 lines and 385,543 bytes. Both TypeScript projects and complete GTK Demo lint pass. The testing-library interaction suite passes 45 cases. The final shortcut and SVG test refinements pass all 12 focused cases. File Browser, Selections, Video Player, picker errors and both Settings viewers were captured and inspected. DND now uses GTK picking for overlapping and rotated items, and clicking the edited item closes its editor. Both defects reproduce before the fix; all 24 DND cases pass afterward. The running DND window was captured and inspected; editor placement around rotated items remains open.
+
+### Native object input types
+
+`Gdk.AppLaunchContext.getDisplay()` shadows its parent's incompatible method signature. Generated input types now express native ancestry through declaration-only identity members, so that context can be passed directly to `Gio.AppInfo.launch`. Ordinary call and property results, signal emission results and callback arguments retain their concrete wrapper methods. Virtual hook return signatures accept native identities so overrides can return valid native subclasses; direct and parent virtual-hook calls share that return signature. The same model covers constructor parameters, writable properties, signals, callbacks and JSX. Registered classes retain their implemented native interfaces, and exported registered classes can emit consumer declarations. The launcher workaround is removed.
+
+The broader generated-consumer run covers 705 cases across 51 files. Eight declaration expectations required updates; all 45 cases across those five files pass their follow-up runs, and the remaining 46 files pass the complete run. All 48 workspace TypeScript projects pass. The native runtime, signal and shortcut scope passes 60 cases, including usable wrapper results after native dispatch. Scoped lint and declaration emission checks pass. An independent review of the changed and supporting type-generation paths finds no further supported-consumer defect.
+
 ### Latest remote checkpoint
 
 At `fdb77c7c`, every main CI job passes, including all 591 CLI tests across 55 files in 2,172 seconds. The expanded CLI budget accommodates that run. CodeQL passes. The instrumented suite passes all 4,930 tests across 382 files in 3,175 seconds; Sonar analysis and its quality-gate check both pass. The 90-minute coverage budget accommodates the complete run.
@@ -1702,8 +1772,44 @@ Copilot reviewed 246 of 817 files and raised one tutorial context concern: a tra
 
 The CLI job budget is now 90 minutes. Its last remote run took 56 minutes before the additional public compiler and reference coverage in this batch. The worker count and individual test deadlines are unchanged. YAML parsing and the job settings check pass locally; the expanded suite still needs a remote checkpoint after the runner update is incorporated.
 
+### Rebased checkpoint
+
+The polish branch now includes main at `75c2a3d6`, including the free Ubuntu Sonar runner, its three-worker limit and the current dependency updates. The rebase preserves the tutorial's direct React Navigation dependency alongside React 19.3. The maintainer's uncommitted social image is unchanged.
+
+Fresh generated declarations exposed three negative fundamental-input tests that bypass the supported type contract; they now use JavaScript reflection to exercise the same runtime rejection behavior. The 20 fundamental cases pass. Drawer helpers now follow the upstream navigation state type and dispatch idempotent open/close actions using the current navigator key. The 39 drawer cases pass, and the revised seven-case back/sidebar file exercises consecutive actions through rendered consumer controls. Unused test helpers were removed. Knip recognizes declaration fixtures and generated consumers of the internal fixed-array export. TypeDoc records the private helpers referenced by newly exported native identity and registered-class types.
+
+The post-rebase integration run passes 4,581 cases across 330 files, excluding CLI and navigation, which have separate validation. The isolated native-input CLI consumer passes all ten cases. Workspace types, ESLint, Rust checks and Knip pass through the complete run and corrected target follow-ups; website types and lint include successful reference generation. A fresh tutorial consumer installed from the temporary registry passes typechecking, all 49 main cases, the timezone case, all three localization cases and the production build. Logs are retained under `build/polish-v2/post-rebase`. At `8fbd0ea1`, remote types, lint, documentation, CLI tests, sanitizers and CodeQL pass. The main test job fails on a demo test’s unavailable PulseAudio schema, and publication fails on tutorial lint preceding declaration generation. Both repository validation corrections are described below. Free-runner Sonar coverage is still running; no gate result is claimed.
+
+### Content-provider inputs and source-driven drag tests
+
+`Gdk.ContentProvider.getValue` requires the caller's initialized GValue, but its output-only GIR annotation generated a method with no input. Both ordinary and empty text fail before the correction. This exact parameter now uses the existing in-place input/output path; no native marshalling implementation or handwritten binding is added. All 35 value integration cases pass, including union-provider selection, replacing an existing value and an unsupported requested type. U37 in `~/UPSTREAM.md` records the upstream annotation candidate and retained source evidence.
+
+`userEvent.dragAndDrop(source, target)` now reads the source provider's actual typed content in a format accepted by the target. Explicit content remains available for existing callers. Missing source content throws, incompatible formats do not reach the drop handler, and native drag cleanup includes a failing begin handler. All 73 public interaction and actionability cases pass, alongside affected types, lint and Knip. The v2 testing guide explains the source-driven and supplied-value entry points. Evidence is archived under `build/polish-v2/content-provider`.
+
+Copilot's 23 September review of `8fbd0ea1` adds no inline comments. Its overview repeats seven older comments and the previously assessed manifest, CSS and story-input concerns. The unsupported GL callback API has already been removed; that old comment no longer describes the supported surface. The prior supported-consumer findings and their dispositions remain recorded above. No review reply was posted, and the overview is not a complete clean review.
+
+### Hypertext edit protection and publication check order
+
+Hypertext is now read-only, keeping the displayed document consistent with its authored link locations while retaining cursor navigation, selection and copying. The regression changes the introductory text and shifts link targets before the fix. All ten Hypertext cases pass afterward, including attempted typing/deletion, rejected clearing and navigation. The speaker test runs the real speech executable through a temporary output-file adapter and checks the resulting WAV file instead of mocking Node's process module. The running native view was captured and inspected. Imperative ghost-anchor and shared TextView child ownership remain open.
+
+The rebased publication CI job fails because tutorial lint runs immediately after installation, before codegen creates schema declarations. The validation script now runs the tutorial's typecheck, which includes codegen, before lint. Generated tutorial lint and root script TypeScript pass locally; the next remote publication run must verify the complete reordered workflow. This is a repository validation change with no production resolver fallback.
+
+### Clipboard data and settings fixtures
+
+Clipboard image providers now retain their texture GType, including serialization to external PNG consumers. Every image has its own source provider, the default image is immediately draggable, and native toggle grouping keeps the active selection visible. File and folder selections keep independent content and copy sensitivity. All 40 public integration cases pass, including decoded image comparisons, alongside both demo TypeScript projects and lint. The running application was inspected through the development MCP connection, confirming each image’s selection behavior. The temporary screenshots were removed after inspection.
+
+The settings tests no longer depend on GNOME desktop or PulseAudio schemas installed on the host. Their test-only XML supplies constrained string, boolean and integer settings plus a child whose name differs from its schema ID. The demo Vitest configuration compiles that fixture before workers start and keeps the in-memory backend. Both real settings viewers pass all 15 cases, including valid edits, rejected values, schema switching, child editing and collapsed-tree state. No production schema lookup or environment fallback changed.
+
+### Font presentation and drag geometry
+
+Font Features now uses one Pango font description for the selected face and controlled size. Native Pango attributes preserve weight and style, spacing is entered in pixels and converted to Pango units, and Reset restores the initial Sans 14 presentation. Editing keeps its buffer while style properties change. Feature controls use native radio grouping and accessible names, and the demo describes its fixed feature set accurately. All 35 integration cases pass, including real native font selection, UTF-8 keyboard selection, rendered style changes, reset, boundaries and edit commit/cancel. The chooser regression selects a DejaVu face supplied by the CI image. The running native window was captured and inspected.
+
+DND now preserves the pointer’s actual grab location through native coordinate conversion. GTK’s preferred widget sizes replace the stale half-size cache that changed rotation pivots during later renders. The inline editor uses the same native rotation transform and remains below the item’s transformed bounds as its label grows. Both positioning defects reproduce through real demo interactions before their corrections. All 27 DND integration cases pass. Independent source review is clean, and the running development app was inspected through MCP with a long label rotated 90 degrees; the editor sits below the transformed item. Complete rotate/zoom lifecycle coverage remains separate work.
+
+The complete demo run passes 612 cases across 77 files. All 101 workspace type, lint, Rust and dependency checks pass. The final font portability correction and DND simplification pass all 62 focused cases after that broad checkpoint. Evidence and retained visual captures are under `build/polish-v2/gtk-demo`.
+
 ## Next work
 
-The latest ordinary checkpoint passes 3,204 cases across 193 files. The cumulative sanitizer run passes 1,289 addon, generated-native and runtime cases, then restores the normal addon. Workspace TypeScript, lint, Rust checks and Knip pass. Recent completed batches cover owning regex matches, character-array and cursor contracts, supported signal-container values, runtime callback-error conversion, terminal owner cleanup, callback lifetime policy and terminated inline record inputs. Their bounded reviews and validation limits are recorded above. Audit inventories, reviews, patches and logs remain under the home-backed `build/polish-v2/pointer-contracts` directory. Local changes still require a remote checkpoint after the runner update is incorporated.
+The earlier native-focused ordinary checkpoint passes 3,204 cases across 193 files; the newer post-rebase run passes 4,581 cases across 330 files with its scope recorded above. The cumulative sanitizer run passes 1,289 addon, generated-native and runtime cases, then restores the normal addon. Workspace TypeScript, lint, Rust checks and Knip pass. Recent completed batches cover owning regex matches, character-array and cursor contracts, supported signal-container values, runtime callback-error conversion, terminal owner cleanup, callback lifetime policy and terminated inline record inputs. Their bounded reviews and validation limits are recorded above. Audit inventories, reviews, patches and logs remain under the home-backed `build/polish-v2/pointer-contracts` directory. The rebased checkpoint above incorporates the runner update. Its two repository-validation failures have local corrections; the next push must verify them remotely.
 
 Continue repeat audits and the remaining R2 conversion work. Custom and inline container resources, remaining CLI consumer contracts and the unread example, website and end-to-end inventories remain open. Continue broader container output/storage and remaining public test-quality reviews. The OSTree finder public finish-return correction and its restricted native vfunc receiving direction are validated; JavaScript overrides remain supported. Worker native-owner retirement is corrected and validated under the approved cleanup-before-termination contract; it is not established as the cause of the earlier unexplained worker failure. Caller-allocated container callback outputs and pointer-cell record inout callbacks are now omitted where unsupported; the supported Icon preservation control also exposed and verified the floating Variant adoption correction. No suspect destruction call or unsupported callback was executed. U22 in ~/UPSTREAM.md records the source-confirmed napi External publication ownership candidate, with primary source evidence preserved under ~/upstream-work/napi-external-publication. Track that candidate and the reviewed GtkSourceView cleanup patch through upstream releases. GNOME Shell notification-card interaction and focus policy remain separate desktop validation work. Keep the existing compatibility code until official upstream releases include its fixes and GTKX's supported versions no longer need it. Zero findings has not been reached.

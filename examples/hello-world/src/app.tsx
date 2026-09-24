@@ -20,8 +20,16 @@ const Counter = () => {
                     valign={Gtk.Align.CENTER}
                     halign={Gtk.Align.CENTER}
                 >
-                    <GtkLabel cssClasses={["title-1"]}>Welcome to GTKX!</GtkLabel>
-                    <GtkLabel cssClasses={["title-2"]}>{`Count: ${String(count)}`}</GtkLabel>
+                    <GtkLabel
+                        cssClasses={["title-1"]}
+                        accessibleRole={Gtk.AccessibleRole.HEADING}
+                        accessibleLevel={1}
+                    >
+                        Welcome to GTKX!
+                    </GtkLabel>
+                    <GtkLabel cssClasses={["title-2"]} accessibleRole={Gtk.AccessibleRole.STATUS}>
+                        {`Count: ${String(count)}`}
+                    </GtkLabel>
                     <GtkButton
                         label="Increment"
                         onClicked={() => {

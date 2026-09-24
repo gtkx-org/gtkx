@@ -11,23 +11,33 @@ const findTextViews = async (): Promise<[Gtk.TextView, Gtk.TextView]> => {
     return [end, scroll];
 };
 
-const scrollMarkLine = (view: Gtk.TextView, markName: string): { line: number; lineOffset: number } => {
-    const buffer = view.getBuffer();
-    const mark = buffer.getMark(markName);
+const enclosingScrolledWindow = (view: Gtk.TextView): Gtk.ScrolledWindow => {
+    let current = view.getParent();
 
-    if (!mark) {
-        throw new Error(`mark ${markName} not found`);
+    while (current !== null) {
+        if (current instanceof Gtk.ScrolledWindow) {
+            return current;
+        }
+
+        current = current.getParent();
     }
 
-    const iter = buffer.getIterAtMark(mark);
+    throw new Error("Text view is not inside a scrolled window");
+};
 
-    return { line: iter.getLine(), lineOffset: iter.getLineOffset() };
+const lastVisibleLine = (view: Gtk.TextView): number => {
+    const visible = view.getVisibleRect();
+    const [iter] = view.getLineAtY(visible.y + visible.height - 1);
+
+    return iter.getLine();
 };
 
 describe("textscrollDemo", () => {
     it("renders each named view with its own distinct appended text", async () => {
         await renderDemo(textscrollDemo);
         const [end, scroll] = await findTextViews();
+        expect(end).toHaveAccessibleName("Scroll to end");
+        expect(scroll).toHaveAccessibleName("Scroll to bottom");
 
         await waitFor(() => {
             expect(within(end).getByDisplayValue(/Scroll to end/)).toBe(end);
@@ -36,16 +46,6 @@ describe("textscrollDemo", () => {
 
         expect(within(end).queryByDisplayValue(/Scroll to bottom/)).toBeNull();
         expect(within(scroll).queryByDisplayValue(/Scroll to end/)).toBeNull();
-    });
-
-    it("creates the 'end' mark on the scroll-to-end view and 'scroll' on the scroll-to-bottom view", async () => {
-        await renderDemo(textscrollDemo);
-        const [end, scroll] = await findTextViews();
-
-        await waitFor(() => {
-            expect(end.getBuffer().getMark("end")).not.toBeNull();
-            expect(scroll.getBuffer().getMark("scroll")).not.toBeNull();
-        });
     });
 });
 
@@ -62,25 +62,33 @@ describe("textscrollDemo scrolling", () => {
         });
     });
 
-    it("repositions the scroll-to-bottom 'scroll' mark to the start of the advancing last line each tick", async () => {
+    it("keeps each advancing last line inside the visible scroll range", async () => {
         await renderDemo(textscrollDemo);
-        const [, scroll] = await findTextViews();
+        const [end, scroll] = await findTextViews();
+        const root = end.getRoot();
+
+        if (!(root instanceof Gtk.Window)) {
+            throw new TypeError("Text view is not inside a window");
+        }
+
+        root.setDefaultSize(600, 120);
 
         await waitFor(() => {
-            expect(scroll.getBuffer().getLineCount()).toBeGreaterThan(3);
+            expect(end.getHeight()).toBeLessThan(200);
         });
 
-        const first = scrollMarkLine(scroll, "scroll");
-        expect(first.lineOffset).toBe(0);
-        expect(first.line).toBe(scroll.getBuffer().getLineCount() - 1);
+        const endAdjustment = enclosingScrolledWindow(end).getVadjustment();
+        const scrollAdjustment = enclosingScrolledWindow(scroll).getVadjustment();
 
-        await waitFor(() => {
-            expect(scrollMarkLine(scroll, "scroll").line).toBeGreaterThan(first.line);
-        });
-
-        const later = scrollMarkLine(scroll, "scroll");
-        expect(later.lineOffset).toBe(0);
-        expect(later.line).toBe(scroll.getBuffer().getLineCount() - 1);
+        await waitFor(
+            () => {
+                expect(lastVisibleLine(end)).toBe(end.getBuffer().getLineCount() - 1);
+                expect(lastVisibleLine(scroll)).toBe(scroll.getBuffer().getLineCount() - 1);
+                expect(endAdjustment.getValue()).toBeGreaterThan(0);
+                expect(scrollAdjustment.getValue()).toBeGreaterThan(0);
+            },
+            { timeout: 2000 },
+        );
     });
 
     it("stops appending to the buffer after the demo unmounts and clears its interval", async () => {

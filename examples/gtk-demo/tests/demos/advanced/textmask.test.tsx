@@ -16,7 +16,10 @@ describe("textmaskDemo rendering", () => {
     it("mounts the GtkDrawingArea as the sole content of the host window", async () => {
         await renderDemo(textmaskDemo);
         const window = await screen.findByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.Window });
-        const drawingArea = await screen.findByName("textmask-area", { as: Gtk.DrawingArea });
+        const drawingArea = await screen.findByRole(Gtk.AccessibleRole.IMG, {
+            name: "Pango power",
+            as: Gtk.DrawingArea,
+        });
         expect(drawingArea).toBeRooted();
         expect(window).toContainElement(drawingArea);
         expect(drawingArea).toBeEmptyWidget();

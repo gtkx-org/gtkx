@@ -1,3 +1,6 @@
+import { disconnectSignal, type NativeInstance } from "@gtkx/runtime";
+import type { Object as GObjectObject } from "./gobject.js";
+
 export {
     TYPE_BOOLEAN,
     TYPE_BOXED,
@@ -31,3 +34,10 @@ export {
 } from "@gtkx/runtime";
 export { signalConnect, signalEmit } from "@gtkx/runtime/internal";
 export * from "./gobject.js";
+
+export function signalHandlerDisconnect(
+    instance: NativeInstance<GObjectObject>,
+    handlerId: bigint | number,
+): void {
+    disconnectSignal(instance, handlerId);
+}

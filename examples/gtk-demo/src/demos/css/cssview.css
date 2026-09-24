@@ -10,7 +10,7 @@ window.demo .view:selected {
 }
 
 window.demo scrollbar trough,
-.scrollbars-junction {
+window.demo .scrollbars-junction {
   background-color: alpha(white, 0.80);
 }
 

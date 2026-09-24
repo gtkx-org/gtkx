@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkPaned, GtkScrolledWindow, GtkTextBuffer, GtkTextView } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkPaned, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import appleRedPath from "../../../data/demos/css/apple-red.png?resource";
 import backgroundPath from "../../../data/demos/css/background.jpg?resource";
@@ -10,10 +10,10 @@ import gnomeGimpPath from "../../../data/demos/css/gnome-gimp.png?resource";
 import gnomeGmushPath from "../../../data/demos/css/gnome-gmush.png?resource";
 import gnomeGsamePath from "../../../data/demos/css/gnome-gsame.png?resource";
 import gnuKeysPath from "../../../data/demos/css/gnu-keys.png?resource";
+import { CssEditor } from "./css-editor.js";
 import sourceCode from "./css-pixbufs.tsx?raw";
 import cssviewCssPath from "./cssview.css?url";
 import resetCssPath from "./reset.css?url";
-import { useCssEditor } from "./use-css-editor.js";
 
 const DEFAULT_CSS = `/* You can edit the text in this window to change the
  * appearance of this Window.
@@ -142,20 +142,20 @@ const cssPixbufsDemo: Demo = {
 };
 
 function CssPixbufsDemo() {
-    const { textViewRef, onChanged } = useCssEditor(DEFAULT_CSS);
-
     return (
         <GtkPaned
-            name="paned"
             orientation={Gtk.Orientation.VERTICAL}
-            startChild={<GtkBox orientation={Gtk.Orientation.VERTICAL} />}
+            position={150}
+            startChild={(
+                <GtkBox
+                    orientation={Gtk.Orientation.VERTICAL}
+                    accessibleRole={Gtk.AccessibleRole.IMG}
+                    accessibleLabel="Animated CSS background preview"
+                />
+            )}
             endChild={(
-                <GtkScrolledWindow name="scrolled">
-                    <GtkTextView
-                        name="text-view"
-                        ref={textViewRef}
-                        buffer={<GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>}
-                    />
+                <GtkScrolledWindow>
+                    <CssEditor defaultCss={DEFAULT_CSS} />
                 </GtkScrolledWindow>
             )}
         />

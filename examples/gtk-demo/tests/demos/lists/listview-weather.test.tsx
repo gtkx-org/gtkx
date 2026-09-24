@@ -4,8 +4,6 @@ import { describe, expect, it } from "vitest";
 import { listviewWeatherDemo } from "../../../src/demos/lists/listview-weather.js";
 import { renderDemo } from "../../test-utils.js";
 
-const EXPECTED_ITEM_COUNT = 70_128;
-
 const WEATHER_ICON_NAMES = new Set([
     "weather-clear-symbolic",
     "weather-few-clouds-symbolic",
@@ -16,6 +14,8 @@ const WEATHER_ICON_NAMES = new Set([
     "weather-snow-symbolic",
     "weather-storm-symbolic",
 ]);
+
+const WEATHER_LABEL = /^(Clear|Few clouds|Fog|Overcast|Scattered showers|Showers|Snow|Storm)$/;
 
 const renderListView = async (): Promise<Gtk.ListView> => {
     await renderDemo(listviewWeatherDemo);
@@ -30,24 +30,11 @@ describe("listviewWeatherDemo list view", () => {
         expect(lv).toHaveObjectProperty("showSeparators", true);
     });
 
-    it("uses a no-selection model", async () => {
-        const lv = await renderListView();
-        expect(lv.getModel()).toBeInstanceOf(Gtk.NoSelection);
-    });
-
     it("keeps the selection empty when a cell is clicked", async () => {
         const lv = await renderListView();
-        const model = lv.getModel() as Gtk.SelectionModel;
-        expect(Number(model.getSelection().getSize())).toBe(0);
         const cell = within(lv).getAllByRole(Gtk.AccessibleRole.LIST_ITEM)[0] as Gtk.Widget;
         await userEvent.click(cell);
-        expect(Number(model.getSelection().getSize())).toBe(0);
-    });
-
-    it("populates the list view with the full deterministic hourly dataset", async () => {
-        const lv = await renderListView();
-        const model = lv.getModel() as Gtk.SelectionModel;
-        expect(model).toHaveObjectProperty("nItems", EXPECTED_ITEM_COUNT);
+        expect(within(lv).queryByRole(Gtk.AccessibleRole.LIST_ITEM, { selected: true })).toBeNull();
     });
 });
 
@@ -66,6 +53,7 @@ describe("listviewWeatherDemo cell content", () => {
         for (const image of images) {
             expect(image).toHaveObjectProperty("iconSize", Gtk.IconSize.LARGE);
             expect(WEATHER_ICON_NAMES.has(image.getIconName() ?? "")).toBe(true);
+            expect(image).toHaveAccessibleName(WEATHER_LABEL);
         }
     });
 

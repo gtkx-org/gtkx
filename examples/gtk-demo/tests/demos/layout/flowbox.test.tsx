@@ -65,4 +65,14 @@ describe("flowboxDemo accessibility", () => {
         const grid = await screen.findByRole(Gtk.AccessibleRole.GRID);
         expect(grid).toBe(await screen.findByName("flow-box", { as: Gtk.FlowBox }));
     });
+
+    it("names the color swatch buttons and hides their painted implementation", async () => {
+        await renderDemo(flowboxDemo);
+
+        for (const color of ["AliceBlue", "black", "WhiteSmoke", "YellowGreen"]) {
+            const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: color, as: Gtk.Button });
+            expect(button).toHaveObjectProperty("tooltipText", color);
+            expect(button.getChild()?.getAccessibleRole()).toBe(Gtk.AccessibleRole.PRESENTATION);
+        }
+    });
 });

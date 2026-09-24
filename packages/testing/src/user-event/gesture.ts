@@ -49,6 +49,10 @@ type DragInstancePatch = {
     getOffset?: Gtk.GestureDrag["getOffset"] | undefined;
 };
 
+type ZoomInstancePatch = {
+    getBoundingBoxCenter?: Gtk.GestureZoom["getBoundingBoxCenter"] | undefined;
+};
+
 type SavedDragState = {
     instance: DragInstancePatch;
     hasOwnStartPoint: boolean;
@@ -89,7 +93,20 @@ const rotate = (widget: Gtk.Widget, angle: number, deltaAngle: number = angle): 
 /** Zooms a widget's gestures. */
 const zoom = (widget: Gtk.Widget, scale: number): Promise<void> =>
     dispatchOnControllers(widget, Gtk.GestureZoom, (controller) => {
-        controller.emit("scale-changed", scale);
+        const instance: ZoomInstancePatch = controller;
+        const hasOwnCenter = Object.hasOwn(instance, "getBoundingBoxCenter");
+        const previousCenter = instance.getBoundingBoxCenter;
+        instance.getBoundingBoxCenter = () => [true, widget.getWidth() / 2, widget.getHeight() / 2];
+
+        try {
+            controller.emit("scale-changed", scale);
+        } finally {
+            if (hasOwnCenter) {
+                instance.getBoundingBoxCenter = previousCenter;
+            } else {
+                delete instance.getBoundingBoxCenter;
+            }
+        }
     });
 
 /** Swipes a widget's gestures. */
@@ -222,10 +239,10 @@ type ActiveDrag = {
 type DragEnvironment = {
     surface: Gdk.Surface;
     device: Gdk.Device;
-    fallback: Gdk.ContentProvider;
+    fallback: Gdk.ContentProvider | undefined;
 };
 
-const resolveDragEnvironment = (widget: Gtk.Widget, content: DropContent): DragEnvironment => {
+const resolveDragEnvironment = (widget: Gtk.Widget, content: DropContent | undefined): DragEnvironment => {
     const surface = widget.getNative()?.getSurface() ?? null;
     const device = widget.getDisplay().getDefaultSeat()?.getPointer() ?? null;
 
@@ -233,18 +250,25 @@ const resolveDragEnvironment = (widget: Gtk.Widget, content: DropContent): DragE
         throw new Error("The drag source has no surface or pointer device");
     }
 
-    return { surface, device, fallback: Gdk.ContentProvider.newForValue(buildDropValue(content)) };
+    return {
+        surface,
+        device,
+        fallback: content === undefined ? undefined : Gdk.ContentProvider.newForValue(buildDropValue(content)),
+    };
 };
 
 const beginDragSource = (source: Gtk.DragSource, environment: DragEnvironment): ActiveDrag => {
     const provider = source.emit("prepare", 0, 0) ?? source.getContent() ?? environment.fallback;
+
+    if (provider === undefined) {
+        throw new Error("The drag source did not provide content");
+    }
+
     const drag = Gdk.Drag.begin(environment.surface, environment.device, provider, source.getActions(), 0, 0);
 
     if (drag === null) {
         throw new Error("The display refused to begin the drag");
     }
-
-    source.emit("drag-begin", drag);
 
     return { source, drag };
 };
@@ -256,13 +280,19 @@ const endDragSources = (activeDrags: ActiveDrag[], isAccepted: boolean): void =>
     }
 };
 
-const beginDragSources = (widget: Gtk.Widget, sources: Gtk.DragSource[], content: DropContent): ActiveDrag[] => {
+const beginDragSources = (
+    widget: Gtk.Widget,
+    sources: Gtk.DragSource[],
+    content: DropContent | undefined,
+): ActiveDrag[] => {
     const environment = resolveDragEnvironment(widget, content);
     const activeDrags: ActiveDrag[] = [];
 
     try {
         for (const source of sources) {
-            activeDrags.push(beginDragSource(source, environment));
+            const active = beginDragSource(source, environment);
+            activeDrags.push(active);
+            source.emit("drag-begin", active.drag);
         }
     } catch (error) {
         endDragSources(activeDrags, false);
@@ -270,6 +300,29 @@ const beginDragSources = (widget: Gtk.Widget, sources: Gtk.DragSource[], content
     }
 
     return activeDrags;
+};
+
+const didEmitProviderValue = (provider: Gdk.ContentProvider, target: Gtk.DropTarget, options: DropOptions): boolean => {
+    const formats = target.getFormats();
+    const type = formats === null ? GObject.TYPE_INVALID : formats.matchGtype(provider.refFormats());
+
+    if (type === GObject.TYPE_INVALID) {
+        return false;
+    }
+
+    const value = new GObject.Value();
+    value.init(type);
+    provider.getValue(value);
+
+    return target.emit("drop", value, options.x ?? 0, options.y ?? 0);
+};
+
+const didEmitProviderDrop = (target: Gtk.Widget, drags: ActiveDrag[], options: DropOptions): boolean => {
+    const targets = getAllControllers(target, Gtk.DropTarget);
+
+    return drags.some(({ drag }) =>
+        targets.some((dropTarget) => didEmitProviderValue(drag.getContent(), dropTarget, options)),
+    );
 };
 
 /** Drops content on a widget. */
@@ -282,19 +335,21 @@ const drop = (widget: Gtk.Widget, content: DropContent, options: DropOptions = {
 const dragAndDrop = async (
     source: Gtk.Widget,
     target: Gtk.Widget,
-    content: DropContent,
+    content?: DropContent,
     options: DropOptions = {},
 ): Promise<void> => {
     let activeDrags: ActiveDrag[] = [];
     let isAccepted = false;
 
-    await wrapEvent(source, () => {
-        activeDrags = beginDragSources(source, getAllControllers(source, Gtk.DragSource), content);
-    });
-
     try {
+        await wrapEvent(source, () => {
+            activeDrags = beginDragSources(source, getAllControllers(source, Gtk.DragSource), content);
+        });
+
         await wrapEvent(target, () => {
-            isAccepted = didEmitAcceptedDrop(target, content, options);
+            isAccepted = content === undefined
+                ? didEmitProviderDrop(target, activeDrags, options)
+                : didEmitAcceptedDrop(target, content, options);
         });
     } finally {
         await runInAct(() => {

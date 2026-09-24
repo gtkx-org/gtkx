@@ -1,11 +1,16 @@
 import type { Config } from "@gtkx/config";
 import { isPathInside } from "@gtkx/utils";
 import { lstatSync, readdirSync, statSync, writeFileSync } from "node:fs";
-import { join, relative, resolve, sep } from "node:path";
+import { join, resolve } from "node:path";
 import type { DeployArchName, DeployConfig, DeployPaths } from "../types.js";
 import { DEFAULT_DEPLOY_OUT_DIR } from "../../internal/deploy-out-dir.js";
 import { resolveApplicationIcon } from "../../internal/icon-path.js";
-import { prepareOutputDirectory, readRegularFile } from "../../internal/output-directory.js";
+import {
+    hasSymlinkComponent,
+    type OutputDirectoryTransaction,
+    prepareOutputDirectory,
+    readRegularFile,
+} from "../../internal/output-directory.js";
 
 type PathsRequest = {
     root: string;
@@ -20,20 +25,6 @@ const DIST_DIR = "dist";
 const DEPLOY_MARKER_FILENAME = ".gtkx-deploy.json";
 const DEPLOY_MARKER = `${JSON.stringify({ generator: "gtkx-deploy", formatVersion: 1 })}\n`;
 const LICENSE_CANDIDATES = ["LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING", "COPYING.md"];
-
-const hasSymlinkComponent = (root: string, target: string): boolean => {
-    let current = root;
-
-    for (const segment of relative(root, target).split(sep)) {
-        current = join(current, segment);
-
-        if (lstatSync(current, { throwIfNoEntry: false })?.isSymbolicLink() === true) {
-            return true;
-        }
-    }
-
-    return false;
-};
 
 const isDeployMarker = (path: string): boolean => {
     return readRegularFile(path) === DEPLOY_MARKER;
@@ -81,17 +72,17 @@ const resolveOutDir = ({ root, deploy, outDirOverride }: PathsRequest): string =
     return outDir;
 };
 
-const prepareDeployOutDir = (root: string, outDir: string): void => {
-    assertSafeDeployOutDir(root, outDir, outDir);
-    const prepared = prepareOutputDirectory(root, outDir, isReusableDeployDirectory);
+const prepareDeployOutDir = (root: string, outDir: string): OutputDirectoryTransaction => {
+    const transaction = prepareOutputDirectory(root, outDir);
 
-    if (prepared.status === "unsafe") {
-        throw deployOutputError(root, outDir);
+    try {
+        writeFileSync(join(outDir, DEPLOY_MARKER_FILENAME), DEPLOY_MARKER, { flag: "wx" });
+
+        return transaction;
+    } catch (error) {
+        transaction[Symbol.dispose]();
+        throw error;
     }
-
-    using transaction = prepared.transaction;
-    transaction.commit();
-    writeFileSync(join(outDir, DEPLOY_MARKER_FILENAME), DEPLOY_MARKER, { flag: "wx" });
 };
 
 const existingFile = (path: string): string | null =>

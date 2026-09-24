@@ -16,8 +16,6 @@ const renderMainWindowBody = async (): Promise<Gtk.Widget> => {
     return await screen.findByName("main-window-body");
 };
 
-const findNotebook = async (): Promise<Gtk.Notebook> => await screen.findByName("notebook", { as: Gtk.Notebook });
-
 const expectDialogShown = async (): Promise<void> => {
     await waitFor(async () => {
         const [dialog] = await screen.findAllByRole(Gtk.AccessibleRole.DIALOG);
@@ -69,19 +67,36 @@ describe("App global shortcuts", () => {
         });
     });
 
-    it("moves between notebook pages with Ctrl+Page_Down and Ctrl+Page_Up", async () => {
+    it("moves between pages from the header and keyboard", async () => {
         const body = await renderMainWindowBody();
-        const notebook = await findNotebook();
+        const info = await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Info" });
+        const source = await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Source" });
+        expect(info).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, true);
+        await userEvent.click(source);
+        await waitFor(() => {
+            expect(source).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, true);
+        });
+        await userEvent.click(info);
+        await waitFor(() => {
+            expect(info).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, true);
+        });
         await userEvent.keyboard(body, "{Control>}{PageDown}{/Control}");
 
         await waitFor(() => {
-            expect(notebook).toHaveObjectProperty("page", 1);
+            expect(source).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, true);
         });
 
         await userEvent.keyboard(body, "{Control>}{PageUp}{/Control}");
 
         await waitFor(() => {
-            expect(notebook).toHaveObjectProperty("page", 0);
+            expect(info).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, true);
         });
+    });
+
+    it("names shell navigation and icon-only controls", async () => {
+        await renderDemo();
+        expect(await screen.findByRole(Gtk.AccessibleRole.TAB_LIST, { name: "Demo pages" })).toBeVisible();
+        expect(await screen.findByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Search demos" })).toBeVisible();
+        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Main Menu" })).toBeVisible();
     });
 });

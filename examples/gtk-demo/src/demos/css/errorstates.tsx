@@ -126,6 +126,7 @@ const syncModeStateForLevel = ({ modeSwitch, value, setShowError }: LevelStateAr
         setShowError(false);
         modeSwitch.setState(true);
     } else if (isSwitchState && value <= 50) {
+        setShowError(true);
         modeSwitch.setState(false);
     }
 };

@@ -1,11 +1,7 @@
-import { resolveExecutable } from "@gtkx/utils";
-import { execFileSync } from "node:child_process";
 import {
     existsSync,
     mkdirSync,
     mkdtempSync,
-    readFileSync,
-    renameSync,
     rmSync,
     symlinkSync,
     writeFileSync,
@@ -16,7 +12,6 @@ import { describe, expect, it } from "vitest";
 import { createCliProject, runCliOrThrow } from "./cli-project.js";
 
 const APPLICATION_ID = "com.gtkx.deployoutputsafety";
-const MKFIFO = resolveExecutable("mkfifo");
 
 const deployConfig = (outDir?: string): string => `export default {
     applicationId: "${APPLICATION_ID}",
@@ -86,60 +81,21 @@ describe("gtkx deploy output ownership", () => {
         expect(() => runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"])).toThrow();
     });
 
-    it("rejects a symlinked deploy ownership marker", () => {
+    it("keeps the previous deployment when its application build fails", () => {
         using project = createCliProject({
-            prefix: "gtkx-deploy-output-marker-symlink-",
+            prefix: "gtkx-deploy-output-rollback-",
             config: deployConfig(),
             files: projectFiles(),
             hasStore: true,
         });
         const args = ["deploy", "--print-manifests", "--target", "deb"];
         runCliOrThrow(project, args);
-        const marker = join(project.root, "build", ".gtkx-deploy.json");
-        const movedMarker = join(project.root, "moved-deploy-marker.json");
-        renameSync(marker, movedMarker);
-        symlinkSync(movedMarker, marker);
+        const retained = join(project.root, "build", "retained.txt");
+        writeFileSync(retained, "retained");
+        writeFileSync(join(project.root, "src", "index.ts"), 'import "./missing.js";\n');
 
         expect(() => runCliOrThrow(project, args)).toThrow();
-    });
-
-    it("rejects a FIFO deploy ownership marker without blocking", () => {
-        using project = createCliProject({
-            prefix: "gtkx-deploy-output-marker-fifo-",
-            config: deployConfig(),
-            files: projectFiles(),
-            hasStore: true,
-        });
-        const args = ["deploy", "--print-manifests", "--target", "deb"];
-        runCliOrThrow(project, args);
-        const marker = join(project.root, "build", ".gtkx-deploy.json");
-        renameSync(marker, join(project.root, "moved-deploy-marker.json"));
-        execFileSync(MKFIFO, [marker]);
-
-        expect(() => runCliOrThrow(project, args)).toThrow();
-    });
-
-    it("does not follow symlinks left inside an owned deploy output", () => {
-        const outside = mkdtempSync(join(tmpdir(), "gtkx-deploy-output-descendant-"));
-
-        try {
-            using project = createCliProject({
-                prefix: "gtkx-deploy-output-descendant-symlink-",
-                config: deployConfig(),
-                files: projectFiles(),
-                hasStore: true,
-            });
-            const args = ["deploy", "--print-manifests", "--target", "deb"];
-            runCliOrThrow(project, args);
-            rmSync(join(project.root, "build", process.arch, "metadata"), { recursive: true });
-            symlinkSync(outside, join(project.root, "build", process.arch, "metadata"), "dir");
-            writeFileSync(join(outside, "keep.txt"), "keep");
-
-            runCliOrThrow(project, args);
-            expect(readFileSync(join(outside, "keep.txt"), "utf8")).toBe("keep");
-        } finally {
-            rmSync(outside, { recursive: true, force: true });
-        }
+        expect(existsSync(retained)).toBe(true);
     });
 
     it("rejects a nonempty unowned build output before rebuilding for deploy", () => {

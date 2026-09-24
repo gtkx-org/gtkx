@@ -1,6 +1,7 @@
 import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { once } from "@gtkx/utils";
 import type { Demo } from "../types.js";
 import sourceCode from "./listview-weather.tsx?raw";
 import rawWeatherData from "./listview_weather.txt?raw";
@@ -35,6 +36,17 @@ const WEATHER_ICONS: Record<WeatherType, string> = {
     showers: "weather-showers-symbolic",
     snow: "weather-snow-symbolic",
     storm: "weather-storm-symbolic",
+};
+
+const WEATHER_LABELS: Record<WeatherType, string> = {
+    clear: "Clear",
+    "few-clouds": "Few clouds",
+    fog: "Fog",
+    overcast: "Overcast",
+    "showers-scattered": "Scattered showers",
+    showers: "Showers",
+    snow: "Snow",
+    storm: "Storm",
 };
 
 const PRECIPITATION_CODES: WeatherCode[] = [
@@ -173,6 +185,8 @@ function parseWeatherData(): WeatherInfo[] {
     return state.data;
 }
 
+const getWeatherData = once(parseWeatherData);
+
 function renderWeatherItem({ item }: { item: WeatherInfo }) {
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL} vexpand>
@@ -183,6 +197,7 @@ function renderWeatherItem({ item }: { item: WeatherInfo }) {
                 iconName={WEATHER_ICONS[item.weatherType]}
                 iconSize={Gtk.IconSize.LARGE}
                 valign={Gtk.Align.START}
+                accessibleLabel={WEATHER_LABELS[item.weatherType]}
             />
             <GtkLabel widthChars={4} vexpand valign={Gtk.Align.END}>
                 {`${String(Math.round(item.temperature))}°`}
@@ -192,7 +207,7 @@ function renderWeatherItem({ item }: { item: WeatherInfo }) {
 }
 
 function ListViewWeatherDemo() {
-    const weatherData = parseWeatherData();
+    const weatherData = getWeatherData();
 
     return (
         <GtkScrolledWindow name="scrolled" vexpand hexpand>

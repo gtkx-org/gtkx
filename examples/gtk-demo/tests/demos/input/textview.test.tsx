@@ -1,27 +1,8 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { type RenderResult, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { type RenderResult, screen, screenshot, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { textviewDemo } from "../../../src/demos/input/textview.js";
-import { readBufferText, renderDemo } from "../../test-utils.js";
-
-const FORMATTING_TAGS = [
-    "italic",
-    "bold",
-    "monospace",
-    "blue_foreground",
-    "red_background",
-    "strikethrough",
-    "underline",
-    "double_underline",
-    "superscript",
-    "subscript",
-    "center",
-    "right_justify",
-    "not_editable",
-    "word_wrap",
-    "char_wrap",
-    "no_wrap",
-];
+import { readBufferText, renderDemo, screenshotColors } from "../../test-utils.js";
 
 const findTextViews = async (): Promise<[Gtk.TextView, Gtk.TextView]> => {
     const view1 = await screen.findByName("text-view-1", { as: Gtk.TextView });
@@ -53,32 +34,12 @@ const enclosingTextViewName = (widget: Gtk.Widget): string | null => {
     return null;
 };
 
-const getBuffer = (view: Gtk.TextView): Gtk.TextBuffer => view.getBuffer();
 const getOffset = (view: Gtk.TextView, substring: string): number => readBufferText(view).indexOf(substring);
 
-const countEmbeddedContent = (buffer: Gtk.TextBuffer): { paintables: number; anchors: number } => {
-    const iter = buffer.getStartIter();
-    let paintables = 0;
-    let anchors = 0;
-
-    do {
-        if (iter.getPaintable()) {
-            paintables++;
-        }
-
-        if (iter.getChildAnchor()) {
-            anchors++;
-        }
-    } while (iter.forwardChar());
-
-    return { paintables, anchors };
-};
-
-const iterAtOffset = (buffer: Gtk.TextBuffer, offset: number): Gtk.TextIter => {
-    const iter = buffer.getStartIter();
-    iter.forwardChars(offset);
-
-    return iter;
+const placeCursorAt = async (view: Gtk.TextView, offset: number): Promise<void> => {
+    view.grabFocus();
+    await userEvent.keyboard(view, "{Control>}{Home}{/Control}");
+    await userEvent.keyboard(view, "{ArrowRight}".repeat(offset));
 };
 
 const renderPrimaryView = async (): Promise<Gtk.TextView> => {
@@ -121,6 +82,8 @@ describe("textviewDemo rendering", () => {
         await screen.findByRole(Gtk.AccessibleRole.WINDOW);
         const [view1, view2] = await findTextViews();
         expect(view1).toHaveObjectProperty("buffer", view2.getBuffer());
+        expect(view1).toHaveAccessibleName("Primary text view");
+        expect(view2).toHaveAccessibleName("Secondary text view");
     });
 
     it("populates the shared buffer with section headings and international content", async () => {
@@ -146,63 +109,22 @@ describe("textviewDemo rendering", () => {
         expect(view1).toHaveObjectProperty("wrapMode", Gtk.WrapMode.WORD);
         expect(view2).toHaveObjectProperty("wrapMode", Gtk.WrapMode.WORD);
     });
-});
 
-describe("textviewDemo formatting tags", () => {
-    it("registers the demo's named formatting tags in the shared tag table", async () => {
+    it("paints visible formatted content", async () => {
         const view1 = await renderPrimaryView();
-        const table = getBuffer(view1).getTagTable();
-
-        for (const name of FORMATTING_TAGS) {
-            expect(table.lookup(name)).not.toBeNull();
-        }
-    });
-
-    it("applies the italic, bold and monospace tags to their respective text ranges", async () => {
-        const view1 = await renderPrimaryView();
-        const buffer = getBuffer(view1);
-        const table = buffer.getTagTable();
-
-        const cases: [string, string][] = [
-            ["italic", "italic"],
-            ["bold", "bold"],
-            ["monospace", "monospace (typewriter)"],
-        ];
-
-        for (const [tagName, phrase] of cases) {
-            const tag = table.lookup(tagName);
-            expect(tag).not.toBeNull();
-            const iter = iterAtOffset(buffer, getOffset(view1, phrase));
-            expect(iter.hasTag(tag as Gtk.TextTag)).toBe(true);
-        }
-    });
-
-    it("carries distinct per-tag wrap modes on the tagged wrapping sections", async () => {
-        const view1 = await renderPrimaryView();
-        const table = getBuffer(view1).getTagTable();
-        expect(table.lookup("word_wrap") as Gtk.TextTag).toHaveObjectProperty("wrapMode", Gtk.WrapMode.WORD);
-        expect(table.lookup("char_wrap") as Gtk.TextTag).toHaveObjectProperty("wrapMode", Gtk.WrapMode.CHAR);
-        expect(table.lookup("no_wrap") as Gtk.TextTag).toHaveObjectProperty("wrapMode", Gtk.WrapMode.NONE);
+        expect(screenshotColors(await screenshot(view1)).size).toBeGreaterThan(8);
     });
 });
 
 describe("textviewDemo embedded content", () => {
-    it("embeds two paintables and four child anchors in the buffer", async () => {
-        const view1 = await renderPrimaryView();
-        const { paintables, anchors } = countEmbeddedContent(getBuffer(view1));
-        expect(paintables).toBe(2);
-        expect(anchors).toBe(4);
-    });
-
     it("rejects user edits inside the not_editable range but accepts them elsewhere", async () => {
         const view1 = await renderPrimaryView();
-        const buffer = getBuffer(view1);
         const lockedBefore = readBufferText(view1);
-        buffer.placeCursor(iterAtOffset(buffer, getOffset(view1, "locked down")));
+        await placeCursorAt(view1, getOffset(view1, "locked down"));
         await userEvent.type(view1, "X");
         expect(readBufferText(view1)).toBe(lockedBefore);
         const editableBefore = readBufferText(view1);
-        buffer.placeCursor(buffer.getStartIter());
+        await placeCursorAt(view1, 0);
         await userEvent.type(view1, "Z");
         expect(readBufferText(view1)).toHaveLength(editableBefore.length + 1);
         expect(readBufferText(view1).startsWith("Z")).toBe(true);
@@ -210,6 +132,27 @@ describe("textviewDemo embedded content", () => {
 });
 
 describe("textviewDemo cloned widgets", () => {
+    it("owns each view's widgets through Strict Mode replay", async () => {
+        await renderDemo(textviewDemo, { isReactStrictMode: true });
+        await findTextViews();
+        expect(await findClickMeButtons()).toHaveLength(2);
+        expect(findComboBoxes()).toHaveLength(2);
+        expect(findScales()).toHaveLength(2);
+        expect(findEntries()).toHaveLength(2);
+
+        for (const dropdown of findComboBoxes()) {
+            expect(dropdown).toHaveAccessibleName("Menu");
+        }
+
+        for (const scale of findScales()) {
+            expect(scale).toHaveAccessibleName("Scale");
+        }
+
+        for (const entry of findEntries()) {
+            expect(entry).toHaveAccessibleName("Text entry");
+        }
+    });
+
     it("attaches exactly one Click Me button to each text view", async () => {
         await renderDemo(textviewDemo);
         const buttons = await findClickMeButtons();

@@ -58,6 +58,9 @@ type DragAndDropPairOptions = {
     onDrop: ComponentProps<typeof GtkDropTarget>["onDrop"];
     onDragBegin?: ComponentProps<typeof GtkDragSource>["onDragBegin"];
     onDragEnd?: ComponentProps<typeof GtkDragSource>["onDragEnd"];
+    onPrepare?: ComponentProps<typeof GtkDragSource>["onPrepare"];
+    content?: ComponentProps<typeof GtkDragSource>["content"];
+    types?: ComponentProps<typeof GtkDropTarget>["types"];
     isSourceSensitive?: boolean;
     hasDragSource?: boolean;
 };
@@ -153,6 +156,8 @@ async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<R
                                     actions={Gdk.DragAction.COPY}
                                     onDragBegin={options.onDragBegin}
                                     onDragEnd={options.onDragEnd}
+                                    onPrepare={options.onPrepare}
+                                    content={options.content}
                                 />
                             )
                 }
@@ -163,7 +168,7 @@ async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<R
                 name="drop-target"
                 controllers={(
                     <GtkDropTarget
-                        types={[GObject.TYPE_STRING]}
+                        types={options.types ?? [GObject.TYPE_STRING]}
                         actions={Gdk.DragAction.COPY}
                         onDrop={options.onDrop}
                     />

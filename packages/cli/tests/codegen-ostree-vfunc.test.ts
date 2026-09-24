@@ -104,10 +104,14 @@ describe("generated OSTree native vfunc call admission", () => {
     });
 
     it("documents the retained override signature and restricted native call routes", () => {
+        using project = createCliProject({
+            prefix: "gtkx-cli-ostree-vfunc-reference-",
+            config: CONFIG,
+        });
         const reference = loadApiReference({
             libraries: ["OSTree-1.0"],
             girPath: resolveGirPath([]),
-            resolveFrom: process.cwd(),
+            resolveFrom: project.root,
         });
         const page = reference.lookup("OSTree.RepoFinder", "interface");
         expect(page.outcome).toBe("page");

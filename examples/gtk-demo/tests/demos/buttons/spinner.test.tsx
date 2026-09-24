@@ -29,12 +29,16 @@ describe("spinnerDemo rendering", () => {
         const spinners = await renderSpinners();
         expect(spinners).toHaveLength(2);
         expect(spinners.every((s) => s.getSpinning())).toBe(true);
+        expect(screen.getByRole(Gtk.AccessibleRole.PROGRESS_BAR, { name: "Enabled spinner" })).toBe(spinners[0]);
+        expect(screen.getByRole(Gtk.AccessibleRole.PROGRESS_BAR, { name: "Disabled spinner" })).toBe(spinners[1]);
     });
 
     it("renders two text entries — one in the sensitive row and one in the insensitive row", async () => {
         await renderDemo(spinnerDemo);
         const entries = await findEntries();
         expect(entries).toHaveLength(2);
+        expect(screen.getByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Enabled text entry" })).toBe(entries[0]);
+        expect(screen.getByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Disabled text entry" })).toBe(entries[1]);
     });
 
     it("renders the second row insensitive so its spinner and entry are effectively disabled", async () => {

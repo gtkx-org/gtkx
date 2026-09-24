@@ -97,6 +97,8 @@ await user.click(saveButton);
 
 Use `slide(range, value)` for a slider. `drag` drives authored drag gestures and cannot drive a range's native slider. The [interaction reference](/v2/reference/@gtkx/testing/) covers the available helpers.
 
+Use `dragAndDrop(source, target)` to transfer a drag source's typed content to a `GtkDropTarget`. Use `drop(target, content)` when testing how a target handles a supplied value.
+
 `fireEvent(object, signalName, ...args)` emits a GObject signal directly. Use it when testing a signal handler or a tree without a visible window. Wrap state changes made outside these helpers in `act`.
 
 For asynchronous assertions, use `waitFor`; for a widget leaving the tree, use `waitForElementToBeRemoved`. Their timeout defaults to one second and can be changed per call or through `configure`.

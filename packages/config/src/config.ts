@@ -32,6 +32,7 @@ type ResolvedReactCompilerOptions = ReactCompilerOptions & {
  */
 type Config = z.infer<typeof configSchema>;
 type ModuleExport = z.infer<typeof moduleExportSchema>;
+type ElementPropsExport = z.infer<typeof elementPropsSchema>;
 type ElementConfigEntry = z.infer<typeof elementConfigSchema>;
 
 type McpSettings = {
@@ -105,10 +106,16 @@ const moduleExportSchema = z.strictObject(
     { error: "must be a { module, export } object" },
 );
 
+const elementPropsSchema = moduleExportSchema.extend({
+    composition: z.enum(["factory", "intersection"]).optional(),
+    constructOnly: z.array(z.string()).optional(),
+});
+
 const elementConfigSchema = z.strictObject({
     component: moduleExportSchema.optional(),
-    props: moduleExportSchema.optional(),
+    props: elementPropsSchema.optional(),
     isLazy: z.boolean({ error: "must be a boolean" }).optional(),
+    acceptedChildTypes: z.array(z.string()).optional(),
     omittedProps: z
         .array(
             z.string({ error: "must be a non-empty property name" }).min(1, {
@@ -251,8 +258,11 @@ const elementEntryValues = <T>(
 const resolveElementComponents = (elements: Config["elements"]): Record<string, ModuleExport> =>
     elementEntryValues(elements, (entry) => entry.component);
 
-const resolveElementProps = (elements: Config["elements"]): Record<string, ModuleExport> =>
+const resolveElementProps = (elements: Config["elements"]): Record<string, ElementPropsExport> =>
     elementEntryValues(elements, (entry) => entry.props);
+
+const resolveAcceptedChildTypes = (elements: Config["elements"]): Record<string, string[]> =>
+    elementEntryValues(elements, (entry) => entry.acceptedChildTypes);
 
 const resolveOmittedProps = (elements: Config["elements"]): Record<string, string[]> =>
     elementEntryValues(elements, (entry) => entry.omittedProps);
@@ -285,6 +295,7 @@ export {
     resolveLazyElements,
     resolveElementComponents,
     resolveElementProps,
+    resolveAcceptedChildTypes,
     resolveMcpSettings,
     resolveOmittedProps,
     resolveConfig,

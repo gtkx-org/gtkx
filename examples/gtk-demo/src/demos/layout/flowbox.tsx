@@ -1,7 +1,7 @@
-import type { Context } from "@gtkx/cairo";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkButton, GtkDrawingArea, GtkFlowBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./flowbox.tsx?raw";
 
@@ -673,8 +673,6 @@ const COLORS = [
     "YellowGreen",
 ];
 
-const PARSED_COLORS: Map<string, Gdk.RGBA> = new Map();
-
 const flowboxDemo: Demo = {
     id: "flowbox",
     title: "Flow Box",
@@ -689,51 +687,22 @@ const flowboxDemo: Demo = {
     defaultHeight: 600,
 };
 
-function parseColor(name: string): Gdk.RGBA | null {
+function parseColor(name: string): Gdk.RGBA {
     const rgba = new Gdk.RGBA();
+    rgba.parse(name);
 
-    return rgba.parse(name) ? rgba : null;
+    return rgba;
 }
 
-function fillParsedColors(): void {
-    for (const name of COLORS) {
-        const rgba = parseColor(name);
-
-        if (rgba) {
-            PARSED_COLORS.set(name, rgba);
-        }
-    }
-}
-
-function getParsedColors() {
-    if (PARSED_COLORS.size === 0) {
-        fillParsedColors();
-    }
-
-    return PARSED_COLORS;
-}
-
-function drawColor(cr: Context, _width: number, _height: number, rgba: Gdk.RGBA): void {
-    cr.setSourceRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha);
-    cr.paint();
-}
-
-function createColorDrawFunc(rgba: Gdk.RGBA | undefined): Gtk.DrawingAreaDrawFunc | undefined {
-    if (!rgba) {
-        return undefined;
-    }
-
-    return (_self, cr, width, height) => {
-        drawColor(cr, width, height, rgba);
+function createColorDrawFunc(rgba: Gdk.RGBA): Gtk.DrawingAreaDrawFunc {
+    return (_self, cr) => {
+        cr.setSourceRgba(rgba.red, rgba.green, rgba.blue, rgba.alpha);
+        cr.paint();
     };
 }
 
 function FlowBoxDemo() {
-    const colorItems = COLORS.map((color) => {
-        const rgba = getParsedColors().get(color);
-
-        return { color, rgba };
-    });
+    const [colorItems] = useState(() => COLORS.map((color) => ({ color, rgba: parseColor(color) })));
 
     return (
         <GtkScrolledWindow name="scrolled" hscrollbarPolicy={Gtk.PolicyType.NEVER}>
@@ -744,11 +713,12 @@ function FlowBoxDemo() {
                 valign={Gtk.Align.START}
             >
                 {colorItems.map(({ color, rgba }) => (
-                    <GtkButton key={color}>
+                    <GtkButton key={color} accessibleLabel={color} tooltipText={color}>
                         <GtkDrawingArea
                             contentWidth={24}
                             contentHeight={24}
                             drawFunc={createColorDrawFunc(rgba)}
+                            accessibleRole={Gtk.AccessibleRole.PRESENTATION}
                         />
                     </GtkButton>
                 ))}

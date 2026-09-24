@@ -27,7 +27,7 @@ type BlendPageProps = {
 };
 
 type BlendModeListProps = {
-    onRowActivated: (row: Gtk.ListBoxRow) => void;
+    onRowSelected: (row: Gtk.ListBoxRow | null) => void;
 };
 
 const BLEND_MODES = [
@@ -44,7 +44,7 @@ const BLEND_MODES = [
     { name: "Multiply", id: "multiply" },
     { name: "Normal", id: "normal" },
     { name: "Overlay", id: "overlay" },
-    { name: "Saturate", id: "saturation" },
+    { name: "Saturation", id: "saturation" },
     { name: "Screen", id: "screen" },
     { name: "Soft Light", id: "soft-light" },
 ];
@@ -138,7 +138,7 @@ function createBlendCss(blendMode: string) {
     `;
 }
 
-const BlendStack = ({ ref, isVisible }: { ref?: Ref<Gtk.Stack | null>; isVisible: boolean }) => (
+const BlendStack = ({ ref }: { ref?: Ref<Gtk.Stack | null> }) => (
     <GtkStack
         name="blend-stack"
         ref={ref}
@@ -147,7 +147,6 @@ const BlendStack = ({ ref, isVisible }: { ref?: Ref<Gtk.Stack | null>; isVisible
         hhomogeneous={false}
         vhomogeneous={false}
         transitionType={Gtk.StackTransitionType.CROSSFADE}
-        visible={isVisible}
     >
         <GtkStackPage name="page0" title="Ducky">
             <DuckyPage />
@@ -170,16 +169,16 @@ const BlendPage = ({ labels, leftClass, rightClass, blendClass }: BlendPageProps
             <GtkLabel>{labels[1]}</GtkLabel>
         </GtkGridLayoutChild>
         <GtkGridLayoutChild column={0} row={1}>
-            <GtkImage cssClasses={[leftClass]} />
+            <GtkImage accessibleLabel={`${labels[0]} source`} cssClasses={[leftClass]} />
         </GtkGridLayoutChild>
         <GtkGridLayoutChild column={1} row={1}>
-            <GtkImage cssClasses={[rightClass]} />
+            <GtkImage accessibleLabel={`${labels[1]} source`} cssClasses={[rightClass]} />
         </GtkGridLayoutChild>
         <GtkGridLayoutChild column={0} row={2} columnSpan={2}>
             <GtkLabel>Blended picture</GtkLabel>
         </GtkGridLayoutChild>
         <GtkGridLayoutChild column={0} row={3} columnSpan={2}>
-            <GtkImage halign={Gtk.Align.CENTER} cssClasses={[blendClass]} />
+            <GtkImage accessibleLabel="Blended picture" halign={Gtk.Align.CENTER} cssClasses={[blendClass]} />
         </GtkGridLayoutChild>
     </GtkGrid>
 );
@@ -203,10 +202,10 @@ const CmykPage = () => (
             </GtkLabel>
         </GtkGridLayoutChild>
         <GtkGridLayoutChild column={0} row={1}>
-            <GtkImage cssClasses={["cyan"]} />
+            <GtkImage accessibleLabel="Cyan source" cssClasses={["cyan"]} />
         </GtkGridLayoutChild>
         <GtkGridLayoutChild column={1} row={1}>
-            <GtkImage cssClasses={["magenta"]} />
+            <GtkImage accessibleLabel="Magenta source" cssClasses={["magenta"]} />
         </GtkGridLayoutChild>
         <GtkGridLayoutChild column={0} row={2}>
             <GtkLabel xalign={0} cssClasses={["dim-label"]}>
@@ -219,10 +218,10 @@ const CmykPage = () => (
             </GtkLabel>
         </GtkGridLayoutChild>
         <GtkGridLayoutChild column={0} row={3}>
-            <GtkImage cssClasses={["yellow"]} />
+            <GtkImage accessibleLabel="Yellow source" cssClasses={["yellow"]} />
         </GtkGridLayoutChild>
         <GtkGridLayoutChild column={1} row={3}>
-            <GtkImage halign={Gtk.Align.CENTER} cssClasses={["blend2"]} />
+            <GtkImage accessibleLabel="Blended CMYK picture" halign={Gtk.Align.CENTER} cssClasses={["blend2"]} />
         </GtkGridLayoutChild>
     </GtkGrid>
 );
@@ -238,9 +237,14 @@ const selectAndFocusNormalRow = (widget: Gtk.Widget) => {
     }
 };
 
-const BlendModeList = ({ onRowActivated }: BlendModeListProps) => (
+const BlendModeList = ({ onRowSelected }: BlendModeListProps) => (
     <GtkScrolledWindow vexpand hasFrame minContentWidth={150}>
-        <GtkListBox name="blend-list" onRowActivated={onRowActivated} onRealize={selectAndFocusNormalRow}>
+        <GtkListBox
+            name="blend-list"
+            selectionMode={Gtk.SelectionMode.BROWSE}
+            onRowSelected={onRowSelected}
+            onRealize={selectAndFocusNormalRow}
+        >
             {BLEND_MODES.map((mode) => (
                 <GtkListBoxRow key={mode.id} accessibleLabel={mode.name}>
                     <GtkLabel xalign={0}>{mode.name}</GtkLabel>
@@ -255,7 +259,11 @@ function CssBlendmodesDemo() {
     const [blendMode, setBlendMode] = useState("normal");
     const blendCss = createBlendCss(blendMode);
 
-    const handleRowActivated = (row: Gtk.ListBoxRow) => {
+    const handleRowSelected = (row: Gtk.ListBoxRow | null) => {
+        if (!row) {
+            return;
+        }
+
         const index = row.getIndex();
         const mode = BLEND_MODES[index];
 
@@ -282,7 +290,7 @@ function CssBlendmodesDemo() {
             </GtkGridLayoutChild>
 
             <GtkGridLayoutChild column={0} row={1}>
-                <BlendModeList onRowActivated={handleRowActivated} />
+                <BlendModeList onRowSelected={handleRowSelected} />
             </GtkGridLayoutChild>
 
             <GtkGridLayoutChild column={1} row={0}>
@@ -290,12 +298,7 @@ function CssBlendmodesDemo() {
             </GtkGridLayoutChild>
 
             <GtkGridLayoutChild column={1} row={1}>
-                <BlendStack
-                    ref={(node) => {
-                        setStack(node);
-                    }}
-                    isVisible={stack !== null}
-                />
+                <BlendStack ref={setStack} />
             </GtkGridLayoutChild>
         </GtkGrid>
     );

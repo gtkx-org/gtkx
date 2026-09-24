@@ -1,4 +1,3 @@
-import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkCheckButton, GtkImage, GtkSpinner, GtkStack, GtkStackPage, GtkStackSwitcher } from "@gtkx/jsx/gtk";
 import { useState } from "react";
@@ -19,21 +18,31 @@ const stackDemo: Demo = {
 };
 
 function StackDemo() {
-    const demoIcon = Gio.FileIcon.new(Gio.File.newForUri(`resource://${demoIconPath}`));
     const [stack, setStack] = useState<Gtk.Stack | null>(null);
 
     return (
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
-            <GtkStackSwitcher halign={Gtk.Align.CENTER} stack={stack} />
+            <GtkStackSwitcher halign={Gtk.Align.CENTER} stack={stack} accessibleLabel="Stack pages" />
             <GtkStack ref={setStack} name="stack" transitionType={Gtk.StackTransitionType.CROSSFADE}>
                 <GtkStackPage name="page1" title="Page 1">
-                    <GtkImage gicon={demoIcon} pixelSize={100} marginTop={20} marginBottom={20} />
+                    <GtkImage
+                        resource={demoIconPath}
+                        pixelSize={100}
+                        marginTop={20}
+                        marginBottom={20}
+                        accessibleLabel="GTK Demo logo"
+                    />
                 </GtkStackPage>
                 <GtkStackPage name="page2" title="Page 2">
                     <GtkCheckButton label="Page 2" halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
                 </GtkStackPage>
-                <GtkStackPage name="page3" iconName="face-laugh-symbolic">
-                    <GtkSpinner spinning halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER} />
+                <GtkStackPage name="page3" title="Page 3" iconName="face-laugh-symbolic">
+                    <GtkSpinner
+                        spinning
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                        accessibleLabel="Loading Page 3"
+                    />
                 </GtkStackPage>
             </GtkStack>
         </GtkBox>

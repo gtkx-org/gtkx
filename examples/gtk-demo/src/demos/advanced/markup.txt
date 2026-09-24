@@ -1,7 +1,7 @@
 
 Text sizes: <span size="xx-small">tiny </span><span size="x-small">very small </span><span size="small">small </span><span size="medium">normal </span><span size="large">large </span><span size="x-large">very large </span><span size="xx-large">huge</span>
 
-Text styles: <span style="normal">Normal</span> <span style="italic">Italic</span> <span style="oblique">Olique</span>
+Text styles: <span style="normal">Normal</span> <span style="italic">Italic</span> <span style="oblique">Oblique</span>
 
 Text weights: <span weight="thin">thin</span> <span weight="light">light</span> <span weight="normal">normal</span> <span weight="bold">bold</span> <span weight="ultraheavy">ultraheavy</span>
 
@@ -27,4 +27,3 @@ hy­phen­ation al­go­rithm is a <span allow_breaks="false" style="italic">set
 Note that the line height affects the spacing between paragraphs as well as between the wrapped lines inside a paragraph.</span>
 
 Transforms: <span text_transform='uppercase'>straße</span> <span text_transform='capitalize'>up, up and away</span>
-

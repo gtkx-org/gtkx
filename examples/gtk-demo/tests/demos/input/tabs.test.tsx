@@ -14,6 +14,7 @@ const renderTextView = async (): Promise<Gtk.TextView> => {
 describe("tabsDemo", () => {
     it("renders a GtkTextView populated with tab-separated rows", async () => {
         const textView = await renderTextView();
+        expect(textView).toHaveAccessibleName("Tab alignment example");
         expect(await screen.findByDisplayValue(/one\t2\.0\tthree/, { collapseWhitespace: false })).toBe(textView);
         expect(await screen.findByDisplayValue(/four\t5\.555\tsix/, { collapseWhitespace: false })).toBe(textView);
         expect(await screen.findByDisplayValue(/seven\t88\.88\tnine/, { collapseWhitespace: false })).toBe(textView);

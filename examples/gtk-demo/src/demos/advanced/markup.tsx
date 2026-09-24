@@ -23,7 +23,6 @@ type MarkupStackProps = {
 type MarkupContextValue = {
     isShowingSource: boolean;
     handleSourceToggle: (isActive: boolean) => void;
-    applyMarkup: () => void;
     formattedViewRef: React.RefObject<Gtk.TextView | null>;
     sourceViewRef: React.RefObject<Gtk.TextView | null>;
     markupRef: React.RefObject<string>;
@@ -96,6 +95,7 @@ const MarkupStack = ({ isShowingSource, formattedViewRef, sourceViewRef, onForma
             <MarkupScroller>
                 <GtkTextView
                     name="formatted-view"
+                    accessibleLabel="Formatted markup"
                     ref={formattedViewRef}
                     editable={false}
                     wrapMode={Gtk.WrapMode.WORD_CHAR}
@@ -109,6 +109,7 @@ const MarkupStack = ({ isShowingSource, formattedViewRef, sourceViewRef, onForma
             <MarkupScroller>
                 <GtkTextView
                     name="source-view"
+                    accessibleLabel="Markup source"
                     ref={sourceViewRef}
                     wrapMode={Gtk.WrapMode.WORD}
                     leftMargin={10}
@@ -152,7 +153,6 @@ function MarkupProvider({ children }: DemoProviderProps) {
     const value = {
         isShowingSource,
         handleSourceToggle,
-        applyMarkup,
         formattedViewRef,
         sourceViewRef,
         markupRef,

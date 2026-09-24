@@ -5,7 +5,7 @@ import type { ResolvedSignalEmitMap, ResolvedSignalMap, SignalArguments, SignalR
 import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { bind } from "./bind.js";
 import { wrapCallback } from "./callback.js";
-import { newCCallbackClosure, toClosure } from "./closure.js";
+import { newCCallbackClosure, newClosure, toClosure } from "./closure.js";
 import {
     arrayT,
     biguint64T,
@@ -38,6 +38,19 @@ import {
 /** Function invoked when a connected GObject signal is emitted. */
 type SignalHandler = (...args: unknown[]) => unknown;
 type SignalHandlerId = bigint;
+type SignalHandlerReference = { id: SignalHandlerId };
+type SignalDisconnectObserver = (instance: object, handlerId: SignalHandlerId) => void;
+type TrackedSignalConnection = {
+    handlerId: SignalHandlerId;
+    handler: SignalHandler;
+    reference: SignalHandlerReference;
+};
+type SignalConnections = {
+    bySignal: Map<string, Set<SignalHandlerId>>;
+    handlers: Map<SignalHandlerId, SignalHandler>;
+    references: Map<SignalHandlerId, SignalHandlerReference>;
+    disconnectObservers: Map<SignalHandlerId, Set<SignalDisconnectObserver>>;
+};
 
 const isSignalHandler = (value: unknown): value is SignalHandler => typeof value === "function";
 
@@ -112,7 +125,7 @@ type EmitArg = Arg & {
     value?: unknown;
 };
 
-const connectionTable: WeakMap<object, Map<string, Set<SignalHandlerId>>> = new WeakMap();
+const connectionTable: WeakMap<object, SignalConnections> = new WeakMap();
 const signalDispatchTable: Map<number, SignalDispatch> = new Map();
 const pendingSignalDispatches: Map<string, PendingSignalDispatch[]> = new Map();
 const gQuarkFromString = bind(LIB, "g_quark_from_string", [stringT("borrowed")], uint32T);
@@ -183,28 +196,134 @@ function getSignalDetailQuark(signal: string): number {
     return gQuarkFromString(signal.slice(detailIndex + 2)) as number;
 }
 
-const isSignalHandlerConnected = (instance: object, handlerId: SignalHandlerId): boolean =>
+const isSignalHandlerConnected = (instance: object, handlerId: SignalHandlerId | number): boolean =>
     gSignalHandlerIsConnected(getHandle(instance), handlerId) as boolean;
 
-const trackConnection = (instance: object, signal: string, handlerId: SignalHandlerId): void => {
-    const bySignal = connectionTable.getOrInsertComputed(instance, () => new Map<string, Set<SignalHandlerId>>());
-    bySignal.getOrInsertComputed(signal, () => new Set<SignalHandlerId>()).add(handlerId);
+const trackConnection = (
+    instance: object,
+    signal: string,
+    connection: TrackedSignalConnection,
+): void => {
+    const { handlerId, handler, reference } = connection;
+    const connections = connectionTable.getOrInsertComputed(instance, () => ({
+        bySignal: new Map(),
+        handlers: new Map(),
+        references: new Map(),
+        disconnectObservers: new Map(),
+    }));
+    connections.bySignal.getOrInsertComputed(signal, () => new Set<SignalHandlerId>()).add(handlerId);
+    connections.handlers.set(handlerId, handler);
+    connections.references.set(handlerId, reference);
 };
 
-const untrackConnection = (instance: object, handlerId: SignalHandlerId): void => {
-    const bySignal = connectionTable.get(instance);
+const notifySignalDisconnected = (
+    instance: object,
+    handlerId: SignalHandlerId,
+    observers: Set<SignalDisconnectObserver> | undefined,
+): void => {
+    const activeObservers = observers ?? [];
 
-    if (bySignal === undefined) {
-        return;
+    for (const observer of activeObservers) {
+        observer(instance, handlerId);
     }
+};
 
-    for (const [name, handlerIds] of bySignal) {
+const isCurrentConnection = (
+    connections: SignalConnections | undefined,
+    handlerId: SignalHandlerId,
+    reference: SignalHandlerReference | undefined,
+): boolean =>
+    reference === undefined || connections === undefined || connections.references.get(handlerId) === reference;
+
+const removeSignalHandlerId = (connections: SignalConnections, handlerId: SignalHandlerId): void => {
+    for (const [name, handlerIds] of connections.bySignal) {
         handlerIds.delete(handlerId);
 
         if (handlerIds.size === 0) {
-            bySignal.delete(name);
+            connections.bySignal.delete(name);
         }
     }
+};
+
+const untrackConnection = (
+    instance: object,
+    handlerId: SignalHandlerId,
+    reference?: SignalHandlerReference,
+): void => {
+    const connections = connectionTable.get(instance);
+
+    if (!isCurrentConnection(connections, handlerId, reference)) {
+        return;
+    }
+
+    const observers = connections?.disconnectObservers.get(handlerId);
+
+    if (connections !== undefined) {
+        connections.handlers.delete(handlerId);
+        connections.references.delete(handlerId);
+        connections.disconnectObservers.delete(handlerId);
+        removeSignalHandlerId(connections, handlerId);
+
+        if (connections.handlers.size === 0) {
+            connectionTable.delete(instance);
+        }
+    }
+
+    notifySignalDisconnected(instance, handlerId, observers);
+};
+
+const releaseConnection = (
+    receiver: WeakRef<object>,
+    reference: SignalHandlerReference,
+): (() => void) => () => {
+    const instance = receiver.deref();
+
+    if (instance !== undefined) {
+        untrackConnection(instance, reference.id, reference);
+    }
+};
+
+const trackSignalDisconnect = (
+    instance: object,
+    handlerId: SignalHandlerId,
+    observer: SignalDisconnectObserver,
+): void => {
+    const connections = connectionTable.get(instance);
+
+    if (!connections?.handlers.has(handlerId)) {
+        observer(instance, handlerId);
+
+        return;
+    }
+
+    connections.disconnectObservers.getOrInsertComputed(handlerId, () => new Set()).add(observer);
+};
+
+const handlerFor = (receiver: WeakRef<object>, reference: SignalHandlerReference): SignalHandler | undefined => {
+    const instance = receiver.deref();
+    const connections = instance === undefined ? undefined : connectionTable.get(instance);
+
+    return connections?.references.get(reference.id) === reference
+        ? connections.handlers.get(reference.id)
+        : undefined;
+};
+
+const createSignalDispatcher = (
+    receiver: WeakRef<object>,
+    reference: SignalHandlerReference,
+): SignalHandler => function (this: unknown, ...args): unknown {
+    const handler = handlerFor(receiver, reference);
+
+    return handler === undefined ? undefined : Reflect.apply(handler, this, args);
+};
+
+const createClosureDispatcher = (
+    receiver: WeakRef<object>,
+    reference: SignalHandlerReference,
+): SignalHandler => (...args): unknown => {
+    const handler = handlerFor(receiver, reference);
+
+    return handler === undefined ? undefined : Reflect.apply(handler, null, args.slice(1));
 };
 
 /**
@@ -212,9 +331,14 @@ const untrackConnection = (instance: object, handlerId: SignalHandlerId): void =
  * @param instance Emitter the handler was connected to.
  * @param handlerId Id {@link connectSignal} returned for the handler.
  */
-const disconnectSignal = (instance: object, handlerId: SignalHandlerId): void => {
-    untrackConnection(instance, handlerId);
-    gSignalHandlerDisconnect(getHandle(instance), handlerId);
+const disconnectSignal = (instance: object, handlerId: SignalHandlerId | number): void => {
+    const isConnected = isSignalHandlerConnected(instance, handlerId);
+    const trackedHandlerId = typeof handlerId === "bigint" ? handlerId : BigInt(handlerId);
+    untrackConnection(instance, trackedHandlerId);
+
+    if (isConnected) {
+        gSignalHandlerDisconnect(getHandle(instance), handlerId);
+    }
 };
 
 const hasLiveConnection = (instance: object, handlerIds: Set<SignalHandlerId>): boolean => {
@@ -224,7 +348,7 @@ const hasLiveConnection = (instance: object, handlerIds: Set<SignalHandlerId>): 
         if (isSignalHandlerConnected(instance, handlerId)) {
             isLive = true;
         } else {
-            handlerIds.delete(handlerId);
+            untrackConnection(instance, handlerId);
         }
     }
 
@@ -232,7 +356,7 @@ const hasLiveConnection = (instance: object, handlerIds: Set<SignalHandlerId>): 
 };
 
 function hasSignalListener(instance: object, signals?: string[]): boolean {
-    const bySignal = connectionTable.get(instance);
+    const bySignal = connectionTable.get(instance)?.bySignal;
 
     if (!bySignal) {
         return false;
@@ -296,12 +420,15 @@ const getSignalId = (instance: object, signal: string): number =>
  */
 function connectSignal(instance: object, signal: string, spec: SignalConnectSpec): SignalHandlerId {
     const { callback, handler, isAfter } = spec;
-    const wrapped = wrapCallback(handler, callback, "signal");
+    const receiver = new WeakRef(instance);
+    const reference: SignalHandlerReference = { id: 0n };
+    const wrapped = wrapCallback(createSignalDispatcher(receiver, reference), callback, "signal");
     const type: bigint = (instance as TypedClass).__type__;
     const key = `${String(type)}\0${getSignalBaseName(signal)}`;
-    const closure = newCCallbackClosure(key, callback, wrapped);
+    const closure = newCCallbackClosure(key, callback, wrapped, releaseConnection(receiver, reference));
     const handlerId = gSignalConnectClosure(getHandle(instance), signal, closure, isAfter) as SignalHandlerId;
-    trackConnection(instance, canonicalSignalName(signal), handlerId);
+    reference.id = handlerId;
+    trackConnection(instance, canonicalSignalName(signal), { handlerId, handler, reference });
 
     return handlerId;
 }
@@ -316,9 +443,15 @@ function connectClosureSignal(
     handler: SignalHandler,
     isAfter: boolean,
 ): SignalHandlerId {
-    const closure = toClosure((...args: unknown[]) => Reflect.apply(handler, null, args.slice(1)));
+    const receiver = new WeakRef(instance);
+    const reference: SignalHandlerReference = { id: 0n };
+    const closure = newClosure(
+        createClosureDispatcher(receiver, reference),
+        releaseConnection(receiver, reference),
+    );
     const handlerId = gSignalConnectClosure(getHandle(instance), signal, closure, isAfter) as SignalHandlerId;
-    trackConnection(instance, canonicalSignalName(signal), handlerId);
+    reference.id = handlerId;
+    trackConnection(instance, canonicalSignalName(signal), { handlerId, handler, reference });
 
     return handlerId;
 }
@@ -533,7 +666,6 @@ export {
     emitSignal,
     emitSignalByName,
     hasSignalListener,
-    isSignalHandlerConnected,
     installSignalDispatch,
     overrideSignalClassClosure,
     signalConnect,
@@ -545,4 +677,5 @@ export {
     type SignalHandlerId,
     type SignalMap,
     type SignalName,
+    trackSignalDisconnect,
 };

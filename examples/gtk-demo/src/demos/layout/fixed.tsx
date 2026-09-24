@@ -3,8 +3,8 @@ import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkFixed, GtkFixedLayoutChild, GtkFrame, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
+import { CssResource } from "../../css-resource.js";
 import { at } from "../../transform.js";
-import { useCssResource } from "../../use-css-resource.js";
 import fixedCss from "./fixed.css?raw";
 import sourceCode from "./fixed.tsx?raw";
 
@@ -81,37 +81,39 @@ function createFaceTransform(face: CubeFace): Gsk.Transform {
 }
 
 function FixedDemo() {
-    useCssResource(fixedCss);
-
     const faceTransforms = CUBE_FACES.map((face) => ({
         face,
         transform: createFaceTransform(face),
     }));
 
     return (
-        <GtkScrolledWindow name="scrolled">
-            <GtkFixed
-                name="outer-fixed"
-                halign={Gtk.Align.CENTER}
-                valign={Gtk.Align.CENTER}
-                overflow={Gtk.Overflow.VISIBLE}
-            >
-                <GtkFixedLayoutChild transform={at(0, 0)}>
-                    <GtkFixed name="inner-fixed" overflow={Gtk.Overflow.VISIBLE}>
-                        {faceTransforms.map(({ face, transform }) => (
-                            <GtkFixedLayoutChild key={face.name} transform={at(0, 0, transform)}>
-                                <GtkFrame
-                                    name={`cube-face-${face.name}`}
-                                    widthRequest={FACE_SIZE}
-                                    heightRequest={FACE_SIZE}
-                                    cssClasses={[face.name]}
-                                />
-                            </GtkFixedLayoutChild>
-                        ))}
-                    </GtkFixed>
-                </GtkFixedLayoutChild>
-            </GtkFixed>
-        </GtkScrolledWindow>
+        <>
+            <CssResource css={fixedCss} />
+            <GtkScrolledWindow name="scrolled">
+                <GtkFixed
+                    name="outer-fixed"
+                    halign={Gtk.Align.CENTER}
+                    valign={Gtk.Align.CENTER}
+                    overflow={Gtk.Overflow.VISIBLE}
+                >
+                    <GtkFixedLayoutChild transform={at(0, 0)}>
+                        <GtkFixed name="inner-fixed" overflow={Gtk.Overflow.VISIBLE}>
+                            {faceTransforms.map(({ face, transform }) => (
+                                <GtkFixedLayoutChild key={face.name} transform={at(0, 0, transform)}>
+                                    <GtkFrame
+                                        name={`cube-face-${face.name}`}
+                                        widthRequest={FACE_SIZE}
+                                        heightRequest={FACE_SIZE}
+                                        cssClasses={[face.name]}
+                                        accessibleRole={Gtk.AccessibleRole.PRESENTATION}
+                                    />
+                                </GtkFixedLayoutChild>
+                            ))}
+                        </GtkFixed>
+                    </GtkFixedLayoutChild>
+                </GtkFixed>
+            </GtkScrolledWindow>
+        </>
     );
 }
 

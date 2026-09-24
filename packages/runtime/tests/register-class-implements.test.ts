@@ -278,7 +278,7 @@ class ChainedStore extends ChainBase implements Gio.ListModelImpl {
         return 2;
     }
 
-    override vfuncGetItem(position: number): GObject | null {
+    override vfuncGetItem(position: number): ReturnType<Gio.ListModel["vfuncGetItem"]> {
         return position < 2 ? super.vfuncGetItem(position) : null;
     }
 }

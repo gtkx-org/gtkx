@@ -15,7 +15,8 @@ type Theme = {
     isDark: boolean;
 };
 
-type OriginalSettingsRef = React.RefObject<{ themeName: string; colorScheme: Adw.ColorScheme } | null>;
+type OriginalSettings = { themeName: string; colorScheme: Adw.ColorScheme; title: string | null };
+type OriginalSettingsRef = React.RefObject<OriginalSettings | null>;
 
 type ThemesControls = {
     window: Gtk.Window | null;
@@ -32,7 +33,7 @@ const THEMES: Theme[] = [
     { name: "Adwaita", isDark: false },
     { name: "Adwaita", isDark: true },
     { name: "HighContrast", isDark: false },
-    { name: "HighContrastInverse", isDark: false },
+    { name: "HighContrastInverse", isDark: true },
 ];
 
 const FPS_POLL_MS = 500;
@@ -52,7 +53,7 @@ const themesDemo: Demo = {
     isResizable: false,
 };
 
-const restoreOriginalSettings = (originalSettingsRef: OriginalSettingsRef) => {
+const restoreOriginalSettings = (originalSettingsRef: OriginalSettingsRef, window: Gtk.Window | null) => {
     const original = originalSettingsRef.current;
     const settings = Gtk.Settings.getDefault();
     const styleManager = Adw.StyleManager.getDefault();
@@ -60,6 +61,7 @@ const restoreOriginalSettings = (originalSettingsRef: OriginalSettingsRef) => {
     if (original && settings) {
         settings.gtkThemeName = original.themeName;
         styleManager.setColorScheme(original.colorScheme);
+        window?.setTitle(original.title);
     }
 };
 
@@ -100,7 +102,7 @@ const applyNextTheme = (
 };
 
 const stopCycling = (controls: ThemesControls): void => {
-    restoreOriginalSettings(controls.originalSettingsRef);
+    restoreOriginalSettings(controls.originalSettingsRef, controls.window);
     controls.setIsRunning(false);
     controls.fpsRef.current = "";
     controls.setFps("");
@@ -167,8 +169,12 @@ const ThemesWarningDialog = ({ onResponse }: { onResponse: (response: string) =>
     />
 );
 
-function useThemesLifecycle(originalSettingsRef: OriginalSettingsRef) {
+function useThemesLifecycle(window: Gtk.Window | null, originalSettingsRef: OriginalSettingsRef) {
     useLayoutEffect(() => {
+        if (window === null) {
+            return;
+        }
+
         const settings = Gtk.Settings.getDefault();
         const styleManager = Adw.StyleManager.getDefault();
 
@@ -176,13 +182,14 @@ function useThemesLifecycle(originalSettingsRef: OriginalSettingsRef) {
             originalSettingsRef.current = {
                 themeName: settings.gtkThemeName,
                 colorScheme: styleManager.getColorScheme(),
+                title: window.getTitle(),
             };
         }
 
         return () => {
-            restoreOriginalSettings(originalSettingsRef);
+            restoreOriginalSettings(originalSettingsRef, null);
         };
-    }, [originalSettingsRef]);
+    }, [window, originalSettingsRef]);
 }
 
 function useFpsPolling(isRunning: boolean, fpsRef: React.RefObject<string>, setFps: (fps: string) => void) {
@@ -202,12 +209,14 @@ function useFpsPolling(isRunning: boolean, fpsRef: React.RefObject<string>, setF
 }
 
 function useFpsAttrs() {
-    return (() => {
+    const [attrs] = useState(() => {
         const attrs = Pango.AttrList.new();
         attrs.insert(Pango.AttrFontFeatures.new("tnum=1"));
 
         return attrs;
-    })();
+    });
+
+    return attrs;
 }
 
 function useThemesCycling(window: Gtk.Window | null) {
@@ -216,10 +225,10 @@ function useThemesCycling(window: Gtk.Window | null) {
     const [showWarning, setShowWarning] = useState(false);
     const fpsAttrs = useFpsAttrs();
     const themeIndexRef = useRef(0);
-    const originalSettingsRef = useRef<{ themeName: string; colorScheme: Adw.ColorScheme } | null>(null);
+    const originalSettingsRef = useRef<OriginalSettings | null>(null);
     const fpsRef = useRef("");
     const controls = { window, originalSettingsRef, fpsRef, setIsRunning, setFps, setShowWarning };
-    useThemesLifecycle(originalSettingsRef);
+    useThemesLifecycle(window, originalSettingsRef);
     useFpsPolling(isRunning, fpsRef, setFps);
 
     useTickCallback(isRunning ? window : null, (_widget, frameClock) => {
@@ -264,14 +273,14 @@ function ThemesTitlebar() {
             start={(
                 <GtkToggleButton
                     label="Cycle"
-                    active={cycling.isRunning}
+                    active={cycling.isRunning || cycling.showWarning}
                     onToggled={(btn) => {
                         cycling.handleToggle(btn.getActive());
                     }}
                 />
             )}
             end={(
-                <GtkLabel widthChars={12} attributes={cycling.fpsAttrs}>
+                <GtkLabel accessibleRole={Gtk.AccessibleRole.STATUS} widthChars={12} attributes={cycling.fpsAttrs}>
                     {cycling.fps}
                 </GtkLabel>
             )}

@@ -217,7 +217,7 @@ describe("generated caller-allocated container admission", () => {
         const reference = loadApiReference({
             libraries: ["Gio-2.0", "Pango-1.0"],
             girPath: resolveGirPath([]),
-            resolveFrom: process.cwd(),
+            resolveFrom: project.root,
         });
         const pollable = reference.lookup("Gio.PollableInputStream", "interface");
         expect(pollable.outcome).toBe("page");

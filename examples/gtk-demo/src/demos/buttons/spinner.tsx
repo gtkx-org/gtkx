@@ -27,13 +27,13 @@ function SpinnerDemo() {
             marginEnd={5}
         >
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={5}>
-                <GtkSpinner spinning={spinning} />
-                <GtkEntry />
+                <GtkSpinner accessibleLabel="Enabled spinner" spinning={spinning} />
+                <GtkEntry accessibleLabel="Enabled text entry" />
             </GtkBox>
 
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={5} sensitive={false}>
-                <GtkSpinner spinning={spinning} />
-                <GtkEntry />
+                <GtkSpinner accessibleLabel="Disabled spinner" spinning={spinning} />
+                <GtkEntry accessibleLabel="Disabled text entry" />
             </GtkBox>
 
             <GtkButton

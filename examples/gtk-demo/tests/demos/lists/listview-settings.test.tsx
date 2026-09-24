@@ -1,302 +1,158 @@
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { act, screen, userEvent, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
 import { listviewSettingsDemo } from "../../../src/demos/lists/listview-settings.js";
-import { collectWidgets, findInactiveSearchToggle, openSearchEntry, renderDemo } from "../../test-utils.js";
+import { collectWidgets, openSearchEntry, renderDemo } from "../../test-utils.js";
 
-type FilteredToZeroState = {
-    columnView: Gtk.ColumnView;
-    full: number;
-    entry: Gtk.SearchEntry;
-};
+const schemaId = "org.gtkx.test.settings";
+const groupsSchemaId = "org.gtkx.test.settings.groups";
 
-type BooleanEditableSelection = {
-    sidebar: Gtk.ListView;
-    index: number;
-    editable: Gtk.EditableLabel;
-};
-
-const titledColumn = (candidate: unknown): [string, Gtk.ColumnViewColumn] | null => {
-    if (!(candidate instanceof Gtk.ColumnViewColumn)) {
-        return null;
-    }
-
-    const title = candidate.getTitle();
-
-    return title ? [title, candidate] : null;
-};
-
-const readColumns = (cv: Gtk.ColumnView): Map<string, Gtk.ColumnViewColumn> => {
-    const out: Map<string, Gtk.ColumnViewColumn> = new Map();
-    const columns = cv.getColumns();
-
-    for (let i = 0; i < columns.getNItems(); i++) {
-        const entry = titledColumn(columns.getItem(i));
-
-        if (entry) {
-            out.set(entry[0], entry[1]);
-        }
-    }
-
-    return out;
-};
-
-const itemCount = (cv: Gtk.ColumnView): number => (cv.getModel())?.getNItems() ?? 0;
-
-const findColumnView = async (): Promise<Gtk.ColumnView> =>
-    await screen.findByName("column-view", { as: Gtk.ColumnView });
-
-const renderColumnView = async (): Promise<Gtk.ColumnView> => {
-    await renderDemo(listviewSettingsDemo);
-
-    return await findColumnView();
-};
-
-const selectFirstSchemaWithKeys = async (): Promise<Gtk.ColumnView> => {
+const selectSchema = async (id: string) => {
     const sidebar = await screen.findByName("sidebar", { as: Gtk.ListView });
-    await userEvent.selectOptions(sidebar, 0);
-    const columnView = await findColumnView();
+    await userEvent.scroll(sidebar, { y: -100_000 });
 
-    await waitFor(() => {
-        expect(itemCount(columnView)).toBeGreaterThan(0);
-    });
+    for (let page = 0; page < 50; page++) {
+        const label = within(sidebar).queryAllByText(id)[0];
 
-    return columnView;
-};
+        if (label) {
+            await userEvent.click(label);
 
-const booleanEditableIn = (columnView: Gtk.ColumnView): Gtk.EditableLabel | undefined =>
-    collectWidgets(columnView, Gtk.EditableLabel).find((e) => e.getText() === "true" || e.getText() === "false");
-
-const booleanEditableAtRow = async (sidebar: Gtk.ListView, index: number): Promise<Gtk.EditableLabel | undefined> => {
-    await userEvent.selectOptions(sidebar, index);
-
-    return booleanEditableIn(await findColumnView());
-};
-
-const selectSchemaWithBooleanKey = async (): Promise<BooleanEditableSelection> => {
-    const sidebar = await screen.findByName("sidebar", { as: Gtk.ListView });
-    const rowCount = sidebar.getModel()?.getNItems() ?? 0;
-
-    for (let index = 0; index < rowCount; index++) {
-        const editable = await booleanEditableAtRow(sidebar, index);
-
-        if (editable !== undefined) {
-            return { sidebar, index, editable };
+            return;
         }
+
+        await userEvent.scroll(sidebar, { y: 250 });
     }
 
-    throw new Error("No GSettings schema installed on this system exposes a boolean-valued key");
+    throw new Error(`Schema ${id} was not found`);
 };
 
-const filterKeysToZero = async (): Promise<FilteredToZeroState> => {
-    await renderDemo(listviewSettingsDemo);
-    const columnView = await selectFirstSchemaWithKeys();
-    const full = itemCount(columnView);
-    const entry = await openSearchEntry();
-    await userEvent.type(entry, "zzqqxx");
+const findValue = async (key: string): Promise<Gtk.EditableLabel> => {
+    const search = screen.queryByName("search-entry", { as: Gtk.SearchEntry }) ?? await openSearchEntry();
+    await userEvent.clear(search);
+    await userEvent.type(search, key);
 
-    await waitFor(() => {
-        expect(itemCount(columnView)).toBe(0);
-    });
-
-    return { columnView, full, entry };
+    return await screen.findByLabelText(`Value for ${key}`, { as: Gtk.EditableLabel });
 };
 
-describe("listviewSettingsDemo layout", () => {
-    it("installs a header bar with a search toggle starting inactive", async () => {
+const editValue = async (entry: Gtk.EditableLabel, text: string) => {
+    await userEvent.click(entry);
+    await userEvent.keyboard(entry, "{Enter}");
+    await userEvent.clear(entry);
+    await userEvent.type(entry, text);
+    await userEvent.keyboard(entry, "{Enter}");
+};
+
+describe("listviewSettingsDemo", () => {
+    it("shows the keys of the selected schema", async () => {
         await renderDemo(listviewSettingsDemo);
-        const toggle = await findInactiveSearchToggle();
-        expect(toggle).toHaveObjectProperty("active", false);
+        await selectSchema(schemaId);
+        await findValue("clock-format");
+        expect(await screen.findByText("clock-format")).toBeVisible();
+        const view = await screen.findByName("column-view", { as: Gtk.ColumnView });
+        expect(within(view).getByText("Name")).toBeVisible();
+        expect(within(view).getByText("Value")).toBeVisible();
+        expect(within(view).getByText("Type")).toBeVisible();
+        expect(within(view).queryByText("Summary")).toBeNull();
     });
 
-    it("splits the sidebar list from the column-view details across the paned", async () => {
+    it("filters keys and clears the search with Escape", async () => {
         await renderDemo(listviewSettingsDemo);
-        const paned = await screen.findByName("paned", { as: Gtk.Paned });
-        const sidebar = await screen.findByName("sidebar", { as: Gtk.ListView });
-        const columnView = await findColumnView();
-        expect(paned.getStartChild()).toContainElement(sidebar);
-        expect(paned.getEndChild()).toContainElement(columnView);
-    });
-
-    it("populates the navigation sidebar list with the schema tree", async () => {
-        await renderDemo(listviewSettingsDemo);
-        const sidebar = await screen.findByName("sidebar", { as: Gtk.ListView });
-        expect(sidebar).toHaveClass("navigation-sidebar");
-        expect((sidebar.getModel() as Gtk.SelectionModel).getNItems()).toBeGreaterThan(0);
-    });
-
-    it("renders a search bar starting disabled with an empty search entry inside", async () => {
-        await renderDemo(listviewSettingsDemo);
-        const searchBar = await screen.findByName("search-bar", { as: Gtk.SearchBar });
-        expect(searchBar).toHaveObjectProperty("searchModeEnabled", false);
-        expect(screen.queryByName("search-entry")).toBeNull();
-        const searchEntry = await openSearchEntry();
-        expect(searchEntry).toHaveObjectProperty("text", "");
-    });
-});
-
-describe("listviewSettingsDemo column view", () => {
-    it("renders a GtkColumnView with the expected columns", async () => {
-        const columnView = await renderColumnView();
-
-        expect(readColumns(columnView).keys().toArray()).toEqual([
-            "Name",
-            "Value",
-            "Type",
-            "Default",
-            "Summary",
-            "Description",
-        ]);
-    });
-
-    it("hides the Summary and Description columns by default", async () => {
-        const columnView = await renderColumnView();
-        const byTitle = readColumns(columnView);
-        expect(byTitle.get("Summary")).toHaveObjectProperty("visible", false);
-        expect(byTitle.get("Description")).toHaveObjectProperty("visible", false);
-        expect(byTitle.get("Name")).toHaveObjectProperty("visible", true);
-    });
-
-    it("attaches a selection model to the column view", async () => {
-        const columnView = await renderColumnView();
-
+        await selectSchema(schemaId);
+        const search = await openSearchEntry();
+        await userEvent.type(search, "clock-format");
         await waitFor(() => {
-            expect(columnView.getModel()).toBeInstanceOf(Gtk.SelectionModel);
+            expect(screen.queryByText("cursor-size")).toBeNull();
         });
+        expect(screen.getByText("clock-format")).toBeVisible();
+        await userEvent.keyboard(search, "{Escape}");
+        const searchAgain = await openSearchEntry();
+        expect(searchAgain).toHaveDisplayValue("");
+        await userEvent.keyboard(searchAgain, "{Escape}");
+        expect(screen.getByName("search-toggle", { as: Gtk.ToggleButton })).not.toBePressed();
     });
 
-    it("exposes the column view's column count once the React commit settles", async () => {
-        const columnView = await renderColumnView();
+    it("edits a boolean and retains it after changing schemas", async () => {
+        const settings = Gio.Settings.new(schemaId);
+        const original = settings.getValue("clock-show-seconds");
+        const changed = original.print(false) === "true" ? "false" : "true";
 
+        try {
+            await renderDemo(listviewSettingsDemo);
+            await selectSchema(schemaId);
+            await editValue(await findValue("clock-show-seconds"), changed);
+            expect(settings.getValue("clock-show-seconds").print(false)).toBe(changed);
+            await selectSchema(groupsSchemaId);
+            await selectSchema(schemaId);
+            expect(await findValue("clock-show-seconds")).toHaveObjectProperty("text", changed);
+        } finally {
+            settings.setValue("clock-show-seconds", original);
+        }
+    });
+
+    it.each(["invalid", "'unsupported'"])("rejects an invalid clock format %s", async (value) => {
+        const settings = Gio.Settings.new(schemaId);
+        const original = settings.getValue("clock-format");
+        await renderDemo(listviewSettingsDemo);
+        await selectSchema(schemaId);
+        const entry = await findValue("clock-format");
+        await editValue(entry, value);
+        expect(entry).toHaveObjectProperty("text", original.print(false));
+        expect(settings.getValue("clock-format").equal(original)).toBe(true);
+    });
+
+    it("loads and edits a child whose schema ID differs from its name", async () => {
+        const settings = Gio.Settings.new(groupsSchemaId).getChild("output");
+        const original = settings.getValue("enabled");
+        const changed = original.print(false) === "true" ? "false" : "true";
+
+        try {
+            await renderDemo(listviewSettingsDemo);
+            await selectSchema(`${groupsSchemaId}/output`);
+            await editValue(await findValue("enabled"), changed);
+            expect(settings.getValue("enabled").print(false)).toBe(changed);
+        } finally {
+            settings.setValue("enabled", original);
+        }
+    });
+
+    it("keeps a schema collapsed after selection changes", async () => {
+        await renderDemo(listviewSettingsDemo);
+        await selectSchema(groupsSchemaId);
+        const sidebar = screen.getByName("sidebar", { as: Gtk.ListView });
+        await userEvent.click(within(sidebar).getByRole(Gtk.AccessibleRole.BUTTON, {
+            name: groupsSchemaId,
+            as: Gtk.TreeExpander,
+        }));
         await waitFor(() => {
-            expect(columnView.getColumns()).toHaveObjectProperty("nItems", 6);
+            expect(screen.queryAllByText(`${groupsSchemaId}/output`)).toHaveLength(0);
         });
+        await selectSchema(schemaId);
+        expect(screen.queryAllByText(`${groupsSchemaId}/output`)).toHaveLength(0);
+        await selectSchema(groupsSchemaId);
+        await userEvent.click(within(sidebar).getByRole(Gtk.AccessibleRole.BUTTON, {
+            name: groupsSchemaId,
+            as: Gtk.TreeExpander,
+        }));
+        const children = await screen.findAllByText(`${groupsSchemaId}/output`);
+        expect(children.length).toBeGreaterThan(0);
     });
-});
 
-describe("listviewSettingsDemo column header menus", () => {
-    it("attaches a header menu only to the four toggleable columns", async () => {
-        const columnView = await renderColumnView();
-
-        await waitFor(
-            () => {
-                const byTitle = readColumns(columnView);
-
-                for (const title of ["Type", "Default", "Summary", "Description"]) {
-                    expect(byTitle.get(title)?.getHeaderMenu()).not.toBeNull();
-                }
-            },
-            { timeout: 3000 },
+    it("sorts displayed values by their type when the Type header is clicked", async () => {
+        await renderDemo(listviewSettingsDemo);
+        await selectSchema(schemaId);
+        const view = screen.getByName("column-view", { as: Gtk.ColumnView });
+        const header = within(view).getByText("Type");
+        const types = () => collectWidgets(view, Gtk.Label).map((label) => label.getText()).filter((text) =>
+            ["s", "b", "i", "u", "d", "as"].includes(text),
         );
-
-        const byTitle = readColumns(columnView);
-        expect(byTitle.get("Name")?.getHeaderMenu()).toBeNull();
-        expect(byTitle.get("Value")?.getHeaderMenu()).toBeNull();
-        const withMenus = byTitle.values().filter((col) => col.getHeaderMenu() !== null).toArray();
-        expect(withMenus).toHaveLength(4);
-    });
-
-    it("shows a column when its visibility menu action is activated", async () => {
-        const columnView = await renderColumnView();
-        expect(readColumns(columnView).get("Summary")).toHaveObjectProperty("visible", false);
-
-        await act(() => {
-            columnView.activateAction("columnview.show-summary", null);
-        });
-
+        await userEvent.click(header);
         await waitFor(() => {
-            expect(readColumns(columnView).get("Summary")).toHaveObjectProperty("visible", true);
+            expect(types()).toEqual(types().toSorted((a, b) => a.localeCompare(b)));
         });
-    });
-});
-
-describe("listviewSettingsDemo schema interactions", () => {
-    it("loads keys into the column view when a schema is selected", async () => {
-        await renderDemo(listviewSettingsDemo);
-        const columnView = await selectFirstSchemaWithKeys();
-        expect(itemCount(columnView)).toBeGreaterThan(0);
-    });
-
-    it("opens the key search bar when the titlebar toggle is activated", async () => {
-        await renderDemo(listviewSettingsDemo);
-        await openSearchEntry();
-        const searchBar = await screen.findByName("search-bar", { as: Gtk.SearchBar });
-        expect(searchBar).toHaveObjectProperty("searchModeEnabled", true);
-    });
-
-    it("filters the column view to zero rows for a non-matching query and restores on clear", async () => {
-        const { columnView, full, entry } = await filterKeysToZero();
-        await userEvent.clear(entry);
-
+        await userEvent.click(header);
         await waitFor(() => {
-            expect(itemCount(columnView)).toBe(full);
-        });
-    });
-
-    it("clears the key search filter when the search entry stops searching", async () => {
-        const { columnView, full, entry } = await filterKeysToZero();
-        await userEvent.keyboard(entry, "{Escape}");
-        const searchBar = await screen.findByName("search-bar", { as: Gtk.SearchBar });
-
-        await waitFor(() => {
-            expect(searchBar).toHaveObjectProperty("searchModeEnabled", false);
-        });
-
-        await waitFor(() => {
-            expect(itemCount(columnView)).toBe(full);
-        });
-    });
-});
-
-describe("listviewSettingsDemo value editing", () => {
-    it("commits a valid edited boolean value to GSettings and reflects it in the row", async () => {
-        await renderDemo(listviewSettingsDemo);
-        const { sidebar, index, editable: target } = await selectSchemaWithBooleanKey();
-        const flipped = target.getText() === "true" ? "false" : "true";
-
-        await act(() => {
-            target.startEditing();
-        });
-        await userEvent.clear(target);
-        await userEvent.type(target, flipped);
-        await act(() => {
-            target.stopEditing(true);
-        });
-
-        await waitFor(() => {
-            expect(target).toHaveObjectProperty("text", flipped);
-        });
-
-        await userEvent.selectOptions(sidebar, index === 0 ? 1 : 0);
-        await userEvent.selectOptions(sidebar, index);
-        const columnView = await findColumnView();
-
-        await waitFor(() => {
-            expect(booleanEditableIn(columnView)).toHaveObjectProperty("text", flipped);
-        });
-    });
-
-    it("restores the displayed value after rejecting an unparseable edit", async () => {
-        await renderDemo(listviewSettingsDemo);
-        const columnView = await selectFirstSchemaWithKeys();
-        const [target] = collectWidgets(columnView, Gtk.EditableLabel);
-
-        if (!target) {
-            throw new Error("the selected schema exposes no editable value cell");
-        }
-
-        const original = target.getText();
-        await act(() => {
-            target.startEditing();
-        });
-        await userEvent.clear(target);
-        await userEvent.type(target, "!!not-a-valid-variant!!");
-        await act(() => {
-            target.stopEditing(true);
-        });
-
-        await waitFor(() => {
-            expect(target).toHaveObjectProperty("text", original);
+            expect(types()).toEqual(types().toSorted((a, b) => b.localeCompare(a)));
         });
     });
 });

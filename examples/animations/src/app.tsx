@@ -24,7 +24,7 @@ const Showcase = () => {
         <AdwApplicationWindow title="GTKX Animations" defaultWidth={920} defaultHeight={640} onCloseRequest={quit}>
             <AdwToolbarView topBar={<AdwHeaderBar />}>
                 <GtkBox>
-                    {stack && <GtkStackSidebar name="sidebar" stack={stack} />}
+                    {stack && <GtkStackSidebar stack={stack} />}
                     <GtkStack ref={setStack} transitionType={Gtk.StackTransitionType.CROSSFADE} hexpand vexpand>
                         {demos.map(({ id, title, description, component: DemoComponent }) => (
                             <GtkStackPage key={id} name={id} title={title}>
@@ -37,7 +37,12 @@ const Showcase = () => {
                                         marginStart={24}
                                         marginEnd={24}
                                     >
-                                        <GtkLabel cssClasses={["title-2"]} halign={Gtk.Align.START}>
+                                        <GtkLabel
+                                            cssClasses={["title-2"]}
+                                            halign={Gtk.Align.START}
+                                            accessibleRole={Gtk.AccessibleRole.HEADING}
+                                            accessibleLevel={1}
+                                        >
                                             {title}
                                         </GtkLabel>
                                         <GtkLabel cssClasses={["dim-label"]} halign={Gtk.Align.START} wrap>

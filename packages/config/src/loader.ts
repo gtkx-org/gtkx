@@ -138,6 +138,7 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
             rcFile: false,
             globalRc: false,
             packageJson: false,
+            omit$Keys: true,
             context: { mode: options.mode },
             jitiOptions: { fsCache: false, transform: transformConfigModule },
             resolve: rejectMissingLocalConfig,

@@ -8,7 +8,8 @@
     "scripts": {
         "build": "gtkx build",
         "dev": "gtkx dev",
-        "start": "node dist/bundle.mjs"
+        "start": "node dist/bundle.mjs",
+        "test": "vitest run"
     },
     "dependencies": {
         "@gtkx/react": "workspace:*",
@@ -16,7 +17,10 @@
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
-        "@gtkx/config": "workspace:*"
+        "@gtkx/config": "workspace:*",
+        "@gtkx/testing": "workspace:*",
+        "vite": "catalog:",
+        "vitest": "catalog:"
     },
     "nx": {
         "targets": {
@@ -71,6 +75,27 @@
                 "continuous": true,
                 "dependsOn": [
                     "build"
+                ]
+            },
+            "test": {
+                "command": "vitest run",
+                "options": {
+                    "cwd": "{projectRoot}"
+                },
+                "cache": true,
+                "inputs": [
+                    "default",
+                    "^production",
+                    {
+                        "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
+                        "transitive": true
+                    }
+                ],
+                "outputs": [],
+                "dependsOn": [
+                    "...",
+                    "codegen",
+                    "@gtkx/testing:build"
                 ]
             },
             "lint": {

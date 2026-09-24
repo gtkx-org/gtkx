@@ -15,20 +15,73 @@ const renderVideo = async (): Promise<Gtk.Video> => {
 };
 
 describe("videoPlayerDemo", () => {
-    it("renders its media controls and loads the bundled video", async () => {
+    it("enters fullscreen through the titlebar and exits with F11", async () => {
+        const video = await renderVideo();
+        const window = video.getRoot() as Gtk.Window;
+        const fullscreenButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+            name: "Fullscreen",
+            as: Gtk.Button,
+        });
+        await userEvent.click(fullscreenButton);
+        await waitFor(() => {
+            expect(window.isFullscreen()).toBe(true);
+        });
+        expect(fullscreenButton).toHaveAccessibleName("Exit fullscreen");
+        expect(fullscreenButton).toHaveObjectProperty("tooltipText", "Exit fullscreen");
+        await userEvent.keyboard(video, "{F11}");
+        await waitFor(() => {
+            expect(window.isFullscreen()).toBe(false);
+        });
+        expect(fullscreenButton).toHaveAccessibleName("Fullscreen");
+        expect(fullscreenButton).toHaveObjectProperty("tooltipText", "Fullscreen");
+    });
+
+    it("toggles fullscreen with F11", async () => {
+        const video = await renderVideo();
+        const window = video.getRoot() as Gtk.Window;
+        await userEvent.keyboard(video, "{F11}");
+        await waitFor(() => {
+            expect(window.isFullscreen()).toBe(true);
+        });
+        await userEvent.keyboard(video, "{F11}");
+        await waitFor(() => {
+            expect(window.isFullscreen()).toBe(false);
+        });
+        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Fullscreen" })).toBeVisible();
+    });
+
+    it("renders accessible media controls and restarts the bundled video", async () => {
         const video = await renderVideo();
         expect(video).toHaveObjectProperty("autoplay", true);
         expect(video).toHaveObjectProperty("graphicsOffload", Gtk.GraphicsOffloadEnabled.ENABLED);
         expect(video).toHaveObjectProperty("file", null);
+        expect(await screen.findByRole(Gtk.AccessibleRole.GROUP, { name: "Video player", as: Gtk.Video })).toBe(video);
         await screen.findByName("open-button", { as: Gtk.Button });
-        await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Big Buck Bunny" });
+        const logoButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "GTK Logo", as: Gtk.Button });
+        const bbbButton = await screen.findByRole(Gtk.AccessibleRole.BUTTON, {
+            name: "Big Buck Bunny",
+            as: Gtk.Button,
+        });
+        expect(logoButton).toHaveObjectProperty("tooltipText", "GTK Logo");
+        expect(bbbButton).toHaveObjectProperty("tooltipText", "Big Buck Bunny");
+        expect(logoButton.getChild()?.getAccessibleRole()).toBe(Gtk.AccessibleRole.PRESENTATION);
+        expect(bbbButton.getChild()?.getAccessibleRole()).toBe(Gtk.AccessibleRole.PRESENTATION);
         await screen.findByName("fullscreen-button", { as: Gtk.Button });
 
-        await userEvent.click(await screen.findByName("logo-button", { as: Gtk.Button }));
+        await userEvent.click(logoButton);
 
         await waitFor(() => {
             expect(video.getFile()?.getUri()).toMatch(/gtk-logo\.webm$/);
         });
+
+        const firstFile = video.getFile();
+        await userEvent.click(logoButton);
+
+        await waitFor(() => {
+            expect(video.getFile()).not.toBe(firstFile);
+        });
+
+        expect(video.getFile()?.getUri()).toMatch(/gtk-logo\.webm$/);
     });
 
     it("loads a file selected through the open dialog", async () => {

@@ -946,6 +946,69 @@ describe("userEvent.drop", () => {
 });
 
 describe("userEvent.dragAndDrop", () => {
+    it.each(["prepared", ""])("drops the source's prepared content %j", async (text) => {
+        const handleDrop = dropHandler((value) => value.getString());
+        const ends = callCounter();
+        const { source, target } = await renderDragAndDropPair({
+            onDrop: handleDrop.onDrop,
+            onPrepare: () => Gdk.ContentProvider.newForValue(text),
+            onDragEnd: ends.callback,
+        });
+        await userEvent.dragAndDrop(source, target, undefined, { x: 2, y: 3 });
+        expect(handleDrop.calls).toEqual([[text, 2, 3]]);
+        expect(ends.count).toBe(1);
+    });
+
+    it("drops a configured source value in a format accepted by the target", async () => {
+        const handleDrop = dropHandler((value) => value.getInt());
+        const { source, target } = await renderDragAndDropPair({
+            onDrop: handleDrop.onDrop,
+            content: Gdk.ContentProvider.newUnion([
+                Gdk.ContentProvider.newForValue("text"),
+                Gdk.ContentProvider.newForValue(42),
+            ]),
+            types: [GObject.TYPE_INT],
+        });
+        await userEvent.dragAndDrop(source, target);
+        expect(handleDrop.calls[0]?.[0]).toBe(42);
+    });
+
+    it("ends a drag without delivering a format the target does not accept", async () => {
+        const drops = callCounter();
+        const ends = callCounter();
+        const { source, target } = await renderDragAndDropPair({
+            onDrop: () => {
+                drops.callback();
+
+                return true;
+            },
+            onPrepare: () => Gdk.ContentProvider.newForValue(true),
+            onDragEnd: ends.callback,
+        });
+        await userEvent.dragAndDrop(source, target);
+        expect(drops.count).toBe(0);
+        expect(ends.count).toBe(1);
+    });
+
+    it("throws when the source has no content", async () => {
+        const { source, target } = await renderDragAndDropPair({ onDrop: () => true });
+        await expect(userEvent.dragAndDrop(source, target)).rejects.toThrow();
+    });
+
+    it("ends the source drag when its begin handler throws", async () => {
+        const ends = callCounter();
+        const { source, target } = await renderDragAndDropPair({
+            onDrop: () => true,
+            onPrepare: () => Gdk.ContentProvider.newForValue("prepared"),
+            onDragBegin: () => {
+                throw new Error("Drag setup failed");
+            },
+            onDragEnd: ends.callback,
+        });
+        await expect(userEvent.dragAndDrop(source, target)).rejects.toThrow();
+        expect(ends.count).toBe(1);
+    });
+
     it("runs the source drag lifecycle around the target drop", async () => {
         const handleDrop = dropHandler((value) => value.getString());
         const begins = callCounter();

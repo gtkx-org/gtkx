@@ -52,6 +52,7 @@ describe("fixedDemo cube faces", () => {
 
         for (const [i, name] of FACE_NAMES.entries()) {
             expect(faces[i]).toHaveClass(name);
+            expect(faces[i]?.getAccessibleRole()).toBe(Gtk.AccessibleRole.PRESENTATION);
         }
     });
 

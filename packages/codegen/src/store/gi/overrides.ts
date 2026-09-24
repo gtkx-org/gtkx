@@ -22,6 +22,7 @@ const OVERRIDES: Record<string, Override[]> = {
     gtk: [
         { module: "widget-class", exports: ["WidgetClass"] },
         { module: "text-view", exports: "*", patchesPrototype: true },
+        { module: "window", exports: [], patchesPrototype: true },
     ],
 };
 

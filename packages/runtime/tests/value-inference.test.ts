@@ -189,6 +189,33 @@ describe("a value no GType can be inferred from", () => {
 });
 
 describe("a binding handing a value back", () => {
+    it.each(["copied", ""])("fills an initialized content-provider value with %j", (text) => {
+        const provider = Gdk.ContentProvider.newForValue(text);
+        const value = new Value();
+        value.init(TYPE_STRING);
+        expect(provider.getValue(value)).toBe(true);
+        expect(value.getString()).toBe(text);
+    });
+
+    it("reads the requested format from a union provider and replaces an earlier value", () => {
+        const provider = Gdk.ContentProvider.newUnion([
+            Gdk.ContentProvider.newForValue("copied"),
+            Gdk.ContentProvider.newForValue(42),
+        ]);
+        const value = new Value();
+        value.init(TYPE_INT);
+        value.setInt(7);
+        expect(provider.getValue(value)).toBe(true);
+        expect(value.getInt()).toBe(42);
+    });
+
+    it("throws when a content provider cannot fill the requested type", () => {
+        const provider = Gdk.ContentProvider.newForValue("copied");
+        const value = new Value();
+        value.init(Gdk.RGBA);
+        expect(() => provider.getValue(value)).toThrow();
+    });
+
     it("surfaces what a caller-allocated out parameter holds", () => {
         const builder = new Gtk.Builder();
         expect(builder.valueFromStringType(TYPE_INT, "42")).toEqual([true, 42]);

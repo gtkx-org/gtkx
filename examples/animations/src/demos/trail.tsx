@@ -30,7 +30,7 @@ function TrailDemo() {
         <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
             <GtkToggleButton
                 name="trail-toggle"
-                label="Toggle trail"
+                label="Show trail"
                 active={isShown}
                 halign={Gtk.Align.START}
                 onToggled={(button) => {

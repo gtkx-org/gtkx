@@ -17,7 +17,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import { useTickCallback } from "../../use-tick-callback.js";
 import sourceCode from "./gears.tsx?raw";
-import { bufferFloatData, setShaderSource } from "./gl-helpers.js";
+import { bufferFloatData, createShaderProgram, rotationMatrix } from "./gl-helpers.js";
 
 type GearStrip = {
     first: number;
@@ -26,7 +26,6 @@ type GearStrip = {
 
 type GearGeometry = {
     vertices: number[];
-    nvertices: number;
     strips: GearStrip[];
 };
 
@@ -39,8 +38,8 @@ type GearBuilder = {
     nz: number;
     w2: number;
     vert: (px: number, py: number, sign: number) => void;
-    startStrip: () => void;
-    endStrip: () => void;
+    startStrip: () => number;
+    endStrip: (first: number) => void;
     quadNormal: (p1x: number, p1y: number, p2x: number, p2y: number) => void;
 };
 
@@ -70,11 +69,25 @@ type ToothPoints = {
 
 type GearColor = [number, number, number, number];
 
+type GearDefinition = {
+    innerRadius: number;
+    outerRadius: number;
+    width: number;
+    teeth: number;
+    toothDepth: number;
+    color: GearColor;
+    x: number;
+    y: number;
+    angleScale: number;
+    angleOffset: number;
+};
+
+type GearMesh = GearDefinition & GearGeometry & { vbo: number };
+
 type GLState = {
     program: number;
     vao: number;
-    gearVbos: number[];
-    gearGeoms: GearGeometry[];
+    gears: GearMesh[];
     uniforms: {
         mvp: number;
         normalMatrix: number;
@@ -87,12 +100,8 @@ type DrawGearParams = {
     uniforms: GLState["uniforms"];
     projection: Graphene.Matrix;
     transform: Graphene.Matrix;
-    gear: GearGeometry;
-    vbo: number;
-    x: number;
-    y: number;
+    gear: GearMesh;
     angle: number;
-    color: GearColor;
 };
 
 type GearsState = ReturnType<typeof useGearsState>;
@@ -142,16 +151,43 @@ void main() {
     fragColor = Color;
 }`;
 
-const GEAR_COLORS: GearColor[] = [
-    [0.8, 0.1, 0, 1],
-    [0, 0.8, 0.2, 1],
-    [0.2, 0.2, 1, 1],
-];
-
-const GEAR_PARAMS = [
-    { inner: 1, outer: 4, width: 1, teeth: 20, depth: 0.7 },
-    { inner: 0.5, outer: 2, width: 2, teeth: 10, depth: 0.7 },
-    { inner: 1.3, outer: 2, width: 0.5, teeth: 10, depth: 0.7 },
+const GEAR_DEFINITIONS: GearDefinition[] = [
+    {
+        innerRadius: 1,
+        outerRadius: 4,
+        width: 1,
+        teeth: 20,
+        toothDepth: 0.7,
+        color: [0.8, 0.1, 0, 1],
+        x: -3,
+        y: -2,
+        angleScale: 1,
+        angleOffset: 0,
+    },
+    {
+        innerRadius: 0.5,
+        outerRadius: 2,
+        width: 2,
+        teeth: 10,
+        toothDepth: 0.7,
+        color: [0, 0.8, 0.2, 1],
+        x: 3.1,
+        y: -2,
+        angleScale: -2,
+        angleOffset: -9,
+    },
+    {
+        innerRadius: 1.3,
+        outerRadius: 2,
+        width: 0.5,
+        teeth: 10,
+        toothDepth: 0.7,
+        color: [0.2, 0.2, 1, 1],
+        x: -3.1,
+        y: 4.2,
+        angleScale: -2,
+        angleOffset: -25,
+    },
 ];
 
 const FPS_POLL_MS = 500;
@@ -184,14 +220,10 @@ const createGearBuilder = (width: number): GearBuilder => {
             builder.vi++;
         },
         startStrip() {
-            strips.push({ first: builder.vi, count: 0 });
+            return builder.vi;
         },
-        endStrip() {
-            const strip = strips.at(-1);
-
-            if (strip) {
-                strip.count = builder.vi - strip.first;
-            }
+        endStrip(first) {
+            strips.push({ first, count: builder.vi - first });
         },
         quadNormal(p1x, p1y, p2x, p2y) {
             builder.nx = p1y - p2y;
@@ -240,7 +272,7 @@ const computeToothPoints = (radii: ToothRadii, base: number): ToothPoints => {
 
 const emitToothFaces = (builder: GearBuilder, radii: ToothRadii, base: number) => {
     const p = computeToothPoints(radii, base);
-    builder.startStrip();
+    let first = builder.startStrip();
     builder.nx = 0;
     builder.ny = 0;
     builder.nz = 1;
@@ -251,11 +283,11 @@ const emitToothFaces = (builder: GearBuilder, radii: ToothRadii, base: number) =
     builder.vert(p.p4x, p.p4y, 1);
     builder.vert(p.p5x, p.p5y, 1);
     builder.vert(p.p6x, p.p6y, 1);
-    builder.endStrip();
-    builder.startStrip();
+    builder.endStrip(first);
+    first = builder.startStrip();
     builder.quadNormal(p.p4x, p.p4y, p.p6x, p.p6y);
-    builder.endStrip();
-    builder.startStrip();
+    builder.endStrip(first);
+    first = builder.startStrip();
     builder.nx = 0;
     builder.ny = 0;
     builder.nz = -1;
@@ -266,19 +298,19 @@ const emitToothFaces = (builder: GearBuilder, radii: ToothRadii, base: number) =
     builder.vert(p.p2x, p.p2y, -1);
     builder.vert(p.p1x, p.p1y, -1);
     builder.vert(p.p0x, p.p0y, -1);
-    builder.endStrip();
-    builder.startStrip();
+    builder.endStrip(first);
+    first = builder.startStrip();
     builder.quadNormal(p.p0x, p.p0y, p.p2x, p.p2y);
-    builder.endStrip();
-    builder.startStrip();
+    builder.endStrip(first);
+    first = builder.startStrip();
     builder.quadNormal(p.p1x, p.p1y, p.p0x, p.p0y);
-    builder.endStrip();
-    builder.startStrip();
+    builder.endStrip(first);
+    first = builder.startStrip();
     builder.quadNormal(p.p3x, p.p3y, p.p1x, p.p1y);
-    builder.endStrip();
-    builder.startStrip();
+    builder.endStrip(first);
+    first = builder.startStrip();
     builder.quadNormal(p.p5x, p.p5y, p.p3x, p.p3y);
-    builder.endStrip();
+    builder.endStrip(first);
 };
 
 function createGear({
@@ -287,13 +319,7 @@ function createGear({
     width,
     teeth,
     toothDepth,
-}: {
-    innerRadius: number;
-    outerRadius: number;
-    width: number;
-    teeth: number;
-    toothDepth: number;
-}): GearGeometry {
+}: GearDefinition): GearGeometry {
     const builder = createGearBuilder(width);
 
     const radii = {
@@ -307,7 +333,7 @@ function createGear({
         emitToothFaces(builder, radii, (i * 2 * Math.PI) / teeth);
     }
 
-    return { vertices: builder.vertices, nvertices: builder.vi, strips: builder.strips };
+    return { vertices: builder.vertices, strips: builder.strips };
 }
 
 const translationMatrix = (x: number, y: number, z: number): Graphene.Matrix => {
@@ -315,33 +341,6 @@ const translationMatrix = (x: number, y: number, z: number): Graphene.Matrix => 
     point.init(x, y, z);
 
     return new Graphene.Matrix().initTranslate(point);
-};
-
-const rotationMatrix = (angle: number, x: number, y: number, z: number): Graphene.Matrix => {
-    const axis = new Graphene.Vec3();
-    axis.init(x, y, z);
-
-    return new Graphene.Matrix().initRotate(angle, axis);
-};
-
-const createGearsProgram = (): number => {
-    const vs = gl.createShader(gl.VERTEX_SHADER);
-    setShaderSource(vs, VERTEX_SHADER);
-    gl.compileShader(vs);
-    const fs = gl.createShader(gl.FRAGMENT_SHADER);
-    setShaderSource(fs, FRAGMENT_SHADER);
-    gl.compileShader(fs);
-    const program = gl.createProgram();
-    gl.attachShader(program, vs);
-    gl.attachShader(program, fs);
-    gl.linkProgram(program);
-    gl.detachShader(program, vs);
-    gl.detachShader(program, fs);
-    gl.deleteShader(vs);
-    gl.deleteShader(fs);
-    gl.useProgram(program);
-
-    return program;
 };
 
 const collectUniforms = (program: number) => ({
@@ -352,50 +351,43 @@ const collectUniforms = (program: number) => ({
 });
 
 const createGearBuffers = () => {
-    const gearVbos: number[] = [];
-    const gearGeoms: GearGeometry[] = [];
-
-    for (const params of GEAR_PARAMS) {
-        const gear = createGear({
-            innerRadius: params.inner,
-            outerRadius: params.outer,
-            width: params.width,
-            teeth: params.teeth,
-            toothDepth: params.depth,
-        });
+    return GEAR_DEFINITIONS.map((definition): GearMesh => {
+        const geometry = createGear(definition);
 
         const vbo = gl.genBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
-        bufferFloatData(gl.ARRAY_BUFFER, gear.vertices, gl.STATIC_DRAW);
-        gearVbos.push(vbo);
-        gearGeoms.push(gear);
-    }
+        bufferFloatData(gl.ARRAY_BUFFER, geometry.vertices, gl.STATIC_DRAW);
 
-    return { gearVbos, gearGeoms };
+        return { ...definition, ...geometry, vbo };
+    });
 };
 
 function initGL(): GLState {
-    const program = createGearsProgram();
+    const program = createShaderProgram(VERTEX_SHADER, FRAGMENT_SHADER);
+    gl.useProgram(program);
     const uniforms = collectUniforms(program);
     gl.uniform4f(uniforms.lightSourcePosition, 5, 5, 10, 1);
     const vao = gl.genVertexArray();
     gl.bindVertexArray(vao);
     gl.enable(gl.CULL_FACE);
     gl.enable(gl.DEPTH_TEST);
-    const { gearVbos, gearGeoms } = createGearBuffers();
+    const gears = createGearBuffers();
 
-    return { program, vao, gearVbos, gearGeoms, uniforms };
+    return { program, vao, gears, uniforms };
 }
 
 function drawGear(params: DrawGearParams) {
-    const { uniforms, projection, transform, gear, vbo, x, y, angle, color } = params;
-    const modelView = rotationMatrix(angle, 0, 0, 1).multiply(translationMatrix(x, y, 0)).multiply(transform);
+    const { uniforms, projection, transform, gear, angle } = params;
+    const gearAngle = gear.angleScale * angle + gear.angleOffset;
+    const modelView = rotationMatrix(gearAngle, 0, 0, 1)
+        .multiply(translationMatrix(gear.x, gear.y, 0))
+        .multiply(transform);
     const mvp = modelView.multiply(projection);
     gl.uniformMatrix4fv(uniforms.mvp, 1, false, mvp.toFloat());
     const [, inverseModelView] = modelView.inverse();
     gl.uniformMatrix4fv(uniforms.normalMatrix, 1, false, inverseModelView.transpose().toFloat());
-    gl.uniform4f(uniforms.materialColor, color[0], color[1], color[2], color[3]);
-    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.uniform4f(uniforms.materialColor, gear.color[0], gear.color[1], gear.color[2], gear.color[3]);
+    gl.bindBuffer(gl.ARRAY_BUFFER, gear.vbo);
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 6 * 4, 0);
     gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 6 * 4, 3 * 4);
     gl.enableVertexAttribArray(0);
@@ -417,6 +409,7 @@ const AxisSlider = ({ axis, value, onChange }: { axis: string; value: number; on
                 orientation={Gtk.Orientation.VERTICAL}
                 inverted
                 drawValue={false}
+                accessibleLabel={`${axis} axis`}
                 vexpand
                 adjustment={<GtkAdjustment value={value} lower={0} upper={360} stepIncrement={1} pageIncrement={12} />}
                 onValueChanged={(scale) => {
@@ -527,8 +520,8 @@ function useGearsUnrealize(glStateRef: React.RefObject<GLState | null>) {
 
         area.makeCurrent();
 
-        for (const vbo of state.gearVbos) {
-            gl.deleteBuffer(vbo);
+        for (const gear of state.gears) {
+            gl.deleteBuffer(gear.vbo);
         }
 
         gl.deleteVertexArray(state.vao);
@@ -566,30 +559,8 @@ const resolveGLState = (
 };
 
 const drawAllGears = (state: GLState, transform: Graphene.Matrix, projection: Graphene.Matrix, angle: number) => {
-    const configs = [
-        { idx: 0, x: -3, y: -2, angle },
-        { idx: 1, x: 3.1, y: -2, angle: -2 * angle - 9 },
-        { idx: 2, x: -3.1, y: 4.2, angle: -2 * angle - 25 },
-    ];
-
-    for (const cfg of configs) {
-        const gear = state.gearGeoms[cfg.idx];
-        const vbo = state.gearVbos[cfg.idx];
-        const color = GEAR_COLORS[cfg.idx];
-
-        if (gear !== undefined && vbo !== undefined && color) {
-            drawGear({
-                uniforms: state.uniforms,
-                projection,
-                transform,
-                gear,
-                vbo,
-                x: cfg.x,
-                y: cfg.y,
-                angle: cfg.angle,
-                color,
-            });
-        }
+    for (const gear of state.gears) {
+        drawGear({ uniforms: state.uniforms, projection, transform, gear, angle });
     }
 };
 
@@ -604,7 +575,6 @@ const renderGearsFrame = ({ glState, area, rotation, angle }: RenderFrameParams)
     const width = area.getWidth() * scale;
     const height = area.getHeight() * scale;
     const projection = new Graphene.Matrix().initPerspective(60, width / height, 1, 1024);
-    gl.viewport(0, 0, width, height);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.bindVertexArray(glState.vao);
@@ -678,6 +648,7 @@ function GearsDemo() {
             <GtkBox orientation={Gtk.Orientation.HORIZONTAL} spacing={6}>
                 <GtkGLArea
                     name="gl-area"
+                    accessibleLabel="Animated gears"
                     ref={handleGLAreaRef}
                     allowedApis={Gdk.GLAPI.GLES}
                     hasDepthBuffer

@@ -215,6 +215,24 @@ describe("listviewSelectionsDemo suggestion popover", () => {
         const selected = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { selected: true });
         expect(rowLabelText(selected)).toBe("totem pole");
     });
+
+    it("starts at the last suggestion when Up is pressed before selecting", async () => {
+        const entry = await renderWordsEntry();
+        await userEvent.type(entry, "gnom");
+        await userEvent.keyboard(entry, "{ArrowUp}{Enter}");
+        expect(entry).toHaveDisplayValue("Gnomonic projection");
+    });
+
+    it("clears the highlighted suggestion when the query changes", async () => {
+        const entry = await renderWordsEntry();
+        await userEvent.type(entry, "gno");
+        await userEvent.keyboard(entry, "{ArrowDown}");
+        await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { selected: true });
+        await userEvent.type(entry, "m");
+        expect(screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { selected: true })).toBeNull();
+        await userEvent.keyboard(entry, "{Enter}");
+        expect(entry).toHaveDisplayValue("gnom");
+    });
 });
 
 describe("listviewSelectionsDemo suggestion acceptance", () => {
@@ -298,15 +316,11 @@ describe("listviewSelectionsDemo directory suggestion entry", () => {
     it("fills the directory entry with a directory name when a suggestion button is clicked", async () => {
         const entry = await renderDirectoryEntry();
         const menuButton = await screen.findByName("directory-menu-button", { as: Gtk.MenuButton });
-        const popover = menuButton.getPopover() as Gtk.Popover;
-        popover.popup();
-
         const target = readdirSync(process.cwd()).includes("package.json")
             ? "package.json"
             : (readdirSync(process.cwd()).toSorted((a, b) => a.localeCompare(b))[0] as string);
-
-        const label = within(popover).getByText(target);
-        const button = label.getParent() as Gtk.Button;
+        await userEvent.click(menuButton);
+        const button = await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: target, as: Gtk.Button });
         await userEvent.click(button);
 
         await waitFor(() => {
@@ -330,13 +344,13 @@ describe("listviewSelectionsDemo font spin button", () => {
         });
     });
 
-    it("ignores spin button values out of range", async () => {
+    it("keeps both font controls at the first font when decrementing the lower bound", async () => {
         await renderDemo(listviewSelectionsDemo);
         const spin = await findFontSpin();
         const fonts = await findFontsDropDown();
         spin.grabFocus();
         await userEvent.keyboard(spin, "{ArrowDown}");
-        await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: -1 } });
+        await screen.findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { value: { now: 0 } });
         expect(fonts).toHaveObjectProperty("selected", 0);
     });
 });

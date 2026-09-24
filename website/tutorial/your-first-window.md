@@ -8,23 +8,6 @@ You have a scaffolded project that runs. Replace its contents with the first pie
 
 ## What the scaffolder made
 
-Open the `tasks` directory. It contains the files the scaffolder wrote, alongside the `node_modules` it installed and the `.git` repository it initialized:
-
-```
-tasks/
-├── src/
-│   ├── app.tsx
-│   ├── gtkx-env.d.ts
-│   └── index.tsx
-├── tests/
-│   └── app.test.tsx
-├── .gitignore
-├── gtkx.config.ts
-├── package.json
-├── tsconfig.json
-└── vitest.config.ts
-```
-
 `gtkx.config.ts` configures the application and generated bindings. `src/index.tsx` mounts the component tree, and `src/app.tsx` contains the counter demo you will replace. `src/gtkx-env.d.ts` connects TypeScript to the generated declarations.
 
 `gtkx.config.ts`:
@@ -96,7 +79,7 @@ GObject properties become camelCase props, such as `widthRequest`. Signals becom
 
 `AdwApplication` takes its application ID from `gtkx.config.ts` and starts the application when it mounts. Rendering `AdwApplicationWindow` opens the window; removing it from the tree closes it.
 
-The minimum size of 360 by 294 follows GNOME's [guidance for phone layouts](https://developer.gnome.org/hig/guidelines/adaptive.html#small-size-handling). Test at this size as you add the adaptive layout in [A Layout That Collapses](/tutorial/an-adaptive-layout).
+The minimum size keeps narrow-window testing available as you add [the adaptive layout](/tutorial/an-adaptive-layout).
 
 ## Giving the window a header bar
 

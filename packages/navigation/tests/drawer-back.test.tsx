@@ -145,8 +145,14 @@ describe("drawer - sidebar sync", () => {
     });
 
     it("follows the latest consecutive drawer action before rendering", async () => {
+        const states: StateHistory = [];
+
         await render(
-            <NavigationContainer>
+            <NavigationContainer
+                onStateChange={(state) => {
+                    states.push(state);
+                }}
+            >
                 <Drawer.Navigator collapsed>
                     <Drawer.Screen name="Inbox" component={ConsecutiveDrawerActions} />
                 </Drawer.Navigator>
@@ -155,8 +161,12 @@ describe("drawer - sidebar sync", () => {
 
         await screen.findByText("Inbox Content");
         await clickButton("Open then close sidebar");
+
+        expect(getDrawerStatus(lastState(states))).toBe("closed");
         expect(querySidebarLabel("Inbox")).toBeNull();
         await clickButton("Close then open sidebar");
+
+        expect(getDrawerStatus(lastState(states))).toBe("open");
         expect(querySidebarLabel("Inbox")).toBeVisible();
     });
 

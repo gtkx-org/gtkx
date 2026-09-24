@@ -1,0 +1,25 @@
+<schemalist>
+    <schema id="org.gtkx.test.settings" path="/org/gtkx/test/settings/">
+        <key name="clock-format" type="s">
+            <choices>
+                <choice value="12h" />
+                <choice value="24h" />
+            </choices>
+            <default>'24h'</default>
+        </key>
+        <key name="clock-show-seconds" type="b">
+            <default>false</default>
+        </key>
+        <key name="cursor-size" type="i">
+            <default>24</default>
+        </key>
+    </schema>
+    <schema id="org.gtkx.test.settings.groups" path="/org/gtkx/test/settings/groups/">
+        <child name="output" schema="org.gtkx.test.settings.audio" />
+    </schema>
+    <schema id="org.gtkx.test.settings.audio">
+        <key name="enabled" type="b">
+            <default>false</default>
+        </key>
+    </schema>
+</schemalist>

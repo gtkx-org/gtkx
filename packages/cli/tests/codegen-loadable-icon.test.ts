@@ -62,7 +62,7 @@ const finish = (icon: Gio.LoadableIcon, cancellable: Gio.Cancellable | null): Pr
 class TypedIcon extends Gio.BytesIcon {
     contentType: string | null = null;
 
-    override vfuncLoad(size: number, cancellable: Gio.Cancellable | null): Loaded {
+    override vfuncLoad(size: number, cancellable: Gio.Cancellable | null): ReturnType<Gio.LoadableIcon["vfuncLoad"]> {
         const [stream] = super.vfuncLoad(size, cancellable);
         return [stream, this.contentType];
     }
@@ -162,19 +162,22 @@ describe("generated loadable icon nullable content types", () => {
         });
         const page = reference.lookup("Gio.LoadableIcon", "interface");
         const tuple = "[Gio.InputStream, string | null]";
+        const virtualTuple = "[NativeInstance<Gio.InputStream>, string | null]";
         expect(page.outcome).toBe("page");
         expect(page).toHaveProperty("markdown", expect.stringContaining(
-            `load(size: number, cancellable: Gio.Cancellable | null): ${tuple}`,
+            `load(size: number, cancellable: NativeInstance<Gio.Cancellable> | null): ${tuple}`,
         ));
         expect(page).toHaveProperty("markdown", expect.stringContaining(
-            `loadAsync(size: number, cancellable?: Gio.Cancellable | null): Promise<${tuple}>`,
-        ));
-        expect(page).toHaveProperty("markdown", expect.stringContaining(`loadFinish(res: Gio.AsyncResult): ${tuple}`));
-        expect(page).toHaveProperty("markdown", expect.stringContaining(
-            `vfuncLoad(size: number, cancellable: Gio.Cancellable | null): ${tuple}`,
+            `loadAsync(size: number, cancellable?: NativeInstance<Gio.Cancellable> | null): Promise<${tuple}>`,
         ));
         expect(page).toHaveProperty("markdown", expect.stringContaining(
-            `vfuncLoadFinish(res: Gio.AsyncResult): ${tuple}`,
+            `loadFinish(res: NativeInstance<Gio.AsyncResult>): ${tuple}`,
+        ));
+        expect(page).toHaveProperty("markdown", expect.stringContaining(
+            `vfuncLoad(size: number, cancellable: Gio.Cancellable | null): ${virtualTuple}`,
+        ));
+        expect(page).toHaveProperty("markdown", expect.stringContaining(
+            `vfuncLoadFinish(res: Gio.AsyncResult): ${virtualTuple}`,
         ));
     });
 

@@ -5,19 +5,11 @@ description: "Rendering surfaces that live outside the widget tree: portals, win
 
 # Modals and Portals
 
-Portals let a component render children into a container other than its JSX parent, while it keeps owning those children's state, props, and lifetime.
+GTKX windows and Adwaita dialogs handle their own native placement. Use `createPortal` for other objects that belong outside their surrounding widget container.
 
 ## createPortal
 
-`createPortal` from `@gtkx/react` has the same signature as its React DOM namesake, with native GObject containers in place of DOM nodes:
-
-```ts
-createPortal(children: ReactNode, container: GObject.Object | RootElement, key?: string): ReactPortal
-```
-
-The container is any live `GObject.Object`, or `rootElement` (also exported from `@gtkx/react`), the marker that mounts children at the top level with no widget parent.
-
-The container has to exist before the portal can target it, so capture it in state rather than a plain ref, which makes the portal render as soon as the widget is created:
+`createPortal` from `@gtkx/react` renders into a compatible native object. Capture that target with a state callback ref so the portal renders once the widget exists:
 
 ```tsx
 import type * as Gtk from "@gtkx/gi/gtk";
@@ -36,7 +28,7 @@ const StatusArea = () => {
 };
 ```
 
-Portal children stay in the *React* tree of the component that rendered them, so context, state, and effects flow from where the portal is written, not from where the widgets land.
+Pass `rootElement` from `@gtkx/react` when an object needs React ownership without a native parent. See the [`createPortal` reference](/reference/@gtkx/react/index/variables/createPortal) for its arguments and React's [portal documentation](https://react.dev/reference/react-dom/createPortal) for component lifetime.
 
 ## Windows
 

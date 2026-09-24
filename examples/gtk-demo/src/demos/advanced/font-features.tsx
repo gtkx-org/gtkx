@@ -1,5 +1,5 @@
 import type * as Gdk from "@gtkx/gi/gdk";
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import type { RefObject } from "react";
 import { css } from "@gtkx/css";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as Pango from "@gtkx/gi/pango";
@@ -27,6 +27,8 @@ import {
     GtkShortcutTrigger,
     GtkStack,
     GtkStackPage,
+    GtkTextBuffer,
+    GtkTextTag,
     GtkTextView,
     GtkToggleButton,
     GtkViewport,
@@ -55,30 +57,31 @@ type NumberBounds = {
     max: number;
 };
 
+type PreviewAttributesArgs = {
+    fontDesc: Pango.FontDescription;
+    letterSpacing: number;
+    lineHeight: number;
+    fontFeatures: string | null;
+    selection: PreviewSelection | null;
+};
+
+type WaterfallAttributesArgs = Omit<PreviewAttributesArgs, "selection"> & {
+    size: number;
+};
+
+type FontFeaturesEditViewProps = {
+    textViewRef: RefObject<Gtk.TextView | null>;
+    textTagRef: RefObject<Gtk.TextTag | null>;
+    fontDesc: Pango.FontDescription;
+    fgColor: Gdk.RGBA;
+    letterSpacing: number;
+    lineHeight: number;
+    fontFeatures: string;
+};
+
 type FontFeaturesState = ReturnType<typeof useFontFeaturesState>;
 type FontFeaturesStyles = ReturnType<typeof useFontFeaturesStyles>;
 type FontFeaturesHandlers = ReturnType<typeof useFontFeaturesHandlers>;
-
-type TextStyleValuesArgs = {
-    fontDesc: Pango.FontDescription | null;
-    fgColor: Gdk.RGBA;
-    letterSpacing: number;
-};
-
-type PreviewStyleArgs = TextStyleValuesArgs & {
-    size: number;
-    lineHeight: number;
-};
-
-type EditStyleArgs = TextStyleValuesArgs & {
-    size: number;
-    fontFeaturesString: string;
-};
-
-type WaterfallStyleArgs = TextStyleValuesArgs & {
-    wfSize: number;
-    fontFeaturesString: string;
-};
 
 type SliderEntryRowProps = {
     row: number;
@@ -117,13 +120,13 @@ type FontFeaturesPreviewProps = {
     styles: FontFeaturesStyles;
     handlers: FontFeaturesHandlers;
     stackPage: string;
-    previewAttributes: Pango.AttrList | null;
+    previewAttributes: Pango.AttrList;
 };
 
 type FontFeaturesPreviewLabelProps = {
     state: FontFeaturesState;
     styles: FontFeaturesStyles;
-    attributes: Pango.AttrList | null;
+    attributes: Pango.AttrList;
 };
 
 type FontFeaturesSectionProps = {
@@ -310,7 +313,7 @@ const CV_RE = /^cv(\d{2})$/;
 const WATERFALL_SIZES = [7, 8, 9, 10, 12, 14, 16, 20, 24, 30, 40, 50, 60, 70, 90];
 const ALPHABET_SAMPLES = ["abcdefghijklmnopqrstuvwxyz", "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "0123456789", "!@#$%^&*/?;"];
 const SIZE_BOUNDS: NumberBounds = { min: 7, max: 100 };
-const LETTER_SPACING_BOUNDS: NumberBounds = { min: -1024, max: 8192 };
+const LETTER_SPACING_BOUNDS: NumberBounds = { min: -1, max: 8 };
 const LINE_HEIGHT_BOUNDS: NumberBounds = { min: 0.75, max: 2.5 };
 
 const ENGLISH_PARAGRAPH =
@@ -336,11 +339,8 @@ const fontFeaturesDemo: Demo = {
     id: "font-features",
     title: "Pango/Font Explorer",
     description:
-        "This example demonstrates support for OpenType font features with Pango attributes. " +
-        "The attributes can be used manually or via Pango markup.\n\n" +
-        "It can also be used to explore available features in OpenType fonts and their effect.\n\n" +
-        "If the selected font supports OpenType font variations, " +
-        "then the axes are also offered for customization.",
+        "This example applies a fixed set of common OpenType features with Pango attributes. " +
+        "Choose a font, adjust its presentation, and compare the plain, waterfall, and editable previews.",
     keywords: [],
     component: FontFeaturesDemo,
     titlebar: FontFeaturesTitlebar,
@@ -401,6 +401,14 @@ const createDefaultFgColor = () => buildRgba(0, 0, 0, 1);
 const createDefaultBgColor = () => buildRgba(1, 1, 1, 1);
 const createDefaultFontDesc = () => Pango.FontDescription.fromString("Sans 14");
 
+const fontDescriptionWithSize = (fontDesc: Pango.FontDescription, size: number): Pango.FontDescription => {
+    const next = Pango.FontDescription.new();
+    next.merge(fontDesc, true);
+    next.setSize(Pango.unitsFromDouble(size));
+
+    return next;
+};
+
 const collectCheckTags = (): string[] =>
     FEATURE_GROUPS.filter((group) => group.type === "check").flatMap((group) => group.tags);
 
@@ -427,12 +435,11 @@ const createInitialRadioStates = (): Map<string, string> => {
 };
 
 function useFontFeaturesState() {
-    const [fontDesc, setFontDesc] = useState<Pango.FontDescription | null>(createDefaultFontDesc);
+    const [fontDesc, setFontDesc] = useState(createDefaultFontDesc);
     const [checkStates, setCheckStates] = useState<Map<string, FeatureState>>(createInitialCheckStates);
     const [radioStates, setRadioStates] = useState<Map<string, string>>(createInitialRadioStates);
     const [fgColor, setFgColor] = useState<Gdk.RGBA>(createDefaultFgColor);
     const [bgColor, setBgColor] = useState<Gdk.RGBA>(createDefaultBgColor);
-    const [size, setSize] = useState(14);
     const [letterSpacing, setLetterSpacing] = useState(0);
     const [lineHeight, setLineHeight] = useState(1);
     const [viewMode, setViewMode] = useState<ViewMode>("plain");
@@ -442,36 +449,30 @@ function useFontFeaturesState() {
     const savedTextRef = useRef("");
     const previewLabelRef = useRef<Gtk.Label | null>(null);
     const editTextViewRef = useRef<Gtk.TextView | null>(null);
+    const editTextTagRef = useRef<Gtk.TextTag | null>(null);
     const editScrolledWindowRef = useRef<Gtk.ScrolledWindow | null>(null);
+    const size = Pango.unitsToDouble(fontDesc.getSize());
+
+    const setSize = (nextSize: number) => {
+        setFontDesc((current) =>
+            Pango.unitsToDouble(current.getSize()) === nextSize ? current : fontDescriptionWithSize(current, nextSize));
+    };
 
     return {
-        fontDesc,
-        setFontDesc,
-        checkStates,
-        setCheckStates,
-        radioStates,
-        setRadioStates,
-        fgColor,
-        setFgColor,
-        bgColor,
-        setBgColor,
-        size,
-        setSize,
-        letterSpacing,
-        setLetterSpacing,
-        lineHeight,
-        setLineHeight,
-        viewMode,
-        setViewMode,
-        previewText,
-        setPreviewText,
-        previewSelection,
-        setPreviewSelection,
-        sampleCounterRef,
-        savedTextRef,
-        previewLabelRef,
-        editTextViewRef,
-        editScrolledWindowRef,
+        fontDesc, setFontDesc,
+        checkStates, setCheckStates,
+        radioStates, setRadioStates,
+        fgColor, setFgColor,
+        bgColor, setBgColor,
+        size, setSize,
+        letterSpacing, setLetterSpacing,
+        lineHeight, setLineHeight,
+        viewMode, setViewMode,
+        previewText, setPreviewText,
+        previewSelection, setPreviewSelection,
+        sampleCounterRef, savedTextRef,
+        previewLabelRef, editTextViewRef,
+        editTextTagRef, editScrolledWindowRef,
     };
 }
 
@@ -511,68 +512,23 @@ const buildBgStyle = (bgColor: Gdk.RGBA) => {
     `;
 };
 
-const buildTextStyleValues = ({ fontDesc, fgColor, letterSpacing }: TextStyleValuesArgs) => {
+const buildLabelStyle = (fgColor: Gdk.RGBA, padding = 0) => {
     const { r, g, b } = rgbColor(fgColor);
 
-    return {
-        fontFamily: fontDesc?.getFamily() ?? "Sans",
-        color: `rgb(${String(r)}, ${String(g)}, ${String(b)})`,
-        spacing: `${String(letterSpacing / 1024)}em`,
-    };
-};
-
-const buildPreviewStyle = ({ fontDesc, size, fgColor, letterSpacing, lineHeight }: PreviewStyleArgs) => {
-    const { fontFamily, color, spacing } = buildTextStyleValues({ fontDesc, fgColor, letterSpacing });
-
     return css`
         label& {
-            font-family: "${fontFamily}";
-            font-size: ${size}pt;
-            color: ${color};
-            letter-spacing: ${spacing};
-            line-height: ${lineHeight};
-            padding: 16px;
-        }
-    `;
-};
-
-const buildEditStyle = ({ fontDesc, size, fontFeaturesString, fgColor, letterSpacing }: EditStyleArgs) => {
-    const { fontFamily, color, spacing } = buildTextStyleValues({ fontDesc, fgColor, letterSpacing });
-
-    return css`
-        textview& {
-            font-family: "${fontFamily}";
-            font-size: ${size}pt;
-            font-feature-settings: ${fontFeaturesString};
-            color: ${color};
-            letter-spacing: ${spacing};
-        }
-    `;
-};
-
-const buildWaterfallStyle = ({ fontDesc, wfSize, fontFeaturesString, fgColor, letterSpacing }: WaterfallStyleArgs) => {
-    const { fontFamily, color, spacing } = buildTextStyleValues({ fontDesc, fgColor, letterSpacing });
-
-    return css`
-        label& {
-            font-family: "${fontFamily}";
-            font-size: ${wfSize}pt;
-            font-feature-settings: ${fontFeaturesString};
-            color: ${color};
-            letter-spacing: ${spacing};
+            color: rgb(${r}, ${g}, ${b});
+            padding: ${padding}px;
         }
     `;
 };
 
 function useFontFeaturesStyles(state: ReturnType<typeof useFontFeaturesState>) {
-    const { fontDesc, fgColor, bgColor, size, letterSpacing, lineHeight, checkStates, radioStates } = state;
+    const { fontDesc, fgColor, bgColor, checkStates, radioStates } = state;
     const fontFeaturesString = buildFontFeaturesString(checkStates, radioStates);
     const bgStyle = buildBgStyle(bgColor);
-    const previewStyle = buildPreviewStyle({ fontDesc, size, fgColor, letterSpacing, lineHeight });
-    const editStyle = buildEditStyle({ fontDesc, size, fontFeaturesString, fgColor, letterSpacing });
-
-    const createWaterfallStyle = (wfSize: number) =>
-        buildWaterfallStyle({ fontDesc, wfSize, fontFeaturesString, fgColor, letterSpacing });
+    const previewStyle = buildLabelStyle(fgColor, 16);
+    const waterfallStyle = buildLabelStyle(fgColor);
 
     const pangoFontFeaturesString = (() => {
         if (fontFeaturesString === "normal") {
@@ -583,14 +539,12 @@ function useFontFeaturesStyles(state: ReturnType<typeof useFontFeaturesState>) {
     })();
 
     const settingsText = pangoFontFeaturesString ?? "";
-    const descriptionText = fontDesc?.toString() ?? "Sans 14";
+    const descriptionText = fontDesc.toString();
 
     return {
-        fontFeaturesString,
         bgStyle,
         previewStyle,
-        editStyle,
-        createWaterfallStyle,
+        waterfallStyle,
         settingsText,
         pangoFontFeaturesString,
         descriptionText,
@@ -605,22 +559,30 @@ const mapWith = <T,>(entries: Map<string, T>, key: string, value: T): Map<string
 };
 
 function useFeatureHandlers(state: ReturnType<typeof useFontFeaturesState>) {
-    const { setCheckStates, setRadioStates, previewLabelRef } = state;
+    const { setCheckStates, setRadioStates, previewLabelRef, setPreviewSelection } = state;
+
+    const captureSelection = () => {
+        setPreviewSelection(readPreviewSelection(previewLabelRef.current));
+    };
 
     const toggleCheck = (tag: string) => {
+        captureSelection();
         setCheckStates((prev) => mapWith(prev, tag, prev.get(tag) === "active" ? "inactive" : "active"));
     };
 
     const resetToInconsistent = (tag: string) => {
+        captureSelection();
         setCheckStates((prev) => mapWith(prev, tag, "inconsistent"));
     };
 
     const selectRadio = (groupTitle: string, tag: string) => {
+        captureSelection();
         setRadioStates((prev) => mapWith(prev, groupTitle, tag));
     };
 
     const resetFeatures = () => {
         previewLabelRef.current?.selectRegion(0, 0);
+        setPreviewSelection(null);
         setCheckStates(createInitialCheckStates());
         setRadioStates(createInitialRadioStates());
     };
@@ -629,7 +591,7 @@ function useFeatureHandlers(state: ReturnType<typeof useFontFeaturesState>) {
 }
 
 function useColorHandlers(state: ReturnType<typeof useFontFeaturesState>) {
-    const { fgColor, bgColor, setFgColor, setBgColor, setSize, setLetterSpacing, setLineHeight } = state;
+    const { fgColor, bgColor, setFgColor, setBgColor, setFontDesc, setLetterSpacing, setLineHeight } = state;
 
     const swapColors = () => {
         setFgColor(buildRgba(bgColor.red, bgColor.green, bgColor.blue, 1));
@@ -637,7 +599,7 @@ function useColorHandlers(state: ReturnType<typeof useFontFeaturesState>) {
     };
 
     const resetBasic = () => {
-        setSize(20);
+        setFontDesc(createDefaultFontDesc());
         setLetterSpacing(0);
         setLineHeight(1);
         setFgColor(createDefaultFgColor());
@@ -756,56 +718,64 @@ const readPreviewSelection = (label: Gtk.Label | null): PreviewSelection | null 
     };
 };
 
-const isSameSelection = (a: PreviewSelection | null, b: PreviewSelection | null): boolean =>
-    a === b || (a !== null && b !== null && a.start === b.start && a.end === b.end);
+const createPreviewAttributes = ({
+    fontDesc,
+    letterSpacing,
+    lineHeight,
+    fontFeatures,
+    selection,
+}: PreviewAttributesArgs): Pango.AttrList => {
+    const attrList = Pango.AttrList.new();
+    attrList.insert(Pango.AttrFontDesc.new(fontDesc));
+    attrList.insert(Pango.attrLetterSpacingNew(Pango.unitsFromDouble(letterSpacing)));
+    attrList.insert(Pango.attrLineHeightNew(lineHeight));
 
-function usePreviewSelectionTracking(
-    previewLabelRef: RefObject<Gtk.Label | null>,
-    setPreviewSelection: Dispatch<SetStateAction<PreviewSelection | null>>,
-) {
-    useLayoutEffect(() => {
-        const selection = readPreviewSelection(previewLabelRef.current);
-        setPreviewSelection((previous) => (isSameSelection(previous, selection) ? previous : selection));
-    });
-}
-
-function usePreviewAttributes(
-    pangoFontFeaturesString: string | null,
-    previewSelection: PreviewSelection | null,
-): Pango.AttrList | null {
-    return (() => {
-        if (!pangoFontFeaturesString) {
-            return null;
-        }
-
-        const attrList = Pango.AttrList.new();
-        const attr = Pango.AttrFontFeatures.new(pangoFontFeaturesString);
-        attr.startIndex = previewSelection?.start ?? 0;
-        attr.endIndex = previewSelection?.end ?? 0xFF_FF_FF_FF;
+    if (fontFeatures) {
+        const attr = Pango.AttrFontFeatures.new(fontFeatures);
+        attr.startIndex = selection?.start ?? Pango.ATTR_INDEX_FROM_TEXT_BEGINNING;
+        attr.endIndex = selection?.end ?? Pango.ATTR_INDEX_TO_TEXT_END;
         attrList.insert(attr);
+    }
 
-        return attrList;
-    })();
-}
+    return attrList;
+};
+
+const createWaterfallAttributes = ({
+    fontDesc,
+    size,
+    letterSpacing,
+    lineHeight,
+    fontFeatures,
+}: WaterfallAttributesArgs): Pango.AttrList => {
+    const waterfallFontDesc = fontDescriptionWithSize(fontDesc, size);
+
+    return createPreviewAttributes({
+        fontDesc: waterfallFontDesc,
+        letterSpacing,
+        lineHeight,
+        fontFeatures,
+        selection: null,
+    });
+};
 
 const FontFeaturesFontButton = ({ state }: { state: FontFeaturesState }) => {
-    const { fontDesc, setFontDesc, setSize } = state;
+    const { fontDesc, setFontDesc } = state;
 
     return (
         <GtkFontDialogButton
             name="font-button"
-            fontDesc={fontDesc ?? undefined}
+            accessibleLabel="Font"
+            fontDesc={fontDesc}
             dialog={<GtkFontDialog />}
             onNotifyFontDesc={(desc) => {
                 if (!desc) {
                     return;
                 }
 
-                setFontDesc(desc);
-                const newSize = desc.getSize() / Pango.SCALE;
+                const next = fontDescriptionWithSize(desc, Pango.unitsToDouble(fontDesc.getSize()));
 
-                if (newSize > 0) {
-                    setSize(newSize);
+                if (!fontDesc.equal(next)) {
+                    setFontDesc(next);
                 }
             }}
             receivesDefault
@@ -825,8 +795,8 @@ const FontFeaturesGrid = ({ state, handlers }: FontFeaturesSectionProps) => {
                 label="Size"
                 entryName="size_entry"
                 value={size}
-                lower={7}
-                upper={100}
+                lower={SIZE_BOUNDS.min}
+                upper={SIZE_BOUNDS.max}
                 stepIncrement={0.5}
                 pageIncrement={10}
                 onValueChanged={setSize}
@@ -839,12 +809,12 @@ const FontFeaturesGrid = ({ state, handlers }: FontFeaturesSectionProps) => {
                 label="Letterspacing"
                 entryName="letterspacing_entry"
                 value={letterSpacing}
-                lower={-1024}
-                upper={8192}
-                stepIncrement={1}
-                pageIncrement={512}
+                lower={LETTER_SPACING_BOUNDS.min}
+                upper={LETTER_SPACING_BOUNDS.max}
+                stepIncrement={0.1}
+                pageIncrement={1}
                 onValueChanged={setLetterSpacing}
-                displayText={String(Math.round(letterSpacing))}
+                displayText={String(Math.round(letterSpacing * 100) / 100)}
                 onEntryActivate={handlers.handleLetterspacingEntry}
             />
             <SliderEntryRow
@@ -852,8 +822,8 @@ const FontFeaturesGrid = ({ state, handlers }: FontFeaturesSectionProps) => {
                 label="Line Height"
                 entryName="line_height_entry"
                 value={lineHeight}
-                lower={0.75}
-                upper={2.5}
+                lower={LINE_HEIGHT_BOUNDS.min}
+                upper={LINE_HEIGHT_BOUNDS.max}
                 stepIncrement={0.1}
                 pageIncrement={1}
                 onValueChanged={setLineHeight}
@@ -882,6 +852,7 @@ const ColorRow = ({ row, label, name, rgba, onChanged }: ColorRowProps) => (
         <GtkGridLayoutChild column={1} row={row}>
             <GtkColorDialogButton
                 name={name}
+                accessibleLabel={label}
                 rgba={rgba}
                 dialog={<GtkColorDialog />}
                 onNotifyRgba={onChanged}
@@ -922,6 +893,7 @@ const FontFeaturesColorRows = ({ state, handlers }: FontFeaturesSectionProps) =>
             <GtkGridLayoutChild column={2} row={3} rowSpan={2}>
                 <GtkButton
                     name="swap-colors"
+                    accessibleLabel="Swap colors"
                     iconName="object-flip-vertical-symbolic"
                     halign={Gtk.Align.START}
                     valign={Gtk.Align.CENTER}
@@ -937,6 +909,8 @@ const FontFeaturesColorRows = ({ state, handlers }: FontFeaturesSectionProps) =>
 const SliderScaleCell = (props: SliderEntryRowProps) => (
     <GtkGridLayoutChild column={1} row={props.row}>
         <GtkScale
+            name={`${props.entryName}_scale`}
+            accessibleLabel={props.label}
             hexpand
             widthRequest={100}
             valign={Gtk.Align.BASELINE_FILL}
@@ -968,6 +942,7 @@ const SliderEntryRow = (props: SliderEntryRowProps) => (
         <GtkGridLayoutChild column={2} row={props.row}>
             <GtkEntry
                 name={props.entryName}
+                accessibleLabel={props.label}
                 widthChars={4}
                 maxWidthChars={4}
                 valign={Gtk.Align.BASELINE_FILL}
@@ -1023,6 +998,38 @@ const FontFeaturesSidebar = ({ state, handlers }: FontFeaturesSectionProps) => (
     </GtkBox>
 );
 
+const FeatureRadioGroup = ({
+    group,
+    radioStates,
+    onSelectRadio,
+}: Pick<FeatureGroupBoxProps, "group" | "radioStates" | "onSelectRadio">) => {
+    const [groupButton, setGroupButton] = useState<Gtk.CheckButton | null>(null);
+
+    return (
+        <GtkBox
+            orientation={Gtk.Orientation.VERTICAL}
+            accessibleRole={Gtk.AccessibleRole.RADIO_GROUP}
+            accessibleLabel={group.title}
+        >
+            {group.tags.map((tag, index) => (
+                <GtkCheckButton
+                    key={tag}
+                    ref={index === 0 ? setGroupButton : undefined}
+                    group={index === 0 ? undefined : groupButton}
+                    accessibleRole={Gtk.AccessibleRole.RADIO}
+                    label={getFeatureDisplayName(tag)}
+                    active={(radioStates.get(group.title) ?? "xxxx") === tag}
+                    onToggled={(button) => {
+                        if (button.getActive()) {
+                            onSelectRadio(group.title, tag);
+                        }
+                    }}
+                />
+            ))}
+        </GtkBox>
+    );
+};
+
 const FeatureGroupBox = ({
     group,
     checkStates,
@@ -1036,16 +1043,7 @@ const FeatureGroupBox = ({
             {group.title}
         </GtkLabel>
         {group.type === "radio"
-            ? group.tags.map((tag) => (
-                    <GtkCheckButton
-                        key={tag}
-                        label={getFeatureDisplayName(tag)}
-                        active={(radioStates.get(group.title) ?? "xxxx") === tag}
-                        onToggled={() => {
-                            onSelectRadio(group.title, tag);
-                        }}
-                    />
-                ))
+            ? <FeatureRadioGroup group={group} radioStates={radioStates} onSelectRadio={onSelectRadio} />
             : group.tags.map((tag) => (
                     <GtkCheckButton
                         key={tag}
@@ -1069,8 +1067,8 @@ const FeatureGroupBox = ({
 );
 
 const FontFeaturesPreviewLabel = ({ state, styles, attributes }: FontFeaturesPreviewLabelProps) => {
-    const { previewText, previewLabelRef, viewMode } = state;
-    const { previewStyle, createWaterfallStyle } = styles;
+    const { fontDesc, letterSpacing, lineHeight, previewText, previewLabelRef, viewMode } = state;
+    const { previewStyle, waterfallStyle, pangoFontFeaturesString } = styles;
 
     if (viewMode === "waterfall") {
         return (
@@ -1079,7 +1077,14 @@ const FontFeaturesPreviewLabel = ({ state, styles, attributes }: FontFeaturesPre
                     <GtkLabel
                         key={wfSize}
                         name="waterfall-label"
-                        cssClasses={[createWaterfallStyle(wfSize)]}
+                        attributes={createWaterfallAttributes({
+                            fontDesc,
+                            size: wfSize,
+                            letterSpacing,
+                            lineHeight,
+                            fontFeatures: pangoFontFeaturesString,
+                        })}
+                        cssClasses={[waterfallStyle]}
                         wrap
                         xalign={0}
                         yalign={0}
@@ -1185,6 +1190,8 @@ function useViewModeToggleHandlers(state: FontFeaturesState) {
 
 const FontFeaturesDescriptionLabel = ({ text }: { text: string }) => (
     <GtkLabel
+        name="font-description"
+        accessibleLabel="Font description"
         wrap
         wrapMode={Pango.WrapMode.CHAR}
         xalign={0}
@@ -1232,6 +1239,7 @@ const FontFeaturesPreviewControlsRow = ({
             </GtkBox>
             <GtkToggleButton
                 name="edit_toggle"
+                accessibleLabel="Edit text"
                 iconName="document-edit-symbolic"
                 group={plainToggle}
                 active={viewMode === "edit"}
@@ -1244,8 +1252,58 @@ const FontFeaturesPreviewControlsRow = ({
     );
 };
 
-const FontFeaturesPreview = ({ state, styles, handlers, stackPage, previewAttributes }: FontFeaturesPreviewProps) => {
-    const { editScrolledWindowRef, editTextViewRef } = state;
+const FontFeaturesEditView = ({
+    textViewRef,
+    textTagRef,
+    fontDesc,
+    fgColor,
+    letterSpacing,
+    lineHeight,
+    fontFeatures,
+}: FontFeaturesEditViewProps) => {
+    const applyEditTag = (buffer: Gtk.TextBuffer) => {
+        const tag = textTagRef.current;
+
+        if (tag) {
+            buffer.applyTag(tag, buffer.getStartIter(), buffer.getEndIter());
+        }
+    };
+
+    return (
+        <GtkTextView
+            name="edit_textview"
+            accessibleLabel="Preview text editor"
+            ref={textViewRef}
+            wrapMode={Gtk.WrapMode.WORD}
+            valign={Gtk.Align.FILL}
+            buffer={(
+                <GtkTextBuffer onChanged={applyEditTag}>
+                    <GtkTextTag
+                        ref={textTagRef}
+                        fontDesc={fontDesc}
+                        foregroundRgba={fgColor}
+                        letterSpacing={Pango.unitsFromDouble(letterSpacing)}
+                        lineHeight={lineHeight}
+                        fontFeatures={fontFeatures}
+                    />
+                </GtkTextBuffer>
+            )}
+        />
+    );
+};
+
+const FontFeaturesPreview = (props: FontFeaturesPreviewProps) => {
+    const { state, styles, handlers, stackPage, previewAttributes } = props;
+    const {
+        editScrolledWindowRef,
+        editTextViewRef,
+        editTextTagRef,
+        fontDesc,
+        fgColor,
+        letterSpacing,
+        lineHeight,
+    } = state;
+    const { bgStyle, pangoFontFeaturesString } = styles;
 
     return (
         <GtkBox
@@ -1258,18 +1316,20 @@ const FontFeaturesPreview = ({ state, styles, handlers, stackPage, previewAttrib
             marginBottom={20}
             spacing={20}
         >
-            <GtkScrolledWindow ref={editScrolledWindowRef} vexpand propagateNaturalHeight cssClasses={[styles.bgStyle]}>
+            <GtkScrolledWindow ref={editScrolledWindowRef} vexpand propagateNaturalHeight cssClasses={[bgStyle]}>
                 <GtkStack name="stack" visibleChildName={stackPage}>
                     <GtkStackPage name="label">
                         <FontFeaturesPreviewLabel state={state} styles={styles} attributes={previewAttributes} />
                     </GtkStackPage>
                     <GtkStackPage name="entry">
-                        <GtkTextView
-                            name="edit_textview"
-                            ref={editTextViewRef}
-                            cssClasses={[styles.editStyle]}
-                            wrapMode={Gtk.WrapMode.WORD}
-                            valign={Gtk.Align.FILL}
+                        <FontFeaturesEditView
+                            textViewRef={editTextViewRef}
+                            textTagRef={editTextTagRef}
+                            fontDesc={fontDesc}
+                            fgColor={fgColor}
+                            letterSpacing={letterSpacing}
+                            lineHeight={lineHeight}
+                            fontFeatures={pangoFontFeaturesString ?? ""}
                         />
                     </GtkStackPage>
                 </GtkStack>
@@ -1363,6 +1423,7 @@ function FontFeaturesTitlebar() {
             start={(
                 <GtkButton
                     name="reset"
+                    accessibleLabel="Reset"
                     iconName="view-refresh-symbolic"
                     tooltipText="Reset"
                     onClicked={handlers.resetAll}
@@ -1374,9 +1435,14 @@ function FontFeaturesTitlebar() {
 
 function FontFeaturesDemo() {
     const { state, styles, handlers } = useFontFeatures();
-    usePreviewSelectionTracking(state.previewLabelRef, state.setPreviewSelection);
     useEditViewFocus(state);
-    const previewAttributes = usePreviewAttributes(styles.pangoFontFeaturesString, state.previewSelection);
+    const previewAttributes = createPreviewAttributes({
+        fontDesc: state.fontDesc,
+        letterSpacing: state.letterSpacing,
+        lineHeight: state.lineHeight,
+        fontFeatures: styles.pangoFontFeaturesString,
+        selection: state.previewSelection,
+    });
     const stackPage = state.viewMode === "edit" ? "entry" : "label";
 
     return (

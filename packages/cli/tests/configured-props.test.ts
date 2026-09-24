@@ -5,12 +5,14 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCli, runCliOrThrow } from "./cli-project.js";
 import {
+    BOX_PAGE,
     installConfiguredProps,
     OUTPUT,
     readButton,
     runDocs,
     stamp,
     UNION_MODULE,
+    writeMetadataConfig,
     writePropsConfig,
 } from "./configured-props-fixture.js";
 import { isolateTypeConsumer } from "./type-consumer.js";
@@ -30,6 +32,18 @@ expectTypeOf<Props["auditWidget"]>().toEqualTypeOf<Gtk.Widget | null | undefined
 expectTypeOf<Props["auditCallback"]>().toEqualTypeOf<((widget: Gtk.Widget) => boolean) | undefined>();
 expectTypeOf<Props>().not.toHaveProperty("auditCount");
 export const button = <GtkButton label="Run" auditCaption="Example" auditMode="quiet" audit-enabled />;
+`;
+const METADATA_CONSUMER = `import { GtkButton, GtkToggleButton } from "@gtkx/jsx/gtk";
+import type { GtkButtonProps, GtkToggleButtonProps } from "@gtkx/jsx/gtk";
+import type { ConstructOnlyPropNames } from "@gtkx/react/internal";
+import { expectTypeOf } from "vitest";
+
+type IsConstructOnly = "auditCaption" extends ConstructOnlyPropNames<GtkButtonProps> ? true : false;
+expectTypeOf<IsConstructOnly>().toEqualTypeOf<true>();
+expectTypeOf<GtkButtonProps>().toHaveProperty("auditCaption");
+expectTypeOf<GtkToggleButtonProps>().not.toHaveProperty("auditCaption");
+export const button = <GtkButton label="Run" auditCaption="Example" />;
+export const toggle = <GtkToggleButton label="Toggle" />;
 `;
 const linkHoistedDependencies = (project: CliProject, source: string, manifest: PackageManifest): void => {
     for (const dependency of Object.keys(manifest.dependencies)) {
@@ -109,6 +123,22 @@ const unionConsumer = (project: CliProject, page: string): string => {
 };
 
 describe("configured element prop reference", () => {
+    it("preserves prop metadata and accepted child types across generated consumer surfaces", () => {
+        using project = createCliProject({ prefix: "gtkx-props-metadata-" });
+        installConfiguredProps(project.root);
+        writeMetadataConfig(project.root);
+        runCliOrThrow(project, ["codegen"]);
+        runDocs(project);
+
+        for (const directory of [OUTPUT, ".gtkx/reference"]) {
+            const page = readFileSync(join(project.root, directory, BOX_PAGE), "utf8");
+            expect(page).toContain("Each GTKX element rendered into it must create");
+            expect(page).toContain("[GtkLabel]");
+        }
+
+        typecheckConsumer(project, METADATA_CONSUMER);
+    });
+
     it("follows current GIR inputs after generating a store and preserves declaration errors", () => {
         using project = createCliProject({ prefix: "gtkx-props-generated-store-" });
         const earlier = join(project.root, "earlier");

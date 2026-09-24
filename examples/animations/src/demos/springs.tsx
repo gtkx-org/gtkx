@@ -55,11 +55,11 @@ function SpringsDemo() {
             </GtkBox>
             <GtkToggleButton
                 name="springs-toggle"
-                label={isShown ? "Slide away" : "Bring back"}
-                active={!isShown}
+                label="Show card"
+                active={isShown}
                 halign={Gtk.Align.START}
                 onToggled={(button) => {
-                    setIsShown(!button.getActive());
+                    setIsShown(button.getActive());
                 }}
             />
             <GtkFrame>

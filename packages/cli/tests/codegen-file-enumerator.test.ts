@@ -112,7 +112,8 @@ describe("generated file enumerator nullable results", () => {
         const page = reference.lookup("Gio.FileEnumerator", "class");
         expect(page.outcome).toBe("page");
         expect(page).toHaveProperty("markdown", expect.stringContaining(
-            "iterate(cancellable: Gio.Cancellable | null): [boolean, Gio.FileInfo | null, Gio.File | null]",
+            "iterate(cancellable: NativeInstance<Gio.Cancellable> | null): " +
+            "[boolean, Gio.FileInfo | null, Gio.File | null]",
         ));
     });
 

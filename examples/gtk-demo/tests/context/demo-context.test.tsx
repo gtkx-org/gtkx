@@ -8,9 +8,17 @@ import { button, drawSidebar, expander, fixedSlash, intro, standalone } from "..
 const rowLabels = (sidebar: Gtk.ListView): (string | null)[] =>
     within(sidebar).queryAllByText(/./, { as: Gtk.Inscription }).map((label) => label.getText());
 
-const sidebarWidget = (): Gtk.ListView => screen.getByName("sidebar-list", { as: Gtk.ListView });
+const sidebarWidget = (): Gtk.ListView =>
+    screen.getByRole(Gtk.AccessibleRole.LIST, { name: "Demos", as: Gtk.ListView });
 
 const searchWidget = (): Gtk.SearchEntry => screen.getByRole(Gtk.AccessibleRole.SEARCH_BOX, { as: Gtk.SearchEntry });
+const sidebarRow = (sidebar: Gtk.ListView, name: string): Gtk.Widget => {
+    const row = within(sidebar).getAllByRole(Gtk.AccessibleRole.LIST_ITEM)
+        .find((candidate) => within(candidate).queryByText(name) !== null);
+    assert(row !== undefined);
+
+    return row;
+};
 
 describe("DemoProvider sidebar presentation", () => {
     it("renders plain and categorized titles in order with the introduction selected", async () => {
@@ -19,11 +27,7 @@ describe("DemoProvider sidebar presentation", () => {
         expect(rowLabels(sidebar)).toEqual([
             "GTK Demo", "Buttons", "Button", "Expander", "Layout", "Fixed", "Standalone",
         ]);
-        const model = sidebar.getModel();
-        assert(model !== null);
-        expect(model.getNItems()).toBe(7);
-        expect(model.getSelection().getSize()).toBe(1n);
-        expect(model.isSelected(0)).toBe(true);
+        expect(sidebarRow(sidebar, "GTK Demo")).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, true);
     });
 
     it("keeps the introduction first and sorts top-level demos and categories", async () => {
@@ -37,52 +41,40 @@ describe("DemoProvider sidebar presentation", () => {
         await render(drawSidebar([button, expander]));
         const sidebar = sidebarWidget();
         expect(rowLabels(sidebar)).toEqual(["Buttons", "Button", "Expander"]);
-        const model = sidebar.getModel();
-        assert(model !== null);
-        expect(model.getSelection().getSize()).toBe(1n);
-        expect(model.isSelected(1)).toBe(true);
+        expect(sidebarRow(sidebar, "Button")).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, true);
     });
 
     it("renders an empty list without selection before and after a search", async () => {
         await render(drawSidebar([], true));
         const sidebar = sidebarWidget();
-        const model = sidebar.getModel();
-        assert(model !== null);
         expect(rowLabels(sidebar)).toEqual([]);
-        expect(model.getNItems()).toBe(0);
-        expect(model.getSelection().getSize()).toBe(0n);
+        expect(within(sidebar).queryAllByRole(Gtk.AccessibleRole.LIST_ITEM)).toHaveLength(0);
         const search = searchWidget();
         await userEvent.type(search, "missing");
         await userEvent.clear(search);
         expect(rowLabels(sidebar)).toEqual([]);
-        expect(model.getNItems()).toBe(0);
-        expect(model.getSelection().getSize()).toBe(0n);
+        expect(within(sidebar).queryAllByRole(Gtk.AccessibleRole.LIST_ITEM)).toHaveLength(0);
     });
 
     it("moves the native selection when a different demo row is clicked", async () => {
         await render(drawSidebar([intro, button, expander, standalone]));
         const sidebar = sidebarWidget();
-        const model = sidebar.getModel();
-        assert(model !== null);
         await userEvent.click(within(sidebar).getByText("Standalone"));
-        expect(model.getSelection().getSize()).toBe(1n);
-        expect(model.isSelected(4)).toBe(true);
+        expect(sidebarRow(sidebar, "Standalone")).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, true);
         await userEvent.click(within(sidebar).getByText("Button"));
-        expect(model.getSelection().getSize()).toBe(1n);
-        expect(model.isSelected(2)).toBe(true);
+        expect(sidebarRow(sidebar, "Button")).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, true);
+        expect(sidebarRow(sidebar, "Standalone")).toHaveAccessibleState(Gtk.AccessibleState.SELECTED, false);
     });
 
     it("rejects rendering Sidebar without its provider", async () => {
-        const searches: string[] = [];
         await expect(render(
             <Sidebar
                 isSearchActive={false}
-                onSearchChanged={(query) => {
-                    searches.push(query);
-                }}
+                onDemoActivated={() => null}
+                onSearchActiveChange={() => null}
+                onSearchChanged={() => null}
             />,
         )).rejects.toThrow();
-        expect(searches).toEqual([]);
     });
 });
 
@@ -92,6 +84,7 @@ describe("DemoProvider sidebar search", () => {
         ["description", "expandable widget"],
         ["keyword", "disclosure"],
         ["case-insensitive title", "eXpAnDeR"],
+        ["padded title", "  Expander  "],
     ])("shows only the matching demo and its category for a %s search", async (_field, query) => {
         await render(drawSidebar([intro, button, expander, standalone], true));
         const sidebar = sidebarWidget();
@@ -99,9 +92,7 @@ describe("DemoProvider sidebar search", () => {
         await waitFor(() => {
             expect(rowLabels(sidebar)).toEqual(["Buttons", "Expander"]);
         });
-        const model = sidebar.getModel();
-        assert(model !== null);
-        expect(model.getNItems()).toBe(2);
+        expect(within(sidebar).getAllByRole(Gtk.AccessibleRole.LIST_ITEM)).toHaveLength(2);
     });
 
     it("restores every displayed row for a whitespace-only query", async () => {
@@ -128,9 +119,7 @@ describe("DemoProvider sidebar search", () => {
         await waitFor(() => {
             expect(rowLabels(sidebar)).toEqual([]);
         });
-        const model = sidebar.getModel();
-        assert(model !== null);
-        expect(model.getNItems()).toBe(0);
+        expect(within(sidebar).queryAllByRole(Gtk.AccessibleRole.LIST_ITEM)).toHaveLength(0);
         await userEvent.clear(search);
         await userEvent.type(search, "Standalone");
         await waitFor(() => {

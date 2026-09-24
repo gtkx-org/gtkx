@@ -1,3 +1,4 @@
+import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -10,6 +11,9 @@ import {
     AdwShortcutsItem,
     AdwShortcutsSection,
     AdwToolbarView,
+    AdwViewStack,
+    AdwViewStackPage,
+    AdwViewSwitcher,
 } from "@gtkx/jsx/adw";
 import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
 import {
@@ -18,40 +22,28 @@ import {
     GtkCallbackAction,
     GtkLabel,
     GtkMenuButton,
-    GtkNotebook,
-    GtkNotebookPage,
     GtkScrolledWindow,
     GtkShortcut,
     GtkShortcutController,
     GtkShortcutTrigger,
     GtkToggleButton,
-    GtkWindow,
 } from "@gtkx/jsx/gtk";
-import { quit, useParentWindow } from "@gtkx/react";
+import { quit } from "@gtkx/react";
 import * as path from "node:path/posix";
-import { type ComponentType, useEffect, useRef, useState } from "react";
-import type { Demo as DemoDefinition, DemoProviderProps } from "./demos/types.js";
+import { useEffect, useRef, useState } from "react";
+import type { Demo as DemoDefinition } from "./demos/types.js";
 import logoResourcePath from "../data/icons/org.gtk.Demo4.svg?resource";
+import { DemoWindow } from "./components/demo-window.js";
 import { EmptyState } from "./components/empty-state.js";
 import { Sidebar } from "./components/sidebar.js";
 import { SourceViewer } from "./components/source-viewer.js";
 import { DemoProvider, parseTitle, useDemo } from "./context/demo-context.js";
 import { demos } from "./demos/index.js";
 
-type DemoWindowProps = {
-    onClose: () => void;
-};
-
-type OpenDemoWindow = DemoWindowProps & {
+type OpenDemoWindow = {
     id: number;
     demo: DemoDefinition;
-};
-
-type DemoWindowSizing = {
-    defaultWidth: number;
-    defaultHeight: number;
-    isResizable: boolean;
-    isDeletable: boolean;
+    onClose: () => void;
 };
 
 type ShortcutsDialogProps = {
@@ -61,19 +53,23 @@ type ShortcutsDialogProps = {
 type AppHeaderBarProps = {
     hasDemo: boolean;
     isSearchActive: boolean;
+    pageStack: Adw.ViewStack | null;
     onRun: () => void;
     onSearchToggle: (isActive: boolean) => void;
 };
 
 type AppShortcutsProps = {
     onSearchToggle: () => void;
-    onNotebookNext: () => void;
-    onNotebookPrev: () => void;
+    onPageNext: () => void;
+    onPagePrev: () => void;
 };
 
-type AppNotebookProps = {
-    page: number;
-    onSwitchPage: (page: number) => void;
+type AppPage = "info" | "source";
+
+type AppPagesProps = {
+    page: AppPage;
+    onStackChange: (stack: Adw.ViewStack | null) => void;
+    onSwitchPage: (page: AppPage) => void;
 };
 
 type AboutDialogProps = {
@@ -82,9 +78,12 @@ type AboutDialogProps = {
 
 type MainWindowBodyProps = {
     isSearchActive: boolean;
-    notebookPage: number;
+    page: AppPage;
+    onDemoActivated: (demo: DemoDefinition) => void;
+    onPageChange: (page: AppPage) => void;
+    onPageStackChange: (stack: Adw.ViewStack | null) => void;
+    onSearchActiveChange: (isActive: boolean) => void;
     onSearchToggle: () => void;
-    onNotebookPageChange: (page: number) => void;
     onSearchChanged: (query: string) => void;
 };
 
@@ -98,8 +97,13 @@ type MainWindowChrome = ReturnType<typeof useMainWindowChrome>;
 type MainWindowContentProps = {
     chrome: MainWindowChrome;
     demoWindows: OpenDemoWindow[];
+    onDemoActivated: (demo: DemoDefinition) => void;
+    onSearchActiveChange: (isActive: boolean) => void;
+    onSearchToggle: () => void;
     onSearchChanged: (query: string) => void;
 };
+
+const gtkVersion = [Gtk.getMajorVersion(), Gtk.getMinorVersion(), Gtk.getMicroVersion()].join(".");
 
 type AppProps = {
     applicationId?: string;
@@ -149,72 +153,6 @@ const InfoTab = () => {
     );
 };
 
-const PassthroughProvider: ComponentType<DemoProviderProps> = ({ children }) => children;
-
-function demoWindowTitle(demo: DemoDefinition, windowTitle: string | null): string {
-    const { displayTitle } = parseTitle(demo.title);
-
-    return windowTitle ?? demo.windowTitle ?? displayTitle;
-}
-
-function demoWindowSizing(demo: DemoDefinition): DemoWindowSizing {
-    return {
-        defaultWidth: demo.defaultWidth ?? -1,
-        defaultHeight: demo.defaultHeight ?? -1,
-        isResizable: demo.isResizable ?? true,
-        isDeletable: demo.isDeletable ?? true,
-    };
-}
-
-const DemoWindow = ({ onClose }: DemoWindowProps) => {
-    const { currentDemo, windowTitle, defaultWidget } = useDemo();
-    const hostWindow = useParentWindow();
-    const [window, setWindow] = useState<Gtk.Window | null>(null);
-
-    if (!hostWindow || !currentDemo?.component) {
-        return null;
-    }
-
-    const DemoComponent = currentDemo.component;
-    const DemoTitlebar = currentDemo.titlebar;
-    const DemoStateProvider = currentDemo.provider ?? PassthroughProvider;
-
-    if (currentDemo.isDialogOnly) {
-        return (
-            <DemoStateProvider window={hostWindow} onClose={onClose}>
-                <DemoComponent onClose={onClose} window={hostWindow} />
-            </DemoStateProvider>
-        );
-    }
-
-    const titlebar = DemoTitlebar ? <DemoTitlebar onClose={onClose} window={window} /> : undefined;
-    const sizing = demoWindowSizing(currentDemo);
-
-    return (
-        <DemoStateProvider window={window} onClose={onClose}>
-            <GtkWindow
-                ref={setWindow}
-                name="demo-window"
-                title={demoWindowTitle(currentDemo, windowTitle)}
-                defaultWidth={sizing.defaultWidth}
-                defaultHeight={sizing.defaultHeight}
-                resizable={sizing.isResizable}
-                deletable={sizing.isDeletable}
-                cssClasses={currentDemo.windowCssClasses}
-                defaultWidget={defaultWidget}
-                titlebar={titlebar}
-                onCloseRequest={() => {
-                    onClose();
-
-                    return Gdk.EVENT_STOP;
-                }}
-            >
-                <DemoComponent onClose={onClose} window={window} />
-            </GtkWindow>
-        </DemoStateProvider>
-    );
-};
-
 const ShortcutsDialog = ({ onClose }: ShortcutsDialogProps) => (
     <AdwShortcutsDialog onClosed={onClose}>
         <AdwShortcutsSection title="General">
@@ -229,8 +167,27 @@ const ShortcutsDialog = ({ onClose }: ShortcutsDialogProps) => (
     </AdwShortcutsDialog>
 );
 
-const AppHeaderBar = ({ hasDemo, isSearchActive, onRun, onSearchToggle }: AppHeaderBarProps) => (
+const renderPageSwitcher = (stack: Adw.ViewStack | null) => stack === null
+    ? undefined
+    : <AdwViewSwitcher accessibleLabel="Demo pages" policy={Adw.ViewSwitcherPolicy.WIDE} stack={stack} />;
+
+const renderAppMenu = () => (
+    <GMenu
+        items={[
+            {
+                section: [
+                    { label: "_Inspector", action: "win.inspector" },
+                    { label: "_Keyboard Shortcuts", action: "win.shortcuts" },
+                    { label: "_About GTK Demo", action: "win.about" },
+                ],
+            },
+        ]}
+    />
+);
+
+const AppHeaderBar = ({ hasDemo, isSearchActive, pageStack, onRun, onSearchToggle }: AppHeaderBarProps) => (
     <AdwHeaderBar
+        titleWidget={renderPageSwitcher(pageStack)}
         start={(
             <>
                 <GtkButton
@@ -241,12 +198,12 @@ const AppHeaderBar = ({ hasDemo, isSearchActive, onRun, onSearchToggle }: AppHea
                     focusOnClick={false}
                 />
                 <GtkToggleButton
-                    name="search-toggle"
-                    tooltipText="Search"
+                    accessibleLabel="Search demos"
+                    tooltipText="Search demos"
                     iconName="edit-find-symbolic"
                     active={isSearchActive}
-                    onToggled={(btn: Gtk.ToggleButton) => {
-                        onSearchToggle(btn.getActive());
+                    onToggled={(button: Gtk.ToggleButton) => {
+                        onSearchToggle(button.getActive());
                     }}
                     valign={Gtk.Align.CENTER}
                     focusOnClick={false}
@@ -255,23 +212,12 @@ const AppHeaderBar = ({ hasDemo, isSearchActive, onRun, onSearchToggle }: AppHea
         )}
         end={(
             <GtkMenuButton
-                name="menu-button"
+                accessibleLabel="Main Menu"
+                tooltipText="Main Menu"
                 iconName="open-menu-symbolic"
                 valign={Gtk.Align.CENTER}
                 focusOnClick={false}
-                menuModel={(
-                    <GMenu
-                        items={[
-                            {
-                                section: [
-                                    { label: "_Inspector", action: "win.inspector" },
-                                    { label: "_Keyboard Shortcuts", action: "win.shortcuts" },
-                                    { label: "_About GTK Demo", action: "win.about" },
-                                ],
-                            },
-                        ]}
-                    />
-                )}
+                menuModel={renderAppMenu()}
             />
         )}
     />
@@ -292,41 +238,40 @@ const shortcut = (accelerator: string, run: () => void) => (
     />
 );
 
-const AppShortcuts = ({ onSearchToggle, onNotebookNext, onNotebookPrev }: AppShortcutsProps) => (
+const AppShortcuts = ({ onSearchToggle, onPageNext, onPagePrev }: AppShortcutsProps) => (
     <GtkShortcutController
         scope={Gtk.ShortcutScope.GLOBAL}
         shortcuts={(
             <>
                 {shortcut("<Control>f", onSearchToggle)}
-                {shortcut("<Control>Page_Down", onNotebookNext)}
-                {shortcut("<Control>Page_Up", onNotebookPrev)}
+                {shortcut("<Control>Page_Down", onPageNext)}
+                {shortcut("<Control>Page_Up", onPagePrev)}
             </>
         )}
     />
 );
 
-const AppNotebook = ({ page, onSwitchPage }: AppNotebookProps) => (
-    <GtkNotebook
-        name="notebook"
-        page={page}
-        onSwitchPage={(_page, pageNum) => {
-            onSwitchPage(pageNum);
+const AppPages = ({ page, onStackChange, onSwitchPage }: AppPagesProps) => (
+    <AdwViewStack
+        ref={onStackChange}
+        visibleChildName={page}
+        onNotifyVisibleChildName={(name) => {
+            if (name === "info" || name === "source") {
+                onSwitchPage(name);
+            }
         }}
         vexpand
         hexpand
-        scrollable
-        showBorder={false}
-        enablePopup
     >
-        <GtkNotebookPage tabLabel="Info">
+        <AdwViewStackPage name="info" title="Info" iconName="dialog-information-symbolic">
             <GtkScrolledWindow vexpand hexpand>
                 <InfoTab />
             </GtkScrolledWindow>
-        </GtkNotebookPage>
-        <GtkNotebookPage tabLabel="Source">
+        </AdwViewStackPage>
+        <AdwViewStackPage name="source" title="Source" iconName="text-x-generic-symbolic">
             <SourceViewer />
-        </GtkNotebookPage>
-    </GtkNotebook>
+        </AdwViewStackPage>
+    </AdwViewStack>
 );
 
 const AboutDialog = ({ onClose }: AboutDialogProps) => (
@@ -334,7 +279,7 @@ const AboutDialog = ({ onClose }: AboutDialogProps) => (
         onClosed={onClose}
         applicationName="GTK Demo"
         applicationIcon={applicationIconName}
-        version="0.14.0"
+        version={gtkVersion}
         copyright="© 2026 The GTKX Team"
         website="https://gtkx.dev"
         comments="An Adwaita application demonstrating GTKX widgets"
@@ -367,21 +312,20 @@ const useDemoWindows = () => {
 
 function useMainWindowChrome() {
     const [isSearchActive, setIsSearchActive] = useState(false);
-    const [notebookPage, setNotebookPage] = useState(0);
+    const [page, setPage] = useState<AppPage>("info");
+    const [pageStack, setPageStack] = useState<Adw.ViewStack | null>(null);
     const [showAbout, setShowAbout] = useState(false);
     const [showShortcuts, setShowShortcuts] = useState(false);
 
     return {
         isSearchActive,
         setIsSearchActive,
-        notebookPage,
-        setNotebookPage,
+        page,
+        setPage,
+        pageStack,
+        setPageStack,
         showAbout,
         showShortcuts,
-
-        toggleSearch: () => {
-            setIsSearchActive((prev) => !prev);
-        },
 
         openAbout: () => {
             setShowAbout(true);
@@ -403,9 +347,12 @@ function useMainWindowChrome() {
 
 const MainWindowBody = ({
     isSearchActive,
-    notebookPage,
+    page,
+    onDemoActivated,
+    onPageChange,
+    onPageStackChange,
+    onSearchActiveChange,
     onSearchToggle,
-    onNotebookPageChange,
     onSearchChanged,
 }: MainWindowBodyProps) => (
     <GtkBox
@@ -415,17 +362,22 @@ const MainWindowBody = ({
         controllers={(
             <AppShortcuts
                 onSearchToggle={onSearchToggle}
-                onNotebookNext={() => {
-                    onNotebookPageChange(Math.min(notebookPage + 1, 1));
+                onPageNext={() => {
+                    onPageChange("source");
                 }}
-                onNotebookPrev={() => {
-                    onNotebookPageChange(Math.max(notebookPage - 1, 0));
+                onPagePrev={() => {
+                    onPageChange("info");
                 }}
             />
         )}
     >
-        <Sidebar isSearchActive={isSearchActive} onSearchChanged={onSearchChanged} />
-        <AppNotebook page={notebookPage} onSwitchPage={onNotebookPageChange} />
+        <Sidebar
+            isSearchActive={isSearchActive}
+            onDemoActivated={onDemoActivated}
+            onSearchActiveChange={onSearchActiveChange}
+            onSearchChanged={onSearchChanged}
+        />
+        <AppPages page={page} onStackChange={onPageStackChange} onSwitchPage={onPageChange} />
     </GtkBox>
 );
 
@@ -442,13 +394,23 @@ const renderMainWindowActions = ({ onKeyboardShortcuts, onShowAbout }: MainWindo
     </>
 );
 
-const MainWindowContent = ({ chrome, demoWindows, onSearchChanged }: MainWindowContentProps) => (
+const MainWindowContent = ({
+    chrome,
+    demoWindows,
+    onDemoActivated,
+    onSearchActiveChange,
+    onSearchToggle,
+    onSearchChanged,
+}: MainWindowContentProps) => (
     <>
         <MainWindowBody
             isSearchActive={chrome.isSearchActive}
-            notebookPage={chrome.notebookPage}
-            onSearchToggle={chrome.toggleSearch}
-            onNotebookPageChange={chrome.setNotebookPage}
+            page={chrome.page}
+            onDemoActivated={onDemoActivated}
+            onPageChange={chrome.setPage}
+            onPageStackChange={chrome.setPageStack}
+            onSearchActiveChange={onSearchActiveChange}
+            onSearchToggle={onSearchToggle}
             onSearchChanged={onSearchChanged}
         />
         {demoWindows.map(({ id, demo, onClose }) => (
@@ -461,11 +423,28 @@ const MainWindowContent = ({ chrome, demoWindows, onSearchChanged }: MainWindowC
     </>
 );
 
+function useMainWindowSearch(chrome: MainWindowChrome, setSearchQuery: (query: string) => void) {
+    const setSearchActive = (isActive: boolean) => {
+        chrome.setIsSearchActive(isActive);
+
+        if (!isActive) {
+            setSearchQuery("");
+        }
+    };
+
+    const toggleSearch = () => {
+        setSearchActive(!chrome.isSearchActive);
+    };
+
+    return { setSearchActive, toggleSearch };
+}
+
 const MainWindow = () => {
     const { currentDemo, setSearchQuery } = useDemo();
     const chrome = useMainWindowChrome();
     const { demoWindows, openWindow } = useDemoWindows();
     const windowTitle = currentDemo ? parseTitle(currentDemo.title).displayTitle : "GTK Demo";
+    const search = useMainWindowSearch(chrome, setSearchQuery);
 
     const handleRun = () => {
         if (!currentDemo) {
@@ -492,14 +471,18 @@ const MainWindow = () => {
                     <AppHeaderBar
                         hasDemo={!!currentDemo?.component}
                         isSearchActive={chrome.isSearchActive}
+                        pageStack={chrome.pageStack}
                         onRun={handleRun}
-                        onSearchToggle={chrome.setIsSearchActive}
+                        onSearchToggle={search.setSearchActive}
                     />
                 )}
             >
                 <MainWindowContent
                     chrome={chrome}
                     demoWindows={demoWindows}
+                    onDemoActivated={openWindow}
+                    onSearchActiveChange={search.setSearchActive}
+                    onSearchToggle={search.toggleSearch}
                     onSearchChanged={setSearchQuery}
                 />
             </AdwToolbarView>

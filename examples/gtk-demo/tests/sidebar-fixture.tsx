@@ -30,7 +30,14 @@ const fixedSlash: Demo = {
 const ConnectedSidebar = ({ isSearchActive }: { isSearchActive: boolean }) => {
     const { setSearchQuery } = useDemo();
 
-    return <Sidebar isSearchActive={isSearchActive} onSearchChanged={setSearchQuery} />;
+    return (
+        <Sidebar
+            isSearchActive={isSearchActive}
+            onDemoActivated={() => null}
+            onSearchActiveChange={() => null}
+            onSearchChanged={setSearchQuery}
+        />
+    );
 };
 
 const drawSidebar = (demos: Demo[], isSearchActive = false) => (

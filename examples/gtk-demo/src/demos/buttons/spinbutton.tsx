@@ -33,7 +33,7 @@ const MONTHS = [
 ];
 
 const GTK_INPUT_ERROR = -1;
-const DECIMAL_PREFIX_PATTERN = /^\s*([+-]?\d+)/;
+const DECIMAL_PATTERN = /^\s*([+-]?\d+)$/;
 
 const spinbuttonDemo: Demo = {
     id: "spinbutton",
@@ -49,7 +49,7 @@ const spinbuttonDemo: Demo = {
 };
 
 const parseDecimal = (text: string): number => {
-    const match = DECIMAL_PREFIX_PATTERN.exec(text);
+    const match = DECIMAL_PATTERN.exec(text);
 
     return match ? Number(match[1]) : NaN;
 };
@@ -117,6 +117,10 @@ const handleTimeOutput = (spin: Gtk.SpinButton) => {
 
 const handleMonthInput = (spin: Gtk.SpinButton): [number, number] => {
     const text = spin.getText().toLowerCase();
+
+    if (text.length === 0) {
+        return [GTK_INPUT_ERROR, 0];
+    }
 
     for (const [i, month] of MONTHS.entries()) {
         if (month.toLowerCase().startsWith(text)) {

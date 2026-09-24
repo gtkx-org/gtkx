@@ -35,7 +35,7 @@ function renderAppItem({ item }: { item: AppItem }) {
             <GtkImage
                 {...(item.icon ? { gicon: item.icon } : { iconName: "application-x-executable" })}
                 iconSize={Gtk.IconSize.LARGE}
-                accessibleLabel="App icon"
+                accessibleRole={Gtk.AccessibleRole.PRESENTATION}
             />
             <GtkLabel accessibleLabel={item.name}>{item.name}</GtkLabel>
         </GtkBox>
@@ -43,17 +43,7 @@ function renderAppItem({ item }: { item: AppItem }) {
 }
 
 function launchApp(app: AppItem, onError: (error: unknown) => void) {
-    const display = Gdk.Display.getDefault();
-
-    if (!display) {
-        return;
-    }
-
-    const context: object = display.getAppLaunchContext();
-
-    if (!(context instanceof Gio.AppLaunchContext)) {
-        return;
-    }
+    const context = Gdk.Display.getDefault()?.getAppLaunchContext() ?? null;
 
     try {
         app.appInfo.launch(null, context);
@@ -66,12 +56,15 @@ function ListViewApplauncherDemo() {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [launchError, setLaunchError] = useState<{ app: AppItem; error: unknown } | null>(null);
 
-    const apps = Gio.AppInfo.getAll().map((app) => ({
-        appInfo: app,
-        id: app.getId() ?? crypto.randomUUID(),
-        name: app.getDisplayName(),
-        icon: app.getIcon(),
-    }));
+    const [apps] = useState(() => Gio.AppInfo.getAll()
+        .filter((app) => app.shouldShow())
+        .map((app) => ({
+            appInfo: app,
+            id: app.getId() ?? crypto.randomUUID(),
+            name: app.getDisplayName(),
+            icon: app.getIcon(),
+        }))
+        .toSorted((a, b) => a.name.localeCompare(b.name)));
 
     const handleActivate = (position: number) => {
         const app = apps[position];

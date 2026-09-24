@@ -55,6 +55,7 @@ function SpringsListDemo() {
                     value={styles.value}
                     widthRequest={320}
                     halign={Gtk.Align.START}
+                    accessibleLabel={`Preset value ${String(index + 1)}`}
                 />
             ))}
             <GtkButton label="Next preset" halign={Gtk.Align.START} onClicked={nextPreset} />

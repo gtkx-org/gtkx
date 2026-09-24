@@ -25,13 +25,30 @@ function HeaderBarTitlebar() {
             start={(
                 <>
                     <GtkBox name="nav-box" cssClasses={["linked"]}>
-                        <GtkButton name="back-button" iconName="go-previous-symbolic" tooltipText="Back" />
-                        <GtkButton name="forward-button" iconName="go-next-symbolic" tooltipText="Forward" />
+                        <GtkButton
+                            name="back-button"
+                            iconName="go-previous-symbolic"
+                            tooltipText="Back"
+                            accessibleLabel="Back"
+                        />
+                        <GtkButton
+                            name="forward-button"
+                            iconName="go-next-symbolic"
+                            tooltipText="Forward"
+                            accessibleLabel="Forward"
+                        />
                     </GtkBox>
                     <GtkSwitch accessibleLabel="Change something" />
                 </>
             )}
-            end={<GtkButton name="check-out-button" iconName="mail-send-receive-symbolic" tooltipText="Check out" />}
+            end={(
+                <GtkButton
+                    name="check-out-button"
+                    iconName="mail-send-receive-symbolic"
+                    tooltipText="Check out"
+                    accessibleLabel="Check out"
+                />
+            )}
         />
     );
 }

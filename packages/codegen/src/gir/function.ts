@@ -1,6 +1,7 @@
 import type { GirAnnotations } from "./annotations.js";
 import type { ParseContext } from "./type-id.js";
 import { type CursorParameterNames, PARAMETERS_MISSING_ARRAY_EXTENT } from "./cursor-overrides.js";
+import { PARAMETER_DIRECTION_OVERRIDES } from "./direction-overrides.js";
 import { FUNCTIONS_MISSING_FINISH_FUNC } from "./finish-overrides.js";
 import { HIDDEN_SYMBOLS } from "./hidden-symbols.js";
 import { relaxMissingNullable } from "./nullable-overrides.js";
@@ -102,17 +103,15 @@ const applyReturnTransfer = (fn: GirFunction): GirFunction => {
     return fn;
 };
 
-const applyParameterTransfers = (fn: GirFunction): GirFunction => {
+const applyParameterOverrides = (fn: GirFunction): GirFunction => {
     if (fn.cIdentifier === undefined) {
         return fn;
     }
 
     for (const parameter of fn.parameters) {
-        const transfer = PARAMETER_TRANSFER_OVERRIDES.get(`${fn.cIdentifier}:${parameter.name}`);
-
-        if (transfer !== undefined) {
-            parameter.transferOwnership = transfer;
-        }
+        const key = `${fn.cIdentifier}:${parameter.name}`;
+        parameter.transferOwnership = PARAMETER_TRANSFER_OVERRIDES.get(key) ?? parameter.transferOwnership;
+        parameter.direction = PARAMETER_DIRECTION_OVERRIDES.get(key) ?? parameter.direction;
     }
 
     return fn;
@@ -153,7 +152,7 @@ const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => 
     }
 
     relaxMissingNullable(fn, cIdentifier);
-    const relaxed = applyParameterTransfers(applyReturnTransfer(fn));
+    const relaxed = applyParameterOverrides(applyReturnTransfer(fn));
 
     return bindMissingUcs4ReturnArray(bindMissingArrayExtent(relaxed, context), context);
 };

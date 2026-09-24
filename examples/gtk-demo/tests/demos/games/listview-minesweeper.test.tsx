@@ -1,13 +1,24 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { fireEvent, screen, userEvent, waitFor } from "@gtkx/testing";
+import { screen, userEvent, waitFor } from "@gtkx/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listviewMinesweeperDemo } from "../../../src/demos/games/listview-minesweeper.js";
 import { collectWidgets, renderDemo } from "../../test-utils.js";
 
 const MINE = "\u{1F4A3}";
 
-const cellTexts = (gridView: Gtk.Widget): string[] =>
-    collectWidgets(gridView, Gtk.Label).map((label) => label.getLabel());
+const cellLabels = (gridView: Gtk.Widget): Gtk.Label[] => collectWidgets(gridView, Gtk.Label);
+
+const cellTexts = (gridView: Gtk.Widget): string[] => cellLabels(gridView).map((label) => label.getLabel());
+
+const clickCell = async (gridView: Gtk.Widget, position: number): Promise<void> => {
+    const cell = cellLabels(gridView)[position];
+
+    if (cell === undefined) {
+        throw new Error(`cell ${String(position)} is not rendered`);
+    }
+
+    await userEvent.click(cell);
+};
 
 const hasTrophy = (header: Gtk.Widget): boolean =>
     collectWidgets(header, Gtk.Image).some((image) => image.getIconName() === "trophy-gold");
@@ -32,9 +43,11 @@ describe("listviewMinesweeperDemo rendering", () => {
         await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New Game" });
         const gridView = await screen.findByName("grid-view", { as: Gtk.GridView });
         expect(gridView.getModel()).toHaveObjectProperty("nItems", 64);
+        expect(gridView.getModel()).toBeInstanceOf(Gtk.NoSelection);
         const texts = cellTexts(gridView);
         expect(texts).toHaveLength(64);
         expect(texts.every((text) => text === "?")).toBe(true);
+        expect(cellLabels(gridView)[0]).toHaveAccessibleName("Row 1, column 1, hidden");
     });
 
     it("starts with no trophy in the header (title widget is null while playing)", async () => {
@@ -54,12 +67,15 @@ describe("listviewMinesweeperDemo gameplay", () => {
             const texts = cellTexts(gridView);
             expect(texts[0]).not.toBe("?");
             expect(texts.filter((text) => text === "?")).toHaveLength(63);
+            expect(cellLabels(gridView)[0]).toHaveAccessibleName(
+                /^Row 1, column 1, (mine|empty|[1-8] adjacent mines?)$/,
+            );
         });
     });
 
     it("restores the revealed cell to '?' after pressing New Game", async () => {
         const gridView = await renderGridView();
-        await fireEvent(gridView, "activate", 0);
+        await clickCell(gridView, 0);
 
         await waitFor(() => {
             expect(cellTexts(gridView)[0]).not.toBe("?");
@@ -82,7 +98,7 @@ describe("listviewMinesweeperDemo outcomes", () => {
         let mineIndex = -1;
 
         for (let position = 0; position < 64; position++) {
-            await fireEvent(gridView, "activate", position);
+            await clickCell(gridView, position);
             await waitFor(() => {
                 expect(cellTexts(gridView)[position]).not.toBe("?");
             });
@@ -97,7 +113,7 @@ describe("listviewMinesweeperDemo outcomes", () => {
         const hiddenIndex = cellTexts(gridView).indexOf("?");
         expect(hiddenIndex).toBeGreaterThanOrEqual(0);
 
-        await fireEvent(gridView, "activate", hiddenIndex);
+        await clickCell(gridView, hiddenIndex);
         expect(cellTexts(gridView)[hiddenIndex]).toBe("?");
     });
 });

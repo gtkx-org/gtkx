@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createCliProject, runCli, STORE_LIBRARIES } from "./cli-project.js";
+import { createCliProject, runCli, runCliOrThrow, STORE_LIBRARIES } from "./cli-project.js";
 
 type RejectedConfig = { title: string; config: string };
 
@@ -80,7 +80,7 @@ const buildWith = (config: string): ReturnType<typeof createCliProject> => {
         hasStore: true,
     });
 
-    expect(runCli(project, ["build"]).status).toBe(0);
+    runCliOrThrow(project, ["build"]);
 
     return project;
 };

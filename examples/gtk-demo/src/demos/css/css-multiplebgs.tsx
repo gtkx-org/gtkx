@@ -1,22 +1,19 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import {
-    GtkBox,
     GtkButton,
     GtkDrawingArea,
     GtkOverlay,
     GtkOverlayLayoutChild,
     GtkPaned,
     GtkScrolledWindow,
-    GtkTextBuffer,
-    GtkTextView,
 } from "@gtkx/jsx/gtk";
 import type { Demo } from "../types.js";
 import brick2Path from "../../../data/demos/css/brick2.png?resource";
 import brickPath from "../../../data/demos/css/brick.png?resource";
+import { CssEditor } from "./css-editor.js";
 import sourceCode from "./css-multiplebgs.tsx?raw";
 import cssviewCssPath from "./cssview.css?url";
 import resetCssPath from "./reset.css?url";
-import { useCssEditor } from "./use-css-editor.js";
 
 const DEFAULT_CSS = `/* You can edit the text in this window to change the
  * appearance of this Window.
@@ -165,7 +162,7 @@ const cssMultiplebgsDemo: Demo = {
     id: "css-multiplebgs",
     title: "Theming/Multiple Backgrounds",
     description:
-        "GTK themes are written using CSS. Every widget is build of multiple items that you can style very " +
+        "GTK themes are written using CSS. Every widget is built from multiple elements that you can style " +
         "similarly to a regular website.",
     keywords: [],
     component: CssMultiplebgsDemo,
@@ -176,41 +173,40 @@ const cssMultiplebgsDemo: Demo = {
 };
 
 function CssMultiplebgsDemo() {
-    const { textViewRef, onChanged } = useCssEditor(DEFAULT_CSS);
-
     return (
-        <GtkOverlay
-            name="overlay"
-            overlays={[
-                <GtkOverlayLayoutChild key="overlay-0">
-                    <GtkButton
-                        name="bricks-button"
-                        halign={Gtk.Align.CENTER}
-                        valign={Gtk.Align.CENTER}
-                        widthRequest={250}
-                        heightRequest={84}
+        <GtkPaned
+            orientation={Gtk.Orientation.VERTICAL}
+            position={150}
+            startChild={(
+                <GtkOverlay
+                    overlays={(
+                        <GtkOverlayLayoutChild>
+                            <GtkButton
+                                name="bricks-button"
+                                halign={Gtk.Align.CENTER}
+                                valign={Gtk.Align.CENTER}
+                                widthRequest={250}
+                                heightRequest={84}
+                                accessibleLabel="Bricks"
+                            />
+                        </GtkOverlayLayoutChild>
+                    )}
+                >
+                    <GtkDrawingArea
+                        name="canvas"
+                        hexpand
+                        vexpand
+                        accessibleRole={Gtk.AccessibleRole.IMG}
+                        accessibleLabel="CSS background preview"
                     />
-                </GtkOverlayLayoutChild>,
-                <GtkOverlayLayoutChild key="overlay-1">
-                    <GtkPaned
-                        name="paned"
-                        orientation={Gtk.Orientation.VERTICAL}
-                        startChild={<GtkBox />}
-                        endChild={(
-                            <GtkScrolledWindow>
-                                <GtkTextView
-                                    name="text-view"
-                                    ref={textViewRef}
-                                    buffer={<GtkTextBuffer onChanged={onChanged}>{DEFAULT_CSS}</GtkTextBuffer>}
-                                />
-                            </GtkScrolledWindow>
-                        )}
-                    />
-                </GtkOverlayLayoutChild>,
-            ]}
-        >
-            <GtkDrawingArea name="canvas" hexpand vexpand />
-        </GtkOverlay>
+                </GtkOverlay>
+            )}
+            endChild={(
+                <GtkScrolledWindow>
+                    <CssEditor defaultCss={DEFAULT_CSS} />
+                </GtkScrolledWindow>
+            )}
+        />
     );
 }
 

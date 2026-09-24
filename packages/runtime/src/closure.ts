@@ -25,6 +25,7 @@ import { fromValue, getValueType, intoValue } from "./value.js";
  * handler produces that parameter's value. It stops being valid once the handler returns.
  */
 type ClosureCallback = (...args: never[]) => unknown;
+type ClosureRelease = () => void;
 
 const CCLOSURE_CALLBACK_OFFSET = CLOSURE_SIZE;
 const N_PARAM_VALUES_INDEX = 2;
@@ -71,6 +72,9 @@ const gClosureSink = bind(LIB, "g_closure_sink", [CLOSURE_T], voidT);
 const gClosureSetMarshal = bind(LIB, "g_closure_set_marshal", [CLOSURE_T, bufferT], voidT);
 const cclosureNewCache = createBindCache();
 const genericMarshal: { function?: ExternalObject<Handle> } = {};
+const closureReleaseRegistry: FinalizationRegistry<ClosureRelease> = new FinalizationRegistry((release) => {
+    release();
+});
 
 const genericClosureMarshal = (): ExternalObject<Handle> =>
     (genericMarshal.function ??= resolveFunction(LIB, "g_cclosure_marshal_generic"));
@@ -96,19 +100,35 @@ function marshalFor(callback: ClosureCallback): (...args: unknown[]) => void {
     };
 }
 
-function newClosure(callback: ClosureCallback): ExternalObject<Handle> {
-    const handle = gCclosureNew(marshalFor(callback)) as ExternalObject<Handle>;
-    const marshal = readFunctionPointer(handle, CCLOSURE_CALLBACK_OFFSET);
+function newClosure(callback: ClosureCallback, release?: ClosureRelease): ExternalObject<Handle> {
+    const marshal = marshalFor(callback);
+    const handle = gCclosureNew(marshal) as ExternalObject<Handle>;
+
+    if (release !== undefined) {
+        closureReleaseRegistry.register(marshal, release);
+    }
+
+    const nativeMarshal = readFunctionPointer(handle, CCLOSURE_CALLBACK_OFFSET);
     gClosureRef(handle);
     gClosureSink(handle);
-    gClosureSetMarshal(handle, marshal);
+    gClosureSetMarshal(handle, nativeMarshal);
 
     return handle;
 }
 
-function newCCallbackClosure(key: string, callback: CallbackDescriptor, fn: unknown): ExternalObject<Handle> {
+function newCCallbackClosure(
+    key: string,
+    callback: CallbackDescriptor,
+    fn: unknown,
+    release?: ClosureRelease,
+): ExternalObject<Handle> {
     const create = cclosureNewCache(key, LIB, "g_cclosure_new", [callback], OWNED_CLOSURE_T);
     const handle = create(fn) as ExternalObject<Handle>;
+
+    if (release !== undefined && typeof fn === "function") {
+        closureReleaseRegistry.register(fn, release);
+    }
+
     gClosureRef(handle);
     gClosureSink(handle);
     gClosureSetMarshal(handle, genericClosureMarshal());
@@ -145,4 +165,4 @@ class ClosureMarshalError extends TypeError {
     public override name = "ClosureMarshalError";
 }
 
-export { type ClosureCallback, ClosureMarshalError, newCCallbackClosure, toClosure, tryToClosure };
+export { type ClosureCallback, ClosureMarshalError, newCCallbackClosure, newClosure, toClosure, tryToClosure };

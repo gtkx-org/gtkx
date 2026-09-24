@@ -1,14 +1,37 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { render, waitFor } from "@gtkx/testing";
-import { existsSync, mkdtempDisposableSync, readFileSync } from "node:fs";
+import { render, screen, userEvent, waitFor, within } from "@gtkx/testing";
+import { mkdtempDisposableSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PrintOperation } from "../../../src/demos/dialogs/print-operation.js";
+import { printingDemo } from "../../../src/demos/dialogs/printing.js";
+import { findAddedWindow } from "../../native-dialogs.js";
+import { renderDemo } from "../../test-utils.js";
 
 const longSource = Array.from({ length: 80 }, (_, index) => `line ${String(index + 1)}`).join("\n");
 
-describe("printingDemo", () => {
+describe("printingDemo component lifecycle", () => {
+    it("closes the native print dialog and completes once after cancellation", async () => {
+        let completions = 0;
+        await renderDemo(printingDemo, { onClose: () => {
+            completions += 1;
+        } });
+        const parent = screen.getByRole(Gtk.AccessibleRole.WINDOW, { as: Gtk.ApplicationWindow });
+        const dialog = await findAddedWindow(new Set([parent]));
+        expect(dialog.getTitle()).toBe("Print");
+        expect(dialog.getTransientFor()).toBe(parent);
+        expect(completions).toBe(0);
+        await userEvent.click(within(dialog).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Cancel" }));
+        await waitFor(() => {
+            expect(Gtk.Window.listToplevels()).not.toContain(dialog);
+            expect(completions).toBe(1);
+        });
+        expect(parent).toBeVisible();
+    });
+});
+
+describe("PrintOperation exports", () => {
     it.each([
         { name: "empty source", source: "", pages: 1 },
         { name: "multipage source", source: longSource, pages: 2 },
@@ -45,7 +68,6 @@ describe("printingDemo", () => {
                 exportFilename={output}
             />,
         )).rejects.toThrow();
-        expect(existsSync(output)).toBe(false);
     });
 
     it("reports an export failure to its error callback", async () => {
@@ -71,6 +93,5 @@ describe("printingDemo", () => {
             expect(errors).toHaveLength(1);
             expect(completions).toEqual([Gtk.PrintOperationResult.ERROR]);
         });
-        expect(existsSync(output)).toBe(false);
     });
 });

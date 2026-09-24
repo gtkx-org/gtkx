@@ -26,10 +26,8 @@ const localDateTime = (iso: string | null): GLib.DateTime | null | undefined => 
     if (iso === null) {
         return undefined;
     }
-    const milliseconds = new Date(iso).getTime();
-    const seconds = BigInt(Math.floor(milliseconds / 1000));
 
-    return GLib.DateTime.newFromUnixLocal(seconds);
+    return GLib.DateTime.newFromIso8601(iso, null)?.toLocal();
 };
 
 const dueFrom = (date: GLib.DateTime): string =>
@@ -61,6 +59,7 @@ const DuePicker = ({ task }: { task: Task }) => {
                         popover={(
                             <GtkPopover>
                                 <GtkCalendar
+                                    accessibleLabel={t("Due")}
                                     date={dueDate}
                                     onDaySelected={(self) => {
                                         updateTask(task.id, { due: dueFrom(self.getDate()) });

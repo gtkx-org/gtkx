@@ -43,8 +43,8 @@ describe("drawingAreaDemo rendering", () => {
     it("renders two GtkDrawingArea widgets each sized 100x100", async () => {
         const { knockoutFrame, scribbleFrame } = await renderFrames();
 
-        for (const frame of [knockoutFrame, scribbleFrame]) {
-            const area = within(frame).getByRole(Gtk.AccessibleRole.IMG, { as: Gtk.DrawingArea });
+        for (const [frame, name] of [[knockoutFrame, "Knockout groups"], [scribbleFrame, "Scribble area"]] as const) {
+            const area = within(frame).getByRole(Gtk.AccessibleRole.IMG, { name, as: Gtk.DrawingArea });
             expect(area).toHaveObjectProperty("contentWidth", 100);
             expect(area).toHaveObjectProperty("contentHeight", 100);
         }

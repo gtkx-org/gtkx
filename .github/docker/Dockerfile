@@ -27,6 +27,7 @@ RUN apt-get update \
         libadwaita-1-dev \
         libgtksourceview-5-dev \
         libwebkitgtk-6.0-dev \
+        libgstreamer1.0-dev \
         libgirepository1.0-dev \
         libostree-dev \
         gobject-introspection \

@@ -2,9 +2,9 @@ import {
     canonicalDetailedSignalName,
     connectSignalByName,
     disconnectSignal,
-    isSignalHandlerConnected,
     type SignalHandler,
     type SignalHandlerId,
+    trackSignalDisconnect,
 } from "./signal.js";
 
 const listenerTable: WeakMap<object, Map<string, Map<SignalHandler, SignalHandlerId[]>>> = new WeakMap();
@@ -36,6 +36,7 @@ const trackListener = (instance: object, signal: string, handler: SignalHandler,
     }
 
     handlerIds.push(handlerId);
+    trackSignalDisconnect(instance, handlerId, untrackHandlerId);
 };
 
 const removeTrackedHandlerId = (handlerIds: SignalHandlerId[], handlerId: SignalHandlerId): number => {
@@ -48,25 +49,36 @@ const removeTrackedHandlerId = (handlerIds: SignalHandlerId[], handlerId: Signal
     return handlerIds.length;
 };
 
-const untrackHandlerId = (instance: object, signal: string, handlerId: SignalHandlerId): void => {
-    const key = canonicalDetailedSignalName(signal);
-    const bySignal = listenerTable.get(instance);
-    const byHandler = bySignal?.get(key);
-
-    if (byHandler === undefined) {
-        return;
-    }
-
+const removeHandlerIdFrom = (
+    byHandler: Map<SignalHandler, SignalHandlerId[]>,
+    handlerId: SignalHandlerId,
+): void => {
     for (const [handler, handlerIds] of byHandler) {
         if (removeTrackedHandlerId(handlerIds, handlerId) === 0) {
             byHandler.delete(handler);
         }
     }
-
-    if (byHandler.size === 0) {
-        bySignal?.delete(key);
-    }
 };
+
+function untrackHandlerId(instance: object, handlerId: SignalHandlerId): void {
+    const bySignal = listenerTable.get(instance);
+
+    if (bySignal === undefined) {
+        return;
+    }
+
+    for (const [signal, byHandler] of bySignal) {
+        removeHandlerIdFrom(byHandler, handlerId);
+
+        if (byHandler.size === 0) {
+            bySignal.delete(signal);
+        }
+    }
+
+    if (bySignal.size === 0) {
+        listenerTable.delete(instance);
+    }
+}
 
 /**
  * Connects a handler to a signal and tracks it so it can later be removed with
@@ -95,7 +107,7 @@ function onceSignal(instance: object, signal: string, handler: SignalHandler, is
     let handlerId = 0n;
 
     const wrapped: SignalHandler = (...args) => {
-        untrackHandlerId(instance, signal, handlerId);
+        untrackHandlerId(instance, handlerId);
         disconnectSignal(instance, handlerId);
 
         return handler(...args);
@@ -121,12 +133,7 @@ function offSignal(instance: object, signal: string, handler: SignalHandler): vo
         return;
     }
 
-    untrackHandlerId(instance, signal, handlerId);
-
-    if (!isSignalHandlerConnected(instance, handlerId)) {
-        return;
-    }
-
+    untrackHandlerId(instance, handlerId);
     disconnectSignal(instance, handlerId);
 }
 

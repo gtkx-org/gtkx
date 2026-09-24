@@ -1,3 +1,4 @@
+import type { ElementPropsExport } from "@gtkx/react/config";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";
@@ -41,7 +42,7 @@ type CodegenRunnerOptions = {
     /** GLib type names whose GObject their parent container creates, added to the framework's own. */
     userLazyElements?: string[];
     /** Base props interfaces the project's elements extend, keyed by GLib type name. */
-    userProps?: Record<string, ModuleExport>;
+    userProps?: Record<string, ElementPropsExport>;
     /** Props the project drops from the generated element props, keyed by GLib type name. */
     userOmittedProps?: OmittedProps;
     /** Regenerates both stores even when their fingerprints are fresh. */

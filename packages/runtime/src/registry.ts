@@ -50,6 +50,14 @@ type WrapperClass<C, I> = Omit<C, "prototype"> & {
         ? abstract new (...args: A) => I
         : never);
 
+type NativeIdentity = { readonly type: unique symbol };
+
+type NativeIdentityKeys<T> = {
+    [K in Extract<keyof T, symbol>]: T[K] extends NativeIdentity ? K : never;
+}[Extract<keyof T, symbol>];
+
+type NativeInstance<T> = Pick<T, NativeIdentityKeys<T>>;
+
 type InterfaceClass<C, I> = C & {
     [Symbol.hasInstance](value: unknown): value is I;
 };
@@ -763,5 +771,7 @@ export {
     type StaticBase,
     type VfuncDescriptor,
     type WrapperClass,
+    type NativeIdentity,
+    type NativeInstance,
     type WrapperClassResolver,
 };
