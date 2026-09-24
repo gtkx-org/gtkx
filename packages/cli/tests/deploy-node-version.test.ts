@@ -1,4 +1,4 @@
-import { MINIMUM_NODE_VERSION } from "@gtkx/config/internal";
+import { DEFAULT_NODE_VERSION, MINIMUM_NODE_VERSION } from "@gtkx/config/internal";
 import { chmodSync, copyFileSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -69,7 +69,7 @@ describe("gtkx deploy Node.js runtime versions", () => {
     );
 
     it.each([
-        [undefined, MINIMUM_NODE_VERSION],
+        [undefined, DEFAULT_NODE_VERSION],
         [MINIMUM_NODE_VERSION, MINIMUM_NODE_VERSION],
         [` v${MINIMUM_NODE_VERSION} `, MINIMUM_NODE_VERSION],
         ["26.7.1", "26.7.1"],
