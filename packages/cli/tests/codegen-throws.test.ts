@@ -28,7 +28,7 @@ const bindingFor = (bindings: string, name: string): string => {
 
 describe("gtkx codegen (callbacks whose C signature ends with a GError**)", () => {
     const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
+        project: { root: "", nodeModules: "", tmpDir: "" },
         status: null,
     };
 

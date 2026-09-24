@@ -344,7 +344,7 @@ const sharedProject = (host: CliProject, name: string, source: string): CliProje
     writeFileSync(join(root, "package.json"), `${JSON.stringify({ name, private: true, type: "module" }, null, 4)}\n`);
     writeFileSync(join(root, "gtkx.config.ts"), source);
 
-    return { root, nodeModules: host.nodeModules };
+    return { root, nodeModules: host.nodeModules, tmpDir: host.tmpDir };
 };
 
 describe("gtkx codegen store publication", () => {

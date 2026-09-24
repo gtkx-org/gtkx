@@ -263,7 +263,7 @@ describe("gtkx codegen (record fields and the GType a type registers)", () => {
 
 describe("gtkx codegen (fixed-size array fields stored inline)", () => {
     const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
+        project: { root: "", nodeModules: "", tmpDir: "" },
         status: null,
     };
 
@@ -321,7 +321,7 @@ describe("gtkx codegen (fixed-size array fields stored inline)", () => {
 
 describe("gtkx codegen (callback arguments of vtable slots)", () => {
     const state: { project: CliProject; status: number | null } = {
-        project: { root: "", nodeModules: "" },
+        project: { root: "", nodeModules: "", tmpDir: "" },
         status: null,
     };
 
