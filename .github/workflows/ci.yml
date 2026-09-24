@@ -252,7 +252,31 @@ jobs:
       - name: Run tests
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm exec nx run-many -t test --exclude @gtkx/cli,@gtkx/mcp
+          command: pnpm exec nx run-many -t test --exclude @gtkx/animated,@gtkx/cli,@gtkx/mcp
+          image-ref: ${{ needs.image-manifest.outputs.ref }}
+
+      - name: Report failures to Nx Cloud
+        if: *fix-ci
+        continue-on-error: true
+        uses: ./.github/actions/run-in-container
+        with:
+          command: *fix-ci-command
+          install: "false"
+
+  test-animated:
+    name: test (animated)
+    needs: [changes, image-manifest]
+    if: *code-changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run the animated tests
+        uses: ./.github/actions/run-ci-command
+        with:
+          command: pnpm exec nx run @gtkx/animated:test
           image-ref: ${{ needs.image-manifest.outputs.ref }}
 
       - name: Report failures to Nx Cloud
@@ -291,7 +315,7 @@ jobs:
           install: "false"
 
   test:
-    needs: [changes, test-core, test-mcp]
+    needs: [changes, test-animated, test-core, test-mcp]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -300,11 +324,13 @@ jobs:
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           CODE_CHANGED: ${{ needs.changes.outputs.code }}
+          ANIMATED_RESULT: ${{ needs.test-animated.result }}
           CORE_RESULT: ${{ needs.test-core.result }}
           MCP_RESULT: ${{ needs.test-mcp.result }}
         run: |
           test "$CHANGES_RESULT" = "success"
           if [ "$CODE_CHANGED" = "true" ]; then
+            test "$ANIMATED_RESULT" = "success"
             test "$CORE_RESULT" = "success"
             test "$MCP_RESULT" = "success"
           fi
