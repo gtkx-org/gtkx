@@ -2,4 +2,4 @@
 __default__: patch
 ---
 
-Bound native field access to handle extents, move ParamSpec override implementations into the runtime, and support clearing drag-source icons.
+Polish native and runtime foundations, framework packages, navigation, forms, components, and tutorials for GTKX 2.0.
