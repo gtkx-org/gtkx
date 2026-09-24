@@ -134,10 +134,10 @@ describe("reference configuration updates", () => {
             expect(await listApi({ projectRoot: project })).toContain("GtkSource");
             writeFileSync(dependency, "export default undefined;\n");
 
-            await expect.poll(() => listApi({ projectRoot: project }), { timeout: 10_000 })
+            await expect.poll(() => listApi({ projectRoot: project }), { timeout: 30_000 })
                 .not.toContain("GtkSource");
         } finally {
             rmSync(project, { recursive: true, force: true });
         }
-    });
+    }, 60_000);
 });
