@@ -4,21 +4,53 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    rebase-strategy: "disabled"
+    groups:
+      workspace-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: "npm"
     directory: "/examples/tutorial"
     schedule:
       interval: "daily"
+    rebase-strategy: "disabled"
+    groups:
+      tutorial-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: "cargo"
     directory: "/packages/native"
     schedule:
       interval: "daily"
+    rebase-strategy: "disabled"
+    groups:
+      native-patches:
+        patterns:
+          - "*"
+        update-types:
+          - "patch"
   - package-ecosystem: "github-actions"
     directories:
       - "/"
       - "/.github/actions/*"
     schedule:
       interval: "daily"
+    rebase-strategy: "disabled"
+    groups:
+      actions-minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: "docker"
     directory: "/.github/docker"
     schedule:
       interval: "daily"
+    rebase-strategy: "disabled"
