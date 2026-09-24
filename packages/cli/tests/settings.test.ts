@@ -41,10 +41,10 @@ const CHILD = `<schema id="org.gtkx.Child" extends="org.gtkx.Middle" path="/org/
 <key name="own-mode" enum="org.gtkx.Mode"><default>'octal'</default></key>
 </schema>`;
 const KEYS = { shared: "s", mode: "enum", features: "flags", choice: "s", "nested-choice": "aams" };
-const MODE_VALUES = {
-    first: 1, hexadecimal: 42, octal: 8, negative: -7, minimum: -2_147_483_648, maximum: 2_147_483_647,
-    ["__proto__"]: 9,
-};
+const MODE_VALUES = Object.fromEntries([
+    ["first", 1], ["hexadecimal", 42], ["octal", 8], ["negative", -7],
+    ["minimum", -2_147_483_648], ["maximum", 2_147_483_647], ["__proto__", 9],
+]);
 const VALUES = {
     mode: MODE_VALUES,
     features: { enabled: 1, high: 2_147_483_648 },
