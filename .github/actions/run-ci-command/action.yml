@@ -1,5 +1,5 @@
 name: Run CI Command
-description: Set up the CI image, Nx env, and caches via `setup-ci`, then run a command in the CI container with the cargo cache mounted.
+description: Set up the CI image, Nx env, and caches via `setup-ci`, then run a command in the CI container with the cargo and pnpm caches mounted.
 
 inputs:
   command:
@@ -25,4 +25,5 @@ runs:
       with:
         command: ${{ inputs.command }}
         mount-cargo-cache: "true"
+        mount-pnpm-store: "true"
         extra-env: ${{ inputs.extra-env }}

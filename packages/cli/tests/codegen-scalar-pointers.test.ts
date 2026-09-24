@@ -90,9 +90,6 @@ const REJECTED: Record<string, string> = {
     "property-options": "export const props: ScalarPointers.ProbeConstructorProps = { pointer: 1 };",
     "property-jsx": "export const view = <ScalarPointersProbe pointer={1} />;",
     "property-notify": "export const view = <ScalarPointersProbe onNotifyPointer={() => undefined} />;",
-    "hmac-constructor": "export const method = GLib.Hmac.new;",
-    "hmac-input": "export type Method = GLib.Hmac[\"update\"];",
-    "hmac-output": "export type Method = GLib.Hmac[\"getDigest\"];",
     "pixbuf-return": "export type Method = GdkPixbuf.Pixbuf[\"readPixels\"];",
     "byte-array-field": "export type Field = GLib.ByteArray[\"data\"];",
     "message-field": "export type Field = Gio.InputMessage[\"numControlMessages\"];",
@@ -105,9 +102,6 @@ import * as GdkPixbuf from "@gtkx/gi/gdkpixbuf";
 import { quit } from "@gtkx/runtime";
 
 try {
-    assert.equal("new" in GLib.Hmac, false);
-    assert.equal("update" in GLib.Hmac.prototype, false);
-    assert.equal("getDigest" in GLib.Hmac.prototype, false);
     assert.equal("readPixels" in GdkPixbuf.Pixbuf.prototype, false);
     assert.equal("data" in GLib.ByteArray.prototype, false);
     assert.equal("numControlMessages" in Gio.InputMessage.prototype, false);

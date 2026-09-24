@@ -404,3 +404,4 @@ jobs:
         with:
           command: pnpm tutorial
           mount-cargo-cache: "true"
+          mount-pnpm-store: "true"

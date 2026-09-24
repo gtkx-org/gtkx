@@ -1,70 +1,15 @@
-import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { callText, callTool, createProject, isToolFailure, type McpServer, startServer } from "./app-session.js";
+import { describe, expect, it } from "vitest";
+import { callTool, createProject, isToolFailure } from "./app-session.js";
+import {
+    createConfiguredProject,
+    referenceSession,
+    REQUEST_OPTIONS,
+    writePropsConfig,
+} from "./reference-session.js";
 
-const REFERENCE_TIMEOUT = 120_000;
-const REQUEST_OPTIONS = { timeout: REFERENCE_TIMEOUT };
-
-vi.setConfig({ testTimeout: 600_000, expect: { poll: { timeout: REFERENCE_TIMEOUT } } });
-
-const state = { project: "", server: {} as McpServer };
-const CONFIGURED_PROPS_FIXTURE = fileURLToPath(
-    new URL("../../cli/tests/fixtures/configured-props/@audit", import.meta.url),
-);
-const PROPS_MODULE = "@audit/element-props";
-const BASE_DECLARATION = "export interface SharedProps<T> { auditReplacement: T; }\n";
-const INVALID_DECLARATION = 'import type * as Gtk from "@gtkx/gi/gtk";\n' +
-    "export interface AliasProps { auditWidget: Gtk.Absent; }\n";
-const INVALID_PROPS = [
-    { title: "an uninstalled package", module: "@audit/not-installed", exported: "Props" },
-    { title: "a missing export", module: PROPS_MODULE, exported: "MissingProps" },
-    { title: "a value-only export", module: PROPS_MODULE, exported: "ValueProps" },
-    { title: "a function export", module: PROPS_MODULE, exported: "FunctionProps" },
-];
-
-const writePropsConfig = (root: string, exportName = "AliasProps", moduleName = PROPS_MODULE): void => {
-    const config = {
-        applicationId: "org.gtkx.configuredprops",
-        elements: { config: { GtkButton: { props: { module: moduleName, export: exportName } } } },
-    };
-    writeFileSync(join(root, "gtkx.config.mjs"), `export default ${JSON.stringify(config)};\n`);
-};
-
-const createConfiguredProject = (): string => {
-    const root = createProject();
-    cpSync(CONFIGURED_PROPS_FIXTURE, join(root, "node_modules", "@audit"), { recursive: true });
-    writePropsConfig(root);
-
-    return root;
-};
-
-const listApi = (args: Record<string, unknown> = {}): Promise<string> =>
-    callText(state.server.client, "gtkx_list_api", args, REQUEST_OPTIONS);
-
-const searchApi = (args: Record<string, unknown>): Promise<string> =>
-    callText(state.server.client, "gtkx_search_api", args, REQUEST_OPTIONS);
-
-const apiDocs = (args: Record<string, unknown>): Promise<string> =>
-    callText(state.server.client, "gtkx_get_api_docs", args, REQUEST_OPTIONS);
-
-const readResource = async (uri: string): Promise<string> => {
-    const result = await state.server.client.readResource({ uri }, REQUEST_OPTIONS);
-    const [entry] = result.contents;
-
-    return entry && "text" in entry ? entry.text : "";
-};
-
-beforeAll(async () => {
-    state.project = createProject();
-    state.server = await startServer(state.project);
-}, 120_000);
-
-afterAll(async () => {
-    await state.server.stop();
-    rmSync(state.project, { recursive: true, force: true });
-});
+const { apiDocs, listApi, readResource, searchApi, state } = referenceSession();
 
 describe("gtkx_list_api", () => {
     it("lists the namespaces the project's bindings expose", async () => {
@@ -303,63 +248,6 @@ describe("reference configuration updates", () => {
             rmSync(selected);
             await expect.poll(docs)
                 .toContain("Holds a short piece of text the user jotted down.");
-        } finally {
-            rmSync(project, { recursive: true, force: true });
-        }
-    });
-
-    it("refreshes configured declarations and isolates installed prop packages by project", async () => {
-        const project = createConfiguredProject();
-        const other = createConfiguredProject();
-        const baseFile = join(project, "node_modules/@audit/element-base/index.d.ts");
-        writeFileSync(
-            join(other, "node_modules/@audit/element-base/index.d.ts"),
-            "export interface SharedProps<T> { auditOther: T; }\n",
-        );
-
-        try {
-            const docs = (projectRoot: string): Promise<string> => apiDocs({ symbol: "GtkButton", projectRoot });
-            expect(await docs(project)).toContain("### `auditCaption`");
-            expect(await docs(other)).toContain("### `auditOther`");
-            expect(await docs(project)).not.toContain("### `auditOther`");
-            writeFileSync(baseFile, BASE_DECLARATION);
-
-            await expect.poll(() => docs(project)).toContain("### `auditReplacement`");
-            expect(await docs(project)).not.toContain("### `auditCaption`");
-            expect(await docs(other)).toContain("### `auditOther`");
-        } finally {
-            rmSync(project, { recursive: true, force: true });
-            rmSync(other, { recursive: true, force: true });
-        }
-    });
-
-    it.each(INVALID_PROPS)("rejects configured props from $title", async ({ module, exported }) => {
-        const project = createConfiguredProject();
-        const request = { symbol: "GtkButton", projectRoot: project };
-
-        try {
-            expect(await apiDocs(request)).toContain("### `auditCaption`");
-            writePropsConfig(project, exported, module);
-            await expect.poll(
-                () => isToolFailure(state.server.client, "gtkx_get_api_docs", request, REQUEST_OPTIONS),
-            ).toBe(true);
-            writePropsConfig(project);
-            await expect.poll(() => apiDocs(request)).toContain("### `auditCaption`");
-        } finally {
-            rmSync(project, { recursive: true, force: true });
-        }
-    });
-
-    it("rejects a configured prop with an absent GIR type", async () => {
-        const project = createConfiguredProject();
-        const request = { symbol: "GtkButton", projectRoot: project };
-
-        try {
-            expect(await apiDocs(request)).toContain("### `auditCaption`");
-            writeFileSync(join(project, "node_modules", PROPS_MODULE, "index.d.ts"), INVALID_DECLARATION);
-            await expect.poll(
-                () => isToolFailure(state.server.client, "gtkx_get_api_docs", request, REQUEST_OPTIONS),
-            ).toBe(true);
         } finally {
             rmSync(project, { recursive: true, force: true });
         }
