@@ -1,7 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
-import { runNativeConsumer } from "./native-consumer.js";
-import { isolateTypeConsumer, typecheckFile } from "./type-consumer.js";
+import {
+    isolateTypeConsumer,
+    runNativeConsumer,
+    typecheckFile,
+} from "./type-consumer.js";
 
 const CONFIG = 'export default { applicationId: "org.gtkx.typeinstance",' +
     " agents: { reference: false, rules: false } };";

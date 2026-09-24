@@ -2,8 +2,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createCliProject, runCli } from "./cli-project.js";
 import { fixtureConfig } from "./codegen-helpers.js";
-import { compileNativeFixture, runNativeConsumer } from "./native-consumer.js";
-import { isolateTypeConsumer, typecheckSource } from "./type-consumer.js";
+import {
+    compileNativeFixture,
+    isolateTypeConsumer,
+    runNativeConsumer,
+    typecheckSource,
+} from "./type-consumer.js";
 
 const FIXTURE = fileURLToPath(new URL("fixtures/async-pair.c", import.meta.url));
 const CONSUMER = `import assert from "node:assert/strict";

@@ -1,8 +1,11 @@
 import { loadApiReference, resolveGirPath } from "@gtkx/codegen";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCliOrThrow } from "./cli-project.js";
-import { runNativeConsumer } from "./native-consumer.js";
-import { isolateTypeConsumer, typecheckFile } from "./type-consumer.js";
+import {
+    isolateTypeConsumer,
+    runNativeConsumer,
+    typecheckFile,
+} from "./type-consumer.js";
 
 const CONFIG = 'export default { applicationId: "org.gtkx.hiddendata",' +
     " agents: { reference: false, rules: false } };";
