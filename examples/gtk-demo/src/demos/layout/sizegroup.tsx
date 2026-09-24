@@ -85,7 +85,11 @@ function DropdownRow({ row, selection, dropdowns, setSelection, setDropdowns }: 
     const { labelText, options } = row;
 
     const handleSelectionChanged = useCallback(
-        (id: string) => {
+        (id: string | null) => {
+            if (id === null) {
+                return;
+            }
+
             setSelection((previous) => ({ ...previous, [labelText]: id }));
         },
         [labelText, setSelection],

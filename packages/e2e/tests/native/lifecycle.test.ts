@@ -14,6 +14,15 @@ drainAfterEachTest();
 const COMPILE_DEFAULT = GLib.RegexCompileFlags.DEFAULT;
 const MATCH_DEFAULT = GLib.RegexMatchFlags.DEFAULT;
 
+const createRegex = (pattern: string): GLib.Regex => {
+    const regex = GLib.Regex.new(pattern, COMPILE_DEFAULT, MATCH_DEFAULT);
+    if (regex === null) {
+        throw new Error("Regex construction failed");
+    }
+
+    return regex;
+};
+
 class NameObject extends GObject.Object {
     name = "";
 }
@@ -61,7 +70,7 @@ const appendTracked = (store: Gio.ListStore) => {
 };
 
 const matchWithoutKeepingTheRegex = () => {
-    const regex = GLib.Regex.new(String.raw`(\w+)-(\w+)`, COMPILE_DEFAULT, MATCH_DEFAULT);
+    const regex = createRegex(String.raw`(\w+)-(\w+)`);
     const [matched, info] = regex.match("left-right", MATCH_DEFAULT);
 
     return { matched, info, weak: new WeakRef(regex) };
@@ -169,7 +178,7 @@ test("constructing with an uncoercible property value throws", () => {
 });
 
 test("a match info reads every group after the subject string is churned over", () => {
-    const regex = GLib.Regex.new(String.raw`(?P<user>\w+)@(?P<host>\w+)`, COMPILE_DEFAULT, MATCH_DEFAULT);
+    const regex = createRegex(String.raw`(?P<user>\w+)@(?P<host>\w+)`);
     const [matched, info] = regex.match("hello@world", MATCH_DEFAULT);
     churnAllocations();
 
@@ -195,7 +204,7 @@ test("a match info reads every group after the subject string is churned over", 
 });
 
 test("match all reports every overlapping match after churn", () => {
-    const regex = GLib.Regex.new("a+", COMPILE_DEFAULT, MATCH_DEFAULT);
+    const regex = createRegex("a+");
     const [matched, info] = regex.matchAll("aaa", MATCH_DEFAULT);
     churnAllocations();
 
@@ -206,7 +215,7 @@ test("match all reports every overlapping match after churn", () => {
 });
 
 test("a match info walks every match with next", () => {
-    const regex = GLib.Regex.new(String.raw`\w+`, COMPILE_DEFAULT, MATCH_DEFAULT);
+    const regex = createRegex(String.raw`\w+`);
     const [matched, info] = regex.match("one two three", MATCH_DEFAULT);
     const words = [];
     let hasMatch = matched;
@@ -222,7 +231,7 @@ test("a match info walks every match with next", () => {
 });
 
 test("a match info that matched nothing still reports its subject", () => {
-    const regex = GLib.Regex.new(String.raw`\d+`, COMPILE_DEFAULT, MATCH_DEFAULT);
+    const regex = createRegex(String.raw`\d+`);
     const [matched, info] = regex.match("letters only", MATCH_DEFAULT);
     churnAllocations();
 
@@ -236,7 +245,7 @@ test("a match info that matched nothing still reports its subject", () => {
 });
 
 test("match positions are byte offsets into a multibyte subject", () => {
-    const regex = GLib.Regex.new("日本語", COMPILE_DEFAULT, MATCH_DEFAULT);
+    const regex = createRegex("日本語");
     const [matched, info] = regex.match("aé日本語", MATCH_DEFAULT);
     churnAllocations();
 
@@ -248,7 +257,7 @@ test("match positions are byte offsets into a multibyte subject", () => {
 });
 
 test("groups outside the match report nothing instead of failing", () => {
-    const regex = GLib.Regex.new(String.raw`(\w)(\w)`, COMPILE_DEFAULT, MATCH_DEFAULT);
+    const regex = createRegex(String.raw`(\w)(\w)`);
     const [matched, info] = regex.match("ab", MATCH_DEFAULT);
     churnAllocations();
 

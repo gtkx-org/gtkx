@@ -420,7 +420,9 @@ const TimesDropDown = () => {
     return (
         <DropDown
             selectedId={selectedId}
-            onSelectionChanged={setSelectedId}
+            onSelectionChanged={(id) => {
+                setSelectedId((current) => id ?? current);
+            }}
             renderListItem={({ item: label }: { item: string }) => renderSelectableTimeItem(label, selectedId)}
             items={times.map((t) => ({ id: t, value: t }))}
         />
@@ -433,7 +435,9 @@ const TimesSectionedDropDown = () => {
     return (
         <DropDown
             selectedId={selectedId}
-            onSelectionChanged={setSelectedId}
+            onSelectionChanged={(id) => {
+                setSelectedId((current) => id ?? current);
+            }}
             enableSearch
             renderListItem={({ item: label }: { item: string }) => renderSelectableTimeItem(label, selectedId)}
             renderHeader={({ section: value }: { section: string }) => (
@@ -478,7 +482,9 @@ const DevicesDropDown = () => {
     return (
         <DropDown
             selectedId={selectedId}
-            onSelectionChanged={setSelectedId}
+            onSelectionChanged={(id) => {
+                setSelectedId((current) => id ?? current);
+            }}
             renderItem={({ item: label }: { item: string }) =>
                 renderDeviceRow(label, (device) => (
                     <GtkLabel xalign={0} hexpand>
@@ -593,7 +599,11 @@ function selectFontByIndex(value: number, setFontIndex: (index: number) => void)
     }
 }
 
-function selectFontById(id: string, setFontIndex: (index: number) => void): void {
+function selectFontById(id: string | null, setFontIndex: (index: number) => void): void {
+    if (id === null) {
+        return;
+    }
+
     const index = getFontFamilies().indexOf(id);
 
     if (index !== -1) {

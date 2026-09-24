@@ -823,7 +823,11 @@ function useColorsComputed(state: ColorsState, models: ColorsModels) {
         bumpRefillToken();
     };
 
-    const handleLimitChange = (id: string) => {
+    const handleLimitChange = (id: string | null) => {
+        if (id === null) {
+            return;
+        }
+
         const limit = COLOR_LIMITS.find((l) => l.id === id);
 
         if (limit) {
