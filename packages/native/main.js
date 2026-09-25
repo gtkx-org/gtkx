@@ -11,5 +11,41 @@ const onLog = (listener) => {
     };
 };
 
-export * from "./index.js";
+export {
+    alloc,
+    allocField,
+    ArrayKind,
+    bind,
+    bindField,
+    bindFunctionPointer,
+    bindVfunc,
+    call,
+    CallbackScope,
+    copy,
+    DestroyNotifyKind,
+    ElementOwnership,
+    getFundamentalWrapper,
+    getMatchInfoBase,
+    getMatchInfoType,
+    getType,
+    getTypeClass,
+    getWrapper,
+    init,
+    keepAlive,
+    newObject,
+    Ownership,
+    ownMatchInfo,
+    quit,
+    read,
+    readField,
+    readFunctionPointer,
+    registerClass,
+    resolveFunction,
+    resolveType,
+    setFundamentalWrapper,
+    setWrapper,
+    setWrapperBorrow,
+    write,
+    writeField,
+} from "./index.js";
 export { onLog };
