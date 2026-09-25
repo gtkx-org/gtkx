@@ -199,10 +199,7 @@ function getProperty<
 function getProperty(obj: object, propertyName: string, descriptor: Descriptor): unknown;
 function getProperty(obj: object, propertyName: string, descriptor?: Descriptor): unknown {
     if (arguments.length === 2) {
-        const property = readableObjectPropertyFor(obj, propertyName);
-        gObjectGetProperty(getHandle(obj), property.name, property.value);
-
-        return fromObjectPropertyValue(property.value);
+        return getObjectProperty(obj, propertyName);
     }
 
     if (descriptor === undefined) {
@@ -213,6 +210,13 @@ function getProperty(obj: object, propertyName: string, descriptor?: Descriptor)
     gObjectGetProperty(getHandle(obj), propertyName, value);
 
     return fromValueForDescriptor(descriptor, value);
+}
+
+function getObjectProperty(obj: object, propertyName: string): unknown {
+    const property = readableObjectPropertyFor(obj, propertyName);
+    gObjectGetProperty(getHandle(obj), property.name, property.value);
+
+    return fromObjectPropertyValue(property.value);
 }
 
 /**
@@ -248,6 +252,7 @@ function setProperty(
 
 export {
     newObjectWithProperties,
+    getObjectProperty,
     getProperty,
     registerConstructProperties,
     registerConstructFactory,

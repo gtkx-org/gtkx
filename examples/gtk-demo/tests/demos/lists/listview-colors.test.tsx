@@ -217,8 +217,8 @@ describe("listviewColorsDemo header actions", () => {
         const grid = await findGrid();
         const limitDropdown = await screen.findByName("limit-dropdown", { as: Gtk.DropDown });
         const displayDropdown = await screen.findByName("display-dropdown", { as: Gtk.DropDown });
-        await userEvent.selectOptions(displayDropdown, 1);
         await userEvent.selectOptions(limitDropdown, 0);
+        await userEvent.selectOptions(displayDropdown, 1);
         expect(await screen.findByText("8 /")).toBeVisible();
 
         await waitFor(() => {
@@ -227,12 +227,20 @@ describe("listviewColorsDemo header actions", () => {
 
         await userEvent.selectOptions(limitDropdown, 1);
         expect(await screen.findByText("64 /")).toBeVisible();
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Refill" }));
 
-        expect(await screen.findByText("64 /")).toBeVisible();
         await waitFor(() => {
             const colors = renderedColors(grid);
             expect(colors.length).toBeGreaterThan(0);
+            expect(colors.every((color) => color.swatch.getWidth() > 0 && color.swatch.getHeight() > 0)).toBe(true);
+        });
+
+        await userEvent.selectOptions(limitDropdown, 0);
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Refill" }));
+
+        expect(await screen.findByText("8 /")).toBeVisible();
+        await waitFor(() => {
+            const colors = renderedColors(grid);
+            expect(colors).toHaveLength(8);
             expect(colors.every((color) => color.swatch.getWidth() > 0 && color.swatch.getHeight() > 0)).toBe(true);
         });
     });

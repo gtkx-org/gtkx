@@ -33,7 +33,7 @@ export { createErrorDomain } from "./error.js";
 export { fixedArrayEntries } from "./field.js";
 export { markSyntheticSignalMembers };
 export { type ApplicationInstance, getApplicationInstance } from "./lifecycle.js";
-export { registerConstructFactory } from "./object.js";
+export { getObjectProperty, registerConstructFactory } from "./object.js";
 export {
     createTypeClassPeek,
     objectDisconnect,

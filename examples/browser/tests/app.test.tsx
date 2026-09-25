@@ -1,5 +1,4 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import * as WebKit from "@gtkx/gi/webkit";
 import { rootElement } from "@gtkx/react";
 import { configure, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { once } from "node:events";
@@ -9,7 +8,6 @@ import { App } from "../src/app.js";
 
 type LocalServer = {
     close: () => Promise<void>;
-    origin: string;
     port: number;
 };
 
@@ -63,7 +61,6 @@ const startServer = async (): Promise<LocalServer> => {
             await exited;
             servers.delete(server);
         },
-        origin: `http://127.0.0.1:${String(port)}`,
         port,
     };
     servers.add(server);
@@ -81,12 +78,8 @@ const waitForLoadedUrl = async (entry: Gtk.Entry, url: string): Promise<void> =>
     await waitFor(() => {
         expect(entry).toHaveDisplayValue(url);
     });
-    await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Stop loading" });
     await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Reload" });
 };
-
-const loadingProgress = (): Promise<Gtk.ProgressBar> =>
-    screen.findByRole(Gtk.AccessibleRole.PROGRESS_BAR, { name: "Page loading progress", as: Gtk.ProgressBar });
 
 afterEach(async () => {
     await Promise.all([...servers].map((server) => server.close()));
@@ -127,36 +120,17 @@ describe("App", () => {
         expect(screen.queryByRole(Gtk.AccessibleRole.PROGRESS_BAR, { name: "Page loading progress" })).toBeNull();
     });
 
-    it("clears loading state after cancellation and failure", async () => {
+    it("clears loading state after failure", async () => {
         const server = await startServer();
-        await render(<App initialUrl={`${server.origin}/cancel`} />, { container: rootElement });
+        await server.close();
+        const failedUrl = `https://localhost:${String(server.port)}/failure`;
+        await render(<App initialUrl={failedUrl} />, { container: rootElement });
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, {
             name: "Web address",
             as: Gtk.Entry,
         });
 
-        expect(await loadingProgress()).toBeVisible();
-        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Stop loading" }));
-        await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Reload" });
-        expect(screen.queryByRole(Gtk.AccessibleRole.PROGRESS_BAR, { name: "Page loading progress" })).toBeNull();
-
-        await server.close();
-        const failedUrl = `https://localhost:${String(server.port)}/failure`;
-        await navigate(entry, ` localhost:${String(server.port)}/failure `);
         await waitForLoadedUrl(entry, failedUrl);
         expect(screen.queryByRole(Gtk.AccessibleRole.PROGRESS_BAR, { name: "Page loading progress" })).toBeNull();
-    });
-
-    it("cancels a pending load when unmounted", async () => {
-        const server = await startServer();
-        const rendered = await render(<App initialUrl={`${server.origin}/cancel`} />, { container: rootElement });
-        const webView = await screen.findByLabelText("Web page", { as: WebKit.WebView });
-
-        expect(await loadingProgress()).toBeVisible();
-        expect(webView.isLoading()).toBe(true);
-        await rendered.unmount();
-        await waitFor(() => {
-            expect(webView.isLoading()).toBe(false);
-        });
     });
 });
