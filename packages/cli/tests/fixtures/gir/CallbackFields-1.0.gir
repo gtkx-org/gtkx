@@ -38,6 +38,13 @@
         </array>
       </field>
       <field name="after" writable="1"><type name="guint" c:type="guint"/></field>
+      <constructor name="new" c:identifier="callback_fields_capsule_new">
+        <return-value transfer-ownership="full"><type name="Capsule" c:type="CallbackFieldsCapsule*"/></return-value>
+        <parameters>
+          <parameter name="before" transfer-ownership="none"><type name="gint" c:type="gint"/></parameter>
+          <parameter name="after" transfer-ownership="none"><type name="guint" c:type="guint"/></parameter>
+        </parameters>
+      </constructor>
       <method name="read_before" c:identifier="callback_fields_capsule_read_before">
         <return-value transfer-ownership="none"><type name="gint" c:type="gint"/></return-value>
         <parameters>

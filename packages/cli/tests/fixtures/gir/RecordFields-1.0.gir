@@ -61,6 +61,55 @@
         <type name="gint" c:type="gint"/>
       </field>
     </record>
+    <record name="NestedSimple" c:type="RecordFieldsNestedSimple">
+      <field name="inner" writable="1">
+        <type name="Plain" c:type="RecordFieldsPlain"/>
+      </field>
+    </record>
+    <record name="PrivateState" c:type="RecordFieldsPrivateState">
+      <field name="ref_count" readable="0" private="1">
+        <type name="guint" c:type="guint"/>
+      </field>
+    </record>
+    <record name="NestedPrivateState" c:type="RecordFieldsNestedPrivateState">
+      <field name="inner" writable="1">
+        <type name="PrivateState" c:type="RecordFieldsPrivateState"/>
+      </field>
+    </record>
+    <record name="PlainPointers" c:type="RecordFieldsPlainPointers">
+      <field name="text" writable="1">
+        <type name="utf8" c:type="gchar*"/>
+      </field>
+    </record>
+    <record name="NestedPointers" c:type="RecordFieldsNestedPointers">
+      <field name="inner" writable="1">
+        <type name="PlainPointers" c:type="RecordFieldsPlainPointers"/>
+      </field>
+    </record>
+    <function name="fill_simple" c:identifier="record_fields_fill_simple">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="value" direction="out" caller-allocates="1" transfer-ownership="none">
+          <type name="NestedSimple" c:type="RecordFieldsNestedSimple*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="fill_pointers" c:identifier="record_fields_fill_pointers">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="value" direction="out" caller-allocates="1" transfer-ownership="none">
+          <type name="PlainPointers" c:type="RecordFieldsPlainPointers*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="fill_nested_pointers" c:identifier="record_fields_fill_nested_pointers">
+      <return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+      <parameters>
+        <parameter name="value" direction="out" caller-allocates="1" transfer-ownership="none">
+          <type name="NestedPointers" c:type="RecordFieldsNestedPointers*"/>
+        </parameter>
+      </parameters>
+    </function>
     <class name="Widget"
            c:symbol-prefix="widget"
            c:type="RecordFieldsWidget"

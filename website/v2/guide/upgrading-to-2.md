@@ -62,6 +62,8 @@ Import `createElementComponent` from `@gtkx/react` instead of `@gtkx/react/confi
 
 The `@gtkx/native` root no longer exports `armParentDeath`, `addLogListener`, `removeLogListener`, or `__napiBindingTarget`. Subscribe to native logs with `onLog(listener)` and release the subscription with `unsubscribe()`. Process supervision remains internal.
 
+Direct native calls using `bigint64` or `biguint64` descriptors now require bigint values. Runtime bindings still accept exactly representable integer Number inputs within ±2⁵³ and normalize them before crossing the native boundary.
+
 The generated wrapper-retention helper `retainWrapperClasses` now belongs to `@gtkx/runtime/internal`. Regenerate bindings with `gtkx codegen --force` after upgrading so their bootstrap imports match the runtime.
 
 ## Move GObject ownership into JSX
@@ -109,6 +111,8 @@ Run codegen after migrating. The generated declaration now uses i18next's standa
 | `AnimatedElements` | `AnimatedElementMap` |
 
 The cairo stub-constructor `*ConstructorProps` aliases have no replacement because their constructors no longer exist.
+
+Record constructors now require either public writable value fields, a supported native default constructor, or the zero-initialization contract of `GObject.Value`. Obtain other records from their native factories: use `GLib.String.new(text)`, `GLib.Error.newLiteral(domain, code, message)`, or `Graphene.Matrix.alloc().initIdentity()`. Their synthetic `*ConstructorProps` types are removed. `GLib.String` exposes `str`, `len`, and `allocatedLen` as readonly; use methods such as `assign`, `append`, and `truncate` to update its buffer.
 
 Generated methods that expose unmanaged native addresses are also omitted. Replace `GLib.Bytes.getRegion` with `getData` or `newFromBytes`, use `GLib.Variant.getDataAsBytes` instead of `getData`, and close a `Gio.MemoryOutputStream` before calling `stealAsBytes` instead of `getData` or `stealData`.
 

@@ -98,7 +98,7 @@ test("glib errors round trip the fields they are constructed with", () => {
     expect(literal.message).toBe("not found here");
     expect(literal.matches(ioDomain(), Gio.IOErrorEnum.EXISTS)).toBe(true);
 
-    const built = new GLib.Error({ domain: ioDomain(), code: Gio.IOErrorEnum.BUSY, message: "busy" });
+    const built = GLib.Error.newLiteral(ioDomain(), Gio.IOErrorEnum.BUSY, "busy");
     expect(built.domain).toBe(ioDomain());
     expect(built.code).toBe(Gio.IOErrorEnum.BUSY);
     expect(built.message).toBe("busy");
@@ -203,10 +203,10 @@ test("gerror arguments reject values of the wrong type", () => {
 });
 
 test("glib error field writes reject values the fields cannot hold", () => {
-    expect(() => new GLib.Error({ domain: ioDomain(), code: 1.5, message: "x" })).toThrow();
-    // @ts-expect-error a string is not an error code
-    expect(() => new GLib.Error({ domain: ioDomain(), code: "x", message: "y" })).toThrow();
-    expect(() => new GLib.Error({ domain: -1, code: 1, message: "y" })).toThrow();
+    expect(() => {
+        Reflect.construct(GLib.Error, [{ domain: ioDomain(), code: 1, message: "x" }]);
+    }).toThrow();
+    expect(() => GLib.Error.newLiteral(-1, 1, "y")).toThrow();
     expect(() => GLib.Error.newLiteral(ioDomain(), 1.5, "x")).toThrow();
 
     const error = GLib.Error.newLiteral(ioDomain(), Gio.IOErrorEnum.FAILED, "boom");

@@ -340,7 +340,7 @@ const translationMatrix = (x: number, y: number, z: number): Graphene.Matrix => 
     const point = new Graphene.Point3D();
     point.init(x, y, z);
 
-    return new Graphene.Matrix().initTranslate(point);
+    return Graphene.Matrix.alloc().initTranslate(point);
 };
 
 const collectUniforms = (program: number) => ({
@@ -574,7 +574,7 @@ const renderGearsFrame = ({ glState, area, rotation, angle }: RenderFrameParams)
     const scale = area.getScaleFactor();
     const width = area.getWidth() * scale;
     const height = area.getHeight() * scale;
-    const projection = new Graphene.Matrix().initPerspective(60, width / height, 1, 1024);
+    const projection = Graphene.Matrix.alloc().initPerspective(60, width / height, 1, 1024);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.bindVertexArray(glState.vao);

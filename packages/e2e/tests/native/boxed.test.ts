@@ -269,24 +269,22 @@ test("many boxed instances with C invariants survive collection", async () => {
     await drainGC(5);
 });
 
-test("records whose boxed free is a real destructor are safe to construct", async () => {
-    const built = [
-        new GLib.Array({}),
-        new GLib.ByteArray({}),
-        new GLib.PtrArray({}),
-        new GLib.Thread({}),
-        new GLib.Source({}),
-        new GLib.VariantBuilder({}),
-        new GLib.VariantDict({}),
-        new GObject.Closure({}),
-        new Pango.Attribute({}),
-        new Pango.FontMetrics({}),
-        new Pango.LayoutLine({}),
-    ];
-
-    expect(built).toHaveLength(11);
-    built.length = 0;
-    await drainGC(5);
+test.each([
+    GLib.Array,
+    GLib.ByteArray,
+    GLib.PtrArray,
+    GLib.Thread,
+    GLib.Source,
+    GLib.VariantBuilder,
+    GLib.VariantDict,
+    GObject.Closure,
+    Pango.Attribute,
+    Pango.FontMetrics,
+    Pango.LayoutLine,
+])("non-simple records require native construction: %s", (record) => {
+    expect(() => {
+        Reflect.construct(record, [{}]);
+    }).toThrow();
 });
 
 test("a boxed argument rejects a value of an unrelated boxed type", () => {

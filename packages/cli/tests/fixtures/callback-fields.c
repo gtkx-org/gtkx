@@ -28,6 +28,15 @@ callback_fields_capsule_free(CallbackFieldsCapsule *capsule)
 G_DEFINE_BOXED_TYPE(CallbackFieldsCapsule, callback_fields_capsule,
                    callback_fields_capsule_copy, callback_fields_capsule_free)
 
+CallbackFieldsCapsule *
+callback_fields_capsule_new(gint before, guint after)
+{
+    CallbackFieldsCapsule *capsule = g_new0(CallbackFieldsCapsule, 1);
+    capsule->before = before;
+    capsule->after = after;
+    return capsule;
+}
+
 gint
 callback_fields_capsule_read_before(CallbackFieldsCapsule *capsule)
 {

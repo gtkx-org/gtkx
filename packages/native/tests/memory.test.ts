@@ -53,13 +53,8 @@ test("an allocation carrying a boxed gtype exposes the type tag it was initializ
     expect(read(value, { kind: "biguint64" }, 0)).toBe(call(typeFromName, [encoder.encode("gint")]).value);
 });
 
-test("a registered non-boxed gtype allocates plain writable memory", () => {
-    const block = alloc(16, resolveType(GOBJECT, "g_object_get_type"));
-
-    write(block, { kind: "int32" }, 4, 321);
-
-    expect(read(block, { kind: "int32" }, 0)).toBe(0);
-    expect(read(block, { kind: "int32" }, 4)).toBe(321);
+test("a registered non-boxed gtype cannot allocate boxed storage", () => {
+    expect(() => alloc(16, resolveType(GOBJECT, "g_object_get_type"))).toThrow();
 });
 
 test("a read through a zero-sized allocation throws", () => {

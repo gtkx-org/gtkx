@@ -43,7 +43,7 @@ const fixedDemo: Demo = {
 };
 
 function createAxis(x: number, y: number, z: number): Graphene.Vec3 {
-    const axis = new Graphene.Vec3();
+    const axis = Graphene.Vec3.alloc();
     axis.init(x, y, z);
 
     return axis;

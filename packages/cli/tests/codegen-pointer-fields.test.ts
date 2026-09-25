@@ -26,12 +26,9 @@ export const mixed = (record: PointerFields.Mixed) => {
     const bytes: GLib.Bytes = record.bytes;
     const buffer: Uint8Array = record.buffer;
     const numbers: number[] = record.numbers;
-    const options: PointerFields.MixedConstructorProps = { before: 1, after: 2n, type: 3n };
-    return { type, bytes, buffer, numbers, value: new PointerFields.Mixed(options) };
+    return { type, bytes, buffer, numbers };
 };
-export const empty = new PointerFields.PointerOnly();
-export const emptyOptions: PointerFields.PointerOnlyConstructorProps = {};
-export const iterator = new Gtk.TreeIter({ stamp: 42 });
+export const iterator = (value: Gtk.TreeIter): number => value.stamp;
 export const option = (entry: GLib.OptionEntry) => {
     entry.longName = "verbose";
     entry.flags = 0;
@@ -39,6 +36,9 @@ export const option = (entry: GLib.OptionEntry) => {
 };
 `;
 const REJECTED: Record<string, string> = {
+    "mixed-constructor": "export const record = new PointerFields.Mixed();",
+    "pointer-constructor": "export const record = new PointerFields.PointerOnly();",
+    "iterator-constructor": "export const iterator = new Gtk.TreeIter();",
     "direct-read": "export const read = (record: PointerFields.Mixed) => record.direct;",
     "direct-write": "export const write = (record: PointerFields.Mixed): void => { record.direct = 1n; };",
     "direct-option": "export const record = new PointerFields.Mixed({ direct: null });",
@@ -57,28 +57,30 @@ const REJECTED: Record<string, string> = {
     "iterator-option": "export const iterator = new Gtk.TreeIter({ userData: 1n });",
     "option-entry": "export const read = (entry: GLib.OptionEntry) => entry.argData;",
     "log-field": "export const read = (field: GLib.LogField) => field.value;",
-    "wrong-scalar": "export const record = new PointerFields.Mixed({ after: \"invalid\" });",
+    "wrong-scalar": "export const write = (record: PointerFields.Mixed): void => { record.after = \"invalid\"; };",
 };
 const NATIVE = `import assert from "node:assert/strict";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as GLib from "@gtkx/gi/glib";
+import * as GObject from "@gtkx/gi/gobject";
 import { quit } from "@gtkx/runtime";
 
 try {
-    const iterator = new Gtk.TreeIter({ stamp: 42 });
-    assert.equal(iterator.stamp, 42);
+    const model = Gtk.ListStore.new([GObject.typeFromName("gint")]);
+    const iterator = model.append();
+    const stamp = iterator.stamp;
     const copy = iterator.copy();
-    iterator.stamp = 7;
-    assert.equal(copy.stamp, 42);
-    assert.equal(iterator.stamp, 7);
-    assert.equal(new Gtk.TreeIter().stamp, 0);
+    iterator.stamp = stamp;
+    assert.equal(copy.stamp, stamp);
+    assert.equal(iterator.stamp, stamp);
+    assert.throws(() => Reflect.construct(Gtk.TreeIter, []));
     for (const name of ["userData", "userData2", "userData3"]) {
         assert.equal(name in iterator, false);
     }
     assert.equal("argData" in GLib.OptionEntry.prototype, false);
     assert.equal("value" in GLib.LogField.prototype, false);
     assert.throws(() => Reflect.set(iterator, "stamp", "invalid"));
-    assert.equal(iterator.stamp, 7);
+    assert.equal(iterator.stamp, stamp);
 } finally {
     quit();
 }
@@ -111,7 +113,7 @@ describe("generated pointer record fields", () => {
         cleanup.dispose();
     });
 
-    it("preserves numeric fields, typed handles, arrays and empty construction", () => {
+    it("preserves numeric fields, typed handles and arrays on existing records", () => {
         expect(typecheckFile(project, "accepted.ts")).toBe(0);
         expect(typecheckFile(project, "native.ts")).toBe(0);
     });

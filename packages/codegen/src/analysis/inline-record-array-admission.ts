@@ -3,7 +3,7 @@ import type { CArrayType, TypeId } from "../gir/type-id.js";
 import type { GirType } from "../gir/type.js";
 import type { ModuleContext } from "../writer/context.js";
 import { deriveElementTransfer } from "../gir/parameter.js";
-import { isConstructibleRecord, isValueMarshalable } from "../store/gi/value-marshalable.js";
+import { hasOwnCopySemantics, isValueMarshalable } from "../store/gi/value-marshalable.js";
 import { cTypePointerDepth, underlyingType } from "./type-shape.js";
 
 type InlineRecordArrayDirection = "from-native" | "lent-from-native" | "to-native";
@@ -73,7 +73,6 @@ const isUnsupportedToNative = (transfer: ParameterTransfer, options: InlineRecor
     options.isCallerAllocated === true || options.isRetained === true || transfer !== "none";
 
 const isUnsupportedFromNative = (
-    context: AdmissionContext,
     array: InlineRecordArray,
     transfer: ParameterTransfer,
     options: InlineRecordArrayOptions,
@@ -86,9 +85,9 @@ const isUnsupportedFromNative = (
         return true;
     }
 
-    const { namespace, value } = array.record;
+    const { value } = array.record;
 
-    if (!isConstructibleRecord(context, namespace.name, value)) {
+    if (!hasOwnCopySemantics(value)) {
         return true;
     }
 
@@ -119,7 +118,7 @@ const hasUnsupportedInlineRecordArray = (
 
     return options.direction === "to-native"
         ? isUnsupportedToNative(transfer, options)
-        : isUnsupportedFromNative(context, array, transfer, options);
+        : isUnsupportedFromNative(array, transfer, options);
 };
 
 const hasUnsupportedCallbackInput = (context: AdmissionContext, parameter: GirParameter): boolean => {

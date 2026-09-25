@@ -61,10 +61,10 @@ const createShaderProgram = (
 };
 
 const rotationMatrix = (angle: number, x: number, y: number, z: number): Graphene.Matrix => {
-    const axis = new Graphene.Vec3();
+    const axis = Graphene.Vec3.alloc();
     axis.init(x, y, z);
 
-    return new Graphene.Matrix().initRotate(angle, axis);
+    return Graphene.Matrix.alloc().initRotate(angle, axis);
 };
 
 const bufferFloatData = (target: number, data: number[], usage: number): void => {

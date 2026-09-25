@@ -10,7 +10,6 @@ import { renderParameterTsType } from "../../analysis/ts-type.js";
 import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
 import { type Callables, staticMembers } from "./callables.js";
 import { getDoc } from "./doc-spec.js";
-import { renderSourceGtype } from "./gtype-binding.js";
 import {
     emitFieldWrite,
     hasOwnedFieldStorage,
@@ -21,9 +20,7 @@ import {
     isVisibleField,
 } from "./record-field-accessor.js";
 import { computeRecordFieldSlots, type RecordFieldSlot } from "./record-layout.js";
-import { isConstructibleRecord } from "./value-marshalable.js";
-
-const RECORDS_REQUIRING_BOXED_FREE: Set<string> = new Set(["GObject.Value"]);
+import { defaultRecordConstructor, hasBoxedZeroInitialization, isConstructibleRecord } from "./value-marshalable.js";
 
 type WritableFieldSlot = RecordFieldSlot & { field: GirField & { type: TypeId } };
 
@@ -112,29 +109,12 @@ const renderUnconstructibleGuard = (context: ModuleContext, spec: RecordConstruc
     return renderBlock("constructor()", [...superCall, `throw new globalThis.Error(${message});`].join("\n"));
 };
 
-const isDefaultConstructor = (context: ModuleContext, record: GirRecord, callable: GirFunction): boolean =>
-    !callable.throws &&
-    callable.parameters.length === 0 &&
-    callable.returnValue.transferOwnership === "full" &&
-    !callable.returnValue.nullable &&
-    isSelfReturning(context, record, callable);
-
 const defaultConstructorCall = (context: ModuleContext, spec: RecordConstructorSpec): string | undefined => {
-    const declared: Set<GirFunction> = new Set(spec.callables.constructors);
+    const constructor = defaultRecordConstructor(context, context.namespace.name, spec.record);
 
-    for (const { callable, name } of staticMembers(context, spec.callables)) {
-        const { cIdentifier } = callable;
-
-        if (name !== "new" || cIdentifier === undefined || !declared.has(callable)) {
-            continue;
-        }
-
-        if (isDefaultConstructor(context, spec.record, callable)) {
-            return `${toCamelIdentifier(cIdentifier)}()`;
-        }
-    }
-
-    return undefined;
+    return constructor?.cIdentifier === undefined
+        ? undefined
+        : `${toCamelIdentifier(constructor.cIdentifier)}()`;
 };
 
 const renderEmptyConstructor = (className: string, isErrorSubclass: boolean): string =>
@@ -207,9 +187,7 @@ const renderRecordConstructor = (context: ModuleContext, spec: RecordConstructor
 
 const allocArgs = (context: ModuleContext, record: GirRecord, size: number): string[] => {
     const args = [String(size)];
-    const key = `${context.namespace.name}.${record.name}`;
-
-    if (renderSourceGtype(context, record) !== undefined && RECORDS_REQUIRING_BOXED_FREE.has(key)) {
+    if (hasBoxedZeroInitialization(context.namespace.name, record)) {
         args.push("this.__type__");
     }
 

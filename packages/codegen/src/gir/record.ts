@@ -34,6 +34,13 @@ const recordFromNode = (
     const methods = getChildren(node, "method")
         .map((method) => functionFromNode(method, context))
         .filter((method) => freeFunc === undefined || method.cIdentifier !== freeFunc);
+    const fields = collectFields(node, context);
+
+    if (attr(node, "c:type") === "GString") {
+        for (const field of fields) {
+            field.writable = false;
+        }
+    }
 
     return {
         isVtable,
@@ -47,7 +54,7 @@ const recordFromNode = (
         disguised: isAttrTrue(node, "disguised"),
         opaque: isAttrTrue(node, "opaque"),
         introspectable: isAttrTrue(node, "introspectable", true),
-        fields: collectFields(node, context),
+        fields,
         methods,
         constructors: getChildren(node, GIR_CONSTRUCTOR_TAG).map((ctor) => functionFromNode(ctor, context)),
         functions: getChildren(node, "function").map((fn) => functionFromNode(fn, context)),

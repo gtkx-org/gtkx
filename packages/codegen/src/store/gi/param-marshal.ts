@@ -4,11 +4,12 @@ import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { underlyingType } from "../../analysis/type-shape.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter } from "../../gir/parameter.js";
+import { isBoxedRecord } from "../../gir/record.js";
 import { recordInlineSize } from "./record-layout.js";
 import { isConstructibleRecord } from "./value-marshalable.js";
 
 type TypeName = { namespaceName: string; typeName: string };
-type CallerOutAllocation = TypeName & ({ strategy: "construct" } | { strategy: "allocate"; size: number });
+type CallerOutAllocation = TypeName & ({ strategy: "construct" } | { strategy: "boxed"; size: number });
 
 const isHandlePassedInPlace = (context: ModuleContext, parameter: GirParameter): boolean => {
     if (parameter.direction !== "out" && parameter.direction !== "inout") {
@@ -53,9 +54,13 @@ const recordCallerOutAllocation = (
         return undefined;
     }
 
-    return isConstructibleRecord(context, type.namespace.name, type.value)
-        ? { ...name, strategy: "construct" }
-        : { ...name, strategy: "allocate", size };
+    if (isConstructibleRecord(context, type.namespace.name, type.value)) {
+        return { ...name, strategy: "construct" };
+    }
+
+    return isBoxedRecord(type.value) && type.namespace.sharedLibrary !== undefined
+        ? { ...name, strategy: "boxed", size }
+        : undefined;
 };
 
 const callerOutAllocation = (context: ModuleContext, parameter: GirParameter): CallerOutAllocation | undefined => {
@@ -87,9 +92,10 @@ const renderCallerOutInstance = (context: ModuleContext, parameter: GirParameter
     }
 
     context.addRuntimeImport("alloc");
+    context.addRuntimeImport("getClassType");
     context.addRuntimeImport("wrapHandle");
 
-    return `wrapHandle(alloc(${String(allocation.size)}), ${classExpression})`;
+    return `wrapHandle(alloc(${String(allocation.size)}, getClassType(${classExpression})), ${classExpression})`;
 };
 
 const isCollectibleCallerOut = (context: ModuleContext, parameter: GirParameter): boolean =>

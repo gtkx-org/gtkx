@@ -1,4 +1,5 @@
 import type { GirField } from "../../gir/field.js";
+import type { GirFunction } from "../../gir/function.js";
 import type { PrimitiveCategory } from "../../gir/primitives.js";
 import type { TypeId } from "../../gir/type-id.js";
 import type { GirType } from "../../gir/type.js";
@@ -6,7 +7,7 @@ import type { ModuleContext } from "../../writer/context.js";
 import { type GirRecord, isBoxedRecord } from "../../gir/record.js";
 
 type ValueMarshalContext = Pick<ModuleContext, "library">;
-type Scope = { context: ValueMarshalContext; seen: Set<string> };
+type Scope = { context: ValueMarshalContext; seen: Set<string>; requiresWritableFields: boolean };
 
 const POINTER_CATEGORIES: Set<PrimitiveCategory> = new Set<PrimitiveCategory>(["string", "pointer"]);
 
@@ -64,7 +65,8 @@ function isValueSafeRef(scope: Scope, ref: TypeId | undefined, cType: string | u
 
 const isValueSafeField = (scope: Scope, field: GirField): boolean =>
     field.inlineMembers?.every((member) => isValueSafeField(scope, member)) ??
-    isValueSafeRef(scope, field.type, field.cType);
+    ((!scope.requiresWritableFields || (field.introspectable && !field.private && field.writable)) &&
+        isValueSafeRef(scope, field.type, field.cType));
 
 function isValueSafeRecord(scope: Scope, namespaceName: string, record: GirRecord): boolean {
     const key = recordKey(namespaceName, record);
@@ -81,9 +83,40 @@ function isValueSafeRecord(scope: Scope, namespaceName: string, record: GirRecor
 }
 
 const isValueMarshalable = (context: ValueMarshalContext, namespaceName: string, record: GirRecord): boolean =>
-    isValueSafeRecord({ context, seen: new Set<string>() }, namespaceName, record);
+    isValueSafeRecord({ context, seen: new Set<string>(), requiresWritableFields: false }, namespaceName, record);
+
+const isFieldInitializable = (context: ValueMarshalContext, namespaceName: string, record: GirRecord): boolean =>
+    isValueSafeRecord({ context, seen: new Set<string>(), requiresWritableFields: true }, namespaceName, record);
+
+const hasBoxedZeroInitialization = (namespaceName: string, record: GirRecord): boolean =>
+    namespaceName === "GObject" && record.name === "Value" && isBoxedRecord(record);
+
+const defaultRecordConstructor = (
+    context: ValueMarshalContext,
+    namespaceName: string,
+    record: GirRecord,
+): GirFunction | undefined => record.constructors.find((constructor) => {
+    const result = constructor.returnValue;
+    const name = result.type === undefined ? undefined : context.library.nameFor(result.type);
+
+    return constructor.name === "new" && constructor.introspectable && constructor.cIdentifier !== undefined &&
+        constructor.movedTo === undefined && constructor.shadowedBy === undefined &&
+        !constructor.throws && constructor.parameters.length === 0 &&
+        result.transferOwnership === "full" && !result.nullable && !result.skip &&
+        name?.namespaceName === namespaceName && name.typeName === record.name;
+});
 
 const isConstructibleRecord = (context: ValueMarshalContext, namespaceName: string, record: GirRecord): boolean =>
-    !isOpaqueRecord(record) && (hasOwnCopySemantics(record) || isValueMarshalable(context, namespaceName, record));
+    !isOpaqueRecord(record) && (
+        isFieldInitializable(context, namespaceName, record) ||
+        hasBoxedZeroInitialization(namespaceName, record) ||
+        (hasOwnCopySemantics(record) && defaultRecordConstructor(context, namespaceName, record) !== undefined)
+    );
 
-export { isConstructibleRecord, isValueMarshalable };
+export {
+    defaultRecordConstructor,
+    hasBoxedZeroInitialization,
+    hasOwnCopySemantics,
+    isConstructibleRecord,
+    isValueMarshalable,
+};

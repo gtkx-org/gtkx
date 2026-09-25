@@ -18,7 +18,7 @@ import { Capsule, invoke, type Hook, type HookAliasChain } from "@gtkx/gi/callba
 import { quit } from "@gtkx/runtime";
 
 try {
-    const capsule = new Capsule({ before: -7, after: 19 });
+    const capsule = Capsule.new(-7, 19);
     assert.equal(capsule.before, -7);
     assert.equal(capsule.after, 19);
     assert.equal(capsule.readBefore(), -7);
@@ -27,7 +27,7 @@ try {
     capsule.after = 47;
     assert.equal(capsule.readBefore(), 31);
     assert.equal(capsule.readAfter(), 47);
-    const empty = new Capsule();
+    const empty = Capsule.new(0, 0);
     assert.equal(empty.readBefore(), 0);
     assert.equal(empty.readAfter(), 0);
     for (const member of ["direct", "aliased", "inlineHooks", "hooks"]) {
@@ -47,6 +47,9 @@ try {
 }
 `;
 const REJECTED: Record<string, string> = {
+    "empty-constructor.ts": `import { Capsule } from "@gtkx/gi/callbackfields";
+export const capsule = new Capsule();
+`,
     "direct-read.ts": `import type { Capsule } from "@gtkx/gi/callbackfields";
 export const read = (capsule: Capsule) => capsule.direct;
 `,
