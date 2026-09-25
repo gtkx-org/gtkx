@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import workspaceConfig from "../../../gtkx.config.base.js";
+import { installNativePackage } from "./native-package-fixture.js";
 
 type CliProject = { root: string; nodeModules: string; tmpDir: string };
 type DisposableCliProject = CliProject & Disposable;
@@ -18,6 +19,7 @@ type CliProjectOptions = {
     shouldShareStore?: boolean | undefined;
     hasAgentReference?: boolean | undefined;
     omitPackages?: string[] | undefined;
+    shouldCopyNative?: boolean | undefined;
 };
 
 const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
@@ -120,6 +122,10 @@ const createCliProject = (options: CliProjectOptions): DisposableCliProject => {
     const nodeModules = join(root, "node_modules");
     mkdirSync(join(nodeModules, SCOPE), { recursive: true });
     installPeers(nodeModules, options.omitPackages ?? []);
+
+    if (options.shouldCopyNative === true) {
+        installNativePackage(root, "source-built");
+    }
 
     if (options.hasStore === true) {
         installStore(nodeModules, options.shouldShareStore === true);

@@ -13,11 +13,12 @@ import {
     DEPLOY_BLOCK,
     DEPLOY_FIELDS,
     deployProbe,
+    projectFiles as deployProjectFiles,
     expectSuccessfulDeploy,
     hostAddon,
     OUT_DIR,
-    projectFiles,
 } from "./deploy-helpers.ts";
+import { NATIVE_ENTRY } from "./native-package-fixture.js";
 
 type NfpmArch = { arch: string };
 
@@ -29,6 +30,10 @@ const FOREIGN_ARCH = HOST_ARCH === "x64" ? "arm64" : "x64";
 const MACHINE_FOR: Record<string, number> = { arm64: EM_AARCH64, x64: EM_X86_64 };
 const BINDING_FILENAME = "gtkx.node";
 const STAGED_BINDING = join("stage", "lib", BINARY_NAME, BINDING_FILENAME);
+const projectFiles = (): Record<string, string> => ({
+    ...deployProjectFiles(),
+    "src/index.tsx": NATIVE_ENTRY,
+});
 
 const addonBuiltFor = (arch: string): Buffer => {
     const bytes = hostAddon();
@@ -148,7 +153,13 @@ const startRegistry = async (arch: string, shouldCorrupt = false): Promise<Regis
 };
 
 const runDeploy = (args: string[], files: Record<string, string | Buffer> = projectFiles()): number | null => {
-    const project = createCliProject({ prefix: "gtkx-cli-arch-", config: config(DEPLOY_BLOCK), files, hasStore: true });
+    const project = createCliProject({
+        prefix: "gtkx-cli-arch-",
+        config: config(DEPLOY_BLOCK),
+        files,
+        hasStore: true,
+        shouldCopyNative: true,
+    });
 
     try {
         return runCli(project, ["deploy", "--print-manifests", ...args]).status;
@@ -160,6 +171,7 @@ const runDeploy = (args: string[], files: Record<string, string | Buffer> = proj
 describe("gtkx deploy --arch", () => {
     const state = deployProbe({
         prefix: "gtkx-cli-arch-",
+        shouldCopyNative: true,
         config: config(DEPLOY_BLOCK),
         files: { ...projectFiles(), ...addonPackage(FOREIGN_ARCH) },
         args: ["deploy", "--print-manifests", "--target", "deb,rpm", "--arch", `${HOST_ARCH},${FOREIGN_ARCH}`],
@@ -196,6 +208,7 @@ describe("gtkx deploy --arch", () => {
 describe("gtkx deploy --arch (defaults)", () => {
     const state = deployProbe({
         prefix: "gtkx-cli-arch-host-",
+        shouldCopyNative: true,
         config: config(DEPLOY_BLOCK),
         files: projectFiles(),
         args: ["deploy", "--print-manifests", "--target", "deb"],
@@ -210,6 +223,7 @@ describe("gtkx deploy --arch (defaults)", () => {
 describe("gtkx deploy --arch (config)", () => {
     const state = deployProbe({
         prefix: "gtkx-cli-arch-config-",
+        shouldCopyNative: true,
         config: archConfig([HOST_ARCH, FOREIGN_ARCH]),
         files: { ...projectFiles(), ...addonPackage(FOREIGN_ARCH) },
         args: ["deploy", "--print-manifests", "--target", "deb"],
@@ -247,6 +261,7 @@ describe("gtkx deploy --arch (rejections)", () => {
         const body = `    deploy: {\n${DEPLOY_FIELDS}\n        node: { source: "host" },\n    },\n`;
         const project = createCliProject({
             prefix: "gtkx-cli-arch-node-",
+            shouldCopyNative: true,
             config: config(body),
             files: projectFiles(),
             hasStore: true,
@@ -270,6 +285,7 @@ describe("gtkx deploy --arch (registry)", () => {
         const registry = await startRegistry(FOREIGN_ARCH);
         const project = createCliProject({
             prefix: "gtkx-cli-arch-registry-",
+            shouldCopyNative: true,
             config: config(DEPLOY_BLOCK),
             files: projectFiles(),
             hasStore: true,
@@ -294,6 +310,7 @@ describe("gtkx deploy --arch (registry)", () => {
         const registry = await startRegistry(FOREIGN_ARCH, true);
         const project = createCliProject({
             prefix: "gtkx-cli-arch-corrupt-",
+            shouldCopyNative: true,
             config: config(DEPLOY_BLOCK),
             files: projectFiles(),
             hasStore: true,
@@ -316,6 +333,7 @@ describe("gtkx deploy --arch (skip build)", () => {
     it("packages an existing build for another architecture", () => {
         const project = createCliProject({
             prefix: "gtkx-cli-arch-skip-",
+            shouldCopyNative: true,
             config: config(DEPLOY_BLOCK),
             files: { ...projectFiles(), ...addonPackage(FOREIGN_ARCH) },
             hasStore: true,

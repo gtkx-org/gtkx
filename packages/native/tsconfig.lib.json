@@ -1,4 +1,4 @@
 {
     "extends": "../../tsconfig.lib.json",
-    "include": ["internal.d.ts"]
+    "include": ["internal.d.ts", "binding.d.ts"]
 }

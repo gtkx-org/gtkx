@@ -1,6 +1,7 @@
-import { existsSync, readFileSync } from "node:fs";
+import { resolveBinding } from "@gtkx/native/internal/binding";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import type { DeployArchName, DeploySettings } from "./types.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
 import { cacheDir, downloadFile, readCachedDigest, writeAtomically } from "./download.js";
@@ -39,21 +40,6 @@ const registryUrl = (): string => {
 };
 
 const projectRequireFor = (root: string): ProjectRequire => createRequire(join(root, "package.json"));
-
-const localBinary = (projectRequire: ProjectRequire, arch: DeployArchName): string | null => {
-    const nativeRoot = dirname(projectRequire.resolve(NATIVE_MANIFEST));
-    const candidate = join(nativeRoot, binaryFilename(arch));
-
-    return existsSync(candidate) ? candidate : null;
-};
-
-const installedBinary = (projectRequire: ProjectRequire, arch: DeployArchName): string | null => {
-    try {
-        return projectRequire.resolve(platformPackage(arch));
-    } catch {
-        return null;
-    }
-};
 
 const manifestVersion = (manifest: unknown): string | null => {
     if (typeof manifest !== "object" || manifest === null || !("version" in manifest)) {
@@ -175,7 +161,7 @@ const resolveStagedAddon = async (settings: DeploySettings): Promise<string | nu
     }
 
     const projectRequire = projectRequireFor(settings.paths.root);
-    const resolved = localBinary(projectRequire, arch) ?? installedBinary(projectRequire, arch);
+    const resolved = resolveBinding(join(settings.paths.root, "package.json"), arch);
 
     return resolved ?? await downloadedBinary(arch, nativeVersion(projectRequire));
 };

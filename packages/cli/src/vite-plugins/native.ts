@@ -1,19 +1,13 @@
 import type { Plugin } from "vite";
-import { existsSync, readFileSync } from "node:fs";
+import { resolveBinding } from "@gtkx/native/internal/binding";
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { arch, platform } from "node:os";
 import { dirname, join } from "node:path";
 import { BINDING_FILENAME } from "../deploy/native-addon.js";
 import { stripQuery } from "./strip-query.js";
 
-function resolveBinaryPath(projectRequire: ReturnType<typeof createRequire>, currentArch: string): string {
-    const nativeRoot = dirname(projectRequire.resolve("@gtkx/native/package.json"));
-    const localBinary = join(nativeRoot, `native.linux-${currentArch}-gnu.node`);
-
-    return existsSync(localBinary) ? localBinary : projectRequire.resolve(`@gtkx/native-linux-${currentArch}-gnu`);
-}
-
-function resolvePlatformBinary(projectRequire: ReturnType<typeof createRequire>): Buffer {
+function resolvePlatformBinary(root: string): Buffer {
     const currentPlatform = platform();
 
     if (currentPlatform !== "linux") {
@@ -26,7 +20,13 @@ function resolvePlatformBinary(projectRequire: ReturnType<typeof createRequire>)
         throw new Error(`Unsupported build architecture: ${currentArch}, only x64 and arm64 are supported`);
     }
 
-    return readFileSync(resolveBinaryPath(projectRequire, currentArch));
+    const binary = resolveBinding(join(root, "package.json"), currentArch);
+
+    if (binary === undefined) {
+        throw new Error(`Cannot find the @gtkx/native binary for linux-${currentArch}-gnu`);
+    }
+
+    return readFileSync(binary);
 }
 
 function rewriteLoader(code: string, bindingReferenceId: string): string {
@@ -91,7 +91,7 @@ function gtkxNative(root: string): Plugin {
             bindingReferenceId = this.emitFile({
                 type: "asset",
                 fileName: BINDING_FILENAME,
-                source: resolvePlatformBinary(projectRequire),
+                source: resolvePlatformBinary(root),
             });
         },
 

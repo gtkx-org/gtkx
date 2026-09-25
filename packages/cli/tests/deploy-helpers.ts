@@ -59,6 +59,7 @@ type DeploySetup = {
     files: Record<string, string | Buffer>;
     args: string[];
     executables?: string[] | undefined;
+    shouldCopyNative?: boolean | undefined;
 };
 
 const APPLICATION_ID = "com.gtkx.clideploy";

@@ -36,6 +36,10 @@
         "./internal": {
             "types": "./internal.d.ts",
             "default": "./internal.js"
+        },
+        "./internal/binding": {
+            "types": "./binding.d.ts",
+            "default": "./binding.js"
         }
     },
     "sideEffects": [
@@ -43,6 +47,8 @@
         "./main.js"
     ],
     "files": [
+        "binding.js",
+        "binding.d.ts",
         "bootstrap.js",
         "index.js",
         "index.d.ts",
