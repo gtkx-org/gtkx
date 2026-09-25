@@ -1,21 +1,18 @@
-import { spawnSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { type CliProject, createCliProject, removeCliProject, STORE_LIBRARIES } from "./cli-project.js";
 import {
-    cliEnvironment,
-    type CliProject,
-    createCliProject,
-    removeCliProject,
-    runCli,
-    runCliOrThrow,
-    STORE_LIBRARIES,
-} from "./cli-project.js";
+    BASE_PATH,
+    CALLBACK_ACTION_PAGE,
+    config,
+    docsDir,
+    MENU_ITEM_PAGE,
+    readPage,
+    runDocs,
+    SHORTCUT_TRIGGER_PAGE,
+} from "./docs-fixture.js";
 
-const APPLICATION_ID = "com.gtkx.clidocs";
-const OUT_DIR = join("site", "elements");
-const BASE_PATH = "/elements";
 const INDEX_PAGE = "index.md";
 const MANIFEST = "manifest.json";
 const NAMESPACE_PREFIX = "gtk/";
@@ -39,61 +36,8 @@ const WINDOW_PAGE = "gtk/window.md";
 const DBUS_CONNECTION_PAGE = "gio/d-bus-connection.md";
 const SIDEBAR_PAGE = "adw/sidebar.md";
 const APPLICATION_PAGE = "adw/application.md";
-const MENU_ITEM_PAGE = "gio/menu-item.md";
-const CALLBACK_ACTION_PAGE = "gtk/callback-action.md";
-const SHORTCUT_TRIGGER_PAGE = "gtk/shortcut-trigger.md";
-const DOCUMENTED_PAGE = "documented/note.md";
-const ASYNC_SACK_PAGE = "asyncpair/sack.md";
-const ASYNC_JOB_PAGE = "asyncpair/job.md";
 const REFERENCE_LIBRARIES = [...STORE_LIBRARIES, "GioUnix-2.0"];
-const REJECTED_OUT_DIRS = ["", ".", "..", "../sibling", "docs/../..", "/elsewhere/docs"];
-const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
-const CLI_ENTRY = fileURLToPath(new URL("../dist/cli.js", import.meta.url));
-const PACKAGEKIT_SEARCH_TEXT = 'free text to search for, for instance, "power"';
-
-const config = (body = "", libraries = STORE_LIBRARIES): string =>
-    `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(libraries)}` +
-    `${body} };\n`;
-
-const docsDir = (project: CliProject): string => join(project.root, OUT_DIR);
-
-const runDocs = (project: CliProject, args: string[] = []): number | null =>
-    runCli(project, ["docs", "--out", OUT_DIR, "--base-path", BASE_PATH, ...args]).status;
-
 const indexStamp = (project: CliProject): number => statSync(join(docsDir(project), INDEX_PAGE)).mtimeMs;
-const readPage = (project: CliProject, name: string): string => readFileSync(join(docsDir(project), name), "utf8");
-
-describe("project-relative GIR paths", () => {
-    it("uses the requested project's GIR for docs and codegen from another working directory", () => {
-        const source = readFileSync(join(FIXTURE_GIR, "Documented-1.0.gir"), "utf8");
-        const original = "Holds a short piece of text the user jotted down.";
-        const requested = "A note from the requested project.";
-        using project = createCliProject({
-            prefix: "gtkx-cli-gir-requested-",
-            config: config(', girPath: ["./gir"], agents: { reference: true }', ["Documented-1.0"]),
-            files: { "gir/Documented-1.0.gir": source.replace(original, () => requested) },
-        });
-        using launcher = createCliProject({
-            prefix: "gtkx-cli-gir-launcher-",
-            files: {
-                "gir/Documented-1.0.gir": source.replace(original, "A note from the launching project."),
-            },
-        });
-
-        for (const args of [["docs", "--out", OUT_DIR], ["codegen"]]) {
-            const result = spawnSync(process.execPath, [CLI_ENTRY, ...args, "--cwd", project.root], {
-                cwd: launcher.root,
-                env: cliEnvironment(project),
-                encoding: "utf8",
-                timeout: 300_000,
-            });
-            expect(result.status).toBe(0);
-        }
-
-        expect(readPage(project, DOCUMENTED_PAGE)).toContain(requested);
-        expect(readFileSync(join(project.root, ".gtkx/reference", DOCUMENTED_PAGE), "utf8")).toContain(requested);
-    });
-});
 
 describe("gtkx docs", () => {
     const state: { project: CliProject; status: number | null } = {
@@ -253,147 +197,5 @@ describe("gtkx docs", () => {
         expect(state.status).toBe(0);
         expect(readPage(state.project, CALLBACK_ACTION_PAGE)).toContain("### `callback`");
         expect(readPage(state.project, SHORTCUT_TRIGGER_PAGE)).toContain("### `accelerator`");
-    });
-});
-
-describe("gtkx docs (a fresh project)", () => {
-    it("includes built-in props before bindings have been generated", () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-docs-first-run-",
-            config: `export default { applicationId: "${APPLICATION_ID}" };`,
-        });
-
-        runCliOrThrow(project, ["docs", "--out", OUT_DIR]);
-        expect(readPage(project, CALLBACK_ACTION_PAGE)).toContain("### `callback`");
-        expect(readPage(project, MENU_ITEM_PAGE)).toContain("### `submenu`");
-        expect(readPage(project, MENU_ITEM_PAGE)).toContain("### `section`");
-        expect(readPage(project, SHORTCUT_TRIGGER_PAGE)).toContain("### `accelerator`");
-    });
-});
-
-describe("gtkx docs (directories it refuses to write to)", () => {
-    const state: { project: CliProject } = { project: { root: "", nodeModules: "", tmpDir: "" } };
-
-    beforeAll(() => {
-        state.project = createCliProject({ prefix: "gtkx-cli-docs-out-", config: config(), hasStore: true });
-    });
-
-    afterAll(() => {
-        removeCliProject(state.project);
-    });
-
-    it.each(REJECTED_OUT_DIRS)("fails over an out directory of %j", (out) => {
-        expect(runCli(state.project, ["docs", "--out", out]).status).not.toBe(0);
-        expect(existsSync(join(state.project.root, "docs"))).toBe(false);
-    });
-});
-
-describe("gtkx docs (ordinary prose that starts with free)", () => {
-    it("preserves the PackageKit search parameter description and strips C memory management", () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-docs-free-text-",
-            config: config(', girPath: ["./gir"]', ["Documented-1.0"]),
-            files: { "gir/Documented-1.0.gir": readFileSync(join(FIXTURE_GIR, "Documented-1.0.gir")) },
-        });
-
-        expect(runDocs(project)).toBe(0);
-        const page = readPage(project, DOCUMENTED_PAGE);
-        expect(page).toContain(PACKAGEKIT_SEARCH_TEXT);
-        expect(page).toContain("Copies the note text.");
-        expect(page).toContain("**Returns** a copy of the note.");
-        expect(page).toContain("**Returns** a list of strvs.");
-        expect(page).toContain("- `buffer`: the buffer to copy into");
-        expect(page).toContain("Describes copied values.");
-        expect(page).toContain("The memory of the input has to be dynamically allocated.");
-        expect(page).toContain("Describes allocator behavior.");
-        expect(page).toContain("automatically via `g_free()`");
-        expect(page).toContain("using `g_realloc()` and `g_free()` for memory allocation");
-        expect(page).toContain("Describes lifecycle details.");
-        expect(page).toContain("Note that filters run in another thread.");
-        expect(page).toContain("The port is chosen by the system.");
-        expect(page).toContain("After calling this function, it is no longer possible to add more nodes.");
-        expect(page).toContain("The items are not freed.");
-        expect(page).toContain("The data contained in the resulting `GBytes` is always zero-terminated.");
-        expect(page).toContain("rather than handed to `g_free()`");
-        expect(page).toContain(
-            "Since you are providing a pre-allocated note buffer, you must also specify a way to free that data.",
-        );
-        expect(page).toContain("your destroy notification function will be called");
-        expect(page).toContain("**Returns** a list of cell renderers.");
-        expect(page).toContain("Describes clause details.");
-        expect(page).toContain("Returns the label of the note, if any.");
-        expect(page).toContain("Reads the tooltip back, when set.");
-        expect(page).toContain("Gets the icon of the note, if one was set.");
-        expect(page).toContain("The buffer is reused.");
-        expect(page).toContain("If the note holds a string, the location will contain a newly allocated string.");
-        expect(page).toContain("Reading a joined note returns a handle only if joining was requested.");
-        expect(page).toContain("On failure, the caller must close the descriptor themselves.");
-        expect(page).toContain("final releases of code");
-        expect(page).toContain("so code must not depend on any side effects from reading them.");
-        expect(page).toContain("To delete a note window, call `Gtk.Window.destroy()`.");
-        expect(page).toContain("You must use `GLib.Source.destroy()` for sources added to a non-default main context.");
-        expect(page).toContain("- `label`: the label text");
-        expect(page).toContain("**Returns** a newly created window.");
-        expect(page).not.toContain("but if the note");
-        expect(page).not.toContain("Likewise");
-        expect(page).not.toContain("In that case");
-        expect(page).not.toContain("On success");
-        expect(page).not.toContain("takes ownership");
-        expect(page).not.toContain("take ownership");
-        expect(page).not.toContain("ref and sink");
-        expect(page).not.toContain("objects are referenced");
-        expect(page).not.toContain("documented_label_new");
-        expect(page).not.toContain("Instead");
-        expect(page).not.toContain("In particular");
-        expect(page).not.toContain("This address");
-        expect(page).not.toContain("The only function");
-        expect(page).not.toContain("dynamically allocated,");
-        expect(page).not.toContain("no longer in use");
-        expect(page).not.toContain("belongs to the caller");
-        expect(page).not.toContain("The list");
-        expect(page).not.toContain("must free");
-        expect(page).not.toContain("must be freed");
-        expect(page).not.toContain("should be freed");
-        expect(page).not.toContain("needs to be freed");
-        expect(page).not.toContain("eventually be freed");
-        expect(page).not.toContain("responsible for freeing");
-        expect(page).not.toContain("Free it with");
-        expect(page).not.toContain("Free each item");
-        expect(page).not.toContain("strfreev");
-    });
-});
-
-describe("gtkx docs (async finish pairing)", () => {
-    it("documents the paired generic finish and the remaining callback-only methods", () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-docs-async-pair-",
-            config: config(', girPath: ["./gir"]', ["AsyncPair-1.0"]),
-            files: { "gir/AsyncPair-1.0.gir": readFileSync(join(FIXTURE_GIR, "AsyncPair-1.0.gir")) },
-        });
-
-        expect(runDocs(project)).toBe(0);
-        expect(readPage(project, ASYNC_SACK_PAGE)).toContain(
-            "fetchAsync(cancellable?: NativeInstance<Gio.Cancellable> | null): Promise<boolean>",
-        );
-        expect(readPage(project, ASYNC_SACK_PAGE)).not.toContain("Callback-based:");
-        expect(readPage(project, ASYNC_JOB_PAGE)).toContain(
-            "externalAsync(callback: Gio.AsyncReadyCallback | null): void",
-        );
-        expect(readPage(project, ASYNC_JOB_PAGE)).toContain(
-            "Callback-based: the GIR declares `AsyncPair.Client.genericFinish` as its finish function",
-        );
-    });
-});
-
-describe("gtkx docs (a project with nothing to document)", () => {
-    it("fails when the project generates no bindings", () => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-docs-disabled-",
-            config: config(", codegen: false"),
-            hasStore: true,
-        });
-
-        expect(runDocs(project)).not.toBe(0);
-        expect(existsSync(docsDir(project))).toBe(false);
     });
 });
