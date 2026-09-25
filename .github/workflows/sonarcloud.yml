@@ -1,17 +1,14 @@
 name: SonarCloud
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-    types: [opened, synchronize, reopened, closed]
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
+  workflow_call:
+    inputs:
+      coverage:
+        required: true
+        type: boolean
+      image-ref:
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -25,40 +22,8 @@ env:
   NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
 
 jobs:
-  changes:
-    if: github.event.action != 'closed'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      coverage: ${{ steps.filter.outputs.coverage }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-
-      - name: Detect changes
-        id: filter
-        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
-        with:
-          predicate-quantifier: every
-          filters: |
-            coverage:
-              - '**'
-              - '!**/*.md'
-              - '!.editorconfig'
-              - '!.github/CODEOWNERS'
-              - '!.github/FUNDING.yml'
-              - '!.github/ISSUE_TEMPLATE/**'
-              - '!.github/dependabot.yml'
-              - '!.gitignore'
-              - '!.vscode/**'
-              - '!LICENSE'
-              - '!docs/**'
-              - '!logo.svg'
-              - '!website/**'
-
   coverage:
-    needs: changes
-    if: needs.changes.outputs.coverage == 'true'
+    if: inputs.coverage
     name: coverage (${{ matrix.group }} ${{ matrix.shard }}/${{ matrix.total }})
     strategy:
       fail-fast: false
@@ -87,7 +52,7 @@ jobs:
         uses: ./.github/actions/run-ci-command
         with:
           command: pnpm exec nx run gtkx:coverage-shard
-          image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
+          image-ref: ${{ inputs.image-ref }}
           extra-env: GTKX_COVERAGE_GROUP GTKX_COVERAGE_PROJECT_ARGS GTKX_COVERAGE_SHARD GTKX_COVERAGE_SHARDS GTKX_MAX_WORKERS
 
       - name: Upload coverage
@@ -99,12 +64,10 @@ jobs:
           retention-days: 1
 
   sonarcloud:
-    needs: [changes, coverage]
+    needs: coverage
     if: >-
       always() && !cancelled() &&
-      needs.changes.result == 'success' &&
-      (needs.coverage.result == 'success' ||
-      (github.event_name == 'pull_request' && needs.changes.outputs.coverage == 'false'))
+      (needs.coverage.result == 'success' || !inputs.coverage)
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -116,7 +79,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download coverage
-        if: needs.changes.outputs.coverage == 'true'
+        if: inputs.coverage
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           pattern: sonar-coverage-*
@@ -124,25 +87,25 @@ jobs:
           path: coverage-artifacts
 
       - name: Merge coverage
-        if: needs.changes.outputs.coverage == 'true'
+        if: inputs.coverage
         uses: ./.github/actions/run-ci-command
         with:
           command: pnpm exec nx run gtkx:coverage-merge
-          image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
+          image-ref: ${{ inputs.image-ref }}
           extra-env: PNPM_CONFIG_NODE_LINKER
 
       - name: Install analysis dependencies
-        if: needs.changes.outputs.coverage == 'false'
+        if: ${{ !inputs.coverage }}
         uses: ./.github/actions/run-ci-command
         with:
           command: pnpm exec tsc --version
-          image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
+          image-ref: ${{ inputs.image-ref }}
           extra-env: PNPM_CONFIG_NODE_LINKER
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2
         with:
-          args: ${{ needs.changes.outputs.coverage == 'false' && '-Dsonar.coverage.exclusions=**/*' || '' }}
+          args: ${{ !inputs.coverage && '-Dsonar.coverage.exclusions=**/*' || '' }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io

@@ -33,6 +33,7 @@ jobs:
       pull-requests: read
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      coverage: ${{ steps.filter.outputs.coverage }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -46,6 +47,20 @@ jobs:
             code:
               - '**'
               - '!**/*.md'
+            coverage:
+              - '**'
+              - '!**/*.md'
+              - '!.editorconfig'
+              - '!.github/CODEOWNERS'
+              - '!.github/FUNDING.yml'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/dependabot.yml'
+              - '!.gitignore'
+              - '!.vscode/**'
+              - '!LICENSE'
+              - '!docs/**'
+              - '!logo.svg'
+              - '!website/**'
 
   image:
     if: github.event.action != 'closed'
@@ -201,6 +216,23 @@ jobs:
         run: |
           set -euo pipefail
           docker buildx imagetools create --tag ghcr.io/gtkx-org/gtkx-ci:latest "$REF"
+
+  sonarcloud:
+    needs: [changes, image-manifest]
+    if: >-
+      always() && github.event.action != 'closed' &&
+      needs.changes.result == 'success' &&
+      needs.image-manifest.result == 'success' &&
+      (needs.changes.outputs.coverage == 'true' || github.event_name == 'pull_request')
+    permissions:
+      contents: read
+      packages: read
+      pull-requests: read
+    uses: ./.github/workflows/sonarcloud.yml
+    with:
+      coverage: ${{ needs.changes.outputs.coverage == 'true' }}
+      image-ref: ${{ needs.image-manifest.outputs.ref }}
+    secrets: inherit
 
   docs:
     needs: image-manifest

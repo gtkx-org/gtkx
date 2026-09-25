@@ -1,23 +1,12 @@
 name: Compute Cache Env
-description: Inspect the CI container for Node.js, Adwaita, and GTK4 versions; export them to $GITHUB_ENV for Nx cache keys.
+description: Export the immutable CI image ID for Nx cache keys.
 
 runs:
   using: composite
   steps:
-    - name: Read versions from container
+    - name: Read CI image ID
       shell: bash
       run: |
-        read_versions() {
-          podman run \
-            --rm \
-            --userns=keep-id \
-            --cap-drop=ALL \
-            --security-opt no-new-privileges \
-            localhost/gtkx-ci:local \
-            bash -c '
-            printf "NODE_VERSION=%s\n" "$(node -v)"
-            printf "ADWAITA_VERSION=%s\n" "$(pkg-config --modversion libadwaita-1)"
-            printf "GTK4_VERSION=%s\n" "$(pkg-config --modversion gtk4)"
-          '
-        }
-        read_versions >> "$GITHUB_ENV"
+        image_id="$(podman image inspect --format '{{.Id}}' localhost/gtkx-ci:local)"
+        test -n "$image_id"
+        echo "CI_IMAGE_ID=$image_id" >> "$GITHUB_ENV"

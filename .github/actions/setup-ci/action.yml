@@ -1,5 +1,5 @@
 name: Setup CI
-description: Pull the CI image, compute the version env vars Nx hashes, and restore the cargo and pnpm caches. Composes the smaller setup composites so individual jobs don't repeat the boilerplate.
+description: Pull the CI image, compute its Nx cache key, and restore the cargo and pnpm caches. Composes the smaller setup composites so individual jobs don't repeat the boilerplate.
 
 runs:
   using: composite
