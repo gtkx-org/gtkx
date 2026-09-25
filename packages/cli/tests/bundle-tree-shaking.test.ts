@@ -14,6 +14,7 @@ const OUT_DIR = "dist";
 const USED_NAME_PREFIX = "used-name=";
 const USED_TYPE_PREFIX = "used-type=";
 const DROPPED_TYPE_PREFIX = "dropped-type=";
+const RETAINED_VALUES_PREFIX = "retained-values=";
 const UNUSED_CLASS_METHOD = "getAutoplay";
 const UNUSED_GET_TYPE = "gtk_video_get_type";
 
@@ -23,12 +24,34 @@ const APP_CONFIG = `export default {
 };
 `;
 
-const APP_ENTRY = String.raw`import { Task } from "@gtkx/gi/gio";
-import { typeFromName } from "@gtkx/runtime";
+const APP_ENTRY = String.raw`import { File, IOErrorEnum, ioErrorQuark, SimpleAction, Task } from "@gtkx/gi/gio";
+import { toVariant, typeFromName } from "@gtkx/runtime";
 
 process.stdout.write("${USED_NAME_PREFIX}" + Task.name + "\n");
 process.stdout.write("${USED_TYPE_PREFIX}" + String(typeFromName("GTask") !== 0n) + "\n");
 process.stdout.write("${DROPPED_TYPE_PREFIX}" + String(typeFromName("GtkVideo") !== 0n) + "\n");
+
+const retainedValues = ["retained", ""].map((value) => {
+    const action = SimpleAction.newStateful("state", null, toVariant("s", value));
+    const state = action.getState();
+
+    if (state === null) {
+        throw new Error("The action has no state");
+    }
+
+    return state.getString()[0];
+});
+process.stdout.write("${RETAINED_VALUES_PREFIX}" + JSON.stringify(retainedValues) + "\n");
+
+let rejectedMissingFile = false;
+try {
+    File.newForPath(import.meta.dirname + "/gtkx-missing-file").read(null);
+} catch (error) {
+    rejectedMissingFile = error.matches(ioErrorQuark(), IOErrorEnum.NOT_FOUND);
+}
+if (!rejectedMissingFile) {
+    process.exitCode = 1;
+}
 `;
 
 const USED_SIGNAL_HANDLER = "onClicked";
@@ -76,6 +99,15 @@ describe("gtkx build (tree shaking)", () => {
     it("drops the namespaces the app never imports", () => {
         expect(bundle).not.toContain(UNUSED_CLASS_METHOD);
         expect(bundle).not.toContain(UNUSED_GET_TYPE);
+    });
+
+    it("retains native value wrappers without direct class imports", () => {
+        expect(probe.run.status).toBe(0);
+        expect(probe.run.stdout).toContain(`${RETAINED_VALUES_PREFIX}["retained",""]\n`);
+    });
+
+    it("retains native errors without a direct error class import", () => {
+        expect(probe.run.status).toBe(0);
     });
 });
 

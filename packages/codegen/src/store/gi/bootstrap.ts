@@ -13,12 +13,8 @@ const renderDependencyImports = (context: ModuleContext): string[] => [
     ...sortStrings(context.externalDependencies).map((packageName) => `import ${sourceStringLiteral(packageName)};`),
 ];
 
-const renderRuntimeImport = (context: ModuleContext, coreWrappers: string[]): string[] => {
-    const runtimeImports = new Set(context.bootstrapRuntimeImports);
-
-    if (coreWrappers.length > 0) {
-        runtimeImports.add("retainWrapperClasses");
-    }
+const renderRuntimeImport = (context: ModuleContext): string[] => {
+    const runtimeImports = context.bootstrapRuntimeImports;
 
     if (runtimeImports.size === 0) {
         return [];
@@ -44,7 +40,10 @@ const renderBootstrapModule = (context: ModuleContext): string => {
     const lines = [
         ...renderDependencyImports(context),
         ...renderOverrideImports(directory),
-        ...renderRuntimeImport(context, coreWrappers),
+        ...renderRuntimeImport(context),
+        ...(coreWrappers.length === 0
+            ? []
+            : ['import { retainWrapperClasses } from "@gtkx/runtime/internal";']),
         ...renderModuleImports(context, directory, coreWrappers),
         "",
         ...retention,

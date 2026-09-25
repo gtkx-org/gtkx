@@ -66,6 +66,10 @@ Use `useToast().dismissAll()` in place of `useToastOverlay().dismissAll()`. `sho
 
 Import `createElementComponent` from `@gtkx/react` instead of `@gtkx/react/config`. The config subpath remains for renderer behavior and element registration APIs.
 
+The `@gtkx/native` root no longer exports `armParentDeath`, `addLogListener`, `removeLogListener`, or `__napiBindingTarget`. Subscribe to native logs with `onLog(listener)` and release the subscription with `unsubscribe()`. Process supervision remains internal.
+
+The generated wrapper-retention helper `retainWrapperClasses` now belongs to `@gtkx/runtime/internal`. Regenerate bindings with `gtkx codegen --force` after upgrading so their bootstrap imports match the runtime.
+
 ## Move GObject ownership into JSX
 
 The settings hooks no longer create a `Gio.Settings` instance. Render `GSettings` from `@gtkx/jsx/gio` in the root portal, capture the instance with a state callback ref, and mount its consumers once it is available. Pass that instance first to `useSetting`, and add it as the `settings` option to `useBindSetting`. The [2.0 settings tutorial](/v2/tutorial/preferences-and-theming#create-the-settings-instance) shows the complete ownership pattern.

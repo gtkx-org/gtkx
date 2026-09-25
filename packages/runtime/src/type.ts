@@ -162,15 +162,6 @@ function typeFromName(name: string): bigint {
     return gTypeFromName(name) as bigint;
 }
 
-/**
- * Keeps the given wrapper classes in a tree-shaken bundle: a generated bootstrap names the classes
- * its namespace cannot operate without as arguments here, which is a reference a bundler retains.
- *
- * @param wrappers Wrapper classes to keep.
- * @returns The same classes, untouched.
- */
-const retainWrapperClasses = (wrappers: readonly unknown[]): readonly unknown[] => wrappers;
-
 function typeFundamental(type: bigint): bigint {
     return gTypeFundamental(type) as bigint;
 }
@@ -346,7 +337,6 @@ export {
     getStrvType,
     isResolvableDescriptor,
     isTypedClass,
-    retainWrapperClasses,
     typeIsA,
     typeParent,
     typeInterfacePrerequisites,

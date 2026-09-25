@@ -11,6 +11,8 @@ const emitSignalByName: typeof emitSignalByNameImpl = emitSignalByNameImpl;
 const signalConnect: typeof signalConnectImpl = signalConnectImpl;
 const signalEmit: typeof signalEmitImpl = signalEmitImpl;
 
+const retainWrapperClasses = (wrappers: readonly unknown[]): readonly unknown[] => wrappers;
+
 type SignalMethodReceiver<T, K extends PropertyKey> = T extends {
     [naturalSignalMember]?: infer TMembers;
 }
@@ -81,6 +83,7 @@ export {
     type SignalName,
 } from "./signal.js";
 export { installTextViewBufferOverride } from "./text-view.js";
+export { retainWrapperClasses };
 export { resolveType } from "./type.js";
 export {
     fromValue,
