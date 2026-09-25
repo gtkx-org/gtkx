@@ -1,6 +1,5 @@
 use anyhow::bail;
 
-use super::numeric::MAX_SAFE_INTEGER;
 use super::prelude::*;
 use super::{IntegerCodec, forward_ffi_encoder};
 
@@ -34,32 +33,13 @@ impl BigIntCodec {
         }
     }
 
-    fn integer_from_value(self, value: Unknown<'_>) -> anyhow::Result<i128> {
-        match value.get_type()? {
-            ValueType::BigInt => {
-                let big = value::read_napi::<BigInt>(value)?;
-                let (int, lossless) = big.get_i128();
-                if !lossless {
-                    bail!("BigInt value exceeds the supported 128-bit range");
-                }
-                Ok(int)
-            }
-            #[allow(clippy::cast_possible_truncation)]
-            ValueType::Number => {
-                let n = value::read_napi::<f64>(value)?;
-                if !n.is_finite()
-                    || n.fract() != 0.0
-                    || !(-MAX_SAFE_INTEGER..=MAX_SAFE_INTEGER).contains(&n)
-                {
-                    bail!(
-                        "Value {n} is not an integer Number exactly representable as {}; pass a bigint",
-                        self.name()
-                    );
-                }
-                Ok(n as i128)
-            }
-            _ => bail_expected!("a BigInt", self.name()),
+    fn integer_from_value(value: Unknown<'_>) -> anyhow::Result<i128> {
+        let big = value::read_napi::<BigInt>(value)?;
+        let (int, lossless) = big.get_i128();
+        if !lossless {
+            bail!("BigInt value exceeds the supported 128-bit range");
         }
+        Ok(int)
     }
 
     fn checked_to_stash(self, value: i128) -> anyhow::Result<ffi::Stash> {
@@ -83,7 +63,7 @@ impl BigIntCodec {
     /// Encodes a value the way [`Encoder::encode`] does, for a caller that needs the 64-bit word
     /// itself rather than a libffi argument.
     pub(super) fn entry_stash(self, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
-        let int = self.integer_from_value(value)?;
+        let int = Self::integer_from_value(value)?;
 
         self.checked_to_stash(int)
     }
@@ -116,8 +96,7 @@ impl BigIntCodec {
 
     pub fn to_stash_storage(self, array: &[Unknown<'_>]) -> anyhow::Result<ffi::StashStorage> {
         let integer_at = |i: usize, v: Unknown<'_>| {
-            self.integer_from_value(v)
-                .map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))
+            Self::integer_from_value(v).map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))
         };
         match self {
             Self::I64 => array
@@ -143,16 +122,12 @@ impl BigIntCodec {
         }
     }
 
-    pub(super) fn to_pointer_words(
-        self,
-        array: &[Unknown<'_>],
-    ) -> anyhow::Result<Vec<*mut c_void>> {
+    pub(super) fn to_pointer_words(array: &[Unknown<'_>]) -> anyhow::Result<Vec<*mut c_void>> {
         array
             .iter()
             .enumerate()
             .map(|(i, &v)| {
-                let int = self
-                    .integer_from_value(v)
+                let int = Self::integer_from_value(v)
                     .map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))?;
                 let word = usize::try_from(int).map_err(|_| {
                     anyhow::anyhow!("Array element {i}: value {int} is not a valid pointer")
@@ -170,7 +145,7 @@ pub(super) fn bigint_to_unknown(env: &Env, value: i128) -> anyhow::Result<Unknow
 
 impl Encoder for BigIntCodec {
     fn encode(&self, _env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
-        let int = self.integer_from_value(value)?;
+        let int = Self::integer_from_value(value)?;
         self.checked_to_stash(int)
     }
 
@@ -203,8 +178,7 @@ impl PtrWriter for BigIntCodec {
         value: &std::result::Result<Unknown<'_>, ()>,
     ) {
         let stash = match value {
-            Ok(unknown) => self
-                .integer_from_value(*unknown)
+            Ok(unknown) => Self::integer_from_value(*unknown)
                 .and_then(|integer| self.checked_to_stash(integer))
                 .unwrap_or_else(|error| {
                     reject_callback_return(*env, &error);
@@ -222,7 +196,7 @@ impl PtrWriter for BigIntCodec {
         value: Unknown<'_>,
         _init: SlotInit,
     ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
-        let int = self.integer_from_value(value)?;
+        let int = Self::integer_from_value(value)?;
         let stash = self.checked_to_stash(int)?;
         unsafe { stash.write_scalar_to_ptr(slot.as_ptr()) }?;
         Ok(None)

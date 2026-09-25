@@ -720,13 +720,15 @@ impl ArrayCodec {
             }
             ItemCodec::BigInt(kind) => {
                 if encoder.holds_pointer_slots() {
-                    return encoder
-                        .encode_pointer_words(kind.to_pointer_words(array)?, self.ownership);
+                    return encoder.encode_pointer_words(
+                        super::BigIntCodec::to_pointer_words(array)?,
+                        self.ownership,
+                    );
                 }
 
                 let storage = if zero_terminated {
                     let mut items = array.to_vec();
-                    items.push(0f64.into_unknown(&env)?);
+                    items.push(BigInt::from(0i64).into_unknown(&env)?);
                     kind.to_stash_storage(&items)?
                 } else {
                     kind.to_stash_storage(array)?

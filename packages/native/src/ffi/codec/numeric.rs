@@ -5,7 +5,7 @@ use super::prelude::*;
 
 const MAX_SAFE_INTEGER_I128: i128 = 9_007_199_254_740_992;
 
-pub(super) const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_992.0;
+const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_992.0;
 
 trait NumberCast: Copy {
     fn to_f64(self) -> f64;

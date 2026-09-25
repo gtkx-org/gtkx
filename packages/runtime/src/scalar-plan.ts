@@ -94,6 +94,26 @@ const encodeByteArray: Conversion = (value) => {
     });
 };
 
+const encodeBigInt: Conversion = (value) => {
+    if (typeof value !== "number") {
+        return value;
+    }
+    if (!Number.isSafeInteger(value) && Math.abs(value) !== 2 ** 53) {
+        throw new RangeError("Expected an integer number within the exact 2^53 range or a bigint");
+    }
+
+    return BigInt(value);
+};
+
+const encodeBigIntArray: Conversion = (value) => {
+    if (value == null || ArrayBuffer.isView(value)) {
+        return value;
+    }
+    const items = value as readonly unknown[];
+
+    return items.some((item) => typeof item === "number") ? items.map((item) => encodeBigInt(item)) : items;
+};
+
 const enumClass = (descriptor: EnumDescriptor): ExternalObject<Handle> => {
     let library = classHandles.get(descriptor.sharedLibrary);
     if (library === undefined) {
@@ -213,10 +233,17 @@ const byteOutputLayouts: Set<Extract<Descriptor, { kind: "array" }>["arrayKind"]
 const hasByteTransport = (descriptor: Extract<Descriptor, { kind: "array" }>, item: NativeDescriptor): boolean =>
     descriptor.arrayKind === "gbytearray" || (item.kind === "uint8" && byteOutputLayouts.has(descriptor.arrayKind));
 
+const arrayEncoder = (descriptor: Extract<Descriptor, { kind: "array" }>, encode: Conversion): Conversion => {
+    if (descriptor.arrayKind === "gbytearray") {
+        return encodeByteArray;
+    }
+
+    return encode === encodeBigInt ? encodeBigIntArray : mapCollection(encode);
+};
+
 const arrayPlan = (descriptor: Extract<Descriptor, { kind: "array" }>): ScalarPlan => {
     const item = compileDescriptor(descriptor.itemDescriptor);
     const { preserveNull = false, ...layout } = descriptor;
-    const isByteArray = descriptor.arrayKind === "gbytearray";
     const shouldUseByteTransport = hasByteTransport(descriptor, item.abi);
     const decode: Conversion = shouldUseByteTransport && descriptor.isBytes !== true
         ? (value) => [...value as Uint8Array]
@@ -224,7 +251,7 @@ const arrayPlan = (descriptor: Extract<Descriptor, { kind: "array" }>): ScalarPl
 
     return {
         abi: { ...layout, itemDescriptor: item.abi, ...(shouldUseByteTransport && { isBytes: true }) },
-        encode: isByteArray ? encodeByteArray : mapCollection(item.encode),
+        encode: arrayEncoder(descriptor, item.encode),
         decode(value) {
             if (value === null) {
                 if (preserveNull) {
@@ -481,6 +508,10 @@ const buildPlan = (descriptor: Descriptor): ScalarPlan => {
         case "string": {
             return stringPlan(descriptor);
         }
+        case "bigint64":
+        case "biguint64": {
+            return { abi: descriptor, encode: encodeBigInt, decode: identity };
+        }
         case "bytes":
         case "object":
         case "int8":
@@ -491,8 +522,6 @@ const buildPlan = (descriptor: Descriptor): ScalarPlan => {
         case "uint32":
         case "int64":
         case "uint64":
-        case "bigint64":
-        case "biguint64":
         case "float32":
         case "float64":
         case "void":

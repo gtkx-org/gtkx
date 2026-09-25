@@ -46,12 +46,20 @@ describe.each(bigIntegers)("$name 64-bit hash table values", ({ descriptor, valu
         expect(source.size).toBe(0);
     });
 
+    it("normalizes numeric entries without changing their source map", () => {
+        const source: Map<string, number | bigint> = new Map([["number", 2 ** 53]]);
+        source.set("bigint", 2n ** 53n + 1n);
+
+        expect(roundtrip(source)).toEqual(new Map([["number", 2n ** 53n], ["bigint", 2n ** 53n + 1n]]));
+        expect(source.get("number")).toBe(2 ** 53);
+    });
+
     it.each([null, undefined])("rejects %s scalar entries", (value) => {
         expect(() => roundtrip(new Map([["invalid", value]]))).toThrow();
     });
 
     it("rejects invalid scalar entries and preserves the input", () => {
-        for (const value of [...invalid, 1.5, "invalid"]) {
+        for (const value of [...invalid, 1.5, 2 ** 53 + 2, "invalid"]) {
             const source: Map<string, bigint | number | string> = new Map([["valid", 1n], ["invalid", value]]);
             const expected = new Map(source);
 

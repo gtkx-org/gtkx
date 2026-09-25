@@ -154,12 +154,10 @@ test("the bigint codecs store their extremes", () => {
     expect(read(block, { kind: "biguint64" }, 16)).toBe(18_446_744_073_709_551_615n);
 });
 
-test("a bigint slot accepts a plain number", () => {
+test("a bigint slot rejects a plain number", () => {
     const block = alloc(8);
 
-    write(block, { kind: "bigint64" }, 0, 7);
-
-    expect(read(block, { kind: "bigint64" }, 0)).toBe(7n);
+    expect(() => write(block, { kind: "bigint64" }, 0, 7)).toThrow();
 });
 
 test("float64 round-trips exactly", () => {
