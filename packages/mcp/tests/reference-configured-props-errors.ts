@@ -9,7 +9,6 @@ import {
 } from "./reference-session.js";
 
 type InvalidProps = {
-    title: string;
     module: string;
     exported: string;
 };

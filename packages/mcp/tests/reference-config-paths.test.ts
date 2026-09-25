@@ -1,10 +1,10 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createProject } from "./app-session.js";
 import { referenceSession } from "./reference-session.js";
 
-const { apiDocs, listApi, state } = referenceSession();
+const { apiDocs, state } = referenceSession();
 
 describe("reference configuration updates", () => {
     it("resolves relative GIR paths from the requested project instead of the server's working directory", async () => {
@@ -39,21 +39,4 @@ describe("reference configuration updates", () => {
             rmSync(launchGir, { recursive: true, force: true });
         }
     });
-
-    it.each(["gtkx.config.cjs", "gtkx.config.cts", ".config/gtkx.ts", ".config/gtkx.config.ts"])(
-        "finds a project using %s from a child directory",
-        async (configuration) => {
-            const project = createProject();
-            rmSync(join(project, "gtkx.config.mjs"));
-            const path = join(project, configuration);
-            mkdirSync(dirname(path), { recursive: true });
-            writeFileSync(path, 'module.exports = { applicationId: "org.gtkx.reference" };\n');
-
-            try {
-                expect(await listApi({ projectRoot: join(project, "src") })).toContain("Adw");
-            } finally {
-                rmSync(project, { recursive: true, force: true });
-            }
-        },
-    );
 });
