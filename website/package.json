@@ -17,7 +17,7 @@
     "devDependencies": {
         "shiki": "^4.4.3",
         "typedoc": "^0.28.20",
-        "typedoc-plugin-markdown": "^4.13.0",
+        "typedoc-plugin-markdown": "^4.13.1",
         "typedoc-vitepress-theme": "^1.1.4",
         "typescript": "catalog:",
         "vite": "catalog:",
