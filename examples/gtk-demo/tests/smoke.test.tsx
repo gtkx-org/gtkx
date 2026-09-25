@@ -124,7 +124,7 @@ const exerciseMainMenu = async (): Promise<void> => {
     await openMenuItem(menuButton, "About GTK Demo");
     const about = await screen.findByRole(Gtk.AccessibleRole.DIALOG);
     const gtkVersion = [Gtk.getMajorVersion(), Gtk.getMinorVersion(), Gtk.getMicroVersion()].join(".");
-    expect(within(about).getByText(gtkVersion)).toBeVisible();
+    expect(await within(about).findByText(gtkVersion)).toBeVisible();
     await dismissDialog(about);
     await openMenuItem(menuButton, "Keyboard Shortcuts Ctrl+?");
     const [shortcutLabel] = await screen.findAllByText("Search demos");
