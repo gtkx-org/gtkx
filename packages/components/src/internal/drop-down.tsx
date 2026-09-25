@@ -183,7 +183,7 @@ function DropDownBase(props: DropDownBaseProps & { component: ElementType }): Re
     const { component: Component, items, sections, renderListItem, renderHeader, ref } = props;
     const rest = omit(props, DROP_DOWN_PROPS);
     const [widget, refCallback] = useWidgetRef<SelectableWidget>(ref);
-    const collection = useCollectionData({ items, sections, isFlat: true });
+    const { collection, model } = useCollectionData({ items, sections, isFlat: true });
     const faceCells = useItemCells({ width: -1, height: -1 });
     const listCells = useItemCells({ width: -1, height: -1 });
     const header = useSectionHeader(renderHeader, collection, { width: -1, height: -1 });
@@ -193,7 +193,7 @@ function DropDownBase(props: DropDownBaseProps & { component: ElementType }): Re
         <>
             <Component
                 ref={refCallback}
-                model={collection.model}
+                model={model}
                 factory={<GtkSignalListItemFactory {...faceCells.handlers} />}
                 {...(renderListItem != null && {
                     listFactory: <GtkSignalListItemFactory {...listCells.handlers} />,

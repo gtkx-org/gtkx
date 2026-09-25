@@ -1,4 +1,3 @@
-import type * as Gio from "@gtkx/gi/gio";
 import type { ReactElement } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkMultiSelection, GtkNoSelection, GtkSingleSelection } from "@gtkx/jsx/gtk";
@@ -12,6 +11,7 @@ import { joinParts } from "./keys.js";
 
 type SelectionOptions = {
     collection: Collection;
+    model: ReactElement;
     selectedIds?: string[] | null | undefined;
     onSelectionChanged?: ((ids: string[]) => void) | null | undefined;
     selectionMode?: Gtk.SelectionMode | null | undefined;
@@ -42,7 +42,7 @@ type PositionRun = {
 
 type SelectionElementProps = {
     ref: (value: Gtk.SelectionModel | null) => void;
-    model: Gio.ListModel;
+    model: ReactElement;
     onSelectionChanged: () => void;
     onItemsChanged: ItemsChangeHandler;
 };
@@ -267,7 +267,7 @@ function useSelection(options: SelectionOptions): ReactElement {
 
     return selectionElement(selectionMode, {
         ref: setSelection,
-        model: collection.model,
+        model: options.model,
         onSelectionChanged: () => {
             observeSelection(context, selectedIds, markDrift);
         },

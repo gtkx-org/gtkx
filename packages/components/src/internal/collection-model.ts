@@ -1,6 +1,8 @@
+import type { ReactNode, Ref } from "react";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
+import { createElementComponent } from "@gtkx/react";
 import { registerClass } from "@gtkx/runtime";
 import type { CollectionIndex, Level } from "./collection-index.js";
 import type { TreeExpansion } from "./tree-expansion.js";
@@ -26,28 +28,28 @@ type SlotRun = {
 };
 
 type ModelState = {
-    root: Gio.ListStore;
-    rootModels: GObject.Object[];
-    model: Gtk.FlattenListModel;
-    groupStores: LevelStore[];
+    root: CollectionRootStore | null;
+    model: Gtk.FlattenListModel | null;
+    groupStores: Map<number, LevelStore>;
     trees: Map<LevelStore, Gtk.TreeListModel>;
-    treeModels: Gtk.TreeListModel[];
     expansion: TreeExpansion;
     index: CollectionIndex;
 };
 
 type CollectionModel = {
-    model: Gtk.FlattenListModel;
     expansion: TreeExpansion;
     rowAt: (position: number) => Gtk.TreeListRow | null;
+    bind: (root: CollectionRootStore, model: Gtk.FlattenListModel) => void;
+    clear: () => void;
     sync: (index: CollectionIndex) => void;
 };
 
-const STORE_CLASS_KEY = Symbol.for("gtkx.components.lazy-level-store");
-const SLOTS_KEY = Symbol.for("gtkx.components.lazy-level-store.slots");
-const EMPTY_INDEX = createCollectionIndex(undefined, undefined, true);
+type CollectionRootProps = { ref: Ref<CollectionRootStore> };
 
-const newRootStore = (): Gio.ListStore => new Gio.ListStore({ itemType: GObject.TYPE_OBJECT });
+const STORE_CLASS_KEY = Symbol.for("gtkx.components.lazy-level-store");
+const ROOT_CLASS_KEY = Symbol.for("gtkx.components.collection-root-store");
+const SLOTS_KEY = Symbol.for("gtkx.components.lazy-level-store.slots");
+const EMPTY_INDEX = createCollectionIndex(undefined, [], true);
 
 function sharedSlots(): WeakMap<GObject.Object, SlotRef> {
     const cached: unknown = Reflect.get(globalThis, SLOTS_KEY);
@@ -73,6 +75,19 @@ function registeredStoreClass(): typeof LazyLevelStore {
     Reflect.set(globalThis, STORE_CLASS_KEY, LazyLevelStore);
 
     return LazyLevelStore;
+}
+
+function registeredRootClass(): unknown {
+    const cached: unknown = Reflect.get(globalThis, ROOT_CLASS_KEY);
+
+    if (typeof cached === "function") {
+        return cached;
+    }
+
+    registerClass(CollectionRootStore, { typeName: "GtkxCollectionRootStore", implements: [Gio.ListModel] });
+    Reflect.set(globalThis, ROOT_CLASS_KEY, CollectionRootStore);
+
+    return CollectionRootStore;
 }
 
 function slotRefFor(value: GObject.Object | null): SlotRef | null {
@@ -242,102 +257,81 @@ function childStoreFor(state: ModelState, object: GObject.Object): Gio.ListModel
 }
 
 function treeFor(state: ModelState, store: LevelStore): Gtk.TreeListModel {
-    return (
-        state.trees.get(store) ?? Gtk.TreeListModel.new(store, false, false, (object) => childStoreFor(state, object))
-    );
-}
+    const existing = state.trees.get(store);
 
-function nextTrees(state: ModelState, index: CollectionIndex): Map<LevelStore, Gtk.TreeListModel> {
-    if (!index.isTree) {
-        return new Map();
+    if (existing !== undefined) {
+        return existing;
     }
 
-    return new Map(state.groupStores.map((store) => [store, treeFor(state, store)]));
-}
+    const created = Gtk.TreeListModel.new(store, false, false, (object) => childStoreFor(state, object));
+    state.trees.set(store, created);
 
-function pruneRebuiltLevels(state: ModelState, next: Map<LevelStore, Gtk.TreeListModel>): void {
-    const stores: Set<LevelStore> = new Set([...state.trees.keys(), ...next.keys()]);
-
-    for (const store of stores) {
-        if (state.trees.get(store) !== next.get(store)) {
-            pruneSlots(state.expansion, store.level.path, () => true);
-        }
-    }
-}
-
-function adoptTrees(state: ModelState, index: CollectionIndex): void {
-    const next = nextTrees(state, index);
-    pruneRebuiltLevels(state, next);
-    state.trees = next;
-    state.treeModels = next.values().toArray();
-}
-
-function desiredRootModels(state: ModelState, index: CollectionIndex): GObject.Object[] {
-    adoptTrees(state, index);
-
-    return index.isTree ? [...state.treeModels] : [...state.groupStores];
+    return created;
 }
 
 function rowAt(state: ModelState, position: number): Gtk.TreeListRow | null {
-    let offset = position;
+    const item = state.model?.getItem(position);
 
-    for (const tree of state.treeModels) {
-        const count = tree.getNItems();
+    return item instanceof Gtk.TreeListRow ? item : null;
+}
 
-        if (offset < count) {
-            return tree.getRow(offset);
+function pruneGroups(state: ModelState, previous: CollectionIndex): void {
+    const hasModeChanged = previous.isTree !== state.index.isTree;
+
+    for (const [group, store] of state.groupStores) {
+        const isRemoved = group >= state.index.groups.length;
+
+        if (isRemoved || hasModeChanged) {
+            pruneSlots(state.expansion, store.level.path, () => true);
+            state.trees.delete(store);
         }
 
-        offset -= count;
+        if (isRemoved) {
+            state.groupStores.delete(group);
+        }
     }
-
-    return null;
 }
 
-function hasSameModels(previous: GObject.Object[], next: GObject.Object[]): boolean {
-    return previous.length === next.length && next.every((model, index) => previous[index] === model);
-}
+function syncRoot(state: ModelState, previous: CollectionIndex): void {
+    const before = previous.groups.length;
+    const after = state.index.groups.length;
 
-function syncRoot(state: ModelState, index: CollectionIndex): void {
-    const next = desiredRootModels(state, index);
+    if (previous.isTree !== state.index.isTree) {
+        state.root?.itemsChanged(0, before, after);
 
-    if (hasSameModels(state.rootModels, next)) {
         return;
     }
 
-    state.root.splice(0, state.rootModels.length, next);
-    state.rootModels = next;
-}
-
-function adjustGroupStores(state: ModelState, context: SyncContext): void {
-    const { groups } = context.index;
-    state.groupStores.length = Math.min(state.groupStores.length, groups.length);
-
-    for (const level of groups.slice(state.groupStores.length)) {
-        state.groupStores.push(newLevelStore(level));
+    if (before !== after) {
+        const start = Math.min(before, after);
+        state.root?.itemsChanged(start, before - start, after - start);
     }
 }
 
-function stepGroupStores(state: ModelState, context: SyncContext, surviving: number): void {
-    for (const [group, level] of context.index.groups.entries()) {
-        const store = state.groupStores[group];
+function stepGroupStores(state: ModelState, context: SyncContext): void {
+    for (const [group, store] of state.groupStores) {
+        const level = context.index.groups[group];
 
-        if (store !== undefined && group < surviving) {
+        if (level !== undefined && store.level !== level) {
             syncLevel(context, store, level);
         }
     }
 }
 
 function syncModel(state: ModelState, index: CollectionIndex): void {
+    if (state.root === null) {
+        return;
+    }
+
     const context: SyncContext = { index, expansion: state.expansion };
-    const surviving = Math.min(state.groupStores.length, index.groups.length);
+    const previous = state.index;
     state.index = index;
     state.expansion.isSyncing = true;
 
     try {
-        adjustGroupStores(state, context);
-        syncRoot(state, index);
-        stepGroupStores(state, context, surviving);
+        pruneGroups(state, previous);
+        syncRoot(state, previous);
+        stepGroupStores(state, context);
     } finally {
         state.expansion.isSyncing = false;
     }
@@ -345,29 +339,89 @@ function syncModel(state: ModelState, index: CollectionIndex): void {
     adoptIndex(state.expansion, index);
 }
 
-function createCollectionModel(): CollectionModel {
-    registeredStoreClass();
-    const root = newRootStore();
+function clearModel(state: ModelState): void {
+    const root = state.root;
+    const previousLength = state.index.groups.length;
+    state.expansion.isSyncing = true;
 
+    try {
+        if (root !== null) {
+            root.state = null;
+        }
+
+        state.root = null;
+        state.model = null;
+        state.index = EMPTY_INDEX;
+        state.groupStores.clear();
+        state.trees.clear();
+        state.expansion.expanded.clear();
+        state.expansion.slots.clear();
+        adoptIndex(state.expansion, EMPTY_INDEX);
+
+        if (previousLength > 0) {
+            root?.itemsChanged(0, previousLength, 0);
+        }
+    } finally {
+        state.expansion.isSyncing = false;
+    }
+}
+
+function createCollectionModel(): CollectionModel {
     const state: ModelState = {
-        root,
-        rootModels: [],
-        model: Gtk.FlattenListModel.new(root),
-        groupStores: [],
+        root: null,
+        model: null,
+        groupStores: new Map(),
         trees: new Map(),
-        treeModels: [],
         expansion: createTreeExpansion(EMPTY_INDEX),
         index: EMPTY_INDEX,
     };
 
     return {
-        model: state.model,
         expansion: state.expansion,
         rowAt: (position) => rowAt(state, position),
+        bind: (root, model) => {
+            root.state = state;
+            state.root = root;
+            state.model = model;
+        },
+        clear: () => {
+            clearModel(state);
+        },
         sync: (index) => {
             syncModel(state, index);
         },
     };
+}
+
+class CollectionRootStore extends GObject.Object implements Gio.ListModelImpl {
+    declare itemsChanged: Gio.ListModel["itemsChanged"];
+    state: ModelState | null = null;
+
+    vfuncGetItemType(): bigint {
+        return GObject.TYPE_OBJECT;
+    }
+
+    vfuncGetNItems(): number {
+        return this.state?.index.groups.length ?? 0;
+    }
+
+    vfuncGetItem(position: number): GObject.Object | null {
+        const state = this.state;
+        const level = state?.index.groups[position];
+
+        if (state === null || level === undefined) {
+            return null;
+        }
+
+        let store = state.groupStores.get(position);
+
+        if (store === undefined) {
+            store = newLevelStore(level);
+            state.groupStores.set(position, store);
+        }
+
+        return state.index.isTree ? treeFor(state, store) : store;
+    }
 }
 
 class LazyLevelStore extends GObject.Object implements Gio.ListModelImpl {
@@ -404,4 +458,17 @@ class LazyLevelStore extends GObject.Object implements Gio.ListModelImpl {
     }
 }
 
-export { createCollectionModel, slotPathAt, slotRefFor, type CollectionModel, type SlotRef };
+const CollectionRoot: (props: CollectionRootProps) => ReactNode = createElementComponent<CollectionRootProps>(
+    "GtkxCollectionRootStore",
+    registeredRootClass(),
+);
+
+export {
+    CollectionRoot,
+    createCollectionModel,
+    slotPathAt,
+    slotRefFor,
+    type CollectionModel,
+    type CollectionRootStore,
+    type SlotRef,
+};

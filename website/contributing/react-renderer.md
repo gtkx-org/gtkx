@@ -77,6 +77,12 @@ Signal behavior changes should be checked through an actual interaction and thro
 
 Controlled selection and visibility use [`components/controlled.tsx`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/components/controlled.tsx) and its shared hook. These observe native changes and restore the latest committed prop when needed. Menu descriptions likewise compose JSX menu elements above the host layer.
 
+## Collection models
+
+The collection components render their selection model, `Gtk.FlattenListModel`, and collection root through JSX. [`use-collection.tsx`](https://github.com/gtkx-org/gtkx/blob/main/packages/components/src/internal/use-collection.tsx) binds their committed references to a JavaScript controller, then updates the collection index and native model together before applying controlled selection and expansion. Unmounting detaches the model graph and clears its groups.
+
+The root implements `Gio.ListModel`. Its synchronous `get_item` callback supplies each section's model when GTK requests it, creating the level store and optional `Gtk.TreeListModel` at that point. Tree child models and row objects are likewise created only when native callbacks require an immediate return value. This keeps ordinary model ownership declarative while preserving the native callback construction exception.
+
 ## Roots, portals, and presentation
 
 [`reconciler/root.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/root.ts) creates roots, submits updates, tracks mounted roots, and exposes portals. The default root container is a marker with no native object. A root can also target an existing GObject, which the renderer adopts as a container. Portals let React children target another container while retaining their React ancestry.

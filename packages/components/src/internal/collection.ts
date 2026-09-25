@@ -1,3 +1,4 @@
+import type * as Gtk from "@gtkx/gi/gtk";
 import type { ListItem } from "../types.js";
 import type { CollectionIndex, SectionIdentity } from "./collection-index.js";
 import type { CollectionModel, SlotRef } from "./collection-model.js";
@@ -5,7 +6,7 @@ import type { MatchedRows } from "./tree-order.js";
 import { slotPathAt, slotRefFor } from "./collection-model.js";
 import { findIds, findRows } from "./tree-order.js";
 
-type Collection = Pick<CollectionModel, "model" | "expansion" | "rowAt"> & {
+type Collection = Pick<CollectionModel, "expansion" | "rowAt"> & {
     isTree: boolean;
     itemAt: (ref: SlotRef) => ListItem | undefined;
     sectionFor: (levelPath: string) => SectionIdentity | undefined;
@@ -35,26 +36,26 @@ function positionFor(gtkModel: CollectionModel, id: string): number {
     return first;
 }
 
-function refAt(gtkModel: CollectionModel, position: number): SlotRef | null {
+function refAt(model: Gtk.FlattenListModel | null, position: number): SlotRef | null {
     if (position < 0) {
         return null;
     }
 
-    return slotRefFor(gtkModel.model.getItem(position));
+    return slotRefFor(model?.getItem(position) ?? null);
 }
 
 function itemAt(index: CollectionIndex, ref: SlotRef): ListItem | undefined {
     return index.itemAt(ref.store.level.path, ref.slot);
 }
 
-function idAt(gtkModel: CollectionModel, index: CollectionIndex, position: number): string | null {
-    const ref = refAt(gtkModel, position);
+function idAt(model: Gtk.FlattenListModel | null, index: CollectionIndex, position: number): string | null {
+    const ref = refAt(model, position);
 
     return ref === null ? null : (itemAt(index, ref)?.id ?? null);
 }
 
-function pathAt(gtkModel: CollectionModel, position: number): string | null {
-    const ref = refAt(gtkModel, position);
+function pathAt(model: Gtk.FlattenListModel | null, position: number): string | null {
+    const ref = refAt(model, position);
 
     if (ref === null) {
         return null;
@@ -79,17 +80,20 @@ function isCollectionIdle(collection: Collection): boolean {
     return !expansion.isApplying && !expansion.isSyncing;
 }
 
-function createCollection(gtkModel: CollectionModel, index: CollectionIndex): Collection {
+function createCollection(
+    gtkModel: CollectionModel,
+    index: CollectionIndex,
+    model: Gtk.FlattenListModel | null,
+): Collection {
     return {
-        model: gtkModel.model,
         expansion: gtkModel.expansion,
         isTree: index.isTree,
         rowAt: gtkModel.rowAt,
         itemAt: (ref) => itemAt(index, ref),
         sectionFor: index.sectionFor,
-        idAt: (position) => idAt(gtkModel, index, position),
+        idAt: (position) => idAt(model, index, position),
         idsAt: (positions) => idsAt(gtkModel, positions),
-        pathAt: (position) => pathAt(gtkModel, position),
+        pathAt: (position) => pathAt(model, position),
         positionFor: (id) => positionFor(gtkModel, id),
         rowsFor: (ids) => rowsFor(gtkModel, ids),
     };
