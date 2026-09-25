@@ -22,56 +22,7 @@ env:
   NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
 
 jobs:
-  coverage:
-    if: inputs.coverage
-    name: coverage (${{ matrix.group }} ${{ matrix.shard }}/${{ matrix.total }})
-    strategy:
-      fail-fast: false
-      matrix:
-        group: [cli]
-        projects: ["--project=cli"]
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
-        total: [18]
-        workers: [3]
-        include:
-          - { group: mcp, projects: "--project=mcp", shard: 1, total: 2, workers: 3 }
-          - { group: mcp, projects: "--project=mcp", shard: 2, total: 2, workers: 3 }
-          - { group: other, projects: "--project=!cli --project=!mcp", shard: 1, total: 4, workers: 1 }
-          - { group: other, projects: "--project=!cli --project=!mcp", shard: 2, total: 4, workers: 1 }
-          - { group: other, projects: "--project=!cli --project=!mcp", shard: 3, total: 4, workers: 1 }
-          - { group: other, projects: "--project=!cli --project=!mcp", shard: 4, total: 4, workers: 1 }
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    env:
-      GTKX_COVERAGE_GROUP: ${{ matrix.group }}
-      GTKX_COVERAGE_PROJECT_ARGS: ${{ matrix.projects }}
-      GTKX_COVERAGE_SHARD: ${{ matrix.shard }}
-      GTKX_COVERAGE_SHARDS: ${{ matrix.total }}
-      GTKX_MAX_WORKERS: ${{ matrix.workers }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Generate coverage
-        uses: ./.github/actions/run-ci-command
-        with:
-          command: pnpm exec nx run gtkx:coverage-shard
-          image-ref: ${{ inputs.image-ref }}
-          extra-env: GTKX_COVERAGE_GROUP GTKX_COVERAGE_PROJECT_ARGS GTKX_COVERAGE_SHARD GTKX_COVERAGE_SHARDS GTKX_MAX_WORKERS
-
-      - name: Upload coverage
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-        with:
-          name: sonar-coverage-${{ matrix.group }}-${{ matrix.shard }}
-          path: coverage-artifacts
-          if-no-files-found: error
-          retention-days: 1
-
   sonarcloud:
-    needs: coverage
-    if: >-
-      always() && !cancelled() &&
-      (needs.coverage.result == 'success' || !inputs.coverage)
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:

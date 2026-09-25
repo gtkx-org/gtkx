@@ -218,11 +218,15 @@ jobs:
           docker buildx imagetools create --tag ghcr.io/gtkx-org/gtkx-ci:latest "$REF"
 
   sonarcloud:
-    needs: [changes, image-manifest]
+    needs: [changes, image-manifest, coverage-core, coverage-mcp-shard, coverage-cli-shard]
     if: >-
       always() && github.event.action != 'closed' &&
       needs.changes.result == 'success' &&
       needs.image-manifest.result == 'success' &&
+      (needs.changes.outputs.coverage != 'true' ||
+      (needs.coverage-core.result == 'success' &&
+      needs.coverage-mcp-shard.result == 'success' &&
+      needs.coverage-cli-shard.result == 'success')) &&
       (needs.changes.outputs.coverage == 'true' || github.event_name == 'pull_request')
     permissions:
       contents: read
@@ -287,7 +291,10 @@ jobs:
       - name: Run tests
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm exec nx run-many -t test --exclude @gtkx/animated,@gtkx/cli,@gtkx/mcp
+          command: >-
+            ${{ needs.changes.outputs.coverage == 'true' &&
+            'pnpm exec nx run-many -t test --projects=animations,navigation,gtk-demo,browser,hello-world' ||
+            'pnpm exec nx run-many -t test --exclude @gtkx/animated,@gtkx/cli,@gtkx/mcp' }}
           image-ref: ${{ needs.image-manifest.outputs.ref }}
 
       - name: Report failures to Nx Cloud
@@ -301,7 +308,7 @@ jobs:
   test-animated:
     name: test (animated)
     needs: [changes, image-manifest]
-    if: *code-changed
+    if: needs.changes.outputs.code == 'true' && needs.changes.outputs.coverage != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -325,7 +332,7 @@ jobs:
   test-mcp:
     name: test (mcp)
     needs: [changes, image-manifest]
-    if: *code-changed
+    if: needs.changes.outputs.code == 'true' && needs.changes.outputs.coverage != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -349,8 +356,80 @@ jobs:
           command: *fix-ci-command
           install: "false"
 
+  coverage-core:
+    name: coverage (other ${{ matrix.shard }}/${{ matrix.total }})
+    needs: [changes, image-manifest]
+    if: needs.changes.outputs.coverage == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+        total: [4]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GTKX_COVERAGE_GROUP: other
+      GTKX_COVERAGE_PROJECT_ARGS: --project=!cli --project=!mcp
+      GTKX_COVERAGE_SHARD: ${{ matrix.shard }}
+      GTKX_COVERAGE_SHARDS: ${{ matrix.total }}
+      GTKX_MAX_WORKERS: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Generate coverage
+        uses: ./.github/actions/run-ci-command
+        with:
+          command: pnpm exec nx run gtkx:coverage-shard
+          image-ref: ${{ needs.image-manifest.outputs.ref }}
+          extra-env: GTKX_COVERAGE_GROUP GTKX_COVERAGE_PROJECT_ARGS GTKX_COVERAGE_SHARD GTKX_COVERAGE_SHARDS GTKX_MAX_WORKERS
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: sonar-coverage-other-${{ matrix.shard }}
+          path: coverage-artifacts
+          if-no-files-found: error
+          retention-days: 1
+
+  coverage-mcp-shard:
+    name: coverage (mcp ${{ matrix.shard }}/${{ matrix.total }})
+    needs: [changes, image-manifest]
+    if: needs.changes.outputs.coverage == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+        total: [2]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GTKX_COVERAGE_GROUP: mcp
+      GTKX_COVERAGE_PROJECT_ARGS: --project=mcp
+      GTKX_COVERAGE_SHARD: ${{ matrix.shard }}
+      GTKX_COVERAGE_SHARDS: ${{ matrix.total }}
+      GTKX_MAX_WORKERS: "3"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Generate coverage
+        uses: ./.github/actions/run-ci-command
+        with:
+          command: pnpm exec nx run gtkx:coverage-shard
+          image-ref: ${{ needs.image-manifest.outputs.ref }}
+          extra-env: GTKX_COVERAGE_GROUP GTKX_COVERAGE_PROJECT_ARGS GTKX_COVERAGE_SHARD GTKX_COVERAGE_SHARDS GTKX_MAX_WORKERS
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: sonar-coverage-mcp-${{ matrix.shard }}
+          path: coverage-artifacts
+          if-no-files-found: error
+          retention-days: 1
+
   test:
-    needs: [changes, test-animated, test-core, test-mcp]
+    needs: [changes, test-animated, test-core, test-mcp, coverage-core, coverage-mcp-shard]
     if: always() && github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -362,18 +441,26 @@ jobs:
           ANIMATED_RESULT: ${{ needs.test-animated.result }}
           CORE_RESULT: ${{ needs.test-core.result }}
           MCP_RESULT: ${{ needs.test-mcp.result }}
+          COVERAGE_CORE_RESULT: ${{ needs.coverage-core.result }}
+          COVERAGE_MCP_RESULT: ${{ needs.coverage-mcp-shard.result }}
+          COVERAGE_ENABLED: ${{ needs.changes.outputs.coverage }}
         run: |
           test "$CHANGES_RESULT" = "success"
           if [ "$CODE_CHANGED" = "true" ]; then
-            test "$ANIMATED_RESULT" = "success"
             test "$CORE_RESULT" = "success"
-            test "$MCP_RESULT" = "success"
+            if [ "$COVERAGE_ENABLED" = "true" ]; then
+              test "$COVERAGE_CORE_RESULT" = "success"
+              test "$COVERAGE_MCP_RESULT" = "success"
+            else
+              test "$ANIMATED_RESULT" = "success"
+              test "$MCP_RESULT" = "success"
+            fi
           fi
 
   test-cli-shard:
     name: test-cli (${{ matrix.shard }}/${{ matrix.total }})
     needs: [changes, image-manifest]
-    if: *code-changed
+    if: needs.changes.outputs.code == 'true' && needs.changes.outputs.coverage != 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -402,8 +489,44 @@ jobs:
           command: *fix-ci-command
           install: "false"
 
+  coverage-cli-shard:
+    name: coverage (cli ${{ matrix.shard }}/${{ matrix.total }})
+    needs: [changes, image-manifest]
+    if: needs.changes.outputs.coverage == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+        total: [19]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      GTKX_COVERAGE_GROUP: cli
+      GTKX_COVERAGE_PROJECT_ARGS: --project=cli
+      GTKX_COVERAGE_SHARD: ${{ matrix.shard }}
+      GTKX_COVERAGE_SHARDS: ${{ matrix.total }}
+      GTKX_MAX_WORKERS: "3"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Generate coverage
+        uses: ./.github/actions/run-ci-command
+        with:
+          command: pnpm exec nx run gtkx:coverage-shard
+          image-ref: ${{ needs.image-manifest.outputs.ref }}
+          extra-env: GTKX_COVERAGE_GROUP GTKX_COVERAGE_PROJECT_ARGS GTKX_COVERAGE_SHARD GTKX_COVERAGE_SHARDS GTKX_MAX_WORKERS
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: sonar-coverage-cli-${{ matrix.shard }}
+          path: coverage-artifacts
+          if-no-files-found: error
+          retention-days: 1
+
   test-cli:
-    needs: [changes, test-cli-shard]
+    needs: [changes, test-cli-shard, coverage-cli-shard]
     if: always() && github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -413,10 +536,16 @@ jobs:
           CHANGES_RESULT: ${{ needs.changes.result }}
           CODE_CHANGED: ${{ needs.changes.outputs.code }}
           SHARDS_RESULT: ${{ needs.test-cli-shard.result }}
+          COVERAGE_RESULT: ${{ needs.coverage-cli-shard.result }}
+          COVERAGE_ENABLED: ${{ needs.changes.outputs.coverage }}
         run: |
           test "$CHANGES_RESULT" = "success"
           if [ "$CODE_CHANGED" = "true" ]; then
-            test "$SHARDS_RESULT" = "success"
+            if [ "$COVERAGE_ENABLED" = "true" ]; then
+              test "$COVERAGE_RESULT" = "success"
+            else
+              test "$SHARDS_RESULT" = "success"
+            fi
           fi
 
   asan-shard:
