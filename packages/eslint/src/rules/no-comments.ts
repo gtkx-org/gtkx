@@ -45,7 +45,7 @@ const isJsDoc = (comment: TSESTree.Comment): boolean =>
 const isDirective = (comment: TSESTree.Comment): boolean =>
     DIRECTIVE_PATTERNS.some((pattern) => pattern.test(comment.value));
 
-const isTaskComment = (comment: TSESTree.Comment): boolean => /^\s*(?:TODO|FIXME)\b/.test(comment.value);
+const isTaskComment = (comment: TSESTree.Comment): boolean => /^[\s*]*(?:TODO|FIXME)\b/.test(comment.value);
 
 const isShebang = (comment: TSESTree.Comment): boolean => (comment.type as string) === SHEBANG;
 
