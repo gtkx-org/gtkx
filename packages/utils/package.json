@@ -53,7 +53,7 @@
         }
     },
     "dependencies": {
-        "@babel/helper-validator-identifier": "^8.0.4",
+        "@babel/helper-validator-identifier": "^8.0.6",
         "es-toolkit": "^1.51.0",
         "picocolors": "^1.1.1",
         "type-fest": "^5.8.0",
