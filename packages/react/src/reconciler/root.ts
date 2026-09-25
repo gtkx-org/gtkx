@@ -26,13 +26,6 @@ type RootOptions = {
     identifierPrefix?: string | undefined;
 };
 
-type ReconcilerRootOptions = RootOptions & { containerInfo: Container };
-
-type ReconcilerRoot = {
-    update: (element: ReactNode) => void;
-    unmount: (teardown: (root: ReconcilerRoot) => Promise<void>) => Promise<void>;
-};
-
 /** The object {@link createRoot} returns: it renders an element tree into a container and can tear it down. */
 type Root = {
     /**
@@ -44,29 +37,9 @@ type Root = {
     unmount: () => void;
 };
 
-type ErrorHandler = (error: unknown) => void;
-type ErrorHandlerSlot = { get: () => ErrorHandler | null; set: (handler: ErrorHandler) => ErrorHandler | null };
-
 declare const opaqueRoot: unique symbol;
 const log: Logger = createLogger("react");
 const activeRoots: Set<OpaqueRoot> = new Set();
-const errorHandlerSlot = createErrorHandlerSlot();
-
-function createErrorHandlerSlot(): ErrorHandlerSlot {
-    let current: ErrorHandler | null = null;
-
-    return {
-        get: () => current,
-        set: (handler) => {
-            const previous = current;
-            current = handler;
-
-            return previous;
-        },
-    };
-}
-
-const setReconcilerErrorHandler = (handler: ErrorHandler): ErrorHandler | null => errorHandlerSlot.set(handler);
 
 const rethrowUncaughtRenderError = (error: unknown): never => {
     throw error;
@@ -90,17 +63,9 @@ const openContainer = (containerInfo: Container, options: RootOptions): OpaqueRo
         false,
         null,
         options.identifierPrefix ?? "",
-        (error, info) => {
-            errorHandlerSlot.get()?.(error);
-            options.onUncaughtError?.(error, info);
-        },
-        (error, info) => {
-            errorHandlerSlot.get()?.(error);
-            options.onCaughtError?.(error, info);
-        },
-        (error, info) => {
-            options.onRecoverableError?.(error, info);
-        },
+        options.onUncaughtError ?? rethrowUncaughtRenderError,
+        options.onCaughtError ?? logCaughtRenderError,
+        options.onRecoverableError ?? logRecoverableRenderError,
         (): void => undefined,
     ) as OpaqueRoot;
 };
@@ -121,22 +86,6 @@ const mountContainer = (container: OpaqueRoot, element: ReactNode): void => {
     reconciler.updateContainer(element, container, null, null);
 };
 
-const createReconcilerRoot = (options: ReconcilerRootOptions): ReconcilerRoot => {
-    const container = openContainer(options.containerInfo, options);
-
-    const root: ReconcilerRoot = {
-        update: (element) => {
-            mountContainer(container, element);
-        },
-        unmount: async (teardown) => {
-            await teardown(root);
-            activeRoots.delete(container);
-        },
-    };
-
-    return root;
-};
-
 /**
  * Creates a render root for a GTKX application. Uncaught render errors are rethrown, errors caught by an
  * error boundary are logged, and errors React recovered from by rendering again are logged.
@@ -145,12 +94,7 @@ const createReconcilerRoot = (options: ReconcilerRootOptions): ReconcilerRoot =>
  * @param options Error callbacks and the `useId` prefix; each callback left out falls back to the behavior above.
  */
 const createRoot = (container: Container = rootElement, options: RootOptions = {}): Root => {
-    const opaque = openContainer(container, {
-        ...options,
-        onUncaughtError: options.onUncaughtError ?? rethrowUncaughtRenderError,
-        onCaughtError: options.onCaughtError ?? logCaughtRenderError,
-        onRecoverableError: options.onRecoverableError ?? logRecoverableRenderError,
-    });
+    const opaque = openContainer(container, options);
 
     return {
         render: (element) => {
@@ -187,13 +131,10 @@ const createPortal = (children: ReactNode, container: Container, key?: string): 
     reconciler.createPortal(children, container, null, key ?? null);
 
 export {
-    setReconcilerErrorHandler,
-    createReconcilerRoot,
     createRoot,
     quit,
     createPortal,
     type CaughtErrorInfo,
-    type ReconcilerRoot,
     type Root,
     type RootOptions,
 };

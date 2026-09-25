@@ -1,12 +1,7 @@
-import type { CaughtErrorInfo, RootElement } from "@gtkx/react";
+import type { CaughtErrorInfo, Root, RootElement } from "@gtkx/react";
 import * as Gtk from "@gtkx/gi/gtk";
-import {
-    createReconcilerRoot,
-    isRootElement,
-    type ReconcilerRoot,
-    setReconcilerErrorHandler,
-    settleAccessible,
-} from "@gtkx/react/internal";
+import { createRoot } from "@gtkx/react";
+import { isRootElement, settleAccessible } from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
 import type { RenderResult } from "./bound-queries.js";
 import type { QueryMap, RenderOptions, ScreenshotOptions } from "./types.js";
@@ -26,8 +21,9 @@ import { findPresentedWindowFailure, findRenderedWindowFailure, mappedToplevels 
 import { within } from "./within.js";
 
 type ActiveRender = {
-    root: ReconcilerRoot;
+    root: Root;
     window: Gtk.Window | null;
+    errors: RenderErrorState;
 };
 
 type ResolvedContainer = {
@@ -35,15 +31,13 @@ type ResolvedContainer = {
     window: Gtk.Window | null;
 };
 
-type ReconcilerErrorState = {
+type RenderErrorState = {
     lastError: Error | null;
-    isHandlerInstalled: boolean;
 };
 
 type WindowFailureReporter = (window: Gtk.Window) => string | null;
 type SettleAction = "render" | "rerender";
 
-const reconcilerErrors: ReconcilerErrorState = { lastError: null, isHandlerInstalled: false };
 const activeRenders: Set<ActiveRender> = new Set();
 
 const settleWindow = async (
@@ -72,16 +66,18 @@ const settleWindow = async (
     }
 };
 
-const update = async (element: ReactNode, root: ReconcilerRoot): Promise<void> => {
-    await runInAct(async () => {
-        root.update(element);
-        await Promise.resolve();
-    });
+const flushRender = async (active: ActiveRender, action: () => void): Promise<void> => {
+    try {
+        await runInAct(async () => {
+            action();
+            await Promise.resolve();
+        });
 
-    if (reconcilerErrors.lastError) {
-        const captured = reconcilerErrors.lastError;
-        reconcilerErrors.lastError = null;
-        throw captured;
+        if (active.errors.lastError !== null) {
+            throw active.errors.lastError;
+        }
+    } finally {
+        active.errors.lastError = null;
     }
 };
 
@@ -90,30 +86,15 @@ const disposeActiveRender = async (active: ActiveRender): Promise<void> => {
         return;
     }
 
-    await active.root.unmount(async (root) => {
-        try {
-            await update(null, root);
-        } finally {
-            active.window?.destroy();
-        }
-    });
+    try {
+        await flushRender(active, active.root.unmount);
+    } finally {
+        active.window?.destroy();
+    }
 };
 
 const disposeAllActiveRenders = async (): Promise<void> => {
     await runCleanupCallbacks(activeRenders.values().map((active) => () => disposeActiveRender(active)));
-};
-
-const handleError = (error: unknown): void => {
-    reconcilerErrors.lastError = error instanceof Error ? error : new Error(String(error));
-};
-
-const installErrorHandler = (): void => {
-    if (reconcilerErrors.isHandlerInstalled) {
-        return;
-    }
-
-    setReconcilerErrorHandler(handleError);
-    reconcilerErrors.isHandlerInstalled = true;
 };
 
 const resolveContainer = (container: RenderOptions["container"]): ResolvedContainer => {
@@ -190,16 +171,22 @@ const settleRender = async (
     await settleWindow(settleTarget(resolved, container), findFailure, action);
 };
 
-const renderErrorHandlers = <Q extends QueryMap>(options: RenderOptions<Q> | undefined) => ({
-    onUncaughtError: handleError,
-    onCaughtError: (error: unknown, errorInfo: CaughtErrorInfo): void => {
-        handleError(error);
-        options?.onCaughtError?.(error, errorInfo);
-    },
-    onRecoverableError: (error: unknown, errorInfo: ErrorInfo): void => {
-        options?.onRecoverableError?.(error, errorInfo);
-    },
-});
+const renderErrorHandlers = <Q extends QueryMap>(errors: RenderErrorState, options: RenderOptions<Q> | undefined) => {
+    const handleError = (error: unknown): void => {
+        errors.lastError = error instanceof Error ? error : new Error(String(error));
+    };
+
+    return {
+        onUncaughtError: handleError,
+        onCaughtError: (error: unknown, errorInfo: CaughtErrorInfo): void => {
+            handleError(error);
+            options?.onCaughtError?.(error, errorInfo);
+        },
+        onRecoverableError: (error: unknown, errorInfo: ErrorInfo): void => {
+            options?.onRecoverableError?.(error, errorInfo);
+        },
+    };
+};
 
 const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
     const settings = Gtk.Settings.getDefault();
@@ -233,18 +220,15 @@ const render = async <Q extends QueryMap = Record<never, never>>(
     element: ReactNode,
     options?: RenderOptions<Q>,
 ): Promise<RenderResult<Q>> => {
-    installErrorHandler();
     applyEnableAnimations(options?.areAnimationsEnabled === true);
     const baseElement: Container = options?.baseElement ?? TOPLEVELS;
     const Wrapper = options?.wrapper;
     const resolved = resolveContainer(options?.container);
 
-    const root = createReconcilerRoot({
-        containerInfo: resolved.containerInfo,
-        ...renderErrorHandlers(options),
-    });
+    const errors: RenderErrorState = { lastError: null };
+    const root = createRoot(resolved.containerInfo, renderErrorHandlers(errors, options));
 
-    const active: ActiveRender = { root, window: resolved.window };
+    const active: ActiveRender = { root, window: resolved.window, errors };
     activeRenders.add(active);
     addToCleanupQueue(disposeAllActiveRenders);
     addToCleanupQueue(clearScreen);
@@ -256,7 +240,9 @@ const render = async <Q extends QueryMap = Record<never, never>>(
         return options?.isReactStrictMode ? <StrictMode>{wrapped}</StrictMode> : wrapped;
     };
 
-    await update(wrap(element), root);
+    await flushRender(active, () => {
+        root.render(wrap(element));
+    });
     presentHarnessWindow(resolved.window);
     await settleRender(resolved, options?.container, "render");
     const container = resolveResultContainer(resolved, options?.container, baseElement);
@@ -269,7 +255,9 @@ const render = async <Q extends QueryMap = Record<never, never>>(
             await disposeActiveRender(active);
         },
         rerender: async (newElement: ReactNode) => {
-            await update(wrap(newElement), root);
+            await flushRender(active, () => {
+                root.render(wrap(newElement));
+            });
             await settleRender(resolved, options?.container, "rerender");
         },
         debug: (element: Container | Container[] = baseElement, debugOptions?: PrettyWidgetOptions) => {
