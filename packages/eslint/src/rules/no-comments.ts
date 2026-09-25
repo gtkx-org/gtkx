@@ -16,11 +16,11 @@ const noComments = ESLintUtils.RuleCreator.withoutDocs<[], MessageIds>({
     meta: {
         type: "suggestion",
         docs: {
-            description: "Disallow every comment that is neither JSDoc nor a directive a tool actually reads",
+            description: "Allow JSDoc, tool directives, TODO comments and FIXME comments",
         },
         messages: {
             prohibitedComment:
-                "Remove this comment. Only JSDoc on the public API and tool directives belong in the tree; " +
+                "Remove this comment. Only public API JSDoc, tool directives, TODOs and FIXMEs belong in the tree; " +
                 "clarify anything else through naming and structure.",
         },
         schema: [],
@@ -45,9 +45,11 @@ const isJsDoc = (comment: TSESTree.Comment): boolean =>
 const isDirective = (comment: TSESTree.Comment): boolean =>
     DIRECTIVE_PATTERNS.some((pattern) => pattern.test(comment.value));
 
+const isTaskComment = (comment: TSESTree.Comment): boolean => /^\s*(?:TODO|FIXME)\b/.test(comment.value);
+
 const isShebang = (comment: TSESTree.Comment): boolean => (comment.type as string) === SHEBANG;
 
 const isAllowed = (comment: TSESTree.Comment): boolean =>
-    isJsDoc(comment) || isDirective(comment) || isShebang(comment);
+    isJsDoc(comment) || isDirective(comment) || isTaskComment(comment) || isShebang(comment);
 
 export { noComments };
