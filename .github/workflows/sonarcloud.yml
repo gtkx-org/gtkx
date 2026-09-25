@@ -35,7 +35,10 @@ jobs:
         include:
           - { group: mcp, projects: "--project=mcp", shard: 1, total: 2 }
           - { group: mcp, projects: "--project=mcp", shard: 2, total: 2 }
-          - { group: other, projects: "--project=!cli --project=!mcp", shard: 1, total: 1 }
+          - { group: other, projects: "--project=!cli --project=!mcp", shard: 1, total: 4 }
+          - { group: other, projects: "--project=!cli --project=!mcp", shard: 2, total: 4 }
+          - { group: other, projects: "--project=!cli --project=!mcp", shard: 3, total: 4 }
+          - { group: other, projects: "--project=!cli --project=!mcp", shard: 4, total: 4 }
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
