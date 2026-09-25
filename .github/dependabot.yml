@@ -4,7 +4,6 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-    rebase-strategy: "disabled"
     groups:
       workspace-minor-and-patch:
         patterns:
@@ -16,7 +15,6 @@ updates:
     directory: "/examples/tutorial"
     schedule:
       interval: "daily"
-    rebase-strategy: "disabled"
     groups:
       tutorial-minor-and-patch:
         patterns:
@@ -28,7 +26,6 @@ updates:
     directory: "/packages/native"
     schedule:
       interval: "daily"
-    rebase-strategy: "disabled"
     groups:
       native-patches:
         patterns:
@@ -41,7 +38,6 @@ updates:
       - "/.github/actions/*"
     schedule:
       interval: "daily"
-    rebase-strategy: "disabled"
     groups:
       actions-minor-and-patch:
         patterns:
@@ -53,4 +49,3 @@ updates:
     directory: "/.github/docker"
     schedule:
       interval: "daily"
-    rebase-strategy: "disabled"
