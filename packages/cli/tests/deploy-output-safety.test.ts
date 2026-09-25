@@ -2,6 +2,7 @@ import {
     existsSync,
     mkdirSync,
     mkdtempSync,
+    readFileSync,
     rmSync,
     symlinkSync,
     writeFileSync,
@@ -9,7 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createCliProject, runCliOrThrow } from "./cli-project.js";
+import { createCliProject, runCli, runCliOrThrow } from "./cli-project.js";
 
 const APPLICATION_ID = "com.gtkx.deployoutputsafety";
 
@@ -79,6 +80,29 @@ describe("gtkx deploy output ownership", () => {
         mkdirSync(join(project.root, "build", "stage"), { recursive: true });
 
         expect(() => runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"])).toThrow();
+    });
+
+    it.each(["symlink", "directory", "invalid"])("rejects a %s deployment marker", (kind) => {
+        using project = createCliProject({
+            prefix: "gtkx-deploy-output-marker-",
+            config: deployConfig(),
+            files: { ...projectFiles(), [join("build", "user-data.txt")]: "keep" },
+            hasStore: true,
+        });
+        const marker = join(project.root, "build", ".gtkx-deploy.json");
+
+        if (kind === "symlink") {
+            const target = join(project.root, "marker.json");
+            writeFileSync(target, `${JSON.stringify({ generator: "gtkx-deploy", formatVersion: 1 })}\n`);
+            symlinkSync(target, marker);
+        } else if (kind === "directory") {
+            mkdirSync(marker);
+        } else {
+            writeFileSync(marker, "invalid");
+        }
+
+        expect(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status).toBe(1);
+        expect(readFileSync(join(project.root, "build", "user-data.txt"), "utf8")).toBe("keep");
     });
 
     it("keeps the previous deployment when its application build fails", () => {

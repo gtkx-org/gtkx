@@ -1,4 +1,5 @@
-import { spawnSync } from "node:child_process";
+import { resolveExecutable } from "@gtkx/utils";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
     existsSync,
     mkdirSync,
@@ -8,7 +9,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createCliProject, runCliOrThrow } from "./cli-project.js";
+import { createCliProject, runCli, runCliOrThrow } from "./cli-project.js";
 
 const APPLICATION_ID = "com.gtkx.clibuildoutput";
 const BUNDLE = "bundle.mjs";
@@ -122,6 +123,39 @@ describe("gtkx build (separate output directories)", () => {
         });
 
         expect(() => runCliOrThrow(project, ["build"])).toThrow();
+    });
+
+    it.each(["symlink", "directory", "invalid", "FIFO"])("rejects a %s build marker", (kind) => {
+        using project = createCliProject({
+            prefix: "gtkx-build-output-marker-",
+            config: CONFIG,
+            files: { ...projectFiles(), [join("dist", "user-data.txt")]: "keep" },
+            hasStore: true,
+        });
+        const marker = join(project.root, "dist", "gtkx-schemas.json");
+
+        switch (kind) {
+            case "symlink": {
+                const target = join(project.root, "marker.json");
+                writeFileSync(target, `${JSON.stringify({ generator: "gtkx-build" })}\n`);
+                symlinkSync(target, marker);
+                break;
+            }
+            case "directory": {
+                mkdirSync(marker);
+                break;
+            }
+            case "FIFO": {
+                execFileSync(resolveExecutable("mkfifo"), [marker]);
+                break;
+            }
+            default: {
+                writeFileSync(marker, "invalid");
+            }
+        }
+
+        expect(runCli(project, ["build"]).status).toBe(1);
+        expect(readFileSync(join(project.root, "dist", "user-data.txt"), "utf8")).toBe("keep");
     });
 
     it("keeps the previous build when a rebuild fails", () => {

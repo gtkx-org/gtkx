@@ -1,8 +1,12 @@
 import {
+    closeSync,
+    constants,
     cpSync,
+    fstatSync,
     lstatSync,
     mkdirSync,
     mkdtempDisposableSync,
+    openSync,
     readFileSync,
     renameSync,
     rmSync,
@@ -43,11 +47,13 @@ const hasSymlinkComponent = (root: string, target: string): boolean => {
 
 const readRegularFile = (path: string): string | null => {
     try {
-        if (!lstatSync(path).isFile()) {
-            return null;
-        }
+        const descriptor = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
 
-        return readFileSync(path, "utf8");
+        try {
+            return fstatSync(descriptor).isFile() ? readFileSync(descriptor, "utf8") : null;
+        } finally {
+            closeSync(descriptor);
+        }
     } catch {
         return null;
     }
