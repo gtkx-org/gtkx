@@ -7,9 +7,10 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, closed]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -24,6 +25,7 @@ env:
 
 jobs:
   changes:
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -46,6 +48,7 @@ jobs:
               - '!**/*.md'
 
   image:
+    if: github.event.action != 'closed'
     strategy:
       fail-fast: false
       matrix:
@@ -316,7 +319,7 @@ jobs:
 
   test:
     needs: [changes, test-animated, test-core, test-mcp]
-    if: always()
+    if: always() && github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -369,7 +372,7 @@ jobs:
 
   test-cli:
     needs: [changes, test-cli-shard]
-    if: always()
+    if: always() && github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -407,7 +410,7 @@ jobs:
 
   asan:
     needs: [changes, asan-shard]
-    if: always()
+    if: always() && github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -514,7 +517,7 @@ jobs:
 
   publish-e2e:
     needs: [changes, publish-consumer-e2e, publish-tutorial-e2e]
-    if: always()
+    if: always() && github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
