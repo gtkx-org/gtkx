@@ -4,13 +4,9 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - "**/*.md"
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - "**/*.md"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -28,7 +24,39 @@ env:
   NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      coverage: ${{ steps.filter.outputs.coverage }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Detect changes
+        id: filter
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
+        with:
+          predicate-quantifier: every
+          filters: |
+            coverage:
+              - '**'
+              - '!**/*.md'
+              - '!.editorconfig'
+              - '!.github/CODEOWNERS'
+              - '!.github/FUNDING.yml'
+              - '!.github/ISSUE_TEMPLATE/**'
+              - '!.github/dependabot.yml'
+              - '!.gitignore'
+              - '!.vscode/**'
+              - '!LICENSE'
+              - '!docs/**'
+              - '!logo.svg'
+              - '!website/**'
+
   coverage:
+    needs: changes
+    if: needs.changes.outputs.coverage == 'true'
     name: coverage (${{ matrix.group }} ${{ matrix.shard }}/${{ matrix.total }})
     strategy:
       fail-fast: false
@@ -68,7 +96,12 @@ jobs:
           retention-days: 1
 
   sonarcloud:
-    needs: coverage
+    needs: [changes, coverage]
+    if: >-
+      always() && !cancelled() &&
+      needs.changes.result == 'success' &&
+      (needs.coverage.result == 'success' ||
+      (github.event_name == 'pull_request' && needs.changes.outputs.coverage == 'false'))
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -80,6 +113,7 @@ jobs:
           fetch-depth: 0
 
       - name: Download coverage
+        if: needs.changes.outputs.coverage == 'true'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           pattern: sonar-coverage-*
@@ -87,14 +121,25 @@ jobs:
           path: coverage-artifacts
 
       - name: Merge coverage
+        if: needs.changes.outputs.coverage == 'true'
         uses: ./.github/actions/run-ci-command
         with:
           command: pnpm exec nx run gtkx:coverage-merge
           image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
           extra-env: PNPM_CONFIG_NODE_LINKER
 
+      - name: Install analysis dependencies
+        if: needs.changes.outputs.coverage == 'false'
+        uses: ./.github/actions/run-ci-command
+        with:
+          command: pnpm exec tsc --version
+          image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
+          extra-env: PNPM_CONFIG_NODE_LINKER
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2
+        with:
+          args: ${{ needs.changes.outputs.coverage == 'false' && '-Dsonar.coverage.exclusions=**/*' || '' }}
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io
