@@ -21,7 +21,10 @@ export const scalarAliases = () => {
     return { direct, chain, size, builtin };
 };
 export const doubleKeys = (): Map<number, number> => NumericTables.readDoubleKeys();
-export const frame = new NumericTables.Frame({ before: 1, after: 2 });
+export const updateFrame = (frame: NumericTables.Frame): void => {
+    frame.before = 1;
+    frame.after = 2;
+};
 export const neighbors = (value: NumericTables.Frame): number => value.before + value.after;
 export const probe = new NumericTables.Probe({ count: 1, typeWord, chainWord: typeChain, sizeWord });
 export const view = <NumericTablesProbe count={1} typeWord={1n} chainWord={1n} sizeWord={8} onChanged={(count) => {
@@ -75,6 +78,7 @@ export class Derived extends NumericTables.Probe {
 }
 `;
 const REJECTED: Record<string, string> = {
+    "pointer-record-constructor": "export const frame = new NumericTables.Frame({ before: 1, after: 2 });",
     "type-word-key-input": "export const method = NumericTables.takeTypeWordKeys;",
     "type-word-value-input": "export const method = NumericTables.takeTypeWordAlias;",
     "type-word-chain-result": "export const method = NumericTables.readTypeWordChain;",
