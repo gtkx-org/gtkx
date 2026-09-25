@@ -1,7 +1,7 @@
 import type { ReactNode, RefObject } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import { createContext, useContext, useMemo } from "react";
-import type { ToastController, ToastOptions, ToastOverlayController, ToastProviderProps } from "./types.js";
+import type { ToastController, ToastOptions, ToastProviderProps } from "./types.js";
 
 type OverlayRef = RefObject<Adw.ToastOverlay | null>;
 
@@ -11,7 +11,7 @@ const useOverlayRef = (): OverlayRef => {
     const overlayRef = useContext(ToastContext);
 
     if (overlayRef === null) {
-        throw new Error("useToast and useToastOverlay must be used within a ToastProvider");
+        throw new Error("useToast must be used within a ToastProvider");
     }
 
     return overlayRef;
@@ -36,7 +36,7 @@ const buildToast = (options: ToastOptions): Adw.Toast => {
     return toast;
 };
 
-/** Shares an Adw.ToastOverlay reference with the toast hooks in every descendant. */
+/** Shares an Adw.ToastOverlay reference with useToast in every descendant. */
 function ToastProvider(props: ToastProviderProps): ReactNode {
     return <ToastContext.Provider value={props.overlayRef}>{props.children}</ToastContext.Provider>;
 }
@@ -53,20 +53,6 @@ function useToast(): ToastController {
 
                 return toast;
             },
-            dismiss: (toast: Adw.Toast) => {
-                toast.dismiss();
-            },
-        }),
-        [overlayRef],
-    );
-}
-
-/** Returns a {@link ToastOverlayController} for the nearest provider's overlay as a whole. */
-function useToastOverlay(): ToastOverlayController {
-    const overlayRef = useOverlayRef();
-
-    return useMemo<ToastOverlayController>(
-        () => ({
             dismissAll: () => {
                 overlayRef.current?.dismissAll();
             },
@@ -75,4 +61,4 @@ function useToastOverlay(): ToastOverlayController {
     );
 }
 
-export { ToastProvider, useToast, useToastOverlay };
+export { ToastProvider, useToast };

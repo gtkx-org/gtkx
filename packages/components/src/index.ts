@@ -4,7 +4,7 @@ export { DropDown } from "./drop-down.js";
 export { GridView } from "./grid-view.js";
 export { ListItemFactory } from "./list-item-factory.js";
 export { ListView } from "./list-view.js";
-export { ToastProvider, useToast, useToastOverlay } from "./toast.js";
+export { ToastProvider, useToast } from "./toast.js";
 export type {
     ColumnViewColumn,
     ColumnViewProps,
@@ -24,6 +24,5 @@ export type {
     ListViewProps,
     ToastController,
     ToastOptions,
-    ToastOverlayController,
     ToastProviderProps,
 } from "./types.js";

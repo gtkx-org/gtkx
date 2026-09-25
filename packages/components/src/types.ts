@@ -286,16 +286,10 @@ type ComboRowProps<T = unknown, S = unknown> = DropDownWidgetProps<AdwComboRowPr
  */
 type ToastOptions = Adw.ToastConstructorProps & Pick<AdwToastProps, "onButtonClicked" | "onDismissed">;
 
-/** Imperative controls for individual toasts, returned by {@link useToast}. */
+/** Imperative controls for toasts, returned by {@link useToast}. */
 type ToastController = {
     /** Builds a toast, shows it through the overlay, and returns it. */
     show: (options?: ToastOptions) => Adw.Toast;
-    /** Dismisses a single toast, typically one returned by `ToastController.show`. */
-    dismiss: (toast: Adw.Toast) => void;
-};
-
-/** Imperative controls for the overlay as a whole, returned by {@link useToastOverlay}. */
-type ToastOverlayController = {
     /** Dismisses the shown toast and every queued one. */
     dismissAll: () => void;
 };
@@ -304,7 +298,7 @@ type ToastOverlayController = {
 type ToastProviderProps = {
     /** Ref also given to the `AdwToastOverlay` the toasts appear over. */
     overlayRef: RefObject<Adw.ToastOverlay | null>;
-    /** Subtree whose `useToast` and `useToastOverlay` calls target that overlay. */
+    /** Subtree whose `useToast` calls target that overlay. */
     children?: ReactNode | undefined;
 };
 
@@ -331,6 +325,5 @@ export {
     type ComboRowProps,
     type ToastOptions,
     type ToastController,
-    type ToastOverlayController,
     type ToastProviderProps,
 };

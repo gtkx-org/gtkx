@@ -1,59 +1,50 @@
-import {
-    type ToastController,
-    type ToastOverlayController,
-    ToastProvider,
-    useToast,
-    useToastOverlay,
-} from "@gtkx/components";
+import { type ToastController, ToastProvider, useToast } from "@gtkx/components";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwToastOverlay } from "@gtkx/jsx/adw";
 import { GtkLabel } from "@gtkx/jsx/gtk";
 import { render, renderHook, screen, userEvent, waitFor } from "@gtkx/testing";
-import { createRef, type ReactNode, type RefObject, useLayoutEffect } from "react";
+import { createRef, type ReactNode, useLayoutEffect } from "react";
 import { describe, expect, it } from "vitest";
 
-type Handles = { toast: ToastController; overlay: ToastOverlayController };
-
-const Probe = ({ onHandles }: { onHandles: (handles: Handles) => void }): ReactNode => {
-    const toast = useToast();
-    const overlay = useToastOverlay();
+const Probe = ({ onController }: { onController: (controller: ToastController) => void }): ReactNode => {
+    const controller = useToast();
 
     useLayoutEffect(() => {
-        onHandles({ toast, overlay });
+        onController(controller);
     });
 
     return <GtkLabel>probe</GtkLabel>;
 };
 
-const renderToastHost = async (): Promise<{ handles: Handles; overlayRef: RefObject<Adw.ToastOverlay | null> }> => {
+const renderToastHost = async (): Promise<ToastController> => {
     const overlayRef = createRef<Adw.ToastOverlay>();
-    const captured: { handles: Handles | null } = { handles: null };
+    const captured: { controller: ToastController | null } = { controller: null };
 
     await render(
         <ToastProvider overlayRef={overlayRef}>
             <AdwToastOverlay ref={overlayRef}>
                 <Probe
-                    onHandles={(handles) => {
-                        captured.handles = handles;
+                    onController={(controller) => {
+                        captured.controller = controller;
                     }}
                 />
             </AdwToastOverlay>
         </ToastProvider>,
     );
 
-    if (captured.handles === null) {
-        throw new Error("probe did not capture the toast controllers");
+    if (captured.controller === null) {
+        throw new Error("probe did not capture the toast controller");
     }
 
-    return { handles: captured.handles, overlayRef };
+    return captured.controller;
 };
 
-describe("render - toast (useToast / useToastOverlay)", () => {
+describe("render - toast", () => {
     it("shows a toast with the given options and returns it", async () => {
-        const { handles } = await renderToastHost();
+        const controller = await renderToastHost();
 
-        const toast = handles.toast.show({
+        const toast = controller.show({
             title: "Moved to Trash",
             buttonLabel: "Undo",
             timeout: 3,
@@ -71,24 +62,24 @@ describe("render - toast (useToast / useToastOverlay)", () => {
     });
 
     it("invokes onButtonClicked when the toast button is activated", async () => {
-        const { handles } = await renderToastHost();
+        const controller = await renderToastHost();
         let clickCount = 0;
         const onButtonClicked = (): void => {
             clickCount += 1;
         };
-        handles.toast.show({ title: "Undoable", buttonLabel: "Undo", onButtonClicked });
+        controller.show({ title: "Undoable", buttonLabel: "Undo", onButtonClicked });
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Undo" }));
         expect(clickCount).toBe(1);
     });
 
     it("dismisses a single toast and reports it through onDismissed", async () => {
-        const { handles } = await renderToastHost();
+        const controller = await renderToastHost();
         let dismissCount = 0;
         const onDismissed = (): void => {
             dismissCount += 1;
         };
-        const toast = handles.toast.show({ title: "Bye", onDismissed });
-        handles.toast.dismiss(toast);
+        const toast = controller.show({ title: "Bye", onDismissed });
+        toast.dismiss();
 
         await waitFor(() => {
             expect(dismissCount).toBe(1);
@@ -96,7 +87,7 @@ describe("render - toast (useToast / useToastOverlay)", () => {
     });
 
     it("dismisses every toast through dismissAll", async () => {
-        const { handles } = await renderToastHost();
+        const controller = await renderToastHost();
         let firstCount = 0;
         let secondCount = 0;
         const onFirst = (): void => {
@@ -105,9 +96,9 @@ describe("render - toast (useToast / useToastOverlay)", () => {
         const onSecond = (): void => {
             secondCount += 1;
         };
-        handles.toast.show({ title: "First", onDismissed: onFirst });
-        handles.toast.show({ title: "Second", onDismissed: onSecond });
-        handles.overlay.dismissAll();
+        controller.show({ title: "First", onDismissed: onFirst });
+        controller.show({ title: "Second", onDismissed: onSecond });
+        controller.dismissAll();
 
         await waitFor(() => {
             expect(firstCount).toBe(1);
@@ -115,7 +106,19 @@ describe("render - toast (useToast / useToastOverlay)", () => {
         });
     });
 
-    it("throws when the hooks are used outside a ToastProvider", async () => {
+    it("returns an unattached toast and permits dismissal without a mounted overlay", async () => {
+        const overlayRef = createRef<Adw.ToastOverlay>();
+        const { result } = await renderHook(() => useToast(), {
+            wrapper: ({ children }) => <ToastProvider overlayRef={overlayRef}>{children}</ToastProvider>,
+        });
+
+        const toast = result.current.show({ title: "Unattached" });
+        expect(toast).toHaveObjectProperty("title", "Unattached");
+        expect(screen.queryByText("Unattached")).toBeNull();
+        result.current.dismissAll();
+    });
+
+    it("throws when useToast is used outside a ToastProvider", async () => {
         await expect(renderHook(() => useToast())).rejects.toThrow();
     });
 });

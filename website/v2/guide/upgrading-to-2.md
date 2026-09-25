@@ -50,11 +50,13 @@ Namespace subpaths are the public JSX surface and keep unrelated generated libra
 
 ## Drop the Adwaita subpaths
 
-Adwaita is part of the core packages. `ComboRow`, `ToastProvider`, `useToast`, and `useToastOverlay` moved from `@gtkx/components/adw` to `@gtkx/components`, and the internal `@gtkx/react/adw` entry point is gone:
+Adwaita is part of the core packages. `ComboRow`, `ToastProvider`, and `useToast` moved from `@gtkx/components/adw` to `@gtkx/components`, and the internal `@gtkx/react/adw` entry point is gone:
 
 ```tsx
 import { ComboRow, ToastProvider, useToast } from "@gtkx/components";
 ```
+
+Use `useToast().dismissAll()` in place of `useToastOverlay().dismissAll()`. `show()` returns the native `Adw.Toast`; call its `dismiss()` method to dismiss that toast. The forwarding `useToast().dismiss(toast)` method and `ToastOverlayController` type are removed.
 
 Import `createElementComponent` from `@gtkx/react` instead of `@gtkx/react/config`. The config subpath remains for renderer behavior and element registration APIs.
 
