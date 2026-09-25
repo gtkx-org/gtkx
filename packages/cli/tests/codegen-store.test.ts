@@ -1,64 +1,27 @@
-import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
+import { existsSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { runCli } from "./cli-project.js";
 import {
-    type CliProject,
-    createCliProject,
-    removeCliProject,
-    runCli,
-    runCliOrThrow,
-    STORE_LIBRARIES,
-} from "./cli-project.js";
-import {
-    BROKEN_CASES,
     CAIRO_PACKAGE,
-    config,
-    expectModules,
     expectStoreAndLink,
-    fixtureLibrariesConfig,
     generatedModule,
     GI_MODULES,
-    initialRunState,
     isStoreMarked,
     JSX_MODULES,
     linkPath,
     markStore,
     resolveCairoFrom,
-    runInitialCodegen,
     storeManifest,
     storePath,
-    withProject,
 } from "./codegen-helpers.js";
-
-const nestedProject = (parent: CliProject): CliProject => {
-    const root = join(parent.root, "application");
-    const tmpDir = join(parent.tmpDir, "application");
-    mkdirSync(root);
-    mkdirSync(tmpDir);
-
-    for (const name of ["package.json", "gtkx.config.ts"]) {
-        cpSync(join(parent.root, name), join(root, name));
-    }
-
-    return { root, nodeModules: join(root, "node_modules"), tmpDir };
-};
-
-const installNestedPackages = (parent: CliProject, project: CliProject): void => {
-    cpSync(parent.nodeModules, project.nodeModules, { recursive: true, verbatimSymlinks: true });
-};
+import { createCodegenStoreHarness } from "./codegen-store-fixture.js";
 
 describe("gtkx codegen", () => {
-    const state = initialRunState();
+    const { state, setup, cleanup } = createCodegenStoreHarness();
 
-    beforeAll(() => {
-        runInitialCodegen(state, { prefix: "gtkx-cli-codegen-", config: config("") });
-    });
-
-    afterAll(() => {
-        removeCliProject(state.project);
-    });
+    beforeAll(setup);
+    afterAll(cleanup);
 
     it("writes both stores where the project imports them", () => {
         expect(state.status).toBe(0);
@@ -95,208 +58,5 @@ describe("gtkx codegen", () => {
         expect(runCli(state.project, ["codegen"]).status).toBe(0);
         expect(existsSync(linkPath(state.project, "gi", "gtk", "index.js"))).toBe(true);
         expect(isStoreMarked(state.project)).toBe(true);
-    });
-
-    it("regenerates stores whose exported namespace files are missing", () => {
-        rmSync(storePath(state.project, "jsx", "adw", "adw.js"), { force: true });
-        expect(runCli(state.project, ["codegen"]).status).toBe(0);
-        expectModules(storePath(state.project, "jsx"), JSX_MODULES);
-
-        rmSync(storePath(state.project, "gi", "gobject", "index.d.ts"), { force: true });
-        expect(runCli(state.project, ["codegen"]).status).toBe(0);
-        expectModules(storePath(state.project, "gi"), GI_MODULES);
-
-        const manifestPath = storePath(state.project, "gi", "package.json");
-        const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as { exports?: Record<string, unknown> };
-
-        if (manifest.exports === undefined) {
-            throw new Error("generated GI store has no exports");
-        }
-
-        delete manifest.exports["./gtk"];
-        writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 4)}\n`);
-        expect(runCli(state.project, ["codegen"]).status).toBe(0);
-        const restored = JSON.parse(readFileSync(manifestPath, "utf8")) as { exports?: Record<string, unknown> };
-        expect(restored.exports).toHaveProperty("./gtk");
-    });
-
-    it("rebuilds the store from scratch when it is forced", () => {
-        markStore(state.project);
-        expect(runCli(state.project, ["codegen", "--force"]).status).toBe(0);
-        expect(isStoreMarked(state.project)).toBe(false);
-        expectModules(storePath(state.project, "gi"), GI_MODULES);
-        expectModules(storePath(state.project, "jsx"), JSX_MODULES);
-    });
-});
-
-describe("gtkx codegen (Storybook dependency placement)", () => {
-    it.each(["local", "ancestor"])("keeps generated stores reachable from a %s Storybook installation", (placement) => {
-        using parent = createCliProject({
-            prefix: "gtkx-cli-storybook-store-",
-            config: fixtureLibrariesConfig(undefined),
-        });
-        const project = nestedProject(parent);
-
-        if (placement === "local") {
-            installNestedPackages(parent, project);
-        }
-
-        expect(runCli(project, ["codegen"]).status).toBe(0);
-        const installed = placement === "local" ? project : parent;
-        const require = createRequire(join(installed.nodeModules, "@gtkx", "storybook", "package.json"));
-
-        expect(realpathSync(require.resolve("@gtkx/gi/gtk")))
-            .toBe(realpathSync(linkPath(installed, "gi", "gtk", "index.js")));
-        expect(realpathSync(require.resolve("@gtkx/jsx/gtk")))
-            .toBe(realpathSync(linkPath(installed, "jsx", "gtk", "index.js")));
-    });
-
-    it("rejects Storybook above the generated store's dependency directory", () => {
-        using parent = createCliProject({
-            prefix: "gtkx-cli-storybook-split-store-",
-            config: fixtureLibrariesConfig(undefined),
-        });
-        const project = nestedProject(parent);
-        installNestedPackages(parent, project);
-        rmSync(join(project.nodeModules, "@gtkx", "storybook"));
-
-        expect(runCli(project, ["codegen"]).status).not.toBe(0);
-    });
-});
-
-describe("gtkx codegen (a project that installed the workspace store)", () => {
-    const state: { project: CliProject } = { project: { root: "", nodeModules: "", tmpDir: "" } };
-
-    beforeAll(() => {
-        state.project = createCliProject({
-            prefix: "gtkx-cli-codegen-installed-",
-            config: config(`, libraries: ${JSON.stringify(STORE_LIBRARIES)}`),
-            hasStore: true,
-        });
-    });
-
-    afterAll(() => {
-        removeCliProject(state.project);
-    });
-
-    it("leaves the store it was installed with alone", () => {
-        markStore(state.project);
-        expect(runCli(state.project, ["codegen"]).status).toBe(0);
-        expect(isStoreMarked(state.project)).toBe(true);
-    });
-});
-
-describe("gtkx codegen (a project that generates no store)", () => {
-    const state: { project: CliProject } = { project: { root: "", nodeModules: "", tmpDir: "" } };
-
-    beforeAll(() => {
-        state.project = createCliProject({
-            prefix: "gtkx-cli-codegen-disabled-",
-            config: config(`, codegen: false, libraries: ${JSON.stringify(STORE_LIBRARIES)}`),
-            hasStore: true,
-        });
-    });
-
-    afterAll(() => {
-        removeCliProject(state.project);
-    });
-
-    it("keeps the store the project installed for itself", () => {
-        markStore(state.project);
-        expect(runCli(state.project, ["codegen"]).status).toBe(0);
-        expect(isStoreMarked(state.project)).toBe(true);
-        expectModules(linkPath(state.project, "gi"), GI_MODULES);
-    });
-
-    it("refuses to force a store it does not generate", () => {
-        markStore(state.project);
-        expect(runCli(state.project, ["codegen", "--force"]).status).not.toBe(0);
-        expect(isStoreMarked(state.project)).toBe(true);
-    });
-});
-
-describe("gtkx codegen (the libraries a project binds without naming them)", () => {
-    it("binds Adwaita and its transitive GTK dependency by default", () => {
-        withProject("default-libraries", fixtureLibrariesConfig(undefined), (project) => {
-            expect(runCli(project, ["codegen"]).status).toBe(0);
-            expectModules(storePath(project, "gi"), [join("adw", "adw.js"), join("gtk", "gtk.js")]);
-            expectModules(storePath(project, "jsx"), [join("adw", "adw.js"), join("gtk", "gtk.js")]);
-        });
-    });
-
-    it("adds libraries the project names", () => {
-        const source = fixtureLibrariesConfig(["Documented-1.0"]);
-
-        withProject("default-libraries-extra", source, (project) => {
-            expect(runCli(project, ["codegen", "--force"]).status).toBe(0);
-            expect(existsSync(storePath(project, "gi", "documented"))).toBe(true);
-        });
-    });
-
-    it("preserves illegal control codes in GIR constants", () => {
-        const source = fixtureLibrariesConfig(["Malformed-1.0"]);
-
-        withProject("control-code-library", source, (project) => {
-            expect(runCli(project, ["codegen", "--force"]).status).toBe(0);
-            const moduleSource = `import { EOT_STR, PUA_STR } from "@gtkx/gi/malformed";
-process.stdout.write(JSON.stringify([EOT_STR, PUA_STR]));`;
-            const output = execFileSync(
-                process.execPath,
-                ["--conditions=source", "--import=tsx", "--input-type=module", "--eval", moduleSource],
-                { cwd: project.root, encoding: "utf8" },
-            );
-
-            expect(output).toBe(JSON.stringify([String.fromCodePoint(4), "&#xE004;"]));
-        });
-    });
-
-    it("keeps the version of a mandatory namespace that the project pins", () => {
-        const source = fixtureLibrariesConfig(["Adw-2"]);
-
-        withProject("default-libraries-pinned", source, (project) => {
-            expect(runCli(project, ["codegen", "--force"]).status).toBe(0);
-            expect(generatedModule(project, "gi", "adw", "adw.d.ts")).toContain("export declare const Slab");
-        });
-    });
-});
-
-describe("gtkx codegen (projects it cannot generate from)", () => {
-    it.each(["native", "runtime"])("requires an installed @gtkx/%s package", (name) => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-codegen-source-package-",
-            config: fixtureLibrariesConfig(["Documented-1.0"]),
-            omitPackages: [name],
-            files: {
-                [`packages/${name}/package.json`]: JSON.stringify({ name: `@gtkx/${name}`, version: "1.0.0" }),
-            },
-        });
-
-        expect(runCli(project, ["codegen"]).status).not.toBe(0);
-    });
-
-    it.each(["@gtkx/react", "react"])("does not treat a source directory as installed %s", (name) => {
-        using project = createCliProject({
-            prefix: "gtkx-cli-codegen-source-react-",
-            config: fixtureLibrariesConfig(["Documented-1.0"]),
-            omitPackages: name === "@gtkx/react" ? ["react"] : [],
-            files: { "packages/react/package.json": JSON.stringify({ name, version: "1.0.0" }) },
-        });
-
-        if (name === "react") {
-            rmSync(join(project.nodeModules, "react"));
-        }
-
-        runCliOrThrow(project, ["codegen"]);
-        const require = createRequire(join(project.root, "probe.js"));
-
-        expect(() => require.resolve("@gtkx/gi/gtk")).not.toThrow();
-        expect(() => require.resolve("@gtkx/jsx/gtk")).toThrow();
-    });
-
-    it.each(BROKEN_CASES)("fails over $title", ({ config: body }) => {
-        using project = createCliProject({ prefix: "gtkx-cli-codegen-broken-", config: body });
-
-        expect(runCli(project, ["codegen"]).status).not.toBe(0);
-        expect(existsSync(storePath(project, "gi"))).toBe(false);
     });
 });

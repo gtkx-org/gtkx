@@ -1,50 +1,10 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
-import { isolateTypeConsumer, typecheckSource } from "./type-consumer.js";
-
-const CONFIG = `export default {
-    applicationId: "org.gtkx.constructprops",
-    libraries: ["Construct-1.0"],
-    girPath: ["./gir"],
-    agents: { reference: false, rules: false },
-};`;
-const IMPORTS = `import type { ComponentProps } from "react";
-import * as Gtk from "@gtkx/gi/gtk";
-import * as Construct from "@gtkx/gi/construct";
-import {
-    GtkSignalAction, type GtkSignalActionProps,
-    GtkNamedAction, type GtkNamedActionProps,
-    GtkAlternativeTrigger, type GtkAlternativeTriggerProps,
-    GtkKeyvalTrigger, GtkMnemonicTrigger, GtkNeverTrigger,
-} from "@gtkx/jsx/gtk";
-import {
-    ConstructConfiguredAction, type ConstructConfiguredActionProps,
-    ConstructInheritedAction, type ConstructInheritedActionProps,
-} from "@gtkx/jsx/construct";
-const trigger = Gtk.NeverTrigger.get();
-`;
-const typecheck = (project: CliProject, source: string): number | null => typecheckSource(project, IMPORTS + source);
-const createProject = (): ReturnType<typeof createCliProject> => {
-    const fixture = new URL("fixtures/gir/Construct-1.0.gir", import.meta.url);
-    const project = createCliProject({
-        prefix: "gtkx-construct-props-",
-        config: CONFIG,
-        files: { "gir/Construct-1.0.gir": readFileSync(fixture, "utf8") },
-    });
-    using pending = new DisposableStack();
-    pending.use(project);
-    runCliOrThrow(project, ["codegen"]);
-    isolateTypeConsumer(project);
-    pending.move();
-
-    return project;
-};
+import { createConstructPropsProject, typecheckConstructProps } from "./codegen-construct-props-fixture.js";
 
 describe("required construction props", () => {
     it("accepts supplied props in constructors, named types, component props, and JSX", () => {
-        using project = createProject();
-        expect(typecheck(project, `
+        using project = createConstructPropsProject();
+        expect(typecheckConstructProps(project, `
             const signal: Gtk.SignalActionConstructorProps = { signalName: "activate" };
             const named: Gtk.NamedActionConstructorProps = { actionName: "app.save" };
             const alternative: Gtk.AlternativeTriggerConstructorProps = { first: trigger, second: trigger };
@@ -66,41 +26,9 @@ describe("required construction props", () => {
         `)).toBe(0);
     });
 
-    it("rejects omitted or nullable direct construction inputs", () => {
-        using project = createProject();
-        for (const expression of [
-            "new Gtk.SignalAction()", "new Gtk.NamedAction()", "new Gtk.AlternativeTrigger()",
-            "new Gtk.SignalAction({})", "new Gtk.NamedAction({})",
-            "new Gtk.AlternativeTrigger({ first: trigger })", "new Gtk.AlternativeTrigger({ second: trigger })",
-            "new Gtk.SignalAction({ signalName: null })", "new Gtk.SignalAction({ signalName: undefined })",
-            "new Gtk.NamedAction({ actionName: null })", "new Gtk.NamedAction({ actionName: undefined })",
-            "new Gtk.AlternativeTrigger({ first: null, second: trigger })",
-            "new Gtk.AlternativeTrigger({ first: trigger, second: undefined })",
-        ]) {
-            expect(typecheck(project, `export const instance = ${expression};`)).not.toBe(0);
-        }
-    });
-
-    it("requires the same inputs in named JSX props and rendered elements", () => {
-        using project = createProject();
-        for (const source of [
-            "export const props: GtkSignalActionProps = {};",
-            "export const props: GtkNamedActionProps = { actionName: null };",
-            "export const props: GtkAlternativeTriggerProps = { first: trigger, second: undefined };",
-            "export const view = <GtkSignalAction />;",
-            "export const view = <GtkNamedAction />;",
-            "export const view = <GtkAlternativeTrigger first={trigger} />;",
-            "export const view = <GtkSignalAction signalName={undefined} />;",
-            "export const view = <GtkNamedAction actionName={null} />;",
-            "export const view = <GtkAlternativeTrigger first={null} second={trigger} />;",
-        ]) {
-            expect(typecheck(project, source)).not.toBe(0);
-        }
-    });
-
     it("preserves required inherited props when descendants add optional properties", () => {
-        using project = createProject();
-        expect(typecheck(project, `
+        using project = createConstructPropsProject();
+        expect(typecheckConstructProps(project, `
             const configured: Construct.ConfiguredActionConstructorProps = { actionName: "app.save" };
             const inherited: Construct.InheritedActionConstructorProps = { actionName: "app.save", enabled: true };
             export const instances = [
@@ -122,7 +50,7 @@ describe("required construction props", () => {
             "export const view = <ConstructConfiguredAction enabled />;",
             "export const view = <ConstructInheritedAction />;",
         ]) {
-            expect(typecheck(project, source)).not.toBe(0);
+            expect(typecheckConstructProps(project, source)).not.toBe(0);
         }
     });
 });
