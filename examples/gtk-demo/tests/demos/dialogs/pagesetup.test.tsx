@@ -57,6 +57,9 @@ describe.each([false, true])("PageSetup completion with initial setup %s", (hasI
         });
         const dialog = await findAddedWindow(previous);
         expect(dialog.getTransientFor()).toBe(main);
+        /* TODO: Restore ordinary orientation coverage once GTK stops initializing multiple controls as active.
+         * https://github.com/gtkx-org/gtkx/issues/751
+         */
         const reverseLandscape = within(dialog).getByRole(Gtk.AccessibleRole.RADIO, {
             name: "Reverse landscape", as: Gtk.CheckButton,
         });

@@ -589,6 +589,9 @@ describe("render - GtkConstraintLayout vfl", () => {
     it("removes only its described constraints when the prop goes away", async () => {
         const boxRef = createRef<Gtk.Box>();
         const constraintRef = createRef<Gtk.Constraint>();
+        /* TODO: Restore weak-inequality coverage when the supported GTK floor includes the 4.24.0 solver fix.
+         * https://github.com/gtkx-org/gtkx/issues/749
+         */
         const constraints = (
             <GtkConstraint
                 ref={constraintRef}

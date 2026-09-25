@@ -3,6 +3,9 @@ import { createXmlParser, parseXmlFile } from "../xml.js";
 
 type RawNode = Record<PropertyKey, unknown>;
 
+/* TODO: Drop valueOf once fast-xml-parser declares the metadata key as primitive symbol.
+ * https://github.com/gtkx-org/gtkx/issues/734
+ */
 const XML_NODE_METADATA = XMLParser.getMetaDataSymbol().valueOf();
 
 const GIR_LABEL = "GIR file";

@@ -201,6 +201,9 @@ function WordsModel({ expression, isIncremental, onFiltered, onSource, searchTex
                 />
             );
 
+    /* TODO: Keep mode-keyed remounts until GTK safely disables incremental filtering without a pending bitset.
+     * https://github.com/gtkx-org/gtkx/issues/738
+     */
     return (
         <GtkNoSelection
             model={(

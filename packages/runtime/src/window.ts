@@ -57,6 +57,9 @@ function completeDefaultWidgetProperty(this: Window, propertyName: string): void
     }
 }
 
+/* TODO: Keep the default widget alive until supported GTK clears its borrowed pointer before removal.
+ * https://github.com/gtkx-org/gtkx/issues/728
+ */
 function installWindowDefaultWidgetOverride(prototype: Window): void {
     const { setDefaultWidget, setProperty } = prototype;
 

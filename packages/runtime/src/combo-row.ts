@@ -124,6 +124,9 @@ const destroyRow = (state: State): void => {
     state.boxes.clear();
 };
 
+/* TODO: Keep handler cleanup until libadwaita ties default-factory callbacks to the ComboRow lifetime.
+ * https://github.com/gtkx-org/gtkx/issues/727
+ */
 function installComboRowFactoryOverride(prototype: ComboRow): void {
     rootSignal.id = lookup("notify", TYPE_OBJECT) as number;
     rootSignal.detail = quark("root") as number;

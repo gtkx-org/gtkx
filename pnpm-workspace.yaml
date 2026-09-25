@@ -57,4 +57,5 @@ overrides:
 patchedDependencies:
   '@react-navigation/core@7.22.1': patches/@react-navigation__core@7.22.1.patch
   '@react-navigation/routers@7.6.4': patches/@react-navigation__routers@7.6.4.patch
+  # TODO: Remove this patch once reconciler declarations use compatible React Context and Portal types. https://github.com/gtkx-org/gtkx/issues/752
   '@types/react-reconciler@0.33.0': patches/@types__react-reconciler@0.33.0.patch

@@ -198,6 +198,9 @@ const useAnimatedUpdate = (instanceRef: RefObject<object | null>, props: Lookup)
     };
 };
 
+/* TODO: Keep the ref-compatible host until React Spring supports ordinary React 19 function refs.
+ * https://github.com/gtkx-org/gtkx/issues/729
+ */
 const createAnimatedComponent = (Component: Wrappable): AnimatedComponent<Wrappable> => {
     const Animated = ({ ref: givenRef, ...props }: AnimatedInput): ReactNode => {
         const instanceRef = useRef<object | null>(null);

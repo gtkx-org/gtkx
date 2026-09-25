@@ -159,6 +159,9 @@ const renderOverlayWithChild = async (mainLabel: string): Promise<Gtk.Overlay> =
 
 const renderSnippetView = async (spec: string, initialText?: string): Promise<SnippetView> => {
     const viewRef = createRef<GtkSource.View>();
+    /* TODO: Restore explicit-buffer removal coverage once GtkSourceView safely cleans detached snippet marks.
+     * https://github.com/gtkx-org/gtkx/issues/750
+     */
     await render(<GtkSourceView ref={viewRef} />);
     const view = viewRef.current as GtkSource.View;
     const buffer = view.getBuffer() as GtkSource.Buffer;

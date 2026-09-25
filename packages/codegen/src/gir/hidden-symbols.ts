@@ -50,6 +50,9 @@ const HIDDEN_SYMBOLS: Set<string> = new Set([
     "g_type_module_register_flags",
     "g_variant_get_data",
     "hb_blob_get_data_writable",
+    /* TODO: Remove this exact exclusion once Pango GIR supplies AttrIterator boxed lifecycle metadata.
+     * https://github.com/gtkx-org/gtkx/issues/736
+     */
     "pango_attr_iterator_destroy",
 ]);
 

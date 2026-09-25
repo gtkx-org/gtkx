@@ -349,6 +349,9 @@ class ImageSurface extends Surface {
 
     /** Returns a copy of the pixel data, `getStride() * getHeight()` bytes in the surface's format. */
     getData(): Uint8Array {
+        /* TODO: Keep this finished-state check until Cairo stops exposing released image storage.
+         * https://github.com/gtkx-org/gtkx/issues/730
+         */
         Context.create(this);
         this.flush();
         const totalBytes = this.getStride() * this.getHeight();

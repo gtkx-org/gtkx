@@ -112,6 +112,9 @@ const normalizeBooleanArgument = (argument: string): string => {
 const canonicalOption = (token: OptionToken): [string, string | boolean] =>
     [kebabCase(token.name), token.value ?? !token.rawName.startsWith("--no-")];
 
+/* TODO: Keep ordered token parsing until Citty respects the order of positive and negated flags.
+ * https://github.com/gtkx-org/gtkx/issues/732
+ */
 const parseCreateArguments = (rawArgs: string[]): CreateCommandArgs => {
     const { tokens, positionals } = parseArgs({
         args: rawArgs.map((argument) =>

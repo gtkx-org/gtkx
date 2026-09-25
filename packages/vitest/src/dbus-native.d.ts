@@ -1,5 +1,8 @@
 import "@homebridge/dbus-native";
 
+/* TODO: Remove this augmentation once dbus-native ships its implemented server API declarations.
+ * https://github.com/gtkx-org/gtkx/issues/731
+ */
 declare module "@homebridge/dbus-native" {
     export type InterfaceDescriptor = {
         name: string;

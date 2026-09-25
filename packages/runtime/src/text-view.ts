@@ -6,6 +6,9 @@ type TextView<TBuffer, TValue> = {
     setProperty: (this: TextView<TBuffer, TValue>, propertyName: string, value: TValue) => void;
 };
 
+/* TODO: Keep eager default-buffer creation until GTK safely handles nullable buffer writes.
+ * https://github.com/gtkx-org/gtkx/issues/725
+ */
 function installTextViewBufferOverride<TBuffer, TValue>(prototype: TextView<TBuffer, TValue>): void {
     const { getBuffer, setBuffer, setProperty } = prototype;
     const completePropertyWrite = function (this: TextView<TBuffer, TValue>, propertyName: string): void {

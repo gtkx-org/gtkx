@@ -101,6 +101,9 @@ const changedMode = (
     }
 };
 
+/* TODO: Keep retired-view cleanup until libadwaita disconnects Sidebar models and suffixes on mode changes.
+ * https://github.com/gtkx-org/gtkx/issues/726
+ */
 function installSidebarModeOverride(prototype: Sidebar, classes: ViewClasses): void {
     Object.defineProperty(prototype, initializeWrapper, {
         value: function (this: Sidebar): void {
