@@ -192,6 +192,7 @@ async function deployTutorial(env: NodeJS.ProcessEnv): Promise<void> {
 }
 
 async function validateTutorial(env: NodeJS.ProcessEnv): Promise<void> {
+    await runAsync("npm", ["run", "codegen"], { cwd: TUTORIAL_DIR, env });
     await runAsync("pnpm", ["exec", "eslint", "examples/tutorial"], { cwd: ROOT_DIR, env });
     await runAsync("npm", ["run", "build"], { cwd: TUTORIAL_DIR, env });
     requireFile(join(TUTORIAL_DIR, "dist", "locale", "fr", "LC_MESSAGES", `${APPLICATION_ID}.mo`));
