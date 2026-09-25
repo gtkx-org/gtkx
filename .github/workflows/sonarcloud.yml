@@ -6,9 +6,6 @@ on:
       coverage:
         required: true
         type: boolean
-      image-ref:
-        required: true
-        type: string
 
 permissions:
   contents: read
@@ -41,21 +38,29 @@ jobs:
           merge-multiple: true
           path: coverage-artifacts
 
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 26.8.2
+
+      - name: Enable pnpm
+        shell: bash
+        run: |
+          npm install --global corepack@0.36.0
+          corepack enable
+          corepack install
+
+      - name: Restore pnpm store
+        uses: ./.github/actions/setup-pnpm-cache
+
+      - name: Install dependencies
+        shell: bash
+        run: pnpm install --frozen-lockfile
+
       - name: Merge coverage
         if: inputs.coverage
-        uses: ./.github/actions/run-ci-command
-        with:
-          command: pnpm exec nx run gtkx:coverage-merge
-          image-ref: ${{ inputs.image-ref }}
-          extra-env: PNPM_CONFIG_NODE_LINKER
-
-      - name: Install analysis dependencies
-        if: ${{ !inputs.coverage }}
-        uses: ./.github/actions/run-ci-command
-        with:
-          command: pnpm exec tsc --version
-          image-ref: ${{ inputs.image-ref }}
-          extra-env: PNPM_CONFIG_NODE_LINKER
+        shell: bash
+        run: pnpm exec nx run gtkx:coverage-merge
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2

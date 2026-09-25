@@ -71,7 +71,6 @@
                 "executor": "nx:noop",
                 "dependsOn": [
                     "codegen",
-                    "@gtkx/e2e:test-fixtures",
                     "@gtkx/vitest:build",
                     "@gtkx/cairo:build",
                     "@gtkx/cli:build",
@@ -88,7 +87,8 @@
                 "command": "rm -rf coverage/subprocess && GTKX_COVERAGE_DIR=\"$PWD/coverage/subprocess\" vitest run --coverage --exclude '**/tests/testing/query-perf.test.tsx' && NODE_OPTIONS=--max-old-space-size=8192 tsx ./scripts/subprocess-coverage.ts && rm -rf coverage/subprocess",
                 "cache": true,
                 "dependsOn": [
-                    "coverage-dependencies"
+                    "coverage-dependencies",
+                    "@gtkx/e2e:test-fixtures"
                 ],
                 "inputs": [
                     "sharedGlobals",

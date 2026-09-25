@@ -42,25 +42,36 @@ jobs:
         id: filter
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
-          predicate-quantifier: every
+          predicate-quantifier: some-with-excludes
           filters: |
             code:
               - '**'
               - '!**/*.md'
             coverage:
-              - '**'
-              - '!**/*.md'
-              - '!.editorconfig'
-              - '!.github/CODEOWNERS'
-              - '!.github/FUNDING.yml'
-              - '!.github/ISSUE_TEMPLATE/**'
-              - '!.github/dependabot.yml'
-              - '!.gitignore'
-              - '!.vscode/**'
-              - '!LICENSE'
-              - '!docs/**'
-              - '!logo.svg'
-              - '!website/**'
+              - 'packages/*/src/**/*.{ts,tsx}'
+              - '!packages/gl/src/generated/**'
+              - '!**/*.d.ts'
+              - '!**/*.test.{ts,tsx}'
+              - '!**/*.spec.{ts,tsx}'
+              - '.github/actions/**'
+              - '.github/docker/**'
+              - '.github/workflows/ci.yml'
+              - '.github/workflows/sonarcloud.yml'
+              - 'vitest.config*.ts'
+              - '**/vitest.config*.ts'
+              - 'package.json'
+              - 'packages/*/package.json'
+              - 'mise.toml'
+              - 'nx.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'packages/cli/tests/cli-project.ts'
+              - 'packages/create-gtkx/tests/create-project.ts'
+              - 'packages/mcp/tests/app-session.ts'
+              - 'scripts/subprocess-coverage.ts'
+              - 'sonar-project.properties'
+              - 'tsconfig*.json'
+              - 'packages/*/tsconfig*.json'
 
   image:
     if: github.event.action != 'closed'
@@ -217,25 +228,33 @@ jobs:
           set -euo pipefail
           docker buildx imagetools create --tag ghcr.io/gtkx-org/gtkx-ci:latest "$REF"
 
-  sonarcloud:
-    needs: [changes, image-manifest, coverage-core, coverage-mcp-shard, coverage-cli-shard]
+  sonarcloud-coverage:
+    needs: [changes, coverage-core, coverage-mcp-shard, coverage-cli-shard]
     if: >-
       always() && github.event.action != 'closed' &&
       needs.changes.result == 'success' &&
-      needs.image-manifest.result == 'success' &&
-      (needs.changes.outputs.coverage != 'true' ||
-      (needs.coverage-core.result == 'success' &&
+      needs.changes.outputs.coverage == 'true' &&
+      needs.coverage-core.result == 'success' &&
       needs.coverage-mcp-shard.result == 'success' &&
-      needs.coverage-cli-shard.result == 'success')) &&
-      (needs.changes.outputs.coverage == 'true' || github.event_name == 'pull_request')
-    permissions:
+      needs.coverage-cli-shard.result == 'success'
+    permissions: &sonar-permissions
       contents: read
       packages: read
       pull-requests: read
-    uses: ./.github/workflows/sonarcloud.yml
+    uses: &sonar-workflow ./.github/workflows/sonarcloud.yml
     with:
-      coverage: ${{ needs.changes.outputs.coverage == 'true' }}
-      image-ref: ${{ needs.image-manifest.outputs.ref }}
+      coverage: true
+    secrets: inherit
+
+  sonarcloud-no-coverage:
+    needs: changes
+    if: >-
+      github.event.action != 'closed' && github.event_name == 'pull_request' &&
+      needs.changes.result == 'success' && needs.changes.outputs.coverage != 'true'
+    permissions: *sonar-permissions
+    uses: *sonar-workflow
+    with:
+      coverage: false
     secrets: inherit
 
   docs:
@@ -330,9 +349,14 @@ jobs:
           install: "false"
 
   test-mcp:
-    name: test (mcp)
+    name: test (mcp ${{ matrix.shard }}/${{ matrix.total }})
     needs: [changes, image-manifest]
     if: needs.changes.outputs.code == 'true' && needs.changes.outputs.coverage != 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+        total: [4]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -344,7 +368,7 @@ jobs:
       - name: Run the MCP tests
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm exec nx run @gtkx/mcp:test
+          command: pnpm exec nx run @gtkx/mcp:test -- --shard=${{ matrix.shard }}/${{ matrix.total }}
           image-ref: ${{ needs.image-manifest.outputs.ref }}
           extra-env: GTKX_MAX_WORKERS
 
@@ -380,7 +404,7 @@ jobs:
       - name: Generate coverage
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm exec nx run gtkx:coverage-shard
+          command: pnpm exec nx run @gtkx/e2e:test-fixtures && pnpm exec nx run gtkx:coverage-shard
           image-ref: ${{ needs.image-manifest.outputs.ref }}
           extra-env: GTKX_COVERAGE_GROUP GTKX_COVERAGE_PROJECT_ARGS GTKX_COVERAGE_SHARD GTKX_COVERAGE_SHARDS GTKX_MAX_WORKERS
 
@@ -399,8 +423,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
-        total: [2]
+        shard: [1, 2, 3]
+        total: [3]
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
@@ -463,9 +487,9 @@ jobs:
     if: needs.changes.outputs.code == 'true' && needs.changes.outputs.coverage != 'true'
     strategy:
       fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
-        total: [19]
+      matrix: &cli-shards
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+        total: [23]
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -495,9 +519,7 @@ jobs:
     if: needs.changes.outputs.coverage == 'true'
     strategy:
       fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
-        total: [19]
+      matrix: *cli-shards
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
