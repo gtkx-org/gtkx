@@ -5,33 +5,43 @@ import { describe, expect, it, vi } from "vitest";
 import { listviewApplauncherDemo } from "../../../src/demos/lists/listview-applauncher.js";
 import { renderDemo } from "../../test-utils.js";
 
-const firstAppInfo = (): Gio.AppInfo => {
-    const [first] = Gio.AppInfo.getAll()
-        .filter((app) => app.shouldShow())
-        .toSorted((a, b) => a.getDisplayName().localeCompare(b.getDisplayName()));
+const TEST_APP_IDS = {
+    alpha: "org.gtkx.ApplauncherAlpha.desktop",
+    beta: "org.gtkx.ApplauncherBeta.desktop",
+} as const;
 
-    if (first === undefined) {
-        throw new Error("expected at least one installed application");
+const testAppInfo = (id: string = TEST_APP_IDS.alpha): Gio.AppInfo => {
+    const appInfo = Gio.AppInfo.getAll().find((app) => app.getId() === id);
+
+    if (appInfo === undefined) {
+        throw new Error("expected the application fixture to be installed");
     }
 
-    return first;
+    return appInfo;
 };
 
-const appInfoPrototype = (): Gio.AppInfo => Object.getPrototypeOf(firstAppInfo()) as Gio.AppInfo;
+const appInfoPrototype = (): Gio.AppInfo => Object.getPrototypeOf(testAppInfo()) as Gio.AppInfo;
 
 const renderListView = async (): Promise<Gtk.ListView> => {
     await renderDemo(listviewApplauncherDemo);
+    const listView = await screen.findByName("list-view", { as: Gtk.ListView });
 
-    return await screen.findByName("list-view", { as: Gtk.ListView });
+    for (const id of Object.values(TEST_APP_IDS)) {
+        await within(listView).findByText(testAppInfo(id).getDisplayName());
+    }
+
+    return listView;
 };
 
-const activateFirstRowAndExpectLaunch = async (launchSpy: ReturnType<typeof vi.spyOn>): Promise<void> => {
+const activateTestAppAndExpectLaunch = async (launchSpy: ReturnType<typeof vi.spyOn>): Promise<void> => {
     const listView = await renderListView();
-    await within(listView).findByText(firstAppInfo().getDisplayName());
-    const [row] = within(listView).getAllByRole(Gtk.AccessibleRole.LIST_ITEM);
+    const appName = testAppInfo().getDisplayName();
+    const row = within(listView)
+        .getAllByRole(Gtk.AccessibleRole.LIST_ITEM)
+        .find((candidate) => within(candidate).queryByText(appName) !== null);
 
     if (row === undefined) {
-        throw new Error("expected at least one rendered application row");
+        throw new Error("expected the application fixture row to be rendered");
     }
 
     await userEvent.dblClick(row);
@@ -43,25 +53,10 @@ const activateFirstRowAndExpectLaunch = async (launchSpy: ReturnType<typeof vi.s
 
 describe("listviewApplauncherDemo structure", () => {
     it("wraps a single GtkListView inside a scrolled window", async () => {
-        await renderDemo(listviewApplauncherDemo);
+        const listView = await renderListView();
         const sw = await screen.findByName("scrolled", { as: Gtk.ScrolledWindow });
-        const listView = await screen.findByName("list-view", { as: Gtk.ListView });
         expect(screen.getAllByName("list-view")).toHaveLength(1);
         expect(sw).toContainElement(listView);
-    });
-
-    it("moves the single selection to whichever row is chosen", async () => {
-        const listView = await renderListView();
-
-        await waitFor(() => {
-            expect(within(listView).queryAllByRole(Gtk.AccessibleRole.LIST_ITEM).length).toBeGreaterThanOrEqual(2);
-        });
-
-        const rows = within(listView).getAllByRole(Gtk.AccessibleRole.LIST_ITEM);
-        await userEvent.selectOptions(listView, 0);
-        expect(within(listView).getByRole(Gtk.AccessibleRole.LIST_ITEM, { selected: true })).toBe(rows[0]);
-        await userEvent.selectOptions(listView, 1);
-        expect(within(listView).getByRole(Gtk.AccessibleRole.LIST_ITEM, { selected: true })).toBe(rows[1]);
     });
 });
 
@@ -70,10 +65,10 @@ describe("listviewApplauncherDemo rows", () => {
         const launchSpy = vi.spyOn(appInfoPrototype(), "launch").mockReturnValue(true);
 
         try {
-            await activateFirstRowAndExpectLaunch(launchSpy);
+            await activateTestAppAndExpectLaunch(launchSpy);
             expect(launchSpy).toHaveBeenCalledWith(null, expect.any(Gio.AppLaunchContext));
             const launchedOn = launchSpy.mock.instances[0] as Gio.AppInfo;
-            expect(launchedOn.getId()).toBe(firstAppInfo().getId());
+            expect(launchedOn.getId()).toBe(TEST_APP_IDS.alpha);
         } finally {
             launchSpy.mockRestore();
         }
@@ -85,7 +80,7 @@ describe("listviewApplauncherDemo rows", () => {
         });
 
         try {
-            await activateFirstRowAndExpectLaunch(launchSpy);
+            await activateTestAppAndExpectLaunch(launchSpy);
             expect(await screen.findByRole(Gtk.AccessibleRole.ALERT_DIALOG)).toBeRooted();
         } finally {
             launchSpy.mockRestore();

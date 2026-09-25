@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=GTKX Applauncher Beta
+Exec=/usr/bin/true
+Icon=application-x-executable
+Terminal=false

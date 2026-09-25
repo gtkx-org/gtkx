@@ -6,6 +6,7 @@ import { defineConfig, mergeConfig } from "vitest/config";
 import { sourceResolveConfig } from "../../vitest.config.base.js";
 
 export default defineConfig(() => {
+    const dataDir = fileURLToPath(new URL("tests/fixtures/data", import.meta.url));
     const schemaDir = fileURLToPath(new URL("tests/fixtures/settings", import.meta.url));
     execFileSync(resolveExecutable("glib-compile-schemas"), ["--strict", schemaDir]);
 
@@ -16,6 +17,7 @@ export default defineConfig(() => {
             env: {
                 GSETTINGS_BACKEND: "memory",
                 GSETTINGS_SCHEMA_DIR: [schemaDir, process.env.GSETTINGS_SCHEMA_DIR].filter(Boolean).join(":"),
+                XDG_DATA_HOME: dataDir,
             },
             name: "gtk-demo",
             include: ["tests/**/*.test.{ts,tsx}"],
