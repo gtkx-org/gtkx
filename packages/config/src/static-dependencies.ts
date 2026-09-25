@@ -4,6 +4,7 @@ import { createJiti, type Jiti } from "jiti";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { localConfigSourcePath } from "./config-source.ts";
 
 const MODULE_EXTENSIONS: ReadonlySet<string> = new Set([
     ".cjs",
@@ -411,17 +412,10 @@ const c12SourceDependencies = (
 ): string[] => {
     const clean = source.split(/[?#]/u, 1)[0] ?? "";
 
-    if (clean === "." || (!isAbsolute(clean) && !clean.startsWith("."))) {
-        return [];
-    }
-
     const cwd = configLayerDirectory(importer, configName, configRoot);
-    const extension = extname(clean);
-    const target = (extension.length === 0 || extension === basename(clean))
-        ? resolve(cwd, clean, configName)
-        : resolve(cwd, clean);
+    const target = localConfigSourcePath(clean, { cwd, configFile: configName });
 
-    return targetCandidates(target, configName);
+    return target === undefined ? [] : targetCandidates(target, configName);
 };
 
 const directDependencies = (path: string, configName: string, configRoot: string): string[] => {

@@ -1,4 +1,4 @@
-import { errorCode, resolveExecutable, sortStrings } from "@gtkx/utils";
+import { errorCode, readProcessStatFields, resolveExecutable, sortStrings } from "@gtkx/utils";
 import { type ChildProcess, spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
@@ -45,22 +45,11 @@ const readBootId = (): string | null => {
 const BOOT_ID = readBootId();
 
 const readProcessStat = (pid: number): { startTime: string; state: string } | null => {
-    try {
-        const stat = readFileSync(`/proc/${String(pid)}/stat`, "utf8");
-        const commandEnd = stat.lastIndexOf(")");
+    const fields = readProcessStatFields(pid);
+    const state = fields?.[0];
+    const startTime = fields?.[PROCESS_START_FIELD];
 
-        if (commandEnd === -1) {
-            return null;
-        }
-
-        const fields = stat.slice(commandEnd + 2).trim().split(/\s+/u);
-        const state = fields[0];
-        const startTime = fields[PROCESS_START_FIELD];
-
-        return state === undefined || startTime === undefined ? null : { startTime, state };
-    } catch {
-        return null;
-    }
+    return state === undefined || startTime === undefined ? null : { startTime, state };
 };
 
 const processIdentity = (pid: number): string | null => {

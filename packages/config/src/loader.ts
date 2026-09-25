@@ -1,13 +1,14 @@
 import { isPathInside, warn } from "@gtkx/utils";
 import { loadConfig as loadConfigFile } from "c12";
 import { existsSync } from "node:fs";
-import { basename, extname, isAbsolute, relative, resolve } from "node:path";
+import { relative, resolve } from "node:path";
 import {
     captureConfigDependencies,
     setConfigDependencies,
     transformConfigModule,
 } from "./config-dependencies.ts";
 import { missingConfigFileError } from "./config-error.ts";
+import { type ConfigResolutionOptions, localConfigSourcePath } from "./config-source.ts";
 import {
     type Config,
     graduatedFutureKeys,
@@ -46,28 +47,6 @@ type ConfigLoader = {
 
 const GRADUATED_FUTURE_ENV = "GTKX_GRADUATED_FUTURE_SHOWN";
 const graduatedFutureWarnings: Map<string, string> = new Map();
-
-type ConfigResolutionOptions = { configFile?: string | undefined; cwd?: string | undefined };
-
-const isLocalConfigSource = (source: string): boolean => source.startsWith(".") || isAbsolute(source);
-
-const isDirectoryConfigSource = (source: string): boolean => {
-    const extension = extname(source);
-
-    return extension.length === 0 || extension === basename(source);
-};
-
-const localConfigSourcePath = (source: string, options: ConfigResolutionOptions): string | undefined => {
-    if (source === "." || !isLocalConfigSource(source)) {
-        return undefined;
-    }
-
-    const cwd = options.cwd ?? process.cwd();
-
-    return isDirectoryConfigSource(source)
-        ? resolve(cwd, source, options.configFile ?? "gtkx.config")
-        : resolve(cwd, source);
-};
 
 const rejectMissingLocalConfig = (source: string, options: ConfigResolutionOptions): undefined => {
     const path = localConfigSourcePath(source, options);
@@ -199,4 +178,4 @@ const createConfigLoader = (options: LoadConfigOptions = {}): ConfigLoader => {
     };
 };
 
-export { loadConfig, createConfigLoader, type LoadedConfig, type ConfigLoader };
+export { loadConfig, createConfigLoader, type LoadedConfig, type ConfigLoader, type LoadConfigOptions };

@@ -564,9 +564,6 @@ importers:
       citty:
         specifier: ^0.2.2
         version: 0.2.2
-      confbox:
-        specifier: ^0.3.1
-        version: 0.3.1
       create-gtkx:
         specifier: workspace:*
         version: link:../create-gtkx
@@ -689,12 +686,18 @@ importers:
 
   packages/config:
     dependencies:
+      '@babel/core':
+        specifier: ^8.0.6
+        version: 8.0.6
       '@gtkx/utils':
         specifier: workspace:*
         version: link:../utils
       c12:
         specifier: ^3.3.4
         version: 3.3.4(magicast@0.5.5)
+      confbox:
+        specifier: ^0.3.1
+        version: 0.3.1
       defu:
         specifier: ^6.1.7
         version: 6.1.7

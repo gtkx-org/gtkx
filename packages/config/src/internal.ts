@@ -1,4 +1,5 @@
 export { configDependenciesFor } from "./config-dependencies.ts";
+export { createConfigReloader } from "./config-reloader.ts";
 export type { McpSettings, ResolvedReactCompilerOptions } from "./config.ts";
 export {
     APPLICATION_ID_MAX_LENGTH,

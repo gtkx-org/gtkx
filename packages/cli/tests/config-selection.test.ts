@@ -15,6 +15,7 @@ import {
 const DEFAULT_ID = "com.gtkx.configdefault";
 const EDITION_ID = "com.gtkx.configedition";
 const REFRESHED_ID = "com.gtkx.configrefreshed";
+const REMAPPED_ID = "com.gtkx.configremapped";
 const SWITCHED_ID = "com.gtkx.configswitched";
 const REWATCHED_ID = "com.gtkx.configrewatched";
 const RECOVERED_ID = "com.gtkx.configrecovered";
@@ -27,6 +28,7 @@ const JSON_NATIVE_ID = "com.gtkx.confignativejson";
 const REFRESHED_JSON_NATIVE_ID = "com.gtkx.confignativejsonrefreshed";
 const DIRECT_NATIVE_ID = "com.gtkx.confignativedirect";
 const EDITION_CONFIG = "gtkx.edition.config.ts";
+const REMAPPED_CONFIG = "gtkx.remapped.config.ts";
 const SWITCHED_CONFIG = "gtkx.switched.config.ts";
 const MISSING_CONFIG = "missing.ts";
 const RELOAD_MARKER = "config-reload.started";
@@ -260,6 +262,7 @@ describe("GTKX configuration selection", () => {
             config: baseConfig,
             files: {
                 [EDITION_CONFIG]: editionConfig.replace("./gtkx.config.ts", "#base"),
+                [REMAPPED_CONFIG]: baseConfig.replace('configRevision = "edition"', 'configRevision = "remapped"'),
                 [SWITCHED_CONFIG]: baseConfig.replace('configRevision = "edition"', 'configRevision = "switched"'),
                 "application.svg": '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"/>\n',
                 [join("src", "index.ts")]: DEV_ENTRY,
@@ -285,6 +288,11 @@ describe("GTKX configuration selection", () => {
             const refreshed = await waitForOutput(output, REFRESHED_ID);
             expect(refreshed).toContain(REFRESHED_ID);
             expect(refreshed).toContain(reloadMessage("gtkx.config.ts"));
+            writeFileSync(
+                manifestPath,
+                `${JSON.stringify({ ...manifest, imports: { "#base": "./" + REMAPPED_CONFIG } })}\n`,
+            );
+            expect(await waitForOutput(output, REMAPPED_ID)).toContain(REMAPPED_ID);
             writeFileSync(
                 join(project.root, EDITION_CONFIG),
                 editionConfig.replace("./gtkx.config.ts", () => `./${SWITCHED_CONFIG}`),
