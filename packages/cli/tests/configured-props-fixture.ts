@@ -20,6 +20,7 @@ const FIXTURE = fileURLToPath(new URL("fixtures/configured-props/@audit", import
 const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../node_modules/typescript/bin/tsc", import.meta.url));
 const VITEST_PACKAGE = dirname(fileURLToPath(import.meta.resolve("vitest/package.json")));
 const COPIED_PACKAGES: Set<string> = new Set(["@gtkx/cli", "@gtkx/codegen"]);
+const BASE_DECLARATION = "export interface SharedProps<T> { auditReplacement: T; }\n";
 const OUTPUT = "docs/reference";
 const BOX_PAGE = "gtk/box.md";
 const BUTTON_PAGE = "gtk/button.md";
@@ -175,6 +176,7 @@ const unionConsumer = (project: CliProject, page: string): string => {
 };
 
 export {
+    BASE_DECLARATION,
     BOX_PAGE,
     documentedType,
     installConfiguredProps,

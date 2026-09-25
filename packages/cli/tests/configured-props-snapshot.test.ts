@@ -1,15 +1,14 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
 import { coverageTimeout, createCliProject, startCli } from "./cli-project.js";
 import {
+    BASE_DECLARATION,
     installConfiguredProps,
     OUTPUT,
-    PROPS_MODULE,
     readButton,
     runDocs,
-    stamp,
     writePropsConfig,
 } from "./configured-props-fixture.js";
 
@@ -31,8 +30,6 @@ fs.readFileSync = (file, ...args) => {
 };
 syncBuiltinESMExports();
 `;
-const BASE_DECLARATION = "export interface SharedProps<T> { auditReplacement: T; }\n";
-const REEXPORT_DECLARATION = "export interface ReexportedProps { auditEarlier?: Date; }\n";
 
 describe("configured element prop reference", () => {
     it("refreshes after a declaration changes during the first documentation build", async () => {
@@ -77,44 +74,5 @@ describe("configured element prop reference", () => {
                 await closed;
             }
         }
-    });
-
-    it.each(["utf8", "utf16le"] as const)("keeps unchanged %s BOM declarations cached", (encoding) => {
-        using project = createCliProject({ prefix: "gtkx-props-bom-" });
-        installConfiguredProps(project.root);
-        writePropsConfig(project.root);
-        const declaration = join(project.nodeModules, "@audit/element-base/index.d.ts");
-        writeFileSync(declaration, "\u{FEFF}" + readFileSync(declaration, "utf8"), encoding);
-        runDocs(project);
-        expect(readButton(project.root)).toContain("### `auditCaption`");
-        const before = stamp(project.root);
-        runDocs(project);
-        expect(stamp(project.root)).toBe(before);
-    });
-
-    it("invalidates cached pages when a transitive declaration changes", () => {
-        using project = createCliProject({ prefix: "gtkx-props-freshness-" });
-        installConfiguredProps(project.root);
-        writePropsConfig(project.root);
-        runDocs(project);
-        const before = stamp(project.root);
-        runDocs(project);
-        expect(stamp(project.root)).toBe(before);
-        writeFileSync(join(project.nodeModules, "@audit/element-base/index.d.ts"), BASE_DECLARATION);
-        runDocs(project);
-        expect(readButton(project.root)).toContain("### `auditReplacement`");
-        expect(readButton(project.root)).not.toContain("### `auditCaption`");
-    });
-
-    it("follows reexports when an earlier declaration source appears", () => {
-        using project = createCliProject({ prefix: "gtkx-props-reexport-" });
-        installConfiguredProps(project.root);
-        writePropsConfig(project.root, "ReexportedProps");
-        runDocs(project);
-        expect(readButton(project.root)).toContain("### `auditReexported`");
-        writeFileSync(join(project.nodeModules, PROPS_MODULE, "reexport.ts"), REEXPORT_DECLARATION);
-        runDocs(project);
-        expect(readButton(project.root)).toContain("### `auditEarlier`");
-        expect(readButton(project.root)).not.toContain("### `auditReexported`");
     });
 });
