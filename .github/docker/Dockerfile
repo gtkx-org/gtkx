@@ -60,6 +60,8 @@ RUN apt-get update \
         libgtk-4-1-dbgsym \
         libadwaita-1-0-dbgsym \
         libglib2.0-0t64-dbgsym \
+    && ln -s "/usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/gir-1.0/Gst-1.0.gir" \
+        /usr/share/gir-1.0/Gst-1.0.gir \
     && rm -rf /var/lib/apt/lists/*
 
 ARG FLATPAK_BUILDER_TOOLS=de2225a6dee4818c1339b3cdbf29f90c471fcb7e
