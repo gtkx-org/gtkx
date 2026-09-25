@@ -1,20 +1,10 @@
 import { loadApiReference, resolveGirPath } from "@gtkx/codegen";
-import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
-import { isolateTypeConsumer, typecheckFile } from "./type-consumer.js";
+import type { CliProject } from "./cli-project.js";
+import { createHashTableAdmissionProject, HASH_TABLE_IMPORTS } from "./codegen-hash-table-admission-fixture.js";
+import { typecheckFile } from "./type-consumer.js";
 
-const CONFIG = `export default {
-    applicationId: "org.gtkx.numerictables",
-    libraries: ["NumericTables-1.0"],
-    girPath: ["./gir"],
-    agents: { reference: false, rules: false },
-};`;
-const IMPORTS = `import * as GObject from "@gtkx/gi/gobject";
-import * as NumericTables from "@gtkx/gi/numerictables";
-import { NumericTablesProbe } from "@gtkx/jsx/numerictables";
-`;
-const ACCEPTED = IMPORTS + `
+const ACCEPTED = HASH_TABLE_IMPORTS + `
 export const table: NumericTables.TableAlias = new Map([["value", 1n]]);
 export const nested: NumericTables.NestedTables = [table];
 export const keyAlias: NumericTables.KeyTableAlias = new Map([[1n, 1]]);
@@ -96,83 +86,7 @@ const REJECTED: Record<string, string> = {
     "type-word-jsx": "export const view = <NumericTablesProbe typeWord={1} />;",
     "type-chain-jsx": "export const view = <NumericTablesProbe chainWord={1} />;",
     "size-word-jsx": "export const view = <NumericTablesProbe sizeWord={1n} />;",
-    "borrowed-key-input": "export const method = NumericTables.takeKeyBorrowed;",
-    "signed-key-result": "export const method = NumericTables.readSignedKeys;",
-    "gtype-key-result": "export const method = NumericTables.readTypeKeys;",
-    "key-out-result": "export const method = NumericTables.readKeyOut;",
-    "nested-key-result": "export const method = NumericTables.readKeyArrays;",
-    "key-input-callback": "export type Callback = NumericTables.KeyInput;",
-    "key-return-callback": "export type Callback = NumericTables.KeyReturn;",
-    "key-output-callback": "export type Callback = NumericTables.KeyOutput;",
-    "key-callback-consumer": "export const method = NumericTables.useKeyInput;",
-    "key-property-read": "export const read = (probe: NumericTables.Probe) => probe.keyed;",
-    "key-property-option": "export const probe = new NumericTables.Probe({ keyed: new Map() });",
-    "key-property-jsx": "export const view = <NumericTablesProbe keyed={new Map()} />;",
-    "key-property-notify": "export const view = <NumericTablesProbe onNotifyKeyed={() => undefined} />;",
-    "key-signal": 'export const listen = (probe: NumericTables.Probe) => probe.on("keyed", () => undefined);',
-    "key-signal-jsx": "export const view = <NumericTablesProbe onKeyed={() => undefined} />;",
-    "key-field-read": "export const read = (frame: NumericTables.Frame) => frame.keyed;",
-    "key-field-option": "export const frame = new NumericTables.Frame({ keyed: new Map() });",
-    "key-vfunc-input": `export class Derived extends NumericTables.Probe {
-        override vfuncKeyInput(_table: NumericTables.KeyTableAlias): void {}
-    }`,
-    "key-vfunc-result": `export class Derived extends NumericTables.Probe {
-        override vfuncKeyResult(): NumericTables.KeyTableAlias { return new Map(); }
-    }`,
-    "borrowed-type-value-input": "export const method = NumericTables.takeTypeBorrowed;",
-    "direct-type-value-result": "export const method = NumericTables.readTypes;",
-    "nested-type-value-result": "export const method = NumericTables.readNestedTypes;",
-    "type-value-out-result": "export const method = NumericTables.readTypeOut;",
-    "array-type-value-result": "export const method = NumericTables.readTypeArrays;",
-    "type-value-input-callback": "export type Callback = NumericTables.TypeInput;",
-    "type-value-return-callback": "export type Callback = NumericTables.TypeReturn;",
-    "type-value-output-callback": "export type Callback = NumericTables.TypeOutput;",
-    "type-value-callback-consumer": "export const method = NumericTables.useTypeInput;",
-    "type-value-property-read": "export const read = (probe: NumericTables.Probe) => probe.typed;",
-    "type-value-property-option": "export const probe = new NumericTables.Probe({ typed: new Map() });",
-    "type-value-property-jsx": "export const view = <NumericTablesProbe typed={{ type: 1n }} />;",
-    "type-value-property-notify": "export const view = <NumericTablesProbe onNotifyTyped={() => undefined} />;",
-    "type-value-signal": 'export const listen = (probe: NumericTables.Probe) => probe.on("typed", () => undefined);',
-    "type-value-signal-jsx": "export const view = <NumericTablesProbe onTyped={() => undefined} />;",
-    "type-value-field-read": "export const read = (frame: NumericTables.Frame) => frame.typed;",
-    "type-value-field-option": "export const frame = new NumericTables.Frame({ typed: new Map() });",
-    "type-value-vfunc-input": `export class Derived extends NumericTables.Probe {
-        override vfuncTypeInput(_table: NumericTables.TypeTableAlias): void {}
-    }`,
-    "type-value-vfunc-result": `export class Derived extends NumericTables.Probe {
-        override vfuncTypeResult(): NumericTables.TypeTableAlias { return new Map(); }
-    }`,
-    "full-input": "export const method = NumericTables.takeFull;",
-    "container-input": "export const method = NumericTables.takeContainer;",
-    "numeric-key": "export const method = NumericTables.takeKey;",
-    "gtype-cell": "export const method = NumericTables.takeType;",
-    "nested-full-input": "export const method = NumericTables.takeNestedFull;",
-    "class-input": 'export type Method = NumericTables.Probe["takeFull"];',
-    "owned-return-callback": "export type Callback = NumericTables.OwnedReturn;",
-    "container-return-callback": "export type Callback = NumericTables.ContainerReturn;",
-    "owned-output-callback": "export type Callback = NumericTables.OwnedOutput;",
-    "owned-inout-callback": "export type Callback = NumericTables.OwnedInout;",
-    "callback-alias": "export type Callback = NumericTables.OwnedReturnAlias;",
-    "return-callback-consumer": "export const method = NumericTables.useOwnedReturn;",
-    "output-callback-consumer": "export const method = NumericTables.useOwnedOutput;",
-    "vfunc-input": `export class Derived extends NumericTables.Probe {
-        override vfuncOwnedInput(_table: NumericTables.TableAlias): void {}
-    }`,
-    "vfunc-result": `export class Derived extends NumericTables.Probe {
-        override vfuncOwnedResult(): NumericTables.TableAlias { return new Map(); }
-    }`,
-    "vfunc-output": `export class Derived extends NumericTables.Probe {
-        override vfuncOwnedOutput(): NumericTables.TableAlias { return new Map(); }
-    }`,
-    "decoded-callback-input": `export class Derived extends NumericTables.Probe {
-        override vfuncDecodedOwned(_operation: NumericTables.OwnedInputWithData): void {}
-    }`,
-    "callback-result-type": 'export const callback: NumericTables.BorrowedReturn = () => "invalid";',
-    "table-value-type": 'NumericTables.takeBorrowed(new Map([["value", 1]]));',
 };
-const rejectedFiles = Object.fromEntries(Object.entries(REJECTED).map(([name, source]) => [
-    `${name}.tsx`, IMPORTS + source,
-]));
 const OMITTED_FUNCTIONS = [
     "takeTypeWordKeys", "takeTypeWordAlias", "readTypeWordChain",
     "takeTypeBorrowed", "readTypes", "readNestedTypes", "readTypeOut", "readTypeArrays", "useTypeInput",
@@ -194,14 +108,12 @@ describe("generated numeric hash table ownership admission", () => {
     let reference: ReturnType<typeof loadApiReference>;
 
     beforeAll(() => {
-        const fixture = readFileSync(new URL("fixtures/gir/NumericTables-1.0.gir", import.meta.url));
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-hash-table-admission-",
-            config: CONFIG,
-            files: { "gir/NumericTables-1.0.gir": fixture, "accepted.tsx": ACCEPTED, ...rejectedFiles },
-        }));
-        runCliOrThrow(project, ["codegen"]);
-        isolateTypeConsumer(project);
+        project = createHashTableAdmissionProject(
+            cleanup,
+            "gtkx-cli-hash-table-admission-",
+            REJECTED,
+            { "accepted.tsx": ACCEPTED },
+        );
         reference = loadApiReference({
             libraries: ["NumericTables-1.0", "Gtk-4.0"],
             girPath: resolveGirPath(["gir"], project.root),
