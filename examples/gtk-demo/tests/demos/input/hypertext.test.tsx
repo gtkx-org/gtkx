@@ -70,6 +70,12 @@ vi.mock("node:child_process", async (importOriginal) => {
     return { ...actual, spawn: spawnMock };
 });
 
+vi.mock("@gtkx/utils", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@gtkx/utils")>();
+
+    return { ...actual, tryResolveExecutable: (command: string) => command };
+});
+
 describe("hypertextDemo rendering", () => {
     it("renders page 1 with the hypertext and tags introduction", async () => {
         const textView = await renderTextView();
