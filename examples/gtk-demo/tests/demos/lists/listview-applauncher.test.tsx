@@ -52,6 +52,11 @@ describe("listviewApplauncherDemo structure", () => {
 
     it("moves the single selection to whichever row is chosen", async () => {
         const listView = await renderListView();
+
+        await waitFor(() => {
+            expect(within(listView).queryAllByRole(Gtk.AccessibleRole.LIST_ITEM).length).toBeGreaterThanOrEqual(2);
+        });
+
         const rows = within(listView).getAllByRole(Gtk.AccessibleRole.LIST_ITEM);
         await userEvent.selectOptions(listView, 0);
         expect(within(listView).getByRole(Gtk.AccessibleRole.LIST_ITEM, { selected: true })).toBe(rows[0]);
