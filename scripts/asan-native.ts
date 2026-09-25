@@ -10,6 +10,7 @@ const NATIVE_CONFIGS = [
     join(WORKSPACE_ROOT, "packages", "native", "vitest.config.ts"),
     join(NATIVE_TESTS, "vitest.config.ts"),
 ];
+const VITEST_ARGS = process.argv.slice(2);
 const BUILD_ARGS = ["--filter", "@gtkx/native", "exec", "napi", "build", "--platform", "--release", "--esm",
     "--no-dts-cache", "--no-const-enum"];
 
@@ -40,6 +41,7 @@ try {
     for (const config of NATIVE_CONFIGS) {
         const args = [
             "exec", "vitest", "run", "--root", dirname(config), "--config", config, "--testTimeout", "120000",
+            ...VITEST_ARGS,
         ];
         run("pnpm", args, {
             ...process.env,

@@ -384,9 +384,15 @@ jobs:
             test "$SHARDS_RESULT" = "success"
           fi
 
-  asan:
+  asan-shard:
+    name: asan (${{ matrix.shard }}/${{ matrix.total }})
     needs: [changes, image-manifest]
     if: *code-changed
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+        total: [2]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -396,8 +402,25 @@ jobs:
       - name: Run the native canary under AddressSanitizer
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm exec nx run @gtkx/e2e:test:asan
+          command: pnpm exec nx run @gtkx/e2e:test:asan -- --shard=${{ matrix.shard }}/${{ matrix.total }}
           image-ref: ${{ needs.image-manifest.outputs.ref }}
+
+  asan:
+    needs: [changes, asan-shard]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check AddressSanitizer shards
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CODE_CHANGED: ${{ needs.changes.outputs.code }}
+          SHARDS_RESULT: ${{ needs.asan-shard.result }}
+        run: |
+          test "$CHANGES_RESULT" = "success"
+          if [ "$CODE_CHANGED" = "true" ]; then
+            test "$SHARDS_RESULT" = "success"
+          fi
 
   typecheck:
     needs: [changes, image-manifest]
