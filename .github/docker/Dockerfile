@@ -88,7 +88,12 @@ RUN set -eux \
         | tar -xJ --strip-components=1 -C /usr/local \
     && node --version | grep -q "v${NODE26_VERSION}"
 
-RUN npm install -g npm@12.0.2 corepack@0.36.0 && corepack enable && corepack prepare pnpm@12.4.2 --activate
+ENV COREPACK_HOME=/usr/local/share/corepack
+RUN npm install -g npm@12.0.2 corepack@0.36.0 \
+    && corepack enable \
+    && corepack prepare pnpm@12.4.2 --activate \
+    && pnpm --version \
+    && chmod -R a+rwX "$COREPACK_HOME"
 
 ENV RUSTUP_HOME=/usr/local/rustup
 ENV CARGO_HOME=/usr/local/cargo
