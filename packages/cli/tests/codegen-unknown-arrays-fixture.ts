@@ -40,16 +40,17 @@ export const properties = (probe: UnknownArrays.Probe) => {
 export const record = (frame: UnknownArrays.Frame) => {
     frame.before = 1;
     frame.after = 2;
+    frame.buffer = new Uint8Array([1, 2]);
+    const before: number = frame.before;
+    const after: number = frame.after;
     const buffer: Uint8Array = frame.buffer;
-    const options: UnknownArrays.FrameConstructorProps = { before: 1, after: 2 };
-    return { buffer, value: new UnknownArrays.Frame(options) };
+    return { before, after, buffer };
 };
 export const inline = new UnknownArrays.InlineRecord({ buffer: new Uint8Array([1, 2]) });
 export const fullInline = (): UnknownArrays.InlineRecord => UnknownArrays.fullInlineRecord();
 export const empty = new UnknownArrays.RawOnly();
-export const emptyRecord = new UnknownArrays.RawRecord();
+export const rawRecord = (value: UnknownArrays.RawRecord): UnknownArrays.RawRecord => value;
 export const emptyOptions: UnknownArrays.RawOnlyConstructorProps = {};
-export const emptyRecordOptions: UnknownArrays.RawRecordConstructorProps = {};
 `;
 const REJECTED = {
     "fixed-pointer-construction": "export const value = new UnknownArrays.FixedPointerRecord();",
@@ -75,8 +76,11 @@ const REJECTED = {
     "property-only-props": "export const options: UnknownArrays.RawOnlyConstructorProps = { data: 1 };",
     "record-read": "export type Field = UnknownArrays.Frame[\"data\"];",
     "record-nested": "export type Field = UnknownArrays.Frame[\"nested\"];",
+    "record-constructor": "export const value = new UnknownArrays.Frame({ before: 1, after: 2 });",
+    "record-constructor-props": "export const props: UnknownArrays.FrameConstructorProps = { before: 1, after: 2 };",
+    "record-only-constructor": "export const value = new UnknownArrays.RawRecord();",
     "record-only-variable": "const options = { data: 1 }; export const value = new UnknownArrays.RawRecord(options);",
-    "record-only-props": "export const options: UnknownArrays.RawRecordConstructorProps = { data: 1 };",
+    "record-only-props": "export const options: UnknownArrays.RawRecordConstructorProps = {};",
     "inet-address": "export const method = Gio.InetAddress.newFromBytes;",
     "texture-download": "export type Method = Gdk.Texture[\"download\"];",
     "pixbuf-input": "export const method = GdkPixbuf.Pixbuf.newFromData;",

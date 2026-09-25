@@ -41,11 +41,12 @@ export const properties = (probe: ScalarPointers.Probe, frame: ScalarPointers.Fr
     const count: bigint = probe.count;
     const options: ScalarPointers.ProbeConstructorProps = { count: 3n };
     const value = new ScalarPointers.Probe(options);
-    const record = new ScalarPointers.Frame({ before: 1, after: 2n });
     frame.before = 2;
     frame.after = 3n;
+    const before: number = frame.before;
+    const after: bigint = frame.after;
     const view = <ScalarPointersProbe {...options} onInteger={(value: bigint) => { void value; }} />;
-    return { count, value, record, view };
+    return { count, value, before, after, view };
 };
 export const controls = (message: Gio.InputMessage, outgoing: Gio.OutputMessage, hmac: GLib.Hmac) => {
     const count: number = outgoing.numControlMessages;
@@ -128,6 +129,7 @@ const SCALAR_POINTER_REJECTED_MEMBERS: Record<string, string> = {
     "property-notify": "export const view = <ScalarPointersProbe onNotifyPointer={() => undefined} />;",
 };
 const SCALAR_POINTER_REJECTED_FIELDS: Record<string, string> = {
+    "record-constructor": "export const record = new ScalarPointers.Frame({ before: 1, after: 2n });",
     "direct-field": "export type Field = ScalarPointers.Frame[\"direct\"];",
     "aliased-field": "export type Field = ScalarPointers.Frame[\"alias\"];",
     "pointer-element-field": "export type Field = ScalarPointers.Frame[\"pointers\"];",

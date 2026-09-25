@@ -12,6 +12,9 @@ const REJECTED_NAMES = [
     "property-only-props",
     "record-read",
     "record-nested",
+    "record-constructor",
+    "record-constructor-props",
+    "record-only-constructor",
     "record-only-variable",
     "record-only-props",
 ] as const satisfies readonly RejectedName[];

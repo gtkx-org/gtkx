@@ -13,9 +13,11 @@ const TYPECHECK_ARGS = [
     "--target", "ESNext", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--types", "node",
 ];
 const RECORD_CONSUMERS = {
-    "visible.ts": `import { Visible } from "@gtkx/gi/girrecords";
-import type { Collection, Mixed, Nested } from "@gtkx/gi/girrecords";
-export const create = (): Visible => new Visible({ publicField: 1, tail: 2 });
+    "visible.ts": `import type { Collection, Mixed, Nested, Visible } from "@gtkx/gi/girrecords";
+export const write = (value: Visible): void => {
+    value.publicField = 1;
+    value.tail = 2;
+};
 export const read = (value: Visible): [number, number] => [value.publicField, value.tail];
 export const mixed = (value: Mixed): [number, number] => [value.before, value.after];
 export const nested = (value: Nested): [number, number] => [value.before, value.after];
@@ -28,7 +30,7 @@ export const read = (value: Visible): bigint => value.hidden;
 export const write = (value: Visible): void => { value.hidden = 1n; };
 `,
     "rejected-constructor.ts": `import { Visible } from "@gtkx/gi/girrecords";
-export const create = (): Visible => new Visible({ hidden: 1n });
+export const create = (): Visible => new Visible({ publicField: 1, tail: 2 });
 `,
     "rejected-element.ts": `import type { Collection } from "@gtkx/gi/girrecords";
 export const read = (value: Collection): bigint[] => value.items.map((item) => item.hidden);
@@ -133,7 +135,7 @@ describe("gtkx codegen GIR record fields", () => {
         removeCliProject(project);
     });
 
-    it("accepts visible fields in records, constructor props and collection elements", () => {
+    it("accepts visible fields in records and collection elements", () => {
         expect(() => execFileSync(process.execPath, [...TYPECHECK_ARGS, "visible.ts"], {
             cwd: project.root,
             encoding: "utf8",
@@ -141,7 +143,7 @@ describe("gtkx codegen GIR record fields", () => {
     });
 
     it.each(["rejected-read.ts", "rejected-write.ts", "rejected-constructor.ts", "rejected-element.ts"])(
-        "rejects non-introspectable fields in %s",
+        "rejects hidden fields or unsupported construction in %s",
         (file) => {
             expect(() => execFileSync(process.execPath, [...TYPECHECK_ARGS, file], {
                 cwd: project.root,
