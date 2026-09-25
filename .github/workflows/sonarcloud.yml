@@ -32,13 +32,14 @@ jobs:
         projects: ["--project=cli"]
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
         total: [18]
+        workers: [3]
         include:
-          - { group: mcp, projects: "--project=mcp", shard: 1, total: 2 }
-          - { group: mcp, projects: "--project=mcp", shard: 2, total: 2 }
-          - { group: other, projects: "--project=!cli --project=!mcp", shard: 1, total: 4 }
-          - { group: other, projects: "--project=!cli --project=!mcp", shard: 2, total: 4 }
-          - { group: other, projects: "--project=!cli --project=!mcp", shard: 3, total: 4 }
-          - { group: other, projects: "--project=!cli --project=!mcp", shard: 4, total: 4 }
+          - { group: mcp, projects: "--project=mcp", shard: 1, total: 2, workers: 3 }
+          - { group: mcp, projects: "--project=mcp", shard: 2, total: 2, workers: 3 }
+          - { group: other, projects: "--project=!cli --project=!mcp", shard: 1, total: 4, workers: 1 }
+          - { group: other, projects: "--project=!cli --project=!mcp", shard: 2, total: 4, workers: 1 }
+          - { group: other, projects: "--project=!cli --project=!mcp", shard: 3, total: 4, workers: 1 }
+          - { group: other, projects: "--project=!cli --project=!mcp", shard: 4, total: 4, workers: 1 }
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
@@ -46,7 +47,7 @@ jobs:
       GTKX_COVERAGE_PROJECT_ARGS: ${{ matrix.projects }}
       GTKX_COVERAGE_SHARD: ${{ matrix.shard }}
       GTKX_COVERAGE_SHARDS: ${{ matrix.total }}
-      GTKX_MAX_WORKERS: "3"
+      GTKX_MAX_WORKERS: ${{ matrix.workers }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
