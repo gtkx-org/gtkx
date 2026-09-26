@@ -69,13 +69,15 @@ const subscribe = (listener: Listener): (() => void) => {
 };
 
 /**
- * Reports whether the desktop asks for less motion: `true` while GTK's `gtk-enable-animations`
- * setting is off, which is when every spring already jumps straight to its target, and also while
- * the `gtk-interface-reduced-motion` setting of GTK 4.22 asks to reduce motion, the preference
- * behind the `prefers-reduced-motion` media query, which leaves springs running so that components
- * can trade a slide for a fade themselves. Returns `null` until a display is open.
+ * Tracks GTK's motion preferences and updates when they change.
  *
- * @returns `true` when motion should be reduced, `false` when it should not, `null` when unknown.
+ * @returns `true` when animations are disabled or GTK 4.22+ requests reduced motion,
+ * `false` otherwise, or `null` before a display opens.
+ *
+ * @remarks
+ * `gtk-enable-animations: false` makes springs jump to their targets.
+ * `gtk-interface-reduced-motion` leaves springs running for components to adapt;
+ * it also drives GTK's `prefers-reduced-motion` media query.
  */
 const useReducedMotion = (): boolean | null => useSyncExternalStore(subscribe, trackReducedMotion);
 

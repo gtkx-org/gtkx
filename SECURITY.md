@@ -1,6 +1,8 @@
 # Security Policy
 
-Security updates apply to the latest 1.x release.
+Until 1 December 2026, security updates apply to the latest 1.x release. Report issues in the 2.0 beta through the same private channel; beta security fixes will be included before the stable release.
+
+From 1 December 2026, security updates apply to the latest 2.x release. Support for 1.x ends on that date. Upgrade using the [2.0 migration guide](https://gtkx.dev/v2/guide/upgrading-to-2).
 
 Report vulnerabilities privately to eugeniodepalo@gmail.com. Include the impact, affected versions, and reproduction steps; do not open a public issue.
 

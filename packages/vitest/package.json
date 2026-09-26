@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/vitest",
     "version": "2.0.0-beta.10",
-    "description": "Vitest plugin for GTKX GNOME apps with headless Wayland isolation.",
+    "description": "Run GTKX tests in isolated headless displays.",
     "keywords": [
         "gtkx",
         "gtk",

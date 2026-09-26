@@ -14,15 +14,15 @@ Install the server and the testing package that powers its widget tools. Scaffol
 ::: code-group
 
 ```bash [npm]
-npm install -D @gtkx/mcp @gtkx/testing
+npm install -D @gtkx/mcp@1.6.0 @gtkx/testing@1.6.0
 ```
 
 ```bash [pnpm]
-pnpm add -D @gtkx/mcp @gtkx/testing
+pnpm add -D @gtkx/mcp@1.6.0 @gtkx/testing@1.6.0
 ```
 
 ```bash [yarn]
-yarn add -D @gtkx/mcp @gtkx/testing
+yarn add -D @gtkx/mcp@1.6.0 @gtkx/testing@1.6.0
 ```
 
 :::
@@ -44,6 +44,8 @@ npx gtkx dev
 ```
 
 The app connects automatically, and either side can start first. The connection is available during development; production builds exclude it.
+
+Run GTKX 1.6 development from a graphical session. The `gtkx dev --headless` option belongs to GTKX 2; 1.6 still supports headless Vitest sessions through the [testing setup](/guide/testing#setup).
 
 ## Inspect and verify changes
 

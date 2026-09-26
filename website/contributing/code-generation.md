@@ -5,9 +5,7 @@ description: "How GTKX turns GIR libraries into project-specific JavaScript bind
 
 # Code Generation
 
-Code generation establishes the native API a GTKX project can use. It turns the project's GIR libraries into executable bindings, TypeScript declarations, React components, and reference documentation. The generated result is part of the application's dependency graph: both application code and GTKX packages import it.
-
-The [executable-binding principle](/contributing/principles#generate-executable-bindings) requires real ESM modules whose classes and functions delegate native calls through `@gtkx/runtime`. Types and executable bindings come from the same generation step. The runtime receives the call descriptors and shapes from those modules and knows nothing about libgirepository; it does not discover signatures or construct the generated classes through runtime introspection.
+`@gtkx/codegen` reads a project's GIR libraries and emits executable ESM bindings, TypeScript declarations, JSX components, and reference pages. Its generated descriptors supply runtime with native call signatures; runtime does not load libgirepository to discover them.
 
 The public orchestration lives in [`packages/codegen/src/runner.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/runner.ts). The CLI integrates it with project configuration in [`packages/cli/src/codegen/run-codegen.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/cli/src/codegen/run-codegen.ts). For using the command and configuring libraries, see [Configuration and Codegen](/v2/guide/configuration-and-codegen).
 
@@ -65,7 +63,7 @@ When investigating a binding, compare the GIR signature, the generated JavaScrip
 
 Each namespace has its main binding module and a bootstrap module. The bootstrap imports dependent namespace bootstraps, applies runtime overrides, and performs required registration or retention work. The public namespace barrel imports that bootstrap. The generated package marks bootstrap, override, and index modules as side effects so bundling can preserve initialization while eliminating unused exports where possible.
 
-Overrides under [`packages/codegen/overrides`](https://github.com/gtkx-org/gtkx/tree/main/packages/codegen/overrides) wire runtime implementations into generated types, including non-introspectable functions and upstream compatibility fixes. One catalog drives template discovery, bootstrap imports, and barrel exports. The templates contain declarations and wiring; [binding behavior belongs in runtime](/contributing/principles#keep-overrides-as-wiring). Cairo uses the external `@gtkx/cairo` namespace.
+Overrides under [`packages/codegen/overrides`](https://github.com/gtkx-org/gtkx/tree/main/packages/codegen/overrides) wire runtime implementations into generated types, including non-introspectable functions and upstream compatibility fixes. One catalog drives template discovery, bootstrap imports, and barrel exports. The templates attach runtime implementations to generated declarations. Cairo uses the external `@gtkx/cairo` namespace.
 
 Public class declarations include the interfaces runtime installs as mixins. Signal methods inherit shared runtime types, with generated metadata describing each class's signals. Strict installed-consumer checks validate the complete declaration graph alongside actual generated imports, so workspace linking and skipped library checks cannot conceal invalid declarations.
 
@@ -86,8 +84,6 @@ The main sources are [`store/jsx/pipeline.ts`](https://github.com/gtkx-org/gtkx/
 Store placement follows package resolution. [`resolve-store.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/resolve-store.ts) finds the installed runtime and renderer, selects a `node_modules` location their consumers can reach, and keeps both generated packages together. Hoisted dependencies can therefore cause multiple workspace projects to share one store. The resolver rejects arrangements where a consumer sits above the generated packages and cannot import them.
 
 Generation acquires store locks, prepares new output in staging directories, and publishes the prepared stores and links together. Failed preparation preserves generated sources for diagnosis. The store code also restores missing links and reclaims stale staging or generation artifacts. This machinery is in [`staging.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/staging.ts) and [`store/store-fs.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/store-fs.ts).
-
-Changes to this machinery need an actual consumer requirement. [Production code must stay focused on consumers](/contributing/principles#keep-production-code-focused-on-consumers), so a quirk of GTKX's own workspace does not justify a production workaround. Likewise, existing store locks do not justify synchronization where the supported execution model has only one process handling a directory.
 
 Freshness is content-based. The GI fingerprint covers the generator, relevant dependency versions, overrides, selected roots, search paths, store version, and GIR contents. JSX has its own fingerprint for the renderer version and element configuration; regenerating GI also invalidates JSX. Documentation fingerprints include their rendering options and element configuration. These checks are implemented in [`fingerprint.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/fingerprint.ts).
 

@@ -50,13 +50,12 @@ const isGeneratedInventory = (value: unknown): value is GeneratedElement[] =>
     arrayGuard(isGeneratedElement)(value);
 
 /**
- * Reads the inventory of elements the `@gtkx/jsx` store binds, written into the store by codegen. Answers
- * "what does this project's JSX layer cover" without loading the store, which resolves `virtual:` specifiers
- * that only exist inside a Vite or Vitest build.
+ * Reads the generated JSX inventory without importing the store or resolving its build-only
+ * `virtual:` imports.
  *
- * @param jsxStoreDir The jsx store directory, as given by `resolveStore(projectRoot).jsx.storeDir`.
- * @returns Every bound element, sorted by GLib type name, or an empty array when the store holds no inventory
- * codegen wrote, which covers an absent, unreadable, unparseable and structurally foreign store file alike.
+ * @param jsxStoreDir Generated JSX store directory.
+ * @returns Elements sorted by GLib type name, or an empty array if the inventory is absent,
+ * unreadable, unparseable, or has an unrecognized structure.
  */
 const readGeneratedElements = (jsxStoreDir: string): GeneratedElement[] => {
     const parsed = readJsonFile(join(jsxStoreDir, ELEMENTS_FILENAME));

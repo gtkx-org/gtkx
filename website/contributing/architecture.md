@@ -5,27 +5,39 @@ description: "How GTKX's generated bindings, React renderer, TypeScript runtime,
 
 # Architecture
 
-GTKX runs React applications in Node.js and renders their interface through native Adwaita and GTK4 objects. React owns component state and reconciliation. Adwaita supplies application structure and adaptive patterns; GTK4 supplies widgets, layout, input, accessibility, and rendering. GTKX connects those systems through generated JavaScript bindings and a Rust native addon.
-
-This section describes GTKX 2 and the package boundaries set by its [development principles](/contributing/principles). Use this page to locate code, then follow the [code generation](/contributing/code-generation), [native runtime](/contributing/native-runtime), and [React renderer](/contributing/react-renderer) pages for the implementation details.
+GTKX runs React in Node.js and renders through native Adwaita and GTK4 objects. React owns state and reconciliation; native libraries supply application structure, widgets, layout, input, accessibility, and rendering.
 
 ## The core layers
 
-| Layer | Current implementation role | Implementation |
-| --- | --- | --- |
-| Application components | Describe the interface, hold application state, and compose GTKX features. | Application TSX and packages such as `@gtkx/components` and `@gtkx/navigation`. |
-| Generated JSX | Expose typed React components for the project's native types and retain their GI classes. | Project-generated `@gtkx/jsx/<namespace>` modules. |
-| React renderer | Create native objects, apply prop changes, route children, connect signals, and tear down mounted instances. | [`packages/react`](https://github.com/gtkx-org/gtkx/tree/main/packages/react). |
-| Generated GI bindings | Expose native classes, interfaces, records, enums, callbacks, and functions, and register property and signal metadata with their classes. | Project-generated `@gtkx/gi/<namespace>` modules. |
-| TypeScript runtime | Convert arguments and results, wrap native values, register types, and coordinate callbacks, signals and application lifecycle. | [`packages/runtime`](https://github.com/gtkx-org/gtkx/tree/main/packages/runtime). |
-| Native bridge | Allocate and protect native storage, invoke C symbols and callback entry points, and integrate GLib with Node's event loop. | [`packages/native`](https://github.com/gtkx-org/gtkx/tree/main/packages/native). |
-| Native libraries | Implement the actual GNOME application and widget behavior. | Adwaita, GTK4, GIO, GObject, GLib, and the project's additional libraries. |
+The [package map](/contributing/tech-stack#package-map) lists package responsibilities. At runtime, a JSX update follows this path:
 
-The generated GI layer also works without React. A native function call or a registered GObject subclass can use the runtime directly; it does not need to pass through the reconciler. Conversely, a component library usually works through the JSX and GI APIs and does not need to know how the native addon represents a pointer.
+```text
+Application components
+        ↓
+Generated @gtkx/jsx elements
+        ↓
+@gtkx/react renderer
+        ↓
+Generated @gtkx/gi methods
+        ↓
+@gtkx/runtime → @gtkx/native → Native libraries
+```
+
+The [renderer](https://github.com/gtkx-org/gtkx/tree/main/packages/react) translates React commits into native operations. Generated methods supply signatures to [runtime](https://github.com/gtkx-org/gtkx/tree/main/packages/runtime), which converts values and calls the [native bridge](https://github.com/gtkx-org/gtkx/tree/main/packages/native).
+
+GI bindings also work without React: function calls and GObject subclasses can use runtime directly. Component libraries normally use JSX and GI APIs without depending on native pointer representation.
 
 ## Generation and execution
 
 GTKX separates information obtained from GObject Introspection Repository files, or GIR files, from operations performed while the application runs.
+
+```text
+GIR libraries + element configuration
+                  ↓
+            @gtkx/codegen
+                  ↓
+  @gtkx/gi + @gtkx/jsx + project reference
+```
 
 During generation, `@gtkx/codegen` reads the configured GIR libraries and their transitive dependencies. It determines JavaScript names, TypeScript types, callable signatures, transfer rules, and the metadata needed by the renderer. It emits two linked package stores, `@gtkx/gi` and `@gtkx/jsx`, plus a project reference when enabled.
 
@@ -81,4 +93,4 @@ Likewise, a controlled prop and a native widget property are two representations
 | A child appears in the wrong place, disappears, or fails to reorder. | `packages/react/src/reconciler/child-routing.ts` and `placement.ts`. |
 | Signals, timers, or shutdown stop making progress. | `packages/runtime/src/lifecycle.ts` and `packages/native/src/runloop.rs`. |
 
-Follow a failure across these boundaries before deciding where a fix belongs. A renderer symptom can begin in generated metadata, and a native ownership failure can begin in an incorrect GIR annotation. The source location is a starting point for investigation; the [package boundaries](/contributing/principles#keep-the-native-module-minimal) determine where the implementation belongs.
+A renderer symptom can begin in generated metadata; a native ownership failure can begin in an incorrect GIR annotation. Follow the failing operation across the relevant boundaries.

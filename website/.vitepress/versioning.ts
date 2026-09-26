@@ -13,6 +13,7 @@ type DocumentationVersion = {
     id: string;
     label: string;
     prefix: string;
+    aliases: string[];
     status: VersionStatus;
     examplesRef: string;
     reference: ReferenceSource;
@@ -33,7 +34,11 @@ const guideItems: DocumentationItem[] = [
     { text: "Why GTKX", path: GUIDE_ROOT },
     { text: "Getting Started", path: "guide/getting-started" },
     { text: "Configuration and Codegen", path: "guide/configuration-and-codegen" },
+    { text: "Scaffold Options", path: "guide/scaffold-options" },
+    { text: "Assets and Build Output", path: "guide/assets" },
+    { text: "Native Values", path: "guide/native-values" },
     { text: "Async Operations", path: "guide/async-operations" },
+    { text: "Workers and Helper Processes", path: "guide/workers" },
     { text: "Error Handling", path: "guide/error-handling" },
     { text: "Subclassing GObject", path: "guide/subclassing" },
     { text: "Components", path: "guide/components" },
@@ -54,24 +59,24 @@ const guideItems: DocumentationItem[] = [
 
 const tutorialItems: DocumentationItem[] = [
     { text: "Introduction", path: TUTORIAL_ROOT },
-    { text: "Your First Window", path: "tutorial/your-first-window" },
-    { text: "A List of Tasks", path: "tutorial/a-list-of-tasks" },
-    { text: "The Task Store", path: "tutorial/the-task-store" },
-    { text: "Interactive Rows", path: "tutorial/completing-and-deleting" },
-    { text: "Saving to Disk", path: "tutorial/saving-to-disk" },
-    { text: "Lists and the Sidebar", path: "tutorial/lists-and-the-sidebar" },
-    { text: "Adaptive Layout", path: "tutorial/an-adaptive-layout" },
-    { text: "Smart Views and Search", path: "tutorial/smart-views-and-search" },
-    { text: "The Task Editor", path: "tutorial/the-task-editor" },
-    { text: "Actions and Menus", path: "tutorial/actions-menus-shortcuts" },
-    { text: "Trash and Toasts", path: "tutorial/trash-and-toasts" },
-    { text: "Preferences and Theming", path: "tutorial/preferences-and-theming" },
-    { text: "Drag to Reorder", path: "tutorial/drag-to-reorder" },
-    { text: "Reminders", path: "tutorial/reminders" },
-    { text: "Appendix A: Testing", path: "tutorial/testing" },
-    { text: "Appendix B: Packaging", path: "tutorial/packaging" },
-    { text: "Internationalization", path: "tutorial/internationalization" },
-    { text: "Appendix C: Flathub", path: "tutorial/flatpak" },
+    { text: "Create a Window", path: "tutorial/your-first-window" },
+    { text: "Display Tasks", path: "tutorial/a-list-of-tasks" },
+    { text: "Add Tasks", path: "tutorial/the-task-store" },
+    { text: "Complete, Star, and Delete Tasks", path: "tutorial/completing-and-deleting" },
+    { text: "Save Tasks", path: "tutorial/saving-to-disk" },
+    { text: "Add Lists and a Sidebar", path: "tutorial/lists-and-the-sidebar" },
+    { text: "Adapt the Layout", path: "tutorial/an-adaptive-layout" },
+    { text: "Filter and Search Tasks", path: "tutorial/smart-views-and-search" },
+    { text: "Edit Tasks", path: "tutorial/the-task-editor" },
+    { text: "Add Menus and Shortcuts", path: "tutorial/actions-menus-shortcuts" },
+    { text: "Add Undo and Delete Confirmation", path: "tutorial/trash-and-toasts" },
+    { text: "Add Preferences", path: "tutorial/preferences-and-theming" },
+    { text: "Reorder Tasks", path: "tutorial/drag-to-reorder" },
+    { text: "Send Reminders", path: "tutorial/reminders" },
+    { text: "Test the App", path: "tutorial/testing" },
+    { text: "Package the App", path: "tutorial/packaging" },
+    { text: "Translate the App", path: "tutorial/internationalization" },
+    { text: "Prepare for Flathub", path: "tutorial/flatpak" },
 ];
 
 const documentationItems: DocumentationItem[] = [...guideItems, ...tutorialItems];
@@ -94,6 +99,23 @@ const toPrefix = (value: string): string => {
     }
 
     throw new Error(`versions.json declares the invalid prefix "${value}".`);
+};
+
+const toAliases = (value: unknown): string[] => {
+    if (value === undefined) {
+        return [];
+    }
+    if (!Array.isArray(value)) {
+        throw new TypeError("Documentation aliases must be an array of prefixes.");
+    }
+
+    return value.map((alias: unknown) => {
+        if (typeof alias !== "string" || alias === "") {
+            throw new TypeError("Documentation aliases must be nonempty prefixes.");
+        }
+
+        return toPrefix(alias);
+    });
 };
 
 const versionLabel = (version: string): string => {
@@ -136,6 +158,14 @@ const assertAtMostOne = (matches: readonly DocumentationVersion[], description: 
     }
 };
 
+const assertAvailablePrefixes = (entries: readonly DocumentationVersion[]): void => {
+    const reserved = new Set(["guide", "tutorial", "reference", "contributing", "blog", "assets", "fonts"]);
+    const prefixes = entries.flatMap((version) => [version.prefix, ...version.aliases]);
+    if (prefixes.some((prefix) => reserved.has(prefix.slice(1)))) {
+        throw new Error("A documentation prefix or alias collides with a site directory.");
+    }
+};
+
 const packageVersion = manifest.packageVersion;
 
 const readVersions = (): readonly DocumentationVersion[] => {
@@ -150,20 +180,19 @@ const readVersions = (): readonly DocumentationVersion[] => {
             id: version.id,
             label: reference.source === "worktree" ? versionLabel(packageVersion) : version.label,
             prefix: toPrefix(version.prefix),
+            aliases: toAliases("aliases" in version ? version.aliases : undefined),
             status: toStatus(version.status),
             examplesRef: version.examplesRef,
             reference,
         };
     });
 
+    assertUnique(parsed.map((version) => version.id), "version id");
     assertUnique(
-        parsed.map((version) => version.id),
-        "version id",
+        parsed.flatMap((version) => [version.prefix, ...version.aliases]),
+        "version prefix or alias",
     );
-    assertUnique(
-        parsed.map((version) => version.prefix),
-        "version prefix",
-    );
+    assertAvailablePrefixes(parsed);
     assertExactlyOne(
         parsed.filter((version) => version.status === "current"),
         "current version",

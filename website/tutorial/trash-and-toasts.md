@@ -1,122 +1,236 @@
 ---
-description: "Make deletion recoverable with an Undo toast, a confirmation dialog, and a Trash you can empty."
+description: "Add Undo, permanent-delete confirmation, and a New List dialog."
 ---
 
-# Deleting Without Fear
+# Add Undo and Delete Confirmation
 
-[Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts) connected every delete command, but moving a task to Trash still leaves its editor open and offers no way back. This chapter adds one deletion path for the row button, header button, and Delete key. It also adds the New List dialog promised in [Lists and a Sidebar](/tutorial/lists-and-the-sidebar).
+[Add Menus and Shortcuts](/tutorial/actions-menus-shortcuts) connected the delete commands. Give them one shared handler that closes an open editor, moves the task to Trash, and offers Undo. Add permanent-delete confirmation and the New List dialog alongside it.
 
 ## Add the undo toast
 
-`@gtkx/components` connects imperative Adwaita toasts to a declarative GTKX tree. Install it from `tasks/`:
+Install the GTKX collection and toast components from `tasks/`:
 
 ::: code-group
 
 ```bash [npm]
-npm install @gtkx/components
+npm install @gtkx/components@1.6.0
 ```
 
 ```bash [pnpm]
-pnpm add @gtkx/components
+pnpm add @gtkx/components@1.6.0
 ```
 
 :::
 
-In `src/components/window.tsx`, share an overlay ref with `ToastProvider` and wrap the navigator with the corresponding `AdwToastOverlay`:
+In `src/components/window.tsx`, add `AdwToastOverlay` to the Adwaita element import, and add these imports:
 
-```diff
-+import { ToastProvider } from "@gtkx/components";
- import * as Adw from "@gtkx/gi/adw";
+```diff [src/components/window.tsx]
+@@ -0,0 +1,2 @@
++import { ToastProvider } from "@gtkx/components/adw";
++import { useRef } from "react";
+@@ -12 +14 @@
 -import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage } from "@gtkx/jsx/adw";
-+import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage, AdwToastOverlay } from "@gtkx/jsx/adw";
- import { useRef } from "react";
-
- const windowRef = useRef<Adw.ApplicationWindow | null>(null);
-+const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
-
--<AdwApplicationWindow ref={windowRef}>
--    <NavigationContainer ref={navigationRef}>
--        <Split.Navigator>
--            …
--        </Split.Navigator>
--    </NavigationContainer>
--    <Dialogs />
--</AdwApplicationWindow>
-+<ToastProvider overlayRef={toastOverlayRef}>
-+    <AdwApplicationWindow ref={windowRef}>
-+        <AdwToastOverlay ref={toastOverlayRef}>
-+            <NavigationContainer ref={navigationRef}>
-+                <Split.Navigator>
-+                    …
-+                </Split.Navigator>
-+            </NavigationContainer>
-+        </AdwToastOverlay>
-+        <Dialogs />
-+    </AdwApplicationWindow>
-+</ToastProvider>
++import { AdwApplicationWindow, AdwToastOverlay, AdwBreakpoint, AdwStatusPage } from "@gtkx/jsx/adw";
 ```
 
-The provider makes this overlay available to `useToast`, including from the window's shortcut controller. The overlay stays around the navigator because that is the surface the toast should cover. See the [components guide](/guide/components) for the toast helpers.
+Inside `Window`, create the overlay ref:
 
-Add the two remaining task transitions in `src/store/tasks.ts`:
+```diff [src/components/window.tsx]
+@@ -31,0 +32 @@
++    const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
+@@ -37,44 +38,13 @@
+-        <AdwApplicationWindow
+-            controllers={<AppShortcuts />}
+-            actions={<WindowActions />}
+-            title="Tasks"
+-            widthRequest={360}
+-            heightRequest={294}
+-            onCloseRequest={() => quit()}
+-            breakpoints={
+-                <AdwBreakpoint
+-                    condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
+-                    onApply={() => setCollapsed(true)}
+-                    onUnapply={() => setCollapsed(false)}
+-                />
+-            }
+-        >
+-            <NavigationContainer ref={navigationRef}>
+-                <Split.Navigator
+-                    initialRouteName="Tasks"
+-                    collapsed={collapsed}
+-                    sidebarWidthFraction={0.25}
+-                    minSidebarWidth={220}
+-                    maxSidebarWidth={300}
+-                    contentPlaceholder={<NothingSelected />}
+-                >
+-                    <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
+-                    <Split.Screen
+-                        name="Tasks"
+-                        component={TasksScreen}
+-                        initialParams={ALL_TASKS}
+-                        options={({ route }) => ({
+-                            title: selectionTitle(route.params, lists),
+-                            headerTitle: <TaskFilter />,
+-                            headerStart: (
+-                                <>
+-                                    <GtkButton
+-                                        iconName="list-add-symbolic"
+-                                        tooltipText="New Task (Ctrl+N)"
+-                                        actionName="win.new"
+-                                    />
+-                                    <SearchButton />
+-                                </>
+-                            ),
+-                            headerEnd: <MainMenu />,
+-                        })}
++        <ToastProvider overlayRef={toastOverlayRef}>
++            <AdwApplicationWindow
++                controllers={<AppShortcuts />}
++                actions={<WindowActions />}
++                title="Tasks"
++                widthRequest={360}
++                heightRequest={294}
++                onCloseRequest={() => quit()}
++                breakpoints={
++                    <AdwBreakpoint
++                        condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
++                        onApply={() => setCollapsed(true)}
++                        onUnapply={() => setCollapsed(false)}
+@@ -82,12 +52,47 @@
+-                    <Split.Screen
+-                        name="Task"
+-                        component={TaskScreen}
+-                        options={({ route }) => ({
+-                            headerTitle: <TaskTitle id={route.params.id} />,
+-                            headerEnd: <TaskButtons id={route.params.id} />,
+-                        })}
+-                    />
+-                </Split.Navigator>
+-            </NavigationContainer>
+-            <Dialogs />
+-        </AdwApplicationWindow>
++                }
++            >
++                <AdwToastOverlay ref={toastOverlayRef}>
++                    <NavigationContainer ref={navigationRef}>
++                        <Split.Navigator
++                            initialRouteName="Tasks"
++                            collapsed={collapsed}
++                            sidebarWidthFraction={0.25}
++                            minSidebarWidth={220}
++                            maxSidebarWidth={300}
++                            contentPlaceholder={<NothingSelected />}
++                        >
++                            <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
++                            <Split.Screen
++                                name="Tasks"
++                                component={TasksScreen}
++                                initialParams={ALL_TASKS}
++                                options={({ route }) => ({
++                                    title: selectionTitle(route.params, lists),
++                                    headerTitle: <TaskFilter />,
++                                    headerStart: (
++                                        <>
++                                            <GtkButton
++                                                iconName="list-add-symbolic"
++                                                tooltipText="New Task (Ctrl+N)"
++                                                actionName="win.new"
++                                            />
++                                            <SearchButton />
++                                        </>
++                                    ),
++                                    headerEnd: <MainMenu />,
++                                })}
++                            />
++                            <Split.Screen
++                                name="Task"
++                                component={TaskScreen}
++                                options={({ route }) => ({
++                                    headerTitle: <TaskTitle id={route.params.id} />,
++                                    headerEnd: <TaskButtons id={route.params.id} />,
++                                })}
++                            />
++                        </Split.Navigator>
++                    </NavigationContainer>
++                </AdwToastOverlay>
++                <Dialogs />
++            </AdwApplicationWindow>
++        </ToastProvider>
+```
 
-```diff
-     moveToTrash: (id: string) => void;
+Wrap `AdwApplicationWindow` in `<ToastProvider overlayRef={toastOverlayRef}>`. Inside the window, wrap the existing `NavigationContainer` in `<AdwToastOverlay ref={toastOverlayRef}>`. Keep `<Dialogs />` after that overlay, inside the window.
+
+The provider shares this overlay with `useToast`, including calls from window actions and shortcuts. See the [components guide](/guide/components) for the toast API.
+
+## Extend the persisted task actions
+
+Add the two transitions to `TasksSlice` in `src/store/tasks.ts`:
+
+```diff [src/store/tasks.ts]
+@@ -12,0 +13,2 @@
 +    restore: (id: string) => void;
 +    deleteForever: (id: string) => void;
 ```
-
-```diff
-     moveToTrash: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: true }) })),
+```diff [src/store/tasks.ts]
+@@ -52,0 +53,2 @@
 +    restore: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: false }) })),
 +    deleteForever: (id) => set((state) => ({ tasks: state.tasks.filter((task) => task.id !== id) })),
 ```
 
-Moving and restoring change the persisted `deleted` flag. Permanent deletion removes the task from the same persisted array.
+Permanent deletion leaves gaps in the surviving positions. Keep additions at the end of the stored manual order by changing `addTask` in the same file:
+
+```diff [src/store/tasks.ts]
+@@ -38 +38 @@
+-                    position: state.tasks.length,
++                    position: (state.tasks.at(-1)?.position ?? -1) + 1,
+```
+
+The array retains manual order: deletion removes entries, and new tasks append after its final position. An empty array starts at zero.
 
 ## Model the confirmation
 
-The dialog state must carry the task whenever a permanent-delete dialog is open. Replace the string-only dialog model in `src/types.ts`:
+Replace the dialog types in `src/types.ts`:
 
-```ts
-export type DialogKind = "none" | "about" | "shortcuts" | "new-list";
-
-export type DialogState = { kind: DialogKind } | { kind: "delete-task"; task: Task };
+```diff [src/types.ts]
+@@ -27 +27,3 @@
+-export type DialogKind = "none" | "about" | "shortcuts";
++export type DialogKind = "none" | "about" | "shortcuts" | "new-list";
++
++export type DialogState = { kind: DialogKind } | { kind: "delete-task"; task: Task };
 ```
 
-This shape keeps the task on the only dialog state that needs it, without a nullable fallback.
+Update the type import and dialog fields in `src/store/ui.ts`:
 
-Update the UI slice in `src/store/ui.ts`:
-
-```diff
+```diff [src/store/ui.ts]
+@@ -2 +2 @@
 -import type { DialogKind, Filter } from "../types.js";
 +import type { DialogKind, DialogState, Filter, Task } from "../types.js";
-
+@@ -6 +6 @@
 -    dialog: DialogKind;
 +    dialog: DialogState;
-     showDialog: (dialog: DialogKind) => void;
+@@ -7,0 +8 @@
 +    askDeleteTask: (task: Task) => void;
-
+@@ -20,2 +21,3 @@
 -    dialog: "none",
-+    dialog: { kind: "none" },
 -    showDialog: (dialog) => set({ dialog }),
++    dialog: { kind: "none" },
 +    showDialog: (kind) => set({ dialog: { kind } }),
 +    askDeleteTask: (task) => set({ dialog: { kind: "delete-task", task } }),
 ```
 
-This shape makes the invalid state—an open confirmation with no task—impossible.
+Add this helper to `src/navigation.ts` so deleting the current task also leaves its editor:
 
-Deleting an open task must also remove its editor. Add this helper to `src/navigation.ts`:
-
-```ts
-export const closeTaskIfOpen = (id: string): void => {
-    if (openTaskId() === id) navigationRef.goBack();
-};
+```diff [src/navigation.ts]
+@@ -46,0 +47,4 @@
++
++export const closeTaskIfOpen = (id: string): void => {
++    if (openTaskId() === id) navigationRef.goBack();
++};
 ```
 
 Create `src/components/delete-confirmation.tsx`:
 
-```tsx
+```tsx [src/components/delete-confirmation.tsx]
 import * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { closeTaskIfOpen } from "../navigation.js";
@@ -149,67 +263,13 @@ export const DeleteConfirmation = ({ task }: { task: Task }) => {
 };
 ```
 
-The response IDs keep the native dialog and the handler aligned. Cancel is both the default and close response, while Delete uses Adwaita's destructive appearance.
-
-## Route every delete through one hook
-
-Add the shared command to `src/components/dialogs.tsx`:
-
-```tsx
-import { useToast } from "@gtkx/components";
-import { closeTaskIfOpen } from "../navigation.js";
-import type { Task } from "../types.js";
-
-export const useRequestDeleteTask = (): ((task: Task) => void) => {
-    const { show } = useToast();
-
-    return (task) => {
-        const { moveToTrash, restore, askDeleteTask } = useStore.getState();
-        if (task.deleted) {
-            askDeleteTask(task);
-            return;
-        }
-        closeTaskIfOpen(task.id);
-        moveToTrash(task.id);
-        show({
-            title: `“${task.title}” moved to Trash`,
-            buttonLabel: "Undo",
-            onButtonClicked: () => restore(task.id),
-        });
-    };
-};
-```
-
-Use this hook in `TaskRow`, `TaskButtons`, and `AppShortcuts`, then replace each direct `moveToTrash` call with `requestDeleteTask(task)`. The handler reads current store actions when it runs and uses the one overlay shared by the window.
-
-Mount the confirmation from the same file. `Dialogs` now switches on `dialog.kind`:
-
-```tsx
-export const Dialogs = () => {
-    const dialog = useStore((state) => state.dialog);
-    const showDialog = useStore((state) => state.showDialog);
-    const close = (): void => showDialog("none");
-
-    switch (dialog.kind) {
-        case "about":
-            return <About onClose={close} />;
-        case "shortcuts":
-            return <Shortcuts onClose={close} />;
-        case "new-list":
-            return <NewListDialog />;
-        case "delete-task":
-            return <DeleteConfirmation task={dialog.task} />;
-        case "none":
-            return null;
-    }
-};
-```
+Cancel is both the default and close response. Delete uses Adwaita's destructive appearance and removes the task only after confirmation.
 
 ## Add the New List dialog
 
-The New List dialog owns its unfinished name and color. Create `src/components/new-list-dialog.tsx`:
+Create `src/components/new-list-dialog.tsx`:
 
-```tsx
+```tsx [src/components/new-list-dialog.tsx]
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
@@ -274,38 +334,150 @@ export const NewListDialog = () => {
 };
 ```
 
-The Add response remains disabled until the trimmed name has content. The store can now trust its caller, so simplify `addList` in `src/store/lists.ts`:
+The native Add response is disabled until the name has content. Its handler trims the accepted name, so `addList` in `src/store/lists.ts` can use it directly:
 
-```ts
-addList: (name, color) =>
-    set((state) => ({ lists: [...state.lists, { id: crypto.randomUUID(), name, color }] })),
+```diff [src/store/lists.ts]
+@@ -13,5 +13,2 @@
+-    addList: (name, color) => {
+-        const trimmed = name.trim();
+-        if (trimmed === "") return;
+-        set((state) => ({ lists: [...state.lists, { id: crypto.randomUUID(), name: trimmed, color }] }));
+-    },
++    addList: (name, color) =>
++        set((state) => ({ lists: [...state.lists, { id: crypto.randomUUID(), name, color }] })),
 ```
 
-Add the `new-list` case shown above, then open it from the Lists screen header in `src/components/window.tsx`:
+## Route every delete through one hook
 
-```tsx
-<Split.Screen
-    name="Lists"
-    component={Sidebar}
-    options={{
-        title: "Tasks",
-        headerStart: (
-            <GtkButton
-                iconName="list-add-symbolic"
-                tooltipText="New List"
-                onClicked={() => showDialog("new-list")}
-            />
-        ),
-    }}
-/>
+Replace `src/components/dialogs.tsx` with the shared deletion hook and dialog selection:
+
+```tsx [src/components/dialogs.tsx]
+import { useToast } from "@gtkx/components/adw";
+import { useStore } from "../store/index.js";
+import { About } from "./about.js";
+import { DeleteConfirmation } from "./delete-confirmation.js";
+import { NewListDialog } from "./new-list-dialog.js";
+import { Shortcuts } from "./shortcuts.js";
+import { closeTaskIfOpen } from "../navigation.js";
+import type { Task } from "../types.js";
+
+export const useRequestDeleteTask = (): ((task: Task) => void) => {
+    const { show } = useToast();
+
+    return (task) => {
+        const { moveToTrash, restore, askDeleteTask } = useStore.getState();
+        if (task.deleted) {
+            askDeleteTask(task);
+            return;
+        }
+        closeTaskIfOpen(task.id);
+        moveToTrash(task.id);
+        show({
+            useMarkup: false,
+            title: `“${task.title}” moved to Trash`,
+            buttonLabel: "Undo",
+            onButtonClicked: () => restore(task.id),
+        });
+    };
+};
+
+export const Dialogs = () => {
+    const dialog = useStore((state) => state.dialog);
+    const showDialog = useStore((state) => state.showDialog);
+    const close = (): void => showDialog("none");
+
+    switch (dialog.kind) {
+        case "about":
+            return <About onClose={close} />;
+        case "shortcuts":
+            return <Shortcuts onClose={close} />;
+        case "new-list":
+            return <NewListDialog />;
+        case "delete-task":
+            return <DeleteConfirmation task={dialog.task} />;
+        case "none":
+            return null;
+    }
+};
+```
+
+`useMarkup: false` keeps a task title literal, including ampersands and angle brackets. Undo restores the persisted task; the confirmation body also uses plain text by default.
+
+In `TaskRow` and `TaskButtons`, import `useRequestDeleteTask` from `./dialogs.js`, replace their `moveToTrash` store subscription with `const requestDeleteTask = useRequestDeleteTask()`, and call `requestDeleteTask(task)` from the delete buttons.
+
+In `src/components/app-shortcuts.tsx`, import the same hook and call it inside `AppShortcuts`. Replace `deleteOpenTask` with a handler that reads the current task:
+
+```diff [src/components/app-shortcuts.tsx]
+@@ -0,0 +1 @@
++import { useRequestDeleteTask } from "./dialogs.js";
+@@ -13,0 +15 @@
++    const requestDeleteTask = useRequestDeleteTask();
+@@ -21,3 +23,3 @@
+-        const id = openTaskId();
+-        if (id === null) return false;
+-        useStore.getState().moveToTrash(id);
++        const task = useStore.getState().tasks.find((candidate) => candidate.id === openTaskId());
++        if (!task) return false;
++        requestDeleteTask(task);
+```
+
+In `Window`, read `const showDialog = useStore((state) => state.showDialog)` and update the Lists screen header:
+
+```diff [src/components/window.tsx]
+@@ -31,0 +32 @@
++    const showDialog = useStore((state) => state.showDialog);
+@@ -64 +65,14 @@
+-                            <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
++                            <Split.Screen
++                                name="Lists"
++                                component={Sidebar}
++                                options={{
++                                    title: "Tasks",
++                                    headerStart: (
++                                        <GtkButton
++                                            iconName="list-add-symbolic"
++                                            tooltipText="New List"
++                                            onClicked={() => showDialog("new-list")}
++                                        />
++                                    ),
++                                }}
++                            />
+```
+
+Connect the shared delete handler in `src/components/task-row.tsx`:
+
+```diff [src/components/task-row.tsx]
+@@ -0,0 +1 @@
++import { useRequestDeleteTask } from "./dialogs.js";
+@@ -14 +15 @@
+-    const moveToTrash = useStore((state) => state.moveToTrash);
++    const requestDeleteTask = useRequestDeleteTask();
+@@ -48 +49 @@
+-                        onClicked={() => moveToTrash(task.id)}
++                        onClicked={() => requestDeleteTask(task)}
+```
+
+Connect the shared delete handler in `src/components/task-buttons.tsx`:
+
+```diff [src/components/task-buttons.tsx]
+@@ -0,0 +1 @@
++import { useRequestDeleteTask } from "./dialogs.js";
+@@ -6 +7 @@
+-    const moveToTrash = useStore((state) => state.moveToTrash);
++    const requestDeleteTask = useRequestDeleteTask();
+@@ -19 +20 @@
+-            <GtkButton iconName="user-trash-symbolic" tooltipText="Delete (Delete)" onClicked={() => moveToTrash(task.id)} />
++            <GtkButton iconName="user-trash-symbolic" tooltipText="Delete (Delete)" onClicked={() => requestDeleteTask(task)} />
 ```
 
 ## Run it
 
-Delete a task from a row, its editor, and the Delete key. Each route closes an open editor, moves the task to Trash, and offers Undo. Deleting from Trash opens the confirmation; Cancel and Escape preserve the task, while Delete removes it permanently.
+Delete from a row, its editor, and the Delete key. Each path offers Undo and closes the editor when needed. Try a title containing `&` or `<b>`: the toast preserves the text.
 
-Open the New List dialog. Add stays disabled for an empty or whitespace-only name. Enter a name, choose a swatch, and press Return. The list appears in the sidebar and is saved with the other user data.
+Open Trash and delete again. Cancel and Escape preserve the task; Delete removes it permanently. Add another task afterward and check that it appears last in manual order.
+
+Open New List. Add stays disabled for an empty or whitespace-only name. Enter a name, choose a color, and press Return; the saved list appears in the sidebar.
 
 ## Next
 
-[Preferences and the System Theme](/tutorial/preferences-and-theming) adds settings that survive the window and can follow the desktop's color scheme.
+[Add Preferences](/tutorial/preferences-and-theming) stores application choices in GSettings.

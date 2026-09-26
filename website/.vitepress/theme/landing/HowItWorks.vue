@@ -6,15 +6,15 @@ import CodeBlock from "../components/CodeBlock.vue";
 <template>
   <section id="how" class="how">
     <div class="how__head section-head">
-      <h2 class="section-title">GNOME apps in JSX, rendered as GObjects</h2>
+      <h2 class="section-title">From JSX to a native window</h2>
     </div>
 
     <div class="how__step">
       <div class="how__text">
-        <h3 class="how__name">Start with the GNOME platform</h3>
+        <h3 class="how__name">Choose your native libraries</h3>
         <p class="how__body">
-          libadwaita over GTK4 is the foundation. Name any additional GIRs and codegen reads them off your
-          system, emitting typed bindings for exactly those namespaces too.
+          Adwaita and GTK are included by default. Add libraries such as WebKitGTK to your
+          configuration, then generate their bindings from the installed introspection files.
         </p>
       </div>
       <CodeBlock title="gtkx.config.ts" :snippet="snippets.config" />
@@ -22,10 +22,10 @@ import CodeBlock from "../components/CodeBlock.vue";
 
     <div class="how__step  how__step--rev">
       <div class="how__text">
-        <h3 class="how__name">Constructible GObjects become JSX elements</h3>
+        <h3 class="how__name">Describe the interface</h3>
         <p class="how__body">
-          Codegen emits element types for supported GObject classes. Nested GObjects go in props,
-          so a header bar or an adjustment is an element too, not an object you build on the side.
+          Use JSX for widgets and the objects they depend on. Props configure them,
+          and signal handlers connect user input to your application state.
         </p>
       </div>
       <CodeBlock title="src/app.tsx" :snippet="snippets.app" />
@@ -33,12 +33,13 @@ import CodeBlock from "../components/CodeBlock.vue";
 
     <div class="how__step">
       <div class="how__text">
-        <h3 class="how__name">Vanilla Node, real npm</h3>
+        <h3 class="how__name">Use Node.js and npm</h3>
         <p class="how__body">
-          Your app is a plain Node program, with Node APIs and compatible npm packages available to it.
+          Read files, make network requests, and use libraries such as Zustand and Zod.
+          Your app runs on Node.js; packages that require a browser DOM need a native alternative.
         </p>
       </div>
-      <CodeBlock title="package.json" :snippet="snippets.ecosystem" />
+      <CodeBlock title="Terminal" :snippet="snippets.ecosystem" />
     </div>
   </section>
 </template>

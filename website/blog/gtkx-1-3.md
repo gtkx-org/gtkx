@@ -1,6 +1,6 @@
 ---
 title: "GTKX 1.3: Introducing @gtkx/animated"
-description: "GTKX 1.3 adds @gtkx/animated, React Spring's engine with a GTK target, and a per-widget style prop. Springs are written straight onto widget properties on every frame of the GTK frame clock, without a React render, and reach color, background and border radius through a rule scoped to the widget alone."
+description: "GTKX 1.3 adds React Spring animations, widget styles, a Cairo package, and more GObject subclassing support."
 image: /animations-demo.png
 ---
 
@@ -10,9 +10,9 @@ image: /animations-demo.png
 
 GTKX 1.3 is out. The headline is [`@gtkx/animated`](/guide/animations), React Spring's engine with a GTK target, alongside a per-widget [`style`](/guide/css) prop that springs can drive, a new [`@gtkx/cairo`](/guide/cairo) package and a much larger [`registerClass`](/guide/subclassing). Read the [`changelog`](https://github.com/gtkx-org/gtkx/releases/tag/v1.3.0) for the full list of changes.
 
-<video src="/animations-demo.webm" poster="/animations-demo.webp" width="1120" height="480" autoplay loop muted playsinline controls preload="metadata" aria-label="Screen recording of the GTKX animations example. Each page in the sidebar drives a different React Spring primitive against real GTK widgets: a card fades and slides between two targets, one spring fills a progress bar while counting up a label, a column of level bars and a staggered trail of labels animate together, list items fade in and out as they mount and unmount, a panel and its items sequence in turn, a level bar is started and paused by hand, a label slides and tilts between the corners of a fixed layout, and a notification card animates its background, corner radius and shadow through the style prop while its text color crosses to white."></video>
+<video src="/animations-demo.webm" poster="/animations-demo.webp" width="1120" height="480" autoplay loop muted playsinline controls preload="metadata" aria-label="GTKX animation demos showing fades, slides, progress, list transitions, transforms, and animated colors. Sidebar pages demonstrate springs, trails, chains, and imperative controls."></video>
 
-*The [`animations`](https://github.com/gtkx-org/gtkx/tree/main/examples/animations) example, one page per primitive, driving real GTK widgets.*
+*The [`animations`](https://github.com/gtkx-org/gtkx/tree/v1.3.0/examples/animations) example, one page per primitive, driving real GTK widgets.*
 
 Until now, animating anything in GTKX meant reaching for GTK's own machinery: an `Adw.TimedAnimation`, a `Gtk.Revealer`, a tick callback and some arithmetic. All of it works, and none of it composes with React. A revealer animates the one thing a revealer animates. A tick callback that moves a margin has to be started, stopped, and torn down by hand, and it has no idea that the component owning it has just re-rendered with a different target.
 
@@ -93,7 +93,7 @@ Some of what you want to animate is not a GObject property at all. There is no `
 <GtkBox style={{ background: "var(--card-bg-color)", borderRadius: 12, padding: 18 }} />;
 ```
 
-GTK4 has no inline styles, so the object compiles to one rule in a `Gtk.CssProvider` that belongs to that widget alone, at a priority above `cssClasses`. Changing the object rewrites that one rule rather than minting another, which is what makes it safe to drive from a spring at sixty frames a second:
+In 1.3, the style object compiles to a rule in a widget-specific `Gtk.CssProvider`, above `cssClasses` in priority. A spring updates that rule on each frame. Profile applications with many animated styles, since those writes still require GTK to recalculate styling:
 
 ```tsx
 import { animated, useSpring } from "@gtkx/animated";

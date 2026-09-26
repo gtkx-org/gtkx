@@ -82,10 +82,13 @@ function publishableName(entry: string): string | undefined {
     return typeof manifest.name === "string" ? manifest.name : undefined;
 }
 
-function publishablePackageNames(): string[] {
+function publishablePackages(): { name: string; directory: string }[] {
     return readdirSync(PACKAGES_DIR)
-        .map((entry) => publishableName(entry))
-        .filter((name): name is string => name !== undefined);
+        .flatMap((entry) => {
+            const name = publishableName(entry);
+
+            return name === undefined ? [] : [{ name, directory: join(PACKAGES_DIR, entry) }];
+        });
 }
 
 async function tarballUrl(name: string): Promise<string> {
@@ -109,7 +112,7 @@ async function tarballUrl(name: string): Promise<string> {
 async function inspectTarball(
     name: string,
     inspectDir: string,
-): Promise<{ entries: string[]; manifest: PackageManifest; maps: Record<string, string> }> {
+): Promise<{ entries: string[]; manifest: PackageManifest; maps: Record<string, string>; readme: string }> {
     const response = await fetch(await tarballUrl(name));
 
     if (!response.ok) {
@@ -140,18 +143,24 @@ async function inspectTarball(
         }
     }
 
-    return { entries, manifest, maps };
+    const readme = await runCapture("tar", ["-xzOf", tarballPath, "package/README.md"]);
+
+    return { entries, manifest, maps, readme };
 }
 
 async function verifyPublishedShapes(inspectDir: string): Promise<void> {
-    const names = publishablePackageNames();
+    const packages = publishablePackages();
 
-    for (const name of names) {
-        const { entries, manifest, maps } = await inspectTarball(name, inspectDir);
+    for (const { name, directory } of packages) {
+        const { entries, manifest, maps, readme } = await inspectTarball(name, inspectDir);
         assertPublishedShape({ name, entries, manifest, maps });
+
+        if (readme !== readFileSync(join(directory, "README.md"), "utf8")) {
+            throw new Error(`${name} did not publish its package README`);
+        }
     }
 
-    console.log(`release-e2e: verified the published shape of ${String(names.length)} packages`);
+    console.log(`release-e2e: verified the published shape and README of ${String(packages.length)} packages`);
 }
 
 async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, variant: ConsumerVariant): Promise<void> {

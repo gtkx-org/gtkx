@@ -45,7 +45,7 @@ const MirrorWindow = ({ open }: { open: boolean }) =>
     ) : null;
 ```
 
-A window element presents itself on mount and destroys the window on unmount. `AdwApplicationWindow` registers with the application ancestor it finds in the React tree, normally `AdwApplication`, and throws when there is none. `AdwToolbarView` and `AdwHeaderBar` give the secondary window the same GNOME window structure as the main one. Relationships between top-level windows are expressed with `transientFor`, which the underlying `GtkWindow` defaults to the nearest window ancestor in the React tree; pass it explicitly to point at another window, or pass `null` for a fully independent one.
+A window element presents itself on mount and destroys the window on unmount. `AdwApplicationWindow` registers with the application ancestor it finds in the React tree, normally `AdwApplication`, and throws when there is none. `AdwToolbarView` and `AdwHeaderBar` give the secondary window a header and toolbar layout. Relationships between top-level windows are expressed with `transientFor`, which the underlying `GtkWindow` defaults to the nearest window ancestor in the React tree; pass it explicitly to point at another window, or pass `null` for a fully independent one.
 
 Wire `onCloseRequest` to clear the state that mounted a secondary window, so React stays in charge of when it goes away.
 

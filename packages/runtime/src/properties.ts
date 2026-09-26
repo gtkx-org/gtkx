@@ -459,17 +459,16 @@ function coerceConstructPropertyValue(gtype: bigint, propertyName: string, value
 }
 
 /**
- * Fits a number to what a GObject property accepts, the way an animation writing a value on every
- * frame needs: a fractional number headed for a property that holds whole numbers, such as a
- * `gint`, an enum, or flags, is truncated toward zero, and a number outside the range the
- * property's `GObject.ParamSpec` allows is clamped to it, so the write that follows never trips
- * GObject's range check. Anything that is not a finite number, a number the property cannot hold
- * at all, and a name the object installs no property under come back unchanged.
+ * Coerces a finite number to a native property's accepted range. Integer, enum, and flag values
+ * are truncated toward zero, then clamped to the `GObject.ParamSpec` range.
  *
- * @param obj The object the value is about to be written to.
- * @param propertyName The property name, dashed or camelCased.
- * @param value The value about to be written.
- * @returns The value as the property accepts it.
+ * Non-finite and nonnumeric values, values the property cannot hold, and values for unknown
+ * properties are returned unchanged.
+ *
+ * @param obj Object whose property will be written.
+ * @param propertyName Dashed or camelCased property name.
+ * @param value Value to coerce.
+ * @returns The coerced value, or the original value when coercion does not apply.
  */
 function coerceObjectProperty(obj: object, propertyName: string, value: unknown): unknown {
     if (typeof value !== "number") {

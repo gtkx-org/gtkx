@@ -482,35 +482,35 @@ const packNode = (node: VariantTypeNode, value: unknown): GLib.Variant => {
 };
 
 /**
- * Packs a JavaScript value into the `GLib.Variant` a GVariant type string describes, building the
- * nested arrays, dictionaries, tuples and maybes the type calls for. A type string given as a
- * literal also types `value`, so `"as"` takes an array of strings, `"a{sv}"` a record of variants,
- * `"(si)"` a string and a number pair, a 64-bit type a `bigint`, and `"ay"` a `Uint8Array` or an
- * array of byte values.
- * @param typeString GVariant type of the variant to build, such as `"a{sv}"`.
- * @param value Value to pack, shaped the way `typeString` describes.
+ * Packs a JavaScript value into a `GLib.Variant` described by a GVariant type string.
+ * Literal type strings also determine the TypeScript input type: `"as"` takes strings,
+ * `"a{sv}"` a record of variants, `"(si)"` a string/number pair, 64-bit types a `bigint`, and
+ * `"ay"` a `Uint8Array` or byte array. Nested arrays, dictionaries, tuples, and maybes are supported.
+ *
+ * @param typeString One complete GVariant type, such as `"a{sv}"`.
+ * @param value Value matching that type.
  * @returns The packed variant.
- * @throws {Error} When the type string is not one complete GVariant type, when a value packed as
- * an object path or a type signature is not a valid one, or when a byte array is packed from
- * anything but a `Uint8Array` or an array of byte values.
+ * @throws {Error} For invalid types, object paths, or signatures, or byte-array inputs other
+ * than a `Uint8Array` or an array of byte values.
  */
 const toVariant = <S extends string>(typeString: S, value: VariantInput<S>): GLib.Variant =>
     packNode(parseVariantType(typeString), value);
 
 /**
- * Unpacks a `GLib.Variant` into the JavaScript value its GVariant type describes, the inverse of
- * {@link toVariant}. A dictionary keyed by strings unpacks to a record and one keyed by anything
- * else to a `Map`, an array to an array, a byte array (`ay`) to a `Uint8Array`, a tuple
- * to an array of its members, a maybe to its value or `null`, and a nested variant to the
- * `GLib.Variant` itself unless `recursive` is set, in which case it is unwrapped all the way down.
+ * Unpacks a `GLib.Variant`, reversing {@link toVariant}.
  *
- * The type string is optional: without one the variant's own type is read, and the result is
- * `unknown`. With one given as a literal, the result is typed from it.
- * @param typeString GVariant type the variant holds, such as `"a{sv}"`.
- * @param variant Variant to read, which has to hold that type.
+ * String-keyed dictionaries become records; other dictionaries become `Map`s. Arrays and tuples
+ * become arrays, `ay` becomes `Uint8Array`, and maybes become their value or `null`. Nested
+ * variants stay as `GLib.Variant` unless `recursive` is set, which unwraps them fully.
+ *
+ * A literal `typeString` determines the return type. When omitted, the variant's own type is
+ * used and the result is `unknown`.
+ *
+ * @param typeString One complete GVariant type matching the variant.
+ * @param variant Variant to unpack.
  * @param options Whether to unwrap nested variants recursively.
  * @returns The unpacked value.
- * @throws {Error} When the type string is not one complete GVariant type.
+ * @throws {Error} If the type string is not one complete GVariant type.
  */
 function fromVariant<S extends string>(typeString: S, variant: GLib.Variant): VariantValue<S>;
 

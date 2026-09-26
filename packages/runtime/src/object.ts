@@ -132,27 +132,23 @@ function constructPropertyForEntry(
 }
 
 /**
- * Constructs a new GObject of the given type, setting the supplied construct
- * properties, and binds `wrapper` to it. A property the wrapper's class declares
- * through `registerConstructProperties` is marshalled through its descriptor; any
- * other one is marshalled through the `GObject.ParamSpec` the type installs under
- * that name, dashed or camelCased, and is skipped when the type installs none.
- * A value that ParamSpec would refuse throws before GObject sees it: a `TypeError`
- * for a read-only property and for a value of a type the property cannot hold, and
- * a `RangeError` for a value the ParamSpec rejects. Properties whose value is
- * `undefined` are skipped. A type registered with
- * `registerClass` binds the wrapper before its `constructed` slot runs, so an
- * override of that slot already sees a usable instance.
- * When construction returns an object that already has a wrapper — it reached
- * JavaScript and was wrapped before `g_object_new` returned, for example a
- * `Gtk.Window` observed through the toplevels list — that existing wrapper is
- * returned instead of binding `wrapper`, so both references stay one object.
+ * Constructs a GObject with the supplied properties and binds its JavaScript wrapper.
  *
- * @param gtype The GType of the object to construct.
- * @param props Property names mapped to the values to set them to.
- * @param wrapper The wrapper instance to bind to the new object.
- * @returns The wrapper bound to the constructed object: `wrapper` itself, or
- * the wrapper the object already had.
+ * @remarks
+ * Properties declared through `registerConstructProperties` use their descriptors. Other
+ * properties use the type's `GObject.ParamSpec`, accepting dashed or camelCased names. Unknown
+ * properties and `undefined` values are skipped.
+ *
+ * For types created with `registerClass`, the wrapper is bound before `constructed` runs. If
+ * construction has already exposed the object to JavaScript, its existing wrapper is reused
+ * instead, preserving identity.
+ *
+ * @param gtype GType to construct.
+ * @param props Construct property names and values.
+ * @param wrapper Wrapper to bind unless the object already has one.
+ * @returns The supplied wrapper or the object's existing wrapper.
+ * @throws {TypeError} When a ParamSpec-backed property is read-only or cannot hold the value's type.
+ * @throws {RangeError} When a ParamSpec rejects the value.
  */
 function newObjectWithProperties<T extends object>(gtype: bigint, props: object, wrapper: T): T {
     if (!typeIsA(gtype, TYPE_OBJECT)) {

@@ -1,0 +1,90 @@
+[
+    {
+        "slug": "your-first-window",
+        "title": "Create a Window"
+    },
+    {
+        "slug": "a-list-of-tasks",
+        "title": "Display Tasks"
+    },
+    {
+        "slug": "the-task-store",
+        "title": "Add Tasks",
+        "dependencies": [
+            "zustand"
+        ]
+    },
+    {
+        "slug": "completing-and-deleting",
+        "title": "Complete, Star, and Delete Tasks"
+    },
+    {
+        "slug": "saving-to-disk",
+        "title": "Save Tasks"
+    },
+    {
+        "slug": "lists-and-the-sidebar",
+        "title": "Add Lists and a Sidebar",
+        "dependencies": [
+            "@gtkx/navigation",
+            "@gtkx/css"
+        ]
+    },
+    {
+        "slug": "an-adaptive-layout",
+        "title": "Adapt the Layout"
+    },
+    {
+        "slug": "smart-views-and-search",
+        "title": "Filter and Search Tasks"
+    },
+    {
+        "slug": "the-task-editor",
+        "title": "Edit Tasks",
+        "dependencies": [
+            "@gtkx/forms"
+        ]
+    },
+    {
+        "slug": "actions-menus-shortcuts",
+        "title": "Add Menus and Shortcuts"
+    },
+    {
+        "slug": "trash-and-toasts",
+        "title": "Add Undo and Delete Confirmation",
+        "dependencies": [
+            "@gtkx/components"
+        ]
+    },
+    {
+        "slug": "preferences-and-theming",
+        "title": "Add Preferences"
+    },
+    {
+        "slug": "drag-to-reorder",
+        "title": "Reorder Tasks"
+    },
+    {
+        "slug": "reminders",
+        "title": "Send Reminders"
+    },
+    {
+        "slug": "testing",
+        "title": "Test the App"
+    },
+    {
+        "slug": "packaging",
+        "title": "Package the App"
+    },
+    {
+        "slug": "internationalization",
+        "title": "Translate the App",
+        "dependencies": [
+            "@gtkx/i18n"
+        ]
+    },
+    {
+        "slug": "flatpak",
+        "title": "Prepare for Flathub"
+    }
+]

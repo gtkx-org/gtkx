@@ -98,12 +98,16 @@ type ValueGetter = (value: ExternalObject<Handle>) => unknown;
 type ValueWriter = ValueType["set"];
 type ValueNarrower = (jsValue: unknown) => unknown;
 /**
- * JavaScript value a `GObject.Value` can be built from without being told which GType to hold, for the
- * parameters that take one. A string holds `gchararray`, a boolean `gboolean`, an integer within `gint`
- * range `gint` and any other number `gdouble`, a `bigint` `gint64` or `guint64` past its range, an array
- * of strings `GStrv`, a wrapper instance the GType it carries, and `null` a NULL `gpointer`, which is
- * what GJS infers for it and which few callees accept. Reaching a GType inference cannot name, such as
- * `guchar` or an enumeration, takes an explicitly initialized `GObject.Value` instead.
+ * Values accepted when a `GObject.Value` parameter infers its GType:
+ *
+ * - `string`: `gchararray`; `boolean`: `gboolean`.
+ * - `number`: `gint` for integers in range, otherwise `gdouble`.
+ * - `bigint`: `gint64`, or `guint64` above its range.
+ * - `string[]`: `GStrv`; wrapper instance: its registered GType.
+ * - `null`: NULL `gpointer`, matching GJS inference; few callees accept it.
+ *
+ * Use an explicitly initialized `GObject.Value` for types inference cannot select, such as
+ * `guchar` or an enumeration.
  */
 type JsValue = string | number | bigint | boolean | string[] | TypedClass | null;
 

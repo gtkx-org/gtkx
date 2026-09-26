@@ -8,17 +8,17 @@ description: "Choose an Adwaita navigator and connect its pages, headers, and na
 `@gtkx/navigation` renders [React Navigation](https://reactnavigation.org) with Adwaita widgets. Install it alongside GTKX:
 
 ```bash
-npm install @gtkx/navigation
+npm install @gtkx/navigation@1.6.0
 ```
 
 Choose a navigator for the layout:
 
 | Navigator | Use it for | Native surface |
 | --- | --- | --- |
-| Stack | Moving through a sequence of pages | `AdwNavigationView` |
-| Tabs | Switching between a few peer sections | `AdwViewStack` and a view switcher |
-| Drawer | Choosing an application section from a sidebar | `AdwOverlaySplitView` |
-| Split view | Keeping a selection beside its detail pages | `AdwNavigationSplitView` |
+| [Stack](#stack-navigator) | Moving through a sequence of pages | `AdwNavigationView` |
+| [Tabs](#tab-navigator) | Switching between a few peer sections | `AdwViewStack` and a view switcher |
+| [Drawer](#drawer-navigator) | Choosing an application section from a sidebar | `AdwOverlaySplitView` |
+| [Split view](#split-view-navigator) | Keeping a selection beside its detail pages | `AdwNavigationSplitView` |
 
 Scaffolded 1.6 applications enable [`v2DefaultLibraries`](/guide/configuration-and-codegen#future-flags), so they already generate the Adwaita bindings these navigators need. A legacy GTK-only project must bind `Adw-1` first. The package re-exports React Navigation's core hooks, actions and types. Use its [navigation documentation](https://reactnavigation.org/docs/navigation-object/) for those shared concepts and the [GTKX reference](/reference/@gtkx/navigation/) for navigator options.
 
@@ -48,7 +48,7 @@ State restoration and navigation outside the tree use React Navigation's [contai
 
 ## Stack navigator
 
-`createStackNavigator` renders its screens as pages of an `AdwNavigationView`, so pushing and popping animate the way native Adwaita pages do. Type the param list once, and every screen, `navigate` call, and `route.params` read is checked against it:
+`createStackNavigator` renders an `AdwNavigationView`. Define the route parameters to type-check screens, `navigate` calls, and `route.params`:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
@@ -88,7 +88,7 @@ Pushes and pops use Adwaita transitions. Replacing or resetting the stack switch
 
 ### Headers
 
-Every page gets an `AdwHeaderBar` above its content, with the `title` option, which defaults to the route name, and Adwaita's back button. The header options shape it:
+Each page gets an `AdwHeaderBar` with a title and native back button. The title defaults to the route name. Add header actions through screen options:
 
 ```tsx
 import { GtkButton } from "@gtkx/jsx/gtk";
@@ -111,7 +111,7 @@ Set shared defaults through the navigator's `screenOptions`; a screen's `options
 
 The header back button, Escape, Alt+Left, mouse back button and swipe gestures use the native Adwaita behavior. Set `popOnEscape={false}` to disable the navigator's Escape handling, `canPop: false` to prevent native back navigation, or `animation: "none"` to skip a page's transition. `headerBackVisible: false` hides only the header button.
 
-A native pop dispatches `StackActions.pop()` through the navigator, so it takes the same route as `navigation.goBack()`, and `usePreventRemove` sees it. When a listener prevents the removal, the page slides back into place and the callback runs with the action that was attempted:
+Native back controls dispatch `StackActions.pop()`. Use `usePreventRemove` to guard against losing edits; if it prevents removal, the page returns to its position and the callback receives the attempted action:
 
 ```tsx
 import type { NavigationAction } from "@gtkx/navigation";
@@ -166,7 +166,7 @@ Stack screens emit `transitionStart` and `transitionEnd` from their native page 
 
 ## Tab navigator
 
-`createTabNavigator` renders its screens as pages of an `AdwViewStack`, switched from an `AdwViewSwitcher`. With the default `tabBarPosition` of `"top"` the switcher is the header bar's title widget; with `"bottom"` it is an `AdwViewSwitcherBar` below the content:
+`createTabNavigator` renders an `AdwViewStack`. The switcher occupies the header title by default; `tabBarPosition="bottom"` puts an `AdwViewSwitcherBar` below the content:
 
 ```tsx
 import { createTabNavigator } from "@gtkx/navigation";
@@ -199,7 +199,7 @@ User selection emits `tabPress`, which a screen listener can prevent. Programmat
 
 ## Drawer navigator
 
-`createDrawerNavigator` renders its screens beside a sidebar in an `AdwOverlaySplitView`. The sidebar lists the screens, the focused one selected, and the content header bar starts with a button that toggles the sidebar:
+`createDrawerNavigator` uses an `AdwOverlaySplitView`. Its sidebar lists the screens and marks the focused one; a button in the content header toggles the sidebar:
 
 ```tsx
 import { createDrawerNavigator } from "@gtkx/navigation";
@@ -328,7 +328,7 @@ Focus follows the selected content route even when the sidebar remains visible. 
 
 ## Nesting navigators
 
-A navigator is a single widget, so it is a valid screen of another navigator. The usual shape is a drawer or tabs at the root and a stack inside each section. Each navigator draws its own header bar, so set `headerShown: false` on the screen that hosts the nested one, and only the inner bar shows:
+Use a navigator as a screen to nest it, for example a stack inside each drawer section. Set `headerShown: false` on the containing screen so only the inner navigator draws a header:
 
 ```tsx
 import type { NavigatorScreenParams } from "@gtkx/navigation";
@@ -355,7 +355,7 @@ export const App = () => (
 );
 ```
 
-Hiding the drawer's header bar hides its toggle button too. The stack's pages put their own in `headerStart`, dispatching `DrawerActions.toggleDrawer()`, which bubbles up from the stack to the drawer:
+Hiding the drawer header also hides its toggle. Add a button to the inner stack's `headerStart` that dispatches `DrawerActions.toggleDrawer()`:
 
 ```tsx
 import { GtkButton } from "@gtkx/jsx/gtk";

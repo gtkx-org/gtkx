@@ -6,7 +6,7 @@ import Icon from "../components/Icon.vue";
 import IconButton from "../components/IconButton.vue";
 import { featuredVersion } from "../../versioning.js";
 import { useAppearance } from "../composables/use-appearance";
-import { REPO_URL } from "./content";
+import { docsLink, REPO_URL } from "./content";
 
 const { isDark, toggle } = useAppearance();
 const featuredLabel = featuredVersion.label;
@@ -17,7 +17,7 @@ const links = [
     { label: "How it works", href: "#how" },
     { label: "CLI", href: "#cli" },
     { label: "Tutorial", href: "#tutorial" },
-    { label: "Docs", href: "/guide/why-gtkx" },
+    { label: "Docs", href: docsLink("guide/getting-started") },
     { label: "Contributing", href: `/${CONTRIBUTING_ROOT}` },
 ];
 </script>

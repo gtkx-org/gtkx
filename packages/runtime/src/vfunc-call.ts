@@ -189,18 +189,17 @@ function buildParentInvoker(klass: AnyClass, methodName: string): Invoker {
 }
 
 /**
- * Calls the implementation of a virtual function that the parent type of `klass` provides, so an
- * override can chain up to the behavior it replaces. `klass` is the class whose override is
- * running, named lexically rather than taken from `instance`, so each level of a hierarchy reaches
- * exactly one level up. Arguments and the return value follow the same convention the override
- * itself uses: pure out parameters are left out and returned instead, and a slot with several
- * outputs returns them as a tuple. Throws if `klass` was never registered, inherits no such slot,
- * or the parent type leaves the slot empty.
+ * Calls a parent virtual function from an override.
  *
- * @param klass The registered class whose override is chaining up.
- * @param methodName Name of the overridden method, such as `vfuncMeasure`.
- * @param instance The instance the override was invoked on.
- * @param inputs The arguments the override received.
+ * Use the lexical class declaring the override as `klass`, not the instance's runtime class,
+ * so each override advances exactly one level. Arguments follow the override convention:
+ * pure out parameters are omitted and returned instead, with multiple outputs forming a tuple.
+ *
+ * @param klass Registered class whose override is chaining up.
+ * @param methodName Overridden method, such as `vfuncMeasure`.
+ * @param instance Instance passed to the override.
+ * @param inputs Arguments passed to the override.
+ * @throws If `klass` is unregistered, inherits no matching slot, or has an empty parent slot.
  */
 function callParent(klass: AnyClass, methodName: string, instance: object, ...inputs: unknown[]): unknown {
     const invoker = cachedInvoker(parentInvokers, klass, methodName, () => buildParentInvoker(klass, methodName));
@@ -241,22 +240,23 @@ function resolveInstanceType(key: string, instance: object, slot: ResolvedSlot):
 }
 
 /**
- * Calls the implementation of a virtual function a wrapper class or interface declares, backing the
- * `vfunc`-prefixed members the generated bindings emit. The slot is read from the nearest generated
- * wrapper class in the instance's class chain rather than from the instance's own type, so an
- * override reaching it through `super` runs the implementation it replaced instead of re-entering
- * itself. When that wrapper class does not carry the interface the slot belongs to, because a class
- * registered below it adopted the interface, the slot comes from the interface's own default vtable
- * instead, which holds exactly what the adopting class replaced. Arguments and the return value
- * follow the same convention an override uses: pure out parameters are left out and returned
- * instead, and a slot with several outputs returns them as a tuple. Throws if the owner declares no
- * such slot, the instance descends from no wrapper class, or the resolved vtable leaves the slot
- * empty.
+ * Calls a virtual-function slot for a generated `vfunc` member.
  *
- * @param owner The wrapper class or interface declaring the slot.
- * @param key Name of the generated member, such as `vfuncMeasure`.
- * @param instance The instance to invoke the slot on.
- * @param inputs The arguments the slot receives.
+ * @remarks
+ * The slot comes from the nearest generated wrapper in the instance's ancestry, so `super`
+ * calls the replaced implementation without re-entering the override. If that wrapper does
+ * not implement the interface owning the slot, use the interface's default vtable: a subclass
+ * adopted the interface, replacing that default.
+ *
+ * Arguments follow the override convention. Pure out parameters are omitted and returned
+ * instead; multiple outputs form a tuple.
+ *
+ * @param owner Wrapper class or interface declaring the slot.
+ * @param key Generated member name, such as `vfuncMeasure`.
+ * @param instance Instance to invoke the slot on.
+ * @param inputs Arguments passed to the slot.
+ * @throws If the owner declares no matching slot, the instance has no wrapper ancestor,
+ * or the resolved vtable slot is empty.
  */
 function callVfunc(owner: AnyClass, key: string, instance: object, inputs: unknown[]): unknown {
     const slot = resolveOwnerSlot(owner, key);

@@ -330,18 +330,17 @@ const captureUntilPaintable = (
 };
 
 /**
- * Captures a PNG snapshot of a widget, retrying until it has a paintable size,
- * and writes the image to `options.path` when one is given, creating any
- * missing parent directories. Popovers open inside the widget render on their
- * own surfaces, so they are composited into the image at their on-screen
- * positions. A display that never presents a frame leaves GTK without a cached
- * render node, so the widget's contents are then snapshotted directly; when
- * even that yields nothing, the failure names the display instead of blaming
- * the widget.
+ * Captures a widget as PNG, retrying until it has a paintable size. Writes to `options.path`
+ * when supplied, creating missing parent directories.
  *
- * @param widget The widget to render to an image.
- * @param options Optional scale, timeout, retry interval, and output path.
- * @returns The base64-encoded PNG data along with its mime type and dimensions.
+ * @remarks
+ * Open popovers are composited at their on-screen positions. If the display has not presented
+ * a frame, captures widget contents directly instead of using GTK's cached render node.
+ * If that also fails, the error identifies the display's presentation failure.
+ *
+ * @param target Widget to capture.
+ * @param options Scale, timeout, retry interval, and output path.
+ * @returns Base64-encoded PNG data, MIME type, and dimensions.
  */
 const screenshot = async (target: Gtk.Accessible, options?: ScreenshotOptions): Promise<ScreenshotResult> => {
     const widget = requireWidget(target);

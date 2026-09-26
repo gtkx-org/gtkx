@@ -2,7 +2,7 @@
 description: "Open a task on the content stack and edit it with native form rows, a calendar, and a text buffer."
 ---
 
-# Opening a Task
+# Edit Tasks
 
 Give each task an editor with a title, importance switch, due date, and notes. It opens above the task list on the content stack; the navigator supplies its header and back navigation.
 
@@ -10,58 +10,51 @@ Give each task an editor with a title, importance switch, due date, and notes. I
 
 In `src/navigation.ts`, extend `RootParamList`:
 
-```diff
-export type RootParamList = {
-     Lists: undefined;
-     Tasks: Selection;
+```diff [src/navigation.ts]
+@@ -6,0 +7 @@
 +    Task: { id: string };
- };
 ```
 
 Below `Split`, declare the root navigator type so components can use `useNavigation` without passing navigation through their props:
 
-```ts
-type RootNavigatorType = typeof Split;
-
-declare module "@react-navigation/core" {
-    interface RootNavigator extends RootNavigatorType {}
-}
+```diff [src/navigation.ts]
+@@ -21,0 +22,6 @@
++
++type RootNavigatorType = typeof Split;
++
++declare module "@react-navigation/core" {
++    interface RootNavigator extends RootNavigatorType { }
++}
 ```
 
 GTKX re-exports the React Navigation core API, so this augmentation targets `@react-navigation/core`. See React Navigation's [TypeScript guide](https://reactnavigation.org/docs/typescript/) for the underlying pattern.
 
 In `src/components/task-row.tsx`, import `useNavigation` and read it inside `TaskRow`:
 
-```diff
-import { GtkButton, GtkCheckButton, GtkToggleButton } from "@gtkx/jsx/gtk";
+```diff [src/components/task-row.tsx]
+@@ -4,0 +5 @@
 +import { useNavigation } from "@gtkx/navigation";
 ```
 
 
-```diff
-export const TaskRow = ({ task }: { task: Task }) => {
+```diff [src/components/task-row.tsx]
+@@ -9,0 +10 @@
 +    const navigation = useNavigation();
-     const setDone = useStore((state) => state.setDone);
-     const setImportant = useStore((state) => state.setImportant);
-     const moveToTrash = useStore((state) => state.moveToTrash);
 ```
 
 Make the action row activatable and open the editor from its signal:
 
-```diff
-<AdwActionRow
-             title={title}
-             useMarkup
+```diff [src/components/task-row.tsx]
+@@ -20,0 +21,2 @@
 +            activatable
 +            onActivated={() => navigation.navigate("Task", { id: task.id })}
-             prefix={
 ```
 
 An activatable row responds to a click or keyboard activation. `navigate("Task", { id })` opens the editor, or changes the params of its existing page.
 
 Create `src/components/task-screen.tsx`:
 
-```tsx
+```tsx [src/components/task-screen.tsx]
 import type { SplitViewScreenProps } from "@gtkx/navigation";
 import type { RootParamList } from "../navigation.js";
 import { useStore } from "../store/index.js";
@@ -80,15 +73,14 @@ The route stores an ID; the screen reads the current task from the store. The ke
 
 In `src/store/tasks.ts`, add `updateTask` to the slice type and implementation:
 
-```diff
-setImportant: (id: string, important: boolean) => void;
+```diff [src/store/tasks.ts]
+@@ -10,0 +11 @@
 +    updateTask: (id: string, fields: Partial<Pick<Task, "title" | "notes" | "due" | "listId">>) => void;
-     moveToTrash: (id: string) => void;
 ```
 
 
-```diff
-setImportant: (id, important) => set((state) => ({ tasks: patch(state.tasks, id, { important }) })),
+```diff [src/store/tasks.ts]
+@@ -48,0 +49 @@
 +    updateTask: (id, fields) => set((state) => ({ tasks: patch(state.tasks, id, fields) })),
 ```
 
@@ -98,49 +90,52 @@ Keep `setDone` for completion timestamps and `setImportant` for the shared star/
 
 Append these functions to `src/format.ts`, after the existing `startOfDay` and `isToday` helpers:
 
-```ts
-export const formatDue = (iso: string | null): string | null => {
-    if (!iso) return null;
-    const due = new Date(iso);
-    const days = Math.round((startOfDay(due) - startOfDay(new Date())) / 86_400_000);
-    const time = due.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-    if (days === 0) return `Today at ${time}`;
-    if (days === 1) return `Tomorrow at ${time}`;
-    if (days === -1) return `Yesterday at ${time}`;
-    if (days < 0) return `${-days} days ago`;
-    if (days < 7) return due.toLocaleDateString([], { weekday: "long" });
-    return due.toLocaleDateString([], { month: "short", day: "numeric" });
-};
-
-export const formatDateTime = (iso: string | null): string => {
-    if (!iso) return "Never";
-    return new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
-};
+```diff [src/format.ts]
+@@ -6,0 +7,18 @@
++
++export const formatDue = (iso: string | null): string | null => {
++    if (!iso) return null;
++    const due = new Date(iso);
++    const days = Math.round((startOfDay(due) - startOfDay(new Date())) / 86_400_000);
++    const time = due.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
++    if (days === 0) return `Today at ${time}`;
++    if (days === 1) return `Tomorrow at ${time}`;
++    if (days === -1) return `Yesterday at ${time}`;
++    if (days < 0) return `${-days} days ago`;
++    if (days < 7) return due.toLocaleDateString([], { weekday: "long" });
++    return due.toLocaleDateString([], { month: "short", day: "numeric" });
++};
++
++export const formatDateTime = (iso: string | null): string => {
++    if (!iso) return "Never";
++    return new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
++};
 ```
 
 In `src/components/task-row.tsx`, import the formatter and add the subtitle:
 
-```diff
+```diff [src/components/task-row.tsx]
+@@ -0,0 +1 @@
 +import { formatDue } from "../format.js";
 ```
 
 
-```diff
-title={title}
-             useMarkup
+```diff [src/components/task-row.tsx]
+@@ -21,0 +22 @@
 +            subtitle={formatDue(task.due) ?? undefined}
-             activatable
 ```
 
 When no due date remains, `undefined` resets the subtitle to its native default. The row then has no subtitle text.
 
 Append the notes style to `src/styles.ts`:
 
-```ts
-export const detailNotes = css`
-    padding: 6px;
-    min-height: 160px;
-`;
+```diff [src/styles.ts]
+@@ -8,0 +9,5 @@
++
++export const detailNotes = css`
++    padding: 6px;
++    min-height: 160px;
++`;
 ```
 
 ## Build the editor
@@ -150,11 +145,11 @@ Install `@gtkx/forms` from the project directory:
 ::: code-group
 
 ```bash [npm]
-npm install @gtkx/forms
+npm install @gtkx/forms@1.6.0
 ```
 
 ```bash [pnpm]
-pnpm add @gtkx/forms
+pnpm add @gtkx/forms@1.6.0
 ```
 
 :::
@@ -163,7 +158,7 @@ GTKX form rows connect native Adwaita controls to React Hook Form. This form kee
 
 Create `src/components/task-detail.tsx`:
 
-```tsx
+```tsx [src/components/task-detail.tsx]
 import { EntryRow, FormProvider, SwitchRow, useForm } from "@gtkx/forms";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -326,7 +321,7 @@ The notes editor uses a `GtkTextBuffer` in the text view's `buffer` slot. `onCha
 
 Create `src/components/task-title.tsx`:
 
-```tsx
+```tsx [src/components/task-title.tsx]
 import { AdwWindowTitle } from "@gtkx/jsx/adw";
 import { useStore } from "../store/index.js";
 
@@ -341,7 +336,7 @@ The title reads the committed task value and falls back to “Task” if the tas
 
 Create `src/components/task-buttons.tsx`:
 
-```tsx
+```tsx [src/components/task-buttons.tsx]
 import { GtkButton, GtkToggleButton } from "@gtkx/jsx/gtk";
 import { useStore } from "../store/index.js";
 
@@ -370,28 +365,30 @@ Both controls use the same store actions as the task row. The buttons disappear 
 
 In `src/components/window.tsx`, add these imports:
 
-```ts
-import { TaskButtons } from "./task-buttons.js";
-import { TaskScreen } from "./task-screen.js";
-import { TaskTitle } from "./task-title.js";
+```diff [src/components/window.tsx]
+@@ -0,0 +1,3 @@
++import { TaskButtons } from "./task-buttons.js";
++import { TaskScreen } from "./task-screen.js";
++import { TaskTitle } from "./task-title.js";
 ```
 
 Add the editor after the `Tasks` screen in `Split.Navigator`:
 
-```tsx
-<Split.Screen
-    name="Task"
-    component={TaskScreen}
-    options={({ route }) => ({
-        headerTitle: <TaskTitle id={route.params.id} />,
-        headerEnd: <TaskButtons id={route.params.id} />,
-    })}
-/>
+```diff [src/components/window.tsx]
+@@ -62,0 +63,8 @@
++                    <Split.Screen
++                        name="Task"
++                        component={TaskScreen}
++                        options={({ route }) => ({
++                            headerTitle: <TaskTitle id={route.params.id} />,
++                            headerEnd: <TaskButtons id={route.params.id} />,
++                        })}
++                    />
 ```
 
 `headerTitle` replaces the title widget; `headerEnd` holds the task commands. The navigator handles the back button, Escape, and Alt+Left.
 
-Deleting here currently moves the task to Trash while leaving its editor open. [Deleting Without Fear](/tutorial/trash-and-toasts) will add undo and confirmation behavior and close that page.
+Deleting here currently moves the task to Trash while leaving its editor open. [Add Undo and Delete Confirmation](/tutorial/trash-and-toasts) will add undo and confirmation behavior and close that page.
 
 ## Run it
 
@@ -405,4 +402,4 @@ Restart the app and reopen the task to confirm the committed fields were saved.
 
 ## Next
 
-Continue to [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts).
+Continue to [Add Menus and Shortcuts](/tutorial/actions-menus-shortcuts).

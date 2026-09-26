@@ -1,6 +1,6 @@
 ---
 title: "GTKX 1.5: Native forms and gettext i18n"
-description: "GTKX 1.5 adds React Hook Form-powered Adwaita controls and the complete react-i18next API backed by GNU gettext, with strict generated message types and localization automated from codegen through every deploy target."
+description: "GTKX 1.5 connects native form controls to React Hook Form and React translation APIs to GNU gettext."
 image: /tasks-forms.png
 ---
 
@@ -8,7 +8,7 @@ image: /tasks-forms.png
 
 <p class="post-date">August 27, 2026</p>
 
-GTKX 1.5 is out with two new packages for work almost every application has to do: [`@gtkx/forms`](/guide/forms) connects React Hook Form to native Adwaita controls, and [`@gtkx/i18n`](/guide/internationalization) connects the complete react-i18next API to GNU gettext. Forms stay typed from the saved value to the widget. Translation stays in standard PO catalogs, while the GTKX CLI owns extraction, generated types, compilation, localized desktop metadata, and packaging. Read the [`changelog`](https://github.com/gtkx-org/gtkx/releases/tag/v1.5.0) for the full list of changes.
+GTKX 1.5 is out with two new packages for work almost every application has to do: [`@gtkx/forms`](/guide/forms) connects React Hook Form to native Adwaita controls, and [`@gtkx/i18n`](/guide/internationalization) connects React translation APIs to GNU gettext. Forms stay typed from the saved value to the widget. Translation stays in standard PO catalogs, while the GTKX CLI owns extraction, generated types, compilation, localized desktop metadata, and packaging. Read the [`changelog`](https://github.com/gtkx-org/gtkx/releases/tag/v1.5.0) for the full list of changes.
 
 <picture>
   <source srcset="/tasks-forms.webp" type="image/webp" />
@@ -63,7 +63,7 @@ The [forms guide](/guide/forms) covers validation, disabled fields, custom contr
 
 ## The real react-i18next API, with gettext storage
 
-`@gtkx/i18n` registers a real backend on the default `i18next` singleton and re-exports `react-i18next`. Existing component patterns remain the same: `useTranslation`, `withTranslation`, `Translation`, `Trans`, providers, SSR helpers, defaults, and context are the upstream implementations. The direct `t` and `init` exports use that same configured singleton.
+`@gtkx/i18n` registers a real backend on the default `i18next` singleton and re-exports `react-i18next`. Existing component patterns remain the same: `useTranslation`, `withTranslation`, `Translation`, `Trans`, providers, SSR helpers, defaults, and context are the upstream implementations. The direct `t` and `init` exports use that same configured singleton. These exports keep the upstream API shape; gettext still supplies process-wide catalog lookup, and GTKX does not provide a browser or server renderer.
 
 The storage model follows the Linux desktop. Source messages become a gettext POT template, translators edit PO files, builds compile MO catalogs, and GLib performs the runtime lookup. Interpolation keeps i18next's `{{name}}` syntax, while an explicit singular and plural pair becomes one gettext plural entry:
 

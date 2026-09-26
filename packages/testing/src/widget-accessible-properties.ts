@@ -515,7 +515,7 @@ const buildInaccessibilityCheck = (): ((target: Gtk.Accessible) => boolean) => {
  * Returns whether a widget is excluded from the accessibility tree, because it or one of its
  * ancestors is marked hidden.
  *
- * @param widget The widget to test.
+ * @param target The widget to test.
  */
 const isInaccessible = (target: Gtk.Accessible): boolean => buildInaccessibilityCheck()(target);
 

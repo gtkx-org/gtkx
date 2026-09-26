@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/forms",
     "version": "2.0.0-beta.10",
-    "description": "React Hook Form controls for building Adwaita forms.",
+    "description": "React Hook Form controls for GTKX.",
     "keywords": [
         "gtkx",
         "gtk",

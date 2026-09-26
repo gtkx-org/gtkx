@@ -2,22 +2,28 @@
 description: "Give Tasks an icon, desktop metadata, and installable packages."
 ---
 
-# Appendix B: Making It a Real Application
+# Package the App
 
 The app now has a [test suite](/tutorial/testing). Use `gtkx deploy` to package it with an icon, desktop entry, settings schema, and Node.js runtime.
 
 ## Name the release
 
-Update the package metadata used by the About dialog and deployment:
+Merge these fields into `package.json`, keeping its existing dependencies and scripts:
+
+```json [package.json] merge
+{
+    "name": "gtkx-tutorial",
+    "version": "1.0.0",
+    "license": "MPL-2.0",
+    "description": "Tasks app from the GTKX tutorial",
+    "author": "GTKX <hello@gtkx.dev>",
+    "homepage": "https://gtkx.dev"
+}
+```
+
+Refresh the lockfile after updating the package metadata:
 
 ```bash
-npm pkg set \
-    name=gtkx-tutorial \
-    version=1.0.0 \
-    license=MPL-2.0 \
-    description="Tasks app from the GTKX tutorial" \
-    author="GTKX <hello@gtkx.dev>" \
-    homepage=https://gtkx.dev
 npm install --package-lock-only
 ```
 
@@ -32,34 +38,49 @@ data/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg
 data/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg
 ```
 
-Add `applicationIcon: "data/icons"` beside `applicationId` in `gtkx.config.ts`. GTKX copies this icon tree into the build and installed packages. The filenames match the application ID already used by the window and About dialog.
+The configuration keeps `applicationIcon: "data/icons"`. GTKX copies this icon tree into the build and installed packages. The filenames match the application ID already used by the window and About dialog.
 
 For your own artwork, follow the [GNOME app icon guidelines](https://developer.gnome.org/hig/guidelines/app-icons.html).
 
 ## Describe the app
 
-Add this `deploy` block to the existing configuration:
+Replace `gtkx.config.ts` with the complete configuration below:
 
-```ts
-deploy: {
-    name: "Tasks",
-    genericName: "Task Manager",
-    binaryName: "gtkx-tutorial",
-    summary: "Manage your tasks and to-dos",
-    description: [
-        "A GNOME task manager built with GTKX, demonstrating how to build React-based Adwaita applications.",
-    ],
-    categories: ["Office", "ProjectManagement"],
-    keywords: ["Task", "Tasks", "Todo", "To-do", "Checklist"],
-    isDbusActivatable: true,
-    desktopEntry: { "X-GNOME-UsesNotifications": "true" },
-    targets: ["flatpak", "deb", "rpm", "appimage"],
-},
+```ts [gtkx.config.ts]
+import { defineConfig } from "@gtkx/config";
+
+export default defineConfig({
+    applicationId: "com.gtkx.tutorial",
+    applicationIcon: "data/icons",
+    future: {
+        v2ByteArrays: true,
+        v2ValueReturns: true,
+        v2FinishResults: true,
+        v2InoutReturns: true,
+        v2ResourceImports: true,
+        v2DefaultLibraries: true,
+        v2TreeShaking: true,
+    },
+    deploy: {
+        name: "Tasks",
+        genericName: "Task Manager",
+        binaryName: "gtkx-tutorial",
+        summary: "Manage your tasks and to-dos",
+        description: [
+            "Tasks lets you organize to-dos into lists, set reminders, and track completed work. Built with GTKX, React, and Adwaita.",
+        ],
+        categories: ["Office", "ProjectManagement"],
+        keywords: ["Task", "Tasks", "Todo", "To-do", "Checklist"],
+        isDbusActivatable: true,
+        desktopEntry: { "X-GNOME-UsesNotifications": "true" },
+        targets: ["flatpak", "deb", "rpm", "appimage"],
+    },
+});
 ```
 
 GTKX derives the version, license, author, and homepage from `package.json`. It uses this configuration to generate the desktop entry and AppStream metadata.
 
-The notification entry gives Tasks a place in the desktop's notification settings. D-Bus activation lets notification actions reach the app when it is closed. These settings complete the [reminders](/tutorial/reminders) workflow.
+The notification entry gives Tasks a place in the desktop's notification settings. D-Bus activation lets notification actions reach the app when it is closed. These settings complete the [reminder](/tutorial/reminders) workflow.
 
 The [finished configuration](https://github.com/gtkx-org/gtkx/blob/v1.6.0/examples/tutorial/gtkx.config.ts) also includes screenshots and release notes. Add those when preparing your own release; the [configuration reference](/reference/@gtkx/config/index/type-aliases/Config) describes the available options.
 
@@ -117,4 +138,4 @@ For an installed package, find **Tasks** in the application launcher and confirm
 
 ## Next
 
-[Speaking the User's Language](/tutorial/internationalization) adds a French catalog to the interface and package metadata. The final appendix builds the Flatpak.
+[Translate the App](/tutorial/internationalization) adds a French catalog to the interface and package metadata. The last chapter builds the Flatpak.

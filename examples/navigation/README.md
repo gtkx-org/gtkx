@@ -1,10 +1,12 @@
-# navigation
+# Navigation example
 
-A GNOME mail-style app built with Adwaita, demonstrating typed, nested drawer, stack, and tab navigators. It also covers native Back behavior, prevented navigation, themes, and integration tests.
+A mail-style app with nested drawer, stack, and tab navigators. Its integration tests cover native Back controls, discarded edits, and theme changes.
+
+Complete the [workspace setup](../../website/contributing/development.md), then run from the repository root:
 
 ```bash
 pnpm --filter navigation dev
 pnpm --filter navigation test
 ```
 
-Run from the repository root after `pnpm install` and `pnpm build`. See the [navigation guide](https://gtkx.dev/v2/guide/navigation) and [React Navigation](https://reactnavigation.org/docs/getting-started).
+See the [navigation guide](https://gtkx.dev/v2/guide/navigation) for GTKX integration and [React Navigation](https://reactnavigation.org/docs/getting-started) for shared concepts.

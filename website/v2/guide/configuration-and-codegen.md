@@ -5,7 +5,7 @@ description: "Configure a GTKX project and generate its bindings."
 
 # Configuration and Codegen
 
-`gtkx.config.ts` identifies your application and selects the libraries GTKX generates bindings for. GTKX 2 includes Adwaita and GTK by default.
+`gtkx.config.ts` identifies your application and selects the libraries GTKX generates bindings for. GTKX 2 includes Adwaita and GTK by default. For resource imports, see [Assets and Build Output](/v2/guide/assets); for native type wrappers, see [Native Values](/v2/guide/native-values).
 
 ## The config file
 
@@ -90,70 +90,23 @@ Native methods keep their generated camelCase names, even when a name overlaps a
 
 ## Passing a GType
 
-GTKX accepts a registered class wherever a binding takes a GType:
-
-```ts
-import * as Gio from "@gtkx/gi/gio";
-import * as Gtk from "@gtkx/gi/gtk";
-
-const store = Gio.ListStore.new(Gtk.Label);
-```
-
-Generated classes and interfaces, and subclasses registered with `registerClass`, can be passed this way. A plain JavaScript subclass has no registration of its own. Returned GTypes and signal handler arguments remain `bigint` values.
+Pass a registered GI class wherever a method takes a GType. See [Native Values](/v2/guide/native-values#passing-a-gtype) for registration and returned type IDs.
 
 ## Passing a GValue
 
-When a binding reads a `GObject.Value`, GTKX usually accepts the JavaScript payload directly:
-
-```ts
-import * as Gdk from "@gtkx/gi/gdk";
-
-const provider = Gdk.ContentProvider.newForValue("Copied text");
-```
-
-Use an explicitly initialized `GObject.Value` when the operation requires a particular native type, including an interface type for clipboard or drag-and-drop matching. A binding that fills a value instead takes a new, uninitialized `GObject.Value`; its generated signature identifies this case. Signal handlers continue to receive the value object.
-
-For nullable value parameters, `null` means no value object. To represent a typed null payload, create a value with the required type and set its payload to null.
+Most input values accept a JavaScript payload directly. See [Native Values](/v2/guide/native-values#passing-a-gvalue) for typed nulls, output values, and explicit wrappers.
 
 ### Generated return values
 
-Returned byte sequences use `Uint8Array`; byte inputs accept `Uint8Array` or `number[]`. Returned `GObject.Value` objects are unpacked to their payloads, typed as `unknown`.
-
-Promisified operations omit a redundant success boolean when failure already rejects. Inout records and boxed values are updated in place without being repeated in the return value. See [Async Operations](/v2/guide/async-operations) for promise usage.
+See [generated return values](/v2/guide/native-values#generated-return-values) for byte arrays, unpacked values, and async result shapes.
 
 ## Import project data
 
-Use relative imports so GTKX can bundle the files with the app:
-
-```ts
-import logoPath from "../data/logo.png?resource";
-import saveIcon from "../data/icons/scalable/actions/save.svg?icon=example-save-symbolic";
-import templatePath from "../data/template.txt?url";
-import bodyFont from "../data/fonts/Inter-Regular.otf?font";
-import settings from "../data/com.example.Tasks.gschema.xml";
-```
-
-`?resource` returns a bundled GResource path; `?resource=/org/example/exact.png` selects an exact path. Convert it to a `resource://` URI only when an API requires one. `?url` provides a real file path, while settings schema imports remain query-free and receive generated types.
-
-`?icon` returns an icon name and registers the bundled icon with the app's private theme path. Keep icons under `icons/<size>/<context>/` or `icons/hicolor/<size>/<context>/` to preserve theme layout; other locations become unthemed fallbacks. Choose package-specific names for icons supplied by libraries.
-
-`?font` bundles a font and returns its family name. GTKX makes bundled fonts available automatically. Import a font for its side effect when it only supplies fallback characters; see [CSS](/v2/guide/css) for choosing a family in styles.
-
-GTKX derives resource paths from the configured application ID: `com.example.Tasks` becomes `/com/example/Tasks`. Overriding an application's `applicationId` prop alone does not move bundled resources; supply a matching `resourceBasePath` when using another resource tree.
-
-Production builds load their `gtkx.gresource` file automatically.
+Use imports for resources, icons, fonts, files, and settings schemas. [Assets and Build Output](/v2/guide/assets#import-project-data) explains each import form and its native path or value.
 
 ## Production build output
 
-`gtkx build` writes to `dist/`. Use `--out` for another independently runnable build:
-
-```bash
-gtkx build src/helper.ts --out build/helper
-```
-
-Choose a directory below the project root that is empty or contains an earlier GTKX build. GTKX rejects unrelated files, symlinked paths, and output nested inside another build. Generated bundles contain their JavaScript dependencies; unresolved package imports fail the build.
-
-`gtkx deploy --skip-build` packages `dist/`. Its `--out` option selects the deployment artifact directory, not the application build directory. See [Deploying](/v2/guide/deploying).
+`gtkx build` writes a runnable bundle and its assets to `dist/`. See [build output](/v2/guide/assets#production-build-output) for custom destinations and the files deployment needs.
 
 ## Generating element reference docs
 

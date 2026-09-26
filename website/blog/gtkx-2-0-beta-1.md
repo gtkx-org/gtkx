@@ -1,6 +1,6 @@
 ---
 title: "GTKX 2.0 beta: a smaller, safer foundation"
-description: "GTKX 2.0 beta makes the migration behaviors previewed in 1.6 unconditional, removes deprecated compatibility APIs, standardizes ESM and internationalization, and hardens the native boundary."
+description: "GTKX 2.0 beta removes compatibility APIs and updates the Node.js, ESM, and internationalization requirements."
 image: /og.png
 ---
 
@@ -8,7 +8,7 @@ image: /og.png
 
 <p class="post-date">September 2, 2026</p>
 
-The GTKX 2.0 beta is ready to test. This is the release GTKX 1.6 prepared applications for: the future behaviors are now the only behaviors, deprecated compatibility APIs are gone, and the framework has one smaller contract to carry forward. The beta also moves the project onto a current Node.js and ESM baseline, delegates source-message analysis to the standard i18next toolchain, and puts more of the native boundary behind end-to-end tests. Read the [full changelog](https://github.com/gtkx-org/gtkx/releases) and the [upgrade guide](/v2/guide/upgrading-to-2) before moving an existing application.
+The GTKX 2.0 beta is ready to test. This is the release GTKX 1.6 prepared applications for: the future behaviors are now the only behaviors, deprecated compatibility APIs are gone, and the framework has one smaller contract to carry forward. The beta also moves the project onto a current Node.js and ESM baseline, delegates source-message analysis to the standard i18next toolchain, and puts more of the native boundary behind end-to-end tests. Read the [beta 1 changelog](https://github.com/gtkx-org/gtkx/releases/tag/v2.0.0-beta.1) and the [upgrade guide](/v2/guide/upgrading-to-2) before moving an existing application.
 
 This starts a three-month beta period. The final GTKX 2.0 release is scheduled for December 1, 2026. Until then, the focus is migration feedback, correctness, and release hardening; feature work remains scheduled for 2.1.
 

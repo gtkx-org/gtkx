@@ -2,9 +2,9 @@
 description: "Build a Flatpak for Tasks and prepare a source manifest for distribution."
 ---
 
-# Appendix C: Shipping It on Flathub
+# Prepare for Flathub
 
-The [localization chapter](/v2/tutorial/internationalization) added a French catalog. Package it in a Flatpak, then use GTKX's source mode to prepare a manifest that rebuilds the application.
+[Translate the App](/v2/tutorial/internationalization) added a French catalog. Package it in a Flatpak, then use GTKX's source mode to prepare a manifest that rebuilds the application.
 
 ## Build and install it
 
@@ -12,18 +12,20 @@ The [localization chapter](/v2/tutorial/internationalization) added a French cat
 npm run deploy -- --target flatpak
 ```
 
-GTKX writes the manifest under `build/<arch>/targets/flatpak/` and runs Flatpak Builder. The first build downloads its GNOME runtime from Flathub. Install the resulting x64 bundle and launch it in French:
+GTKX writes the manifest under `build/<arch>/targets/flatpak/` and runs Flatpak Builder. The first build downloads its GNOME runtime from Flathub. If the build fails because FUSE is unavailable, follow the [container troubleshooting instructions](/v2/guide/deploying#flatpak-in-containers).
+
+Install the resulting x64 bundle and launch it in French:
 
 ```bash
 flatpak install --user --reinstall build/out/com.gtkx.tutorial-1.0.0-x86_64.flatpak
 flatpak run --env=LANG=fr_FR.UTF-8 --env=LANGUAGE=fr --env=LC_ALL=fr_FR.UTF-8 com.gtkx.tutorial
 ```
 
-Use the artifact matching your architecture. Tasks loads the installed catalog from `/app/share/locale`. On a fresh Flatpak installation, its initial lists and tasks are created in French.
+Use the artifact matching your architecture. Tasks loads the installed catalog from `/app/share/locale`. On a fresh Flatpak installation, the translated starter task appears as **Arroser les plantes**.
 
 ## Check storage and reminders
 
-Add a task named `Ship it`, quit, and reopen the Flatpak. Confirm the task persists. The storage backend from [Saving Tasks Between Runs](/v2/tutorial/saving-to-disk) uses GLib's data directory, which points into the Flatpak's private storage:
+Add a task named `Ship it`, quit, and reopen the Flatpak. Confirm the task persists. The storage backend from [Save Tasks](/v2/tutorial/saving-to-disk) uses GLib's data directory, which points into the Flatpak's private storage:
 
 ```bash
 cat ~/.var/app/com.gtkx.tutorial/data/com.gtkx.tutorial/tasks.json
@@ -37,13 +39,14 @@ Also check preferences and a reminder's **Mark Complete** action. Tasks uses the
 
 The default `prebuilt` mode packages the local build. In `source` mode, the manifest checks out a pinned Git revision, installs dependencies offline, and runs `gtkx build` inside the SDK.
 
-Add this setting inside the existing `deploy` block:
+After testing the prebuilt package, update `gtkx.config.ts` for source mode:
 
-```ts
-flatpak: {
-    mode: "source",
-    source: { url: "https://github.com/you/tasks.git" },
-},
+```diff [gtkx.config.ts]
+@@ -17,0 +18,4 @@
++        flatpak: {
++            mode: "source",
++            source: { url: "https://github.com/you/tasks.git" },
++        },
 ```
 
 Use your application's public repository URL. Install [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/tree/master/node) using its installation instructions; GTKX uses it to prepare the offline dependency sources.

@@ -47,6 +47,12 @@ GLib `ERROR` messages are also reported, but GLib aborts regardless of JavaScrip
 
 There is no GTKX option to disable fatal-error reporting. Unhandled failures fail the test suite as well; see [Testing](/v2/guide/testing).
 
+## React error boundaries
+
+An error boundary can replace a failed descendant's rendered UI with a fallback. Use it around a recoverable part of the interface, and render the fallback with GTKX elements. React's [error boundary documentation](https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary) describes the component contract.
+
+Boundaries do not catch ordinary event-handler failures or arbitrary rejected promises. Catch those failures in the signal handler or around the awaited operation, then update application state to show an error. A boundary also cannot recover from a native fatal error that leaves the process unsafe to continue.
+
 ## Next
 
 Continue with [Components](/v2/guide/components) for how GTKX widgets compose and the hooks that drive them.

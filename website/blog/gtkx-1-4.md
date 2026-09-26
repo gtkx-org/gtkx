@@ -1,6 +1,6 @@
 ---
 title: "GTKX 1.4: Introducing @gtkx/navigation"
-description: "GTKX 1.4 adds @gtkx/navigation, React Navigation 7's core rendered with native libadwaita stack, tab, drawer, and split view navigators. Routes and params stay typed, while native back controls, adaptive layouts, hooks, actions, and static configuration all share one navigation state."
+description: "GTKX 1.4 adds native stack, tab, drawer, and split view navigators through React Navigation."
 image: /tasks-screenshot.png
 ---
 
@@ -116,7 +116,7 @@ That is now how the [GTKX tutorial](/tutorial/) builds Tasks. Its selected smart
 
 Navigation does not need navigator-specific test machinery. [`@gtkx/testing`](/guide/testing) clicks the visible header button, list row, or tab, types into the screen, or sends Escape to the window. A push or pop is complete immediately under the default test render because animations are disabled, so the assertion is simply what has appeared and what is no longer mapped.
 
-The [`navigation`](https://github.com/gtkx-org/gtkx/tree/main/examples/navigation) example is a small mail-style app that nests a drawer, a stack, and tabs. Its tests open a message, start a reply, attempt to leave it, answer the discard dialog, switch drawer sections and tabs, and toggle Adwaita's color scheme through the same controls a user sees.
+The [`navigation`](https://github.com/gtkx-org/gtkx/tree/v1.4.0/examples/navigation) example is a small mail-style app that nests a drawer, a stack, and tabs. Its tests open a message, start a reply, attempt to leave it, answer the discard dialog, switch drawer sections and tabs, and toggle Adwaita's color scheme through the same controls a user sees.
 
 ## Also in 1.4
 

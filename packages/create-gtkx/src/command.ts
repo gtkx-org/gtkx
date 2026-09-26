@@ -139,7 +139,7 @@ const parseCreateArguments = (rawArgs: string[]): CreateCommandArgs => {
 const scaffoldCommand = defineCommand({
     meta: {
         name: "create",
-        description: "Create a new Adwaita-first GNOME application with GTKX",
+        description: "Create a Linux application with GTKX",
     },
     args: CREATE_ARGS,
     run: ({ rawArgs }) => runCreate(rawArgs),

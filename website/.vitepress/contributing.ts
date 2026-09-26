@@ -12,6 +12,8 @@ const contributingItems: DocumentationItem[] = [
     { text: "React Renderer", path: "contributing/react-renderer" },
     { text: "Testing", path: "contributing/testing" },
     { text: "Development Principles", path: "contributing/principles" },
+    { text: "Maintaining Documentation", path: "contributing/documentation" },
+    { text: "Publishing Releases", path: "contributing/releases" },
 ];
 
 export { CONTRIBUTING_ROOT, contributingItems };

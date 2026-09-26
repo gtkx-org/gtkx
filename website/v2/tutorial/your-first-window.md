@@ -2,9 +2,9 @@
 description: "Build the Tasks application shell with an Adwaita window and header bar."
 ---
 
-# Your First Window
+# Create a Window
 
-You have a scaffolded project that runs. Replace its contents with the first piece of Tasks: an application, a window, and a header bar. If you skipped ahead, start at [the introduction](/v2/tutorial/) and come back once `npm create gtkx@beta` has finished.
+You have a project that runs. For the complete v2 tutorial, use the [repository setup](/v2/tutorial/#use-the-repository-build); published beta.10 supports this chapter but not all later APIs. Replace its contents with the first piece of Tasks: an application, a window, and a header bar. If you skipped ahead, start at [the introduction](/v2/tutorial/) and come back once `npm create gtkx@beta` has finished.
 
 ## What the scaffolder made
 
@@ -12,7 +12,7 @@ You have a scaffolded project that runs. Replace its contents with the first pie
 
 `gtkx.config.ts`:
 
-```ts
+```ts [gtkx.config.ts]
 import { defineConfig } from "@gtkx/config";
 
 export default defineConfig({
@@ -31,7 +31,7 @@ Keep the application ID you chose in the introduction, and use it wherever later
 
 `src/index.tsx`:
 
-```tsx
+```tsx [src/index.tsx]
 import { createRoot } from "@gtkx/react";
 import { App } from "./app.js";
 
@@ -42,7 +42,7 @@ createRoot().render(<App />);
 
 ## The application and its window
 
-Replace `src/app.tsx` with the following. Also remove the scaffolder's `tests/app.test.tsx`, which tests the counter and imports its default export. [Testing](/v2/tutorial/testing) adds tests for Tasks.
+Replace `src/app.tsx` with the following. Also remove the scaffolder's `tests/app.test.tsx`, which tests the counter and imports its default export. [Add Tasks](/v2/tutorial/the-task-store#test-the-entry-row) adds the first tests for Tasks.
 
 `src/app.tsx`:
 
@@ -70,7 +70,7 @@ GObject properties become camelCase props, such as `widthRequest`. Signals becom
 
 `AdwApplication` takes its application ID from `gtkx.config.ts` and starts the application when it mounts. Rendering `AdwApplicationWindow` opens the window; removing it from the tree closes it.
 
-The minimum size keeps narrow-window testing available as you add [the adaptive layout](/v2/tutorial/an-adaptive-layout).
+The minimum size keeps narrow-window testing available as you add [Adapt the Layout](/v2/tutorial/an-adaptive-layout).
 
 ## Giving the window a header bar
 
@@ -78,7 +78,7 @@ The minimum size keeps narrow-window testing available as you add [the adaptive 
 
 `src/app.tsx`:
 
-```tsx
+```tsx [src/app.tsx]
 import {
     AdwApplication,
     AdwApplicationWindow,
@@ -116,7 +116,7 @@ The header bar picks up the window title. `AdwStatusPage` supplies the empty sta
 
 ## Run it
 
-Save `src/app.tsx` and look at the window that has been open since the introduction. The counter is replaced by a window 360 points wide at its narrowest, titled **Tasks** in a header bar, with a checkbox icon centered above the words **No Tasks Yet**.
+Save `src/app.tsx` and look at the window that has been open since the introduction. The counter is replaced by a window 360 logical pixels wide at its narrowest, titled **Tasks** in a header bar, with a checkbox icon centered above the words **No Tasks Yet**.
 
 Change the status page title to `Nothing Here Yet` and save. Fast Refresh updates the text in the open window.
 
@@ -124,4 +124,4 @@ Set the title back to `No Tasks Yet` before moving on.
 
 ## Next
 
-Continue to [Showing a List of Tasks](/v2/tutorial/a-list-of-tasks).
+Continue to [Display Tasks](/v2/tutorial/a-list-of-tasks).

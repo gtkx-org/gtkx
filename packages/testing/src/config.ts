@@ -19,10 +19,9 @@ type Config = {
     actionabilityTimeout: number;
 
     /**
-     * Timeout in milliseconds `render` waits for the window it shows the tree in to be laid out and
-     * activated. A window becoming active is a round trip through the compositor rather than an
-     * in-process check, so this is far longer than {@link Config.actionabilityTimeout}: it bounds
-     * how long a window that never activates takes to report, and costs nothing when one does.
+     * Maximum milliseconds `render` waits for window layout and activation. Activation needs a
+     * compositor round trip, so this is longer than {@link Config.actionabilityTimeout}. Rendering
+     * resolves as soon as activation succeeds, without waiting out the timeout.
      */
     windowActivationTimeout: number;
 };

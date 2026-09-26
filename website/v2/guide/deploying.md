@@ -5,7 +5,8 @@ description: "Package a GTKX application as a Flatpak, Debian package, RPM, or A
 # Deploying
 
 `gtkx deploy` builds your application and packages it for Linux. GTKX generates the launcher, desktop entry,
-AppStream metadata, and package manifests from `gtkx.config.ts`.
+AppStream metadata, and package manifests from `gtkx.config.ts`. Start with one package for your own
+distribution, then add other targets or a [source Flatpak build](#publishing-on-flathub).
 
 ## Configure your application
 
@@ -21,6 +22,7 @@ export default defineConfig({
     deploy: {
         summary: "Manage your tasks and to-dos",
         categories: ["Office"],
+        minimumLibraryVersions: { "Gtk-4.0": "4.20", "Adw-1": "1.8" },
     },
 });
 ```
@@ -59,18 +61,6 @@ gtkx deploy --target deb,rpm
 Packages land in `build/out`. Manifests and staged files are under `build/<arch>/`. `gtkx deploy --out packages`
 changes this deployment directory to `packages`, with finished artifacts in `packages/out`.
 
-### Architectures
-
-Deployment uses the host architecture unless `deploy.architectures` or `--arch` selects `x64`, `arm64`, or both:
-
-```bash
-gtkx deploy --target deb,rpm --arch x64,arm64
-```
-
-Only Debian and RPM packages support cross-building. Flatpak and AppImage must be built on their target
-architecture. Cross-building also requires the default `deploy.node.source: "download"`; GTKX obtains the
-matching Node.js runtime and native addon.
-
 ### Build tools
 
 Every deployment needs `desktop-file-validate` and `appstreamcli`. Downloaded archives need `tar`;
@@ -83,11 +73,13 @@ The command reports missing tools with installation hints.
 
 ## Preview and build
 
-Review the generated metadata and manifests before creating packages:
+From a scaffolded project on Fedora, preview an RPM:
 
 ```bash
-gtkx deploy --print-manifests
+npm run deploy -- --target rpm --print-manifests
 ```
+
+Use `--target deb` on Debian or Ubuntu. The preview prints the generated metadata and manifests for review.
 
 This still builds and stages the application, but stops before package creation. It skips Node.js and
 packaging-tool downloads; cross-architecture addon downloads and source Flatpak dependency preparation may
@@ -97,7 +89,14 @@ GTKX validates the desktop entry and AppStream metadata. AppStream errors and un
 target. Other AppStream warnings are fatal when source-mode Flatpak is selected, including previews.
 Prebuilt Flatpak, Debian, RPM, and AppImage deployments report them and continue.
 
-Remove `--print-manifests` to produce the packages. To package an existing production build:
+Remove `--print-manifests` to build the package:
+
+```bash
+npm run deploy -- --target rpm
+```
+
+The finished package is under `build/out`. Install it on a compatible system and open the application from
+the desktop launcher to check the packaged build. To package an existing production build:
 
 ```bash
 gtkx build
@@ -112,6 +111,18 @@ rebuild to update it.
 Each deployment replaces its managed output directory. Choose an empty directory or an earlier GTKX deploy
 directory below the project root, outside `dist/`; symlinked output paths and unrelated files are rejected.
 
+### Architectures
+
+Deployment uses the host architecture unless `deploy.architectures` or `--arch` selects `x64`, `arm64`, or both:
+
+```bash
+gtkx deploy --target deb,rpm --arch x64,arm64
+```
+
+Only Debian and RPM packages support cross-building. Flatpak and AppImage must be built on their target
+architecture. Cross-building also requires the default `deploy.node.source: "download"`; GTKX obtains the
+matching Node.js runtime and native addon.
+
 ## Runtime and library requirements
 
 For prebuilt deployments, GTKX bundles Node.js with the application. The default download is pinned to
@@ -122,10 +133,12 @@ GTK, libadwaita, and other native libraries come from the host system or the Fla
 bindings call those libraries directly; the installed app does not need GIR files. An AppImage still needs
 compatible native libraries on the host.
 
-Debian and RPM dependencies include GTK, libadwaita, and runtime requirements detected from the staged
-binaries. Declare additional system packages through `deploy.depends`. Set `deploy.minimumLibraryVersions`
-for newer GTK or libadwaita APIs your app uses, for example `{ "Gtk-4.0": "4.14" }`. Publish the corresponding
-requirements alongside an AppImage, and check prebuilt Flatpaks against the selected GNOME runtime.
+Debian and RPM dependencies include GTK, libadwaita, and runtime requirements detected from staged binaries.
+Declare additional system packages through `deploy.depends`. The opening example explicitly sets the GTKX
+baseline in `deploy.minimumLibraryVersions`; raise it when your app uses newer APIs, for example
+`{ "Gtk-4.0": "4.22", "Adw-1": "1.8" }`. GTKX writes these minimums into Debian and RPM package dependencies;
+it does not infer the minimum API version from your code. Publish the same requirements alongside an
+AppImage, and check prebuilt Flatpaks against the selected GNOME runtime.
 
 ### Additional native addons
 
@@ -197,9 +210,15 @@ project needs a generator with `--pnpm-store-version`. Explicit pnpm pins suppor
 (11.3.0 or later), and 12. The `packageManager` field must include an integrity digest.
 
 Keep the generated Flatpak manifest and `generated-sources.json` together, and regenerate them after dependency
-changes. If a container cannot run `rofiles-fuse`, set `deploy.flatpak.shouldUseRofilesFuse: false`.
+changes.
 
 Source mode rebuilds the application bundle; native npm dependencies still use their packaged binaries.
 Review those dependencies against [Flathub's source-build requirements](https://docs.flathub.org/docs/for-app-authors/requirements#building-from-source)
 and test the final manifest before submission. A successful preview does not validate that build or establish
 Flathub readiness. The [Flatpak tutorial](/v2/tutorial/flatpak) walks through the GTKX workflow.
+
+## Flatpak in containers
+
+If Flatpak stops while spawning `rofiles-fuse`, set `deploy.flatpak.shouldUseRofilesFuse: false` in `gtkx.config.ts` and retry. This applies to both prebuilt and source builds when the container cannot provide FUSE.
+
+If a failed deployment leaves an output directory that GTKX refuses to replace, keep it for diagnosis and choose a fresh directory, for example `npm run deploy -- --target flatpak --out build-flatpak-retry`. The `--out` directory must be below the project root and outside `dist/`.

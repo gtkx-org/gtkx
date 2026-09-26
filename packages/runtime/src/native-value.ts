@@ -244,9 +244,8 @@ function collectionToNative(descriptor: ArrayDescriptor, value: unknown): unknow
 }
 
 /**
- * Normalises the JavaScript form of a hash table argument into its entry list. A `Map` is the
- * expected form and any other iterable of pairs is accepted; anything else is rejected, a plain
- * object above all, which `Array.from` would quietly flatten into an empty table.
+ * Converts a `Map` or other iterable of pairs to hash-table entries. Rejects other values,
+ * including plain objects, which `Array.from` would silently turn into empty tables.
  *
  * @param value The JavaScript value passed for a hash table argument.
  */

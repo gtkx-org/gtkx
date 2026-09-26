@@ -163,11 +163,13 @@ if (retired.length > 0) {
     throw new Error(`Retire the old version served at ${prefixes} before promoting another release.`);
 }
 
-if (manifest.versions.some((version) => version.prefix === values.to)) {
+if (manifest.versions.some((version) =>
+    version.prefix === values.to || (version !== outgoing && (version.aliases ?? []).includes(values.to)),
+)) {
     throw new Error(`versions.json already declares the prefix ${values.to}.`);
 }
 
-if (SECTIONS.includes(values.to.slice(1))) {
+if ([...SECTIONS, "contributing", "blog", "assets", "fonts"].includes(values.to.slice(1))) {
     throw new Error(`${values.to} collides with a documentation section; choose another prefix.`);
 }
 
@@ -177,6 +179,26 @@ if (existsSync(versionDirectory(values.to))) {
 
 if (existsSync(staging)) {
     throw new Error(`${staging} is left over from an interrupted run; reset the working tree before retrying.`);
+}
+
+const prefixes = manifest.versions.flatMap((version) => [version.prefix, ...(version.aliases ?? [])]);
+
+if (new Set(prefixes).size !== prefixes.length) {
+    throw new Error("Documentation prefixes and aliases must be unique before promotion.");
+}
+
+for (const prefix of prefixes) {
+    if ([...SECTIONS, "contributing", "blog", "assets", "fonts"].includes(prefix.slice(1))) {
+        throw new Error(`Documentation prefix or alias collides with a site directory: ${prefix}`);
+    }
+
+    if (prefix !== "" && !/^\/[A-Za-z0-9][A-Za-z0-9.-]*$/.test(prefix)) {
+        throw new Error(`Invalid documentation prefix or alias: ${prefix}`);
+    }
+}
+
+if (incoming.prefix === "") {
+    throw new Error("The prerelease must have a nonempty prefix to retain after promotion.");
 }
 
 const moves = [
@@ -192,8 +214,10 @@ pruneEmptyDirectory(incoming.prefix);
 
 const changed = rewriteLinks(createRewriter(moves));
 
+outgoing.aliases = (outgoing.aliases ?? []).filter((alias) => alias !== values.to);
 outgoing.prefix = values.to;
 outgoing.status = "old";
+incoming.aliases = [...(incoming.aliases ?? []), incoming.prefix];
 incoming.prefix = "";
 incoming.status = "current";
 incoming.label = "";

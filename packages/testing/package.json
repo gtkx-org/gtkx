@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/testing",
     "version": "2.0.0-beta.10",
-    "description": "Queries, events, and screenshots for Adwaita and GTK4 widget trees.",
+    "description": "Test GTKX applications with native widgets.",
     "keywords": [
         "gtkx",
         "gtk",

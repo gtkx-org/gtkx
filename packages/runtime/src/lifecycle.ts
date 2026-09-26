@@ -130,33 +130,25 @@ const getApplicationInstance = (application: ApplicationLike): ApplicationInstan
 };
 
 /**
- * Hands `argv` to GLib's own command line handling, which parses the application's options, prints
- * `--help`, runs `handle-local-options`, registers the application, and either activates it or
- * forwards the command line to the process that already owns the application ID. The runtime is
- * held alive while the application is active and released on shutdown.
+ * Starts a GTKX-created application through GLib's command-line handling, including option
+ * parsing, `--help`, `handle-local-options`, registration, and activation or forwarding to an
+ * existing instance. Keeps the runtime alive while the application is active.
  *
- * `g_application_run()` is not what starts the application, because it would drive its own main loop
- * and freeze Node; only the local command line handling it delegates to runs here. {@link
- * quitApplication} calls it once no window holds the application open, to reach the teardown only it
- * performs.
+ * @remarks
+ * Node remains the outer event loop. Starting the same application again registers and activates
+ * it without reparsing `argv`; GLib permits command-line parsing only once per instance.
  *
- * GLib parses a given application's command line at most once, so starting an application that has
- * already run registers and activates it instead of reading `argv` again.
- *
- * When another process already owns the application ID, this one registers as a remote instance: no
- * user interface may be built here, because a remote application has no `GtkApplicationImpl` and
+ * Build a UI only when `isPrimary` is true. A remote instance has no `GtkApplicationImpl`, and
  * attaching a window to it crashes.
  *
- * The application also claims the process-wide default `Gio.Application.getDefault()` returns, before
- * its command line is parsed, so an `activate` handler and anything the host reads afterwards see the
- * application being started rather than an earlier one. That holds whether the start ends registered,
- * remote or unregistered: a refused command line still has to be reportable through the default, which
- * is how `gtkx dev` learns which application its entry mounted. {@link quitApplication} gives the
- * default back up, since GLib drops it only at finalize.
+ * Before parsing, the application becomes the process-wide default returned by
+ * `Gio.Application.getDefault()`. It remains the default even if registration fails or it is
+ * remote, until {@link quitApplication} releases it.
  *
- * @param application The application to start.
- * @param argv The command line, whose first entry names the program as `--help` should print it.
- * @returns Whether this process may build a user interface, and the status to exit with.
+ * @param application An application created by GTKX.
+ * @param argv Command-line arguments; the first entry is the program name displayed by `--help`.
+ * @returns Whether this instance may build a UI, and GLib's command-line exit status.
+ * @throws If the application was not created by GTKX.
  */
 const runApplication = (application: ApplicationLike, argv: string[]): RunApplicationResult => {
     if (!isDerivedApplication(application)) {
@@ -208,19 +200,15 @@ const tearDownApplication = (application: ApplicationLike): void => {
 };
 
 /**
- * Detaches every window from the application and runs GLib's own shutdown, which emits `shutdown`,
- * destroys the application implementation and releases the D-Bus registration. Does nothing for an
- * application that is not registered, so a repeated call is a no-op.
+ * Detaches application windows, runs shutdown, and releases the process-wide default claimed by
+ * {@link runApplication}. Repeated calls do not repeat shutdown. Unregistered applications only
+ * release the default.
  *
- * GLib's own shutdown is reachable once per application: reaching it marks the application as
- * quitting, which GLib never undoes. An application that has already quit falls back to emitting
- * `shutdown`, which releases the runtime and leaves the registration for GLib to drop at finalize.
- *
- * The process-wide default {@link runApplication} claimed is given up whichever of those paths the
- * application took, including the ones that have no teardown left to do, so
- * `Gio.Application.getDefault()` never hands back an application that has been torn down or that
- * never registered in the first place. GLib clears that default only at finalize, which a
- * garbage-collected wrapper reaches arbitrarily late or never.
+ * @remarks
+ * GLib's full shutdown runs once per instance, emitting `shutdown`, destroying its application
+ * implementation, and releasing D-Bus registration. For an instance that already quit, GTKX emits `shutdown` to
+ * release the runtime; registration then remains until GLib finalizes the instance. Releasing
+ * the default does not wait for garbage collection or native finalization.
  *
  * @param application The application to shut down.
  */

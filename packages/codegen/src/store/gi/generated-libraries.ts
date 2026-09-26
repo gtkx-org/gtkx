@@ -23,11 +23,11 @@ const isGeneratedLibraries = (value: unknown): value is GeneratedLibraries =>
     });
 
 /**
- * Reads which GIR libraries a generated `@gtkx/gi` store binds out of the inventory codegen writes into the store.
+ * Reads the GIR library inventory written into a generated GI store.
  *
- * @param giStoreDir The gi store directory, as given by `resolveStore(projectRoot).gi.storeDir`.
- * @returns What the store recorded, or null when it holds no inventory codegen wrote, which covers an absent,
- * unreadable, unparseable and structurally foreign store file alike.
+ * @param giStoreDir Generated GI store directory.
+ * @returns The recorded libraries, or null if the inventory is absent, unreadable, unparseable,
+ * or has an unrecognized structure.
  */
 const readGeneratedLibraries = (giStoreDir: string): GeneratedLibraries | null => {
     const parsed = readJsonFile(join(giStoreDir, LIBRARIES_FILENAME));

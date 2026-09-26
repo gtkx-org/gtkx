@@ -5,8 +5,8 @@ import type { StoreOptions } from "./store-fs.js";
 import { sweepStagingDirs } from "../staging.js";
 
 /**
- * Where a project's generated stores live, ready to spread into `runCodegen`. `jsx` is null when the
- * project has no `@gtkx/react` installed, in which case only the `@gtkx/gi` store can be generated.
+ * Locations for a project's generated stores. When `@gtkx/react` is absent, `jsx` is null; omit
+ * it from `runCodegen` options to generate only GI.
  */
 type ResolvedStore = {
     /** Where the `@gtkx/gi` store goes, versioned by the installed `@gtkx/runtime`. */
@@ -175,25 +175,19 @@ const sweepProjectStaging = (projectRoot: string): void => {
 };
 
 /**
- * Resolves where a project's `@gtkx/gi` and `@gtkx/jsx` stores belong, from the project root alone. The
- * result supplies every `runCodegen` input except `libraries` and `girPath`, so a caller that has
- * already resolved those can spread it straight into the call.
+ * Resolves generated GI and JSX store options from a project's installed dependencies.
+ * Pass the result to `runCodegen` alongside `libraries` and `girPath`, omitting `jsx` when null.
  *
- * Both stores go in one `node_modules`, found by walking the project's `node_modules` chain upwards:
- * the one `@gtkx/react` resolves from, or `@gtkx/runtime`'s when no React is installed. That is the
- * project's own directory when it installs those packages itself, and the workspace root when npm or
- * yarn hoisted them there. Keeping the pair together is what lets the jsx store import the gi store, and
- * anchoring them where the `@gtkx` packages sit is what lets `@gtkx/react`, the CLI, and the project's
- * sources all reach the bindings. A package manager that hoists therefore gives every project sharing
- * that `node_modules` one shared store.
+ * @remarks
+ * Both stores share one `node_modules` directory selected from the project's ancestor chain,
+ * using the installed renderer and runtime. Hoisted packages can therefore give several
+ * projects one shared store. Store versions follow `@gtkx/runtime` and `@gtkx/react`, so
+ * upgrades invalidate generated output. Explicit `gi` or `jsx` options override this selection.
  *
- * Store versions come from the installed `@gtkx/runtime` and `@gtkx/react`, so a dependency upgrade
- * invalidates the stores. Pass explicit `gi` or `jsx` options to `runCodegen` to override any of it.
- *
- * @param projectRoot Directory holding the project's `package.json`, whose `node_modules` chain is walked.
- * @returns Where each store belongs.
- * @throws If `@gtkx/runtime` cannot be resolved from the project, or a `@gtkx` package that imports the
- * bindings is installed above the `node_modules` the stores would go in, since it could not reach them.
+ * @param projectRoot Directory containing the project's `package.json`.
+ * @returns Store locations and versions, with `jsx` set to null when React is absent.
+ * @throws If runtime cannot be resolved, or a binding consumer is installed above the selected
+ * store and cannot import it.
  */
 const resolveStore = (projectRoot: string): ResolvedStore => {
     const root = resolve(projectRoot);

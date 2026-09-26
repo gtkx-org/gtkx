@@ -5,9 +5,8 @@
 <h1 align="center">GTKX</h1>
 
 <p align="center">
-  The React framework for Linux.<br />
-  Write native GNOME applications with React and TypeScript.
-  Real Adwaita and GTK4 widgets with standard web tooling.
+  The React framework for Linux<br />
+  Build native apps with React, TypeScript, and Adwaita widgets.
 </p>
 
 <p align="center">
@@ -27,7 +26,50 @@
   <a href="https://opencollective.com/gtkx">Sponsor</a>
 </p>
 
----
+## Start an app
+
+This branch develops **GTKX 2.0**, currently in beta. The stable release is scheduled for **1 December 2026**. For the current stable release, use the [1.x documentation](https://gtkx.dev/guide/getting-started).
+
+You need Linux, Node.js 26.7 or later, GTK 4.20 or later, libadwaita 1.8 or later, and the native development libraries. Follow [Getting Started](https://gtkx.dev/v2/guide/getting-started) to install and check them before scaffolding:
+
+```sh
+npm create gtkx@beta my-app
+cd my-app
+npm run dev
+```
+
+The native addon ships prebuilt for x64 and arm64 glibc Linux. Other targets require building it from the repository with Rust.
+
+## Build with React
+
+GTKX renders native Adwaita and GTK widgets. Use React state and events to update them, Node.js for filesystem and network access, and npm packages that do not require a browser DOM.
+
+This is a complete entry point in a scaffolded app:
+
+```tsx
+import {
+  AdwApplication, AdwApplicationWindow,
+  AdwHeaderBar, AdwToolbarView,
+} from "@gtkx/jsx/adw";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+import { createRoot, quit } from "@gtkx/react";
+
+const App = () => (
+  <AdwApplication>
+    <AdwApplicationWindow title="My App" onCloseRequest={() => quit()}>
+      <AdwToolbarView topBar={<AdwHeaderBar />}>
+        <GtkLabel>Hello from GTKX</GtkLabel>
+      </AdwToolbarView>
+    </AdwApplicationWindow>
+  </AdwApplication>
+);
+
+createRoot().render(<App />);
+```
+
+The CLI generates `@gtkx/jsx` elements and `@gtkx/gi` bindings from your configured native libraries. They are local to the app, not installed from npm.
+
+## Learn GTKX
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/examples/tutorial/assets/screenshot.png" alt="The Tasks app: an Adwaita window with a sidebar of smart views and colored lists on the left, and a boxed task list on the right." />
@@ -37,152 +79,19 @@
   <em>The Tasks app you build in the <a href="https://gtkx.dev/v2/tutorial/">tutorial</a>.</em>
 </p>
 
-## Demo
+- [Tutorial](https://gtkx.dev/v2/tutorial/): build the Tasks app, test it, and package it for distribution.
+- [Guides](https://gtkx.dev/v2/guide/why-gtkx): forms, navigation, animation, styling, testing, and deployment.
+- [API reference](https://gtkx.dev/v2/reference/): GTKX package exports. Widget props are documented in the generated `.gtkx/reference/` in your app.
+- [Examples](https://github.com/gtkx-org/gtkx/tree/main/examples): a counter, browser, widget showcase, animations, navigation, and component stories.
 
-This app starts with an Adwaita application shell, renders native GTK4 widgets inside it, and uses ordinary React hooks and events:
+## Contribute
 
-```tsx
-import * as Gtk from "@gtkx/gi/gtk";
-import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { createRoot, quit } from "@gtkx/react";
-import { useState } from "react";
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and checks, the [Code of Conduct](CODE_OF_CONDUCT.md), and the [security policy](SECURITY.md). Architecture and maintainer procedures are in the [contributor docs](https://gtkx.dev/contributing/).
 
-const Counter = () => {
-  const [count, setCount] = useState(0);
+## Support GTKX
 
-  return (
-    <AdwApplicationWindow
-      title="Hello GTKX"
-      defaultWidth={400}
-      defaultHeight={300}
-      onCloseRequest={quit}
-    >
-      <AdwToolbarView topBar={<AdwHeaderBar />}>
-        <GtkBox
-          orientation={Gtk.Orientation.VERTICAL}
-          spacing={20}
-          marginTop={40}
-          marginBottom={40}
-          marginStart={40}
-          marginEnd={40}
-          valign={Gtk.Align.CENTER}
-          halign={Gtk.Align.CENTER}
-        >
-          <GtkLabel cssClasses={["title-1"]}>Welcome to GTKX!</GtkLabel>
-          <GtkLabel cssClasses={["title-2"]}>{`Count: ${String(count)}`}</GtkLabel>
-          <GtkButton
-            label="Increment"
-            onClicked={() => setCount((c) => c + 1)}
-            cssClasses={["suggested-action", "pill"]}
-          />
-        </GtkBox>
-      </AdwToolbarView>
-    </AdwApplicationWindow>
-  );
-};
-
-const App = () => (
-  <AdwApplication>
-    <Counter />
-  </AdwApplication>
-);
-
-createRoot().render(<App />);
-```
-
-This is the [`hello-world`](https://github.com/gtkx-org/gtkx/tree/main/examples/hello-world) example, with `app.tsx` and `index.tsx` combined into a single snippet. `@gtkx/gi` and `@gtkx/jsx` are per-project bindings generated by the CLI, not packages you install from npm.
-
-## Why GTKX
-
-### Adwaita-first application development
-
-GTKX uses Adwaita as the foundation for applications, windows, navigation, dialogs, and adaptive layouts, with the complete GTK4 toolkit underneath. It adds a declarative React layer and an integrated TypeScript toolchain to the GNOME platform:
-
-- generated JSX elements for native GObject types,
-- a CLI for scaffolding, development, and production builds,
-- a dev server with Fast Refresh that patches your running UI in place,
-- CSS-in-JS styling, React Hook Form-powered Adwaita controls, gettext-backed react-i18next localization, React Spring animations, React Navigation stack, tab, drawer, and split view navigators, and high-level list, grid, and dialog components,
-- a Testing Library-style API for querying and driving your widgets in tests,
-- and a Model Context Protocol (MCP) server that exposes your live app to AI agents.
-
-### Native GNOME widgets
-
-GTKX renders real Adwaita and GTK4 widgets. Generated bindings also expose the GObject-Introspection libraries configured by your application. GTKX is GNOME-native and Linux-only.
-
-### Why Node.js, and why generated bindings
-
-GTKX runs on Node.js, with access to its APIs, native modules, npm packages, and development tools. The [Why GTKX guide](https://gtkx.dev/v2/guide/why-gtkx) explains the design.
-
-GTKX generates executable ESM bindings and TypeScript declarations together from GIR data. Adwaita and GTK4 are included by default; the `libraries` option selects additional libraries.
-
-At runtime, the native Rust core calls straight into the system Adwaita, GTK4, and GLib libraries through libffi, without loading libgirepository at all.
-
-## Quick start
-
-GTKX is Linux-only and needs Node.js 26.7 or later. See [Requirements](#requirements).
-
-Scaffold a new app with the `create-gtkx` initializer:
-
-```sh
-npm create gtkx@beta
-```
-
-The same command works with other package managers: `pnpm create gtkx@beta` or `yarn create gtkx@beta`.
-
-Then run your new app:
-
-```sh
-cd my-app
-npm run dev
-```
-
-To go further, follow the [tutorial](https://gtkx.dev/v2/tutorial/).
-
-## Documentation
-
-The documentation at **[gtkx.dev](https://gtkx.dev)** includes a step-by-step tutorial that builds a complete GNOME app, from scaffolding to packaging and shipping, plus guides and a full API reference.
-
-**[Read the docs &rarr;](https://gtkx.dev/v2/guide/why-gtkx)**
-
-## Requirements
-
-GTKX is Linux-only. You need:
-
-- Linux with the Adwaita (1.8 or later), GTK4 (4.20 or later), and GLib development libraries
-- Node.js 26.7 or later
-
-The `@gtkx/native` addon ships prebuilt for x64 and arm64 glibc Linux; other targets need to build it from the GTKX repository, which requires a Rust toolchain.
-
-## Examples
-
-Explore the [example apps](https://github.com/gtkx-org/gtkx/tree/main/examples):
-
-- [`hello-world`](https://github.com/gtkx-org/gtkx/tree/main/examples/hello-world): the Adwaita counter above.
-- [`gtk-demo`](https://github.com/gtkx-org/gtkx/tree/main/examples/gtk-demo): the official GTK4 widget showcase in an Adwaita application shell, covering lists, dialogs, gestures, CSS, and OpenGL.
-- [`browser`](https://github.com/gtkx-org/gtkx/tree/main/examples/browser): an Adwaita browser built around `WebKitWebView`.
-- [`animations`](https://github.com/gtkx-org/gtkx/tree/main/examples/animations): an Adwaita showcase for `@gtkx/animated`, with React Spring animations driven by the GTK frame clock.
-- [`navigation`](https://github.com/gtkx-org/gtkx/tree/main/examples/navigation): a tour of `@gtkx/navigation`, React Navigation's stack, tab, and drawer navigators rendered with libadwaita.
-- [`tutorial`](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial): the Tasks app the documentation builds.
-
-## Status
-
-This branch develops GTKX 2.0, currently in beta. The stable release is scheduled for 1 December 2026. The [1.x documentation](https://gtkx.dev/guide/getting-started) covers the current stable release.
-
-## Funding
-
-GTKX costs approximately **US$300 per month** to run, including AI development tools, Copilot reviews, and GitHub services. Our initial fundraising target is **US$375 per month**, allowing for fiscal-host and payment processing fees. We will review this target against actual expenses and fees.
-
-**[Support GTKX on Open Collective →](https://opencollective.com/gtkx)**
-
-Monthly contributions of **US$5**, **US$25**, or any amount help cover these recurring costs. One-time contributions are also welcome. Once ongoing costs are covered, additional contributions will build a **US$900 operating reserve**, equivalent to three months of current expenses.
-
-GTKX is fiscally hosted by [Open Source Collective](https://oscollective.org/), which charges a [10% host fee](https://docs.oscollective.org/welcome-and-introduction-to-osc/fees) in addition to payment processing fees. Project contributions and expenses are managed transparently through [Open Collective](https://opencollective.com/gtkx). We track recurring support separately from one-time contributions when assessing whether ongoing costs are covered.
-
-## Contributing
-
-Contributions are welcome. The [Contributing docs](https://gtkx.dev/contributing/) cover GTKX's architecture, tech stack, development setup, and testing workflow. See [CONTRIBUTING.md](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md) for contribution and release procedures, the [Code of Conduct](https://github.com/gtkx-org/gtkx/blob/main/CODE_OF_CONDUCT.md), and the [security policy](https://github.com/gtkx-org/gtkx/blob/main/SECURITY.md). Building the repo needs Node.js 26.7 or later, pnpm, and a Rust toolchain.
+[Contribute through Open Collective](https://opencollective.com/gtkx) to help cover recurring costs. Our [funding plan](FUNDING.md) explains expenses, fees, and the operating reserve.
 
 ## License
 
-GTKX is licensed under [MPL-2.0](https://github.com/gtkx-org/gtkx/blob/main/LICENSE).
+[MPL-2.0](LICENSE).

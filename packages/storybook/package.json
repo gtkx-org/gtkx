@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/storybook",
     "version": "2.0.0-beta.10",
-    "description": "Native story explorer and portable Component Story Format fixtures for GTKX applications.",
+    "description": "Explore GTKX components as native stories.",
     "keywords": [
         "gtkx",
         "gtk",

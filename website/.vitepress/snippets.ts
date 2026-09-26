@@ -11,9 +11,12 @@ import { createRoot, quit } from "@gtkx/react";
 
 const App = () => (
   <AdwApplication>
-    <AdwApplicationWindow title="My App" onCloseRequest={() => quit()}>
+    <AdwApplicationWindow
+      title="My App"
+      onCloseRequest={() => quit()}
+    >
       <AdwToolbarView topBar={<AdwHeaderBar />}>
-        <GtkLabel>Hello from GNOME 👋</GtkLabel>
+        <GtkLabel>Hello from GTKX</GtkLabel>
       </AdwToolbarView>
     </AdwApplicationWindow>
   </AdwApplication>
@@ -27,7 +30,6 @@ const CONFIG = `import { defineConfig } from "@gtkx/config";
 export default defineConfig({
   applicationId: "com.example.myapp",
   libraries: ["WebKit-6.0"],
-  future: { v2DefaultLibraries: true },
 });
 `;
 
@@ -39,21 +41,13 @@ const APP = `<AdwToolbarView topBar={<AdwHeaderBar />}>
 </AdwToolbarView>
 `;
 
-const ECOSYSTEM = `{
-  "dependencies": {
-    "@gtkx/react": "*",
-    "react": "*",
-    "zod": "*",
-    "zustand": "*"
-  }
-}
-`;
+const ECOSYSTEM = "npm install zod zustand";
 
 const SNIPPETS = {
     hero: { lang: "tsx", code: HERO },
     config: { lang: "ts", code: CONFIG },
     app: { lang: "tsx", code: APP },
-    ecosystem: { lang: "json", code: ECOSYSTEM },
+    ecosystem: { lang: "bash", code: ECOSYSTEM },
 } satisfies Record<string, Snippet>;
 
 export { type Snippet, SNIPPETS };

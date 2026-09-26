@@ -292,18 +292,17 @@ const bindNativeCallable = (
 };
 
 /**
- * Binds a symbol in a shared library to a callable that marshals its inputs and packs output
- * arguments into the result. When the spec sets `canThrow`, the reported `GError` is thrown.
+ * Binds a native symbol, marshals inputs, and packs output arguments into the result.
+ * Throws the reported `GError` when `spec.canThrow` is set.
  *
- * A plain spec is bound when `fn` is called, so a malformed descriptor throws at binding time.
- * Passing a function returning the spec instead defers building the descriptors and the binding
- * to the first call, so describing such a binding costs nothing until something calls it and a
- * module full of them loads without touching the shared library.
+ * @remarks
+ * A plain specification binds immediately; malformed descriptors throw during binding. A
+ * specification factory defers descriptor construction and binding until the first invocation,
+ * so defining the callable does not load its shared library.
  *
- * @param sharedLibrary Shared library the symbol is looked up in.
- * @param symbol Name of the C symbol to bind.
- * @param spec Argument and return descriptors the call is marshalled through, or a function
- * returning them, which defers building the descriptors and the binding to the first call.
+ * @param sharedLibrary Shared library containing the symbol.
+ * @param symbol C symbol to bind.
+ * @param spec Argument and return descriptors, or a factory for deferred binding.
  */
 function fn(
     sharedLibrary: string,

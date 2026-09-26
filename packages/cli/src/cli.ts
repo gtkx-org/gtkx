@@ -18,7 +18,7 @@ const main = defineCommand({
     meta: {
         name: "gtkx",
         version,
-        description: "CLI for GTKX: create and develop Adwaita-first GNOME applications",
+        description: "Create, develop, and package Linux applications with GTKX",
     },
     subCommands: {
         storybook: async () => {

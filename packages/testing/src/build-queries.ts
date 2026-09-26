@@ -209,14 +209,13 @@ const requireSingle =
         };
 
 /**
- * Derives the `queryBy`, `getAllBy`, `getBy`, `findAllBy`, and `findBy` variants of a query family
- * from the family's `queryAllBy` function, mirroring DOM Testing Library's `buildQueries`. The family
- * name used when suggesting a better query comes from `queryAllBy.name`.
+ * Builds a query family from `queryAllBy`, following DOM Testing Library's `buildQueries`.
+ * Query suggestions use `queryAllBy.name` as the family name.
  *
- * @param queryAllBy Finds every widget the family matches.
- * @param getMultipleError Builds the error thrown when a single-match variant finds more than one widget.
- * @param getMissingError Builds the error thrown when a required match is missing.
- * @returns The variants, in the order `[queryBy, getAllBy, getBy, findAllBy, findBy]`.
+ * @param queryAllBy Finds all matching widgets.
+ * @param getMultipleError Builds errors for single-match queries finding multiple widgets.
+ * @param getMissingError Builds errors for required queries finding no widgets.
+ * @returns `[queryBy, getAllBy, getBy, findAllBy, findBy]`.
  */
 const buildQueries = <
     Args extends unknown[],

@@ -120,4 +120,4 @@ import bodyFont from "../data/fonts/Inter-Regular.otf?font";
 <GtkLabel label="Bundled" style={{ fontFamily: bodyFont }} />;
 ```
 
-To add a font for fallback coverage without selecting it, use a side-effect import such as `import "../data/fonts/NotoSansKR.otf?font";`. See [Import project data](/v2/guide/configuration-and-codegen#import-project-data) for asset imports.
+To add a font for fallback coverage without selecting it, use a side-effect import such as `import "../data/fonts/NotoSansKR.otf?font";`. See [Import project data](/v2/guide/assets#import-project-data) for asset imports.

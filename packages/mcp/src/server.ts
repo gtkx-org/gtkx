@@ -177,9 +177,8 @@ const screenshotShape = {
         .boolean()
         .optional()
         .describe(
-            "Whether to return the PNG as image content, true by default. Pass false together with `path` " +
-            "to save the screenshot and get back only where it landed, which keeps the image out of the " +
-            "conversation until something actually needs to look at it.",
+            "Return the PNG as image content (default: true). Set false with `path` to save the image " +
+            "and return only its file location.",
         ),
 };
 
@@ -298,18 +297,14 @@ const widgetPropsTool = (appRouter: AppRouter): Tool =>
         title: "Get widget properties",
         kind: "readOnly",
         description:
-            "Get a fixed summary of one widget by ID: type, accessible role, name, text, sensitivity, " +
-            "visibility, CSS classes, and the same summary for its descendants. The subtree is bounded " +
-            `twice: ${String(DEFAULT_SUBTREE_DEPTH)} levels deep unless \`maxDepth\` says otherwise, and ` +
-            `${String(MAX_SUBTREE_WIDGETS)} widgets in all, filled breadth first. Wherever either bound ` +
-            "cut a branch, that widget carries `hiddenChildren`, the count of its own direct children left " +
-            "out rather than of everything below them; call again with that widget's ID to drill in, or " +
-            "use `gtkx_get_widget_tree` for a wider map. Pass `properties` to read GObject properties too; " +
-            "they come back first in the payload, each under its canonical kebab-case name as " +
-            "`{type, value}`, where an enum or flags value is its GType value name, a 64-bit integer a " +
-            "decimal string, and an object its GType name plus `widgetId` when it is a widget. Asking for " +
-            "a property the widget does not have fails; a value that cannot be marshalled carries a `note` " +
-            "instead.",
+            "Read a widget's type, accessible role, name, text, sensitivity, visibility, CSS classes, " +
+            `and descendants. Defaults to ${String(DEFAULT_SUBTREE_DEPTH)} levels; \`maxDepth\` changes ` +
+            `the depth. Results contain at most ${String(MAX_SUBTREE_WIDGETS)} widgets, in breadth-first ` +
+            "order. `hiddenChildren` counts omitted direct children; query that widget's ID to expand it. " +
+            "Use `gtkx_get_widget_tree` for an overview. Requested GObject `properties` appear first, " +
+            "keyed by canonical kebab-case name with `{type, value}`. Enum/flags values use GType value " +
+            "names, 64-bit integers use decimal strings, and objects use their GType name plus `widgetId` " +
+            "for widgets. Unknown properties fail; values that cannot be converted include a `note`.",
         inputSchema: widgetPropsShape,
         handler: async ({ applicationId, appTimeout, ...params }) => {
             const result = await appRouter.sendToApp(applicationId, "widget.getProps", params, appTimeout);
@@ -367,7 +362,7 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             title: "Click widget",
             kind: "action",
             description:
-                "Click a widget through userEvent.click, with no special case per widget. Works with " +
+                "Click a widget through userEvent.click. Works with " +
                 "buttons, checkboxes, switches, list and grid rows, tree expanders, and column headers: a " +
                 "row is selected, an expander toggles its row's expansion, and a header sorts its column.",
             inputSchema: widgetIdShape,
