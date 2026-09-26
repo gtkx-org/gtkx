@@ -58,7 +58,7 @@ The default size is `1024x768`. Keep the launching terminal or supervisor runnin
 
 ### Sway in a restricted container
 
-Fedora may install Sway with the `CAP_SYS_NICE` file capability. A rootless container that excludes that capability can fail to start Sway with exit status 126, before a test runs. Check the container capability policy. For a disposable test container, removing the capability with `sudo setcap -r /usr/sbin/sway` allows Sway to run without it. This is a container workaround, not a desktop setup step.
+Fedora may install Sway with the `CAP_SYS_NICE` file capability. A rootless container that excludes that capability can fail to start Sway with exit status 126, before a test runs. Check the container capability policy. For a disposable test container, removing the capability with `sudo setcap -r "$(command -v sway)"` allows Sway to run without it. This is a container workaround, not a desktop setup step.
 
 ## Rendering a component
 

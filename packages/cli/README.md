@@ -2,7 +2,7 @@
 
 Development and packaging commands for GTKX applications.
 
-Provides the `gtkx` command: `dev`, `build`, `codegen`, `storybook`, `deploy`, and `cleanup`. A scaffolded app includes this package and npm scripts for the usual workflows. Run `npx gtkx --help` inside the project for command options.
+Provides the `gtkx` command: `create`, `dev`, `build`, `codegen`, `docs`, `mcp`, `storybook`, `deploy`, and `cleanup`. A scaffolded app includes this package and npm scripts for the usual workflows. Run `npx gtkx --help` inside the project for command options.
 
 [Guide](https://gtkx.dev/v2/guide/getting-started) · [GTKX](https://gtkx.dev)
 
