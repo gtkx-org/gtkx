@@ -24,7 +24,7 @@
   <a href="https://gtkx.dev/v2/guide/getting-started">Documentation</a> &middot;
   <a href="https://github.com/gtkx-org/gtkx/tree/main/examples">Examples</a> &middot;
   <a href="https://gtkx.dev/contributing/">Contributing</a> &middot;
-  <a href="https://github.com/sponsors/gtkx-org">Sponsor</a>
+  <a href="https://opencollective.com/gtkx">Sponsor</a>
 </p>
 
 ---
@@ -171,11 +171,13 @@ This branch develops GTKX 2.0, currently in beta. The stable release is schedule
 
 ## Funding
 
-GTKX is developed and maintained as an open-source project. Sponsorships help cover recurring project costs such as continuous integration and development tooling.
+GTKX costs approximately **US$300 per month** to run, including AI development tools, Copilot reviews, and GitHub services. Our initial fundraising target is **US$375 per month**, allowing for fiscal-host and payment processing fees. We will review this target against actual expenses and fees.
 
-**[Sponsor GTKX on GitHub →](https://github.com/sponsors/gtkx-org)**
+**[Support GTKX on Open Collective →](https://opencollective.com/gtkx)**
 
-GTKX is fiscally hosted by [Open Source Collective](https://oscollective.org/). Project contributions and expenses are managed transparently through [Open Collective](https://opencollective.com/gtkx).
+Monthly contributions of **US$5**, **US$25**, or any amount help cover these recurring costs. One-time contributions are also welcome. Once ongoing costs are covered, additional contributions will build a **US$900 operating reserve**, equivalent to three months of current expenses.
+
+GTKX is fiscally hosted by [Open Source Collective](https://oscollective.org/), which charges a [10% host fee](https://docs.oscollective.org/welcome-and-introduction-to-osc/fees) in addition to payment processing fees. Project contributions and expenses are managed transparently through [Open Collective](https://opencollective.com/gtkx). We track recurring support separately from one-time contributions when assessing whether ongoing costs are covered.
 
 ## Contributing
 
