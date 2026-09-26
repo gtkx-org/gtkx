@@ -836,8 +836,8 @@ importers:
         specifier: ^10.10.0
         version: 10.11.0(jiti@2.7.0)(supports-color@7.2.0)
       eslint-plugin-perfectionist:
-        specifier: ^5.11.1
-        version: 5.11.1(eslint@10.11.0(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)
+        specifier: ^5.12.0
+        version: 5.12.0(eslint@10.11.0(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)
       eslint-plugin-promise:
         specifier: ^7.3.0
         version: 7.3.0(eslint@10.11.0(jiti@2.7.0)(supports-color@7.2.0))
@@ -979,8 +979,8 @@ importers:
         specifier: workspace:*
         version: link:../utils
       '@napi-rs/cli':
-        specifier: ^3.10.4
-        version: 3.10.4(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@26.5.1)(supports-color@7.2.0)
+        specifier: ^3.10.5
+        version: 3.10.5(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@26.5.1)(supports-color@7.2.0)
 
   packages/navigation:
     dependencies:
@@ -2396,8 +2396,8 @@ packages:
       '@cfworker/json-schema':
         optional: true
 
-  '@napi-rs/cli@3.10.4':
-    resolution: {integrity: sha512-7yvXpu/m4p1Re1/DViAooSYAyivYEhqDrjuq66a6haXLEAKrZSzndG7B850g1irngI1pAdZS5xL4tsu0xQ8P9Q==}
+  '@napi-rs/cli@3.10.5':
+    resolution: {integrity: sha512-GF4WXmLLQk3uQvkPuLCOSH50DN4GUKZw1zHlMDh4rRF5TWpfOj3a8DkZ2PWCTwpPDMD4ex05sAjrCEwNdukEjg==}
     engines: {node: ^20.17.0 || ^22.13.0 || >= 23.5.0}
     hasBin: true
     peerDependencies:
@@ -4980,8 +4980,8 @@ packages:
     resolution: {integrity: sha512-TtpcNJ3XAzx3Gq8sWRzJaVajRs0uVxA2YAkdb1jm2YkPz4G6egUFAyA3n5vtEIZefPk5Wa4UXbKuS5fKkJWdgA==}
     engines: {node: '>=10'}
 
-  eslint-plugin-perfectionist@5.11.1:
-    resolution: {integrity: sha512-xloHScnOpin9Jy3CegfzoBeY33ASk0spLyM2sJs0LyNHQjv9m0osUD2PYNT7NrJieZbUR2Ebn4A5Q0+0dOcv+A==}
+  eslint-plugin-perfectionist@5.12.0:
+    resolution: {integrity: sha512-1S1Vgb9b3AIxlJoVMbGKB5PwOCtA0PTvDIiGhIoT9CzZa5aZ6BhgGywIj3ONJ5vrH7gTDjgsLgJ1gPUbDI6UUQ==}
     engines: {node: ^20.0.0 || >=22.0.0}
     peerDependencies:
       eslint: ^8.45.0 || ^9.0.0 || ^10.0.0
@@ -8860,7 +8860,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@napi-rs/cli@3.10.4(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@26.5.1)(supports-color@7.2.0)':
+  '@napi-rs/cli@3.10.5(@emnapi/core@1.9.2)(@emnapi/runtime@1.9.2)(@types/node@26.5.1)(supports-color@7.2.0)':
     dependencies:
       '@inquirer/prompts': 8.7.2(@types/node@26.5.1)
       '@napi-rs/cross-toolchain': 1.0.3(supports-color@7.2.0)
@@ -11273,8 +11273,9 @@ snapshots:
 
   escape-string-regexp@4.0.0: {}
 
-  eslint-plugin-perfectionist@5.11.1(eslint@10.11.0(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3):
+  eslint-plugin-perfectionist@5.12.0(eslint@10.11.0(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3):
     dependencies:
+      '@typescript-eslint/types': 8.70.1
       '@typescript-eslint/utils': 8.70.1(eslint@10.11.0(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)
       eslint: 10.11.0(jiti@2.7.0)(supports-color@7.2.0)
       natural-orderby: 5.0.0
