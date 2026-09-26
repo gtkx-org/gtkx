@@ -1,11 +1,14 @@
 diff --git a/index.d.ts b/index.d.ts
-index c0762387a68005990e4d2297ff2331e73c4e71ba..cc1e695d5647b371a491535c9c3f123d275e40e3 100644
+index c0762387a68005990e4d2297ff2331e73c4e71ba..7fff5f90fe549b46a0c500ec0b343195f5988dd6 100644
 --- a/index.d.ts
 +++ b/index.d.ts
-@@ -1 +1 @@
+@@ -1 +1,4 @@
 -import { Component, ReactNode } from "react";
++/* TODO: Remove this patch once upstream declarations use compatible React Context and Portal types.
++ * https://github.com/gtkx-org/gtkx/issues/752
++ */
 +import { Component, Context, ReactNode, ReactPortal as PublicReactPortal } from "react";
-@@ -649,18 +649 @@ declare namespace ReactReconciler {
+@@ -649,18 +652 @@ declare namespace ReactReconciler {
 -    interface ReactContext<T> {
 -        $$typeof: symbol | number;
 -        Consumer: ReactContext<T>;
@@ -25,9 +28,9 @@ index c0762387a68005990e4d2297ff2331e73c4e71ba..cc1e695d5647b371a491535c9c3f123d
 -        displayName?: string;
 -    }
 +    interface ReactContext<T> extends Context<T> {}
-@@ -668 +651 @@ declare namespace ReactReconciler {
+@@ -668 +654 @@ declare namespace ReactReconciler {
 -    interface ReactPortal {
 +    interface ReactPortal extends PublicReactPortal {
-@@ -952 +935 @@ declare namespace ReactReconciler {
+@@ -952 +938 @@ declare namespace ReactReconciler {
 -        ): ReactPortal;
 +        ): PublicReactPortal;

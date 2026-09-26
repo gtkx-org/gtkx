@@ -208,7 +208,7 @@ packageExtensionsChecksum: sha256-a2xhjdsFr8d5AIbVRi4nn7WBebox5vq0zcCN2SSQOYo=
 patchedDependencies:
   '@react-navigation/core@7.22.1': 6462da01ed23beee88f01d290d3714743e43d2fd84235198fcbe09501a61d1d4
   '@react-navigation/routers@7.6.4': 264e3b1766bd6c68d737cc5a0462f4d031997ddce4982d95ed9fbbc91906b77e
-  '@types/react-reconciler@0.33.0': 5f321dd89798ede30e54db677b972e9a7ad535a6245167ce4678941916c328e8
+  '@types/react-reconciler@0.33.0': 98f429416b9ac86afe04e2c3df1c45e860d75071680fdbcdf2cd606f1cf46e72
 
 importers:
 
@@ -1026,7 +1026,7 @@ importers:
         version: link:../utils
       '@types/react-reconciler':
         specifier: ^0.33.0
-        version: 0.33.0(patch_hash=5f321dd89798ede30e54db677b972e9a7ad535a6245167ce4678941916c328e8)(@types/react@19.3.0)
+        version: 0.33.0(patch_hash=98f429416b9ac86afe04e2c3df1c45e860d75071680fdbcdf2cd606f1cf46e72)(@types/react@19.3.0)
       react:
         specifier: ^19.3
         version: 19.3.0
@@ -9995,7 +9995,7 @@ snapshots:
 
   '@types/parse-json@4.0.2': {}
 
-  '@types/react-reconciler@0.33.0(patch_hash=5f321dd89798ede30e54db677b972e9a7ad535a6245167ce4678941916c328e8)(@types/react@19.3.0)':
+  '@types/react-reconciler@0.33.0(patch_hash=98f429416b9ac86afe04e2c3df1c45e860d75071680fdbcdf2cd606f1cf46e72)(@types/react@19.3.0)':
     dependencies:
       '@types/react': 19.3.0
 
