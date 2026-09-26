@@ -2,7 +2,7 @@
 description: "Add smart views, a native filter control, and a search bar to the task list."
 ---
 
-# Smart Views, Filters, and Search
+# Filter and Search Tasks
 
 The split view now adapts to a narrow window. Add All Tasks, Today, Important, and Trash to its sidebar, then filter and search the selected view.
 
@@ -10,12 +10,14 @@ The split view now adapts to a narrow window. Add All Tasks, Today, Important, a
 
 In `src/types.ts`, replace `Selection` and add `SmartView` and `Filter`:
 
-```ts
-export type SmartView = "all" | "today" | "important" | "trash";
-
-export type Selection = { kind: "smart"; view: SmartView } | { kind: "list"; listId: string };
-
-export type Filter = "all" | "open" | "done";
+```diff [src/types.ts]
+@@ -21 +21,5 @@
+-export type Selection = { kind: "list"; listId: string };
++export type SmartView = "all" | "today" | "important" | "trash";
++
++export type Selection = { kind: "smart"; view: SmartView } | { kind: "list"; listId: string };
++
++export type Filter = "all" | "open" | "done";
 ```
 
 `Selection` remains the `Tasks` route's param type. A smart view combines tasks from any list.
@@ -24,7 +26,7 @@ export type Filter = "all" | "open" | "done";
 
 Create `src/format.ts` for the shared date helper:
 
-```ts
+```ts [src/format.ts]
 const startOfDay = (date: Date): number => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 
 export const isToday = (iso: string | null): boolean => {
@@ -35,7 +37,7 @@ export const isToday = (iso: string | null): boolean => {
 
 Create `src/store/selectors.ts`:
 
-```ts
+```ts [src/store/selectors.ts]
 import { isToday } from "../format.js";
 import type { Filter, Selection, SmartView, Task, TaskList } from "../types.js";
 
@@ -144,7 +146,7 @@ Components will select the stored arrays and derive their visible rows during re
 
 Replace `src/store/ui.ts` with:
 
-```ts
+```ts [src/store/ui.ts]
 import type { StateCreator } from "zustand";
 import type { Filter } from "../types.js";
 import type { Mutators, Store } from "./index.js";
@@ -180,7 +182,7 @@ The UI slice is already excluded by `partialize`, so the filter and search start
 
 Replace `src/components/sidebar.tsx` with:
 
-```tsx
+```tsx [src/components/sidebar.tsx]
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkBox, GtkImage, GtkLabel, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
@@ -293,15 +295,19 @@ Each row carries the selection it opens. `selectedIndex` continues to follow the
 
 In `src/navigation.ts`, add the launch selection:
 
-```ts
-export const ALL_TASKS: Selection = { kind: "smart", view: "all" };
+```diff [src/navigation.ts]
+@@ -18,0 +19,2 @@
++
++export const ALL_TASKS: Selection = { kind: "smart", view: "all" };
 ```
 
 In `src/components/window.tsx`, import it and the title helper:
 
-```ts
-import { ALL_TASKS, Split } from "../navigation.js";
-import { selectionTitle } from "../store/selectors.js";
+```diff [src/components/window.tsx]
+@@ -5 +5,2 @@
+-import { Split } from "../navigation.js";
++import { ALL_TASKS, Split } from "../navigation.js";
++import { selectionTitle } from "../store/selectors.js";
 ```
 
 Use `initialParams={ALL_TASKS}` on the `Tasks` screen. Its title now comes from `selectionTitle(route.params, lists)`; the complete options appear below.
@@ -310,7 +316,7 @@ Use `initialParams={ALL_TASKS}` on the `Tasks` screen. Its title now comes from 
 
 A header control can be a component with its own store subscription. Create `src/components/task-filter.tsx`:
 
-```tsx
+```tsx [src/components/task-filter.tsx]
 import { AdwToggle, AdwToggleGroup } from "@gtkx/jsx/adw";
 import { useStore } from "../store/index.js";
 
@@ -338,7 +344,7 @@ GTKX's notify props receive the property value first. The native toggle name is 
 
 Create `src/components/search-button.tsx`:
 
-```tsx
+```tsx [src/components/search-button.tsx]
 import { GtkButton } from "@gtkx/jsx/gtk";
 import { useStore } from "../store/index.js";
 
@@ -356,28 +362,27 @@ export const SearchButton = () => {
 };
 ```
 
-The shortcut in the tooltip is added in [Menus, Accelerators, and Shortcuts](/v2/tutorial/actions-menus-shortcuts).
+The shortcut in the tooltip is added in [Add Menus and Shortcuts](/v2/tutorial/actions-menus-shortcuts).
 
 In `src/components/window.tsx`, import both controls:
 
-```ts
-import { SearchButton } from "./search-button.js";
-import { TaskFilter } from "./task-filter.js";
+```diff [src/components/window.tsx]
+@@ -0,0 +1,2 @@
++import { SearchButton } from "./search-button.js";
++import { TaskFilter } from "./task-filter.js";
 ```
 
 Replace the `Tasks` screen declaration with:
 
-```tsx
-<Split.Screen
-    name="Tasks"
-    component={TasksScreen}
-    initialParams={ALL_TASKS}
-    options={({ route }) => ({
-        title: selectionTitle(route.params, lists),
-        headerTitle: <TaskFilter />,
-        headerStart: <SearchButton />,
-    })}
-/>
+```diff [src/components/window.tsx]
+@@ -53 +53 @@
+-                        initialParams={{ kind: "list", listId: "personal" }}
++                        initialParams={ALL_TASKS}
+@@ -55 +55,3 @@
+-                            title: lists.find((list) => list.id === route.params.listId)?.name ?? "Tasks",
++                            title: selectionTitle(route.params, lists),
++                            headerTitle: <TaskFilter />,
++                            headerStart: <SearchButton />,
 ```
 
 `headerTitle` replaces the visible title widget. Keep `title` as well: it names the native navigation page and is used for back navigation.
@@ -386,7 +391,7 @@ Replace the `Tasks` screen declaration with:
 
 Replace `src/components/task-list.tsx` with:
 
-```tsx
+```tsx [src/components/task-list.tsx]
 import { markupEscapeText } from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwClamp, AdwEntryRow, AdwStatusPage } from "@gtkx/jsx/adw";
@@ -459,7 +464,7 @@ export const TaskList = ({ selection }: { selection: Selection }) => {
 
 Replace `src/components/tasks-screen.tsx` with:
 
-```tsx
+```tsx [src/components/tasks-screen.tsx]
 import type { SplitViewScreenProps } from "@gtkx/navigation";
 import type { RootParamList } from "../navigation.js";
 import { selectionKey } from "../store/selectors.js";
@@ -486,4 +491,4 @@ Quit and restart once more. Tasks are preserved; the filter returns to All and s
 
 ## Next
 
-Continue to [Opening a Task](/v2/tutorial/the-task-editor).
+Continue to [Edit Tasks](/v2/tutorial/the-task-editor).

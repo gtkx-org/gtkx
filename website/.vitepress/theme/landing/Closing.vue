@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import Button from "../components/Button.vue";
 import Icon from "../components/Icon.vue";
-import { LICENSE, REPO_URL } from "./content";
+import { EXAMPLES_URL, LICENSE } from "./content";
 </script>
 
 <template>
@@ -10,15 +10,15 @@ import { LICENSE, REPO_URL } from "./content";
       <div class="oss__text">
         <h2 class="oss__title">Built in the open</h2>
         <p class="oss__body">
-          GTKX is {{ LICENSE }}-licensed and developed in public. We're open to contributions, and we welcome feedback and questions on GitHub.
+          GTKX is {{ LICENSE }}-licensed. Help improve the framework, documentation, or examples.
         </p>
       </div>
       <div class="oss__cta">
-        <Button variant="secondary" :href="REPO_URL">
+        <Button variant="secondary" href="/contributing/">
           <template #icon-left><Icon name="github" /></template>
-          Contribute on GitHub
+          Contribute
         </Button>
-        <Button variant="ghost" :href="`${REPO_URL}/tree/main/examples`">
+        <Button variant="ghost" :href="EXAMPLES_URL">
           Browse examples
           <template #icon-right><Icon name="external" :size="15" /></template>
         </Button>

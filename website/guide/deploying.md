@@ -1,5 +1,5 @@
 ---
-description: "Package a native GNOME app built with GTKX as a Flatpak, a .deb, an .rpm, or an AppImage."
+description: "Package a GTKX app as a Flatpak, Debian package, RPM, or AppImage."
 ---
 
 # Deploying
@@ -20,6 +20,7 @@ export default defineConfig({
     deploy: {
         summary: "Manage your tasks and to-dos",
         categories: ["Office"],
+        minimumLibraryVersions: { "Gtk-4.0": "4.20", "Adw-1": "1.8" },
     },
 });
 ```
@@ -53,13 +54,21 @@ With neither setting, GTKX builds a Flatpak. Finished packages land in `build/ou
 
 ## Preview and build
 
-Review the generated files before creating packages:
+From a scaffolded project on Fedora, preview an RPM:
 
 ```bash
-gtkx deploy --print-manifests
+npm run deploy -- --target rpm --print-manifests
 ```
 
-GTKX builds and stages the application, validates its desktop entry and AppStream metadata, then stops before packaging. Remove `--print-manifests` to produce the selected packages.
+Use `--target deb` on Debian or Ubuntu. Review the generated files before creating packages.
+
+GTKX builds and stages the application, validates its desktop entry and AppStream metadata, then stops before packaging. Remove `--print-manifests` to produce the package:
+
+```bash
+npm run deploy -- --target rpm
+```
+
+Install it on a compatible system and open it from the desktop launcher to check the packaged build.
 
 To package an existing production build:
 
@@ -76,7 +85,7 @@ Every deployment needs `desktop-file-validate` and `appstreamcli`. Translation c
 
 GTKX 1.6 requires Node.js 24 or newer, while supported distributions may ship an older release. Prebuilt packages bundle the version used for deployment. The default downloads the official archive, verifies it, and caches it. The host and path modes use a local runtime after checking that it is suitable for the package; see the [configuration reference](/reference/@gtkx/config/) for those settings.
 
-GTK, libadwaita, and other native libraries come from the host system or Flatpak runtime. Generated GTKX bindings call them directly, so installed applications do not need GIR files. Declare additional system packages and minimum library versions in `deploy` when the application uses them.
+GTK, libadwaita, and other native libraries come from the host system or Flatpak runtime. Generated GTKX bindings call them directly, so installed applications do not need GIR files. Declare additional system packages and minimum library versions in `deploy` when the application uses them. The opening example records the GTKX baseline in `minimumLibraryVersions`; raise it when using newer APIs. GTKX writes those minimums into Debian and RPM dependencies but does not infer the minimum API version from your code. AppImage users still need compatible system libraries.
 
 ## Third-party notices
 
@@ -106,6 +115,10 @@ Put this inside `deploy` and use the application's public repository and release
 Install [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/tree/master/node) before preparing a source manifest. Keep its generated dependency file beside the Flatpak manifest and regenerate both after dependency changes.
 
 Source mode rebuilds the application bundle, while native npm dependencies still use their packaged binaries. Review those dependencies against [Flathub's source-build requirements](https://docs.flathub.org/docs/for-app-authors/requirements#building-from-source) and test the final manifest before submission. [Shipping It on Flathub](/tutorial/flatpak) walks through the GTKX workflow.
+
+## Flatpak in containers
+
+If Flatpak stops while spawning `rofiles-fuse`, set `deploy.flatpak.shouldUseRofilesFuse: false` in `gtkx.config.ts` and retry. This applies to both prebuilt and source builds when the container cannot provide FUSE.
 
 ## Next
 

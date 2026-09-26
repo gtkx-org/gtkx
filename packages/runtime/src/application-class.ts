@@ -96,18 +96,16 @@ const deriveApplicationClass = <T extends CommandLineApplication>(base: AnyClass
     derivedClasses.getOrInsertComputed(base, () => buildApplicationClass(base)) as AnyClass<T>;
 
 /**
- * Constructs an application GTKX can shut down. GLib parses an application's command line at most
- * once per instance and crashes on a second parse, so {@link runApplication} and
- * {@link quitApplication} only accept an application built here.
+ * Constructs an application supported by {@link runApplication} and {@link quitApplication}.
+ * Its derived GType lets GTKX avoid repeating GLib's command-line parse, which would crash.
  *
- * Whatever `g_application_constructed` assigned to the process-wide default is handed straight back,
- * so merely building an application never makes it what `Gio.Application.getDefault()` returns.
- * {@link runApplication} is the only place that claims that default, which keeps it pointing at an
- * application GTKX has actually started rather than at one that is still unregistered.
+ * @remarks
+ * Construction does not claim the process-wide default. Any default assigned by GLib during
+ * construction is released; {@link runApplication} claims it when the application starts.
  *
- * @param base The application class to construct, such as `Gtk.Application`.
+ * @param base The application class, such as `Gtk.Application`.
  * @param props Construct properties, passed through unchanged.
- * @returns An instance of a class derived from `base`, registered once per base class as its own GType.
+ * @returns An instance derived from `base`, with one registered GType per base class.
  */
 const createApplication = <T extends CommandLineApplication, P>(base: ApplicationClass<T, P>, props: P): T => {
     const application = new (deriveApplicationClass(base) as new (props: P) => T)(props);

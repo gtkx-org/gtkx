@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/css",
     "version": "2.0.0-beta.10",
-    "description": "CSS-in-JS for Adwaita and GTK widgets, compiled to GTK4 CSS.",
+    "description": "CSS-in-JS for GTKX widgets.",
     "keywords": [
         "gtkx",
         "gtk",

@@ -2,35 +2,36 @@
 description: "Send one desktop reminder for each due date, with actions that survive a cold start."
 ---
 
-# Reminders That Reach the Desktop
+# Send Reminders
 
-[Dragging Tasks Into Order](/tutorial/drag-to-reorder) completed task-list interaction. This chapter sends a desktop notification when a task enters its reminder window and keeps notification actions working when they launch the app.
+[Reorder Tasks](/tutorial/drag-to-reorder) completed task-list interaction. This chapter sends a desktop notification when a task enters its reminder window and keeps notification actions working when they launch the app.
 
 ## Remember which due date was notified
 
 The reminder marker belongs to the task because tasks already persist. Add it to `Task` in `src/types.ts`:
 
-```diff
-     createdAt: string;
-     completedAt: string | null;
+```diff [src/types.ts]
+@@ -12,0 +13 @@
 +    lastNotifiedDue: string | null;
 ```
 
 Set it to `null` in both the seed helper in `src/store/seed.ts` and the new task created in `src/store/tasks.ts`:
 
-```ts
-lastNotifiedDue: null,
+```diff [src/store/seed.ts]
+@@ -25,0 +26 @@
++    lastNotifiedDue: null,
 ```
 
 Add an action that records the exact due value that produced a notification:
 
-```diff
-     reorder: (draggedId: string, targetId: string) => void;
+```diff [src/store/tasks.ts]
+@@ -15,0 +16 @@
 +    markNotified: (id: string, due: string) => void;
 ```
 
-```ts
-markNotified: (id, due) => set((state) => ({ tasks: patch(state.tasks, id, { lastNotifiedDue: due }) })),
+```diff [src/store/tasks.ts]
+@@ -64,0 +65 @@
++    markNotified: (id, due) => set((state) => ({ tasks: patch(state.tasks, id, { lastNotifiedDue: due }) })),
 ```
 
 A restart now preserves the marker. Changing the task's due date changes the value being compared, so the new due date can produce its own reminder.
@@ -39,7 +40,7 @@ A restart now preserves the marker. Changing the task's due date changes the val
 
 Create `src/hooks/use-reminders.ts`:
 
-```ts
+```ts [src/hooks/use-reminders.ts]
 import { useEffect } from "react";
 import type { Task } from "../types.js";
 
@@ -79,7 +80,7 @@ The first sweep runs when the hook mounts and sends upcoming tasks already insid
 
 Create `src/notifications.ts`:
 
-```ts
+```ts [src/notifications.ts]
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import { formatDateTime } from "./format.js";
@@ -101,28 +102,36 @@ This is an explicit imperative boundary: `Gio.Notification` requires a title in 
 
 Wire the hook into `src/components/window.tsx`:
 
-```tsx
-import { quit, useApplication, useBindSetting, useSetting } from "@gtkx/react";
-import { useCallback, useEffect, useRef } from "react";
-import schema from "../../data/com.gtkx.tutorial.gschema.xml";
-import { useReminders } from "../hooks/use-reminders.js";
-import { buildReminder } from "../notifications.js";
-import type { Task } from "../types.js";
-
-const application = useApplication();
-const tasks = useStore((state) => state.tasks);
-const markNotified = useStore((state) => state.markNotified);
-const [reminderMinutes] = useSetting(schema, "reminder-minutes");
-
-const sendReminder = useCallback(
-    (task: Task, due: string) => {
-        application.sendNotification(task.id, buildReminder(task, due));
-        markNotified(task.id, due);
-    },
-    [application, markNotified],
-);
-
-useReminders(tasks, reminderMinutes, sendReminder);
+```diff [src/components/window.tsx]
+@@ -0,0 +1,6 @@
++import { quit, useApplication, useBindSetting, useSetting } from "@gtkx/react";
++import { useCallback, useEffect, useRef } from "react";
++import schema from "../../data/com.gtkx.tutorial.gschema.xml";
++import { useReminders } from "../hooks/use-reminders.js";
++import { buildReminder } from "../notifications.js";
++import type { Task } from "../types.js";
+@@ -3,3 +8,0 @@
+-import { quit, useBindSetting, useSetting } from "@gtkx/react";
+-import { useEffect, useRef } from "react";
+-import schema from "../../data/com.gtkx.tutorial.gschema.xml";
+@@ -35 +37,0 @@
+-    const [reminderMinutes] = useSetting(schema, "reminder-minutes");
+@@ -49,0 +52,15 @@
++
++    const application = useApplication();
++    const tasks = useStore((state) => state.tasks);
++    const markNotified = useStore((state) => state.markNotified);
++    const [reminderMinutes] = useSetting(schema, "reminder-minutes");
++
++    const sendReminder = useCallback(
++        (task: Task, due: string) => {
++            application.sendNotification(task.id, buildReminder(task, due));
++            markNotified(task.id, due);
++        },
++        [application, markNotified],
++    );
++
++    useReminders(tasks, reminderMinutes, sendReminder);
 ```
 
 The task ID is also the shell notification ID, so sending another notification for that task replaces the existing one. Recording the due value immediately after sending makes the store and desktop delivery share one path.
@@ -131,40 +140,55 @@ The task ID is also the shell notification ID, so sending another notification f
 
 Notification interactions target application actions because they may run before a window exists. GTKX renders them as children of `AdwApplication`; the [Gio application reference](https://docs.gtk.org/gio/class.Application.html) covers the upstream action, activation, and session-bus lifecycle. Add them to the `actions` prop in `src/app.tsx`:
 
-```tsx
+```tsx [src/app.tsx]
+import type * as Adw from "@gtkx/gi/adw";
+import { useState } from "react";
 import * as GLib from "@gtkx/gi/glib";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { ALL_TASKS, openTask } from "./navigation.js";
 import { useStore } from "./store/index.js";
+import { AdwApplication } from "@gtkx/jsx/adw";
+import { Window } from "./components/window.js";
 
-<AdwApplication
-    actionAccels={[
-        { detailedActionName: "win.new", accels: ["<Control>n"] },
-        { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
-        { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
-    ]}
-    actions={
-        <>
-            <GSimpleAction
-                name="complete-task"
-                parameterType={GLib.VariantType.new("s")}
-                onActivate={(parameter) => {
-                    useStore.getState().setDone((parameter as GLib.Variant).getString()[0], true);
-                }}
-            />
-            <GSimpleAction
-                name="open-task"
-                parameterType={GLib.VariantType.new("s")}
-                onActivate={(parameter) => {
-                    openTask(ALL_TASKS, (parameter as GLib.Variant).getString()[0]);
-                }}
-            />
-        </>
-    }
->
-    <Window />
-</AdwApplication>
+export const App = () => {
+    const [application, setApplication] = useState<Adw.Application | null>(null);
+
+    return (
+        <AdwApplication
+            ref={setApplication}
+            onActivate={() => application?.getActiveWindow()?.present()}
+            actionAccels={[
+                { detailedActionName: "win.new", accels: ["<Control>n"] },
+                { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
+                { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
+            ]}
+            actions={
+                <>
+                    <GSimpleAction
+                        name="complete-task"
+                        parameterType={GLib.VariantType.new("s")}
+                        onActivate={(parameter) => {
+                            useStore.getState().setDone((parameter as GLib.Variant).getString()[0], true);
+                        }}
+                    />
+                    <GSimpleAction
+                        name="open-task"
+                        parameterType={GLib.VariantType.new("s")}
+                        onActivate={(parameter) => {
+                            openTask(ALL_TASKS, (parameter as GLib.Variant).getString()[0]);
+                            application?.activate();
+                        }}
+                    />
+                </>
+            }
+        >
+            <Window />
+        </AdwApplication>
+    );
+};
 ```
+
+The `open-task` handler activates the application after queuing navigation, so a service launch mounts its window. `onActivate` presents a window that is already open.
 
 These actions match the names and string targets created in `buildReminder`. They use the store and navigation ref because a notification activation does not originate inside a screen.
 
@@ -172,39 +196,47 @@ These actions match the names and string targets created in `buildReminder`. The
 
 An `open-task` action can arrive before `NavigationContainer` mounts. Keep the latest request until the container reports that it is ready. Update `src/navigation.ts`:
 
-```ts
-let pendingTask: { selection: Selection; id: string } | null = null;
-
-export const openTask = (selection: Selection, id: string): void => {
-    if (!navigationRef.isReady()) {
-        pendingTask = { selection, id };
-        return;
-    }
-    navigationRef.navigate("Tasks", selection);
-    navigationRef.navigate("Task", { id });
-};
-
-export const openPendingTask = (): void => {
-    if (pendingTask === null) return;
-    const { selection, id } = pendingTask;
-    pendingTask = null;
-    openTask(selection, id);
-};
+```diff [src/navigation.ts]
+@@ -41,0 +42,2 @@
++let pendingTask: { selection: Selection; id: string } | null = null;
++
+@@ -43 +45,4 @@
+-    if (!navigationRef.isReady()) return;
++    if (!navigationRef.isReady()) {
++        pendingTask = { selection, id };
++        return;
++    }
+@@ -45,0 +51,7 @@
++};
++
++export const openPendingTask = (): void => {
++    if (pendingTask === null) return;
++    const { selection, id } = pendingTask;
++    pendingTask = null;
++    openTask(selection, id);
 ```
 
 Import `openPendingTask` in `src/components/window.tsx` and connect it to the container:
 
-```tsx
-<NavigationContainer ref={navigationRef} onReady={openPendingTask}>
-    <Split.Navigator>
-        …
-    </Split.Navigator>
-</NavigationContainer>
+```diff [src/components/window.tsx]
+@@ -22 +22 @@
+-import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
++import { ALL_TASKS, navigationRef, openPendingTask, Split } from "../navigation.js";
+@@ -87 +87 @@
+-                    <NavigationContainer ref={navigationRef}>
++                    <NavigationContainer ref={navigationRef} onReady={openPendingTask}>
 ```
 
 A running window opens the task immediately. A cold start stores the request, mounts the normal application tree, and opens it from `onReady`.
 
-Desktop delivery also depends on the installed application identity and desktop entry. [Packaging the App](/tutorial/packaging) adds that metadata; the development process can exercise the actions directly but does not represent an installed notification service.
+Desktop delivery also depends on the installed application identity and desktop entry. [Package the App](/tutorial/packaging) adds that metadata; the development process can exercise the actions directly but does not represent an installed notification service.
+
+Initialize the marker for new tasks:
+
+```diff [src/store/tasks.ts]
+@@ -42,0 +43 @@
++                    lastNotifiedDue: null,
+```
 
 ## Run it
 
@@ -226,4 +258,4 @@ Tasks now covers native Adwaita layout, GTKX JSX, navigation, forms, persistence
 
 ## Next
 
-[Appendix A: Testing the App](/tutorial/testing) drives the finished application through its native accessibility tree.
+[Test the App](/tutorial/testing) drives the finished application through its native accessibility tree.

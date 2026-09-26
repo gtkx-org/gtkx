@@ -143,19 +143,17 @@ const renderElement = (typeName: string, props: unknown): ReactElement => {
 };
 
 /**
- * Builds the component that renders the element of a GLib type, which is how the generated `@gtkx/jsx`
- * store exposes every widget. Reach for it to render a type codegen does not cover, such as one
- * `registerClass` created: the element name is the GType name, and the component routes each prop whose
- * value is an element into that prop's slot, which a bare intrinsic element cannot do.
+ * Creates a JSX component for a GType, including custom types created with `registerClass`.
+ * Generated JSX uses this factory to route element-valued props into named child slots,
+ * which bare intrinsic elements cannot do.
  *
- * Name the props the element takes as the type argument, since the GType name says nothing about them.
- * Left out, the component takes `unknown`, which accepts no attributes at all.
+ * Supply the props type as the type argument. It cannot be inferred from the GType name;
+ * the default `unknown` accepts no attributes.
  *
- * @param typeName GType name to render, such as `GtkButton` or the `typeName` given to `registerClass`.
- * @param cls Wrapper class the name resolves to. Referencing it keeps the class, and with it the
- * registration the reconciler's name lookup depends on, in a tree-shaken bundle; the component
- * itself renders through the name.
- * @returns A component taking that type's props.
+ * @param typeName GType name, such as `GtkButton` or a custom `registerClass` type name.
+ * @param cls Wrapper class to retain with its registration during tree shaking. Rendering
+ * uses `typeName` for lookup.
+ * @returns A component accepting the specified props.
  */
 /* eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- callers name the props */
 const createElementComponent: <P = unknown>(

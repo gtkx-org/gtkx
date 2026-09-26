@@ -11,7 +11,9 @@ Every page under the guide, the tutorial and the API reference belongs to one GT
 
 ## How each version is built
 
-The guide and tutorial for a version are written by hand and kept in the repository alongside that version's prefix. The API reference is generated with TypeDoc from the source of the release it documents: a released version builds from its own git tag, pinned by both tag name and commit, and a pre-release builds from the working tree. A reference page therefore always matches the package version it belongs to.
+Each version has its own guides, tutorial, and package API reference. Archived references use their release's source; documentation for the active development version follows the working tree. Contributor pages always follow `main`.
+
+See [Maintaining Documentation](/contributing/documentation#documentation-versions) for source pinning and release promotion.
 
 ## Machine-readable documentation
 

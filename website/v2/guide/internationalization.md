@@ -7,7 +7,16 @@ description: "Translate GTKX applications and package metadata with gettext cata
 
 `@gtkx/i18n` connects React translation APIs to GNU gettext. Your application's `applicationId` is its gettext domain, and `po/` holds its translation catalogs. GTKX uses those catalogs for both the application and its desktop metadata.
 
-Install `@gtkx/i18n@beta` and make the GNU gettext command-line tools available in your development environment.
+Install `@gtkx/i18n@beta` and GNU gettext 0.25 or later. On Fedora 44:
+
+```bash
+npm install @gtkx/i18n@beta
+sudo dnf install gettext
+xgettext --version
+msgfmt --version
+```
+
+Other distributions may package the tools separately; both commands must be available when running codegen, development, and builds.
 
 ## Create a catalog
 

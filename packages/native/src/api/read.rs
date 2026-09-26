@@ -43,8 +43,8 @@ pub(crate) fn read_field_at<'e>(
 /// the bare offset. A value the descriptor marks as stored inline decodes to a handle aliasing the
 /// owner's memory, so writing one of its own fields reaches the owner.
 ///
-/// The descriptor is compiled on every call. A field read repeatedly from the same descriptor and
-/// offset is cheaper through `bindField`, which compiles both once.
+/// The descriptor is compiled on every call. For repeated access, `bindField` compiles it once;
+/// `readField` and `writeField` still receive the byte offset on each call.
 #[napi(catch_unwind)]
 pub fn read<'env>(
     env: &'env Env,

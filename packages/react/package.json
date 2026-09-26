@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/react",
     "version": "2.0.0-beta.10",
-    "description": "React reconciler for native Adwaita and GTK4 GNOME apps.",
+    "description": "The React renderer for GTKX.",
     "keywords": [
         "gtkx",
         "gtk",

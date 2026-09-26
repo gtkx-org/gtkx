@@ -5,9 +5,7 @@ description: "The languages, native libraries, packages, and development tools b
 
 # Tech Stack
 
-GTKX combines React and TypeScript with libadwaita, GTK4, and a Rust native addon. Applications run in Node.js and create native widgets. The [architecture overview](/contributing/architecture) explains how these layers communicate; this page maps the technologies and repository packages that implement them.
-
-These pages describe the development branch for GTKX 2. Dependency ranges live in [package manifests](https://github.com/gtkx-org/gtkx/tree/main/packages) and the shared [pnpm catalog](https://github.com/gtkx-org/gtkx/blob/main/pnpm-workspace.yaml). The pnpm and Cargo lockfiles record the resolved dependency versions.
+This page maps the technologies and packages on `main`. The [architecture overview](/contributing/architecture) traces how they communicate. Dependency ranges live in [package manifests](https://github.com/gtkx-org/gtkx/tree/main/packages) and the shared [pnpm catalog](https://github.com/gtkx-org/gtkx/blob/main/pnpm-workspace.yaml). The pnpm and Cargo lockfiles record the resolved dependency versions.
 
 ## Languages and execution
 
@@ -41,7 +39,7 @@ The generated `@gtkx/gi` and `@gtkx/jsx` packages belong to each project. Their 
 
 ## Package map
 
-All paths below are relative to the repository root. Package names normally match their directory under `packages/`; `packages/create-gtkx` publishes as `create-gtkx`. This map describes the current package contents. Use the [Development Principles](/contributing/principles) to decide where a responsibility belongs when changing them.
+All paths below are relative to the repository root. Package names normally match their directory under `packages/`; `packages/create-gtkx` publishes as `create-gtkx`. The map describes current package contents; [Development Principles](/contributing/principles) defines their required boundaries.
 
 ### Core and generation
 

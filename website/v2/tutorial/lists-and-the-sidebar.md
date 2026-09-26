@@ -2,7 +2,7 @@
 description: "Organize tasks into lists and navigate between them with an Adwaita split view."
 ---
 
-# Lists and a Sidebar
+# Add Lists and a Sidebar
 
 Your tasks now survive a restart. Add a sidebar for Personal, Work, and Shopping, with the selected list opening in the content pane.
 
@@ -10,24 +10,31 @@ Your tasks now survive a restart. Add a sidebar for Personal, Work, and Shopping
 
 `Task` already has a `listId`. Add these two types to `src/types.ts`:
 
-```ts
-export type TaskList = {
-    id: string;
-    name: string;
-    color: string;
-};
-
-export type Selection = { kind: "list"; listId: string };
+```diff [src/types.ts]
+@@ -13,0 +14,8 @@
++
++export type TaskList = {
++    id: string;
++    name: string;
++    color: string;
++};
++
++export type Selection = { kind: "list"; listId: string };
 ```
 
 In `src/store/seed.ts`, add `TaskList` to the existing type import and append the list defaults:
 
-```ts
-export const seedLists: TaskList[] = [
-    { id: "personal", name: "Personal", color: "#3584e4" },
-    { id: "work", name: "Work", color: "#2ec27e" },
-    { id: "shopping", name: "Shopping", color: "#e66100" },
-];
+```diff [src/store/seed.ts]
+@@ -1 +1 @@
+-import type { Task } from "../types.js";
++import type { Task, TaskList } from "../types.js";
+@@ -46,0 +47,6 @@
++
++export const seedLists: TaskList[] = [
++    { id: "personal", name: "Personal", color: "#3584e4" },
++    { id: "work", name: "Work", color: "#2ec27e" },
++    { id: "shopping", name: "Shopping", color: "#e66100" },
++];
 ```
 
 Keep your existing `seedTasks`. Saved tasks take precedence over seed data, so changing that array would not add tasks to a list you have already saved. Shopping starts empty; you can add tasks to it through the app.
@@ -38,7 +45,7 @@ Separate tasks and lists using Zustand's [slices pattern](https://zustand.docs.p
 
 Move the task state and actions into `src/store/tasks.ts`:
 
-```ts
+```ts [src/store/tasks.ts]
 import type { StateCreator } from "zustand";
 import type { Task } from "../types.js";
 import type { Mutators, Store } from "./index.js";
@@ -92,7 +99,7 @@ export const createTasksSlice: StateCreator<Store, Mutators, [], TasksSlice> = (
 
 Create `src/store/lists.ts`:
 
-```ts
+```ts [src/store/lists.ts]
 import type { StateCreator } from "zustand";
 import type { TaskList } from "../types.js";
 import type { Mutators, Store } from "./index.js";
@@ -113,11 +120,11 @@ export const createListsSlice: StateCreator<Store, Mutators, [], ListsSlice> = (
 });
 ```
 
-The New List dialog will use `addList` in [Deleting Without Fear](/v2/tutorial/trash-and-toasts).
+The New List dialog will use `addList` in [Add Undo and Delete Confirmation](/v2/tutorial/trash-and-toasts).
 
 Replace `src/store/index.ts` with:
 
-```ts
+```ts [src/store/index.ts]
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { Task, TaskList } from "../types.js";
@@ -165,16 +172,16 @@ The selected list belongs to navigation state. Keep it out of the store: the rou
 
 ## Add the navigator
 
-Install `@gtkx/navigation` from the project directory:
+Install navigation and CSS support from the project directory:
 
 ::: code-group
 
 ```bash [npm]
-npm install @gtkx/navigation@beta
+npm install @gtkx/navigation@beta @gtkx/css@beta
 ```
 
 ```bash [pnpm]
-pnpm add @gtkx/navigation@beta
+pnpm add @gtkx/navigation@beta @gtkx/css@beta
 ```
 
 :::
@@ -183,7 +190,7 @@ GTKX integrates React Navigation with libadwaita. Its split view navigator uses 
 
 Create `src/navigation.ts`:
 
-```ts
+```ts [src/navigation.ts]
 import { createSplitViewNavigator, useNavigationState } from "@gtkx/navigation";
 import type { Selection } from "./types.js";
 
@@ -210,7 +217,7 @@ export const useSelection = (): Selection | null =>
 
 Create `src/components/window.tsx`:
 
-```tsx
+```tsx [src/components/window.tsx]
 import { AdwApplicationWindow } from "@gtkx/jsx/adw";
 import { NavigationContainer } from "@gtkx/navigation";
 import { quit } from "@gtkx/react";
@@ -251,7 +258,7 @@ export const Window = () => {
 
 The navigator now owns the toolbar and header. Each screen supplies its content widget. Create `src/components/tasks-screen.tsx`:
 
-```tsx
+```tsx [src/components/tasks-screen.tsx]
 import type { SplitViewScreenProps } from "@gtkx/navigation";
 import type { RootParamList } from "../navigation.js";
 import { TaskList } from "./task-list.js";
@@ -263,7 +270,7 @@ export const TasksScreen = ({ route }: SplitViewScreenProps<RootParamList, "Task
 
 Replace `src/app.tsx` with:
 
-```tsx
+```tsx [src/app.tsx]
 import { AdwApplication } from "@gtkx/jsx/adw";
 import { Window } from "./components/window.js";
 
@@ -282,7 +289,7 @@ Keep the existing `src/index.tsx`; it still imports the named `App` export.
 
 Use a small CSS rule for each list's color. Create `src/styles.ts`:
 
-```ts
+```ts [src/styles.ts]
 import { css } from "@gtkx/css";
 
 export const listDot = (color: string): string => css`
@@ -297,7 +304,7 @@ Adwaita's built-in classes handle the rest of the styling. See [Styling with CSS
 
 Create `src/components/sidebar.tsx`:
 
-```tsx
+```tsx [src/components/sidebar.tsx]
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkBox, GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
@@ -357,7 +364,7 @@ For this navigator, `navigate("Tasks", params)` returns to the existing tasks pa
 
 Replace `src/components/task-list.tsx` with:
 
-```tsx
+```tsx [src/components/task-list.tsx]
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwClamp, AdwEntryRow } from "@gtkx/jsx/adw";
 import { GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
@@ -403,4 +410,4 @@ Close the window and start `npm run dev` again. Tasks and lists return from disk
 
 ## Next
 
-Continue to [A Layout That Collapses](/v2/tutorial/an-adaptive-layout).
+Continue to [Adapt the Layout](/v2/tutorial/an-adaptive-layout).

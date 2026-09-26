@@ -2,15 +2,15 @@
 description: "Store preferences in GSettings, add a preferences dialog, sort the list, and follow the system theme."
 ---
 
-# Preferences and the System Theme
+# Add Preferences
 
-[Deleting Without Fear](/v2/tutorial/trash-and-toasts) finished the app's dialog flow. This chapter keeps user choices in GSettings while task and list data stays in the JSON store from [Saving Tasks Between Runs](/v2/tutorial/saving-to-disk).
+[Add Undo and Delete Confirmation](/v2/tutorial/trash-and-toasts) finished the app's dialog flow. This chapter keeps user choices in GSettings while task and list data stays in the JSON store from [Save Tasks](/v2/tutorial/saving-to-disk).
 
 ## Add the settings schema
 
 GTKX imports, compiles, and generates types for the GSettings schemas used by the application. Create `data/com.gtkx.tutorial.gschema.xml`:
 
-```xml
+```xml [data/com.gtkx.tutorial.gschema.xml]
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <enum id="com.gtkx.tutorial.SortOrder">
@@ -69,7 +69,7 @@ The import returns the generated schema module. Its key names and stored value k
 
 Both hooks receive an existing `Gio.Settings` instance. Create it for the application in `src/components/settings.tsx`:
 
-```tsx
+```tsx [src/components/settings.tsx]
 import type * as Gio from "@gtkx/gi/gio";
 import { GSettings } from "@gtkx/jsx/gio";
 import { createPortal, rootElement } from "@gtkx/react";
@@ -103,32 +103,43 @@ The portal places the non-widget settings object at GTKX's root while `SettingsP
 
 In `src/app.tsx`, wrap `Window` inside the existing `AdwApplication`:
 
-```diff
+```diff [src/app.tsx]
+@@ -0,0 +1 @@
 +import { SettingsProvider } from "./components/settings.js";
-
--    <Window />
-+    <SettingsProvider>
-+        <Window />
-+    </SettingsProvider>
+@@ -12 +13,3 @@
+-            <Window />
++            <SettingsProvider>
++                <Window />
++            </SettingsProvider>
 ```
 
 ## Bind the window size
 
 In `src/components/window.tsx`, extend the React and GTKX imports, then hold the window instance in state and bind its default size:
 
-```tsx
-import * as Adw from "@gtkx/gi/adw";
-import { quit, useBindSetting, useSetting } from "@gtkx/react";
-import { useEffect, useRef, useState } from "react";
-import schema from "../../data/com.gtkx.tutorial.gschema.xml";
-import { useAppSettings } from "./settings.js";
-
-const settings = useAppSettings();
-const [colorScheme] = useSetting(settings, schema, "color-scheme");
-const [window, setWindow] = useState<Adw.ApplicationWindow | null>(null);
-
-useBindSetting({ settings, schema, key: "window-width", object: window, property: "defaultWidth" });
-useBindSetting({ settings, schema, key: "window-height", object: window, property: "defaultHeight" });
+```diff [src/components/window.tsx]
+@@ -0,0 +1,5 @@
++import * as Adw from "@gtkx/gi/adw";
++import { quit, useBindSetting, useSetting } from "@gtkx/react";
++import { useEffect, useRef, useState } from "react";
++import schema from "../../data/com.gtkx.tutorial.gschema.xml";
++import { useAppSettings } from "./settings.js";
+@@ -2 +6,0 @@
+-import { useRef } from "react";
+@@ -13 +16,0 @@
+-import * as Adw from "@gtkx/gi/adw";
+@@ -16 +18,0 @@
+-import { quit } from "@gtkx/react";
+@@ -31,0 +34,7 @@
++    const settings = useAppSettings();
++    const [colorScheme] = useSetting(settings, schema, "color-scheme");
++    const [window, setWindow] = useState<Adw.ApplicationWindow | null>(null);
++
++    useBindSetting({ settings, schema, key: "window-width", object: window, property: "defaultWidth" });
++    useBindSetting({ settings, schema, key: "window-height", object: window, property: "defaultHeight" });
++
+@@ -40,0 +50 @@
++                ref={setWindow}
 ```
 
 Set `ref={setWindow}` on `AdwApplicationWindow`. Both bindings wait for the mounted instance, then restore its saved size and write changes back. Keep the existing toast overlay ref.
@@ -137,7 +148,7 @@ Set `ref={setWindow}` on `AdwApplicationWindow`. Both bindings wait for the moun
 
 The generated schema supplies the allowed choices and enum values. A small application module adds the labels and Adwaita theme mapping used by the UI. Create `src/settings.ts`:
 
-```ts
+```ts [src/settings.ts]
 import * as Adw from "@gtkx/gi/adw";
 import schema from "../data/com.gtkx.tutorial.gschema.xml";
 
@@ -178,7 +189,7 @@ The sort setting returns the schema's integer enum value. The conversion uses th
 
 Create `src/hooks/use-sort-order.ts`:
 
-```ts
+```ts [src/hooks/use-sort-order.ts]
 import { useSetting } from "@gtkx/react";
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 import { useAppSettings } from "../components/settings.js";
@@ -195,47 +206,44 @@ export const useSortOrder = (): [SortOrder, (order: SortOrder) => void] => {
 
 Import `SortOrder` from `settings.ts` in `src/store/selectors.ts`, then add the comparator:
 
-```ts
-const byOrder =
-    (order: SortOrder) =>
-    (a: Task, b: Task): number => {
-        switch (order) {
-            case "due-date": {
-                if (a.due === b.due) return a.position - b.position;
-                if (!a.due) return 1;
-                if (!b.due) return -1;
-                return a.due < b.due ? -1 : 1;
-            }
-            case "title":
-                return a.title.localeCompare(b.title);
-            case "created":
-                return a.createdAt.localeCompare(b.createdAt);
-            default:
-                return a.position - b.position;
-        }
-    };
-
-export type VisibleOptions = { query: string; filter: Filter; sortOrder: SortOrder };
-
-export const visibleTasks = (tasks: Task[], selection: Selection, options: VisibleOptions): Task[] =>
-    tasks
-        .filter(
-            (task) =>
-                inSelection(task, selection) &&
-                matchesQuery(task, options.query) &&
-                matchesFilter(task, options.filter),
-        )
-        .sort(byOrder(options.sortOrder));
+```diff [src/store/selectors.ts]
+@@ -0,0 +1 @@
++import type { SortOrder } from "../settings.js";
+@@ -48 +49,20 @@
+-export type VisibleOptions = { query: string; filter: Filter };
++const byOrder =
++    (order: SortOrder) =>
++        (a: Task, b: Task): number => {
++            switch (order) {
++                case "due-date": {
++                    if (a.due === b.due) return a.position - b.position;
++                    if (!a.due) return 1;
++                    if (!b.due) return -1;
++                    return a.due < b.due ? -1 : 1;
++                }
++                case "title":
++                    return a.title.localeCompare(b.title);
++                case "created":
++                    return a.createdAt.localeCompare(b.createdAt);
++                default:
++                    return a.position - b.position;
++            }
++        };
++
++export type VisibleOptions = { query: string; filter: Filter; sortOrder: SortOrder };
+@@ -58 +78 @@
+-        .sort((a, b) => a.position - b.position);
++        .sort(byOrder(options.sortOrder));
 ```
 
 In `src/components/task-list.tsx`, read the setting and pass it to the selector:
 
-```diff
+```diff [src/components/task-list.tsx]
+@@ -0,0 +1 @@
 +import { useSortOrder } from "../hooks/use-sort-order.js";
-
- export const TaskList = ({ selection }: { selection: Selection }) => {
+@@ -10,0 +12 @@
 +    const [sortOrder] = useSortOrder();
-
+@@ -20 +22 @@
 -    const visible = visibleTasks(tasks, selection, { query: searchQuery, filter });
 +    const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sortOrder });
 ```
@@ -244,31 +252,28 @@ In `src/components/task-list.tsx`, read the setting and pass it to the selector:
 
 Add `"preferences"` to `DialogKind` in `src/types.ts`. Then connect the existing dialog state to a window action in `src/components/window-actions.tsx`:
 
-```diff
-     <GSimpleAction name="new" onActivate={newTask} />
-+    <GSimpleAction name="preferences" onActivate={() => showDialog("preferences")} />
-     <GSimpleAction name="shortcuts" onActivate={() => showDialog("shortcuts")} />
+```diff [src/components/window-actions.tsx]
+@@ -18,0 +19 @@
++            <GSimpleAction name="preferences" onActivate={() => showDialog("preferences")} />
 ```
 
 Register the accelerator in `src/app.tsx`:
 
-```diff
-     actionAccels={[
-         { detailedActionName: "win.new", accels: ["<Control>n"] },
-+        { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
-         { detailedActionName: "win.shortcuts", accels: ["<Control>question"] },
-     ]}
+```diff [src/app.tsx]
+@@ -9,0 +10 @@
++                { detailedActionName: "win.preferences", accels: ["<Control>comma"] },
 ```
 
 Add `{ label: "Preferences", action: "win.preferences" }` beside Keyboard Shortcuts in `src/components/main-menu.tsx`, and document the same accelerator in `src/components/shortcuts.tsx`:
 
-```tsx
-<AdwShortcutsItem title="Preferences" accelerator="<Control>comma" />
+```diff [src/components/shortcuts.tsx]
+@@ -5,0 +6 @@
++            <AdwShortcutsItem title="Preferences" accelerator="<Control>comma" />
 ```
 
 Create `src/components/preferences.tsx`:
 
-```tsx
+```tsx [src/components/preferences.tsx]
 import { ComboRow } from "@gtkx/components";
 import { AdwPreferencesDialog, AdwPreferencesGroup, AdwPreferencesPage, AdwSpinRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
@@ -319,21 +324,19 @@ export const Preferences = ({ onClose }: { onClose: () => void }) => {
 
 Mount the new dialog from `src/components/dialogs.tsx`:
 
-```diff
+```diff [src/components/dialogs.tsx]
+@@ -0,0 +1 @@
 +import { Preferences } from "./preferences.js";
-
-     switch (dialog.kind) {
+@@ -35,0 +37,2 @@
 +        case "preferences":
 +            return <Preferences onClose={close} />;
-         case "new-list":
-             return <NewListDialog />;
 ```
 
 ## Apply the color scheme
 
 Create `src/theme.ts`:
 
-```ts
+```ts [src/theme.ts]
 import * as Adw from "@gtkx/gi/adw";
 import { colorSchemeValue } from "./settings.js";
 
@@ -345,22 +348,39 @@ export const applyColorScheme = (value: string): void => {
 
 Apply it when the setting changes in `src/components/window.tsx`:
 
-```tsx
-import { applyColorScheme } from "../theme.js";
-
-useEffect(() => {
-    applyColorScheme(colorScheme);
-}, [colorScheme]);
+```diff [src/components/window.tsx]
+@@ -0,0 +1 @@
++import { applyColorScheme } from "../theme.js";
+@@ -45,0 +47,4 @@
++
++    useEffect(() => {
++        applyColorScheme(colorScheme);
++    }, [colorScheme]);
 ```
 
 The default table entry follows the desktop scheme; the other entries ask Adwaita to keep the app light or dark.
+
+Include Preferences in the dialog type:
+
+```diff [src/types.ts]
+@@ -27 +27 @@
+-export type DialogKind = "none" | "about" | "shortcuts" | "new-list";
++export type DialogKind = "none" | "about" | "shortcuts" | "new-list" | "preferences";
+```
+
+Add the menu entry:
+
+```diff [src/components/main-menu.tsx]
+@@ -12,0 +13 @@
++                    { section: [{ label: "Preferences", action: "win.preferences" }] },
+```
 
 ## Run it
 
 Press <kbd>Ctrl</kbd>+<kbd>,</kbd>. Change the theme and sort order, then close the dialog. Both changes take effect immediately. Resize the window, quit the process, and start it again. The window size and each preference return from GSettings.
 
-Set Reminder lead time to zero and leave it there. [Reminders That Reach the Desktop](/v2/tutorial/reminders) will make that mean “notify when due.”
+Set Reminder lead time to zero and leave it there. [Send Reminders](/v2/tutorial/reminders) will make that mean “notify when due.”
 
 ## Next
 
-[Dragging Tasks Into Order](/v2/tutorial/drag-to-reorder) adds pointer and keyboard reordering when Manual is selected.
+[Reorder Tasks](/v2/tutorial/drag-to-reorder) adds pointer and keyboard reordering when Manual is selected.

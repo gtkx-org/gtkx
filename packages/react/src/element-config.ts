@@ -34,10 +34,8 @@ const SINGLE_CHILD_TYPES: string[] = [
 const CONTENT_SETTER_TYPES: string[] = ["AdwBottomSheet", "AdwOverlaySplitView"];
 
 /**
- * The framework's own element configuration for the Adwaita and GTK types it customizes: the base props interface each
- * generated element extends, the component that wraps it, the GObject properties left out of its generated
- * props, and whether its GObject is created by its parent. Carries no behaviors, so importing it never
- * reaches the GObject bindings.
+ * Built-in GTK and Adwaita element metadata: base props, component wrappers, omitted properties,
+ * and parent-created objects. Contains no behaviors and can be imported without loading GI bindings.
  */
 const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     ...forTypes(SINGLE_CHILD_TYPES, {

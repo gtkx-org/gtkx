@@ -14,13 +14,11 @@ pub struct FieldDescriptor {
     codec: Codec,
 }
 
-/// Precompiles the marshalling `fieldDescriptor` describes into a reusable field descriptor that
-/// `readField` and `writeField` reach a field through, at whichever offset they are given. `read`
-/// and `write` compile the descriptor on every call instead.
+/// Compiles `fieldDescriptor` for reuse with `readField` and `writeField` at any byte offset.
+/// Unlike `read` and `write`, these accessors do not recompile it on each call.
 ///
-/// Binding costs about as much as one unbound access, so it pays off where the binding is hoisted
-/// out of the access path — held in a module-level constant an accessor reaches through — rather
-/// than made beside the access it serves.
+/// Binding costs about as much as one unbound access. Hoist the binding into a module-level
+/// constant or other reusable storage to avoid paying that cost on every access.
 #[napi(catch_unwind)]
 pub fn bind_field(field_descriptor: Descriptor) -> Result<External<FieldDescriptor>> {
     let codec = field_descriptor.into_codec()?;

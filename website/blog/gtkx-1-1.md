@@ -1,6 +1,6 @@
 ---
 title: "GTKX 1.1: Introducing gtkx deploy"
-description: "GTKX 1.1 adds gtkx deploy, which builds a Flatpak, a .deb, an .rpm, or an AppImage from a GTKX project. The desktop entry, the AppStream metadata, the Flatpak manifest, and the package control files are generated from a deploy block in gtkx.config.ts."
+description: "GTKX 1.1 introduces gtkx deploy for Flatpak, Debian, RPM, and AppImage packages."
 image: /tasks-screenshot.png
 ---
 
@@ -10,7 +10,7 @@ image: /tasks-screenshot.png
 
 GTKX 1.1 is out. It is a small release introducing a new `gtkx deploy` command, in addition to several bug fixes. Read the [`changelog`](https://github.com/gtkx-org/gtkx/releases/tag/v1.1.0) for the full list of changes.
 
-1.0 shipped with a tutorial that ended in a packaging appendix. The appendix asked you to write two esbuild scripts, a shell script, a `sea-config.json`, a desktop entry, an AppStream metainfo file, a Flatpak manifest, and two more shell scripts to drive all of it, then keep the application ID in sync across the lot by hand. It worked, and it ended in a Flathub submission, which was the point. But it was eleven files of packaging for an app with a few hundred lines of source, and almost none of it was specific to the app. That is the sort of thing a framework should be doing for you.
+The 1.0 tutorial required eleven packaging files, including build scripts, desktop metadata, and a Flatpak manifest. GTKX 1.1 generates those shared pieces from the application configuration:
 
 ```bash
 gtkx deploy
@@ -66,7 +66,7 @@ What you do have to install yourself is `desktop-file-validate`, `appstreamcli`,
 
 ## Upgrading
 
-There are no breaking changes in 1.1. Add a `deploy` block, delete your packaging scripts, and read [Deploying](/guide/deploying) for the full field reference. The tutorial's [Appendix B](/tutorial/packaging) and [Appendix C](/tutorial/flatpak) have been rewritten around the command.
+There are no breaking changes in 1.1. Add a `deploy` block and check the generated packages before removing old packaging scripts. The [1.1 deployment guide](https://github.com/gtkx-org/gtkx/blob/v1.1.0/website/guide/deploying.md) records the release's configuration. The maintained [Deploying guide](/guide/deploying) and tutorial chapters on [packaging](/tutorial/packaging) and [Flatpak](/tutorial/flatpak) include later 1.x updates.
 
 ## What's next
 

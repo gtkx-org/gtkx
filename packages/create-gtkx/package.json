@@ -1,7 +1,7 @@
 {
     "name": "create-gtkx",
     "version": "2.0.0-beta.10",
-    "description": "Create a native GNOME app with React, Adwaita, and GTK4.",
+    "description": "Create a GTKX application.",
     "keywords": [
         "gtkx",
         "gtk",

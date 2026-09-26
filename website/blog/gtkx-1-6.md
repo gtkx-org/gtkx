@@ -1,6 +1,6 @@
 ---
 title: "GTKX 1.6: Agents and the road to 2.0"
-description: "GTKX 1.6 gives coding agents project-specific rules, a generated GTK API reference, one-command MCP setup, and guided opt-ins for Adwaita defaults and tree-shakeable stores on the road to GTKX 2.0."
+description: "GTKX 1.6 adds generated agent references, MCP setup, and opt-in migration flags for 2.0."
 image: /og.png
 ---
 
@@ -8,7 +8,7 @@ image: /og.png
 
 <p class="post-date">August 29, 2026</p>
 
-GTKX 1.6 is the migration release before 2.0. It gives coding agents instructions and API documentation generated for the project they are editing, makes the MCP server a first-class CLI command, and tells every existing project exactly which 2.0 behaviors it has not adopted yet. Two new future flags let applications opt into Adwaita as a default library and tree-shakeable generated bindings now. Existing application semantics stay on 1.5 behavior until those flags are enabled. Read the [`changelog`](https://github.com/gtkx-org/gtkx/releases/tag/v1.6.0) for the full list of changes.
+GTKX 1.6 is the migration release before 2.0. It gives coding agents instructions and API documentation generated for the project they are editing, makes the MCP server a first-class CLI command, and reports which previewed 2.0 behaviors a project has not adopted yet. Two new future flags let applications opt into Adwaita as a default library and tree-shakeable generated bindings now. Existing application semantics stay on 1.5 behavior until those flags are enabled. Read the [`changelog`](https://github.com/gtkx-org/gtkx/releases/tag/v1.6.0) for the full list of changes.
 
 ## The GTK API your agent can actually use
 
@@ -44,9 +44,9 @@ Once `gtkx dev` is running, an agent can inspect the live widget tree, query the
 
 A project can keep that surface small. `mcp.tools` accepts additive and subtractive glob patterns, and `mcp.readOnly` removes the tools that drive the application. Command-line flags override both for an editor that needs a narrower server. Tools also carry MCP read-only and destructive annotations, and screenshots can be written to disk without placing the image in the conversation until the client needs to inspect it. The [MCP guide](/guide/mcp) covers every client and tool.
 
-## 1.6 tells you exactly what 2.0 will change
+## Previewing 2.0 behavior {#_1-6-tells-you-exactly-what-2-0-will-change}
 
-GTKX 2.0 is deliberately a removal release: it makes the already available future behaviors unconditional and removes deprecated paths. Feature work resumes in 2.1. The work for an application therefore belongs on 1.6, where each change can be adopted independently and verified against the current release.
+The 1.6 migration plan makes the previewed behaviors unconditional in 2.0 and removes deprecated paths. Applications can adopt each flag independently and verify it on 1.6. The later beta also introduces changes outside those flags; the [current upgrade guide](/v2/guide/upgrading-to-2) includes them.
 
 Every command that loads `gtkx.config.ts` now prints one grouped warning on stderr when future flags remain unset. The block names each flag, explains the behavior it changes, gives it a stable deprecation ID, and links to the new [Upgrading to 2.0](/guide/upgrading-to-2) guide. It prints once for a given set of pending flags, so a dev server does not repeat it through every process it starts.
 
@@ -100,8 +100,8 @@ GTKX 1.6 has no application-facing runtime break by default. Upgrade every insta
 npm install @gtkx/cli@^1.6.0 @gtkx/react@^1.6.0
 ```
 
-Update the other `@gtkx/*` packages the application uses in the same command. The first CLI run may add the managed agent block and will report any future flags the project has not adopted. Work through those flags one at a time using the typechecker, build, or live application check named by the warning. Clear the GTKX symbols tagged `Removed in v2` as well; once both lists are empty, the eventual 2.0 upgrade is only a version bump.
+Update the other `@gtkx/*` packages the application uses in the same command. The first CLI run may add the managed agent block and will report any future flags the project has not adopted. Work through those flags one at a time using the typechecker, build, or live application check named by the warning. Clear the GTKX symbols tagged `Removed in v2` as well. This completes the changes previewed by 1.6. Before upgrading to the beta, also check its [Node.js, ESM, and internationalization requirements](/v2/guide/upgrading-to-2).
 
 ## What's next
 
-GTKX 2.0 removes the deprecated paths and future-flag branches documented by 1.6, without adding a second set of changes at the same time. Applications can complete that migration now, on stable behavior with explicit checks. New feature work resumes in 2.1.
+Applications can prepare for removal of the deprecated paths and future-flag branches on 1.6. The [2.0 beta announcement](/blog/gtkx-2-0-beta-1) records the additional migration changes introduced afterward. New feature work is scheduled for 2.1.

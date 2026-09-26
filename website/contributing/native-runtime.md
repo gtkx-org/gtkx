@@ -5,9 +5,7 @@ description: "GTKX's TypeScript runtime, Rust FFI bridge, native ownership model
 
 # Native Runtime
 
-GTKX's native runtime spans two packages. `@gtkx/runtime` implements JavaScript-facing binding behavior in TypeScript. `@gtkx/native` is a Rust addon that handles the ABI, pointers, native memory, and integration with Node. Generated GI code supplies the signatures and metadata that connect them.
-
-The required boundary keeps [`@gtkx/native` minimal](/contributing/principles#keep-the-native-module-minimal): it supplies memory-safe FFI operations without exposing raw pointers or undefined behavior to JavaScript. [Binding semantics belong to `@gtkx/runtime`](/contributing/principles#put-binding-semantics-in-the-runtime), including marshalling, GValue and GVariant conversion, callback conventions, signal handling, and the GObject type system.
+`@gtkx/runtime` implements JavaScript binding behavior. The Rust addon, `@gtkx/native`, handles ABI operations, native memory, and Node integration. Generated GI code supplies their signatures and metadata; JavaScript uses safe handles without manipulating raw pointers.
 
 The Rust crate builds a Node addon through napi-rs and uses libffi for native calls, libloading for shared libraries, and the Rust GLib bindings for GLib and GObject operations. Its dependencies and supported addon targets are declared in [`packages/native/Cargo.toml`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/Cargo.toml) and [`packages/native/package.json`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/package.json).
 
@@ -25,7 +23,7 @@ A call passes through these stages:
 
 The two main reusable pieces are the compiled call interface and the resolved symbol. A lazy runtime function specification defers creating the bound callable until its first invocation. The native call descriptor then caches its resolved target. Shared-library loading and symbol lookup are centralized in [`ffi/library_cache.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/ffi/library_cache.rs).
 
-The current native call also checks argument counts, and object codecs check declared native types when those types can be resolved. Review these checks against [the principle of trusting the types](/contributing/principles#prefer-simple-code-and-trust-the-types): safe native memory access is required, while redundant validation of statically guaranteed values and unsupported cases should not be added.
+Native calls also check argument counts, and object codecs check declared native types when those types can be resolved.
 
 ## Values, temporary storage, and ownership
 
@@ -106,4 +104,4 @@ Runtime shutdown runs registered exit callbacks and releases native keep-alive b
 
 Errors need to cross the same boundaries as successful results. Throwing native functions report `GError` through an out parameter that the TypeScript runtime turns into an exception. Runtime converts callback exceptions into owned `GError` values when the signature supplies an error slot. Native retains error-slot ABI metadata, validates and copies the supplied handle, and preserves the original exception when the error slot is absent or occupied. The direct addon transport is `CallbackFailure` in [`native/main.d.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/main.d.ts). GLib criticals raised during a bound call are collected and reported after the call returns, and Rust entry points guard unwinding at FFI boundaries.
 
-The relevant sources are [`runtime/src/error.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/runtime/src/error.ts), [`native/src/host/log_writer.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/host/log_writer.rs), and [`native/src/host/panic_handler.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/host/panic_handler.rs). The [Error Handling guide](/v2/guide/error-handling) explains which errors an application's React boundaries can catch and which occur outside rendering.
+The relevant sources are [`runtime/src/error.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/runtime/src/error.ts), [`native/src/host/log_writer.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/host/log_writer.rs), and [`native/src/host/panic_handler.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/host/panic_handler.rs). The [Error Handling guide](/v2/guide/error-handling) explains native exceptions, promise rejections, and failures that terminate the process. React error boundaries do not catch arbitrary signal-handler exceptions or asynchronous failures.

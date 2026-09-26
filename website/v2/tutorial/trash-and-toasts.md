@@ -2,9 +2,9 @@
 description: "Add Undo, permanent-delete confirmation, and a New List dialog."
 ---
 
-# Deleting Without Fear
+# Add Undo and Delete Confirmation
 
-[Menus, Accelerators, and Shortcuts](/v2/tutorial/actions-menus-shortcuts) connected the delete commands. Give them one shared handler that closes an open editor, moves the task to Trash, and offers Undo. Add permanent-delete confirmation and the New List dialog alongside it.
+[Add Menus and Shortcuts](/v2/tutorial/actions-menus-shortcuts) connected the delete commands. Give them one shared handler that closes an open editor, moves the task to Trash, and offers Undo. Add permanent-delete confirmation and the New List dialog alongside it.
 
 ## Add the toast overlay
 
@@ -24,15 +24,138 @@ pnpm add @gtkx/components@beta
 
 In `src/components/window.tsx`, add `AdwToastOverlay` to the Adwaita element import, and add these imports:
 
-```tsx
-import { ToastProvider } from "@gtkx/components";
-import { useRef } from "react";
+```diff [src/components/window.tsx]
+@@ -0,0 +1,2 @@
++import { ToastProvider } from "@gtkx/components";
++import { useRef } from "react";
+@@ -12 +14 @@
+-import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage } from "@gtkx/jsx/adw";
++import { AdwApplicationWindow, AdwToastOverlay, AdwBreakpoint, AdwStatusPage } from "@gtkx/jsx/adw";
 ```
 
 Inside `Window`, create the overlay ref:
 
-```ts
-const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
+```diff [src/components/window.tsx]
+@@ -31,0 +32 @@
++    const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
+@@ -37,44 +38,13 @@
+-        <AdwApplicationWindow
+-            controllers={<AppShortcuts />}
+-            actions={<WindowActions />}
+-            title="Tasks"
+-            widthRequest={360}
+-            heightRequest={294}
+-            onCloseRequest={() => quit()}
+-            breakpoints={
+-                <AdwBreakpoint
+-                    condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
+-                    onApply={() => setCollapsed(true)}
+-                    onUnapply={() => setCollapsed(false)}
+-                />
+-            }
+-        >
+-            <NavigationContainer ref={navigationRef}>
+-                <Split.Navigator
+-                    initialRouteName="Tasks"
+-                    collapsed={collapsed}
+-                    sidebarWidthFraction={0.25}
+-                    minSidebarWidth={220}
+-                    maxSidebarWidth={300}
+-                    contentPlaceholder={<NothingSelected />}
+-                >
+-                    <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
+-                    <Split.Screen
+-                        name="Tasks"
+-                        component={TasksScreen}
+-                        initialParams={ALL_TASKS}
+-                        options={({ route }) => ({
+-                            title: selectionTitle(route.params, lists),
+-                            headerTitle: <TaskFilter />,
+-                            headerStart: (
+-                                <>
+-                                    <GtkButton
+-                                        iconName="list-add-symbolic"
+-                                        tooltipText="New Task (Ctrl+N)"
+-                                        actionName="win.new"
+-                                    />
+-                                    <SearchButton />
+-                                </>
+-                            ),
+-                            headerEnd: <MainMenu />,
+-                        })}
++        <ToastProvider overlayRef={toastOverlayRef}>
++            <AdwApplicationWindow
++                controllers={<AppShortcuts />}
++                actions={<WindowActions />}
++                title="Tasks"
++                widthRequest={360}
++                heightRequest={294}
++                onCloseRequest={() => quit()}
++                breakpoints={
++                    <AdwBreakpoint
++                        condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
++                        onApply={() => setCollapsed(true)}
++                        onUnapply={() => setCollapsed(false)}
+@@ -82,12 +52,47 @@
+-                    <Split.Screen
+-                        name="Task"
+-                        component={TaskScreen}
+-                        options={({ route }) => ({
+-                            headerTitle: <TaskTitle id={route.params.id} />,
+-                            headerEnd: <TaskButtons id={route.params.id} />,
+-                        })}
+-                    />
+-                </Split.Navigator>
+-            </NavigationContainer>
+-            <Dialogs />
+-        </AdwApplicationWindow>
++                }
++            >
++                <AdwToastOverlay ref={toastOverlayRef}>
++                    <NavigationContainer ref={navigationRef}>
++                        <Split.Navigator
++                            initialRouteName="Tasks"
++                            collapsed={collapsed}
++                            sidebarWidthFraction={0.25}
++                            minSidebarWidth={220}
++                            maxSidebarWidth={300}
++                            contentPlaceholder={<NothingSelected />}
++                        >
++                            <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
++                            <Split.Screen
++                                name="Tasks"
++                                component={TasksScreen}
++                                initialParams={ALL_TASKS}
++                                options={({ route }) => ({
++                                    title: selectionTitle(route.params, lists),
++                                    headerTitle: <TaskFilter />,
++                                    headerStart: (
++                                        <>
++                                            <GtkButton
++                                                iconName="list-add-symbolic"
++                                                tooltipText="New Task (Ctrl+N)"
++                                                actionName="win.new"
++                                            />
++                                            <SearchButton />
++                                        </>
++                                    ),
++                                    headerEnd: <MainMenu />,
++                                })}
++                            />
++                            <Split.Screen
++                                name="Task"
++                                component={TaskScreen}
++                                options={({ route }) => ({
++                                    headerTitle: <TaskTitle id={route.params.id} />,
++                                    headerEnd: <TaskButtons id={route.params.id} />,
++                                })}
++                            />
++                        </Split.Navigator>
++                    </NavigationContainer>
++                </AdwToastOverlay>
++                <Dialogs />
++            </AdwApplicationWindow>
++        </ToastProvider>
 ```
 
 Wrap `AdwApplicationWindow` in `<ToastProvider overlayRef={toastOverlayRef}>`. Inside the window, wrap the existing `NavigationContainer` in `<AdwToastOverlay ref={toastOverlayRef}>`. Keep `<Dialogs />` after that overlay, inside the window.
@@ -43,20 +166,21 @@ The provider shares this overlay with `useToast`, including calls from window ac
 
 Add the two transitions to `TasksSlice` in `src/store/tasks.ts`:
 
-```diff
-moveToTrash: (id: string) => void;
+```diff [src/store/tasks.ts]
+@@ -12,0 +13,2 @@
 +    restore: (id: string) => void;
 +    deleteForever: (id: string) => void;
 ```
-```diff
-moveToTrash: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: true }) })),
+```diff [src/store/tasks.ts]
+@@ -52,0 +53,2 @@
 +    restore: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: false }) })),
 +    deleteForever: (id) => set((state) => ({ tasks: state.tasks.filter((task) => task.id !== id) })),
 ```
 
 Permanent deletion leaves gaps in the surviving positions. Keep additions at the end of the stored manual order by changing `addTask` in the same file:
 
-```diff
+```diff [src/store/tasks.ts]
+@@ -38 +38 @@
 -                    position: state.tasks.length,
 +                    position: (state.tasks.at(-1)?.position ?? -1) + 1,
 ```
@@ -67,41 +191,46 @@ The array retains manual order: deletion removes entries, and new tasks append a
 
 Replace the dialog types in `src/types.ts`:
 
-```ts
-export type DialogKind = "none" | "about" | "shortcuts" | "new-list";
-
-export type DialogState = { kind: DialogKind } | { kind: "delete-task"; task: Task };
+```diff [src/types.ts]
+@@ -27 +27,3 @@
+-export type DialogKind = "none" | "about" | "shortcuts";
++export type DialogKind = "none" | "about" | "shortcuts" | "new-list";
++
++export type DialogState = { kind: DialogKind } | { kind: "delete-task"; task: Task };
 ```
 
 Update the type import and dialog fields in `src/store/ui.ts`:
 
-```diff
+```diff [src/store/ui.ts]
+@@ -2 +2 @@
 -import type { DialogKind, Filter } from "../types.js";
 +import type { DialogKind, DialogState, Filter, Task } from "../types.js";
-
+@@ -6 +6 @@
 -    dialog: DialogKind;
 +    dialog: DialogState;
-     showDialog: (dialog: DialogKind) => void;
+@@ -7,0 +8 @@
 +    askDeleteTask: (task: Task) => void;
-
+@@ -20,2 +21,3 @@
 -    dialog: "none",
-+    dialog: { kind: "none" },
 -    showDialog: (dialog) => set({ dialog }),
++    dialog: { kind: "none" },
 +    showDialog: (kind) => set({ dialog: { kind } }),
 +    askDeleteTask: (task) => set({ dialog: { kind: "delete-task", task } }),
 ```
 
 Add this helper to `src/navigation.ts` so deleting the current task also leaves its editor:
 
-```ts
-export const closeTaskIfOpen = (id: string): void => {
-    if (openTaskId() === id) navigationRef.goBack();
-};
+```diff [src/navigation.ts]
+@@ -46,0 +47,4 @@
++
++export const closeTaskIfOpen = (id: string): void => {
++    if (openTaskId() === id) navigationRef.goBack();
++};
 ```
 
 Create `src/components/delete-confirmation.tsx`:
 
-```tsx
+```tsx [src/components/delete-confirmation.tsx]
 import * as Adw from "@gtkx/gi/adw";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { closeTaskIfOpen } from "../navigation.js";
@@ -140,7 +269,7 @@ Cancel is both the default and close response. Delete uses Adwaita's destructive
 
 Create `src/components/new-list-dialog.tsx`:
 
-```tsx
+```tsx [src/components/new-list-dialog.tsx]
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
@@ -207,16 +336,22 @@ export const NewListDialog = () => {
 
 The native Add response is disabled until the name has content. Its handler trims the accepted name, so `addList` in `src/store/lists.ts` can use it directly:
 
-```ts
-addList: (name, color) =>
-    set((state) => ({ lists: [...state.lists, { id: crypto.randomUUID(), name, color }] })),
+```diff [src/store/lists.ts]
+@@ -13,5 +13,2 @@
+-    addList: (name, color) => {
+-        const trimmed = name.trim();
+-        if (trimmed === "") return;
+-        set((state) => ({ lists: [...state.lists, { id: crypto.randomUUID(), name: trimmed, color }] }));
+-    },
++    addList: (name, color) =>
++        set((state) => ({ lists: [...state.lists, { id: crypto.randomUUID(), name, color }] })),
 ```
 
 ## Share the delete command
 
 Replace `src/components/dialogs.tsx` with the shared deletion hook and dialog selection:
 
-```tsx
+```tsx [src/components/dialogs.tsx]
 import { useToast } from "@gtkx/components";
 import { useStore } from "../store/index.js";
 import { About } from "./about.js";
@@ -272,34 +407,67 @@ In `TaskRow` and `TaskButtons`, import `useRequestDeleteTask` from `./dialogs.js
 
 In `src/components/app-shortcuts.tsx`, import the same hook and call it inside `AppShortcuts`. Replace `deleteOpenTask` with a handler that reads the current task:
 
-```ts
-const requestDeleteTask = useRequestDeleteTask();
-
-const deleteOpenTask = (): boolean => {
-    const task = useStore.getState().tasks.find((candidate) => candidate.id === openTaskId());
-    if (!task) return false;
-    requestDeleteTask(task);
-    return true;
-};
+```diff [src/components/app-shortcuts.tsx]
+@@ -0,0 +1 @@
++import { useRequestDeleteTask } from "./dialogs.js";
+@@ -18,0 +20 @@
++    const requestDeleteTask = useRequestDeleteTask();
+@@ -26,3 +28,3 @@
+-        const id = openTaskId();
+-        if (id === null) return false;
+-        useStore.getState().moveToTrash(id);
++        const task = useStore.getState().tasks.find((candidate) => candidate.id === openTaskId());
++        if (!task) return false;
++        requestDeleteTask(task);
 ```
 
 In `Window`, read `const showDialog = useStore((state) => state.showDialog)` and update the Lists screen header:
 
-```tsx
-<Split.Screen
-    name="Lists"
-    component={Sidebar}
-    options={{
-        title: "Tasks",
-        headerStart: (
-            <GtkButton
-                iconName="list-add-symbolic"
-                tooltipText="New List"
-                onClicked={() => showDialog("new-list")}
-            />
-        ),
-    }}
-/>
+```diff [src/components/window.tsx]
+@@ -31,0 +32 @@
++    const showDialog = useStore((state) => state.showDialog);
+@@ -64 +65,14 @@
+-                            <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
++                            <Split.Screen
++                                name="Lists"
++                                component={Sidebar}
++                                options={{
++                                    title: "Tasks",
++                                    headerStart: (
++                                        <GtkButton
++                                            iconName="list-add-symbolic"
++                                            tooltipText="New List"
++                                            onClicked={() => showDialog("new-list")}
++                                        />
++                                    ),
++                                }}
++                            />
+```
+
+Connect the shared delete handler in `src/components/task-row.tsx`:
+
+```diff [src/components/task-row.tsx]
+@@ -0,0 +1 @@
++import { useRequestDeleteTask } from "./dialogs.js";
+@@ -14 +15 @@
+-    const moveToTrash = useStore((state) => state.moveToTrash);
++    const requestDeleteTask = useRequestDeleteTask();
+@@ -48 +49 @@
+-                        onClicked={() => moveToTrash(task.id)}
++                        onClicked={() => requestDeleteTask(task)}
+```
+
+Connect the shared delete handler in `src/components/task-buttons.tsx`:
+
+```diff [src/components/task-buttons.tsx]
+@@ -0,0 +1 @@
++import { useRequestDeleteTask } from "./dialogs.js";
+@@ -6 +7 @@
+-    const moveToTrash = useStore((state) => state.moveToTrash);
++    const requestDeleteTask = useRequestDeleteTask();
+@@ -19 +20 @@
+-            <GtkButton iconName="user-trash-symbolic" tooltipText="Delete (Delete)" onClicked={() => moveToTrash(task.id)} />
++            <GtkButton iconName="user-trash-symbolic" tooltipText="Delete (Delete)" onClicked={() => requestDeleteTask(task)} />
 ```
 
 ## Run it
@@ -312,4 +480,4 @@ Open New List. Add stays disabled for an empty or whitespace-only name. Enter a 
 
 ## Next
 
-[Preferences and the System Theme](/v2/tutorial/preferences-and-theming) stores application choices in GSettings.
+[Add Preferences](/v2/tutorial/preferences-and-theming) stores application choices in GSettings.

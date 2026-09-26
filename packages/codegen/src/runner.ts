@@ -71,17 +71,17 @@ type JsxStoreResult = StoreResult & { store: PreparedStore | undefined };
 type GiStoreResult = { isRegenerated: boolean; namespaces: number; store: PreparedStore | undefined };
 
 /**
- * Writes and links a project's `@gtkx/gi` and `@gtkx/jsx` stores from the given GObject-Introspection
- * libraries. The gi store is rewritten only when its GIR inputs changed, and the jsx store only when the gi
- * store or the React element config changed, unless `options.isForced` is set. Pass the spread of
- * `resolveStore(projectRoot)` for everything but `libraries` and `girPath`.
+ * Generates and links a project's GI and JSX stores from GObject Introspection libraries.
+ * Use `resolveStore(projectRoot)` for store locations and versions; omit `jsx` when it is null.
  *
- * Every store already on disk is linked at its `linkDir` before anything is generated, so a link an install
- * pruned out of `node_modules` is restored without regenerating the store.
+ * @remarks
+ * GI regenerates when its inputs change; JSX regenerates when GI or element configuration
+ * changes. `isForced` bypasses freshness checks. Existing stores are linked before generation,
+ * restoring links removed during dependency installation even when regeneration is unnecessary.
  *
- * @param options What to generate and where to write it.
- * @returns A summary of what was regenerated and how long the run took.
- * @throws If `girPath` is empty, which would otherwise generate nothing and report success.
+ * @param options Libraries, GIR paths, store locations, and generation settings.
+ * @returns Regenerated outputs and elapsed time.
+ * @throws If `girPath` is empty.
  */
 const runCodegen = async (options: CodegenRunnerOptions): Promise<CodegenRunnerResult> => {
     const start = Date.now();

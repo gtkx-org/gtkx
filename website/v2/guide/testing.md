@@ -29,7 +29,20 @@ export default defineConfig({
 });
 ```
 
-The plugin gives each worker a private headless display and session bus. It needs the compositor binary, `dbus-daemon`, and `setpriv` installed on the system. See the [plugin reference](/v2/reference/@gtkx/vitest/) for configuration.
+The plugin gives each worker a private headless display and session bus. Its default compositor is Sway; it also needs `dbus-daemon` and `setpriv`. On Fedora 44, install these with:
+
+```bash
+sudo dnf install sway dbus-daemon util-linux
+```
+
+Check that the commands are available, then run the tests:
+
+```bash
+command -v sway dbus-daemon setpriv
+npm test
+```
+
+This setup was checked in the Fedora 44 environment described in [Getting Started](/v2/guide/getting-started#native-libraries-on-fedora-44). See the [plugin reference](/v2/reference/@gtkx/vitest/) for display size and compositor options.
 
 Importing `@gtkx/testing` registers widget matchers and automatic cleanup. No additional setup file is needed.
 
@@ -42,6 +55,10 @@ gtkx dev --headless --size 1280x720
 ```
 
 The default size is `1024x768`. Keep the launching terminal or supervisor running for the session. GTKX removes its temporary runtime on shutdown; use `gtkx cleanup --dry-run` to inspect stale runtimes and `gtkx cleanup` to remove them.
+
+### Sway in a restricted container
+
+Fedora may install Sway with the `CAP_SYS_NICE` file capability. A rootless container that excludes that capability can fail to start Sway with exit status 126, before a test runs. Check the container capability policy. For a disposable test container, removing the capability with `sudo setcap -r "$(command -v sway)"` allows Sway to run without it. This is a container workaround, not a desktop setup step.
 
 ## Rendering a component
 

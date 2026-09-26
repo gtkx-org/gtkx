@@ -1,6 +1,6 @@
 ---
 title: "Animations"
-description: "Animate Adwaita and GTK4 widgets in a GNOME app with GTKX's React Spring target."
+description: "Animate native widget properties and GTK styles with React Spring."
 ---
 
 # Animations
@@ -28,9 +28,7 @@ export const FadeIn = () => {
 };
 ```
 
-This works for every generated JSX element and for components of your own. Keeping the wrapper at module scope also gives React a stable component type, so it does not remount between renders.
-
-The call form also works for elements that are not widgets, such as `GtkAdjustment`, and components of your own, while letting a production bundle retain only the components it reaches.
+Wrap generated elements, non-widget objects such as `GtkAdjustment`, or your own components. A module-scoped wrapper keeps its component identity between renders, and production builds retain only the elements the app uses.
 
 Each frame, the current values are written straight onto the widget through its `ref`, so the component does not re-render while the spring runs. Writable GObject props such as `opacity`, margins, size requests, and adjustment values can be animated this way. Construct-only props remain static, and TypeScript rejects springs passed to them. Labels and text children also accept animated values:
 
@@ -40,11 +38,11 @@ const { count } = useSpring({ from: { count: 0 }, to: { count: 100 } });
 <AnimatedLabel label={count.to((value) => `${Math.round(value)}%`)} />;
 ```
 
-A value the property cannot hold as written is fitted to it: a spring headed for a whole-number property such as a margin is truncated toward zero, and a value outside the range a property allows, such as an `opacity` that a bouncy spring overshoots past 1 or a margin that dips below 0, is clamped to it. GTK margins cannot go negative, so slide a widget in by shrinking a margin rather than by growing one from a negative start.
+GTKX truncates whole-number properties, such as margins, toward zero and clamps values to the native property range. An opacity spring cannot exceed 1, and margins cannot be negative. To slide a widget using a margin, animate from a positive margin to zero.
 
 The wrapper passes a `ref` through. A component of your own that forwards it to the widget it renders gets the same per-frame writes, while one that keeps the `ref` re-renders with the current values instead.
 
-Props that are not GObject properties, such as the `accessible*` props, still animate by re-rendering the component with the current value on each frame. Reserve that path for values that genuinely need it. `style` is handled specially: animated declarations update the shared stylesheet imperatively, without re-rendering the component.
+Props that are not GObject properties, such as `accessible*`, animate by re-rendering the component on each frame. `style` is handled specially: animated declarations update the shared stylesheet imperatively, without re-rendering the component.
 
 ## Animated styles
 
@@ -79,7 +77,7 @@ const styles = useSpring({ from: { color: "red" }, to: { color: "blue" } });
 
 Nested blocks work too, so <span v-pre>`style={{ "&:hover": { color: styles.color } }}`</span> is animated without a React render. Only `style` is read this way; a spring nested inside another object-valued prop is not tracked.
 
-Animated styles are supported, but a provider reload still makes GTK invalidate styling across the display. Animate a native GObject property when one represents the effect, and prefer a class with a CSS `transition` or `@keyframes` for a fixed CSS state change. Use animated `style` when the value is composed dynamically or the effect exists only in CSS, and profile it when many widgets move at once in a large tree. For continuously changing custom pixels, draw them in a `GtkDrawingArea` and call `queueDraw()` as the value changes.
+A provider reload invalidates styling across the display. Prefer a native property for effects it can express, or a CSS `transition` or `@keyframes` for a fixed state change. Use animated `style` for dynamic CSS values, and profile large trees with many animations. For custom drawing, use `GtkDrawingArea` and call `queueDraw()` as values change.
 
 ## Moving widgets
 
@@ -120,9 +118,14 @@ Frames advance during the update phase of a mapped window's GTK frame clock, bef
 
 ## Reduced motion
 
-GTK's `gtk-enable-animations` setting is the toolkit-wide switch, and the package follows it the way GTK's own transitions do: while animations are disabled, every spring jumps to its target and the rest of the lifecycle runs as usual. The desktop's reduced-motion preference is a separate setting, `gtk-interface-reduced-motion` on GTK 4.22 and later, the one behind the `prefers-reduced-motion` media query; it asks for less motion rather than none, so springs keep running and components decide what to reduce. `useReducedMotion()` reports `true` in either case, `false` otherwise, and `null` before a display is open, and re-renders when the settings change, so a component can trade a slide for a fade.
+GTK exposes two settings with different effects:
 
-The `render` helper in `@gtkx/testing` disables animations unless it is given `areAnimationsEnabled: true`, so a spring lands on its final value on the first frame; assert with `findBy*` or `waitFor`, which resolve right away instead of after the animation's duration, and opt in when a test wants to watch the motion.
+- `gtk-enable-animations` disables motion across the toolkit. When false, GTKX springs jump to their targets while still running their lifecycle callbacks.
+- `gtk-interface-reduced-motion`, available in GTK 4.22 and later, asks applications to reduce motion. It also drives GTK's `prefers-reduced-motion` media query. Springs keep running; the component chooses an alternative, such as a fade instead of a slide.
+
+`useReducedMotion()` returns `true` when either preference calls for less motion, `false` otherwise, and `null` before a display is open. It updates when the settings change.
+
+`@gtkx/testing` disables animations by default, so springs reach their targets on the first frame. Assert the result with `findBy*` or `waitFor`. Pass `areAnimationsEnabled: true` to `render` when the test needs to exercise motion.
 
 ## Next
 

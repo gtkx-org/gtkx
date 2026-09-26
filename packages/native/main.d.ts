@@ -61,7 +61,7 @@ declare module "./index.js" {
     export type Handle = { _opaque: "Handle" };
     /**
      * An opaque, precompiled binding of a native function, produced by `bind` and passed to `call`.
-     * It captures the resolved symbol and the marshalling of its arguments and return value.
+     * It stores the target symbol and argument/return marshalling; the symbol resolves on first call.
      */
     export type CallDescriptor = { _opaque: "CallDescriptor" };
     /**
@@ -81,14 +81,11 @@ type LogListener = (level: LogLevel, domain: string, message: string) => void;
 type LogSubscription = { unsubscribe(): void };
 
 /**
- * Subscribes `listener` to every GLib log record the process writes, whichever thread logs it,
- * and returns the subscription whose `unsubscribe` removes it again. The listener receives the
- * level name, the log domain and the message. Records are queued to the JavaScript thread and
- * delivered asynchronously, so a check that reads what the listener collected has to yield to the
- * event loop once after the logging call. A level GLib treats as fatal, including one made fatal
- * through `logSetAlwaysFatal`, aborts the process before the queued delivery runs, so such a
- * listener never sees it. `unsubscribe` stops further records from being queued but does not cancel
- * the ones already queued, so the listener can still run for those after `unsubscribe` returns.
+ * Subscribes to GLib logs from every thread. The listener receives the level, domain, and message.
+ * Records reach JavaScript asynchronously; yield to the event loop before checking collected logs.
+ *
+ * Fatal logs, including levels made fatal by `logSetAlwaysFatal`, abort before delivery and never
+ * reach the listener. Unsubscribing stops new records but leaves already queued deliveries intact.
  */
 declare function onLog(listener: LogListener): LogSubscription;
 

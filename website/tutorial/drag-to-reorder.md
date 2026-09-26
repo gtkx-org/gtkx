@@ -2,28 +2,29 @@
 description: "Reorder tasks by pointer or keyboard where the complete manual list is visible."
 ---
 
-# Dragging Tasks Into Order
+# Reorder Tasks
 
-[Preferences and the System Theme](/tutorial/preferences-and-theming) added Manual sorting. This chapter lets the user change that order with drag and drop or <kbd>Alt</kbd>+<kbd>Up</kbd>/<kbd>Alt</kbd>+<kbd>Down</kbd>.
+[Add Preferences](/tutorial/preferences-and-theming) added Manual sorting. This chapter lets the user change that order with drag and drop or <kbd>Alt</kbd>+<kbd>Up</kbd>/<kbd>Alt</kbd>+<kbd>Down</kbd>.
 
 ## Add the reorder action
 
 Each task already has a `position`. Add one action to `src/store/tasks.ts` that moves a task to another task's index and rewrites those positions:
 
-```diff
-     deleteForever: (id: string) => void;
+```diff [src/store/tasks.ts]
+@@ -14,0 +15 @@
 +    reorder: (draggedId: string, targetId: string) => void;
 ```
 
-```ts
-reorder: (draggedId, targetId) =>
-    set((state) => {
-        const tasks = [...state.tasks];
-        const from = tasks.findIndex((task) => task.id === draggedId);
-        const to = tasks.findIndex((task) => task.id === targetId);
-        tasks.splice(to, 0, ...tasks.splice(from, 1));
-        return { tasks: tasks.map((task, index) => ({ ...task, position: index })) };
-    }),
+```diff [src/store/tasks.ts]
+@@ -55,0 +56,8 @@
++    reorder: (draggedId, targetId) =>
++        set((state) => {
++            const tasks = [...state.tasks];
++            const from = tasks.findIndex((task) => task.id === draggedId);
++            const to = tasks.findIndex((task) => task.id === targetId);
++            tasks.splice(to, 0, ...tasks.splice(from, 1));
++            return { tasks: tasks.map((task, index) => ({ ...task, position: index })) };
++        }),
 ```
 
 Callers validate the IDs at their input boundary, so the action can use them directly. The store's existing persistence writes the new positions to disk.
@@ -34,33 +35,40 @@ A displayed order can be edited only when the screen contains the complete order
 
 Add the shared decision to `src/store/selectors.ts`:
 
-```ts
-export const isReorderable = (
-    selection: Selection,
-    query: string,
-    filter: Filter,
-    sortOrder: SortOrder,
-): boolean =>
-    sortOrder === "manual" &&
-    query === "" &&
-    filter === "all" &&
-    !(selection.kind === "smart" && selection.view === "trash");
+```diff [src/store/selectors.ts]
+@@ -118,0 +119,11 @@
++
++export const isReorderable = (
++    selection: Selection,
++    query: string,
++    filter: Filter,
++    sortOrder: SortOrder,
++): boolean =>
++    sortOrder === "manual" &&
++    query === "" &&
++    filter === "all" &&
++    !(selection.kind === "smart" && selection.view === "trash");
 ```
 
 Compute it once in `src/components/task-list.tsx`, then give each row its neighbors:
 
-```tsx
-const canReorder = isReorderable(selection, searchQuery, filter, sortOrder);
-
-{visible.map((task, index) => (
-    <TaskRow
-        key={task.id}
-        task={task}
-        canReorder={canReorder}
-        previousId={visible[index - 1]?.id}
-        nextId={visible[index + 1]?.id}
-    />
-))}
+```diff [src/components/task-list.tsx]
+@@ -8 +8 @@
+-import { addListId, emptyState, visibleTasks } from "../store/selectors.js";
++import { addListId, emptyState, isReorderable, visibleTasks } from "../store/selectors.js";
+@@ -21,0 +22 @@
++    const canReorder = isReorderable(selection, searchQuery, filter, sortOrder);
+@@ -49,2 +50,8 @@
+-                            {visible.map((task) => (
+-                                <TaskRow key={task.id} task={task} />
++                            {visible.map((task, index) => (
++                                <TaskRow
++                                    key={task.id}
++                                    task={task}
++                                    canReorder={canReorder}
++                                    previousId={visible[index - 1]?.id}
++                                    nextId={visible[index + 1]?.id}
++                                />
 ```
 
 The neighboring IDs give the keyboard command the same destinations a pointer drop receives.
@@ -71,7 +79,7 @@ GTKX attaches generated controller elements through a widget's `controllers` pro
 
 Update the imports and props in `src/components/task-row.tsx`:
 
-```tsx
+```tsx [src/components/task-row.tsx]
 import * as Gdk from "@gtkx/gi/gdk";
 import { markupEscapeText } from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
@@ -199,4 +207,4 @@ Switch to Title, search for a task, select Open or Done, or open Trash. Pointer 
 
 ## Next
 
-[Reminders That Reach the Desktop](/tutorial/reminders) sends a notification when a task reaches its reminder window.
+[Send Reminders](/tutorial/reminders) sends a notification when a task reaches its reminder window.

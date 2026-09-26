@@ -5,13 +5,13 @@ description: "Set up the GTKX repository, build packages, run examples, and work
 
 # Development Setup
 
-Contributing to GTKX means building the framework, its native addon, and the generated bindings used throughout the workspace. The [tech stack](/contributing/tech-stack) maps the packages; this page covers the local development loop.
+Build the workspace, run an example, then use focused Nx targets while making changes. The [package map](/contributing/tech-stack#package-map) identifies each package's role.
 
 ## Prerequisites
 
 Use Linux with Node.js 26.7 or later. The repository's `mise.toml` selects Node 26, and `package.json` pins pnpm through its `packageManager` field. If your runtimes are managed by mise, run the commands below through `mise exec --`, for example `mise exec -- pnpm install`.
 
-Install Rust through rustup so the repository's `rust-toolchain.toml` can select its pinned compiler, Clippy, and rustfmt. Rust formatting also uses the nightly toolchain pinned in [scripts/rust-nightly.ts](https://github.com/gtkx-org/gtkx/blob/main/scripts/rust-nightly.ts); the native sanitizer run uses that same nightly. Install it with the minimal profile and the rustfmt component when working on native code.
+Install Rust through rustup so `rust-toolchain.toml` selects the pinned compiler and Clippy. Native formatting and sanitizers use a separate nightly; its installation command is under [Change native code](#change-native-code).
 
 The full workspace needs more system libraries than a minimal application:
 
@@ -23,7 +23,21 @@ The full workspace needs more system libraries than a minimal application:
 | Headless examples and tests | A supported compositor, normally Sway, `dbus-daemon`, `setpriv`, Mesa rendering support, fonts, icons, MIME data, and GSettings schemas. |
 | Localization and packaging checks | GNU gettext and the packaging tools used by the target formats, including RPM and Debian tooling and Flatpak helpers. |
 
-GTKX's application baseline is GTK 4.20 and libadwaita 1.8 or later. Distribution package names and available versions vary. The repository's [CI Dockerfile](https://github.com/gtkx-org/gtkx/blob/main/.github/docker/Dockerfile) records the complete environment used for verification, including packaging tools, fonts, and pinned toolchains. The [repository contributing guide](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md#set-up-the-workspace) includes a Debian/Ubuntu dependency command.
+GTKX's application baseline is GTK 4.20 and libadwaita 1.8 or later. Distribution package names and available versions vary. The [CI Dockerfile](https://github.com/gtkx-org/gtkx/blob/main/.github/docker/Dockerfile) records the complete verification environment, including packaging tools, fonts, and pinned toolchains.
+
+On Debian or Ubuntu releases providing those library versions, the development packages include:
+
+```bash
+sudo apt install build-essential pkg-config gobject-introspection \
+    libgirepository1.0-dev libgtk-4-dev libadwaita-1-dev \
+    libgtksourceview-5-dev libwebkitgtk-6.0-dev meson ninja-build
+```
+
+This command covers native development and fixtures, not the full headless and packaging environment listed above. Check the installed library versions before building:
+
+```bash
+pkg-config --modversion gtk4 libadwaita-1
+```
 
 ## Clone and build
 
@@ -102,7 +116,17 @@ Keep the process's parent session alive while inspecting the app. Use the live w
 
 ## Change native code
 
-Rust source lives in `packages/native/src`. Rebuild the addon after changing it, then start a fresh application or test process to load the new binary:
+Rust source lives in `packages/native/src`. Formatting and sanitizers use the nightly pinned in [scripts/rust-nightly.ts](https://github.com/gtkx-org/gtkx/blob/main/scripts/rust-nightly.ts). After `pnpm install`, install that toolchain from the repository root:
+
+```bash
+pnpm exec tsx -e '
+import { execFileSync } from "node:child_process";
+import { RUST_NIGHTLY } from "./scripts/rust-nightly.ts";
+execFileSync("rustup", ["toolchain", "install", RUST_NIGHTLY, "--profile", "minimal", "--component", "rustfmt"], { stdio: "inherit" });
+'
+```
+
+Rebuild after changing native code, then start a fresh app or test process to load the new binary:
 
 ```bash
 pnpm nx run @gtkx/native:build
@@ -128,7 +152,7 @@ pnpm nx run @gtkx/website:preview
 
 The preview target depends on the build target. Prose changes usually belong in Markdown, while navigation, versioning, and theme behavior live in `website/.vitepress`. The Contributing section is shared at `/contributing/` and describes repository development. Guide, Tutorial, and API Reference pages follow the prefixes declared in `website/versions.json`; GTKX 2's application documentation currently lives under `/v2/`.
 
-API pages are generated from package output. Change the exported API documentation at its source and regenerate the reference. Changes to documentation versions and their URL prefixes follow the [repository's versioning workflow](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md#documentation-versions).
+API pages are generated from package output. Change the exported API documentation at its source and regenerate the reference. See [Maintaining Documentation](/contributing/documentation) for page registration, version manifests, and promotion.
 
 ## Prepare a change for review
 
@@ -141,4 +165,4 @@ pnpm lint
 pnpm typecheck
 ```
 
-Published-package changes use an Nx version plan created by `pnpm plan`. Documentation-only and test-only changes do not need one. The [repository contributing guide](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md) contains the submission and release workflow. Review changes against the [Development Principles](/contributing/principles), including package ownership, testing strategy, and the separation of consumer behavior from repository-specific tooling.
+Published-package changes use an Nx version plan created by `pnpm plan`. Documentation-only and test-only changes do not need one. The [contribution guide](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md) covers submission and version plans; [Publishing Releases](/contributing/releases) is for maintainers.

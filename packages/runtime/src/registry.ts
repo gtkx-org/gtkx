@@ -25,20 +25,17 @@ import {
 import { initializeWrapper } from "./wrapper-brand.js";
 
 /**
- * Static side of class `C` with its construct signature preserved but the members named `K`
- * removed. A generated class lists every static it declares itself, so a static it narrows never
- * has to stay assignable to the one it shadows. The signature is kept abstract so an abstract `C`
- * survives it: a subclass extends the result, and only the subclass's own declarations decide
- * which statics reach it.
+ * Static side of `C` without members named `K`, preserving its abstract construct signature.
+ * Generated subclasses redeclare their own statics, allowing narrower types than the parent.
+ * Keeping the signature abstract also supports abstract base classes.
  */
 type StaticBase<C, K extends PropertyKey> = Omit<C, K> &
     (C extends abstract new (...args: infer A) => infer R ? abstract new (...args: A) => R : never);
 
 /**
- * Static side of class `C` with its construct signature retargeted to produce `I`. A generated
- * wrapper class is declared locally and exported as a registered constant; its instance type is
- * exported as an interface extending the local class so declaration merging and module
- * augmentation keep working, and this type makes constructing the constant produce that interface.
+ * Static side of `C` whose constructor produces `I`. Generated wrappers export a registered
+ * constant and a separate instance interface for declaration merging and module augmentation;
+ * this type makes constructing the constant return that interface.
  */
 type WrapperClass<C, I> = Omit<C, "prototype"> & {
     /** Prototype retyped to the exported instance interface, so `instanceof` narrows to it. */
@@ -219,14 +216,15 @@ function registerWrapperClass(cls: AnyClass, type: bigint, vfuncs?: VfuncRegistr
 }
 
 /**
- * Lets a class registered with `registerWrapperClass` pick a subclass for each handle it wraps, for
- * types whose one GType covers several C-level subtypes, the way a cairo surface reports image or
- * recording through `cairo_surface_get_type`. The resolver runs when a handle is wrapped as that class
- * explicitly, the way a boxed value a binding hands back is; a wrapper resolved from a handle's runtime
- * GType never consults it, and a subclass passed to `wrapHandle` directly is used as given.
- * @param cls Registered wrapper class whose handles the resolver classifies.
- * @param resolver Returns the class to instantiate for one handle, `cls` itself included.
- * @throws If `cls` is not a registered wrapper class.
+ * Registers a resolver for native subtypes sharing one GType, such as Cairo surface types.
+ *
+ * The resolver runs when wrapping a handle with `cls` explicitly. It does not run when the
+ * wrapper is selected from the handle's runtime GType or when a subclass is passed directly to
+ * `wrapHandle`.
+ *
+ * @param cls Registered wrapper class whose handles need classification.
+ * @param resolver Selects the wrapper class for a handle, including `cls` itself.
+ * @throws If `cls` is not registered.
  */
 function registerWrapperClassResolver(cls: AnyClass, resolver: WrapperClassResolver): void {
     if (!wrapperClasses.has(cls)) {
@@ -332,17 +330,17 @@ function getTypeClassHandle(gtype: bigint): ExternalObject<Handle> {
 }
 
 /**
- * Returns a GObject type's class struct, wrapped in the class-struct wrapper classes registered
- * for the type's ancestry, such as `Gtk.WidgetClass` composed with `GObject.ObjectClass` for a
- * widget type. The class is referenced so it exists even before the type's first instance, and
- * the reference is deliberately never released: once created, a class struct lives for the rest
- * of the process. Backs the `peek` statics of generated GTypeStruct wrappers, such as
- * `GObject.ObjectClass.peek` and `Gtk.WidgetClass.peek`.
+ * Returns a GObject class struct, composing the wrappers registered for its ancestry.
+ * Backs generated statics such as `GObject.ObjectClass.peek` and `Gtk.WidgetClass.peek`.
  *
- * @param type GType to peek the class struct of, or a registered wrapper class of the type.
- * @param base When given, wrapper class of the type the peeked type must derive from; the peek
- * throws for a type outside that lineage. Without it any GObject type is accepted.
+ * @remarks
+ * The class is referenced even before its first instance exists. That reference is never
+ * released: class structs live for the rest of the process.
+ *
+ * @param type GType or registered wrapper class.
+ * @param base Optional wrapper class the requested type must derive from.
  * @returns The wrapped class struct.
+ * @throws If the type is not a GObject type or does not derive from `base`.
  */
 function peekTypeClass(type: bigint | AnyClass, base?: AnyClass): object {
     const gtype = typeof type === "bigint" ? type : getClassType(type);
@@ -413,14 +411,12 @@ function registerInterface(cls: AnyClass, type: bigint, mixin: Mixin, layout?: I
 }
 
 /**
- * Copies the members of registered interfaces onto a wrapper class, resolving each interface's
- * mixin through the registry rather than taking the mixin itself, so a class states which
- * interfaces it implements by referencing their classes. The interfaces must already be
- * registered through `registerInterface`; generated code guarantees that by declaring interfaces
- * ahead of the classes that implement them.
+ * Copies registered interface mixins onto a wrapper class, in the supplied order.
+ * Interfaces must already be registered through `registerInterface`; generated code declares
+ * them before their implementing classes.
  *
  * @param cls Wrapper class adopting the interfaces.
- * @param interfaces Registered interface classes to adopt, in order.
+ * @param interfaces Registered interface classes to adopt.
  * @throws If an entry is not a registered interface.
  */
 function installInterfaces(cls: AnyClass, interfaces: AnyClass[], inheritedOverrides: string[] = []): void {
@@ -438,14 +434,14 @@ function installInterfaces(cls: AnyClass, interfaces: AnyClass[], inheritedOverr
 }
 
 /**
- * Wraps a native handle in a JS wrapper instance. With no class, resolves and
- * reuses the wrapper for the handle's runtime GType (composing interface mixins),
- * and hands back an instance that already carries a handle unchanged; with an
- * explicit class, creates a bare instance backed by the handle, of the subclass the
- * class's `registerWrapperClassResolver` resolver picks when it has one. Returns null
- * for a null or undefined handle.
+ * Wraps a native handle, returning null for a null or undefined handle.
+ *
+ * Without `cls`, resolves the runtime GType's wrapper, composes interface mixins, and reuses an
+ * existing wrapper. An instance that already carries a handle is returned unchanged. With `cls`,
+ * creates a bare instance, using its `registerWrapperClassResolver` to select a subclass if registered.
+ *
  * @param handle Native handle to wrap.
- * @param cls Wrapper class to instantiate, or omitted to resolve it from the runtime type.
+ * @param cls Wrapper class, or omitted to resolve it from the runtime GType.
  */
 function wrapHandle(handle: null | undefined, cls?: AnyClass): null;
 function wrapHandle<T extends object>(handle: ExternalObject<Handle>, cls: AnyClass<T>): T;

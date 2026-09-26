@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/native",
     "version": "2.0.0-beta.10",
-    "description": "Rust FFI addon for the GTKX GNOME stack and GObject libraries.",
+    "description": "Native addon for GTKX foreign-function calls.",
     "keywords": [
         "gtkx",
         "gtk",

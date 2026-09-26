@@ -2,19 +2,15 @@ import { createParamSpecOverride, type ParamSpecOverride } from "@gtkx/runtime/i
 import { ParamSpec } from "../gobject.js";
 
 /**
- * Creates a `ParamSpec` that redirects to the property `source` declares under `name`, for
- * redeclaring in a subclass a property a parent class or an implemented interface already
- * carries — the equivalent of `g_param_spec_override`, which introspection does not expose.
+ * Creates a `ParamSpec` overriding a property declared by a parent class or interface.
+ * This exposes the non-introspectable `g_param_spec_override` operation.
  *
- * Installing the returned spec through the `properties` option of `registerClass` gives the
- * subclass its own storage and change notification for the property, while its value type,
- * flags and default stay the ones the overridden spec declares.
+ * Install the result through `registerClass`'s `properties` option to give the subclass its
+ * own storage and change notifications. The original type, flags, and default are preserved.
  *
- * Throws when `source` is neither a GType nor a registered class or interface, and when it
- * declares no property under `name`.
- *
- * @param name Canonical name of the property to override.
- * @param source The GType, wrapper class or interface declaring the property.
- * @returns The override spec, ready to install on a subclass.
+ * @param name Canonical property name.
+ * @param source GType, registered wrapper class, or interface declaring the property.
+ * @returns An override spec ready to install on a subclass.
+ * @throws If `source` is not a GType or registered class/interface, or declares no such property.
  */
 export const paramSpecOverride: ParamSpecOverride<ParamSpec> = createParamSpecOverride(ParamSpec);

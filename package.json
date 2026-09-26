@@ -19,7 +19,8 @@
         "local-registry": "tsx ./scripts/local-registry.ts",
         "test": "nx run-many -t test",
         "tutorial": "tsx ./scripts/tutorial.ts",
-        "typecheck": "nx run-many -t typecheck"
+        "typecheck": "nx run-many -t typecheck",
+        "tutorial:checkpoints": "tsx ./scripts/tutorial-checkpoints.ts"
     },
     "nx": {
         "includedScripts": [],

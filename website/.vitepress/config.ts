@@ -27,7 +27,7 @@ import {
 } from "./versioning.js";
 
 const title = "GTKX";
-const description = "Build native GNOME apps with React and TypeScript on an Adwaita-first foundation.";
+const description = "The React framework for Linux. Build native apps with React, TypeScript, and Adwaita widgets.";
 const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
 const websiteRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -403,6 +403,52 @@ const llmsFull = (loaded: LoadedDocumentationVersion, contributing: Documentatio
         otherVersionsSection(loaded.version),
     ].join("\n");
 
+const writeAliasPage = async (
+    outputDirectory: string,
+    alias: string,
+    version: DocumentationVersion,
+    route: string,
+): Promise<void> => {
+    const destination = documentationLink(version, route);
+    const canonical = `${url}${destination}`;
+    const file = route.endsWith("/") ? `${route}index.html` : `${route}.html`;
+    const target = join(outputDirectory, alias.slice(1), file);
+    await mkdir(dirname(target), { recursive: true });
+    await writeFile(target, `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Page moved | GTKX</title>
+<link rel="canonical" href="${canonical}">
+<script>location.replace(${JSON.stringify(destination)} + location.search + location.hash)</script>
+<noscript><meta http-equiv="refresh" content="0;url=${destination}"></noscript>
+</head><body><a href="${destination}">Continue to the GTKX documentation</a></body></html>
+`);
+};
+
+const writeVersionAliases = async (
+    outputDirectory: string,
+    loaded: LoadedDocumentationVersion,
+    contributing: DocumentationSources,
+): Promise<void> => {
+    const version = loaded.version;
+    const routes = canonicalRoutesByVersion.get(version.id) ?? new Set<string>();
+
+    for (const alias of version.aliases) {
+        for (const route of routes) {
+            await writeAliasPage(outputDirectory, alias, version, route);
+        }
+
+        const aliasDirectory = join(outputDirectory, alias.slice(1));
+        await mkdir(aliasDirectory, { recursive: true });
+        await writeFile(join(aliasDirectory, "llms.txt"), llmsIndex(loaded, contributing));
+        await writeFile(join(aliasDirectory, "llms-full.txt"), llmsFull(loaded, contributing));
+
+        for (const source of loaded.sources) {
+            const target = join(aliasDirectory, source.file.slice(version.prefix.length));
+            await mkdir(dirname(target), { recursive: true });
+            await writeFile(target, source.source);
+        }
+    }
+};
+
 export default defineConfig({
     title,
     description,
@@ -482,6 +528,7 @@ export default defineConfig({
                 await mkdir(directory, { recursive: true });
                 await writeFile(join(directory, "llms.txt"), llmsIndex(version, contributing));
                 await writeFile(join(directory, "llms-full.txt"), llmsFull(version, contributing));
+                await writeVersionAliases(siteConfig.outDir, version, contributing);
             }),
         );
     },

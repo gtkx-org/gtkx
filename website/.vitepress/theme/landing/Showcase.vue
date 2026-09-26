@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import Icon from "../components/Icon.vue";
+import { docsLink } from "./content";
 </script>
 
 <template>
   <section id="tutorial" class="show">
     <div class="show__head section-head">
-      <h2 class="show__title section-title">A comprehensive tutorial</h2>
+      <h2 class="show__title section-title">Build a task manager</h2>
       <p class="section-sub">
-        The docs walk you through creating Tasks, a complete GNOME app with an adaptive split view, GSettings,
-        notifications, and Flatpak packaging.
+        Build Tasks one feature at a time: lists, search, preferences, and reminders.
+        Then test it, translate it, and create installable packages.
       </p>
     </div>
-    <a class="show__frame" href="/tutorial/">
+    <a class="show__frame" :href="docsLink('tutorial/')">
       <picture>
         <source srcset="/tasks-screenshot.webp" type="image/webp" />
         <img

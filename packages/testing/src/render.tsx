@@ -197,24 +197,24 @@ const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
 };
 
 /**
- * Renders a React element into a GTK4 widget tree and returns queries
- * scoped to it along with controls for rerendering and unmounting. When no
- * container is supplied, a harness window is created and presented, and the editable it hands the
- * focus to keeps its text unselected, with its caret at the end. The returned promise settles once
- * the window the tree is shown in has been laid out and activation has arrived, so platform state
- * such as focus is already readable when it resolves. A presented harness window is waited on until
- * it is itself active; a window the caller or the tree owns is waited on until the application holds
- * activation, since only a present can claim it. Rendering into a container that is not shown waits
- * for nothing, and a window that never becomes readable within `windowActivationTimeout` throws an
- * error naming the condition that failed rather than resolving with unreadable platform state. A
- * tree mounted into a container that sits outside every toplevel, or inside a window that is not
- * visible, is out of reach of a pointer and a keyboard, so every `userEvent` helper aimed at it
- * rejects after `actionabilityTimeout` naming that condition, and `fireEvent` drives it instead.
+ * Renders React into native widgets and returns queries, debug helpers, and lifecycle controls.
  *
- * @param element The React element to render.
- * @param options Optional container, wrapper, custom queries, and other render settings.
- * @returns A render result with bound queries, debug helpers, and lifecycle controls.
- * @throws When the window the tree is shown in is not laid out and activated in time.
+ * @remarks
+ * Without a container, creates and presents a harness window. Its initially focused editable
+ * keeps its text unselected, with the caret at the end.
+ *
+ * Waits for layout and activation before resolving, so focus and other platform state can be
+ * read immediately. A new harness waits for its own activation; a caller-owned or rendered
+ * window waits for application activation, since only presentation can claim it. A container
+ * that is not shown requires no activation wait.
+ *
+ * Widgets outside all toplevels or inside a hidden window cannot receive pointer or keyboard
+ * input. `userEvent` rejects after `actionabilityTimeout`; use `fireEvent` to drive them directly.
+ *
+ * @param element React element to render.
+ * @param options Container, wrapper, custom queries, and render settings.
+ * @returns Bound queries, debug helpers, and rerender/unmount controls.
+ * @throws If a shown window is not laid out and activated within `windowActivationTimeout`.
  */
 const render = async <Q extends QueryMap = Record<never, never>>(
     element: ReactNode,

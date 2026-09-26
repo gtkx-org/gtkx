@@ -8,7 +8,7 @@ description: "Use GTKX's OpenGL bindings inside a GtkGLArea."
 `@gtkx/gl` provides OpenGL bindings for drawing inside a `GtkGLArea`. Install it alongside your application:
 
 ```bash
-npm install @gtkx/gl
+npm install @gtkx/gl@1.6.0
 ```
 
 This guide covers GTKX integration. Use the [Khronos OpenGL reference](https://registry.khronos.org/OpenGL-Refpages/gl4/) for the rendering API and the [GTKX GL reference](/reference/@gtkx/gl/) for available bindings.

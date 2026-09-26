@@ -2,9 +2,9 @@
 description: "Translate the interface and package metadata with GTKX's gettext integration."
 ---
 
-# Speaking the User's Language
+# Translate the App
 
-The [packaging chapter](/v2/tutorial/packaging) made Tasks installable. Add a French catalog for its interface and desktop metadata.
+[Package the App](/v2/tutorial/packaging) made Tasks installable. Add a French catalog for its interface and desktop metadata.
 
 `@gtkx/i18n` connects react-i18next to GNU gettext. Components use the upstream [translation hook](https://react.i18next.com/latest/usetranslation-hook); GTKX extracts messages, generates their types, and loads the compiled catalog through GLib.
 
@@ -20,7 +20,7 @@ GTKX requires GNU gettext 0.25 or newer for extraction and compilation. Its CLI 
 
 Create `po/LINGUAS` with the locales to ship:
 
-```text
+```text [po/LINGUAS]
 fr
 ```
 
@@ -28,11 +28,24 @@ The application ID, `com.gtkx.tutorial`, is the gettext domain. Keep it unchange
 
 ## Mark the interface text
 
-In `src/components/window.tsx`, import `useTranslation` from `@gtkx/i18n` and call `const { t } = useTranslation()` inside `Window`. Change the existing window title to `title={t("Tasks")}` and the new-task button's tooltip to `tooltipText={t("New Task (Ctrl+N)")}`.
+Translate the window title and new-task tooltip in `src/components/window.tsx`:
+
+```diff [src/components/window.tsx]
+@@ -0,0 +1 @@
++import { useTranslation } from "@gtkx/i18n";
+@@ -36,0 +38 @@
++    const { t } = useTranslation();
+@@ -66 +68 @@
+-                title="Tasks"
++                title={t("Tasks")}
+@@ -113 +115 @@
+-                                                tooltipText="New Task (Ctrl+N)"
++                                                tooltipText={t("New Task (Ctrl+N)")}
+```
 
 Update `src/components/search-button.tsx`:
 
-```tsx
+```tsx [src/components/search-button.tsx]
 import { useTranslation } from "@gtkx/i18n";
 import { GtkButton } from "@gtkx/jsx/gtk";
 import { useStore } from "../store/index.js";
@@ -52,15 +65,64 @@ export const SearchButton = () => {
 };
 ```
 
-Add the same hook inside `TaskList`, then change its search entry to `placeholderText={t("Search tasks…")}`.
+Translate the search entry in `src/components/task-list.tsx`:
 
-Outside components, import `t` directly from `@gtkx/i18n`. In `src/store/seed.ts`, wrap the starter title as `t("Water the plants")`. In the search result returned by `emptyState` in `src/store/selectors.ts`, replace the description with:
-
-```ts
-description: t("No tasks match “{{query}}”", { query }),
+```diff [src/components/task-list.tsx]
+@@ -0,0 +1 @@
++import { useTranslation } from "@gtkx/i18n";
+@@ -11,0 +13 @@
++    const { t } = useTranslation();
+@@ -34 +36 @@
+-                    placeholderText="Search tasks…"
++                    placeholderText={t("Search tasks…")}
 ```
 
-Replace `src/format.ts` with the tutorial's [translated date helpers](https://github.com/gtkx-org/gtkx/blob/main/examples/tutorial/src/format.ts). This keeps its existing exports and adds the plural message used by the test below. Gettext counts must be non-negative safe integers.
+Outside components, import `t` directly. Translate the starter task in `src/store/seed.ts`:
+
+```diff [src/store/seed.ts]
+@@ -0,0 +1 @@
++import { t } from "@gtkx/i18n";
+@@ -41 +42 @@
+-        title: "Water the plants",
++        title: t("Water the plants"),
+```
+
+Translate the search result in `src/store/selectors.ts`:
+
+```diff [src/store/selectors.ts]
+@@ -0,0 +1 @@
++import { t } from "@gtkx/i18n";
+@@ -115 +116 @@
+-    if (query) return { icon: "system-search-symbolic", title: "No Results", description: `No tasks match “${query}”` };
++    if (query) return { icon: "system-search-symbolic", title: "No Results", description: t("No tasks match “{{query}}”", { query }) };
+```
+
+Translate the formatters in `src/format.ts`, keeping the existing date helpers:
+
+```diff [src/format.ts]
+@@ -0,0 +1 @@
++import { t } from "@gtkx/i18n";
+@@ -13,4 +14,10 @@
+-    if (days === 0) return `Today at ${time}`;
+-    if (days === 1) return `Tomorrow at ${time}`;
+-    if (days === -1) return `Yesterday at ${time}`;
+-    if (days < 0) return `${-days} days ago`;
++    if (days === 0) return t("Today at {{time}}", { time });
++    if (days === 1) return t("Tomorrow at {{time}}", { time });
++    if (days === -1) return t("Yesterday at {{time}}", { time });
++    if (days < 0) {
++        return t("{{count}} day ago", {
++            count: -days,
++            defaultValue_one: "{{count}} day ago",
++            defaultValue_other: "{{count}} days ago",
++        });
++    }
+@@ -22 +29 @@
+-    if (!iso) return "Never";
++    if (!iso) return t("Never");
+```
+
+Gettext counts must be non-negative safe integers. An overdue date has a negative `days` value, so pass `-days` as the count. `toLocaleDateString` and `toLocaleString` format dates using the process locale.
 
 These edits provide the messages exercised in this chapter. Apply the same approach to the remaining authored labels, dialogs, notifications, and starter content; the [finished source](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial/src) shows each location. Keep user-entered names, action names, settings keys, and other identifiers unchanged. Starter content is translated on first creation; changing locale does not rewrite saved tasks.
 
@@ -74,9 +136,21 @@ Refresh the source and deployment messages without building packages:
 npm run deploy -- --target appimage,deb,rpm --print-manifests
 ```
 
-GTKX creates `po/fr.po`, synchronizes it with the source template, and includes the translatable metadata from `gtkx.config.ts`. Edit the following entries in that file, preserving its generated header and plural rule:
+GTKX creates `po/fr.po`, synchronizes it with the source template, and includes the translatable metadata from `gtkx.config.ts`. Replace the initial French catalog with this complete file. Later extraction keeps these translations and adds new messages:
 
-```po
+```po [po/fr.po]
+msgid ""
+msgstr ""
+"Project-Id-Version: gtkx-tutorial 1.0.0\n"
+"PO-Revision-Date: 2026-09-26 00:00+0000\n"
+"Last-Translator: GTKX contributors\n"
+"Language-Team: French\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
 msgid "Tasks"
 msgstr "Tâches"
 
@@ -95,10 +169,46 @@ msgstr "Arroser les plantes"
 msgid "No tasks match “{{query}}”"
 msgstr "Aucune tâche ne correspond à « {{query}} »"
 
+msgid "Today at {{time}}"
+msgstr "Aujourd’hui à {{time}}"
+
+msgid "Tomorrow at {{time}}"
+msgstr "Demain à {{time}}"
+
+msgid "Yesterday at {{time}}"
+msgstr "Hier à {{time}}"
+
+msgid "Never"
+msgstr "Jamais"
+
 msgid "{{count}} day ago"
 msgid_plural "{{count}} days ago"
 msgstr[0] "Il y a {{count}} jour"
 msgstr[1] "Il y a {{count}} jours"
+
+msgid "Task Manager"
+msgstr "Gestionnaire de tâches"
+
+msgid "Manage your tasks and to-dos"
+msgstr "Gérez vos tâches et listes de choses à faire"
+
+msgid "Tasks lets you organize to-dos into lists, set reminders, and track completed work. Built with GTKX, React, and Adwaita."
+msgstr "Tâches vous permet d’organiser vos tâches en listes, de définir des rappels et de suivre le travail accompli. L’application utilise GTKX, React et Adwaita."
+
+msgid "Task;Tasks;Todo;To-do;Checklist;"
+msgstr "Tâche;Tâches;À faire;À-faire;Liste de contrôle;"
+
+msgid "Task"
+msgstr "Tâche"
+
+msgid "Todo"
+msgstr "À faire"
+
+msgid "To-do"
+msgstr "À-faire"
+
+msgid "Checklist"
+msgstr "Liste de contrôle"
 ```
 
 Translate the remaining entries as you mark more interface text. An empty translation falls back to English. The [gettext manual](https://www.gnu.org/software/gettext/manual/html_node/PO-Files.html) describes the PO format.
@@ -120,9 +230,9 @@ The locale is process-wide. Restart after changing the locale environment; calli
 
 ## Test the compiled catalog
 
-Keep the English tests from the [testing chapter](/v2/tutorial/testing). Create `vitest.i18n.config.ts` for a separate French process:
+Keep the English tests from [Test the App](/v2/tutorial/testing). Create `vitest.i18n.config.ts` for a separate French process:
 
-```ts
+```ts [vitest.i18n.config.ts]
 import gtkx from "@gtkx/cli/vitest-plugin";
 import { resolve } from "node:path";
 import { defineConfig } from "vitest/config";
@@ -145,9 +255,8 @@ export default defineConfig({
 
 Create `tests/localization.i18n.tsx`:
 
-```tsx
+```tsx [tests/localization.i18n.tsx]
 import * as Gtk from "@gtkx/gi/gtk";
-import { t } from "@gtkx/i18n";
 import { rootElement } from "@gtkx/react";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
@@ -188,27 +297,33 @@ describe("Tasks in French", () => {
         );
     });
 
-    it("rejects a plural count gettext cannot represent", () => {
-        expect(() =>
-            t("{{count}} day ago", {
-                count: 1.5,
-                defaultValue_one: "{{count}} day ago",
-                defaultValue_other: "{{count}} days ago",
-            }),
-        ).toThrow();
+    it("rejects dragging while the translated task list is filtered", async () => {
+        await render(<App />, { container: rootElement });
+
+        await userEvent.click(await screen.findByText("Open"));
+        const source = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Arroser les plantes/ });
+        const target = await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Welcome to Tasks/ });
+
+        await expect(userEvent.dragAndDrop(source, target, "t2")).rejects.toThrow();
     });
 });
 ```
 
-The tests mount the real app, exercise translated controls and empty results, and reject a fractional gettext count. They use the setup file from the testing chapter, including its isolated data directory.
+The tests mount the real app, exercise translated controls and empty results, and reject an unavailable drag after filtering. They use the setup file from the testing chapter, including its isolated data directory.
 
-Update these scripts in `package.json`:
+Replace the `scripts` field in `package.json` with this block; keep the remaining package fields:
 
-```json
+```json [package.json] merge
 {
     "scripts": {
+        "dev": "gtkx dev",
+        "build": "gtkx build",
+        "codegen": "gtkx codegen",
         "test": "vitest run && npm run test:i18n",
-        "test:i18n": "gtkx build && vitest run --config vitest.i18n.config.ts"
+        "test:i18n": "gtkx build && vitest run --config vitest.i18n.config.ts",
+        "typecheck": "gtkx codegen && tsc",
+        "start": "node dist/bundle.mjs",
+        "deploy": "gtkx deploy"
     }
 }
 ```
@@ -244,4 +359,4 @@ The launcher locates the packaged catalog through `GTKX_LOCALE_DIR`. Translated 
 
 ## Next
 
-[Shipping It on Flathub](/v2/tutorial/flatpak) builds the localized Flatpak and prepares its source submission.
+[Prepare for Flathub](/v2/tutorial/flatpak) builds the localized Flatpak and prepares its source submission.

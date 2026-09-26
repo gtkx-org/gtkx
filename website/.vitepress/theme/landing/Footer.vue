@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LICENSE, REPO_URL } from "./content";
+import { docsLink, EXAMPLES_URL, LICENSE, REPO_URL } from "./content";
 
 const NPM_URL = "https://www.npmjs.com/package";
 
@@ -8,10 +8,10 @@ const cols: { h: string; items: Link[] }[] = [
     {
         h: "Docs",
         items: [
-            { t: "Why GTKX", href: "/guide/why-gtkx" },
-            { t: "Tutorial", href: "/tutorial/" },
-            { t: "Testing", href: "/guide/testing" },
-            { t: "Packaging", href: "/tutorial/packaging" },
+            { t: "Get started", href: docsLink("guide/getting-started") },
+            { t: "Tutorial", href: docsLink("tutorial/") },
+            { t: "Testing", href: docsLink("guide/testing") },
+            { t: "Packaging", href: docsLink("tutorial/packaging") },
         ],
     },
     {
@@ -19,7 +19,7 @@ const cols: { h: string; items: Link[] }[] = [
         items: [
             { t: "GitHub", href: REPO_URL },
             { t: "Contributing", href: "/contributing/" },
-            { t: "Examples", href: `${REPO_URL}/tree/main/examples` },
+            { t: "Examples", href: EXAMPLES_URL },
             { t: "Issues", href: `${REPO_URL}/issues` },
             { t: "Releases", href: `${REPO_URL}/releases` },
         ],

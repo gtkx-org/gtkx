@@ -1,6 +1,6 @@
 ---
 title: "GTKX 1.0: The React framework for Linux"
-description: "GTKX renders native GTK4 and Adwaita applications from React on Linux. In 1.0 the element surface is generated on your machine from the GObject-Introspection data your development packages already install, so every widget on the system is a typed JSX element, with its properties as props and its signals as handlers."
+description: "GTKX 1.0 brings React and TypeScript to native Linux apps, with generated bindings, Fast Refresh, and integration tests."
 image: /tasks-screenshot.png
 ---
 
@@ -12,7 +12,7 @@ After months of hard work, GTKX 1.0 is finally out.
 
 GTKX is the React framework for Linux. It provides the missing declarative layer on top of the already mature GTK4 APIs: you write JSX, and GTKX creates GObject instances.
 
-In regular GTK development, GtkBuilder XML lays out an interface, but the tree it builds is fixed: keeping it in sync with your application state is imperative code you write yourself, and nothing refreshes the window as you work. Reaching GTK4 from JavaScript has meant GJS, a separate runtime cut off from npm, or wrapping the desktop around a browser. If you know React, GTKX gives you the Linux desktop without shipping one; if you know GTK, it gives you re-rendering, Fast Refresh, and npm without leaving the platform.
+GTKX runs React on Node.js and renders native widgets. Components describe the interface for the current state, React updates the widget tree, and Fast Refresh applies edits to the running app. Node APIs and compatible npm libraries are available alongside GTK and Gio.
 
 Scaffold an app and the rest of this post is what you get:
 
@@ -24,7 +24,7 @@ It needs Linux, Node.js 24 or later, and the GTK4 and GLib development packages.
 
 ## A whole application
 
-This is the [`hello-world`](https://github.com/gtkx-org/gtkx/tree/main/examples/hello-world) example with its entry point folded in:
+This is the [`hello-world`](https://github.com/gtkx-org/gtkx/tree/v1.0.0/examples/hello-world) example with its entry point folded in:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";
@@ -70,9 +70,9 @@ const App = () => (
 createRoot().render(<App />);
 ```
 
-React here is stock React 19, not a dialect: hooks, context, Suspense, portals, and the React Compiler behave the way they do in any other renderer.
+GTKX uses React 19, including hooks, context, Suspense, portals, and the React Compiler.
 
-The app is an ordinary Node.js process. `node:fs`, `fetch`, timers, and the npm registry all work: the Tasks app in the [tutorial](/tutorial/) keeps its state in `zustand` and writes it to disk with `node:fs`. Gio comes in only where the desktop is the point: GSettings, notifications, and actions. GTK and your JavaScript share one thread.
+The app is an ordinary Node.js process. The Tasks app in the [tutorial](/tutorial/) keeps state in `zustand` and writes it to disk with `node:fs`; Gio provides settings, notifications, and actions. Packages that require the browser DOM need adaptation. GTK and application JavaScript share one thread.
 
 <picture>
   <source srcset="/tasks-screenshot.webp" type="image/webp" />
@@ -81,7 +81,7 @@ The app is an ordinary Node.js process. `node:fs`, `fetch`, timers, and the npm 
 
 *The tutorial's Tasks app. All driven declaratively by GTKX.*
 
-This is Linux only. If you want one codebase across desktop platforms, GTKX is the wrong tool. The narrowness is the point: targeting one platform is what lets GTKX expose the whole toolkit instead of the subset every platform shares.
+GTKX targets Linux. It exposes native library APIs through generated bindings and GTKX integration code; it does not provide a renderer for other desktop platforms.
 
 ## The elements are generated on your machine
 
@@ -102,7 +102,7 @@ Adding WebKit is one entry in that array, plus the development package:
 libraries: ["Gtk-4.0", "Adw-1", "WebKit-6.0"],
 ```
 
-`import { WebKitWebView } from "@gtkx/jsx/webkit"` then resolves, with `WebKit.WebView`'s full method set behind its `ref`; the [`browser`](https://github.com/gtkx-org/gtkx/tree/main/examples/browser) example is that one entry grown into a small web browser.
+`import { WebKitWebView } from "@gtkx/jsx/webkit"` then resolves, with `WebKit.WebView`'s full method set behind its `ref`; the [`browser`](https://github.com/gtkx-org/gtkx/tree/v1.0.0/examples/browser) example is that one entry grown into a small web browser.
 
 ## Every GObject is an element, every property is a prop
 
@@ -272,4 +272,6 @@ with the application itself now an element you render. The changes are mechanica
 
 GTKX is a thin layer over other people's work: GTK and the GNOME platform, GObject-Introspection, libffi, React and `react-reconciler`, and napi-rs. Thank you also to everyone who filed, tested, and argued through the [release candidates](https://github.com/gtkx-org/gtkx/releases).
 
-The [guide](/guide/why-gtkx) covers the rest. Run `npm create gtkx`, give the [tutorial](/tutorial/) an afternoon, and it will take you from an empty directory to a Flathub submission. If you already have a GTK4 application, port one dialog and [file what breaks](https://github.com/gtkx-org/gtkx/issues). Questions go to [GitHub Discussions](https://github.com/gtkx-org/gtkx/discussions), and [CONTRIBUTING.md](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md) is the door in.
+The [guide](/guide/why-gtkx) covers the rest, and the [tutorial](/tutorial/) builds a task manager through packaging and preparation for Flathub. Submission still requires a tested package and [Flathub review](https://docs.flathub.org/docs/for-app-authors/submission); the time depends on the application and requested changes.
+
+If you already have a GTK4 application, try porting one dialog and [report problems](https://github.com/gtkx-org/gtkx/issues). Questions go to [GitHub Discussions](https://github.com/gtkx-org/gtkx/discussions); [CONTRIBUTING.md](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md) explains how to contribute.

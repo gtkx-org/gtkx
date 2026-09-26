@@ -1,18 +1,16 @@
 ---
-description: "Model a task and render a hardcoded array as an Adwaita boxed list."
+description: "Model a task and display sample data in a scrollable list."
 ---
 
-# Showing a List of Tasks
+# Display Tasks
 
-Replace the empty state from [Your First Window](/tutorial/your-first-window) with an Adwaita boxed list of tasks. Start with sample data; the next chapter adds editing.
+Replace the empty state from [Create a Window](/tutorial/your-first-window) with a list of tasks. Start with sample data; the next chapter adds editing.
 
-## The task model
-
-The following chapters share this task model.
+## Define the task model
 
 Create `src/types.ts`:
 
-```ts
+```ts [src/types.ts]
 export type Task = {
     id: string;
     listId: string;
@@ -28,17 +26,16 @@ export type Task = {
 };
 ```
 
-`title` is the line you see in the list, `notes` the longer body you see when you open a task, and `position` is where the task sits in manual order.
+`title` appears in the list, `notes` holds the body shown in the editor, and `position` records the manual order. Dates use ISO strings so tasks can be saved as JSON in [Save Tasks](/tutorial/saving-to-disk).
 
-Dates use ISO strings so tasks can be saved as JSON in [Saving Tasks Between Runs](/tutorial/saving-to-disk).
-
-## A hardcoded array
-
-Use three sample tasks to build the list.
+## Render the list
 
 Create `src/components/task-list.tsx`:
 
-```tsx
+```tsx [src/components/task-list.tsx]
+import * as Gtk from "@gtkx/gi/gtk";
+import { AdwActionRow, AdwClamp } from "@gtkx/jsx/adw";
+import { GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import type { Task } from "../types.js";
 
 const createdAt = new Date().toISOString();
@@ -84,88 +81,64 @@ const TASKS: Task[] = [
         completedAt: null,
     },
 ];
-```
-
-The next chapter moves this data into a store as the initial tasks for a fresh install.
-
-## The list frame
-
-Use `GtkScrolledWindow` to scroll long lists and `AdwClamp` to keep rows readable in a wide window. Inside them, a `GtkListBox` with the `boxed-list` CSS class groups the tasks into a rounded card.
-
-Add the frame to `src/components/task-list.tsx`:
-
-```tsx
-import * as Gtk from "@gtkx/gi/gtk";
-import { AdwClamp } from "@gtkx/jsx/adw";
-import { GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
-import type { Task } from "../types.js";
-
-// ...
 
 export const TaskList = () => (
     <GtkScrolledWindow vexpand>
         <AdwClamp maximumSize={640} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
             <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
-                {/* ... */}
+                {TASKS.map((task) => (
+                    <AdwActionRow key={task.id} title={task.title} subtitle={task.notes} useMarkup={false} />
+                ))}
             </GtkListBox>
         </AdwClamp>
     </GtkScrolledWindow>
 );
 ```
 
-`cssClasses` applies native style classes to the widget. [CSS](/guide/css) covers using Adwaita classes and your own stylesheets.
+`GtkScrolledWindow` scrolls long lists. `AdwClamp` keeps the rows readable in a wide window, and the `boxed-list` class gives the list its rounded card appearance. [CSS](/guide/css) covers native classes and stylesheets.
 
-`selectionMode={Gtk.SelectionMode.NONE}` disables row selection because task rows will have their own controls. Import enums such as `Gtk.SelectionMode` from `@gtkx/gi/gtk`, and JSX elements from `@gtkx/jsx/gtk`.
+`selectionMode={Gtk.SelectionMode.NONE}` disables row selection because each task will have its own controls. JSX elements come from `@gtkx/jsx/gtk`; enums such as `Gtk.SelectionMode` come from `@gtkx/gi/gtk`.
 
-## One row per task
+`useMarkup={false}` displays task text literally. Use `task.id` as the key so rows retain their identity when reordered; React's [list rendering guide](https://react.dev/learn/rendering-lists#keeping-list-items-in-order-with-key) explains stable keys.
 
-Use `AdwActionRow` to show each task's title and notes.
+## Show the list in the window
 
-Fill in the list box in `src/components/task-list.tsx`:
+Replace `src/app.tsx` with the following. It keeps the window and header bar, removes the unused status-page import, and puts `TaskList` in the content slot.
 
-```tsx
-<GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
-    {TASKS.map((task) => (
-        <AdwActionRow key={task.id} title={task.title} subtitle={task.notes} />
-    ))}
-</GtkListBox>
+```tsx [src/app.tsx]
+import {
+    AdwApplication,
+    AdwApplicationWindow,
+    AdwHeaderBar,
+    AdwToolbarView,
+} from "@gtkx/jsx/adw";
+import { quit } from "@gtkx/react";
+import { TaskList } from "./components/task-list.js";
+
+export function App() {
+    return (
+        <AdwApplication>
+            <AdwApplicationWindow
+                title="Tasks"
+                widthRequest={360}
+                heightRequest={294}
+                onCloseRequest={() => quit()}
+            >
+                <AdwToolbarView topBar={<AdwHeaderBar />}>
+                    <TaskList />
+                </AdwToolbarView>
+            </AdwApplicationWindow>
+        </AdwApplication>
+    );
+}
 ```
-
-Update the import to bring in the row alongside the clamp:
-
-```ts
-import { AdwActionRow, AdwClamp } from "@gtkx/jsx/adw";
-```
-
-Use `task.id` as the key so each native row keeps its identity when tasks are reordered. React's [list rendering guide](https://react.dev/learn/rendering-lists#keeping-list-items-in-order-with-key) explains stable keys.
 
 ## Run it
 
-Point the window body at the list. In `src/app.tsx`, swap the status page for the component:
+The window shows three task titles in a card under the header bar. **Welcome to Tasks** has a second line of notes; the other rows have titles only.
 
-```diff
--                    <AdwStatusPage
--                        iconName="checkbox-checked-symbolic"
--                        title="No Tasks Yet"
--                        description="Your tasks will show up here."
--                    />
-+                    <TaskList />
-```
-
-and import it:
-
-```diff
-+import { TaskList } from "./components/task-list.js";
-```
-
-`AdwStatusPage` is no longer used in this file, so drop it from the `@gtkx/jsx/adw` import.
-
-Save and watch the window you already have open. The status page is gone, replaced by a rounded card holding the task titles, centered under the header bar with a margin. "Welcome to Tasks" shows its notes as a second line under the title; the others show a title alone, because their notes are empty.
-
-Drag the window wider and past a certain width the card stops growing and stays centered: that is the clamp. Drag it short until the rows do not fit and the list scrolls instead of clipping.
-
-Then add another entry to `TASKS`, copying an existing one and changing its `id` and `title`. Save, and the new row appears in the card.
+Widen the window until the card stops growing and stays centered. Shorten it until the list scrolls. Add a fourth entry to `TASKS` with a unique `id` and title, check that it appears, then remove it before continuing.
 
 ## Next
 
-This list is read-only. [Adding Tasks with a Store](/tutorial/the-task-store) moves the tasks into a store and lets you type a new one.
+[Add Tasks](/tutorial/the-task-store) moves the sample data into a store and adds an entry row.

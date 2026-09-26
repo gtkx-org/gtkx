@@ -2,9 +2,9 @@
 description: "Connect an Adwaita entry row to a Zustand store to add tasks."
 ---
 
-# Adding Tasks with a Store
+# Add Tasks
 
-Connect the list from [Showing a List of Tasks](/tutorial/a-list-of-tasks) to a store, then add an entry row that creates tasks when you press Enter.
+Connect the list from [Display Tasks](/tutorial/a-list-of-tasks) to a store, then add an entry row that creates tasks when you press Enter.
 
 ## Shared task state
 
@@ -32,7 +32,7 @@ Move the initial tasks into a seed module.
 
 `src/store/seed.ts`:
 
-```ts
+```ts [src/store/seed.ts]
 import type { Task } from "../types.js";
 
 const isoInDays = (days: number): string => {
@@ -87,7 +87,7 @@ Relative due dates give the later Today view sample content whenever you run the
 
 `src/store/index.ts`:
 
-```ts
+```ts [src/store/index.ts]
 import { create } from "zustand";
 import type { Task } from "../types.js";
 import { seedTasks } from "./seed.js";
@@ -126,64 +126,104 @@ export const useStore = create<Store>()((set) => ({
 }));
 ```
 
-`addTask` ignores blank titles and returns the new task's ID. The editor will use that ID in [Opening a Task](/tutorial/the-task-editor).
+`addTask` ignores blank titles and returns the new task's ID. The editor will use that ID in [Edit Tasks](/tutorial/the-task-editor).
 
-## Reading from the store
+## Connect the entry row
 
-Remove the module-level `TASKS` and `createdAt` constants from `task-list.tsx`, along with the `Task` type import. Add the store import:
+Replace `src/components/task-list.tsx` with this component. The store supplies `tasks` and `addTask`, replacing the file's sample array.
 
-`src/components/task-list.tsx`:
-
-```ts
+```tsx [src/components/task-list.tsx]
+import * as Gtk from "@gtkx/gi/gtk";
+import { AdwActionRow, AdwClamp, AdwEntryRow } from "@gtkx/jsx/adw";
+import { GtkListBox, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { useStore } from "../store/index.js";
-```
 
-Inside `TaskList`, select `state.tasks` and `state.addTask`, then change `TASKS.map` to `tasks.map`, as shown below. Select the stored array directly; Zustand's [selector guide](https://zustand.docs.pmnd.rs/learn/guides/prevent-rerenders-with-use-shallow) covers computed values. The tutorial adds filtering in [Smart Views, Filters, and Search](/tutorial/smart-views-and-search).
-
-## The add row
-
-An Adwaita boxed list can hold an entry that looks like a row. Put an `AdwEntryRow` first inside the list box, ahead of the tasks.
-
-`src/components/task-list.tsx`:
-
-```tsx
 export const TaskList = () => {
     const tasks = useStore((state) => state.tasks);
     const addTask = useStore((state) => state.addTask);
 
     return (
-        // ...
-        <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
-            <AdwEntryRow
-                title="Add a task…"
-                onEntryActivated={(self) => {
-                    addTask("personal", self.text);
-                    self.text = "";
-                }}
-            />
-            {tasks.map((task) => (
-                <AdwActionRow key={task.id} title={task.title} />
-            ))}
-        </GtkListBox>
-        // ...
+        <GtkScrolledWindow vexpand>
+            <AdwClamp maximumSize={640} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
+                <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
+                    <AdwEntryRow
+                        title="Add a task…"
+                        onEntryActivated={(self) => {
+                            addTask("personal", self.text);
+                            self.text = "";
+                        }}
+                    />
+                    {tasks.map((task) => (
+                        <AdwActionRow key={task.id} title={task.title} useMarkup={false} />
+                    ))}
+                </GtkListBox>
+            </AdwClamp>
+        </GtkScrolledWindow>
     );
 };
 ```
 
-Add `AdwEntryRow` to the import from `@gtkx/jsx/adw`.
+`onEntryActivated` receives the emitting widget as its last argument. This signal has no other arguments, so the handler receives only `self`. It reads the entry's text, adds a task, and clears the entry.
 
-`onEntryActivated` handles the native `entry-activated` signal. GTKX passes the emitting widget as the last argument; this signal has no other arguments, so the handler receives only `self`. See [the JSX prop model](/guide/configuration-and-codegen#the-jsx-prop-model) for signal conventions.
-
-The entry keeps its text in GTK until submission. The handler reads `self.text`, adds the task, and clears the entry. The next chapter connects controls whose values stay synchronized with the store.
-
-The `"personal"` passed as the list id is a placeholder while every task lives in one place. [Lists and a Sidebar](/tutorial/lists-and-the-sidebar) replaces it with the list you are currently viewing.
+The `"personal"` list ID is temporary. [Add Lists and a Sidebar](/tutorial/lists-and-the-sidebar) replaces it with the selected list. Select `state.tasks` directly here; the tutorial introduces derived selectors in [Filter and Search Tasks](/tutorial/smart-views-and-search).
 
 ## Run it
 
 Save `task-list.tsx` and watch the window. An empty row titled "Add a task…" appears at the top of the card, above the seeded tasks. Type `Buy oat milk` into it and press Enter. The task appears at the bottom of the list and the entry clears, ready for the next one. Press Enter on the empty entry and nothing happens, because `addTask` trims the title to nothing and returns early.
 
-Restart the app. The seeded tasks return and newly added tasks are gone because the store is still in memory. [Saving Tasks Between Runs](/tutorial/saving-to-disk) adds persistence.
+Restart the app. The seeded tasks return and newly added tasks are gone because the store is still in memory. [Save Tasks](/tutorial/saving-to-disk) adds persistence.
+
+## Test the entry row
+
+The scaffold includes the GTKX Vitest plugin and `@gtkx/testing`. Create `tests/tasks.test.tsx`:
+
+```tsx [tests/tasks.test.tsx]
+import * as Gtk from "@gtkx/gi/gtk";
+import { rootElement } from "@gtkx/react";
+import { render, screen, userEvent } from "@gtkx/testing";
+import { beforeEach, describe, expect, it } from "vitest";
+import { App } from "../src/app.js";
+import { useStore } from "../src/store/index.js";
+import { seedTasks } from "../src/store/seed.js";
+
+beforeEach(() => {
+    useStore.setState({ tasks: seedTasks });
+});
+
+describe("adding tasks", () => {
+    it.each(["Buy oat milk", "  Milk & <b>tea</b>  "])("adds the literal title %s", async (title) => {
+        await render(<App />, { container: rootElement });
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+
+        await userEvent.type(entry, title);
+        await userEvent.keyboard(entry, "{Enter}");
+
+        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: title.trim() })).toBeDefined();
+        expect(entry).toHaveValue("");
+    });
+
+    it("leaves the list unchanged for a blank title", async () => {
+        await render(<App />, { container: rootElement });
+        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX);
+        const rowCount = screen.getAllByRole(Gtk.AccessibleRole.LIST_ITEM).length;
+
+        await userEvent.type(entry, "   ");
+        await userEvent.keyboard(entry, "{Enter}");
+
+        expect(screen.getAllByRole(Gtk.AccessibleRole.LIST_ITEM)).toHaveLength(rowCount);
+        expect(entry).toHaveValue("");
+    });
+});
+```
+
+These tests type into real native widgets. They cover adding a task, trimming and displaying literal text, and rejecting a blank title. `beforeEach` restores the sample tasks; GTKX unmounts rendered trees between tests. `App` renders an application, so pass `rootElement` as its container.
+
+```bash
+npm test
+```
+
+Keep these tests as you continue. [Save Tasks](/tutorial/saving-to-disk#isolate-test-data) isolates the persistence directory before tests begin writing files, and [Test the App](/tutorial/testing) extends the suite.
 
 ## Next
 
-[Completing, Starring, and Deleting](/tutorial/completing-and-deleting) gives every row a checkbox, a star, and a delete button, each wired to a store action.
+[Complete, Star, and Delete Tasks](/tutorial/completing-and-deleting) gives every row a checkbox, a star, and a delete button, each wired to a store action.

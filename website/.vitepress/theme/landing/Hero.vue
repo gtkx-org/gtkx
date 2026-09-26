@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import snippets from "virtual:gtkx-snippets";
+import { currentVersion, documentationLink, featuredVersion } from "../../versioning.js";
 import Button from "../components/Button.vue";
 import CodeBlock from "../components/CodeBlock.vue";
 import Icon from "../components/Icon.vue";
-import { REPO_URL } from "./content";
-
-const cmd = "npm create gtkx";
+import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
 </script>
 
 <template>
@@ -18,16 +17,15 @@ const cmd = "npm create gtkx";
           The React framework for <span class="gtkx-gradient-text">Linux</span>
         </h1>
         <p class="hero__lede">
-          Build native GNOME applications with React and TypeScript.
-          GTKX puts libadwaita first and brings the whole platform to standard web tooling.
+          Build native apps with Adwaita and GTK widgets, TypeScript, and the Node.js ecosystem.
         </p>
         <div class="hero__actions">
           <div id="install" class="hero__install">
-            <CodeBlock variant="terminal" :frame="false" :code="cmd" />
+            <CodeBlock variant="terminal" :frame="false" :code="CREATE_COMMAND" />
           </div>
           <div class="hero__cta">
-            <Button size="lg" href="/guide/getting-started">
-              Get started
+            <Button size="lg" :href="docsLink('guide/getting-started')">
+              {{ featuredVersion.status === "prerelease" ? "Try the beta" : "Get started" }}
               <template #icon-right><Icon name="arrow" :size="17" /></template>
             </Button>
             <Button size="lg" variant="secondary" :href="REPO_URL">
@@ -35,6 +33,10 @@ const cmd = "npm create gtkx";
               View on GitHub
             </Button>
           </div>
+          <p v-if="featuredVersion.status === 'prerelease'" class="hero__version">
+            Prefer the stable release?
+            <a :href="documentationLink(currentVersion, 'guide/getting-started')">Use GTKX {{ currentVersion.label }}.</a>
+          </p>
         </div>
       </div>
       <div class="hero__col hero__visual">
@@ -93,6 +95,14 @@ const cmd = "npm create gtkx";
   display: flex;
   gap: 0.8rem;
   flex-wrap: wrap;
+}
+.hero__version {
+  margin: 1rem 0 0;
+  color: var(--text-2);
+  font-size: var(--text-sm);
+}
+.hero__version a {
+  color: var(--text-brand);
 }
 .hero__col {
   min-width: 0;

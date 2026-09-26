@@ -1,6 +1,6 @@
 ---
 title: "Animations"
-description: "Animate Adwaita and GTK4 widgets in a GNOME app with GTKX's React Spring target."
+description: "Animate native widget properties and GTK styles with React Spring."
 ---
 
 # Animations
@@ -8,7 +8,7 @@ description: "Animate Adwaita and GTK4 widgets in a GNOME app with GTKX's React 
 `@gtkx/animated` adapts [React Spring](https://www.react-spring.dev) to GTKX. Learn how to create and control springs in the React Spring docs; this guide covers how those values reach native GTKX elements. Install the package separately:
 
 ```bash
-npm install @gtkx/animated
+npm install @gtkx/animated@1.6.0
 ```
 
 ## Animated components
@@ -40,7 +40,7 @@ const { count } = useSpring({ from: { count: 0 }, to: { count: 100 } });
 <AnimatedLabel label={count.to((value) => `${Math.round(value)}%`)} />;
 ```
 
-A value the property cannot hold as written is fitted to it: a spring headed for a whole-number property such as a margin is truncated toward zero, and a value outside the range a property allows, such as an `opacity` that a bouncy spring overshoots past 1 or a margin that dips below 0, is clamped to it. GTK margins cannot go negative, so slide a widget in by shrinking a margin rather than by growing one from a negative start.
+GTKX truncates whole-number properties, such as margins, toward zero and clamps values to the native property range. An opacity spring cannot exceed 1, and margins cannot be negative. To slide a widget using a margin, animate from a positive margin to zero.
 
 The wrapper passes a `ref` through. A component of your own that forwards it to the widget it renders gets the same per-frame writes, while one that keeps the `ref` re-renders with the current values instead.
 
@@ -48,7 +48,7 @@ Props that are not GObject properties, such as the `accessible*` props, still an
 
 ## Animated styles
 
-GTK4 has no inline styles, so the [`style` prop](/guide/css) compiles to a rule in a `Gtk.CssProvider` that belongs to the widget alone. That provider is what a spring writes each frame: it reloads one rule for one widget, and the component does not re-render, exactly as for a GObject property. It is how you animate what GTK4 exposes through CSS and through nothing else, a color above all:
+In GTKX 1.6, the [`style` prop](/guide/css) compiles to a rule in a widget-specific `Gtk.CssProvider`. The spring reloads that rule each frame without a React render. Use it for effects exposed through CSS, such as color:
 
 ```tsx
 import { animated, useSpring } from "@gtkx/animated";
@@ -68,7 +68,7 @@ export const Deadline = ({ isOverdue }: { isOverdue: boolean }) => {
 };
 ```
 
-The spring carries a number and the interpolation builds the declaration around it. GTK4's `mix()` blends two colors by a fraction and `alpha()` scales one's opacity, so a color animation is a number animation; any other property is built the same way, out of a template string.
+The interpolation turns a number into a CSS declaration. GTK's `mix()` blends two colors; `alpha()` scales a color's opacity.
 
 A spring can also sit on a single declaration rather than on the whole prop, which is how React Spring is written for the DOM:
 
@@ -79,9 +79,9 @@ const styles = useSpring({ from: { color: "red" }, to: { color: "blue" } });
 <AnimatedLabel style={{ color: styles.color, paddingTop: 4 }} label="Due today" />;
 ```
 
-Both forms work, nested blocks included, so <span v-pre>`style={{ "&:hover": { color: spring } }}`</span> animates on hover. Hand the object a spring hook returns straight to `style`, put springs on the declarations you want to move, or interpolate the whole object out with `spring.to(…)` — whichever reads better for the animation at hand. Only the `style` prop is read this way; a spring nested inside any other object-valued prop, such as a `Pango.AttrList`, is not tracked.
+Nested blocks also accept springs, such as <span v-pre>`style={{ "&:hover": { color: styles.color } }}`</span>. Only `style` tracks nested springs; other object-valued props do not.
 
-Because the rule is scoped to that one widget, this also animates what a widget has no property for at all: a `border-radius` that opens up, a `box-shadow` that lifts, a `filter` that desaturates a row as it is dismissed.
+This also supports effects such as `border-radius`, `box-shadow`, and `filter`.
 
 ## Moving widgets
 
@@ -122,9 +122,14 @@ Frames advance during the update phase of a mapped window's GTK frame clock, bef
 
 ## Reduced motion
 
-GTK's `gtk-enable-animations` setting is the toolkit-wide switch, and the package follows it the way GTK's own transitions do: while animations are disabled, every spring jumps to its target and the rest of the lifecycle runs as usual. The desktop's reduced-motion preference is a separate setting, `gtk-interface-reduced-motion` on GTK 4.22 and later, the one behind the `prefers-reduced-motion` media query; it asks for less motion rather than none, so springs keep running and components decide what to reduce. `useReducedMotion()` reports `true` in either case, `false` otherwise, and `null` before a display is open, and re-renders when the settings change, so a component can trade a slide for a fade.
+GTK exposes two settings with different effects:
 
-The `render` helper in `@gtkx/testing` disables animations unless it is given `areAnimationsEnabled: true`, so a spring lands on its final value on the first frame; assert with `findBy*` or `waitFor`, which resolve right away instead of after the animation's duration, and opt in when a test wants to watch the motion.
+- `gtk-enable-animations` disables motion across the toolkit. When false, GTKX springs jump to their targets while still running their lifecycle callbacks.
+- `gtk-interface-reduced-motion`, available in GTK 4.22 and later, asks applications to reduce motion. It also drives GTK's `prefers-reduced-motion` media query. Springs keep running; the component chooses an alternative, such as a fade instead of a slide.
+
+`useReducedMotion()` returns `true` when either preference calls for less motion, `false` otherwise, and `null` before a display is open. It updates when the settings change.
+
+`@gtkx/testing` disables animations by default, so springs reach their targets on the first frame. Assert the result with `findBy*` or `waitFor`. Pass `areAnimationsEnabled: true` to `render` when the test needs to exercise motion.
 
 ## Next
 

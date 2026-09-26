@@ -25,10 +25,7 @@ type ResolvedReactCompilerOptions = ReactCompilerOptions & {
 };
 
 /**
- * User-facing configuration for a GTKX project, as authored in `gtkx.config.ts`: the GIR libraries
- * to bind and where to find them, the GApplication id, per-element configuration, the React
- * Compiler, codegen, and user event signal settings, and the `agents` and `mcp` blocks controlling
- * what coding agents are given.
+ * GTKX project configuration authored in `gtkx.config.ts` and validated when loaded.
  */
 type Config = z.infer<typeof configSchema>;
 type ModuleExport = z.infer<typeof moduleExportSchema>;

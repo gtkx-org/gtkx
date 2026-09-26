@@ -49,12 +49,11 @@ const fixedArrayEntries = <T>(value: FixedArrayValue<T>, expectedLength: number)
 };
 
 /**
- * Binds a struct field whose offset is only known per access, compiling `descriptor` once into an
- * accessor that reads and writes it wherever it is pointed. Use it to walk records stored one
- * after another in a buffer; {@link field} is the one to reach for when the offset is fixed.
+ * Compiles a struct field descriptor once, with a byte offset supplied on each access.
+ * Use it to walk consecutive records in a buffer; use {@link field} for a fixed offset.
  *
  * @param descriptor Describes how the field's bytes are marshalled.
- * @returns An accessor reading and writing that field at any offset of any handle it is given.
+ * @returns Read/write accessors accepting a handle and byte offset.
  */
 const fieldAt = (descriptor: Descriptor): StridedField => {
     const plan = compileDescriptor(descriptor);
@@ -69,13 +68,12 @@ const fieldAt = (descriptor: Descriptor): StridedField => {
 };
 
 /**
- * Binds a struct field at a fixed offset, compiling `descriptor` once into an accessor that reads
- * and writes it. The `read` and `write` functions compile the descriptor on every call instead, so
- * they remain the ones to reach for when a descriptor is only known per access.
+ * Compiles a struct field descriptor once and binds it to a fixed byte offset.
+ * Use `read` and `write` when the descriptor is only known at each access; they compile it each time.
  *
  * @param descriptor Describes how the field's bytes are marshalled.
  * @param offset Byte offset of the field within its owner's memory.
- * @returns An accessor reading and writing that field of any handle it is given.
+ * @returns Read/write accessors accepting the field's owner handle.
  */
 const field = (descriptor: Descriptor, offset: number): Field => {
     if (!Number.isSafeInteger(offset) || offset < 0) {

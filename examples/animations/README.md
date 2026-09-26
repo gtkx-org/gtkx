@@ -1,10 +1,12 @@
-# animations
+# Animations example
 
-An Adwaita application offering an interactive tour of `@gtkx/animated`: springs, interpolations, trails, transitions, chains, imperative controls, layout transforms, and reduced motion on GTK's frame clock.
+An interactive tour of `@gtkx/animated`, including springs, list transitions, layout transforms, and reduced motion.
+
+Complete the [workspace setup](../../website/contributing/development.md), then run from the repository root:
 
 ```bash
 pnpm --filter animations dev
 pnpm --filter animations test
 ```
 
-Run commands from the repository root after `pnpm install` and `pnpm build`. See the [animations guide](https://gtkx.dev/v2/guide/animations) and [React Spring](https://react-spring.dev/).
+See the [animations guide](https://gtkx.dev/v2/guide/animations) for native behavior and [React Spring](https://react-spring.dev/) for its animation APIs.

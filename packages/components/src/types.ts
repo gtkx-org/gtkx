@@ -197,10 +197,7 @@ type ColumnViewOwnProps<T, S> = SelectionProps &
     };
 
 /**
- * Props for {@link ColumnView}. Combines the underlying Gtk.ColumnView props with
- * declarative collection props: flat items or grouped sections, controlled selection
- * and expansion, sorting (sortColumn, sortOrder, onSortChanged), an optional section
- * header renderer, per-row props, and the columns to render.
+ * Native `Gtk.ColumnView` props with declarative columns and collections, controlled selection, expansion, and sorting.
  */
 type ColumnViewProps<T = unknown, S = unknown> = Omit<
     GtkColumnViewProps,
@@ -229,9 +226,7 @@ DropDownOwnProps<T, S> &
 (SourceProps<T & Primitive, S> | Record<"renderItem", ListItemRenderer<T>>);
 
 /**
- * Props for {@link DropDown}. Combines the underlying Gtk.DropDown props with the declarative
- * collection props: flat items or grouped sections, controlled single selection, and renderers
- * for the collapsed display, popup rows, and popup section headers.
+ * Native `Gtk.DropDown` props with declarative collections, controlled selection, and display/popup renderers.
  */
 type DropDownProps<T = unknown, S = unknown> = DropDownWidgetProps<GtkDropDownProps, T, S>;
 
@@ -245,9 +240,7 @@ type GridViewOwnProps<T> = ItemSizeProps &
     };
 
 /**
- * Props for {@link GridView}. Combines the underlying Gtk.GridView props with
- * declarative collection props: items, a per-cell renderItem, controlled selection,
- * and estimated item sizing.
+ * Native `Gtk.GridView` props with declarative cells, controlled selection, and estimated sizing.
  */
 type GridViewProps<T = unknown> = Omit<GtkGridViewProps, "model" | "factory" | keyof GridViewOwnProps<T>> &
     GridViewOwnProps<T>;
@@ -263,10 +256,8 @@ type ListViewOwnProps<T, S> = ItemSizeProps &
     };
 
 /**
- * Props for {@link ListView}. Combines the underlying Gtk.ListView props with
- * declarative collection props: flat items or grouped sections, a per-row renderItem,
- * an optional section header renderer, controlled selection and expansion, and
- * estimated item sizing.
+ * Native `Gtk.ListView` props with declarative rows and sections, controlled selection and expansion,
+ * and estimated sizing.
  */
 type ListViewProps<T = unknown, S = unknown> = Omit<
     GtkListViewProps,
@@ -275,9 +266,7 @@ type ListViewProps<T = unknown, S = unknown> = Omit<
 ListViewOwnProps<T, S>;
 
 /**
- * Props for {@link ComboRow}. Combines the underlying Adw.ComboRow props with the declarative
- * collection props: flat items or grouped sections, controlled single selection, and renderers
- * for the row display, popup rows, and popup section headers.
+ * Native `Adw.ComboRow` props with declarative collections, controlled selection, and display/popup renderers.
  */
 type ComboRowProps<T = unknown, S = unknown> = DropDownWidgetProps<AdwComboRowProps, T, S>;
 /**

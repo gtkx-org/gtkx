@@ -2,9 +2,9 @@
 description: "Send desktop reminders and route their actions into the app."
 ---
 
-# Reminders That Reach the Desktop
+# Send Reminders
 
-The [drag chapter](/v2/tutorial/drag-to-reorder) completed task-list interaction. Add a reminder when a task reaches its configured lead time, then connect the notification's actions to the application.
+[Reorder Tasks](/v2/tutorial/drag-to-reorder) completed task-list interaction. Add a reminder when a task reaches its configured lead time, then connect the notification's actions to the application.
 
 ## Record the notified due date
 
@@ -12,14 +12,16 @@ Add `lastNotifiedDue: string | null` to `Task` in `src/types.ts`. Set it to `nul
 
 Add this member to `TasksSlice` in `src/store/tasks.ts`:
 
-```ts
-markNotified: (id: string, due: string) => void;
+```diff [src/store/tasks.ts]
+@@ -15,0 +16 @@
++    markNotified: (id: string, due: string) => void;
 ```
 
 Add its implementation alongside the other slice actions:
 
-```ts
-markNotified: (id, due) => set((state) => ({ tasks: patch(state.tasks, id, { lastNotifiedDue: due }) })),
+```diff [src/store/tasks.ts]
+@@ -64,0 +65 @@
++    markNotified: (id, due) => set((state) => ({ tasks: patch(state.tasks, id, { lastNotifiedDue: due }) })),
 ```
 
 Tasks already persist, so this marker survives a restart. Comparing the exact due value lets a changed due date produce another reminder.
@@ -28,7 +30,7 @@ Tasks already persist, so this marker survives a restart. Comparing the exact du
 
 Create `src/hooks/use-reminders.ts`:
 
-```ts
+```ts [src/hooks/use-reminders.ts]
 import { useEffect, useRef, useState } from "react";
 import type { Task } from "../types.js";
 
@@ -80,7 +82,7 @@ The hook checks immediately and once a minute, returning every due task in the s
 
 Create `src/notifications.tsx`:
 
-```tsx
+```tsx [src/notifications.tsx]
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import { GNotification } from "@gtkx/jsx/gio";
@@ -118,24 +120,28 @@ The task ID identifies the desktop notification, allowing a later reminder to re
 
 In `src/components/window.tsx`, add these imports:
 
-```ts
-import { useReminders } from "../hooks/use-reminders.js";
-import { ReminderNotification } from "../notifications.js";
+```diff [src/components/window.tsx]
+@@ -0,0 +1,2 @@
++import { useReminders } from "../hooks/use-reminders.js";
++import { ReminderNotification } from "../notifications.js";
 ```
 
-Inside `Window`, reuse `tasks`, the settings instance, and the schema from the earlier chapters:
+Inside `Window`, subscribe to tasks and read the reminder interval using the existing settings instance and schema:
 
-```ts
-const [reminderMinutes] = useSetting(settings, schema, "reminder-minutes");
-const reminders = useReminders(tasks, reminderMinutes);
+```diff [src/components/window.tsx]
+@@ -45,0 +46,3 @@
++    const tasks = useStore((state) => state.tasks);
++    const [reminderMinutes] = useSetting(settings, schema, "reminder-minutes");
++    const reminders = useReminders(tasks, reminderMinutes);
 ```
 
 Render the reminders inside the existing `ToastProvider`, before `AdwApplicationWindow`:
 
-```tsx
-{reminders.map((reminder) => (
-    <ReminderNotification key={`${reminder.id}:${reminder.due}`} {...reminder} />
-))}
+```diff [src/components/window.tsx]
+@@ -58,0 +59,3 @@
++            {reminders.map((reminder) => (
++                <ReminderNotification key={`${reminder.id}:${reminder.due}`} {...reminder} />
++            ))}
 ```
 
 Each task/due pair gets its own notification object. After dispatch updates the store, the next sweep removes that reminder and releases its portal.
@@ -144,7 +150,7 @@ Each task/due pair gets its own notification object. After dispatch updates the 
 
 Update `src/app.tsx`, keeping its `App` export:
 
-```tsx
+```tsx [src/app.tsx]
 import type * as Adw from "@gtkx/gi/adw";
 import * as GLib from "@gtkx/gi/glib";
 import { AdwApplication } from "@gtkx/jsx/adw";
@@ -201,27 +207,59 @@ Activating an action is separate from activating the application. `open-task` qu
 
 An action may arrive before the navigation container mounts. In `src/navigation.ts`, add `pendingTask`, replace `openTask`, and add `openPendingTask`:
 
-```ts
-let pendingTask: { selection: Selection; id: string } | null = null;
-
-export const openTask = (selection: Selection, id: string): void => {
-    if (!navigationRef.isReady()) {
-        pendingTask = { selection, id };
-        return;
-    }
-    navigationRef.navigate("Tasks", selection);
-    navigationRef.navigate("Task", { id });
-};
-
-export const openPendingTask = (): void => {
-    if (pendingTask === null) return;
-    const { selection, id } = pendingTask;
-    pendingTask = null;
-    openTask(selection, id);
-};
+```diff [src/navigation.ts]
+@@ -41,0 +42,2 @@
++let pendingTask: { selection: Selection; id: string } | null = null;
++
+@@ -43 +45,4 @@
+-    if (!navigationRef.isReady()) return;
++    if (!navigationRef.isReady()) {
++        pendingTask = { selection, id };
++        return;
++    }
+@@ -45,0 +51,7 @@
++};
++
++export const openPendingTask = (): void => {
++    if (pendingTask === null) return;
++    const { selection, id } = pendingTask;
++    pendingTask = null;
++    openTask(selection, id);
 ```
 
 Import `openPendingTask` in `window.tsx` and add `onReady={openPendingTask}` to the existing `NavigationContainer`. A ready container opens the task immediately; a newly mounted one consumes the queued request.
+
+Add the notification marker to the task type:
+
+```diff [src/types.ts]
+@@ -12,0 +13 @@
++    lastNotifiedDue: string | null;
+```
+
+Initialize the marker in the seed helper:
+
+```diff [src/store/seed.ts]
+@@ -25,0 +26 @@
++    lastNotifiedDue: null,
+```
+
+Open any queued task when navigation is ready:
+
+```diff [src/components/window.tsx]
+@@ -22 +22 @@
+-import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
++import { ALL_TASKS, navigationRef, openPendingTask, Split } from "../navigation.js";
+@@ -79 +79 @@
+-                    <NavigationContainer ref={navigationRef}>
++                    <NavigationContainer ref={navigationRef} onReady={openPendingTask}>
+```
+
+Initialize the marker for new tasks:
+
+```diff [src/store/tasks.ts]
+@@ -42,0 +43 @@
++                    lastNotifiedDue: null,
+```
 
 ## Run it
 
@@ -233,8 +271,8 @@ While the development app is running, exercise an application action with a real
 gapplication action com.gtkx.tutorial complete-task "'<task-id>'"
 ```
 
-Desktop delivery and launching from a notification require the installed application identity and desktop entry. The [packaging chapter](/v2/tutorial/packaging) adds those. After installation, check that clicking a reminder opens its task and **Mark Complete** updates it.
+Desktop delivery and launching from a notification require the installed application identity and desktop entry. [Package the App](/v2/tutorial/packaging) adds those. After installation, check that clicking a reminder opens its task and **Mark Complete** updates it.
 
 ## Next
 
-[Testing the App](/v2/tutorial/testing) exercises the application through its native widgets.
+[Test the App](/v2/tutorial/testing) exercises the application through its native widgets.

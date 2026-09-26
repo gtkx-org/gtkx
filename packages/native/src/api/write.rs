@@ -94,8 +94,8 @@ pub(crate) fn write_field_at<'e>(
 /// Encodes `value` with `fieldDescriptor` and writes it into the handle's memory at `offset` bytes,
 /// rejecting a handle that points at nothing rather than writing at the bare offset.
 ///
-/// The descriptor is compiled on every call. A field written repeatedly through the same descriptor
-/// and offset is cheaper through `bindField`, which compiles both once.
+/// The descriptor is compiled on every call. For repeated access, `bindField` compiles it once;
+/// `readField` and `writeField` still receive the byte offset on each call.
 #[napi(catch_unwind)]
 pub fn write<'env>(
     env: &'env Env,

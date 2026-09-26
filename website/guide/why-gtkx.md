@@ -1,32 +1,33 @@
 ---
 title: "Why GTKX"
-description: "Native GTK and Adwaita apps with React, TypeScript, and Node.js."
+description: "Where GTKX fits: native Linux interfaces, React state, and Node.js libraries."
 ---
 
 # Why GTKX
 
-GTKX builds native Linux applications with React and TypeScript. JSX describes the Adwaita and GTK widgets, and React keeps the native interface in sync with application state.
+GTKX builds native Linux applications with React and TypeScript. JSX creates Adwaita and GTK widgets; React keeps them in sync with application state. Choose it when you want a Linux desktop interface and a React development workflow.
 
-Start application shells with `AdwApplication` and `AdwApplicationWindow`. GTKX 1.x binds `Gtk-4.0` by default; enabling `v2DefaultLibraries` also binds `Adw-1`.
+## Platform scope
 
-GTKX generates ESM bindings and TypeScript declarations from the same GIR data. The classes, method signatures, and JSX props reflect the native libraries selected for your project.
+GTKX supports Linux. Its widgets follow GTK and Adwaita conventions and can run on Linux desktops with the required libraries. It does not provide a Windows, macOS, mobile, or browser renderer.
 
-## Development tools
+Components render native widgets, so web UI libraries that expect HTML, the DOM, or browser CSS need to be replaced or adapted. React hooks and libraries that work independently of a renderer can be reused. GTK styles use [GTK CSS](/guide/css), whose properties and layout differ from the web.
 
-- The CLI scaffolds projects, builds applications, and runs a development server with Fast Refresh.
-- [CSS](/guide/css) lets you author GTK styles in JavaScript; [animations](/guide/animations) adapt React Spring to native widget props.
-- [Navigation](/guide/navigation) integrates React Navigation with native stack, tab, drawer, and split view layouts.
-- [Components](/guide/components) provide declarative lists and grids. [Adwaita dialogs](/guide/modals-and-portals) present when mounted and close when unmounted.
-- [Testing tools](/guide/testing) query and drive native widgets; the [MCP server](/guide/mcp) exposes the running app to coding agents.
+GTKX generates TypeScript bindings from the native libraries installed for your project. Those bindings describe the available classes, methods, and JSX props. Shipping an app still requires compatible native libraries; see [Deploying](/guide/deploying).
 
 ## Why Node.js
 
-A GTKX app runs on Node.js, with access to its standard library and compatible npm packages. Generated GLib and Gio bindings are available alongside them for native file objects, settings, actions, notifications, and other platform APIs.
+An app runs on Node.js and can use its standard library and compatible npm packages. GLib and Gio bindings are also available for platform APIs such as settings, actions, and notifications.
 
-Keep widget work on the UI thread. Move expensive work off that thread so the application stays responsive.
+Check a package's runtime assumptions before adding it. A browser package may require `window` or `document`; a native Node addon must match the deployment architecture and runtime. Keep expensive computation off the UI thread so the window remains responsive.
+
+## Development tools
+
+- The CLI scaffolds projects, runs Fast Refresh, and builds application bundles and Linux packages.
+- [Navigation](/guide/navigation) maps React Navigation to native page stacks, tabs, drawers, and split views.
+- [Components](/guide/components) render collections and notifications; [forms](/guide/forms) connect native controls to React Hook Form.
+- [Testing](/guide/testing) drives the native interface. The [MCP server](/guide/mcp) lets coding agents inspect widgets, interact with the app, and capture screenshots.
 
 ## Next
 
-- [Getting Started](/guide/getting-started): scaffold an app and run it.
-- [Configuration and Codegen](/guide/configuration-and-codegen): select libraries and generate bindings.
-- [Tutorial](/tutorial/): build Tasks, a native GNOME task manager.
+[Getting Started](/guide/getting-started) opens a first window. The [tutorial](/tutorial/) builds Tasks, a task manager with persistence and navigation.

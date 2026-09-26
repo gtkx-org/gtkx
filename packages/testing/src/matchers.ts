@@ -184,12 +184,10 @@ type MatcherImplementations = {
     /**
      * Asserts a widget's numeric value, or its display value when a string is given.
      *
-     * Numbers come from the accessibility tree, which GTK keeps to a resolution of 0.001: it drops an
-     * update whose value is nearer than that to the one already published, so a widget that moves by
-     * less keeps its previous value. Numbers therefore match within 0.001, the same tolerance the
-     * `value` option of the `ByRole` queries and `toHaveAccessibleProperty` apply. That option reads
-     * the same tree, where the maximum of a paged widget such as a scrollbar is the last value it can
-     * reach, its adjustment's upper bound less one page.
+     * Numeric values come from GTK's accessibility tree, which ignores updates smaller than 0.001.
+     * Comparisons use that tolerance, matching `ByRole`'s `value` option and
+     * `toHaveAccessibleProperty`. For paged widgets such as scrollbars, the accessible maximum is
+     * the adjustment's upper bound minus its page size.
      */
     toHaveValue: (received: unknown, expected?: number | string) => MatcherResult;
     /** Asserts the widget's accessible role. */

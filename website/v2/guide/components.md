@@ -1,11 +1,11 @@
 ---
 title: "Components"
-description: "GTK4 collection views, dropdowns, an Adwaita combo row, and toast helpers for GNOME apps."
+description: "Render lists, tables, dropdowns, and toast notifications from React state."
 ---
 
 # Components
 
-GTKX applications establish their top-level structure with libadwaita, then use GTK4 widgets for lower-level controls such as model-backed collections. The components in `@gtkx/components` drop those collections' `model`, `factory`, and `headerFactory` props and take data plus renderers instead; the package also exposes an Adwaita `ComboRow` and toast helpers.
+`@gtkx/components` renders native collections from data and render functions. It manages their GTK models and factories. `@gtkx/components` also provides `ComboRow` and toast helpers.
 
 `@gtkx/components` is a separate install:
 
@@ -117,6 +117,47 @@ Leave `selectedIndex` out for native selection, or set it to keep selection unde
 GTKX suppresses `onRowSelected` while applying its own selection updates. Other native selection changes still reach the handler, including changes made through native methods. Update the controlled value in that handler to keep the new selection; otherwise GTKX restores the requested row.
 
 The tutorial's [sidebar](/v2/tutorial/lists-and-the-sidebar#keeping-gtk4-and-the-route-in-agreement) drives one from the current route.
+
+## Toasts
+
+Wrap the window's content in `AdwToastOverlay`, then share its ref through `ToastProvider`. Descendants can call `useToast()` to show a notification:
+
+```tsx
+import { ToastProvider, useToast } from "@gtkx/components";
+import type * as Adw from "@gtkx/gi/adw";
+import { AdwToastOverlay } from "@gtkx/jsx/adw";
+import { GtkButton } from "@gtkx/jsx/gtk";
+import { useRef } from "react";
+
+const NotifyButton = () => {
+    const toast = useToast();
+
+    return (
+        <GtkButton
+            label="Show notification"
+            onClicked={() => toast.show({ title: "Task saved", useMarkup: false })}
+        />
+    );
+};
+
+export const Notifications = () => {
+    const overlayRef = useRef<Adw.ToastOverlay | null>(null);
+
+    return (
+        <ToastProvider overlayRef={overlayRef}>
+            <AdwToastOverlay ref={overlayRef}>
+                <NotifyButton />
+            </AdwToastOverlay>
+        </ToastProvider>
+    );
+};
+```
+
+Render `Notifications` inside an application window. Clicking the button shows a toast over the content. Use `useMarkup: false` for titles that should display literally, including user text.
+
+`show()` returns the native toast. Pass `buttonLabel` and `onButtonClicked` to add an action, and `onDismissed` when cleanup depends on its dismissal. Call `toast.dismiss()` on the returned toast to close it, or `useToast().dismissAll()` to clear the overlay.
+
+`useToast()` requires a provider. Show toasts from events or effects after the overlay mounts; calling `show()` while its ref is empty creates a toast without displaying it. The [Trash and Toasts tutorial](/v2/tutorial/trash-and-toasts) adds an Undo action to a delete operation.
 
 ## Next
 
