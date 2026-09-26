@@ -178,6 +178,9 @@ const VideoColumn = ({
 }) => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={8}>
         <ImagesPanel title="Displaying video">
+            {/* TODO: Reconcile this enabled looping with the historical GStreamer gapless-race restriction;
+             * no supported upstream fix has been verified. https://github.com/gtkx-org/gtkx/issues/758
+             */}
             <GtkVideo
                 name="animation-video"
                 accessibleLabel="Floppy Buddy video"

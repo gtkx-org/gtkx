@@ -22,9 +22,9 @@ sudo apt install build-essential pkg-config gobject-introspection \
     libgtksourceview-5-dev libwebkitgtk-6.0-dev meson ninja-build
 ```
 
-Distribution names vary; [.github/docker/Dockerfile](.github/docker/Dockerfile) is the authoritative dependency list. Meson and Ninja build the GObject introspection fixtures. Released GStreamer versions can crash looping `GtkVideo` or `GtkMediaFile` tests, so repository demos must not enable media looping. [The tracking issue](https://github.com/gtkx-org/gtkx/issues/758) records the original evidence and the conditions for lifting this restriction.
+Distribution names vary; [.github/docker/Dockerfile](.github/docker/Dockerfile) is the authoritative dependency list. Meson and Ninja build the GObject introspection fixtures.
 
-<!-- TODO: Restore media looping once the supported GStreamer floor includes a verified race fix. https://github.com/gtkx-org/gtkx/issues/758 -->
+GStreamer media looping has a documented native teardown race tracked in [#758](https://github.com/gtkx-org/gtkx/issues/758). The [Images demo](examples/gtk-demo/src/demos/drawing/images.tsx) currently enables looping on a shared media stream, so the historical no-loop restriction is not an effective workaround in the current code. The TODO beside that configuration tracks this unresolved discrepancy; a fix in the supported GStreamer releases has not been verified.
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/gtkx.git
