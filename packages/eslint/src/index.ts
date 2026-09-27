@@ -9,6 +9,7 @@ import promise from "eslint-plugin-promise";
 import reactHooks from "eslint-plugin-react-hooks";
 import sonarjs from "eslint-plugin-sonarjs";
 import unicorn from "eslint-plugin-unicorn";
+import vue from "eslint-plugin-vue";
 import { includeIgnoreFile } from "eslint/config";
 import * as jsonc from "jsonc-eslint-parser";
 import { join } from "node:path";
@@ -25,10 +26,11 @@ type PublicApi = {
 const SOURCES = ["**/*.{ts,tsx,mts,js,jsx,mjs}"];
 const JS_SOURCES = ["**/*.{js,jsx,mjs}"];
 const TS_SOURCES = ["**/*.{ts,tsx,mts}"];
+const VUE_SOURCES = ["website/**/*.vue"];
 const TESTS = ["**/tests/**/*.{ts,tsx}", "**/*.{test,spec,bench}.{ts,tsx}"];
 const MANIFESTS = ["packages/*/package.json"];
 const TOOLING = ["**/*.config.{ts,mts,js,mjs}", "**/*.config.base.ts", "**/scripts/**/*.ts"];
-const TYPE_ONLY_DEPS = ["@types/ejs", "@types/node", "@types/react"];
+const TYPE_ONLY_DEPS = ["@types/node"];
 const DEPENDENCY_CHECKS = { checkObsoleteDependencies: false };
 const CLI_OPTIONAL_DEPS = ["@gtkx/native", "@gtkx/react", "@gtkx/testing", "vitest"];
 
@@ -56,6 +58,15 @@ const NX_CONFIGS: FlatConfig[] = [
         rules: { "@nx/dependency-checks": ["error", { ...DEPENDENCY_CHECKS, ignoredDependencies: TYPE_ONLY_DEPS }] },
     },
     {
+        files: ["packages/create-gtkx/package.json"],
+        rules: {
+            "@nx/dependency-checks": [
+                "error",
+                { ...DEPENDENCY_CHECKS, ignoredDependencies: [...TYPE_ONLY_DEPS, "@types/ejs"] },
+            ],
+        },
+    },
+    {
         files: ["packages/react/package.json"],
         plugins: { "@nx": nx },
         languageOptions: { parser: jsonc },
@@ -80,7 +91,6 @@ const NX_CONFIGS: FlatConfig[] = [
 ];
 
 const IGNORES = [
-    "**/*.vue",
     ".claude/**",
     "packages/native/npm/**",
     "packages/native/target/**",
@@ -194,6 +204,18 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "gtkx/no-inline-exports": "error",
     "max-lines-per-function": ["error", { max: 50, skipBlankLines: true, skipComments: true }],
     "max-params": ["error", { max: 4 }],
+    "no-restricted-syntax": [
+        "error",
+        {
+            selector: ":matches(TSAsExpression, TSTypeAssertion) > " +
+                ":matches(TSAsExpression, TSTypeAssertion)[typeAnnotation.type='TSUnknownKeyword']",
+            message: "Express the conversion through compatible types instead of asserting through unknown.",
+        },
+        {
+            selector: "[definite=true]",
+            message: "Initialize the declaration through a constructor, factory, or control flow.",
+        },
+    ],
     "perfectionist/sort-exports": [
         "error",
         { type: "natural", order: "asc", ignoreCase: true, newlinesBetween: "ignore" },
@@ -260,6 +282,7 @@ const classifyEntrypoints = (surface: PublicApi): FlatConfig => ({
 const config = (root: string, surface: PublicApi): FlatConfig[] => [
     includeIgnoreFile(join(root, ".gitignore")),
     { ignores: IGNORES },
+    { linterOptions: { reportUnusedDisableDirectives: "error", reportUnusedInlineConfigs: "error" } },
     ...scopeTo(SOURCES, SOURCE_EXTENDS),
     {
         files: SOURCES,
@@ -268,6 +291,16 @@ const config = (root: string, surface: PublicApi): FlatConfig[] => [
         rules: SOURCE_RULES,
     },
     ...NX_CONFIGS,
+    ...scopeTo(VUE_SOURCES, [tseslint.configs.strict, vue.configs["flat/essential"]]),
+    {
+        files: VUE_SOURCES,
+        languageOptions: { parserOptions: { parser: tseslint.parser } },
+        rules: {
+            "@typescript-eslint/no-non-null-assertion": "error",
+            "no-restricted-syntax": SOURCE_RULES["no-restricted-syntax"],
+            "vue/multi-word-component-names": "off",
+        },
+    },
     documentPublicApi(root, surface),
     classifyEntrypoints(surface),
     {

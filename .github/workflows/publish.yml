@@ -8,8 +8,9 @@ permissions:
   packages: read
 
 concurrency:
-  group: publish-${{ github.ref }}
+  group: publish
   cancel-in-progress: false
+  queue: max
 
 env:
   GIT_CONFIG_COUNT: "1"
@@ -20,9 +21,14 @@ env:
 jobs:
   validate-release:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 30
     permissions:
-      contents: write
+      contents: read
+      actions: read
+      checks: read
+      pull-requests: read
+    outputs:
+      image-ref: ${{ steps.image.outputs.image-ref }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,6 +57,32 @@ jobs:
             exit 1
           fi
 
+      - name: Verify exact release commit
+        id: verification
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/verify-release.sh
+
+      - name: Download verified CI image reference
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: verified-ci-image
+          run-id: ${{ steps.verification.outputs.run-id }}
+          github-token: ${{ github.token }}
+          path: release-verification
+
+      - name: Require immutable verified image
+        id: image
+        shell: bash
+        run: |
+          image_ref="$(cat release-verification/ci-image-ref.txt)"
+          if [[ ! "$image_ref" =~ ^ghcr\.io/gtkx-org/gtkx-ci@sha256:[a-f0-9]{64}$ ]]; then
+            echo "::error::CI did not record an immutable release image"
+            exit 1
+          fi
+          echo "image-ref=$image_ref" >> "$GITHUB_OUTPUT"
+
   build-native:
     needs: validate-release
     permissions:
@@ -73,30 +105,87 @@ jobs:
         uses: ./.github/actions/run-ci-command
         with:
           command: pnpm exec nx run @gtkx/native:build --skip-nx-cache
-          image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
+          image-ref: ${{ needs.validate-release.outputs.image-ref }}
 
-      - name: Upload native binary
+      - name: Stage native bindings and checksums
+        shell: bash
+        working-directory: packages/native
+        env:
+          RELEASE_ARCH: ${{ matrix.arch }}
+        run: |
+          cp index.js "index.linux-${RELEASE_ARCH}-gnu.js"
+          cp index.d.ts "index.linux-${RELEASE_ARCH}-gnu.d.ts"
+          for artifact in "native.linux-${RELEASE_ARCH}-gnu.node" "index.linux-${RELEASE_ARCH}-gnu.js" "index.linux-${RELEASE_ARCH}-gnu.d.ts"; do
+            sha256sum "$artifact" > "$artifact.sha256"
+          done
+
+      - name: Upload native bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: native-linux-${{ matrix.arch }}-gnu
-          path: packages/native/native.linux-${{ matrix.arch }}-gnu.node
+          path: |
+            packages/native/native.linux-${{ matrix.arch }}-gnu.node
+            packages/native/native.linux-${{ matrix.arch }}-gnu.node.sha256
+            packages/native/index.linux-${{ matrix.arch }}-gnu.js
+            packages/native/index.linux-${{ matrix.arch }}-gnu.js.sha256
+            packages/native/index.linux-${{ matrix.arch }}-gnu.d.ts
+            packages/native/index.linux-${{ matrix.arch }}-gnu.d.ts.sha256
           if-no-files-found: error
+          overwrite: true
+          retention-days: 90
+
+  accept-native:
+    needs: [validate-release, build-native]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Download release native artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+        with:
+          name: native-linux-${{ matrix.arch }}-gnu
+          path: packages/native/artifacts
+
+      - name: Restore verified native bindings before dependency installation
+        shell: bash
+        run: bash scripts/restore-native-artifacts.sh
+
+      - name: Accept staged native artifact through published consumers
+        uses: ./.github/actions/run-ci-command
+        env:
+          GTKX_RELEASE_NATIVE_ARTIFACTS: "true"
+        with:
+          command: pnpm release-e2e
+          extra-env: GTKX_RELEASE_NATIVE_ARTIFACTS
+          image-ref: ${{ needs.validate-release.outputs.image-ref }}
 
   publish:
-    needs: build-native
+    needs: [validate-release, accept-native]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
       contents: read
       packages: read
       id-token: write
+    environment: npm-release
     env:
       NPM_CONFIG_PROVENANCE: "true"
+      GTKX_RELEASE_NATIVE_ARTIFACTS: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Download x64 binary
+      - name: Download x64 native bundle
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         env:
           NODE_OPTIONS: --disable-warning=DEP0005
@@ -104,13 +193,17 @@ jobs:
           name: native-linux-x64-gnu
           path: packages/native/artifacts
 
-      - name: Download arm64 binary
+      - name: Download arm64 native bundle
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         env:
           NODE_OPTIONS: --disable-warning=DEP0005
         with:
           name: native-linux-arm64-gnu
           path: packages/native/artifacts
+
+      - name: Restore verified native bindings before dependency installation
+        shell: bash
+        run: bash scripts/restore-native-artifacts.sh
 
       - name: Stage OIDC token request for the release container
         shell: bash
@@ -132,10 +225,10 @@ jobs:
           command: >-
             . /workspace/.oidc.env;
             rm -f /workspace/.oidc.env;
-            echo "oidc-token-len=${#ACTIONS_ID_TOKEN_REQUEST_TOKEN}";
             pnpm release
           extra-env: >-
             NPM_CONFIG_PROVENANCE
+            GTKX_RELEASE_NATIVE_ARTIFACTS
             GITHUB_ACTIONS
             GITHUB_SERVER_URL
             GITHUB_REPOSITORY
@@ -154,7 +247,7 @@ jobs:
             GITHUB_ACTOR_ID
             GITHUB_JOB
             RUNNER_ENVIRONMENT
-          image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
+          image-ref: ${{ needs.validate-release.outputs.image-ref }}
 
   publish-release:
     needs: publish
@@ -164,22 +257,28 @@ jobs:
       actions: write
       contents: write
     steps:
-      - name: Validate release remains draft
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Resolve final release state
+        id: release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           release="$(gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --json isDraft,tagName)"
-          if [ "$(jq -r '.isDraft' <<<"${release}")" != "true" ]; then
-            echo "::error::Release ${GITHUB_REF_NAME} is not a draft"
-            exit 1
-          fi
           if [ "$(jq -r '.tagName' <<<"${release}")" != "${GITHUB_REF_NAME}" ]; then
             echo "::error::Draft release does not match ${GITHUB_REF_NAME}"
             exit 1
           fi
+          echo "is-draft=$(jq -r '.isDraft' <<<"${release}")" >> "$GITHUB_OUTPUT"
+
+      - name: Verify complete release channel before publication
+        if: steps.release.outputs.is-draft == 'true'
+        run: node --experimental-strip-types scripts/verify-release-channel.ts
 
       - name: Publish GitHub release
+        if: steps.release.outputs.is-draft == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release edit "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft=false

@@ -32,7 +32,7 @@ const run = (command: string, args: string[], env: NodeJS.ProcessEnv): void => {
 const runtime = asanRuntime();
 
 try {
-    run("pnpm", [...BUILD_ARGS, "--target", "x86_64-unknown-linux-gnu"], {
+    run("pnpm", [...BUILD_ARGS, "--target", "x86_64-unknown-linux-gnu", "--", "--locked"], {
         ...process.env,
         RUSTFLAGS: "-Zsanitizer=address",
         RUSTUP_TOOLCHAIN: RUST_NIGHTLY,
@@ -59,5 +59,5 @@ try {
         });
     }
 } finally {
-    run("pnpm", BUILD_ARGS, process.env);
+    run("pnpm", [...BUILD_ARGS, "--", "--locked"], process.env);
 }

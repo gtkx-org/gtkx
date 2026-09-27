@@ -63,6 +63,18 @@
                     "cwd": ".",
                     "command": "eslint {projectRoot}"
                 }
+            },
+            "test": {
+                "dependsOn": [
+                    "^build",
+                    "gtkx:codegen",
+                    "@gtkx/cli:build",
+                    "@gtkx/components:build"
+                ],
+                "inputs": [
+                    "...",
+                    "{workspaceRoot}/packages/cli/tests/fixtures/**/*"
+                ]
             }
         }
     },

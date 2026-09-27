@@ -1,7 +1,10 @@
 import { ESLint } from "eslint";
+import { execFile } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 import { afterEach, expect, test } from "vitest";
 import { config } from "../src/index.js";
 
@@ -12,6 +15,7 @@ type Workspace = {
 };
 
 const roots: string[] = [];
+const run = promisify(execFile);
 
 afterEach(() => {
     for (const root of roots) {
@@ -87,6 +91,48 @@ const lint = async (workspace: Workspace, file: string, source?: string): Promis
 const publicReports = (results: ESLint.LintResult[]): number =>
     results.flatMap((result) => result.messages).filter((message) => message.ruleId === "gtkx/public-api-jsdoc")
         .length;
+
+const lintCommand = async (workspace: Workspace, source: string): Promise<void> => {
+    const configuration = new URL("../src/index.ts", import.meta.url).href;
+    const eslint = fileURLToPath(new URL("../bin/eslint.js", import.meta.resolve("eslint")));
+    symlinkSync(fileURLToPath(new URL("../../../node_modules", import.meta.url)), join(workspace.root, "node_modules"));
+    writeFileSync(
+        join(workspace.root, "eslint.config.ts"),
+        `import { config } from ${JSON.stringify(configuration)};\n` +
+        "export default config(import.meta.dirname, { entrypoints: [], modules: [] });\n",
+    );
+    writeFileSync(workspace.tests, source);
+    await run(process.execPath, [eslint, workspace.tests], { cwd: workspace.root });
+};
+
+test("the lint command accepts initialized declarations and checked unknown values", async () => {
+    const workspace = createWorkspace();
+    const source = [
+        "class Value {",
+        "    value: string;",
+        "    constructor(value: unknown) {",
+        "        this.value = typeof value === \"string\" ? value : \"\";",
+        "    }",
+        "}",
+        "console.log(new Value(\"value\").value);",
+        "",
+    ].join("\n");
+
+    await expect(lintCommand(workspace, source)).resolves.toBeUndefined();
+});
+
+test.each([
+    "const value = \"value\" as unknown as number;\nconsole.log(value);\n",
+    "const value = <number><unknown>\"value\";\nconsole.log(value);\n",
+    "class Value {\n    value!: string;\n}\nconsole.log(new Value().value);\n",
+    "let value!: string;\nconsole.log(value);\n",
+    "const values: string[] = [];\nconsole.log(values[0]!);\n",
+    "/* eslint-disable no-debugger */\nconst value = \"value\";\nconsole.log(value);\n",
+])("the lint command rejects prohibited assertions: %s", async (source) => {
+    const workspace = createWorkspace();
+
+    await expect(lintCommand(workspace, source)).rejects.toThrow();
+});
 
 test("the public config accepts library names, external keys, and semantic aliases", async () => {
     const workspace = createWorkspace();

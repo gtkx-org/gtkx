@@ -94,7 +94,7 @@
                     "default",
                     "^production",
                     {
-                        "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
+                        "dependentTasksOutputFiles": "**/*.{js,d.ts,json,node}",
                         "transitive": true
                     }
                 ],

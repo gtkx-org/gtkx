@@ -10,11 +10,11 @@
         "build": "nx run-many -t build && nx run gtkx:reference",
         "codegen": "nx run-many -t codegen && nx run gtkx:reference",
         "coverage": "nx run-many -t coverage --parallel=1",
-        "lint": "nx run-many -t lint lint:rust lint:knip",
+        "lint": "nx run-many -t lint lint:rust lint:knip lint:knip:production",
         "plan": "nx release plan",
         "postinstall": "tsc -b --force packages/vitest/tsconfig.lib.json",
         "prepare-release": "tsx ./scripts/prepare-release.ts",
-        "release": "nx run-many -t release",
+        "release": "tsx ./scripts/release.ts",
         "release-e2e": "tsx ./scripts/release-e2e.ts",
         "local-registry": "tsx ./scripts/local-registry.ts",
         "test": "nx run-many -t test",
@@ -93,6 +93,16 @@
                 ],
                 "inputs": [
                     "sharedGlobals",
+                    "nativeEnvironment",
+                    {
+                        "env": "GTKX_COVERAGE_GROUP"
+                    },
+                    {
+                        "env": "GTKX_COVERAGE_SHARD"
+                    },
+                    {
+                        "env": "GTKX_COVERAGE_MERGE"
+                    },
                     "{workspaceRoot}/package.json",
                     "{workspaceRoot}/pnpm-lock.yaml",
                     "{workspaceRoot}/vitest.config.ts",
@@ -102,7 +112,7 @@
                     "{workspaceRoot}/examples/gtk-demo/**/*",
                     "{workspaceRoot}/examples/storybook/**/*",
                     {
-                        "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
+                        "dependentTasksOutputFiles": "**/*.{js,d.ts,json,node}",
                         "transitive": true
                     },
                     {
@@ -118,7 +128,7 @@
                 ]
             },
             "coverage-shard": {
-                "command": "GTKX_COVERAGE_DIR=\"$PWD/coverage/subprocess\" vitest run --coverage $GTKX_COVERAGE_PROJECT_ARGS --shard=\"$GTKX_COVERAGE_SHARD/$GTKX_COVERAGE_SHARDS\" --reporter=dot --reporter=blob --outputFile.blob=\"coverage-artifacts/vitest/blob-${GTKX_COVERAGE_GROUP:-all}-$GTKX_COVERAGE_SHARD.json\" --exclude '**/tests/testing/query-perf.test.tsx' && GTKX_SUBPROCESS_COVERAGE_REPORT_DIR=\"$PWD/coverage-artifacts/subprocess-report/${GTKX_COVERAGE_GROUP:-all}-$GTKX_COVERAGE_SHARD\" NODE_OPTIONS=--max-old-space-size=8192 tsx ./scripts/subprocess-coverage.ts && rm -rf coverage/subprocess",
+                "command": "GTKX_COVERAGE_DIR=\"$PWD/coverage/subprocess\" vitest run --coverage --shard=\"$GTKX_COVERAGE_SHARD/$GTKX_COVERAGE_SHARDS\" --reporter=dot --reporter=blob --outputFile.blob=\"coverage-artifacts/vitest/blob-${GTKX_COVERAGE_GROUP:-all}-$GTKX_COVERAGE_SHARD.json\" --exclude '**/tests/testing/query-perf.test.tsx' && GTKX_SUBPROCESS_COVERAGE_REPORT_DIR=\"$PWD/coverage-artifacts/subprocess-report/${GTKX_COVERAGE_GROUP:-all}-$GTKX_COVERAGE_SHARD\" NODE_OPTIONS=--max-old-space-size=8192 tsx ./scripts/subprocess-coverage.ts && rm -rf coverage/subprocess",
                 "cache": false,
                 "dependsOn": [
                     "coverage-dependencies"
@@ -157,13 +167,42 @@
                             "eslint-plugin-react-hooks",
                             "eslint-plugin-sonarjs",
                             "eslint-plugin-unicorn",
-                            "jiti"
+                            "jiti",
+                            "eslint-plugin-vue",
+                            "vue-eslint-parser"
                         ]
                     }
                 ]
             },
             "lint:knip": {
                 "command": "knip",
+                "cache": true,
+                "dependsOn": [
+                    "codegen",
+                    "@gtkx/cli:build"
+                ],
+                "inputs": [
+                    "{workspaceRoot}/knip.json",
+                    "{workspaceRoot}/package.json",
+                    "{workspaceRoot}/pnpm-workspace.yaml",
+                    "{workspaceRoot}/tsconfig.json",
+                    "{workspaceRoot}/eslint.config.ts",
+                    "{workspaceRoot}/vitest.config.ts",
+                    "{workspaceRoot}/gtkx.config.ts",
+                    "{workspaceRoot}/scripts/**/*",
+                    "{workspaceRoot}/packages/**/*",
+                    "{workspaceRoot}/examples/**/*",
+                    "{workspaceRoot}/website/**/*",
+                    "sharedGlobals",
+                    {
+                        "externalDependencies": [
+                            "knip"
+                        ]
+                    }
+                ]
+            },
+            "lint:knip:production": {
+                "command": "knip --strict --config scripts/knip-production.ts",
                 "cache": true,
                 "dependsOn": [
                     "codegen",

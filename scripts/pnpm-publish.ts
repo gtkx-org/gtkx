@@ -189,7 +189,9 @@ const waitForVisibility = async (packageDir: string, tag: string | undefined, ti
 
 const publishPackage = async (packageDir: string, tag: string): Promise<void> => {
     const timeoutMs = visibilityTimeoutMs();
-    const result = runPnpmPublish(packageDir, tag);
+    const { version } = packageIdentity(packageDir);
+    const stagingTag = `gtkx-release-${tag}-${version.replaceAll("+", "-")}`;
+    const result = runPnpmPublish(packageDir, stagingTag);
     const { stdout, stderr } = result;
     process.stdout.write(stdout);
     process.stderr.write(stderr);
@@ -199,7 +201,7 @@ const publishPackage = async (packageDir: string, tag: string): Promise<void> =>
     }
 
     const outcome = publishOutcome(packageDir, result, `${stdout}${stderr}`);
-    await waitForVisibility(packageDir, outcome === "published" ? tag : undefined, timeoutMs);
+    await waitForVisibility(packageDir, outcome === "published" ? stagingTag : undefined, timeoutMs);
 };
 
-export { publishPackage };
+export { packageIdentity, publishPackage, registryFor, visibilityTimeoutMs, waitForVisibility };

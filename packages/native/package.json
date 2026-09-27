@@ -66,9 +66,9 @@
     },
     "scripts": {
         "artifacts": "napi artifacts",
-        "build": "napi build --platform --release --esm --no-dts-cache --no-const-enum",
+        "build": "tsx ../../scripts/build-native.ts",
         "create-npm-dirs": "napi create-npm-dirs",
-        "lint:rust": "tsx ../../scripts/cargo-nightly.ts fmt --check && cargo clippy --all-targets -- -D warnings",
+        "lint:rust": "tsx ../../scripts/cargo-nightly.ts fmt --check && cargo clippy --locked --all-targets -- -D warnings",
         "release": "tsx ../../scripts/prepublish-native.ts && tsx ../../scripts/release-package.ts"
     },
     "nx": {
@@ -82,7 +82,8 @@
                 "{workspaceRoot}/rust-toolchain.toml",
                 {
                     "runtime": "uname -m"
-                }
+                },
+                "nativeEnvironment"
             ]
         },
         "targets": {
@@ -96,7 +97,14 @@
                 "dependsOn": [],
                 "cache": true,
                 "inputs": [
-                    "crate"
+                    "crate",
+                    "{workspaceRoot}/scripts/build-native.ts",
+                    "{workspaceRoot}/scripts/native-artifact.ts",
+                    "{projectRoot}/artifacts/native.*.node",
+                    "{projectRoot}/artifacts/native.*.node.sha256",
+                    {
+                        "env": "GTKX_RELEASE_NATIVE_ARTIFACTS"
+                    }
                 ],
                 "outputs": [
                     "{projectRoot}/index.d.ts",

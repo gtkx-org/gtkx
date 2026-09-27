@@ -10,7 +10,11 @@ const TEMP_DIR = join(WORKSPACE_ROOT, "coverage", "subprocess");
 const BATCH_DIR = join(WORKSPACE_ROOT, "coverage", "subprocess-batches");
 const REPORT_DIR = process.env.GTKX_SUBPROCESS_COVERAGE_REPORT_DIR ??
     join(WORKSPACE_ROOT, "coverage", "subprocess-report");
-const INCLUDES = ["packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"];
+const INCLUDES = [
+    "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx",
+    "packages/native/{binding,bootstrap,internal,main}.js",
+];
 const PROFILES_PER_BATCH = 48;
 const BATCH_HEAP = "--max-old-space-size=2048";
 

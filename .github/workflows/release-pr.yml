@@ -63,13 +63,6 @@ jobs:
             echo "version=$version"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Extract the release notes
-        if: steps.release.outputs.prepared == 'true'
-        id: notes
-        uses: ./.github/actions/release-notes
-        with:
-          version: ${{ steps.release.outputs.version }}
-
       - name: Mint the release bot token
         if: steps.release.outputs.prepared == 'true'
         id: app
@@ -91,4 +84,4 @@ jobs:
           delete-branch: true
           commit-message: Prepare GTKX ${{ steps.release.outputs.version }}
           title: Prepare GTKX ${{ steps.release.outputs.version }}
-          body-path: ${{ steps.notes.outputs.path }}
+          body: ""

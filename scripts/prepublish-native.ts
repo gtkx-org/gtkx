@@ -1,9 +1,11 @@
 import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { nativeArtifactHash, verifyNativeArtifacts } from "./native-artifact.js";
 import { publishPackage } from "./pnpm-publish.js";
 import { distTagForVersion, type PackageManifest } from "./publish-manifest.js";
+import { nativePlatforms } from "./release-package-set.js";
 
 const packageDir = process.cwd();
 const manifestPath = join(packageDir, "package.json");
@@ -33,13 +35,31 @@ const preparePlatformManifest = (platformManifest: PackageManifest): PackageMani
 
 execFileSync(resolveExecutable("napi"), ["create-npm-dirs"], { cwd: packageDir, stdio: "inherit" });
 
-for (const platform of readdirSync(npmDir)) {
+const platforms = nativePlatforms(packageDir);
+
+if (process.env.GTKX_RELEASE_NATIVE_ARTIFACTS === "true") {
+    const artifacts = platforms.map((platform) => verifyNativeArtifacts(artifactsDir, platform.split("-", 2)[1] ?? ""));
+    const javascript = new Set([
+        nativeArtifactHash(join(packageDir, "index.js")),
+        ...artifacts.map((artifact) => nativeArtifactHash(artifact.javascript)),
+    ]);
+    const declarations = new Set([
+        nativeArtifactHash(join(packageDir, "index.d.ts")),
+        ...artifacts.map((artifact) => nativeArtifactHash(artifact.declarations)),
+    ]);
+
+    if (javascript.size !== 1 || declarations.size !== 1) {
+        throw new Error("Native release platforms produced different shared bindings");
+    }
+}
+
+for (const platform of platforms) {
     const platformDir = join(npmDir, platform);
     const binary = `native.${platform}.node`;
     const source = join(artifactsDir, binary);
 
     if (!existsSync(source)) {
-        continue;
+        throw new Error(`Missing native release artifact: ${binary}`);
     }
 
     copyFileSync(source, join(platformDir, binary));

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM ubuntu:26.04
+FROM ubuntu:26.04@sha256:da6fc2be547864451aa253836dd926da33623312df4a9a243e35dc877c378a78
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -80,12 +80,14 @@ ARG NODE26_VERSION=26.8.2
 ARG TARGETARCH
 RUN set -eux \
     && case "${TARGETARCH}" in \
-        amd64) node_arch=x64 ;; \
-        arm64) node_arch=arm64 ;; \
+        amd64) node_arch=x64; node_sha=40e1d3225c1c9ae9a2671c98ecb9857e4d5555026394f348645676798840d5c5 ;; \
+        arm64) node_arch=arm64; node_sha=81d8f0fdea9dcd3bfdcfeafc5f8359c151f097e9880b0007c0645ca670d07971 ;; \
         *) echo "unsupported target architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac \
-    && curl -fsSL "https://nodejs.org/dist/v${NODE26_VERSION}/node-v${NODE26_VERSION}-linux-${node_arch}.tar.xz" \
-        | tar -xJ --strip-components=1 -C /usr/local \
+    && curl -fsSL "https://nodejs.org/dist/v${NODE26_VERSION}/node-v${NODE26_VERSION}-linux-${node_arch}.tar.xz" -o /tmp/node.tar.xz \
+    && printf '%s  /tmp/node.tar.xz\n' "$node_sha" | sha256sum -c - \
+    && tar -xJ --strip-components=1 -C /usr/local -f /tmp/node.tar.xz \
+    && rm /tmp/node.tar.xz \
     && node --version | grep -q "v${NODE26_VERSION}"
 
 ENV COREPACK_HOME=/usr/local/share/corepack
@@ -105,7 +107,18 @@ ENV CARGO_HTTP_MULTIPLEXING=false
 
 ARG RUST_VERSION=1.98.1
 ARG RUST_NIGHTLY=nightly-2026-09-15
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy --component rustfmt --default-toolchain "${RUST_VERSION}" \
+ARG RUSTUP_VERSION=1.29.1
+RUN set -eux \
+    && case "${TARGETARCH}" in \
+        amd64) rustup_target=x86_64-unknown-linux-gnu; rustup_sha=dda7234360b7f578ca8b0ddcb80145646fa61a67c1720a5abc7051b35c9fcb71 ;; \
+        arm64) rustup_target=aarch64-unknown-linux-gnu; rustup_sha=15f6e4ce9f583b929c996c91562bad6d4454f3281de858b02cdfdef615fac433 ;; \
+        *) exit 1 ;; \
+    esac \
+    && curl --proto '=https' --tlsv1.2 -fsSL "https://static.rust-lang.org/rustup/archive/${RUSTUP_VERSION}/${rustup_target}/rustup-init" -o /tmp/rustup-init \
+    && printf '%s  /tmp/rustup-init\n' "$rustup_sha" | sha256sum -c - \
+    && chmod +x /tmp/rustup-init \
+    && /tmp/rustup-init -y --profile minimal --component clippy --component rustfmt --default-toolchain "${RUST_VERSION}" \
+    && rm /tmp/rustup-init \
     && chmod -R a+rwX "$RUSTUP_HOME" "$CARGO_HOME"
 
 RUN rustup toolchain install "${RUST_NIGHTLY}" --profile minimal --component rustfmt \
@@ -114,6 +127,11 @@ RUN rustup toolchain install "${RUST_NIGHTLY}" --profile minimal --component rus
 RUN if [ -d /usr/share/vulkan/icd.d ]; then \
         find /usr/share/vulkan/icd.d -type f -name '*.json' ! -name 'lvp_icd*' -delete; \
     fi
+
+RUN mkdir -p /opt/gtkx-ci \
+    && dpkg-query -W -f='${binary:Package}=${Version}\n' | sort > /opt/gtkx-ci/packages.txt \
+    && node --version > /opt/gtkx-ci/node-version.txt \
+    && rustc --version --verbose > /opt/gtkx-ci/rust-version.txt
 
 ENV CARGO_INCREMENTAL=0
 

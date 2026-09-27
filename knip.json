@@ -65,6 +65,9 @@
         ],
         "packages/runtime/src/signal.ts": [
             "types"
+        ],
+        "scripts/knip-production.ts": [
+            "exports"
         ]
     },
     "workspaces": {
@@ -75,12 +78,22 @@
             ],
             "ignoreDependencies": [
                 "@gtkx/cairo",
-                "@gtkx/native"
+                "@gtkx/native",
+                "@gtkx/react",
+                "react"
             ]
         },
         "scripts": {
             "entry": [
-                "gtkx.bootstrap.ts!"
+                "gtkx.bootstrap.ts!",
+                "cache-environment.ts",
+                "ci-plan.ts",
+                "ci-run.ts",
+                "knip-production.ts",
+                "promote-release.ts"
+            ],
+            "ignoreDependencies": [
+                "@napi-rs/cli"
             ]
         },
         "packages/codegen": {
@@ -149,7 +162,7 @@
         },
         "packages/utils": {
             "entry": [
-                "src/process/process-guard.ts"
+                "src/process/process-guard.ts!"
             ]
         },
         "packages/testing": {
@@ -160,7 +173,9 @@
         },
         "packages/storybook": {
             "includeEntryExports": false,
-            "entry": ["gtkx.config.ts!"]
+            "entry": [
+                "gtkx.config.ts!"
+            ]
         },
         "packages/cli": {
             "entry": [

@@ -48,7 +48,19 @@
                 "options": {
                     "cwd": ".",
                     "command": "eslint {projectRoot}"
-                }
+                },
+                "dependsOn": []
+            },
+            "build": {
+                "dependsOn": [
+                    "^build"
+                ]
+            },
+            "typecheck": {
+                "dependsOn": [
+                    "build",
+                    "^typecheck"
+                ]
             }
         }
     },

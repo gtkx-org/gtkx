@@ -8,6 +8,14 @@ on:
     branches:
       - main
     types: [opened, synchronize, reopened, closed]
+  schedule:
+    - cron: '23 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      refresh_image:
+        description: Rebuild the CI image with refreshed system packages
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -16,6 +24,10 @@ concurrency:
 permissions:
   contents: read
   packages: read
+
+defaults:
+  run:
+    shell: bash
 
 env:
   GIT_CONFIG_COUNT: "1"
@@ -31,12 +43,26 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+      actions: read
     outputs:
-      code: ${{ steps.filter.outputs.code }}
-      coverage: ${{ steps.filter.outputs.coverage }}
+      code: ${{ github.event_name != 'pull_request' || steps.filter.outputs.code == 'true' || steps.filter.outputs.coverage == 'true' }}
+      coverage: ${{ github.event_name != 'pull_request' || steps.filter.outputs.coverage == 'true' }}
+      full: ${{ github.event_name != 'pull_request' || steps.filter.outputs.global == 'true' || steps.shas.outputs.noPreviousBuild == 'true' }}
+      base: ${{ steps.shas.outputs.base }}
+      head: ${{ steps.shas.outputs.head }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve affected revisions
+        id: shas
+        uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1
+        with:
+          main-branch-name: main
+          workflow-id: ci.yml
 
       - name: Detect changes
         id: filter
@@ -44,11 +70,19 @@ jobs:
         with:
           predicate-quantifier: some-with-excludes
           filters: |
+            global:
+              - '.github/**'
+              - 'scripts/**'
+              - 'package.json'
+              - 'nx.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
             code:
               - '**'
               - '!**/*.md'
             coverage:
-              - 'packages/*/src/**/*.{ts,tsx}'
+              - 'packages/*/src/**/*.{ts,tsx,mts,js,jsx,mjs}'
+              - 'packages/native/{binding,bootstrap,internal,main}.js'
               - '!packages/gl/src/generated/**'
               - '!**/*.d.ts'
               - '!**/*.test.{ts,tsx}'
@@ -73,8 +107,40 @@ jobs:
               - 'tsconfig*.json'
               - 'packages/*/tsconfig*.json'
 
-  image:
+  image-plan:
     if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ref: ${{ steps.image.outputs.ref }}
+      build: ${{ steps.image.outputs.build }}
+      tag: ${{ steps.image.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Resolve the image once
+        id: image
+        env:
+          REF: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
+          REFRESH: ${{ github.event_name == 'schedule' || inputs.refresh_image == true }}
+        run: |
+          set -euo pipefail
+          echo "tag=$REF" >> "$GITHUB_OUTPUT"
+          if [ "$REFRESH" != "true" ] && manifest=$(docker buildx imagetools inspect "$REF" --format '{{json .Manifest}}'); then
+            digest=$(jq -er '.digest | select(test("^sha256:[a-f0-9]{64}$"))' <<< "$manifest")
+            jq -e '[.manifests[] | select(.platform.os == "linux") | .platform.architecture] | index("amd64") != null and index("arm64") != null' <<< "$manifest"
+            echo "ref=ghcr.io/gtkx-org/gtkx-ci@$digest" >> "$GITHUB_OUTPUT"
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  image:
+    needs: image-plan
+    if: needs.image-plan.outputs.build == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -89,150 +155,214 @@ jobs:
       contents: read
       packages: write
     env:
-      CAN_PUSH: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+      CAN_PUSH: ${{ github.ref == 'refs/heads/main' || github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
 
       - name: Log in to GHCR
-        if: &can-push env.CAN_PUSH == 'true'
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        if: env.CAN_PUSH == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Look for the image in GHCR
-        id: existing
-        shell: bash
-        env:
-          REF: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
-        run: |
-          if docker manifest inspect "$REF" > /dev/null 2>&1; then
-            echo "result=present" >> "$GITHUB_OUTPUT"
-          else
-            echo "result=missing" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Set up Docker Buildx
-        if: &image-missing steps.existing.outputs.result == 'missing'
-        uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4.4.0
+        uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003
 
       - name: Build and push CI image by digest
         id: build
-        if: *image-missing
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        if: env.CAN_PUSH == 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
         with:
           context: .github/docker
           platforms: linux/${{ matrix.arch }}
-          outputs: type=image,name=ghcr.io/gtkx-org/gtkx-ci,push-by-digest=true,name-canonical=true,push=${{ env.CAN_PUSH }}
+          outputs: type=image,name=ghcr.io/gtkx-org/gtkx-ci,push-by-digest=true,name-canonical=true,push=true
+          pull: true
+          no-cache: ${{ github.event_name == 'schedule' || inputs.refresh_image == true }}
           cache-from: type=gha,scope=ci-image-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=ci-image-${{ matrix.arch }}
 
       - name: Export the digest
-        if: &image-pushed steps.existing.outputs.result == 'missing' && env.CAN_PUSH == 'true'
-        shell: bash
-        run: |
-          mkdir -p /tmp/digests
-          touch "/tmp/digests/${DIGEST#sha256:}"
+        if: env.CAN_PUSH == 'true'
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
 
       - name: Upload the digest
-        if: *image-pushed
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: env.CAN_PUSH == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: ci-image-digest-${{ matrix.arch }}
-          path: /tmp/digests/*
+          path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
+          overwrite: true
           retention-days: 1
 
+      - name: Build fork image archive
+        if: env.CAN_PUSH != 'true'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
+        with:
+          context: .github/docker
+          platforms: linux/${{ matrix.arch }}
+          outputs: type=docker,name=localhost/gtkx-ci:local,dest=${{ runner.temp }}/ci-image.tar
+          pull: true
+          cache-from: type=gha,scope=ci-image-${{ matrix.arch }}
+
+      - name: Upload fork image archive
+        if: env.CAN_PUSH != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ci-image-${{ matrix.arch }}
+          path: ${{ runner.temp }}/ci-image.tar
+          compression-level: 0
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 3
+
   image-manifest:
-    needs: image
+    needs: [image-plan, image]
+    if: >-
+      always() && needs.image-plan.result == 'success' &&
+      (needs.image.result == 'success' || needs.image.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
       packages: write
     env:
-      CAN_PUSH: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+      CAN_PUSH: ${{ github.ref == 'refs/heads/main' || github.event.pull_request.head.repo.full_name == github.repository }}
     outputs:
-      ref: ${{ steps.meta.outputs.ref }}
+      ref: ${{ steps.resolve.outputs.ref }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Compute image tags
-        id: meta
-        run: |
-          ref="ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}"
-          tags="--tag $ref"
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            tags="$tags --tag ghcr.io/gtkx-org/gtkx-ci:latest"
-          fi
-          {
-            echo "ref=$ref"
-            echo "tags=$tags"
-          } >> "$GITHUB_OUTPUT"
-
       - name: Log in to GHCR
-        if: *can-push
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        if: needs.image-plan.outputs.build == 'true' && env.CAN_PUSH == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Look for the image in GHCR
-        id: existing
-        shell: bash
-        env:
-          REF: ${{ steps.meta.outputs.ref }}
-        run: |
-          if docker manifest inspect "$REF" > /dev/null 2>&1; then
-            echo "result=present" >> "$GITHUB_OUTPUT"
-          else
-            echo "result=missing" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Download the per-arch digests
-        if: &manifest-missing steps.existing.outputs.result == 'missing' && env.CAN_PUSH == 'true'
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        env:
-          NODE_OPTIONS: --disable-warning=DEP0005
+        if: needs.image-plan.outputs.build == 'true' && env.CAN_PUSH == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
           pattern: ci-image-digest-*
           merge-multiple: true
-          path: /tmp/digests
+          path: ${{ runner.temp }}/digests
 
-      - name: Merge the digests into a multi-arch manifest list
-        if: *manifest-missing
-        shell: bash
-        working-directory: /tmp/digests
+      - name: Resolve immutable image
+        id: resolve
         env:
-          TAGS: ${{ steps.meta.outputs.tags }}
-          REF: ${{ steps.meta.outputs.ref }}
+          BUILD: ${{ needs.image-plan.outputs.build }}
+          EXISTING_REF: ${{ needs.image-plan.outputs.ref }}
+          RECIPE_TAG: ${{ needs.image-plan.outputs.tag }}
         run: |
           set -euo pipefail
-          # shellcheck disable=SC2046,SC2086
-          docker buildx imagetools create $TAGS \
-            $(printf 'ghcr.io/gtkx-org/gtkx-ci@sha256:%s ' *)
-          docker buildx imagetools inspect "$REF"
+          if [ "$BUILD" != "true" ]; then
+            echo "ref=$EXISTING_REF" >> "$GITHUB_OUTPUT"
+          elif [ "$CAN_PUSH" != "true" ]; then
+            echo "ref=artifact:ci-image" >> "$GITHUB_OUTPUT"
+          else
+            sources=()
+            for file in "$RUNNER_TEMP"/digests/*; do
+              sources+=("ghcr.io/gtkx-org/gtkx-ci@sha256:$(basename "$file")")
+            done
+            test "${#sources[@]}" -eq 2
+            run_tag="ghcr.io/gtkx-org/gtkx-ci:run-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+            docker buildx imagetools create --tag "$run_tag" --tag "$RECIPE_TAG" "${sources[@]}"
+            digest=$(docker buildx imagetools inspect "$run_tag" --format '{{json .Manifest}}' | jq -er '.digest | select(test("^sha256:[a-f0-9]{64}$"))')
+            echo "ref=ghcr.io/gtkx-org/gtkx-ci@$digest" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Point the latest tag at the existing image
-        if: steps.existing.outputs.result == 'present' && github.ref == 'refs/heads/main'
-        shell: bash
-        env:
-          REF: ${{ steps.meta.outputs.ref }}
+  plan:
+    needs: [changes, image-manifest]
+    if: ${{ !cancelled() && needs.image-manifest.result == 'success' && needs.changes.result == 'success' && needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NX_BASE: ${{ needs.changes.outputs.base }}
+      NX_HEAD: ${{ needs.changes.outputs.head }}
+      GTKX_CI_FULL: ${{ needs.changes.outputs.full }}
+      GTKX_CI_COVERAGE: ${{ needs.changes.outputs.coverage }}
+    outputs:
+      core: ${{ steps.plan.outputs.core }}
+      animated: ${{ steps.plan.outputs.animated }}
+      cli: ${{ steps.plan.outputs.cli }}
+      mcp: ${{ steps.plan.outputs.mcp }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Plan affected test groups
+        uses: ./.github/actions/run-ci-command
+        with:
+          command: mkdir -p .nx && node scripts/ci-plan.ts > .nx/ci-plan.json
+          image-ref: ${{ needs.image-manifest.outputs.ref }}
+
+      - name: Export test groups
+        id: plan
         run: |
           set -euo pipefail
-          docker buildx imagetools create --tag ghcr.io/gtkx-org/gtkx-ci:latest "$REF"
+          jq -er 'to_entries[] | select(.key != "projects") | "\(.key)=\(.value)"' .nx/ci-plan.json >> "$GITHUB_OUTPUT"
+          cat .nx/ci-plan.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Preserve execution plan
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ci-plan
+          path: .nx/ci-plan.json
+          include-hidden-files: true
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 14
+
+  tooling-lint:
+    if: github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16
+        with:
+          go-version: '1.26.6'
+          cache: false
+
+      - name: Install workflow parser
+        run: python3 -m pip install --disable-pip-version-check --target "$RUNNER_TEMP/gtkx-tooling-python" PyYAML==6.0.3
+
+      - name: Check workflows and shell scripts
+        run: PYTHONPATH="$RUNNER_TEMP/gtkx-tooling-python" bash scripts/check-tooling.sh
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003
+
+      - name: Check Dockerfile
+        run: docker buildx build --check --file .github/docker/Dockerfile .github/docker
+
+  rust-advisories:
+    if: github.event.action != 'closed'
+    uses: ./.github/workflows/tooling-maintenance.yml
 
   sonarcloud-coverage:
     needs: [changes, coverage-core, coverage-mcp-shard, coverage-cli-shard]
     if: >-
       always() && github.event.action != 'closed' &&
       needs.changes.result == 'success' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) &&
       needs.changes.outputs.coverage == 'true' &&
       needs.coverage-core.result == 'success' &&
       needs.coverage-mcp-shard.result == 'success' &&
@@ -250,7 +380,8 @@ jobs:
     needs: changes
     if: >-
       github.event.action != 'closed' && github.event_name == 'pull_request' &&
-      needs.changes.result == 'success' && needs.changes.outputs.coverage != 'true'
+      needs.changes.result == 'success' && github.event.pull_request.head.repo.full_name == github.repository &&
+      needs.changes.outputs.coverage != 'true'
     permissions: *sonar-permissions
     uses: *sonar-workflow
     with:
@@ -259,6 +390,7 @@ jobs:
 
   docs:
     needs: image-manifest
+    if: ${{ !cancelled() && needs.image-manifest.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -276,17 +408,24 @@ jobs:
 
   lint:
     needs: [changes, image-manifest]
-    if: &code-changed needs.changes.outputs.code == 'true'
+    if: &code-changed ${{ !cancelled() && needs.image-manifest.result == 'success' && needs.changes.result == 'success' && needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      NX_BASE: ${{ needs.changes.outputs.base }}
+      NX_HEAD: ${{ needs.changes.outputs.head }}
+      GTKX_CI_FULL: ${{ needs.changes.outputs.full }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Lint
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm lint
+          command: node scripts/ci-run.ts lint && pnpm exec nx run-many -t lint:knip lint:knip:production
           image-ref: ${{ needs.image-manifest.outputs.ref }}
 
       - name: Report failures to Nx Cloud
@@ -299,21 +438,28 @@ jobs:
 
   test-core:
     name: test (core)
-    needs: [changes, image-manifest]
-    if: *code-changed
+    needs: [changes, image-manifest, plan]
+    if: ${{ !cancelled() && needs.image-manifest.result == 'success' && needs.plan.result == 'success' && needs.plan.outputs.core == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      NX_BASE: ${{ needs.changes.outputs.base }}
+      NX_HEAD: ${{ needs.changes.outputs.head }}
+      GTKX_CI_FULL: ${{ needs.changes.outputs.full }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Run tests
         uses: ./.github/actions/run-ci-command
         with:
           command: >-
             ${{ needs.changes.outputs.coverage == 'true' &&
-            'pnpm exec nx run-many -t test --projects=animations,navigation,gtk-demo,browser,hello-world' ||
-            'pnpm exec nx run-many -t test --exclude @gtkx/animated,@gtkx/cli,@gtkx/mcp' }}
+            'node scripts/ci-run.ts test --exclude="@gtkx/*,create-gtkx"' ||
+            'node scripts/ci-run.ts test --exclude=@gtkx/animated,@gtkx/cli,@gtkx/mcp' }}
           image-ref: ${{ needs.image-manifest.outputs.ref }}
 
       - name: Report failures to Nx Cloud
@@ -326,8 +472,8 @@ jobs:
 
   test-animated:
     name: test (animated)
-    needs: [changes, image-manifest]
-    if: needs.changes.outputs.code == 'true' && needs.changes.outputs.coverage != 'true'
+    needs: [changes, image-manifest, plan]
+    if: ${{ !cancelled() && needs.image-manifest.result == 'success' && needs.plan.result == 'success' && needs.plan.outputs.animated == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -350,8 +496,8 @@ jobs:
 
   test-mcp:
     name: test (mcp ${{ matrix.shard }}/${{ matrix.total }})
-    needs: [changes, image-manifest]
-    if: needs.changes.outputs.code == 'true' && needs.changes.outputs.coverage != 'true'
+    needs: [changes, image-manifest, plan]
+    if: ${{ !cancelled() && needs.image-manifest.result == 'success' && needs.plan.result == 'success' && needs.plan.outputs.mcp == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -383,7 +529,7 @@ jobs:
   coverage-core:
     name: coverage (other ${{ matrix.shard }}/${{ matrix.total }})
     needs: [changes, image-manifest]
-    if: needs.changes.outputs.coverage == 'true'
+    if: ${{ !cancelled() && needs.image-manifest.result == 'success' && needs.changes.result == 'success' && needs.changes.outputs.coverage == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -392,8 +538,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      GTKX_COVERAGE_GROUP: other
-      GTKX_COVERAGE_PROJECT_ARGS: --project=!cli --project=!mcp
+      GTKX_COVERAGE_GROUP: core
       GTKX_COVERAGE_SHARD: ${{ matrix.shard }}
       GTKX_COVERAGE_SHARDS: ${{ matrix.total }}
       GTKX_MAX_WORKERS: "1"
@@ -406,20 +551,32 @@ jobs:
         with:
           command: pnpm exec nx run @gtkx/e2e:test-fixtures && pnpm exec nx run gtkx:coverage-shard
           image-ref: ${{ needs.image-manifest.outputs.ref }}
-          extra-env: GTKX_COVERAGE_GROUP GTKX_COVERAGE_PROJECT_ARGS GTKX_COVERAGE_SHARD GTKX_COVERAGE_SHARDS GTKX_MAX_WORKERS
+          extra-env: GTKX_COVERAGE_GROUP GTKX_COVERAGE_SHARD GTKX_COVERAGE_SHARDS GTKX_MAX_WORKERS
 
       - name: Upload coverage
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: sonar-coverage-other-${{ matrix.shard }}
           path: coverage-artifacts
-          if-no-files-found: error
-          retention-days: 1
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 14
+
+      - name: Upload raw coverage diagnostics
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: coverage-raw-other-${{ matrix.shard }}
+          path: coverage/subprocess
+          if-no-files-found: ignore
+          overwrite: true
+          retention-days: 14
 
   coverage-mcp-shard:
     name: coverage (mcp ${{ matrix.shard }}/${{ matrix.total }})
     needs: [changes, image-manifest]
-    if: needs.changes.outputs.coverage == 'true'
+    if: ${{ !cancelled() && needs.image-manifest.result == 'success' && needs.changes.result == 'success' && needs.changes.outputs.coverage == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -429,7 +586,6 @@ jobs:
     timeout-minutes: 120
     env:
       GTKX_COVERAGE_GROUP: mcp
-      GTKX_COVERAGE_PROJECT_ARGS: --project=mcp
       GTKX_COVERAGE_SHARD: ${{ matrix.shard }}
       GTKX_COVERAGE_SHARDS: ${{ matrix.total }}
       GTKX_MAX_WORKERS: "3"
@@ -442,18 +598,30 @@ jobs:
         with:
           command: pnpm exec nx run gtkx:coverage-shard
           image-ref: ${{ needs.image-manifest.outputs.ref }}
-          extra-env: GTKX_COVERAGE_GROUP GTKX_COVERAGE_PROJECT_ARGS GTKX_COVERAGE_SHARD GTKX_COVERAGE_SHARDS GTKX_MAX_WORKERS
+          extra-env: GTKX_COVERAGE_GROUP GTKX_COVERAGE_SHARD GTKX_COVERAGE_SHARDS GTKX_MAX_WORKERS
 
       - name: Upload coverage
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: sonar-coverage-mcp-${{ matrix.shard }}
           path: coverage-artifacts
-          if-no-files-found: error
-          retention-days: 1
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 14
+
+      - name: Upload raw coverage diagnostics
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: coverage-raw-mcp-${{ matrix.shard }}
+          path: coverage/subprocess
+          if-no-files-found: ignore
+          overwrite: true
+          retention-days: 14
 
   test:
-    needs: [changes, test-animated, test-core, test-mcp, coverage-core, coverage-mcp-shard]
+    needs: [changes, plan, docs, asan, tooling-lint, rust-advisories, test-animated, test-core, test-mcp, coverage-core, coverage-mcp-shard]
     if: always() && github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -462,6 +630,14 @@ jobs:
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           CODE_CHANGED: ${{ needs.changes.outputs.code }}
+          PLAN_RESULT: ${{ needs.plan.result }}
+          DOCS_RESULT: ${{ needs.docs.result }}
+          ASAN_RESULT: ${{ needs.asan.result }}
+          TOOLING_RESULT: ${{ needs.tooling-lint.result }}
+          ADVISORIES_RESULT: ${{ needs.rust-advisories.result }}
+          CORE_EXPECTED: ${{ needs.plan.outputs.core }}
+          ANIMATED_EXPECTED: ${{ needs.plan.outputs.animated }}
+          MCP_EXPECTED: ${{ needs.plan.outputs.mcp }}
           ANIMATED_RESULT: ${{ needs.test-animated.result }}
           CORE_RESULT: ${{ needs.test-core.result }}
           MCP_RESULT: ${{ needs.test-mcp.result }}
@@ -469,22 +645,32 @@ jobs:
           COVERAGE_MCP_RESULT: ${{ needs.coverage-mcp-shard.result }}
           COVERAGE_ENABLED: ${{ needs.changes.outputs.coverage }}
         run: |
+          case "$CODE_CHANGED" in true|false) ;; *) exit 1 ;; esac
           test "$CHANGES_RESULT" = "success"
+          test "$DOCS_RESULT" = "success"
+          test "$ASAN_RESULT" = "success"
+          test "$TOOLING_RESULT" = "success"
+          test "$ADVISORIES_RESULT" = "success"
           if [ "$CODE_CHANGED" = "true" ]; then
-            test "$CORE_RESULT" = "success"
+            test "$PLAN_RESULT" = "success"
+            case "$COVERAGE_ENABLED" in true|false) ;; *) exit 1 ;; esac
+            for expected in "$CORE_EXPECTED" "$ANIMATED_EXPECTED" "$MCP_EXPECTED"; do
+              case "$expected" in true|false) ;; *) exit 1 ;; esac
+            done
+            if [ "$CORE_EXPECTED" = "true" ]; then test "$CORE_RESULT" = "success"; else test "$CORE_RESULT" = "skipped"; fi
             if [ "$COVERAGE_ENABLED" = "true" ]; then
               test "$COVERAGE_CORE_RESULT" = "success"
               test "$COVERAGE_MCP_RESULT" = "success"
             else
-              test "$ANIMATED_RESULT" = "success"
-              test "$MCP_RESULT" = "success"
+              if [ "$ANIMATED_EXPECTED" = "true" ]; then test "$ANIMATED_RESULT" = "success"; else test "$ANIMATED_RESULT" = "skipped"; fi
+              if [ "$MCP_EXPECTED" = "true" ]; then test "$MCP_RESULT" = "success"; else test "$MCP_RESULT" = "skipped"; fi
             fi
           fi
 
   test-cli-shard:
     name: test-cli (${{ matrix.shard }}/${{ matrix.total }})
-    needs: [changes, image-manifest]
-    if: needs.changes.outputs.code == 'true' && needs.changes.outputs.coverage != 'true'
+    needs: [changes, image-manifest, plan]
+    if: ${{ !cancelled() && needs.image-manifest.result == 'success' && needs.plan.result == 'success' && needs.plan.outputs.cli == 'true' }}
     strategy:
       fail-fast: false
       matrix: &cli-shards
@@ -516,7 +702,7 @@ jobs:
   coverage-cli-shard:
     name: coverage (cli ${{ matrix.shard }}/${{ matrix.total }})
     needs: [changes, image-manifest]
-    if: needs.changes.outputs.coverage == 'true'
+    if: ${{ !cancelled() && needs.image-manifest.result == 'success' && needs.changes.result == 'success' && needs.changes.outputs.coverage == 'true' }}
     strategy:
       fail-fast: false
       matrix: *cli-shards
@@ -524,7 +710,6 @@ jobs:
     timeout-minutes: 120
     env:
       GTKX_COVERAGE_GROUP: cli
-      GTKX_COVERAGE_PROJECT_ARGS: --project=cli
       GTKX_COVERAGE_SHARD: ${{ matrix.shard }}
       GTKX_COVERAGE_SHARDS: ${{ matrix.total }}
       GTKX_MAX_WORKERS: "3"
@@ -537,18 +722,30 @@ jobs:
         with:
           command: pnpm exec nx run gtkx:coverage-shard
           image-ref: ${{ needs.image-manifest.outputs.ref }}
-          extra-env: GTKX_COVERAGE_GROUP GTKX_COVERAGE_PROJECT_ARGS GTKX_COVERAGE_SHARD GTKX_COVERAGE_SHARDS GTKX_MAX_WORKERS
+          extra-env: GTKX_COVERAGE_GROUP GTKX_COVERAGE_SHARD GTKX_COVERAGE_SHARDS GTKX_MAX_WORKERS
 
       - name: Upload coverage
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: sonar-coverage-cli-${{ matrix.shard }}
           path: coverage-artifacts
-          if-no-files-found: error
-          retention-days: 1
+          if-no-files-found: warn
+          overwrite: true
+          retention-days: 14
+
+      - name: Upload raw coverage diagnostics
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: coverage-raw-cli-${{ matrix.shard }}
+          path: coverage/subprocess
+          if-no-files-found: ignore
+          overwrite: true
+          retention-days: 14
 
   test-cli:
-    needs: [changes, test-cli-shard, coverage-cli-shard]
+    needs: [changes, plan, test-cli-shard, coverage-cli-shard]
     if: always() && github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -556,17 +753,23 @@ jobs:
       - name: Check CLI test shards
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
+          PLAN_RESULT: ${{ needs.plan.result }}
+          CLI_EXPECTED: ${{ needs.plan.outputs.cli }}
           CODE_CHANGED: ${{ needs.changes.outputs.code }}
           SHARDS_RESULT: ${{ needs.test-cli-shard.result }}
           COVERAGE_RESULT: ${{ needs.coverage-cli-shard.result }}
           COVERAGE_ENABLED: ${{ needs.changes.outputs.coverage }}
         run: |
+          case "$CODE_CHANGED" in true|false) ;; *) exit 1 ;; esac
           test "$CHANGES_RESULT" = "success"
           if [ "$CODE_CHANGED" = "true" ]; then
+            test "$PLAN_RESULT" = "success"
+            case "$COVERAGE_ENABLED" in true|false) ;; *) exit 1 ;; esac
+            case "$CLI_EXPECTED" in true|false) ;; *) exit 1 ;; esac
             if [ "$COVERAGE_ENABLED" = "true" ]; then
               test "$COVERAGE_RESULT" = "success"
             else
-              test "$SHARDS_RESULT" = "success"
+              if [ "$CLI_EXPECTED" = "true" ]; then test "$SHARDS_RESULT" = "success"; else test "$SHARDS_RESULT" = "skipped"; fi
             fi
           fi
 
@@ -603,6 +806,7 @@ jobs:
           CODE_CHANGED: ${{ needs.changes.outputs.code }}
           SHARDS_RESULT: ${{ needs.asan-shard.result }}
         run: |
+          case "$CODE_CHANGED" in true|false) ;; *) exit 1 ;; esac
           test "$CHANGES_RESULT" = "success"
           if [ "$CODE_CHANGED" = "true" ]; then
             test "$SHARDS_RESULT" = "success"
@@ -613,14 +817,21 @@ jobs:
     if: *code-changed
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      NX_BASE: ${{ needs.changes.outputs.base }}
+      NX_HEAD: ${{ needs.changes.outputs.head }}
+      GTKX_CI_FULL: ${{ needs.changes.outputs.full }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
 
       - name: Typecheck
         uses: ./.github/actions/run-ci-command
         with:
-          command: pnpm typecheck
+          command: node scripts/ci-run.ts typecheck
           image-ref: ${{ needs.image-manifest.outputs.ref }}
 
       - name: Report failures to Nx Cloud
@@ -634,6 +845,7 @@ jobs:
   plan-check:
     needs: [changes, image-manifest]
     if: >-
+      !cancelled() && needs.image-manifest.result == 'success' && needs.changes.result == 'success' &&
       github.event_name == 'pull_request' && needs.changes.outputs.code == 'true'
       && github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
@@ -711,8 +923,64 @@ jobs:
           CONSUMER_RESULT: ${{ needs.publish-consumer-e2e.result }}
           TUTORIAL_RESULT: ${{ needs.publish-tutorial-e2e.result }}
         run: |
+          case "$CODE_CHANGED" in true|false) ;; *) exit 1 ;; esac
           test "$CHANGES_RESULT" = "success"
           if [ "$CODE_CHANGED" = "true" ]; then
             test "$CONSUMER_RESULT" = "success"
             test "$TUTORIAL_RESULT" = "success"
           fi
+
+  ci-success:
+    needs: [changes, image-manifest, lint, typecheck, test, test-cli, publish-e2e, plan-check, sonarcloud-coverage, sonarcloud-no-coverage]
+    if: always() && github.event.action != 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Require all verification jobs
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+          CODE_CHANGED: ${{ needs.changes.outputs.code }}
+        run: |
+          set -euo pipefail
+          case "$CODE_CHANGED" in true|false) ;; *) exit 1 ;; esac
+          jq -e 'all(.[]; .result == "success" or .result == "skipped")' <<< "$RESULTS"
+          jq -e '[.changes, .["image-manifest"], .test, .["test-cli"], .["publish-e2e"]] | all(.[]; .result == "success")' <<< "$RESULTS"
+          if [ "$CODE_CHANGED" = "true" ]; then
+            jq -e '[.lint, .typecheck] | all(.[]; .result == "success")' <<< "$RESULTS"
+          fi
+
+      - name: Record verified image
+        if: github.ref == 'refs/heads/main'
+        env:
+          REF: ${{ needs.image-manifest.outputs.ref }}
+        run: |
+          set -euo pipefail
+          [[ "$REF" =~ ^ghcr\.io/gtkx-org/gtkx-ci@sha256:[a-f0-9]{64}$ ]]
+          printf '%s\n' "$REF" > ci-image-ref.txt
+
+      - name: Preserve verified image identity
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: verified-ci-image
+          path: ci-image-ref.txt
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 90
+
+      - name: Log in to GHCR
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote verified image
+        if: github.ref == 'refs/heads/main'
+        env:
+          REF: ${{ needs.image-manifest.outputs.ref }}
+        run: docker buildx imagetools create --tag ghcr.io/gtkx-org/gtkx-ci:latest "$REF"

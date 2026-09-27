@@ -11,7 +11,9 @@ import {
     verifyBuiltAppStarts,
     withRegistry,
 } from "./e2e-registry.js";
+import { nativeArtifactHash, verifyNativeArtifacts } from "./native-artifact.js";
 import { assertPublishedShape, type PackageManifest } from "./publish-manifest.js";
+import { verifyReleaseChannels } from "./release-channel-e2e.js";
 
 type ConsumerVariant = { appName: string; applicationId: string; isTypescript: boolean };
 
@@ -163,6 +165,26 @@ async function verifyPublishedShapes(inspectDir: string): Promise<void> {
     console.log(`release-e2e: verified the published shape and README of ${String(packages.length)} packages`);
 }
 
+function verifyConsumerNativeArtifact(appDir: string): void {
+    if (process.env.GTKX_RELEASE_NATIVE_ARTIFACTS !== "true") {
+        return;
+    }
+
+    const staged = verifyNativeArtifacts(join(PACKAGES_DIR, "native", "artifacts"), process.arch);
+    const platform = `native-linux-${process.arch}-gnu`;
+    const installed = join(appDir, "node_modules", "@gtkx", platform, `native.linux-${process.arch}-gnu.node`);
+
+    const nativeDir = join(appDir, "node_modules", "@gtkx", "native");
+
+    if (
+        nativeArtifactHash(staged.binary) !== nativeArtifactHash(installed) ||
+        nativeArtifactHash(staged.javascript) !== nativeArtifactHash(join(nativeDir, "index.js")) ||
+        nativeArtifactHash(staged.declarations) !== nativeArtifactHash(join(nativeDir, "index.d.ts"))
+    ) {
+        throw new Error("The consumer did not install the staged native release artifact");
+    }
+}
+
 async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, variant: ConsumerVariant): Promise<void> {
     const language = variant.isTypescript ? "TypeScript" : "JavaScript";
     const scaffoldEnv: NodeJS.ProcessEnv = {
@@ -192,6 +214,8 @@ async function verifyConsumer(consumerRoot: string, env: NodeJS.ProcessEnv, vari
 
     await runAsync("npm", scaffoldArgs, { cwd: consumerRoot, env: scaffoldEnv });
     const appDir = join(consumerRoot, variant.appName);
+
+    verifyConsumerNativeArtifact(appDir);
 
     if (variant.isTypescript) {
         writeFileSync(
@@ -237,6 +261,7 @@ async function main(): Promise<void> {
 
         await withRegistry(async ({ env, registryDir }: RegistryContext) => {
             await verifyPublishedShapes(registryDir);
+            await verifyReleaseChannels(consumerRoot, env);
 
             for (const variant of CONSUMER_VARIANTS) {
                 await verifyConsumer(consumerRoot, env, variant);

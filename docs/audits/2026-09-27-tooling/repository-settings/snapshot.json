@@ -1,0 +1,70 @@
+{
+  "observed_at": "2026-09-27",
+  "default_ruleset_updated_at": "2026-09-12T15:05:02.454+01:00",
+  "actions": {
+    "enabled": true,
+    "allowed_actions": "all",
+    "sha_pinning_required": false
+  },
+  "immutable_releases": {
+    "enabled": false,
+    "enforced_by_owner": false
+  },
+  "repository": {
+    "allow_merge_commit": true,
+    "allow_rebase_merge": true,
+    "allow_squash_merge": true,
+    "security_and_analysis": {
+      "dependabot_security_updates": {
+        "status": "enabled"
+      },
+      "secret_scanning": {
+        "status": "enabled"
+      },
+      "secret_scanning_ai_detection": {
+        "status": "disabled"
+      },
+      "secret_scanning_delegated_alert_dismissal": {
+        "status": "disabled"
+      },
+      "secret_scanning_non_provider_patterns": {
+        "status": "disabled"
+      },
+      "secret_scanning_push_protection": {
+        "status": "disabled"
+      },
+      "secret_scanning_validity_checks": {
+        "status": "disabled"
+      }
+    }
+  },
+  "environments": {
+    "total_count": 2,
+    "environments": [
+      {
+        "id": 10423372679,
+        "node_id": "EN_kwDOObUW2c8AAAACbUgLhw",
+        "name": "copilot",
+        "url": "https://api.github.com/repos/gtkx-org/gtkx/environments/copilot",
+        "html_url": "https://github.com/gtkx-org/gtkx/deployments/activity_log?environments_filter=copilot",
+        "created_at": "2025-12-04T17:04:03Z",
+        "updated_at": "2025-12-04T17:04:03Z",
+        "can_admins_bypass": true,
+        "protection_rules": [],
+        "deployment_branch_policy": null
+      },
+      {
+        "id": 10385203390,
+        "node_id": "EN_kwDOObUW2c8AAAACawGgvg",
+        "name": "github-pages",
+        "url": "https://api.github.com/repos/gtkx-org/gtkx/environments/github-pages",
+        "html_url": "https://github.com/gtkx-org/gtkx/deployments/activity_log?environments_filter=github-pages",
+        "created_at": "2025-12-03T11:43:35Z",
+        "updated_at": "2025-12-03T11:43:35Z",
+        "can_admins_bypass": true,
+        "protection_rules": [],
+        "deployment_branch_policy": null
+      }
+    ]
+  }
+}

@@ -35,25 +35,13 @@ For the first stable release, complete [documentation promotion](/contributing/d
 
 ## Review and advance main
 
-Read the pull request and check its results. Fetch and push the exact reviewed commit:
+Review `release/next`, approve its latest commit, and wait for its required checks. Merge through GitHub using the repository's configured squash method. GitHub creates the signed commit on `main`; CI then verifies that exact merge commit. If `main` has moved or the prepared release changes, refresh the release PR and review the new head before merging.
 
-```bash
-git fetch origin release/next
-sha="$(git rev-parse FETCH_HEAD)"
-gh pr checks <number>
-git log -1 --show-signature "$sha"
-git push origin "$sha:main"
-```
-
-The ruleset allows only rebase merges, which drop commit signatures. The merge button therefore cannot produce a commit that `main` accepts. Pushing the fetched, Verified commit preserves its signature and linear history and closes the pull request as merged.
-
-This push uses the organization admin's ruleset bypass for required checks and approval. Check `gh pr checks` yourself before pushing. Use the fetched SHA: another workflow run can rebuild `release/next` into a different commit that would also fast-forward but has not been reviewed.
-
-If `main` has moved, rerun Release PR. Do not use “Update branch”: a merge adds a second parent, violating linear history, and a rebase removes the signature.
+Publication requires a merged `release/next` PR whose merge SHA is the release commit, an approval of its final head from a reviewer with repository write access, and no outstanding change request. It also requires a successful main CI run with `ci-success` and successful Sonar and all three CodeQL checks on that same SHA. An administrator bypass does not satisfy this release gate.
 
 ## Tag and publish
 
-The push starts Tag release. It recognizes a prepared release from the version's changelog entry and release state, creates the annotated `vX.Y.Z` tag and draft GitHub release, and dispatches Publish from that tag. An ordinary edit to `packages/create-gtkx/package.json` does not trigger a release. Rerunning after a failed publish redispatches the same draft.
+Successful completion of main CI starts Tag release. It recognizes a prepared release from the version's changelog entry and release state, verifies its merged review and exact commit checks, creates the annotated `vX.Y.Z` tag and draft GitHub release, and dispatches Publish from that tag. A normal commit without a prepared version does not publish. Rerunning the successful CI run can redispatch the same draft.
 
 To curate the draft notes:
 
@@ -61,12 +49,20 @@ To curate the draft notes:
 gh release edit vX.Y.Z --notes-file notes.md
 ```
 
-Publish takes no inputs; its dispatched ref identifies the release. The `validate-release` job rejects branch refs, tags that do not match `v` plus the version in `packages/create-gtkx/package.json`, and releases that are not drafts.
+Publish takes no inputs; its dispatched ref identifies the release. Validation rejects branch refs, tags that do not match the package version, releases that are not drafts, and commits without the required verification and review. It downloads the immutable multiarchitecture image digest recorded by that successful CI run. Missing verification artifacts or unavailable images fail the release. CI retains image evidence for 90 days; rerun CI for that commit if the evidence has expired.
 
-Publish builds and uploads from `refs/tags/vX.Y.Z`, then waits for every exact package version and dist-tag to appear in the registry. Only then does it publish the draft, preserving its notes, and dispatch Website for the same tag. That explicit dispatch is necessary because a release published with the workflow's token does not trigger Website itself.
+Both native binaries and their generated JavaScript and type declarations are built in that verified image and uploaded with SHA-256 checksums. Separate x64 and arm64 jobs publish the staged binary to a disposable registry, scaffold consumers, verify the installed binary and generated bindings against those checksums, run codegen and builds, and exercise the generated application's headless tests. Publication restores the verified bindings before dependency installation, uses those same staged binaries without recompiling, and requires both architectures to produce identical shared JavaScript and declarations.
+
+Every Publish run shares a single queue, including different versions and retries. Package versions first become available under version-specific `gtkx-release-*` tags. Once the complete package family is visible, a separate promotion step updates the stable or prerelease channel and verifies every package's tag. The channel can only move forward. npm cannot update multiple packages' tags atomically; an interrupted promotion leaves the GitHub draft unpublished and a retry completes it.
+
+The final job freshly checks every exact package version and channel before publishing the GitHub draft, preserving its notes, and dispatching Website for that tag. A retry of that job fails if a newer release has advanced any package channel. This dispatch is needed because releases published with the workflow token do not trigger Website themselves.
+
+The publication job uses the `npm-release` GitHub environment. Configure each npm trusted publisher to require that environment and this workflow, restrict eligible release tags in GitHub, and enable immutable releases. Environment reviewers are optional; they do not replace the exact-commit verification gate. Promotion obtains a short-lived, package-scoped OIDC token through the [npm registry API](https://api-docs.npmjs.com/) and removes its temporary credential file after each tag update.
 
 ## Retry a failed publish
 
-A failed build, upload, or registry check leaves the GitHub release in draft. Fix the cause and rerun Publish on the same tag. Already-published packages are skipped; for those packages the visibility check requires only the exact version, not its dist-tag. Missing packages continue publishing.
+A failed build, upload, or registry check leaves the GitHub release in draft. Fix the cause and rerun Publish on the same tag. Already-published versions are skipped and checked for exact-version visibility. Missing packages continue staging, then promotion verifies and updates the complete package family. If any package in the channel has advanced beyond the candidate version, the retry fails before uploading anything. An old partial release cannot move the channel backwards; prepare a newer release to supersede it.
+
+If the GitHub release was published but the Website dispatch failed, rerun only the failed `publish-release` job. It recognizes the already-published release and retries the Website dispatch without changing the immutable release. Starting a new full Publish run still requires a draft.
 
 The registry visibility timeout is ten minutes per package. `GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS` overrides it for `pnpm release` or the publish scripts. It must be a positive integer in milliseconds; invalid values fail before upload. Beta 5 took three to four minutes to become visible.

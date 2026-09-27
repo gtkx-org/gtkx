@@ -68,6 +68,21 @@
                     "cwd": ".",
                     "command": "eslint {projectRoot}"
                 }
+            },
+            "test": {
+                "dependsOn": [
+                    "gtkx:codegen",
+                    "@gtkx/vitest:build",
+                    "@gtkx/cairo:build",
+                    "@gtkx/cli:build",
+                    "@gtkx/components:build",
+                    "@gtkx/css:build",
+                    "@gtkx/forms:build",
+                    "@gtkx/gl:build",
+                    "@gtkx/i18n:build",
+                    "@gtkx/navigation:build",
+                    "@gtkx/storybook:build"
+                ]
             }
         }
     },
@@ -102,6 +117,7 @@
         "yaml": "catalog:"
     },
     "devDependencies": {
+        "@gtkx/react": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.30.0",
         "@types/babel__core": "^7.20.5",
@@ -112,6 +128,16 @@
         "vitest": "catalog:"
     },
     "peerDependencies": {
+        "@gtkx/react": "workspace:*",
+        "@gtkx/testing": "workspace:*",
         "react": "^19.3"
+    },
+    "peerDependenciesMeta": {
+        "@gtkx/react": {
+            "optional": true
+        },
+        "@gtkx/testing": {
+            "optional": true
+        }
     }
 }
