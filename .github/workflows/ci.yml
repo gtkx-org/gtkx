@@ -366,10 +366,11 @@ jobs:
     uses: ./.github/workflows/tooling-maintenance.yml
 
   sonarcloud-coverage:
-    needs: [changes, coverage-core, coverage-mcp-shard, coverage-cli-shard]
+    needs: [changes, image-manifest, coverage-core, coverage-mcp-shard, coverage-cli-shard]
     if: >-
       always() && github.event.action != 'closed' &&
       needs.changes.result == 'success' &&
+      needs.image-manifest.result == 'success' &&
       (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) &&
       needs.changes.outputs.coverage == 'true' &&
       needs.coverage-core.result == 'success' &&
@@ -382,6 +383,7 @@ jobs:
     uses: &sonar-workflow ./.github/workflows/sonarcloud.yml
     with:
       coverage: true
+      image-ref: ${{ needs.image-manifest.outputs.ref }}
     secrets: inherit
 
   sonarcloud-no-coverage:

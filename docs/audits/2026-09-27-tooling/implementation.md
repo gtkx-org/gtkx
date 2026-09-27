@@ -42,6 +42,8 @@ The broad local checks completed successfully:
 
 Language tools were invoked through `mise exec --`. A temporary shim exposed the already-installed Corepack pnpm entrypoint; temporary official checker binaries avoided global installation changes. No Docker/Podman engine operation or workstation configuration change was made.
 
+Hosted [CI run 36337434385](https://github.com/gtkx-org/gtkx/actions/runs/36337434385) passed all 30 coverage shards, both sanitizer shards, lint, typechecking, documentation, and both publish rehearsals. Fresh x64 and ARM image builds also passed. The separate Sonar quality gate exposed a coverage-path defect: container reports originated under `/workspace`, but merging on the host produced paths Sonar could not resolve. Hosted acceptance requires the corrected report handoff to pass the external quality gate as well as the Actions aggregate.
+
 ## External work and deliberate deferrals
 
 [Repository settings](./repository-settings.md) includes current read-only evidence and concrete JSON payloads for required checks, action SHA enforcement, push protection, release/Pages environments, tag protection, and release immutability. Apply settings after reviewing their consequences and observing the new workflow contexts. npm package-side trusted-publisher bindings and Nx Cloud credential scopes still require owner-side verification. The `npm-release` environment must be aligned with every package's trusted-publisher configuration before release.
