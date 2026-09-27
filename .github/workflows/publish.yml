@@ -27,6 +27,7 @@ jobs:
       actions: read
       checks: read
       pull-requests: read
+      security-events: read
     outputs:
       image-ref: ${{ steps.image.outputs.image-ref }}
     steps:
@@ -288,7 +289,6 @@ jobs:
           echo "is-draft=$(jq -r '.isDraft' <<<"${release}")" >> "$GITHUB_OUTPUT"
 
       - name: Verify complete release channel before publication
-        if: steps.release.outputs.is-draft == 'true'
         run: node --experimental-strip-types scripts/verify-release-channel.ts
 
       - name: Publish GitHub release

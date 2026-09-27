@@ -70,4 +70,6 @@ while true; do
   sleep 20
 done
 
+bash scripts/verify-code-scanning.sh "$release_sha"
+
 printf 'run-id=%s\nrelease-sha=%s\n' "$run_id" "$release_sha" >> "$GITHUB_OUTPUT"
