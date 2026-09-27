@@ -15,7 +15,7 @@ release_pr="$(jq -cer --arg sha "$release_sha" --arg repo "$GITHUB_REPOSITORY" '
 pr_number="$(jq -r '.number' <<<"$release_pr")"
 pr_head="$(jq -r '.head.sha' <<<"$release_pr")"
 reviews="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pr_number}/reviews" --paginate --slurp)"
-reviewers="$(jq -er --arg sha "$pr_head" '
+reviewers="$(jq -r --arg sha "$pr_head" '
   [.[][] | select(.state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED")]
   | group_by(.user.login) | map(max_by(.id))
   | select(all(.state != "CHANGES_REQUESTED"))
@@ -23,6 +23,7 @@ reviewers="$(jq -er --arg sha "$pr_head" '
 ' <<<"$reviews")"
 has_approval=false
 while IFS= read -r reviewer; do
+  if [ -z "$reviewer" ]; then continue; fi
   permission="$(gh api "repos/${GITHUB_REPOSITORY}/collaborators/${reviewer}/permission" --jq '.permission')"
   case "$permission" in
     admin|maintain|write) has_approval=true ;;

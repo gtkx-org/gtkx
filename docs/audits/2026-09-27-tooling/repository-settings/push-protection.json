@@ -1,7 +1,0 @@
-{
-  "security_and_analysis": {
-    "secret_scanning_push_protection": {
-      "status": "enabled"
-    }
-  }
-}
