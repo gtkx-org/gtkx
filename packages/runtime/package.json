@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/runtime",
-    "version": "2.0.0-beta.10",
+    "version": "2.0.0-beta.11",
     "description": "Runtime support for generated GTKX bindings.",
     "keywords": [
         "gtkx",
