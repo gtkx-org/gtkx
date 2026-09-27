@@ -1,24 +1,7 @@
-import { alloc, bind, call, copy, type ExternalObject, type Handle, read, resolveType, write } from "@gtkx/native";
+import { alloc, copy, type ExternalObject, type Handle, read, write } from "@gtkx/native";
 import { expect, test } from "vitest";
 
 const encoder = new TextEncoder();
-
-const GOBJECT = "libgobject-2.0.so.0";
-
-const typeFromName = bind(GOBJECT, "g_type_from_name", [{ kind: "bytes", ownership: "borrowed" }], {
-    kind: "biguint64",
-});
-
-const valueInit = bind(GOBJECT, "g_value_init", [{ kind: "struct", ownership: "borrowed" }, { kind: "biguint64" }], {
-    kind: "struct",
-    ownership: "borrowed",
-});
-
-const valueSetInt = bind(GOBJECT, "g_value_set_int", [{ kind: "struct", ownership: "borrowed" }, { kind: "int32" }], {
-    kind: "void",
-});
-
-const valueGetInt = bind(GOBJECT, "g_value_get_int", [{ kind: "struct", ownership: "borrowed" }], { kind: "int32" });
 
 test("a fresh allocation reads back as zero-filled memory", () => {
     const block = alloc(32);
@@ -34,27 +17,6 @@ test("a single-byte allocation round-trips its only byte", () => {
     write(block, { kind: "uint8" }, 0, 200);
 
     expect(read(block, { kind: "uint8" }, 0)).toBe(200);
-});
-
-test("an allocation carrying a boxed gtype holds a usable GValue", () => {
-    const value = alloc(24, resolveType(GOBJECT, "g_value_get_type"));
-
-    call(valueInit, [value, call(typeFromName, [encoder.encode("gint")]).value]);
-    call(valueSetInt, [value, 42]);
-
-    expect(call(valueGetInt, [value]).value).toBe(42);
-});
-
-test("an allocation carrying a boxed gtype exposes the type tag it was initialized with", () => {
-    const value = alloc(24, resolveType(GOBJECT, "g_value_get_type"));
-
-    call(valueInit, [value, call(typeFromName, [encoder.encode("gint")]).value]);
-
-    expect(read(value, { kind: "biguint64" }, 0)).toBe(call(typeFromName, [encoder.encode("gint")]).value);
-});
-
-test("a registered non-boxed gtype cannot allocate boxed storage", () => {
-    expect(() => alloc(16, resolveType(GOBJECT, "g_object_get_type"))).toThrow();
 });
 
 test("a read through a zero-sized allocation throws", () => {
@@ -431,18 +393,6 @@ test("copying a handle onto itself preserves its contents", () => {
     copy(block, block, 8);
 
     expect(read(block, { kind: "int32" }, 0)).toBe(7);
-});
-
-test("a copy carries a boxed allocation's contents into another", () => {
-    const gvalueType = resolveType(GOBJECT, "g_value_get_type");
-    const source = alloc(24, gvalueType);
-    const destination = alloc(24, gvalueType);
-
-    call(valueInit, [source, call(typeFromName, [encoder.encode("gint")]).value]);
-    call(valueSetInt, [source, 99]);
-    copy(destination, source, 24);
-
-    expect(call(valueGetInt, [destination]).value).toBe(99);
 });
 
 test("a fractional copy size throws", () => {

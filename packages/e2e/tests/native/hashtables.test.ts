@@ -2,27 +2,18 @@ import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as Regress from "@gtkx/gi/regress";
 import { t } from "@gtkx/runtime";
 import { expect, test } from "vitest";
+import { fixtureLibrary } from "./helpers/fixture-library.js";
 import { drainAfterEachTest } from "./helpers/memory.js";
 
 drainAfterEachTest();
 
-const genumValuedTableIn = t.fn("libgimarshallingtests.so", "gi_marshalling_tests_ghashtable_enum_none_in", () => ({
-    args: [
-        {
-            type: t.hashTable(
-                t.int32,
-                t.enum("libgimarshallingtests.so", "gi_marshalling_tests_genum_get_type", false),
-                "borrowed",
-            ),
-            isRequired: true,
-        },
-    ],
-    returns: t.void,
-}));
-
-const utf8TableIn = t.fn("libgimarshallingtests.so", "gi_marshalling_tests_ghashtable_utf8_none_in", () => ({
-    args: [{ type: t.hashTable(t.string(), t.string()), isRequired: true }],
-    returns: t.void,
+const library = fixtureLibrary("registered-enum-tables", "gobject-2.0");
+const genumValuedTableIn = t.fn(library, "gtkx_registered_enum_table_matches", () => ({
+    args: [{
+        type: t.hashTable(t.int32, t.enum(library, "gtkx_hash_enum_get_type", false)),
+        isRequired: true,
+    }],
+    returns: t.boolean,
 }));
 
 const utf8Table = () =>
@@ -63,7 +54,6 @@ test("utf8 hash tables round trip across transfer none, container and full", () 
     expect(GIMarshallingTests.ghashtableUtf8ContainerOut()).toEqual(expected);
     expect(GIMarshallingTests.ghashtableUtf8FullOut()).toEqual(expected);
     GIMarshallingTests.ghashtableUtf8NoneIn(utf8Table());
-    utf8TableIn(utf8Table());
     GIMarshallingTests.ghashtableUtf8ContainerIn(utf8Table());
     const consumed = utf8Table();
     GIMarshallingTests.ghashtableUtf8FullIn(consumed);
@@ -209,7 +199,7 @@ test("a GType registered enum marshals as a hash table element", () => {
         [2, GIMarshallingTests.GEnum.VALUE2],
         [3, GIMarshallingTests.GEnum.VALUE3],
     ]);
-    genumValuedTableIn(members);
+    expect(genumValuedTableIn(members)).toBe(true);
     expect(members).toEqual(new Map([
         [1, 0],
         [2, 1],

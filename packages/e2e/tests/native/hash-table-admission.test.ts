@@ -1,7 +1,7 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import { alloc, type Descriptor, registerClass, resolveType } from "@gtkx/native";
-import { getHandle, t, typeFromName } from "@gtkx/runtime";
+import { getHandle, t } from "@gtkx/runtime";
 import { describe, expect, test } from "vitest";
 import { fixtureLibrary } from "./helpers/fixture-library.js";
 import { drainAfterEachTest } from "./helpers/memory.js";
@@ -17,10 +17,8 @@ const scalars = [
 ];
 
 test("nested GPtrArray hash values validate their native wrappers and recover", () => {
-    const gvalue = t.boxed("GValue", {
-        sharedLibrary: "libgobject-2.0.so.0,libglib-2.0.so.0",
-        getTypeFnName: "g_value_get_type",
-    });
+    GObject.typeEnsure(GObject.Value);
+    const gvalue = t.boxed("GValue");
     const table = t.hashTable(t.string(), t.ptrArray(gvalue), "borrowed");
     const accept = t.fn(library, "gtkx_numeric_key_ignore", () => ({
         args: [{ type: table, isRequired: true }],
@@ -32,7 +30,7 @@ test("nested GPtrArray hash values validate their native wrappers and recover", 
     expect(() => accept(mismatched)).toThrow();
 
     const value = new GObject.Value();
-    value.init(typeFromName("gint"));
+    value.init(GObject.typeFromName("gint"));
     value.setInt(42);
     accept(new Map([["values", [getHandle(value)]]]));
     expect(value.getInt()).toBe(42);
@@ -91,7 +89,7 @@ describe.each(scalars)("$name hash table admission", ({ kind, descriptor, value 
     });
 
     test("rejects full numeric inputs before a consuming native call", () => {
-        const consume = t.fn("libglib-2.0.so.0", "g_hash_table_unref", () => ({
+        const consume = t.fn(library, "gtkx_numeric_key_consume", () => ({
             args: [{ type: full, isRequired: true }], returns: t.void,
         }));
         const source = new Map(expected);
@@ -156,7 +154,7 @@ describe.each(scalars)("$name hash table admission", ({ kind, descriptor, value 
 });
 
 test.each(scalars)("rejects full $name keys before a consuming native call", ({ descriptor, value }) => {
-    const consume = t.fn("libglib-2.0.so.0", "g_hash_table_unref", () => ({
+    const consume = t.fn(library, "gtkx_numeric_key_consume", () => ({
         args: [{ type: t.hashTable(descriptor, t.int32, "full"), isRequired: true }], returns: t.void,
     }));
     const source = new Map([[value, 1]]);
@@ -228,10 +226,10 @@ test.each([false, true])("rejects full numeric vfunc outputs before publishing a
         }],
     })).toThrow();
     expect(calls).toBe(0);
-    expect(typeFromName(name)).toBe(0n);
+    expect(GObject.typeFromName(name)).toBe(0n);
     const recovered = registerClass(name, parent);
     expect(recovered).toBeGreaterThan(0n);
-    expect(typeFromName(name)).toBe(recovered);
+    expect(GObject.typeFromName(name)).toBe(recovered);
 });
 
 const keyDescriptors = [
@@ -329,14 +327,14 @@ test.each([false, true])("rejects key vfuncs before class publication, out=%s", 
         }],
     })).toThrow();
     expect(calls).toBe(0);
-    expect(typeFromName(name)).toBe(0n);
+    expect(GObject.typeFromName(name)).toBe(0n);
     const recovered = registerClass(name, parent);
-    expect(typeFromName(name)).toBe(recovered);
+    expect(GObject.typeFromName(name)).toBe(recovered);
     expect(recovered).toBeGreaterThan(0n);
 });
 
 test("preserves borrowed double keys and independent full-return maps", () => {
-    const roundtrip = t.fn("libglib-2.0.so.0", "g_hash_table_ref", () => ({
+    const roundtrip = t.fn(library, "gtkx_numeric_table_retain", () => ({
         args: [{ type: t.hashTable(t.float64, t.int32), isRequired: true }],
         returns: t.hashTable(t.float64, t.int32, "full"),
     }));
@@ -417,11 +415,9 @@ describe.each(["borrowed", "full"] as const)("GType hash table values with %s ow
 });
 
 test("preserves scalar GType input and output descriptors", () => {
-    const fundamental = t.bind("libgobject-2.0.so.0", "g_type_fundamental", [t.gtype], t.gtype);
-    const name = t.bind("libgobject-2.0.so.0", "g_type_name", [t.gtype], t.string());
-    const objectType = typeFromName("GObject");
+    const objectType = GObject.typeFromName("GObject");
 
     expect(objectType).toBeGreaterThan(0n);
-    expect(fundamental(objectType)).toBe(objectType);
-    expect(name(objectType)).toBe("GObject");
+    expect(GObject.typeFundamental(objectType)).toBe(objectType);
+    expect(GObject.typeName(objectType)).toBe("GObject");
 });

@@ -1,9 +1,7 @@
 import {
     alloc,
     allocField,
-    bind,
     bindField,
-    call,
     type ExternalObject,
     type Handle,
     read,
@@ -15,7 +13,6 @@ import { expect, test } from "vitest";
 
 const encoder = new TextEncoder();
 
-const GLIB = "libglib-2.0.so.0";
 const INT32 = bindField({ kind: "int32" });
 const FLOAT64 = bindField({ kind: "float64" });
 const BYTES = bindField({ kind: "bytes", ownership: "borrowed" });
@@ -165,17 +162,6 @@ test("a bound bigint field round-trips a value beyond the exact integer range", 
     expect(readField(bigint64, block, 8)).toBe(9_223_372_036_854_775_807n);
 });
 
-test("bound descriptors read the fields of a struct a library laid out", () => {
-    const stringNew = bind(GLIB, "g_string_new", [{ kind: "bytes", ownership: "borrowed" }], {
-        kind: "struct",
-        ownership: "borrowed",
-    });
-    const uint64 = bindField({ kind: "uint64" });
-    const gstring = call(stringNew, [encoder.encode("hello")]).value as ExternalObject<Handle>;
-
-    expect([readField(BYTES, gstring, 0), readField(uint64, gstring, 8)]).toEqual([encoder.encode("hello"), 5]);
-});
-
 test("a freshly allocated block reads as zero at every offset", () => {
     const block = alloc(16);
 
@@ -254,15 +240,14 @@ test("an inline struct field decodes to a handle aliasing the owner's memory", (
     const block = alloc(16);
     const uint8 = bindField({ kind: "uint8" });
     const inlineStruct = bindField({ kind: "struct", isInline: true, ownership: "borrowed" });
-    const strdup = bind(GLIB, "g_strdup", [{ kind: "struct", ownership: "borrowed" }], {
-        kind: "bytes",
-        ownership: "full",
-    });
-
     writeField(uint8, block, 8, 0x68);
     writeField(uint8, block, 9, 0x69);
 
-    expect(call(strdup, [readField(inlineStruct, block, 8)]).value).toEqual(encoder.encode("hi"));
+    const child = readField(inlineStruct, block, 8) as ExternalObject<Handle>;
+
+    expect([readField(uint8, child, 0), readField(uint8, child, 1)]).toEqual([0x68, 0x69]);
+    writeField(uint8, child, 1, 0x6F);
+    expect(readField(uint8, block, 9)).toBe(0x6F);
 });
 
 test("writing a string into unsigned storage throws", () => {

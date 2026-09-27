@@ -101,3 +101,7 @@ gint gtkx_worker_release_nested(gpointer argument, void (*callback)(void)) {
     callback();
     return g_atomic_int_get(&finalized);
 }
+
+gint gtkx_worker_pointer_equal(gconstpointer left, gconstpointer right) {
+    return left == right;
+}

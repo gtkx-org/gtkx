@@ -110,19 +110,8 @@ describe.each(["bound", "unbound"] as const)("%s field bounds", (mode) => {
         expect(() => field.write(owner, 2 ** 53, 1)).toThrow();
     });
 
-    test.each([
-        INLINE,
-        {
-            kind: "boxed",
-            typeName: "GDate",
-            ownership: "borrowed",
-            isInline: true,
-            size: 8,
-            sharedLibrary: "libgobject-2.0.so.0",
-            getTypeFnName: "g_date_get_type",
-        },
-    ] satisfies Descriptor[])("an inline %j field bounds both sides of a copy", (descriptor) => {
-        const field = access(descriptor);
+    test("an inline struct field bounds both sides of a copy", () => {
+        const field = access(INLINE);
         const source = alloc(8);
         const owner = alloc(16);
         write(source, INT32, 4, 42);

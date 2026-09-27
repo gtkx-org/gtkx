@@ -1,7 +1,8 @@
 import type { ExternalObject, Handle, Ref } from "@gtkx/native";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
+import * as GLib from "@gtkx/gi/glib";
 import { Value } from "@gtkx/gi/gobject";
-import { getHandle, t } from "@gtkx/runtime";
+import { t } from "@gtkx/runtime";
 import { expect, test } from "vitest";
 import { fixtureLibrary } from "./helpers/fixture-library.js";
 import { drainAfterEachTest } from "./helpers/memory.js";
@@ -88,9 +89,16 @@ test("inout byte-array refs seed native storage and preserve empty seeds", () =>
     expect(() => seeded({ value: new Uint16Array() })).toThrow();
 });
 
-test.each([false, true])("callback byte-array arguments preserve null and empty values (%s)", (preserveNull) => {
+test.each([
+    { isBytes: false, preserveNull: false },
+    { isBytes: false, preserveNull: true },
+    { isBytes: true, preserveNull: false },
+    { isBytes: true, preserveNull: true },
+])("callback byte-array arguments preserve null and empty values (%o)", ({ isBytes, preserveNull }) => {
     const visit = t.bind(library, "gtkx_byte_array_visit", [
-        t.int32, t.callback([{ ...byteArray, preserveNull }], t.void, { scope: "call" }),
+        t.int32, t.callback([
+            { ...t.array(t.uint8, "gbytearray", "borrowed", { isBytes }), preserveNull },
+        ], t.void, { scope: "call" }),
     ], t.void);
     const seen: unknown[] = [];
 
@@ -100,7 +108,9 @@ test.each([false, true])("callback byte-array arguments preserve null and empty 
         });
     }
 
-    expect(seen).toEqual([preserveNull ? null : new Uint8Array(), new Uint8Array(), Uint8Array.from(contents)]);
+    const empty = isBytes ? new Uint8Array() : [];
+    const populated = isBytes ? Uint8Array.from(contents) : contents;
+    expect(seen).toEqual([preserveNull ? null : empty, empty, populated]);
 });
 
 test.each(["borrowed", "full"] as const)("callback byte-array returns honor %s transfer", (ownership) => {
@@ -141,27 +151,27 @@ test.each([false, true])("callback byte-array refs write outputs and seed inout 
 });
 
 test("GValue byte arrays retain independent copied output", () => {
-    const getType = t.bind("libgobject-2.0.so.0", "g_byte_array_get_type", [], t.biguint64);
     const value = new Value();
-    value.init(getType() as bigint);
+    const duplicate = new Value();
+    value.init(GLib.ByteArray);
+    duplicate.init(GLib.ByteArray);
 
     try {
         value.setBoxed(offsetView());
         const bytes = value.getBoxed();
-        const items = t.bind("libgobject-2.0.so.0", "g_value_get_boxed", [t.struct()],
-            t.array(t.uint8, "gbytearray"))(getHandle(value));
-        const duplicate = t.bind("libgobject-2.0.so.0", "g_value_dup_boxed", [t.struct()], ownedByteArray);
-        const copied = duplicate(getHandle(value));
+        value.copy(duplicate);
+        const copied = duplicate.getBoxed();
         value.setBoxed([9]);
 
         expect(bytes).toEqual(Uint8Array.from(contents));
-        expect(items).toEqual(contents);
         expect(copied).toEqual(Uint8Array.from(contents));
+        expect(duplicate.getBoxed()).toEqual(Uint8Array.from(contents));
         expect(value.getBoxed()).toEqual(new Uint8Array([9]));
         expect(() => {
             value.setBoxed([256]);
         }).toThrow();
     } finally {
+        duplicate.unset();
         value.unset();
     }
 });

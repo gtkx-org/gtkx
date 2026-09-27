@@ -2,6 +2,7 @@ import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as Regress from "@gtkx/gi/regress";
 import { type Descriptor, registerClass, t } from "@gtkx/runtime";
 import { expect, test } from "vitest";
+import { fixtureLibrary } from "./helpers/fixture-library.js";
 import { prepareMemoryChecks } from "./helpers/memory-suite.js";
 import {
     didThrow,
@@ -13,7 +14,8 @@ import {
 prepareMemoryChecks();
 
 const OWNED_STRING: Descriptor = { kind: "string", ownership: "full" };
-const freeStringList = t.bind("libglib-2.0.so.0", "g_list_free_full", [
+const library = fixtureLibrary("string-callback-transfer");
+const freeStringList = t.bind(library, "gtkx_string_list_consume", [
     { kind: "array", arrayKind: "glist", itemDescriptor: OWNED_STRING, ownership: "full" },
     { kind: "callback", argDescriptors: [OWNED_STRING], returnDescriptor: { kind: "void" }, scope: "call" },
 ], { kind: "void" });

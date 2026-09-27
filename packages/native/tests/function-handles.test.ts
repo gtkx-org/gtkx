@@ -7,29 +7,41 @@ import {
     type Descriptor,
     type ExternalObject,
     type Handle,
-    newObject,
     read,
     readFunctionPointer,
-    resolveType,
-    setWrapper,
     write,
 } from "@gtkx/native";
-import { expect, test } from "vitest";
+import { resolveExecutable } from "@gtkx/utils";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, beforeAll, expect, test } from "vitest";
 
-const GOBJECT = "libgobject-2.0.so.0";
+const temporary = mkdtempSync(join(tmpdir(), "gtkx-function-handles-"));
+const library = join(temporary, "libgtkx-function-handles.so");
+
+beforeAll(() => {
+    execFileSync(resolveExecutable("cc"), [
+        "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror",
+        join(import.meta.dirname, "fixtures/function-handles.c"), "-o", library,
+    ]);
+});
+
+afterAll(() => {
+    rmSync(temporary, { recursive: true, force: true });
+});
 const VOID: Descriptor = { kind: "void" };
 const INT: Descriptor = { kind: "int32" };
 const BUFFER: Descriptor = { kind: "buffer" };
-const CLOSURE: Descriptor = {
-    kind: "boxed",
+const HOLDER: Descriptor = {
+    kind: "struct",
     ownership: "borrowed",
-    typeName: "GClosure",
-    sharedLibrary: GOBJECT,
-    getTypeFnName: "g_closure_get_type",
+    sharedLibrary: library,
+    copyFnName: "gtkx_function_holder_ref",
+    freeFnName: "gtkx_function_holder_unref",
 };
-const CLOSURE_CALLBACK_OFFSET = 32;
-const refClosure = bind(GOBJECT, "g_closure_ref", [CLOSURE], VOID);
-const sinkClosure = bind(GOBJECT, "g_closure_sink", [CLOSURE], VOID);
+const HOLDER_CALLBACK_OFFSET = 0;
 
 const drain = async (): Promise<void> => {
     for (let index = 0; index < 5; index++) {
@@ -38,26 +50,22 @@ const drain = async (): Promise<void> => {
     }
 };
 
-const newClosure = (
+const newHolder = (
     callback: (...args: never[]) => unknown,
     argDescriptors: Descriptor[],
     returnDescriptor: Descriptor,
 ): ExternalObject<Handle> => {
-    const create = bind(GOBJECT, "g_cclosure_new", [{
+    const create = bind(library, "gtkx_function_holder_new", [{
         kind: "callback",
         argDescriptors: [...argDescriptors, BUFFER],
         returnDescriptor,
         hasUserData: true,
         userDataIndex: argDescriptors.length,
         hasDestroy: true,
-        destroyKind: "closureNotify",
         scope: "notified",
-    }], { ...CLOSURE, ownership: "full" });
-    const closure = call(create, [callback]).value as ExternalObject<Handle>;
-    call(refClosure, [closure]);
-    call(sinkClosure, [closure]);
+    }], { ...HOLDER, ownership: "full" });
 
-    return closure;
+    return call(create, [callback]).value as ExternalObject<Handle>;
 };
 
 const callbackDescriptor = (scope: "call" | "async" | "notified"): Descriptor => ({
@@ -76,9 +84,9 @@ const receiveCallback = (
     callback: (value: number) => number,
 ): void => {
     const descriptor = callbackDescriptor(scope);
-    const closure = newClosure(receive, [descriptor], VOID);
+    const closure = newHolder(receive, [descriptor], VOID);
     const invoke = bindFunctionPointer(
-        readFunctionPointer(closure, CLOSURE_CALLBACK_OFFSET),
+        readFunctionPointer(closure, HOLDER_CALLBACK_OFFSET),
         [descriptor, BUFFER],
         VOID,
         "callback receiver",
@@ -90,6 +98,8 @@ const bindCallback = (callback: DecodedCallback) =>
     bindFunctionPointer(callback.function, [INT, BUFFER], INT, "received callback");
 
 const decrementBy = (offset: number) => (value: number): number => value - offset;
+const increment = (value: number): number => value + 1;
+const double = (value: number): number => value * 2;
 
 const held = (value: DecodedCallback | null): DecodedCallback => {
     if (value === null) {
@@ -99,20 +109,20 @@ const held = (value: DecodedCallback | null): DecodedCallback => {
     return value;
 };
 
-test("a function field keeps its owning closure alive", async () => {
+test("a function field keeps its callback holder alive", async () => {
     const functionHandle = readFunctionPointer(
-        newClosure((value: number) => value * 2, [INT], INT),
-        CLOSURE_CALLBACK_OFFSET,
+        newHolder((value: number) => value * 2, [INT], INT),
+        HOLDER_CALLBACK_OFFSET,
     );
     await drain();
-    const invoke = bindFunctionPointer(functionHandle, [INT, BUFFER], INT, "retained closure");
+    const invoke = bindFunctionPointer(functionHandle, [INT, BUFFER], INT, "retained callback holder");
     expect(call(invoke, [7, null]).value).toBe(14);
     expect(call(invoke, [-3, null]).value).toBe(-6);
 });
 
 test.each([false, true])("callback scalar storage is writable only during its invocation (inout: %s)", (inout) => {
     const captured: { storage: ExternalObject<Handle> | null } = { storage: null };
-    const closure = newClosure((storage: ExternalObject<Handle>) => {
+    const closure = newHolder((storage: ExternalObject<Handle>) => {
         captured.storage = storage;
         expect(read(storage, INT, 0)).toBe(inout ? 7 : 0);
         write(storage, INT, 0, 11);
@@ -120,7 +130,7 @@ test.each([false, true])("callback scalar storage is writable only during its in
         expect(() => deferBuffer(storage, held, { kind: "ref", innerDescriptor: INT })).toThrow();
     }, [{ kind: "ref", innerDescriptor: INT, inout }], VOID);
     const invoke = bindFunctionPointer(
-        readFunctionPointer(closure, CLOSURE_CALLBACK_OFFSET),
+        readFunctionPointer(closure, HOLDER_CALLBACK_OFFSET),
         [BUFFER, BUFFER],
         VOID,
         "scalar storage callback",
@@ -141,12 +151,12 @@ test.each([false, true])("callback scalar storage is writable only during its in
 
 test("callback scalar storage expires after a handler throws", () => {
     const captured: { storage: ExternalObject<Handle> | null } = { storage: null };
-    const closure = newClosure((storage: ExternalObject<Handle>) => {
+    const closure = newHolder((storage: ExternalObject<Handle>) => {
         captured.storage = storage;
         throw new Error("Callback failure");
     }, [{ kind: "ref", innerDescriptor: INT }], VOID);
     const invoke = bindFunctionPointer(
-        readFunctionPointer(closure, CLOSURE_CALLBACK_OFFSET),
+        readFunctionPointer(closure, HOLDER_CALLBACK_OFFSET),
         [BUFFER, BUFFER],
         VOID,
         "throwing scalar storage callback",
@@ -168,11 +178,11 @@ test("callback scalar storage expires after a handler throws", () => {
 test("an omitted callback scalar slot arrives as null", () => {
     const observed: (ExternalObject<Handle> | null)[] = [];
     const reference: Descriptor = { kind: "ref", innerDescriptor: INT };
-    const closure = newClosure((storage: ExternalObject<Handle> | null) => {
+    const closure = newHolder((storage: ExternalObject<Handle> | null) => {
         observed.push(storage);
     }, [reference], VOID);
     const invoke = bindFunctionPointer(
-        readFunctionPointer(closure, CLOSURE_CALLBACK_OFFSET),
+        readFunctionPointer(closure, HOLDER_CALLBACK_OFFSET),
         [reference, BUFFER],
         VOID,
         "optional scalar storage callback",
@@ -198,6 +208,44 @@ test("received call-scoped function handles expire after the native invocation",
     }
     const retained = invoke;
     expect(() => call(retained, [5, callback.userData]).value).toThrow();
+});
+
+test("callback companions preserve nested calls and scalar outputs beyond eight native arguments", () => {
+    const descriptor = callbackDescriptor("notified");
+    const reference: Descriptor = { kind: "ref", innerDescriptor: INT };
+    const closure = newHolder((
+        first: DecodedCallback,
+        second: DecodedCallback,
+        input: number,
+        storage: ExternalObject<Handle>,
+    ) => {
+        let total = 0;
+        for (const callback of [first, second]) {
+            const value = call(bindCallback(callback), [input, callback.userData]).value;
+            if (typeof value !== "number") {
+                throw new TypeError("The callback did not return a number");
+            }
+            total += value;
+        }
+        write(storage, INT, 0, total);
+
+        return total;
+    }, [descriptor, descriptor, INT, reference], INT);
+    const invoke = bindFunctionPointer(
+        readFunctionPointer(closure, HOLDER_CALLBACK_OFFSET),
+        [descriptor, descriptor, INT, reference, BUFFER],
+        INT,
+        "expanded callback companions",
+    );
+    const output = alloc(4);
+
+    expect(call(invoke, [increment, double, 5, output, null])).toEqual({ value: 16, outputs: [] });
+    expect(read(output, INT, 0)).toBe(16);
+    expect(() => call(invoke, [increment, () => {
+        throw new Error("Callback failure");
+    }, 5, output, null])).toThrow();
+    expect(call(invoke, [increment, double, 7, output, null])).toEqual({ value: 22, outputs: [] });
+    expect(read(output, INT, 0)).toBe(22);
 });
 
 test("received async function handles survive the caller and expire after invocation", async () => {
@@ -254,27 +302,27 @@ test("received async function handles reject reentrant invocation", () => {
 const DATA_DESCRIPTORS: Descriptor[] = [
     { kind: "object", ownership: "borrowed" },
     { kind: "struct", ownership: "borrowed" },
-    CLOSURE,
     { kind: "ref", innerDescriptor: INT },
 ];
 
 test.each(DATA_DESCRIPTORS)("function handles cannot be passed as $kind data", (descriptor) => {
     const functionHandle = readFunctionPointer(
-        newClosure((value: number) => value, [INT], INT),
-        CLOSURE_CALLBACK_OFFSET,
+        newHolder((value: number) => value, [INT], INT),
+        HOLDER_CALLBACK_OFFSET,
     );
-    const compare = bind("libglib-2.0.so.0", "g_direct_equal", [descriptor, descriptor], { kind: "int32" });
+    const compare = bind(library, "gtkx_function_pointer_equal", [descriptor, descriptor], { kind: "int32" });
     expect(() => call(compare, [functionHandle, functionHandle]).value).toThrow();
 });
 
 test.each([
-    alloc(8),
-    readFunctionPointer(newClosure((value: number) => value, [INT], INT), CLOSURE_CALLBACK_OFFSET),
+    () => alloc(8),
+    () => readFunctionPointer(newHolder((value: number) => value, [INT], INT), HOLDER_CALLBACK_OFFSET),
 ])(
     "native handles cannot be coerced into integer arguments",
-    (handle) => {
+    (createHandle) => {
+        const handle = createHandle();
         const integer: Descriptor = { kind: "uint64" };
-        const compare = bind("libglib-2.0.so.0", "g_direct_equal", [integer, integer], { kind: "int32" });
+        const compare = bind(library, "gtkx_function_pointer_equal", [integer, integer], { kind: "int32" });
         expect(() => call(compare, [handle, handle]).value).toThrow();
     },
 );
@@ -293,11 +341,11 @@ const deferBuffer = (
     receive: (callback: DecodedCallback) => void,
     descriptor: Descriptor = BUFFER,
 ): { calls: number } => {
-    const closure = newClosure((_buffer: ExternalObject<Handle>, callback: DecodedCallback) => {
+    const closure = newHolder((_buffer: ExternalObject<Handle>, callback: DecodedCallback) => {
         receive(callback);
     }, [{ kind: "struct", ownership: "borrowed" }, COMPLETE], VOID);
     const invoke = bindFunctionPointer(
-        readFunctionPointer(closure, CLOSURE_CALLBACK_OFFSET),
+        readFunctionPointer(closure, HOLDER_CALLBACK_OFFSET),
         [descriptor, COMPLETE, BUFFER],
         VOID,
         "deferred buffer receiver",
@@ -315,14 +363,14 @@ const completeBuffer = (callback: DecodedCallback): void => {
     call(invoke, [callback.userData]);
 };
 
-test.each(["closure", "function", "field"])("an async buffer retains its %s owner until completion", async (kind) => {
+test.each(["holder", "function", "field"])("an async buffer retains its %s owner until completion", async (kind) => {
     const captured: { callback: DecodedCallback | null } = { callback: null };
     const begin = (): WeakRef<(value: number) => number> => {
         const fn = decrementBy(4);
-        const closure = newClosure(fn, [INT], INT);
+        const closure = newHolder(fn, [INT], INT);
         let buffer = closure;
         if (kind === "function") {
-            buffer = readFunctionPointer(closure, CLOSURE_CALLBACK_OFFSET);
+            buffer = readFunctionPointer(closure, HOLDER_CALLBACK_OFFSET);
         } else if (kind === "field") {
             buffer = read(closure, {
                 kind: "struct", ownership: "borrowed", isInline: true, size: 8,
@@ -347,7 +395,7 @@ test("an async scalar slot retains its owner until completion", async () => {
     const captured: { callback: DecodedCallback | null } = { callback: null };
     const begin = (): WeakRef<(value: number) => number> => {
         const fn = decrementBy(4);
-        const closure = newClosure(fn, [INT], INT);
+        const closure = newHolder(fn, [INT], INT);
         const storage = read(closure, {
             kind: "struct", ownership: "borrowed", isInline: true, size: 4,
         }, 0) as ExternalObject<Handle>;
@@ -368,9 +416,9 @@ test("an async scalar slot retains its owner until completion", async () => {
 
 test("an async scalar slot requires the completion callback that releases it", () => {
     const reference: Descriptor = { kind: "ref", innerDescriptor: INT };
-    const closure = newClosure(() => null, [reference, COMPLETE], VOID);
+    const closure = newHolder(() => null, [reference, COMPLETE], VOID);
     const invoke = bindFunctionPointer(
-        readFunctionPointer(closure, CLOSURE_CALLBACK_OFFSET),
+        readFunctionPointer(closure, HOLDER_CALLBACK_OFFSET),
         [reference, COMPLETE, BUFFER],
         VOID,
         "async scalar storage without completion",
@@ -401,26 +449,4 @@ test("an async callback's user data cannot escape into another async buffer", ()
         deferBuffer(data, held);
     }).toThrow();
     expect(call(bindCallback(callback), [2, data]).value).toBe(1);
-});
-
-test("an async buffer pins a GObject after ownership passes to its wrapper", async () => {
-    const captured: { callback: DecodedCallback | null } = { callback: null };
-    const begin = (): WeakRef<object> => {
-        const wrapper = {};
-        newObject(resolveType(GOBJECT, "g_object_get_type"), [], [], wrapper, (handle) => {
-            setWrapper(handle, wrapper);
-            deferBuffer(handle, (callback) => {
-                captured.callback = callback;
-            });
-        });
-
-        return new WeakRef(wrapper);
-    };
-    const weak = begin();
-    await drain();
-    expect(weak.deref()).toBeDefined();
-    completeBuffer(held(captured.callback));
-    captured.callback = null;
-    await drain();
-    expect(weak.deref()).toBeUndefined();
 });

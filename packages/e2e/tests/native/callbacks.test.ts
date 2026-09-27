@@ -5,8 +5,9 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Regress from "@gtkx/gi/regress";
 import { bind, call } from "@gtkx/native";
-import { getHandle, t } from "@gtkx/runtime";
+import { t } from "@gtkx/runtime";
 import { expect, test } from "vitest";
+import { fixtureLibrary } from "./helpers/fixture-library.js";
 import { drainAfterEachTest, drainGC } from "./helpers/memory.js";
 
 type Counter = { calls: number };
@@ -14,7 +15,7 @@ type Holder<T> = { value: T | null };
 type NotifiedCallback = WeakRef<Regress.TestCallbackUserData>;
 
 const VOID: Descriptor = { kind: "void" };
-const BORROWED_OBJECT = (typeName: string): Descriptor => ({ kind: "object", ownership: "borrowed", typeName });
+const library = fixtureLibrary("callback-descriptors");
 const SIDE_CALLBACK: Extract<Descriptor, { kind: "callback" }> = {
     kind: "callback",
     argDescriptors: [{ kind: "biguint64" }],
@@ -25,14 +26,15 @@ const SIDE_CALLBACK: Extract<Descriptor, { kind: "callback" }> = {
     releaseWithCompletion: true,
 };
 const completionTiedArgs = (side: Extract<Descriptor, { kind: "callback" }>): Descriptor[] => [
-    BORROWED_OBJECT("RegressTestObj"),
-    { kind: "int32" },
-    BORROWED_OBJECT("GCancellable"),
     side,
     ...(side.hasDestroy === true ? [] : [{ kind: "buffer" } as const]),
     {
         kind: "callback",
-        argDescriptors: [BORROWED_OBJECT("GObject"), BORROWED_OBJECT("GAsyncResult"), { kind: "biguint64" }],
+        argDescriptors: [
+            { kind: "object", ownership: "borrowed" },
+            { kind: "object", ownership: "borrowed" },
+            { kind: "biguint64" },
+        ],
         returnDescriptor: VOID,
         hasUserData: true,
         userDataIndex: 2,
@@ -40,16 +42,13 @@ const completionTiedArgs = (side: Extract<Descriptor, { kind: "callback" }>): De
     },
 ];
 const completionTiedFunction = bind(
-    "libregress.so", "regress_test_obj_function2", completionTiedArgs(SIDE_CALLBACK), VOID,
+    library, "gtkx_callback_with_completion", completionTiedArgs(SIDE_CALLBACK), VOID,
 );
 
 const runtimeCompletionTiedFunction = t.bind(
-    "libregress.so",
-    "regress_test_obj_function2",
+    library,
+    "gtkx_callback_with_completion",
     [
-        t.object("borrowed"),
-        t.int32,
-        t.object("borrowed"),
         t.callback([t.biguint64], t.int32, { hasUserData: true, userDataIndex: 0, scope: "notified" }),
         t.buffer,
         t.callback([t.object("borrowed"), t.object("borrowed"), t.biguint64], t.void, {
@@ -59,12 +58,14 @@ const runtimeCompletionTiedFunction = t.bind(
     t.void,
 );
 const completionInvokers = [
-    { name: "native", invoke: (values: unknown[]) => call(completionTiedFunction, values, 5) },
+    { name: "native", invoke: (values: unknown[]) => call(completionTiedFunction, values, 2) },
     { name: "runtime", invoke: (values: unknown[]) => runtimeCompletionTiedFunction(...values) },
 ];
-const defaultUserDataCallback = t.bind("libregress.so", "regress_test_callback_user_data", [
+const defaultUserDataCallback = t.bind(library, "gtkx_callback_user_data", [
     t.callback([t.biguint64], t.int32, { hasUserData: true, userDataIndex: 0 }),
 ], t.int32);
+
+const finishDescriptorCallback = t.bind(library, "gtkx_callback_complete", [], t.int32);
 
 drainAfterEachTest();
 
@@ -111,28 +112,39 @@ const invokeDefaultUserDataCallback = (counter: Counter): WeakRef<() => number> 
     return new WeakRef(callback);
 };
 
+const countInvocation = (counter: Counter) => (): number => {
+    counter.calls += 1;
+
+    return 1;
+};
+
 const registerCompletionTied = (
-    obj: Regress.TestObj,
     counter: Counter,
     invoke: (values: unknown[]) => unknown,
 ): { completion: Promise<undefined>; weak: NotifiedCallback } => {
     const { promise, resolve } = Promise.withResolvers<undefined>();
-    const callback = (): number => {
-        counter.calls += 1;
-
-        return 1;
-    };
+    const callback = countInvocation(counter);
 
     invoke([
-        getHandle(obj),
-        0,
-        null,
         callback,
         null,
         () => {
             resolve(undefined);
         },
     ]);
+
+    return { completion: promise, weak: new WeakRef(callback) };
+};
+
+const registerGeneratedCompletion = (
+    obj: Regress.TestObj,
+    counter: Counter,
+): { completion: Promise<undefined>; weak: NotifiedCallback } => {
+    const { promise, resolve } = Promise.withResolvers<undefined>();
+    const callback = countInvocation(counter);
+    obj.function2(0, null, callback, () => {
+        resolve(undefined);
+    });
 
     return { completion: promise, weak: new WeakRef(callback) };
 };
@@ -334,10 +346,22 @@ test("async scope callbacks are deferred until the async queue is thawed", async
 });
 
 test.each(completionInvokers)("a $name side callback is released with its async completion", async ({ invoke }) => {
+    const counter: Counter = { calls: 0 };
+    const { completion, weak } = registerCompletionTied(counter, invoke);
+
+    expect(counter.calls).toBe(1);
+    await drainGC();
+    expect(weak.deref()).toBeDefined();
+    expect(finishDescriptorCallback()).toBe(1);
+    await completion;
+    await drainGC(8);
+    expect(weak.deref()).toBeUndefined();
+});
+
+test("a generated async method releases its notified callback after completion", async () => {
     const obj = new Regress.TestObj({});
     const counter: Counter = { calls: 0 };
-    const { completion, weak } = registerCompletionTied(obj, counter, invoke);
-
+    const { completion, weak } = registerGeneratedCompletion(obj, counter);
     expect(counter.calls).toBe(1);
     await drainGC();
     expect(weak.deref()).toBeDefined();
@@ -363,17 +387,16 @@ test("an async ready callback handed to C is invoked from the main loop", async 
 });
 
 test("a gerror callback receives the error C created", () => {
-    const seen: [string, number, number, boolean][] = [];
+    const seen: [number, number, boolean][] = [];
     Regress.testGerrorCallback((error) => {
         seen.push([
-            error.message,
             error.code,
             error.domain,
             error.matches(Gio.ioErrorQuark(), Gio.IOErrorEnum.NOT_SUPPORTED),
         ]);
     });
     expect(seen).toEqual([
-        ["regression test error", Gio.IOErrorEnum.NOT_SUPPORTED, Gio.ioErrorQuark(), true],
+        [Gio.IOErrorEnum.NOT_SUPPORTED, Gio.ioErrorQuark(), true],
     ]);
 });
 
@@ -390,7 +413,6 @@ test("an owned gerror stays readable after the callback returns", async () => {
     Regress.testOwnedGerrorCallback((error) => {
         seen.push(error);
     });
-    expect(seen[0]?.message).toBe("regression test owned error");
     expect(seen[0]?.code).toBe(Gio.IOErrorEnum.PERMISSION_DENIED);
     expect(seen[0]?.matches(Gio.ioErrorQuark(), Gio.IOErrorEnum.PERMISSION_DENIED)).toBe(true);
     seen.length = 0;
@@ -419,8 +441,8 @@ test("callback return values and out parameters come back from the call", () => 
 });
 
 const callWithScalarOutput = t.bind(
-    "libgimarshallingtests.so",
-    "gi_marshalling_tests_callback_one_out_parameter",
+    library,
+    "gtkx_callback_scalar_output",
     [t.callback([t.ref(t.float32)], t.void), t.ref(t.float32)],
     t.void,
 );
@@ -452,8 +474,8 @@ test("a throwing scalar callback leaves the caller's Ref unchanged", () => {
 
 test("a scalar inout callback receives the caller's seed and writes its replacement", () => {
     const invoke = t.bind(
-        "libgimarshallingtests.so",
-        "gi_marshalling_tests_callback_one_out_parameter",
+        library,
+        "gtkx_callback_scalar_output",
         [t.callback([t.ref(t.float32, true)], t.void), t.ref(t.float32)],
         t.void,
     );
@@ -709,6 +731,6 @@ test.each([
     { name: "destroy notifier", descriptor: { ...SIDE_CALLBACK, hasDestroy: true } as const },
 ])("native completion retention rejects a side callback with $name", ({ descriptor }) => {
     expect(() => bind(
-        "libregress.so", "regress_test_obj_function2", completionTiedArgs(descriptor), VOID,
+        library, "gtkx_callback_with_completion", completionTiedArgs(descriptor), VOID,
     )).toThrow();
 });

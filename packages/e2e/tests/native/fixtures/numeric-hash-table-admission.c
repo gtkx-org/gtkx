@@ -51,6 +51,10 @@ GHashTable *gtkx_numeric_table_ref_callback(GtkxNumericTableReturn callback) {
     return g_hash_table_ref(callback());
 }
 
+GHashTable *gtkx_numeric_table_retain(GHashTable *table) {
+    return g_hash_table_ref(table);
+}
+
 gboolean gtkx_numeric_table_accept_return(GtkxNumericTableReturn callback) {
     return callback != NULL;
 }

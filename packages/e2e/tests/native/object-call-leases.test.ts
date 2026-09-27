@@ -1,3 +1,4 @@
+import * as GObject from "@gtkx/gi/gobject";
 import {
     alloc,
     bind,
@@ -10,14 +11,13 @@ import {
     getWrapper,
     type Handle,
     init,
-    newObject,
     quit,
     read,
     readField,
     resolveType,
-    setWrapper,
     write,
 } from "@gtkx/native";
+import { getHandle, registerWrapperClass } from "@gtkx/runtime";
 import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -39,6 +39,8 @@ type Fixture = {
     cancel: BoundFunction;
 };
 type CallSource = { name: string; descriptor: Descriptor; select: (subject: Subject) => NativeHandle };
+
+class WorkerObject extends GObject.Object {}
 
 const VOID: Descriptor = { kind: "void" };
 const INT: Descriptor = { kind: "int32" };
@@ -65,9 +67,11 @@ beforeAll(() => {
         join(import.meta.dirname, "fixtures/object-worker.c"), "-o", library, ...flags,
     ]);
     const offset = bind(library, "gtkx_worker_object_value_offset", [], { kind: "uint32" });
+    const type = resolveType(library, "gtkx_worker_object_get_type");
+    registerWrapperClass(WorkerObject, type);
     state.fixture = {
         library,
-        type: resolveType(library, "gtkx_worker_object_get_type"),
+        type,
         valueOffset: call(offset, []).value as number,
         prepare: bind(library, "gtkx_worker_prepare", [OBJECT], VOID),
         start: bind(library, "gtkx_worker_start", [], VOID),
@@ -90,16 +94,8 @@ const fixtureFor = (): Fixture => {
 };
 
 const createSubject = (fixture: Fixture): Subject => {
-    const wrapper = {};
-    let result: NativeHandle | undefined;
-    newObject(fixture.type, [], [], wrapper, (handle) => {
-        setWrapper(handle, wrapper);
-        result = handle;
-    });
-
-    if (result === undefined) {
-        throw new Error("The native object was not associated");
-    }
+    const wrapper = new WorkerObject();
+    const result = getHandle(wrapper);
 
     const alias = read(result, INLINE, fixture.valueOffset) as NativeHandle;
     const nested = read(alias, INLINE, 0) as NativeHandle;
@@ -186,22 +182,11 @@ test("a rejected callback releases its enclosing native object's lease", async (
 
 test("disposed objects remain usable while their JavaScript wrapper is live", () => {
     const fixture = fixtureFor();
-    const wrapper = {};
-    let result: NativeHandle | undefined;
-    newObject(fixture.type, [], [], wrapper, (handle) => {
-        setWrapper(handle, wrapper);
-        result = handle;
-    });
-
-    if (result === undefined) {
-        throw new Error("The native object was not associated");
-    }
-
-    const handle = result;
+    const wrapper = new WorkerObject();
+    const handle = getHandle(wrapper);
     const alias = read(handle, INLINE, fixture.valueOffset) as NativeHandle;
-    const dispose = bind("libgobject-2.0.so.0", "g_object_run_dispose", [OBJECT], VOID);
-    const equal = bind("libglib-2.0.so.0", "g_direct_equal", [BUFFER, BUFFER], INT);
-    call(dispose, [handle]);
+    const equal = bind(fixture.library, "gtkx_worker_pointer_equal", [BUFFER, BUFFER], INT);
+    wrapper.runDispose();
     expect(getType(handle)).toBe(fixture.type);
     expect(read(alias, INT, 0)).toBe(42);
     write(alias, INT, 0, 43);

@@ -1,4 +1,5 @@
 import type { Descriptor } from "@gtkx/native";
+import * as GLib from "@gtkx/gi/glib";
 import { bind, call, resolveType } from "@gtkx/native";
 import { spawn } from "node:child_process";
 import { expect, test } from "vitest";
@@ -17,12 +18,9 @@ type WorkerReport = { bare: boolean; doubled: number; string: string };
 const encoder = new TextEncoder();
 
 const CHILD_BUDGET_MS = 30_000;
-const GLIB = "libglib-2.0.so.0";
+const LIBC = "libc.so.6";
 const VOID: Descriptor = { kind: "void" };
 const INT32: Descriptor = { kind: "int32" };
-const UINT32: Descriptor = { kind: "uint32" };
-const BUFFER: Descriptor = { kind: "buffer" };
-const BYTES_FULL: Descriptor = { kind: "bytes", ownership: "full" };
 const NESTING_LIMIT = 80;
 const WORKER_REPORT: WorkerReport = { bare: true, doubled: 42, string: "worker" };
 
@@ -208,28 +206,26 @@ test("a malformed descriptor is refused when the call is bound", () => {
         ownership: "borrowed",
     };
 
-    expect(() => bind(GLIB, "g_free", [nested], VOID)).toThrow();
-    expect(() => bind(GLIB, "g_free", [{ kind: "bytes", ownership: "borrowed", length: -5 }], VOID)).toThrow();
-    expect(() => bind(GLIB, "g_free", [fixedArray], VOID)).toThrow();
-    expect(() => bind(GLIB, "g_free", [sizedArray], VOID)).toThrow();
-    // @ts-expect-error a kind no descriptor variant carries
-    expect(() => bind(GLIB, "g_free", [{ kind: "gtkx-not-a-kind" }], VOID)).toThrow();
+    expect(() => bind(LIBC, "free", [nested], VOID)).toThrow();
+    expect(() => bind(LIBC, "free", [{ kind: "bytes", ownership: "borrowed", length: -5 }], VOID)).toThrow();
+    expect(() => bind(LIBC, "free", [fixedArray], VOID)).toThrow();
+    expect(() => bind(LIBC, "free", [sizedArray], VOID)).toThrow();
+    expect(() => {
+        Reflect.apply(bind, undefined, [LIBC, "free", [{ kind: "gtkx-not-a-kind" }], VOID]);
+    }).toThrow();
 });
 
-test("a buffer descriptor lends a typed array to C", () => {
-    const checksum = bind(GLIB, "g_compute_checksum_for_data", [INT32, BUFFER, UINT32], BYTES_FULL);
-    const expected = encoder.encode("900150983cd24fb0d6963f7d28e17f72");
+test("a generated checksum function reads typed arrays and empty data", () => {
+    const expected = "900150983cd24fb0d6963f7d28e17f72";
 
-    expect(call(checksum, [0, new Uint8Array([97, 98, 99]), 3]).value).toEqual(expected);
-    expect(call(checksum, [0, encoder.encode("abc"), 3]).value).toEqual(expected);
-    expect(call(checksum, [0, null, 0]).value).toEqual(encoder.encode("d41d8cd98f00b204e9800998ecf8427e"));
-    expect(() => call(checksum, [0, 0, 0])).toThrow();
+    expect(GLib.computeChecksumForData(GLib.ChecksumType.MD5, new Uint8Array([97, 98, 99]))).toBe(expected);
+    expect(GLib.computeChecksumForData(GLib.ChecksumType.MD5, encoder.encode("abc"))).toBe(expected);
+    expect(GLib.computeChecksumForData(GLib.ChecksumType.MD5, new Uint8Array()))
+        .toBe("d41d8cd98f00b204e9800998ecf8427e");
 });
 
-test("a buffer descriptor rejects values that are not a view, a handle or null", () => {
-    const checksum = bind(GLIB, "g_compute_checksum_for_data", [INT32, BUFFER, UINT32], BYTES_FULL);
-    expect(() => call(checksum, [0, "abc", 3]).value).toThrow();
-    expect(() => call(checksum, [0, 1.5, 0]).value).toThrow();
-    expect(() => call(checksum, [0, -1, 0]).value).toThrow();
-    expect(() => call(checksum, [0, {}, 0]).value).toThrow();
+test.each(["abc", 0, 1.5, -1, {}])("a generated checksum rejects an invalid byte array %s", (value) => {
+    expect(() => {
+        Reflect.apply(GLib.computeChecksumForData, undefined, [GLib.ChecksumType.MD5, value]);
+    }).toThrow();
 });

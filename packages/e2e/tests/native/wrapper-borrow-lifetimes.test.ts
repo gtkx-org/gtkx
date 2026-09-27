@@ -1,38 +1,28 @@
+import * as GObject from "@gtkx/gi/gobject";
 import {
     alloc,
     type ExternalObject,
     getType,
     type Handle,
     newObject,
-    resolveType,
     setWrapper,
     setWrapperBorrow,
 } from "@gtkx/native";
+import { getHandle } from "@gtkx/runtime";
 import { expect, test } from "vitest";
 
 type NativeHandle = ExternalObject<Handle>;
-type Wrapper = { owner?: object };
+type Wrapper = { owner?: object | undefined };
 type WrappedObject = { handle: NativeHandle; wrapper: Wrapper };
 type LifetimeState = { calls: number; ownerType: bigint; dependentType: bigint };
 
-const GOBJECT = "libgobject-2.0.so.0";
-const OBJECT_TYPE = resolveType(GOBJECT, "g_object_get_type");
+const OBJECT_TYPE = GObject.TYPE_OBJECT;
 const ephemerons: WeakMap<object, object> = new WeakMap();
 
 const wrappedObject = (): WrappedObject => {
-    const wrapper: Wrapper = {};
-    let handle: NativeHandle | undefined;
+    const wrapper: Wrapper = Object.assign(new GObject.Object(), { owner: undefined });
 
-    newObject(OBJECT_TYPE, [], [], wrapper, (native) => {
-        setWrapper(native, wrapper);
-        handle = native;
-    });
-
-    if (handle === undefined) {
-        throw new Error("The native object was not associated");
-    }
-
-    return { handle, wrapper };
+    return { handle: getHandle(wrapper), wrapper };
 };
 
 const objectHandle = (): NativeHandle => {

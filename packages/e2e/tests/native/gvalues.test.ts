@@ -2,7 +2,7 @@ import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
-import { type AnyClass, resolveType, type TypedClass } from "@gtkx/runtime";
+import { type AnyClass, getParamSpecValueType, type TypedClass } from "@gtkx/runtime";
 import { assert, expect, test } from "vitest";
 import { drainAfterEachTest, drainGC } from "./helpers/memory.js";
 
@@ -19,8 +19,8 @@ const buildValue = (type: ValueType, fill: (value: GObject.Value) => void): GObj
 };
 
 const named = (name: string): GObject.Type => GObject.typeFromName(name);
-const genumType = (): GObject.Type => resolveType("libgimarshallingtests.so", "gi_marshalling_tests_genum_get_type");
-const flagsType = (): GObject.Type => resolveType("libgimarshallingtests.so", "gi_marshalling_tests_flags_get_type");
+const propertyType = (name: string): GObject.Type =>
+    getParamSpecValueType(GObject.ObjectClass.peek(GIMarshallingTests.PropertiesObject).findProperty(name));
 const fixtureFloat = 314 / 100;
 
 const intValue = (n: number): GObject.Value => buildValue(named("gint"), (value) => {
@@ -83,11 +83,11 @@ const objectValue = (o: GObject.Object): GObject.Value => buildValue(GIMarshalli
     value.setObject(o);
 });
 
-const enumValue = (v: number): GObject.Value => buildValue(genumType(), (value) => {
+const enumValue = (v: number): GObject.Value => buildValue(propertyType("some-enum"), (value) => {
     value.setEnum(v);
 });
 
-const flagsValue = (v: number): GObject.Value => buildValue(flagsType(), (value) => {
+const flagsValue = (v: number): GObject.Value => buildValue(propertyType("some-flags"), (value) => {
     value.setFlags(v);
 });
 
@@ -289,7 +289,7 @@ test("values unset and re-initialize to another type", () => {
 
 test("byte-array GValues distinguish null and empty payloads", () => {
     const value = new GObject.Value();
-    value.init(resolveType("libgobject-2.0.so.0", "g_byte_array_get_type"));
+    value.init(GLib.ByteArray);
     expect(value.getBoxed()).toBeNull();
 
     value.setBoxed(new Uint8Array());
