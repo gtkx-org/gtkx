@@ -58,9 +58,6 @@ type RenderPropBlockContext = {
     hasContainerProps: (glibName: string | undefined) => boolean;
 };
 
-const ACCESSIBLE_INTERFACE_GLIB_NAME = "GtkAccessible";
-const ACCESSIBLE_PROPS_NAME = "AccessibleProps";
-
 const addGiNamespace = (imports: ImportsBuilder, namespaceName: string, alias: string): void => {
     if (namespaceName === "") {
         return;
@@ -327,11 +324,6 @@ const renderInterfacePropsBlock = (
         const alias = `${declared.export}Base`;
         imports.addNamed(declared.module, declared.export, true, alias);
         prerequisiteExtends.push(alias);
-    }
-
-    if (glib === ACCESSIBLE_INTERFACE_GLIB_NAME) {
-        imports.addNamed("@gtkx/react", ACCESSIBLE_PROPS_NAME, true);
-        prerequisiteExtends.push(ACCESSIBLE_PROPS_NAME);
     }
 
     addGiNamespace(imports, iface.namespace.name, giNamespaceAlias(iface.namespace.name));

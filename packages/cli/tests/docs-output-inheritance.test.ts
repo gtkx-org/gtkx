@@ -24,6 +24,10 @@ describe("generated reference output inheritance", () => {
         const base = readReferencePage(project, "gtk/widget.md");
         expect(base).toContain('import type { GtkWidgetProps } from "@gtkx/jsx/gtk";');
         expect(base).toContain("### `widthRequest`");
+        expect(base).toContain("### `accessibleLabel`");
+        expect(base).toContain("### `accessibleDescription`");
+        expect(base).toContain("### `accessibleLabelledBy`");
+        expect(base).toContain("from `GtkAccessible`");
         expect(base).not.toContain('import { GtkWidget } from "@gtkx/jsx/gtk";');
         expect(readReferencePage(project, "gtk/index.md")).toContain("## Abstract bases");
         expect(readReferencePage(project, "gtk/index.md")).toContain("[GtkWidget](/reference/gtk/widget)");
@@ -31,14 +35,37 @@ describe("generated reference output inheritance", () => {
             .toContain("[GtkWidget](.gtkx/reference/gtk/widget.md)");
         expect(readFileSync(join(project.root, ".gtkx/reference/gtk/widget.md"), "utf8"))
             .toContain('import type { GtkWidgetProps } from "@gtkx/jsx/gtk";');
+        expect(readFileSync(join(project.root, ".gtkx/reference/gtk/widget.md"), "utf8"))
+            .toContain("### `accessibleLabel`");
+        expect(readReferencePage(project, "gio/menu-item.md")).not.toContain("### `accessibleLabel`");
         isolateTypeConsumer(project);
-        expect(typecheckSource(project, `import { GtkButton, GtkShortcutTrigger } from "@gtkx/jsx/gtk";
+        expect(typecheckSource(project, `import { GtkButton, GtkLabel, GtkShortcutTrigger } from "@gtkx/jsx/gtk";
+import { GMenuItem } from "@gtkx/jsx/gio";
+import * as Gtk from "@gtkx/gi/gtk";
 import type { GtkWidgetProps } from "@gtkx/jsx/gtk";
-export const inherited = { widthRequest: 200 } satisfies GtkWidgetProps;
-export const views = [<GtkButton {...inherited} />, <GtkShortcutTrigger accelerator="F5" />];
+export const inherited = {
+    widthRequest: 200,
+    accessibleLabel: "Select folder",
+    accessibleDescription: "Analyze storage in the selected folder",
+    accessibleBusy: false,
+    accessibleLabelledBy: [new Gtk.Label({ label: "Folder" })],
+} satisfies GtkWidgetProps;
+export const reset = { accessibleLabel: null, accessibleDescription: undefined, accessibleLabelledBy: [] };
+export const views = [
+    <GtkButton {...inherited} />,
+    <GtkLabel {...reset} />,
+    <GtkShortcutTrigger accelerator="F5" />,
+    <GMenuItem label="Folder" />,
+];
 `)).toBe(0);
         expect(typecheckSource(project, `import { GtkWidget } from "@gtkx/jsx/gtk";
 export const view = <GtkWidget />;
+`)).not.toBe(0);
+        expect(typecheckSource(project, `import { GtkButton } from "@gtkx/jsx/gtk";
+export const view = <GtkButton accessibleLabelledBy={["Folder"]} />;
+`)).not.toBe(0);
+        expect(typecheckSource(project, `import { GMenuItem } from "@gtkx/jsx/gio";
+export const view = <GMenuItem accessibleLabel="Folder" />;
 `)).not.toBe(0);
     });
 });

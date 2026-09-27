@@ -2,6 +2,7 @@ use std::cell::Cell;
 use std::ffi::c_void;
 
 use libffi::middle as libffi;
+use smallvec::SmallVec;
 
 use crate::ffi::closure::{ClosureData, ClosureState};
 
@@ -219,7 +220,7 @@ impl Stash {
         }
     }
 
-    pub fn append_libffi_args<'a>(&'a self, args: &mut Vec<libffi::Arg<'a>>) {
+    pub fn append_libffi_args<'a>(&'a self, args: &mut SmallVec<[libffi::Arg<'a>; 8]>) {
         match self {
             Self::Callback(callback) => {
                 args.push(libffi::arg(&callback.fn_ptr));

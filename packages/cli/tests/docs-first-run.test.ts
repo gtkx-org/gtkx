@@ -21,5 +21,8 @@ describe("gtkx docs (a fresh project)", () => {
         expect(readPage(project, MENU_ITEM_PAGE)).toContain("### `submenu`");
         expect(readPage(project, MENU_ITEM_PAGE)).toContain("### `section`");
         expect(readPage(project, SHORTCUT_TRIGGER_PAGE)).toContain("### `accelerator`");
+        expect(readPage(project, "gtk/widget.md")).toContain("### `accessibleLabel`");
+        expect(readPage(project, "gtk/widget.md")).toContain("### `accessibleDescription`");
+        expect(readPage(project, "gtk/widget.md")).toContain("### `accessibleLabelledBy`");
     });
 });

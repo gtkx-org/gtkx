@@ -213,7 +213,7 @@ const isRelationComplete = (scan: RelationScan): boolean => scan.size > 0 && sca
 const readAccessibleRelation = (
     accessible: Gtk.Accessible,
     relation: Gtk.AccessibleRelation,
-    tiers: Iterable<Gtk.Accessible>[],
+    tiers: Iterable<Iterable<Gtk.Accessible>>,
 ): Gtk.Accessible[] => {
     if (!Gtk.testAccessibleHasRelation(accessible, relation)) {
         return [];

@@ -99,11 +99,13 @@ const mappedWidgets = function* (widget: Gtk.Widget, isParentMapped: boolean): G
     }
 };
 
-const relationCandidates = (widget: Gtk.Widget): Iterable<Gtk.Accessible>[] => {
+const relationCandidates = function* (widget: Gtk.Widget): Generator<Iterable<Gtk.Accessible>> {
+    yield widget.listMnemonicLabels();
+    yield descendants(widget);
     const root = widget.getRoot();
-    const tree: Iterable<Gtk.Accessible> = root instanceof Gtk.Widget ? traverseWidgetTree(root, isAnyWidget) : [];
-
-    return [widget.listMnemonicLabels(), descendants(widget), tree];
+    if (root instanceof Gtk.Widget) {
+        yield traverseWidgetTree(root, isAnyWidget);
+    }
 };
 
 const resolveRoot = (container: QueryContainer): Gtk.Widget | null => {

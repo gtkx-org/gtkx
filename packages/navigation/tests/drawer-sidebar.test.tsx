@@ -41,6 +41,9 @@ describe("drawer - sidebar", () => {
         expect(sidebarRow("Mail").getIndex()).toBe(0);
         expect(sidebarRow("Preferences").getIndex()).toBe(1);
         expect(sidebarRow("Archive").getIndex()).toBe(2);
+        expect(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Mail" })).toBe(sidebarRow("Mail"));
+        expect(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Preferences" })).toBe(sidebarRow("Preferences"));
+        expect(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Archive" })).toBe(sidebarRow("Archive"));
         expect(querySidebarLabel("Inbox Title")).toBeNull();
         expect(sidebarList().getSelectedRow()).toBe(sidebarRow("Mail"));
     });
@@ -53,7 +56,7 @@ describe("drawer - sidebar", () => {
         );
 
         await screen.findByText("Inbox Content");
-        await userEvent.click(sidebarRow("Settings"));
+        await userEvent.keyboard(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Settings" }), "{Enter}");
         await screen.findByText("Settings Content");
         expect(screen.queryByText("Inbox Content")).toBeNull();
     });
@@ -134,6 +137,7 @@ describe("drawer - sidebar", () => {
 
         await screen.findByText("Inbox Content");
         expect(sidebarRow("Mail").getIndex()).toBe(0);
+        expect(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Mail" })).toBe(sidebarRow("Mail"));
 
         await rerender(
             <NavigationContainer>
@@ -144,6 +148,8 @@ describe("drawer - sidebar", () => {
         );
 
         expect(sidebarRow("Letters").getIndex()).toBe(0);
+        expect(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Letters" })).toBe(sidebarRow("Letters"));
+        expect(() => screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Mail" })).toThrow();
         expect(querySidebarLabel("Mail")).toBeNull();
     });
 

@@ -5,6 +5,7 @@ use libffi::middle as libffi;
 use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
+use smallvec::SmallVec;
 
 use super::bind::CallDescriptor;
 use super::native_result;
@@ -70,7 +71,8 @@ fn execute_call_inner<'e>(
     let completion = AsyncCompletion::resolve(completion_index, arg_codecs, &stashes)
         .with_context(|| format!("calling {label}"))?;
 
-    let mut ffi_args: Vec<libffi::Arg<'_>> = Vec::with_capacity(stashes.len() + 1);
+    let mut ffi_args: SmallVec<[libffi::Arg<'_>; 8]> =
+        SmallVec::with_capacity(descriptor.native_arg_count);
     for stash in &stashes {
         stash.append_libffi_args(&mut ffi_args);
     }
@@ -85,6 +87,7 @@ fn execute_call_inner<'e>(
     let symbol = descriptor.symbol()?;
     let trap = CriticalTrap::arm();
     let called = return_codec.call_cif(&descriptor.cif, symbol, &ffi_args);
+    drop(ffi_args);
     let critical = trap.disarm();
 
     let result = called.with_context(|| format!("calling {label}"))?;
@@ -252,7 +255,8 @@ pub fn call<'env>(
     values: Array<'_>,
     completion_index: Option<u32>,
 ) -> Result<CallResult<'env>> {
-    let mut parsed_values: Vec<Unknown<'env>> = Vec::with_capacity(values.len() as usize);
+    let mut parsed_values: SmallVec<[Unknown<'env>; 8]> =
+        SmallVec::with_capacity(values.len() as usize);
     for i in 0..values.len() {
         let item: Unknown<'env> = values
             .get(i)?

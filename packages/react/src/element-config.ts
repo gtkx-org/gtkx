@@ -83,6 +83,9 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
     GActionGroup: {
         props: internal("ActionGroupProps"),
     },
+    GtkAccessible: {
+        props: { module: "@gtkx/react", export: "AccessibleProps" },
+    },
     GtkWidget: {
         props: { ...internal("GtkWidgetProps"), constructOnly: ["textChildAnchor"] },
     },
