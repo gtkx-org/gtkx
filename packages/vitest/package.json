@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/vitest",
-    "version": "2.0.0-beta.10",
+    "version": "2.0.0-beta.11",
     "description": "Run GTKX tests in isolated headless displays.",
     "keywords": [
         "gtkx",
