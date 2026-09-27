@@ -52,17 +52,14 @@ jobs:
             exit 0
           fi
           version="$(node -p "require('./packages/create-gtkx/package.json').version")"
-          lookup="${RUNNER_TEMP}/release-lookup"
-          if release="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/v${version}" 2> "$lookup")"; then
+          releases="$(gh api "repos/${GITHUB_REPOSITORY}/releases" --paginate --slurp)"
+          release="$(jq -c --arg tag "v${version}" '[.[][] | select(.tag_name == $tag)] | first' <<<"$releases")"
+          if [ "$release" != "null" ]; then
             if [ "$(jq -r '.draft' <<<"${release}")" = "true" ]; then
               state=draft
             else
               state=published
             fi
-          elif ! grep -q 'HTTP 404' "$lookup"; then
-            cat "$lookup" >&2
-            echo "::error::Could not read the release state for v${version}"
-            exit 1
           elif [ -f CHANGELOG.md ] && awk -v version="$version" '
             /^##? / { if ($2 == version) { found = 1; exit } }
             END { exit found ? 0 : 1 }
