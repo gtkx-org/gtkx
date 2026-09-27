@@ -20,5 +20,5 @@ await run("pnpm", [
     "--dir", fileURLToPath(new URL("../packages/native", import.meta.url)), "exec", "napi", "create-npm-dirs",
 ]);
 await checkReleaseChannel(releasePackageDirectories());
-await run("nx", ["run-many", "-t", "release", "--skip-nx-cache"]);
+await run("nx", ["run-many", "-t", "release", "--skip-nx-cache", "--outputStyle=stream"]);
 await promoteRelease(releasePackageDirectories());

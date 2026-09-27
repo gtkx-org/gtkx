@@ -173,7 +173,7 @@ jobs:
   publish:
     needs: [validate-release, accept-native]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 90
     permissions:
       contents: read
       packages: read
