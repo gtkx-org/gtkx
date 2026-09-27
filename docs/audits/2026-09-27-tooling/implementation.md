@@ -1,6 +1,6 @@
 # Tooling implementation
 
-Implementation branch: `chore/tooling-modernization`. The audit reports describe the original September 27 snapshot; this document records the resulting changes and their verification limits. Changes are local and have not been published, deployed, or applied to GitHub or npm settings.
+Implementation branch: `chore/tooling-modernization`, under review in [PR #765](https://github.com/gtkx-org/gtkx/pull/765). The audit reports describe the original September 27 snapshot; this document records the resulting changes and their verification limits. GitHub and npm settings remain unapplied.
 
 ## Implemented changes
 
