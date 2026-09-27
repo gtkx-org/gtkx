@@ -205,6 +205,13 @@ jobs:
         shell: bash
         run: bash scripts/restore-native-artifacts.sh
 
+      - name: Install release dependencies before staging publishing credentials
+        uses: ./.github/actions/run-ci-command
+        with:
+          command: "true"
+          extra-env: GTKX_RELEASE_NATIVE_ARTIFACTS
+          image-ref: ${{ needs.validate-release.outputs.image-ref }}
+
       - name: Stage OIDC token request for the release container
         shell: bash
         run: |
@@ -220,12 +227,15 @@ jobs:
           } > "${GITHUB_WORKSPACE}/.oidc.env"
 
       - name: Release
-        uses: ./.github/actions/run-ci-command
+        uses: ./.github/actions/run-in-container
         with:
           command: >-
-            . /workspace/.oidc.env;
-            rm -f /workspace/.oidc.env;
+            . /workspace/.oidc.env &&
+            rm -f /workspace/.oidc.env &&
             pnpm release
+          install: "false"
+          mount-cargo-cache: "true"
+          mount-pnpm-store: "true"
           extra-env: >-
             NPM_CONFIG_PROVENANCE
             GTKX_RELEASE_NATIVE_ARTIFACTS
@@ -247,7 +257,11 @@ jobs:
             GITHUB_ACTOR_ID
             GITHUB_JOB
             RUNNER_ENVIRONMENT
-          image-ref: ${{ needs.validate-release.outputs.image-ref }}
+
+      - name: Remove staged publishing credentials
+        if: always()
+        shell: bash
+        run: rm -f "${GITHUB_WORKSPACE}/.oidc.env"
 
   publish-release:
     needs: publish
