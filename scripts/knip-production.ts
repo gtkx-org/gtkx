@@ -5,7 +5,7 @@ import base from "../knip.json" with { type: "json" };
 
 type PackageManifest = {
     private?: boolean;
-    exports?: Record<string, string | { source?: string }>;
+    exports?: Record<string, string | { source?: string; default?: string }>;
 };
 
 type Configuration = Extract<KnipConfig, { workspaces?: unknown }>;
@@ -25,9 +25,9 @@ const dynamicDependencies: Record<string, string[]> = {
 
 const publicEntries = (manifest: PackageManifest): string[] =>
     Object.values(manifest.exports ?? {}).flatMap((entry) => {
-        const source = typeof entry === "string" ? entry : entry.source;
+        const source = typeof entry === "string" ? entry : entry.source ?? entry.default;
 
-        return source !== undefined && /\.(?:[cm]?ts|tsx)$/.test(source) ? [`${source}!`] : [];
+        return source !== undefined && /\.(?:[cm]?[jt]s|[jt]sx)$/.test(source) ? [`${source}!`] : [];
     });
 
 const workspaceConfig = (path: string, manifest: PackageManifest): WorkspaceConfig => {
@@ -42,7 +42,7 @@ const workspaceConfig = (path: string, manifest: PackageManifest): WorkspaceConf
             ...publicEntries(manifest),
             ...(existsSync(join(root, path, "src/cli.ts")) ? ["src/cli.ts!"] : []),
         ],
-        project: ["src/**/*.{ts,tsx,mts}!", "bin/**/*.js!", "*.d.ts!"],
+        project: ["src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}!", "bin/**/*.{js,mjs,cjs}!", "*.{js,mjs,cjs,d.ts}!"],
         ignoreDependencies: [
             ...(existing.ignoreDependencies ?? []),
             "^@gtkx/gi(/.*)?$",

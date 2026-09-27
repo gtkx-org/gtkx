@@ -44,6 +44,8 @@ Language tools were invoked through `mise exec --`. A temporary shim exposed the
 
 Hosted [CI run 36337434385](https://github.com/gtkx-org/gtkx/actions/runs/36337434385) passed all 30 coverage shards, both sanitizer shards, lint, typechecking, documentation, and both publish rehearsals. Fresh x64 and ARM image builds also passed. The separate Sonar quality gate exposed a coverage-path defect: container reports originated under `/workspace`, but merging on the host produced paths Sonar could not resolve. Hosted acceptance requires the corrected report handoff to pass the external quality gate as well as the Actions aggregate.
 
+[CI run 36339224839](https://github.com/gtkx-org/gtkx/actions/runs/36339224839) subsequently passed the full Actions aggregate and external Sonar quality gate. New-code coverage was 100%, overall coverage was 88.9%, and all 707 source paths resolved. This run also verified authenticated image reuse and successful downstream execution when image builds were skipped. A later failed shard retained its structured coverage artifact for fourteen days; its raw-upload step succeeded but had no subprocess profiles to upload.
+
 ## External work and deliberate deferrals
 
 [Repository settings](./repository-settings.md) includes current read-only evidence and concrete JSON payloads for required checks, action SHA enforcement, push protection, release/Pages environments, tag protection, and release immutability. Apply settings after reviewing their consequences and observing the new workflow contexts. npm package-side trusted-publisher bindings and Nx Cloud credential scopes still require owner-side verification. The `npm-release` environment must be aligned with every package's trusted-publisher configuration before release.
