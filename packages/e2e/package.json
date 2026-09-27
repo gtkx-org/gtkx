@@ -62,7 +62,11 @@
                 ],
                 "cache": true,
                 "inputs": [
-                    "nodeTests"
+                    "nodeTests",
+                    {
+                        "dependentTasksOutputFiles": "**/*.node",
+                        "transitive": true
+                    }
                 ],
                 "options": {
                     "cwd": "{projectRoot}"
@@ -105,7 +109,8 @@
                 "{workspaceRoot}/packages/vitest/src/**/*",
                 "{workspaceRoot}/packages/codegen/src/**/*",
                 "{workspaceRoot}/packages/runtime/src/**/*",
-                "{workspaceRoot}/packages/utils/src/**/*"
+                "{workspaceRoot}/packages/utils/src/**/*",
+                "nativeEnvironment"
             ]
         }
     },

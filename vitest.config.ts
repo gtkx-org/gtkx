@@ -6,8 +6,27 @@ const projects = [
     "examples/gtk-demo/vitest.config.ts",
     "examples/storybook/vitest.config.ts",
 ];
+const coverageProjects = (): string[] => {
+    switch (process.env.GTKX_COVERAGE_GROUP) {
+        case undefined: {
+            return projects;
+        }
+        case "core": {
+            return [...projects, "!packages/cli/vitest.config.ts", "!packages/mcp/vitest.config.ts"];
+        }
+        case "cli": {
+            return ["packages/cli/vitest.config.ts"];
+        }
+        case "mcp": {
+            return ["packages/mcp/vitest.config.ts"];
+        }
+        default: {
+            throw new Error("Unknown coverage project group");
+        }
+    }
+};
 const projectConfig = process.env.GTKX_COVERAGE_MERGE === undefined
-    ? { projects }
+    ? { projects: coverageProjects() }
     : {};
 
 export default defineConfig({
@@ -18,7 +37,7 @@ export default defineConfig({
             allowExternal: true,
             reporter: process.env.GTKX_COVERAGE_SHARD === undefined ? ["lcovonly", "text-summary"] : [],
             reportsDirectory: "coverage",
-            include: ["packages/*/src/**/*.{ts,tsx}"],
+            include: ["packages/*/src/**/*.{ts,tsx}", "packages/native/{binding,bootstrap,internal,main}.js"],
             exclude: [
                 "**/dist/**",
                 "**/out-tsc/**",

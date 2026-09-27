@@ -37,6 +37,31 @@
             },
             {
                 "env": "NODE_VERSION"
+            },
+            "{workspaceRoot}/scripts/cache-environment.ts",
+            {
+                "runtime": "node scripts/cache-environment.ts runtime"
+            }
+        ],
+        "nativeEnvironment": [
+            "{workspaceRoot}/scripts/cache-environment.ts",
+            {
+                "env": "CI_IMAGE_ID"
+            },
+            {
+                "env": "RUSTUP_TOOLCHAIN"
+            },
+            {
+                "env": "RUSTFLAGS"
+            },
+            {
+                "env": "CARGO_ENCODED_RUSTFLAGS"
+            },
+            {
+                "env": "CARGO_BUILD_TARGET"
+            },
+            {
+                "runtime": "node scripts/cache-environment.ts native"
             }
         ]
     },
@@ -53,7 +78,8 @@
                 }
             },
             "exclude": [
-                "packages/eslint/tests/fixtures/**"
+                "packages/eslint/tests/fixtures/**",
+                "packages/cli/tests/fixtures/**"
             ]
         },
         {
@@ -62,7 +88,8 @@
                 "targetName": "lint"
             },
             "exclude": [
-                "packages/eslint/tests/fixtures/**"
+                "packages/eslint/tests/fixtures/**",
+                "packages/cli/tests/fixtures/**"
             ]
         },
         {
@@ -130,6 +157,8 @@
                         "eslint-plugin-react-hooks",
                         "eslint-plugin-sonarjs",
                         "eslint-plugin-unicorn",
+                        "eslint-plugin-vue",
+                        "vue-eslint-parser",
                         "jiti"
                     ]
                 }
@@ -137,17 +166,15 @@
         },
         "test": {
             "dependsOn": [
-                "gtkx:codegen",
-                "@gtkx/vitest:build",
-                "@gtkx/cairo:build",
-                "@gtkx/cli:build",
-                "@gtkx/components:build",
-                "@gtkx/css:build",
-                "@gtkx/forms:build",
-                "@gtkx/gl:build",
-                "@gtkx/i18n:build",
-                "@gtkx/navigation:build",
-                "@gtkx/storybook:build"
+                "^build",
+                "gtkx:codegen"
+            ],
+            "inputs": [
+                "...",
+                {
+                    "dependentTasksOutputFiles": "**/*.node",
+                    "transitive": true
+                }
             ]
         },
         "release": {

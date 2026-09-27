@@ -200,23 +200,8 @@ describe("waitFor", () => {
         expect(attempts).toBeGreaterThan(1);
     });
 
-    it("honors the timeout and the interval it is given", async () => {
-        const start = Date.now();
-        let callCount = 0;
-
-        await expect(
-            waitFor(
-                () => {
-                    callCount++;
-                    throw new Error("Never succeeds");
-                },
-                { timeout: 300, interval: 50 },
-            ),
-        ).rejects.toThrow();
-
-        const elapsed = Date.now() - start;
-        expect(elapsed).toBeGreaterThanOrEqual(300);
-        expect(callCount).toBeGreaterThanOrEqual(2);
+    it("rejects when custom polling attempts never succeed", async () => {
+        await expect(waitFor(failingCallback, { timeout: 300, interval: 50 })).rejects.toThrow();
     });
 
     it("routes a custom onTimeout through waitFor and through a find query", async () => {

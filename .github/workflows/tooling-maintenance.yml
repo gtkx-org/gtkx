@@ -1,0 +1,48 @@
+name: Tooling maintenance
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-advisories:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Select repository Rust toolchain
+        run: rustup show
+
+      - name: Install pinned cargo-audit
+        run: cargo install cargo-audit --version 0.22.2 --locked --root "$RUNNER_TEMP/cargo-audit"
+
+      - name: Record dependency license inventory
+        shell: bash
+        run: |
+          cargo metadata --manifest-path packages/native/Cargo.toml --locked --format-version 1 |
+            jq '[.packages[] | {name, version, license, license_file, source}] | sort_by(.name, .version)' > cargo-licenses.json
+
+      - name: Check locked native dependencies
+        shell: bash
+        run: |
+          "$RUNNER_TEMP/cargo-audit/bin/cargo-audit" audit \
+            --file packages/native/Cargo.lock --json | tee cargo-audit.json
+
+      - name: Retain advisory report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: cargo-audit
+          path: |
+            cargo-audit.json
+            cargo-licenses.json
+          if-no-files-found: ignore
+          overwrite: true
+          retention-days: 14

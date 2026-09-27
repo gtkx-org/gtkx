@@ -16,6 +16,7 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { runServer } from "verdaccio";
+import { verifyNativeArtifacts } from "./native-artifact.js";
 
 type HostNativeTarget = { triple: string; platformPackage: string };
 
@@ -522,8 +523,15 @@ const prepareHostOnlyPublish = (): (() => void) => {
 };
 
 async function stageNativeArtifacts(): Promise<void> {
-    await runAsync("nx", ["run", "@gtkx/native:build"], { env: process.env });
     const artifactsDir = join(NATIVE_DIR, "artifacts");
+
+    if (process.env.GTKX_RELEASE_NATIVE_ARTIFACTS === "true") {
+        verifyNativeArtifacts(artifactsDir, process.arch);
+
+        return;
+    }
+
+    await runAsync("nx", ["run", "@gtkx/native:build"], { env: process.env });
     mkdirSync(artifactsDir, { recursive: true });
 
     for (const entry of readdirSync(NATIVE_DIR)) {
@@ -581,7 +589,7 @@ async function buildPackages(packages: PublishablePackage[], env: NodeJS.Process
 }
 
 async function publishPackages(env: NodeJS.ProcessEnv): Promise<void> {
-    await runAsync("nx", ["run-many", "-t", "release", "--skip-nx-cache"], { env });
+    await runAsync("tsx", [join(ROOT_DIR, "scripts", "release.ts")], { env });
 }
 
 function closeServer(server: Server): Promise<void> {

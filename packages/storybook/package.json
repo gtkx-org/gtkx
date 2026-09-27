@@ -75,12 +75,14 @@
         "storybook": "10.6.0"
     },
     "peerDependencies": {
+        "@types/react": "^19.3",
         "react": "^19.3"
     },
     "devDependencies": {
         "@gtkx/config": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@gtkx/vitest": "workspace:*",
+        "@types/react": "catalog:",
         "vitest": "catalog:"
     }
 }

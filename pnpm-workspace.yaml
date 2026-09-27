@@ -6,7 +6,10 @@ packages:
   - "!examples/tutorial"
   - website
 
-minimumReleaseAge: 0
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - '@gtkx/*'
+  - create-gtkx
 trustPolicy: no-downgrade
 
 verifyDepsBeforeRun: false

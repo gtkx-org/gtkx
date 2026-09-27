@@ -80,6 +80,7 @@
         "react-i18next": "^17.0.15"
     },
     "peerDependencies": {
+        "@types/react": "^19.3",
         "react": "^19.3"
     },
     "devDependencies": {

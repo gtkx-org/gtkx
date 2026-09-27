@@ -1,0 +1,13 @@
+[advisories]
+ignore = []
+informational_warnings = ["unmaintained", "unsound"]
+
+[output]
+deny = ["unsound"]
+format = "terminal"
+quiet = false
+show_tree = true
+
+[database]
+fetch = true
+stale = false
