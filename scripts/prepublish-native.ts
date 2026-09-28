@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { nativeArtifactHash, verifyNativeArtifacts } from "./native-artifact.js";
 import { publishPackage } from "./pnpm-publish.js";
 import { distTagForVersion, type PackageManifest } from "./publish-manifest.js";
+import { checkReleaseChannel } from "./release-channel.js";
 import { nativePlatforms } from "./release-package-set.js";
 
 const packageDir = process.cwd();
@@ -73,6 +74,7 @@ for (const platform of platforms) {
     }
 
     writeFileSync(platformManifestPath, `${JSON.stringify(platformManifest, null, 2)}\n`);
+    await checkReleaseChannel([platformDir]);
     await publishPackage(platformDir, tag);
 }
 
