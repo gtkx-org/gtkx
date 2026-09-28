@@ -5,8 +5,6 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import type { PackageManifest } from "./publish-manifest.js";
 
-type PublishOutcome = "published" | "already-published";
-
 const ALREADY_PUBLISHED = /cannot publish over|EPUBLISHCONFLICT|previously published version/i;
 const DEFAULT_VISIBILITY_TIMEOUT_MS = 600_000;
 const VISIBILITY_TIMEOUT_ENV = "GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS";
@@ -42,15 +40,15 @@ const runPnpmPublish = (packageDir: string, tag: string): SpawnSyncReturns<strin
     });
 };
 
-const publishOutcome = (packageDir: string, result: SpawnSyncReturns<string>, output: string): PublishOutcome => {
+const checkPublishResult = (packageDir: string, result: SpawnSyncReturns<string>, output: string): void => {
     if (result.status === 0) {
-        return "published";
+        return;
     }
 
     if (ALREADY_PUBLISHED.test(output)) {
         console.log(`${packageDir} is already published, skipping`);
 
-        return "already-published";
+        return;
     }
 
     throw new Error(`pnpm publish failed with exit code ${String(result.status ?? "unknown")}`);
@@ -140,20 +138,16 @@ const field = (value: unknown, key: string): unknown =>
 
 const isVersionVisible = (document: unknown, version: string): boolean => field(document, "version") === version;
 
-const isTagVisible = (document: unknown, tag: string | undefined, version: string): boolean => {
-    if (tag === undefined) {
-        return true;
-    }
-
+const isTagVisible = (document: unknown, tag: string, version: string): boolean => {
     const tags = field(document, "dist-tags");
 
     return tags !== null && typeof tags === "object" && Reflect.get(tags, tag) === version;
 };
 
-const describeExpected = (name: string, version: string, tag: string | undefined): string =>
-    tag === undefined ? `${name}@${version}` : `${name}@${version} with dist-tag ${tag}`;
+const describeExpected = (name: string, version: string, tag: string): string =>
+    `${name}@${version} with dist-tag ${tag}`;
 
-const waitForVisibility = async (packageDir: string, tag: string | undefined, timeoutMs: number): Promise<void> => {
+const waitForVisibility = async (packageDir: string, tag: string, timeoutMs: number): Promise<void> => {
     const { name, version, manifest } = packageIdentity(packageDir);
     const registry = registryFor(packageDir, name, manifest);
     const encodedName = encodeURIComponent(name);
@@ -189,9 +183,19 @@ const waitForVisibility = async (packageDir: string, tag: string | undefined, ti
 
 const publishPackage = async (packageDir: string, tag: string): Promise<void> => {
     const timeoutMs = visibilityTimeoutMs();
-    const { version } = packageIdentity(packageDir);
-    const stagingTag = `gtkx-release-${tag}-${version.replaceAll("+", "-")}`;
-    const result = runPnpmPublish(packageDir, stagingTag);
+    const { name, version, manifest } = packageIdentity(packageDir);
+    const registry = registryFor(packageDir, name, manifest);
+    const versionUrl = new URL(`${encodeURIComponent(name)}/${encodeURIComponent(version)}`, registry);
+    const published = await registryDocument(versionUrl, Math.min(REGISTRY_REQUEST_TIMEOUT_MS, timeoutMs));
+
+    if (isVersionVisible(published, version)) {
+        console.log(`${packageDir} is already published, skipping`);
+        await waitForVisibility(packageDir, tag, timeoutMs);
+
+        return;
+    }
+
+    const result = runPnpmPublish(packageDir, tag);
     const { stdout, stderr } = result;
     process.stdout.write(stdout);
     process.stderr.write(stderr);
@@ -200,8 +204,8 @@ const publishPackage = async (packageDir: string, tag: string): Promise<void> =>
         throw result.error;
     }
 
-    const outcome = publishOutcome(packageDir, result, `${stdout}${stderr}`);
-    await waitForVisibility(packageDir, outcome === "published" ? stagingTag : undefined, timeoutMs);
+    checkPublishResult(packageDir, result, `${stdout}${stderr}`);
+    await waitForVisibility(packageDir, tag, timeoutMs);
 };
 
 export { packageIdentity, publishPackage, registryFor, visibilityTimeoutMs, waitForVisibility };

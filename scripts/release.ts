@@ -1,7 +1,7 @@
 import { resolveExecutable } from "@gtkx/utils";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { checkReleaseChannel, promoteRelease } from "./release-channel.js";
+import { checkReleaseChannel, verifyReleaseChannel } from "./release-channel.js";
 import { releasePackageDirectories } from "./release-package-set.js";
 
 const run = async (command: string, args: string[]): Promise<void> => new Promise((resolve, reject) => {
@@ -21,4 +21,4 @@ await run("pnpm", [
 ]);
 await checkReleaseChannel(releasePackageDirectories());
 await run("nx", ["run-many", "-t", "release", "--skip-nx-cache", "--outputStyle=stream"]);
-await promoteRelease(releasePackageDirectories());
+await verifyReleaseChannel(releasePackageDirectories());

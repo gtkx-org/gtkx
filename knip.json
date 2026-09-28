@@ -89,8 +89,7 @@
                 "cache-environment.ts",
                 "ci-plan.ts",
                 "ci-run.ts",
-                "knip-production.ts",
-                "promote-release.ts"
+                "knip-production.ts"
             ],
             "ignoreDependencies": [
                 "@napi-rs/cli"
