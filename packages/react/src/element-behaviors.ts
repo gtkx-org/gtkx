@@ -34,7 +34,6 @@ import {
     forTypes,
     registerElements,
 } from "./reconciler/registry.js";
-import { applyWrite } from "./reconciler/signals.js";
 
 type AdwChildSetter =
     | Adw.Bin |
@@ -88,25 +87,6 @@ const textViewAnchorChildren: ElementBehavior<Gtk.TextView> = {
         if (isWidget(child) && child.getParent() === view) {
             view.remove(child);
         }
-    },
-};
-
-const windowDefaultSize: ElementBehavior<Gtk.Window> = {
-    update: (window, prev, next) => {
-        if (Object.is(prev.defaultWidth, next.defaultWidth) && Object.is(prev.defaultHeight, next.defaultHeight)) {
-            return ["defaultWidth", "defaultHeight"];
-        }
-
-        const width = typeof next.defaultWidth === "number" ? next.defaultWidth : -1;
-        const height = typeof next.defaultHeight === "number" ? next.defaultHeight : -1;
-
-        applyWrite("defaultWidth", () => {
-            applyWrite("defaultHeight", () => {
-                window.setDefaultSize(width, height);
-            });
-        });
-
-        return ["defaultWidth", "defaultHeight"];
     },
 };
 
@@ -166,7 +146,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         ],
     }),
     GtkWindow: {
-        behaviors: [childSetterSlot(), windowDefaultSize],
+        behaviors: [childSetterSlot()],
     },
     GtkWidget: {
         behaviors: [
