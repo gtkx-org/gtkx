@@ -25,11 +25,11 @@ catalog:
   '@types/ejs': ^3.1.5
   '@types/node': ^26.5.1
   '@types/react': ^19.3.0
-  '@vitest/coverage-v8': ^5.0.1
+  '@vitest/coverage-v8': ^5.0.2
   ejs: ^6.0.1
   react: ^19.3.0
   typescript: ^6.0.3
-  vite: ^8.3.0
+  vite: ^8.3.1
   vitest: ^5.0.1
   yaml: ^2.9.1
   zod: ^4.6.5
@@ -51,7 +51,7 @@ peerDependencyRules:
 
 overrides:
   'nx>smol-toml': ^1.8.0
-  vite: ^8.3.0
+  vite: ^8.3.1
   'yaml@^2.0.0': ^2.9.1
   qs: ^6.16.0
   axios: ^1.20.0
