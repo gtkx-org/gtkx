@@ -18,9 +18,11 @@ const packages = globSync("packages/*/package.json", { cwd: root }).map((path) =
     manifest: JSON.parse(readFileSync(join(root, path), "utf8")) as PackageManifest,
 }));
 
-const dynamicDependencies: Record<string, string[]> = {
+const ignoredProductionDependencies: Record<string, string[]> = {
+    "packages/animated": ["@react-spring/types"],
     "packages/cli": ["react", "@gtkx/react", "@gtkx/testing"],
     "packages/codegen": ["@gtkx/cairo"],
+    "packages/gl": ["@gtkx/native"],
 };
 
 const publicEntries = (manifest: PackageManifest): string[] =>
@@ -47,7 +49,7 @@ const workspaceConfig = (path: string, manifest: PackageManifest): WorkspaceConf
             ...(existing.ignoreDependencies ?? []),
             "^@gtkx/gi(/.*)?$",
             "^@gtkx/jsx(/.*)?$",
-            ...(dynamicDependencies[path] ?? []),
+            ...(ignoredProductionDependencies[path] ?? []),
         ],
     };
 };
