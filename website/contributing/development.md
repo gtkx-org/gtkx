@@ -71,7 +71,7 @@ pnpm nx show project @gtkx/react
 
 ## Generated bindings
 
-The root `gtkx.config.ts` re-exports `gtkx.config.base.ts`. That configuration selects the workspace's additional native libraries and reads `GTKX_GIR_PATH` when GIR files are installed outside the normal search paths.
+The root `gtkx.config.ts` defines the shared configuration imported by workspace packages. It selects the workspace's additional native libraries and reads `GTKX_GIR_PATH` when GIR files are installed outside the normal search paths.
 
 Regenerate the workspace's bindings and other codegen targets through Nx:
 

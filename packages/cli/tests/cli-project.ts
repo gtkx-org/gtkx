@@ -4,7 +4,7 @@ import { cpSync, mkdirSync, mkdtempDisposableSync, readdirSync, rmSync, symlinkS
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import workspaceConfig from "../../../gtkx.config.base.js";
+import workspaceConfig from "../../../gtkx.config.js";
 import { installNativePackage } from "./native-package-fixture.js";
 
 type CliProject = { root: string; nodeModules: string; tmpDir: string };

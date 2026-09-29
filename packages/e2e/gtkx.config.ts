@@ -1,5 +1,5 @@
 import { defineConfig, mergeConfig } from "@gtkx/config";
-import base from "../../gtkx.config.base.js";
+import base from "../../gtkx.config.js";
 
 export default mergeConfig(
     base,
