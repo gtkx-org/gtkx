@@ -7,6 +7,7 @@ import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loa
 import { sourceLanguage } from "../internal/source-imports.js";
 import { projectSchemaFiles, SCHEMA_SUFFIX, stageAndCompileProjectSchemas } from "../settings/schema.js";
 import { createStorybookSession, type StorybookSession } from "../storybook/session.js";
+import { isUrlSpecifier } from "../vite-plugins/asset-specifier.js";
 import { createChangeQueue, type WatchedChange } from "./change-queue.js";
 import { DEV_STORYBOOK_ENV } from "./entry-env.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
@@ -270,6 +271,15 @@ const refreshChangedModule = async (
 };
 
 const applyModuleChange = async (session: DevSession, changedPath: string, action: string): Promise<void> => {
+    const fileModules = session.server.moduleGraph.getModulesByFile(changedPath);
+
+    if (fileModules?.values().some((module) => module.id !== null && isUrlSpecifier(module.id))) {
+        session.deps.log(`${action}: ${changedPath}`);
+        await requestRestart(session);
+
+        return;
+    }
+
     const module = session.server.moduleGraph.getModuleById(changedPath);
 
     if (!module) {
