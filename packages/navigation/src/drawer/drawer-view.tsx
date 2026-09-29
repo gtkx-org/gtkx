@@ -39,6 +39,7 @@ type DrawerHeaderProps = {
 
 type DrawerPageProps = {
     descriptor: DrawerDescriptor;
+    isFocused: boolean;
     isLoaded: boolean;
 };
 
@@ -111,13 +112,14 @@ const DrawerHeader = ({ descriptor, navigation }: DrawerHeaderProps): ReactNode 
     );
 };
 
-const DrawerPage = ({ descriptor, isLoaded }: DrawerPageProps): ReactNode => {
+const DrawerPage = ({ descriptor, isFocused, isLoaded }: DrawerPageProps): ReactNode => {
     const { route, options } = descriptor;
 
     return (
         <ScenePage
             name={route.key}
             title={options.title ?? route.name}
+            isFocused={isFocused}
             isLoaded={isLoaded || options.lazy === false}
             render={() => descriptor.render()}
         />
@@ -153,6 +155,7 @@ const DrawerView = ({ state, navigation, descriptors, drawerContent, ...config }
                             <DrawerPage
                                 key={route.key}
                                 descriptor={requireDescriptor(descriptors, route.key)}
+                                isFocused={route.key === focused.key}
                                 isLoaded={route.key === focused.key || state.preloadedRouteKeys.includes(route.key)}
                             />
                         ))}

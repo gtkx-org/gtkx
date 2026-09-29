@@ -8,11 +8,12 @@ type ScenePageProps = {
     iconName?: string;
     badgeNumber?: number;
     needsAttention?: boolean;
+    isFocused: boolean;
     isLoaded: boolean;
     render: () => ReactElement;
 };
 
-const ScenePage = ({ name, title, isLoaded, render, ...page }: ScenePageProps): ReactNode => {
+const ScenePage = ({ name, title, isFocused, isLoaded, render, ...page }: ScenePageProps): ReactNode => {
     const [hasLoaded, setHasLoaded] = useState(isLoaded);
 
     if (isLoaded && !hasLoaded) {
@@ -26,6 +27,7 @@ const ScenePage = ({ name, title, isLoaded, render, ...page }: ScenePageProps): 
             iconName={page.iconName}
             badgeNumber={page.badgeNumber}
             needsAttention={page.needsAttention}
+            accessibleHidden={!isFocused}
             useUnderline={false}
         >
             <AdwBin>{hasLoaded ? render() : null}</AdwBin>

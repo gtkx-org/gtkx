@@ -23,6 +23,7 @@ type TabHeaderProps = {
 
 type TabPageProps = {
     descriptor: TabDescriptor;
+    isFocused: boolean;
     isLoaded: boolean;
 };
 
@@ -67,7 +68,7 @@ const TabHeader = (props: TabHeaderProps): ReactNode => {
     );
 };
 
-const TabPage = ({ descriptor, isLoaded }: TabPageProps): ReactNode => {
+const TabPage = ({ descriptor, isFocused, isLoaded }: TabPageProps): ReactNode => {
     const { route, options } = descriptor;
 
     return (
@@ -77,6 +78,7 @@ const TabPage = ({ descriptor, isLoaded }: TabPageProps): ReactNode => {
             iconName={options.tabBarIcon}
             badgeNumber={options.tabBarBadge}
             needsAttention={options.needsAttention}
+            isFocused={isFocused}
             isLoaded={isLoaded || options.lazy === false}
             render={() => descriptor.render()}
         />
@@ -113,6 +115,7 @@ const TabView = ({ state, navigation, descriptors, tabBarPosition = "top" }: Tab
                     <TabPage
                         key={route.key}
                         descriptor={requireDescriptor(descriptors, route.key)}
+                        isFocused={route.key === focused.key}
                         isLoaded={route.key === focused.key || state.preloadedRouteKeys.includes(route.key)}
                     />
                 ))}
