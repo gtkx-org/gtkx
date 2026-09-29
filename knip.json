@@ -73,8 +73,7 @@
     "workspaces": {
         ".": {
             "entry": [
-                "gtkx.config.ts",
-                "gtkx.config.base.ts"
+                "gtkx.config.ts"
             ],
             "ignoreDependencies": [
                 "@gtkx/cairo",

@@ -7,7 +7,7 @@
         "tests/**/*.ts",
         "tests/**/*.tsx",
         "tests/**/*.mts",
-        "../../gtkx.config.base.ts"
+        "../../gtkx.config.ts"
     ],
     "references": [
         {
