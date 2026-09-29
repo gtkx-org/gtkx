@@ -120,26 +120,30 @@ pub enum HandleClass {
 
 struct ObjectLifetime {
     ended: Arc<AtomicBool>,
+    weak: Arc<glib::SendWeakRef<glib::Object>>,
 }
 
 impl ObjectLifetime {
-    fn track(object: &glib::Object) -> Arc<AtomicBool> {
+    fn track(object: &glib::Object) -> (Arc<AtomicBool>, Arc<glib::SendWeakRef<glib::Object>>) {
         let key = glib::Quark::from_static_str(glib::gstr!("gtkx-object-lifetime"));
         if let Some(lifetime) = unsafe { object.qdata::<Self>(key) } {
-            return Arc::clone(&unsafe { lifetime.as_ref() }.ended);
+            let lifetime = unsafe { lifetime.as_ref() };
+            return (Arc::clone(&lifetime.ended), Arc::clone(&lifetime.weak));
         }
 
         let ended = Arc::new(AtomicBool::new(false));
+        let weak = Arc::new(object.downgrade().into());
         unsafe {
             object.set_qdata(
                 key,
                 Self {
                     ended: Arc::clone(&ended),
+                    weak: Arc::clone(&weak),
                 },
             );
         }
 
-        ended
+        (ended, weak)
     }
 }
 
@@ -155,7 +159,7 @@ enum HandleKind {
         owned: Cell<Option<glib::Object>>,
         lent: bool,
         lifetime: Option<Arc<AtomicBool>>,
-        weak: glib::WeakRef<glib::Object>,
+        weak: Arc<glib::SendWeakRef<glib::Object>>,
         wrapper: RefCell<std::rc::Weak<crate::value::wrapper::WrapperHandle>>,
     },
     Boxed(Boxed),
@@ -441,8 +445,7 @@ impl Handle {
     #[must_use]
     pub fn decoded_gobject(object: glib::Object) -> Self {
         let ptr = object.as_ptr().cast::<c_void>();
-        let lifetime = ObjectLifetime::track(&object);
-        let weak = object.downgrade();
+        let (lifetime, weak) = ObjectLifetime::track(&object);
         HandleKind::Object {
             ptr: Cell::new(ptr),
             owned: Cell::new(Some(object)),
@@ -465,7 +468,7 @@ impl Handle {
             owned: Cell::new(None),
             lent: true,
             lifetime: None,
-            weak: glib::WeakRef::new(),
+            weak: Arc::new(glib::SendWeakRef::default()),
             wrapper: RefCell::new(std::rc::Weak::new()),
         }
         .into();
