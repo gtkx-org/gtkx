@@ -20,6 +20,7 @@ publicHoistPattern:
 trustPolicyExclude:
   - pino@9.14.0
   - semver@6.3.1
+  - why-is-node-running@3.2.2
 
 catalog:
   '@types/ejs': ^3.1.5
