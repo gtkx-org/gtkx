@@ -70,7 +70,7 @@ const textSuggestion = (queryName: Method, variant: Variant, value: string | nul
 /**
  * Computes the recommended query for reaching the given widget, preferring role, then label text,
  * placeholder text, text, display value, and name.
- * @param widget Widget to build a suggestion for.
+ * @param target Widget to build a suggestion for.
  * @param variant Query variant the suggestion should use.
  * @param method Restrict the suggestion to a specific query family instead of choosing by priority.
  * @returns The best available suggestion, or undefined when no query applies.

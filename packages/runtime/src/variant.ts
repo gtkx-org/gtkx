@@ -508,24 +508,48 @@ const toVariant = <S extends string>(typeString: S, value: VariantInput<S>): GLi
  *
  * @param typeString One complete GVariant type matching the variant.
  * @param variant Variant to unpack.
- * @param options Whether to unwrap nested variants recursively.
  * @returns The unpacked value.
  * @throws {Error} If the type string is not one complete GVariant type.
  */
 function fromVariant<S extends string>(typeString: S, variant: GLib.Variant): VariantValue<S>;
 
+/**
+ * Unpacks a `GLib.Variant` and every nested variant, typing the result from `typeString`.
+ *
+ * @param typeString One complete GVariant type matching the variant.
+ * @param variant Variant to unpack.
+ * @param options Enables recursive unwrapping of nested variants.
+ * @returns The unpacked value with nested variants fully unwrapped.
+ * @throws {Error} If the type string is not one complete GVariant type.
+ */
 function fromVariant<S extends string>(
     typeString: S,
     variant: GLib.Variant,
     options: RecursiveFromVariantOptions,
 ): RecursiveVariantValue<S>;
 
+/**
+ * Unpacks a `GLib.Variant` with configurable recursive unwrapping.
+ *
+ * @param typeString One complete GVariant type matching the variant.
+ * @param variant Variant to unpack.
+ * @param options Whether to unwrap nested variants recursively.
+ * @returns The unpacked value, typed according to `typeString` and the unwrapping options.
+ * @throws {Error} If the type string is not one complete GVariant type.
+ */
 function fromVariant<S extends string>(
     typeString: S,
     variant: GLib.Variant,
     options: FromVariantOptions,
 ): VariantValue<S> | RecursiveVariantValue<S>;
 
+/**
+ * Unpacks a `GLib.Variant` using its own type string.
+ *
+ * @param variant Variant to unpack.
+ * @param options Whether to unwrap nested variants recursively.
+ * @returns The unpacked value, typed as `unknown` because no type string was supplied.
+ */
 function fromVariant(variant: GLib.Variant, options?: FromVariantOptions): unknown;
 
 function fromVariant(

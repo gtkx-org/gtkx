@@ -1,6 +1,6 @@
 {
     "entryPoints": [
         "./env.d.ts",
-        "./dist/vitest-plugin.d.ts"
+        "./src/vitest-plugin.ts"
     ]
 }

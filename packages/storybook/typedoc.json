@@ -1,8 +1,8 @@
 {
     "entryPoints": [
-        "./dist/index.d.ts",
-        "./dist/config.d.ts",
-        "./dist/explorer.d.ts"
+        "./src/index.ts",
+        "./src/config.ts",
+        "./src/explorer.ts"
     ],
     "intentionallyNotExported": [
         "Annotations",

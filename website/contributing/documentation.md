@@ -14,7 +14,7 @@ pnpm nx run @gtkx/website:dev
 pnpm nx run @gtkx/website:build
 ```
 
-Both targets generate API pages from package output before starting VitePress. Build the site and inspect the rendered pages after editing prose, navigation, or theme components.
+Both targets build the packages and generate API pages before starting VitePress. The working-tree reference reads public source entrypoints so inferred fields retain their JSDoc and declarations link to source files. Build the site and inspect the rendered pages after editing prose, navigation, or theme components.
 
 Edit exported API documentation at its package source, then regenerate it. Generated reference files are overwritten. The project widget reference in `.gtkx/reference` describes generated elements and their props; the website package reference describes helpers exported by GTKX packages.
 

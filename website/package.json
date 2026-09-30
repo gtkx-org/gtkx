@@ -99,7 +99,10 @@
                     "{workspaceRoot}/api.json",
                     "{workspaceRoot}/packages/eslint/src/api-entrypoints.ts",
                     {
-                        "dependentTasksOutputFiles": "**/*.{d.ts,d.mts}",
+                        "runtime": "git rev-parse HEAD"
+                    },
+                    {
+                        "dependentTasksOutputFiles": "**/*.{d.ts,d.mts,d.ts.map,d.mts.map}",
                         "transitive": true
                     },
                     {
