@@ -5,7 +5,6 @@
     ],
     "intentionallyNotExported": [
         "LoadConfigOptions",
-        "ResolvedReactCompilerOptions",
-        "configSchema"
+        "ResolvedReactCompilerOptions"
     ]
 }

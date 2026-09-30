@@ -65,7 +65,12 @@ for (const [name, entryPoints] of entryPointsByPackage) {
 export default {
     $schema: "https://typedoc.org/schema.json",
     name: "API Reference",
-    plugin: ["typedoc-plugin-markdown", "typedoc-vitepress-theme", "./typedoc-route-safe-router.mjs"],
+    plugin: [
+        "typedoc-plugin-markdown",
+        "typedoc-plugin-zod",
+        "typedoc-vitepress-theme",
+        "./typedoc-route-safe-router.mjs",
+    ],
     router: "route-safe",
     publicModuleNames,
     entryPointStrategy: "packages",

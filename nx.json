@@ -193,6 +193,7 @@
                 "**/tests/**",
                 "**/*.test.ts",
                 "**/*.test.tsx",
+                "**/typedoc.json",
                 "**/*.md"
             ]
         },
