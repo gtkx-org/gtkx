@@ -7,6 +7,7 @@ import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loa
 import { sourceLanguage } from "../internal/source-imports.js";
 import { projectSchemaFiles, SCHEMA_SUFFIX, stageAndCompileProjectSchemas } from "../settings/schema.js";
 import { createStorybookSession, type StorybookSession } from "../storybook/session.js";
+import { isUrlSpecifier } from "../vite-plugins/asset-specifier.js";
 import { createChangeQueue, type WatchedChange } from "./change-queue.js";
 import { DEV_STORYBOOK_ENV } from "./entry-env.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
@@ -422,6 +423,19 @@ const hasChangedSchemaInputs = (session: DevSession, change: WatchedChange): boo
     );
 };
 
+const didRestartForUrlAsset = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
+    const fileModules = session.server.moduleGraph.getModulesByFile(change.path);
+
+    if (fileModules?.values().some((module) => module.id !== null && isUrlSpecifier(module.id))) {
+        session.deps.log(`URL asset ${change.event}: ${change.path}`);
+        await requestRestart(session);
+
+        return true;
+    }
+
+    return false;
+};
+
 const didRestartForChange = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
     const { root } = session.server.config;
 
@@ -449,7 +463,7 @@ const didRestartForChange = async (session: DevSession, change: WatchedChange): 
         return true;
     }
 
-    return false;
+    return didRestartForUrlAsset(session, change);
 };
 
 const applyChange = async (session: DevSession, change: WatchedChange): Promise<void> => {
