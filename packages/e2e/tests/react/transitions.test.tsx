@@ -45,7 +45,7 @@ it("unmounts while a native signal has scheduled a transition", async () => {
     expect(screen.queryByRole(Gtk.AccessibleRole.BUTTON)).toBeNull();
 });
 
-it("reports an error thrown while rendering a transition", async () => {
+it("unmounts a failed transition and reports its error", async () => {
     const errors: unknown[] = [];
     const button = createRef<Gtk.Button>();
     const root = createRoot({ ...rootElement }, { onUncaughtError: (error) => {
@@ -73,16 +73,18 @@ it("reports an error thrown while rendering a transition", async () => {
         await act(() => {
             root.render(<Probe />);
         });
-        if (button.current === null) {
+        const mountedButton = button.current;
+        if (mountedButton === null) {
             throw new Error("Button did not mount");
         }
-        button.current.emit("clicked");
+        mountedButton.emit("clicked");
         const deadline = Date.now() + 3000;
-        while (errors.length === 0 && Date.now() < deadline) {
+        while ((errors.length === 0 || button.current !== null) && Date.now() < deadline) {
             await new Promise((resolve) => setTimeout(resolve, 10));
         }
         expect(errors.length).toBeGreaterThan(0);
         expect(errors[0]).toBeInstanceOf(Error);
+        expect(button.current).toBeNull();
     } finally {
         await act(() => {
             root.unmount();
