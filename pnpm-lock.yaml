@@ -1185,6 +1185,9 @@ importers:
       typedoc-plugin-markdown:
         specifier: ^4.13.1
         version: 4.13.1(typedoc@0.28.20(typescript@6.0.3))
+      typedoc-plugin-zod:
+        specifier: ^1.4.3
+        version: 1.4.3(typedoc@0.28.20(typescript@6.0.3))
       typedoc-vitepress-theme:
         specifier: ^1.1.4
         version: 1.1.4(typedoc-plugin-markdown@4.13.1(typedoc@0.28.20(typescript@6.0.3)))(typedoc@0.28.20(typescript@6.0.3))
@@ -7121,6 +7124,11 @@ packages:
     engines: {node: '>= 18'}
     peerDependencies:
       typedoc: 0.28.x
+
+  typedoc-plugin-zod@1.4.3:
+    resolution: {integrity: sha512-j3kb4dGGK5OegtiIOH4F4etYdqq2lh+sTx6sABTmptPJJm8qx9XHyNlzfLYqW86ZVfL0hFR3+B/Ij9YXQw9TsA==}
+    peerDependencies:
+      typedoc: 0.23.x || 0.24.x || 0.25.x || 0.26.x || 0.27.x || 0.28.x
 
   typedoc-vitepress-theme@1.1.4:
     resolution: {integrity: sha512-RDFWSuFUYgHv8UYZnHRaTaep53+Tl/4dsl5EN+6laSdTFKp920KHdDNovHD1OKGqnJr47kXNwOM7LFj3IWMrtw==}
@@ -13812,6 +13820,10 @@ snapshots:
       mime-types: 3.0.2
 
   typedoc-plugin-markdown@4.13.1(typedoc@0.28.20(typescript@6.0.3)):
+    dependencies:
+      typedoc: 0.28.20(typescript@6.0.3)
+
+  typedoc-plugin-zod@1.4.3(typedoc@0.28.20(typescript@6.0.3)):
     dependencies:
       typedoc: 0.28.20(typescript@6.0.3)
 
