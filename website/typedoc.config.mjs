@@ -35,7 +35,7 @@ const readTypedocEntryPoints = (dir) => {
     }
 };
 
-for (const { dir, name, path } of resolveEntrypoints(root, api.entrypoints, "types")) {
+for (const { dir, name, path } of resolveEntrypoints(root, api.entrypoints, "source")) {
     packageDirs.set(name, dir);
     entryPointsByPackage.set(name, [...(entryPointsByPackage.get(name) ?? []), path]);
 }
@@ -52,7 +52,7 @@ for (const specifier of api.entrypoints) {
 for (const [name, entryPoints] of entryPointsByPackage) {
     const dir = packageDirs.get(name);
     const expected = entryPoints.toSorted(byName);
-    const actual = (readTypedocEntryPoints(dir) ?? ["./dist/index.d.ts"]).toSorted(byName);
+    const actual = (readTypedocEntryPoints(dir) ?? ["./src/index.ts"]).toSorted(byName);
 
     if (JSON.stringify(expected) !== JSON.stringify(actual)) {
         throw new Error(
@@ -70,14 +70,15 @@ export default {
         "typedoc-plugin-zod",
         "typedoc-vitepress-theme",
         "./typedoc-route-safe-router.mjs",
+        "./typedoc-source-docs.mjs",
     ],
     router: "route-safe",
     publicModuleNames,
     entryPointStrategy: "packages",
     entryPoints: packageDirs.values().map((dir) => relative(here, dir)).toArray(),
     packageOptions: {
-        entryPoints: ["./dist/index.d.ts"],
-        tsconfig: "../../website/tsconfig.typedoc.json",
+        entryPoints: ["./src/index.ts"],
+        tsconfig: "./tsconfig.lib.json",
         readme: "none",
     },
     treatWarningsAsErrors: true,

@@ -180,6 +180,17 @@ function newObjectWithProperties<T extends object>(gtype: bigint, props: object,
 }
 
 /**
+ * Reads a GObject property using the object's generated property types.
+ *
+ * @param obj The object to read from.
+ * @param propertyName The property name.
+ */
+function getProperty<
+    TObject extends { __properties__: object },
+    TPropertyMap extends object = Extract<ReadableProperties<TObject>, object>,
+    TName extends Extract<keyof NoInfer<TPropertyMap>, string> = Extract<keyof NoInfer<TPropertyMap>, string>,
+>(obj: TObject, propertyName: TName): NoInfer<TPropertyMap>[TName];
+/**
  * Reads a GObject property and converts it to its JavaScript value using the
  * descriptor.
  *
@@ -187,11 +198,6 @@ function newObjectWithProperties<T extends object>(gtype: bigint, props: object,
  * @param propertyName The property name.
  * @param descriptor Describes the property's type.
  */
-function getProperty<
-    TObject extends { __properties__: object },
-    TPropertyMap extends object = Extract<ReadableProperties<TObject>, object>,
-    TName extends Extract<keyof NoInfer<TPropertyMap>, string> = Extract<keyof NoInfer<TPropertyMap>, string>,
->(obj: TObject, propertyName: TName): NoInfer<TPropertyMap>[TName];
 function getProperty(obj: object, propertyName: string, descriptor: Descriptor): unknown;
 function getProperty(obj: object, propertyName: string, descriptor?: Descriptor): unknown {
     if (arguments.length === 2) {
@@ -216,6 +222,18 @@ function getObjectProperty(obj: object, propertyName: string): unknown {
 }
 
 /**
+ * Writes a GObject property using the object's generated writable property types.
+ *
+ * @param obj The object to write to.
+ * @param propertyName The property name.
+ * @param jsValue The value to set.
+ */
+function setProperty<
+    TObject extends { __writableProperties__: object },
+    TPropertyMap extends object = Extract<WritableProperties<TObject>, object>,
+    TName extends Extract<keyof NoInfer<TPropertyMap>, string> = Extract<keyof NoInfer<TPropertyMap>, string>,
+>(obj: TObject, propertyName: TName, jsValue: NoInfer<TPropertyMap>[TName]): void;
+/**
  * Writes a JavaScript value to a GObject property, converting it to native form
  * using the descriptor.
  *
@@ -224,11 +242,6 @@ function getObjectProperty(obj: object, propertyName: string): unknown {
  * @param descriptor Describes the property's type.
  * @param jsValue The value to set.
  */
-function setProperty<
-    TObject extends { __writableProperties__: object },
-    TPropertyMap extends object = Extract<WritableProperties<TObject>, object>,
-    TName extends Extract<keyof NoInfer<TPropertyMap>, string> = Extract<keyof NoInfer<TPropertyMap>, string>,
->(obj: TObject, propertyName: TName, jsValue: NoInfer<TPropertyMap>[TName]): void;
 function setProperty(obj: object, propertyName: string, descriptor: Descriptor, jsValue: unknown): void;
 function setProperty(
     obj: object,

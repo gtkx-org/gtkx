@@ -1,3 +1,10 @@
-export { type Config, defineConfig, mergeConfig, type ResolvedConfig } from "./config.ts";
-export { type DeployExtraFileOptions, type DeployNodeOptions } from "./deploy.ts";
+export { type Config, defineConfig, type ElementConfigOptions, mergeConfig, type ResolvedConfig } from "./config.ts";
+export {
+    type DeployDesktopActionOptions,
+    type DeployExtraFileOptions,
+    type DeployFileAssociationOptions,
+    type DeployNodeOptions,
+    type DeployReleaseOptions,
+    type DeployScreenshotOptions,
+} from "./deploy.ts";
 export { type ConfigLoader, type LoadedConfig, loadConfig } from "./loader.ts";

@@ -1,7 +1,7 @@
 {
     "entryPoints": [
-        "./dist/index.d.ts",
-        "./dist/config.d.ts"
+        "./src/index.ts",
+        "./src/config.ts"
     ],
     "intentionallyNotExported": [
         "Container",

@@ -1,7 +1,7 @@
 {
     "entryPoints": [
-        "./dist/index.d.ts",
-        "./dist/vite-plugin.d.ts"
+        "./src/index.ts",
+        "./src/vite-plugin.ts"
     ],
     "intentionallyNotExported": [
         "LoadConfigOptions",

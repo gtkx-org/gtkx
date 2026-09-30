@@ -3,6 +3,7 @@
     "compilerOptions": {
         "isolatedDeclarations": false
     },
+    "include": ["src/**/*", "env.d.ts"],
     "references": [
       {
         "path": "../native/tsconfig.lib.json"

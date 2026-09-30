@@ -7,7 +7,7 @@ type ControllerConstructor<T extends Gtk.EventController> = new () => T;
 /**
  * Returns every controller of the given type attached to a widget, in the order GTK4 reports them.
  *
- * @param widget The widget whose controllers are inspected.
+ * @param target The widget whose controllers are inspected.
  * @param controllerType The controller class to match.
  * @returns The matching controllers, or an empty array when the widget has none.
  */
