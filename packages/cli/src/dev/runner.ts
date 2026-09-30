@@ -271,15 +271,6 @@ const refreshChangedModule = async (
 };
 
 const applyModuleChange = async (session: DevSession, changedPath: string, action: string): Promise<void> => {
-    const fileModules = session.server.moduleGraph.getModulesByFile(changedPath);
-
-    if (fileModules?.values().some((module) => module.id !== null && isUrlSpecifier(module.id))) {
-        session.deps.log(`${action}: ${changedPath}`);
-        await requestRestart(session);
-
-        return;
-    }
-
     const module = session.server.moduleGraph.getModuleById(changedPath);
 
     if (!module) {
@@ -432,6 +423,19 @@ const hasChangedSchemaInputs = (session: DevSession, change: WatchedChange): boo
     );
 };
 
+const didRestartForUrlAsset = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
+    const fileModules = session.server.moduleGraph.getModulesByFile(change.path);
+
+    if (fileModules?.values().some((module) => module.id !== null && isUrlSpecifier(module.id))) {
+        session.deps.log(`URL asset ${change.event}: ${change.path}`);
+        await requestRestart(session);
+
+        return true;
+    }
+
+    return false;
+};
+
 const didRestartForChange = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
     const { root } = session.server.config;
 
@@ -459,7 +463,7 @@ const didRestartForChange = async (session: DevSession, change: WatchedChange): 
         return true;
     }
 
-    return false;
+    return didRestartForUrlAsset(session, change);
 };
 
 const applyChange = async (session: DevSession, change: WatchedChange): Promise<void> => {

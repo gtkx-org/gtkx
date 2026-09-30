@@ -1,5 +1,6 @@
 import { isRecord } from "@gtkx/utils";
 import { basename, dirname, extname } from "node:path";
+import { stripQuery } from "../vite-plugins/strip-query.js";
 
 const LOAD_FAILURE_PATTERN = /Failed to load url (\S+)/;
 const INDEX_NAME = "index";
@@ -24,7 +25,7 @@ const missingImportName = (cause: unknown): string | null => {
         return null;
     }
 
-    const name = fileName(url);
+    const name = fileName(stripQuery(url));
 
     return NAMELESS_URLS.has(name) ? null : name;
 };
