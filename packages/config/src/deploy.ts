@@ -478,7 +478,10 @@ const deploySchema = z.strictObject({
     desktopActions: z
         .record(z.string(), desktopActionSchema, { error: "must be a record of action ids to actions" })
         .optional(),
-    /** Additional desktop entry keys, overriding generated values with the same key. */
+    /**
+     * Additional desktop entry keys, overriding non-reserved generated values.
+     * `DBusActivatable` and `Version` are rejected; use `deploy.isDbusActivatable` for D-Bus activation.
+     */
     desktopEntry: textRecord("must be a desktop entry value", "must be a record of desktop entry keys to values")
         .optional(),
     /** Additional XML fragments appended to the AppStream component. */
