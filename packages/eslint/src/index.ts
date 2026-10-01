@@ -180,6 +180,7 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "@typescript-eslint/naming-convention": ["error", ...NAMING_CONVENTION],
     "@typescript-eslint/no-empty-object-type": ["error", { allowInterfaces: "with-single-extends" }],
     "@typescript-eslint/no-generated-empty-object-type": "off",
+    "@typescript-eslint/no-unsafe-enum-assignment": "off",
     "@typescript-eslint/no-restricted-imports": [
         "error",
         {
