@@ -1,0 +1,81 @@
+{
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "name": "@gtkx/native",
+    "namedInputs": {
+        "crate": [
+            "{projectRoot}/src/**/*",
+            "{projectRoot}/build.rs",
+            "{projectRoot}/Cargo.toml",
+            "{projectRoot}/Cargo.lock",
+            "{projectRoot}/package.json",
+            "{workspaceRoot}/rust-toolchain.toml",
+            {
+                "runtime": "uname -m"
+            },
+            "nativeEnvironment"
+        ]
+    },
+    "targets": {
+        "build": {
+            "dependsOn": [],
+            "cache": true,
+            "inputs": [
+                "crate",
+                "{workspaceRoot}/scripts/build-native.ts",
+                "{workspaceRoot}/scripts/native-artifact.ts",
+                "{projectRoot}/artifacts/native.*.node",
+                "{projectRoot}/artifacts/native.*.node.sha256",
+                {
+                    "env": "GTKX_RELEASE_NATIVE_ARTIFACTS"
+                }
+            ],
+            "outputs": [
+                "{projectRoot}/index.d.ts",
+                "{projectRoot}/index.js",
+                "{projectRoot}/native.*.node"
+            ]
+        },
+        "lint:rust": {
+            "cache": true,
+            "inputs": [
+                "crate",
+                "{workspaceRoot}/rustfmt.toml",
+                "{workspaceRoot}/scripts/cargo-nightly.ts",
+                "{workspaceRoot}/scripts/rust-nightly.ts"
+            ],
+            "outputs": []
+        },
+        "create-npm-dirs": {
+            "dependsOn": [
+                "build"
+            ],
+            "cache": true,
+            "inputs": [
+                "crate"
+            ],
+            "outputs": [
+                "{projectRoot}/npm/**"
+            ]
+        },
+        "artifacts": {
+            "dependsOn": [
+                "build",
+                "create-npm-dirs"
+            ],
+            "cache": false
+        },
+        "release": {
+            "dependsOn": [
+                "artifacts",
+                "create-npm-dirs"
+            ],
+            "cache": false
+        },
+        "test": {
+            "dependsOn": [
+                "build"
+            ],
+            "cache": true
+        }
+    }
+}

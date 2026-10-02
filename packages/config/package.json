@@ -58,28 +58,6 @@
     "scripts": {
         "release": "tsx ../../scripts/release-package.ts"
     },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint {projectRoot}"
-                },
-                "dependsOn": []
-            },
-            "build": {
-                "dependsOn": [
-                    "^build"
-                ]
-            },
-            "typecheck": {
-                "dependsOn": [
-                    "build",
-                    "^typecheck"
-                ]
-            }
-        }
-    },
     "engines": {
         "node": ">=26.7.0"
     },

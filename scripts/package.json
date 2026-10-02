@@ -2,15 +2,5 @@
     "name": "@gtkx/scripts",
     "version": "0.0.0",
     "private": true,
-    "type": "module",
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint scripts"
-                }
-            }
-        }
-    }
+    "type": "module"
 }

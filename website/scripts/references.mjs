@@ -124,7 +124,10 @@ const ensureTagCommit = (reference) => {
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
 
 const archiveTarget = (source) => {
-    const targets = readJson(join(source, "website", "package.json")).nx?.targets ?? {};
+    const projectPath = join(source, "website", "project.json");
+    const targets = existsSync(projectPath)
+        ? readJson(projectPath).targets ?? {}
+        : readJson(join(source, "website", "package.json")).nx?.targets ?? {};
 
     return "reference-current" in targets ? "reference-current" : "reference";
 };
@@ -211,7 +214,7 @@ if (mode === "pins") {
     console.log(pins.join("\n"));
 } else if (mode === "sync") {
     syncReferenceOutputs(manifest.versions);
-    console.log("Synchronised the reference output paths in website/package.json.");
+    console.log("Synchronised the reference output paths in website/project.json.");
 } else {
     assertDeclaredOutputs(manifest.versions);
 

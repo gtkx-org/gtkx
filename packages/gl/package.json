@@ -56,43 +56,5 @@
         "@gtkx/codegen": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@types/node": "catalog:"
-    },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint {projectRoot}"
-                }
-            },
-            "codegen": {
-                "cache": true,
-                "dependsOn": [
-                    "gtkx:codegen"
-                ],
-                "inputs": [
-                    "{projectRoot}/scripts/**/*",
-                    "{projectRoot}/src/overrides.ts",
-                    "^production",
-                    "{workspaceRoot}/packages/codegen/src/khronos/**/*"
-                ],
-                "outputs": [
-                    "{projectRoot}/src/generated/**"
-                ]
-            },
-            "build": {
-                "dependsOn": [
-                    "^build",
-                    "gtkx:codegen",
-                    "codegen"
-                ],
-                "inputs": [
-                    "...",
-                    {
-                        "dependentTasksOutputFiles": "**/*.ts"
-                    }
-                ]
-            }
-        }
     }
 }

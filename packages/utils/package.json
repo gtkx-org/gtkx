@@ -42,28 +42,6 @@
     "scripts": {
         "release": "tsx ../../scripts/release-package.ts"
     },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint {projectRoot}"
-                },
-                "dependsOn": []
-            },
-            "build": {
-                "dependsOn": [
-                    "^build"
-                ]
-            },
-            "typecheck": {
-                "dependsOn": [
-                    "build",
-                    "^typecheck"
-                ]
-            }
-        }
-    },
     "dependencies": {
         "@babel/helper-validator-identifier": "^8.0.6",
         "es-toolkit": "^1.51.0",
