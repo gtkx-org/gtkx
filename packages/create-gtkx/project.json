@@ -1,0 +1,35 @@
+{
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "name": "create-gtkx",
+    "targets": {
+        "lint": {
+            "dependsOn": []
+        },
+        "copy-templates": {
+            "cache": true,
+            "inputs": [
+                "{projectRoot}/src/templates/**/*"
+            ],
+            "outputs": [
+                "{projectRoot}/dist/templates/**"
+            ]
+        },
+        "build": {
+            "dependsOn": [
+                "^build",
+                "copy-templates"
+            ]
+        },
+        "typecheck": {
+            "dependsOn": [
+                "build",
+                "^typecheck"
+            ]
+        },
+        "test": {
+            "dependsOn": [
+                "build"
+            ]
+        }
+    }
+}

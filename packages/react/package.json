@@ -73,16 +73,6 @@
     "scripts": {
         "release": "tsx ../../scripts/release-package.ts"
     },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint {projectRoot}"
-                }
-            }
-        }
-    },
     "engines": {
         "node": ">=26.7.0"
     },

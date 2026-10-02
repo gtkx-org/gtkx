@@ -162,7 +162,11 @@
                         "jiti"
                     ]
                 }
-            ]
+            ],
+            "options": {
+                "cwd": ".",
+                "command": "eslint {projectRoot}"
+            }
         },
         "test": {
             "dependsOn": [

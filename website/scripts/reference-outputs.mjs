@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const website = join(here, "..");
-const packagePath = join(website, "package.json");
+const projectPath = join(website, "project.json");
 const PROJECT_ROOT = "{projectRoot}";
 
 const TARGET_SOURCES = [
@@ -26,17 +26,17 @@ const neededOutputs = (versions, source) =>
         .toSorted(byText);
 
 const syncReferenceOutputs = (versions) => {
-    const manifest = readJson(packagePath);
+    const project = readJson(projectPath);
 
     for (const [name, source] of TARGET_SOURCES) {
-        manifest.nx.targets[name].outputs = neededOutputs(versions, source);
+        project.targets[name].outputs = neededOutputs(versions, source);
     }
 
-    writeFileSync(packagePath, `${JSON.stringify(manifest, undefined, 4)}\n`);
+    writeFileSync(projectPath, `${JSON.stringify(project, undefined, 4)}\n`);
 };
 
 const assertDeclaredOutputs = (versions) => {
-    const targets = readJson(packagePath).nx.targets;
+    const targets = readJson(projectPath).targets;
 
     for (const [name, source] of TARGET_SOURCES) {
         const declared = (targets[name].outputs ?? []).toSorted(byText).join(", ");
@@ -44,7 +44,7 @@ const assertDeclaredOutputs = (versions) => {
 
         if (declared !== needed) {
             throw new Error(
-                `website/package.json declares ${name} outputs [${declared}], but versions.json needs [${needed}]. ` +
+                `website/project.json declares ${name} outputs [${declared}], but versions.json needs [${needed}]. ` +
                 "Run pnpm --filter @gtkx/website reference-sync.",
             );
         }

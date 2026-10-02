@@ -69,42 +69,5 @@
         "@types/node": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:"
-    },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint {projectRoot}"
-                },
-                "dependsOn": []
-            },
-            "copy-templates": {
-                "cache": true,
-                "inputs": [
-                    "{projectRoot}/src/templates/**/*"
-                ],
-                "outputs": [
-                    "{projectRoot}/dist/templates/**"
-                ]
-            },
-            "build": {
-                "dependsOn": [
-                    "^build",
-                    "copy-templates"
-                ]
-            },
-            "typecheck": {
-                "dependsOn": [
-                    "build",
-                    "^typecheck"
-                ]
-            },
-            "test": {
-                "dependsOn": [
-                    "build"
-                ]
-            }
-        }
     }
 }

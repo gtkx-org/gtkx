@@ -86,7 +86,7 @@ The CLI uses Vite for application development and bundling. Its plugin stack int
 
 Vitest runs the JavaScript test suites. GTKX's plugin gives workers real headless Wayland displays, while the testing package works with native widgets and accessibility information. Native integration fixtures are built with Meson and Ninja. V8 coverage and an additional subprocess coverage pass account for JavaScript executed by tests and CLI child processes. The native sanitizer target uses AddressSanitizer and LeakSanitizer.
 
-ESLint checks TypeScript and JavaScript, Knip checks unused code and dependencies, and Rust uses rustfmt and Clippy. The exact commands and target dependencies are declared in [nx.json](https://github.com/gtkx-org/gtkx/blob/main/nx.json) and each package's `package.json`.
+ESLint checks TypeScript and JavaScript, Knip checks unused code and dependencies, and Rust uses rustfmt and Clippy. Shared target defaults are declared in [nx.json](https://github.com/gtkx-org/gtkx/blob/main/nx.json), project targets and overrides in `project.json`, and package scripts in `package.json`.
 
 ## Documentation, examples, and distribution
 

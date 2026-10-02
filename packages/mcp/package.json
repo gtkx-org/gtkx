@@ -56,28 +56,6 @@
     "scripts": {
         "release": "tsx ../../scripts/release-package.ts"
     },
-    "nx": {
-        "targets": {
-            "lint": {
-                "options": {
-                    "cwd": ".",
-                    "command": "eslint {projectRoot}"
-                }
-            },
-            "test": {
-                "dependsOn": [
-                    "^build",
-                    "gtkx:codegen",
-                    "@gtkx/cli:build",
-                    "@gtkx/components:build"
-                ],
-                "inputs": [
-                    "...",
-                    "{workspaceRoot}/packages/cli/tests/fixtures/**/*"
-                ]
-            }
-        }
-    },
     "engines": {
         "node": ">=26.7.0"
     },
