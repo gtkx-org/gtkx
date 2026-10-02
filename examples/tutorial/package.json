@@ -27,7 +27,7 @@
         "@gtkx/i18n": "^2.0.0-beta.11",
         "@gtkx/navigation": "^2.0.0-beta.11",
         "@gtkx/react": "^2.0.0-beta.11",
-        "@react-navigation/core": "^7.21.13",
+        "@react-navigation/core": "^7.23.0",
         "react": "^19.3.0",
         "zustand": "^5.0.15"
     },
