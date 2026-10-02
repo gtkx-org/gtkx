@@ -5,9 +5,9 @@ description: "Find the right GTKX test suite, run native integration checks, and
 
 # Testing
 
-Choose the suite that exercises the changed behavior: native widget interactions, generated calls, CLI output, or installed packages. The [testing principles](/contributing/principles#test-behavior-at-the-right-level) define coverage and mock policy; the [application testing guide](/v2/guide/testing) documents rendering, queries, input, and assertions.
+Choose the suite that exercises the changed behavior: native widget interactions, generated calls, CLI output, or installed packages. The [testing principles](/contributing/principles#test-behavior-at-the-right-level) define test scope and mock policy; the [application testing guide](/v2/guide/testing) documents rendering, queries, input, and assertions.
 
-## Where coverage lives
+## Where tests live
 
 | Location | Observable behavior exercised |
 | --- | --- |
@@ -56,7 +56,7 @@ The shared Vitest configuration derives its worker limit from available CPU para
 GTKX_MAX_WORKERS=2 pnpm nx run @gtkx/e2e:test
 ```
 
-The query performance suite is excluded from the ordinary end-to-end target and the root coverage target. Run it deliberately when changing query performance:
+The query performance suite is excluded from the ordinary end-to-end target. Run it deliberately when changing query performance:
 
 ```bash
 pnpm exec vitest run --project e2e packages/e2e/tests/testing/query-perf.test.tsx
@@ -119,15 +119,7 @@ The tutorial script reinstalls the tutorial's dependencies and rebuilds its gene
 pnpm tutorial run test
 ```
 
-## Coverage and other checks
-
-Collect workspace JavaScript coverage with:
-
-```bash
-pnpm coverage
-```
-
-The root coverage target runs Vitest with the V8 provider and then merges coverage from CLI subprocesses. It writes its report under `coverage/`. The GTK demo has its own coverage configuration and line threshold. These reports measure the configured JavaScript and TypeScript sources; Rust memory validation is handled separately by the native tests and sanitizer target.
+## Other checks
 
 Tests complement compilation and static analysis:
 

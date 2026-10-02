@@ -7,7 +7,6 @@ import vitest from "@vitest/eslint-plugin";
 import perfectionist from "eslint-plugin-perfectionist";
 import promise from "eslint-plugin-promise";
 import reactHooks from "eslint-plugin-react-hooks";
-import sonarjs from "eslint-plugin-sonarjs";
 import unicorn from "eslint-plugin-unicorn";
 import vue from "eslint-plugin-vue";
 import { includeIgnoreFile } from "eslint/config";
@@ -132,7 +131,6 @@ const SOURCE_EXTENDS = [
     js.configs.recommended,
     tseslint.configs.strictTypeChecked,
     tseslint.configs.stylisticTypeChecked,
-    sonarjs.configs.recommended,
     promise.configs["flat/recommended"],
     reactHooks.configs.flat.recommended,
     unicorn.configs.recommended,
@@ -229,12 +227,6 @@ const SOURCE_RULES: Linter.RulesRecord = {
     "react-hooks/exhaustive-deps": "error",
     "react-hooks/incompatible-library": "error",
     "react-hooks/unsupported-syntax": "error",
-    "sonarjs/cognitive-complexity": ["error", 5],
-    "sonarjs/deprecation": "off",
-    "sonarjs/fixme-tag": "off",
-    "sonarjs/prefer-read-only-props": "off",
-    "sonarjs/redundant-type-aliases": "off",
-    "sonarjs/todo-tag": "off",
     "unicorn/filename-case": ["error", { case: "kebabCase" }],
     "unicorn/import-style": ["error", { styles: { path: { default: false, named: true } } }],
     "unicorn/name-replacements": "off",

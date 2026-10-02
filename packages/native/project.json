@@ -59,23 +59,20 @@
         },
         "artifacts": {
             "dependsOn": [
-                "build",
                 "create-npm-dirs"
             ],
             "cache": false
         },
         "release": {
             "dependsOn": [
-                "artifacts",
-                "create-npm-dirs"
+                "artifacts"
             ],
             "cache": false
         },
         "test": {
             "dependsOn": [
                 "build"
-            ],
-            "cache": true
+            ]
         }
     }
 }

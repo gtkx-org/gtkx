@@ -1,5 +1,7 @@
 .env
 .nx/cache
+.nx/migrate-runs
+.nx/self-healing
 .nx/workspace-data
 *.log
 *.tsbuildinfo
@@ -10,8 +12,6 @@
 /AGENTS.md
 /CLAUDE.md
 build/
-coverage/
-coverage-artifacts/
 dist/
 gschemas.compiled
 node_modules/

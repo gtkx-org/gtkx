@@ -6,9 +6,6 @@
     "include": ["src/**/*", "env.d.ts"],
     "references": [
       {
-        "path": "../native/tsconfig.lib.json"
-      },
-      {
         "path": "../create-gtkx/tsconfig.lib.json"
       },
       {
@@ -21,6 +18,9 @@
         "path": "../runtime/tsconfig.lib.json"
       },
       {
+        "path": "../native/tsconfig.lib.json"
+      },
+      {
         "path": "../mcp/tsconfig.lib.json"
       },
       {
@@ -31,6 +31,9 @@
       },
       {
         "path": "../testing/tsconfig.lib.json"
+      },
+      {
+        "path": "../react/tsconfig.lib.json"
       }
     ]
 }

@@ -2,7 +2,7 @@ import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, expect, it } from "vitest";
-import { coverageTimeout, createCliProject, startCli } from "./cli-project.js";
+import { createCliProject, startCli } from "./cli-project.js";
 import {
     BASE_DECLARATION,
     installConfiguredProps,
@@ -57,7 +57,7 @@ describe("configured element prop reference", () => {
         });
 
         try {
-            await expect.poll(() => existsSync(ready), { timeout: coverageTimeout(60_000) }).toBe(true);
+            await expect.poll(() => existsSync(ready), { timeout: 60_000 }).toBe(true);
             writeFileSync(declaration, BASE_DECLARATION);
             writeFileSync(released, "");
             const status = await closed;

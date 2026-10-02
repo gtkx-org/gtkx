@@ -36,8 +36,7 @@ const CLI_ARGV = ["--enable-source-maps", CLI_ENTRY];
 const PACKAGE_MANAGERS = ["corepack", "pnpm", "npm", "yarn"];
 const PROJECT_NAME = "my-app";
 const APPLICATION_ID = "com.example.myapp";
-const COVERAGE_SLOWDOWN = 3;
-const CREATE_TIMEOUT_MS = 120_000 * (process.env.GTKX_COVERAGE_DIR === undefined ? 1 : COVERAGE_SLOWDOWN);
+const CREATE_TIMEOUT_MS = 120_000;
 const LOG_NAME = "package-manager.log";
 const TERMINAL_COMMAND = 'exec "$GTKX_CREATE_NODE" --input-type=commonjs -e ' +
     "'const { spawnSync } = require(\"node:child_process\"); " +
@@ -72,7 +71,6 @@ const createEnvironment = (workspace: Workspace): NodeJS.ProcessEnv => ({
     ...process.env,
     PATH: `${workspace.binDir}:${process.env.PATH ?? ""}`,
     GTKX_PACKAGE_MANAGER_LOG: workspace.logPath,
-    ...(process.env.GTKX_COVERAGE_DIR !== undefined && { NODE_V8_COVERAGE: process.env.GTKX_COVERAGE_DIR }),
 });
 
 const readInstalls = (logPath: string): string[] =>

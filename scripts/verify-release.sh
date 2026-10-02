@@ -47,7 +47,7 @@ while true; do
   checks="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${release_sha}/check-runs?per_page=100&filter=latest" --paginate --slurp)"
   if jq -e '
     [.[].check_runs[]] as $checks |
-    [["SonarCloud Code Analysis", 12526], ["Analyze (actions)", 15368],
+    [["Analyze (actions)", 15368],
      ["Analyze (javascript-typescript)", 15368], ["Analyze (rust)", 15368]] |
     all(. as $required | [$checks[] | select(.name == $required[0] and .app.id == $required[1])]
       | max_by(.id) | .conclusion == "success")
@@ -56,7 +56,7 @@ while true; do
   fi
   if jq -e '
     [.[].check_runs[]] as $checks |
-    [["SonarCloud Code Analysis", 12526], ["Analyze (actions)", 15368],
+    [["Analyze (actions)", 15368],
      ["Analyze (javascript-typescript)", 15368], ["Analyze (rust)", 15368]] |
     any(. as $required | [$checks[] | select(.name == $required[0] and .app.id == $required[1])]
       | max_by(.id) | .status == "completed" and .conclusion != "success")

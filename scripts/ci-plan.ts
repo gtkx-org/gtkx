@@ -20,14 +20,12 @@ if (!isStringList(result)) {
 }
 
 const projects: Set<string> = new Set(result);
-const examples = new Set(["animations", "navigation", "gtk-demo", "browser", "hello-world", "storybook-example"]);
 const separate = new Set(["@gtkx/animated", "@gtkx/cli", "@gtkx/mcp"]);
-const hasCoverage = process.env.GTKX_CI_COVERAGE === "true";
 
 console.log(JSON.stringify({
-    core: [...projects].some((project) => hasCoverage ? examples.has(project) : !separate.has(project)),
-    animated: !hasCoverage && projects.has("@gtkx/animated"),
-    cli: !hasCoverage && projects.has("@gtkx/cli"),
-    mcp: !hasCoverage && projects.has("@gtkx/mcp"),
+    core: [...projects].some((project) => !separate.has(project)),
+    animated: projects.has("@gtkx/animated"),
+    cli: projects.has("@gtkx/cli"),
+    mcp: projects.has("@gtkx/mcp"),
     projects: [...projects].toSorted((left, right) => left.localeCompare(right)),
 }));

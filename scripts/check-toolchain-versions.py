@@ -17,7 +17,6 @@ mise = tomllib.loads((root / "mise.toml").read_text())["tools"]
 rust = tomllib.loads((root / "rust-toolchain.toml").read_text())["toolchain"]
 manifest = json.loads((root / "package.json").read_text())
 nightly = (root / "scripts/rust-nightly.ts").read_text()
-sonar = (root / ".github/workflows/sonarcloud.yml").read_text()
 minimum = (root / "scripts/check-minimum-node.sh").read_text()
 
 versions = {
@@ -32,7 +31,6 @@ versions = {
         value(r'const RUST_NIGHTLY = "([^"]+)";', nightly),
         value(r"^ARG RUST_NIGHTLY=(\S+)$", dockerfile),
     ),
-    "Sonar Node": (mise["node"], value(r"^\s+node-version: (\S+)$", sonar)),
     "Minimum Node": (manifest["engines"]["node"], ">=" + value(r"^minimum_node=(\S+)$", minimum)),
 }
 
