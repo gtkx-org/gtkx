@@ -29,6 +29,8 @@ type TabNavigationOptions = HeaderOptions & {
     header?: (props: TabHeaderProps) => ReactNode;
     /** Label shown in the view switcher; defaults to `title`, then to the route name. */
     tabBarLabel?: string;
+    /** Whether underscores in the tab label indicate mnemonics; defaults to `false`. */
+    useUnderline?: boolean;
     /** Icon name shown in the view switcher. */
     tabBarIcon?: string;
     /** Badge number shown in the view switcher; `0` hides the badge. */

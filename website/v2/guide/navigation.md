@@ -193,6 +193,10 @@ export const Mail = ({ unread }: { unread: number }) => (
 
 The switcher uses each screen's label, icon, badge and attention options. Tabs mount when first focused unless `lazy: false` is set. Set `animation: "fade"` for a crossfade.
 
+Set `useUnderline: true` to interpret underscores in the switcher label as keyboard mnemonics. For example, combine `title: "World"`, `tabBarLabel: "_World"`, and `useUnderline: true` in a screen's options to let Alt+W select the tab in either switcher position. The default is `false`, so existing labels keep literal underscores. With mnemonics enabled, write `__` for a literal underscore.
+
+Header titles remain plain text. Use `tabBarLabel` for mnemonic text and keep `title` plain, or provide a separate `headerTitle` when the mnemonic is in `title`.
+
 With a top switcher, leave the header's title widget available for it. To supply `headerTitle`, move the switcher to the bottom or place it explicitly through a custom `header`. Hiding the header leaves a top switcher visible on its own.
 
 User selection emits `tabPress`, which a screen listener can prevent. Programmatic selection uses React Navigation's tab actions. The [tab options reference](/v2/reference/@gtkx/navigation/type-aliases/TabNavigationOptions) covers the remaining settings.
@@ -221,6 +225,8 @@ export const App = ({ isNarrow }: { isNarrow: boolean }) => (
 ```
 
 Set `collapsed` when the layout needs an overlay sidebar; the sidebar then closes after a selection. In a wide layout it stays beside the content. `defaultStatus` controls its initial visibility, and `pinSidebar` preserves visibility across collapse changes.
+
+Set `useUnderline: true` to enable keyboard mnemonics in drawer labels. For example, combine `title: "Settings"`, `drawerLabel: "_Settings"`, and `useUnderline: true` in a screen's options to let Alt+S select the screen while the sidebar is visible. Header titles remain plain text. Mnemonics default to disabled; when enabled, `__` displays a literal underscore.
 
 Native opening and dismissal update the drawer's navigation state, so gestures and React Navigation's drawer actions stay in sync. See the [drawer configuration reference](/v2/reference/@gtkx/navigation/type-aliases/DrawerNavigationConfig) for sizing and placement.
 
