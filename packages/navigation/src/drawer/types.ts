@@ -29,6 +29,8 @@ type DrawerNavigationOptions = HeaderOptions & {
     header?: (props: DrawerHeaderProps) => ReactNode;
     /** Label shown in the sidebar; defaults to `title`, then to the route name. */
     drawerLabel?: string;
+    /** Whether underscores in the sidebar label indicate mnemonics; defaults to `false`. */
+    useUnderline?: boolean;
     /** Icon name shown next to the sidebar label. */
     drawerIcon?: string;
     /** Whether the screen mounts on first focus instead of at startup; defaults to `true`. */

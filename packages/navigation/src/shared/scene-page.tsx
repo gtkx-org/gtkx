@@ -8,6 +8,7 @@ type ScenePageProps = {
     iconName?: string;
     badgeNumber?: number;
     needsAttention?: boolean;
+    useUnderline?: boolean;
     isFocused: boolean;
     isLoaded: boolean;
     render: () => ReactElement;
@@ -28,7 +29,7 @@ const ScenePage = ({ name, title, isFocused, isLoaded, render, ...page }: SceneP
             badgeNumber={page.badgeNumber}
             needsAttention={page.needsAttention}
             accessibleHidden={!isFocused}
-            useUnderline={false}
+            useUnderline={page.useUnderline ?? false}
         >
             <AdwBin>{hasLoaded ? render() : null}</AdwBin>
         </AdwViewStackPage>

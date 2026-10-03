@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkListBox, GtkListBoxRow } from "@gtkx/jsx/gtk";
 import { CommonActions, DrawerActions } from "@react-navigation/core";
-import { useCallback, useContext } from "react";
+import { useCallback, useContext, useState } from "react";
 import type { DrawerContentProps, DrawerDescriptor, DrawerNavigationHelpers } from "./types.js";
 import { requireDescriptor } from "../shared/routes.js";
 import { DrawerCollapsedContext } from "./drawer-collapsed-context.js";
@@ -44,12 +44,13 @@ const useDrawerItemPress = (navigation: DrawerNavigationHelpers, isCollapsed: bo
 const DrawerItem = ({ descriptor }: { descriptor: DrawerDescriptor }): ReactNode => {
     const { route, options } = descriptor;
     const label = options.drawerLabel ?? options.title ?? route.name;
+    const [labelWidget, setLabelWidget] = useState<Gtk.Label | null>(null);
 
     return (
-        <GtkListBoxRow accessibleLabel={label}>
+        <GtkListBoxRow accessibleLabelledBy={labelWidget === null ? undefined : [labelWidget]}>
             <GtkBox spacing={12}>
                 {options.drawerIcon === undefined ? null : <GtkImage iconName={options.drawerIcon} />}
-                <GtkLabel label={label} xalign={0} />
+                <GtkLabel ref={setLabelWidget} label={label} useUnderline={options.useUnderline ?? false} xalign={0} />
             </GtkBox>
         </GtkListBoxRow>
     );

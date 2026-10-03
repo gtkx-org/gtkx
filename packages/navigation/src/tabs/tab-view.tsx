@@ -75,6 +75,7 @@ const TabPage = ({ descriptor, isFocused, isLoaded }: TabPageProps): ReactNode =
         <ScenePage
             name={route.key}
             title={options.tabBarLabel ?? options.title ?? route.name}
+            useUnderline={options.useUnderline}
             iconName={options.tabBarIcon}
             badgeNumber={options.tabBarBadge}
             needsAttention={options.needsAttention}
