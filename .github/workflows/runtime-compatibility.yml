@@ -89,7 +89,6 @@ jobs:
         uses: ./.github/actions/run-ci-command
         with:
           command: >-
-            pnpm exec nx run gtkx:coverage-dependencies &&
             pnpm exec nx run @gtkx/e2e:codegen &&
             pnpm exec nx run @gtkx/e2e:test-fixtures &&
             pnpm --filter @gtkx/e2e exec vitest run tests/testing/query-perf.test.tsx

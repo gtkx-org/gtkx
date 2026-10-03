@@ -25,7 +25,6 @@
         "@gtkx/config": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/testing": "workspace:*",
-        "@vitest/coverage-v8": "catalog:",
         "vite": "catalog:",
         "vitest": "catalog:"
     }

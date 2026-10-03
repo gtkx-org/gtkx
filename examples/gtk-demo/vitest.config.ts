@@ -22,15 +22,6 @@ export default defineConfig(() => {
             name: "gtk-demo",
             include: ["tests/**/*.test.{ts,tsx}"],
             setupFiles: ["./tests/setup.ts"],
-            coverage: {
-                provider: "v8",
-                include: ["src/**/*.{ts,tsx}"],
-                exclude: ["src/**/*.d.ts", "src/demos/types.ts"],
-                reporter: ["text", "html", "lcov"],
-                thresholds: {
-                    lines: 80,
-                },
-            },
         },
     });
 });

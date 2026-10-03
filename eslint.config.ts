@@ -31,7 +31,6 @@ export default [
         files: ["packages/codegen/src/fingerprint.ts"],
         rules: {
             "unicorn/require-array-sort-compare": "off",
-            "sonarjs/no-alphabetical-sort": "off",
         },
     },
     {

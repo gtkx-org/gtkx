@@ -20,6 +20,7 @@
         "composite": false,
         "declaration": false,
         "declarationMap": false,
-        "outDir": "dist"
+        "outDir": "dist",
+        "incremental": true
     }
 }

@@ -1,10 +1,6 @@
 {
     "$schema": "./node_modules/nx/schemas/nx-schema.json",
-    "defaultBase": "main",
     "analytics": false,
-    "sync": {
-        "disabledTaskSyncGenerators": ["@nx/js:typescript-sync"]
-    },
     "namedInputs": {
         "default": [
             "{projectRoot}/**/*",
@@ -41,6 +37,30 @@
             "{workspaceRoot}/scripts/cache-environment.ts",
             {
                 "runtime": "node scripts/cache-environment.ts runtime"
+            }
+        ],
+        "eslintConfig": [
+            "{workspaceRoot}/api.json",
+            "{workspaceRoot}/eslint.config.ts",
+            "{workspaceRoot}/packages/eslint/src/**/*",
+            "{workspaceRoot}/packages/eslint/package.json",
+            {
+                "externalDependencies": [
+                    "eslint",
+                    "typescript",
+                    "typescript-eslint",
+                    "@eslint/js",
+                    "@nx/eslint-plugin",
+                    "@stylistic/eslint-plugin",
+                    "@vitest/eslint-plugin",
+                    "eslint-plugin-perfectionist",
+                    "eslint-plugin-promise",
+                    "eslint-plugin-react-hooks",
+                    "eslint-plugin-unicorn",
+                    "eslint-plugin-vue",
+                    "vue-eslint-parser",
+                    "jiti"
+                ]
             }
         ],
         "nativeEnvironment": [
@@ -112,7 +132,7 @@
     "targetDefaults": {
         "build": {
             "dependsOn": [
-                "^build",
+                "...",
                 "gtkx:codegen"
             ],
             "inputs": [
@@ -122,8 +142,7 @@
         },
         "typecheck": {
             "dependsOn": [
-                "build",
-                "^typecheck",
+                "...",
                 "gtkx:codegen"
             ],
             "inputs": [
@@ -139,34 +158,8 @@
             "inputs": [
                 "default",
                 "^default",
-                "{workspaceRoot}/api.json",
-                "{workspaceRoot}/eslint.config.ts",
-                "{workspaceRoot}/packages/eslint/src/**/*",
-                "{workspaceRoot}/packages/eslint/package.json",
-                {
-                    "externalDependencies": [
-                        "eslint",
-                        "typescript",
-                        "typescript-eslint",
-                        "@eslint/js",
-                        "@nx/eslint-plugin",
-                        "@stylistic/eslint-plugin",
-                        "@vitest/eslint-plugin",
-                        "eslint-plugin-perfectionist",
-                        "eslint-plugin-promise",
-                        "eslint-plugin-react-hooks",
-                        "eslint-plugin-sonarjs",
-                        "eslint-plugin-unicorn",
-                        "eslint-plugin-vue",
-                        "vue-eslint-parser",
-                        "jiti"
-                    ]
-                }
-            ],
-            "options": {
-                "cwd": ".",
-                "command": "eslint {projectRoot}"
-            }
+                "eslintConfig"
+            ]
         },
         "test": {
             "dependsOn": [
@@ -191,7 +184,6 @@
         }
     },
     "release": {
-        "projectsRelationship": "fixed",
         "versionPlans": {
             "ignorePatternsForPlanCheck": [
                 "**/tests/**",
@@ -203,10 +195,7 @@
         },
         "version": {
             "git": {
-                "commit": false,
-                "tag": false,
-                "stageChanges": false,
-                "push": false
+                "stageChanges": false
             },
             "versionActionsOptions": {
                 "skipLockFileUpdate": true
@@ -215,15 +204,8 @@
         "changelog": {
             "git": {
                 "commit": false,
-                "tag": false,
-                "stageChanges": false,
-                "push": false
-            },
-            "workspaceChangelog": {
-                "file": "{workspaceRoot}/CHANGELOG.md",
-                "createRelease": false
-            },
-            "projectChangelogs": false
+                "tag": false
+            }
         }
     }
 }

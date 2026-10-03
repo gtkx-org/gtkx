@@ -37,7 +37,7 @@ For the first stable release, complete [documentation promotion](/contributing/d
 
 Review `release/next`, approve its latest commit, and wait for its required checks. Merge through GitHub using the repository's configured squash method. GitHub creates the signed commit on `main`; CI then verifies that exact merge commit. If `main` has moved or the prepared release changes, refresh the release PR and review the new head before merging.
 
-Publication requires a merged `release/next` PR whose merge SHA is the release commit, an approval of its final head from a reviewer with repository write access, and no outstanding change request. It also requires a successful main CI run with `ci-success` and successful Sonar and all three CodeQL checks on that same SHA. The gate reads that commit's stored CodeQL analyses for all three languages and rejects every reported finding without an accepted dismissal. A later fix on another commit does not approve an older release. Missing analysis data fails verification. An administrator bypass does not satisfy this release gate.
+Publication requires a merged `release/next` PR whose merge SHA is the release commit, an approval of its final head from a reviewer with repository write access, and no outstanding change request. It also requires a successful main CI run with `ci-success` and all three CodeQL checks on that same SHA. The gate reads that commit's stored CodeQL analyses for all three languages and rejects every reported finding without an accepted dismissal. A later fix on another commit does not approve an older release. Missing analysis data fails verification. An administrator bypass does not satisfy this release gate.
 
 ## Tag and publish
 

@@ -5,6 +5,9 @@
     },
     "references": [
       {
+        "path": "../runtime/tsconfig.lib.json"
+      },
+      {
         "path": "../react/tsconfig.lib.json"
       },
       {

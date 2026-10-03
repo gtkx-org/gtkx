@@ -4,8 +4,7 @@
     "targets": {
         "test": {
             "dependsOn": [
-                "^build",
-                "gtkx:codegen",
+                "...",
                 "@gtkx/cli:build",
                 "@gtkx/components:build"
             ],
