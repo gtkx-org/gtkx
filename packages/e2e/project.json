@@ -55,7 +55,7 @@
             "outputs": [
                 "{workspaceRoot}/build/native-tests/gi-tests/build/*.{so,gir,typelib}",
                 "{workspaceRoot}/build/native-tests/node_modules/.gtkx",
-                "{projectRoot}/tests/native/node_modules/@gtkx/gi"
+                "{projectRoot}/tests/native/node_modules"
             ]
         },
         "test": {
