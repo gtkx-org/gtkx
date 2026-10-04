@@ -21,7 +21,8 @@
                 "@gtkx/native:build"
             ],
             "outputs": [
-                "{workspaceRoot}/node_modules/.gtkx/**/*.{js,d.ts,json}"
+                "{workspaceRoot}/node_modules/.gtkx/gi/**/*.{js,d.ts,json}",
+                "{workspaceRoot}/node_modules/.gtkx/jsx/**/*.{js,d.ts,json}"
             ]
         },
         "typecheck": {

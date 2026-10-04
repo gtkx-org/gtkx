@@ -76,6 +76,8 @@ Every worker has a private D-Bus session. Desktop services from your logged-in s
 
 The native integration suite uses a pinned checkout of GNOME's `gobject-introspection-tests`. Its setup builds the C fixtures through Meson and Ninja, then runs GTKX codegen for their GIR metadata. This exercises generated bindings, the JavaScript runtime, the Rust addon, and native fixture libraries together.
 
+Nx caches the fixture build and generated bindings. A cache miss starts a fresh Meson build so compiler metadata from another checkout is never reused for compilation.
+
 The private fixture target prepares the libraries and bindings without running the suite:
 
 ```bash
@@ -139,7 +141,7 @@ pnpm lint
 
 These root commands are aliases for `nx run-many -t <target>`. `pnpm lint` includes ESLint, Codescythe, actionlint, ShellCheck, rustfmt, Clippy, and cargo-audit through the graph. CI exposes four checks: tests, build, lint, and e2e; the build check also runs typechecking.
 
-The e2e check combines four Vitest shards on separate runners, each with its own registry setup. Reproduce one shard with `pnpm e2e -- --shard=1/4`; `pnpm e2e` still runs the complete suite locally.
+The e2e check combines eight Vitest shards on separate runners, each with its own registry setup. Reproduce one shard with `pnpm e2e -- --shard=1/8`; `pnpm e2e` still runs the complete suite locally.
 
 Run `pnpm nx run gtkx:_lint:workflows` to check workflows, tracked shell scripts, and composite action steps. The target feeds composite steps to actionlint as a temporary workflow, so composite diagnostics refer to the transformed YAML. See [Development Setup](/contributing/development#prerequisites) for the Go, ShellCheck, and cargo-audit prerequisites. `pnpm nx run @gtkx/native:_lint:audit` checks current RustSec advisories without caching the result.
 

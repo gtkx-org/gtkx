@@ -45,9 +45,8 @@ if (checkedOutRevision() !== REVISION) {
     execFileSync(git, ["-C", sourceDir, "checkout", "--quiet", REVISION], { stdio: "inherit" });
 }
 
-if (!existsSync(join(buildDir, "build.ninja"))) {
-    execFileSync(meson, ["setup", buildDir, sourceDir, "-Dcairo=false"], { stdio: "inherit" });
-}
+rmSync(buildDir, { recursive: true, force: true });
+execFileSync(meson, ["setup", buildDir, sourceDir, "-Dcairo=false"], { stdio: "inherit" });
 
 execFileSync(meson, ["compile", "-C", buildDir], {
     env: { ...process.env, GI_SCANNER_DISABLE_CACHE: "1" },
