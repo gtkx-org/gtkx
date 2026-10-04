@@ -16,7 +16,7 @@
         "typecheck": "vue-tsc --noEmit -p tsconfig.json"
     },
     "devDependencies": {
-        "shiki": "^4.4.3",
+        "shiki": "^4.5.0",
         "typedoc": "^0.28.20",
         "typedoc-plugin-markdown": "^4.13.1",
         "typedoc-plugin-zod": "^1.4.3",
