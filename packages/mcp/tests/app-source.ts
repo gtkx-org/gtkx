@@ -1,4 +1,3 @@
-/* eslint-disable unicorn/no-incorrect-template-string-interpolation -- the JSX braces below belong to the app source */
 const APP_SOURCE = `import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";

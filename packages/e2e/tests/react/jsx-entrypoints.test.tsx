@@ -61,9 +61,7 @@ describe("@gtkx/jsx namespace entrypoints", () => {
 });
 
 declare module "@gtkx/jsx/gtk" {
-    /* eslint-disable @typescript-eslint/consistent-type-definitions -- declaration merging requires interfaces */
     interface GtkBoxProps {
         indexAugmented?: boolean;
     }
-    /* eslint-enable @typescript-eslint/consistent-type-definitions */
 }

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-empty-function -- the app link negotiates no MCP capabilities */
+/** The app link negotiates no MCP capabilities. */
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { Socket } from "node:net";
 import { normalizeError } from "@gtkx/utils";

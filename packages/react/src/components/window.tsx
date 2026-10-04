@@ -8,7 +8,6 @@ import { createPortaledComponent } from "./portaled.js";
 
 type WindowComponentProps = PresentedProps<Gtk.Window> & {
     application?: Gtk.Application | null | undefined;
-    // eslint-disable-next-line gtkx/accessor-naming
     transientFor?: Gtk.Window | null | undefined;
 };
 

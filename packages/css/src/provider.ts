@@ -50,7 +50,6 @@ const registerProviderForDefaultDisplay = (options?: Partial<ProviderOptions>): 
     const manager = DisplayManager.get();
 
     const attach = (display: Display): void => {
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
         StyleContext.addProviderForDisplay(display, provider, priority);
 
         if (followsPreferences) {

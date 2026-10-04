@@ -54,7 +54,6 @@ const useInstalledProvider = (provider: Gtk.CssProvider | null, defaultCss: stri
         const display = Gdk.DisplayManager.get().getDefaultDisplay();
 
         if (display) {
-            // eslint-disable-next-line @typescript-eslint/no-deprecated
             Gtk.StyleContext.addProviderForDisplay(display, provider, 0xFF_FF_FF_FF);
         }
 
@@ -62,7 +61,6 @@ const useInstalledProvider = (provider: Gtk.CssProvider | null, defaultCss: stri
 
         return () => {
             if (display) {
-                // eslint-disable-next-line @typescript-eslint/no-deprecated
                 Gtk.StyleContext.removeProviderForDisplay(display, provider);
             }
         };

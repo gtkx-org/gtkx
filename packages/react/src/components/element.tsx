@@ -155,7 +155,6 @@ const renderElement = (typeName: string, props: unknown): ReactElement => {
  * uses `typeName` for lookup.
  * @returns A component accepting the specified props.
  */
-/* eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- callers name the props */
 const createElementComponent: <P = unknown>(
     typeName: string,
     cls?: unknown,

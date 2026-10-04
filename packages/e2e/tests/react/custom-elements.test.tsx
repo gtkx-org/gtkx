@@ -51,7 +51,6 @@ describe("createElementComponent for a type codegen does not cover", () => {
 });
 
 declare module "@gtkx/jsx/gtk" {
-    /* eslint-disable @typescript-eslint/consistent-type-definitions -- declaration merging requires interfaces */
     interface GtkWidgetProps {
         cursorName?: string | null | undefined;
     }
@@ -60,7 +59,6 @@ declare module "@gtkx/jsx/gtk" {
         labelSlot?: ReactNode;
         customTooltip?: string | null | undefined;
     }
-    /* eslint-enable @typescript-eslint/consistent-type-definitions */
 }
 
 describe("custom element rules from gtkx.config.ts", () => {

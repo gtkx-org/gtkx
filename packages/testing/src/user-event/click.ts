@@ -256,7 +256,6 @@ const deliverClick = (widget: Gtk.Widget, nPress: number): Promise<void> =>
         applyClickOutcomes(targets, nPress);
     });
 
-/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether activation succeeded */
 const tryActivate = async (widget: Gtk.Widget): Promise<boolean> => {
     if (widget.getAccessibleRole() === Gtk.AccessibleRole.LABEL) {
         return false;

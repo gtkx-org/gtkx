@@ -338,7 +338,7 @@ const sliceSelectedText = (widget: Gtk.Widget, start: number, end: number): stri
 
     const text = callStringGetter(widget, "getText");
 
-    /* eslint-disable-next-line @typescript-eslint/no-misused-spread -- bounds are code point offsets */
+    /* Selection bounds are code point offsets. */
     return text === null ? null : [...text].slice(start, end).join("");
 };
 

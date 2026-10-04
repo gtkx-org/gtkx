@@ -585,7 +585,6 @@ function rowText(value: string | undefined): string | null {
     return value ?? null;
 }
 
-/* eslint-disable-next-line unicorn/consistent-boolean-name -- reads the flag off a row, paired with rowText */
 function rowFlag(value: boolean | undefined): boolean {
     return value ?? true;
 }

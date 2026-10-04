@@ -78,7 +78,6 @@ All paths below are relative to the repository root. Package names normally matc
 | `@gtkx/testing` | Rendering, accessible widget queries, user input, assertions, and screenshots for tests. |
 | `@gtkx/vitest` | Worker preload and isolated headless display and session-bus infrastructure. |
 | `@gtkx/e2e` | Private integration suite spanning the renderer, generated bindings, runtime, native bridge, and testing APIs. |
-| `@gtkx/eslint` | Private shared ESLint configuration and custom repository rules. |
 
 ## Build and development tools
 
@@ -88,7 +87,7 @@ The CLI uses Vite for application development and bundling. Its plugin stack int
 
 Vitest runs the JavaScript test suites. GTKX's plugin gives workers real headless Wayland displays, while the testing package works with native widgets and accessibility information. Native integration fixtures are built with Meson and Ninja. The native sanitizer target uses AddressSanitizer and LeakSanitizer.
 
-ESLint checks TypeScript and JavaScript, Codescythe checks unused files and exports, and Rust uses rustfmt and Clippy. Shared target defaults are declared in [nx.json](https://github.com/gtkx-org/gtkx/blob/main/nx.json), project targets and overrides in `project.json`, and package scripts in `package.json`.
+ESLint uses standard configurations for TypeScript, JavaScript, React Hooks, Vitest, and Vue from the root `eslint.config.ts`. Codescythe checks unused files and exports, and Rust uses rustfmt and Clippy. Shared target defaults are declared in [nx.json](https://github.com/gtkx-org/gtkx/blob/main/nx.json), project targets and overrides in `project.json`, and package scripts in `package.json`.
 
 ## Documentation, examples, and distribution
 

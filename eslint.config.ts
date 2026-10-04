@@ -1,35 +1,68 @@
-import { config } from "@gtkx/eslint";
+import js from "@eslint/js";
+import vitest from "@vitest/eslint-plugin";
+import { defineConfig, includeIgnoreFile } from "eslint/config";
+import reactHooks from "eslint-plugin-react-hooks";
+import vue from "eslint-plugin-vue";
+import globals from "globals";
+import { join } from "node:path";
+import tseslint from "typescript-eslint";
 
-export default [
-    ...config(import.meta.dirname),
+export default defineConfig(
+    includeIgnoreFile(join(import.meta.dirname, ".gitignore")),
     {
-        files: ["tutorial/src/gtkx-env.d.ts"],
+        ignores: [
+            ".claude/**",
+            ".codescythe-*/**",
+            "packages/native/npm/**",
+            "packages/native/target/**",
+            "packages/native/artifacts/**",
+            "packages/native/index.js",
+            "packages/native/index.d.ts",
+            "website/.vitepress/cache/**",
+            "website/.vitepress/dist/**",
+            "website/.vitepress/.temp/**",
+        ],
+    },
+    {
+        files: ["**/*.{ts,tsx,mts,cts}"],
+        extends: [js.configs.recommended, tseslint.configs.recommendedTypeChecked],
+        languageOptions: {
+            parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+        },
         rules: {
-            "@typescript-eslint/triple-slash-reference": "off",
+            "@typescript-eslint/no-empty-object-type": ["error", { allowInterfaces: "with-single-extends" }],
         },
     },
     {
-        files: ["tutorial/src/navigation.ts"],
-        rules: { "@typescript-eslint/consistent-type-definitions": "off" },
+        files: ["**/gtkx-env.d.ts"],
+        rules: { "@typescript-eslint/triple-slash-reference": "off" },
     },
     {
-        files: [
-            "tutorial/tests/application-actions.test.tsx",
-            "tutorial/tests/notifications.test.tsx",
-        ],
-        rules: { "no-empty-pattern": "off" },
-    },
-    {
-        files: [
-            "packages/runtime/tests/fixtures/process-exit-owner.ts",
-            "packages/runtime/tests/fixtures/process-exit-closure.ts",
-        ],
-        rules: { "unicorn/no-process-exit": "off" },
-    },
-    {
-        files: ["packages/codegen/src/fingerprint.ts"],
-        rules: {
-            "unicorn/require-array-sort-compare": "off",
+        files: ["**/*.{js,jsx,mjs,cjs}"],
+        extends: [js.configs.recommended],
+        languageOptions: {
+            globals: globals.node,
+            parserOptions: { ecmaFeatures: { jsx: true } },
         },
     },
-];
+    {
+        files: ["**/*.{ts,tsx,js,jsx}"],
+        extends: [reactHooks.configs.flat.recommended],
+    },
+    {
+        files: ["**/tests/**/*.{ts,tsx}", "**/*.{test,spec,bench}.{ts,tsx}"],
+        extends: [vitest.configs.recommended],
+        rules: {
+            "@typescript-eslint/unbound-method": "off",
+            "vitest/unbound-method": "error",
+            "vitest/expect-expect": ["error", { assertFunctionNames: ["expect", "assert", "expect*"] }],
+            "no-empty-pattern": ["error", { allowObjectPatternsAsParameters: true }],
+        },
+    },
+    {
+        files: ["website/**/*.vue"],
+        extends: [tseslint.configs.recommended, vue.configs["flat/essential"]],
+        languageOptions: { parserOptions: { parser: tseslint.parser } },
+        rules: { "vue/multi-word-component-names": "off" },
+    },
+);
