@@ -17,14 +17,8 @@ import { gtkx } from "./plugin.js";
 
 type FlatConfig = TSESLint.FlatConfig.Config;
 
-type PublicApi = {
-    entrypoints: string[];
-    modules: { path: string }[];
-};
-
 const SOURCES = ["**/*.{ts,tsx,mts,js,jsx,mjs}"];
 const JS_SOURCES = ["**/*.{js,jsx,mjs}"];
-const TS_SOURCES = ["**/*.{ts,tsx,mts}"];
 const VUE_SOURCES = ["website/**/*.vue"];
 const TESTS = ["**/tests/**/*.{ts,tsx}", "**/*.{test,spec,bench}.{ts,tsx}"];
 const MANIFESTS = ["packages/*/package.json"];
@@ -91,6 +85,7 @@ const NX_CONFIGS: FlatConfig[] = [
 
 const IGNORES = [
     ".claude/**",
+    ".codescythe-*/**",
     "packages/native/npm/**",
     "packages/native/target/**",
     "packages/native/artifacts/**",
@@ -253,26 +248,7 @@ const TEST_RULES: Linter.RulesRecord = {
 const scopeTo = (files: string[], configs: (FlatConfig | FlatConfig[])[]): FlatConfig[] =>
     configs.flat().map((entry) => ({ ...entry, files }));
 
-const documentPublicApi = (root: string, surface: PublicApi): FlatConfig => ({
-    files: TS_SOURCES,
-    ignores: TESTS,
-    plugins: { gtkx },
-    rules: {
-        "gtkx/public-api-jsdoc": [
-            "error",
-            { entrypoints: surface.entrypoints, modules: surface.modules.map((entry) => entry.path), root },
-        ],
-    },
-});
-
-const classifyEntrypoints = (surface: PublicApi): FlatConfig => ({
-    files: MANIFESTS,
-    languageOptions: { parser: jsonc },
-    plugins: { gtkx },
-    rules: { "gtkx/public-entrypoints": ["error", { entrypoints: surface.entrypoints }] },
-});
-
-const config = (root: string, surface: PublicApi): FlatConfig[] => [
+const config = (root: string): FlatConfig[] => [
     includeIgnoreFile(join(root, ".gitignore")),
     { ignores: IGNORES },
     { linterOptions: { reportUnusedDisableDirectives: "error", reportUnusedInlineConfigs: "error" } },
@@ -294,8 +270,6 @@ const config = (root: string, surface: PublicApi): FlatConfig[] => [
             "vue/multi-word-component-names": "off",
         },
     },
-    documentPublicApi(root, surface),
-    classifyEntrypoints(surface),
     {
         files: ["packages/cli/src/vite-plugins/**/*.ts", "packages/runtime/src/properties.ts"],
         rules: { "unicorn/no-this-outside-of-class": "off" },

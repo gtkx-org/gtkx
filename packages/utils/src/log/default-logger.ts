@@ -14,10 +14,4 @@ function error(message: string, ...rest: unknown[]): void {
     logger.error(message, ...rest);
 }
 
-function debug(message: string, ...rest: unknown[]): void {
-    logger.debug(message, ...rest);
-}
-
 export { logger, info, warn, error };
-/** @internal */
-export { debug };

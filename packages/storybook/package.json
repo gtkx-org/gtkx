@@ -27,21 +27,18 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
-            "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "import": "./dist/index.js",
             "require": null,
             "default": "./dist/index.js"
         },
         "./config": {
-            "source": "./src/config.ts",
             "types": "./dist/config.d.ts",
             "import": "./dist/config.js",
             "require": null,
             "default": "./dist/config.js"
         },
         "./explorer": {
-            "source": "./src/explorer.ts",
             "types": "./dist/explorer.d.ts",
             "import": "./dist/explorer.js",
             "require": null,

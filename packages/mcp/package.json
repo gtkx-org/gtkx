@@ -30,14 +30,12 @@
     "exports": {
         "./package.json": "./package.json",
         "./server": {
-            "source": "./src/server.ts",
             "types": "./dist/server.d.ts",
             "import": "./dist/server.js",
             "require": null,
             "default": "./dist/server.js"
         },
         "./internal": {
-            "source": "./src/internal.ts",
             "types": "./dist/internal.d.ts",
             "import": "./dist/internal.js",
             "require": null,

@@ -69,8 +69,6 @@
             "inputs": [
                 "default",
                 "^production",
-                "{workspaceRoot}/api.json",
-                "{workspaceRoot}/packages/eslint/src/api-entrypoints.ts",
                 {
                     "runtime": "git rev-parse HEAD"
                 },

@@ -23,6 +23,7 @@ type CliProjectOptions = {
 };
 
 const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+const TSX_LOADER = join(WORKSPACE_ROOT, "scripts", "tsx.ts");
 const WORKSPACE_MODULES = join(WORKSPACE_ROOT, "node_modules");
 const CLI_ENTRY = join(WORKSPACE_ROOT, "packages", "cli", "dist", "cli.js");
 const CLI_ARGV = ["--enable-source-maps", CLI_ENTRY];
@@ -226,4 +227,5 @@ export {
     runCliOrThrow,
     startCli,
     STORE_LIBRARIES,
+    TSX_LOADER,
 };

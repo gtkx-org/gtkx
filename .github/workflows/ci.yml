@@ -375,7 +375,7 @@ jobs:
       - name: Lint
         uses: ./.github/actions/run-ci-command
         with:
-          command: node scripts/ci-run.ts lint && pnpm exec nx run-many -t lint:knip lint:knip:production
+          command: node scripts/ci-run.ts lint && pnpm exec nx run-many -t lint:codescythe
           image-ref: ${{ needs.image-manifest.outputs.ref }}
 
       - name: Report failures to Nx Cloud

@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { runCli } from "./cli-project.js";
+import { runCli, TSX_LOADER } from "./cli-project.js";
 import {
     expectModules,
     fixtureLibrariesConfig,
@@ -38,7 +38,7 @@ describe("gtkx codegen (the libraries a project binds without naming them)", () 
 process.stdout.write(JSON.stringify([EOT_STR, PUA_STR]));`;
             const output = execFileSync(
                 process.execPath,
-                ["--conditions=source", "--import=tsx", "--input-type=module", "--eval", moduleSource],
+                ["--import", TSX_LOADER, "--input-type=module", "--eval", moduleSource],
                 { cwd: project.root, encoding: "utf8" },
             );
 

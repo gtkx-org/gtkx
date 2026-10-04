@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
-import { createCliProject, runCliOrThrow } from "./cli-project.js";
+import { createCliProject, runCliOrThrow, TSX_LOADER } from "./cli-project.js";
 
 const CONFIG = `export default {
     applicationId: "org.gtkx.ownedcontainers",
@@ -49,7 +49,7 @@ describe("generated owning container returns", () => {
         runCliOrThrow(project, ["codegen"]);
 
         expect(() => execFileSync(process.execPath, [
-            "--conditions=source", "--import=tsx", "--input-type=module", "--eval", IMPORTS + source,
+            "--import", TSX_LOADER, "--input-type=module", "--eval", IMPORTS + source,
         ], { cwd: project.root, stdio: "pipe" })).not.toThrow();
     });
 });

@@ -1,11 +1,8 @@
 import { readFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { resolveEntrypoints } from "../packages/eslint/src/api-entrypoints.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const root = join(here, "..");
-const api = JSON.parse(readFileSync(join(root, "api.json"), "utf8"));
 const manifest = JSON.parse(readFileSync(join(here, "versions.json"), "utf8"));
 const worktreeVersions = manifest.versions.filter((version) => version.reference.source === "worktree");
 
@@ -18,49 +15,24 @@ if (worktreeVersions.length !== 1) {
 const [worktreeVersion] = worktreeVersions;
 const referenceOut = join(worktreeVersion.prefix.replace(/^\//, ""), "reference");
 const referenceLink = `${worktreeVersion.prefix}/reference`;
-const packageDirs = new Map();
-const entryPointsByPackage = new Map();
-const publicModuleNames = {};
-
-const byName = (left, right) => left.localeCompare(right);
-
-const getPackageName = (specifier) =>
-    packageDirs.keys().find((name) => specifier === name || specifier.startsWith(`${name}/`));
-
-const readTypedocEntryPoints = (dir) => {
-    try {
-        return JSON.parse(readFileSync(join(dir, "typedoc.json"), "utf8")).entryPoints;
-    } catch {
-        return;
-    }
+const publicModuleNames = {
+    "@gtkx/animated": ["index"],
+    "@gtkx/cairo": ["index"],
+    "@gtkx/cli": ["env", "vitest-plugin"],
+    "@gtkx/codegen": ["index"],
+    "@gtkx/components": ["index"],
+    "@gtkx/config": ["index", "vite-plugin"],
+    "@gtkx/css": ["index"],
+    "@gtkx/forms": ["index"],
+    "@gtkx/gl": ["index"],
+    "@gtkx/i18n": ["index"],
+    "@gtkx/navigation": ["index"],
+    "@gtkx/react": ["index", "config"],
+    "@gtkx/runtime": ["index"],
+    "@gtkx/storybook": ["index", "config", "explorer"],
+    "@gtkx/testing": ["index"],
+    "@gtkx/vitest": ["index"],
 };
-
-for (const { dir, name, path } of resolveEntrypoints(root, api.entrypoints, "source")) {
-    packageDirs.set(name, dir);
-    entryPointsByPackage.set(name, [...(entryPointsByPackage.get(name) ?? []), path]);
-}
-
-for (const specifier of api.entrypoints) {
-    const name = getPackageName(specifier);
-
-    if (name !== undefined) {
-        const subpath = specifier.slice(name.length + 1) || "index";
-        publicModuleNames[name] = [...(publicModuleNames[name] ?? []), subpath];
-    }
-}
-
-for (const [name, entryPoints] of entryPointsByPackage) {
-    const dir = packageDirs.get(name);
-    const expected = entryPoints.toSorted(byName);
-    const actual = (readTypedocEntryPoints(dir) ?? ["./src/index.ts"]).toSorted(byName);
-
-    if (JSON.stringify(expected) !== JSON.stringify(actual)) {
-        throw new Error(
-            `${relative(root, join(dir, "typedoc.json"))} declares entryPoints ${JSON.stringify(actual)}, ` +
-            `but api.json publishes ${JSON.stringify(expected)} from ${name}.`,
-        );
-    }
-}
 
 export default {
     $schema: "https://typedoc.org/schema.json",
@@ -75,7 +47,7 @@ export default {
     router: "route-safe",
     publicModuleNames,
     entryPointStrategy: "packages",
-    entryPoints: packageDirs.values().map((dir) => relative(here, dir)).toArray(),
+    entryPoints: Object.keys(publicModuleNames).map((name) => `../packages/${name.replace("@gtkx/", "")}`),
     packageOptions: {
         entryPoints: ["./src/index.ts"],
         tsconfig: "./tsconfig.lib.json",

@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 import { collectOutput, waitForMarker } from "./child-output.js";
 
 const OWNER_FIXTURE = fileURLToPath(new URL("../fixtures/application-owner.ts", import.meta.url));
-const OWNER_ARGS = ["--conditions=source", "--import", "tsx", OWNER_FIXTURE];
+const TSX_LOADER = new URL("../../../../scripts/tsx.ts", import.meta.url).href;
+const OWNER_ARGS = ["--import", TSX_LOADER, OWNER_FIXTURE];
 const OWNED_MARKER = "OWNER isPrimary=true";
 const OWNED_SUBJECT = "the application owner";
 const OWNED_TIMEOUT_MS = 20_000;

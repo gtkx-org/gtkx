@@ -40,42 +40,6 @@ const distTagForVersion = (version: string): string => {
 
 const isDevSource = (entry: string): boolean => entry === "src" || entry.startsWith("src/");
 
-const stripExportsEntry = (entry: ExportsField): ExportsField =>
-    entry === null || typeof entry === "string" ? entry : stripExportsSource(entry);
-
-const stripExportsSource = (entry: Record<string, ExportsField>): Record<string, ExportsField> => {
-    const result: Record<string, ExportsField> = {};
-
-    for (const [key, value] of Object.entries(entry)) {
-        if (key === "source") {
-            continue;
-        }
-
-        result[key] = stripExportsEntry(value);
-    }
-
-    return result;
-};
-
-const stripDevArtifacts = (manifest: PackageManifest): PackageManifest => {
-    const stripped: PackageManifest = { ...manifest };
-    const exportsField = manifest.exports;
-
-    if (exportsField !== undefined && exportsField !== null && typeof exportsField !== "string") {
-        stripped.exports = stripExportsSource(exportsField);
-    }
-
-    return stripped;
-};
-
-const hasSourceCondition = (entry: ExportsField): boolean => {
-    if (entry === null || typeof entry === "string") {
-        return false;
-    }
-
-    return Object.entries(entry).some(([key, value]) => key === "source" || hasSourceCondition(value));
-};
-
 const collectExportTargets = (entry: ExportsField): string[] => {
     if (entry === null) {
         return [];
@@ -126,14 +90,6 @@ const shippedEntryViolation = (entry: string): string | undefined => {
     }
 
     return undefined;
-};
-
-const manifestViolations = (manifest: PackageManifest): string[] => {
-    if (manifest.exports !== undefined && hasSourceCondition(manifest.exports)) {
-        return ['package.json "exports" still declares a "source" condition'];
-    }
-
-    return [];
 };
 
 const unresolvedTargetViolations = (files: Set<string>, manifest: PackageManifest): string[] => {
@@ -202,7 +158,6 @@ const assertPublishedShape = ({ name, entries, manifest, maps }: PublishedPackag
     const violations = [
         ...requiredFileViolations(files),
         ...[...files].map((file) => shippedEntryViolation(file)).filter((violation) => violation !== undefined),
-        ...manifestViolations(manifest),
         ...unresolvedTargetViolations(files, manifest),
         ...mapViolations(files, maps ?? {}),
     ];
@@ -212,4 +167,4 @@ const assertPublishedShape = ({ name, entries, manifest, maps }: PublishedPackag
     }
 };
 
-export { assertPublishedShape, distTagForVersion, type PackageManifest, stripDevArtifacts };
+export { assertPublishedShape, distTagForVersion, type PackageManifest };

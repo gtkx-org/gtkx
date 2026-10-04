@@ -1,6 +1,6 @@
 import { errorCode, errorMessage, normalizeError } from "@gtkx/utils";
 import { existsSync, mkdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, join, relative } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { createStagingDir } from "./staging.js";
@@ -22,6 +22,7 @@ type ProjectContext = {
 
 type CompileProjectParams = ProjectContext & {
     compilerOptions: Record<string, unknown>;
+    resolveFrom: string;
 };
 
 type EmitModulesParams = {
@@ -48,7 +49,6 @@ const BASE_COMPILER_OPTIONS = {
     lib: ["esnext"],
     jsx: "react-jsx",
     jsxImportSource: "react",
-    customConditions: ["source"],
     strict: true,
     exactOptionalPropertyTypes: true,
     noUncheckedIndexedAccess: true,
@@ -234,10 +234,41 @@ const keepFailedProject = (input: FailedProjectInput): Error => {
     });
 };
 
+const projectCompilerPaths = (params: CompileProjectParams): ts.MapLike<string[]> | undefined => {
+    const configFile = ts.findConfigFile(params.resolveFrom, (path) => ts.sys.fileExists(path));
+
+    if (configFile === undefined) {
+        return undefined;
+    }
+
+    const config = ts.getParsedCommandLineOfConfigFile(configFile, {}, {
+        ...ts.sys,
+        onUnRecoverableConfigFileDiagnostic: (diagnostic) => {
+            throw diagnosticError(params, [diagnostic]);
+        },
+    });
+    if (config?.options.paths === undefined) {
+        return undefined;
+    }
+
+    const paths = config.options.paths;
+    const compilerOptions: Readonly<Record<string, unknown>> = config.options;
+    const configuredBase = compilerOptions.baseUrl ?? compilerOptions.pathsBasePath;
+    const base = typeof configuredBase === "string" ? configuredBase : dirname(configFile);
+
+    return Object.fromEntries(
+        Object.entries(paths).map(([name, targets]) => [name, targets.map((target) => resolve(base, target))]),
+    );
+};
+
 const runProgram = (params: CompileProjectParams): ts.Diagnostic[] => {
     const parsed = ts.parseJsonConfigFileContent(
         {
-            compilerOptions: { ...BASE_COMPILER_OPTIONS, ...params.compilerOptions },
+            compilerOptions: {
+                ...BASE_COMPILER_OPTIONS,
+                paths: projectCompilerPaths(params),
+                ...params.compilerOptions,
+            },
             files: params.files.map((file) => `./${file.fileName}`),
         },
         ts.sys,
@@ -367,6 +398,7 @@ const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; la
 
         compileProject({
             projectDir,
+            resolveFrom: params.resolveFrom,
             files: params.modules,
             compilerOptions: CHECK_OPTIONS,
             label: params.label,

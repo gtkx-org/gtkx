@@ -34,9 +34,11 @@ const CASES = [
     },
 ];
 
+const TSX_LOADER = new URL("../../../scripts/tsx.ts", import.meta.url).href;
+
 const runFixture = async (mode: string, artifact: string): Promise<number | null> => {
     const child = spawnWithParentDeathSignal(process.execPath, [
-        "--conditions=source", "--import", "tsx", FIXTURE, mode, artifact,
+        "--import", TSX_LOADER, FIXTURE, mode, artifact,
     ], { stdio: "ignore" });
     const closed: Promise<number | null> = new Promise((resolve, reject) => {
         child.once("error", reject);

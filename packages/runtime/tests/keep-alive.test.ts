@@ -8,7 +8,8 @@ import { createApplicationFrom } from "./helpers/application.js";
 import { collectOutput, waitForMarker } from "./helpers/child-output.js";
 
 const FIXTURE = fileURLToPath(new URL("fixtures/application-keep-alive.ts", import.meta.url));
-const FIXTURE_ARGS = ["--conditions=source", "--import", "tsx", FIXTURE];
+const TSX_LOADER = new URL("../../../scripts/tsx.ts", import.meta.url).href;
+const FIXTURE_ARGS = ["--import", TSX_LOADER, FIXTURE];
 const READY_MARKER = "READY";
 const STOPPED_MARKER = "STOPPED";
 const TIMEOUT_MS = 20_000;

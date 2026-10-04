@@ -2,6 +2,7 @@ import { spawnWithParentDeathSignal } from "@gtkx/utils";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
+const TSX_LOADER = new URL("../../../scripts/tsx.ts", import.meta.url).href;
 const FIXTURES = {
     "process-exit-owner": new URL("fixtures/process-exit-owner.ts", import.meta.url),
     "process-exit-closure": new URL("fixtures/process-exit-closure.ts", import.meta.url),
@@ -22,7 +23,7 @@ const runFixture = async (
 ): Promise<{ code: number | null; signal: NodeJS.Signals | null }> => {
     const filename = fileURLToPath(FIXTURES[fixture]);
     const child = spawnWithParentDeathSignal(process.execPath, [
-        "--conditions=source", "--import", "tsx", "--expose-gc", filename, mode,
+        "--import", TSX_LOADER, "--expose-gc", filename, mode,
     ], { stdio: "ignore" });
     const closed: Promise<{ code: number | null; signal: NodeJS.Signals | null }> = new Promise((resolve, reject) => {
         child.once("error", reject);

@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import type { CliProject } from "./cli-project.js";
+import { type CliProject, TSX_LOADER } from "./cli-project.js";
 import { typecheckFile } from "./type-consumer.js";
 
 const GIO_CONFIG = `export default {
@@ -23,8 +23,7 @@ const evaluateProject = (project: { root: string }, source: string): string =>
     execFileSync(
         process.execPath,
         [
-            "--conditions=source",
-            "--import=tsx",
+            "--import", TSX_LOADER,
             "--input-type=module",
             "--eval",
             source,
