@@ -2,6 +2,18 @@
     "$schema": "./node_modules/nx/schemas/project-schema.json",
     "name": "gtkx",
     "targets": {
+        "local-registry": {
+            "executor": "@nx/js:verdaccio",
+            "cache": false,
+            "options": {
+                "port": 4873,
+                "listenAddress": "127.0.0.1",
+                "location": "none",
+                "clear": true,
+                "config": ".verdaccio/config.yml",
+                "storage": ".local-registry/storage"
+            }
+        },
         "codegen": {
             "command": "node --import ./scripts/tsx.ts packages/cli/src/cli.ts codegen --config scripts/gtkx.bootstrap.ts",
             "cache": false,
