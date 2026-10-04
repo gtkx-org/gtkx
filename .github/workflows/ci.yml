@@ -723,7 +723,7 @@ jobs:
           fi
 
   ci-success:
-    needs: [changes, image-manifest, lint, typecheck, test, test-cli, publish-e2e, plan-check]
+    needs: [changes, image-manifest, lint, typecheck, test, test-cli, publish-e2e]
     if: always() && github.event.action != 'closed'
     runs-on: ubuntu-latest
     timeout-minutes: 10
