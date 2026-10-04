@@ -30,7 +30,6 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
-            "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "import": "./dist/index.js",
             "require": null,
@@ -40,14 +39,12 @@
             "types": "./env.d.ts"
         },
         "./internal": {
-            "source": "./src/internal.ts",
             "types": "./dist/internal.d.ts",
             "import": "./dist/internal.js",
             "require": null,
             "default": "./dist/internal.js"
         },
         "./config": {
-            "source": "./src/config.ts",
             "types": "./dist/config.d.ts",
             "import": "./dist/config.js",
             "require": null,

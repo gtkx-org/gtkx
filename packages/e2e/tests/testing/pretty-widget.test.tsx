@@ -13,8 +13,8 @@ import { VBox } from "./widget-fixtures.js";
 const ANONYMOUS_TYPE_NAME = "GtkxAnonymousTagProbe";
 const AnonymousBox = registerClass(class extends Gtk.Box {}, { typeName: ANONYMOUS_TYPE_NAME });
 const OUTPUT_FIXTURE = fileURLToPath(new URL("../fixtures/pretty-widget-output.tsx", import.meta.url));
-const OUTPUT_FIXTURE_ARGS = ["--conditions=source", "--import", "tsx", OUTPUT_FIXTURE];
-const OUTPUT_FIXTURE_TSCONFIG = fileURLToPath(new URL("../../../../tsconfig.base.json", import.meta.url));
+const TSX_LOADER = new URL("../../../../scripts/tsx.ts", import.meta.url).href;
+const OUTPUT_FIXTURE_ARGS = ["--import", TSX_LOADER, OUTPUT_FIXTURE];
 const OUTPUT_FIXTURE_TIMEOUT = 20_000;
 
 const wrapAs = <T extends object>(object: GObject.Object, cls: AnyClass<T>): T => wrapHandle(getHandle(object), cls);
@@ -22,7 +22,6 @@ const wrapAs = <T extends object>(object: GObject.Object, cls: AnyClass<T>): T =
 const runOutputFixture = (scenario: "debug" | "logWidget"): string => {
     const result = spawnSync(process.execPath, [...OUTPUT_FIXTURE_ARGS, scenario], {
         encoding: "utf8",
-        env: { ...process.env, TSX_TSCONFIG_PATH: OUTPUT_FIXTURE_TSCONFIG },
         timeout: OUTPUT_FIXTURE_TIMEOUT,
     });
 

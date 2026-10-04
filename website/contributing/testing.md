@@ -129,7 +129,11 @@ pnpm typecheck
 pnpm lint
 ```
 
-`pnpm lint` includes ESLint, Knip, rustfmt, and Clippy targets. For a documentation change, build the website and inspect the resulting pages. For a visible widget or application change, run the affected example and inspect its live tree, interactions, and screenshots as well as its test results.
+`pnpm lint` includes ESLint, Codescythe, rustfmt, and Clippy targets. For a documentation change, build the website and inspect the resulting pages. For a visible widget or application change, run the affected example and inspect its live tree, interactions, and screenshots as well as its test results.
+
+Run `pnpm exec nx run gtkx:lint:codescythe` to check unused source files and exports in packages, examples, and scripts. `codescythe.json` lists public library entrypoints, executable roots, and tests. Private package barrels and `internal` barrels remain subject to usage checks. Test imports count as usage; website Vue files, declaration files, and built launchers are outside this source check.
+
+The target generates bindings first, then `scripts/codescythe.ts` copies their JavaScript and declarations into a temporary analysis directory. This lets Codescythe count real imports from generated GI and JSX modules even though it skips `node_modules`. The copy is removed after the check. Use explicit named re-exports in private barrels: Codescythe 0.11.1 does not reliably follow named imports through `export *` there.
 
 ## Diagnose a failure
 

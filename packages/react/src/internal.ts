@@ -27,7 +27,46 @@ export { createWindowComponent } from "./components/window.js";
 export { settleAccessible } from "./hooks/use-accessible-map.js";
 export { useLatestRef } from "./hooks/use-latest-ref.js";
 export { useMergedRef } from "./hooks/use-merged-refs.js";
-export type * from "./prop-types.js";
+export type {
+    ConstructOnlyMetadata,
+    ConstructOnlyPropNames,
+    GeneratedElementProps,
+    constructOnlyProps,
+    ScaleMark,
+    CreditSection,
+    MainOption,
+    ActionAccel,
+    ChildrenProps,
+    GtkWidgetProps,
+    ActionGroupProps,
+    ActionMapProps,
+    MenuProps,
+    MenuItemProps,
+    AdwToggleGroupProps,
+    GtkShortcutControllerProps,
+    GtkCallbackActionElementProps,
+    GtkShortcutTriggerElementProps,
+    GtkOverlayProps,
+    GtkTextChildAnchorProps,
+    GtkConstraintLayoutProps,
+    GtkHeaderBarProps,
+    GtkScaleProps,
+    GtkListBoxProps,
+    GtkCalendarProps,
+    GtkLevelBarProps,
+    GtkSizeGroupProps,
+    GtkAboutDialogProps,
+    GtkApplicationProps,
+    GtkDropTargetProps,
+    GtkDrawingAreaProps,
+    GtkDragSourceProps,
+    AdwAlertDialogProps,
+    AdwPreferencesRowProps,
+    AdwExpanderRowProps,
+    AdwToolbarViewProps,
+    AdwBreakpointsProps,
+    AdwMultiLayoutViewProps,
+} from "./prop-types.js";
 export { isRootElement } from "./reconciler/root-element.js";
 export { applyWrite } from "./reconciler/signals.js";
 export { applyStyle } from "./reconciler/style.js";

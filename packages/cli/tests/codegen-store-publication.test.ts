@@ -19,7 +19,7 @@ import { createRequire } from "node:module";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { type CliProject, createCliProject, runCliOrThrow, startCli } from "./cli-project.js";
+import { type CliProject, createCliProject, runCliOrThrow, startCli, TSX_LOADER } from "./cli-project.js";
 import { fixtureLibrariesConfig } from "./codegen-helpers.js";
 
 const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../node_modules/typescript/bin/tsc", import.meta.url));
@@ -168,7 +168,7 @@ const runTypecheck = (project: CliProject): number | null =>
 const runImportProbe = (project: CliProject, source: string): number | null =>
     spawnSync(
         process.execPath,
-        ["--conditions=source", "--import=tsx", "--input-type=module", "--eval", source],
+        ["--import", TSX_LOADER, "--input-type=module", "--eval", source],
         { cwd: project.root, timeout: 60_000 },
     ).status;
 

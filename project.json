@@ -3,7 +3,7 @@
     "name": "gtkx",
     "targets": {
         "codegen": {
-            "command": "NODE_OPTIONS=--conditions=source tsx packages/cli/src/cli.ts codegen --config scripts/gtkx.bootstrap.ts",
+            "command": "node --import ./scripts/tsx.ts packages/cli/src/cli.ts codegen --config scripts/gtkx.bootstrap.ts",
             "cache": false,
             "dependsOn": [
                 "@gtkx/native:build"
@@ -60,17 +60,18 @@
                 "sharedGlobals"
             ]
         },
-        "lint:knip": {
-            "command": "knip",
+        "lint:codescythe": {
+            "command": "tsx scripts/codescythe.ts",
             "cache": true,
             "dependsOn": [
                 "codegen",
-                "@gtkx/cli:build"
+                "@gtkx/gl:codegen"
             ],
             "inputs": [
-                "{workspaceRoot}/knip.json",
+                "{workspaceRoot}/codescythe.json",
                 "{workspaceRoot}/package.json",
                 "{workspaceRoot}/pnpm-workspace.yaml",
+                "{workspaceRoot}/.gitignore",
                 "{workspaceRoot}/tsconfig.json",
                 "{workspaceRoot}/eslint.config.ts",
                 "{workspaceRoot}/vitest.config.ts",
@@ -78,39 +79,15 @@
                 "{workspaceRoot}/scripts/**/*",
                 "{workspaceRoot}/packages/**/*",
                 "{workspaceRoot}/examples/**/*",
-                "{workspaceRoot}/website/**/*",
                 "sharedGlobals",
                 {
                     "externalDependencies": [
-                        "knip"
+                        "codescythe"
                     ]
-                }
-            ]
-        },
-        "lint:knip:production": {
-            "command": "knip --strict --config scripts/knip-production.ts",
-            "cache": true,
-            "dependsOn": [
-                "codegen",
-                "@gtkx/cli:build"
-            ],
-            "inputs": [
-                "{workspaceRoot}/knip.json",
-                "{workspaceRoot}/package.json",
-                "{workspaceRoot}/pnpm-workspace.yaml",
-                "{workspaceRoot}/tsconfig.json",
-                "{workspaceRoot}/eslint.config.ts",
-                "{workspaceRoot}/vitest.config.ts",
-                "{workspaceRoot}/gtkx.config.ts",
-                "{workspaceRoot}/scripts/**/*",
-                "{workspaceRoot}/packages/**/*",
-                "{workspaceRoot}/examples/**/*",
-                "{workspaceRoot}/website/**/*",
-                "sharedGlobals",
+                },
                 {
-                    "externalDependencies": [
-                        "knip"
-                    ]
+                    "dependentTasksOutputFiles": "**/*.{js,ts,json}",
+                    "transitive": true
                 }
             ]
         }

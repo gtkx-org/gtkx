@@ -3,7 +3,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { CliProject } from "./cli-project.js";
+import { type CliProject, TSX_LOADER } from "./cli-project.js";
 
 const WORKSPACE = fileURLToPath(new URL("../../..", import.meta.url));
 const TYPESCRIPT_CLI = join(WORKSPACE, "node_modules/typescript/bin/tsc");
@@ -27,7 +27,7 @@ const runNativeConsumer = (
     const libraryPath = [project.root, process.env.LD_LIBRARY_PATH]
         .filter((entry) => entry !== undefined && entry !== "")
         .join(":");
-    execFileSync(process.execPath, [...nodeOptions, "--conditions=source", "--import=tsx", file], {
+    execFileSync(process.execPath, [...nodeOptions, "--import", TSX_LOADER, file], {
         cwd: project.root,
         env: { ...process.env, LD_LIBRARY_PATH: libraryPath },
         stdio: "pipe",

@@ -3,7 +3,13 @@
     "exclude": ["${configDir}/tests/native/vitest.config.ts"],
     "references": [
         {
+            "path": "../cairo/tsconfig.lib.json"
+        },
+        {
             "path": "../config/tsconfig.lib.json"
+        },
+        {
+            "path": "../gl/tsconfig.lib.json"
         },
         {
             "path": "../runtime/tsconfig.lib.json"

@@ -1,5 +1,6 @@
 import { availableParallelism } from "node:os";
 import { defineConfig } from "vitest/config";
+import { workspaceAliases } from "./scripts/workspace-paths.js";
 
 const INLINE_DEPS: RegExp[] = [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/];
 const CPUS_PER_WORKER = 4;
@@ -11,10 +12,11 @@ const maxWorkers = Number.isSafeInteger(configuredWorkers) && configuredWorkers 
     : defaultWorkers;
 
 const sourceResolveConfig = defineConfig({
-    ssr: {
-        resolve: {
-            conditions: ["source", "module", "node", "development|production"],
-        },
+    resolve: {
+        alias: [...workspaceAliases].map(([specifier, replacement]) => ({
+            find: new RegExp(`^${RegExp.escape(specifier)}$`),
+            replacement,
+        })),
     },
     test: {
         maxWorkers,

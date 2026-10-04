@@ -28,7 +28,7 @@ const WORKSPACE_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const WORKSPACE_MODULES = join(WORKSPACE_ROOT, "node_modules");
 const CLI_ENTRY = join(WORKSPACE_ROOT, "packages", "cli", "dist", "cli.js");
 const SERVER_ENTRY = join(WORKSPACE_ROOT, "packages", "mcp", "src", "server.ts");
-const TSX_ARGV = ["--conditions=source", "--import", "tsx"];
+const TSX_ARGV = ["--import", join(WORKSPACE_ROOT, "scripts", "tsx.ts")];
 
 const SERVER_SCRIPT =
     `const { main, parseServerArgs } = await import(${JSON.stringify(SERVER_ENTRY)});` +

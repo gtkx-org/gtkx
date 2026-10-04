@@ -29,7 +29,6 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
-            "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "import": "./dist/index.js",
             "require": null,
@@ -42,7 +41,7 @@
         "src"
     ],
     "scripts": {
-        "codegen": "NODE_OPTIONS=--conditions=source tsx ./scripts/codegen.ts",
+        "codegen": "node --import ../../scripts/tsx.ts ./scripts/codegen.ts",
         "release": "tsx ../../scripts/release-package.ts"
     },
     "engines": {

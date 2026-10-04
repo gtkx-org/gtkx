@@ -30,14 +30,12 @@
     "exports": {
         "./package.json": "./package.json",
         ".": {
-            "source": "./src/index.ts",
             "types": "./dist/index.d.ts",
             "import": "./dist/index.js",
             "require": null,
             "default": "./dist/index.js"
         },
         "./bootstrap": {
-            "source": "./src/bootstrap.ts",
             "types": "./dist/bootstrap.d.ts",
             "import": "./dist/bootstrap.js",
             "require": null,

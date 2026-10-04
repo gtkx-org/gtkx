@@ -17,7 +17,9 @@ This page maps the technologies and packages on `main`. The [architecture overvi
 | Rust, edition 2024 | Implements the native bridge, native value conversion, object lifetime handling, callbacks, and integration with the GLib main context. |
 | C ABI and GObject Introspection | Describe the native functions, types, properties, signals, and ownership information that code generation translates into JavaScript and TypeScript. |
 
-The framework workspace packages use ECMAScript modules and NodeNext module resolution. The website and generated compiler configuration use bundler resolution. The shared compiler configuration enables strict checking, exact optional properties, checked indexed access, and project references. Library builds emit JavaScript, declarations, and source maps into each package's `dist/` directory. A `source` export condition lets workspace tooling resolve package source during development.
+The framework workspace packages use ECMAScript modules and NodeNext module resolution. The website and generated compiler configuration use bundler resolution. The shared compiler configuration enables strict checking, exact optional properties, checked indexed access, and project references. Library builds emit JavaScript, declarations, and source maps into each package's `dist/` directory. Shared TypeScript path aliases let workspace tooling resolve package source during development, and package TypeScript configurations extend the shared base.
+
+Workspace scripts use `tsx`. Scripts that load generated bindings run with `node --import ./scripts/tsx.ts` from the repository root. This preload registers `tsx` and applies the shared aliases to imports inside generated packages under `node_modules`, keeping them on the same runtime as workspace source. Vitest uses the same aliases.
 
 Rust is pinned by [rust-toolchain.toml](https://github.com/gtkx-org/gtkx/blob/main/rust-toolchain.toml). The addon is built with `napi-rs` as a Node-API module. It uses `libloading` to resolve native libraries and `libffi` to invoke functions described by generated metadata. The `glib` crate provides the Rust integration with GLib. Prebuilt native npm packages target x64 and arm64 Linux with glibc.
 
@@ -86,7 +88,7 @@ The CLI uses Vite for application development and bundling. Its plugin stack int
 
 Vitest runs the JavaScript test suites. GTKX's plugin gives workers real headless Wayland displays, while the testing package works with native widgets and accessibility information. Native integration fixtures are built with Meson and Ninja. The native sanitizer target uses AddressSanitizer and LeakSanitizer.
 
-ESLint checks TypeScript and JavaScript, Knip checks unused code and dependencies, and Rust uses rustfmt and Clippy. Shared target defaults are declared in [nx.json](https://github.com/gtkx-org/gtkx/blob/main/nx.json), project targets and overrides in `project.json`, and package scripts in `package.json`.
+ESLint checks TypeScript and JavaScript, Codescythe checks unused files and exports, and Rust uses rustfmt and Clippy. Shared target defaults are declared in [nx.json](https://github.com/gtkx-org/gtkx/blob/main/nx.json), project targets and overrides in `project.json`, and package scripts in `package.json`.
 
 ## Documentation, examples, and distribution
 

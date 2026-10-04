@@ -31,7 +31,6 @@ export {
     registeredElementProperties,
     registeredElementSignals,
 } from "./element-metadata.js";
-export { createErrorDomain } from "./error.js";
 export { fixedArrayEntries } from "./field.js";
 export { markSyntheticSignalMembers };
 export { type ApplicationInstance, getApplicationInstance } from "./lifecycle.js";
@@ -52,12 +51,8 @@ export {
     valueSetBoxed,
 } from "./override-methods.js";
 export { createParamSpecOverride, type ParamSpecOverride } from "./param-spec-override.js";
-export {
-    descriptorFreePropertySpec,
-    propertyMapOverride,
-    writablePropertyMapOverride,
-} from "./property-brand.js";
-export type { ReadableProperties, WritableProperties } from "./property-types.js";
+export { descriptorFreePropertySpec } from "./property-brand.js";
+export type { ReadableProperties } from "./property-types.js";
 export { installMatchInfo } from "./regex.js";
 export { getExactWrapperClass, resolveWrapperClass } from "./registry.js";
 export type { SignalMethodReceiver };
@@ -71,7 +66,6 @@ export {
 export { emitSignalByName, signalConnect, signalEmit };
 export { hasSignalListener } from "./signal.js";
 export {
-    canonicalDetailedSignalName,
     canonicalSignalName,
     connectSignalByName,
     installSignalDispatch,

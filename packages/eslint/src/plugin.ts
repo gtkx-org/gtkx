@@ -2,8 +2,6 @@ import { accessorNaming } from "./rules/accessor-naming.js";
 import { brandNaming } from "./rules/brand-naming.js";
 import { noComments } from "./rules/no-comments.js";
 import { noInlineExports } from "./rules/no-inline-exports.js";
-import { publicApiJsdoc } from "./rules/public-api-jsdoc.js";
-import { publicEntrypoints } from "./rules/public-entrypoints.js";
 
 const gtkx = {
     meta: { name: "@gtkx/eslint" },
@@ -12,8 +10,6 @@ const gtkx = {
         "brand-naming": brandNaming,
         "no-comments": noComments,
         "no-inline-exports": noInlineExports,
-        "public-api-jsdoc": publicApiJsdoc,
-        "public-entrypoints": publicEntrypoints,
     },
 };
 

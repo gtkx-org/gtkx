@@ -50,8 +50,9 @@ const PROBE_APP_ID = "org.gtkx.linkprobe";
 const DELAYED_APP_ID = "org.gtkx.delayed";
 const PROBE_WIDGET_ID = "probe-widget";
 const SERVER_ENTRY = fileURLToPath(new URL("../src/server.ts", import.meta.url));
+const TSX_LOADER = new URL("../../../scripts/tsx.ts", import.meta.url).href;
 const SERVER_SCRIPT = `const { main } = await import(${JSON.stringify(SERVER_ENTRY)}); await main();`;
-const SERVER_ARGUMENTS = ["--conditions=source", "--import=tsx", "--input-type=module", "-e", SERVER_SCRIPT];
+const SERVER_ARGUMENTS = ["--import", TSX_LOADER, "--input-type=module", "-e", SERVER_SCRIPT];
 const state: ServerState = { project: "", servers: [], apps: [], runtimeRoots: [], rawServers: [] };
 
 const projectRoot = (): string => {

@@ -19,6 +19,8 @@
             "{workspaceRoot}/tsconfig.test.json",
             "{workspaceRoot}/gtkx.config.ts",
             "{workspaceRoot}/vitest.config.base.ts",
+            "{workspaceRoot}/scripts/workspace-paths.ts",
+            "{workspaceRoot}/scripts/tsx.ts",
             {
                 "env": "CI_IMAGE_ID"
             },
@@ -40,7 +42,6 @@
             }
         ],
         "eslintConfig": [
-            "{workspaceRoot}/api.json",
             "{workspaceRoot}/eslint.config.ts",
             "{workspaceRoot}/packages/eslint/src/**/*",
             "{workspaceRoot}/packages/eslint/package.json",
@@ -98,7 +99,6 @@
                 }
             },
             "exclude": [
-                "packages/eslint/tests/fixtures/**",
                 "packages/cli/tests/fixtures/**",
                 "tutorial/**"
             ]
@@ -109,7 +109,6 @@
                 "targetName": "lint"
             },
             "exclude": [
-                "packages/eslint/tests/fixtures/**",
                 "packages/cli/tests/fixtures/**",
                 "tutorial/**"
             ]

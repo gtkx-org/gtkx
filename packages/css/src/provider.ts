@@ -79,4 +79,4 @@ const attachParsingErrorLogger = (provider: CssProvider, log: Logger, subject: s
     }
 };
 
-export { type ProviderOptions, registerProviderForDefaultDisplay, attachParsingErrorLogger };
+export { registerProviderForDefaultDisplay, attachParsingErrorLogger };

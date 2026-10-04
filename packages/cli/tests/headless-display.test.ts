@@ -20,7 +20,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { type CliProjectOptions, createCliProject, runCli, runCliOrThrow } from "./cli-project.js";
+import { type CliProjectOptions, createCliProject, runCli, runCliOrThrow, TSX_LOADER } from "./cli-project.js";
 import {
     childProcesses,
     isPidRunning,
@@ -56,7 +56,7 @@ type StaleRuntimeLayout = "sway" | "weston" | "bus";
 
 const STALE_AGE_MS = 10_000;
 const CRASH_SETTLE_MS = 500;
-const NODE_TYPESCRIPT_ARGS = ["--conditions=source", "--import", "tsx", "--input-type=module", "-e"];
+const NODE_TYPESCRIPT_ARGS = ["--import", TSX_LOADER, "--input-type=module", "-e"];
 const HEADLESS_MODULE = new URL("../../vitest/src/headless.ts", import.meta.url).href;
 const VITEST_PLUGIN_MODULE = new URL("../../vitest/src/index.ts", import.meta.url).href;
 const VITEST_DIST_PLUGIN_MODULE = new URL("../../vitest/dist/index.js", import.meta.url).href;
