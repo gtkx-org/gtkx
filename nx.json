@@ -43,6 +43,9 @@
         ],
         "eslintConfig": [
             "{workspaceRoot}/eslint.config.ts",
+            "{workspaceRoot}/.gitignore",
+            "{workspaceRoot}/packages/native/.gitignore",
+            "{workspaceRoot}/website/.gitignore",
             {
                 "externalDependencies": [
                     "eslint",

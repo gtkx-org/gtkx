@@ -8,21 +8,11 @@ import { join } from "node:path";
 import tseslint from "typescript-eslint";
 
 export default defineConfig(
-    includeIgnoreFile(join(import.meta.dirname, ".gitignore")),
-    {
-        ignores: [
-            ".claude/**",
-            ".codescythe-*/**",
-            "packages/native/npm/**",
-            "packages/native/target/**",
-            "packages/native/artifacts/**",
-            "packages/native/index.js",
-            "packages/native/index.d.ts",
-            "website/.vitepress/cache/**",
-            "website/.vitepress/dist/**",
-            "website/.vitepress/.temp/**",
-        ],
-    },
+    includeIgnoreFile(
+        [".gitignore", "packages/native/.gitignore", "website/.gitignore"].map((path) => join(import.meta.dirname, path)),
+        { gitignoreResolution: true },
+    ),
+    { ignores: [".codescythe-*/**"] },
     {
         files: ["**/*.{ts,tsx,mts,cts}"],
         extends: [js.configs.recommended, tseslint.configs.recommendedTypeChecked],
