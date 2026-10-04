@@ -9,7 +9,7 @@ Build the workspace, run an example, then use focused Nx targets while making ch
 
 ## Prerequisites
 
-Use Linux with Node.js 26.7 or later. The repository's `mise.toml` selects Node 26, and `package.json` pins pnpm through its `packageManager` field. If your runtimes are managed by mise, run the commands below through `mise exec --`, for example `mise exec -- pnpm install`.
+Use Linux with Node.js 26.7 or later. The repository's `package.json` pins pnpm through its `packageManager` field. If your runtimes are managed by mise, run the commands below through `mise exec --`, for example `mise exec -- pnpm install`.
 
 Install Rust through rustup so `rust-toolchain.toml` selects the pinned compiler and Clippy. Native formatting and sanitizers use a separate nightly; its installation command is under [Change native code](#change-native-code).
 
