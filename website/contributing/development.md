@@ -15,6 +15,14 @@ CI reads `.github/node-version` to run the minimum supported Node.js version, in
 
 Install Rust through rustup so `rust-toolchain.toml` selects the pinned compiler and Clippy. Native formatting and sanitizers use a separate nightly; its installation command is under [Change native code](#change-native-code).
 
+Full linting also requires Go 1.26 or later, ShellCheck on `PATH`, and the pinned Rust advisory checker:
+
+```bash
+cargo install cargo-audit --version 0.22.2 --locked
+```
+
+Keep Cargo's binary directory on `PATH`. The workflow lint target downloads its pinned actionlint and yq versions through `go run`; the advisory audit refreshes the RustSec database on every run.
+
 The full workspace needs more system libraries than a minimal application:
 
 | Work | System dependencies |
@@ -131,7 +139,7 @@ pnpm nx run @gtkx/native:build
 pnpm nx run @gtkx/native:lint
 ```
 
-The build invokes `napi build` in release mode and produces the platform-specific `.node` file and generated addon declarations. Rust linting runs the pinned nightly rustfmt check followed by Clippy with warnings treated as errors. Changes that affect ownership, callbacks, marshalling, or teardown also belong in the native integration verification described in [Testing](/contributing/testing#native-integration-and-sanitizers).
+The build invokes `napi build` in release mode and produces the platform-specific `.node` file and generated addon declarations. Rust linting runs the pinned nightly rustfmt check, Clippy with warnings treated as errors, and cargo-audit against the current RustSec advisories. Changes that affect ownership, callbacks, marshalling, or teardown also belong in the native integration verification described in [Testing](/contributing/testing#native-integration-and-sanitizers).
 
 ## Work on the website
 

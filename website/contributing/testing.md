@@ -137,7 +137,9 @@ pnpm typecheck
 pnpm lint
 ```
 
-These root commands are aliases for `nx run-many -t <target>`. `pnpm lint` includes ESLint, Codescythe, rustfmt, and Clippy through the graph. CI exposes four checks: tests, build, lint, and e2e; the build check also runs typechecking.
+These root commands are aliases for `nx run-many -t <target>`. `pnpm lint` includes ESLint, Codescythe, actionlint, ShellCheck, rustfmt, Clippy, and cargo-audit through the graph. CI exposes four checks: tests, build, lint, and e2e; the build check also runs typechecking.
+
+Run `pnpm nx run gtkx:_lint:workflows` to check workflows, tracked shell scripts, and composite action steps. The target feeds composite steps to actionlint as a temporary workflow, so composite diagnostics refer to the transformed YAML. See [Development Setup](/contributing/development#prerequisites) for the Go, ShellCheck, and cargo-audit prerequisites. `pnpm nx run @gtkx/native:_lint:audit` checks current RustSec advisories without caching the result.
 
 Run `pnpm nx run gtkx:_lint:codescythe` to focus on unused source files and exports in packages, examples, and scripts. `codescythe.json` lists public library entrypoints, executable roots, and tests. Private package barrels and `internal` barrels remain subject to usage checks. Test imports count as usage; website Vue files, declaration files, and built launchers are outside this source check.
 

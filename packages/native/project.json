@@ -53,10 +53,15 @@
             ],
             "outputs": []
         },
+        "_lint:audit": {
+            "command": "cargo audit --file packages/native/Cargo.lock --deny unsound",
+            "cache": false
+        },
         "lint": {
             "dependsOn": [
                 "build",
-                "_lint:rust"
+                "_lint:rust",
+                "_lint:audit"
             ]
         },
         "_test:asan": {

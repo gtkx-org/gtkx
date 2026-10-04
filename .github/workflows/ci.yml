@@ -47,6 +47,12 @@ jobs:
 
       - uses: ./.github/actions/setup-ci
 
+      - name: Install Rust advisory audit
+        if: matrix.check == 'lint'
+        run: |
+          cargo install cargo-audit --version 0.22.2 --locked --root "$RUNNER_TEMP/cargo-audit"
+          echo "$RUNNER_TEMP/cargo-audit/bin" >> "$GITHUB_PATH"
+
       - name: Run check
         env:
           CHECK: ${{ matrix.script }}

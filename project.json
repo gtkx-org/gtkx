@@ -29,7 +29,8 @@
             "cache": true,
             "dependsOn": [
                 "codegen",
-                "build"
+                "build",
+                "^typecheck"
             ],
             "inputs": [
                 "{workspaceRoot}/tsconfig.json",
@@ -52,7 +53,8 @@
             "dependsOn": [
                 "codegen",
                 "build",
-                "_lint:codescythe"
+                "_lint:codescythe",
+                "_lint:workflows"
             ],
             "inputs": [
                 "default",
@@ -119,6 +121,34 @@
         "_tutorial:checkpoint": {
             "command": "tsx scripts/tutorial-checkpoints.ts",
             "cache": false
+        },
+        "_lint:workflows": {
+            "executor": "nx:run-commands",
+            "cache": true,
+            "inputs": [
+                "{workspaceRoot}/project.json",
+                "{workspaceRoot}/.github/**/*",
+                "{workspaceRoot}/**/*.sh",
+                "{workspaceRoot}/.shellcheckrc",
+                {
+                    "runtime": "go version"
+                },
+                {
+                    "runtime": "shellcheck --version"
+                },
+                {
+                    "env": "SHELLCHECK_OPTS"
+                }
+            ],
+            "outputs": [],
+            "options": {
+                "parallel": false,
+                "commands": [
+                    "bash -euo pipefail -c 'git ls-files -z -- \"*.sh\" | xargs -0 -r shellcheck --shell=bash'",
+                    "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -pyflakes=",
+                    "bash -euo pipefail -c 'for action in .github/actions/*/action.yml .github/actions/*/action.yaml; do if [ -f \"$action\" ]; then go run github.com/mikefarah/yq/v4@v4.54.1 \"{\\\"on\\\":\\\"push\\\",\\\"jobs\\\":{\\\"composite\\\":{\\\"runs-on\\\":\\\"ubuntu-latest\\\",\\\"steps\\\":.runs.steps}}}\" \"$action\" | go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -pyflakes= -stdin-filename \"$action\" -; fi; done'"
+                ]
+            }
         }
     }
 }
