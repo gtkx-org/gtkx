@@ -124,7 +124,7 @@ Translate the formatters in `src/format.ts`, keeping the existing date helpers:
 
 Gettext counts must be non-negative safe integers. An overdue date has a negative `days` value, so pass `-days` as the count. `toLocaleDateString` and `toLocaleString` format dates using the process locale.
 
-These edits provide the messages exercised in this chapter. Apply the same approach to the remaining authored labels, dialogs, notifications, and starter content; the [finished source](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial/src) shows each location. Keep user-entered names, action names, settings keys, and other identifiers unchanged. Starter content is translated on first creation; changing locale does not rewrite saved tasks.
+These edits provide the messages exercised in this chapter. Apply the same approach to the remaining authored labels, dialogs, notifications, and starter content; the [finished source](https://github.com/gtkx-org/gtkx/tree/main/tutorial/src) shows each location. Keep user-entered names, action names, settings keys, and other identifiers unchanged. Starter content is translated on first creation; changing locale does not rewrite saved tasks.
 
 Use literal message keys and retain the names `t` and `useTranslation`: GTKX's extractor rejects aliases and dynamic keys. Codegen generates the message and interpolation types, so there is no separate list of keys to maintain.
 

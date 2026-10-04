@@ -27,11 +27,11 @@ Refresh the lockfile after updating the package metadata:
 npm install --package-lock-only
 ```
 
-Save the tutorial's [LICENSE](https://github.com/gtkx-org/gtkx/blob/main/examples/tutorial/LICENSE) in the project root. Keep the updated lockfile; the later Flatpak source build uses it to install dependencies offline.
+Save the tutorial's [LICENSE](https://github.com/gtkx-org/gtkx/blob/main/tutorial/LICENSE) in the project root. Keep the updated lockfile; the later Flatpak source build uses it to install dependencies offline.
 
 ## Add the application icons
 
-Copy the tutorial's [full-color icon](https://github.com/gtkx-org/gtkx/blob/main/examples/tutorial/data/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg) and [symbolic icon](https://github.com/gtkx-org/gtkx/blob/main/examples/tutorial/data/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg) into these paths:
+Copy the tutorial's [full-color icon](https://github.com/gtkx-org/gtkx/blob/main/tutorial/data/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg) and [symbolic icon](https://github.com/gtkx-org/gtkx/blob/main/tutorial/data/icons/hicolor/symbolic/apps/com.gtkx.tutorial-symbolic.svg) into these paths:
 
 ```text
 data/icons/hicolor/scalable/apps/com.gtkx.tutorial.svg
@@ -73,7 +73,7 @@ GTKX derives the version, license, author, and homepage from `package.json`. It 
 
 The notification entry gives Tasks a place in the desktop's notification settings. D-Bus activation lets notification actions reach the app when it is closed. These settings complete the [reminder](/v2/tutorial/reminders) workflow.
 
-The [finished configuration](https://github.com/gtkx-org/gtkx/blob/main/examples/tutorial/gtkx.config.ts) also includes screenshots and release notes. Add those when preparing your own release; the [configuration reference](/v2/reference/@gtkx/config/index/type-aliases/Config) describes the available options.
+The [finished configuration](https://github.com/gtkx-org/gtkx/blob/main/tutorial/gtkx.config.ts) also includes screenshots and release notes. Add those when preparing your own release; the [configuration reference](/v2/reference/@gtkx/config/index/type-aliases/Config) describes the available options.
 
 ## Build and preview
 

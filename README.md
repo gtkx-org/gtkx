@@ -72,7 +72,7 @@ The CLI generates `@gtkx/jsx` elements and `@gtkx/gi` bindings from your configu
 ## Learn GTKX
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/examples/tutorial/assets/screenshot.png" alt="The Tasks app: an Adwaita window with a sidebar of smart views and colored lists on the left, and a boxed task list on the right." />
+  <img src="https://raw.githubusercontent.com/gtkx-org/gtkx/main/tutorial/assets/screenshot.png" alt="The Tasks app: an Adwaita window with a sidebar of smart views and colored lists on the left, and a boxed task list on the right." />
 </p>
 
 <p align="center">

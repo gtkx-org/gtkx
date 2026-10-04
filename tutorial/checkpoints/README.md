@@ -35,11 +35,11 @@ npm run dev
 
 `--version v1` pins GTKX to 1.6.0. The default is `v2`, using the GTKX version declared by the current example. Other dependency ranges come from the corresponding example manifest. Keep the generated lockfile for repeatable dependency resolution. The default final chapter is `flatpak`; `--chapter` includes all preceding edits. Existing output directories are rejected.
 
-The published v2 beta.10 supports chapters 1–9. The remaining v2 chapters use APIs from the working repository that have not yet been published. After [setting up the repository](../../../CONTRIBUTING.md), build and install those packages through the local registry:
+The published v2 beta.10 supports chapters 1–9. The remaining v2 chapters use APIs from the working repository that have not yet been published. After [setting up the repository](../../CONTRIBUTING.md), build and install those packages through the local registry:
 
 ```bash
 pnpm tutorial run typecheck
-pnpm tutorial:checkpoints --check --dependencies examples/tutorial/node_modules --chapter your-first-window --output /tmp/gtkx-tasks-v2
+pnpm tutorial:checkpoints --check --dependencies tutorial/node_modules --chapter your-first-window --output /tmp/gtkx-tasks-v2
 cd /tmp/gtkx-tasks-v2
 npm run dev
 ```
@@ -50,7 +50,7 @@ The first command leaves the example's installed dependencies available for the 
 
 ```bash
 pnpm tutorial:checkpoints --check --version v1
-pnpm tutorial:checkpoints --check --dependencies examples/tutorial/node_modules
+pnpm tutorial:checkpoints --check --dependencies tutorial/node_modules
 ```
 
 Without `--dependencies`, the check installs packages from the configured npm registry into a fresh temporary project, adding chapter dependencies as they appear. With a current development registry, use its npm configuration and a fresh cache to keep unpublished packages distinct from published packages with the same version.

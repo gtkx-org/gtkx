@@ -14,7 +14,7 @@
         "packages/eslint/src/eslint-plugin-promise.d.ts",
         "packages/vitest/src/dbus-native.d.ts"
     ],
-    "exclude": ["examples/tutorial"],
+    "exclude": ["tutorial"],
     "references": [],
     "compilerOptions": {
         "composite": false,

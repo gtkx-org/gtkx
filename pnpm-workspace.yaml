@@ -3,7 +3,6 @@ packages:
   - packages/*
   - scripts
   - examples/*
-  - "!examples/tutorial"
   - website
 
 minimumReleaseAge: 1440

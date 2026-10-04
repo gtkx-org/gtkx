@@ -13,7 +13,7 @@ type TutorialPackage = {
     devDependencies: Record<string, string>;
 };
 
-const tutorialDir = join(ROOT_DIR, "examples", "tutorial");
+const tutorialDir = join(ROOT_DIR, "tutorial");
 const chapters = JSON.parse(
     readFileSync(join(tutorialDir, "checkpoints", "chapters.json"), "utf8"),
 ) as Chapter[];

@@ -43,7 +43,7 @@ Maintainers follow [Publishing Releases](https://gtkx.dev/contributing/releases)
 
 ## Documentation and examples
 
-[Maintaining Documentation](https://gtkx.dev/contributing/documentation) covers the website workflow. Examples provide executable integration coverage. `examples/tutorial` consumes registry packages outside the workspace; run `pnpm tutorial` to validate it against the working tree.
+[Maintaining Documentation](https://gtkx.dev/contributing/documentation) covers the website workflow. Examples provide executable integration coverage. `tutorial` consumes registry packages outside the workspace; run `pnpm tutorial` to validate it against the working tree.
 
 ### Documentation versions
 
