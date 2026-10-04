@@ -50,7 +50,6 @@ const isDefaultWidgetName = (widget: object, name: string): boolean =>
 const hasWidgetMethod = (widget: object, name: string): boolean =>
     typeof getWidgetMethod(widget, name) === "function";
 
-/* eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters -- callers name the signature */
 const getCallableMethod = <Args extends unknown[], Result>(
     widget: object,
     name: string,

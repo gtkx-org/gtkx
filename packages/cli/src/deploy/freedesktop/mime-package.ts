@@ -1,8 +1,7 @@
 import type { DeployFileAssociation, DeploySettings } from "../types.js";
 import { element, renderDocument, text, type XmlNode } from "./xml.js";
 
-/* eslint-disable-next-line unicorn/prefer-https --
-   An XML namespace is a fixed identifier, not a URL to fetch: shared-mime-info only recognizes this exact string. */
+/* An XML namespace is a fixed identifier, not a URL to fetch: shared-mime-info only recognizes this exact string. */
 const MIME_INFO_NAMESPACE = "http://www.freedesktop.org/standards/shared-mime-info";
 
 const mimeTypeNode = (association: DeployFileAssociation): XmlNode =>

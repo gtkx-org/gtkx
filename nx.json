@@ -43,22 +43,16 @@
         ],
         "eslintConfig": [
             "{workspaceRoot}/eslint.config.ts",
-            "{workspaceRoot}/packages/eslint/src/**/*",
-            "{workspaceRoot}/packages/eslint/package.json",
             {
                 "externalDependencies": [
                     "eslint",
                     "typescript",
                     "typescript-eslint",
                     "@eslint/js",
-                    "@nx/eslint-plugin",
-                    "@stylistic/eslint-plugin",
                     "@vitest/eslint-plugin",
-                    "eslint-plugin-perfectionist",
-                    "eslint-plugin-promise",
                     "eslint-plugin-react-hooks",
-                    "eslint-plugin-unicorn",
                     "eslint-plugin-vue",
+                    "globals",
                     "vue-eslint-parser",
                     "jiti"
                 ]

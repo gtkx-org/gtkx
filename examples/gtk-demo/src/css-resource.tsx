@@ -24,11 +24,9 @@ function CssResource({ css, priority = Gtk.STYLE_PROVIDER_PRIORITY_USER }: CssRe
         }
 
         provider.loadFromString(css);
-        // eslint-disable-next-line @typescript-eslint/no-deprecated
         Gtk.StyleContext.addProviderForDisplay(display, provider, priority);
 
         return () => {
-            // eslint-disable-next-line @typescript-eslint/no-deprecated
             Gtk.StyleContext.removeProviderForDisplay(display, provider);
         };
     }, [css, priority, provider]);

@@ -224,7 +224,6 @@ const maybeAnnounceStale = (shouldAnnounce: boolean | undefined, inputs: Codegen
 const isPreflightSkipped = (options: EnsureGeneratedOptions): boolean =>
     options.shouldAnnounce === true && process.env.GTKX_DISABLE_PREFLIGHT === "1";
 
-/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether codegen ran */
 const generate = async (context: CodegenContext, options: EnsureGeneratedOptions): Promise<boolean> => {
     if (context.config.codegen === false) {
         const result = await runCodegen({
@@ -252,13 +251,11 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
     return result.isRegenerated;
 };
 
-/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether codegen ran */
 const ensureGeneratedIn = async (
     context: CodegenContext,
     options: EnsureGeneratedOptions = {},
 ): Promise<boolean> => !isPreflightSkipped(options) && generate(context, options);
 
-/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether codegen ran */
 const ensureGenerated = async (cwd: string, options: EnsureGeneratedOptions = {}): Promise<boolean> =>
     !isPreflightSkipped(options) &&
     generate(await resolveCodegenContext(cwd, options.mode, options.configFile), options);

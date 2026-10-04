@@ -999,8 +999,8 @@ const registerMatchers = (): void => {
 };
 
 declare module "vitest" {
-    /* eslint-disable @typescript-eslint/consistent-type-definitions, @typescript-eslint/no-unused-vars --
-       declaration merging requires an interface with vitest's exact type parameters */
+    /* eslint-disable @typescript-eslint/no-unused-vars --
+       declaration merging requires vitest's exact type parameters */
     interface Matchers<R extends void | Promise<void> = void | Promise<void>, T = unknown> {
         toHaveDisplayValue(expected?: TextExpectation): R;
         toHaveTextContent(expected?: TextExpectation, options?: TextContentOptions): R;
@@ -1008,12 +1008,10 @@ declare module "vitest" {
         toHaveAccessibleDescription(expected?: TextExpectation): R;
         toHaveAccessibleErrorMessage(expected?: TextExpectation): R;
         toHaveSelection(expected?: TextExpectation): R;
-        /* eslint-disable-next-line unicorn/consistent-boolean-name -- expected is the jest-dom matcher argument name */
         toHaveAccessibleState(state: BooleanAccessibleState, expected?: boolean): R;
         toHaveAccessibleState(state: TristateAccessibleState, expected?: Gtk.AccessibleTristate): R;
         toHaveAccessibleState(state: Gtk.AccessibleState.INVALID, expected?: Gtk.AccessibleInvalidState): R;
         toHaveAccessibleProperty(property: StringAccessibleProperty, expected?: string): R;
-        /* eslint-disable-next-line unicorn/consistent-boolean-name -- expected is the jest-dom matcher argument name */
         toHaveAccessibleProperty(property: BooleanAccessibleProperty, expected?: boolean): R;
         toHaveAccessibleProperty(property: NumberAccessibleProperty, expected?: number): R;
         toHaveAccessibleProperty(
@@ -1053,7 +1051,7 @@ declare module "vitest" {
         toHaveClass(...args: (ClassExpectation | { exact: boolean })[]): R;
         toHaveObjectProperty(name: string, expected?: unknown): R;
     }
-    /* eslint-enable @typescript-eslint/consistent-type-definitions, @typescript-eslint/no-unused-vars */
+    /* eslint-enable @typescript-eslint/no-unused-vars */
 }
 
 export { matchers, registerMatchers, type ClassExpectation, type TextContentOptions, type TextExpectation };
