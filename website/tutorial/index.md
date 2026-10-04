@@ -68,7 +68,7 @@ The [completed 1.6 source](https://github.com/gtkx-org/gtkx/tree/v1.6.0/examples
 
 ## Chapter checkpoints
 
-The [checkpoint generator](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial/checkpoints) reconstructs all 18 stable chapters from these examples. From a current GTKX repository checkout:
+The [checkpoint generator](https://github.com/gtkx-org/gtkx/tree/main/tutorial/checkpoints) reconstructs all 18 stable chapters from these examples. From a current GTKX repository checkout:
 
 ```bash
 pnpm tutorial:checkpoints --version v1 --chapter the-task-store --output /tmp/gtkx-tasks

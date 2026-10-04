@@ -8,7 +8,8 @@
         "packages/cli/tests/fixtures/configured-props/**",
         "packages/cli/tests/fixtures/react-compiler/*.d.mts",
         "packages/eslint/tests/fixtures/**",
-        "packages/native/index.js"
+        "packages/native/index.js",
+        "tutorial/**"
     ],
     "ignoreDependencies": [
         "^@gtkx/gi(/.*)?$",

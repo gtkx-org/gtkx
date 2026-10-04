@@ -17,7 +17,7 @@ type VersionArguments = {
 const ROOT = join(import.meta.dirname, "..");
 const VERSION_MANIFEST_PATH = join(ROOT, "packages/create-gtkx/package.json");
 const VERSION_PLANS_PATH = join(ROOT, ".nx/version-plans");
-const TUTORIAL_MANIFEST_PATH = join(ROOT, "examples/tutorial/package.json");
+const TUTORIAL_MANIFEST_PATH = join(ROOT, "tutorial/package.json");
 const VERSIONS_PATH = join(ROOT, "website/versions.json");
 const GIT_OPTIONS = { stageChanges: false, gitCommit: false, gitTag: false, gitPush: false };
 

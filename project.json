@@ -46,7 +46,7 @@
             ]
         },
         "lint": {
-            "command": "eslint . --ignore-pattern packages --ignore-pattern examples --ignore-pattern website",
+            "command": "eslint . --ignore-pattern packages --ignore-pattern examples --ignore-pattern tutorial --ignore-pattern website",
             "cache": true,
             "dependsOn": [
                 "codegen",

@@ -74,7 +74,7 @@ Complete the [contributor setup](/contributing/), then run these commands from t
 
 ```bash
 pnpm tutorial run typecheck
-pnpm tutorial:checkpoints --check --dependencies examples/tutorial/node_modules --chapter your-first-window --output /tmp/gtkx-tasks
+pnpm tutorial:checkpoints --check --dependencies tutorial/node_modules --chapter your-first-window --output /tmp/gtkx-tasks
 cd /tmp/gtkx-tasks
 npm run dev
 ```
@@ -83,9 +83,9 @@ The first command builds and installs the current packages through a temporary l
 
 ## Chapter checkpoints
 
-The [checkpoint generator](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial/checkpoints) reconstructs every chapter from the named code fences. Select the chapter slug with `--chapter` and a new directory with `--output`. For current v2 code, retain `--check --dependencies examples/tutorial/node_modules` from the command above.
+The [checkpoint generator](https://github.com/gtkx-org/gtkx/tree/main/tutorial/checkpoints) reconstructs every chapter from the named code fences. Select the chapter slug with `--chapter` and a new directory with `--output`. For current v2 code, retain `--check --dependencies tutorial/node_modules` from the command above.
 
-The check applies chapters in order, typechecks, builds, starts each app, and runs the tests available at that step. It does not replace the chapter's **Run it** checks or install a built package. The [finished source](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial) is a separate reference for the complete app.
+The check applies chapters in order, typechecks, builds, starts each app, and runs the tests available at that step. It does not replace the chapter's **Run it** checks or install a built package. The [finished source](https://github.com/gtkx-org/gtkx/tree/main/tutorial) is a separate reference for the complete app.
 
 ## Next
 

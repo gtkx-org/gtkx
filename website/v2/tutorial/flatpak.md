@@ -69,4 +69,4 @@ Build and test the final source manifest using [Flathub's submission instruction
 
 ## Next
 
-Browse the [complete tutorial source](https://github.com/gtkx-org/gtkx/tree/main/examples/tutorial), or start your own application with `npm create gtkx@beta`.
+Browse the [complete tutorial source](https://github.com/gtkx-org/gtkx/tree/main/tutorial), or start your own application with `npm create gtkx@beta`.

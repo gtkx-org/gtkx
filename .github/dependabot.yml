@@ -12,7 +12,7 @@ updates:
           - "minor"
           - "patch"
   - package-ecosystem: "npm"
-    directory: "/examples/tutorial"
+    directory: "/tutorial"
     schedule:
       interval: "daily"
     groups:

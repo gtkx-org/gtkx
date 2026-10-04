@@ -92,7 +92,7 @@ ESLint checks TypeScript and JavaScript, Knip checks unused code and dependencie
 
 The website uses VitePress, Vue, and Shiki. Its prose lives under `website/`, and TypeDoc with its Markdown and VitePress integrations generates the API reference from package output. [website/versions.json](https://github.com/gtkx-org/gtkx/blob/main/website/versions.json) controls version labels, URL prefixes, and whether an API reference comes from the working tree or a pinned release tag.
 
-`examples/` contains runnable applications, the GTK demo, and native stories. Most examples consume workspace packages. `examples/tutorial` is deliberately excluded from the pnpm workspace so the tutorial can also verify installation and execution as an external consumer.
+`examples/` contains runnable applications, the GTK demo, and native stories. Examples consume workspace packages. `tutorial/` lives outside the pnpm workspace so the tutorial can also verify installation and execution as an external consumer.
 
 GitHub Actions runs checks, prepares releases, publishes packages, and deploys the website to GitHub Pages. Nx version plans record published-package changes. Consumer validation uses a private Verdaccio registry to test the packages produced by the repository. Application distribution through `gtkx deploy` supports Flatpak, Debian packages, RPM packages, and AppImage; see [Deploying](/v2/guide/deploying) for those application workflows.
 

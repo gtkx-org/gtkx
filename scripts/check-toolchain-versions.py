@@ -13,15 +13,12 @@ def value(pattern, source):
 
 root = pathlib.Path(__file__).resolve().parent.parent
 dockerfile = (root / ".github/docker/Dockerfile").read_text()
-mise = tomllib.loads((root / "mise.toml").read_text())["tools"]
 rust = tomllib.loads((root / "rust-toolchain.toml").read_text())["toolchain"]
 manifest = json.loads((root / "package.json").read_text())
 nightly = (root / "scripts/rust-nightly.ts").read_text()
 minimum = (root / "scripts/check-minimum-node.sh").read_text()
 
 versions = {
-    "Node": (mise["node"], value(r"^ARG NODE26_VERSION=(\S+)$", dockerfile)),
-    "npm": (mise["npm:npm"], value(r"\bnpm@([\d.]+)\b", dockerfile)),
     "Rust": (rust["channel"], value(r"^ARG RUST_VERSION=(\S+)$", dockerfile)),
     "pnpm": (
         value(r"^pnpm@([^+]+)", manifest["packageManager"]),

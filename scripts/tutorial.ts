@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ROOT_DIR, runAsync, verifyAppStarts, verifyBuiltAppStarts, withRegistry } from "./e2e-registry.js";
 
-const TUTORIAL_DIR = join(ROOT_DIR, "examples", "tutorial");
+const TUTORIAL_DIR = join(ROOT_DIR, "tutorial");
 const APPLICATION_ID = "com.gtkx.tutorial";
 const BINARY_NAME = "gtkx-tutorial";
 const MANIFEST_TARGETS = "appimage,deb,flatpak,rpm";
@@ -193,7 +193,7 @@ async function deployTutorial(env: NodeJS.ProcessEnv): Promise<void> {
 
 async function validateTutorial(env: NodeJS.ProcessEnv): Promise<void> {
     await runAsync("npm", ["run", "typecheck"], { cwd: TUTORIAL_DIR, env });
-    await runAsync("pnpm", ["exec", "eslint", "examples/tutorial"], { cwd: ROOT_DIR, env });
+    await runAsync("pnpm", ["exec", "eslint", "tutorial"], { cwd: ROOT_DIR, env });
     await runAsync("npm", ["run", "build"], { cwd: TUTORIAL_DIR, env });
     requireFile(join(TUTORIAL_DIR, "dist", "locale", "fr", "LC_MESSAGES", `${APPLICATION_ID}.mo`));
     await verifyBuiltAppStarts(TUTORIAL_DIR);

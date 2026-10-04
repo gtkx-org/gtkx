@@ -99,7 +99,8 @@
             },
             "exclude": [
                 "packages/eslint/tests/fixtures/**",
-                "packages/cli/tests/fixtures/**"
+                "packages/cli/tests/fixtures/**",
+                "tutorial/**"
             ]
         },
         {
@@ -109,7 +110,8 @@
             },
             "exclude": [
                 "packages/eslint/tests/fixtures/**",
-                "packages/cli/tests/fixtures/**"
+                "packages/cli/tests/fixtures/**",
+                "tutorial/**"
             ]
         },
         {
@@ -125,7 +127,8 @@
                 "examples/browser/*",
                 "examples/hello-world/*",
                 "examples/navigation/*",
-                "examples/storybook/*"
+                "examples/storybook/*",
+                "tutorial/**"
             ]
         }
     ],
