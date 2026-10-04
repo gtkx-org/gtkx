@@ -18,7 +18,6 @@ export default defineConfig(
             "packages/native/artifacts/**",
             "packages/native/index.js",
             "packages/native/index.d.ts",
-            "packages/*/bin/**",
             "website/.vitepress/cache/**",
             "website/.vitepress/dist/**",
             "website/.vitepress/.temp/**",
@@ -41,7 +40,10 @@ export default defineConfig(
     {
         files: ["**/*.{js,jsx,mjs,cjs}"],
         extends: [js.configs.recommended],
-        languageOptions: { globals: globals.node },
+        languageOptions: {
+            globals: globals.node,
+            parserOptions: { ecmaFeatures: { jsx: true } },
+        },
     },
     {
         files: ["**/*.{ts,tsx,js,jsx}"],
