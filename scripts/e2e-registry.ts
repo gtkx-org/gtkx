@@ -13,10 +13,9 @@ import {
 import { createServer, type IncomingMessage, request, type Server, type ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { runServer } from "verdaccio";
 import { verifyNativeArtifacts } from "./native-artifact.js";
+import { startNxRegistry } from "./nx-registry.js";
 
 type HostNativeTarget = { triple: string; platformPackage: string };
 
@@ -34,10 +33,6 @@ type PackageIdentity = {
 type PublishablePackage = {
     directory: string;
     name: string;
-};
-
-type UserResponse = {
-    token?: string;
 };
 
 type RunOptions = {
@@ -96,7 +91,7 @@ type VisibilityTracker = {
 };
 
 type RegistryServers = {
-    server: Server;
+    stop: () => Promise<void>;
     visibilityProxy?: VisibilityProxy | undefined;
 };
 
@@ -115,9 +110,7 @@ const PORT = 4873;
 const VERDACCIO_PORT = 4874;
 const HOSTNAME = "127.0.0.1";
 const HOST = `${HOSTNAME}:${String(PORT)}`;
-const VERDACCIO_HOST = `${HOSTNAME}:${String(VERDACCIO_PORT)}`;
 const REGISTRY = `http://${HOST}/`;
-const REGISTRAR_USER = "release-e2e";
 const RELEASE_VISIBILITY_DELAY_MS = 3000;
 
 const hostNativeTargets: Record<string, HostNativeTarget> = {
@@ -144,74 +137,6 @@ function runAsync(command: string, args: string[], options: RunOptions): Promise
             }
         });
     });
-}
-
-function verdaccioConfig(workDir: string, host: string): string {
-    return `
-        storage: ${join(workDir, "storage")}
-        auth:
-            htpasswd:
-                file: ${join(workDir, "htpasswd")}
-                max_users: 1000
-        uplinks:
-            npmjs:
-                url: https://registry.npmjs.org/
-                maxage: 60m
-                cache: false
-        packages:
-            '@gtkx/*':
-                access: $all
-                publish: $all
-                unpublish: $all
-            'create-gtkx':
-                access: $all
-                publish: $all
-                unpublish: $all
-            '@*/*':
-                access: $all
-                publish: $all
-                proxy: npmjs
-            '**':
-                access: $all
-                publish: $all
-                proxy: npmjs
-        security:
-            api:
-                jwt:
-                    sign:
-                        expiresIn: 1d
-            web:
-                sign:
-                    expiresIn: 1d
-        listen: ${host}
-        log:
-            type: stdout
-            format: pretty
-            level: warn
-    `;
-}
-
-/* eslint-disable-next-line unicorn/consistent-boolean-name -- the boolean reports whether the registry answered */
-async function ping(): Promise<boolean> {
-    try {
-        const response = await fetch(`${REGISTRY}-/ping`);
-
-        return response.ok;
-    } catch {
-        return false;
-    }
-}
-
-async function waitForRegistry(): Promise<void> {
-    for (let attempt = 0; attempt < 60; attempt += 1) {
-        if (await ping()) {
-            return;
-        }
-
-        await delay(500);
-    }
-
-    throw new Error("Verdaccio did not become ready in time");
 }
 
 function decodedPathSegments(rawUrl: string): string[] | undefined {
@@ -439,26 +364,6 @@ async function startVisibilityProxy(delayMs: number): Promise<VisibilityProxy> {
     return { assertDelay: tracker.assertDelay, server };
 }
 
-async function createUserToken(): Promise<string> {
-    const response = await fetch(`${REGISTRY}-/user/org.couchdb.user:${REGISTRAR_USER}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: REGISTRAR_USER, password: REGISTRAR_USER, email: "e2e@gtkx.dev" }),
-    });
-
-    if (!response.ok) {
-        throw new Error(`Failed to register Verdaccio user: HTTP ${String(response.status)}`);
-    }
-
-    const body = (await response.json()) as UserResponse;
-
-    if (!body.token) {
-        throw new Error("Verdaccio did not return an authentication token");
-    }
-
-    return body.token;
-}
-
 function registryEnv(userConfig: string, registryDir: string): NodeJS.ProcessEnv {
     const env: NodeJS.ProcessEnv = {
         ...process.env,
@@ -610,10 +515,7 @@ function listenServer(server: Server, port: number): Promise<void> {
     });
 }
 
-async function publishInto(env: NodeJS.ProcessEnv): Promise<void> {
-    const packages = publishablePackages();
-    cleanPublishableBuildArtifacts(packages);
-    await bootstrapProjectGraph(env);
+async function publishInto(packages: PublishablePackage[], env: NodeJS.ProcessEnv): Promise<void> {
     await buildPackages(packages, env);
     await stageNativeArtifacts();
     const restorePublishedTree = prepareHostOnlyPublish();
@@ -625,49 +527,45 @@ async function publishInto(env: NodeJS.ProcessEnv): Promise<void> {
     }
 }
 
-async function startRegistryServers(configPath: string, visibilityDelayMs: number): Promise<RegistryServers> {
-    const server = (await runServer(configPath)) as Server;
+async function startRegistryServers(registryDir: string, visibilityDelayMs: number): Promise<RegistryServers> {
+    const stop = await startNxRegistry(registryDir, visibilityDelayMs > 0 ? VERDACCIO_PORT : PORT);
 
     try {
-        await listenServer(server, visibilityDelayMs > 0 ? VERDACCIO_PORT : PORT);
-
         if (visibilityDelayMs === 0) {
-            return { server };
+            return { stop };
         }
 
-        return { server, visibilityProxy: await startVisibilityProxy(visibilityDelayMs) };
+        return { stop, visibilityProxy: await startVisibilityProxy(visibilityDelayMs) };
     } catch (error) {
-        await closeServer(server);
+        await stop();
         throw error;
     }
 }
 
 async function stopRegistryServers(servers: RegistryServers): Promise<void> {
-    if (servers.visibilityProxy !== undefined) {
-        await closeServer(servers.visibilityProxy.server);
+    try {
+        if (servers.visibilityProxy !== undefined) {
+            await closeServer(servers.visibilityProxy.server);
+        }
+    } finally {
+        await servers.stop();
     }
-
-    await closeServer(servers.server);
 }
 
 async function startRegistry(options: StartRegistryOptions): Promise<RegistryHandle> {
     const { registryDir } = options;
     const visibilityDelayMs = options.visibilityDelayMs ?? 0;
-    const verdaccioHost = visibilityDelayMs > 0 ? VERDACCIO_HOST : HOST;
     mkdirSync(registryDir, { recursive: true });
-    const configPath = join(registryDir, "config.yaml");
     const npmrcPath = join(registryDir, "npmrc");
-    writeFileSync(configPath, verdaccioConfig(registryDir, verdaccioHost));
-    rmSync(join(registryDir, "htpasswd"), { force: true });
-    rmSync(join(registryDir, "storage"), { recursive: true, force: true });
-    const servers = await startRegistryServers(configPath, visibilityDelayMs);
+    writeFileSync(npmrcPath, `registry=${REGISTRY}\n//${HOST}/:_authToken=secretVerdaccioToken\n`);
+    const packages = publishablePackages();
+    cleanPublishableBuildArtifacts(packages);
+    await bootstrapProjectGraph(process.env);
+    const servers = await startRegistryServers(registryDir, visibilityDelayMs);
 
     try {
-        await waitForRegistry();
-        const token = await createUserToken();
-        writeFileSync(npmrcPath, `registry=${REGISTRY}\n//${HOST}/:_authToken=${token}\n`);
         const env = registryEnv(npmrcPath, registryDir);
-        await publishInto(env);
+        await publishInto(packages, env);
         servers.visibilityProxy?.assertDelay();
 
         return {

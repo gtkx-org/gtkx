@@ -111,6 +111,22 @@ pnpm tutorial
 
 Run these separately when the changed behavior reaches scaffolding, package contents, installation, or deployment. They publish to the test registry managed by the scripts. They also require network access for upstream dependencies and the relevant system packaging tools.
 
+The scripts start Verdaccio through the `gtkx:local-registry` Nx target. Its configuration in `.verdaccio/config.yml` keeps `@gtkx/*` and `create-gtkx` local while forwarding other packages to npm. Registry storage is cleared on startup so each run checks freshly published packages. Consumer commands receive an isolated npm configuration; your user-level npm and Yarn settings stay unchanged.
+
+For manual consumer testing, build and publish the workspace packages and leave the registry running:
+
+```bash
+pnpm local-registry
+```
+
+The script prints the registry URL and environment settings for a separate consumer terminal. To start an empty registry without building or publishing packages, use:
+
+```bash
+pnpm nx run gtkx:local-registry
+```
+
+This target listens on `127.0.0.1:4873` by default and clears `.local-registry/storage` on startup. Run registry commands separately, and stop a manual registry before starting a consumer check.
+
 `pnpm release-e2e` validates a freshly scaffolded consumer application. `pnpm tutorial` validates the existing Tasks application, which is intentionally outside the pnpm workspace. Its default flow installs dependencies, builds and starts the app, typechecks, runs tests, generates deployment manifests, and verifies localized AppImage, Debian, and RPM artifacts. It generates the Flatpak manifest as part of this flow; the default tutorial check does not build a Flatpak.
 
 The tutorial script reinstalls the tutorial's dependencies and rebuilds its generated artifacts. It also accepts an npm command for a narrower pass after the registry setup:
