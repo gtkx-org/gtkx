@@ -37,9 +37,6 @@ jobs:
           - check: lint
             script: lint
             timeout: 30
-          - check: e2e
-            script: e2e
-            timeout: 240
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -61,3 +58,34 @@ jobs:
       - name: Typecheck
         if: matrix.check == 'build'
         run: pnpm typecheck
+
+  e2e-shards:
+    name: e2e (${{ matrix.shard }}/4)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-ci
+
+      - name: Run E2E shard
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: pnpm e2e -- --shard="$SHARD/4"
+
+  e2e:
+    if: always()
+    needs: e2e-shards
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every E2E shard
+        env:
+          RESULT: ${{ needs.e2e-shards.result }}
+        run: test "$RESULT" = success

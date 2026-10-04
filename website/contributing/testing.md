@@ -100,7 +100,7 @@ The sanitizer run tests both the addon and generated binding fixtures with leak 
 
 ## Consumer and packaging checks
 
-Workspace imports can pass while a published package is missing a file, export, template, or dependency. The published-consumer Vitest project installs packages from a private Verdaccio registry. Nx builds the package set before the tests; Vitest's global setup publishes it once for both suites and closes the registry afterward.
+Workspace imports can pass while a published package is missing a file, export, template, or dependency. The published-consumer Vitest project installs packages from a private Verdaccio registry. Nx builds the package set before the tests; Vitest's global setup publishes it once per run and closes the registry afterward.
 
 Both suites are part of `pnpm e2e`. Select one through Nx when working on package contents or deployment:
 
@@ -138,6 +138,8 @@ pnpm lint
 ```
 
 These root commands are aliases for `nx run-many -t <target>`. `pnpm lint` includes ESLint, Codescythe, actionlint, ShellCheck, rustfmt, Clippy, and cargo-audit through the graph. CI exposes four checks: tests, build, lint, and e2e; the build check also runs typechecking.
+
+The e2e check combines four Vitest shards on separate runners, each with its own registry setup. Reproduce one shard with `pnpm e2e -- --shard=1/4`; `pnpm e2e` still runs the complete suite locally.
 
 Run `pnpm nx run gtkx:_lint:workflows` to check workflows, tracked shell scripts, and composite action steps. The target feeds composite steps to actionlint as a temporary workflow, so composite diagnostics refer to the transformed YAML. See [Development Setup](/contributing/development#prerequisites) for the Go, ShellCheck, and cargo-audit prerequisites. `pnpm nx run @gtkx/native:_lint:audit` checks current RustSec advisories without caching the result.
 
