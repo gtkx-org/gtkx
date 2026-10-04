@@ -78,7 +78,7 @@ npm test
 npm run dev
 ```
 
-Use a new output directory. `--version v1` selects the stable pages and GTKX 1.6.0 dependencies. Add `--check` to install dependencies and typecheck, build, start, and test every checkpoint up to the selected chapter. Continue to use each chapter's **Run it** checks to inspect the interaction.
+Use a new output directory. `--version v1` selects the stable pages and GTKX 1.6.0 dependencies. After installing dependencies, run `npm run typecheck`, `npm run build`, and `npm test` in the generated project to check that chapter. Continue to use each chapter's **Run it** checks to inspect the interaction.
 
 ## Next
 

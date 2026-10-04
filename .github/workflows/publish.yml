@@ -5,7 +5,6 @@ on:
 
 permissions:
   contents: read
-  packages: read
 
 concurrency:
   group: publish
@@ -13,14 +12,11 @@ concurrency:
   queue: max
 
 env:
-  GIT_CONFIG_COUNT: "1"
-  GIT_CONFIG_KEY_0: init.defaultBranch
-  GIT_CONFIG_VALUE_0: main
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_READ_TOKEN }}
 
 jobs:
   validate-release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
       contents: write
@@ -28,8 +24,6 @@ jobs:
       checks: read
       pull-requests: read
       security-events: read
-    outputs:
-      image-ref: ${{ steps.image.outputs.image-ref }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -63,120 +57,64 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash scripts/verify-release.sh
-
-      - name: Download verified CI image reference
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          name: verified-ci-image
-          run-id: ${{ steps.verification.outputs.run-id }}
-          github-token: ${{ github.token }}
-          path: release-verification
-
-      - name: Require immutable verified image
-        id: image
-        shell: bash
-        run: |
-          image_ref="$(cat release-verification/ci-image-ref.txt)"
-          if [[ ! "$image_ref" =~ ^ghcr\.io/gtkx-org/gtkx-ci@sha256:[a-f0-9]{64}$ ]]; then
-            echo "::error::CI did not record an immutable release image"
-            exit 1
-          fi
-          echo "image-ref=$image_ref" >> "$GITHUB_OUTPUT"
+        run: bash .github/scripts/verify-release.sh
 
   build-native:
     needs: validate-release
     permissions:
       contents: read
-      packages: read
     strategy:
       matrix:
         include:
           - arch: x64
-            runner: ubuntu-24.04
+            runner: ubuntu-26.04
           - arch: arm64
-            runner: ubuntu-24.04-arm
+            runner: ubuntu-26.04-arm
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - uses: ./.github/actions/setup-ci
+
       - name: Build native binary
-        uses: ./.github/actions/run-ci-command
-        with:
-          command: pnpm exec nx run @gtkx/native:build --skip-nx-cache
-          image-ref: ${{ needs.validate-release.outputs.image-ref }}
+        run: pnpm exec nx run @gtkx/native:build --skip-nx-cache
 
       - name: Stage native bindings and checksums
-        shell: bash
         working-directory: packages/native
         env:
           RELEASE_ARCH: ${{ matrix.arch }}
         run: |
-          cp index.js "index.linux-${RELEASE_ARCH}-gnu.js"
-          cp index.d.ts "index.linux-${RELEASE_ARCH}-gnu.d.ts"
+          mkdir -p artifacts
+          cp "native.linux-${RELEASE_ARCH}-gnu.node" artifacts/
+          cp index.js "artifacts/index.linux-${RELEASE_ARCH}-gnu.js"
+          cp index.d.ts "artifacts/index.linux-${RELEASE_ARCH}-gnu.d.ts"
+          cd artifacts
           for artifact in "native.linux-${RELEASE_ARCH}-gnu.node" "index.linux-${RELEASE_ARCH}-gnu.js" "index.linux-${RELEASE_ARCH}-gnu.d.ts"; do
             sha256sum "$artifact" > "$artifact.sha256"
           done
 
+      - name: Accept native artifact through published consumers
+        env:
+          GTKX_RELEASE_NATIVE_ARTIFACTS: "true"
+        run: pnpm exec nx run @gtkx/e2e:e2e --skip-nx-cache -- tests/publish.test.ts
+
       - name: Upload native bundle
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: native-linux-${{ matrix.arch }}-gnu
-          path: |
-            packages/native/native.linux-${{ matrix.arch }}-gnu.node
-            packages/native/native.linux-${{ matrix.arch }}-gnu.node.sha256
-            packages/native/index.linux-${{ matrix.arch }}-gnu.js
-            packages/native/index.linux-${{ matrix.arch }}-gnu.js.sha256
-            packages/native/index.linux-${{ matrix.arch }}-gnu.d.ts
-            packages/native/index.linux-${{ matrix.arch }}-gnu.d.ts.sha256
+          path: packages/native/artifacts/*
           if-no-files-found: error
           overwrite: true
           retention-days: 90
 
-  accept-native:
-    needs: [validate-release, build-native]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: x64
-            runner: ubuntu-24.04
-          - arch: arm64
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 60
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-
-      - name: Download release native artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
-        with:
-          name: native-linux-${{ matrix.arch }}-gnu
-          path: packages/native/artifacts
-
-      - name: Restore verified native bindings before dependency installation
-        shell: bash
-        run: bash scripts/restore-native-artifacts.sh
-
-      - name: Accept staged native artifact through published consumers
-        uses: ./.github/actions/run-ci-command
-        env:
-          GTKX_RELEASE_NATIVE_ARTIFACTS: "true"
-        with:
-          command: pnpm release-e2e
-          extra-env: GTKX_RELEASE_NATIVE_ARTIFACTS
-          image-ref: ${{ needs.validate-release.outputs.image-ref }}
-
   publish:
-    needs: [validate-release, accept-native]
-    runs-on: ubuntu-latest
+    needs: build-native
+    runs-on: ubuntu-26.04
     timeout-minutes: 90
     permissions:
       contents: read
-      packages: read
       id-token: write
     environment: npm-release
     env:
@@ -186,87 +124,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Download x64 native bundle
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        env:
-          NODE_OPTIONS: --disable-warning=DEP0005
+      - name: Download native bundles
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
         with:
-          name: native-linux-x64-gnu
-          path: packages/native/artifacts
-
-      - name: Download arm64 native bundle
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        env:
-          NODE_OPTIONS: --disable-warning=DEP0005
-        with:
-          name: native-linux-arm64-gnu
+          pattern: native-linux-*-gnu
+          merge-multiple: true
           path: packages/native/artifacts
 
       - name: Restore verified native bindings before dependency installation
         shell: bash
-        run: bash scripts/restore-native-artifacts.sh
+        run: bash .github/scripts/restore-native-artifacts.sh
 
-      - name: Install release dependencies before staging publishing credentials
-        uses: ./.github/actions/run-ci-command
-        with:
-          command: "true"
-          extra-env: GTKX_RELEASE_NATIVE_ARTIFACTS
-          image-ref: ${{ needs.validate-release.outputs.image-ref }}
-
-      - name: Stage OIDC token request for the release container
-        shell: bash
-        run: |
-          if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
-            echo "::error::OIDC token request variables are unavailable; the publish job needs id-token: write"
-            exit 1
-          fi
-          echo "::add-mask::${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"
-          umask 077
-          {
-            printf 'export ACTIONS_ID_TOKEN_REQUEST_URL=%q\n' "${ACTIONS_ID_TOKEN_REQUEST_URL}"
-            printf 'export ACTIONS_ID_TOKEN_REQUEST_TOKEN=%q\n' "${ACTIONS_ID_TOKEN_REQUEST_TOKEN}"
-          } > "${GITHUB_WORKSPACE}/.oidc.env"
+      - uses: ./.github/actions/setup-ci
 
       - name: Release
-        uses: ./.github/actions/run-in-container
-        with:
-          command: >-
-            . /workspace/.oidc.env &&
-            rm -f /workspace/.oidc.env &&
-            pnpm release
-          install: "false"
-          mount-cargo-cache: "true"
-          mount-pnpm-store: "true"
-          extra-env: >-
-            NPM_CONFIG_PROVENANCE
-            GTKX_RELEASE_NATIVE_ARTIFACTS
-            GITHUB_ACTIONS
-            GITHUB_SERVER_URL
-            GITHUB_REPOSITORY
-            GITHUB_REPOSITORY_ID
-            GITHUB_REPOSITORY_OWNER
-            GITHUB_REPOSITORY_OWNER_ID
-            GITHUB_REF
-            GITHUB_SHA
-            GITHUB_RUN_ID
-            GITHUB_RUN_NUMBER
-            GITHUB_RUN_ATTEMPT
-            GITHUB_WORKFLOW
-            GITHUB_WORKFLOW_REF
-            GITHUB_EVENT_NAME
-            GITHUB_ACTOR
-            GITHUB_ACTOR_ID
-            GITHUB_JOB
-            RUNNER_ENVIRONMENT
-
-      - name: Remove staged publishing credentials
-        if: always()
-        shell: bash
-        run: rm -f "${GITHUB_WORKSPACE}/.oidc.env"
+        run: pnpm release
 
   publish-release:
     needs: publish
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
       actions: write
@@ -287,6 +163,11 @@ jobs:
             exit 1
           fi
           echo "is-draft=$(jq -r '.isDraft' <<<"${release}")" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+        with:
+          node-version-file: .github/node-version
+          package-manager-cache: false
 
       - name: Verify complete release channel before publication
         run: node --experimental-strip-types scripts/verify-release-channel.ts

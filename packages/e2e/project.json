@@ -1,63 +1,29 @@
 {
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "name": "@gtkx/e2e",
+    "namedInputs": {
+        "integration": [
+            "default",
+            "{workspaceRoot}/packages/native/src/**/*",
+            "{workspaceRoot}/packages/native/Cargo.toml",
+            "{workspaceRoot}/packages/native/Cargo.lock",
+            "{workspaceRoot}/packages/native/build.rs",
+            "{workspaceRoot}/rust-toolchain.toml",
+            "nativeEnvironment"
+        ],
+        "acceptance": [
+            "default",
+            "{workspaceRoot}/scripts/**/*",
+            "{workspaceRoot}/tutorial/**/*",
+            "{workspaceRoot}/website/v2/tutorial/**/*",
+            "{workspaceRoot}/.verdaccio/config.yml",
+            {
+                "env": "GTKX_RELEASE_NATIVE_ARTIFACTS"
+            },
+            "nativeEnvironment"
+        ]
+    },
     "targets": {
-        "lint": {
-            "dependsOn": [
-                "codegen",
-                "@gtkx/gl:codegen",
-                "test-fixtures"
-            ]
-        },
-        "test-fixtures": {
-            "dependsOn": [
-                "@gtkx/utils:build"
-            ],
-            "cache": false
-        },
-        "test:asan": {
-            "dependsOn": [
-                "test-fixtures",
-                "@gtkx/runtime:build",
-                "@gtkx/utils:build"
-            ],
-            "cache": true,
-            "inputs": [
-                "nodeTests",
-                "{workspaceRoot}/packages/native/tests/**/*",
-                "{workspaceRoot}/packages/native/vitest.config.ts",
-                "{workspaceRoot}/packages/native/package.json",
-                "{workspaceRoot}/packages/native/*.js"
-            ],
-            "outputs": []
-        },
-        "test": {
-            "command": "vitest run --exclude '**/tests/testing/query-perf.test.tsx' && vitest run --config tests/native/vitest.config.ts",
-            "dependsOn": [
-                "test-fixtures",
-                "@gtkx/native:build",
-                "codegen"
-            ],
-            "cache": true,
-            "inputs": [
-                "nodeTests",
-                {
-                    "dependentTasksOutputFiles": "**/*.node",
-                    "transitive": true
-                }
-            ],
-            "options": {
-                "cwd": "{projectRoot}"
-            }
-        },
-        "typecheck": {
-            "dependsOn": [
-                "build",
-                "^typecheck",
-                "codegen",
-                "test-fixtures"
-            ]
-        },
         "codegen": {
             "command": "gtkx codegen",
             "options": {
@@ -71,24 +37,91 @@
             "outputs": [
                 "{projectRoot}/node_modules/.gtkx/**/*.{js,d.ts,json}"
             ]
+        },
+        "_test:fixtures": {
+            "cache": true,
+            "dependsOn": [
+                "@gtkx/utils:build"
+            ],
+            "inputs": [
+                "{projectRoot}/tests/helpers/native-fixtures.ts",
+                "{workspaceRoot}/packages/codegen/src/**/*",
+                "{workspaceRoot}/packages/codegen/overrides/**/*",
+                "{workspaceRoot}/packages/runtime/package.json",
+                "{workspaceRoot}/packages/utils/src/**/*",
+                "sharedGlobals",
+                "nativeEnvironment"
+            ],
+            "outputs": [
+                "{workspaceRoot}/build/native-tests/gi-tests/build/*.{so,gir,typelib}",
+                "{workspaceRoot}/build/native-tests/node_modules/.gtkx",
+                "{projectRoot}/tests/native/node_modules/@gtkx/gi"
+            ]
+        },
+        "test": {
+            "command": "vitest run --config vitest.integration.config.ts --exclude '**/tests/testing/query-perf.test.tsx'",
+            "options": {
+                "cwd": "{projectRoot}"
+            },
+            "cache": true,
+            "dependsOn": [
+                "^build",
+                "codegen",
+                "_test:fixtures",
+                "_test:performance"
+            ],
+            "inputs": [
+                "...",
+                "integration"
+            ],
+            "outputs": []
+        },
+        "e2e": {
+            "dependsOn": [
+                "^build",
+                "gtkx:codegen"
+            ],
+            "inputs": [
+                "...",
+                "acceptance"
+            ],
+            "parallelism": false
+        },
+        "lint": {
+            "dependsOn": [
+                "...",
+                "codegen",
+                "_test:fixtures"
+            ]
+        },
+        "typecheck": {
+            "dependsOn": [
+                "...",
+                "^build",
+                "codegen",
+                "_test:fixtures"
+            ]
+        },
+        "_test:performance": {
+            "command": "vitest run --config vitest.integration.config.ts --project=integration tests/testing/query-perf.test.tsx --maxWorkers=1",
+            "options": {
+                "cwd": "{projectRoot}"
+            },
+            "cache": true,
+            "parallelism": false,
+            "dependsOn": [
+                "^build",
+                "codegen"
+            ],
+            "inputs": [
+                "integration",
+                "^production",
+                {
+                    "dependentTasksOutputFiles": "**/*.node",
+                    "transitive": true
+                }
+            ],
+            "outputs": []
         }
-    },
-    "namedInputs": {
-        "nodeTests": [
-            "default",
-            "{workspaceRoot}/packages/native/src/**/*",
-            "{workspaceRoot}/packages/native/build.rs",
-            "{workspaceRoot}/packages/native/Cargo.toml",
-            "{workspaceRoot}/packages/native/Cargo.lock",
-            "{workspaceRoot}/rust-toolchain.toml",
-            "{workspaceRoot}/scripts/native-test-fixtures.ts",
-            "{workspaceRoot}/scripts/asan-native.ts",
-            "{workspaceRoot}/scripts/rust-nightly.ts",
-            "{workspaceRoot}/packages/vitest/src/**/*",
-            "{workspaceRoot}/packages/codegen/src/**/*",
-            "{workspaceRoot}/packages/runtime/src/**/*",
-            "{workspaceRoot}/packages/utils/src/**/*",
-            "nativeEnvironment"
-        ]
     }
 }

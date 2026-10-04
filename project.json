@@ -24,28 +24,17 @@
                 "{workspaceRoot}/node_modules/.gtkx/**/*.{js,d.ts,json}"
             ]
         },
-        "reference": {
-            "command": "node packages/cli/dist/cli.js codegen",
-            "cache": false,
-            "dependsOn": [
-                "@gtkx/cli:build"
-            ],
-            "outputs": [
-                "{workspaceRoot}/.gtkx/reference"
-            ]
-        },
         "typecheck": {
             "command": "tsc --noEmit",
             "cache": true,
             "dependsOn": [
                 "codegen",
-                "reference"
+                "build"
             ],
             "inputs": [
                 "{workspaceRoot}/tsconfig.json",
                 "{workspaceRoot}/eslint.config.ts",
                 "{workspaceRoot}/gtkx.config.ts",
-                "{workspaceRoot}/vitest.config.ts",
                 "{workspaceRoot}/scripts/**/*",
                 "{workspaceRoot}/packages/**/*.{ts,tsx,mts,json}",
                 "{workspaceRoot}/examples/**/*.{ts,tsx,mts,json}",
@@ -62,17 +51,27 @@
             "cache": true,
             "dependsOn": [
                 "codegen",
-                "reference"
+                "build",
+                "_lint:codescythe"
             ],
             "inputs": [
-                "eslintConfig",
-                "{workspaceRoot}/gtkx.config.ts",
-                "{workspaceRoot}/vitest.config.ts",
-                "{workspaceRoot}/scripts/**/*",
-                "sharedGlobals"
+                "default",
+                "^default",
+                "{workspaceRoot}/packages/native/.gitignore",
+                "{workspaceRoot}/website/.gitignore"
             ]
         },
-        "lint:codescythe": {
+        "build": {
+            "command": "node packages/cli/dist/cli.js codegen",
+            "cache": false,
+            "dependsOn": [
+                "@gtkx/cli:build"
+            ],
+            "outputs": [
+                "{workspaceRoot}/.gtkx/reference"
+            ]
+        },
+        "_lint:codescythe": {
             "command": "tsx scripts/codescythe.ts",
             "cache": true,
             "dependsOn": [
@@ -86,7 +85,6 @@
                 "{workspaceRoot}/.gitignore",
                 "{workspaceRoot}/tsconfig.json",
                 "{workspaceRoot}/eslint.config.ts",
-                "{workspaceRoot}/vitest.config.ts",
                 "{workspaceRoot}/gtkx.config.ts",
                 "{workspaceRoot}/scripts/**/*",
                 "{workspaceRoot}/packages/**/*",
@@ -102,6 +100,25 @@
                     "transitive": true
                 }
             ]
+        },
+        "_registry:publish": {
+            "command": "tsx scripts/local-registry.ts",
+            "continuous": true,
+            "dependsOn": [
+                {
+                    "projects": [
+                        "@gtkx/*",
+                        "create-gtkx",
+                        "!@gtkx/e2e",
+                        "!@gtkx/website"
+                    ],
+                    "target": "build"
+                }
+            ]
+        },
+        "_tutorial:checkpoint": {
+            "command": "tsx scripts/tutorial-checkpoints.ts",
+            "cache": false
         }
     }
 }

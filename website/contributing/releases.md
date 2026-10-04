@@ -15,7 +15,7 @@ Run the Release PR workflow from GitHub Actions or the CLI:
 gh workflow run release-pr.yml
 ```
 
-The workflow runs only on request and never writes to `main`.
+Release preparation runs only on request and never writes to `main`. The same workflow tags prepared releases after main CI succeeds.
 
 | Inputs | Result |
 | --- | --- |
@@ -37,11 +37,11 @@ For the first stable release, complete [documentation promotion](/contributing/d
 
 Review `release/next`, approve its latest commit, and wait for its required checks. Merge through GitHub using the repository's configured squash method. GitHub creates the signed commit on `main`; CI then verifies that exact merge commit. If `main` has moved or the prepared release changes, refresh the release PR and review the new head before merging.
 
-Publication requires a merged `release/next` PR whose merge SHA is the release commit, an approval of its final head from a reviewer with repository write access, and no outstanding change request. It also requires a successful main CI run with `ci-success` and all three CodeQL checks on that same SHA. The gate reads that commit's stored CodeQL analyses for all three languages and rejects every reported finding without an accepted dismissal. A later fix on another commit does not approve an older release. Missing analysis data fails verification. An administrator bypass does not satisfy this release gate.
+Publication requires a merged `release/next` PR whose merge SHA is the release commit, an approval of its final head from a reviewer with repository write access, and no outstanding change request. It also requires a successful main CI run with `tests`, `build`, `lint`, `e2e`, and all three CodeQL checks on that same SHA. The gate reads that commit's stored CodeQL analyses for all three languages and rejects every reported finding without an accepted dismissal. A later fix on another commit does not approve an older release. Missing analysis data fails verification. An administrator bypass does not satisfy this release gate.
 
 ## Tag and publish
 
-Successful completion of main CI starts Tag release. It recognizes a prepared release from the version's changelog entry and release state, verifies its merged review and exact commit checks, creates the annotated `vX.Y.Z` tag and draft GitHub release, and dispatches Publish from that tag. A normal commit without a prepared version does not publish. Rerunning the successful CI run can redispatch the same draft.
+Successful completion of main CI starts the tag job in Release PR. It recognizes a prepared release from the version's changelog entry and release state, verifies its merged review and exact commit checks, creates the annotated `vX.Y.Z` tag and draft GitHub release, and dispatches Publish from that tag. A normal commit without a prepared version does not publish. Rerunning the successful CI run can redispatch the same draft.
 
 To curate the draft notes:
 
@@ -49,9 +49,9 @@ To curate the draft notes:
 gh release edit vX.Y.Z --notes-file notes.md
 ```
 
-Publish takes no inputs; its dispatched ref identifies the release. Validation rejects branch refs, tags that do not match the package version, releases that are not drafts, and commits without the required verification and review. It downloads the immutable multiarchitecture image digest recorded by that successful CI run. Missing verification artifacts or unavailable images fail the release. CI retains image evidence for 90 days. If that evidence expires, prepare a new release from a freshly verified main commit; do not move or reuse the old release tag. GitHub limits [workflow reruns](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/re-run-workflows-and-jobs) to 30 days after the initial run, so an expired artifact cannot be recovered by rerunning the original CI job.
+Publish takes no inputs; its dispatched ref identifies the release. Validation rejects branch refs, tags that do not match the package version, releases that are not drafts, and commits without the required verification and review.
 
-Both native binaries and their generated JavaScript and type declarations are built in that verified image and uploaded with SHA-256 checksums. Separate x64 and arm64 jobs publish the staged binary to a disposable registry, scaffold consumers, verify the installed binary and generated bindings against those checksums, run codegen and builds, and exercise the generated application's headless tests. Publication restores the verified bindings before dependency installation, uses those same staged binaries without recompiling, and requires both architectures to produce identical shared JavaScript and declarations.
+Both native binaries and their generated JavaScript and type declarations are built on Ubuntu 26.04 runners and uploaded with SHA-256 checksums. Separate x64 and arm64 jobs publish the staged binary to a disposable registry, scaffold consumers, verify the installed binary and generated bindings against those checksums, run codegen and builds, and exercise the generated application's headless tests. Publication restores the verified bindings before dependency installation, uses those same staged binaries without recompiling, and requires both architectures to produce identical shared JavaScript and declarations.
 
 Every Publish run shares a single queue, including different versions and retries. Each package is published directly to its stable or prerelease channel with `pnpm publish --tag`, and its exact version and channel tag must become visible before publication continues. The channel can only move forward. npm cannot publish multiple packages atomically, so channel tags advance package by package. An interrupted publication leaves the GitHub draft unpublished, and a retry publishes the remaining packages and verifies the complete channel.
 

@@ -612,9 +612,6 @@ importers:
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../testing
-      '@modelcontextprotocol/sdk':
-        specifier: ^1.31.0
-        version: 1.31.0(supports-color@7.2.0)(zod@4.6.5)
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
@@ -758,9 +755,6 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.3(@types/node@26.5.1)(vite@8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/css:
     dependencies:
@@ -786,30 +780,54 @@ importers:
 
   packages/e2e:
     devDependencies:
+      '@gtkx/animated':
+        specifier: workspace:*
+        version: link:../animated
       '@gtkx/cairo':
         specifier: workspace:*
         version: link:../cairo
       '@gtkx/cli':
         specifier: workspace:*
         version: link:../cli
+      '@gtkx/codegen':
+        specifier: workspace:*
+        version: link:../codegen
+      '@gtkx/components':
+        specifier: workspace:*
+        version: link:../components
       '@gtkx/config':
         specifier: workspace:*
         version: link:../config
       '@gtkx/css':
         specifier: workspace:*
         version: link:../css
+      '@gtkx/forms':
+        specifier: workspace:*
+        version: link:../forms
       '@gtkx/gl':
         specifier: workspace:*
         version: link:../gl
+      '@gtkx/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@gtkx/mcp':
+        specifier: workspace:*
+        version: link:../mcp
       '@gtkx/native':
         specifier: workspace:*
         version: link:../native
+      '@gtkx/navigation':
+        specifier: workspace:*
+        version: link:../navigation
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react
       '@gtkx/runtime':
         specifier: workspace:*
         version: link:../runtime
+      '@gtkx/storybook':
+        specifier: workspace:*
+        version: link:../storybook
       '@gtkx/testing':
         specifier: workspace:*
         version: link:../testing
@@ -819,9 +837,33 @@ importers:
       '@gtkx/vitest':
         specifier: workspace:*
         version: link:../vitest
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.31.0
+        version: 1.31.0(supports-color@7.2.0)(zod@4.6.5)
+      '@types/gettext-parser':
+        specifier: ^9.0.0
+        version: 9.0.0
+      create-gtkx:
+        specifier: workspace:*
+        version: link:../create-gtkx
+      gettext-parser:
+        specifier: ^9.1.1
+        version: 9.1.1
+      i18next:
+        specifier: ^26.4.2
+        version: 26.4.2(typescript@6.0.3)
       react:
         specifier: 'catalog:'
         version: 19.3.0
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vitest:
+        specifier: 'catalog:'
+        version: 5.0.3(@types/node@26.5.1)(vite@8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+      yaml:
+        specifier: 'catalog:'
+        version: 2.9.1
 
   packages/forms:
     dependencies:
@@ -924,13 +966,6 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.6.5
-    devDependencies:
-      '@gtkx/vitest':
-        specifier: workspace:*
-        version: link:../vitest
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.3(@types/node@26.5.1)(vite@8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
   packages/native:
     devDependencies:
@@ -1112,8 +1147,6 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.3(@types/node@26.5.1)(vite@8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
-
-  scripts: {}
 
   website:
     devDependencies:

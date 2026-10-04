@@ -8,7 +8,8 @@
     "scripts": {
         "build": "gtkx build",
         "dev": "gtkx dev",
-        "start": "node dist/bundle.mjs"
+        "start": "node dist/bundle.mjs",
+        "test": "vitest run"
     },
     "dependencies": {
         "@gtkx/cairo": "workspace:*",

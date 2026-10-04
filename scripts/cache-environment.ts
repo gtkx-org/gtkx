@@ -130,7 +130,7 @@ const addNative = (): void => {
     }
 };
 
-add([process.versions.node, process.platform, process.arch, process.env.CI_IMAGE_ID]);
+add([process.versions.node, process.platform, process.arch]);
 addFile("/etc/os-release");
 query("getconf", ["GNU_LIBC_VERSION"]);
 

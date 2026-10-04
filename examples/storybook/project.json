@@ -31,20 +31,6 @@
             ]
         },
         "test": {
-            "command": "vitest run",
-            "options": {
-                "cwd": "{projectRoot}"
-            },
-            "cache": true,
-            "inputs": [
-                "default",
-                "^production",
-                {
-                    "dependentTasksOutputFiles": "**/*.{js,d.ts,json,node}",
-                    "transitive": true
-                }
-            ],
-            "outputs": [],
             "dependsOn": [
                 "...",
                 "codegen",

@@ -3,6 +3,7 @@
     "include": [
         "**/scripts",
         "**/vitest.config.ts",
+        "**/vitest.*.config.ts",
         "**/vite.config.ts",
         "**/gtkx.config.ts",
         "vitest.config.base.ts",
@@ -11,15 +12,102 @@
         "packages/e2e/elements.ts",
         "packages/native/main.d.ts",
         "packages/cli/src/babel-modules.d.ts",
-        "packages/vitest/src/dbus-native.d.ts"
+        "packages/vitest/src/dbus-native.d.ts",
+        "packages/native/tools/**/*.ts"
     ],
-    "exclude": ["tutorial"],
-    "references": [],
+    "exclude": [
+        "tutorial"
+    ],
+    "references": [
+      {
+        "path": "./packages/create-gtkx"
+      },
+      {
+        "path": "./examples/hello-world"
+      },
+      {
+        "path": "./packages/components"
+      },
+      {
+        "path": "./packages/navigation"
+      },
+      {
+        "path": "./examples/animations"
+      },
+      {
+        "path": "./examples/navigation"
+      },
+      {
+        "path": "./packages/storybook"
+      },
+      {
+        "path": "./examples/storybook"
+      },
+      {
+        "path": "./packages/animated"
+      },
+      {
+        "path": "./examples/gtk-demo"
+      },
+      {
+        "path": "./packages/codegen"
+      },
+      {
+        "path": "./packages/runtime"
+      },
+      {
+        "path": "./packages/testing"
+      },
+      {
+        "path": "./examples/browser"
+      },
+      {
+        "path": "./packages/config"
+      },
+      {
+        "path": "./packages/native"
+      },
+      {
+        "path": "./packages/vitest"
+      },
+      {
+        "path": "./packages/cairo"
+      },
+      {
+        "path": "./packages/forms"
+      },
+      {
+        "path": "./packages/react"
+      },
+      {
+        "path": "./packages/utils"
+      },
+      {
+        "path": "./packages/i18n"
+      },
+      {
+        "path": "./packages/cli"
+      },
+      {
+        "path": "./packages/css"
+      },
+      {
+        "path": "./packages/e2e"
+      },
+      {
+        "path": "./packages/mcp"
+      },
+      {
+        "path": "./packages/gl"
+      }
+    ],
     "compilerOptions": {
         "composite": false,
         "declaration": false,
         "declarationMap": false,
         "outDir": "dist",
-        "incremental": true
+        "incremental": true,
+        "allowImportingTsExtensions": true,
+        "rewriteRelativeImportExtensions": false
     }
 }

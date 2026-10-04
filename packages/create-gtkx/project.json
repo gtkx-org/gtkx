@@ -5,7 +5,7 @@
         "lint": {
             "dependsOn": []
         },
-        "copy-templates": {
+        "_build:templates": {
             "cache": true,
             "inputs": [
                 "{projectRoot}/src/templates/**/*"
@@ -17,18 +17,13 @@
         "build": {
             "dependsOn": [
                 "^build",
-                "copy-templates"
+                "_build:templates"
             ]
         },
         "typecheck": {
             "dependsOn": [
                 "build",
                 "^typecheck"
-            ]
-        },
-        "test": {
-            "dependsOn": [
-                "build"
             ]
         }
     }

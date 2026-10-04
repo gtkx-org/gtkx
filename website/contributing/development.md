@@ -11,6 +11,8 @@ Build the workspace, run an example, then use focused Nx targets while making ch
 
 Use Linux with Node.js 26.7 or later. The repository's `package.json` pins pnpm through its `packageManager` field. If your runtimes are managed by mise, run the commands below through `mise exec --`, for example `mise exec -- pnpm install`.
 
+CI reads `.github/node-version` to run the minimum supported Node.js version, including the published-consumer tests.
+
 Install Rust through rustup so `rust-toolchain.toml` selects the pinned compiler and Clippy. Native formatting and sanitizers use a separate nightly; its installation command is under [Change native code](#change-native-code).
 
 The full workspace needs more system libraries than a minimal application:
@@ -23,7 +25,7 @@ The full workspace needs more system libraries than a minimal application:
 | Headless examples and tests | A supported compositor, normally Sway, `dbus-daemon`, `setpriv`, Mesa rendering support, fonts, icons, MIME data, and GSettings schemas. |
 | Localization and packaging checks | GNU gettext and the packaging tools used by the target formats, including RPM and Debian tooling and Flatpak helpers. |
 
-GTKX's application baseline is GTK 4.20 and libadwaita 1.8 or later. Distribution package names and available versions vary. The [CI Dockerfile](https://github.com/gtkx-org/gtkx/blob/main/.github/docker/Dockerfile) records the complete verification environment, including packaging tools, fonts, and pinned toolchains.
+GTKX's application baseline is GTK 4.20 and libadwaita 1.8 or later. Distribution package names and available versions vary. The [CI setup action](https://github.com/gtkx-org/gtkx/blob/main/.github/actions/setup-ci/action.yml) installs the complete verification environment on Ubuntu 26.04, including packaging tools and fonts.
 
 On Debian or Ubuntu releases providing those library versions, the development packages include:
 
@@ -116,21 +118,17 @@ Keep the process's parent session alive while inspecting the app. Use the live w
 
 ## Change native code
 
-Rust source lives in `packages/native/src`. Formatting and sanitizers use the nightly pinned in [scripts/rust-nightly.ts](https://github.com/gtkx-org/gtkx/blob/main/scripts/rust-nightly.ts). After `pnpm install`, install that toolchain from the repository root:
+Rust source lives in `packages/native/src`. Formatting and sanitizers use the nightly pinned in [packages/native/tools/rust-toolchain.toml](https://github.com/gtkx-org/gtkx/blob/main/packages/native/tools/rust-toolchain.toml). After `pnpm install`, install that toolchain from the repository root:
 
 ```bash
-pnpm exec tsx -e '
-import { execFileSync } from "node:child_process";
-import { RUST_NIGHTLY } from "./scripts/rust-nightly.ts";
-execFileSync("rustup", ["toolchain", "install", RUST_NIGHTLY, "--profile", "minimal", "--component", "rustfmt"], { stdio: "inherit" });
-'
+(cd packages/native/tools && rustup show)
 ```
 
 Rebuild after changing native code, then start a fresh app or test process to load the new binary:
 
 ```bash
 pnpm nx run @gtkx/native:build
-pnpm nx run @gtkx/native:lint:rust
+pnpm nx run @gtkx/native:lint
 ```
 
 The build invokes `napi build` in release mode and produces the platform-specific `.node` file and generated addon declarations. Rust linting runs the pinned nightly rustfmt check followed by Clippy with warnings treated as errors. Changes that affect ownership, callbacks, marshalling, or teardown also belong in the native integration verification described in [Testing](/contributing/testing#native-integration-and-sanitizers).
@@ -160,9 +158,10 @@ Use [Testing](/contributing/testing) to select the checks that exercise your cha
 
 ```bash
 pnpm build
+pnpm typecheck
 pnpm test
 pnpm lint
-pnpm typecheck
+pnpm e2e
 ```
 
 Published-package changes use an Nx version plan created by `pnpm plan`. Documentation-only and test-only changes do not need one. The [contribution guide](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md) covers submission and version plans; [Publishing Releases](/contributing/releases) is for maintainers.

@@ -1,28 +1,63 @@
 {
     "extends": "../../tsconfig.test.json",
-    "exclude": ["${configDir}/tests/native/vitest.config.ts"],
+    "exclude": ["tests/native/vitest.config.ts"],
     "references": [
         {
             "path": "../cairo/tsconfig.lib.json"
         },
         {
+            "path": "../cli/tsconfig.lib.json"
+        },
+        {
+            "path": "../codegen/tsconfig.lib.json"
+        },
+        {
             "path": "../config/tsconfig.lib.json"
+        },
+        {
+            "path": "../create-gtkx/tsconfig.lib.json"
         },
         {
             "path": "../gl/tsconfig.lib.json"
         },
         {
-            "path": "../runtime/tsconfig.lib.json"
+            "path": "../i18n/tsconfig.lib.json"
+        },
+        {
+            "path": "../mcp/tsconfig.lib.json"
         },
         {
             "path": "../react/tsconfig.lib.json"
         },
         {
+            "path": "../runtime/tsconfig.lib.json"
+        },
+        {
+            "path": "../storybook/tsconfig.lib.json"
+        },
+        {
             "path": "../testing/tsconfig.lib.json"
+        },
+        {
+            "path": "../utils/tsconfig.lib.json"
         },
         {
             "path": "../vitest/tsconfig.lib.json"
         }
     ],
-    "files": ["./node_modules/.gtkx/env.d.ts"]
+    "files": [
+        "./node_modules/.gtkx/env.d.ts"
+    ],
+    "compilerOptions": {
+        "rootDir": "../.."
+    },
+    "include": [
+        "tests/**/*.ts",
+        "tests/**/*.tsx",
+        "tests/**/*.mts",
+        "../../gtkx.config.ts",
+        "../../scripts/native-artifact.ts",
+        "../../scripts/nx-registry.ts",
+        "../../scripts/publish-manifest.ts"
+    ]
 }

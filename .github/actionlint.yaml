@@ -1,7 +1,12 @@
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
+    - ubuntu-26.04-arm
+
 paths:
   .github/workflows/publish.yml:
     ignore:
       - '^unexpected key "queue" for "concurrency" section\.'
-  .github/workflows/tag-release.yml:
+  .github/workflows/release-pr.yml:
     ignore:
       - '^unexpected key "queue" for "concurrency" section\.'
