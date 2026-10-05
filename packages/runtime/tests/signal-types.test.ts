@@ -23,10 +23,17 @@ describe("generated signal types", () => {
             Expect<
                 Equal<Gtk.RangeSignals["change-value"], (scroll: Gtk.ScrollType, value: number) => boolean | undefined>
             >,
+            Expect<
+                Equal<
+                    Gtk.EditableSignals["insert-text"],
+                    (text: string, length: number, position: number) => number | undefined
+                >
+            >,
+            Expect<Equal<Gtk.SpinButtonSignals["input"], () => [number, number] | undefined>>,
             Expect<Equal<Gtk.WidgetSignals["notify"], (pspec: GObject.ParamSpec) => void>>,
-        ] = [true, true, true];
+        ] = [true, true, true, true, true];
 
-        expect(signatures).toEqual([true, true, true]);
+        expect(signatures).toEqual([true, true, true, true, true]);
         expect(calls).toBe(1);
     });
 

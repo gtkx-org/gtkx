@@ -26,6 +26,7 @@ import { fromValue, getValueType, intoValue } from "./value.js";
  */
 type ClosureCallback = (...args: never[]) => unknown;
 type ClosureRelease = () => void;
+type ClosureKind = "callback" | "signal";
 
 const CCLOSURE_CALLBACK_OFFSET = CLOSURE_SIZE;
 const N_PARAM_VALUES_INDEX = 2;
@@ -67,6 +68,7 @@ const MARSHAL_T = callbackT(
 const NESTED_VALUE_T = structT("borrowed");
 const gCclosureNew = bind(LIB, "g_cclosure_new", [MARSHAL_T], OWNED_CLOSURE_T);
 const gValueGetBoxed = bind(LIB, "g_value_get_boxed", [VALUE_T], NESTED_VALUE_T);
+const gValueReset = bind(LIB, "g_value_reset", [VALUE_T], voidT);
 const gClosureRef = bind(LIB, "g_closure_ref", [CLOSURE_T], voidT);
 const gClosureSink = bind(LIB, "g_closure_sink", [CLOSURE_T], voidT);
 const gClosureSetMarshal = bind(LIB, "g_closure_set_marshal", [CLOSURE_T, bufferT], voidT);
@@ -88,20 +90,26 @@ const getNestedValue = (param: ExternalObject<Handle>): object | null =>
 const fromParamValue = (param: ExternalObject<Handle>): unknown =>
     getValueType(param) === resolveBoxedType(VALUE_T) ? getNestedValue(param) : fromValue(param);
 
-function marshalFor(callback: ClosureCallback): (...args: unknown[]) => void {
+function marshalFor(callback: ClosureCallback, kind: ClosureKind): (...args: unknown[]) => void {
     return (_closure: unknown, returnValue: unknown, _count: unknown, paramValues: unknown): void => {
         const values = paramValues as ExternalObject<Handle>[];
         const args = values.map((value) => fromParamValue(value));
         const result = (callback as (...values: unknown[]) => unknown)(...(args as never[]));
 
-        if (returnValue !== null) {
+        if (returnValue === null) {
+            return;
+        }
+
+        if (result === undefined && kind === "signal") {
+            gValueReset(returnValue);
+        } else {
             intoValue(returnValue as ExternalObject<Handle>, result);
         }
     };
 }
 
-function newClosure(callback: ClosureCallback, release?: ClosureRelease): ExternalObject<Handle> {
-    const marshal = marshalFor(callback);
+function createClosure(callback: ClosureCallback, kind: ClosureKind, release?: ClosureRelease): ExternalObject<Handle> {
+    const marshal = marshalFor(callback, kind);
     const handle = gCclosureNew(marshal) as ExternalObject<Handle>;
 
     if (release !== undefined) {
@@ -114,6 +122,14 @@ function newClosure(callback: ClosureCallback, release?: ClosureRelease): Extern
     gClosureSetMarshal(handle, nativeMarshal);
 
     return handle;
+}
+
+function newClosure(callback: ClosureCallback, release?: ClosureRelease): ExternalObject<Handle> {
+    return createClosure(callback, "callback", release);
+}
+
+function newSignalClosure(callback: ClosureCallback, release?: ClosureRelease): ExternalObject<Handle> {
+    return createClosure(callback, "signal", release);
 }
 
 function newCCallbackClosure(
@@ -165,4 +181,11 @@ class ClosureMarshalError extends TypeError {
     public override name = "ClosureMarshalError";
 }
 
-export { type ClosureCallback, ClosureMarshalError, newCCallbackClosure, newClosure, toClosure, tryToClosure };
+export {
+    type ClosureCallback,
+    ClosureMarshalError,
+    newCCallbackClosure,
+    newSignalClosure,
+    toClosure,
+    tryToClosure,
+};

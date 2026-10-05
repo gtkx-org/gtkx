@@ -309,6 +309,31 @@ describe("signal out-parameters - GtkSpinButton::input (pure out)", () => {
 });
 
 describe("signal inout-parameters - GtkEditable::insert-text", () => {
+    it("allows JSX observers to leave the insertion position unchanged", async () => {
+        const entryRef = createRef<Gtk.Entry>();
+        const received: unknown[][] = [];
+        await render(
+            <GtkEntry
+                ref={entryRef}
+                onInsertText={(...args) => {
+                    received.push(args);
+                }}
+            />,
+        );
+        const entry = entryRef.current;
+
+        if (entry === null) {
+            throw new Error("Entry was not mounted");
+        }
+
+        await act(() => entry.setText("hello"));
+        expect(entry).toHaveDisplayValue("hello");
+        await act(() => entry.insertText("!", 1, 2));
+
+        expect(received.at(-1)).toEqual(["!", 1, 2, entry]);
+        expect(entry).toHaveDisplayValue("he!llo");
+    });
+
     it("seeds the handler with the incoming position read from the inout pointer", async () => {
         const text = await renderText();
         const seenPositions: number[] = [];
@@ -330,6 +355,32 @@ describe("signal inout-parameters - GtkEditable::insert-text", () => {
         text.connect("insert-text", () => 1);
         await act(() => text.insertText("Y", 1, 4));
         expect(text).toHaveDisplayValue("XYXXX");
+    });
+});
+
+describe("signal arguments - GtkEditable::delete-text", () => {
+    it("passes deletion positions before the JSX emitter instance", async () => {
+        const entryRef = createRef<Gtk.Entry>();
+        const received: unknown[][] = [];
+        await render(
+            <GtkEntry
+                ref={entryRef}
+                text="hello"
+                onDeleteText={(...args) => {
+                    received.push(args);
+                }}
+            />,
+        );
+        const entry = entryRef.current;
+
+        if (entry === null) {
+            throw new Error("Entry was not mounted");
+        }
+
+        await act(() => entry.deleteText(1, 4));
+
+        expect(received).toEqual([[1, 4, entry]]);
+        expect(entry).toHaveDisplayValue("ho");
     });
 });
 

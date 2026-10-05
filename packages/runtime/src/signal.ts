@@ -5,7 +5,7 @@ import type { ResolvedSignalEmitMap, ResolvedSignalMap, SignalArguments, SignalR
 import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { bind } from "./bind.js";
 import { wrapCallback } from "./callback.js";
-import { newCCallbackClosure, newClosure, toClosure } from "./closure.js";
+import { newCCallbackClosure, newSignalClosure } from "./closure.js";
 import {
     arrayT,
     biguint64T,
@@ -80,17 +80,19 @@ type SignalConnector = (
     isAfter?: boolean,
 ) => SignalHandlerId;
 type SignalEmitter = (instance: object, signal: string, args: unknown[]) => unknown;
+type SignalCallback = (signal: string) => CallbackDescriptor;
 type SignalDispatch = {
     connect: SignalConnector;
     emit: SignalEmitter;
+    callback?: SignalCallback;
 };
-type SignalDispatchSpec = {
-    connect: SignalConnector;
+type SignalDispatchSpec = SignalDispatch | {
+    callback: SignalCallback;
     emit: SignalEmitter;
 };
 type PendingSignalDispatch = {
     ownerType: bigint;
-    spec: SignalDispatchSpec;
+    spec: SignalDispatch;
 };
 
 type DeclaredSignalTypes = {
@@ -434,7 +436,17 @@ function connectSignal(instance: object, signal: string, spec: SignalConnectSpec
 }
 
 function overrideSignalClassClosure(type: bigint, signalId: number, handler: SignalHandler): void {
-    gSignalOverrideClassClosure(signalId, type, toClosure(handler));
+    const signal = gSignalName(signalId) as string;
+    const dispatch = signalDispatchForId(signalId, signal);
+    const callback = dispatch?.callback?.(signal);
+    const closure = callback === undefined
+        ? newSignalClosure((...args: unknown[]) => handler.apply(args[0], args.slice(1)))
+        : newCCallbackClosure(
+                `${String(type)}\0${signal}`,
+                callback,
+                wrapCallback(handler, callback, "signal-class"),
+            );
+    gSignalOverrideClassClosure(signalId, type, closure);
 }
 
 function connectClosureSignal(
@@ -445,7 +457,7 @@ function connectClosureSignal(
 ): SignalHandlerId {
     const receiver = new WeakRef(instance);
     const reference: SignalHandlerReference = { id: 0n };
-    const closure = newClosure(
+    const closure = newSignalClosure(
         createClosureDispatcher(receiver, reference),
         releaseConnection(receiver, reference),
     );
@@ -547,16 +559,34 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returns?:
     return packTupleResult(readEmitOutputs(reads), fromValue(returnValue), true);
 }
 
+const createSignalDispatch = (spec: SignalDispatchSpec): SignalDispatch => {
+    if ("connect" in spec) {
+        return spec;
+    }
+
+    return {
+        ...spec,
+        connect(instance, signal, handler, isAfter): SignalHandlerId {
+            return connectSignal(instance, signal, {
+                callback: spec.callback(signal),
+                handler,
+                isAfter: isAfter ?? false,
+            });
+        },
+    };
+};
+
 function installSignalDispatch(
     klass: AnyClass,
     names: readonly string[],
     spec: SignalDispatchSpec,
 ): void {
     const ownerType = getClassType(klass);
+    const dispatch = createSignalDispatch(spec);
 
     for (const rawName of names) {
         const name = canonicalSignalName(rawName);
-        pendingSignalDispatches.getOrInsertComputed(name, () => []).push({ ownerType, spec });
+        pendingSignalDispatches.getOrInsertComputed(name, () => []).push({ ownerType, spec: dispatch });
     }
 }
 
@@ -580,6 +610,9 @@ const resolvePendingSignalDispatch = (signalId: number, name: string): SignalDis
     return undefined;
 };
 
+const signalDispatchForId = (signalId: number, name: string): SignalDispatch | undefined =>
+    signalDispatchTable.get(signalId) ?? resolvePendingSignalDispatch(signalId, name);
+
 const signalDispatchFor = (instance: object, signal: string): SignalDispatch | undefined => {
     const name = canonicalSignalName(signal);
     const instanceType = getInstanceType(instance);
@@ -594,7 +627,7 @@ const signalDispatchFor = (instance: object, signal: string): SignalDispatch | u
         return undefined;
     }
 
-    return signalDispatchTable.get(signalId) ?? resolvePendingSignalDispatch(signalId, name);
+    return signalDispatchForId(signalId, name);
 };
 
 const connectDispatcherFor = (instance: object, signal: string): SignalConnector => {

@@ -200,6 +200,26 @@ describe("a value that cannot become a GObject.Closure", () => {
 });
 
 describe("a GValue a GObject.Closure is expected to fill in", () => {
+    it("still requires a boolean result from a property binding transform", () => {
+        const source = new Gtk.Label({ label: "before" });
+        const target = new Gtk.Label({ label: "unchanged" });
+        const binding = source.bindPropertyFull(
+            "label",
+            target,
+            "label",
+            GObject.BindingFlags.DEFAULT,
+            () => undefined,
+            () => true,
+        );
+
+        try {
+            expect(() => source.setLabel("after")).toThrow("Expected a boolean");
+            expect(target.getLabel()).toBe("unchanged");
+        } finally {
+            binding.unbind();
+        }
+    });
+
     it("carries the handler's write back to the binding target", () => {
         const source = new Gtk.Label({ label: "written" });
         const target = new Gtk.Label({ label: "" });
