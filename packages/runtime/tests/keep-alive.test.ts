@@ -20,7 +20,7 @@ const waitForClose = (child: ChildProcess): Promise<number | null> =>
         child.once("close", resolve);
     });
 
-const runHeldApplication = async (mode: "activated" | "service"): Promise<string> => {
+const runHeldApplication = async (mode: "activated" | "service" | "concurrent"): Promise<string> => {
     const child = spawnWithParentDeathSignal(process.execPath, [...FIXTURE_ARGS, mode], {
         stdio: ["pipe", "pipe", "pipe"],
     });
@@ -44,13 +44,17 @@ const runHeldApplication = async (mode: "activated" | "service"): Promise<string
     }
 };
 
-describe("runApplication — holding the native loop alive", () => {
+describe("Application.runAsync — holding the native loop alive", () => {
     it("holds an activated application until shutdown", async () => {
         expect(await runHeldApplication("activated")).toContain(STOPPED_MARKER);
     });
 
     it("holds a registered service before activation", async () => {
         expect(await runHeldApplication("service")).toContain(STOPPED_MARKER);
+    });
+
+    it("holds the remaining application after another application shuts down", async () => {
+        expect(await runHeldApplication("concurrent")).toContain(STOPPED_MARKER);
     });
 
     it("exits naturally when command-line handling registers nothing", async () => {

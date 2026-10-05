@@ -1,7 +1,8 @@
+import assert from "node:assert/strict";
 import * as Gio from "@gtkx/gi/gio";
-import { createApplication, quitApplication, runApplication } from "@gtkx/gi/gio";
+import { createApplication } from "@gtkx/gi/gio";
 
-type Mode = "activated" | "service" | "rejected";
+type Mode = "activated" | "service" | "rejected" | "concurrent";
 
 const mode = process.argv[2] as Mode | undefined;
 
@@ -15,16 +16,47 @@ const application = createApplication(Gio.Application, {
 });
 application.on("activate", (): void => undefined);
 
-if (mode === "rejected") {
-    process.exitCode = runApplication(application, ["probe", "--nope"]).exitStatus;
-} else {
-    const argv = mode === "service" ? ["probe", "--gapplication-service"] : ["probe"];
-    const result = runApplication(application, argv);
-    process.exitCode = result.exitStatus;
-    process.stdout.write("READY\n");
+const firstApplication = mode === "concurrent"
+    ? createApplication(Gio.Application, {
+        applicationId: `org.gtkx.keepalive.first.p${String(process.pid)}`,
+        flags: Gio.ApplicationFlags.NON_UNIQUE,
+    })
+    : undefined;
+firstApplication?.on("activate", (): void => undefined);
+const firstCompletion = firstApplication?.runAsync(["probe"]);
+
+const argv = mode === "rejected"
+    ? ["probe", "--nope"]
+    : mode === "service" ? ["probe", "--gapplication-service"] : ["probe"];
+const completion = application.runAsync(argv);
+
+if (firstApplication) {
+    firstApplication.quit();
+    assert.equal(await firstCompletion, 0);
+    assert.equal(firstApplication.getIsRegistered(), false);
+    assert.equal(application.getIsRegistered(), true);
+    assert.equal(Gio.Application.getDefault(), application);
+}
+
+if (mode !== "rejected") {
+    setTimeout(() => {
+        process.stdout.write("READY\n");
+    }, 20).unref();
     process.stdin.once("data", () => {
-        quitApplication(application);
-        process.stdout.write("STOPPED\n");
+        application.quit();
     });
     process.stdin.unref();
+}
+
+process.exitCode = await completion;
+
+if (mode === "rejected") {
+    application.quit();
+}
+
+assert.equal(application.getIsRegistered(), false);
+assert.equal(Gio.Application.getDefault(), null);
+
+if (mode !== "rejected") {
+    process.stdout.write("STOPPED\n");
 }

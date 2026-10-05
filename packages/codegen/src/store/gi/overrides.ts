@@ -11,7 +11,7 @@ const OVERRIDES: Record<string, Override[]> = {
         { module: "sidebar", exports: "*", needsBootstrap: true },
         { module: "combo-row", exports: "*", needsBootstrap: true },
     ],
-    gio: [{ module: "application", exports: "*" }],
+    gio: [{ module: "application", exports: "*", needsBootstrap: true }],
     glib: [
         { module: "regex", exports: ["MatchInfo"], needsBootstrap: true },
         { module: "variant", exports: "*" },

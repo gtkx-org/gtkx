@@ -75,6 +75,10 @@ import { fromVariant, toVariant } from "@gtkx/gi/glib";
 
 Move their associated type imports too: `ApplicationClass` is now `ApplicationConstructor`, and the Variant helper's `ByteArray` type is now `VariantByteArray`. Use `Gio.Application` in place of the removed `CommandLineApplication` interface. Runtime shutdown remains `quit()` from `@gtkx/runtime`.
 
+Applications constructed with `createApplication` also support `application.runAsync(argv): Promise<number>`. Command-line handling starts immediately while Node keeps control of the event loop. Call `application.quit()` to finish an active run; the promise resolves with the exit status after GTKX completes shutdown and releases the process-wide default. Rejected command lines and remote instances resolve immediately; call `application.quit()` afterward to release their retained application state.
+
+`runAsync` requires `createApplication`, including for Gtk and Adw application classes; ordinary `new Application(...)` instances are unsupported. It waits for explicit shutdown and does not reproduce native `run()` termination through `hold()`, `release()`, or inactivity timeouts. Full native shutdown can run only once per instance; restarted applications and those already quit by native code may retain registration until finalization. Create another application when another complete lifecycle is needed. The synchronous `runApplication` and `quitApplication` helpers remain available.
+
 ## Move GObject ownership into JSX
 
 The settings hooks no longer create a `Gio.Settings` instance. Render `GSettings` from `@gtkx/jsx/gio` in the root portal, capture the instance with a state callback ref, and mount its consumers once it is available. Pass that instance first to `useSetting`, and add it as the `settings` option to `useBindSetting`. The [settings tutorial](/v2/tutorial/preferences-and-theming#create-the-settings-instance) shows the complete ownership pattern.

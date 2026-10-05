@@ -6,11 +6,10 @@ import { expect, it } from "vitest";
 import { createCliProject, runCliOrThrow } from "./cli-project.js";
 
 const APP_SOURCE = `import assert from "node:assert/strict";
-import { Application, ApplicationFlags } from "@gtkx/gi/gio";
+import { Application, ApplicationFlags, createApplication } from "@gtkx/gi/gio";
 import { fromVariant, toVariant } from "@gtkx/gi/glib";
 import { ParamFlags, paramSpecInt } from "@gtkx/gi/gobject";
 import { Label } from "@gtkx/gi/gtk";
-import { createApplication, quitApplication, runApplication } from "@gtkx/gi/gio";
 import { quit, registerClass } from "@gtkx/runtime";
 
 try {
@@ -36,9 +35,13 @@ try {
     });
     application.on("activate", () => {});
     assert.equal(Application.getDefault(), null);
-    assert.equal(runApplication(application, ["gtkx-runtime-dependencies"]).isPrimary, true);
+    const completion = application.runAsync(["gtkx-runtime-dependencies"]);
+    assert.equal(application.getIsRegistered(), true);
+    assert.equal(application.getIsRemote(), false);
     assert.equal(Application.getDefault(), application);
-    quitApplication(application);
+    setImmediate(() => application.quit());
+    assert.equal(await completion, 0);
+    assert.equal(application.getIsRegistered(), false);
     assert.equal(Application.getDefault(), null);
     process.stdout.write("dependencies-ok");
 } catch (error) {
