@@ -1,6 +1,6 @@
 import type { ChildProcess } from "node:child_process";
 import * as Gtk from "@gtkx/gi/gtk";
-import { quitApplication, runApplication } from "@gtkx/runtime";
+import { quitApplication, runApplication } from "@gtkx/gi/gio";
 import { spawnWithParentDeathSignal } from "@gtkx/utils";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";

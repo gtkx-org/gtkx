@@ -7,7 +7,7 @@ import { AdwPreferencesGroup } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkEntry, GtkLabel, GtkWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { createApplication } from "@gtkx/runtime";
+import { createApplication } from "@gtkx/gi/gio";
 import {
     act,
     cleanup,

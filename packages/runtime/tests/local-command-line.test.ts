@@ -1,7 +1,8 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { quitApplication, registerClass, runApplication, type RunApplicationResult } from "@gtkx/runtime";
+import { quitApplication, runApplication, type RunApplicationResult } from "@gtkx/gi/gio";
+import { registerClass } from "@gtkx/runtime";
 import { afterEach, describe, expect, it } from "vitest";
 import { applicationProps, countSignal, createApplication, createApplicationFrom } from "./helpers/application.js";
 import { createTypeNameFactory } from "./helpers/unique-name.js";
@@ -180,14 +181,22 @@ describe("vfuncLocalCommandLine — inout string array marshalling", () => {
     it("lets an override strip an argument before chaining up to GLib", () => {
         class FilteringApplication extends Gio.Application {
             override vfuncLocalCommandLine(argv: string[]): CommandLineResult {
-                return super.vfuncLocalCommandLine(argv.filter((argument) => argument !== "--strip-me"));
+                const index = argv.indexOf("--strip-me");
+
+                if (index >= 0) {
+                    argv.splice(index, 1);
+                }
+
+                return super.vfuncLocalCommandLine(argv);
             }
         }
 
         registerClass(FilteringApplication, { typeName: uniqueName("GtkxFilteringApplication") });
         const application = track(createApplicationFrom(FilteringApplication));
         const activations = countSignal(application, "activate");
-        expect(runApplication(application, ["probe", "--strip-me"])).toEqual({ isPrimary: true, exitStatus: 0 });
+        const argv = ["probe", "--strip-me"];
+        expect(runApplication(application, argv)).toEqual({ isPrimary: true, exitStatus: 0 });
+        expect(argv).toEqual(["probe", "--strip-me"]);
         expect(activations()).toBe(1);
     });
 });

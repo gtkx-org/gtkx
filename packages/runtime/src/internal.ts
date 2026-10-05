@@ -21,7 +21,6 @@ type SignalMethodReceiver<T, K extends PropertyKey> = T extends {
         : unknown
     : unknown;
 
-export { installComboRowFactoryOverride } from "./combo-row.js";
 export { preserveArrayNull } from "./descriptors.js";
 /** @internal */
 export { registerElementMetadata } from "./element-metadata.js";
@@ -33,30 +32,12 @@ export {
 } from "./element-metadata.js";
 export { fixedArrayEntries } from "./field.js";
 export { markSyntheticSignalMembers };
-export { type ApplicationInstance, getApplicationInstance } from "./lifecycle.js";
 export { getObjectProperty, registerConstructFactory } from "./object.js";
-export {
-    createTypeClassPeek,
-    objectDisconnect,
-    objectOff,
-    objectOn,
-    objectOnce,
-    paramSpecGetters,
-    regexMatch,
-    regexMatchAll,
-    regexMatchAllFull,
-    regexMatchFull,
-    regexReplaceEval,
-    valueGetBoxed,
-    valueSetBoxed,
-} from "./override-methods.js";
-export { createParamSpecOverride, type ParamSpecOverride } from "./param-spec-override.js";
-export { descriptorFreePropertySpec } from "./property-brand.js";
-export type { ReadableProperties } from "./property-types.js";
-export { installMatchInfo } from "./regex.js";
+export { descriptorFreePropertySpec, propertyWriteComplete } from "./property-brand.js";
+export type { Camelized, Dashed, ReadableProperties, WritableProperties } from "./property-types.js";
+export { installMatchInfo, replaceRegexEval } from "./regex.js";
 export { getExactWrapperClass, resolveWrapperClass } from "./registry.js";
 export type { SignalMethodReceiver };
-export { installSidebarModeOverride } from "./sidebar.js";
 export {
     classSignalMember,
     naturalSignalMember,
@@ -76,7 +57,6 @@ export {
     type SignalMap,
     type SignalName,
 } from "./signal.js";
-export { installTextViewBufferOverride } from "./text-view.js";
 export { retainWrapperClasses };
 export { resolveType } from "./type.js";
 export {
@@ -88,4 +68,13 @@ export {
     outValueForBoxedDescriptor,
     toValue,
 } from "./value.js";
-export { installWindowDefaultWidgetOverride } from "./window.js";
+export { registerClassOption } from "./class-options.js";
+export {
+    connectNativeSignal,
+    disconnectNativeSignalHandlers,
+    findNativeSignalHandler,
+    isNativeHandleAlive,
+    type NativeHandle,
+} from "./native-lifetime.js";
+export { initializeWrapper } from "./wrapper-brand.js";
+export { keepAlive, setWrapperBorrow } from "@gtkx/native";

@@ -3,26 +3,30 @@ import { sourceStringLiteral } from "@gtkx/utils";
 type Override = {
     module: string;
     exports: "*" | string[];
-    patchesPrototype?: boolean;
+    needsBootstrap?: boolean;
 };
 
 const OVERRIDES: Record<string, Override[]> = {
     adw: [
-        { module: "sidebar", exports: "*", patchesPrototype: true },
-        { module: "combo-row", exports: "*", patchesPrototype: true },
+        { module: "sidebar", exports: "*", needsBootstrap: true },
+        { module: "combo-row", exports: "*", needsBootstrap: true },
     ],
-    glib: [{ module: "regex", exports: ["MatchInfo"], patchesPrototype: true }],
+    gio: [{ module: "application", exports: "*" }],
+    glib: [
+        { module: "regex", exports: ["MatchInfo"], needsBootstrap: true },
+        { module: "variant", exports: "*" },
+    ],
     gobject: [
-        { module: "object", exports: "*", patchesPrototype: true },
+        { module: "object", exports: "*", needsBootstrap: true },
         { module: "object-class", exports: ["ObjectClass"] },
         { module: "param-spec", exports: "*" },
-        { module: "param-spec-getters", exports: "*", patchesPrototype: true },
-        { module: "value", exports: "*", patchesPrototype: true },
+        { module: "param-spec-getters", exports: "*", needsBootstrap: true },
+        { module: "value", exports: "*", needsBootstrap: true },
     ],
     gtk: [
-        { module: "widget-class", exports: ["WidgetClass"] },
-        { module: "text-view", exports: "*", patchesPrototype: true },
-        { module: "window", exports: [], patchesPrototype: true },
+        { module: "widget-class", exports: ["WidgetClass"], needsBootstrap: true },
+        { module: "text-view", exports: "*", needsBootstrap: true },
+        { module: "window", exports: [], needsBootstrap: true },
     ],
 };
 
@@ -33,7 +37,7 @@ const overrideImportPath = (override: Override): string =>
 
 const renderOverrideImports = (directory: string): string[] =>
     namespaceOverrides(directory)
-        .filter((override) => override.patchesPrototype === true)
+        .filter((override) => override.needsBootstrap === true)
         .map((override) => `import ${overrideImportPath(override)};`);
 
 const renderOverrideExports = (directory: string): string[] =>

@@ -66,6 +66,15 @@ Direct native calls using `bigint64` or `biguint64` descriptors now require bigi
 
 The generated wrapper-retention helper `retainWrapperClasses` now belongs to `@gtkx/runtime/internal`. Regenerate bindings with `gtkx codegen --force` after upgrading so their bootstrap imports match the runtime.
 
+Application and Variant helpers now belong to their generated namespaces:
+
+```ts
+import { createApplication, quitApplication, runApplication } from "@gtkx/gi/gio";
+import { fromVariant, toVariant } from "@gtkx/gi/glib";
+```
+
+Move their associated type imports too: `ApplicationClass` is now `ApplicationConstructor`, and the Variant helper's `ByteArray` type is now `VariantByteArray`. Use `Gio.Application` in place of the removed `CommandLineApplication` interface. Runtime shutdown remains `quit()` from `@gtkx/runtime`.
+
 ## Move GObject ownership into JSX
 
 The settings hooks no longer create a `Gio.Settings` instance. Render `GSettings` from `@gtkx/jsx/gio` in the root portal, capture the instance with a state callback ref, and mount its consumers once it is available. Pass that instance first to `useSetting`, and add it as the `settings` option to `useBindSetting`. The [settings tutorial](/v2/tutorial/preferences-and-theming#create-the-settings-instance) shows the complete ownership pattern.

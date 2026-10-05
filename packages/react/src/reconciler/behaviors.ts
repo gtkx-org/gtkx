@@ -1,14 +1,7 @@
+import { type Application, type ApplicationConstructor, createApplication } from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import {
-    type ApplicationClass,
-    type CommandLineApplication,
-    createApplication,
-    getClassType,
-    getInstanceType,
-    TYPE_INVALID,
-    typeIsA,
-} from "@gtkx/runtime";
+import { getClassType, getInstanceType, TYPE_INVALID, typeIsA } from "@gtkx/runtime";
 import { isDeepEqual } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.js";
 import { applyWrite } from "./signals.js";
@@ -276,8 +269,8 @@ const rowSlot = <P extends Gtk.Widget & IndexedChildHost<Gtk.Widget>>(): Element
         },
     });
 
-const applicationCreator = <P extends GObject.Object & CommandLineApplication, C extends Props>(
-    base: ApplicationClass<P, C>,
+const applicationCreator = <P extends Application, C extends Props>(
+    base: ApplicationConstructor<P, C>,
 ): ElementBehavior<P> => ({
     create: (props) => createApplication(base, props as C),
 });

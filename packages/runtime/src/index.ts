@@ -1,13 +1,12 @@
 import "./exit-hook.js";
 
-export { type ApplicationClass, type CommandLineApplication, createApplication } from "./application-class.js";
 export { CallbackMarshalError } from "./callback.js";
 export { type ClosureCallback, ClosureMarshalError, toClosure, tryToClosure } from "./closure.js";
 export type { Descriptor } from "./descriptor-types.js";
 export { createErrorDomain, type ErrorDomain } from "./error.js";
 export { type Field, type StridedField } from "./field.js";
 export { read, write } from "./field.js";
-export { onExit, quit, quitApplication, runApplication, type RunApplicationResult } from "./lifecycle.js";
+export { onExit, quit } from "./lifecycle.js";
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
 export { installMixins, type Mixin } from "./mixin.js";
 export { fromNative, toHashTableEntries, toNative } from "./native-value.js";
@@ -108,16 +107,6 @@ export {
     tryToValueHandle,
     ValueMarshalError,
 } from "./value.js";
-export {
-    type ByteArray,
-    type FromVariantOptions,
-    fromVariant,
-    type RecursiveFromVariantOptions,
-    type RecursiveVariantValue,
-    toVariant,
-    type VariantInput,
-    type VariantValue,
-} from "./variant.js";
 export { callParent, callVfunc } from "./vfunc-call.js";
 export { alloc, type ExternalObject, type Handle } from "@gtkx/native";
 export { type AnyClass } from "@gtkx/utils";

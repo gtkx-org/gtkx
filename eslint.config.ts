@@ -28,6 +28,17 @@ export default defineConfig(
         rules: { "@typescript-eslint/triple-slash-reference": "off" },
     },
     {
+        files: ["packages/runtime/src/**/*.ts"],
+        rules: {
+            "no-restricted-imports": ["error", {
+                patterns: [{
+                    group: ["@gtkx/gi", "@gtkx/gi/*", "@gtkx/jsx", "@gtkx/jsx/*"],
+                    message: "Keep generated-binding behavior in the TypeScript override modules.",
+                }],
+            }],
+        },
+    },
+    {
         files: ["**/*.{js,jsx,mjs,cjs}"],
         extends: [js.configs.recommended],
         languageOptions: {

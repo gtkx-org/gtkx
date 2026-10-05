@@ -128,7 +128,7 @@
           <type name="none" c:type="void"/>
         </return-value>
         <parameters>
-          <instance-parameter name="self" transfer-ownership="none">
+          <instance-parameter name="self" transfer-ownership="none" nullable="1" allow-none="1">
             <type name="Job" c:type="AsyncPairJob*"/>
           </instance-parameter>
           <parameter name="callback"
@@ -149,7 +149,7 @@
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
-          <instance-parameter name="self" transfer-ownership="none">
+          <instance-parameter name="self" transfer-ownership="none" nullable="1" allow-none="1">
             <type name="Job" c:type="AsyncPairJob*"/>
           </instance-parameter>
           <parameter name="res" transfer-ownership="none">
@@ -311,7 +311,7 @@
           <type name="none" c:type="void"/>
         </return-value>
         <parameters>
-          <instance-parameter name="self" transfer-ownership="none">
+          <instance-parameter name="self" transfer-ownership="none" nullable="1" allow-none="1">
             <type name="Sack" c:type="AsyncPairSack*"/>
           </instance-parameter>
           <parameter name="cancellable" transfer-ownership="none" nullable="1" allow-none="1">
@@ -361,7 +361,7 @@
           <type name="gboolean" c:type="gboolean"/>
         </return-value>
         <parameters>
-          <instance-parameter name="self" transfer-ownership="none">
+          <instance-parameter name="self" transfer-ownership="none" nullable="1" allow-none="1">
             <type name="Sack" c:type="AsyncPairSack*"/>
           </instance-parameter>
           <parameter name="res" transfer-ownership="none">

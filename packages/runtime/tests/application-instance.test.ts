@@ -1,5 +1,5 @@
 import type * as Gio from "@gtkx/gi/gio";
-import { quitApplication, runApplication } from "@gtkx/runtime";
+import { quitApplication, runApplication } from "@gtkx/gi/gio";
 import { afterEach, describe, expect, it } from "vitest";
 import { startApplicationOwner, stopApplicationOwners } from "./helpers/application-owner.js";
 import { createUniqueApplication } from "./helpers/application.js";

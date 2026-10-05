@@ -1,14 +1,17 @@
 import {
-    objectDisconnect,
-    objectOff,
-    objectOn,
-    objectOnce,
-    type SignalMap,
+    disconnectSignal,
+    offSignal,
+    onceSignal,
+    onSignal,
+    type SignalHandler,
     type SignalHandlerId,
-    type SignalMethodReceiver,
-    type SignalName,
+} from "@gtkx/runtime";
+import type {
+    SignalMap,
+    SignalMethodReceiver,
+    SignalName,
 } from "@gtkx/runtime/internal";
-import { Object as GObject, type Type } from "../gobject.js";
+import { Object as GObject } from "../gobject.js";
 
 declare module "../gobject.js" {
     interface Object {
@@ -69,7 +72,34 @@ declare module "../gobject.js" {
     }
 }
 
-GObject.prototype.disconnect = objectDisconnect;
-GObject.prototype.on = objectOn;
-GObject.prototype.once = objectOnce;
-GObject.prototype.off = objectOff;
+GObject.prototype.disconnect = function (this: GObject, handlerId: SignalHandlerId): void {
+    disconnectSignal(this, handlerId);
+};
+
+GObject.prototype.on = function <TThis extends object>(
+    this: TThis,
+    signal: string,
+    handler: SignalHandler,
+    isAfter?: boolean,
+): TThis {
+    onSignal(this, signal, handler, isAfter);
+
+    return this;
+};
+
+GObject.prototype.once = function <TThis extends object>(
+    this: TThis,
+    signal: string,
+    handler: SignalHandler,
+    isAfter?: boolean,
+): TThis {
+    onceSignal(this, signal, handler, isAfter);
+
+    return this;
+};
+
+GObject.prototype.off = function <TThis extends object>(this: TThis, signal: string, handler: SignalHandler): TThis {
+    offSignal(this, signal, handler);
+
+    return this;
+};

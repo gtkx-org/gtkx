@@ -1,4 +1,4 @@
-import { quitApplication, runApplication } from "@gtkx/runtime";
+import { quitApplication, runApplication } from "@gtkx/gi/gio";
 import { describe, expect, it } from "vitest";
 import { countSignal, createApplication, createPlainApplication } from "./helpers/application.js";
 

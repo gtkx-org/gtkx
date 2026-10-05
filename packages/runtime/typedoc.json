@@ -1,14 +1,11 @@
 {
     "intentionallyNotExported": [
-        "ApplicationLike",
-        "ByteArrayInput",
         "EmitArg",
         "ErrorLike",
         "FinishResult",
         "InterfaceLayout",
         "MixinReceiver",
         "NativeIdentityKeys",
-        "ParsedValue",
         "ReadableProperties",
         "RegisterClassOptions",
         "RegisteredInstance",

@@ -1,4 +1,4 @@
-import type { ApplicationInstance } from "@gtkx/runtime/internal";
+import type { ApplicationInstance } from "@gtkx/gi/gio";
 import type { InlineConfig, ModuleNode, Plugin, ViteDevServer } from "vite";
 import { error, warn } from "@gtkx/utils";
 import { isCatalogSource } from "../i18n/catalogs.js";

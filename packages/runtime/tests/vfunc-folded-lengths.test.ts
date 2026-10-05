@@ -1,7 +1,8 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { quitApplication, registerClass } from "@gtkx/runtime";
+import { quitApplication } from "@gtkx/gi/gio";
+import { registerClass } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
 function createSwipeable(typeName: string, snapPoints: () => number[]): Adw.Swipeable {

@@ -25,7 +25,8 @@ const APP_CONFIG = `export default {
 `;
 
 const APP_ENTRY = String.raw`import { File, IOErrorEnum, ioErrorQuark, SimpleAction, Task } from "@gtkx/gi/gio";
-import { toVariant, typeFromName } from "@gtkx/runtime";
+import { toVariant } from "@gtkx/gi/glib";
+import { typeFromName } from "@gtkx/runtime";
 
 process.stdout.write("${USED_NAME_PREFIX}" + Task.name + "\n");
 process.stdout.write("${USED_TYPE_PREFIX}" + String(typeFromName("GTask") !== 0n) + "\n");

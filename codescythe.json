@@ -4,6 +4,8 @@
         "packages/animated/src/index.ts",
         "packages/cairo/src/index.ts",
         "packages/codegen/src/index.ts",
+        "packages/codegen/overrides/*/index.ts",
+        "packages/codegen/overrides/*/overrides/*.ts",
         "packages/components/src/index.ts",
         "packages/config/src/index.ts",
         "packages/create-gtkx/src/index.ts",

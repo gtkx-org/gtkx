@@ -49,6 +49,30 @@
     "scripts": {
         "release": "tsx ../../scripts/release-package.ts"
     },
+    "nx": {
+        "targets": {
+            "typecheck": {
+                "dependsOn": ["...", "_typecheck:overrides"]
+            },
+            "_typecheck:overrides": {
+                "command": "tsc -p overrides/tsconfig.json",
+                "options": {
+                    "cwd": "packages/codegen"
+                },
+                "cache": true,
+                "dependsOn": ["gtkx:_build:bindings"],
+                "inputs": [
+                    "default",
+                    "^production",
+                    {
+                        "dependentTasksOutputFiles": "**/*.d.ts",
+                        "transitive": true
+                    }
+                ],
+                "outputs": []
+            }
+        }
+    },
     "engines": {
         "node": ">=26.7.0"
     },

@@ -12,7 +12,8 @@ import { join } from "node:path";
 import * as Gio from "@gtkx/gi/gio";
 import * as OSTree from "@gtkx/gi/ostree";
 import { keepAlive } from "@gtkx/native";
-import { quit, toVariant } from "@gtkx/runtime";
+import { toVariant } from "@gtkx/gi/glib";
+import { quit } from "@gtkx/runtime";
 
 using temporary = mkdtempDisposableSync(join(tmpdir(), "gtkx-ostree-finder-values-"));
 const parentPath = join(temporary.path, "parent");

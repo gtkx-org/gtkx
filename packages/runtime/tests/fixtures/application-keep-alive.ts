@@ -1,5 +1,5 @@
 import * as Gio from "@gtkx/gi/gio";
-import { createApplication, quitApplication, runApplication } from "@gtkx/runtime";
+import { createApplication, quitApplication, runApplication } from "@gtkx/gi/gio";
 
 type Mode = "activated" | "service" | "rejected";
 

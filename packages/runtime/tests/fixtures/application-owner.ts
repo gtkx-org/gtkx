@@ -1,5 +1,5 @@
 import type * as Gio from "@gtkx/gi/gio";
-import { runApplication } from "@gtkx/runtime";
+import { runApplication } from "@gtkx/gi/gio";
 import { createUniqueApplication } from "../helpers/application.js";
 
 const HOLD_INTERVAL_MS = 250;

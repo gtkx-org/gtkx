@@ -1,12 +1,65 @@
 import { SimpleAction } from "@gtkx/gi/gio";
 import { Regex } from "@gtkx/gi/glib";
-import { ObjectClass, ParamFlags, paramSpecInt, TYPE_INT, TYPE_INVALID, TYPE_STRING } from "@gtkx/gi/gobject";
-import { Button, WidgetClass } from "@gtkx/gi/gtk";
-import { getClassType } from "@gtkx/runtime";
+import {
+    ObjectClass,
+    ParamFlags,
+    type ParamSpec,
+    paramSpecInt,
+    paramSpecOverride,
+    TYPE_INT,
+    TYPE_INVALID,
+    TYPE_STRING,
+    type Value,
+} from "@gtkx/gi/gobject";
+import { Button, Widget, WidgetClass, Window } from "@gtkx/gi/gtk";
+import { callParent, getClassType, registerClass } from "@gtkx/runtime";
 import { assert, describe, expect, it } from "vitest";
+import { gcUntil } from "./helpers/native-utils.js";
+import { createTypeNameFactory } from "./helpers/unique-name.js";
 
 const MATCH_METHODS = ["match", "matchAll"] as const;
 const FULL_MATCH_METHODS = ["matchFull", "matchAllFull"] as const;
+const uniqueName = createTypeNameFactory("_");
+
+describe("generated Gtk.Window lifetime override", () => {
+    it("clears the native default without invoking an overridden property during collection", async () => {
+        const propertyWrites: string[] = [];
+        let finalized = false;
+
+        class InterceptedWindow extends Window {
+            vfuncSetProperty(_propertyId: number, value: Value, spec: ParamSpec): void {
+                propertyWrites.push(spec.getName());
+                const widget = value.getObject();
+
+                if (widget === null || widget instanceof Widget) {
+                    this.setDefaultWidget(widget);
+                }
+            }
+
+            vfuncFinalize(): void {
+                finalized = true;
+                callParent(InterceptedWindow, "vfuncFinalize", this);
+            }
+        }
+
+        registerClass(InterceptedWindow, {
+            typeName: uniqueName("GtkxInterceptedDefaultWindow"),
+            properties: { defaultWidget: paramSpecOverride("default-widget", Window) },
+        });
+
+        const destroyWindow = (): void => {
+            const window = new InterceptedWindow();
+            window.setDefaultWidget(new Button());
+            window.destroy();
+        };
+
+        destroyWindow();
+        await gcUntil(() => finalized);
+
+        expect(finalized).toBe(true);
+        expect(propertyWrites).toEqual([]);
+    });
+});
 
 describe("generated GLib.Regex overrides", () => {
     it.each(MATCH_METHODS)("%s retains the subject for the returned match info", (method) => {

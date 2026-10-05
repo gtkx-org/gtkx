@@ -1,5 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { quitApplication, runApplication } from "@gtkx/runtime";
+import { quitApplication, runApplication } from "@gtkx/gi/gio";
 import { pickBy, warn } from "@gtkx/utils";
 import process from "node:process";
 import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";

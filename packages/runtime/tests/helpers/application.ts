@@ -1,5 +1,5 @@
 import * as Gio from "@gtkx/gi/gio";
-import { type ApplicationClass, createApplication as deriveApplication } from "@gtkx/runtime";
+import { type ApplicationConstructor, createApplication as deriveApplication } from "@gtkx/gi/gio";
 import { createAppIdFactory } from "./unique-name.js";
 
 type ApplicationSignal = "activate" | "shutdown";
@@ -12,7 +12,7 @@ const applicationProps = (): Gio.ApplicationConstructorProps => ({
 });
 
 const createApplicationFrom = <T extends Gio.Application>(
-    base: ApplicationClass<T, Gio.ApplicationConstructorProps>,
+    base: ApplicationConstructor<T, Gio.ApplicationConstructorProps>,
 ): T => deriveApplication(base, applicationProps());
 
 const createApplication = (): Gio.Application => createApplicationFrom(Gio.Application);

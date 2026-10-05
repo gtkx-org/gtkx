@@ -1,11 +1,5 @@
-import {
-    installMatchInfo,
-    regexMatch,
-    regexMatchAll,
-    regexMatchAllFull,
-    regexMatchFull,
-    regexReplaceEval,
-} from "@gtkx/runtime/internal";
+import { matchAllRegex, matchRegex } from "@gtkx/runtime";
+import { installMatchInfo, replaceRegexEval } from "@gtkx/runtime/internal";
 import { MatchInfo as RawMatchInfo, Regex, type RegexEvalCallback, type RegexMatchFlags } from "../glib.js";
 
 export abstract class MatchInfo extends RawMatchInfo {}
@@ -59,8 +53,46 @@ declare module "../glib.js" {
     }
 }
 
-Regex.prototype.match = regexMatch<MatchInfo>;
-Regex.prototype.matchAll = regexMatchAll<MatchInfo>;
-Regex.prototype.matchFull = regexMatchFull<MatchInfo>;
-Regex.prototype.matchAllFull = regexMatchAllFull<MatchInfo>;
-Regex.prototype.replaceEval = regexReplaceEval;
+Regex.prototype.match = function (
+    this: Regex,
+    subject: string,
+    matchOptions: RegexMatchFlags,
+): [boolean, MatchInfo] {
+    return matchRegex<MatchInfo>(this, subject, 0, matchOptions);
+};
+
+Regex.prototype.matchAll = function (
+    this: Regex,
+    subject: string,
+    matchOptions: RegexMatchFlags,
+): [boolean, MatchInfo] {
+    return matchAllRegex<MatchInfo>(this, subject, 0, matchOptions);
+};
+
+Regex.prototype.matchFull = function (
+    this: Regex,
+    subject: string | string[] | Uint8Array | number[],
+    startPosition: number,
+    matchOptions: RegexMatchFlags,
+): [boolean, MatchInfo] {
+    return matchRegex<MatchInfo>(this, subject, startPosition, matchOptions);
+};
+
+Regex.prototype.matchAllFull = function (
+    this: Regex,
+    subject: string | string[] | Uint8Array | number[],
+    startPosition: number,
+    matchOptions: RegexMatchFlags,
+): [boolean, MatchInfo] {
+    return matchAllRegex<MatchInfo>(this, subject, startPosition, matchOptions);
+};
+
+Regex.prototype.replaceEval = function (
+    this: Regex,
+    subject: string | string[] | Uint8Array | number[],
+    startPosition: number,
+    matchOptions: RegexMatchFlags,
+    shouldStop: RegexEvalCallback,
+): string {
+    return replaceRegexEval({ regex: this, subject, startPosition, matchOptions }, shouldStop);
+};
