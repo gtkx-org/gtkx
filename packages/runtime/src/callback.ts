@@ -16,7 +16,7 @@ import { copyValue } from "./value.js";
 import { popSeedFrame, pushSeedFrame, type RefSeeds } from "./vfunc-seeds.js";
 
 type Callback = (...args: unknown[]) => unknown;
-type CallbackKind = "vfunc" | "signal" | "callback";
+type CallbackKind = "vfunc" | "signal" | "signal-class" | "callback";
 type CallbackTraits = {
     isInstanceBound: boolean;
     hasInstanceArg: boolean;
@@ -53,6 +53,7 @@ type CallbackPlan = {
 const CALLBACK_TRAITS: Record<CallbackKind, CallbackTraits> = {
     callback: { isInstanceBound: false, hasInstanceArg: false, hasFoldedLengths: true, hasFoldedInputs: true },
     signal: { isInstanceBound: false, hasInstanceArg: true, hasFoldedLengths: false, hasFoldedInputs: false },
+    "signal-class": { isInstanceBound: true, hasInstanceArg: true, hasFoldedLengths: false, hasFoldedInputs: false },
     vfunc: { isInstanceBound: true, hasInstanceArg: true, hasFoldedLengths: true, hasFoldedInputs: true },
 };
 
@@ -263,7 +264,7 @@ const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {
     const { inputs, outParams } = partitionCallbackArgs(plan, rawArgs);
     const result = applyCallback(plan, thisArg, inputs, outParams);
 
-    if (result === undefined && plan.isSignal && plan.hasPrimary) {
+    if (result === undefined && plan.isSignal) {
         return signalDefaultReturn;
     }
 
@@ -326,7 +327,7 @@ function wrapCallback(fn: Callback, spec: CallbackSpec, kind: CallbackKind): Cal
         lengthSources: planLengthSources(spec, hasFoldedLengths),
         hasOutParams: haveOutParamArgs(effectiveTypes, start),
         hasRefOutParams: haveRefOutParamArgs(effectiveTypes, start),
-        isSignal: kind === "signal",
+        isSignal: kind === "signal" || kind === "signal-class",
         foldedInputIndices: planFoldedInputIndices(spec, hasFoldedInputs),
     };
 

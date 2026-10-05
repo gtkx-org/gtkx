@@ -879,11 +879,7 @@ function installSignalOverrides(newType: bigint, methods: MethodTable): void {
             continue;
         }
 
-        const handler = fn as (...args: unknown[]) => unknown;
-
-        overrideSignalClassClosure(newType, signalId, (...args: unknown[]) =>
-            handler.apply(args[0], args.slice(1)),
-        );
+        overrideSignalClassClosure(newType, signalId, fn as (...args: unknown[]) => unknown);
     }
 }
 

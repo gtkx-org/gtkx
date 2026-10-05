@@ -11,6 +11,10 @@ type NativeHandle = ExternalObject<Handle>;
 type Widget = { getFirstChild: () => Widget | null; getNextSibling: () => Widget | null };
 type ComboRow = Widget & { getFactory: () => object | null };
 type ListItem = { getChild: () => Widget | null };
+type FactoryClasses = {
+    SignalListItemFactory: abstract new (...args: never[]) => object;
+    ListItem: abstract new (...args: never[]) => ListItem;
+};
 type State = { factories: Map<NativeHandle, SignalHandlerId[]>; boxes: Map<NativeHandle, SignalHandlerId> };
 
 const MATCH_DATA = 16;
@@ -75,7 +79,7 @@ const trackCurrentBoxes = (row: ComboRow, state: State): void => {
     }
 };
 
-const trackFactory = (row: ComboRow, state: State): void => {
+const trackFactory = (row: ComboRow, state: State, classes: FactoryClasses): void => {
     retainLiveHandles(state.factories);
     const factory = row.getFactory();
 
@@ -89,9 +93,15 @@ const trackFactory = (row: ComboRow, state: State): void => {
         findHandler(handle, MATCH_DATA | 1, lookup(signal, getType(handle)), 0, null, null, owner) as SignalHandlerId,
     );
 
-    if (!state.factories.has(handle) && ids.every((id) => id !== 0n)) {
+    if (
+        !state.factories.has(handle)
+        && factory instanceof classes.SignalListItemFactory
+        && ids.every((id) => id !== 0n)
+    ) {
         const id = connectSignalByName(factory, "bind", (item: unknown) => {
-            trackBox(item as ListItem, state, owner);
+            if (item instanceof classes.ListItem) {
+                trackBox(item, state, owner);
+            }
         });
         state.factories.set(handle, [...ids, id]);
     }
@@ -127,19 +137,19 @@ const destroyRow = (state: State): void => {
 /* TODO: Keep handler cleanup until libadwaita ties default-factory callbacks to the ComboRow lifetime.
  * https://github.com/gtkx-org/gtkx/issues/727
  */
-function installComboRowFactoryOverride(prototype: ComboRow): void {
+function installComboRowFactoryOverride(prototype: ComboRow, classes: FactoryClasses): void {
     rootSignal.id = lookup("notify", TYPE_OBJECT) as number;
     rootSignal.detail = quark("root") as number;
     Object.defineProperty(prototype, initializeWrapper, {
         value: function (this: ComboRow): void {
             const state: State = { factories: new Map(), boxes: new Map() };
             const receiver = new WeakRef(this);
-            trackFactory(this, state);
+            trackFactory(this, state, classes);
             connectSignalByName(this, "notify::factory", () => {
                 const row = receiver.deref();
 
                 if (row !== undefined) {
-                    trackFactory(row, state);
+                    trackFactory(row, state, classes);
                 }
             });
             connectDestroy(getHandle(this), "destroy", () => {

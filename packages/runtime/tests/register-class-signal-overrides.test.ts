@@ -177,6 +177,93 @@ describe("registerClass — on<SignalName> default handlers", () => {
 });
 
 describe("registerClass — on<SignalName> edge cases", () => {
+    it.each([true, false, undefined])("marshals an inherited class handler's primitive return %s", (result) => {
+        class HandlingSwitch extends Gtk.Switch {
+            states: boolean[] = [];
+
+            onStateSet(state: boolean): boolean | undefined {
+                this.states.push(state);
+
+                return result;
+            }
+        }
+
+        const Registered = registerClass(HandlingSwitch, { typeName: uniqueName("GtkxOnSignalHandlingSwitch") });
+        const widget = new Registered();
+
+        expect(widget.emit("state-set", true)).toBe(result ?? false);
+        expect(widget.states).toEqual([true]);
+    });
+
+    it("marshals inherited signal inout values and binds the handler instance", () => {
+        class InsertingEntry extends Gtk.Entry {
+            insertions: [string, number, number][] = [];
+
+            onInsertText(text: string, length: number, position: number): number {
+                this.insertions.push([text, length, position]);
+
+                return position + length;
+            }
+        }
+
+        const Registered = registerClass(InsertingEntry, { typeName: uniqueName("GtkxOnSignalInsertingEntry") });
+        const entry = new Registered();
+
+        expect(entry.insertText("hello", 5, 0)).toBe(5);
+        expect(entry.insertions).toEqual([["hello", 5, 0]]);
+    });
+
+    it("preserves inherited signal inout values when the default handler observes them", () => {
+        class ObservingEntry extends Gtk.Entry {
+            positions: number[] = [];
+
+            onInsertText(_text: string, _length: number, position: number): void {
+                this.positions.push(position);
+            }
+        }
+
+        const Registered = registerClass(ObservingEntry, { typeName: uniqueName("GtkxOnSignalObservingEntry") });
+        const entry = new Registered();
+
+        expect(entry.insertText("hello", 5, 0)).toBe(0);
+        expect(entry.positions).toEqual([0]);
+    });
+
+    it("writes a class handler's return and output values back to a native signal", () => {
+        class ConvertingSpin extends Gtk.SpinButton {
+            onInput(): [number, number] {
+                return [1, 42];
+            }
+        }
+
+        const Registered = registerClass(ConvertingSpin, { typeName: uniqueName("GtkxOnSignalConvertingSpin") });
+        const spin = new Registered();
+        spin.setRange(0, 100);
+        spin.setText("answer");
+        spin.update();
+
+        expect(spin.getValue()).toBe(42);
+    });
+
+    it("keeps native input parsing when a class handler returns no replacement", () => {
+        class ObservingSpin extends Gtk.SpinButton {
+            inputs = 0;
+
+            onInput(): void {
+                this.inputs += 1;
+            }
+        }
+
+        const Registered = registerClass(ObservingSpin, { typeName: uniqueName("GtkxOnSignalObservingSpin") });
+        const spin = new Registered();
+        spin.setRange(0, 100);
+        spin.setText("23");
+        spin.update();
+
+        expect(spin.getValue()).toBe(23);
+        expect(spin.inputs).toBe(1);
+    });
+
     it("installs the default handler for a signal an implemented interface carries", () => {
         const Feed = makeFeedClass();
         const feed = new Feed() as InstanceType<typeof Feed> & Gio.ListModel;

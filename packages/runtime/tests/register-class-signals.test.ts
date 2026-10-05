@@ -97,6 +97,103 @@ describe("registerClass — signal accumulators", () => {
         expect(instance.emit("handle")).toBe(true);
         expect(calls).toEqual(["first", "second"]);
     });
+
+    it("continues past an observer until a true-handled listener handles the signal", () => {
+        const Registered = registerSignals("GtkxSignalObservedHandled", {
+            handle: { returnType: TYPE_BOOLEAN, accumulator: "true-handled" },
+        });
+        const instance = new Registered();
+        const calls: string[] = [];
+        instance.connect("handle", () => {
+            calls.push("observer");
+        });
+        instance.connect("handle", () => {
+            calls.push("handler");
+
+            return true;
+        });
+        instance.connect("handle", () => {
+            calls.push("unreached");
+
+            return false;
+        });
+
+        expect(instance.emit("handle")).toBe(true);
+        expect(calls).toEqual(["observer", "handler"]);
+    });
+
+    it("uses an observer's default result as the first-wins result", () => {
+        const Registered = registerSignals("GtkxSignalObservedFirst", {
+            pick: { returnType: TYPE_INT, accumulator: "first-wins" },
+        });
+        const instance = new Registered();
+        const calls: string[] = [];
+        instance.connect("pick", () => {
+            calls.push("observer");
+        });
+        instance.connect("pick", () => {
+            calls.push("unreached");
+
+            return 42;
+        });
+
+        expect(instance.emit("pick")).toBe(0);
+        expect(calls).toEqual(["observer"]);
+    });
+});
+
+describe.each([
+    { label: "boolean", returnType: TYPE_BOOLEAN, expected: false, previous: true },
+    { label: "integer", returnType: TYPE_INT, expected: 0, previous: 42 },
+])("registerClass — $label signal observers", ({ returnType, expected, previous }) => {
+    it("resets the return value when an observer follows a returning listener", () => {
+        const Registered = registerSignals("GtkxSignalObservedReturn", { observed: { returnType } });
+        const instance = new Registered();
+        const calls: string[] = [];
+        instance.connect("observed", () => {
+            calls.push("handler");
+
+            return previous;
+        });
+        instance.connect("observed", () => {
+            calls.push("observer");
+        });
+
+        expect(instance.emit("observed")).toBe(expected);
+        expect(calls).toEqual(["handler", "observer"]);
+    });
+
+    it("uses the native default when the class handler returns nothing", () => {
+        class Observer extends GObject {
+            calls: string[] = [];
+
+            onObserved(): void {
+                this.calls.push("default");
+            }
+        }
+
+        const Registered = registerClass(Observer, {
+            typeName: uniqueName("GtkxSignalObservedDefault"),
+            signals: { observed: { returnType, flags: SignalFlags.RUN_LAST } },
+        });
+        const instance = new Registered();
+        instance.connect("observed", () => {
+            instance.calls.push("handler");
+
+            return previous;
+        });
+
+        expect(instance.emit("observed")).toBe(expected);
+        expect(instance.calls).toEqual(["handler", "default"]);
+    });
+
+    it("rejects an explicit result of the wrong type", () => {
+        const Registered = registerSignals("GtkxSignalInvalidReturn", { observed: { returnType } });
+        const instance = new Registered();
+        instance.connect("observed", () => "invalid");
+
+        expect(() => instance.emit("observed")).toThrow();
+    });
 });
 
 describe("registerClass — declared signals through the listener surface", () => {

@@ -61,7 +61,6 @@ type SignalResultTypeOptions = {
 
 type NamedMember = { name: string };
 
-const SIGNAL_HANDLER_TYPE = "(...args: any[]) => any";
 const SIGNALS_SUFFIX = "Signals";
 const SIGNAL_EMIT_SUFFIX = "SignalEmit";
 
@@ -127,27 +126,21 @@ const renderSignalRegistration = (
         return marker;
     }
 
-    context.addRuntimeImport("connectSignal");
     context.addRuntimeImport("emitSignal");
     context.addRuntimeInternalImport("canonicalSignalName");
     context.addRuntimeInternalImport("installSignalDispatch");
     context.addRuntimeImport("t");
-    const handlerId = context.addRuntimeInternalTypeImport("SignalHandlerId");
-    const connectCases = signals.map((signal) => renderConnectCase(context, signal));
+    const callbackCases = signals.map((signal) => renderCallbackCase(context, signal));
     const emitCases = signals.filter((signal) => canEmitSignal(context.library, signal))
         .map((signal) => renderEmitCase(context, signal));
-    const connectDefault = "default:\n    throw new globalThis.Error(\"Unknown signal '\" + signal + \"'\");";
+    const callbackDefault = "default:\n    throw new globalThis.Error(\"Unknown signal '\" + signal + \"'\");";
     const emitDefault = "default:\n    throw new globalThis.Error(\"Unknown signal '\" + sigName + \"'\");";
-    const connectBody = indent([...connectCases, connectDefault].join("\n"), 1);
-    const connectSwitch = `switch (canonicalSignalName(signal)) {\n${connectBody}\n}`;
+    const callbackBody = indent([...callbackCases, callbackDefault].join("\n"), 1);
+    const callbackSwitch = `switch (canonicalSignalName(signal)) {\n${callbackBody}\n}`;
     const emitBody = indent([...emitCases, emitDefault].join("\n"), 1);
     const emitSwitch = `switch (canonicalSignalName(sigName)) {\n${emitBody}\n}`;
     const members = [
-        renderBlock(
-            `connect(instance: object, signal: string, handler: ${SIGNAL_HANDLER_TYPE}, ` +
-            `isAfter?: boolean): ${handlerId}`,
-            connectSwitch,
-        ),
+        renderBlock("callback(signal: string): ReturnType<typeof t.callback>", callbackSwitch),
         renderBlock("emit(instance: object, sigName: string, args: unknown[]): unknown", emitSwitch),
     ];
     const names = signals.map((signal) => sourceStringLiteral(signal.name.replaceAll("_", "-"))).join(", ");
@@ -392,13 +385,10 @@ const renderSignalEmitEntry = (context: ModuleContext, signal: GirCallable): str
 const nonVarargParameters = (signal: GirCallable): GirParameter[] =>
     signal.parameters.filter((parameter) => !parameter.isVarargs);
 
-const renderConnectCase = (context: ModuleContext, signal: GirCallable): string => {
+const renderCallbackCase = (context: ModuleContext, signal: GirCallable): string => {
     const callback = renderCallback(context, signal);
-    const body =
-        "return connectSignal(instance, signal, " +
-        `{ callback: ${callback}, handler, isAfter: isAfter ?? false });`;
 
-    return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, body);
+    return renderBlock(`case ${sourceStringLiteral(signal.name)}:`, `return ${callback};`);
 };
 
 const renderEmitArgLiteral = (options: EmitArgOptions): { literal: string; nextArgIndex: number } => {

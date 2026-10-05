@@ -36,6 +36,55 @@ describe("emitSignal — basic dispatch", () => {
     });
 });
 
+describe("editable signal handlers", () => {
+    it("preserves the order of distinct deletion positions without an emitter argument", () => {
+        const entry = new Gtk.Entry({ text: "hello" });
+        const received: unknown[][] = [];
+        entry.on("delete-text", (...args) => {
+            received.push(args);
+        });
+
+        entry.deleteText(1, 4);
+
+        expect(received).toEqual([[1, 4]]);
+        expect(entry.getText()).toBe("ho");
+    });
+
+    it("preserves an insertion position when a handler returns no replacement", () => {
+        const entry = new Gtk.Entry({ text: "hello" });
+        const received: unknown[][] = [];
+        entry.on("insert-text", (...args) => {
+            received.push(args);
+        });
+
+        expect(entry.insertText("!", 1, 2)).toBe(3);
+        expect(received).toEqual([["!", 1, 2]]);
+        expect(entry.getText()).toBe("he!llo");
+    });
+
+    it("allows a surrounding text update when an insertion handler returns nothing", () => {
+        const entry = new Gtk.Entry();
+        entry.on("insert-text", () => undefined);
+
+        entry.setText("hello");
+
+        expect(entry.getText()).toBe("hello");
+    });
+
+    it("preserves another handler's replacement position when an observer returns nothing", () => {
+        const entry = new Gtk.Entry({ text: "hello" });
+        const received: number[] = [];
+        entry.on("insert-text", () => 1);
+        entry.on("insert-text", (_text, _length, position) => {
+            received.push(position);
+        });
+
+        expect(entry.insertText("!", 1, 4)).toBe(2);
+        expect(received).toEqual([1]);
+        expect(entry.getText()).toBe("h!ello");
+    });
+});
+
 describe("emitSignal — inheritance and errors", () => {
     it("emits an inherited signal via super.emit fallthrough", () => {
         const button = new Gtk.Button();

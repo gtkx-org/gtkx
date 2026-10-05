@@ -307,7 +307,7 @@ const renderHandlerResultType = (options: HandlerResultOptions): string => {
         return scalarResultType(primary, isOptOut);
     }
 
-    return foldOutParamShape(primary, outTypes);
+    return scalarResultType(foldOutParamShape(primary, outTypes), isOptOut);
 };
 
 export {
