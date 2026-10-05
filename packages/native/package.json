@@ -75,6 +75,6 @@
     },
     "devDependencies": {
         "@gtkx/utils": "workspace:*",
-        "@napi-rs/cli": "^3.10.5"
+        "@napi-rs/cli": "^3.10.6"
     }
 }
