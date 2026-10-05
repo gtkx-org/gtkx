@@ -89,15 +89,17 @@ Regenerate the workspace's bindings and other codegen targets through Nx:
 pnpm codegen
 ```
 
-For only the root GIR and JSX bindings:
+For only the root bindings, TypeScript declarations, and widget reference:
 
 ```bash
 pnpm nx run gtkx:codegen
 ```
 
-Each application example has its own configuration and codegen target. Example build and development targets generate their own bindings before starting. Generated bindings live in `node_modules/.gtkx`, with package links under `node_modules/@gtkx`; generated widget reference pages live in `.gtkx/reference`.
+Nx uses a private bootstrap target to generate bindings before building the CLI. The public `codegen` target runs the built CLI and also refreshes `.gtkx/reference`.
 
-Change the generator, configuration, or source metadata when correcting generated behavior, then regenerate. Editing a generated output alone will be lost on the next run. For widget work, read the example's `.gtkx/reference/index.md` to find its actual element props, signals, and methods. [Configuration and Codegen](/v2/guide/configuration-and-codegen) covers the application's view of these outputs.
+Each application example has its own configuration and codegen target. Its build and development targets refresh project declarations and reuse the workspace bindings. Generated bindings live in the root `node_modules/.gtkx`, with package links under `node_modules/@gtkx`; generated widget reference pages live in the root `.gtkx/reference`.
+
+Change the generator, configuration, or source metadata when correcting generated behavior, then regenerate. Editing a generated output alone will be lost on the next run. For widget work, read `.gtkx/reference/index.md` to find the available element props, signals, and methods. [Configuration and Codegen](/v2/guide/configuration-and-codegen) covers the application's view of these outputs.
 
 ## Run an example
 

@@ -49,7 +49,7 @@
             "cache": true,
             "dependsOn": [
                 "^build",
-                "gtkx:codegen"
+                "gtkx:_build:bindings"
             ],
             "inputs": [
                 "default",

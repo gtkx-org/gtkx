@@ -106,7 +106,7 @@
         "build": {
             "dependsOn": [
                 "...",
-                "gtkx:codegen"
+                "gtkx:_build:bindings"
             ],
             "inputs": [
                 "...",
@@ -115,14 +115,14 @@
         },
         "lint": {
             "dependsOn": [
-                "gtkx:codegen",
+                "gtkx:_build:bindings",
                 "@gtkx/gl:codegen"
             ]
         },
         "test": {
             "dependsOn": [
                 "^build",
-                "gtkx:codegen"
+                "gtkx:_build:bindings"
             ],
             "inputs": [
                 "...",

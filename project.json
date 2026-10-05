@@ -14,7 +14,7 @@
                 "storage": ".local-registry/storage"
             }
         },
-        "codegen": {
+        "_build:bindings": {
             "command": "node --import ./scripts/tsx.ts packages/cli/src/cli.ts codegen --config scripts/gtkx.bootstrap.ts",
             "cache": false,
             "dependsOn": [
@@ -22,14 +22,27 @@
             ],
             "outputs": [
                 "{workspaceRoot}/node_modules/.gtkx/gi/**/*.{js,d.ts,json}",
-                "{workspaceRoot}/node_modules/.gtkx/jsx/**/*.{js,d.ts,json}"
+                "{workspaceRoot}/node_modules/.gtkx/jsx/**/*.{js,d.ts,json}",
+                "{workspaceRoot}/node_modules/.gtkx/*.d.ts"
+            ]
+        },
+        "codegen": {
+            "command": "node packages/cli/dist/cli.js codegen",
+            "cache": false,
+            "dependsOn": [
+                "@gtkx/cli:build"
+            ],
+            "outputs": [
+                "{workspaceRoot}/node_modules/.gtkx/gi/**/*.{js,d.ts,json}",
+                "{workspaceRoot}/node_modules/.gtkx/jsx/**/*.{js,d.ts,json}",
+                "{workspaceRoot}/node_modules/.gtkx/*.d.ts",
+                "{workspaceRoot}/.gtkx/reference"
             ]
         },
         "typecheck": {
             "command": "tsc --noEmit",
             "cache": true,
             "dependsOn": [
-                "codegen",
                 "build",
                 "^typecheck"
             ],
@@ -52,7 +65,6 @@
             "command": "eslint . --ignore-pattern packages --ignore-pattern examples --ignore-pattern tutorial --ignore-pattern website",
             "cache": true,
             "dependsOn": [
-                "codegen",
                 "build",
                 "_lint:codescythe",
                 "_lint:workflows"
@@ -65,20 +77,17 @@
             ]
         },
         "build": {
-            "command": "node packages/cli/dist/cli.js codegen",
-            "cache": false,
+            "executor": "nx:noop",
             "dependsOn": [
-                "@gtkx/cli:build"
+                "codegen"
             ],
-            "outputs": [
-                "{workspaceRoot}/.gtkx/reference"
-            ]
+            "outputs": []
         },
         "_lint:codescythe": {
             "command": "tsx scripts/codescythe.ts",
             "cache": true,
             "dependsOn": [
-                "codegen",
+                "_build:bindings",
                 "@gtkx/gl:codegen"
             ],
             "inputs": [

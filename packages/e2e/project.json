@@ -31,12 +31,13 @@
             },
             "cache": false,
             "dependsOn": [
-                "gtkx:codegen",
+                "gtkx:_build:bindings",
                 "@gtkx/cli:build"
             ],
             "outputs": [
                 "{projectRoot}/node_modules/.gtkx/gi/**/*.{js,d.ts,json}",
-                "{projectRoot}/node_modules/.gtkx/jsx/**/*.{js,d.ts,json}"
+                "{projectRoot}/node_modules/.gtkx/jsx/**/*.{js,d.ts,json}",
+                "{projectRoot}/node_modules/.gtkx/*.d.ts"
             ]
         },
         "_test:fixtures": {
@@ -80,7 +81,7 @@
         "e2e": {
             "dependsOn": [
                 "^build",
-                "gtkx:codegen"
+                "gtkx:_build:bindings"
             ],
             "inputs": [
                 "...",
