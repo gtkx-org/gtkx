@@ -92,7 +92,7 @@ The checkpoint command reconstructs the first chapter from its examples; `npm in
 
 The [checkpoint generator](https://github.com/gtkx-org/gtkx/tree/main/tutorial/checkpoints) reconstructs every chapter from the named code fences. Select the chapter slug with `--chapter` and a new directory with `--output`. For current v2 code, install dependencies from the local registry as shown above.
 
-The generator writes the selected chapter and all preceding edits into a new project. Run that project's typecheck, build, and test commands and follow the chapter's **Run it** checks to inspect its behavior. The [finished source](https://github.com/gtkx-org/gtkx/tree/main/tutorial) is a separate reference for the complete app.
+The generator writes the selected chapter and all preceding edits into a new project. Run that project's typecheck and build commands and follow the chapter's **Run it** checks to inspect its behavior. Run `npm test` from Add Tasks onward, once the tutorial introduces the test suite. The [finished source](https://github.com/gtkx-org/gtkx/tree/main/tutorial) is a separate reference for the complete app.
 
 To validate the finished app and every v2 checkpoint together, stop the manual registry and run `pnpm nx run @gtkx/e2e:e2e -- tests/tutorial.test.ts` from the GTKX checkout. This Vitest suite manages its own registry and temporary applications.
 
