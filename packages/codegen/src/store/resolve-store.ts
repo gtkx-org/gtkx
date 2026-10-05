@@ -31,7 +31,6 @@ const STORE_CONSUMERS: string[] = [
     "@gtkx/i18n",
     "@gtkx/navigation",
     "@gtkx/react",
-    "@gtkx/runtime",
     "@gtkx/storybook",
     "@gtkx/testing",
 ];
