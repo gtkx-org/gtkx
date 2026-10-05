@@ -50,7 +50,7 @@ type DevRunner = {
 
 type ShutdownController = {
     isShuttingDown: () => boolean;
-    shutdown: (quitApplication: () => void) => Promise<void>;
+    shutdown: (requestQuit: () => void | Promise<void>) => Promise<void>;
 };
 
 type DevSession = {
@@ -361,13 +361,13 @@ const createShutdownController = (server: ViteDevServer, deps: DevRunnerDeps): S
 
     return {
         isShuttingDown: () => isShuttingDown,
-        shutdown: async (quitApplication: () => void): Promise<void> => {
+        shutdown: async (requestQuit: () => void | Promise<void>): Promise<void> => {
             if (isShuttingDown) {
                 return;
             }
 
             isShuttingDown = true;
-            quitApplication();
+            await requestQuit();
             deps.stopMcpClient();
             await server.close();
         },
@@ -543,7 +543,7 @@ const isSessionInactive = (session: DevSession): boolean => {
 const stopForApplicationQuit = (session: DevSession): Promise<never> => {
     session.deps.log("Application quit - stopping dev runner...");
 
-    return closeAndExit(session);
+    return closeAndExit(session, process.exitCode === undefined ? 0 : Number(process.exitCode));
 };
 
 const settleUnmount = (session: DevSession, wasRefreshing: boolean): void => {

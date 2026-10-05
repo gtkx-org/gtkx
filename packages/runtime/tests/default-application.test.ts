@@ -1,6 +1,5 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
-import { quitApplication, runApplication } from "@gtkx/gi/gio";
 import { registerClass } from "@gtkx/runtime";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { applicationProps, createApplication, createApplicationFrom } from "./helpers/application.js";
@@ -9,7 +8,7 @@ import { createTypeNameFactory } from "./helpers/unique-name.js";
 const uniqueName = createTypeNameFactory("GtkxDefaultApplication");
 
 describe("generated application default operations", () => {
-    it("claims the native default when an application overrides setDefault", () => {
+    it("claims the native default when an application overrides setDefault", async () => {
         class CustomApplication extends Gio.Application {
             override setDefault(): void {
                 return;
@@ -20,14 +19,18 @@ describe("generated application default operations", () => {
         const previous = Gio.Application.getDefault();
         const application = createApplicationFrom(CustomApplication);
         application.on("activate", () => {});
+        const completion = application.runAsync(["probe"]);
 
         try {
-            expect(runApplication(application, ["probe"]).isPrimary).toBe(true);
+            expect(application.getIsRegistered()).toBe(true);
+            expect(application.getIsRemote()).toBe(false);
             expect(Gio.Application.getDefault()).toBe(application);
-            quitApplication(application);
+            application.quit();
+            await expect(completion).resolves.toBe(0);
             expect(Gio.Application.getDefault()).toBeNull();
         } finally {
-            quitApplication(application);
+            application.quit();
+            await completion;
             Gio.Application.prototype.setDefault.call(previous);
         }
     });
@@ -60,7 +63,7 @@ describe("generated application default operations", () => {
             owner.setDefault();
             const application = createApplication();
             expect(Gio.Application.getDefault()).toBe(owner);
-            quitApplication(application);
+            application.quit();
             expect(Gio.Application.getDefault()).toBe(owner);
         } finally {
             if (previous === null) {

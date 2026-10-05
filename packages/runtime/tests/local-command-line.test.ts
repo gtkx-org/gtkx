@@ -1,7 +1,6 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
-import { quitApplication, runApplication, type RunApplicationResult } from "@gtkx/gi/gio";
 import { registerClass } from "@gtkx/runtime";
 import { afterEach, describe, expect, it } from "vitest";
 import { applicationProps, countSignal, createApplication, createApplicationFrom } from "./helpers/application.js";
@@ -11,6 +10,7 @@ type CommandLineResult = [boolean, string[], number];
 
 const uniqueName = createTypeNameFactory("_");
 const started: Gio.Application[] = [];
+const completions: Promise<number>[] = [];
 
 const track = (application: Gio.Application): Gio.Application => {
     started.push(application);
@@ -24,27 +24,26 @@ const createTrackedApplication = (): { application: Gio.Application; activations
     return { application, activations: countSignal(application, "activate") };
 };
 
-const startTrackedApplication = (
-    argv: string[],
-    expected: RunApplicationResult,
-): { application: Gio.Application; activations: () => number } => {
-    const tracked = createTrackedApplication();
-    expect(runApplication(tracked.application, argv)).toEqual(expected);
+const start = (application: Gio.Application, argv: string[]): Promise<number> => {
+    const completion = application.runAsync(argv);
+    completions.push(completion);
 
-    return tracked;
+    return completion;
 };
 
-afterEach(() => {
+afterEach(async () => {
     const applications = [...started];
     started.length = 0;
 
     for (const application of applications) {
-        quitApplication(application);
+        application.quit();
     }
+
+    await Promise.allSettled(completions.splice(0));
 });
 
-describe("runApplication — application options", () => {
-    it("parses an application-defined main option and reaches handle-local-options", () => {
+describe("Application.runAsync — application options", () => {
+    it("parses an application-defined main option and reaches handle-local-options", async () => {
         const { application, activations } = createTrackedApplication();
         let parsed: number | null = null;
         application.addMainOption("count", 0, GLib.OptionFlags.NONE, GLib.OptionArg.INT, "how many", null);
@@ -55,21 +54,23 @@ describe("runApplication — application options", () => {
             return -1;
         });
 
-        expect(runApplication(application, ["probe", "--count=7"])).toEqual({ isPrimary: true, exitStatus: 0 });
+        const completion = start(application, ["probe", "--count=7"]);
         expect(parsed).toBe(7);
         expect(application.getIsRegistered()).toBe(true);
         expect(activations()).toBe(1);
+        application.quit();
+        await expect(completion).resolves.toBe(0);
     });
 
-    it("stops startup with the status a handle-local-options handler returns", () => {
+    it("stops startup with the status a handle-local-options handler returns", async () => {
         const { application, activations } = createTrackedApplication();
         application.on("handle-local-options", () => 3);
-        expect(runApplication(application, ["probe"])).toEqual({ isPrimary: false, exitStatus: 3 });
+        await expect(start(application, ["probe"])).resolves.toBe(3);
         expect(application.getIsRegistered()).toBe(false);
         expect(activations()).toBe(0);
     });
 
-    it("treats a handle-local-options handler that returns nothing as a zero exit status", () => {
+    it("treats a handle-local-options handler that returns nothing as a zero exit status", async () => {
         const { application, activations } = createTrackedApplication();
         let hasHandled = false;
 
@@ -77,37 +78,38 @@ describe("runApplication — application options", () => {
             hasHandled = true;
         });
 
-        expect(runApplication(application, ["probe"])).toEqual({ isPrimary: false, exitStatus: 0 });
+        await expect(start(application, ["probe"])).resolves.toBe(0);
         expect(hasHandled).toBe(true);
         expect(application.getIsRegistered()).toBe(false);
         expect(activations()).toBe(0);
     });
 });
 
-describe("runApplication — launch modes", () => {
-    it("activates normally when nothing but the program name is passed", () => {
-        const { activations } = startTrackedApplication(["probe"], { isPrimary: true, exitStatus: 0 });
+describe("Application.runAsync — launch modes", () => {
+    it("activates normally when nothing but the program name is passed", async () => {
+        const { application, activations } = createTrackedApplication();
+        const completion = start(application, ["probe"]);
         expect(activations()).toBe(1);
+        application.quit();
+        await expect(completion).resolves.toBe(0);
     });
 
-    it("registers without activating for --gapplication-service", () => {
-        const { application, activations } = startTrackedApplication(["probe", "--gapplication-service"], {
-            isPrimary: true,
-            exitStatus: 0,
-        });
+    it("registers without activating for --gapplication-service", async () => {
+        const { application, activations } = createTrackedApplication();
+        const completion = start(application, ["probe", "--gapplication-service"]);
 
         expect(application.getFlags() & Gio.ApplicationFlags.IS_SERVICE).toBe(Gio.ApplicationFlags.IS_SERVICE);
         expect(application.getIsRegistered()).toBe(true);
         expect(activations()).toBe(0);
         application.activate();
         expect(activations()).toBe(1);
+        application.quit();
+        await expect(completion).resolves.toBe(0);
     });
 
-    it("reports a failing exit status for an unknown option without registering", () => {
-        const { application, activations } = startTrackedApplication(["probe", "--nope"], {
-            isPrimary: false,
-            exitStatus: 1,
-        });
+    it("reports a failing exit status for an unknown option without registering", async () => {
+        const { application, activations } = createTrackedApplication();
+        await expect(start(application, ["probe", "--nope"])).resolves.toBe(1);
 
         expect(application.getIsRegistered()).toBe(false);
         expect(activations()).toBe(0);
@@ -115,40 +117,42 @@ describe("runApplication — launch modes", () => {
     });
 });
 
-describe("quitApplication", () => {
-    it("emits shutdown once, releases the registration, and ignores repeated calls", () => {
-        const application = createApplication();
+describe("Application.quit", () => {
+    it("emits shutdown once, releases the registration, and ignores repeated calls", async () => {
+        const { application } = createTrackedApplication();
         const shutdowns = countSignal(application, "shutdown");
-        runApplication(application, ["probe"]);
+        const completion = start(application, ["probe"]);
         expect(application.getIsRegistered()).toBe(true);
-        quitApplication(application);
+        application.quit();
+        await expect(completion).resolves.toBe(0);
         expect(application.getIsRegistered()).toBe(false);
-        quitApplication(application);
+        application.quit();
         expect(shutdowns()).toBe(1);
     });
 
-    it("releases an application that registered without activating", () => {
-        const application = createApplication();
-        runApplication(application, ["probe", "--gapplication-service"]);
+    it("releases an application that registered without activating", async () => {
+        const { application } = createTrackedApplication();
+        const completion = start(application, ["probe", "--gapplication-service"]);
         expect(application.getIsRegistered()).toBe(true);
-        quitApplication(application);
+        application.quit();
+        await expect(completion).resolves.toBe(0);
         expect(application.getIsRegistered()).toBe(false);
     });
 
     it("does nothing for an application that never registered", () => {
-        const application = createApplication();
+        const { application } = createTrackedApplication();
         const shutdowns = countSignal(application, "shutdown");
-        quitApplication(application);
+        application.quit();
         expect(shutdowns()).toBe(0);
     });
 
-    it("gives up the process-wide default an application kept when its start left it unregistered", () => {
-        const application = createApplication();
+    it("gives up the process-wide default an application kept when its start left it unregistered", async () => {
+        const { application } = createTrackedApplication();
         application.on("handle-local-options", () => 3);
-        expect(runApplication(application, ["probe"])).toEqual({ isPrimary: false, exitStatus: 3 });
+        await expect(start(application, ["probe"])).resolves.toBe(3);
         expect(application.getIsRegistered()).toBe(false);
         expect(Gio.Application.getDefault()).toBe(application);
-        quitApplication(application);
+        application.quit();
         expect(Gio.Application.getDefault()).toBeNull();
     });
 });
@@ -178,7 +182,7 @@ describe("vfuncLocalCommandLine — inout string array marshalling", () => {
         expect(application.getIsRegistered()).toBe(false);
     });
 
-    it("lets an override strip an argument before chaining up to GLib", () => {
+    it("lets an override strip an argument before chaining up to GLib", async () => {
         class FilteringApplication extends Gio.Application {
             override vfuncLocalCommandLine(argv: string[]): CommandLineResult {
                 const index = argv.indexOf("--strip-me");
@@ -195,9 +199,11 @@ describe("vfuncLocalCommandLine — inout string array marshalling", () => {
         const application = track(createApplicationFrom(FilteringApplication));
         const activations = countSignal(application, "activate");
         const argv = ["probe", "--strip-me"];
-        expect(runApplication(application, argv)).toEqual({ isPrimary: true, exitStatus: 0 });
+        const completion = start(application, argv);
         expect(argv).toEqual(["probe", "--strip-me"]);
         expect(activations()).toBe(1);
+        application.quit();
+        await expect(completion).resolves.toBe(0);
     });
 });
 

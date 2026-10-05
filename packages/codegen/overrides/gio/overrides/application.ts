@@ -5,13 +5,10 @@ import { Application } from "../gio.js";
 /** Registration and ownership state tracked for an application. */
 type ApplicationInstance = "primary" | "remote" | "shutDown" | "unregistered";
 
-/** What {@link runApplication} reports about the process it just started. */
-type RunApplicationResult = {
-    /** Whether this process owns the application ID and may build a user interface. */
+interface ApplicationStartup {
     isPrimary: boolean;
-    /** The status GLib determined for the command line, which the process should exit with. */
     exitStatus: number;
-};
+}
 
 type CommandLineResult = [boolean, string[], number];
 
@@ -43,7 +40,6 @@ const derivedClasses: WeakMap<AnyClass<Application>, AnyClass<Application>> = ne
 const derivedApplicationClasses: Set<AnyClass<ManagedApplication>> = new Set();
 const quitApplications: WeakSet<Application> = new WeakSet();
 const shuttingDownApplications: WeakSet<Application> = new WeakSet();
-const asynchronousApplications: WeakSet<Application> = new WeakSet();
 const applicationRuns: WeakMap<Application, ApplicationRun> = new WeakMap();
 const activeApplications: Set<Application> = new Set();
 
@@ -61,7 +57,7 @@ const requestApplicationQuit = (application: Application): boolean => {
 
         queueMicrotask(() => {
             if (applicationRuns.get(application) === run) {
-                quitApplication(application);
+                finishApplication(application);
             }
         });
     }
@@ -104,10 +100,8 @@ const buildApplicationClass = (base: AnyClass<Application>): AnyClass<ManagedApp
                     return;
                 }
 
-                if (asynchronousApplications.has(this)) {
-                    quitApplication(this);
-                    return;
-                }
+                finishApplication(this);
+                return;
             }
 
             quitApplications.add(this);
@@ -149,13 +143,12 @@ const deriveApplicationClass = <T extends Application>(base: AnyClass<T>): AnyCl
     derivedClasses.getOrInsertComputed(base, () => buildApplicationClass(base)) as AnyClass<T>;
 
 /**
- * Constructs an application supported by {@link Application.runAsync}, {@link runApplication},
- * and {@link quitApplication}.
+ * Constructs an application supported by {@link Application.runAsync}.
  * Its derived GType lets GTKX avoid repeating GLib's command-line parse, which would crash.
  *
  * @remarks
  * Construction does not claim the process-wide default. Any default assigned by GLib during
- * construction is released; {@link runApplication} claims it when the application starts.
+ * construction is released; {@link Application.runAsync} claims it when the application starts.
  *
  * @param base The application class, such as `Gtk.Application`.
  * @param props Construct properties, passed through unchanged.
@@ -216,36 +209,7 @@ const getApplicationInstance = (application: Application): ApplicationInstance =
     return application.getIsRemote() ? "remote" : "primary";
 };
 
-/**
- * Starts a GTKX-created application through GLib's command-line handling, including option
- * parsing, `--help`, `handle-local-options`, registration, and activation or forwarding to an
- * existing instance. Keeps the runtime alive while the application is active.
- *
- * @remarks
- * Node remains the outer event loop. Starting the same application again registers and activates
- * it without reparsing `argv`; GLib permits command-line parsing only once per instance.
- *
- * Build a UI only when `isPrimary` is true. A remote instance has no `GtkApplicationImpl`, and
- * attaching a window to it crashes.
- *
- * Before parsing, the application becomes the process-wide default returned by
- * `Gio.Application.getDefault()`. It remains the default even if registration fails or it is
- * remote, until {@link quitApplication} releases it.
- *
- * @param application An application created by GTKX.
- * @param argv Command-line arguments; the first entry is the program name displayed by `--help`.
- * @returns Whether this instance may build a UI, and GLib's command-line exit status.
- * @throws If the application was not created by GTKX.
- */
-const runApplication = (application: Application, argv: string[]): RunApplicationResult => {
-    if (!isDerivedApplication(application)) {
-        throw new Error(
-            "runApplication: this application was not built by GTKX, so its command line cannot be " +
-            "parsed and it cannot be shut down safely; render <AdwApplication> or <GtkApplication>, " +
-            "or construct it with createApplication from @gtkx/gi/gio",
-        );
-    }
-
+const initializeApplication = (application: ManagedApplication, argv: string[]): ApplicationStartup => {
     Application.prototype.setDefault.call(application);
 
     const exitStatus = startedApplications.has(application)
@@ -288,20 +252,7 @@ const tearDownApplication = (application: Application): void => {
     }
 };
 
-/**
- * Detaches application windows, runs shutdown, and releases the process-wide default claimed by
- * {@link runApplication}. Repeated calls do not repeat shutdown. Unregistered applications only
- * release the default.
- *
- * @remarks
- * GLib's full shutdown runs once per instance, emitting `shutdown`, destroying its application
- * implementation, and releasing D-Bus registration. For an instance that already quit, GTKX emits `shutdown` to
- * release the runtime; registration then remains until GLib finalizes the instance. Releasing
- * the default does not wait for garbage collection or native finalization.
- *
- * @param application The application to shut down.
- */
-const quitApplication = (application: Application): void => {
+const finishApplication = (application: Application): void => {
     const run = applicationRuns.get(application);
 
     if (!run) {
@@ -355,17 +306,24 @@ declare module "../gio.js" {
          * the GTKX renderer construct it.
          *
          * @remarks
+         * Startup handles GLib command-line options, registration, activation, and forwarding
+         * to an existing instance. Build the UI in an `activate` handler; remote instances
+         * cannot own application windows.
+         *
          * Node remains the outer event loop. A primary instance stays active until `quit()`
-         * or {@link quitApplication} completes cleanup, including releasing the process-wide
-         * default. Closing the last window or balancing `hold()` and `release()` does not
+         * completes cleanup, including releasing the process-wide default. Closing the last
+         * window or balancing `hold()` and `release()` does not
          * complete this Promise.
          *
          * Options handled before registration and remote instances resolve immediately. The
          * application remains the process-wide default until `quit()` releases it.
          *
-         * A second concurrent call rejects. After completion, another call follows
-         * {@link runApplication}'s restart behavior without parsing the command line again.
-         * GLib's full native shutdown runs only once per instance.
+         * A second concurrent call rejects unless the preceding run has already requested
+         * shutdown with `quit()`. Calling this method after `quit()` completes the pending
+         * cleanup before restarting. Subsequent runs register and activate the application
+         * without parsing the command line again. GLib's full native shutdown runs only once
+         * per instance; subsequent shutdowns emit `shutdown` and release the default, while
+         * registration remains until native finalization.
          *
          * @param argv Command-line arguments, starting with the program name.
          * @returns GLib's command-line exit status after completion.
@@ -379,8 +337,14 @@ Application.prototype.runAsync = function (argv: string[]): Promise<number> {
         return Promise.reject(new Error("Application.runAsync requires an application created with createApplication"));
     }
 
-    if (applicationRuns.has(this)) {
-        return Promise.reject(new Error("Application.runAsync is already running for this application"));
+    const previousRun = applicationRuns.get(this);
+
+    if (previousRun) {
+        if (!previousRun.quitRequested || previousRun.starting || previousRun.finishing) {
+            return Promise.reject(new Error("Application.runAsync is already running for this application"));
+        }
+
+        finishApplication(this);
     }
 
     const deferred = Promise.withResolvers<number>();
@@ -393,16 +357,15 @@ Application.prototype.runAsync = function (argv: string[]): Promise<number> {
         cleanupScheduled: false,
     };
 
-    asynchronousApplications.add(this);
     applicationRuns.set(this, run);
 
     try {
-        const result = runApplication(this, argv);
+        const result = initializeApplication(this, argv);
         run.exitStatus = result.exitStatus;
         run.starting = false;
 
         if (run.quitRequested) {
-            quitApplication(this);
+            finishApplication(this);
         } else if (!result.isPrimary) {
             applicationRuns.delete(this);
             run.resolve(result.exitStatus);
@@ -410,7 +373,7 @@ Application.prototype.runAsync = function (argv: string[]): Promise<number> {
     } catch (error) {
         run.starting = false;
         run.startupFailure = { error };
-        quitApplication(this);
+        finishApplication(this);
     }
 
     return run.promise;
@@ -419,9 +382,6 @@ Application.prototype.runAsync = function (argv: string[]): Promise<number> {
 export {
     createApplication,
     getApplicationInstance,
-    quitApplication,
-    runApplication,
     type ApplicationConstructor,
     type ApplicationInstance,
-    type RunApplicationResult,
 };

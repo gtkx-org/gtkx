@@ -1,6 +1,6 @@
 import { loadConfig } from "@gtkx/config";
 import * as Gio from "@gtkx/gi/gio";
-import { type ApplicationInstance, getApplicationInstance, quitApplication } from "@gtkx/gi/gio";
+import { type ApplicationInstance, getApplicationInstance } from "@gtkx/gi/gio";
 import { info, installGracefulShutdown } from "@gtkx/utils";
 import { readFile } from "node:fs/promises";
 import { createServer } from "vite";
@@ -90,7 +90,7 @@ const createDevRunnerDeps = (
         const application = Gio.Application.getDefault();
 
         if (application) {
-            quitApplication(application);
+            application.quit();
         }
     },
     performRefresh,

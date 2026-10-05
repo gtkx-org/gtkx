@@ -69,15 +69,17 @@ The generated wrapper-retention helper `retainWrapperClasses` now belongs to `@g
 Application and Variant helpers now belong to their generated namespaces:
 
 ```ts
-import { createApplication, quitApplication, runApplication } from "@gtkx/gi/gio";
+import { createApplication, getApplicationInstance } from "@gtkx/gi/gio";
 import { fromVariant, toVariant } from "@gtkx/gi/glib";
 ```
 
 Move their associated type imports too: `ApplicationClass` is now `ApplicationConstructor`, and the Variant helper's `ByteArray` type is now `VariantByteArray`. Use `Gio.Application` in place of the removed `CommandLineApplication` interface. Runtime shutdown remains `quit()` from `@gtkx/runtime`.
 
-Applications constructed with `createApplication` also support `application.runAsync(argv): Promise<number>`. Command-line handling starts immediately while Node keeps control of the event loop. Call `application.quit()` to finish an active run; the promise resolves with the exit status after GTKX completes shutdown and releases the process-wide default. Rejected command lines and remote instances resolve immediately; call `application.quit()` afterward to release their retained application state.
+Replace `runApplication(application, argv)` with `application.runAsync(argv): Promise<number>` and `quitApplication(application)` with `application.quit()`. `RunApplicationResult` is removed. Command-line handling starts immediately while Node keeps control of the event loop; use `getApplicationInstance(application) === "primary"` after starting to decide whether to build a UI. Observe the promise's exit status and handle startup or shutdown rejections.
 
-`runAsync` requires `createApplication`, including for Gtk and Adw application classes; ordinary `new Application(...)` instances are unsupported. It waits for explicit shutdown and does not reproduce native `run()` termination through `hold()`, `release()`, or inactivity timeouts. Full native shutdown can run only once per instance; restarted applications and those already quit by native code may retain registration until finalization. Create another application when another complete lifecycle is needed. The synchronous `runApplication` and `quitApplication` helpers remain available.
+Call `application.quit()` to finish an active run; the promise resolves after GTKX completes shutdown and releases the process-wide default. Rejected command lines and remote instances resolve immediately; call `application.quit()` afterward to release their retained application state.
+
+`runAsync` requires `createApplication`, including for Gtk and Adw application classes; ordinary `new Application(...)` instances are unsupported. It waits for explicit shutdown and does not reproduce native `run()` termination through `hold()`, `release()`, or inactivity timeouts. Full native shutdown can run only once per instance; restarted applications and those already quit by native code may retain registration until finalization. Create another application when another complete lifecycle is needed.
 
 ## Move GObject ownership into JSX
 

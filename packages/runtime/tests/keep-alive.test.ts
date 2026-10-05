@@ -1,6 +1,5 @@
 import type { ChildProcess } from "node:child_process";
 import * as Gtk from "@gtkx/gi/gtk";
-import { quitApplication, runApplication } from "@gtkx/gi/gio";
 import { spawnWithParentDeathSignal } from "@gtkx/utils";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -65,10 +64,10 @@ describe("Application.runAsync — holding the native loop alive", () => {
     });
 });
 
-describe("quitApplication — windows held by the application", () => {
-    it("detaches every window before GLib reaches shutdown", () => {
+describe("Application.quit — windows held by the application", () => {
+    it("detaches every window before GLib reaches shutdown", async () => {
         const application = createApplicationFrom(Gtk.Application);
-        runApplication(application, ["probe"]);
+        const completion = application.runAsync(["probe"]);
         const windows = [new Gtk.ApplicationWindow({ application }), new Gtk.ApplicationWindow({ application })];
         expect(application.getWindows()).toEqual(windows);
         let windowsAtShutdown: number | null = null;
@@ -77,7 +76,8 @@ describe("quitApplication — windows held by the application", () => {
             windowsAtShutdown = application.getWindows().length;
         });
 
-        quitApplication(application);
+        application.quit();
+        await expect(completion).resolves.toBe(0);
         expect(windowsAtShutdown).toBe(0);
         expect(application.getWindows()).toHaveLength(0);
     });

@@ -1,6 +1,5 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { quitApplication, runApplication } from "@gtkx/gi/gio";
-import { pickBy, warn } from "@gtkx/utils";
+import { error, pickBy, warn } from "@gtkx/utils";
 import process from "node:process";
 import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
 import {
@@ -17,6 +16,8 @@ type ApplicationComponentProps = {
     ref?: Ref<Gtk.Application | null> | undefined;
     resourceBasePath?: string | null | undefined;
 };
+
+type ApplicationFailure = { error: unknown };
 
 const POST_ACTIVATE_PROPS = new Set(["menubar"]);
 
@@ -39,24 +40,21 @@ const reportOwnedApplicationId = (application: Gtk.Application): void => {
 
 const startApplication = (
     application: Gtk.Application,
-    setActivated: (isActivated: boolean) => void,
     applicationId: string | null,
+    onFailure: (cause: unknown) => void,
 ): void => {
-    application.on("activate", () => {
-        setActivated(true);
-    });
-
-    const { exitStatus } = runApplication(application, commandLine(applicationId));
+    void application.runAsync(commandLine(applicationId)).then((exitStatus) => {
+        if (exitStatus !== 0) {
+            process.exitCode = exitStatus;
+        }
+    }, onFailure);
     reportOwnedApplicationId(application);
-
-    if (exitStatus !== 0) {
-        process.exitCode = exitStatus;
-    }
 };
 
 const useApplicationLifecycle = (
     application: Gtk.Application | null,
     setActivated: (isActivated: boolean) => void,
+    setFailure: (failure: ApplicationFailure) => void,
     applicationId: string | null,
 ): void => {
     useLayoutEffect(() => {
@@ -64,13 +62,27 @@ const useApplicationLifecycle = (
             return;
         }
 
-        startApplication(application, setActivated, applicationId);
+        let isMounted = true;
+        const onActivate = (): void => {
+            setActivated(true);
+        };
+        application.on("activate", onActivate);
+        startApplication(application, applicationId, (cause) => {
+            if (isMounted) {
+                setFailure({ error: cause });
+            } else {
+                process.exitCode = 1;
+                error("Application shutdown failed:", cause);
+            }
+        });
 
         return () => {
-            quitApplication(application);
+            isMounted = false;
+            application.off("activate", onActivate);
+            application.quit();
             setActivated(false);
         };
-    }, [application, setActivated, applicationId]);
+    }, [application, setActivated, setFailure, applicationId]);
 };
 
 const applicationChildren = (application: Gtk.Application | null, children: ReactNode): ReactNode => {
@@ -93,9 +105,14 @@ const createApplicationElement = (
     }: ApplicationComponentProps): ReactNode => {
         const [application, setApplication] = useState<Gtk.Application | null>(null);
         const [activated, setActivated] = useState(false);
-        useApplicationLifecycle(application, setActivated, applicationId);
+        const [failure, setFailure] = useState<ApplicationFailure | null>(null);
+        useApplicationLifecycle(application, setActivated, setFailure, applicationId);
         const mergedRef = useMergedRef(ref, setApplication);
         const appliedProps = activated ? rest : pickBy(rest, (_value, key) => !POST_ACTIVATE_PROPS.has(key));
+
+        if (failure) {
+            throw failure.error;
+        }
 
         return (
             <Component

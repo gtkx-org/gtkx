@@ -1,6 +1,5 @@
 import { setImmediate } from "node:timers/promises";
 import * as Gio from "@gtkx/gi/gio";
-import { quitApplication } from "@gtkx/gi/gio";
 import { registerClass } from "@gtkx/runtime";
 import { afterEach, describe, expect, expectTypeOf, it } from "vitest";
 import { startApplicationOwner, stopApplicationOwners } from "./helpers/application-owner.js";
@@ -27,11 +26,12 @@ const track = (application: Gio.Application): Gio.Application => {
 
 const createTrackedApplication = (): Gio.Application => track(createApplication());
 
-afterEach(() => {
+afterEach(async () => {
     for (const application of applications.splice(0)) {
-        quitApplication(application);
+        application.quit();
     }
 
+    await setImmediate();
     stopApplicationOwners();
 });
 
@@ -61,23 +61,8 @@ describe("Application.runAsync", () => {
         expect(shutdowns()).toBe(1);
         expect(application.getIsRegistered()).toBe(false);
         expect(Gio.Application.getDefault()).toBeNull();
-        quitApplication(application);
+        application.quit();
         expect(shutdowns()).toBe(1);
-    });
-
-    it("resolves after explicit quitApplication cleanup", async () => {
-        const application = createTrackedApplication();
-        const activations = countSignal(application, "activate");
-        const shutdowns = countSignal(application, "shutdown");
-        const completion = application.runAsync(["probe"]);
-
-        expect(activations()).toBe(1);
-        quitApplication(application);
-
-        await expect(completion).resolves.toBe(0);
-        expect(shutdowns()).toBe(1);
-        expect(application.getIsRegistered()).toBe(false);
-        expect(Gio.Application.getDefault()).toBeNull();
     });
 
     it("finishes startup before shutting down when activation quits synchronously", async () => {
@@ -97,7 +82,7 @@ describe("Application.runAsync", () => {
         expect(events).toEqual(["activate", "activated", "shutdown"]);
         expect(application.getIsRegistered()).toBe(false);
         expect(Gio.Application.getDefault()).toBeNull();
-        quitApplication(application);
+        application.quit();
         expect(events).toEqual(["activate", "activated", "shutdown"]);
     });
 
@@ -145,10 +130,16 @@ describe("Application.runAsync", () => {
         const application = track(createPlainApplication());
         const activations = countSignal(application, "activate");
 
-        await expect(application.runAsync(["probe"])).rejects.toThrow(/createApplication/);
+        try {
+            await expect(application.runAsync(["probe"])).rejects.toThrow(/createApplication/);
 
-        expect(activations()).toBe(0);
-        expect(application.getIsRegistered()).toBe(false);
+            expect(activations()).toBe(0);
+            expect(application.getIsRegistered()).toBe(false);
+        } finally {
+            if (Gio.Application.getDefault() === application) {
+                Gio.Application.prototype.setDefault.call(null);
+            }
+        }
     });
 
     it("resolves a remote instance without waiting for its owner's shutdown", async () => {
@@ -293,6 +284,34 @@ describe("Application.runAsync", () => {
         expect(settled).toBe(false);
         expect(activations()).toBe(2);
         expect(shutdowns()).toBe(1);
+        expect(application.getIsRegistered()).toBe(true);
+        expect(Gio.Application.getDefault()).toBe(application);
+        application.quit();
+
+        await expect(second).resolves.toBe(0);
+        expect(shutdowns()).toBe(2);
+        expect(Gio.Application.getDefault()).toBeNull();
+    });
+
+    it("restarts immediately after quit without waiting for the previous promise", async () => {
+        const application = createTrackedApplication();
+        const activations = countSignal(application, "activate");
+        const shutdowns = countSignal(application, "shutdown");
+        const first = application.runAsync(["probe"]);
+        application.quit();
+        const second = application.runAsync(["probe"]);
+        let settled = false;
+        void second.then(() => {
+            settled = true;
+        });
+
+        await expect(first).resolves.toBe(0);
+        await setImmediate();
+
+        expect(second).not.toBe(first);
+        expect(activations()).toBe(2);
+        expect(shutdowns()).toBe(1);
+        expect(settled).toBe(false);
         expect(application.getIsRegistered()).toBe(true);
         expect(Gio.Application.getDefault()).toBe(application);
         application.quit();

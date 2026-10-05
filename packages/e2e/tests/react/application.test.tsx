@@ -10,7 +10,7 @@ import { GtkApplication, GtkApplicationWindow, GtkBox, GtkEntry, GtkLabel } from
 import { createRoot, quit, rootElement, useApplication } from "@gtkx/react";
 import { act, render, userEvent } from "@gtkx/testing";
 import process from "node:process";
-import { createRef, useEffect } from "react";
+import { createRef, StrictMode, useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { startApplicationOwner, stopApplicationOwners } from "../helpers/application-owner.js";
 import { createApplicationRenderer } from "../helpers/application-render.js";
@@ -450,6 +450,74 @@ describe("render - Application main options", () => {
         const application = ref.current;
         await rerender([{ ...GREETING_OPTION }]);
         expect(ref.current).toBe(application);
+    });
+
+    it("reports a rejected asynchronous startup through React", async () => {
+        const failure = new Error("Application options failed");
+
+        await expect(render(
+            <OptionApp
+                appRef={createRef<Gtk.Application>()}
+                appId={uniqueAppId()}
+                options={[]}
+                onLocalOptions={() => {
+                    throw failure;
+                }}
+            />,
+            { container: rootElement },
+        )).rejects.toThrow(failure);
+        expect(Gio.Application.getDefault()).toBeNull();
+    });
+
+    it("preserves an early asynchronous exit status", async () => {
+        const previousExitCode = process.exitCode;
+        const ref = createRef<Gtk.Application>();
+        const root = createRoot({ ...rootElement });
+        mounted.push(root);
+
+        try {
+            await act(() => {
+                root.render(
+                    <OptionApp
+                        appRef={ref}
+                        appId={uniqueAppId()}
+                        options={[]}
+                        onLocalOptions={() => 7}
+                    />,
+                );
+            });
+
+            expect(process.exitCode).toBe(7);
+            expect(ref.current?.getWindows()).toHaveLength(0);
+        } finally {
+            process.exitCode = previousExitCode;
+        }
+    });
+});
+
+describe("render - Application lifecycle", () => {
+    it("opens and cleans up an application in StrictMode", async () => {
+        const ref = createRef<Gtk.Application>();
+        const root = createRoot({ ...rootElement });
+        mounted.push(root);
+
+        await act(() => {
+            root.render(
+                <StrictMode>
+                    <GtkApplication ref={ref} applicationId={uniqueAppId()} flags={APP_FLAGS}>
+                        <GtkApplicationWindow />
+                    </GtkApplication>
+                </StrictMode>,
+            );
+        });
+
+        const application = requireWidget(ref.current, "Application");
+        expect(application.getWindows()).toHaveLength(1);
+
+        await act(() => root.unmount());
+
+        expect(application.getWindows()).toHaveLength(0);
+        expect(Gio.Application.getDefault()).toBeNull();
     });
 });
 
