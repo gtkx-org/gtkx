@@ -1,9 +1,10 @@
 import type { ChildProcess } from "node:child_process";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { stripVTControlCharacters } from "node:util";
-import { spawnWithParentDeathSignal } from "../packages/utils/src/process/spawn-with-parent-death-signal.ts";
+import { spawnWithParentDeathSignal } from "@gtkx/utils";
 
 type RegistryStartup = {
     output: string;
@@ -98,7 +99,7 @@ function registryStop(child: ChildProcess): () => Promise<void> {
 }
 
 async function startNxRegistry(registryDir: string, port: number): Promise<() => Promise<void>> {
-    const nxBin = fileURLToPath(import.meta.resolve("nx/bin/nx.js"));
+    const nxBin = createRequire(import.meta.url).resolve("nx/bin/nx.js");
     const child = spawnWithParentDeathSignal(
         "env",
         [

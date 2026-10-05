@@ -35,38 +35,44 @@ npm run dev
 
 `--version v1` pins GTKX to 1.6.0. The default is `v2`, using the GTKX version declared by the current example. Other dependency ranges come from the corresponding example manifest. Keep the generated lockfile for repeatable dependency resolution. The default final chapter is `flatpak`; `--chapter` includes all preceding edits. Existing output directories are rejected.
 
-The published v2 beta.10 supports chapters 1–9. The remaining v2 chapters use APIs from the working repository that have not yet been published. After [setting up the repository](../../CONTRIBUTING.md), build and install those packages through the local registry:
+The published v2 beta.10 supports chapters 1–9. The remaining v2 chapters use APIs from the working repository that have not yet been published. After [setting up the repository](../../CONTRIBUTING.md), build and publish those packages through the local registry in one terminal:
 
 ```bash
-pnpm tutorial run typecheck
-pnpm tutorial:checkpoints --check --dependencies tutorial/node_modules --chapter your-first-window --output /tmp/gtkx-tasks-v2
+pnpm local-registry
+```
+
+Keep that registry running. In another terminal, from the repository root, generate a checkpoint and install it against the registry:
+
+```bash
+pnpm tutorial:checkpoints --chapter your-first-window --output /tmp/gtkx-tasks-v2
 cd /tmp/gtkx-tasks-v2
+NPM_CONFIG_REGISTRY=http://127.0.0.1:4873 NPM_CONFIG_CACHE="$(mktemp -d)" npm install
+npm run typecheck
 npm run dev
 ```
 
-The first command leaves the example's installed dependencies available for the second. `--dependencies` copies that directory, including development and transitive dependencies, into the checkpoint. It does not validate a registry installation. Use an installation from the matching GTKX version; a stable dependency tree cannot check v2 APIs. The source files still come entirely from the tutorial.
+The generator writes source files reconstructed from the tutorial. Install current packages from the local registry with a fresh npm cache, then run the generated application's commands. Keep the registry running when installing later chapter dependencies, and use the same registry setting for those installs.
 
-## Replay the progression
+## Validate the progression
+
+Run the tutorial's Vitest suite through Nx:
 
 ```bash
-pnpm tutorial:checkpoints --check --version v1
-pnpm tutorial:checkpoints --check --dependencies tutorial/node_modules
+pnpm nx run @gtkx/e2e:e2e -- tests/tutorial.test.ts
 ```
 
-Without `--dependencies`, the check installs packages from the configured npm registry into a fresh temporary project, adding chapter dependencies as they appear. With a current development registry, use its npm configuration and a fresh cache to keep unpublished packages distinct from published packages with the same version.
+The suite prepares its own registry, validates a temporary copy of the finished application, and replays every v2 chapter with those installed dependencies. Stop a manual registry before running it. Checkpoint validation belongs to this suite; the generator accepts only `--version`, `--chapter`, and `--output`.
 
-Every chapter is applied to its predecessor, typechecked, built, and started under a headless display. Add Tasks introduces three integration checks. Test the App expands coverage to 31 native workflows; Translate the App adds three French checks. From each introduction onward, the check runs that suite at every checkpoint. App startup uses an isolated data directory and in-memory settings; test setup isolates its own data.
+Each chapter is applied to its predecessor, typechecked, built, and started under a headless display. Tests introduced by a chapter run at that checkpoint and each later one. App startup uses an isolated data directory and in-memory settings; test setup isolates its own data. Vitest removes the temporary applications afterward.
 
-Add `--output /tmp/gtkx-tasks` to retain the generated project and lockfile for inspection. `--from testing --chapter internationalization` reconstructs earlier chapters but runs checks only for the selected range. It is useful for investigating a failure; it does not verify the skipped chapters.
-
-The runner copies the example's TypeScript setup, test scaffold, icons, and license alongside the documented files. These supporting files are shared with the finished example. It removes the temporary project after a check unless `--output` was supplied.
+For interactive inspection of either version, generate a selected chapter into a new output directory, install its dependencies, and run its application commands as shown above. The generator includes the example's TypeScript setup, test scaffold, icons, and license alongside the documented files. These supporting files are shared with the finished example.
 
 ## Packaging checks
 
-`--check` validates the app and its tests, including the final source-mode configuration. It does not install packages, publish to Flathub, or fetch the placeholder source repository. Follow Package the App and Prepare for Flathub to inspect the produced packages and run their installed launchers.
+The Vitest suite validates the finished application's localized packages and every v2 checkpoint, including the final source-mode configuration. It does not publish to Flathub or fetch the placeholder source repository. Follow Package the App and Prepare for Flathub to inspect the produced packages and run their installed launchers.
 
-Use `--chapter internationalization` for the localized app's prebuilt packaging configuration. The final `flatpak` checkpoint switches to source mode and includes a repository URL that you must replace with your own before building that manifest.
+Use `--chapter internationalization` when generating the localized app's prebuilt packaging configuration. The final `flatpak` checkpoint switches to source mode and includes a repository URL that you must replace with your own before building that manifest.
 
 ## Maintain the checkpoints
 
-Use a fence title such as `tsx [src/app.tsx]` for a complete file or `diff [src/app.tsx]` for a unified patch. `append` adds declarations to an existing file; JSON `merge` updates top-level fields and merges their immediate object values. Unnamed illustrative snippets are not extracted. Keep every required edit in a named fence and replay both versions after changing a shared step.
+Use a fence title such as `tsx [src/app.tsx]` for a complete file or `diff [src/app.tsx]` for a unified patch. `append` adds declarations to an existing file; JSON `merge` updates top-level fields and merges their immediate object values. Unnamed illustrative snippets are not extracted. Keep every required edit in a named fence. After changing a shared step, run the v2 Vitest suite and generate and inspect the affected stable checkpoints.

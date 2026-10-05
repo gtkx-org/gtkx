@@ -1,6 +1,10 @@
 name: Release PR
 
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       specifier:
@@ -17,20 +21,18 @@ permissions: {}
 concurrency:
   group: release-pr
   cancel-in-progress: false
+  queue: max
 
 env:
-  GIT_CONFIG_COUNT: "1"
-  GIT_CONFIG_KEY_0: init.defaultBranch
-  GIT_CONFIG_VALUE_0: main
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_READ_TOKEN }}
 
 jobs:
   release-pr:
-    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
       contents: read
-      packages: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -38,15 +40,13 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Version, sync the version surfaces and write the changelog
-        uses: ./.github/actions/run-ci-command
-        with:
-          command: pnpm prepare-release ${SPECIFIER:+--specifier "$SPECIFIER"} ${PREID:+--preid "$PREID"}
-          extra-env: SPECIFIER PREID
-          image-ref: ghcr.io/gtkx-org/gtkx-ci:df-${{ hashFiles('.github/docker/**') }}
+      - uses: ./.github/actions/setup-ci
+
+      - name: Prepare release
         env:
           SPECIFIER: ${{ inputs.specifier }}
           PREID: ${{ inputs.preid }}
+        run: pnpm prepare-release ${SPECIFIER:+--specifier "$SPECIFIER"} ${PREID:+--preid "$PREID"}
 
       - name: Detect a prepared release
         id: release
@@ -85,3 +85,122 @@ jobs:
           commit-message: Prepare GTKX ${{ steps.release.outputs.version }}
           title: Prepare GTKX ${{ steps.release.outputs.version }}
           body: ""
+
+  tag:
+    if: >-
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    permissions:
+      actions: write
+      checks: read
+      pull-requests: read
+      security-events: read
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-tags: true
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Resolve the release state
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          candidates="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${RELEASE_SHA}/pulls" --paginate --slurp)"
+          if ! jq -e --arg sha "$RELEASE_SHA" --arg repo "$GITHUB_REPOSITORY" '
+            [.[][] | select(.merged_at != null and .merge_commit_sha == $sha and
+              .base.ref == "main" and .head.ref == "release/next" and .head.repo.full_name == $repo)]
+            | length == 1
+          ' <<<"$candidates" > /dev/null; then
+            echo "state=unprepared" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          version="$(node -p "require('./packages/create-gtkx/package.json').version")"
+          releases="$(gh api "repos/${GITHUB_REPOSITORY}/releases" --paginate --slurp)"
+          release="$(jq -c --arg tag "v${version}" '[.[][] | select(.tag_name == $tag)] | first' <<<"$releases")"
+          if [ "$release" != "null" ]; then
+            if [ "$(jq -r '.draft' <<<"${release}")" = "true" ]; then
+              state=draft
+            else
+              state=published
+            fi
+          elif [ -f CHANGELOG.md ] && awk -v version="$version" '
+            /^##? / { if ($2 == version) { found = 1; exit } }
+            END { exit found ? 0 : 1 }
+          ' CHANGELOG.md; then
+            state=missing
+          else
+            state=unprepared
+          fi
+          {
+            echo "version=$version"
+            echo "state=$state"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Verify release commit and review
+        if: steps.release.outputs.state == 'missing' || steps.release.outputs.state == 'draft'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: bash .github/scripts/verify-release.sh
+
+      - name: Extract the release notes
+        if: steps.release.outputs.state == 'missing'
+        id: notes
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          notes="${RUNNER_TEMP}/release-notes-${VERSION}.md"
+          awk -v version="$VERSION" '
+            /^##? / { if (found) exit; found = ($2 == version); next }
+            found { print }
+          ' CHANGELOG.md > "$notes"
+          if [ ! -s "$notes" ]; then
+            echo "::error::CHANGELOG.md has no entry for ${VERSION}"
+            exit 1
+          fi
+          echo "path=$notes" >> "$GITHUB_OUTPUT"
+
+      - name: Tag, draft the release and dispatch Publish
+        if: steps.release.outputs.state == 'missing' || steps.release.outputs.state == 'draft'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.release.outputs.version }}
+          STATE: ${{ steps.release.outputs.state }}
+          NOTES: ${{ steps.notes.outputs.path }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          tag="v${VERSION}"
+          peeled="$(git ls-remote origin "refs/tags/${tag}^{}" | cut -f1)"
+          target="${peeled:-$(git ls-remote origin "refs/tags/${tag}" | cut -f1)}"
+          if [ -n "$target" ] && [ "$target" != "$RELEASE_SHA" ]; then
+            echo "::error::Tag ${tag} already points at ${target} instead of ${RELEASE_SHA}"
+            exit 1
+          fi
+          if [ -z "$target" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag --annotate "${tag}" --message "${tag}" "$RELEASE_SHA"
+            git push origin "refs/tags/${tag}"
+          fi
+          if [ "$STATE" = "missing" ]; then
+            prerelease=()
+            case "$VERSION" in
+              *-*) prerelease=(--prerelease) ;;
+            esac
+            gh release create "${tag}" --draft "${prerelease[@]}" --verify-tag \
+              --title "${tag}" --notes-file "$NOTES"
+          fi
+          gh workflow run publish.yml --ref "${tag}"

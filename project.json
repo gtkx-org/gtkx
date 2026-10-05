@@ -14,23 +14,28 @@
                 "storage": ".local-registry/storage"
             }
         },
-        "codegen": {
+        "_build:bindings": {
             "command": "node --import ./scripts/tsx.ts packages/cli/src/cli.ts codegen --config scripts/gtkx.bootstrap.ts",
             "cache": false,
             "dependsOn": [
                 "@gtkx/native:build"
             ],
             "outputs": [
-                "{workspaceRoot}/node_modules/.gtkx/**/*.{js,d.ts,json}"
+                "{workspaceRoot}/node_modules/.gtkx/gi/**/*.{js,d.ts,json}",
+                "{workspaceRoot}/node_modules/.gtkx/jsx/**/*.{js,d.ts,json}",
+                "{workspaceRoot}/node_modules/.gtkx/*.d.ts"
             ]
         },
-        "reference": {
+        "codegen": {
             "command": "node packages/cli/dist/cli.js codegen",
             "cache": false,
             "dependsOn": [
                 "@gtkx/cli:build"
             ],
             "outputs": [
+                "{workspaceRoot}/node_modules/.gtkx/gi/**/*.{js,d.ts,json}",
+                "{workspaceRoot}/node_modules/.gtkx/jsx/**/*.{js,d.ts,json}",
+                "{workspaceRoot}/node_modules/.gtkx/*.d.ts",
                 "{workspaceRoot}/.gtkx/reference"
             ]
         },
@@ -38,14 +43,13 @@
             "command": "tsc --noEmit",
             "cache": true,
             "dependsOn": [
-                "codegen",
-                "reference"
+                "build",
+                "^typecheck"
             ],
             "inputs": [
                 "{workspaceRoot}/tsconfig.json",
                 "{workspaceRoot}/eslint.config.ts",
                 "{workspaceRoot}/gtkx.config.ts",
-                "{workspaceRoot}/vitest.config.ts",
                 "{workspaceRoot}/scripts/**/*",
                 "{workspaceRoot}/packages/**/*.{ts,tsx,mts,json}",
                 "{workspaceRoot}/examples/**/*.{ts,tsx,mts,json}",
@@ -61,22 +65,29 @@
             "command": "eslint . --ignore-pattern packages --ignore-pattern examples --ignore-pattern tutorial --ignore-pattern website",
             "cache": true,
             "dependsOn": [
-                "codegen",
-                "reference"
+                "build",
+                "_lint:codescythe",
+                "_lint:workflows"
             ],
             "inputs": [
-                "eslintConfig",
-                "{workspaceRoot}/gtkx.config.ts",
-                "{workspaceRoot}/vitest.config.ts",
-                "{workspaceRoot}/scripts/**/*",
-                "sharedGlobals"
+                "default",
+                "^default",
+                "{workspaceRoot}/packages/native/.gitignore",
+                "{workspaceRoot}/website/.gitignore"
             ]
         },
-        "lint:codescythe": {
+        "build": {
+            "executor": "nx:noop",
+            "dependsOn": [
+                "codegen"
+            ],
+            "outputs": []
+        },
+        "_lint:codescythe": {
             "command": "tsx scripts/codescythe.ts",
             "cache": true,
             "dependsOn": [
-                "codegen",
+                "_build:bindings",
                 "@gtkx/gl:codegen"
             ],
             "inputs": [
@@ -86,7 +97,6 @@
                 "{workspaceRoot}/.gitignore",
                 "{workspaceRoot}/tsconfig.json",
                 "{workspaceRoot}/eslint.config.ts",
-                "{workspaceRoot}/vitest.config.ts",
                 "{workspaceRoot}/gtkx.config.ts",
                 "{workspaceRoot}/scripts/**/*",
                 "{workspaceRoot}/packages/**/*",
@@ -102,6 +112,53 @@
                     "transitive": true
                 }
             ]
+        },
+        "_registry:publish": {
+            "command": "tsx scripts/local-registry.ts",
+            "continuous": true,
+            "dependsOn": [
+                {
+                    "projects": [
+                        "@gtkx/*",
+                        "create-gtkx",
+                        "!@gtkx/e2e",
+                        "!@gtkx/website"
+                    ],
+                    "target": "build"
+                }
+            ]
+        },
+        "_tutorial:checkpoint": {
+            "command": "tsx scripts/tutorial-checkpoints.ts",
+            "cache": false
+        },
+        "_lint:workflows": {
+            "executor": "nx:run-commands",
+            "cache": true,
+            "inputs": [
+                "{workspaceRoot}/project.json",
+                "{workspaceRoot}/.github/**/*",
+                "{workspaceRoot}/**/*.sh",
+                "{workspaceRoot}/.shellcheckrc",
+                {
+                    "runtime": "go version"
+                },
+                {
+                    "runtime": "shellcheck --version"
+                },
+                {
+                    "env": "SHELLCHECK_OPTS"
+                }
+            ],
+            "outputs": [],
+            "options": {
+                "parallel": false,
+                "commands": [
+                    "bash -euo pipefail -c 'git ls-files -z -- \"*.sh\" | xargs -0 -r shellcheck --shell=bash'",
+                    "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -pyflakes=",
+                    "bash -euo pipefail -c 'for action in .github/actions/*/action.yml .github/actions/*/action.yaml; do if [ -f \"$action\" ]; then go run github.com/mikefarah/yq/v4@v4.54.1 \"{\\\"on\\\":\\\"push\\\",\\\"jobs\\\":{\\\"composite\\\":{\\\"runs-on\\\":\\\"ubuntu-latest\\\",\\\"steps\\\":.runs.steps}}}\" \"$action\" | go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -pyflakes= -stdin-filename \"$action\" -; fi; done'"
+                ]
+            }
         }
     }
 }

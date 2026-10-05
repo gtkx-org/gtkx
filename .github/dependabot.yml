@@ -45,7 +45,3 @@ updates:
         update-types:
           - "minor"
           - "patch"
-  - package-ecosystem: "docker"
-    directory: "/.github/docker"
-    schedule:
-      interval: "daily"

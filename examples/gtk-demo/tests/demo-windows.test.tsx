@@ -5,13 +5,17 @@ import { createAppRenderer } from "./render-app.js";
 
 const renderApp = createAppRenderer("org.gtkx.demowindows");
 
-const selectDemo = async (title: string): Promise<void> => {
+const selectDemo = async (title: string, category?: string): Promise<void> => {
     const searchBar = screen.getByName("sidebar-search-bar", { as: Gtk.SearchBar });
     const search = within(searchBar).getByRole(Gtk.AccessibleRole.SEARCH_BOX);
     await userEvent.clear(search);
     await userEvent.type(search, title);
     const sidebar = screen.getByRole(Gtk.AccessibleRole.LIST, { name: "Demos", as: Gtk.ListView });
-    await userEvent.click(await within(sidebar).findByText(title));
+    await waitFor(() => {
+        const labels = within(sidebar).queryAllByText(/./, { as: Gtk.Inscription }).map((label) => label.getText());
+        expect(labels).toEqual(category ? [category, title] : [title]);
+    });
+    await userEvent.click(within(sidebar).getByText(title));
     expect(screen.getByName("main-window", { as: Gtk.Window }).getTitle()).toBe(title);
 };
 
@@ -74,7 +78,7 @@ it("keeps open demo contents and state while selecting and opening other demos",
 it("gives repeated password demos independent default buttons and close actions", async () => {
     await renderApp();
     await userEvent.click(screen.getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON, { name: "Search demos" }));
-    await selectDemo("Password Entry");
+    await selectDemo("Password Entry", "Entry");
     const first = await openSelectedDemo();
     const firstDone = within(first).getByRole(Gtk.AccessibleRole.BUTTON, { name: "Done" });
     expect(first.getDefaultWidget()).toBe(firstDone);

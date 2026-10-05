@@ -48,23 +48,8 @@
         "reference-current": {
             "cache": true,
             "dependsOn": [
-                "gtkx:codegen",
-                "@gtkx/animated:build",
-                "@gtkx/cairo:build",
-                "@gtkx/cli:build",
-                "@gtkx/codegen:build",
-                "@gtkx/components:build",
-                "@gtkx/config:build",
-                "@gtkx/css:build",
-                "@gtkx/forms:build",
-                "@gtkx/gl:build",
-                "@gtkx/i18n:build",
-                "@gtkx/navigation:build",
-                "@gtkx/react:build",
-                "@gtkx/runtime:build",
-                "@gtkx/storybook:build",
-                "@gtkx/testing:build",
-                "@gtkx/vitest:build"
+                "^build",
+                "gtkx:_build:bindings"
             ],
             "inputs": [
                 "default",

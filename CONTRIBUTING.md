@@ -6,7 +6,7 @@ Follow the [Code of Conduct](CODE_OF_CONDUCT.md). Report conduct concerns to eug
 
 ## Set up the workspace
 
-The workspace needs Linux, Node.js 26.7 or later, pnpm, the pinned Rust toolchains, and native development libraries. Follow [Development Setup](https://gtkx.dev/contributing/development) for prerequisites, cloning, building, and running examples. [.github/docker/Dockerfile](.github/docker/Dockerfile) records the complete CI environment.
+The workspace needs Linux, Node.js 26.7 or later, pnpm, the pinned Rust toolchains, and native development libraries. Follow [Development Setup](https://gtkx.dev/contributing/development) for prerequisites, cloning, building, and running examples. [The CI setup action](.github/actions/setup-ci/action.yml) installs the complete CI environment.
 
 ## Submit a focused change
 
@@ -35,7 +35,7 @@ Write the changelog message for the people who will use the release.
 
 Choose `major` for a breaking change, `minor` for a feature, or `patch` for a fix. During the beta, these choices organize the changelog; releases continue on the beta train until a maintainer changes it. The `pre*` bumps are for maintainers starting a prerelease from a stable version.
 
-Documentation, tests, and files outside `packages/` need no plan. Bot pull requests are exempt. CI reports a missing plan for other published-package changes, but the check is advisory so changes that need no changelog entry can still merge.
+Documentation, tests, and files outside `packages/` need no plan. Bot pull requests are exempt. For other published-package changes, include a plan when the change needs a changelog entry.
 
 ## Publish a release
 
@@ -43,7 +43,7 @@ Maintainers follow [Publishing Releases](https://gtkx.dev/contributing/releases)
 
 ## Documentation and examples
 
-[Maintaining Documentation](https://gtkx.dev/contributing/documentation) covers the website workflow. Examples provide executable integration coverage. `tutorial` consumes registry packages outside the workspace; run `pnpm tutorial` to validate it against the working tree.
+[Maintaining Documentation](https://gtkx.dev/contributing/documentation) covers the website workflow. Examples provide executable integration coverage. `tutorial` consumes registry packages outside the workspace; run `pnpm nx run @gtkx/e2e:e2e -- tests/tutorial.test.ts` to validate it against the working tree.
 
 ### Documentation versions
 

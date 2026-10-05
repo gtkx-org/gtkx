@@ -9,10 +9,20 @@
             "{projectRoot}/Cargo.lock",
             "{projectRoot}/package.json",
             "{workspaceRoot}/rust-toolchain.toml",
-            {
-                "runtime": "uname -m"
-            },
-            "nativeEnvironment"
+            "nativeEnvironment",
+            "{projectRoot}/tools/rust-toolchain.toml"
+        ],
+        "nativeTests": [
+            "default",
+            "crate",
+            "{workspaceRoot}/packages/codegen/src/**/*",
+            "{workspaceRoot}/packages/codegen/overrides/**/*",
+            "{workspaceRoot}/packages/runtime/src/**/*",
+            "{workspaceRoot}/packages/vitest/src/**/*",
+            "{workspaceRoot}/scripts/tsx.ts",
+            "{workspaceRoot}/scripts/workspace-paths.ts",
+            "{workspaceRoot}/packages/e2e/tests/native/**/*",
+            "{workspaceRoot}/packages/e2e/tests/helpers/native-fixtures.ts"
         ]
     },
     "targets": {
@@ -21,10 +31,9 @@
             "cache": true,
             "inputs": [
                 "crate",
-                "{workspaceRoot}/scripts/build-native.ts",
+                "{projectRoot}/tools/build.ts",
                 "{workspaceRoot}/scripts/native-artifact.ts",
-                "{projectRoot}/artifacts/native.*.node",
-                "{projectRoot}/artifacts/native.*.node.sha256",
+                "{projectRoot}/artifacts/**/*",
                 {
                     "env": "GTKX_RELEASE_NATIVE_ARTIFACTS"
                 }
@@ -35,42 +44,58 @@
                 "{projectRoot}/native.*.node"
             ]
         },
-        "lint:rust": {
+        "_lint:rust": {
             "cache": true,
+            "dependsOn": [],
             "inputs": [
                 "crate",
-                "{workspaceRoot}/rustfmt.toml",
-                "{workspaceRoot}/scripts/cargo-nightly.ts",
-                "{workspaceRoot}/scripts/rust-nightly.ts"
+                "{workspaceRoot}/rustfmt.toml"
             ],
             "outputs": []
         },
-        "create-npm-dirs": {
+        "_lint:audit": {
+            "command": "cargo audit --file packages/native/Cargo.lock --deny unsound",
+            "cache": false
+        },
+        "lint": {
             "dependsOn": [
-                "build"
+                "build",
+                "_lint:rust",
+                "_lint:audit"
+            ]
+        },
+        "_test:asan": {
+            "dependsOn": [
+                "build",
+                "@gtkx/e2e:_test:fixtures",
+                "@gtkx/runtime:build"
             ],
             "cache": true,
             "inputs": [
-                "crate"
+                "nativeTests",
+                "^production"
             ],
-            "outputs": [
-                "{projectRoot}/npm/**"
-            ]
-        },
-        "artifacts": {
-            "dependsOn": [
-                "create-npm-dirs"
-            ],
-            "cache": false
-        },
-        "release": {
-            "dependsOn": [
-                "artifacts"
-            ],
-            "cache": false
+            "outputs": []
         },
         "test": {
             "dependsOn": [
+                "build",
+                "_test:asan"
+            ],
+            "inputs": [
+                "...",
+                "nativeTests"
+            ]
+        },
+        "release": {
+            "cache": false,
+            "dependsOn": [
+                "build"
+            ]
+        },
+        "typecheck": {
+            "dependsOn": [
+                "...",
                 "build"
             ]
         }

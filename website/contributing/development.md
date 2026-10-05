@@ -11,7 +11,17 @@ Build the workspace, run an example, then use focused Nx targets while making ch
 
 Use Linux with Node.js 26.7 or later. The repository's `package.json` pins pnpm through its `packageManager` field. If your runtimes are managed by mise, run the commands below through `mise exec --`, for example `mise exec -- pnpm install`.
 
+CI reads `.github/node-version` to run the minimum supported Node.js version, including the published-consumer tests.
+
 Install Rust through rustup so `rust-toolchain.toml` selects the pinned compiler and Clippy. Native formatting and sanitizers use a separate nightly; its installation command is under [Change native code](#change-native-code).
+
+Full linting also requires Go 1.26 or later, ShellCheck on `PATH`, and the pinned Rust advisory checker:
+
+```bash
+cargo install cargo-audit --version 0.22.2 --locked
+```
+
+Keep Cargo's binary directory on `PATH`. The workflow lint target downloads its pinned actionlint and yq versions through `go run`; the advisory audit refreshes the RustSec database on every run.
 
 The full workspace needs more system libraries than a minimal application:
 
@@ -23,7 +33,7 @@ The full workspace needs more system libraries than a minimal application:
 | Headless examples and tests | A supported compositor, normally Sway, `dbus-daemon`, `setpriv`, Mesa rendering support, fonts, icons, MIME data, and GSettings schemas. |
 | Localization and packaging checks | GNU gettext and the packaging tools used by the target formats, including RPM and Debian tooling and Flatpak helpers. |
 
-GTKX's application baseline is GTK 4.20 and libadwaita 1.8 or later. Distribution package names and available versions vary. The [CI Dockerfile](https://github.com/gtkx-org/gtkx/blob/main/.github/docker/Dockerfile) records the complete verification environment, including packaging tools, fonts, and pinned toolchains.
+GTKX's application baseline is GTK 4.20 and libadwaita 1.8 or later. Distribution package names and available versions vary. The [CI setup action](https://github.com/gtkx-org/gtkx/blob/main/.github/actions/setup-ci/action.yml) installs the complete verification environment on Ubuntu 26.04, including packaging tools and fonts.
 
 On Debian or Ubuntu releases providing those library versions, the development packages include:
 
@@ -79,15 +89,17 @@ Regenerate the workspace's bindings and other codegen targets through Nx:
 pnpm codegen
 ```
 
-For only the root GIR and JSX bindings:
+For only the root bindings, TypeScript declarations, and widget reference:
 
 ```bash
 pnpm nx run gtkx:codegen
 ```
 
-Each application example has its own configuration and codegen target. Example build and development targets generate their own bindings before starting. Generated bindings live in `node_modules/.gtkx`, with package links under `node_modules/@gtkx`; generated widget reference pages live in `.gtkx/reference`.
+Nx uses a private bootstrap target to generate bindings before building the CLI. The public `codegen` target runs the built CLI and also refreshes `.gtkx/reference`.
 
-Change the generator, configuration, or source metadata when correcting generated behavior, then regenerate. Editing a generated output alone will be lost on the next run. For widget work, read the example's `.gtkx/reference/index.md` to find its actual element props, signals, and methods. [Configuration and Codegen](/v2/guide/configuration-and-codegen) covers the application's view of these outputs.
+Each application example has its own configuration and codegen target. Its build and development targets refresh project declarations and reuse the workspace bindings. Generated bindings live in the root `node_modules/.gtkx`, with package links under `node_modules/@gtkx`; generated widget reference pages live in the root `.gtkx/reference`.
+
+Change the generator, configuration, or source metadata when correcting generated behavior, then regenerate. Editing a generated output alone will be lost on the next run. For widget work, read `.gtkx/reference/index.md` to find the available element props, signals, and methods. [Configuration and Codegen](/v2/guide/configuration-and-codegen) covers the application's view of these outputs.
 
 ## Run an example
 
@@ -116,24 +128,20 @@ Keep the process's parent session alive while inspecting the app. Use the live w
 
 ## Change native code
 
-Rust source lives in `packages/native/src`. Formatting and sanitizers use the nightly pinned in [scripts/rust-nightly.ts](https://github.com/gtkx-org/gtkx/blob/main/scripts/rust-nightly.ts). After `pnpm install`, install that toolchain from the repository root:
+Rust source lives in `packages/native/src`. Formatting and sanitizers use the nightly pinned in [packages/native/tools/rust-toolchain.toml](https://github.com/gtkx-org/gtkx/blob/main/packages/native/tools/rust-toolchain.toml). After `pnpm install`, install that toolchain from the repository root:
 
 ```bash
-pnpm exec tsx -e '
-import { execFileSync } from "node:child_process";
-import { RUST_NIGHTLY } from "./scripts/rust-nightly.ts";
-execFileSync("rustup", ["toolchain", "install", RUST_NIGHTLY, "--profile", "minimal", "--component", "rustfmt"], { stdio: "inherit" });
-'
+(cd packages/native/tools && rustup show)
 ```
 
 Rebuild after changing native code, then start a fresh app or test process to load the new binary:
 
 ```bash
 pnpm nx run @gtkx/native:build
-pnpm nx run @gtkx/native:lint:rust
+pnpm nx run @gtkx/native:lint
 ```
 
-The build invokes `napi build` in release mode and produces the platform-specific `.node` file and generated addon declarations. Rust linting runs the pinned nightly rustfmt check followed by Clippy with warnings treated as errors. Changes that affect ownership, callbacks, marshalling, or teardown also belong in the native integration verification described in [Testing](/contributing/testing#native-integration-and-sanitizers).
+The build invokes `napi build` in release mode and produces the platform-specific `.node` file and generated addon declarations. Rust linting runs the pinned nightly rustfmt check, Clippy with warnings treated as errors, and cargo-audit against the current RustSec advisories. Changes that affect ownership, callbacks, marshalling, or teardown also belong in the native integration verification described in [Testing](/contributing/testing#native-integration-and-sanitizers).
 
 ## Work on the website
 
@@ -160,9 +168,10 @@ Use [Testing](/contributing/testing) to select the checks that exercise your cha
 
 ```bash
 pnpm build
+pnpm typecheck
 pnpm test
 pnpm lint
-pnpm typecheck
+pnpm e2e
 ```
 
 Published-package changes use an Nx version plan created by `pnpm plan`. Documentation-only and test-only changes do not need one. The [contribution guide](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md) covers submission and version plans; [Publishing Releases](/contributing/releases) is for maintainers.

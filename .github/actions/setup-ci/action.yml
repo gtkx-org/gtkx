@@ -1,17 +1,73 @@
 name: Setup CI
-description: Pull the CI image, compute its Nx cache key, and restore the cargo and pnpm caches. Composes the smaller setup composites so individual jobs don't repeat the boilerplate.
+description: Install workspace dependencies and native tooling on Ubuntu 26.04.
 
 runs:
   using: composite
   steps:
-    - name: Pull CI image
-      uses: ./.github/actions/pull-image
+    - name: Set up Node
+      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38
+      with:
+        node-version-file: .github/node-version
+        package-manager-cache: false
 
-    - name: Compute cache env
-      uses: ./.github/actions/compute-cache-env
+    - name: Set up pnpm
+      uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+      with:
+        cache: true
 
-    - name: Setup cargo cache
-      uses: ./.github/actions/setup-cargo-cache
+    - name: Install native dependencies
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          build-essential meson ninja-build gettext locales-all pkg-config shellcheck \
+          libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev libwebkitgtk-6.0-dev \
+          libgstreamer1.0-dev libgirepository1.0-dev libostree-dev gobject-introspection \
+          gvfs libgles2 libgl1-mesa-dri mesa-vulkan-drivers sway weston xwayland-run dbus \
+          libasan8 adwaita-icon-theme gsettings-desktop-schemas shared-mime-info \
+          hicolor-icon-theme librsvg2-common desktop-file-utils espeak-ng \
+          flatpak-builder appstream dpkg-dev rpm pipx fontconfig fonts-noto-core fonts-dejavu-core
+        gst_gir="/usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/gir-1.0/Gst-1.0.gir"
+        if [ -f "$gst_gir" ]; then
+          sudo ln -sf "$gst_gir" /usr/share/gir-1.0/Gst-1.0.gir
+        fi
+        sudo install -m 644 "$ACTION_PATH/60-gtkx-noto-sans.conf" /etc/fonts/conf.d/
+        fc-cache -f
+        pipx install 'git+https://github.com/flatpak/flatpak-builder-tools.git@de2225a6dee4818c1339b3cdbf29f90c471fcb7e#subdirectory=node'
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-    - name: Setup pnpm cache
-      uses: ./.github/actions/setup-pnpm-cache
+    - name: Select repository Rust toolchains
+      shell: bash
+      run: |
+        rustup show
+        (cd packages/native/tools && rustup show)
+
+    - name: Cache Cargo dependencies
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+        key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/native/Cargo.lock') }}
+        restore-keys: cargo-${{ runner.os }}-${{ runner.arch }}-
+
+    - name: Configure test environment
+      shell: bash
+      run: |
+        {
+          echo 'GIT_CONFIG_COUNT=1'
+          echo 'GIT_CONFIG_KEY_0=init.defaultBranch'
+          echo 'GIT_CONFIG_VALUE_0=main'
+          echo 'CARGO_INCREMENTAL=0'
+          for driver in /usr/share/vulkan/icd.d/lvp_icd*.json; do
+            if [ -f "$driver" ]; then
+              echo "VK_DRIVER_FILES=$driver"
+            fi
+          done
+        } >> "$GITHUB_ENV"
+
+    - name: Install workspace dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile

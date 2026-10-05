@@ -1,6 +1,5 @@
 packages:
   - packages/*
-  - scripts
   - examples/*
   - website
 

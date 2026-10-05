@@ -22,50 +22,19 @@
             "{workspaceRoot}/scripts/workspace-paths.ts",
             "{workspaceRoot}/scripts/tsx.ts",
             {
-                "env": "CI_IMAGE_ID"
-            },
-            {
-                "env": "ADWAITA_VERSION"
-            },
-            {
-                "env": "GTK4_VERSION"
-            },
-            {
                 "env": "GTKX_GIR_PATH"
-            },
-            {
-                "env": "NODE_VERSION"
             },
             "{workspaceRoot}/scripts/cache-environment.ts",
             {
                 "runtime": "node scripts/cache-environment.ts runtime"
-            }
-        ],
-        "eslintConfig": [
-            "{workspaceRoot}/eslint.config.ts",
-            "{workspaceRoot}/.gitignore",
-            "{workspaceRoot}/packages/native/.gitignore",
-            "{workspaceRoot}/website/.gitignore",
+            },
+            "{workspaceRoot}/.github/actions/setup-ci/**/*",
             {
-                "externalDependencies": [
-                    "eslint",
-                    "typescript",
-                    "typescript-eslint",
-                    "@eslint/js",
-                    "@vitest/eslint-plugin",
-                    "eslint-plugin-react-hooks",
-                    "eslint-plugin-vue",
-                    "globals",
-                    "vue-eslint-parser",
-                    "jiti"
-                ]
+                "env": "ImageVersion"
             }
         ],
         "nativeEnvironment": [
             "{workspaceRoot}/scripts/cache-environment.ts",
-            {
-                "env": "CI_IMAGE_ID"
-            },
             {
                 "env": "RUSTUP_TOOLCHAIN"
             },
@@ -96,7 +65,7 @@
                 }
             },
             "exclude": [
-                "packages/cli/tests/fixtures/**",
+                "packages/e2e/tests/cli/fixtures/**",
                 "tutorial/**"
             ]
         },
@@ -106,7 +75,7 @@
                 "targetName": "lint"
             },
             "exclude": [
-                "packages/cli/tests/fixtures/**",
+                "packages/e2e/tests/cli/fixtures/**",
                 "tutorial/**"
             ]
         },
@@ -117,32 +86,27 @@
                 "testMode": "run"
             },
             "exclude": [
-                "packages/e2e/vitest.config.ts",
-                "examples/gtk-demo/*",
-                "examples/animations/*",
-                "examples/browser/*",
-                "examples/hello-world/*",
-                "examples/navigation/*",
-                "examples/storybook/*",
+                "examples/**",
+                "packages/e2e/**",
                 "tutorial/**"
             ]
+        },
+        {
+            "plugin": "@nx/vitest",
+            "include": [
+                "packages/e2e/vitest.config.ts"
+            ],
+            "options": {
+                "testTargetName": "e2e",
+                "testMode": "run"
+            }
         }
     ],
     "targetDefaults": {
         "build": {
             "dependsOn": [
                 "...",
-                "gtkx:codegen"
-            ],
-            "inputs": [
-                "...",
-                "sharedGlobals"
-            ]
-        },
-        "typecheck": {
-            "dependsOn": [
-                "...",
-                "gtkx:codegen"
+                "gtkx:_build:bindings"
             ],
             "inputs": [
                 "...",
@@ -151,27 +115,28 @@
         },
         "lint": {
             "dependsOn": [
-                "gtkx:codegen",
+                "gtkx:_build:bindings",
                 "@gtkx/gl:codegen"
-            ],
-            "inputs": [
-                "default",
-                "^default",
-                "eslintConfig"
             ]
         },
         "test": {
             "dependsOn": [
                 "^build",
-                "gtkx:codegen"
+                "gtkx:_build:bindings"
             ],
             "inputs": [
                 "...",
+                "default",
+                "^production",
                 {
-                    "dependentTasksOutputFiles": "**/*.node",
+                    "dependentTasksOutputFiles": "**/*.{js,node}",
                     "transitive": true
+                },
+                {
+                    "env": "CI"
                 }
-            ]
+            ],
+            "cache": true
         },
         "release": {
             "cache": false,
@@ -179,6 +144,18 @@
             "dependsOn": [
                 "build",
                 "^release"
+            ]
+        },
+        "e2e": {
+            "dependsOn": [
+                "^build"
+            ],
+            "inputs": [
+                "...",
+                {
+                    "dependentTasksOutputFiles": "**/*.node",
+                    "transitive": true
+                }
             ]
         }
     },
