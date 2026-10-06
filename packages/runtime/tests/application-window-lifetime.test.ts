@@ -3,7 +3,7 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { afterEach, describe, expect, it } from "vitest";
-import { countSignal, createApplicationFrom } from "./helpers/application.js";
+import { applicationProps, countSignal } from "./helpers/application.js";
 
 interface ApplicationCase {
     name: string;
@@ -14,12 +14,12 @@ interface ApplicationCase {
 const applicationCases: ApplicationCase[] = [
     {
         name: "Gtk",
-        createApplication: () => createApplicationFrom(Gtk.Application),
+        createApplication: () => Gtk.Application.create(applicationProps()),
         createWindow: (application) => new Gtk.ApplicationWindow({ application }),
     },
     {
         name: "Adw",
-        createApplication: () => createApplicationFrom(Adw.Application),
+        createApplication: () => Adw.Application.create(applicationProps()),
         createWindow: (application) => new Adw.ApplicationWindow({ application }),
     },
 ];

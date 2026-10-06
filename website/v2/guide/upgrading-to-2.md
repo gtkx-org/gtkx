@@ -66,20 +66,24 @@ Direct native calls using `bigint64` or `biguint64` descriptors now require bigi
 
 The generated wrapper-retention helper `retainWrapperClasses` now belongs to `@gtkx/runtime/internal`. Regenerate bindings with `gtkx codegen --force` after upgrading so their bootstrap imports match the runtime.
 
-Application and Variant helpers now belong to their generated namespaces:
+Application lifecycle methods and Variant helpers now belong to their generated namespaces:
 
 ```ts
-import { createApplication, getApplicationInstance } from "@gtkx/gi/gio";
+import * as Adw from "@gtkx/gi/adw";
 import { fromVariant, toVariant } from "@gtkx/gi/glib";
+
+const application = Adw.Application.create({ applicationId: "org.example.App" });
 ```
 
-Move their associated type imports too: `ApplicationClass` is now `ApplicationConstructor`, and the Variant helper's `ByteArray` type is now `VariantByteArray`. Use `Gio.Application` in place of the removed `CommandLineApplication` interface. Runtime shutdown remains `quit()` from `@gtkx/runtime`.
+Replace `createApplication(ApplicationClass, props)` with `ApplicationClass.create(props)`. The static factory belongs to `Gio.Application` and is inherited by Gtk, Adw, and custom application subclasses. Replace `getApplicationInstance(application)` with `application.getRegistrationState()`, which returns `"primary"`, `"remote"`, `"shutDown"`, or `"unregistered"`.
 
-Replace `runApplication(application, argv)` with `application.runAsync(argv): Promise<number>` and `quitApplication(application)` with `application.quit()`. `RunApplicationResult` is removed. Command-line handling starts immediately while Node keeps control of the event loop; use `getApplicationInstance(application) === "primary"` after starting to decide whether to build a UI. Observe the promise's exit status and handle startup or shutdown rejections.
+Move their associated type imports too: import `ApplicationRegistrationState` in place of `ApplicationInstance` and `ApplicationConstructor` in place of `ApplicationClass` from `@gtkx/gi/gio`. The Variant helper's `ByteArray` type is now `VariantByteArray` in `@gtkx/gi/glib`. Use `Gio.Application` in place of the removed `CommandLineApplication` interface. Runtime shutdown remains `quit()` from `@gtkx/runtime`.
+
+Replace `runApplication(application, argv)` with `application.runAsync(argv): Promise<number>` and `quitApplication(application)` with `application.quit()`. `RunApplicationResult` is removed. Command-line handling starts immediately while Node keeps control of the event loop; use `application.getRegistrationState() === "primary"` after starting to decide whether to build a UI. Registration state does not indicate whether an asynchronous run has completed; observe the promise's exit status and handle startup or shutdown rejections.
 
 An active run finishes automatically when it has no application windows or outstanding JavaScript `hold()` calls. Balance each `hold()` with `release()` to keep background work alive; the final release observes `inactivityTimeout`. A service starts with a ten-second grace period before its first use. Call `application.quit()` to force shutdown even while holds or windows remain. The promise resolves after GTKX completes shutdown and releases the process-wide default. Rejected command lines and remote instances resolve immediately; call `application.quit()` afterward to release their retained application state.
 
-`runAsync` requires `createApplication`, including for Gtk and Adw application classes; ordinary `new Application(...)` instances are unsupported. GTKX tracks JavaScript holds and application windows; it cannot observe arbitrary holds acquired directly by native C code. Explicit holds survive forced shutdown and must still be balanced with `release()`; an unmatched release throws `RangeError`. Full native shutdown can run only once per instance; restarted applications and those already quit by native code may retain registration until finalization. Create another application when another complete lifecycle is needed.
+`runAsync` requires `Application.create()`, including for Gtk and Adw application classes; ordinary `new Application(...)` instances are unsupported. GTKX tracks JavaScript holds and application windows; it cannot observe arbitrary holds acquired directly by native C code. Explicit holds survive forced shutdown and must still be balanced with `release()`; an unmatched release throws `RangeError`. Full native shutdown can run only once per instance; restarted applications and those already quit by native code may retain registration until finalization. Create another application when another complete lifecycle is needed.
 
 React holds an application until its first activated tree commits. React's `quit()`, `root.unmount()`, and `root.render(null)` remove the UI while allowing explicit background holds to keep the application running. Release those holds when the work finishes. If initial asynchronous rendering or Suspense commits without a window, hold the application until that work can create one.
 

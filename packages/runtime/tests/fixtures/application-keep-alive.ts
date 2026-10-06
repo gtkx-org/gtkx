@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import * as Gio from "@gtkx/gi/gio";
-import { createApplication } from "@gtkx/gi/gio";
 
 type Mode = "activated" | "service" | "rejected" | "concurrent" | "idle";
 
@@ -10,7 +9,7 @@ if (mode === undefined) {
     throw new Error("The application keep-alive fixture requires a mode");
 }
 
-const application = createApplication(Gio.Application, {
+const application = Gio.Application.create({
     applicationId: `org.gtkx.keepalive.p${String(process.pid)}`,
     flags: Gio.ApplicationFlags.NON_UNIQUE,
 });
@@ -22,7 +21,7 @@ if (held) {
 }
 
 const firstApplication = mode === "concurrent"
-    ? createApplication(Gio.Application, {
+    ? Gio.Application.create({
         applicationId: `org.gtkx.keepalive.first.p${String(process.pid)}`,
         flags: Gio.ApplicationFlags.NON_UNIQUE,
     })

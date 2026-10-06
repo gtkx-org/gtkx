@@ -8,7 +8,7 @@ import { createCliProject, startCli } from "./cli-project.js";
 const QUIT_COMMAND = "node_modules/quit-command";
 const ENTRY = `import assert from "node:assert/strict";
 import { watch } from "node:fs";
-import { Application, ApplicationFlags, createApplication } from "@gtkx/gi/gio";
+import { Application, ApplicationFlags } from "@gtkx/gi/gio";
 import { registerClass } from "@gtkx/runtime";
 
 class StatusApplication extends Application {
@@ -19,7 +19,7 @@ class StatusApplication extends Application {
 }
 
 registerClass(StatusApplication, { typeName: "GtkxDevExitStatusApplication" });
-const application = createApplication(StatusApplication, {
+const application = StatusApplication.create({
     applicationId: "org.gtkx.devexitstatus",
     flags: ApplicationFlags.NON_UNIQUE,
 });

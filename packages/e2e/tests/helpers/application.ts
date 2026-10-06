@@ -1,8 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
-import { createApplication as deriveApplication } from "@gtkx/gi/gio";
 
 const createUniqueApplication = (applicationId: string): Gio.Application => {
-    const application = deriveApplication(Gio.Application, {
+    const application = Gio.Application.create({
         applicationId,
         flags: Gio.ApplicationFlags.DEFAULT_FLAGS,
     });

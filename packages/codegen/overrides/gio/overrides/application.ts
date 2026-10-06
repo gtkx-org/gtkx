@@ -1,9 +1,12 @@
 import { type AnyClass, callParent, getClassType, registerClass, typeName } from "@gtkx/runtime";
 import { keepAlive } from "@gtkx/runtime/internal";
-import { Application, ApplicationFlags } from "../gio.js";
+import { Application as GeneratedApplication, ApplicationFlags } from "../gio.js";
+
+/** An application with GTKX-managed asynchronous lifecycle methods. */
+type Application = GeneratedApplication;
 
 /** Registration and ownership state tracked for an application. */
-type ApplicationInstance = "primary" | "remote" | "shutDown" | "unregistered";
+type ApplicationRegistrationState = "primary" | "remote" | "shutDown" | "unregistered";
 
 interface ApplicationStartup {
     isPrimary: boolean;
@@ -40,8 +43,11 @@ interface ApplicationActivity {
     idleDeadline?: number;
 }
 
-/** An application class together with the construct properties it accepts. */
-type ApplicationConstructor<T extends Application, P> = AnyClass<T> & (new (props: P) => T);
+/** An application constructor and managed factory accepting the same construct properties. */
+interface ApplicationConstructor<T extends Application, P> {
+    new(props: P): T;
+    create(props: NoInfer<P>): NoInfer<T>;
+}
 
 const derivedClasses: WeakMap<AnyClass<Application>, AnyClass<Application>> = new WeakMap();
 const derivedApplicationClasses: Set<AnyClass<ManagedApplication>> = new Set();
@@ -235,16 +241,29 @@ const deriveApplicationClass = <T extends Application>(base: AnyClass<T>): AnyCl
  * Construction does not claim the process-wide default. Any default assigned by GLib during
  * construction is released; {@link Application.runAsync} claims it when the application starts.
  *
- * @param base The application class, such as `Gtk.Application`.
- * @param props Construct properties, passed through unchanged.
- * @returns An instance derived from `base`, with one registered GType per base class.
+ * @param args Constructor arguments, passed through unchanged.
+ * @returns An instance derived from the receiving class, with one registered GType per base class.
  */
-const createApplication = <T extends Application, P>(base: ApplicationConstructor<T, P>, props: P): T => {
-    const application = new (deriveApplicationClass(base) as new (props: P) => T)(props);
+function create<C extends new (...args: never[]) => Application>(
+    this: C,
+    ...args: ConstructorParameters<C>
+): InstanceType<C> {
+    const DerivedApplication = deriveApplicationClass(this) as new (...args: ConstructorParameters<C>) => InstanceType<C>;
+    const application = new DerivedApplication(...args);
     releaseDefaultApplication(application);
 
     return application;
-};
+}
+
+/** The application class, including managed construction inherited by Gtk, Adw, and custom subclasses. */
+const Application: typeof GeneratedApplication & {
+    /**
+     * Constructs an application supported by `runAsync`, preserving the receiving class's
+     * constructor arguments and instance type. Construction releases any default assigned
+     * by GLib; `runAsync` claims the process-wide default when the application starts.
+     */
+    create: typeof create;
+} = Object.assign(GeneratedApplication, { create });
 
 const releaseDefaultApplication = (application: Application): void => {
     if (Application.getDefault() === application) {
@@ -285,8 +304,7 @@ const restartApplication = (application: Application): number => {
     return 0;
 };
 
-/** Returns the application's registration and ownership state, including a completed shutdown. */
-const getApplicationInstance = (application: Application): ApplicationInstance => {
+const registrationState = (application: Application): ApplicationRegistrationState => {
     if (!application.getIsRegistered()) {
         return registeredApplications.has(application) ? "shutDown" : "unregistered";
     }
@@ -301,7 +319,7 @@ const initializeApplication = (application: ManagedApplication, argv: string[]):
         ? restartApplication(application)
         : startApplication(application, argv);
 
-    const instance = getApplicationInstance(application);
+    const instance = registrationState(application);
 
     if (instance !== "unregistered") {
         registeredApplications.add(application);
@@ -389,8 +407,15 @@ const finishApplication = (application: Application): void => {
 declare module "../gio.js" {
     interface Application {
         /**
+         * Returns registration and ownership state. A previously registered application is
+         * `shutDown` once it is unregistered. Restarted applications can remain `primary`
+         * after managed shutdown because GLib retains their registration until finalization.
+         */
+        getRegistrationState(): ApplicationRegistrationState;
+
+        /**
          * Starts a GTKX-managed application and resolves its command-line exit status after
-         * shutdown. Construct the application with {@link createApplication} or let
+         * shutdown. Construct the application with {@link Application.create} or let
          * the GTKX renderer construct it.
          *
          * @remarks
@@ -427,9 +452,13 @@ declare module "../gio.js" {
     }
 }
 
+Application.prototype.getRegistrationState = function (): ApplicationRegistrationState {
+    return registrationState(this);
+};
+
 Application.prototype.runAsync = function (argv: string[]): Promise<number> {
     if (!isDerivedApplication(this)) {
-        return Promise.reject(new Error("Application.runAsync requires an application created with createApplication"));
+        return Promise.reject(new Error("Application.runAsync requires an application created with Application.create"));
     }
 
     const previousRun = applicationRuns.get(this);
@@ -484,9 +513,8 @@ Application.prototype.runAsync = function (argv: string[]): Promise<number> {
 };
 
 export {
-    createApplication,
-    getApplicationInstance,
+    Application,
     updateApplicationActivity,
     type ApplicationConstructor,
-    type ApplicationInstance,
+    type ApplicationRegistrationState,
 };

@@ -2,7 +2,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import { registerClass } from "@gtkx/runtime";
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { applicationProps, createApplication, createApplicationFrom } from "./helpers/application.js";
+import { applicationProps } from "./helpers/application.js";
 import { createTypeNameFactory } from "./helpers/unique-name.js";
 
 const uniqueName = createTypeNameFactory("GtkxDefaultApplication");
@@ -17,7 +17,8 @@ describe("generated application default operations", () => {
 
         registerClass(CustomApplication, { typeName: uniqueName("CustomSetter") });
         const previous = Gio.Application.getDefault();
-        const application = createApplicationFrom(CustomApplication);
+        const application = CustomApplication.create(applicationProps());
+        expectTypeOf(application).toEqualTypeOf<CustomApplication>();
         application.on("activate", () => {});
         const completion = application.runAsync(["probe"]);
 
@@ -61,7 +62,8 @@ describe("generated application default operations", () => {
 
         try {
             owner.setDefault();
-            const application = createApplication();
+            const application = Gio.Application.create();
+            expectTypeOf(application).toEqualTypeOf<Gio.Application>();
             expect(Gio.Application.getDefault()).toBe(owner);
             application.quit();
             expect(Gio.Application.getDefault()).toBe(owner);
@@ -72,6 +74,37 @@ describe("generated application default operations", () => {
                 previous.setDefault();
             }
         }
+    });
+
+    it("preserves a custom application's required constructor options", async () => {
+        interface CustomApplicationOptions extends Gio.ApplicationConstructorProps {
+            sessionName: string;
+        }
+
+        class CustomApplication extends Gio.Application {
+            readonly sessionName: string;
+
+            constructor({ sessionName, ...props }: CustomApplicationOptions) {
+                super(props);
+                this.sessionName = sessionName;
+            }
+        }
+
+        registerClass(CustomApplication, { typeName: uniqueName("CustomConstructor") });
+        const props = applicationProps();
+        const application = CustomApplication.create({ ...props, sessionName: "session-one" });
+        expectTypeOf(application).toEqualTypeOf<CustomApplication>();
+
+        expect(application).toBeInstanceOf(CustomApplication);
+        expect(application.sessionName).toBe("session-one");
+        expect(application.getApplicationId()).toBe(props.applicationId);
+        expect(application.getFlags()).toBe(props.flags);
+        expect(application.getRegistrationState()).toBe("unregistered");
+        application.on("activate", (): void => undefined);
+
+        await expect(application.runAsync(["probe"])).resolves.toBe(0);
+
+        expect(application.getRegistrationState()).toBe("shutDown");
     });
 });
 

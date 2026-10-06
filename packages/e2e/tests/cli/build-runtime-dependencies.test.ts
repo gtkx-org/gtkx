@@ -6,7 +6,7 @@ import { expect, it } from "vitest";
 import { createCliProject, runCliOrThrow } from "./cli-project.js";
 
 const APP_SOURCE = `import assert from "node:assert/strict";
-import { Application, ApplicationFlags, createApplication } from "@gtkx/gi/gio";
+import { Application, ApplicationFlags } from "@gtkx/gi/gio";
 import { fromVariant, toVariant } from "@gtkx/gi/glib";
 import { ParamFlags, paramSpecInt } from "@gtkx/gi/gobject";
 import { Label } from "@gtkx/gi/gtk";
@@ -29,7 +29,7 @@ try {
     assert.equal(label.count, 4);
     assert.throws(() => { label.count = 11; }, RangeError);
 
-    const application = createApplication(Application, {
+    const application = Application.create({
         applicationId: "org.gtkx.runtimedependencies",
         flags: ApplicationFlags.NON_UNIQUE,
     });
@@ -39,11 +39,13 @@ try {
     const completion = application.runAsync(["gtkx-runtime-dependencies"]);
     assert.equal(application.getIsRegistered(), true);
     assert.equal(application.getIsRemote(), false);
+    assert.equal(application.getRegistrationState(), "primary");
     assert.equal(Application.getDefault(), application);
     setImmediate(() => application.quit());
     assert.equal(await completion, 0);
     application.release();
     assert.equal(application.getIsRegistered(), false);
+    assert.equal(application.getRegistrationState(), "shutDown");
     assert.equal(Application.getDefault(), null);
     process.stdout.write("dependencies-ok");
 } catch (error) {

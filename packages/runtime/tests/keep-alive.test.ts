@@ -2,7 +2,7 @@ import type { ChildProcess } from "node:child_process";
 import * as Gtk from "@gtkx/gi/gtk";
 import { spawnWithParentDeathSignal } from "@gtkx/utils";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import { createApplicationFrom } from "./helpers/application.js";
 import { collectOutput, waitForMarker } from "./helpers/child-output.js";
 
@@ -74,6 +74,7 @@ describe("Application.runAsync — holding the native loop alive", () => {
 describe("Application.quit — windows held by the application", () => {
     it("detaches every window before GLib reaches shutdown", async () => {
         const application = createApplicationFrom(Gtk.Application);
+        expectTypeOf(application).toEqualTypeOf<Gtk.Application>();
         const completion = application.runAsync(["probe"]);
         const windows = [new Gtk.ApplicationWindow({ application }), new Gtk.ApplicationWindow({ application })];
         expect(application.getWindows()).toEqual(windows);

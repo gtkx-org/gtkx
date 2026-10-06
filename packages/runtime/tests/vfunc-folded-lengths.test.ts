@@ -1,7 +1,6 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { createApplication } from "@gtkx/gi/gio";
 import { registerClass } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
@@ -49,7 +48,7 @@ describe("vfunc input arrays whose length parameter is folded away", () => {
         }
 
         registerClass(OpeningApplication, { typeName: `GtkxFoldedOpen_${String(process.pid)}` });
-        const application = createApplication(OpeningApplication, {
+        const application = OpeningApplication.create({
             applicationId: `org.gtkx.folded-open-${String(process.pid)}`,
             flags: Gio.ApplicationFlags.NON_UNIQUE | Gio.ApplicationFlags.HANDLES_OPEN,
         });

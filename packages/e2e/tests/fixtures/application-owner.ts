@@ -1,5 +1,4 @@
 import type * as Gio from "@gtkx/gi/gio";
-import { getApplicationInstance } from "@gtkx/gi/gio";
 import { createUniqueApplication } from "../helpers/application.js";
 
 const HOLD_INTERVAL_MS = 250;
@@ -21,7 +20,7 @@ const ownApplicationId = async (applicationId: string): Promise<void> => {
     const application = createUniqueApplication(applicationId);
     application.hold();
     const completion = application.runAsync(["owner"]);
-    const isPrimary = getApplicationInstance(application) === "primary";
+    const isPrimary = application.getRegistrationState() === "primary";
     process.stdout.write(`OWNER isPrimary=${String(isPrimary)}\n`);
     const interval = holdApplication(application);
 

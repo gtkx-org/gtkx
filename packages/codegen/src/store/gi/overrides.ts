@@ -13,7 +13,7 @@ const OVERRIDES: Record<string, Override[]> = {
     ],
     gio: [{
         module: "application",
-        exports: ["createApplication", "getApplicationInstance", "type ApplicationConstructor", "type ApplicationInstance"],
+        exports: ["Application", "type ApplicationConstructor", "type ApplicationRegistrationState"],
         needsBootstrap: true,
     }],
     glib: [

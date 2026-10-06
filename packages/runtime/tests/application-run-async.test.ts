@@ -37,7 +37,9 @@ afterEach(async () => {
 
 describe("Application.runAsync", () => {
     it("waits for quit while held and resolves after shutdown releases the application", async () => {
-        const application = createTrackedApplication();
+        const application = createApplicationFrom(Gio.Application);
+        expectTypeOf(application).toEqualTypeOf<Gio.Application>();
+        track(application);
         application.hold();
         const activations = countSignal(application, "activate");
         const shutdowns = countSignal(application, "shutdown");
@@ -98,7 +100,9 @@ describe("Application.runAsync", () => {
         }
 
         registerClass(StatusApplication, { typeName: uniqueName("GtkxAsyncStatusApplication") });
-        const application = track(createApplicationFrom(StatusApplication));
+        const application = createApplicationFrom(StatusApplication);
+        expectTypeOf(application).toEqualTypeOf<StatusApplication>();
+        track(application);
         const activations = countSignal(application, "activate");
         const completion = application.runAsync(["probe"]);
 
@@ -133,7 +137,7 @@ describe("Application.runAsync", () => {
         const activations = countSignal(application, "activate");
 
         try {
-            await expect(application.runAsync(["probe"])).rejects.toThrow(/createApplication/);
+            await expect(application.runAsync(["probe"])).rejects.toThrow(/Application\.create/);
 
             expect(activations()).toBe(0);
             expect(application.getIsRegistered()).toBe(false);
