@@ -5,7 +5,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { AdwApplication, AdwApplicationWindow, AdwWindow } from "@gtkx/jsx/adw";
 import { GtkButton } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
-import { cleanup, getRoles, prettyWidget, render, screen, within } from "@gtkx/testing";
+import { act, cleanup, getRoles, prettyWidget, render, screen, within } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { createAppIdFactory } from "../helpers/unique-name.js";
@@ -66,19 +66,25 @@ describe("queries scoped to an application", () => {
             expect(prettyWidget(application)).toContain("owned-first");
             expect(prettyWidget(application)).not.toContain("foreign-button");
 
-            await rerender(view(false));
-            expect(appRef.current).toBe(application);
-            expect(application.getWindows()).toEqual([]);
-            expect(scope.queryAllByRole(Gtk.AccessibleRole.WINDOW)).toEqual([]);
-            expect(getRoles(application).size).toBe(0);
-            expect(prettyWidget(application)).toBe("");
-            expect(() => scope.getByName("owned-first")).toThrow();
-            expect(screen.getByName("foreign-button")).toBeRooted();
+            application.hold();
 
-            await rerender(view(true));
-            expect(appRef.current).toBe(application);
-            expect(scope.getAllByRole(Gtk.AccessibleRole.BUTTON, { name: "Shared action" })).toHaveLength(2);
-            expect(scope.queryByName("foreign-button")).toBeNull();
+            try {
+                await rerender(view(false));
+                expect(appRef.current).toBe(application);
+                expect(application.getWindows()).toEqual([]);
+                expect(scope.queryAllByRole(Gtk.AccessibleRole.WINDOW)).toEqual([]);
+                expect(getRoles(application).size).toBe(0);
+                expect(prettyWidget(application)).toBe("");
+                expect(() => scope.getByName("owned-first")).toThrow();
+                expect(screen.getByName("foreign-button")).toBeRooted();
+
+                await rerender(view(true));
+                expect(appRef.current).toBe(application);
+                expect(scope.getAllByRole(Gtk.AccessibleRole.BUTTON, { name: "Shared action" })).toHaveLength(2);
+                expect(scope.queryByName("foreign-button")).toBeNull();
+            } finally {
+                await act(() => application.release());
+            }
         } finally {
             await cleanup();
         }
