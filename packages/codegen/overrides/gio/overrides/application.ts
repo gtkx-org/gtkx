@@ -340,6 +340,7 @@ const tearDownApplication = (application: Application): void => {
         return;
     }
 
+    registeredApplications.add(application);
     const owner: Application & WindowOwner = application;
     const windows = owner.getWindows?.() ?? [];
 

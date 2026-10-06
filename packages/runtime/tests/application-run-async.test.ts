@@ -183,6 +183,7 @@ describe("Application.runAsync", () => {
         expect(activations()).toBe(0);
         expect(shutdowns()).toBe(0);
         expect(application.getIsRegistered()).toBe(false);
+        expect(application.getRegistrationState()).toBe("unregistered");
         expect(Gio.Application.getDefault()).toBeNull();
     });
 
@@ -197,6 +198,7 @@ describe("Application.runAsync", () => {
 
         expect(shutdowns()).toBe(1);
         expect(application.getIsRegistered()).toBe(false);
+        expect(application.getRegistrationState()).toBe("shutDown");
         expect(Gio.Application.getDefault()).toBeNull();
     });
 
