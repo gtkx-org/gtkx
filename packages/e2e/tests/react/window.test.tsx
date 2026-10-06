@@ -30,7 +30,10 @@ const ApplicationCapture = ({ onCapture }: ApplicationCaptureProps): null => {
     const application = useApplication();
 
     useEffect(() => {
+        application.hold();
         onCapture(application);
+
+        return () => application.release();
     }, [application, onCapture]);
 
     return null;
@@ -275,7 +278,12 @@ describe("render - Window", () => {
                 );
             };
 
-            await renderInApplication(<AlternateWindow />);
+            await renderInApplication(
+                <>
+                    <GtkApplicationWindow />
+                    <AlternateWindow />
+                </>,
+            );
             expect(windowRef.current?.getApplication()?.getApplicationId()).toBe(alternateId);
         });
 

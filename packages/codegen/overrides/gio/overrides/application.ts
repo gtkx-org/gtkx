@@ -1,6 +1,6 @@
 import { type AnyClass, callParent, getClassType, registerClass, typeName } from "@gtkx/runtime";
 import { keepAlive } from "@gtkx/runtime/internal";
-import { Application } from "../gio.js";
+import { Application, ApplicationFlags } from "../gio.js";
 
 /** Registration and ownership state tracked for an application. */
 type ApplicationInstance = "primary" | "remote" | "shutDown" | "unregistered";
@@ -30,7 +30,14 @@ interface ApplicationRun {
     finishing: boolean;
     quitRequested: boolean;
     cleanupScheduled: boolean;
+    idleTimer?: ReturnType<typeof setTimeout>;
     startupFailure?: { error: unknown };
+}
+
+interface ApplicationActivity {
+    holds: number;
+    uses: number;
+    idleDeadline?: number;
 }
 
 /** An application class together with the construct properties it accepts. */
@@ -41,7 +48,76 @@ const derivedApplicationClasses: Set<AnyClass<ManagedApplication>> = new Set();
 const quitApplications: WeakSet<Application> = new WeakSet();
 const shuttingDownApplications: WeakSet<Application> = new WeakSet();
 const applicationRuns: WeakMap<Application, ApplicationRun> = new WeakMap();
+const applicationActivity: WeakMap<Application, ApplicationActivity> = new WeakMap();
 const activeApplications: Set<Application> = new Set();
+
+const activityFor = (application: Application): ApplicationActivity =>
+    applicationActivity.getOrInsertComputed(application, () => ({ holds: 0, uses: 0 }));
+
+const refreshApplicationActivity = (application: Application): ApplicationActivity => {
+    const activity = activityFor(application);
+    const owner: Application & WindowOwner = application;
+    const uses = activity.holds + (owner.getWindows?.().length ?? 0);
+
+    if (uses > 0) {
+        delete activity.idleDeadline;
+    } else if (activity.uses > 0) {
+        activity.idleDeadline = performance.now() + application.getInactivityTimeout();
+    }
+
+    activity.uses = uses;
+
+    return activity;
+};
+
+const scheduleApplicationCompletion = (application: Application): void => {
+    const run = applicationRuns.get(application);
+
+    if (!run || run.starting || run.finishing) {
+        return;
+    }
+
+    clearTimeout(run.idleTimer);
+    delete run.idleTimer;
+    const activity = activityFor(application);
+
+    if (!run.quitRequested && activity.uses > 0) {
+        return;
+    }
+
+    const remaining = run.quitRequested ? 0 : (activity.idleDeadline ?? 0) - performance.now();
+
+    if (remaining > 0) {
+        run.idleTimer = setTimeout(() => updateApplicationActivity(application), Math.min(remaining, 2_147_483_647));
+        return;
+    }
+
+    if (run.cleanupScheduled) {
+        return;
+    }
+
+    run.cleanupScheduled = true;
+    queueMicrotask(() => {
+        if (applicationRuns.get(application) !== run) {
+            return;
+        }
+
+        run.cleanupScheduled = false;
+        const current = refreshApplicationActivity(application);
+
+        if (run.quitRequested || (current.uses === 0 && (current.idleDeadline ?? 0) <= performance.now())) {
+            finishApplication(application);
+        } else {
+            scheduleApplicationCompletion(application);
+        }
+    });
+};
+
+/** @internal Reconciles explicit holds and windows after a native ownership change. */
+const updateApplicationActivity = (application: Application): void => {
+    refreshApplicationActivity(application);
+    scheduleApplicationCompletion(application);
+};
 
 const requestApplicationQuit = (application: Application): boolean => {
     const run = applicationRuns.get(application);
@@ -51,16 +127,7 @@ const requestApplicationQuit = (application: Application): boolean => {
     }
 
     run.quitRequested = true;
-
-    if (!run.starting && !run.finishing && !run.cleanupScheduled) {
-        run.cleanupScheduled = true;
-
-        queueMicrotask(() => {
-            if (applicationRuns.get(application) === run) {
-                finishApplication(application);
-            }
-        });
-    }
+    scheduleApplicationCompletion(application);
 
     return true;
 };
@@ -69,6 +136,24 @@ const derivedTypeName = (base: AnyClass<Application>): string => `Gtkx${typeName
 
 const buildApplicationClass = (base: AnyClass<Application>): AnyClass<ManagedApplication> => {
     class DerivedApplication extends base {
+        override hold(): void {
+            super.hold();
+            activityFor(this).holds += 1;
+            updateApplicationActivity(this);
+        }
+
+        override release(): void {
+            const activity = activityFor(this);
+
+            if (activity.holds === 0) {
+                throw new RangeError("Application.release requires a matching hold");
+            }
+
+            super.release();
+            activity.holds -= 1;
+            updateApplicationActivity(this);
+        }
+
         runLocalCommandLine(argv: string[]): CommandLineResult {
             return this.vfuncLocalCommandLine(argv);
         }
@@ -271,6 +356,8 @@ const finishApplication = (application: Application): void => {
     }
 
     run.finishing = true;
+    clearTimeout(run.idleTimer);
+    delete run.idleTimer;
 
     try {
         try {
@@ -287,6 +374,7 @@ const finishApplication = (application: Application): void => {
         return;
     } finally {
         applicationRuns.delete(application);
+        delete activityFor(application).idleDeadline;
         activeApplications.delete(application);
         keepAlive(activeApplications.size > 0);
     }
@@ -302,7 +390,7 @@ declare module "../gio.js" {
     interface Application {
         /**
          * Starts a GTKX-managed application and resolves its command-line exit status after
-         * explicit shutdown. Construct the application with {@link createApplication} or let
+         * shutdown. Construct the application with {@link createApplication} or let
          * the GTKX renderer construct it.
          *
          * @remarks
@@ -310,10 +398,17 @@ declare module "../gio.js" {
          * to an existing instance. Build the UI in an `activate` handler; remote instances
          * cannot own application windows.
          *
-         * Node remains the outer event loop. A primary instance stays active until `quit()`
-         * completes cleanup, including releasing the process-wide default. Closing the last
-         * window or balancing `hold()` and `release()` does not
-         * complete this Promise.
+         * Node remains the outer event loop. A primary instance stays active while it owns
+         * application windows or has unmatched JavaScript `hold()` calls. With neither, it
+         * shuts down after the current JavaScript turn, respecting `inactivityTimeout` after
+         * the final release. Service instances initially wait up to ten seconds for activity.
+         * `quit()` forces shutdown regardless of windows or holds. Cleanup releases the
+         * process-wide default before this Promise resolves.
+         *
+         * Call `hold()` before asynchronous startup work and `release()` when it finishes;
+         * closing a window does not cancel an explicit hold. Holds persist across runs, and
+         * `release()` without a matching JavaScript hold throws. Native library holds other
+         * than GTK application window ownership cannot be observed by this managed loop.
          *
          * Options handled before registration and remote instances resolve immediately. The
          * application remains the process-wide default until `quit()` releases it.
@@ -369,6 +464,15 @@ Application.prototype.runAsync = function (argv: string[]): Promise<number> {
         } else if (!result.isPrimary) {
             applicationRuns.delete(this);
             run.resolve(result.exitStatus);
+        } else {
+            const activity = refreshApplicationActivity(this);
+
+            if (activity.uses === 0 && activity.idleDeadline === undefined &&
+                (this.getFlags() & ApplicationFlags.IS_SERVICE) !== 0) {
+                activity.idleDeadline = performance.now() + 10_000;
+            }
+
+            scheduleApplicationCompletion(this);
         }
     } catch (error) {
         run.starting = false;
@@ -382,6 +486,7 @@ Application.prototype.runAsync = function (argv: string[]): Promise<number> {
 export {
     createApplication,
     getApplicationInstance,
+    updateApplicationActivity,
     type ApplicationConstructor,
     type ApplicationInstance,
 };

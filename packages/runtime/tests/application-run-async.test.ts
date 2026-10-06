@@ -36,8 +36,9 @@ afterEach(async () => {
 });
 
 describe("Application.runAsync", () => {
-    it("waits for quit and resolves after shutdown releases the application", async () => {
+    it("waits for quit while held and resolves after shutdown releases the application", async () => {
         const application = createTrackedApplication();
+        application.hold();
         const activations = countSignal(application, "activate");
         const shutdowns = countSignal(application, "shutdown");
         let settled = false;
@@ -61,6 +62,7 @@ describe("Application.runAsync", () => {
         expect(shutdowns()).toBe(1);
         expect(application.getIsRegistered()).toBe(false);
         expect(Gio.Application.getDefault()).toBeNull();
+        application.release();
         application.quit();
         expect(shutdowns()).toBe(1);
     });
@@ -219,6 +221,7 @@ describe("Application.runAsync", () => {
 
         registerClass(PersistentApplication, { typeName: uniqueName("GtkxAsyncPersistentApplication") });
         const application = track(createApplicationFrom(PersistentApplication));
+        application.hold();
         const activations = countSignal(application, "activate");
         const shutdowns = countSignal(application, "shutdown");
         let settled = false;
@@ -240,10 +243,12 @@ describe("Application.runAsync", () => {
         expect(shutdowns()).toBe(1);
         expect(application.getIsRegistered()).toBe(false);
         expect(Gio.Application.getDefault()).toBeNull();
+        application.release();
     });
 
     it("rejects an overlapping run without ending the active run", async () => {
         const application = createTrackedApplication();
+        application.hold();
         const activations = countSignal(application, "activate");
         const shutdowns = countSignal(application, "shutdown");
         let settled = false;
@@ -263,6 +268,7 @@ describe("Application.runAsync", () => {
 
         await expect(completion).resolves.toBe(0);
         expect(shutdowns()).toBe(1);
+        application.release();
     });
 
     it("returns a fresh pending promise when a completed application is restarted", async () => {
@@ -274,6 +280,7 @@ describe("Application.runAsync", () => {
         await expect(first).resolves.toBe(0);
 
         let settled = false;
+        application.hold();
         const second = application.runAsync(["probe"]);
         void second.then(() => {
             settled = true;
@@ -291,6 +298,7 @@ describe("Application.runAsync", () => {
         await expect(second).resolves.toBe(0);
         expect(shutdowns()).toBe(2);
         expect(Gio.Application.getDefault()).toBeNull();
+        application.release();
     });
 
     it("restarts immediately after quit without waiting for the previous promise", async () => {
@@ -299,6 +307,7 @@ describe("Application.runAsync", () => {
         const shutdowns = countSignal(application, "shutdown");
         const first = application.runAsync(["probe"]);
         application.quit();
+        application.hold();
         const second = application.runAsync(["probe"]);
         let settled = false;
         void second.then(() => {
@@ -319,6 +328,7 @@ describe("Application.runAsync", () => {
         await expect(second).resolves.toBe(0);
         expect(shutdowns()).toBe(2);
         expect(Gio.Application.getDefault()).toBeNull();
+        application.release();
     });
 
     it("preserves caller arguments when a native parent handles a mutable argv", async () => {

@@ -11,7 +11,11 @@ const OVERRIDES: Record<string, Override[]> = {
         { module: "sidebar", exports: "*", needsBootstrap: true },
         { module: "combo-row", exports: "*", needsBootstrap: true },
     ],
-    gio: [{ module: "application", exports: "*", needsBootstrap: true }],
+    gio: [{
+        module: "application",
+        exports: ["createApplication", "getApplicationInstance", "type ApplicationConstructor", "type ApplicationInstance"],
+        needsBootstrap: true,
+    }],
     glib: [
         { module: "regex", exports: ["MatchInfo"], needsBootstrap: true },
         { module: "variant", exports: "*" },
@@ -24,6 +28,7 @@ const OVERRIDES: Record<string, Override[]> = {
         { module: "value", exports: "*", needsBootstrap: true },
     ],
     gtk: [
+        { module: "application", exports: [], needsBootstrap: true },
         { module: "widget-class", exports: ["WidgetClass"], needsBootstrap: true },
         { module: "text-view", exports: "*", needsBootstrap: true },
         { module: "window", exports: [], needsBootstrap: true },

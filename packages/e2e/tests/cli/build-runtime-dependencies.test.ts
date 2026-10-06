@@ -34,6 +34,7 @@ try {
         flags: ApplicationFlags.NON_UNIQUE,
     });
     application.on("activate", () => {});
+    application.hold();
     assert.equal(Application.getDefault(), null);
     const completion = application.runAsync(["gtkx-runtime-dependencies"]);
     assert.equal(application.getIsRegistered(), true);
@@ -41,6 +42,7 @@ try {
     assert.equal(Application.getDefault(), application);
     setImmediate(() => application.quit());
     assert.equal(await completion, 0);
+    application.release();
     assert.equal(application.getIsRegistered(), false);
     assert.equal(Application.getDefault(), null);
     process.stdout.write("dependencies-ok");

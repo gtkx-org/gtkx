@@ -62,6 +62,13 @@ describe("Application.runAsync — holding the native loop alive", () => {
         });
         expect(await waitForClose(child)).toBe(1);
     });
+
+    it("exits naturally after an application has no holds or windows", async () => {
+        const child = spawnWithParentDeathSignal(process.execPath, [...FIXTURE_ARGS, "idle"], {
+            stdio: "ignore",
+        });
+        expect(await waitForClose(child)).toBe(0);
+    });
 });
 
 describe("Application.quit — windows held by the application", () => {

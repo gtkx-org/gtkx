@@ -1,6 +1,8 @@
 import { loadConfig } from "@gtkx/config";
 import * as Gio from "@gtkx/gi/gio";
 import { type ApplicationInstance, getApplicationInstance } from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+import { onExit } from "@gtkx/runtime";
 import { info, installGracefulShutdown } from "@gtkx/utils";
 import { readFile } from "node:fs/promises";
 import { createServer } from "vite";
@@ -27,6 +29,22 @@ const currentApplicationInstance = (): ApplicationInstance => {
     const application = Gio.Application.getDefault();
 
     return application === null ? "unregistered" : getApplicationInstance(application);
+};
+
+const watchApplicationShutdown = (onShutdown: () => void): void => {
+    GObject.ObjectClass.peek(Gio.Application);
+    const signalId = GObject.signalLookup("shutdown", Gio.Application);
+    const hookId = GObject.signalAddEmissionHook(signalId, 0, (_hint, values) => {
+        const application = values[0]?.getObject();
+
+        if (application && application === Gio.Application.getDefault()) {
+            onShutdown();
+        }
+
+        return true;
+    });
+
+    onExit(() => GObject.signalRemoveEmissionHook(signalId, hookId));
 };
 
 const waitForApplicationId = async (timeoutMs: number, shouldKeepWaiting: () => boolean): Promise<string | null> => {
@@ -75,9 +93,7 @@ const createDevRunnerDeps = (
         return startMcpClient(applicationId);
     },
     stopMcpClient,
-    watchApplicationShutdown: (onShutdown) => {
-        Gio.Application.getDefault()?.on("shutdown", onShutdown);
-    },
+    watchApplicationShutdown,
     watchUncaughtErrors: (onUncaughtError) => {
         process.on("uncaughtException", onUncaughtError);
         process.on("unhandledRejection", onUncaughtError);

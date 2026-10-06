@@ -581,7 +581,6 @@ const refusedExitCode = (): number => (process.exitCode === undefined ? 1 : Numb
 
 const connectApplication = async (session: DevSession, liveApplicationId: string): Promise<void> => {
     const { deps, server } = session;
-    deps.watchApplicationShutdown(onApplicationShutdown(session));
     const applicationId = (await deps.getConfiguredApplicationId(process.cwd())) ?? liveApplicationId;
     deps.log(`Connected application ID: ${applicationId}`);
     await deps.startMcpClient(applicationId, (id) => loadModuleExclusively(server, id));
@@ -723,6 +722,7 @@ const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
             session.failure.report(cause);
         });
 
+        deps.watchApplicationShutdown(onApplicationShutdown(session));
         watchProjectFiles(session);
         await loadEntry(session, entryPath);
         await attachApplication(session);
