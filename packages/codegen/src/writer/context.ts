@@ -1,6 +1,7 @@
 import type { Library } from "../gir/library.js";
 import { externalPackageFor } from "../gir/external-namespaces.js";
 import { declaredTypeNames, type GirNamespace } from "../gir/namespace.js";
+import { namespaceOverrides } from "../store/gi/overrides.js";
 import { type Declaration, ModuleBuilder } from "./module.js";
 
 type BootstrapCallOptions = {
@@ -122,6 +123,27 @@ class ModuleContext {
         }
 
         return `${this.addCrossNamespaceImport(namespaceName)}.${name}`;
+    }
+
+    qualifyType(namespaceName: string, name: string): string {
+        const directory = namespaceName.toLowerCase();
+        const override = namespaceOverrides(directory).find((entry) =>
+            entry.exports !== "*" && entry.exports.includes(name)
+        );
+
+        if (override === undefined) {
+            return this.qualify(namespaceName, name);
+        }
+
+        const prefix = namespaceName === this.namespace.name ? "." : `../${directory}`;
+        const local = `Override${namespaceName}${name}`;
+        this.module.imports.addNamed(`${prefix}/overrides/${override.module}.js`, name, true, local);
+
+        if (namespaceName !== this.namespace.name) {
+            this.dependencies.add(directory);
+        }
+
+        return local;
     }
 
     hoistBaseRef(expression: string): string {

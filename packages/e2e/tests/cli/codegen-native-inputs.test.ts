@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
-import { isolateTypeConsumer, runNativeConsumer, typecheckFile, typecheckProject } from "./type-consumer.js";
+import { isolateTypeConsumer, runNativeConsumer, typecheckFile, typecheckProjectResult } from "./type-consumer.js";
 
 const CONFIG = `export default {
     applicationId: "org.gtkx.nativeinputs",
@@ -19,8 +19,18 @@ const ACCEPTED = IMPORTS + `import { createElement } from "react";
 import { NativeInputsProbe } from "@gtkx/jsx/nativeinputs";
 import { GtkActivateAction } from "@gtkx/jsx/gtk";
 import { registerClass } from "@gtkx/runtime";
+import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
-import type * as Gtk from "@gtkx/gi/gtk";
+import * as Gtk from "@gtkx/gi/gtk";
+
+export const constructedVariant = new GLib.Variant("(si)", ["value", 42]);
+export const nativeVariant = GLib.Variant.newInt32(42);
+export const nativeProperty = GObject.paramSpecInt("level", null, null, 0, 100, 0, GObject.ParamFlags.READWRITE);
+export const overriddenProperty = GObject.ParamSpec.override("name", Gio.Action);
+export const objectClass = GObject.ObjectClass.peek(GObject.Object);
+export const widgetClass = Gtk.WidgetClass.peek(Gtk.Widget);
+export const application = Gio.Application.getDefault();
+export const constructedApplication = new Gio.Application();
 
 info.launch(null, context);
 NativeInputs.useContext(context);
@@ -162,7 +172,8 @@ describe("generated native object inputs", () => {
     });
 
     it("emits consumer declarations for registered classes and native return values", () => {
-        expect(typecheckProject(project, "declarations.json")).toBe(0);
+        const result = typecheckProjectResult(project, "declarations.json");
+        expect(result).toEqual({ status: 0, output: "" });
     });
 
     it.each(Object.keys(REJECTED))("rejects an invalid native input or method in %s", (name) => {

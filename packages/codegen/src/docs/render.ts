@@ -69,6 +69,12 @@ const LEADING_NAMESPACES = ["Adw", "Gtk"];
 const DOCS_SIGNATURE_NAMESPACE = "$docs";
 const WHITESPACE_RUN = /\s+/g;
 
+class DocsSignatureContext extends ModuleContext {
+    override qualifyType(namespaceName: string, name: string): string {
+        return this.qualify(namespaceName, name);
+    }
+}
+
 const docsTarget = (library: Library): TsTypeTarget =>
     recordTypeTarget(
         library,
@@ -351,7 +357,7 @@ const namespaceOrder = (name: string): string => {
 };
 
 const docsSignatureContext = (namespace: GirNamespace, library: Library): ModuleContext =>
-    new ModuleContext({ ...namespace, name: DOCS_SIGNATURE_NAMESPACE }, library);
+    new DocsSignatureContext({ ...namespace, name: DOCS_SIGNATURE_NAMESPACE }, library);
 
 const originSignatureBlocks = (entries: OriginSignatureEntry[]): string[] =>
     sortStringsBy(entries, (item) => item.name).map((item) =>

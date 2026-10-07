@@ -157,10 +157,7 @@ impl Encoder for RefCodec {
                     });
                 }
 
-                if inner_type == ValueType::Object
-                    && inner.is_array()?
-                    && Array::from_unknown(inner)?.len() > 0
-                {
+                if inner_type == ValueType::Object && inner.is_array()? {
                     let ffi::Stash::Storage(storage) = array_codec.encode(env, inner)? else {
                         bail!("Expected Storage from array encode for Ref<Array>")
                     };
@@ -170,7 +167,7 @@ impl Encoder for RefCodec {
                     }
 
                     Ok(Self::ptr_slot_stash(storage))
-                } else if is_nullish || (inner_type == ValueType::Object && inner.is_array()?) {
+                } else if is_nullish {
                     Ok(Self::null_ptr_stash())
                 } else {
                     bail!("Expected Array, Null, or Undefined for Ref<Array>")

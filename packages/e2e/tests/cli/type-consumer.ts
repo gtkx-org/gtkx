@@ -9,6 +9,8 @@ const WORKSPACE = fileURLToPath(new URL("../../../..", import.meta.url));
 const TYPESCRIPT_CLI = join(WORKSPACE, "node_modules/typescript/bin/tsc");
 const PACKAGES = ["cairo", "components", "config", "css", "forms", "native", "react", "runtime", "utils"];
 
+type TypeScriptResult = { status: number; output: string };
+
 const compileNativeFixture = (project: CliProject, source: string, library: string, pkg: string): void => {
     const flags = execFileSync(resolveExecutable("pkg-config"), ["--cflags", "--libs", pkg], {
         encoding: "utf8",
@@ -89,7 +91,7 @@ const isolateTypeConsumer = (project: CliProject, additionalPackages: readonly s
     copyTypeDependencies(project);
 };
 
-const runTypeScript = (project: CliProject, args: readonly string[], timeout?: number): number => {
+const runTypeScript = (project: CliProject, args: readonly string[], timeout?: number): TypeScriptResult => {
     const result = spawnSync(process.execPath, [TYPESCRIPT_CLI, ...args], {
         cwd: project.root,
         encoding: "utf8",
@@ -100,7 +102,7 @@ const runTypeScript = (project: CliProject, args: readonly string[], timeout?: n
         throw result.error ?? new Error("TypeScript did not exit normally");
     }
 
-    return result.status;
+    return { status: result.status, output: `${result.stdout}${result.stderr}` };
 };
 
 const typecheckFile = (project: CliProject, file: string, compilerOptions: readonly string[] = []): number =>
@@ -115,9 +117,12 @@ const typecheckFile = (project: CliProject, file: string, compilerOptions: reado
         "--types", "node",
         ...compilerOptions,
         file,
-    ]);
+    ]).status;
 
 const typecheckProject = (project: CliProject, configFile: string, timeout?: number): number =>
+    typecheckProjectResult(project, configFile, timeout).status;
+
+const typecheckProjectResult = (project: CliProject, configFile: string, timeout?: number): TypeScriptResult =>
     runTypeScript(project, ["--project", configFile], timeout);
 
 const typecheckSource = (project: CliProject, source: string): number => {
@@ -132,5 +137,6 @@ export {
     runNativeConsumer,
     typecheckFile,
     typecheckProject,
+    typecheckProjectResult,
     typecheckSource,
 };

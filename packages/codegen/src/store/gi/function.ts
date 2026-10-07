@@ -176,12 +176,12 @@ const renderNamespaceFunctionDeclaration = (options: NamespaceFunctionOptions): 
 
     const signature = renderMethodSignature(context, fn);
     const renderedReturnType = renderMethodReturnType(context, fn);
-    const descriptorFreeBrand = DESCRIPTOR_FREE_PROPERTY_SPEC_FACTORIES.has(fn.cIdentifier ?? "")
-        ? context.addRuntimeInternalTypeImport("descriptorFreePropertySpec")
+    const descriptorFreeSpec = DESCRIPTOR_FREE_PROPERTY_SPEC_FACTORIES.has(fn.cIdentifier ?? "")
+        ? context.addRuntimeInternalTypeImport("DescriptorFreePropertySpec")
         : undefined;
-    const returnType = descriptorFreeBrand === undefined
+    const returnType = descriptorFreeSpec === undefined
         ? renderedReturnType
-        : `${renderedReturnType} & { readonly [${descriptorFreeBrand}]: true }`;
+        : `${descriptorFreeSpec}<${renderedReturnType}>`;
     const body = renderMethodBody(context, fn, { bindingExpression: bindingName, returnTypeOverride: returnType });
 
     return renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body);

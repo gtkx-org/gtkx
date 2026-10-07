@@ -2,7 +2,7 @@ import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
-import { type AnyClass, getParamSpecValueType, type TypedClass } from "@gtkx/runtime";
+import { type AnyClass, type TypedClass } from "@gtkx/runtime";
 import { assert, expect, test } from "vitest";
 import { drainAfterEachTest, drainGC } from "./helpers/memory.js";
 
@@ -20,7 +20,7 @@ const buildValue = (type: ValueType, fill: (value: GObject.Value) => void): GObj
 
 const named = (name: string): GObject.Type => GObject.typeFromName(name);
 const propertyType = (name: string): GObject.Type =>
-    getParamSpecValueType(GObject.ObjectClass.peek(GIMarshallingTests.PropertiesObject).findProperty(name));
+    GObject.ObjectClass.peek(GIMarshallingTests.PropertiesObject).findProperty(name).valueType;
 const fixtureFloat = 314 / 100;
 
 const intValue = (n: number): GObject.Value => buildValue(named("gint"), (value) => {

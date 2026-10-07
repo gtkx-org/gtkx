@@ -32,6 +32,10 @@ void gtkx_collection_visit(int state, void (*callback)(char **)) {
     callback(gtkx_collection_strings(state));
 }
 
+int gtkx_collection_ref_length(char ***value) {
+    return *value == NULL ? -1 : (int)g_strv_length(*value);
+}
+
 int gtkx_collection_visit_ref(int state, void (*callback)(char ***)) {
     if (state == 3) {
         callback(NULL);
@@ -41,12 +45,7 @@ int gtkx_collection_visit_ref(int state, void (*callback)(char ***)) {
     char **value = g_strdupv(gtkx_collection_strings(state));
     callback(&value);
 
-    int length = 0;
-    if (value != NULL) {
-        while (value[length] != NULL) {
-            length++;
-        }
-    }
+    int length = gtkx_collection_ref_length(&value);
     g_strfreev(value);
     return length;
 }

@@ -18,7 +18,7 @@ const RegisteredRail = registerClass(Rail, {
     typeName: "GtkxPropertyHelperRail",
     implements: [Gtk.Orientable],
     properties: {
-        orientation: GObject.paramSpecOverride("orientation", Gtk.Orientable),
+        orientation: GObject.ParamSpec.override("orientation", Gtk.Orientable),
     },
 });
 const rail = new RegisteredRail({});
@@ -30,9 +30,9 @@ class SpacedWidget extends Gtk.Widget {}
 const RegisteredSpacedWidget = registerClass(SpacedWidget, {
     typeName: "GtkxPropertyHelperSpacedWidget",
     properties: {
-        "margin-top": GObject.paramSpecOverride("margin-top", Gtk.Widget),
-        margin_bottom: GObject.paramSpecOverride("margin_bottom", Gtk.Widget),
-        marginStart: GObject.paramSpecOverride("marginStart", Gtk.Widget),
+        "margin-top": GObject.ParamSpec.override("margin-top", Gtk.Widget),
+        margin_bottom: GObject.ParamSpec.override("margin_bottom", Gtk.Widget),
+        marginStart: GObject.ParamSpec.override("marginStart", Gtk.Widget),
     },
 });
 const widget = new RegisteredSpacedWidget({});
@@ -47,7 +47,7 @@ const PROPERTY_OVERRIDE_SPELLING_PROBE = `import * as GObject from "@gtkx/gi/gob
 import * as Gtk from "@gtkx/gi/gtk";
 
 const names = ["margin-top", "margin_top", "marginTop"].map(
-    (name) => GObject.paramSpecOverride(name, Gtk.Widget).name,
+    (name) => GObject.ParamSpec.override(name, Gtk.Widget).name,
 );
 process.stdout.write(names.join(","));
 `;
@@ -77,7 +77,7 @@ class Visibility extends GObject.Object {
 const RegisteredVisibility = registerClass(Visibility, {
     typeName: "GtkxPropertyHelperUnionOverride",
     properties: {
-        visible: GObject.paramSpecOverride("visible", source),
+        visible: GObject.ParamSpec.override("visible", source),
     },
 });
 GObject.getProperty(new RegisteredVisibility({}), "visible");

@@ -240,7 +240,7 @@ const renderPropertyDescriptor = (context: ModuleContext, property: GirProperty)
 };
 
 const renderGenericGetBody = (context: ModuleContext, property: GirProperty, tsType: string): string => {
-    context.addRuntimeImport("getProperty");
+    context.addRuntimeInternalImport("getProperty");
     context.addRuntimeImport("t");
     const descriptor = renderPropertyDescriptor(context, property);
 
@@ -248,7 +248,7 @@ const renderGenericGetBody = (context: ModuleContext, property: GirProperty, tsT
 };
 
 const renderGenericSetBody = (context: ModuleContext, property: GirProperty): string => {
-    context.addRuntimeImport("setProperty");
+    context.addRuntimeInternalImport("setProperty");
     context.addRuntimeImport("t");
     const descriptor = renderPropertyDescriptor(context, property);
 

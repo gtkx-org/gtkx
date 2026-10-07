@@ -247,7 +247,7 @@ const renderNamedModuleType = (
     name: ReferenceName,
     options: ModuleTypeOptions,
 ): string => {
-    const qualified = context.qualify(name.namespaceName, name.typeName);
+    const qualified = context.qualifyType(name.namespaceName, name.typeName);
 
     if (options.isValueWidened && isValueTypeName(name)) {
         context.addRuntimeTypeImport("JsValue");

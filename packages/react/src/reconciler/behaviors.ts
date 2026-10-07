@@ -1,4 +1,4 @@
-import type { Application, ApplicationConstructor } from "@gtkx/gi/gio";
+import type { Application } from "@gtkx/gi/gio";
 import type * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { getClassType, getInstanceType, TYPE_INVALID, typeIsA } from "@gtkx/runtime";
@@ -270,9 +270,9 @@ const rowSlot = <P extends Gtk.Widget & IndexedChildHost<Gtk.Widget>>(): Element
     });
 
 const applicationCreator = <P extends Application, C extends Props>(
-    base: ApplicationConstructor<P, C>,
+    base: new (props: C) => P,
 ): ElementBehavior<P> => ({
-    create: (props) => base.create(props as C),
+    create: (props) => new base(props as C),
 });
 
 export {

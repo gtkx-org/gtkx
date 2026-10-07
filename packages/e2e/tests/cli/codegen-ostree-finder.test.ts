@@ -12,7 +12,7 @@ import { join } from "node:path";
 import * as Gio from "@gtkx/gi/gio";
 import * as OSTree from "@gtkx/gi/ostree";
 import { keepAlive } from "@gtkx/native";
-import { toVariant } from "@gtkx/gi/glib";
+import { Variant } from "@gtkx/gi/glib";
 import { quit } from "@gtkx/runtime";
 
 using temporary = mkdtempDisposableSync(join(tmpdir(), "gtkx-ostree-finder-values-"));
@@ -52,7 +52,7 @@ try {
     assert.equal(wroteCommit, true);
     assert.equal(remote.setCollectionRefImmediate(ref, checksum, null), true);
     assert.equal(remote.regenerateSummary(null, null), true);
-    const options = toVariant("${OPTIONS_TYPE}", { "collection-id": toVariant("s", collectionId) });
+    const options = new Variant("${OPTIONS_TYPE}", { "collection-id": new Variant("s", collectionId) });
     const remoteUri = remoteFile.getUri();
     assert.equal(parent.remoteAdd("local", remoteUri, options, null), true);
 

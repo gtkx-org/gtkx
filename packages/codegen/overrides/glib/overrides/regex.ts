@@ -1,5 +1,4 @@
-import { matchAllRegex, matchRegex } from "@gtkx/runtime";
-import { installMatchInfo, replaceRegexEval } from "@gtkx/runtime/internal";
+import { installMatchInfo, matchAllRegex, matchRegex, replaceRegexEval } from "@gtkx/runtime/internal";
 import { MatchInfo as RawMatchInfo, Regex, type RegexEvalCallback, type RegexMatchFlags } from "../glib.js";
 
 export abstract class MatchInfo extends RawMatchInfo {}

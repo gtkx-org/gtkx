@@ -1,4 +1,4 @@
-import { Bytes, Variant, VariantType } from "../glib.js";
+import { Bytes, Variant as GeneratedVariant, VariantType } from "../glib.js";
 
 /** JavaScript type every GVariant basic type code unpacks to, with a nested variant held as `Nested`. */
 type BasicValueMap<Nested> = {
@@ -37,7 +37,7 @@ type BasicCode = keyof BasicValueMap<unknown>;
 /** JavaScript type a byte array (`ay`) unpacks to. */
 type VariantByteArray = ReturnType<Bytes["unrefToArray"]>;
 /** Values a byte array (`ay`) packs from. */
-type ByteArrayInput = Uint8Array | number[];
+type ByteArrayInput = string | Uint8Array | number[];
 
 /**
  * Parses the element type of an array, yielding the array type it produces and the rest of the string. An array of
@@ -77,13 +77,10 @@ type ParsePair<S extends string, Bytes, Nested> =
             : never
         : never;
 
-/**
- * Parses a dictionary entry into the collection an array of those entries unpacks to, a record for string keys and a
- * `Map` otherwise, plus the rest of the string.
- */
+/** Parses a dictionary entry into a record, plus the rest of the string. */
 type ParseDict<S extends string, Bytes, Nested> =
-    ParsePair<S, Bytes, Nested> extends [infer K, infer V, infer R extends string]
-        ? [[K] extends [string] ? Record<string, V> : Map<K, V>, R]
+    ParsePair<S, Bytes, Nested> extends [unknown, infer V, infer R extends string]
+        ? [Record<string, V>, R]
         : never;
 
 /** Parses a standalone dictionary entry into a key and value pair, yielding it and the rest of the string. */
@@ -122,33 +119,54 @@ type ParsedValue<S extends string, Bytes, Nested> = [Parse<S, Bytes, Nested>] ex
 
 /**
  * JavaScript type a variant of type string `S` unpacks to, or `unknown` when `S` is not one complete type. A byte
- * array (`ay`) unpacks to {@link VariantByteArray} and a nested variant (`v`) to the `Variant` itself.
+ * array (`ay`) unpacks to {@link VariantByteArray}, dictionaries to records, and a nested variant (`v`) to the
+ * `Variant` itself. Signed and unsigned 64-bit integers unpack as exact `bigint` values.
  */
 type VariantValue<S extends string> = ParsedValue<S, VariantByteArray, Variant>;
+
+type InputValue<Value> = Value extends GeneratedVariant ? Value
+    : Value extends Uint8Array ? ByteArrayInput
+        : Value extends bigint ? bigint | number
+            : Value extends object ? { [Key in keyof Value]: InputValue<Value[Key]> }
+                : Value;
+
 /**
- * JavaScript type {@link toVariant} packs into a variant of type string `S`, or `unknown` when `S` is not one
- * complete type. The same as {@link VariantValue}, except that a byte array (`ay`) also packs from a `number[]`.
+ * Values accepted by the variant constructor for type string `S`, or `unknown` for a dynamic signature.
+ * Byte arrays accept strings, `Uint8Array`, or byte arrays; 64-bit integers accept `bigint` or safe integer numbers.
  */
-type VariantInput<S extends string> = ParsedValue<S, ByteArrayInput, Variant>;
+type VariantInput<S extends string> = InputValue<VariantValue<S>>;
 /**
  * JavaScript type a variant of type string `S` unpacks to when every nested variant is unwrapped as well, so a `v`
  * reads as `unknown`.
  */
 type RecursiveVariantValue<S extends string> = ParsedValue<S, VariantByteArray, unknown>;
 
-/** Options {@link fromVariant} reads. */
-type FromVariantOptions = {
-    /**
-     * Whether to unwrap every nested variant (`v`) into the value it holds, all the way down, instead of handing back
-     * the `Variant` itself. Discards the type information those variants carry.
-     */
-    recursive?: boolean;
+/** Shallowly unpacked values, retaining variants for container children. */
+type ShallowVariantValue<S extends string> = unknown extends VariantValue<S> ? unknown
+    : S extends "ay" ? VariantByteArray
+        : S extends `a{${string}}` ? Record<string, Variant>
+            : S extends `a${string}` ? Variant[]
+                : S extends `m${string}` ? Variant | null
+                    : S extends `(${string})` | `{${string}}` ?
+                            VariantValue<S> extends infer Tuple extends unknown[] ? { [Key in keyof Tuple]: Variant }
+                                : unknown
+                        : VariantValue<S>;
+
+/**
+ * A variant with unpacked types inferred from its constructor signature. An explicit method type argument
+ * describes the expected signature for variants returned by native functions; it does not validate the value.
+ */
+type Variant<S extends string = string> = GeneratedVariant<S>;
+
+type VariantStatics = Omit<typeof GeneratedVariant, "new"> & {
+    /** Packs a value using its GVariant type signature, like the constructor. */
+    new: <S extends string>(typeString: S, value: VariantInput<S>) => Variant<S>;
 };
 
-/** {@link FromVariantOptions} with recursive unwrapping selected, typing the result accordingly. */
-type RecursiveFromVariantOptions = {
-    /** Unwraps every nested variant (`v`) into the value it holds, all the way down. */
-    recursive: true;
+/** The native variant class with GJS-compatible construction and its existing native factory methods. */
+type VariantConstructor = VariantStatics & {
+    /** Packs a value using its GVariant type signature. Signed and unsigned 64-bit values unpack as `bigint`. */
+    new<S extends string>(typeString: S, value: VariantInput<S>): Variant<S>;
 };
 
 type VariantTypeNode =
@@ -308,8 +326,10 @@ const parseVariantType = (typeString: string): VariantTypeNode => {
 const isByteArray = (node: VariantTypeNode): boolean =>
     node.kind === "array" && node.element.kind === "basic" && node.element.code === "y";
 
-const unpackChildren = (variant: Variant, unpackChild: (child: Variant) => unknown): unknown[] => {
-    const children: unknown[] = [];
+type UnpackDepth = "shallow" | "deep" | "recursive";
+
+const unpackChildren = <Value>(variant: Variant, unpackChild: (child: Variant) => Value): Value[] => {
+    const children: Value[] = [];
     const count = variant.nChildren();
 
     for (let index = 0; index < count; index += 1) {
@@ -323,64 +343,61 @@ const unpackPair = (
     key: VariantTypeNode,
     value: VariantTypeNode,
     entry: Variant,
-    isRecursive: boolean,
+    depth: UnpackDepth,
 ): [unknown, unknown] => [
-    unpackNode(key, entry.getChildValue(0), isRecursive),
-    unpackNode(value, entry.getChildValue(1), isRecursive),
+    unpackChild(key, entry.getChildValue(0), depth),
+    unpackChild(value, entry.getChildValue(1), depth),
 ];
 
 const unpackDict = (
     node: { key: VariantTypeNode; value: VariantTypeNode },
     variant: Variant,
-    isRecursive: boolean,
-): Record<string, unknown> | Map<unknown, unknown> => {
-    const entries = unpackChildren(variant, (entry) => unpackPair(node.key, node.value, entry, isRecursive)) as [
-        unknown,
-        unknown,
-    ][];
+    depth: UnpackDepth,
+): Record<string, unknown> => {
+    const entries = unpackChildren(variant, (entry): [string, unknown] => [
+        String(unpackNode(node.key, entry.getChildValue(0), depth)),
+        unpackChild(node.value, entry.getChildValue(1), depth),
+    ]);
 
-    if (!isStringKeyed(node.key)) {
-        return new Map(entries);
-    }
-
-    const stringEntries: [string, unknown][] = entries.map(([key, value]) => [key as string, value]);
-
-    return Object.fromEntries(stringEntries);
+    return Object.fromEntries(entries);
 };
 
-const unpackMaybe = (element: VariantTypeNode, variant: Variant, isRecursive: boolean): unknown => {
+const unpackMaybe = (element: VariantTypeNode, variant: Variant, depth: UnpackDepth): unknown => {
     const child = variant.getMaybe();
 
-    return child === null ? null : unpackNode(element, child, isRecursive);
+    return child === null ? null : unpackChild(element, child, depth);
 };
 
-const unpackNested = (variant: Variant, isRecursive: boolean): unknown => {
+const unpackNested = (variant: Variant, depth: UnpackDepth): unknown => {
     const held = variant.getVariant();
 
-    return isRecursive ? unpackNode(parseVariantType(held.getTypeString()), held, true) : held;
+    return depth === "recursive" ? unpackNode(parseVariantType(held.getTypeString()), held, depth) : held;
 };
 
-const unpackNode = (node: VariantTypeNode, variant: Variant, isRecursive: boolean): unknown => {
+const unpackChild = (node: VariantTypeNode, variant: Variant, depth: UnpackDepth): unknown =>
+    depth === "shallow" ? variant : unpackNode(node, variant, depth);
+
+const unpackNode = (node: VariantTypeNode, variant: Variant, depth: UnpackDepth): unknown => {
     switch (node.kind) {
         case "basic": {
-            return node.code === "v" ? unpackNested(variant, isRecursive) : unpackBasic[node.code](variant);
+            return node.code === "v" ? unpackNested(variant, depth) : unpackBasic[node.code](variant);
         }
         case "array": {
             return isByteArray(node)
                 ? variant.getDataAsBytes().unrefToArray()
-                : unpackChildren(variant, (child) => unpackNode(node.element, child, isRecursive));
+                : unpackChildren(variant, (child) => unpackChild(node.element, child, depth));
         }
         case "dict": {
-            return unpackDict(node, variant, isRecursive);
+            return unpackDict(node, variant, depth);
         }
         case "entry": {
-            return unpackPair(node.key, node.value, variant, isRecursive);
+            return unpackPair(node.key, node.value, variant, depth);
         }
         case "tuple": {
-            return node.items.map((item, index) => unpackNode(item, variant.getChildValue(index), isRecursive));
+            return node.items.map((item, index) => unpackChild(item, variant.getChildValue(index), depth));
         }
         case "maybe": {
-            return unpackMaybe(node.element, variant, isRecursive);
+            return unpackMaybe(node.element, variant, depth);
         }
     }
 };
@@ -416,11 +433,45 @@ function packSignature(value: unknown): Variant {
     );
 }
 
-const packEntry = (key: VariantTypeNode, value: VariantTypeNode, pair: [unknown, unknown]): Variant =>
-    Variant.newDictEntry(packNode(key, pair[0]), packNode(value, pair[1]));
+const packEntry = (
+    key: VariantTypeNode,
+    value: VariantTypeNode,
+    pair: [unknown, unknown],
+): Variant => Variant.newDictEntry(packNode(key, pair[0]), packNode(value, pair[1]));
 
-const dictEntries = (value: unknown): [unknown, unknown][] =>
-    value instanceof Map ? [...value] : Object.entries(value as Record<string, unknown>);
+const dictEntries = (value: unknown): [string, unknown][] => {
+    if (value === null || typeof value !== "object") {
+        throw new TypeError("Variant dictionaries require a plain object");
+    }
+
+    const prototype: unknown = Object.getPrototypeOf(value);
+
+    if (prototype !== null && prototype !== Object.prototype) {
+        throw new TypeError("Variant dictionaries require a plain object");
+    }
+
+    return Object.entries(value);
+};
+
+const dictionaryKey = (node: VariantTypeNode, key: string): unknown => {
+    if (node.kind !== "basic" || isStringKeyed(node)) {
+        return key;
+    }
+
+    if (node.code === "x" || node.code === "t") {
+        return BigInt(key);
+    }
+
+    if (node.code === "b") {
+        if (key !== "true" && key !== "false") {
+            throw new TypeError("Boolean dictionary keys must be true or false");
+        }
+
+        return key === "true";
+    }
+
+    return Number(key);
+};
 
 const packDict = (
     node: { entryTypeString: string; key: VariantTypeNode; value: VariantTypeNode },
@@ -428,23 +479,35 @@ const packDict = (
 ): Variant =>
     Variant.newArray(
         VariantType.new(node.entryTypeString),
-        dictEntries(value).map((pair) => packEntry(node.key, node.value, pair)),
+        dictEntries(value).map(([key, entry]) =>
+            packEntry(
+                node.key,
+                node.value,
+                [dictionaryKey(node.key, key), entry],
+            )),
     );
 
-const packMaybe = (node: { elementTypeString: string; element: VariantTypeNode }, value: unknown): Variant =>
+const packMaybe = (
+    node: { elementTypeString: string; element: VariantTypeNode },
+    value: unknown,
+): Variant =>
     Variant.newMaybe(
         VariantType.new(node.elementTypeString),
         value === null ? null : packNode(node.element, value),
     );
 
 const packByteArray = (value: unknown): Variant => {
+    if (typeof value === "string") {
+        value = new TextEncoder().encode(`${value}\0`);
+    }
+
     if (!(value instanceof Uint8Array) && !Array.isArray(value)) {
-        throw new TypeError("Expected a Uint8Array or an array of byte values for a byte array (ay)");
+        throw new TypeError("Expected a string, Uint8Array, or array of byte values for a byte array (ay)");
     }
 
     return Variant.newFromBytes(
         VariantType.new(BYTE_ARRAY_TYPE_STRING),
-        Bytes.new(value as ByteArrayInput),
+        Bytes.new(value),
         true,
     );
 };
@@ -452,6 +515,14 @@ const packByteArray = (value: unknown): Variant => {
 const packNode = (node: VariantTypeNode, value: unknown): Variant => {
     switch (node.kind) {
         case "basic": {
+            if ((node.code === "x" || node.code === "t") && typeof value === "number") {
+                if (!Number.isSafeInteger(value)) {
+                    throw new RangeError("64-bit variant numbers must be safe integers; use bigint for larger values");
+                }
+
+                value = BigInt(value);
+            }
+
             return packBasic[node.code](value);
         }
         case "array": {
@@ -459,20 +530,34 @@ const packNode = (node: VariantTypeNode, value: unknown): Variant => {
                 return packByteArray(value);
             }
 
+            if (!Array.isArray(value)) {
+                throw new TypeError("Expected an array of values for a variant array");
+            }
+
             return Variant.newArray(
                 VariantType.new(node.elementTypeString),
-                (value as unknown[]).map((item) => packNode(node.element, item)),
+                value.map((item: unknown) => packNode(node.element, item)),
             );
         }
         case "dict": {
             return packDict(node, value);
         }
         case "entry": {
-            return packEntry(node.key, node.value, value as [unknown, unknown]);
+            if (!Array.isArray(value) || value.length !== 2) {
+                throw new TypeError("Expected two values for a variant dictionary entry");
+            }
+
+            return packEntry(node.key, node.value, [value[0], value[1]]);
         }
         case "tuple": {
+            if (!Array.isArray(value) || value.length !== node.items.length) {
+                throw new TypeError(`Expected ${node.items.length} values for a variant tuple`);
+            }
+
+            const values = value;
+
             return Variant.newTuple(
-                node.items.map((item, index) => packNode(item, (value as unknown[])[index])),
+                node.items.map((item, index) => packNode(item, values[index])),
             );
         }
         case "maybe": {
@@ -481,98 +566,77 @@ const packNode = (node: VariantTypeNode, value: unknown): Variant => {
     }
 };
 
-/**
- * Packs a JavaScript value into a `Variant` described by a GVariant type string.
- * Literal type strings also determine the TypeScript input type: `"as"` takes strings,
- * `"a{sv}"` a record of variants, `"(si)"` a string/number pair, 64-bit types a `bigint`, and
- * `"ay"` a `Uint8Array` or byte array. Nested arrays, dictionaries, tuples, and maybes are supported.
- *
- * @param typeString One complete GVariant type, such as `"a{sv}"`.
- * @param value Value matching that type.
- * @returns The packed variant.
- * @throws {Error} For invalid types, object paths, or signatures, or byte-array inputs other
- * than a `Uint8Array` or an array of byte values.
- */
-const toVariant = <S extends string>(typeString: S, value: VariantInput<S>): Variant =>
+const createVariant = <S extends string>(typeString: S, value: VariantInput<S>): Variant<S> =>
     packNode(parseVariantType(typeString), value);
 
 /**
- * Unpacks a `Variant`, reversing {@link toVariant}.
- *
- * String-keyed dictionaries become records; other dictionaries become `Map`s. Arrays and tuples
- * become arrays, `ay` becomes `Uint8Array`, and maybes become their value or `null`. Nested
- * variants stay as `Variant` unless `recursive` is set, which unwraps them fully.
- *
- * A literal `typeString` determines the return type. When omitted, the variant's own type is
- * used and the result is `unknown`.
- *
- * @param typeString One complete GVariant type matching the variant.
- * @param variant Variant to unpack.
- * @returns The unpacked value.
- * @throws {Error} If the type string is not one complete GVariant type.
+ * Packs JavaScript values using GJS-compatible construction. Strings for `ay` become NUL-terminated UTF-8;
+ * dictionaries use plain objects. Unlike GJS, 64-bit integers unpack as exact `bigint` values.
  */
-function fromVariant<S extends string>(typeString: S, variant: Variant): VariantValue<S>;
+const Variant: VariantConstructor = /* @__PURE__ */ (() => new Proxy(GeneratedVariant, {
+    get(target, property, receiver): unknown {
+        if (property === "new") {
+            return createVariant;
+        }
 
-/**
- * Unpacks a `Variant` and every nested variant, typing the result from `typeString`.
- *
- * @param typeString One complete GVariant type matching the variant.
- * @param variant Variant to unpack.
- * @param options Enables recursive unwrapping of nested variants.
- * @returns The unpacked value with nested variants fully unwrapped.
- * @throws {Error} If the type string is not one complete GVariant type.
- */
-function fromVariant<S extends string>(
-    typeString: S,
-    variant: Variant,
-    options: RecursiveFromVariantOptions,
-): RecursiveVariantValue<S>;
+        const value: unknown = Reflect.get(target, property, receiver);
 
-/**
- * Unpacks a `Variant` with configurable recursive unwrapping.
- *
- * @param typeString One complete GVariant type matching the variant.
- * @param variant Variant to unpack.
- * @param options Whether to unwrap nested variants recursively.
- * @returns The unpacked value, typed according to `typeString` and the unwrapping options.
- * @throws {Error} If the type string is not one complete GVariant type.
- */
-function fromVariant<S extends string>(
-    typeString: S,
-    variant: Variant,
-    options: FromVariantOptions,
-): VariantValue<S> | RecursiveVariantValue<S>;
+        return value;
+    },
+    construct(_target, args: unknown[]): Variant {
+        const [typeString, value] = args;
 
-/**
- * Unpacks a `Variant` using its own type string.
- *
- * @param variant Variant to unpack.
- * @param options Whether to unwrap nested variants recursively.
- * @returns The unpacked value, typed as `unknown` because no type string was supplied.
- */
-function fromVariant(variant: Variant, options?: FromVariantOptions): unknown;
+        if (typeof typeString !== "string") {
+            throw new TypeError("A variant constructor requires a GVariant type string");
+        }
 
-function fromVariant(
-    first: string | Variant,
-    second?: Variant | FromVariantOptions,
-    third?: FromVariantOptions,
-): unknown {
-    if (typeof first === "string") {
-        return unpackNode(parseVariantType(first), second as Variant, third?.recursive === true);
+        return createVariant(typeString, value);
+    },
+}) as typeof GeneratedVariant & VariantConstructor)();
+
+declare module "../glib.js" {
+    interface Variant<S extends string = string> {
+        /**
+         * Unpacks the outer container, retaining child variants. Byte arrays unpack to `Uint8Array`.
+         * An optional type argument describes the expected signature without validating it.
+         */
+        unpack<Type extends string = S>(): ShallowVariantValue<Type>;
+        /**
+         * Unpacks containers recursively, retaining variants inside `v` values. Dictionaries become objects.
+         * An optional type argument describes the expected signature without validating it.
+         */
+        deepUnpack<Type extends string = S>(): VariantValue<Type>;
+        /** GJS compatibility alias for {@link deepUnpack}. */
+        deep_unpack<Type extends string = S>(): VariantValue<Type>;
+        /**
+         * Unpacks containers and nested variants recursively. Dictionaries become objects.
+         * An optional type argument describes the expected signature without validating it.
+         */
+        recursiveUnpack<Type extends string = S>(): RecursiveVariantValue<Type>;
     }
-
-    const options = second as FromVariantOptions | undefined;
-
-    return unpackNode(parseVariantType(first.getTypeString()), first, options?.recursive === true);
 }
+
+GeneratedVariant.prototype.unpack = function <S extends string = string>(): ShallowVariantValue<S> {
+    return unpackNode(parseVariantType(this.getTypeString()), this, "shallow") as ShallowVariantValue<S>;
+};
+
+const deepUnpack = function <S extends string = string>(this: GeneratedVariant): VariantValue<S> {
+    return unpackNode(parseVariantType(this.getTypeString()), this, "deep") as VariantValue<S>;
+};
+
+GeneratedVariant.prototype.deepUnpack = deepUnpack;
+GeneratedVariant.prototype.deep_unpack = deepUnpack;
+
+GeneratedVariant.prototype.recursiveUnpack = function <S extends string = string>(): RecursiveVariantValue<S> {
+    return unpackNode(parseVariantType(this.getTypeString()), this, "recursive") as RecursiveVariantValue<S>;
+};
 
 export {
     type VariantByteArray,
-    type FromVariantOptions,
-    fromVariant,
-    type RecursiveFromVariantOptions,
     type RecursiveVariantValue,
-    toVariant,
+    type ShallowVariantValue,
+    Variant,
+    type VariantConstructor,
     type VariantInput,
     type VariantValue,
 };

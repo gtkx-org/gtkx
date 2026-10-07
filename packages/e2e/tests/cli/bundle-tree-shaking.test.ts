@@ -25,7 +25,7 @@ const APP_CONFIG = `export default {
 `;
 
 const APP_ENTRY = String.raw`import { File, IOErrorEnum, ioErrorQuark, SimpleAction, Task } from "@gtkx/gi/gio";
-import { toVariant } from "@gtkx/gi/glib";
+import { Variant } from "@gtkx/gi/glib";
 import { typeFromName } from "@gtkx/runtime";
 
 process.stdout.write("${USED_NAME_PREFIX}" + Task.name + "\n");
@@ -33,7 +33,7 @@ process.stdout.write("${USED_TYPE_PREFIX}" + String(typeFromName("GTask") !== 0n
 process.stdout.write("${DROPPED_TYPE_PREFIX}" + String(typeFromName("GtkVideo") !== 0n) + "\n");
 
 const retainedValues = ["retained", ""].map((value) => {
-    const action = SimpleAction.newStateful("state", null, toVariant("s", value));
+    const action = SimpleAction.newStateful("state", null, new Variant("s", value));
     const state = action.getState();
 
     if (state === null) {
@@ -150,8 +150,8 @@ describe("gtkx build (metadata tree shaking)", () => {
     });
 });
 
-describe("gtkx build (pure helper tree shaking)", () => {
-    it("drops unused Variant helpers from GLib consumers", async () => {
+describe("gtkx build (Variant constructor tree shaking)", () => {
+    it("drops unused Variant packing from GLib consumers", async () => {
         const probe = await probeAppProject({
             applicationId: "com.gtkx.clipurehelperprobe",
             entry: GLIB_APP_ENTRY,
@@ -164,7 +164,7 @@ describe("gtkx build (pure helper tree shaking)", () => {
 
             expect(probe.run.status).toBe(0);
             expect(probe.run.stdout).toContain("clock-running=true\n");
-            expect(bundle).not.toContain("Invalid GVariant type string");
+            expect(bundle).not.toContain("Variant dictionaries require a plain object");
         } finally {
             removeAppProject(probe.project);
         }

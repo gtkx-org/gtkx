@@ -2,7 +2,7 @@
 
 Runtime support for generated GTKX bindings.
 
-Provides native object wrappers, values, signals, class registration, and lifetime management without importing generated bindings. Library-specific overrides live in the generated `@gtkx/gi` modules. Import application helpers from `@gtkx/gi/gio` and Variant conversion helpers from `@gtkx/gi/glib`.
+Provides native object wrappers, values, signals, class registration, and lifetime management without importing generated bindings. Library-specific overrides live in the generated `@gtkx/gi` modules. Construct applications through their generated classes and use `runAsync()` for their lifecycle. Construct and unpack variants with `GLib.Variant` from `@gtkx/gi/glib`.
 
 [Guide](https://gtkx.dev/v2/guide/native-values) · [API reference](https://gtkx.dev/v2/reference/@gtkx/runtime/) · [GTKX](https://gtkx.dev)
 

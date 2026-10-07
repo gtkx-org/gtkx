@@ -1,4 +1,3 @@
-import type { ApplicationRegistrationState } from "@gtkx/gi/gio";
 import type { InlineConfig, ModuleNode, Plugin, ViteDevServer } from "vite";
 import { error, warn } from "@gtkx/utils";
 import { isCatalogSource } from "../i18n/catalogs.js";
@@ -21,6 +20,7 @@ import {
 } from "./vite-dev-server.js";
 
 type LoadAppModule = (id: string) => Promise<Record<string, unknown>>;
+type ApplicationState = "primary" | "remote" | "shutDown" | "unregistered";
 
 type DevRunnerDeps = {
     createServer(config: InlineConfig): Promise<ViteDevServer>;
@@ -30,7 +30,7 @@ type DevRunnerDeps = {
     stopMcpClient(): void;
     watchApplicationShutdown(onShutdown: () => void): void;
     watchUncaughtErrors(onUncaughtError: (cause: unknown) => void): void;
-    getApplicationRegistrationState(): ApplicationRegistrationState;
+    getApplicationRegistrationState(): ApplicationState;
     installShutdownHandlers(onSignal: () => void | Promise<void>): void;
     quitDefaultApplication(): void;
     performRefresh: () => void;
@@ -597,7 +597,7 @@ const stopForOwnedApplicationId = async (session: DevSession, liveApplicationId:
 
 const stopForStoppedApplication = async (
     session: DevSession,
-    registrationState: ApplicationRegistrationState,
+    registrationState: ApplicationState,
 ): Promise<void> => {
     if (session.failure.hasReported()) {
         session.deps.log("Application stopped before the dev runner attached.");
@@ -677,7 +677,7 @@ const loadEntry = async (session: DevSession, entryPath: string): Promise<void> 
     }
 };
 
-const hasApplicationStopped = (registrationState: ApplicationRegistrationState): boolean =>
+const hasApplicationStopped = (registrationState: ApplicationState): boolean =>
     registrationState === "shutDown" || registrationState === "unregistered";
 
 const isApplicationLost = (session: DevSession): boolean =>
@@ -733,4 +733,4 @@ const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
     },
 });
 
-export { createDevRunner, type DevRunnerDeps };
+export { type ApplicationState, createDevRunner, type DevRunnerDeps };

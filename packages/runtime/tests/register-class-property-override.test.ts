@@ -3,7 +3,6 @@ import {
     ParamFlags,
     ParamSpec,
     paramSpecInt,
-    paramSpecOverride,
     TYPE_BOOLEAN,
     TYPE_INT,
     Value,
@@ -66,8 +65,8 @@ const makeMeterClass = () => {
     return Meter;
 };
 
-const overrideLevel = (source: Parameters<typeof paramSpecOverride>[1]): Record<string, ParamSpec> => ({
-    level: paramSpecOverride("level", source),
+const overrideLevel = (source: Parameters<typeof ParamSpec.override>[1]): Record<string, ParamSpec> => ({
+    level: ParamSpec.override("level", source),
 });
 
 const makeGaugedMeterClass = (writes: number[]) => {
@@ -121,7 +120,7 @@ describe("registerClass — property overrides, happy path", () => {
 
         registerClass(Blinker, {
             typeName: uniqueName("GtkxOverrideBlinker"),
-            properties: { visible: paramSpecOverride("visible", Gtk.Widget) },
+            properties: { visible: ParamSpec.override("visible", Gtk.Widget) },
         });
 
         const blinker = new Blinker();
@@ -138,7 +137,7 @@ describe("registerClass — property overrides, edge cases", () => {
     it.each(["margin-top", "margin_top", "marginTop"])("overrides properties named %s", (name) => {
         class SpacedWidget extends Gtk.Widget {}
 
-        const spec = paramSpecOverride(name, Gtk.Widget);
+        const spec = ParamSpec.override(name, Gtk.Widget);
         expect(spec).toBeInstanceOf(ParamSpec);
         expect(spec.name).toBe("margin-top");
         expect(spec.valueType).toBe(TYPE_INT);
@@ -163,7 +162,7 @@ describe("registerClass — property overrides, edge cases", () => {
         registerClass(Rail, {
             typeName: uniqueName("GtkxOverrideRail"),
             implements: [Gtk.Orientable],
-            properties: { orientation: paramSpecOverride("orientation", Gtk.Orientable) },
+            properties: { orientation: ParamSpec.override("orientation", Gtk.Orientable) },
         });
 
         const rail = new Rail() as GObject & Gtk.Orientable;
@@ -203,11 +202,11 @@ describe("registerClass — property overrides, edge cases", () => {
 describe("registerClass — property overrides, error paths", () => {
     it("throws for a property name the source class does not declare", () => {
         const Meter = makeMeterClass();
-        expect(() => paramSpecOverride("no-such-property", Meter)).toThrow();
+        expect(() => ParamSpec.override("no-such-property", Meter)).toThrow();
     });
 
     it("throws for a property name the source interface does not declare", () => {
-        expect(() => paramSpecOverride("no-such-property", Gtk.Orientable)).toThrow();
+        expect(() => ParamSpec.override("no-such-property", Gtk.Orientable)).toThrow();
     });
 
     it("throws for a source that is not a registered class or interface", () => {
@@ -215,6 +214,6 @@ describe("registerClass — property overrides, error paths", () => {
             level = 0;
         }
 
-        expect(() => paramSpecOverride("level", Plain)).toThrow();
+        expect(() => ParamSpec.override("level", Plain)).toThrow();
     });
 });

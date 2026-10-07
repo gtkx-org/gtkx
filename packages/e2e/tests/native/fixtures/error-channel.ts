@@ -1,7 +1,6 @@
 import * as GLib from "@gtkx/gi/glib";
-import { toVariant } from "@gtkx/gi/glib";
 
-const fields = toVariant("a{sv}", { MESSAGE: toVariant("s", "Authored diagnostic") });
+const fields = new GLib.Variant("a{sv}", { MESSAGE: new GLib.Variant("s", "Authored diagnostic") });
 const level =
     process.argv[2] === "critical" ? GLib.LogLevelFlags.LEVEL_CRITICAL : GLib.LogLevelFlags.LEVEL_WARNING;
 

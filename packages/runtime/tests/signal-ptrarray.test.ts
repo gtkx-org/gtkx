@@ -1,16 +1,8 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
-import {
-    connectSignal,
-    disconnectSignal,
-    emitSignal,
-    getProperty,
-    registerClass,
-    setProperty,
-    type SignalHandlerId,
-    t,
-} from "@gtkx/runtime";
+import { getProperty, setProperty } from "@gtkx/gi/gobject";
+import { connectSignal, disconnectSignal, emitSignal, registerClass, type SignalHandlerId, t } from "@gtkx/runtime";
 import { expect, it } from "vitest";
 import { createTypeNameFactory } from "./helpers/unique-name.js";
 

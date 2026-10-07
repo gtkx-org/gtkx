@@ -122,6 +122,39 @@ test.each([false, true])("inout array callbacks distinguish null values from abs
     expect(lengths).toEqual([1, 1, 1, -1]);
 });
 
+test("unbounded array refs pass empty arrays and null as distinct native values", () => {
+    const descriptor = { ...t.array(t.string()), preserveNull: true };
+    const readLength = t.bind(collectionLibrary, "gtkx_collection_ref_length", [t.ref(descriptor, true)], t.int32);
+    const reference: Ref = { value: null };
+
+    for (const value of [null, [], ["one", "two"], []]) {
+        reference.value = value;
+        expect(readLength(reference)).toBe(value === null ? -1 : value.length);
+        expect(reference.value).toEqual(value);
+    }
+});
+
+test.each([
+    { name: "out", inout: false, state: 0, seed: null },
+    { name: "inout", inout: true, state: 2, seed: ["one", "two"] },
+])("unbounded array callback $name refs preserve empty replacements and null", ({ inout, state, seed }) => {
+    const descriptor = { ...t.array(t.string("full"), "array", "full"), preserveNull: true };
+    const visit = t.bind(collectionLibrary, "gtkx_collection_visit_ref", [
+        t.int32, t.callback([t.ref(descriptor, inout)], t.void, { scope: "call" }),
+    ], t.int32);
+
+    for (const replacement of [[], null]) {
+        const seen: unknown[] = [];
+        const length = visit(state, (reference: Ref) => {
+            seen.push(reference.value);
+            reference.value = replacement;
+        });
+
+        expect(seen).toEqual([seed]);
+        expect(length).toBe(replacement === null ? -1 : 0);
+    }
+});
+
 test("array callback outputs start unset and write through existing slots", () => {
     const descriptor = t.array(t.string("full"), "array", "full");
     const visit = t.bind(collectionLibrary, "gtkx_collection_visit_ref", [

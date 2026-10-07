@@ -19,7 +19,7 @@ class StatusApplication extends Application {
 }
 
 registerClass(StatusApplication, { typeName: "GtkxDevExitStatusApplication" });
-const application = StatusApplication.create({
+const application = new StatusApplication({
     applicationId: "org.gtkx.devexitstatus",
     flags: ApplicationFlags.NON_UNIQUE,
 });

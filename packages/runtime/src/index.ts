@@ -13,20 +13,15 @@ export { fromNative, toHashTableEntries, toNative } from "./native-value.js";
 export {
     type ConstructBinding,
     type ConstructBindings,
-    getProperty,
     newObjectWithProperties,
     registerConstructProperties,
-    setProperty,
 } from "./object.js";
-export { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from "./param-spec.js";
 export { promisify, trimFinish } from "./promisify.js";
 export {
     coerceObjectProperty,
     getDeclaredPropertyName,
     isReadableProperty,
-    newParamSpecOverride,
 } from "./properties.js";
-export { matchAllRegex, matchRegex } from "./regex.js";
 export {
     type Interface,
     registerClass,
@@ -41,7 +36,6 @@ export {
     getWrapperClass,
     installInterfaces,
     type InterfaceClass,
-    peekTypeClass,
     registerClassStruct,
     registerInterface,
     registerWrapperClass,
@@ -100,9 +94,7 @@ export {
 } from "./type.js";
 export {
     fromValue,
-    getBoxedValue,
     type JsValue,
-    setBoxedValue,
     toValueHandle,
     tryToValueHandle,
     ValueMarshalError,

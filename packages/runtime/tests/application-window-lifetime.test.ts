@@ -14,12 +14,12 @@ interface ApplicationCase {
 const applicationCases: ApplicationCase[] = [
     {
         name: "Gtk",
-        createApplication: () => Gtk.Application.create(applicationProps()),
+        createApplication: () => new Gtk.Application(applicationProps()),
         createWindow: (application) => new Gtk.ApplicationWindow({ application }),
     },
     {
         name: "Adw",
-        createApplication: () => Adw.Application.create(applicationProps()),
+        createApplication: () => new Adw.Application(applicationProps()),
         createWindow: (application) => new Adw.ApplicationWindow({ application }),
     },
 ];
