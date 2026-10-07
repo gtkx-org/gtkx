@@ -1,15 +1,15 @@
-import { type AnyClass } from "@gtkx/runtime";
+import { type AnyClass, type WrapperClass } from "@gtkx/runtime";
 import { peekTypeClass } from "@gtkx/runtime/internal";
 import { ObjectClass as GeneratedObjectClass } from "../gobject.js";
 
-const peek = (type: bigint | AnyClass): GeneratedObjectClass => peekTypeClass(type) as GeneratedObjectClass;
+const peek = (type: bigint | AnyClass): ObjectClass => peekTypeClass(type) as ObjectClass;
 
 /**
  * The class structure for the GObject type, with a static `peek` that hands back the class struct
  * of any GObject type so class-level introspection such as `findProperty` and `listProperties`
  * works outside a `classInit` hook.
  */
-export const ObjectClass: typeof GeneratedObjectClass & {
+export const ObjectClass: WrapperClass<typeof GeneratedObjectClass, ObjectClass> & {
     /**
      * Returns the class struct of a GObject type, referencing the class so it exists even before
      * the type's first instance. The reference is deliberately never released: once created, a
@@ -25,4 +25,4 @@ export const ObjectClass: typeof GeneratedObjectClass & {
 /**
  * The class structure for the GObject type.
  */
-export type ObjectClass = GeneratedObjectClass;
+export interface ObjectClass extends GeneratedObjectClass {}

@@ -1,11 +1,12 @@
+import type { WrapperClass } from "@gtkx/runtime";
 import { Application as GioApplication } from "../../gio/gio.js";
 import { updateApplicationActivity, wrapApplicationConstructor } from "../../gio/overrides/application.js";
 import { Application as GeneratedApplication } from "../gtk.js";
 
-type Application = GeneratedApplication;
+interface Application extends GeneratedApplication {}
 
 /** The GTK application class, with GJS-compatible construction and asynchronous execution. */
-const Application: typeof GeneratedApplication = wrapApplicationConstructor(GeneratedApplication);
+const Application: WrapperClass<typeof GeneratedApplication, Application> = wrapApplicationConstructor(GeneratedApplication);
 
 const observedApplications: WeakSet<Application> = new WeakSet();
 

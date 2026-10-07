@@ -156,16 +156,7 @@ type ShallowVariantValue<S extends string> = unknown extends VariantValue<S> ? u
  * A variant with unpacked types inferred from its constructor signature. An explicit method type argument
  * describes the expected signature for variants returned by native functions; it does not validate the value.
  */
-interface Variant<S extends string = string> extends GeneratedVariant {
-    /** Unpacks the outer container, retaining its children as variants. Byte arrays unpack to `Uint8Array`. */
-    unpack<Type extends string = S>(): ShallowVariantValue<Type>;
-    /** Unpacks containers recursively, preserving variants held inside `v` values. Dictionaries become objects. */
-    deepUnpack<Type extends string = S>(): VariantValue<Type>;
-    /** GJS compatibility alias for {@link deepUnpack}. */
-    deep_unpack<Type extends string = S>(): VariantValue<Type>;
-    /** Unpacks containers and every nested variant. Dictionaries become objects. */
-    recursiveUnpack<Type extends string = S>(): RecursiveVariantValue<Type>;
-}
+type Variant<S extends string = string> = GeneratedVariant<S>;
 
 type VariantStatics = Omit<typeof GeneratedVariant, "new"> & {
     /** Packs a value using its GVariant type signature, like the constructor. */
@@ -604,24 +595,24 @@ const Variant: VariantConstructor = /* @__PURE__ */ (() => new Proxy(GeneratedVa
 }) as typeof GeneratedVariant & VariantConstructor)();
 
 declare module "../glib.js" {
-    interface Variant {
+    interface Variant<S extends string = string> {
         /**
          * Unpacks the outer container, retaining child variants. Byte arrays unpack to `Uint8Array`.
          * An optional type argument describes the expected signature without validating it.
          */
-        unpack<S extends string = string>(): ShallowVariantValue<S>;
+        unpack<Type extends string = S>(): ShallowVariantValue<Type>;
         /**
          * Unpacks containers recursively, retaining variants inside `v` values. Dictionaries become objects.
          * An optional type argument describes the expected signature without validating it.
          */
-        deepUnpack<S extends string = string>(): VariantValue<S>;
+        deepUnpack<Type extends string = S>(): VariantValue<Type>;
         /** GJS compatibility alias for {@link deepUnpack}. */
-        deep_unpack<S extends string = string>(): VariantValue<S>;
+        deep_unpack<Type extends string = S>(): VariantValue<Type>;
         /**
          * Unpacks containers and nested variants recursively. Dictionaries become objects.
          * An optional type argument describes the expected signature without validating it.
          */
-        recursiveUnpack<S extends string = string>(): RecursiveVariantValue<S>;
+        recursiveUnpack<Type extends string = S>(): RecursiveVariantValue<Type>;
     }
 }
 

@@ -1,4 +1,4 @@
-import { type AnyClass, wrapHandle } from "@gtkx/runtime";
+import { type AnyClass, type WrapperClass, wrapHandle } from "@gtkx/runtime";
 import { peekTypeClass, registerClassOption } from "@gtkx/runtime/internal";
 import { Widget, WidgetClass as GeneratedWidgetClass } from "../gtk.js";
 
@@ -16,15 +16,15 @@ registerClassOption("cssName", (klass, name) => {
     };
 });
 
-const peek = (type: bigint | AnyClass): GeneratedWidgetClass =>
-    peekTypeClass(type, Widget) as GeneratedWidgetClass;
+const peek = (type: bigint | AnyClass): WidgetClass =>
+    peekTypeClass(type, Widget) as WidgetClass;
 
 /**
  * The class structure for the GtkWidget type, with a static `peek` that hands back the class
  * struct of any widget type so class-level introspection such as `getCssName` works outside a
  * `classInit` hook.
  */
-export const WidgetClass: typeof GeneratedWidgetClass & {
+export const WidgetClass: WrapperClass<typeof GeneratedWidgetClass, WidgetClass> & {
     /**
      * Returns the class struct of a widget type, referencing the class so it exists even before
      * the type's first instance. The reference is deliberately never released: once created, a
@@ -40,4 +40,4 @@ export const WidgetClass: typeof GeneratedWidgetClass & {
 /**
  * The class structure for the GtkWidget type.
  */
-export type WidgetClass = GeneratedWidgetClass;
+export interface WidgetClass extends GeneratedWidgetClass {}

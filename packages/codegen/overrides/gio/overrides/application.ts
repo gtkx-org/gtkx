@@ -1,9 +1,9 @@
-import { type AnyClass, callParent, getClassType, registerClass, registerWrapperClass, typeName } from "@gtkx/runtime";
+import { type AnyClass, callParent, getClassType, registerClass, registerWrapperClass, typeName, type WrapperClass } from "@gtkx/runtime";
 import { getVfuncRegistry, keepAlive } from "@gtkx/runtime/internal";
 import { Application as GeneratedApplication, ApplicationFlags } from "../gio.js";
 
 /** An application with GTKX-managed asynchronous lifecycle methods. */
-type Application = GeneratedApplication;
+interface Application extends GeneratedApplication {}
 
 interface ApplicationStartup {
     isPrimary: boolean;
@@ -246,7 +246,7 @@ const wrapApplicationConstructor = <C extends AnyClass<Application>>(base: C): C
 };
 
 /** The application class, with GJS-compatible construction and asynchronous execution. */
-const Application: typeof GeneratedApplication = wrapApplicationConstructor(GeneratedApplication);
+const Application: WrapperClass<typeof GeneratedApplication, Application> = wrapApplicationConstructor(GeneratedApplication);
 
 const releaseDefaultApplication = (application: Application): void => {
     if (Application.getDefault() === application) {
