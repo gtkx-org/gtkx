@@ -6,14 +6,12 @@
         "InterfaceLayout",
         "MixinReceiver",
         "NativeIdentityKeys",
-        "ReadableProperties",
         "RegisterClassOptions",
         "RegisteredInstance",
         "RegisteredParts",
         "SignalConnectSpec",
         "T",
         "TrimmedFinish",
-        "VfuncRegistry",
-        "WritableProperties"
+        "VfuncRegistry"
     ]
 }
