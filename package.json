@@ -49,7 +49,7 @@
         "tsx": "^4.23.15",
         "typescript": "catalog:",
         "typescript-eslint": "^8.71.0",
-        "verdaccio": "^6.10.4",
+        "verdaccio": "^6.10.5",
         "vitest": "catalog:",
         "vue-eslint-parser": "^10.4.1"
     },
