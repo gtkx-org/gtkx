@@ -48,7 +48,7 @@ describe("vfunc input arrays whose length parameter is folded away", () => {
         }
 
         registerClass(OpeningApplication, { typeName: `GtkxFoldedOpen_${String(process.pid)}` });
-        const application = OpeningApplication.create({
+        const application = new OpeningApplication({
             applicationId: `org.gtkx.folded-open-${String(process.pid)}`,
             flags: Gio.ApplicationFlags.NON_UNIQUE | Gio.ApplicationFlags.HANDLES_OPEN,
         });

@@ -1,5 +1,5 @@
-import { type AnyClass, peekTypeClass, wrapHandle } from "@gtkx/runtime";
-import { registerClassOption } from "@gtkx/runtime/internal";
+import { type AnyClass, wrapHandle } from "@gtkx/runtime";
+import { peekTypeClass, registerClassOption } from "@gtkx/runtime/internal";
 import { Widget, WidgetClass as GeneratedWidgetClass } from "../gtk.js";
 
 registerClassOption("cssName", (klass, name) => {

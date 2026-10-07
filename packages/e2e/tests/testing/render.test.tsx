@@ -342,7 +342,7 @@ describe("Gio.Application.getDefault", () => {
         await cleanup();
         expect(Gio.Application.getDefault()).toBeNull();
 
-        const unrendered = Gio.Application.create({
+        const unrendered = new Gio.Application({
             applicationId: `${APPLICATION_ID}.unrendered`,
             flags: NON_UNIQUE,
         });

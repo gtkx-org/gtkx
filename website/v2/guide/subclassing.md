@@ -64,7 +64,7 @@ Typed `GObject.getProperty` and `GObject.setProperty` calls infer keys from decl
 
 ### Overriding an inherited property
 
-Use `paramSpecOverride("property-name", Source)` when explicitly redeclaring a property from a parent class or interface. `Source` can be its generated class, interface, or GType. Implemented interface properties are overridden automatically; an explicit spec is useful when supplying custom accessors.
+Use `GObject.ParamSpec.override("property-name", Source)` when explicitly redeclaring a property from a parent class or interface. `Source` can be its generated class, interface, or GType. Implemented interface properties are overridden automatically; an explicit spec is useful when supplying custom accessors.
 
 ### Inspecting a ParamSpec
 

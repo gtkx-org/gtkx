@@ -97,26 +97,40 @@ If no suitable method exists, the generated method stays callback-based and its 
 
 ## Calling D-Bus directly
 
-`toVariant` and `fromVariant` convert between JavaScript values and the variants used by `Gio.DBusProxy`. Literal GVariant type strings determine the TypeScript input and output types:
+Construct the variants used by `Gio.DBusProxy` with `new GLib.Variant(signature, value)`, as in GJS. Literal GVariant type strings determine the TypeScript input and unpacked types. For native replies, supply the expected signature as a type parameter when unpacking:
 
 ```ts
 import * as Gio from "@gtkx/gi/gio";
-import { fromVariant, toVariant } from "@gtkx/gi/glib";
+import { Variant } from "@gtkx/gi/glib";
 
 const getNameOwner = async (proxy: Gio.DBusProxy, name: string) => {
     const reply = await proxy.call(
         "GetNameOwner",
-        toVariant("(s)", [name]),
+        new Variant("(s)", [name]),
         Gio.DBusCallFlags.NONE,
         -1,
         null,
     );
-    const [owner] = fromVariant("(s)", reply);
+    const [owner] = reply.deepUnpack<"(s)">();
     return owner;
 };
 ```
 
-A nested variant stays a `GLib.Variant` unless recursive unpacking is requested. Pass `{ recursive: true }` as the final `fromVariant` argument to unwrap nested variants completely. The generated promise is named `call` here; use the generated signature rather than deriving a name from the C function.
+Variants also expose the [GJS unpacking methods](https://gjs.guide/guides/glib/gvariant.html):
+
+| Method | Behavior |
+| --- | --- |
+| `unpack()` | Opens the outer container, leaving its children as variants. Dictionary keys are unpacked. |
+| `deepUnpack()` | Opens arrays, tuples, dictionaries, and maybes recursively, retaining the variants held inside `v` values. |
+| `recursiveUnpack()` | Opens every container, including nested `v` values. |
+
+Basic values unpack directly. Byte arrays (`ay`) return `Uint8Array` in every mode, and dictionaries return objects, including dictionaries with numeric keys. `deep_unpack()` aliases `deepUnpack()`, and `Variant.new(signature, value)` aliases construction for compatibility with older GJS code.
+
+Passing a string to `new Variant("ay", text)` produces UTF-8 bytes with a trailing NUL, as in GJS; passing a byte array preserves its bytes. GTKX keeps signed and unsigned 64-bit values as `bigint` to preserve their full precision. Construction accepts `bigint` or safe integer numbers for those types.
+
+Unpacking always reads the variant's actual runtime type. An explicit type parameter describes the signature your code expects; it does not validate that signature at runtime. Without a known constructor signature or explicit type parameter, the result is `unknown`.
+
+The generated promise is named `call` here; use the generated signature rather than deriving a name from the C function.
 
 ## Keeping a helper process alive
 

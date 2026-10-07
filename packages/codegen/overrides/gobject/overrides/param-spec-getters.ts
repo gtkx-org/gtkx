@@ -1,4 +1,4 @@
-import { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from "@gtkx/runtime";
+import { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from "@gtkx/runtime/internal";
 import { type ParamFlags, ParamSpec, type Type } from "../gobject.js";
 
 declare module "../gobject.js" {

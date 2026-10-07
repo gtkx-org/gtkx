@@ -27,12 +27,8 @@ export {
     TYPE_UNICHAR,
     TYPE_VARIANT,
 } from "@gtkx/runtime";
-export {
-    disconnectSignal as signalDisconnect,
-    getProperty,
-    setProperty,
-} from "@gtkx/runtime";
-export { signalConnect, signalEmit } from "@gtkx/runtime/internal";
+export { disconnectSignal as signalDisconnect } from "@gtkx/runtime";
+export { getProperty, setProperty, signalConnect, signalEmit } from "@gtkx/runtime/internal";
 export * from "./gobject.js";
 
 export function signalHandlerDisconnect(

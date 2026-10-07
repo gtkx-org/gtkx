@@ -1,4 +1,5 @@
-import { type AnyClass, newParamSpecOverride, wrapHandle } from "@gtkx/runtime";
+import { type AnyClass, wrapHandle } from "@gtkx/runtime";
+import { newParamSpecOverride } from "@gtkx/runtime/internal";
 import type {
     Camelized,
     Dashed,
@@ -6,7 +7,10 @@ import type {
     ReadableProperties,
     WritableProperties,
 } from "@gtkx/runtime/internal";
-import { ParamSpec } from "../gobject.js";
+import { ParamSpec as GeneratedParamSpec } from "../gobject.js";
+
+/** A parameter specification describing a GObject property. */
+type ParamSpec = GeneratedParamSpec;
 
 type SourceInstance<TSource> = [TSource] extends [AnyClass]
     ? TSource extends {
@@ -40,9 +44,17 @@ type OverridePropertySpec<TName extends string, TSource> = [TSource] extends [An
  * @returns An override spec ready to install on a subclass.
  * @throws If `source` is not a GType or registered class/interface, or declares no such property.
  */
-export function paramSpecOverride<const TName extends string, const TSource extends bigint | AnyClass>(
+function overrideProperty<const TName extends string, const TSource extends bigint | AnyClass>(
     name: TName,
     source: TSource,
 ): OverridePropertySpec<TName, TSource> {
     return wrapHandle(newParamSpecOverride(name, source), ParamSpec) as OverridePropertySpec<TName, TSource>;
 }
+
+/** The native parameter specification class, including GJS-compatible property overrides. */
+const ParamSpec: typeof GeneratedParamSpec & {
+    /** Creates a property specification overriding a property declared by a parent class or interface. */
+    override: typeof overrideProperty;
+} = Object.assign(GeneratedParamSpec, { override: overrideProperty });
+
+export { ParamSpec };

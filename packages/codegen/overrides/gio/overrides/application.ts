@@ -1,12 +1,9 @@
-import { type AnyClass, callParent, getClassType, registerClass, typeName } from "@gtkx/runtime";
-import { keepAlive } from "@gtkx/runtime/internal";
+import { type AnyClass, callParent, getClassType, registerClass, registerWrapperClass, typeName } from "@gtkx/runtime";
+import { getVfuncRegistry, keepAlive } from "@gtkx/runtime/internal";
 import { Application as GeneratedApplication, ApplicationFlags } from "../gio.js";
 
 /** An application with GTKX-managed asynchronous lifecycle methods. */
 type Application = GeneratedApplication;
-
-/** Registration and ownership state tracked for an application. */
-type ApplicationRegistrationState = "primary" | "remote" | "shutDown" | "unregistered";
 
 interface ApplicationStartup {
     isPrimary: boolean;
@@ -41,12 +38,6 @@ interface ApplicationActivity {
     holds: number;
     uses: number;
     idleDeadline?: number;
-}
-
-/** An application constructor and managed factory accepting the same construct properties. */
-interface ApplicationConstructor<T extends Application, P> {
-    new(props: P): T;
-    create(props: NoInfer<P>): NoInfer<T>;
 }
 
 const derivedClasses: WeakMap<AnyClass<Application>, AnyClass<Application>> = new WeakMap();
@@ -233,37 +224,29 @@ const shutDownThroughRun = (application: Application): void => {
 const deriveApplicationClass = <T extends Application>(base: AnyClass<T>): AnyClass<T> =>
     derivedClasses.getOrInsertComputed(base, () => buildApplicationClass(base)) as AnyClass<T>;
 
-/**
- * Constructs an application supported by {@link Application.runAsync}.
- * Its derived GType lets GTKX avoid repeating GLib's command-line parse, which would crash.
- *
- * @remarks
- * Construction does not claim the process-wide default. Any default assigned by GLib during
- * construction is released; {@link Application.runAsync} claims it when the application starts.
- *
- * @param args Constructor arguments, passed through unchanged.
- * @returns An instance derived from the receiving class, with one registered GType per base class.
- */
-function create<C extends new (...args: never[]) => Application>(
-    this: C,
-    ...args: ConstructorParameters<C>
-): InstanceType<C> {
-    const DerivedApplication = deriveApplicationClass(this) as new (...args: ConstructorParameters<C>) => InstanceType<C>;
-    const application = new DerivedApplication(...args);
-    releaseDefaultApplication(application);
+/** @internal Preserves native class metadata while constructing applications with managed lifecycle support. */
+const wrapApplicationConstructor = <C extends AnyClass<Application>>(base: C): C => {
+    const createNative = (applicationId: string | null, flags: ApplicationFlags): Application =>
+        Reflect.construct(wrapped, [{ applicationId, flags }]) as Application;
+    const wrapped = new Proxy(base, {
+        construct(target, args: unknown[], newTarget): Application {
+            const derived = deriveApplicationClass(newTarget as AnyClass<Application>);
+            const application = Reflect.construct(target, args, derived) as Application;
+            releaseDefaultApplication(application);
 
-    return application;
-}
+            return application;
+        },
+        get(target, key, receiver): unknown {
+            return key === "new" ? createNative : Reflect.get(target, key, receiver);
+        },
+    });
+    registerWrapperClass(wrapped, getClassType(base), getVfuncRegistry(base));
 
-/** The application class, including managed construction inherited by Gtk, Adw, and custom subclasses. */
-const Application: typeof GeneratedApplication & {
-    /**
-     * Constructs an application supported by `runAsync`, preserving the receiving class's
-     * constructor arguments and instance type. Construction releases any default assigned
-     * by GLib; `runAsync` claims the process-wide default when the application starts.
-     */
-    create: typeof create;
-} = Object.assign(GeneratedApplication, { create });
+    return wrapped;
+};
+
+/** The application class, with GJS-compatible construction and asynchronous execution. */
+const Application: typeof GeneratedApplication = wrapApplicationConstructor(GeneratedApplication);
 
 const releaseDefaultApplication = (application: Application): void => {
     if (Application.getDefault() === application) {
@@ -272,7 +255,6 @@ const releaseDefaultApplication = (application: Application): void => {
 };
 
 const startedApplications: WeakSet<Application> = new WeakSet();
-const registeredApplications: WeakSet<Application> = new WeakSet();
 const shutDownApplications: WeakSet<Application> = new WeakSet();
 
 const startApplication = (application: ManagedApplication, argv: string[]): number => {
@@ -304,14 +286,6 @@ const restartApplication = (application: Application): number => {
     return 0;
 };
 
-const registrationState = (application: Application): ApplicationRegistrationState => {
-    if (!application.getIsRegistered()) {
-        return registeredApplications.has(application) ? "shutDown" : "unregistered";
-    }
-
-    return application.getIsRemote() ? "remote" : "primary";
-};
-
 const initializeApplication = (application: ManagedApplication, argv: string[]): ApplicationStartup => {
     Application.prototype.setDefault.call(application);
 
@@ -319,13 +293,7 @@ const initializeApplication = (application: ManagedApplication, argv: string[]):
         ? restartApplication(application)
         : startApplication(application, argv);
 
-    const instance = registrationState(application);
-
-    if (instance !== "unregistered") {
-        registeredApplications.add(application);
-    }
-
-    const isPrimary = instance === "primary";
+    const isPrimary = application.getIsRegistered() && !application.getIsRemote();
 
     if (isPrimary) {
         activeApplications.add(application);
@@ -340,7 +308,6 @@ const tearDownApplication = (application: Application): void => {
         return;
     }
 
-    registeredApplications.add(application);
     const owner: Application & WindowOwner = application;
     const windows = owner.getWindows?.() ?? [];
 
@@ -408,15 +375,8 @@ const finishApplication = (application: Application): void => {
 declare module "../gio.js" {
     interface Application {
         /**
-         * Returns registration and ownership state. A previously registered application is
-         * `shutDown` once it is unregistered. Restarted applications can remain `primary`
-         * after managed shutdown because GLib retains their registration until finalization.
-         */
-        getRegistrationState(): ApplicationRegistrationState;
-
-        /**
          * Starts a GTKX-managed application and resolves its command-line exit status after
-         * shutdown. Construct the application with {@link Application.create} or let
+         * shutdown. Construct the application with `new Application(props)` or let
          * the GTKX renderer construct it.
          *
          * @remarks
@@ -446,20 +406,20 @@ declare module "../gio.js" {
          * per instance; subsequent shutdowns emit `shutdown` and release the default, while
          * registration remains until native finalization.
          *
-         * @param argv Command-line arguments, starting with the program name.
+         * @param argv Command-line arguments, starting with the program name, or `null` for no arguments.
          * @returns GLib's command-line exit status after completion.
          */
-        runAsync(argv: string[]): Promise<number>;
+        runAsync(argv: string[] | null): Promise<number>;
     }
 }
 
-Application.prototype.getRegistrationState = function (): ApplicationRegistrationState {
-    return registrationState(this);
-};
+Application.prototype.runAsync = function (argv: string[] | null): Promise<number> {
+    if (argv !== null && !Array.isArray(argv)) {
+        return Promise.reject(new TypeError("Application.runAsync requires an argument array or null"));
+    }
 
-Application.prototype.runAsync = function (argv: string[]): Promise<number> {
     if (!isDerivedApplication(this)) {
-        return Promise.reject(new Error("Application.runAsync requires an application created with Application.create"));
+        return Promise.reject(new Error("Application.runAsync requires an application constructed by its namespace"));
     }
 
     const previousRun = applicationRuns.get(this);
@@ -485,7 +445,7 @@ Application.prototype.runAsync = function (argv: string[]): Promise<number> {
     applicationRuns.set(this, run);
 
     try {
-        const result = initializeApplication(this, argv);
+        const result = initializeApplication(this, argv ?? []);
         run.exitStatus = result.exitStatus;
         run.starting = false;
 
@@ -516,6 +476,5 @@ Application.prototype.runAsync = function (argv: string[]): Promise<number> {
 export {
     Application,
     updateApplicationActivity,
-    type ApplicationConstructor,
-    type ApplicationRegistrationState,
+    wrapApplicationConstructor,
 };

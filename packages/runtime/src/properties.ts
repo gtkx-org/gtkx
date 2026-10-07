@@ -203,14 +203,14 @@ const findSourceSpec = (source: bigint | AnyClass, name: string): ExternalObject
 
     if (!isInterface && !typeIsA(gtype, TYPE_OBJECT)) {
         throw new TypeError(
-            `paramSpecOverride: '${sourceLabel(source, gtype)}' is neither a registered object class nor an interface`,
+            `ParamSpec.override: '${sourceLabel(source, gtype)}' is neither a registered object class nor an interface`,
         );
     }
 
     const pspec = isInterface ? findInterfaceSpec(gtype, name) : findClassSpec(gtype, name);
 
     if (pspec === null) {
-        throw new TypeError(`paramSpecOverride: type '${sourceLabel(source, gtype)}' has no property named '${name}'`);
+        throw new TypeError(`ParamSpec.override: type '${sourceLabel(source, gtype)}' has no property named '${name}'`);
     }
 
     return pspec;

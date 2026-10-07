@@ -9,7 +9,7 @@ if (mode === undefined) {
     throw new Error("The application keep-alive fixture requires a mode");
 }
 
-const application = Gio.Application.create({
+const application = new Gio.Application({
     applicationId: `org.gtkx.keepalive.p${String(process.pid)}`,
     flags: Gio.ApplicationFlags.NON_UNIQUE,
 });
@@ -21,7 +21,7 @@ if (held) {
 }
 
 const firstApplication = mode === "concurrent"
-    ? Gio.Application.create({
+    ? new Gio.Application({
         applicationId: `org.gtkx.keepalive.first.p${String(process.pid)}`,
         flags: Gio.ApplicationFlags.NON_UNIQUE,
     })

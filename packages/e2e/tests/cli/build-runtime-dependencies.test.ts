@@ -7,15 +7,18 @@ import { createCliProject, runCliOrThrow } from "./cli-project.js";
 
 const APP_SOURCE = `import assert from "node:assert/strict";
 import { Application, ApplicationFlags } from "@gtkx/gi/gio";
-import { fromVariant, toVariant } from "@gtkx/gi/glib";
+import { Variant } from "@gtkx/gi/glib";
 import { ParamFlags, paramSpecInt } from "@gtkx/gi/gobject";
 import { Label } from "@gtkx/gi/gtk";
 import { quit, registerClass } from "@gtkx/runtime";
 
 try {
-    const packed = toVariant("a{sv}", { answer: toVariant("i", 42) });
-    assert.deepEqual(fromVariant(packed, { recursive: true }), { answer: 42 });
-    assert.deepEqual(fromVariant("ay", toVariant("ay", [1, 2, 3])), new Uint8Array([1, 2, 3]));
+    assert.deepEqual(new Variant("ay", [1, 2, 3]).deepUnpack(), new Uint8Array([1, 2, 3]));
+    const compatible = new Variant("a{sv}", { answer: new Variant("i", 42) });
+    assert.deepEqual(compatible.recursiveUnpack(), { answer: 42 });
+    assert.equal(compatible.deepUnpack().answer?.getTypeString(), "i");
+    assert.equal(compatible.unpack().answer?.getTypeString(), "v");
+    assert.equal(Variant.new("s", "packed").deep_unpack(), "packed");
 
     const CountedLabel = registerClass(class extends Label {}, {
         typeName: "GtkxBundledDependencyLabel",
@@ -29,7 +32,7 @@ try {
     assert.equal(label.count, 4);
     assert.throws(() => { label.count = 11; }, RangeError);
 
-    const application = Application.create({
+    const application = new Application({
         applicationId: "org.gtkx.runtimedependencies",
         flags: ApplicationFlags.NON_UNIQUE,
     });
@@ -39,14 +42,32 @@ try {
     const completion = application.runAsync(["gtkx-runtime-dependencies"]);
     assert.equal(application.getIsRegistered(), true);
     assert.equal(application.getIsRemote(), false);
-    assert.equal(application.getRegistrationState(), "primary");
     assert.equal(Application.getDefault(), application);
     setImmediate(() => application.quit());
     assert.equal(await completion, 0);
     application.release();
     assert.equal(application.getIsRegistered(), false);
-    assert.equal(application.getRegistrationState(), "shutDown");
     assert.equal(Application.getDefault(), null);
+    process.stdout.write("dependencies-ok");
+} catch (error) {
+    process.stderr.write(String(error));
+    process.exitCode = 1;
+} finally {
+    quit();
+}
+`;
+
+const NATIVE_VARIANT_SOURCE = `import assert from "node:assert/strict";
+import { MenuItem } from "@gtkx/gi/gio";
+import { quit } from "@gtkx/runtime";
+
+try {
+    const item = MenuItem.new("Native variant", null);
+    const label = item.getAttributeValue("label", null);
+    assert.ok(label);
+    assert.equal(label.unpack(), "Native variant");
+    assert.equal(label.deepUnpack(), "Native variant");
+    assert.equal(label.recursiveUnpack(), "Native variant");
     process.stdout.write("dependencies-ok");
 } catch (error) {
     process.stderr.write(String(error));
@@ -75,11 +96,14 @@ it("loads the runtime package without generated bindings installed", () => {
     expect(result.status).toBe(0);
 });
 
-it("runs generated overrides in a production bundle", () => {
+it.for([
+    { name: "generated overrides", source: APP_SOURCE },
+    { name: "Variant methods without importing GLib", source: NATIVE_VARIANT_SOURCE },
+])("runs $name in a production bundle", ({ source }) => {
     using project = createCliProject({
         prefix: "gtkx-build-runtime-dependencies-",
         config: 'export default { applicationId: "org.gtkx.runtimedependencies", codegen: false };\n',
-        files: { "src/index.ts": APP_SOURCE },
+        files: { "src/index.ts": source },
         hasStore: true,
         shouldShareStore: true,
     });

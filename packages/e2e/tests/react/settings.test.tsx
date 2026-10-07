@@ -279,17 +279,14 @@ describe("useSetting (variant types: dictionaries)", () => {
         await expectSettingRoundTrip(schema, "metadata", { origin: "default" }, { origin: "user", locale: "en" });
     });
 
-    it("reads and writes non-string-keyed dictionaries as maps", async () => {
-        expectTypeOf<Value<"scores">>().toEqualTypeOf<Map<number, bigint>>();
+    it("reads and writes non-string-keyed dictionaries as objects", async () => {
+        expectTypeOf<Value<"scores">>().toEqualTypeOf<Record<string, bigint>>();
 
         await expectSettingRoundTrip(
             schema,
             "scores",
-            new Map(),
-            new Map([
-                [1, 10n],
-                [2, 20n],
-            ]),
+            {},
+            { 1: 10n, 2: 20n },
         );
     });
 
@@ -392,7 +389,7 @@ describe("useSetting (variant types: dict entries)", () => {
 
     it("computes pair and dict types for nested positions", () => {
         expectTypeOf<SettingValue<{ k: "({si}u)" }, "k">>().toEqualTypeOf<[[string, number], number]>();
-        expectTypeOf<SettingValue<{ k: "a{bs}" }, "k">>().toEqualTypeOf<Map<boolean, string>>();
+        expectTypeOf<SettingValue<{ k: "a{bs}" }, "k">>().toEqualTypeOf<Record<string, string>>();
         expectTypeOf<SettingValue<{ k: "(ii" }, "k">>().toEqualTypeOf<unknown>();
     });
 });

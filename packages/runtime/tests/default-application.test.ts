@@ -17,7 +17,7 @@ describe("generated application default operations", () => {
 
         registerClass(CustomApplication, { typeName: uniqueName("CustomSetter") });
         const previous = Gio.Application.getDefault();
-        const application = CustomApplication.create(applicationProps());
+        const application = new CustomApplication(applicationProps());
         expectTypeOf(application).toEqualTypeOf<CustomApplication>();
         application.on("activate", () => {});
         const completion = application.runAsync(["probe"]);
@@ -62,7 +62,7 @@ describe("generated application default operations", () => {
 
         try {
             owner.setDefault();
-            const application = Gio.Application.create();
+            const application = new Gio.Application();
             expectTypeOf(application).toEqualTypeOf<Gio.Application>();
             expect(Gio.Application.getDefault()).toBe(owner);
             application.quit();
@@ -77,6 +77,8 @@ describe("generated application default operations", () => {
     });
 
     it("preserves a custom application's required constructor options", async () => {
+        let constructions = 0;
+
         interface CustomApplicationOptions extends Gio.ApplicationConstructorProps {
             sessionName: string;
         }
@@ -86,25 +88,28 @@ describe("generated application default operations", () => {
 
             constructor({ sessionName, ...props }: CustomApplicationOptions) {
                 super(props);
+                constructions += 1;
                 this.sessionName = sessionName;
             }
         }
 
         registerClass(CustomApplication, { typeName: uniqueName("CustomConstructor") });
         const props = applicationProps();
-        const application = CustomApplication.create({ ...props, sessionName: "session-one" });
+        const application = new CustomApplication({ ...props, sessionName: "session-one" });
         expectTypeOf(application).toEqualTypeOf<CustomApplication>();
 
         expect(application).toBeInstanceOf(CustomApplication);
+        expect(constructions).toBe(1);
         expect(application.sessionName).toBe("session-one");
         expect(application.getApplicationId()).toBe(props.applicationId);
         expect(application.getFlags()).toBe(props.flags);
-        expect(application.getRegistrationState()).toBe("unregistered");
+        expect(application.getIsRegistered()).toBe(false);
         application.on("activate", (): void => undefined);
 
         await expect(application.runAsync(["probe"])).resolves.toBe(0);
 
-        expect(application.getRegistrationState()).toBe("shutDown");
+        expect(application.getIsRegistered()).toBe(false);
+        expect(constructions).toBe(1);
     });
 });
 

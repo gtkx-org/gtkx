@@ -8,7 +8,7 @@ const CONFIG = `export default {
 };`;
 const IMPORTS = `import * as Gst from "@gtkx/gi/gst";
 import * as GObject from "@gtkx/gi/gobject";
-import { getProperty, setProperty } from "@gtkx/runtime";
+import { getProperty, setProperty } from "@gtkx/gi/gobject";
 `;
 const ACCEPTED = IMPORTS + `
 export const construct = (object: Gst.Object): Gst.ControlBindingConstructorProps[] => [

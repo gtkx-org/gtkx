@@ -20,7 +20,7 @@ const ownApplicationId = async (applicationId: string): Promise<void> => {
     const application = createUniqueApplication(applicationId);
     application.hold();
     const completion = application.runAsync(["owner"]);
-    const isPrimary = application.getRegistrationState() === "primary";
+    const isPrimary = application.getIsRegistered() && !application.getIsRemote();
     process.stdout.write(`OWNER isPrimary=${String(isPrimary)}\n`);
     const interval = holdApplication(application);
 

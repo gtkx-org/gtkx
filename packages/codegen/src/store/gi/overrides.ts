@@ -8,27 +8,40 @@ type Override = {
 
 const OVERRIDES: Record<string, Override[]> = {
     adw: [
+        { module: "application", exports: ["Application"], needsBootstrap: true },
         { module: "sidebar", exports: "*", needsBootstrap: true },
         { module: "combo-row", exports: "*", needsBootstrap: true },
     ],
     gio: [{
         module: "application",
-        exports: ["Application", "type ApplicationConstructor", "type ApplicationRegistrationState"],
+        exports: ["Application"],
         needsBootstrap: true,
     }],
     glib: [
         { module: "regex", exports: ["MatchInfo"], needsBootstrap: true },
-        { module: "variant", exports: "*" },
+        {
+            module: "variant",
+            exports: [
+                "type RecursiveVariantValue",
+                "type ShallowVariantValue",
+                "Variant",
+                "type VariantByteArray",
+                "type VariantConstructor",
+                "type VariantInput",
+                "type VariantValue",
+            ],
+            needsBootstrap: true,
+        },
     ],
     gobject: [
         { module: "object", exports: "*", needsBootstrap: true },
         { module: "object-class", exports: ["ObjectClass"] },
-        { module: "param-spec", exports: "*" },
+        { module: "param-spec", exports: ["ParamSpec"], needsBootstrap: true },
         { module: "param-spec-getters", exports: "*", needsBootstrap: true },
         { module: "value", exports: "*", needsBootstrap: true },
     ],
     gtk: [
-        { module: "application", exports: [], needsBootstrap: true },
+        { module: "application", exports: ["Application"], needsBootstrap: true },
         { module: "widget-class", exports: ["WidgetClass"], needsBootstrap: true },
         { module: "text-view", exports: "*", needsBootstrap: true },
         { module: "window", exports: [], needsBootstrap: true },

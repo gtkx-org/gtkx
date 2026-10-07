@@ -7,7 +7,6 @@ import {
     countSignal,
     createApplication,
     createApplicationFrom,
-    createPlainApplication,
     createUniqueApplication,
 } from "./helpers/application.js";
 import { createAppIdFactory, createTypeNameFactory } from "./helpers/unique-name.js";
@@ -36,6 +35,16 @@ afterEach(async () => {
 });
 
 describe("Application.runAsync", () => {
+    it("rejects omitted arguments before starting an application", async () => {
+        const application = createTrackedApplication();
+        const activations = countSignal(application, "activate");
+
+        await expect(Reflect.apply(application.runAsync.bind(application), undefined, [])).rejects.toThrow(TypeError);
+
+        expect(activations()).toBe(0);
+        expect(application.getIsRegistered()).toBe(false);
+    });
+
     it("waits for quit while held and resolves after shutdown releases the application", async () => {
         const application = createApplicationFrom(Gio.Application);
         expectTypeOf(application).toEqualTypeOf<Gio.Application>();
@@ -132,20 +141,31 @@ describe("Application.runAsync", () => {
         expect(shutdowns()).toBe(0);
     });
 
-    it("rejects applications that were not created by GTKX", async () => {
-        const application = track(createPlainApplication());
+    const constructionCases = [
+        {
+            name: "constructor",
+            construct: () => new Gio.Application({ flags: Gio.ApplicationFlags.NON_UNIQUE }),
+        },
+        {
+            name: "native factory",
+            construct: () => Gio.Application.new(null, Gio.ApplicationFlags.NON_UNIQUE),
+        },
+    ];
+
+    it.each(constructionCases.flatMap((factory) => [
+        { ...factory, argumentKind: "null", argv: null },
+        { ...factory, argumentKind: "empty", argv: [] },
+    ]))("runs applications created through the $name with $argumentKind arguments", async ({ construct, argv }) => {
+        const application = track(construct());
         const activations = countSignal(application, "activate");
+        const shutdowns = countSignal(application, "shutdown");
 
-        try {
-            await expect(application.runAsync(["probe"])).rejects.toThrow(/Application\.create/);
+        await expect(application.runAsync(argv)).resolves.toBe(0);
 
-            expect(activations()).toBe(0);
-            expect(application.getIsRegistered()).toBe(false);
-        } finally {
-            if (Gio.Application.getDefault() === application) {
-                Gio.Application.prototype.setDefault.call(null);
-            }
-        }
+        expect(activations()).toBe(1);
+        expect(shutdowns()).toBe(1);
+        expect(application.getIsRegistered()).toBe(false);
+        expect(Gio.Application.getDefault()).toBeNull();
     });
 
     it("resolves a remote instance without waiting for its owner's shutdown", async () => {
@@ -183,7 +203,6 @@ describe("Application.runAsync", () => {
         expect(activations()).toBe(0);
         expect(shutdowns()).toBe(0);
         expect(application.getIsRegistered()).toBe(false);
-        expect(application.getRegistrationState()).toBe("unregistered");
         expect(Gio.Application.getDefault()).toBeNull();
     });
 
@@ -198,7 +217,6 @@ describe("Application.runAsync", () => {
 
         expect(shutdowns()).toBe(1);
         expect(application.getIsRegistered()).toBe(false);
-        expect(application.getRegistrationState()).toBe("shutDown");
         expect(Gio.Application.getDefault()).toBeNull();
     });
 

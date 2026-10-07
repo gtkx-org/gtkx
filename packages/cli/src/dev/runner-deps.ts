@@ -1,12 +1,11 @@
 import { loadConfig } from "@gtkx/config";
 import * as Gio from "@gtkx/gi/gio";
-import type { ApplicationRegistrationState } from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import { onExit } from "@gtkx/runtime";
 import { info, installGracefulShutdown } from "@gtkx/utils";
 import { readFile } from "node:fs/promises";
 import { createServer } from "vite";
-import type { DevRunnerDeps } from "./runner.js";
+import type { ApplicationState, DevRunnerDeps } from "./runner.js";
 import { startMcpClient, stopMcpClient } from "../mcp/index.js";
 import {
     mergeTestingModule,
@@ -22,13 +21,24 @@ import { type CatalogWrites, createCatalogWrites } from "./catalog-writes.js";
 
 const DEV_MODE = "development";
 const APPLICATION_POLL_INTERVAL_MS = 50;
+const registeredApplications: WeakSet<object> = new WeakSet();
 
 const currentApplicationId = (): string | null => Gio.Application.getDefault()?.applicationId ?? null;
 
-const currentApplicationRegistrationState = (): ApplicationRegistrationState => {
+const currentApplicationRegistrationState = (): ApplicationState => {
     const application = Gio.Application.getDefault();
 
-    return application === null ? "unregistered" : application.getRegistrationState();
+    if (application === null) {
+        return "unregistered";
+    }
+
+    if (!application.getIsRegistered()) {
+        return registeredApplications.has(application) ? "shutDown" : "unregistered";
+    }
+
+    registeredApplications.add(application);
+
+    return application.getIsRemote() ? "remote" : "primary";
 };
 
 const watchApplicationShutdown = (onShutdown: () => void): void => {
@@ -38,6 +48,7 @@ const watchApplicationShutdown = (onShutdown: () => void): void => {
         const application = values[0]?.getObject();
 
         if (application && application === Gio.Application.getDefault()) {
+            registeredApplications.add(application);
             onShutdown();
         }
 

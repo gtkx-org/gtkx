@@ -32,11 +32,13 @@ export {
 } from "./element-metadata.js";
 export { fixedArrayEntries } from "./field.js";
 export { markSyntheticSignalMembers };
-export { getObjectProperty, registerConstructFactory } from "./object.js";
+export { getObjectProperty, getProperty, registerConstructFactory, setProperty } from "./object.js";
+export { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from "./param-spec.js";
+export { newParamSpecOverride } from "./properties.js";
 export { descriptorFreePropertySpec, propertyWriteComplete } from "./property-brand.js";
 export type { Camelized, Dashed, ReadableProperties, WritableProperties } from "./property-types.js";
-export { installMatchInfo, replaceRegexEval } from "./regex.js";
-export { getExactWrapperClass, resolveWrapperClass } from "./registry.js";
+export { installMatchInfo, matchAllRegex, matchRegex, replaceRegexEval } from "./regex.js";
+export { getExactWrapperClass, getVfuncRegistry, peekTypeClass, resolveWrapperClass } from "./registry.js";
 export type { SignalMethodReceiver };
 export {
     classSignalMember,
@@ -66,6 +68,7 @@ export {
     inoutValueForBoxedDescriptor,
     newValueForDescriptor,
     outValueForBoxedDescriptor,
+    setBoxedValue,
     toValue,
 } from "./value.js";
 export { registerClassOption } from "./class-options.js";

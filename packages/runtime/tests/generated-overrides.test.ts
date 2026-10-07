@@ -3,9 +3,8 @@ import { Regex } from "@gtkx/gi/glib";
 import {
     ObjectClass,
     ParamFlags,
-    type ParamSpec,
+    ParamSpec,
     paramSpecInt,
-    paramSpecOverride,
     TYPE_INT,
     TYPE_INVALID,
     TYPE_STRING,
@@ -44,7 +43,7 @@ describe("generated Gtk.Window lifetime override", () => {
 
         registerClass(InterceptedWindow, {
             typeName: uniqueName("GtkxInterceptedDefaultWindow"),
-            properties: { defaultWidget: paramSpecOverride("default-widget", Window) },
+            properties: { defaultWidget: ParamSpec.override("default-widget", Window) },
         });
 
         const destroyWindow = (): void => {

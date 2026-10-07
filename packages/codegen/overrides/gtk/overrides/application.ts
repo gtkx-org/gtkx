@@ -1,10 +1,15 @@
 import { Application as GioApplication } from "../../gio/gio.js";
-import { updateApplicationActivity } from "../../gio/overrides/application.js";
-import { Application } from "../gtk.js";
+import { updateApplicationActivity, wrapApplicationConstructor } from "../../gio/overrides/application.js";
+import { Application as GeneratedApplication } from "../gtk.js";
+
+type Application = GeneratedApplication;
+
+/** The GTK application class, with GJS-compatible construction and asynchronous execution. */
+const Application: typeof GeneratedApplication = wrapApplicationConstructor(GeneratedApplication);
 
 const observedApplications: WeakSet<Application> = new WeakSet();
 
-Application.prototype.runAsync = function (argv: string[]): Promise<number> {
+Application.prototype.runAsync = function (argv: string[] | null): Promise<number> {
     if (!observedApplications.has(this)) {
         observedApplications.add(this);
         const receiver = new WeakRef(this);
@@ -23,3 +28,5 @@ Application.prototype.runAsync = function (argv: string[]): Promise<number> {
 
     return GioApplication.prototype.runAsync.call(this, argv);
 };
+
+export { Application };

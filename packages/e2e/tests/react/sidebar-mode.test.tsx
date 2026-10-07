@@ -9,7 +9,8 @@ import {
     AdwSpinner,
 } from "@gtkx/jsx/adw";
 import { GtkLabel } from "@gtkx/jsx/gtk";
-import { setProperty, t, typeFromName } from "@gtkx/runtime";
+import { setProperty } from "@gtkx/gi/gobject";
+import { t, typeFromName } from "@gtkx/runtime";
 import { act, render, waitFor } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";

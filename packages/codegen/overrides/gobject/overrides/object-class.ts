@@ -1,4 +1,5 @@
-import { type AnyClass, peekTypeClass } from "@gtkx/runtime";
+import { type AnyClass } from "@gtkx/runtime";
+import { peekTypeClass } from "@gtkx/runtime/internal";
 import { ObjectClass as GeneratedObjectClass } from "../gobject.js";
 
 const peek = (type: bigint | AnyClass): GeneratedObjectClass => peekTypeClass(type) as GeneratedObjectClass;
