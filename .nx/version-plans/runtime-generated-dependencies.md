@@ -4,7 +4,7 @@ __default__: major
 
 Compile overrides as ordinary TypeScript modules alongside generated bindings, with concrete generated types and semantic typechecking. Keep native marshalling and lifetime primitives in runtime.
 
-Replace `createApplication(ApplicationClass, props)` and `ApplicationClass.create(props)` with `new ApplicationClass(props)`. Construct Gio, Gtk, Adw, and custom application subclasses normally. Use `getIsRegistered()` and `getIsRemote()` in place of registration-state helpers, and observe completion through `runAsync()`. The associated application helper types are removed. Generated methods support nullable receivers where declared by GIR.
+Replace `createApplication(ApplicationClass, props)` and `ApplicationClass.create(props)` with `new ApplicationClass(props)`. Construct Gio, Gtk, Adw, and custom application subclasses normally. Use `getIsRegistered()` and `getIsRemote()` in place of registration-state helpers, and observe completion through `runAsync(argv)`. Pass an argument array or `null`; omitting the argument is an error. The associated application helper types are removed. Generated methods support nullable receivers where declared by GIR.
 
 Replace the removed `runApplication` and `quitApplication` helpers with applications' `runAsync(argv): Promise<number>` and `quit()` methods. `RunApplicationResult` is removed. Node remains the outer event loop. Applications finish automatically when no application windows or outstanding JavaScript holds remain, respecting inactivity timeouts and the initial service grace period. Balance `hold()` with `release()` to keep background work alive, or call `quit()` to force shutdown. GTKX cannot observe holds acquired directly by native C code.
 

@@ -78,7 +78,7 @@ const application = new Adw.Application({ applicationId: "org.example.App" });
 const target = new Variant("(s)", ["task-id"]);
 ```
 
-Replace `createApplication(ApplicationClass, props)` and `ApplicationClass.create(props)` with `new ApplicationClass(props)`. This works for Gio, Gtk, Adw, and custom application subclasses. Replace `getApplicationInstance(application)` and `application.getRegistrationState()` with `application.getIsRegistered()` and, once registered, `application.getIsRemote()`. Use the `activate` signal to build the primary instance's UI and the `runAsync()` promise to observe completion.
+Replace `createApplication(ApplicationClass, props)` and `ApplicationClass.create(props)` with `new ApplicationClass(props)`. This works for Gio, Gtk, Adw, and custom application subclasses. Replace `getApplicationInstance(application)` and `application.getRegistrationState()` with `application.getIsRegistered()` and, once registered, `application.getIsRemote()`. Use the `activate` signal to build the primary instance's UI and the `runAsync(argv)` promise to observe completion.
 
 The `ApplicationInstance`, `ApplicationRegistrationState`, `ApplicationClass`, and `ApplicationConstructor` helper types are removed. Use generated application classes and their constructor props directly. The Variant `ByteArray` type is now `VariantByteArray` in `@gtkx/gi/glib`. Use `Gio.Application` in place of the removed `CommandLineApplication` interface. Runtime shutdown remains `quit()` from `@gtkx/runtime`.
 
@@ -86,7 +86,7 @@ The `toVariant` and `fromVariant` helpers are removed. Replace `toVariant(signat
 
 Variant dictionaries now use objects for every key type; replace `Map` inputs and reads with object properties. GTKX continues to use exact `bigint` values for 64-bit integers. See [Calling D-Bus directly](/v2/guide/async-operations#calling-d-bus-directly) for the unpacking modes and GJS compatibility aliases.
 
-Replace `runApplication(application, argv)` with `application.runAsync(argv): Promise<number>` and `quitApplication(application)` with `application.quit()`. `RunApplicationResult` is removed. Command-line handling starts immediately while Node keeps control of the event loop. Observe the promise's exit status and handle startup or shutdown rejections.
+Replace `runApplication(application, argv)` with `application.runAsync(argv): Promise<number>` and `quitApplication(application)` with `application.quit()`. Pass an array beginning with the program name, or `null` or `[]` for no arguments; omitting the argument is an error. `RunApplicationResult` is removed. Command-line handling starts immediately while Node keeps control of the event loop. Observe the promise's exit status and handle startup or shutdown rejections.
 
 An active run finishes automatically when it has no application windows or outstanding JavaScript `hold()` calls. Balance each `hold()` with `release()` to keep background work alive; the final release observes `inactivityTimeout`. A service starts with a ten-second grace period before its first use. Call `application.quit()` to force shutdown even while holds or windows remain. The promise resolves after GTKX completes shutdown and releases the process-wide default. Rejected command lines and remote instances resolve immediately; call `application.quit()` afterward to release their retained application state.
 
