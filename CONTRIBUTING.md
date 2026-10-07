@@ -19,6 +19,8 @@ pnpm lint
 pnpm typecheck
 ```
 
+`pnpm build` emits JavaScript and declarations without full TypeScript checking. Run `pnpm typecheck` to check package, example, and workspace types; CI runs it as a separate check.
+
 Include a screenshot for visible UI changes. Keep the pull request description empty or use `Closes #N` to link the issue it closes.
 
 Breaking removals require a warning in an earlier minor release. Renamed symbols use `@deprecated` with their introduction version; behavior changes need a CLI warning and an opt-in migration path. A removal-only major adds no unrelated features, and its migration guide changes with every deprecation.
