@@ -101,7 +101,7 @@ If no suitable method exists, the generated method stays callback-based and its 
 
 ```ts
 import * as Gio from "@gtkx/gi/gio";
-import { fromVariant, toVariant } from "@gtkx/runtime";
+import { fromVariant, toVariant } from "@gtkx/gi/glib";
 
 const getNameOwner = async (proxy: Gio.DBusProxy, name: string) => {
     const reply = await proxy.call(
@@ -116,7 +116,7 @@ const getNameOwner = async (proxy: Gio.DBusProxy, name: string) => {
 };
 ```
 
-A nested variant stays a `GLib.Variant` unless recursive unpacking is requested. See the [`fromVariant` reference](/v2/reference/@gtkx/runtime/functions/fromVariant) for conversion options. The generated promise is named `call` here; use the generated signature rather than deriving a name from the C function.
+A nested variant stays a `GLib.Variant` unless recursive unpacking is requested. Pass `{ recursive: true }` as the final `fromVariant` argument to unwrap nested variants completely. The generated promise is named `call` here; use the generated signature rather than deriving a name from the C function.
 
 ## Keeping a helper process alive
 

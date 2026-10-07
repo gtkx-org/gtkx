@@ -25,7 +25,8 @@ const APP_CONFIG = `export default {
 `;
 
 const APP_ENTRY = String.raw`import { File, IOErrorEnum, ioErrorQuark, SimpleAction, Task } from "@gtkx/gi/gio";
-import { toVariant, typeFromName } from "@gtkx/runtime";
+import { toVariant } from "@gtkx/gi/glib";
+import { typeFromName } from "@gtkx/runtime";
 
 process.stdout.write("${USED_NAME_PREFIX}" + Task.name + "\n");
 process.stdout.write("${USED_TYPE_PREFIX}" + String(typeFromName("GTask") !== 0n) + "\n");
@@ -60,6 +61,11 @@ const UNUSED_SIGNAL_HANDLER = "onActivateLink";
 const REACT_APP_ENTRY = String.raw`import { GtkButton } from "@gtkx/jsx/gtk";
 
 process.stdout.write("used-component=" + typeof GtkButton + "\n");
+`;
+
+const GLIB_APP_ENTRY = String.raw`import { getMonotonicTime } from "@gtkx/gi/glib";
+
+process.stdout.write("clock-running=" + String(getMonotonicTime() > 0) + "\n");
 `;
 
 describe("gtkx build (tree shaking)", () => {
@@ -104,6 +110,7 @@ describe("gtkx build (tree shaking)", () => {
     it("retains native value wrappers without direct class imports", () => {
         expect(probe.run.status).toBe(0);
         expect(probe.run.stdout).toContain(`${RETAINED_VALUES_PREFIX}["retained",""]\n`);
+        expect(bundle).toContain("Invalid GVariant type string");
     });
 
     it("retains native errors without a direct error class import", () => {
@@ -141,4 +148,25 @@ describe("gtkx build (metadata tree shaking)", () => {
     it("drops the metadata of elements the app never imports", () => {
         expect(bundle).not.toContain(UNUSED_SIGNAL_HANDLER);
     });
+});
+
+describe("gtkx build (pure helper tree shaking)", () => {
+    it("drops unused Variant helpers from GLib consumers", async () => {
+        const probe = await probeAppProject({
+            applicationId: "com.gtkx.clipurehelperprobe",
+            entry: GLIB_APP_ENTRY,
+            outDir: OUT_DIR,
+            prefix: "gtkx-bundle-pure-helpers-",
+        });
+
+        try {
+            const bundle = readFileSync(join(probe.project.root, probe.reported), "utf8");
+
+            expect(probe.run.status).toBe(0);
+            expect(probe.run.stdout).toContain("clock-running=true\n");
+            expect(bundle).not.toContain("Invalid GVariant type string");
+        } finally {
+            removeAppProject(probe.project);
+        }
+    }, BUILD_TIMEOUT);
 });

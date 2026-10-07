@@ -80,12 +80,15 @@ const requiredFileViolations = (files: Set<string>): string[] => {
     return violations;
 };
 
-const shippedEntryViolation = (entry: string): string | undefined => {
+const shippedEntryViolation = (name: string, entry: string): string | undefined => {
     if (entry.endsWith(".tsbuildinfo")) {
         return `ships build artifact ${entry}`;
     }
 
-    if (entry.endsWith(".ts") && !entry.endsWith(".d.ts") && !isDevSource(entry) && !entry.includes("templates/")) {
+    const isCodegenOverride = name === "@gtkx/codegen" && entry.startsWith("overrides/");
+
+    if (entry.endsWith(".ts") && !entry.endsWith(".d.ts") &&
+        !isDevSource(entry) && !entry.includes("templates/") && !isCodegenOverride) {
         return `ships TypeScript source ${entry}`;
     }
 
@@ -157,7 +160,7 @@ const assertPublishedShape = ({ name, entries, manifest, maps }: PublishedPackag
 
     const violations = [
         ...requiredFileViolations(files),
-        ...[...files].map((file) => shippedEntryViolation(file)).filter((violation) => violation !== undefined),
+        ...[...files].map((file) => shippedEntryViolation(name, file)).filter((violation) => violation !== undefined),
         ...unresolvedTargetViolations(files, manifest),
         ...mapViolations(files, maps ?? {}),
     ];

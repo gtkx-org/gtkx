@@ -1,7 +1,7 @@
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { quitApplication, registerClass } from "@gtkx/runtime";
+import { registerClass } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
 function createSwipeable(typeName: string, snapPoints: () => number[]): Adw.Swipeable {
@@ -37,7 +37,7 @@ describe("vfunc return arrays whose length parameter is folded away", () => {
 });
 
 describe("vfunc input arrays whose length parameter is folded away", () => {
-    it("derives the native length for overrides and parent calls", () => {
+    it("derives the native length for overrides and parent calls", async () => {
         const received: [string[], string][] = [];
 
         class OpeningApplication extends Gio.Application {
@@ -48,13 +48,15 @@ describe("vfunc input arrays whose length parameter is folded away", () => {
         }
 
         registerClass(OpeningApplication, { typeName: `GtkxFoldedOpen_${String(process.pid)}` });
-        const application = new OpeningApplication({
+        const application = OpeningApplication.create({
             applicationId: `org.gtkx.folded-open-${String(process.pid)}`,
             flags: Gio.ApplicationFlags.NON_UNIQUE | Gio.ApplicationFlags.HANDLES_OPEN,
         });
+        application.on("activate", (): void => undefined);
+        const completion = application.runAsync(["probe"]);
 
         try {
-            expect(application.register(null)).toBe(true);
+            expect(application.getIsRegistered()).toBe(true);
             application.open([Gio.File.newForPath("/one"), Gio.File.newForPath("/two")], "first");
             application.open([Gio.File.newForPath("/three")], "second");
             expect(received).toEqual([
@@ -62,7 +64,8 @@ describe("vfunc input arrays whose length parameter is folded away", () => {
                 [["/three"], "second"],
             ]);
         } finally {
-            quitApplication(application);
+            application.quit();
+            await expect(completion).resolves.toBe(0);
         }
     });
 });

@@ -1,14 +1,14 @@
 import type * as Gtk from "@gtkx/gi/gtk";
-import { quitApplication, runApplication } from "@gtkx/runtime";
-import { pickBy, warn } from "@gtkx/utils";
+import { error, pickBy, warn } from "@gtkx/utils";
 import process from "node:process";
-import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useState } from "react";
+import { type ElementType, type ReactNode, type Ref, useLayoutEffect, useRef, useState } from "react";
 import {
     applicationId as defaultApplicationId,
     resourceBasePath as defaultResourceBasePath,
 } from "virtual:gtkx-config";
 import { ApplicationContext } from "../hooks/use-application.js";
 import { useMergedRef } from "../hooks/use-merged-refs.js";
+import { reconciler } from "../reconciler/host-config.js";
 import { createPortaledComponent } from "./portaled.js";
 
 type ApplicationComponentProps = {
@@ -18,7 +18,31 @@ type ApplicationComponentProps = {
     resourceBasePath?: string | null | undefined;
 };
 
+type ApplicationFailure = { error: unknown };
+
+type ApplicationLifecycle = {
+    application: Gtk.Application;
+    activated: boolean;
+    generation: number;
+    hasCommitted: boolean;
+    isMounted: boolean;
+    settled: boolean;
+    releaseStartup: (() => void) | null;
+};
+
 const POST_ACTIVATE_PROPS = new Set(["menubar"]);
+
+const holdForStartup = (lifecycle: ApplicationLifecycle): void => {
+    if (lifecycle.hasCommitted || lifecycle.releaseStartup) {
+        return;
+    }
+
+    lifecycle.application.hold();
+    lifecycle.releaseStartup = (): void => {
+        lifecycle.releaseStartup = null;
+        lifecycle.application.release();
+    };
+};
 
 const commandLine = (applicationId: string | null): string[] => [
     applicationId?.split(".").at(-1) ?? "gtkx",
@@ -38,39 +62,135 @@ const reportOwnedApplicationId = (application: Gtk.Application): void => {
 };
 
 const startApplication = (
-    application: Gtk.Application,
-    setActivated: (isActivated: boolean) => void,
+    lifecycle: ApplicationLifecycle,
     applicationId: string | null,
+    onComplete: () => void,
+    onFailure: (cause: unknown) => void,
 ): void => {
-    application.on("activate", () => {
-        setActivated(true);
+    const { application } = lifecycle;
+    const completion = application.runAsync(commandLine(applicationId));
+    const generation = lifecycle.generation;
+    void completion.then((exitStatus) => {
+        if (lifecycle.generation === generation) {
+            onComplete();
+        }
+
+        if (exitStatus !== 0) {
+            process.exitCode = exitStatus;
+        }
+    }, (cause) => {
+        if (lifecycle.generation === generation) {
+            onFailure(cause);
+        } else {
+            process.exitCode = 1;
+            error("Application shutdown failed:", cause);
+        }
     });
-
-    const { exitStatus } = runApplication(application, commandLine(applicationId));
     reportOwnedApplicationId(application);
-
-    if (exitStatus !== 0) {
-        process.exitCode = exitStatus;
-    }
 };
 
 const useApplicationLifecycle = (
     application: Gtk.Application | null,
+    activated: boolean,
     setActivated: (isActivated: boolean) => void,
+    setFailure: (failure: ApplicationFailure) => void,
     applicationId: string | null,
 ): void => {
+    const currentLifecycle = useRef<ApplicationLifecycle | null>(null);
+
     useLayoutEffect(() => {
         if (!application) {
             return;
         }
 
-        startApplication(application, setActivated, applicationId);
+        const previous = currentLifecycle.current;
+        const lifecycle = previous?.application === application && !previous.settled
+            ? previous
+            : {
+                application,
+                activated: false,
+                generation: 0,
+                hasCommitted: false,
+                isMounted: true,
+                settled: false,
+                releaseStartup: null,
+            };
+        currentLifecycle.current = lifecycle;
+        lifecycle.isMounted = true;
+
+        const onActivate = (): void => {
+            if (lifecycle.settled) {
+                lifecycle.generation += 1;
+                lifecycle.settled = false;
+            }
+
+            holdForStartup(lifecycle);
+            lifecycle.activated = true;
+            setActivated(true);
+        };
+        const onShutdown = (): void => {
+            lifecycle.activated = false;
+            lifecycle.hasCommitted = false;
+            lifecycle.settled = true;
+            lifecycle.releaseStartup?.();
+            reconciler.flushSyncFromReconciler(() => setActivated(false));
+        };
+        application.on("activate", onActivate);
+        application.on("shutdown", onShutdown);
+
+        if (lifecycle === previous) {
+            if (lifecycle.activated) {
+                holdForStartup(lifecycle);
+            }
+
+            setActivated(lifecycle.activated);
+        } else {
+            const onComplete = (): void => {
+                lifecycle.settled = true;
+                lifecycle.activated = false;
+                lifecycle.releaseStartup?.();
+
+                if (lifecycle.isMounted) {
+                    setActivated(false);
+                } else {
+                    application.quit();
+                }
+            };
+
+            startApplication(lifecycle, applicationId, onComplete, (cause) => {
+                onComplete();
+
+                if (lifecycle.isMounted) {
+                    setFailure({ error: cause });
+                } else {
+                    process.exitCode = 1;
+                    error("Application shutdown failed:", cause);
+                }
+            });
+        }
 
         return () => {
-            quitApplication(application);
+            lifecycle.isMounted = false;
+            application.off("activate", onActivate);
+            application.off("shutdown", onShutdown);
+            lifecycle.releaseStartup?.();
+
+            if (lifecycle.settled) {
+                application.quit();
+            }
+
             setActivated(false);
         };
-    }, [application, setActivated, applicationId]);
+    }, [application, setActivated, setFailure, applicationId]);
+
+    useLayoutEffect(() => {
+        const lifecycle = currentLifecycle.current;
+
+        if (activated && lifecycle?.application === application) {
+            lifecycle.hasCommitted = true;
+            lifecycle.releaseStartup?.();
+        }
+    }, [activated, application]);
 };
 
 const applicationChildren = (application: Gtk.Application | null, children: ReactNode): ReactNode => {
@@ -93,9 +213,14 @@ const createApplicationElement = (
     }: ApplicationComponentProps): ReactNode => {
         const [application, setApplication] = useState<Gtk.Application | null>(null);
         const [activated, setActivated] = useState(false);
-        useApplicationLifecycle(application, setActivated, applicationId);
+        const [failure, setFailure] = useState<ApplicationFailure | null>(null);
+        useApplicationLifecycle(application, activated, setActivated, setFailure, applicationId);
         const mergedRef = useMergedRef(ref, setApplication);
         const appliedProps = activated ? rest : pickBy(rest, (_value, key) => !POST_ACTIVATE_PROPS.has(key));
+
+        if (failure) {
+            throw failure.error;
+        }
 
         return (
             <Component

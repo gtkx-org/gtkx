@@ -1,6 +1,6 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
-import { fromVariant, toVariant } from "@gtkx/runtime";
+import { fromVariant, toVariant } from "@gtkx/gi/glib";
 import { afterEach, describe, expect, it } from "vitest";
 
 const OBJECT_PATH = "/com/example/VariantProbe";

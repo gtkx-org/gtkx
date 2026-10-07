@@ -38,7 +38,7 @@ const overrideFiles = (directory: string): SourceModule[] =>
     namespaceOverrides(directory).map(({ module }) =>
         overrideModule(
             `${directory}/overrides/${module}.ts`,
-            join(OVERRIDES_ROOT, directory, `${module}.ts.ejs`),
+            join(OVERRIDES_ROOT, directory, "overrides", `${module}.ts`),
         ));
 
 const overrideModule = (fileName: string, overridePath: string): SourceModule => ({
@@ -49,7 +49,7 @@ const overrideModule = (fileName: string, overridePath: string): SourceModule =>
 
 const barrelFile = (directory: string, girFile: string): SourceModule => {
     const barrel = namespaceBarrel(directory);
-    const overrideIndex = join(OVERRIDES_ROOT, directory, "index.ts.ejs");
+    const overrideIndex = join(OVERRIDES_ROOT, directory, "index.ts");
 
     const file = existsSync(overrideIndex)
         ? overrideModule(barrel.fileName, overrideIndex)

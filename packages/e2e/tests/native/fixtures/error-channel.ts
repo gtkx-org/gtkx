@@ -1,5 +1,5 @@
 import * as GLib from "@gtkx/gi/glib";
-import { toVariant } from "@gtkx/runtime";
+import { toVariant } from "@gtkx/gi/glib";
 
 const fields = toVariant("a{sv}", { MESSAGE: toVariant("s", "Authored diagnostic") });
 const level =

@@ -135,18 +135,34 @@ const arrayLengthArgument = (source: GirParameter, sourceIndex: number): string 
     return source.nullable || source.optional ? `(${identifier}?.length ?? 0)` : `${identifier}.length`;
 };
 
+const withNullableReceiver = (context: ModuleContext, fn: GirFunction, parameters: string): string => {
+    if (fn.instance?.nullable !== true) {
+        return parameters;
+    }
+
+    const receiver = `this: ${renderTsType(context, fn.instance.type, true)}`;
+
+    return parameters === "" ? receiver : `${receiver}, ${parameters}`;
+};
+
+const instanceHandleExpression = (instance: GirParameter): string =>
+    instance.nullable ? "this == null ? null : getHandle(this)" : "getHandle(this)";
+
 const renderMethodSignature = (
     context: ModuleContext,
     fn: GirFunction,
     excludedParameters: ReadonlySet<GirParameter> = new Set(),
     direction: TypeDirection = "to-native",
-): string =>
-    renderInputParameters(context, fn, {
+): string => {
+    const parameters = renderInputParameters(context, fn, {
         shouldSkip: (parameter) => excludedParameters.has(parameter),
         isOptionalExtra: () => false,
         isNullableExtra: () => false,
         direction,
     });
+
+    return withNullableReceiver(context, fn, parameters);
+};
 
 const closureAnnotation = (context: ModuleContext, base: string): string => {
     context.addRuntimeTypeImport("ClosureCallback");
@@ -444,7 +460,7 @@ const renderPromisifiedBody = (
 
     if (asyncFn.instance !== undefined) {
         context.addRuntimeImport("getHandle");
-        leadingExpressions.push("getHandle(this)");
+        leadingExpressions.push(instanceHandleExpression(asyncFn.instance));
     }
 
     leadingExpressions.push(...collectPromisifiedArguments(promisifyContext, cancellableIndex));
@@ -534,7 +550,7 @@ const adaptedArguments = (
 
     if (asyncFn.instance !== undefined) {
         context.addRuntimeImport("getHandle");
-        expressions.unshift("getHandle(this)");
+        expressions.unshift(instanceHandleExpression(asyncFn.instance));
     }
 
     return expressions;
@@ -556,10 +572,15 @@ const renderAdaptedPromisifiedBody = (
     return `return promisify(${adapter}, ${finish}, ${cancellableExpression});`;
 };
 
-const finishCallExpression = (asyncFn: GirFunction, finishFn: GirFunction, ownerName: string): string =>
-    asyncFn.instance !== undefined && finishFn.instance === undefined
-        ? `${ownerName}.${methodExportName(finishFn)}.bind(${ownerName})`
-        : `this.${methodExportName(finishFn)}.bind(this)`;
+const finishCallExpression = (asyncFn: GirFunction, finishFn: GirFunction, ownerName: string): string => {
+    if (asyncFn.instance !== undefined && finishFn.instance === undefined) {
+        return `${ownerName}.${methodExportName(finishFn)}.bind(${ownerName})`;
+    }
+
+    const receiver = asyncFn.instance?.nullable === true ? `(this ?? ${ownerName}.prototype)` : "this";
+
+    return `${receiver}.${methodExportName(finishFn)}.bind(this)`;
+};
 
 const shouldSkipPromisifiedParameter = (promisify: PromisifyContext, parameter: GirParameter, index: number): boolean =>
     isAsyncReadyCallback(promisify.context, parameter) ||
@@ -617,7 +638,7 @@ const renderPromisifiedSignature = (
             )
         : renderMethodReturnType(context, finishFn);
 
-    return { signature, returnType: `Promise<${finishReturn}>` };
+    return { signature: withNullableReceiver(context, asyncFn, signature), returnType: `Promise<${finishReturn}>` };
 };
 
 const isCancellable = (context: ModuleContext, parameter: GirParameter): boolean =>
@@ -710,7 +731,7 @@ const planCallArgs = (context: ModuleContext, fn: GirFunction): CallArgPlan[] =>
 
         plan.push({
             paramLiteral: `{ type: ${renderSelfDescriptor(context, fn.instance)} }`,
-            inputExpr: "getHandle(this)",
+            inputExpr: instanceHandleExpression(fn.instance),
         });
     }
 

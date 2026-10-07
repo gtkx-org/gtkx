@@ -1,0 +1,11 @@
+{
+    "extends": "../../../tsconfig.base.json",
+    "compilerOptions": {
+        "composite": false,
+        "noEmit": true,
+        "declaration": true,
+        "isolatedDeclarations": true,
+        "rootDirs": [".", "../../../node_modules/@gtkx/gi"]
+    },
+    "include": ["**/*.ts"]
+}

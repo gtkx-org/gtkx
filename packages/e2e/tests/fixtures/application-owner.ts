@@ -1,5 +1,4 @@
 import type * as Gio from "@gtkx/gi/gio";
-import { runApplication } from "@gtkx/runtime";
 import { createUniqueApplication } from "../helpers/application.js";
 
 const HOLD_INTERVAL_MS = 250;
@@ -12,17 +11,26 @@ const requireRegistration = (application: Gio.Application): void => {
     throw new Error("the owner lost the application ID it took");
 };
 
-const holdApplication = (application: Gio.Application): void => {
+const holdApplication = (application: Gio.Application): NodeJS.Timeout =>
     setInterval(() => {
         requireRegistration(application);
-    }, HOLD_INTERVAL_MS);
-};
+    }, HOLD_INTERVAL_MS).unref();
 
-const ownApplicationId = (applicationId: string): void => {
+const ownApplicationId = async (applicationId: string): Promise<void> => {
     const application = createUniqueApplication(applicationId);
-    const { isPrimary } = runApplication(application, ["owner"]);
+    application.hold();
+    const completion = application.runAsync(["owner"]);
+    const isPrimary = application.getRegistrationState() === "primary";
     process.stdout.write(`OWNER isPrimary=${String(isPrimary)}\n`);
-    holdApplication(application);
+    const interval = holdApplication(application);
+
+    try {
+        process.exitCode = await completion;
+    } finally {
+        clearInterval(interval);
+        application.quit();
+        application.release();
+    }
 };
 
-ownApplicationId(process.argv[2] ?? "");
+await ownApplicationId(process.argv[2] ?? "");

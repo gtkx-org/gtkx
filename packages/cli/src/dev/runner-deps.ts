@@ -1,7 +1,8 @@
 import { loadConfig } from "@gtkx/config";
 import * as Gio from "@gtkx/gi/gio";
-import { quitApplication } from "@gtkx/runtime";
-import { type ApplicationInstance, getApplicationInstance } from "@gtkx/runtime/internal";
+import type { ApplicationRegistrationState } from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
+import { onExit } from "@gtkx/runtime";
 import { info, installGracefulShutdown } from "@gtkx/utils";
 import { readFile } from "node:fs/promises";
 import { createServer } from "vite";
@@ -24,10 +25,26 @@ const APPLICATION_POLL_INTERVAL_MS = 50;
 
 const currentApplicationId = (): string | null => Gio.Application.getDefault()?.applicationId ?? null;
 
-const currentApplicationInstance = (): ApplicationInstance => {
+const currentApplicationRegistrationState = (): ApplicationRegistrationState => {
     const application = Gio.Application.getDefault();
 
-    return application === null ? "unregistered" : getApplicationInstance(application);
+    return application === null ? "unregistered" : application.getRegistrationState();
+};
+
+const watchApplicationShutdown = (onShutdown: () => void): void => {
+    GObject.ObjectClass.peek(Gio.Application);
+    const signalId = GObject.signalLookup("shutdown", Gio.Application);
+    const hookId = GObject.signalAddEmissionHook(signalId, 0, (_hint, values) => {
+        const application = values[0]?.getObject();
+
+        if (application && application === Gio.Application.getDefault()) {
+            onShutdown();
+        }
+
+        return true;
+    });
+
+    onExit(() => GObject.signalRemoveEmissionHook(signalId, hookId));
 };
 
 const waitForApplicationId = async (timeoutMs: number, shouldKeepWaiting: () => boolean): Promise<string | null> => {
@@ -76,14 +93,12 @@ const createDevRunnerDeps = (
         return startMcpClient(applicationId);
     },
     stopMcpClient,
-    watchApplicationShutdown: (onShutdown) => {
-        Gio.Application.getDefault()?.on("shutdown", onShutdown);
-    },
+    watchApplicationShutdown,
     watchUncaughtErrors: (onUncaughtError) => {
         process.on("uncaughtException", onUncaughtError);
         process.on("unhandledRejection", onUncaughtError);
     },
-    getApplicationInstance: currentApplicationInstance,
+    getApplicationRegistrationState: currentApplicationRegistrationState,
     installShutdownHandlers: (onSignal) => {
         installGracefulShutdown({ onSignal });
     },
@@ -91,7 +106,7 @@ const createDevRunnerDeps = (
         const application = Gio.Application.getDefault();
 
         if (application) {
-            quitApplication(application);
+            application.quit();
         }
     },
     performRefresh,

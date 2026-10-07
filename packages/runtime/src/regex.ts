@@ -32,12 +32,6 @@ type Subject = {
 };
 
 type RegexEvaluator = (info: never, result: never) => boolean;
-type RegexEvalArgs = [
-    subject: string | string[] | Uint8Array | number[],
-    startPosition: number,
-    matchOptions: number,
-    shouldStop: RegexEvaluator,
-];
 
 type MatchInfoMethod = (this: object, ...args: unknown[]) => unknown;
 
@@ -199,4 +193,4 @@ function installMatchInfo(cls: AnyClass, rawClass: AnyClass): void {
     }
 }
 
-export { installMatchInfo, matchAllRegex, matchRegex, type RegexEvalArgs, replaceRegexEval };
+export { installMatchInfo, matchAllRegex, matchRegex, replaceRegexEval };

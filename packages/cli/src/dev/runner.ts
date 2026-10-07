@@ -1,4 +1,4 @@
-import type { ApplicationInstance } from "@gtkx/runtime/internal";
+import type { ApplicationRegistrationState } from "@gtkx/gi/gio";
 import type { InlineConfig, ModuleNode, Plugin, ViteDevServer } from "vite";
 import { error, warn } from "@gtkx/utils";
 import { isCatalogSource } from "../i18n/catalogs.js";
@@ -30,7 +30,7 @@ type DevRunnerDeps = {
     stopMcpClient(): void;
     watchApplicationShutdown(onShutdown: () => void): void;
     watchUncaughtErrors(onUncaughtError: (cause: unknown) => void): void;
-    getApplicationInstance(): ApplicationInstance;
+    getApplicationRegistrationState(): ApplicationRegistrationState;
     installShutdownHandlers(onSignal: () => void | Promise<void>): void;
     quitDefaultApplication(): void;
     performRefresh: () => void;
@@ -50,7 +50,7 @@ type DevRunner = {
 
 type ShutdownController = {
     isShuttingDown: () => boolean;
-    shutdown: (quitApplication: () => void) => Promise<void>;
+    shutdown: (requestQuit: () => void | Promise<void>) => Promise<void>;
 };
 
 type DevSession = {
@@ -361,13 +361,13 @@ const createShutdownController = (server: ViteDevServer, deps: DevRunnerDeps): S
 
     return {
         isShuttingDown: () => isShuttingDown,
-        shutdown: async (quitApplication: () => void): Promise<void> => {
+        shutdown: async (requestQuit: () => void | Promise<void>): Promise<void> => {
             if (isShuttingDown) {
                 return;
             }
 
             isShuttingDown = true;
-            quitApplication();
+            await requestQuit();
             deps.stopMcpClient();
             await server.close();
         },
@@ -543,7 +543,7 @@ const isSessionInactive = (session: DevSession): boolean => {
 const stopForApplicationQuit = (session: DevSession): Promise<never> => {
     session.deps.log("Application quit - stopping dev runner...");
 
-    return closeAndExit(session);
+    return closeAndExit(session, process.exitCode === undefined ? 0 : Number(process.exitCode));
 };
 
 const settleUnmount = (session: DevSession, wasRefreshing: boolean): void => {
@@ -581,7 +581,6 @@ const refusedExitCode = (): number => (process.exitCode === undefined ? 1 : Numb
 
 const connectApplication = async (session: DevSession, liveApplicationId: string): Promise<void> => {
     const { deps, server } = session;
-    deps.watchApplicationShutdown(onApplicationShutdown(session));
     const applicationId = (await deps.getConfiguredApplicationId(process.cwd())) ?? liveApplicationId;
     deps.log(`Connected application ID: ${applicationId}`);
     await deps.startMcpClient(applicationId, (id) => loadModuleExclusively(server, id));
@@ -596,7 +595,10 @@ const stopForOwnedApplicationId = async (session: DevSession, liveApplicationId:
     await closeAndExit(session, OWNED_ID_EXIT_CODE);
 };
 
-const stopForStoppedApplication = async (session: DevSession, instance: ApplicationInstance): Promise<void> => {
+const stopForStoppedApplication = async (
+    session: DevSession,
+    registrationState: ApplicationRegistrationState,
+): Promise<void> => {
     if (session.failure.hasReported()) {
         session.deps.log("Application stopped before the dev runner attached.");
         session.failure.fail();
@@ -604,7 +606,7 @@ const stopForStoppedApplication = async (session: DevSession, instance: Applicat
         return;
     }
 
-    if (instance === "shutDown") {
+    if (registrationState === "shutDown") {
         await stopForApplicationQuit(session);
 
         return;
@@ -615,21 +617,21 @@ const stopForStoppedApplication = async (session: DevSession, instance: Applicat
 };
 
 const connectLiveApplication = async (session: DevSession, liveApplicationId: string): Promise<void> => {
-    const instance = session.deps.getApplicationInstance();
+    const registrationState = session.deps.getApplicationRegistrationState();
 
-    if (instance === "primary") {
+    if (registrationState === "primary") {
         await connectApplication(session, liveApplicationId);
 
         return;
     }
 
-    if (instance === "remote") {
+    if (registrationState === "remote") {
         await stopForOwnedApplicationId(session, liveApplicationId);
 
         return;
     }
 
-    await stopForStoppedApplication(session, instance);
+    await stopForStoppedApplication(session, registrationState);
 };
 
 const attachApplication = async (session: DevSession): Promise<void> => {
@@ -675,11 +677,11 @@ const loadEntry = async (session: DevSession, entryPath: string): Promise<void> 
     }
 };
 
-const hasApplicationStopped = (instance: ApplicationInstance): boolean =>
-    instance === "shutDown" || instance === "unregistered";
+const hasApplicationStopped = (registrationState: ApplicationRegistrationState): boolean =>
+    registrationState === "shutDown" || registrationState === "unregistered";
 
 const isApplicationLost = (session: DevSession): boolean =>
-    session.failure.hasReported() && hasApplicationStopped(session.deps.getApplicationInstance());
+    session.failure.hasReported() && hasApplicationStopped(session.deps.getApplicationRegistrationState());
 
 const announceReady = (session: DevSession): void => {
     if (isApplicationLost(session)) {
@@ -723,6 +725,7 @@ const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
             session.failure.report(cause);
         });
 
+        deps.watchApplicationShutdown(onApplicationShutdown(session));
         watchProjectFiles(session);
         await loadEntry(session, entryPath);
         await attachApplication(session);

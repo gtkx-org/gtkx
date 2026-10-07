@@ -1,4 +1,4 @@
-import * as GLib from "@gtkx/gi/glib";
+import { Bytes, Variant, VariantType } from "../glib.js";
 
 /** JavaScript type every GVariant basic type code unpacks to, with a nested variant held as `Nested`. */
 type BasicValueMap<Nested> = {
@@ -35,7 +35,7 @@ type BasicValueMap<Nested> = {
 /** Single-character code of one of the GVariant basic types in {@link BasicValueMap}. */
 type BasicCode = keyof BasicValueMap<unknown>;
 /** JavaScript type a byte array (`ay`) unpacks to. */
-type ByteArray = ReturnType<GLib.Bytes["unrefToArray"]>;
+type VariantByteArray = ReturnType<Bytes["unrefToArray"]>;
 /** Values a byte array (`ay`) packs from. */
 type ByteArrayInput = Uint8Array | number[];
 
@@ -122,25 +122,25 @@ type ParsedValue<S extends string, Bytes, Nested> = [Parse<S, Bytes, Nested>] ex
 
 /**
  * JavaScript type a variant of type string `S` unpacks to, or `unknown` when `S` is not one complete type. A byte
- * array (`ay`) unpacks to {@link ByteArray} and a nested variant (`v`) to the `GLib.Variant` itself.
+ * array (`ay`) unpacks to {@link VariantByteArray} and a nested variant (`v`) to the `Variant` itself.
  */
-type VariantValue<S extends string> = ParsedValue<S, ByteArray, GLib.Variant>;
+type VariantValue<S extends string> = ParsedValue<S, VariantByteArray, Variant>;
 /**
  * JavaScript type {@link toVariant} packs into a variant of type string `S`, or `unknown` when `S` is not one
  * complete type. The same as {@link VariantValue}, except that a byte array (`ay`) also packs from a `number[]`.
  */
-type VariantInput<S extends string> = ParsedValue<S, ByteArrayInput, GLib.Variant>;
+type VariantInput<S extends string> = ParsedValue<S, ByteArrayInput, Variant>;
 /**
  * JavaScript type a variant of type string `S` unpacks to when every nested variant is unwrapped as well, so a `v`
  * reads as `unknown`.
  */
-type RecursiveVariantValue<S extends string> = ParsedValue<S, ByteArray, unknown>;
+type RecursiveVariantValue<S extends string> = ParsedValue<S, VariantByteArray, unknown>;
 
 /** Options {@link fromVariant} reads. */
 type FromVariantOptions = {
     /**
      * Whether to unwrap every nested variant (`v`) into the value it holds, all the way down, instead of handing back
-     * the `GLib.Variant` itself. Discards the type information those variants carry.
+     * the `Variant` itself. Discards the type information those variants carry.
      */
     recursive?: boolean;
 };
@@ -172,7 +172,7 @@ const CONTAINER_PARSERS: Record<string, (source: string, start: number) => [Vari
 const parsedTypes: Map<string, VariantTypeNode> = new Map();
 const BYTE_ARRAY_TYPE_STRING = "ay";
 
-const unpackBasic: Record<BasicCode, (variant: GLib.Variant) => unknown> = {
+const unpackBasic: Record<BasicCode, (variant: Variant) => unknown> = {
     b: (variant) => variant.getBoolean(),
     y: (variant) => variant.getByte(),
     n: (variant) => variant.getInt16(),
@@ -189,21 +189,21 @@ const unpackBasic: Record<BasicCode, (variant: GLib.Variant) => unknown> = {
     v: (variant) => variant.getVariant(),
 };
 
-const packBasic: Record<BasicCode, (value: unknown) => GLib.Variant> = {
-    b: (value) => GLib.Variant.newBoolean(value as boolean),
-    y: (value) => GLib.Variant.newByte(value as number),
-    n: (value) => GLib.Variant.newInt16(value as number),
-    q: (value) => GLib.Variant.newUint16(value as number),
-    i: (value) => GLib.Variant.newInt32(value as number),
-    u: (value) => GLib.Variant.newUint32(value as number),
-    h: (value) => GLib.Variant.newHandle(value as number),
-    d: (value) => GLib.Variant.newDouble(value as number),
-    x: (value) => GLib.Variant.newInt64(value as bigint),
-    t: (value) => GLib.Variant.newUint64(value as bigint),
-    s: (value) => GLib.Variant.newString(value as string),
+const packBasic: Record<BasicCode, (value: unknown) => Variant> = {
+    b: (value) => Variant.newBoolean(value as boolean),
+    y: (value) => Variant.newByte(value as number),
+    n: (value) => Variant.newInt16(value as number),
+    q: (value) => Variant.newUint16(value as number),
+    i: (value) => Variant.newInt32(value as number),
+    u: (value) => Variant.newUint32(value as number),
+    h: (value) => Variant.newHandle(value as number),
+    d: (value) => Variant.newDouble(value as number),
+    x: (value) => Variant.newInt64(value as bigint),
+    t: (value) => Variant.newUint64(value as bigint),
+    s: (value) => Variant.newString(value as string),
     o: packObjectPath,
     g: packSignature,
-    v: (value) => GLib.Variant.newVariant(value as GLib.Variant),
+    v: (value) => Variant.newVariant(value as Variant),
 };
 
 const isBasicCode = (code: string): code is BasicCode => BASIC_CODES.includes(code);
@@ -308,7 +308,7 @@ const parseVariantType = (typeString: string): VariantTypeNode => {
 const isByteArray = (node: VariantTypeNode): boolean =>
     node.kind === "array" && node.element.kind === "basic" && node.element.code === "y";
 
-const unpackChildren = (variant: GLib.Variant, unpackChild: (child: GLib.Variant) => unknown): unknown[] => {
+const unpackChildren = (variant: Variant, unpackChild: (child: Variant) => unknown): unknown[] => {
     const children: unknown[] = [];
     const count = variant.nChildren();
 
@@ -322,7 +322,7 @@ const unpackChildren = (variant: GLib.Variant, unpackChild: (child: GLib.Variant
 const unpackPair = (
     key: VariantTypeNode,
     value: VariantTypeNode,
-    entry: GLib.Variant,
+    entry: Variant,
     isRecursive: boolean,
 ): [unknown, unknown] => [
     unpackNode(key, entry.getChildValue(0), isRecursive),
@@ -331,7 +331,7 @@ const unpackPair = (
 
 const unpackDict = (
     node: { key: VariantTypeNode; value: VariantTypeNode },
-    variant: GLib.Variant,
+    variant: Variant,
     isRecursive: boolean,
 ): Record<string, unknown> | Map<unknown, unknown> => {
     const entries = unpackChildren(variant, (entry) => unpackPair(node.key, node.value, entry, isRecursive)) as [
@@ -348,19 +348,19 @@ const unpackDict = (
     return Object.fromEntries(stringEntries);
 };
 
-const unpackMaybe = (element: VariantTypeNode, variant: GLib.Variant, isRecursive: boolean): unknown => {
+const unpackMaybe = (element: VariantTypeNode, variant: Variant, isRecursive: boolean): unknown => {
     const child = variant.getMaybe();
 
     return child === null ? null : unpackNode(element, child, isRecursive);
 };
 
-const unpackNested = (variant: GLib.Variant, isRecursive: boolean): unknown => {
+const unpackNested = (variant: Variant, isRecursive: boolean): unknown => {
     const held = variant.getVariant();
 
     return isRecursive ? unpackNode(parseVariantType(held.getTypeString()), held, true) : held;
 };
 
-const unpackNode = (node: VariantTypeNode, variant: GLib.Variant, isRecursive: boolean): unknown => {
+const unpackNode = (node: VariantTypeNode, variant: Variant, isRecursive: boolean): unknown => {
     switch (node.kind) {
         case "basic": {
             return node.code === "v" ? unpackNested(variant, isRecursive) : unpackBasic[node.code](variant);
@@ -389,8 +389,8 @@ const packValidatedString = (
     value: unknown,
     isValid: (value: string) => boolean,
     description: string,
-    construct: (value: string) => GLib.Variant,
-): GLib.Variant => {
+    construct: (value: string) => Variant,
+): Variant => {
     if (typeof value !== "string" || !isValid(value)) {
         throw new Error(`"${String(value)}" is not a valid GVariant ${description}`);
     }
@@ -398,26 +398,26 @@ const packValidatedString = (
     return construct(value);
 };
 
-function packObjectPath(value: unknown): GLib.Variant {
+function packObjectPath(value: unknown): Variant {
     return packValidatedString(
         value,
-        (path) => GLib.Variant.isObjectPath(path),
+        (path) => Variant.isObjectPath(path),
         "object path",
-        (path) => GLib.Variant.newObjectPath(path),
+        (path) => Variant.newObjectPath(path),
     );
 }
 
-function packSignature(value: unknown): GLib.Variant {
+function packSignature(value: unknown): Variant {
     return packValidatedString(
         value,
-        (signature) => GLib.Variant.isSignature(signature),
+        (signature) => Variant.isSignature(signature),
         "type signature",
-        (signature) => GLib.Variant.newSignature(signature),
+        (signature) => Variant.newSignature(signature),
     );
 }
 
-const packEntry = (key: VariantTypeNode, value: VariantTypeNode, pair: [unknown, unknown]): GLib.Variant =>
-    GLib.Variant.newDictEntry(packNode(key, pair[0]), packNode(value, pair[1]));
+const packEntry = (key: VariantTypeNode, value: VariantTypeNode, pair: [unknown, unknown]): Variant =>
+    Variant.newDictEntry(packNode(key, pair[0]), packNode(value, pair[1]));
 
 const dictEntries = (value: unknown): [unknown, unknown][] =>
     value instanceof Map ? [...value] : Object.entries(value as Record<string, unknown>);
@@ -425,31 +425,31 @@ const dictEntries = (value: unknown): [unknown, unknown][] =>
 const packDict = (
     node: { entryTypeString: string; key: VariantTypeNode; value: VariantTypeNode },
     value: unknown,
-): GLib.Variant =>
-    GLib.Variant.newArray(
-        GLib.VariantType.new(node.entryTypeString),
+): Variant =>
+    Variant.newArray(
+        VariantType.new(node.entryTypeString),
         dictEntries(value).map((pair) => packEntry(node.key, node.value, pair)),
     );
 
-const packMaybe = (node: { elementTypeString: string; element: VariantTypeNode }, value: unknown): GLib.Variant =>
-    GLib.Variant.newMaybe(
-        GLib.VariantType.new(node.elementTypeString),
+const packMaybe = (node: { elementTypeString: string; element: VariantTypeNode }, value: unknown): Variant =>
+    Variant.newMaybe(
+        VariantType.new(node.elementTypeString),
         value === null ? null : packNode(node.element, value),
     );
 
-const packByteArray = (value: unknown): GLib.Variant => {
+const packByteArray = (value: unknown): Variant => {
     if (!(value instanceof Uint8Array) && !Array.isArray(value)) {
         throw new TypeError("Expected a Uint8Array or an array of byte values for a byte array (ay)");
     }
 
-    return GLib.Variant.newFromBytes(
-        GLib.VariantType.new(BYTE_ARRAY_TYPE_STRING),
-        GLib.Bytes.new(value as ByteArrayInput),
+    return Variant.newFromBytes(
+        VariantType.new(BYTE_ARRAY_TYPE_STRING),
+        Bytes.new(value as ByteArrayInput),
         true,
     );
 };
 
-const packNode = (node: VariantTypeNode, value: unknown): GLib.Variant => {
+const packNode = (node: VariantTypeNode, value: unknown): Variant => {
     switch (node.kind) {
         case "basic": {
             return packBasic[node.code](value);
@@ -459,8 +459,8 @@ const packNode = (node: VariantTypeNode, value: unknown): GLib.Variant => {
                 return packByteArray(value);
             }
 
-            return GLib.Variant.newArray(
-                GLib.VariantType.new(node.elementTypeString),
+            return Variant.newArray(
+                VariantType.new(node.elementTypeString),
                 (value as unknown[]).map((item) => packNode(node.element, item)),
             );
         }
@@ -471,7 +471,7 @@ const packNode = (node: VariantTypeNode, value: unknown): GLib.Variant => {
             return packEntry(node.key, node.value, value as [unknown, unknown]);
         }
         case "tuple": {
-            return GLib.Variant.newTuple(
+            return Variant.newTuple(
                 node.items.map((item, index) => packNode(item, (value as unknown[])[index])),
             );
         }
@@ -482,7 +482,7 @@ const packNode = (node: VariantTypeNode, value: unknown): GLib.Variant => {
 };
 
 /**
- * Packs a JavaScript value into a `GLib.Variant` described by a GVariant type string.
+ * Packs a JavaScript value into a `Variant` described by a GVariant type string.
  * Literal type strings also determine the TypeScript input type: `"as"` takes strings,
  * `"a{sv}"` a record of variants, `"(si)"` a string/number pair, 64-bit types a `bigint`, and
  * `"ay"` a `Uint8Array` or byte array. Nested arrays, dictionaries, tuples, and maybes are supported.
@@ -493,15 +493,15 @@ const packNode = (node: VariantTypeNode, value: unknown): GLib.Variant => {
  * @throws {Error} For invalid types, object paths, or signatures, or byte-array inputs other
  * than a `Uint8Array` or an array of byte values.
  */
-const toVariant = <S extends string>(typeString: S, value: VariantInput<S>): GLib.Variant =>
+const toVariant = <S extends string>(typeString: S, value: VariantInput<S>): Variant =>
     packNode(parseVariantType(typeString), value);
 
 /**
- * Unpacks a `GLib.Variant`, reversing {@link toVariant}.
+ * Unpacks a `Variant`, reversing {@link toVariant}.
  *
  * String-keyed dictionaries become records; other dictionaries become `Map`s. Arrays and tuples
  * become arrays, `ay` becomes `Uint8Array`, and maybes become their value or `null`. Nested
- * variants stay as `GLib.Variant` unless `recursive` is set, which unwraps them fully.
+ * variants stay as `Variant` unless `recursive` is set, which unwraps them fully.
  *
  * A literal `typeString` determines the return type. When omitted, the variant's own type is
  * used and the result is `unknown`.
@@ -511,10 +511,10 @@ const toVariant = <S extends string>(typeString: S, value: VariantInput<S>): GLi
  * @returns The unpacked value.
  * @throws {Error} If the type string is not one complete GVariant type.
  */
-function fromVariant<S extends string>(typeString: S, variant: GLib.Variant): VariantValue<S>;
+function fromVariant<S extends string>(typeString: S, variant: Variant): VariantValue<S>;
 
 /**
- * Unpacks a `GLib.Variant` and every nested variant, typing the result from `typeString`.
+ * Unpacks a `Variant` and every nested variant, typing the result from `typeString`.
  *
  * @param typeString One complete GVariant type matching the variant.
  * @param variant Variant to unpack.
@@ -524,12 +524,12 @@ function fromVariant<S extends string>(typeString: S, variant: GLib.Variant): Va
  */
 function fromVariant<S extends string>(
     typeString: S,
-    variant: GLib.Variant,
+    variant: Variant,
     options: RecursiveFromVariantOptions,
 ): RecursiveVariantValue<S>;
 
 /**
- * Unpacks a `GLib.Variant` with configurable recursive unwrapping.
+ * Unpacks a `Variant` with configurable recursive unwrapping.
  *
  * @param typeString One complete GVariant type matching the variant.
  * @param variant Variant to unpack.
@@ -539,26 +539,26 @@ function fromVariant<S extends string>(
  */
 function fromVariant<S extends string>(
     typeString: S,
-    variant: GLib.Variant,
+    variant: Variant,
     options: FromVariantOptions,
 ): VariantValue<S> | RecursiveVariantValue<S>;
 
 /**
- * Unpacks a `GLib.Variant` using its own type string.
+ * Unpacks a `Variant` using its own type string.
  *
  * @param variant Variant to unpack.
  * @param options Whether to unwrap nested variants recursively.
  * @returns The unpacked value, typed as `unknown` because no type string was supplied.
  */
-function fromVariant(variant: GLib.Variant, options?: FromVariantOptions): unknown;
+function fromVariant(variant: Variant, options?: FromVariantOptions): unknown;
 
 function fromVariant(
-    first: string | GLib.Variant,
-    second?: GLib.Variant | FromVariantOptions,
+    first: string | Variant,
+    second?: Variant | FromVariantOptions,
     third?: FromVariantOptions,
 ): unknown {
     if (typeof first === "string") {
-        return unpackNode(parseVariantType(first), second as GLib.Variant, third?.recursive === true);
+        return unpackNode(parseVariantType(first), second as Variant, third?.recursive === true);
     }
 
     const options = second as FromVariantOptions | undefined;
@@ -567,7 +567,7 @@ function fromVariant(
 }
 
 export {
-    type ByteArray,
+    type VariantByteArray,
     type FromVariantOptions,
     fromVariant,
     type RecursiveFromVariantOptions,

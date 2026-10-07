@@ -1,7 +1,7 @@
-import { createTypeClassPeek } from "@gtkx/runtime/internal";
+import { type AnyClass, peekTypeClass } from "@gtkx/runtime";
 import { ObjectClass as GeneratedObjectClass } from "../gobject.js";
 
-const peek: ReturnType<typeof createTypeClassPeek<GeneratedObjectClass>> = createTypeClassPeek(GeneratedObjectClass);
+const peek = (type: bigint | AnyClass): GeneratedObjectClass => peekTypeClass(type) as GeneratedObjectClass;
 
 /**
  * The class structure for the GObject type, with a static `peek` that hands back the class struct

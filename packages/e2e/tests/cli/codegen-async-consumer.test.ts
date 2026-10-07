@@ -38,6 +38,7 @@ try {
     assert.ok(run instanceof Promise);
     assert.deepEqual(await run, ["done", 3]);
     assert.equal(await job.probeAsync(), true);
+    assert.equal(await Job.prototype.probeAsync.call(null), true);
     assert.equal(await queryAsync(true), 42);
     await assert.rejects(queryAsync(false));
     const created = await Job.createAsync(true);
@@ -47,6 +48,7 @@ try {
 
     const sack = new Sack();
     assert.equal(await sack.fetchAsync(), true);
+    assert.equal(await Sack.prototype.fetchAsync.call(null), true);
     assert.equal(await sack.refreshAsync(null), true);
     const cancellable = new Gio.Cancellable();
     assert.equal(await sack.fetchAsync(cancellable), true);

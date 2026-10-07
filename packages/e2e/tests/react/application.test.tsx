@@ -1,16 +1,18 @@
 import type { Root, RootElement } from "@gtkx/react";
 import type { ActionAccel, MainOption } from "@gtkx/react/internal";
 import type { ReactNode, RefObject } from "react";
+import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
 import { GMenu, GMenuItem, GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkEntry, GtkLabel } from "@gtkx/jsx/gtk";
 import { createRoot, quit, rootElement, useApplication } from "@gtkx/react";
 import { act, render, userEvent } from "@gtkx/testing";
 import process from "node:process";
-import { createRef, useEffect } from "react";
+import { createRef, StrictMode, useEffect } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { startApplicationOwner, stopApplicationOwners } from "../helpers/application-owner.js";
 import { createApplicationRenderer } from "../helpers/application-render.js";
@@ -450,6 +452,357 @@ describe("render - Application main options", () => {
         const application = ref.current;
         await rerender([{ ...GREETING_OPTION }]);
         expect(ref.current).toBe(application);
+    });
+
+    it("reports a rejected asynchronous startup through React", async () => {
+        const failure = new Error("Application options failed");
+
+        await expect(render(
+            <OptionApp
+                appRef={createRef<Gtk.Application>()}
+                appId={uniqueAppId()}
+                options={[]}
+                onLocalOptions={() => {
+                    throw failure;
+                }}
+            />,
+            { container: rootElement },
+        )).rejects.toThrow(failure);
+        expect(Gio.Application.getDefault()).toBeNull();
+    });
+
+    it("preserves an early asynchronous exit status", async () => {
+        const previousExitCode = process.exitCode;
+        const ref = createRef<Gtk.Application>();
+        const root = createRoot({ ...rootElement });
+        mounted.push(root);
+
+        try {
+            await act(() => {
+                root.render(
+                    <OptionApp
+                        appRef={ref}
+                        appId={uniqueAppId()}
+                        options={[]}
+                        onLocalOptions={() => 7}
+                    />,
+                );
+            });
+
+            expect(process.exitCode).toBe(7);
+            expect(ref.current?.getWindows()).toHaveLength(0);
+
+            await act(() => root.unmount());
+
+            expect(Gio.Application.getDefault()).toBeNull();
+        } finally {
+            process.exitCode = previousExitCode;
+        }
+    });
+});
+
+describe("render - Application lifecycle", () => {
+    it("opens and cleans up an application in StrictMode", async () => {
+        const ref = createRef<Gtk.Application>();
+        const root = createRoot({ ...rootElement });
+        mounted.push(root);
+
+        await act(() => {
+            root.render(
+                <StrictMode>
+                    <GtkApplication ref={ref} applicationId={uniqueAppId()} flags={APP_FLAGS}>
+                        <GtkApplicationWindow />
+                    </GtkApplication>
+                </StrictMode>,
+            );
+        });
+
+        const application = requireWidget(ref.current, "Application");
+        expect(application.getWindows()).toHaveLength(1);
+
+        await act(() => root.unmount());
+
+        expect(application.getWindows()).toHaveLength(0);
+        expect(Gio.Application.getDefault()).toBeNull();
+    });
+
+    it("exits after committing children without a window", async () => {
+        const events: string[] = [];
+        const root = createRoot({ ...rootElement });
+        mounted.push(root);
+        const Child = (): null => {
+            useEffect(() => {
+                events.push("mounted");
+
+                return () => {
+                    events.push("cleaned up");
+                };
+            }, []);
+
+            return null;
+        };
+
+        await act(() => {
+            root.render(
+                <AdwApplication applicationId={uniqueAppId()} flags={APP_FLAGS} onShutdown={() => events.push("shutdown")}>
+                    <Child />
+                </AdwApplication>,
+            );
+        });
+
+        expect(events).toEqual(["mounted", "shutdown", "cleaned up"]);
+        expect(Gio.Application.getDefault()).toBeNull();
+    });
+
+    it("cleans up React children when its last window closes", async () => {
+        const appRef = createRef<Adw.Application>();
+        const windowRef = createRef<Adw.ApplicationWindow>();
+        let cleanups = 0;
+        let shutdowns = 0;
+        const Window = (): ReactNode => {
+            useEffect(() => () => {
+                cleanups += 1;
+            }, []);
+
+            return <AdwApplicationWindow ref={windowRef} />;
+        };
+
+        await render(
+            <AdwApplication
+                ref={appRef}
+                applicationId={uniqueAppId()}
+                flags={APP_FLAGS}
+                onShutdown={() => {
+                    shutdowns += 1;
+                }}
+            >
+                <Window />
+            </AdwApplication>,
+            { container: rootElement },
+        );
+        const application = requireWidget(appRef.current, "Application");
+        const window = requireWidget(windowRef.current, "Application window");
+
+        expect(application.getWindows()).toHaveLength(1);
+        expect(shutdowns).toBe(0);
+
+        await act(() => window.close());
+
+        expect(application.getWindows()).toHaveLength(0);
+        expect(shutdowns).toBe(1);
+        expect(cleanups).toBe(1);
+        expect(Gio.Application.getDefault()).toBeNull();
+    });
+
+    it("keeps a windowless application alive for work started by an effect", async () => {
+        const appRef = createRef<Adw.Application>();
+        const root = createRoot({ ...rootElement });
+        mounted.push(root);
+        let cleanups = 0;
+        const BackgroundWork = (): null => {
+            const application = useApplication();
+
+            useEffect(() => {
+                application.hold();
+
+                return () => {
+                    cleanups += 1;
+                };
+            }, [application]);
+
+            return null;
+        };
+
+        await act(() => {
+            root.render(
+                <AdwApplication ref={appRef} applicationId={uniqueAppId()} flags={APP_FLAGS}>
+                    <BackgroundWork />
+                </AdwApplication>,
+            );
+        });
+        const application = requireWidget(appRef.current, "Application");
+
+        expect(Gio.Application.getDefault()).toBe(application);
+        expect(cleanups).toBe(0);
+
+        await act(() => application.release());
+
+        expect(cleanups).toBe(1);
+        expect(Gio.Application.getDefault()).toBeNull();
+    });
+
+    it.each(TEARDOWNS)("preserves a background hold after $name", async ({ tearDown }) => {
+        const appRef = createRef<Adw.Application>();
+        const root = createRoot({ ...rootElement });
+        mounted.push(root);
+        let shutdowns = 0;
+
+        await act(() => {
+            root.render(
+                <AdwApplication ref={appRef} applicationId={uniqueAppId()} flags={APP_FLAGS}>
+                    <AdwApplicationWindow />
+                </AdwApplication>,
+            );
+        });
+        const application = requireWidget(appRef.current, "Application");
+        application.on("shutdown", () => {
+            shutdowns += 1;
+        });
+        application.hold();
+
+        try {
+            await act(() => tearDown(root));
+
+            expect(application.getWindows()).toHaveLength(0);
+            expect(shutdowns).toBe(0);
+            expect(Gio.Application.getDefault()).toBe(application);
+        } finally {
+            await act(() => application.release());
+        }
+
+        expect(shutdowns).toBe(1);
+        expect(Gio.Application.getDefault()).toBeNull();
+    });
+
+    it("releases its startup hold when rendering children fails", async () => {
+        const failure = new Error("Application children failed");
+        const BrokenChild = (): never => {
+            throw failure;
+        };
+
+        await expect(render(
+            <AdwApplication applicationId={uniqueAppId()} flags={APP_FLAGS}>
+                <BrokenChild />
+            </AdwApplication>,
+            { container: rootElement },
+        )).rejects.toThrow(failure);
+
+        expect(Gio.Application.getDefault()).toBeNull();
+    });
+
+    it("does not hold a service before it activates", async () => {
+        const appRef = createRef<Adw.Application>();
+        const root = createRoot({ ...rootElement });
+        mounted.push(root);
+        let activations = 0;
+
+        await act(() => {
+            root.render(
+                <AdwApplication
+                    ref={appRef}
+                    applicationId={uniqueAppId()}
+                    flags={APP_FLAGS | Gio.ApplicationFlags.IS_SERVICE}
+                    onActivate={() => {
+                        activations += 1;
+                    }}
+                >
+                    <AdwApplicationWindow />
+                </AdwApplication>,
+            );
+        });
+        const application = requireWidget(appRef.current, "Application");
+
+        expect(activations).toBe(0);
+        expect(application.getWindows()).toHaveLength(0);
+
+        await act(() => {
+            application.hold();
+            application.release();
+        });
+
+        expect(Gio.Application.getDefault()).toBeNull();
+    });
+
+    it("holds a service activation until its first window commits", async () => {
+        const appRef = createRef<Adw.Application>();
+        const root = createRoot({ ...rootElement });
+        mounted.push(root);
+
+        await act(() => {
+            root.render(
+                <AdwApplication
+                    ref={appRef}
+                    applicationId={uniqueAppId()}
+                    flags={APP_FLAGS | Gio.ApplicationFlags.IS_SERVICE}
+                >
+                    <AdwApplicationWindow />
+                </AdwApplication>,
+            );
+        });
+        const application = requireWidget(appRef.current, "Application");
+
+        await act(() => application.activate());
+
+        expect(application.getWindows()).toHaveLength(1);
+
+        await act(() => root.unmount());
+
+        expect(Gio.Application.getDefault()).toBeNull();
+    });
+
+    it("handles a forced quit during activation before children commit", async () => {
+        const appRef = createRef<Adw.Application>();
+        const root = createRoot({ ...rootElement });
+        mounted.push(root);
+
+        await act(() => {
+            root.render(
+                <AdwApplication
+                    ref={appRef}
+                    applicationId={uniqueAppId()}
+                    flags={APP_FLAGS}
+                    onActivate={() => appRef.current?.quit()}
+                >
+                    <AdwApplicationWindow />
+                </AdwApplication>,
+            );
+        });
+
+        expect(appRef.current?.getWindows()).toHaveLength(0);
+        expect(Gio.Application.getDefault()).toBeNull();
+    });
+
+    it.each(["after shutdown", "immediately"])("renders again when the application restarts %s", async (timing) => {
+        const appRef = createRef<Adw.Application>();
+        const root = createRoot({ ...rootElement });
+        mounted.push(root);
+
+        await act(() => {
+            root.render(
+                <AdwApplication ref={appRef} applicationId={uniqueAppId()} flags={APP_FLAGS}>
+                    <AdwApplicationWindow />
+                </AdwApplication>,
+            );
+        });
+        const application = requireWidget(appRef.current, "Application");
+
+        if (timing === "after shutdown") {
+            await act(() => application.quit());
+        }
+
+        const { completion } = await act(() => {
+            if (timing === "immediately") {
+                application.quit();
+            }
+
+            return { completion: application.runAsync(["react-restart"]) };
+        });
+        expect(application.getWindows()).toHaveLength(1);
+        expect(Gio.Application.getDefault()).toBe(application);
+
+        application.hold();
+
+        try {
+            await act(() => root.unmount());
+
+            expect(application.getWindows()).toHaveLength(0);
+            expect(Gio.Application.getDefault()).toBe(application);
+        } finally {
+            await act(() => application.release());
+        }
+
+        await expect(completion).resolves.toBe(0);
+        expect(Gio.Application.getDefault()).toBeNull();
     });
 });
 

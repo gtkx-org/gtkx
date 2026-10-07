@@ -111,7 +111,7 @@ describe("gtkx docs (async finish pairing)", () => {
 
         expect(runDocs(project)).toBe(0);
         expect(readPage(project, ASYNC_SACK_PAGE)).toContain(
-            "fetchAsync(cancellable?: NativeInstance<Gio.Cancellable> | null): Promise<boolean>",
+            "fetchAsync(this: AsyncPair.Sack | null, cancellable?: NativeInstance<Gio.Cancellable> | null): Promise<boolean>",
         );
         expect(readPage(project, ASYNC_SACK_PAGE)).not.toContain("Callback-based:");
         expect(readPage(project, ASYNC_JOB_PAGE)).toContain(

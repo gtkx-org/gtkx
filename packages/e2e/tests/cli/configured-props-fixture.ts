@@ -9,7 +9,7 @@ import {
     symlinkSync,
     writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, matchesGlob, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { type CliProject, runCliOrThrow } from "./cli-project.js";
 import { isolateTypeConsumer } from "./type-consumer.js";
@@ -78,10 +78,15 @@ const installHoistedToolchain = (project: CliProject): void => {
         const source = fileURLToPath(new URL(`../../../${name.slice("@gtkx/".length)}`, import.meta.url));
         const manifest = JSON.parse(readFileSync(join(source, "package.json"), "utf8")) as PackageManifest;
         const directory = join(project.nodeModules, manifest.name);
+        const included = manifest.files.filter((file) => !file.startsWith("!"));
+        const excluded = manifest.files.filter((file) => file.startsWith("!")).map((file) => file.slice(1));
         mkdirSync(directory, { recursive: true });
 
-        for (const file of ["package.json", ...manifest.files]) {
-            cpSync(join(source, file), join(directory, file), { recursive: true });
+        for (const file of ["package.json", ...included]) {
+            cpSync(join(source, file), join(directory, file), {
+                recursive: true,
+                filter: (path) => !excluded.some((pattern) => matchesGlob(relative(source, path), pattern)),
+            });
         }
 
         linkHoistedDependencies(project, source, manifest);

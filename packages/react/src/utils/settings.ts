@@ -1,5 +1,5 @@
 import type * as Gio from "@gtkx/gi/gio";
-import { fromVariant, toVariant, type VariantValue } from "@gtkx/runtime";
+import { fromVariant, toVariant, type VariantValue } from "@gtkx/gi/glib";
 
 /** Maps each key of a GSettings schema to its kind: a GVariant type string, or `enum` or `flags`. */
 type SettingsSchemaKeys = Record<string, string>;

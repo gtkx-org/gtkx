@@ -1,4 +1,3 @@
-import type { ExternalObject, Handle } from "@gtkx/native";
 import {
     registerClass as nativeRegisterClass,
     type RegisterClassInterface as NativeRegisterClassInterface,
@@ -8,10 +7,9 @@ import {
 import { type AnyClass, getParentClass, kebabCase, walkClassChain } from "@gtkx/utils";
 import type { Descriptor } from "./descriptor-types.js";
 import type { Camelized, Dashed, ReadableProperties, WritableProperties } from "./property-types.js";
-import { bind } from "./bind.js";
 import { wrapCallback } from "./callback.js";
 import { type ClassSignal, prepareClassSignals } from "./class-signals.js";
-import { stringT, structT, voidT } from "./descriptors.js";
+import { prepareClassOptions } from "./class-options.js";
 import { registerElementMetadata } from "./element-metadata.js";
 import { insertMixinLayer } from "./mixin.js";
 import {
@@ -63,7 +61,6 @@ import {
     TYPE_INVALID,
     TYPE_NONE,
     type TypedClass,
-    typeFromName,
     typeFundamental,
     typeInterfacePrerequisites,
     typeInterfaces,
@@ -484,10 +481,10 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
     assertClaimedVfuncs(klass, methods, claimedMethodNames, interfaceBindings);
 
     const installSignals = prepareClassSignals(signals.native, parentType, declaredTypes);
-    const setCssName = prepareCssName(parentType, options.cssName);
+    const initializeClassOptions = prepareClassOptions(klass, { cssName: options.cssName });
     const nativeOptions = toNativeOptions(classVfuncs, interfaceBindings, options);
     nativeOptions.initialize = (handle, type) => {
-        setCssName(handle);
+        initializeClassOptions(handle);
         installSignals(type);
         installClassProperties(handle, properties, adoptedTypes);
     };
@@ -1002,22 +999,6 @@ function toNativeInterface(binding: InterfaceVfuncBinding): NativeRegisterClassI
     }
 
     return nativeInterface;
-}
-
-const widgetClassSetCssName = bind(
-    "libgtk-4.so.1", "gtk_widget_class_set_css_name", [structT("borrowed"), stringT("borrowed")], voidT,
-);
-
-function prepareCssName(parentType: bigint, name: string | undefined): (handle: ExternalObject<Handle>) => void {
-    if (name !== undefined && !typeIsA(parentType, typeFromName("GtkWidget"))) {
-        throw new TypeError("cssName requires a GtkWidget parent");
-    }
-
-    return (handle) => {
-        if (name !== undefined) {
-            widgetClassSetCssName(handle, name);
-        }
-    };
 }
 
 function sortInterfaceTypes(parentType: bigint, types: bigint[]): void {

@@ -1,12 +1,12 @@
 import type * as Gio from "@gtkx/gi/gio";
-import { quitApplication, runApplication } from "@gtkx/runtime";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, expectTypeOf, it } from "vitest";
 import { startApplicationOwner, stopApplicationOwners } from "./helpers/application-owner.js";
 import { createUniqueApplication } from "./helpers/application.js";
 import { createAppIdFactory } from "./helpers/unique-name.js";
 
 const uniqueAppId = createAppIdFactory("org.gtkx.instance");
 const started: Gio.Application[] = [];
+const completions: Promise<number>[] = [];
 
 const trackUniqueApplication = (applicationId: string): Gio.Application => {
     const application = createUniqueApplication(applicationId);
@@ -15,53 +15,77 @@ const trackUniqueApplication = (applicationId: string): Gio.Application => {
     return application;
 };
 
-const runAndQuitApplication = (): Gio.Application => {
+const start = (application: Gio.Application, argv: string[]): Promise<number> => {
+    const completion = application.runAsync(argv);
+    completions.push(completion);
+
+    return completion;
+};
+
+const runAndQuitApplication = async (): Promise<Gio.Application> => {
     const application = trackUniqueApplication(uniqueAppId());
-    runApplication(application, ["probe"]);
-    quitApplication(application);
+    const completion = start(application, ["probe"]);
+    application.quit();
+    await expect(completion).resolves.toBe(0);
 
     return application;
 };
 
-afterEach(() => {
+afterEach(async () => {
     const applications = [...started];
     started.length = 0;
 
     for (const application of applications) {
-        quitApplication(application);
+        application.quit();
     }
 
+    await Promise.allSettled(completions.splice(0));
     stopApplicationOwners();
 });
 
-describe("runApplication instance ownership", () => {
-    it("reports a primary instance for the process that owns the application ID", () => {
+describe("Application.getRegistrationState", () => {
+    it("registers a primary instance for the process that owns the application ID", async () => {
         const application = trackUniqueApplication(uniqueAppId());
-        expect(runApplication(application, ["probe"])).toEqual({ isPrimary: true, exitStatus: 0 });
+        expect(application.getRegistrationState()).toBe("unregistered");
+        expectTypeOf(application.getRegistrationState()).toEqualTypeOf<Gio.ApplicationRegistrationState>();
+        const completion = start(application, ["probe"]);
+        expect(application.getRegistrationState()).toBe("primary");
+        expect(application.getIsRegistered()).toBe(true);
+        expect(application.getIsRemote()).toBe(false);
+        application.quit();
+        await expect(completion).resolves.toBe(0);
     });
 
     it("registers without becoming primary when another process already owns the application ID", async () => {
         const applicationId = uniqueAppId();
         await startApplicationOwner(applicationId);
         const application = trackUniqueApplication(applicationId);
-        expect(runApplication(application, ["probe"])).toEqual({ isPrimary: false, exitStatus: 0 });
+        await expect(start(application, ["probe"])).resolves.toBe(0);
+        expect(application.getRegistrationState()).toBe("remote");
         expect(application.getIsRegistered()).toBe(true);
         expect(application.getIsRemote()).toBe(true);
     });
 
-    it("keeps reporting an unregistered instance for a command line the application refused", () => {
+    it("leaves an instance unregistered when its command line is refused", async () => {
         const application = trackUniqueApplication(uniqueAppId());
-        expect(runApplication(application, ["probe", "--nope"])).toEqual({ isPrimary: false, exitStatus: 1 });
+        await expect(start(application, ["probe", "--nope"])).resolves.toBe(1);
+        expect(application.getRegistrationState()).toBe("unregistered");
         expect(application.getIsRegistered()).toBe(false);
     });
 
-    it("tells an application that shut down apart from one that never registered", () => {
-        const application = runAndQuitApplication();
+    it("releases registration after shutdown", async () => {
+        const application = await runAndQuitApplication();
+        expect(application.getRegistrationState()).toBe("shutDown");
         expect(application.getIsRegistered()).toBe(false);
     });
 
-    it("reports a primary instance again for an application that ran a second time", () => {
-        const application = runAndQuitApplication();
-        expect(runApplication(application, ["probe"])).toEqual({ isPrimary: true, exitStatus: 0 });
+    it("registers a primary instance again for an application that ran a second time", async () => {
+        const application = await runAndQuitApplication();
+        const completion = start(application, ["probe"]);
+        expect(application.getRegistrationState()).toBe("primary");
+        expect(application.getIsRegistered()).toBe(true);
+        expect(application.getIsRemote()).toBe(false);
+        application.quit();
+        await expect(completion).resolves.toBe(0);
     });
 });

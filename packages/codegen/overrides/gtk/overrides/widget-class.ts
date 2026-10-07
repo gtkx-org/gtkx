@@ -1,10 +1,23 @@
-import { createTypeClassPeek } from "@gtkx/runtime/internal";
+import { type AnyClass, peekTypeClass, wrapHandle } from "@gtkx/runtime";
+import { registerClassOption } from "@gtkx/runtime/internal";
 import { Widget, WidgetClass as GeneratedWidgetClass } from "../gtk.js";
 
-const peek: ReturnType<typeof createTypeClassPeek<GeneratedWidgetClass>> = createTypeClassPeek(
-    GeneratedWidgetClass,
-    Widget,
-);
+registerClassOption("cssName", (klass, name) => {
+    if (!(klass.prototype instanceof Widget)) {
+        throw new TypeError("cssName requires a GtkWidget parent");
+    }
+
+    if (typeof name !== "string") {
+        throw new TypeError("cssName must be a string");
+    }
+
+    return (handle) => {
+        wrapHandle(handle, GeneratedWidgetClass).setCssName(name);
+    };
+});
+
+const peek = (type: bigint | AnyClass): GeneratedWidgetClass =>
+    peekTypeClass(type, Widget) as GeneratedWidgetClass;
 
 /**
  * The class structure for the GtkWidget type, with a static `peek` that hands back the class

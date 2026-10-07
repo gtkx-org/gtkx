@@ -1,9 +1,8 @@
 import type { ChildProcess } from "node:child_process";
 import * as Gtk from "@gtkx/gi/gtk";
-import { quitApplication, runApplication } from "@gtkx/runtime";
 import { spawnWithParentDeathSignal } from "@gtkx/utils";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import { createApplicationFrom } from "./helpers/application.js";
 import { collectOutput, waitForMarker } from "./helpers/child-output.js";
 
@@ -20,7 +19,7 @@ const waitForClose = (child: ChildProcess): Promise<number | null> =>
         child.once("close", resolve);
     });
 
-const runHeldApplication = async (mode: "activated" | "service"): Promise<string> => {
+const runHeldApplication = async (mode: "activated" | "service" | "concurrent"): Promise<string> => {
     const child = spawnWithParentDeathSignal(process.execPath, [...FIXTURE_ARGS, mode], {
         stdio: ["pipe", "pipe", "pipe"],
     });
@@ -44,7 +43,7 @@ const runHeldApplication = async (mode: "activated" | "service"): Promise<string
     }
 };
 
-describe("runApplication — holding the native loop alive", () => {
+describe("Application.runAsync — holding the native loop alive", () => {
     it("holds an activated application until shutdown", async () => {
         expect(await runHeldApplication("activated")).toContain(STOPPED_MARKER);
     });
@@ -53,18 +52,30 @@ describe("runApplication — holding the native loop alive", () => {
         expect(await runHeldApplication("service")).toContain(STOPPED_MARKER);
     });
 
+    it("holds the remaining application after another application shuts down", async () => {
+        expect(await runHeldApplication("concurrent")).toContain(STOPPED_MARKER);
+    });
+
     it("exits naturally when command-line handling registers nothing", async () => {
         const child = spawnWithParentDeathSignal(process.execPath, [...FIXTURE_ARGS, "rejected"], {
             stdio: "ignore",
         });
         expect(await waitForClose(child)).toBe(1);
     });
+
+    it("exits naturally after an application has no holds or windows", async () => {
+        const child = spawnWithParentDeathSignal(process.execPath, [...FIXTURE_ARGS, "idle"], {
+            stdio: "ignore",
+        });
+        expect(await waitForClose(child)).toBe(0);
+    });
 });
 
-describe("quitApplication — windows held by the application", () => {
-    it("detaches every window before GLib reaches shutdown", () => {
+describe("Application.quit — windows held by the application", () => {
+    it("detaches every window before GLib reaches shutdown", async () => {
         const application = createApplicationFrom(Gtk.Application);
-        runApplication(application, ["probe"]);
+        expectTypeOf(application).toEqualTypeOf<Gtk.Application>();
+        const completion = application.runAsync(["probe"]);
         const windows = [new Gtk.ApplicationWindow({ application }), new Gtk.ApplicationWindow({ application })];
         expect(application.getWindows()).toEqual(windows);
         let windowsAtShutdown: number | null = null;
@@ -73,7 +84,8 @@ describe("quitApplication — windows held by the application", () => {
             windowsAtShutdown = application.getWindows().length;
         });
 
-        quitApplication(application);
+        application.quit();
+        await expect(completion).resolves.toBe(0);
         expect(windowsAtShutdown).toBe(0);
         expect(application.getWindows()).toHaveLength(0);
     });
