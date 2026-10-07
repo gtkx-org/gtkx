@@ -19,7 +19,9 @@ pnpm lint
 pnpm typecheck
 ```
 
-Include a screenshot for visible UI changes. Keep the pull request description empty or use `Closes #N` to link the issue it closes.
+`pnpm build` emits JavaScript and declarations without full TypeScript checking. Run `pnpm typecheck` to check package, example, and workspace types; CI runs it as a separate check.
+
+Use the [pull request template](.github/PULL_REQUEST_TEMPLATE.md) to summarize the change and validation in at most twenty words. Remove unused sections and add `Closes #N` only when the pull request resolves that issue. Include a screenshot for visible UI changes.
 
 Breaking removals require a warning in an earlier minor release. Renamed symbols use `@deprecated` with their introduction version; behavior changes need a CLI warning and an opt-in migration path. A removal-only major adds no unrelated features, and its migration guide changes with every deprecation.
 

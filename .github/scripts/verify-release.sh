@@ -41,7 +41,7 @@ run_id="$(jq -er --arg sha "$release_sha" --arg repo "$GITHUB_REPOSITORY" '
 ' <<<"$runs")"
 jobs="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/jobs?filter=latest&per_page=100" --paginate --slurp)"
 jq -e '
-  [.[].jobs[]] as $jobs | ["tests", "build", "lint", "e2e"] |
+  [.[].jobs[]] as $jobs | ["tests", "build", "typecheck", "lint", "e2e"] |
   all(. as $name | [$jobs[] | select(.name == $name)] | length == 1 and all(.conclusion == "success"))
 ' <<<"$jobs" > /dev/null
 

@@ -103,16 +103,28 @@
         }
     ],
     "targetDefaults": {
-        "build": {
-            "dependsOn": [
-                "...",
-                "gtkx:_build:bindings"
-            ],
-            "inputs": [
-                "...",
-                "sharedGlobals"
-            ]
-        },
+        "build": [
+            {
+                "dependsOn": [
+                    "...",
+                    "gtkx:_build:bindings"
+                ],
+                "inputs": [
+                    "...",
+                    "sharedGlobals"
+                ]
+            },
+            {
+                "filter": {
+                    "plugin": "@nx/js/typescript"
+                },
+                "options": {
+                    "args": [
+                        "--noCheck"
+                    ]
+                }
+            }
+        ],
         "lint": {
             "dependsOn": [
                 "gtkx:_build:bindings",
