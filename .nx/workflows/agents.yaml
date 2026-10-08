@@ -21,7 +21,7 @@ launch-templates:
       - name: Restore dependency downloads
         uses: https://raw.githubusercontent.com/nrwl/nx-cloud-workflows/563df6a963147063d44d830a2ec7f117758d6c41/workflow-steps/cache/main.yaml
         inputs:
-          key: '"gtkx-workload-v1"|scripts/ci/Dockerfile|rust-toolchain.toml|packages/native/tools/rust-toolchain.toml|packages/native/Cargo.lock|pnpm-lock.yaml'
+          key: '"gtkx-workload-v2"|scripts/ci/Dockerfile|scripts/ci/start-workload.sh|rust-toolchain.toml|packages/native/tools/rust-toolchain.toml|packages/native/Cargo.lock|pnpm-lock.yaml'
           paths: |
             .nx/ci/pnpm-store
             .nx/ci/cargo-registry

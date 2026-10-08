@@ -54,7 +54,7 @@ docker run --detach --name "$GTKX_CI_CONTAINER" --init --shm-size=2g \
   --mount "type=bind,source=$cache_root/cargo-registry,target=/home/gtkx/.cargo/registry" \
   --mount "type=bind,source=$cache_root/cargo-git,target=/home/gtkx/.cargo/git" \
   --workdir "$workspace" \
-  --env CI=true --env npm_config_store_dir=/home/gtkx/.pnpm-store \
+  --env CI=true --env pnpm_config_store_dir=/home/gtkx/.pnpm-store \
   "$GTKX_CI_CONTAINER:local"
 
 docker exec "$GTKX_CI_CONTAINER" bwrap \

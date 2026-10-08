@@ -113,8 +113,8 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: .nx/ci/pnpm-store
-          key: workload-pnpm-${{ runner.arch }}-${{ hashFiles('scripts/ci/Dockerfile', 'pnpm-lock.yaml') }}
-          restore-keys: workload-pnpm-${{ runner.arch }}-
+          key: workload-pnpm-v2-${{ runner.arch }}-${{ hashFiles('scripts/ci/Dockerfile', 'scripts/ci/start-workload.sh', 'pnpm-lock.yaml') }}
+          restore-keys: workload-pnpm-v2-${{ runner.arch }}-
 
       - name: Start Ubuntu 26.04 workload
         id: workload
