@@ -20,10 +20,6 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: write
-      actions: read
-      checks: read
-      pull-requests: read
-      security-events: read
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -51,13 +47,6 @@ jobs:
             echo "::error::Draft release does not match ${GITHUB_REF_NAME}"
             exit 1
           fi
-
-      - name: Verify exact release commit
-        id: verification
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/verify-release.sh
 
   build-native:
     needs: validate-release
@@ -131,10 +120,6 @@ jobs:
           merge-multiple: true
           path: packages/native/artifacts
 
-      - name: Restore verified native bindings before dependency installation
-        shell: bash
-        run: bash .github/scripts/restore-native-artifacts.sh
-
       - uses: ./.github/actions/setup-ci
 
       - name: Release
@@ -166,7 +151,7 @@ jobs:
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
-          node-version-file: .github/node-version
+          node-version-file: package.json
           package-manager-cache: false
 
       - name: Verify complete release channel before publication

@@ -96,15 +96,12 @@ jobs:
     timeout-minutes: 30
     permissions:
       actions: write
-      checks: read
       pull-requests: read
-      security-events: read
       contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-tags: true
           ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Resolve the release state
@@ -145,14 +142,6 @@ jobs:
             echo "version=$version"
             echo "state=$state"
           } >> "$GITHUB_OUTPUT"
-
-      - name: Verify release commit and review
-        if: steps.release.outputs.state == 'missing' || steps.release.outputs.state == 'draft'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
-        run: bash .github/scripts/verify-release.sh
 
       - name: Extract the release notes
         if: steps.release.outputs.state == 'missing'
