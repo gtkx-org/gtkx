@@ -80,7 +80,7 @@
                 "_lint:rust"
             ]
         },
-        "_test:asan": {
+        "test-asan": {
             "dependsOn": [
                 "build",
                 "@gtkx/e2e:_test:fixtures",
@@ -93,7 +93,7 @@
                 "{workspaceRoot}/scripts/ci/**/*"
             ],
             "outputs": [],
-            "command": "node ../../scripts/ci/run.mjs 'pnpm run _test:asan'",
+            "command": "node ../../scripts/ci/run.mjs 'pnpm run test-asan'",
             "options": {
                 "cwd": "{projectRoot}"
             }

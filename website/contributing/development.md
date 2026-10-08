@@ -79,7 +79,7 @@ pnpm nx show projects
 pnpm nx show project @gtkx/react
 ```
 
-Pull requests and pushes use Nx's affected graph to select CI checks, relative to the last successful run on `main`. CI also selects native sanitizers from their task inputs and published-consumer acceptance from relevant file changes; their results contribute to the required `tests` and `e2e` checks. A manual CI run checks the complete workspace, including both validations. Locally, the root commands above still run every matching target; use a package target for focused iteration.
+CI uses Nx's affected graph to select checks. Pull requests compare against their merge base, pushes against the last successful run on `main`, and merge queues against the previous merge-group commit. CI also selects native sanitizers from their task inputs and published-consumer acceptance from relevant file changes; their results contribute to the required `tests` and `e2e` checks. A manual CI run checks the complete workspace, including both validations. Locally, the root commands above still run every matching target; use a package target for focused iteration.
 
 Nx Cloud distributes build, test, typecheck, lint, and per-file CLI E2E tasks across two to four agents. Each agent runs at most two Nx tasks, and each Vitest task uses at most two workers. `.nx/workflows/distribution-config.yaml` controls agent counts; `.nx/workflows/agents.yaml` defines their setup. Required GitHub checks remain `tests`, `build`, `typecheck`, `lint`, and `e2e`.
 
@@ -88,7 +88,7 @@ The standard Nx agent image hosts Docker; actual GTKX commands execute inside th
 Nx plugin adapters and explicit project commands call `scripts/ci/run.mjs`. With `GTKX_CI_CONTAINER` set, it runs the command inside the named container with the same workspace path, user identity, and declared task environment. Local commands run directly. New CI targets must use this wrapper and declare complete cache outputs. CI validates the resolved task graph before starting agents; reproduce that check with:
 
 ```bash
-pnpm exec nx run-many -t build,test,typecheck,lint,e2e-ci,_test:asan --graph=/tmp/gtkx-task-graph.json
+pnpm exec nx run-many -t build,test,typecheck,lint,e2e-ci,test-asan --graph=/tmp/gtkx-task-graph.json
 node scripts/ci/validate-graph.mjs /tmp/gtkx-task-graph.json
 ```
 

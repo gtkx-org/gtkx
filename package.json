@@ -18,7 +18,7 @@
         "release": "tsx ./scripts/release.ts",
         "local-registry": "nx run gtkx:_registry:publish",
         "test": "nx run-many -t test",
-        "test:asan": "nx run @gtkx/native:_test:asan",
+        "test:asan": "nx run @gtkx/native:test-asan",
         "typecheck": "nx run-many -t typecheck",
         "tutorial:checkpoints": "nx run gtkx:_tutorial:checkpoint --",
         "e2e": "nx run-many -t e2e"

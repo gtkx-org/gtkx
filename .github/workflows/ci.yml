@@ -128,7 +128,7 @@ jobs:
         env:
           NX_NO_CLOUD: "true"
         run: |
-          pnpm exec nx run-many -t build,test,typecheck,lint,e2e-ci,_test:asan --graph=.nx/ci/task-graph.json
+          pnpm exec nx run-many -t build,test,typecheck,lint,e2e-ci,test-asan --graph=.nx/ci/task-graph.json
           node scripts/ci/validate-graph.mjs .nx/ci/task-graph.json
 
       - name: Start Nx Agents
@@ -138,7 +138,7 @@ jobs:
           pnpm exec nx-cloud start-ci-run
           --distribute-on=".nx/workflows/distribution-config.yaml"
           --with-env-vars="GTKX_MAX_WORKERS,NODE_OPTIONS,GTKX_CI_RUNTIME_HASH,GTKX_CI_NATIVE_HASH"
-          --stop-agents-after="build,test,typecheck,lint,e2e-ci,_test:asan"
+          --stop-agents-after="build,test,typecheck,lint,e2e-ci,test-asan"
           --stop-agents-on-failure=false
           --require-explicit-completion
 
@@ -162,9 +162,9 @@ jobs:
           NX_NO_CLOUD: ${{ env.NX_CLOUD_ACCESS_TOKEN == '' && 'true' || 'false' }}
         run: |
           if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
-            pnpm exec nx run-many -t _test:asan --parallel=2
+            pnpm exec nx run-many -t test-asan --parallel=2
           else
-            pnpm exec nx affected -t _test:asan --parallel=2
+            pnpm exec nx affected -t test-asan --parallel=2
           fi
 
       - name: Check current Rust advisories

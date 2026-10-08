@@ -32,7 +32,7 @@ for (const [id, task] of Object.entries(tasks.tasks)) {
     }
 }
 
-for (const target of ["build", "test", "typecheck", "lint", "e2e-ci", "_test:asan"]) {
+for (const target of ["build", "test", "typecheck", "lint", "e2e-ci", "test-asan"]) {
     assert.ok(targets.has(target), `Unknown distributed completion target: ${target}`);
 }
 

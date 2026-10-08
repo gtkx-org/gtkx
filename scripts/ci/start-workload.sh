@@ -3,6 +3,10 @@ set -euo pipefail
 
 : "${GTKX_CI_CONTAINER:?Set a unique workload container name}"
 workspace="$(pwd -P)"
+if [[ -n "${NX_HEAD:-}" && "$(git rev-parse HEAD)" != "$NX_HEAD" ]]; then
+  echo "The checked-out commit does not match the coordinator's NX_HEAD." >&2
+  exit 1
+fi
 cache_root="$workspace/.nx/ci"
 mkdir -p "$cache_root/pnpm-store" "$cache_root/cargo-registry" "$cache_root/cargo-git"
 
