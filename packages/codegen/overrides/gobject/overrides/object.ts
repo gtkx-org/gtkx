@@ -6,11 +6,7 @@ import {
     type SignalHandler,
     type SignalHandlerId,
 } from "@gtkx/runtime";
-import type {
-    SignalMap,
-    SignalMethodReceiver,
-    SignalName,
-} from "@gtkx/runtime/internal";
+import type { SignalMap, SignalMethodReceiver, SignalName } from "@gtkx/runtime/internal";
 import { Object as GObject } from "../gobject.js";
 
 declare module "../gobject.js" {
@@ -68,7 +64,6 @@ declare module "../gobject.js" {
             sigName: K,
             callback: SignalMap<TThis>[K],
         ): TThis;
-
     }
 }
 

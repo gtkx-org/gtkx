@@ -2,32 +2,32 @@
     "extends": "../../tsconfig.app.json",
     "files": ["${configDir}/node_modules/.gtkx/env.d.ts"],
     "references": [
-      {
-        "path": "../../packages/utils/tsconfig.lib.json"
-      },
-      {
-        "path": "../../packages/runtime/tsconfig.lib.json"
-      },
-      {
-        "path": "../../packages/react/tsconfig.lib.json"
-      },
-      {
-        "path": "../../packages/gl/tsconfig.lib.json"
-      },
-      {
-        "path": "../../packages/css/tsconfig.lib.json"
-      },
-      {
-        "path": "../../packages/components/tsconfig.lib.json"
-      },
-      {
-        "path": "../../packages/cairo/tsconfig.lib.json"
-      },
-      {
-        "path": "../../packages/cli/tsconfig.lib.json"
-      },
-      {
-        "path": "../../packages/config/tsconfig.lib.json"
-      }
+        {
+            "path": "../../packages/utils/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/runtime/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/react/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/gl/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/css/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/components/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/cairo/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/cli/tsconfig.lib.json"
+        },
+        {
+            "path": "../../packages/config/tsconfig.lib.json"
+        }
     ]
 }

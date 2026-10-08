@@ -4,8 +4,7 @@ import { type CArrayType, LIST_FLAVOR_BY_NAME, type ListFlavor, type ParseContex
 
 const LIST_FLAVOR_BY_NAME_LOOKUP: Map<string, ListFlavor> = new Map(Object.entries(LIST_FLAVOR_BY_NAME));
 
-const typeCTypeFromNode = (parent: RawNode | undefined): string | undefined =>
-    attr(getChild(parent, "type"), "c:type");
+const typeCTypeFromNode = (parent: RawNode | undefined): string | undefined => attr(getChild(parent, "type"), "c:type");
 
 function getElementRef(node: RawNode, context: ParseContext): TypeId {
     const arrayNode = getChild(node, "array");
@@ -93,8 +92,8 @@ function arrayTypeRefFromNode(arrayNode: RawNode, context: ParseContext): TypeId
 
     const elementNode = getChild(arrayNode, "type");
     const arrayCType = attr(arrayNode, "c:type");
-    const isCharacterArray = attr(elementNode, "name") === "utf8" &&
-        /^(?:const\s+)?(?:gchar|char)\s*\*$/u.test(arrayCType ?? "");
+    const isCharacterArray =
+        attr(elementNode, "name") === "utf8" && /^(?:const\s+)?(?:gchar|char)\s*\*$/u.test(arrayCType ?? "");
 
     const carray: CArrayType = {
         kind: "carray",

@@ -20,12 +20,15 @@ const ReminderNotification = ({ id, due }: Reminder) => {
     const application = useApplication();
     const [notification, setNotification] = useState<Gio.Notification | null>(null);
 
-    useEffect(() => () => {
-        const task = useStore.getState().tasks.find((current) => current.id === id);
-        if (!isCurrentReminder(task, due)) {
-            application.withdrawNotification(id);
-        }
-    }, [application, due, id]);
+    useEffect(
+        () => () => {
+            const task = useStore.getState().tasks.find((current) => current.id === id);
+            if (!isCurrentReminder(task, due)) {
+                application.withdrawNotification(id);
+            }
+        },
+        [application, due, id],
+    );
 
     useEffect(() => {
         const store = useStore.getState();
@@ -47,8 +50,4 @@ const ReminderNotification = ({ id, due }: Reminder) => {
     return createPortal(<GNotification ref={setNotification} />, rootElement);
 };
 
-export {
-    createReminderTarget,
-    readReminderTarget,
-    ReminderNotification,
-};
+export { createReminderTarget, readReminderTarget, ReminderNotification };

@@ -42,10 +42,7 @@ const FORM_FIELD_PROP_NAMES: FormFieldPropName[] = [
     "shouldUnregister",
 ];
 
-const withErrorClass = (
-    cssClasses: string[] | null | undefined,
-    isInvalid: boolean,
-): string[] | null | undefined => {
+const withErrorClass = (cssClasses: string[] | null | undefined, isInvalid: boolean): string[] | null | undefined => {
     if (!isInvalid || cssClasses?.includes("error") === true) {
         return cssClasses;
     }
@@ -98,8 +95,7 @@ const useFieldWidget = <Widget extends FieldWidget>(
     cssClasses: withErrorClass(props.cssClasses, state.invalid),
     sensitive: field.disabled !== true && props.sensitive,
     tooltipText: state.invalid && state.error?.message !== undefined ? state.error.message : props.tooltipText,
-    accessibleInvalid:
-        (state.invalid && Gtk.AccessibleInvalidState.TRUE) || Gtk.AccessibleInvalidState.FALSE,
+    accessibleInvalid: (state.invalid && Gtk.AccessibleInvalidState.TRUE) || Gtk.AccessibleInvalidState.FALSE,
 });
 
 const selectText = (row: { selectRegion: (start: number, end: number) => void }): void => {

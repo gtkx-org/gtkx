@@ -120,7 +120,7 @@ const enclosingTagNodes = (node: TextNode): ElementNode[] => {
 const textRestrictionError = (text: string): Error =>
     new Error(
         "Text strings must be rendered within a <GtkLabel> or <GtkTextBuffer> element; " +
-        `received ${JSON.stringify(text)}`,
+            `received ${JSON.stringify(text)}`,
     );
 
 const canAcceptText = (host: ElementNode): boolean =>
@@ -190,9 +190,7 @@ const validateContentMix = (node: ElementNode, props: Props): void => {
         return;
     }
 
-    const violated = CONTENT_MIX_RULES.find(
-        (rule) => rule.kind === node.contentKind && props[rule.prop] !== undefined,
-    );
+    const violated = CONTENT_MIX_RULES.find((rule) => rule.kind === node.contentKind && props[rule.prop] !== undefined);
 
     if (violated !== undefined) {
         throw new Error(violated.message);

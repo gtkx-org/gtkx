@@ -38,17 +38,19 @@ class PreviewBoundary extends Component<BoundaryProps, BoundaryState> {
     override state: BoundaryState = { error: null, args: this.props.args };
 
     override render(): ReactNode {
-        return this.state.error === null
-            ? this.props.children
-            : (
-                    <AdwStatusPage
-                        name="storybook-preview-error"
-                        title="Preview failed"
-                        iconName="dialog-error-symbolic"
-                        description={markupEscapeText(this.state.error.message.slice(0, 500), -1) +
-                            "\n\nAdjust controls, reset the preview, or select another story to continue."}
-                    />
-                );
+        return this.state.error === null ? (
+            this.props.children
+        ) : (
+            <AdwStatusPage
+                name="storybook-preview-error"
+                title="Preview failed"
+                iconName="dialog-error-symbolic"
+                description={
+                    markupEscapeText(this.state.error.message.slice(0, 500), -1) +
+                    "\n\nAdjust controls, reset the preview, or select another story to continue."
+                }
+            />
+        );
     }
 }
 
@@ -108,11 +110,16 @@ const usePreviewState = ({ entry }: PreviewProps) => {
         error: null,
         actions: new ActionStore(),
     }));
-    const onError = useCallback((error: Error) => {
-        setState((current) => current.story === state.story && current.generation === state.generation
-            ? { ...current, error }
-            : current);
-    }, [state.story, state.generation]);
+    const onError = useCallback(
+        (error: Error) => {
+            setState((current) =>
+                current.story === state.story && current.generation === state.generation
+                    ? { ...current, error }
+                    : current,
+            );
+        },
+        [state.story, state.generation],
+    );
     const boundArgs = useMemo(
         () => bindActions(state.args, state.story.argTypes, state.actions, onError),
         [state.args, state.story.argTypes, state.actions, onError],
@@ -148,12 +155,7 @@ const usePreviewState = ({ entry }: PreviewProps) => {
 type InspectorProps = PreviewProps & { actions: ActionStore; args: Args; onChange: (args: Args) => void };
 
 const StoryInspector = ({ entry, actions, args, onChange }: InspectorProps): ReactNode => (
-    <GtkScrolledWindow
-        name="storybook-inspector"
-        widthRequest={280}
-        hscrollbarPolicy={Gtk.PolicyType.NEVER}
-        vexpand
-    >
+    <GtkScrolledWindow name="storybook-inspector" widthRequest={280} hscrollbarPolicy={Gtk.PolicyType.NEVER} vexpand>
         <GtkBox
             orientation={Gtk.Orientation.VERTICAL}
             spacing={24}
@@ -175,27 +177,29 @@ const StorybookPreview = ({ entry }: PreviewProps): ReactNode => {
         <AdwToolbarView
             hexpand
             vexpand
-            topBar={(
+            topBar={
                 <AdwHeaderBar
                     titleWidget={<AdwWindowTitle title={entry.name} subtitle={entry.title} />}
                     end={<GtkButton label="Reset story" onClicked={reset} />}
                 />
-            )}
+            }
         >
             <GtkBox>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} hexpand vexpand>
                     <PreviewBoundary key={state.generation} args={state.args}>
-                        {state.error === null
-                            ? <PreviewContent story={entry.story} args={boundArgs} />
-                            : (
-                                    <AdwStatusPage
-                                        name="storybook-preview-error"
-                                        title="Story action failed"
-                                        iconName="dialog-error-symbolic"
-                                        description={markupEscapeText(state.error.message.slice(0, 500), -1) +
-                                            "\n\nReset the preview or select another story to continue."}
-                                    />
-                                )}
+                        {state.error === null ? (
+                            <PreviewContent story={entry.story} args={boundArgs} />
+                        ) : (
+                            <AdwStatusPage
+                                name="storybook-preview-error"
+                                title="Story action failed"
+                                iconName="dialog-error-symbolic"
+                                description={
+                                    markupEscapeText(state.error.message.slice(0, 500), -1) +
+                                    "\n\nReset the preview or select another story to continue."
+                                }
+                            />
+                        )}
                     </PreviewBoundary>
                 </GtkBox>
                 <StoryInspector entry={entry} actions={state.actions} args={state.args} onChange={onChange} />

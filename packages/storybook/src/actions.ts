@@ -133,40 +133,39 @@ const settleCallback = async (
     }
 };
 
-const bindCallback = (
-    store: ActionStore,
-    options: CallbackOptions,
-): EventCallback => (...values) => {
-    const succeed = (): void => {
-        store.record(options.name, values);
-    };
-    const fail = (cause: unknown): void => {
-        const error = cause instanceof Error ? cause : new Error(String(cause));
-        store.record(options.name, values, error);
+const bindCallback =
+    (store: ActionStore, options: CallbackOptions): EventCallback =>
+    (...values) => {
+        const succeed = (): void => {
+            store.record(options.name, values);
+        };
+        const fail = (cause: unknown): void => {
+            const error = cause instanceof Error ? cause : new Error(String(cause));
+            store.record(options.name, values, error);
 
-        if (options.onError === undefined) {
-            throw error;
+            if (options.onError === undefined) {
+                throw error;
+            }
+
+            options.onError(error);
+        };
+
+        try {
+            const result = actionScope.run(store, () => options.callback?.(...values));
+
+            if (result instanceof Promise) {
+                return settleCallback(result, succeed, fail);
+            }
+
+            succeed();
+
+            return result;
+        } catch (error) {
+            fail(error);
+
+            return;
         }
-
-        options.onError(error);
     };
-
-    try {
-        const result = actionScope.run(store, () => options.callback?.(...values));
-
-        if (result instanceof Promise) {
-            return settleCallback(result, succeed, fail);
-        }
-
-        succeed();
-
-        return result;
-    } catch (error) {
-        fail(error);
-
-        return;
-    }
-};
 
 const actionName = (value: unknown, configuredName: unknown): string | undefined => {
     if (typeof configuredName === "string") {
@@ -195,12 +194,7 @@ const callbackOptions = (
     };
 };
 
-const bindActions = (
-    args: Args,
-    argTypes: ArgTypes,
-    store: ActionStore,
-    onError?: (error: Error) => void,
-): Args => {
+const bindActions = (args: Args, argTypes: ArgTypes, store: ActionStore, onError?: (error: Error) => void): Args => {
     const bound = { ...args };
     const names = new Set([...Object.keys(args), ...Object.keys(argTypes)]);
 

@@ -118,11 +118,11 @@ const getNameOwner = async (proxy: Gio.DBusProxy, name: string) => {
 
 Variants also expose the [GJS unpacking methods](https://gjs.guide/guides/glib/gvariant.html):
 
-| Method | Behavior |
-| --- | --- |
-| `unpack()` | Opens the outer container, leaving its children as variants. Dictionary keys are unpacked. |
-| `deepUnpack()` | Opens arrays, tuples, dictionaries, and maybes recursively, retaining the variants held inside `v` values. |
-| `recursiveUnpack()` | Opens every container, including nested `v` values. |
+| Method              | Behavior                                                                                                   |
+| ------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `unpack()`          | Opens the outer container, leaving its children as variants. Dictionary keys are unpacked.                 |
+| `deepUnpack()`      | Opens arrays, tuples, dictionaries, and maybes recursively, retaining the variants held inside `v` values. |
+| `recursiveUnpack()` | Opens every container, including nested `v` values.                                                        |
 
 Basic values unpack directly. Byte arrays (`ay`) return `Uint8Array` in every mode, and dictionaries return objects, including dictionaries with numeric keys. `deep_unpack()` aliases `deepUnpack()`, and `Variant.new(signature, value)` aliases construction for compatibility with older GJS code.
 

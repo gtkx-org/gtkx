@@ -122,11 +122,7 @@ function fundamentalFromNative(descriptor: FundamentalDescriptor, value: unknown
 const errorRefDescriptor = (): Descriptor =>
     refT(boxedT("GError", { ownership: "full", sharedLibrary: LIB, getTypeFnName: "g_error_get_type" }));
 
-function decodedCallbackValues(
-    descriptor: CallbackDescriptor,
-    target: DecodedCallback,
-    inputs: unknown[],
-): unknown[] {
+function decodedCallbackValues(descriptor: CallbackDescriptor, target: DecodedCallback, inputs: unknown[]): unknown[] {
     const values: unknown[] = [];
     let cursor = 0;
 
@@ -156,8 +152,10 @@ function decodedCallbackCallable(
     return (...inputs) => {
         invoke ??= createCall(
             bindFunctionPointer(
-                target.function, argDescriptors.map((argument) => toAbi(argument)),
-                toAbi(descriptor.returnDescriptor), "decoded callback",
+                target.function,
+                argDescriptors.map((argument) => toAbi(argument)),
+                toAbi(descriptor.returnDescriptor),
+                "decoded callback",
             ),
             argDescriptors,
             descriptor.returnDescriptor,

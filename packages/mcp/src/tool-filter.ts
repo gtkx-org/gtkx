@@ -4,7 +4,12 @@ import type { Tool } from "./tool.js";
 const NEGATION_PREFIX = "!";
 
 const patternToRegExp = (pattern: string): RegExp =>
-    new RegExp(`^${pattern.split("*").map((part) => RegExp.escape(part)).join(".*")}$`);
+    new RegExp(
+        `^${pattern
+            .split("*")
+            .map((part) => RegExp.escape(part))
+            .join(".*")}$`,
+    );
 
 const matchingNames = (tools: Tool[], pattern: string): string[] => {
     const expression = patternToRegExp(pattern);

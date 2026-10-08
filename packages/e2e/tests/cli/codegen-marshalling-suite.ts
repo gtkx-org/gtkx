@@ -4,12 +4,7 @@ import { createCliProject, runCli } from "./cli-project.js";
 import { fixtureConfig } from "./codegen-helpers.js";
 import { isolateTypeConsumer, typecheckFiles } from "./type-consumer.js";
 
-const expectMarshallingConsumer = ({
-    library,
-    imports,
-    accepted,
-    rejected,
-}: MarshallingConsumer): void => {
+const expectMarshallingConsumer = ({ library, imports, accepted, rejected }: MarshallingConsumer): void => {
     const files = {
         "accepted.tsx": imports + accepted,
         ...Object.fromEntries(rejected.map((source, index) => [`rejected-${String(index)}.tsx`, imports + source])),

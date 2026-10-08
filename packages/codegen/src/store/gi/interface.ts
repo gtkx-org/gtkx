@@ -36,12 +36,7 @@ import {
 } from "./property-accessor.js";
 import { appendInterfaceRegistration } from "./registration.js";
 import { renderSignalDeclarations, renderSignalMembers, renderSignalRegistration } from "./signal.js";
-import {
-    hasCallableVfuncSlots,
-    renderVfuncMembers,
-    renderVfuncMetadata,
-    type VfuncMemberMode,
-} from "./vtable.js";
+import { hasCallableVfuncSlots, renderVfuncMembers, renderVfuncMetadata, type VfuncMemberMode } from "./vtable.js";
 
 type InterfaceMemberRenderers = {
     renderMethod: InstanceMemberRenderer;
@@ -174,11 +169,7 @@ const generateFoldedInterface = (
 
 const makerName = (className: string): string => `make${className}`;
 
-const renderInterfaceLayout = (
-    context: ModuleContext,
-    iface: GirClass,
-    callables: Callables,
-): string | undefined => {
+const renderInterfaceLayout = (context: ModuleContext, iface: GirClass, callables: Callables): string | undefined => {
     const vfuncs = renderVfuncMetadata(context, iface);
     const properties = renderSlotBackedProperties(context, iface, callables);
 
@@ -313,7 +304,7 @@ const renderInterfaceType = (
 
     return `${getDoc(iface)}${renderBracedOrEmpty(
         `export interface ${className} extends ${context.qualify("GObject", "TypeInstance")}, ` +
-        interfaceTypeExtends(context, iface),
+            interfaceTypeExtends(context, iface),
         members.join("\n"),
     )}`;
 };
@@ -446,11 +437,7 @@ const renderInterfaceTypeMembers = (context: ModuleContext, iface: GirClass, cal
     ...interfaceVfuncMembers(context, iface, "signature"),
 ];
 
-const renderInterfaceClass = (
-    context: ModuleContext,
-    options: InterfaceClassOptions,
-    localName?: string,
-): string => {
+const renderInterfaceClass = (context: ModuleContext, options: InterfaceClassOptions, localName?: string): string => {
     const { className, callables, gtypeExpr, implRef } = options;
     const members: string[] = [];
 

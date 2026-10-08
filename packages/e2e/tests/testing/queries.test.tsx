@@ -420,11 +420,12 @@ describe("within", () => {
         const inner = await within(outer).findByName("inner-frame");
         const bound = within(inner);
         expect(await bound.findAllByText("Submit")).toHaveLength(2);
-        expect(bound.getAllByRole(Gtk.AccessibleRole.BUTTON).map((button) => button.getName()))
-            .toEqual(["submit-first", "submit-second"]);
+        expect(bound.getAllByRole(Gtk.AccessibleRole.BUTTON).map((button) => button.getName())).toEqual([
+            "submit-first",
+            "submit-second",
+        ]);
         expect(bound.queryAllByName(/^submit-/)).toHaveLength(2);
-        expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Outside" }))
-            .toBe(screen.getByName("outside"));
+        expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Outside" })).toBe(screen.getByName("outside"));
         expect(bound.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Outside" })).toBeNull();
         expect(bound.queryAllByName("outside")).toEqual([]);
         await expect(bound.findByText("Outside", { timeout: 100 })).rejects.toThrow();

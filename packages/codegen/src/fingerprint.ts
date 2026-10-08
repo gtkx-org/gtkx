@@ -4,11 +4,7 @@ import { type Dirent, existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import packageManifest from "../package.json" with { type: "json" };
-import {
-    hasFreshPropsDependencies,
-    isPropsDependencies,
-    type PropsDependencies,
-} from "./docs/props-dependencies.js";
+import { hasFreshPropsDependencies, isPropsDependencies, type PropsDependencies } from "./docs/props-dependencies.js";
 import { EXTERNAL_NAMESPACES } from "./gir/external-namespaces.js";
 import { locateGirFile } from "./gir/libraries.js";
 import { arrayGuard, hasFields, isNumber, isString } from "./guards.js";
@@ -277,25 +273,33 @@ const isDocsOutputFresh = (outDir: string, inputs: GiInputs, input: DocsFingerpr
 
     const giValue = recordedGiValue(sentinel.gi, inputs);
 
-    return giValue !== undefined &&
+    return (
+        giValue !== undefined &&
         hashDocs(giValue, input, sentinel.props.value) === sentinel.value &&
-        hasFreshPropsDependencies(sentinel.props);
+        hasFreshPropsDependencies(sentinel.props)
+    );
 };
 
 const serializeModuleExports = (map: Record<string, ModuleExport>): [string, string, string][] =>
-    Object.keys(map).toSorted().map((type) => [type, map[type]?.module ?? "", map[type]?.export ?? ""]);
+    Object.keys(map)
+        .toSorted()
+        .map((type) => [type, map[type]?.module ?? "", map[type]?.export ?? ""]);
 
 const serializeElementProps = (map: Record<string, ElementPropsExport>): [string, string, string, string, string][] =>
-    Object.keys(map).toSorted().map((type) => [
-        type,
-        map[type]?.module ?? "",
-        map[type]?.export ?? "",
-        map[type]?.composition ?? "",
-        sortAlpha(map[type]?.constructOnly ?? []),
-    ]);
+    Object.keys(map)
+        .toSorted()
+        .map((type) => [
+            type,
+            map[type]?.module ?? "",
+            map[type]?.export ?? "",
+            map[type]?.composition ?? "",
+            sortAlpha(map[type]?.constructOnly ?? []),
+        ]);
 
 const serializeStringLists = (map: Record<string, string[]>): [string, string][] =>
-    Object.keys(map).toSorted().map((type) => [type, sortAlpha(map[type] ?? [])]);
+    Object.keys(map)
+        .toSorted()
+        .map((type) => [type, sortAlpha(map[type] ?? [])]);
 
 const hashJsx = (input: JsxFingerprintInput): string =>
     createHash("sha256")

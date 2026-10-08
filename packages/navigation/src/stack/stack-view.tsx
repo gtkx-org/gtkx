@@ -114,9 +114,12 @@ const StackPageContent = ({ descriptor, previous }: Omit<StackPageProps, "naviga
 
     const back = previous === undefined ? undefined : { title: previous.options.title ?? previous.route.name };
 
-    const topBar = options.header === undefined
-        ? <HeaderBar options={options} showBackButton={options.headerBackVisible ?? true} />
-        : <>{options.header({ route, navigation, options, back })}</>;
+    const topBar =
+        options.header === undefined ? (
+            <HeaderBar options={options} showBackButton={options.headerBackVisible ?? true} />
+        ) : (
+            <>{options.header({ route, navigation, options, back })}</>
+        );
 
     return <AdwToolbarView topBar={topBar}>{descriptor.render()}</AdwToolbarView>;
 };

@@ -18,11 +18,15 @@ const wrapOptions = (options) => {
     return {
         ...options,
         ...(options.command === undefined ? {} : { command: wrapCommand(options.command) }),
-        ...(options.commands === undefined ? {} : {
-            commands: options.commands.map((command) => typeof command === "string"
-                ? wrapCommand(command)
-                : { ...command, command: wrapCommand(command.command) }),
-        }),
+        ...(options.commands === undefined
+            ? {}
+            : {
+                  commands: options.commands.map((command) =>
+                      typeof command === "string"
+                          ? wrapCommand(command)
+                          : { ...command, command: wrapCommand(command.command) },
+                  ),
+              }),
     };
 };
 
@@ -33,11 +37,13 @@ const wrapTarget = (target) => ({
         : { inputs: [...(target.inputs ?? ["default", "^default"]), "{workspaceRoot}/scripts/ci/**/*"] }),
     ...(target.command === undefined ? {} : { command: wrapCommand(target.command) }),
     ...(target.options === undefined ? {} : { options: wrapOptions(target.options) }),
-    ...(target.configurations === undefined ? {} : {
-        configurations: Object.fromEntries(Object.entries(target.configurations).map(
-            ([name, options]) => [name, wrapOptions(options)],
-        )),
-    }),
+    ...(target.configurations === undefined
+        ? {}
+        : {
+              configurations: Object.fromEntries(
+                  Object.entries(target.configurations).map(([name, options]) => [name, wrapOptions(options)]),
+              ),
+          }),
 });
 
 export const wrapPlugin = ([pattern, createNodes]) => [
@@ -45,18 +51,33 @@ export const wrapPlugin = ([pattern, createNodes]) => [
     async (files, options, context) => {
         const results = await createNodes(files, options, context);
 
-        return results.map(([file, result]) => [file, {
-            ...result,
-            ...(result.projects === undefined ? {} : {
-                projects: Object.fromEntries(Object.entries(result.projects).map(([root, project]) => [root, {
-                    ...project,
-                    ...(project.targets === undefined ? {} : {
-                        targets: Object.fromEntries(Object.entries(project.targets).map(
-                            ([name, target]) => [name, wrapTarget(target)],
-                        )),
-                    }),
-                }])),
-            }),
-        }]);
+        return results.map(([file, result]) => [
+            file,
+            {
+                ...result,
+                ...(result.projects === undefined
+                    ? {}
+                    : {
+                          projects: Object.fromEntries(
+                              Object.entries(result.projects).map(([root, project]) => [
+                                  root,
+                                  {
+                                      ...project,
+                                      ...(project.targets === undefined
+                                          ? {}
+                                          : {
+                                                targets: Object.fromEntries(
+                                                    Object.entries(project.targets).map(([name, target]) => [
+                                                        name,
+                                                        wrapTarget(target),
+                                                    ]),
+                                                ),
+                                            }),
+                                  },
+                              ]),
+                          ),
+                      }),
+            },
+        ]);
     },
 ];

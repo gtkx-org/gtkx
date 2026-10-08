@@ -54,14 +54,14 @@ const DetailsView = ({ texture }: { texture: Gdk.Texture }) => (
             rightMargin={10}
             topMargin={10}
             bottomMargin={10}
-            buffer={(
+            buffer={
                 <GtkTextBuffer>
                     {DETAILS_TEXT}
                     <GtkTextTag name="logo" pixelsAboveLines={200} justification={Gtk.Justification.RIGHT}>
                         <GtkTextChildAnchor paintable={texture} />
                     </GtkTextTag>
                 </GtkTextBuffer>
-            )}
+            }
         />
     </GtkScrolledWindow>
 );

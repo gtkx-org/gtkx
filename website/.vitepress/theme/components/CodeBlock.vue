@@ -45,37 +45,40 @@ const copy = async (): Promise<void> => {
 </script>
 
 <template>
-  <div class="cb" :class="{ 'cb--terminal': isTerminal, 'cb--flush': hasFloatingCopy }">
-    <div v-if="hasHead" class="cb__head">
-      <span v-if="isTerminal" class="cb__lights" aria-hidden="true">
-        <span class="cb__light" style="background: #ff5f57" />
-        <span class="cb__light" style="background: #febc2e" />
-        <span class="cb__light" style="background: #28c840" />
-      </span>
-      <span class="cb__title">{{ title || lang }}</span>
-      <button
-        v-if="source != null"
-        type="button"
-        class="cb__copy"
-        :aria-label="copied ? 'Copied' : 'Copy to clipboard'"
-        @click="copy"
-      >
-        <Icon :name="copied ? 'check' : 'copy'" :size="14" />
-      </button>
+    <div class="cb" :class="{ 'cb--terminal': isTerminal, 'cb--flush': hasFloatingCopy }">
+        <div v-if="hasHead" class="cb__head">
+            <span v-if="isTerminal" class="cb__lights" aria-hidden="true">
+                <span class="cb__light" style="background: #ff5f57" />
+                <span class="cb__light" style="background: #febc2e" />
+                <span class="cb__light" style="background: #28c840" />
+            </span>
+            <span class="cb__title">{{ title || lang }}</span>
+            <button
+                v-if="source != null"
+                type="button"
+                class="cb__copy"
+                :aria-label="copied ? 'Copied' : 'Copy to clipboard'"
+                @click="copy"
+            >
+                <Icon :name="copied ? 'check' : 'copy'" :size="14" />
+            </button>
+        </div>
+        <span class="visually-hidden" role="status" aria-live="polite">{{ copied ? "Copied to clipboard" : "" }}</span>
+        <div v-if="snippet" class="cb__shiki" v-html="snippet.html" />
+        <pre
+            v-else
+            class="cb__pre"
+        ><code class="cb__code"><template v-if="lines"><div v-for="(ln, i) in lines" :key="i" class="cb__line"><span v-if="isTerminal" class="cb__prompt" aria-hidden="true">$</span><span class="cb__txt">{{ ln || " " }}</span></div></template><slot v-else /></code></pre>
+        <button
+            v-if="hasFloatingCopy"
+            type="button"
+            class="cb__copy cb__copy--float"
+            :aria-label="copied ? 'Copied' : 'Copy to clipboard'"
+            @click="copy"
+        >
+            <Icon :name="copied ? 'check' : 'copy'" :size="14" />
+        </button>
     </div>
-    <span class="visually-hidden" role="status" aria-live="polite">{{ copied ? "Copied to clipboard" : "" }}</span>
-    <div v-if="snippet" class="cb__shiki" v-html="snippet.html" />
-    <pre v-else class="cb__pre"><code class="cb__code"><template v-if="lines"><div v-for="(ln, i) in lines" :key="i" class="cb__line"><span v-if="isTerminal" class="cb__prompt" aria-hidden="true">$</span><span class="cb__txt">{{ ln || " " }}</span></div></template><slot v-else /></code></pre>
-    <button
-      v-if="hasFloatingCopy"
-      type="button"
-      class="cb__copy cb__copy--float"
-      :aria-label="copied ? 'Copied' : 'Copy to clipboard'"
-      @click="copy"
-    >
-      <Icon :name="copied ? 'check' : 'copy'" :size="14" />
-    </button>
-  </div>
 </template>
 
 <style scoped>

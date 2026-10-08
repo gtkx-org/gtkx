@@ -323,8 +323,8 @@ const isAccessibleNumberMatch = (
 
 const tokenReaderFor =
     (domain: number[]): PropertyReader =>
-        (accessible, property) =>
-            readAccessibleToken(accessible, property, domain);
+    (accessible, property) =>
+        readAccessibleToken(accessible, property, domain);
 
 const propertyReaderFor = (property: Gtk.AccessibleProperty): PropertyReader => {
     const domain = TOKEN_DOMAINS[property];

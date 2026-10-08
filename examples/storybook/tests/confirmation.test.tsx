@@ -9,9 +9,10 @@ const { Default } = composeStories(stories);
 it("opens the native dialog and discards the draft", async () => {
     let discards = 0;
     await render(
-        <Default onDiscard={() => {
-            discards += 1;
-        }}
+        <Default
+            onDiscard={() => {
+                discards += 1;
+            }}
         />,
     );
 

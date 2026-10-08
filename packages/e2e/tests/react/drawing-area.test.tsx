@@ -66,12 +66,7 @@ describe("a drawing area rendered from React", () => {
             expect(frames.length).toBeGreaterThan(0);
         });
         await rerender(
-            <GtkDrawingArea
-                ref={areaRef}
-                contentWidth={FRAME_SIZE}
-                contentHeight={FRAME_SIZE}
-                drawFunc={drawFunc}
-            />,
+            <GtkDrawingArea ref={areaRef} contentWidth={FRAME_SIZE} contentHeight={FRAME_SIZE} drawFunc={drawFunc} />,
         );
         const drawnFrames = frames.length;
         areaRef.current?.queueDraw();

@@ -1,8 +1,5 @@
 import { describe, it } from "vitest";
-import {
-    expectConfiguredPropsRejection,
-    type InvalidProps,
-} from "./reference-configured-props-errors.js";
+import { expectConfiguredPropsRejection, type InvalidProps } from "./reference-configured-props-errors.js";
 import { referenceSession } from "./reference-session.js";
 
 const INVALID_PROPS: InvalidProps = { module: "@audit/not-installed", exported: "Props" };

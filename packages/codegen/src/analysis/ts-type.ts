@@ -98,11 +98,8 @@ const renderPrimitiveType = (target: TsTypeTarget, type: Extract<GirType, { kind
     return type.category === "unichar" ? `${rendered} | number` : rendered;
 };
 
-const renderEntityType = (
-    target: TsTypeTarget,
-    type: EntityType,
-    name: ReferenceName | undefined,
-): string => renderNamedType(target, type, willEmitEntity(type) ? name : undefined);
+const renderEntityType = (target: TsTypeTarget, type: EntityType, name: ReferenceName | undefined): string =>
+    renderNamedType(target, type, willEmitEntity(type) ? name : undefined);
 
 const renderBaseType = (library: Library, target: TsTypeTarget, ref: TypeId | undefined): string => {
     if (ref === undefined) {
@@ -158,9 +155,7 @@ const renderContainerType = (
 const parenthesizeUnion = (rendered: string): string => (rendered.includes(" | ") ? `(${rendered})` : rendered);
 
 const renderByteSequenceType = (target: TsTypeTarget, type: CArrayType | ListType): string =>
-    target.isInput && type.kind === "carray" && !target.canAcceptTypedArrayViews
-        ? "number[]"
-        : target.byteArrayType;
+    target.isInput && type.kind === "carray" && !target.canAcceptTypedArrayViews ? "number[]" : target.byteArrayType;
 
 const directTypedArrayInputType = (type: GirType): string | undefined => {
     if (type.kind === "enum") {
@@ -232,9 +227,8 @@ const renderNamedNumericInput = (
     qualified: string,
     isInput: boolean,
 ): string => {
-    const category = resolved?.kind === "alias"
-        ? primitiveCategoryThroughAliases(library, resolved.value.target)
-        : undefined;
+    const category =
+        resolved?.kind === "alias" ? primitiveCategoryThroughAliases(library, resolved.value.target) : undefined;
 
     return category !== undefined && isInput && NUMBER_INPUT_CATEGORIES.has(category)
         ? `${qualified} | number`
@@ -302,11 +296,7 @@ const renderParameterTsType = (
     ref: TypeId | undefined,
     options: ParameterTsTypeOptions = {},
 ): string => {
-    const {
-        isNullable = false,
-        isValueWidened = true,
-        canAcceptTypedArrayViews = true,
-    } = options;
+    const { isNullable = false, isValueWidened = true, canAcceptTypedArrayViews = true } = options;
 
     return renderModuleType(context, ref, isNullable, {
         byteArrayType: BYTE_ARRAY_INPUT_TYPE,

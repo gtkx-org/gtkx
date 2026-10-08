@@ -39,8 +39,8 @@ type IndexedChildHost<C extends GObject.Object> = GObject.Object & {
 };
 
 type ChildClass<C extends GObject.Object> =
-    (abstract new (...args: never[]) => C) |
-    { [Symbol.hasInstance]: (value: unknown) => value is C };
+    | (abstract new (...args: never[]) => C)
+    | { [Symbol.hasInstance]: (value: unknown) => value is C };
 
 const childClassType = (cls: ChildClass<GObject.Object>): bigint =>
     typeof cls === "function" ? getClassType(cls) : TYPE_INVALID;
@@ -57,8 +57,8 @@ const isChildInstance = <C extends GObject.Object>(child: GObject.Object, cls: C
 
 const childMatcher =
     <C extends GObject.Object>(cls: ChildClass<C> | undefined): ((child: GObject.Object) => child is C) =>
-        (child): child is C =>
-            cls !== undefined && isChildInstance(child, cls);
+    (child): child is C =>
+        cls !== undefined && isChildInstance(child, cls);
 
 const slotAttach =
     <P extends GObject.Object, C extends GObject.Object>(
@@ -66,13 +66,13 @@ const slotAttach =
         isMatch: (child: GObject.Object) => child is C,
         attach: SlotHooks<P, C>["attach"],
     ): NonNullable<ElementBehavior["attach"]> =>
-        (object, child, info) => {
-            if (info.slot !== slotName || !isMatch(child)) {
-                return;
-            }
+    (object, child, info) => {
+        if (info.slot !== slotName || !isMatch(child)) {
+            return;
+        }
 
-            return attach(object as P, child, info) ?? true;
-        };
+        return attach(object as P, child, info) ?? true;
+    };
 
 const slot = <P extends GObject.Object, C extends GObject.Object>(
     slotName: string,
@@ -128,10 +128,7 @@ const clearList = <P extends GObject.Object, I>(object: P, items: I[], hooks: Li
     }
 };
 
-const list = <P extends GObject.Object, I>(
-    prop: string,
-    hooks: ListHooks<P, I>,
-): ElementBehavior<P> => {
+const list = <P extends GObject.Object, I>(prop: string, hooks: ListHooks<P, I>): ElementBehavior<P> => {
     const behavior: ElementBehavior<P> = {
         update: (object, prev, next) => {
             const previous = (prev[prop] as I[] | null | undefined) ?? [];
@@ -269,9 +266,7 @@ const rowSlot = <P extends Gtk.Widget & IndexedChildHost<Gtk.Widget>>(): Element
         },
     });
 
-const applicationCreator = <P extends Application, C extends Props>(
-    base: new (props: C) => P,
-): ElementBehavior<P> => ({
+const applicationCreator = <P extends Application, C extends Props>(base: new (props: C) => P): ElementBehavior<P> => ({
     create: (props) => new base(props as C),
 });
 

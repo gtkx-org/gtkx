@@ -30,7 +30,7 @@ const CounterCard = ({ label, step, enabled, unit, onIncrement }: CounterCardPro
                 title={`${String(count)} ${count === 1 ? unit.slice(0, -1) : unit}`}
                 subtitle={`Add ${String(step)} with each click`}
                 useMarkup={false}
-                suffix={(
+                suffix={
                     <GtkButton
                         label={label}
                         sensitive={enabled}
@@ -38,7 +38,7 @@ const CounterCard = ({ label, step, enabled, unit, onIncrement }: CounterCardPro
                         cssClasses={["suggested-action"]}
                         onClicked={increment}
                     />
-                )}
+                }
             />
         </AdwPreferencesGroup>
     );

@@ -4,9 +4,7 @@
     "targets": {
         "codegen": {
             "cache": true,
-            "dependsOn": [
-                "gtkx:_build:bindings"
-            ],
+            "dependsOn": ["gtkx:_build:bindings"],
             "inputs": [
                 "{projectRoot}/scripts/**/*",
                 "{projectRoot}/src/overrides.ts",
@@ -14,19 +12,14 @@
                 "{workspaceRoot}/packages/codegen/src/khronos/**/*",
                 "{workspaceRoot}/scripts/ci/**/*"
             ],
-            "outputs": [
-                "{projectRoot}/src/generated/**"
-            ],
+            "outputs": ["{projectRoot}/src/generated/**"],
             "command": "node ../../scripts/ci/run.mjs 'pnpm run codegen'",
             "options": {
                 "cwd": "{projectRoot}"
             }
         },
         "build": {
-            "dependsOn": [
-                "...",
-                "codegen"
-            ],
+            "dependsOn": ["...", "codegen"],
             "inputs": [
                 "...",
                 {

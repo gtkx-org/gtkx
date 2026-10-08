@@ -140,9 +140,9 @@ const didAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
 const unclaimedChildError = (parentTypeName: string, childTypeName: string): Error =>
     new Error(
         `<${childTypeName}> cannot be a child of <${parentTypeName}>. Pass it to the ` +
-        `<${parentTypeName}> prop that takes it, if there is one, portal it to rootElement with createPortal ` +
-        `if it does not belong inside <${parentTypeName}>, or register an attach behavior for ` +
-        `<${parentTypeName}> with defineElements from "@gtkx/react/config" if it belongs among its children.`,
+            `<${parentTypeName}> prop that takes it, if there is one, portal it to rootElement with createPortal ` +
+            `if it does not belong inside <${parentTypeName}>, or register an attach behavior for ` +
+            `<${parentTypeName}> with defineElements from "@gtkx/react/config" if it belongs among its children.`,
     );
 
 const runAttach = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
@@ -249,12 +249,7 @@ const resolveEntry = (
     return createEntry(slot, node);
 };
 
-const placeChild = (
-    parent: ElementNode,
-    slot: string,
-    node: PlaceableNode,
-    before: PlaceableNode | null,
-): void => {
+const placeChild = (parent: ElementNode, slot: string, node: PlaceableNode, before: PlaceableNode | null): void => {
     const entries = parent.placements.getOrInsertComputed(slot, () => []);
     const existing = entries.findIndex((entry) => entry.node === node);
     const entry = resolveEntry(entries, existing, slot, node);

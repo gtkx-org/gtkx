@@ -20,14 +20,7 @@ type GroupProps = Pick<NavigatorProps, "selectedId" | "onSelect"> & {
 
 const StoryGroup = ({ title, entries, selectedId, onSelect }: GroupProps): ReactNode => (
     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-        <GtkLabel
-            label={title}
-            xalign={0}
-            marginStart={18}
-            marginEnd={18}
-            cssClasses={["heading"]}
-            wrap
-        />
+        <GtkLabel label={title} xalign={0} marginStart={18} marginEnd={18} cssClasses={["heading"]} wrap />
         <GtkListBox
             cssClasses={["navigation-sidebar"]}
             selectedIndex={entries.findIndex((entry) => entry.id === selectedId)}
@@ -54,22 +47,23 @@ const StoryGroup = ({ title, entries, selectedId, onSelect }: GroupProps): React
     </GtkBox>
 );
 
-const LoadErrors = ({ errors }: Pick<NavigatorProps, "errors">): ReactNode => errors.length > 0 && (
-    <GtkBox name="storybook-load-errors" orientation={Gtk.Orientation.VERTICAL} spacing={6}>
-        {errors.map(({ source, error }, index) => (
-            <GtkLabel
-                key={`${source}-${String(index)}`}
-                label={`${source}\n${error.message.slice(0, 500)}`}
-                cssClasses={["error"]}
-                marginStart={18}
-                marginEnd={18}
-                wrap
-                selectable
-                xalign={0}
-            />
-        ))}
-    </GtkBox>
-);
+const LoadErrors = ({ errors }: Pick<NavigatorProps, "errors">): ReactNode =>
+    errors.length > 0 && (
+        <GtkBox name="storybook-load-errors" orientation={Gtk.Orientation.VERTICAL} spacing={6}>
+            {errors.map(({ source, error }, index) => (
+                <GtkLabel
+                    key={`${source}-${String(index)}`}
+                    label={`${source}\n${error.message.slice(0, 500)}`}
+                    cssClasses={["error"]}
+                    marginStart={18}
+                    marginEnd={18}
+                    wrap
+                    selectable
+                    xalign={0}
+                />
+            ))}
+        </GtkBox>
+    );
 
 const StoryNavigator = ({ stories, errors, selectedId, onSelect }: NavigatorProps): ReactNode => {
     const [search, setSearch] = useState("");

@@ -210,11 +210,7 @@ const appendInterfaceMerge = (
     });
 };
 
-const instanceMethodCollisions = (
-    context: ModuleContext,
-    klass: GirClass,
-    methods: GirFunction[],
-): Set<string> => {
+const instanceMethodCollisions = (context: ModuleContext, klass: GirClass, methods: GirFunction[]): Set<string> => {
     const inheritedMethods = collectInheritedMethods(context, klass);
     const scope = instanceScope(klass.name, klass);
 
@@ -301,9 +297,7 @@ const appendMixinRegistration = (options: MixinRegistrationOptions): void => {
     }
 
     context.addRuntimeImport(runtimeName);
-    const overrideArg = overrides.length === 0
-        ? ""
-        : `, [${overrides.map((name) => JSON.stringify(name)).join(", ")}]`;
+    const overrideArg = overrides.length === 0 ? "" : `, [${overrides.map((name) => JSON.stringify(name)).join(", ")}]`;
     context.collectRegistration(`${runtimeName}(${targetName}, [${refs.join(", ")}]${overrideArg});`);
 };
 
@@ -544,10 +538,11 @@ const renderExtendsClause = (options: ExtendsClauseOptions): string => {
         return ` extends ${parentExpression}`;
     }
 
-    const parentBase = staticNames.length === 0
-        ? parentExpression
-        : `(${parentExpression} as ${context.addRuntimeTypeImport("StaticBase")}<` +
-            `typeof ${parentExpression}, ${omittedKeys(staticNames)}>)`;
+    const parentBase =
+        staticNames.length === 0
+            ? parentExpression
+            : `(${parentExpression} as ${context.addRuntimeTypeImport("StaticBase")}<` +
+              `typeof ${parentExpression}, ${omittedKeys(staticNames)}>)`;
 
     if (instanceNames.length === 0) {
         return ` extends ${parentBase}`;

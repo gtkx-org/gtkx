@@ -1,13 +1,7 @@
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import {
-    type CliProject,
-    createCliProject,
-    removeCliProject,
-    runCli,
-    STORE_LIBRARIES,
-} from "./cli-project.js";
+import { type CliProject, createCliProject, removeCliProject, runCli, STORE_LIBRARIES } from "./cli-project.js";
 
 const APPLICATION_ID = "com.gtkx.cliagents";
 const AGENTS = "AGENTS.md";

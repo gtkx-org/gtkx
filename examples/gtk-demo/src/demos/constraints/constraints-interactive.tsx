@@ -30,17 +30,15 @@ const constraintsInteractiveDemo: Demo = {
 const renderDividerConstraints = (divider: Gtk.ConstraintGuide, dividerOffset: number | null): ReactNode => (
     <>
         <GtkConstraint target={divider} targetAttribute={A.WIDTH} sourceAttribute={A.NONE} constant={0} />
-        {dividerOffset === null
-            ? null
-            : (
-                    <GtkConstraint
-                        key={dividerOffset}
-                        target={divider}
-                        targetAttribute={A.LEFT}
-                        sourceAttribute={A.LEFT}
-                        constant={dividerOffset}
-                    />
-                )}
+        {dividerOffset === null ? null : (
+            <GtkConstraint
+                key={dividerOffset}
+                target={divider}
+                targetAttribute={A.LEFT}
+                sourceAttribute={A.LEFT}
+                constant={dividerOffset}
+            />
+        )}
     </>
 );
 
@@ -82,13 +80,16 @@ const renderLayout = (
 ): ReactElement => (
     <GtkConstraintLayout
         guides={<GtkConstraintGuide ref={dividerRef} name="divider" />}
-        constraints={buttons && divider && (
-            <>
-                {renderDividerConstraints(divider, dividerOffset)}
-                {renderHorizontalConstraints(buttons, divider)}
-                {renderVerticalConstraints(buttons)}
-            </>
-        )}
+        constraints={
+            buttons &&
+            divider && (
+                <>
+                    {renderDividerConstraints(divider, dividerOffset)}
+                    {renderHorizontalConstraints(buttons, divider)}
+                    {renderVerticalConstraints(buttons)}
+                </>
+            )
+        }
     />
 );
 
@@ -101,7 +102,7 @@ function ConstraintsInteractive() {
         <ConstraintContainer
             handlers={handlers}
             layoutManager={renderLayout(buttons, divider, setDivider, dividerOffset)}
-            controllers={(
+            controllers={
                 <GtkGestureDrag
                     onDragUpdate={(offsetX, _offsetY, self) => {
                         const [success, startX] = self.getStartPoint();
@@ -111,7 +112,7 @@ function ConstraintsInteractive() {
                         }
                     }}
                 />
-            )}
+            }
         />
     );
 }

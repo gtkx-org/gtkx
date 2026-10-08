@@ -94,14 +94,16 @@ const test = it.extend<{ notifications: NotificationLog }>({
         });
         const synchronize = async (): Promise<void> => {
             const previous = informationCalls;
-            await expect.poll(async () => {
-                if (failure !== undefined) {
-                    throw failure;
-                }
-                await call(busctl, [...args, "call", service, objectPath, service, "GetServerInformation"]);
+            await expect
+                .poll(async () => {
+                    if (failure !== undefined) {
+                        throw failure;
+                    }
+                    await call(busctl, [...args, "call", service, objectPath, service, "GetServerInformation"]);
 
-                return informationCalls;
-            }).toBeGreaterThan(previous);
+                    return informationCalls;
+                })
+                .toBeGreaterThan(previous);
         };
 
         try {
@@ -137,7 +139,12 @@ describe("desktop reminders", () => {
         const due = new Date(Date.now() - 1000).toISOString();
         useStore.getState().updateTask("t2", { due });
 
-        const first = await render(<StrictMode><App /></StrictMode>, { container: rootElement });
+        const first = await render(
+            <StrictMode>
+                <App />
+            </StrictMode>,
+            { container: rootElement },
+        );
         await waitFor(() => {
             expect(notifications).toHaveLength(1);
         });
@@ -152,10 +159,7 @@ describe("desktop reminders", () => {
         await waitFor(() => {
             expect(notifications.at(-1)?.[3]).toBe("Water the balcony");
         });
-        expect(notifications.map((notification) => notification[3])).toEqual([
-            "Water the plants",
-            "Water the balcony",
-        ]);
+        expect(notifications.map((notification) => notification[3])).toEqual(["Water the plants", "Water the balcony"]);
     });
 
     test("sends every task in the same due batch", async ({ notifications }) => {
@@ -199,15 +203,24 @@ describe("desktop reminders", () => {
     });
 
     test.for([
-        { name: "completion", change: () => {
-            useStore.getState().setDone("t4", true);
-        } },
-        { name: "trash", change: () => {
-            useStore.getState().moveToTrash("t4");
-        } },
-        { name: "removal", change: () => {
-            useStore.getState().deleteForever("t4");
-        } },
+        {
+            name: "completion",
+            change: () => {
+                useStore.getState().setDone("t4", true);
+            },
+        },
+        {
+            name: "trash",
+            change: () => {
+                useStore.getState().moveToTrash("t4");
+            },
+        },
+        {
+            name: "removal",
+            change: () => {
+                useStore.getState().deleteForever("t4");
+            },
+        },
         {
             name: "rescheduling",
             change: () => {
@@ -233,13 +246,9 @@ describe("desktop reminders", () => {
         try {
             await render(<App />, { container: rootElement });
             await waitFor(() => {
-                expect(notifications.some((message) => message[3] === "Order birthday gift"))
-                    .toBe(true);
+                expect(notifications.some((message) => message[3] === "Order birthday gift")).toBe(true);
             });
-            expect(notifications.map((message) => message[3])).toEqual([
-                "Water the plants",
-                "Order birthday gift",
-            ]);
+            expect(notifications.map((message) => message[3])).toEqual(["Water the plants", "Order birthday gift"]);
         } finally {
             unsubscribe();
         }
@@ -264,18 +273,20 @@ describe("desktop reminders", () => {
         },
         {
             name: "permanent removal",
-            change: async () => act(() => {
-                useStore.getState().deleteForever("t4");
-            }),
+            change: async () =>
+                act(() => {
+                    useStore.getState().deleteForever("t4");
+                }),
             expectedCompletion: null,
         },
         {
             name: "rescheduling",
-            change: async () => act(() => {
-                useStore.getState().updateTask("t4", {
-                    due: new Date(Date.now() + 3_600_000).toISOString(),
-                });
-            }),
+            change: async () =>
+                act(() => {
+                    useStore.getState().updateTask("t4", {
+                        due: new Date(Date.now() + 3_600_000).toISOString(),
+                    });
+                }),
             expectedCompletion: false,
         },
     ])("withdraws and rejects stale actions after $name", async ({ change, expectedCompletion }, { notifications }) => {
@@ -300,9 +311,8 @@ describe("desktop reminders", () => {
         expect(screen.queryByText("Notes")).toBeNull();
 
         const row = screen.queryByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Review pull requests" });
-        const isCompleted = row === null
-            ? null
-            : within(row).queryByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true }) !== null;
+        const isCompleted =
+            row === null ? null : within(row).queryByRole(Gtk.AccessibleRole.CHECKBOX, { checked: true }) !== null;
         expect(isCompleted).toBe(expectedCompletion);
     });
 
@@ -323,8 +333,7 @@ describe("desktop reminders", () => {
         try {
             await render(<App />, { container: rootElement });
             await waitFor(() => {
-                expect(notifications.some((message) => message[3] === "Order birthday gift"))
-                    .toBe(true);
+                expect(notifications.some((message) => message[3] === "Order birthday gift")).toBe(true);
             });
             expect(notifications.map((message) => message[3])).toEqual([
                 "Water the plants",
@@ -336,22 +345,21 @@ describe("desktop reminders", () => {
         }
     });
 
-    test("catches a nonzero reminder after the application resumes past its due window", async (
-        { notifications, signal },
-    ) => {
+    test("catches a nonzero reminder after the application resumes past its due window", async ({
+        notifications,
+        signal,
+    }) => {
         const project = fileURLToPath(new URL("..", import.meta.url));
         const output = mkdtempSync(join(project, ".gtkx-reminder-"));
         const dataHome = mkdtempSync(join(tmpdir(), "gtkx-reminder-data-"));
         const cliManifest = fileURLToPath(import.meta.resolve("@gtkx/cli/package.json"));
         const cli = join(dirname(cliManifest), "bin", "gtkx.js");
         try {
-            await call(process.execPath, [
-                cli,
-                "build",
-                "tests/fixtures/delayed-reminder.tsx",
-                "--out",
-                relative(project, output),
-            ], { cwd: project, timeout: 60_000, signal });
+            await call(
+                process.execPath,
+                [cli, "build", "tests/fixtures/delayed-reminder.tsx", "--out", relative(project, output)],
+                { cwd: project, timeout: 60_000, signal },
+            );
             const child = fork(join(output, "bundle.mjs"), {
                 cwd: project,
                 env: { ...process.env, XDG_DATA_HOME: dataHome },
@@ -360,27 +368,29 @@ describe("desktop reminders", () => {
                 killSignal: "SIGKILL",
                 stdio: ["ignore", "ignore", "inherit", "ipc"],
             });
-            const exited: Promise<void> = new Promise((resolve) => child.once("close", () => {
-                resolve();
-            }));
+            const exited: Promise<void> = new Promise((resolve) =>
+                child.once("close", () => {
+                    resolve();
+                }),
+            );
             const ready: Promise<{ due: number }> = new Promise((resolve, reject) => {
                 child.once("message", resolve);
                 child.once("error", reject);
             });
             try {
-                const { due } = await Promise.race([
-                    ready,
-                    rejectAfterExit(exited),
-                ]);
+                const { due } = await Promise.race([ready, rejectAfterExit(exited)]);
                 await waitFor(() => {
                     expect(notifications.map((message) => message[3])).toEqual(["Review pull requests"]);
                 });
                 child.kill("SIGSTOP");
                 await delay(due + 65_000 - Date.now(), undefined, { signal });
                 child.kill("SIGCONT");
-                await waitFor(() => {
-                    expect(notifications.at(-1)?.[3]).toBe("Water the plants");
-                }, { timeout: 10_000 });
+                await waitFor(
+                    () => {
+                        expect(notifications.at(-1)?.[3]).toBe("Water the plants");
+                    },
+                    { timeout: 10_000 },
+                );
                 expect(notifications.map((message) => message[3])).toEqual([
                     "Review pull requests",
                     "Water the plants",

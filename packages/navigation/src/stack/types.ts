@@ -68,7 +68,8 @@ type StackNavigationProp<
     StackNavigationState<ParamList>,
     StackNavigationOptions,
     StackNavigationEventMap
-> & StackActionHelpers<ParamList>;
+> &
+    StackActionHelpers<ParamList>;
 
 /** Props a stack screen component receives. */
 type StackScreenProps<
@@ -112,8 +113,8 @@ type StackNavigatorProps = DefaultNavigatorOptions<
     StackNavigationEventMap,
     StackNavigationProp<ParamListBase>
 > &
-StackRouterOptions &
-StackNavigationConfig;
+    StackRouterOptions &
+    StackNavigationConfig;
 
 export type {
     StackDescriptor,

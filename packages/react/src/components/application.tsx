@@ -56,8 +56,8 @@ const reportOwnedApplicationId = (application: Gtk.Application): void => {
 
     warn(
         `Another process already owns ${application.applicationId ?? "this application ID"}, so this process ` +
-        "registered as a remote instance and can never show a window. Quit that instance or change " +
-        "applicationId, then start this application again.",
+            "registered as a remote instance and can never show a window. Quit that instance or change " +
+            "applicationId, then start this application again.",
     );
 };
 
@@ -70,22 +70,25 @@ const startApplication = (
     const { application } = lifecycle;
     const completion = application.runAsync(commandLine(applicationId));
     const generation = lifecycle.generation;
-    void completion.then((exitStatus) => {
-        if (lifecycle.generation === generation) {
-            onComplete();
-        }
+    void completion.then(
+        (exitStatus) => {
+            if (lifecycle.generation === generation) {
+                onComplete();
+            }
 
-        if (exitStatus !== 0) {
-            process.exitCode = exitStatus;
-        }
-    }, (cause) => {
-        if (lifecycle.generation === generation) {
-            onFailure(cause);
-        } else {
-            process.exitCode = 1;
-            error("Application shutdown failed:", cause);
-        }
-    });
+            if (exitStatus !== 0) {
+                process.exitCode = exitStatus;
+            }
+        },
+        (cause) => {
+            if (lifecycle.generation === generation) {
+                onFailure(cause);
+            } else {
+                process.exitCode = 1;
+                error("Application shutdown failed:", cause);
+            }
+        },
+    );
     reportOwnedApplicationId(application);
 };
 
@@ -104,17 +107,18 @@ const useApplicationLifecycle = (
         }
 
         const previous = currentLifecycle.current;
-        const lifecycle = previous?.application === application && !previous.settled
-            ? previous
-            : {
-                application,
-                activated: false,
-                generation: 0,
-                hasCommitted: false,
-                isMounted: true,
-                settled: false,
-                releaseStartup: null,
-            };
+        const lifecycle =
+            previous?.application === application && !previous.settled
+                ? previous
+                : {
+                      application,
+                      activated: false,
+                      generation: 0,
+                      hasCommitted: false,
+                      isMounted: true,
+                      settled: false,
+                      releaseStartup: null,
+                  };
         currentLifecycle.current = lifecycle;
         lifecycle.isMounted = true;
 
@@ -201,9 +205,7 @@ const applicationChildren = (application: Gtk.Application | null, children: Reac
     return <ApplicationContext.Provider value={application}>{children}</ApplicationContext.Provider>;
 };
 
-const createApplicationElement = (
-    Component: ElementType,
-): ((props: ApplicationComponentProps) => ReactNode) => {
+const createApplicationElement = (Component: ElementType): ((props: ApplicationComponentProps) => ReactNode) => {
     return ({
         applicationId = defaultApplicationId,
         children,

@@ -220,8 +220,9 @@ test("a generated checksum function reads typed arrays and empty data", () => {
 
     expect(GLib.computeChecksumForData(GLib.ChecksumType.MD5, new Uint8Array([97, 98, 99]))).toBe(expected);
     expect(GLib.computeChecksumForData(GLib.ChecksumType.MD5, encoder.encode("abc"))).toBe(expected);
-    expect(GLib.computeChecksumForData(GLib.ChecksumType.MD5, new Uint8Array()))
-        .toBe("d41d8cd98f00b204e9800998ecf8427e");
+    expect(GLib.computeChecksumForData(GLib.ChecksumType.MD5, new Uint8Array())).toBe(
+        "d41d8cd98f00b204e9800998ecf8427e",
+    );
 });
 
 test.each(["abc", 0, 1.5, -1, {}])("a generated checksum rejects an invalid byte array %s", (value) => {

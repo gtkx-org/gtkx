@@ -195,14 +195,14 @@ const getTypeInfo = (object: object): TypeInfo | undefined => {
 
 const hasProperty = (info: TypeInfo, accessor: string): boolean => Object.hasOwn(info.properties, accessor);
 
-const propertyNameFor = (info: TypeInfo, accessor: string): string | undefined =>
-    info.properties[accessor]?.[NAME];
+const propertyNameFor = (info: TypeInfo, accessor: string): string | undefined => info.properties[accessor]?.[NAME];
 
 const getPropertyName = (object: object, accessor: string): string | undefined => {
     const info = getTypeInfo(object);
 
-    return (info === undefined ? undefined : propertyNameFor(info, accessor)) ??
-        getDeclaredPropertyName(object, accessor);
+    return (
+        (info === undefined ? undefined : propertyNameFor(info, accessor)) ?? getDeclaredPropertyName(object, accessor)
+    );
 };
 
 export { getPropertyName, hasProperty, typeInfoFor, type TypeInfo };

@@ -1,11 +1,7 @@
 import { loadApiReference, resolveGirPath } from "@gtkx/codegen";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CliProject } from "./cli-project.js";
-import {
-    ACCEPTED,
-    createHiddenSignalsProject,
-    REJECTED_NAMES,
-} from "./codegen-hidden-signals-fixture.js";
+import { ACCEPTED, createHiddenSignalsProject, REJECTED_NAMES } from "./codegen-hidden-signals-fixture.js";
 import { typecheckFiles } from "./type-consumer.js";
 
 const OMITTED_SIGNALS = [
@@ -29,11 +25,9 @@ describe("generated unsupported signal omissions", () => {
     let reference: ReturnType<typeof loadApiReference>;
 
     beforeAll(() => {
-        project = cleanup.use(createHiddenSignalsProject(
-            "gtkx-cli-hidden-signal-types-",
-            { "accepted.tsx": ACCEPTED },
-            REJECTED_NAMES,
-        ));
+        project = cleanup.use(
+            createHiddenSignalsProject("gtkx-cli-hidden-signal-types-", { "accepted.tsx": ACCEPTED }, REJECTED_NAMES),
+        );
         reference = loadApiReference({
             libraries: ["SignalPointers-1.0", "Gtk-4.0", "WebKit-6.0"],
             girPath: resolveGirPath(["gir"], project.root),
@@ -62,7 +56,15 @@ describe("generated unsupported signal omissions", () => {
         expect(element.outcome).toBe("page");
         expect(feed.outcome).toBe("page");
         for (const name of [
-            "object", "boxed", "bytes", "byte-array", "integer", "array", "closure", "shared", "iface-safe",
+            "object",
+            "boxed",
+            "bytes",
+            "byte-array",
+            "integer",
+            "array",
+            "closure",
+            "shared",
+            "iface-safe",
         ]) {
             expect(probe).toHaveProperty("markdown", expect.stringContaining("### `" + name + "`"));
         }

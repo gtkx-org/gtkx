@@ -11,11 +11,9 @@ const openWaterThePlants = async (): Promise<void> => {
     await screen.findByText("Notes");
 };
 
-const dueRow = (): Adw.ActionRow =>
-    screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Due/, as: Adw.ActionRow });
+const dueRow = (): Adw.ActionRow => screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /^Due/, as: Adw.ActionRow });
 
-const dueMenu = (): Gtk.MenuButton =>
-    within(dueRow()).getByRole(Gtk.AccessibleRole.BUTTON, { as: Gtk.MenuButton });
+const dueMenu = (): Gtk.MenuButton => within(dueRow()).getByRole(Gtk.AccessibleRole.BUTTON, { as: Gtk.MenuButton });
 
 const dateParts = (calendar: Gtk.Calendar): [number, number, number] => {
     const date = calendar.getDate();

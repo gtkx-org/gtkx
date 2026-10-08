@@ -42,8 +42,13 @@ const CHILD = `<schema id="org.gtkx.Child" extends="org.gtkx.Middle" path="/org/
 </schema>`;
 const KEYS = { shared: "s", mode: "enum", features: "flags", choice: "s", "nested-choice": "aams" };
 const MODE_VALUES = Object.fromEntries([
-    ["first", 1], ["hexadecimal", 42], ["octal", 8], ["negative", -7],
-    ["minimum", -2_147_483_648], ["maximum", 2_147_483_647], ["__proto__", 9],
+    ["first", 1],
+    ["hexadecimal", 42],
+    ["octal", 8],
+    ["negative", -7],
+    ["minimum", -2_147_483_648],
+    ["maximum", 2_147_483_647],
+    ["__proto__", 9],
 ]);
 const VALUES = {
     mode: MODE_VALUES,
@@ -52,10 +57,25 @@ const VALUES = {
     "nested-choice": ["first", "second"],
 };
 const TYPECHECK_ARGS = [
-    "--no-addons", TYPESCRIPT_CLI, "--noEmit", "--strict", "--skipLibCheck", "false",
-    "--exactOptionalPropertyTypes", "--noUncheckedIndexedAccess", "--noUncheckedSideEffectImports",
-    "--target", "ESNext", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--types", "node",
-    ENV_FILE, "consumer.ts",
+    "--no-addons",
+    TYPESCRIPT_CLI,
+    "--noEmit",
+    "--strict",
+    "--skipLibCheck",
+    "false",
+    "--exactOptionalPropertyTypes",
+    "--noUncheckedIndexedAccess",
+    "--noUncheckedSideEffectImports",
+    "--target",
+    "ESNext",
+    "--module",
+    "NodeNext",
+    "--moduleResolution",
+    "NodeNext",
+    "--types",
+    "node",
+    ENV_FILE,
+    "consumer.ts",
 ];
 
 const SCHEMA_LAYOUTS = {
@@ -64,7 +84,8 @@ const SCHEMA_LAYOUTS = {
         schemas: { [SCHEMA_FILE]: `<schemalist>${ENUMS}${BASE}${MIDDLE}${CHILD}</schemalist>` },
     },
     "three files": {
-        imports: 'import base from "../data/a-base.gschema.xml";\n' +
+        imports:
+            'import base from "../data/a-base.gschema.xml";\n' +
             'import "../data/b-middle.gschema.xml";\n' +
             'import child from "../data/c-child.gschema.xml";',
         schemas: {
@@ -74,7 +95,8 @@ const SCHEMA_LAYOUTS = {
         },
     },
     "separate enums": {
-        imports: 'import "../data/a-enums.gschema.xml";\n' +
+        imports:
+            'import "../data/a-enums.gschema.xml";\n' +
             'import base from "../data/b-base.gschema.xml";\n' +
             'import child from "../data/c-child.gschema.xml";',
         schemas: {
@@ -139,14 +161,15 @@ process.stdout.write(JSON.stringify({ base: base.at("/org/gtkx/instance/"), chil
     };
 };
 
-const schemaProject = () => createCliProject({
-    prefix: "gtkx-cli-settings-",
-    config: CONFIG,
-    files: {
-        [SCHEMA_FILE]: VALID_SCHEMA,
-        "src/index.ts": 'import schema from "../data/settings.gschema.xml";\nprocess.stdout.write(schema.id);\n',
-    },
-});
+const schemaProject = () =>
+    createCliProject({
+        prefix: "gtkx-cli-settings-",
+        config: CONFIG,
+        files: {
+            [SCHEMA_FILE]: VALID_SCHEMA,
+            "src/index.ts": 'import schema from "../data/settings.gschema.xml";\nprocess.stdout.write(schema.id);\n',
+        },
+    });
 
 const typecheck = (project: CliProject): void => {
     execFileSync(process.execPath, TYPECHECK_ARGS, { cwd: project.root, encoding: "utf8" });
@@ -175,9 +198,11 @@ describe("GSettings schema consumers", () => {
                 values: { ...VALUES, "own-mode": MODE_VALUES },
             },
         });
-        const value = execFileSync(resolveExecutable("gsettings"), [
-            "--schemadir", join(project.root, "dist"), "get", "org.gtkx.Child", "shared",
-        ], { env: { ...process.env, GSETTINGS_BACKEND: "memory" }, encoding: "utf8" });
+        const value = execFileSync(
+            resolveExecutable("gsettings"),
+            ["--schemadir", join(project.root, "dist"), "get", "org.gtkx.Child", "shared"],
+            { env: { ...process.env, GSETTINGS_BACKEND: "memory" }, encoding: "utf8" },
+        );
         expect(value.trim()).toBe("'inherited'");
         isolateTypeConsumer(project);
         expect(() => {
@@ -190,11 +215,13 @@ describe("GSettings schema consumers", () => {
                 'useSetting(settings, child, "choice")[1]("other")',
                 'useSetting(settings, child, "nested-choice")[1]([["other"]])',
                 'useSetting(settings, child, "features")[1]("enabled")',
-            ].map((expression) =>
-                'import type * as Gio from "@gtkx/gi/gio";\n' +
-                'import { useSetting } from "@gtkx/react";\n' +
-                'import { child } from "./src/schemas.js";\n' +
-                `export const useRejected = (settings: Gio.Settings) => ${expression};\n`),
+            ].map(
+                (expression) =>
+                    'import type * as Gio from "@gtkx/gi/gio";\n' +
+                    'import { useSetting } from "@gtkx/react";\n' +
+                    'import { child } from "./src/schemas.js";\n' +
+                    `export const useRejected = (settings: Gio.Settings) => ${expression};\n`,
+            ),
             ...(layout === "separate enums"
                 ? ['import schema from "./data/a-enums.gschema.xml";\nexport const missing = schema.id;\n']
                 : []),
@@ -219,46 +246,46 @@ describe("GSettings schema consumers", () => {
         [
             "missing enum",
             "<schemalist>" +
-            '<schema id="org.gtkx.Settings">' +
-            '<key name="mode" enum="org.gtkx.Missing"/>' +
-            "</schema>" +
-            "</schemalist>",
+                '<schema id="org.gtkx.Settings">' +
+                '<key name="mode" enum="org.gtkx.Missing"/>' +
+                "</schema>" +
+                "</schemalist>",
         ],
         [
             "invalid enum integer",
             "<schemalist>" +
-            '<enum id="org.gtkx.Mode">' +
-            '<value nick="first" value="1.5"/>' +
-            "</enum>" +
-            "</schemalist>",
+                '<enum id="org.gtkx.Mode">' +
+                '<value nick="first" value="1.5"/>' +
+                "</enum>" +
+                "</schemalist>",
         ],
         [
             "out-of-range enum integer",
             "<schemalist>" +
-            '<enum id="org.gtkx.Mode">' +
-            '<value nick="first" value="2147483648"/>' +
-            "</enum>" +
-            "</schemalist>",
+                '<enum id="org.gtkx.Mode">' +
+                '<value nick="first" value="2147483648"/>' +
+                "</enum>" +
+                "</schemalist>",
         ],
         [
             "negative flags integer",
             "<schemalist>" +
-            '<flags id="org.gtkx.Mode">' +
-            '<value nick="first" value="-1"/>' +
-            "</flags>" +
-            "</schemalist>",
+                '<flags id="org.gtkx.Mode">' +
+                '<value nick="first" value="-1"/>' +
+                "</flags>" +
+                "</schemalist>",
         ],
         [
             "missing choice value",
             "<schemalist>" +
-            '<schema id="org.gtkx.Settings">' +
-            '<key name="mode" type="s">' +
-            "<choices>" +
-            "<choice/>" +
-            "</choices>" +
-            "</key>" +
-            "</schema>" +
-            "</schemalist>",
+                '<schema id="org.gtkx.Settings">' +
+                '<key name="mode" type="s">' +
+                "<choices>" +
+                "<choice/>" +
+                "</choices>" +
+                "</key>" +
+                "</schema>" +
+                "</schemalist>",
         ],
         ["inheritance cycle", '<schemalist><schema id="org.gtkx.Settings" extends="org.gtkx.Settings"/></schemalist>'],
     ])("preserves consumer declarations after %s", (_title, source) => {

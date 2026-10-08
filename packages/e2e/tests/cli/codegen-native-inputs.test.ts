@@ -15,7 +15,9 @@ import * as NativeInputs from "@gtkx/gi/nativeinputs";
 declare const context: Gdk.AppLaunchContext;
 declare const info: Gio.AppInfo;
 `;
-const ACCEPTED = IMPORTS + `import { createElement } from "react";
+const ACCEPTED =
+    IMPORTS +
+    `import { createElement } from "react";
 import { NativeInputsProbe } from "@gtkx/jsx/nativeinputs";
 import { GtkActivateAction } from "@gtkx/jsx/gtk";
 import { registerClass } from "@gtkx/runtime";
@@ -79,13 +81,13 @@ declare const group: Gio.SimpleActionGroup;
 group.addAction(new Action());
 `;
 const REJECTED = {
-    unrelated: "info.launch(null, Gio.SimpleAction.new(\"unrelated\", null));",
+    unrelated: 'info.launch(null, Gio.SimpleAction.new("unrelated", null));',
     empty: "info.launch(null, {});",
     constructor: "info.launch(null, Gio.AppLaunchContext);",
     method: "context.getDisplay(info, null);",
     callback: "NativeInputs.useTransform((received: Gdk.AppLaunchContext) => received);",
-    property: "new NativeInputs.Probe({ context: Gio.SimpleAction.new(\"unrelated\", null) });",
-    signal: "new NativeInputs.Probe().emit(\"transform\", Gio.SimpleAction.new(\"unrelated\", null));",
+    property: 'new NativeInputs.Probe({ context: Gio.SimpleAction.new("unrelated", null) });',
+    signal: 'new NativeInputs.Probe().emit("transform", Gio.SimpleAction.new("unrelated", null));',
 };
 const NATIVE = `import assert from "node:assert/strict";
 import * as Gdk from "@gtkx/gi/gdk";
@@ -111,9 +113,9 @@ try {
 }
 `;
 
-const rejectedFiles = Object.fromEntries(Object.entries(REJECTED).map(([name, source]) => [
-    `${name}.ts`, IMPORTS + source,
-]));
+const rejectedFiles = Object.fromEntries(
+    Object.entries(REJECTED).map(([name, source]) => [`${name}.ts`, IMPORTS + source]),
+);
 
 describe("generated native object inputs", () => {
     const cleanup = new DisposableStack();
@@ -121,30 +123,32 @@ describe("generated native object inputs", () => {
 
     beforeAll(() => {
         const fixture = readFileSync(new URL("fixtures/gir/NativeInputs-1.0.gir", import.meta.url));
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-native-inputs-",
-            config: CONFIG,
-            files: {
-                "gir/NativeInputs-1.0.gir": fixture,
-                "accepted.ts": ACCEPTED,
-                "probe.ts": NATIVE,
-                "declarations.json": JSON.stringify({
-                    compilerOptions: {
-                        strict: true,
-                        exactOptionalPropertyTypes: true,
-                        target: "ESNext",
-                        module: "ESNext",
-                        moduleResolution: "Bundler",
-                        declaration: true,
-                        emitDeclarationOnly: true,
-                        outDir: "types",
-                        types: ["node"],
-                    },
-                    files: ["accepted.ts"],
-                }),
-                ...rejectedFiles,
-            },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-native-inputs-",
+                config: CONFIG,
+                files: {
+                    "gir/NativeInputs-1.0.gir": fixture,
+                    "accepted.ts": ACCEPTED,
+                    "probe.ts": NATIVE,
+                    "declarations.json": JSON.stringify({
+                        compilerOptions: {
+                            strict: true,
+                            exactOptionalPropertyTypes: true,
+                            target: "ESNext",
+                            module: "ESNext",
+                            moduleResolution: "Bundler",
+                            declaration: true,
+                            emitDeclarationOnly: true,
+                            outDir: "types",
+                            types: ["node"],
+                        },
+                        files: ["accepted.ts"],
+                    }),
+                    ...rejectedFiles,
+                },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });
@@ -156,7 +160,8 @@ describe("generated native object inputs", () => {
     it("passes a native subclass through successful and failed launches", () => {
         using consumer = createCliProject({
             prefix: "gtkx-cli-native-launch-",
-            config: 'export default { applicationId: "org.gtkx.nativelaunch",' +
+            config:
+                'export default { applicationId: "org.gtkx.nativelaunch",' +
                 " agents: { reference: false, rules: false } };",
             files: { "probe.ts": NATIVE },
         });

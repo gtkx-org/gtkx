@@ -16,8 +16,18 @@ type OutputStorage = {
 };
 
 const scalarKinds: Set<Descriptor["kind"]> = new Set([
-    "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64",
-    "bigint64", "biguint64", "float32", "float64",
+    "int8",
+    "uint8",
+    "int16",
+    "uint16",
+    "int32",
+    "uint32",
+    "int64",
+    "uint64",
+    "bigint64",
+    "biguint64",
+    "float32",
+    "float64",
 ]);
 
 const isScalarStorageDescriptor = (descriptor: Descriptor): boolean => scalarKinds.has(descriptor.kind);

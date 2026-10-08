@@ -73,18 +73,10 @@ test("GPtrArray slots take boxed values", () => {
     const values = [intValue(42), intValue(43)];
 
     expect(() => {
-        Reflect.apply(
-            Regress.annotationPtrArray,
-            Regress,
-            [[new Regress.TestObj({})]],
-        );
+        Reflect.apply(Regress.annotationPtrArray, Regress, [[new Regress.TestObj({})]]);
     }).toThrow();
     expect(() => {
-        Reflect.apply(
-            Regress.annotationPtrArray,
-            Regress,
-            [[new GIMarshallingTests.BoxedStruct({ long: 42n })]],
-        );
+        Reflect.apply(Regress.annotationPtrArray, Regress, [[new GIMarshallingTests.BoxedStruct({ long: 42n })]]);
     }).toThrow();
     Regress.annotationPtrArray(values);
     Regress.annotationPtrArray([]);
@@ -120,27 +112,27 @@ test("GArray boxed struct copies outlive the transfer-full container", async () 
 test("GByteArray carries binary data both ways", () => {
     const bytes = GIMarshallingTests.bytearrayFullReturn();
     expect(bytes instanceof Uint8Array).toBeTruthy();
-    expect(bytes).toEqual(new Uint8Array([0, 49, 0xFF, 51]));
-    expect(GIMarshallingTests.bytearrayFullOut()).toEqual(new Uint8Array([0, 49, 0xFF, 51]));
+    expect(bytes).toEqual(new Uint8Array([0, 49, 0xff, 51]));
+    expect(GIMarshallingTests.bytearrayFullOut()).toEqual(new Uint8Array([0, 49, 0xff, 51]));
     GIMarshallingTests.bytearrayNoneIn(bytes);
-    GIMarshallingTests.bytearrayNoneIn([0, 49, 0xFF, 51]);
+    GIMarshallingTests.bytearrayNoneIn([0, 49, 0xff, 51]);
 });
 
 test("GBytes round trips as a boxed value", () => {
     const bytes = GIMarshallingTests.gbytesFullReturn();
     expect(bytes.getSize()).toBe(4);
-    expect(bytes.getData()).toEqual(new Uint8Array([0, 49, 0xFF, 51]));
+    expect(bytes.getData()).toEqual(new Uint8Array([0, 49, 0xff, 51]));
     GIMarshallingTests.gbytesNoneIn(bytes);
-    GIMarshallingTests.gbytesNoneIn(GLib.Bytes.new([0, 49, 0xFF, 51]));
+    GIMarshallingTests.gbytesNoneIn(GLib.Bytes.new([0, 49, 0xff, 51]));
 });
 
 test("GList and GSList of integers round trip through their pointer slots", () => {
     GIMarshallingTests.glistIntNoneIn([-1, 0, 1, 2]);
     GIMarshallingTests.gslistIntNoneIn([-1, 0, 1, 2]);
-    GIMarshallingTests.glistUint32NoneIn([0, 0xFF_FF_FF_FF]);
+    GIMarshallingTests.glistUint32NoneIn([0, 0xff_ff_ff_ff]);
     expect(GIMarshallingTests.glistIntNoneReturn()).toEqual([-1, 0, 1, 2]);
     expect(GIMarshallingTests.gslistIntNoneReturn()).toEqual([-1, 0, 1, 2]);
-    expect(GIMarshallingTests.glistUint32NoneReturn()).toEqual([0, 0xFF_FF_FF_FF]);
+    expect(GIMarshallingTests.glistUint32NoneReturn()).toEqual([0, 0xff_ff_ff_ff]);
 });
 
 test("GList of strings round trips across transfer modes", () => {
@@ -310,7 +302,7 @@ test("container elements of the wrong type throw before the call", () => {
         GIMarshallingTests.gslistIntNoneIn([-1, 0, 2 ** 53, 2]);
     }).toThrow();
     expect(() => {
-        GIMarshallingTests.glistUint32NoneIn([0.5, 0xFF_FF_FF_FF]);
+        GIMarshallingTests.glistUint32NoneIn([0.5, 0xff_ff_ff_ff]);
     }).toThrow();
 });
 

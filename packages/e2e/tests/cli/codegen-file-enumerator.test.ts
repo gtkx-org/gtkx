@@ -3,10 +3,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
 import { isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
-const CONFIG = 'export default { applicationId: "org.gtkx.fileenumerator", libraries: ["Gio-2.0"],' +
+const CONFIG =
+    'export default { applicationId: "org.gtkx.fileenumerator", libraries: ["Gio-2.0"],' +
     " agents: { reference: false, rules: false } };";
 const IMPORTS = 'import * as Gio from "@gtkx/gi/gio";\n';
-const CONSUMER = IMPORTS + `import assert from "node:assert/strict";
+const CONSUMER =
+    IMPORTS +
+    `import assert from "node:assert/strict";
 import { mkdirSync, mkdtempDisposableSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -62,14 +65,18 @@ try {
     quit();
 }
 `;
-const CONTROL = IMPORTS + `export const read = (enumerator: Gio.FileEnumerator): boolean =>
+const CONTROL =
+    IMPORTS +
+    `export const read = (enumerator: Gio.FileEnumerator): boolean =>
     enumerator.iterate(null)[0];
 `;
 const REJECTED = {
-    "nonnull-info.ts": IMPORTS + "export const read = (enumerator: Gio.FileEnumerator): Gio.FileInfo => " +
+    "nonnull-info.ts":
+        IMPORTS +
+        "export const read = (enumerator: Gio.FileEnumerator): Gio.FileInfo => " +
         "enumerator.iterate(null)[1];",
-    "nonnull-child.ts": IMPORTS + "export const read = (enumerator: Gio.FileEnumerator): Gio.File => " +
-        "enumerator.iterate(null)[2];",
+    "nonnull-child.ts":
+        IMPORTS + "export const read = (enumerator: Gio.FileEnumerator): Gio.File => " + "enumerator.iterate(null)[2];",
 };
 
 describe("generated file enumerator nullable results", () => {
@@ -77,11 +84,13 @@ describe("generated file enumerator nullable results", () => {
     let project: CliProject;
 
     beforeAll(() => {
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-file-enumerator-types-",
-            config: CONFIG,
-            files: { "probe.ts": CONSUMER, "control.ts": CONTROL, ...REJECTED },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-file-enumerator-types-",
+                config: CONFIG,
+                files: { "probe.ts": CONSUMER, "control.ts": CONTROL, ...REJECTED },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });
@@ -110,10 +119,13 @@ describe("generated file enumerator nullable results", () => {
         });
         const page = reference.lookup("Gio.FileEnumerator", "class");
         expect(page.outcome).toBe("page");
-        expect(page).toHaveProperty("markdown", expect.stringContaining(
-            "iterate(cancellable: NativeInstance<Gio.Cancellable> | null): " +
-            "[boolean, Gio.FileInfo | null, Gio.File | null]",
-        ));
+        expect(page).toHaveProperty(
+            "markdown",
+            expect.stringContaining(
+                "iterate(cancellable: NativeInstance<Gio.Cancellable> | null): " +
+                    "[boolean, Gio.FileInfo | null, Gio.File | null]",
+            ),
+        );
     });
 
     it("iterates owned directories and preserves borrowed results", () => {

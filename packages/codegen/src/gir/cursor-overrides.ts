@@ -15,10 +15,7 @@ const PARAMETERS_MISSING_ARRAY_EXTENT: Map<string, CursorParameterNames[]> = new
      * extent.
      * https://github.com/gtkx-org/gtkx/issues/735
      */
-    [
-        "hb_buffer_deserialize_glyphs",
-        [{ cursor: "end_ptr", base: "buf", length: "buf_len", isMissingArrayType: true }],
-    ],
+    ["hb_buffer_deserialize_glyphs", [{ cursor: "end_ptr", base: "buf", length: "buf_len", isMissingArrayType: true }]],
     [
         "hb_buffer_deserialize_unicode",
         [{ cursor: "end_ptr", base: "buf", length: "buf_len", isMissingArrayType: true }],

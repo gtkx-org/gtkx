@@ -41,11 +41,7 @@ const watchErrorPlugin = (): Plugin => ({
     },
 });
 
-const createDevServerConfig = (
-    root: string,
-    deployOutDir: string | undefined,
-    plugins: Plugin[],
-): InlineConfig => ({
+const createDevServerConfig = (root: string, deployOutDir: string | undefined, plugins: Plugin[]): InlineConfig => ({
     root,
     appType: "custom",
     plugins: [watchErrorPlugin(), ...plugins],
@@ -66,8 +62,4 @@ const createDevServerConfig = (
     },
 });
 
-export {
-    createDevServerConfig,
-    type DevServerWatchEvent,
-    isServerConfigFile,
-};
+export { createDevServerConfig, type DevServerWatchEvent, isServerConfigFile };

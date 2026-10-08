@@ -75,9 +75,7 @@ const renderRemovableButton = async () => {
                         setIsRemovableShown(false);
                     }}
                 />
-                {isRemovableShown && (
-                    <GtkButton ref={removableRef} label="Removable" onClicked={clicks.callback} />
-                )}
+                {isRemovableShown && <GtkButton ref={removableRef} label="Removable" onClicked={clicks.callback} />}
             </GtkBox>
         );
     };

@@ -45,17 +45,9 @@ const WOFF_FONT_FAMILY = "Red Hat Display";
 const COLLECTION_FONT_FILE = "probe.ttc";
 const COLLECTION_FONT_FAMILY = "Red Hat Display";
 
-const fontFixture = (name: string): Buffer =>
-    readFileSync(fileURLToPath(new URL(`fixtures/${name}`, import.meta.url)));
+const fontFixture = (name: string): Buffer => readFileSync(fileURLToPath(new URL(`fixtures/${name}`, import.meta.url)));
 
-const EMITTED = [
-    "bundle.mjs",
-    "gtkx.node",
-    "gtkx.gresource",
-    "gschemas.compiled",
-    BUILD_METADATA,
-    ICON_PATH,
-];
+const EMITTED = ["bundle.mjs", "gtkx.node", "gtkx.gresource", "gschemas.compiled", BUILD_METADATA, ICON_PATH];
 
 const SCHEMA_TYPES = join("node_modules", ".gtkx", "env.d.ts");
 const FOLDERS_ID = `${APPLICATION_ID}.app-folders`;
@@ -220,7 +212,7 @@ createRoot();
 process.stdout.write(String(Object.keys(absent).length));
 `;
 
-const MISSING_DEFAULT_BINDING_SOURCE = "import \"@gtkx/gi/gtk\";\n";
+const MISSING_DEFAULT_BINDING_SOURCE = 'import "@gtkx/gi/gtk";\n';
 
 const BARE_ASSET_SOURCE = `import logo from "../data/logo.png";
 
@@ -390,12 +382,10 @@ const expectUnifiedBuildMetadata = (project: CliProject): void => {
     expect(metadata.configDigest).toMatch(/^[\da-f]{64}$/);
     expect(metadata.schemas).toEqual([join("data", SCHEMA_FILE)]);
 
-    expect(metadata.packages).toEqual(expect.arrayContaining([
-        expect.objectContaining({ name: PACKAGE_NAME, version: null }),
-    ]));
-    expect(metadata.packages).not.toEqual(expect.arrayContaining([
-        expect.objectContaining({ name: MANIFEST.name }),
-    ]));
+    expect(metadata.packages).toEqual(
+        expect.arrayContaining([expect.objectContaining({ name: PACKAGE_NAME, version: null })]),
+    );
+    expect(metadata.packages).not.toEqual(expect.arrayContaining([expect.objectContaining({ name: MANIFEST.name })]));
 
     expect(emittedNames(project)).not.toContain("gtkx-packages.json");
 };
@@ -413,9 +403,9 @@ const installResourcePackage = (project: CliProject): void => {
 
     writeFileSync(
         join(packageDir, "index.js"),
-        "import path from \"./icons/star.svg?resource\";\n" +
-        `import packageIconName from "./icons/16x16/actions/package.svg?icon=${PACKAGE_ICON_NAME}";\n` +
-        "export { packageIconName };\nexport default path;\n",
+        'import path from "./icons/star.svg?resource";\n' +
+            `import packageIconName from "./icons/16x16/actions/package.svg?icon=${PACKAGE_ICON_NAME}";\n` +
+            "export { packageIconName };\nexport default path;\n",
     );
 
     writeFileSync(join(iconDir, "star.svg"), "package-svg-probe\n");
@@ -429,12 +419,16 @@ const installSideEffectIconPackage = (project: CliProject): void => {
 
     writeFileSync(
         join(packageDir, "package.json"),
-        `${JSON.stringify({
-            name: SIDE_EFFECT_ICON_PACKAGE,
-            type: "module",
-            exports: "./index.js",
-            sideEffects: false,
-        }, null, 4)}\n`,
+        `${JSON.stringify(
+            {
+                name: SIDE_EFFECT_ICON_PACKAGE,
+                type: "module",
+                exports: "./index.js",
+                sideEffects: false,
+            },
+            null,
+            4,
+        )}\n`,
     );
 
     writeFileSync(
@@ -545,8 +539,8 @@ describe("gtkx build", () => {
 
         expect(run.stdout).toContain(
             `${LOCAL_ICON_NAME} ${DIRECT_ICON_NAME} ${PACKAGE_ICON_NAME} true true true true true ` +
-            `resource://${PACKAGE_ICON_RESOURCE_PATH} ${FONT_FAMILY} ${OPENTYPE_FONT_FAMILY} ` +
-            `${WOFF_FONT_FAMILY} ${COLLECTION_FONT_FAMILY}`,
+                `resource://${PACKAGE_ICON_RESOURCE_PATH} ${FONT_FAMILY} ${OPENTYPE_FONT_FAMILY} ` +
+                `${WOFF_FONT_FAMILY} ${COLLECTION_FONT_FAMILY}`,
         );
 
         expect(run.status).toBe(0);

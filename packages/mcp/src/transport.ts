@@ -154,11 +154,9 @@ class ProtocolConnection extends Protocol<Request, Notification, Result> {
     protected assertTaskHandlerCapability(): void {}
 
     async send<T>(method: string, params?: RequestParams, timeout?: number): Promise<T> {
-        const result = await this.request(
-            { method, ...(params !== undefined && { params }) },
-            ResultSchema,
-            { ...(timeout !== undefined && { timeout }) },
-        );
+        const result = await this.request({ method, ...(params !== undefined && { params }) }, ResultSchema, {
+            ...(timeout !== undefined && { timeout }),
+        });
 
         return result as T;
     }

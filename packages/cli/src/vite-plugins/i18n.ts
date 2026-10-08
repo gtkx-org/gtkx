@@ -54,10 +54,7 @@ const isI18nLocaleModule = (state: I18nState, id: string): boolean => {
 };
 
 const markLocaleUrl = (code: string): string =>
-    code.replace(
-        LOCALE_URL_PATTERN,
-        () => `new URL(${JSON.stringify(LOCALE_URL_PLACEHOLDER)}, import.meta.url)`,
-    );
+    code.replace(LOCALE_URL_PATTERN, () => `new URL(${JSON.stringify(LOCALE_URL_PLACEHOLDER)}, import.meta.url)`);
 
 const localeUrlForChunk = (fileName: string): string => {
     const path = posix.relative(posix.dirname(fileName), LOCALE_DIRNAME);
@@ -144,11 +141,7 @@ const queueExtraction = (
     const prior = state.extraction;
     const pending = (async (): Promise<void> => {
         await settleExtraction(prior);
-        await extractProjectMessages(
-            state,
-            shouldPreserveMetadataMessages,
-            shouldSynchronizeCatalogs,
-        );
+        await extractProjectMessages(state, shouldPreserveMetadataMessages, shouldSynchronizeCatalogs);
     })();
 
     state.extraction = pending;
@@ -219,9 +212,10 @@ const gtkxI18n = ({
 
         configResolved: (config) => applyResolvedConfig(state, config, loadConfig),
 
-        buildStart: () => shouldRecoverExtractionErrors
-            ? recoverInitialSourceExtraction(state, shouldPreserveMetadataMessages)
-            : queueExtraction(state, shouldPreserveMetadataMessages, true),
+        buildStart: () =>
+            shouldRecoverExtractionErrors
+                ? recoverInitialSourceExtraction(state, shouldPreserveMetadataMessages)
+                : queueExtraction(state, shouldPreserveMetadataMessages, true),
 
         hotUpdate(options) {
             if (!isProjectSource(state, options.file) || state.hotUpdateTimestamp === options.timestamp) {

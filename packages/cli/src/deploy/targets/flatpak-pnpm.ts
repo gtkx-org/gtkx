@@ -13,7 +13,8 @@ const PNPM_VERSION = "12.4.2";
 const PNPM_MAJOR = 12;
 const PNPM_MINOR = 4;
 
-const PNPM_SHA512 = "08adc6613180275c7c9edada39dcf08c9c61ad4e7eaf330a4f3461f102b0f907423454d117f9" +
+const PNPM_SHA512 =
+    "08adc6613180275c7c9edada39dcf08c9c61ad4e7eaf330a4f3461f102b0f907423454d117f9" +
     "8e72d47fef0616070644d7bffc973a6a57f5090a6d7c368b07c9";
 
 const PNPM_DIR = "flatpak-pnpm";
@@ -35,8 +36,7 @@ const DEFAULT_PIN: PnpmPin = {
     sha512: PNPM_SHA512,
 };
 
-const PNPM_PIN_FIELD =
-    /^pnpm@(?<version>(?<major>\d+)\.(?<minor>\d+)\.\d+)\+sha512\.(?<sha512>[\da-f]{128})$/;
+const PNPM_PIN_FIELD = /^pnpm@(?<version>(?<major>\d+)\.(?<minor>\d+)\.\d+)\+sha512\.(?<sha512>[\da-f]{128})$/;
 
 const pinFromGroups = (groups: Record<string, string | undefined>): PnpmPin | null => {
     const { major, minor, sha512, version } = groups;
@@ -49,7 +49,8 @@ const pinFromGroups = (groups: Record<string, string | undefined>): PnpmPin | nu
 };
 
 const isSupportedPin = (pin: PnpmPin): boolean =>
-    pin.major === PNPM_MAJOR || pin.major === STORE_V10_MAJOR ||
+    pin.major === PNPM_MAJOR ||
+    pin.major === STORE_V10_MAJOR ||
     (pin.major === STORE_V11_MAJOR && pin.minor >= TRUST_LOCKFILE_MINOR);
 
 const resolvePnpmPin = (settings: DeploySettings): PnpmPin => {
@@ -62,8 +63,8 @@ const resolvePnpmPin = (settings: DeploySettings): PnpmPin => {
     if (!field.startsWith(PNPM_PREFIX)) {
         throw new Error(
             `Cannot vendor pnpm for the Flathub sandbox: "packageManager" is "${field}" but the offline install ` +
-            "resolves from a pnpm lockfile. Run `corepack use pnpm@<version>` to pin it to pnpm, or point " +
-            "`deploy.flatpak.packageManager` at the manager whose lockfile the build should install from.",
+                "resolves from a pnpm lockfile. Run `corepack use pnpm@<version>` to pin it to pnpm, or point " +
+                "`deploy.flatpak.packageManager` at the manager whose lockfile the build should install from.",
         );
     }
 
@@ -72,17 +73,17 @@ const resolvePnpmPin = (settings: DeploySettings): PnpmPin => {
     if (pin === null) {
         throw new Error(
             `Cannot vendor pnpm for the Flathub sandbox: "packageManager" is "${field}", which carries no sha512 ` +
-            "integrity digest, and every source in a Flathub build has to be hash-pinned. Run " +
-            "`corepack use pnpm@<version>` to rewrite it with its digest.",
+                "integrity digest, and every source in a Flathub build has to be hash-pinned. Run " +
+                "`corepack use pnpm@<version>` to rewrite it with its digest.",
         );
     }
 
     if (!isSupportedPin(pin)) {
         throw new Error(
             `Cannot vendor pnpm ${pin.version} for the Flathub sandbox: the offline install runs on pnpm 10, or on ` +
-            "pnpm 11 from 11.3.0 on, or pnpm 12, where `--trust-lockfile` exists. " +
-            "Earlier pnpm 11 releases reach the registry " +
-            'during the supply-chain check and the sandbox has no network. Pin "packageManager" to one of those.',
+                "pnpm 11 from 11.3.0 on, or pnpm 12, where `--trust-lockfile` exists. " +
+                "Earlier pnpm 11 releases reach the registry " +
+                'during the supply-chain check and the sandbox has no network. Pin "packageManager" to one of those.',
         );
     }
 
@@ -104,14 +105,6 @@ const pnpmSources = (pin: PnpmPin, moduleDir: string): FlatpakModule[] => [
 const pnpmInstallCommand = (pin: PnpmPin): string =>
     pin.major >= STORE_V11_MAJOR ? `${PNPM_INSTALL} ${TRUST_LOCKFILE}` : PNPM_INSTALL;
 
-const pnpmStoreVersionFor = (pin: PnpmPin): string =>
-    pin.major === STORE_V10_MAJOR ? STORE_V10 : STORE_V11;
+const pnpmStoreVersionFor = (pin: PnpmPin): string => (pin.major === STORE_V10_MAJOR ? STORE_V10 : STORE_V11);
 
-export {
-    pnpmInstallCommand,
-    pnpmPathFor,
-    type PnpmPin,
-    pnpmSources,
-    pnpmStoreVersionFor,
-    resolvePnpmPin,
-};
+export { pnpmInstallCommand, pnpmPathFor, type PnpmPin, pnpmSources, pnpmStoreVersionFor, resolvePnpmPin };

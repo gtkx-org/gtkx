@@ -25,12 +25,12 @@ const selectedVersion = computed<string>({
 </script>
 
 <template>
-  <label v-if="isDocumentation" class="version-select" :class="{ 'screen-menu': screenMenu }">
-    <span>Version</span>
-    <select v-model="selectedVersion">
-      <option v-for="entry in versions" :key="entry.id" :value="entry.id">{{ entry.label }}</option>
-    </select>
-  </label>
+    <label v-if="isDocumentation" class="version-select" :class="{ 'screen-menu': screenMenu }">
+        <span>Version</span>
+        <select v-model="selectedVersion">
+            <option v-for="entry in versions" :key="entry.id" :value="entry.id">{{ entry.label }}</option>
+        </select>
+    </label>
 </template>
 
 <style scoped>

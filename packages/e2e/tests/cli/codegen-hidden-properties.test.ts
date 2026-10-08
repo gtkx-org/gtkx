@@ -1,11 +1,7 @@
 import { loadApiReference, resolveGirPath } from "@gtkx/codegen";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CliProject } from "./cli-project.js";
-import {
-    ACCEPTED,
-    createHiddenPropertiesProject,
-    REJECTED_NAMES,
-} from "./codegen-hidden-properties-fixture.js";
+import { ACCEPTED, createHiddenPropertiesProject, REJECTED_NAMES } from "./codegen-hidden-properties-fixture.js";
 import { typecheckFiles } from "./type-consumer.js";
 
 describe("generated raw-pointer property omissions", () => {
@@ -13,11 +9,13 @@ describe("generated raw-pointer property omissions", () => {
     let project: CliProject;
 
     beforeAll(() => {
-        project = cleanup.use(createHiddenPropertiesProject(
-            "gtkx-cli-hidden-property-types-",
-            { "accepted.tsx": ACCEPTED },
-            REJECTED_NAMES,
-        ));
+        project = cleanup.use(
+            createHiddenPropertiesProject(
+                "gtkx-cli-hidden-property-types-",
+                { "accepted.tsx": ACCEPTED },
+                REJECTED_NAMES,
+            ),
+        );
     });
 
     afterAll(() => {

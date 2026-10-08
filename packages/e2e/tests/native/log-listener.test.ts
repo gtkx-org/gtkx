@@ -18,7 +18,8 @@ test("a real GTK warning reaches a JavaScript log listener", async () => {
 
     try {
         provokeCssWarning("gtkx-log-listener-happy");
-        await expect.poll(() => records.some(({ level, domain }) => level === "warning" && domain === "Gtk"))
+        await expect
+            .poll(() => records.some(({ level, domain }) => level === "warning" && domain === "Gtk"))
             .toBe(true);
     } finally {
         subscription.unsubscribe();

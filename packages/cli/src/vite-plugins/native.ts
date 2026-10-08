@@ -43,11 +43,11 @@ function rewriteLoader(code: string, bindingReferenceId: string): string {
     const bindings = idents.join(", ");
 
     return [
-        "import { createRequire as __gtkxCreateRequire } from \"node:module\";",
-        "import { fileURLToPath as __gtkxFileURLToPath } from \"node:url\";",
+        'import { createRequire as __gtkxCreateRequire } from "node:module";',
+        'import { fileURLToPath as __gtkxFileURLToPath } from "node:url";',
         `const __gtkxNativeLocation = import.meta.ROLLUP_FILE_URL_${bindingReferenceId};`,
-        "const __gtkxNativePath = __gtkxNativeLocation.startsWith(\"file:\") " +
-        "? __gtkxFileURLToPath(__gtkxNativeLocation) : __gtkxNativeLocation;",
+        'const __gtkxNativePath = __gtkxNativeLocation.startsWith("file:") ' +
+            "? __gtkxFileURLToPath(__gtkxNativeLocation) : __gtkxNativeLocation;",
         "const __gtkxNative = __gtkxCreateRequire(import.meta.url)(__gtkxNativePath);",
         `const { ${bindings} } = __gtkxNative;`,
         `export { ${bindings} };`,

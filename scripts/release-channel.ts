@@ -19,7 +19,11 @@ const releasePackages = (directories: string[]): ReleasePackage[] => {
         }
 
         return {
-            directory, name, version, registry: registryFor(directory, name, manifest), tag: distTagForVersion(version),
+            directory,
+            name,
+            version,
+            registry: registryFor(directory, name, manifest),
+            tag: distTagForVersion(version),
         };
     });
 
@@ -45,7 +49,7 @@ const currentChannelVersion = async (entry: ReleasePackage): Promise<unknown> =>
         throw new Error(`Cannot inspect release channel: HTTP ${String(response.status)}`);
     }
 
-    const document = await response.json() as { "dist-tags"?: Record<string, unknown> };
+    const document = (await response.json()) as { "dist-tags"?: Record<string, unknown> };
 
     return document["dist-tags"]?.[entry.tag];
 };

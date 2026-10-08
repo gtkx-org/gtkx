@@ -36,7 +36,7 @@ const isFile = (path: string): boolean => statSync(path, { throwIfNoEntry: false
 const missingDefaultEntryError = (cwd: string): Error =>
     new Error(
         `No entry file found in ${cwd}. Looked for ${DEFAULT_ENTRY_CANDIDATES.join(", ")}; ` +
-        "pass the entry file as an argument.",
+            "pass the entry file as an argument.",
     );
 
 const resolveDefaultEntry = (cwd: string): string => {

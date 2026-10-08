@@ -181,11 +181,4 @@ class ClosureMarshalError extends TypeError {
     public override name = "ClosureMarshalError";
 }
 
-export {
-    type ClosureCallback,
-    ClosureMarshalError,
-    newCCallbackClosure,
-    newSignalClosure,
-    toClosure,
-    tryToClosure,
-};
+export { type ClosureCallback, ClosureMarshalError, newCCallbackClosure, newSignalClosure, toClosure, tryToClosure };

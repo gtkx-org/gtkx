@@ -29,7 +29,7 @@ type Demo = {
 };
 
 type TreeItem =
-    | { type: "category"; title: string; children: TreeItem[] } |
-    { type: "demo"; demo: Demo; displayTitle: string };
+    | { type: "category"; title: string; children: TreeItem[] }
+    | { type: "demo"; demo: Demo; displayTitle: string };
 
 export { type Demo, type DemoProps, type DemoProviderProps, type TreeItem };

@@ -16,6 +16,4 @@ const Shortcuts = ({ onClose }: { onClose: () => void }) => (
     </AdwShortcutsDialog>
 );
 
-export {
-    Shortcuts,
-};
+export { Shortcuts };

@@ -75,7 +75,9 @@ import { HiddenPropertiesProbe, HiddenPropertiesChild, HiddenPropertiesRawOnly,
 import { registerClass } from "@gtkx/runtime";
 `;
 
-const ACCEPTED = IMPORTS + `
+const ACCEPTED =
+    IMPORTS +
+    `
 export const read = (probe: HiddenProperties.Probe) => {
     const count: bigint = probe.count;
     const typeId: bigint = probe.typeId;
@@ -133,7 +135,7 @@ const REJECTED = {
     "stream-realloc-option": "export const props: Gio.MemoryOutputStreamConstructorProps = { reallocFunction: null };",
     "stream-jsx": "export const view = <GMemoryOutputStream data={null} />;",
     "stream-notify": "export const view = <GMemoryOutputStream onNotifyData={() => undefined} />;",
-    "integer-control": "export const props: HiddenProperties.ProbeConstructorProps = { count: \"invalid\" };",
+    "integer-control": 'export const props: HiddenProperties.ProbeConstructorProps = { count: "invalid" };',
 } as const;
 
 type RejectedName = keyof typeof REJECTED;
@@ -144,10 +146,7 @@ const createHiddenPropertiesProject = (
     acceptedFiles: Record<string, string>,
     rejectedNames: readonly RejectedName[] = [],
 ): ReturnType<typeof createCliProject> => {
-    const rejectedFiles = Object.fromEntries(rejectedNames.map((name) => [
-        `${name}.tsx`,
-        IMPORTS + REJECTED[name],
-    ]));
+    const rejectedFiles = Object.fromEntries(rejectedNames.map((name) => [`${name}.tsx`, IMPORTS + REJECTED[name]]));
     const project = createCliProject({
         prefix,
         config: CONFIG,

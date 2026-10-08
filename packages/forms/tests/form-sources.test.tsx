@@ -16,7 +16,10 @@ type SourceFormProps = {
     source: "empty" | "items" | "sections";
 };
 
-const ITEMS = [{ id: "name", value: "By name" }, { id: "date", value: "By date" }];
+const ITEMS = [
+    { id: "name", value: "By name" },
+    { id: "date", value: "By date" },
+];
 
 function SourceForm({ comboRef, source }: SourceFormProps): ReactNode {
     const form = useForm<FormValues>({ defaultValues: { sort: "name" } });

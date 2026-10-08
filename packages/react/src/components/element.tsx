@@ -24,8 +24,7 @@ const NO_PROP_CHILDREN: ReactNode[] = [];
 const hasElement = (value: unknown): boolean =>
     isValidElement(value) || (Array.isArray(value) && value.some((item: unknown) => hasElement(item)));
 
-const isRoutedProp = (key: string, value: unknown): boolean =>
-    key !== "children" && key !== "ref" && hasElement(value);
+const isRoutedProp = (key: string, value: unknown): boolean => key !== "children" && key !== "ref" && hasElement(value);
 
 const collectPropChildren = (record: Props): ReactNode[] | null => {
     let propChildren: ReactNode[] | null = null;
@@ -37,9 +36,7 @@ const collectPropChildren = (record: Props): ReactNode[] | null => {
 
         propChildren ??= [];
 
-        propChildren.push(
-            createElement(Prop, { propName: key, key: `${Prop}:${key}` }, record[key] as ReactNode),
-        );
+        propChildren.push(createElement(Prop, { propName: key, key: `${Prop}:${key}` }, record[key] as ReactNode));
     }
 
     return propChildren;
@@ -96,11 +93,12 @@ const subscribeLazyRef = (
 
         if (object !== null && ref != null) {
             const assigned = assignRef(ref, object);
-            cleanup = typeof assigned === "function"
-                ? assigned
-                : () => {
-                        assignRef(ref, null);
-                    };
+            cleanup =
+                typeof assigned === "function"
+                    ? assigned
+                    : () => {
+                          assignRef(ref, null);
+                      };
         }
 
         notify?.();
@@ -119,8 +117,10 @@ const LazyElement = ({ typeName, record }: { typeName: string; record: Props }):
     const ref = record.ref as Ref<GObject.Object> | undefined;
     const context = use(ControlledChildrenContext);
     const notify = context?.typeName === typeName ? context.notify : undefined;
-    const attach = useCallback((node: LazyNode | null) =>
-        node === null ? undefined : subscribeLazyRef(node, ref, notify), [ref, notify]);
+    const attach = useCallback(
+        (node: LazyNode | null) => (node === null ? undefined : subscribeLazyRef(node, ref, notify)),
+        [ref, notify],
+    );
 
     return buildElement(typeName, { ...record, ref: attach });
 };
@@ -131,9 +131,11 @@ const Element = ({ typeName, record }: { typeName: string; record: Props }): Rea
     const mergedRef = useMergedRef(ref, accessibleRef);
     const next = accessibleRef === undefined ? record : { ...record, ref: mergedRef };
 
-    return ELEMENTS[typeName]?.isLazy === true
-        ? <LazyElement typeName={typeName} record={next} />
-        : buildElement(typeName, next);
+    return ELEMENTS[typeName]?.isLazy === true ? (
+        <LazyElement typeName={typeName} record={next} />
+    ) : (
+        buildElement(typeName, next)
+    );
 };
 
 const renderElement = (typeName: string, props: unknown): ReactElement => {
@@ -155,10 +157,9 @@ const renderElement = (typeName: string, props: unknown): ReactElement => {
  * uses `typeName` for lookup.
  * @returns A component accepting the specified props.
  */
-const createElementComponent: <P = unknown>(
-    typeName: string,
-    cls?: unknown,
-) => (props: P) => ReactNode =
-    (typeName) => (props): ReactNode => renderElement(typeName, props);
+const createElementComponent: <P = unknown>(typeName: string, cls?: unknown) => (props: P) => ReactNode =
+    (typeName) =>
+    (props): ReactNode =>
+        renderElement(typeName, props);
 
 export { Prop, createElementComponent };

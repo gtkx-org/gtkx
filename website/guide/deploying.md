@@ -37,12 +37,12 @@ Keep development icons in a separate directory and select them with a [`$develop
 
 ## Choose a target
 
-| Target | Package | Use |
-| --- | --- | --- |
-| `flatpak` | `.flatpak` bundle and local repository | A sandboxed application with a GNOME runtime |
-| `deb` | `.deb` | Debian, Ubuntu, and derivatives |
-| `rpm` | `.rpm` | Fedora and other RPM distributions |
-| `appimage` | `.AppImage` | A downloadable executable file |
+| Target     | Package                                | Use                                          |
+| ---------- | -------------------------------------- | -------------------------------------------- |
+| `flatpak`  | `.flatpak` bundle and local repository | A sandboxed application with a GNOME runtime |
+| `deb`      | `.deb`                                 | Debian, Ubuntu, and derivatives              |
+| `rpm`      | `.rpm`                                 | Fedora and other RPM distributions           |
+| `appimage` | `.AppImage`                            | A downloadable executable file               |
 
 Set `deploy.targets` for the project's usual formats, or override them for one run:
 

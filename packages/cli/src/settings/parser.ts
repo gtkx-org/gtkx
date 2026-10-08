@@ -123,16 +123,18 @@ const parseEnum = (node: RawNode, kind: "enum" | "flags"): RawEnum => {
         throw new Error(`A GSettings ${kind} has no id attribute`);
     }
 
-    const values = Object.fromEntries(children(node, "value").map((item) => {
-        const nick = rawAttr(item, "nick");
-        const value = attr(item, "value");
+    const values = Object.fromEntries(
+        children(node, "value").map((item) => {
+            const nick = rawAttr(item, "nick");
+            const value = attr(item, "value");
 
-        if (nick === null || value === null) {
-            throw new Error(`A GSettings ${kind} value has no nick or value attribute`);
-        }
+            if (nick === null || value === null) {
+                throw new Error(`A GSettings ${kind} value has no nick or value attribute`);
+            }
 
-        return [nick, parseEnumNumber(value, kind)];
-    }));
+            return [nick, parseEnumNumber(value, kind)];
+        }),
+    );
 
     return { id, kind, values };
 };
@@ -229,9 +231,10 @@ const resolveKeyValues = (key: RawKey, enums: Map<string, Record<string, number>
     return { ...key, values };
 };
 
-const createSchemaResolver = (files: RawSchemaFile[]): (file: RawSchemaFile) => ParsedSchemaFile => {
-    const enums = new Map(files.flatMap((file) =>
-        file.enums.map(({ id, kind, values }) => [`${kind}:${id}`, values] as const)));
+const createSchemaResolver = (files: RawSchemaFile[]): ((file: RawSchemaFile) => ParsedSchemaFile) => {
+    const enums = new Map(
+        files.flatMap((file) => file.enums.map(({ id, kind, values }) => [`${kind}:${id}`, values] as const)),
+    );
     const resolveSchema = (schema: RawSchema): SchemaDefinition => ({
         ...schema,
         keys: schema.keys.map((key) => resolveKeyValues(key, enums)),

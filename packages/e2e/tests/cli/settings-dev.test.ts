@@ -16,7 +16,8 @@ const BASE_FILE = "data/base.gschema.xml";
 const OBSERVATION_FILE = "observation.json";
 const RELOAD_TIMEOUT = 60_000;
 const INVALID_SETTLE_MS = 2000;
-const CHILD_SCHEMA = '<schemalist><schema id="org.gtkx.Child" extends="org.gtkx.Base" path="/org/gtkx/child/">' +
+const CHILD_SCHEMA =
+    '<schemalist><schema id="org.gtkx.Child" extends="org.gtkx.Base" path="/org/gtkx/child/">' +
     '<key name="own" type="b"><default>true</default></key></schema></schemalist>';
 const INITIAL_KEYS = { shared: "s", own: "b" };
 const UPDATED_KEYS = { ...INITIAL_KEYS, added: "i" };

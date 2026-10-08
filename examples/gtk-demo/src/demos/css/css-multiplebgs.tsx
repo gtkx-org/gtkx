@@ -177,9 +177,9 @@ function CssMultiplebgsDemo() {
         <GtkPaned
             orientation={Gtk.Orientation.VERTICAL}
             position={150}
-            startChild={(
+            startChild={
                 <GtkOverlay
-                    overlays={(
+                    overlays={
                         <GtkOverlayLayoutChild>
                             <GtkButton
                                 name="bricks-button"
@@ -190,7 +190,7 @@ function CssMultiplebgsDemo() {
                                 accessibleLabel="Bricks"
                             />
                         </GtkOverlayLayoutChild>
-                    )}
+                    }
                 >
                     <GtkDrawingArea
                         name="canvas"
@@ -200,12 +200,12 @@ function CssMultiplebgsDemo() {
                         accessibleLabel="CSS background preview"
                     />
                 </GtkOverlay>
-            )}
-            endChild={(
+            }
+            endChild={
                 <GtkScrolledWindow>
                     <CssEditor defaultCss={DEFAULT_CSS} />
                 </GtkScrolledWindow>
-            )}
+            }
         />
     );
 }

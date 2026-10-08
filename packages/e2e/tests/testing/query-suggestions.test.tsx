@@ -22,7 +22,7 @@ const loadSuggestion = async (
     using temporary = mkdtempDisposableSync(join(tmpdir(), "gtkx-query-suggestion-"));
     const file = join(temporary.path, "consumer.mjs");
     writeFileSync(file, `export default (Gtk, queries) => queries.${suggestion.toString()};`);
-    const consumer = await import(pathToFileURL(file).href) as {
+    const consumer = (await import(pathToFileURL(file).href)) as {
         default: (gtk: typeof Gtk, queries: BoundQueries) => unknown;
     };
 

@@ -163,9 +163,9 @@ const COLOR_LIMITS: { id: string; value: ColorLimit; label: string }[] = [
 ];
 
 const POSITION_TO_COLOR_MAP = [
-    0xFF_00_00, 0x00_FF_00, 0x00_00_FF, 0x7F_00_00, 0x00_7F_00, 0x00_00_7F, 0x3F_00_00, 0x00_3F_00,
-    0x00_00_3F, 0x1F_00_00, 0x00_1F_00, 0x00_00_1F, 0x0F_00_00, 0x00_0F_00, 0x00_00_0F, 0x07_00_00,
-    0x00_07_00, 0x00_00_07, 0x03_00_00, 0x00_03_00, 0x00_00_03, 0x01_00_00, 0x00_01_00, 0x00_00_01,
+    0xff_00_00, 0x00_ff_00, 0x00_00_ff, 0x7f_00_00, 0x00_7f_00, 0x00_00_7f, 0x3f_00_00, 0x00_3f_00, 0x00_00_3f,
+    0x1f_00_00, 0x00_1f_00, 0x00_00_1f, 0x0f_00_00, 0x00_0f_00, 0x00_00_0f, 0x07_00_00, 0x00_07_00, 0x00_00_07,
+    0x03_00_00, 0x00_03_00, 0x00_00_03, 0x01_00_00, 0x00_01_00, 0x00_00_01,
 ];
 
 const DETAIL_LABEL_CSS = ["dim-label", "caption", "monospace"];
@@ -360,7 +360,7 @@ function rgbToHex(r: number, g: number, b: number): string {
 }
 
 function colorKey(r: number, g: number, b: number): number {
-    return ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF);
+    return ((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff);
 }
 
 function colorField(fields: string[], index: number): number {
@@ -422,9 +422,9 @@ function createColorObject(position: number): ColorObject {
     const rgb = positionToColor(position);
     const obj = new ColorObject();
     obj.position = position;
-    obj.r = (rgb >> 16) & 0xFF;
-    obj.g = (rgb >> 8) & 0xFF;
-    obj.b = rgb & 0xFF;
+    obj.r = (rgb >> 16) & 0xff;
+    obj.g = (rgb >> 8) & 0xff;
+    obj.b = rgb & 0xff;
     const hsv = rgbToHsv(obj.r, obj.g, obj.b);
     obj.h = hsv.h;
     obj.s = hsv.s;
@@ -473,9 +473,7 @@ const ColorSwatch = ({ item, size }: { item: ColorItem; size: number }) => (
     />
 );
 
-const renderSimpleColor: ListItemRenderer<ColorObject> = ({ item }) => (
-    <ColorSwatch item={item.colorItem} size={32} />
-);
+const renderSimpleColor: ListItemRenderer<ColorObject> = ({ item }) => <ColorSwatch item={item.colorItem} size={32} />;
 
 const renderDetailedColor: ListItemRenderer<ColorObject> = ({ item }) => {
     const color = item.colorItem;
@@ -568,7 +566,7 @@ function useColorsModels(): { element: ReactNode; models: ColorsModels | null } 
     const [sortModel, setSortModel] = useState<Gtk.SortListModel | null>(null);
     const [selection, setSelection] = useState<Gtk.MultiSelection | null>(null);
     const models = useMemo(
-        () => colors && sorter && sortModel && selection ? { colors, sorter, sortModel, selection } : null,
+        () => (colors && sorter && sortModel && selection ? { colors, sorter, sortModel, selection } : null),
         [colors, sorter, sortModel, selection],
     );
     const element = createPortal(
@@ -576,13 +574,11 @@ function useColorsModels(): { element: ReactNode; models: ColorsModels | null } 
             <GtkMultiSelection
                 ref={setSelection}
                 model={
-                    (
-                        <GtkSortListModel
-                            ref={setSortModel}
-                            incremental
-                            model={<ColorListElement ref={setColors} itemType={ColorObject.prototype.__type__} />}
-                        />
-                    )
+                    <GtkSortListModel
+                        ref={setSortModel}
+                        incremental
+                        model={<ColorListElement ref={setColors} itemType={ColorObject.prototype.__type__} />}
+                    />
                 }
             />
             <GtkCustomSorter ref={setSorter} />
@@ -734,11 +730,16 @@ function collectSelectedColors(selection: Gtk.MultiSelection): ColorItem[] {
 function useSelectedColors(selection: Gtk.MultiSelection): ColorItem[] {
     const [selectedColors, setSelectedColors] = useState<ColorItem[]>([]);
 
-    useSignal(selection, "selection-changed", () => {
-        setSelectedColors(collectSelectedColors(selection));
-    }, {
-        isImmediate: true,
-    });
+    useSignal(
+        selection,
+        "selection-changed",
+        () => {
+            setSelectedColors(collectSelectedColors(selection));
+        },
+        {
+            isImmediate: true,
+        },
+    );
 
     return selectedColors;
 }
@@ -979,11 +980,11 @@ const ColorsGridOverlay = () => {
                     enableRubberband
                     cssClasses={computed.gridCssClasses}
                     model={models.selection}
-                    factory={(
+                    factory={
                         <ListItemFactory<ColorObject>
                             renderItem={computed.showDetails ? renderDetailedColor : renderSimpleColor}
                         />
-                    )}
+                    }
                 />
             </GtkScrolledWindow>
         </GtkOverlay>

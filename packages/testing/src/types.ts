@@ -17,9 +17,7 @@ type NormalizerFn = (text: string) => string;
  * A widget class usable as a query's `as` constraint, such as `Gtk.Button`. Abstract classes and
  * generated GInterface pseudo-classes that extend `Gtk.Accessible` are accepted.
  */
-type WidgetType<T extends Gtk.Accessible = Gtk.Accessible> = abstract new (
-    ...args: never[]
-) => T;
+type WidgetType<T extends Gtk.Accessible = Gtk.Accessible> = abstract new (...args: never[]) => T;
 
 /** Options controlling the default text normalizer. */
 type NormalizerOptions = {
@@ -138,19 +136,17 @@ type QueryKind = "role" | "text" | "name" | "value";
 type QueryArgs<Kind extends QueryKind, T extends Gtk.Accessible> = Kind extends "role"
     ? [role: Gtk.AccessibleRole, options?: ByRoleOptions<T>]
     : Kind extends "name"
-        ? [name: Matcher, options?: MatcherOptions<T>]
-        : Kind extends "value"
-            ? [value: Matcher, options?: MatcherOptions<T>]
-            : [text: Matcher, options?: MatcherOptions<T>];
+      ? [name: Matcher, options?: MatcherOptions<T>]
+      : Kind extends "value"
+        ? [value: Matcher, options?: MatcherOptions<T>]
+        : [text: Matcher, options?: MatcherOptions<T>];
 
 /**
  * One family's query variants, each named for its variant followed by `Suffix` and taking `Head`
  * ahead of the family's own arguments.
  */
 type QueryFamily<Suffix extends string, Kind extends QueryKind, Head extends unknown[]> = {
-    [K in keyof QueryFamilyReturns<Gtk.Widget> as `${K & string}${Suffix}`]: <
-        T extends Gtk.Accessible = Gtk.Widget,
-    >(
+    [K in keyof QueryFamilyReturns<Gtk.Widget> as `${K & string}${Suffix}`]: <T extends Gtk.Accessible = Gtk.Widget>(
         ...args: [...Head, ...QueryArgs<Kind, T>]
     ) => QueryFamilyReturns<T>[K];
 };
@@ -239,12 +235,12 @@ type RenderHookOptions<Props> = {
     wrapper?: WrapperComponent;
 } & (undefined extends Props
     ? {
-            /** Props the hook is invoked with until `rerender` is given new ones. */
-            initialProps?: Props;
-        }
+          /** Props the hook is invoked with until `rerender` is given new ones. */
+          initialProps?: Props;
+      }
     : {
-            initialProps: Props;
-        });
+          initialProps: Props;
+      });
 
 /**
  * The result of {@link renderHook}: the latest hook return value plus functions to rerender with new

@@ -16,7 +16,9 @@ import * as Gtk from "@gtkx/gi/gtk";
 import * as GdkPixbuf from "@gtkx/gi/gdkpixbuf";
 import { ScalarPointersProbe } from "@gtkx/jsx/scalarpointers";
 `;
-const SCALAR_POINTER_ACCEPTED = SCALAR_POINTER_IMPORTS + `
+const SCALAR_POINTER_ACCEPTED =
+    SCALAR_POINTER_IMPORTS +
+    `
 export const values = (probe: ScalarPointers.Probe, mode: ScalarPointers.Mode, object: GObject.Object) => {
     const read: number = probe.readNumber();
     const erasedOut: number = probe.readErased();
@@ -93,18 +95,18 @@ try {
 }
 `;
 const SCALAR_POINTER_REJECTED_INPUTS: Record<string, string> = {
-    "typedef-pointer-input": "export type Method = ScalarPointers.Probe[\"takeErased\"];",
-    "direct-input": "export type Method = ScalarPointers.Probe[\"takeDirect\"];",
-    "aliased-input": "export type Method = ScalarPointers.Probe[\"takeAlias\"];",
-    "nested-input": "export type Method = ScalarPointers.Probe[\"takeNested\"];",
-    "pointer-element-input": "export type Method = ScalarPointers.Probe[\"takePointers\"];",
-    "enum-input": "export type Method = ScalarPointers.Probe[\"takeMode\"];",
-    "gtype-input": "export type Method = ScalarPointers.Probe[\"takeType\"];",
+    "typedef-pointer-input": 'export type Method = ScalarPointers.Probe["takeErased"];',
+    "direct-input": 'export type Method = ScalarPointers.Probe["takeDirect"];',
+    "aliased-input": 'export type Method = ScalarPointers.Probe["takeAlias"];',
+    "nested-input": 'export type Method = ScalarPointers.Probe["takeNested"];',
+    "pointer-element-input": 'export type Method = ScalarPointers.Probe["takePointers"];',
+    "enum-input": 'export type Method = ScalarPointers.Probe["takeMode"];',
+    "gtype-input": 'export type Method = ScalarPointers.Probe["takeType"];',
 };
 const SCALAR_POINTER_REJECTED_OUTPUTS: Record<string, string> = {
-    "pointer-return": "export type Method = ScalarPointers.Probe[\"readPointer\"];",
-    "skipped-return": "export type Method = ScalarPointers.Probe[\"discardPointer\"];",
-    "aliased-output": "export type Method = ScalarPointers.Probe[\"readAlias\"];",
+    "pointer-return": 'export type Method = ScalarPointers.Probe["readPointer"];',
+    "skipped-return": 'export type Method = ScalarPointers.Probe["discardPointer"];',
+    "aliased-output": 'export type Method = ScalarPointers.Probe["readAlias"];',
     "namespace-return": "export const method = ScalarPointers.readScalar;",
     "pointer-alias": "export type Value = ScalarPointers.PointerAlias;",
     "own-pointer-alias": "export type Value = ScalarPointers.OwnPointer;",
@@ -116,27 +118,28 @@ const SCALAR_POINTER_REJECTED_CALLBACKS: Record<string, string> = {
     "aliased-pointer-constant": "export const value = ScalarPointers.ALIASED_POINTER;",
     "callback-input": "export type Callback = ScalarPointers.InputScalar;",
     "callback-return": "export type Callback = ScalarPointers.ReturnScalar;",
-    "callback-consumer": "export type Method = ScalarPointers.Probe[\"useRaw\"];",
+    "callback-consumer": 'export type Method = ScalarPointers.Probe["useRaw"];',
 };
 const SCALAR_POINTER_REJECTED_MEMBERS: Record<string, string> = {
-    "signal-input": "export type Signal = ScalarPointers.ProbeSignals[\"scalar-pointer\"];",
-    "signal-return": "export type Signal = ScalarPointers.ProbeSignals[\"scalar-return\"];",
-    "vfunc-input": "export class Derived extends ScalarPointers.Probe { " +
+    "signal-input": 'export type Signal = ScalarPointers.ProbeSignals["scalar-pointer"];',
+    "signal-return": 'export type Signal = ScalarPointers.ProbeSignals["scalar-return"];',
+    "vfunc-input":
+        "export class Derived extends ScalarPointers.Probe { " +
         "override vfuncRawInput(value: number): void { void value; } }",
-    "property-read": "export type Property = ScalarPointers.Probe[\"pointer\"];",
+    "property-read": 'export type Property = ScalarPointers.Probe["pointer"];',
     "property-options": "export const props: ScalarPointers.ProbeConstructorProps = { pointer: 1 };",
     "property-jsx": "export const view = <ScalarPointersProbe pointer={1} />;",
     "property-notify": "export const view = <ScalarPointersProbe onNotifyPointer={() => undefined} />;",
 };
 const SCALAR_POINTER_REJECTED_FIELDS: Record<string, string> = {
     "record-constructor": "export const record = new ScalarPointers.Frame({ before: 1, after: 2n });",
-    "direct-field": "export type Field = ScalarPointers.Frame[\"direct\"];",
-    "aliased-field": "export type Field = ScalarPointers.Frame[\"alias\"];",
-    "pointer-element-field": "export type Field = ScalarPointers.Frame[\"pointers\"];",
+    "direct-field": 'export type Field = ScalarPointers.Frame["direct"];',
+    "aliased-field": 'export type Field = ScalarPointers.Frame["alias"];',
+    "pointer-element-field": 'export type Field = ScalarPointers.Frame["pointers"];',
     "record-options": "export const props: ScalarPointers.FrameConstructorProps = { direct: 1 };",
-    "pixbuf-return": "export type Method = GdkPixbuf.Pixbuf[\"readPixels\"];",
-    "byte-array-field": "export type Field = GLib.ByteArray[\"data\"];",
-    "message-field": "export type Field = Gio.InputMessage[\"numControlMessages\"];",
+    "pixbuf-return": 'export type Method = GdkPixbuf.Pixbuf["readPixels"];',
+    "byte-array-field": 'export type Field = GLib.ByteArray["data"];',
+    "message-field": 'export type Field = Gio.InputMessage["numControlMessages"];',
 };
 const SCALAR_POINTER_REJECTED = {
     ...SCALAR_POINTER_REJECTED_INPUTS,
@@ -146,14 +149,23 @@ const SCALAR_POINTER_REJECTED = {
     ...SCALAR_POINTER_REJECTED_FIELDS,
 };
 const SCALAR_POINTER_OMITTED_METHODS = [
-    "takeDirect", "takeAlias", "takeNested", "takeMode", "takeType", "readPointer", "discardPointer",
-    "readAlias", "useRaw", "takePointers", "takeErased",
+    "takeDirect",
+    "takeAlias",
+    "takeNested",
+    "takeMode",
+    "takeType",
+    "readPointer",
+    "discardPointer",
+    "readAlias",
+    "useRaw",
+    "takePointers",
+    "takeErased",
 ];
 
 const scalarPointerRejectedFiles = (rejected: Record<string, string>): Record<string, string> =>
-    Object.fromEntries(Object.entries(rejected).map(([name, source]) => [
-        `${name}.tsx`, SCALAR_POINTER_IMPORTS + source,
-    ]));
+    Object.fromEntries(
+        Object.entries(rejected).map(([name, source]) => [`${name}.tsx`, SCALAR_POINTER_IMPORTS + source]),
+    );
 
 const createScalarPointerProject = (
     prefix: string,

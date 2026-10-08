@@ -412,14 +412,14 @@ describe("userEvent.click", () => {
                 onRowActivated={(row) => {
                     activations.push(row.getName());
                 }}
-                controllers={(
+                controllers={
                     <GtkGestureClick
                         onPressed={(nPress, x, y) => {
                             presses.push([nPress, x, y]);
                         }}
                         onReleased={releases.callback}
                     />
-                )}
+                }
             >
                 <GtkListBoxRow name="first">
                     <GtkLabel>First</GtkLabel>
@@ -564,7 +564,7 @@ describe("userEvent.clear", () => {
         const { findByRole } = await renderScoped(
             <GtkEntry
                 text="abc"
-                controllers={(
+                controllers={
                     <GtkEventControllerKey
                         onKeyPressed={(keyval) => {
                             presses.push(keyval);
@@ -572,7 +572,7 @@ describe("userEvent.clear", () => {
                             return Gdk.EVENT_PROPAGATE;
                         }}
                     />
-                )}
+                }
             />,
         );
 
@@ -613,14 +613,14 @@ describe("userEvent.clear", () => {
     it("throws, leaving the text intact, when a tag protects part of a text view", async () => {
         await render(
             <GtkTextView
-                buffer={(
+                buffer={
                     <GtkTextBuffer>
                         {"erasable "}
                         <GtkTextTag name="keep" editable={false}>
                             prompt
                         </GtkTextTag>
                     </GtkTextBuffer>
-                )}
+                }
             />,
         );
 
@@ -839,14 +839,14 @@ describe("controller fan-out", () => {
             <GtkButton
                 label="Fan out"
                 onClicked={clicks.callback}
-                controllers={(
+                controllers={
                     <GtkGestureClick
                         onPressed={(nPress, x, y) => {
                             presses.push([nPress, x, y]);
                         }}
                         onReleased={releases.callback}
                     />
-                )}
+                }
             />,
         );
 
@@ -906,12 +906,12 @@ describe("controller fan-out", () => {
         const { findByName } = await renderScoped(
             <GtkEntry
                 name="multi-key"
-                controllers={(
+                controllers={
                     <>
                         <GtkEventControllerKey onKeyPressed={firstPressed.callback} />
                         <GtkEventControllerKey onKeyPressed={secondPressed.callback} />
                     </>
-                )}
+                }
             />,
         );
 
@@ -1166,11 +1166,9 @@ describe("userEvent.keyboard: shortcuts", () => {
         await render(
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
-                controllers={(
-                    <GtkShortcutController
-                        shortcuts={<GtkShortcut trigger={enter} action={activateDefault} />}
-                    />
-                )}
+                controllers={
+                    <GtkShortcutController shortcuts={<GtkShortcut trigger={enter} action={activateDefault} />} />
+                }
             >
                 <AdwSidebar ref={sidebarRef} mode={Adw.SidebarMode.PAGE} selected={0} onActivated={onActivated}>
                     <AdwSidebarSection>
@@ -1210,12 +1208,7 @@ describe("userEvent.keyboard: key controller propagation", () => {
     it("delivers presses and releases, with the held modifiers, to an ancestor's key controller", async () => {
         const pressed = await pressKeyOnProbe("{Escape}");
 
-        expect(pressed.ancestorPresses).toContainEqual([
-            Gdk.KEY_Escape,
-            0,
-            0,
-            expect.any(Gtk.EventControllerKey),
-        ]);
+        expect(pressed.ancestorPresses).toContainEqual([Gdk.KEY_Escape, 0, 0, expect.any(Gtk.EventControllerKey)]);
 
         const releases: [number, number, Gdk.ModifierType][] = [];
         const field = await renderKeyControllerTree(

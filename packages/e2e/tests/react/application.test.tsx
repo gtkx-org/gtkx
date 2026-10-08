@@ -129,13 +129,13 @@ const renderMenu = async (
                     <GMenuItem
                         key={entry.label}
                         label={entry.label}
-                        submenu={(
+                        submenu={
                             <GMenu>
                                 {entry.items.map((item) => (
                                     <GMenuItem key={item.action} label={item.label} action={item.action} />
                                 ))}
                             </GMenu>
-                        )}
+                        }
                     />
                 ))}
             </GMenu>,
@@ -265,11 +265,7 @@ const AccelsApp = ({ labelRef, entryRef, actionAccels, actions, isAppScoped }: A
         actionAccels={actionAccels}
         actions={isAppScoped ? actions : undefined}
     >
-        <GtkApplicationWindow
-            defaultWidth={400}
-            defaultHeight={300}
-            actions={isAppScoped ? undefined : actions}
-        >
+        <GtkApplicationWindow defaultWidth={400} defaultHeight={300} actions={isAppScoped ? undefined : actions}>
             <GtkBox>
                 <GtkLabel ref={labelRef} label="content" selectable />
                 <GtkEntry ref={entryRef} text="editable content" />
@@ -457,17 +453,19 @@ describe("render - Application main options", () => {
     it("reports a rejected asynchronous startup through React", async () => {
         const failure = new Error("Application options failed");
 
-        await expect(render(
-            <OptionApp
-                appRef={createRef<Gtk.Application>()}
-                appId={uniqueAppId()}
-                options={[]}
-                onLocalOptions={() => {
-                    throw failure;
-                }}
-            />,
-            { container: rootElement },
-        )).rejects.toThrow(failure);
+        await expect(
+            render(
+                <OptionApp
+                    appRef={createRef<Gtk.Application>()}
+                    appId={uniqueAppId()}
+                    options={[]}
+                    onLocalOptions={() => {
+                        throw failure;
+                    }}
+                />,
+                { container: rootElement },
+            ),
+        ).rejects.toThrow(failure);
         expect(Gio.Application.getDefault()).toBeNull();
     });
 
@@ -479,14 +477,7 @@ describe("render - Application main options", () => {
 
         try {
             await act(() => {
-                root.render(
-                    <OptionApp
-                        appRef={ref}
-                        appId={uniqueAppId()}
-                        options={[]}
-                        onLocalOptions={() => 7}
-                    />,
-                );
+                root.render(<OptionApp appRef={ref} appId={uniqueAppId()} options={[]} onLocalOptions={() => 7} />);
             });
 
             expect(process.exitCode).toBe(7);
@@ -544,7 +535,11 @@ describe("render - Application lifecycle", () => {
 
         await act(() => {
             root.render(
-                <AdwApplication applicationId={uniqueAppId()} flags={APP_FLAGS} onShutdown={() => events.push("shutdown")}>
+                <AdwApplication
+                    applicationId={uniqueAppId()}
+                    flags={APP_FLAGS}
+                    onShutdown={() => events.push("shutdown")}
+                >
                     <Child />
                 </AdwApplication>,
             );
@@ -560,9 +555,12 @@ describe("render - Application lifecycle", () => {
         let cleanups = 0;
         let shutdowns = 0;
         const Window = (): ReactNode => {
-            useEffect(() => () => {
-                cleanups += 1;
-            }, []);
+            useEffect(
+                () => () => {
+                    cleanups += 1;
+                },
+                [],
+            );
 
             return <AdwApplicationWindow ref={windowRef} />;
         };
@@ -670,12 +668,14 @@ describe("render - Application lifecycle", () => {
             throw failure;
         };
 
-        await expect(render(
-            <AdwApplication applicationId={uniqueAppId()} flags={APP_FLAGS}>
-                <BrokenChild />
-            </AdwApplication>,
-            { container: rootElement },
-        )).rejects.toThrow(failure);
+        await expect(
+            render(
+                <AdwApplication applicationId={uniqueAppId()} flags={APP_FLAGS}>
+                    <BrokenChild />
+                </AdwApplication>,
+                { container: rootElement },
+            ),
+        ).rejects.toThrow(failure);
 
         expect(Gio.Application.getDefault()).toBeNull();
     });

@@ -16,8 +16,9 @@ const underlyingType = (library: Library, ref: TypeId | undefined): GirType | un
 const isScalarRef = (library: Library, ref: TypeId | undefined): boolean => {
     const type = underlyingType(library, ref);
 
-    return type?.kind === "enum" ||
-        (type?.kind === "primitive" && type.category !== "string" && type.category !== "void");
+    return (
+        type?.kind === "enum" || (type?.kind === "primitive" && type.category !== "string" && type.category !== "void")
+    );
 };
 
 const carrayFor = (library: Library, ref: TypeId | undefined): CArrayType | undefined => {
@@ -44,11 +45,7 @@ const isUnboundedArray = (type: CArrayType): boolean =>
 const isByteSequence = (library: Library, type: CArrayType | ListType): boolean =>
     type.kind === "list" ? type.flavor === "gbytearray" : primitiveCategoryFor(library, type.element) === "uint8";
 
-const hasTypeMatching = (
-    library: Library,
-    ref: TypeId | undefined,
-    isMatch: (type: GirType) => boolean,
-): boolean => {
+const hasTypeMatching = (library: Library, ref: TypeId | undefined, isMatch: (type: GirType) => boolean): boolean => {
     const type = resolvedTypeFor(library, ref);
 
     if (type !== undefined && isMatch(type)) {
@@ -90,11 +87,14 @@ const hasScalarPointer = (
 ): boolean => {
     const outerArray = hasOutIndirection ? underlyingType(library, ref) : undefined;
 
-    return (isScalarRef(library, ref) && cTypePointerDepth(cType) > 0) ||
+    return (
+        (isScalarRef(library, ref) && cTypePointerDepth(cType) > 0) ||
         hasTypeMatching(library, ref, (type) => {
             if (type.kind === "alias") {
-                return isScalarRef(library, type.value.target) &&
-                    (cTypePointerDepth(type.value.cType) > 0 || cTypePointerDepth(type.value.targetCType) > 0);
+                return (
+                    isScalarRef(library, type.value.target) &&
+                    (cTypePointerDepth(type.value.cType) > 0 || cTypePointerDepth(type.value.targetCType) > 0)
+                );
             }
 
             if (type.kind !== "carray" || !isScalarRef(library, type.element)) {
@@ -104,7 +104,8 @@ const hasScalarPointer = (
             const pointers = cTypePointerDepth(type.elementCType);
 
             return pointers > (type === outerArray ? 1 : 0);
-        });
+        })
+    );
 };
 
 const hasPrimitivePointer = (library: Library, ref: TypeId | undefined): boolean =>

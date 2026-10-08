@@ -38,7 +38,10 @@ const SECTIONS: CreditSection[] = [
 const TRANSLATIONS: CreditSection[] = [{ sectionName: "Translation", people: ["Alan Turing"] }];
 const uniqueAppId = createAppIdFactory("org.gtkx.dialogtest");
 const uniqueAppId2 = createAppIdFactory("org.gtkx.alertextrachild");
-const RESPONSES: AlertResponse[] = [{ id: "cancel", label: "Cancel" }, { id: "ok", label: "OK" }];
+const RESPONSES: AlertResponse[] = [
+    { id: "cancel", label: "Cancel" },
+    { id: "ok", label: "OK" },
+];
 const HEADING = "Alert heading";
 
 const requireWidget = <T extends Gtk.Widget>(ref: RefObject<T | null>, label: string): T => {

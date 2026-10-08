@@ -4,8 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
 import { isolateTypeConsumer, typecheckFile } from "./type-consumer.js";
 
-const CONFIG = 'export default { applicationId: "org.gtkx.windowproptypes",' +
-    " agents: { reference: true, rules: false } };";
+const CONFIG =
+    'export default { applicationId: "org.gtkx.windowproptypes",' + " agents: { reference: true, rules: false } };";
 const IMPORTS = `import type { ComponentProps } from "react";
 import type * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -14,7 +14,9 @@ import {
 } from "@gtkx/jsx/gtk";
 import { AdwApplication, AdwApplicationWindow, AdwWindow } from "@gtkx/jsx/adw";
 `;
-const ACCEPTED = IMPORTS + `
+const ACCEPTED =
+    IMPORTS +
+    `
 export const nativeProps = (windowInstance: Gtk.Window, appInstance: Gtk.Application) => {
     const windowValues: (Gtk.Window | null | undefined)[] = [windowInstance, null, undefined];
     const applicationValues: (Gtk.Application | null | undefined)[] = [appInstance, null, undefined];
@@ -51,9 +53,10 @@ const REJECTED: Record<string, string> = {
     "dialog-parent.tsx": "export const props = { transientFor: <AdwWindow /> } satisfies GtkNativeDialogProps;",
     "window-parent.tsx": "export const props = { transientFor: <AdwWindow /> } satisfies GtkWindowProps;",
     "window-application.tsx": "export const props = { application: <AdwApplication /> } satisfies GtkWindowProps;",
-    "inherited-parent.tsx": "export const props = { transientFor: <AdwWindow /> }" +
-        " satisfies ComponentProps<typeof AdwWindow>;",
-    "inherited-application.tsx": "export const props = { application: <AdwApplication /> }" +
+    "inherited-parent.tsx":
+        "export const props = { transientFor: <AdwWindow /> }" + " satisfies ComponentProps<typeof AdwWindow>;",
+    "inherited-application.tsx":
+        "export const props = { application: <AdwApplication /> }" +
         " satisfies ComponentProps<typeof AdwApplicationWindow>;",
     "rendered-parent.tsx": "export const view = <AdwWindow transientFor={<AdwWindow />} />;",
 };
@@ -66,15 +69,17 @@ describe("generated window and application property types", () => {
         const rejectedFiles = Object.fromEntries(
             Object.entries(REJECTED).map(([name, source]) => [name, IMPORTS + source]),
         );
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-window-props-",
-            config: CONFIG,
-            hasAgentReference: true,
-            files: {
-                "accepted.tsx": ACCEPTED,
-                ...rejectedFiles,
-            },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-window-props-",
+                config: CONFIG,
+                hasAgentReference: true,
+                files: {
+                    "accepted.tsx": ACCEPTED,
+                    ...rejectedFiles,
+                },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });

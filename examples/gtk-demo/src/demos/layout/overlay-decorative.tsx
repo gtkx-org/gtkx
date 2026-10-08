@@ -96,14 +96,14 @@ function OverlayDecorativeDemo() {
                     hexpand
                     vexpand
                     leftMargin={Math.round(margin)}
-                    buffer={(
+                    buffer={
                         <GtkTextBuffer>
                             <GtkTextTag name="top-margin" pixelsAboveLines={Math.round(margin)}>
                                 Dear
                             </GtkTextTag>
                             {" diary..."}
                         </GtkTextBuffer>
-                    )}
+                    }
                 />
             </GtkScrolledWindow>
         </GtkOverlay>

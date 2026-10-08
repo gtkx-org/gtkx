@@ -127,8 +127,8 @@ class ModuleContext {
 
     qualifyType(namespaceName: string, name: string): string {
         const directory = namespaceName.toLowerCase();
-        const override = namespaceOverrides(directory).find((entry) =>
-            entry.exports !== "*" && entry.exports.includes(name)
+        const override = namespaceOverrides(directory).find(
+            (entry) => entry.exports !== "*" && entry.exports.includes(name),
         );
 
         if (override === undefined) {

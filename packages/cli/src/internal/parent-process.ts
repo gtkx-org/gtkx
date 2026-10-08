@@ -9,8 +9,9 @@ type ProcessIdentity = {
 };
 
 type ProcessGroupOwner = Pick<ProcessIdentity, "pid" | "startTime">;
-type ProcessGroupOwnerCapture = { isCaptured: true; owner: ProcessGroupOwner | undefined } |
-    { isCaptured: false; error: Error };
+type ProcessGroupOwnerCapture =
+    | { isCaptured: true; owner: ProcessGroupOwner | undefined }
+    | { isCaptured: false; error: Error };
 
 const initialParentId = process.ppid;
 const STOPPED_PROCESS_STATES: Set<string> = new Set(["Z", "X", "x"]);

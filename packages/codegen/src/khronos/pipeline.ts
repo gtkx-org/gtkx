@@ -111,12 +111,7 @@ const PLAN_POLICY: GlPlanPolicy = {
 
 const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);
 
-const GROUP_BEARING_PARAM_KINDS: Set<ParamPlan["kind"]> = new Set([
-    "scalar",
-    "array-in",
-    "ref-out",
-    "ref-array-out",
-]);
+const GROUP_BEARING_PARAM_KINDS: Set<ParamPlan["kind"]> = new Set(["scalar", "array-in", "ref-out", "ref-array-out"]);
 
 const GL_SELECTION: GlSelection = { api: "gl", version: 4.6, profile: "core" };
 

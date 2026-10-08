@@ -3,16 +3,16 @@ defineProps<{ label: string; href?: string }>();
 </script>
 
 <template>
-  <component
-    :is="href ? 'a' : 'button'"
-    :href="href"
-    :type="href ? undefined : 'button'"
-    class="icon-btn"
-    :aria-label="label"
-    :title="label"
-  >
-    <slot />
-  </component>
+    <component
+        :is="href ? 'a' : 'button'"
+        :href="href"
+        :type="href ? undefined : 'button'"
+        class="icon-btn"
+        :aria-label="label"
+        :title="label"
+    >
+        <slot />
+    </component>
 </template>
 
 <style scoped>

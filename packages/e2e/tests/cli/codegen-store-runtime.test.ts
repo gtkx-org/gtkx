@@ -33,20 +33,29 @@ it("generates paired stores beside local React when runtime is hoisted above the
     const fromReact = createRequire(join(project.nodeModules, "@gtkx", "react", "package.json"));
 
     for (const store of ["gi", "jsx"]) {
-        expect(realpathSync(fromReact.resolve(`@gtkx/${store}/gtk`)))
-            .toBe(realpathSync(linkPath(project, store, "gtk", "index.js")));
+        expect(realpathSync(fromReact.resolve(`@gtkx/${store}/gtk`))).toBe(
+            realpathSync(linkPath(project, store, "gtk", "index.js")),
+        );
     }
 
     const fromRuntime = createRequire(join(runtime, "package.json"));
     expect(() => fromRuntime.resolve("@gtkx/gi/glib")).toThrow();
-    const result = spawnSync(process.execPath, ["--input-type=module", "--eval", `
+    const result = spawnSync(
+        process.execPath,
+        [
+            "--input-type=module",
+            "--eval",
+            `
         import assert from "node:assert/strict";
         import { getMonotonicTime } from "@gtkx/gi/glib";
         import { quit, TYPE_BOOLEAN, typeFromName } from "@gtkx/runtime";
         assert.equal(typeFromName("gboolean"), TYPE_BOOLEAN);
         assert.ok(getMonotonicTime() > 0);
         quit();
-    `], { cwd: project.root, encoding: "utf8", timeout: 60_000 });
+    `,
+        ],
+        { cwd: project.root, encoding: "utf8", timeout: 60_000 },
+    );
 
     expect(result.stderr).toBe("");
     expect(result.status).toBe(0);

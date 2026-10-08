@@ -20,7 +20,9 @@ const bytesFor = (isBytes: boolean, values: number[]): number[] | Uint8Array =>
     isBytes ? Uint8Array.from(values) : values;
 
 const expectedStates = (isBytes: boolean, shouldPreserveNull: boolean, values: number[]): unknown[] => [
-    shouldPreserveNull ? null : bytesFor(isBytes, []), bytesFor(isBytes, []), bytesFor(isBytes, values),
+    shouldPreserveNull ? null : bytesFor(isBytes, []),
+    bytesFor(isBytes, []),
+    bytesFor(isBytes, values),
 ];
 
 test.each(modes)("contiguous byte results preserve their public shape (%o)", ({ isBytes, preserveNull }) => {
@@ -41,14 +43,21 @@ test.each(modes)("contiguous byte results preserve their public shape (%o)", ({ 
         expect(readGArray(state)).toEqual(value);
     }
 
-    const readFixed = t.bind(library, "gtkx_u8_result", [t.int32, t.ref(t.uint64)],
-        t.fixedArray(t.uint8, contents.length, "borrowed", { isBytes }));
+    const readFixed = t.bind(
+        library,
+        "gtkx_u8_result",
+        [t.int32, t.ref(t.uint64)],
+        t.fixedArray(t.uint8, contents.length, "borrowed", { isBytes }),
+    );
     expect(readFixed(2, { value: null })).toEqual(expected[2]);
-    const readFull = t.bind(library, "gtkx_u8_full", [t.ref(t.uint64)],
-        t.sizedArray(t.uint8, 0, "full", { isBytes }));
+    const readFull = t.bind(library, "gtkx_u8_full", [t.ref(t.uint64)], t.sizedArray(t.uint8, 0, "full", { isBytes }));
     expect(readFull({ value: null })).toEqual(expected[2]);
-    const cursor = t.bind(library, "gtkx_u8_cursor", [t.sizedArray(t.uint8, 1), t.uint64, t.uint64],
-        t.cursorArray(t.uint8, { baseParamIndex: 0, sizeParamIndex: 1 }, "borrowed", { isBytes }));
+    const cursor = t.bind(
+        library,
+        "gtkx_u8_cursor",
+        [t.sizedArray(t.uint8, 1), t.uint64, t.uint64],
+        t.cursorArray(t.uint8, { baseParamIndex: 0, sizeParamIndex: 1 }, "borrowed", { isBytes }),
+    );
     expect(cursor(contents, contents.length, 3)).toEqual(bytesFor(isBytes, contents.slice(1)));
 });
 
@@ -77,9 +86,12 @@ test.each(modes)("contiguous byte out refs preserve their public shape (%o)", ({
 
 test.each(modes)("byte callback inputs and fields preserve their shape (%o)", ({ isBytes, preserveNull }) => {
     const sized = { ...t.sizedArray(t.uint8, 1, "borrowed", { isBytes }), preserveNull };
-    const visit = t.bind(library, "gtkx_u8_visit", [
-        t.int32, t.callback([sized, t.uint64], t.void, { scope: "call" }),
-    ], t.void);
+    const visit = t.bind(
+        library,
+        "gtkx_u8_visit",
+        [t.int32, t.callback([sized, t.uint64], t.void, { scope: "call" })],
+        t.void,
+    );
     const seen: unknown[] = [];
     const lengths: unknown[] = [];
     const readRecord = t.bind(library, "gtkx_u8_record", [t.int32], t.struct());
@@ -108,15 +120,23 @@ test.each([false, true])("contiguous byte callback outputs preserve their shape 
     for (const isInout of [false, true]) {
         const sized = { ...t.sizedArray(t.uint8, 1, "full", { isBytes }), preserveNull: true };
         const callback = t.callback([t.ref(sized, isInout), t.ref(t.uint64, isInout)], t.void, { scope: "call" });
-        const invokeRef = t.bind(library, "gtkx_u8_callback_ref", [t.boolean, callback, t.ref(t.uint64)],
-            t.sizedArray(t.uint8, 2, "full", { isBytes }));
+        const invokeRef = t.bind(
+            library,
+            "gtkx_u8_callback_ref",
+            [t.boolean, callback, t.ref(t.uint64)],
+            t.sizedArray(t.uint8, 2, "full", { isBytes }),
+        );
         const seen: unknown[] = [];
         const length = { value: null };
-        const returned = invokeRef(isInout, (value: Ref, size: Ref) => {
-            seen.push(value.value);
-            value.value = contents;
-            size.value = contents.length;
-        }, length);
+        const returned = invokeRef(
+            isInout,
+            (value: Ref, size: Ref) => {
+                seen.push(value.value);
+                value.value = contents;
+                size.value = contents.length;
+            },
+            length,
+        );
         expect(seen).toEqual([isInout ? expected : null]);
         expect(returned).toEqual(expected);
         expect(length.value).toBe(contents.length);

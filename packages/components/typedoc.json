@@ -1,7 +1,5 @@
 {
-    "entryPoints": [
-        "./src/index.ts"
-    ],
+    "entryPoints": ["./src/index.ts"],
     "$schema": "https://typedoc.org/schema.json",
     "intentionallyNotExported": [
         "ColumnViewOwnProps",

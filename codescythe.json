@@ -83,17 +83,9 @@
     ],
     "testFilePatterns": [],
     "aliases": {
-        "@gtkx/native": [
-            "./packages/native/main.js"
-        ],
-        "@gtkx/native/internal": [
-            "./packages/native/internal.js"
-        ],
-        "@gtkx/native/internal/binding": [
-            "./packages/native/binding.js"
-        ],
-        "../src/resources.js": [
-            "./packages/i18n/src/resources.d.ts"
-        ]
+        "@gtkx/native": ["./packages/native/main.js"],
+        "@gtkx/native/internal": ["./packages/native/internal.js"],
+        "@gtkx/native/internal/binding": ["./packages/native/binding.js"],
+        "../src/resources.js": ["./packages/i18n/src/resources.d.ts"]
     }
 }

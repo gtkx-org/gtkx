@@ -21,16 +21,34 @@ it("emits string parameters and preserves the callback copy", () => {
     message.on("content-sniffed", handler);
 
     try {
-        const params = new Map([["charset", "utf8"], ["title", "café ♥"], ["empty", ""]]);
+        const params = new Map([
+            ["charset", "utf8"],
+            ["title", "café ♥"],
+            ["empty", ""],
+        ]);
         message.emit("content-sniffed", "text/plain", params);
         expect(received).toEqual([
-            ["text/plain", new Map([["charset", "utf8"], ["title", "café ♥"], ["empty", ""]])],
+            [
+                "text/plain",
+                new Map([
+                    ["charset", "utf8"],
+                    ["title", "café ♥"],
+                    ["empty", ""],
+                ]),
+            ],
         ]);
 
         params.clear();
         params.set("charset", "ascii");
         expect(received).toEqual([
-            ["text/plain", new Map([["charset", "utf8"], ["title", "café ♥"], ["empty", ""]])],
+            [
+                "text/plain",
+                new Map([
+                    ["charset", "utf8"],
+                    ["title", "café ♥"],
+                    ["empty", ""],
+                ]),
+            ],
         ]);
     } finally {
         message.off("content-sniffed", handler);

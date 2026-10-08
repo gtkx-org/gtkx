@@ -24,13 +24,9 @@ type CaptureState = {
     failure: CaptureFailure | null;
 };
 
-type CaptureResult =
-    { status: "captured"; result: ScreenshotResult } |
-    { status: "failed"; failure: CaptureFailure };
+type CaptureResult = { status: "captured"; result: ScreenshotResult } | { status: "failed"; failure: CaptureFailure };
 
-type CaptureOutcome =
-    { status: "captured"; result: ScreenshotResult } |
-    { status: "stalled"; failure: CaptureFailure };
+type CaptureOutcome = { status: "captured"; result: ScreenshotResult } | { status: "stalled"; failure: CaptureFailure };
 
 type BackgroundSnapshot = {
     renderBackground(...args: [context: object, x: number, y: number, width: number, height: number]): void;
@@ -57,8 +53,7 @@ const NOT_PRESENTING_MESSAGE =
 const EMPTY_WIDGET_HINT =
     "The display is presenting frames to this window, so the widget itself is empty: it painted nothing.";
 
-const OTHER_FAILURE_HINT =
-    "The display is presenting frames to this window, so the capture failed for another reason.";
+const OTHER_FAILURE_HINT = "The display is presenting frames to this window, so the capture failed for another reason.";
 
 const NOTHING_ON_SCREEN_MESSAGE = "Nothing is on screen to capture: no toplevel window is mapped";
 

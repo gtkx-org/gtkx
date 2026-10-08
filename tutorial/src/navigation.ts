@@ -21,8 +21,7 @@ declare module "@react-navigation/core" {
     interface RootNavigator extends RootNavigatorType {}
 }
 
-const isSelection = (params: object | undefined): params is Selection =>
-    params !== undefined && "kind" in params;
+const isSelection = (params: object | undefined): params is Selection => params !== undefined && "kind" in params;
 
 const useSelection = (): Selection | null =>
     useNavigationState<RootParamList, Selection | null>((state) => {

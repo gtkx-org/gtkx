@@ -32,14 +32,17 @@ describe("native story controls", () => {
 
     it("recovers a failed render when controls repair the arguments", async () => {
         const catalog = new StoryCatalog();
-        await catalog.load([{
-            id: "inspector.stories.tsx",
-            title: "Inspector",
-            load: () => Promise.resolve({
-                default: { ...controlMeta, component: RecoverableControlFixture },
-                Default: {},
-            }),
-        }]);
+        await catalog.load([
+            {
+                id: "inspector.stories.tsx",
+                title: "Inspector",
+                load: () =>
+                    Promise.resolve({
+                        default: { ...controlMeta, component: RecoverableControlFixture },
+                        Default: {},
+                    }),
+            },
+        ]);
         const explorer = <Storybook catalog={catalog} />;
         const result = await render(explorer, { container: rootElement });
         await userEvent.click(screen.getByText("Increment local state"));
@@ -143,8 +146,9 @@ describe("native story controls", () => {
             expect(screen.getByName(`storybook-control-${argument}`)).toBeDisabled();
         }
 
-        expect(within(screen.getByName("storybook-control-text")).getByRole(Gtk.AccessibleRole.TEXT_BOX))
-            .toHaveDisplayValue("Initial");
+        expect(
+            within(screen.getByName("storybook-control-text")).getByRole(Gtk.AccessibleRole.TEXT_BOX),
+        ).toHaveDisplayValue("Initial");
         expect(screen.getByName("storybook-control-choice")).toHaveDisplayValue("green");
         await userEvent.click(screen.getByText("Increment local state"));
         expect(screen.getByName("inspector-clicks")).toHaveTextContent(/^1$/);

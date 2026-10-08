@@ -9,16 +9,16 @@ Choose the suite that exercises the changed behavior: native widget interactions
 
 ## Where tests live
 
-| Location | Observable behavior exercised |
-| --- | --- |
-| `packages/e2e/tests` | Rendering, widget relationships, prop updates, signals, accessibility, input, runtime integration, and the testing library itself. |
-| `packages/e2e/tests/native` | Generated bindings against compiled GObject Introspection fixtures: ownership, callbacks, arrays, strings, records, errors, and object lifetimes. |
-| `packages/e2e/tests/cli`, `mcp`, and `create-gtkx` | CLI configuration, codegen, development sessions, bundling, deployment, process lifecycles, MCP sessions, and scaffolding. |
-| `packages/e2e/tests/publish.test.ts` | Installing, scaffolding, building, and testing consumer applications through a local package registry. |
-| `packages/e2e/tests/tutorial.test.ts` | The tutorial as an installed consumer, including chapter checkpoints, startup, typechecking, tests, localization, and packaging. |
-| `packages/native/tests` and `packages/runtime/tests` | Native addon and JavaScript runtime behavior. |
-| Other package `tests/` directories | Package behavior such as forms, navigation, animation, localization, and stories. |
-| `examples/storybook/tests` | Story explorer behavior in a consuming application. |
+| Location                                             | Observable behavior exercised                                                                                                                     |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/e2e/tests`                                 | Rendering, widget relationships, prop updates, signals, accessibility, input, runtime integration, and the testing library itself.                |
+| `packages/e2e/tests/native`                          | Generated bindings against compiled GObject Introspection fixtures: ownership, callbacks, arrays, strings, records, errors, and object lifetimes. |
+| `packages/e2e/tests/cli`, `mcp`, and `create-gtkx`   | CLI configuration, codegen, development sessions, bundling, deployment, process lifecycles, MCP sessions, and scaffolding.                        |
+| `packages/e2e/tests/publish.test.ts`                 | Installing, scaffolding, building, and testing consumer applications through a local package registry.                                            |
+| `packages/e2e/tests/tutorial.test.ts`                | The tutorial as an installed consumer, including chapter checkpoints, startup, typechecking, tests, localization, and packaging.                  |
+| `packages/native/tests` and `packages/runtime/tests` | Native addon and JavaScript runtime behavior.                                                                                                     |
+| Other package `tests/` directories                   | Package behavior such as forms, navigation, animation, localization, and stories.                                                                 |
+| `examples/storybook/tests`                           | Story explorer behavior in a consuming application.                                                                                               |
 
 Nx discovers package tests from their Vitest configurations and declares prerequisite builds and generated fixtures. The Storybook example uses a package script so Nx can discover its tests before the CLI plugin is built. There is no root Vitest aggregator. `pnpm test` runs the workspace's `test` targets, while `pnpm e2e` runs the CLI, MCP, and scaffolder checks. Published-consumer and tutorial acceptance checks run separately with `pnpm acceptance`.
 

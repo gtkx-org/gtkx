@@ -429,9 +429,7 @@ describe("registerClass — signal error paths: names and accumulators", () => {
     });
 
     it("throws for the same signal declared under both spellings", () => {
-        expect(() =>
-            registerSignals("GtkxSignalDoubled", { ["flip_flop"]: {}, "flip-flop": {} }),
-        ).toThrow();
+        expect(() => registerSignals("GtkxSignalDoubled", { ["flip_flop"]: {}, "flip-flop": {} })).toThrow();
     });
 });
 
@@ -467,8 +465,6 @@ describe("registerClass — signal error paths: parameter types", () => {
             marker = "no-gtype";
         }
 
-        expect(() =>
-            registerSignals("GtkxSignalBadClassParam", { broken: { paramTypes: [Plain] } }),
-        ).toThrow();
+        expect(() => registerSignals("GtkxSignalBadClassParam", { broken: { paramTypes: [Plain] } })).toThrow();
     });
 });

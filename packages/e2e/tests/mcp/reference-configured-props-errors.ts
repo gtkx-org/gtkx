@@ -24,9 +24,9 @@ const expectConfiguredPropsRejection = async (
     try {
         expect(await apiDocs(request)).toContain("### `auditCaption`");
         writePropsConfig(project, exported, module);
-        await expect.poll(
-            () => isToolFailure(state.server.client, "gtkx_get_api_docs", request, REQUEST_OPTIONS),
-        ).toBe(true);
+        await expect
+            .poll(() => isToolFailure(state.server.client, "gtkx_get_api_docs", request, REQUEST_OPTIONS))
+            .toBe(true);
         writePropsConfig(project);
         await expect.poll(() => apiDocs(request)).toContain("### `auditCaption`");
     } finally {

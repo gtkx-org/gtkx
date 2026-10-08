@@ -231,9 +231,9 @@ test("a byte field reads the low byte of the integer written over it", () => {
 test("a gunichar storage field reads the written codepoint", () => {
     const block = alloc(16);
 
-    writeField(INT32, block, 0, 0x1_F6_00);
+    writeField(INT32, block, 0, 0x1_f6_00);
 
-    expect(readField(UNICHAR_STORAGE, block, 0)).toBe(0x1_F6_00);
+    expect(readField(UNICHAR_STORAGE, block, 0)).toBe(0x1_f6_00);
 });
 
 test("an inline struct field decodes to a handle aliasing the owner's memory", () => {
@@ -246,8 +246,8 @@ test("an inline struct field decodes to a handle aliasing the owner's memory", (
     const child = readField(inlineStruct, block, 8) as ExternalObject<Handle>;
 
     expect([readField(uint8, child, 0), readField(uint8, child, 1)]).toEqual([0x68, 0x69]);
-    writeField(uint8, child, 1, 0x6F);
-    expect(readField(uint8, block, 9)).toBe(0x6F);
+    writeField(uint8, child, 1, 0x6f);
+    expect(readField(uint8, block, 9)).toBe(0x6f);
 });
 
 test("writing a string into unsigned storage throws", () => {

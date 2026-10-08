@@ -32,13 +32,7 @@ const dev = defineCommand({
         reapStaleHeadlessDisplaysAtStartup();
         const initialProcessGroupOwner = getInitialProcessGroupOwner();
 
-        if (
-            !armParentDeath(
-                initialParentId,
-                initialProcessGroupOwner?.pid,
-                initialProcessGroupOwner?.startTime,
-            )
-        ) {
+        if (!armParentDeath(initialParentId, initialProcessGroupOwner?.pid, initialProcessGroupOwner?.startTime)) {
             throw new Error("The process that launched gtkx dev exited during startup");
         }
 
@@ -47,12 +41,7 @@ const dev = defineCommand({
         }
 
         const { cwd, entry: entryPath, configFile, configDependencies } = await prepareProject(args, DEV_MODE);
-        const watch: DevWatch | undefined = await resolveConfigWatch(
-            cwd,
-            DEV_MODE,
-            configFile,
-            configDependencies,
-        );
+        const watch: DevWatch | undefined = await resolveConfigWatch(cwd, DEV_MODE, configFile, configDependencies);
         const { applicationArgs } = splitApplicationArgs(process.argv.slice(2));
         const stopHeadless = args.headless ? await startHeadlessDevDisplay(args.size) : undefined;
 

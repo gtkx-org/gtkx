@@ -35,10 +35,12 @@ const resolvePropsModule = (specifier: string, containingFile: string): string =
 };
 
 const declarationError = (diagnostics: readonly ts.Diagnostic[], root: string): Error =>
-    new Error(ts.formatDiagnostics(diagnostics, {
-        getCanonicalFileName: (fileName) => fileName,
-        getCurrentDirectory: () => root,
-        getNewLine: () => "\n",
-    }));
+    new Error(
+        ts.formatDiagnostics(diagnostics, {
+            getCanonicalFileName: (fileName) => fileName,
+            getCurrentDirectory: () => root,
+            getNewLine: () => "\n",
+        }),
+    );
 
 export { declarationError, PROPS_COMPILER_OPTIONS, PROPS_ORIGIN, resolvePropsModule, VIRTUAL_GI_ROOT };

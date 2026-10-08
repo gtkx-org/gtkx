@@ -72,9 +72,4 @@ const useReminders = (tasks: Task[], reminderMinutes: number): Reminder[] => {
     return reminders;
 };
 
-export {
-    isCurrentReminder,
-    isPendingReminder,
-    type Reminder,
-    useReminders,
-};
+export { isCurrentReminder, isPendingReminder, type Reminder, useReminders };

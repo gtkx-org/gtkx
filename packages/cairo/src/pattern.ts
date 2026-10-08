@@ -25,12 +25,7 @@ import { parsePath } from "./path.js";
 import { checkStatus } from "./status.js";
 import { Surface } from "./surface.js";
 
-type RgbaRefs = [
-    red: { value: number },
-    green: { value: number },
-    blue: { value: number },
-    alpha: { value: number },
-];
+type RgbaRefs = [red: { value: number }, green: { value: number }, blue: { value: number }, alpha: { value: number }];
 
 const PATTERN_TYPE = cairoGType("cairo_gobject_pattern_get_type");
 const FOUR_DOUBLES_OUT = [t.ref(t.float64), t.ref(t.float64), t.ref(t.float64), t.ref(t.float64)];

@@ -1,10 +1,4 @@
 {
-    "entryPoints": [
-        "./src/index.ts",
-        "./src/vite-plugin.ts"
-    ],
-    "intentionallyNotExported": [
-        "LoadConfigOptions",
-        "ResolvedReactCompilerOptions"
-    ]
+    "entryPoints": ["./src/index.ts", "./src/vite-plugin.ts"],
+    "intentionallyNotExported": ["LoadConfigOptions", "ResolvedReactCompilerOptions"]
 }

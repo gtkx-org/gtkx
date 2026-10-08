@@ -12,11 +12,13 @@ const OVERRIDES: Record<string, Override[]> = {
         { module: "sidebar", exports: "*", needsBootstrap: true },
         { module: "combo-row", exports: "*", needsBootstrap: true },
     ],
-    gio: [{
-        module: "application",
-        exports: ["Application"],
-        needsBootstrap: true,
-    }],
+    gio: [
+        {
+            module: "application",
+            exports: ["Application"],
+            needsBootstrap: true,
+        },
+    ],
     glib: [
         { module: "regex", exports: ["MatchInfo"], needsBootstrap: true },
         {
@@ -50,8 +52,7 @@ const OVERRIDES: Record<string, Override[]> = {
 
 const namespaceOverrides = (directory: string): Override[] => OVERRIDES[directory] ?? [];
 
-const overrideImportPath = (override: Override): string =>
-    sourceStringLiteral(`./overrides/${override.module}.js`);
+const overrideImportPath = (override: Override): string => sourceStringLiteral(`./overrides/${override.module}.js`);
 
 const renderOverrideImports = (directory: string): string[] =>
     namespaceOverrides(directory)

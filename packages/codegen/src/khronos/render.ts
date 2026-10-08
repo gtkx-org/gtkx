@@ -107,9 +107,7 @@ const returnStatements = (call: string, returned: EmittedReturn, outs: OutArg[])
         const [single] = outValues;
 
         const tail =
-            single !== undefined && outValues.length === 1
-                ? `return ${single};`
-                : `return [${outValues.join(", ")}];`;
+            single !== undefined && outValues.length === 1 ? `return ${single};` : `return [${outValues.join(", ")}];`;
 
         return [`${call};`, tail];
     }
@@ -216,7 +214,7 @@ const genSingularJsDoc = (context: SingularContext, prefix: InArg[], shape: GenS
     return singularCommandJsDoc(
         context,
         `Returns one ${shape.objectClass} object name via ` +
-        `\`${command.name}(${prefix.length > 0 ? "..., " : ""}1, ...)\`.`,
+            `\`${command.name}(${prefix.length > 0 ? "..., " : ""}1, ...)\`.`,
         [
             ...prefix.map((arg) => inParamDocLine(context.plan, arg, context.docs)),
             ` * @returns \`${shape.outScalar.tsAlias}\`, object class \`${shape.objectClass}\``,

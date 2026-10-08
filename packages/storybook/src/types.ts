@@ -71,20 +71,16 @@ type Annotations<TArgs extends object> = {
 };
 
 /** Default export metadata describing a component's stories and their shared annotations. */
-type ComponentMeta<TArgs extends object> = Annotations<TArgs> & Pick<
-    ComponentAnnotations<NativeRenderer<TArgs>, TArgs>,
-    "title" | "id" | "includeStories" | "excludeStories"
-> & {
-    /** Component rendered with story args when no custom render annotation applies. */
-    component?: ComponentType<TArgs>;
-    /** Global overrides shared by this component's stories. */
-    globals?: Args;
-};
+type ComponentMeta<TArgs extends object> = Annotations<TArgs> &
+    Pick<ComponentAnnotations<NativeRenderer<TArgs>, TArgs>, "title" | "id" | "includeStories" | "excludeStories"> & {
+        /** Component rendered with story args when no custom render annotation applies. */
+        component?: ComponentType<TArgs>;
+        /** Global overrides shared by this component's stories. */
+        globals?: Args;
+    };
 
 /** Resolves a component's props or accepts an explicitly supplied args object type. */
-type ComponentOrProps<T> = T extends ComponentType<infer Props extends object>
-    ? Props
-    : T extends object ? T : Args;
+type ComponentOrProps<T> = T extends ComponentType<infer Props extends object> ? Props : T extends object ? T : Args;
 
 /** Presents combined inferred args as a single object type. */
 type Simplify<T> = { [Key in keyof T]: T[Key] };
@@ -92,10 +88,12 @@ type Simplify<T> = { [Key in keyof T]: T[Key] };
 /** Infers story args from component props, render functions, decorators, or declared defaults. */
 type ArgsFrom<T> = T extends { component?: infer Component; render?: unknown; decorators?: unknown }
     ? Simplify<
-        (NonNullable<Component> extends ComponentType<infer Props extends object> ? Props : object) &
-        ArgsFromMeta<NativeRenderer, T>
-    >
-    : T extends { args: infer Defaults extends object } ? Defaults : Args;
+          (NonNullable<Component> extends ComponentType<infer Props extends object> ? Props : object) &
+              ArgsFromMeta<NativeRenderer, T>
+      >
+    : T extends { args: infer Defaults extends object }
+      ? Defaults
+      : Args;
 
 /** CSF3 default export metadata typed from a React component or an explicit args type. */
 type Meta<T = Args> = ComponentMeta<ComponentOrProps<T>>;
@@ -112,15 +110,16 @@ type StoryAnnotations<TArgs extends object> = Annotations<TArgs> & {
 type DefaultArgs<T> = T extends { args: infer Defaults } ? Defaults : Record<never, never>;
 
 /** Makes args with metadata defaults optional while preserving other required args. */
-type RequiredStoryArgs<T, TArgs extends object> =
-    Omit<TArgs, keyof DefaultArgs<T>> & Partial<Pick<TArgs, keyof TArgs & keyof DefaultArgs<T>>>;
+type RequiredStoryArgs<T, TArgs extends object> = Omit<TArgs, keyof DefaultArgs<T>> &
+    Partial<Pick<TArgs, keyof TArgs & keyof DefaultArgs<T>>>;
 
 /** CSF3 story object inferred from metadata, a React component, or an explicit args type. */
 type StoryObj<T = Args> = T extends { component?: unknown; render?: unknown; decorators?: unknown; args?: unknown }
-    ? StoryAnnotations<ArgsFrom<T>> & Pick<
-        StorybookAnnotations<NativeRenderer<ArgsFrom<T>>, ArgsFrom<T>, RequiredStoryArgs<T, ArgsFrom<T>>>,
-        "args"
-    >
+    ? StoryAnnotations<ArgsFrom<T>> &
+          Pick<
+              StorybookAnnotations<NativeRenderer<ArgsFrom<T>>, ArgsFrom<T>, RequiredStoryArgs<T, ArgsFrom<T>>>,
+              "args"
+          >
     : StoryAnnotations<ComponentOrProps<T>>;
 
 /** Project annotations shared by all composed stories. */
@@ -160,9 +159,10 @@ type StoryKeys<TModule extends StoryModule> = {
     [Key in keyof TModule]: Key extends "default" | "__esModule" | "__namedExportsOrder"
         ? never
         : TModule[Key] extends StoryAnnotations<ArgsFrom<TModule["default"]>>
-            ? Key
-            : never;
-}[keyof TModule] & string;
+          ? Key
+          : never;
+}[keyof TModule] &
+    string;
 
 /** Composed stories keyed by their original named exports. */
 type ComposedStories<TModule extends StoryModule> = Record<

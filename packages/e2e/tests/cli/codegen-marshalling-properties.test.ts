@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createCliProject, runCli } from "./cli-project.js";
 import { fixtureConfig } from "./codegen-helpers.js";
-import {
-    evaluateProject,
-    GIO_CONFIG,
-    ORIENTABLE_CONFIG,
-    typecheckProject,
-} from "./codegen-marshalling-project.js";
+import { evaluateProject, GIO_CONFIG, ORIENTABLE_CONFIG, typecheckProject } from "./codegen-marshalling-project.js";
 
 const INTERFACE_PROPERTY_PROBE = `import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -381,9 +376,7 @@ describe("gtkx codegen marshalling", () => {
 
         expect(runCli(project, ["codegen"]).status).toBe(0);
         expect(typecheckProject(project)).toBe(0);
-        expect(evaluateProject(project, PROPERTY_OVERRIDE_SPELLING_PROBE)).toBe(
-            "margin-top,margin-top,margin-top",
-        );
+        expect(evaluateProject(project, PROPERTY_OVERRIDE_SPELLING_PROBE)).toBe("margin-top,margin-top,margin-top");
 
         for (const file of Object.keys(PROPERTY_TYPE_ERRORS)) {
             expect(typecheckProject(project, file)).not.toBe(0);

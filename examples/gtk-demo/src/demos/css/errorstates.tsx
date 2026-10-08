@@ -282,13 +282,13 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                     accessibleInvalid={showError ? Gtk.AccessibleInvalidState.TRUE : Gtk.AccessibleInvalidState.FALSE}
                     accessibleErrorMessage={showError && errorLabel ? [errorLabel] : undefined}
                     onStateSet={onStateSet}
-                    controllers={(
+                    controllers={
                         <GtkShortcutController
                             scope={Gtk.ShortcutScope.MANAGED}
-                            shortcuts={(
+                            shortcuts={
                                 <GtkShortcut
                                     trigger={<GtkShortcutTrigger accelerator="<Control>m" />}
-                                    action={(
+                                    action={
                                         <GtkCallbackAction
                                             callback={() => {
                                                 modeSwitch?.activate();
@@ -296,11 +296,11 @@ const ModeSwitchRow = ({ state, onStateSet }: ModeSwitchRowProps) => {
                                                 return true;
                                             }}
                                         />
-                                    )}
+                                    }
                                 />
-                            )}
+                            }
                         />
-                    )}
+                    }
                 />
             </GtkGridLayoutChild>
             {showError && <ModeErrorLabel setErrorLabel={setErrorLabel} />}

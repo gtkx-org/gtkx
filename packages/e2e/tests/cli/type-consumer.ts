@@ -11,13 +11,19 @@ const TYPESCRIPT_CLI = join(WORKSPACE, "node_modules/@typescript/native/bin/tsc"
 const PACKAGES = ["cairo", "components", "config", "css", "forms", "native", "react", "runtime", "utils"];
 const TYPECHECK_OPTIONS = [
     "--noEmit",
-    "--module", "ESNext",
-    "--moduleResolution", "Bundler",
-    "--target", "ESNext",
-    "--jsx", "react-jsx",
+    "--module",
+    "ESNext",
+    "--moduleResolution",
+    "Bundler",
+    "--target",
+    "ESNext",
+    "--jsx",
+    "react-jsx",
     "--strict",
-    "--skipLibCheck", "false",
-    "--types", "node",
+    "--skipLibCheck",
+    "false",
+    "--types",
+    "node",
 ];
 
 type TypeScriptResult = { status: number; output: string };
@@ -25,18 +31,23 @@ type TypeScriptResult = { status: number; output: string };
 const compileNativeFixture = (project: CliProject, source: string, library: string, pkg: string): void => {
     const flags = execFileSync(resolveExecutable("pkg-config"), ["--cflags", "--libs", pkg], {
         encoding: "utf8",
-    }).trim().split(/\s+/);
+    })
+        .trim()
+        .split(/\s+/);
     execFileSync(resolveExecutable("cc"), [
-        "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror", source,
-        "-o", join(project.root, library), ...flags,
+        "-shared",
+        "-fPIC",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        source,
+        "-o",
+        join(project.root, library),
+        ...flags,
     ]);
 };
 
-const runNativeConsumer = (
-    project: CliProject,
-    file = "probe.ts",
-    nodeOptions: readonly string[] = [],
-): void => {
+const runNativeConsumer = (project: CliProject, file = "probe.ts", nodeOptions: readonly string[] = []): void => {
     const libraryPath = [project.root, process.env.LD_LIBRARY_PATH]
         .filter((entry) => entry !== undefined && entry !== "")
         .join(":");
@@ -117,11 +128,7 @@ const runTypeScript = (project: CliProject, args: readonly string[], timeout?: n
 };
 
 const typecheckFile = (project: CliProject, file: string, compilerOptions: readonly string[] = []): number =>
-    runTypeScript(project, [
-        ...TYPECHECK_OPTIONS,
-        ...compilerOptions,
-        file,
-    ]).status;
+    runTypeScript(project, [...TYPECHECK_OPTIONS, ...compilerOptions, file]).status;
 
 const typecheckFiles = (project: CliProject, files: readonly string[]): Map<string, TypeScriptResult> => {
     const roots = new Map(files.map((file) => [resolve(project.root, file), file]));
@@ -129,11 +136,12 @@ const typecheckFiles = (project: CliProject, files: readonly string[]): Map<stri
     const host = ts.createCompilerHost(options);
     host.getCurrentDirectory = () => project.root;
     const program = ts.createProgram([...roots.keys()], options, host);
-    const format = (diagnostics: readonly ts.Diagnostic[]): string => ts.formatDiagnostics(diagnostics, {
-        getCanonicalFileName: (file) => file,
-        getCurrentDirectory: () => project.root,
-        getNewLine: () => "\n",
-    });
+    const format = (diagnostics: readonly ts.Diagnostic[]): string =>
+        ts.formatDiagnostics(diagnostics, {
+            getCanonicalFileName: (file) => file,
+            getCurrentDirectory: () => project.root,
+            getNewLine: () => "\n",
+        });
     const setupErrors = [
         ...program.getOptionsDiagnostics(),
         ...program.getGlobalDiagnostics(),
@@ -153,19 +161,25 @@ const typecheckFiles = (project: CliProject, files: readonly string[]): Map<stri
     }
 
     const diagnostics = program.getSemanticDiagnostics();
-    const unrelated = diagnostics.filter((diagnostic) =>
-        diagnostic.file === undefined || !roots.has(diagnostic.file.fileName) ||
-        diagnostic.code === 2307 || diagnostic.code === 7016);
+    const unrelated = diagnostics.filter(
+        (diagnostic) =>
+            diagnostic.file === undefined ||
+            !roots.has(diagnostic.file.fileName) ||
+            diagnostic.code === 2307 ||
+            diagnostic.code === 7016,
+    );
 
     if (unrelated.length > 0) {
         throw new Error(format(unrelated));
     }
 
-    return new Map([...roots].map(([absolute, file]) => {
-        const errors = diagnostics.filter((diagnostic) => diagnostic.file?.fileName === absolute);
+    return new Map(
+        [...roots].map(([absolute, file]) => {
+            const errors = diagnostics.filter((diagnostic) => diagnostic.file?.fileName === absolute);
 
-        return [file, { status: errors.length === 0 ? 0 : 1, output: format(errors) }];
-    }));
+            return [file, { status: errors.length === 0 ? 0 : 1, output: format(errors) }];
+        }),
+    );
 };
 
 const typecheckProject = (project: CliProject, configFile: string, timeout?: number): number =>

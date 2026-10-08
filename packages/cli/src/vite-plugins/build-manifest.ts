@@ -52,7 +52,8 @@ const packageForModule = (id: string): PackageSource | null => {
 const packageKey = ({ manifest }: PackageSource): string => `${manifest.name}@${manifest.version ?? ""}`;
 
 const packagesFor = (root: string, ids: string[]): RecordedPackage[] => {
-    const found = ids.map((id) => packageForModule(id))
+    const found = ids
+        .map((id) => packageForModule(id))
         .filter((entry) => entry !== null)
         .filter((entry) => realpathSync(entry.dir) !== root);
     const unique = new Map(found.map((entry) => [packageKey(entry), entry]));

@@ -11,8 +11,8 @@ import {
     writePropsConfig,
 } from "./configured-props-fixture.js";
 
-const INVALID_DECLARATION = 'import type * as Gtk from "@gtkx/gi/gtk";\n' +
-    "export interface AliasProps { auditWidget: Gtk.Absent; }\n";
+const INVALID_DECLARATION =
+    'import type * as Gtk from "@gtkx/gi/gtk";\n' + "export interface AliasProps { auditWidget: Gtk.Absent; }\n";
 
 describe("configured element prop reference", () => {
     it("rejects an absent GIR type without replacing prior pages", () => {

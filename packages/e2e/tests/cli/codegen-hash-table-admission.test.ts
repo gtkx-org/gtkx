@@ -1,10 +1,16 @@
 import { loadApiReference, resolveGirPath } from "@gtkx/codegen";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CliProject } from "./cli-project.js";
-import { createHashTableAdmissionProject, HASH_TABLE_IMPORTS, HASH_TABLE_REJECTED } from "./codegen-hash-table-admission-fixture.js";
+import {
+    createHashTableAdmissionProject,
+    HASH_TABLE_IMPORTS,
+    HASH_TABLE_REJECTED,
+} from "./codegen-hash-table-admission-fixture.js";
 import { typecheckFiles } from "./type-consumer.js";
 
-const ACCEPTED = HASH_TABLE_IMPORTS + `
+const ACCEPTED =
+    HASH_TABLE_IMPORTS +
+    `
 export const table: NumericTables.TableAlias = new Map([["value", 1n]]);
 export const nested: NumericTables.NestedTables = [table];
 export const keyAlias: NumericTables.KeyTableAlias = new Map([[1n, 1]]);
@@ -79,18 +85,53 @@ export class Derived extends NumericTables.Probe {
 `;
 
 const OMITTED_FUNCTIONS = [
-    "takeTypeWordKeys", "takeTypeWordAlias", "readTypeWordChain",
-    "takeTypeBorrowed", "readTypes", "readNestedTypes", "readTypeOut", "readTypeArrays", "useTypeInput",
-    "takeFull", "takeContainer", "takeKey", "takeType", "takeNestedFull", "useOwnedReturn", "useOwnedOutput",
-    "takeKeyBorrowed", "readSignedKeys", "readTypeKeys", "readKeyOut", "readKeyArrays", "useKeyInput",
+    "takeTypeWordKeys",
+    "takeTypeWordAlias",
+    "readTypeWordChain",
+    "takeTypeBorrowed",
+    "readTypes",
+    "readNestedTypes",
+    "readTypeOut",
+    "readTypeArrays",
+    "useTypeInput",
+    "takeFull",
+    "takeContainer",
+    "takeKey",
+    "takeType",
+    "takeNestedFull",
+    "useOwnedReturn",
+    "useOwnedOutput",
+    "takeKeyBorrowed",
+    "readSignedKeys",
+    "readTypeKeys",
+    "readKeyOut",
+    "readKeyArrays",
+    "useKeyInput",
 ];
 const OMITTED_CALLBACKS = [
-    "TypeInput", "TypeReturn", "TypeOutput",
-    "OwnedReturn", "ContainerReturn", "OwnedOutput", "OwnedInout", "KeyInput", "KeyReturn", "KeyOutput",
+    "TypeInput",
+    "TypeReturn",
+    "TypeOutput",
+    "OwnedReturn",
+    "ContainerReturn",
+    "OwnedOutput",
+    "OwnedInout",
+    "KeyInput",
+    "KeyReturn",
+    "KeyOutput",
 ];
 const OMITTED_MEMBERS = [
-    "takeFull", "vfuncOwnedInput", "vfuncOwnedResult", "vfuncOwnedOutput", "vfuncDecodedOwned",
-    "keyed", "vfuncKeyInput", "vfuncKeyResult", "typed", "vfuncTypeInput", "vfuncTypeResult",
+    "takeFull",
+    "vfuncOwnedInput",
+    "vfuncOwnedResult",
+    "vfuncOwnedOutput",
+    "vfuncDecodedOwned",
+    "keyed",
+    "vfuncKeyInput",
+    "vfuncKeyResult",
+    "typed",
+    "vfuncTypeInput",
+    "vfuncTypeResult",
 ];
 
 describe("generated numeric hash table ownership admission", () => {
@@ -99,12 +140,9 @@ describe("generated numeric hash table ownership admission", () => {
     let reference: ReturnType<typeof loadApiReference>;
 
     beforeAll(() => {
-        project = createHashTableAdmissionProject(
-            cleanup,
-            "gtkx-cli-hash-table-admission-",
-            HASH_TABLE_REJECTED,
-            { "accepted.tsx": ACCEPTED },
-        );
+        project = createHashTableAdmissionProject(cleanup, "gtkx-cli-hash-table-admission-", HASH_TABLE_REJECTED, {
+            "accepted.tsx": ACCEPTED,
+        });
         reference = loadApiReference({
             libraries: ["NumericTables-1.0", "Gtk-4.0"],
             girPath: resolveGirPath(["gir"], project.root),
@@ -129,8 +167,17 @@ describe("generated numeric hash table ownership admission", () => {
             expect(reference.lookup(`NumericTables.${name}`, "function").outcome).toBe("notFound");
         }
         for (const name of [
-            "takeBorrowed", "takeWords", "readFull", "readOut", "readNested", "useOwnedInput",
-            "readDoubleKeys", "identityType", "identityTypeWord", "identityTypeWordChain", "identitySizeWord",
+            "takeBorrowed",
+            "takeWords",
+            "readFull",
+            "readOut",
+            "readNested",
+            "useOwnedInput",
+            "readDoubleKeys",
+            "identityType",
+            "identityTypeWord",
+            "identityTypeWordChain",
+            "identitySizeWord",
         ]) {
             expect(reference.lookup(`NumericTables.${name}`, "function").outcome).toBe("page");
         }
@@ -139,8 +186,18 @@ describe("generated numeric hash table ownership admission", () => {
         }
         expect(reference.lookup("NumericTables.OwnedReturnAlias", "alias").outcome).toBe("notFound");
         for (const name of [
-            "Table", "TableAlias", "NestedTables", "SignedCell", "TypeWord", "KeyTable", "KeyTableAlias",
-            "TypeId", "TypeTable", "TypeTableAlias", "TypeWordChain", "SizeWord",
+            "Table",
+            "TableAlias",
+            "NestedTables",
+            "SignedCell",
+            "TypeWord",
+            "KeyTable",
+            "KeyTableAlias",
+            "TypeId",
+            "TypeTable",
+            "TypeTableAlias",
+            "TypeWordChain",
+            "SizeWord",
         ]) {
             expect(reference.lookup(`NumericTables.${name}`, "alias").outcome).toBe("page");
         }

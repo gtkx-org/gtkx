@@ -12,12 +12,16 @@ const sumTerminated = t.bind(library, "gtkx_i64_terminated_sum", [t.array(t.bigi
 test("native callbacks receive bigint values and normalize returned numbers and reference values", () => {
     const output: Ref = { value: null };
     const received: unknown[] = [];
-    const result = invokeCallback(2 ** 53, (initial: bigint, updated: Ref) => {
-        received.push(initial, updated.value);
-        updated.value = -(2 ** 53);
+    const result = invokeCallback(
+        2 ** 53,
+        (initial: bigint, updated: Ref) => {
+            received.push(initial, updated.value);
+            updated.value = -(2 ** 53);
 
-        return 17;
-    }, output);
+            return 17;
+        },
+        output,
+    );
 
     expect(received).toEqual([2n ** 53n, 2n ** 53n]);
     expect(output.value).toBe(-(2n ** 53n));
@@ -29,11 +33,17 @@ test.each([1.5, Infinity, 2 ** 53 + 2])("rejects callback number result %s", (va
 });
 
 test.each([1.5, Infinity, 2 ** 53 + 2])("rejects callback reference number %s", (value) => {
-    expect(() => invokeCallback(1, (_initial: bigint, updated: Ref) => {
-        updated.value = value;
+    expect(() =>
+        invokeCallback(
+            1,
+            (_initial: bigint, updated: Ref) => {
+                updated.value = value;
 
-        return 0;
-    }, { value: null })).toThrow();
+                return 0;
+            },
+            { value: null },
+        ),
+    ).toThrow();
 });
 
 test("sized and terminated arrays normalize mixed number and bigint elements", () => {

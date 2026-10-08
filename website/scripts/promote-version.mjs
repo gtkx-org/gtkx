@@ -28,8 +28,7 @@ const requireSingle = (versions, status) => {
 
 const isSectionPath = (rest) =>
     SECTIONS.some(
-        (section) =>
-            rest === `/${section}` || rest.startsWith(`/${section}/`) || rest.startsWith(`/${section}#`),
+        (section) => rest === `/${section}` || rest.startsWith(`/${section}/`) || rest.startsWith(`/${section}#`),
     );
 
 const createRewriter = (moves) => {
@@ -163,9 +162,12 @@ if (retired.length > 0) {
     throw new Error(`Retire the old version served at ${prefixes} before promoting another release.`);
 }
 
-if (manifest.versions.some((version) =>
-    version.prefix === values.to || (version !== outgoing && (version.aliases ?? []).includes(values.to)),
-)) {
+if (
+    manifest.versions.some(
+        (version) =>
+            version.prefix === values.to || (version !== outgoing && (version.aliases ?? []).includes(values.to)),
+    )
+) {
     throw new Error(`versions.json already declares the prefix ${values.to}.`);
 }
 

@@ -81,21 +81,22 @@ function loadKeyItem(schema: Gio.SettingsSchema, settings: Gio.Settings, name: s
     };
 }
 
-function SchemaSettings({ schemaId, onLoaded }: {
-    schemaId: string;
-    onLoaded: (schema: SchemaKeys) => void;
-}) {
-    const handleRef = useCallback((settings: Gio.Settings | null) => {
-        if (!settings) {
-            return;
-        }
+function SchemaSettings({ schemaId, onLoaded }: { schemaId: string; onLoaded: (schema: SchemaKeys) => void }) {
+    const handleRef = useCallback(
+        (settings: Gio.Settings | null) => {
+            if (!settings) {
+                return;
+            }
 
-        const schema = GObject.getProperty(settings, "settingsSchema") as Gio.SettingsSchema;
-        const keys = schema.listKeys()
-            .toSorted((a, b) => a.localeCompare(b))
-            .map((name) => loadKeyItem(schema, settings, name));
-        onLoaded({ schemaId, keys });
-    }, [schemaId, onLoaded]);
+            const schema = GObject.getProperty(settings, "settingsSchema") as Gio.SettingsSchema;
+            const keys = schema
+                .listKeys()
+                .toSorted((a, b) => a.localeCompare(b))
+                .map((name) => loadKeyItem(schema, settings, name));
+            onLoaded({ schemaId, keys });
+        },
+        [schemaId, onLoaded],
+    );
 
     return createPortal(<GSettings schemaId={schemaId} ref={handleRef} />, rootElement);
 }
@@ -137,14 +138,11 @@ function applySettingValue(key: KeyItem, entry: Gtk.Entry): string {
 function replaceKeyValue(schemas: SchemaKeys[], keyId: string, value: string): SchemaKeys[] {
     return schemas.map((schema) => ({
         ...schema,
-        keys: schema.keys.map((item) => item.id === keyId ? { ...item, value } : item),
+        keys: schema.keys.map((item) => (item.id === keyId ? { ...item, value } : item)),
     }));
 }
 
-function SettingEntry({ item, onValueEdit }: {
-    item: KeyItem;
-    onValueEdit: (key: KeyItem, entry: Gtk.Entry) => void;
-}) {
+function SettingEntry({ item, onValueEdit }: { item: KeyItem; onValueEdit: (key: KeyItem, entry: Gtk.Entry) => void }) {
     const entryRef = useRef<Gtk.Entry | null>(null);
 
     return (
@@ -157,7 +155,7 @@ function SettingEntry({ item, onValueEdit }: {
             onActivate={(entry) => {
                 onValueEdit(item, entry);
             }}
-            controllers={(
+            controllers={
                 <GtkEventControllerFocus
                     onLeave={() => {
                         if (entryRef.current) {
@@ -165,7 +163,7 @@ function SettingEntry({ item, onValueEdit }: {
                         }
                     }}
                 />
-            )}
+            }
         />
     );
 }
@@ -174,7 +172,10 @@ function renderSchemaHeader({ section: schemaId }: { section: string }) {
     return <GtkLabel xalign={0}>{schemaId}</GtkLabel>;
 }
 
-const SchemaKeysListView = ({ filteredSchemaKeys, onValueEdit }: {
+const SchemaKeysListView = ({
+    filteredSchemaKeys,
+    onValueEdit,
+}: {
     filteredSchemaKeys: SchemaKeys[];
     onValueEdit: (key: KeyItem, entry: Gtk.Entry) => void;
 }) => (
@@ -218,13 +219,19 @@ function useSettings2Context(): Settings2ContextValue {
 function ListViewSettings2Provider({ children }: DemoProviderProps) {
     const [searchText, setSearchText] = useState("");
     const [isSearchActive, setIsSearchActive] = useState(false);
-    const [schemaIds] = useState(() =>
-        Gio.SettingsSchemaSource.getDefault()?.listSchemas(true)[0].toSorted((a, b) => a.localeCompare(b)) ?? [],
+    const [schemaIds] = useState(
+        () =>
+            Gio.SettingsSchemaSource.getDefault()
+                ?.listSchemas(true)[0]
+                .toSorted((a, b) => a.localeCompare(b)) ?? [],
     );
     const [allSchemaKeys, setAllSchemaKeys] = useState<SchemaKeys[]>([]);
     const handleSchemaLoaded = useCallback((schema: SchemaKeys) => {
-        setAllSchemaKeys((previous) => [...previous.filter((item) => item.schemaId !== schema.schemaId), schema]
-            .toSorted((a, b) => a.schemaId.localeCompare(b.schemaId)));
+        setAllSchemaKeys((previous) =>
+            [...previous.filter((item) => item.schemaId !== schema.schemaId), schema].toSorted((a, b) =>
+                a.schemaId.localeCompare(b.schemaId),
+            ),
+        );
     }, []);
 
     const handleSearchChanged = (entry: Gtk.SearchEntry) => {
@@ -278,7 +285,7 @@ function ListViewSettings2Titlebar() {
 
     return (
         <GtkHeaderBar
-            end={(
+            end={
                 <GtkToggleButton
                     name="search-toggle"
                     iconName="system-search-symbolic"
@@ -289,7 +296,7 @@ function ListViewSettings2Titlebar() {
                         setSearchText("");
                     }}
                 />
-            )}
+            }
         />
     );
 }
@@ -309,10 +316,7 @@ function ListViewSettings2Demo() {
                     onStopSearch={handleStopSearch}
                 />
             </GtkSearchBar>
-            <SchemaKeysListView
-                filteredSchemaKeys={filteredSchemaKeys}
-                onValueEdit={handleValueEdit}
-            />
+            <SchemaKeysListView filteredSchemaKeys={filteredSchemaKeys} onValueEdit={handleValueEdit} />
         </GtkBox>
     );
 }

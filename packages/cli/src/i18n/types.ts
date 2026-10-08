@@ -17,11 +17,7 @@ const clearI18nResources = (root: string): void => {
     rmSync(i18nResourceDir(root), { force: true, recursive: true });
 };
 
-const i18nToolkitConfig = (
-    root: string,
-    sourceFiles: string[],
-    plugins: Plugin[] = [],
-): I18nextToolkitConfig => ({
+const i18nToolkitConfig = (root: string, sourceFiles: string[], plugins: Plugin[] = []): I18nextToolkitConfig => ({
     locales: ["en"],
     plugins,
     extract: {
@@ -110,11 +106,4 @@ const clearI18nTypes = (root: string): void => {
     clearI18nResources(root);
 };
 
-export {
-    I18N_TYPES_FILENAME,
-    clearI18nResources,
-    clearI18nTypes,
-    emitI18nTypes,
-    i18nToolkitConfig,
-    i18nTypesPath,
-};
+export { I18N_TYPES_FILENAME, clearI18nResources, clearI18nTypes, emitI18nTypes, i18nToolkitConfig, i18nTypesPath };

@@ -40,23 +40,21 @@ const DuePicker = ({ task }: { task: Task }) => {
     return (
         <AdwActionRow
             title={t("Due")}
-            suffix={(
+            suffix={
                 <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
-                    {task.due
-                        ? (
-                                <GtkButton
-                                    iconName="edit-clear-symbolic"
-                                    cssClasses={["flat", "circular"]}
-                                    accessibleLabel={t("Clear due date")}
-                                    onClicked={() => {
-                                        updateTask(task.id, { due: null });
-                                    }}
-                                />
-                            )
-                        : null}
+                    {task.due ? (
+                        <GtkButton
+                            iconName="edit-clear-symbolic"
+                            cssClasses={["flat", "circular"]}
+                            accessibleLabel={t("Clear due date")}
+                            onClicked={() => {
+                                updateTask(task.id, { due: null });
+                            }}
+                        />
+                    ) : null}
                     <GtkMenuButton
                         label={formatDue(task.due) ?? t("Set date")}
-                        popover={(
+                        popover={
                             <GtkPopover>
                                 <GtkCalendar
                                     accessibleLabel={t("Due")}
@@ -66,10 +64,10 @@ const DuePicker = ({ task }: { task: Task }) => {
                                     }}
                                 />
                             </GtkPopover>
-                        )}
+                        }
                     />
                 </GtkBox>
-            )}
+            }
         />
     );
 };
@@ -131,7 +129,7 @@ const TaskNotes = ({ task }: { task: Task }) => {
                 <GtkTextView
                     wrapMode={Gtk.WrapMode.WORD_CHAR}
                     cssClasses={[detailNotes]}
-                    buffer={(
+                    buffer={
                         <GtkTextBuffer
                             enableUndo
                             text={task.notes}
@@ -140,7 +138,7 @@ const TaskNotes = ({ task }: { task: Task }) => {
                                 updateTask(task.id, { notes });
                             }}
                         />
-                    )}
+                    }
                 />
             </GtkScrolledWindow>
         </GtkBox>
@@ -149,20 +147,14 @@ const TaskNotes = ({ task }: { task: Task }) => {
 
 const TaskMetadata = ({ task }: { task: Task }) => (
     <AdwPreferencesGroup>
-        <AdwActionRow
-            cssClasses={["property"]}
-            title={t("Created")}
-            subtitle={formatDateTime(task.createdAt)}
-        />
-        {task.completedAt
-            ? (
-                    <AdwActionRow
-                        cssClasses={["property"]}
-                        title={t("Completed")}
-                        subtitle={formatDateTime(task.completedAt)}
-                    />
-                )
-            : null}
+        <AdwActionRow cssClasses={["property"]} title={t("Created")} subtitle={formatDateTime(task.createdAt)} />
+        {task.completedAt ? (
+            <AdwActionRow
+                cssClasses={["property"]}
+                title={t("Completed")}
+                subtitle={formatDateTime(task.completedAt)}
+            />
+        ) : null}
     </AdwPreferencesGroup>
 );
 
@@ -178,6 +170,4 @@ const TaskDetail = ({ task }: { task: Task }) => (
     </GtkScrolledWindow>
 );
 
-export {
-    TaskDetail,
-};
+export { TaskDetail };

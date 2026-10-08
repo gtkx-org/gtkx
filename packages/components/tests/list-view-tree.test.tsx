@@ -30,11 +30,7 @@ const branchC = (): ListItem<TreeName> => treeBranch("c", [treeLeaf("c0")]);
 const nestedTree = (): ListItem<TreeName>[] => [branchA(), treeLeaf("b"), branchC()];
 const shuffledTree = (): ListItem<TreeName>[] => [treeLeaf("z"), branchA(), branchC()];
 
-const grownTree = (): ListItem<TreeName>[] => [
-    branchA(),
-    treeBranch("b", [treeLeaf("b0"), treeLeaf("b1")]),
-    branchC(),
-];
+const grownTree = (): ListItem<TreeName>[] => [branchA(), treeBranch("b", [treeLeaf("b0"), treeLeaf("b1")]), branchC()];
 
 const growingTree = (leading: ListItem<TreeName>[]): ListItem<TreeName>[] => [
     ...leading,

@@ -32,9 +32,10 @@ describe("Tasks", () => {
         expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Buy milk & café" })).toBeDefined();
         const file = join(getUserDataDir(), applicationId, "tasks.json");
         const saved: unknown = JSON.parse(readFileSync(file, "utf8"));
-        expect(saved).toHaveProperty("state.tasks", expect.arrayContaining([
-            expect.objectContaining({ title: "Buy milk & café" }),
-        ]));
+        expect(saved).toHaveProperty(
+            "state.tasks",
+            expect.arrayContaining([expect.objectContaining({ title: "Buy milk & café" })]),
+        );
     });
 
     it("adds a task from the entry row", async () => {

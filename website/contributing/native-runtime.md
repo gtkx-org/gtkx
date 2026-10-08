@@ -41,14 +41,14 @@ JavaScript wrappers hold native handles through the TypeScript runtime's registr
 
 A handle is a Rust object exposed through Node's external-value mechanism. [`native/src/handle.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/handle.rs) distinguishes several underlying lifetimes:
 
-| Handle kind | Lifetime behavior |
-| --- | --- |
-| GObject | Holds or borrows a GObject reference and participates in wrapper tracking. |
-| Boxed value | Uses the boxed type's copy and free behavior, or the supplied operations. |
-| Fundamental value | Uses native reference and release functions for a non-GObject reference-counted type. |
-| Owned record | Owns an allocation released through its free function or GLib's allocator. |
-| Borrowed pointer | Refers to memory owned elsewhere, with an explicitly limited or process-wide lifetime. |
-| Field view | Aliases an offset inside another handle and keeps that owner reachable. |
+| Handle kind       | Lifetime behavior                                                                      |
+| ----------------- | -------------------------------------------------------------------------------------- |
+| GObject           | Holds or borrows a GObject reference and participates in wrapper tracking.             |
+| Boxed value       | Uses the boxed type's copy and free behavior, or the supplied operations.              |
+| Fundamental value | Uses native reference and release functions for a non-GObject reference-counted type.  |
+| Owned record      | Owns an allocation released through its free function or GLib's allocator.             |
+| Borrowed pointer  | Refers to memory owned elsewhere, with an explicitly limited or process-wide lifetime. |
+| Field view        | Aliases an offset inside another handle and keeps that owner reachable.                |
 
 Tracked GObjects reuse an existing JavaScript wrapper when one is available. This matters for identity, JavaScript state attached to subclasses, and signal handlers. The native implementation stores wrapper information on the GObject and uses toggle references to coordinate native reference counts with the strength of Node's reference to the wrapper. Native ownership keeps the wrapper reachable; when the toggle reference is the remaining native reference, the JavaScript wrapper can become collectible.
 
@@ -80,11 +80,11 @@ Importing the public native package runs its bootstrap and initializes the nativ
 
 The integration uses three kinds of libuv handle:
 
-| Handle | Purpose |
-| --- | --- |
-| Prepare | Dispatch ready GLib work without blocking before libuv waits. |
-| Poll | Wake libuv when file descriptors requested by GLib become ready. |
-| Timer | Wake libuv for GLib timeouts or immediately ready sources. |
+| Handle  | Purpose                                                          |
+| ------- | ---------------------------------------------------------------- |
+| Prepare | Dispatch ready GLib work without blocking before libuv waits.    |
+| Poll    | Wake libuv when file descriptors requested by GLib become ready. |
+| Timer   | Wake libuv for GLib timeouts or immediately ready sources.       |
 
 Each prepare callback iterates the GLib context without blocking, stopping when there is no work or the current four-millisecond dispatch budget expires. It then queries GLib's next deadline and descriptors, updates poll handles, and arms the timer. The budget limits a batch of iterations; it cannot interrupt a long-running callback. Native dispatch runs within Node callback scopes so JavaScript callbacks and microtasks participate in Node's execution model.
 

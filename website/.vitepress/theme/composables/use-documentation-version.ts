@@ -24,9 +24,7 @@ const useDocumentationVersion = (): VersionContext => {
     const { frontmatter } = useData();
     const documentation = computed<DocumentationFrontmatter>(() => frontmatter.value);
     const links = computed(() => new Map(Object.entries(documentation.value.versionLinks ?? {})));
-    const version = computed(
-        () => versions.find((entry) => entry.id === documentation.value.versionId) ?? rootVersion,
-    );
+    const version = computed(() => versions.find((entry) => entry.id === documentation.value.versionId) ?? rootVersion);
 
     return {
         version,

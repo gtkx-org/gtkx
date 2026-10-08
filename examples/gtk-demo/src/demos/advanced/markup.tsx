@@ -166,7 +166,7 @@ function MarkupTitlebar() {
 
     return (
         <GtkHeaderBar
-            start={(
+            start={
                 <GtkCheckButton
                     label="Source"
                     active={isShowingSource}
@@ -175,7 +175,7 @@ function MarkupTitlebar() {
                         handleSourceToggle(btn.getActive());
                     }}
                 />
-            )}
+            }
         />
     );
 }

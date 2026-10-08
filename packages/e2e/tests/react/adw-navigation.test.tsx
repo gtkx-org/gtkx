@@ -455,9 +455,11 @@ describe("render - AdwSidebar", () => {
                                 key={title}
                                 ref={title === "Files" ? itemRef : undefined}
                                 title={title}
-                                suffix={title === "Files" && suffix !== null
-                                    ? <GtkLabel key={suffix}>{suffix}</GtkLabel>
-                                    : null}
+                                suffix={
+                                    title === "Files" && suffix !== null ? (
+                                        <GtkLabel key={suffix}>{suffix}</GtkLabel>
+                                    ) : null
+                                }
                             />
                         ))}
                     </AdwSidebarSection>

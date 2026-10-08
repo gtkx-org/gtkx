@@ -46,8 +46,7 @@ const anonymousMemberFromNode = (node: RawNode, isUnion: boolean, context: Parse
 
 const collectFields = (node: RawNode, context: ParseContext): GirField[] =>
     getOrderedChildren(node, ["field", "union", "record"]).map(({ tag, node: child }) =>
-        tag === "field"
-            ? fieldFromNode(child, context)
-            : anonymousMemberFromNode(child, tag === "union", context));
+        tag === "field" ? fieldFromNode(child, context) : anonymousMemberFromNode(child, tag === "union", context),
+    );
 
 export { collectFields, type GirField };

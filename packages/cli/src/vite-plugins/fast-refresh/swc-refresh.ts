@@ -24,19 +24,13 @@ const buildTypeStripOptions = (id: string): SwcOptions => ({
     },
 });
 
-const buildRefreshOptions = (
-    id: string,
-    language: RefreshLanguage,
-    inputSourceMap?: string,
-): SwcOptions => ({
+const buildRefreshOptions = (id: string, language: RefreshLanguage, inputSourceMap?: string): SwcOptions => ({
     ...(inputSourceMap !== undefined && { inputSourceMap }),
     filename: id,
     sourceFileName: id,
     sourceMaps: true,
     jsc: {
-        parser: language === "tsx"
-            ? { syntax: "typescript", tsx: true }
-            : { syntax: "ecmascript", jsx: true },
+        parser: language === "tsx" ? { syntax: "typescript", tsx: true } : { syntax: "ecmascript", jsx: true },
         transform: {
             react: {
                 runtime: "automatic",

@@ -48,7 +48,8 @@ const executableModeFor = (path: string): number =>
     (sourceMode(path) & EXECUTE_MASK) === 0 ? READABLE_MODE : EXECUTABLE_MODE;
 
 const copyTree = (root: string, relBase: string, sourceDir: string): StagedFile[] =>
-    listFilesRecursive(sourceDir)
-        .map((file) => copyInto(root, join(relBase, file.rel), file.absPath, sourceMode(file.absPath)));
+    listFilesRecursive(sourceDir).map((file) =>
+        copyInto(root, join(relBase, file.rel), file.absPath, sourceMode(file.absPath)),
+    );
 
 export { copyInto, copyTree, EXECUTABLE_MODE, executableModeFor, writeInto };

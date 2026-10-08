@@ -24,10 +24,16 @@ describe("configured GIR property omissions for configured props", () => {
         runCliOrThrow(project, ["docs", "--out", OMITTED_PROPS_OUTPUT]);
         isolateTypeConsumer(project);
         const imports = 'import { GtkEntry, GtkSearchEntry } from "@gtkx/jsx/gtk";\n';
-        expect(typecheckSource(project, imports + `export const views = [
+        expect(
+            typecheckSource(
+                project,
+                imports +
+                    `export const views = [
             <GtkEntry extra visibility />,
             <GtkSearchEntry text="Search" onNotifyText={() => undefined} extra />,
-        ];`)).toBe(0);
+        ];`,
+            ),
+        ).toBe(0);
         for (const view of ['<GtkEntry text="Omitted" />', "<GtkEntry onNotifyText={() => undefined} />"]) {
             expect(typecheckSource(project, imports + `export const view = ${view};`)).not.toBe(0);
         }

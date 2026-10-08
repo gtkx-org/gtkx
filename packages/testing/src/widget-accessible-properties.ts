@@ -109,8 +109,7 @@ const namingLabelText = (widget: Gtk.Widget): string | null => {
 };
 
 const isNamingLabelRole = (role: Gtk.AccessibleRole, shouldIncludePresentation: boolean): boolean =>
-    role === Gtk.AccessibleRole.LABEL ||
-    (shouldIncludePresentation && role === Gtk.AccessibleRole.PRESENTATION);
+    role === Gtk.AccessibleRole.LABEL || (shouldIncludePresentation && role === Gtk.AccessibleRole.PRESENTATION);
 
 const collectLabels = (widget: Gtk.Widget): string[] => {
     const isIncludePresentation = widget.getAccessibleRole() === Gtk.AccessibleRole.MENU_ITEM;
@@ -187,8 +186,8 @@ const comboRowDisplayValue = (widget: Adw.ComboRow): string => {
     }
 
     const factory = widget.getFactory();
-    const current = dropDownFace(widget).find((child) =>
-        child instanceof Gtk.ListView && child.getFactory() === factory,
+    const current = dropDownFace(widget).find(
+        (child) => child instanceof Gtk.ListView && child.getFactory() === factory,
     );
 
     return current === undefined ? "" : (dropDownFaceText(current) ?? "");
@@ -384,7 +383,7 @@ const isWidgetChecked = (widget: Gtk.Widget): boolean | null => {
 const getWidgetPressedState = (widget: Gtk.Widget): boolean | null => {
     const tristate = readAccessibleState(widget, Gtk.AccessibleState.PRESSED);
 
-    return tristate === null ? null : PRESSED_BY_TRISTATE.get(tristate) ?? null;
+    return tristate === null ? null : (PRESSED_BY_TRISTATE.get(tristate) ?? null);
 };
 
 const getWidgetExpandedState = (widget: Gtk.Widget): boolean | null => {
@@ -409,8 +408,7 @@ const getWidgetSelectedState = (widget: Gtk.Widget): boolean | null => {
     return null;
 };
 
-const getWidgetLevel = (widget: Gtk.Widget): number | null =>
-    readAccessibleInt(widget, Gtk.AccessibleProperty.LEVEL);
+const getWidgetLevel = (widget: Gtk.Widget): number | null => readAccessibleInt(widget, Gtk.AccessibleProperty.LEVEL);
 
 const getWidgetInvalidState = (widget: Gtk.Widget): Gtk.AccessibleInvalidState | null =>
     readAccessibleState(widget, Gtk.AccessibleState.INVALID);

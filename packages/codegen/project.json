@@ -3,10 +3,7 @@
     "name": "@gtkx/codegen",
     "targets": {
         "typecheck": {
-            "dependsOn": [
-                "...",
-                "_typecheck:overrides"
-            ]
+            "dependsOn": ["...", "_typecheck:overrides"]
         },
         "_typecheck:overrides": {
             "command": "node ../../scripts/ci/run.mjs 'tsc -p overrides/tsconfig.json'",
@@ -14,9 +11,7 @@
                 "cwd": "packages/codegen"
             },
             "cache": true,
-            "dependsOn": [
-                "gtkx:_build:bindings"
-            ],
+            "dependsOn": ["gtkx:_build:bindings"],
             "inputs": [
                 "default",
                 "^production",

@@ -30,13 +30,8 @@
                 "cwd": "{projectRoot}"
             },
             "cache": true,
-            "dependsOn": [
-                "gtkx:_build:bindings",
-                "@gtkx/cli:build"
-            ],
-            "outputs": [
-                "{projectRoot}/node_modules/.gtkx"
-            ],
+            "dependsOn": ["gtkx:_build:bindings", "@gtkx/cli:build"],
+            "outputs": ["{projectRoot}/node_modules/.gtkx"],
             "inputs": [
                 "default",
                 "^production",
@@ -49,10 +44,7 @@
         },
         "_test:fixtures": {
             "cache": true,
-            "dependsOn": [
-                "@gtkx/utils:build",
-                "_test:fixtures:compile"
-            ],
+            "dependsOn": ["@gtkx/utils:build", "_test:fixtures:compile"],
             "inputs": [
                 "{projectRoot}/tests/helpers/native-fixtures*.ts",
                 "{workspaceRoot}/packages/codegen/src/**/*",
@@ -78,9 +70,7 @@
                 "cwd": "{projectRoot}"
             },
             "cache": true,
-            "dependsOn": [
-                "@gtkx/utils:build"
-            ],
+            "dependsOn": ["@gtkx/utils:build"],
             "inputs": [
                 "{projectRoot}/tests/helpers/native-fixtures-compile.ts",
                 "{workspaceRoot}/packages/utils/src/**/*",
@@ -88,9 +78,7 @@
                 "nativeEnvironment",
                 "{workspaceRoot}/scripts/ci/**/*"
             ],
-            "outputs": [
-                "{workspaceRoot}/build/native-tests/gi-tests/build"
-            ]
+            "outputs": ["{workspaceRoot}/build/native-tests/gi-tests/build"]
         },
         "test": {
             "command": "node ../../scripts/ci/run.mjs 'vitest run --config vitest.integration.config.ts --exclude '\\''**/tests/testing/query-perf.test.tsx'\\'''",
@@ -98,28 +86,13 @@
                 "cwd": "{projectRoot}"
             },
             "cache": true,
-            "dependsOn": [
-                "^build",
-                "codegen",
-                "_test:fixtures"
-            ],
-            "inputs": [
-                "...",
-                "integration",
-                "{workspaceRoot}/scripts/ci/**/*"
-            ],
+            "dependsOn": ["^build", "codegen", "_test:fixtures"],
+            "inputs": ["...", "integration", "{workspaceRoot}/scripts/ci/**/*"],
             "outputs": []
         },
         "e2e": {
-            "dependsOn": [
-                "^build",
-                "gtkx:_build:bindings"
-            ],
-            "inputs": [
-                "...",
-                "default",
-                "^production"
-            ],
+            "dependsOn": ["^build", "gtkx:_build:bindings"],
+            "inputs": ["...", "default", "^production"],
             "parallelism": false
         },
         "acceptance": {
@@ -127,10 +100,7 @@
             "options": {
                 "cwd": "{projectRoot}"
             },
-            "dependsOn": [
-                "^build",
-                "gtkx:_build:bindings"
-            ],
+            "dependsOn": ["^build", "gtkx:_build:bindings"],
             "cache": true,
             "inputs": [
                 "acceptance",
@@ -144,19 +114,10 @@
             "parallelism": false
         },
         "lint": {
-            "dependsOn": [
-                "...",
-                "codegen",
-                "_test:fixtures"
-            ]
+            "dependsOn": ["...", "codegen", "_test:fixtures"]
         },
         "typecheck": {
-            "dependsOn": [
-                "...",
-                "^build",
-                "codegen",
-                "_test:fixtures"
-            ]
+            "dependsOn": ["...", "^build", "codegen", "_test:fixtures"]
         },
         "benchmark": {
             "command": "vitest run --config vitest.integration.config.ts --project=integration tests/testing/query-perf.test.tsx --maxWorkers=1",
@@ -165,10 +126,7 @@
             },
             "cache": false,
             "parallelism": false,
-            "dependsOn": [
-                "^build",
-                "codegen"
-            ],
+            "dependsOn": ["^build", "codegen"],
             "inputs": [
                 "integration",
                 "^production",
@@ -180,11 +138,7 @@
             "outputs": []
         },
         "_lint:eslint": {
-            "dependsOn": [
-                "...",
-                "codegen",
-                "_test:fixtures"
-            ]
+            "dependsOn": ["...", "codegen", "_test:fixtures"]
         }
     }
 }

@@ -1,9 +1,4 @@
-import {
-    type CleanupDirectoryIdentity,
-    cleanupDirectoryIdentity,
-    info,
-    removeCleanupDirectory,
-} from "@gtkx/utils";
+import { type CleanupDirectoryIdentity, cleanupDirectoryIdentity, info, removeCleanupDirectory } from "@gtkx/utils";
 import { constants, lstatSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
@@ -43,23 +38,20 @@ const isPrivateRuntimeDirectory = (runtimeDir: string, userId: number): boolean 
     try {
         const stat = lstatSync(runtimeDir);
 
-        return stat.isDirectory() &&
+        return (
+            stat.isDirectory() &&
             stat.uid === userId &&
             (stat.mode & 0o777) === 0o700 &&
             Date.now() - stat.mtimeMs >= MINIMUM_STALE_AGE_MS &&
             RUNTIME_DIRECTORY_PATTERN.test(basename(runtimeDir)) &&
-            dirname(runtimeDir) === RUNTIME_ROOT;
+            dirname(runtimeDir) === RUNTIME_ROOT
+        );
     } catch {
         return false;
     }
 };
 
-const readOwnedFile = (
-    path: string,
-    runtimeDir: string,
-    userId: number,
-    requiredMode?: number,
-): string | undefined => {
+const readOwnedFile = (path: string, runtimeDir: string, userId: number, requiredMode?: number): string | undefined => {
     try {
         if (dirname(path) !== runtimeDir) {
             return undefined;
@@ -102,9 +94,11 @@ const hasGeneratedRuntimeFiles = (runtimeDir: string, userId: number): boolean =
     const sway = readOwnedFile(join(runtimeDir, "sway.conf"), runtimeDir, userId);
     const marker = readOwnedFile(join(runtimeDir, HEADLESS_RUNTIME_MARKER), runtimeDir, userId, 0o600);
 
-    return marker === createHeadlessRuntimeMarker(runtimeDir) ||
+    return (
+        marker === createHeadlessRuntimeMarker(runtimeDir) ||
         (sway !== undefined && isSwayConfig(sway)) ||
-        hasOnlyBusConfig(runtimeDir);
+        hasOnlyBusConfig(runtimeDir)
+    );
 };
 
 const readProcessArguments = (pid: number): string[] | undefined => {
@@ -203,11 +197,7 @@ const findLiveRuntimeDirectories = (userId: number): Set<string> => {
     return live;
 };
 
-const classifyRuntimeDirectory = (
-    name: string,
-    userId: number,
-    live: ReadonlySet<string>,
-): StaleHeadlessDisplay[] => {
+const classifyRuntimeDirectory = (name: string, userId: number, live: ReadonlySet<string>): StaleHeadlessDisplay[] => {
     const runtimeDir = join(RUNTIME_ROOT, name);
 
     if (
@@ -237,29 +227,16 @@ const findStaleHeadlessDisplays = (): StaleHeadlessDisplay[] => {
         .flatMap((entry) => classifyRuntimeDirectory(entry.name, userId, live));
 };
 
-const isSameCleanupDirectory = (
-    left: CleanupDirectoryIdentity | undefined,
-    right: CleanupDirectoryIdentity,
-): boolean =>
-    left?.device === right.device &&
-    left.inode === right.inode &&
-    left.userId === right.userId;
+const isSameCleanupDirectory = (left: CleanupDirectoryIdentity | undefined, right: CleanupDirectoryIdentity): boolean =>
+    left?.device === right.device && left.inode === right.inode && left.userId === right.userId;
 
-const isReapable = (
-    candidate: StaleHeadlessDisplay,
-    userId: number,
-    live: ReadonlySet<string>,
-): boolean =>
+const isReapable = (candidate: StaleHeadlessDisplay, userId: number, live: ReadonlySet<string>): boolean =>
     !live.has(candidate.runtimeDir) &&
     isSameCleanupDirectory(cleanupDirectoryIdentity(candidate.runtimeDir), candidate.cleanupDirectory) &&
     isPrivateRuntimeDirectory(candidate.runtimeDir, userId) &&
     hasGeneratedRuntimeFiles(candidate.runtimeDir, userId);
 
-const didReapCandidate = (
-    candidate: StaleHeadlessDisplay,
-    userId: number,
-    live: ReadonlySet<string>,
-): boolean => {
+const didReapCandidate = (candidate: StaleHeadlessDisplay, userId: number, live: ReadonlySet<string>): boolean => {
     if (!isReapable(candidate, userId, live)) {
         return false;
     }

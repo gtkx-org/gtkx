@@ -106,8 +106,8 @@ const widgetPropsShape = {
     ...describeParams(widgetPropsParams.shape, {
         widgetId: WIDGET_ID_DESCRIPTION,
         properties:
-            "GObject property names to read as well, in kebab-case or camelCase (\"current-breakpoint\" or " +
-            "\"currentBreakpoint\"). Omit for the summary alone.",
+            'GObject property names to read as well, in kebab-case or camelCase ("current-breakpoint" or ' +
+            '"currentBreakpoint"). Omit for the summary alone.',
         maxDepth:
             `How many levels of descendants to include: ${String(DEFAULT_SUBTREE_DEPTH)} by default, and 0 ` +
             `for the widget on its own. At most ${String(MAX_SUBTREE_WIDGETS)} widgets come back whatever ` +
@@ -178,7 +178,7 @@ const screenshotShape = {
         .optional()
         .describe(
             "Return the PNG as image content (default: true). Set false with `path` to save the image " +
-            "and return only its file location.",
+                "and return only its file location.",
         ),
 };
 
@@ -214,11 +214,7 @@ const logSocketError = (event: Event): void => {
 
 const appWithWindows = async (appRouter: AppRouter, app: AppInfo): Promise<AppWithWindows> => {
     try {
-        const result = await appRouter.sendToApp<{ windows: AppWindow[] }>(
-            app.applicationId,
-            "app.getWindows",
-            {},
-        );
+        const result = await appRouter.sendToApp<{ windows: AppWindow[] }>(app.applicationId, "app.getWindows", {});
 
         return { ...app, windows: result.windows };
     } catch {
@@ -255,9 +251,9 @@ const screenshotResult = (
         return shouldReturnImage
             ? imageContent(result.data, result.mimeType)
             : textError(
-                    "Nothing to return: `returnImage` was false and no `path` was given, so the screenshot was " +
-                    "neither saved nor returned. Pass `path` to save it, or leave `returnImage` unset.",
-                );
+                  "Nothing to return: `returnImage` was false and no `path` was given, so the screenshot was " +
+                      "neither saved nor returned. Pass `path` to save it, or leave `returnImage` unset.",
+              );
     }
 
     const saved = { type: "text", text: `Screenshot saved to ${result.savedPath}` } as const;
@@ -326,10 +322,15 @@ function buildInspectionTools(appRouter: AppRouter): Tool[] {
                 "`rootId` to render just one subtree instead of the whole (possibly truncated) tree.",
             inputSchema: treeShape,
             handler: async ({ applicationId, appTimeout, rootId, maxDepth }) => {
-                const result = await appRouter.sendToApp<{ tree: string }>(applicationId, "widget.getTree", {
-                    rootId,
-                    maxDepth,
-                }, appTimeout);
+                const result = await appRouter.sendToApp<{ tree: string }>(
+                    applicationId,
+                    "widget.getTree",
+                    {
+                        rootId,
+                        maxDepth,
+                    },
+                    appTimeout,
+                );
 
                 return textContent(result.tree);
             },
@@ -555,7 +556,10 @@ const resolveSettings = async (options: ServerOptions): Promise<McpSettings> => 
 };
 
 const splitPatterns = (values: string[]): string[] =>
-    values.flatMap((value) => value.split(",")).map((value) => value.trim()).filter((value) => value.length > 0);
+    values
+        .flatMap((value) => value.split(","))
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0);
 
 const parseServerArgs = (argv: string[]): ServerOptions => {
     const { values } = parseArgs({

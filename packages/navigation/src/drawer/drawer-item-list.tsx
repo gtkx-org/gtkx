@@ -29,17 +29,20 @@ const didNavigateToRow = (navigation: DrawerNavigationHelpers, state: Navigation
 };
 
 const useDrawerItemPress = (navigation: DrawerNavigationHelpers, isCollapsed: boolean): RowActivated =>
-    useCallback((row: Gtk.ListBoxRow) => {
-        const state = navigation.getState();
+    useCallback(
+        (row: Gtk.ListBoxRow) => {
+            const state = navigation.getState();
 
-        if (!didNavigateToRow(navigation, state, row.getIndex())) {
-            return;
-        }
+            if (!didNavigateToRow(navigation, state, row.getIndex())) {
+                return;
+            }
 
-        if (isCollapsed) {
-            navigation.dispatch({ ...DrawerActions.closeDrawer(), target: state.key });
-        }
-    }, [navigation, isCollapsed]);
+            if (isCollapsed) {
+                navigation.dispatch({ ...DrawerActions.closeDrawer(), target: state.key });
+            }
+        },
+        [navigation, isCollapsed],
+    );
 
 const DrawerItem = ({ descriptor }: { descriptor: DrawerDescriptor }): ReactNode => {
     const { route, options } = descriptor;

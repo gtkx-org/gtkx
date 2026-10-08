@@ -102,17 +102,17 @@ const inlineWorkerExample = (specifier: string): string =>
 const hoistedWorkerError = (scan: ScanContext, hoisted: HoistedWorkerUrl): Error =>
     new Error(
         `${stripQuery(scan.id)}: the worker URL for ${JSON.stringify(hoisted.specifier)} is bound to ` +
-        `"${hoisted.name}" before it reaches "new Worker". gtkx build emits a worker chunk only for a URL ` +
-        `written inside the construction. Write ${inlineWorkerExample(hoisted.specifier)} instead.`,
+            `"${hoisted.name}" before it reaches "new Worker". gtkx build emits a worker chunk only for a URL ` +
+            `written inside the construction. Write ${inlineWorkerExample(hoisted.specifier)} instead.`,
     );
 
 const unresolvedWorkerError = (scan: ScanContext, specifier: string, suggestion: string | null): Error =>
     new Error(
         `${stripQuery(scan.id)}: the worker specifier ${JSON.stringify(specifier)} does not resolve to a module, ` +
-        "so no worker chunk can be emitted. " +
-        (suggestion === null
-            ? "Correct the path so it names the worker source file as it exists on disk."
-            : `Write ${inlineWorkerExample(suggestion)} instead.`),
+            "so no worker chunk can be emitted. " +
+            (suggestion === null
+                ? "Correct the path so it names the worker source file as it exists on disk."
+                : `Write ${inlineWorkerExample(suggestion)} instead.`),
     );
 
 const suggestionFor = async (emit: EmitContext, scan: ScanContext, specifier: string): Promise<string | null> => {
@@ -174,7 +174,10 @@ const replacementFor = async (
 };
 
 const collectReplacements = async (emit: EmitContext, scan: ScanContext): Promise<WorkerReplacement[]> => {
-    const pending = scan.code.matchAll(WORKER_URL).map((match) => replacementFor(emit, scan, match)).toArray();
+    const pending = scan.code
+        .matchAll(WORKER_URL)
+        .map((match) => replacementFor(emit, scan, match))
+        .toArray();
     const found = await Promise.all(pending);
 
     return found.filter((entry) => entry !== null);

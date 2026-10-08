@@ -84,7 +84,9 @@ const withShownSidebar = (router: DrawerRouterInstance, isCollapsed: () => boole
         keepSidebarShown(state, router.getStateForRouteFocus(state, key), isCollapsed()),
 });
 
-const createDrawerRouter = (isCollapsed: () => boolean): DrawerRouterFactory => (options) =>
-    withShownSidebar(DrawerRouter(options), isCollapsed);
+const createDrawerRouter =
+    (isCollapsed: () => boolean): DrawerRouterFactory =>
+    (options) =>
+        withShownSidebar(DrawerRouter(options), isCollapsed);
 
 export { createDrawerRouter, type DrawerRouterFactory };

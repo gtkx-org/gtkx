@@ -76,8 +76,11 @@ const hasStoreExports = (storeDir: string, required: string[], forbidden: string
     };
     const exports = manifest.exports;
 
-    if (exports === undefined || required.some((key) => !Object.hasOwn(exports, key)) ||
-        forbidden.some((key) => Object.hasOwn(exports, key))) {
+    if (
+        exports === undefined ||
+        required.some((key) => !Object.hasOwn(exports, key)) ||
+        forbidden.some((key) => Object.hasOwn(exports, key))
+    ) {
         return false;
     }
 
@@ -87,10 +90,7 @@ const hasStoreExports = (storeDir: string, required: string[], forbidden: string
 };
 
 const isGiStoreStale = (store: CodegenStore, libraries: string[]): boolean => {
-    const required = [
-        PACKAGE_EXPORT,
-        ...resolveBoundLibraries(libraries).map((library) => namespaceExport(library)),
-    ];
+    const required = [PACKAGE_EXPORT, ...resolveBoundLibraries(libraries).map((library) => namespaceExport(library))];
 
     return !hasStoreExports(store.giStoreDir, required);
 };

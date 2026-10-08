@@ -55,10 +55,10 @@ function LinksDemo() {
             {showKeynavDialog && (
                 <AdwAlertDialog
                     heading="Keyboard navigation"
-                    body={(
+                    body={
                         "The term ‘keynav’ is a shorthand for keyboard navigation and refers to the process of " +
                         "using a program (exclusively) via keyboard input."
-                    )}
+                    }
                     responses={[{ id: "ok", label: "_OK" }]}
                     defaultResponse="ok"
                     closeResponse="ok"

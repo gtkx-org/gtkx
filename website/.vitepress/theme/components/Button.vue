@@ -10,15 +10,11 @@ withDefaults(
 </script>
 
 <template>
-  <a
-    :href="href"
-    class="btn"
-    :class="[`btn--${variant}`, `btn--${size}`]"
-  >
-    <slot name="icon-left" />
-    <slot />
-    <slot name="icon-right" />
-  </a>
+    <a :href="href" class="btn" :class="[`btn--${variant}`, `btn--${size}`]">
+        <slot name="icon-left" />
+        <slot />
+        <slot name="icon-right" />
+    </a>
 </template>
 
 <style scoped>

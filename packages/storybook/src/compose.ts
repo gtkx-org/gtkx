@@ -38,15 +38,21 @@ const composeStory = <TArgs extends object>(
         throw new TypeError("A story needs a component or render function");
     }
 
-    return composeStoryAnnotations(story, { ...meta }, preview, {
-        render: (args) => {
-            if (!meta.component) {
-                throw new TypeError("A story needs a component or render function");
-            }
+    return composeStoryAnnotations(
+        story,
+        { ...meta },
+        preview,
+        {
+            render: (args) => {
+                if (!meta.component) {
+                    throw new TypeError("A story needs a component or render function");
+                }
 
-            return createElement(meta.component, args);
+                return createElement(meta.component, args);
+            },
         },
-    }, exportName);
+        exportName,
+    );
 };
 
 /**

@@ -56,15 +56,17 @@ function ListViewApplauncherDemo() {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [launchError, setLaunchError] = useState<{ app: AppItem; error: unknown } | null>(null);
 
-    const [apps] = useState(() => Gio.AppInfo.getAll()
-        .filter((app) => app.shouldShow())
-        .map((app) => ({
-            appInfo: app,
-            id: app.getId() ?? crypto.randomUUID(),
-            name: app.getDisplayName(),
-            icon: app.getIcon(),
-        }))
-        .toSorted((a, b) => a.name.localeCompare(b.name)));
+    const [apps] = useState(() =>
+        Gio.AppInfo.getAll()
+            .filter((app) => app.shouldShow())
+            .map((app) => ({
+                appInfo: app,
+                id: app.getId() ?? crypto.randomUUID(),
+                name: app.getDisplayName(),
+                icon: app.getIcon(),
+            }))
+            .toSorted((a, b) => a.name.localeCompare(b.name)),
+    );
 
     const handleActivate = (position: number) => {
         const app = apps[position];

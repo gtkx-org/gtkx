@@ -35,6 +35,10 @@ const targetsFor = (names: string[]): DeployTarget[] => {
     return sortStrings(requested).map((name) => TARGETS[assertKnown(name)]);
 };
 
-const parseTargetList = (value: string): string[] => value.split(",").map((name) => name.trim()).filter(Boolean);
+const parseTargetList = (value: string): string[] =>
+    value
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean);
 
 export { DEFAULT_TARGETS, KNOWN_NAMES, parseTargetList, targetsFor };

@@ -7,15 +7,15 @@ type NotebookPageContent = (label: string) => ReactNode;
 
 const buildNotebookFrom =
     (ref: RefObject<Gtk.Notebook | null>, content: NotebookPageContent): ChildrenBuilder<string> =>
-        (pages) => (
-            <GtkNotebook ref={ref}>
-                {pages.map((label) => (
-                    <GtkNotebookPage key={label} tabLabel={label}>
-                        {content(label)}
-                    </GtkNotebookPage>
-                ))}
-            </GtkNotebook>
-        );
+    (pages) => (
+        <GtkNotebook ref={ref}>
+            {pages.map((label) => (
+                <GtkNotebookPage key={label} tabLabel={label}>
+                    {content(label)}
+                </GtkNotebookPage>
+            ))}
+        </GtkNotebook>
+    );
 
 const buildPlainNotebook = (ref: RefObject<Gtk.Notebook | null>): ChildrenBuilder<string> =>
     buildNotebookFrom(ref, (label) => <GtkLabel>{label}</GtkLabel>);

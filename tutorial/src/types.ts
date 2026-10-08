@@ -29,12 +29,4 @@ type DialogKind = "none" | "about" | "shortcuts" | "preferences" | "new-list";
 
 type DialogState = { kind: DialogKind } | { kind: "delete-task"; task: Task };
 
-export {
-    type DialogKind,
-    type DialogState,
-    type Filter,
-    type Selection,
-    type SmartView,
-    type Task,
-    type TaskList,
-};
+export { type DialogKind, type DialogState, type Filter, type Selection, type SmartView, type Task, type TaskList };

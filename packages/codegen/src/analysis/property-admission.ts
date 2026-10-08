@@ -4,8 +4,10 @@ import { hasUnsupportedHashTableSlot } from "./hash-table-admission.js";
 import { hasPrimitivePointer, hasScalarPointer, hasUnknownLengthArray } from "./type-shape.js";
 
 const isEmittableProperty = (library: Library, property: GirProperty): boolean =>
-    property.introspectable && !hasUnsupportedHashTableSlot(library, property.type) &&
+    property.introspectable &&
+    !hasUnsupportedHashTableSlot(library, property.type) &&
     !hasPrimitivePointer(library, property.type) &&
-    !hasUnknownLengthArray(library, property.type) && !hasScalarPointer(library, property.type);
+    !hasUnknownLengthArray(library, property.type) &&
+    !hasScalarPointer(library, property.type);
 
 export { isEmittableProperty };

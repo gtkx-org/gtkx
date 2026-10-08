@@ -59,11 +59,7 @@ const NewTaskButtons = () => {
 
     return (
         <>
-            <GtkButton
-                iconName="list-add-symbolic"
-                tooltipText={t("New Task (Ctrl+N)")}
-                actionName="win.new"
-            />
+            <GtkButton iconName="list-add-symbolic" tooltipText={t("New Task (Ctrl+N)")} actionName="win.new" />
             <SearchButton />
         </>
     );
@@ -135,7 +131,7 @@ const WindowContent = ({ toastOverlayRef }: { toastOverlayRef: RefObject<Adw.Toa
             widthRequest={360}
             heightRequest={294}
             onCloseRequest={() => quit()}
-            breakpoints={(
+            breakpoints={
                 <AdwBreakpoint
                     condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
                     onApply={() => {
@@ -145,7 +141,7 @@ const WindowContent = ({ toastOverlayRef }: { toastOverlayRef: RefObject<Adw.Toa
                         setCollapsed(false);
                     }}
                 />
-            )}
+            }
             actions={<WindowActions />}
             controllers={<AppShortcuts />}
         >
@@ -174,6 +170,4 @@ const Window = () => {
     );
 };
 
-export {
-    Window,
-};
+export { Window };

@@ -4,13 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { cliEnvironment, type CliProject, createCliProject, runCliOrThrow, startCli } from "./cli-project.js";
-import {
-    PINNED_SOURCE,
-    PNPM_PIN,
-    SOURCE_ARGS,
-    sourceConfig,
-    sourceFiles,
-} from "./deploy-helpers.js";
+import { PINNED_SOURCE, PNPM_PIN, SOURCE_ARGS, sourceConfig, sourceFiles } from "./deploy-helpers.js";
 
 const DEFAULT_ID = "com.gtkx.configdefault";
 const EDITION_ID = "com.gtkx.configedition";
@@ -222,8 +216,9 @@ describe("GTKX configuration selection", () => {
             "--config",
             EDITION_CONFIG,
         ]);
-        expect(existsSync(join(project.root, "build", process.arch, "metadata", `${EDITION_ID}.metainfo.xml`)))
-            .toBe(true);
+        expect(existsSync(join(project.root, "build", process.arch, "metadata", `${EDITION_ID}.metainfo.xml`))).toBe(
+            true,
+        );
     });
 
     it("lets codegen and dev select project-relative configuration files", () => {
@@ -338,22 +333,13 @@ describe("GTKX configuration selection", () => {
 
         try {
             expect(await waitForOutput(output, LAYER_ID)).toContain(LAYER_ID);
-            writeFileSync(
-                join(project.root, LAYER_BASE_CONFIG),
-                `applicationId: ${REFRESHED_LAYER_ID}\n`,
-            );
+            writeFileSync(join(project.root, LAYER_BASE_CONFIG), `applicationId: ${REFRESHED_LAYER_ID}\n`);
             const refreshed = await waitForOutput(output, REFRESHED_LAYER_ID);
             expect(refreshed).toContain(REFRESHED_LAYER_ID);
             expect(refreshed).toContain(reloadMessage(LAYER_BASE_CONFIG));
-            writeFileSync(
-                join(project.root, LAYER_CONFIG),
-                `extends: ./${MISSING_LAYER_DIRECTORY}\ncodegen: false\n`,
-            );
+            writeFileSync(join(project.root, LAYER_CONFIG), `extends: ./${MISSING_LAYER_DIRECTORY}\ncodegen: false\n`);
             await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL * 5));
-            writeFileSync(
-                join(project.root, MISSING_LAYER_CONFIG),
-                `applicationId: ${RECOVERED_LAYER_ID}\n`,
-            );
+            writeFileSync(join(project.root, MISSING_LAYER_CONFIG), `applicationId: ${RECOVERED_LAYER_ID}\n`);
             const recovered = await waitForOutput(output, RECOVERED_LAYER_ID);
             expect(recovered).toContain(RECOVERED_LAYER_ID);
             expect(recovered).toContain(reloadMessage(MISSING_LAYER_CONFIG));
@@ -436,30 +422,31 @@ describe("GTKX configuration selection", () => {
         });
 
         runCliOrThrow(project, ["build"]);
-        expect(() => runCliOrThrow(project, [
-            "deploy",
-            "--skip-build",
-            "--print-manifests",
-            "--target",
-            "deb",
-            "--config",
-            EDITION_CONFIG,
-        ])).toThrow();
+        expect(() =>
+            runCliOrThrow(project, [
+                "deploy",
+                "--skip-build",
+                "--print-manifests",
+                "--target",
+                "deb",
+                "--config",
+                EDITION_CONFIG,
+            ]),
+        ).toThrow();
 
         runCliOrThrow(project, ["build", "--config", EDITION_CONFIG]);
-        writeFileSync(
-            join(project.root, EDITION_CONFIG),
-            editionConfig.replace("Selected Edition", "Changed Edition"),
-        );
-        expect(() => runCliOrThrow(project, [
-            "deploy",
-            "--skip-build",
-            "--print-manifests",
-            "--target",
-            "deb",
-            "--config",
-            EDITION_CONFIG,
-        ])).toThrow();
+        writeFileSync(join(project.root, EDITION_CONFIG), editionConfig.replace("Selected Edition", "Changed Edition"));
+        expect(() =>
+            runCliOrThrow(project, [
+                "deploy",
+                "--skip-build",
+                "--print-manifests",
+                "--target",
+                "deb",
+                "--config",
+                EDITION_CONFIG,
+            ]),
+        ).toThrow();
     });
 
     it("rejects configuration paths outside the project", () => {

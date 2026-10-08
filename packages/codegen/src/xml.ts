@@ -16,10 +16,10 @@ type SanitizedXml = {
     replacements: Map<string, string>;
 };
 
-const HIGHEST_CONTROL_CODE = 0x1F;
-const LEGAL_CONTROL_CODES: Set<number> = new Set([0x09, 0x0A, 0x0D]);
-const PRIVATE_USE_START = 0xE0_00;
-const PRIVATE_USE_END = 0xF8_FF;
+const HIGHEST_CONTROL_CODE = 0x1f;
+const LEGAL_CONTROL_CODES: Set<number> = new Set([0x09, 0x0a, 0x0d]);
+const PRIVATE_USE_START = 0xe0_00;
+const PRIVATE_USE_END = 0xf8_ff;
 const CONTROL_CODE_RANGE = HIGHEST_CONTROL_CODE + 1;
 
 const createXmlParser = (options: Partial<X2jOptions>): XMLParser =>
@@ -59,8 +59,7 @@ const positionSuffix = (error: unknown): string => {
     return ` (line ${String(line)}, column ${String(col)})`;
 };
 
-const isIllegalControlCode = (code: number): boolean =>
-    code <= HIGHEST_CONTROL_CODE && !LEGAL_CONTROL_CODES.has(code);
+const isIllegalControlCode = (code: number): boolean => code <= HIGHEST_CONTROL_CODE && !LEGAL_CONTROL_CODES.has(code);
 
 const escapedCode = (code: number): string => `[U+${code.toString(16).toUpperCase().padStart(4, "0")}]`;
 
@@ -100,7 +99,7 @@ const occupiedCodePoints = (xml: string): Set<number> => {
     for (const match of xml.matchAll(/&#(?:x([\da-f]+)|(\d+));/giu)) {
         const code = numericEntityCode(match);
 
-        if (code !== undefined && Number.isSafeInteger(code) && code >= 0 && code <= 0x10_FF_FF) {
+        if (code !== undefined && Number.isSafeInteger(code) && code >= 0 && code <= 0x10_ff_ff) {
             occupied.add(code);
         }
     }
@@ -112,10 +111,9 @@ const privateUseBase = (xml: string): number => {
     const occupied = occupiedCodePoints(xml);
 
     for (let base = PRIVATE_USE_START; base + HIGHEST_CONTROL_CODE <= PRIVATE_USE_END; base += CONTROL_CODE_RANGE) {
-        const isAvailable = Array.from(
-            { length: CONTROL_CODE_RANGE },
-            (_, code) => base + code,
-        ).every((code) => !occupied.has(code));
+        const isAvailable = Array.from({ length: CONTROL_CODE_RANGE }, (_, code) => base + code).every(
+            (code) => !occupied.has(code),
+        );
 
         if (isAvailable) {
             return base;
@@ -225,7 +223,7 @@ const assertWellFormed = (input: XmlFileInput, xml: string, displayedXml: string
     } catch (error) {
         throw new Error(
             `The ${input.label} at ${input.path} is not well-formed XML: ` +
-            `${errorMessage(error)}${positionSuffix(error)}${remedySuffix(input, displayedXml, error)}`,
+                `${errorMessage(error)}${positionSuffix(error)}${remedySuffix(input, displayedXml, error)}`,
             { cause: error },
         );
     }
@@ -233,9 +231,10 @@ const assertWellFormed = (input: XmlFileInput, xml: string, displayedXml: string
 
 const parseXmlFile = (input: XmlFileInput): unknown => {
     const xml = readXmlFile(input);
-    const sanitized = input.preserveIllegalControls === true
-        ? sanitizeControlCodes(xml)
-        : { source: xml, replacements: new Map<string, string>() };
+    const sanitized =
+        input.preserveIllegalControls === true
+            ? sanitizeControlCodes(xml)
+            : { source: xml, replacements: new Map<string, string>() };
     assertWellFormed(input, sanitized.source, xml);
 
     try {

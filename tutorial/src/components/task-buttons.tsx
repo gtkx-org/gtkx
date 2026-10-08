@@ -33,6 +33,4 @@ const TaskButtons = ({ id }: { id: string }) => {
     );
 };
 
-export {
-    TaskButtons,
-};
+export { TaskButtons };

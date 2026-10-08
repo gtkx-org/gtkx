@@ -2,10 +2,7 @@
     "$schema": "./node_modules/nx/schemas/nx-schema.json",
     "analytics": false,
     "namedInputs": {
-        "default": [
-            "{projectRoot}/**/*",
-            "sharedGlobals"
-        ],
+        "default": ["{projectRoot}/**/*", "sharedGlobals"],
         "production": [
             "default",
             "!{projectRoot}/tests/**/*",
@@ -66,30 +63,21 @@
                     "configName": "tsconfig.lib.json"
                 }
             },
-            "exclude": [
-                "packages/e2e/tests/cli/fixtures/**",
-                "tutorial/**"
-            ]
+            "exclude": ["packages/e2e/tests/cli/fixtures/**", "tutorial/**"]
         },
         {
             "plugin": "./scripts/ci/oxlint-plugin.mjs",
             "options": {
                 "targetName": "lint"
             },
-            "exclude": [
-                "packages/e2e/tests/cli/fixtures/**",
-                "tutorial/**"
-            ]
+            "exclude": ["packages/e2e/tests/cli/fixtures/**", "tutorial/**"]
         },
         {
             "plugin": "./scripts/ci/eslint-plugin.mjs",
             "options": {
                 "targetName": "_lint:eslint"
             },
-            "exclude": [
-                "packages/e2e/tests/cli/fixtures/**",
-                "tutorial/**"
-            ]
+            "exclude": ["packages/e2e/tests/cli/fixtures/**", "tutorial/**"]
         },
         {
             "plugin": "./scripts/ci/vitest-plugin.mjs",
@@ -97,17 +85,11 @@
                 "testTargetName": "test",
                 "testMode": "run"
             },
-            "exclude": [
-                "examples/**",
-                "packages/e2e/**",
-                "tutorial/**"
-            ]
+            "exclude": ["examples/**", "packages/e2e/**", "tutorial/**"]
         },
         {
             "plugin": "./scripts/ci/vitest-plugin.mjs",
-            "include": [
-                "packages/e2e/vitest.config.ts"
-            ],
+            "include": ["packages/e2e/vitest.config.ts"],
             "options": {
                 "testTargetName": "e2e",
                 "testMode": "run",
@@ -120,33 +102,20 @@
     "targetDefaults": {
         "build": [
             {
-                "dependsOn": [
-                    "...",
-                    "gtkx:_build:bindings"
-                ],
-                "inputs": [
-                    "...",
-                    "sharedGlobals"
-                ]
+                "dependsOn": ["...", "gtkx:_build:bindings"],
+                "inputs": ["...", "sharedGlobals"]
             },
             {
                 "filter": {
                     "plugin": "./scripts/ci/typescript-plugin.mjs"
                 },
                 "options": {
-                    "args": [
-                        "--noCheck"
-                    ]
+                    "args": ["--noCheck"]
                 }
             }
         ],
         "lint": {
-            "dependsOn": [
-                "^build",
-                "gtkx:_build:bindings",
-                "@gtkx/gl:codegen",
-                "_lint:eslint"
-            ],
+            "dependsOn": ["^build", "gtkx:_build:bindings", "@gtkx/gl:codegen", "_lint:eslint"],
             "inputs": [
                 "...",
                 "default",
@@ -160,10 +129,7 @@
             ]
         },
         "test": {
-            "dependsOn": [
-                "^build",
-                "gtkx:_build:bindings"
-            ],
+            "dependsOn": ["^build", "gtkx:_build:bindings"],
             "inputs": [
                 "...",
                 "default",
@@ -181,15 +147,10 @@
         "release": {
             "cache": false,
             "parallelism": false,
-            "dependsOn": [
-                "build",
-                "^release"
-            ]
+            "dependsOn": ["build", "^release"]
         },
         "e2e": {
-            "dependsOn": [
-                "^build"
-            ],
+            "dependsOn": ["^build"],
             "inputs": [
                 "...",
                 {
@@ -210,10 +171,7 @@
             ]
         },
         "e2e-ci--**/**": {
-            "dependsOn": [
-                "^build",
-                "gtkx:_build:bindings"
-            ],
+            "dependsOn": ["^build", "gtkx:_build:bindings"],
             "inputs": [
                 "...",
                 "default",
@@ -226,11 +184,7 @@
             "cache": true
         },
         "_lint:eslint": {
-            "dependsOn": [
-                "^build",
-                "gtkx:_build:bindings",
-                "@gtkx/gl:codegen"
-            ],
+            "dependsOn": ["^build", "gtkx:_build:bindings", "@gtkx/gl:codegen"],
             "inputs": [
                 "...",
                 "default",
@@ -246,13 +200,7 @@
     },
     "release": {
         "versionPlans": {
-            "ignorePatternsForPlanCheck": [
-                "**/tests/**",
-                "**/*.test.ts",
-                "**/*.test.tsx",
-                "**/typedoc.json",
-                "**/*.md"
-            ]
+            "ignorePatternsForPlanCheck": ["**/tests/**", "**/*.test.ts", "**/*.test.tsx", "**/typedoc.json", "**/*.md"]
         },
         "version": {
             "git": {

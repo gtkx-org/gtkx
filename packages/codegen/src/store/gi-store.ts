@@ -4,11 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { SourceModule } from "../compile.js";
 import { FINGERPRINT_FILENAME, type GiFingerprint } from "../fingerprint.js";
-import {
-    type GeneratedLibraries,
-    LIBRARIES_FILENAME,
-    renderGeneratedLibraries,
-} from "./gi/generated-libraries.js";
+import { type GeneratedLibraries, LIBRARIES_FILENAME, renderGeneratedLibraries } from "./gi/generated-libraries.js";
 import { namespaceOverrides, renderOverrideExports } from "./gi/overrides.js";
 import {
     buildManifest,
@@ -39,7 +35,8 @@ const overrideFiles = (directory: string): SourceModule[] =>
         overrideModule(
             `${directory}/overrides/${module}.ts`,
             join(OVERRIDES_ROOT, directory, "overrides", `${module}.ts`),
-        ));
+        ),
+    );
 
 const overrideModule = (fileName: string, overridePath: string): SourceModule => ({
     fileName,
@@ -82,9 +79,7 @@ const collectStoreSources = (
 };
 
 const storePeerDependencies = (externalPackages: string[]): Record<string, string> =>
-    Object.fromEntries(
-        sortStrings(["@gtkx/runtime", ...externalPackages]).map((name) => [name, "*"]),
-    );
+    Object.fromEntries(sortStrings(["@gtkx/runtime", ...externalPackages]).map((name) => [name, "*"]));
 
 const writeGiStore = (
     options: StoreOptions,

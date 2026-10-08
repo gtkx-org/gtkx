@@ -9,14 +9,14 @@ These rules apply to new and existing code. The [architecture pages](/contributi
 
 ## Give each layer one responsibility
 
-| Layer | Responsibility |
-| --- | --- |
-| `@gtkx/native` | Memory-safe FFI, native allocations and lifetimes, and unsafe ABI operations. |
-| `@gtkx/runtime` | Binding semantics, value conversion, callbacks, signals, the GObject type system, and JavaScript representations of native values. |
-| `@gtkx/codegen` | Executable ESM bindings and declarations derived from GIR, using explicit runtime descriptors. |
-| Codegen overrides | Wiring runtime implementations into generated modules. |
-| `@gtkx/react` | Reconciliation and primitives behind generated JSX elements. |
-| Components and hooks | Lifecycle effects, presentation, list factories, and other composed behavior. |
+| Layer                | Responsibility                                                                                                                     |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `@gtkx/native`       | Memory-safe FFI, native allocations and lifetimes, and unsafe ABI operations.                                                      |
+| `@gtkx/runtime`      | Binding semantics, value conversion, callbacks, signals, the GObject type system, and JavaScript representations of native values. |
+| `@gtkx/codegen`      | Executable ESM bindings and declarations derived from GIR, using explicit runtime descriptors.                                     |
+| Codegen overrides    | Wiring runtime implementations into generated modules.                                                                             |
+| `@gtkx/react`        | Reconciliation and primitives behind generated JSX elements.                                                                       |
+| Components and hooks | Lifecycle effects, presentation, list factories, and other composed behavior.                                                      |
 
 Review changes for clear ownership, observable tests, and a consumer requirement. Keep repository-specific behavior in repository tooling.
 

@@ -41,9 +41,7 @@ describe("portable native story edge cases", () => {
         const { Named } = composeStories({ ...stories, default: meta });
         const result = await render(<Single />);
 
-        expect(screen.getByName("story-context")).toHaveTextContent(
-            "components-counter--default|Default|Increment",
-        );
+        expect(screen.getByName("story-context")).toHaveTextContent("components-counter--default|Default|Increment");
 
         await result.rerender(<Named label="Frozen metadata" />);
 

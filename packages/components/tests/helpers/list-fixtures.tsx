@@ -247,7 +247,7 @@ const renderStatefulListView: RenderListView = (items, options = {}, render) =>
 const renderListView: RenderListView = (items, options = {}, render) =>
     wireListView({ draw: drawListView, items, options, render });
 
-const renderGridView = async <T = NamedValue>(
+const renderGridView = async <T = NamedValue,>(
     items: FixtureInput<T>,
     options: RenderGridViewOptions<T> = {},
 ): Promise<GridViewFixture<T>> => {
@@ -277,7 +277,7 @@ const renderGridView = async <T = NamedValue>(
     });
 };
 
-const renderColumnView = async <T = NamedValue>(
+const renderColumnView = async <T = NamedValue,>(
     items: FixtureInput<T>,
     options: RenderColumnViewOptions<T> = {},
 ): Promise<ColumnViewFixture<T>> => {

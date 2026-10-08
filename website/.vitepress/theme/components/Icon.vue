@@ -41,20 +41,20 @@ const def = computed<IconDefinition>(() => ICONS[props.name]);
 </script>
 
 <template>
-  <svg
-    :width="size"
-    :height="size"
-    viewBox="0 0 24 24"
-    :fill="def.fill ? 'currentColor' : 'none'"
-    :stroke="def.fill ? 'none' : 'currentColor'"
-    stroke-width="2"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    aria-hidden="true"
-  >
-    <template v-for="(el, i) in def.els" :key="i">
-      <circle v-if="el.r" :cx="el.cx" :cy="el.cy" :r="el.r" />
-      <path v-else :d="el.d" />
-    </template>
-  </svg>
+    <svg
+        :width="size"
+        :height="size"
+        viewBox="0 0 24 24"
+        :fill="def.fill ? 'currentColor' : 'none'"
+        :stroke="def.fill ? 'none' : 'currentColor'"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+    >
+        <template v-for="(el, i) in def.els" :key="i">
+            <circle v-if="el.r" :cx="el.cx" :cy="el.cy" :r="el.r" />
+            <path v-else :d="el.d" />
+        </template>
+    </svg>
 </template>

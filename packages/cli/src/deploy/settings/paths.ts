@@ -37,14 +37,15 @@ const isReusableDeployDirectory = (path: string): boolean => {
         return true;
     }
 
-    return entry.isDirectory() &&
-        (readdirSync(path).length === 0 || isDeployMarker(join(path, DEPLOY_MARKER_FILENAME)));
+    return (
+        entry.isDirectory() && (readdirSync(path).length === 0 || isDeployMarker(join(path, DEPLOY_MARKER_FILENAME)))
+    );
 };
 
 const deployOutputError = (root: string, configured: string): Error =>
     new Error(
         `Cannot use "${configured}" as the deploy output directory: choose an empty directory or an ` +
-        `earlier GTKX deploy directory below ${root}`,
+            `earlier GTKX deploy directory below ${root}`,
     );
 
 const assertSafeDeployOutDir = (root: string, outDir: string, configured: string): void => {

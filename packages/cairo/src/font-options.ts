@@ -39,11 +39,7 @@ const cairoFontOptionsSetSubpixelOrder = bindCairo(
     t.void,
 );
 
-const cairoFontOptionsGetSubpixelOrder = bindCairo(
-    "cairo_font_options_get_subpixel_order",
-    [FONT_OPTIONS_T],
-    t.int32,
-);
+const cairoFontOptionsGetSubpixelOrder = bindCairo("cairo_font_options_get_subpixel_order", [FONT_OPTIONS_T], t.int32);
 
 /**
  * Cairo font options (`cairo_font_options_t`): the rendering settings applied to text, such as antialiasing,

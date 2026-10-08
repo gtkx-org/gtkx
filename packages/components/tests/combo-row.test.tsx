@@ -126,12 +126,7 @@ describe("ComboRow controlled selection", () => {
             selectionChanges.push(id);
         };
         await render(
-            <ComboShell
-                comboRef={ref}
-                items={items}
-                selectedId="title"
-                onSelectionChanged={onSelectionChanged}
-            />,
+            <ComboShell comboRef={ref} items={items} selectedId="title" onSelectionChanged={onSelectionChanged} />,
         );
 
         if (ref.current === null) {

@@ -159,15 +159,18 @@ type SortProps = {
 };
 
 /** The data a collection view renders, either as a plain item list or grouped into sections. */
-type SourceProps<T, S> = ({
-    /** Items to render, nesting through `ListItem.children` for a tree. */
-    items?: ListItem<T>[] | undefined;
-} & Partial<Record<"sections", undefined>> & Partial<Record<"renderHeader", null | undefined>>) | ({
-    /** Items grouped under section headers. */
-    sections: ListSection<S, T>[];
-    /** Renders the header shown above each section. */
-    renderHeader?: ListSectionRenderer<S> | null | undefined;
-} & Partial<Record<"items", undefined>>);
+type SourceProps<T, S> =
+    | ({
+          /** Items to render, nesting through `ListItem.children` for a tree. */
+          items?: ListItem<T>[] | undefined;
+      } & Partial<Record<"sections", undefined>> &
+          Partial<Record<"renderHeader", null | undefined>>)
+    | ({
+          /** Items grouped under section headers. */
+          sections: ListSection<S, T>[];
+          /** Renders the header shown above each section. */
+          renderHeader?: ListSectionRenderer<S> | null | undefined;
+      } & Partial<Record<"items", undefined>>);
 
 /** One column of a {@link ColumnView}, pairing Gtk.ColumnViewColumn props with a cell renderer. */
 type ColumnViewColumn<T = unknown> = Omit<GtkColumnViewColumnProps, "factory" | "sorter" | "id" | "title"> & {
@@ -203,7 +206,7 @@ type ColumnViewProps<T = unknown, S = unknown> = Omit<
     GtkColumnViewProps,
     "children" | "columns" | "model" | "headerFactory" | "rowFactory" | keyof ColumnViewOwnProps<T, S>
 > &
-ColumnViewOwnProps<T, S>;
+    ColumnViewOwnProps<T, S>;
 
 /** The declarative collection props {@link DropDown} and `ComboRow` add on top of their widget's own. */
 type DropDownOwnProps<T, S> = SourceProps<T, S> & {
@@ -222,8 +225,8 @@ type DropDownWidgetProps<Widget, T, S> = Omit<
     Widget,
     "model" | "factory" | "listFactory" | "headerFactory" | keyof DropDownOwnProps<T, S>
 > &
-DropDownOwnProps<T, S> &
-(SourceProps<T & Primitive, S> | Record<"renderItem", ListItemRenderer<T>>);
+    DropDownOwnProps<T, S> &
+    (SourceProps<T & Primitive, S> | Record<"renderItem", ListItemRenderer<T>>);
 
 /**
  * Native `Gtk.DropDown` props with declarative collections, controlled selection, and display/popup renderers.
@@ -263,7 +266,7 @@ type ListViewProps<T = unknown, S = unknown> = Omit<
     GtkListViewProps,
     "model" | "factory" | "headerFactory" | keyof ListViewOwnProps<T, S>
 > &
-ListViewOwnProps<T, S>;
+    ListViewOwnProps<T, S>;
 
 /**
  * Native `Adw.ComboRow` props with declarative collections, controlled selection, and display/popup renderers.

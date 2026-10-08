@@ -117,10 +117,7 @@ const mergeElementConfigs = (...maps: Record<string, ElementConfig<never>>[]): R
     return merged;
 };
 
-const registerElements = (
-    map: Record<string, ElementConfig<never>>,
-    options: { isPrepended?: boolean } = {},
-): void => {
+const registerElements = (map: Record<string, ElementConfig<never>>, options: { isPrepended?: boolean } = {}): void => {
     for (const [type, config] of Object.entries(map)) {
         ELEMENTS[type] = mergeConfigEntry(ELEMENTS[type] ?? {}, config, options.isPrepended === true);
     }

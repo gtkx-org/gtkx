@@ -58,8 +58,4 @@ const formatDue = (iso: string | null): string | null => {
 const formatDateTime = (iso: string): string =>
     new Date(iso).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
 
-export {
-    formatDateTime,
-    formatDue,
-    isToday,
-};
+export { formatDateTime, formatDue, isToday };

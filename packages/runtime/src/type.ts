@@ -226,7 +226,9 @@ const getByteArrayType = (): bigint => resolveType(LIB, "g_byte_array_get_type")
 const isScalarGArray = (descriptor: ArrayDescriptor): boolean =>
     descriptor.arrayKind === "garray" && isScalarStorageDescriptor(toAbi(descriptor.itemDescriptor));
 
-const isObjectPtrArray = (descriptor: ArrayDescriptor): descriptor is ArrayDescriptor & {
+const isObjectPtrArray = (
+    descriptor: ArrayDescriptor,
+): descriptor is ArrayDescriptor & {
     itemDescriptor: ObjectDescriptor;
 } => descriptor.arrayKind === "gptrarray" && descriptor.itemDescriptor.kind === "object";
 
@@ -264,7 +266,8 @@ function resolveEnumOrFlagsType(descriptor: Extract<Descriptor, { kind: "enum" |
 
 const isStringHashTable = (descriptor: Descriptor): descriptor is HashTableDescriptor =>
     descriptor.kind === "hashtable" &&
-    descriptor.keyDescriptor.kind === "string" && descriptor.valueDescriptor.kind === "string";
+    descriptor.keyDescriptor.kind === "string" &&
+    descriptor.valueDescriptor.kind === "string";
 
 function resolveDescriptorType(descriptor: Descriptor): bigint {
     if (isStringHashTable(descriptor)) {

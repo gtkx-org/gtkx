@@ -12,7 +12,4 @@ const detailNotes = css`
     min-height: 160px;
 `;
 
-export {
-    detailNotes,
-    listDot,
-};
+export { detailNotes, listDot };

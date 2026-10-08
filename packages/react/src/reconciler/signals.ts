@@ -67,11 +67,7 @@ const isSuppressed = (record: HandlerRecord, notify: NotifyBinding | null, args:
 const isBlockableSignal = (info: TypeInfo, signal: string): boolean =>
     info.userEventSignals.has(getSignalBaseName(signal));
 
-const invokeHandler = (
-    record: HandlerRecord,
-    notify: NotifyBinding | null,
-    args: unknown[],
-): unknown => {
+const invokeHandler = (record: HandlerRecord, notify: NotifyBinding | null, args: unknown[]): unknown => {
     const property = notify?.property ?? null;
 
     return property === null
@@ -79,11 +75,8 @@ const invokeHandler = (
         : record.handler(getObjectProperty(record.object, property), record.object);
 };
 
-const wrapHandler = (
-    reference: WeakRef<HandlerRecord>,
-    dispatch: Dispatch,
-    notify: NotifyBinding | null,
-): SignalHandler =>
+const wrapHandler =
+    (reference: WeakRef<HandlerRecord>, dispatch: Dispatch, notify: NotifyBinding | null): SignalHandler =>
     (...args: unknown[]): unknown => {
         const record = reference.deref();
 
@@ -141,10 +134,4 @@ const disconnectAllHandlers = (target: SignalTarget): void => {
     target.handlers.clear();
 };
 
-export {
-    applyMutation,
-    applyWrite,
-    connectHandler,
-    disconnectHandler,
-    disconnectAllHandlers,
-};
+export { applyMutation, applyWrite, connectHandler, disconnectHandler, disconnectAllHandlers };

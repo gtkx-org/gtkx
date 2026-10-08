@@ -35,12 +35,7 @@ function buildScrollLine(count: number, isScrollToEnd: boolean) {
     return `\n${spaces}${text}`;
 }
 
-function scrollMarkOnscreen(
-    textView: Gtk.TextView,
-    buffer: Gtk.TextBuffer,
-    markName: string,
-    isScrollToEnd: boolean,
-) {
+function scrollMarkOnscreen(textView: Gtk.TextView, buffer: Gtk.TextBuffer, markName: string, isScrollToEnd: boolean) {
     const mark = buffer.getMark(markName);
 
     if (!mark) {
@@ -71,11 +66,7 @@ function tickAutoScroll({ textView, buffer, markName, countRef, isScrollToEnd }:
     }
 }
 
-function startAutoScroll(
-    textView: Gtk.TextView | null,
-    countRef: React.RefObject<number>,
-    isScrollToEnd: boolean,
-) {
+function startAutoScroll(textView: Gtk.TextView | null, countRef: React.RefObject<number>, isScrollToEnd: boolean) {
     if (!textView) {
         return;
     }

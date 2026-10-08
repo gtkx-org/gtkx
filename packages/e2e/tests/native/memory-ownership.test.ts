@@ -3,14 +3,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import { expect, test } from "vitest";
 import { prepareMemoryChecks } from "./helpers/memory-suite.js";
-import {
-    didSettle,
-    didThrow,
-    hammer,
-    RSS_BUDGET,
-    THROWING_RSS_BUDGET,
-    wasCollected,
-} from "./helpers/memory.js";
+import { didSettle, didThrow, hammer, RSS_BUDGET, THROWING_RSS_BUDGET, wasCollected } from "./helpers/memory.js";
 
 prepareMemoryChecks();
 

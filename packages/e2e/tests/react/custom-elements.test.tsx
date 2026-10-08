@@ -112,11 +112,7 @@ it("renders, updates and unmounts a consumer element with merged behavior defini
     const labelRef = createRef<Gtk.Label>();
     const contentRef = createRef<Gtk.Label>();
     const App = ({ caption }: { caption: string | undefined }) => (
-        <GtkFrame
-            ref={frameRef}
-            customTooltip={caption}
-            labelSlot={<GtkLabel ref={labelRef}>Section</GtkLabel>}
-        >
+        <GtkFrame ref={frameRef} customTooltip={caption} labelSlot={<GtkLabel ref={labelRef}>Section</GtkLabel>}>
             <GtkLabel ref={contentRef}>Content</GtkLabel>
         </GtkFrame>
     );

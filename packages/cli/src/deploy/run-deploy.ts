@@ -157,7 +157,7 @@ const warnMissingDisplay = (settings: DeploySettings, finishArgs: string[]): voi
 
     warn(
         `The flatpak permissions grant no display socket, so ${settings.name} will start without a window. ` +
-        "Grant one through `deploy.flatpak.finishArgs`, such as `--socket=wayland`.",
+            "Grant one through `deploy.flatpak.finishArgs`, such as `--socket=wayland`.",
     );
 };
 
@@ -192,16 +192,16 @@ const minimumSummary = (settings: DeploySettings): string =>
 const warnAppImageMinimums = (settings: DeploySettings, summary: string): void => {
     warn(
         `An AppImage cannot declare a dependency, so nothing stops ${settings.name} from starting on a host ` +
-        `whose libraries are older than the ones its bindings were generated against (${summary}). ` +
-        "Publish that requirement alongside the AppImage, or build on the oldest host you support.",
+            `whose libraries are older than the ones its bindings were generated against (${summary}). ` +
+            "Publish that requirement alongside the AppImage, or build on the oldest host you support.",
     );
 };
 
 const warnFlatpakMinimums = (settings: DeploySettings, summary: string): void => {
     warn(
         `The flatpak bundles binaries built against ${summary}, but runs them on ` +
-        `${runtimeLabelFor(settings)}, whose libraries are whatever that runtime ships. ` +
-        'Set `deploy.flatpak.mode: "source"` to build inside the runtime instead.',
+            `${runtimeLabelFor(settings)}, whose libraries are whatever that runtime ships. ` +
+            'Set `deploy.flatpak.mode: "source"` to build inside the runtime instead.',
     );
 };
 
@@ -220,7 +220,7 @@ const warnUnusedMinimums = (settings: DeploySettings): void => {
 
     warn(
         `\`deploy.minimumLibraryVersions\` names ${unused.join(", ")}, which this project generates no bindings for, ` +
-        "so those minimums change nothing.",
+            "so those minimums change nothing.",
     );
 };
 
@@ -281,13 +281,7 @@ const mutableCatalogTools = (project: CatalogProject): DeployTool[] => {
         return [MSGGREP, XGETTEXT];
     }
 
-    return [
-        MSGFMT,
-        MSGGREP,
-        ...(requiresCatalogInitialization(project) ? [MSGINIT] : []),
-        MSGMERGE,
-        XGETTEXT,
-    ];
+    return [MSGFMT, MSGGREP, ...(requiresCatalogInitialization(project) ? [MSGINIT] : []), MSGMERGE, XGETTEXT];
 };
 
 const catalogTools = (project: CatalogProject | null, shouldSkipBuild: boolean): DeployTool[] => {
@@ -344,14 +338,14 @@ const assertCrossBuild = (plan: DeployPlan): void => {
     if (hostOnly.length > 0) {
         throw new Error(
             `Cannot build ${hostOnly.join(" and ")} for ${foreign.join(" and ")}: those targets package with ` +
-            `tooling that only runs on ${hostArchName()}. Deploy them in a separate run without --arch.`,
+                `tooling that only runs on ${hostArchName()}. Deploy them in a separate run without --arch.`,
         );
     }
 
     if ((plan.loaded.deploy.node?.source ?? "download") !== "download") {
         throw new Error(
             'Cannot deploy for another architecture with a `deploy.node.source` other than "download": ' +
-            `a host or path runtime is always ${hostArchName()}.`,
+                `a host or path runtime is always ${hostArchName()}.`,
         );
     }
 };
@@ -462,12 +456,7 @@ const buildApplication = async ({
     return localizeMetadata(templates, plan.project);
 };
 
-const buildArchPayload = async ({
-    options,
-    plan,
-    settings,
-    metadata,
-}: BuildPayloadRequest): Promise<DeployPayload> => {
+const buildArchPayload = async ({ options, plan, settings, metadata }: BuildPayloadRequest): Promise<DeployPayload> => {
     validateMetadata(settings, metadata, isFlathubSubmission(settings, plan.targets));
     const buildManifest = readBuildManifest(settings, plan.loaded);
 
@@ -477,9 +466,7 @@ const buildArchPayload = async ({
     };
 
     const shouldIncludeNode = isNodeRequired(plan.targets, builtSettings);
-    const node = !shouldIncludeNode || options.shouldPrintManifests
-        ? null
-        : await resolveNodeRuntime(builtSettings);
+    const node = !shouldIncludeNode || options.shouldPrintManifests ? null : await resolveNodeRuntime(builtSettings);
 
     const addon = await resolveStagedAddon(builtSettings);
     const stage = stagePayload({ settings: builtSettings, node, addon, metadata });
@@ -605,7 +592,7 @@ const runDeploy = async (options: DeployOptions): Promise<void> => {
     const artifacts: DeployArtifact[] = [];
 
     for (const arch of plan.arches) {
-        artifacts.push(...await deployArch({ options, plan, arch, metadata }));
+        artifacts.push(...(await deployArch({ options, plan, arch, metadata })));
     }
 
     preparedDeployOutput.commit();

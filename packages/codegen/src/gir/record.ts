@@ -24,12 +24,7 @@ type GirRecord = {
     isUnion: boolean;
 };
 
-const recordFromNode = (
-    node: RawNode,
-    isVtable: boolean,
-    isUnion: boolean,
-    context: ParseContext,
-): GirRecord => {
+const recordFromNode = (node: RawNode, isVtable: boolean, isUnion: boolean, context: ParseContext): GirRecord => {
     const freeFunc = attr(node, "free-function");
     const methods = getChildren(node, "method")
         .map((method) => functionFromNode(method, context))

@@ -39,10 +39,8 @@ const files = (license = "MIT", licenseFile = "LICENSE"): Record<string, string>
     [`node_modules/${DEPENDENCY_NAME}/${licenseFile}`]: ORIGINAL_TERMS,
 });
 
-const copyright = (root: string): string => readFileSync(
-    join(root, "build", process.arch, "overlay", "deb", "share", "doc", BINARY_NAME, "copyright"),
-    "utf8",
-);
+const copyright = (root: string): string =>
+    readFileSync(join(root, "build", process.arch, "overlay", "deb", "share", "doc", BINARY_NAME, "copyright"), "utf8");
 
 const deploy = (project: Parameters<typeof runCliOrThrow>[0], shouldSkipBuild = false): string => {
     runCliOrThrow(project, [
@@ -68,14 +66,17 @@ describe("bundled dependency notice provenance", () => {
         const bundlePath = join(project.root, "dist/bundle.mjs");
         const bundle = readFileSync(bundlePath, "utf8");
         const dependency = join(project.nodeModules, DEPENDENCY_NAME);
-        writeFileSync(join(dependency, "package.json"), JSON.stringify({
-            name: DEPENDENCY_NAME,
-            version: "2.0.0",
-            type: "module",
-            exports: "./index.js",
-            license: "ISC",
-            repository: "https://github.com/example/replacement.git",
-        }));
+        writeFileSync(
+            join(dependency, "package.json"),
+            JSON.stringify({
+                name: DEPENDENCY_NAME,
+                version: "2.0.0",
+                type: "module",
+                exports: "./index.js",
+                license: "ISC",
+                repository: "https://github.com/example/replacement.git",
+            }),
+        );
         writeFileSync(join(dependency, "index.js"), 'export const message = "replacement dependency";\n');
         writeFileSync(join(dependency, "LICENSE"), REPLACEMENT_TERMS);
         const notice = deploy(project, true);
@@ -136,14 +137,28 @@ describe("bundled dependency notice provenance", () => {
     it.each([
         { formatVersion: 2 },
         {
-            packages: [{
-                name: DEPENDENCY_NAME, version: "1.0.0", license: null, source: null, copyright: [], text: 42,
-            }],
+            packages: [
+                {
+                    name: DEPENDENCY_NAME,
+                    version: "1.0.0",
+                    license: null,
+                    source: null,
+                    copyright: [],
+                    text: 42,
+                },
+            ],
         },
         {
-            packages: [{
-                name: DEPENDENCY_NAME, version: "1.0.0", license: null, source: null, copyright: [42], text: null,
-            }],
+            packages: [
+                {
+                    name: DEPENDENCY_NAME,
+                    version: "1.0.0",
+                    license: null,
+                    source: null,
+                    copyright: [42],
+                    text: null,
+                },
+            ],
         },
     ])("rejects unsupported or malformed build metadata", (replacement) => {
         using project = createCliProject({
@@ -244,10 +259,14 @@ describe("Debian license expressions", () => {
             config: CONFIG.replace('license: "MPL-2.0"', () => `license: "${expression}"`),
             files: {
                 ...files("(BSD-2-Clause OR BSD-3-Clause) AND Zlib"),
-                "src/index.ts": `import { message } from "${DEPENDENCY_NAME}";\n` +
+                "src/index.ts":
+                    `import { message } from "${DEPENDENCY_NAME}";\n` +
                     `import { other } from "${other}"; process.stdout.write(message + other);\n`,
                 [`node_modules/${other}/package.json`]: JSON.stringify({
-                    name: other, version: "1.0.0", type: "module", exports: "./index.js",
+                    name: other,
+                    version: "1.0.0",
+                    type: "module",
+                    exports: "./index.js",
                     license: "LicenseRef-Company OR CC0-1.0",
                 }),
                 [`node_modules/${other}/index.js`]: 'export const other = "other dependency";\n',
@@ -259,7 +278,10 @@ describe("Debian license expressions", () => {
         const notice = deploy(project);
         expect(licenseField(notice, `lib/${BINARY_NAME}/bundle.mjs`)?.split(", and ")).toEqual(
             expect.arrayContaining([
-                "MPL-2.0 or Apache-2.0", "ISC", "BSD-2-Clause or BSD-3-Clause", "Zlib",
+                "MPL-2.0 or Apache-2.0",
+                "ISC",
+                "BSD-2-Clause or BSD-3-Clause",
+                "Zlib",
                 "LicenseRef-Company or CC0-1.0",
             ]),
         );

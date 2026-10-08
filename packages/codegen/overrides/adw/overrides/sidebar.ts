@@ -65,24 +65,26 @@ const sidebarViews = (sidebar: Sidebar): Widget[] => {
     return widgetChildren(sidebar).filter((child) => child !== placeholder);
 };
 
-const changedMode = (receiver: WeakRef<Sidebar>, state: ModeState): (() => void) => () => {
-    const sidebar = receiver.deref();
+const changedMode =
+    (receiver: WeakRef<Sidebar>, state: ModeState): (() => void) =>
+    () => {
+        const sidebar = receiver.deref();
 
-    if (sidebar === undefined) {
-        return;
-    }
-
-    const previous = state.views;
-    state.views = sidebarViews(sidebar).map((view) => new WeakRef(view));
-
-    for (const reference of previous) {
-        const view = reference.deref();
-
-        if (view !== undefined) {
-            disposeDetachedView(view);
+        if (sidebar === undefined) {
+            return;
         }
-    }
-};
+
+        const previous = state.views;
+        state.views = sidebarViews(sidebar).map((view) => new WeakRef(view));
+
+        for (const reference of previous) {
+            const view = reference.deref();
+
+            if (view !== undefined) {
+                disposeDetachedView(view);
+            }
+        }
+    };
 
 /* TODO: Keep retired-view cleanup until libadwaita disconnects Sidebar models and suffixes on mode changes.
  * https://github.com/gtkx-org/gtkx/issues/726

@@ -103,9 +103,11 @@ const isStranded = (entry: string, prefix: string): boolean => {
         return true;
     }
 
-    return owner.identity !== undefined &&
+    return (
+        owner.identity !== undefined &&
         owner.identity !== "unknown" &&
-        processIdentityToken(Number(owner.pid)) !== owner.identity;
+        processIdentityToken(Number(owner.pid)) !== owner.identity
+    );
 };
 
 const readEntries = (parentDir: string): string[] => {

@@ -36,19 +36,21 @@ const files = (): Record<string, string> => ({
     "package-lock.json": JSON.stringify({ ...PACKAGE, lockfileVersion: 3, packages: { "": PACKAGE } }),
     "src/index.ts": 'import { message } from "../vendor/dependency/index.js"; process.stdout.write(message);',
     "vendor/dependency/package.json": JSON.stringify({
-        name: DEPENDENCY_NAME, version: "1.0.0", type: "module", license: "MIT",
+        name: DEPENDENCY_NAME,
+        version: "1.0.0",
+        type: "module",
+        license: "MIT",
     }),
     "vendor/dependency/index.js": 'export const message = "committed dependency";',
     "vendor/dependency/LICENSE": ORIGINAL_TERMS,
 });
 
-const buildNotices = (project: CliProject): string =>
-    readFileSync(join(project.root, "dist", NOTICES_FILE), "utf8");
+const buildNotices = (project: CliProject): string => readFileSync(join(project.root, "dist", NOTICES_FILE), "utf8");
 
-const sourceManifest = (project: CliProject): FlatpakManifest => parse(readFileSync(
-    join(project.root, "build", process.arch, "targets/flatpak", `${APPLICATION_ID}.yml`),
-    "utf8",
-)) as FlatpakManifest;
+const sourceManifest = (project: CliProject): FlatpakManifest =>
+    parse(
+        readFileSync(join(project.root, "build", process.arch, "targets/flatpak", `${APPLICATION_ID}.yml`), "utf8"),
+    ) as FlatpakManifest;
 
 const git = (project: CliProject, args: string[]): string =>
     execFileSync(resolveExecutable("git"), args, { cwd: project.root, encoding: "utf8" }).trim();
@@ -57,17 +59,31 @@ const commitSource = (project: CliProject): string => {
     git(project, ["init", "--quiet"]);
     git(project, ["add", "gtkx.config.ts", ...Object.keys(files())]);
     git(project, [
-        "-c", "user.name=Probe", "-c", "user.email=probe@gtkx.dev", "-c", "commit.gpgsign=false",
-        "commit", "--quiet", "-m", "Source fixture",
+        "-c",
+        "user.name=Probe",
+        "-c",
+        "user.email=probe@gtkx.dev",
+        "-c",
+        "commit.gpgsign=false",
+        "commit",
+        "--quiet",
+        "-m",
+        "Source fixture",
     ]);
 
     return git(project, ["rev-parse", "HEAD"]);
 };
 
 const replaceDependency = (project: CliProject): void => {
-    writeFileSync(join(project.root, "vendor/dependency/package.json"), JSON.stringify({
-        name: DEPENDENCY_NAME, version: "2.0.0", type: "module", license: "ISC",
-    }));
+    writeFileSync(
+        join(project.root, "vendor/dependency/package.json"),
+        JSON.stringify({
+            name: DEPENDENCY_NAME,
+            version: "2.0.0",
+            type: "module",
+            license: "ISC",
+        }),
+    );
     writeFileSync(join(project.root, "vendor/dependency/index.js"), 'export const message = "replacement dependency";');
     writeFileSync(join(project.root, "vendor/dependency/LICENSE"), REPLACEMENT_TERMS);
 };
@@ -81,7 +97,8 @@ const installSourceNotices = (project: CliProject, manifest: FlatpakManifest): s
     }
 
     writeFileSync(join(project.root, INSTALLED_NOTICES_FILE), contents);
-    const commands = manifest.modules.flatMap((module) => module["build-commands"])
+    const commands = manifest.modules
+        .flatMap((module) => module["build-commands"])
         .filter((command) => command.includes(INSTALLED_NOTICES_FILE));
     const destination = join(project.root, "flatpak-destination");
     execFileSync(resolveExecutable("sh"), ["-ec", commands.join("\n")], {
@@ -96,17 +113,24 @@ const installSourceNotices = (project: CliProject, manifest: FlatpakManifest): s
 describe("source build notice provenance", () => {
     it.each(["flatpak", "deb,flatpak"])("installs the committed build's notices for %s", (target) => {
         using project = createCliProject({
-            prefix: "gtkx-source-notices-", config: DEPLOY_CONFIG, files: files(), hasStore: true,
+            prefix: "gtkx-source-notices-",
+            config: DEPLOY_CONFIG,
+            files: files(),
+            hasStore: true,
         });
         const revision = commitSource(project);
-        writeFileSync(join(project.root, "gtkx.config.ts"),
-            DEPLOY_CONFIG.replace("source: { url:", () => `source: { commit: "${revision}", url:`));
+        writeFileSync(
+            join(project.root, "gtkx.config.ts"),
+            DEPLOY_CONFIG.replace("source: { url:", () => `source: { commit: "${revision}", url:`),
+        );
         replaceDependency(project);
         runCliOrThrow(project, ["deploy", "--print-manifests", "--target", target]);
         const manifest = sourceManifest(project);
-        expect(manifest.modules.flatMap((module) => module.sources)
-            .some((source) => typeof source !== "string" && source.commit === revision))
-            .toBe(true);
+        expect(
+            manifest.modules
+                .flatMap((module) => module.sources)
+                .some((source) => typeof source !== "string" && source.commit === revision),
+        ).toBe(true);
         git(project, ["checkout", "--quiet", revision, "--", "gtkx.config.ts", "src", "vendor"]);
         runCliOrThrow(project, ["build", "--config", "gtkx.config.ts"]);
         const notices = installSourceNotices(project, manifest);
@@ -121,7 +145,10 @@ describe("source build notice provenance", () => {
 
     it("builds dependency notices without deployment metadata", () => {
         using project = createCliProject({
-            prefix: "gtkx-build-notices-", config: BUILD_CONFIG, files: files(), hasStore: true,
+            prefix: "gtkx-build-notices-",
+            config: BUILD_CONFIG,
+            files: files(),
+            hasStore: true,
         });
         runCliOrThrow(project, ["build"]);
         expect(buildNotices(project)).toContain(`${DEPENDENCY_NAME} 1.0.0`);
@@ -130,7 +157,9 @@ describe("source build notice provenance", () => {
 
     it("builds an application with no bundled JavaScript dependencies", () => {
         using project = createCliProject({
-            prefix: "gtkx-empty-notices-", config: BUILD_CONFIG, hasStore: true,
+            prefix: "gtkx-empty-notices-",
+            config: BUILD_CONFIG,
+            hasStore: true,
             files: { "src/index.ts": 'process.stdout.write("application");' },
         });
         runCliOrThrow(project, ["build"]);
@@ -140,7 +169,10 @@ describe("source build notice provenance", () => {
 
     it("preserves the previous bundle and notices after an unsuccessful build", () => {
         using project = createCliProject({
-            prefix: "gtkx-failed-notices-", config: BUILD_CONFIG, files: files(), hasStore: true,
+            prefix: "gtkx-failed-notices-",
+            config: BUILD_CONFIG,
+            files: files(),
+            hasStore: true,
         });
         runCliOrThrow(project, ["build"]);
         const previous = buildNotices(project);
@@ -153,26 +185,34 @@ describe("source build notice provenance", () => {
 
     it("preserves recorded dependency notices when deployment skips rebuilding", () => {
         using project = createCliProject({
-            prefix: "gtkx-skipped-notices-", config: DEPLOY_CONFIG, files: files(), hasStore: true,
+            prefix: "gtkx-skipped-notices-",
+            config: DEPLOY_CONFIG,
+            files: files(),
+            hasStore: true,
         });
         runCliOrThrow(project, ["build"]);
         const previous = buildNotices(project);
         replaceDependency(project);
         runCliOrThrow(project, ["deploy", "--print-manifests", "--skip-build", "--target", "deb"]);
         const notices = readFileSync(
-            join(project.root, "build", process.arch, "overlay/deb/share/doc", BINARY_NAME, "copyright"), "utf8",
+            join(project.root, "build", process.arch, "overlay/deb/share/doc", BINARY_NAME, "copyright"),
+            "utf8",
         );
         expect(notices).toContain(`${DEPENDENCY_NAME} 1.0.0`);
         expect(notices).toContain(ORIGINAL_TERMS);
         expect(notices).not.toContain(REPLACEMENT_TERMS);
         expect(buildNotices(project)).toBe(previous);
-        expect(existsSync(join(project.root, "build", process.arch, "stage/lib", BINARY_NAME, NOTICES_FILE)))
-            .toBe(false);
+        expect(existsSync(join(project.root, "build", process.arch, "stage/lib", BINARY_NAME, NOTICES_FILE))).toBe(
+            false,
+        );
     });
 
     it("fails source notice installation when the build artifact is missing", () => {
         using project = createCliProject({
-            prefix: "gtkx-missing-notices-", config: DEPLOY_CONFIG, files: files(), hasStore: true,
+            prefix: "gtkx-missing-notices-",
+            config: DEPLOY_CONFIG,
+            files: files(),
+            hasStore: true,
         });
         runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "flatpak"]);
         const manifest = sourceManifest(project);

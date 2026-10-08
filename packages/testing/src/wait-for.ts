@@ -140,10 +140,7 @@ const isTargetRemoved = (target: RemovalTarget): boolean => {
  * returning them to observe for removal.
  * @param options Optional timeout and interval settings.
  */
-const waitForElementToBeRemoved = (
-    elementOrCallback: ElementOrCallback,
-    options?: WaitForOptions,
-): Promise<void> => {
+const waitForElementToBeRemoved = (elementOrCallback: ElementOrCallback, options?: WaitForOptions): Promise<void> => {
     const stackTraceError = new Error("STACK_TRACE_MESSAGE");
 
     if (isTargetRemoved(getTarget(elementOrCallback))) {

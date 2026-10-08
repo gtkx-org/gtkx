@@ -3,13 +3,18 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
 import { isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
-const CONFIG = 'export default { applicationId: "org.gtkx.iochannelline", libraries: ["GLib-2.0"],' +
+const CONFIG =
+    'export default { applicationId: "org.gtkx.iochannelline", libraries: ["GLib-2.0"],' +
     " agents: { reference: false, rules: false } };";
 const IMPORTS = 'import * as GLib from "@gtkx/gi/glib";\n';
-const CONTROL = IMPORTS + `export const readStatus = (channel: GLib.IOChannel): GLib.IOStatus => channel.readLine()[0];
+const CONTROL =
+    IMPORTS +
+    `export const readStatus = (channel: GLib.IOChannel): GLib.IOStatus => channel.readLine()[0];
 export const readLength = (channel: GLib.IOChannel): number => channel.readLine()[2];
 `;
-const ACCEPTED = IMPORTS + `export const exhausted: ReturnType<GLib.IOChannel["readLine"]> =
+const ACCEPTED =
+    IMPORTS +
+    `export const exhausted: ReturnType<GLib.IOChannel["readLine"]> =
     [GLib.IOStatus.EOF, null, 0, 0];
 export const read = (channel: GLib.IOChannel): string | null => {
     const [, line] = channel.readLine();
@@ -17,7 +22,9 @@ export const read = (channel: GLib.IOChannel): string | null => {
 };
 `;
 const REJECTED = IMPORTS + "export const read = (channel: GLib.IOChannel): string => channel.readLine()[1];";
-const CONSUMER = IMPORTS + String.raw`import assert from "node:assert/strict";
+const CONSUMER =
+    IMPORTS +
+    String.raw`import assert from "node:assert/strict";
 import { mkdtempDisposableSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -71,11 +78,18 @@ describe("generated IOChannel line result nullability", () => {
     let project: CliProject;
 
     beforeAll(() => {
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-iochannel-line-types-",
-            config: CONFIG,
-            files: { "accepted.ts": ACCEPTED, "control.ts": CONTROL, "rejected.ts": REJECTED, "probe.ts": CONSUMER },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-iochannel-line-types-",
+                config: CONFIG,
+                files: {
+                    "accepted.ts": ACCEPTED,
+                    "control.ts": CONTROL,
+                    "rejected.ts": REJECTED,
+                    "probe.ts": CONSUMER,
+                },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });
@@ -105,9 +119,10 @@ describe("generated IOChannel line result nullability", () => {
         });
         const page = reference.lookup("GLib.IOChannel", "record");
         expect(page.outcome).toBe("page");
-        expect(page).toHaveProperty("markdown", expect.stringContaining(
-            "readLine(): [GLib.IOStatus, string | null, number, number]",
-        ));
+        expect(page).toHaveProperty(
+            "markdown",
+            expect.stringContaining("readLine(): [GLib.IOStatus, string | null, number, number]"),
+        );
     });
 
     it("reads UTF-8 lines and EOF after a conversion error", () => {

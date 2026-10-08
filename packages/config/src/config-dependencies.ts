@@ -83,7 +83,7 @@ const setConfigDependencies = (value: object, dependencies: Iterable<string>): v
 };
 
 const configDependenciesFor = (value: unknown): string[] =>
-    typeof value === "object" && value !== null ? dependenciesByValue.get(value) ?? [] : [];
+    typeof value === "object" && value !== null ? (dependenciesByValue.get(value) ?? []) : [];
 
 const captureConfigDependencies = async <T>(operation: () => Promise<T>): Promise<CapturedConfig<T>> => {
     const state: CaptureState = {
@@ -108,9 +108,4 @@ const captureConfigDependencies = async <T>(operation: () => Promise<T>): Promis
     }
 };
 
-export {
-    captureConfigDependencies,
-    configDependenciesFor,
-    setConfigDependencies,
-    transformConfigModule,
-};
+export { captureConfigDependencies, configDependenciesFor, setConfigDependencies, transformConfigModule };

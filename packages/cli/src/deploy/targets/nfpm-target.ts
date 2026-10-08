@@ -19,10 +19,12 @@ const renderManifests = (payload: DeployPayload, packager: NfpmPackager): Deploy
         info(`${packager} package requires glibc >= ${glibcMinimum}`);
     }
 
-    return [{
-        path: manifestPathFor(payload, packager),
-        contents: stringify(renderNfpmConfig(payload, packager, glibcMinimum), { lineWidth: 0 }),
-    }];
+    return [
+        {
+            path: manifestPathFor(payload, packager),
+            contents: stringify(renderNfpmConfig(payload, packager, glibcMinimum), { lineWidth: 0 }),
+        },
+    ];
 };
 
 const packPackage = async (payload: DeployPayload, packager: NfpmPackager): Promise<DeployArtifact[]> => [

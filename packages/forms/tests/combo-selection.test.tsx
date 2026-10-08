@@ -8,16 +8,22 @@ import { useState } from "react";
 import { describe, expect, it } from "vitest";
 
 type Source = "items" | "sections";
-const CHOICES = [{ id: "first", value: "First" }, { id: "second", value: "Second" }];
+const CHOICES = [
+    { id: "first", value: "First" },
+    { id: "second", value: "Second" },
+];
 
 function ChoiceForm({ source, hasChoices }: { source: Source; hasChoices: boolean }): ReactNode {
     const form = useForm({ defaultValues: { choice: "second" } });
     const [submitted, setSubmitted] = useState("");
     const items = hasChoices ? CHOICES : [];
     const props = { name: "choice", control: form.control, title: "Choice" } as const;
-    const row = source === "items"
-        ? <ComboRow {...props} items={items} />
-        : <ComboRow {...props} sections={[{ id: "group", value: "Choices", data: items }]} />;
+    const row =
+        source === "items" ? (
+            <ComboRow {...props} items={items} />
+        ) : (
+            <ComboRow {...props} sections={[{ id: "group", value: "Choices", data: items }]} />
+        );
     const submit = form.handleSubmit(({ choice }) => {
         setSubmitted(choice);
     });

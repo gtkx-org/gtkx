@@ -48,8 +48,12 @@ describe("generated owning container returns", () => {
         using project = createCliProject({ prefix: "gtkx-owned-containers-", config: CONFIG });
         runCliOrThrow(project, ["codegen"]);
 
-        expect(() => execFileSync(process.execPath, [
-            "--import", TSX_LOADER, "--input-type=module", "--eval", IMPORTS + source,
-        ], { cwd: project.root, stdio: "pipe" })).not.toThrow();
+        expect(() =>
+            execFileSync(
+                process.execPath,
+                ["--import", TSX_LOADER, "--input-type=module", "--eval", IMPORTS + source],
+                { cwd: project.root, stdio: "pipe" },
+            ),
+        ).not.toThrow();
     });
 });

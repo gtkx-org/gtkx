@@ -11,7 +11,9 @@ describe("native attachments when an entire subtree unmounts", () => {
         const labelRef = createRef<Gtk.Label>();
         const App = ({ reversed }: { reversed: boolean }) => {
             const children = (reversed ? ["Second", "First"] : ["First", "Second"]).map((text) => (
-                <GtkLabel key={text} ref={text === "First" ? labelRef : undefined}>{text}</GtkLabel>
+                <GtkLabel key={text} ref={text === "First" ? labelRef : undefined}>
+                    {text}
+                </GtkLabel>
             ));
 
             return kind === "list" ? <GtkListBox>{children}</GtkListBox> : <GtkFlowBox>{children}</GtkFlowBox>;
@@ -32,9 +34,7 @@ describe("native attachments when an entire subtree unmounts", () => {
     it("detaches retained event controllers from retained widgets", async () => {
         const boxRef = createRef<Gtk.Box>();
         const controllerRef = createRef<Gtk.GestureClick>();
-        const { unmount } = await render(
-            <GtkBox ref={boxRef} controllers={<GtkGestureClick ref={controllerRef} />} />,
-        );
+        const { unmount } = await render(<GtkBox ref={boxRef} controllers={<GtkGestureClick ref={controllerRef} />} />);
         const box = boxRef.current;
         const controller = controllerRef.current;
         expect(controller?.getWidget()).toBe(box);
@@ -47,9 +47,10 @@ describe("native attachments when an entire subtree unmounts", () => {
     it("removes actions from a retained action group", async () => {
         const groupRef = createRef<Gio.SimpleActionGroup>();
         const { unmount } = await render(
-            <GtkBox actionGroups={(
-                <GSimpleActionGroup ref={groupRef} prefix="test" actions={<GSimpleAction name="run" />} />
-            )}
+            <GtkBox
+                actionGroups={
+                    <GSimpleActionGroup ref={groupRef} prefix="test" actions={<GSimpleAction name="run" />} />
+                }
             />,
         );
         const group = groupRef.current;
@@ -72,7 +73,9 @@ describe("adopted native page refs", () => {
 
             return (
                 <GtkStack>
-                    <GtkStackPage ref={pageRef} title="Ready"><GtkLabel>Content</GtkLabel></GtkStackPage>
+                    <GtkStackPage ref={pageRef} title="Ready">
+                        <GtkLabel>Content</GtkLabel>
+                    </GtkStackPage>
                 </GtkStack>
             );
         };
@@ -102,7 +105,11 @@ describe("adopted native page refs", () => {
         const App = ({ version }: { version: string | null }) => (
             <GtkStack ref={stackRef}>
                 <GtkStackPage ref={ref} name="page" title={version ?? "Empty"}>
-                    {version !== null && <GtkLabel key={version} ref={childRef}>{version}</GtkLabel>}
+                    {version !== null && (
+                        <GtkLabel key={version} ref={childRef}>
+                            {version}
+                        </GtkLabel>
+                    )}
                 </GtkStackPage>
             </GtkStack>
         );
@@ -148,7 +155,11 @@ describe("adopted native page refs", () => {
         const childRef = createRef<Gtk.Label>();
         const App = ({ hasFirst }: { hasFirst: boolean }) => (
             <GtkStack ref={stackRef}>
-                {hasFirst && <GtkStackPage key="first" name="first"><GtkLabel>First</GtkLabel></GtkStackPage>}
+                {hasFirst && (
+                    <GtkStackPage key="first" name="first">
+                        <GtkLabel>First</GtkLabel>
+                    </GtkStackPage>
+                )}
                 <GtkStackPage key="last" ref={pageRef} name="last">
                     <GtkLabel ref={childRef}>Last</GtkLabel>
                 </GtkStackPage>

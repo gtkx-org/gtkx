@@ -167,10 +167,7 @@ test("a subprocess constructs through its GIR shadow name", () => {
 });
 
 test("a subprocess argument vector preserves spaces", () => {
-    const subprocess = Gio.Subprocess.new(
-        ["/usr/bin/test", "a b", "=", "a b"],
-        Gio.SubprocessFlags.NONE,
-    );
+    const subprocess = Gio.Subprocess.new(["/usr/bin/test", "a b", "=", "a b"], Gio.SubprocessFlags.NONE);
 
     expect(subprocess.wait(null)).toBe(true);
     expect(subprocess.getSuccessful()).toBe(true);

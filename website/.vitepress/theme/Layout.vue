@@ -11,8 +11,8 @@ const isHome = computed(() => route.path === "/" || route.path === "/index.html"
 </script>
 
 <template>
-  <Landing v-if="isHome" />
-  <Layout v-else>
-    <template #doc-before><VersionBanner /></template>
-  </Layout>
+    <Landing v-if="isHome" />
+    <Layout v-else>
+        <template #doc-before><VersionBanner /></template>
+    </Layout>
 </template>

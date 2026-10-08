@@ -10,16 +10,10 @@
     "env": {
         "builtin": true
     },
-    "ignorePatterns": [
-        ".codescythe-*/**",
-        "**/*.vue",
-        "tutorial/**"
-    ],
+    "ignorePatterns": [".codescythe-*/**", "**/*.vue", "tutorial/**"],
     "overrides": [
         {
-            "files": [
-                "**/*.{ts,tsx,mts,cts}"
-            ],
+            "files": ["**/*.{ts,tsx,mts,cts}"],
             "rules": {
                 "constructor-super": "off",
                 "for-direction": "error",
@@ -139,37 +133,24 @@
                 "prefer-rest-params": "error",
                 "prefer-spread": "error"
             },
-            "plugins": [
-                "typescript"
-            ]
+            "plugins": ["typescript"]
         },
         {
-            "files": [
-                "**/gtkx-env.d.ts"
-            ],
+            "files": ["**/gtkx-env.d.ts"],
             "rules": {
                 "typescript/triple-slash-reference": "off"
             },
-            "plugins": [
-                "typescript"
-            ]
+            "plugins": ["typescript"]
         },
         {
-            "files": [
-                "packages/runtime/src/**/*.ts"
-            ],
+            "files": ["packages/runtime/src/**/*.ts"],
             "rules": {
                 "no-restricted-imports": [
                     "error",
                     {
                         "patterns": [
                             {
-                                "group": [
-                                    "@gtkx/gi",
-                                    "@gtkx/gi/*",
-                                    "@gtkx/jsx",
-                                    "@gtkx/jsx/*"
-                                ],
+                                "group": ["@gtkx/gi", "@gtkx/gi/*", "@gtkx/jsx", "@gtkx/jsx/*"],
                                 "message": "Keep generated-binding behavior in the TypeScript override modules."
                             }
                         ]
@@ -178,9 +159,7 @@
             }
         },
         {
-            "files": [
-                "**/*.{js,jsx,mjs,cjs}"
-            ],
+            "files": ["**/*.{js,jsx,mjs,cjs}"],
             "rules": {
                 "constructor-super": "error",
                 "for-direction": "error",
@@ -250,9 +229,7 @@
             }
         },
         {
-            "files": [
-                "**/*.{ts,tsx,js,jsx}"
-            ],
+            "files": ["**/*.{ts,tsx,js,jsx}"],
             "rules": {
                 "react/rules-of-hooks": "error",
                 "react/exhaustive-deps": "warn",
@@ -269,24 +246,15 @@
                 "react/set-state-in-render": "error",
                 "react/unsupported-syntax": "warn"
             },
-            "plugins": [
-                "react"
-            ]
+            "plugins": ["react"]
         },
         {
-            "files": [
-                "**/tests/**/*.{ts,tsx}",
-                "**/*.{test,spec,bench}.{ts,tsx}"
-            ],
+            "files": ["**/tests/**/*.{ts,tsx}", "**/*.{test,spec,bench}.{ts,tsx}"],
             "rules": {
                 "vitest/expect-expect": [
                     "error",
                     {
-                        "assertFunctionNames": [
-                            "expect",
-                            "assert",
-                            "expect*"
-                        ]
+                        "assertFunctionNames": ["expect", "assert", "expect*"]
                     }
                 ],
                 "vitest/no-commented-out-tests": "error",
@@ -313,32 +281,21 @@
                 ],
                 "typescript/unbound-method": "off"
             },
-            "plugins": [
-                "vitest",
-                "typescript"
-            ]
+            "plugins": ["vitest", "typescript"]
         },
         {
-            "files": [
-                "packages/react/src/components/controlled.tsx"
-            ],
+            "files": ["packages/react/src/components/controlled.tsx"],
             "rules": {
                 "react/refs": "off"
             },
-            "plugins": [
-                "react"
-            ]
+            "plugins": ["react"]
         },
         {
-            "files": [
-                "packages/e2e/tests/react/layout-effects.test.tsx"
-            ],
+            "files": ["packages/e2e/tests/react/layout-effects.test.tsx"],
             "rules": {
                 "react/set-state-in-effect": "off"
             },
-            "plugins": [
-                "react"
-            ]
+            "plugins": ["react"]
         }
     ]
 }

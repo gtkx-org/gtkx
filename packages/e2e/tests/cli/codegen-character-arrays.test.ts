@@ -3,11 +3,14 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
 import { isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
-const CONFIG = 'export default { applicationId: "org.gtkx.characterarrays", libraries: ["HarfBuzz-0.0"],' +
+const CONFIG =
+    'export default { applicationId: "org.gtkx.characterarrays", libraries: ["HarfBuzz-0.0"],' +
     " agents: { reference: false, rules: false } };";
 const IMPORTS = 'import * as GLib from "@gtkx/gi/glib";\nimport * as HarfBuzz from "@gtkx/gi/harfbuzz";\n';
 const CONTROL = IMPORTS + 'export const found: boolean = GLib.strvContains(["one", "two"], "two");\n';
-const ACCEPTED = IMPORTS + `export const read = (blob: HarfBuzz.blob_t): Uint8Array | null =>
+const ACCEPTED =
+    IMPORTS +
+    `export const read = (blob: HarfBuzz.blob_t): Uint8Array | null =>
     HarfBuzz.blobGetData(blob);
 export const replace = (regex: GLib.Regex, bytes: Uint8Array): string => regex.replace(bytes, 0, "text", 0);
 export const literal = (regex: GLib.Regex, bytes: number[]): string => regex.replaceLiteral(bytes, 0, "text", 0);
@@ -15,14 +18,20 @@ export const split = (regex: GLib.Regex, bytes: Uint8Array): string[] => regex.s
 export const glyph = (font: HarfBuzz.font_t, bytes: Uint8Array): number =>
     HarfBuzz.fontGetGlyphFromName(font, bytes)[0];
 `;
-const STRING_OUTPUT = IMPORTS + `export const read = (blob: HarfBuzz.blob_t): string[] | null =>
+const STRING_OUTPUT =
+    IMPORTS +
+    `export const read = (blob: HarfBuzz.blob_t): string[] | null =>
     HarfBuzz.blobGetData(blob);
 `;
-const STRING_INPUT = IMPORTS + `export const replace = (regex: GLib.Regex): string =>
+const STRING_INPUT =
+    IMPORTS +
+    `export const replace = (regex: GLib.Regex): string =>
     regex.replace(["text"], 0, "replacement", 0);
 `;
 const WRITABLE = IMPORTS + "export const writable = HarfBuzz.blobGetDataWritable;";
-const CONSUMER = IMPORTS + String.raw`import assert from "node:assert/strict";
+const CONSUMER =
+    IMPORTS +
+    String.raw`import assert from "node:assert/strict";
 import { quit } from "@gtkx/runtime";
 
 try {
@@ -81,18 +90,20 @@ describe("generated character arrays", () => {
     let project: CliProject;
 
     beforeAll(() => {
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-character-array-types-",
-            config: CONFIG,
-            files: {
-                "accepted.ts": ACCEPTED,
-                "control.ts": CONTROL,
-                "strings.ts": STRING_OUTPUT,
-                "input.ts": STRING_INPUT,
-                "writable.ts": WRITABLE,
-                "probe.ts": CONSUMER,
-            },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-character-array-types-",
+                config: CONFIG,
+                files: {
+                    "accepted.ts": ACCEPTED,
+                    "control.ts": CONTROL,
+                    "strings.ts": STRING_OUTPUT,
+                    "input.ts": STRING_INPUT,
+                    "writable.ts": WRITABLE,
+                    "probe.ts": CONSUMER,
+                },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });

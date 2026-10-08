@@ -17,18 +17,18 @@ describe("Gdk.TimeCoord.axes", () => {
         expect(coord.time).toBe(42);
     });
 
-    it.each([
-        { axes: [...AXES, 99] },
-        { axes: AXES.slice(0, -1) },
-    ])("refuses arrays that do not contain 12 axes", ({ axes }) => {
-        const coord = new Gdk.TimeCoord({ time: 7 });
-        coord.axes = AXES;
-        expect(() => {
-            coord.axes = axes;
-        }).toThrow();
-        expect(coord.axes).toEqual(AXES);
-        expect(coord.time).toBe(7);
-    });
+    it.each([{ axes: [...AXES, 99] }, { axes: AXES.slice(0, -1) }])(
+        "refuses arrays that do not contain 12 axes",
+        ({ axes }) => {
+            const coord = new Gdk.TimeCoord({ time: 7 });
+            coord.axes = AXES;
+            expect(() => {
+                coord.axes = axes;
+            }).toThrow();
+            expect(coord.axes).toEqual(AXES);
+            expect(coord.time).toBe(7);
+        },
+    );
 
     it("refuses an element that is not a number", () => {
         const coord = new Gdk.TimeCoord();
@@ -49,14 +49,21 @@ describe("Gsk.RoundedRect.corner", () => {
             new Graphene.Size({ width: 7, height: 8 }),
         ];
 
-        expect(rect.corner.map((corner) => [corner.width, corner.height])).toEqual([[1, 2], [3, 4], [5, 6], [7, 8]]);
+        expect(rect.corner.map((corner) => [corner.width, corner.height])).toEqual([
+            [1, 2],
+            [3, 4],
+            [5, 6],
+            [7, 8],
+        ]);
         expect(rect.bounds.size.width).toBe(0);
     });
 
     it.each([2, 5])("refuses arrays that do not contain four corners", (length) => {
         const rect = new Gsk.RoundedRect();
-        const corners = Array.from({ length }, (_, index) =>
-            new Graphene.Size({ width: index + 1, height: index + 1 }));
+        const corners = Array.from(
+            { length },
+            (_, index) => new Graphene.Size({ width: index + 1, height: index + 1 }),
+        );
         expect(() => {
             rect.corner = corners;
         }).toThrow();

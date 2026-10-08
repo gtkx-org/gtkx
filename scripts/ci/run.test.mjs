@@ -14,13 +14,14 @@ const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const runner = join(workspace, "scripts/ci/run.mjs");
 const require = createRequire(import.meta.url);
 const localEnvironment = { ...process.env, GTKX_CI_CONTAINER: "" };
-const run = (command, args = [], options = {}) => spawnSync(process.execPath, [runner, command, ...args], {
-    cwd: workspace,
-    env: localEnvironment,
-    encoding: "utf8",
-    timeout: 10_000,
-    ...options,
-});
+const run = (command, args = [], options = {}) =>
+    spawnSync(process.execPath, [runner, command, ...args], {
+        cwd: workspace,
+        env: localEnvironment,
+        encoding: "utf8",
+        timeout: 10_000,
+        ...options,
+    });
 
 test("local task commands preserve quoted arguments and exit status", () => {
     const args = ["two words", "an'apostrophe", "$HOME", "; exit 9", "", "line\nbreak"];
@@ -35,7 +36,9 @@ test("container tasks wait for process groups and preserve output, status, argum
     t.after(() => rmSync(directory, { recursive: true, force: true }));
     const docker = join(directory, "docker");
 
-    writeFileSync(docker, `#!/usr/bin/env node
+    writeFileSync(
+        docker,
+        `#!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 const args = process.argv.slice(2);
 if (args.shift() !== "exec") process.exit(99);
@@ -53,14 +56,15 @@ const result = spawnSync(args.shift(), args, { cwd, env, stdio: "inherit", detac
 if (result.error) throw result.error;
 if (result.signal) process.kill(process.pid, result.signal);
 process.exit(result.status ?? 1);
-`);
+`,
+    );
     chmodSync(docker, 0o755);
 
     const args = ["two words", "an'apostrophe", "$HOME", "; exit 9"];
     const result = run(
-        "node -e 'setTimeout(() => { console.log(JSON.stringify({args:process.argv.slice(1),cwd:process.cwd(),path:process.env.PATH,"
-            + "ci:process.env.CI,workers:process.env.GTKX_MAX_WORKERS,container:process.env.GTKX_CI_CONTAINER,"
-            + "secret:process.env.GTKX_TEST_SECRET})); process.exit(17); }, 50)'",
+        "node -e 'setTimeout(() => { console.log(JSON.stringify({args:process.argv.slice(1),cwd:process.cwd(),path:process.env.PATH," +
+            "ci:process.env.CI,workers:process.env.GTKX_MAX_WORKERS,container:process.env.GTKX_CI_CONTAINER," +
+            "secret:process.env.GTKX_TEST_SECRET})); process.exit(17); }, 50)'",
         args,
         {
             cwd: join(workspace, "packages/css"),
@@ -84,20 +88,23 @@ process.exit(result.status ?? 1);
     assert.equal(output.workers, "2");
     assert.equal(output.container, undefined);
     assert.equal(output.secret, undefined);
-    assert.ok(output.path.startsWith([
-        join(workspace, "packages/css/node_modules/.bin"),
-        join(workspace, "node_modules/.bin"),
-    ].join(":")));
+    assert.ok(
+        output.path.startsWith(
+            [join(workspace, "packages/css/node_modules/.bin"), join(workspace, "node_modules/.bin")].join(":"),
+        ),
+    );
 });
 
 test("cancelling a local task stops its child process and preserves the signal", { timeout: 10_000 }, async (t) => {
-    const child = spawn(process.execPath, [runner,
-        'node -e \'process.stdout.write(String(process.pid) + "\\n"); setInterval(()=>{},1000)\'',
-    ], {
-        cwd: workspace,
-        env: localEnvironment,
-        stdio: ["ignore", "pipe", "pipe"],
-    });
+    const child = spawn(
+        process.execPath,
+        [runner, "node -e 'process.stdout.write(String(process.pid) + \"\\n\"); setInterval(()=>{},1000)'"],
+        {
+            cwd: workspace,
+            env: localEnvironment,
+            stdio: ["ignore", "pipe", "pipe"],
+        },
+    );
     const lines = createInterface({ input: child.stdout });
     let taskPid;
     t.after(async () => {
@@ -145,37 +152,45 @@ test("cancelling a local task stops its child process and preserves the signal",
     assert.fail("The cancelled task left its child process running");
 });
 
-test("Nx resolves wrapped inferred tasks with their original build options and wrapper cache inputs", {
-    timeout: 60_000,
-}, (t) => {
-    const directory = mkdtempSync(join(tmpdir(), "gtkx-inference-contract-"));
-    t.after(() => rmSync(directory, { recursive: true, force: true }));
-    const result = spawnSync(process.execPath, [require.resolve("nx/bin/nx.js"), "show", "project", "@gtkx/css", "--json"], {
-        cwd: workspace,
-        env: {
-            ...localEnvironment,
-            NX_DAEMON: "false",
-            NX_NO_CLOUD: "true",
-            NX_CLOUD_ACCESS_TOKEN: "",
-            NX_CACHE_PROJECT_GRAPH: "false",
-            NX_WORKSPACE_DATA_DIRECTORY: join(directory, "workspace-data"),
-        },
-        encoding: "utf8",
-        timeout: 55_000,
-        maxBuffer: 8 * 1024 * 1024,
-    });
+test(
+    "Nx resolves wrapped inferred tasks with their original build options and wrapper cache inputs",
+    {
+        timeout: 60_000,
+    },
+    (t) => {
+        const directory = mkdtempSync(join(tmpdir(), "gtkx-inference-contract-"));
+        t.after(() => rmSync(directory, { recursive: true, force: true }));
+        const result = spawnSync(
+            process.execPath,
+            [require.resolve("nx/bin/nx.js"), "show", "project", "@gtkx/css", "--json"],
+            {
+                cwd: workspace,
+                env: {
+                    ...localEnvironment,
+                    NX_DAEMON: "false",
+                    NX_NO_CLOUD: "true",
+                    NX_CLOUD_ACCESS_TOKEN: "",
+                    NX_CACHE_PROJECT_GRAPH: "false",
+                    NX_WORKSPACE_DATA_DIRECTORY: join(directory, "workspace-data"),
+                },
+                encoding: "utf8",
+                timeout: 55_000,
+                maxBuffer: 8 * 1024 * 1024,
+            },
+        );
 
-    assert.equal(result.status, 0, result.stderr);
-    const project = JSON.parse(result.stdout);
+        assert.equal(result.status, 0, result.stderr);
+        const project = JSON.parse(result.stdout);
 
-    for (const name of ["build", "typecheck", "test", "lint"]) {
-        const target = project.targets[name];
-        assert.equal(target.executor, "nx:run-commands");
-        assert.match(target.options.command, /node "\$NX_WORKSPACE_ROOT\/scripts\/ci\/run\.mjs"/);
-        assert.ok(target.inputs.includes("{workspaceRoot}/scripts/ci/**/*"));
-        assert.equal(target.cache, true);
-    }
+        for (const name of ["build", "typecheck", "test", "lint"]) {
+            const target = project.targets[name];
+            assert.equal(target.executor, "nx:run-commands");
+            assert.match(target.options.command, /node "\$NX_WORKSPACE_ROOT\/scripts\/ci\/run\.mjs"/);
+            assert.ok(target.inputs.includes("{workspaceRoot}/scripts/ci/**/*"));
+            assert.equal(target.cache, true);
+        }
 
-    assert.deepEqual(project.targets.build.options.args, ["--noCheck"]);
-    assert.ok(project.targets.build.dependsOn.includes("gtkx:_build:bindings"));
-});
+        assert.deepEqual(project.targets.build.options.args, ["--noCheck"]);
+        assert.ok(project.targets.build.dependsOn.includes("gtkx:_build:bindings"));
+    },
+);

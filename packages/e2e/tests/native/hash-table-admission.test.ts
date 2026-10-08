@@ -43,10 +43,12 @@ describe.each(scalars)("$name hash table admission", ({ kind, descriptor, value 
 
     test("decodes native full results and Ref outputs", () => {
         const produce = t.fn(library, "gtkx_numeric_table_values", () => ({
-            args: [{ type: t.uint32 }], returns: full,
+            args: [{ type: t.uint32 }],
+            returns: full,
         }));
         const fill = t.fn(library, "gtkx_numeric_table_fill_slot", () => ({
-            args: [{ type: full, direction: "out" }, { type: t.uint32 }], returns: t.void,
+            args: [{ type: full, direction: "out" }, { type: t.uint32 }],
+            returns: t.void,
         }));
         const first = produce(kind);
         const second = produce(kind);
@@ -72,7 +74,8 @@ describe.each(scalars)("$name hash table admission", ({ kind, descriptor, value 
 
     test("retains borrowed callback results through a native table reference", () => {
         const roundtrip = t.fn(library, "gtkx_numeric_table_ref_callback", () => ({
-            args: [{ type: t.callback([], borrowed, { scope: "call" }) }], returns: full,
+            args: [{ type: t.callback([], borrowed, { scope: "call" }) }],
+            returns: full,
         }));
         const source = new Map(expected);
         let calls = 0;
@@ -90,7 +93,8 @@ describe.each(scalars)("$name hash table admission", ({ kind, descriptor, value 
 
     test("rejects full numeric inputs before a consuming native call", () => {
         const consume = t.fn(library, "gtkx_numeric_key_consume", () => ({
-            args: [{ type: full, isRequired: true }], returns: t.void,
+            args: [{ type: full, isRequired: true }],
+            returns: t.void,
         }));
         const source = new Map(expected);
         const empty: Map<string, number | bigint> = new Map();
@@ -103,15 +107,18 @@ describe.each(scalars)("$name hash table admission", ({ kind, descriptor, value 
 
     test("rejects owned callback returns before the callback can be installed", () => {
         const accept = t.fn(library, "gtkx_numeric_table_accept_return", () => ({
-            args: [{ type: t.callback([], full, { scope: "call" }) }], returns: t.boolean,
+            args: [{ type: t.callback([], full, { scope: "call" }) }],
+            returns: t.boolean,
         }));
         let calls = 0;
 
-        expect(() => accept(() => {
-            calls++;
+        expect(() =>
+            accept(() => {
+                calls++;
 
-            return new Map(expected);
-        })).toThrow();
+                return new Map(expected);
+            }),
+        ).toThrow();
         expect(calls).toBe(0);
         expect(accept(null)).toBe(false);
     });
@@ -123,9 +130,11 @@ describe.each(scalars)("$name hash table admission", ({ kind, descriptor, value 
         }));
         let calls = 0;
 
-        expect(() => accept(() => {
-            calls++;
-        })).toThrow();
+        expect(() =>
+            accept(() => {
+                calls++;
+            }),
+        ).toThrow();
         expect(calls).toBe(0);
         expect(accept(null)).toBe(false);
     });
@@ -155,7 +164,8 @@ describe.each(scalars)("$name hash table admission", ({ kind, descriptor, value 
 
 test.each(scalars)("rejects full $name keys before a consuming native call", ({ descriptor, value }) => {
     const consume = t.fn(library, "gtkx_numeric_key_consume", () => ({
-        args: [{ type: t.hashTable(descriptor, t.int32, "full"), isRequired: true }], returns: t.void,
+        args: [{ type: t.hashTable(descriptor, t.int32, "full"), isRequired: true }],
+        returns: t.void,
     }));
     const source = new Map([[value, 1]]);
 
@@ -168,15 +178,18 @@ const floatScalars = scalars.filter(({ name }) => name.startsWith("float"));
 test.each(floatScalars)("rejects full $name callback keys before installation", ({ descriptor, value }) => {
     const full = t.hashTable(descriptor, t.int32, "full");
     const accept = t.fn(library, "gtkx_numeric_table_accept_return", () => ({
-        args: [{ type: t.callback([], full, { scope: "call" }) }], returns: t.boolean,
+        args: [{ type: t.callback([], full, { scope: "call" }) }],
+        returns: t.boolean,
     }));
     let calls = 0;
 
-    expect(() => accept(() => {
-        calls++;
+    expect(() =>
+        accept(() => {
+            calls++;
 
-        return new Map([[value, 1]]);
-    })).toThrow();
+            return new Map([[value, 1]]);
+        }),
+    ).toThrow();
     expect(calls).toBe(0);
     expect(accept(null)).toBe(false);
 });
@@ -189,11 +202,13 @@ test("rejects nested owned numeric callback outputs before installation", () => 
     }));
     let calls = 0;
 
-    expect(() => accept(() => {
-        calls++;
+    expect(() =>
+        accept(() => {
+            calls++;
 
-        return [new Map([["value", 1n]])];
-    })).toThrow();
+            return [new Map([["value", 1n]])];
+        }),
+    ).toThrow();
     expect(calls).toBe(0);
     expect(accept(null)).toBe(false);
 });
@@ -205,7 +220,9 @@ test.each([false, true])("rejects full numeric vfunc outputs before publishing a
         throw new TypeError("Expected a native vfunc offset");
     }
     const full: Descriptor = {
-        kind: "hashtable", ownership: "full", keyDescriptor: { kind: "bytes", ownership: "full" },
+        kind: "hashtable",
+        ownership: "full",
+        keyDescriptor: { kind: "bytes", ownership: "full" },
         valueDescriptor: { kind: "biguint64" },
     };
     const args: Descriptor[] = [{ kind: "object", ownership: "borrowed" }];
@@ -215,16 +232,20 @@ test.each([false, true])("rejects full numeric vfunc outputs before publishing a
     const name = `GtkxNumericAdmission${output ? "Output" : "Return"}`;
     let calls = 0;
 
-    expect(() => registerClass(name, parent, {
-        vfuncs: [{
-            byteOffset: offset,
-            argDescriptors: args,
-            returnDescriptor: output ? t.void : full,
-            fn: () => {
-                calls++;
-            },
-        }],
-    })).toThrow();
+    expect(() =>
+        registerClass(name, parent, {
+            vfuncs: [
+                {
+                    byteOffset: offset,
+                    argDescriptors: args,
+                    returnDescriptor: output ? t.void : full,
+                    fn: () => {
+                        calls++;
+                    },
+                },
+            ],
+        }),
+    ).toThrow();
     expect(calls).toBe(0);
     expect(GObject.typeFromName(name)).toBe(0n);
     const recovered = registerClass(name, parent);
@@ -255,7 +276,8 @@ describe.each(keyDescriptors)("$name hash table key capability", ({ descriptor }
         for (const ownership of ["borrowed", "full"] as const) {
             const symbol = ownership === "full" ? "gtkx_numeric_key_consume" : "gtkx_numeric_key_ignore";
             const consume = t.fn(library, symbol, () => ({
-                args: [{ type: t.hashTable(descriptor, t.int32, ownership) }], returns: t.void,
+                args: [{ type: t.hashTable(descriptor, t.int32, ownership) }],
+                returns: t.void,
             }));
             expect(() => consume(null)).toThrow();
             expect(() => consume(empty)).toThrow();
@@ -268,7 +290,8 @@ describe.each(keyDescriptors)("$name hash table key capability", ({ descriptor }
             const table = t.hashTable(descriptor, t.int32, ownership);
             const read = t.fn(library, "gtkx_numeric_key_null", () => ({ args: [], returns: table }));
             const output = t.fn(library, "gtkx_numeric_key_null_output", () => ({
-                args: [{ type: table, direction: "out" }], returns: t.void,
+                args: [{ type: table, direction: "out" }],
+                returns: t.void,
             }));
             expect(() => read()).toThrow();
             expect(() => output()).toThrow();
@@ -305,7 +328,10 @@ test.each([false, true])("rejects key vfuncs before class publication, out=%s", 
         throw new TypeError("Expected a native vfunc offset");
     }
     const table: Descriptor = {
-        kind: "hashtable", ownership: "borrowed", keyDescriptor: t.biguint64, valueDescriptor: t.int32,
+        kind: "hashtable",
+        ownership: "borrowed",
+        keyDescriptor: t.biguint64,
+        valueDescriptor: t.int32,
     };
     const args: Descriptor[] = [{ kind: "object", ownership: "borrowed" }];
     if (output) {
@@ -314,18 +340,22 @@ test.each([false, true])("rejects key vfuncs before class publication, out=%s", 
     const name = `GtkxNumericKeyAdmission${output ? "Output" : "Return"}`;
     let calls = 0;
 
-    expect(() => registerClass(name, parent, {
-        vfuncs: [{
-            byteOffset: offset,
-            argDescriptors: args,
-            returnDescriptor: output ? t.void : table,
-            fn: () => {
-                calls++;
+    expect(() =>
+        registerClass(name, parent, {
+            vfuncs: [
+                {
+                    byteOffset: offset,
+                    argDescriptors: args,
+                    returnDescriptor: output ? t.void : table,
+                    fn: () => {
+                        calls++;
 
-                return null;
-            },
-        }],
-    })).toThrow();
+                        return null;
+                    },
+                },
+            ],
+        }),
+    ).toThrow();
     expect(calls).toBe(0);
     expect(GObject.typeFromName(name)).toBe(0n);
     const recovered = registerClass(name, parent);
@@ -338,7 +368,11 @@ test("preserves borrowed double keys and independent full-return maps", () => {
         args: [{ type: t.hashTable(t.float64, t.int32), isRequired: true }],
         returns: t.hashTable(t.float64, t.int32, "full"),
     }));
-    const source = new Map([[-1.25, -1], [0, 0], [2.5, 2]]);
+    const source = new Map([
+        [-1.25, -1],
+        [0, 0],
+        [2.5, 2],
+    ]);
     const first = roundtrip(source);
     const second = roundtrip(source);
 
@@ -370,7 +404,8 @@ describe.each(["borrowed", "full"] as const)("GType hash table values with %s ow
     test("rejects null results and Ref outputs before entry", () => {
         const read = t.fn(library, "gtkx_numeric_key_null", () => ({ args: [], returns: table }));
         const output = t.fn(library, "gtkx_numeric_key_null_output", () => ({
-            args: [{ type: table, direction: "out" }], returns: t.void,
+            args: [{ type: table, direction: "out" }],
+            returns: t.void,
         }));
 
         expect(() => read()).toThrow();

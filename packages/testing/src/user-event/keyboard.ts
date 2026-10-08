@@ -242,11 +242,7 @@ const isMovingFocus = (action: Gtk.ShortcutAction): boolean =>
 
 const isShortcutLive = (host: Gtk.Widget): boolean => host.isSensitive() && host.getMapped();
 
-const didRunShortcutAction = (
-    shortcut: Gtk.Shortcut,
-    host: Gtk.Widget,
-    flags: Gtk.ShortcutActionFlags,
-): boolean => {
+const didRunShortcutAction = (shortcut: Gtk.Shortcut, host: Gtk.Widget, flags: Gtk.ShortcutActionFlags): boolean => {
     const action = shortcut.getAction();
 
     if (action === null || isMovingFocus(action) || !isShortcutLive(host)) {
@@ -256,11 +252,7 @@ const didRunShortcutAction = (
     return action.activate(flags, host, shortcut.getArguments());
 };
 
-const mnemonicModifiersFor = (
-    widget: Gtk.Widget,
-    keyval: number,
-    modifiers: Gdk.ModifierType,
-): Gdk.ModifierType => {
+const mnemonicModifiersFor = (widget: Gtk.Widget, keyval: number, modifiers: Gdk.ModifierType): Gdk.ModifierType => {
     const display = widget.getDisplay();
     const [, keys] = display.mapKeyval(keyval);
     const key = keys[0];
@@ -289,8 +281,10 @@ const matchingShortcuts = (
         const index = (offset + j) % count;
         const shortcut = controller.getItem(index);
 
-        if (!(shortcut instanceof Gtk.Shortcut) ||
-            !isTriggerMatch(shortcut.getTrigger(), keyval, modifiers, areMnemonicsEnabled)) {
+        if (
+            !(shortcut instanceof Gtk.Shortcut) ||
+            !isTriggerMatch(shortcut.getTrigger(), keyval, modifiers, areMnemonicsEnabled)
+        ) {
             continue;
         }
 

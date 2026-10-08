@@ -15,8 +15,7 @@ type EnumRow = {
 };
 
 const LIB_CONSTANT =
-    "/** The shared library the generated OpenGL bindings are loaded from. */\n" +
-    "export const LIB = \"libGL.so.1\";";
+    "/** The shared library the generated OpenGL bindings are loaded from. */\n" + 'export const LIB = "libGL.so.1";';
 
 const SYNC_SUMMARY = "An opaque `GLsync` fence handle";
 const TS_PRIMITIVES: Set<string> = new Set(["boolean", "string", "void", "number"]);
@@ -24,9 +23,7 @@ const TS_PRIMITIVES: Set<string> = new Set(["boolean", "string", "void", "number
 const attributionLine = (line: string): string => (line.length === 0 ? " *" : ` * ${line}`);
 
 const attributionLines = (registryComment: string | undefined): string[] =>
-    registryComment === undefined
-        ? []
-        : [" *", ...registryComment.split("\n").map((line) => attributionLine(line))];
+    registryComment === undefined ? [] : [" *", ...registryComment.split("\n").map((line) => attributionLine(line))];
 
 const generatedHeader = (docs: GlDocContext): string =>
     [

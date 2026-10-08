@@ -2,11 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runCliOrThrow } from "./cli-project.js";
-import {
-    createReferenceOutputProject,
-    readReferencePage,
-    REFERENCE_OUTPUT,
-} from "./docs-output-fixture.js";
+import { createReferenceOutputProject, readReferencePage, REFERENCE_OUTPUT } from "./docs-output-fixture.js";
 import { isolateTypeConsumer, typecheckSource } from "./type-consumer.js";
 
 describe("generated reference output inheritance", () => {
@@ -31,15 +27,21 @@ describe("generated reference output inheritance", () => {
         expect(base).not.toContain('import { GtkWidget } from "@gtkx/jsx/gtk";');
         expect(readReferencePage(project, "gtk/index.md")).toContain("## Abstract bases");
         expect(readReferencePage(project, "gtk/index.md")).toContain("[GtkWidget](/reference/gtk/widget)");
-        expect(readFileSync(join(project.root, ".gtkx/reference/gtk/button.md"), "utf8"))
-            .toContain("[GtkWidget](.gtkx/reference/gtk/widget.md)");
-        expect(readFileSync(join(project.root, ".gtkx/reference/gtk/widget.md"), "utf8"))
-            .toContain('import type { GtkWidgetProps } from "@gtkx/jsx/gtk";');
-        expect(readFileSync(join(project.root, ".gtkx/reference/gtk/widget.md"), "utf8"))
-            .toContain("### `accessibleLabel`");
+        expect(readFileSync(join(project.root, ".gtkx/reference/gtk/button.md"), "utf8")).toContain(
+            "[GtkWidget](.gtkx/reference/gtk/widget.md)",
+        );
+        expect(readFileSync(join(project.root, ".gtkx/reference/gtk/widget.md"), "utf8")).toContain(
+            'import type { GtkWidgetProps } from "@gtkx/jsx/gtk";',
+        );
+        expect(readFileSync(join(project.root, ".gtkx/reference/gtk/widget.md"), "utf8")).toContain(
+            "### `accessibleLabel`",
+        );
         expect(readReferencePage(project, "gio/menu-item.md")).not.toContain("### `accessibleLabel`");
         isolateTypeConsumer(project);
-        expect(typecheckSource(project, `import { GtkButton, GtkLabel, GtkShortcutTrigger } from "@gtkx/jsx/gtk";
+        expect(
+            typecheckSource(
+                project,
+                `import { GtkButton, GtkLabel, GtkShortcutTrigger } from "@gtkx/jsx/gtk";
 import { GMenuItem } from "@gtkx/jsx/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { GtkWidgetProps } from "@gtkx/jsx/gtk";
@@ -57,15 +59,32 @@ export const views = [
     <GtkShortcutTrigger accelerator="F5" />,
     <GMenuItem label="Folder" />,
 ];
-`)).toBe(0);
-        expect(typecheckSource(project, `import { GtkWidget } from "@gtkx/jsx/gtk";
+`,
+            ),
+        ).toBe(0);
+        expect(
+            typecheckSource(
+                project,
+                `import { GtkWidget } from "@gtkx/jsx/gtk";
 export const view = <GtkWidget />;
-`)).not.toBe(0);
-        expect(typecheckSource(project, `import { GtkButton } from "@gtkx/jsx/gtk";
+`,
+            ),
+        ).not.toBe(0);
+        expect(
+            typecheckSource(
+                project,
+                `import { GtkButton } from "@gtkx/jsx/gtk";
 export const view = <GtkButton accessibleLabelledBy={["Folder"]} />;
-`)).not.toBe(0);
-        expect(typecheckSource(project, `import { GMenuItem } from "@gtkx/jsx/gio";
+`,
+            ),
+        ).not.toBe(0);
+        expect(
+            typecheckSource(
+                project,
+                `import { GMenuItem } from "@gtkx/jsx/gio";
 export const view = <GMenuItem accessibleLabel="Folder" />;
-`)).not.toBe(0);
+`,
+            ),
+        ).not.toBe(0);
     });
 });

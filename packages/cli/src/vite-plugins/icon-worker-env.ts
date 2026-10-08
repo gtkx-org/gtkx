@@ -14,11 +14,7 @@ function gtkxIconWorkerEnv(configFile?: string): Plugin {
         async config(config: UserConfig) {
             const loaded = await loadConfig.load(viteProjectRoot(config));
 
-            const shareDir = stageProjectIcons(
-                loaded.root,
-                loaded.config.applicationId,
-                loaded.config.applicationIcon,
-            );
+            const shareDir = stageProjectIcons(loaded.root, loaded.config.applicationId, loaded.config.applicationIcon);
 
             if (shareDir === null) {
                 return;

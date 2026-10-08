@@ -26,7 +26,7 @@ const headerIndexFor = (header: Gtk.Widget): number => {
 const titledColumnFor = (columns: Gtk.ColumnViewColumn[], title: string | null): Gtk.ColumnViewColumn | null => {
     const matches = columns.filter((column) => column.getTitle() === title);
 
-    return matches.length === 1 ? matches[0] ?? null : null;
+    return matches.length === 1 ? (matches[0] ?? null) : null;
 };
 
 const columnFor = (header: Gtk.Widget, view: Gtk.ColumnView): Gtk.ColumnViewColumn | null => {

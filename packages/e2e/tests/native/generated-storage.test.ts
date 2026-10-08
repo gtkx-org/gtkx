@@ -1,7 +1,16 @@
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import {
-    alloc, bindField, copy, type Descriptor, type ExternalObject, type Handle, read, readField, write, writeField,
+    alloc,
+    bindField,
+    copy,
+    type Descriptor,
+    type ExternalObject,
+    type Handle,
+    read,
+    readField,
+    write,
+    writeField,
 } from "@gtkx/native";
 import { getHandle, wrapHandle } from "@gtkx/runtime";
 import { describe, expect, test } from "vitest";
@@ -46,7 +55,11 @@ describe.each(["bound", "unbound"] as const)("%s boxed field bounds", (mode) => 
         const date = GLib.Date.newDmy(29, GLib.DateMonth.DECEMBER, 2026);
         GObject.typeEnsure(GLib.Date);
         const descriptor: Descriptor = {
-            kind: "boxed", typeName: "GDate", ownership: "borrowed", isInline: true, size: 8,
+            kind: "boxed",
+            typeName: "GDate",
+            ownership: "borrowed",
+            isInline: true,
+            size: 8,
         };
         const field = bindField(descriptor);
         const readDate = (handle: ExternalObject<Handle>, offset: number): ExternalObject<Handle> => {

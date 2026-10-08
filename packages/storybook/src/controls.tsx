@@ -27,7 +27,7 @@ const isObject = (value: unknown): value is Args =>
 const isWithinBoundsOrAbsent = (value: unknown, min: number, max: number): boolean =>
     value === undefined || (typeof value === "number" && Number.isFinite(value) && value >= min && value <= max);
 
-const controlTitle = (name: unknown, argument: string): string => typeof name === "string" ? name : argument;
+const controlTitle = (name: unknown, argument: string): string => (typeof name === "string" ? name : argument);
 
 const numberDigits = (step: number): number => {
     const [coefficient = "", exponent = "0"] = String(step).split("e", 2);
@@ -54,9 +54,15 @@ const NumberControl = ({
     const step = settings.step ?? 1;
 
     if (
-        typeof min !== "number" || typeof max !== "number" || typeof step !== "number" ||
-        !Number.isFinite(min) || !Number.isFinite(max) || !Number.isFinite(step) ||
-        step <= 0 || min > max || !isWithinBoundsOrAbsent(value, min, max)
+        typeof min !== "number" ||
+        typeof max !== "number" ||
+        typeof step !== "number" ||
+        !Number.isFinite(min) ||
+        !Number.isFinite(max) ||
+        !Number.isFinite(step) ||
+        step <= 0 ||
+        min > max ||
+        !isWithinBoundsOrAbsent(value, min, max)
     ) {
         return <UnsupportedControl title={title} description="Provide a finite number and valid bounds." />;
     }
@@ -72,7 +78,7 @@ const NumberControl = ({
             digits={numberDigits(step)}
             numeric
             widthChars={8}
-            adjustment={(
+            adjustment={
                 <GtkAdjustment
                     lower={min}
                     upper={max}
@@ -80,7 +86,7 @@ const NumberControl = ({
                     pageIncrement={Math.min(Number.MAX_VALUE, step * 10)}
                     value={currentValue}
                 />
-            )}
+            }
             onNotifyValue={(next) => {
                 if (!Object.is(next, value)) {
                     onChange({ [argument]: next });
@@ -92,19 +98,31 @@ const NumberControl = ({
 
 const SelectControl = (props: Omit<ControlProps, "type">): ReactNode => {
     const { argument, title, value, options, settings, isDisabled, onChange } = props;
-    if (!Array.isArray(options) || options.length === 0 || options.some((option: unknown) =>
-        option !== null && typeof option !== "string" && typeof option !== "number" && typeof option !== "boolean")) {
+    if (
+        !Array.isArray(options) ||
+        options.length === 0 ||
+        options.some(
+            (option: unknown) =>
+                option !== null &&
+                typeof option !== "string" &&
+                typeof option !== "number" &&
+                typeof option !== "boolean",
+        )
+    ) {
         return <UnsupportedControl title={title} description="Provide a list of text, number, or boolean options." />;
     }
 
     const values: unknown[] = options;
     const selected = values.findIndex((option) => Object.is(option, value));
     const labels = isObject(settings.labels) ? settings.labels : {};
-    const items = [{ id: NO_SELECTION_ID, value: NO_SELECTION_LABEL }, ...values.map((option, index) => {
-        const label = labels[String(option)];
+    const items = [
+        { id: NO_SELECTION_ID, value: NO_SELECTION_LABEL },
+        ...values.map((option, index) => {
+            const label = labels[String(option)];
 
-        return { id: String(index), value: typeof label === "string" ? label : String(option) };
-    })];
+            return { id: String(index), value: typeof label === "string" ? label : String(option) };
+        }),
+    ];
 
     return (
         <ComboRow

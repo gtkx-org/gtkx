@@ -20,11 +20,7 @@ const Counter = () => {
                     valign={Gtk.Align.CENTER}
                     halign={Gtk.Align.CENTER}
                 >
-                    <GtkLabel
-                        cssClasses={["title-1"]}
-                        accessibleRole={Gtk.AccessibleRole.HEADING}
-                        accessibleLevel={1}
-                    >
+                    <GtkLabel cssClasses={["title-1"]} accessibleRole={Gtk.AccessibleRole.HEADING} accessibleLevel={1}>
                         Welcome to GTKX!
                     </GtkLabel>
                     <GtkLabel cssClasses={["title-2"]} accessibleRole={Gtk.AccessibleRole.STATUS}>

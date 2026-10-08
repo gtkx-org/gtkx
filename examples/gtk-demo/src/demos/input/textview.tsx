@@ -117,10 +117,8 @@ function createNuclearTexture(): Gdk.Texture {
 
 const TextViewIntroSection = () => (
     <>
-        {
-            "The text widget can display text with all kinds of nifty attributes. It also supports " +
-            "multiple views of the same buffer; this demo is showing the same buffer in two places.\n\n"
-        }
+        {"The text widget can display text with all kinds of nifty attributes. It also supports " +
+            "multiple views of the same buffer; this demo is showing the same buffer in two places.\n\n"}
     </>
 );
 
@@ -240,9 +238,9 @@ const TextViewSpacingSection = () => (
         {"\n"}
         <GtkTextTag name="wide_margins_3" leftMargin={50} rightMargin={50}>
             <GtkTextTag name="double_spaced" pixelsInsideWrap={10}>
-                You can also adjust the amount of space between wrapped lines; this line has extra space
-                between each wrapped line in the same paragraph. To show off wrapping, some filler text:
-                the quick brown fox jumped over the lazy dog. Blah blah blah blah blah blah blah blah blah.
+                You can also adjust the amount of space between wrapped lines; this line has extra space between each
+                wrapped line in the same paragraph. To show off wrapping, some filler text: the quick brown fox jumped
+                over the lazy dog. Blah blah blah blah blah blah blah blah blah.
             </GtkTextTag>
         </GtkTextTag>
         {"\nAlso note that those lines have extra-wide margins.\n\n"}
@@ -267,16 +265,14 @@ const TextViewWrappingSection = () => (
             {"Wrapping. "}
         </GtkTextTag>
         <GtkTextTag name="word_wrap" wrapMode={Gtk.WrapMode.WORD}>
-            This line (and most of the others in this buffer) is word-wrapped, using the proper Unicode
-            algorithm. Word wrap should work in all scripts and languages that GTK supports. Let's make
-            this a long paragraph to demonstrate: blah blah blah blah blah blah blah blah blah blah blah
-            blah blah blah blah
+            This line (and most of the others in this buffer) is word-wrapped, using the proper Unicode algorithm. Word
+            wrap should work in all scripts and languages that GTK supports. Let's make this a long paragraph to
+            demonstrate: blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah
         </GtkTextTag>
         {"\n\n"}
         <GtkTextTag name="char_wrap" wrapMode={Gtk.WrapMode.CHAR}>
-            This line has character-based wrapping, and can wrap between any two character glyphs. Let's
-            make this a long paragraph to demonstrate: blah blah blah blah blah blah blah blah blah blah
-            blah blah blah blah blah
+            This line has character-based wrapping, and can wrap between any two character glyphs. Let's make this a
+            long paragraph to demonstrate: blah blah blah blah blah blah blah blah blah blah blah blah blah blah blah
         </GtkTextTag>
         {"\n\n"}
         <GtkTextTag name="no_wrap" wrapMode={Gtk.WrapMode.NONE}>
@@ -301,9 +297,8 @@ const TextViewJustificationSection = () => (
         </GtkTextTag>
         {"\n\n"}
         <GtkTextTag name="wide_margins" leftMargin={50} rightMargin={50}>
-            This line has big wide margins. Text text text text text text text text text text text text
-            text text text text text text text text text text text text text text text text text text
-            text text text text text.
+            This line has big wide margins. Text text text text text text text text text text text text text text text
+            text text text text text text text text text text text text text text text text text text text text.
         </GtkTextTag>
         {"\n\n"}
     </>
@@ -314,15 +309,13 @@ const TextViewInternationalSection = () => (
         <GtkTextTag name="heading-intl" {...headingProps}>
             {"Internationalization. "}
         </GtkTextTag>
-        {
-            " You can put all sorts of Unicode text in the buffer.\n\n" +
+        {" You can put all sorts of Unicode text in the buffer.\n\n" +
             "German (Deutsch Süd) Grüß Gott\n" +
             "Greek (Ελληνικά) Γειά σας\n" +
             "Hebrew שלום\n" +
             "Japanese (日本語)\n\n" +
             "The widget properly handles bidirectional text, word wrapping, DOS/UNIX/Unicode paragraph " +
-            "separators, grapheme boundaries, and so on using the Pango internationalization framework.\n"
-        }
+            "separators, grapheme boundaries, and so on using the Pango internationalization framework.\n"}
         {"Here's a word-wrapped quote in a right-to-left language:\n"}
         <GtkTextTag
             name="rtl_quote"
@@ -332,9 +325,9 @@ const TextViewInternationalSection = () => (
             leftMargin={20}
             rightMargin={20}
         >
-            وقد بدأ ثلاث من أكثر المؤسسات تقدما في شبكة اكسيون برامجها كمنظمات لا تسعى للربح، ثم تحولت في
-            السنوات الخمس الماضية إلى مؤسسات مالية منظمة، وباتت جزءا من النظام المالي في بلدانها، ولكنها
-            تتخصص في خدمة قطاع المشروعات الصغيرة. وأحد أكثر هذه المؤسسات نجاحا هو «بانكوسول» في بوليفيا.
+            وقد بدأ ثلاث من أكثر المؤسسات تقدما في شبكة اكسيون برامجها كمنظمات لا تسعى للربح، ثم تحولت في السنوات الخمس
+            الماضية إلى مؤسسات مالية منظمة، وباتت جزءا من النظام المالي في بلدانها، ولكنها تتخصص في خدمة قطاع المشروعات
+            الصغيرة. وأحد أكثر هذه المؤسسات نجاحا هو «بانكوسول» في بوليفيا.
         </GtkTextTag>
     </>
 );
@@ -374,11 +367,9 @@ const TextViewWidgetsSection = ({
             <GtkTextChildAnchor ref={setEntryAnchor}>
                 <GtkEntry accessibleLabel="Text entry" widthChars={10} />
             </GtkTextChildAnchor>
-            {
-                ".\n\nThis demo doesn't demonstrate all the GtkTextBuffer features; it leaves out, " +
+            {".\n\nThis demo doesn't demonstrate all the GtkTextBuffer features; it leaves out, " +
                 "for example: invisible/hidden text, tab stops, application-drawn areas on the sides " +
-                "of the widget for displaying breakpoints and such..."
-            }
+                "of the widget for displaying breakpoints and such..."}
         </>
     );
 };
@@ -396,7 +387,7 @@ function PrimaryTextView({
                 name="text-view-1"
                 accessibleLabel="Primary text view"
                 wrapMode={Gtk.WrapMode.WORD}
-                buffer={(
+                buffer={
                     <GtkTextBuffer ref={setSharedBuffer}>
                         <TextViewIntroSection />
                         <TextViewFontStylesSection />
@@ -410,7 +401,7 @@ function PrimaryTextView({
                         <TextViewInternationalSection />
                         <TextViewWidgetsSection onClickMe={onClickMe} anchorSetters={anchorSetters} />
                     </GtkTextBuffer>
-                )}
+                }
             />
         </GtkScrolledWindow>
     );
@@ -422,12 +413,7 @@ const SecondaryTextViewWidgets = ({ anchors, onClickMe }: Pick<SecondaryTextView
             <GtkButton key="button" textChildAnchor={anchors.button} label="Click Me" onClicked={onClickMe} />
         )}
         {anchors.dropdown && (
-            <DropDown
-                key="dropdown"
-                textChildAnchor={anchors.dropdown}
-                accessibleLabel="Menu"
-                items={widgetOptions}
-            />
+            <DropDown key="dropdown" textChildAnchor={anchors.dropdown} accessibleLabel="Menu" items={widgetOptions} />
         )}
         {anchors.scale && (
             <GtkScale
@@ -506,13 +492,13 @@ function EasterEggWindow({ windowRef, onClose }: { windowRef: RefObject<Gtk.Wind
                 <GtkTextView
                     accessibleLabel="Shared nested text"
                     wrapMode={Gtk.WrapMode.WORD}
-                    buffer={(
+                    buffer={
                         <GtkTextBuffer ref={setBuffer}>
                             {"This buffer is shared by a set of nested text views.\n Nested view:\n"}
                             <GtkTextChildAnchor ref={setAnchor} />
                             {"\nDon't do this in production applications, please.\n"}
                         </GtkTextBuffer>
-                    )}
+                    }
                 >
                     {buffer && anchor && <NestedTextView depth={0} buffer={buffer} anchor={anchor} />}
                 </GtkTextView>
@@ -557,7 +543,7 @@ function TextViewDemo() {
                 orientation={Gtk.Orientation.VERTICAL}
                 resizeStartChild={false}
                 resizeEndChild
-                startChild={(
+                startChild={
                     <PrimaryTextView
                         setSharedBuffer={setSharedBuffer}
                         anchorSetters={anchorSetters}
@@ -565,10 +551,8 @@ function TextViewDemo() {
                         nuclearPaintable={nuclearPaintable}
                         onClickMe={handleClickMe}
                     />
-                )}
-                endChild={(
-                    <SecondaryTextView sharedBuffer={sharedBuffer} anchors={anchors} onClickMe={handleClickMe} />
-                )}
+                }
+                endChild={<SecondaryTextView sharedBuffer={sharedBuffer} anchors={anchors} onClickMe={handleClickMe} />}
             />
             {isEasterEggOpen && (
                 <EasterEggWindow

@@ -49,12 +49,13 @@ const valueKey = (library: Library, value: GirParameter): string =>
     `${typeKey(library, value.type)}${value.nullable ? " | null" : ""}`;
 
 const callableKeys = (context: ModuleContext, member: Member): CallableKeys => ({
-    inputs: inputParameters(context.library, member.callable).map(({ parameter }) =>
-        `${valueKey(context.library, parameter)}${parameter.optional ? " | undefined" : ""}`,
+    inputs: inputParameters(context.library, member.callable).map(
+        ({ parameter }) => `${valueKey(context.library, parameter)}${parameter.optional ? " | undefined" : ""}`,
     ),
-    output: "returnType" in member
-        ? member.returnType
-        : renderInstanceMethodReturnType(comparisonContextFor(context), member.callable, member.scope),
+    output:
+        "returnType" in member
+            ? member.returnType
+            : renderInstanceMethodReturnType(comparisonContextFor(context), member.callable, member.scope),
 });
 
 const areKeysEqual = (left: string[], right: string[]): boolean =>
@@ -140,11 +141,7 @@ const claimInterfaceMembers = (options: InterfaceConflictOptions, claimed: Claim
     }
 };
 
-const isConflictingMember = (
-    context: ModuleContext,
-    claimed: ClaimedMembers,
-    entry: [string, Member],
-): boolean => {
+const isConflictingMember = (context: ModuleContext, claimed: ClaimedMembers, entry: [string, Member]): boolean => {
     const [name, method] = entry;
     const owned = claimed.inherited.get(name);
 
@@ -234,16 +231,13 @@ const supertypeMembers = (context: ModuleContext, base: ResolvedAncestor): Membe
     return members;
 };
 
-const isPrerequisiteConflict = (
-    context: ModuleContext,
-    inherited: MemberTable,
-    entry: [string, Member],
-): boolean => {
+const isPrerequisiteConflict = (context: ModuleContext, inherited: MemberTable, entry: [string, Member]): boolean => {
     const [name, method] = entry;
     const owned = inherited.get(name);
 
-    return SYNTHETIC_SIGNAL_MEMBERS.has(name) ||
-        (owned !== undefined && !areCallablesAssignable(context, method, owned));
+    return (
+        SYNTHETIC_SIGNAL_MEMBERS.has(name) || (owned !== undefined && !areCallablesAssignable(context, method, owned))
+    );
 };
 
 const prerequisiteConflicts = (context: ModuleContext, iface: GirClass, base: ResolvedAncestor): string[] => {
@@ -251,9 +245,7 @@ const prerequisiteConflicts = (context: ModuleContext, iface: GirClass, base: Re
     collectMethods(context, iface, members);
     const inherited = supertypeMembers(context, base);
 
-    return [...members]
-        .filter((entry) => isPrerequisiteConflict(context, inherited, entry))
-        .map(([name]) => name);
+    return [...members].filter((entry) => isPrerequisiteConflict(context, inherited, entry)).map(([name]) => name);
 };
 
 const omittedKeys = (omissions: string[]): string =>

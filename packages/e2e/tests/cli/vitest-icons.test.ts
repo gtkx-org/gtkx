@@ -65,8 +65,7 @@ ${testProject("second")}
 };
 `;
 
-const fontFixture = (name: string): Buffer =>
-    readFileSync(fileURLToPath(new URL(`fixtures/${name}`, import.meta.url)));
+const fontFixture = (name: string): Buffer => readFileSync(fileURLToPath(new URL(`fixtures/${name}`, import.meta.url)));
 
 const config = (applicationId: string, applicationIcon: string | null): string =>
     `export default { applicationId: "${applicationId}", libraries: ${JSON.stringify(STORE_LIBRARIES)}` +

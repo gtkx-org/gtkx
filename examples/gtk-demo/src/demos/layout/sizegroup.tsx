@@ -83,16 +83,13 @@ function DropdownRow({ row, dropdowns, setDropdowns }: DropdownRowProps): ReactN
     const { id, labelText, options } = row;
     const [selectedId, setSelectedId] = useState(options[0]);
 
-    const handleSelectionChanged = useCallback(
-        (nextId: string | null) => {
-            if (nextId === null) {
-                return;
-            }
+    const handleSelectionChanged = useCallback((nextId: string | null) => {
+        if (nextId === null) {
+            return;
+        }
 
-            setSelectedId(nextId);
-        },
-        [],
-    );
+        setSelectedId(nextId);
+    }, []);
 
     const captureDropdown = useCallback(
         (dropdown: Gtk.DropDown | null) => {

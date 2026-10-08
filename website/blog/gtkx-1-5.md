@@ -15,7 +15,7 @@ GTKX 1.5 is out with two new packages for work almost every application has to d
   <img src="/tasks-forms.png" width="900" height="600" loading="lazy" alt="The Tasks app editing a work task in a native Adwaita form, with a changed title ready to apply, an active Important switch, and a due date." />
 </picture>
 
-*The tutorial task editor now uses React Hook Form for its native title and importance controls.*
+_The tutorial task editor now uses React Hook Form for its native title and importance controls._
 
 ## React Hook Form, rendered by Adwaita
 
@@ -87,7 +87,7 @@ Context and plural selection use gettext's own rules. The locale is process-wide
   <img src="/tasks-i18n-fr.png" width="900" height="600" loading="lazy" alt="The Tasks app running in French, with translated sidebar views, filters, search controls, and a no-results message interpolating the query introuvable." />
 </picture>
 
-*One French PO catalog drives the application UI and the metadata installed with it.*
+_One French PO catalog drives the application UI and the metadata installed with it._
 
 ## Strict messages, generated from the application
 

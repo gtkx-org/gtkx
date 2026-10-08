@@ -16,8 +16,7 @@ registerClassOption("cssName", (klass, name) => {
     };
 });
 
-const peek = (type: bigint | AnyClass): WidgetClass =>
-    peekTypeClass(type, Widget) as WidgetClass;
+const peek = (type: bigint | AnyClass): WidgetClass => peekTypeClass(type, Widget) as WidgetClass;
 
 /**
  * The class structure for the GtkWidget type, with a static `peek` that hands back the class

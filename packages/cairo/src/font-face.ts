@@ -30,11 +30,7 @@ const cairoToyFontFaceCreate = bindCairo(
     FONT_FACE_FULL_T,
 );
 
-const cairoFtFontFaceUnsetSynthesize = bindCairo(
-    "cairo_ft_font_face_unset_synthesize",
-    [FONT_FACE_T, t.int32],
-    t.void,
-);
+const cairoFtFontFaceUnsetSynthesize = bindCairo("cairo_ft_font_face_unset_synthesize", [FONT_FACE_T, t.int32], t.void);
 
 /**
  * Styles a FreeType font face synthesizes when the font itself lacks them.

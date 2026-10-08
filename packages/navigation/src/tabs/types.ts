@@ -63,7 +63,8 @@ type TabNavigationProp<
     TabNavigationState<ParamList>,
     TabNavigationOptions,
     TabNavigationEventMap
-> & TabActionHelpers<ParamList>;
+> &
+    TabActionHelpers<ParamList>;
 
 /** Props a tab screen component receives. */
 type TabScreenProps<
@@ -105,8 +106,8 @@ type TabNavigatorProps = DefaultNavigatorOptions<
     TabNavigationEventMap,
     TabNavigationProp<ParamListBase>
 > &
-TabRouterOptions &
-TabNavigationConfig;
+    TabRouterOptions &
+    TabNavigationConfig;
 
 export type {
     TabDescriptor,

@@ -21,7 +21,7 @@ const formatCodegenResult = (result: RunCodegenResult, totalMs: number): string[
     const details = [
         ...contextDetails(result),
         `${String(result.namespaces)} namespaces, ${String(result.intrinsicElements)} intrinsic elements ` +
-        `in ${String(result.duration)}ms (total ${String(totalMs)}ms)`,
+            `in ${String(result.duration)}ms (total ${String(totalMs)}ms)`,
         ...referenceDetails(result),
     ];
 

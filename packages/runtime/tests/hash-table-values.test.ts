@@ -50,7 +50,12 @@ describe.each(bigIntegers)("$name 64-bit hash table values", ({ descriptor, valu
         const source: Map<string, number | bigint> = new Map([["number", 2 ** 53]]);
         source.set("bigint", 2n ** 53n + 1n);
 
-        expect(roundtrip(source)).toEqual(new Map([["number", 2n ** 53n], ["bigint", 2n ** 53n + 1n]]));
+        expect(roundtrip(source)).toEqual(
+            new Map([
+                ["number", 2n ** 53n],
+                ["bigint", 2n ** 53n + 1n],
+            ]),
+        );
         expect(source.get("number")).toBe(2 ** 53);
     });
 
@@ -60,7 +65,10 @@ describe.each(bigIntegers)("$name 64-bit hash table values", ({ descriptor, valu
 
     it("rejects invalid scalar entries and preserves the input", () => {
         for (const value of [...invalid, 1.5, 2 ** 53 + 2, "invalid"]) {
-            const source: Map<string, bigint | number | string> = new Map([["valid", 1n], ["invalid", value]]);
+            const source: Map<string, bigint | number | string> = new Map([
+                ["valid", 1n],
+                ["invalid", value],
+            ]);
             const expected = new Map(source);
 
             expect(() => roundtrip(source)).toThrow();
@@ -98,7 +106,11 @@ it.each([
         args: [{ type: t.hashTable(t.string(), descriptor, "borrowed"), isRequired: true }],
         returns: t.hashTable(t.string(), descriptor, "full"),
     }));
-    const source = new Map([["negative", -1.25], ["zero", 0], ["fraction", 0.5]]);
+    const source = new Map([
+        ["negative", -1.25],
+        ["zero", 0],
+        ["fraction", 0.5],
+    ]);
 
     expect(roundtrip(source)).toEqual(source);
 });

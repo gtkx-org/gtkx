@@ -5,13 +5,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { screen, within } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
-import {
-    clickButton,
-    expectHidden,
-    expectVisible,
-    getAncestor,
-    renderSplit,
-} from "./helpers/split-view-fixtures.js";
+import { clickButton, expectHidden, expectVisible, getAncestor, renderSplit } from "./helpers/split-view-fixtures.js";
 
 const SIDEBAR_ACTIONS = { headerStart: <GtkButton label="New List" />, headerEnd: <GtkLabel>Synced</GtkLabel> };
 

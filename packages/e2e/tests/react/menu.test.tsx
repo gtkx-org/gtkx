@@ -197,18 +197,25 @@ const buildMenu = (items: { label: string; action: string }[]): Gio.Menu => {
 const callbackAction = () => <GtkCallbackAction callback={() => true} />;
 
 const ItemMenu = ({ label }: { label: string }) => (
-    <GtkPopoverMenu menuModel={<GMenu><GMenuItem label={label} action="win.open" /></GMenu>} />
+    <GtkPopoverMenu
+        menuModel={
+            <GMenu>
+                <GMenuItem label={label} action="win.open" />
+            </GMenu>
+        }
+    />
 );
 
 describe("render - Menu items", () => {
     it("renders native menu item elements and replaces keyed snapshots", async () => {
         const menuRef = createRef<Gio.Menu>();
         const ItemMenu = ({ label }: { label: string }) => (
-            <GtkPopoverMenu menuModel={(
-                <GMenu ref={menuRef}>
-                    <GMenuItem key={label} label={label} action="win.open" />
-                </GMenu>
-            )}
+            <GtkPopoverMenu
+                menuModel={
+                    <GMenu ref={menuRef}>
+                        <GMenuItem key={label} label={label} action="win.open" />
+                    </GMenu>
+                }
             />
         );
         const { rerender, unmount } = await render(<ItemMenu label="Before" />);
@@ -235,12 +242,26 @@ describe("render - Menu items", () => {
 
     it("rejects adding an action to an existing item snapshot", async () => {
         const { rerender } = await render(
-            <GtkPopoverMenu menuModel={<GMenu><GMenuItem label="Before" /></GMenu>} />,
+            <GtkPopoverMenu
+                menuModel={
+                    <GMenu>
+                        <GMenuItem label="Before" />
+                    </GMenu>
+                }
+            />,
         );
 
-        await expect(rerender(
-            <GtkPopoverMenu menuModel={<GMenu><GMenuItem label="Before" action="win.open" /></GMenu>} />,
-        )).rejects.toThrow();
+        await expect(
+            rerender(
+                <GtkPopoverMenu
+                    menuModel={
+                        <GMenu>
+                            <GMenuItem label="Before" action="win.open" />
+                        </GMenu>
+                    }
+                />,
+            ),
+        ).rejects.toThrow();
     });
 
     it("adds a menu item with a label and detailed action", async () => {
@@ -470,9 +491,7 @@ describe("render - PopoverMenu actions", () => {
                 <GtkApplication applicationId={appId} flags={APP_FLAGS}>
                     <GtkApplicationWindow
                         ref={windowRef}
-                        actions={isEnabled && (
-                            <GSimpleAction name="toggle" onActivate={() => null} />
-                        )}
+                        actions={isEnabled && <GSimpleAction name="toggle" onActivate={() => null} />}
                     />
                 </GtkApplication>
             );
@@ -491,17 +510,17 @@ describe("render - Shortcut", () => {
 
         await render(
             <GtkBox
-                controllers={(
+                controllers={
                     <GtkShortcutController
                         ref={controllerRef}
-                        shortcuts={(
+                        shortcuts={
                             <GtkShortcut
                                 trigger={<GtkShortcutTrigger accelerator="<Control>s" />}
                                 action={callbackAction()}
                             />
-                        )}
+                        }
                     />
-                )}
+                }
             />,
         );
 
@@ -519,12 +538,12 @@ describe("render - Shortcut", () => {
 
         await render(
             <GtkBox
-                controllers={(
+                controllers={
                     <GtkShortcutController
                         ref={controllerRef}
                         shortcuts={<GtkShortcut trigger={trigger} action={callbackAction()} />}
                     />
-                )}
+                }
             />,
         );
 
@@ -536,17 +555,19 @@ describe("render - Shortcut", () => {
 
         const Harness = ({ hasShortcut }: { hasShortcut: boolean }) => (
             <GtkBox
-                controllers={(
+                controllers={
                     <GtkShortcutController
                         ref={controllerRef}
-                        shortcuts={hasShortcut && (
-                            <GtkShortcut
-                                trigger={<GtkShortcutTrigger accelerator="<Control>s" />}
-                                action={callbackAction()}
-                            />
-                        )}
+                        shortcuts={
+                            hasShortcut && (
+                                <GtkShortcut
+                                    trigger={<GtkShortcutTrigger accelerator="<Control>s" />}
+                                    action={callbackAction()}
+                                />
+                            )
+                        }
                     />
-                )}
+                }
             />
         );
 
@@ -564,22 +585,24 @@ describe("render - Shortcut", () => {
 
         const Harness = ({ isDisabled }: { isDisabled: boolean }) => (
             <GtkBox
-                controllers={(
+                controllers={
                     <GtkShortcutController
                         ref={controllerRef}
-                        shortcuts={(
+                        shortcuts={
                             <GtkShortcut
                                 ref={shortcutRef}
                                 trigger={
-                                    isDisabled
-                                        ? Gtk.NeverTrigger.get()
-                                        : <GtkShortcutTrigger accelerator="<Control>s" />
+                                    isDisabled ? (
+                                        Gtk.NeverTrigger.get()
+                                    ) : (
+                                        <GtkShortcutTrigger accelerator="<Control>s" />
+                                    )
                                 }
                                 action={callbackAction()}
                             />
-                        )}
+                        }
                     />
-                )}
+                }
             />
         );
 

@@ -25,9 +25,16 @@ test("an async buffer pins a generated GObject wrapper until completion", async 
     let completed = 0;
     const begin = (): WeakRef<GObject.Object> => {
         const object = new GObject.Object();
-        call(hold, [getHandle(object), () => {
-            completed += 1;
-        }], 1);
+        call(
+            hold,
+            [
+                getHandle(object),
+                () => {
+                    completed += 1;
+                },
+            ],
+            1,
+        );
 
         return new WeakRef(object);
     };

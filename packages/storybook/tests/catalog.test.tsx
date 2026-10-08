@@ -19,11 +19,14 @@ describe("native story catalog updates", () => {
             title: "Healthy",
             load: () => Promise.resolve(moduleWithLabel("Healthy preview")),
         };
-        const failedLoad = catalog.load([healthy, {
-            id: "Storybook",
-            title: "Broken",
-            load: () => Promise.reject(new Error("Import failed")),
-        }]);
+        const failedLoad = catalog.load([
+            healthy,
+            {
+                id: "Storybook",
+                title: "Broken",
+                load: () => Promise.reject(new Error("Import failed")),
+            },
+        ]);
         await expect(failedLoad).rejects.toThrow();
         await render(<Storybook catalog={catalog} />, { container: rootElement });
         const errors = within(screen.getByName("storybook-load-errors"));
@@ -57,19 +60,22 @@ describe("native story catalog updates", () => {
         const catalog = new StoryCatalog();
         const title = "Widgets <b>& things</b>";
         const name = "Example <i>& details</i>";
-        await catalog.load([{
-            id: "literal.stories.tsx",
-            title,
-            load: () => Promise.resolve({
-                default: {
-                    id: "literal",
-                    args: { label: "Click <b>& continue</b>" },
-                    argTypes: { label: { name: "Label <i>& text</i>", control: "text" } },
-                    render: (args) => <GtkButton label={String(args.label)} />,
-                } satisfies Meta,
-                Default: { name },
-            }),
-        }]);
+        await catalog.load([
+            {
+                id: "literal.stories.tsx",
+                title,
+                load: () =>
+                    Promise.resolve({
+                        default: {
+                            id: "literal",
+                            args: { label: "Click <b>& continue</b>" },
+                            argTypes: { label: { name: "Label <i>& text</i>", control: "text" } },
+                            render: (args) => <GtkButton label={String(args.label)} />,
+                        } satisfies Meta,
+                        Default: { name },
+                    }),
+            },
+        ]);
         await render(<Storybook catalog={catalog} />, { container: rootElement });
 
         expect(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name })).toBeVisible();
@@ -86,9 +92,15 @@ describe("native story catalog updates", () => {
         await act(() => {
             previousLoad = catalog.load([{ id: "old.stories.tsx", title: "Old", load: () => pending.promise }]);
         });
-        await act(() => catalog.load([{
-            id: "new.stories.tsx", title: "New", load: () => Promise.resolve(moduleWithLabel("Newest preview")),
-        }]));
+        await act(() =>
+            catalog.load([
+                {
+                    id: "new.stories.tsx",
+                    title: "New",
+                    load: () => Promise.resolve(moduleWithLabel("Newest preview")),
+                },
+            ]),
+        );
         expect(screen.getByText("Newest preview")).toBeVisible();
 
         await act(async () => {
@@ -109,10 +121,14 @@ describe("native story catalog updates", () => {
     it("rejects duplicate identifiers while keeping healthy stories usable and recovers after removal", async () => {
         const catalog = new StoryCatalog();
         const first = {
-            id: "first.stories.tsx", title: "Shared", load: () => Promise.resolve(moduleWithLabel("First")),
+            id: "first.stories.tsx",
+            title: "Shared",
+            load: () => Promise.resolve(moduleWithLabel("First")),
         };
         const second = {
-            id: "second.stories.tsx", title: "Shared", load: () => Promise.resolve(moduleWithLabel("Second")),
+            id: "second.stories.tsx",
+            title: "Shared",
+            load: () => Promise.resolve(moduleWithLabel("Second")),
         };
         const healthy = {
             id: "healthy.stories.tsx",
@@ -134,14 +150,19 @@ describe("native story catalog updates", () => {
     it.each([42, false, { label: "Invalid" }])("rejects invalid display names during loading", async (name) => {
         const catalog = new StoryCatalog();
 
-        await expect(catalog.load([{
-            id: "invalid.stories.js",
-            title: "Invalid",
-            load: () => Promise.resolve({
-                ...moduleWithLabel("Invalid preview"),
-                Default: { name },
-            }),
-        }])).rejects.toThrow();
+        await expect(
+            catalog.load([
+                {
+                    id: "invalid.stories.js",
+                    title: "Invalid",
+                    load: () =>
+                        Promise.resolve({
+                            ...moduleWithLabel("Invalid preview"),
+                            Default: { name },
+                        }),
+                },
+            ]),
+        ).rejects.toThrow();
     });
 
     it("uses explicit control precedence and leaves inferred arguments out of the inspector", async () => {
@@ -152,21 +173,30 @@ describe("native story catalog updates", () => {
                 hiddenByMeta: { control: "text" },
             },
         } satisfies Preview;
-        await catalog.load([{
-            id: "controls.stories.tsx",
-            title: "Controls",
-            load: () => Promise.resolve({
-                default: {
-                    args: {
-                        inherited: "Inherited", hiddenByMeta: "Meta", hiddenByStory: "Story", inferred: "Inferred",
-                    },
-                    argTypes: { hiddenByMeta: { control: false }, hiddenByStory: { control: "text" } },
-                    render: () => <GtkLabel>Control precedence preview</GtkLabel>,
-                } satisfies Meta,
-                Default: { argTypes: { hiddenByStory: { control: false } } },
-                Editable: { argTypes: { hiddenByMeta: { control: "text" } } },
-            }),
-        }], preview);
+        await catalog.load(
+            [
+                {
+                    id: "controls.stories.tsx",
+                    title: "Controls",
+                    load: () =>
+                        Promise.resolve({
+                            default: {
+                                args: {
+                                    inherited: "Inherited",
+                                    hiddenByMeta: "Meta",
+                                    hiddenByStory: "Story",
+                                    inferred: "Inferred",
+                                },
+                                argTypes: { hiddenByMeta: { control: false }, hiddenByStory: { control: "text" } },
+                                render: () => <GtkLabel>Control precedence preview</GtkLabel>,
+                            } satisfies Meta,
+                            Default: { argTypes: { hiddenByStory: { control: false } } },
+                            Editable: { argTypes: { hiddenByMeta: { control: "text" } } },
+                        }),
+                },
+            ],
+            preview,
+        );
         await render(<Storybook catalog={catalog} />, { container: rootElement });
 
         expect(screen.getByName("storybook-control-inherited")).toBeVisible();

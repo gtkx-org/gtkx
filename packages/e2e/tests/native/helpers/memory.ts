@@ -87,13 +87,4 @@ const drainAfterEachTest = (): void => {
     });
 };
 
-export {
-    RSS_BUDGET,
-    THROWING_RSS_BUDGET,
-    didSettle,
-    didThrow,
-    drainAfterEachTest,
-    drainGC,
-    hammer,
-    wasCollected,
-};
+export { RSS_BUDGET, THROWING_RSS_BUDGET, didSettle, didThrow, drainAfterEachTest, drainGC, hammer, wasCollected };

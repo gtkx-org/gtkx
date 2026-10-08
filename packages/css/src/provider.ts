@@ -1,12 +1,6 @@
 import type { Logger } from "@gtkx/utils";
 import { type Display, DisplayManager } from "@gtkx/gi/gdk";
-import {
-    checkVersion,
-    CssProvider,
-    Settings,
-    STYLE_PROVIDER_PRIORITY_APPLICATION,
-    StyleContext,
-} from "@gtkx/gi/gtk";
+import { checkVersion, CssProvider, Settings, STYLE_PROVIDER_PRIORITY_APPLICATION, StyleContext } from "@gtkx/gi/gtk";
 
 type ProviderOptions = { priority: number; followsPreferences: boolean };
 

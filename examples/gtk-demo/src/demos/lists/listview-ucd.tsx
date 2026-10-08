@@ -277,7 +277,7 @@ function getScriptName(value: GLib.UnicodeScript): string {
     }
 
     const tag = GLib.unicodeScriptToIso15924(value);
-    const code = String.fromCodePoint(tag >>> 24, (tag >>> 16) & 0xFF, (tag >>> 8) & 0xFF, tag & 0xFF);
+    const code = String.fromCodePoint(tag >>> 24, (tag >>> 16) & 0xff, (tag >>> 8) & 0xff, tag & 0xff);
 
     return scriptDisplayNames.of(code) ?? "Unknown";
 }

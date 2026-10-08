@@ -10,11 +10,15 @@ const library = fixtureLibrary("array-seeds", "gobject-2.0");
 const contents = [3, 7];
 const strings = ["\u{FEFF}café", "♥"];
 const copyableValue = t.struct("full", {
-    sharedLibrary: library, copyFnName: "gtkx_array_value_copy", freeFnName: "gtkx_array_value_free",
+    sharedLibrary: library,
+    copyFnName: "gtkx_array_value_copy",
+    freeFnName: "gtkx_array_value_free",
     isValueSafe: true,
 });
 const boxedValue = t.boxed("GtkxArraySeedValue", {
-    ownership: "full", sharedLibrary: library, getTypeFnName: "gtkx_array_value_get_type",
+    ownership: "full",
+    sharedLibrary: library,
+    getTypeFnName: "gtkx_array_value_get_type",
 });
 const fundamental = t.fundamental(library, "gtkx_array_reference_ref", "gtkx_array_reference_unref", {
     ownership: "full",
@@ -24,28 +28,41 @@ const layouts = [
     { name: "fixed", id: 1, make: (item: Descriptor, length: number) => t.fixedArray(item, length, "full") },
     { name: "terminated", id: 2, make: (item: Descriptor) => t.array(item, "array", "full") },
     {
-        name: "GPtrArray", id: 3,
+        name: "GPtrArray",
+        id: 3,
         make: (item: Descriptor) => t.ptrArray(item, "full", { elementOwnership: "container" }),
     },
     {
-        name: "GArray", id: 4,
+        name: "GArray",
+        id: 4,
         make: (item: Descriptor) => t.array(item, "garray", "full", { elementOwnership: "container" }),
     },
 ];
 const handleTypes = [
     {
-        name: "object", kind: 1, item: t.object("full"), argument: t.object(),
-        getter: "gtkx_array_object_get", copied: false,
+        name: "object",
+        kind: 1,
+        item: t.object("full"),
+        argument: t.object(),
+        getter: "gtkx_array_object_get",
+        copied: false,
     },
     {
-        name: "record", kind: 2, item: copyableValue, argument: t.struct(),
-        getter: "gtkx_array_value_get", copied: true,
+        name: "record",
+        kind: 2,
+        item: copyableValue,
+        argument: t.struct(),
+        getter: "gtkx_array_value_get",
+        copied: true,
     },
     { name: "boxed", kind: 2, item: boxedValue, argument: t.struct(), getter: "gtkx_array_value_get", copied: true },
     {
-        name: "fundamental", kind: 3, item: fundamental,
+        name: "fundamental",
+        kind: 3,
+        item: fundamental,
         argument: t.fundamental(library, "gtkx_array_reference_ref", "gtkx_array_reference_unref"),
-        getter: "gtkx_array_reference_get", copied: false,
+        getter: "gtkx_array_reference_get",
+        copied: false,
     },
 ];
 const releases = (kind: number): number =>
@@ -61,10 +78,12 @@ for (const { name, id, make } of layouts) {
         const invoke = invokeSeed(make(t.string("full"), 2));
         const seen: unknown[] = [];
 
-        expect(() => invoke(id, 0, 2, (ref: Ref, size: Ref) => {
-            seen.push(ref.value, size.value);
-            throw new Error("callback failure");
-        })).toThrow();
+        expect(() =>
+            invoke(id, 0, 2, (ref: Ref, size: Ref) => {
+                seen.push(ref.value, size.value);
+                throw new Error("callback failure");
+            }),
+        ).toThrow();
         expect(seen).toEqual([strings, 2]);
         expect(releases(0) - before).toBe(2);
     });
@@ -77,11 +96,16 @@ for (const { name, id, make } of layouts) {
             const seen: unknown[] = [];
             const retained: ExternalObject<Handle>[] = [];
 
-            expect(() => invoke(id, type.kind, 2, (ref: Ref, size: Ref) => {
-                retained.push(...ref.value as ExternalObject<Handle>[]);
-                seen.push(retained.map((value) => readValue(value)), size.value);
-                throw new Error("callback failure");
-            })).toThrow();
+            expect(() =>
+                invoke(id, type.kind, 2, (ref: Ref, size: Ref) => {
+                    retained.push(...(ref.value as ExternalObject<Handle>[]));
+                    seen.push(
+                        retained.map((value) => readValue(value)),
+                        size.value,
+                    );
+                    throw new Error("callback failure");
+                }),
+            ).toThrow();
             expect(seen).toEqual([contents, 2]);
             expect(releases(type.kind) - before).toBe(type.copied ? 2 : 0);
             retained.length = 0;
@@ -97,10 +121,12 @@ for (const { name, id, make } of layouts) {
             const invoke = invokeSeed(descriptor);
             const seen: unknown[] = [];
 
-            expect(() => invoke(id, 0, state, (ref: Ref, size: Ref) => {
-                seen.push(ref.value, size.value);
-                throw new Error("callback failure");
-            })).toThrow();
+            expect(() =>
+                invoke(id, 0, state, (ref: Ref, size: Ref) => {
+                    seen.push(ref.value, size.value);
+                    throw new Error("callback failure");
+                }),
+            ).toThrow();
             expect(seen).toEqual([state === 0 ? null : [], 0]);
         }
         expect(releases(0) - before).toBe(0);
@@ -115,11 +141,13 @@ test("inline callback record seeds retain copied values independently of the nat
     const seen: unknown[] = [];
     const retained: ExternalObject<Handle>[] = [];
 
-    expect(() => invoke((ref: Ref) => {
-        retained.push(...ref.value as ExternalObject<Handle>[]);
-        seen.push(retained.map((value) => readValue(value)));
-        throw new Error("callback failure");
-    })).toThrow();
+    expect(() =>
+        invoke((ref: Ref) => {
+            retained.push(...(ref.value as ExternalObject<Handle>[]));
+            seen.push(retained.map((value) => readValue(value)));
+            throw new Error("callback failure");
+        }),
+    ).toThrow();
     expect(seen).toEqual([contents]);
     expect(releases(2) - before).toBe(0);
     retained.length = 0;
@@ -136,7 +164,7 @@ test("nested pointer-array field reads retain independent inner objects", async 
     const retained: ExternalObject<Handle>[][] = [];
 
     try {
-        retained.push(...t.field(descriptor, 0).read(holder) as ExternalObject<Handle>[][]);
+        retained.push(...(t.field(descriptor, 0).read(holder) as ExternalObject<Handle>[][]));
         expect(retained.map((values) => values.map((value) => readValue(value)))).toEqual([contents]);
     } finally {
         free(holder);

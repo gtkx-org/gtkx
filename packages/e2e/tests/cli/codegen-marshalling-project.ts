@@ -13,26 +13,13 @@ const ORIENTABLE_CONFIG = `export default {
 `;
 
 const typecheckProject = (project: CliProject, file = "probe.ts"): number =>
-    typecheckFile(project, file, [
-        "--module", "NodeNext",
-        "--moduleResolution", "NodeNext",
-        "--skipLibCheck", "true",
-    ]);
+    typecheckFile(project, file, ["--module", "NodeNext", "--moduleResolution", "NodeNext", "--skipLibCheck", "true"]);
 
 const evaluateProject = (project: { root: string }, source: string): string =>
-    execFileSync(
-        process.execPath,
-        [
-            "--import", TSX_LOADER,
-            "--input-type=module",
-            "--eval",
-            source,
-        ],
-        {
-            cwd: project.root,
-            encoding: "utf8",
-            stdio: ["ignore", "pipe", "pipe"],
-        },
-    );
+    execFileSync(process.execPath, ["--import", TSX_LOADER, "--input-type=module", "--eval", source], {
+        cwd: project.root,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+    });
 
 export { evaluateProject, GIO_CONFIG, ORIENTABLE_CONFIG, typecheckProject };

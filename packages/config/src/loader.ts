@@ -2,20 +2,10 @@ import { isPathInside, warn } from "@gtkx/utils";
 import { loadConfig as loadConfigFile } from "c12";
 import { existsSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import {
-    captureConfigDependencies,
-    setConfigDependencies,
-    transformConfigModule,
-} from "./config-dependencies.ts";
+import { captureConfigDependencies, setConfigDependencies, transformConfigModule } from "./config-dependencies.ts";
 import { missingConfigFileError } from "./config-error.ts";
 import { type ConfigResolutionOptions, localConfigSourcePath } from "./config-source.ts";
-import {
-    type Config,
-    graduatedFutureKeys,
-    resolveConfig,
-    type ResolvedConfig,
-    validateConfig,
-} from "./config.ts";
+import { type Config, graduatedFutureKeys, resolveConfig, type ResolvedConfig, validateConfig } from "./config.ts";
 import { assertSupportedNodeVersion } from "./node-version.ts";
 
 /** Result of loading a project's `gtkx.config.ts` file. */
@@ -122,21 +112,17 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
             jitiOptions: { fsCache: false, transform: transformConfigModule },
             resolve: rejectMissingLocalConfig,
             ...(requestedConfigFile !== undefined && { configFile: requestedConfigFile }),
-            ...((options.mode !== undefined) && { envName: options.mode }),
-        }));
+            ...(options.mode !== undefined && { envName: options.mode }),
+        }),
+    );
     const result = captured.value;
 
     const configFile = result.configFile;
     const root = result.cwd ?? searched;
-    const layerFiles = (result.layers ?? [])
-        .flatMap((layer) => layer.configFile === undefined
-            ? []
-            : [resolve(layer.cwd ?? root, layer.configFile)]);
-    const dependencies = [
-        ...(configFile === undefined ? [] : [configFile]),
-        ...layerFiles,
-        ...captured.dependencies,
-    ];
+    const layerFiles = (result.layers ?? []).flatMap((layer) =>
+        layer.configFile === undefined ? [] : [resolve(layer.cwd ?? root, layer.configFile)],
+    );
+    const dependencies = [...(configFile === undefined ? [] : [configFile]), ...layerFiles, ...captured.dependencies];
 
     return withConfigDependencies(dependencies, () => {
         if (configFile === undefined || !existsSync(resolve(searched, configFile))) {

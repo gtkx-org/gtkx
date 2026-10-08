@@ -17,11 +17,14 @@ for (const name of ["gi", "jsx"]) {
 
 const generated = `${basename(directory.path)}/**/*.{js,ts}`;
 const configPath = join(directory.path, "codescythe.json");
-writeFileSync(configPath, JSON.stringify({
-    ...config,
-    entry: [...config.entry, generated],
-    project: [...config.project, generated],
-}));
+writeFileSync(
+    configPath,
+    JSON.stringify({
+        ...config,
+        entry: [...config.entry, generated],
+        project: [...config.project, generated],
+    }),
+);
 
 const cli = fileURLToPath(import.meta.resolve("codescythe/bin/codescythe.js"));
 const args = [cli, "--directory", root, "--config", configPath, ...process.argv.slice(2)];

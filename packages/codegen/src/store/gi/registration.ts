@@ -13,10 +13,7 @@ type InterfaceRegistration = {
     layout?: string | undefined;
 };
 
-const appendWrapperClassRegistration = (
-    context: ModuleContext,
-    registration: WrapperClassRegistration,
-): void => {
+const appendWrapperClassRegistration = (context: ModuleContext, registration: WrapperClassRegistration): void => {
     const { className, gtypeExpr, vfuncs } = registration;
 
     if (gtypeExpr === undefined) {

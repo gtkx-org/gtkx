@@ -146,18 +146,18 @@ function CssPixbufsDemo() {
         <GtkPaned
             orientation={Gtk.Orientation.VERTICAL}
             position={150}
-            startChild={(
+            startChild={
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
                     accessibleRole={Gtk.AccessibleRole.IMG}
                     accessibleLabel="Animated CSS background preview"
                 />
-            )}
-            endChild={(
+            }
+            endChild={
                 <GtkScrolledWindow>
                     <CssEditor defaultCss={DEFAULT_CSS} />
                 </GtkScrolledWindow>
-            )}
+            }
         />
     );
 }

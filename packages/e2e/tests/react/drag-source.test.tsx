@@ -7,9 +7,7 @@ import { describe, expect, it } from "vitest";
 type Icon = ComponentProps<typeof GtkDragSource>["icon"];
 
 const Source = ({ icon, sourceRef }: { icon: Icon; sourceRef: RefObject<Gtk.DragSource | null> }) => (
-    <GtkLabel controllers={<GtkDragSource ref={sourceRef} icon={icon} />}>
-        Drag source
-    </GtkLabel>
+    <GtkLabel controllers={<GtkDragSource ref={sourceRef} icon={icon} />}>Drag source</GtkLabel>
 );
 
 describe("drag source icons", () => {

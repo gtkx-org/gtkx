@@ -3,36 +3,22 @@
     "name": "create-gtkx",
     "targets": {
         "lint": {
-            "dependsOn": [
-                "^build",
-                "_lint:eslint"
-            ]
+            "dependsOn": ["^build", "_lint:eslint"]
         },
         "_build:templates": {
             "cache": true,
-            "inputs": [
-                "{projectRoot}/src/templates/**/*",
-                "{workspaceRoot}/scripts/ci/**/*"
-            ],
-            "outputs": [
-                "{projectRoot}/dist/templates/**"
-            ],
+            "inputs": ["{projectRoot}/src/templates/**/*", "{workspaceRoot}/scripts/ci/**/*"],
+            "outputs": ["{projectRoot}/dist/templates/**"],
             "command": "node ../../scripts/ci/run.mjs 'pnpm run _build:templates'",
             "options": {
                 "cwd": "{projectRoot}"
             }
         },
         "build": {
-            "dependsOn": [
-                "^build",
-                "_build:templates"
-            ]
+            "dependsOn": ["^build", "_build:templates"]
         },
         "typecheck": {
-            "dependsOn": [
-                "build",
-                "^typecheck"
-            ]
+            "dependsOn": ["build", "^typecheck"]
         }
     }
 }

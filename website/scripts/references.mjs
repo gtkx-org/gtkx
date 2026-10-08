@@ -44,8 +44,7 @@ const run = (command, args, cwd, environment = process.env) => {
     execute(command, args, { cwd, env: environment, stdio: "inherit" });
 };
 
-const read = (command, args, cwd) =>
-    execute(command, args, { cwd, encoding: "utf8" }).trim();
+const read = (command, args, cwd) => execute(command, args, { cwd, encoding: "utf8" }).trim();
 
 const commitRevision = (revision) => `${revision}^{${commitType}}`;
 
@@ -126,8 +125,8 @@ const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
 const archiveTarget = (source) => {
     const projectPath = join(source, "website", "project.json");
     const targets = existsSync(projectPath)
-        ? readJson(projectPath).targets ?? {}
-        : readJson(join(source, "website", "package.json")).nx?.targets ?? {};
+        ? (readJson(projectPath).targets ?? {})
+        : (readJson(join(source, "website", "package.json")).nx?.targets ?? {});
 
     return "reference-current" in targets ? "reference-current" : "reference";
 };

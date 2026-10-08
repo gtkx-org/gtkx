@@ -26,7 +26,4 @@ const useAppSettings = (): Gio.Settings => {
     return settings;
 };
 
-export {
-    SettingsProvider,
-    useAppSettings,
-};
+export { SettingsProvider, useAppSettings };

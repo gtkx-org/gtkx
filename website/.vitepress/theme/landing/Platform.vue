@@ -39,20 +39,20 @@ const active = computed(() => STEPS[tab.value]);
 </script>
 
 <template>
-  <section id="cli" class="platform">
-    <div class="platform__head section-head">
-      <h2 class="platform__title section-title">Create, run, and package your app</h2>
-    </div>
-    <div class="platform__panel">
-      <Tabs v-model="tab" variant="pill" :items="items" controls="platform-cmd" label="CLI command" />
-      <div id="platform-cmd" role="tabpanel" :aria-label="`gtkx ${tab}`" class="platform__tabpanel">
-        <CodeBlock variant="terminal">
-          <div class="tcmd"><span class="tprompt" aria-hidden="true">$</span> {{ active.cmd }}</div>
-        </CodeBlock>
-        <p class="platform__description">{{ active.description }}</p>
-      </div>
-    </div>
-  </section>
+    <section id="cli" class="platform">
+        <div class="platform__head section-head">
+            <h2 class="platform__title section-title">Create, run, and package your app</h2>
+        </div>
+        <div class="platform__panel">
+            <Tabs v-model="tab" variant="pill" :items="items" controls="platform-cmd" label="CLI command" />
+            <div id="platform-cmd" role="tabpanel" :aria-label="`gtkx ${tab}`" class="platform__tabpanel">
+                <CodeBlock variant="terminal">
+                    <div class="tcmd"><span class="tprompt" aria-hidden="true">$</span> {{ active.cmd }}</div>
+                </CodeBlock>
+                <p class="platform__description">{{ active.description }}</p>
+            </div>
+        </div>
+    </section>
 </template>
 
 <style scoped>

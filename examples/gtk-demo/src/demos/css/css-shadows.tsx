@@ -68,18 +68,18 @@ function CssShadowsDemo() {
         <GtkPaned
             orientation={Gtk.Orientation.VERTICAL}
             resizeStartChild={false}
-            startChild={(
+            startChild={
                 <GtkBox spacing={6} valign={Gtk.Align.CENTER}>
                     <GtkButton iconName="go-next" accessibleLabel="Go Next" />
                     <GtkButton iconName="go-previous" accessibleLabel="Go Previous" />
                     <GtkButton label="Hello World" />
                 </GtkBox>
-            )}
-            endChild={(
+            }
+            endChild={
                 <GtkScrolledWindow>
                     <CssEditor defaultCss={DEFAULT_CSS} />
                 </GtkScrolledWindow>
-            )}
+            }
         />
     );
 }

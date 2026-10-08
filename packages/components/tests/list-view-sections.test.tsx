@@ -22,10 +22,10 @@ import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 type Named = { name: string };
 
 type SectionedViewProps =
-    | ListViewProps<string, string> |
-    ColumnViewProps<string, string> |
-    DropDownProps<string, string> |
-    ComboRowProps<string, string>;
+    | ListViewProps<string, string>
+    | ColumnViewProps<string, string>
+    | DropDownProps<string, string>
+    | ComboRowProps<string, string>;
 
 type ItemViewProps = {
     items: ListItem<string>[];
@@ -148,14 +148,21 @@ function StatefulSections({ listRef }: { listRef: RefObject<Gtk.ListView | null>
 
 describe("ListView sections", () => {
     it("accepts an empty source and switches between section and item renderers", async () => {
-        expectTypeOf<ItemViewProps & { sections: ListSection<string, string>[] }>()
-            .not.toExtend<SectionedViewProps>();
-        expectTypeOf<ItemViewProps & { renderHeader: ListSectionRenderer<string> }>()
-            .not.toExtend<SectionedViewProps>();
-        expectTypeOf<{ renderItem: () => null; columns: []; renderHeader: () => null }>()
-            .not.toExtend<SectionedViewProps>();
-        expectTypeOf<{ renderItem: () => null; columns: []; sections: undefined; renderHeader: () => null }>()
-            .not.toExtend<SectionedViewProps>();
+        expectTypeOf<ItemViewProps & { sections: ListSection<string, string>[] }>().not.toExtend<SectionedViewProps>();
+        expectTypeOf<
+            ItemViewProps & { renderHeader: ListSectionRenderer<string> }
+        >().not.toExtend<SectionedViewProps>();
+        expectTypeOf<{
+            renderItem: () => null;
+            columns: [];
+            renderHeader: () => null;
+        }>().not.toExtend<SectionedViewProps>();
+        expectTypeOf<{
+            renderItem: () => null;
+            columns: [];
+            sections: undefined;
+            renderHeader: () => null;
+        }>().not.toExtend<SectionedViewProps>();
         expectTypeOf<"children">().not.toExtend<keyof ColumnViewProps>();
 
         const ref = createRef<Gtk.ListView>();

@@ -43,8 +43,9 @@ describe("drawer - mnemonics", () => {
         expect(screen.queryByText("Settings Content")).toBeNull();
         await userEvent.keyboard(content, "{Alt>}f{/Alt}");
         expect(await screen.findByText("Settings Content")).toBeVisible();
-        expect(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Files_and_folders" }))
-            .toBe(sidebarList().getSelectedRow());
+        expect(screen.getByRole(Gtk.AccessibleRole.LIST_ITEM, { name: "Files_and_folders" })).toBe(
+            sidebarList().getSelectedRow(),
+        );
     });
 
     it("keeps underscores literal and leaves mnemonics disabled by default", async () => {

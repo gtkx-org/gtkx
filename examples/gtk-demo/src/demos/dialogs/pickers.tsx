@@ -267,7 +267,8 @@ function FileMetadata({ file, onSelected, onError }: FileMetadataProps) {
         }
 
         const flags = Gio.FileQueryInfoFlags.NONE;
-        void file.queryInfoAsync("standard::content-type", flags, GLib.PRIORITY_DEFAULT, cancellable)
+        void file
+            .queryInfoAsync("standard::content-type", flags, GLib.PRIORITY_DEFAULT, cancellable)
             .then((info) => {
                 if (!cancellable.isCancelled()) {
                     reportResult(info);
@@ -327,7 +328,7 @@ function useFilePickerState() {
 
     return {
         selectedFile: selection?.file ?? null,
-        fileName: selection === null ? "None" : selection.file.getBasename() ?? selection.file.getUri(),
+        fileName: selection === null ? "None" : (selection.file.getBasename() ?? selection.file.getUri()),
         isPdf: selection?.isPdf ?? false,
         setFile: (file: Gio.File) => {
             setPending({ file, id: crypto.randomUUID() });
@@ -348,12 +349,12 @@ function useFilePickerHandlers(
         handleOpenFile: () =>
             objects.fileDialog !== null && cancellables.openFile.cancellable !== null
                 ? openFile({
-                        fileDialog: objects.fileDialog,
-                        parentWindow,
-                        cancellable: cancellables.openFile.cancellable,
-                        state,
-                        renewCancellable: cancellables.openFile.renew,
-                    })
+                      fileDialog: objects.fileDialog,
+                      parentWindow,
+                      cancellable: cancellables.openFile.cancellable,
+                      state,
+                      renewCancellable: cancellables.openFile.renew,
+                  })
                 : Promise.resolve(),
         handleLaunchApp: () => launchApp(parentWindow, objects.fileLauncher, cancellables.launchApp, state.reportError),
         handleOpenFolder: () =>
@@ -361,12 +362,12 @@ function useFilePickerHandlers(
         handlePrintFile: () =>
             objects.printDialog !== null && cancellables.printFile.cancellable !== null
                 ? printFile({
-                        printDialog: objects.printDialog,
-                        parentWindow,
-                        cancellable: cancellables.printFile.cancellable,
-                        state,
-                        renewCancellable: cancellables.printFile.renew,
-                    })
+                      printDialog: objects.printDialog,
+                      parentWindow,
+                      cancellable: cancellables.printFile.cancellable,
+                      state,
+                      renewCancellable: cancellables.printFile.renew,
+                  })
                 : Promise.resolve(),
         handleLaunchUri: () => launchUri(parentWindow, objects.uriLauncher, cancellables.launchUri, state.reportError),
     };
@@ -466,13 +467,13 @@ const FilePickerRow = ({ fileState, handlers, fileButtonWidget, setFileButtonWid
                     accessibleHasPopup
                     tooltipText="Select File"
                     onClicked={() => void handlers.handleOpenFile()}
-                    controllers={(
+                    controllers={
                         <GtkDropTarget
                             types={[gfileType]}
                             actions={Gdk.DragAction.COPY}
                             onDrop={handlers.handleFileDrop}
                         />
-                    )}
+                    }
                 />
                 <FileActionButtons fileState={fileState} handlers={handlers} />
             </GtkBox>
@@ -546,14 +547,7 @@ function PickersDemo() {
         <>
             {portal}
             {fileState.element}
-            <GtkGrid
-                rowSpacing={6}
-                columnSpacing={6}
-                marginStart={20}
-                marginEnd={20}
-                marginTop={20}
-                marginBottom={20}
-            >
+            <GtkGrid rowSpacing={6} columnSpacing={6} marginStart={20} marginEnd={20} marginTop={20} marginBottom={20}>
                 <ColorPickerRow colorWidget={colorWidget} setColorWidget={setColorWidget} />
                 <FontPickerRow fontWidget={fontWidget} setFontWidget={setFontWidget} />
                 <FilePickerRow

@@ -37,8 +37,7 @@ const makeSorterClass = () => {
     return TitleSorter;
 };
 
-const titleExpression = (): Gtk.Expression =>
-    Gtk.PropertyExpression.new(getClassType(makeRowClass()), null, "title");
+const titleExpression = (): Gtk.Expression => Gtk.PropertyExpression.new(getClassType(makeRowClass()), null, "title");
 
 const evaluateTitle = (expression: Gtk.Expression | null, row: GObject): string | null => {
     const value = new Value();

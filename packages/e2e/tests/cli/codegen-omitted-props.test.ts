@@ -18,15 +18,22 @@ describe("configured GIR property omissions", () => {
         runCliOrThrow(project, ["codegen"]);
         runCliOrThrow(project, ["docs", "--out", OMITTED_PROPS_OUTPUT]);
         isolateTypeConsumer(project);
-        const imports = 'import { GtkButton, GtkEntry, GtkSearchEntry, GtkToggleButton } from "@gtkx/jsx/gtk";\n' +
+        const imports =
+            'import { GtkButton, GtkEntry, GtkSearchEntry, GtkToggleButton } from "@gtkx/jsx/gtk";\n' +
             'import { AdwApplicationWindow } from "@gtkx/jsx/adw";\n';
-        expect(typecheckSource(project, imports + `export const views = [
+        expect(
+            typecheckSource(
+                project,
+                imports +
+                    `export const views = [
             <GtkButton label="Parent" onNotifyLabel={() => undefined} />,
             <GtkToggleButton active />,
             <GtkEntry visibility />,
             <GtkSearchEntry text="Search" onNotifyText={() => undefined} />,
             <AdwApplicationWindow defaultWidth={400} />,
-        ];`)).toBe(0);
+        ];`,
+            ),
+        ).toBe(0);
 
         for (const view of [
             '<GtkToggleButton label="Omitted" />',
@@ -44,9 +51,11 @@ describe("configured GIR property omissions", () => {
         expect(entry).not.toContain("### `text`");
         expect(entry).toContain("GIR props omitted from this element: `text`.");
         expect(toggle).toContain("GIR props omitted from this element: `label`.");
-        expect(readFileSync(join(project.root, OMITTED_PROPS_OUTPUT, "gtk/button.md"), "utf8"))
-            .toContain("### `label`");
-        expect(readFileSync(join(project.root, OMITTED_PROPS_OUTPUT, "gtk/search-entry.md"), "utf8"))
-            .toContain("### `text`");
+        expect(readFileSync(join(project.root, OMITTED_PROPS_OUTPUT, "gtk/button.md"), "utf8")).toContain(
+            "### `label`",
+        );
+        expect(readFileSync(join(project.root, OMITTED_PROPS_OUTPUT, "gtk/search-entry.md"), "utf8")).toContain(
+            "### `text`",
+        );
     });
 });

@@ -22,12 +22,10 @@ describe.each(["bound", "unbound"] as const)("%s field bounds", (mode) => {
         const bound = bindField(descriptor);
 
         return {
-            read: (handle: ExternalObject<Handle>, offset: number) => mode === "bound"
-                ? readField(bound, handle, offset)
-                : read(handle, descriptor, offset),
-            write: (handle: ExternalObject<Handle>, offset: number, value: unknown) => mode === "bound"
-                ? writeField(bound, handle, offset, value)
-                : write(handle, descriptor, offset, value),
+            read: (handle: ExternalObject<Handle>, offset: number) =>
+                mode === "bound" ? readField(bound, handle, offset) : read(handle, descriptor, offset),
+            write: (handle: ExternalObject<Handle>, offset: number, value: unknown) =>
+                mode === "bound" ? writeField(bound, handle, offset, value) : write(handle, descriptor, offset, value),
         };
     };
 

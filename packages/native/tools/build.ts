@@ -21,8 +21,21 @@ if (process.env.GTKX_RELEASE_NATIVE_ARTIFACTS === "true") {
     const separator = args.indexOf("--");
     const napiArgs = separator === -1 ? args : args.slice(0, separator);
     const cargoArgs = separator === -1 ? [] : args.slice(separator + 1);
-    execFileSync(process.execPath, [cli,
-        "build", "--platform", "--release", "--esm", "--no-dts-cache", "--no-const-enum", ...napiArgs,
-        "--", "--locked", ...cargoArgs,
-    ], { stdio: "inherit" });
+    execFileSync(
+        process.execPath,
+        [
+            cli,
+            "build",
+            "--platform",
+            "--release",
+            "--esm",
+            "--no-dts-cache",
+            "--no-const-enum",
+            ...napiArgs,
+            "--",
+            "--locked",
+            ...cargoArgs,
+        ],
+        { stdio: "inherit" },
+    );
 }

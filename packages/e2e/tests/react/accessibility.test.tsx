@@ -39,9 +39,8 @@ const expectLabelSelection = async (text: string, range: [number, number], expec
     expect(label).toHaveSelection(expected);
 };
 
-const renderItemLabel = (item: GObject.Object): ReactNode => (
-    item instanceof Gtk.StringObject ? <GtkLabel>{`Language: ${item.getString()}`}</GtkLabel> : null
-);
+const renderItemLabel = (item: GObject.Object): ReactNode =>
+    item instanceof Gtk.StringObject ? <GtkLabel>{`Language: ${item.getString()}`}</GtkLabel> : null;
 
 const renderPlaceholderEntry = async (rendered: string, accessible: string): Promise<Gtk.Entry | null> => {
     const ref = createRef<Gtk.Entry>();
@@ -108,7 +107,11 @@ describe("holding accessible props against GTK's own writes", () => {
         const ref = createRef<Gtk.Label>();
 
         function App({ isShown }: { isShown: boolean }) {
-            return <GtkBox visible={isShown}><GtkLabel ref={ref} accessibleHidden /></GtkBox>;
+            return (
+                <GtkBox visible={isShown}>
+                    <GtkLabel ref={ref} accessibleHidden />
+                </GtkBox>
+            );
         }
 
         const { rerender } = await render(<App isShown />);
@@ -126,7 +129,11 @@ describe("holding accessible props against GTK's own writes", () => {
         function App({ isAuthored, isHidden, isShown }: { isAuthored: boolean; isHidden: boolean; isShown: boolean }) {
             const accessible = isAuthored ? { accessibleHidden: isHidden } : {};
 
-            return <GtkBox visible={isShown}><GtkLabel ref={ref} {...accessible} /></GtkBox>;
+            return (
+                <GtkBox visible={isShown}>
+                    <GtkLabel ref={ref} {...accessible} />
+                </GtkBox>
+            );
         }
 
         const { rerender } = await render(<App isAuthored={false} isHidden={false} isShown />);
@@ -342,9 +349,7 @@ describe("numeric values compare within the resolution GTK publishes", () => {
     it("matches a scale value beyond six significant digits in every matcher alike", async () => {
         const ref = createRef<Gtk.Scale>();
 
-        await render(
-            <GtkScale ref={ref} adjustment={<GtkAdjustment value={1234.5678} lower={0} upper={10_000} />} />,
-        );
+        await render(<GtkScale ref={ref} adjustment={<GtkAdjustment value={1234.5678} lower={0} upper={10_000} />} />);
 
         expect(screen.getByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 1234.5678 } })).toBe(ref.current);
         expect(screen.queryAllByRole(Gtk.AccessibleRole.SLIDER, { value: { now: 1234.57 } })).toHaveLength(0);
@@ -368,10 +373,7 @@ describe("numeric values carry the staleness GTK publishes them with", () => {
         const adjustment = createRef<Gtk.Adjustment>();
 
         await render(
-            <GtkScale
-                ref={ref}
-                adjustment={<GtkAdjustment ref={adjustment} value={42} lower={0} upper={100} />}
-            />,
+            <GtkScale ref={ref} adjustment={<GtkAdjustment ref={adjustment} value={42} lower={0} upper={100} />} />,
         );
 
         adjustment.current?.setValue(42.0009);
@@ -386,10 +388,7 @@ describe("numeric values carry the staleness GTK publishes them with", () => {
         const ref = createRef<Gtk.Scrollbar>();
 
         await render(
-            <GtkScrollbar
-                ref={ref}
-                adjustment={<GtkAdjustment value={0} lower={0} upper={100} pageSize={10} />}
-            />,
+            <GtkScrollbar ref={ref} adjustment={<GtkAdjustment value={0} lower={0} upper={100} pageSize={10} />} />,
         );
 
         expect(screen.getByRole(Gtk.AccessibleRole.SCROLLBAR, { value: { max: 90 } })).toBe(ref.current);

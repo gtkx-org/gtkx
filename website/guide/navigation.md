@@ -13,12 +13,12 @@ npm install @gtkx/navigation@1.6.0
 
 Choose a navigator for the layout:
 
-| Navigator | Use it for | Native surface |
-| --- | --- | --- |
-| [Stack](#stack-navigator) | Moving through a sequence of pages | `AdwNavigationView` |
-| [Tabs](#tab-navigator) | Switching between a few peer sections | `AdwViewStack` and a view switcher |
-| [Drawer](#drawer-navigator) | Choosing an application section from a sidebar | `AdwOverlaySplitView` |
-| [Split view](#split-view-navigator) | Keeping a selection beside its detail pages | `AdwNavigationSplitView` |
+| Navigator                           | Use it for                                     | Native surface                     |
+| ----------------------------------- | ---------------------------------------------- | ---------------------------------- |
+| [Stack](#stack-navigator)           | Moving through a sequence of pages             | `AdwNavigationView`                |
+| [Tabs](#tab-navigator)              | Switching between a few peer sections          | `AdwViewStack` and a view switcher |
+| [Drawer](#drawer-navigator)         | Choosing an application section from a sidebar | `AdwOverlaySplitView`              |
+| [Split view](#split-view-navigator) | Keeping a selection beside its detail pages    | `AdwNavigationSplitView`           |
 
 Scaffolded 1.6 applications enable [`v2DefaultLibraries`](/guide/configuration-and-codegen#future-flags), so they already generate the Adwaita bindings these navigators need. A legacy GTK-only project must bind `Adw-1` first. The package re-exports React Navigation's core hooks, actions and types. Use its [navigation documentation](https://reactnavigation.org/docs/navigation-object/) for those shared concepts and the [GTKX reference](/reference/@gtkx/navigation/) for navigator options.
 

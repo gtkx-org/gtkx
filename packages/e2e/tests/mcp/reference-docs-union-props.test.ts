@@ -2,12 +2,7 @@ import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { isToolFailure } from "./app-session.js";
-import {
-    createConfiguredProject,
-    referenceSession,
-    REQUEST_OPTIONS,
-    writePropsConfig,
-} from "./reference-session.js";
+import { createConfiguredProject, referenceSession, REQUEST_OPTIONS, writePropsConfig } from "./reference-session.js";
 
 const { apiDocs, state } = referenceSession();
 
@@ -38,9 +33,19 @@ describe("gtkx_get_api_docs", () => {
             writeFileSync(declaration, source.replaceAll("auditFlag", "auditUpdated"));
             await expect.poll(docs).toContain("### `auditUpdated`");
             writeFileSync(declaration, source.replace("auditFlag: boolean", "auditFlag: Gtk.Absent"));
-            await expect.poll(() => isToolFailure(state.server.client, "gtkx_get_api_docs", {
-                symbol: "GtkButton", projectRoot: project,
-            }, REQUEST_OPTIONS)).toBe(true);
+            await expect
+                .poll(() =>
+                    isToolFailure(
+                        state.server.client,
+                        "gtkx_get_api_docs",
+                        {
+                            symbol: "GtkButton",
+                            projectRoot: project,
+                        },
+                        REQUEST_OPTIONS,
+                    ),
+                )
+                .toBe(true);
             writeFileSync(declaration, source);
             await expect.poll(docs).toContain("### `auditFlag`");
         } finally {

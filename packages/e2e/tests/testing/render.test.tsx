@@ -54,14 +54,14 @@ const ApplicationProbe = (): ReactNode => {
         <GtkApplication
             applicationId={APPLICATION_ID}
             flags={NON_UNIQUE}
-            actions={(
+            actions={
                 <GSimpleAction
                     name="bump"
                     onActivate={() => {
                         setCount((current) => current + 1);
                     }}
                 />
-            )}
+            }
         >
             <GtkApplicationWindow defaultWidth={100} defaultHeight={100}>
                 <GtkLabel name="count">{`Count: ${String(count)}`}</GtkLabel>
@@ -108,7 +108,13 @@ afterEach(() => {
 
 describe("render", () => {
     it("mounts a tree into a fresh queryable window and updates it on rerender", async () => {
-        const { container, findByRole: find, findByText, queryByText, rerender } = await render(
+        const {
+            container,
+            findByRole: find,
+            findByText,
+            queryByText,
+            rerender,
+        } = await render(
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 <GtkButton label="First" />
                 <GtkLabel>Second</GtkLabel>

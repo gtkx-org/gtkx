@@ -151,13 +151,7 @@ const gtkLogoTextureCallback: Gdk.CursorGetTextureCallback = (_cursor, cursorSiz
     const texture = renderer.renderTexture(node, null);
     renderer.unrealize();
 
-    return [
-        texture,
-        cursorSize,
-        cursorSize,
-        Math.round((18 * cursorSize) / 32),
-        Math.round((2 * cursorSize) / 32),
-    ];
+    return [texture, cursorSize, cursorSize, Math.round((18 * cursorSize) / 32), Math.round((2 * cursorSize) / 32)];
 };
 
 const buildCursorVariants = (info: CursorInfo) => {
@@ -196,17 +190,17 @@ const buildCursorVariants = (info: CursorInfo) => {
 const buildCursorTooltips = (info: CursorInfo): [string, string, string, string] =>
     info.name === "gtk-logo"
         ? [
-                "The \"gtk-logo\" named cursor",
-                "An image cursor for the GTK logo",
-                "A callback cursor for the GTK logo",
-                "An image cursor falling back to the \"gtk-logo\" cursor",
-            ]
+              'The "gtk-logo" named cursor',
+              "An image cursor for the GTK logo",
+              "A callback cursor for the GTK logo",
+              'An image cursor falling back to the "gtk-logo" cursor',
+          ]
         : [
-                `The "${info.name}" named cursor`,
-                "An image cursor",
-                `The "${info.name}" named cursor falling back to an image cursor`,
-                `An image cursor falling back to the "${info.name}" cursor`,
-            ];
+              `The "${info.name}" named cursor`,
+              "An image cursor",
+              `The "${info.name}" named cursor falling back to an image cursor`,
+              `An image cursor falling back to the "${info.name}" cursor`,
+          ];
 
 const CursorPreview = ({ info }: { info: CursorInfo }) => {
     const texture = getCursorTexture(info);

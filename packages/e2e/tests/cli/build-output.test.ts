@@ -1,12 +1,6 @@
 import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync, spawnSync } from "node:child_process";
-import {
-    existsSync,
-    mkdirSync,
-    readFileSync,
-    symlinkSync,
-    writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createCliProject, runCli, runCliOrThrow } from "./cli-project.js";
@@ -70,8 +64,7 @@ describe("gtkx build (separate output directories)", () => {
         });
 
         runCliOrThrow(project, ["build"]);
-        expect(() => runCliOrThrow(project, ["build", "src/helper.ts", "--out", join("dist", "helper")]))
-            .toThrow();
+        expect(() => runCliOrThrow(project, ["build", "src/helper.ts", "--out", join("dist", "helper")])).toThrow();
     });
 
     it("replaces a previous build while preserving its .git directory", () => {

@@ -10,9 +10,8 @@ const applicationProps = (): Gio.ApplicationConstructorProps => ({
     flags: Gio.ApplicationFlags.NON_UNIQUE,
 });
 
-const createApplicationFrom = <T extends Gio.Application>(
-    base: new(props: Gio.ApplicationConstructorProps) => T,
-): T => new base(applicationProps());
+const createApplicationFrom = <T extends Gio.Application>(base: new (props: Gio.ApplicationConstructorProps) => T): T =>
+    new base(applicationProps());
 
 const createApplication = (): Gio.Application => createApplicationFrom(Gio.Application);
 
@@ -37,10 +36,4 @@ const countSignal = (application: Gio.Application, signal: ApplicationSignal): (
     return () => emissions;
 };
 
-export {
-    applicationProps,
-    countSignal,
-    createApplication,
-    createApplicationFrom,
-    createUniqueApplication,
-};
+export { applicationProps, countSignal, createApplication, createApplicationFrom, createUniqueApplication };

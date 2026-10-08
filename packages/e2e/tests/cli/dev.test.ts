@@ -39,14 +39,17 @@ const PACKAGE_FONT_FAMILY = "Red Hat Display";
 const PACKAGE_FONT_DIR = join("node_modules", "probe-fonts");
 const PACKAGE_FONT_IMPORT = 'import packageFontFamily from "probe-fonts/probe.woff?font";';
 
-const PACKAGE_FONT_MANIFEST = `${JSON.stringify({
-    name: "probe-fonts",
-    version: "1.0.0",
-    exports: { "./probe.woff": "./probe.woff" },
-}, null, 4)}\n`;
+const PACKAGE_FONT_MANIFEST = `${JSON.stringify(
+    {
+        name: "probe-fonts",
+        version: "1.0.0",
+        exports: { "./probe.woff": "./probe.woff" },
+    },
+    null,
+    4,
+)}\n`;
 
-const fontFixture = (name: string): Buffer =>
-    readFileSync(fileURLToPath(new URL(`fixtures/${name}`, import.meta.url)));
+const fontFixture = (name: string): Buffer => readFileSync(fileURLToPath(new URL(`fixtures/${name}`, import.meta.url)));
 const APP_MODULE = join("src", "app.tsx");
 const ENTRY_MODULE = join("src", "index.tsx");
 const JAVASCRIPT_REFRESH_MODULE = join("src", "javascript-refresh.mjs");
@@ -76,14 +79,7 @@ const WATCH_ENTRY_MODULE = join("src", "index.ts");
 const RESOURCE_ICON_NAME = "gtkx-dev-probe-symbolic";
 const RESOURCE_ICON_PATH = `/com/gtkx/clidev/icons/scalable/actions/${RESOURCE_ICON_NAME}.svg`;
 
-const RESOURCE_ICON_DIR = join(
-    "data",
-    "assets",
-    "icons",
-    "hicolor",
-    "scalable",
-    "actions",
-);
+const RESOURCE_ICON_DIR = join("data", "assets", "icons", "hicolor", "scalable", "actions");
 
 const FIRST_RESOURCE_ICON_ASSET = join(RESOURCE_ICON_DIR, "first.svg");
 const SECOND_RESOURCE_ICON_ASSET = join(RESOURCE_ICON_DIR, "second.svg");
@@ -221,10 +217,12 @@ const iconImportSource = (iconFile: ResourceIconSource): string => {
         return 'import { resourceIconName } from "./resource-icon.js";';
     }
 
-    return 'import type { ResourceIconMarker } from "./resource-icon.js";\n' +
+    return (
+        'import type { ResourceIconMarker } from "./resource-icon.js";\n' +
         "import importedResourceIconName from " +
         `"../data/assets/icons/hicolor/scalable/actions/${iconFile}?icon=${RESOURCE_ICON_NAME}";\n` +
-        "const resourceIconName: ResourceIconMarker = importedResourceIconName;";
+        "const resourceIconName: ResourceIconMarker = importedResourceIconName;"
+    );
 };
 
 const appHead = (iconFile: ResourceIconSource): string => {
@@ -233,11 +231,8 @@ const appHead = (iconFile: ResourceIconSource): string => {
     return `${APP_HEAD_START}${iconImport}\n\nconst REVISION = `;
 };
 
-const appSource = (
-    revision: string,
-    iconFile: ResourceIconSource = null,
-    translationKey = "translation",
-): string => `${appHead(iconFile)}${JSON.stringify(revision)}${appBody(translationKey)}`;
+const appSource = (revision: string, iconFile: ResourceIconSource = null, translationKey = "translation"): string =>
+    `${appHead(iconFile)}${JSON.stringify(revision)}${appBody(translationKey)}`;
 
 const javascriptRefreshSource = (revision: string): string => String.raw`import { GtkLabel } from "@gtkx/jsx/gtk";
 import { createElement, useEffect } from "react";
@@ -349,7 +344,10 @@ const startDev = (project: CliProject): DevSession =>
 
 const headlessRuntimeDir = (session: DevSession): string => {
     const prefix = `${HEADLESS_MARKER} `;
-    const line = session.output().split("\n").find((candidate) => candidate.startsWith(prefix));
+    const line = session
+        .output()
+        .split("\n")
+        .find((candidate) => candidate.startsWith(prefix));
 
     if (line === undefined) {
         throw new Error("The headless dev session reported no runtime directory");
@@ -359,8 +357,8 @@ const headlessRuntimeDir = (session: DevSession): string => {
 };
 
 const headlessCompositor = (runtimeDir: string): ProcessEntry => {
-    const compositor = processEntries().find((entry) =>
-        entry.args[0]?.endsWith("/sway") === true && entry.args.includes(join(runtimeDir, "sway.conf")),
+    const compositor = processEntries().find(
+        (entry) => entry.args[0]?.endsWith("/sway") === true && entry.args.includes(join(runtimeDir, "sway.conf")),
     );
 
     if (compositor === undefined) {
@@ -398,7 +396,9 @@ const waitForOutput = async (session: DevSession, needle: string, timeout: numbe
 const occurrences = (source: string, needle: string): number => source.split(needle).length - 1;
 
 const observations = (project: CliProject): DevObservation[] =>
-    readFileSync(join(project.root, OBSERVATIONS_FILE), "utf8").trim().split("\n")
+    readFileSync(join(project.root, OBSERVATIONS_FILE), "utf8")
+        .trim()
+        .split("\n")
         .map((line) => JSON.parse(line) as DevObservation);
 
 const waitForOccurrences = async (
@@ -446,7 +446,11 @@ const expectSingleRestart = async (state: DevState, change: () => void): Promise
     await waitForOccurrences(state.session, READY_MARKER, priorRuns + 1, RELOAD_TIMEOUT);
     await delay(SETTLE_DELAY);
     const output = state.session.output().slice(priorOutput.length);
-    const currentPids = new Set(observations(state.project).slice(previous.length).map(({ pid }) => pid));
+    const currentPids = new Set(
+        observations(state.project)
+            .slice(previous.length)
+            .map(({ pid }) => pid),
+    );
     expect(occurrences(output, READY_MARKER)).toBe(1);
     expect(currentPids.size).toBe(1);
     expect(currentPids.intersection(previousPids).size).toBe(0);
@@ -456,10 +460,15 @@ const expectSingleRestart = async (state: DevState, change: () => void): Promise
 
 const expectAddedFontRestart = async (state: DevState): Promise<void> => {
     const restarted = await expectSingleRestart(state, () => {
-        writeApp(state.project, appSource("font-added").replace(
-            PACKAGE_FONT_IMPORT,
-            () => `${PACKAGE_FONT_IMPORT}\nimport addedFamily from "../data/probe.otf?font";`,
-        ).replace('" " + packageFontFamily + " "', '" " + packageFontFamily + " " + addedFamily + " "'));
+        writeApp(
+            state.project,
+            appSource("font-added")
+                .replace(
+                    PACKAGE_FONT_IMPORT,
+                    () => `${PACKAGE_FONT_IMPORT}\nimport addedFamily from "../data/probe.otf?font";`,
+                )
+                .replace('" " + packageFontFamily + " "', '" " + packageFontFamily + " " + addedFamily + " "'),
+        );
     });
 
     expect(restarted).toContain(ADDED_FONT_FAMILY);
@@ -492,7 +501,8 @@ const expectResourceIconReload = async (
 ): Promise<void> => {
     writeApp(state.project, appSource(revision, iconFile));
 
-    const expected = `${READY_MARKER} ${revision} ${FIRST_RESOURCE_PATH} asset-three asset-two asset-three true ` +
+    const expected =
+        `${READY_MARKER} ${revision} ${FIRST_RESOURCE_PATH} asset-three asset-two asset-three true ` +
         `${RESOURCE_ICON_NAME} ${iconState}`;
 
     expect(await waitForOutput(state.session, expected, RELOAD_TIMEOUT)).toContain(expected);
@@ -538,7 +548,7 @@ const devProjectFiles = (): Record<string, string | Buffer> => ({
     [join(PACKAGE_FONT_DIR, "probe.woff")]: fontFixture("probe.woff"),
     [FIRST_ASSET]: "asset-one\n",
     [SECOND_ASSET]: "asset-two\n",
-    [ICON_ASSET]: "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\"/>\n",
+    [ICON_ASSET]: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"/>\n',
     [FIRST_RESOURCE_ICON_ASSET]: FIRST_RESOURCE_ICON_SOURCE,
     [SECOND_RESOURCE_ICON_ASSET]: SECOND_RESOURCE_ICON_SOURCE,
     [LINGUAS]: "it\n",
@@ -652,11 +662,7 @@ describe("gtkx dev", () => {
         );
         expect(observations(state.project)).toContainEqual({ pid: initialPid, revision: "two" });
         expect(
-            await waitForFileContent(
-                join(state.project.root, POT),
-                'msgid "Source refresh"',
-                RELOAD_TIMEOUT,
-            ),
+            await waitForFileContent(join(state.project.root, POT), 'msgid "Source refresh"', RELOAD_TIMEOUT),
         ).toContain('msgid "Source refresh"');
         expect(
             await waitForFileContent(
@@ -667,9 +673,9 @@ describe("gtkx dev", () => {
         ).toContain("Source refresh");
 
         writeApp(state.project, appSource("two-restored"));
-        expect(
-            await waitForOutput(state.session, `${READY_MARKER} two-restored`, RELOAD_TIMEOUT),
-        ).toContain(`${READY_MARKER} two-restored`);
+        expect(await waitForOutput(state.session, `${READY_MARKER} two-restored`, RELOAD_TIMEOUT)).toContain(
+            `${READY_MARKER} two-restored`,
+        );
     });
 
     it("restarts once when a source change rewrites a translation catalog", async () => {
@@ -706,17 +712,14 @@ describe("gtkx dev", () => {
         expect(state.session.isRunning()).toBe(true);
         writeApp(state.project, appSource("three"));
 
-        const recovered = `${READY_MARKER} three ${FIRST_RESOURCE_PATH} asset-three asset-two asset-three ` +
+        const recovered =
+            `${READY_MARKER} three ${FIRST_RESOURCE_PATH} asset-three asset-two asset-three ` +
             `true ${RESOURCE_ICON_NAME} true icon-one`;
 
         expect(await waitForOutput(state.session, recovered, RELOAD_TIMEOUT)).toContain(recovered);
         expect(observations(state.project)).toContainEqual({ pid: previousPid, revision: "three" });
 
-        const priorPot = await waitForFileContent(
-            join(state.project.root, POT),
-            'msgid "translation"',
-            RELOAD_TIMEOUT,
-        );
+        const priorPot = await waitForFileContent(join(state.project.root, POT), 'msgid "translation"', RELOAD_TIMEOUT);
         const priorTypes = await waitForFileContent(
             join(state.project.root, GENERATED_I18N_RESOURCES),
             '"translation": "translation"',

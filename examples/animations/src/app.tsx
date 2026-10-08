@@ -1,14 +1,7 @@
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwApplication, AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
-import {
-    GtkBox,
-    GtkLabel,
-    GtkScrolledWindow,
-    GtkStack,
-    GtkStackPage,
-    GtkStackSidebar,
-} from "@gtkx/jsx/gtk";
+import { GtkBox, GtkLabel, GtkScrolledWindow, GtkStack, GtkStackPage, GtkStackSidebar } from "@gtkx/jsx/gtk";
 import { quit } from "@gtkx/react";
 import { useState } from "react";
 import { demos } from "./demos/index.js";

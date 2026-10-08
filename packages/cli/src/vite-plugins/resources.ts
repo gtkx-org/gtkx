@@ -10,11 +10,7 @@ import { runCliTool } from "../internal/run-cli-tool.js";
 import { parseRuntimeImportsIn, type SourceImport, sourceLanguage } from "../internal/source-imports.js";
 import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_RE } from "./asset-extensions.js";
-import {
-    isBareRelativeAsset,
-    parseIconSpecifier,
-    parseResourceSpecifier,
-} from "./asset-specifier.js";
+import { isBareRelativeAsset, parseIconSpecifier, parseResourceSpecifier } from "./asset-specifier.js";
 import { renderInitModule } from "./resource-init-module.js";
 import {
     BUNDLE_FILENAME,
@@ -287,19 +283,14 @@ const iconLayoutFromTree = (sourcePath: string): string | null => {
     return iconLayoutInParts(parts, parts.length - 2);
 };
 
-const derivedIconEntry = (
-    state: PluginState,
-    sourcePath: string,
-    requestedName: string | null,
-): DerivedIconEntry => {
+const derivedIconEntry = (state: PluginState, sourcePath: string, requestedName: string | null): DerivedIconEntry => {
     const extension = iconExtension(sourcePath);
     const sourceName = basename(sourcePath, extname(sourcePath));
     const iconName = validateIconName(requestedName ?? sourceName);
     const layout = iconLayoutFromTree(sourcePath);
 
-    const iconIdentity = layout === null
-        ? `${state.prefix}/icons/${iconName}`
-        : `${state.prefix}/icons/${layout}/${iconName}`;
+    const iconIdentity =
+        layout === null ? `${state.prefix}/icons/${iconName}` : `${state.prefix}/icons/${layout}/${iconName}`;
 
     const resourcePath = validateResourcePath(`${iconIdentity}${extension}`);
 
@@ -324,13 +315,8 @@ const hasSideEffectIconImport = (code: string, id: string): boolean => {
     );
 };
 
-const retainSideEffectIconImport = (
-    code: string,
-    id: string,
-): { code: string; moduleSideEffects: true } | null =>
-    hasSideEffectIconImport(code, id)
-        ? { code, moduleSideEffects: true }
-        : null;
+const retainSideEffectIconImport = (code: string, id: string): { code: string; moduleSideEffects: true } | null =>
+    hasSideEffectIconImport(code, id) ? { code, moduleSideEffects: true } : null;
 
 const compileBundle = (state: PluginState, outputPath: string): Buffer =>
     withStagingDir("resources", (dir) => {
@@ -353,7 +339,7 @@ const stageBundle = (dir: string, entries: Map<string, ResourceEntry>): string =
     const manifest = join(dir, "gtkx.gresource.xml");
 
     const xml = [
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+        '<?xml version="1.0" encoding="UTF-8"?>',
         "<gresources>",
         `    <gresource prefix="${prefix}">`,
         ...fileNodes,
@@ -451,7 +437,7 @@ const activateEntry = (state: PluginState, entry: ResourceEntry): ResourceEntry 
         if (existing.sourcePath !== entry.sourcePath) {
             throw new Error(
                 `${existing.sourcePath} and ${entry.sourcePath} both resolve to the GResource path ` +
-                entry.resourcePath,
+                    entry.resourcePath,
             );
         }
 
@@ -491,8 +477,7 @@ const declareEntry = (state: PluginState, importer: string, entry: ResourceEntry
 
     if (existing !== undefined && existing.sourcePath !== entry.sourcePath) {
         throw new Error(
-            `${existing.sourcePath} and ${entry.sourcePath} both resolve to the GResource path ` +
-            entry.resourcePath,
+            `${existing.sourcePath} and ${entry.sourcePath} both resolve to the GResource path ` + entry.resourcePath,
         );
     }
 
@@ -504,37 +489,24 @@ const declareEntry = (state: PluginState, importer: string, entry: ResourceEntry
     return declared;
 };
 
-const declareIcon = (
-    state: PluginState,
-    importer: string,
-    iconIdentity: string,
-    entry: ResourceEntry,
-): void => {
+const declareIcon = (state: PluginState, importer: string, iconIdentity: string, entry: ResourceEntry): void => {
     const key = importerKey(importer);
     const declarations = state.declaredIcons.get(key) ?? new Map<string, ResourceEntry>();
     const existing = declarations.get(iconIdentity);
 
     if (existing !== undefined && existing.sourcePath !== entry.sourcePath) {
-        throw new Error(
-            `${existing.sourcePath} and ${entry.sourcePath} both claim the themed icon ${iconIdentity}`,
-        );
+        throw new Error(`${existing.sourcePath} and ${entry.sourcePath} both claim the themed icon ${iconIdentity}`);
     }
 
     declarations.set(iconIdentity, existing ?? entry);
     state.declaredIcons.set(key, declarations);
 };
 
-const assertIconIdentityAvailable = (
-    state: PluginState,
-    iconIdentity: string,
-    sourcePath: string,
-): void => {
+const assertIconIdentityAvailable = (state: PluginState, iconIdentity: string, sourcePath: string): void => {
     const existing = state.iconOwners.get(iconIdentity);
 
     if (existing !== undefined && existing.sourcePath !== sourcePath) {
-        throw new Error(
-            `${existing.sourcePath} and ${sourcePath} both claim the themed icon ${iconIdentity}`,
-        );
+        throw new Error(`${existing.sourcePath} and ${sourcePath} both claim the themed icon ${iconIdentity}`);
     }
 };
 
@@ -549,12 +521,7 @@ const declareResolvedIcon = (
     }
 };
 
-const registerEntry = (
-    state: PluginState,
-    absPath: string,
-    rel: string,
-    importer?: string,
-): ResourceEntry => {
+const registerEntry = (state: PluginState, absPath: string, rel: string, importer?: string): ResourceEntry => {
     const resourcePath = validateResourcePath(rel.startsWith("/") ? rel : `${state.prefix}/${rel}`);
     let entry = createResourceEntry(absPath, resourcePath);
 
@@ -575,7 +542,8 @@ const registerIconEntry = (
     derived: DerivedIconEntry,
     importer: string | undefined,
 ): ResourceEntry => {
-    const shouldActivate = !isDeclarativeImporter(state, importer) ||
+    const shouldActivate =
+        !isDeclarativeImporter(state, importer) ||
         (isImporterActive(state, importer) && isDeclaredSourceAvailable(state, sourcePath));
 
     if (shouldActivate) {
@@ -604,10 +572,7 @@ const hasSourceEntry = (entries: Map<string, ResourceEntry>, file: string): bool
     return false;
 };
 
-const hasDeclaredSource = (
-    declarations: Map<string, Map<string, ResourceEntry>>,
-    file: string,
-): boolean => {
+const hasDeclaredSource = (declarations: Map<string, Map<string, ResourceEntry>>, file: string): boolean => {
     for (const entries of declarations.values()) {
         if (hasSourceEntry(entries, file)) {
             return true;
@@ -710,9 +675,8 @@ const virtualAssetMetadata = (virtualId: string): { absPath: string; iconName: s
 
     return {
         absPath: rest.slice(0, separatorIndex),
-        iconName: iconSeparatorIndex === -1
-            ? null
-            : relAndMetadata.slice(iconSeparatorIndex + ICON_NAME_SEPARATOR.length),
+        iconName:
+            iconSeparatorIndex === -1 ? null : relAndMetadata.slice(iconSeparatorIndex + ICON_NAME_SEPARATOR.length),
         rel: iconSeparatorIndex === -1 ? relAndMetadata : relAndMetadata.slice(0, iconSeparatorIndex),
     };
 };
@@ -721,18 +685,13 @@ const resourcePathExport = (entry: ResourceEntry, iconName: string | null): stri
     iconName === null ? [`export const ${RESOURCE_PATH_EXPORT} = ${JSON.stringify(entry.resourcePath)};`] : [];
 
 const assetModuleImports = (iconName: string | null): string[] => {
-    const initBindings = iconName === null
-        ? "ensureRegistered"
-        : `ensureRegistered, ${REGISTER_REFRESH_EXPORT}`;
+    const initBindings = iconName === null ? "ensureRegistered" : `ensureRegistered, ${REGISTER_REFRESH_EXPORT}`;
 
     return [
         `import { ${initBindings} } from ${JSON.stringify(VIRTUAL_INIT)};`,
         ...(iconName === null
             ? []
-            : [
-                    "import { Display } from \"@gtkx/gi/gdk\";",
-                    "import { IconTheme } from \"@gtkx/gi/gtk\";",
-                ]),
+            : ['import { Display } from "@gtkx/gi/gdk";', 'import { IconTheme } from "@gtkx/gi/gtk";']),
     ];
 };
 
@@ -836,15 +795,14 @@ const refreshDevRegistration = (state: PluginState): void => {
 };
 
 const isSameSpecifiers = (left: Set<string> | undefined, right: Set<string>): boolean =>
-    left === undefined
-        ? right.size === 0
-        : left.size === right.size && [...right].every((source) => left.has(source));
+    left === undefined ? right.size === 0 : left.size === right.size && [...right].every((source) => left.has(source));
 
 const bundledSpecifiersIn = (imports: SourceImport[]): Set<string> =>
     new Set(
         imports
-            .filter((entry) =>
-                parseResourceSpecifier(entry.source) !== null || parseIconSpecifier(entry.source) !== null)
+            .filter(
+                (entry) => parseResourceSpecifier(entry.source) !== null || parseIconSpecifier(entry.source) !== null,
+            )
             .map((entry) => entry.source),
     );
 
@@ -1023,12 +981,7 @@ const enqueueGraphDependencies = (state: PluginState, key: string, pending: stri
     }
 };
 
-const visitActiveImporter = (
-    state: PluginState,
-    active: Set<string>,
-    pending: string[],
-    key: string,
-): void => {
+const visitActiveImporter = (state: PluginState, active: Set<string>, pending: string[], key: string): void => {
     if (active.has(key)) {
         return;
     }
@@ -1059,17 +1012,11 @@ const activeImporterKeys = (state: PluginState): Set<string> => {
 const isImporterActive = (state: PluginState, importer: string): boolean =>
     activeImporterKeys(state).has(importerKey(importer));
 
-const activateDeclaredIcon = (
-    state: PluginState,
-    iconIdentity: string,
-    entry: ResourceEntry,
-): void => {
+const activateDeclaredIcon = (state: PluginState, iconIdentity: string, entry: ResourceEntry): void => {
     const existing = state.iconOwners.get(iconIdentity);
 
     if (existing !== undefined && existing.sourcePath !== entry.sourcePath) {
-        throw new Error(
-            `${existing.sourcePath} and ${entry.sourcePath} both claim the themed icon ${iconIdentity}`,
-        );
+        throw new Error(`${existing.sourcePath} and ${entry.sourcePath} both claim the themed icon ${iconIdentity}`);
     }
 
     state.iconOwners.set(iconIdentity, activateEntry(state, entry));
@@ -1240,10 +1187,7 @@ const prepareReconciliation = async (
 ): Promise<PluginState> => {
     const candidate = reconciliationCandidate(state);
 
-    const isBundledChanged = !isSameSpecifiers(
-        reconciliation.previousBundled,
-        reconciliation.currentBundled,
-    );
+    const isBundledChanged = !isSameSpecifiers(reconciliation.previousBundled, reconciliation.currentBundled);
 
     if (isBundledChanged) {
         forgetImporterDeclarations(candidate, reconciliation.key);
@@ -1381,14 +1325,14 @@ const rejectInvalidSpecifier = (source: string): void => {
     if (BUNDLED_QUERY_MENTION_RE.test(source)) {
         throw new Error(
             `${JSON.stringify(source)} is not a valid bundled asset import; use ?resource, ` +
-            "?resource=/absolute/path, ?icon, or ?icon=name",
+                "?resource=/absolute/path, ?icon, or ?icon=name",
         );
     }
 
     if (isBareRelativeAsset(source)) {
         throw new Error(
             `${JSON.stringify(source)} must choose ?resource for a GResource, ?icon for a themed icon, ` +
-            "?font for a bundled font, or ?url for an emitted file",
+                "?font for a bundled font, or ?url for an emitted file",
         );
     }
 };
@@ -1432,9 +1376,7 @@ const resolveIconResourceId = async (
         options: request.options,
     });
 
-    return resolved === undefined
-        ? undefined
-        : { id: virtualIconId(resolved), moduleSideEffects: true };
+    return resolved === undefined ? undefined : { id: virtualIconId(resolved), moduleSideEffects: true };
 };
 
 const resolveBundledResourceId = async (
@@ -1445,7 +1387,7 @@ const resolveBundledResourceId = async (
     if (isLegacyDataSpecifier(request.source)) {
         throw new Error(
             `${JSON.stringify(request.source)} uses the legacy #data asset form; import it relatively with ` +
-            "?resource or ?url",
+                "?resource or ?url",
         );
     }
 

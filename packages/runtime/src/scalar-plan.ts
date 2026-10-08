@@ -74,7 +74,7 @@ const stringPlan = (descriptor: Extract<Descriptor, { kind: "string" }>): Scalar
 
         return encoder.encode(value);
     },
-    decode: (value) => value == null ? value : decoder.decode(value as Uint8Array),
+    decode: (value) => (value == null ? value : decoder.decode(value as Uint8Array)),
 });
 
 const encodeByteArray: Conversion = (value) => {
@@ -146,7 +146,7 @@ const explicitMembership = (descriptor: EnumDescriptor): ((value: number) => boo
         return (value) => descriptor.members === undefined || descriptor.members.includes(value);
     }
 
-    return (value) => descriptor.mask === undefined || ((value & descriptor.mask) >>> 0) === (value >>> 0);
+    return (value) => descriptor.mask === undefined || (value & descriptor.mask) >>> 0 === value >>> 0;
 };
 
 const enumMembership = (descriptor: EnumDescriptor): ((value: number) => boolean) => {
@@ -157,7 +157,7 @@ const enumMembership = (descriptor: EnumDescriptor): ((value: number) => boolean
     if (descriptor.kind === "flags") {
         const mask = nativeRead(handle, unsignedT, 8) as number;
 
-        return (value) => ((value & mask) >>> 0) === (value >>> 0);
+        return (value) => (value & mask) >>> 0 === value >>> 0;
     }
     const valueCall = nativeBind(LIB, "g_enum_get_value", [pointerT, integerT], pointerT);
 
@@ -167,7 +167,7 @@ const enumMembership = (descriptor: EnumDescriptor): ((value: number) => boolean
 const enumPlan = (descriptor: EnumDescriptor): ScalarPlan => {
     const abi = descriptor.isSigned ? integerT : unsignedT;
     const minimum = descriptor.isSigned ? -0x80_00_00_00 : 0;
-    const maximum = descriptor.isSigned ? 0x7F_FF_FF_FF : 0xFF_FF_FF_FF;
+    const maximum = descriptor.isSigned ? 0x7f_ff_ff_ff : 0xff_ff_ff_ff;
     let contains: ((value: number) => boolean) | undefined;
 
     return {
@@ -191,7 +191,7 @@ const enumPlan = (descriptor: EnumDescriptor): ScalarPlan => {
 };
 
 const codepoint = (value: number): number => {
-    if (!Number.isSafeInteger(value) || value < 0 || value > 0x10_FF_FF || (value >= 0xD8_00 && value <= 0xDF_FF)) {
+    if (!Number.isSafeInteger(value) || value < 0 || value > 0x10_ff_ff || (value >= 0xd8_00 && value <= 0xdf_ff)) {
         throw new RangeError("Invalid Unicode codepoint");
     }
 
@@ -209,7 +209,7 @@ const encodeUnichar: Conversion = (value) => {
         throw new TypeError("Expected a character or codepoint");
     }
     const point = value.toWellFormed().codePointAt(0) ?? 0;
-    if (value.length !== (point > 0xFF_FF ? 2 : 1)) {
+    if (value.length !== (point > 0xff_ff ? 2 : 1)) {
         throw new TypeError("Expected a single Unicode character");
     }
 
@@ -221,13 +221,21 @@ const mapCollection = (convert: Conversion): Conversion => {
         return identity;
     }
 
-    return (value) => value == null
-        ? value
-        : (value as readonly unknown[]).values().map((item) => convert(item)).toArray();
+    return (value) =>
+        value == null
+            ? value
+            : (value as readonly unknown[])
+                  .values()
+                  .map((item) => convert(item))
+                  .toArray();
 };
 
 const byteOutputLayouts: Set<Extract<Descriptor, { kind: "array" }>["arrayKind"]> = new Set([
-    "array", "sized", "fixed", "cursor", "garray",
+    "array",
+    "sized",
+    "fixed",
+    "cursor",
+    "garray",
 ]);
 
 const hasByteTransport = (descriptor: Extract<Descriptor, { kind: "array" }>, item: NativeDescriptor): boolean =>
@@ -245,9 +253,10 @@ const arrayPlan = (descriptor: Extract<Descriptor, { kind: "array" }>): ScalarPl
     const item = compileDescriptor(descriptor.itemDescriptor);
     const { preserveNull = false, ...layout } = descriptor;
     const shouldUseByteTransport = hasByteTransport(descriptor, item.abi);
-    const decode: Conversion = shouldUseByteTransport && descriptor.isBytes !== true
-        ? (value) => [...value as Uint8Array]
-        : mapCollection(item.decode);
+    const decode: Conversion =
+        shouldUseByteTransport && descriptor.isBytes !== true
+            ? (value) => [...(value as Uint8Array)]
+            : mapCollection(item.decode);
 
     return {
         abi: { ...layout, itemDescriptor: item.abi, ...(shouldUseByteTransport && { isBytes: true }) },
@@ -283,9 +292,7 @@ const fixedRefBuffer = (value: unknown, length: number): Uint8Array => {
 };
 
 const refConversion = (convert: Conversion, length?: number): Conversion => {
-    const wrap: Conversion = length === undefined
-        ? (value) => ({ value })
-        : (value) => fixedRefBuffer(value, length);
+    const wrap: Conversion = length === undefined ? (value) => ({ value }) : (value) => fixedRefBuffer(value, length);
 
     return (value) => {
         if (value == null) {
@@ -331,9 +338,8 @@ const referencePlan = (descriptor: Extract<Descriptor, { kind: "ref" }>): Scalar
             return storage.allocate(seed == null ? seed : inner.encode(seed));
         },
         decode: (value) => ({
-            value: value != null && descriptor.inout === true
-                ? inner.decode(storage.read(value as StorageHandle))
-                : null,
+            value:
+                value != null && descriptor.inout === true ? inner.decode(storage.read(value as StorageHandle)) : null,
         }),
     };
 };
@@ -341,12 +347,15 @@ const referencePlan = (descriptor: Extract<Descriptor, { kind: "ref" }>): Scalar
 const writeCallbackOutputs = (plans: ScalarPlan[], values: unknown[], decoded: unknown[]): void => {
     const outputs = plans.flatMap((plan, index) =>
         plan.inner !== undefined && values[index] != null
-            ? [{
-                    index,
-                    storage: plan.storage,
-                    value: plan.inner.encode((decoded[index] as Ref).value),
-                }]
-            : []);
+            ? [
+                  {
+                      index,
+                      storage: plan.storage,
+                      value: plan.inner.encode((decoded[index] as Ref).value),
+                  },
+              ]
+            : [],
+    );
 
     for (const output of outputs) {
         if (output.storage === undefined) {
@@ -411,9 +420,7 @@ const mapEntries = (key: Conversion, item: Conversion): Conversion => {
     return (value) => {
         const entries = normalizeHashTableEntries(value);
 
-        return entries === null
-            ? null
-            : entries.map(([entryKey, entryValue]) => [key(entryKey), item(entryValue)]);
+        return entries === null ? null : entries.map(([entryKey, entryValue]) => [key(entryKey), item(entryValue)]);
     };
 };
 
@@ -459,8 +466,10 @@ const nestedPlan = (descriptor: NestedDescriptor): ScalarPlan => {
                 abi: {
                     ...descriptor,
                     scope: callbackScope(descriptor),
-                    releaseWithCompletion: descriptor.scope === "notified" &&
-                        descriptor.hasDestroy !== true && descriptor.hasUserData === true,
+                    releaseWithCompletion:
+                        descriptor.scope === "notified" &&
+                        descriptor.hasDestroy !== true &&
+                        descriptor.hasUserData === true,
                     argDescriptors: descriptor.argDescriptors.map((descriptor) => toAbi(descriptor)),
                     returnDescriptor: toAbi(descriptor.returnDescriptor),
                 },

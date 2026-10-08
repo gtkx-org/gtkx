@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { ACCEPTED, callerContainerRejectedFiles, createCallerContainerProject, REJECTED } from "./codegen-caller-containers-fixture.js";
+import {
+    ACCEPTED,
+    callerContainerRejectedFiles,
+    createCallerContainerProject,
+    REJECTED,
+} from "./codegen-caller-containers-fixture.js";
 import { typecheckFiles } from "./type-consumer.js";
 
 describe("generated caller-allocated container admission", () => {

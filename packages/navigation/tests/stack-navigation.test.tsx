@@ -125,10 +125,7 @@ describe("stack - navigation", () => {
         await clickButton("Back");
         await screen.findByText("Home Content");
 
-        expect(stateLog.states.map((state) => getRouteNames(state))).toEqual([
-            ["Home", "Details"],
-            ["Home"],
-        ]);
+        expect(stateLog.states.map((state) => getRouteNames(state))).toEqual([["Home", "Details"], ["Home"]]);
     });
 
     it("pops with navigation.goBack", async () => {

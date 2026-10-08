@@ -422,7 +422,11 @@ describe("host-config - child restrictions", () => {
     });
 
     it("throws for a widget a named-slot container takes only through a prop", async () => {
-        await expectRenderToThrow(<GtkPaned><GtkLabel>Start</GtkLabel></GtkPaned>);
+        await expectRenderToThrow(
+            <GtkPaned>
+                <GtkLabel>Start</GtkLabel>
+            </GtkPaned>,
+        );
     });
 
     it("sets a slot prop child no behavior claims as a property", async () => {
@@ -508,11 +512,7 @@ describe("reorder op - containers with native index reorder", () => {
         });
 
         it("reorders and removes together", async () => {
-            expect(await reorderAndRead(TAB_VIEW_CASE, ["A", "B", "C", "D"], ["D", "A", "C"])).toEqual([
-                "D",
-                "A",
-                "C",
-            ]);
+            expect(await reorderAndRead(TAB_VIEW_CASE, ["A", "B", "C", "D"], ["D", "A", "C"])).toEqual(["D", "A", "C"]);
         });
     });
 });

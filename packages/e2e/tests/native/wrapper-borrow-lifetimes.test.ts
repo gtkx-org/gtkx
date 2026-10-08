@@ -52,39 +52,41 @@ const collectUntil = async (isDone: () => boolean): Promise<void> => {
     expect(isDone()).toBe(true);
 };
 
-const recordLifetime = (
-    owner: NativeHandle,
-    dependent: NativeHandle,
-    state: LifetimeState,
-): (() => void) =>
+const recordLifetime =
+    (owner: NativeHandle, dependent: NativeHandle, state: LifetimeState): (() => void) =>
     () => {
         state.calls++;
         state.ownerType = getType(owner);
         state.dependentType = getType(dependent);
     };
 
-const countFirst = (state: { first: number }): (() => void) =>
+const countFirst =
+    (state: { first: number }): (() => void) =>
     () => {
         state.first++;
     };
 
-const countSecond = (state: { second: number }): (() => void) =>
+const countSecond =
+    (state: { second: number }): (() => void) =>
     () => {
         state.second++;
     };
 
-const countCalls = (state: { calls: number }): (() => void) =>
+const countCalls =
+    (state: { calls: number }): (() => void) =>
     () => {
         state.calls++;
     };
 
-const recordSelf = (handle: NativeHandle, state: { calls: number; type: bigint }): (() => void) =>
+const recordSelf =
+    (handle: NativeHandle, state: { calls: number; type: bigint }): (() => void) =>
     () => {
         state.calls++;
         state.type = getType(handle);
     };
 
-const recordCycle = (handle: NativeHandle, state: { calls: number }): (() => void) =>
+const recordCycle =
+    (handle: NativeHandle, state: { calls: number }): (() => void) =>
     () => {
         state.calls++;
         getType(handle);

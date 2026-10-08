@@ -2,12 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-    PACKAGES_DIR,
-    REGISTRY,
-    runAsync,
-    verifyBuiltAppStarts,
-} from "./helpers/registry.js";
+import { PACKAGES_DIR, REGISTRY, runAsync, verifyBuiltAppStarts } from "./helpers/registry.js";
 import { nativeArtifactHash, verifyNativeArtifacts } from "../../../scripts/native-artifact.js";
 import { assertPublishedShape, type PackageManifest } from "../../../scripts/publish-manifest.js";
 import { verifyReleaseChannels } from "./helpers/release-channels.js";
@@ -48,7 +43,7 @@ function runCapture(command: string, args: string[]): Promise<string> {
                 reject(
                     new Error(
                         `Command failed with exit code ${String(code ?? "unknown")}: ` +
-                        `${command} ${args.join(" ")}\n${stderr}`,
+                            `${command} ${args.join(" ")}\n${stderr}`,
                     ),
                 );
             }
@@ -84,12 +79,11 @@ function publishableName(entry: string): string | undefined {
 }
 
 function publishablePackages(): { name: string; directory: string }[] {
-    return readdirSync(PACKAGES_DIR)
-        .flatMap((entry) => {
-            const name = publishableName(entry);
+    return readdirSync(PACKAGES_DIR).flatMap((entry) => {
+        const name = publishableName(entry);
 
-            return name === undefined ? [] : [{ name, directory: join(PACKAGES_DIR, entry) }];
-        });
+        return name === undefined ? [] : [{ name, directory: join(PACKAGES_DIR, entry) }];
+    });
 }
 
 async function tarballUrl(name: string): Promise<string> {

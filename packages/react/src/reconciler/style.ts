@@ -187,12 +187,7 @@ const applyCssClassDiff = (
     addDesiredCssClasses(widget, state, desired);
 };
 
-const reconcileCssClasses = (
-    widget: Gtk.Widget,
-    state: StyleState,
-    value: unknown,
-    styleName: string | null,
-): void => {
+const reconcileCssClasses = (widget: Gtk.Widget, state: StyleState, value: unknown, styleName: string | null): void => {
     const desired = cssClassNames(value);
 
     applyWrite(CSS_CLASSES_PROP, () => {

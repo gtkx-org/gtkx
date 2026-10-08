@@ -35,10 +35,12 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
     const builtin = await readBuiltinElements();
     const components = { ...builtin.components, ...options.userComponents };
     const lazyElements = [...builtin.lazyElements, ...options.userLazyElements];
-    const userProps = Object.fromEntries(Object.entries(options.userProps).map(([name, ref]) => [
-        name,
-        { ...ref, composition: ref.composition ?? "intersection" },
-    ]));
+    const userProps = Object.fromEntries(
+        Object.entries(options.userProps).map(([name, ref]) => [
+            name,
+            { ...ref, composition: ref.composition ?? "intersection" },
+        ]),
+    );
     const props = { ...builtin.props, ...userProps };
     const omittedProps = mergeOmittedProps(builtin.omittedProps, options.userOmittedProps);
 
@@ -74,8 +76,7 @@ const runJsxCodegen = async (options: RunJsxCodegenOptions): Promise<RunJsxCodeg
         rawFiles: [
             {
                 relativePath: FINGERPRINT_FILENAME,
-                content:
-                    `${JSON.stringify(computeJsxFingerprint(fingerprintInput, intrinsicElementCount), null, 2)}\n`,
+                content: `${JSON.stringify(computeJsxFingerprint(fingerprintInput, intrinsicElementCount), null, 2)}\n`,
             },
             { relativePath: ELEMENTS_FILENAME, content: renderGeneratedElements(elements) },
         ],

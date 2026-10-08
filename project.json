@@ -17,12 +17,8 @@
         "_build:bindings": {
             "command": "node scripts/ci/run.mjs 'node --import ./scripts/tsx.ts packages/cli/src/cli.ts codegen --config scripts/gtkx.bootstrap.ts'",
             "cache": true,
-            "dependsOn": [
-                "@gtkx/native:build"
-            ],
-            "outputs": [
-                "{workspaceRoot}/node_modules/.gtkx"
-            ],
+            "dependsOn": ["@gtkx/native:build"],
+            "outputs": ["{workspaceRoot}/node_modules/.gtkx"],
             "inputs": [
                 "default",
                 "{workspaceRoot}/**/*.{js,jsx,mjs,mts,ts,tsx,json,xml,po,pot}",
@@ -34,12 +30,8 @@
         "codegen": {
             "command": "node scripts/ci/run.mjs 'node packages/cli/dist/cli.js codegen'",
             "cache": true,
-            "dependsOn": [
-                "@gtkx/cli:build"
-            ],
-            "outputs": [
-                "{workspaceRoot}/.gtkx/reference"
-            ],
+            "dependsOn": ["@gtkx/cli:build"],
+            "outputs": ["{workspaceRoot}/.gtkx/reference"],
             "inputs": [
                 "default",
                 "^production",
@@ -53,10 +45,7 @@
         "typecheck": {
             "command": "node scripts/ci/run.mjs 'tsc --noEmit'",
             "cache": true,
-            "dependsOn": [
-                "build",
-                "^typecheck"
-            ],
+            "dependsOn": ["build", "^typecheck"],
             "inputs": [
                 "{workspaceRoot}/tsconfig.json",
                 "{workspaceRoot}/eslint.config.ts",
@@ -76,13 +65,7 @@
         "lint": {
             "command": "node scripts/ci/run.mjs 'oxlint . --ignore-pattern packages --ignore-pattern examples --ignore-pattern tutorial --ignore-pattern website'",
             "cache": true,
-            "dependsOn": [
-                "build",
-                "_lint:codescythe",
-                "_lint:workflows",
-                "_lint:ci",
-                "_lint:format"
-            ],
+            "dependsOn": ["build", "_lint:codescythe", "_lint:workflows", "_lint:ci", "_lint:format"],
             "inputs": [
                 "default",
                 "^default",
@@ -95,19 +78,14 @@
         },
         "build": {
             "executor": "nx:noop",
-            "dependsOn": [
-                "codegen"
-            ],
+            "dependsOn": ["codegen"],
             "outputs": [],
             "cache": true
         },
         "_lint:codescythe": {
             "command": "node scripts/ci/run.mjs 'tsx scripts/codescythe.ts'",
             "cache": true,
-            "dependsOn": [
-                "_build:bindings",
-                "@gtkx/gl:codegen"
-            ],
+            "dependsOn": ["_build:bindings", "@gtkx/gl:codegen"],
             "inputs": [
                 "{workspaceRoot}/codescythe.json",
                 "{workspaceRoot}/package.json",
@@ -121,9 +99,7 @@
                 "{workspaceRoot}/examples/**/*",
                 "sharedGlobals",
                 {
-                    "externalDependencies": [
-                        "codescythe"
-                    ]
+                    "externalDependencies": ["codescythe"]
                 },
                 {
                     "dependentTasksOutputFiles": "**/*.{js,ts,json}",
@@ -137,12 +113,7 @@
             "continuous": true,
             "dependsOn": [
                 {
-                    "projects": [
-                        "@gtkx/*",
-                        "create-gtkx",
-                        "!@gtkx/e2e",
-                        "!@gtkx/website"
-                    ],
+                    "projects": ["@gtkx/*", "create-gtkx", "!@gtkx/e2e", "!@gtkx/website"],
                     "target": "build"
                 }
             ]
@@ -182,11 +153,7 @@
         "_lint:ci": {
             "command": "node scripts/ci/run.mjs 'node --test scripts/ci/run.test.mjs'",
             "cache": true,
-            "inputs": [
-                "default",
-                "^default",
-                "{workspaceRoot}/scripts/ci/**/*"
-            ],
+            "inputs": ["default", "^default", "{workspaceRoot}/scripts/ci/**/*"],
             "outputs": []
         },
         "_lint:format": {
@@ -195,9 +162,7 @@
             "inputs": [
                 "{workspaceRoot}/**/*",
                 {
-                    "externalDependencies": [
-                        "oxfmt"
-                    ]
+                    "externalDependencies": ["oxfmt"]
                 }
             ],
             "outputs": []

@@ -17,7 +17,7 @@ describe("GLib.utf8Validate", () => {
     });
 
     it("reports the bytes from the first invalid character", () => {
-        expect(GLib.utf8Validate(new Uint8Array([0x61, 0xFF, 0x62]))).toEqual([false, new Uint8Array([0xFF, 0x62])]);
+        expect(GLib.utf8Validate(new Uint8Array([0x61, 0xff, 0x62]))).toEqual([false, new Uint8Array([0xff, 0x62])]);
     });
 });
 
@@ -27,6 +27,6 @@ describe("GLib.utf8ValidateLen", () => {
     });
 
     it("reports the bytes from the first invalid character", () => {
-        expect(GLib.utf8ValidateLen(new Uint8Array([0x61, 0xFF, 0x62]))).toEqual([false, new Uint8Array([0xFF, 0x62])]);
+        expect(GLib.utf8ValidateLen(new Uint8Array([0x61, 0xff, 0x62]))).toEqual([false, new Uint8Array([0xff, 0x62])]);
     });
 });

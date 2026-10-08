@@ -1,12 +1,7 @@
 import type { I18nFormatModule, TOptions } from "i18next";
 import i18next from "i18next";
 import { initReactI18next } from "react-i18next";
-import {
-    GETTEXT_RESOURCE_KEY,
-    gettextBackend,
-    type GettextCatalog,
-    isGettextCatalog,
-} from "./backend.js";
+import { GETTEXT_RESOURCE_KEY, gettextBackend, type GettextCatalog, isGettextCatalog } from "./backend.js";
 import { locale } from "./locale.js";
 
 type GettextFormat = I18nFormatModule & {
@@ -89,12 +84,7 @@ const pluralSources = (msgid: string, options: TOptions): { plural: string; sing
     };
 };
 
-const pluralPointLookup = (
-    catalog: GettextCatalog,
-    msgid: string,
-    options: TOptions,
-    count: number,
-): string => {
+const pluralPointLookup = (catalog: GettextCatalog, msgid: string, options: TOptions, count: number): string => {
     const { plural, singular } = pluralSources(msgid, options);
 
     return pluralLookup({
@@ -106,11 +96,7 @@ const pluralPointLookup = (
     });
 };
 
-const contextualLookup = (
-    catalog: GettextCatalog,
-    source: string,
-    context: string | undefined,
-): string => {
+const contextualLookup = (catalog: GettextCatalog, source: string, context: string | undefined): string => {
     if (context === undefined) {
         return catalog.gettext(source);
     }
@@ -118,11 +104,7 @@ const contextualLookup = (
     return catalog.pgettext(context, source) ?? catalog.gettext(source);
 };
 
-const singularPointLookup = (
-    catalog: GettextCatalog,
-    msgid: string,
-    options: TOptions,
-): string | undefined => {
+const singularPointLookup = (catalog: GettextCatalog, msgid: string, options: TOptions): string | undefined => {
     const source = stringOption(options, "defaultValue") ?? msgid;
     const translated = contextualLookup(catalog, source, getContext(options.context));
 

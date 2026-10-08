@@ -143,14 +143,17 @@ describe.each(["type", "paste"] as const)("TextView %s undo groups", (method) =>
 
 it("closes the empty action when its begin observer throws", async () => {
     let beginnings = 0;
-    const view = await renderEditor({}, {
-        onBeginUserAction: () => {
-            beginnings += 1;
-            if (beginnings === 1) {
-                throw new Error("Begin observer failed");
-            }
+    const view = await renderEditor(
+        {},
+        {
+            onBeginUserAction: () => {
+                beginnings += 1;
+                if (beginnings === 1) {
+                    throw new Error("Begin observer failed");
+                }
+            },
         },
-    });
+    );
 
     await expect(edit(view, "type", "X", [2, 2])).rejects.toThrow();
     expect(beginnings).toBe(1);
@@ -164,14 +167,17 @@ it("closes the empty action when its begin observer throws", async () => {
 
 it("keeps a completed action undoable when its end observer throws", async () => {
     let endings = 0;
-    const view = await renderEditor({}, {
-        onEndUserAction: () => {
-            endings += 1;
-            if (endings === 1) {
-                throw new Error("End observer failed");
-            }
+    const view = await renderEditor(
+        {},
+        {
+            onEndUserAction: () => {
+                endings += 1;
+                if (endings === 1) {
+                    throw new Error("End observer failed");
+                }
+            },
         },
-    });
+    );
 
     await expect(edit(view, "type", "X", [2, 2])).rejects.toThrow();
     expect(endings).toBe(1);

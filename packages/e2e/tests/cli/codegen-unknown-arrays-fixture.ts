@@ -15,7 +15,9 @@ import * as GdkPixbuf from "@gtkx/gi/gdkpixbuf";
 import * as Pango from "@gtkx/gi/pango";
 import { UnknownArraysProbe } from "@gtkx/jsx/unknownarrays";
 `;
-const ACCEPTED = IMPORTS + `
+const ACCEPTED =
+    IMPORTS +
+    `
 export const arrays = (probe: UnknownArrays.Probe, pixbuf: GdkPixbuf.Pixbuf) => {
     const sized: Uint8Array | null = probe.readSized();
     const fixed: Uint8Array | null = probe.readFixed();
@@ -57,32 +59,32 @@ const REJECTED = {
     "aliased-pointer-construction": "export const value = new UnknownArrays.AliasedPointerRecord();",
     "fixed-pointer-full-transfer": "export const method = UnknownArrays.fullFixedPointerRecord;",
     "aliased-pointer-full-transfer": "export const method = UnknownArrays.fullAliasedPointerRecord;",
-    "direct-input": "export type Method = UnknownArrays.Probe[\"takeDirect\"];",
-    "aliased-output": "export type Method = UnknownArrays.Probe[\"readAlias\"];",
-    "nested-return": "export type Method = UnknownArrays.Probe[\"readNested\"];",
-    "skipped-return": "export type Method = UnknownArrays.Probe[\"discardArray\"];",
+    "direct-input": 'export type Method = UnknownArrays.Probe["takeDirect"];',
+    "aliased-output": 'export type Method = UnknownArrays.Probe["readAlias"];',
+    "nested-return": 'export type Method = UnknownArrays.Probe["readNested"];',
+    "skipped-return": 'export type Method = UnknownArrays.Probe["discardArray"];',
     "namespace-return": "export const method = UnknownArrays.unknownBytes;",
     "unknown-callback": "export type Callback = UnknownArrays.RawCallback;",
     "callback-alias": "export type Callback = UnknownArrays.CallbackAlias;",
-    "callback-consumer": "export type Method = UnknownArrays.Probe[\"useRaw\"];",
+    "callback-consumer": 'export type Method = UnknownArrays.Probe["useRaw"];',
     "array-alias": "export type Bytes = UnknownArrays.RawAlias;",
     "nested-alias": "export type Bytes = UnknownArrays.NestedRaw;",
-    "property-read": "export type Property = UnknownArrays.Probe[\"data\"];",
-    "nested-property": "export type Property = UnknownArrays.Probe[\"nested\"];",
+    "property-read": 'export type Property = UnknownArrays.Probe["data"];',
+    "nested-property": 'export type Property = UnknownArrays.Probe["nested"];',
     "property-jsx": "export const view = <UnknownArraysProbe data={1} />;",
     "property-notify": "export const view = <UnknownArraysProbe onNotifyData={() => undefined} />;",
     "property-only-options": "export const value = new UnknownArrays.RawOnly({ data: 1 });",
     "property-only-variable": "const options = { data: 1 }; export const value = new UnknownArrays.RawOnly(options);",
     "property-only-props": "export const options: UnknownArrays.RawOnlyConstructorProps = { data: 1 };",
-    "record-read": "export type Field = UnknownArrays.Frame[\"data\"];",
-    "record-nested": "export type Field = UnknownArrays.Frame[\"nested\"];",
+    "record-read": 'export type Field = UnknownArrays.Frame["data"];',
+    "record-nested": 'export type Field = UnknownArrays.Frame["nested"];',
     "record-constructor": "export const value = new UnknownArrays.Frame({ before: 1, after: 2 });",
     "record-constructor-props": "export const props: UnknownArrays.FrameConstructorProps = { before: 1, after: 2 };",
     "record-only-constructor": "export const value = new UnknownArrays.RawRecord();",
     "record-only-variable": "const options = { data: 1 }; export const value = new UnknownArrays.RawRecord(options);",
     "record-only-props": "export const options: UnknownArrays.RawRecordConstructorProps = {};",
     "inet-address": "export const method = Gio.InetAddress.newFromBytes;",
-    "texture-download": "export type Method = Gdk.Texture[\"download\"];",
+    "texture-download": 'export type Method = Gdk.Texture["download"];',
     "pixbuf-input": "export const method = GdkPixbuf.Pixbuf.newFromData;",
     "pango-return": "export const method = Pango.log2visGetEmbeddingLevels;",
 } as const;
@@ -127,10 +129,7 @@ const createUnknownArraysProject = (
     rejectedNames: readonly RejectedName[] = [],
 ): ReturnType<typeof createCliProject> => {
     const fixture = readFileSync(new URL("fixtures/gir/UnknownArrays-1.0.gir", import.meta.url));
-    const rejectedFiles = Object.fromEntries(rejectedNames.map((name) => [
-        name + ".tsx",
-        IMPORTS + REJECTED[name],
-    ]));
+    const rejectedFiles = Object.fromEntries(rejectedNames.map((name) => [name + ".tsx", IMPORTS + REJECTED[name]]));
     const project = createCliProject({
         prefix,
         config: CONFIG,

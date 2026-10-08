@@ -2,11 +2,7 @@ import { loadApiReference, resolveGirPath } from "@gtkx/codegen";
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
-import {
-    isolateTypeConsumer,
-    runNativeConsumer,
-    typecheckFile,
-} from "./type-consumer.js";
+import { isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
 const CONFIG = `export default {
     applicationId: "org.gtkx.pointerfields",
@@ -18,7 +14,9 @@ const IMPORTS = `import * as PointerFields from "@gtkx/gi/pointerfields";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 `;
-const ACCEPTED = IMPORTS + `
+const ACCEPTED =
+    IMPORTS +
+    `
 export const mixed = (record: PointerFields.Mixed) => {
     record.before = -1;
     record.after = 7n;
@@ -46,18 +44,18 @@ const REJECTED: Record<string, string> = {
     "aliased-option": "export const record = new PointerFields.Mixed({ aliased: 1n });",
     "inline-array": "export const read = (record: PointerFields.Mixed) => record.inlinePointers;",
     "pointer-array": "export const read = (record: PointerFields.Mixed) => record.pointedPointers;",
-    "pointer-list": "export type Field = PointerFields.Mixed[\"list\"];",
-    "pointer-keys": "export type Field = PointerFields.Mixed[\"keys\"];",
-    "pointer-values": "export type Field = PointerFields.Mixed[\"values\"];",
+    "pointer-list": 'export type Field = PointerFields.Mixed["list"];',
+    "pointer-keys": 'export type Field = PointerFields.Mixed["keys"];',
+    "pointer-values": 'export type Field = PointerFields.Mixed["values"];',
     "only-pointer-option": "export const record = new PointerFields.PointerOnly({ data: null });",
-    "only-pointer-variable": "const options = { data: 1n }; " +
-        "export const record = new PointerFields.PointerOnly(options);",
+    "only-pointer-variable":
+        "const options = { data: 1n }; " + "export const record = new PointerFields.PointerOnly(options);",
     "only-pointer-props": "export const options: PointerFields.PointerOnlyConstructorProps = { data: 1n };",
     "iterator-read": "export const read = (iterator: Gtk.TreeIter) => iterator.userData;",
     "iterator-option": "export const iterator = new Gtk.TreeIter({ userData: 1n });",
     "option-entry": "export const read = (entry: GLib.OptionEntry) => entry.argData;",
     "log-field": "export const read = (field: GLib.LogField) => field.value;",
-    "wrong-scalar": "export const write = (record: PointerFields.Mixed): void => { record.after = \"invalid\"; };",
+    "wrong-scalar": 'export const write = (record: PointerFields.Mixed): void => { record.after = "invalid"; };',
 };
 const NATIVE = `import assert from "node:assert/strict";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -85,9 +83,9 @@ try {
     quit();
 }
 `;
-const rejectedFiles = Object.fromEntries(Object.entries(REJECTED).map(([name, source]) => [
-    `${name}.ts`, IMPORTS + source,
-]));
+const rejectedFiles = Object.fromEntries(
+    Object.entries(REJECTED).map(([name, source]) => [`${name}.ts`, IMPORTS + source]),
+);
 
 describe("generated pointer record fields", () => {
     const cleanup = new DisposableStack();
@@ -95,16 +93,18 @@ describe("generated pointer record fields", () => {
 
     beforeAll(() => {
         const fixture = readFileSync(new URL("fixtures/gir/PointerFields-1.0.gir", import.meta.url));
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-pointer-field-types-",
-            config: CONFIG,
-            files: {
-                "gir/PointerFields-1.0.gir": fixture,
-                "accepted.ts": ACCEPTED,
-                "native.ts": NATIVE,
-                ...rejectedFiles,
-            },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-pointer-field-types-",
+                config: CONFIG,
+                files: {
+                    "gir/PointerFields-1.0.gir": fixture,
+                    "accepted.ts": ACCEPTED,
+                    "native.ts": NATIVE,
+                    ...rejectedFiles,
+                },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });
@@ -144,7 +144,8 @@ describe("generated pointer record fields", () => {
     it("copies ordinary native records and omits their pointer fields", () => {
         using consumer = createCliProject({
             prefix: "gtkx-cli-pointer-field-values-",
-            config: 'export default { applicationId: "org.gtkx.pointerfieldvalues",' +
+            config:
+                'export default { applicationId: "org.gtkx.pointerfieldvalues",' +
                 " agents: { reference: false, rules: false } };",
             files: { "probe.ts": NATIVE },
         });

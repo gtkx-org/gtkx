@@ -551,9 +551,7 @@ describe("GtkDropDown - expression prop", () => {
         const ref = createRef<Gtk.DropDown>();
         const expression = PropertyExpression.new(getClassType(StringObject), null, "string");
 
-        await render(
-            <GtkDropDown ref={ref} expression={expression} model={<GtkStringList strings={["a", "b"]} />} />,
-        );
+        await render(<GtkDropDown ref={ref} expression={expression} model={<GtkStringList strings={["a", "b"]} />} />);
 
         expect(ref.current?.getExpression()).toBe(expression);
     });

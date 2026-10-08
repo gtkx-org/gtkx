@@ -50,10 +50,12 @@ const renderManifests = (payload: DeployPayload): DeployManifest[] => {
         generateNodeSources(settings, manager, pnpmPinFor(settings, manager));
     }
 
-    return [{
-        path: manifestPathFor(settings),
-        contents: stringify(renderFlatpakManifest(payload), { lineWidth: 0 }),
-    }];
+    return [
+        {
+            path: manifestPathFor(settings),
+            contents: stringify(renderFlatpakManifest(payload), { lineWidth: 0 }),
+        },
+    ];
 };
 
 const builderArgsFor = (settings: DeploySettings, dir: string): string[] => [
@@ -83,8 +85,8 @@ const buildFlatpak = (settings: DeploySettings): void => {
     } catch (error) {
         throw new Error(
             `${errorMessage(error)}\n\nIf it stopped at "Failure spawning rofiles-fuse", the build is running ` +
-            "somewhere FUSE is unavailable, such as a container. Set `deploy.flatpak.shouldUseRofilesFuse: false` " +
-            "to build without it.",
+                "somewhere FUSE is unavailable, such as a container. Set `deploy.flatpak.shouldUseRofilesFuse: false` " +
+                "to build without it.",
             { cause: error },
         );
     }
@@ -124,8 +126,14 @@ const bundleFlatpak = (settings: DeploySettings): DeployArtifact => {
 const installFlatpak = (settings: DeploySettings): void => {
     runCliTool({
         tool: FLATPAK.command,
-        args: ["install", "--user", "--noninteractive", "--reinstall", join(flatpakDir(settings), "repo"),
-            `app/${settings.applicationId}/${settings.arch.flatpak}/${branchFor(settings)}`],
+        args: [
+            "install",
+            "--user",
+            "--noninteractive",
+            "--reinstall",
+            join(flatpakDir(settings), "repo"),
+            `app/${settings.applicationId}/${settings.arch.flatpak}/${branchFor(settings)}`,
+        ],
         target: "the flatpak",
         shouldStream: true,
     });

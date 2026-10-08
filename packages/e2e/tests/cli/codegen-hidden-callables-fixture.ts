@@ -14,7 +14,9 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as CallablePointers from "@gtkx/gi/callablepointers";
 import { CallablePointersProbe } from "@gtkx/jsx/callablepointers";
 `;
-const ACCEPTED = IMPORTS + `
+const ACCEPTED =
+    IMPORTS +
+    `
 export const values = (probe: CallablePointers.Probe, bytes: GLib.Bytes, type: bigint) => {
     const count: bigint = probe.getCount();
     const typeId: bigint = probe.echoType(type);
@@ -67,23 +69,27 @@ const REJECTED = {
     "task-return": "export const invoke = (task: Gio.Task) => task.getTaskData();",
     "task-input": "export const invoke = (task: Gio.Task) => task.setSourceTag(null);",
     "task-owned-return": "export const invoke = (task: Gio.Task) => task.propagatePointer();",
-    "source-tag-return": "export type Method = GLib.Source[\"addUnixFd\"];",
-    "source-tag-input": "export type Method = GLib.Source[\"removeUnixFd\"];",
+    "source-tag-return": 'export type Method = GLib.Source["addUnixFd"];',
+    "source-tag-input": 'export type Method = GLib.Source["removeUnixFd"];',
     "hash-table-static": "export const invoke = () => GLib.HashTable.newSimilar(new Map());",
     "hash-table-size": "export const invoke = () => GLib.HashTable.size(new Map());",
     "hash-table-add": "export const invoke = () => GLib.HashTable.add(new Map(), 1n);",
     "hash-table-contains": "export const invoke = () => GLib.HashTable.contains(new Map(), 1n);",
     "hash-table-iterator": "export const invoke = (iterator: GLib.HashTableIter) => iterator.getHashTable();",
     "namespace-export": "export const invoke = () => GObject.typeGetQdata(GObject.TYPE_OBJECT, 0);",
-    "namespace-free": "export const invoke = (instance: GObject.TypeInstance) => " +
-        "GObject.typeFreeInstance(instance);",
-    "enum-register-static": "export const invoke = (values: GObject.EnumValue[]) => " +
+    "namespace-free":
+        "export const invoke = (instance: GObject.TypeInstance) => " + "GObject.typeFreeInstance(instance);",
+    "enum-register-static":
+        "export const invoke = (values: GObject.EnumValue[]) => " +
         "GObject.enumRegisterStatic('GtkxUnsafeEnum', values);",
-    "flags-register-static": "export const invoke = (values: GObject.FlagsValue[]) => " +
+    "flags-register-static":
+        "export const invoke = (values: GObject.FlagsValue[]) => " +
         "GObject.flagsRegisterStatic('GtkxUnsafeFlags', values);",
-    "type-module-register-enum": "export const invoke = " +
+    "type-module-register-enum":
+        "export const invoke = " +
         "(module: GObject.TypeModule, values: GObject.EnumValue[]) => module.registerEnum('GtkxUnsafeEnum', values);",
-    "type-module-register-flags": "export const invoke = (module: GObject.TypeModule, " +
+    "type-module-register-flags":
+        "export const invoke = (module: GObject.TypeModule, " +
         "values: GObject.FlagsValue[]) => module.registerFlags('GtkxUnsafeFlags', values);",
 } as const;
 const NATIVE_CONSUMER = `import assert from "node:assert/strict";
@@ -153,10 +159,7 @@ const createHiddenCallablesProject = (
     rejectedNames: readonly RejectedName[] = [],
 ): ReturnType<typeof createCliProject> => {
     const fixture = readFileSync(new URL("fixtures/gir/CallablePointers-1.0.gir", import.meta.url));
-    const rejectedFiles = Object.fromEntries(rejectedNames.map((name) => [
-        name + ".tsx",
-        IMPORTS + REJECTED[name],
-    ]));
+    const rejectedFiles = Object.fromEntries(rejectedNames.map((name) => [name + ".tsx", IMPORTS + REJECTED[name]]));
     const project = createCliProject({
         prefix,
         config: CONFIG,

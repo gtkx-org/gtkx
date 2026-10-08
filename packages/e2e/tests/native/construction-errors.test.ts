@@ -79,27 +79,26 @@ test("registered construction runs nonconstruct setters after constructed and re
 test.each([
     { failure: "constructed", expected: ["constructed"], typeName: "GtkxConstructionErrorConstructed" },
     { failure: "first", expected: ["constructed", "first"], typeName: "GtkxConstructionErrorFirstSetter" },
-] as const)("a $failure exception skips later setters and preserves subsequent construction", async ({
-    failure,
-    expected,
-    typeName,
-}) => {
-    const { Registered, events, wrappers, state } = observedClass(typeName);
-    state.failure = failure;
-    expect(() => new Registered({ first: 3, second: 7 })).toThrow();
-    expect(events).toEqual(expected);
-    expect(wrappers).toHaveLength(1);
+] as const)(
+    "a $failure exception skips later setters and preserves subsequent construction",
+    async ({ failure, expected, typeName }) => {
+        const { Registered, events, wrappers, state } = observedClass(typeName);
+        state.failure = failure;
+        expect(() => new Registered({ first: 3, second: 7 })).toThrow();
+        expect(events).toEqual(expected);
+        expect(wrappers).toHaveLength(1);
 
-    state.failure = "none";
-    events.length = 0;
-    const construct = () => {
-        const instance = new Registered({ first: 11, second: 13 });
-        expect(GObject.getProperty(instance, "first")).toBe(11);
-        expect(GObject.getProperty(instance, "second")).toBe(13);
-    };
+        state.failure = "none";
+        events.length = 0;
+        const construct = () => {
+            const instance = new Registered({ first: 11, second: 13 });
+            expect(GObject.getProperty(instance, "first")).toBe(11);
+            expect(GObject.getProperty(instance, "second")).toBe(13);
+        };
 
-    construct();
-    expect(events).toEqual(["constructed", "first", "second"]);
-    expect(wrappers).toHaveLength(2);
-    expect(await didSettle(() => wrappers.every((wrapper) => wrapper.deref() === undefined))).toBe(true);
-});
+        construct();
+        expect(events).toEqual(["constructed", "first", "second"]);
+        expect(wrappers).toHaveLength(2);
+        expect(await didSettle(() => wrappers.every((wrapper) => wrapper.deref() === undefined))).toBe(true);
+    },
+);

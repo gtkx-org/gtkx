@@ -14,13 +14,13 @@ describe("reference configuration updates", () => {
         const launchGir = join(state.project, directory);
         mkdirSync(requestedGir);
         mkdirSync(launchGir);
-        const source = readFileSync(
-            new URL("../cli/fixtures/gir/Documented-1.0.gir", import.meta.url),
-            "utf8",
-        );
+        const source = readFileSync(new URL("../cli/fixtures/gir/Documented-1.0.gir", import.meta.url), "utf8");
         const original = "Holds a short piece of text the user jotted down.";
         const requested = "A note from the requested project.";
-        writeFileSync(join(requestedGir, "Documented-1.0.gir"), source.replace(original, () => requested));
+        writeFileSync(
+            join(requestedGir, "Documented-1.0.gir"),
+            source.replace(original, () => requested),
+        );
         writeFileSync(
             join(launchGir, "Documented-1.0.gir"),
             source.replace(original, "A note from the server's working directory."),

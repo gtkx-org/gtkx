@@ -31,11 +31,8 @@ const acceptsActionRow: typeof Adw.ActionRow extends QueryWidgetType ? true : fa
 const rejectsFileIcon: typeof Gio.FileIcon extends QueryWidgetType ? false : true = true;
 const rejectsObjectShape: ObjectOnlyConstructor extends QueryWidgetType ? false : true = true;
 
-const queryAllByTooltip = (
-    container: Container,
-    text: string,
-    options?: MatcherOptions<Gtk.Widget>,
-): Gtk.Widget[] => queryAllByObjectProperty("tooltip-text", container, text, options);
+const queryAllByTooltip = (container: Container, text: string, options?: MatcherOptions<Gtk.Widget>): Gtk.Widget[] =>
+    queryAllByObjectProperty("tooltip-text", container, text, options);
 
 const [queryByTooltip, getAllByTooltip, getByTooltip, findAllByTooltip, findByTooltip] = buildQueries<
     [text: string, options?: MatcherOptions<Gtk.Widget>],

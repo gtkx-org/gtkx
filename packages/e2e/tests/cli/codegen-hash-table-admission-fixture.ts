@@ -103,9 +103,7 @@ const HASH_TABLE_REJECTED: Record<string, string> = {
 };
 
 const rejectedFiles = (rejected: Record<string, string>): Record<string, string> =>
-    Object.fromEntries(Object.entries(rejected).map(([name, source]) => [
-        `${name}.tsx`, HASH_TABLE_IMPORTS + source,
-    ]));
+    Object.fromEntries(Object.entries(rejected).map(([name, source]) => [`${name}.tsx`, HASH_TABLE_IMPORTS + source]));
 
 const createHashTableAdmissionProject = (
     cleanup: DisposableStack,
@@ -114,11 +112,13 @@ const createHashTableAdmissionProject = (
     files: Record<string, string> = {},
 ): CliProject => {
     const fixture = readFileSync(new URL("fixtures/gir/NumericTables-1.0.gir", import.meta.url));
-    const project = cleanup.use(createCliProject({
-        prefix,
-        config: CONFIG,
-        files: { "gir/NumericTables-1.0.gir": fixture, ...files, ...rejectedFiles(rejected) },
-    }));
+    const project = cleanup.use(
+        createCliProject({
+            prefix,
+            config: CONFIG,
+            files: { "gir/NumericTables-1.0.gir": fixture, ...files, ...rejectedFiles(rejected) },
+        }),
+    );
     runCliOrThrow(project, ["codegen"]);
     isolateTypeConsumer(project);
 

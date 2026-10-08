@@ -44,18 +44,27 @@ const collect = async (): Promise<void> => {
 };
 
 const frozenWriters: [string, (window: Gtk.Window, button: Gtk.Button) => void][] = [
-    ["method", (window, button) => {
-        window.setDefaultWidget(button);
-    }],
-    ["property", (window, button) => {
-        window.defaultWidget = button;
-    }],
-    ["GValue", (window, button) => {
-        const value = new GObject.Value();
-        value.init(getClassType(Gtk.Widget));
-        value.setObject(button);
-        window.setProperty("default-widget", value);
-    }],
+    [
+        "method",
+        (window, button) => {
+            window.setDefaultWidget(button);
+        },
+    ],
+    [
+        "property",
+        (window, button) => {
+            window.defaultWidget = button;
+        },
+    ],
+    [
+        "GValue",
+        (window, button) => {
+            const value = new GObject.Value();
+            value.init(getClassType(Gtk.Widget));
+            value.setObject(button);
+            window.setProperty("default-widget", value);
+        },
+    ],
 ];
 
 const unmountFrozenDefault = async (write: (window: Gtk.Window, button: Gtk.Button) => void) => {

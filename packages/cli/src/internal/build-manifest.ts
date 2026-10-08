@@ -45,7 +45,9 @@ const canonicalConfig = (value: unknown): unknown => {
 };
 
 const configDigest = (config: unknown): string =>
-    createHash("sha256").update(JSON.stringify(canonicalConfig(config))).digest("hex");
+    createHash("sha256")
+        .update(JSON.stringify(canonicalConfig(config)))
+        .digest("hex");
 
 const createBuildManifestCollector = (): BuildManifestCollector => ({ schemas: [] });
 

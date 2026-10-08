@@ -7,7 +7,8 @@ describe("generated scalar C pointer omissions", () => {
     it("uses supported HMAC byte APIs and corrected Unicode arrays", () => {
         using consumer = createCliProject({
             prefix: "gtkx-cli-scalar-pointer-values-",
-            config: 'export default { applicationId: "org.gtkx.scalarpointervalues", libraries: ["GdkPixbuf-2.0"],' +
+            config:
+                'export default { applicationId: "org.gtkx.scalarpointervalues", libraries: ["GdkPixbuf-2.0"],' +
                 " agents: { reference: false, rules: false } };",
             files: { "probe.ts": SCALAR_POINTER_NATIVE_CONSUMER },
         });

@@ -17,12 +17,12 @@ A generated component such as `GtkButton` is a typed factory around a host eleme
 
 The renderer distinguishes four node kinds in [`reconciler/node.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/node.ts):
 
-| Kind | Meaning |
-| --- | --- |
+| Kind    | Meaning                                                                               |
+| ------- | ------------------------------------------------------------------------------------- |
 | Element | A native GObject, its current props, handlers, child placements, and style resources. |
-| Prop | A named slot and the children routed into it; it has no native object. |
-| Lazy | A declaration for an object created by its parent, adopted after placement. |
-| Text | Text content associated with a supported text host. |
+| Prop    | A named slot and the children routed into it; it has no native object.                |
+| Lazy    | A declaration for an object created by its parent, adopted after placement.           |
+| Text    | Text content associated with a supported text host.                                   |
 
 Function components and React context providers are reconciled by React itself. They do not add GObjects. This is why a React tree and the widget tree visible in an inspector are related but have different shapes.
 

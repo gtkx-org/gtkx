@@ -2,11 +2,7 @@ import { loadApiReference, resolveGirPath } from "@gtkx/codegen";
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
-import {
-    isolateTypeConsumer,
-    runNativeConsumer,
-    typecheckFile,
-} from "./type-consumer.js";
+import { isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
 const CONFIG = `export default {
     applicationId: "org.gtkx.callbacks",
@@ -20,7 +16,9 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as CallbackPointers from "@gtkx/gi/callbackpointers";
 `;
-const ACCEPTED = IMPORTS + `
+const ACCEPTED =
+    IMPORTS +
+    `
 const compareObjects = (a: GObject.Object | null, b: GObject.Object | null): number => a === b ? 0 : 1;
 export const callbackInputs = (object: GObject.Object, result: Gio.AsyncResult, iterator: GLib.SequenceIter) => {
     const ready: Parameters<Gio.AsyncReadyCallback> = [object, result];
@@ -59,20 +57,21 @@ const REJECTED: Record<string, string> = {
     "callback-return-type": "export type Callback = CallbackPointers.CallbackReturn;",
     "unsafe-alias": "export type Callback = CallbackPointers.RawAlias;",
     "generic-comparator-alias": "export type Callback = CallbackPointers.CompareAlias;",
-    "raw-owner": "export type Method = CallbackPointers.Probe[\"useRaw\"];",
-    "alias-owner": "export type Method = CallbackPointers.Probe[\"useAlias\"];",
-    "output-owner": "export type Method = CallbackPointers.Probe[\"useOutput\"];",
-    "return-owner": "export type Method = CallbackPointers.Probe[\"useReturn\"];",
-    "collection-owner": "export type Method = CallbackPointers.Probe[\"useCollection\"];",
+    "raw-owner": 'export type Method = CallbackPointers.Probe["useRaw"];',
+    "alias-owner": 'export type Method = CallbackPointers.Probe["useAlias"];',
+    "output-owner": 'export type Method = CallbackPointers.Probe["useOutput"];',
+    "return-owner": 'export type Method = CallbackPointers.Probe["useReturn"];',
+    "collection-owner": 'export type Method = CallbackPointers.Probe["useCollection"];',
     "static-owner": "export const factory = CallbackPointers.Probe.newWithRaw;",
     "namespace-owner": "export const invoke = CallbackPointers.useRaw;",
-    "task-thread": "export type Method = Gio.Task[\"runInThread\"];",
-    "task-thread-sync": "export type Method = Gio.Task[\"runInThreadSync\"];",
+    "task-thread": 'export type Method = Gio.Task["runInThread"];',
+    "task-thread-sync": 'export type Method = Gio.Task["runInThreadSync"];',
     "byte-array-comparator": "export const sort = GLib.ByteArray.sort;",
     "byte-array-data-comparator": "export const sort = GLib.ByteArray.sortWithData;",
     "thread-callback-type": "export type Callback = Gio.TaskThreadFunc;",
     "copy-callback-type": "export type Callback = GLib.CopyFunc;",
-    "async-extra-data": "export const args = (result: Gio.AsyncResult): Parameters<Gio.AsyncReadyCallback> => " +
+    "async-extra-data":
+        "export const args = (result: Gio.AsyncResult): Parameters<Gio.AsyncReadyCallback> => " +
         "[null, result, null];",
     "alias-extra-data": "export const args: Parameters<CallbackPointers.SafeAlias> = [null, 1, null];",
 };
@@ -156,16 +155,30 @@ try {
     quit();
 }
 `;
-const rejectedFiles = Object.fromEntries(Object.entries(REJECTED).map(([name, source]) => [
-    `${name}.ts`, IMPORTS + source,
-]));
+const rejectedFiles = Object.fromEntries(
+    Object.entries(REJECTED).map(([name, source]) => [`${name}.ts`, IMPORTS + source]),
+);
 const CALLBACK_OMISSIONS = [
-    "RawInput", "AliasInput", "RawOutput", "RawReturn", "SkippedReturn", "CollectionInput", "NestedCallback",
+    "RawInput",
+    "AliasInput",
+    "RawOutput",
+    "RawReturn",
+    "SkippedReturn",
+    "CollectionInput",
+    "NestedCallback",
     "CallbackReturn",
-    "RawAlias", "CompareAlias",
+    "RawAlias",
+    "CompareAlias",
 ];
 const METHOD_OMISSIONS = [
-    "useRaw", "useAlias", "useOutput", "useReturn", "useSkipped", "useCollection", "useNested", "useCallbackReturn",
+    "useRaw",
+    "useAlias",
+    "useOutput",
+    "useReturn",
+    "useSkipped",
+    "useCollection",
+    "useNested",
+    "useCallbackReturn",
     "newWithRaw",
 ];
 
@@ -175,16 +188,18 @@ describe("generated effective callback contracts", () => {
 
     beforeAll(() => {
         const fixture = readFileSync(new URL("fixtures/gir/CallbackPointers-1.0.gir", import.meta.url));
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-callback-signatures-",
-            config: CONFIG,
-            files: {
-                "gir/CallbackPointers-1.0.gir": fixture,
-                "accepted.ts": ACCEPTED,
-                "native.ts": NATIVE_CONSUMER,
-                ...rejectedFiles,
-            },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-callback-signatures-",
+                config: CONFIG,
+                files: {
+                    "gir/CallbackPointers-1.0.gir": fixture,
+                    "accepted.ts": ACCEPTED,
+                    "native.ts": NATIVE_CONSUMER,
+                    ...rejectedFiles,
+                },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });
@@ -230,7 +245,8 @@ describe("generated effective callback contracts", () => {
     it("dispatches real source, completion and object comparator callbacks with the public shape", () => {
         using consumer = createCliProject({
             prefix: "gtkx-cli-callback-values-",
-            config: 'export default { applicationId: "org.gtkx.callbackvalues", libraries: ["Gio-2.0"],' +
+            config:
+                'export default { applicationId: "org.gtkx.callbackvalues", libraries: ["Gio-2.0"],' +
                 " agents: { reference: false, rules: false } };",
             files: { "probe.ts": NATIVE_CONSUMER },
         });

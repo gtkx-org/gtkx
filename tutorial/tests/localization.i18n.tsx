@@ -10,21 +10,17 @@ describe("Tasks in French", () => {
     it("renders translated controls and starter content", async () => {
         await render(<App />, { container: rootElement });
 
-        expect(
-            await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Nouvelle tâche (Ctrl+N)" }),
-        ).toBeDefined();
+        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Nouvelle tâche (Ctrl+N)" })).toBeDefined();
 
-        expect(
-            await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Arroser les plantes/ }),
-        ).toBeDefined();
+        expect(await screen.findByRole(Gtk.AccessibleRole.LIST_ITEM, { name: /Arroser les plantes/ })).toBeDefined();
     });
 
     it("uses French interpolation and plural forms", async () => {
         const due = new Date();
         due.setDate(due.getDate() - 2);
-        const tasks = useStore.getState().tasks.map((task) =>
-            task.id === "t2" ? { ...task, due: due.toISOString() } : task,
-        );
+        const tasks = useStore
+            .getState()
+            .tasks.map((task) => (task.id === "t2" ? { ...task, due: due.toISOString() } : task));
         useStore.setState({ tasks });
 
         await render(<App />, { container: rootElement });

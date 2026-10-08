@@ -7,7 +7,9 @@ import { LIB } from "./library.js";
 const cache: { newError?: ReturnType<typeof bind>; quark?: number; errorType?: bigint } = {};
 
 const isError = (value: unknown): value is ErrorLike =>
-    typeof value === "object" && value !== null && "__type__" in value &&
+    typeof value === "object" &&
+    value !== null &&
+    "__type__" in value &&
     value.__type__ === (cache.errorType ??= resolveType(LIB, "g_error_get_type"));
 
 class CallbackError extends Error implements CallbackFailure {
@@ -41,18 +43,26 @@ const callbackFailure = (thrown: unknown): CallbackError => {
     if (isWrapped) {
         domain = thrown.domain;
     } else {
-        cache.quark ??= bind(LIB, "g_quark_from_string", [stringT("borrowed")], uint32T)(
-            "gtkx-js-error-quark",
-        ) as number;
+        cache.quark ??= bind(
+            LIB,
+            "g_quark_from_string",
+            [stringT("borrowed")],
+            uint32T,
+        )("gtkx-js-error-quark") as number;
         domain = cache.quark;
     }
     const code = isWrapped ? thrown.code : 0;
     const message = isWrapped ? thrown.message : errorMessage(thrown);
-    cache.newError ??= bind(LIB, "g_error_new_literal", [uint32T, int32T, stringT("borrowed")], boxedT("GError", {
-        ownership: "full",
-        sharedLibrary: LIB,
-        getTypeFnName: "g_error_get_type",
-    }));
+    cache.newError ??= bind(
+        LIB,
+        "g_error_new_literal",
+        [uint32T, int32T, stringT("borrowed")],
+        boxedT("GError", {
+            ownership: "full",
+            sharedLibrary: LIB,
+            getTypeFnName: "g_error_get_type",
+        }),
+    );
     const nativeError = cache.newError(domain, code, message.replaceAll("\0", "�"));
 
     return new CallbackError(nativeError as ExternalObject<Handle>, thrown);

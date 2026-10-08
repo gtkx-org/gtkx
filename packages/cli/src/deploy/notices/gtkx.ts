@@ -72,13 +72,16 @@ const gtkxNotices = (bundleFile: string, addonFile: string, packages: RecordedPa
         title: TITLE,
         files: [addonFile, bundleFile],
         summary: summaryFor(bundleFile, addonFile, own),
-        notices: [{
-            subject: subjectFor(own),
-            license: LICENSE_NAME,
-            source: sourceFor(own),
-            copyright: getCopyright(own),
-            text: getText(own),
-        }, cratesNotice(own)],
+        notices: [
+            {
+                subject: subjectFor(own),
+                license: LICENSE_NAME,
+                source: sourceFor(own),
+                copyright: getCopyright(own),
+                text: getText(own),
+            },
+            cratesNotice(own),
+        ],
     };
 };
 

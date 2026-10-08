@@ -6,14 +6,7 @@ import { basename, dirname, extname, isAbsolute, join, resolve, sep } from "node
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { localConfigSourcePath } from "./config-source.ts";
 
-const MODULE_EXTENSIONS: ReadonlySet<string> = new Set([
-    ".cjs",
-    ".cts",
-    ".js",
-    ".mjs",
-    ".mts",
-    ".ts",
-]);
+const MODULE_EXTENSIONS: ReadonlySet<string> = new Set([".cjs", ".cts", ".js", ".mjs", ".mts", ".ts"]);
 const RESOLVABLE_EXTENSIONS = [
     ".js",
     ".ts",
@@ -52,10 +45,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const parserPlugins = (path: string): ("decorators" | "jsx" | "typescript")[] => {
     const extension = extname(path).toLowerCase();
 
-    return [
-        "decorators",
-        ...([".cts", ".mts", ".ts"].includes(extension) ? ["typescript" as const] : []),
-    ];
+    return ["decorators", ...([".cts", ".mts", ".ts"].includes(extension) ? ["typescript" as const] : [])];
 };
 
 function expressionSources(value: types.Expression): string[] {
@@ -64,8 +54,7 @@ function expressionSources(value: types.Expression): string[] {
     }
 
     if (types.isArrayExpression(value)) {
-        return value.elements.flatMap((element) =>
-            types.isExpression(element) ? expressionSources(element) : []);
+        return value.elements.flatMap((element) => (types.isExpression(element) ? expressionSources(element) : []));
     }
 
     return types.isObjectExpression(value)
@@ -77,33 +66,30 @@ const isNamedProperty = (property: types.ObjectProperty, name: string): boolean 
     (types.isIdentifier(property.key) && property.key.name === name) ||
     (types.isStringLiteral(property.key) && property.key.value === name);
 
-function sourcePropertySources(
-    property: types.ObjectMethod | types.ObjectProperty | types.SpreadElement,
-): string[] {
-    return types.isObjectProperty(property) &&
-        isNamedProperty(property, "source") &&
-        types.isExpression(property.value)
+function sourcePropertySources(property: types.ObjectMethod | types.ObjectProperty | types.SpreadElement): string[] {
+    return types.isObjectProperty(property) && isNamedProperty(property, "source") && types.isExpression(property.value)
         ? expressionSources(property.value)
         : [];
 }
 
 const extendsSources = (value: types.Expression): string[] => expressionSources(value);
 
-const isExtendsProperty = (property: types.ObjectProperty): boolean =>
-    isNamedProperty(property, "extends");
+const isExtendsProperty = (property: types.ObjectProperty): boolean => isNamedProperty(property, "extends");
 
 type ParsedModule = NonNullable<ReturnType<typeof parseSync>>;
 
 const parseModule = (path: string): ParsedModule | undefined => {
     try {
-        return parseSync(readFileSync(path, "utf8"), {
-            ast: true,
-            babelrc: false,
-            configFile: false,
-            filename: path,
-            parserOpts: { allowReturnOutsideFunction: true, plugins: parserPlugins(path) },
-            sourceType: "unambiguous",
-        }) ?? undefined;
+        return (
+            parseSync(readFileSync(path, "utf8"), {
+                ast: true,
+                babelrc: false,
+                configFile: false,
+                filename: path,
+                parserOpts: { allowReturnOutsideFunction: true, plugins: parserPlugins(path) },
+                sourceType: "unambiguous",
+            }) ?? undefined
+        );
     } catch {
         return undefined;
     }
@@ -127,9 +113,7 @@ const importEqualsSource = (declaration: types.TSImportEqualsDeclaration): types
 };
 
 const propertySources = (property: types.ObjectProperty): string[] =>
-    isExtendsProperty(property) && types.isExpression(property.value)
-        ? extendsSources(property.value)
-        : [];
+    isExtendsProperty(property) && types.isExpression(property.value) ? extendsSources(property.value) : [];
 
 const collectModuleSources = (ast: ParsedModule): ModuleSources => {
     const sources: Set<string> = new Set();
@@ -310,9 +294,7 @@ function stringTargets(value: unknown): string[] {
         return value.flatMap((item) => stringTargets(item));
     }
 
-    return isRecord(value)
-        ? Object.values(value).flatMap((item) => stringTargets(item))
-        : [];
+    return isRecord(value) ? Object.values(value).flatMap((item) => stringTargets(item)) : [];
 }
 
 const importPatternMatch = (pattern: string, source: string): string | undefined => {
@@ -338,9 +320,7 @@ const packageImportTargets = (source: string, imports: Record<string, unknown>):
     Object.entries(imports).flatMap(([pattern, value]) => {
         const match = importPatternMatch(pattern, source);
 
-        return match === undefined
-            ? []
-            : stringTargets(value).map((target) => target.split("*").join(match));
+        return match === undefined ? [] : stringTargets(value).map((target) => target.split("*").join(match));
     });
 
 const packageImportDependencies = (source: string, importer: string, configName: string): string[] => {
@@ -361,8 +341,7 @@ const packageImportDependencies = (source: string, importer: string, configName:
     return [packageImports.file, ...targets];
 };
 
-const normalizedResolvedPath = (path: string): string =>
-    path.startsWith("file:") ? fileURLToPath(path) : path;
+const normalizedResolvedPath = (path: string): string => (path.startsWith("file:") ? fileURLToPath(path) : path);
 
 const resolvedSourcePath = (source: string, importer: string, jiti: Jiti): string | undefined => {
     try {
@@ -377,12 +356,7 @@ const resolvedSourcePath = (source: string, importer: string, jiti: Jiti): strin
     }
 };
 
-const sourceDependencies = (
-    source: string,
-    importer: string,
-    configName: string,
-    jiti: Jiti,
-): string[] => {
+const sourceDependencies = (source: string, importer: string, configName: string, jiti: Jiti): string[] => {
     const dependency = resolvedSourcePath(source, importer, jiti);
     const packageDependencies = packageImportDependencies(source, importer, configName);
 
@@ -404,12 +378,7 @@ const configLayerDirectory = (path: string, configName: string, configRoot: stri
     return resolve(directory, ...segments) === resolve(path) ? directory : resolve(configRoot);
 };
 
-const c12SourceDependencies = (
-    source: string,
-    importer: string,
-    configName: string,
-    configRoot: string,
-): string[] => {
+const c12SourceDependencies = (source: string, importer: string, configName: string, configRoot: string): string[] => {
     const clean = source.split(/[?#]/u, 1)[0] ?? "";
 
     const cwd = configLayerDirectory(importer, configName, configRoot);
@@ -431,8 +400,7 @@ const directDependencies = (path: string, configName: string, configRoot: string
     return [
         ...sources.flatMap((source) => sourceDependencies(source, path, configName, jiti)),
         ...extended.flatMap((source) => c12SourceDependencies(source, path, configName, configRoot)),
-    ]
-        .filter((dependency) => !dependency.includes(`${sep}node_modules${sep}`));
+    ].filter((dependency) => !dependency.includes(`${sep}node_modules${sep}`));
 };
 
 const resolveConfigDependencies = (

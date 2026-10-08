@@ -29,12 +29,7 @@ const gettextCatalog: GettextCatalog = {
         const contextualSingular = contextualMsgid(context, msgid);
         const contextualPlural = contextualMsgid(context, msgidPlural);
 
-        const translated = GLib.dngettext(
-            applicationId,
-            contextualSingular,
-            contextualPlural,
-            normalizeCount(count),
-        );
+        const translated = GLib.dngettext(applicationId, contextualSingular, contextualPlural, normalizeCount(count));
 
         return translated === contextualSingular || translated === contextualPlural ? undefined : translated;
     },

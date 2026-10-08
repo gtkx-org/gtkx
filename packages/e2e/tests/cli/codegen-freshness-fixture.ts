@@ -39,9 +39,18 @@ const writeGir = (directory: string, identifier: string, source: string): void =
     writeFileSync(join(directory, `${identifier}.gir`), source);
 };
 
-const importValue = (project: CliProject): number => Number(execFileSync(process.execPath, [
-    "--no-addons", "--input-type=module", "--eval",
-    'import { VALUE } from "@gtkx/gi/searchorder"; process.stdout.write(String(VALUE));',
-], { cwd: project.root, encoding: "utf8" }));
+const importValue = (project: CliProject): number =>
+    Number(
+        execFileSync(
+            process.execPath,
+            [
+                "--no-addons",
+                "--input-type=module",
+                "--eval",
+                'import { VALUE } from "@gtkx/gi/searchorder"; process.stdout.write(String(VALUE));',
+            ],
+            { cwd: project.root, encoding: "utf8" },
+        ),
+    );
 
 export { configure, constantGir, dependentGir, importValue, writeGir };

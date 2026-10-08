@@ -19,9 +19,7 @@ const isClickTransparent = (widget: Gtk.Widget): boolean =>
     getWidgetTypeName(widget) === CELL_TYPE_NAME || isHeaderRow(widget);
 
 const isExpanderToggling = (widget: Gtk.Widget): boolean =>
-    widget instanceof Gtk.TreeExpander &&
-    widget.getListRow()?.isExpandable() === true &&
-    !widget.getHideExpander();
+    widget instanceof Gtk.TreeExpander && widget.getListRow()?.isExpandable() === true && !widget.getHideExpander();
 
 const isColumnHeader = (widget: Gtk.Widget): boolean => getWidgetTypeName(widget) === TITLE_TYPE_NAME;
 const isFactoryRow = (widget: Gtk.Widget): boolean => ROW_TYPE_NAMES.has(getWidgetTypeName(widget) ?? "");

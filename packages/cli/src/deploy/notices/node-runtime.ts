@@ -79,13 +79,15 @@ const nodeNotices = (settings: DeploySettings, node: NodeRuntime | null): Notice
         title: TITLE,
         files: [`lib/${settings.binaryName}/${NODE_FILENAME}`],
         summary: summaryFor(text),
-        notices: [{
-            subject: `Node.js ${versionFor(settings, node)}`,
-            license: LICENSE_NAME,
-            source: SOURCE_URL,
-            copyright: copyrightLines(text),
-            text,
-        }],
+        notices: [
+            {
+                subject: `Node.js ${versionFor(settings, node)}`,
+                license: LICENSE_NAME,
+                source: SOURCE_URL,
+                copyright: copyrightLines(text),
+                text,
+            },
+        ],
     };
 };
 
@@ -93,13 +95,15 @@ const sdkNodeNotices = (settings: DeploySettings): NoticeSection => ({
     title: TITLE,
     files: [`lib/${settings.binaryName}/${NODE_FILENAME}`],
     summary: [...SUMMARY, ...MISSING_SUMMARY, ...extensionSummary(settings)],
-    notices: [{
-        subject: `Node.js (${nodeExtensionFor(settings)})`,
-        license: LICENSE_NAME,
-        source: SOURCE_URL,
-        copyright: [],
-        text: null,
-    }],
+    notices: [
+        {
+            subject: `Node.js (${nodeExtensionFor(settings)})`,
+            license: LICENSE_NAME,
+            source: SOURCE_URL,
+            copyright: [],
+            text: null,
+        },
+    ],
 });
 
 export { nodeNotices, sdkNodeNotices };

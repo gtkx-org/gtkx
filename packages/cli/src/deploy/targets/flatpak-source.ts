@@ -69,7 +69,7 @@ const runtimeInstallCommands = (settings: DeploySettings, nodeExtensionPath: str
         installCommand(`dist/${BINDING_FILENAME}`, `${lib}/${BINDING_FILENAME}`, "m755"),
         "test ! -f dist/gtkx.gresource || " + installCommand("dist/gtkx.gresource", `${lib}/gtkx.gresource`, "m644"),
         "test ! -f dist/gschemas.compiled || " +
-        installCommand("dist/gschemas.compiled", `${lib}/gschemas.compiled`, "m644"),
+            installCommand("dist/gschemas.compiled", `${lib}/gschemas.compiled`, "m644"),
         `test ! -d dist/assets || cp -a dist/assets ${lib}/assets`,
         `test ! -d dist/${FONTS_DIR} || cp -a dist/${FONTS_DIR} ${lib}/${FONTS_DIR}`,
         `test ! -d dist/${LOCALE_DIRNAME} || { mkdir -p ${locale} && cp -a dist/${LOCALE_DIRNAME}/. ${locale}/; }`,
@@ -84,11 +84,13 @@ const activationSource = (settings: DeploySettings): FlatpakModule[] =>
 
 const activationInstallCommands = (settings: DeploySettings): string[] =>
     settings.isDbusActivatable
-        ? [installCommand(
-                `${settings.applicationId}.service`,
-                `${DESTINATION}/share/dbus-1/services/${settings.applicationId}.service`,
-                "m644",
-            )]
+        ? [
+              installCommand(
+                  `${settings.applicationId}.service`,
+                  `${DESTINATION}/share/dbus-1/services/${settings.applicationId}.service`,
+                  "m644",
+              ),
+          ]
         : [];
 
 const stagedContents = (payload: DeployPayload, destination: string): string => {
@@ -115,21 +117,25 @@ const stagedMetadataSources = (payload: DeployPayload): FlatpakModule[] => {
         ),
         ...(settings.fileAssociations.length === 0
             ? []
-            : [inlineSource(
-                    `${settings.applicationId}.xml`,
-                    stagedContents(payload, posix.join("share", "mime", "packages", `${settings.applicationId}.xml`)),
-                )]),
+            : [
+                  inlineSource(
+                      `${settings.applicationId}.xml`,
+                      stagedContents(payload, posix.join("share", "mime", "packages", `${settings.applicationId}.xml`)),
+                  ),
+              ]),
     ];
 };
 
 const mimeInstallCommands = (settings: DeploySettings): string[] =>
     settings.fileAssociations.length === 0
         ? []
-        : [installCommand(
-                `${settings.applicationId}.xml`,
-                `${DESTINATION}/share/mime/packages/${settings.applicationId}.xml`,
-                "m644",
-            )];
+        : [
+              installCommand(
+                  `${settings.applicationId}.xml`,
+                  `${DESTINATION}/share/mime/packages/${settings.applicationId}.xml`,
+                  "m644",
+              ),
+          ];
 
 const metadataInstallCommands = (settings: DeploySettings): string[] => [
     installCommand(
@@ -187,8 +193,8 @@ const assertInsideProject = (settings: DeploySettings, installed: InstalledFile)
 
     throw new Error(
         `Cannot install "${installed.destination}" from "${installed.source}": a source-mode manifest builds from ` +
-        `your git checkout, so every file it installs has to live inside ${settings.paths.root} and be committed. ` +
-        "Move it into the project, or drop it from the source build.",
+            `your git checkout, so every file it installs has to live inside ${settings.paths.root} and be committed. ` +
+            "Move it into the project, or drop it from the source build.",
     );
 };
 
@@ -246,9 +252,7 @@ const offlineEnvFor = (manager: PackageManager, settings: DeploySettings): Recor
 };
 
 const appendPathFor = (settings: DeploySettings, pin: PnpmPin | null, nodeExtensionPath: string): string =>
-    pin === null
-        ? `${nodeExtensionPath}/bin`
-        : `${pnpmPathFor(moduleDirFor(settings))}:${nodeExtensionPath}/bin`;
+    pin === null ? `${nodeExtensionPath}/bin` : `${pnpmPathFor(moduleDirFor(settings))}:${nodeExtensionPath}/bin`;
 
 const sourceBuildCommand = (settings: DeploySettings): string => {
     const configFile = projectRelative(settings, settings.configFile);
@@ -286,7 +290,7 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
             inlineSource(
                 NOTICES_FILENAME,
                 renderNotices(settings, payload.notices.flatpak) +
-                `The bundled files listed below are installed in ${RUNTIME_PREFIX}/lib/${settings.binaryName}.\n\n`,
+                    `The bundled files listed below are installed in ${RUNTIME_PREFIX}/lib/${settings.binaryName}.\n\n`,
             ),
             ...activationSource(settings),
         ],

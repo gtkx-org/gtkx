@@ -22,6 +22,4 @@ const About = ({ onClose }: { onClose: () => void }) => {
     );
 };
 
-export {
-    About,
-};
+export { About };

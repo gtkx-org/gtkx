@@ -3,16 +3,7 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
-import {
-    act,
-    findByText,
-    render,
-    screen,
-    userEvent,
-    waitFor,
-    waitForElementToBeRemoved,
-    within,
-} from "@gtkx/testing";
+import { act, findByText, render, screen, userEvent, waitFor, waitForElementToBeRemoved, within } from "@gtkx/testing";
 import { clearTimeout as cancel, setTimeout as schedule } from "node:timers";
 import { setTimeout as delay } from "node:timers/promises";
 import { useEffect, useState } from "react";
@@ -66,9 +57,7 @@ const renderRemovable = async (removableContent: ReactNode): Promise<Gtk.Widget>
     return screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Remove" });
 };
 
-const waitForRemovalOfAbsentTarget = async (
-    target: Parameters<typeof waitForElementToBeRemoved>[0],
-): Promise<void> => {
+const waitForRemovalOfAbsentTarget = async (target: Parameters<typeof waitForElementToBeRemoved>[0]): Promise<void> => {
     await render(<GtkLabel>Test</GtkLabel>);
 
     return waitForElementToBeRemoved(target);
@@ -143,16 +132,19 @@ describe("waitFor", () => {
     it("awaits asynchronous success and retries asynchronous failures", async () => {
         let attempts = 0;
 
-        const result = await waitFor(async () => {
-            await delay(5);
-            attempts += 1;
+        const result = await waitFor(
+            async () => {
+                await delay(5);
+                attempts += 1;
 
-            if (attempts < 2) {
-                throw new Error("Pending");
-            }
+                if (attempts < 2) {
+                    throw new Error("Pending");
+                }
 
-            return "ready";
-        }, { interval: 5 });
+                return "ready";
+            },
+            { interval: 5 },
+        );
 
         expect(result).toBe("ready");
         expect(attempts).toBe(2);
@@ -250,29 +242,41 @@ describe("waitForElementToBeRemoved", () => {
 });
 
 describe("fake timers", () => {
-    it("lets waitFor settle whether the whole clock, only setTimeout or only Date is faked", async () => {
-        const faked = await renderLabelWithFakeTimers();
-        await expect(waitFor(faked)).resolves.toHaveTextContent("Present");
-        vi.useRealTimers();
-        const partial = await renderLabelWithFakeTimers({ toFake: ["setTimeout"] });
-        await expect(waitFor(partial)).resolves.toHaveTextContent("Present");
-        vi.useRealTimers();
-        await renderLabelWithFakeTimers({ toFake: ["Date"] });
-        await expect(waitFor(failingCallback, { timeout: 100 })).rejects.toThrow();
-    }, TEST_TIMEOUT);
+    it(
+        "lets waitFor settle whether the whole clock, only setTimeout or only Date is faked",
+        async () => {
+            const faked = await renderLabelWithFakeTimers();
+            await expect(waitFor(faked)).resolves.toHaveTextContent("Present");
+            vi.useRealTimers();
+            const partial = await renderLabelWithFakeTimers({ toFake: ["setTimeout"] });
+            await expect(waitFor(partial)).resolves.toHaveTextContent("Present");
+            vi.useRealTimers();
+            await renderLabelWithFakeTimers({ toFake: ["Date"] });
+            await expect(waitFor(failingCallback, { timeout: 100 })).rejects.toThrow();
+        },
+        TEST_TIMEOUT,
+    );
 
-    it("advances the installed fake clock so a component timeout progresses", async () => {
-        vi.useFakeTimers();
-        await render(<DebouncedLabel />);
-        await expect(waitFor(() => screen.getByText("Settled"))).resolves.toHaveTextContent("Settled");
-    }, TEST_TIMEOUT);
+    it(
+        "advances the installed fake clock so a component timeout progresses",
+        async () => {
+            vi.useFakeTimers();
+            await render(<DebouncedLabel />);
+            await expect(waitFor(() => screen.getByText("Settled"))).resolves.toHaveTextContent("Settled");
+        },
+        TEST_TIMEOUT,
+    );
 
-    it("keeps find queries and user events working", async () => {
-        let clickCount = 0;
-        vi.useFakeTimers();
-        await render(<GtkButton label="Press" onClicked={() => (clickCount += 1)} />);
-        await screen.findByText("Press");
-        await userEvent.click(screen.getByText("Press"));
-        expect(clickCount).toBe(1);
-    }, TEST_TIMEOUT);
+    it(
+        "keeps find queries and user events working",
+        async () => {
+            let clickCount = 0;
+            vi.useFakeTimers();
+            await render(<GtkButton label="Press" onClicked={() => (clickCount += 1)} />);
+            await screen.findByText("Press");
+            await userEvent.click(screen.getByText("Press"));
+            expect(clickCount).toBe(1);
+        },
+        TEST_TIMEOUT,
+    );
 });

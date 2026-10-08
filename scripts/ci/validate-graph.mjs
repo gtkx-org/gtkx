@@ -13,8 +13,10 @@ for (const [id, task] of Object.entries(tasks.tasks)) {
     targets.add(task.target.target);
 
     if (task.target.target === "lint" && graph.nodes[task.target.project].data.targets["_lint:eslint"] !== undefined) {
-        assert.ok(tasks.dependencies[id].includes(`${task.target.project}:_lint:eslint`),
-            `${id} must preserve the ESLint compatibility checks`);
+        assert.ok(
+            tasks.dependencies[id].includes(`${task.target.project}:_lint:eslint`),
+            `${id} must preserve the ESLint compatibility checks`,
+        );
     }
 
     if (target.executor !== "nx:noop") {
@@ -32,8 +34,12 @@ for (const [id, task] of Object.entries(tasks.tasks)) {
         const dependencies = tasks.dependencies[id];
         assert.ok(dependencies.includes("gtkx:_build:bindings"), `${id} needs generated bindings`);
         assert.ok(dependencies.includes("@gtkx/cli:build"), `${id} needs the CLI build`);
-        assert.ok(target.inputs.some((input) => typeof input === "object"
-            && input.dependentTasksOutputFiles?.includes("node")), `${id} must hash native outputs`);
+        assert.ok(
+            target.inputs.some(
+                (input) => typeof input === "object" && input.dependentTasksOutputFiles?.includes("node"),
+            ),
+            `${id} must hash native outputs`,
+        );
     }
 }
 

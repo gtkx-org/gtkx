@@ -61,7 +61,7 @@ const SUPERVISOR_KILL_GROUP_BODY = [
 const SUPERVISOR_REMOVE_RUNTIME_BODY = [
     "remaining=40",
     'while [ "$remaining" -gt 0 ] && ' +
-    '[ "$("$stat_command" -c "%d:%i:%u" -- "$runtime" 2>/dev/null)" = "$identity" ]; do',
+        '[ "$("$stat_command" -c "%d:%i:%u" -- "$runtime" 2>/dev/null)" = "$identity" ]; do',
     '    "$rm_command" -rf -- "$runtime"',
     '    "$sleep_command" 0.025',
     "    remaining=$((remaining - 1))",
@@ -155,7 +155,7 @@ const SUPERVISOR_SCRIPT = [
     '    trap "" CONT TERM INT HUP',
     "    while :; do",
     '        "$setsid_command" "$shell_command" -c "$cleanup_script" "$cleanup_name" "$runtime" "$identity" "$$" ' +
-    '"$stat_command" "$rm_command" "$sleep_command" </dev/null >/dev/null 2>&1 &',
+        '"$stat_command" "$rm_command" "$sleep_command" </dev/null >/dev/null 2>&1 &',
     "        cleanup=$!",
     '        wait "$cleanup" 2>/dev/null',
     '        "$sleep_command" 0.025',
@@ -171,10 +171,10 @@ const SUPERVISOR_SCRIPT = [
     "}",
     "trap continue_or_terminate CONT",
     "trap terminate TERM INT HUP",
-    "supervisor_start=$(process_start \"$$\") || terminate",
+    'supervisor_start=$(process_start "$$") || terminate',
     '( unset GTKX_PROCESS_GUARD; exec "$setsid_command" "$shell_command" -c "$watch_script" "$watch_name" "$runtime" ' +
-    '"$identity" "$$" "$supervisor_start" "$expected_parent" "$expected_parent_start" "$stat_command" ' +
-    '"$rm_command" "$sleep_command" ) </dev/null >/dev/null 2>&1 &',
+        '"$identity" "$$" "$supervisor_start" "$expected_parent" "$expected_parent_start" "$stat_command" ' +
+        '"$rm_command" "$sleep_command" ) </dev/null >/dev/null 2>&1 &',
     "child=",
     "if ! matches_parent; then terminate; fi",
     '"$@" &',
@@ -233,9 +233,7 @@ const configureProcessWatch = (watch?: ProcessWatch): void => {
 };
 
 const guardArguments = (): string[] =>
-    guard.watch === undefined
-        ? [GUARD_PATH, RUN_PREFIX]
-        : [GUARD_PATH, RUN_PREFIX, JSON.stringify(guard.watch)];
+    guard.watch === undefined ? [GUARD_PATH, RUN_PREFIX] : [GUARD_PATH, RUN_PREFIX, JSON.stringify(guard.watch)];
 
 const startGuard = (watch?: ProcessWatch): void => {
     configureProcessWatch(watch);
@@ -406,12 +404,7 @@ function spawnWithParentDeathSignal(
     args: string[],
     options: ParentDeathSpawnOptions = {},
 ): ChildProcess {
-    return spawnGuarded(
-        command,
-        options,
-        "SIGKILL",
-        (executable) => ["--pdeathsig", "SIGKILL", executable, ...args],
-    );
+    return spawnGuarded(command, options, "SIGKILL", (executable) => ["--pdeathsig", "SIGKILL", executable, ...args]);
 }
 
 const spawnWithParentDeathSupervisor = (

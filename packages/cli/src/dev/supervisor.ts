@@ -266,11 +266,13 @@ const nearestWatchTarget = (path: string): { directory: string; name: string } =
 };
 
 const watchTargets = (paths: string[]): Set<string> =>
-    new Set(paths.flatMap((path) => {
-        const { directory, name } = nearestWatchTarget(path);
+    new Set(
+        paths.flatMap((path) => {
+            const { directory, name } = nearestWatchTarget(path);
 
-        return [path, join(directory, name)];
-    }));
+            return [path, join(directory, name)];
+        }),
+    );
 
 const watchPathState = (path: string): string | null => {
     try {
@@ -287,10 +289,7 @@ const watchPathState = (path: string): string | null => {
 const snapshotWatchPaths = (paths: string[]): Map<string, string | null> =>
     new Map([...watchTargets(paths)].map((path) => [path, watchPathState(path)]));
 
-const changedWatchPaths = (
-    previous: ReadonlyMap<string, string | null>,
-    paths: string[],
-): string[] =>
+const changedWatchPaths = (previous: ReadonlyMap<string, string | null>, paths: string[]): string[] =>
     [...watchTargets(paths)].filter((path) => {
         const current = watchPathState(path);
 
@@ -310,11 +309,7 @@ const groupWatchNamesByDirectory = (paths: string[]): Map<string, Set<string>> =
     return namesByDirectory;
 };
 
-const watchConfigDirectory = (
-    state: SupervisorState,
-    directory: string,
-    names: Set<string>,
-): void => {
+const watchConfigDirectory = (state: SupervisorState, directory: string, names: Set<string>): void => {
     try {
         const watcher = watchFs(directory, (_event, filename) => {
             const changed = watchedChangePath(state, directory, names, filename);
@@ -413,8 +408,4 @@ const runDevSupervisor = async (options: DevSupervisorOptions): Promise<never> =
     return new Promise<never>((): void => undefined);
 };
 
-export {
-    RESTART_EXIT_CODE,
-    runDevSupervisor,
-    type DevWatch,
-};
+export { RESTART_EXIT_CODE, runDevSupervisor, type DevWatch };

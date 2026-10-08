@@ -34,7 +34,8 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
                 id: registry.getOrCreateId(window),
                 title: window.getTitle(),
             })),
-        })),
+        }),
+    ),
     "widget.getTree": validated(ServerRequestParamsSchemas["widget.getTree"], async ({ app, registry }, params) => {
         const testing = await loadTestingModule();
         const container = params.rootId === undefined ? app : requireWidget(registry, params.rootId);
@@ -43,7 +44,7 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
             tree: testing.prettyWidget(container, {
                 getId: (w) => registry.getOrCreateId(w),
                 shouldHighlight: false,
-                ...((params.maxDepth !== undefined) && { maxDepth: params.maxDepth }),
+                ...(params.maxDepth !== undefined && { maxDepth: params.maxDepth }),
             }),
         };
     }),
@@ -104,7 +105,7 @@ const SEARCHED_BY: Record<QueryBy, string> = {
     role: "the accessible role, narrowed by any options given",
     text: "the text the widget renders",
     name:
-        "the widget name (gtk_widget_get_name, which reports the GType name such as \"GtkButton\" when no name " +
+        'the widget name (gtk_widget_get_name, which reports the GType name such as "GtkButton" when no name ' +
         "was set), the accessible label, and the text the widget renders",
     labelText: "the accessible label, the labelled-by relation, and the label whose mnemonic targets the widget",
 };
@@ -129,7 +130,8 @@ function targeted<Params extends WidgetParams>(
     handler: TargetedHandler<Params>,
 ): ValidatedHandler {
     return validated(schema, async (ctx, params) =>
-        handler(ctx, await widgetTarget(ctx.registry, params.widgetId), params));
+        handler(ctx, await widgetTarget(ctx.registry, params.widgetId), params),
+    );
 }
 
 const widgetTarget = async (registry: WidgetRegistry, widgetId: string | undefined): Promise<WidgetTarget> => ({
@@ -196,7 +198,7 @@ function runRoleQuery(testing: TestingModule, app: Gtk.Application, params: Quer
     if (roleValue === undefined) {
         throw invalidRequestError(
             `Unknown accessible role "${String(params.value)}"; use the lowercase role shown in the ` +
-            "widget tree, e.g. \"button\", \"list\", \"list_item\", or \"checkbox\".",
+                'widget tree, e.g. "button", "list", "list_item", or "checkbox".',
         );
     }
 
@@ -211,11 +213,7 @@ function runLabelTextQuery(testing: TestingModule, app: Gtk.Application, params:
     return matchesOrEmpty(() => testing.findAllByLabelText(app, String(params.value), params.options));
 }
 
-async function runNameQuery(
-    testing: TestingModule,
-    app: Gtk.Application,
-    params: QueryParams,
-): Promise<Gtk.Widget[]> {
+async function runNameQuery(testing: TestingModule, app: Gtk.Application, params: QueryParams): Promise<Gtk.Widget[]> {
     const matches = await Promise.all([
         matchesOrEmpty(() => testing.findAllByName(app, String(params.value), params.options)),
         runLabelTextQuery(testing, app, params),
@@ -227,7 +225,7 @@ async function runNameQuery(
 
 const emptyQueryHint = (params: QueryParams): string =>
     `Nothing matched by:"${params.by}" value:"${String(params.value)}", which compared ${SEARCHED_BY[params.by]}. ` +
-    "Call gtkx_get_widget_tree to see what is mounted; by:\"name\" is the widest match, and by:\"role\" accepts " +
+    'Call gtkx_get_widget_tree to see what is mounted; by:"name" is the widest match, and by:"role" accepts ' +
     "options.name to match the accessible name of a known role.";
 
 async function handleQuery({ app, registry }: HandlerContext, params: QueryParams): Promise<Result> {

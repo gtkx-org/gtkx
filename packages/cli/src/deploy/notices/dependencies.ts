@@ -32,8 +32,8 @@ const warnUndeclared = (entries: RecordedPackage[]): void => {
 
     warn(
         `The third-party notices list ${undeclared.map((entry) => subjectFor(entry)).join(", ")} without any ` +
-        "license: the package declares no SPDX identifier and ships no license file. Check what the terms are " +
-        "before you publish this build, and ask upstream to record them.",
+            "license: the package declares no SPDX identifier and ships no license file. Check what the terms are " +
+            "before you publish this build, and ask upstream to record them.",
     );
 };
 

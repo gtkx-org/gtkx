@@ -8,13 +8,8 @@
                 "cwd": "{projectRoot}"
             },
             "cache": true,
-            "dependsOn": [
-                "gtkx:_build:bindings",
-                "@gtkx/cli:build"
-            ],
-            "outputs": [
-                "{projectRoot}/node_modules/.gtkx"
-            ],
+            "dependsOn": ["gtkx:_build:bindings", "@gtkx/cli:build"],
+            "outputs": ["{projectRoot}/node_modules/.gtkx"],
             "inputs": [
                 "default",
                 "^production",
@@ -26,47 +21,26 @@
             ]
         },
         "typecheck": {
-            "dependsOn": [
-                "^build",
-                "codegen"
-            ]
+            "dependsOn": ["^build", "codegen"]
         },
         "dev": {
             "cache": false,
             "continuous": true,
-            "dependsOn": [
-                "^build",
-                "codegen"
-            ]
+            "dependsOn": ["^build", "codegen"]
         },
         "test": {
-            "dependsOn": [
-                "...",
-                "codegen",
-                "@gtkx/testing:build"
-            ],
+            "dependsOn": ["...", "codegen", "@gtkx/testing:build"],
             "command": "node ../../scripts/ci/run.mjs 'pnpm run test'",
             "options": {
                 "cwd": "{projectRoot}"
             },
-            "inputs": [
-                "...",
-                "default",
-                "^default",
-                "{workspaceRoot}/scripts/ci/**/*"
-            ]
+            "inputs": ["...", "default", "^default", "{workspaceRoot}/scripts/ci/**/*"]
         },
         "lint": {
-            "dependsOn": [
-                "...",
-                "codegen"
-            ]
+            "dependsOn": ["...", "codegen"]
         },
         "_lint:eslint": {
-            "dependsOn": [
-                "...",
-                "codegen"
-            ]
+            "dependsOn": ["...", "codegen"]
         }
     }
 }

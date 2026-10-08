@@ -27,9 +27,7 @@ describe.each(["bound", "unbound"] as const)("%s copied struct bounds", (mode) =
     const readCopy = (owner: ExternalObject<Handle>, size: number): unknown => {
         const descriptor: Descriptor = { ...POINTER, size };
 
-        return mode === "bound"
-            ? readField(bindField(descriptor), owner, 0)
-            : read(owner, descriptor, 0);
+        return mode === "bound" ? readField(bindField(descriptor), owner, 0) : read(owner, descriptor, 0);
     };
 
     const snapshot = (source: ExternalObject<Handle>, size: number): ExternalObject<Handle> => {
@@ -119,8 +117,8 @@ describe.each(["bound", "unbound"] as const)("%s copied struct bounds", (mode) =
             const small = record(7, 43);
             const copied = snapshot(first, 8);
             const tooSmall = snapshot(small, 7);
-            const values = () => (readField(field, destination, 0) as ExternalObject<Handle>[])
-                .map((entry) => read(entry, INT32, 4));
+            const values = () =>
+                (readField(field, destination, 0) as ExternalObject<Handle>[]).map((entry) => read(entry, INT32, 4));
 
             try {
                 writeField(field, destination, 0, [copied, snapshot(second, 8)]);

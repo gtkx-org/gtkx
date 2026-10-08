@@ -7,7 +7,9 @@ import tseslint from "typescript-eslint";
 
 export default defineConfig(
     includeIgnoreFile(
-        [".gitignore", "packages/native/.gitignore", "website/.gitignore"].map((path) => join(import.meta.dirname, path)),
+        [".gitignore", "packages/native/.gitignore", "website/.gitignore"].map((path) =>
+            join(import.meta.dirname, path),
+        ),
         { gitignoreResolution: true },
     ),
     { ignores: [".codescythe-*/**", "**/*.{js,jsx,mjs}"] },

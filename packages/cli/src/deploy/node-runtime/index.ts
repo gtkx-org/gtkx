@@ -120,9 +120,10 @@ const resolveNodeVersion = (settings: DeploySettings): string => {
         return supportedNodeVersion(node.version ?? DEFAULT_NODE_VERSION, 'deploy.node.source: "download"');
     }
 
-    const actual = source === "host"
-        ? supportedNodeVersion(process.versions.node, 'deploy.node.source: "host"')
-        : probeNodeVersion(sourcePathFor(settings));
+    const actual =
+        source === "host"
+            ? supportedNodeVersion(process.versions.node, 'deploy.node.source: "host"')
+            : probeNodeVersion(sourcePathFor(settings));
 
     return assertExpectedVersion(node.version, actual, source);
 };
@@ -182,7 +183,7 @@ const shouldStripRuntime = (settings: DeploySettings, node: DeployNodeConfig, el
 
     warn(
         `Skipping \`strip\` on the bundled Node.js: it was built for ${settings.arch.node} and \`strip\` reads ` +
-        `only ${hostArchName()}. The ${settings.arch.node} packages carry an unstripped runtime.`,
+            `only ${hostArchName()}. The ${settings.arch.node} packages carry an unstripped runtime.`,
     );
 
     return false;

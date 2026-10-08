@@ -108,11 +108,7 @@ it("preserves a user factory shared with another widget after row destruction", 
     const choices = ["first", "second"];
     const App = ({ shouldShowRow }: { shouldShowRow: boolean }) => (
         <GtkBox>
-            <GtkDropDown
-                ref={dropdownRef}
-                factory={itemFactory()}
-                model={<GtkStringList strings={choices} />}
-            />
+            <GtkDropDown ref={dropdownRef} factory={itemFactory()} model={<GtkStringList strings={choices} />} />
             {shouldShowRow && (
                 <AdwPreferencesGroup>
                     <AdwComboRow ref={rowRef} title="Pick" model={<GtkStringList strings={["alpha", "beta"]} />} />

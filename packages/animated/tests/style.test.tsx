@@ -76,9 +76,11 @@ const WideningCustom = ({ renders, isForwarding }: WideningProps): ReactNode => 
     const { width } = useSpring({ from: { width: NARROW }, to: { width: WIDE }, config: LONG });
     const style = width.to((current) => ({ minWidth: current }));
 
-    return isForwarding
-        ? <AnimatedForwarding style={style} renders={renders} />
-        : <AnimatedOpaque style={style} renders={renders} />;
+    return isForwarding ? (
+        <AnimatedForwarding style={style} renders={renders} />
+    ) : (
+        <AnimatedOpaque style={style} renders={renders} />
+    );
 };
 
 function Forwarding({ ref, style, renders }: ForwardingProps): ReactNode {
@@ -126,9 +128,7 @@ const OneDeclaration = ({ labelRef }: { labelRef: RefObject<Gtk.Label | null> })
 const NestedBlock = ({ labelRef }: { labelRef: RefObject<Gtk.Label | null> }): ReactNode => {
     const { tint } = useSpring({ from: { tint: RED }, to: { tint: BLUE }, config: SLOW });
 
-    return (
-        <AnimatedLabel ref={labelRef} style={{ color: GREEN, "&:hover": { color: tint } }} label="nested block" />
-    );
+    return <AnimatedLabel ref={labelRef} style={{ color: GREEN, "&:hover": { color: tint } }} label="nested block" />;
 };
 
 const Slide = ({ renders }: SlideProps): ReactNode => {

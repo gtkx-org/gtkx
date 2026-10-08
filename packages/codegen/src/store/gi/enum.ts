@@ -8,11 +8,9 @@ import { getDoc } from "./doc-spec.js";
 
 type KeyedMember = EnumMember & { key: string };
 
-const memberDoc = (member: KeyedMember): string =>
-    getDoc(member);
+const memberDoc = (member: KeyedMember): string => getDoc(member);
 
-const enumDoc = (enumeration: GirEnum): string =>
-    getDoc(enumeration);
+const enumDoc = (enumeration: GirEnum): string => getDoc(enumeration);
 
 const generateEnum = (context: ModuleContext, enumeration: GirEnum): void => {
     if (!isEmittableEntity(enumeration)) {

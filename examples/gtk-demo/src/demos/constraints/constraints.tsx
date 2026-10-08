@@ -56,13 +56,7 @@ const renderHorizontalConstraints = (buttons: ChildButtons, space: Gtk.Constrain
 );
 
 const stackedAboveConstraint = (target: Gtk.ConstraintTarget, source: Gtk.ConstraintTarget): ReactNode => (
-    <GtkConstraint
-        target={target}
-        targetAttribute={A.BOTTOM}
-        source={source}
-        sourceAttribute={A.TOP}
-        constant={-12}
-    />
+    <GtkConstraint target={target} targetAttribute={A.BOTTOM} source={source} sourceAttribute={A.TOP} constant={-12} />
 );
 
 const sameHeightConstraint = (target: Gtk.ConstraintTarget, source: Gtk.ConstraintTarget): ReactNode => (
@@ -87,7 +81,7 @@ const renderLayout = (
     spaceRef: (guide: Gtk.ConstraintGuide | null) => void,
 ): ReactElement => (
     <GtkConstraintLayout
-        guides={(
+        guides={
             <GtkConstraintGuide
                 ref={spaceRef}
                 name="space"
@@ -99,13 +93,16 @@ const renderLayout = (
                 maxHeight={20}
                 strength={S.STRONG}
             />
-        )}
-        constraints={buttons && space && (
-            <>
-                {renderHorizontalConstraints(buttons, space)}
-                {renderVerticalConstraints(buttons)}
-            </>
-        )}
+        }
+        constraints={
+            buttons &&
+            space && (
+                <>
+                    {renderHorizontalConstraints(buttons, space)}
+                    {renderVerticalConstraints(buttons)}
+                </>
+            )
+        }
     />
 );
 

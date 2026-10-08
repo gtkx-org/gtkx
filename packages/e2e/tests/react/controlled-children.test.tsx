@@ -19,7 +19,11 @@ const GrowingPages = () => {
                     }}
                 />
             </GtkStackPage>
-            {hasTarget && <GtkStackPage name="target"><GtkLabel>Target</GtkLabel></GtkStackPage>}
+            {hasTarget && (
+                <GtkStackPage name="target">
+                    <GtkLabel>Target</GtkLabel>
+                </GtkStackPage>
+            )}
         </>
     );
 };
@@ -37,7 +41,11 @@ const GrowingRows = () => {
                     }}
                 />
             </GtkListBoxRow>
-            {hasTarget && <GtkListBoxRow><GtkLabel>Target</GtkLabel></GtkListBoxRow>}
+            {hasTarget && (
+                <GtkListBoxRow>
+                    <GtkLabel>Target</GtkLabel>
+                </GtkListBoxRow>
+            )}
         </>
     );
 };
@@ -55,7 +63,11 @@ const GrowingLayouts = () => {
                     }}
                 />
             </AdwLayout>
-            {hasTarget && <AdwLayout name="target"><GtkLabel>Target</GtkLabel></AdwLayout>}
+            {hasTarget && (
+                <AdwLayout name="target">
+                    <GtkLabel>Target</GtkLabel>
+                </AdwLayout>
+            )}
         </>
     );
 };
@@ -63,14 +75,22 @@ const GrowingLayouts = () => {
 describe("controlled parents whose child component updates independently", () => {
     it("selects a newly added stack page", async () => {
         const ref = createRef<Gtk.Stack>();
-        await render(<GtkStack ref={ref} visibleChildName="target"><GrowingPages /></GtkStack>);
+        await render(
+            <GtkStack ref={ref} visibleChildName="target">
+                <GrowingPages />
+            </GtkStack>,
+        );
         await userEvent.click(screen.getByText("Add page"));
         expect(ref.current?.getVisibleChildName()).toBe("target");
     });
 
     it("selects a newly added list row", async () => {
         const ref = createRef<Gtk.ListBox>();
-        await render(<GtkListBox ref={ref} selectedIndex={1}><GrowingRows /></GtkListBox>);
+        await render(
+            <GtkListBox ref={ref} selectedIndex={1}>
+                <GrowingRows />
+            </GtkListBox>,
+        );
         await userEvent.click(screen.getByText("Add row"));
         expect(ref.current?.getSelectedRow()?.getIndex()).toBe(1);
     });

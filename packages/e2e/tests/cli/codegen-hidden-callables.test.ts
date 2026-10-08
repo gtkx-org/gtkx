@@ -10,9 +10,22 @@ import {
 import { typecheckFiles } from "./type-consumer.js";
 
 const OMISSIONS = [
-    "takeDirect", "takeAlias", "readDirect", "readAlias", "returnDirect", "returnAlias", "discardPointer",
-    "takeArray", "takeList", "takeHashValues", "readHashKeys", "takeNested", "newWithData",
-    "rawList", "rawArray", "rawHash",
+    "takeDirect",
+    "takeAlias",
+    "readDirect",
+    "readAlias",
+    "returnDirect",
+    "returnAlias",
+    "discardPointer",
+    "takeArray",
+    "takeList",
+    "takeHashValues",
+    "readHashKeys",
+    "takeNested",
+    "newWithData",
+    "rawList",
+    "rawArray",
+    "rawHash",
 ];
 
 describe("generated raw-pointer callable omissions", () => {
@@ -20,14 +33,16 @@ describe("generated raw-pointer callable omissions", () => {
     let project: CliProject;
 
     beforeAll(() => {
-        project = cleanup.use(createHiddenCallablesProject(
-            "gtkx-cli-hidden-callable-types-",
-            {
-                "accepted.tsx": ACCEPTED,
-                "native.ts": NATIVE_CONSUMER,
-            },
-            REJECTED_NAMES,
-        ));
+        project = cleanup.use(
+            createHiddenCallablesProject(
+                "gtkx-cli-hidden-callable-types-",
+                {
+                    "accepted.tsx": ACCEPTED,
+                    "native.ts": NATIVE_CONSUMER,
+                },
+                REJECTED_NAMES,
+            ),
+        );
     });
 
     afterAll(() => {
@@ -63,8 +78,12 @@ describe("generated raw-pointer callable omissions", () => {
         expect(value).toHaveProperty("markdown", expect.stringContaining("### `setBoxed`"));
         expect(reference.lookup("CallablePointers.safeCount", "function").outcome).toBe("page");
         for (const name of [
-            "CallablePointers.acceptPointer", "CallablePointers.getPointer", "GObject.typeGetQdata",
-            "GObject.typeFreeInstance", "GObject.enumRegisterStatic", "GObject.flagsRegisterStatic",
+            "CallablePointers.acceptPointer",
+            "CallablePointers.getPointer",
+            "GObject.typeGetQdata",
+            "GObject.typeFreeInstance",
+            "GObject.enumRegisterStatic",
+            "GObject.flagsRegisterStatic",
         ]) {
             expect(reference.lookup(name, "function").outcome).toBe("notFound");
         }

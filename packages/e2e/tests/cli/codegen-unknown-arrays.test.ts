@@ -16,14 +16,16 @@ describe("generated unknown-length array omissions", () => {
     let project: CliProject;
 
     beforeAll(() => {
-        project = cleanup.use(createUnknownArraysProject(
-            "gtkx-cli-unknown-array-types-",
-            {
-                "accepted.tsx": ACCEPTED,
-                "native.ts": NATIVE_CONSUMER,
-            },
-            REJECTED_NAMES,
-        ));
+        project = cleanup.use(
+            createUnknownArraysProject(
+                "gtkx-cli-unknown-array-types-",
+                {
+                    "accepted.tsx": ACCEPTED,
+                    "native.ts": NATIVE_CONSUMER,
+                },
+                REJECTED_NAMES,
+            ),
+        );
     });
 
     afterAll(() => {
@@ -48,8 +50,14 @@ describe("generated unknown-length array omissions", () => {
         const probe = reference.lookup("UnknownArrays.Probe", "class");
         expect(probe.outcome).toBe("page");
         for (const name of [
-            "readSized", "readFixed", "readTerminated", "readIntrinsic", "readNestedBytes",
-            "useSized", "count", "payload",
+            "readSized",
+            "readFixed",
+            "readTerminated",
+            "readIntrinsic",
+            "readNestedBytes",
+            "useSized",
+            "count",
+            "payload",
         ]) {
             expect(probe).toHaveProperty("markdown", expect.stringContaining("### `" + name + "`"));
         }

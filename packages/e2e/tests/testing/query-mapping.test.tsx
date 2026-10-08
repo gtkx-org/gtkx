@@ -93,8 +93,7 @@ describe("queries over a Gtk.Stack", () => {
         });
 
         await screen.findByText("Behind");
-        expect(screen.getByName("behind-button"))
-            .toBe(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Behind" }));
+        expect(screen.getByName("behind-button")).toBe(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Behind" }));
         expect(screen.queryByText("On top")).toBeNull();
     });
 });
@@ -137,9 +136,9 @@ describe("prettyWidget over unmapped widgets", () => {
     it("marks an unmapped widget and summarizes a subtree that holds nothing mapped", async () => {
         const { container } = await renderStack();
         const output = prettyWidget(container, { shouldHighlight: false });
-        expect(output).toContain("mapped=\"false\"");
+        expect(output).toContain('mapped="false"');
         expect(output).toContain("child widget not mapped");
-        expect(output).not.toContain("<Label name=\"GtkLabel\" role=\"label\">\n        Behind");
+        expect(output).not.toContain('<Label name="GtkLabel" role="label">\n        Behind');
     });
 
     it("keeps descending through an unmapped subtree that still holds a mapped widget", async () => {
@@ -150,7 +149,7 @@ describe("prettyWidget over unmapped widgets", () => {
         });
 
         const output = prettyWidget(container, { shouldHighlight: false });
-        expect(output).toContain("mapped=\"false\"");
+        expect(output).toContain('mapped="false"');
         expect(output).toContain("Inside the popover");
     });
 });

@@ -47,33 +47,31 @@ const cols: { h: string; items: Link[] }[] = [
 </script>
 
 <template>
-  <footer class="footer">
-    <span class="glow glow-soft" />
-    <div class="footer__inner">
-      <div class="footer__grid">
-        <div class="footer__brand">
-          <div class="footer__lockup">
-            <img src="/gtkx-mark.svg" width="32" height="32" alt="" />
-            <span class="footer__word">GTKX</span>
-          </div>
-          <p class="footer__tag">
-            The React framework for Linux. Free &amp; open source.
-          </p>
+    <footer class="footer">
+        <span class="glow glow-soft" />
+        <div class="footer__inner">
+            <div class="footer__grid">
+                <div class="footer__brand">
+                    <div class="footer__lockup">
+                        <img src="/gtkx-mark.svg" width="32" height="32" alt="" />
+                        <span class="footer__word">GTKX</span>
+                    </div>
+                    <p class="footer__tag">The React framework for Linux. Free &amp; open source.</p>
+                </div>
+                <div v-for="c in cols" :key="c.h" class="footer__col">
+                    <p class="footer__h">{{ c.h }}</p>
+                    <ul class="footer__list">
+                        <li v-for="i in c.items" :key="i.t">
+                            <a :href="i.href">{{ i.t }}</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer__bar">
+                <span>© 2026 GTKX contributors · {{ LICENSE }} licensed</span>
+            </div>
         </div>
-        <div v-for="c in cols" :key="c.h" class="footer__col">
-          <p class="footer__h">{{ c.h }}</p>
-          <ul class="footer__list">
-            <li v-for="i in c.items" :key="i.t">
-              <a :href="i.href">{{ i.t }}</a>
-            </li>
-          </ul>
-        </div>
-      </div>
-      <div class="footer__bar">
-        <span>© 2026 GTKX contributors · {{ LICENSE }} licensed</span>
-      </div>
-    </div>
-  </footer>
+    </footer>
 </template>
 
 <style scoped>

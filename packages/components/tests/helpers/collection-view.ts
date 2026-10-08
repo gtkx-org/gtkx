@@ -32,7 +32,7 @@ const FILTER_STEPS: string[][] = [
     ["1", "2", "3", "4", "5"],
 ];
 
-const asCollectionView = <W,>(fixture: CollectionFixture<W>, texts: (widget: W) => string[]): CollectionView => ({
+const asCollectionView = <W>(fixture: CollectionFixture<W>, texts: (widget: W) => string[]): CollectionView => ({
     texts: () => texts(fixture.ref.current),
     rerender: (next) => fixture.rerender(next),
 });

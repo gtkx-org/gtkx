@@ -4,12 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import {
-    type CliProject,
-    createCliProject,
-    removeCliProject,
-    runCliOrThrow,
-} from "./cli-project.js";
+import { type CliProject, createCliProject, removeCliProject, runCliOrThrow } from "./cli-project.js";
 
 const APPLICATION_ID = "com.gtkx.clii18n";
 const BUNDLE = join("dist", "bundle.mjs");
@@ -182,21 +177,25 @@ const runBuiltApp = (project: CliProject): string => {
 };
 
 const typecheckConfig = (source: string): string =>
-    `${JSON.stringify({
-        compilerOptions: {
-            module: "ESNext",
-            moduleResolution: "Bundler",
-            noEmit: true,
-            skipLibCheck: true,
-            strict: true,
+    `${JSON.stringify(
+        {
+            compilerOptions: {
+                module: "ESNext",
+                moduleResolution: "Bundler",
+                noEmit: true,
+                skipLibCheck: true,
+                strict: true,
+            },
+            files: [GENERATED_ENV, source],
         },
-        files: [GENERATED_ENV, source],
-    }, null, 4)}\n`;
+        null,
+        4,
+    )}\n`;
 
 const expectTypecheckToThrow = (project: CliProject): void => {
     const source = join("src", "unknown-message.ts");
     const config = "tsconfig.invalid.json";
-    writeFileSync(join(project.root, source), "import { t } from \"@gtkx/i18n\";\nt(\"Unknown message\");\n");
+    writeFileSync(join(project.root, source), 'import { t } from "@gtkx/i18n";\nt("Unknown message");\n');
     writeFileSync(join(project.root, config), typecheckConfig(source));
 
     expect(() => {
@@ -246,9 +245,7 @@ const expectBuiltCatalog = (project: CliProject): void => {
     expect(potfiles).toContain("src/index.ts\n");
     expect(potfiles).not.toContain("legacy.cjs");
 
-    expect(readFileSync(join(project.root, IT_CATALOG), "utf8")).toContain(
-        '#~ msgid "Removed message"',
-    );
+    expect(readFileSync(join(project.root, IT_CATALOG), "utf8")).toContain('#~ msgid "Removed message"');
 
     expect(existsSync(join(project.root, GENERATED_I18N_TYPES))).toBe(true);
     expect(existsSync(join(project.root, IT_MO))).toBe(true);
@@ -273,7 +270,9 @@ const expectEdgeCases = (): void => {
     });
 
     withProject(createI18nProject("", null), (project) => {
-        writeFileSync(join(project.root, ENTRY), `import { t, useTranslation } from "@gtkx/i18n";
+        writeFileSync(
+            join(project.root, ENTRY),
+            `import { t, useTranslation } from "@gtkx/i18n";
 
 t("settings", { context: "menu", keyPrefix: "panel." });
 t("Shared", { defaultValue: "Canonical source" });
@@ -290,7 +289,8 @@ export const prefixedProbe = (): string => {
     const { t } = useTranslation("translation", { keyPrefix: "panel" });
     return t("title", { context: "menu" });
 };
-`);
+`,
+        );
         runCliOrThrow(project, ["build"]);
         const pot = readFileSync(join(project.root, POT), "utf8");
         expect(existsSync(join(project.root, POT))).toBe(true);
@@ -333,123 +333,201 @@ t("rank", {
     });
 
     for (const [file, source] of [
-        [ENTRY, `import { t as translate } from "@gtkx/i18n";
+        [
+            ENTRY,
+            `import { t as translate } from "@gtkx/i18n";
 translate("Aliased message");
-`],
-        [ENTRY, `import { t } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { t } from "@gtkx/i18n";
 const translate = t;
 translate("Local alias message");
-`],
-        [ENTRY, `import * as i18n from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import * as i18n from "@gtkx/i18n";
 i18n.t("Member message");
-`],
-        [ENTRY, `import * as i18n from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import * as i18n from "@gtkx/i18n";
 const { t } = i18n;
 t("Destructured member message");
-`],
-        [ENTRY, `import { useTranslation as useT } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { useTranslation as useT } from "@gtkx/i18n";
 const { t } = useT();
 t("Aliased hook message");
-`],
-        [ENTRY, `import { useTranslation } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { useTranslation } from "@gtkx/i18n";
 const translate = useTranslation().t;
 translate("Hook property alias message");
-`],
-        [ENTRY, `import { useTranslation } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { useTranslation } from "@gtkx/i18n";
 const translation = useTranslation();
 translation.t("Hook member message");
-`],
-        [ENTRY, `import { t } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { t } from "@gtkx/i18n";
 const translate = t.bind(undefined);
 translate("Bound alias message");
-`],
-        [ENTRY, `import { useTranslation } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { useTranslation } from "@gtkx/i18n";
 const { t } = useTranslation("translation", { keyPrefix: "panel" });
 t("title", { keyPrefix: "" });
-`],
-        [ENTRY, `import { t } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { t } from "@gtkx/i18n";
 (t)("Wrapped callee message");
-`],
-        [ENTRY, `import { t } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { t } from "@gtkx/i18n";
 t\`Tagged message\`;
-`],
-        [ENTRY, `import { t as translate } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { t as translate } from "@gtkx/i18n";
 translate\`Aliased tagged message\`;
-`],
-        [ENTRY, `import * as i18n from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import * as i18n from "@gtkx/i18n";
 i18n.t\`Member tagged message\`;
-`],
-        [ENTRY, `import * as i18n from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import * as i18n from "@gtkx/i18n";
 i18n?.t("Optional member message");
-`],
-        [ENTRY, `import { t } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { t } from "@gtkx/i18n";
 const key = process.argv[2];
 t(key);
-`],
-        [
-            join("src", "components.tsx"),
-            'import { Trans } from "@gtkx/i18n";\n' +
-            "const key = process.argv[2];\n" +
-            "export const Invalid = <Trans i18nKey={key}>fallback</Trans>;\n",
+`,
         ],
         [
             join("src", "components.tsx"),
             'import { Trans } from "@gtkx/i18n";\n' +
-            "const context = process.argv[2];\n" +
-            'export const Invalid = <Trans i18nKey="open" context={context}>Open</Trans>;\n',
+                "const key = process.argv[2];\n" +
+                "export const Invalid = <Trans i18nKey={key}>fallback</Trans>;\n",
         ],
         [
             join("src", "components.tsx"),
             'import { Trans } from "@gtkx/i18n";\n' +
-            "const defaults = process.argv[2];\n" +
-            'export const Invalid = <Trans i18nKey="greeting" defaults={defaults}>Visible child</Trans>;\n',
+                "const context = process.argv[2];\n" +
+                'export const Invalid = <Trans i18nKey="open" context={context}>Open</Trans>;\n',
         ],
-        [join("src", "components.tsx"), `import { Trans } from "@gtkx/i18n";
+        [
+            join("src", "components.tsx"),
+            'import { Trans } from "@gtkx/i18n";\n' +
+                "const defaults = process.argv[2];\n" +
+                'export const Invalid = <Trans i18nKey="greeting" defaults={defaults}>Visible child</Trans>;\n',
+        ],
+        [
+            join("src", "components.tsx"),
+            `import { Trans } from "@gtkx/i18n";
 const context = process.argv[2];
 export const Invalid = <Trans i18nKey="open" tOptions={{ context }}>Open</Trans>;
-`],
-        [join("src", "components.tsx"), `import { Trans } from "@gtkx/i18n";
+`,
+        ],
+        [
+            join("src", "components.tsx"),
+            `import { Trans } from "@gtkx/i18n";
 const fallback = process.argv[2];
 export const Invalid = (
     <Trans i18nKey="greeting" tOptions={{ defaultValue: fallback }}>Visible child</Trans>
 );
-`],
-        [ENTRY, `import { t } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { t } from "@gtkx/i18n";
 t("files", "files", { count: 2, defaultValue_few: "few files" });
-`],
-        [ENTRY, `import { t } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { t } from "@gtkx/i18n";
 t("files", { count: 2, ["defaultValue_two"]: "paired files" });
-`],
-        [ENTRY, `import { t } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { t } from "@gtkx/i18n";
 const defaults = { defaultValue_many: "many files" };
 t("files", { count: 2, ...defaults });
-`],
-        [ENTRY, `import { t } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { t } from "@gtkx/i18n";
 const options = { count: 2, defaultValue_one: "one", defaultValue_other: "many" };
 t("files", options);
-`],
-        [ENTRY, `import { t } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { t } from "@gtkx/i18n";
 t("open", { ["con" + "text"]: "menu" });
-`],
-        [ENTRY, `import { t } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { t } from "@gtkx/i18n";
 t("files", ({
     count: 2,
     defaultValue_one: "one file",
     defaultValue_other: "many files",
     defaultValue_zero: "no files",
 } as const));
-`],
-        [ENTRY, `import { t } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { t } from "@gtkx/i18n";
 t(("Parenthesized message"));
-`],
-        [ENTRY, `import { t } from "@gtkx/i18n";
+`,
+        ],
+        [
+            ENTRY,
+            `import { t } from "@gtkx/i18n";
 t("Satisfied message" satisfies string);
-`],
-        [join("src", "components.tsx"), `import { Trans } from "@gtkx/i18n";
+`,
+        ],
+        [
+            join("src", "components.tsx"),
+            `import { Trans } from "@gtkx/i18n";
 export const Invalid = () => (
     <Trans i18nKey="files" count={2} tOptions={{ defaultValue_zero: "no files" }}>files</Trans>
 );
-`],
+`,
+        ],
     ] as const) {
         withProject(createI18nProject(), (project) => {
             writeFileSync(join(project.root, file), source);

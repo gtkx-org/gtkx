@@ -112,54 +112,99 @@ const Actions = ({ actions }: { actions: Actions }): ReactNode =>
     actions.map(([label, onClicked]) => <GtkButton key={label} label={label} onClicked={onClicked} />);
 
 const homeActions = (navigation: StackNavigationProp<RootParams, "Home">): Actions => [
-    ["Go to details", () => {
-        navigation.navigate("Details", { id: "1" });
-    }],
-    ["Push details", () => {
-        navigation.push("Details", { id: "1" });
-    }],
-    ["Replace with details", () => {
-        navigation.replace("Details", { id: "1" });
-    }],
-    ["Preload details", () => {
-        navigation.preload("Details", { id: "7" });
-    }],
-    ["Go to compose", () => {
-        navigation.navigate("Compose");
-    }],
-    ["Go to draft", () => {
-        navigation.navigate("Draft", { text: "empty" });
-    }],
-    ["Go back", () => {
-        navigation.goBack();
-    }],
+    [
+        "Go to details",
+        () => {
+            navigation.navigate("Details", { id: "1" });
+        },
+    ],
+    [
+        "Push details",
+        () => {
+            navigation.push("Details", { id: "1" });
+        },
+    ],
+    [
+        "Replace with details",
+        () => {
+            navigation.replace("Details", { id: "1" });
+        },
+    ],
+    [
+        "Preload details",
+        () => {
+            navigation.preload("Details", { id: "7" });
+        },
+    ],
+    [
+        "Go to compose",
+        () => {
+            navigation.navigate("Compose");
+        },
+    ],
+    [
+        "Go to draft",
+        () => {
+            navigation.navigate("Draft", { text: "empty" });
+        },
+    ],
+    [
+        "Go back",
+        () => {
+            navigation.goBack();
+        },
+    ],
 ];
 
 const detailsActions = (navigation: StackNavigationProp<RootParams, "Details">, id: string): Actions => [
-    ["Push details", () => {
-        navigation.push("Details", { id: String(Number(id) + 1) });
-    }],
-    ["Navigate to details", () => {
-        navigation.navigate("Details", { id: "5" });
-    }],
-    ["Pop to top", () => {
-        navigation.popToTop();
-    }],
-    ["Go back", () => {
-        navigation.goBack();
-    }],
-    ["Set params", () => {
-        navigation.setParams({ id: "99" });
-    }],
-    ["Push compose", () => {
-        navigation.navigate("Compose");
-    }],
-    ["Push settings", () => {
-        navigation.navigate("Settings");
-    }],
-    ["Reset to settings", () => {
-        navigation.reset({ index: 0, routes: [{ name: "Settings" }] });
-    }],
+    [
+        "Push details",
+        () => {
+            navigation.push("Details", { id: String(Number(id) + 1) });
+        },
+    ],
+    [
+        "Navigate to details",
+        () => {
+            navigation.navigate("Details", { id: "5" });
+        },
+    ],
+    [
+        "Pop to top",
+        () => {
+            navigation.popToTop();
+        },
+    ],
+    [
+        "Go back",
+        () => {
+            navigation.goBack();
+        },
+    ],
+    [
+        "Set params",
+        () => {
+            navigation.setParams({ id: "99" });
+        },
+    ],
+    [
+        "Push compose",
+        () => {
+            navigation.navigate("Compose");
+        },
+    ],
+    [
+        "Push settings",
+        () => {
+            navigation.navigate("Settings");
+        },
+    ],
+    [
+        "Reset to settings",
+        () => {
+            navigation.reset({ index: 0, routes: [{ name: "Settings" }] });
+        },
+    ],
 ];
 
 const Home = ({ navigation, route }: StackScreenProps<RootParams, "Home">): ReactNode => {
@@ -244,16 +289,14 @@ const Draft = ({ navigation, route }: StackScreenProps<RootParams, "Draft">): Re
 const CustomHeader = ({ route, options, back, navigation }: StackHeaderProps): ReactNode => (
     <GtkBox orientation={Gtk.Orientation.HORIZONTAL}>
         <GtkLabel>{`Header ${options.title ?? route.name}`}</GtkLabel>
-        {back === undefined
-            ? null
-            : (
-                    <GtkButton
-                        label={`Back to ${back.title}`}
-                        onClicked={() => {
-                            navigation.goBack();
-                        }}
-                    />
-                )}
+        {back === undefined ? null : (
+            <GtkButton
+                label={`Back to ${back.title}`}
+                onClicked={() => {
+                    navigation.goBack();
+                }}
+            />
+        )}
     </GtkBox>
 );
 
@@ -339,8 +382,7 @@ const pressKeys = async (text: string, keys: string): Promise<void> => {
     await userEvent.keyboard(await screen.findByText(text), keys);
 };
 
-const getNavigationView = (text: string): Adw.NavigationView =>
-    getAncestor(screen.getByText(text), Adw.NavigationView);
+const getNavigationView = (text: string): Adw.NavigationView => getAncestor(screen.getByText(text), Adw.NavigationView);
 
 const getStackPage = (view: Adw.NavigationView, index: number): Adw.NavigationPage => {
     const page = view.getNavigationStack().getItem(index);

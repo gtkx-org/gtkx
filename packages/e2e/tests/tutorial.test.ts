@@ -96,7 +96,7 @@ function verifyLocalizedStage(): void {
         '<name xml:lang="fr">Tâches</name>',
         '<summary xml:lang="fr">Gérez vos tâches et listes de choses à faire</summary>',
         '<p xml:lang="fr">Un gestionnaire de tâches GNOME construit avec GTKX, qui montre comment créer ' +
-        "des applications Adwaita avec React.</p>",
+            "des applications Adwaita avec React.</p>",
         '<keyword xml:lang="fr">Tâche</keyword>',
         '<caption xml:lang="fr">Parcours des listes de tâches dans la barre latérale</caption>',
         '<caption xml:lang="fr">Modification d’une tâche</caption>',
@@ -169,10 +169,7 @@ async function deployTutorial(env: NodeJS.ProcessEnv): Promise<void> {
         await extractDeb(env, prefix);
         requireFile(join(prefix, "usr", LOCALE_PATH));
 
-        requireText(
-            join(prefix, "usr", "share", "applications", `${APPLICATION_ID}.desktop`),
-            "Name[fr]=Tâches",
-        );
+        requireText(join(prefix, "usr", "share", "applications", `${APPLICATION_ID}.desktop`), "Name[fr]=Tâches");
 
         await verifyAppStarts(prefix, {
             command: join(prefix, "usr", "bin", BINARY_NAME),
@@ -205,8 +202,8 @@ describe("tutorial as a published consumer", () => {
         tutorialDir = join(tutorialRoot, "app");
         cpSync(join(ROOT_DIR, "tutorial"), tutorialDir, {
             recursive: true,
-            filter: (source) => !["node_modules", "dist", "build", ".gtkx"].some((name) =>
-                source === join(ROOT_DIR, "tutorial", name)),
+            filter: (source) =>
+                !["node_modules", "dist", "build", ".gtkx"].some((name) => source === join(ROOT_DIR, "tutorial", name)),
         });
         await installTutorial(inject("registry").env);
     });
@@ -220,12 +217,14 @@ describe("tutorial as a published consumer", () => {
     });
 
     it("builds and launches every documented tutorial checkpoint", async () => {
-        await expect(createCheckpoint({
-            version: "v2",
-            chapter: "flatpak",
-            check: true,
-            dependencies: join(tutorialDir, "node_modules"),
-            env: inject("registry").env,
-        })).resolves.toBeUndefined();
+        await expect(
+            createCheckpoint({
+                version: "v2",
+                chapter: "flatpak",
+                check: true,
+                dependencies: join(tutorialDir, "node_modules"),
+                env: inject("registry").env,
+            }),
+        ).resolves.toBeUndefined();
     });
 });

@@ -10,7 +10,7 @@ const HIDDEN_LINK_PREFIXES: Map<string, string> = new Map([
 ]);
 
 const CALLABLE_LINK_KINDS: Set<string> = new Set(["method", "func", "ctor", "vfunc", "id"]);
-const SENTINEL = String.fromCodePoint(0xE0_00);
+const SENTINEL = String.fromCodePoint(0xe0_00);
 const CODE_BLOCK_OPEN = "|[";
 const CODE_BLOCK_CLOSE = "]|";
 const CODE_LANGUAGE_PATTERN = /^\s*<!--\s*language="([^"]*)"\s*-->/;

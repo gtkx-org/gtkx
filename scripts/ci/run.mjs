@@ -59,8 +59,8 @@ const containerCommand = [
     "--wait",
     "sh",
     "-c",
-    'pidFile=$1; shift; printf "%s\\n" "$$" > "$pidFile"; trap \'rm -f "$pidFile"\' EXIT; '
-        + 'export PATH="$1:$2:$PATH"; shift 2; "$@"',
+    'pidFile=$1; shift; printf "%s\\n" "$$" > "$pidFile"; trap \'rm -f "$pidFile"\' EXIT; ' +
+        'export PATH="$1:$2:$PATH"; shift 2; "$@"',
     "gtkx-ci-task",
     pidFile,
     join(process.cwd(), "node_modules/.bin"),
@@ -84,12 +84,21 @@ const terminate = (signal) => {
     terminatingSignal = signal;
 
     if (container) {
-        spawnSync("docker", [
-            "exec", container, "sh", "-c",
-            'if [ -f "$1" ]; then pid=$(cat "$1"); case "$pid" in ""|*[!0-9]*) exit 1;; esac; '
-                + '/bin/kill -s "$2" -- "-$pid"; fi',
-            "gtkx-ci-stop", pidFile, signal,
-        ], { stdio: "ignore", timeout: 5_000 });
+        spawnSync(
+            "docker",
+            [
+                "exec",
+                container,
+                "sh",
+                "-c",
+                'if [ -f "$1" ]; then pid=$(cat "$1"); case "$pid" in ""|*[!0-9]*) exit 1;; esac; ' +
+                    '/bin/kill -s "$2" -- "-$pid"; fi',
+                "gtkx-ci-stop",
+                pidFile,
+                signal,
+            ],
+            { stdio: "ignore", timeout: 5_000 },
+        );
         child.kill(signal);
     } else if (child.pid !== undefined) {
         try {

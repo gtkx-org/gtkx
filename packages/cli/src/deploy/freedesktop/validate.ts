@@ -75,9 +75,11 @@ const rulesIn = (diagnostics: Diagnostic[], severities: string[]): string[] =>
 const fatalNotes = (diagnostics: Diagnostic[]): string[] =>
     diagnostics
         .filter((diagnostic) => diagnostic.severity !== ERROR_SEVERITY && FATAL_WARNING_RULES.has(diagnostic.tag))
-        .map((diagnostic) =>
-            FATAL_RULE_NOTES[diagnostic.tag]?.(diagnostic.hint ?? "") ??
-            `GTKX treats ${diagnostic.tag} as fatal for every target`);
+        .map(
+            (diagnostic) =>
+                FATAL_RULE_NOTES[diagnostic.tag]?.(diagnostic.hint ?? "") ??
+                `GTKX treats ${diagnostic.tag} as fatal for every target`,
+        );
 
 const remedyLines = (rules: string[]): string[] => {
     const remedies = sortStrings([...new Set(rules)])
@@ -88,12 +90,11 @@ const remedyLines = (rules: string[]): string[] => {
 };
 
 const invalid = (subject: string, output: string, rules: string[], notes: string[]): Error =>
-    new Error([
-        `${subject} is not valid:`,
-        output.length > 0 ? output : "no output",
-        ...notes,
-        ...remedyLines(rules),
-    ].join("\n"));
+    new Error(
+        [`${subject} is not valid:`, output.length > 0 ? output : "no output", ...notes, ...remedyLines(rules)].join(
+            "\n",
+        ),
+    );
 
 const isFatalResult = ({ status, errors, warnings, rules, areWarningsFatal }: MetainfoResult): boolean => {
     if (errors.length > 0) {
@@ -165,9 +166,10 @@ const validateMetainfo = (path: string, areWarningsFatal: boolean): void => {
     const notes = fatalNotes(diagnostics);
     assertNotFatal({
         subject,
-        output: diagnostics.length === 0
-            ? output
-            : diagnostics.map((issue) => `${issue.tag}: ${issue.explanation}`).join("\n"),
+        output:
+            diagnostics.length === 0
+                ? output
+                : diagnostics.map((issue) => `${issue.tag}: ${issue.explanation}`).join("\n"),
         status,
         errors,
         warnings,

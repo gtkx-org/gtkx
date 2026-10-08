@@ -18,26 +18,26 @@ const rows = versions.map((version) => ({
 </script>
 
 <template>
-  <table class="versions-table">
-    <thead>
-      <tr>
-        <th>Version</th>
-        <th>Status</th>
-        <th>Documentation</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-for="row in rows" :key="row.id">
-        <td>{{ row.label }}</td>
-        <td>{{ row.status }}</td>
-        <td>
-          <a :href="row.guide">Guide</a>, <a :href="row.reference">API reference</a>,
-          <a :href="row.examples">examples</a>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-  <p>{{ retentionPolicy }}</p>
+    <table class="versions-table">
+        <thead>
+            <tr>
+                <th>Version</th>
+                <th>Status</th>
+                <th>Documentation</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr v-for="row in rows" :key="row.id">
+                <td>{{ row.label }}</td>
+                <td>{{ row.status }}</td>
+                <td>
+                    <a :href="row.guide">Guide</a>, <a :href="row.reference">API reference</a>,
+                    <a :href="row.examples">examples</a>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <p>{{ retentionPolicy }}</p>
 </template>
 
 <style scoped>

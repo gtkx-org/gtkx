@@ -100,10 +100,7 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
         start: (runtimeDir, width, height) => {
             const configPath = join(runtimeDir, "sway.conf");
 
-            writeFileSync(
-                configPath,
-                createSwayConfig(width, height),
-            );
+            writeFileSync(configPath, createSwayConfig(width, height));
 
             return spawnWithParentDeathSupervisor("sway", ["-c", configPath], {
                 stdio: ["ignore", "ignore", "pipe"],
@@ -296,8 +293,7 @@ const isMonitorReady = (monitor: ChildMonitor): boolean => monitor.isRunning() &
 const pendingMonitors = (monitors: ChildMonitor[]): ChildMonitor[] =>
     monitors.filter((monitor) => !isMonitorReady(monitor));
 
-const isEveryMonitorReady = (monitors: ChildMonitor[]): boolean =>
-    monitors.every((monitor) => isMonitorReady(monitor));
+const isEveryMonitorReady = (monitors: ChildMonitor[]): boolean => monitors.every((monitor) => isMonitorReady(monitor));
 
 const firstFailure = (monitors: ChildMonitor[]): string | undefined => {
     for (const monitor of monitors) {
@@ -411,11 +407,7 @@ const captureCompositorStderr = (child: ChildProcess, logPath: string): Captured
     };
 };
 
-const compositorExitMessage = (
-    code: number | null,
-    signal: NodeJS.Signals | null,
-    captured: CapturedStderr,
-): string =>
+const compositorExitMessage = (code: number | null, signal: NodeJS.Signals | null, captured: CapturedStderr): string =>
     `[gtkx] the headless compositor exited (code ${String(code)}, signal ${signal ?? "null"}); ` +
     "every Wayland client in this worker has been severed. " +
     `Its stderr log is kept at ${captured.logPath} until this worker exits.\n${captured.chunks.join("")}`;
@@ -476,10 +468,7 @@ const waitUntilConnectable = async (monitor: ChildMonitor): Promise<void> => {
     }
 };
 
-const attachCompositorClient = async (
-    compositor: SpawnedCompositor,
-    monitor: ChildMonitor,
-): Promise<() => void> => {
+const attachCompositorClient = async (compositor: SpawnedCompositor, monitor: ChildMonitor): Promise<() => void> => {
     if (compositor.requiresVirtualSeat) {
         return startVirtualSeat(monitor.path);
     }
@@ -508,7 +497,8 @@ const makeTeardown = (stops: (() => void)[]): (() => void) => {
     };
 };
 
-const makeRemoveRuntime = (env: EnvSnapshot, runtimeDir: string): (() => void) =>
+const makeRemoveRuntime =
+    (env: EnvSnapshot, runtimeDir: string): (() => void) =>
     (): void => {
         restoreEnv(env);
         rmSync(runtimeDir, { recursive: true, force: true });

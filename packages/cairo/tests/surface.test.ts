@@ -54,12 +54,10 @@ describe("Surface (context targets)", () => {
             getTypeFnName: "cairo_gobject_surface_get_type",
         });
 
-        const createDevice = t.bind(
-            "libcairo.so.2",
-            "cairo_script_create",
-            [t.string()],
-            { ...deviceType, ownership: "full" },
-        );
+        const createDevice = t.bind("libcairo.so.2", "cairo_script_create", [t.string()], {
+            ...deviceType,
+            ownership: "full",
+        });
 
         const createSurface = t.bind(
             "libcairo.so.2",

@@ -2,12 +2,7 @@ import "./register-test-hooks.js";
 
 export { act } from "./act.js";
 export type { BoundQueries, RenderResult, Screen } from "./bound-queries.js";
-export type {
-    BuiltQueries,
-    MissingErrorBuilder,
-    MultipleErrorBuilder,
-    QueryAllBy,
-} from "./build-queries.js";
+export type { BuiltQueries, MissingErrorBuilder, MultipleErrorBuilder, QueryAllBy } from "./build-queries.js";
 export { buildQueries } from "./build-queries.js";
 export type { Config, ConfigFn } from "./config.js";
 export { configure, getConfig } from "./config.js";
@@ -86,12 +81,7 @@ export type {
     WrapperComponent,
 } from "./types.js";
 export type { ControllerConstructor } from "./user-event/controller.js";
-export {
-    getAllControllers,
-    getController,
-    queryAllControllers,
-    queryController,
-} from "./user-event/controller.js";
+export { getAllControllers, getController, queryAllControllers, queryController } from "./user-event/controller.js";
 export type {
     DragOffset,
     DragOptions,
