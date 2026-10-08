@@ -387,6 +387,54 @@ const createProbeRoot = (): ProbeRoot => {
     };
 };
 
+describe("render - Application configured identity", () => {
+    it("defaults the application ID and resource base path to the project configuration", async () => {
+        const ref = createRef<Adw.Application>();
+
+        await render(
+            <AdwApplication ref={ref} flags={APP_FLAGS}>
+                <AdwApplicationWindow defaultWidth={200} defaultHeight={100} />
+            </AdwApplication>,
+            { container: rootElement },
+        );
+
+        const application = requireWidget(ref.current, "Application");
+        expect(application.getApplicationId()).toBe("org.gtkx.e2e");
+        expect(application.getResourceBasePath()).toBe("/org/gtkx/e2e");
+    });
+
+    it("keeps the configured resource base path when the application ID is explicit", async () => {
+        const ref = createRef<Adw.Application>();
+        const applicationId = uniqueAppId();
+
+        await render(
+            <AdwApplication ref={ref} applicationId={applicationId} flags={APP_FLAGS}>
+                <AdwApplicationWindow defaultWidth={200} defaultHeight={100} />
+            </AdwApplication>,
+            { container: rootElement },
+        );
+
+        const application = requireWidget(ref.current, "Application");
+        expect(application.getApplicationId()).toBe(applicationId);
+        expect(application.getResourceBasePath()).toBe("/org/gtkx/e2e");
+    });
+
+    it("honors an explicit resource base path", async () => {
+        const ref = createRef<Adw.Application>();
+
+        await render(
+            <AdwApplication ref={ref} flags={APP_FLAGS} resourceBasePath="/org/gtkx/custom">
+                <AdwApplicationWindow defaultWidth={200} defaultHeight={100} />
+            </AdwApplication>,
+            { container: rootElement },
+        );
+
+        const application = requireWidget(ref.current, "Application");
+        expect(application.getApplicationId()).toBe("org.gtkx.e2e");
+        expect(application.getResourceBasePath()).toBe("/org/gtkx/custom");
+    });
+});
+
 describe("render - Application", () => {
     describe("menubar slot", () => {
         it("sets menubar from a GMenu", async () => {
