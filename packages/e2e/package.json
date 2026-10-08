@@ -24,7 +24,7 @@
         "@gtkx/testing": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",
-        "@modelcontextprotocol/sdk": "^1.32.0",
+        "@modelcontextprotocol/sdk": "^1.32.1",
         "@types/gettext-parser": "^9.0.0",
         "create-gtkx": "workspace:*",
         "gettext-parser": "^9.1.1",
