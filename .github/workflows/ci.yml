@@ -88,3 +88,6 @@ jobs:
         env:
           RESULT: ${{ needs.e2e-shards.result }}
         run: test "$RESULT" = success
+
+      - run: pnpm exec nx fix-ci
+        if: always()
