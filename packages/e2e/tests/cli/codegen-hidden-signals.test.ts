@@ -4,8 +4,9 @@ import type { CliProject } from "./cli-project.js";
 import {
     ACCEPTED,
     createHiddenSignalsProject,
+    REJECTED_NAMES,
 } from "./codegen-hidden-signals-fixture.js";
-import { typecheckFile } from "./type-consumer.js";
+import { typecheckFiles } from "./type-consumer.js";
 
 const OMITTED_SIGNALS = [
     ["direct", "onDirect"],
@@ -31,6 +32,7 @@ describe("generated unsupported signal omissions", () => {
         project = cleanup.use(createHiddenSignalsProject(
             "gtkx-cli-hidden-signal-types-",
             { "accepted.tsx": ACCEPTED },
+            REJECTED_NAMES,
         ));
         reference = loadApiReference({
             libraries: ["SignalPointers-1.0", "Gtk-4.0", "WebKit-6.0"],
@@ -43,8 +45,13 @@ describe("generated unsupported signal omissions", () => {
         cleanup.dispose();
     });
 
-    it("preserves typed handles, boxed bytes, real integers, arrays and supported interface signals", () => {
-        expect(typecheckFile(project, "accepted.tsx")).toBe(0);
+    it("preserves supported consumers and rejects the omitted public contracts", () => {
+        const accepted = ["accepted.tsx"];
+        const rejected = REJECTED_NAMES.map((name) => `${name}.tsx`);
+
+        for (const [file, result] of typecheckFiles(project, [...accepted, ...rejected])) {
+            expect({ file, ...result }).toMatchObject({ status: accepted.includes(file) ? 0 : 1 });
+        }
     });
 
     it("aligns class, interface and JSX reference signals while preserving owner precedence", () => {

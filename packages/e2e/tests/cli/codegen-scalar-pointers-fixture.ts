@@ -138,6 +138,13 @@ const SCALAR_POINTER_REJECTED_FIELDS: Record<string, string> = {
     "byte-array-field": "export type Field = GLib.ByteArray[\"data\"];",
     "message-field": "export type Field = Gio.InputMessage[\"numControlMessages\"];",
 };
+const SCALAR_POINTER_REJECTED = {
+    ...SCALAR_POINTER_REJECTED_INPUTS,
+    ...SCALAR_POINTER_REJECTED_OUTPUTS,
+    ...SCALAR_POINTER_REJECTED_CALLBACKS,
+    ...SCALAR_POINTER_REJECTED_MEMBERS,
+    ...SCALAR_POINTER_REJECTED_FIELDS,
+};
 const SCALAR_POINTER_OMITTED_METHODS = [
     "takeDirect", "takeAlias", "takeNested", "takeMode", "takeType", "readPointer", "discardPointer",
     "readAlias", "useRaw", "takePointers", "takeErased",
@@ -173,9 +180,5 @@ export {
     SCALAR_POINTER_ACCEPTED,
     SCALAR_POINTER_NATIVE_CONSUMER,
     SCALAR_POINTER_OMITTED_METHODS,
-    SCALAR_POINTER_REJECTED_CALLBACKS,
-    SCALAR_POINTER_REJECTED_FIELDS,
-    SCALAR_POINTER_REJECTED_INPUTS,
-    SCALAR_POINTER_REJECTED_MEMBERS,
-    SCALAR_POINTER_REJECTED_OUTPUTS,
+    SCALAR_POINTER_REJECTED,
 };

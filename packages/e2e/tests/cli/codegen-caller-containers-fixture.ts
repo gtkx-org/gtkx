@@ -77,12 +77,6 @@ const REJECTED: Record<string, string> = {
     "hash-vfunc": "export type Method = CallerContainers.Probe[\"vfuncFillHash\"];",
     "optional-byte-vfunc": "export type Method = CallerContainers.Probe[\"vfuncFillBytes\"];",
 };
-const CALLER_CARRAY_REJECTED = Object.fromEntries(
-    Object.entries(REJECTED).filter(([name]) => name.includes("carray") || name.startsWith("icon-")),
-);
-const CALLER_CONTAINER_REJECTED = Object.fromEntries(
-    Object.entries(REJECTED).filter(([name]) => !name.includes("carray") && !name.startsWith("icon-")),
-);
 const OMITTED_CALLBACKS = [
     "PtrOut", "AliasOut", "HashOut", "OptionalBytesOut", "OutAlias", "SizedOut", "FixedOut", "AliasedBytesOut",
 ];
@@ -178,11 +172,10 @@ const createCallerContainerProject = (
 
 export {
     ACCEPTED,
-    CALLER_CARRAY_REJECTED,
-    CALLER_CONTAINER_REJECTED,
     callerContainerRejectedFiles,
     createCallerContainerProject,
     NATIVE_CONSUMER,
     OMITTED_CALLBACKS,
     OMITTED_METHODS,
+    REJECTED,
 };

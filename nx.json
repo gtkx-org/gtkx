@@ -10,7 +10,7 @@
             "default",
             "!{projectRoot}/tests/**/*",
             "!{projectRoot}/tsconfig.test.json",
-            "!{projectRoot}/vitest.config.ts"
+            "!{projectRoot}/vitest*.config.ts"
         ],
         "sharedGlobals": [
             "{workspaceRoot}/tsconfig.base.json",
@@ -26,12 +26,11 @@
             },
             "{workspaceRoot}/scripts/cache-environment.ts",
             {
-                "runtime": "node scripts/cache-environment.ts runtime"
+                "runtime": "node scripts/ci/run.mjs \"node scripts/cache-environment.ts runtime\""
             },
             "{workspaceRoot}/.github/actions/setup-ci/**/*",
-            {
-                "env": "ImageVersion"
-            }
+            "{workspaceRoot}/scripts/ci/**/*",
+            "{workspaceRoot}/.nx/workflows/**/*"
         ],
         "nativeEnvironment": [
             "{workspaceRoot}/scripts/cache-environment.ts",
@@ -48,13 +47,13 @@
                 "env": "CARGO_BUILD_TARGET"
             },
             {
-                "runtime": "node scripts/cache-environment.ts native"
+                "runtime": "node scripts/ci/run.mjs \"node scripts/cache-environment.ts native\""
             }
         ]
     },
     "plugins": [
         {
-            "plugin": "@nx/js/typescript",
+            "plugin": "./scripts/ci/typescript-plugin.mjs",
             "options": {
                 "typecheck": {
                     "targetName": "typecheck"
@@ -70,7 +69,7 @@
             ]
         },
         {
-            "plugin": "@nx/eslint/plugin",
+            "plugin": "./scripts/ci/eslint-plugin.mjs",
             "options": {
                 "targetName": "lint"
             },
@@ -80,7 +79,7 @@
             ]
         },
         {
-            "plugin": "@nx/vitest",
+            "plugin": "./scripts/ci/vitest-plugin.mjs",
             "options": {
                 "testTargetName": "test",
                 "testMode": "run"
@@ -92,13 +91,16 @@
             ]
         },
         {
-            "plugin": "@nx/vitest",
+            "plugin": "./scripts/ci/vitest-plugin.mjs",
             "include": [
                 "packages/e2e/vitest.config.ts"
             ],
             "options": {
                 "testTargetName": "e2e",
-                "testMode": "run"
+                "testMode": "run",
+                "ciTargetName": "e2e-ci",
+                "ciGroupName": "CLI E2E",
+                "discoverTestFiles": "glob"
             }
         }
     ],
@@ -116,7 +118,7 @@
             },
             {
                 "filter": {
-                    "plugin": "@nx/js/typescript"
+                    "plugin": "./scripts/ci/typescript-plugin.mjs"
                 },
                 "options": {
                     "args": [
@@ -169,6 +171,33 @@
                     "transitive": true
                 }
             ]
+        },
+        "e2e-ci": {
+            "inputs": [
+                "...",
+                "default",
+                "^production",
+                {
+                    "dependentTasksOutputFiles": "**/*.{js,node,d.ts,d.mts}",
+                    "transitive": true
+                }
+            ]
+        },
+        "e2e-ci--**/**": {
+            "dependsOn": [
+                "^build",
+                "gtkx:_build:bindings"
+            ],
+            "inputs": [
+                "...",
+                "default",
+                "^production",
+                {
+                    "dependentTasksOutputFiles": "**/*.{js,node,d.ts,d.mts}",
+                    "transitive": true
+                }
+            ],
+            "cache": true
         }
     },
     "release": {

@@ -21,6 +21,10 @@ pnpm typecheck
 
 `pnpm build` emits JavaScript and declarations without full TypeScript checking. Run `pnpm typecheck` to check package, example, and workspace types; CI runs it as a separate check.
 
+Use `pnpm exec nx affected -t build,test,typecheck,lint --base=origin/main` to check changed projects and their dependents locally. Routine CI selects affected projects from the last successful main-branch run; manually dispatch CI to check the complete workspace.
+
+Run `pnpm e2e` for CLI and MCP checks, `pnpm test:asan` for native memory safety, and `pnpm benchmark` for query performance. Published consumer and tutorial validation is available through `pnpm acceptance`. CI selects ASAN from its task inputs and published consumers from changes to tutorial, packaging, and release files; their failures block the existing `tests` and `e2e` checks. Both validations can also be dispatched separately; release publication validates the staged native artifacts through installed consumers.
+
 Use the [pull request template](.github/PULL_REQUEST_TEMPLATE.md) to summarize the change and validation in at most twenty words. Remove unused sections and add `Closes #N` only when the pull request resolves that issue. Include a screenshot for visible UI changes.
 
 Breaking removals require a warning in an earlier minor release. Renamed symbols use `@deprecated` with their introduction version; behavior changes need a CLI warning and an opt-in migration path. A removal-only major adds no unrelated features, and its migration guide changes with every deprecation.
@@ -45,7 +49,7 @@ Maintainers follow [Publishing Releases](https://gtkx.dev/contributing/releases)
 
 ## Documentation and examples
 
-[Maintaining Documentation](https://gtkx.dev/contributing/documentation) covers the website workflow. Examples provide executable integration coverage. `tutorial` consumes registry packages outside the workspace; run `pnpm nx run @gtkx/e2e:e2e -- tests/tutorial.test.ts` to validate it against the working tree.
+[Maintaining Documentation](https://gtkx.dev/contributing/documentation) covers the website workflow. Examples demonstrate application development; retain example tests only when they teach testing. Framework regression coverage belongs in package integration suites. The Storybook example demonstrates `composeStories`, and `tutorial` consumes registry packages outside the workspace; run `pnpm acceptance -- tests/tutorial.test.ts` to validate it against the working tree.
 
 ### Documentation versions
 

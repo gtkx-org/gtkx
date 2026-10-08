@@ -119,6 +119,7 @@ try {
 `;
 
 type RejectedName = keyof typeof REJECTED;
+const REJECTED_NAMES = Object.keys(REJECTED) as RejectedName[];
 
 const createUnknownArraysProject = (
     prefix: string,
@@ -146,4 +147,4 @@ const createUnknownArraysProject = (
     return project;
 };
 
-export { ACCEPTED, createUnknownArraysProject, NATIVE_CONSUMER, type RejectedName };
+export { ACCEPTED, createUnknownArraysProject, NATIVE_CONSUMER, REJECTED_NAMES };

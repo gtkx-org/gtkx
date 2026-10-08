@@ -5,9 +5,12 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  merge_group:
+    types: [checks_requested]
   workflow_dispatch:
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -18,73 +21,205 @@ env:
   NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
   GTKX_MAX_WORKERS: "2"
   NODE_OPTIONS: --max-old-space-size=8192
+  NX_DAEMON: "false"
 
 jobs:
-  checks:
-    name: ${{ matrix.check }}
+  changes:
     runs-on: ubuntu-26.04
-    timeout-minutes: ${{ matrix.timeout }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - check: tests
-            script: test
-            timeout: 120
-          - check: build
-            script: build
-            timeout: 60
-          - check: typecheck
-            script: typecheck
-            timeout: 60
-          - check: lint
-            script: lint
-            timeout: 30
+    timeout-minutes: 5
+    outputs:
+      base: ${{ steps.shas.outputs.base }}
+      head: ${{ steps.shas.outputs.head }}
+      acceptance: ${{ steps.acceptance.outputs.required }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
-      - uses: ./.github/actions/setup-ci
+      - uses: nrwl/nx-set-shas@3e9ad7370203c1e93d109be57f3b72eb0eb511b1
+        id: shas
 
-      - name: Install Rust advisory audit
-        if: matrix.check == 'lint'
+      - name: Select published consumer validation
+        id: acceptance
         run: |
-          cargo install cargo-audit --version 0.22.2 --locked --root "$RUNNER_TEMP/cargo-audit"
-          echo "$RUNNER_TEMP/cargo-audit/bin" >> "$GITHUB_PATH"
+          if git diff --quiet "$NX_BASE" "$NX_HEAD" -- \
+            .github/workflows/ci.yml .github/workflows/acceptance.yml .github/workflows/publish.yml \
+            .github/actions/setup-ci scripts/ci .nx/workflows .verdaccio \
+            packages/e2e/vitest.acceptance.config.ts packages/e2e/project.json \
+            packages/e2e/tests/publish.test.ts packages/e2e/tests/tutorial.test.ts \
+            ':(glob)packages/e2e/tests/helpers/registry*.ts' \
+            ':(glob)packages/e2e/tests/helpers/tutorial-*.ts' \
+            packages/e2e/tests/helpers/release-channels.ts \
+            packages/create-gtkx packages/cli/src/builder.ts \
+            packages/cli/src/commands/build.ts packages/cli/src/commands/deploy.ts \
+            packages/cli/src/deploy packages/cli/src/vite-plugins packages/cli/src/internal/build-manifest.ts \
+            ':(glob)packages/*/package.json' ':(glob)packages/*/tsconfig.lib.json' ':(glob)packages/*/project.json' \
+            packages/native/tools/prepublish.ts \
+            ':(glob)scripts/*release*.ts' scripts/native-artifact.ts scripts/publish-manifest.ts \
+            scripts/pnpm-publish.ts scripts/nx-registry.ts \
+            package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.lib.json tsconfig.base.json nx.json \
+            tutorial website/v2/tutorial; then
+            echo 'required=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'required=true' >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Run check
-        env:
-          CHECK: ${{ matrix.script }}
-        run: pnpm run "$CHECK"
-
-  e2e-shards:
-    name: e2e (${{ matrix.shard }}/8)
+  distributed:
+    needs: changes
     runs-on: ubuntu-26.04
     timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    env:
+      NX_BASE: ${{ needs.changes.outputs.base }}
+      NX_HEAD: ${{ needs.changes.outputs.head }}
+      NX_CI_EXECUTION_ENV: checks
+      NX_CLOUD_CONTINUOUS_ASSIGNMENT: "true"
+      GTKX_CI_CONTAINER: gtkx-ci
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
-      - uses: ./.github/actions/setup-ci
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: "26.8.2"
+          package-manager-cache: false
 
-      - name: Run E2E shard
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+
+      - name: Identify workload user
+        id: workload-user
+        run: |
+          echo "uid=$(id -u)" >> "$GITHUB_OUTPUT"
+          echo "gid=$(id -g)" >> "$GITHUB_OUTPUT"
+
+      - name: Build Ubuntu 26.04 workload image
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: .
+          file: scripts/ci/Dockerfile
+          load: true
+          push: false
+          tags: ${{ env.GTKX_CI_CONTAINER }}:local
+          build-args: |
+            GTKX_UID=${{ steps.workload-user.outputs.uid }}
+            GTKX_GID=${{ steps.workload-user.outputs.gid }}
+          cache-from: type=gha,scope=gtkx-ci
+          cache-to: type=gha,scope=gtkx-ci,mode=max
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: .nx/ci/pnpm-store
+          key: workload-pnpm-${{ runner.arch }}-${{ hashFiles('scripts/ci/Dockerfile', 'pnpm-lock.yaml') }}
+          restore-keys: workload-pnpm-${{ runner.arch }}-
+
+      - name: Start Ubuntu 26.04 workload
+        id: workload
         env:
-          SHARD: ${{ matrix.shard }}
-        run: pnpm e2e -- --shard="$SHARD/8"
+          GTKX_CI_PREBUILT: "true"
+        run: |
+          bash scripts/ci/start-workload.sh
+          cat .nx/ci/environment >> "$GITHUB_ENV"
+
+      - name: Validate distributed task graph
+        env:
+          NX_NO_CLOUD: "true"
+        run: |
+          pnpm exec nx run-many -t build,test,typecheck,lint,e2e-ci,_test:asan --graph=.nx/ci/task-graph.json
+          node scripts/ci/validate-graph.mjs .nx/ci/task-graph.json
+
+      - name: Start Nx Agents
+        id: agents
+        if: env.NX_CLOUD_ACCESS_TOKEN != ''
+        run: >-
+          pnpm exec nx-cloud start-ci-run
+          --distribute-on=".nx/workflows/distribution-config.yaml"
+          --with-env-vars="GTKX_MAX_WORKERS,NODE_OPTIONS,GTKX_CI_RUNTIME_HASH,GTKX_CI_NATIVE_HASH"
+          --stop-agents-after="build,test,typecheck,lint,e2e-ci,_test:asan"
+          --stop-agents-on-failure=false
+          --require-explicit-completion
+
+      - name: Run build, tests, typecheck, lint and CLI E2E
+        id: tasks
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          NX_NO_CLOUD: ${{ env.NX_CLOUD_ACCESS_TOKEN == '' && 'true' || 'false' }}
+        run: |
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            pnpm exec nx run-many -t build,test,typecheck,lint,e2e-ci --parallel=2
+          else
+            pnpm exec nx affected -t build,test,typecheck,lint,e2e-ci --parallel=2
+          fi
+
+      - name: Check native memory safety
+        if: ${{ !cancelled() && steps.workload.outcome == 'success' && (steps.agents.outcome == 'success' || env.NX_CLOUD_ACCESS_TOKEN == '') }}
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          NX_LEGACY_AFFECTED: "false"
+          NX_NO_CLOUD: ${{ env.NX_CLOUD_ACCESS_TOKEN == '' && 'true' || 'false' }}
+        run: |
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            pnpm exec nx run-many -t _test:asan --parallel=2
+          else
+            pnpm exec nx affected -t _test:asan --parallel=2
+          fi
+
+      - name: Check current Rust advisories
+        if: ${{ !cancelled() && steps.workload.outcome == 'success' && (steps.agents.outcome == 'success' || env.NX_CLOUD_ACCESS_TOKEN == '') }}
+        run: |
+          if [[ -n "$NX_CLOUD_ACCESS_TOKEN" ]]; then
+            pnpm exec nx-cloud record -- node scripts/ci/run.mjs 'cargo audit --file packages/native/Cargo.lock --deny unsound'
+          else
+            node scripts/ci/run.mjs 'cargo audit --file packages/native/Cargo.lock --deny unsound'
+          fi
+
+      - name: Complete Nx CI run
+        if: always() && steps.workload.outcome == 'success' && steps.agents.outcome != 'skipped' && env.NX_CLOUD_ACCESS_TOKEN != ''
+        timeout-minutes: 2
+        run: pnpm exec nx-cloud complete-ci-run
+
+      - name: Remove workload container
+        if: always()
+        run: |
+          if docker container inspect "$GTKX_CI_CONTAINER" >/dev/null 2>&1; then
+            docker rm --force "$GTKX_CI_CONTAINER"
+          fi
+
+  checks:
+    needs: distributed
+    if: always()
+    name: ${{ matrix.check }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [tests, build, typecheck, lint]
+    steps:
+      - name: Require distributed checks
+        env:
+          RESULT: ${{ needs.distributed.result }}
+        run: test "$RESULT" = success
+
+  acceptance:
+    needs: changes
+    if: needs.changes.outputs.acceptance == 'true' || github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/acceptance.yml
+    secrets: inherit
 
   e2e:
     if: always()
-    needs: e2e-shards
+    needs: [distributed, acceptance]
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
-      - name: Require every E2E shard
+      - name: Require distributed checks and selected published consumers
         env:
-          RESULT: ${{ needs.e2e-shards.result }}
-        run: test "$RESULT" = success
+          DISTRIBUTED: ${{ needs.distributed.result }}
+          ACCEPTANCE: ${{ needs.acceptance.result }}
+        run: |
+          test "$DISTRIBUTED" = success
+          test "$ACCEPTANCE" = success || test "$ACCEPTANCE" = skipped

@@ -485,6 +485,40 @@ describe("render - GtkConstraintLayout attach", () => {
 });
 
 describe("render - GtkConstraint props", () => {
+    it("allocates a child from its parent's width and follows window resizing", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        await render(
+            <ConstrainedBox
+                boxRef={boxRef}
+                build={(button) => (
+                    <>
+                        <GtkConstraint target={button} targetAttribute={A.START} sourceAttribute={A.START} constant={8} />
+                        <GtkConstraint target={button} targetAttribute={A.TOP} sourceAttribute={A.TOP} constant={8} />
+                        <GtkConstraint target={button} targetAttribute={A.WIDTH} sourceAttribute={A.WIDTH} multiplier={0.5} />
+                    </>
+                )}
+            />,
+        );
+        const box = boxRef.current;
+        const button = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "A" });
+        const window = button.getRoot();
+
+        if (box === null || !(window instanceof Gtk.Window)) {
+            throw new Error("constraint layout has no window");
+        }
+
+        for (const width of [320, 480]) {
+            window.setDefaultSize(width, 240);
+            await waitFor(() => {
+                const [wasComputed, bounds] = button.computeBounds(box);
+                expect(wasComputed).toBe(true);
+                expect(box.getWidth()).toBe(width);
+                expect(bounds.getWidth()).toBe(width / 2);
+                expect(bounds.getX()).toBe(8);
+            });
+        }
+    });
+
     it("builds a constraint from a widget reference", async () => {
         const boxRef = createRef<Gtk.Box>();
         await render(<WidthBox boxRef={boxRef} constant={100} />);
@@ -571,10 +605,27 @@ describe("render - GtkConstraintGuide", () => {
 });
 
 describe("render - GtkConstraintLayout vfl", () => {
-    it("adds the constraints a VFL description expands to", async () => {
+    it("allocates equal buttons with the gaps described by VFL", async () => {
         const boxRef = createRef<Gtk.Box>();
-        await render(<VflBox boxRef={boxRef} lines={VFL_LINES} />);
-        expect(collectConstraints(layoutFrom(boxRef)).length).toBeGreaterThanOrEqual(5);
+        await render(<VflBox boxRef={boxRef} lines={WIDER_VFL_LINES} />);
+        const box = boxRef.current;
+        const a = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "A" });
+        const b = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "B" });
+
+        if (box === null) {
+            throw new Error("VFL layout was not mounted");
+        }
+
+        await waitFor(() => {
+            const [aComputed, aBounds] = a.computeBounds(box);
+            const [bComputed, bBounds] = b.computeBounds(box);
+            expect(aComputed && bComputed).toBe(true);
+            expect(aBounds.getWidth()).toBeGreaterThan(0);
+            expect(aBounds.getWidth()).toBe(bBounds.getWidth());
+            expect(aBounds.getX()).toBe(8);
+            expect(bBounds.getX() - aBounds.getX() - aBounds.getWidth()).toBe(12);
+            expect(bBounds.getX() + bBounds.getWidth()).toBe(box.getWidth() - 8);
+        });
     });
 
     it("re-parses the description when the lines change", async () => {

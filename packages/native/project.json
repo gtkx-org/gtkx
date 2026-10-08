@@ -22,7 +22,8 @@
             "{workspaceRoot}/scripts/tsx.ts",
             "{workspaceRoot}/scripts/workspace-paths.ts",
             "{workspaceRoot}/packages/e2e/tests/native/**/*",
-            "{workspaceRoot}/packages/e2e/tests/helpers/native-fixtures.ts"
+            "{workspaceRoot}/packages/e2e/tests/helpers/native-fixtures.ts",
+            "{workspaceRoot}/packages/e2e/tests/helpers/native-fixtures-compile.ts"
         ]
     },
     "targets": {
@@ -36,32 +37,47 @@
                 "{projectRoot}/artifacts/**/*",
                 {
                     "env": "GTKX_RELEASE_NATIVE_ARTIFACTS"
-                }
+                },
+                "{workspaceRoot}/scripts/ci/**/*"
             ],
             "outputs": [
                 "{projectRoot}/index.d.ts",
                 "{projectRoot}/index.js",
                 "{projectRoot}/native.*.node"
-            ]
+            ],
+            "command": "node ../../scripts/ci/run.mjs 'pnpm run build'",
+            "options": {
+                "cwd": "{projectRoot}"
+            }
         },
         "_lint:rust": {
             "cache": true,
             "dependsOn": [],
             "inputs": [
                 "crate",
-                "{workspaceRoot}/rustfmt.toml"
+                "{workspaceRoot}/rustfmt.toml",
+                "{workspaceRoot}/scripts/ci/**/*"
             ],
-            "outputs": []
+            "outputs": [],
+            "command": "node ../../scripts/ci/run.mjs 'pnpm run _lint:rust'",
+            "options": {
+                "cwd": "{projectRoot}"
+            }
         },
         "_lint:audit": {
-            "command": "cargo audit --file packages/native/Cargo.lock --deny unsound",
-            "cache": false
+            "command": "node scripts/ci/run.mjs 'cargo audit --file packages/native/Cargo.lock --deny unsound'",
+            "cache": false,
+            "inputs": [
+                "...",
+                "default",
+                "^default",
+                "{workspaceRoot}/scripts/ci/**/*"
+            ]
         },
         "lint": {
             "dependsOn": [
                 "build",
-                "_lint:rust",
-                "_lint:audit"
+                "_lint:rust"
             ]
         },
         "_test:asan": {
@@ -73,14 +89,18 @@
             "cache": true,
             "inputs": [
                 "nativeTests",
-                "^production"
+                "^production",
+                "{workspaceRoot}/scripts/ci/**/*"
             ],
-            "outputs": []
+            "outputs": [],
+            "command": "node ../../scripts/ci/run.mjs 'pnpm run _test:asan'",
+            "options": {
+                "cwd": "{projectRoot}"
+            }
         },
         "test": {
             "dependsOn": [
-                "build",
-                "_test:asan"
+                "build"
             ],
             "inputs": [
                 "...",

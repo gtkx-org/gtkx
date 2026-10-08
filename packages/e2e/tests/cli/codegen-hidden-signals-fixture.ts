@@ -115,6 +115,7 @@ const REJECTED = {
 } as const;
 
 type RejectedName = keyof typeof REJECTED;
+const REJECTED_NAMES = Object.keys(REJECTED) as RejectedName[];
 
 const createHiddenSignalsProject = (
     prefix: string,
@@ -142,4 +143,4 @@ const createHiddenSignalsProject = (
     return project;
 };
 
-export { ACCEPTED, createHiddenSignalsProject, type RejectedName };
+export { ACCEPTED, createHiddenSignalsProject, REJECTED_NAMES };

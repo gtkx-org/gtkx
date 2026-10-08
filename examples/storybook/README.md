@@ -16,7 +16,7 @@ Select a counter story, edit Controls, then click the preview button and inspect
 
 The confirmation story opens a dialog; the progress story owns a window that closes when you leave it. Shared decorators and initial globals live in `.storybook/preview.tsx`.
 
-The same stories run as native integration fixtures:
+The same stories run as native integration fixtures. The three tests demonstrate shared decorators and argument overrides, dialog interaction, and window cleanup:
 
 ```sh
 pnpm nx test storybook-example

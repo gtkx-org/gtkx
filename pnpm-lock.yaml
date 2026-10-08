@@ -310,15 +310,9 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@gtkx/testing':
-        specifier: workspace:*
-        version: link:../../packages/testing
       vite:
         specifier: 'catalog:'
         version: 8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.3(@types/node@26.5.1)(vite@8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
   examples/browser:
     dependencies:
@@ -338,15 +332,9 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@gtkx/testing':
-        specifier: workspace:*
-        version: link:../../packages/testing
       vite:
         specifier: 'catalog:'
         version: 8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.3(@types/node@26.5.1)(vite@8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
   examples/gtk-demo:
     dependencies:
@@ -381,18 +369,9 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@gtkx/native':
-        specifier: workspace:*
-        version: link:../../packages/native
-      '@gtkx/testing':
-        specifier: workspace:*
-        version: link:../../packages/testing
       vite:
         specifier: 'catalog:'
         version: 8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.3(@types/node@26.5.1)(vite@8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
   examples/hello-world:
     dependencies:
@@ -409,15 +388,9 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@gtkx/testing':
-        specifier: workspace:*
-        version: link:../../packages/testing
       vite:
         specifier: 'catalog:'
         version: 8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.3(@types/node@26.5.1)(vite@8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
   examples/navigation:
     dependencies:
@@ -437,15 +410,9 @@ importers:
       '@gtkx/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@gtkx/testing':
-        specifier: workspace:*
-        version: link:../../packages/testing
       vite:
         specifier: 'catalog:'
         version: 8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
-      vitest:
-        specifier: 'catalog:'
-        version: 5.0.3(@types/node@26.5.1)(vite@8.3.2(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
   examples/storybook:
     dependencies:

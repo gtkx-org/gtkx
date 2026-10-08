@@ -9,9 +9,6 @@
             "path": "../../packages/navigation/tsconfig.lib.json"
         },
         {
-            "path": "../../packages/testing/tsconfig.lib.json"
-        },
-        {
             "path": "../../packages/cli/tsconfig.lib.json"
         },
         {

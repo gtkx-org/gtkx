@@ -9,7 +9,7 @@
             ]
         },
         "_typecheck:overrides": {
-            "command": "tsc -p overrides/tsconfig.json",
+            "command": "node ../../scripts/ci/run.mjs 'tsc -p overrides/tsconfig.json'",
             "options": {
                 "cwd": "packages/codegen"
             },
@@ -23,7 +23,8 @@
                 {
                     "dependentTasksOutputFiles": "**/*.d.ts",
                     "transitive": true
-                }
+                },
+                "{workspaceRoot}/scripts/ci/**/*"
             ],
             "outputs": []
         }

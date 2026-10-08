@@ -11,11 +11,16 @@
                 "{projectRoot}/scripts/**/*",
                 "{projectRoot}/src/overrides.ts",
                 "^production",
-                "{workspaceRoot}/packages/codegen/src/khronos/**/*"
+                "{workspaceRoot}/packages/codegen/src/khronos/**/*",
+                "{workspaceRoot}/scripts/ci/**/*"
             ],
             "outputs": [
                 "{projectRoot}/src/generated/**"
-            ]
+            ],
+            "command": "node ../../scripts/ci/run.mjs 'pnpm run codegen'",
+            "options": {
+                "cwd": "{projectRoot}"
+            }
         },
         "build": {
             "dependsOn": [

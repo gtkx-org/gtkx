@@ -145,6 +145,7 @@ try {
 `;
 
 type RejectedName = keyof typeof REJECTED;
+const REJECTED_NAMES = Object.keys(REJECTED) as RejectedName[];
 
 const createHiddenCallablesProject = (
     prefix: string,
@@ -172,4 +173,4 @@ const createHiddenCallablesProject = (
     return project;
 };
 
-export { ACCEPTED, createHiddenCallablesProject, NATIVE_CONSUMER, type RejectedName };
+export { ACCEPTED, createHiddenCallablesProject, NATIVE_CONSUMER, REJECTED_NAMES };

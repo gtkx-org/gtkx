@@ -6,6 +6,6 @@ export default mergeConfig(
     sourceResolveConfig,
     defineConfig({
         plugins: [gtkx()],
-        test: { name: "storybook" },
+        test: { name: "storybook", fsModuleCache: true },
     }),
 );

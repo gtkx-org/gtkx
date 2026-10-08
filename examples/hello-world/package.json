@@ -8,8 +8,7 @@
     "scripts": {
         "build": "gtkx build",
         "dev": "gtkx dev",
-        "start": "node dist/bundle.mjs",
-        "test": "vitest run"
+        "start": "node dist/bundle.mjs"
     },
     "dependencies": {
         "@gtkx/react": "workspace:*",
@@ -18,9 +17,7 @@
     "devDependencies": {
         "@gtkx/cli": "workspace:*",
         "@gtkx/config": "workspace:*",
-        "@gtkx/testing": "workspace:*",
-        "vite": "catalog:",
-        "vitest": "catalog:"
+        "vite": "catalog:"
     },
     "author": "GTKX <hello@gtkx.dev>"
 }

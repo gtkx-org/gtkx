@@ -1,8 +1,8 @@
 import { loadApiReference, resolveGirPath } from "@gtkx/codegen";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CliProject } from "./cli-project.js";
-import { createHashTableAdmissionProject, HASH_TABLE_IMPORTS } from "./codegen-hash-table-admission-fixture.js";
-import { typecheckFile } from "./type-consumer.js";
+import { createHashTableAdmissionProject, HASH_TABLE_IMPORTS, HASH_TABLE_REJECTED } from "./codegen-hash-table-admission-fixture.js";
+import { typecheckFiles } from "./type-consumer.js";
 
 const ACCEPTED = HASH_TABLE_IMPORTS + `
 export const table: NumericTables.TableAlias = new Map([["value", 1n]]);
@@ -77,20 +77,7 @@ export class Derived extends NumericTables.Probe {
     }
 }
 `;
-const REJECTED: Record<string, string> = {
-    "pointer-record-constructor": "export const frame = new NumericTables.Frame({ before: 1, after: 2 });",
-    "type-word-key-input": "export const method = NumericTables.takeTypeWordKeys;",
-    "type-word-value-input": "export const method = NumericTables.takeTypeWordAlias;",
-    "type-word-chain-result": "export const method = NumericTables.readTypeWordChain;",
-    "type-word-argument": "NumericTables.identityTypeWord(1);",
-    "type-chain-argument": "NumericTables.identityTypeWordChain(1);",
-    "size-word-argument": "NumericTables.identitySizeWord(1n);",
-    "type-word-option": "export const probe = new NumericTables.Probe({ typeWord: 1 });",
-    "size-word-option": "export const probe = new NumericTables.Probe({ sizeWord: 1n });",
-    "type-word-jsx": "export const view = <NumericTablesProbe typeWord={1} />;",
-    "type-chain-jsx": "export const view = <NumericTablesProbe chainWord={1} />;",
-    "size-word-jsx": "export const view = <NumericTablesProbe sizeWord={1n} />;",
-};
+
 const OMITTED_FUNCTIONS = [
     "takeTypeWordKeys", "takeTypeWordAlias", "readTypeWordChain",
     "takeTypeBorrowed", "readTypes", "readNestedTypes", "readTypeOut", "readTypeArrays", "useTypeInput",
@@ -115,7 +102,7 @@ describe("generated numeric hash table ownership admission", () => {
         project = createHashTableAdmissionProject(
             cleanup,
             "gtkx-cli-hash-table-admission-",
-            REJECTED,
+            HASH_TABLE_REJECTED,
             { "accepted.tsx": ACCEPTED },
         );
         reference = loadApiReference({
@@ -129,12 +116,12 @@ describe("generated numeric hash table ownership admission", () => {
         cleanup.dispose();
     });
 
-    it("preserves borrowed inputs, decoded outputs and semantic scalar aliases", () => {
-        expect(typecheckFile(project, "accepted.tsx")).toBe(0);
-    });
+    it("preserves supported consumers and rejects unsafe hash table contracts", () => {
+        const rejected = Object.keys(HASH_TABLE_REJECTED).map((name) => `${name}.tsx`);
 
-    it.each(Object.keys(REJECTED))("rejects the unsupported public contract in %s", (name) => {
-        expect(typecheckFile(project, `${name}.tsx`)).not.toBe(0);
+        for (const [file, result] of typecheckFiles(project, ["accepted.tsx", ...rejected])) {
+            expect({ file, ...result }).toMatchObject({ status: file === "accepted.tsx" ? 0 : 1 });
+        }
     });
 
     it("keeps namespace and callback reference entries aligned with declarations", () => {

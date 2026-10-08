@@ -4,9 +4,10 @@ import type { CliProject } from "./cli-project.js";
 import {
     ACCEPTED,
     createUnknownArraysProject,
+    REJECTED_NAMES,
     NATIVE_CONSUMER,
 } from "./codegen-unknown-arrays-fixture.js";
-import { typecheckFile } from "./type-consumer.js";
+import { typecheckFiles } from "./type-consumer.js";
 
 const OMITTED_MEMBERS = ["takeDirect", "readAlias", "readNested", "discardArray", "useRaw", "data", "nested"];
 
@@ -21,6 +22,7 @@ describe("generated unknown-length array omissions", () => {
                 "accepted.tsx": ACCEPTED,
                 "native.ts": NATIVE_CONSUMER,
             },
+            REJECTED_NAMES,
         ));
     });
 
@@ -28,9 +30,13 @@ describe("generated unknown-length array omissions", () => {
         cleanup.dispose();
     });
 
-    it("preserves bounded arrays, intrinsic byte arrays and neighboring properties and fields", () => {
-        expect(typecheckFile(project, "accepted.tsx")).toBe(0);
-        expect(typecheckFile(project, "native.ts")).toBe(0);
+    it("preserves supported consumers and rejects the omitted public contracts", () => {
+        const accepted = ["accepted.tsx", "native.ts"];
+        const rejected = REJECTED_NAMES.map((name) => `${name}.tsx`);
+
+        for (const [file, result] of typecheckFiles(project, [...accepted, ...rejected])) {
+            expect({ file, ...result }).toMatchObject({ status: accepted.includes(file) ? 0 : 1 });
+        }
     });
 
     it("keeps references aligned with omitted aliases and retained array methods", () => {

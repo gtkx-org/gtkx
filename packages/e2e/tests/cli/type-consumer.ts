@@ -1,13 +1,24 @@
 import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync, spawnSync } from "node:child_process";
 import { cpSync, mkdirSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 import { type CliProject, TSX_LOADER } from "./cli-project.js";
 
 const WORKSPACE = fileURLToPath(new URL("../../../..", import.meta.url));
 const TYPESCRIPT_CLI = join(WORKSPACE, "node_modules/typescript/bin/tsc");
 const PACKAGES = ["cairo", "components", "config", "css", "forms", "native", "react", "runtime", "utils"];
+const TYPECHECK_OPTIONS = [
+    "--noEmit",
+    "--module", "ESNext",
+    "--moduleResolution", "Bundler",
+    "--target", "ESNext",
+    "--jsx", "react-jsx",
+    "--strict",
+    "--skipLibCheck", "false",
+    "--types", "node",
+];
 
 type TypeScriptResult = { status: number; output: string };
 
@@ -107,17 +118,55 @@ const runTypeScript = (project: CliProject, args: readonly string[], timeout?: n
 
 const typecheckFile = (project: CliProject, file: string, compilerOptions: readonly string[] = []): number =>
     runTypeScript(project, [
-        "--noEmit",
-        "--module", "ESNext",
-        "--moduleResolution", "Bundler",
-        "--target", "ESNext",
-        "--jsx", "react-jsx",
-        "--strict",
-        "--skipLibCheck", "false",
-        "--types", "node",
+        ...TYPECHECK_OPTIONS,
         ...compilerOptions,
         file,
     ]).status;
+
+const typecheckFiles = (project: CliProject, files: readonly string[]): Map<string, TypeScriptResult> => {
+    const roots = new Map(files.map((file) => [resolve(project.root, file), file]));
+    const { options } = ts.parseCommandLine(TYPECHECK_OPTIONS);
+    const host = ts.createCompilerHost(options);
+    host.getCurrentDirectory = () => project.root;
+    const program = ts.createProgram([...roots.keys()], options, host);
+    const format = (diagnostics: readonly ts.Diagnostic[]): string => ts.formatDiagnostics(diagnostics, {
+        getCanonicalFileName: (file) => file,
+        getCurrentDirectory: () => project.root,
+        getNewLine: () => "\n",
+    });
+    const setupErrors = [
+        ...program.getOptionsDiagnostics(),
+        ...program.getGlobalDiagnostics(),
+        ...program.getSyntacticDiagnostics(),
+    ];
+
+    if (setupErrors.length > 0) {
+        throw new Error(format(setupErrors));
+    }
+
+    for (const file of roots.keys()) {
+        const source = program.getSourceFile(file);
+
+        if (source === undefined || !ts.isExternalModule(source)) {
+            throw new Error(`Typecheck consumer must be a separate module: ${file}`);
+        }
+    }
+
+    const diagnostics = program.getSemanticDiagnostics();
+    const unrelated = diagnostics.filter((diagnostic) =>
+        diagnostic.file === undefined || !roots.has(diagnostic.file.fileName) ||
+        diagnostic.code === 2307 || diagnostic.code === 7016);
+
+    if (unrelated.length > 0) {
+        throw new Error(format(unrelated));
+    }
+
+    return new Map([...roots].map(([absolute, file]) => {
+        const errors = diagnostics.filter((diagnostic) => diagnostic.file?.fileName === absolute);
+
+        return [file, { status: errors.length === 0 ? 0 : 1, output: format(errors) }];
+    }));
+};
 
 const typecheckProject = (project: CliProject, configFile: string, timeout?: number): number =>
     typecheckProjectResult(project, configFile, timeout).status;
@@ -136,6 +185,7 @@ export {
     isolateTypeConsumer,
     runNativeConsumer,
     typecheckFile,
+    typecheckFiles,
     typecheckProject,
     typecheckProjectResult,
     typecheckSource,

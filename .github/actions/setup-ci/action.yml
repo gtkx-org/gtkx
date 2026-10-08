@@ -1,6 +1,11 @@
 name: Setup CI
 description: Install workspace dependencies and native tooling on Ubuntu 26.04.
 
+inputs:
+  rust-cache-key:
+    description: Rust build profile to cache separately.
+    default: build
+
 runs:
   using: composite
   steps:
@@ -40,14 +45,19 @@ runs:
         rustup show
         (cd packages/native/tools && rustup show)
 
-    - name: Cache Cargo dependencies
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+    - name: Fingerprint native build environment
+      id: native-environment
+      shell: bash
+      run: echo "hash=$(node scripts/cache-environment.ts native)" >> "$GITHUB_OUTPUT"
+
+    - name: Cache Rust dependencies and build artifacts
+      uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
       with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-        key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/native/Cargo.lock') }}
-        restore-keys: cargo-${{ runner.os }}-${{ runner.arch }}-
+        shared-key: ${{ inputs.rust-cache-key }}-${{ steps.native-environment.outputs.hash }}
+        workspaces: |
+          packages/native -> target
+        cache-bin: false
+        save-if: ${{ github.ref == 'refs/heads/main' }}
 
     - name: Configure test environment
       shell: bash

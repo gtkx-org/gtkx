@@ -8,11 +8,16 @@
         "_build:templates": {
             "cache": true,
             "inputs": [
-                "{projectRoot}/src/templates/**/*"
+                "{projectRoot}/src/templates/**/*",
+                "{workspaceRoot}/scripts/ci/**/*"
             ],
             "outputs": [
                 "{projectRoot}/dist/templates/**"
-            ]
+            ],
+            "command": "node ../../scripts/ci/run.mjs 'pnpm run _build:templates'",
+            "options": {
+                "cwd": "{projectRoot}"
+            }
         },
         "build": {
             "dependsOn": [

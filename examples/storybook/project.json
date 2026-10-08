@@ -3,19 +3,26 @@
     "name": "storybook-example",
     "targets": {
         "codegen": {
-            "command": "gtkx codegen",
+            "command": "node ../../scripts/ci/run.mjs 'gtkx codegen'",
             "options": {
                 "cwd": "{projectRoot}"
             },
-            "cache": false,
+            "cache": true,
             "dependsOn": [
                 "gtkx:_build:bindings",
                 "@gtkx/cli:build"
             ],
             "outputs": [
-                "{projectRoot}/node_modules/.gtkx/gi/**/*.{js,d.ts,json}",
-                "{projectRoot}/node_modules/.gtkx/jsx/**/*.{js,d.ts,json}",
-                "{projectRoot}/node_modules/.gtkx/*.d.ts"
+                "{projectRoot}/node_modules/.gtkx"
+            ],
+            "inputs": [
+                "default",
+                "^production",
+                {
+                    "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
+                    "transitive": true
+                },
+                "{workspaceRoot}/scripts/ci/**/*"
             ]
         },
         "typecheck": {
@@ -37,6 +44,16 @@
                 "...",
                 "codegen",
                 "@gtkx/testing:build"
+            ],
+            "command": "node ../../scripts/ci/run.mjs 'pnpm run test'",
+            "options": {
+                "cwd": "{projectRoot}"
+            },
+            "inputs": [
+                "...",
+                "default",
+                "^default",
+                "{workspaceRoot}/scripts/ci/**/*"
             ]
         },
         "lint": {

@@ -4,7 +4,7 @@ import * as WebKit from "@gtkx/gi/webkit";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { WebKitSettings, WebKitWebView } from "@gtkx/jsx/webkit";
 import { createPortal, rootElement, useProperty } from "@gtkx/react";
-import { act, render, screen, userEvent } from "@gtkx/testing";
+import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 
@@ -36,7 +36,7 @@ describe("property names (digit segments)", () => {
 });
 
 describe("property notify values", () => {
-    it("reads a property whose camelCase accessor collides with a method", async () => {
+    it("reads loading notifications whose camelCase accessor collides with a method in Strict Mode", async () => {
         const webViewRef = createRef<WebKit.WebView>();
         const values: (boolean | null)[] = [];
 
@@ -47,12 +47,17 @@ describe("property notify values", () => {
                     values.push(value);
                 }}
             />,
+            { isReactStrictMode: true },
         );
 
         await act(() => {
-            webViewRef.current?.notify("is-loading");
+            webViewRef.current?.loadUri("data:text/html,<title>Loaded</title>");
         });
 
-        expect(values).toEqual([false]);
+        await waitFor(() => {
+            expect(values).toContain(true);
+            expect(values.at(-1)).toBe(false);
+            expect(webViewRef.current?.getTitle()).toBe("Loaded");
+        });
     });
 });

@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
+import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow, AdwSidebar, AdwSidebarItem, AdwSidebarSection } from "@gtkx/jsx/adw";
@@ -946,6 +947,36 @@ describe("userEvent.drop", () => {
 });
 
 describe("userEvent.dragAndDrop", () => {
+    it("delivers boxed colors and texture objects from prepared content", async () => {
+        const color = new Gdk.RGBA();
+        color.red = 0.25;
+        color.green = 0.5;
+        color.blue = 0.75;
+        color.alpha = 1;
+        const handleColor = dropHandler((value) => value.getBoxed());
+        const colorPair = await renderDragAndDropPair({
+            onDrop: handleColor.onDrop,
+            onPrepare: () => Gdk.ContentProvider.newForValue(color),
+            types: [GObject.typeFromName("GdkRGBA")],
+        });
+        await userEvent.dragAndDrop(colorPair.source, colorPair.target);
+        expect(handleColor.calls[0]?.[0]).toBeInstanceOf(Gdk.RGBA);
+        expect(handleColor.calls[0]?.[0]).toMatchObject({ red: 0.25, green: 0.5, blue: 0.75, alpha: 1 });
+
+        const texture = Gdk.MemoryTexture.new(1, 1, Gdk.MemoryFormat.R8G8B8A8, GLib.Bytes.new([255, 0, 0, 255]), 4);
+        const textureValue = new GObject.Value();
+        textureValue.init(Gdk.Texture);
+        textureValue.setObject(texture);
+        const handleTexture = dropHandler((value) => value.getObject());
+        const texturePair = await renderDragAndDropPair({
+            onDrop: handleTexture.onDrop,
+            onPrepare: () => Gdk.ContentProvider.newForValue(textureValue),
+            types: [GObject.typeFromName("GdkTexture")],
+        });
+        await userEvent.dragAndDrop(texturePair.source, texturePair.target);
+        expect(handleTexture.calls[0]?.[0]).toBe(texture);
+    });
+
     it.each(["prepared", ""])("drops the source's prepared content %j", async (text) => {
         const handleDrop = dropHandler((value) => value.getString());
         const ends = callCounter();
