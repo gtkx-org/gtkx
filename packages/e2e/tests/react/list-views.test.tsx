@@ -141,7 +141,13 @@ const headerRowFor = (title: string): Gtk.Widget => {
 
 const expectUnsorted = (ref: RefObject<Gtk.ColumnView | null>): void => {
     expect(sorterFrom(ref.current).getPrimarySortColumn()).toBeNull();
-    expect((ref.current?.getModel() as Gtk.MultiSelection).getSelection().getSize()).toBe(0n);
+    const model = ref.current?.getModel();
+
+    if (!(model instanceof Gtk.MultiSelection)) {
+        throw new TypeError("The column view has no multi selection model");
+    }
+
+    expect(model.getSelection().getSize()).toBe(0n);
 };
 
 const clickHeaders = async (titles: string[]): Promise<RefObject<Gtk.ColumnView | null>> => {

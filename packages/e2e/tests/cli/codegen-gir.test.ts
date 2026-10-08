@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCliOrThrow } from "./cli-project.js";
 import { classBody, fixtureConfig, generatedModule } from "./codegen-helpers.js";
 
-const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/typescript/bin/tsc", import.meta.url));
+const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/@typescript/native/bin/tsc", import.meta.url));
 const CODEGEN_ENTRY = new URL("../../../codegen/dist/index.js", import.meta.url).href;
 const TYPECHECK_ARGS = [
     "--no-addons", TYPESCRIPT_CLI, "--noEmit", "--strict", "--skipLibCheck", "false",

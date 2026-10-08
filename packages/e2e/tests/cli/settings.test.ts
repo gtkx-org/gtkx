@@ -8,7 +8,7 @@ import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.
 import { isolateTypeConsumer } from "./type-consumer.js";
 
 const CONFIG = 'export default { applicationId: "org.gtkx.settingsaudit", codegen: false };';
-const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/typescript/bin/tsc", import.meta.url));
+const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/@typescript/native/bin/tsc", import.meta.url));
 const ENV_FILE = "node_modules/.gtkx/env.d.ts";
 const SCHEMA_FILE = "data/settings.gschema.xml";
 const VALID_SCHEMA = `<schemalist><schema id="org.gtkx.Settings">

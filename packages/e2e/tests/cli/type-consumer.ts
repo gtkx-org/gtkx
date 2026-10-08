@@ -7,7 +7,7 @@ import ts from "typescript";
 import { type CliProject, TSX_LOADER } from "./cli-project.js";
 
 const WORKSPACE = fileURLToPath(new URL("../../../..", import.meta.url));
-const TYPESCRIPT_CLI = join(WORKSPACE, "node_modules/typescript/bin/tsc");
+const TYPESCRIPT_CLI = join(WORKSPACE, "node_modules/@typescript/native/bin/tsc");
 const PACKAGES = ["cairo", "components", "config", "css", "forms", "native", "react", "runtime", "utils"];
 const TYPECHECK_OPTIONS = [
     "--noEmit",

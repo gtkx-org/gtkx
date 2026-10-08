@@ -1,0 +1,344 @@
+{
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "plugins": [],
+    "categories": {
+        "correctness": "off"
+    },
+    "options": {
+        "typeAware": true
+    },
+    "env": {
+        "builtin": true
+    },
+    "ignorePatterns": [
+        ".codescythe-*/**",
+        "**/*.vue",
+        "tutorial/**"
+    ],
+    "overrides": [
+        {
+            "files": [
+                "**/*.{ts,tsx,mts,cts}"
+            ],
+            "rules": {
+                "constructor-super": "off",
+                "for-direction": "error",
+                "getter-return": "off",
+                "no-async-promise-executor": "error",
+                "no-case-declarations": "error",
+                "no-class-assign": "off",
+                "no-compare-neg-zero": "error",
+                "no-cond-assign": "error",
+                "no-const-assign": "off",
+                "no-constant-binary-expression": "error",
+                "no-constant-condition": "error",
+                "no-control-regex": "error",
+                "no-debugger": "error",
+                "no-delete-var": "error",
+                "no-dupe-class-members": "off",
+                "no-dupe-else-if": "error",
+                "no-dupe-keys": "off",
+                "no-duplicate-case": "error",
+                "no-empty": "error",
+                "no-empty-character-class": "error",
+                "no-empty-pattern": "error",
+                "no-empty-static-block": "error",
+                "no-ex-assign": "error",
+                "no-extra-boolean-cast": "error",
+                "no-fallthrough": "error",
+                "no-func-assign": "off",
+                "no-global-assign": "error",
+                "no-import-assign": "off",
+                "no-invalid-regexp": "error",
+                "no-irregular-whitespace": "error",
+                "no-loss-of-precision": "error",
+                "no-misleading-character-class": "error",
+                "no-new-native-nonconstructor": "off",
+                "no-nonoctal-decimal-escape": "error",
+                "no-obj-calls": "off",
+                "no-prototype-builtins": "error",
+                "no-redeclare": "off",
+                "no-regex-spaces": "error",
+                "no-self-assign": "error",
+                "no-setter-return": "off",
+                "no-shadow-restricted-names": "error",
+                "no-sparse-arrays": "error",
+                "no-this-before-super": "off",
+                "no-unassigned-vars": "error",
+                "no-undef": "off",
+                "no-unexpected-multiline": "error",
+                "no-unreachable": "off",
+                "no-unsafe-finally": "error",
+                "no-unsafe-negation": "off",
+                "no-unsafe-optional-chaining": "error",
+                "no-unused-labels": "error",
+                "no-unused-private-class-members": "error",
+                "no-unused-vars": "error",
+                "no-useless-assignment": "error",
+                "no-useless-backreference": "error",
+                "no-useless-catch": "error",
+                "no-useless-escape": "error",
+                "no-with": "off",
+                "preserve-caught-error": "error",
+                "require-yield": "error",
+                "use-isnan": "error",
+                "valid-typeof": "error",
+                "no-array-constructor": "error",
+                "no-implied-eval": "off",
+                "no-unused-expressions": "error",
+                "no-throw-literal": "off",
+                "prefer-promise-reject-errors": "off",
+                "require-await": "off",
+                "typescript/await-thenable": "error",
+                "typescript/ban-ts-comment": "error",
+                "typescript/no-array-delete": "error",
+                "typescript/no-base-to-string": "error",
+                "typescript/no-duplicate-enum-values": "error",
+                "typescript/no-duplicate-type-constituents": "error",
+                "typescript/no-empty-object-type": [
+                    "error",
+                    {
+                        "allowInterfaces": "with-single-extends"
+                    }
+                ],
+                "typescript/no-explicit-any": "error",
+                "typescript/no-extra-non-null-assertion": "error",
+                "typescript/no-floating-promises": "error",
+                "typescript/no-for-in-array": "error",
+                "typescript/no-implied-eval": "error",
+                "typescript/no-misused-new": "error",
+                "typescript/no-misused-promises": "error",
+                "typescript/no-namespace": "error",
+                "typescript/no-non-null-asserted-optional-chain": "error",
+                "typescript/no-redundant-type-constituents": "error",
+                "typescript/no-require-imports": "error",
+                "typescript/no-this-alias": "error",
+                "typescript/no-unnecessary-type-assertion": "error",
+                "typescript/no-unnecessary-type-constraint": "error",
+                "typescript/no-unsafe-argument": "error",
+                "typescript/no-unsafe-assignment": "error",
+                "typescript/no-unsafe-call": "error",
+                "typescript/no-unsafe-declaration-merging": "error",
+                "typescript/no-unsafe-enum-comparison": "error",
+                "typescript/no-unsafe-function-type": "error",
+                "typescript/no-unsafe-member-access": "error",
+                "typescript/no-unsafe-return": "error",
+                "typescript/no-unsafe-unary-minus": "error",
+                "typescript/no-wrapper-object-types": "error",
+                "typescript/only-throw-error": "error",
+                "typescript/prefer-as-const": "error",
+                "typescript/prefer-namespace-keyword": "error",
+                "typescript/prefer-promise-reject-errors": "error",
+                "typescript/require-await": "error",
+                "typescript/restrict-plus-operands": "error",
+                "typescript/restrict-template-expressions": "error",
+                "typescript/triple-slash-reference": "error",
+                "typescript/unbound-method": "error",
+                "no-var": "error",
+                "prefer-const": "error",
+                "prefer-rest-params": "error",
+                "prefer-spread": "error"
+            },
+            "plugins": [
+                "typescript"
+            ]
+        },
+        {
+            "files": [
+                "**/gtkx-env.d.ts"
+            ],
+            "rules": {
+                "typescript/triple-slash-reference": "off"
+            },
+            "plugins": [
+                "typescript"
+            ]
+        },
+        {
+            "files": [
+                "packages/runtime/src/**/*.ts"
+            ],
+            "rules": {
+                "no-restricted-imports": [
+                    "error",
+                    {
+                        "patterns": [
+                            {
+                                "group": [
+                                    "@gtkx/gi",
+                                    "@gtkx/gi/*",
+                                    "@gtkx/jsx",
+                                    "@gtkx/jsx/*"
+                                ],
+                                "message": "Keep generated-binding behavior in the TypeScript override modules."
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "files": [
+                "**/*.{js,jsx,mjs,cjs}"
+            ],
+            "rules": {
+                "constructor-super": "error",
+                "for-direction": "error",
+                "getter-return": "error",
+                "no-async-promise-executor": "error",
+                "no-case-declarations": "error",
+                "no-class-assign": "error",
+                "no-compare-neg-zero": "error",
+                "no-cond-assign": "error",
+                "no-const-assign": "error",
+                "no-constant-binary-expression": "error",
+                "no-constant-condition": "error",
+                "no-control-regex": "error",
+                "no-debugger": "error",
+                "no-delete-var": "error",
+                "no-dupe-class-members": "error",
+                "no-dupe-else-if": "error",
+                "no-dupe-keys": "error",
+                "no-duplicate-case": "error",
+                "no-empty": "error",
+                "no-empty-character-class": "error",
+                "no-empty-pattern": "error",
+                "no-empty-static-block": "error",
+                "no-ex-assign": "error",
+                "no-extra-boolean-cast": "error",
+                "no-fallthrough": "error",
+                "no-func-assign": "error",
+                "no-global-assign": "error",
+                "no-import-assign": "error",
+                "no-invalid-regexp": "error",
+                "no-irregular-whitespace": "error",
+                "no-loss-of-precision": "error",
+                "no-misleading-character-class": "error",
+                "no-new-native-nonconstructor": "error",
+                "no-nonoctal-decimal-escape": "error",
+                "no-obj-calls": "error",
+                "no-prototype-builtins": "error",
+                "no-redeclare": "error",
+                "no-regex-spaces": "error",
+                "no-self-assign": "error",
+                "no-setter-return": "error",
+                "no-shadow-restricted-names": "error",
+                "no-sparse-arrays": "error",
+                "no-this-before-super": "error",
+                "no-unassigned-vars": "error",
+                "no-undef": "error",
+                "no-unexpected-multiline": "error",
+                "no-unreachable": "error",
+                "no-unsafe-finally": "error",
+                "no-unsafe-negation": "error",
+                "no-unsafe-optional-chaining": "error",
+                "no-unused-labels": "error",
+                "no-unused-private-class-members": "error",
+                "no-unused-vars": "error",
+                "no-useless-assignment": "error",
+                "no-useless-backreference": "error",
+                "no-useless-catch": "error",
+                "no-useless-escape": "error",
+                "no-with": "error",
+                "preserve-caught-error": "error",
+                "require-yield": "error",
+                "use-isnan": "error",
+                "valid-typeof": "error"
+            },
+            "env": {
+                "node": true
+            }
+        },
+        {
+            "files": [
+                "**/*.{ts,tsx,js,jsx}"
+            ],
+            "rules": {
+                "react/rules-of-hooks": "error",
+                "react/exhaustive-deps": "warn",
+                "react/static-components": "error",
+                "react/use-memo": "error",
+                "react/preserve-manual-memoization": "error",
+                "react/incompatible-library": "warn",
+                "react/immutability": "error",
+                "react/globals": "error",
+                "react/refs": "error",
+                "react/set-state-in-effect": "error",
+                "react/error-boundaries": "error",
+                "react/purity": "error",
+                "react/set-state-in-render": "error",
+                "react/unsupported-syntax": "warn"
+            },
+            "plugins": [
+                "react"
+            ]
+        },
+        {
+            "files": [
+                "**/tests/**/*.{ts,tsx}",
+                "**/*.{test,spec,bench}.{ts,tsx}"
+            ],
+            "rules": {
+                "vitest/expect-expect": [
+                    "error",
+                    {
+                        "assertFunctionNames": [
+                            "expect",
+                            "assert",
+                            "expect*"
+                        ]
+                    }
+                ],
+                "vitest/no-commented-out-tests": "error",
+                "vitest/no-conditional-expect": "error",
+                "vitest/no-disabled-tests": "warn",
+                "vitest/no-focused-tests": "error",
+                "vitest/no-identical-title": "error",
+                "vitest/no-import-node-test": "error",
+                "vitest/no-interpolation-in-snapshots": "error",
+                "vitest/no-mocks-import": "error",
+                "vitest/no-standalone-expect": "error",
+                "vitest/no-unneeded-async-expect-function": "error",
+                "vitest/prefer-called-exactly-once-with": "error",
+                "vitest/require-local-test-context-for-concurrent-snapshots": "error",
+                "vitest/valid-describe-callback": "error",
+                "vitest/valid-expect": "error",
+                "vitest/valid-expect-in-promise": "error",
+                "vitest/valid-title": "error",
+                "no-empty-pattern": [
+                    "error",
+                    {
+                        "allowObjectPatternsAsParameters": true
+                    }
+                ],
+                "typescript/unbound-method": "off"
+            },
+            "plugins": [
+                "vitest",
+                "typescript"
+            ]
+        },
+        {
+            "files": [
+                "packages/react/src/components/controlled.tsx"
+            ],
+            "rules": {
+                "react/refs": "off"
+            },
+            "plugins": [
+                "react"
+            ]
+        },
+        {
+            "files": [
+                "packages/e2e/tests/react/layout-effects.test.tsx"
+            ],
+            "rules": {
+                "react/set-state-in-effect": "off"
+            },
+            "plugins": [
+                "react"
+            ]
+        }
+    ]
+}

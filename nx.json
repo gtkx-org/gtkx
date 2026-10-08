@@ -30,7 +30,10 @@
             },
             "{workspaceRoot}/.github/actions/setup-ci/**/*",
             "{workspaceRoot}/scripts/ci/**/*",
-            "{workspaceRoot}/.nx/workflows/**/*"
+            "{workspaceRoot}/.nx/workflows/**/*",
+            {
+                "runtime": "node scripts/ci/run.mjs 'tsc --version'"
+            }
         ],
         "nativeEnvironment": [
             "{workspaceRoot}/scripts/cache-environment.ts",
@@ -69,9 +72,19 @@
             ]
         },
         {
-            "plugin": "./scripts/ci/eslint-plugin.mjs",
+            "plugin": "./scripts/ci/oxlint-plugin.mjs",
             "options": {
                 "targetName": "lint"
+            },
+            "exclude": [
+                "packages/e2e/tests/cli/fixtures/**",
+                "tutorial/**"
+            ]
+        },
+        {
+            "plugin": "./scripts/ci/eslint-plugin.mjs",
+            "options": {
+                "targetName": "_lint:eslint"
             },
             "exclude": [
                 "packages/e2e/tests/cli/fixtures/**",
@@ -129,8 +142,21 @@
         ],
         "lint": {
             "dependsOn": [
+                "^build",
                 "gtkx:_build:bindings",
-                "@gtkx/gl:codegen"
+                "@gtkx/gl:codegen",
+                "_lint:eslint"
+            ],
+            "inputs": [
+                "...",
+                "default",
+                "^production",
+                "sharedGlobals",
+                "{workspaceRoot}/pnpm-lock.yaml",
+                {
+                    "dependentTasksOutputFiles": "**/*.{d.ts,d.mts}",
+                    "transitive": true
+                }
             ]
         },
         "test": {
@@ -198,6 +224,24 @@
                 }
             ],
             "cache": true
+        },
+        "_lint:eslint": {
+            "dependsOn": [
+                "^build",
+                "gtkx:_build:bindings",
+                "@gtkx/gl:codegen"
+            ],
+            "inputs": [
+                "...",
+                "default",
+                "^production",
+                "sharedGlobals",
+                "{workspaceRoot}/pnpm-lock.yaml",
+                {
+                    "dependentTasksOutputFiles": "**/*.{d.ts,d.mts}",
+                    "transitive": true
+                }
+            ]
         }
     },
     "release": {

@@ -146,7 +146,7 @@ pnpm typecheck
 pnpm lint
 ```
 
-These root commands invoke `nx run-many -t <target>`. `pnpm lint` includes ESLint, Codescythe, workflow checks, container execution checks, rustfmt, and Clippy, then runs the uncached cargo-audit target. CI exposes five checks: tests, build, typecheck, lint, and e2e. Pull requests, pushes, and merge queues run affected Nx targets; manually dispatching CI runs the complete groups. Typechecking remains a separate task in the combined distributed graph.
+These root commands invoke `nx run-many -t <target>`. `pnpm lint` includes Oxlint, scoped ESLint compatibility checks, Oxfmt, Codescythe, workflow checks, container execution checks, rustfmt, and Clippy, then runs the uncached cargo-audit target. CI exposes five checks: tests, build, typecheck, lint, and e2e. Pull requests, pushes, and merge queues run affected Nx targets; manually dispatching CI runs the complete groups. Typechecking remains a separate task in the combined distributed graph.
 
 Nx discovers one `e2e-ci--<test-file>` target per CLI E2E file and schedules these through the aggregate `@gtkx/e2e:e2e-ci` target. Each file declares its build and generated binding prerequisites. This lets Nx schedule and cache files independently. `pnpm e2e` still runs the complete CLI group locally; use Vitest file filters for a focused run. Acceptance tests create their registry once in a separate run.
 

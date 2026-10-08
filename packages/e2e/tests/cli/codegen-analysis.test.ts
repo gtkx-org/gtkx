@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCliOrThrow } from "./cli-project.js";
 import { fixtureConfig } from "./codegen-helpers.js";
 
-const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/typescript/bin/tsc", import.meta.url));
+const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/@typescript/native/bin/tsc", import.meta.url));
 const CONSUMERS = {
     "callbacks.ts": `import type { Base, Derived, Leaf } from "@gtkx/gi/outputshapes";
 export const visitBase = (value: Base): void => value.visit((item) => item + 1);

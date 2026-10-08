@@ -17,7 +17,7 @@ import { isolateTypeConsumer } from "./type-consumer.js";
 type PackageManifest = { name: string; files: string[]; dependencies: Record<string, string> };
 
 const FIXTURE = fileURLToPath(new URL("fixtures/configured-props/@audit", import.meta.url));
-const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/typescript/bin/tsc", import.meta.url));
+const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/@typescript/native/bin/tsc", import.meta.url));
 const VITEST_PACKAGE = dirname(fileURLToPath(import.meta.resolve("vitest/package.json")));
 const COPIED_PACKAGES: Set<string> = new Set(["@gtkx/cli", "@gtkx/codegen"]);
 const BASE_DECLARATION = "export interface SharedProps<T> { auditReplacement: T; }\n";

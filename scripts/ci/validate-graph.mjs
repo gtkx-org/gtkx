@@ -12,6 +12,11 @@ for (const [id, task] of Object.entries(tasks.tasks)) {
     assert.equal(target.cache, true, `${id} must be cacheable for Nx Agents`);
     targets.add(task.target.target);
 
+    if (task.target.target === "lint" && graph.nodes[task.target.project].data.targets["_lint:eslint"] !== undefined) {
+        assert.ok(tasks.dependencies[id].includes(`${task.target.project}:_lint:eslint`),
+            `${id} must preserve the ESLint compatibility checks`);
+    }
+
     if (target.executor !== "nx:noop") {
         assert.equal(target.executor, "nx:run-commands", `${id} needs an explicit container command`);
         const commands = target.options.commands ?? [target.options.command];

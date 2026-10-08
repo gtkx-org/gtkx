@@ -3,7 +3,10 @@
     "name": "@gtkx/vitest",
     "targets": {
         "lint": {
-            "dependsOn": []
+            "dependsOn": [
+                "^build",
+                "_lint:eslint"
+            ]
         },
         "build": {
             "dependsOn": [

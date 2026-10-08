@@ -61,6 +61,12 @@
                 "...",
                 "codegen"
             ]
+        },
+        "_lint:eslint": {
+            "dependsOn": [
+                "...",
+                "codegen"
+            ]
         }
     }
 }

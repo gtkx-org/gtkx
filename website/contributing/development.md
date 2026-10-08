@@ -13,6 +13,8 @@ Use Linux with Node.js 26.7 or later. The repository's `package.json` pins pnpm 
 
 Distributed CI pins Node.js 26.8.2 in its workflow, agent setup, and workload Dockerfile. Publishing and published-consumer workflows read `engines.node` from the root `package.json` to select a compatible version.
 
+Workspace `tsc` commands use the native TypeScript 7 compiler through the `@typescript/native` dependency alias. The `typescript` catalog entry aliases the TypeScript 6 compatibility package so code generation, Vue tooling, and batched semantic tests retain the stable compiler API. Use `pnpm exec tsc --version` to check the native compiler and `pnpm exec tsc6 --version` for the compatibility compiler. Application templates and the tutorial declare their own TypeScript dependency.
+
 Install Rust through rustup so `rust-toolchain.toml` selects the pinned compiler and Clippy. Native formatting and sanitizers use a separate nightly; its installation command is under [Change native code](#change-native-code).
 
 Full linting also requires Go 1.26 or later, ShellCheck on `PATH`, and the pinned Rust advisory checker:
@@ -79,11 +81,17 @@ pnpm nx show projects
 pnpm nx show project @gtkx/react
 ```
 
+Use `pnpm format` to apply Oxfmt to hand-written JavaScript, TypeScript, Vue, styles, configuration, and Markdown files. `pnpm format:check` checks the same files without rewriting them and also runs as part of `pnpm lint`. To format only files changed from `main`, run `pnpm nx format:write --base=origin/main`; Nx detects the root `.oxfmtrc.json` configuration.
+
+The formatter preserves import and package manifest ordering. Generated outputs, test fixtures, changelogs, and generated agent instructions are excluded. Embedded code formatting is disabled so tutorial code fences and their patches remain unchanged. Rust formatting uses the pinned nightly rustfmt described below.
+
 CI uses Nx's affected graph to select checks. Pull requests compare against their merge base, pushes against the last successful run on `main`, and merge queues against the previous merge-group commit. CI also selects native sanitizers from their task inputs and published-consumer acceptance from relevant file changes; their results contribute to the required `tests` and `e2e` checks. A manual CI run checks the complete workspace, including both validations. Locally, the root commands above still run every matching target; use a package target for focused iteration.
 
 Nx Cloud distributes build, test, typecheck, lint, and per-file CLI E2E tasks across two to four agents. Each agent runs at most two Nx tasks, and each Vitest task uses at most two workers. `.nx/workflows/distribution-config.yaml` controls agent counts; `.nx/workflows/agents.yaml` defines their setup. Required GitHub checks remain `tests`, `build`, `typecheck`, `lint`, and `e2e`.
 
 The standard Nx agent image hosts Docker; actual GTKX commands execute inside the Ubuntu 26.04 image defined in `scripts/ci/Dockerfile`. This requires Nx dedicated compute with Docker enabled. Docker layer caching uses `NX_DOCKER_CACHE_REGISTRY` when the add-on is enabled. Dependency downloads and Cargo compilation outputs use separate agent caches. The coordinator builds the same workload image using GitHub's Docker cache. Initialization compares native and runtime fingerprints and fails if the two environments differ; rebuild both image caches after changing system dependencies.
+
+Typed Oxlint and scoped ESLint checks depend on built package declarations. Their cache inputs include dependent declarations and the lockfile; the shared compiler-version input also invalidates tasks when the native TypeScript compiler changes.
 
 Nx plugin adapters and explicit project commands call `scripts/ci/run.mjs`. With `GTKX_CI_CONTAINER` set, it runs the command inside the named container with the same workspace path, user identity, and declared task environment. Local commands run directly. New CI targets must use this wrapper and declare complete cache outputs. CI validates the resolved task graph before starting agents; reproduce that check with:
 

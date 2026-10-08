@@ -3,7 +3,10 @@
     "name": "@gtkx/utils",
     "targets": {
         "lint": {
-            "dependsOn": []
+            "dependsOn": [
+                "^build",
+                "_lint:eslint"
+            ]
         },
         "build": {
             "dependsOn": [

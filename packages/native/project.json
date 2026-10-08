@@ -76,8 +76,10 @@
         },
         "lint": {
             "dependsOn": [
+                "^build",
                 "build",
-                "_lint:rust"
+                "_lint:rust",
+                "_lint:eslint"
             ]
         },
         "test-asan": {
@@ -116,6 +118,12 @@
         "typecheck": {
             "dependsOn": [
                 "...",
+                "build"
+            ]
+        },
+        "_lint:eslint": {
+            "dependsOn": [
+                "^build",
                 "build"
             ]
         }

@@ -22,7 +22,7 @@ import { describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow, startCli, TSX_LOADER } from "./cli-project.js";
 import { fixtureLibrariesConfig } from "./codegen-helpers.js";
 
-const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/typescript/bin/tsc", import.meta.url));
+const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/@typescript/native/bin/tsc", import.meta.url));
 const CODEGEN_ENTRY = new URL("../../../codegen/dist/index.js", import.meta.url).href;
 const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
 const COMMON_PROBE = `import type * as Gtk from "@gtkx/gi/gtk";

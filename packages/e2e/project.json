@@ -178,6 +178,13 @@
                 }
             ],
             "outputs": []
+        },
+        "_lint:eslint": {
+            "dependsOn": [
+                "...",
+                "codegen",
+                "_test:fixtures"
+            ]
         }
     }
 }

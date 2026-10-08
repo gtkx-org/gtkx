@@ -21,6 +21,8 @@ pnpm typecheck
 
 `pnpm build` emits JavaScript and declarations without full TypeScript checking. Run `pnpm typecheck` to check package, example, and workspace types; CI runs it as a separate check.
 
+Run `pnpm format` to format hand-written files with Oxfmt, or `pnpm nx format:write --base=origin/main` to format changed files. `pnpm format:check` checks formatting without changing files, and `pnpm lint` includes that check. Generated outputs, test fixtures, changelogs, and generated agent instructions are excluded; Markdown code fences remain unchanged because tutorial checkpoints use them as source files and patches. Rust source remains checked by rustfmt.
+
 Use `pnpm exec nx affected -t build,test,typecheck,lint --base=origin/main` to check changed projects and their dependents locally. CI compares pull requests to their merge base and pushes to the last successful main-branch run; manually dispatch CI to check the complete workspace.
 
 Run `pnpm e2e` for CLI and MCP checks, `pnpm test:asan` for native memory safety, and `pnpm benchmark` for query performance. Published consumer and tutorial validation is available through `pnpm acceptance`. CI selects ASAN from its task inputs and published consumers from changes to tutorial, packaging, and release files; their failures block the existing `tests` and `e2e` checks. Both validations can also be dispatched separately; release publication validates the staged native artifacts through installed consumers.

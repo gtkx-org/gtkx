@@ -21,7 +21,7 @@ const GENERATED_ENV = join("node_modules", ".gtkx", "env.d.ts");
 const GENERATED_I18N_TYPES = join("node_modules", ".gtkx", "i18n.d.ts");
 const GENERATED_I18N_RESOURCES = join("node_modules", ".gtkx", "i18n-resources.d.ts");
 const GENERATED_EN_MESSAGES = join("node_modules", ".gtkx", "i18n", "en", "translation.json");
-const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/typescript/bin/tsc", import.meta.url));
+const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/@typescript/native/bin/tsc", import.meta.url));
 const ENTRY = join("src", "index.ts");
 const RUN_TIMEOUT = 60_000;
 

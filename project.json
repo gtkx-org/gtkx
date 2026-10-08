@@ -74,20 +74,23 @@
             ]
         },
         "lint": {
-            "command": "node scripts/ci/run.mjs 'eslint . --ignore-pattern packages --ignore-pattern examples --ignore-pattern tutorial --ignore-pattern website'",
+            "command": "node scripts/ci/run.mjs 'oxlint . --ignore-pattern packages --ignore-pattern examples --ignore-pattern tutorial --ignore-pattern website'",
             "cache": true,
             "dependsOn": [
                 "build",
                 "_lint:codescythe",
                 "_lint:workflows",
-                "_lint:ci"
+                "_lint:ci",
+                "_lint:format"
             ],
             "inputs": [
                 "default",
                 "^default",
                 "{workspaceRoot}/packages/native/.gitignore",
                 "{workspaceRoot}/website/.gitignore",
-                "{workspaceRoot}/scripts/ci/**/*"
+                "{workspaceRoot}/scripts/ci/**/*",
+                "{workspaceRoot}/.oxlintrc.json",
+                "{workspaceRoot}/pnpm-lock.yaml"
             ]
         },
         "build": {
@@ -183,6 +186,19 @@
                 "default",
                 "^default",
                 "{workspaceRoot}/scripts/ci/**/*"
+            ],
+            "outputs": []
+        },
+        "_lint:format": {
+            "command": "node scripts/ci/run.mjs 'oxfmt --check .'",
+            "cache": true,
+            "inputs": [
+                "{workspaceRoot}/**/*",
+                {
+                    "externalDependencies": [
+                        "oxfmt"
+                    ]
+                }
             ],
             "outputs": []
         }

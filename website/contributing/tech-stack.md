@@ -11,7 +11,7 @@ This page maps the technologies and packages on `main`. The [architecture overvi
 
 | Technology | Role in GTKX |
 | --- | --- |
-| TypeScript 6 | Implements the React renderer, generated bindings, runtime wrappers, CLI, testing tools, and higher-level packages. |
+| TypeScript 7 | Native compiler for workspace builds, typechecking, and CLI declaration consumers. TypeScript 6 supplies the stable compiler API used by code generation and other tooling. |
 | React 19 | Supplies components, hooks, state, context, and scheduling. `react-reconciler` connects React commits to GTKX's native element tree. |
 | Node.js 26.7 or later | Runs application JavaScript, loads the native addon, and provides the Node APIs used by applications and tooling. |
 | Rust, edition 2024 | Implements the native bridge, native value conversion, object lifetime handling, callbacks, and integration with the GLib main context. |
@@ -81,13 +81,13 @@ All paths below are relative to the repository root. Package names normally matc
 
 ## Build and development tools
 
-pnpm manages the workspace and its shared dependency catalog. Nx discovers TypeScript, ESLint, and Vitest targets, combines them with explicit package targets, orders their dependencies, and caches eligible results. `pnpm build`, `pnpm test`, `pnpm lint`, and `pnpm typecheck` are entry points into that task graph.
+pnpm manages the workspace and its shared dependency catalog. Nx discovers TypeScript, Oxlint, scoped ESLint, and Vitest targets, combines them with explicit package targets, orders their dependencies, and caches eligible results. `pnpm build`, `pnpm test`, `pnpm lint`, and `pnpm typecheck` are entry points into that task graph.
 
 The CLI uses Vite for application development and bundling. Its plugin stack integrates generated bindings, native assets, styles, settings, localization, and the application runtime. SWC transforms TypeScript and JSX for Fast Refresh during development; the React Compiler runs through Babel, and React Fast Refresh updates components in a running development session.
 
 Vitest runs the JavaScript test suites. GTKX's plugin gives workers real headless Wayland displays, while the testing package works with native widgets and accessibility information. Native integration fixtures are built with Meson and Ninja. The native sanitizer target uses AddressSanitizer and LeakSanitizer.
 
-ESLint uses standard configurations for TypeScript, JavaScript, React Hooks, Vitest, and Vue from the root `eslint.config.ts`. Codescythe checks unused files and exports, and Rust uses rustfmt and Clippy. Shared target defaults are declared in [nx.json](https://github.com/gtkx-org/gtkx/blob/main/nx.json), project targets and overrides in `project.json`, and package scripts in `package.json`.
+Oxlint runs the migrated JavaScript, typed TypeScript, React, and Vitest rules from `.oxlintrc.json`. The compiler and linter are pinned separately because Oxlint ships its own native type checker. ESLint retains Vue checks, the typed Vitest unbound-method rule, and two scoped React compatibility checks in `eslint.config.ts`. Oxfmt checks hand-written source and configuration formatting. Codescythe checks unused files and exports, and Rust uses rustfmt and Clippy. Shared target defaults are declared in [nx.json](https://github.com/gtkx-org/gtkx/blob/main/nx.json), project targets and overrides in `project.json`, and package scripts in `package.json`.
 
 ## Documentation, examples, and distribution
 
@@ -98,3 +98,5 @@ The website uses VitePress, Vue, and Shiki. Its prose lives under `website/`, an
 GitHub Actions runs checks, prepares releases, publishes packages, and deploys the website to GitHub Pages. Nx version plans record published-package changes. Consumer validation uses a private Verdaccio registry to test the packages produced by the repository. Application distribution through `gtkx deploy` supports Flatpak, Debian packages, RPM packages, and AppImage; see [Deploying](/v2/guide/deploying) for those application workflows.
 
 Continue with [Development Setup](/contributing/development) to build the workspace, or [Testing](/contributing/testing) to choose a verification path.
+
+The scoped React fallbacks preserve the existing checks where the native rules currently misclassify generic controlled-property reads and the intentional layout-effect regression. The TypeScript 6 compiler API remains in code generation and batched semantic tests; compiler commands and generated-consumer CLI checks use TypeScript 7.
