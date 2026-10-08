@@ -23,6 +23,16 @@ runs:
     - name: Install native dependencies
       shell: bash
       run: |
+        if [ "$(dpkg --print-architecture)" = amd64 ]; then
+          for source in /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list; do
+            if [ -f "$source" ]; then
+              sudo sed -i -E \
+                -e 's#mirror\+file:/etc/apt/apt-mirrors\.txt([[:space:]]|$)#https://archive.ubuntu.com/ubuntu/\1#g' \
+                -e 's#https?://azure\.archive\.ubuntu\.com/ubuntu/?([[:space:]]|$)#https://archive.ubuntu.com/ubuntu/\1#g' \
+                "$source"
+            fi
+          done
+        fi
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
           build-essential meson ninja-build gettext locales-all pkg-config shellcheck \
