@@ -93,6 +93,10 @@ RUN package_manager="$(node --input-type=module -e 'import { readFileSync } from
     npm install --global --cache /tmp/gtkx-npm-cache "$package_manager" && \
     rm -rf /tmp/gtkx-npm-cache
 
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends file && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY --chmod=755 scripts/ci/container-entrypoint.sh /usr/local/bin/gtkx-ci-entrypoint
 
 USER ${GTKX_UID}:${GTKX_GID}

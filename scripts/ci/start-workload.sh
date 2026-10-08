@@ -16,7 +16,12 @@ if [[ "${GTKX_CI_PREBUILT:-false}" != true ]]; then
     --tag "$GTKX_CI_CONTAINER:local" "$@" .
 fi
 
+# WebKit's Bubblewrap sandbox needs nested namespaces and its own /proc mount.
+# https://docs.docker.com/reference/cli/docker/container/run/#security-opt
 docker run --detach --name "$GTKX_CI_CONTAINER" --init --shm-size=2g \
+  --security-opt seccomp=unconfined \
+  --security-opt apparmor=unconfined \
+  --security-opt systempaths=unconfined \
   --mount "type=bind,source=$workspace,target=$workspace" \
   --mount "type=bind,source=$cache_root/pnpm-store,target=/home/gtkx/.pnpm-store" \
   --mount "type=bind,source=$cache_root/cargo-registry,target=/home/gtkx/.cargo/registry" \
@@ -24,6 +29,10 @@ docker run --detach --name "$GTKX_CI_CONTAINER" --init --shm-size=2g \
   --workdir "$workspace" \
   --env CI=true --env npm_config_store_dir=/home/gtkx/.pnpm-store \
   "$GTKX_CI_CONTAINER:local"
+
+docker exec "$GTKX_CI_CONTAINER" bwrap \
+  --unshare-user --unshare-pid --unshare-net --unshare-uts --unshare-ipc \
+  --ro-bind / / --proc /proc --dev /dev true
 
 docker exec "$GTKX_CI_CONTAINER" pnpm install --frozen-lockfile
 
