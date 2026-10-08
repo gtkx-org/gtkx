@@ -114,6 +114,8 @@ pnpm nx run gtkx:codegen
 
 Nx uses a private bootstrap target to generate bindings before building the CLI. The public `codegen` target runs the built CLI and also refreshes `.gtkx/reference`.
 
+`pnpm codegen` bypasses Nx task-result caching so explicit regeneration also refreshes the generated blocks in `AGENTS.md` and `CLAUDE.md`. These files can contain developer-owned instructions and are never restored from a shared cache. Dependency builds use cached binding and reference outputs during ordinary CI tasks.
+
 Each application example has its own configuration and codegen target. Its build and development targets refresh project declarations and reuse the workspace bindings. Generated bindings live in the root `node_modules/.gtkx`, with package links under `node_modules/@gtkx`; generated widget reference pages live in the root `.gtkx/reference`.
 
 Change the generator, configuration, or source metadata when correcting generated behavior, then regenerate. Editing a generated output alone will be lost on the next run. For widget work, read `.gtkx/reference/index.md` to find the available element props, signals, and methods. [Configuration and Codegen](/v2/guide/configuration-and-codegen) covers the application's view of these outputs.

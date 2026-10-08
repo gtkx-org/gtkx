@@ -56,6 +56,7 @@ const containerCommand = [
     ...forwardedVariables.filter((name) => process.env[name] !== undefined).flatMap((name) => ["--env", name]),
     container,
     "setsid",
+    "--wait",
     "sh",
     "-c",
     'pidFile=$1; shift; printf "%s\\n" "$$" > "$pidFile"; trap \'rm -f "$pidFile"\' EXIT; '

@@ -30,7 +30,7 @@ test("local task commands preserve quoted arguments and exit status", () => {
     assert.equal(run("exit 7").status, 7);
 });
 
-test("container tasks preserve arguments and cwd while forwarding only declared environment", (t) => {
+test("container tasks wait for process groups and preserve output, status, arguments and environment", (t) => {
     const directory = mkdtempSync(join(tmpdir(), "gtkx-container-boundary-"));
     t.after(() => rmSync(directory, { recursive: true, force: true }));
     const docker = join(directory, "docker");
@@ -49,7 +49,7 @@ while (args[0]?.startsWith("--")) {
     else process.exit(98);
 }
 if (args.shift() !== "gtkx-boundary-test") process.exit(97);
-const result = spawnSync(args.shift(), args, { cwd, env, stdio: "inherit" });
+const result = spawnSync(args.shift(), args, { cwd, env, stdio: "inherit", detached: true });
 if (result.error) throw result.error;
 if (result.signal) process.kill(process.pid, result.signal);
 process.exit(result.status ?? 1);
@@ -58,9 +58,9 @@ process.exit(result.status ?? 1);
 
     const args = ["two words", "an'apostrophe", "$HOME", "; exit 9"];
     const result = run(
-        "node -e 'console.log(JSON.stringify({args:process.argv.slice(1),cwd:process.cwd(),path:process.env.PATH,"
+        "node -e 'setTimeout(() => { console.log(JSON.stringify({args:process.argv.slice(1),cwd:process.cwd(),path:process.env.PATH,"
             + "ci:process.env.CI,workers:process.env.GTKX_MAX_WORKERS,container:process.env.GTKX_CI_CONTAINER,"
-            + "secret:process.env.GTKX_TEST_SECRET}))'",
+            + "secret:process.env.GTKX_TEST_SECRET})); process.exit(17); }, 50)'",
         args,
         {
             cwd: join(workspace, "packages/css"),
@@ -76,7 +76,7 @@ process.exit(result.status ?? 1);
         },
     );
 
-    assert.equal(result.status, 0, result.stderr);
+    assert.equal(result.status, 17, result.stderr);
     const output = JSON.parse(result.stdout);
     assert.deepEqual(output.args, args);
     assert.equal(output.cwd, join(workspace, "packages/css"));

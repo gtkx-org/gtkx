@@ -41,17 +41,21 @@ COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
 COPY --from=go /usr/local/go /usr/local/go
 
+ARG GTKX_UID=1001
+ARG GTKX_GID=1001
+
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
+    test "$GTKX_UID" -ge 1000 && test "$GTKX_GID" -ge 1000 && \
     if getent passwd ubuntu >/dev/null; then userdel --remove ubuntu; fi && \
     if getent group ubuntu >/dev/null; then groupdel ubuntu; fi && \
-    groupadd --gid 1001 gtkx && \
-    useradd --create-home --uid 1001 --gid gtkx --home-dir /home/gtkx --shell /bin/bash gtkx
+    groupadd --gid "$GTKX_GID" gtkx && \
+    useradd --create-home --uid "$GTKX_UID" --gid gtkx --home-dir /home/gtkx --shell /bin/bash gtkx
 
 COPY rust-toolchain.toml /opt/gtkx-toolchains/rust-toolchain.toml
 COPY packages/native/tools/rust-toolchain.toml /opt/gtkx-toolchains/native/rust-toolchain.toml
 
-USER 1001:1001
+USER ${GTKX_UID}:${GTKX_GID}
 WORKDIR /opt/gtkx-toolchains
 
 RUN case "$(dpkg --print-architecture)" in \
@@ -90,16 +94,6 @@ RUN package_manager="$(node --input-type=module -e 'import { readFileSync } from
     rm -rf /tmp/gtkx-npm-cache
 
 COPY --chmod=755 scripts/ci/container-entrypoint.sh /usr/local/bin/gtkx-ci-entrypoint
-
-ARG GTKX_UID=1001
-ARG GTKX_GID=1001
-
-RUN test "$GTKX_UID" -ge 1000 && test "$GTKX_GID" -ge 1000 && \
-    if [ "$GTKX_UID" != 1001 ] || [ "$GTKX_GID" != 1001 ]; then \
-        groupmod --gid "$GTKX_GID" gtkx && \
-        usermod --uid "$GTKX_UID" --gid gtkx gtkx && \
-        chown -R "$GTKX_UID:$GTKX_GID" /home/gtkx; \
-    fi
 
 USER ${GTKX_UID}:${GTKX_GID}
 ENTRYPOINT ["gtkx-ci-entrypoint"]

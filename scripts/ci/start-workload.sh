@@ -25,6 +25,10 @@ docker exec "$GTKX_CI_CONTAINER" pnpm install --frozen-lockfile
 
 for mode in runtime native; do
   fingerprint="$(node scripts/ci/run.mjs "node scripts/cache-environment.ts $mode")"
+  if [[ ! "$fingerprint" =~ ^[0-9a-f]{64}$ ]]; then
+    echo "The workload did not produce a valid $mode environment fingerprint." >&2
+    exit 1
+  fi
   expected_name="GTKX_CI_${mode^^}_HASH"
   if [[ -n "${!expected_name:-}" && "${!expected_name}" != "$fingerprint" ]]; then
     echo "The agent's $mode environment differs from the coordinator. Rebuild both image caches." >&2

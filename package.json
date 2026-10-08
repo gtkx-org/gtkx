@@ -10,7 +10,7 @@
         "acceptance": "nx run @gtkx/e2e:acceptance",
         "benchmark": "nx run @gtkx/e2e:benchmark",
         "build": "nx run-many -t build",
-        "codegen": "nx run-many -t codegen",
+        "codegen": "nx run-many -t codegen --skip-nx-cache",
         "lint": "nx run-many -t lint && nx run @gtkx/native:_lint:audit --no-agents",
         "plan": "nx release plan",
         "postinstall": "tsc -b --noCheck --force packages/vitest/tsconfig.lib.json && node scripts/link-bindings.ts",
