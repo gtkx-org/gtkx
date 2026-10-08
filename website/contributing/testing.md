@@ -139,11 +139,11 @@ pnpm typecheck
 pnpm lint
 ```
 
-These root commands are aliases for `nx run-many -t <target>`. `pnpm lint` includes ESLint, Codescythe, actionlint, ShellCheck, rustfmt, Clippy, and cargo-audit through the graph. CI exposes four checks: tests, build, lint, and e2e; the build check also runs typechecking.
+These root commands are aliases for `nx run-many -t <target>`. `pnpm lint` includes ESLint, Codescythe, actionlint, ShellCheck, rustfmt, Clippy, and cargo-audit through the graph. CI exposes five checks: tests, build, typecheck, lint, and e2e. Typechecking runs separately from the build.
 
 The e2e check combines eight Vitest shards on separate runners, each with its own registry setup. Reproduce one shard with `pnpm e2e -- --shard=1/8`; `pnpm e2e` still runs the complete suite locally.
 
-Run `pnpm nx run gtkx:_lint:workflows` to check workflows, tracked shell scripts, and composite action steps. The target feeds composite steps to actionlint as a temporary workflow, so composite diagnostics refer to the transformed YAML. See [Development Setup](/contributing/development#prerequisites) for the Go, ShellCheck, and cargo-audit prerequisites. `pnpm nx run @gtkx/native:_lint:audit` checks current RustSec advisories without caching the result.
+Run `pnpm nx run gtkx:_lint:workflows` to check workflows and composite action steps, including their inline shell commands. The target feeds composite steps to actionlint as a temporary workflow, so composite diagnostics refer to the transformed YAML. See [Development Setup](/contributing/development#prerequisites) for the Go, ShellCheck, and cargo-audit prerequisites. `pnpm nx run @gtkx/native:_lint:audit` checks current RustSec advisories without caching the result.
 
 Run `pnpm nx run gtkx:_lint:codescythe` to focus on unused source files and exports in packages, examples, and scripts. `codescythe.json` lists public library entrypoints, executable roots, and tests. Private package barrels and `internal` barrels remain subject to usage checks. Test imports count as usage; website Vue files, declaration files, and built launchers are outside this source check.
 

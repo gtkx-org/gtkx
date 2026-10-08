@@ -11,7 +11,7 @@ Build the workspace, run an example, then use focused Nx targets while making ch
 
 Use Linux with Node.js 26.7 or later. The repository's `package.json` pins pnpm through its `packageManager` field. If your runtimes are managed by mise, run the commands below through `mise exec --`, for example `mise exec -- pnpm install`.
 
-CI reads `.github/node-version` to run the minimum supported Node.js version, including the published-consumer tests.
+CI reads `engines.node` from the root `package.json` to select a compatible Node.js version, including for the published-consumer tests.
 
 Install Rust through rustup so `rust-toolchain.toml` selects the pinned compiler and Clippy. Native formatting and sanitizers use a separate nightly; its installation command is under [Change native code](#change-native-code).
 
