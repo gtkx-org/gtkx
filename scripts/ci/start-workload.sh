@@ -10,6 +10,33 @@ fi
 cache_root="$workspace/.nx/ci"
 mkdir -p "$cache_root/pnpm-store" "$cache_root/cargo-registry" "$cache_root/cargo-git"
 
+apparmor_profile=unconfined
+if [[ -r /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]] && \
+   [[ "$(</proc/sys/kernel/apparmor_restrict_unprivileged_userns)" == 1 ]]; then
+  # Ubuntu requires an explicit userns grant even for an otherwise unconfined workload.
+  # https://documentation.ubuntu.com/release-notes/24.04/
+  apparmor_profile=gtkx-ci
+  if ! command -v apparmor_parser >/dev/null; then
+    sudo --non-interactive apt-get update
+    sudo --non-interactive apt-get install --yes --no-install-recommends apparmor
+  fi
+  if ! sudo --non-interactive apparmor_parser --replace <<'PROFILE'
+abi <abi/4.0>,
+profile gtkx-ci flags=(unconfined) {
+  userns,
+}
+PROFILE
+  then
+    echo "Cannot load gtkx-ci on the Docker host; a compatible AppArmor parser and policy-loading privileges are required." >&2
+    exit 1
+  fi
+  if ! sudo --non-interactive grep --fixed-strings --line-regexp --quiet \
+    'gtkx-ci (unconfined)' /sys/kernel/security/apparmor/profiles; then
+    echo "The Docker host did not load the gtkx-ci AppArmor profile." >&2
+    exit 1
+  fi
+fi
+
 if [[ "${GTKX_CI_PREBUILT:-false}" != true ]]; then
   docker buildx build --load --file scripts/ci/Dockerfile \
     --build-arg "GTKX_UID=$(id -u)" --build-arg "GTKX_GID=$(id -g)" \
@@ -20,7 +47,7 @@ fi
 # https://docs.docker.com/reference/cli/docker/container/run/#security-opt
 docker run --detach --name "$GTKX_CI_CONTAINER" --init --shm-size=2g \
   --security-opt seccomp=unconfined \
-  --security-opt apparmor=unconfined \
+  --security-opt "apparmor=$apparmor_profile" \
   --security-opt systempaths=unconfined \
   --mount "type=bind,source=$workspace,target=$workspace" \
   --mount "type=bind,source=$cache_root/pnpm-store,target=/home/gtkx/.pnpm-store" \
