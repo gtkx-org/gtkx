@@ -176,6 +176,10 @@ jobs:
             node scripts/ci/run.mjs 'cargo audit --file packages/native/Cargo.lock --deny unsound'
           fi
 
+      - name: Run self-healing CI
+        if: always() && steps.workload.outcome == 'success' && steps.agents.outcome == 'success' && env.NX_CLOUD_ACCESS_TOKEN != ''
+        run: pnpm exec nx fix-ci
+
       - name: Complete Nx CI run
         if: always() && steps.workload.outcome == 'success' && steps.agents.outcome != 'skipped' && env.NX_CLOUD_ACCESS_TOKEN != ''
         timeout-minutes: 2
