@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { createStagingDir } from "./staging.js";
+import { transpileModules } from "./store/transpile.js";
 
 type ProjectFile = {
     fileName: string;
@@ -202,17 +203,20 @@ const originLines = (diagnosed: DiagnosedFile[], files: ProjectFile[]): string[]
         ([origin, generated]) => `Generated from ${origin}: ${[...generated].join(", ")}`,
     );
 
-const diagnosticError = (params: ProjectContext, diagnostics: ts.Diagnostic[]): Error => {
-    const diagnosed = projectDiagnosticFiles(diagnostics, params.projectDir);
-    const { label } = params;
-
-    if (diagnosed.length === 0) {
-        return new Error(`Compiling ${label} failed:\n${ts.formatDiagnostics(diagnostics, FORMAT_HOST).trim()}`);
-    }
-
+const diagnosedError = (params: ProjectContext, diagnosed: DiagnosedFile[]): Error => {
     const lines = [...diagnosed.map((entry) => entry.text), ...originLines(diagnosed, params.files)];
 
-    return new Error(`Compiling ${label} failed:\n${lines.join("\n")}`);
+    return new Error(`Compiling ${params.label} failed:\n${lines.join("\n")}`);
+};
+
+const diagnosticError = (params: ProjectContext, diagnostics: ts.Diagnostic[]): Error => {
+    const diagnosed = projectDiagnosticFiles(diagnostics, params.projectDir);
+
+    if (diagnosed.length === 0) {
+        return new Error(`Compiling ${params.label} failed:\n${ts.formatDiagnostics(diagnostics, FORMAT_HOST).trim()}`);
+    }
+
+    return diagnosedError(params, diagnosed);
 };
 
 const keepFailedProject = (input: FailedProjectInput): Error => {
@@ -358,6 +362,16 @@ const emitModule = (module: SourceModule, projectDir: string): ts.Diagnostic[] =
 };
 
 const emitModules = (params: EmitModulesParams): void => {
+    const diagnosed = transpileModules(params);
+
+    if (diagnosed !== undefined) {
+        if (diagnosed.length > 0) {
+            throw diagnosedError(params, diagnosed);
+        }
+
+        return;
+    }
+
     const diagnostics: ts.Diagnostic[] = [];
 
     for (const module of params.files) {
@@ -411,4 +425,4 @@ const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; la
     rmSync(keepAt, { recursive: true, force: true });
 };
 
-export { checkModules, emitModules, keepFailedProject, transpileDeclaration, type SourceModule };
+export { checkModules, emitModules, keepFailedProject, transpileDeclaration, type DiagnosedFile, type SourceModule };

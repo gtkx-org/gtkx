@@ -22,10 +22,12 @@ const generateConstant = (context: ModuleContext, constant: GirConstant): void =
 
     const doc = getDoc(constant);
     const name = sanitizeIdentifier(constant.name);
+    const literal = constantLiteral(context, constant);
+    const annotation = literal === "true" || literal === "false" ? `: ${literal}` : "";
 
     context.declare({
         name,
-        code: `${doc}export const ${name} = ${constantLiteral(context, constant)};`,
+        code: `${doc}export const ${name}${annotation} = ${literal};`,
     });
 };
 

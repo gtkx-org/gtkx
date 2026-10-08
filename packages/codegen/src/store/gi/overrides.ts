@@ -60,10 +60,12 @@ const renderOverrideImports = (directory: string): string[] =>
         .map((override) => `import ${overrideImportPath(override)};`);
 
 const renderOverrideExports = (directory: string): string[] =>
-    namespaceOverrides(directory).map((override) => {
-        const exports = override.exports === "*" ? "*" : `{ ${override.exports.join(", ")} }`;
+    namespaceOverrides(directory)
+        .filter((override) => override.exports === "*" || override.exports.length > 0)
+        .map((override) => {
+            const exports = override.exports === "*" ? "*" : `{ ${override.exports.join(", ")} }`;
 
-        return `export ${exports} from ${overrideImportPath(override)};`;
-    });
+            return `export ${exports} from ${overrideImportPath(override)};`;
+        });
 
 export { namespaceOverrides, renderOverrideExports, renderOverrideImports };

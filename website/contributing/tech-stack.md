@@ -9,13 +9,14 @@ This page maps the technologies and packages on `main`. The [architecture overvi
 
 ## Languages and execution
 
-| Technology                      | Role in GTKX                                                                                                                                                                |
-| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| TypeScript 7                    | Native compiler for workspace builds, typechecking, and CLI declaration consumers. TypeScript 6 supplies the stable compiler API used by code generation and other tooling. |
-| React 19                        | Supplies components, hooks, state, context, and scheduling. `react-reconciler` connects React commits to GTKX's native element tree.                                        |
-| Node.js 26.7 or later           | Runs application JavaScript, loads the native addon, and provides the Node APIs used by applications and tooling.                                                           |
-| Rust, edition 2024              | Implements the native bridge, native value conversion, object lifetime handling, callbacks, and integration with the GLib main context.                                     |
-| C ABI and GObject Introspection | Describe the native functions, types, properties, signals, and ownership information that code generation translates into JavaScript and TypeScript.                        |
+| Technology                      | Role in GTKX                                                                                                                                                       |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| TypeScript 7                    | Native compiler for workspace builds, typechecking, and CLI declaration consumers. TypeScript 6 supplies compiler APIs for reference generation and other tooling. |
+| Oxc transformer                 | Emits generated GI and JSX store JavaScript and declarations.                                                                                                      |
+| React 19                        | Supplies components, hooks, state, context, and scheduling. `react-reconciler` connects React commits to GTKX's native element tree.                               |
+| Node.js 26.7 or later           | Runs application JavaScript, loads the native addon, and provides the Node APIs used by applications and tooling.                                                  |
+| Rust, edition 2024              | Implements the native bridge, native value conversion, object lifetime handling, callbacks, and integration with the GLib main context.                            |
+| C ABI and GObject Introspection | Describe the native functions, types, properties, signals, and ownership information that code generation translates into JavaScript and TypeScript.               |
 
 The framework workspace packages use ECMAScript modules and NodeNext module resolution. The website and generated compiler configuration use bundler resolution. The shared compiler configuration enables strict checking, exact optional properties, checked indexed access, and project references. Library builds emit JavaScript, declarations, and source maps into each package's `dist/` directory. Shared TypeScript path aliases let workspace tooling resolve package source during development, and package TypeScript configurations extend the shared base.
 
