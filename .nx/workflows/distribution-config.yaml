@@ -1,4 +1,4 @@
 distribute-on:
-  small-changeset: 2 gtkx-linux-large
+  small-changeset: 3 gtkx-linux-large
   medium-changeset: 3 gtkx-linux-large
   large-changeset: 4 gtkx-linux-large
