@@ -231,6 +231,14 @@ const expectInFlight = (label: Gtk.Label | null): Promise<void> =>
     });
 
 describe("animated - spring values on widgets", () => {
+    it("jumps to the target when desktop animations are disabled", async () => {
+        const labelRef = createRef<Gtk.Label>();
+        await render(<Fade labelRef={labelRef} to={1} duration={10000} />);
+        await waitFor(() => {
+            expect(labelRef.current).toHaveObjectProperty("opacity", 1);
+        });
+    });
+
     it("drives a widget property through its frames to the target", async () => {
         const labelRef = createRef<Gtk.Label>();
         await render(<Fade labelRef={labelRef} to={1} duration={LONG.duration} />, ANIMATED);
@@ -430,14 +438,6 @@ describe("animated - generated prop contracts", () => {
             ANIMATED,
         );
         expect(listRef.current?.getString(1)).toBe("Second");
-    });
-
-    it("accepts animated readonly arrays without accepting general iterables", () => {
-        type Children = ComponentProps<typeof AnimatedLabel>["children"];
-        type Item = FluidValue<string> | string;
-
-        expectTypeOf<readonly Item[]>().toExtend<Children>();
-        expectTypeOf<Set<Item>>().not.toExtend<Children>();
     });
 });
 

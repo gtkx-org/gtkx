@@ -50,7 +50,7 @@ function vfuncInputs(args: Arg[], descriptor: VfuncDescriptor): VfuncInput[] {
     const required = args
         .map((arg, descriptorIndex) => ({ arg, descriptorIndex }))
         .filter(({ arg }) => requiresInputArg(arg))
-        .slice(1);
+        .slice(descriptor.hasInstanceArg === false ? 0 : 1);
     const publicInputIndex = (descriptorIndex: number): number =>
         required.filter((input) => input.descriptorIndex < descriptorIndex && !sources.has(input.descriptorIndex))
             .length;
@@ -143,7 +143,9 @@ function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, call
         const nativeInputs = inputPlan.map((input) => marshalVfuncInput(input, inputs));
         pendingSeeds = SEEDED_SLOTS[label] ?? seedsFor(descriptor.argDescriptors, instance);
 
-        return shaped(getHandle(instance), ...nativeInputs);
+        return descriptor.hasInstanceArg === false
+            ? shaped(...nativeInputs)
+            : shaped(getHandle(instance), ...nativeInputs);
     };
 }
 

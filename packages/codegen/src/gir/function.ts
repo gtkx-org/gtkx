@@ -6,7 +6,7 @@ import { FUNCTIONS_MISSING_FINISH_FUNC } from "./finish-overrides.js";
 import { HIDDEN_SYMBOLS } from "./hidden-symbols.js";
 import { relaxMissingNullable } from "./nullable-overrides.js";
 import { type GirParameter, type GirReturnValue, parameterFromNode, parseCallable } from "./parameter.js";
-import { attr, getChild, type RawNode } from "./parse.js";
+import { attr, getChild, getChildren, intAttr, type RawNode } from "./parse.js";
 import { PARAMETER_TRANSFER_OVERRIDES, RETURN_TRANSFER_OVERRIDES } from "./transfer-overrides.js";
 import { RETURNS_MISSING_UCS4_ARRAY_TYPE } from "./ucs4-overrides.js";
 
@@ -130,6 +130,23 @@ const annotatedFinishFunc = (node: RawNode, cIdentifier: string | undefined): st
 const isHiddenSymbol = (cIdentifier: string | undefined): boolean =>
     cIdentifier !== undefined && HIDDEN_SYMBOLS.has(cIdentifier);
 
+/** Scanner-inferred output lengths can still be scalar C inputs for caller-allocated arrays. */
+const normalizeCallerArrayLengths = (fn: GirFunction, node: RawNode): void => {
+    const parameters = getChildren(getChild(node, "parameters"), "parameter");
+    for (const [index, raw] of parameters.entries()) {
+        if (fn.parameters[index]?.callerAllocates !== true) continue;
+        const length = intAttr(getChild(raw, "array") ?? {}, "length");
+        const capacity = length === undefined ? undefined : fn.parameters[length];
+        if (
+            capacity?.direction === "out" &&
+            capacity.cType !== undefined &&
+            !/\*|g(?:const)?pointer/.test(capacity.cType)
+        ) {
+            capacity.direction = "in";
+        }
+    }
+};
+
 const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => {
     const instanceNode = getChild(getChild(node, "parameters"), "instance-parameter");
     const callable = parseCallable(node, context);
@@ -151,6 +168,7 @@ const functionFromNode = (node: RawNode, context: ParseContext): GirFunction => 
         DECLARED_FUNCTION_NAMES.set(fn, declaredName);
     }
 
+    normalizeCallerArrayLengths(fn, node);
     relaxMissingNullable(fn, cIdentifier);
     const relaxed = applyParameterOverrides(applyReturnTransfer(fn));
 

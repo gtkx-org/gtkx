@@ -57,7 +57,9 @@ const hasGtypeInput = (descriptor: Descriptor): boolean =>
 
 const buildNativeArgTypes = (args: Arg[], canThrow: boolean): Descriptor[] => {
     const nativeArgTypes = args.map((argSpec) =>
-        argSpec.direction !== undefined && argSpec.isCallerAllocated !== true ? refT(argSpec.type) : argSpec.type,
+        argSpec.direction !== undefined && argSpec.isCallerAllocated !== true
+            ? refT(argSpec.type, argSpec.direction === "inout")
+            : argSpec.type,
     );
 
     if (canThrow) {
@@ -122,8 +124,21 @@ const buildNativeValue = (spec: ArgSpec, inputs: unknown[], seeds: RefSeeds | un
     return inputValueFor(spec, inputs);
 };
 
-const buildNativeValues = (plans: ArgSpec[], inputs: unknown[], seeds: RefSeeds | undefined): unknown[] =>
-    plans.map((plan) => buildNativeValue(plan, inputs, seeds));
+const buildNativeValues = (plans: ArgSpec[], inputs: unknown[], seeds: RefSeeds | undefined): unknown[] => {
+    const values = plans.map((plan) => buildNativeValue(plan, inputs, seeds));
+    for (const plan of plans) {
+        const type = plan.arg.type;
+        if (plan.isRef && type.kind === "array" && type.isCallerAllocated === true && type.arrayKind === "sized") {
+            const length = type.sizeParamIndex;
+            if (length === undefined) throw new TypeError("A caller-allocated array requires a capacity argument");
+            const capacity = values[length];
+            if (typeof capacity !== "number" && typeof capacity !== "bigint")
+                throw new TypeError("Array capacity must be an integer input");
+            (values[plan.index] as Ref).value = capacity;
+        }
+    }
+    return values;
+};
 
 const unpackValueHandle = (handle: ExternalObject<Handle> | null): unknown => {
     if (handle === null || getValueType(handle) === TYPE_INVALID) {
@@ -166,6 +181,8 @@ const KINDS_PASSED_AS_POINTER: ReadonlySet<Descriptor["kind"]> = new Set<Descrip
     "array",
     "boxed",
     "buffer",
+    "indirect",
+    "pointerValue",
     "callback",
     "fundamental",
     "hashtable",

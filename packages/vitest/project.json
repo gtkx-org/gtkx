@@ -2,6 +2,9 @@
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "name": "@gtkx/vitest",
     "targets": {
+        "test": {
+            "dependsOn": ["build", "^build", "gtkx:_build:bindings"]
+        },
         "lint": {
             "dependsOn": ["^build", "_lint:eslint"]
         },

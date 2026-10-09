@@ -22,15 +22,13 @@ impl ItemCodec {
             Codec::BigInt(kind) => Self::BigInt(*kind),
             Codec::Float(kind) => Self::Float(*kind),
             Codec::Bytes(_) => Self::Bytes,
+            Codec::Array(_) | Codec::Buffer(_) => Self::Pointer,
             Codec::Object(_) | Codec::Boxed(_) | Codec::Struct(_) | Codec::Fundamental(_) => {
                 unreachable!("handle-backed codecs are classified as pointers above")
             }
-            Codec::Void(_)
-            | Codec::Array(_)
-            | Codec::Buffer(_)
-            | Codec::HashTable(_)
-            | Codec::Callback(_)
-            | Codec::Ref(_) => return None,
+            Codec::Void(_) | Codec::HashTable(_) | Codec::Callback(_) | Codec::Ref(_) => {
+                return None;
+            }
         })
     }
 

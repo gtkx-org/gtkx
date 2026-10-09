@@ -1,9 +1,8 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
-import * as Regress from "@gtkx/gi/regress";
-import { expect, test } from "vitest";
-import { drainAfterEachTest } from "./helpers/memory.js";
 
-drainAfterEachTest();
+import * as Regress from "@gtkx/gi/regress";
+
+import { expect, test } from "vitest";
 
 const UTF8 = "const ♥ utf8";
 

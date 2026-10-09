@@ -65,5 +65,8 @@
         "oxc-parser": "0.153.0",
         "oxc-transform": "0.153.0",
         "typescript": "catalog:"
+    },
+    "devDependencies": {
+        "vitest": "catalog:"
     }
 }

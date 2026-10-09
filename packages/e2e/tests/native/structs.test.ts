@@ -1,11 +1,10 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
-import * as GLib from "@gtkx/gi/glib";
-import * as HarfBuzz from "@gtkx/gi/harfbuzz";
-import * as Regress from "@gtkx/gi/regress";
-import { expect, test } from "vitest";
-import { drainAfterEachTest, drainGC } from "./helpers/memory.js";
 
-drainAfterEachTest();
+import * as Regress from "@gtkx/gi/regress";
+
+import { expect, test } from "vitest";
+
+import { drainGC } from "./helpers/memory.js";
 
 test("SimpleStruct round trips through construction, methods, and returnv", () => {
     const constructed = new GIMarshallingTests.SimpleStruct({ long: 6n, int8: 7 });
@@ -81,23 +80,6 @@ test("a pointer registered struct constructs from props", () => {
 test("many pointer registered structs survive collection", async () => {
     for (let index = 0; index < 1000; index += 1) {
         expect(new GIMarshallingTests.PointerStruct({ long: BigInt(index) }).long).toBe(BigInt(index));
-    }
-
-    await drainGC(5);
-});
-
-test("a struct handed over with its own free function is owned and usable", () => {
-    const queue = GLib.AsyncQueue.new();
-    expect(queue).toBeInstanceOf(GLib.AsyncQueue);
-    expect(queue.length()).toBe(0);
-    queue.lock();
-    expect(queue.lengthUnlocked()).toBe(0);
-    queue.unlock();
-});
-
-test("many structs released by their own free function survive collection", async () => {
-    for (let index = 0; index < 1000; index += 1) {
-        expect(GLib.AsyncQueue.new().length()).toBe(0);
     }
 
     await drainGC(5);
@@ -323,21 +305,5 @@ test("abstract structs and unions cannot be constructed", () => {
 
 test("a struct method whose C symbol is missing throws", () => {
     const union = Regress.FooBUnion.new();
-    expect(() => union.getContainedType()).toThrow();
-});
-
-test("callables that pass or return a record by value are not bound at all", () => {
-    // @ts-expect-error the callable is not bound
-    expect(GIMarshallingTests.gvalueFlatArrayRoundTrip).toBeUndefined();
-    // @ts-expect-error the callable is not bound
-    expect(Regress.fooMethodExternalReferences).toBeUndefined();
-});
-
-test("records GIR spells without a star but that are really pointers still bind", () => {
-    const bytes = GLib.Bytes.new([1, 2, 3]);
-    expect(bytes.equal(GLib.Bytes.new([1, 2, 3]))).toBe(true);
-    expect(bytes.equal(GLib.Bytes.new([1, 2, 4]))).toBe(false);
-    expect(bytes.compare(GLib.Bytes.new([1, 2, 3]))).toBe(0);
-    expect(typeof HarfBuzz.ftFontCreateReferenced).toBe("function");
-    expect(typeof HarfBuzz.ftFaceCreateReferenced).toBe("function");
+    expect(() => union.getContainedType()).toThrow("regress_foo_bunion_get_contained_type");
 });

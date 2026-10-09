@@ -1,4 +1,4 @@
-use super::{CallbackScope, Codec, Ownership};
+use super::{CallbackScope, Codec, Encoder as _, Ownership};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum InlineRecordCapability {
@@ -82,7 +82,7 @@ fn validate_inline_array(array: &super::ArrayCodec, flow: Flow) -> anyhow::Resul
             ..
         } if capability == InlineRecordCapability::Ownable
             && (array.item_codec.transfer().is_borrowed()
-                || (array.ownership == Ownership::Full && array.is_garray_container())) =>
+                || array.ownership == Ownership::Full) =>
         {
             Ok(())
         }
@@ -102,8 +102,23 @@ fn validate_inline_array(array: &super::ArrayCodec, flow: Flow) -> anyhow::Resul
 }
 
 fn validate_flow(codec: &Codec, flow: Flow) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        codec.value_layout().is_none(),
+        "By-value records require a direct synchronous function input"
+    );
     match codec {
-        Codec::Array(array) => validate_inline_array(array, flow),
+        Codec::Array(array) => {
+            anyhow::ensure!(
+                !array.is_input_only() || matches!(flow, Flow::ToNative { .. }),
+                "An input array without an extent cannot be decoded"
+            );
+            validate_inline_array(array, flow)?;
+            validate_flow(&array.item_codec, flow)
+        }
+        Codec::HashTable(table) => {
+            validate_flow(&table.key_codec, flow)?;
+            validate_flow(&table.value_codec, flow)
+        }
         Codec::Callback(callback) => {
             validate_inline_callback_signature(&callback.arg_codecs, &callback.return_codec)
         }
@@ -113,6 +128,13 @@ fn validate_flow(codec: &Codec, flow: Flow) -> anyhow::Result<()> {
 }
 
 fn validate_call_argument(codec: &Codec, retained: bool) -> anyhow::Result<()> {
+    if codec.value_layout().is_some() {
+        anyhow::ensure!(
+            !retained,
+            "By-value records cannot outlive their source values in an asynchronous call"
+        );
+        return Ok(());
+    }
     match codec {
         Codec::Ref(reference) => {
             if reference.is_inout() {
@@ -173,6 +195,10 @@ pub(crate) fn validate_call_signature(
     arg_codecs: &[Codec],
     return_codec: &Codec,
 ) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        return_codec.value_layout().is_none(),
+        "By-value record returns are unsupported"
+    );
     let retained = arg_codecs.iter().any(
         |codec| matches!(codec, Codec::Callback(callback) if callback.scope == CallbackScope::Async),
     );
@@ -194,6 +220,13 @@ fn validate_inline_callback_signature(
     arg_codecs: &[Codec],
     return_codec: &Codec,
 ) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        return_codec.value_layout().is_none()
+            && arg_codecs
+                .iter()
+                .all(|codec| codec.value_layout().is_none()),
+        "By-value record callback signatures are unsupported"
+    );
     for codec in arg_codecs {
         validate_callback_argument(codec)?;
     }

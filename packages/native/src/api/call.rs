@@ -84,10 +84,17 @@ fn execute_call_inner<'e>(
         ffi_args.len()
     );
 
+    let ordered_args: SmallVec<[libffi::Arg<'_>; 8]> = descriptor
+        .arg_order
+        .iter()
+        .map(|&index| ffi_args[index].clone())
+        .collect();
+    drop(ffi_args);
+
     let symbol = descriptor.symbol()?;
     let trap = CriticalTrap::arm();
-    let called = return_codec.call_cif(&descriptor.cif, symbol, &ffi_args);
-    drop(ffi_args);
+    let called = return_codec.call_cif(&descriptor.cif, symbol, &ordered_args);
+    drop(ordered_args);
     let critical = trap.disarm();
 
     let result = called.with_context(|| format!("calling {label}"))?;

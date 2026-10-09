@@ -1,7 +1,4 @@
-use glib::translate::{
-    Borrowed, FromGlibPtrNone as _, IntoGlib as _, IntoGlibPtr, ToGlibPtr, from_glib_borrow,
-    from_glib_full,
-};
+use glib::translate::{Borrowed, IntoGlib as _, ToGlibPtr, from_glib_borrow, from_glib_full};
 use glib::{self};
 
 use super::prelude::*;
@@ -71,9 +68,7 @@ pub(super) unsafe extern "C" fn g_object_unref_wrapper(ptr: *mut c_void) {
 }
 
 unsafe fn object_ref_full(ptr: *mut c_void) -> *mut c_void {
-    let obj: glib::Object =
-        unsafe { glib::Object::from_glib_none(ptr.cast::<glib::gobject_ffi::GObject>()) };
-    IntoGlibPtr::<*mut glib::gobject_ffi::GObject>::into_glib_ptr(obj).cast::<c_void>()
+    unsafe { glib::gobject_ffi::g_object_ref(ptr.cast::<glib::gobject_ffi::GObject>()) }.cast()
 }
 
 #[derive(Debug, Clone)]

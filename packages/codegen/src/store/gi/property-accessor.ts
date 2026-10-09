@@ -133,7 +133,8 @@ const resolvePropertyMetadata = (
         writeType: inheritedTypes?.writeType ?? declaredWriteType(context, property),
         hasGetter,
         isWritable,
-        supportsDescriptorFreeAccess: canAccessPropertyWithoutDescriptor(context, property.type),
+        supportsDescriptorFreeAccess:
+            isConstructableProperty(property) || canAccessPropertyWithoutDescriptor(context, property.type),
     };
 };
 

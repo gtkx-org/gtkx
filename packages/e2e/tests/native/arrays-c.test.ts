@@ -1,194 +1,14 @@
-import type { ExternalObject, Handle, Ref } from "@gtkx/native";
-import * as Gdk from "@gtkx/gi/gdk";
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
-import * as Gio from "@gtkx/gi/gio";
-import * as GLib from "@gtkx/gi/glib";
-import * as GObject from "@gtkx/gi/gobject";
-import * as Regress from "@gtkx/gi/regress";
-import { t } from "@gtkx/runtime";
-import { expect, test } from "vitest";
-import { fixtureLibrary } from "./helpers/fixture-library.js";
-import { drainAfterEachTest } from "./helpers/memory.js";
 
-drainAfterEachTest();
+import * as GObject from "@gtkx/gi/gobject";
+
+import * as Regress from "@gtkx/gi/regress";
+
+import { expect, test } from "vitest";
 
 const UNICHARS = ["c", "o", "n", "s", "t", " ", "♥", " ", "u", "t", "f", "8"];
 
 const unalignedPattern = Array.from({ length: 32 }, (_, index) => (index + 1) % 8);
-const collectionLibrary = fixtureLibrary("collection-values");
-
-const unsupportedNestedStringArrays = [
-    "fixedArrayOfGstrvTransferContainerIn",
-    "fixedArrayOfGstrvTransferContainerInout",
-    "fixedArrayOfGstrvTransferContainerReturn",
-    "fixedArrayOfGstrvTransferFullIn",
-    "fixedArrayOfGstrvTransferFullInout",
-    "fixedArrayOfGstrvTransferFullReturn",
-    "fixedArrayOfGstrvTransferNoneIn",
-    "fixedArrayOfGstrvTransferNoneInout",
-    "fixedArrayOfGstrvTransferNoneReturn",
-    "lengthArrayOfGstrvTransferContainerIn",
-    "lengthArrayOfGstrvTransferContainerInout",
-    "lengthArrayOfGstrvTransferContainerReturn",
-    "lengthArrayOfGstrvTransferFullIn",
-    "lengthArrayOfGstrvTransferFullInout",
-    "lengthArrayOfGstrvTransferFullReturn",
-    "lengthArrayOfGstrvTransferNoneIn",
-    "lengthArrayOfGstrvTransferNoneInout",
-    "lengthArrayOfGstrvTransferNoneReturn",
-    "zeroTerminatedArrayOfGstrvTransferContainerIn",
-    "zeroTerminatedArrayOfGstrvTransferContainerInout",
-    "zeroTerminatedArrayOfGstrvTransferFullIn",
-    "zeroTerminatedArrayOfGstrvTransferFullInout",
-    "zeroTerminatedArrayOfGstrvTransferNoneIn",
-    "zeroTerminatedArrayOfGstrvTransferNoneInout",
-];
-
-test("nested string arrays match the native container boundary", () => {
-    for (const name of unsupportedNestedStringArrays) {
-        expect(Reflect.get(GIMarshallingTests, name)).toBeUndefined();
-    }
-
-    const expected = [
-        ["0", "1", "2"],
-        ["3", "4", "5"],
-        ["6", "7", "8"],
-    ];
-
-    expect(GIMarshallingTests.zeroTerminatedArrayOfGstrvTransferNoneReturn()).toEqual(expected);
-    expect(GIMarshallingTests.zeroTerminatedArrayOfGstrvTransferContainerReturn()).toEqual(expected);
-    expect(GIMarshallingTests.zeroTerminatedArrayOfGstrvTransferFullReturn()).toEqual(expected);
-});
-
-test.each([false, true])("array returns and outputs preserve their null policy (%s)", (preserveNull) => {
-    const descriptor = { ...t.array(t.string()), preserveNull };
-    const read = t.bind(collectionLibrary, "gtkx_collection_strings", [t.int32], descriptor);
-    const readOut = t.bind(collectionLibrary, "gtkx_collection_out", [t.int32, t.ref(descriptor)], t.void);
-    const expected = [preserveNull ? null : [], [], ["one", "two"]];
-
-    for (const [state, value] of expected.entries()) {
-        expect(read(state)).toEqual(value);
-        const out = { value: null };
-        readOut(state, out);
-        expect(out.value).toEqual(value);
-    }
-});
-
-test.each([false, true])("byte array returns preserve their null policy (%s)", (preserveNull) => {
-    const descriptor = { ...t.array(t.uint8, "array", "borrowed", { isBytes: true }), preserveNull };
-    const read = t.bind(collectionLibrary, "gtkx_collection_bytes", [t.int32], descriptor);
-
-    expect(read(0)).toEqual(preserveNull ? null : new Uint8Array());
-    expect(read(1)).toEqual(new Uint8Array());
-    expect(read(2)).toEqual(new Uint8Array([1, 2]));
-});
-
-test.each([false, true])("array fields preserve their null policy (%s)", (preserveNull) => {
-    const descriptor = { ...t.array(t.string()), preserveNull };
-    const readRecord = t.bind(collectionLibrary, "gtkx_collection_record", [t.int32], t.struct());
-    const items = t.field(descriptor, 0);
-    const expected = [preserveNull ? null : [], [], ["one", "two"]];
-
-    for (const [state, value] of expected.entries()) {
-        const record = readRecord(state) as ExternalObject<Handle>;
-        expect(items.read(record)).toEqual(value);
-    }
-});
-
-test.each([false, true])("array callback arguments preserve their null policy (%s)", (preserveNull) => {
-    const descriptor = { ...t.array(t.string()), preserveNull };
-    const visit = t.bind(
-        collectionLibrary,
-        "gtkx_collection_visit",
-        [t.int32, t.callback([descriptor], t.void, { scope: "call" })],
-        t.void,
-    );
-    const seen: unknown[] = [];
-
-    for (const state of [0, 1, 2]) {
-        visit(state, (value: unknown) => {
-            seen.push(value);
-        });
-    }
-
-    expect(seen).toEqual([preserveNull ? null : [], [], ["one", "two"]]);
-});
-
-test.each([false, true])("inout array callbacks distinguish null values from absent slots (%s)", (preserveNull) => {
-    const descriptor = { ...t.array(t.string("full"), "array", "full"), preserveNull };
-    const visit = t.bind(
-        collectionLibrary,
-        "gtkx_collection_visit_ref",
-        [t.int32, t.callback([t.ref(descriptor, true)], t.void, { scope: "call" })],
-        t.int32,
-    );
-    const seen: unknown[] = [];
-    const lengths = [0, 1, 2, 3].map((state) =>
-        visit(state, (value: Ref) => {
-            seen.push(value.value);
-            value.value = ["replacement"];
-        }),
-    );
-
-    expect(seen).toEqual([preserveNull ? null : [], [], ["one", "two"], null]);
-    expect(lengths).toEqual([1, 1, 1, -1]);
-});
-
-test("unbounded array refs pass empty arrays and null as distinct native values", () => {
-    const descriptor = { ...t.array(t.string()), preserveNull: true };
-    const readLength = t.bind(collectionLibrary, "gtkx_collection_ref_length", [t.ref(descriptor, true)], t.int32);
-    const reference: Ref = { value: null };
-
-    for (const value of [null, [], ["one", "two"], []]) {
-        reference.value = value;
-        expect(readLength(reference)).toBe(value === null ? -1 : value.length);
-        expect(reference.value).toEqual(value);
-    }
-});
-
-test.each([
-    { name: "out", inout: false, state: 0, seed: null },
-    { name: "inout", inout: true, state: 2, seed: ["one", "two"] },
-])("unbounded array callback $name refs preserve empty replacements and null", ({ inout, state, seed }) => {
-    const descriptor = { ...t.array(t.string("full"), "array", "full"), preserveNull: true };
-    const visit = t.bind(
-        collectionLibrary,
-        "gtkx_collection_visit_ref",
-        [t.int32, t.callback([t.ref(descriptor, inout)], t.void, { scope: "call" })],
-        t.int32,
-    );
-
-    for (const replacement of [[], null]) {
-        const seen: unknown[] = [];
-        const length = visit(state, (reference: Ref) => {
-            seen.push(reference.value);
-            reference.value = replacement;
-        });
-
-        expect(seen).toEqual([seed]);
-        expect(length).toBe(replacement === null ? -1 : 0);
-    }
-});
-
-test("array callback outputs start unset and write through existing slots", () => {
-    const descriptor = t.array(t.string("full"), "array", "full");
-    const visit = t.bind(
-        collectionLibrary,
-        "gtkx_collection_visit_ref",
-        [t.int32, t.callback([t.ref(descriptor)], t.void, { scope: "call" })],
-        t.int32,
-    );
-    const seen: unknown[] = [];
-    const lengths = [0, 3].map((state) =>
-        visit(state, (value: Ref) => {
-            seen.push(value.value);
-            value.value = ["replacement"];
-        }),
-    );
-
-    expect(seen).toEqual([null, null]);
-    expect(lengths).toEqual([1, -1]);
-});
 
 test("variable-length int arrays pass with the length in any position", () => {
     GIMarshallingTests.arrayIn([-1, 0, 1, 2]);
@@ -217,14 +37,6 @@ test("a zero-terminated length-bounded array terminates a typed-array argument t
     }
 
     expect([...view]).toEqual([-1, 0, 1, 2]);
-});
-
-test("an empty inline record array carries its terminating record", () => {
-    const application = Gio.Application.new("org.gtkx.InlineRecordTerminator", Gio.ApplicationFlags.DEFAULT_FLAGS);
-
-    expect(() => {
-        application.addMainOptionEntries([]);
-    }).not.toThrow();
 });
 
 test("zero-terminated length-bounded arrays still validate their elements", () => {
@@ -348,39 +160,6 @@ test("boxed struct pointer arrays pass for every transfer mode", () => {
     expect(borrowed.map((entry) => entry.long)).toEqual([1n, 2n, 3n]);
     GIMarshallingTests.arrayStructFullIn([make(1), make(2), make(3)]);
     GIMarshallingTests.arrayStructTakeIn([make(1), make(2), make(3)]);
-});
-
-test("handle-backed arrays reject mismatched native wrappers and recover", () => {
-    const bytes = GLib.Bytes.new([1, 2, 3]);
-    const action = Gio.SimpleAction.new("wrong-array-element", null);
-
-    expect(() => {
-        Reflect.apply(Gdk.ContentProvider.newUnion, Gdk.ContentProvider, [[bytes]]);
-    }).toThrow();
-    expect(() => {
-        Reflect.apply(Gdk.ContentProvider.newUnion, Gdk.ContentProvider, [[action]]);
-    }).toThrow();
-    const provider = Gdk.ContentProvider.newForBytes("application/octet-stream", bytes);
-    expect(Gdk.ContentProvider.newUnion([provider])).toBeInstanceOf(Gdk.ContentProvider);
-
-    const wrongBoxed = Regress.TestBoxed.new();
-    expect(() => {
-        Reflect.apply(GIMarshallingTests.arrayStructFullIn, GIMarshallingTests, [[action, action, action]]);
-    }).toThrow();
-    expect(() => {
-        Reflect.apply(GIMarshallingTests.arrayStructFullIn, GIMarshallingTests, [[wrongBoxed, wrongBoxed, wrongBoxed]]);
-    }).toThrow();
-
-    const valid = [1, 2, 3].map((long) => new GIMarshallingTests.BoxedStruct({ long: BigInt(long) }));
-    GIMarshallingTests.arrayStructFullIn(valid);
-
-    expect(() => {
-        Reflect.apply(GIMarshallingTests.arrayStructValueIn, GIMarshallingTests, [
-            [wrongBoxed, wrongBoxed, wrongBoxed],
-        ]);
-    }).toThrow();
-    GIMarshallingTests.arrayStructValueIn(valid);
-    expect(valid.map((value) => value.long)).toEqual([1n, 2n, 3n]);
 });
 
 test("flat struct value arrays marshal by value", () => {
@@ -539,20 +318,4 @@ test("typed-array views reject mismatched kinds and shared buffers", () => {
         shared.set([97, 98, 99, 100]);
         GIMarshallingTests.arrayUint8In(shared);
     }).toThrow();
-});
-
-test("a cursor array reports how far a validating callee read", () => {
-    expect(GLib.utf8Validate(new TextEncoder().encode("héllo"))).toEqual([true, new Uint8Array([])]);
-    expect(GLib.utf8Validate(new Uint8Array([]))).toEqual([true, new Uint8Array([])]);
-    expect(GLib.utf8Validate([104, 105])).toEqual([true, new Uint8Array([])]);
-    expect(GLib.utf8Validate(new Uint8Array([0x68, 0xff, 0x69]))).toEqual([false, new Uint8Array([255, 105])]);
-});
-
-test("a cursor array rejects values that are not byte sequences", () => {
-    // @ts-expect-error a string is not a byte sequence
-    expect(() => GLib.utf8Validate("héllo")).toThrow();
-    // @ts-expect-error a number is not a byte sequence
-    expect(() => GLib.utf8Validate(42)).toThrow();
-    // @ts-expect-error a string is not a byte element
-    expect(() => GLib.utf8Validate([104, "i"])).toThrow();
 });

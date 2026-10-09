@@ -1,11 +1,14 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
-import * as GLib from "@gtkx/gi/glib";
-import * as GObject from "@gtkx/gi/gobject";
-import * as Regress from "@gtkx/gi/regress";
-import { expect, test } from "vitest";
-import { drainAfterEachTest, drainGC } from "./helpers/memory.js";
 
-drainAfterEachTest();
+import * as GLib from "@gtkx/gi/glib";
+
+import * as GObject from "@gtkx/gi/gobject";
+
+import * as Regress from "@gtkx/gi/regress";
+
+import { expect, test } from "vitest";
+
+import { drainGC } from "./helpers/memory.js";
 
 const intValue = (contents: number): GObject.Value => {
     const value = new GObject.Value();

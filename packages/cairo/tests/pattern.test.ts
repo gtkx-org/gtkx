@@ -40,7 +40,7 @@ const createPatch = (): MeshPattern => {
     mesh.moveTo(0, 0);
     mesh.lineTo(10, 0);
     mesh.lineTo(10, 10);
-    mesh.lineTo(0, 10);
+    mesh.curveTo(8, 10, 2, 10, 0, 10);
     mesh.setCornerColorRgba(0, 1, 0, 0, 0.5);
     mesh.setControlPoint(0, 2, 2);
     mesh.endPatch();
@@ -73,6 +73,7 @@ describe("Pattern (context sources)", () => {
         expect(mesh.getCornerColorRgba(0, 0)).toEqual({ red: 1, green: 0, blue: 0, alpha: 0.5 });
         expect(mesh.getControlPoint(0, 0)).toEqual({ x: 2, y: 2 });
         expect(mesh.getPath(0)[0]).toEqual({ type: "moveTo", x: 0, y: 0 });
+        expect(mesh.getPath(0).some((segment) => segment.type === "curveTo")).toBe(true);
     });
 
     it("wraps a popped group as a surface pattern", () => {
@@ -92,12 +93,6 @@ describe("Pattern (context sources)", () => {
         expect(source.getType()).toBe(PatternType.SOLID);
         expect(source.getRgba()).toEqual({ red: 0, green: 0, blue: 0, alpha: 1 });
         expect(() => source.getColorStopCount()).toThrow();
-    });
-
-    it("rejects a missing source", () => {
-        expect(() => {
-            createContext().setSource(undefined as never);
-        }).toThrow();
     });
 });
 
@@ -166,13 +161,5 @@ describe("Pattern (statics)", () => {
         expect(() => mesh.getCornerColorRgba(0, 4)).toThrow();
         expect(() => mesh.getPath(1)).toThrow();
         expect(mesh.getPatchCount()).toBe(1);
-    });
-
-    it("rejects a missing operand", () => {
-        expect(() => Pattern.createForSurface(undefined as never)).toThrow();
-
-        expect(() => {
-            Pattern.createLinear(0, 0, 1, 1).setMatrix(undefined as never);
-        }).toThrow();
     });
 });

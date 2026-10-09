@@ -7,8 +7,6 @@
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
     "scripts": {
-        "acceptance": "nx run @gtkx/e2e:acceptance",
-        "benchmark": "nx run @gtkx/e2e:benchmark",
         "build": "nx run-many -t build",
         "codegen": "nx run-many -t codegen --skip-nx-cache",
         "lint": "nx run-many -t lint && nx run @gtkx/native:_lint:audit --no-agents",
@@ -16,11 +14,9 @@
         "postinstall": "tsc -b --noCheck --force packages/vitest/tsconfig.lib.json && node scripts/link-bindings.ts",
         "prepare-release": "tsx ./scripts/prepare-release.ts",
         "release": "tsx ./scripts/release.ts",
-        "local-registry": "nx run gtkx:_registry:publish",
         "test": "nx run-many -t test",
         "test:asan": "nx run @gtkx/native:test-asan",
         "typecheck": "nx run-many -t typecheck",
-        "tutorial:checkpoints": "nx run gtkx:_tutorial:checkpoint --",
         "e2e": "nx run-many -t e2e",
         "format": "oxfmt --write .",
         "format:check": "oxfmt --check ."
@@ -57,7 +53,6 @@
         "tsx": "^4.23.15",
         "typescript": "catalog:",
         "typescript-eslint": "^8.71.1",
-        "verdaccio": "^6.10.5",
         "vitest": "catalog:",
         "vue-eslint-parser": "^10.4.1"
     },

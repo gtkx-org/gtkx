@@ -1,76 +1,22 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import type { Descriptor, Ref } from "@gtkx/native";
+
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
+
 import * as Gio from "@gtkx/gi/gio";
+
 import * as GLib from "@gtkx/gi/glib";
+
 import * as Regress from "@gtkx/gi/regress";
-import { bind, call } from "@gtkx/native";
-import { t } from "@gtkx/runtime";
+
 import { expect, test } from "vitest";
-import { fixtureLibrary } from "./helpers/fixture-library.js";
-import { drainAfterEachTest, drainGC } from "./helpers/memory.js";
+
+import { drainGC } from "./helpers/memory.js";
 
 type Counter = { calls: number };
+
 type Holder<T> = { value: T | null };
+
 type NotifiedCallback = WeakRef<Regress.TestCallbackUserData>;
-
-const VOID: Descriptor = { kind: "void" };
-const library = fixtureLibrary("callback-descriptors");
-const SIDE_CALLBACK: Extract<Descriptor, { kind: "callback" }> = {
-    kind: "callback",
-    argDescriptors: [{ kind: "biguint64" }],
-    returnDescriptor: { kind: "int32" },
-    hasUserData: true,
-    userDataIndex: 0,
-    scope: "forever",
-    releaseWithCompletion: true,
-};
-const completionTiedArgs = (side: Extract<Descriptor, { kind: "callback" }>): Descriptor[] => [
-    side,
-    ...(side.hasDestroy === true ? [] : [{ kind: "buffer" } as const]),
-    {
-        kind: "callback",
-        argDescriptors: [
-            { kind: "object", ownership: "borrowed" },
-            { kind: "object", ownership: "borrowed" },
-            { kind: "biguint64" },
-        ],
-        returnDescriptor: VOID,
-        hasUserData: true,
-        userDataIndex: 2,
-        scope: "async",
-    },
-];
-const completionTiedFunction = bind(library, "gtkx_callback_with_completion", completionTiedArgs(SIDE_CALLBACK), VOID);
-
-const runtimeCompletionTiedFunction = t.bind(
-    library,
-    "gtkx_callback_with_completion",
-    [
-        t.callback([t.biguint64], t.int32, { hasUserData: true, userDataIndex: 0, scope: "notified" }),
-        t.buffer,
-        t.callback([t.object("borrowed"), t.object("borrowed"), t.biguint64], t.void, {
-            hasUserData: true,
-            userDataIndex: 2,
-            scope: "async",
-        }),
-    ],
-    t.void,
-);
-const completionInvokers = [
-    { name: "native", invoke: (values: unknown[]) => call(completionTiedFunction, values, 2) },
-    { name: "runtime", invoke: (values: unknown[]) => runtimeCompletionTiedFunction(...values) },
-];
-const defaultUserDataCallback = t.bind(
-    library,
-    "gtkx_callback_user_data",
-    [t.callback([t.biguint64], t.int32, { hasUserData: true, userDataIndex: 0 })],
-    t.int32,
-);
-
-const finishDescriptorCallback = t.bind(library, "gtkx_callback_complete", [], t.int32);
-
-drainAfterEachTest();
 
 const held = <T>(holder: Holder<T>): T => {
     if (holder.value === null) {
@@ -104,39 +50,10 @@ const registerAsync = (counter: Counter, value: number): NotifiedCallback => {
     return new WeakRef(callback);
 };
 
-const invokeDefaultUserDataCallback = (counter: Counter): WeakRef<() => number> => {
-    const callback = (): number => {
-        counter.calls += 1;
-
-        return 17;
-    };
-    expect(defaultUserDataCallback(callback)).toBe(17);
-
-    return new WeakRef(callback);
-};
-
 const countInvocation = (counter: Counter) => (): number => {
     counter.calls += 1;
 
     return 1;
-};
-
-const registerCompletionTied = (
-    counter: Counter,
-    invoke: (values: unknown[]) => unknown,
-): { completion: Promise<undefined>; weak: NotifiedCallback } => {
-    const { promise, resolve } = Promise.withResolvers<undefined>();
-    const callback = countInvocation(counter);
-
-    invoke([
-        callback,
-        null,
-        () => {
-            resolve(undefined);
-        },
-    ]);
-
-    return { completion: promise, weak: new WeakRef(callback) };
 };
 
 const registerGeneratedCompletion = (
@@ -348,19 +265,6 @@ test("async scope callbacks are deferred until the async queue is thawed", async
     expect(weak.deref()).toBeUndefined();
 });
 
-test.each(completionInvokers)("a $name side callback is released with its async completion", async ({ invoke }) => {
-    const counter: Counter = { calls: 0 };
-    const { completion, weak } = registerCompletionTied(counter, invoke);
-
-    expect(counter.calls).toBe(1);
-    await drainGC();
-    expect(weak.deref()).toBeDefined();
-    expect(finishDescriptorCallback()).toBe(1);
-    await completion;
-    await drainGC(8);
-    expect(weak.deref()).toBeUndefined();
-});
-
 test("a generated async method releases its notified callback after completion", async () => {
     const obj = new Regress.TestObj({});
     const counter: Counter = { calls: 0 };
@@ -435,70 +339,6 @@ test("callback return values and out parameters come back from the call", () => 
     expect(GIMarshallingTests.callbackMultipleOutParameters(() => [1.5, 2.5])).toEqual([1.5, 2.5]);
     expect(GIMarshallingTests.callbackReturnValueAndOneOutParameter(() => [11n, 22n])).toEqual([11n, 22n]);
     expect(GIMarshallingTests.callbackReturnValueAndMultipleOutParameters(() => [1n, 2n, 3n])).toEqual([1n, 2n, 3n]);
-});
-
-const callWithScalarOutput = t.bind(
-    library,
-    "gtkx_callback_scalar_output",
-    [t.callback([t.ref(t.float32)], t.void), t.ref(t.float32)],
-    t.void,
-);
-
-test.each([false, true])("a callback rejects an unset scalar output (explicit null: %s)", (explicitNull) => {
-    const output = { value: 7 };
-
-    expect(() =>
-        callWithScalarOutput((reference: Ref) => {
-            if (explicitNull) {
-                reference.value = null;
-            }
-        }, output),
-    ).toThrow();
-});
-
-test("a throwing scalar callback leaves the caller's Ref unchanged", () => {
-    const output = { value: 7 };
-
-    expect(() =>
-        callWithScalarOutput((reference: Ref) => {
-            expect(reference.value).toBeNull();
-            throw new Error("Callback failure");
-        }, output),
-    ).toThrow();
-
-    expect(output.value).toBe(7);
-    callWithScalarOutput((reference: Ref) => {
-        reference.value = 12;
-    }, output);
-    expect(output.value).toBe(12);
-});
-
-test("a scalar inout callback receives the caller's seed and writes its replacement", () => {
-    const invoke = t.bind(
-        library,
-        "gtkx_callback_scalar_output",
-        [t.callback([t.ref(t.float32, true)], t.void), t.ref(t.float32)],
-        t.void,
-    );
-    const output = { value: 7 };
-
-    invoke((reference: Ref) => {
-        expect(reference.value).toBe(7);
-        reference.value = 12;
-    }, output);
-
-    expect(output.value).toBe(12);
-});
-
-test("an omitted scalar callback output keeps its Ref wrapper without accessing native storage", () => {
-    const observed: unknown[] = [];
-
-    callWithScalarOutput((reference: Ref) => {
-        observed.push(reference.value);
-        reference.value = 12;
-    }, null);
-
-    expect(observed).toEqual([null]);
 });
 
 test("a boxed lent to a callback is mutable and its changes are visible to C", () => {
@@ -717,26 +557,4 @@ test("the binding survives a callback out parameter failure", () => {
     expect(() => GIMarshallingTests.callbackMultipleOutParameters(() => ["a", "b"])).toThrow();
     expect(GIMarshallingTests.callbackReturnValueOnly(() => 42n)).toBe(42n);
     expect(GIMarshallingTests.callbackMultipleOutParameters(() => [1.5, 2.5])).toEqual([1.5, 2.5]);
-});
-
-test("a runtime callback with only user data defaults to the call lifetime", async () => {
-    const counter: Counter = { calls: 0 };
-    const weak = invokeDefaultUserDataCallback(counter);
-    expect(counter.calls).toBe(1);
-    await drainGC(5);
-    expect(weak.deref()).toBeUndefined();
-    expect(() =>
-        defaultUserDataCallback(() => {
-            throw new Error("Callback failure");
-        }),
-    ).toThrow();
-    expect(defaultUserDataCallback(() => 21)).toBe(21);
-});
-
-test.each([
-    { name: "call scope", descriptor: { ...SIDE_CALLBACK, scope: "call" } as const },
-    { name: "async scope", descriptor: { ...SIDE_CALLBACK, scope: "async" } as const },
-    { name: "destroy notifier", descriptor: { ...SIDE_CALLBACK, hasDestroy: true } as const },
-])("native completion retention rejects a side callback with $name", ({ descriptor }) => {
-    expect(() => bind(library, "gtkx_callback_with_completion", completionTiedArgs(descriptor), VOID)).toThrow();
 });

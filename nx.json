@@ -63,21 +63,21 @@
                     "configName": "tsconfig.lib.json"
                 }
             },
-            "exclude": ["packages/e2e/tests/cli/fixtures/**", "tutorial/**"]
+            "exclude": ["tutorial/**"]
         },
         {
             "plugin": "./scripts/ci/oxlint-plugin.mjs",
             "options": {
                 "targetName": "lint"
             },
-            "exclude": ["packages/e2e/tests/cli/fixtures/**", "tutorial/**"]
+            "exclude": ["tutorial/**"]
         },
         {
             "plugin": "./scripts/ci/eslint-plugin.mjs",
             "options": {
                 "targetName": "_lint:eslint"
             },
-            "exclude": ["packages/e2e/tests/cli/fixtures/**", "tutorial/**"]
+            "exclude": ["tutorial/**"]
         },
         {
             "plugin": "./scripts/ci/vitest-plugin.mjs",
@@ -92,10 +92,7 @@
             "include": ["packages/e2e/vitest.config.ts"],
             "options": {
                 "testTargetName": "e2e",
-                "testMode": "run",
-                "ciTargetName": "e2e-ci",
-                "ciGroupName": "CLI E2E",
-                "discoverTestFiles": "glob"
+                "testMode": "run"
             }
         }
     ],
@@ -158,30 +155,6 @@
                     "transitive": true
                 }
             ]
-        },
-        "e2e-ci": {
-            "inputs": [
-                "...",
-                "default",
-                "^production",
-                {
-                    "dependentTasksOutputFiles": "**/*.{js,node,d.ts,d.mts}",
-                    "transitive": true
-                }
-            ]
-        },
-        "e2e-ci--**/**": {
-            "dependsOn": ["^build", "gtkx:_build:bindings"],
-            "inputs": [
-                "...",
-                "default",
-                "^production",
-                {
-                    "dependentTasksOutputFiles": "**/*.{js,node,d.ts,d.mts}",
-                    "transitive": true
-                }
-            ],
-            "cache": true
         },
         "_lint:eslint": {
             "dependsOn": ["^build", "gtkx:_build:bindings", "@gtkx/gl:codegen"],

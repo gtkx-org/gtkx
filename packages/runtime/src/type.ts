@@ -95,6 +95,10 @@ const getErrorType: () => bigint = lazyType("GError");
 const getStrvType = (): bigint => resolveType(LIB, "g_strv_get_type");
 
 const PLAIN_DESCRIPTOR_TYPES: Partial<Record<Descriptor["kind"], bigint>> = {
+    buffer: TYPE_POINTER,
+    indirect: TYPE_POINTER,
+    pointerValue: TYPE_POINTER,
+    callback: TYPE_POINTER,
     boolean: TYPE_BOOLEAN,
     string: TYPE_STRING,
     int8: TYPE_INT,

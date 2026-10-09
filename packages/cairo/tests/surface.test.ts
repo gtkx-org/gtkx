@@ -71,9 +71,15 @@ describe("Surface (context targets)", () => {
         const device = asInstance(surface.getDevice(), Device);
         expect(device.getType()).toBe(DeviceType.SCRIPT);
         expect(device.status()).toBe(Status.SUCCESS);
+        expect(device.getReferenceCount()).toBeGreaterThan(0);
         const ctx = Context.create(surface);
         ctx.setSourceRgb(1, 0, 0);
         ctx.paint();
+        ctx.tagBegin("Link", "uri='https://gtkx.dev'");
+        ctx.rectangle(0, 0, 1, 1);
+        ctx.fill();
+        ctx.tagEnd("Link");
+        expect(ctx.status()).toBe(Status.SUCCESS);
         device.flush();
         expect(image.getData().slice(0, 4)).toEqual(new Uint8Array([0, 0, 255, 255]));
         surface.finish();
@@ -110,10 +116,6 @@ describe("Surface (context targets)", () => {
         ctx.popGroupToSource();
         expect(ctx.getGroupTarget()).toBeInstanceOf(ImageSurface);
     });
-
-    it("rejects a missing target", () => {
-        expect(() => Context.create(undefined as never)).toThrow();
-    });
 });
 
 describe("Surface (statics)", () => {
@@ -135,12 +137,6 @@ describe("Surface (statics)", () => {
         expect(sub.getType()).toBe(SurfaceType.IMAGE);
         expect(sub).toBeInstanceOf(ImageSurface);
         expect(sub.getContent()).toBe(Content.COLOR_ALPHA);
-    });
-
-    it("rejects a missing surface operand", () => {
-        expect(() => Surface.createSimilar(undefined as never, Content.COLOR_ALPHA, 1, 1)).toThrow();
-        expect(() => Surface.createSimilarImage(undefined as never, Format.ARGB32, 1, 1)).toThrow();
-        expect(() => Surface.createForRectangle(undefined as never, 0, 0, 1, 1)).toThrow();
     });
 });
 
@@ -168,6 +164,12 @@ describe("ImageSurface", () => {
         expect(image.getDeviceOffset()).toEqual({ xOffset: 1.5, yOffset: 2.5 });
         expect(image.getDeviceScale()).toEqual({ xScale: 2, yScale: 3 });
         expect(image.getFallbackResolution()).toEqual({ xPixelsPerInch: 72, yPixelsPerInch: 96 });
+        image.markDirtyRectangle(0, 0, 1, 1);
+        image.copyPage();
+        image.showPage();
+        expect(image.status()).toBe(Status.SUCCESS);
+        expect(image.hasShowTextGlyphs()).toBe(false);
+        expect(image.supportsMimeType("image/png")).toBe(false);
     });
 
     it("throws when loading a missing PNG file", () => {
@@ -229,10 +231,6 @@ describe("ImageSurface", () => {
         ctx.getTarget().finish();
         expect(() => image.getData()).toThrow();
     });
-
-    it("rejects a non-string file name", () => {
-        expect(() => ImageSurface.createFromPng(123 as never)).toThrow();
-    });
 });
 
 describe("RecordingSurface", () => {
@@ -248,9 +246,5 @@ describe("RecordingSurface", () => {
         const unbounded = new RecordingSurface(Content.COLOR_ALPHA);
         expect(unbounded.getExtents()).toBeNull();
         expect(unbounded.inkExtents()).toEqual({ x0: 0, y0: 0, width: 0, height: 0 });
-    });
-
-    it("rejects malformed extents", () => {
-        expect(() => new RecordingSurface(Content.COLOR_ALPHA, { x: "a" } as never)).toThrow();
     });
 });

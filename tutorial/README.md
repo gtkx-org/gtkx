@@ -11,12 +11,4 @@ npm install
 npm run dev
 ```
 
-From the repository root, run the tutorial's Vitest suite through Nx:
-
-```bash
-pnpm nx run @gtkx/e2e:e2e -- tests/tutorial.test.ts
-```
-
-It publishes the working packages to a local registry and validates a temporary copy of the example against them. See [desktop integration](https://gtkx.dev/v2/tutorial/actions-menus-shortcuts) and [packaging](https://gtkx.dev/v2/tutorial/packaging).
-
-The [chapter checkpoints](checkpoints/README.md) reconstruct all 18 chapters for v2 and stable 1.6 directly from the documentation. They validate each intermediate app and run the tests introduced by that point. The current v2 tutorial needs repository builds beyond chapter 9; the checkpoint guide explains that setup. The tutorial's Vitest suite checks both this finished example and every v2 checkpoint.
+Run `npm test` from this directory to exercise the application. See [desktop integration](https://gtkx.dev/v2/tutorial/actions-menus-shortcuts) and [packaging](https://gtkx.dev/v2/tutorial/packaging).

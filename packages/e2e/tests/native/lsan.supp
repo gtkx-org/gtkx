@@ -1,12 +1,20 @@
-leak:libc.so
 leak:node::contextify::ContextifyScript::New
 leak:node::encoding_binding::BindingData::DecodeUTF8
 leak:node::fs::ReadFileUtf8
 leak:node::StringBytes::Encode
 leak:ossl_load_builtin_compressions
-leak:libgvfsdbus.so
-leak:libfontconfig.so
-leak:g_vfs_get_file_for_path
-leak:g_io_module_
-leak:gi_marshalling_tests_properties_accessors_object_set_hash_table
-leak:g_strv_builder_add_many
+
+# These upstream emitters surrender allocations to g_signal_emit(), which only borrows
+# its arguments. The allocations leak even with zero listeners. Value-copying boxed
+# types hide the original pointer, while refcounted containers share it between all
+# listeners. Consuming transfer ownership per listener would invalidate later listeners.
+# https://gitlab.gnome.org/GNOME/gobject-introspection/-/issues/470
+# gimarshallingtests.c:10270-10378 and regress.c:3023-3032 (pinned fixture source).
+leak:gi_marshalling_tests_signals_object_emit_boxed_gptrarray_utf8_container
+leak:gi_marshalling_tests_signals_object_emit_boxed_gptrarray_utf8_full
+leak:gi_marshalling_tests_signals_object_emit_boxed_gptrarray_boxed_struct_container
+leak:gi_marshalling_tests_signals_object_emit_boxed_gptrarray_boxed_struct_full
+leak:gi_marshalling_tests_signals_object_emit_hash_table_utf8_int_container
+leak:gi_marshalling_tests_signals_object_emit_hash_table_utf8_int_full
+leak:gi_marshalling_tests_signals_object_emit_boxed_struct_full
+leak:regress_test_obj_emit_sig_with_gstrv_full

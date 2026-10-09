@@ -5,6 +5,7 @@ import type { Library } from "../gir/library.js";
 import type { PrimitiveCategory } from "../gir/primitives.js";
 import type { EntityType, GirType } from "../gir/type.js";
 import type { ModuleContext } from "../writer/context.js";
+import { EXTERNAL_RECORD_COPY_STRATEGIES } from "../gir/external-namespaces.js";
 import {
     deriveElementTransfer,
     type GirCursorBounds,
@@ -20,14 +21,19 @@ import { type CArrayType, hasUnknownArrayLength, type ListFlavor, type ListType,
 import { isRecordInout } from "../store/gi/param-marshal.js";
 import { computeRecordFieldSlots, recordInlineSize } from "../store/gi/record-layout.js";
 import { isValueMarshalable } from "../store/gi/value-marshalable.js";
+import { isIndirectScalarParameter, isPointerValueParameter, isIndirectScalarReturn } from "./scalar-pointer.js";
 import { callbackUserDataIndex } from "./callback-shape.js";
+import { inoutHandleIndirection } from "./inout-handle.js";
+import { byValueRecordAbi } from "./record-value-abi.js";
 import {
     type ArrayLayout,
     type ListDescriptorName,
     type Ownership,
     type ScalarDescriptorName,
     tArray,
-    tBiguint64,
+    tBuffer,
+    tIndirect,
+    tPointerValue,
     tBoxed,
     tByteArray,
     tCallback,
@@ -45,17 +51,9 @@ import {
     tSizedArray,
     tString,
     tStruct,
-    tUint64,
     tVoid,
 } from "./descriptor.js";
-import {
-    carrayFor,
-    isByteSequence,
-    isScalarRef,
-    isUnboundedArray,
-    primitiveCategoryFor,
-    underlyingType,
-} from "./type-shape.js";
+import { isByteSequence, primitiveCategoryFor, underlyingType } from "./type-shape.js";
 
 type PrimaryReturnKind = "surfaced" | "void" | "skipped";
 
@@ -205,7 +203,7 @@ const renderDescriptor = (
             return tVoid;
         }
         case "callback": {
-            return tBiguint64;
+            return callbackDescriptor(context, type.value, ['scope: "call"']);
         }
         case "class":
         case "interface":
@@ -277,21 +275,25 @@ const resolveCallbackType = (context: ModuleContext, ref: TypeId | undefined): G
     return type.value;
 };
 
-const isStrvRef = (library: Library, ref: TypeId | undefined): boolean => {
-    const type = carrayFor(library, ref);
+const isCellInout = (library: Library, parameter: GirParameter): boolean =>
+    isInoutParameter(parameter) && inoutHandleIndirection(library, parameter) !== 1;
 
-    if (type === undefined) {
-        return false;
+const renderByValueRecordDescriptor = (context: ModuleContext, parameter: GirParameter, descriptor: string): string => {
+    if (parameter.direction !== "in") {
+        return descriptor;
+    }
+    const fields = byValueRecordAbi(context, parameter.type, parameter.cType);
+    const type = underlyingType(context.library, parameter.type);
+    if (fields === undefined || type?.kind !== "record") {
+        return descriptor;
+    }
+    const size = recordInlineSize(context, type.value);
+    if (size === undefined) {
+        throw new Error("A by-value record requires a known native layout");
     }
 
-    return isUnboundedArray(type) && primitiveCategoryFor(library, type.element) === "string";
+    return `{ ...${descriptor}, size: ${String(size)}, abiFields: [${fields.join(", ")}] }`;
 };
-
-const isCellInout = (library: Library, parameter: GirParameter): boolean =>
-    isInoutParameter(parameter) &&
-    (isScalarRef(library, parameter.type) ||
-        isStrvRef(library, parameter.type) ||
-        carrayFor(library, parameter.type) !== undefined);
 
 const renderParamDescriptor = (
     context: ModuleContext,
@@ -306,6 +308,17 @@ const renderParamDescriptor = (
         isReceived: true,
     };
 
+    if (isPointerValueParameter(context.library, parameter)) {
+        return tPointerValue(renderDescriptor(context, ref, parameter.transferOwnership, argIndex));
+    }
+    if (isIndirectScalarParameter(context.library, parameter)) {
+        const descriptor = tIndirect(
+            renderDescriptor(context, ref, parameter.transferOwnership, argIndex),
+            transferOwnership(parameter.transferOwnership),
+        );
+        return isOutParameter(parameter) ? tRef(descriptor) : descriptor;
+    }
+
     if (isCellInout(context.library, parameter)) {
         return tRef(renderDescriptor(context, ref, parameter.transferOwnership, behindRef), true);
     }
@@ -314,26 +327,35 @@ const renderParamDescriptor = (
         return tRef(renderDescriptor(context, ref, parameter.transferOwnership, behindRef));
     }
 
-    return renderDescriptor(context, ref, parameter.transferOwnership, {
-        ...argIndex,
-        isCallerAllocated: isCallerAllocatedOut(parameter) || isRecordInout(context, parameter),
-        isReceived: true,
-    });
+    return renderByValueRecordDescriptor(
+        context,
+        parameter,
+        renderDescriptor(context, ref, parameter.transferOwnership, {
+            ...argIndex,
+            isCallerAllocated: isCallerAllocatedOut(parameter) || isRecordInout(context, parameter),
+            isReceived: true,
+        }),
+    );
 };
 
 const callbackOptionsArg = (
     owningParameter: GirParameter,
     userDataIndex: number | undefined,
     canThrow: boolean,
+    argIndexOffset?: number,
 ): string[] => {
     const options: string[] = [];
 
     if (owningParameter.destroyIndex !== undefined) {
         options.push("hasDestroy: true");
+        if (argIndexOffset !== undefined)
+            options.push(`destroyArgIndex: ${String(owningParameter.destroyIndex + argIndexOffset)}`);
     }
 
     if (owningParameter.closureIndex !== undefined) {
         options.push("hasUserData: true");
+        if (argIndexOffset !== undefined)
+            options.push(`userDataArgIndex: ${String(owningParameter.closureIndex + argIndexOffset)}`);
     }
 
     if (userDataIndex !== undefined) {
@@ -351,11 +373,32 @@ const callbackOptionsArg = (
     return options;
 };
 
+const callbackDescriptor = (
+    context: ModuleContext,
+    callback: GirCallback,
+    options: string[],
+    argOverrides?: Map<number, string>,
+): string => {
+    const argTypes = callback.parameters.map(
+        (parameter, index) => argOverrides?.get(index) ?? renderParamDescriptor(context, parameter, parameter.type),
+    );
+    const { returnValue } = callback;
+    const returns = renderDescriptor(context, returnValue.type, returnValue.transferOwnership, { isReceived: true });
+    return tCallback({
+        argTypes,
+        returns: isIndirectScalarReturn(context.library, returnValue.type, returnValue.cType)
+            ? tIndirect(returns, transferOwnership(returnValue.transferOwnership))
+            : returns,
+        options,
+    });
+};
+
 const renderCallbackType = (
     context: ModuleContext,
     ref: TypeId | undefined,
     owningParameter: GirParameter,
     argOverrides?: Map<number, string>,
+    argIndexOffset?: number,
 ): string | undefined => {
     const callback = resolveCallbackType(context, ref);
 
@@ -363,21 +406,17 @@ const renderCallbackType = (
         return undefined;
     }
 
-    const argTypes = callback.parameters.map(
-        (parameter, index) => argOverrides?.get(index) ?? renderParamDescriptor(context, parameter, parameter.type),
-    );
-
-    const { returnValue } = callback;
-
-    return tCallback({
-        argTypes,
-        returns: renderDescriptor(context, returnValue.type, returnValue.transferOwnership, { isReceived: true }),
-        options: callbackOptionsArg(
+    return callbackDescriptor(
+        context,
+        callback,
+        callbackOptionsArg(
             owningParameter,
             callbackUserDataIndex(context.library, callback.parameters),
             callback.throws,
+            argIndexOffset,
         ),
-    });
+        argOverrides,
+    );
 };
 
 const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership, hasOwnedStorage: boolean): string => {
@@ -390,7 +429,7 @@ const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership, 
     }
 
     if (category === "pointer") {
-        return tBiguint64;
+        return tBuffer;
     }
 
     if (category === "gtype") {
@@ -602,6 +641,7 @@ const structExpression = (
         isInline: options.isInline,
         sharedLibrary: lib,
         copyFnName: lib === undefined ? undefined : refFunc,
+        copyStrategy: EXTERNAL_RECORD_COPY_STRATEGIES.get(record.cType ?? ""),
         freeFnName: lib === undefined ? undefined : unrefFunc,
         isValueSafe: isCopyable,
     });
@@ -838,14 +878,21 @@ const arrayExpression = (
     }
 
     if (hasUnknownArrayLength(ref)) {
-        return tUint64;
+        const item = elementExpression(context, ref, transfer, options);
+        const bytes = isByteSequence(context.library, ref);
+        return `t.array(${item}, "input", "${transferOwnership(transfer)}", { isBytes: ${String(bytes)} })`;
     }
 
     const ownership = transferOwnership(transfer);
     const element = elementExpression(context, ref, transfer, options);
 
     if (ref.lengthParameterIndex !== undefined) {
-        return tSizedArray(element, mapArgIndex(options, ref.lengthParameterIndex), ownership, layout);
+        return tSizedArray(
+            element,
+            mapArgIndex(options, ref.lengthParameterIndex),
+            ownership,
+            fixedArrayLayout(layout, options.isCallerAllocated),
+        );
     }
 
     if (ref.fixedSize !== undefined) {
@@ -898,6 +945,7 @@ export {
     shouldOmitPrimaryReturn,
     renderDescriptor,
     isCellInout,
+    renderByValueRecordDescriptor,
     renderParamDescriptor,
     renderCallbackType,
     renderSelfDescriptor,

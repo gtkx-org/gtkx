@@ -24,7 +24,18 @@ const hasArrayItem = (library: Library, type: ArrayType): boolean => {
 const hasUnsupportedNestedArrayInput = (library: Library, ref: TypeId | undefined): boolean => {
     const type = arrayTypeFor(library, ref);
 
-    return type !== undefined && hasArrayItem(library, type);
+    if (type === undefined || !hasArrayItem(library, type)) {
+        return false;
+    }
+
+    const item = arrayTypeFor(library, type.element);
+
+    return (
+        type.kind !== "carray" ||
+        item?.kind !== "carray" ||
+        (!isUnboundedArray(item) && item.fixedSize === undefined) ||
+        hasUnsupportedNestedArrayInput(library, type.element)
+    );
 };
 
 const hasUnsupportedNestedArrayOutput = (library: Library, ref: TypeId | undefined): boolean => {
@@ -34,7 +45,12 @@ const hasUnsupportedNestedArrayOutput = (library: Library, ref: TypeId | undefin
         return false;
     }
 
-    return type.kind === "carray" ? !isUnboundedArray(type) : type.flavor === "garray";
+    const item = arrayTypeFor(library, type.element);
+    if (item?.kind === "carray" && !isUnboundedArray(item) && item.fixedSize === undefined) {
+        return true;
+    }
+
+    return type.kind === "carray" ? hasUnsupportedNestedArrayOutput(library, type.element) : type.flavor === "garray";
 };
 
 const hasUnsupportedNestedArrayParameter = (library: Library, parameter: GirParameter): boolean =>

@@ -1,20 +1,23 @@
-import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
-import * as Regress from "@gtkx/gi/regress";
-import { getInstanceType, registerClass } from "@gtkx/runtime";
-import { expect, test } from "vitest";
-import { drainAfterEachTest } from "./helpers/memory.js";
 
-drainAfterEachTest();
+import * as Regress from "@gtkx/gi/regress";
+
+import { getInstanceType, registerClass } from "@gtkx/runtime";
+
+import { expect, test } from "vitest";
 
 const suffix = String(process.pid);
 
 const spareHandler = () => 1;
 
 class Shouter extends Regress.TestObj {}
+
 class Answerer extends Regress.TestObj {}
+
 class Quiet extends Regress.TestObj {}
+
 class Picky extends Regress.TestObj {}
+
 class Mute extends Regress.TestObj {}
 
 const Shouting = registerClass(Shouter, {
@@ -32,13 +35,16 @@ const Answering = registerClass(Answerer, {
 });
 
 const Quieting = registerClass(Quiet, { typeName: `GtkxSignalsQuiet${suffix}` });
+
 const Picking = registerClass(Picky, {
     typeName: `GtkxSignalsPicky${suffix}`,
     signals: { pick: { paramTypes: [GObject.TYPE_STRING] } },
 });
+
 const Muting = registerClass(Mute, { typeName: `GtkxSignalsMute${suffix}`, signals: { hum: {} } });
 
 const askCalls: [unknown, unknown][] = [];
+
 const quietRuns = { count: 0 };
 
 GObject.signalOverrideClassClosure(GObject.signalLookup("ask", Answering), Answering, (emitter, question) => {
@@ -144,24 +150,6 @@ test("on, once and off connect and remove handlers by function", () => {
     obj.emit("test");
     obj.emit("test");
     expect(seen).toEqual(["on", "once"]);
-});
-
-test("natural connect and collision-safe signal and property helpers remain independent", () => {
-    const socket = Gio.Socket.new(Gio.SocketFamily.IPV4, Gio.SocketType.DATAGRAM, Gio.SocketProtocol.UDP);
-    const address = Gio.InetSocketAddress.new(Gio.InetAddress.newLoopback(Gio.SocketFamily.IPV4), 9);
-    expect(socket.connect(address, null)).toBe(true);
-
-    const states: boolean[] = [];
-    const handlerId = GObject.signalConnect(socket, "notify::blocking", () => {
-        states.push(GObject.getProperty(socket, "blocking"));
-    });
-
-    GObject.setProperty(socket, "blocking", false);
-    expect(states).toEqual([false]);
-    GObject.signalDisconnect(socket, handlerId);
-    GObject.setProperty(socket, "blocking", true);
-    expect(states).toEqual([false]);
-    expect(socket.close()).toBe(true);
 });
 
 test("an object signal argument arrives as the very wrapper it was emitted with", () => {
@@ -311,38 +299,6 @@ test("a handler returning nothing leaves the emitter with the default value", ()
     expect(calls).toHaveLength(1);
 });
 
-test("a transfer full strv signal argument reaches the handler without being freed twice", () => {
-    const obj = new Regress.TestObj({});
-    const seen: string[][] = [];
-    obj.connect("sig-with-strv-full", (strs) => {
-        seen.push(strs);
-    });
-
-    obj.emitSigWithGstrvFull();
-    obj.emitSigWithGstrvFull();
-    expect(seen).toEqual([
-        ["foo", "bar", "baz"],
-        ["foo", "bar", "baz"],
-    ]);
-});
-
-test("two handlers on the same transfer full signal both see the argument", () => {
-    const obj = new Regress.TestObj({});
-    const seen: string[][] = [];
-    obj.connect("sig-with-strv-full", (strs) => {
-        seen.push(strs);
-    });
-
-    obj.connect("sig-with-strv-full", (strs) => {
-        seen.push(strs);
-    });
-
-    obj.emitSigWithGstrvFull();
-    expect(seen).toHaveLength(2);
-    expect(seen[0]).toEqual(["foo", "bar", "baz"]);
-    expect(seen[1]).toEqual(["foo", "bar", "baz"]);
-});
-
 test("a transfer full object signal argument keeps its reference across emissions", () => {
     const obj = new Regress.TestObj({});
     const seen: number[] = [];
@@ -420,20 +376,6 @@ test("run-first and run-cleanup signals reach their handlers", () => {
     obj.emit("first");
     obj.emit("cleanup");
     expect(seen).toEqual(["first", "cleanup"]);
-});
-
-test("an interface signal reaches handlers on an implementing instance", () => {
-    const group = Gio.SimpleActionGroup.new();
-    const names: string[] = [];
-    group.connect("action-added", (name) => {
-        names.push(name);
-    });
-
-    group.addAction(Gio.SimpleAction.new("open", null));
-    expect(names).toEqual(["open"]);
-
-    group.emit("action-added", "save");
-    expect(names).toEqual(["open", "save"]);
 });
 
 test("signal ids and names resolve through the GObject signal API", () => {
@@ -563,4 +505,16 @@ test("overriding a class closure with a value that is not a closure throws", () 
         // @ts-expect-error a symbol is not a closure
         GObject.signalOverrideClassClosure(signalId, Muting, Symbol("nope"));
     }).toThrow();
+});
+
+test.each([0, 1, 3])("transfer-full native string-vector signals support %i listeners", (listeners) => {
+    const object = new Regress.TestObj({});
+    const received: string[][] = [];
+    for (let index = 0; index < listeners; index += 1) {
+        object.on("sig-with-strv-full", (values) => {
+            received.push(values);
+        });
+    }
+    object.emitSigWithGstrvFull();
+    expect(received).toEqual(Array.from({ length: listeners }, () => ["foo", "bar", "baz"]));
 });

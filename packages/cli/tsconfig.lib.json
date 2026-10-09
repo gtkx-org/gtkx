@@ -30,6 +30,9 @@
             "path": "../codegen/tsconfig.lib.json"
         },
         {
+            "path": "../storybook/tsconfig.lib.json"
+        },
+        {
             "path": "../testing/tsconfig.lib.json"
         },
         {

@@ -427,9 +427,10 @@ const renderEmitCase = (context: ModuleContext, signal: GirCallable): string => 
     let argIndex = 0;
 
     const argLiterals = params.map((parameter) => {
-        const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
-            isReceived: true,
-        });
+        const descriptor =
+            parameter.direction === "in"
+                ? renderParamDescriptor(context, parameter, parameter.type)
+                : renderDescriptor(context, parameter.type, parameter.transferOwnership, { isReceived: true });
 
         const rendered = renderEmitArgLiteral({ context, parameter, descriptor, argIndex });
         argIndex = rendered.nextArgIndex;

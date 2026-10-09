@@ -89,26 +89,36 @@ impl ArrayCodec {
     }
 
     /// Marks the array as a caller-allocated out parameter: the runtime allocates the buffer the
-    /// callee fills in, sized as the element stride times the fixed element count.
+    /// callee fills in, using a bounded buffer or an initially empty `GArray`.
     pub fn caller_allocated(mut self) -> anyhow::Result<Self> {
         anyhow::ensure!(
-            self.container.fixed_extent().is_some(),
-            "A caller-allocated array descriptor needs a fixed size"
+            self.container.fixed_extent().is_some()
+                || matches!(self.container, ArrayContainerCodec::Sized(_))
+                || self.is_garray_container(),
+            "A caller-allocated array descriptor needs a fixed size, a capacity or a GArray container"
         );
         self.element_stride()?;
         self.caller_allocated = true;
         Ok(self)
     }
 
-    pub(crate) fn caller_allocation_len(&self) -> anyhow::Result<Option<usize>> {
-        if !self.caller_allocated {
+    pub(crate) fn caller_allocation_len(
+        &self,
+        capacity: Option<usize>,
+    ) -> anyhow::Result<Option<usize>> {
+        if !self.caller_allocated || self.is_garray_container() {
             return Ok(None);
         }
-        let Some(extent) = self.container.fixed_extent() else {
-            bail!("A caller-allocated array descriptor needs a fixed size");
+        let Some(extent) = self.container.fixed_extent().or(capacity) else {
+            bail!("A caller-allocated array requires a capacity");
         };
-        let slots = extent + usize::from(self.zero_terminated);
-        Ok(Some(self.element_stride()? * slots))
+        value::checked_array_length(extent)?;
+        let byte_len = extent
+            .checked_add(usize::from(self.zero_terminated))
+            .and_then(|slots| self.element_stride().ok()?.checked_mul(slots))
+            .ok_or_else(|| anyhow::anyhow!("Caller-allocated array size overflow"))?;
+        value::checked_array_length(byte_len)?;
+        Ok(Some(byte_len))
     }
 
     pub(crate) fn is_byte_array(&self) -> bool {
@@ -117,6 +127,10 @@ impl ArrayCodec {
 
     pub(crate) fn is_length_bounded(&self) -> bool {
         self.container.is_length_bounded()
+    }
+
+    pub(crate) fn is_input_only(&self) -> bool {
+        matches!(self.container, ArrayContainerCodec::Input(_))
     }
 
     pub(crate) fn has_inline_record_items(&self) -> bool {
@@ -602,6 +616,13 @@ impl ArrayCodec {
         (0..len)
             .map(|index| {
                 let ptr = unsafe { data.add(index * stride).cast_mut().cast() };
+                if self.is_flat_inline_container()
+                    && read.transfer().is_full()
+                    && self.item_codec.transfer().is_full()
+                {
+                    let owned = unsafe { glib::ffi::g_memdup2(ptr, stride) };
+                    return self.item_codec.decode(env, &ffi::Stash::Ptr(owned));
+                }
                 if read.borrows_items() {
                     self.decode_borrowed_item(env, ptr)
                 } else {
@@ -744,6 +765,9 @@ impl ArrayCodec {
                 encoder.encode_byte_strings(array, dup_items, self.ownership)
             }
             ItemCodec::Pointer => {
+                if matches!(&*self.item_codec, Codec::Array(_) | Codec::Buffer(_)) {
+                    return self.encode_pointer_items(env, encoder, array, zero_terminated);
+                }
                 if let Some(element_size) = self.inline_element_size() {
                     let mut buffer = self.inline_element_buffer(element_size, array)?;
                     if terminate_inline {
@@ -759,6 +783,50 @@ impl ArrayCodec {
                 )
             }
         }
+    }
+
+    fn encode_pointer_items(
+        &self,
+        env: Env,
+        encoder: &dyn ArrayKindEncoder,
+        array: &[Unknown<'_>],
+        zero_terminated: bool,
+    ) -> anyhow::Result<ffi::Stash> {
+        anyhow::ensure!(
+            self.is_flat_inline_container() || encoder.holds_pointer_slots(),
+            "Nested and opaque pointer elements require a pointer array container"
+        );
+        let mut items = array
+            .iter()
+            .map(|&item| self.item_codec.encode_owned(&env, item))
+            .collect::<anyhow::Result<Vec<_>>>()?;
+        let mut pointers = items
+            .iter()
+            .map(|item| item.as_ptr("nested array item"))
+            .collect::<anyhow::Result<Vec<_>>>()?;
+        if encoder.holds_pointer_slots() {
+            let container = encoder.encode_pointer_words(pointers, self.ownership)?;
+            let ptr = container.as_ptr("pointer array container")?;
+            items.push(container);
+            return Ok(ffi::Stash::Storage(ffi::StashStorage::new(
+                ptr,
+                ffi::StashData::NestedArray(items, Vec::new()),
+            )));
+        }
+        if zero_terminated {
+            pointers.push(std::ptr::null_mut());
+        }
+        let storage = if self.ownership.is_borrowed() {
+            let ptr = pointers.as_mut_ptr().cast::<c_void>();
+            ffi::StashStorage::new(ptr, ffi::StashData::NestedArray(items, pointers))
+        } else {
+            let ptr = unsafe {
+                glib::ffi::g_memdup2(pointers.as_ptr().cast(), size_of_val(pointers.as_slice()))
+            };
+            ffi::StashStorage::new(ptr, ffi::StashData::NestedArray(items, Vec::new()))
+                .with_pending_transfer(ptr, ffi::ReleaseKind::GFree)
+        };
+        Ok(ffi::Stash::Storage(storage))
     }
 
     #[allow(clippy::cast_ptr_alignment)]

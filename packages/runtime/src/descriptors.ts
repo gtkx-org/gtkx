@@ -104,7 +104,10 @@ type BoxedOptions = {
 } & Pick<BoxedDescriptor, "isValueSafe">;
 
 /** Callback result, closure ownership, and lifetime options. */
-type CallbackOptions = Pick<CallbackDescriptor, "hasDestroy" | "hasUserData" | "userDataIndex" | "canThrow"> & {
+type CallbackOptions = Pick<
+    CallbackDescriptor,
+    "hasDestroy" | "hasUserData" | "userDataIndex" | "canThrow" | "userDataArgIndex" | "destroyArgIndex"
+> & {
     [Key in "destroyKind" | "scope"]?: CallbackDescriptor[Key] | undefined;
 };
 
@@ -172,6 +175,8 @@ type StructOptions = {
     copyFnName?: string;
     /** Function releasing an instance, used instead of `g_free` when the struct declares one. */
     freeFnName?: string;
+    /** Deep-copy operation for a foreign record with no native copy function. */
+    copyStrategy?: "cairo-path";
 } & Pick<StructDescriptor, "isValueSafe">;
 
 /** Descriptor for a `gint8`, marshalled as a number. */
@@ -250,6 +255,18 @@ const objectT = (
 /** Wraps a descriptor in a pointer to it, for an output or inout argument. */
 const refT = (innerDescriptor: Descriptor, isInout = false): RefDescriptor =>
     isInout ? { kind: "ref", innerDescriptor, inout: true } : { kind: "ref", innerDescriptor };
+
+/** Describes a pointer to a single scalar, decoding its contents instead of its address. */
+const indirectT = (
+    innerDescriptor: Descriptor,
+    ownership: Ownership = "borrowed",
+): Extract<Descriptor, { kind: "indirect" }> => ({ kind: "indirect", innerDescriptor, ownership });
+
+/** Describes an integer carried directly in a pointer word, as with `GINT_TO_POINTER`. */
+const pointerValueT = (innerDescriptor: Descriptor): Extract<Descriptor, { kind: "pointerValue" }> => ({
+    kind: "pointerValue",
+    innerDescriptor,
+});
 
 /** Builds a descriptor for a `GHashTable`, marshalled as an array of key/value pairs. */
 const hashTableT = (
@@ -355,6 +372,9 @@ const applyStructLifecycle = (result: StructDescriptor, options: StructOptions):
 
     if (options.copyFnName !== undefined) {
         result.copyFnName = options.copyFnName;
+    }
+    if (options.copyStrategy !== undefined) {
+        result.copyStrategy = options.copyStrategy;
     }
 
     if (options.freeFnName !== undefined) {
@@ -581,6 +601,9 @@ const applyClosureOptions = (result: CallbackDescriptor, options: CallbackOption
         result.userDataIndex = options.userDataIndex;
     }
 
+    if (options.userDataArgIndex !== undefined) result.userDataArgIndex = options.userDataArgIndex;
+    if (options.destroyArgIndex !== undefined) result.destroyArgIndex = options.destroyArgIndex;
+
     if (options.canThrow !== undefined) {
         result.canThrow = options.canThrow;
     }
@@ -625,6 +648,8 @@ export {
     stringT,
     objectT,
     refT,
+    indirectT,
+    pointerValueT,
     hashTableT,
     enumT,
     flagsT,

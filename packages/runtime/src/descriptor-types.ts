@@ -1,4 +1,4 @@
-import type { Descriptor as NativeDescriptor } from "@gtkx/native";
+import type { Descriptor as NativeDescriptor, Ownership } from "@gtkx/native";
 
 type Descriptor =
     | Exclude<
@@ -8,6 +8,8 @@ type Descriptor =
           }
       >
     | (Omit<Extract<NativeDescriptor, { kind: "bytes" }>, "kind"> & { kind: "string" })
+    | { kind: "indirect"; innerDescriptor: Descriptor; ownership: Ownership }
+    | { kind: "pointerValue"; innerDescriptor: Descriptor }
     | { kind: "boolean" }
     | { kind: "unichar" }
     | { kind: "enum"; sharedLibrary: string; getTypeFnName: string; isSigned: boolean; members?: number[] }

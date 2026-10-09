@@ -15,15 +15,7 @@ const runtimeManifest = JSON.parse(
     readFileSync(require.resolve("@gtkx/runtime/package.json"), "utf8"),
 ) as PackageManifest;
 await runCodegen({
-    libraries: [
-        "Regress-1.0",
-        "RegressUnix-1.0",
-        "GIMarshallingTests-1.0",
-        "Utility-1.0",
-        "WarnLib-1.0",
-        "Gtk-4.0",
-        "GioUnix-2.0",
-    ],
+    libraries: ["Regress-1.0", "GIMarshallingTests-1.0"],
     girPath: resolveGirPath([buildDir]),
     gi: { storeDir, linkDir, version: runtimeManifest.version ?? "0.0.0" },
 });

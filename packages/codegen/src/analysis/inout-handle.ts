@@ -9,7 +9,11 @@ const inoutHandleIndirection = (library: Library, parameter: GirParameter): numb
 
     const kind = underlyingType(library, parameter.type)?.kind;
 
-    return kind !== undefined && ["class", "interface", "record"].includes(kind) ? 1 : undefined;
+    if (kind === undefined || !["class", "interface", "record"].includes(kind)) {
+        return undefined;
+    }
+
+    return cTypePointerDepth(parameter.cType) === 2 ? 2 : 1;
 };
 
 const hasInoutHandleIndirectionMismatch = (library: Library, parameter: GirParameter): boolean => {

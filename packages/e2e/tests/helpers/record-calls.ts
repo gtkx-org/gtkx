@@ -9,4 +9,4 @@ const recordCalls = <Args extends unknown[] = unknown[]>(): RecordedCalls<Args> 
     return Object.assign(handler, { calls });
 };
 
-export { recordCalls, type RecordedCalls };
+export { recordCalls };

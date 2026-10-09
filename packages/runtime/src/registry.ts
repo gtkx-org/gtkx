@@ -72,7 +72,9 @@ type VfuncDescriptor = {
      * one carries no size of its own.
      */
     vtableSize?: number;
-    /** Descriptor for each argument the slot receives, starting with the instance. */
+    /** Whether the slot receives an instance argument; omitted for ordinary instance vfuncs. */
+    hasInstanceArg?: boolean;
+    /** Descriptor for each argument the slot receives. */
     argDescriptors: Descriptor[];
     /** Descriptor for the value the slot returns. */
     returnDescriptor: Descriptor;

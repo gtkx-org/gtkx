@@ -37,6 +37,22 @@ impl RefCodec {
         self.inout
     }
 
+    fn inout_array_input(&self) -> Option<super::ArrayCodec> {
+        let Codec::Array(array) = &*self.inner_codec else {
+            return None;
+        };
+        if !self.inout
+            || !array.ownership.is_full()
+            || !array.item_codec.transfer().is_full()
+            || !(array.is_garray_container() || array.ptr_array_item().is_some())
+        {
+            return None;
+        }
+        let mut input = array.clone();
+        input.element_ownership = super::array::ElementOwnership::Container;
+        Some(input)
+    }
+
     #[must_use]
     pub fn supports_inner(inner: &Codec) -> bool {
         match inner {
@@ -62,6 +78,35 @@ impl RefCodec {
                 Ok(Some(obj.get_named_property::<Unknown<'_>>("value")?))
             }
             _ => bail_expected!("a Ref", "ref"),
+        }
+    }
+
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    fn caller_capacity(value: Unknown<'_>) -> anyhow::Result<Option<usize>> {
+        match value.get_type()? {
+            ValueType::Number => {
+                let capacity: f64 = value::read_napi(value)?;
+                anyhow::ensure!(
+                    (0.0..=9_007_199_254_740_991.0).contains(&capacity) && capacity.fract() == 0.0,
+                    "Caller-allocated array capacity must be a nonnegative safe integer"
+                );
+                let capacity = usize::try_from(capacity as u64)?;
+                value::checked_array_length(capacity)?;
+                Ok(Some(capacity))
+            }
+            ValueType::BigInt => {
+                let value: BigInt = value::read_napi(value)?;
+                let (negative, capacity, lossless) = value.get_u64();
+                anyhow::ensure!(
+                    !negative && lossless,
+                    "Caller-allocated array capacity must be a nonnegative integer"
+                );
+                let capacity = usize::try_from(capacity)?;
+                value::checked_array_length(capacity)?;
+                Ok(Some(capacity))
+            }
+            ValueType::Null | ValueType::Undefined => Ok(None),
+            _ => bail!("Caller-allocated array capacity must be an integer"),
         }
     }
 
@@ -124,6 +169,19 @@ impl Encoder for RefCodec {
         let inner_type = inner.get_type()?;
         let is_nullish = matches!(inner_type, ValueType::Null | ValueType::Undefined);
 
+        if self.inout {
+            let encoded = match self.inout_array_input() {
+                Some(input) => input.encode(env, inner)?,
+                None => self.inner_codec.encode(env, inner)?,
+            };
+
+            return match encoded {
+                ffi::Stash::Storage(storage) => Ok(Self::ptr_slot_stash(storage)),
+                ffi::Stash::Ptr(ptr) => Ok(Self::slot_stash(ptr, None)),
+                _ => bail!("Expected pointer storage for a non-scalar inout reference"),
+            };
+        }
+
         if self.inner_codec.is_handle_backed() {
             return if is_nullish {
                 Ok(Self::null_ptr_stash())
@@ -134,7 +192,18 @@ impl Encoder for RefCodec {
 
         match &*self.inner_codec {
             Codec::Array(array_codec) => {
-                if let Some(byte_len) = array_codec.caller_allocation_len()? {
+                if array_codec.caller_allocated && array_codec.is_garray_container() {
+                    let mut allocation = array_codec.clone();
+                    allocation.ownership = Ownership::Borrowed;
+                    allocation.caller_allocated = false;
+                    return allocation.encode(env, value::js_array(env, Vec::new())?);
+                }
+                let capacity = if array_codec.caller_allocated {
+                    Self::caller_capacity(inner)?
+                } else {
+                    None
+                };
+                if let Some(byte_len) = array_codec.caller_allocation_len(capacity)? {
                     let allocation = ffi::CallerAllocation::zeroed(byte_len);
 
                     return Ok(ffi::Stash::Storage(StashStorage::new(
@@ -256,6 +325,10 @@ impl Decoder for RefCodec {
                 return Ok(value::js_null(env)?);
             };
 
+            if array_codec.caller_allocated && array_codec.is_garray_container() {
+                return array_codec.decode_with_context(env, stash, ffi_args, arg_codecs);
+            }
+
             let actual_ptr = match storage.data() {
                 StashData::PtrSlot(_, _) => unsafe { *(storage.ptr() as *const *mut c_void) },
                 _ => storage.ptr(),
@@ -266,7 +339,15 @@ impl Decoder for RefCodec {
             }
 
             let ptr_stash = ffi::Stash::Ptr(actual_ptr);
-            let result = array_codec.decode_with_context(env, &ptr_stash, ffi_args, arg_codecs);
+            let same_input = matches!(
+                storage.data(),
+                StashData::PtrSlot(_, Some(inner)) if inner.ptr() == actual_ptr
+            );
+            let input_codec = same_input.then(|| self.inout_array_input()).flatten();
+            let result = input_codec
+                .as_ref()
+                .unwrap_or(array_codec)
+                .decode_with_context(env, &ptr_stash, ffi_args, arg_codecs);
 
             if matches!(storage.data(), StashData::PtrSlot(_, _))
                 && array_codec.ownership.is_full()

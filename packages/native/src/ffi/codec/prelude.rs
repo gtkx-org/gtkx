@@ -226,10 +226,16 @@ where
 
 fn aliases_stash_backing(stash: &ffi::Stash) -> bool {
     let ffi::Stash::Storage(storage) = stash else {
-        return true;
+        return false;
     };
     match storage.data() {
-        ffi::StashData::Unit | ffi::StashData::ObjectArray(_, _) => false,
+        ffi::StashData::Unit => false,
+        ffi::StashData::ObjectArray(_, pointers) => !pointers.is_empty(),
+        ffi::StashData::NestedArray(items, pointers) => {
+            !pointers.is_empty() || items.iter().any(aliases_stash_backing)
+        }
+        ffi::StashData::GArray(array) => array.should_free,
+        ffi::StashData::GPtrArray(array) => array.should_free,
         ffi::StashData::List(list) => matches!(
             &list.payload,
             ffi::ListPayload::Strings {

@@ -95,7 +95,7 @@ const isUnsupportedFromNative = (
         return false;
     }
 
-    return array.container === "carray" || transfer !== "full";
+    return transfer !== "full";
 };
 
 const hasUnsupportedInlineRecordArray = (

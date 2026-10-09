@@ -31,6 +31,7 @@ pub enum ArrayKind {
     Sized,
     Fixed,
     Cursor,
+    Input,
 }
 
 /// Where an array container reads its extent from, as the descriptor declared it.
@@ -147,6 +148,7 @@ pub(super) enum ViewEncoding {
 #[derive(Debug, Clone)]
 pub(crate) enum ArrayContainerCodec {
     NullTerminated(NullTerminatedArrayCodec),
+    Input(InputArrayCodec),
     Sized(SizedArrayCodec),
     Fixed(FixedArrayCodec),
     Cursor(CursorArrayCodec),
@@ -156,6 +158,29 @@ pub(crate) enum ArrayContainerCodec {
     ByteArray(GByteArrayCodec),
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct InputArrayCodec;
+
+impl ArrayContainer for InputArrayCodec {
+    fn decode<'e>(
+        &self,
+        _codec: &ArrayCodec,
+        _env: &'e Env,
+        _stash: &ffi::Stash,
+        _read: ArrayRead,
+    ) -> anyhow::Result<Unknown<'e>> {
+        bail!("An input array without an extent cannot be decoded")
+    }
+
+    fn buffer_view_support(&self) -> BufferViewSupport {
+        BufferViewSupport::Contiguous(None)
+    }
+
+    fn name(&self) -> &'static str {
+        "input array"
+    }
+}
+
 fn required_index(index: Option<u32>, field: &str, kind: &str) -> anyhow::Result<u32> {
     index.ok_or_else(|| anyhow::anyhow!("A {kind} array requires a {field}"))
 }
@@ -163,6 +188,7 @@ fn required_index(index: Option<u32>, field: &str, kind: &str) -> anyhow::Result
 impl ArrayContainerCodec {
     pub(super) fn from_kind(kind: ArrayKind, bounds: ArrayBounds) -> anyhow::Result<Self> {
         Ok(match kind {
+            ArrayKind::Input => Self::Input(InputArrayCodec),
             ArrayKind::Array => Self::NullTerminated(NullTerminatedArrayCodec),
             ArrayKind::Sized => Self::Sized(SizedArrayCodec::new(required_index(
                 bounds.size_param_index,
@@ -192,9 +218,11 @@ impl ArrayContainerCodec {
             Self::PtrArray(_) => ffi::ReleaseKind::GPtrArrayUnref,
             Self::GArray(_) => ffi::ReleaseKind::GArrayUnref,
             Self::ByteArray(_) => ffi::ReleaseKind::GByteArrayUnref,
-            Self::NullTerminated(_) | Self::Sized(_) | Self::Fixed(_) | Self::Cursor(_) => {
-                ffi::ReleaseKind::GFree
-            }
+            Self::NullTerminated(_)
+            | Self::Input(_)
+            | Self::Sized(_)
+            | Self::Fixed(_)
+            | Self::Cursor(_) => ffi::ReleaseKind::GFree,
         }
     }
 

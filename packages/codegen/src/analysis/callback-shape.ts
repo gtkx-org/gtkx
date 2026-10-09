@@ -9,14 +9,13 @@ import {
     hasUnsupportedInlineRecordArray,
 } from "./inline-record-array-admission.js";
 import { hasInoutHandleIndirectionMismatch } from "./inout-handle.js";
-import { hasUnsupportedScalarParameter } from "./scalar-pointer.js";
 import {
-    hasPrimitivePointer,
-    hasScalarPointer,
-    hasTypeMatching,
-    hasUnknownLengthArray,
-    primitiveCategoryFor,
-} from "./type-shape.js";
+    hasUnsupportedScalarParameter,
+    hasUnsupportedOpaquePointer,
+    isOpaquePointer,
+    isIndirectScalarReturn,
+} from "./scalar-pointer.js";
+import { hasScalarPointer, hasTypeMatching, hasUnknownLengthArray, primitiveCategoryFor } from "./type-shape.js";
 
 const userDataIndexByName = (library: Library, parameters: GirParameter[]): number | undefined => {
     let userDataIndex: number | undefined;
@@ -57,9 +56,11 @@ const isSupportedCallback = (
         !callback.introspectable ||
         hasUnsupportedHashTableSlot(library, callback.returnValue.type) ||
         hasTransferredNumericHashTable(library, callback.returnValue.type, callback.returnValue.transferOwnership) ||
-        hasScalarPointer(library, callback.returnValue.type, callback.returnValue.cType) ||
+        (!isOpaquePointer(library, callback.returnValue.type) &&
+            !isIndirectScalarReturn(library, callback.returnValue.type, callback.returnValue.cType) &&
+            hasScalarPointer(library, callback.returnValue.type, callback.returnValue.cType)) ||
         hasUnknownLengthArray(library, callback.returnValue.type) ||
-        hasPrimitivePointer(library, callback.returnValue.type) ||
+        hasUnsupportedOpaquePointer(library, callback.returnValue.type, callback.returnValue.transferOwnership) ||
         hasCallbackType(library, callback.returnValue.type) ||
         hasUnsupportedInlineRecordArray(
             { library },
@@ -84,7 +85,7 @@ const isSupportedCallback = (
                 !hasUnsupportedCallbackInlineRecordArray({ library }, parameter) &&
                 !hasUnsupportedScalarParameter(library, parameter) &&
                 !hasUnknownLengthArray(library, parameter.type) &&
-                !hasPrimitivePointer(library, parameter.type) &&
+                !hasUnsupportedOpaquePointer(library, parameter.type, parameter.transferOwnership) &&
                 !hasUnsupportedHashTableSlot(library, parameter.type) &&
                 !hasCallbackType(library, parameter.type)),
     );

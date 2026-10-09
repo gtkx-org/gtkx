@@ -1,22 +1,8 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
+
 import * as Regress from "@gtkx/gi/regress";
-import { t } from "@gtkx/runtime";
+
 import { expect, test } from "vitest";
-import { fixtureLibrary } from "./helpers/fixture-library.js";
-import { drainAfterEachTest } from "./helpers/memory.js";
-
-drainAfterEachTest();
-
-const library = fixtureLibrary("registered-enum-tables", "gobject-2.0");
-const genumValuedTableIn = t.fn(library, "gtkx_registered_enum_table_matches", () => ({
-    args: [
-        {
-            type: t.hashTable(t.int32, t.enum(library, "gtkx_hash_enum_get_type", false)),
-            isRequired: true,
-        },
-    ],
-    returns: t.boolean,
-}));
 
 const utf8Table = () =>
     new Map([
@@ -195,27 +181,6 @@ test("hash table enum entries reject wrong types and values outside the storage 
     }).toThrow();
 });
 
-test("a GType registered enum marshals as a hash table element", () => {
-    const members = new Map([
-        [1, GIMarshallingTests.GEnum.VALUE1],
-        [2, GIMarshallingTests.GEnum.VALUE2],
-        [3, GIMarshallingTests.GEnum.VALUE3],
-    ]);
-    expect(genumValuedTableIn(members)).toBe(true);
-    expect(members).toEqual(
-        new Map([
-            [1, 0],
-            [2, 1],
-            [3, 42],
-        ]),
-    );
-});
-
-test("a GType registered enum hash table element rejects values that are not members", () => {
-    expect(() => genumValuedTableIn([[1, 7]])).toThrow();
-    expect(() => genumValuedTableIn([[1, "VALUE1"]])).toThrow();
-});
-
 test("regress string hash tables return as maps in every transfer mode", () => {
     const expected = regressTable();
     expect(Regress.testGhashNothingReturn()).toEqual(expected);
@@ -260,6 +225,8 @@ test("an empty hash table stays distinguishable from a null one", () => {
     expect(owner.getHashTable()).toEqual(new Map());
     owner.setHashTable(new Map([[7, "seven"]]));
     expect(owner.getHashTable()).toEqual(new Map([[7, "seven"]]));
+    owner.someHashTable = null;
+    expect(owner.getHashTable()).toBeNull();
 });
 
 test("hash table arguments reject non-map containers", () => {

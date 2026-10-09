@@ -2,11 +2,9 @@ import type {
     NavigationAction,
     NavigationContainerProps,
     NavigationState,
-    ParamListBase,
     StackHeaderProps,
     StackNavigationOptions,
     StackNavigationProp,
-    StackNavigationState,
     StackScreenProps,
 } from "@gtkx/navigation";
 import type { RenderResult } from "@gtkx/testing";
@@ -20,11 +18,9 @@ import {
     useNavigationContainerRef,
     usePreventRemove,
 } from "@gtkx/navigation";
-import { act, render, screen, userEvent } from "@gtkx/testing";
+import { render, screen, userEvent } from "@gtkx/testing";
 import { createContext, useContext, useEffect, useState } from "react";
 import { expect } from "vitest";
-
-import { getAncestor } from "./widget-ancestors.js";
 
 type RootParams = {
     Home: undefined;
@@ -382,35 +378,10 @@ const pressKeys = async (text: string, keys: string): Promise<void> => {
     await userEvent.keyboard(await screen.findByText(text), keys);
 };
 
-const getNavigationView = (text: string): Adw.NavigationView => getAncestor(screen.getByText(text), Adw.NavigationView);
-
-const getStackPage = (view: Adw.NavigationView, index: number): Adw.NavigationPage => {
-    const page = view.getNavigationStack().getItem(index);
-
-    if (!(page instanceof Adw.NavigationPage)) {
-        throw new TypeError(`The navigation stack has no page at index ${String(index)}`);
-    }
-
-    return page;
-};
-
-const popToPage = async (view: Adw.NavigationView, index: number): Promise<void> => {
-    await act(async () => {
-        view.popToPage(getStackPage(view, index));
-        await Promise.resolve();
-    });
-};
-
 const getHeaderBar = (): Gtk.Widget => screen.getByRole(Gtk.AccessibleRole.GROUP, { as: Adw.HeaderBar });
 const queryHeaderBar = (): Gtk.Widget | null => screen.queryByRole(Gtk.AccessibleRole.GROUP, { as: Adw.HeaderBar });
 const queryBackButton = (): Gtk.Widget | null => screen.queryByRole(Gtk.AccessibleRole.BUTTON, { name: "Back" });
 const getRouteNames = (state: NavigationState | undefined): string[] => state?.routes.map((route) => route.name) ?? [];
-const getRouteKeys = (state: NavigationState | undefined): string[] => state?.routes.map((route) => route.key) ?? [];
-const isStackState = (state: NavigationState): state is StackNavigationState<ParamListBase> => state.type === "stack";
-
-const getPreloadedKeys = (state: NavigationState | undefined): string[] =>
-    state !== undefined && isStackState(state) ? state.preloadedRoutes.map((route) => route.key) : [];
-
 const expectRouteNames = (stateLog: StateLog, names: string[]): void => {
     expect(getRouteNames(stateLog.states.at(-1))).toEqual(names);
 };
@@ -435,16 +406,11 @@ export {
     expectRouteNames,
     expectVisible,
     getHeaderBar,
-    getNavigationView,
-    getPreloadedKeys,
-    getRouteKeys,
     getRouteNames,
-    popToPage,
     pressKeys,
     queryBackButton,
     queryHeaderBar,
     RefApp,
     renderStack,
     type RootParams,
-    Stack,
 };

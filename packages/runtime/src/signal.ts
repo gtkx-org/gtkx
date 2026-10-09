@@ -1,4 +1,4 @@
-import type { ExternalObject, Handle } from "@gtkx/native";
+import { alloc, type ExternalObject, type Handle } from "@gtkx/native";
 import { type AnyClass, toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import type { Descriptor } from "./descriptor-types.js";
 import type { ResolvedSignalEmitMap, ResolvedSignalMap, SignalArguments, SignalResult } from "./signal-brand.js";
@@ -10,8 +10,10 @@ import {
     arrayT,
     biguint64T,
     booleanT,
+    bufferT,
     boxedT,
     type CallbackDescriptor,
+    fixedArrayT,
     objectT,
     refT,
     sizedArrayT,
@@ -19,20 +21,22 @@ import {
     uint32T,
     voidT,
 } from "./descriptors.js";
+import { read } from "./field.js";
 import { LIB, VALUE_SIZE, VALUE_T } from "./library.js";
 import { getClassType, getHandle, getInstanceType } from "./registry.js";
 import { packTupleResult } from "./tuple.js";
 import { TYPE_INVALID, type TypedClass, typeInterfaces, typeParent } from "./type.js";
 import {
     fromValue,
+    fromValueForDescriptor,
     getBoxedValue,
     inoutValueForBoxedDescriptor,
     intoValue,
-    newValueForDescriptor,
     newValueForType,
     outValueForBoxedDescriptor,
     outValueForDescriptor,
     toValue,
+    toValueForType,
 } from "./value.js";
 
 /** Function invoked when a connected GObject signal is emitted. */
@@ -128,6 +132,8 @@ const pendingSignalDispatches: Map<string, PendingSignalDispatch[]> = new Map();
 const gQuarkFromString = bind(LIB, "g_quark_from_string", [stringT("borrowed")], uint32T);
 const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
 const gSignalName = bind(LIB, "g_signal_name", [uint32T], stringT("borrowed"));
+const gSignalQuery = bind(LIB, "g_signal_query", [uint32T, bufferT], voidT);
+const signalTypesCache: Map<number, { paramTypes: bigint[]; returnType: bigint }> = new Map();
 const signalNameCache: Map<bigint, string[]> = new Map();
 const gSignalListIds = bind(LIB, "g_signal_list_ids", [biguint64T, refT(uint32T)], sizedArrayT(uint32T, 1, "full"));
 
@@ -137,6 +143,16 @@ const gSignalEmitv = bind(
     [arrayT(VALUE_T, "array", "borrowed", { elementSize: VALUE_SIZE }), uint32T, uint32T, VALUE_T],
     voidT,
 );
+
+const signalTypes = (signalId: number): { paramTypes: bigint[]; returnType: bigint } =>
+    signalTypesCache.getOrInsertComputed(signalId, () => {
+        const query = alloc(56);
+        gSignalQuery(signalId, query);
+        const count = read(query, uint32T, 40) as number;
+        const paramTypes = read(query, fixedArrayT(biguint64T, count), 48) as bigint[];
+        const returnType = read(query, biguint64T, 32) as bigint;
+        return { paramTypes: paramTypes.map((type) => type & ~1n), returnType: returnType & ~1n };
+    });
 
 const gSignalHandlerIsConnected = bind(
     LIB,
@@ -475,9 +491,9 @@ function emitDeclaredSignal(instance: object, signal: string, types: DeclaredSig
     return fromValue(returnValue);
 }
 
-const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: () => unknown } => {
+const createEmitValue = (arg: EmitArg, type: bigint): { value: ExternalObject<Handle>; read?: () => unknown } => {
     if (!isOutputArg(arg)) {
-        return { value: toValue(arg.type, arg.value) };
+        return { value: toValueForType(arg.type, arg.value, type) };
     }
 
     if (isCallerAllocatedArg(arg)) {
@@ -493,11 +509,17 @@ const createEmitValue = (arg: EmitArg): { value: ExternalObject<Handle>; read?: 
     return isInoutArg(arg) ? outValueForDescriptor(arg.type, arg.value) : outValueForDescriptor(arg.type);
 };
 
-const collectEmitValues = (instance: object, args: EmitArg[]): EmitValues => {
+const collectEmitValues = (instance: object, args: EmitArg[], paramTypes: bigint[]): EmitValues => {
     const collected: EmitValues = { values: [toValue(objectT("full"), instance)], reads: [] };
 
-    for (const arg of args) {
-        const { value, read } = createEmitValue(arg);
+    if (args.length !== paramTypes.length) {
+        throw new TypeError(`emit: signal takes ${String(paramTypes.length)} arguments, got ${String(args.length)}`);
+    }
+
+    for (const [index, arg] of args.entries()) {
+        const type = paramTypes[index];
+        if (type === undefined) throw new TypeError("emit: missing native signal argument type");
+        const { value, read } = createEmitValue(arg, type);
         collected.values.push(value);
 
         if (read) {
@@ -521,7 +543,8 @@ const readEmitOutputs = (reads: (() => unknown)[]): unknown[] => reads.map((read
 function emitSignal(instance: object, signal: string, args: EmitArg[], returns?: Descriptor): unknown {
     const signalId = getSignalId(instance, signal);
     const detail = getSignalDetailQuark(signal);
-    const { values, reads } = collectEmitValues(instance, args);
+    const { paramTypes, returnType } = signalTypes(signalId);
+    const { values, reads } = collectEmitValues(instance, args, paramTypes);
 
     if (returns === undefined) {
         gSignalEmitv(values, signalId, detail, undefined);
@@ -529,10 +552,10 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returns?:
         return packTupleResult(readEmitOutputs(reads), undefined, false);
     }
 
-    const returnValue = newValueForDescriptor(returns);
+    const returnValue = newValueForType(returnType);
     gSignalEmitv(values, signalId, detail, returnValue);
 
-    return packTupleResult(readEmitOutputs(reads), fromValue(returnValue), true);
+    return packTupleResult(readEmitOutputs(reads), fromValueForDescriptor(returns, returnValue), true);
 }
 
 const createSignalDispatch = (spec: SignalDispatchSpec): SignalDispatch => {

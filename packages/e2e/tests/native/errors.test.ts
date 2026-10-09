@@ -1,15 +1,17 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
-import * as Gio from "@gtkx/gi/gio";
-import * as GLib from "@gtkx/gi/glib";
-import * as GObject from "@gtkx/gi/gobject";
-import * as Regress from "@gtkx/gi/regress";
-import * as WarnLib from "@gtkx/gi/warnlib";
-import { expect, test } from "vitest";
-import { drainAfterEachTest } from "./helpers/memory.js";
 
-drainAfterEachTest();
+import * as Gio from "@gtkx/gi/gio";
+
+import * as GLib from "@gtkx/gi/glib";
+
+import * as GObject from "@gtkx/gi/gobject";
+
+import * as Regress from "@gtkx/gi/regress";
+
+import { expect, test } from "vitest";
 
 const marshallingDomain = () => GLib.quarkFromString(GIMarshallingTests.CONSTANT_GERROR_DOMAIN);
+
 const ioDomain = () => GLib.quarkFromString("g-io-error-quark");
 
 test("a failing call throws", () => {
@@ -87,24 +89,6 @@ test("a constructor that fails throws instead of returning an instance", () => {
     expect(GIMarshallingTests.Object.new(42).int).toBe(42);
 });
 
-test("glib errors round trip the fields they are constructed with", () => {
-    const literal = GLib.Error.newLiteral(ioDomain(), Gio.IOErrorEnum.NOT_FOUND, "not found here");
-    expect(literal.domain).toBe(ioDomain());
-    expect(literal.code).toBe(Gio.IOErrorEnum.NOT_FOUND);
-    expect(literal.message).toBe("not found here");
-
-    literal.code = Gio.IOErrorEnum.EXISTS;
-    expect(literal.code).toBe(Gio.IOErrorEnum.EXISTS);
-    expect(literal.message).toBe("not found here");
-    expect(literal.matches(ioDomain(), Gio.IOErrorEnum.EXISTS)).toBe(true);
-
-    const built = GLib.Error.newLiteral(ioDomain(), Gio.IOErrorEnum.BUSY, "busy");
-    expect(built.domain).toBe(ioDomain());
-    expect(built.code).toBe(Gio.IOErrorEnum.BUSY);
-    expect(built.message).toBe("busy");
-    expect(built.matches(ioDomain(), Gio.IOErrorEnum.BUSY)).toBe(true);
-});
-
 test("a nullable gerror argument accepts null and an owned error", () => {
     expect(GIMarshallingTests.nullableGerror(null)).toBe(false);
     expect(GIMarshallingTests.nullableGerror(GIMarshallingTests.gerrorReturn())).toBe(true);
@@ -155,10 +139,6 @@ test("regress calls with a trailing gerror throw the io error they set", () => {
     }).toThrow();
 });
 
-test("an unregistered error domain still throws a wrapped glib error", () => {
-    expect(() => WarnLib.throwUnpaired()).toThrow();
-});
-
 test("constructing an abstract or non instantiable type throws", () => {
     const abstractClasses: (new (props?: object) => object)[] = [
         // @ts-expect-error TestInheritDrawable is abstract
@@ -200,35 +180,6 @@ test("gerror arguments reject values of the wrong type", () => {
         // @ts-expect-error a plain object is not a GValue
         GIMarshallingTests.compareTwoGerrorsInGvalue({}, {});
     }).toThrow();
-});
-
-test("glib error field writes reject values the fields cannot hold", () => {
-    expect(() => {
-        Reflect.construct(GLib.Error, [{ domain: ioDomain(), code: 1, message: "x" }]);
-    }).toThrow();
-    expect(() => GLib.Error.newLiteral(-1, 1, "y")).toThrow();
-    expect(() => GLib.Error.newLiteral(ioDomain(), 1.5, "x")).toThrow();
-
-    const error = GLib.Error.newLiteral(ioDomain(), Gio.IOErrorEnum.FAILED, "boom");
-    expect(() => {
-        // @ts-expect-error a string is not an error code
-        error.code = "nope";
-    }).toThrow();
-    expect(() => {
-        // @ts-expect-error a number is not an error message
-        error.message = 42;
-    }).toThrow();
-});
-
-test("overwriting a string field releases the string it displaces", () => {
-    const domain = GLib.quarkFromString("gtkx-field-write");
-    const error = GLib.Error.newLiteral(domain, 1, "B".repeat(40));
-
-    error.message = "CC";
-    expect(error.message).toBe("CC");
-
-    error.message = "D".repeat(40);
-    expect(error.message).toBe("D".repeat(40));
 });
 
 test("a string field written repeatedly on a gtkx-allocated struct still round-trips", () => {

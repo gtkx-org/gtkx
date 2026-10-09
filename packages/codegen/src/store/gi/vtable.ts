@@ -60,6 +60,7 @@ type VtableSlot = {
     vfunc: GirVirtualMethod | undefined;
     byteOffset: number;
     canCall: boolean;
+    hasInstanceArg: boolean;
 };
 
 type VfuncMemberOptions = {
@@ -150,7 +151,7 @@ const vtableCallbackType = (context: ModuleContext, field: GirField): GirCallbac
 
     const type = context.library.typeFor(field.type);
 
-    if (type?.kind !== "callback" || context.library.nameFor(field.type) !== undefined) {
+    if (type?.kind !== "callback") {
         return undefined;
     }
 
@@ -273,6 +274,11 @@ const collectVtableSlots = (
                 ...entry,
                 field,
                 vfunc: undefined,
+                hasInstanceArg:
+                    entry.callback.parameters[0]?.direction === "in" &&
+                    ["class", "interface"].includes(
+                        underlyingType(context.library, entry.callback.parameters[0]?.type)?.kind ?? "",
+                    ),
                 byteOffset: slot.byteOffset,
                 canCall:
                     `${namespaceName}.${record.name}.${field.name}` !== "OSTree.RepoFinderInterface.resolve_finish",
@@ -347,7 +353,7 @@ const shadowedSlotKey = (klass: GirClass, slot: VtableSlot): string =>
     `vfunc${sanitizeTypeIdentifier(klass.name)}${pascalCase(slot.field.name)}`;
 
 const slotSignatureKey = (library: Library, slot: VtableSlot): string => {
-    const [, ...parameters] = slot.callback.parameters;
+    const parameters = slot.callback.parameters.slice(slot.hasInstanceArg ? 1 : 0);
 
     const parts = parameters.map(
         (parameter) => `${typeKey(library, parameter.type)}/${parameter.direction}/${String(parameter.nullable)}`,
@@ -455,7 +461,7 @@ const vfuncCallables = (context: ModuleContext, namespaceName: string, klass: Gi
     const members: Map<string, VfuncCallable> = new Map();
 
     for (const slot of callableVfuncSlots(context, namespaceName, klass)) {
-        const [, ...parameters] = slot.callback.parameters;
+        const parameters = slot.callback.parameters.slice(slot.hasInstanceArg ? 1 : 0);
         members.set(slot.key, {
             callable: { ...callbackAsFunction(slot.callback), parameters },
             returnType: vfuncSlotSignature(context, slot).returnType,
@@ -516,13 +522,16 @@ const slotDoc = (slot: VtableSlot): string | undefined => {
 
 const slotDocParameters = (context: ModuleContext, slot: VtableSlot): GirParameter[] => {
     const plan = slotParamPlan(context, slot.callback);
-    const [, ...parameters] = slot.callback.parameters;
+    const parameters = slot.callback.parameters.slice(slot.hasInstanceArg ? 1 : 0);
     const vfuncParameters = slot.vfunc?.parameters ?? [];
     const folded = foldedLengthParameters(context.library, slot.callback);
 
     return parameters
         .map((parameter, index) => ({ parameter, index }))
-        .filter(({ parameter, index }) => plan.argIndexMap.has(index + 1) && !folded.has(parameter))
+        .filter(
+            ({ parameter, index }) =>
+                plan.argIndexMap.has(index + (slot.hasInstanceArg ? 1 : 0)) && !folded.has(parameter),
+        )
         .map(({ parameter, index }) => ({
             ...parameter,
             doc: vfuncParameters[index]?.doc ?? parameter.doc,
@@ -534,7 +543,11 @@ const slotDocSpec = (context: ModuleContext, slot: VtableSlot): JsDocSpec => {
     const source = slot.vfunc ?? slot.callback;
 
     return {
-        ...handlerSpec(source, parameters, renamesWithInstance(parameters, slot.callback.parameters[0])),
+        ...handlerSpec(
+            source,
+            parameters,
+            renamesWithInstance(parameters, slot.hasInstanceArg ? slot.callback.parameters[0] : undefined),
+        ),
         returns: slot.vfunc?.returnValue.doc ?? slot.callback.returnValue.doc,
         throws: slot.callback.throws ? THROWS_TEXT : undefined,
     };
@@ -570,7 +583,7 @@ const renderVfuncMembers = (options: VfuncMembersOptions): string[] => {
 const isCallableSlot = (slot: VtableSlot): boolean => !UNCALLABLE_SLOT_KEYS.has(slot.key);
 
 const vfuncInputParameters = (context: ModuleContext, slot: VtableSlot): GirParameter[] => {
-    const [, ...parameters] = slotParamPlan(context, slot.callback).parameters;
+    const parameters = slotParamPlan(context, slot.callback).parameters.slice(slot.hasInstanceArg ? 1 : 0);
     const folded = foldedLengthParameters(context.library, slot.callback);
 
     return handlerParameters(parameters, (parameter) => folded.has(parameter));
@@ -578,7 +591,7 @@ const vfuncInputParameters = (context: ModuleContext, slot: VtableSlot): GirPara
 
 const vfuncSlotSignature = (context: ModuleContext, slot: VtableSlot, isOptional = false): VfuncSignature => {
     const plan = slotParamPlan(context, slot.callback);
-    const [, ...parameters] = plan.parameters;
+    const parameters = plan.parameters.slice(slot.hasInstanceArg ? 1 : 0);
 
     const renderType = (ref: TypeId | undefined, isNullable: boolean): string => renderTsType(context, ref, isNullable);
 
@@ -695,6 +708,10 @@ const renderVtableSlotDescriptor = (context: ModuleContext, vtable: Vtable, slot
     }
 
     lines.push(`argDescriptors: [${argDescriptors}],`, `returnDescriptor: ${returnDescriptor},`);
+
+    if (!slot.hasInstanceArg) {
+        lines.push("hasInstanceArg: false,");
+    }
 
     if (!slot.canCall) {
         lines.push("canCall: false,");

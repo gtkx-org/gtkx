@@ -77,7 +77,13 @@ const hasTypeMatching = (library: Library, ref: TypeId | undefined, isMatch: (ty
 };
 
 const cTypePointerDepth = (cType: string | undefined): number =>
-    (cType?.split("*").length ?? 1) - 1 + (/\bg(?:const)?pointer\b/u.test(cType ?? "") ? 1 : 0);
+    (cType?.split("*").length ?? 1) -
+    1 +
+    (/\bg(?:const)?pointer\b/u.test(cType ?? "") ? 1 : 0) +
+    (/\bGStrv\b/u.test(cType ?? "") ? 2 : 0);
+
+const isOpaqueCType = (cType: string | undefined): boolean =>
+    /^(?:gpointer|gconstpointer|(?:const\s+)?void\s*\*)$/u.test(cType?.trim() ?? "");
 
 const hasScalarPointer = (
     library: Library,
@@ -93,6 +99,7 @@ const hasScalarPointer = (
             if (type.kind === "alias") {
                 return (
                     isScalarRef(library, type.value.target) &&
+                    primitiveCategoryThroughAliases(library, type.value.target) !== "pointer" &&
                     (cTypePointerDepth(type.value.cType) > 0 || cTypePointerDepth(type.value.targetCType) > 0)
                 );
             }
@@ -101,9 +108,14 @@ const hasScalarPointer = (
                 return false;
             }
 
+            if (isOpaqueCType(type.arrayCType) && isOpaqueCType(type.elementCType)) {
+                return false;
+            }
+
             const pointers = cTypePointerDepth(type.elementCType);
 
-            return pointers > (type === outerArray ? 1 : 0);
+            const elementPointers = primitiveCategoryThroughAliases(library, type.element) === "pointer" ? 1 : 0;
+            return pointers > elementPointers + (type === outerArray ? 1 : 0);
         })
     );
 };

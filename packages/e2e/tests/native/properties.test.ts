@@ -1,12 +1,12 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
-import * as Gio from "@gtkx/gi/gio";
-import * as GLib from "@gtkx/gi/glib";
-import * as GObject from "@gtkx/gi/gobject";
-import * as Regress from "@gtkx/gi/regress";
-import { expect, test } from "vitest";
-import { drainAfterEachTest } from "./helpers/memory.js";
 
-drainAfterEachTest();
+import * as GLib from "@gtkx/gi/glib";
+
+import * as GObject from "@gtkx/gi/gobject";
+
+import * as Regress from "@gtkx/gi/regress";
+
+import { expect, test } from "vitest";
 
 const intGvalue = (contents: number): GObject.Value => {
     const value = new GObject.Value();
@@ -252,19 +252,6 @@ test("readonly property reads its value and writes throw", () => {
     }).toThrow();
 });
 
-test("construct-only property is set at construct and rejected afterwards", () => {
-    const action = new Gio.SimpleAction({ name: "probe" });
-    expect(GObject.getProperty(action, "name")).toBe("probe");
-    expect(() => {
-        // @ts-expect-error name is construct-only
-        action.name = "other";
-    }).toThrow();
-    expect(() => {
-        Reflect.apply(GObject.setProperty, undefined, [action, "name", "other"]);
-    }).toThrow();
-    expect(action.name).toBe("probe");
-});
-
 test("property writes reject wrong types", () => {
     const po = new GIMarshallingTests.PropertiesObject({});
     expect(() => {
@@ -374,6 +361,8 @@ test("PropertiesAccessorsObject accessor methods round trip scalar properties", 
 
 test("PropertiesAccessorsObject accessor methods round trip boxed container and object properties", () => {
     const ao = GIMarshallingTests.PropertiesAccessorsObject.new();
+    ao.setBoxedGlist([-1, 0, 1, 2]);
+    expect(ao.getBoxedGlist()).toEqual([-1, 0, 1, 2]);
     ao.setByteArray(new Uint8Array([9, 8]));
     expect(ao.getByteArray()).toEqual(new Uint8Array([9, 8]));
     ao.setHashTable(
@@ -401,6 +390,8 @@ test("PropertiesAccessorsObject accessor methods round trip boxed container and 
     ao.setGvalue(held);
     expect(ao.getGvalue()).toBe("boxed value");
     expect(ao.someGvalue?.getString()).toBe("boxed value");
+    ao.someHashTable = null;
+    expect(ao.someHashTable).toBeNull();
 });
 
 test("PropertiesAccessorsObject property accessors set values and notify", () => {

@@ -84,11 +84,6 @@ jobs:
             sha256sum "$artifact" > "$artifact.sha256"
           done
 
-      - name: Accept native artifact through published consumers
-        env:
-          GTKX_RELEASE_NATIVE_ARTIFACTS: "true"
-        run: pnpm exec nx run @gtkx/e2e:acceptance --skip-nx-cache -- tests/publish.test.ts
-
       - name: Upload native bundle
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:

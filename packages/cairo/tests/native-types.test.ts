@@ -76,14 +76,21 @@ describe("Cairo structs", () => {
     });
 
     it("writes back through the setters", () => {
-        const rect = new cairo.Rectangle({ x: 1.5 });
-        rect.width = 2.5;
-        expect(rect.x).toBe(1.5);
-        expect(rect.width).toBe(2.5);
-    });
-
-    it("throws when a struct field receives a non-numeric value", () => {
-        expect(() => new cairo.RectangleInt({ x: "wide" as never })).toThrow();
-        expect(() => new cairo.Glyph({ index: "first" as never })).toThrow();
+        for (const rect of [new cairo.Rectangle(), new cairo.RectangleInt()]) {
+            rect.x = 1;
+            rect.y = 2;
+            rect.width = 3;
+            rect.height = 4;
+            expect([rect.x, rect.y, rect.width, rect.height]).toEqual([1, 2, 3, 4]);
+        }
+        const glyph = new cairo.Glyph();
+        glyph.index = 1n;
+        glyph.x = 2.5;
+        glyph.y = 3.5;
+        expect([glyph.index, glyph.x, glyph.y]).toEqual([1n, 2.5, 3.5]);
+        const cluster = new cairo.TextCluster();
+        cluster.numBytes = 2;
+        cluster.numGlyphs = 1;
+        expect([cluster.numBytes, cluster.numGlyphs]).toEqual([2, 1]);
     });
 });

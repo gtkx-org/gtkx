@@ -33,6 +33,7 @@ pub struct CallDescriptor {
     pub(crate) cif: Cif,
     pub(crate) symbol: OnceCell<CodePtr>,
     pub(crate) native_arg_count: usize,
+    pub(crate) arg_order: Vec<usize>,
 }
 
 /// A vtable slot to precompile a call to, together with how its arguments and return value are
@@ -111,22 +112,75 @@ fn build_arg_types(
     (arg_types, fixed_type_count)
 }
 
+fn argument_order(arg_codecs: &[Codec], count: usize) -> Result<Vec<usize>> {
+    let mut reserved = vec![None; count];
+    let mut sequential = Vec::new();
+    let mut source = 0;
+    for codec in arg_codecs {
+        sequential.push(source);
+        source += 1;
+        if let Codec::Callback(callback) = codec {
+            let extras = [
+                (callback.has_user_data, callback.user_data_arg_index),
+                (callback.has_destroy, callback.destroy_arg_index),
+            ];
+            for (present, target) in extras {
+                if !present {
+                    if target.is_some() {
+                        return Err(Error::from_reason(
+                            "A callback position requires its matching argument",
+                        ));
+                    }
+                    continue;
+                }
+                if let Some(target) = target {
+                    let slot = reserved.get_mut(target).ok_or_else(|| {
+                        Error::from_reason(
+                            "Callback argument position exceeds the native signature",
+                        )
+                    })?;
+                    if slot.replace(source).is_some() {
+                        return Err(Error::from_reason("Callback argument positions overlap"));
+                    }
+                } else {
+                    sequential.push(source);
+                }
+                source += 1;
+            }
+        }
+    }
+    let mut sequential = sequential.into_iter();
+    reserved
+        .into_iter()
+        .map(|reserved| {
+            reserved
+                .or_else(|| sequential.next())
+                .ok_or_else(|| Error::from_reason("Incomplete callback argument layout"))
+        })
+        .collect()
+}
+
 pub(crate) fn prepare(
     target: CallTarget,
     label: String,
     arg_codecs: Vec<Codec>,
     return_codec: Codec,
     fixed_arg_count: Option<usize>,
-) -> CallDescriptor {
+) -> Result<CallDescriptor> {
     let (arg_types, fixed_type_count) = build_arg_types(&arg_codecs, fixed_arg_count);
     let native_arg_count = arg_types.len();
+    let arg_order = argument_order(&arg_codecs, native_arg_count)?;
+    let arg_types: Vec<Type> = arg_order
+        .iter()
+        .map(|&index| arg_types[index].clone())
+        .collect();
     let return_type = return_codec.libffi_type();
     let cif = match fixed_type_count {
         Some(fixed) => Cif::new_variadic(arg_types, fixed, return_type),
         None => Builder::new().res(return_type).args(arg_types).into_cif(),
     };
 
-    CallDescriptor {
+    Ok(CallDescriptor {
         target,
         label,
         arg_codecs,
@@ -134,7 +188,8 @@ pub(crate) fn prepare(
         cif,
         symbol: OnceCell::new(),
         native_arg_count,
-    }
+        arg_order,
+    })
 }
 
 fn into_codecs(
@@ -226,7 +281,7 @@ pub fn bind(
         arg_codecs,
         return_codec,
         fixed_arg_count.map(|count| count as usize),
-    )))
+    )?))
 }
 
 #[napi(catch_unwind)]
@@ -247,7 +302,7 @@ pub fn bind_function_pointer(
         arg_codecs,
         return_codec,
         None,
-    )))
+    )?))
 }
 
 /// Precompiles a call to the virtual function slot at `byteOffset` of `instanceType`'s class
@@ -296,5 +351,5 @@ pub fn bind_vfunc(options: BindVfuncOptions) -> Result<External<CallDescriptor>>
         arg_codecs,
         return_codec,
         None,
-    )))
+    )?))
 }
