@@ -7,7 +7,11 @@ it("searches a large native store through repeated object callbacks", () => {
     const item = Gtk.StringObject.new("same native identity");
     const needle = Gtk.StringObject.new("missing");
     const store = Gio.ListStore.new(GObject.TYPE_OBJECT);
-    store.splice(0, 0, Array.from({ length: 100_000 }, () => item));
+    store.splice(
+        0,
+        0,
+        Array.from({ length: 100_000 }, () => item),
+    );
     let calls = 0;
     let isMatchingIdentity = true;
     const [found] = store.findWithEqualFunc(needle, (candidate, target) => {
@@ -39,16 +43,22 @@ it("preserves a native store after a late callback rejection", () => {
     const item = Gtk.StringObject.new("same native identity");
     const needle = Gtk.StringObject.new("missing");
     const store = Gio.ListStore.new(GObject.TYPE_OBJECT);
-    store.splice(0, 0, Array.from({ length: 100_000 }, () => item));
+    store.splice(
+        0,
+        0,
+        Array.from({ length: 100_000 }, () => item),
+    );
     let calls = 0;
-    expect(() => store.findWithEqualFunc(needle, () => {
-        calls++;
-        if (calls === 100_000) {
-            throw new Error("Callback rejected");
-        }
+    expect(() =>
+        store.findWithEqualFunc(needle, () => {
+            calls++;
+            if (calls === 100_000) {
+                throw new Error("Callback rejected");
+            }
 
-        return false;
-    })).toThrow();
+            return false;
+        }),
+    ).toThrow();
     expect(calls).toBe(100_000);
     expect(store.getNItems()).toBe(100_000);
     expect(store.getItem(99_999)).toBe(item);

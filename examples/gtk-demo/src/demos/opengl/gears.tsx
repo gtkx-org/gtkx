@@ -313,13 +313,7 @@ const emitToothFaces = (builder: GearBuilder, radii: ToothRadii, base: number) =
     builder.endStrip(first);
 };
 
-function createGear({
-    innerRadius,
-    outerRadius,
-    width,
-    teeth,
-    toothDepth,
-}: GearDefinition): GearGeometry {
+function createGear({ innerRadius, outerRadius, width, teeth, toothDepth }: GearDefinition): GearGeometry {
     const builder = createGearBuilder(width);
 
     const radii = {

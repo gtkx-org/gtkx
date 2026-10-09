@@ -64,11 +64,13 @@ export function ${isApplication ? "App" : "Child"}() {
         const timer = setInterval(publish, 100);
         return () => clearInterval(timer);
     });
-    return ${isApplication
-        ? "<AdwApplication>" +
-        '<AdwApplicationWindow title="Schema refresh" defaultWidth={320} defaultHeight={160}>' +
-        "<Child /></AdwApplicationWindow></AdwApplication>"
-        : `<GtkLabel label=${JSON.stringify(phase)} />`};
+    return ${
+        isApplication
+            ? "<AdwApplication>" +
+              '<AdwApplicationWindow title="Schema refresh" defaultWidth={320} defaultHeight={160}>' +
+              "<Child /></AdwApplicationWindow></AdwApplication>"
+            : `<GtkLabel label=${JSON.stringify(phase)} />`
+    };
 }
 `;
 };

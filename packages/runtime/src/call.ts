@@ -24,7 +24,8 @@ const createCall = (
     const scalarOutputs = args.flatMap((plan, index) =>
         plan.inner !== undefined && plan.storage !== undefined
             ? [{ index, inner: plan.inner, storage: plan.storage }]
-            : []);
+            : [],
+    );
     const index = argDescriptors.findIndex((arg) => isCompletionCallback(arg));
     const completionIndex = index === -1 ? undefined : index;
 

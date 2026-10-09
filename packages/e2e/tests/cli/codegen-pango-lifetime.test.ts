@@ -3,7 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
 import { isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
-const CONFIG = 'export default { applicationId: "org.gtkx.pangolifetime", libraries: ["Pango-1.0"],' +
+const CONFIG =
+    'export default { applicationId: "org.gtkx.pangolifetime", libraries: ["Pango-1.0"],' +
     " agents: { reference: false, rules: false } };";
 const CONSUMER = `import assert from "node:assert/strict";
 import * as Pango from "@gtkx/gi/pango";
@@ -33,14 +34,16 @@ try {
 }
 `;
 const REJECTED: Record<string, string> = {
-    "attribute-call.ts": 'import * as Pango from "@gtkx/gi/pango";' +
+    "attribute-call.ts":
+        'import * as Pango from "@gtkx/gi/pango";' +
         " export const destroy = (value: Pango.Attribute) => value.destroy();",
-    "attribute-member.ts": 'import * as Pango from "@gtkx/gi/pango";' +
-        ' export type Destroy = Pango.Attribute["destroy"];',
-    "iterator-call.ts": 'import * as Pango from "@gtkx/gi/pango";' +
+    "attribute-member.ts":
+        'import * as Pango from "@gtkx/gi/pango";' + ' export type Destroy = Pango.Attribute["destroy"];',
+    "iterator-call.ts":
+        'import * as Pango from "@gtkx/gi/pango";' +
         " export const destroy = (value: Pango.AttrIterator) => value.destroy();",
-    "iterator-member.ts": 'import * as Pango from "@gtkx/gi/pango";' +
-        ' export type Destroy = Pango.AttrIterator["destroy"];',
+    "iterator-member.ts":
+        'import * as Pango from "@gtkx/gi/pango";' + ' export type Destroy = Pango.AttrIterator["destroy"];',
 };
 
 describe("generated Pango lifetime contracts", () => {
@@ -48,11 +51,13 @@ describe("generated Pango lifetime contracts", () => {
     let project: CliProject;
 
     beforeAll(() => {
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-pango-lifetime-types-",
-            config: CONFIG,
-            files: { "probe.ts": CONSUMER, ...REJECTED },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-pango-lifetime-types-",
+                config: CONFIG,
+                files: { "probe.ts": CONSUMER, ...REJECTED },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });

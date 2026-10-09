@@ -1,9 +1,8 @@
 const FENCE_LINE = /^\s*(```|~~~)/;
-const CLEANUP_TOKEN = String.fromCodePoint(0xE0_01);
-const FENCE_TOKEN = String.fromCodePoint(0xE0_02);
+const CLEANUP_TOKEN = String.fromCodePoint(0xe0_01);
+const FENCE_TOKEN = String.fromCodePoint(0xe0_02);
 const FENCED_CLEANUP_COMMENT = /^(?:\/\/|#|\/\*|\*)[^\n]*\b(?:free|unref)\b/i;
-const FENCED_CLEANUP_INSTRUCTION =
-    /\b(?:do\s+not|don't|must|should|needs?\s+to|(?:have|has)\s+to)\s+(?:free|unref)\b/i;
+const FENCED_CLEANUP_INSTRUCTION = /\b(?:do\s+not|don't|must|should|needs?\s+to|(?:have|has)\s+to)\s+(?:free|unref)\b/i;
 const C_CLEANUP_CALL = /\b[a-z]\w*_(?:free(?:_[a-z]\w*)?|freev|unref|unset|destroy)\s*\(\)/i;
 const C_STRFREEV_CALL = /\bg_\w*freev?\s*\(\)/i;
 const GI_CLEANUP_CALL = /\b(?:[A-Z]\w*\.)+(?:free|strfreev|unref|unset|destroy)\s*\(\)/;
@@ -36,17 +35,14 @@ const RETURN_VALUE_CLEANUP_START = /^(?:the\s+)?return(?:ed)?\s+(?:value|result)
 const RESULTING_CLEANUP_START = /^(?:the\s+)?resulting\s+`?\w+`?\s+(?:should|must)\s+be\s+(?:freed|unreffed)\b/i;
 const VALUE_CLEANUP_START =
     /^(?:(?:the|this|that|a|an|both)\s+)?`?(?:value|array|list|result|string|object|path|paths|reference)\b`?/i;
-const MEMORY_VALUE_CLEANUP_START =
-    /^(?:(?:the|this|that|a|an|both)\s+)?`?(?:copy|contents?|pointer|memory)\b`?/i;
+const MEMORY_VALUE_CLEANUP_START = /^(?:(?:the|this|that|a|an|both)\s+)?`?(?:copy|contents?|pointer|memory)\b`?/i;
 const CALLER_OWNERSHIP = /\bbelongs?\s+to\s+(?:the\s+)?caller\b/i;
 const OWNED_BY_CALLER = /\bowned\s+by\s+(?:the\s+)?caller\b/i;
-const CALLER_RESPONSIBILITY =
-    /\b(?:caller|calling\s+code)\s+(?:is|becomes|remains)\s+responsible\s+for\b/i;
+const CALLER_RESPONSIBILITY = /\b(?:caller|calling\s+code)\s+(?:is|becomes|remains)\s+responsible\s+for\b/i;
 const CLEANUP_RESPONSIBILITY = /\bresponsible\s+for\s+(?:freeing|unreferencing|releasing|destroying)\b/i;
 const OBJECT_OWNERSHIP = /\bobjects?\s+(?:are|is)\s+(?:referenced|owned)\b/i;
 const TAKES_OWNERSHIP = /\btakes?\s+(?:the\s+)?ownership\b/i;
-const TRAILING_CLEANUP_CLAUSE =
-    /,\s+(?:so|otherwise|and\s+(?:it|they)\s+(?:should|must|need|will|can|is|are))\b/i;
+const TRAILING_CLEANUP_CLAUSE = /,\s+(?:so|otherwise|and\s+(?:it|they)\s+(?:should|must|need|will|can|is|are))\b/i;
 const CLEANUP_CLAUSE_BOUNDARIES = [
     /[,;:]\s*/g,
     /(?:,\s*)?\b(?:which|that)\s+(?=(?:should|must|needs?|is|are|can)\b)/gi,
@@ -118,9 +114,7 @@ const appendFenceLine = (state: FenceProtection, line: string): void => {
     const hasCLanguage = state.block[0]?.trimStart().startsWith("```c") === true;
     const hasCCall = state.block.some((entry) => /\bg_\w+\s*\(/.test(entry));
     const isC = hasCLanguage || hasCCall;
-    const block = isC
-        ? state.block.filter((entry) => !FENCED_CLEANUP_COMMENT.test(entry.trim()))
-        : state.block;
+    const block = isC ? state.block.filter((entry) => !FENCED_CLEANUP_COMMENT.test(entry.trim())) : state.block;
     state.fences.push(block.join("\n"));
     state.marker = undefined;
     state.block = [];
@@ -153,8 +147,7 @@ const restoreFencedBlocks = (markdown: string, fences: string[]): string => {
 
 const isFenceToken = (text: string): boolean => text.startsWith(FENCE_TOKEN) && text.endsWith(FENCE_TOKEN);
 
-const isCleanupCExample = (text: string): boolean =>
-    /\bg_\w+\s*\(/.test(text) && FENCED_CLEANUP_INSTRUCTION.test(text);
+const isCleanupCExample = (text: string): boolean => /\bg_\w+\s*\(/.test(text) && FENCED_CLEANUP_INSTRUCTION.test(text);
 
 const isCExampleIntroduction = (text: string): boolean =>
     /\b(?:code|example|pattern)\b/i.test(text) && /\b(?:from|for)\s+C\b/i.test(text);
@@ -249,7 +242,7 @@ const hasActiveCleanupInstruction = (text: string): boolean =>
         CLEANUP_PHRASAL_EXPECTATION.test(text) ||
         CLEANUP_TO_EXPECTATION.test(text) ||
         CANNOT_CLEANUP.test(text)) &&
-        (hasFreeOrUnrefAction(text) || REFERENCE_RELEASE.test(text) || C_DESTROY_NOTIFY.test(text));
+    (hasFreeOrUnrefAction(text) || REFERENCE_RELEASE.test(text) || C_DESTROY_NOTIFY.test(text));
 
 const hasPassiveCleanupInstruction = (text: string): boolean =>
     ((PASSIVE_CLEANUP_MODAL.test(text) ||
@@ -257,7 +250,7 @@ const hasPassiveCleanupInstruction = (text: string): boolean =>
         CLEANUP_TO_EXPECTATION.test(text)) &&
         PASSIVE_VOICE.test(text) &&
         hasMemoryAction(text)) ||
-        (MAY_NOT_CLEANUP.test(text) && hasFreeOrUnrefAction(text));
+    (MAY_NOT_CLEANUP.test(text) && hasFreeOrUnrefAction(text));
 
 const hasCleanupInstruction = (text: string): boolean =>
     hasPassiveCleanupInstruction(text) ||
@@ -265,8 +258,7 @@ const hasCleanupInstruction = (text: string): boolean =>
     hasOwnershipCleanupStart(text) ||
     DIRECT_MEMORY_CLEANUP.test(text.trimStart()) ||
     HIDDEN_CLEANUP_ALTERNATIVE.test(text.trimStart()) ||
-    ((text.includes(CLEANUP_TOKEN) || isCleanupCall(text)) &&
-        (hasMemoryAction(text) || CLEANUP_DIRECTIVE.test(text)));
+    ((text.includes(CLEANUP_TOKEN) || isCleanupCall(text)) && (hasMemoryAction(text) || CLEANUP_DIRECTIVE.test(text)));
 
 const stripCleanupParentheticals = (text: string): string =>
     text.replaceAll(/\([^()\n]*\)/g, (part) => (hasCleanupInstruction(part) ? "" : part));
@@ -435,9 +427,7 @@ const stripStandaloneCleanupSentence = (sentence: string): string => {
 };
 
 const stripStandaloneParagraph = (markdown: string): string =>
-    HIDDEN_CLEANUP_PARAMETER.test(markdown)
-        ? ""
-        : mapDocSentences(markdown, stripStandaloneCleanupSentence);
+    HIDDEN_CLEANUP_PARAMETER.test(markdown) ? "" : mapDocSentences(markdown, stripStandaloneCleanupSentence);
 
 const stripStandaloneMemoryManagement = (markdown: string): string => {
     const calls: string[] = [];

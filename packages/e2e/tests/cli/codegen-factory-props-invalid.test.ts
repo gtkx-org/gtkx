@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-    createFactoryPropsProject,
-    typecheckFactorySource,
-} from "./codegen-factory-props-fixture.js";
+import { createFactoryPropsProject, typecheckFactorySource } from "./codegen-factory-props-fixture.js";
 
 describe("factory element contracts", () => {
     it("rejects invalid factory props and direct callback construction", () => {

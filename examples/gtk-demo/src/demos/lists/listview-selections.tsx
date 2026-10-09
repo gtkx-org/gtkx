@@ -318,9 +318,9 @@ const SuggestionEntryView = ({
         hexpand
         placeholderText={placeholder}
         onChanged={onChanged}
-        controllers={(
+        controllers={
             <GtkEventControllerKey propagationPhase={Gtk.PropagationPhase.CAPTURE} onKeyPressed={onKeyPressed} />
-        )}
+        }
     >
         <GtkPopover
             ref={popoverRef}
@@ -472,7 +472,8 @@ const DevicesDropDown = () => {
                     <GtkLabel xalign={0} hexpand>
                         {details.title}
                     </GtkLabel>
-                ))}
+                ))
+            }
             renderListItem={({ item: device }: { item: Device }) =>
                 renderDeviceRow(device, (details) => (
                     <>
@@ -488,7 +489,8 @@ const DevicesDropDown = () => {
                             accessibleRole={Gtk.AccessibleRole.PRESENTATION}
                         />
                     </>
-                ))}
+                ))
+            }
             items={devices.map((device) => ({ id: device.id, value: device }))}
         />
     );
@@ -497,11 +499,13 @@ const DevicesDropDown = () => {
 async function loadDirectoryEntries(): Promise<DirEntry[]> {
     const entries = await readdir(process.cwd(), { withFileTypes: true });
 
-    return entries.map((entry) => ({
-        path: entry.name,
-        name: entry.name,
-        isDirectory: entry.isDirectory(),
-    })).toSorted((a, b) => a.name.localeCompare(b.name));
+    return entries
+        .map((entry) => ({
+            path: entry.name,
+            name: entry.name,
+            isDirectory: entry.isDirectory(),
+        }))
+        .toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
 function useDirectoryEntries() {
@@ -509,9 +513,11 @@ function useDirectoryEntries() {
     const [hasError, setHasError] = useState(false);
 
     useEffect(() => {
-        void loadDirectoryEntries().then(setEntries).catch(() => {
-            setHasError(true);
-        });
+        void loadDirectoryEntries()
+            .then(setEntries)
+            .catch(() => {
+                setHasError(true);
+            });
     }, []);
 
     return { entries, hasError };
@@ -556,7 +562,7 @@ const DirectorySuggestionEntry = () => {
                 iconName="pan-down-symbolic"
                 tooltipText="Show suggestions"
                 accessibleLabel="Show directory suggestions"
-                popover={(
+                popover={
                     <GtkPopover hasArrow={false} position={Gtk.PositionType.BOTTOM}>
                         <GtkScrolledWindow
                             maxContentHeight={400}
@@ -566,16 +572,12 @@ const DirectorySuggestionEntry = () => {
                             <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={0}>
                                 {hasError && <GtkLabel>Could not read this directory</GtkLabel>}
                                 {entries.map((entry) => (
-                                    <DirectorySuggestion
-                                        key={entry.path}
-                                        entry={entry}
-                                        onSelect={setText}
-                                    />
+                                    <DirectorySuggestion key={entry.path} entry={entry} onSelect={setText} />
                                 ))}
                             </GtkBox>
                         </GtkScrolledWindow>
                     </GtkPopover>
-                )}
+                }
             />
         </GtkBox>
     );
@@ -614,9 +616,9 @@ const FontsSelector = () => {
                 accessibleLabel="Font index"
                 halign={Gtk.Align.START}
                 marginStart={20}
-                adjustment={(
+                adjustment={
                     <GtkAdjustment value={fontIndex} lower={0} upper={getFontFamilies().length - 1} stepIncrement={1} />
-                )}
+                }
                 onValueChanged={(spin) => {
                     setFontIndex(spin.getValueAsInt());
                 }}

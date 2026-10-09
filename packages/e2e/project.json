@@ -25,96 +25,108 @@
     },
     "targets": {
         "codegen": {
-            "command": "gtkx codegen",
+            "command": "node ../../scripts/ci/run.mjs 'gtkx codegen'",
             "options": {
                 "cwd": "{projectRoot}"
             },
-            "cache": false,
-            "dependsOn": [
-                "gtkx:_build:bindings",
-                "@gtkx/cli:build"
-            ],
-            "outputs": [
-                "{projectRoot}/node_modules/.gtkx/gi/**/*.{js,d.ts,json}",
-                "{projectRoot}/node_modules/.gtkx/jsx/**/*.{js,d.ts,json}",
-                "{projectRoot}/node_modules/.gtkx/*.d.ts"
+            "cache": true,
+            "dependsOn": ["gtkx:_build:bindings", "@gtkx/cli:build"],
+            "outputs": ["{projectRoot}/node_modules/.gtkx"],
+            "inputs": [
+                "default",
+                "^production",
+                {
+                    "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
+                    "transitive": true
+                },
+                "{workspaceRoot}/scripts/ci/**/*"
             ]
         },
         "_test:fixtures": {
             "cache": true,
-            "dependsOn": [
-                "@gtkx/utils:build"
-            ],
+            "dependsOn": ["@gtkx/utils:build", "_test:fixtures:compile"],
             "inputs": [
-                "{projectRoot}/tests/helpers/native-fixtures.ts",
+                "{projectRoot}/tests/helpers/native-fixtures*.ts",
                 "{workspaceRoot}/packages/codegen/src/**/*",
                 "{workspaceRoot}/packages/codegen/overrides/**/*",
                 "{workspaceRoot}/packages/runtime/package.json",
                 "{workspaceRoot}/packages/utils/src/**/*",
                 "sharedGlobals",
-                "nativeEnvironment"
+                "nativeEnvironment",
+                "{workspaceRoot}/scripts/ci/**/*"
             ],
             "outputs": [
-                "{workspaceRoot}/build/native-tests/gi-tests/build",
                 "{workspaceRoot}/build/native-tests/node_modules/.gtkx",
                 "{projectRoot}/tests/native/node_modules"
-            ]
+            ],
+            "command": "node ../../scripts/ci/run.mjs 'pnpm run _test:fixtures'",
+            "options": {
+                "cwd": "{projectRoot}"
+            }
         },
-        "test": {
-            "command": "vitest run --config vitest.integration.config.ts --exclude '**/tests/testing/query-perf.test.tsx'",
+        "_test:fixtures:compile": {
+            "command": "node ../../scripts/ci/run.mjs 'tsx tests/helpers/native-fixtures-compile.ts'",
             "options": {
                 "cwd": "{projectRoot}"
             },
             "cache": true,
-            "dependsOn": [
-                "^build",
-                "codegen",
-                "_test:fixtures",
-                "_test:performance"
-            ],
+            "dependsOn": ["@gtkx/utils:build"],
             "inputs": [
-                "...",
-                "integration"
+                "{projectRoot}/tests/helpers/native-fixtures-compile.ts",
+                "{workspaceRoot}/packages/utils/src/**/*",
+                "sharedGlobals",
+                "nativeEnvironment",
+                "{workspaceRoot}/scripts/ci/**/*"
             ],
+            "outputs": ["{workspaceRoot}/build/native-tests/gi-tests/build"]
+        },
+        "test": {
+            "command": "node ../../scripts/ci/run.mjs 'vitest run --config vitest.integration.config.ts --exclude '\\''**/tests/testing/query-perf.test.tsx'\\'''",
+            "options": {
+                "cwd": "{projectRoot}"
+            },
+            "cache": true,
+            "dependsOn": ["^build", "codegen", "_test:fixtures"],
+            "inputs": ["...", "integration", "{workspaceRoot}/scripts/ci/**/*"],
             "outputs": []
         },
         "e2e": {
-            "dependsOn": [
-                "^build",
-                "gtkx:_build:bindings"
-            ],
+            "dependsOn": ["^build", "gtkx:_build:bindings"],
+            "inputs": ["...", "default", "^production"],
+            "parallelism": false
+        },
+        "acceptance": {
+            "command": "vitest run --config vitest.acceptance.config.ts",
+            "options": {
+                "cwd": "{projectRoot}"
+            },
+            "dependsOn": ["^build", "gtkx:_build:bindings"],
+            "cache": true,
             "inputs": [
-                "...",
-                "acceptance"
+                "acceptance",
+                "^production",
+                {
+                    "dependentTasksOutputFiles": "**/*.{js,node,d.ts}",
+                    "transitive": true
+                }
             ],
+            "outputs": [],
             "parallelism": false
         },
         "lint": {
-            "dependsOn": [
-                "...",
-                "codegen",
-                "_test:fixtures"
-            ]
+            "dependsOn": ["...", "codegen", "_test:fixtures"]
         },
         "typecheck": {
-            "dependsOn": [
-                "...",
-                "^build",
-                "codegen",
-                "_test:fixtures"
-            ]
+            "dependsOn": ["...", "^build", "codegen", "_test:fixtures"]
         },
-        "_test:performance": {
+        "benchmark": {
             "command": "vitest run --config vitest.integration.config.ts --project=integration tests/testing/query-perf.test.tsx --maxWorkers=1",
             "options": {
                 "cwd": "{projectRoot}"
             },
-            "cache": true,
+            "cache": false,
             "parallelism": false,
-            "dependsOn": [
-                "^build",
-                "codegen"
-            ],
+            "dependsOn": ["^build", "codegen"],
             "inputs": [
                 "integration",
                 "^production",
@@ -124,6 +136,9 @@
                 }
             ],
             "outputs": []
+        },
+        "_lint:eslint": {
+            "dependsOn": ["...", "codegen", "_test:fixtures"]
         }
     }
 }

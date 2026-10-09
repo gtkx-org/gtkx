@@ -33,8 +33,7 @@ const REVEAL_INTERVAL_MS = 690;
 const revealerDemo: Demo = {
     id: "revealer",
     title: "Revealer",
-    description:
-        "GtkRevealer is a container that animates showing and hiding of its sole child with nice transitions.",
+    description: "GtkRevealer is a container that animates showing and hiding of its sole child with nice transitions.",
     keywords: [],
     component: RevealerDemo,
     sourceCode,
@@ -51,9 +50,12 @@ function RevealerCell({ config, index }: RevealerCellProps) {
     const [isRevealed, setIsRevealed] = useState(false);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setIsRevealed(true);
-        }, REVEAL_INTERVAL_MS * (index + 1));
+        const timer = setTimeout(
+            () => {
+                setIsRevealed(true);
+            },
+            REVEAL_INTERVAL_MS * (index + 1),
+        );
 
         return () => {
             clearTimeout(timer);
@@ -95,11 +97,7 @@ function RevealerDemo() {
             accessibleLabel="Animated cool faces"
         >
             {revealerConfigs.map((config, index) => (
-                <RevealerCell
-                    key={`${String(config.column)}-${String(config.row)}`}
-                    config={config}
-                    index={index}
-                />
+                <RevealerCell key={`${String(config.column)}-${String(config.row)}`} config={config} index={index} />
             ))}
         </GtkGrid>
     );

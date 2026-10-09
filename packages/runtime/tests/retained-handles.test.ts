@@ -31,9 +31,16 @@ it("rejects a retained handle after its GObject wrapper and native instance are 
         const handle = getHandle(object);
         expect(call(compare, [handle, handle]).value).toBe(1);
 
-        const field = read(handle, {
-            kind: "struct", ownership: "borrowed", isInline: true, size: 8,
-        }, 0) as ExternalObject<Handle>;
+        const field = read(
+            handle,
+            {
+                kind: "struct",
+                ownership: "borrowed",
+                isInline: true,
+                size: 8,
+            },
+            0,
+        ) as ExternalObject<Handle>;
 
         return { handle, field, weak: new WeakRef(object) };
     };

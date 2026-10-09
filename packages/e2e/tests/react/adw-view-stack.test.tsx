@@ -84,12 +84,7 @@ const loaded = (keys: string[], unloadedKeys: string[]): LoadedSpec[] =>
 function NotifiedRoot({ stackRef, isBoxed, onNotifyFirstTitle, onNotifySecondTitle }: NotifiedRootProps) {
     return (
         <AdwViewStack ref={stackRef}>
-            <AdwViewStackPage
-                name="first"
-                title="First"
-                iconName="go-home-symbolic"
-                onNotifyTitle={onNotifyFirstTitle}
-            >
+            <AdwViewStackPage name="first" title="First" iconName="go-home-symbolic" onNotifyTitle={onNotifyFirstTitle}>
                 {pageRoot("First", isBoxed)}
             </AdwViewStackPage>
             <AdwViewStackPage name="second" title="Second" onNotifyTitle={onNotifySecondTitle}>

@@ -46,8 +46,8 @@ type ByteArrayInput = string | Uint8Array | number[];
 type ParseArray<S extends string, Bytes, Nested> = S extends `y${infer Rest}`
     ? [Bytes, Rest]
     : Parse<S, Bytes, Nested> extends [infer V, infer R extends string]
-        ? [V[], R]
-        : never;
+      ? [V[], R]
+      : never;
 
 /** Parses the element type of a maybe, yielding the nullable type it produces and the rest of the string. */
 type ParseMaybe<S extends string, Bytes, Nested> =
@@ -57,10 +57,10 @@ type ParseMaybe<S extends string, Bytes, Nested> =
 type ParseTuple<S extends string, Bytes, Nested, Acc extends unknown[]> = S extends `)${infer Rest}`
     ? [Acc, Rest]
     : [Parse<S, Bytes, Nested>] extends [never]
-            ? never
-            : Parse<S, Bytes, Nested> extends [infer V, infer R extends string]
-                ? ParseTuple<R, Bytes, Nested, [...Acc, V]>
-                : never;
+      ? never
+      : Parse<S, Bytes, Nested> extends [infer V, infer R extends string]
+        ? ParseTuple<R, Bytes, Nested, [...Acc, V]>
+        : never;
 
 /** Types a dictionary entry key can hold. */
 type DictKey = string | number | bigint | boolean;
@@ -71,17 +71,15 @@ type ParsePair<S extends string, Bytes, Nested> =
         ? Parse<R1, Bytes, Nested> extends [infer V, infer R2 extends string]
             ? R2 extends `}${infer R3}`
                 ? [K] extends [DictKey]
-                        ? [K, V, R3]
-                        : never
+                    ? [K, V, R3]
+                    : never
                 : never
             : never
         : never;
 
 /** Parses a dictionary entry into a record, plus the rest of the string. */
 type ParseDict<S extends string, Bytes, Nested> =
-    ParsePair<S, Bytes, Nested> extends [unknown, infer V, infer R extends string]
-        ? [Record<string, V>, R]
-        : never;
+    ParsePair<S, Bytes, Nested> extends [unknown, infer V, infer R extends string] ? [Record<string, V>, R] : never;
 
 /** Parses a standalone dictionary entry into a key and value pair, yielding it and the rest of the string. */
 type ParseEntry<S extends string, Bytes, Nested> =
@@ -99,23 +97,23 @@ type ParseArrayOrDict<S extends string, Bytes, Nested> = S extends `{${infer Res
 type Parse<S extends string, Bytes, Nested> = S extends `a${infer Rest}`
     ? ParseArrayOrDict<Rest, Bytes, Nested>
     : S extends `m${infer Rest}`
-        ? ParseMaybe<Rest, Bytes, Nested>
-        : S extends `(${infer Rest}`
-            ? ParseTuple<Rest, Bytes, Nested, []>
-            : S extends `{${infer Rest}`
-                ? ParseEntry<Rest, Bytes, Nested>
-                : S extends `${infer C}${infer Rest}`
-                    ? C extends BasicCode
-                        ? [BasicValueMap<Nested>[C], Rest]
-                        : never
-                    : never;
+      ? ParseMaybe<Rest, Bytes, Nested>
+      : S extends `(${infer Rest}`
+        ? ParseTuple<Rest, Bytes, Nested, []>
+        : S extends `{${infer Rest}`
+          ? ParseEntry<Rest, Bytes, Nested>
+          : S extends `${infer C}${infer Rest}`
+            ? C extends BasicCode
+                ? [BasicValueMap<Nested>[C], Rest]
+                : never
+            : never;
 
 /** JavaScript type a type string `S` describes, or `unknown` when `S` is not one complete type. */
 type ParsedValue<S extends string, Bytes, Nested> = [Parse<S, Bytes, Nested>] extends [never]
     ? unknown
     : Parse<S, Bytes, Nested> extends [infer V, ""]
-        ? V
-        : unknown;
+      ? V
+      : unknown;
 
 /**
  * JavaScript type a variant of type string `S` unpacks to, or `unknown` when `S` is not one complete type. A byte
@@ -124,11 +122,15 @@ type ParsedValue<S extends string, Bytes, Nested> = [Parse<S, Bytes, Nested>] ex
  */
 type VariantValue<S extends string> = ParsedValue<S, VariantByteArray, Variant>;
 
-type InputValue<Value> = Value extends GeneratedVariant ? Value
-    : Value extends Uint8Array ? ByteArrayInput
-        : Value extends bigint ? bigint | number
-            : Value extends object ? { [Key in keyof Value]: InputValue<Value[Key]> }
-                : Value;
+type InputValue<Value> = Value extends GeneratedVariant
+    ? Value
+    : Value extends Uint8Array
+      ? ByteArrayInput
+      : Value extends bigint
+        ? bigint | number
+        : Value extends object
+          ? { [Key in keyof Value]: InputValue<Value[Key]> }
+          : Value;
 
 /**
  * Values accepted by the variant constructor for type string `S`, or `unknown` for a dynamic signature.
@@ -142,15 +144,22 @@ type VariantInput<S extends string> = InputValue<VariantValue<S>>;
 type RecursiveVariantValue<S extends string> = ParsedValue<S, VariantByteArray, unknown>;
 
 /** Shallowly unpacked values, retaining variants for container children. */
-type ShallowVariantValue<S extends string> = unknown extends VariantValue<S> ? unknown
-    : S extends "ay" ? VariantByteArray
-        : S extends `a{${string}}` ? Record<string, Variant>
-            : S extends `a${string}` ? Variant[]
-                : S extends `m${string}` ? Variant | null
-                    : S extends `(${string})` | `{${string}}` ?
-                            VariantValue<S> extends infer Tuple extends unknown[] ? { [Key in keyof Tuple]: Variant }
-                                : unknown
-                        : VariantValue<S>;
+type ShallowVariantValue<S extends string> =
+    unknown extends VariantValue<S>
+        ? unknown
+        : S extends "ay"
+          ? VariantByteArray
+          : S extends `a{${string}}`
+            ? Record<string, Variant>
+            : S extends `a${string}`
+              ? Variant[]
+              : S extends `m${string}`
+                ? Variant | null
+                : S extends `(${string})` | `{${string}}`
+                  ? VariantValue<S> extends infer Tuple extends unknown[]
+                      ? { [Key in keyof Tuple]: Variant }
+                      : unknown
+                  : VariantValue<S>;
 
 /**
  * A variant with unpacked types inferred from its constructor signature. An explicit method type argument
@@ -166,16 +175,16 @@ type VariantStatics = Omit<typeof GeneratedVariant, "new"> & {
 /** The native variant class with GJS-compatible construction and its existing native factory methods. */
 type VariantConstructor = VariantStatics & {
     /** Packs a value using its GVariant type signature. Signed and unsigned 64-bit values unpack as `bigint`. */
-    new<S extends string>(typeString: S, value: VariantInput<S>): Variant<S>;
+    new <S extends string>(typeString: S, value: VariantInput<S>): Variant<S>;
 };
 
 type VariantTypeNode =
-    | { kind: "basic"; code: BasicCode } |
-    { kind: "array"; elementTypeString: string; element: VariantTypeNode } |
-    { kind: "dict"; entryTypeString: string; key: VariantTypeNode; value: VariantTypeNode } |
-    { kind: "entry"; key: VariantTypeNode; value: VariantTypeNode } |
-    { kind: "tuple"; items: VariantTypeNode[] } |
-    { kind: "maybe"; elementTypeString: string; element: VariantTypeNode };
+    | { kind: "basic"; code: BasicCode }
+    | { kind: "array"; elementTypeString: string; element: VariantTypeNode }
+    | { kind: "dict"; entryTypeString: string; key: VariantTypeNode; value: VariantTypeNode }
+    | { kind: "entry"; key: VariantTypeNode; value: VariantTypeNode }
+    | { kind: "tuple"; items: VariantTypeNode[] }
+    | { kind: "maybe"; elementTypeString: string; element: VariantTypeNode };
 
 const BASIC_CODES = "bynqiuxthdsogv";
 const STRING_KEY_CODES: Set<string> = new Set(["s", "o", "g"]);
@@ -433,11 +442,8 @@ function packSignature(value: unknown): Variant {
     );
 }
 
-const packEntry = (
-    key: VariantTypeNode,
-    value: VariantTypeNode,
-    pair: [unknown, unknown],
-): Variant => Variant.newDictEntry(packNode(key, pair[0]), packNode(value, pair[1]));
+const packEntry = (key: VariantTypeNode, value: VariantTypeNode, pair: [unknown, unknown]): Variant =>
+    Variant.newDictEntry(packNode(key, pair[0]), packNode(value, pair[1]));
 
 const dictEntries = (value: unknown): [string, unknown][] => {
     if (value === null || typeof value !== "object") {
@@ -480,21 +486,12 @@ const packDict = (
     Variant.newArray(
         VariantType.new(node.entryTypeString),
         dictEntries(value).map(([key, entry]) =>
-            packEntry(
-                node.key,
-                node.value,
-                [dictionaryKey(node.key, key), entry],
-            )),
+            packEntry(node.key, node.value, [dictionaryKey(node.key, key), entry]),
+        ),
     );
 
-const packMaybe = (
-    node: { elementTypeString: string; element: VariantTypeNode },
-    value: unknown,
-): Variant =>
-    Variant.newMaybe(
-        VariantType.new(node.elementTypeString),
-        value === null ? null : packNode(node.element, value),
-    );
+const packMaybe = (node: { elementTypeString: string; element: VariantTypeNode }, value: unknown): Variant =>
+    Variant.newMaybe(VariantType.new(node.elementTypeString), value === null ? null : packNode(node.element, value));
 
 const packByteArray = (value: unknown): Variant => {
     if (typeof value === "string") {
@@ -505,11 +502,7 @@ const packByteArray = (value: unknown): Variant => {
         throw new TypeError("Expected a string, Uint8Array, or array of byte values for a byte array (ay)");
     }
 
-    return Variant.newFromBytes(
-        VariantType.new(BYTE_ARRAY_TYPE_STRING),
-        Bytes.new(value),
-        true,
-    );
+    return Variant.newFromBytes(VariantType.new(BYTE_ARRAY_TYPE_STRING), Bytes.new(value), true);
 };
 
 const packNode = (node: VariantTypeNode, value: unknown): Variant => {
@@ -556,9 +549,7 @@ const packNode = (node: VariantTypeNode, value: unknown): Variant => {
 
             const values = value;
 
-            return Variant.newTuple(
-                node.items.map((item, index) => packNode(item, values[index])),
-            );
+            return Variant.newTuple(node.items.map((item, index) => packNode(item, values[index])));
         }
         case "maybe": {
             return packMaybe(node, value);
@@ -573,26 +564,27 @@ const createVariant = <S extends string>(typeString: S, value: VariantInput<S>):
  * Packs JavaScript values using GJS-compatible construction. Strings for `ay` become NUL-terminated UTF-8;
  * dictionaries use plain objects. Unlike GJS, 64-bit integers unpack as exact `bigint` values.
  */
-const Variant: VariantConstructor = /* @__PURE__ */ (() => new Proxy(GeneratedVariant, {
-    get(target, property, receiver): unknown {
-        if (property === "new") {
-            return createVariant;
-        }
+const Variant: VariantConstructor = /* @__PURE__ */ (() =>
+    new Proxy(GeneratedVariant, {
+        get(target, property, receiver): unknown {
+            if (property === "new") {
+                return createVariant;
+            }
 
-        const value: unknown = Reflect.get(target, property, receiver);
+            const value: unknown = Reflect.get(target, property, receiver);
 
-        return value;
-    },
-    construct(_target, args: unknown[]): Variant {
-        const [typeString, value] = args;
+            return value;
+        },
+        construct(_target, args: unknown[]): Variant {
+            const [typeString, value] = args;
 
-        if (typeof typeString !== "string") {
-            throw new TypeError("A variant constructor requires a GVariant type string");
-        }
+            if (typeof typeString !== "string") {
+                throw new TypeError("A variant constructor requires a GVariant type string");
+            }
 
-        return createVariant(typeString, value);
-    },
-}) as typeof GeneratedVariant & VariantConstructor)();
+            return createVariant(typeString, value);
+        },
+    }) as typeof GeneratedVariant & VariantConstructor)();
 
 declare module "../glib.js" {
     interface Variant<S extends string = string> {

@@ -182,9 +182,7 @@ const handlerParameters = (
     parameters: GirParameter[],
     shouldExclude: (parameter: GirParameter) => boolean = () => false,
 ): GirParameter[] =>
-    parameters.filter(
-        (parameter) => !parameter.isVarargs && !isOutParameter(parameter) && !shouldExclude(parameter),
-    );
+    parameters.filter((parameter) => !parameter.isVarargs && !isOutParameter(parameter) && !shouldExclude(parameter));
 
 const documentedParameters = (
     library: Library,
@@ -289,11 +287,7 @@ const renderHandlerResultType = (options: HandlerResultOptions): string => {
 
     const primary = isVoidPrimaryReturn(library, signal.returnValue)
         ? undefined
-        : renderType(
-                signal.returnValue.type,
-                signal.returnValue.nullable,
-                signal.returnValue.transferOwnership,
-            );
+        : renderType(signal.returnValue.type, signal.returnValue.nullable, signal.returnValue.transferOwnership);
 
     const outTypes = signal.parameters
         .filter(

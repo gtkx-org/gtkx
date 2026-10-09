@@ -4,28 +4,28 @@ import { docsLink } from "./content";
 </script>
 
 <template>
-  <section id="tutorial" class="show">
-    <div class="show__head section-head">
-      <h2 class="show__title section-title">Build a task manager</h2>
-      <p class="section-sub">
-        Build Tasks one feature at a time: lists, search, preferences, and reminders.
-        Then test it, translate it, and create installable packages.
-      </p>
-    </div>
-    <a class="show__frame" :href="docsLink('tutorial/')">
-      <picture>
-        <source srcset="/tasks-screenshot.webp" type="image/webp" />
-        <img
-          src="/tasks-screenshot.png"
-          width="900"
-          height="600"
-          loading="lazy"
-          alt="The Tasks app built in the tutorial: an adaptive Adwaita window with a sidebar of smart views and colored lists next to a boxed task list."
-        />
-      </picture>
-      <span class="show__cta">Follow the tutorial <Icon name="arrow" :size="15" /></span>
-    </a>
-  </section>
+    <section id="tutorial" class="show">
+        <div class="show__head section-head">
+            <h2 class="show__title section-title">Build a task manager</h2>
+            <p class="section-sub">
+                Build Tasks one feature at a time: lists, search, preferences, and reminders. Then test it, translate
+                it, and create installable packages.
+            </p>
+        </div>
+        <a class="show__frame" :href="docsLink('tutorial/')">
+            <picture>
+                <source srcset="/tasks-screenshot.webp" type="image/webp" />
+                <img
+                    src="/tasks-screenshot.png"
+                    width="900"
+                    height="600"
+                    loading="lazy"
+                    alt="The Tasks app built in the tutorial: an adaptive Adwaita window with a sidebar of smart views and colored lists next to a boxed task list."
+                />
+            </picture>
+            <span class="show__cta">Follow the tutorial <Icon name="arrow" :size="15" /></span>
+        </a>
+    </section>
 </template>
 
 <style scoped>

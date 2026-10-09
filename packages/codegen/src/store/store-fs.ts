@@ -422,9 +422,7 @@ const isGenerationWriterRunning = (generation: StoreGeneration): boolean => {
         return false;
     }
 
-    return owner.identity === undefined ||
-        owner.identity === "unknown" ||
-        processIdentityToken(pid) === owner.identity;
+    return owner.identity === undefined || owner.identity === "unknown" || processIdentityToken(pid) === owner.identity;
 };
 
 const removeAbandonedGenerations = (removable: StoreGeneration[]): Set<StoreGeneration> => {
@@ -484,12 +482,8 @@ const activePairPaths = (root: string, links: StoreLink[]): Set<string> =>
     new Set(
         [
             realpathOrNull(join(root, "current")),
-            ...links.flatMap((link) => [
-                activePairPath(root, link.storeDir),
-                activePairPath(root, link.linkDir),
-            ]),
-        ]
-            .filter((path): path is string => path !== null),
+            ...links.flatMap((link) => [activePairPath(root, link.storeDir), activePairPath(root, link.linkDir)]),
+        ].filter((path): path is string => path !== null),
     );
 
 const retainedPairGenerations = (root: string, links: StoreLink[]): StoreGeneration[] => {
@@ -679,11 +673,7 @@ const resolveStoreOwner = (params: WriteStoreParams): string | undefined => {
     const identity = storeIdentity(params.storeDir);
     const anchor = realpathSync(dirname(params.storeDir));
 
-    if (
-        identity?.anchor !== anchor ||
-        identity.owner === owner ||
-        !existsSync(identity.owner)
-    ) {
+    if (identity?.anchor !== anchor || identity.owner === owner || !existsSync(identity.owner)) {
         return owner;
     }
 
@@ -693,7 +683,7 @@ const resolveStoreOwner = (params: WriteStoreParams): string | undefined => {
     if (current !== desired || current === null) {
         throw new Error(
             `Cannot replace the generated ${params.manifest.name} store shared with ${identity.owner}; ` +
-            "the projects require different generated bindings.",
+                "the projects require different generated bindings.",
         );
     }
 

@@ -112,11 +112,7 @@ const isModuleExpression = (path: NodePath, seen: Set<ResolvedBinding>): boolean
     const callee = path.get("callee");
     const sourceName = source === undefined ? null : literalString(source);
 
-    return (
-        sourceName !== null &&
-        MODULE_BUILTINS.has(sourceName) &&
-        isRequireExpression(callee, seen)
-    );
+    return sourceName !== null && MODULE_BUILTINS.has(sourceName) && isRequireExpression(callee, seen);
 };
 
 const isFactoryExpression = (path: NodePath, seen: Set<ResolvedBinding>): boolean => {

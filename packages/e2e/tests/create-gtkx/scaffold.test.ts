@@ -18,7 +18,9 @@ import {
 type Scripts = Record<string, string | undefined>;
 
 const BASE_ARGS = ["--no-interactive", "--application-id", APPLICATION_ID, "--package-manager", "pnpm"];
-const SELF_MANIFEST = JSON.parse(readFileSync(new URL("../../../create-gtkx/package.json", import.meta.url), "utf8")) as {
+const SELF_MANIFEST = JSON.parse(
+    readFileSync(new URL("../../../create-gtkx/package.json", import.meta.url), "utf8"),
+) as {
     version: string;
 };
 const SELF_RANGE = `^${SELF_MANIFEST.version}`;
@@ -57,19 +59,21 @@ describe("create-gtkx CLI", () => {
             expect(typescriptRun.status).toBe(0);
             const files = listProject(typescriptRun);
 
-            expect(files).toEqual(expect.arrayContaining([
-                "package.json",
-                "gtkx.config.ts",
-                "tsconfig.json",
-                "vitest.config.ts",
-                "src/app.tsx",
-                "src/index.tsx",
-                "src/gtkx-env.d.ts",
-                "tests/app.test.tsx",
-                ".mcp.json",
-                ".claude/settings.json",
-                ICON_PATH,
-            ]));
+            expect(files).toEqual(
+                expect.arrayContaining([
+                    "package.json",
+                    "gtkx.config.ts",
+                    "tsconfig.json",
+                    "vitest.config.ts",
+                    "src/app.tsx",
+                    "src/index.tsx",
+                    "src/gtkx-env.d.ts",
+                    "tests/app.test.tsx",
+                    ".mcp.json",
+                    ".claude/settings.json",
+                    ICON_PATH,
+                ]),
+            );
             expect(files).not.toContain("mise.toml");
 
             expect(hasProjectPath(typescriptRun, ".git")).toBe(true);
@@ -125,10 +129,9 @@ describe("create-gtkx CLI", () => {
                 permissions: { allow: string[] };
             };
 
-            expect(settings.permissions.allow).toEqual(expect.arrayContaining([
-                "Bash(npx gtkx codegen:*)",
-                "Bash(npx vitest run:*)",
-            ]));
+            expect(settings.permissions.allow).toEqual(
+                expect.arrayContaining(["Bash(npx gtkx codegen:*)", "Bash(npx vitest run:*)"]),
+            );
         });
 
         it("keeps the generated reference out of git and the agent files in it", () => {
@@ -409,11 +412,7 @@ describe("create-gtkx CLI", () => {
     });
 
     describe("create-gtkx refusing to scaffold", () => {
-        it.each([
-            { args: ["extra-directory"] },
-            { args: ["--typescript=false=extra"] },
-            { args: ["--display-name"] },
-        ])(
+        it.each([{ args: ["extra-directory"] }, { args: ["--typescript=false=extra"] }, { args: ["--display-name"] }])(
             "rejects malformed arguments before creating files",
             ({ args }) => {
                 const run = create(args);

@@ -3,12 +3,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import { type ExternalObject, type Handle, resolveType, t, wrapHandle } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
-const getEnumClass = t.bind(
-    "libgobject-2.0.so.0",
-    "g_type_class_get",
-    [t.gtype],
-    t.struct("borrowed", { size: 32 }),
-);
+const getEnumClass = t.bind("libgobject-2.0.so.0", "g_type_class_get", [t.gtype], t.struct("borrowed", { size: 32 }));
 
 const enums = {
     Status: "status",
@@ -39,9 +34,11 @@ describe("native Cairo enum values", () => {
         const nativeType = resolveType("libcairo-gobject.so.2", `cairo_gobject_${symbol}_get_type`);
         const nativeClass = wrapHandle(getEnumClass(nativeType) as ExternalObject<Handle>, GObject.EnumClass);
 
-        const values = Object.fromEntries(nativeClass.values
-            .filter((value) => value.valueNick !== "last-status")
-            .map((value) => [value.valueNick.toUpperCase().replaceAll("-", "_"), value.value]));
+        const values = Object.fromEntries(
+            nativeClass.values
+                .filter((value) => value.valueNick !== "last-status")
+                .map((value) => [value.valueNick.toUpperCase().replaceAll("-", "_"), value.value]),
+        );
 
         expect(cairo[name as keyof typeof enums]).toEqual(expect.objectContaining(values));
     });

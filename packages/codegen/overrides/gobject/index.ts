@@ -31,9 +31,6 @@ export { disconnectSignal as signalDisconnect } from "@gtkx/runtime";
 export { getProperty, setProperty, signalConnect, signalEmit } from "@gtkx/runtime/internal";
 export * from "./gobject.js";
 
-export function signalHandlerDisconnect(
-    instance: NativeInstance<GObjectObject>,
-    handlerId: bigint | number,
-): void {
+export function signalHandlerDisconnect(instance: NativeInstance<GObjectObject>, handlerId: bigint | number): void {
     disconnectSignal(instance, handlerId);
 }

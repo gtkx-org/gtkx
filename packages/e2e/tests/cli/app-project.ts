@@ -32,13 +32,9 @@ const ENTRY_NAME = "index.mjs";
 const INSTALL_PREFIX = "gtkx-bundle-install-";
 
 const appConfig = (applicationId: string): string =>
-    [
-        "export default {",
-        `    applicationId: ${JSON.stringify(applicationId)},`,
-        "    codegen: false,",
-        "};",
-        "",
-    ].join("\n");
+    ["export default {", `    applicationId: ${JSON.stringify(applicationId)},`, "    codegen: false,", "};", ""].join(
+        "\n",
+    );
 
 const writeFiles = (root: string, files: Record<string, string | Buffer>): void => {
     for (const [name, source] of Object.entries(files)) {
@@ -64,11 +60,7 @@ const createAppProject = (options: AppProjectOptions): AppProject => {
 
 const buildAppProject = (options: AppBuildOptions): Promise<string> =>
     Promise.try(() => {
-        runCliOrThrow(
-            options.project,
-            ["build", options.project.entry, "--out", options.outDir],
-            options.environment,
-        );
+        runCliOrThrow(options.project, ["build", options.project.entry, "--out", options.outDir], options.environment);
 
         return join(options.outDir, "bundle.mjs");
     });

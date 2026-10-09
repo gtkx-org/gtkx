@@ -64,10 +64,7 @@ const expectSpawnedChild = ([spawned, pid]: [boolean, GLib.Pid, ...number[]]): v
     expect(pid).toBeGreaterThan(0);
 };
 
-const expectChildOutput = (
-    spawn: [boolean, GLib.Pid, number, number, number],
-    expected: string,
-): void => {
+const expectChildOutput = (spawn: [boolean, GLib.Pid, number, number, number], expected: string): void => {
     const [spawned, pid, stdinFd, stdoutFd, stderrFd] = spawn;
     expectSpawnedChild([spawned, pid]);
     closeSync(stdinFd);
@@ -170,11 +167,13 @@ describe("async calls taking a borrowed array", () => {
 
     it("writes the given bytes through writeAsync", () =>
         expectWrittenBytesToSurvive("write", (path) =>
-            writeThroughStream(path, (stream) => stream.writeAsync(payload, 0, null))));
+            writeThroughStream(path, (stream) => stream.writeAsync(payload, 0, null)),
+        ));
 
     it("writes the given bytes through writeAllAsync", () =>
         expectWrittenBytesToSurvive("write-all", (path) =>
-            writeThroughStream(path, (stream) => stream.writeAllAsync(payload, 0, null))));
+            writeThroughStream(path, (stream) => stream.writeAllAsync(payload, 0, null)),
+        ));
 
     it("writes the bytes a typed array held when the call was made", () =>
         expectWrittenBytesToSurvive("view", replaceContentsFromOverwrittenView));
@@ -212,24 +211,11 @@ describe("async calls made without a completion callback", () => {
 
 describe("calls whose scope-async callback never reports a completion", () => {
     it("spawns a child through spawnAsync without a child setup", () => {
-        expectSpawnedChild(
-            GLib.spawnAsync(null, TRUE_ARGV, null, GLib.SpawnFlags.DEFAULT, null),
-        );
+        expectSpawnedChild(GLib.spawnAsync(null, TRUE_ARGV, null, GLib.SpawnFlags.DEFAULT, null));
     });
 
     it("spawns a child through spawnAsyncWithFds without a child setup", () => {
-        expectSpawnedChild(
-            GLib.spawnAsyncWithFds(
-                null,
-                TRUE_ARGV,
-                null,
-                GLib.SpawnFlags.DEFAULT,
-                null,
-                -1,
-                -1,
-                -1,
-            ),
-        );
+        expectSpawnedChild(GLib.spawnAsyncWithFds(null, TRUE_ARGV, null, GLib.SpawnFlags.DEFAULT, null, -1, -1, -1));
     });
 
     it("hands the child the argument vector and environment spawnAsyncWithPipes was given", () => {

@@ -115,10 +115,10 @@ const renderClassInstanceMember: InstanceMemberRenderer = instanceMemberRenderer
         finishFn === undefined
             ? renderInstanceMethod(context, callable, name)
             : renderPromisifiedCallable(context, callable, finishFn, {
-                    name,
-                    isStatic: false,
-                    ownerName: scope.ownerName,
-                }),
+                  name,
+                  isStatic: false,
+                  ownerName: scope.ownerName,
+              }),
 );
 
 const memberDoc = (context: ModuleContext, callable: GirFunction, finishFn: GirFunction | undefined): string =>
@@ -377,11 +377,8 @@ const memberSignatureText = (
     return `${name}${generics}(${signature}): ${returnType}`;
 };
 
-const renderInstanceMethodReturnType = (
-    context: ModuleContext,
-    callable: GirFunction,
-    scope: InstanceScope,
-): string => memberSignature(context, callable, { finishFn: matchFinishFunction(context, callable, scope) }).returnType;
+const renderInstanceMethodReturnType = (context: ModuleContext, callable: GirFunction, scope: InstanceScope): string =>
+    memberSignature(context, callable, { finishFn: matchFinishFunction(context, callable, scope) }).returnType;
 
 const matchFinishFunction = (
     context: ModuleContext,
@@ -578,9 +575,7 @@ const renderPlainInstanceMethods = (
     return blocks;
 };
 
-const renderPlainTypeMembers = (
-    options: PlainTypeMembersOptions,
-): { members: string[]; claimedNames: Set<string> } => {
+const renderPlainTypeMembers = (options: PlainTypeMembersOptions): { members: string[]; claimedNames: Set<string> } => {
     const { context, className, callables, hasGtype } = options;
     const claimedNames: Set<string> = new Set();
 

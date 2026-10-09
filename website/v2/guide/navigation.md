@@ -13,12 +13,12 @@ npm install @gtkx/navigation@beta
 
 Choose a navigator for the layout:
 
-| Navigator | Use it for | Native surface |
-| --- | --- | --- |
-| [Stack](#stack-navigator) | Moving through a sequence of pages | `AdwNavigationView` |
-| [Tabs](#tab-navigator) | Switching between a few peer sections | `AdwViewStack` and a view switcher |
-| [Drawer](#drawer-navigator) | Choosing an application section from a sidebar | `AdwOverlaySplitView` |
-| [Split view](#split-view-navigator) | Keeping a selection beside its detail pages | `AdwNavigationSplitView` |
+| Navigator                           | Use it for                                     | Native surface                     |
+| ----------------------------------- | ---------------------------------------------- | ---------------------------------- |
+| [Stack](#stack-navigator)           | Moving through a sequence of pages             | `AdwNavigationView`                |
+| [Tabs](#tab-navigator)              | Switching between a few peer sections          | `AdwViewStack` and a view switcher |
+| [Drawer](#drawer-navigator)         | Choosing an application section from a sidebar | `AdwOverlaySplitView`              |
+| [Split view](#split-view-navigator) | Keeping a selection beside its detail pages    | `AdwNavigationSplitView`           |
 
 Scaffolded applications already generate the Adwaita bindings these navigators need. The package re-exports React Navigation's core hooks, actions and types. Use its [navigation documentation](https://reactnavigation.org/docs/navigation-object/) for those shared concepts and the [GTKX reference](/v2/reference/@gtkx/navigation/) for navigator options.
 

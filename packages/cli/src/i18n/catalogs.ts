@@ -1,14 +1,5 @@
 import { isPathInside } from "@gtkx/utils";
-import {
-    chmodSync,
-    existsSync,
-    mkdirSync,
-    mkdtempSync,
-    readFileSync,
-    renameSync,
-    rmSync,
-    statSync,
-} from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { runCliTool } from "../internal/run-cli-tool.js";
 
@@ -156,12 +147,7 @@ const mergeCatalog = (catalog: Catalog, template: string, output: string): void 
     chmodSync(output, statSync(catalog.path).mode & MODE_MASK);
 };
 
-const prepareCatalog = (
-    catalog: Catalog,
-    index: number,
-    template: string,
-    stagingDir: string,
-): PreparedCatalog => {
+const prepareCatalog = (catalog: Catalog, index: number, template: string, stagingDir: string): PreparedCatalog => {
     const output = join(stagingDir, `${String(index)}.po`);
     const isExisting = existsSync(catalog.path);
 
@@ -197,8 +183,7 @@ const synchronizeCatalogs = (project: CatalogProject): WrittenCatalog[] => {
     const stagingDir = mkdtempSync(join(project.poDir, ".gtkx-catalog-"));
 
     try {
-        const merged = project.catalogs.map((catalog, index) =>
-            prepareCatalog(catalog, index, template, stagingDir));
+        const merged = project.catalogs.map((catalog, index) => prepareCatalog(catalog, index, template, stagingDir));
 
         return merged.filter((catalog) => catalog.isChanged).map((catalog) => replaceCatalog(catalog));
     } finally {

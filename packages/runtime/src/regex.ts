@@ -36,15 +36,26 @@ type RegexEvaluator = (info: never, result: never) => boolean;
 type MatchInfoMethod = (this: object, ...args: unknown[]) => unknown;
 
 const MATCH_INFO = boxedT("GMatchInfo", {
-    ownership: "borrowed", sharedLibrary: LIB, getTypeFnName: "g_match_info_get_type",
+    ownership: "borrowed",
+    sharedLibrary: LIB,
+    getTypeFnName: "g_match_info_get_type",
 });
 const OWNED_MATCH_INFO = boxedT("GMatchInfo", {
-    ownership: "full", sharedLibrary: LIB, getTypeFnName: "g_match_info_get_type",
+    ownership: "full",
+    sharedLibrary: LIB,
+    getTypeFnName: "g_match_info_get_type",
 });
 const BYTES = boxedT("GBytes", { ownership: "borrowed", sharedLibrary: LIB, getTypeFnName: "g_bytes_get_type" });
-const gBytesNew = bind(LIB, "g_bytes_new", [bufferT, uint64T], boxedT("GBytes", {
-    ownership: "full", sharedLibrary: LIB, getTypeFnName: "g_bytes_get_type",
-}));
+const gBytesNew = bind(
+    LIB,
+    "g_bytes_new",
+    [bufferT, uint64T],
+    boxedT("GBytes", {
+        ownership: "full",
+        sharedLibrary: LIB,
+        getTypeFnName: "g_bytes_get_type",
+    }),
+);
 const gBytesGetData = bind(LIB, "g_bytes_get_data", [BYTES, bufferT], structT());
 const gMatchInfoRef = bind(LIB, "g_match_info_ref", [MATCH_INFO], OWNED_MATCH_INFO);
 
@@ -67,11 +78,22 @@ const gRegexMatchAllFull = fn(LIB, "g_regex_match_all_full", { args: MATCH_ARGS,
 const gRegexReplaceEval = fn(LIB, "g_regex_replace_eval", {
     args: [
         ...MATCH_ARGS.slice(0, 5),
-        { type: callbackT([
-            MATCH_INFO,
-            boxedT("GString", { ownership: "borrowed", sharedLibrary: LIB, getTypeFnName: "g_gstring_get_type" }),
-            bufferT,
-        ], booleanT, { hasUserData: true, userDataIndex: 2, scope: "call" }), isRequired: true },
+        {
+            type: callbackT(
+                [
+                    MATCH_INFO,
+                    boxedT("GString", {
+                        ownership: "borrowed",
+                        sharedLibrary: LIB,
+                        getTypeFnName: "g_gstring_get_type",
+                    }),
+                    bufferT,
+                ],
+                booleanT,
+                { hasUserData: true, userDataIndex: 2, scope: "call" },
+            ),
+            isRequired: true,
+        },
     ],
     returns: stringT("full"),
     canThrow: true,
@@ -167,7 +189,12 @@ function replaceRegexEval(
     };
 
     return gRegexReplaceEval(
-        getHandle(regex), input.data, input.length, startPosition, matchOptions, isLastMatch,
+        getHandle(regex),
+        input.data,
+        input.length,
+        startPosition,
+        matchOptions,
+        isLastMatch,
     ) as string;
 }
 

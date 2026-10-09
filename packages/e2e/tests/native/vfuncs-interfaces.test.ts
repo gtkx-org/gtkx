@@ -941,7 +941,8 @@ test("registerClass refuses vfunc methods and interfaces it cannot place", () =>
             typeName: uniqueName("GtkxNotAnInterface"),
             // @ts-expect-error a class is not a registered interface
             implements: [GObject.Object],
-        })).toThrow();
+        }),
+    ).toThrow();
 
     class Uninitialized extends GObject.Object {}
 
@@ -949,7 +950,8 @@ test("registerClass refuses vfunc methods and interfaces it cannot place", () =>
         registerClass(Uninitialized, {
             typeName: uniqueName("GtkxUninitialized"),
             implements: [Gio.AsyncInitable],
-        })).toThrow();
+        }),
+    ).toThrow();
 
     class MismatchedProperty extends GObject.Object {}
 
@@ -957,7 +959,8 @@ test("registerClass refuses vfunc methods and interfaces it cannot place", () =>
         registerClass(MismatchedProperty, {
             typeName: uniqueName("GtkxMismatched"),
             properties: { alpha: GObject.paramSpecInt("beta", null, null, 0, 10, 0, READWRITE) },
-        })).toThrow();
+        }),
+    ).toThrow();
 
     class UppercaseSignal extends GObject.Object {}
 
@@ -965,12 +968,12 @@ test("registerClass refuses vfunc methods and interfaces it cannot place", () =>
         registerClass(UppercaseSignal, {
             typeName: uniqueName("GtkxUppercaseSignal"),
             signals: { myThing: {} },
-        })).toThrow();
+        }),
+    ).toThrow();
 
     class CssNamed extends GObject.Object {}
 
-    expect(() =>
-        registerClass(CssNamed, { typeName: uniqueName("GtkxCssNamed"), cssName: "thing" })).toThrow();
+    expect(() => registerClass(CssNamed, { typeName: uniqueName("GtkxCssNamed"), cssName: "thing" })).toThrow();
 });
 
 test("an abstract registered class cannot be constructed but still serves as a parent", () => {

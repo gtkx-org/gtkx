@@ -27,8 +27,9 @@ const createConfigReloader = async (
     const selectedConfigName = relative(cwd, selectedConfigFile);
     const resolvePaths = (): string[] => [
         ...new Set(
-            [selectedConfigFile, ...knownDependencies]
-                .flatMap((path) => resolveConfigDependencies(path, selectedConfigName, cwd)),
+            [selectedConfigFile, ...knownDependencies].flatMap((path) =>
+                resolveConfigDependencies(path, selectedConfigName, cwd),
+            ),
         ),
     ];
 

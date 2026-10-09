@@ -106,9 +106,7 @@ describe("list box selection", () => {
 
         selectionCount = 0;
 
-        await rerender(
-            <BoxProbe boxRef={boxRef} count={3} selectedIndex={2} onRowSelected={handleRowSelected} />,
-        );
+        await rerender(<BoxProbe boxRef={boxRef} count={3} selectedIndex={2} onRowSelected={handleRowSelected} />);
 
         expect(getSelectedIndex(boxRef.current)).toBe(2);
         expect(selectionCount).toBe(0);

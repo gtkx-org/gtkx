@@ -36,7 +36,6 @@ In `src/components/task-row.tsx`, import `useNavigation` and read it inside `Tas
 +import { useNavigation } from "@gtkx/navigation";
 ```
 
-
 ```diff [src/components/task-row.tsx]
 @@ -9,0 +10 @@
 +    const navigation = useNavigation();
@@ -78,7 +77,6 @@ In `src/store/tasks.ts`, add `updateTask` to the slice type and implementation:
 +    updateTask: (id: string, fields: Partial<Pick<Task, "title" | "notes" | "due" | "listId">>) => void;
 ```
 
-
 ```diff [src/store/tasks.ts]
 @@ -48,0 +49 @@
 +    updateTask: (id, fields) => set((state) => ({ tasks: patch(state.tasks, id, fields) })),
@@ -118,7 +116,6 @@ In `src/components/task-row.tsx`, import the formatter and add the subtitle:
 @@ -0,0 +1 @@
 +import { formatDue } from "../format.js";
 ```
-
 
 ```diff [src/components/task-row.tsx]
 @@ -21,0 +22 @@

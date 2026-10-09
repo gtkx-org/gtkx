@@ -39,14 +39,15 @@ const SCHEMA_ENV_DEBOUNCE_MS = 50;
 const VIRTUAL_ID_RE = new RegExp(`^${VIRTUAL_PREFIX}`);
 const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
-const schemaEnvBanner = (chunk: Rollup.RenderedChunk): string => [
-    "globalThis.process.env.GSETTINGS_SCHEMA_DIR = [",
-    `    ${outputRootUrlExpression(chunk)},`,
-    "    globalThis.process.env.GSETTINGS_SCHEMA_DIR,",
-    "]",
-    "    .filter(Boolean)",
-    "    .join(\":\");",
-].join("\n");
+const schemaEnvBanner = (chunk: Rollup.RenderedChunk): string =>
+    [
+        "globalThis.process.env.GSETTINGS_SCHEMA_DIR = [",
+        `    ${outputRootUrlExpression(chunk)},`,
+        "    globalThis.process.env.GSETTINGS_SCHEMA_DIR,",
+        "]",
+        "    .filter(Boolean)",
+        '    .join(":");',
+    ].join("\n");
 
 const ensureSchemaDir = (state: PluginState): string => {
     const existing = state.schemaDir.getPath();

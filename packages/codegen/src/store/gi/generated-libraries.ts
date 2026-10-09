@@ -14,8 +14,7 @@ const collectGeneratedLibraries = (libraries: string[]): GeneratedLibraries => (
     libraries: sortStrings(libraries),
 });
 
-const renderGeneratedLibraries = (generated: GeneratedLibraries): string =>
-    `${JSON.stringify(generated, null, 2)}\n`;
+const renderGeneratedLibraries = (generated: GeneratedLibraries): string => `${JSON.stringify(generated, null, 2)}\n`;
 
 const isGeneratedLibraries = (value: unknown): value is GeneratedLibraries =>
     hasFields<GeneratedLibraries>(value, {

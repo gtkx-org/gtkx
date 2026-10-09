@@ -21,7 +21,10 @@ function bind(
     returnDescriptor: Descriptor,
 ): (...values: unknown[]) => unknown {
     const descriptor = nativeBind(
-        sharedLibrary, symbol, argDescriptors.map((argument) => toAbi(argument)), toAbi(returnDescriptor),
+        sharedLibrary,
+        symbol,
+        argDescriptors.map((argument) => toAbi(argument)),
+        toAbi(returnDescriptor),
     );
 
     const invoke = createCall(descriptor, argDescriptors, returnDescriptor);

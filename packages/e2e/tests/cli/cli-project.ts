@@ -138,9 +138,14 @@ const createCliProject = (options: CliProjectOptions): DisposableCliProject => {
 
     const owned = resources.move();
 
-    return { root, nodeModules, tmpDir, [Symbol.dispose]: () => {
-        owned.dispose();
-    } };
+    return {
+        root,
+        nodeModules,
+        tmpDir,
+        [Symbol.dispose]: () => {
+            owned.dispose();
+        },
+    };
 };
 
 const listProjectFiles = (project: CliProject, directory: string): string[] =>
@@ -185,7 +190,7 @@ const runCli = (project: CliProject, args: string[], overrides: NodeJS.ProcessEn
     if (result.status === null) {
         throw new Error(
             `gtkx ${args.join(" ")} did not exit on its own: killed by ${result.signal ?? "an unknown signal"} ` +
-            `after ${String(CLI_TIMEOUT)}ms. ${result.stdout}${result.stderr}`,
+                `after ${String(CLI_TIMEOUT)}ms. ${result.stdout}${result.stderr}`,
         );
     }
 

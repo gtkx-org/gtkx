@@ -18,7 +18,7 @@ const assertPortableNode = (info: ElfInfo, source: string): void => {
 
     throw new Error(
         `Cannot bundle this Node.js binary: \`deploy.node.source: "${source}"\` picked one linked against ` +
-        `${foreign.join(", ")}, which the packages GTKX generates do not require. ${remedyFor(source)}`,
+            `${foreign.join(", ")}, which the packages GTKX generates do not require. ${remedyFor(source)}`,
     );
 };
 

@@ -35,8 +35,7 @@ const OUTSIDE_FONT_PATH = join("data", OUTSIDE_FONT_FILE);
 const OUTSIDE_MODULE_PATH = join("extra", "fonts.mjs");
 const OUTSIDE_FONT_FIXTURE = readFileSync(fileURLToPath(new URL("fixtures/probe.otf", import.meta.url)));
 
-const OUTSIDE_FONT_SOURCE =
-    `export { default as outsideFamily } from "../data/${OUTSIDE_FONT_FILE}?font";\n`;
+const OUTSIDE_FONT_SOURCE = `export { default as outsideFamily } from "../data/${OUTSIDE_FONT_FILE}?font";\n`;
 
 const JSX_ENTRY = `import value from "./view.tsx";
 
@@ -166,111 +165,127 @@ const runWithoutDataEnvironment = (file: string): AppRun => {
 };
 
 describe("gtkx build (production environment)", () => {
-    it("emits runnable JSX when the caller environment is not production", async () => {
-        const project = createAppProject({
-            applicationId: "com.gtkx.clibuildjsx",
-            entry: JSX_ENTRY,
-            files: { [JSX_VIEW_PATH]: JSX_VIEW },
-            prefix: "gtkx-build-jsx-environment-",
-        });
+    it(
+        "emits runnable JSX when the caller environment is not production",
+        async () => {
+            const project = createAppProject({
+                applicationId: "com.gtkx.clibuildjsx",
+                entry: JSX_ENTRY,
+                files: { [JSX_VIEW_PATH]: JSX_VIEW },
+                prefix: "gtkx-build-jsx-environment-",
+            });
 
-        try {
-            const bundle = await buildWithNodeEnv(project, "test");
-            const run = runNode(join(project.root, bundle));
-            expect(run.stderr).toBe("");
-            expect(run.stdout).toBe("jsx=ready");
-            expect(run.status).toBe(0);
-        } finally {
-            removeAppProject(project);
-        }
-    }, BUILD_TIMEOUT);
+            try {
+                const bundle = await buildWithNodeEnv(project, "test");
+                const run = runNode(join(project.root, bundle));
+                expect(run.stderr).toBe("");
+                expect(run.stdout).toBe("jsx=ready");
+                expect(run.status).toBe(0);
+            } finally {
+                removeAppProject(project);
+            }
+        },
+        BUILD_TIMEOUT,
+    );
 });
 
 describe("gtkx build (bundled fonts)", () => {
-    it("reaches a bundled font from the output root when the project has no icon", async () => {
-        const project = createAppProject({
-            applicationId: FONT_APPLICATION_ID,
-            entry: FONT_ONLY_ENTRY,
-            files: {
-                [FONT_PATH]: FONT_FIXTURE,
-                [OUTSIDE_FONT_PATH]: OUTSIDE_FONT_FIXTURE,
-                [OUTSIDE_MODULE_PATH]: OUTSIDE_FONT_SOURCE,
-            },
-            prefix: "gtkx-build-font-environment-",
-        });
+    it(
+        "reaches a bundled font from the output root when the project has no icon",
+        async () => {
+            const project = createAppProject({
+                applicationId: FONT_APPLICATION_ID,
+                entry: FONT_ONLY_ENTRY,
+                files: {
+                    [FONT_PATH]: FONT_FIXTURE,
+                    [OUTSIDE_FONT_PATH]: OUTSIDE_FONT_FIXTURE,
+                    [OUTSIDE_MODULE_PATH]: OUTSIDE_FONT_SOURCE,
+                },
+                prefix: "gtkx-build-font-environment-",
+            });
 
-        try {
-            const bundle = await buildAppProject({ project, outDir: FONT_OUT_DIR });
-            const run = runWithoutDataEnvironment(join(project.root, bundle));
-            expect(run.stderr).toBe("");
-            expect(JSON.parse(run.stdout)).toEqual({ families: [FONT_FAMILY, OUTSIDE_FONT_FAMILY], staged: 2 });
-            expect(run.status).toBe(0);
-        } finally {
-            removeAppProject(project);
-        }
-    }, BUILD_TIMEOUT);
+            try {
+                const bundle = await buildAppProject({ project, outDir: FONT_OUT_DIR });
+                const run = runWithoutDataEnvironment(join(project.root, bundle));
+                expect(run.stderr).toBe("");
+                expect(JSON.parse(run.stdout)).toEqual({ families: [FONT_FAMILY, OUTSIDE_FONT_FAMILY], staged: 2 });
+                expect(run.status).toBe(0);
+            } finally {
+                removeAppProject(project);
+            }
+        },
+        BUILD_TIMEOUT,
+    );
 
-    it("leaves the data directories alone when the project bundles no font", async () => {
-        const project = createAppProject({
-            applicationId: FONT_APPLICATION_ID,
-            entry: NO_FONT_ENTRY,
-            prefix: "gtkx-build-no-font-environment-",
-        });
+    it(
+        "leaves the data directories alone when the project bundles no font",
+        async () => {
+            const project = createAppProject({
+                applicationId: FONT_APPLICATION_ID,
+                entry: NO_FONT_ENTRY,
+                prefix: "gtkx-build-no-font-environment-",
+            });
 
-        try {
-            const bundle = await buildAppProject({ project, outDir: FONT_OUT_DIR });
-            const run = runWithoutDataEnvironment(join(project.root, bundle));
-            expect(run.stderr).toBe("");
-            expect(JSON.parse(run.stdout)).toEqual({ xdg: null });
-            expect(run.status).toBe(0);
-        } finally {
-            removeAppProject(project);
-        }
-    }, BUILD_TIMEOUT);
+            try {
+                const bundle = await buildAppProject({ project, outDir: FONT_OUT_DIR });
+                const run = runWithoutDataEnvironment(join(project.root, bundle));
+                expect(run.stderr).toBe("");
+                expect(JSON.parse(run.stdout)).toEqual({ xdg: null });
+                expect(run.status).toBe(0);
+            } finally {
+                removeAppProject(project);
+            }
+        },
+        BUILD_TIMEOUT,
+    );
 });
 
 describe("gtkx build (data environment across chunks)", () => {
-    it("initializes shared, application, and worker modules from the output root", async () => {
-        const project = createAppProject({
-            applicationId: APPLICATION_ID,
-            entry: ENVIRONMENT_ENTRY,
-            files: {
-                "application.svg": "<svg/>\n",
-                "gtkx.config.mjs": ENVIRONMENT_CONFIG,
-                [FONT_PATH]: FONT_FIXTURE,
-                [SCHEMA_PATH]: ENVIRONMENT_SCHEMA,
-                [SHARED_PATH]: SHARED_SOURCE,
-                [WORKER_PATH]: WORKER_SOURCE,
-            },
-            prefix: "gtkx-build-data-environment-",
-        });
-
-        try {
-            const bundle = await buildAppProject({ project, outDir: OUT_DIR });
-            const output = join(project.root, OUT_DIR);
-            const appRun = runWithoutDataEnvironment(join(project.root, bundle));
-            expect(appRun.stderr).toBe("");
-            expect(JSON.parse(appRun.stdout)).toEqual({
-                entry: true,
-                shared: true,
-                worker: { entry: true, shared: true },
+    it(
+        "initializes shared, application, and worker modules from the output root",
+        async () => {
+            const project = createAppProject({
+                applicationId: APPLICATION_ID,
+                entry: ENVIRONMENT_ENTRY,
+                files: {
+                    "application.svg": "<svg/>\n",
+                    "gtkx.config.mjs": ENVIRONMENT_CONFIG,
+                    [FONT_PATH]: FONT_FIXTURE,
+                    [SCHEMA_PATH]: ENVIRONMENT_SCHEMA,
+                    [SHARED_PATH]: SHARED_SOURCE,
+                    [WORKER_PATH]: WORKER_SOURCE,
+                },
+                prefix: "gtkx-build-data-environment-",
             });
-            expect(appRun.status).toBe(0);
 
-            const workerName = readdirSync(output, { recursive: true, encoding: "utf8" }).find((name) =>
-                name.startsWith("workers/") && name.endsWith(".mjs"),
-            );
+            try {
+                const bundle = await buildAppProject({ project, outDir: OUT_DIR });
+                const output = join(project.root, OUT_DIR);
+                const appRun = runWithoutDataEnvironment(join(project.root, bundle));
+                expect(appRun.stderr).toBe("");
+                expect(JSON.parse(appRun.stdout)).toEqual({
+                    entry: true,
+                    shared: true,
+                    worker: { entry: true, shared: true },
+                });
+                expect(appRun.status).toBe(0);
 
-            if (workerName === undefined) {
-                throw new Error("Build emitted no worker entry");
+                const workerName = readdirSync(output, { recursive: true, encoding: "utf8" }).find(
+                    (name) => name.startsWith("workers/") && name.endsWith(".mjs"),
+                );
+
+                if (workerName === undefined) {
+                    throw new Error("Build emitted no worker entry");
+                }
+
+                const workerRun = runWithoutDataEnvironment(join(output, workerName));
+                expect(workerRun.stderr).toBe("");
+                expect(JSON.parse(workerRun.stdout)).toEqual({ entry: true, shared: true });
+                expect(workerRun.status).toBe(0);
+            } finally {
+                removeAppProject(project);
             }
-
-            const workerRun = runWithoutDataEnvironment(join(output, workerName));
-            expect(workerRun.stderr).toBe("");
-            expect(JSON.parse(workerRun.stdout)).toEqual({ entry: true, shared: true });
-            expect(workerRun.status).toBe(0);
-        } finally {
-            removeAppProject(project);
-        }
-    }, BUILD_TIMEOUT);
+        },
+        BUILD_TIMEOUT,
+    );
 });

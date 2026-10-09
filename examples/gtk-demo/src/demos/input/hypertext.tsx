@@ -166,13 +166,7 @@ function buildPage1(): PageContent {
 
     b.addNode(
         <GtkTextChildAnchor key="levelbar">
-            <GtkLevelBar
-                value={50}
-                minValue={0}
-                maxValue={100}
-                widthRequest={100}
-                accessibleLabel="Example level"
-            />
+            <GtkLevelBar value={50} minValue={0} maxValue={100} widthRequest={100} accessibleLabel="Example level" />
         </GtkTextChildAnchor>,
     );
 
@@ -239,9 +233,9 @@ function buildPage2(): PageContent {
         phonetic: "tag",
         definition:
             "\n\nAn attribute that can be applied to some range of text. For example, a tag might be " +
-            "called \"bold\" and make the text inside the tag bold.\n\nHowever, the tag concept is " +
+            'called "bold" and make the text inside the tag bold.\n\nHowever, the tag concept is ' +
             "more general than that; tags don't have to affect appearance. They can instead affect " +
-            "the behavior of mouse and key presses, \"lock\" a range of text so the user can't edit " +
+            'the behavior of mouse and key presses, "lock" a range of text so the user can\'t edit ' +
             "it, or countless other things.\n",
     });
 }
@@ -371,8 +365,7 @@ function useKeyPressHandler(
     findLink: (offset: number) => number | null,
     setCurrentPage: (page: number) => void,
 ) {
-    return (keyval: number) =>
-        handleLinkKeyPress({ keyval, textView: textViewRef.current, findLink, setCurrentPage });
+    return (keyval: number) => handleLinkKeyPress({ keyval, textView: textViewRef.current, findLink, setCurrentPage });
 }
 
 function useHypertextHandlers(
@@ -415,13 +408,13 @@ function HypertextDemo() {
                 pixelsBelowLines={10}
                 canFocus
                 focusable
-                controllers={(
+                controllers={
                     <>
                         <GtkGestureClick button={1} onReleased={handlers.handleClick} />
                         <GtkEventControllerMotion onMotion={handlers.handleMotion} />
                         <GtkEventControllerKey onKeyPressed={handlers.handleKeyPress} />
                     </>
-                )}
+                }
                 buffer={<GtkTextBuffer enableUndo>{content}</GtkTextBuffer>}
             />
         </GtkScrolledWindow>

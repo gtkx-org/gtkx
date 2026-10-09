@@ -32,11 +32,12 @@ const holderString = t.bind(library, "gtkx_separate_holder_get_string", [t.struc
 const keepObjectAlias = t.bind(library, "gtkx_separate_holder_keep_object_alias", [t.struct()], t.void);
 const releases = (kind: number): number =>
     t.bind(library, "gtkx_separate_releases", [t.uint32], t.uint32)(kind) as number;
-const initialValues = (kind: number): unknown[] => kind === 0 ? ["\u{FEFF}café", "♥"] : [3, 7];
-const inputValues = (kind: number): unknown[] => kind === 0 ? ["eleven", "thirteen", "seventeen"] : [11, 13, 17];
+const initialValues = (kind: number): unknown[] => (kind === 0 ? ["\u{FEFF}café", "♥"] : [3, 7]);
+const inputValues = (kind: number): unknown[] => (kind === 0 ? ["eleven", "thirteen", "seventeen"] : [11, 13, 17]);
 const nativeValues = (holder: NativeValue, kind: number, isAlias = false): unknown[] =>
     Array.from({ length: holderCount(holder, isAlias) as number }, (_, index) =>
-        kind === 0 ? holderString(holder, index) : holderGet(holder, isAlias, index));
+        kind === 0 ? holderString(holder, index) : holderGet(holder, isAlias, index),
+    );
 const withHolder = (layout: number, kind: number, state: number, work: (holder: NativeValue) => void): void => {
     const holder = createHolder(layout, kind, state) as NativeValue;
     try {
@@ -46,9 +47,12 @@ const withHolder = (layout: number, kind: number, state: number, work: (holder: 
     }
 };
 const visitor = (descriptor: Descriptor, isInout = true): ReturnType<typeof t.bind> =>
-    t.bind(library, "gtkx_separate_holder_visit", [
-        t.struct(), t.callback([t.ref(descriptor, isInout)], t.void, { scope: "call" }),
-    ], t.void);
+    t.bind(
+        library,
+        "gtkx_separate_holder_visit",
+        [t.struct(), t.callback([t.ref(descriptor, isInout)], t.void, { scope: "call" })],
+        t.void,
+    );
 
 for (const { name, id, make } of layouts) {
     for (const type of types) {
@@ -60,24 +64,27 @@ for (const { name, id, make } of layouts) {
                 const createInput = t.bind(library, "gtkx_separate_input_new", [t.uint32, t.int32], type.item);
                 const getInput = t.bind(library, "gtkx_separate_input_get", [t.uint32, type.argument], t.int32);
                 const input = inputValues(type.kind).map((value) =>
-                    type.kind === 0 ? value : createInput(type.kind, value));
+                    type.kind === 0 ? value : createInput(type.kind, value),
+                );
                 const retained: unknown[] = [];
                 const seen: unknown[] = [];
 
                 try {
                     withHolder(id, type.kind, 2, (holder) => {
                         if (route === "field") {
-                            retained.push(...field.read(holder) as unknown[]);
-                            seen.push(type.kind === 0
-                                ? [...retained]
-                                : retained.map((value) => getInput(type.kind, value)));
+                            retained.push(...(field.read(holder) as unknown[]));
+                            seen.push(
+                                type.kind === 0 ? [...retained] : retained.map((value) => getInput(type.kind, value)),
+                            );
                             field.write(holder, input);
                         } else {
                             visitor(descriptor)(holder, (ref: Ref) => {
-                                retained.push(...ref.value as unknown[]);
-                                seen.push(type.kind === 0
-                                    ? [...retained]
-                                    : retained.map((value) => getInput(type.kind, value)));
+                                retained.push(...(ref.value as unknown[]));
+                                seen.push(
+                                    type.kind === 0
+                                        ? [...retained]
+                                        : retained.map((value) => getInput(type.kind, value)),
+                                );
                                 ref.value = input;
                             });
                         }
@@ -126,8 +133,9 @@ for (const { name, id, make } of layouts) {
                         const expected = state === 2 ? initialValues(type.kind) : [];
                         expect(seen).toEqual([state === 0 ? null : expected]);
                         expect(nativeValues(holder, type.kind)).toEqual(expected);
-                        expect(type.kind === 0 ? [...retained] : retained.map((value) => getInput(type.kind, value)))
-                            .toEqual(expected);
+                        expect(
+                            type.kind === 0 ? [...retained] : retained.map((value) => getInput(type.kind, value)),
+                        ).toEqual(expected);
                         expect(holderIsNull(holder)).toBe(state === 0);
                         releaseCounts.push(releases(type.kind) - before);
                     });
@@ -160,13 +168,15 @@ for (const { name, id, make } of layouts) {
                         field.write(holder, [...input, false]);
                     }).toThrow();
                     expect(nativeValues(holder, type.kind)).toEqual(initialValues(type.kind));
-                    expect(() => visitor(descriptor)(holder, (ref: Ref) => {
-                        retained.push(...ref.value as unknown[]);
-                        seen.push(type.kind === 0
-                            ? [...retained]
-                            : retained.map((value) => getInput(type.kind, value)));
-                        ref.value = [...input, false];
-                    })).toThrow();
+                    expect(() =>
+                        visitor(descriptor)(holder, (ref: Ref) => {
+                            retained.push(...(ref.value as unknown[]));
+                            seen.push(
+                                type.kind === 0 ? [...retained] : retained.map((value) => getInput(type.kind, value)),
+                            );
+                            ref.value = [...input, false];
+                        }),
+                    ).toThrow();
                     expect(seen).toEqual([initialValues(type.kind)]);
                     expect(nativeValues(holder, type.kind)).toEqual(initialValues(type.kind));
                 });

@@ -32,16 +32,16 @@ const withBoundary = (children: ReactNode, mode: ErrorMode): ReactNode =>
 const BreakableButton = (): ReactNode => {
     const [hasFailed, setFailed] = useState(false);
 
-    return hasFailed
-        ? <Thrower />
-        : (
-                <GtkButton
-                    label="Fail this render"
-                    onClicked={() => {
-                        setFailed(true);
-                    }}
-                />
-            );
+    return hasFailed ? (
+        <Thrower />
+    ) : (
+        <GtkButton
+            label="Fail this render"
+            onClicked={() => {
+                setFailed(true);
+            }}
+        />
+    );
 };
 
 describe("render root isolation", () => {
@@ -51,10 +51,13 @@ describe("render root isolation", () => {
         const handleError = (): void => {
             handled.resolve(undefined);
         };
-        const root = createRoot({ ...rootElement }, {
-            onCaughtError: handleError,
-            onUncaughtError: handleError,
-        });
+        const root = createRoot(
+            { ...rootElement },
+            {
+                onCaughtError: handleError,
+                onUncaughtError: handleError,
+            },
+        );
 
         try {
             root.render(withBoundary(<Thrower />, mode));
@@ -72,7 +75,11 @@ describe("render root isolation", () => {
     });
 
     it("keeps a pending caught error with its own testing root", async () => {
-        const failing = await render(<ErrorBoundary><BreakableButton /></ErrorBoundary>);
+        const failing = await render(
+            <ErrorBoundary>
+                <BreakableButton />
+            </ErrorBoundary>,
+        );
         const healthy = await render(<GtkLabel>Healthy</GtkLabel>);
 
         await userEvent.click(failing.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Fail this render" }));

@@ -66,11 +66,11 @@ const cleanupDirectoryIdentity = (path: string): CleanupDirectoryIdentity | unde
 
         return entry.isDirectory()
             ? {
-                    path: absolutePath,
-                    device: entry.dev.toString(),
-                    inode: entry.ino.toString(),
-                    userId: entry.uid.toString(),
-                }
+                  path: absolutePath,
+                  device: entry.dev.toString(),
+                  inode: entry.ino.toString(),
+                  userId: entry.uid.toString(),
+              }
             : undefined;
     } catch {
         return undefined;
@@ -80,11 +80,7 @@ const cleanupDirectoryIdentity = (path: string): CleanupDirectoryIdentity | unde
 const removeCleanupDirectory = (identity: CleanupDirectoryIdentity): void => {
     const current = cleanupDirectoryIdentity(identity.path);
 
-    if (
-        current?.device !== identity.device ||
-        current.inode !== identity.inode ||
-        current.userId !== identity.userId
-    ) {
+    if (current?.device !== identity.device || current.inode !== identity.inode || current.userId !== identity.userId) {
         return;
     }
 

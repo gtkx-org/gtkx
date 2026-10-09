@@ -10,7 +10,9 @@ const IMPORTS = `import * as Gst from "@gtkx/gi/gst";
 import * as GObject from "@gtkx/gi/gobject";
 import { getProperty, setProperty } from "@gtkx/gi/gobject";
 `;
-const ACCEPTED = IMPORTS + `
+const ACCEPTED =
+    IMPORTS +
+    `
 export const construct = (object: Gst.Object): Gst.ControlBindingConstructorProps[] => [
     { name: "volume", object }, { name: null, object: null }, { name: undefined, object: undefined },
 ];
@@ -33,14 +35,15 @@ export class Derived extends Gst.ControlBinding {
 }
 `;
 const REJECTED: Record<string, string> = {
-    "construct-only-name": "export const write = (binding: Gst.ControlBinding) => " +
-        'setProperty(binding, "name", "next");',
-    "construct-only-null-name": "export const write = (binding: Gst.ControlBinding) => " +
-        'setProperty(binding, "name", null);',
-    "construct-only-object": "export const write = (binding: Gst.ControlBinding, object: Gst.Object) => " +
+    "construct-only-name":
+        "export const write = (binding: Gst.ControlBinding) => " + 'setProperty(binding, "name", "next");',
+    "construct-only-null-name":
+        "export const write = (binding: Gst.ControlBinding) => " + 'setProperty(binding, "name", null);',
+    "construct-only-object":
+        "export const write = (binding: Gst.ControlBinding, object: Gst.Object) => " +
         'setProperty(binding, "object", object);',
-    "construct-only-null-object": "export const write = (binding: Gst.ControlBinding) => " +
-        'setProperty(binding, "object", null);',
+    "construct-only-null-object":
+        "export const write = (binding: Gst.ControlBinding) => " + 'setProperty(binding, "object", null);',
     "readonly-name": 'export const write = (binding: Gst.ControlBinding) => { binding.name = "next"; };',
     "readonly-object": "export const write = (binding: Gst.ControlBinding) => { binding.object = null; };",
 };
@@ -50,13 +53,16 @@ describe("generated Gst property maps", () => {
     let project: CliProject;
 
     beforeAll(() => {
-        const rejectedFiles = Object.fromEntries(Object.entries(REJECTED).map(([name, source]) => [
-            `${name}.ts`, IMPORTS + source,
-        ]));
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-gst-property-maps-", config: CONFIG,
-            files: { "accepted.ts": ACCEPTED, ...rejectedFiles },
-        }));
+        const rejectedFiles = Object.fromEntries(
+            Object.entries(REJECTED).map(([name, source]) => [`${name}.ts`, IMPORTS + source]),
+        );
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-gst-property-maps-",
+                config: CONFIG,
+                files: { "accepted.ts": ACCEPTED, ...rejectedFiles },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });

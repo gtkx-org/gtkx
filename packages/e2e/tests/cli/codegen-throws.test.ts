@@ -2,12 +2,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createCliProject, runCli } from "./cli-project.js";
 import { fixtureConfig } from "./codegen-helpers.js";
-import {
-    compileNativeFixture,
-    isolateTypeConsumer,
-    runNativeConsumer,
-    typecheckSource,
-} from "./type-consumer.js";
+import { compileNativeFixture, isolateTypeConsumer, runNativeConsumer, typecheckSource } from "./type-consumer.js";
 
 const FIXTURE = fileURLToPath(new URL("fixtures/throwing-hook.c", import.meta.url));
 const CONSUMER = `import assert from "node:assert/strict";
@@ -102,9 +97,12 @@ describe("generated callbacks with native error boundaries", () => {
         expect(typecheckSource(project, SIGNATURES)).toBe(0);
 
         for (const source of REJECTED) {
-            expect(typecheckSource(project,
-                `import { Runner } from "@gtkx/gi/throwinghook";\nconst runner = new Runner();\n${source}`,
-            )).not.toBe(0);
+            expect(
+                typecheckSource(
+                    project,
+                    `import { Runner } from "@gtkx/gi/throwinghook";\nconst runner = new Runner();\n${source}`,
+                ),
+            ).not.toBe(0);
         }
     });
 

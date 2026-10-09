@@ -24,6 +24,4 @@ const TaskFilter = () => {
     );
 };
 
-export {
-    TaskFilter,
-};
+export { TaskFilter };

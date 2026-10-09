@@ -72,11 +72,4 @@ const renderDocTagLines = (spec: JsDocSpec, converters: DocConverters): string[]
     ...simpleTagLine("@since", spec.since, converters.description),
 ];
 
-export {
-    type DocConverters,
-    renderDocTagLines,
-    stripDocMedia,
-    type JsDocDeprecation,
-    type JsDocParam,
-    type JsDocSpec,
-};
+export { type DocConverters, renderDocTagLines, stripDocMedia, type JsDocDeprecation, type JsDocParam, type JsDocSpec };

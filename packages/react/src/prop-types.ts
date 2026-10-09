@@ -110,75 +110,75 @@ type ChildrenProps = {
 /** Paint and typography declarations GTK4 CSS accepts, spelled the way React DOM spells them. */
 type StyleProperties = Pick<
     CSSProperties,
-    | "animation" |
-    "animationDelay" |
-    "animationDirection" |
-    "animationDuration" |
-    "animationFillMode" |
-    "animationIterationCount" |
-    "animationName" |
-    "animationPlayState" |
-    "animationTimingFunction" |
-    "background" |
-    "backgroundClip" |
-    "backgroundColor" |
-    "backgroundImage" |
-    "backgroundOrigin" |
-    "backgroundPosition" |
-    "backgroundRepeat" |
-    "backgroundSize" |
-    "border" |
-    "borderBottom" |
-    "borderColor" |
-    "borderLeft" |
-    "borderRadius" |
-    "borderRight" |
-    "borderStyle" |
-    "borderTop" |
-    "borderWidth" |
-    "boxShadow" |
-    "caretColor" |
-    "color" |
-    "filter" |
-    "font" |
-    "fontFamily" |
-    "fontSize" |
-    "fontStyle" |
-    "fontVariant" |
-    "fontWeight" |
-    "letterSpacing" |
-    "lineHeight" |
-    "margin" |
-    "marginBottom" |
-    "marginLeft" |
-    "marginRight" |
-    "marginTop" |
-    "minHeight" |
-    "minWidth" |
-    "opacity" |
-    "outline" |
-    "outlineColor" |
-    "outlineOffset" |
-    "outlineStyle" |
-    "outlineWidth" |
-    "padding" |
-    "paddingBottom" |
-    "paddingLeft" |
-    "paddingRight" |
-    "paddingTop" |
-    "textDecoration" |
-    "textDecorationColor" |
-    "textDecorationLine" |
-    "textDecorationStyle" |
-    "textShadow" |
-    "textTransform" |
-    "transform" |
-    "transformOrigin" |
-    "transition" |
-    "transitionDelay" |
-    "transitionDuration" |
-    "transitionProperty" |
-    "transitionTimingFunction"
+    | "animation"
+    | "animationDelay"
+    | "animationDirection"
+    | "animationDuration"
+    | "animationFillMode"
+    | "animationIterationCount"
+    | "animationName"
+    | "animationPlayState"
+    | "animationTimingFunction"
+    | "background"
+    | "backgroundClip"
+    | "backgroundColor"
+    | "backgroundImage"
+    | "backgroundOrigin"
+    | "backgroundPosition"
+    | "backgroundRepeat"
+    | "backgroundSize"
+    | "border"
+    | "borderBottom"
+    | "borderColor"
+    | "borderLeft"
+    | "borderRadius"
+    | "borderRight"
+    | "borderStyle"
+    | "borderTop"
+    | "borderWidth"
+    | "boxShadow"
+    | "caretColor"
+    | "color"
+    | "filter"
+    | "font"
+    | "fontFamily"
+    | "fontSize"
+    | "fontStyle"
+    | "fontVariant"
+    | "fontWeight"
+    | "letterSpacing"
+    | "lineHeight"
+    | "margin"
+    | "marginBottom"
+    | "marginLeft"
+    | "marginRight"
+    | "marginTop"
+    | "minHeight"
+    | "minWidth"
+    | "opacity"
+    | "outline"
+    | "outlineColor"
+    | "outlineOffset"
+    | "outlineStyle"
+    | "outlineWidth"
+    | "padding"
+    | "paddingBottom"
+    | "paddingLeft"
+    | "paddingRight"
+    | "paddingTop"
+    | "textDecoration"
+    | "textDecorationColor"
+    | "textDecorationLine"
+    | "textDecorationStyle"
+    | "textShadow"
+    | "textTransform"
+    | "transform"
+    | "transformOrigin"
+    | "transition"
+    | "transitionDelay"
+    | "transitionDuration"
+    | "transitionProperty"
+    | "transitionTimingFunction"
 >;
 
 /**
@@ -222,10 +222,11 @@ type MenuItemProps = Pick<MenuItem, "label" | "action"> & {
     section?: ReactNode;
 };
 
-type AdwToggleGroupProps = ChildrenProps & (
-    | { active?: Adw.ToggleGroup["active"] | undefined; activeName?: never } |
-    { activeName?: Adw.ToggleGroup["activeName"] | undefined; active?: never }
-);
+type AdwToggleGroupProps = ChildrenProps &
+    (
+        | { active?: Adw.ToggleGroup["active"] | undefined; activeName?: never }
+        | { activeName?: Adw.ToggleGroup["activeName"] | undefined; active?: never }
+    );
 
 /** Props of a `Gtk.ShortcutController` element. */
 type GtkShortcutControllerProps = {

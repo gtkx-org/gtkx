@@ -15,6 +15,7 @@ export default mergeConfig(
                 LC_ALL: "fr_FR.UTF-8",
             },
             name: "i18n",
+            fsModuleCache: true,
         },
     }),
 );

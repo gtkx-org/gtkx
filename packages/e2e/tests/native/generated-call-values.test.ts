@@ -52,7 +52,7 @@ test("generated integer arguments bound the value the callee returns", () => {
 test("generated Unicode arguments and returns preserve codepoints", () => {
     expect(GLib.unicharToupper(0x61)).toBe("A");
     expect(GLib.unicharToupper("a")).toBe("A");
-    expect(GLib.unicharToupper(0x10_FF_FF)).toBe(String.fromCodePoint(0x10_FF_FF));
+    expect(GLib.unicharToupper(0x10_ff_ff)).toBe(String.fromCodePoint(0x10_ff_ff));
 });
 
 test("generated floating point arguments and returns convert Pango units", () => {

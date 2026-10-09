@@ -1,7 +1,7 @@
 import type { BINDING_CONSUMERS } from "./codegen-binding-consumers.js";
 import { type CliProject, createCliProject, removeCliProject, runCli } from "./cli-project.js";
 import { fixtureConfig } from "./codegen-helpers.js";
-import { isolateTypeConsumer, typecheckFile } from "./type-consumer.js";
+import { isolateTypeConsumer, typecheckFiles } from "./type-consumer.js";
 
 type BindingConsumer = (typeof BINDING_CONSUMERS)[number];
 
@@ -10,6 +10,7 @@ const createBindingConsumerHarness = ({ library, accepted, rejected }: BindingCo
         project: { root: "", nodeModules: "", tmpDir: "" },
         status: null,
     };
+    let results: ReturnType<typeof typecheckFiles> = new Map();
 
     return {
         accepted: Object.keys(accepted),
@@ -22,12 +23,21 @@ const createBindingConsumerHarness = ({ library, accepted, rejected }: BindingCo
             });
             state.status = runCli(state.project, ["codegen"]).status;
             isolateTypeConsumer(state.project);
+            results = typecheckFiles(state.project, [...Object.keys(accepted), ...Object.keys(rejected)]);
         },
         cleanup: () => {
             removeCliProject(state.project);
         },
         status: () => state.status,
-        typecheck: (file: string) => typecheckFile(state.project, file),
+        typecheck: (file: string) => {
+            const result = results.get(file);
+
+            if (result === undefined) {
+                throw new Error(`Consumer was not typechecked: ${file}`);
+            }
+
+            return result.status;
+        },
     };
 };
 

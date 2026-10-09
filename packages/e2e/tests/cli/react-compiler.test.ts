@@ -10,47 +10,52 @@ const SOURCES = ["index.tsx", "banner.tsx", "javascript-banner.mjs", "label.ts",
 const READ_ONLY_CACHE = "read-only-cache";
 const FIRST_LABEL = "first-build";
 const SECOND_LABEL = "second-build";
-const sources = Object.fromEntries(SOURCES.map((name) => [
-    `src/${name}`,
-    readFileSync(new URL(`fixtures/react-compiler/${name}`, import.meta.url), "utf8"),
-]));
+const sources = Object.fromEntries(
+    SOURCES.map((name) => [
+        `src/${name}`,
+        readFileSync(new URL(`fixtures/react-compiler/${name}`, import.meta.url), "utf8"),
+    ]),
+);
 
-const createProject = (settings = "", cacheDir = "cache"): DisposableCliProject => createCliProject({
-    prefix: "gtkx-react-compiler-",
-    config: `export default { applicationId: "com.gtkx.clireactcompiler", codegen: false, ${settings} };`,
-    hasStore: true,
-    files: { ...sources, "vite.config.mjs": `export default { cacheDir: ${JSON.stringify(cacheDir)} };` },
-});
-
-const runApp = (project: CliProject): Promise<AppRun> => new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [join(project.root, "dist/bundle.mjs")], {
-        cwd: join(project.root, "dist"),
-        stdio: ["ignore", "ignore", "inherit", "ipc"],
+const createProject = (settings = "", cacheDir = "cache"): DisposableCliProject =>
+    createCliProject({
+        prefix: "gtkx-react-compiler-",
+        config: `export default { applicationId: "com.gtkx.clireactcompiler", codegen: false, ${settings} };`,
+        hasStore: true,
+        files: { ...sources, "vite.config.mjs": `export default { cacheDir: ${JSON.stringify(cacheDir)} };` },
     });
-    const reports: unknown[] = [];
-    const timeout = setTimeout(() => {
-        child.kill("SIGKILL");
-    }, 30_000);
 
-    child.on("message", (message) => {
-        reports.push(message);
-        if (reports.length < 3) {
-            child.send({ action: "increment" });
-        }
-    });
-    child.once("error", reject);
-    child.once("close", (status, signal) => {
-        clearTimeout(timeout);
-        resolve({ status, signal, reports });
-    });
-});
+const runApp = (project: CliProject): Promise<AppRun> =>
+    new Promise((resolve, reject) => {
+        const child = spawn(process.execPath, [join(project.root, "dist/bundle.mjs")], {
+            cwd: join(project.root, "dist"),
+            stdio: ["ignore", "ignore", "inherit", "ipc"],
+        });
+        const reports: unknown[] = [];
+        const timeout = setTimeout(() => {
+            child.kill("SIGKILL");
+        }, 30_000);
 
-const renderedCounters = (label: string, isCompiled = true): unknown[] => [0, 1, 2].map((count) => ({
-    counter: `plain-typescript-${label}-${String(count)}`,
-    banner: "banner-create-element",
-    javascriptRenders: isCompiled ? 1 : count + 1,
-    typescriptRenders: isCompiled ? 1 : count + 1,
-}));
+        child.on("message", (message) => {
+            reports.push(message);
+            if (reports.length < 3) {
+                child.send({ action: "increment" });
+            }
+        });
+        child.once("error", reject);
+        child.once("close", (status, signal) => {
+            clearTimeout(timeout);
+            resolve({ status, signal, reports });
+        });
+    });
+
+const renderedCounters = (label: string, isCompiled = true): unknown[] =>
+    [0, 1, 2].map((count) => ({
+        counter: `plain-typescript-${label}-${String(count)}`,
+        banner: "banner-create-element",
+        javascriptRenders: isCompiled ? 1 : count + 1,
+        typescriptRenders: isCompiled ? 1 : count + 1,
+    }));
 
 describe("gtkx build (React Compiler)", () => {
     it("preserves rendered state and interactions with the default compiler", async () => {
@@ -83,7 +88,10 @@ describe("gtkx build (React Compiler)", () => {
         expect(first.reports).toEqual(renderedCounters(FIRST_LABEL));
 
         const entry = join(project.root, "src/index.tsx");
-        writeFileSync(entry, readFileSync(entry, "utf8").replace(FIRST_LABEL, () => SECOND_LABEL));
+        writeFileSync(
+            entry,
+            readFileSync(entry, "utf8").replace(FIRST_LABEL, () => SECOND_LABEL),
+        );
         runCliOrThrow(project, ["build"]);
         const second = await runApp(project);
 
@@ -111,7 +119,7 @@ describe("gtkx build (React Compiler)", () => {
     });
 
     it("rejects an invalid compiler configuration", () => {
-        using project = createProject("reactCompiler: { compilationMode: \"unsupported\" }");
+        using project = createProject('reactCompiler: { compilationMode: "unsupported" }');
 
         expect(runCli(project, ["build"]).status).not.toBe(0);
     });

@@ -985,12 +985,7 @@ describe("Surface — createForRectangle", () => {
         sub.flush();
         surface.flush();
 
-        expect([...surface.getData().slice(0, 16)]).toEqual([
-            0, 0, 0, 0,
-            0, 0, 0, 0,
-            255, 0, 0, 255,
-            255, 0, 0, 255,
-        ]);
+        expect([...surface.getData().slice(0, 16)]).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 255, 255, 0, 0, 255]);
     });
 });
 

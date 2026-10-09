@@ -61,7 +61,4 @@ const Dialogs = () => {
     }
 };
 
-export {
-    Dialogs,
-    useRequestDeleteTask,
-};
+export { Dialogs, useRequestDeleteTask };

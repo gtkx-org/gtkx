@@ -46,9 +46,4 @@ const createStore = () => {
 
 const useStore = createStore();
 
-export {
-    type Mutators,
-    type PersistedState,
-    type Store,
-    useStore,
-};
+export { type Mutators, type PersistedState, type Store, useStore };

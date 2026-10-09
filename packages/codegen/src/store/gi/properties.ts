@@ -53,10 +53,8 @@ const isPropertyMatch = (context: ModuleContext, property: GirProperty, spec: Pr
 
 const interfaceEntries = (context: ModuleContext, klass: GirClass, spec: PropertyMapSpec): string[] => {
     const entries: string[] = [];
-    const properties = collectInterfaceProperties(
-        context,
-        klass,
-        (_owner, candidate) => isPropertyMatch(context, candidate, spec),
+    const properties = collectInterfaceProperties(context, klass, (_owner, candidate) =>
+        isPropertyMatch(context, candidate, spec),
     );
 
     for (const { property } of properties) {
@@ -85,13 +83,11 @@ const classPropertyMetadata = (context: ModuleContext, klass: GirClass): Resolve
 const renderClassPropertyMap = (options: ClassPropertyMapOptions): Declaration => {
     const { context, klass, className, accessors, spec } = options;
     const parentRef = parentCompanionRef(context, klass, spec.suffix);
-    const ownKeys = [...new Set(
-        klass.properties
-            .map((property) => sourceStringLiteral(toCamelIdentifier(property.name))),
-    )];
-    const omitted = parentRef === undefined || ownKeys.length === 0
-        ? parentRef
-        : `Omit<${parentRef}, ${ownKeys.join(" | ")}>`;
+    const ownKeys = [
+        ...new Set(klass.properties.map((property) => sourceStringLiteral(toCamelIdentifier(property.name)))),
+    ];
+    const omitted =
+        parentRef === undefined || ownKeys.length === 0 ? parentRef : `Omit<${parentRef}, ${ownKeys.join(" | ")}>`;
     const accepted = accessors.filter((accessor) => spec.accepts(accessor));
     const acceptedNames = new Set(accepted.map((accessor) => accessor.jsName));
     const unavailableKeys = klass.properties
@@ -114,11 +110,7 @@ const renderClassPropertyMap = (options: ClassPropertyMapOptions): Declaration =
     return { name: map, code: renderBracedOrEmpty(`export interface ${map}${extendsClause}`, entries.join("\n")) };
 };
 
-const renderPropertyDeclarations = (
-    context: ModuleContext,
-    klass: GirClass,
-    className: string,
-): Declaration[] => {
+const renderPropertyDeclarations = (context: ModuleContext, klass: GirClass, className: string): Declaration[] => {
     const accessors = classPropertyMetadata(context, klass);
     const maps = PROPERTY_MAP_SPECS.map((spec) =>
         renderClassPropertyMap({ context, klass, className, accessors, spec }),

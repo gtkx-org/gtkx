@@ -1,11 +1,5 @@
 import { composeStory } from "storybook/preview-api";
-import type {
-    ComponentMeta,
-    ComposedStory,
-    Preview,
-    StoryAnnotations,
-    StoryRender,
-} from "./types.js";
+import type { ComponentMeta, ComposedStory, Preview, StoryAnnotations, StoryRender } from "./types.js";
 
 type ComposeStory = <TArgs extends object>(
     ...annotations: [

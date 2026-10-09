@@ -52,8 +52,7 @@ const isBlockApplicable = (block: GlInterfaceBlock, selection: GlSelection): boo
 const targetFor = (state: SelectionState, kind: GlSymbolKind): Map<string, GlSymbolProvenance> =>
     kind === "command" ? state.commands : state.enums;
 
-const commentEntry = (comment: string | undefined): { comment?: string } =>
-    comment === undefined ? {} : { comment };
+const commentEntry = (comment: string | undefined): { comment?: string } => (comment === undefined ? {} : { comment });
 
 const requireMember = (state: SelectionState, name: string, context: MemberContext): void => {
     const target = targetFor(state, context.kind);

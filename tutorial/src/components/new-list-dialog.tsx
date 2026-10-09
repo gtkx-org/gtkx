@@ -79,6 +79,4 @@ const NewListDialog = () => {
     );
 };
 
-export {
-    NewListDialog,
-};
+export { NewListDialog };

@@ -1,10 +1,5 @@
 import type { ComboRowProps as BaseComboRowProps } from "@gtkx/components";
-import type {
-    AdwEntryRowProps,
-    AdwPasswordEntryRowProps,
-    AdwSpinRowProps,
-    AdwSwitchRowProps,
-} from "@gtkx/jsx/adw";
+import type { AdwEntryRowProps, AdwPasswordEntryRowProps, AdwSpinRowProps, AdwSwitchRowProps } from "@gtkx/jsx/adw";
 import type { DistributedOmit } from "@gtkx/utils";
 import type { FieldPath, FieldPathByValue, FieldValues, UseControllerProps } from "react-hook-form";
 
@@ -26,8 +21,7 @@ type EntryRowProps<
     TFieldValues extends FieldValues = FieldValues,
     TName extends FormFieldPath<TFieldValues, string> = FormFieldPath<TFieldValues, string>,
     TTransformedValues = TFieldValues,
-> = Omit<AdwEntryRowProps, "accessibleInvalid" | "text"> &
-    FormFieldProps<TFieldValues, TName, TTransformedValues>;
+> = Omit<AdwEntryRowProps, "accessibleInvalid" | "text"> & FormFieldProps<TFieldValues, TName, TTransformedValues>;
 
 /** Props for an Adwaita password entry row controlled by React Hook Form. */
 type PasswordEntryRowProps<
@@ -42,8 +36,7 @@ type SwitchRowProps<
     TFieldValues extends FieldValues = FieldValues,
     TName extends FormFieldPath<TFieldValues, boolean> = FormFieldPath<TFieldValues, boolean>,
     TTransformedValues = TFieldValues,
-> = Omit<AdwSwitchRowProps, "accessibleInvalid" | "active"> &
-    FormFieldProps<TFieldValues, TName, TTransformedValues>;
+> = Omit<AdwSwitchRowProps, "accessibleInvalid" | "active"> & FormFieldProps<TFieldValues, TName, TTransformedValues>;
 
 /** Props for an Adwaita spin row controlled by React Hook Form. */
 type SpinRowProps<

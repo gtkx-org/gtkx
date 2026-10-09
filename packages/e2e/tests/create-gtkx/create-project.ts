@@ -38,9 +38,10 @@ const PROJECT_NAME = "my-app";
 const APPLICATION_ID = "com.example.myapp";
 const CREATE_TIMEOUT_MS = 120_000;
 const LOG_NAME = "package-manager.log";
-const TERMINAL_COMMAND = 'exec "$GTKX_CREATE_NODE" --input-type=commonjs -e ' +
-    "'const { spawnSync } = require(\"node:child_process\"); " +
-    "const result = spawnSync(process.execPath, JSON.parse(process.env.GTKX_CREATE_ARGV), { stdio: \"inherit\" }); " +
+const TERMINAL_COMMAND =
+    'exec "$GTKX_CREATE_NODE" --input-type=commonjs -e ' +
+    '\'const { spawnSync } = require("node:child_process"); ' +
+    'const result = spawnSync(process.execPath, JSON.parse(process.env.GTKX_CREATE_ARGV), { stdio: "inherit" }); ' +
     "process.exitCode = result.status ?? 1;'";
 
 const versionPreload = (version: string): string => {
@@ -50,7 +51,7 @@ const versionPreload = (version: string): string => {
 };
 
 const shimSource = (exitCode: number): string =>
-    ["#!/bin/sh", "echo \"$0 $@\" >> \"$GTKX_PACKAGE_MANAGER_LOG\"", `exit ${String(exitCode)}`, ""].join("\n");
+    ["#!/bin/sh", 'echo "$0 $@" >> "$GTKX_PACKAGE_MANAGER_LOG"', `exit ${String(exitCode)}`, ""].join("\n");
 
 const createWorkspace = (isInstallFailing: boolean): Workspace => {
     const root = mkdtempSync(join(tmpdir(), "gtkx-create-"));

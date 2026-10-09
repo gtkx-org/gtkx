@@ -113,7 +113,10 @@ type DirectoryContents = {
 
 function useDirectoryFiles(directory: Gio.File) {
     const [contents, setContents] = useState<DirectoryContents>({
-        directory: null, files: [], isLoading: true, error: null,
+        directory: null,
+        files: [],
+        isLoading: true,
+        error: null,
     });
     const refresh = useCallback((list: Gtk.DirectoryList | null) => {
         const current = list?.getFile();
@@ -151,9 +154,7 @@ function useDirectoryFiles(directory: Gio.File) {
 
     return {
         portal,
-        ...(contents.directory?.equal(directory)
-            ? contents
-            : { files: [], isLoading: true, error: null }),
+        ...(contents.directory?.equal(directory) ? contents : { files: [], isLoading: true, error: null }),
     };
 }
 
@@ -281,7 +282,7 @@ function ListViewFilebrowserTitlebar() {
     return (
         <GtkHeaderBar
             name="filebrowser-header"
-            start={(
+            start={
                 <GtkButton
                     name="up-button"
                     iconName="go-up-symbolic"
@@ -289,8 +290,8 @@ function ListViewFilebrowserTitlebar() {
                     sensitive={canNavigateUp}
                     onClicked={navigateUp}
                 />
-            )}
-            end={(
+            }
+            end={
                 <ListView
                     name="view-switcher"
                     orientation={Gtk.Orientation.HORIZONTAL}
@@ -315,7 +316,7 @@ function ListViewFilebrowserTitlebar() {
                     renderItem={renderViewMode}
                     items={VIEW_MODES.map((mode) => ({ id: mode.id, value: mode }))}
                 />
-            )}
+            }
         />
     );
 }
@@ -331,8 +332,7 @@ const DirectoryStatus = ({ error, isLoading }: Pick<FilebrowserContextValue, "er
 );
 
 function ListViewFilebrowserDemo() {
-    const { viewMode, files, isLoading, error, selectedIds, setSelectedIds, handleActivate } =
-        useFilebrowserContext();
+    const { viewMode, files, isLoading, error, selectedIds, setSelectedIds, handleActivate } = useFilebrowserContext();
 
     if (error !== null || isLoading || files.length === 0) {
         return <DirectoryStatus error={error} isLoading={isLoading} />;

@@ -1,12 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createCliProject, runCli } from "./cli-project.js";
 import { fixtureConfig } from "./codegen-helpers.js";
-import {
-    evaluateProject,
-    GIO_CONFIG,
-    ORIENTABLE_CONFIG,
-    typecheckProject,
-} from "./codegen-marshalling-project.js";
+import { evaluateProject, GIO_CONFIG, ORIENTABLE_CONFIG, typecheckProject } from "./codegen-marshalling-project.js";
 
 const NEWV_GUARD_PROBE = `import assert from "node:assert/strict";
 import * as Gio from "@gtkx/gi/gio";

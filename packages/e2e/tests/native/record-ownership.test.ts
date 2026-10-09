@@ -24,14 +24,16 @@ test("native strings maintain their buffer through replacement and growth", () =
 });
 
 test("native strings release buffers after repeated reallocations", async () => {
-    expect(await hammer(5000, () => {
-        const value = GLib.String.new("initial");
-        value.assign("x".repeat(8192));
-        value.append("y".repeat(8192));
-        value.truncate(3);
+    expect(
+        await hammer(5000, () => {
+            const value = GLib.String.new("initial");
+            value.assign("x".repeat(8192));
+            value.append("y".repeat(8192));
+            value.truncate(3);
 
-        return value.str;
-    })).toBeLessThan(RSS_BUDGET);
+            return value.str;
+        }),
+    ).toBeLessThan(RSS_BUDGET);
 });
 
 test.each([false, true])("borrowed string fields release replaced and final storage (clear: %s)", async (clear) => {
@@ -39,17 +41,19 @@ test.each([false, true])("borrowed string fields release replaced and final stor
     const first = "a".repeat(8192);
     const second = "b".repeat(8192);
 
-    expect(await hammer(6000, () => {
-        const storage = alloc(8);
-        field.write(storage, first);
-        field.write(storage, second);
+    expect(
+        await hammer(6000, () => {
+            const storage = alloc(8);
+            field.write(storage, first);
+            field.write(storage, second);
 
-        if (clear) {
-            field.write(storage, null);
-        }
+            if (clear) {
+                field.write(storage, null);
+            }
 
-        return field.read(storage);
-    })).toBeLessThan(RSS_BUDGET);
+            return field.read(storage);
+        }),
+    ).toBeLessThan(RSS_BUDGET);
 });
 
 test("native string storage fields cannot be replaced directly", () => {

@@ -21,41 +21,37 @@
     ],
     "targets": {
         "build": {
-            "cache": false,
-            "dependsOn": [
-                "reference"
-            ],
+            "cache": true,
+            "dependsOn": ["reference"],
             "inputs": [
                 "default",
                 "^production",
                 {
                     "dependentTasksOutputFiles": "**/*.{md,js,d.ts,json}",
                     "transitive": true
-                }
+                },
+                "{workspaceRoot}/scripts/ci/**/*"
             ],
-            "outputs": [
-                "{projectRoot}/.vitepress/dist"
-            ]
+            "outputs": ["{projectRoot}/.vitepress/dist"],
+            "command": "node ../scripts/ci/run.mjs 'pnpm run build'",
+            "options": {
+                "cwd": "{projectRoot}"
+            }
         },
         "reference": {
             "executor": "nx:noop",
-            "cache": false,
-            "dependsOn": [
-                "reference-current",
-                "reference-stable"
-            ]
+            "cache": true,
+            "dependsOn": ["reference-current", "reference-stable"],
+            "outputs": []
         },
         "reference-current": {
             "cache": true,
-            "dependsOn": [
-                "^build",
-                "gtkx:_build:bindings"
-            ],
+            "dependsOn": ["^build", "gtkx:_build:bindings"],
             "inputs": [
                 "default",
                 "^production",
                 {
-                    "runtime": "git rev-parse HEAD"
+                    "runtime": "node scripts/ci/run.mjs 'git rev-parse HEAD'"
                 },
                 {
                     "dependentTasksOutputFiles": "**/*.{d.ts,d.mts,d.ts.map,d.mts.map}",
@@ -68,46 +64,45 @@
                         "typedoc-plugin-zod",
                         "typedoc-vitepress-theme"
                     ]
-                }
+                },
+                "{workspaceRoot}/scripts/ci/**/*"
             ],
-            "outputs": [
-                "{projectRoot}/v2/reference"
-            ]
+            "outputs": ["{projectRoot}/v2/reference"],
+            "command": "node ../scripts/ci/run.mjs 'pnpm run reference-current'",
+            "options": {
+                "cwd": "{projectRoot}"
+            }
         },
         "reference-stable": {
             "cache": true,
             "inputs": [
                 "{projectRoot}/scripts/reference*.mjs",
                 {
-                    "runtime": "node website/scripts/references.mjs pins"
-                }
+                    "runtime": "node scripts/ci/run.mjs 'node website/scripts/references.mjs pins'"
+                },
+                "{workspaceRoot}/scripts/ci/**/*"
             ],
-            "outputs": [
-                "{projectRoot}/reference"
-            ]
+            "outputs": ["{projectRoot}/reference"],
+            "command": "node ../scripts/ci/run.mjs 'pnpm run reference-stable'",
+            "options": {
+                "cwd": "{projectRoot}"
+            }
         },
         "dev": {
             "cache": false,
             "continuous": true,
-            "dependsOn": [
-                "reference"
-            ]
+            "dependsOn": ["reference"]
         },
         "preview": {
             "cache": false,
             "continuous": true,
-            "dependsOn": [
-                "build"
-            ]
+            "dependsOn": ["build"]
         },
         "lint": {
-            "dependsOn": [
-                "...",
-                "reference"
-            ]
+            "dependsOn": ["...", "reference"]
         },
         "typecheck": {
-            "command": "vue-tsc --noEmit -p tsconfig.json",
+            "command": "node ../scripts/ci/run.mjs 'vue-tsc --noEmit -p tsconfig.json'",
             "cache": true,
             "dependsOn": [],
             "inputs": [
@@ -115,13 +110,9 @@
                 "{projectRoot}/.vitepress/**/*.{ts,vue,json}",
                 "sharedGlobals",
                 {
-                    "externalDependencies": [
-                        "vue-tsc",
-                        "typescript",
-                        "vue",
-                        "vitepress"
-                    ]
-                }
+                    "externalDependencies": ["vue-tsc", "typescript", "vue", "vitepress"]
+                },
+                "{workspaceRoot}/scripts/ci/**/*"
             ],
             "options": {
                 "cwd": "website"

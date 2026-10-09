@@ -77,8 +77,9 @@ const listboxDemo: Demo = {
 };
 
 function parseMessage(line: string): Message {
-    const [id, senderName, senderNick, message, time, , resentBy, nFavorites, nReshares] =
-        line.split("|") as MessageFields;
+    const [id, senderName, senderNick, message, time, , resentBy, nFavorites, nReshares] = line.split(
+        "|",
+    ) as MessageFields;
 
     return {
         id: Number(id),
@@ -271,9 +272,7 @@ const MessageRow = ({ message, isExpanded, onToggleExpand, onFavorite, onReshare
 
     const handleStateFlagsChanged = (_previousFlags: Gtk.StateFlags, row: Gtk.Widget) => {
         const flags = row.getStateFlags();
-        setAreExtraButtonsVisible(
-            (flags & Gtk.StateFlags.PRELIGHT) !== 0 || (flags & Gtk.StateFlags.SELECTED) !== 0,
-        );
+        setAreExtraButtonsVisible((flags & Gtk.StateFlags.PRELIGHT) !== 0 || (flags & Gtk.StateFlags.SELECTED) !== 0);
     };
 
     return (

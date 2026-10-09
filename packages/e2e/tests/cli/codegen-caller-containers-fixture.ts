@@ -14,7 +14,9 @@ import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as Pango from "@gtkx/gi/pango";
 `;
-const ACCEPTED = IMPORTS + `
+const ACCEPTED =
+    IMPORTS +
+    `
 export const inputs = (probe: CallerContainers.Probe): void => {
     const callback: CallerContainers.Input = (values) => probe.accept(values);
     callback(["first", "second"]);
@@ -48,48 +50,57 @@ export const queries = (tls: Gio.TlsConnection, dtls: Gio.DtlsConnection): boole
 ];
 `;
 const REJECTED: Record<string, string> = {
-    "pollable-carray": "export type Method = Gio.PollableInputStream[\"vfuncReadNonblocking\"];",
-    "pollable-carray-requirement": "export type Method = Gio.PollableInputStreamImpl[\"vfuncReadNonblocking\"];",
-    "input-stream-carray": "export type Method = Gio.InputStream[\"vfuncReadAsync\"];",
-    "font-features-carray": "export type Method = Pango.Font[\"vfuncGetFeatures\"];",
+    "pollable-carray": 'export type Method = Gio.PollableInputStream["vfuncReadNonblocking"];',
+    "pollable-carray-requirement": 'export type Method = Gio.PollableInputStreamImpl["vfuncReadNonblocking"];',
+    "input-stream-carray": 'export type Method = Gio.InputStream["vfuncReadAsync"];',
+    "font-features-carray": 'export type Method = Pango.Font["vfuncGetFeatures"];',
     "sized-carray-callback": "export type Callback = CallerContainers.SizedOut;",
     "fixed-carray-callback": "export type Callback = CallerContainers.FixedOut;",
     "aliased-carray-callback": "export type Callback = CallerContainers.AliasedBytesOut;",
     "sized-carray-owner": "export const method = CallerContainers.useFillSized;",
     "fixed-carray-owner": "export const method = CallerContainers.useFillFixed;",
     "aliased-carray-owner": "export const method = CallerContainers.useFillAliasedBytes;",
-    "sized-carray-vfunc": "export type Method = CallerContainers.Probe[\"vfuncFillSized\"];",
-    "fixed-carray-vfunc": "export type Method = CallerContainers.Probe[\"vfuncFillFixed\"];",
-    "aliased-carray-vfunc": "export type Method = CallerContainers.Probe[\"vfuncFillAliasedBytes\"];",
-    "icon-member": "export type Method = Gio.Icon[\"vfuncToTokens\"];",
-    "icon-requirement": "export type Method = Gio.IconImpl[\"vfuncToTokens\"];",
+    "sized-carray-vfunc": 'export type Method = CallerContainers.Probe["vfuncFillSized"];',
+    "fixed-carray-vfunc": 'export type Method = CallerContainers.Probe["vfuncFillFixed"];',
+    "aliased-carray-vfunc": 'export type Method = CallerContainers.Probe["vfuncFillAliasedBytes"];',
+    "icon-member": 'export type Method = Gio.Icon["vfuncToTokens"];',
+    "icon-requirement": 'export type Method = Gio.IconImpl["vfuncToTokens"];',
     "ptr-callback": "export type Callback = CallerContainers.PtrOut;",
     "aliased-container-callback": "export type Callback = CallerContainers.AliasOut;",
     "hash-callback": "export type Callback = CallerContainers.HashOut;",
     "optional-byte-callback": "export type Callback = CallerContainers.OptionalBytesOut;",
     "callback-alias": "export type Callback = CallerContainers.OutAlias;",
-    "ptr-owner": "export type Method = CallerContainers.Probe[\"useFillTokens\"];",
-    "alias-owner": "export type Method = CallerContainers.Probe[\"useFillAlias\"];",
-    "hash-owner": "export type Method = CallerContainers.Probe[\"useFillHash\"];",
-    "optional-byte-owner": "export type Method = CallerContainers.Probe[\"useFillBytes\"];",
-    "ptr-vfunc": "export type Method = CallerContainers.Probe[\"vfuncFillTokens\"];",
-    "alias-vfunc": "export type Method = CallerContainers.Probe[\"vfuncFillAlias\"];",
-    "hash-vfunc": "export type Method = CallerContainers.Probe[\"vfuncFillHash\"];",
-    "optional-byte-vfunc": "export type Method = CallerContainers.Probe[\"vfuncFillBytes\"];",
+    "ptr-owner": 'export type Method = CallerContainers.Probe["useFillTokens"];',
+    "alias-owner": 'export type Method = CallerContainers.Probe["useFillAlias"];',
+    "hash-owner": 'export type Method = CallerContainers.Probe["useFillHash"];',
+    "optional-byte-owner": 'export type Method = CallerContainers.Probe["useFillBytes"];',
+    "ptr-vfunc": 'export type Method = CallerContainers.Probe["vfuncFillTokens"];',
+    "alias-vfunc": 'export type Method = CallerContainers.Probe["vfuncFillAlias"];',
+    "hash-vfunc": 'export type Method = CallerContainers.Probe["vfuncFillHash"];',
+    "optional-byte-vfunc": 'export type Method = CallerContainers.Probe["vfuncFillBytes"];',
 };
-const CALLER_CARRAY_REJECTED = Object.fromEntries(
-    Object.entries(REJECTED).filter(([name]) => name.includes("carray") || name.startsWith("icon-")),
-);
-const CALLER_CONTAINER_REJECTED = Object.fromEntries(
-    Object.entries(REJECTED).filter(([name]) => !name.includes("carray") && !name.startsWith("icon-")),
-);
 const OMITTED_CALLBACKS = [
-    "PtrOut", "AliasOut", "HashOut", "OptionalBytesOut", "OutAlias", "SizedOut", "FixedOut", "AliasedBytesOut",
+    "PtrOut",
+    "AliasOut",
+    "HashOut",
+    "OptionalBytesOut",
+    "OutAlias",
+    "SizedOut",
+    "FixedOut",
+    "AliasedBytesOut",
 ];
 const OMITTED_METHODS = [
-    "useFillTokens", "useFillAlias", "useFillHash", "useFillBytes",
-    "vfuncFillTokens", "vfuncFillAlias", "vfuncFillHash", "vfuncFillBytes",
-    "vfuncFillSized", "vfuncFillFixed", "vfuncFillAliasedBytes",
+    "useFillTokens",
+    "useFillAlias",
+    "useFillHash",
+    "useFillBytes",
+    "vfuncFillTokens",
+    "vfuncFillAlias",
+    "vfuncFillHash",
+    "vfuncFillBytes",
+    "vfuncFillSized",
+    "vfuncFillFixed",
+    "vfuncFillAliasedBytes",
 ];
 const NATIVE_CONSUMER = `import assert from "node:assert/strict";
 import * as Gio from "@gtkx/gi/gio";
@@ -178,11 +189,10 @@ const createCallerContainerProject = (
 
 export {
     ACCEPTED,
-    CALLER_CARRAY_REJECTED,
-    CALLER_CONTAINER_REJECTED,
     callerContainerRejectedFiles,
     createCallerContainerProject,
     NATIVE_CONSUMER,
     OMITTED_CALLBACKS,
     OMITTED_METHODS,
+    REJECTED,
 };

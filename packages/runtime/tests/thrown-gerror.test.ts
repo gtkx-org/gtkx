@@ -50,10 +50,7 @@ const createInitable = (willInit: InitImpl): Initable => {
     return new TestInitable() as TestInitable & Initable;
 };
 
-const parseWithPreParseHook = (
-    willPreParse: () => boolean,
-    parse = parseOptionContext,
-): unknown => {
+const parseWithPreParseHook = (willPreParse: () => boolean, parse = parseOptionContext): unknown => {
     const context = getHandle(newOptionContext("gtkx-thrown-gerror-test") as GLib.OptionContext);
 
     try {
@@ -91,7 +88,8 @@ describe("a callback implementation that throws", () => {
         expect(() =>
             parseWithPreParseHook(() => {
                 throw new Error("boom");
-            })).toThrow();
+            }),
+        ).toThrow();
     });
 });
 
@@ -101,7 +99,9 @@ const initWithoutError = t.fn("libgio-2.0.so.0", "g_initable_init", {
 });
 
 const errorT = t.boxed("GError", {
-    ownership: "full", sharedLibrary: "libgobject-2.0.so.0", getTypeFnName: "g_error_get_type",
+    ownership: "full",
+    sharedLibrary: "libgobject-2.0.so.0",
+    getTypeFnName: "g_error_get_type",
 });
 const initWithErrorResult = t.fn("libgio-2.0.so.0", "g_initable_init", {
     args: [{ type: t.object("borrowed") }, { type: t.object("borrowed") }, { type: errorT, direction: "out" }],
@@ -139,7 +139,8 @@ const throwValue = (value: unknown): never => {
 
 it("converts an ordinary primitive callback exception to a native error status", () => {
     const [status, error] = parseWithPreParseHook(() => throwValue("failed"), parseWithErrorResult) as [
-        boolean, GLib.Error | null,
+        boolean,
+        GLib.Error | null,
     ];
     expect(status).toBe(false);
     expect(error?.matches(GLib.quarkFromString("gtkx-js-error-quark"), 0)).toBe(true);

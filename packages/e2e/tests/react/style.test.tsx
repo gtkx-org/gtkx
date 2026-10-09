@@ -56,8 +56,7 @@ const getColor = (widget: Gtk.Widget | null): number[] => {
 
 const getAlpha = (widget: Gtk.Widget | null): number => mounted(widget).getColor().alpha;
 
-const getMinWidth = (widget: Gtk.Widget | null): number =>
-    mounted(widget).measure(Gtk.Orientation.HORIZONTAL, -1)[0];
+const getMinWidth = (widget: Gtk.Widget | null): number => mounted(widget).measure(Gtk.Orientation.HORIZONTAL, -1)[0];
 
 const renderPair = async (style: LabelStyle, classes?: string[] | null): Promise<Pair> => {
     const plainRef = createRef<Gtk.Label>();
@@ -71,9 +70,7 @@ const renderPair = async (style: LabelStyle, classes?: string[] | null): Promise
         plain: mounted(plainRef.current),
         styled: mounted(styledRef.current),
         restyle: async (nextStyle, nextClasses) => {
-            await rerender(
-                <Pair plainRef={plainRef} styledRef={styledRef} style={nextStyle} classes={nextClasses} />,
-            );
+            await rerender(<Pair plainRef={plainRef} styledRef={styledRef} style={nextStyle} classes={nextClasses} />);
         },
     };
 };

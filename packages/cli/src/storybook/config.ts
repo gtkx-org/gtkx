@@ -57,8 +57,11 @@ const patterns = (value: unknown, name: string): string[] => {
 
     return value.map((pattern: unknown) => {
         if (
-            typeof pattern !== "string" || pattern.trim().length === 0 || isAbsolute(pattern) ||
-            pattern.split(/[\\/]/).includes("..") || pattern.startsWith("!")
+            typeof pattern !== "string" ||
+            pattern.trim().length === 0 ||
+            isAbsolute(pattern) ||
+            pattern.split(/[\\/]/).includes("..") ||
+            pattern.startsWith("!")
         ) {
             throw new TypeError(`Storybook ${name} must contain project-relative glob patterns`);
         }
@@ -91,16 +94,19 @@ const parseStorybookConfig = (value: unknown): StorybookConfig => {
 };
 
 const autoTitle = (root: string, path: string): string =>
-    relative(root, path).split(sep).join("/").replace(/^src\//, "").replace(/\.stories\.[cm]?[jt]sx?$/, "");
+    relative(root, path)
+        .split(sep)
+        .join("/")
+        .replace(/^src\//, "")
+        .replace(/\.stories\.[cm]?[jt]sx?$/, "");
 
 const discoverStorybookFiles = (
     root: string,
     configPath: string | undefined,
     config: StorybookConfig,
 ): StorybookFiles => {
-    const previewPath = config.preview === undefined
-        ? findConfigFile(root, STORYBOOK_PREVIEW_BASE)
-        : projectPath(root, config.preview);
+    const previewPath =
+        config.preview === undefined ? findConfigFile(root, STORYBOOK_PREVIEW_BASE) : projectPath(root, config.preview);
 
     if (previewPath !== undefined && !isFile(previewPath)) {
         throw new Error(`Storybook preview does not exist: ${previewPath}`);
@@ -110,9 +116,13 @@ const discoverStorybookFiles = (
         cwd: root,
         exclude: [...DEFAULT_EXCLUDES, ...config.exclude],
         withFileTypes: true,
-    }).filter((entry) => entry.isFile()).map((entry) => projectPath(root, resolve(entry.parentPath, entry.name)));
-    const stories = sortStringsBy([...new Set(paths)], (path) => path)
-        .map((id) => ({ id, title: autoTitle(root, id) }));
+    })
+        .filter((entry) => entry.isFile())
+        .map((entry) => projectPath(root, resolve(entry.parentPath, entry.name)));
+    const stories = sortStringsBy([...new Set(paths)], (path) => path).map((id) => ({
+        id,
+        title: autoTitle(root, id),
+    }));
 
     return { configPath, previewPath, stories };
 };
@@ -126,9 +136,10 @@ const prepareStorybookFiles = async (root: string, configured?: string): Promise
 };
 
 const isStorybookConfigCandidate = (root: string, path: string): boolean =>
-    EXTENSIONS.some((extension) =>
-        path === resolve(root, `${STORYBOOK_CONFIG_BASE}${extension}`) ||
-        path === resolve(root, `${STORYBOOK_PREVIEW_BASE}${extension}`),
+    EXTENSIONS.some(
+        (extension) =>
+            path === resolve(root, `${STORYBOOK_CONFIG_BASE}${extension}`) ||
+            path === resolve(root, `${STORYBOOK_PREVIEW_BASE}${extension}`),
     );
 
 export {

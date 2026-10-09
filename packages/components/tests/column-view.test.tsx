@@ -109,8 +109,7 @@ const cellSizeRequests = (columnView: Gtk.ColumnView): [number, number][] =>
 const columnViewView = async (items: string[]) => asCollectionView(await renderColumnView(items), firstColumnTexts);
 
 const personRows = (sortColumn: string | null): ListItem<Person>[] => {
-    const sorted =
-        sortColumn === null ? people : people.toSorted((left, right) => left.name.localeCompare(right.name));
+    const sorted = sortColumn === null ? people : people.toSorted((left, right) => left.name.localeCompare(right.name));
 
     return sorted.map((person) => ({ id: person.name, value: person }));
 };
@@ -247,11 +246,13 @@ describe("ColumnView row accessibility", () => {
     });
 
     it("propagates a failed row property resolver", async () => {
-        await expect(renderColumnView([{ id: "person", value: { name: "Alice" } }], {
-            rowProps: () => {
-                throw new Error("Row properties unavailable");
-            },
-        })).rejects.toThrow();
+        await expect(
+            renderColumnView([{ id: "person", value: { name: "Alice" } }], {
+                rowProps: () => {
+                    throw new Error("Row properties unavailable");
+                },
+            }),
+        ).rejects.toThrow();
     });
 });
 

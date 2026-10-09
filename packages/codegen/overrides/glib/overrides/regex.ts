@@ -25,7 +25,11 @@ declare module "../glib.js" {
          */
         matchFull(string: string, startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
         matchFull(string: string[], startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
-        matchFull(string: Uint8Array | number[], startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
+        matchFull(
+            string: Uint8Array | number[],
+            startPosition: number,
+            matchOptions: RegexMatchFlags,
+        ): [boolean, MatchInfo];
         /**
          * Using the DFA algorithm, scans for all the possible matches in `string`,
          * including overlapping ones.
@@ -45,18 +49,33 @@ declare module "../glib.js" {
          */
         matchAllFull(string: string, startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
         matchAllFull(string: string[], startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
-        matchAllFull(string: Uint8Array | number[], startPosition: number, matchOptions: RegexMatchFlags): [boolean, MatchInfo];
-        replaceEval(string: string, startPosition: number, matchOptions: RegexMatchFlags, eval_: RegexEvalCallback): string;
-        replaceEval(string: string[], startPosition: number, matchOptions: RegexMatchFlags, eval_: RegexEvalCallback): string;
-        replaceEval(string: Uint8Array | number[], startPosition: number, matchOptions: RegexMatchFlags, eval_: RegexEvalCallback): string;
+        matchAllFull(
+            string: Uint8Array | number[],
+            startPosition: number,
+            matchOptions: RegexMatchFlags,
+        ): [boolean, MatchInfo];
+        replaceEval(
+            string: string,
+            startPosition: number,
+            matchOptions: RegexMatchFlags,
+            eval_: RegexEvalCallback,
+        ): string;
+        replaceEval(
+            string: string[],
+            startPosition: number,
+            matchOptions: RegexMatchFlags,
+            eval_: RegexEvalCallback,
+        ): string;
+        replaceEval(
+            string: Uint8Array | number[],
+            startPosition: number,
+            matchOptions: RegexMatchFlags,
+            eval_: RegexEvalCallback,
+        ): string;
     }
 }
 
-Regex.prototype.match = function (
-    this: Regex,
-    subject: string,
-    matchOptions: RegexMatchFlags,
-): [boolean, MatchInfo] {
+Regex.prototype.match = function (this: Regex, subject: string, matchOptions: RegexMatchFlags): [boolean, MatchInfo] {
     return matchRegex<MatchInfo>(this, subject, 0, matchOptions);
 };
 

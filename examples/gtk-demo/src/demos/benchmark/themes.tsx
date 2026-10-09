@@ -270,7 +270,7 @@ function ThemesTitlebar() {
     return (
         <GtkHeaderBar
             name="themes-header"
-            start={(
+            start={
                 <GtkToggleButton
                     label="Cycle"
                     active={cycling.isRunning || cycling.showWarning}
@@ -278,12 +278,12 @@ function ThemesTitlebar() {
                         cycling.handleToggle(btn.getActive());
                     }}
                 />
-            )}
-            end={(
+            }
+            end={
                 <GtkLabel accessibleRole={Gtk.AccessibleRole.STATUS} widthChars={12} attributes={cycling.fpsAttrs}>
                     {cycling.fps}
                 </GtkLabel>
-            )}
+            }
         />
     );
 }

@@ -32,7 +32,4 @@ const createUiSlice: StateCreator<Store, Mutators, [], UiSlice> = (set) => ({
     askDeleteTask: (task) => set({ dialog: { kind: "delete-task", task } }),
 });
 
-export {
-    createUiSlice,
-    type UiSlice,
-};
+export { createUiSlice, type UiSlice };

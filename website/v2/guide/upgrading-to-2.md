@@ -122,21 +122,21 @@ Run codegen after migrating. The generated declaration now uses i18next's standa
 
 ## Replace removed APIs
 
-| Replace | With |
-| --- | --- |
-| `object.addEventListener(name, handler)` | `object.on(name, handler)` |
-| `object.removeEventListener(name, handler)` | `object.off(name, handler)` |
-| `Gdk.RGBA.create(css)` | `new Gdk.RGBA()` followed by a checked `parse(css)` |
-| `Graphene.Point.create(x, y)` | `new Graphene.Point({ x, y })` |
-| `Graphene.Rect.create(x, y, width, height)` | `new Graphene.Rect().init(x, y, width, height)` |
-| `Graphene.Size.create(width, height)` | `new Graphene.Size({ width, height })` |
-| `GObject.buildValue(...)` | Pass the JavaScript value, or initialize `new GObject.Value()` |
-| `getObjectProperty(...)` | `getProperty(...)` |
-| `setObjectProperty(...)` | `setProperty(...)` |
-| `@gtkx/gi/cairo` | `@gtkx/cairo` |
-| `@gtkx/components/adw` | `@gtkx/components` |
-| `animated.GtkLabel` | `animated(GtkLabel)` |
-| `AnimatedElements` | `AnimatedElementMap` |
+| Replace                                     | With                                                           |
+| ------------------------------------------- | -------------------------------------------------------------- |
+| `object.addEventListener(name, handler)`    | `object.on(name, handler)`                                     |
+| `object.removeEventListener(name, handler)` | `object.off(name, handler)`                                    |
+| `Gdk.RGBA.create(css)`                      | `new Gdk.RGBA()` followed by a checked `parse(css)`            |
+| `Graphene.Point.create(x, y)`               | `new Graphene.Point({ x, y })`                                 |
+| `Graphene.Rect.create(x, y, width, height)` | `new Graphene.Rect().init(x, y, width, height)`                |
+| `Graphene.Size.create(width, height)`       | `new Graphene.Size({ width, height })`                         |
+| `GObject.buildValue(...)`                   | Pass the JavaScript value, or initialize `new GObject.Value()` |
+| `getObjectProperty(...)`                    | `getProperty(...)`                                             |
+| `setObjectProperty(...)`                    | `setProperty(...)`                                             |
+| `@gtkx/gi/cairo`                            | `@gtkx/cairo`                                                  |
+| `@gtkx/components/adw`                      | `@gtkx/components`                                             |
+| `animated.GtkLabel`                         | `animated(GtkLabel)`                                           |
+| `AnimatedElements`                          | `AnimatedElementMap`                                           |
 
 The cairo stub-constructor `*ConstructorProps` aliases have no replacement because their constructors no longer exist.
 

@@ -40,12 +40,11 @@ type StaticBase<C, K extends PropertyKey> = Omit<C, K> &
 type WrapperClass<C, I> = Omit<C, "prototype"> & {
     /** Prototype retyped to the exported instance interface, so `instanceof` narrows to it. */
     prototype: I;
-} &
-(C extends new (...args: infer A) => unknown
-    ? new (...args: A) => I
-    : C extends abstract new (...args: infer A) => unknown
-        ? abstract new (...args: A) => I
-        : never);
+} & (C extends new (...args: infer A) => unknown
+        ? new (...args: A) => I
+        : C extends abstract new (...args: infer A) => unknown
+          ? abstract new (...args: A) => I
+          : never);
 
 type NativeIdentity = { readonly type: unique symbol };
 
@@ -230,7 +229,7 @@ function registerWrapperClassResolver(cls: AnyClass, resolver: WrapperClassResol
     if (!wrapperClasses.has(cls)) {
         throw new Error(
             `Cannot register a wrapper class resolver for ${cls.name}: ` +
-            "register the class with registerWrapperClass first",
+                "register the class with registerWrapperClass first",
         );
     }
 
@@ -446,10 +445,7 @@ function installInterfaces(cls: AnyClass, interfaces: AnyClass[], inheritedOverr
 function wrapHandle(handle: null | undefined, cls?: AnyClass): null;
 function wrapHandle<T extends object>(handle: ExternalObject<Handle>, cls: AnyClass<T>): T;
 
-function wrapHandle<T extends object>(
-    handle: ExternalObject<Handle> | null | undefined,
-    cls: AnyClass<T>,
-): T | null;
+function wrapHandle<T extends object>(handle: ExternalObject<Handle> | null | undefined, cls: AnyClass<T>): T | null;
 
 function wrapHandle(handle: ExternalObject<Handle>, cls?: AnyClass): TypedClass;
 function wrapHandle(handle: ExternalObject<Handle> | null | undefined, cls?: AnyClass): TypedClass | null;
@@ -512,7 +508,7 @@ function getExactWrapperClass(type: bigint, label?: string): AnyClass {
     if (cls === undefined) {
         throw new Error(
             `No wrapper class is registered for '${label ?? typeName(type) ?? String(type)}': ` +
-            "its module was dropped from the bundle or never imported",
+                "its module was dropped from the bundle or never imported",
         );
     }
 

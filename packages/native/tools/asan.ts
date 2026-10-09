@@ -16,7 +16,9 @@ const nightly = execFileSync(resolveExecutable("rustup"), ["show", "active-toolc
     cwd: import.meta.dirname,
     encoding: "utf8",
     env: nightlyEnvironment,
-}).trim().split(" ")[0];
+})
+    .trim()
+    .split(" ")[0];
 
 if (nightly === undefined || !nightly.startsWith("nightly-")) {
     throw new Error("The native tools directory must select a pinned nightly Rust toolchain");
@@ -45,22 +47,41 @@ const run = (command: string, args: string[], env: NodeJS.ProcessEnv): void => {
 
 const runtime = asanRuntime();
 
-run("pnpm", [
-    "exec", "napi", "build", "--platform", "--release", "--esm", "--no-dts-cache", "--no-const-enum",
-    "--target", `${architecture}-unknown-linux-gnu`, "--target-dir", "target/asan", "--output-dir", OUTPUT,
-    "--", "--locked",
-], {
-    ...process.env,
-    RUSTFLAGS: "-Zsanitizer=address",
-    RUSTUP_TOOLCHAIN: nightly,
-});
+run(
+    "pnpm",
+    [
+        "exec",
+        "napi",
+        "build",
+        "--platform",
+        "--release",
+        "--esm",
+        "--no-dts-cache",
+        "--no-const-enum",
+        "--target",
+        `${architecture}-unknown-linux-gnu`,
+        "--target-dir",
+        "target/asan",
+        "--output-dir",
+        OUTPUT,
+        "--",
+        "--locked",
+    ],
+    {
+        ...process.env,
+        RUSTFLAGS: "-Zsanitizer=address",
+        RUSTUP_TOOLCHAIN: nightly,
+    },
+);
 
 const testEnvironment = {
     ...process.env,
     NODE_OPTIONS: [
         process.env.NODE_OPTIONS,
         `--import=${pathToFileURL(join(import.meta.dirname, "asan-loader.ts")).href}`,
-    ].filter(Boolean).join(" "),
+    ]
+        .filter(Boolean)
+        .join(" "),
     LD_PRELOAD: runtime,
     GTKX_ASAN_RUNTIME: runtime,
     ASAN_OPTIONS: [
@@ -75,8 +96,20 @@ const testEnvironment = {
 };
 
 for (const config of CONFIGS) {
-    run("pnpm", [
-        "exec", "vitest", "run", "--root", dirname(config), "--config", config,
-        "--testTimeout", "120000", ...VITEST_ARGS,
-    ], testEnvironment);
+    run(
+        "pnpm",
+        [
+            "exec",
+            "vitest",
+            "run",
+            "--root",
+            dirname(config),
+            "--config",
+            config,
+            "--testTimeout",
+            "120000",
+            ...VITEST_ARGS,
+        ],
+        testEnvironment,
+    );
 }

@@ -59,15 +59,11 @@ const declaredReadType = (context: ModuleContext, property: GirProperty): string
     renderTsType(context, property.type, isNullableProperty(context, property));
 
 const declaredWriteType = (context: ModuleContext, property: GirProperty): string =>
-    renderParameterTsType(
-        context,
-        property.type,
-        {
-            isNullable: isNullableProperty(context, property),
-            isValueWidened: false,
-            canAcceptTypedArrayViews: property.transferOwnership === "none",
-        },
-    );
+    renderParameterTsType(context, property.type, {
+        isNullable: isNullableProperty(context, property),
+        isValueWidened: false,
+        canAcceptTypedArrayViews: property.transferOwnership === "none",
+    });
 
 const canAccessPropertyWithoutDescriptor = (context: ModuleContext, ref: TypeId | undefined): boolean => {
     if (ref === undefined) {
@@ -151,10 +147,7 @@ const resolveAccessor = (args: PropertyAccessorArgs): ResolvedAccessor | undefin
     return accessor;
 };
 
-const resolveAccessorTypes = (
-    context: ModuleContext,
-    property: GirProperty,
-): InheritedAccessorTypes | undefined => {
+const resolveAccessorTypes = (context: ModuleContext, property: GirProperty): InheritedAccessorTypes | undefined => {
     const accessor = resolvePropertyMetadata(context, property);
 
     if (accessor === undefined) {
@@ -199,8 +192,7 @@ const renderResolvedPropertyAccessor = (
     return `${propertyDoc(property)}${blocks.join("\n\n")}`;
 };
 
-const propertyDoc = (property: GirProperty): string =>
-    getDoc(property);
+const propertyDoc = (property: GirProperty): string => getDoc(property);
 
 const renderPropertyAccessor = (args: PropertyAccessorArgs): string | undefined =>
     withAccessor(args, (accessor) => renderResolvedPropertyAccessor(args.context, args.property, accessor));

@@ -93,10 +93,7 @@ const collectCandidateExports = (collector: ExportCollector, options: CandidateE
     }
 };
 
-const collectLazyElementExports = (
-    collector: ExportCollector,
-    lazyElements: LazyElementSpec[],
-): void => {
+const collectLazyElementExports = (collector: ExportCollector, lazyElements: LazyElementSpec[]): void => {
     for (const spec of lazyElements) {
         collector.imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
         collector.imports.addNamed("react", "ReactNode", true);
@@ -107,10 +104,7 @@ const collectLazyElementExports = (
     }
 };
 
-const lazyClassRef = (
-    collector: ExportCollector,
-    spec: LazyElementSpec,
-): string => {
+const lazyClassRef = (collector: ExportCollector, spec: LazyElementSpec): string => {
     const alias = `${spec.namespaceName}$`;
     const specifier = externalPackageFor(spec.namespaceName) ?? `@gtkx/gi/${spec.namespaceName.toLowerCase()}`;
     collector.imports.addNamespace(specifier, alias, false);
@@ -118,10 +112,7 @@ const lazyClassRef = (
     return `${alias}.${sanitizeTypeIdentifier(spec.className)}`;
 };
 
-const renderLazyElementExport = (
-    spec: LazyElementSpec,
-    classRef: string,
-): string => {
+const renderLazyElementExport = (spec: LazyElementSpec, classRef: string): string => {
     const doc = getDoc(spec);
     const args = [sourceStringLiteral(spec.element), classRef];
 
@@ -140,9 +131,7 @@ const renderCandidateExport = (
     const { glibName, klass, namespace } = candidate;
     const ancestry = ancestorGlibNames(klass, namespace, library);
     const factoryProps = factoryElementPropTypeFor(glibName);
-    const component = factoryProps === undefined
-        ? resolveElementComponent(ancestry, components)
-        : components[glibName];
+    const component = factoryProps === undefined ? resolveElementComponent(ancestry, components) : components[glibName];
     imports.addNamed("@gtkx/react/internal", "createElementComponent", false);
     imports.addNamed("react", "ReactNode", true);
 

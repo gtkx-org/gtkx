@@ -2,9 +2,9 @@ import * as Adw from "@gtkx/gi/adw";
 import { t } from "@gtkx/i18n";
 import schema from "../data/com.gtkx.tutorial.gschema.xml";
 
-type ColorScheme = typeof schema.values["color-scheme"][number];
-type SortOrder = keyof typeof schema.values["sort-order"];
-type SortOrderValue = typeof schema.values["sort-order"][SortOrder];
+type ColorScheme = (typeof schema.values)["color-scheme"][number];
+type SortOrder = keyof (typeof schema.values)["sort-order"];
+type SortOrderValue = (typeof schema.values)["sort-order"][SortOrder];
 
 const COLOR_SCHEMES = {
     default: { label: () => t("Follow system"), value: Adw.ColorScheme.DEFAULT },

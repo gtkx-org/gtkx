@@ -20,9 +20,8 @@ const builder = new XMLBuilder({
 });
 
 const orderedNode = (node: XmlNode): OrderedNode => ({
-    [node.tag]: node.text === undefined
-        ? (node.children ?? []).map((child) => orderedNode(child))
-        : [{ "#text": node.text }],
+    [node.tag]:
+        node.text === undefined ? (node.children ?? []).map((child) => orderedNode(child)) : [{ "#text": node.text }],
     ...(node.attributes && {
         ":@": Object.fromEntries(Object.entries(node.attributes).map(([key, value]) => [`@_${key}`, value])),
     }),

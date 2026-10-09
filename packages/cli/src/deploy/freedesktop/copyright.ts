@@ -29,7 +29,10 @@ const foldedField = (name: string, lines: string[]): string[] => {
 };
 
 const customName = (license: string): string =>
-    license.split(OUTSIDE_NAME).filter((token) => token.length > 0).join(NAME_JOINER);
+    license
+        .split(OUTSIDE_NAME)
+        .filter((token) => token.length > 0)
+        .join(NAME_JOINER);
 
 const licenseName = (expression: parseSpdx.LicenseInfo): string => {
     const name = customName(expression.license) + (expression.plus === true ? "+" : "");
@@ -67,9 +70,7 @@ const licenseClauses = (license: string): string[][] => {
 const licenseNames = (notices: Notice[]): string => {
     const clauses = notices.flatMap((notice) => licenseClauses(notice.license));
     const names = [...new Set(clauses.map((clause) => [...new Set(clause)].join(LICENSE_CHOICE)))];
-    const separator = clauses.some((clause) => clause.length > 1)
-        ? GROUPED_LICENSE_SEPARATOR
-        : LICENSE_SEPARATOR;
+    const separator = clauses.some((clause) => clause.length > 1) ? GROUPED_LICENSE_SEPARATOR : LICENSE_SEPARATOR;
 
     return names.length === 0 ? UNKNOWN_LICENSE : names.join(separator);
 };
@@ -142,8 +143,9 @@ const fileStanza = ({ settings, files, sections, reproduced }: FileStanza): stri
     ];
 };
 
-const filePatterns = (sections: NoticeSection[]): string[] =>
-    [...new Set(sections.flatMap((section) => section.files))];
+const filePatterns = (sections: NoticeSection[]): string[] => [
+    ...new Set(sections.flatMap((section) => section.files)),
+];
 
 const sectionsFor = (sections: NoticeSection[], files: string): NoticeSection[] =>
     sections.filter((section) => section.files.includes(files));
@@ -174,14 +176,10 @@ const renderCopyright = (settings: DeploySettings, sections: NoticeSection[]): s
     const application = applicationStanza(settings, own, reproduced);
 
     const stanzas = filePatterns(sections).flatMap((files) =>
-        fileStanza({ settings, files, sections: sectionsFor(sections, files), reproduced }));
+        fileStanza({ settings, files, sections: sectionsFor(sections, files), reproduced }),
+    );
 
-    return [
-        ...headerLines(settings, sections),
-        "",
-        ...application,
-        ...stanzas,
-    ].join("\n");
+    return [...headerLines(settings, sections), "", ...application, ...stanzas].join("\n");
 };
 
 export { renderCopyright };

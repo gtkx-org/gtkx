@@ -376,10 +376,7 @@ const classMethodEntries = (library: Library, namespace: GirNamespace, klass: Gi
 const methodsSectionBlocks = (entries: SignatureEntry[], intro: string): string[] =>
     entries.length === 0 ? [] : ["## Methods", intro, ...entries.map((item) => signatureEntryBlock(item))];
 
-const instanceMethodEntries = (
-    signatureContext: ModuleContext,
-    klass: GirClass,
-): SignatureEntry[] => {
+const instanceMethodEntries = (signatureContext: ModuleContext, klass: GirClass): SignatureEntry[] => {
     const deduped = dedupeCallables(klass.methods);
 
     const scope = instanceScope(sanitizeTypeIdentifier(klass.name), {

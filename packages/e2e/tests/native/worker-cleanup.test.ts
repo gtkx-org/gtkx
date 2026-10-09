@@ -12,15 +12,26 @@ test.each(["complete", "cancel"])("an owning worker releases native owners after
     const library = join(temporary.path, "libgtkx-worker-cleanup.so");
     const flags = execFileSync(resolveExecutable("pkg-config"), ["--cflags", "--libs", "gobject-2.0"], {
         encoding: "utf8",
-    }).trim().split(/\s+/);
+    })
+        .trim()
+        .split(/\s+/);
     execFileSync(resolveExecutable("cc"), [
-        "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror",
-        fileURLToPath(new URL("fixtures/worker-cleanup.c", import.meta.url)), "-o", library, ...flags,
+        "-shared",
+        "-fPIC",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        fileURLToPath(new URL("fixtures/worker-cleanup.c", import.meta.url)),
+        "-o",
+        library,
+        ...flags,
     ]);
 
     expect(() => {
-        execFileSync(process.execPath, [
-            ...fixtureArgs("worker-cleanup-host.ts", ["--expose-gc"]), library, mode,
-        ], { env: childEnv(), stdio: "pipe", timeout: 30_000 });
+        execFileSync(process.execPath, [...fixtureArgs("worker-cleanup-host.ts", ["--expose-gc"]), library, mode], {
+            env: childEnv(),
+            stdio: "pipe",
+            timeout: 30_000,
+        });
     }).not.toThrow();
 });

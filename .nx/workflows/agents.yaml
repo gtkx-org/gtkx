@@ -1,0 +1,44 @@
+launch-templates:
+  gtkx-linux-large:
+    resource-class: docker_linux_amd64/large
+    image: ubuntu22.04-node24.14-v1
+    no-output-timeout: 30m
+    env:
+      GTKX_CI_CONTAINER: gtkx-ci
+      NX_DAEMON: "false"
+    init-steps:
+      - name: Checkout
+        uses: https://raw.githubusercontent.com/nrwl/nx-cloud-workflows/563df6a963147063d44d830a2ec7f117758d6c41/workflow-steps/checkout/main.yaml
+      - name: Install Node
+        uses: https://raw.githubusercontent.com/nrwl/nx-cloud-workflows/563df6a963147063d44d830a2ec7f117758d6c41/workflow-steps/install-node/main.yaml
+        inputs:
+          node_version: "26.8.2"
+      - name: Install pnpm
+        script: |
+          corepack install --global "$(node -p "require('./package.json').packageManager")"
+      - name: Set up Docker Buildx
+        uses: https://raw.githubusercontent.com/nrwl/nx-cloud-workflows/563df6a963147063d44d830a2ec7f117758d6c41/workflow-steps/setup-docker-buildx/main.yaml
+      - name: Restore dependency downloads
+        uses: https://raw.githubusercontent.com/nrwl/nx-cloud-workflows/563df6a963147063d44d830a2ec7f117758d6c41/workflow-steps/cache/main.yaml
+        inputs:
+          key: '"gtkx-workload-v2"|scripts/ci/Dockerfile|scripts/ci/start-workload.sh|rust-toolchain.toml|packages/native/tools/rust-toolchain.toml|packages/native/Cargo.lock|pnpm-lock.yaml'
+          paths: |
+            .nx/ci/pnpm-store
+            .nx/ci/cargo-registry
+            .nx/ci/cargo-git
+          base-branch: main
+      - name: Start Ubuntu 26.04 workload and install dependencies
+        script: |
+          cache_args=()
+          if [[ -n "${NX_DOCKER_CACHE_REGISTRY:-}" ]]; then
+            cache_args+=(--cache-from "type=registry,ref=$NX_DOCKER_CACHE_REGISTRY/gtkx-ci:main")
+            cache_args+=(--cache-to "type=registry,ref=$NX_DOCKER_CACHE_REGISTRY/gtkx-ci:main,mode=max")
+          fi
+          bash scripts/ci/start-workload.sh "${cache_args[@]}"
+      - name: Restore compiled Rust dependencies
+        uses: https://raw.githubusercontent.com/nrwl/nx-cloud-workflows/563df6a963147063d44d830a2ec7f117758d6c41/workflow-steps/cache/main.yaml
+        inputs:
+          key: '"gtkx-rust-target-v1"|.nx/ci/environment|packages/native/Cargo.lock|packages/native/Cargo.toml|rust-toolchain.toml|packages/native/tools/rust-toolchain.toml'
+          paths: |
+            packages/native/target
+          base-branch: main

@@ -24,7 +24,7 @@ const escapeXml = (value: string): string =>
             case "&": {
                 return "&amp;";
             }
-            case "\"": {
+            case '"': {
                 return "&quot;";
             }
             default: {

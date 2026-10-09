@@ -240,16 +240,10 @@ const trimCallbackInputs = (plan: CallbackPlan, wrapped: unknown[]): unknown[] =
 const nativeReturn = (plan: CallbackPlan, primary: unknown): unknown =>
     toNative(plan.returnDescriptor, plan.hasPrimary ? primary : undefined);
 
-const runCallbackWithoutOutputs = (
-    plan: CallbackPlan,
-    thisArg: unknown,
-    rawArgs: unknown[],
-): unknown => {
+const runCallbackWithoutOutputs = (plan: CallbackPlan, thisArg: unknown, rawArgs: unknown[]): unknown => {
     const result = plan.fn.apply(thisArg, trimCallbackInputs(plan, rawArgs));
 
-    return result === undefined && plan.isSignal && plan.hasPrimary
-        ? signalDefaultReturn
-        : nativeReturn(plan, result);
+    return result === undefined && plan.isSignal && plan.hasPrimary ? signalDefaultReturn : nativeReturn(plan, result);
 };
 
 const runCallback = (plan: CallbackPlan, rawArgs: unknown[]): unknown => {

@@ -11,25 +11,25 @@ The public orchestration lives in [`packages/codegen/src/runner.ts`](https://git
 
 ## Inputs and outputs
 
-| Input | What it controls |
-| --- | --- |
-| Selected GIR roots | Which namespaces are bound, together with everything their GIR files include. |
-| GIR search paths | Which installed or project-provided GIR files supply those namespaces. |
-| GIR annotations | Types, nullability, argument directions, ownership, callback scopes, and native symbol names. |
-| GTKX's element configuration | Component wrappers, additional props, omitted props, and parent-created elements. |
-| Project element configuration | Project-specific additions and overrides to those element definitions. |
-| Installed runtime and renderer versions | Versions recorded in the generated stores and inputs to their freshness checks. |
+| Input                                   | What it controls                                                                              |
+| --------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Selected GIR roots                      | Which namespaces are bound, together with everything their GIR files include.                 |
+| GIR search paths                        | Which installed or project-provided GIR files supply those namespaces.                        |
+| GIR annotations                         | Types, nullability, argument directions, ownership, callback scopes, and native symbol names. |
+| GTKX's element configuration            | Component wrappers, additional props, omitted props, and parent-created elements.             |
+| Project element configuration           | Project-specific additions and overrides to those element definitions.                        |
+| Installed runtime and renderer versions | Versions recorded in the generated stores and inputs to their freshness checks.               |
 
 Adwaita's `Adw-1` is the default root. Its dependencies bring in GTK4 and the rest of the GNOME foundation. Additional configured roots extend that graph. The selection logic is in [`gir/libraries.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/gir/libraries.ts).
 
 The main outputs are:
 
-| Output | Contents |
-| --- | --- |
-| `@gtkx/gi/<namespace>` | JavaScript classes, records, interfaces, constants, functions, bootstrap code, and their `.d.ts` declarations. |
-| `@gtkx/jsx/<namespace>` | React element components and prop declarations, with references to the corresponding GI classes. |
-| Class metadata and element records | Property names, flags and defaults; signal mappings; generated element configuration. |
-| `.gtkx/reference` | The project's generated element reference, when reference generation is enabled. |
+| Output                             | Contents                                                                                                       |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `@gtkx/gi/<namespace>`             | JavaScript classes, records, interfaces, constants, functions, bootstrap code, and their `.d.ts` declarations. |
+| `@gtkx/jsx/<namespace>`            | React element components and prop declarations, with references to the corresponding GI classes.               |
+| Class metadata and element records | Property names, flags and defaults; signal mappings; generated element configuration.                          |
+| `.gtkx/reference`                  | The project's generated element reference, when reference generation is enabled.                               |
 
 The stores normally live under `node_modules/.gtkx/gi` and `node_modules/.gtkx/jsx`, with package links under `node_modules/@gtkx`. They are generated packages; there are no handwritten `packages/gi` or `packages/jsx` source packages to edit.
 
@@ -87,7 +87,7 @@ Generation acquires store locks, prepares new output in staging directories, and
 
 Freshness is content-based. The GI fingerprint covers the generator, relevant dependency versions, overrides, selected roots, search paths, store version, and GIR contents. JSX has its own fingerprint for the renderer version and element configuration; regenerating GI also invalidates JSX. Documentation fingerprints include their rendering options and element configuration. These checks are implemented in [`fingerprint.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/fingerprint.ts).
 
-The store compiler emits JavaScript and declarations from generated TypeScript and removes successful temporary TypeScript sources. Its emission diagnostics and separate full-project checking facilities are implemented in [`compile.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/compile.ts). Successful store emission alone is not a substitute for checking the consuming project's types and exercising the resulting bindings.
+The store compiler uses Oxc to emit JavaScript and isolated declarations from generated TypeScript, then removes successful temporary TypeScript sources. Declarations retain documentation; JavaScript retains pure annotations for tree shaking and drops other comments. The existing TypeScript emitter remains available when native transformer bindings cannot load, including Node's `--no-addons` mode. Its emission diagnostics and separate full-project checking facilities are implemented in [`compile.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/compile.ts), with native emission in [`store/transpile.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/transpile.ts). Successful store emission alone is not a substitute for checking the consuming project's types and exercising the resulting bindings.
 
 ## Reference documentation and OpenGL
 

@@ -6,11 +6,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AssetEmitter } from "./asset-emitter.js";
 import { prependBanner } from "../internal/banner.js";
-import {
-    relativeIconPath,
-    resolveApplicationIcon,
-    type ResolvedApplicationIcon,
-} from "../internal/icon-path.js";
+import { relativeIconPath, resolveApplicationIcon, type ResolvedApplicationIcon } from "../internal/icon-path.js";
 import { type ListedFile, listFilesRecursive } from "../internal/list-files.js";
 import { xdgDataDirsBanner } from "../internal/xdg-banner.js";
 
@@ -30,10 +26,12 @@ const findIconFiles = (state: PluginState): ListedFile[] => {
         return [];
     }
 
-    return [{
-        absPath: state.source.path,
-        rel: relativeIconPath(state.applicationId, state.source.path),
-    }];
+    return [
+        {
+            absPath: state.source.path,
+            rel: relativeIconPath(state.applicationId, state.source.path),
+        },
+    ];
 };
 
 const applyUserConfig = async (state: PluginState, config: UserConfig, loadConfig: ConfigLoader): Promise<void> => {

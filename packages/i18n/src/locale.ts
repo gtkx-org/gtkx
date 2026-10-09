@@ -8,12 +8,7 @@ const GETTEXT_CODESET = ["UTF", "8"].join("-");
 const setLocaleBinding = t.bind(LIBC, "setlocale", [t.int32, t.string()], t.string());
 const bindTextDomainBinding = t.bind(LIBC, "bindtextdomain", [t.string(), t.string()], t.string());
 
-const bindTextDomainCodesetBinding = t.bind(
-    LIBC,
-    "bind_textdomain_codeset",
-    [t.string(), t.string()],
-    t.string(),
-);
+const bindTextDomainCodesetBinding = t.bind(LIBC, "bind_textdomain_codeset", [t.string(), t.string()], t.string());
 
 const textDomainBinding = t.bind(LIBC, "textdomain", [t.string()], t.string());
 const locale: string = initializeLocale();

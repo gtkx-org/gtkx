@@ -2,9 +2,7 @@ import { isPathInside } from "@gtkx/utils";
 import { statSync } from "node:fs";
 import { basename, extname, isAbsolute, join, resolve } from "node:path";
 
-type ResolvedApplicationIcon = { kind: "file"; path: string } |
-    { kind: "none" } |
-    { kind: "theme"; path: string };
+type ResolvedApplicationIcon = { kind: "file"; path: string } | { kind: "none" } | { kind: "theme"; path: string };
 
 const ICON_EXTENSIONS: Set<string> = new Set([".svg", ".png", ".xpm"]);
 const SCALABLE_DIR = "hicolor/scalable/apps";

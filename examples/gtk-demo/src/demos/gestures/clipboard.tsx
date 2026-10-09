@@ -261,8 +261,7 @@ function useDragProviders(state: ClipboardState) {
     const { sourceText, sourceColor, sourceFile, sourceFolder } = state;
     const createTextDragProvider = () => Gdk.ContentProvider.newForValue(sourceText);
     const createColorDragProvider = () => Gdk.ContentProvider.newForValue(sourceColor);
-    const createFileDragProvider = () =>
-        sourceFile ? Gdk.ContentProvider.newForValue(fileValue(sourceFile)) : null;
+    const createFileDragProvider = () => (sourceFile ? Gdk.ContentProvider.newForValue(fileValue(sourceFile)) : null);
     const createFolderDragProvider = () =>
         sourceFolder ? Gdk.ContentProvider.newForValue(fileValue(sourceFolder)) : null;
 
@@ -287,14 +286,10 @@ const copyFileToClipboard = (clipboard: Gdk.Clipboard, sourceFile: Gio.File | nu
     }
 };
 
-const copySourceToClipboard = ({
-    sourceType,
-    sourceText,
-    sourceColor,
-    selectedImage,
-    sourceFile,
-    sourceFolder,
-}: CopySourceArgs, textures: ClipboardTextures) => {
+const copySourceToClipboard = (
+    { sourceType, sourceText, sourceColor, selectedImage, sourceFile, sourceFolder }: CopySourceArgs,
+    textures: ClipboardTextures,
+) => {
     const clipboard = getClipboard();
 
     if (!clipboard) {
@@ -490,9 +485,7 @@ async function tryPasteText(
 const openFileDialog = async ({ dialog, window, cancellable, kind, setSource }: FileDialogRequest) => {
     try {
         const file =
-            kind === "file"
-                ? await dialog.open(window, cancellable)
-                : await dialog.selectFolder(window, cancellable);
+            kind === "file" ? await dialog.open(window, cancellable) : await dialog.selectFolder(window, cancellable);
         setSource(file);
     } catch (error) {
         logError(error);
@@ -699,9 +692,7 @@ const ImageToggle = ({
                 state.setSelectedImage(index);
             }
         }}
-        controllers={(
-            <GtkDragSource onPrepare={() => textureProvider(paintable)} actions={Gdk.DragAction.COPY} />
-        )}
+        controllers={<GtkDragSource onPrepare={() => textureProvider(paintable)} actions={Gdk.DragAction.COPY} />}
     >
         <GtkImage accessibleLabel={imageLabel} paintable={paintable} cssClasses={["large-icons"]} />
     </GtkToggleButton>
@@ -715,13 +706,13 @@ const SourcePageFile = ({ id, label, file, onClick, createFileDragProvider }: So
             onClicked={() => {
                 onClick();
             }}
-            controllers={(
+            controllers={
                 <GtkDragSource
                     onPrepare={createFileDragProvider}
                     actions={Gdk.DragAction.COPY}
                     propagationPhase={Gtk.PropagationPhase.CAPTURE}
                 />
-            )}
+            }
         >
             <GtkLabel xalign={0} ellipsize={1}>
                 {file ? (file.getPath() ?? file.getUri()) : "—"}
@@ -741,18 +732,16 @@ const renderPasteStackPages = (pastedContent: PastedContent) => (
             </GtkLabel>
         </GtkStackPage>
         <GtkStackPage name="Image">
-            {pastedContent.paintable
-                ? (
-                        <GtkImage
-                            paintable={pastedContent.paintable}
-                            halign={Gtk.Align.END}
-                            valign={Gtk.Align.CENTER}
-                            pixelSize={48}
-                        />
-                    )
-                : (
-                        <GtkLabel></GtkLabel>
-                    )}
+            {pastedContent.paintable ? (
+                <GtkImage
+                    paintable={pastedContent.paintable}
+                    halign={Gtk.Align.END}
+                    valign={Gtk.Align.CENTER}
+                    pixelSize={48}
+                />
+            ) : (
+                <GtkLabel></GtkLabel>
+            )}
         </GtkStackPage>
         <GtkStackPage name="Color">
             <GtkDrawingArea
@@ -781,13 +770,13 @@ const ClipboardPasteSection = ({ pastedContent, canPaste, onPaste, onDrop }: Cli
     <GtkBox
         name="paste-box"
         spacing={12}
-        controllers={(
+        controllers={
             <GtkDropTarget
                 types={[gdkTextureType, gdkPaintableType, gfileType, gdkRgbaType, GObject.TYPE_STRING]}
                 actions={Gdk.DragAction.COPY}
                 onDrop={onDrop}
             />
-        )}
+        }
     >
         <GtkButton
             label="_Paste"

@@ -277,16 +277,13 @@ const clearEditable = (editable: EditableTarget): void => {
 };
 
 /** Deletes all text from an editable widget. */
-const clear = (widget: Gtk.Widget): Promise<void> =>
-    runEditableEvent(widget, "Cannot clear element", clearEditable);
+const clear = (widget: Gtk.Widget): Promise<void> => runEditableEvent(widget, "Cannot clear element", clearEditable);
 
 /** Copies the current selection. */
-const copy = (widget: Gtk.Widget): Promise<void> =>
-    runClipboardEvent(widget, "copy-clipboard");
+const copy = (widget: Gtk.Widget): Promise<void> => runClipboardEvent(widget, "copy-clipboard");
 
 /** Cuts the current selection. */
-const cut = (widget: Gtk.Widget): Promise<void> =>
-    runClipboardEvent(widget, "cut-clipboard");
+const cut = (widget: Gtk.Widget): Promise<void> => runClipboardEvent(widget, "cut-clipboard");
 
 const runClipboardEvent = (widget: Gtk.Widget, signal: "copy-clipboard" | "cut-clipboard"): Promise<void> =>
     runEditableEvent(widget, `Cannot ${signal}`, (editable) => {

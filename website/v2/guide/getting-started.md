@@ -72,11 +72,11 @@ The [tutorial](/v2/tutorial/) follows development on `main` and may use APIs add
 
 `npm run dev` runs `gtkx dev`. Fast Refresh updates edited components in the open window. Changes it cannot patch restart the app.
 
-| Command | Result |
-| --- | --- |
-| `npm run dev` | Run the app and watch source files |
-| `npm run build` | Bundle the app into `dist/bundle.mjs` |
-| `npm start` | Run that production bundle with Node.js |
+| Command          | Result                                                              |
+| ---------------- | ------------------------------------------------------------------- |
+| `npm run dev`    | Run the app and watch source files                                  |
+| `npm run build`  | Bundle the app into `dist/bundle.mjs`                               |
+| `npm start`      | Run that production bundle with Node.js                             |
 | `npm run deploy` | Build a distributable package; see [Deploying](/v2/guide/deploying) |
 
 The production bundle still needs the native runtime libraries. Packaging can supply a Node.js runtime and desktop integration files.

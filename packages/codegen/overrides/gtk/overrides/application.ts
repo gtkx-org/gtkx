@@ -6,7 +6,8 @@ import { Application as GeneratedApplication } from "../gtk.js";
 interface Application extends GeneratedApplication {}
 
 /** The GTK application class, with GJS-compatible construction and asynchronous execution. */
-const Application: WrapperClass<typeof GeneratedApplication, Application> = wrapApplicationConstructor(GeneratedApplication);
+const Application: WrapperClass<typeof GeneratedApplication, Application> =
+    wrapApplicationConstructor(GeneratedApplication);
 
 const observedApplications: WeakSet<Application> = new WeakSet();
 

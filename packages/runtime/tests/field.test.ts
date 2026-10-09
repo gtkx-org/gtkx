@@ -234,7 +234,7 @@ describe("semantic scalar fields", () => {
         expect(read(handle, t.uint32, 0)).toBe(65);
         write(handle, t.unichar, 4, "\u{10FFFF}");
         expect(t.fieldAt(t.unichar).read(handle, 4)).toBe("\u{10FFFF}");
-        for (const invalid of ["ab", -1, 0xD8_00, 0x11_00_00, true]) {
+        for (const invalid of ["ab", -1, 0xd8_00, 0x11_00_00, true]) {
             expect(() => {
                 character.write(handle, invalid);
             }).toThrow();

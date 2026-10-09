@@ -1,12 +1,5 @@
 import { spawn } from "node:child_process";
-import {
-    copyFileSync,
-    existsSync,
-    mkdirSync,
-    readdirSync,
-    readFileSync,
-    writeFileSync,
-} from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, request, type Server, type ServerResponse } from "node:http";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -285,8 +278,7 @@ function createVisibilityTracker(delayMs: number): VisibilityTracker {
 
             console.log(`release-e2e: verified delayed registry visibility for ${state.name}`);
         },
-        delayedResponse: (incoming, rawUrl) =>
-            delayedVisibility(incoming, packageRoute(rawUrl), state, delayMs),
+        delayedResponse: (incoming, rawUrl) => delayedVisibility(incoming, packageRoute(rawUrl), state, delayMs),
         recordRequest: (incoming, rawUrl) => {
             recordVisibilityRequest(state, incoming, packageRoute(rawUrl));
         },
@@ -558,7 +550,7 @@ function runBuiltAppUntilStable(appDir: string, env: NodeJS.ProcessEnv, launch: 
             reject(
                 new Error(
                     `Built app "${command}" exited early (code ${String(code ?? "null")}, ` +
-                    `signal ${signal ?? "null"}) before it was confirmed running:\n${output}`,
+                        `signal ${signal ?? "null"}) before it was confirmed running:\n${output}`,
                 ),
             );
         });

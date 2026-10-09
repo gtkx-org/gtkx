@@ -152,8 +152,7 @@ function OptionalClickButton({ onClicked, isMounted }: { onClicked?: (() => void
     return isMounted ? <GtkButton onClicked={onClicked} label="Click" /> : null;
 }
 
-const renderDialogInWindow = (dialog: ReactNode) =>
-    renderInApp(<GtkApplicationWindow>{dialog}</GtkApplicationWindow>);
+const renderDialogInWindow = (dialog: ReactNode) => renderInApp(<GtkApplicationWindow>{dialog}</GtkApplicationWindow>);
 
 const renderAboutDialog = async (props: ComponentProps<typeof GtkAboutDialog>) => {
     const ref = createRef<Gtk.AboutDialog>();
@@ -709,10 +708,7 @@ describe("widget - signals", () => {
             await renderSwitchAndClick({ onNotify: handleNotify });
 
             await waitFor(() => {
-                expect(handleNotify.calls).toContainEqual([
-                    expect.any(GObject.ParamSpec),
-                    expect.any(Gtk.Switch),
-                ]);
+                expect(handleNotify.calls).toContainEqual([expect.any(GObject.ParamSpec), expect.any(Gtk.Switch)]);
             });
         });
     });

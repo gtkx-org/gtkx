@@ -29,7 +29,8 @@ type SplitViewNavigationProp<
     StackNavigationState<ParamList>,
     SplitViewNavigationOptions,
     SplitViewNavigationEventMap
-> & StackActionHelpers<ParamList>;
+> &
+    StackActionHelpers<ParamList>;
 
 /** Props a split view screen component receives. */
 type SplitViewScreenProps<
@@ -84,8 +85,8 @@ type SplitViewNavigatorProps = DefaultNavigatorOptions<
     SplitViewNavigationEventMap,
     SplitViewNavigationProp<ParamListBase>
 > &
-StackRouterOptions &
-SplitViewNavigationConfig;
+    StackRouterOptions &
+    SplitViewNavigationConfig;
 
 export type {
     SplitViewDescriptor,

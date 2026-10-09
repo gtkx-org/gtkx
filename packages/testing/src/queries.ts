@@ -1,12 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import type {
-    ByRoleOptions,
-    ByRoleValue,
-    Matcher,
-    MatcherOptions,
-    NormalizerFn,
-    QueryFamilies,
-} from "./types.js";
+import type { ByRoleOptions, ByRoleValue, Matcher, MatcherOptions, NormalizerFn, QueryFamilies } from "./types.js";
 import { buildQueries, type BuiltQueries, type QueryAllBy } from "./build-queries.js";
 import { multipleFoundError, notFoundError } from "./errors.js";
 import { getDefaultNormalizer } from "./normalize.js";
@@ -177,8 +170,8 @@ const buildNormalizer = (options?: MatcherOptions): NormalizerFn => {
     if (trim !== undefined || collapseWhitespace !== undefined) {
         throw new Error(
             "trim and collapseWhitespace are not supported with a normalizer. " +
-            "If you want to use the default trim and collapseWhitespace logic in your normalizer, " +
-            "use \"getDefaultNormalizer({ trim, collapseWhitespace })\" and compose that into your normalizer",
+                "If you want to use the default trim and collapseWhitespace logic in your normalizer, " +
+                'use "getDefaultNormalizer({ trim, collapseWhitespace })" and compose that into your normalizer',
         );
     }
 
@@ -287,18 +280,14 @@ const hasMatchingAccessibleStates = (widget: Gtk.Widget, options: ByRoleOptions)
 const isMatchingWidgetType = <T extends Gtk.Accessible>(
     widget: Gtk.Widget,
     options?: MatcherOptions<T>,
-): widget is Gtk.Widget & T =>
-    options?.as === undefined || widget instanceof options.as;
+): widget is Gtk.Widget & T => options?.as === undefined || widget instanceof options.as;
 
 const hasMatchingAccessibleOptions = (widget: Gtk.Widget, options?: ByRoleOptions): boolean => {
     if (!options) {
         return true;
     }
 
-    return (
-        hasMatchingAccessibleName(widget, options) &&
-        hasMatchingAccessibleStates(widget, options)
-    );
+    return hasMatchingAccessibleName(widget, options) && hasMatchingAccessibleStates(widget, options);
 };
 
 function nameQueryFamily<Args extends unknown[], Element extends Gtk.Accessible>(
@@ -416,8 +405,8 @@ function queryAllByLabelText<T extends Gtk.Accessible = Gtk.Widget>(
         collectLabelMatches(results, widget, text, options);
     }
 
-    return [...results].filter((widget): widget is Gtk.Widget & T =>
-        widgets.has(widget) && isMatchingWidgetType(widget, options),
+    return [...results].filter(
+        (widget): widget is Gtk.Widget & T => widgets.has(widget) && isMatchingWidgetType(widget, options),
     );
 }
 
@@ -499,8 +488,7 @@ function queryAllByDisplayValue<T extends Gtk.Accessible = Gtk.Widget>(
     const matches = findAll(
         container,
         (widget) =>
-            isMatchingWidgetType(widget, options) &&
-            isTextMatch(getWidgetDisplayValue(widget), value, widget, options),
+            isMatchingWidgetType(widget, options) && isTextMatch(getWidgetDisplayValue(widget), value, widget, options),
     );
 
     return matches.filter((widget): widget is Gtk.Widget & T => isMatchingWidgetType(widget, options));

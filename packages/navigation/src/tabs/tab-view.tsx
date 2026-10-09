@@ -28,21 +28,24 @@ type TabPageProps = {
 };
 
 const useTabSelection = (navigation: TabNavigationHelpers): ((name: string | null) => void) =>
-    useCallback((name: string | null) => {
-        const current = navigation.getState();
-        const focusedKey = getFocusedRoute(current).key;
-        const route = current.routes.find((candidate) => candidate.key === name);
+    useCallback(
+        (name: string | null) => {
+            const current = navigation.getState();
+            const focusedKey = getFocusedRoute(current).key;
+            const route = current.routes.find((candidate) => candidate.key === name);
 
-        if (route === undefined || route.key === focusedKey) {
-            return;
-        }
+            if (route === undefined || route.key === focusedKey) {
+                return;
+            }
 
-        const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
+            const event = navigation.emit({ type: "tabPress", target: route.key, canPreventDefault: true });
 
-        if (!event.defaultPrevented) {
-            navigation.dispatch({ ...CommonActions.navigate(route.name, route.params), target: current.key });
-        }
-    }, [navigation]);
+            if (!event.defaultPrevented) {
+                navigation.dispatch({ ...CommonActions.navigate(route.name, route.params), target: current.key });
+            }
+        },
+        [navigation],
+    );
 
 const defaultTabHeader = ({ descriptor, viewSwitcher }: TabHeaderProps): ReactElement => (
     <HeaderBar
@@ -92,18 +95,17 @@ const TabView = ({ state, navigation, descriptors, tabBarPosition = "top" }: Tab
     const descriptor = requireDescriptor(descriptors, focused.key);
     const onVisibleChildChanged = useTabSelection(navigation);
 
-    const viewSwitcher = stack === null
-        ? undefined
-        : <AdwViewSwitcher stack={stack} policy={Adw.ViewSwitcherPolicy.WIDE} />;
+    const viewSwitcher =
+        stack === null ? undefined : <AdwViewSwitcher stack={stack} policy={Adw.ViewSwitcherPolicy.WIDE} />;
 
     const hasSwitcherBar = tabBarPosition === "bottom" && stack !== null;
     usePopToTopOnBlur(state, descriptors, navigation);
 
     return (
         <AdwToolbarView
-            topBar={(
+            topBar={
                 <TabHeader descriptor={descriptor} viewSwitcher={tabBarPosition === "top" ? viewSwitcher : undefined} />
-            )}
+            }
             bottomBar={hasSwitcherBar ? <AdwViewSwitcherBar stack={stack} reveal /> : undefined}
         >
             <AdwViewStack

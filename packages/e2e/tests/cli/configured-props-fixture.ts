@@ -17,7 +17,7 @@ import { isolateTypeConsumer } from "./type-consumer.js";
 type PackageManifest = { name: string; files: string[]; dependencies: Record<string, string> };
 
 const FIXTURE = fileURLToPath(new URL("fixtures/configured-props/@audit", import.meta.url));
-const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/typescript/bin/tsc", import.meta.url));
+const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/@typescript/native/bin/tsc", import.meta.url));
 const VITEST_PACKAGE = dirname(fileURLToPath(import.meta.resolve("vitest/package.json")));
 const COPIED_PACKAGES: Set<string> = new Set(["@gtkx/cli", "@gtkx/codegen"]);
 const BASE_DECLARATION = "export interface SharedProps<T> { auditReplacement: T; }\n";
@@ -132,20 +132,30 @@ const typecheckConsumer = (project: CliProject, source = CONSUMER): void => {
     symlinkSync(VITEST_PACKAGE, join(project.nodeModules, "vitest"), "dir");
     writeFileSync(join(project.root, "consumer.tsx"), source);
 
-    const result = spawnSync(process.execPath, [
-        TYPESCRIPT_CLI,
-        "--noEmit",
-        "--module", "ESNext",
-        "--moduleResolution", "Bundler",
-        "--target", "ESNext",
-        "--jsx", "react-jsx",
-        "--strict",
-        "--exactOptionalPropertyTypes",
-        "--noUncheckedIndexedAccess",
-        "--skipLibCheck", "false",
-        "--types", "node",
-        "consumer.tsx",
-    ], { cwd: project.root, encoding: "utf8" });
+    const result = spawnSync(
+        process.execPath,
+        [
+            TYPESCRIPT_CLI,
+            "--noEmit",
+            "--module",
+            "ESNext",
+            "--moduleResolution",
+            "Bundler",
+            "--target",
+            "ESNext",
+            "--jsx",
+            "react-jsx",
+            "--strict",
+            "--exactOptionalPropertyTypes",
+            "--noUncheckedIndexedAccess",
+            "--skipLibCheck",
+            "false",
+            "--types",
+            "node",
+            "consumer.tsx",
+        ],
+        { cwd: project.root, encoding: "utf8" },
+    );
 
     if (result.status !== 0) {
         throw new Error(result.stdout + result.stderr);
@@ -169,11 +179,25 @@ const documentedType = (page: string, name: string): string => {
 const unionConsumer = (project: CliProject, page: string): string => {
     const source = readFileSync(join(project.nodeModules, UNION_MODULE, "consumer.tsx.txt"), "utf8");
     const names = ["auditCall", "auditDynamic", "auditIntersection", "auditOverlap", "auditShared", "auditValue", "0"];
-    const checks = names.map((name, index) =>
-        "type Documented" + String(index) + " = " + documentedType(page, name) + ";\n" +
-        "expectTypeOf<Documented" + String(index) + ">().toEqualTypeOf<NonNullable<Label[\"" + name +
-        "\"] | Count[\"" + name + "\"]>>();");
-    const detail = "type DocumentedDetail = " + documentedType(page, "audit-label-detail-${string}") + ";\n" +
+    const checks = names.map(
+        (name, index) =>
+            "type Documented" +
+            String(index) +
+            " = " +
+            documentedType(page, name) +
+            ";\n" +
+            "expectTypeOf<Documented" +
+            String(index) +
+            '>().toEqualTypeOf<NonNullable<Label["' +
+            name +
+            '"] | Count["' +
+            name +
+            '"]>>();',
+    );
+    const detail =
+        "type DocumentedDetail = " +
+        documentedType(page, "audit-label-detail-${string}") +
+        ";\n" +
         "expectTypeOf<DocumentedDetail>().toEqualTypeOf<Label[`audit-label-detail-${string}`] | " +
         "Count[`audit-label-detail-${string}`]>();";
 

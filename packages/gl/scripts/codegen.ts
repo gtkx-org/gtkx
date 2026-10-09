@@ -37,20 +37,16 @@ for (const exclusion of report.exclusions) {
     exclusionCounts.set(exclusion.reason, (exclusionCounts.get(exclusion.reason) ?? 0) + 1);
 }
 
-log.info(
-    `khronos codegen: ${report.selection.api} ${String(report.selection.version)} ` +
-    report.selection.profile,
-);
+log.info(`khronos codegen: ${report.selection.api} ${String(report.selection.version)} ` + report.selection.profile);
 
 log.info(
     `commands: ${String(report.selectedCommands)} selected, ${String(report.emittedCommands)} emitted, ` +
-    `${String(report.derivedSingulars)} derived singulars, ${String(report.exclusions.length)} excluded ` +
-    `(${summarizeCounts(exclusionCounts)})`,
+        `${String(report.derivedSingulars)} derived singulars, ${String(report.exclusions.length)} excluded ` +
+        `(${summarizeCounts(exclusionCounts)})`,
 );
 
 log.info(
-    `enums: ${String(report.enumExclusions.length)} skipped ` +
-    `(${summarizeEnumExclusions(report.enumExclusions)})`,
+    `enums: ${String(report.enumExclusions.length)} skipped ` + `(${summarizeEnumExclusions(report.enumExclusions)})`,
 );
 
 log.info(`core profile: ${String(report.coreRemovals.length)} symbols removed`);

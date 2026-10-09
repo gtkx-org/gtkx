@@ -101,9 +101,11 @@ const itemComparatorParameters = (
     const ignored = callbackIgnoredParameters(context.library, callback);
     const items = inputParameters(context.library, callbackAsFunction(callback));
 
-    return new Set(items
-        .filter(({ parameter: item }) => !ignored.has(item) && isItemPointer(context, item.type))
-        .map(({ parameter: item }) => item));
+    return new Set(
+        items
+            .filter(({ parameter: item }) => !ignored.has(item) && isItemPointer(context, item.type))
+            .map(({ parameter: item }) => item),
+    );
 };
 
 const itemComparatorArgDescriptors = (
@@ -129,11 +131,7 @@ const itemComparatorArgDescriptors = (
     return overrides.size > 0 ? overrides : undefined;
 };
 
-const itemComparatorTsType = (
-    context: ModuleContext,
-    fn: GirFunction,
-    parameter: GirParameter,
-): string | undefined => {
+const itemComparatorTsType = (context: ModuleContext, fn: GirFunction, parameter: GirParameter): string | undefined => {
     const callback = itemComparatorCallback(context, fn, parameter);
 
     if (callback === undefined) {
@@ -144,8 +142,9 @@ const itemComparatorTsType = (
 
     const items = itemComparatorParameters(context, fn, parameter);
     const ignored = callbackIgnoredParameters(context.library, callback);
-    const parameters = inputParameters(context.library, callbackAsFunction(callback))
-        .filter(({ parameter: item }) => !ignored.has(item));
+    const parameters = inputParameters(context.library, callbackAsFunction(callback)).filter(
+        ({ parameter: item }) => !ignored.has(item),
+    );
     const args = parameters.map(({ parameter: item, index }) => {
         const tsType = items.has(item) ? itemType : renderTsType(context, item.type, item.nullable);
 

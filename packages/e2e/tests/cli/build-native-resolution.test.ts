@@ -25,9 +25,11 @@ it.each(["source-built", "installed"] satisfies NativeLayout[])(
         const direct = spawnSync(process.execPath, [entry], { cwd: project.root, encoding: "utf8" });
         expect(direct.status).toBe(0);
 
-        const resolver = spawnSync(process.execPath, [
-            "--no-addons", "--input-type=module", "--eval", 'import "@gtkx/native/internal/binding";',
-        ], { cwd: project.root, encoding: "utf8" });
+        const resolver = spawnSync(
+            process.execPath,
+            ["--no-addons", "--input-type=module", "--eval", 'import "@gtkx/native/internal/binding";'],
+            { cwd: project.root, encoding: "utf8" },
+        );
         expect(resolver.status).toBe(0);
 
         runCliOrThrow(project, ["build", entry]);

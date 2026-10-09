@@ -39,7 +39,7 @@ for (const name of names) {
         throw new Error(`Release channel verification failed: HTTP ${String(response.status)}`);
     }
 
-    const document = await response.json() as {
+    const document = (await response.json()) as {
         "dist-tags"?: Record<string, string>;
         versions?: Record<string, unknown>;
     };

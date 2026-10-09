@@ -33,9 +33,9 @@ const starterBlock = (applicationId: string, manifest: PackageManifest): string 
 const missingDeployError = (applicationId: string, manifest: PackageManifest): Error =>
     new Error(
         "gtkx.config.ts: no `deploy` section, so there is nothing to package.\n" +
-        "Add this to gtkx.config.ts and adjust it:\n\n" +
-        `${starterBlock(applicationId, manifest)}\n\n` +
-        `Every value above was derived from package.json; see ${DOCS_URL}.`,
+            "Add this to gtkx.config.ts and adjust it:\n\n" +
+            `${starterBlock(applicationId, manifest)}\n\n` +
+            `Every value above was derived from package.json; see ${DOCS_URL}.`,
     );
 
 export { missingDeployError };

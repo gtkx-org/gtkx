@@ -72,10 +72,7 @@ const propertyFlags = (property: GirProperty): number => {
     const construct = isConstructableProperty(property) && !property.constructOnly ? CONSTRUCT : 0;
     const constructOnly = property.constructOnly ? CONSTRUCT_ONLY : 0;
 
-    return (property.readable ? READABLE : 0) |
-        (property.writable ? WRITABLE : 0) |
-        construct |
-        constructOnly;
+    return (property.readable ? READABLE : 0) | (property.writable ? WRITABLE : 0) | construct | constructOnly;
 };
 
 const propertyEntryLiteral = (library: Library, klass: GirClass, property: GirProperty): string => {
@@ -127,8 +124,7 @@ const renderObjectLiteral = (entries: [string, string][], renderValue: (value: s
     return `{\n${lines.join(",\n")}\n    }`;
 };
 
-const renderPropertiesObject = (entries: [string, string][]): string =>
-    renderObjectLiteral(entries, (value) => value);
+const renderPropertiesObject = (entries: [string, string][]): string => renderObjectLiteral(entries, (value) => value);
 
 const renderSignalsObject = (entries: [string, string][]): string => renderObjectLiteral(entries, sourceStringLiteral);
 

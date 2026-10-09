@@ -13,7 +13,9 @@ const IMPORTS = `import * as Fixture from "@gtkx/gi/callbackindirection";
 import * as Gtk from "@gtkx/gi/gtk";
 import * as GtkSource from "@gtkx/gi/gtksource";
 `;
-const ACCEPTED = IMPORTS + `
+const ACCEPTED =
+    IMPORTS +
+    `
 export const inplace: Fixture.InPlace = (cell) => { cell.value += 1; };
 export const aliased: Fixture.AliasedInPlace = (cell) => { cell.value += 1; };
 export const unspelled: Fixture.Unspelled = inplace;
@@ -46,16 +48,16 @@ const REJECTED: Record<string, string> = {
     "object-callback": "export type Removed = Fixture.ObjectPointer;",
     "interface-callback": "export type Removed = Fixture.InterfacePointer;",
     "callback-alias": "export type Removed = Fixture.CallbackAlias;",
-    "record-owner": "export type Removed = Fixture.Probe[\"useCell\"];",
-    "alias-owner": "export type Removed = Fixture.Probe[\"useAlias\"];",
-    "object-owner": "export type Removed = Fixture.Probe[\"useObject\"];",
-    "interface-owner": "export type Removed = Fixture.Probe[\"useInterface\"];",
+    "record-owner": 'export type Removed = Fixture.Probe["useCell"];',
+    "alias-owner": 'export type Removed = Fixture.Probe["useAlias"];',
+    "object-owner": 'export type Removed = Fixture.Probe["useObject"];',
+    "interface-owner": 'export type Removed = Fixture.Probe["useInterface"];',
     "record-slot": "export class Derived extends Fixture.Probe { use(cell: Fixture.Cell) { super.vfuncCell(cell); } }",
     "alias-slot": "export class Derived extends Fixture.Probe { use(cell: Fixture.Cell) { super.vfuncAlias(cell); } }",
 };
-const rejectedFiles = Object.fromEntries(Object.entries(REJECTED).map(([name, source]) => [
-    `${name}.ts`, IMPORTS + source,
-]));
+const rejectedFiles = Object.fromEntries(
+    Object.entries(REJECTED).map(([name, source]) => [`${name}.ts`, IMPORTS + source]),
+);
 
 describe("generated callback handle indirection", () => {
     const cleanup = new DisposableStack();
@@ -65,18 +67,24 @@ describe("generated callback handle indirection", () => {
 
     beforeAll(() => {
         const fixture = readFileSync(new URL("fixtures/gir/CallbackIndirection-1.0.gir", import.meta.url));
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-callback-indirection-", config: CONFIG,
-            files: { "gir/CallbackIndirection-1.0.gir": fixture, "accepted.ts": ACCEPTED, ...rejectedFiles },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-callback-indirection-",
+                config: CONFIG,
+                files: { "gir/CallbackIndirection-1.0.gir": fixture, "accepted.ts": ACCEPTED, ...rejectedFiles },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
         reference = loadApiReference({
-            libraries: ["CallbackIndirection-1.0"], girPath: resolveGirPath(["gir"], project.root),
+            libraries: ["CallbackIndirection-1.0"],
+            girPath: resolveGirPath(["gir"], project.root),
             resolveFrom: project.root,
         });
         gstReference = loadApiReference({
-            libraries: ["Gst-1.0"], girPath: resolveGirPath([], project.root), resolveFrom: project.root,
+            libraries: ["Gst-1.0"],
+            girPath: resolveGirPath([], project.root),
+            resolveFrom: project.root,
         });
     });
 
@@ -114,7 +122,8 @@ describe("generated callback handle indirection", () => {
             expect(gstReference.lookup(`Gst.${name}`, "callback").outcome).toBe("notFound");
         }
         const owners = [
-            ["BufferList", "record", "foreach"], ["Buffer", "record", "foreachMeta"],
+            ["BufferList", "record", "foreach"],
+            ["Buffer", "record", "foreachMeta"],
             ["Pad", "class", "stickyEventsForeach"],
         ] as const;
         for (const [owner, kind, method] of owners) {

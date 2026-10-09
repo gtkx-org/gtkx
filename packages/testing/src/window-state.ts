@@ -8,7 +8,9 @@ const canDisplayDeliverActivation = (window: Gtk.Window): boolean => window.getD
 const isWindow = (widget: Gtk.Widget): widget is Gtk.Window => widget instanceof Gtk.Window;
 
 const mappedToplevels = (): Gtk.Window[] =>
-    Gtk.Window.listToplevels().filter((widget) => isWindow(widget)).filter((window) => window.getMapped());
+    Gtk.Window.listToplevels()
+        .filter((widget) => isWindow(widget))
+        .filter((window) => window.getMapped());
 
 const isWindowAllocated = (window: Gtk.Window): boolean => {
     const [isComputed, allocation] = window.computeBounds(window);
@@ -18,8 +20,7 @@ const isWindowAllocated = (window: Gtk.Window): boolean => {
 
 const activeToplevel = (): Gtk.Window | null => mappedToplevels().find((toplevel) => toplevel.isActive()) ?? null;
 
-const isWindowActivated = (window: Gtk.Window): boolean =>
-    !canDisplayDeliverActivation(window) || window.isActive();
+const isWindowActivated = (window: Gtk.Window): boolean => !canDisplayDeliverActivation(window) || window.isActive();
 
 const isApplicationActivated = (window: Gtk.Window): boolean =>
     !canDisplayDeliverActivation(window) || activeToplevel() !== null;

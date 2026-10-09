@@ -151,7 +151,8 @@ const readOutParams = (outPlans: ArgSpec[], inputs: unknown[], nativeValues: unk
     return Array.from(outPlans, (plan) =>
         plan.isCallerAllocated
             ? readCallerAllocated(plan, inputs)
-            : fromNative(plan.arg.type, (nativeValues[plan.index] as Ref).value));
+            : fromNative(plan.arg.type, (nativeValues[plan.index] as Ref).value),
+    );
 };
 
 const isPassThroughPlan = (plan: ArgSpec, index: number): boolean =>
@@ -284,8 +285,11 @@ const bindNativeCallable = (
 ): ((...inputs: unknown[]) => unknown) => {
     const nativeArgTypes = buildNativeArgTypes(spec.args, spec.canThrow ?? false);
     const descriptor = nativeBind(
-        sharedLibrary, symbol, nativeArgTypes.map((argument) => toAbi(argument)),
-        toAbi(spec.returns), spec.fixedArgCount,
+        sharedLibrary,
+        symbol,
+        nativeArgTypes.map((argument) => toAbi(argument)),
+        toAbi(spec.returns),
+        spec.fixedArgCount,
     );
 
     return fromNativeCallable(descriptor, spec);
@@ -304,11 +308,7 @@ const bindNativeCallable = (
  * @param symbol C symbol to bind.
  * @param spec Argument and return descriptors, or a factory for deferred binding.
  */
-function fn(
-    sharedLibrary: string,
-    symbol: string,
-    spec: FnSpec | (() => FnSpec),
-): (...inputs: unknown[]) => unknown {
+function fn(sharedLibrary: string, symbol: string, spec: FnSpec | (() => FnSpec)): (...inputs: unknown[]) => unknown {
     if (typeof spec !== "function") {
         return bindNativeCallable(sharedLibrary, symbol, spec);
     }

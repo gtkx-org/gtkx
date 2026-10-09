@@ -35,8 +35,8 @@ const heapChecking = (): Record<string, string> => {
     if (mallocDebug === undefined) {
         console.warn(
             "libc_malloc_debug.so.0 was not found, so heap writes past an allocation and delayed " +
-            "double frees go unchecked in this run. Install it with `sudo dnf install glibc-utils` " +
-            "on Fedora; Debian and Ubuntu ship it inside libc6.",
+                "double frees go unchecked in this run. Install it with `sudo dnf install glibc-utils` " +
+                "on Fedora; Debian and Ubuntu ship it inside libc6.",
         );
 
         return perturb;

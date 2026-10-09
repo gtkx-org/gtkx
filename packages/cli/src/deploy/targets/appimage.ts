@@ -103,8 +103,11 @@ const buildAppDir = (payload: DeployPayload): string => {
     copyTree(appDir, USR_DIR, join(settings.paths.overlay, TARGET_DIR));
     writeInto(appDir, APPRUN_FILENAME, renderAppRun(settings), EXECUTABLE_MODE);
 
-    copyInto(appDir, `${settings.applicationId}.desktop`, join(appDir, USR_DIR, "share/applications",
-        `${settings.applicationId}.desktop`));
+    copyInto(
+        appDir,
+        `${settings.applicationId}.desktop`,
+        join(appDir, USR_DIR, "share/applications", `${settings.applicationId}.desktop`),
+    );
 
     const icon = rootIconFor(payload);
     copyInto(appDir, icon.rel, icon.abs);

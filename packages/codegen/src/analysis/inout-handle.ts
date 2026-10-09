@@ -15,8 +15,7 @@ const inoutHandleIndirection = (library: Library, parameter: GirParameter): numb
 const hasInoutHandleIndirectionMismatch = (library: Library, parameter: GirParameter): boolean => {
     const expected = inoutHandleIndirection(library, parameter);
 
-    return expected !== undefined && parameter.cType !== undefined &&
-        cTypePointerDepth(parameter.cType) !== expected;
+    return expected !== undefined && parameter.cType !== undefined && cTypePointerDepth(parameter.cType) !== expected;
 };
 
 export { hasInoutHandleIndirectionMismatch, inoutHandleIndirection };

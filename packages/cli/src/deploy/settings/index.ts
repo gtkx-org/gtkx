@@ -47,17 +47,17 @@ type ResolvedCore = {
 
 type IdentitySlice = Pick<
     DeploySettings,
-    | "applicationId" |
-    "binaryName" |
-    "copyright" |
-    "description" |
-    "developer" |
-    "genericName" |
-    "homepage" |
-    "license" |
-    "metadataLicense" |
-    "name" |
-    "summary"
+    | "applicationId"
+    | "binaryName"
+    | "copyright"
+    | "description"
+    | "developer"
+    | "genericName"
+    | "homepage"
+    | "license"
+    | "metadataLicense"
+    | "name"
+    | "summary"
 >;
 
 type MetadataSlice = Pick<
@@ -67,13 +67,13 @@ type MetadataSlice = Pick<
 
 type DesktopSlice = Pick<
     DeploySettings,
-    | "desktopActions" |
-    "desktopEntry" |
-    "execArgs" |
-    "execToken" |
-    "fileAssociations" |
-    "isDbusActivatable" |
-    "protocols"
+    | "desktopActions"
+    | "desktopEntry"
+    | "execArgs"
+    | "execToken"
+    | "fileAssociations"
+    | "isDbusActivatable"
+    | "protocols"
 >;
 
 const ISO_DATE_LENGTH = 10;

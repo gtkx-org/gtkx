@@ -22,11 +22,11 @@ test("parent supervision remains available through the internal entry point", ()
 test.each(internalExports)("the public entry point excludes %s", (name) => {
     expect(native).not.toHaveProperty(name);
 
-    const result = spawnSync(process.execPath, [
-        "--input-type=module",
-        "--eval",
-        `import { ${name} } from "@gtkx/native";`,
-    ], { cwd: fileURLToPath(new URL("..", import.meta.url)), encoding: "utf8" });
+    const result = spawnSync(
+        process.execPath,
+        ["--input-type=module", "--eval", `import { ${name} } from "@gtkx/native";`],
+        { cwd: fileURLToPath(new URL("..", import.meta.url)), encoding: "utf8" },
+    );
 
     expect(result.status).toBe(1);
 });

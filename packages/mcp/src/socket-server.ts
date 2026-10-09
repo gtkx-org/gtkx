@@ -35,8 +35,7 @@ const closeServer = (server: net.Server): Promise<void> =>
         });
     });
 
-const digestFor = (socketPath: string): string =>
-    createHash("sha256").update(resolvePath(socketPath)).digest("hex");
+const digestFor = (socketPath: string): string => createHash("sha256").update(resolvePath(socketPath)).digest("hex");
 
 const privatePathFor = (socketPath: string): string => {
     const width = Math.max(1, basename(socketPath).length - 1);
@@ -64,7 +63,7 @@ const bindLock = (address: string): Promise<net.Server | null> =>
 const claimBlockedError = (socketPath: string): Error =>
     new Error(
         `Timed out waiting for another GTKX MCP server to finish claiming ${socketPath}. ` +
-        "Retry once no other server is starting on that path.",
+            "Retry once no other server is starting on that path.",
     );
 
 const acquireClaimLock = async (socketPath: string): Promise<net.Server | null> => {
@@ -148,26 +147,26 @@ const probeUntilConclusive = async (target: string): Promise<ProbeOutcome> => {
 const alreadyOwnedError = (socketPath: string): Error =>
     new Error(
         `Another GTKX MCP server already owns ${socketPath}. ` +
-        "Stop the other server (for example, the GTKX MCP server of another active session) and reconnect.",
+            "Stop the other server (for example, the GTKX MCP server of another active session) and reconnect.",
     );
 
 const undecidedOwnerError = (socketPath: string, code: string): Error =>
     new Error(
         `Could not tell whether another GTKX MCP server owns ${socketPath}: probing it failed with ${code}. ` +
-        "Leaving the socket in place instead of removing one that may still be serving another session. " +
-        "Retry, or delete the file by hand once no server is running.",
+            "Leaving the socket in place instead of removing one that may still be serving another session. " +
+            "Retry, or delete the file by hand once no server is running.",
     );
 
 const invalidPathError = (socketPath: string): Error =>
     new Error(
         `The GTKX MCP socket path ${socketPath} exists and is not a socket. ` +
-        "Move it, or point XDG_RUNTIME_DIR at a directory where GTKX can create its socket.",
+            "Move it, or point XDG_RUNTIME_DIR at a directory where GTKX can create its socket.",
     );
 
 const listenFailureError = (socketPath: string, code: string): Error =>
     new Error(
         `Could not create the GTKX MCP socket at ${socketPath}: listening failed with ${code}. ` +
-        "Check that its directory exists and is writable.",
+            "Check that its directory exists and is writable.",
     );
 
 const removeEntry = (target: string, inode: number): void => {

@@ -19,9 +19,7 @@ const backtickList = (values: string[]): string => values.map((value) => backtic
 const asSentence = (text: string): string => (text.endsWith(".") ? text : `${text}.`);
 
 const removalPhrase = (removal: GlRemoval): string =>
-    removal.comment === undefined
-        ? backtick(removal.feature)
-        : `${backtick(removal.feature)} (${removal.comment})`;
+    removal.comment === undefined ? backtick(removal.feature) : `${backtick(removal.feature)} (${removal.comment})`;
 
 const removalLine = (provenance: GlSymbolProvenance): string => {
     const phrases = provenance.removals.map((removal) => removalPhrase(removal)).join(", ");
@@ -37,7 +35,8 @@ const extensionLine = (extensions: GlExtensionAttribution[]): string => {
 
 const extensionNoteLines = (extensions: GlExtensionAttribution[]): string[] =>
     extensions.flatMap((extension) =>
-        extension.notes.map((note) => ` * ${backtick(extension.name)} note: ${asSentence(note)}`));
+        extension.notes.map((note) => ` * ${backtick(extension.name)} note: ${asSentence(note)}`),
+    );
 
 const extensionLines = (extensions: GlExtensionAttribution[]): string[] =>
     extensions.length === 0 ? [] : [extensionLine(extensions), ...extensionNoteLines(extensions)];

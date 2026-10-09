@@ -12,7 +12,7 @@ GTKX 1.3 is out. The headline is [`@gtkx/animated`](/guide/animations), React Sp
 
 <video src="/animations-demo.webm" poster="/animations-demo.webp" width="1120" height="480" autoplay loop muted playsinline controls preload="metadata" aria-label="GTKX animation demos showing fades, slides, progress, list transitions, transforms, and animated colors. Sidebar pages demonstrate springs, trails, chains, and imperative controls."></video>
 
-*The [`animations`](https://github.com/gtkx-org/gtkx/tree/v1.3.0/examples/animations) example, one page per primitive, driving real GTK widgets.*
+_The [`animations`](https://github.com/gtkx-org/gtkx/tree/v1.3.0/examples/animations) example, one page per primitive, driving real GTK widgets._
 
 Until now, animating anything in GTKX meant reaching for GTK's own machinery: an `Adw.TimedAnimation`, a `Gtk.Revealer`, a tick callback and some arithmetic. All of it works, and none of it composes with React. A revealer animates the one thing a revealer animates. A tick callback that moves a margin has to be started, stopped, and torn down by hand, and it has no idea that the component owning it has just re-rendered with a different target.
 
@@ -141,7 +141,7 @@ Windows come and go, so the driver does too: when the driving window is unmapped
 
 The web has one `prefers-reduced-motion`. GTK has two, and they mean different things.
 
-`gtk-enable-animations` is the toolkit-wide switch, and `@gtkx/animated` follows it the way GTK's own transitions do: while animations are off, every spring jumps to its target and the rest of the lifecycle — `onChange`, `onRest` — runs as usual. `gtk-interface-reduced-motion`, on GTK 4.22 and later, is the desktop preference behind the `prefers-reduced-motion` media query, and it asks for *less* motion rather than none. Springs keep running, and the component decides what to reduce:
+`gtk-enable-animations` is the toolkit-wide switch, and `@gtkx/animated` follows it the way GTK's own transitions do: while animations are off, every spring jumps to its target and the rest of the lifecycle — `onChange`, `onRest` — runs as usual. `gtk-interface-reduced-motion`, on GTK 4.22 and later, is the desktop preference behind the `prefers-reduced-motion` media query, and it asks for _less_ motion rather than none. Springs keep running, and the component decides what to reduce:
 
 ```tsx
 import { useReducedMotion, useSpring } from "@gtkx/animated";

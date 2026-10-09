@@ -1,13 +1,5 @@
 import type { ReactNode } from "react";
-import {
-    getI18n,
-    t,
-    Trans,
-    Translation,
-    useTranslation,
-    withTranslation,
-    type WithTranslation,
-} from "@gtkx/i18n";
+import { getI18n, t, Trans, Translation, useTranslation, withTranslation, type WithTranslation } from "@gtkx/i18n";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
@@ -39,9 +31,7 @@ const ReactApiProbe = (): ReactNode => {
 const expectDirectApi = (): void => {
     expect(t("Hello, {{name}}!", { name: "Ada" })).toBe("Bonjour, Ada !");
 
-    expect(t("greeting", { defaultValue: "Welcome, {{name}}!", name: "Ada" })).toBe(
-        "Bienvenue, Ada !",
-    );
+    expect(t("greeting", { defaultValue: "Welcome, {{name}}!", name: "Ada" })).toBe("Bienvenue, Ada !");
 };
 
 const expectEdgeCases = (): void => {
@@ -64,7 +54,11 @@ const expectEdgeCases = (): void => {
     expect(t("Missing message", { defaultValue: "Fallback message" })).toBe("Fallback message");
 
     expect(
-        getI18n().getFixedT(getI18n().language, "translation", "account")("title", {
+        getI18n().getFixedT(
+            getI18n().language,
+            "translation",
+            "account",
+        )("title", {
             defaultValue: "Account title",
         }),
     ).toBe("Titre du compte");

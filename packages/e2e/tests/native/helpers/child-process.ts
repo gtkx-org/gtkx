@@ -3,8 +3,7 @@ import { fileURLToPath } from "node:url";
 const TSX_LOADER = new URL("../../../../../scripts/tsx.ts", import.meta.url).href;
 const FIXTURE_ARGS = ["--import", TSX_LOADER];
 
-const fixturePath = (name: string): string =>
-    fileURLToPath(new URL(`../fixtures/${name}`, import.meta.url));
+const fixturePath = (name: string): string => fileURLToPath(new URL(`../fixtures/${name}`, import.meta.url));
 
 /**
  * Arguments that run a fixture as a child process, compiled the way the rest of the workspace

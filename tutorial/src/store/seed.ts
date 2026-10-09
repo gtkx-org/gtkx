@@ -29,9 +29,7 @@ const seedTasks: Task[] = [
         listId: "personal",
         title: t("Welcome to Tasks"),
         position: 0,
-        notes: t(
-            "This is your first task. Tick the checkbox to complete it, or open it to add notes and a due date.",
-        ),
+        notes: t("This is your first task. Tick the checkbox to complete it, or open it to add notes and a due date."),
     }),
     createTask({
         id: "t2",
@@ -54,7 +52,4 @@ const seedTasks: Task[] = [
     }),
 ];
 
-export {
-    seedLists,
-    seedTasks,
-};
+export { seedLists, seedTasks };

@@ -6,11 +6,23 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCliOrThrow } from "./cli-project.js";
 import { classBody, fixtureConfig, generatedModule } from "./codegen-helpers.js";
 
-const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/typescript/bin/tsc", import.meta.url));
+const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/@typescript/native/bin/tsc", import.meta.url));
 const CODEGEN_ENTRY = new URL("../../../codegen/dist/index.js", import.meta.url).href;
 const TYPECHECK_ARGS = [
-    "--no-addons", TYPESCRIPT_CLI, "--noEmit", "--strict", "--skipLibCheck", "false",
-    "--target", "ESNext", "--module", "NodeNext", "--moduleResolution", "NodeNext", "--types", "node",
+    "--no-addons",
+    TYPESCRIPT_CLI,
+    "--noEmit",
+    "--strict",
+    "--skipLibCheck",
+    "false",
+    "--target",
+    "ESNext",
+    "--module",
+    "NodeNext",
+    "--moduleResolution",
+    "NodeNext",
+    "--types",
+    "node",
 ];
 const RECORD_CONSUMERS = {
     "visible.ts": `import type { Collection, Mixed, Nested, Visible } from "@gtkx/gi/girrecords";
@@ -37,15 +49,24 @@ export const read = (value: Collection): bigint[] => value.items.map((item) => i
 `,
 };
 
-const importConstants = (project: CliProject): unknown => JSON.parse(execFileSync(process.execPath, [
-    "--no-addons", "--input-type=module", "--eval",
-    `import {
+const importConstants = (project: CliProject): unknown =>
+    JSON.parse(
+        execFileSync(
+            process.execPath,
+            [
+                "--no-addons",
+                "--input-type=module",
+                "--eval",
+                `import {
     TEXT, PADDED, SPACES, EMPTY, ENTITIES, ENABLED, DISABLED, COUNT, IDENTIFIER,
 } from "@gtkx/gi/girconstants";
 process.stdout.write(JSON.stringify({
     TEXT, PADDED, SPACES, EMPTY, ENTITIES, ENABLED, DISABLED, COUNT, IDENTIFIER: String(IDENTIFIER),
 }));`,
-], { cwd: project.root, encoding: "utf8" }));
+            ],
+            { cwd: project.root, encoding: "utf8" },
+        ),
+    );
 
 const nestedRecordGir = (hasSecondField: boolean): string => `<?xml version="1.0"?>
 <repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"
@@ -91,10 +112,12 @@ export const identifier: 9007199254740993n = IDENTIFIER;
             COUNT: 42,
             IDENTIFIER: "9007199254740993",
         });
-        expect(() => execFileSync(process.execPath, [...TYPECHECK_ARGS, "constants.ts"], {
-            cwd: project.root,
-            encoding: "utf8",
-        })).not.toThrow();
+        expect(() =>
+            execFileSync(process.execPath, [...TYPECHECK_ARGS, "constants.ts"], {
+                cwd: project.root,
+                encoding: "utf8",
+            }),
+        ).not.toThrow();
     });
 
     it("retains published bindings when replacement GIR XML is malformed", () => {
@@ -136,19 +159,23 @@ describe("gtkx codegen GIR record fields", () => {
     });
 
     it("accepts visible fields in records and collection elements", () => {
-        expect(() => execFileSync(process.execPath, [...TYPECHECK_ARGS, "visible.ts"], {
-            cwd: project.root,
-            encoding: "utf8",
-        })).not.toThrow();
+        expect(() =>
+            execFileSync(process.execPath, [...TYPECHECK_ARGS, "visible.ts"], {
+                cwd: project.root,
+                encoding: "utf8",
+            }),
+        ).not.toThrow();
     });
 
     it.each(["rejected-read.ts", "rejected-write.ts", "rejected-constructor.ts", "rejected-element.ts"])(
         "rejects hidden fields or unsupported construction in %s",
         (file) => {
-            expect(() => execFileSync(process.execPath, [...TYPECHECK_ARGS, file], {
-                cwd: project.root,
-                encoding: "utf8",
-            })).toThrow();
+            expect(() =>
+                execFileSync(process.execPath, [...TYPECHECK_ARGS, file], {
+                    cwd: project.root,
+                    encoding: "utf8",
+                }),
+            ).toThrow();
         },
     );
 
@@ -171,7 +198,10 @@ describe("public codegen record layouts", () => {
         using first = createCliProject({ prefix: "gtkx-cli-gir-record-first-" });
         using second = createCliProject({ prefix: "gtkx-cli-gir-record-second-" });
 
-        for (const [project, hasSecondField] of [[first, false], [second, true]] as const) {
+        for (const [project, hasSecondField] of [
+            [first, false],
+            [second, true],
+        ] as const) {
             const directory = join(project.root, "gir");
             mkdirSync(directory);
             writeFileSync(join(directory, "RecordVersions-1.0.gir"), nestedRecordGir(hasSecondField));

@@ -93,11 +93,11 @@ const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsI
         store.react === null
             ? undefined
             : {
-                    storeDir: store.jsxStoreDir,
-                    linkDir: store.jsxLinkDir,
-                    version: store.react.version,
-                    owner: store.owner,
-                },
+                  storeDir: store.jsxStoreDir,
+                  linkDir: store.jsxLinkDir,
+                  version: store.react.version,
+                  owner: store.owner,
+              },
     userComponents: resolveElementComponents(elements),
     userProps: resolveElementProps(elements),
     userLazyElements: resolveLazyElements(elements),
@@ -128,10 +128,12 @@ const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config)
 
 const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = options.cwd ?? process.cwd();
-    const { config, configFile } = options.resolved ?? (await loadConfig(cwd, {
-        mode: options.mode,
-        configFile: options.configFile,
-    }));
+    const { config, configFile } =
+        options.resolved ??
+        (await loadConfig(cwd, {
+            mode: options.mode,
+            configFile: options.configFile,
+        }));
     await syncI18n(cwd, config.applicationId, options.shouldPreserveI18nMetadata);
     emitSchemaEnv(cwd);
 
@@ -173,11 +175,7 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     };
 };
 
-const syncI18n = async (
-    root: string,
-    applicationId: string,
-    shouldPreserveMetadataMessages = true,
-): Promise<void> => {
+const syncI18n = async (root: string, applicationId: string, shouldPreserveMetadataMessages = true): Promise<void> => {
     const project = resolveCatalogProject(root, applicationId);
 
     if (project === null) {
@@ -251,10 +249,8 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
     return result.isRegenerated;
 };
 
-const ensureGeneratedIn = async (
-    context: CodegenContext,
-    options: EnsureGeneratedOptions = {},
-): Promise<boolean> => !isPreflightSkipped(options) && generate(context, options);
+const ensureGeneratedIn = async (context: CodegenContext, options: EnsureGeneratedOptions = {}): Promise<boolean> =>
+    !isPreflightSkipped(options) && generate(context, options);
 
 const ensureGenerated = async (cwd: string, options: EnsureGeneratedOptions = {}): Promise<boolean> =>
     !isPreflightSkipped(options) &&
@@ -280,11 +276,4 @@ const resolveConfigWatch = async (
     };
 };
 
-export {
-    runCodegen,
-    isCodegenDisabled,
-    ensureGenerated,
-    ensureGeneratedIn,
-    resolveConfigWatch,
-    type RunCodegenResult,
-};
+export { runCodegen, isCodegenDisabled, ensureGenerated, ensureGeneratedIn, resolveConfigWatch, type RunCodegenResult };

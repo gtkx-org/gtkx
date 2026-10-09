@@ -36,14 +36,12 @@ const buildEntries = (lists: TaskList[], counts: SidebarCounts): Entry[] => [
         icon: "starred-symbolic",
         count: counts.important,
     },
-    ...lists.map(
-        (list): Entry => ({
-            selection: { kind: "list", listId: list.id },
-            title: list.name,
-            color: list.color,
-            count: counts.lists[list.id] ?? 0,
-        }),
-    ),
+    ...lists.map((list): Entry => ({
+        selection: { kind: "list", listId: list.id },
+        title: list.name,
+        color: list.color,
+        count: counts.lists[list.id] ?? 0,
+    })),
     {
         selection: { kind: "smart", view: "trash" },
         title: t("Trash"),
@@ -57,26 +55,22 @@ const SidebarRow = ({ entry }: { entry: Entry }) => (
         title={entry.title}
         useMarkup={false}
         prefix={
-            entry.color
-                ? (
-                        <GtkBox
-                            valign={Gtk.Align.CENTER}
-                            cssClasses={[listDot(entry.color)]}
-                            accessibleRole={Gtk.AccessibleRole.PRESENTATION}
-                        />
-                    )
-                : (
-                        <GtkImage iconName={entry.icon} />
-                    )
+            entry.color ? (
+                <GtkBox
+                    valign={Gtk.Align.CENTER}
+                    cssClasses={[listDot(entry.color)]}
+                    accessibleRole={Gtk.AccessibleRole.PRESENTATION}
+                />
+            ) : (
+                <GtkImage iconName={entry.icon} />
+            )
         }
         suffix={
-            entry.count > 0
-                ? (
-                        <GtkLabel valign={Gtk.Align.CENTER} cssClasses={["dimmed", "numeric"]}>
-                            {String(entry.count)}
-                        </GtkLabel>
-                    )
-                : undefined
+            entry.count > 0 ? (
+                <GtkLabel valign={Gtk.Align.CENTER} cssClasses={["dimmed", "numeric"]}>
+                    {String(entry.count)}
+                </GtkLabel>
+            ) : undefined
         }
     />
 );
@@ -113,6 +107,4 @@ const Sidebar = ({ navigation }: SplitViewScreenProps<RootParamList, "Lists">) =
     );
 };
 
-export {
-    Sidebar,
-};
+export { Sidebar };

@@ -198,9 +198,7 @@ const scanSourceDir = (dir: string, previous: ScanIndex): ScanResult => {
 };
 
 const toSourceImports = (index: ScanIndex): SourceImport[] =>
-    sortSourceImports(
-        [...index].flatMap(([importer, { sources }]) => sources.map((source) => ({ importer, source }))),
-    );
+    sortSourceImports([...index].flatMap(([importer, { sources }]) => sources.map((source) => ({ importer, source }))));
 
 const discoverProjectImports = (root: string): ProjectImports => {
     const dir = sourceDirFor(root);

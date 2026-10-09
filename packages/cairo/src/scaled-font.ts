@@ -66,11 +66,7 @@ const cairoScaledFontGetScaleMatrix = bindCairo(
     t.void,
 );
 
-const cairoScaledFontGetReferenceCount = bindCairo(
-    "cairo_scaled_font_get_reference_count",
-    [SCALED_FONT_T],
-    t.int32,
-);
+const cairoScaledFontGetReferenceCount = bindCairo("cairo_scaled_font_get_reference_count", [SCALED_FONT_T], t.int32);
 
 const readMatrixVia = (self: ScaledFont, boundFn: BoundFunction): Matrix => {
     const { handle, matrix } = allocMatrix();

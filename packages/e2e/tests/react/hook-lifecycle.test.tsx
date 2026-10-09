@@ -167,14 +167,21 @@ describe("hook subscription ordering", () => {
         const ref = createRef<Gtk.Button>();
         await render(<GtkButton ref={ref} label="target" />);
         let calls = 0;
-        await expect(renderHook(() => {
-            useSignal(ref.current, "clicked", () => {
-                calls += 1;
-                if (calls === 1) {
-                    throw new Error("Immediate handler failed");
-                }
-            }, { isImmediate: true });
-        })).rejects.toThrow();
+        await expect(
+            renderHook(() => {
+                useSignal(
+                    ref.current,
+                    "clicked",
+                    () => {
+                        calls += 1;
+                        if (calls === 1) {
+                            throw new Error("Immediate handler failed");
+                        }
+                    },
+                    { isImmediate: true },
+                );
+            }),
+        ).rejects.toThrow();
 
         await act(() => ref.current?.emit("clicked"));
 

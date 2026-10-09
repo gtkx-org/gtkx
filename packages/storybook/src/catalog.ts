@@ -59,7 +59,7 @@ type LoadedSource = StoryLoadError | { source: StorySource; cached: CachedStorie
 
 const EMPTY_PREVIEW: Preview = {};
 
-const normalizeError = (cause: unknown): Error => cause instanceof Error ? cause : new Error(String(cause));
+const normalizeError = (cause: unknown): Error => (cause instanceof Error ? cause : new Error(String(cause)));
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
     value !== null && typeof value === "object" && !Array.isArray(value);
@@ -73,8 +73,10 @@ const explicitControls = (
     const controls: ArgTypes = {};
 
     for (const [argument, annotation] of Object.entries(resolved)) {
-        const control = story?.argTypes?.[argument]?.control ??
-            meta.argTypes?.[argument]?.control ?? preview.argTypes?.[argument]?.control;
+        const control =
+            story?.argTypes?.[argument]?.control ??
+            meta.argTypes?.[argument]?.control ??
+            preview.argTypes?.[argument]?.control;
 
         if (control === undefined) {
             continue;
@@ -173,10 +175,13 @@ const loadSource = async (
     try {
         const module = await source.load();
         const previous = getCache().get(source.id);
-        const cached = previous !== undefined && previous.module === module &&
-            previous.title === source.title && previous.preview === preview
-            ? previous
-            : { module, title: source.title, preview, entries: composeSource(source, module, preview) };
+        const cached =
+            previous !== undefined &&
+            previous.module === module &&
+            previous.title === source.title &&
+            previous.preview === preview
+                ? previous
+                : { module, title: source.title, preview, entries: composeSource(source, module, preview) };
 
         return { source, cached };
     } catch (error) {
@@ -233,7 +238,10 @@ class StoryCatalog {
         this.publish({ stories, errors, isLoading: false });
 
         if (errors.length > 0) {
-            const failure = new AggregateError(errors.map(({ error }) => error), "Some stories could not be loaded");
+            const failure = new AggregateError(
+                errors.map(({ error }) => error),
+                "Some stories could not be loaded",
+            );
             this.loadFailures.add(failure);
             throw failure;
         }

@@ -147,7 +147,8 @@ const isFresh = (loaded: LoadedReference): boolean =>
 
 const configCandidatePaths = (directory: string): string[] =>
     CONFIG_LOCATIONS.flatMap((location) =>
-        CONFIG_EXTENSIONS.map((extension) => join(directory, `${location}${extension}`)));
+        CONFIG_EXTENSIONS.map((extension) => join(directory, `${location}${extension}`)),
+    );
 
 const hasConfigFile = (directory: string): boolean => configCandidatePaths(directory).some((path) => existsSync(path));
 
@@ -196,8 +197,8 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
     if (config.codegen === false) {
         throw new Error(
             `codegen is disabled for the project at ${root}, so there are no generated bindings to document. ` +
-            "Remove `codegen: false` from gtkx.config.ts to use the API reference, or point the `projectRoot` " +
-            "argument at another project.",
+                "Remove `codegen: false` from gtkx.config.ts to use the API reference, or point the `projectRoot` " +
+                "argument at another project.",
         );
     }
 
@@ -206,8 +207,8 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
     if (girPath.length === 0) {
         throw new Error(
             "No GIR search paths available. Install gobject-introspection " +
-            "(Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), " +
-            "or set `girPath` in gtkx.config.ts.",
+                "(Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), " +
+                "or set `girPath` in gtkx.config.ts.",
         );
     }
 
@@ -223,11 +224,9 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
         acceptedChildTypes: { ...builtin.acceptedChildTypes, ...resolveAcceptedChildTypes(config.elements) },
     });
 
-    const watched = [...new Set([
-        ...configDependenciesFor(loaded),
-        ...configCandidatePaths(root),
-        ...reference.inputFiles,
-    ])].map((file) => watchFile(file));
+    const watched = [
+        ...new Set([...configDependenciesFor(loaded), ...configCandidatePaths(root), ...reference.inputFiles]),
+    ].map((file) => watchFile(file));
 
     return { reference, root, watched };
 };
@@ -369,7 +368,7 @@ const apiDocsResult = (reference: ReferenceApi, args: ToolArgs<typeof apiDocsSha
     if (result.outcome === "ambiguous") {
         return textError(
             `"${args.symbol}" matches several symbols. Pass a qualified name or a kind:\n` +
-            formatCandidates(result.candidates),
+                formatCandidates(result.candidates),
         );
     }
 
@@ -449,8 +448,8 @@ const completeNames = (
 
 const namespaceCompleter =
     (provider: ReferenceProvider) =>
-        (value: string): Promise<string[]> =>
-            completeNames(provider, value, (reference) => reference.namespaces().map((summary) => summary.name));
+    (value: string): Promise<string[]> =>
+        completeNames(provider, value, (reference) => reference.namespaces().map((summary) => summary.name));
 
 const completeSymbol = (provider: ReferenceProvider, namespace: string, value: string): Promise<string[]> => {
     if (namespace.length === 0) {
@@ -572,9 +571,4 @@ const registerReferenceResources = (server: ResourceServer, provider: ReferenceP
     registerSymbolResource(server, provider);
 };
 
-export {
-    createReferenceProvider,
-    buildReferenceTools,
-    registerReferenceResources,
-    type ReferenceProvider,
-};
+export { createReferenceProvider, buildReferenceTools, registerReferenceResources, type ReferenceProvider };

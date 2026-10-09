@@ -9,9 +9,11 @@ const methods: {
 } = Window.prototype;
 const { setDefaultWidget, setProperty } = methods;
 
-const clearNativeDefault = (handle: NativeHandle): (() => void) => () => {
-    setDefaultWidget.call(wrapHandle(handle, Window), null);
-};
+const clearNativeDefault =
+    (handle: NativeHandle): (() => void) =>
+    () => {
+        setDefaultWidget.call(wrapHandle(handle, Window), null);
+    };
 
 function retainCurrentDefault(window: Window): void {
     const widget = window.getDefaultWidget();

@@ -4,7 +4,10 @@ import { createConstructPropsProject, typecheckConstructProps } from "./codegen-
 describe("required construction props", () => {
     it("accepts supplied props in constructors, named types, component props, and JSX", () => {
         using project = createConstructPropsProject();
-        expect(typecheckConstructProps(project, `
+        expect(
+            typecheckConstructProps(
+                project,
+                `
             const signal: Gtk.SignalActionConstructorProps = { signalName: "activate" };
             const named: Gtk.NamedActionConstructorProps = { actionName: "app.save" };
             const alternative: Gtk.AlternativeTriggerConstructorProps = { first: trigger, second: trigger };
@@ -23,12 +26,17 @@ describe("required construction props", () => {
             ];
             export const defaultInstances = [new Gtk.KeyvalTrigger(), new Gtk.MnemonicTrigger()];
             export const defaultViews = [<GtkKeyvalTrigger />, <GtkMnemonicTrigger />, <GtkNeverTrigger />];
-        `)).toBe(0);
+        `,
+            ),
+        ).toBe(0);
     });
 
     it("preserves required inherited props when descendants add optional properties", () => {
         using project = createConstructPropsProject();
-        expect(typecheckConstructProps(project, `
+        expect(
+            typecheckConstructProps(
+                project,
+                `
             const configured: Construct.ConfiguredActionConstructorProps = { actionName: "app.save" };
             const inherited: Construct.InheritedActionConstructorProps = { actionName: "app.save", enabled: true };
             export const instances = [
@@ -39,7 +47,9 @@ describe("required construction props", () => {
             export const views = [
                 <ConstructConfiguredAction {...configuredProps} />, <ConstructInheritedAction {...inheritedProps} />,
             ];
-        `)).toBe(0);
+        `,
+            ),
+        ).toBe(0);
         for (const source of [
             "export const instance = new Construct.ConfiguredAction();",
             "export const instance = new Construct.InheritedAction();",

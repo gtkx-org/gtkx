@@ -28,13 +28,13 @@ const notice = computed(() => {
 </script>
 
 <template>
-  <aside v-if="notice" class="version-banner" role="note">
-    <p>
-      {{ notice.lead }}
-      <a :href="notice.href">{{ notice.text }}</a
-      >, or see <a href="/versions">all documentation versions</a>.
-    </p>
-  </aside>
+    <aside v-if="notice" class="version-banner" role="note">
+        <p>
+            {{ notice.lead }}
+            <a :href="notice.href">{{ notice.text }}</a
+            >, or see <a href="/versions">all documentation versions</a>.
+        </p>
+    </aside>
 </template>
 
 <style scoped>

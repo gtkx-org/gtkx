@@ -17,10 +17,10 @@ test("8-bit integers round trip at their bounds", () => {
     expect(GIMarshallingTests.int8OutMin()).toBe(-128);
     expect(GIMarshallingTests.int8InoutMaxMin(127)).toBe(-128);
     expect(GIMarshallingTests.int8InoutMinMax(-128)).toBe(127);
-    expect(GIMarshallingTests.uint8Return()).toBe(0xFF);
-    GIMarshallingTests.uint8In(0xFF);
-    expect(GIMarshallingTests.uint8Out()).toBe(0xFF);
-    expect(GIMarshallingTests.uint8Inout(0xFF)).toBe(0);
+    expect(GIMarshallingTests.uint8Return()).toBe(0xff);
+    GIMarshallingTests.uint8In(0xff);
+    expect(GIMarshallingTests.uint8Out()).toBe(0xff);
+    expect(GIMarshallingTests.uint8Inout(0xff)).toBe(0);
 });
 
 test("16-bit integers round trip at their bounds", () => {
@@ -235,8 +235,8 @@ test("unichar values round trip as single-character strings", () => {
     expect(Regress.testUnichar("\u{10FFFF}")).toBe("\u{10FFFF}");
     expect(Regress.testUnichar(66)).toBe("B");
     expect(Regress.testUnichar("")).toBe("\u{0}");
-    expect(Regress.testUnichar(String.fromCodePoint(0xD8_00))).toBe("\u{FFFD}");
-    expect(Regress.testUnichar(String.fromCodePoint(0xDC_00))).toBe("\u{FFFD}");
+    expect(Regress.testUnichar(String.fromCodePoint(0xd8_00))).toBe("\u{FFFD}");
+    expect(Regress.testUnichar(String.fromCodePoint(0xdc_00))).toBe("\u{FFFD}");
     expect(() => Regress.testUnichar("ab")).toThrow();
     expect(() => Regress.testUnichar(0x11_00_00)).toThrow();
     expect(() => Regress.testUnichar(-1)).toThrow();

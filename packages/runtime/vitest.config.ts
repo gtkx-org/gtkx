@@ -8,6 +8,7 @@ export default mergeConfig(
         plugins: [gtkx()],
         test: {
             name: "runtime",
+            fsModuleCache: true,
             setupFiles: ["./tests/setup.ts"],
             execArgv: ["--expose-gc"],
         },

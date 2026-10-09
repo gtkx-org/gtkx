@@ -17,8 +17,8 @@ type Settlement<R extends object, T> = {
 type TrimmedFinish<T> = T extends readonly [boolean, infer Only]
     ? Only
     : T extends readonly [boolean, ...infer Rest]
-        ? Rest
-        : never;
+      ? Rest
+      : never;
 
 const attachCreationStack = (error: unknown, creationStack: Error | undefined): void => {
     if (creationStack === undefined || !(error instanceof Error)) {
@@ -56,11 +56,11 @@ const trimFinish =
     <R extends object, T extends readonly [boolean, unknown, ...unknown[]]>(
         finish: FinishResult<R, T>,
     ): FinishResult<R, TrimmedFinish<T>> =>
-        (result: R): TrimmedFinish<T> => {
-            const [, ...rest] = finish(result);
+    (result: R): TrimmedFinish<T> => {
+        const [, ...rest] = finish(result);
 
-            return (rest.length === 1 ? rest[0] : rest) as TrimmedFinish<T>;
-        };
+        return (rest.length === 1 ? rest[0] : rest) as TrimmedFinish<T>;
+    };
 
 /**
  * Wraps a GIO-style asynchronous function that takes a completion callback into a

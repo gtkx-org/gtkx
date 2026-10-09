@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import {
-    createFactoryPropsProject,
-    typecheckFactorySource,
-} from "./codegen-factory-props-fixture.js";
+import { createFactoryPropsProject, typecheckFactorySource } from "./codegen-factory-props-fixture.js";
 
 describe("factory element contracts", () => {
     it("accepts the same props through named types, component props, and JSX", () => {
         using project = createFactoryPropsProject();
-        expect(typecheckFactorySource(project, `
+        expect(
+            typecheckFactorySource(
+                project,
+                `
             export const callback: GtkCallbackActionProps = { callback: () => true };
             export const action: Gtk.CallbackAction = Gtk.CallbackAction.new(callback.callback);
             export const trigger: GtkShortcutTriggerProps = { accelerator: "<Control>a" };
@@ -20,6 +20,8 @@ describe("factory element contracts", () => {
                 ref: (value) => { value?.getKeyval(); },
             };
             export const views = [<GtkCallbackAction {...callback} />, <GtkShortcutTrigger {...trigger} />];
-        `)).toBe(0);
+        `,
+            ),
+        ).toBe(0);
     });
 });

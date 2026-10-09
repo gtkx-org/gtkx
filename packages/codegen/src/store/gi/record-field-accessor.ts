@@ -151,7 +151,8 @@ const isVisibleField = (field: GirField): field is GirField & { type: TypeId } =
     field.introspectable && !field.private && field.type !== undefined;
 
 const isPublicField = (context: ModuleContext, field: GirField): field is GirField & { type: TypeId } =>
-    isVisibleField(field) && !hasUnsupportedHashTableSlot(context.library, field.type) &&
+    isVisibleField(field) &&
+    !hasUnsupportedHashTableSlot(context.library, field.type) &&
     !hasCallbackType(context.library, field.type) &&
     !hasPrimitivePointer(context.library, field.type) &&
     !hasUnknownLengthArray(context.library, field.type) &&

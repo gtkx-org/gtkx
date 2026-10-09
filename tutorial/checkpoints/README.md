@@ -2,26 +2,26 @@
 
 The generator reconstructs all 18 chapters for v2 and stable 1.6 directly from the tutorial's named code fences. Full files, patches, appended declarations, and package metadata come from the pages; there are no separate application snapshots to keep synchronized.
 
-| Step | Chapter | Command argument |
-| --- | --- | --- |
-| 1 | Create a Window | `your-first-window` |
-| 2 | Display Tasks | `a-list-of-tasks` |
-| 3 | Add Tasks | `the-task-store` |
-| 4 | Complete, Star, and Delete Tasks | `completing-and-deleting` |
-| 5 | Save Tasks | `saving-to-disk` |
-| 6 | Add Lists and a Sidebar | `lists-and-the-sidebar` |
-| 7 | Adapt the Layout | `an-adaptive-layout` |
-| 8 | Filter and Search Tasks | `smart-views-and-search` |
-| 9 | Edit Tasks | `the-task-editor` |
-| 10 | Add Menus and Shortcuts | `actions-menus-shortcuts` |
-| 11 | Add Undo and Delete Confirmation | `trash-and-toasts` |
-| 12 | Add Preferences | `preferences-and-theming` |
-| 13 | Reorder Tasks | `drag-to-reorder` |
-| 14 | Send Reminders | `reminders` |
-| 15 | Test the App | `testing` |
-| 16 | Package the App | `packaging` |
-| 17 | Translate the App | `internationalization` |
-| 18 | Prepare for Flathub | `flatpak` |
+| Step | Chapter                          | Command argument          |
+| ---- | -------------------------------- | ------------------------- |
+| 1    | Create a Window                  | `your-first-window`       |
+| 2    | Display Tasks                    | `a-list-of-tasks`         |
+| 3    | Add Tasks                        | `the-task-store`          |
+| 4    | Complete, Star, and Delete Tasks | `completing-and-deleting` |
+| 5    | Save Tasks                       | `saving-to-disk`          |
+| 6    | Add Lists and a Sidebar          | `lists-and-the-sidebar`   |
+| 7    | Adapt the Layout                 | `an-adaptive-layout`      |
+| 8    | Filter and Search Tasks          | `smart-views-and-search`  |
+| 9    | Edit Tasks                       | `the-task-editor`         |
+| 10   | Add Menus and Shortcuts          | `actions-menus-shortcuts` |
+| 11   | Add Undo and Delete Confirmation | `trash-and-toasts`        |
+| 12   | Add Preferences                  | `preferences-and-theming` |
+| 13   | Reorder Tasks                    | `drag-to-reorder`         |
+| 14   | Send Reminders                   | `reminders`               |
+| 15   | Test the App                     | `testing`                 |
+| 16   | Package the App                  | `packaging`               |
+| 17   | Translate the App                | `internationalization`    |
+| 18   | Prepare for Flathub              | `flatpak`                 |
 
 From a GTKX checkout, create a stable checkpoint in a new directory:
 

@@ -18,27 +18,27 @@ const move = (index: number, offset: number): void => {
 </script>
 
 <template>
-  <div class="tabs" :class="`tabs--${variant ?? 'underline'}`" role="tablist" :aria-label="label">
-    <button
-      v-for="(it, i) in items"
-      :key="it.value"
-      ref="buttons"
-      type="button"
-      role="tab"
-      class="tabs__btn"
-      :class="{ 'is-active': model === it.value }"
-      :aria-selected="model === it.value"
-      :aria-controls="controls"
-      :tabindex="model === it.value ? 0 : -1"
-      @click="model = it.value"
-      @keydown.arrow-left.prevent="move(i, -1)"
-      @keydown.arrow-right.prevent="move(i, 1)"
-      @keydown.home.prevent="move(i, -i)"
-      @keydown.end.prevent="move(i, items.length - 1 - i)"
-    >
-      {{ it.label }}
-    </button>
-  </div>
+    <div class="tabs" :class="`tabs--${variant ?? 'underline'}`" role="tablist" :aria-label="label">
+        <button
+            v-for="(it, i) in items"
+            :key="it.value"
+            ref="buttons"
+            type="button"
+            role="tab"
+            class="tabs__btn"
+            :class="{ 'is-active': model === it.value }"
+            :aria-selected="model === it.value"
+            :aria-controls="controls"
+            :tabindex="model === it.value ? 0 : -1"
+            @click="model = it.value"
+            @keydown.arrow-left.prevent="move(i, -1)"
+            @keydown.arrow-right.prevent="move(i, 1)"
+            @keydown.home.prevent="move(i, -i)"
+            @keydown.end.prevent="move(i, items.length - 1 - i)"
+        >
+            {{ it.label }}
+        </button>
+    </div>
 </template>
 
 <style scoped>

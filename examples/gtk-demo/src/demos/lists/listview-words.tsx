@@ -103,17 +103,19 @@ function useInitialWords(onLoaded: (words: string[]) => void, onError: (message:
             return;
         }
 
-        void readWords(Gio.File.newForPath(DICT_FILE), cancellable).then(onLoaded).catch((error: unknown) => {
-            if (isCancellation(error)) {
-                return;
-            }
+        void readWords(Gio.File.newForPath(DICT_FILE), cancellable)
+            .then(onLoaded)
+            .catch((error: unknown) => {
+                if (isCancellation(error)) {
+                    return;
+                }
 
-            onLoaded(LOREM_IPSUM.split(" "));
+                onLoaded(LOREM_IPSUM.split(" "));
 
-            if (!(error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.NOT_FOUND)) {
-                onError(errorMessage(error));
-            }
-        });
+                if (!(error instanceof Gio.IOErrorEnum && error.code === Gio.IOErrorEnum.NOT_FOUND)) {
+                    onError(errorMessage(error));
+                }
+            });
     }, [cancellable, onLoaded, onError]);
 
     return createPortal(element, rootElement);
@@ -190,23 +192,22 @@ function filterMode(searchText: string, isIncremental: boolean): string {
 }
 
 function WordsModel({ expression, isIncremental, onFiltered, onSource, searchText }: WordsModelProps) {
-    const filter = searchText === ""
-        ? null
-        : (
-                <GtkStringFilter
-                    expression={expression}
-                    ignoreCase
-                    matchMode={Gtk.StringFilterMatchMode.SUBSTRING}
-                    search={searchText}
-                />
-            );
+    const filter =
+        searchText === "" ? null : (
+            <GtkStringFilter
+                expression={expression}
+                ignoreCase
+                matchMode={Gtk.StringFilterMatchMode.SUBSTRING}
+                search={searchText}
+            />
+        );
 
     /* TODO: Keep mode-keyed remounts until GTK safely disables incremental filtering without a pending bitset.
      * https://github.com/gtkx-org/gtkx/issues/738
      */
     return (
         <GtkNoSelection
-            model={(
+            model={
                 <GtkFilterListModel
                     key={filterMode(searchText, isIncremental)}
                     ref={onFiltered}
@@ -214,7 +215,7 @@ function WordsModel({ expression, isIncremental, onFiltered, onSource, searchTex
                     incremental={isIncremental}
                     model={<GtkStringList ref={onSource} />}
                 />
-            )}
+            }
         />
     );
 }
@@ -243,12 +244,7 @@ function WordsView(props: WordsViewProps) {
                     vexpand
                     hexpand
                     model={<WordsModel {...model} />}
-                    factory={(
-                        <ListItemFactory<Gtk.StringObject>
-                            estimatedItemHeight={32}
-                            renderItem={renderWord}
-                        />
-                    )}
+                    factory={<ListItemFactory<Gtk.StringObject> estimatedItemHeight={32} renderItem={renderWord} />}
                 />
             </GtkScrolledWindow>
         </GtkOverlay>
@@ -258,8 +254,7 @@ function WordsView(props: WordsViewProps) {
 function WordsList({ words, searchText }: WordsListProps) {
     const [source, setSource] = useState<Gtk.StringList | null>(null);
     const [filtered, setFiltered] = useState<Gtk.FilterListModel | null>(null);
-    const [expression] = useState(() =>
-        Gtk.PropertyExpression.new(getClassType(Gtk.StringObject), null, "string"));
+    const [expression] = useState(() => Gtk.PropertyExpression.new(getClassType(Gtk.StringObject), null, "string"));
     const pending = useProperty(filtered, "pending") ?? 0;
     const visibleCount = useProperty(filtered, "nItems") ?? 0;
     const filterProgress = words.length === 0 ? 1 : 1 - pending / words.length;

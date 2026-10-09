@@ -46,15 +46,11 @@ function widgetNotFoundError(widgetId: string): ProtocolError {
 }
 
 function propertyNotFoundError(widgetType: string, property: string, readableProperties: string[]): ProtocolError {
-    return new ProtocolError(
-        ErrorCode.PROPERTY_NOT_FOUND,
-        `${widgetType} has no readable property '${property}'`,
-        {
-            widgetType,
-            property,
-            hint: `Readable properties of ${widgetType}: ${readableProperties.join(", ")}`,
-        },
-    );
+    return new ProtocolError(ErrorCode.PROPERTY_NOT_FOUND, `${widgetType} has no readable property '${property}'`, {
+        widgetType,
+        property,
+        hint: `Readable properties of ${widgetType}: ${readableProperties.join(", ")}`,
+    });
 }
 
 function requestTimeoutError(timeout: number): ProtocolError {

@@ -3,10 +3,7 @@ import type { GirClass } from "../../gir/class.js";
 import type { Library } from "../../gir/library.js";
 import type { GirIndex, GirTypeEntry } from "./gir-index.js";
 import { isEmittableProperty } from "../../analysis/property-admission.js";
-import {
-    configuredConstructOnlyPropsFor,
-    inheritableConfiguredConstructOnlyPropsFor,
-} from "./element-prop-imports.js";
+import { configuredConstructOnlyPropsFor, inheritableConfiguredConstructOnlyPropsFor } from "./element-prop-imports.js";
 import { getChain } from "./gir-index.js";
 import { ancestorGlibNames, type GlibNamedClass } from "./intrinsic-elements.js";
 
@@ -47,29 +44,21 @@ const mergeConstructOnlyPropNames = (
 const constructOnlyPropNames = (context: GirIndex, entry: GlibNamedClass): string[] => {
     const ancestors = ancestorGlibNames(entry.klass, entry.namespace, context.library);
 
-    return mergeConstructOnlyPropNames(
-        context,
-        entry,
-        configuredConstructOnlyPropsFor(entry.glibName, ancestors),
-    );
+    return mergeConstructOnlyPropNames(context, entry, configuredConstructOnlyPropsFor(entry.glibName, ancestors));
 };
 
 const namedPropsConstructOnlyPropNames = (context: GirIndex, entry: GlibNamedClass): string[] =>
     mergeConstructOnlyPropNames(
         context,
         entry,
-        inheritableConfiguredConstructOnlyPropsFor(
-            ancestorGlibNames(entry.klass, entry.namespace, context.library),
-        ),
+        inheritableConfiguredConstructOnlyPropsFor(ancestorGlibNames(entry.klass, entry.namespace, context.library)),
     );
 
 const renderConstructOnlyUnion = (constructOnly: string[]): string =>
     constructOnly.map((name) => sourceStringLiteral(name)).join(" | ");
 
 const renderGeneratedElementProps = (props: string, constructOnly: string[]): string =>
-    constructOnly.length === 0
-        ? props
-        : `GeneratedElementProps<${props}, ${renderConstructOnlyUnion(constructOnly)}>`;
+    constructOnly.length === 0 ? props : `GeneratedElementProps<${props}, ${renderConstructOnlyUnion(constructOnly)}>`;
 
 export {
     constructOnlyPropNames,

@@ -135,9 +135,7 @@ describe("screenshot", () => {
         expect(foregroundPixel).toEqual(FOREGROUND_BACKGROUND);
         expect(opaqueWindowPixels).toBeGreaterThan(capturedWindow.width * capturedWindow.height * 0.9);
         expect(
-            capturedLabel.pixels.some(
-                (channel, index) => index % RGBA_CHANNELS === RGBA_CHANNELS - 1 && channel === 0,
-            ),
+            capturedLabel.pixels.some((channel, index) => index % RGBA_CHANNELS === RGBA_CHANNELS - 1 && channel === 0),
         ).toBe(true);
     });
 
@@ -153,7 +151,9 @@ describe("screenshot", () => {
                 defaultHeight={100}
                 style={{ backgroundColor: "rgba(0, 0, 255, 0.5)" }}
             >
-                <GtkLabel halign={Gtk.Align.START} valign={Gtk.Align.START}>Corner</GtkLabel>
+                <GtkLabel halign={Gtk.Align.START} valign={Gtk.Align.START}>
+                    Corner
+                </GtkLabel>
             </GtkWindow>,
             { container: rootElement },
         );

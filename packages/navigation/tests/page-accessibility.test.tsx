@@ -73,27 +73,25 @@ const prevent = (event: Preventable): void => {
 
 const App = ({ kind, lazy = true, preventSwitch = false }: AppProps): ReactNode => (
     <NavigationContainer>
-        {kind === "tabs"
-            ? (
-                    <Tabs.Navigator screenOptions={{ lazy }}>
-                        <Tabs.Screen name="First" component={First} />
-                        <Tabs.Screen
-                            name="Second"
-                            component={Second}
-                            listeners={preventSwitch ? { tabPress: prevent } : undefined}
-                        />
-                    </Tabs.Navigator>
-                )
-            : (
-                    <Drawer.Navigator screenOptions={{ lazy }}>
-                        <Drawer.Screen name="First" component={First} />
-                        <Drawer.Screen
-                            name="Second"
-                            component={Second}
-                            listeners={preventSwitch ? { drawerItemPress: prevent } : undefined}
-                        />
-                    </Drawer.Navigator>
-                )}
+        {kind === "tabs" ? (
+            <Tabs.Navigator screenOptions={{ lazy }}>
+                <Tabs.Screen name="First" component={First} />
+                <Tabs.Screen
+                    name="Second"
+                    component={Second}
+                    listeners={preventSwitch ? { tabPress: prevent } : undefined}
+                />
+            </Tabs.Navigator>
+        ) : (
+            <Drawer.Navigator screenOptions={{ lazy }}>
+                <Drawer.Screen name="First" component={First} />
+                <Drawer.Screen
+                    name="Second"
+                    component={Second}
+                    listeners={preventSwitch ? { drawerItemPress: prevent } : undefined}
+                />
+            </Drawer.Navigator>
+        )}
     </NavigationContainer>
 );
 
@@ -145,9 +143,8 @@ test.each(["tabs", "drawer"] as const)("%s preloads a page without exposing it t
 test.each(["tabs", "drawer"] as const)("%s preserves accessibility when a route change is refused", async (kind) => {
     await render(<App kind={kind} preventSwitch />);
     await expectAccessiblePage("First");
-    const target = kind === "tabs"
-        ? screen.getByRole(Gtk.AccessibleRole.TAB, { name: "Second" })
-        : sidebarRow("Second");
+    const target =
+        kind === "tabs" ? screen.getByRole(Gtk.AccessibleRole.TAB, { name: "Second" }) : sidebarRow("Second");
     await userEvent.click(target);
     await expectAccessiblePage("First");
 });

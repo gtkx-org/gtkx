@@ -51,7 +51,7 @@ class ModuleBuilder {
         if (this.claimedSpaces.has(key)) {
             throw new Error(
                 `The generated module declares '${name}' twice in its ${space} space. ` +
-                "A module may declare each exported name once per declaration space.",
+                    "A module may declare each exported name once per declaration space.",
             );
         }
 
@@ -65,7 +65,7 @@ class ModuleBuilder {
         if (spaces === undefined) {
             throw new Error(
                 `The declaration recorded as '${declaration.name}' exports ${exportedNameText(exported)}. ` +
-                "A declaration may only be recorded under the name its own code exports.",
+                    "A declaration may only be recorded under the name its own code exports.",
             );
         }
 
@@ -86,7 +86,7 @@ class ModuleBuilder {
         if (previous !== undefined && previous !== owner) {
             throw new Error(
                 `The generated type '${name}' is declared for both ${previous} and ${owner}. ` +
-                "Rename one of them, or drop the namespace from the configuration.",
+                    "Rename one of them, or drop the namespace from the configuration.",
             );
         }
 

@@ -38,19 +38,19 @@ const showOrdinaryCallback = async (onEvent: () => unknown) => {
 };
 
 describe("native story actions", () => {
-    it.each([
-        () => 42,
-        () => Promise.resolve(42),
-    ])("preserves ordinary callback results without recording actions", async (onEvent) => {
-        const { result } = await showOrdinaryCallback(onEvent);
-        await Promise.all([
-            expect(result).resolves.toBe(42),
-            userEvent.click(screen.getByText("Invoke ordinary callback")),
-        ]);
+    it.each([() => 42, () => Promise.resolve(42)])(
+        "preserves ordinary callback results without recording actions",
+        async (onEvent) => {
+            const { result } = await showOrdinaryCallback(onEvent);
+            await Promise.all([
+                expect(result).resolves.toBe(42),
+                userEvent.click(screen.getByText("Invoke ordinary callback")),
+            ]);
 
-        expect(screen.queryAllByName(/^storybook-action-/)).toHaveLength(0);
-        expect(screen.getByText("Invoke ordinary callback")).toBeVisible();
-    });
+            expect(screen.queryAllByName(/^storybook-action-/)).toHaveLength(0);
+            expect(screen.getByText("Invoke ordinary callback")).toBeVisible();
+        },
+    );
 
     it.each([
         () => {

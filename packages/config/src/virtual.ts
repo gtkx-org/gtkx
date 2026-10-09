@@ -11,9 +11,9 @@ const renderConfigModule = (config: ResolvedConfig): string => {
         config.elements === null
             ? []
             : [
-                    "import { mergeElementConfigs } from \"@gtkx/react/config\";",
-                    `import __elementBehaviors from ${JSON.stringify(config.elements)};`,
-                ];
+                  'import { mergeElementConfigs } from "@gtkx/react/config";',
+                  `import __elementBehaviors from ${JSON.stringify(config.elements)};`,
+              ];
 
     return [
         ...behaviorImports,

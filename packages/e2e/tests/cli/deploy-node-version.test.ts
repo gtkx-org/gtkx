@@ -79,24 +79,19 @@ describe("gtkx deploy Node.js runtime versions", () => {
         expect(deploy(JSON.stringify({ source: "download", version }))).toContain(`Node.js ${expected}`);
     });
 
-    it.each([
-        "26.6.99",
-        "25.99.99",
-        "26.7",
-        "26.07.0",
-        "9007199254740992.0.0",
-        "26.7.0-rc.1",
-        "26.7.0+build.1",
-    ])("rejects unsupported download version %s", (version) => {
-        expect(() => deploy(JSON.stringify({ source: "download", version }))).toThrow();
-    });
+    it.each(["26.6.99", "25.99.99", "26.7", "26.07.0", "9007199254740992.0.0", "26.7.0-rc.1", "26.7.0+build.1"])(
+        "rejects unsupported download version %s",
+        (version) => {
+            expect(() => deploy(JSON.stringify({ source: "download", version }))).toThrow();
+        },
+    );
 
-    it.each([
-        '{ source: "host", version: "99.0.0" }',
-        `{ source: "host", version: "${process.versions.node}-rc.1" }`,
-    ])("rejects an unsupported or mismatched host version", (node) => {
-        expect(() => deploy(node)).toThrow();
-    });
+    it.each(['{ source: "host", version: "99.0.0" }', `{ source: "host", version: "${process.versions.node}-rc.1" }`])(
+        "rejects an unsupported or mismatched host version",
+        (node) => {
+            expect(() => deploy(node)).toThrow();
+        },
+    );
 
     it("rejects a mismatched configured runtime version", () => {
         const node = JSON.stringify({ source: "path", path: PATH_NODE, version: "99.0.0" });

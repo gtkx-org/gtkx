@@ -31,11 +31,7 @@ import {
     renderMethodSignature,
     renderPromisifiedSignature,
 } from "../store/gi/method.js";
-import {
-    resolveAccessor,
-    type ResolvedAccessor,
-    resolvePropertyMetadata,
-} from "../store/gi/property-accessor.js";
+import { resolveAccessor, type ResolvedAccessor, resolvePropertyMetadata } from "../store/gi/property-accessor.js";
 import { resolveRecordFieldEntry } from "../store/gi/record-field-accessor.js";
 import { computeRecordFieldSlots } from "../store/gi/record-layout.js";
 import { vfuncEntries } from "../store/gi/vtable.js";
@@ -75,33 +71,33 @@ type GiSymbolBase = {
 
 type GiSymbolEntry =
     | (GiSymbolBase & {
-        kind: "class" | "interface";
-        klass: GirClass;
-    }) |
-    (GiSymbolBase & {
-        kind: "record";
-        record: GirRecord;
-    }) |
-    (GiSymbolBase & {
-        kind: "enum";
-        enumeration: GirEnum;
-    }) |
-    (GiSymbolBase & {
-        kind: "callback";
-        callback: GirCallback;
-    }) |
-    (GiSymbolBase & {
-        kind: "alias";
-        alias: GirAlias;
-    }) |
-    (GiSymbolBase & {
-        kind: "function";
-        fn: GirFunction;
-    }) |
-    (GiSymbolBase & {
-        kind: "constant";
-        constant: GirConstant;
-    });
+          kind: "class" | "interface";
+          klass: GirClass;
+      })
+    | (GiSymbolBase & {
+          kind: "record";
+          record: GirRecord;
+      })
+    | (GiSymbolBase & {
+          kind: "enum";
+          enumeration: GirEnum;
+      })
+    | (GiSymbolBase & {
+          kind: "callback";
+          callback: GirCallback;
+      })
+    | (GiSymbolBase & {
+          kind: "alias";
+          alias: GirAlias;
+      })
+    | (GiSymbolBase & {
+          kind: "function";
+          fn: GirFunction;
+      })
+    | (GiSymbolBase & {
+          kind: "constant";
+          constant: GirConstant;
+      });
 
 type ClassSymbol = GiSymbolBase & { klass: GirClass };
 type ClassPageSymbol = ClassSymbol & { kind: "class" | "interface" };
@@ -186,8 +182,8 @@ const elementNote = (entry: ClassSymbol, options: SymbolPageOptions): string[] =
 
     return [
         `Also available as the \`${glibName}\` JSX element from ` +
-        `\`@gtkx/jsx/${namespaceDirectory(entry.namespace)}\`; the \`${glibName}\` element page ` +
-        "documents the JSX props.",
+            `\`@gtkx/jsx/${namespaceDirectory(entry.namespace)}\`; the \`${glibName}\` element page ` +
+            "documents the JSX props.",
     ];
 };
 
@@ -270,7 +266,8 @@ const implementingSection = (entry: ClassPageSymbol, library: Library): string[]
     }
 
     const blocks = sortStringsBy(entries, (item) => item.name).map((item) =>
-        signatureBlock(item.name, item.signature, [docMarkdown(item.doc)]));
+        signatureBlock(item.name, item.signature, [docMarkdown(item.doc)]),
+    );
 
     return ["## Implementing", implementingIntro(entry), ...blocks];
 };
@@ -346,12 +343,8 @@ const documentedAccessorType = (accessor: ResolvedAccessor): string =>
 
 const hiddenPropertyAccessNotes = (accessor: ResolvedAccessor): string[] => [
     ...getAccessNotes(accessor),
-    ...(accessor.hasGetter && accessor.supportsDescriptorFreeAccess
-        ? ["read with `GObject.getProperty`"]
-        : []),
-    ...(accessor.isWritable && accessor.supportsDescriptorFreeAccess
-        ? ["write with `GObject.setProperty`"]
-        : []),
+    ...(accessor.hasGetter && accessor.supportsDescriptorFreeAccess ? ["read with `GObject.getProperty`"] : []),
+    ...(accessor.isWritable && accessor.supportsDescriptorFreeAccess ? ["write with `GObject.setProperty`"] : []),
 ];
 
 const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, seen: Set<string>): MetaDocEntry[] => {
@@ -377,9 +370,8 @@ const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, 
             meta: propertyMetaLine({
                 type: documentedAccessorType(accessor),
                 property,
-                accessNotes: fieldAccessor === undefined
-                    ? hiddenPropertyAccessNotes(accessor)
-                    : getAccessNotes(accessor),
+                accessNotes:
+                    fieldAccessor === undefined ? hiddenPropertyAccessNotes(accessor) : getAccessNotes(accessor),
                 origin: owner.origin,
             }),
             doc: docMarkdown(property.doc),
@@ -407,7 +399,7 @@ const propertiesSection = (entry: ClassPageSymbol, library: Library): string[] =
     const intro =
         "Properties are normally read and written as instance fields. Collision exceptions are marked with " +
         "their `GObject.getProperty` or `GObject.setProperty` escape hatch. Changes can be observed " +
-        "with `GObject.signalConnect(instance, \"notify::<property-name>\", handler)`. Properties inherited " +
+        'with `GObject.signalConnect(instance, "notify::<property-name>", handler)`. Properties inherited ' +
         "from ancestors are documented on their own pages.";
 
     return ["## Properties", intro, ...sortedMetaBlocks(entries)];
@@ -452,7 +444,7 @@ const signalsSection = (entry: ClassSymbol, library: Library): string[] => {
     }
 
     const intro =
-        "Connect with `GObject.signalConnect(instance, \"<signal>\", handler)`. " +
+        'Connect with `GObject.signalConnect(instance, "<signal>", handler)`. ' +
         "Signals inherited from ancestors are documented on their own pages.";
 
     return ["## Signals", intro, ...originSignatureBlocks(entries)];
@@ -578,11 +570,9 @@ const recordPage = (entry: GiSymbolBase & { kind: "record"; record: GirRecord },
 };
 
 const fieldMeta = (field: ResolvedRecordField): string =>
-    [
-        `\`${field.tsType}\``,
-        ...(field.isWritable ? [] : ["read-only"]),
-        ...deprecationMeta(field.annotations),
-    ].join(" · ");
+    [`\`${field.tsType}\``, ...(field.isWritable ? [] : ["read-only"]), ...deprecationMeta(field.annotations)].join(
+        " · ",
+    );
 
 const fieldsSection = (record: GirRecord, context: ModuleContext, claimedNames: Set<string>): string[] => {
     const { slots } = computeRecordFieldSlots(context, record.fields, record.isUnion);
@@ -632,7 +622,7 @@ const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }):
         enumeration.errorDomain === undefined
             ? `Members are accessed as \`${qualified}.<member>\`.`
             : `Members are error codes for the \`${enumeration.errorDomain}\` GError domain, ` +
-                `accessed as \`${qualified}.<member>\`.`;
+              `accessed as \`${qualified}.<member>\`.`;
 
     const table = ["| Member | Value | Description |", "| --- | --- | --- |", ...rows].join("\n");
 

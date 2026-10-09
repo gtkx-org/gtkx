@@ -75,23 +75,21 @@ describe("combo box display values", () => {
         expect(scope.queryByDisplayValue("Spoken choice")).toBeNull();
     });
 
-    it.each([
-        { strings: [] },
-        {},
-        { strings: [], useSubtitle: true },
-        { useSubtitle: true },
-    ])("matches an empty row with source %j", async (props) => {
-        const { container } = await render(<ComboFixture {...props} />);
-        const scope = within(container);
-        const row = scope.getByRole(Gtk.AccessibleRole.COMBO_BOX);
+    it.each([{ strings: [] }, {}, { strings: [], useSubtitle: true }, { useSubtitle: true }])(
+        "matches an empty row with source %j",
+        async (props) => {
+            const { container } = await render(<ComboFixture {...props} />);
+            const scope = within(container);
+            const row = scope.getByRole(Gtk.AccessibleRole.COMBO_BOX);
 
-        expect(row).toHaveDisplayValue("");
-        expect(row).not.toHaveDisplayValue();
-        expect(scope.getByDisplayValue("")).toBe(row);
-        expect(scope.queryByDisplayValue("Row description")).toBeNull();
-        expect(scope.queryByDisplayValue("Prefix")).toBeNull();
-        expect(scope.queryByDisplayValue("Suffix")).toBeNull();
-    });
+            expect(row).toHaveDisplayValue("");
+            expect(row).not.toHaveDisplayValue();
+            expect(scope.getByDisplayValue("")).toBe(row);
+            expect(scope.queryByDisplayValue("Row description")).toBeNull();
+            expect(scope.queryByDisplayValue("Prefix")).toBeNull();
+            expect(scope.queryByDisplayValue("Suffix")).toBeNull();
+        },
+    );
 
     it("reads the displayed subtitle independently of an accessible override", async () => {
         const { container } = await render(

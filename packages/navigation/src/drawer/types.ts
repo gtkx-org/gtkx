@@ -51,7 +51,8 @@ type DrawerNavigationProp<
     DrawerNavigationState<ParamList>,
     DrawerNavigationOptions,
     DrawerNavigationEventMap
-> & DrawerActionHelpers<ParamList>;
+> &
+    DrawerActionHelpers<ParamList>;
 
 /** Props a drawer screen component receives. */
 type DrawerScreenProps<
@@ -126,8 +127,8 @@ type DrawerNavigatorProps = DefaultNavigatorOptions<
     DrawerNavigationEventMap,
     DrawerNavigationProp<ParamListBase>
 > &
-DrawerRouterOptions &
-DrawerNavigationConfig;
+    DrawerRouterOptions &
+    DrawerNavigationConfig;
 
 export type {
     DrawerContentProps,

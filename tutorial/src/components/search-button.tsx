@@ -17,6 +17,4 @@ const SearchButton = () => {
     );
 };
 
-export {
-    SearchButton,
-};
+export { SearchButton };

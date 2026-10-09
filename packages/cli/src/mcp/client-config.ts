@@ -12,8 +12,8 @@ type Client = {
 };
 
 type ClientResult =
-    | { kind: "written"; path: string; isCreated: boolean } |
-    { kind: "manual"; path: string; snippet: string };
+    | { kind: "written"; path: string; isCreated: boolean }
+    | { kind: "manual"; path: string; snippet: string };
 
 const SERVER_NAME = "gtkx";
 const COMMAND = "npx";

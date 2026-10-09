@@ -10,11 +10,7 @@ import { ancestorChain } from "../gir/ancestry.js";
 import { type GirNamespace, namespaceDirectory } from "../gir/namespace.js";
 import { type GirProperty, isConstructableProperty } from "../gir/property.js";
 import { annotationSpec } from "../store/gi/doc-spec.js";
-import {
-    resolveAccessor,
-    type ResolvedAccessor,
-    resolvePropertyMetadata,
-} from "../store/gi/property-accessor.js";
+import { resolveAccessor, type ResolvedAccessor, resolvePropertyMetadata } from "../store/gi/property-accessor.js";
 import { acceptedChildTypesFor } from "../store/jsx/accepted-child-types.js";
 import { elementPropTypeFor } from "../store/jsx/element-prop-imports.js";
 import { isMountableElement } from "../store/jsx/generated-elements.js";
@@ -150,15 +146,9 @@ const propertyEntry = (options: PropertyEntryOptions): MetaDocEntry => {
     const type = isElement ? `${baseType} | ReactElement` : baseType;
 
     const accessNotes = [
-        ...(isConstructableProperty(property)
-            ? []
-            : [`read-only, observe with \`onNotify${upperFirst(jsName)}\``]),
-        ...(hasDescriptorFreeGetter(hiddenAccessor)
-            ? ["instance read with `GObject.getProperty`"]
-            : []),
-        ...(hasDescriptorFreeSetter(hiddenAccessor)
-            ? ["instance write with `GObject.setProperty`"]
-            : []),
+        ...(isConstructableProperty(property) ? [] : [`read-only, observe with \`onNotify${upperFirst(jsName)}\``]),
+        ...(hasDescriptorFreeGetter(hiddenAccessor) ? ["instance read with `GObject.getProperty`"] : []),
+        ...(hasDescriptorFreeSetter(hiddenAccessor) ? ["instance write with `GObject.setProperty`"] : []),
     ];
 
     return {
@@ -178,16 +168,12 @@ const propertyAccessorSetup = (context: ElementPageContext, owner: MemberOwner):
     return {
         context: signatureContext,
         claimedNames,
-        inheritedNames: owner.origin === undefined
-            ? ancestorClassMethodNames(signatureContext, owner.klass)
-            : undefined,
+        inheritedNames:
+            owner.origin === undefined ? ancestorClassMethodNames(signatureContext, owner.klass) : undefined,
     };
 };
 
-const hiddenPropertyAccessor = (
-    setup: PropertyAccessorSetup,
-    property: GirProperty,
-): ResolvedAccessor | undefined => {
+const hiddenPropertyAccessor = (setup: PropertyAccessorSetup, property: GirProperty): ResolvedAccessor | undefined => {
     const metadata = resolvePropertyMetadata(setup.context, property);
     const field = resolveAccessor({
         context: setup.context,
@@ -214,9 +200,8 @@ const acceptedChildTypesDoc = (context: ElementPageContext, owner: MemberOwner):
     }
 
     const labels = accepted.map((name) => glibLabel(context, name));
-    const typeList = labels.length === 1
-        ? labels[0] ?? ""
-        : `${labels.slice(0, -1).join(", ")} or ${labels.at(-1) ?? ""}`;
+    const typeList =
+        labels.length === 1 ? (labels[0] ?? "") : `${labels.slice(0, -1).join(", ")} or ${labels.at(-1) ?? ""}`;
 
     return (
         "This remains a React `ReactNode` slot, so fragments, arrays, conditionals, and nullish values work " +
@@ -224,11 +209,7 @@ const acceptedChildTypesDoc = (context: ElementPageContext, owner: MemberOwner):
     );
 };
 
-const handwrittenPropEntry = (
-    context: ElementPageContext,
-    owner: MemberOwner,
-    prop: HandwrittenProp,
-): MetaDocEntry => {
+const handwrittenPropEntry = (context: ElementPageContext, owner: MemberOwner, prop: HandwrittenProp): MetaDocEntry => {
     const childTypesDoc = prop.name === "children" ? acceptedChildTypesDoc(context, owner) : "";
     const doc = [prop.doc, childTypesDoc].filter((part) => part.length > 0).join("\n\n");
 
@@ -248,8 +229,7 @@ const handwrittenPropEntries = (
     }
 
     const entries: MetaDocEntry[] = [];
-    const props = (context.handwrittenProps.get(declared.type) ?? [])
-        .filter((prop) => !omitted.includes(prop.name));
+    const props = (context.handwrittenProps.get(declared.type) ?? []).filter((prop) => !omitted.includes(prop.name));
 
     for (const prop of props) {
         if (seen.has(prop.name)) {
@@ -294,13 +274,15 @@ const ownerPropEntries = (
         const jsName = propJsName(property, owner, seen, element);
 
         if (jsName !== undefined && isEmittableProperty(context.library, property)) {
-            entries.push(propertyEntry({
-                context,
-                owner,
-                property,
-                jsName,
-                hiddenAccessor: hiddenPropertyAccessor(setup, property),
-            }));
+            entries.push(
+                propertyEntry({
+                    context,
+                    owner,
+                    property,
+                    jsName,
+                    hiddenAccessor: hiddenPropertyAccessor(setup, property),
+                }),
+            );
         }
     }
 
@@ -322,16 +304,17 @@ const propsSection = (entry: GlibNamedClass, context: ElementPageContext, selfTy
     const entries = propertyEntries(entry, context, seen);
 
     const omitted = omittedPropNamesFor(entry.glibName).map((name) => `\`${name}\``);
-    const omissionNote = omitted.length === 0
-        ? []
-        : [
-                `GIR props omitted from this element: ${omitted.join(", ")}. ` +
-                "Their notify handlers are omitted too; configured props can replace them.",
-            ];
+    const omissionNote =
+        omitted.length === 0
+            ? []
+            : [
+                  `GIR props omitted from this element: ${omitted.join(", ")}. ` +
+                      "Their notify handlers are omitted too; configured props can replace them.",
+              ];
     const intro = [
         `\`ref\` receives the \`${selfType}\` instance.`,
         "Every mutable property also has an `onNotify<Prop>` handler prop called with the new value " +
-        "when the property changes.",
+            "when the property changes.",
         "Props inherited from ancestor elements are documented on their own pages.",
     ].join(" ");
 
@@ -421,9 +404,9 @@ const gtkxNotes = (entry: GlibNamedClass): string[] => {
 
     return [
         "> **GTKX JSX:** The automatic `shortcuts-dialog.ui` behavior described above does not apply to " +
-        "GTKX applications because JSX is the interface definition and GTKX does not load `.ui` " +
-        "definitions. Define the action, accelerator, and `AdwShortcutsDialog` in JSX as shown in " +
-        "[Menus, Accelerators, and Shortcuts](https://gtkx.dev/v2/tutorial/actions-menus-shortcuts).",
+            "GTKX applications because JSX is the interface definition and GTKX does not load `.ui` " +
+            "definitions. Define the action, accelerator, and `AdwShortcutsDialog` in JSX as shown in " +
+            "[Menus, Accelerators, and Shortcuts](https://gtkx.dev/v2/tutorial/actions-menus-shortcuts).",
     ];
 };
 
@@ -439,9 +422,9 @@ const renderElementPage = (entry: GlibNamedClass, context: ElementPageContext): 
         ...(isMountableElement(entry)
             ? []
             : [
-                    `Abstract base: \`${entry.glibName}Props\` supplies inherited props for concrete elements. ` +
-                    `\`${entry.glibName}\` does not export a renderable JSX component.`,
-                ]),
+                  `Abstract base: \`${entry.glibName}Props\` supplies inherited props for concrete elements. ` +
+                      `\`${entry.glibName}\` does not export a renderable JSX component.`,
+              ]),
         importBlock(entry),
         ...hierarchySection(entry, context),
         ...staticMethodsSection(entry, context, selfType),

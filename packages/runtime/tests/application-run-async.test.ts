@@ -152,10 +152,12 @@ describe("Application.runAsync", () => {
         },
     ];
 
-    it.each(constructionCases.flatMap((factory) => [
-        { ...factory, argumentKind: "null", argv: null },
-        { ...factory, argumentKind: "empty", argv: [] },
-    ]))("runs applications created through the $name with $argumentKind arguments", async ({ construct, argv }) => {
+    it.each(
+        constructionCases.flatMap((factory) => [
+            { ...factory, argumentKind: "null", argv: null },
+            { ...factory, argumentKind: "empty", argv: [] },
+        ]),
+    )("runs applications created through the $name with $argumentKind arguments", async ({ construct, argv }) => {
         const application = track(construct());
         const activations = countSignal(application, "activate");
         const shutdowns = countSignal(application, "shutdown");

@@ -95,8 +95,7 @@ const insertAtStart = (buffer: Gtk.TextBuffer, text: string): void => {
     buffer.insert(buffer.getStartIter(), text, text.length);
 };
 
-const bufferText = (buffer: Gtk.TextBuffer): string =>
-    buffer.getText(buffer.getStartIter(), buffer.getEndIter(), true);
+const bufferText = (buffer: Gtk.TextBuffer): string => buffer.getText(buffer.getStartIter(), buffer.getEndIter(), true);
 
 const deserializeBadNode = (onError: Gsk.ParseErrorFunc): void => {
     Gsk.RenderNode.deserialize(GLib.Bytes.new(new TextEncoder().encode("not a render node")), onError);
@@ -339,10 +338,7 @@ test("a closure expression owns its parameter expressions", () => {
 });
 
 test("a try expression retains candidates while using a fallback", () => {
-    const expression = Gtk.TryExpression.new([
-        stringExpression(),
-        Gtk.ConstantExpression.newForValue("fallback"),
-    ]);
+    const expression = Gtk.TryExpression.new([stringExpression(), Gtk.ConstantExpression.newForValue("fallback")]);
     const value = new GObject.Value();
 
     expect(expression.evaluate(null, value)).toBe(true);

@@ -10,7 +10,8 @@ import { loadHeadlessDisplay } from "./registry.js";
 type WindowNode = {
     id: number;
     nodes: WindowNode[];
-} & Record<"app_id", string | null> & Record<"floating_nodes", WindowNode[]>;
+} & Record<"app_id", string | null> &
+    Record<"floating_nodes", WindowNode[]>;
 
 type SavedTasks = { state: { tasks: { id: string; done: boolean; completedAt: string | null }[] } };
 type Installation = { directory: string; serviceDirectory: string; stateFile: string };
@@ -27,26 +28,44 @@ function prepareInstallation(prefix: string, applicationId: string, binaryName: 
     const stateFile = join(dataHome, applicationId, "tasks.json");
     const createdAt = new Date().toISOString();
     const tasks = ["first", "second"].map((id, position) => ({
-        id, position, listId: "activation", title: `Activation ${id}`, notes: "", done: false,
-        important: false, deleted: false, due: null, createdAt, completedAt: null, lastNotifiedDue: null,
+        id,
+        position,
+        listId: "activation",
+        title: `Activation ${id}`,
+        notes: "",
+        done: false,
+        important: false,
+        deleted: false,
+        due: null,
+        createdAt,
+        completedAt: null,
+        lastNotifiedDue: null,
     }));
 
     mkdirSync(serviceDirectory, { recursive: true });
     mkdirSync(join(dataHome, applicationId), { recursive: true });
-    writeFileSync(stateFile, JSON.stringify({
-        version: 1,
-        state: { lists: [{ id: "activation", name: "Activation", color: "blue" }], tasks },
-    }));
+    writeFileSync(
+        stateFile,
+        JSON.stringify({
+            version: 1,
+            state: { lists: [{ id: "activation", name: "Activation", color: "blue" }], tasks },
+        }),
+    );
     const servicePath = join(prefix, "usr", "share", "dbus-1", "services", `${applicationId}.service`);
     const service = readFileSync(servicePath, "utf8");
-    writeFileSync(join(serviceDirectory, `${applicationId}.service`),
-        service.replace(`/usr/bin/${binaryName}`, () => join(prefix, "usr", "bin", binaryName)));
+    writeFileSync(
+        join(serviceDirectory, `${applicationId}.service`),
+        service.replace(`/usr/bin/${binaryName}`, () => join(prefix, "usr", "bin", binaryName)),
+    );
     Object.assign(process.env, {
         XDG_DATA_HOME: dataHome,
         XDG_DATA_DIRS: `${join(prefix, "usr", "share")}:/usr/local/share:/usr/share`,
         XDG_CONFIG_HOME: join(directory, "config"),
         XDG_CACHE_HOME: join(directory, "cache"),
-        LANG: "C.UTF-8", LC_ALL: "C.UTF-8", LANGUAGE: "en", GTK_USE_PORTAL: "0",
+        LANG: "C.UTF-8",
+        LC_ALL: "C.UTF-8",
+        LANGUAGE: "en",
+        GTK_USE_PORTAL: "0",
     });
 
     return { directory, serviceDirectory, stateFile };
@@ -54,7 +73,7 @@ function prepareInstallation(prefix: string, applicationId: string, binaryName: 
 
 async function until(isReady: () => boolean | Promise<boolean>): Promise<void> {
     const deadline = Date.now() + 30_000;
-    while (!await isReady()) {
+    while (!(await isReady())) {
         assert.ok(Date.now() < deadline);
         await delay(50);
     }
@@ -100,13 +119,26 @@ class ApplicationSession {
 
     async configureActivation(serviceDirectory: string, headlessEnvironmentNames: string[]): Promise<void> {
         const configPath = join(this.runtime, "session.conf");
-        writeFileSync(configPath, readFileSync(configPath, "utf8").replace(
-            "</busconfig>", () => `<servicedir>${serviceDirectory}</servicedir>\n</busconfig>`,
-        ));
+        writeFileSync(
+            configPath,
+            readFileSync(configPath, "utf8").replace(
+                "</busconfig>",
+                () => `<servicedir>${serviceDirectory}</servicedir>\n</busconfig>`,
+            ),
+        );
         const environmentNames = [
-            ...headlessEnvironmentNames, "PATH", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR",
-            "XDG_DATA_HOME", "XDG_DATA_DIRS", "XDG_CONFIG_HOME", "XDG_CACHE_HOME",
-            "LANG", "LC_ALL", "LANGUAGE", "GTK_USE_PORTAL",
+            ...headlessEnvironmentNames,
+            "PATH",
+            "WAYLAND_DISPLAY",
+            "XDG_RUNTIME_DIR",
+            "XDG_DATA_HOME",
+            "XDG_DATA_DIRS",
+            "XDG_CONFIG_HOME",
+            "XDG_CACHE_HOME",
+            "LANG",
+            "LC_ALL",
+            "LANGUAGE",
+            "GTK_USE_PORTAL",
         ];
         const environment = environmentNames.flatMap((name) => {
             const value = process.env[name];
@@ -118,7 +150,7 @@ class ApplicationSession {
     }
 
     async hasOwner(): Promise<boolean> {
-        return await this.daemon("NameHasOwner", "s", this.applicationId) === "b true";
+        return (await this.daemon("NameHasOwner", "s", this.applicationId)) === "b true";
     }
 
     async ownerPid(): Promise<number> {
@@ -171,7 +203,7 @@ class ApplicationSession {
         }
 
         this.stopProcess();
-        await until(async () => !await this.hasOwner());
+        await until(async () => !(await this.hasOwner()));
         await until(() => this.hasWindows(0));
     }
 }
@@ -188,7 +220,10 @@ async function verifyOpening(application: ApplicationSession): Promise<void> {
     await application.activate();
     assert.equal(await application.ownerPid(), firstPid);
     const reopened = await application.windows();
-    assert.deepEqual(reopened.map((window) => window.id), [firstWindow.id]);
+    assert.deepEqual(
+        reopened.map((window) => window.id),
+        [firstWindow.id],
+    );
 
     await assert.rejects(() => application.activateAction("open-task", "7", "i"), { code: 1 });
 }

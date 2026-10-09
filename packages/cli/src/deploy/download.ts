@@ -146,12 +146,4 @@ const digestFromChecksums = (checksums: string, assetName: string, subject: stri
     return digest;
 };
 
-export {
-    cacheDir,
-    cachedDigest,
-    type DigestRequest,
-    downloadFile,
-    publishedDigest,
-    readCachedDigest,
-    writeAtomically,
-};
+export { cacheDir, cachedDigest, type DigestRequest, downloadFile, publishedDigest, readCachedDigest, writeAtomically };

@@ -1,13 +1,5 @@
 import { type GetTextTranslation, po } from "gettext-parser";
-import {
-    chmodSync,
-    existsSync,
-    mkdtempSync,
-    readFileSync,
-    rmSync,
-    statSync,
-    writeFileSync,
-} from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -78,7 +70,8 @@ const APPEND_PATH = `${MODULE_DIR}/flatpak-pnpm:${NODE_EXTENSION_PATH}`;
 const PNPM_VERSION = "12.4.2";
 const PNPM_TARBALL = `pnpm-${PNPM_VERSION}.tgz`;
 
-const PNPM_SHA512 = "08adc6613180275c7c9edada39dcf08c9c61ad4e7eaf330a4f3461f102b0f907423454d117f9" +
+const PNPM_SHA512 =
+    "08adc6613180275c7c9edada39dcf08c9c61ad4e7eaf330a4f3461f102b0f907423454d117f9" +
     "8e72d47fef0616070644d7bffc973a6a57f5090a6d7c368b07c9";
 
 const PNPM_PIN = `pnpm@${PNPM_VERSION}+sha512.${PNPM_SHA512}`;
@@ -115,11 +108,9 @@ const MIME_INSTALL = `install -Dm644 ${MIME_FILENAME} ${FLATPAK_DEST}/share/mime
 const HELPER_INSTALL = `install -Dm755 tools/helper.sh ${FLATPAK_DEST}/lib/${BINARY_NAME}/helper.sh`;
 const LICENSE_INSTALL = `install -Dm644 LICENSE ${FLATPAK_DEST}/share/licenses/${BINARY_NAME}/LICENSE`;
 
-const SCHEMA_INSTALL =
-    `install -Dm644 data/${SCHEMA_FILE} ${FLATPAK_DEST}/share/glib-2.0/schemas/${SCHEMA_FILE}`;
+const SCHEMA_INSTALL = `install -Dm644 data/${SCHEMA_FILE} ${FLATPAK_DEST}/share/glib-2.0/schemas/${SCHEMA_FILE}`;
 
-const FONTS_INSTALL =
-    `test ! -d dist/fonts || cp -a dist/fonts ${FLATPAK_DEST}/lib/${BINARY_NAME}/fonts`;
+const FONTS_INSTALL = `test ! -d dist/fonts || cp -a dist/fonts ${FLATPAK_DEST}/lib/${BINARY_NAME}/fonts`;
 
 const DEFAULT_FINISH_ARGS = ["--share=ipc", "--socket=wayland", "--socket=fallback-x11", "--device=dri"];
 const DEFAULT_CLEANUP = ["/include", "/share/pkgconfig", "*.la", "*.a"];
@@ -127,11 +118,10 @@ const MERGED_NEGATIONS = ["--share=ipc", "--device=dri", "--nosocket=wayland", "
 const HELPER_SCRIPT = "#!/bin/sh\necho probe\n";
 const NOTES = "Probe notes.\n";
 
-const PACKAGE_INTEGRITY = "sha512-41Cifkg6e8TylSpdtTpeLVMqvSBEVzTttHvERD741+pnZ8ANv0004MRL43QKPDlK9" +
-    "cGvNp6NZWZUBlbGXYxxng==";
+const PACKAGE_INTEGRITY =
+    "sha512-41Cifkg6e8TylSpdtTpeLVMqvSBEVzTttHvERD741+pnZ8ANv0004MRL43QKPDlK9" + "cGvNp6NZWZUBlbGXYxxng==";
 
-const DESCRIPTION =
-    "A probe application that exercises the deploy command and every Flathub manifest it renders.";
+const DESCRIPTION = "A probe application that exercises the deploy command and every Flathub manifest it renders.";
 
 const MANIFEST = {
     name: BINARY_NAME,
@@ -317,7 +307,7 @@ const NODE_LICENSE_TEXT = "Node.js probe license, standing in for the release ar
 const OWN_LICENSE_TEXT = "Probe proprietary license, all rights reserved, and not Node's.";
 const APPLICATION_STANZA = "Deploy Probe (MPL-2.0)";
 const DEPENDENCY_SECTION = "Bundled JavaScript dependencies";
-const BARE_APP_SOURCE = "process.env.PROBE_LABEL = \"probe\";\n";
+const BARE_APP_SOURCE = 'process.env.PROBE_LABEL = "probe";\n';
 const NOTICES_DEST = `${FLATPAK_DEST}/share/licenses/${BINARY_NAME}/${NOTICES_FILENAME}`;
 const NOTICES_INSTALL = `install -Dm644 ${NOTICES_FILENAME} ${NOTICES_DEST}`;
 
@@ -383,24 +373,25 @@ const RUNTIME_NODE = `        node: { source: "path", path: "${RUNTIME_BINARY}" 
 
 const NOTICES_BLOCK = `    deploy: {\n${DEPLOY_FIELDS}\n${RUNTIME_NODE}    },\n`;
 
-const poCatalog = (language: string, translations: [string, string][]): string => [
-    'msgid ""',
-    'msgstr ""',
-    String.raw`"Project-Id-Version: GTKX test catalog\n"`,
-    String.raw`"PO-Revision-Date: 1970-01-01 00:00+0000\n"`,
-    String.raw`"Last-Translator: GTKX Test\n"`,
-    String.raw`"Language-Team: ${language}\n"`,
-    String.raw`"Language: ${language}\n"`,
-    String.raw`"MIME-Version: 1.0\n"`,
-    String.raw`"Content-Type: text/plain; charset=UTF-8\n"`,
-    String.raw`"Content-Transfer-Encoding: 8bit\n"`,
-    "",
-    ...translations.flatMap(([message, translation]) => [
-        `msgid ${JSON.stringify(message)}`,
-        `msgstr ${JSON.stringify(translation)}`,
+const poCatalog = (language: string, translations: [string, string][]): string =>
+    [
+        'msgid ""',
+        'msgstr ""',
+        String.raw`"Project-Id-Version: GTKX test catalog\n"`,
+        String.raw`"PO-Revision-Date: 1970-01-01 00:00+0000\n"`,
+        String.raw`"Last-Translator: GTKX Test\n"`,
+        String.raw`"Language-Team: ${language}\n"`,
+        String.raw`"Language: ${language}\n"`,
+        String.raw`"MIME-Version: 1.0\n"`,
+        String.raw`"Content-Type: text/plain; charset=UTF-8\n"`,
+        String.raw`"Content-Transfer-Encoding: 8bit\n"`,
         "",
-    ]),
-].join("\n");
+        ...translations.flatMap(([message, translation]) => [
+            `msgid ${JSON.stringify(message)}`,
+            `msgstr ${JSON.stringify(translation)}`,
+            "",
+        ]),
+    ].join("\n");
 
 const config = (body: string, applicationIcon: string | null = "data/icons"): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
@@ -410,13 +401,13 @@ const config = (body: string, applicationIcon: string | null = "data/icons"): st
 
 const bareConfig = (body: string): string =>
     `export default {\n    applicationId: "${APPLICATION_ID}",\n` +
-    "    applicationIcon: \"data/icons\",\n" +
+    '    applicationIcon: "data/icons",\n' +
     `${body}};\n`;
 
 const sourceConfig = (source: string, extra = ""): string =>
     config(
         `    deploy: {\n${DEPLOY_FIELDS}\n${extra}` +
-        `        flatpak: { mode: "source", source: ${source} },\n    },\n`,
+            `        flatpak: { mode: "source", source: ${source} },\n    },\n`,
     );
 
 const projectFiles = (): Record<string, string> => ({
@@ -513,8 +504,7 @@ const catalogMessage = (path: string, msgid: string): GetTextTranslation => {
     return message;
 };
 
-const messageReferences = (message: GetTextTranslation): string[] =>
-    message.comments?.reference?.split(/\s+/u) ?? [];
+const messageReferences = (message: GetTextTranslation): string[] => message.comments?.reference?.split(/\s+/u) ?? [];
 
 const expectSharedMetadataMessage = (project: CliProject): string[] => {
     const templatePath = join(project.root, "po", `${APPLICATION_ID}.pot`);
@@ -522,9 +512,7 @@ const expectSharedMetadataMessage = (project: CliProject): string[] => {
     const sourceReferences = references.filter((reference) => reference.startsWith("src/index.tsx:"));
     const metadataRoot = join("po", ".gtkx-metadata");
     expect(references.some((reference) => reference.startsWith(metadataRoot))).toBe(true);
-    expect(catalogMessage(join(project.root, FRENCH_CATALOG), "Deploy Probe").msgstr).toEqual([
-        FRENCH_NAME,
-    ]);
+    expect(catalogMessage(join(project.root, FRENCH_CATALOG), "Deploy Probe").msgstr).toEqual([FRENCH_NAME]);
 
     return sourceReferences;
 };
@@ -546,7 +534,10 @@ const expectInitializedDeployCatalog = (project: CliProject): void => {
 const stabilizePotCreationDate = (path: string): void => {
     const catalog = readFileSync(path, "utf8");
     expect(catalog).toMatch(POT_CREATION_DATE);
-    writeFileSync(path, catalog.replace(POT_CREATION_DATE, () => STABLE_POT_CREATION_DATE));
+    writeFileSync(
+        path,
+        catalog.replace(POT_CREATION_DATE, () => STABLE_POT_CREATION_DATE),
+    );
 };
 
 const expectCatalogRedeployIsStable = (project: CliProject): void => {
@@ -573,15 +564,9 @@ const expectCatalogRedeployIsStable = (project: CliProject): void => {
 const expectLocalizedDeploy = (state: DeployProbe): void => {
     expectSuccessfulDeploy(state);
 
-    const desktop = outputFile(
-        state.project,
-        join("stage", "share", "applications", `${APPLICATION_ID}.desktop`),
-    );
+    const desktop = outputFile(state.project, join("stage", "share", "applications", `${APPLICATION_ID}.desktop`));
 
-    const metainfo = outputFile(
-        state.project,
-        join("stage", "share", "metainfo", `${APPLICATION_ID}.metainfo.xml`),
-    );
+    const metainfo = outputFile(state.project, join("stage", "share", "metainfo", `${APPLICATION_ID}.metainfo.xml`));
 
     const mime = outputFile(state.project, join("stage", "share", "mime", "packages", MIME_FILENAME));
     const launcher = outputFile(state.project, join("stage", "bin", BINARY_NAME));
@@ -593,11 +578,13 @@ const expectLocalizedDeploy = (state: DeployProbe): void => {
     expect(mime).toContain(`<comment xml:lang="fr">${FRENCH_MIME_DESCRIPTION}</comment>`);
     expect(mime).toContain(`<comment xml:lang="de">${GERMAN_MIME_DESCRIPTION}</comment>`);
 
-    expect(written).toEqual(expect.arrayContaining([
-        join("stage", "share", "locale", "fr", "LC_MESSAGES", `${APPLICATION_ID}.mo`),
-        join("stage", "share", "locale", "de", "LC_MESSAGES", `${APPLICATION_ID}.mo`),
-        join("stage", "share", "locale", "it", "LC_MESSAGES", `${APPLICATION_ID}.mo`),
-    ]));
+    expect(written).toEqual(
+        expect.arrayContaining([
+            join("stage", "share", "locale", "fr", "LC_MESSAGES", `${APPLICATION_ID}.mo`),
+            join("stage", "share", "locale", "de", "LC_MESSAGES", `${APPLICATION_ID}.mo`),
+            join("stage", "share", "locale", "it", "LC_MESSAGES", `${APPLICATION_ID}.mo`),
+        ]),
+    );
 
     expect(written.some((name) => name.startsWith(join("stage", "lib", BINARY_NAME, "locale")))).toBe(false);
     expect(launcher).toContain('GTKX_LOCALE_DIR="$prefix/share/locale"\nexport GTKX_LOCALE_DIR');

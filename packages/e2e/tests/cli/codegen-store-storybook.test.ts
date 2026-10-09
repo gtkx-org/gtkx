@@ -38,10 +38,12 @@ describe("gtkx codegen (Storybook dependency placement)", () => {
         const installed = placement === "local" ? project : parent;
         const require = createRequire(join(installed.nodeModules, "@gtkx", "storybook", "package.json"));
 
-        expect(realpathSync(require.resolve("@gtkx/gi/gtk")))
-            .toBe(realpathSync(linkPath(installed, "gi", "gtk", "index.js")));
-        expect(realpathSync(require.resolve("@gtkx/jsx/gtk")))
-            .toBe(realpathSync(linkPath(installed, "jsx", "gtk", "index.js")));
+        expect(realpathSync(require.resolve("@gtkx/gi/gtk"))).toBe(
+            realpathSync(linkPath(installed, "gi", "gtk", "index.js")),
+        );
+        expect(realpathSync(require.resolve("@gtkx/jsx/gtk"))).toBe(
+            realpathSync(linkPath(installed, "jsx", "gtk", "index.js")),
+        );
     });
 
     it("rejects Storybook above the generated store's dependency directory", () => {

@@ -62,9 +62,8 @@ describe.each(["fixed", "garray"] as const)("%s inline array source bounds", (ar
         const field = bindField(descriptor);
         const destination = alloc(8);
         const owner = alloc(16);
-        const tooSmall = source === "allocation"
-            ? alloc(7)
-            : read(owner, { ...INLINE, size: 7 }, 8) as ExternalObject<Handle>;
+        const tooSmall =
+            source === "allocation" ? alloc(7) : (read(owner, { ...INLINE, size: 7 }, 8) as ExternalObject<Handle>);
 
         try {
             writeField(field, destination, 0, [record(31), record(32)]);

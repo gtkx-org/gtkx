@@ -47,8 +47,7 @@ const getTypeTag = (object: object): string => {
 const isDefaultWidgetName = (widget: object, name: string): boolean =>
     name.length === 0 || name === getWidgetTypeName(widget);
 
-const hasWidgetMethod = (widget: object, name: string): boolean =>
-    typeof getWidgetMethod(widget, name) === "function";
+const hasWidgetMethod = (widget: object, name: string): boolean => typeof getWidgetMethod(widget, name) === "function";
 
 const getCallableMethod = <Args extends unknown[], Result>(
     widget: object,

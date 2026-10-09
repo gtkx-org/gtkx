@@ -210,11 +210,7 @@ const appendInterfaceMerge = (
     });
 };
 
-const instanceMethodCollisions = (
-    context: ModuleContext,
-    klass: GirClass,
-    methods: GirFunction[],
-): Set<string> => {
+const instanceMethodCollisions = (context: ModuleContext, klass: GirClass, methods: GirFunction[]): Set<string> => {
     const inheritedMethods = collectInheritedMethods(context, klass);
     const scope = instanceScope(klass.name, klass);
 
@@ -301,9 +297,7 @@ const appendMixinRegistration = (options: MixinRegistrationOptions): void => {
     }
 
     context.addRuntimeImport(runtimeName);
-    const overrideArg = overrides.length === 0
-        ? ""
-        : `, [${overrides.map((name) => JSON.stringify(name)).join(", ")}]`;
+    const overrideArg = overrides.length === 0 ? "" : `, [${overrides.map((name) => JSON.stringify(name)).join(", ")}]`;
     context.collectRegistration(`${runtimeName}(${targetName}, [${refs.join(", ")}]${overrideArg});`);
 };
 
@@ -544,17 +538,34 @@ const renderExtendsClause = (options: ExtendsClauseOptions): string => {
         return ` extends ${parentExpression}`;
     }
 
-    const parentBase = staticNames.length === 0
-        ? parentExpression
-        : `(${parentExpression} as ${context.addRuntimeTypeImport("StaticBase")}<` +
-            `typeof ${parentExpression}, ${omittedKeys(staticNames)}>)`;
+    const className = sanitizeTypeIdentifier(klass.name);
+    const baseName = `${localClassName(className)}$Base`;
+    const bridgeName = `${localClassName(className)}$InstanceBase`;
+    let parentBase = parentExpression;
 
-    if (instanceNames.length === 0) {
-        return ` extends ${parentBase}`;
+    if (staticNames.length > 0) {
+        const staticBaseType =
+            `${context.addRuntimeTypeImport("StaticBase")}<` +
+            `typeof ${parentExpression}, ${omittedKeys(staticNames)}>`;
+
+        if (instanceNames.length === 0) {
+            context.module.appendDeclaration({
+                name: baseName,
+                code: `const ${baseName}: ${staticBaseType} = ${parentExpression};`,
+                isLocal: true,
+            });
+
+            return ` extends ${baseName}`;
+        }
+
+        parentBase = `${bridgeName}$Base`;
+        context.module.appendDeclaration({
+            name: parentBase,
+            code: `declare const ${parentBase}: ${staticBaseType};`,
+            isLocal: true,
+        });
     }
 
-    const className = sanitizeTypeIdentifier(klass.name);
-    const bridgeName = `${localClassName(className)}$InstanceBase`;
     const bridgeMembers = instanceNames.map((name) => `${name}(this: never, ...args: never[]): any;`);
 
     context.module.appendDeclaration({
@@ -563,7 +574,13 @@ const renderExtendsClause = (options: ExtendsClauseOptions): string => {
         isLocal: true,
     });
 
-    return ` extends (${parentExpression} as typeof ${bridgeName})`;
+    context.module.appendDeclaration({
+        name: baseName,
+        code: `const ${baseName}: typeof ${bridgeName} = ${parentExpression} as typeof ${bridgeName};`,
+        isLocal: true,
+    });
+
+    return ` extends ${baseName}`;
 };
 
 const resolveParent = (context: ModuleContext, klass: GirClass): string | undefined => {

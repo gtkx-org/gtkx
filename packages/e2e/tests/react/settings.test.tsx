@@ -5,9 +5,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import { useSetting } from "@gtkx/react";
 import { act, renderHook, waitFor } from "@gtkx/testing";
 import { describe, expect, expectTypeOf, it } from "vitest";
-import schema, {
-    com_gtkx_test_useSetting_profile as profile,
-} from "../fixtures/com.gtkx.test.useSetting.gschema.xml";
+import schema, { com_gtkx_test_useSetting_profile as profile } from "../fixtures/com.gtkx.test.useSetting.gschema.xml";
 import { expectSettingRoundTrip, renderSetting, renderSettings, resetSettingsKey } from "../helpers/settings.js";
 
 type TestSchemaKeys = typeof schema.keys;
@@ -93,12 +91,7 @@ describe("useSetting (typed refs: scalars)", () => {
     it("reads and writes int64 keys as bigints across the full range", async () => {
         expectTypeOf<SettingValue<TestSchemaKeys, "big-signed">>().toEqualTypeOf<bigint>();
 
-        await expectSettingRoundTrip(
-            schema,
-            "big-signed",
-            -9_223_372_036_854_775_808n,
-            9_223_372_036_854_775_807n,
-        );
+        await expectSettingRoundTrip(schema, "big-signed", -9_223_372_036_854_775_808n, 9_223_372_036_854_775_807n);
     });
 
     it("reads and writes uint64 keys as bigints across the full range", async () => {
@@ -282,12 +275,7 @@ describe("useSetting (variant types: dictionaries)", () => {
     it("reads and writes non-string-keyed dictionaries as objects", async () => {
         expectTypeOf<Value<"scores">>().toEqualTypeOf<Record<string, bigint>>();
 
-        await expectSettingRoundTrip(
-            schema,
-            "scores",
-            {},
-            { 1: 10n, 2: 20n },
-        );
+        await expectSettingRoundTrip(schema, "scores", {}, { 1: 10n, 2: 20n });
     });
 
     it("reads and writes variant-valued dictionaries", async () => {

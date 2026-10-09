@@ -71,9 +71,7 @@ const versionRoutes = (version: DocumentationVersion): Set<string> => {
     if (unlisted.length > 0) {
         const missing = unlisted.join(", ");
 
-        throw new Error(
-            `GTKX ${version.label} has pages missing from the lists in versioning.ts: ${missing}.`,
-        );
+        throw new Error(`GTKX ${version.label} has pages missing from the lists in versioning.ts: ${missing}.`);
     }
 
     if (existsSync(join(versionDirectory(version), REFERENCE_ROOT, "index.md"))) {
@@ -226,18 +224,16 @@ const locales: Record<string, LocaleEntry> = {
 const isProdBuild = process.argv.includes("build");
 
 const fontPreloads: HeadConfig[] = isProdBuild
-    ? ["red-hat-display", "red-hat-text", "red-hat-mono"].map(
-            (family): HeadConfig => [
-                "link",
-                {
-                    rel: "preload",
-                    href: `/fonts/${family}-normal-latin.woff2`,
-                    as: "font",
-                    type: "font/woff2",
-                    crossorigin: "",
-                },
-            ],
-        )
+    ? ["red-hat-display", "red-hat-text", "red-hat-mono"].map((family): HeadConfig => [
+          "link",
+          {
+              rel: "preload",
+              href: `/fonts/${family}-normal-latin.woff2`,
+              as: "font",
+              type: "font/woff2",
+              crossorigin: "",
+          },
+      ])
     : [];
 
 const docFile = (link: string): string => (link.endsWith("/") ? `${link.slice(1)}index.md` : `${link.slice(1)}.md`);
@@ -414,13 +410,16 @@ const writeAliasPage = async (
     const file = route.endsWith("/") ? `${route}index.html` : `${route}.html`;
     const target = join(outputDirectory, alias.slice(1), file);
     await mkdir(dirname(target), { recursive: true });
-    await writeFile(target, `<!doctype html>
+    await writeFile(
+        target,
+        `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>Page moved | GTKX</title>
 <link rel="canonical" href="${canonical}">
 <script>location.replace(${JSON.stringify(destination)} + location.search + location.hash)</script>
 <noscript><meta http-equiv="refresh" content="0;url=${destination}"></noscript>
 </head><body><a href="${destination}">Continue to the GTKX documentation</a></body></html>
-`);
+`,
+    );
 };
 
 const writeVersionAliases = async (

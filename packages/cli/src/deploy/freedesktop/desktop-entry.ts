@@ -25,10 +25,7 @@ const quoteExecToken = (token: string): string => {
 };
 
 const execLine = (settings: DeploySettings): string =>
-    [
-        ...[settings.binaryName, ...settings.execArgs].map((part) => quoteExecToken(part)),
-        settings.execToken ?? "",
-    ]
+    [...[settings.binaryName, ...settings.execArgs].map((part) => quoteExecToken(part)), settings.execToken ?? ""]
         .filter((part) => part.length > 0)
         .join(" ");
 

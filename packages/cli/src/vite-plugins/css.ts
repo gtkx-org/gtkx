@@ -35,7 +35,7 @@ const loadInjectedCss = (ctx: CssLoadContext, id: string): string | undefined =>
     const content = readFileSync(filePath, "utf8");
     ctx.addWatchFile(filePath);
 
-    return ["import { injectGlobal } from \"@gtkx/css\";", `injectGlobal(${JSON.stringify(content)});`].join("\n");
+    return ['import { injectGlobal } from "@gtkx/css";', `injectGlobal(${JSON.stringify(content)});`].join("\n");
 };
 
 function gtkxCss(): Plugin {

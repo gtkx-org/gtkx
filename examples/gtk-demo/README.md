@@ -6,7 +6,6 @@ Follow the [workspace setup](../../CONTRIBUTING.md#set-up-the-workspace), instal
 
 ```bash
 pnpm --filter gtk-demo dev
-pnpm vitest run --project gtk-demo
 ```
 
 See the [GTKX guides](https://gtkx.dev/v2/guide/components) and the demos under `src/demos`.

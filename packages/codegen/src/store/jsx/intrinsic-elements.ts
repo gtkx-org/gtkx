@@ -87,10 +87,8 @@ const getGlibName = (klass: GirClass): string | undefined => klass.glibTypeName 
 const giNamespaceAlias = (namespaceName: string): string => `${namespaceName}$`;
 const hasNoContainerProps: HasContainerProps = () => false;
 
-const hasInterfacePropsBody = (
-    klass: GirClass,
-    hasContainerProps: HasContainerProps = hasNoContainerProps,
-): boolean => klass.properties.length > 0 || klass.signals.length > 0 || hasContainerProps(getGlibName(klass));
+const hasInterfacePropsBody = (klass: GirClass, hasContainerProps: HasContainerProps = hasNoContainerProps): boolean =>
+    klass.properties.length > 0 || klass.signals.length > 0 || hasContainerProps(getGlibName(klass));
 
 const qualifiedInterfaceKey = (iface: ResolvedQualifiedInterface): string =>
     `${iface.namespace.name}.${iface.klass.name}`;

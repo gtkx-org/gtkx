@@ -176,27 +176,34 @@ function GuideBox({ boxRef, isShown }: { boxRef: RefObject<Gtk.Box | null>; isSh
     return (
         <GtkBox
             ref={boxRef}
-            layoutManager={(
+            layoutManager={
                 <GtkConstraintLayout
-                    guides={isShown && (
-                        <GtkConstraintGuide
-                            name="space"
-                            minWidth={10}
-                            minHeight={10}
-                            natWidth={100}
-                            natHeight={20}
-                            maxWidth={200}
-                            maxHeight={30}
-                            strength={S.STRONG}
-                        />
-                    )}
+                    guides={
+                        isShown && (
+                            <GtkConstraintGuide
+                                name="space"
+                                minWidth={10}
+                                minHeight={10}
+                                natWidth={100}
+                                natHeight={20}
+                                maxWidth={200}
+                                maxHeight={30}
+                                strength={S.STRONG}
+                            />
+                        )
+                    }
                 />
-            )}
+            }
         />
     );
 }
 
-function VflBox({ boxRef, lines, hasDescription = true, constraints }: {
+function VflBox({
+    boxRef,
+    lines,
+    hasDescription = true,
+    constraints,
+}: {
     boxRef: RefObject<Gtk.Box | null>;
     lines: string[];
     hasDescription?: boolean;
@@ -206,19 +213,25 @@ function VflBox({ boxRef, lines, hasDescription = true, constraints }: {
     const [b, setB] = useState<Gtk.Button | null>(null);
 
     const views = useMemo(
-        () => (a === null || b === null ? null : new Map<string, Gtk.ConstraintTarget>([["a", a], ["b", b]])),
+        () =>
+            a === null || b === null
+                ? null
+                : new Map<string, Gtk.ConstraintTarget>([
+                      ["a", a],
+                      ["b", b],
+                  ]),
         [a, b],
     );
 
     return (
         <GtkBox
             ref={boxRef}
-            layoutManager={(
+            layoutManager={
                 <GtkConstraintLayout
                     constraints={constraints}
                     vfl={hasDescription && views ? [{ lines, hspacing: 8, vspacing: 8, views }] : undefined}
                 />
-            )}
+            }
         >
             <GtkButton ref={setA} label="A" />
             <GtkButton ref={setB} label="B" />
@@ -342,10 +355,10 @@ function RemovableOverlayApp({
             overlays={
                 shouldShow
                     ? [
-                            <GtkOverlayLayoutChild key="a">
-                                <GtkButton label="Removable" />
-                            </GtkOverlayLayoutChild>,
-                        ]
+                          <GtkOverlayLayoutChild key="a">
+                              <GtkButton label="Removable" />
+                          </GtkOverlayLayoutChild>,
+                      ]
                     : []
             }
         >
@@ -485,6 +498,50 @@ describe("render - GtkConstraintLayout attach", () => {
 });
 
 describe("render - GtkConstraint props", () => {
+    it("allocates a child from its parent's width and follows window resizing", async () => {
+        const boxRef = createRef<Gtk.Box>();
+        await render(
+            <ConstrainedBox
+                boxRef={boxRef}
+                build={(button) => (
+                    <>
+                        <GtkConstraint
+                            target={button}
+                            targetAttribute={A.START}
+                            sourceAttribute={A.START}
+                            constant={8}
+                        />
+                        <GtkConstraint target={button} targetAttribute={A.TOP} sourceAttribute={A.TOP} constant={8} />
+                        <GtkConstraint
+                            target={button}
+                            targetAttribute={A.WIDTH}
+                            sourceAttribute={A.WIDTH}
+                            multiplier={0.5}
+                        />
+                    </>
+                )}
+            />,
+        );
+        const box = boxRef.current;
+        const button = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "A" });
+        const window = button.getRoot();
+
+        if (box === null || !(window instanceof Gtk.Window)) {
+            throw new Error("constraint layout has no window");
+        }
+
+        for (const width of [320, 480]) {
+            window.setDefaultSize(width, 240);
+            await waitFor(() => {
+                const [wasComputed, bounds] = button.computeBounds(box);
+                expect(wasComputed).toBe(true);
+                expect(box.getWidth()).toBe(width);
+                expect(bounds.getWidth()).toBe(width / 2);
+                expect(bounds.getX()).toBe(8);
+            });
+        }
+    });
+
     it("builds a constraint from a widget reference", async () => {
         const boxRef = createRef<Gtk.Box>();
         await render(<WidthBox boxRef={boxRef} constant={100} />);
@@ -571,10 +628,27 @@ describe("render - GtkConstraintGuide", () => {
 });
 
 describe("render - GtkConstraintLayout vfl", () => {
-    it("adds the constraints a VFL description expands to", async () => {
+    it("allocates equal buttons with the gaps described by VFL", async () => {
         const boxRef = createRef<Gtk.Box>();
-        await render(<VflBox boxRef={boxRef} lines={VFL_LINES} />);
-        expect(collectConstraints(layoutFrom(boxRef)).length).toBeGreaterThanOrEqual(5);
+        await render(<VflBox boxRef={boxRef} lines={WIDER_VFL_LINES} />);
+        const box = boxRef.current;
+        const a = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "A" });
+        const b = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "B" });
+
+        if (box === null) {
+            throw new Error("VFL layout was not mounted");
+        }
+
+        await waitFor(() => {
+            const [aComputed, aBounds] = a.computeBounds(box);
+            const [bComputed, bBounds] = b.computeBounds(box);
+            expect(aComputed && bComputed).toBe(true);
+            expect(aBounds.getWidth()).toBeGreaterThan(0);
+            expect(aBounds.getWidth()).toBe(bBounds.getWidth());
+            expect(aBounds.getX()).toBe(8);
+            expect(bBounds.getX() - aBounds.getX() - aBounds.getWidth()).toBe(12);
+            expect(bBounds.getX() + bBounds.getWidth()).toBe(box.getWidth() - 8);
+        });
     });
 
     it("re-parses the description when the lines change", async () => {
@@ -607,9 +681,7 @@ describe("render - GtkConstraintLayout vfl", () => {
         expect(independent?.isAttached()).toBe(true);
         expect(collectConstraints(layout).length).toBeGreaterThan(1);
         expect(collectConstraints(layout)).toContain(independent);
-        await rerender(
-            <VflBox boxRef={boxRef} lines={VFL_LINES} constraints={constraints} hasDescription={false} />,
-        );
+        await rerender(<VflBox boxRef={boxRef} lines={VFL_LINES} constraints={constraints} hasDescription={false} />);
         const remaining = onlyConstraint(boxRef);
         expect(remaining).toBe(independent);
         expect(remaining.isAttached()).toBe(true);
@@ -869,11 +941,15 @@ describe("render - AdwMultiLayoutView", () => {
     it("fills each AdwLayout with the content declared as its children", async () => {
         const { view } = await renderView("wide");
 
-        expect(view.getLayoutByName("wide")?.getContent())
-            .toHaveObjectProperty("orientation", Gtk.Orientation.HORIZONTAL);
+        expect(view.getLayoutByName("wide")?.getContent()).toHaveObjectProperty(
+            "orientation",
+            Gtk.Orientation.HORIZONTAL,
+        );
 
-        expect(view.getLayoutByName("narrow")?.getContent())
-            .toHaveObjectProperty("orientation", Gtk.Orientation.VERTICAL);
+        expect(view.getLayoutByName("narrow")?.getContent()).toHaveObjectProperty(
+            "orientation",
+            Gtk.Orientation.VERTICAL,
+        );
     });
 
     it("places named slot children through the view", async () => {

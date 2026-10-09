@@ -41,12 +41,7 @@ export type { Camelized, Dashed, ReadableProperties, WritableProperties } from "
 export { installMatchInfo, matchAllRegex, matchRegex, replaceRegexEval } from "./regex.js";
 export { getExactWrapperClass, getVfuncRegistry, peekTypeClass, resolveWrapperClass } from "./registry.js";
 export type { SignalMethodReceiver };
-export {
-    classSignalMember,
-    naturalSignalMember,
-    signalEmitMapOverride,
-    signalMapOverride,
-} from "./signal-brand.js";
+export { classSignalMember, naturalSignalMember, signalEmitMapOverride, signalMapOverride } from "./signal-brand.js";
 export { emitSignalByName, signalConnect, signalEmit };
 export { hasSignalListener } from "./signal.js";
 export {

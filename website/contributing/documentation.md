@@ -24,14 +24,14 @@ Guides and tutorials explain tasks; API reference pages describe callable contra
 
 [`website/versions.json`](https://github.com/gtkx-org/gtkx/blob/main/website/versions.json) defines each documented version:
 
-| Field | Purpose |
-| --- | --- |
-| Version id and label | Identify the version and label its switcher entry. |
-| URL prefix | Place its guides, tutorial, and reference. |
-| Aliases | Retain previous prefixes with static redirects and text downloads. |
-| Status | Mark it as `current`, `prerelease`, or `old`. |
-| Examples ref | Select the git ref used by the Examples navigation link. |
-| Reference source | Build the API reference from `worktree` or a pinned `tag` and commit. |
+| Field                | Purpose                                                               |
+| -------------------- | --------------------------------------------------------------------- |
+| Version id and label | Identify the version and label its switcher entry.                    |
+| URL prefix           | Place its guides, tutorial, and reference.                            |
+| Aliases              | Retain previous prefixes with static redirects and text downloads.    |
+| Status               | Mark it as `current`, `prerelease`, or `old`.                         |
+| Examples ref         | Select the git ref used by the Examples navigation link.              |
+| Reference source     | Build the API reference from `worktree` or a pinned `tag` and commit. |
 
 The manifest drives navigation, sidebars, page mapping between versions, banners, canonical URLs, per-version `llms.txt` and `llms-full.txt`, and TypeDoc output paths.
 
@@ -74,6 +74,7 @@ Complete promotion on the prepared release branch before advancing `main`. That 
    ```
 
    Check the landing links, version switcher, guide and tutorial sidebars, local search, generated references, old page anchors, and each version's `llms.txt` and `llms-full.txt`. The promoted version should be labeled stable, and archived pages should show their old-version banner. Inspect the root and archived Markdown downloads too.
+
 6. Include these changes in the reviewed, signed release-branch history, then follow [Review and advance main](/contributing/releases#review-and-advance-main). A subsequent Release PR workflow run rebuilds that branch from `main`; it must not discard the reviewed promotion changes.
 
 The script moves each version's `guide`, `tutorial`, and `reference` directories, updates `versions.json`, and synchronizes the Nx reference output paths. It rewrites absolute documentation links in website Markdown by the version they target, preserving intentional links between versions. It does not rewrite beta prose or package commands, and it does not edit files outside `website/`. Generated reference links are corrected by regeneration.

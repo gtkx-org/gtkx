@@ -8,11 +8,7 @@ import { primitiveCategoryFor } from "../../analysis/type-shape.js";
 const ASYNC_SUFFIX = "_async";
 const FINISH_SUFFIX = "_finish";
 
-const matchAsyncFinish = (
-    library: Library,
-    fn: GirFunction,
-    siblings: GirFunction[],
-): GirFunction | undefined => {
+const matchAsyncFinish = (library: Library, fn: GirFunction, siblings: GirFunction[]): GirFunction | undefined => {
     if (!hasPromisifiableCallbacks(library, fn)) {
         return undefined;
     }
@@ -63,9 +59,10 @@ const claimedFinishSiblings = (fn: GirFunction, siblings: GirFunction[]): Set<Gi
     const claimed: Set<GirFunction> = new Set();
 
     for (const sibling of siblings) {
-        const finishFn = sibling === fn
-            ? undefined
-            : annotatedFinishSibling(sibling, siblings) ?? derivedFinishSibling(sibling, siblings);
+        const finishFn =
+            sibling === fn
+                ? undefined
+                : (annotatedFinishSibling(sibling, siblings) ?? derivedFinishSibling(sibling, siblings));
 
         if (finishFn !== undefined) {
             claimed.add(finishFn);
@@ -78,8 +75,10 @@ const claimedFinishSiblings = (fn: GirFunction, siblings: GirFunction[]): Set<Gi
 const genericFinishSibling = (library: Library, fn: GirFunction, siblings: GirFunction[]): GirFunction | undefined => {
     const claimed = claimedFinishSiblings(fn, siblings);
 
-    const candidates = siblings.filter((sibling) =>
-        sibling.name.endsWith(FINISH_SUFFIX) && !claimed.has(sibling) && isPromisifiableFinish(library, sibling));
+    const candidates = siblings.filter(
+        (sibling) =>
+            sibling.name.endsWith(FINISH_SUFFIX) && !claimed.has(sibling) && isPromisifiableFinish(library, sibling),
+    );
 
     return candidates.length === 1 ? candidates[0] : undefined;
 };
@@ -96,17 +95,13 @@ const isAsyncReadyCallback = (library: Library, ref: TypeId | undefined): boolea
 const isVoidCallback = (library: Library, ref: TypeId | undefined): boolean => {
     const resolved = ref === undefined ? undefined : library.typeFor(ref);
 
-    return resolved?.kind === "callback" &&
-        primitiveCategoryFor(library, resolved.value.returnValue.type) === "void";
+    return resolved?.kind === "callback" && primitiveCategoryFor(library, resolved.value.returnValue.type) === "void";
 };
 
 const hasPromisifiableCallbacks = (library: Library, fn: GirFunction): boolean => {
-    const callbackParameters = fn.parameters.filter((parameter) =>
-        isCallbackParameter(library, parameter.type));
-    const readyCallbacks = callbackParameters.filter((parameter) =>
-        isAsyncReadyCallback(library, parameter.type));
-    const sideCallbacks = callbackParameters.filter((parameter) =>
-        !isAsyncReadyCallback(library, parameter.type));
+    const callbackParameters = fn.parameters.filter((parameter) => isCallbackParameter(library, parameter.type));
+    const readyCallbacks = callbackParameters.filter((parameter) => isAsyncReadyCallback(library, parameter.type));
+    const sideCallbacks = callbackParameters.filter((parameter) => !isAsyncReadyCallback(library, parameter.type));
 
     return readyCallbacks.length === 1 && sideCallbacks.every((parameter) => isVoidCallback(library, parameter.type));
 };
@@ -139,10 +134,7 @@ const externalFinishOwnerIn = (namespace: GirNamespace, finishFunc: string): Ext
     return undefined;
 };
 
-const externalFinishOwner = (
-    library: Library,
-    fn: GirFunction,
-): ExternalFinishOwner | undefined => {
+const externalFinishOwner = (library: Library, fn: GirFunction): ExternalFinishOwner | undefined => {
     const finishFunc = fn.finishFunc;
 
     if (finishFunc === undefined) {

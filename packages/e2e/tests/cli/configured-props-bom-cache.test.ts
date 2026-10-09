@@ -2,13 +2,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createCliProject } from "./cli-project.js";
-import {
-    installConfiguredProps,
-    readButton,
-    runDocs,
-    stamp,
-    writePropsConfig,
-} from "./configured-props-fixture.js";
+import { installConfiguredProps, readButton, runDocs, stamp, writePropsConfig } from "./configured-props-fixture.js";
 
 describe("configured element prop reference", () => {
     it.each(["utf8", "utf16le"] as const)("keeps unchanged %s BOM declarations cached", (encoding) => {

@@ -75,9 +75,9 @@ const unreachableStoreError = (generated: GeneratedModule, options: StoreOptions
 
     return new Error(
         `Cannot resolve "${generated.source}": the generated store in ${options.storeDir} does provide ` +
-        `${provided}, but its link at ${options.linkDir} is not on the module resolution path of ` +
-        `${generated.importer}. Codegen writes the store into the node_modules the installed @gtkx packages ` +
-        "resolve from; install them where the importing file reaches them, then run gtkx codegen again.",
+            `${provided}, but its link at ${options.linkDir} is not on the module resolution path of ` +
+            `${generated.importer}. Codegen writes the store into the node_modules the installed @gtkx packages ` +
+            "resolve from; install them where the importing file reaches them, then run gtkx codegen again.",
     );
 };
 
@@ -87,22 +87,22 @@ const undeclaredLibraryError = (source: string, namespace: string, girPath: stri
     if (identifier === undefined) {
         return new Error(
             `Cannot resolve "${source}": the binding store has no "${namespace}" module, and no ` +
-            `GIR data for it was found in [${girPath.join(", ")}]. If "${namespace}" is a library, install ` +
-            "its gobject-introspection data package. Adw-1 is bound by default and pulls in Gtk-4.0; add only other " +
-            "GIR identifiers to `libraries` in gtkx.config.ts. Otherwise run gtkx codegen to regenerate the store.",
+                `GIR data for it was found in [${girPath.join(", ")}]. If "${namespace}" is a library, install ` +
+                "its gobject-introspection data package. Adw-1 is bound by default and pulls in Gtk-4.0; add only other " +
+                "GIR identifiers to `libraries` in gtkx.config.ts. Otherwise run gtkx codegen to regenerate the store.",
         );
     }
 
     if (DEFAULT_LIBRARY_NAMESPACES.has(namespace)) {
         return new Error(
             `Cannot resolve "${source}": the "${identifier}" bindings have not been generated. ` +
-            "The Adwaita and GTK namespaces are generated implicitly; run gtkx dev or gtkx build again.",
+                "The Adwaita and GTK namespaces are generated implicitly; run gtkx dev or gtkx build again.",
         );
     }
 
     return new Error(
         `Cannot resolve "${source}": the "${identifier}" bindings have not been generated. ` +
-        `Add "${identifier}" to \`libraries\` in gtkx.config.ts, then run gtkx dev or gtkx build again.`,
+            `Add "${identifier}" to \`libraries\` in gtkx.config.ts, then run gtkx dev or gtkx build again.`,
     );
 };
 

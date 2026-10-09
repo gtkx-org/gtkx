@@ -97,15 +97,15 @@ For nullable value parameters, `null` means no value object. To represent a type
 
 GTKX 1.6 lets you adopt the 2.0 behavior one change at a time. Enable a flag, regenerate, typecheck, and run the app and its tests before moving to the next one. Typechecking catches many changes, but cannot identify every behavioral difference, such as how a typed array is serialized.
 
-| Flag | Change to prepare for |
-| --- | --- |
-| `v2ByteArrays` | Returned byte sequences become `Uint8Array`. Inputs continue to accept `number[]` too. Update array mutation and serialization code. |
-| `v2ValueReturns` | Returned `GObject.Value` objects become their payloads, typed as `unknown`. Handle the payload type at the call site. |
-| `v2FinishResults` | Promisified operations omit a redundant success boolean when failure already rejects. Update tuple destructuring; see [Async Operations](/guide/async-operations). |
-| `v2InoutReturns` | Inout records and boxed values are updated in place without being repeated in the return value. Primitive inout results remain. |
-| `v2ResourceImports` | Asset imports use relative paths and explicit queries. See the example below. |
-| `v2DefaultLibraries` | Adwaita becomes a default dependency. Install its GIR data and run the app to check its appearance. |
-| `v2TreeShaking` | Production builds drop unused generated classes. Import any class whose registration the app needs at runtime. |
+| Flag                 | Change to prepare for                                                                                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `v2ByteArrays`       | Returned byte sequences become `Uint8Array`. Inputs continue to accept `number[]` too. Update array mutation and serialization code.                               |
+| `v2ValueReturns`     | Returned `GObject.Value` objects become their payloads, typed as `unknown`. Handle the payload type at the call site.                                              |
+| `v2FinishResults`    | Promisified operations omit a redundant success boolean when failure already rejects. Update tuple destructuring; see [Async Operations](/guide/async-operations). |
+| `v2InoutReturns`     | Inout records and boxed values are updated in place without being repeated in the return value. Primitive inout results remain.                                    |
+| `v2ResourceImports`  | Asset imports use relative paths and explicit queries. See the example below.                                                                                      |
+| `v2DefaultLibraries` | Adwaita becomes a default dependency. Install its GIR data and run the app to check its appearance.                                                                |
+| `v2TreeShaking`      | Production builds drop unused generated classes. Import any class whose registration the app needs at runtime.                                                     |
 
 ### Migrating resource imports
 

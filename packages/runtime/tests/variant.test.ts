@@ -104,7 +104,10 @@ describe("a value packed for a container type", () => {
     });
 
     it("round trips a shape nesting arrays, tuples and dictionaries", () => {
-        const value: [string, Record<string, string[]>][] = [["one", { a: ["b", "c"] }], ["two", {}]];
+        const value: [string, Record<string, string[]>][] = [
+            ["one", { a: ["b", "c"] }],
+            ["two", {}],
+        ];
         expect(new GLib.Variant("a(sa{sas})", value).deepUnpack()).toEqual(value);
     });
 

@@ -11,8 +11,14 @@ const callAbiFixture = (): string => {
 
     beforeAll(() => {
         execFileSync(resolveExecutable("cc"), [
-            "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror",
-            join(import.meta.dirname, "../fixtures/call-abi.c"), "-o", library,
+            "-shared",
+            "-fPIC",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            join(import.meta.dirname, "../fixtures/call-abi.c"),
+            "-o",
+            library,
         ]);
     });
 

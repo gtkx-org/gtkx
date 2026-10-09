@@ -20,7 +20,7 @@ describe("Unicode keyboard input", () => {
         await render(
             <GtkBox
                 name="keys"
-                controllers={(
+                controllers={
                     <GtkEventControllerKey
                         onKeyPressed={(keyval) => {
                             pressed.push(Gdk.keyvalToUnicode(keyval));
@@ -31,7 +31,7 @@ describe("Unicode keyboard input", () => {
                             released.push(Gdk.keyvalToUnicode(keyval));
                         }}
                     />
-                )}
+                }
             />,
         );
 
@@ -123,17 +123,17 @@ describe("keyboard mnemonics", () => {
             <GtkCheckButton
                 name="remember"
                 label="Remember"
-                controllers={(
+                controllers={
                     <GtkShortcutController
                         mnemonicModifiers={Gdk.ModifierType.CONTROL_MASK}
-                        shortcuts={(
+                        shortcuts={
                             <GtkShortcut
                                 trigger={new Gtk.MnemonicTrigger({ keyval: Gdk.KEY_r })}
                                 action={Gtk.MnemonicAction.get()}
                             />
-                        )}
+                        }
                     />
-                )}
+                }
             />,
         );
 

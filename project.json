@@ -15,37 +15,37 @@
             }
         },
         "_build:bindings": {
-            "command": "node --import ./scripts/tsx.ts packages/cli/src/cli.ts codegen --config scripts/gtkx.bootstrap.ts",
-            "cache": false,
-            "dependsOn": [
-                "@gtkx/native:build"
-            ],
-            "outputs": [
-                "{workspaceRoot}/node_modules/.gtkx/gi/**/*.{js,d.ts,json}",
-                "{workspaceRoot}/node_modules/.gtkx/jsx/**/*.{js,d.ts,json}",
-                "{workspaceRoot}/node_modules/.gtkx/*.d.ts"
+            "command": "node scripts/ci/run.mjs 'node --import ./scripts/tsx.ts packages/cli/src/cli.ts codegen --config scripts/gtkx.bootstrap.ts'",
+            "cache": true,
+            "dependsOn": ["@gtkx/native:build"],
+            "outputs": ["{workspaceRoot}/node_modules/.gtkx"],
+            "inputs": [
+                "default",
+                "{workspaceRoot}/**/*.{js,jsx,mjs,mts,ts,tsx,json,xml,po,pot}",
+                "{workspaceRoot}/packages/codegen/overrides/**/*",
+                "nativeEnvironment",
+                "{workspaceRoot}/scripts/ci/**/*"
             ]
         },
         "codegen": {
-            "command": "node packages/cli/dist/cli.js codegen",
-            "cache": false,
-            "dependsOn": [
-                "@gtkx/cli:build"
-            ],
-            "outputs": [
-                "{workspaceRoot}/node_modules/.gtkx/gi/**/*.{js,d.ts,json}",
-                "{workspaceRoot}/node_modules/.gtkx/jsx/**/*.{js,d.ts,json}",
-                "{workspaceRoot}/node_modules/.gtkx/*.d.ts",
-                "{workspaceRoot}/.gtkx/reference"
+            "command": "node scripts/ci/run.mjs 'node packages/cli/dist/cli.js codegen'",
+            "cache": true,
+            "dependsOn": ["@gtkx/cli:build"],
+            "outputs": ["{workspaceRoot}/.gtkx/reference"],
+            "inputs": [
+                "default",
+                "^production",
+                {
+                    "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
+                    "transitive": true
+                },
+                "{workspaceRoot}/scripts/ci/**/*"
             ]
         },
         "typecheck": {
-            "command": "tsc --noEmit",
+            "command": "node scripts/ci/run.mjs 'tsc --noEmit'",
             "cache": true,
-            "dependsOn": [
-                "build",
-                "^typecheck"
-            ],
+            "dependsOn": ["build", "^typecheck"],
             "inputs": [
                 "{workspaceRoot}/tsconfig.json",
                 "{workspaceRoot}/eslint.config.ts",
@@ -58,38 +58,34 @@
                 {
                     "dependentTasksOutputFiles": "**/*.{d.ts,d.mts}",
                     "transitive": true
-                }
+                },
+                "{workspaceRoot}/scripts/ci/**/*"
             ]
         },
         "lint": {
-            "command": "eslint . --ignore-pattern packages --ignore-pattern examples --ignore-pattern tutorial --ignore-pattern website",
+            "command": "node scripts/ci/run.mjs 'oxlint . --ignore-pattern packages --ignore-pattern examples --ignore-pattern tutorial --ignore-pattern website'",
             "cache": true,
-            "dependsOn": [
-                "build",
-                "_lint:codescythe",
-                "_lint:workflows"
-            ],
+            "dependsOn": ["build", "_lint:codescythe", "_lint:workflows", "_lint:ci", "_lint:format"],
             "inputs": [
                 "default",
                 "^default",
                 "{workspaceRoot}/packages/native/.gitignore",
-                "{workspaceRoot}/website/.gitignore"
+                "{workspaceRoot}/website/.gitignore",
+                "{workspaceRoot}/scripts/ci/**/*",
+                "{workspaceRoot}/.oxlintrc.json",
+                "{workspaceRoot}/pnpm-lock.yaml"
             ]
         },
         "build": {
             "executor": "nx:noop",
-            "dependsOn": [
-                "codegen"
-            ],
-            "outputs": []
+            "dependsOn": ["codegen"],
+            "outputs": [],
+            "cache": true
         },
         "_lint:codescythe": {
-            "command": "tsx scripts/codescythe.ts",
+            "command": "node scripts/ci/run.mjs 'tsx scripts/codescythe.ts'",
             "cache": true,
-            "dependsOn": [
-                "_build:bindings",
-                "@gtkx/gl:codegen"
-            ],
+            "dependsOn": ["_build:bindings", "@gtkx/gl:codegen"],
             "inputs": [
                 "{workspaceRoot}/codescythe.json",
                 "{workspaceRoot}/package.json",
@@ -103,14 +99,13 @@
                 "{workspaceRoot}/examples/**/*",
                 "sharedGlobals",
                 {
-                    "externalDependencies": [
-                        "codescythe"
-                    ]
+                    "externalDependencies": ["codescythe"]
                 },
                 {
                     "dependentTasksOutputFiles": "**/*.{js,ts,json}",
                     "transitive": true
-                }
+                },
+                "{workspaceRoot}/scripts/ci/**/*"
             ]
         },
         "_registry:publish": {
@@ -118,12 +113,7 @@
             "continuous": true,
             "dependsOn": [
                 {
-                    "projects": [
-                        "@gtkx/*",
-                        "create-gtkx",
-                        "!@gtkx/e2e",
-                        "!@gtkx/website"
-                    ],
+                    "projects": ["@gtkx/*", "create-gtkx", "!@gtkx/e2e", "!@gtkx/website"],
                     "target": "build"
                 }
             ]
@@ -139,23 +129,43 @@
                 "{workspaceRoot}/project.json",
                 "{workspaceRoot}/.github/**/*",
                 {
-                    "runtime": "go version"
+                    "runtime": "node scripts/ci/run.mjs 'go version'"
                 },
                 {
-                    "runtime": "shellcheck --version"
+                    "runtime": "node scripts/ci/run.mjs 'shellcheck --version'"
                 },
                 {
                     "env": "SHELLCHECK_OPTS"
-                }
+                },
+                "{workspaceRoot}/scripts/ci/**/*",
+                "{workspaceRoot}/scripts/ci/**/*.sh"
             ],
             "outputs": [],
             "options": {
                 "parallel": false,
                 "commands": [
-                    "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -pyflakes=",
-                    "bash -euo pipefail -c 'for action in .github/actions/*/action.yml .github/actions/*/action.yaml; do if [ -f \"$action\" ]; then go run github.com/mikefarah/yq/v4@v4.54.1 \"{\\\"on\\\":\\\"push\\\",\\\"jobs\\\":{\\\"composite\\\":{\\\"runs-on\\\":\\\"ubuntu-latest\\\",\\\"steps\\\":.runs.steps}}}\" \"$action\" | go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -pyflakes= -stdin-filename \"$action\" -; fi; done'"
+                    "node scripts/ci/run.mjs 'go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -pyflakes='",
+                    "node scripts/ci/run.mjs 'bash -euo pipefail -c '\\''for action in .github/actions/*/action.yml .github/actions/*/action.yaml; do if [ -f \"$action\" ]; then go run github.com/mikefarah/yq/v4@v4.54.1 \"{\\\"on\\\":{\\\"workflow_dispatch\\\":{\\\"inputs\\\":((.inputs // {}) | with_entries(.value.type = \\\"string\\\"))}},\\\"jobs\\\":{\\\"composite\\\":{\\\"runs-on\\\":\\\"ubuntu-latest\\\",\\\"steps\\\":.runs.steps}}}\" \"$action\" | go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -pyflakes= -stdin-filename \"$action\" -; fi; done'\\'''",
+                    "node scripts/ci/run.mjs 'shellcheck scripts/ci/*.sh'"
                 ]
             }
+        },
+        "_lint:ci": {
+            "command": "node scripts/ci/run.mjs 'node --test scripts/ci/run.test.mjs'",
+            "cache": true,
+            "inputs": ["default", "^default", "{workspaceRoot}/scripts/ci/**/*"],
+            "outputs": []
+        },
+        "_lint:format": {
+            "command": "node scripts/ci/run.mjs 'oxfmt --check .'",
+            "cache": true,
+            "inputs": [
+                "{workspaceRoot}/**/*",
+                {
+                    "externalDependencies": ["oxfmt"]
+                }
+            ],
+            "outputs": []
         }
     }
 }

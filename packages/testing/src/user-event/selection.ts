@@ -22,11 +22,7 @@ const SELECTABLE_ROLES: Set<Gtk.AccessibleRole> = new Set([
 
 const isSelectable = (widget: Gtk.Widget): boolean => SELECTABLE_ROLES.has(widget.getAccessibleRole());
 
-const selectListViewItems = (
-    selectionModel: Gtk.SelectionModel,
-    positions: number[],
-    isExclusive: boolean,
-): void => {
+const selectListViewItems = (selectionModel: Gtk.SelectionModel, positions: number[], isExclusive: boolean): void => {
     if (positions.length === 0) {
         selectionModel.unselectRange(0, selectionModel.getNItems());
 
@@ -92,10 +88,7 @@ const applyIndexedChildren = (widget: Gtk.Widget, valueArray: number[], apply: I
     }
 };
 
-const requireSelectionModel = (
-    widget: CollectionWidget,
-    verb: string,
-): Gtk.SelectionModel => {
+const requireSelectionModel = (widget: CollectionWidget, verb: string): Gtk.SelectionModel => {
     const selectionModel = widget.getModel();
 
     if (selectionModel === null) {
@@ -113,9 +106,7 @@ const selectInListView = (widget: CollectionWidget, valueArray: number[]): void 
 
 const requireSelectableRole = (widget: Gtk.Widget, verb: string): void => {
     if (!isSelectable(widget)) {
-        throw new Error(
-            `Cannot ${verb} options: expected selectable widget (${formatRoleList(SELECTABLE_ROLES)})`,
-        );
+        throw new Error(`Cannot ${verb} options: expected selectable widget (${formatRoleList(SELECTABLE_ROLES)})`);
     }
 };
 

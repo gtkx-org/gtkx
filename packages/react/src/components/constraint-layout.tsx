@@ -5,9 +5,7 @@ import { useMergedRef } from "../hooks/use-merged-refs.js";
 
 type ConstraintLayoutProps = GtkConstraintLayoutProps & { ref?: Ref<Gtk.ConstraintLayout> };
 
-const createConstraintLayoutComponent = (
-    Component: ElementType,
-): ((props: ConstraintLayoutProps) => ReactNode) => {
+const createConstraintLayoutComponent = (Component: ElementType): ((props: ConstraintLayoutProps) => ReactNode) => {
     const ConstraintLayout = ({ vfl, ref, ...props }: ConstraintLayoutProps): ReactNode => {
         const layoutRef = useRef<Gtk.ConstraintLayout | null>(null);
         const mergedRef = useMergedRef(ref, layoutRef);
@@ -19,12 +17,14 @@ const createConstraintLayoutComponent = (
                 return;
             }
 
-            const constraints = (vfl ?? []).flatMap((item) => layout.addConstraintsFromDescription(
-                item.lines,
-                item.hspacing ?? 0,
-                item.vspacing ?? 0,
-                item.views ?? new Map<string, Gtk.ConstraintTarget>(),
-            ));
+            const constraints = (vfl ?? []).flatMap((item) =>
+                layout.addConstraintsFromDescription(
+                    item.lines,
+                    item.hspacing ?? 0,
+                    item.vspacing ?? 0,
+                    item.views ?? new Map<string, Gtk.ConstraintTarget>(),
+                ),
+            );
 
             return () => {
                 for (const constraint of constraints) {

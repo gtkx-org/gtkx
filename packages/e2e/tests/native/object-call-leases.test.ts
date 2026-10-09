@@ -61,10 +61,19 @@ beforeAll(() => {
     const library = join(temporary, "libgtkx-object-worker.so");
     const flags = execFileSync(resolveExecutable("pkg-config"), ["--cflags", "--libs", "gobject-2.0"], {
         encoding: "utf8",
-    }).trim().split(/\s+/);
+    })
+        .trim()
+        .split(/\s+/);
     execFileSync(resolveExecutable("cc"), [
-        "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror",
-        join(import.meta.dirname, "fixtures/object-worker.c"), "-o", library, ...flags,
+        "-shared",
+        "-fPIC",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        join(import.meta.dirname, "fixtures/object-worker.c"),
+        "-o",
+        library,
+        ...flags,
     ]);
     const offset = bind(library, "gtkx_worker_object_value_offset", [], { kind: "uint32" });
     const type = resolveType(library, "gtkx_worker_object_get_type");
@@ -148,9 +157,12 @@ test("a reentrant native call keeps its enclosing object's lease alive", async (
 
     try {
         await collectWrapper(subject);
-        const duringCall = call(nested, [subject.nested, () => {
-            call(fixture.release, [null]);
-        }]).value;
+        const duringCall = call(nested, [
+            subject.nested,
+            () => {
+                call(fixture.release, [null]);
+            },
+        ]).value;
         expect(duringCall).toBe(0);
         expect(call(fixture.finalized, []).value).toBe(1);
     } finally {
@@ -168,9 +180,12 @@ test("a rejected callback releases its enclosing native object's lease", async (
     try {
         await collectWrapper(subject);
         expect(() => {
-            call(nested, [subject.nested, () => {
-                throw new Error("The callback rejected the operation");
-            }]);
+            call(nested, [
+                subject.nested,
+                () => {
+                    throw new Error("The callback rejected the operation");
+                },
+            ]);
         }).toThrow();
         call(fixture.cancel, []);
         expect(call(fixture.finalized, []).value).toBe(1);

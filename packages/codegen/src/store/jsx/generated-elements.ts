@@ -35,8 +35,7 @@ const collectGeneratedElements = (intrinsicElements: GlibNamedClass[]): Generate
         }))
         .toSorted((a, b) => a.glibName.localeCompare(b.glibName));
 
-const renderGeneratedElements = (elements: GeneratedElement[]): string =>
-    `${JSON.stringify(elements, null, 2)}\n`;
+const renderGeneratedElements = (elements: GeneratedElement[]): string => `${JSON.stringify(elements, null, 2)}\n`;
 
 const isGeneratedElement = (value: unknown): value is GeneratedElement =>
     hasFields<GeneratedElement>(value, {
@@ -46,8 +45,7 @@ const isGeneratedElement = (value: unknown): value is GeneratedElement =>
         isMountable: isBoolean,
     });
 
-const isGeneratedInventory = (value: unknown): value is GeneratedElement[] =>
-    arrayGuard(isGeneratedElement)(value);
+const isGeneratedInventory = (value: unknown): value is GeneratedElement[] => arrayGuard(isGeneratedElement)(value);
 
 /**
  * Reads the generated JSX inventory without importing the store or resolving its build-only

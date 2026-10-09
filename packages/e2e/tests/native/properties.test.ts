@@ -376,8 +376,18 @@ test("PropertiesAccessorsObject accessor methods round trip boxed container and 
     const ao = GIMarshallingTests.PropertiesAccessorsObject.new();
     ao.setByteArray(new Uint8Array([9, 8]));
     expect(ao.getByteArray()).toEqual(new Uint8Array([9, 8]));
-    ao.setHashTable(new Map([[3, "three"], [-4, "minus four"]]));
-    expect(ao.getHashTable()).toEqual(new Map([[3, "three"], [-4, "minus four"]]));
+    ao.setHashTable(
+        new Map([
+            [3, "three"],
+            [-4, "minus four"],
+        ]),
+    );
+    expect(ao.getHashTable()).toEqual(
+        new Map([
+            [3, "three"],
+            [-4, "minus four"],
+        ]),
+    );
     ao.setBoxedStruct(new GIMarshallingTests.BoxedStruct({ long: 77n }));
     expect(ao.getBoxedStruct().long).toBe(77n);
     ao.setVariant(GLib.Variant.newInt32(31));
@@ -443,7 +453,7 @@ test("PropertiesAccessorsObject accessor methods reject invalid values", () => {
     }).toThrow();
     expect(() => {
         // @ts-expect-error 65535 is not a Flags member
-        ao.setFlags(0xFF_FF);
+        ao.setFlags(0xff_ff);
     }).toThrow();
     expect(ao.getInt()).toBe(0);
 });
@@ -455,7 +465,7 @@ test("TestObj properties are set at construct time", () => {
         int: 42,
         float: 3.5,
         double: 2.5,
-        unichar: 0x10_FF_FF,
+        unichar: 0x10_ff_ff,
         bare,
     });
     expect(obj.string).toBe("hello");
@@ -463,7 +473,7 @@ test("TestObj properties are set at construct time", () => {
     expect(obj.int).toBe(42);
     expect(obj.float).toBe(3.5);
     expect(obj.double).toBe(2.5);
-    expect(obj.unichar).toBe(0x10_FF_FF);
+    expect(obj.unichar).toBe(0x10_ff_ff);
     expect(obj.bare).toBe(bare);
 });
 
@@ -492,8 +502,8 @@ test("TestObj gtype and unichar properties round trip", () => {
     expect(obj.unichar).toBe(0);
     obj.unichar = 0x26_65;
     expect(obj.unichar).toBe(0x26_65);
-    obj.unichar = 0x10_FF_FF;
-    expect(obj.unichar).toBe(0x10_FF_FF);
+    obj.unichar = 0x10_ff_ff;
+    expect(obj.unichar).toBe(0x10_ff_ff);
 });
 
 test("TestObj write-only property resets int and reads as undefined", () => {

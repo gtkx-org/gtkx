@@ -33,7 +33,8 @@ const renderGroup = (group: IniGroup): string[] => [
 ];
 
 const renderIni = (groups: IniGroup[]): string =>
-    [...groups.flatMap((group, index) => (index === 0 ? renderGroup(group) : ["", ...renderGroup(group)])), ""]
-        .join("\n");
+    [...groups.flatMap((group, index) => (index === 0 ? renderGroup(group) : ["", ...renderGroup(group)])), ""].join(
+        "\n",
+    );
 
 export { type IniGroup, renderIni };

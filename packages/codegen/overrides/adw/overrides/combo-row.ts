@@ -117,8 +117,13 @@ Object.defineProperty(ComboRow.prototype, initializeWrapper, {
                 trackFactory(row, state);
             }
         });
-        connectNativeSignal(this, "destroy", () => {
-            destroyRow(state);
-        }, ConnectFlags.DEFAULT);
+        connectNativeSignal(
+            this,
+            "destroy",
+            () => {
+                destroyRow(state);
+            },
+            ConnectFlags.DEFAULT,
+        );
     },
 });

@@ -2,68 +2,68 @@
     "extends": "../../tsconfig.base.json",
     "files": [],
     "references": [
-      {
-        "path": "../create-gtkx"
-      },
-      {
-        "path": "../vitest"
-      },
-      {
-        "path": "../utils"
-      },
-      {
-        "path": "../testing"
-      },
-      {
-        "path": "../storybook"
-      },
-      {
-        "path": "../runtime"
-      },
-      {
-        "path": "../navigation"
-      },
-      {
-        "path": "../native"
-      },
-      {
-        "path": "../mcp"
-      },
-      {
-        "path": "../i18n"
-      },
-      {
-        "path": "../gl"
-      },
-      {
-        "path": "../forms"
-      },
-      {
-        "path": "../css"
-      },
-      {
-        "path": "../components"
-      },
-      {
-        "path": "../codegen"
-      },
-      {
-        "path": "../cli"
-      },
-      {
-        "path": "../cairo"
-      },
-      {
-        "path": "../animated"
-      },
-      {
-        "path": "../config"
-      },
-      {
-        "path": "../react"
-      },
-      {
-        "path": "./tsconfig.test.json"
-      }
+        {
+            "path": "../create-gtkx"
+        },
+        {
+            "path": "../vitest"
+        },
+        {
+            "path": "../utils"
+        },
+        {
+            "path": "../testing"
+        },
+        {
+            "path": "../storybook"
+        },
+        {
+            "path": "../runtime"
+        },
+        {
+            "path": "../navigation"
+        },
+        {
+            "path": "../native"
+        },
+        {
+            "path": "../mcp"
+        },
+        {
+            "path": "../i18n"
+        },
+        {
+            "path": "../gl"
+        },
+        {
+            "path": "../forms"
+        },
+        {
+            "path": "../css"
+        },
+        {
+            "path": "../components"
+        },
+        {
+            "path": "../codegen"
+        },
+        {
+            "path": "../cli"
+        },
+        {
+            "path": "../cairo"
+        },
+        {
+            "path": "../animated"
+        },
+        {
+            "path": "../config"
+        },
+        {
+            "path": "../react"
+        },
+        {
+            "path": "./tsconfig.test.json"
+        }
     ]
 }

@@ -92,11 +92,7 @@ const isMovedOntoEmittedMember = (context: ModuleContext, namespaceName: string,
     return members.some((member) => member.name === memberName);
 };
 
-const isEmittableNamespaceFunction = (
-    context: ModuleContext,
-    namespaceName: string,
-    fn: GirFunction,
-): boolean =>
+const isEmittableNamespaceFunction = (context: ModuleContext, namespaceName: string, fn: GirFunction): boolean =>
     fn.introspectable &&
     !isMovedOntoEmittedMember(context, namespaceName, fn) &&
     fn.shadowedBy === undefined &&
@@ -179,9 +175,8 @@ const renderNamespaceFunctionDeclaration = (options: NamespaceFunctionOptions): 
     const descriptorFreeSpec = DESCRIPTOR_FREE_PROPERTY_SPEC_FACTORIES.has(fn.cIdentifier ?? "")
         ? context.addRuntimeInternalTypeImport("DescriptorFreePropertySpec")
         : undefined;
-    const returnType = descriptorFreeSpec === undefined
-        ? renderedReturnType
-        : `${descriptorFreeSpec}<${renderedReturnType}>`;
+    const returnType =
+        descriptorFreeSpec === undefined ? renderedReturnType : `${descriptorFreeSpec}<${renderedReturnType}>`;
     const body = renderMethodBody(context, fn, { bindingExpression: bindingName, returnTypeOverride: returnType });
 
     return renderBlock(`export function ${exportName}(${signature}): ${returnType}`, body);
@@ -238,9 +233,4 @@ const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, ex
     }
 };
 
-export {
-    renderFnExpression,
-    generateNamespaceFunction,
-    isEmittableNamespaceFunction,
-    namespaceFunctionExportName,
-};
+export { renderFnExpression, generateNamespaceFunction, isEmittableNamespaceFunction, namespaceFunctionExportName };

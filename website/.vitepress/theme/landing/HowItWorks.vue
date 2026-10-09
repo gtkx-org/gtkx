@@ -4,44 +4,44 @@ import CodeBlock from "../components/CodeBlock.vue";
 </script>
 
 <template>
-  <section id="how" class="how">
-    <div class="how__head section-head">
-      <h2 class="section-title">From JSX to a native window</h2>
-    </div>
+    <section id="how" class="how">
+        <div class="how__head section-head">
+            <h2 class="section-title">From JSX to a native window</h2>
+        </div>
 
-    <div class="how__step">
-      <div class="how__text">
-        <h3 class="how__name">Choose your native libraries</h3>
-        <p class="how__body">
-          Adwaita and GTK are included by default. Add libraries such as WebKitGTK to your
-          configuration, then generate their bindings from the installed introspection files.
-        </p>
-      </div>
-      <CodeBlock title="gtkx.config.ts" :snippet="snippets.config" />
-    </div>
+        <div class="how__step">
+            <div class="how__text">
+                <h3 class="how__name">Choose your native libraries</h3>
+                <p class="how__body">
+                    Adwaita and GTK are included by default. Add libraries such as WebKitGTK to your configuration, then
+                    generate their bindings from the installed introspection files.
+                </p>
+            </div>
+            <CodeBlock title="gtkx.config.ts" :snippet="snippets.config" />
+        </div>
 
-    <div class="how__step  how__step--rev">
-      <div class="how__text">
-        <h3 class="how__name">Describe the interface</h3>
-        <p class="how__body">
-          Use JSX for widgets and the objects they depend on. Props configure them,
-          and signal handlers connect user input to your application state.
-        </p>
-      </div>
-      <CodeBlock title="src/app.tsx" :snippet="snippets.app" />
-    </div>
+        <div class="how__step  how__step--rev">
+            <div class="how__text">
+                <h3 class="how__name">Describe the interface</h3>
+                <p class="how__body">
+                    Use JSX for widgets and the objects they depend on. Props configure them, and signal handlers
+                    connect user input to your application state.
+                </p>
+            </div>
+            <CodeBlock title="src/app.tsx" :snippet="snippets.app" />
+        </div>
 
-    <div class="how__step">
-      <div class="how__text">
-        <h3 class="how__name">Use Node.js and npm</h3>
-        <p class="how__body">
-          Read files, make network requests, and use libraries such as Zustand and Zod.
-          Your app runs on Node.js; packages that require a browser DOM need a native alternative.
-        </p>
-      </div>
-      <CodeBlock title="Terminal" :snippet="snippets.ecosystem" />
-    </div>
-  </section>
+        <div class="how__step">
+            <div class="how__text">
+                <h3 class="how__name">Use Node.js and npm</h3>
+                <p class="how__body">
+                    Read files, make network requests, and use libraries such as Zustand and Zod. Your app runs on
+                    Node.js; packages that require a browser DOM need a native alternative.
+                </p>
+            </div>
+            <CodeBlock title="Terminal" :snippet="snippets.ecosystem" />
+        </div>
+    </section>
 </template>
 
 <style scoped>

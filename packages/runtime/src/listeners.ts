@@ -49,10 +49,7 @@ const removeTrackedHandlerId = (handlerIds: SignalHandlerId[], handlerId: Signal
     return handlerIds.length;
 };
 
-const removeHandlerIdFrom = (
-    byHandler: Map<SignalHandler, SignalHandlerId[]>,
-    handlerId: SignalHandlerId,
-): void => {
+const removeHandlerIdFrom = (byHandler: Map<SignalHandler, SignalHandlerId[]>, handlerId: SignalHandlerId): void => {
     for (const [handler, handlerIds] of byHandler) {
         if (removeTrackedHandlerId(handlerIds, handlerId) === 0) {
             byHandler.delete(handler);

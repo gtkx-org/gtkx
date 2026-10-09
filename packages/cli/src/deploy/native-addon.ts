@@ -76,7 +76,7 @@ const fetchVersionDocument = async (url: string, subject: string): Promise<Recor
     if (!response.ok) {
         throw new Error(
             `Cannot fetch ${subject}: HTTP ${String(response.status)} ${response.statusText}. ` +
-            `Install ${subject} directly, or drop that architecture from --arch.`,
+                `Install ${subject} directly, or drop that architecture from --arch.`,
         );
     }
 
@@ -113,8 +113,15 @@ const publishedTarball = async (arch: DeployArchName, version: string): Promise<
 const extractAddon = (archive: string, dir: string, arch: DeployArchName): void => {
     runCliTool({
         tool: "tar",
-        args: ["-xzf", archive, "-C", dir, "--strip-components", STRIP_COMPONENTS,
-            `${PACKAGE_ROOT}/${binaryFilename(arch)}`],
+        args: [
+            "-xzf",
+            archive,
+            "-C",
+            dir,
+            "--strip-components",
+            STRIP_COMPONENTS,
+            `${PACKAGE_ROOT}/${binaryFilename(arch)}`,
+        ],
         target: platformPackage(arch),
     });
 };
@@ -163,7 +170,7 @@ const resolveStagedAddon = async (settings: DeploySettings): Promise<string | nu
     const projectRequire = projectRequireFor(settings.paths.root);
     const resolved = resolveBinding(join(settings.paths.root, "package.json"), arch);
 
-    return resolved ?? await downloadedBinary(arch, nativeVersion(projectRequire));
+    return resolved ?? (await downloadedBinary(arch, nativeVersion(projectRequire)));
 };
 
 export { BINDING_FILENAME, resolveStagedAddon };

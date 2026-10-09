@@ -36,19 +36,29 @@ const features = [
 </script>
 
 <template>
-  <section id="features" class="features">
-    <div class="features__grid">
-      <Card v-for="f in features" :key="f.title">
-        <span class="features__icon">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path :d="f.icon" />
-          </svg>
-        </span>
-        <h3 class="features__name">{{ f.title }}</h3>
-        <p class="features__body">{{ f.body }}</p>
-      </Card>
-    </div>
-  </section>
+    <section id="features" class="features">
+        <div class="features__grid">
+            <Card v-for="f in features" :key="f.title">
+                <span class="features__icon">
+                    <svg
+                        width="22"
+                        height="22"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                    >
+                        <path :d="f.icon" />
+                    </svg>
+                </span>
+                <h3 class="features__name">{{ f.title }}</h3>
+                <p class="features__body">{{ f.body }}</p>
+            </Card>
+        </div>
+    </section>
 </template>
 
 <style scoped>

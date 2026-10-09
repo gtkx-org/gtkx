@@ -61,7 +61,7 @@ const settleWindow = async (
     if (failure !== null) {
         throw new Error(
             `${action} timed out after ${String(timeout)}ms waiting for the window it rendered into: ${failure}. ` +
-            "Platform state such as focus is only readable once that window is allocated and active.",
+                "Platform state such as focus is only readable once that window is allocated and active.",
         );
     }
 };

@@ -13,7 +13,7 @@ const assertSchemaName = (settings: DeploySettings, file: string): void => {
 
     throw new Error(
         `Cannot install "${name}": every installed GSettings schema shares one system directory, so its file name ` +
-        `has to start with the application id. Rename it to ${settings.applicationId}.gschema.xml.`,
+            `has to start with the application id. Rename it to ${settings.applicationId}.gschema.xml.`,
     );
 };
 

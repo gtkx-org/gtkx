@@ -12,19 +12,13 @@ import { requireWidget } from "./widget-target.js";
  * family's own matcher arguments. Its name determines the family name, so `queryAllByTestId` builds
  * a `TestId` family.
  */
-type QueryAllBy<
-    Args extends unknown[],
-    Element extends Gtk.Accessible = Gtk.Accessible,
-> = (
+type QueryAllBy<Args extends unknown[], Element extends Gtk.Accessible = Gtk.Accessible> = (
     container: Container,
     ...args: Args
 ) => Element[];
 
 /** Builds the error thrown when a single-match query finds more than one widget. */
-type MultipleErrorBuilder<
-    Args extends unknown[],
-    Element extends Gtk.Accessible = Gtk.Accessible,
-> = (
+type MultipleErrorBuilder<Args extends unknown[], Element extends Gtk.Accessible = Gtk.Accessible> = (
     container: Container,
     matches: Element[],
     ...args: Args
@@ -34,10 +28,7 @@ type MultipleErrorBuilder<
 type MissingErrorBuilder<Args extends unknown[]> = (container: Container, ...args: Args) => Error;
 
 /** The variants derived from one `queryAllBy` function, in the order DOM Testing Library returns them. */
-type BuiltQueries<
-    Args extends unknown[],
-    Element extends Gtk.Accessible = Gtk.Accessible,
-> = [
+type BuiltQueries<Args extends unknown[], Element extends Gtk.Accessible = Gtk.Accessible> = [
     queryBy: (container: Container, ...args: Args) => Element | null,
     getAllBy: QueryAllBy<Args, Element>,
     getBy: (container: Container, ...args: Args) => Element,
@@ -127,30 +118,30 @@ const singleFrom =
         allQuery: QueryAllBy<Args, Element>,
         getMultipleError: MultipleErrorBuilder<Args, Element>,
     ): SingleQuery<Args, Element> =>
-        (container, ...args) => {
-            const matches = allQuery(container, ...args);
+    (container, ...args) => {
+        const matches = allQuery(container, ...args);
 
-            if (matches.length > 1) {
-                throw getMultipleError(container, matches, ...args);
-            }
+        if (matches.length > 1) {
+            throw getMultipleError(container, matches, ...args);
+        }
 
-            return matches[0] ?? null;
-        };
+        return matches[0] ?? null;
+    };
 
 const allOrThrow =
     <Args extends unknown[], Element extends Gtk.Accessible>(
         allQuery: QueryAllBy<Args, Element>,
         getMissingError: MissingErrorBuilder<Args>,
     ): QueryAllBy<Args, Element> =>
-        (container, ...args) => {
-            const matches = allQuery(container, ...args);
+    (container, ...args) => {
+        const matches = allQuery(container, ...args);
 
-            if (matches.length === 0) {
-                throw getMissingError(container, ...args);
-            }
+        if (matches.length === 0) {
+            throw getMissingError(container, ...args);
+        }
 
-            return matches;
-        };
+        return matches;
+    };
 
 const wrapSingleWithSuggestion =
     <Args extends unknown[], Element extends Gtk.Accessible>(
@@ -158,21 +149,21 @@ const wrapSingleWithSuggestion =
         queryName: string,
         variant: Variant,
     ): SingleQuery<Args, Element> =>
-        (container, ...args) => {
-            const match = query(container, ...args);
+    (container, ...args) => {
+        const match = query(container, ...args);
 
-            if (match) {
-                maybeThrowSuggestion({
-                    container,
-                    matches: [match],
-                    queryName,
-                    variant,
-                    shouldSuggest: extractShouldSuggest(args),
-                });
-            }
+        if (match) {
+            maybeThrowSuggestion({
+                container,
+                matches: [match],
+                queryName,
+                variant,
+                shouldSuggest: extractShouldSuggest(args),
+            });
+        }
 
-            return match;
-        };
+        return match;
+    };
 
 const wrapAllWithSuggestion =
     <Args extends unknown[], Element extends Gtk.Accessible>(
@@ -180,33 +171,33 @@ const wrapAllWithSuggestion =
         queryName: string,
         variant: Variant,
     ): QueryAllBy<Args, Element> =>
-        (container, ...args) => {
-            const matches = query(container, ...args);
-            maybeThrowSuggestion({
-                container,
-                matches,
-                queryName,
-                variant,
-                shouldSuggest: extractShouldSuggest(args),
-            });
+    (container, ...args) => {
+        const matches = query(container, ...args);
+        maybeThrowSuggestion({
+            container,
+            matches,
+            queryName,
+            variant,
+            shouldSuggest: extractShouldSuggest(args),
+        });
 
-            return matches;
-        };
+        return matches;
+    };
 
 const requireSingle =
     <Args extends unknown[], Element extends Gtk.Accessible>(
         query: SingleQuery<Args, Element>,
         getMissingError: MissingErrorBuilder<Args>,
     ) =>
-        (container: Container, ...args: Args): Element => {
-            const match = query(container, ...args);
+    (container: Container, ...args: Args): Element => {
+        const match = query(container, ...args);
 
-            if (match === null) {
-                throw getMissingError(container, ...args);
-            }
+        if (match === null) {
+            throw getMissingError(container, ...args);
+        }
 
-            return match;
-        };
+        return match;
+    };
 
 /**
  * Builds a query family from `queryAllBy`, following DOM Testing Library's `buildQueries`.
@@ -217,10 +208,7 @@ const requireSingle =
  * @param getMissingError Builds errors for required queries finding no widgets.
  * @returns `[queryBy, getAllBy, getBy, findAllBy, findBy]`.
  */
-const buildQueries = <
-    Args extends unknown[],
-    Element extends Gtk.Accessible = Gtk.Accessible,
->(
+const buildQueries = <Args extends unknown[], Element extends Gtk.Accessible = Gtk.Accessible>(
     queryAllBy: QueryAllBy<Args, Element>,
     getMultipleError: MultipleErrorBuilder<Args, Element>,
     getMissingError: MissingErrorBuilder<Args>,
@@ -266,10 +254,4 @@ const buildQueries = <
     return [queryByWithSuggestion, getAllByWithSuggestion, getByWithSuggestion, findAllBy, findBy];
 };
 
-export {
-    buildQueries,
-    type BuiltQueries,
-    type MissingErrorBuilder,
-    type MultipleErrorBuilder,
-    type QueryAllBy,
-};
+export { buildQueries, type BuiltQueries, type MissingErrorBuilder, type MultipleErrorBuilder, type QueryAllBy };

@@ -118,18 +118,18 @@ async function renderShortcutHost(options: ShortcutHostOptions): Promise<Rendere
             <GtkBox
                 name="host"
                 sensitive={options.isSensitive ?? true}
-                controllers={(
+                controllers={
                     <GtkShortcutController
                         propagationPhase={options.phase}
                         scope={options.scope}
-                        shortcuts={(
+                        shortcuts={
                             <GtkShortcut
                                 trigger={options.trigger}
                                 action={<GtkCallbackAction callback={activations.callback} />}
                             />
-                        )}
+                        }
                     />
-                )}
+                }
             >
                 {options.children ?? <GtkLabel>anchor</GtkLabel>}
             </GtkBox>
@@ -149,30 +149,28 @@ async function renderDragAndDropPair(options: DragAndDropPairOptions): Promise<R
                 name="drag-source"
                 sensitive={options.isSourceSensitive ?? true}
                 controllers={
-                    options.hasDragSource === false
-                        ? undefined
-                        : (
-                                <GtkDragSource
-                                    actions={Gdk.DragAction.COPY}
-                                    onDragBegin={options.onDragBegin}
-                                    onDragEnd={options.onDragEnd}
-                                    onPrepare={options.onPrepare}
-                                    content={options.content}
-                                />
-                            )
+                    options.hasDragSource === false ? undefined : (
+                        <GtkDragSource
+                            actions={Gdk.DragAction.COPY}
+                            onDragBegin={options.onDragBegin}
+                            onDragEnd={options.onDragEnd}
+                            onPrepare={options.onPrepare}
+                            content={options.content}
+                        />
+                    )
                 }
             >
                 Drag me
             </GtkLabel>
             <GtkLabel
                 name="drop-target"
-                controllers={(
+                controllers={
                     <GtkDropTarget
                         types={options.types ?? [GObject.TYPE_STRING]}
                         actions={Gdk.DragAction.COPY}
                         onDrop={options.onDrop}
                     />
-                )}
+                }
             >
                 Drop here
             </GtkLabel>

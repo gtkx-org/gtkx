@@ -85,12 +85,4 @@ const waitUntil = async (isReady: () => boolean): Promise<void> => {
     }
 };
 
-export {
-    childProcesses,
-    isPidRunning,
-    isRunning,
-    type ProcessEntry,
-    processEntries,
-    processIdentity,
-    waitUntil,
-};
+export { childProcesses, isPidRunning, isRunning, type ProcessEntry, processEntries, processIdentity, waitUntil };

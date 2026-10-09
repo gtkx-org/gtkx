@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCliOrThrow } from "./cli-project.js";
 import { fixtureConfig } from "./codegen-helpers.js";
 
-const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/typescript/bin/tsc", import.meta.url));
+const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/@typescript/native/bin/tsc", import.meta.url));
 const CONSUMERS = {
     "callbacks.ts": `import type { Base, Derived, Leaf } from "@gtkx/gi/outputshapes";
 export const visitBase = (value: Base): void => value.visit((item) => item + 1);
@@ -40,17 +40,26 @@ export const copy = (value: Derived): [string[], number] => value.copy();
 };
 
 const typecheck = (project: CliProject, file: string): void => {
-    const result = spawnSync(process.execPath, [
-        TYPESCRIPT_CLI,
-        "--noEmit",
-        "--module", "ESNext",
-        "--moduleResolution", "Bundler",
-        "--skipLibCheck", "false",
-        "--strict",
-        "--target", "ESNext",
-        "--types", "node",
-        file,
-    ], { cwd: project.root, encoding: "utf8" });
+    const result = spawnSync(
+        process.execPath,
+        [
+            TYPESCRIPT_CLI,
+            "--noEmit",
+            "--module",
+            "ESNext",
+            "--moduleResolution",
+            "Bundler",
+            "--skipLibCheck",
+            "false",
+            "--strict",
+            "--target",
+            "ESNext",
+            "--types",
+            "node",
+            file,
+        ],
+        { cwd: project.root, encoding: "utf8" },
+    );
 
     if (result.status !== 0) {
         throw new Error(`${result.stdout}${result.stderr}`);
@@ -91,9 +100,7 @@ describe("gtkx codegen inherited output shapes", () => {
         }).not.toThrow();
     });
 
-    it.each([
-        "rejected-output.ts", "rejected-callback.ts", "rejected-skipped-return.ts", "rejected-length-output.ts",
-    ])(
+    it.each(["rejected-output.ts", "rejected-callback.ts", "rejected-skipped-return.ts", "rejected-length-output.ts"])(
         "rejects an incompatible result in %s",
         (file) => {
             expect(() => {
@@ -207,16 +214,18 @@ export const read = (value: Derived): Promise<number> => value.readAsync();
     });
 
     it.each([
-        "classes.ts", "finish-outputs.ts", "interfaces.ts", "interface-ancestor.ts", "interface-fallback.ts",
-        "inherited-interface-order.ts", "declared-interface-order.ts",
-    ])(
-        "preserves finish results in the generated promises in %s",
-        (file) => {
-            expect(() => {
-                typecheck(project, file);
-            }).not.toThrow();
-        },
-    );
+        "classes.ts",
+        "finish-outputs.ts",
+        "interfaces.ts",
+        "interface-ancestor.ts",
+        "interface-fallback.ts",
+        "inherited-interface-order.ts",
+        "declared-interface-order.ts",
+    ])("preserves finish results in the generated promises in %s", (file) => {
+        expect(() => {
+            typecheck(project, file);
+        }).not.toThrow();
+    });
 
     it("rejects an inherited async result from the wrong finish method", () => {
         expect(() => {

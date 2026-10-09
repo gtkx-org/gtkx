@@ -14,7 +14,9 @@ const IMPORTS = `import * as Gtk from "@gtkx/gi/gtk";
 import * as GLib from "@gtkx/gi/glib";
 import * as NullableCallbacks from "@gtkx/gi/nullablecallbacks";
 `;
-const ACCEPTED = IMPORTS + `
+const ACCEPTED =
+    IMPORTS +
+    `
 export const cancelled: Parameters<Gtk.PageSetupDoneFunc> = [null];
 export const selected = (setup: Gtk.PageSetup): Parameters<Gtk.PageSetupDoneFunc> => [setup];
 export const completed: Gtk.PageSetupDoneFunc = (setup) => {
@@ -35,9 +37,10 @@ export const existingCorrections = (layout: Gtk.FixedLayoutChild, directory: GLi
 };
 `;
 const REJECTED: Record<string, string> = {
-    "nonnull-handler.ts": "export const callback: Gtk.PageSetupDoneFunc = (setup: Gtk.PageSetup) => " +
-        "{ setup.getOrientation(); };",
-    "nonnull-async-handler.ts": "export const present = (settings: Gtk.PrintSettings): void => " +
+    "nonnull-handler.ts":
+        "export const callback: Gtk.PageSetupDoneFunc = (setup: Gtk.PageSetup) => " + "{ setup.getOrientation(); };",
+    "nonnull-async-handler.ts":
+        "export const present = (settings: Gtk.PrintSettings): void => " +
         "{ Gtk.printRunPageSetupDialogAsync(null, null, settings, (setup: Gtk.PageSetup) => " +
         "{ setup.getOrientation(); }); };",
     "extra-user-data.ts": "export const args: Parameters<Gtk.PageSetupDoneFunc> = [null, null];",
@@ -52,11 +55,13 @@ describe("generated page setup completion nullability", () => {
 
     beforeAll(() => {
         const fixture = readFileSync(new URL("fixtures/gir/NullableCallbacks-1.0.gir", import.meta.url));
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-page-setup-nullable-",
-            config: CONFIG,
-            files: { "gir/NullableCallbacks-1.0.gir": fixture, "accepted.ts": ACCEPTED, ...rejectedFiles },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-page-setup-nullable-",
+                config: CONFIG,
+                files: { "gir/NullableCallbacks-1.0.gir": fixture, "accepted.ts": ACCEPTED, ...rejectedFiles },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });
@@ -81,18 +86,21 @@ describe("generated page setup completion nullability", () => {
         });
         const corrected = reference.lookup("Gtk.PageSetupDoneFunc", "callback");
         expect(corrected.outcome).toBe("page");
-        expect(corrected).toHaveProperty("markdown", expect.stringContaining(
-            "type PageSetupDoneFunc = (pageSetup: Gtk.PageSetup | null) => void",
-        ));
+        expect(corrected).toHaveProperty(
+            "markdown",
+            expect.stringContaining("type PageSetupDoneFunc = (pageSetup: Gtk.PageSetup | null) => void"),
+        );
         const unrelated = reference.lookup("NullableCallbacks.PageSetupDoneFunc", "callback");
         expect(unrelated.outcome).toBe("page");
-        expect(unrelated).toHaveProperty("markdown", expect.stringContaining(
-            "type PageSetupDoneFunc = (pageSetup: Gtk.PageSetup) => void",
-        ));
+        expect(unrelated).toHaveProperty(
+            "markdown",
+            expect.stringContaining("type PageSetupDoneFunc = (pageSetup: Gtk.PageSetup) => void"),
+        );
         const annotated = reference.lookup("NullableCallbacks.NullableSetup", "callback");
         expect(annotated.outcome).toBe("page");
-        expect(annotated).toHaveProperty("markdown", expect.stringContaining(
-            "type NullableSetup = (pageSetup: Gtk.PageSetup | null) => void",
-        ));
+        expect(annotated).toHaveProperty(
+            "markdown",
+            expect.stringContaining("type NullableSetup = (pageSetup: Gtk.PageSetup | null) => void"),
+        );
     });
 });

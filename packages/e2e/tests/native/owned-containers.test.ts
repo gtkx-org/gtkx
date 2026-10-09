@@ -22,7 +22,10 @@ const finalizedObjects = (): number => t.bind(library, "gtkx_owned_finalized_obj
 const freedRecords = (): number => t.bind(library, "gtkx_owned_freed_records", [], t.uint32)() as number;
 const initialStrings = ["\u{FEFF}café", "♥"];
 const replacementStrings = ["新しい", ""];
-const layouts = [{ name: "GPtrArray", id: 0, make: t.ptrArray }, { name: "GArray", id: 1, make: t.gArray }];
+const layouts = [
+    { name: "GPtrArray", id: 0, make: t.ptrArray },
+    { name: "GArray", id: 1, make: t.gArray },
+];
 const kinds = [
     { name: "strings", id: 0, item: t.string("full"), initial: initialStrings, replacement: replacementStrings },
     { name: "Objects", id: 1, item: t.object("full"), initial: [3, 7], replacement: [20, 21] },
@@ -61,13 +64,17 @@ const observe = (kind: number, value: unknown, retained: unknown[]): unknown => 
 const replacements = (kind: number, values: readonly unknown[]): unknown[] =>
     kind === 1 ? values.map((value) => createObject(value)) : [...values];
 const invokeFor = (descriptor: Descriptor): ReturnType<typeof t.bind> =>
-    t.bind(library, "gtkx_owned_holder_visit", [
-        holderType, t.callback([t.ref(descriptor, true)], t.void, { scope: "call" }),
-    ], t.void);
+    t.bind(
+        library,
+        "gtkx_owned_holder_visit",
+        [holderType, t.callback([t.ref(descriptor, true)], t.void, { scope: "call" })],
+        t.void,
+    );
 
 for (const layout of layouts) {
     const descriptorFor = (item: Descriptor, ownership: Ownership = "full"): Descriptor => ({
-        ...layout.make(item, ownership, { elementOwnership: "container" }), preserveNull: true,
+        ...layout.make(item, ownership, { elementOwnership: "container" }),
+        preserveNull: true,
     });
 
     for (const kind of kinds) {
@@ -79,7 +86,10 @@ for (const layout of layouts) {
             const field = t.field(descriptor, 0);
             const returnOwned = t.bind(library, "gtkx_owned_holder_return", [holderType], descriptor);
             const returnBorrowed = t.bind(
-                library, "gtkx_owned_holder_peek", [holderType], descriptorFor(kind.item, "borrowed"),
+                library,
+                "gtkx_owned_holder_peek",
+                [holderType],
+                descriptorFor(kind.item, "borrowed"),
             );
 
             try {
@@ -149,9 +159,12 @@ for (const layout of layouts) {
                 const before = finalizedObjects();
                 const retained: unknown[] = [];
                 const inputs = replacements(kind.id, kind.replacement);
-                const install = t.bind(library, "gtkx_owned_holder_install", [
-                    holderType, descriptorFor(kind.item, ownership), t.boolean,
-                ], t.void);
+                const install = t.bind(
+                    library,
+                    "gtkx_owned_holder_install",
+                    [holderType, descriptorFor(kind.item, ownership), t.boolean],
+                    t.void,
+                );
 
                 try {
                     withHolder(layout.id, kind.id, 0, (holder) => {
@@ -183,9 +196,11 @@ for (const layout of layouts) {
                     expect(() => {
                         field.write(holder, [...inputs.slice(0, 1), {}]);
                     }).toThrow();
-                    expect(() => invoke(holder, (ref: Ref) => {
-                        ref.value = {};
-                    })).toThrow();
+                    expect(() =>
+                        invoke(holder, (ref: Ref) => {
+                            ref.value = {};
+                        }),
+                    ).toThrow();
                     expect(nativeValues(holder, kind.id)).toEqual(kind.initial);
                     expect(nativeValues(holder, kind.id, true)).toEqual(kind.initial);
                 });
@@ -228,9 +243,11 @@ for (const layout of layouts) {
         withHolder(layout.id, 3, 2, (holder) => {
             expect(() => returnOwned(holder)).toThrow();
             expect(() => field.read(holder)).toThrow();
-            expect(() => invoke(holder, (ref: Ref) => {
-                ref.value = null;
-            })).toThrow();
+            expect(() =>
+                invoke(holder, (ref: Ref) => {
+                    ref.value = null;
+                }),
+            ).toThrow();
             expect(() => {
                 field.write(holder, []);
             }).toThrow();

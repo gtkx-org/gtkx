@@ -26,15 +26,11 @@ describe("observeControllers wrapper lifetime", () => {
         expect(first.getNItems()).toBe(before + 1);
     });
 
-    it(
-        "reproduces: re-acquiring the cached model after a wrapper is collected must not read a freed object",
-        async () => {
-            const button = new Gtk.Button();
-            button.addController(new Gtk.GestureClick());
-            await expectControllerCyclesStayValid(button, 150);
-        },
-        30_000,
-    );
+    it("reproduces: re-acquiring the cached model after a wrapper is collected must not read a freed object", async () => {
+        const button = new Gtk.Button();
+        button.addController(new Gtk.GestureClick());
+        await expectControllerCyclesStayValid(button, 150);
+    }, 30_000);
 
     it("survives a burst of rebinds whose cleanups are left pending together", async () => {
         const button = new Gtk.Button();

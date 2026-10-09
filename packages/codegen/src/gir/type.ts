@@ -7,35 +7,35 @@ import type { StructuralType } from "./type-id.js";
 
 type EntityType =
     | {
-        kind: "class";
-        namespace: GirNamespace;
-        value: GirClass;
-    } |
-    {
-        kind: "interface";
-        namespace: GirNamespace;
-        value: GirClass;
-    } |
-    {
-        kind: "record";
-        namespace: GirNamespace;
-        value: GirRecord;
-    } |
-    {
-        kind: "enum";
-        namespace: GirNamespace;
-        value: GirEnum;
-    } |
-    {
-        kind: "callback";
-        namespace: GirNamespace;
-        value: GirCallback;
-    } |
-    {
-        kind: "alias";
-        namespace: GirNamespace;
-        value: GirAlias;
-    };
+          kind: "class";
+          namespace: GirNamespace;
+          value: GirClass;
+      }
+    | {
+          kind: "interface";
+          namespace: GirNamespace;
+          value: GirClass;
+      }
+    | {
+          kind: "record";
+          namespace: GirNamespace;
+          value: GirRecord;
+      }
+    | {
+          kind: "enum";
+          namespace: GirNamespace;
+          value: GirEnum;
+      }
+    | {
+          kind: "callback";
+          namespace: GirNamespace;
+          value: GirCallback;
+      }
+    | {
+          kind: "alias";
+          namespace: GirNamespace;
+          value: GirAlias;
+      };
 
 type GirType = StructuralType | EntityType;
 

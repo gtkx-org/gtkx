@@ -61,11 +61,7 @@ export type {
     StackScreenProps,
     StackTransitionData,
 } from "./stack/types.js";
-export {
-    createStaticNavigation,
-    type StaticNavigationProps,
-    type StaticNavigationTree,
-} from "./static-navigation.js";
+export { createStaticNavigation, type StaticNavigationProps, type StaticNavigationTree } from "./static-navigation.js";
 export { createTabNavigator, createTabScreen, TabNavigator, type TabTypeBag } from "./tabs/create-tab-navigator.js";
 export type {
     TabDescriptor,

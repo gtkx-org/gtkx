@@ -17,11 +17,11 @@ gh workflow run release-pr.yml
 
 Release preparation runs only on request and never writes to `main`. The same workflow tags prepared releases after main CI succeeds.
 
-| Inputs | Result |
-| --- | --- |
-| Both empty | Consume pending plans on the current release train: the next beta during beta development, or the bump requested by plans on a stable train. With no pending plans, stop without opening a pull request. |
-| `specifier=2.0.0` | End the beta and prepare the stable release, even without pending plans. |
-| `preid=rc` | Change the prerelease identifier, even without pending plans. |
+| Inputs            | Result                                                                                                                                                                                                   |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Both empty        | Consume pending plans on the current release train: the next beta during beta development, or the bump requested by plans on a stable train. With no pending plans, stop without opening a pull request. |
+| `specifier=2.0.0` | End the beta and prepare the stable release, even without pending plans.                                                                                                                                 |
+| `preid=rc`        | Change the prerelease identifier, even without pending plans.                                                                                                                                            |
 
 The workflow versions all packages, updates tutorial ranges and the documentation version, prepends release notes to `CHANGELOG.md`, and deletes consumed plans. It opens or refreshes `release/next` as the release bot, with a GitHub-signed commit. Preview those preparation steps locally without writing files:
 

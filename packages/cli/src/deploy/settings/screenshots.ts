@@ -41,9 +41,7 @@ const baseForRemote = (root: string, remote: string): string | null => {
         return null;
     }
 
-    return trimTrailingSlash(
-        repository.file(readRepositoryPrefix(root), { committish: readDefaultBranch(root) }),
-    );
+    return trimTrailingSlash(repository.file(readRepositoryPrefix(root), { committish: readDefaultBranch(root) }));
 };
 
 const resolveScreenshotBaseUrl = ({ root, deploy }: ScreenshotRequest): string | null => {
@@ -60,7 +58,7 @@ const urlForScreenshot = (file: string, baseUrl: string | null): string => {
     if (baseUrl === null) {
         throw new Error(
             `Cannot turn the screenshot "${file}" into a URL: a software center fetches screenshots over the ` +
-            "network. Set `deploy.screenshotBaseUrl`, or give the screenshot an absolute `url`.",
+                "network. Set `deploy.screenshotBaseUrl`, or give the screenshot an absolute `url`.",
         );
     }
 

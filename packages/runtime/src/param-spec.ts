@@ -55,13 +55,7 @@ const INT64_MINIMUM: bigint = -(2n ** 63n);
 const INT64_MAXIMUM: bigint = 2n ** 63n - 1n;
 const UINT64_MAXIMUM: bigint = 2n ** 64n - 1n;
 
-const WRAPPED_FUNDAMENTALS: Set<bigint> = new Set([
-    TYPE_BOXED,
-    TYPE_INTERFACE,
-    TYPE_OBJECT,
-    TYPE_PARAM,
-    TYPE_VARIANT,
-]);
+const WRAPPED_FUNDAMENTALS: Set<bigint> = new Set([TYPE_BOXED, TYPE_INTERFACE, TYPE_OBJECT, TYPE_PARAM, TYPE_VARIANT]);
 
 const isWideUnsignedValue: ValueGuard = wideIntegerGuardFor(0n, UINT64_MAXIMUM);
 const MAX_SAFE: number = Number.MAX_SAFE_INTEGER;
@@ -274,9 +268,7 @@ function isLayoutIntact(flags: number): boolean {
     const layout = readProbeLayout(flags);
 
     return (
-        (layout.flags & READ_FLAGS) === flags &&
-        layout.valueType === TYPE_BOOLEAN &&
-        layout.ownerType === TYPE_INVALID
+        (layout.flags & READ_FLAGS) === flags && layout.valueType === TYPE_BOOLEAN && layout.ownerType === TYPE_INVALID
     );
 }
 

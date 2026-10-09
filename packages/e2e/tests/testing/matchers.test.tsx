@@ -230,7 +230,11 @@ describe("state matchers", () => {
 
 describe("toHaveClass", () => {
     it.each([/pill/g, /pill/y])("reuses a class pattern without carrying its cursor: %s", async (pattern) => {
-        await render(<GtkLabel name="styled" cssClasses={["pill"]}>Styled</GtkLabel>);
+        await render(
+            <GtkLabel name="styled" cssClasses={["pill"]}>
+                Styled
+            </GtkLabel>,
+        );
         const widget = screen.getByName("styled");
         expect(widget).toHaveClass(pattern);
         expect(widget).toHaveClass(pattern);

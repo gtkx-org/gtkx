@@ -29,7 +29,7 @@ async function defaultLoader(): Promise<TestingModule> {
 function missingTestingPackageError(cause: unknown): Error {
     return new Error(
         "@gtkx/testing is not installed, install it to enable MCP widget interactions: " +
-        `pnpm add -D @gtkx/testing (import failed: ${String(cause)})`,
+            `pnpm add -D @gtkx/testing (import failed: ${String(cause)})`,
         { cause },
     );
 }

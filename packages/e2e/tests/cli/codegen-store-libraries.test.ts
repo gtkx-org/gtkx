@@ -3,13 +3,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { runCli, TSX_LOADER } from "./cli-project.js";
-import {
-    expectModules,
-    fixtureLibrariesConfig,
-    generatedModule,
-    storePath,
-    withProject,
-} from "./codegen-helpers.js";
+import { expectModules, fixtureLibrariesConfig, generatedModule, storePath, withProject } from "./codegen-helpers.js";
 
 describe("gtkx codegen (the libraries a project binds without naming them)", () => {
     it("binds Adwaita and its transitive GTK dependency by default", () => {

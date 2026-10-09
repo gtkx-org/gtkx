@@ -3,11 +3,7 @@ import type { Library } from "../../gir/library.js";
 import type { GirConstant } from "../../gir/namespace.js";
 import type { PrimitiveCategory } from "../../gir/primitives.js";
 import type { ModuleContext } from "../../writer/context.js";
-import {
-    hasPrimitivePointer,
-    hasScalarPointer,
-    primitiveCategoryThroughAliases,
-} from "../../analysis/type-shape.js";
+import { hasPrimitivePointer, hasScalarPointer, primitiveCategoryThroughAliases } from "../../analysis/type-shape.js";
 import { isEmittableEntity } from "../../gir/emittable.js";
 import { getDoc } from "./doc-spec.js";
 
@@ -26,10 +22,12 @@ const generateConstant = (context: ModuleContext, constant: GirConstant): void =
 
     const doc = getDoc(constant);
     const name = sanitizeIdentifier(constant.name);
+    const literal = constantLiteral(context, constant);
+    const annotation = literal === "true" || literal === "false" ? `: ${literal}` : "";
 
     context.declare({
         name,
-        code: `${doc}export const ${name} = ${constantLiteral(context, constant)};`,
+        code: `${doc}export const ${name}${annotation} = ${literal};`,
     });
 };
 

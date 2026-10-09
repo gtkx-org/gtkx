@@ -73,14 +73,16 @@ const deployBlock = (extra: string): string => `    deploy: {
 ${extra}    },
 `;
 
-const successfulConfig = (): string => config(deployBlock(
-    `        metainfoExtra: ${JSON.stringify(METAINFO_EXTRA)},
+const successfulConfig = (): string =>
+    config(
+        deployBlock(
+            `        metainfoExtra: ${JSON.stringify(METAINFO_EXTRA)},
         extraFiles: ${JSON.stringify(EXTRA_FILES)},
 `,
-));
+        ),
+    );
 
-const nfpmConfig = (project: CliProject, path: string): NfpmConfig =>
-    parse(outputFile(project, path)) as NfpmConfig;
+const nfpmConfig = (project: CliProject, path: string): NfpmConfig => parse(outputFile(project, path)) as NfpmConfig;
 
 const highFloorElf = (): Buffer => {
     const binary = readFileSync(NATIVE_BINARY);
@@ -147,10 +149,7 @@ describe("gtkx deploy (metadata and packaging safety)", () => {
     });
 
     it("merges AppStream fragments before validating and staging metainfo", () => {
-        const metainfo = outputFile(
-            project,
-            join("stage", "share", "metainfo", `${APPLICATION_ID}.metainfo.xml`),
-        );
+        const metainfo = outputFile(project, join("stage", "share", "metainfo", `${APPLICATION_ID}.metainfo.xml`));
 
         for (const fragment of EXPECTED_METAINFO) {
             expect(metainfo).toContain(fragment);
@@ -165,8 +164,8 @@ describe("gtkx deploy (metadata and packaging safety)", () => {
     });
 
     it("leaves system integration directories to their owning rpm packages", () => {
-        const directories = nfpmConfig(project, RPM_NFPM_PATH).contents
-            .filter((entry) => entry.type === "dir")
+        const directories = nfpmConfig(project, RPM_NFPM_PATH)
+            .contents.filter((entry) => entry.type === "dir")
             .map((entry) => entry.dst);
 
         expect(directories).not.toEqual(expect.arrayContaining(SYSTEM_DIRECTORIES));
@@ -175,25 +174,23 @@ describe("gtkx deploy (metadata and packaging safety)", () => {
 });
 
 describe("gtkx deploy (invalid metadata and extra files)", () => {
-    it.each([{ target: "deb", status: 0 }, { target: "flatpak", status: 1 }])(
-        "applies the AppStream warning policy for $target",
-        ({ target, status }) => {
-            const extra = target === "flatpak"
-                ? `        flatpak: { mode: "source", source: ${PINNED_SOURCE} },\n`
-                : "";
-            const configuration = projectConfig(extra).replace(
-                "A probe application for deployment metadata and packaging safety.",
-                "A probe application for deployment metadata and packaging safety. Visit https://gtkx.dev for details.",
-            );
-            using project = createCliProject({
-                prefix: "gtkx-cli-deploy-appstream-warning-",
-                config: configuration,
-                files: projectFiles(),
-                hasStore: true,
-            });
-            expect(runCli(project, ["deploy", "--print-manifests", "--target", target]).status).toBe(status);
-        },
-    );
+    it.each([
+        { target: "deb", status: 0 },
+        { target: "flatpak", status: 1 },
+    ])("applies the AppStream warning policy for $target", ({ target, status }) => {
+        const extra = target === "flatpak" ? `        flatpak: { mode: "source", source: ${PINNED_SOURCE} },\n` : "";
+        const configuration = projectConfig(extra).replace(
+            "A probe application for deployment metadata and packaging safety.",
+            "A probe application for deployment metadata and packaging safety. Visit https://gtkx.dev for details.",
+        );
+        using project = createCliProject({
+            prefix: "gtkx-cli-deploy-appstream-warning-",
+            config: configuration,
+            files: projectFiles(),
+            hasStore: true,
+        });
+        expect(runCli(project, ["deploy", "--print-manifests", "--target", target]).status).toBe(status);
+    });
 
     it("rejects malformed or unsupported AppStream fragments", () => {
         expectDeployRejected(

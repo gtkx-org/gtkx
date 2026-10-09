@@ -11,16 +11,16 @@ This section follows `main` and is shared across documentation versions. To buil
 
 ## Get oriented
 
-| Task | Start here |
-| --- | --- |
-| Find the layer responsible for a bug | [Architecture](/contributing/architecture#finding-the-responsible-layer) |
-| Find a package or dependency | [Tech Stack](/contributing/tech-stack) |
-| Change generated bindings or JSX | [Code Generation](/contributing/code-generation) |
-| Investigate calls, ownership, callbacks, or the event loop | [Native Runtime](/contributing/native-runtime) |
-| Change props, child placement, signals, or presentation | [React Renderer](/contributing/react-renderer) |
-| Choose and run checks | [Testing](/contributing/testing) |
-| Edit the website or promote documentation | [Maintaining Documentation](/contributing/documentation) |
-| Prepare and publish a release | [Publishing Releases](/contributing/releases) |
+| Task                                                       | Start here                                                               |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------ |
+| Find the layer responsible for a bug                       | [Architecture](/contributing/architecture#finding-the-responsible-layer) |
+| Find a package or dependency                               | [Tech Stack](/contributing/tech-stack)                                   |
+| Change generated bindings or JSX                           | [Code Generation](/contributing/code-generation)                         |
+| Investigate calls, ownership, callbacks, or the event loop | [Native Runtime](/contributing/native-runtime)                           |
+| Change props, child placement, signals, or presentation    | [React Renderer](/contributing/react-renderer)                           |
+| Choose and run checks                                      | [Testing](/contributing/testing)                                         |
+| Edit the website or promote documentation                  | [Maintaining Documentation](/contributing/documentation)                 |
+| Prepare and publish a release                              | [Publishing Releases](/contributing/releases)                            |
 
 ## Find the right place to contribute
 

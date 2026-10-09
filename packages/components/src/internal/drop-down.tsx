@@ -59,11 +59,7 @@ const defaultRenderItem = ({ item }: ListItemRenderArgs<Primitive>): ReactNode =
     item == null ? null : <GtkLabel>{String(item)}</GtkLabel>;
 const faceRenderer = (props: DropDownBaseProps): ListItemRenderer<never> => props.renderItem ?? defaultRenderItem;
 
-const resolvePosition = (
-    widget: SelectableWidget,
-    collection: Collection,
-    selectedId: string | undefined,
-): number => {
+const resolvePosition = (widget: SelectableWidget, collection: Collection, selectedId: string | undefined): number => {
     if (selectedId === undefined) {
         return widget.getSelected();
     }

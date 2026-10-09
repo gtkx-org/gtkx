@@ -4,17 +4,16 @@ const BUS_CONFIG_DOCTYPE =
 
 const HEADLESS_RUNTIME_MARKER = ".gtkx-headless-runtime";
 
-const swayConfigLines = (resolution: string): string[] =>
-    [
-        "xwayland disable",
-        "default_border none",
-        "default_floating_border none",
-        `output HEADLESS-1 resolution ${resolution}`,
-        "output HEADLESS-1 bg #000000 solid_color",
-        'for_window [app_id=".*"] floating enable, border none',
-        'for_window [title=".*"] floating enable, border none',
-        "",
-    ];
+const swayConfigLines = (resolution: string): string[] => [
+    "xwayland disable",
+    "default_border none",
+    "default_floating_border none",
+    `output HEADLESS-1 resolution ${resolution}`,
+    "output HEADLESS-1 bg #000000 solid_color",
+    'for_window [app_id=".*"] floating enable, border none',
+    'for_window [title=".*"] floating enable, border none',
+    "",
+];
 
 const createSwayConfig = (width: string, height: string): string => swayConfigLines(`${width}x${height}`).join("\n");
 
@@ -43,10 +42,4 @@ const isSwayConfig = (value: string): boolean => {
     return resolution !== undefined && value === swayConfigLines(resolution).join("\n");
 };
 
-export {
-    createBusConfig,
-    createHeadlessRuntimeMarker,
-    createSwayConfig,
-    HEADLESS_RUNTIME_MARKER,
-    isSwayConfig,
-};
+export { createBusConfig, createHeadlessRuntimeMarker, createSwayConfig, HEADLESS_RUNTIME_MARKER, isSwayConfig };

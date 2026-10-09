@@ -71,9 +71,10 @@ describe("native hash-table return values", () => {
         const first = new Gtk.Label({ label: "first" });
         const second = new Gtk.Label({ label: "second" });
         const roundtrip = roundtripTable(t.string(), t.ptrArray(t.object("borrowed")));
-        const result = roundtrip(
-            new Map([["widgets", [getHandle(first), getHandle(second)]]]),
-        ) as Map<string, Gtk.Label[]>;
+        const result = roundtrip(new Map([["widgets", [getHandle(first), getHandle(second)]]])) as Map<
+            string,
+            Gtk.Label[]
+        >;
 
         expect(result.get("widgets")).toEqual([first, second]);
         expect(result.get("widgets")?.map((widget) => widget.label)).toEqual(["first", "second"]);

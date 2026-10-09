@@ -90,21 +90,21 @@ Replace the removed positional plural overload with `count`, `defaultValue_one`,
 
 Your editor marks the 1.6 compatibility APIs as deprecated. Replace each GTKX deprecation whose annotation ends in `Removed in v2`:
 
-| Replace | With |
-| --- | --- |
-| `object.addEventListener(name, handler)` | `object.on(name, handler)` |
-| `object.removeEventListener(name, handler)` | `object.off(name, handler)` |
-| `Gdk.RGBA.create(css)` | Construct an `RGBA`, then check `parse(css)` |
-| `Graphene.Point.create(x, y)` | `new Graphene.Point({ x, y })` |
-| `Graphene.Rect.create(x, y, width, height)` | `new Graphene.Rect().init(x, y, width, height)` |
-| `Graphene.Size.create(width, height)` | `new Graphene.Size({ width, height })` |
-| `GObject.buildValue(...)` | Pass the JavaScript value, or initialize a `GObject.Value` |
-| `getObjectProperty(...)` | `getProperty(...)` |
-| `setObjectProperty(...)` | `setProperty(...)` |
-| `@gtkx/gi/cairo` | `@gtkx/cairo` |
-| `@gtkx/components/adw` | `@gtkx/components` |
-| `animated.GtkLabel` | `animated(GtkLabel)` |
-| `AnimatedElements` | `AnimatedElementMap` |
+| Replace                                     | With                                                       |
+| ------------------------------------------- | ---------------------------------------------------------- |
+| `object.addEventListener(name, handler)`    | `object.on(name, handler)`                                 |
+| `object.removeEventListener(name, handler)` | `object.off(name, handler)`                                |
+| `Gdk.RGBA.create(css)`                      | Construct an `RGBA`, then check `parse(css)`               |
+| `Graphene.Point.create(x, y)`               | `new Graphene.Point({ x, y })`                             |
+| `Graphene.Rect.create(x, y, width, height)` | `new Graphene.Rect().init(x, y, width, height)`            |
+| `Graphene.Size.create(width, height)`       | `new Graphene.Size({ width, height })`                     |
+| `GObject.buildValue(...)`                   | Pass the JavaScript value, or initialize a `GObject.Value` |
+| `getObjectProperty(...)`                    | `getProperty(...)`                                         |
+| `setObjectProperty(...)`                    | `setProperty(...)`                                         |
+| `@gtkx/gi/cairo`                            | `@gtkx/cairo`                                              |
+| `@gtkx/components/adw`                      | `@gtkx/components`                                         |
+| `animated.GtkLabel`                         | `animated(GtkLabel)`                                       |
+| `AnimatedElements`                          | `AnimatedElementMap`                                       |
 
 The cairo stub-constructor `*ConstructorProps` aliases have no replacement because those constructors are removed. Upstream GTK and Adwaita deprecations are separate and remain available when the upstream library still provides them.
 

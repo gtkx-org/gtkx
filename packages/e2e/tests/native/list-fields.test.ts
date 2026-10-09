@@ -15,23 +15,29 @@ const initialStrings = ["\u{FEFF}café", "♥"];
 const replacementStrings = ["新しい", ""];
 const holderDescriptor = t.struct("full", { sharedLibrary: library, freeFnName: "gtkx_list_holder_free" });
 const copyableValue = t.struct("full", {
-    sharedLibrary: library, copyFnName: "gtkx_list_value_copy", freeFnName: "gtkx_list_value_free",
+    sharedLibrary: library,
+    copyFnName: "gtkx_list_value_copy",
+    freeFnName: "gtkx_list_value_free",
 });
 const noncopyableValues = [
     t.struct("full", { sharedLibrary: library, freeFnName: "gtkx_list_value_free" }),
     t.boxed("GtkxListValue", {
-        ownership: "full", sharedLibrary: library, freeFnName: "gtkx_list_value_free",
+        ownership: "full",
+        sharedLibrary: library,
+        freeFnName: "gtkx_list_value_free",
     }),
 ];
 const borrowedHolder = t.struct();
 const holderFor = (isSingly: boolean, kind: number, isPopulated = true): ExternalObject<Handle> =>
-    t.bind(library, "gtkx_list_holder_new", [t.boolean, t.uint32, t.boolean], holderDescriptor)(
-        isSingly, kind, isPopulated,
-    ) as ExternalObject<Handle>;
+    t.bind(
+        library,
+        "gtkx_list_holder_new",
+        [t.boolean, t.uint32, t.boolean],
+        holderDescriptor,
+    )(isSingly, kind, isPopulated) as ExternalObject<Handle>;
 const count = (holder: ExternalObject<Handle>): unknown =>
     t.bind(library, "gtkx_list_holder_count", [borrowedHolder], t.uint32)(holder);
-const finalizedObjects = (): number =>
-    t.bind(library, "gtkx_list_finalized_objects", [], t.uint32)() as number;
+const finalizedObjects = (): number => t.bind(library, "gtkx_list_finalized_objects", [], t.uint32)() as number;
 const freedValues = (): number => t.bind(library, "gtkx_list_freed_values", [], t.uint32)() as number;
 
 for (const { name, list, isSingly } of layouts) {
@@ -168,7 +174,7 @@ for (const { name, list, isSingly } of layouts) {
         const values: ExternalObject<Handle>[] = [];
 
         invoke(holder, (ref: Ref) => {
-            values.push(...ref.value as ExternalObject<Handle>[]);
+            values.push(...(ref.value as ExternalObject<Handle>[]));
             seen.push(values.map((value) => readValue(value)));
             ref.value = [];
         });
@@ -186,9 +192,11 @@ for (const { name, list, isSingly } of layouts) {
             const invoke = t.bind(library, "gtkx_list_holder_visit", [borrowedHolder, callback], t.void);
             const holder = holderFor(isSingly, 2);
 
-            expect(() => invoke(holder, (ref: Ref) => {
-                ref.value = [];
-            })).toThrow();
+            expect(() =>
+                invoke(holder, (ref: Ref) => {
+                    ref.value = [];
+                }),
+            ).toThrow();
             expect(count(holder)).toBe(2);
             t.field(descriptor, 0).write(holder, []);
             expect(freedValues() - before).toBe(2);
@@ -201,9 +209,11 @@ for (const { name, list, isSingly } of layouts) {
         const invoke = t.bind(library, "gtkx_list_holder_visit", [borrowedHolder, callback], t.void);
         const holder = holderFor(isSingly, 0);
 
-        expect(() => invoke(holder, (ref: Ref) => {
-            ref.value = {};
-        })).toThrow();
+        expect(() =>
+            invoke(holder, (ref: Ref) => {
+                ref.value = {};
+            }),
+        ).toThrow();
         expect(t.field(descriptor, 0).read(holder)).toEqual(initialStrings);
     });
 }

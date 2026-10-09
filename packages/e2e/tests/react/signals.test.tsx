@@ -735,17 +735,17 @@ describe("handler props - a property name codegen escaped", () => {
 
         await render(
             <GtkLabel
-                controllers={(
+                controllers={
                     <GtkShortcutController
-                        shortcuts={(
+                        shortcuts={
                             <GtkShortcut
                                 ref={shortcutRef}
                                 arguments_={GLib.Variant.newString("one")}
                                 onNotifyArguments_={handleNotify}
                             />
-                        )}
+                        }
                     />
-                )}
+                }
             >
                 shortcut host
             </GtkLabel>,

@@ -76,15 +76,17 @@ describe("generated directional input types", () => {
 
     beforeAll(() => {
         const fixture = readFileSync(new URL("fixtures/gir/DirectionalTypes-1.0.gir", import.meta.url));
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-directional-types-",
-            config: CONFIG,
-            files: {
-                "gir/DirectionalTypes-1.0.gir": fixture,
-                "accepted.ts": ACCEPTED,
-                ...REJECTED,
-            },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-directional-types-",
+                config: CONFIG,
+                files: {
+                    "gir/DirectionalTypes-1.0.gir": fixture,
+                    "accepted.ts": ACCEPTED,
+                    ...REJECTED,
+                },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });

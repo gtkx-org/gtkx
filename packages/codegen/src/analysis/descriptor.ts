@@ -189,12 +189,8 @@ const arrayLayoutArg = (ownership: Ownership | undefined, layout: ArrayLayout): 
     return entries.length === 0 ? undefined : `{ ${entries.join(", ")} }`;
 };
 
-const tList = (
-    name: ListDescriptorName,
-    element: string,
-    ownership: Ownership,
-    layout: ArrayLayout,
-): string => call(name, [element, sourceStringLiteral(ownership), arrayLayoutArg(ownership, layout)]);
+const tList = (name: ListDescriptorName, element: string, ownership: Ownership, layout: ArrayLayout): string =>
+    call(name, [element, sourceStringLiteral(ownership), arrayLayoutArg(ownership, layout)]);
 
 const tArray = (element: string, ownership: Ownership | undefined, layout: ArrayLayout): string =>
     call("array", [
@@ -244,8 +240,7 @@ const tCallback = (spec: CallbackSpecParts): string => {
     return call("callback", [`[${spec.argTypes.join(", ")}]`, spec.returns, optionsArg]);
 };
 
-const tBind = (args: BindArgs): string =>
-    call("bind", [args.libExpr, args.symbolExpr, args.argList, args.returnType]);
+const tBind = (args: BindArgs): string => call("bind", [args.libExpr, args.symbolExpr, args.argList, args.returnType]);
 
 const tFn = (lib: string, cIdentifier: string, spec: FnSpecParts): string => {
     const skipEntry = spec.isReturnSkipped ? `, ${SKIPPED_RETURN_ENTRY}` : "";

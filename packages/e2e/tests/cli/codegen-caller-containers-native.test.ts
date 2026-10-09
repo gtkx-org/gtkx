@@ -7,7 +7,8 @@ describe("generated caller-allocated native containers", () => {
     it("preserves native Icon serialization and the later supported vfunc slot", () => {
         using consumer = createCliProject({
             prefix: "gtkx-cli-icon-serialization-",
-            config: 'export default { applicationId: "org.gtkx.iconserialization", libraries: ["Gio-2.0"],' +
+            config:
+                'export default { applicationId: "org.gtkx.iconserialization", libraries: ["Gio-2.0"],' +
                 " agents: { reference: false, rules: false } };",
             files: { "probe.ts": NATIVE_CONSUMER },
         });

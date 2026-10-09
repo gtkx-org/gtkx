@@ -119,11 +119,7 @@ const stopApp = async (child: ChildProcess): Promise<void> => {
     await waitForExit(child);
 };
 
-const startServer = async (
-    cwd: string,
-    existingRuntimeDir?: string,
-    serverArgs: string[] = [],
-): Promise<McpServer> => {
+const startServer = async (cwd: string, existingRuntimeDir?: string, serverArgs: string[] = []): Promise<McpServer> => {
     const runtimeDir = existingRuntimeDir ?? mkdtempSync(join(tmpdir(), "gtkx-mcp-runtime-"));
 
     const transport = new StdioClientTransport({

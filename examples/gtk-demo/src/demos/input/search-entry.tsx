@@ -20,7 +20,7 @@ const searchEntryDemo: Demo = {
     title: "Entry/Search Entry",
     description:
         "GtkSearchEntry provides an entry that is ready for search.\n\nSearch entries have their " +
-        "\"search-changed\" signal delayed and should be used when the search operation is slow, " +
+        '"search-changed" signal delayed and should be used when the search operation is slow, ' +
         "such as big datasets to search, or online searches.\n\nGtkSearchBar can hide a " +
         "search entry that 'springs into action' upon keyboard input.",
     keywords: [],
@@ -67,14 +67,14 @@ function SearchEntryTitlebar() {
 
     return (
         <GtkHeaderBar
-            end={(
+            end={
                 <GtkToggleButton
                     iconName="system-search-symbolic"
                     accessibleLabel="Search"
                     active={isSearchActive}
                     onToggled={handleToggleButtonClicked}
                 />
-            )}
+            }
         />
     );
 }

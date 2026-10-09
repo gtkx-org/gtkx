@@ -123,10 +123,10 @@ const vfuncMemberName = (fieldName: string): string => `vfunc${pascalCase(fieldN
 const vfuncOverrideNote = (slot: VtableSlot, isProtected: boolean): string =>
     slot.canCall
         ? [
-                `Invokes the \`${slot.field.name}\` vtable slot. Override it on a class passed to \`registerClass\``,
-                `and chain up with \`super.${slot.key}()\`.`,
-                isProtected ? PROTECTED_SLOT_NOTE : PUBLIC_SLOT_NOTE,
-            ].join("\n")
+              `Invokes the \`${slot.field.name}\` vtable slot. Override it on a class passed to \`registerClass\``,
+              `and chain up with \`super.${slot.key}()\`.`,
+              isProtected ? PROTECTED_SLOT_NOTE : PUBLIC_SLOT_NOTE,
+          ].join("\n")
         : `Fills the \`${slot.field.name}\` vtable slot. Override it on a class passed to \`registerClass\`.`;
 
 const vfuncRequirementNote = (slot: VtableSlot, ownerRef: string): string =>
@@ -141,8 +141,7 @@ const vfuncMemberNote = (options: VfuncMemberOptions): string =>
         ? vfuncRequirementNote(options.slot, options.ownerRef)
         : vfuncOverrideNote(options.slot, options.isProtected);
 
-const isPaddingField = (field: GirField): boolean =>
-    field.name.startsWith("_") || PADDING_FIELD_NAME.test(field.name);
+const isPaddingField = (field: GirField): boolean => field.name.startsWith("_") || PADDING_FIELD_NAME.test(field.name);
 
 const vtableCallbackType = (context: ModuleContext, field: GirField): GirCallback | undefined => {
     if (field.type === undefined) {
@@ -161,9 +160,13 @@ const vtableCallbackType = (context: ModuleContext, field: GirField): GirCallbac
 const isDecodedCallbackParam = (context: ModuleContext, parameter: GirParameter, index: number): boolean => {
     const type = underlyingType(context.library, parameter.type);
 
-    return type?.kind === "callback" && isSupportedCallback(context.library, type.value) &&
+    return (
+        type?.kind === "callback" &&
+        isSupportedCallback(context.library, type.value) &&
         type.value.parameters.every((input) => !hasTransferredNumericHashTableInput(context.library, input)) &&
-        parameter.closureIndex !== undefined && !hasDetachedClosure(parameter, index);
+        parameter.closureIndex !== undefined &&
+        !hasDetachedClosure(parameter, index)
+    );
 };
 
 const decodedSlotParams = (context: ModuleContext, callback: GirCallback): Set<GirParameter> => {
@@ -347,7 +350,8 @@ const slotSignatureKey = (library: Library, slot: VtableSlot): string => {
     const [, ...parameters] = slot.callback.parameters;
 
     const parts = parameters.map(
-        (parameter) => `${typeKey(library, parameter.type)}/${parameter.direction}/${String(parameter.nullable)}`);
+        (parameter) => `${typeKey(library, parameter.type)}/${parameter.direction}/${String(parameter.nullable)}`,
+    );
 
     return `${parts.join(",")}->${typeKey(library, slot.callback.returnValue.type)}`;
 };
@@ -357,7 +361,8 @@ const isShadowingSlot = (library: Library, slot: VtableSlot, inherited: VtableSl
         (other) =>
             other.key === slot.key &&
             slotIdentity(other) !== slotIdentity(slot) &&
-            slotSignatureKey(library, other) !== slotSignatureKey(library, slot));
+            slotSignatureKey(library, other) !== slotSignatureKey(library, slot),
+    );
 
 const disambiguateSlots = (
     context: ModuleContext,
@@ -368,7 +373,8 @@ const disambiguateSlots = (
     const inherited = ancestorSlots(context, namespaceName, klass);
 
     return slots.map((slot) =>
-        isShadowingSlot(context.library, slot, inherited) ? { ...slot, key: shadowedSlotKey(klass, slot) } : slot);
+        isShadowingSlot(context.library, slot, inherited) ? { ...slot, key: shadowedSlotKey(klass, slot) } : slot,
+    );
 };
 
 const ancestorSlots = (context: ModuleContext, namespaceName: string, klass: GirClass): VtableSlot[] => {
@@ -500,10 +506,12 @@ const slotDoc = (slot: VtableSlot): string | undefined => {
     return slot.canCall
         ? doc
         : [
-                doc,
-                "Calling the native implementation through this member, `super`, `callVfunc` or `callParent` throws. " +
-                "Overriding it remains supported.",
-            ].filter(Boolean).join("\n\n");
+              doc,
+              "Calling the native implementation through this member, `super`, `callVfunc` or `callParent` throws. " +
+                  "Overriding it remains supported.",
+          ]
+              .filter(Boolean)
+              .join("\n\n");
 };
 
 const slotDocParameters = (context: ModuleContext, slot: VtableSlot): GirParameter[] => {
@@ -555,7 +563,8 @@ const renderVfuncMembers = (options: VfuncMembersOptions): string[] => {
     const protectedKeys = protectedSlotKeys(options, slots);
 
     return slots.map((slot) =>
-        renderVfuncMember({ context, ownerRef, slot, mode, isProtected: protectedKeys.has(slot.key) }));
+        renderVfuncMember({ context, ownerRef, slot, mode, isProtected: protectedKeys.has(slot.key) }),
+    );
 };
 
 const isCallableSlot = (slot: VtableSlot): boolean => !UNCALLABLE_SLOT_KEYS.has(slot.key);
@@ -571,13 +580,13 @@ const vfuncSlotSignature = (context: ModuleContext, slot: VtableSlot, isOptional
     const plan = slotParamPlan(context, slot.callback);
     const [, ...parameters] = plan.parameters;
 
-    const renderType = (ref: TypeId | undefined, isNullable: boolean): string =>
-        renderTsType(context, ref, isNullable);
+    const renderType = (ref: TypeId | undefined, isNullable: boolean): string => renderTsType(context, ref, isNullable);
 
     const signature = vfuncInputParameters(context, slot)
         .map(
             (parameter, index) =>
-                `${parameterIdentifier(parameter, index)}: ${renderType(parameter.type, parameter.nullable)}`)
+                `${parameterIdentifier(parameter, index)}: ${renderType(parameter.type, parameter.nullable)}`,
+        )
         .join(", ");
 
     const folded = foldedLengthParameters(context.library, slot.callback);
@@ -609,8 +618,7 @@ const renderVfuncMember = (options: VfuncMemberOptions): string => {
         return `${doc}${declaration};`;
     }
 
-    const inputs = vfuncInputParameters(context, slot).map((parameter, index) =>
-        parameterIdentifier(parameter, index));
+    const inputs = vfuncInputParameters(context, slot).map((parameter, index) => parameterIdentifier(parameter, index));
 
     const call = `callVfunc(${ownerRef}, ${sourceStringLiteral(slot.key)}, this, [${inputs.join(", ")}])`;
     const body = returnType === "void" ? `${call};` : `return ${call} as ${returnType};`;
@@ -627,45 +635,47 @@ const isEligibleVtableParam = (context: ModuleContext, param: GirParameter): boo
 };
 
 const isVtableSlotEligible = (context: ModuleContext, callback: GirCallback): boolean => {
-    if (!callback.introspectable ||
+    if (
+        !callback.introspectable ||
         hasUnsupportedHashTableSlot(context.library, callback.returnValue.type) ||
         hasTransferredNumericHashTable(
-            context.library, callback.returnValue.type, callback.returnValue.transferOwnership,
+            context.library,
+            callback.returnValue.type,
+            callback.returnValue.transferOwnership,
         ) ||
         hasScalarPointer(context.library, callback.returnValue.type, callback.returnValue.cType) ||
         hasUnknownLengthArray(context.library, callback.returnValue.type) ||
         hasPrimitivePointer(context.library, callback.returnValue.type) ||
         hasCallbackType(context.library, callback.returnValue.type) ||
-        hasUnsupportedInlineRecordArray(
-            context,
-            callback.returnValue.type,
-            callback.returnValue.transferOwnership,
-            { direction: "to-native", isRetained: true },
-        )) {
+        hasUnsupportedInlineRecordArray(context, callback.returnValue.type, callback.returnValue.transferOwnership, {
+            direction: "to-native",
+            isRetained: true,
+        })
+    ) {
         return false;
     }
 
     const plan = slotParamPlan(context, callback);
 
-    return plan.parameters.every((parameter) =>
-        isEligibleVtableParam(context, parameter) &&
-        !hasUnsupportedCallbackInlineRecordArray(context, parameter) &&
-        !hasUnsupportedHashTableSlot(context.library, parameter.type) &&
-        !hasTransferredNumericHashTable(context.library, parameter.type, parameter.transferOwnership) &&
-        !hasInoutHandleIndirectionMismatch(context.library, parameter) &&
-        !hasUnsupportedScalarParameter(context.library, parameter) &&
-        !hasPrimitivePointer(context.library, parameter.type) &&
-        !hasUnknownLengthArray(context.library, parameter.type) &&
-        (!hasCallbackType(context.library, parameter.type) || plan.decoded.has(parameter)));
+    return plan.parameters.every(
+        (parameter) =>
+            isEligibleVtableParam(context, parameter) &&
+            !hasUnsupportedCallbackInlineRecordArray(context, parameter) &&
+            !hasUnsupportedHashTableSlot(context.library, parameter.type) &&
+            !hasTransferredNumericHashTable(context.library, parameter.type, parameter.transferOwnership) &&
+            !hasInoutHandleIndirectionMismatch(context.library, parameter) &&
+            !hasUnsupportedScalarParameter(context.library, parameter) &&
+            !hasPrimitivePointer(context.library, parameter.type) &&
+            !hasUnknownLengthArray(context.library, parameter.type) &&
+            (!hasCallbackType(context.library, parameter.type) || plan.decoded.has(parameter)),
+    );
 };
 
 const renderVtableSlotDescriptor = (context: ModuleContext, vtable: Vtable, slot: VtableSlot): string => {
     const { key, field, callback, byteOffset } = slot;
     const plan = slotParamPlan(context, callback);
 
-    const argDescriptors = plan.parameters
-        .map((param) => renderSlotParamDescriptor(context, param, plan))
-        .join(", ");
+    const argDescriptors = plan.parameters.map((param) => renderSlotParamDescriptor(context, param, plan)).join(", ");
 
     const returnDescriptor = renderDescriptor(
         context,

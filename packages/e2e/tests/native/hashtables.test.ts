@@ -9,10 +9,12 @@ drainAfterEachTest();
 
 const library = fixtureLibrary("registered-enum-tables", "gobject-2.0");
 const genumValuedTableIn = t.fn(library, "gtkx_registered_enum_table_matches", () => ({
-    args: [{
-        type: t.hashTable(t.int32, t.enum(library, "gtkx_hash_enum_get_type", false)),
-        isRequired: true,
-    }],
+    args: [
+        {
+            type: t.hashTable(t.int32, t.enum(library, "gtkx_hash_enum_get_type", false)),
+            isRequired: true,
+        },
+    ],
     returns: t.boolean,
 }));
 
@@ -200,11 +202,13 @@ test("a GType registered enum marshals as a hash table element", () => {
         [3, GIMarshallingTests.GEnum.VALUE3],
     ]);
     expect(genumValuedTableIn(members)).toBe(true);
-    expect(members).toEqual(new Map([
-        [1, 0],
-        [2, 1],
-        [3, 42],
-    ]));
+    expect(members).toEqual(
+        new Map([
+            [1, 0],
+            [2, 1],
+            [3, 42],
+        ]),
+    );
 });
 
 test("a GType registered enum hash table element rejects values that are not members", () => {
@@ -225,11 +229,7 @@ test("regress string hash tables return as maps in every transfer mode", () => {
 
 test("boxed hash table entries reject object wrappers and recover", () => {
     expect(() => {
-        Reflect.apply(
-            Regress.testGhashGvalueIn,
-            Regress,
-            [new Map([["value", new Regress.TestObj({})]])],
-        );
+        Reflect.apply(Regress.testGhashGvalueIn, Regress, [new Map([["value", new Regress.TestObj({})]])]);
     }).toThrow();
 
     const values = Regress.testGhashGvalueReturn();

@@ -3,15 +3,7 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAlertDialog } from "@gtkx/jsx/adw";
 import { GListStore } from "@gtkx/jsx/gio";
-import {
-    GtkBox,
-    GtkButton,
-    GtkFileDialog,
-    GtkFileFilter,
-    GtkHeaderBar,
-    GtkPicture,
-    GtkSvg,
-} from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkFileDialog, GtkFileFilter, GtkHeaderBar, GtkPicture, GtkSvg } from "@gtkx/jsx/gtk";
 import { createPortal, rootElement } from "@gtkx/react";
 import { errorMessage } from "@gtkx/utils";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -110,7 +102,7 @@ function PaintableSvgProvider({ window, children }: DemoProviderProps) {
         setPending(null);
     }, []);
     const handleError = useCallback((source: SvgSource, message: string) => {
-        setPending((current) => current?.id === source.id ? null : current);
+        setPending((current) => (current?.id === source.id ? null : current));
         setError(message);
     }, []);
 
@@ -213,10 +205,11 @@ function SvgDocument({ source, onLoaded, onError }: SvgDocumentProps) {
     );
 }
 
-const SvgDocuments = ({ sources, ...callbacks }: SvgDocumentsProps) => createPortal(
-    sources.map((source) => <SvgDocument key={source.id} source={source} {...callbacks} />),
-    rootElement,
-);
+const SvgDocuments = ({ sources, ...callbacks }: SvgDocumentsProps) =>
+    createPortal(
+        sources.map((source) => <SvgDocument key={source.id} source={source} {...callbacks} />),
+        rootElement,
+    );
 
 function PaintableSvgDemo() {
     const { svg, error, clearError } = usePaintableSvgContext();

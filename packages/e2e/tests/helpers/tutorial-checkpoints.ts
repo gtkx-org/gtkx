@@ -23,17 +23,16 @@ type CheckpointOptions = {
 
 async function createCheckpoint(values: CheckpointOptions): Promise<void> {
     const tutorialDir = join(ROOT_DIR, "tutorial");
-    const chapters = JSON.parse(
-        readFileSync(join(tutorialDir, "checkpoints", "chapters.json"), "utf8"),
-    ) as Chapter[];
+    const chapters = JSON.parse(readFileSync(join(tutorialDir, "checkpoints", "chapters.json"), "utf8")) as Chapter[];
 
     const docsDir = join(ROOT_DIR, "website", values.version === "v2" ? "v2" : "", "tutorial");
-    const sourceManifest = values.version === "v2"
-        ? readFileSync(join(tutorialDir, "package.json"), "utf8")
-        : execFileSync(resolveExecutable("git"), ["show", "v1.6.0:examples/tutorial/package.json"], {
-                cwd: ROOT_DIR,
-                encoding: "utf8",
-            });
+    const sourceManifest =
+        values.version === "v2"
+            ? readFileSync(join(tutorialDir, "package.json"), "utf8")
+            : execFileSync(resolveExecutable("git"), ["show", "v1.6.0:examples/tutorial/package.json"], {
+                  cwd: ROOT_DIR,
+                  encoding: "utf8",
+              });
     const sourcePackage = JSON.parse(sourceManifest) as TutorialPackage;
     const gtkxVersion = sourcePackage.dependencies["@gtkx/react"];
 
@@ -63,9 +62,10 @@ async function createCheckpoint(values: CheckpointOptions): Promise<void> {
         throw new Error("Dependencies can only be provided when validating checkpoints");
     }
 
-    const output = values.output === undefined
-        ? mkdtempSync(join(tmpdir(), "gtkx-tutorial-checkpoints-"))
-        : resolve(values.output);
+    const output =
+        values.output === undefined
+            ? mkdtempSync(join(tmpdir(), "gtkx-tutorial-checkpoints-"))
+            : resolve(values.output);
 
     if (values.output !== undefined) {
         if (existsSync(output)) {
@@ -101,7 +101,8 @@ async function createCheckpoint(values: CheckpointOptions): Promise<void> {
             },
             dependencies: Object.fromEntries(
                 Object.entries(source.dependencies).filter(([name]) =>
-                    ["@gtkx/cairo", "@gtkx/css", "@gtkx/runtime", "@gtkx/react", "react"].includes(name)),
+                    ["@gtkx/cairo", "@gtkx/css", "@gtkx/runtime", "@gtkx/react", "react"].includes(name),
+                ),
             ),
             devDependencies: source.devDependencies,
         };
@@ -116,7 +117,10 @@ async function createCheckpoint(values: CheckpointOptions): Promise<void> {
             join(ROOT_DIR, "packages", "create-gtkx", "src", "templates", "vitest.config.ts.ejs"),
             "utf8",
         );
-        writeProjectFile("vitest.config.ts", vitestTemplate.replace('<%= isTypescript ? "ts,tsx" : "js,jsx" %>', "ts,tsx"));
+        writeProjectFile(
+            "vitest.config.ts",
+            vitestTemplate.replace('<%= isTypescript ? "ts,tsx" : "js,jsx" %>', "ts,tsx"),
+        );
         cpSync(join(tutorialDir, "data", "icons"), join(output, "data", "icons"), { recursive: true });
     }
 
@@ -126,8 +130,8 @@ async function createCheckpoint(values: CheckpointOptions): Promise<void> {
 
         for (const [key, value] of Object.entries(addition)) {
             const previous = original[key];
-            const isMergeObjects = typeof previous === "object" && previous !== null &&
-                typeof value === "object" && value !== null;
+            const isMergeObjects =
+                typeof previous === "object" && previous !== null && typeof value === "object" && value !== null;
             original[key] = isMergeObjects ? { ...previous, ...value } : value;
         }
         writeProjectFile(path, `${JSON.stringify(original, null, 4)}\n`);

@@ -54,14 +54,11 @@ const stopChild = async (child: ChildProcess): Promise<void> => {
     });
 };
 
-const startStorybookSession = async (
-    project: CliProject,
-    args: string[] = [],
-): Promise<StorybookSession> => {
+const startStorybookSession = async (project: CliProject, args: string[] = []): Promise<StorybookSession> => {
     const temporary = mkdtempDisposableSync(join(tmpdir(), "gtkx-storybook-mcp-"));
-    const inherited = Object.fromEntries(Object.entries(cliEnvironment(project)).filter(
-        (entry): entry is [string, string] => entry[1] !== undefined,
-    ));
+    const inherited = Object.fromEntries(
+        Object.entries(cliEnvironment(project)).filter((entry): entry is [string, string] => entry[1] !== undefined),
+    );
     const environment = {
         ...inherited,
         GTKX_MCP_SOCKET_PATH: join(temporary.path, "mcp.sock"),
@@ -95,11 +92,7 @@ const startStorybookSession = async (
     const call = (name: string, values: Record<string, unknown> = {}): Promise<CallToolResult> =>
         client.callTool({ name, arguments: { appTimeout: TIMEOUT_MS, ...values } }) as Promise<CallToolResult>;
 
-    const query = async (
-        by: string,
-        value: string,
-        options?: Record<string, unknown>,
-    ): Promise<SerializedWidget[]> => {
+    const query = async (by: string, value: string, options?: Record<string, unknown>): Promise<SerializedWidget[]> => {
         const result = await call("gtkx_query_widgets", { by, value, ...(options !== undefined && { options }) });
         const parsed = JSON.parse(contentText(result, output)) as { widgets: SerializedWidget[] };
 

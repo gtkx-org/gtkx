@@ -25,10 +25,7 @@ const useChildButtons = (): [ChildButtons | null, ChildButtonHandlers] => {
         [button1, button2, button3],
     );
 
-    const handlers = useMemo(
-        () => ({ onButton1: setButton1, onButton2: setButton2, onButton3: setButton3 }),
-        [],
-    );
+    const handlers = useMemo(() => ({ onButton1: setButton1, onButton2: setButton2, onButton3: setButton3 }), []);
 
     return [buttons, handlers];
 };

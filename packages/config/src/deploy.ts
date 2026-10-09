@@ -1,14 +1,5 @@
 import { z } from "zod";
-import {
-    fileExtension,
-    flag,
-    girLibrary,
-    relativePathRecord,
-    text,
-    textList,
-    textRecord,
-    url,
-} from "./schema-text.ts";
+import { fileExtension, flag, girLibrary, relativePathRecord, text, textList, textRecord, url } from "./schema-text.ts";
 
 const DEB_COMPRESSIONS = ["gzip", "none", "xz", "zstd"] as const;
 const DEB_SIGN_METHODS = ["debsign", "dpkg-sig"] as const;
@@ -183,7 +174,7 @@ const extraFileEntrySchema = z.union([text(SOURCE_PATH_ERROR), extraFileSchema],
 const launcherEnvSchema = z.record(
     z.string({ error: LAUNCHER_ENV_NAME_ERROR }).regex(LAUNCHER_ENV_NAME_PATTERN, { error: LAUNCHER_ENV_NAME_ERROR }),
     z.string({ error: LAUNCHER_ENV_ERROR }).refine((value) => !value.includes("\0"), { error: LAUNCHER_ENV_ERROR }),
-    { error: (issue) => issue.code === "invalid_key" ? LAUNCHER_ENV_NAME_ERROR : LAUNCHER_ENV_ERROR },
+    { error: (issue) => (issue.code === "invalid_key" ? LAUNCHER_ENV_NAME_ERROR : LAUNCHER_ENV_ERROR) },
 );
 
 const nodeFlagsSchema = z.array(
@@ -243,8 +234,7 @@ const debSchema = z.strictObject({
     /** Compression used for the Debian package payload. */
     compression: z.enum(DEB_COMPRESSIONS, { error: "must be one of gzip, none, xz, zstd" }).optional(),
     /** Additional Debian control fields, keyed by field name. */
-    fields: textRecord("must be a control field value", "must be a record of control field names to values")
-        .optional(),
+    fields: textRecord("must be a control field value", "must be a record of control field names to values").optional(),
 });
 
 const rpmSchema = z.strictObject({
@@ -466,9 +456,7 @@ const deploySchema = z.strictObject({
      * File extensions and MIME types registered for the application.
      * @see {@link DeployFileAssociationOptions} for the fields accepted by each entry.
      */
-    fileAssociations: z
-        .array(fileAssociationSchema, { error: "must be an array of file associations" })
-        .optional(),
+    fileAssociations: z.array(fileAssociationSchema, { error: "must be an array of file associations" }).optional(),
     /** URL schemes handled by the application, registered as `x-scheme-handler` MIME types. */
     protocols: textList("URL scheme", "must be an array of URL schemes").optional(),
     /**
@@ -482,8 +470,10 @@ const deploySchema = z.strictObject({
      * Additional desktop entry keys, overriding non-reserved generated values.
      * `DBusActivatable` and `Version` are rejected; use `deploy.isDbusActivatable` for D-Bus activation.
      */
-    desktopEntry: textRecord("must be a desktop entry value", "must be a record of desktop entry keys to values")
-        .optional(),
+    desktopEntry: textRecord(
+        "must be a desktop entry value",
+        "must be a record of desktop entry keys to values",
+    ).optional(),
     /** Additional XML fragments appended to the AppStream component. */
     metainfoExtra: textList("AppStream XML fragment", "must be an array of AppStream XML fragments").optional(),
     /** Enable D-Bus activation in the desktop entry and generate a session bus service file. Defaults to `false`. */

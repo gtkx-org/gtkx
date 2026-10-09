@@ -66,8 +66,7 @@ const stageRuntimeFiles = (settings: DeploySettings, root: string): StagedFile[]
     }
 
     return listFilesRecursive(dist)
-        .filter((file) =>
-            !isIconAsset(file.rel) && !BUILD_METADATA_FILENAMES.has(file.rel) && !isLocaleAsset(file.rel))
+        .filter((file) => !isIconAsset(file.rel) && !BUILD_METADATA_FILENAMES.has(file.rel) && !isLocaleAsset(file.rel))
         .map((file) => copyInto(root, join(libDirFor(settings), file.rel), file.absPath));
 };
 
@@ -77,7 +76,7 @@ const stageAddon = (settings: DeploySettings, root: string, addon: string | null
 const architectureMismatch = (settings: DeploySettings, file: StagedFile): Error =>
     new Error(
         `Cannot deploy ${file.rel} for ${settings.arch.node}: it was built for another architecture. ` +
-        "Run `gtkx build` again, or drop --skip-build.",
+            "Run `gtkx build` again, or drop --skip-build.",
     );
 
 const assertStagedArchitecture = (settings: DeploySettings, staged: StagedFile[]): void => {
@@ -95,8 +94,9 @@ const assertStagedArchitecture = (settings: DeploySettings, staged: StagedFile[]
 };
 
 const stageCatalogs = (settings: DeploySettings, root: string): StagedFile[] =>
-    listFilesRecursive(join(settings.paths.dist, LOCALE_DIRNAME))
-        .map((file) => copyInto(root, join(SHARE_LOCALE, file.rel), file.absPath));
+    listFilesRecursive(join(settings.paths.dist, LOCALE_DIRNAME)).map((file) =>
+        copyInto(root, join(SHARE_LOCALE, file.rel), file.absPath),
+    );
 
 const stageNodeBinary = (settings: DeploySettings, root: string, node: NodeRuntime | null): StagedFile[] =>
     node === null ? [] : [copyInto(root, join(libDirFor(settings), NODE_FILENAME), node.path, EXECUTABLE_MODE)];
@@ -122,10 +122,7 @@ const generatedMetadataKind = (
         return "metainfo";
     }
 
-    if (
-        metadata.mimePackage !== null &&
-        destination === join(SHARE_MIME_PACKAGES, `${settings.applicationId}.xml`)
-    ) {
+    if (metadata.mimePackage !== null && destination === join(SHARE_MIME_PACKAGES, `${settings.applicationId}.xml`)) {
         return "MIME package";
     }
 
@@ -142,7 +139,7 @@ const warnMetadataCollision = (
     if (kind !== null) {
         warn(
             `extraFiles source "${file.source}" targeting "${file.destination}" is overridden by the ` +
-            `GTKX-generated ${kind}`,
+                `GTKX-generated ${kind}`,
         );
     }
 };
@@ -203,18 +200,22 @@ const stageActivation = (
     }
 
     if (target === "appimage") {
-        return [writeInto(
-            root,
-            join(SHARE_APPLICATIONS, `${settings.applicationId}.desktop`),
-            withoutDbusActivation(metadata.desktopEntry),
-        )];
+        return [
+            writeInto(
+                root,
+                join(SHARE_APPLICATIONS, `${settings.applicationId}.desktop`),
+                withoutDbusActivation(metadata.desktopEntry),
+            ),
+        ];
     }
 
-    return [writeInto(
-        root,
-        join(SHARE_DBUS_SERVICES, `${settings.applicationId}.service`),
-        renderDbusService(settings, PREFIX_FOR[target]),
-    )];
+    return [
+        writeInto(
+            root,
+            join(SHARE_DBUS_SERVICES, `${settings.applicationId}.service`),
+            renderDbusService(settings, PREFIX_FOR[target]),
+        ),
+    ];
 };
 
 const stageOverlay = (

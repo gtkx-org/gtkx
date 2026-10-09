@@ -16,12 +16,15 @@ const LIBC = "libc.so.6";
 const fixture = callAbiFixture();
 
 const duplicateThroughSymbol = (library: string, symbol: string, text: string): unknown =>
-    call(bindFunctionPointer(
-        resolveFunction(library, symbol),
-        [{ kind: "bytes", ownership: "borrowed" }],
-        { kind: "bytes", ownership: "full" },
-        symbol,
-    ), [encoder.encode(text)]).value;
+    call(
+        bindFunctionPointer(
+            resolveFunction(library, symbol),
+            [{ kind: "bytes", ownership: "borrowed" }],
+            { kind: "bytes", ownership: "full" },
+            symbol,
+        ),
+        [encoder.encode(text)],
+    ).value;
 
 test("resolved function handles invoke the symbol repeatedly", () => {
     expect(duplicateThroughSymbol(LIBC, "strdup", "gtkx")).toEqual(encoder.encode("gtkx"));

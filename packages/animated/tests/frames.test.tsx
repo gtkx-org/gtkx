@@ -76,9 +76,12 @@ const expectClockDriven = (counters: number[], frames: number, duration: number)
 };
 
 const expectSettled = (labelRef: RefObject<Gtk.Label | null>, timeout: number): Promise<void> =>
-    waitFor(() => {
-        expect(labelRef.current?.getOpacity()).toBe(1);
-    }, { timeout });
+    waitFor(
+        () => {
+            expect(labelRef.current?.getOpacity()).toBe(1);
+        },
+        { timeout },
+    );
 
 afterEach(() => {
     for (const window of extraWindows) {

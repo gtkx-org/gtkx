@@ -120,12 +120,7 @@ const sidebarCounts = (tasks: Task[], lists: TaskList[]): SidebarCounts => {
     };
 };
 
-const isReorderable = (
-    selection: Selection,
-    query: string,
-    filter: Filter,
-    sortOrder: SortOrder,
-): boolean =>
+const isReorderable = (selection: Selection, query: string, filter: Filter, sortOrder: SortOrder): boolean =>
     sortOrder === "manual" &&
     query === "" &&
     filter === "all" &&

@@ -148,7 +148,10 @@ describe("GJS-compatible Variant unpacking", () => {
     });
 
     it("preserves special dictionary names as own properties", () => {
-        const expected = Object.fromEntries([["__proto__", "safe"], ["constructor", "value"]]);
+        const expected = Object.fromEntries([
+            ["__proto__", "safe"],
+            ["constructor", "value"],
+        ]);
         const variant = new Variant("a{ss}", expected);
         const unpacked = variant.deepUnpack();
 

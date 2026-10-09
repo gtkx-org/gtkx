@@ -133,12 +133,4 @@ function findIds(index: CollectionIndex, slots: SlotMap, positions: Set<number>)
     return found;
 }
 
-export {
-    expandedPathsFor,
-    findIds,
-    findRows,
-    walkVisible,
-    type MatchedRows,
-    type VisibleOrder,
-    type WalkOptions,
-};
+export { expandedPathsFor, findIds, findRows, walkVisible, type MatchedRows, type VisibleOrder, type WalkOptions };

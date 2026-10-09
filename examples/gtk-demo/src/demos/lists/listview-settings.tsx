@@ -183,22 +183,23 @@ function compareSchemaIds(a: string, b: string): number {
 
 function buildNodeFromSettings(settings: Gio.Settings, nodeId: string): SchemaTreeNode {
     const schema = GObject.getProperty(settings, "settingsSchema") as Gio.SettingsSchema;
-    const children = settings.listChildren().toSorted(compareSchemaIds).map((name) =>
-        buildNodeFromSettings(settings.getChild(name), `${nodeId}/${name}`),
-    );
+    const children = settings
+        .listChildren()
+        .toSorted(compareSchemaIds)
+        .map((name) => buildNodeFromSettings(settings.getChild(name), `${nodeId}/${name}`));
 
     return { nodeId, settings, schema, children };
 }
 
-function SchemaSettings({ schemaId, onLoaded }: {
-    schemaId: string;
-    onLoaded: (node: SchemaTreeNode) => void;
-}) {
-    const handleRef = useCallback((settings: Gio.Settings | null) => {
-        if (settings) {
-            onLoaded(buildNodeFromSettings(settings, schemaId));
-        }
-    }, [schemaId, onLoaded]);
+function SchemaSettings({ schemaId, onLoaded }: { schemaId: string; onLoaded: (node: SchemaTreeNode) => void }) {
+    const handleRef = useCallback(
+        (settings: Gio.Settings | null) => {
+            if (settings) {
+                onLoaded(buildNodeFromSettings(settings, schemaId));
+            }
+        },
+        [schemaId, onLoaded],
+    );
 
     return createPortal(<GSettings schemaId={schemaId} ref={handleRef} />, rootElement);
 }
@@ -255,14 +256,17 @@ function filterKeyInfos(keyInfos: KeyInfo[], searchText: string): KeyInfo[] {
 }
 
 function useListViewSettingsState() {
-    const [schemaIds] = useState(() =>
-        Gio.SettingsSchemaSource.getDefault()?.listSchemas(true)[0].toSorted(compareSchemaIds) ?? [],
+    const [schemaIds] = useState(
+        () => Gio.SettingsSchemaSource.getDefault()?.listSchemas(true)[0].toSorted(compareSchemaIds) ?? [],
     );
     const [schemaTree, setSchemaTree] = useState<SchemaTreeNode[]>([]);
     const [selectedNode, setSelectedNode] = useState<SchemaTreeNode | null>(null);
     const handleSchemaLoaded = useCallback((node: SchemaTreeNode) => {
-        setSchemaTree((previous) => [...previous.filter((item) => item.nodeId !== node.nodeId), node]
-            .toSorted((a, b) => compareSchemaIds(a.nodeId, b.nodeId)));
+        setSchemaTree((previous) =>
+            [...previous.filter((item) => item.nodeId !== node.nodeId), node].toSorted((a, b) =>
+                compareSchemaIds(a.nodeId, b.nodeId),
+            ),
+        );
     }, []);
     const [keyInfos, setKeyInfos] = useState<KeyInfo[]>([]);
     const [isKeySearchActive, setIsKeySearchActive] = useState(false);
@@ -348,11 +352,11 @@ function commitKeyInfoEdit({ keyInfo, newText, widget, state }: CommitKeyInfoEdi
 
 const renderKeyInfoCell =
     (getText: (keyInfo: KeyInfo) => string, shouldWrap = false) =>
-        ({ item }: { item: KeyInfo }) => (
-            <GtkLabel xalign={0} wrap={shouldWrap}>
-                {getText(item)}
-            </GtkLabel>
-        );
+    ({ item }: { item: KeyInfo }) => (
+        <GtkLabel xalign={0} wrap={shouldWrap}>
+            {getText(item)}
+        </GtkLabel>
+    );
 
 function toggleableColumn(spec: KeyInfoColumnSpec, columnVisibility: ColumnVisibility): ColumnViewColumn<KeyInfo> {
     return {
@@ -413,7 +417,10 @@ function renderSchemaItem({ item: schemaId }: { item: string }) {
     return <GtkLabel xalign={0}>{schemaId}</GtkLabel>;
 }
 
-const SchemaSidebar = ({ schemaTree, onSelectionChanged }: {
+const SchemaSidebar = ({
+    schemaTree,
+    onSelectionChanged,
+}: {
     schemaTree: SchemaTreeNode[];
     onSelectionChanged: (ids: string[]) => void;
 }) => {
@@ -456,10 +463,12 @@ const SettingsColumnView = ({
     const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(INITIAL_COLUMN_VISIBILITY);
     const [sortColumn, setSortColumn] = useState<string | null>(null);
     const [sortOrder, setSortOrder] = useState(Gtk.SortType.ASCENDING);
-    const sortedKeyInfos = sortColumn === "type"
-        ? filteredKeyInfos.toSorted((a, b) => a.type.localeCompare(b.type) *
-            (sortOrder === Gtk.SortType.ASCENDING ? 1 : -1))
-        : filteredKeyInfos;
+    const sortedKeyInfos =
+        sortColumn === "type"
+            ? filteredKeyInfos.toSorted(
+                  (a, b) => a.type.localeCompare(b.type) * (sortOrder === Gtk.SortType.ASCENDING ? 1 : -1),
+              )
+            : filteredKeyInfos;
 
     const toggleColumn = (id: ToggleableColumnId) => {
         setColumnVisibility((previous) => ({ ...previous, [id]: !previous[id] }));
@@ -534,7 +543,7 @@ function ListViewSettingsTitlebar() {
 
     return (
         <GtkHeaderBar
-            end={(
+            end={
                 <GtkToggleButton
                     name="search-toggle"
                     iconName="system-search-symbolic"
@@ -545,7 +554,7 @@ function ListViewSettingsTitlebar() {
                         state.setKeySearchText("");
                     }}
                 />
-            )}
+            }
         />
     );
 }
@@ -559,10 +568,8 @@ function ListViewSettingsDemo() {
             position={300}
             hexpand
             vexpand
-            startChild={(
-                <SchemaSidebar schemaTree={state.schemaTree} onSelectionChanged={state.handleSchemaSelected} />
-            )}
-            endChild={(
+            startChild={<SchemaSidebar schemaTree={state.schemaTree} onSelectionChanged={state.handleSchemaSelected} />}
+            endChild={
                 <SettingsColumnView
                     isKeySearchActive={state.isKeySearchActive}
                     keySearchText={state.keySearchText}
@@ -571,7 +578,7 @@ function ListViewSettingsDemo() {
                     filteredKeyInfos={state.filteredKeyInfos}
                     onValueEdit={handleValueEdit}
                 />
-            )}
+            }
         />
     );
 }

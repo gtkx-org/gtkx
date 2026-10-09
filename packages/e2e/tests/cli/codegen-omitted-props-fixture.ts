@@ -24,9 +24,4 @@ const omittedPropsFixtureFiles = {
     [`node_modules/${OMITTED_PROPS_MODULE}/index.d.ts`]: DECLARATIONS,
 };
 
-export {
-    OMITTED_PROPS_MODULE,
-    OMITTED_PROPS_OUTPUT,
-    omittedPropsConfig,
-    omittedPropsFixtureFiles,
-};
+export { OMITTED_PROPS_MODULE, OMITTED_PROPS_OUTPUT, omittedPropsConfig, omittedPropsFixtureFiles };

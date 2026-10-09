@@ -43,11 +43,13 @@ function usePasswordEntryContext(): PasswordEntryContextValue {
     return ctx;
 }
 
-const createTextNotifyHandler = (setText: (text: string) => void): TextNotifyHandler => (pspec, self) => {
-    if (pspec.getName() === "text") {
-        setText(self.getText());
-    }
-};
+const createTextNotifyHandler =
+    (setText: (text: string) => void): TextNotifyHandler =>
+    (pspec, self) => {
+        if (pspec.getName() === "text") {
+            setText(self.getText());
+        }
+    };
 
 function PasswordEntryProvider({ children }: DemoProviderProps) {
     const [password, setPassword] = useState("");
@@ -73,7 +75,7 @@ function PasswordEntryTitlebar({ onClose }: DemoProps) {
         <GtkHeaderBar
             name="password-entry-header"
             showTitleButtons={false}
-            end={(
+            end={
                 <GtkButton
                     ref={setDefaultWidget}
                     label="_Done"
@@ -82,7 +84,7 @@ function PasswordEntryTitlebar({ onClose }: DemoProps) {
                     sensitive={arePasswordsMatching}
                     onClicked={onClose}
                 />
-            )}
+            }
         />
     );
 }

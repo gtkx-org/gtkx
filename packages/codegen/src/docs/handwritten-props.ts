@@ -28,9 +28,10 @@ const exportContext = (program: ts.Program, entry: PropsExport): ExportContext =
     const source = program.getSourceFile(entry.fileName);
     const checker = program.getTypeChecker();
     const moduleSymbol = source === undefined ? undefined : checker.getSymbolAtLocation(source);
-    const exported = moduleSymbol === undefined
-        ? undefined
-        : checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === entry.name);
+    const exported =
+        moduleSymbol === undefined
+            ? undefined
+            : checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === entry.name);
 
     if (exported === undefined || source === undefined) {
         throw new Error(`${entry.fileName} exports no type named ${entry.name}`);
@@ -53,8 +54,11 @@ const isSymbolProperty = (checker: ts.TypeChecker, property: ts.Symbol): boolean
     property.declarations?.some((declaration) => {
         const name = ts.getNameOfDeclaration(declaration);
 
-        return name !== undefined && ts.isComputedPropertyName(name) &&
-            (checker.getTypeAtLocation(name.expression).flags & ts.TypeFlags.ESSymbolLike) !== 0;
+        return (
+            name !== undefined &&
+            ts.isComputedPropertyName(name) &&
+            (checker.getTypeAtLocation(name.expression).flags & ts.TypeFlags.ESSymbolLike) !== 0
+        );
     }) === true;
 
 const formatType = (context: ExportContext, type: ts.Type): string =>
@@ -67,22 +71,25 @@ const indexDoc = (declaration: ts.IndexSignatureDeclaration | undefined): string
         return "";
     }
 
-    const comments = ts.getJSDocCommentsAndTags(declaration)
-        .map((node) => ts.isJSDoc(node) ? ts.getTextOfJSDocComment(node.comment) : undefined);
+    const comments = ts
+        .getJSDocCommentsAndTags(declaration)
+        .map((node) => (ts.isJSDoc(node) ? ts.getTextOfJSDocComment(node.comment) : undefined));
 
     return formatDoc(comments.filter((text) => text !== undefined).join(" "));
 };
 
 const declaredProps = (context: ExportContext): HandwrittenProp[] => {
     const { checker, type, declaration } = context;
-    const properties = checker.getPropertiesOfType(type)
+    const properties = checker
+        .getPropertiesOfType(type)
         .filter((property) => !isSymbolProperty(checker, property))
         .map((property) => ({
             name: property.name,
             type: formatType(context, checker.getTypeOfSymbolAtLocation(property, declaration)),
             doc: formatDoc(ts.displayPartsToString(property.getDocumentationComment(checker))),
         }));
-    const indices = checker.getIndexInfosOfType(type)
+    const indices = checker
+        .getIndexInfosOfType(type)
         .filter((info) => (info.keyType.flags & ts.TypeFlags.ESSymbolLike) === 0)
         .map((info) => ({
             name: formatType(context, info.keyType).replaceAll("`", ""),
@@ -107,12 +114,14 @@ type UnionExport = {
 const unionProps = (context: ExportContext, variants: readonly ts.Type[]): UnionProp[] => {
     const { checker } = context;
     const properties = Map.groupBy(
-        variants.flatMap((variant) => checker.getPropertiesOfType(variant))
+        variants
+            .flatMap((variant) => checker.getPropertiesOfType(variant))
             .filter((property) => !isSymbolProperty(checker, property)),
         (property) => property.name,
     );
     const indices = Map.groupBy(
-        variants.flatMap((variant) => checker.getIndexInfosOfType(variant))
+        variants
+            .flatMap((variant) => checker.getIndexInfosOfType(variant))
             .filter((info) => (info.keyType.flags & ts.TypeFlags.ESSymbolLike) === 0),
         (info) => formatType(context, info.keyType),
     );
@@ -120,18 +129,20 @@ const unionProps = (context: ExportContext, variants: readonly ts.Type[]): Union
     return [
         ...[...properties].map(([name, members]) => ({
             name,
-            doc: formatDoc([...new Set(members.map((property) =>
-                ts.displayPartsToString(property.getDocumentationComment(checker))))].join(" ")),
+            doc: formatDoc(
+                [
+                    ...new Set(
+                        members.map((property) => ts.displayPartsToString(property.getDocumentationComment(checker))),
+                    ),
+                ].join(" "),
+            ),
         })),
         ...[...indices].map(([name, members]) => {
             const [first] = members;
-            const keyType = first === undefined
-                ? undefined
-                : checker.typeToTypeNode(
-                        first.keyType,
-                        context.declaration,
-                        ts.NodeBuilderFlags.NoTruncation,
-                    );
+            const keyType =
+                first === undefined
+                    ? undefined
+                    : checker.typeToTypeNode(first.keyType, context.declaration, ts.NodeBuilderFlags.NoTruncation);
 
             if (keyType === undefined) {
                 throw new Error("Cannot represent a configured element prop index");
@@ -147,24 +158,26 @@ const unionProps = (context: ExportContext, variants: readonly ts.Type[]): Union
 };
 
 const propsProbe = (entries: UnionExport[]): string => {
-    const statements = entries.flatMap(({ entry, props }) => props.map((prop) => {
-        const name = prop.keyType === undefined
-            ? ts.factory.createStringLiteral(prop.name)
-            : ts.factory.createComputedPropertyName(ts.factory.createAsExpression(
-                    ts.factory.createIdentifier("undefined"),
-                    prop.keyType,
-                ));
-        const object = ts.factory.createObjectLiteralExpression([
-            ts.factory.createPropertyAssignment(name, ts.factory.createIdentifier("undefined")),
-        ]);
-        const type = ts.factory.createImportTypeNode(
-            ts.factory.createLiteralTypeNode(ts.factory.createStringLiteral(entry.fileName)),
-            undefined,
-            ts.factory.createIdentifier(entry.name),
-        );
+    const statements = entries.flatMap(({ entry, props }) =>
+        props.map((prop) => {
+            const name =
+                prop.keyType === undefined
+                    ? ts.factory.createStringLiteral(prop.name)
+                    : ts.factory.createComputedPropertyName(
+                          ts.factory.createAsExpression(ts.factory.createIdentifier("undefined"), prop.keyType),
+                      );
+            const object = ts.factory.createObjectLiteralExpression([
+                ts.factory.createPropertyAssignment(name, ts.factory.createIdentifier("undefined")),
+            ]);
+            const type = ts.factory.createImportTypeNode(
+                ts.factory.createLiteralTypeNode(ts.factory.createStringLiteral(entry.fileName)),
+                undefined,
+                ts.factory.createIdentifier(entry.name),
+            );
 
-        return ts.factory.createExpressionStatement(ts.factory.createAsExpression(object, type));
-    }));
+            return ts.factory.createExpressionStatement(ts.factory.createAsExpression(object, type));
+        }),
+    );
     const source = ts.factory.createSourceFile(
         statements,
         ts.factory.createToken(ts.SyntaxKind.EndOfFileToken),
@@ -199,16 +212,19 @@ const contextualProps = (
     return entries.map(({ entry, props }) => {
         const context = exportContext(program, entry);
 
-        return [entry.glibName, props.map((prop) => {
-            const initializer = values[index++];
-            const type = initializer === undefined ? undefined : context.checker.getContextualType(initializer);
+        return [
+            entry.glibName,
+            props.map((prop) => {
+                const initializer = values[index++];
+                const type = initializer === undefined ? undefined : context.checker.getContextualType(initializer);
 
-            if (type === undefined) {
-                throw new Error("Cannot resolve a configured element prop context");
-            }
+                if (type === undefined) {
+                    throw new Error("Cannot resolve a configured element prop context");
+                }
 
-            return { name: prop.name, type: formatType(context, type), doc: prop.doc };
-        })];
+                return { name: prop.name, type: formatType(context, type), doc: prop.doc };
+            }),
+        ];
     });
 };
 

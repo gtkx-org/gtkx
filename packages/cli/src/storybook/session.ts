@@ -72,20 +72,22 @@ const loadFiles = async (state: StorybookState): Promise<void> => {
     const config = parseStorybookConfig(configModule?.default ?? (configPath === undefined ? {} : undefined));
     state.files = discoverStorybookFiles(root, configPath, config);
     pruneModules(state);
-    const previewModule = state.files.previewPath === undefined
-        ? undefined
-        : await loadModule(state, state.files.previewPath);
+    const previewModule =
+        state.files.previewPath === undefined ? undefined : await loadModule(state, state.files.previewPath);
     const preview = previewModule?.default;
 
     if (previewModule !== undefined && (typeof preview !== "object" || preview === null || Array.isArray(preview))) {
         throw new TypeError("Storybook preview must export an object");
     }
 
-    await state.handle.updateStories(state.files.stories.map(({ id, title }) => ({
-        id,
-        title,
-        load: () => loadModule(state, id),
-    })), preview);
+    await state.handle.updateStories(
+        state.files.stories.map(({ id, title }) => ({
+            id,
+            title,
+            load: () => loadModule(state, id),
+        })),
+        preview,
+    );
 };
 
 const invalidateFailedLoad = (state: StorybookState): void => {
@@ -101,9 +103,10 @@ const invalidateFailedLoad = (state: StorybookState): void => {
 };
 
 const invalidateChangedModules = (state: StorybookState, changedPath: string): void => {
-    const paths = state.modules.keys().filter((path) =>
-        path === changedPath || hasDependency(state, changedPath, new Set([path])),
-    ).toArray();
+    const paths = state.modules
+        .keys()
+        .filter((path) => path === changedPath || hasDependency(state, changedPath, new Set([path])))
+        .toArray();
     invalidate(state.server, changedPath);
 
     for (const path of paths) {
@@ -133,11 +136,7 @@ const reload = async (state: StorybookState, changedPath?: string): Promise<void
     }
 };
 
-const hasImporter = (
-    module: ModuleNode,
-    targets: Set<string>,
-    seen: Set<ModuleNode>,
-): boolean => {
+const hasImporter = (module: ModuleNode, targets: Set<string>, seen: Set<ModuleNode>): boolean => {
     if (seen.has(module)) {
         return false;
     }
@@ -160,14 +159,14 @@ const hasDependency = (state: StorybookState, path: string, targets: Set<string>
 const shouldReload = (state: StorybookState, change: WatchedChange): boolean => {
     const { path, event } = change;
     const { files, server } = state;
-    const configuration = [files.configPath, files.previewPath].filter((entry): entry is string =>
-        entry !== undefined,
-    );
+    const configuration = [files.configPath, files.previewPath].filter((entry): entry is string => entry !== undefined);
     const configurationPaths = new Set(configuration);
 
     if (
-        event !== "change" || configurationPaths.has(path) ||
-        isStorybookConfigCandidate(server.config.root, path) || hasDependency(state, path, configurationPaths)
+        event !== "change" ||
+        configurationPaths.has(path) ||
+        isStorybookConfigCandidate(server.config.root, path) ||
+        hasDependency(state, path, configurationPaths)
     ) {
         return true;
     }
@@ -180,8 +179,10 @@ const shouldReload = (state: StorybookState, change: WatchedChange): boolean => 
 
     const module = server.moduleGraph.getModuleById(path);
 
-    return hasDependency(state, path, stories) &&
-        (module?.ssrModule === undefined || module.ssrModule === null || !state.isRefreshBoundary(module.ssrModule));
+    return (
+        hasDependency(state, path, stories) &&
+        (module?.ssrModule === undefined || module.ssrModule === null || !state.isRefreshBoundary(module.ssrModule))
+    );
 };
 
 const createStorybookSession = (

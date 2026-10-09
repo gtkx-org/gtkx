@@ -34,8 +34,9 @@ const resolveExtraFile = (destination: string, entry: ExtraFileEntry): DeployExt
 };
 
 const resolveExtraFiles = (root: string, deploy: DeployConfig): DeployExtraFile[] => {
-    const files = Object.entries(deploy.extraFiles ?? {})
-        .map(([destination, entry]) => resolveExtraFile(destination, entry));
+    const files = Object.entries(deploy.extraFiles ?? {}).map(([destination, entry]) =>
+        resolveExtraFile(destination, entry),
+    );
 
     for (const file of files) {
         assertSourceFile(root, file);

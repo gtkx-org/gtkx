@@ -24,7 +24,7 @@ const tabIndexFor = (notebook: Gtk.Notebook, tab: Gtk.Widget): number => {
         .map((label, index) => (isSameTab(tab, label) ? index : -1))
         .filter((index) => index >= 0);
 
-    return matches.length === 1 ? matches[0] ?? -1 : -1;
+    return matches.length === 1 ? (matches[0] ?? -1) : -1;
 };
 
 const notebookTabFor = (widget: Gtk.Widget): NotebookTab | null => {

@@ -34,11 +34,7 @@ function orUndefined(transform: Gsk.Transform | null | undefined): Gsk.Transform
     return transform ?? undefined;
 }
 
-function computeFixedTransform(
-    duration: number,
-    label: Gtk.Label,
-    fixed: Gtk.Fixed,
-): Gsk.Transform | undefined {
+function computeFixedTransform(duration: number, label: Gtk.Label, fixed: Gtk.Fixed): Gsk.Transform | undefined {
     const angle = duration * 90;
     const scale = 2 + Math.sin(duration * Math.PI);
     const labelWidth = label.getWidth();

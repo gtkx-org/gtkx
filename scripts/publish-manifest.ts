@@ -87,8 +87,13 @@ const shippedEntryViolation = (name: string, entry: string): string | undefined 
 
     const isCodegenOverride = name === "@gtkx/codegen" && entry.startsWith("overrides/");
 
-    if (entry.endsWith(".ts") && !entry.endsWith(".d.ts") &&
-        !isDevSource(entry) && !entry.includes("templates/") && !isCodegenOverride) {
+    if (
+        entry.endsWith(".ts") &&
+        !entry.endsWith(".d.ts") &&
+        !isDevSource(entry) &&
+        !entry.includes("templates/") &&
+        !isCodegenOverride
+    ) {
         return `ships TypeScript source ${entry}`;
     }
 

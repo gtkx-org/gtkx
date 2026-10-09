@@ -48,13 +48,14 @@ const detectPackageManager = (settings: DeploySettings): PackageManager => {
         return configured;
     }
 
-    const found = (["pnpm", "yarn", "npm"] as const)
-        .find((manager) => existsSync(join(settings.paths.root, LOCKFILE_BY_MANAGER[manager])));
+    const found = (["pnpm", "yarn", "npm"] as const).find((manager) =>
+        existsSync(join(settings.paths.root, LOCKFILE_BY_MANAGER[manager])),
+    );
 
     if (found === undefined) {
         throw new Error(
             "Cannot build a Flathub-ready manifest without a lockfile: the sandbox installs dependencies offline. " +
-            "Commit a package-lock.json, pnpm-lock.yaml, or yarn.lock, or set `deploy.flatpak.packageManager`.",
+                "Commit a package-lock.json, pnpm-lock.yaml, or yarn.lock, or set `deploy.flatpak.packageManager`.",
         );
     }
 
@@ -76,7 +77,7 @@ const nodeExtensionPathFor = (settings: DeploySettings): string => {
     if (!extension.startsWith(NODE_EXTENSION_PREFIX)) {
         throw new Error(
             `Cannot resolve where "${extension}" mounts: the sandbox installs Node SDK extensions under ` +
-            `${SDK_EXTENSION_ROOT}, so \`deploy.flatpak.nodeExtension\` has to be an ${NODE_EXTENSION_PREFIX}* id.`,
+                `${SDK_EXTENSION_ROOT}, so \`deploy.flatpak.nodeExtension\` has to be an ${NODE_EXTENSION_PREFIX}* id.`,
         );
     }
 
@@ -89,15 +90,15 @@ const resolveSourceUrl = (settings: DeploySettings): string => {
     if (url === null) {
         throw new Error(
             "Cannot build a Flathub-ready manifest without a public source: Flathub builds from a fetchable " +
-            "repository, not from your working tree. Set `deploy.flatpak.source.url`.",
+                "repository, not from your working tree. Set `deploy.flatpak.source.url`.",
         );
     }
 
     if (!FETCHABLE_URL.test(url)) {
         throw new Error(
             `Cannot build a Flathub-ready manifest from "${url}": Flathub's builders clone over HTTPS and have no ` +
-            "credentials, so an SSH remote never resolves there. Set `deploy.flatpak.source.url` to the " +
-            "repository's https:// URL.",
+                "credentials, so an SSH remote never resolves there. Set `deploy.flatpak.source.url` to the " +
+                "repository's https:// URL.",
         );
     }
 
@@ -110,7 +111,7 @@ const commitForTag = (root: string, tag: string): string => {
     if (commit === null) {
         throw new Error(
             `Cannot pin the Flathub source to "${tag}": Flathub builds a fixed tree, not a movable tag, and that ` +
-            `tag does not resolve in ${root}. Create or fetch it, or set \`deploy.flatpak.source.commit\`.`,
+                `tag does not resolve in ${root}. Create or fetch it, or set \`deploy.flatpak.source.commit\`.`,
         );
     }
 

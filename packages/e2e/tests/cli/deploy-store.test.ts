@@ -60,8 +60,9 @@ describe("gtkx deploy (a store inventory it cannot use)", () => {
         for (const packaged of dependencies) {
             expect(packaged).toContain("libgtk-4-1");
             expect(packaged).toContain("libadwaita-1-0");
-            const versionedToolkit = packaged.filter((entry) =>
-                (entry.startsWith("libgtk") || entry.startsWith("libadwaita")) && entry.includes("(>="));
+            const versionedToolkit = packaged.filter(
+                (entry) => (entry.startsWith("libgtk") || entry.startsWith("libadwaita")) && entry.includes("(>="),
+            );
             expect(versionedToolkit).toEqual([]);
         }
     });

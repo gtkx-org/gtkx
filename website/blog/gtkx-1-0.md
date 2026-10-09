@@ -79,7 +79,7 @@ The app is an ordinary Node.js process. The Tasks app in the [tutorial](/tutoria
   <img src="/tasks-screenshot.png" width="900" height="600" loading="lazy" alt="The Tasks app: an adaptive Adwaita window with a sidebar of smart views and colored user lists on the left, and a boxed task list on the right." />
 </picture>
 
-*The tutorial's Tasks app. All driven declaratively by GTKX.*
+_The tutorial's Tasks app. All driven declaratively by GTKX._
 
 GTKX targets Linux. It exposes native library APIs through generated bindings and GTKX integration code; it does not provide a renderer for other desktop platforms.
 

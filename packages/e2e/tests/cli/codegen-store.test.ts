@@ -32,8 +32,9 @@ describe("gtkx codegen", () => {
     it("binds cairo through @gtkx/cairo", () => {
         expect(state.status).toBe(0);
 
-        expect(generatedModule(state.project, "gi", "gtk", "gtk.js"))
-            .toContain(`import * as cairo from "${CAIRO_PACKAGE}";`);
+        expect(generatedModule(state.project, "gi", "gtk", "gtk.js")).toContain(
+            `import * as cairo from "${CAIRO_PACKAGE}";`,
+        );
 
         expect(storeManifest(state.project, "gi").peerDependencies?.[CAIRO_PACKAGE]).toBe("*");
         expect(storeManifest(state.project, "jsx").peerDependencies?.[CAIRO_PACKAGE]).toBe("*");
@@ -42,9 +43,10 @@ describe("gtkx codegen", () => {
     });
 
     it("records only the GIR library identifiers", () => {
-        const inventory = JSON.parse(
-            readFileSync(storePath(state.project, "gi", "libraries.json"), "utf8"),
-        ) as Record<string, unknown>;
+        const inventory = JSON.parse(readFileSync(storePath(state.project, "gi", "libraries.json"), "utf8")) as Record<
+            string,
+            unknown
+        >;
 
         expect(Object.keys(inventory)).toEqual(["libraries"]);
         expect(inventory.libraries).toEqual(["Adw-1", "Gtk-4.0"]);

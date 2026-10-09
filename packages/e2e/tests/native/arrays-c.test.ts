@@ -49,7 +49,11 @@ test("nested string arrays match the native container boundary", () => {
         expect(Reflect.get(GIMarshallingTests, name)).toBeUndefined();
     }
 
-    const expected = [["0", "1", "2"], ["3", "4", "5"], ["6", "7", "8"]];
+    const expected = [
+        ["0", "1", "2"],
+        ["3", "4", "5"],
+        ["6", "7", "8"],
+    ];
 
     expect(GIMarshallingTests.zeroTerminatedArrayOfGstrvTransferNoneReturn()).toEqual(expected);
     expect(GIMarshallingTests.zeroTerminatedArrayOfGstrvTransferContainerReturn()).toEqual(expected);
@@ -93,9 +97,12 @@ test.each([false, true])("array fields preserve their null policy (%s)", (preser
 
 test.each([false, true])("array callback arguments preserve their null policy (%s)", (preserveNull) => {
     const descriptor = { ...t.array(t.string()), preserveNull };
-    const visit = t.bind(collectionLibrary, "gtkx_collection_visit", [
-        t.int32, t.callback([descriptor], t.void, { scope: "call" }),
-    ], t.void);
+    const visit = t.bind(
+        collectionLibrary,
+        "gtkx_collection_visit",
+        [t.int32, t.callback([descriptor], t.void, { scope: "call" })],
+        t.void,
+    );
     const seen: unknown[] = [];
 
     for (const state of [0, 1, 2]) {
@@ -109,14 +116,19 @@ test.each([false, true])("array callback arguments preserve their null policy (%
 
 test.each([false, true])("inout array callbacks distinguish null values from absent slots (%s)", (preserveNull) => {
     const descriptor = { ...t.array(t.string("full"), "array", "full"), preserveNull };
-    const visit = t.bind(collectionLibrary, "gtkx_collection_visit_ref", [
-        t.int32, t.callback([t.ref(descriptor, true)], t.void, { scope: "call" }),
-    ], t.int32);
+    const visit = t.bind(
+        collectionLibrary,
+        "gtkx_collection_visit_ref",
+        [t.int32, t.callback([t.ref(descriptor, true)], t.void, { scope: "call" })],
+        t.int32,
+    );
     const seen: unknown[] = [];
-    const lengths = [0, 1, 2, 3].map((state) => visit(state, (value: Ref) => {
-        seen.push(value.value);
-        value.value = ["replacement"];
-    }));
+    const lengths = [0, 1, 2, 3].map((state) =>
+        visit(state, (value: Ref) => {
+            seen.push(value.value);
+            value.value = ["replacement"];
+        }),
+    );
 
     expect(seen).toEqual([preserveNull ? null : [], [], ["one", "two"], null]);
     expect(lengths).toEqual([1, 1, 1, -1]);
@@ -139,9 +151,12 @@ test.each([
     { name: "inout", inout: true, state: 2, seed: ["one", "two"] },
 ])("unbounded array callback $name refs preserve empty replacements and null", ({ inout, state, seed }) => {
     const descriptor = { ...t.array(t.string("full"), "array", "full"), preserveNull: true };
-    const visit = t.bind(collectionLibrary, "gtkx_collection_visit_ref", [
-        t.int32, t.callback([t.ref(descriptor, inout)], t.void, { scope: "call" }),
-    ], t.int32);
+    const visit = t.bind(
+        collectionLibrary,
+        "gtkx_collection_visit_ref",
+        [t.int32, t.callback([t.ref(descriptor, inout)], t.void, { scope: "call" })],
+        t.int32,
+    );
 
     for (const replacement of [[], null]) {
         const seen: unknown[] = [];
@@ -157,14 +172,19 @@ test.each([
 
 test("array callback outputs start unset and write through existing slots", () => {
     const descriptor = t.array(t.string("full"), "array", "full");
-    const visit = t.bind(collectionLibrary, "gtkx_collection_visit_ref", [
-        t.int32, t.callback([t.ref(descriptor)], t.void, { scope: "call" }),
-    ], t.int32);
+    const visit = t.bind(
+        collectionLibrary,
+        "gtkx_collection_visit_ref",
+        [t.int32, t.callback([t.ref(descriptor)], t.void, { scope: "call" })],
+        t.int32,
+    );
     const seen: unknown[] = [];
-    const lengths = [0, 3].map((state) => visit(state, (value: Ref) => {
-        seen.push(value.value);
-        value.value = ["replacement"];
-    }));
+    const lengths = [0, 3].map((state) =>
+        visit(state, (value: Ref) => {
+            seen.push(value.value);
+            value.value = ["replacement"];
+        }),
+    );
 
     expect(seen).toEqual([null, null]);
     expect(lengths).toEqual([1, -1]);
@@ -299,19 +319,11 @@ test("unichar arrays round trip as characters", () => {
 });
 
 test("enum and flags arrays pass their members", () => {
-    const enums = [
-        GIMarshallingTests.Enum.VALUE1,
-        GIMarshallingTests.Enum.VALUE2,
-        GIMarshallingTests.Enum.VALUE3,
-    ];
+    const enums = [GIMarshallingTests.Enum.VALUE1, GIMarshallingTests.Enum.VALUE2, GIMarshallingTests.Enum.VALUE3];
     GIMarshallingTests.arrayEnumIn(enums);
     expect(enums).toEqual([0, 1, 42]);
 
-    const flags = [
-        GIMarshallingTests.Flags.VALUE1,
-        GIMarshallingTests.Flags.VALUE2,
-        GIMarshallingTests.Flags.VALUE3,
-    ];
+    const flags = [GIMarshallingTests.Flags.VALUE1, GIMarshallingTests.Flags.VALUE2, GIMarshallingTests.Flags.VALUE3];
     GIMarshallingTests.arrayFlagsIn(flags);
     expect(flags).toEqual([1, 2, 4]);
 });
@@ -353,29 +365,19 @@ test("handle-backed arrays reject mismatched native wrappers and recover", () =>
 
     const wrongBoxed = Regress.TestBoxed.new();
     expect(() => {
-        Reflect.apply(
-            GIMarshallingTests.arrayStructFullIn,
-            GIMarshallingTests,
-            [[action, action, action]],
-        );
+        Reflect.apply(GIMarshallingTests.arrayStructFullIn, GIMarshallingTests, [[action, action, action]]);
     }).toThrow();
     expect(() => {
-        Reflect.apply(
-            GIMarshallingTests.arrayStructFullIn,
-            GIMarshallingTests,
-            [[wrongBoxed, wrongBoxed, wrongBoxed]],
-        );
+        Reflect.apply(GIMarshallingTests.arrayStructFullIn, GIMarshallingTests, [[wrongBoxed, wrongBoxed, wrongBoxed]]);
     }).toThrow();
 
     const valid = [1, 2, 3].map((long) => new GIMarshallingTests.BoxedStruct({ long: BigInt(long) }));
     GIMarshallingTests.arrayStructFullIn(valid);
 
     expect(() => {
-        Reflect.apply(
-            GIMarshallingTests.arrayStructValueIn,
-            GIMarshallingTests,
-            [[wrongBoxed, wrongBoxed, wrongBoxed]],
-        );
+        Reflect.apply(GIMarshallingTests.arrayStructValueIn, GIMarshallingTests, [
+            [wrongBoxed, wrongBoxed, wrongBoxed],
+        ]);
     }).toThrow();
     GIMarshallingTests.arrayStructValueIn(valid);
     expect(valid.map((value) => value.long)).toEqual([1n, 2n, 3n]);
@@ -408,9 +410,17 @@ test("flat struct value arrays marshal by value", () => {
 
 test("struct arrays come back with populated fields", () => {
     const fixed = GIMarshallingTests.arrayFixedOutStruct();
-    expect(fixed.map((entry) => [entry.long, entry.int8])).toEqual([[7n, 6], [6n, 7]]);
+    expect(fixed.map((entry) => [entry.long, entry.int8])).toEqual([
+        [7n, 6],
+        [6n, 7],
+    ]);
     const callerAllocated = GIMarshallingTests.arrayFixedCallerAllocatedStructOut();
-    expect(callerAllocated.map((entry) => [entry.long, entry.int8])).toEqual([[-2n, -1], [1n, 2], [3n, 4], [5n, 6]]);
+    expect(callerAllocated.map((entry) => [entry.long, entry.int8])).toEqual([
+        [-2n, -1],
+        [1n, 2],
+        [3n, 4],
+        [5n, 6],
+    ]);
     expect(GIMarshallingTests.arrayZeroTerminatedReturnStruct().map((entry) => entry.long)).toEqual([42n, 43n, 44n]);
     expect(Regress.testArrayStructOut().map((entry) => entry.someInt)).toEqual([22, 33, 44]);
     expect(Regress.testArrayStructOutNone().map((entry) => entry.someInt)).toEqual([111, 222, 333]);
@@ -420,9 +430,9 @@ test("struct arrays come back with populated fields", () => {
 
 test("gtype arrays accept classes and raw gtypes", () => {
     expect(Regress.testArrayGtypeIn([GObject.Object])).toBe("[GObject,]");
-    expect(
-        Regress.testArrayGtypeIn([GIMarshallingTests.gtypeReturn(), GIMarshallingTests.gtypeStringReturn()]),
-    ).toBe("[void,gchararray,]");
+    expect(Regress.testArrayGtypeIn([GIMarshallingTests.gtypeReturn(), GIMarshallingTests.gtypeStringReturn()])).toBe(
+        "[void,gchararray,]",
+    );
 });
 
 test("unaligned byte buffers come back as full copies", () => {
@@ -535,7 +545,7 @@ test("a cursor array reports how far a validating callee read", () => {
     expect(GLib.utf8Validate(new TextEncoder().encode("héllo"))).toEqual([true, new Uint8Array([])]);
     expect(GLib.utf8Validate(new Uint8Array([]))).toEqual([true, new Uint8Array([])]);
     expect(GLib.utf8Validate([104, 105])).toEqual([true, new Uint8Array([])]);
-    expect(GLib.utf8Validate(new Uint8Array([0x68, 0xFF, 0x69]))).toEqual([false, new Uint8Array([255, 105])]);
+    expect(GLib.utf8Validate(new Uint8Array([0x68, 0xff, 0x69]))).toEqual([false, new Uint8Array([255, 105])]);
 });
 
 test("a cursor array rejects values that are not byte sequences", () => {

@@ -6,8 +6,8 @@ import type { ComponentPropsWithRef, ElementType, FunctionComponent, JSX } from 
 type AnimatedItems<T> = [Exclude<Extract<T, Iterable<unknown>>, string>] extends [never]
     ? never
     : Exclude<Extract<T, Iterable<unknown>>, string> extends Iterable<infer Item>
-        ? readonly AnimatedProp<Item>[]
-        : never;
+      ? readonly AnimatedProp<Item>[]
+      : never;
 
 /** A prop value that an animated component also accepts as a spring or an interpolation. */
 type AnimatedProp<T> = T | FluidValue<Exclude<T, undefined>> | AnimatedItems<Exclude<T, undefined>>;
@@ -30,8 +30,8 @@ type AnimatedProps<Props extends object> = {
     [P in keyof Props]: P extends "key" | "ref" | ConstructOnlyPropNames<Props>
         ? Props[P]
         : P extends "style"
-            ? AnimatedProp<Props[P]> | AnimatedStyle<NonNullable<Props[P]>>
-            : AnimatedProp<Props[P]>;
+          ? AnimatedProp<Props[P]> | AnimatedStyle<NonNullable<Props[P]>>
+          : AnimatedProp<Props[P]>;
 };
 
 /** A component returned by {@link animated}: the wrapped component with animated props. */
@@ -44,18 +44,9 @@ type AnimatedComponent<T extends Exclude<ElementType, string>> = FunctionCompone
  * Only elements whose `ref` exposes a `Gtk.Widget` subclass are included.
  */
 type AnimatedElementMap = {
-    readonly [K in keyof JSX.IntrinsicElements as "cssClasses" extends keyof JSX.IntrinsicElements[K]
-        ? K
-        : never]: JSX.IntrinsicElements[K] extends object
-        ? FunctionComponent<AnimatedProps<JSX.IntrinsicElements[K]>>
-        : never;
+    readonly [
+        K in keyof JSX.IntrinsicElements as "cssClasses" extends keyof JSX.IntrinsicElements[K] ? K : never
+    ]: JSX.IntrinsicElements[K] extends object ? FunctionComponent<AnimatedProps<JSX.IntrinsicElements[K]>> : never;
 };
 
-export type {
-    AnimatedComponent,
-    AnimatedElementMap,
-    AnimatedItems,
-    AnimatedProp,
-    AnimatedProps,
-    AnimatedStyle,
-};
+export type { AnimatedComponent, AnimatedElementMap, AnimatedItems, AnimatedProp, AnimatedProps, AnimatedStyle };

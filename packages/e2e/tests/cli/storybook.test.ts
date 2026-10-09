@@ -5,7 +5,8 @@ import { createCliProject, runCli } from "./cli-project.js";
 import { startStorybookSession } from "./storybook-session.js";
 
 const CONFIG = 'export default { applicationId: "org.gtkx.storybookprobe", codegen: false };';
-const MAIN = 'import { defineConfig } from "@gtkx/storybook/config";\n' +
+const MAIN =
+    'import { defineConfig } from "@gtkx/storybook/config";\n' +
     'export default defineConfig({ stories: ["src/**/*.stories.tsx"], exclude: ["**/excluded/**"] });';
 const COMPONENT = "src/Counter.tsx";
 const STORY = "src/Counter.stories.tsx";
@@ -126,8 +127,10 @@ describe("gtkx storybook", () => {
         await session.waitForWidget("text", "Updated decorator");
         const settings = join(project.root, "src/settings.ts");
         writeFileSync(settings, "export const step = 6;");
-        writeFileSync(join(project.root, STORY),
-            'import { step } from "./settings";\n' + story(3).replace("{ step: 3 }", "{ step }"));
+        writeFileSync(
+            join(project.root, STORY),
+            'import { step } from "./settings";\n' + story(3).replace("{ step: 3 }", "{ step }"),
+        );
         await session.waitForWidget("role", "button", { name: "Refreshed: 0 step 6" });
         writeFileSync(settings, "export const step = 9;");
         await session.waitForWidget("role", "button", { name: "Refreshed: 0 step 9" });
@@ -155,16 +158,17 @@ describe("gtkx storybook", () => {
         await session.click("role", "button", { name: "Counter: 0 step 1" });
         await session.waitForWidget("role", "button", { name: "Counter: 1 step 1" });
         const specifier = `./${missingModule}`;
-        writeFileSync(join(project.root, COMPONENT),
+        writeFileSync(
+            join(project.root, COMPONENT),
             `import { initialStep } from ${JSON.stringify(specifier)};\n` +
-            counter("Recovered").replace("step = 1", "step = initialStep"));
+                counter("Recovered").replace("step = 1", "step = initialStep"),
+        );
         await new Promise((resolve) => setTimeout(resolve, 1000));
         writeFileSync(join(project.root, `src/${missingModule}.ts`), "export const initialStep = 2;");
 
-        await expect.poll(
-            () => session.query("role", "button", { name: "Recovered: 1 step 2" }),
-            { timeout: 15_000 },
-        ).toHaveLength(1);
+        await expect
+            .poll(() => session.query("role", "button", { name: "Recovered: 1 step 2" }), { timeout: 15_000 })
+            .toHaveLength(1);
         await session.click("role", "button", { name: "Recovered: 1 step 2" });
         await session.waitForWidget("role", "button", { name: "Recovered: 3 step 2" });
         expect(await session.applicationPid()).toBe(pid);
@@ -244,7 +248,8 @@ describe("gtkx storybook", () => {
                 prefix: "gtkx-storybook-config-selection-",
                 files: {
                     "alternate.gtkx.ts": CONFIG,
-                    "story.config.ts": 'export default { stories: ["stories/*.stories.tsx"], ' +
+                    "story.config.ts":
+                        'export default { stories: ["stories/*.stories.tsx"], ' +
                         `preview: ${JSON.stringify(previewPath)} };`,
                     "setup/preview.tsx": preview("Custom preview"),
                     "stories/Custom.stories.tsx": otherStory().replace('title: "Other", ', ""),
@@ -254,7 +259,10 @@ describe("gtkx storybook", () => {
                 shouldShareStore: true,
             });
             await using session = await startStorybookSession(project, [
-                "--config", "alternate.gtkx.ts", "--storybook-config", "story.config.ts",
+                "--config",
+                "alternate.gtkx.ts",
+                "--storybook-config",
+                "story.config.ts",
             ]);
             await session.waitForWidget("name", "storybook-story-stories-custom--example");
             await session.waitForWidget("text", "Custom preview");
@@ -272,8 +280,10 @@ describe("gtkx storybook", () => {
             shouldShareStore: true,
         });
         const previewPath = kind === "absolute" ? join(project.root, PREVIEW) : "../preview.tsx";
-        writeFileSync(join(project.root, ".storybook/main.ts"),
-            `export default { preview: ${JSON.stringify(previewPath)} };`);
+        writeFileSync(
+            join(project.root, ".storybook/main.ts"),
+            `export default { preview: ${JSON.stringify(previewPath)} };`,
+        );
 
         expect(runCli(project, ["storybook"]).status).not.toBe(0);
     });

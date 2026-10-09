@@ -46,41 +46,36 @@ function NativeStringList({
     onView,
     maxContentHeight,
 }: NativeStringListProps): ReactNode {
-    const [expression] = useState(() =>
-        Gtk.PropertyExpression.new(getClassType(Gtk.StringObject), null, "string"));
+    const [expression] = useState(() => Gtk.PropertyExpression.new(getClassType(Gtk.StringObject), null, "string"));
 
     return (
-        <GtkScrolledWindow
-            minContentWidth={240}
-            minContentHeight={120}
-            maxContentHeight={maxContentHeight}
-        >
+        <GtkScrolledWindow minContentWidth={240} minContentHeight={120} maxContentHeight={maxContentHeight}>
             <GtkListView
                 ref={onView}
-                model={(
+                model={
                     <GtkNoSelection
-                        model={(
+                        model={
                             <GtkFilterListModel
-                                filter={(
+                                filter={
                                     <GtkStringFilter
                                         expression={expression}
                                         ignoreCase
                                         matchMode={Gtk.StringFilterMatchMode.SUBSTRING}
                                         search={search}
                                     />
-                                )}
+                                }
                                 model={<GtkStringList ref={onList} strings={strings} />}
                             />
-                        )}
+                        }
                     />
-                )}
-                factory={(
+                }
+                factory={
                     <ListItemFactory<Gtk.StringObject>
                         estimatedItemHeight={estimatedItemHeight}
                         estimatedItemWidth={estimatedItemWidth}
                         renderItem={renderItem}
                     />
-                )}
+                }
             />
         </GtkScrolledWindow>
     );
@@ -98,11 +93,7 @@ function SearchFixture(): ReactNode {
                     setSearch(entry.getText());
                 }}
             />
-            <NativeStringList
-                strings={FILTER_STRINGS}
-                search={search}
-                renderItem={renderIndexedString}
-            />
+            <NativeStringList strings={FILTER_STRINGS} search={search} renderItem={renderIndexedString} />
         </GtkBox>
     );
 }
@@ -147,11 +138,7 @@ function MutationFixture(): ReactNode {
                     }}
                 />
             </GtkBox>
-            <NativeStringList
-                strings={MUTABLE_STRINGS}
-                renderItem={renderStatefulString}
-                onList={setList}
-            />
+            <NativeStringList strings={MUTABLE_STRINGS} renderItem={renderStatefulString} onList={setList} />
         </GtkBox>
     );
 }
@@ -296,13 +283,15 @@ describe("ListItemFactory native models", () => {
     });
 
     it("propagates renderer errors", async () => {
-        await expect(render(
-            <NativeStringList
-                strings={SINGLE_STRING}
-                renderItem={() => {
-                    throw new Error("Render failed");
-                }}
-            />,
-        )).rejects.toThrow();
+        await expect(
+            render(
+                <NativeStringList
+                    strings={SINGLE_STRING}
+                    renderItem={() => {
+                        throw new Error("Render failed");
+                    }}
+                />,
+            ),
+        ).rejects.toThrow();
     });
 });

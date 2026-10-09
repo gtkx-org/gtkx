@@ -15,6 +15,7 @@ The window's actions sit outside `NavigationContainer`, so they need a container
 -import { createSplitViewNavigator, useNavigationState } from "@gtkx/navigation";
 +import { createNavigationContainerRef, createSplitViewNavigator, useNavigationState } from "@gtkx/navigation";
 ```
+
 ```diff [src/navigation.ts]
 @@ -10,0 +11,2 @@
 +
@@ -53,6 +54,7 @@ In `src/components/window.tsx`, add `navigationRef` to the navigation import and
 -import { ALL_TASKS, Split } from "../navigation.js";
 +import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
 ```
+
 ```diff [src/components/window.tsx]
 @@ -43 +43 @@
 -            <NavigationContainer>

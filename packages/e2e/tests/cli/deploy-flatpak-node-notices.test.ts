@@ -56,15 +56,16 @@ const files = (): Record<string, string> => ({
     }),
 });
 
-const readFlatpak = (root: string): FlatpakManifest => parse(readFileSync(
-    join(root, "build", process.arch, "targets/flatpak", `${APPLICATION_ID}.yml`),
-    "utf8",
-)) as FlatpakManifest;
+const readFlatpak = (root: string): FlatpakManifest =>
+    parse(
+        readFileSync(join(root, "build", process.arch, "targets/flatpak", `${APPLICATION_ID}.yml`), "utf8"),
+    ) as FlatpakManifest;
 
-const readFlatpakNotices = (root: string): string => readFileSync(
-    join(root, "build", process.arch, "overlay/flatpak/share/licenses", BINARY_NAME, "THIRD-PARTY-NOTICES"),
-    "utf8",
-);
+const readFlatpakNotices = (root: string): string =>
+    readFileSync(
+        join(root, "build", process.arch, "overlay/flatpak/share/licenses", BINARY_NAME, "THIRD-PARTY-NOTICES"),
+        "utf8",
+    );
 
 const installLocalNode = (root: string): void => {
     const path = join(root, "runtime/node");
@@ -89,13 +90,17 @@ describe("source Flatpak runtime notices", () => {
         runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "flatpak"]);
         const manifest = readFlatpak(project.root);
         const notices = readFlatpakNotices(project.root);
-        expect(manifest.modules.flatMap((module) => module["build-commands"]))
-            .toContain(`install -Dm755 /usr/lib/sdk/node26/bin/node \${FLATPAK_DEST}/lib/${BINARY_NAME}/node`);
+        expect(manifest.modules.flatMap((module) => module["build-commands"])).toContain(
+            `install -Dm755 /usr/lib/sdk/node26/bin/node \${FLATPAK_DEST}/lib/${BINARY_NAME}/node`,
+        );
         expect(notices).toContain(`Node.js (${SDK_EXTENSION})`);
         expect(notices).not.toContain(`Node.js ${process.versions.node}`);
         expect(notices).not.toContain(LOCAL_LICENSE.trim());
-        expect(manifest.modules.flatMap((module) => module.sources)
-            .find((source) => source["dest-filename"] === "THIRD-PARTY-NOTICES")?.contents).toContain(notices);
+        expect(
+            manifest.modules
+                .flatMap((module) => module.sources)
+                .find((source) => source["dest-filename"] === "THIRD-PARTY-NOTICES")?.contents,
+        ).toContain(notices);
     });
 
     it("identifies the configured SDK extension without guessing its release", () => {
@@ -109,8 +114,9 @@ describe("source Flatpak runtime notices", () => {
         runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "flatpak"]);
         const manifest = readFlatpak(project.root);
         expect(manifest["sdk-extensions"]).toContain(extension);
-        expect(manifest.modules.flatMap((module) => module["build-commands"]))
-            .toContain(`install -Dm755 /usr/lib/sdk/node26-audit/bin/node \${FLATPAK_DEST}/lib/${BINARY_NAME}/node`);
+        expect(manifest.modules.flatMap((module) => module["build-commands"])).toContain(
+            `install -Dm755 /usr/lib/sdk/node26-audit/bin/node \${FLATPAK_DEST}/lib/${BINARY_NAME}/node`,
+        );
         expect(readFlatpakNotices(project.root)).toContain(`Node.js (${extension})`);
     });
 
@@ -144,8 +150,11 @@ describe("source Flatpak runtime notices", () => {
         const notices = readFlatpakNotices(project.root);
         expect(notices).toContain(`Node.js (${SDK_EXTENSION})`);
         expect(notices).not.toContain(LOCAL_LICENSE.trim());
-        expect(readFlatpak(project.root).modules.flatMap((module) => module.sources)
-            .find((source) => source["dest-filename"] === "THIRD-PARTY-NOTICES")?.contents).toContain(notices);
+        expect(
+            readFlatpak(project.root)
+                .modules.flatMap((module) => module.sources)
+                .find((source) => source["dest-filename"] === "THIRD-PARTY-NOTICES")?.contents,
+        ).toContain(notices);
     });
 
     it("retains local runtime notices for a binary Flatpak", () => {

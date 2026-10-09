@@ -56,10 +56,7 @@ const resolveCodegenStore = (dir: string): CodegenStore => {
         jsxLinkDir: store.jsx?.linkDir ?? siblingStore(store.gi.linkDir),
         runtimeVersion: store.gi.version,
         owner: store.gi.owner ?? realpathSync(dir),
-        react:
-            hasReactRuntime && store.jsx !== null
-                ? { version: store.jsx.version }
-                : null,
+        react: hasReactRuntime && store.jsx !== null ? { version: store.jsx.version } : null,
     };
 };
 

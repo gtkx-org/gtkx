@@ -41,13 +41,15 @@ const gtkxVitePlugins = (options: GtkxVitePluginOptions = {}): Plugin[] => {
         createConfigPlugin({ name: "gtkx:config", loadConfig }),
         ...(entryPath === undefined
             ? []
-            : [gtkxI18n({
-                    entryPath,
-                    loadConfig,
-                    onCatalogsWritten,
-                    shouldPreserveMetadataMessages: shouldPreserveI18nMetadata,
-                    shouldRecoverExtractionErrors: mode === "development",
-                })]),
+            : [
+                  gtkxI18n({
+                      entryPath,
+                      loadConfig,
+                      onCatalogsWritten,
+                      shouldPreserveMetadataMessages: shouldPreserveI18nMetadata,
+                      shouldRecoverExtractionErrors: mode === "development",
+                  }),
+              ]),
         gtkxStoreLinks(),
         gtkxUndeclaredLibrary(loadConfig),
         gtkxSettings(buildManifest),

@@ -47,12 +47,16 @@ const throwOnCleanup = (): never => {
     throw new Error("Cleanup failed");
 };
 
-const failingCleanupRef: RefCallback<Adw.EntryRow> = (row) => row === null ? undefined : throwOnCleanup;
+const failingCleanupRef: RefCallback<Adw.EntryRow> = (row) => (row === null ? undefined : throwOnCleanup);
 
 function RowForm({ row, rowRef }: { row: RowCase; rowRef: RefCallback<Row> }): ReactNode {
     const form = useForm({ defaultValues: { value: row.value } });
 
-    return <FormProvider {...form}><AdwPreferencesGroup>{row.draw(rowRef)}</AdwPreferencesGroup></FormProvider>;
+    return (
+        <FormProvider {...form}>
+            <AdwPreferencesGroup>{row.draw(rowRef)}</AdwPreferencesGroup>
+        </FormProvider>
+    );
 }
 
 function FocusForm({ rowRef }: { rowRef: Ref<Adw.EntryRow> }): ReactNode {

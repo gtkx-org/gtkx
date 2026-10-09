@@ -23,8 +23,4 @@ const metadataTemplateFile = (project: CatalogProject, kind: MetadataTemplateKin
 const metadataTemplateFiles = (project: CatalogProject): MetadataTemplateFile[] =>
     METADATA_TEMPLATE_KINDS.map((kind) => metadataTemplateFile(project, kind));
 
-export {
-    type MetadataTemplateKind,
-    metadataTemplateFile,
-    metadataTemplateFiles,
-};
+export { type MetadataTemplateKind, metadataTemplateFile, metadataTemplateFiles };
