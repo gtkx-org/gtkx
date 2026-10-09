@@ -22,7 +22,8 @@
             "{workspaceRoot}/scripts/tsx.ts",
             "{workspaceRoot}/scripts/workspace-paths.ts",
             "{workspaceRoot}/packages/e2e/tests/native/**/*",
-            "{workspaceRoot}/packages/e2e/tests/helpers/native-fixtures.ts"
+            "{workspaceRoot}/packages/e2e/tests/helpers/native-fixtures.ts",
+            "{workspaceRoot}/packages/e2e/tests/helpers/native-fixtures-compile.ts"
         ]
     },
     "targets": {
@@ -36,68 +37,56 @@
                 "{projectRoot}/artifacts/**/*",
                 {
                     "env": "GTKX_RELEASE_NATIVE_ARTIFACTS"
-                }
+                },
+                "{workspaceRoot}/scripts/ci/**/*"
             ],
-            "outputs": [
-                "{projectRoot}/index.d.ts",
-                "{projectRoot}/index.js",
-                "{projectRoot}/native.*.node"
-            ]
+            "outputs": ["{projectRoot}/index.d.ts", "{projectRoot}/index.js", "{projectRoot}/native.*.node"],
+            "command": "node ../../scripts/ci/run.mjs 'pnpm run build'",
+            "options": {
+                "cwd": "{projectRoot}"
+            }
         },
         "_lint:rust": {
             "cache": true,
             "dependsOn": [],
-            "inputs": [
-                "crate",
-                "{workspaceRoot}/rustfmt.toml"
-            ],
-            "outputs": []
+            "inputs": ["crate", "{workspaceRoot}/rustfmt.toml", "{workspaceRoot}/scripts/ci/**/*"],
+            "outputs": [],
+            "command": "node ../../scripts/ci/run.mjs 'pnpm run _lint:rust'",
+            "options": {
+                "cwd": "{projectRoot}"
+            }
         },
         "_lint:audit": {
-            "command": "cargo audit --file packages/native/Cargo.lock --deny unsound",
-            "cache": false
+            "command": "node scripts/ci/run.mjs 'cargo audit --file packages/native/Cargo.lock --deny unsound'",
+            "cache": false,
+            "inputs": ["...", "default", "^default", "{workspaceRoot}/scripts/ci/**/*"]
         },
         "lint": {
-            "dependsOn": [
-                "build",
-                "_lint:rust",
-                "_lint:audit"
-            ]
+            "dependsOn": ["^build", "build", "_lint:rust", "_lint:eslint"]
         },
-        "_test:asan": {
-            "dependsOn": [
-                "build",
-                "@gtkx/e2e:_test:fixtures",
-                "@gtkx/runtime:build"
-            ],
+        "test-asan": {
+            "dependsOn": ["build", "@gtkx/e2e:_test:fixtures", "@gtkx/runtime:build"],
             "cache": true,
-            "inputs": [
-                "nativeTests",
-                "^production"
-            ],
-            "outputs": []
+            "inputs": ["nativeTests", "^production", "{workspaceRoot}/scripts/ci/**/*"],
+            "outputs": [],
+            "command": "node ../../scripts/ci/run.mjs 'pnpm run test-asan'",
+            "options": {
+                "cwd": "{projectRoot}"
+            }
         },
         "test": {
-            "dependsOn": [
-                "build",
-                "_test:asan"
-            ],
-            "inputs": [
-                "...",
-                "nativeTests"
-            ]
+            "dependsOn": ["build"],
+            "inputs": ["...", "nativeTests"]
         },
         "release": {
             "cache": false,
-            "dependsOn": [
-                "build"
-            ]
+            "dependsOn": ["build"]
         },
         "typecheck": {
-            "dependsOn": [
-                "...",
-                "build"
-            ]
+            "dependsOn": ["...", "build"]
+        },
+        "_lint:eslint": {
+            "dependsOn": ["^build", "build"]
         }
     }
 }

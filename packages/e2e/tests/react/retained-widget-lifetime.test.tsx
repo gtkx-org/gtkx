@@ -42,7 +42,11 @@ const unmountRetainedButton = async () => {
 const unmountRetainedParent = async () => {
     const parentRef = createRef<Gtk.Box>();
     const childRef = createRef<Gtk.Button>();
-    await render(<GtkBox ref={parentRef}><GtkButton ref={childRef} label="Released" /></GtkBox>);
+    await render(
+        <GtkBox ref={parentRef}>
+            <GtkButton ref={childRef} label="Released" />
+        </GtkBox>,
+    );
     const parent = parentRef.current;
     const child = childRef.current;
 
@@ -159,9 +163,7 @@ it("keeps mounted widget and adopted page handlers through collection and replac
 it("accepts a new portal into a retained parent after unmount", async () => {
     const { parent } = await unmountRetainedParent();
     const ref = createRef<Gtk.Button>();
-    const { rerender, unmount } = await render(
-        createPortal(<GtkButton ref={ref} label="First" />, parent),
-    );
+    const { rerender, unmount } = await render(createPortal(<GtkButton ref={ref} label="First" />, parent));
     const button = ref.current;
     expect(button?.getParent()).toBe(parent);
 
@@ -189,10 +191,15 @@ it("updates a portal that adopts a parent in the same commit that unmounts it", 
     const first = firstRef.current;
     expect(first?.getParent()).toBe(parent);
 
-    await rerender(createPortal([
-        <GtkButton key="first" ref={firstRef} label="Updated" />,
-        <GtkButton key="second" ref={secondRef} label="Second" />,
-    ], parent));
+    await rerender(
+        createPortal(
+            [
+                <GtkButton key="first" ref={firstRef} label="Updated" />,
+                <GtkButton key="second" ref={secondRef} label="Second" />,
+            ],
+            parent,
+        ),
+    );
     const second = secondRef.current;
     expect(firstRef.current).toBe(first);
     expect(first?.getLabel()).toBe("Updated");

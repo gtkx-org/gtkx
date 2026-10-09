@@ -34,11 +34,13 @@ describe("the public OpenGL package", () => {
     let project: CliProject;
 
     beforeAll(() => {
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-gl-types-",
-            hasStore: true,
-            shouldShareStore: true,
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-gl-types-",
+                hasStore: true,
+                shouldShareStore: true,
+            }),
+        );
         isolateTypeConsumer(project, ["gl"]);
     });
 
@@ -47,7 +49,10 @@ describe("the public OpenGL package", () => {
     });
 
     it("accepts generated commands and info-log overrides", () => {
-        expect(typecheckSource(project, `import * as gl from "@gtkx/gl";
+        expect(
+            typecheckSource(
+                project,
+                `import * as gl from "@gtkx/gl";
 export const draw = (): void => {
     gl.clearColor(0, 1, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -58,7 +63,9 @@ export const logs = (shader: gl.GLuint, program: gl.GLuint, pipeline: gl.GLuint)
     gl.getProgramPipelineInfoLog(pipeline),
 ];
 export const timeout: bigint = gl.TIMEOUT_IGNORED;
-`)).toBe(0);
+`,
+            ),
+        ).toBe(0);
     });
 
     it.each(REJECTED)("rejects $name", ({ source }) => {

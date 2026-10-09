@@ -168,15 +168,19 @@ describe("gtkx_get_widget_props", () => {
         const label = await queryOne("text", "clicks: 0");
         expect(await isToolFailure(session.client, "gtkx_get_widget_props", { widgetId: "missing" })).toBe(true);
 
-        expect(await isToolFailure(session.client, "gtkx_get_widget_props", {
-            widgetId: label.id,
-            properties: ["collapsed"],
-        })).toBe(true);
+        expect(
+            await isToolFailure(session.client, "gtkx_get_widget_props", {
+                widgetId: label.id,
+                properties: ["collapsed"],
+            }),
+        ).toBe(true);
 
-        expect(await isToolFailure(session.client, "gtkx_get_widget_props", {
-            applicationId: "org.gtkx.absent",
-            widgetId: label.id,
-        })).toBe(true);
+        expect(
+            await isToolFailure(session.client, "gtkx_get_widget_props", {
+                applicationId: "org.gtkx.absent",
+                widgetId: label.id,
+            }),
+        ).toBe(true);
     });
 });
 

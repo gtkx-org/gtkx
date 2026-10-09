@@ -76,10 +76,12 @@ const readBuiltinElementsForDocs = async (): Promise<DocsBuiltinElements> => {
 
     collectBuiltinElements(result, elements);
 
-    result.props = Object.fromEntries(Object.entries(result.props).map(([type, ref]) => [
-        type,
-        { ...ref, module: resolvePropsModule(ref.module, PROPS_ORIGIN) },
-    ]));
+    result.props = Object.fromEntries(
+        Object.entries(result.props).map(([type, ref]) => [
+            type,
+            { ...ref, module: resolvePropsModule(ref.module, PROPS_ORIGIN) },
+        ]),
+    );
 
     for (const [type, config] of Object.entries(elements)) {
         if (config.acceptedChildTypes !== undefined) {

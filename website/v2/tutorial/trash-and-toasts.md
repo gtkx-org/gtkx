@@ -171,6 +171,7 @@ Add the two transitions to `TasksSlice` in `src/store/tasks.ts`:
 +    restore: (id: string) => void;
 +    deleteForever: (id: string) => void;
 ```
+
 ```diff [src/store/tasks.ts]
 @@ -52,0 +53,2 @@
 +    restore: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: false }) })),

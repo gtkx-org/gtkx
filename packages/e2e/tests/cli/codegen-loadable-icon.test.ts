@@ -3,10 +3,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
 import { isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
-const CONFIG = 'export default { applicationId: "org.gtkx.loadableicon", libraries: ["Gio-2.0"],' +
+const CONFIG =
+    'export default { applicationId: "org.gtkx.loadableicon", libraries: ["Gio-2.0"],' +
     " agents: { reference: false, rules: false } };";
 const IMPORTS = 'import * as Gio from "@gtkx/gi/gio";\nimport * as GLib from "@gtkx/gi/glib";\n';
-const CONSUMER = IMPORTS + `import assert from "node:assert/strict";
+const CONSUMER =
+    IMPORTS +
+    `import assert from "node:assert/strict";
 import { mkdtempDisposableSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -109,16 +112,20 @@ try {
     quit();
 }
 `;
-const CONTROL = IMPORTS + `export const stream = (icon: Gio.LoadableIcon): Gio.InputStream => icon.load(16, null)[0];
+const CONTROL =
+    IMPORTS +
+    `export const stream = (icon: Gio.LoadableIcon): Gio.InputStream => icon.load(16, null)[0];
 `;
 const REJECTED = {
     "load.ts": "export const read = (icon: Gio.LoadableIcon): string => icon.load(16, null)[1];",
-    "load-async.ts": "export const read = async (icon: Gio.LoadableIcon): Promise<string> => " +
-        "(await icon.loadAsync(16))[1];",
-    "load-finish.ts": "export const read = (icon: Gio.LoadableIcon, result: Gio.AsyncResult): string => " +
+    "load-async.ts":
+        "export const read = async (icon: Gio.LoadableIcon): Promise<string> => " + "(await icon.loadAsync(16))[1];",
+    "load-finish.ts":
+        "export const read = (icon: Gio.LoadableIcon, result: Gio.AsyncResult): string => " +
         "icon.loadFinish(result)[1];",
     "vfunc-load.ts": "export const read = (icon: Gio.LoadableIcon): string => icon.vfuncLoad(16, null)[1];",
-    "vfunc-load-finish.ts": "export const read = (icon: Gio.LoadableIcon, result: Gio.AsyncResult): string => " +
+    "vfunc-load-finish.ts":
+        "export const read = (icon: Gio.LoadableIcon, result: Gio.AsyncResult): string => " +
         "icon.vfuncLoadFinish(result)[1];",
 };
 const rejectedFiles = Object.fromEntries(Object.entries(REJECTED).map(([file, source]) => [file, IMPORTS + source]));
@@ -128,11 +135,13 @@ describe("generated loadable icon nullable content types", () => {
     let project: CliProject;
 
     beforeAll(() => {
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-loadable-icon-types-",
-            config: CONFIG,
-            files: { "probe.ts": CONSUMER, "control.ts": CONTROL, ...rejectedFiles },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-loadable-icon-types-",
+                config: CONFIG,
+                files: { "probe.ts": CONSUMER, "control.ts": CONTROL, ...rejectedFiles },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });
@@ -163,21 +172,30 @@ describe("generated loadable icon nullable content types", () => {
         const tuple = "[Gio.InputStream, string | null]";
         const virtualTuple = "[NativeInstance<Gio.InputStream>, string | null]";
         expect(page.outcome).toBe("page");
-        expect(page).toHaveProperty("markdown", expect.stringContaining(
-            `load(size: number, cancellable: NativeInstance<Gio.Cancellable> | null): ${tuple}`,
-        ));
-        expect(page).toHaveProperty("markdown", expect.stringContaining(
-            `loadAsync(size: number, cancellable?: NativeInstance<Gio.Cancellable> | null): Promise<${tuple}>`,
-        ));
-        expect(page).toHaveProperty("markdown", expect.stringContaining(
-            `loadFinish(res: NativeInstance<Gio.AsyncResult>): ${tuple}`,
-        ));
-        expect(page).toHaveProperty("markdown", expect.stringContaining(
-            `vfuncLoad(size: number, cancellable: Gio.Cancellable | null): ${virtualTuple}`,
-        ));
-        expect(page).toHaveProperty("markdown", expect.stringContaining(
-            `vfuncLoadFinish(res: Gio.AsyncResult): ${virtualTuple}`,
-        ));
+        expect(page).toHaveProperty(
+            "markdown",
+            expect.stringContaining(
+                `load(size: number, cancellable: NativeInstance<Gio.Cancellable> | null): ${tuple}`,
+            ),
+        );
+        expect(page).toHaveProperty(
+            "markdown",
+            expect.stringContaining(
+                `loadAsync(size: number, cancellable?: NativeInstance<Gio.Cancellable> | null): Promise<${tuple}>`,
+            ),
+        );
+        expect(page).toHaveProperty(
+            "markdown",
+            expect.stringContaining(`loadFinish(res: NativeInstance<Gio.AsyncResult>): ${tuple}`),
+        );
+        expect(page).toHaveProperty(
+            "markdown",
+            expect.stringContaining(`vfuncLoad(size: number, cancellable: Gio.Cancellable | null): ${virtualTuple}`),
+        );
+        expect(page).toHaveProperty(
+            "markdown",
+            expect.stringContaining(`vfuncLoadFinish(res: Gio.AsyncResult): ${virtualTuple}`),
+        );
     });
 
     it("loads real icon streams and preserves nullable completion results", () => {

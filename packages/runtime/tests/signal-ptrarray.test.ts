@@ -14,10 +14,8 @@ const Registered = registerClass(Emitter, {
 });
 
 const actionsType = t.ptrArray(t.object("borrowed", () => Gio.SimpleAction, "GSimpleAction"));
-const connectActions = (emitter: object, received: Gio.SimpleAction[][]): SignalHandlerId => connectSignal(
-    emitter,
-    "items-changed",
-    {
+const connectActions = (emitter: object, received: Gio.SimpleAction[][]): SignalHandlerId =>
+    connectSignal(emitter, "items-changed", {
         callback: t.callback([t.object("borrowed"), actionsType, t.void], t.void, {
             hasDestroy: true,
             destroyKind: "closureNotify",
@@ -28,8 +26,7 @@ const connectActions = (emitter: object, received: Gio.SimpleAction[][]): Signal
             received.push(actions as Gio.SimpleAction[]);
         },
         isAfter: false,
-    },
-);
+    });
 
 it("emits object arrays and preserves received object identity", () => {
     const emitter = new Registered();
@@ -116,21 +113,28 @@ it("propagates a handler error and recovers on the next emission", () => {
         });
 
         try {
-            expect(() => emitSignal(emitter, "items-changed", [{
-                type: actionsType,
-                value: [Gio.SimpleAction.new("before-error", null)],
-            }])).toThrow();
+            expect(() =>
+                emitSignal(emitter, "items-changed", [
+                    {
+                        type: actionsType,
+                        value: [Gio.SimpleAction.new("before-error", null)],
+                    },
+                ]),
+            ).toThrow();
             expect(received.map((actions) => actions.map((action) => action.getName()))).toEqual([["before-error"]]);
         } finally {
             emitter.disconnect(failing);
         }
 
-        emitSignal(emitter, "items-changed", [{
-            type: actionsType,
-            value: [Gio.SimpleAction.new("recovered", null)],
-        }]);
+        emitSignal(emitter, "items-changed", [
+            {
+                type: actionsType,
+                value: [Gio.SimpleAction.new("recovered", null)],
+            },
+        ]);
         expect(received.map((actions) => actions.map((action) => action.getName()))).toEqual([
-            ["before-error"], ["recovered"],
+            ["before-error"],
+            ["recovered"],
         ]);
     } finally {
         disconnectSignal(emitter, handler);

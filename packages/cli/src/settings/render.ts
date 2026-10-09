@@ -25,12 +25,17 @@ const ID_SEPARATOR = /[._]/;
 const NAME_SEPARATOR = "_";
 
 const getExportName = (schemaId: string): string =>
-    sanitizeIdentifier(schemaId.split(ID_SEPARATOR).map((part) => camelCase(part)).join(NAME_SEPARATOR));
+    sanitizeIdentifier(
+        schemaId
+            .split(ID_SEPARATOR)
+            .map((part) => camelCase(part))
+            .join(NAME_SEPARATOR),
+    );
 
 const collisionError = (file: ParsedSchemaFile, taken: string, schemaId: string, name: string): Error =>
     new Error(
         `${file.fileName} declares ${taken} and ${schemaId}, which both export \`${name}\`. ` +
-        "Rename one of the schema ids so that every schema in the file gets an export of its own.",
+            "Rename one of the schema ids so that every schema in the file gets an export of its own.",
     );
 
 const getNamedSchemas = (file: ParsedSchemaFile): NamedSchema[] => {
@@ -51,9 +56,7 @@ const getNamedSchemas = (file: ParsedSchemaFile): NamedSchema[] => {
 };
 
 const getRuntimeKeys = (schema: ParsedSchema): string => {
-    const entries = schema.keys.map(
-        (key) => `${sourceStringLiteral(key.name)}: ${sourceStringLiteral(key.kind)}`,
-    );
+    const entries = schema.keys.map((key) => `${sourceStringLiteral(key.name)}: ${sourceStringLiteral(key.kind)}`);
 
     return `{ ${entries.join(", ")} }`;
 };
@@ -76,9 +79,9 @@ const renderKeyValues = (values: NonNullable<ParsedSchema["keys"][number]["value
 };
 
 const getRuntimeValues = (schema: ParsedSchema): string => {
-    const entries = schema.keys.flatMap((key) => key.values === null
-        ? []
-        : [`${sourceStringLiteral(key.name)}: ${renderKeyValues(key.values, false)}`]);
+    const entries = schema.keys.flatMap((key) =>
+        key.values === null ? [] : [`${sourceStringLiteral(key.name)}: ${renderKeyValues(key.values, false)}`],
+    );
 
     return `{ ${entries.join(", ")} }`;
 };
@@ -99,7 +102,7 @@ const renderRuntimeModule = (file: ParsedSchemaFile): string => {
         if (schema.path === null) {
             lines.push(
                 `export const ${exportName} = { id: ${id}, keys: ${keysName}, values: ${valuesName}, ` +
-                `at: (path) => ({ id: ${id}, path, keys: ${keysName}, values: ${valuesName} }) };`,
+                    `at: (path) => ({ id: ${id}, path, keys: ${keysName}, values: ${valuesName} }) };`,
             );
         } else {
             lines.push(
@@ -230,29 +233,32 @@ const renderFileModule = (file: ParsedSchemaFile, usedNames: Set<string>): strin
     return lines;
 };
 
-const renderResourceModule = (specifier: string): string => [
-    `declare module ${sourceStringLiteral(specifier)} {`,
-    "    const path: string;",
-    "    export { path };",
-    "    export default path;",
-    "}",
-].join("\n");
+const renderResourceModule = (specifier: string): string =>
+    [
+        `declare module ${sourceStringLiteral(specifier)} {`,
+        "    const path: string;",
+        "    export { path };",
+        "    export default path;",
+        "}",
+    ].join("\n");
 
-const renderIconModule = (specifier: string): string => [
-    `declare module ${sourceStringLiteral(specifier)} {`,
-    "    const iconName: string;",
-    "    export default iconName;",
-    "}",
-].join("\n");
+const renderIconModule = (specifier: string): string =>
+    [
+        `declare module ${sourceStringLiteral(specifier)} {`,
+        "    const iconName: string;",
+        "    export default iconName;",
+        "}",
+    ].join("\n");
 
-const renderBlockedAssetModule = (specifier: string): string => [
-    `declare module ${sourceStringLiteral(specifier)} {`,
-    "    const assetImportRequiresResourceOrUrlQuery: {",
-    "        readonly __gtkxAssetImportRequiresResourceOrUrlQuery: unique symbol;",
-    "    };",
-    "    export default assetImportRequiresResourceOrUrlQuery;",
-    "}",
-].join("\n");
+const renderBlockedAssetModule = (specifier: string): string =>
+    [
+        `declare module ${sourceStringLiteral(specifier)} {`,
+        "    const assetImportRequiresResourceOrUrlQuery: {",
+        "        readonly __gtkxAssetImportRequiresResourceOrUrlQuery: unique symbol;",
+        "    };",
+        "    export default assetImportRequiresResourceOrUrlQuery;",
+        "}",
+    ].join("\n");
 
 const renderEnvModule = (
     files: ParsedSchemaFile[],
@@ -269,14 +275,7 @@ const renderEnvModule = (
     const resources = assets.resources.map((specifier) => renderResourceModule(specifier));
     const references = (options.references ?? []).map((path) => `/// <reference path=${JSON.stringify(path)} />`);
 
-    return `${[
-        GTKX_ENV_MODULE_HEADER,
-        ...references,
-        ...blocked,
-        ...icons,
-        ...resources,
-        ...schemas,
-    ].join("\n\n")}\n`;
+    return `${[GTKX_ENV_MODULE_HEADER, ...references, ...blocked, ...icons, ...resources, ...schemas].join("\n\n")}\n`;
 };
 
 export { renderRuntimeModule, renderEnvModule };

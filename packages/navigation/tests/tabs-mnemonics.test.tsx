@@ -37,9 +37,7 @@ describe.each(["top", "bottom"] as const)("tabs - %s mnemonics", (tabBarPosition
     });
 
     it("keeps underscores literal and leaves mnemonics disabled by default", async () => {
-        await render(
-            <TabsApp navigator={{ tabBarPosition }} options={{ Second: { tabBarLabel: "_Second__tab" } }} />,
-        );
+        await render(<TabsApp navigator={{ tabBarPosition }} options={{ Second: { tabBarLabel: "_Second__tab" } }} />);
         const content = await screen.findByText("First Content");
         const tab = await findTab("_Second__tab");
         await userEvent.keyboard(content, "{Alt>}s{/Alt}");

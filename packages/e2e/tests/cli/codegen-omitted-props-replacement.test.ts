@@ -27,11 +27,17 @@ describe("configured GIR property omission replacements", () => {
         runCliOrThrow(project, ["docs", "--out", OMITTED_PROPS_OUTPUT]);
         isolateTypeConsumer(project);
         const imports = 'import { GtkButton, GtkToggleButton } from "@gtkx/jsx/gtk";\n';
-        expect(typecheckSource(project, imports + `export const views = [
+        expect(
+            typecheckSource(
+                project,
+                imports +
+                    `export const views = [
             <GtkButton label="Parent" kind="text" text="Text" />,
             <GtkToggleButton label={3} onNotifyLabel={(value) => value.toFixed()} kind="text" text="Text" />,
             <GtkToggleButton label={4} kind="count" count={1} />,
-        ];`)).toBe(0);
+        ];`,
+            ),
+        ).toBe(0);
 
         for (const view of [
             '<GtkToggleButton label="Omitted" kind="text" text="Text" />',

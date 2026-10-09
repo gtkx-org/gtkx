@@ -16,13 +16,7 @@ import {
     type ParameterTransfer,
 } from "../gir/parameter.js";
 import { isBoxedRecord, isInternRecord } from "../gir/record.js";
-import {
-    type CArrayType,
-    hasUnknownArrayLength,
-    type ListFlavor,
-    type ListType,
-    type TypeId,
-} from "../gir/type-id.js";
+import { type CArrayType, hasUnknownArrayLength, type ListFlavor, type ListType, type TypeId } from "../gir/type-id.js";
 import { isRecordInout } from "../store/gi/param-marshal.js";
 import { computeRecordFieldSlots, recordInlineSize } from "../store/gi/record-layout.js";
 import { isValueMarshalable } from "../store/gi/value-marshalable.js";
@@ -386,11 +380,7 @@ const renderCallbackType = (
     });
 };
 
-const primitiveExpression = (
-    category: PrimitiveCategory,
-    ownership: Ownership,
-    hasOwnedStorage: boolean,
-): string => {
+const primitiveExpression = (category: PrimitiveCategory, ownership: Ownership, hasOwnedStorage: boolean): string => {
     if (category === "void") {
         return tVoid;
     }
@@ -431,11 +421,7 @@ const fallbackClassThunk = (
 ): string | undefined =>
     isReceived ? `() => ${context.qualify(namespaceName, sanitizeTypeIdentifier(name))}` : undefined;
 
-const sunkOwnership = (
-    ancestor: AncestorFundamental,
-    ownership: Ownership,
-    isNewlyCreated: boolean,
-): Ownership => {
+const sunkOwnership = (ancestor: AncestorFundamental, ownership: Ownership, isNewlyCreated: boolean): Ownership => {
     if (!isNewlyCreated || ownership !== "full" || ancestor.typeName === undefined) {
         return ownership;
     }

@@ -51,9 +51,7 @@ describe("drawer - header", () => {
     it("hides the header bar when headerShown is false", async () => {
         await render(
             <NavigationContainer>
-                <Drawer.Navigator>
-                    {drawerScreens([{ ...INBOX, options: HIDDEN_HEADER }, SETTINGS])}
-                </Drawer.Navigator>
+                <Drawer.Navigator>{drawerScreens([{ ...INBOX, options: HIDDEN_HEADER }, SETTINGS])}</Drawer.Navigator>
             </NavigationContainer>,
         );
 

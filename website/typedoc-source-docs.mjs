@@ -38,15 +38,15 @@ const resolveDeclarationSource = (source) => {
 
         if (
             typeof origin.fileName !== "string" ||
-            !Number.isSafeInteger(origin.lineNumber) || origin.lineNumber < 1 ||
-            !Number.isSafeInteger(origin.columnNumber) || origin.columnNumber < 1
+            !Number.isSafeInteger(origin.lineNumber) ||
+            origin.lineNumber < 1 ||
+            !Number.isSafeInteger(origin.columnNumber) ||
+            origin.columnNumber < 1
         ) {
             return;
         }
 
-        const sourceRoot = payload.sourceRoot
-            ? new URL(payload.sourceRoot.replace(/\/?$/, "/"), mapUrl)
-            : mapUrl;
+        const sourceRoot = payload.sourceRoot ? new URL(payload.sourceRoot.replace(/\/?$/, "/"), mapUrl) : mapUrl;
         const fileName = fileURLToPath(new URL(origin.fileName, sourceRoot));
 
         if (existsSync(fileName)) {

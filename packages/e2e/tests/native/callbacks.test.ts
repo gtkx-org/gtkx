@@ -41,9 +41,7 @@ const completionTiedArgs = (side: Extract<Descriptor, { kind: "callback" }>): De
         scope: "async",
     },
 ];
-const completionTiedFunction = bind(
-    library, "gtkx_callback_with_completion", completionTiedArgs(SIDE_CALLBACK), VOID,
-);
+const completionTiedFunction = bind(library, "gtkx_callback_with_completion", completionTiedArgs(SIDE_CALLBACK), VOID);
 
 const runtimeCompletionTiedFunction = t.bind(
     library,
@@ -52,7 +50,9 @@ const runtimeCompletionTiedFunction = t.bind(
         t.callback([t.biguint64], t.int32, { hasUserData: true, userDataIndex: 0, scope: "notified" }),
         t.buffer,
         t.callback([t.object("borrowed"), t.object("borrowed"), t.biguint64], t.void, {
-            hasUserData: true, userDataIndex: 2, scope: "async",
+            hasUserData: true,
+            userDataIndex: 2,
+            scope: "async",
         }),
     ],
     t.void,
@@ -61,9 +61,12 @@ const completionInvokers = [
     { name: "native", invoke: (values: unknown[]) => call(completionTiedFunction, values, 2) },
     { name: "runtime", invoke: (values: unknown[]) => runtimeCompletionTiedFunction(...values) },
 ];
-const defaultUserDataCallback = t.bind(library, "gtkx_callback_user_data", [
-    t.callback([t.biguint64], t.int32, { hasUserData: true, userDataIndex: 0 }),
-], t.int32);
+const defaultUserDataCallback = t.bind(
+    library,
+    "gtkx_callback_user_data",
+    [t.callback([t.biguint64], t.int32, { hasUserData: true, userDataIndex: 0 })],
+    t.int32,
+);
 
 const finishDescriptorCallback = t.bind(library, "gtkx_callback_complete", [], t.int32);
 
@@ -389,15 +392,9 @@ test("an async ready callback handed to C is invoked from the main loop", async 
 test("a gerror callback receives the error C created", () => {
     const seen: [number, number, boolean][] = [];
     Regress.testGerrorCallback((error) => {
-        seen.push([
-            error.code,
-            error.domain,
-            error.matches(Gio.ioErrorQuark(), Gio.IOErrorEnum.NOT_SUPPORTED),
-        ]);
+        seen.push([error.code, error.domain, error.matches(Gio.ioErrorQuark(), Gio.IOErrorEnum.NOT_SUPPORTED)]);
     });
-    expect(seen).toEqual([
-        [Gio.IOErrorEnum.NOT_SUPPORTED, Gio.ioErrorQuark(), true],
-    ]);
+    expect(seen).toEqual([[Gio.IOErrorEnum.NOT_SUPPORTED, Gio.ioErrorQuark(), true]]);
 });
 
 test("a null gerror callback receives null", () => {
@@ -450,20 +447,24 @@ const callWithScalarOutput = t.bind(
 test.each([false, true])("a callback rejects an unset scalar output (explicit null: %s)", (explicitNull) => {
     const output = { value: 7 };
 
-    expect(() => callWithScalarOutput((reference: Ref) => {
-        if (explicitNull) {
-            reference.value = null;
-        }
-    }, output)).toThrow();
+    expect(() =>
+        callWithScalarOutput((reference: Ref) => {
+            if (explicitNull) {
+                reference.value = null;
+            }
+        }, output),
+    ).toThrow();
 });
 
 test("a throwing scalar callback leaves the caller's Ref unchanged", () => {
     const output = { value: 7 };
 
-    expect(() => callWithScalarOutput((reference: Ref) => {
-        expect(reference.value).toBeNull();
-        throw new Error("Callback failure");
-    }, output)).toThrow();
+    expect(() =>
+        callWithScalarOutput((reference: Ref) => {
+            expect(reference.value).toBeNull();
+            throw new Error("Callback failure");
+        }, output),
+    ).toThrow();
 
     expect(output.value).toBe(7);
     callWithScalarOutput((reference: Ref) => {
@@ -567,15 +568,18 @@ test("an exception thrown inside a callback propagates out of the C call", () =>
     expect(() =>
         Regress.testCallback(() => {
             throw new Error("boom");
-        })).toThrow();
+        }),
+    ).toThrow();
     expect(() =>
         Regress.testMultiCallback(() => {
             throw new TypeError("boom");
-        })).toThrow();
+        }),
+    ).toThrow();
     expect(() =>
         GIMarshallingTests.callbackMultipleOutParameters(() => {
             throw new Error("boom");
-        })).toThrow();
+        }),
+    ).toThrow();
 
     expect(Regress.testCallback(() => 9)).toBe(9);
     expect(GIMarshallingTests.callbackMultipleOutParameters(() => [4.5, 5.5])).toEqual([4.5, 5.5]);
@@ -647,11 +651,13 @@ test("a hash table callback receives the table it was handed", () => {
 
     expect(seen).toHaveLength(1);
     expect(seen[0]).toHaveLength(1);
-    expect(new Map(seen[0]?.[0])).toEqual(new Map([
-        ["foo", 1],
-        ["bar", 2],
-        ["baz", 3],
-    ]));
+    expect(new Map(seen[0]?.[0])).toEqual(
+        new Map([
+            ["foo", 1],
+            ["bar", 2],
+            ["baz", 3],
+        ]),
+    );
 });
 
 test("a user data slot GIR leaves unannotated is still elided", () => {
@@ -719,9 +725,11 @@ test("a runtime callback with only user data defaults to the call lifetime", asy
     expect(counter.calls).toBe(1);
     await drainGC(5);
     expect(weak.deref()).toBeUndefined();
-    expect(() => defaultUserDataCallback(() => {
-        throw new Error("Callback failure");
-    })).toThrow();
+    expect(() =>
+        defaultUserDataCallback(() => {
+            throw new Error("Callback failure");
+        }),
+    ).toThrow();
     expect(defaultUserDataCallback(() => 21)).toBe(21);
 });
 
@@ -730,7 +738,5 @@ test.each([
     { name: "async scope", descriptor: { ...SIDE_CALLBACK, scope: "async" } as const },
     { name: "destroy notifier", descriptor: { ...SIDE_CALLBACK, hasDestroy: true } as const },
 ])("native completion retention rejects a side callback with $name", ({ descriptor }) => {
-    expect(() => bind(
-        library, "gtkx_callback_with_completion", completionTiedArgs(descriptor), VOID,
-    )).toThrow();
+    expect(() => bind(library, "gtkx_callback_with_completion", completionTiedArgs(descriptor), VOID)).toThrow();
 });

@@ -15,7 +15,10 @@ const verifyFile = (directory: string, name: string): string => {
     return path;
 };
 
-const verifyNativeArtifacts = (directory: string, architecture: string): {
+const verifyNativeArtifacts = (
+    directory: string,
+    architecture: string,
+): {
     binary: string;
     javascript: string;
     declarations: string;

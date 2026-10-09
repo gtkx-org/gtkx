@@ -28,10 +28,13 @@ const intValue = (value: number) => {
 
     return getHandle(wrapped);
 };
-const registerCounterClass = () => getClassType(registerClass(class extends GObject.Object {}, {
-    typeName: uniqueName(),
-    properties: { count: GObject.paramSpecInt("count", null, null, 0, 100, 0, GObject.ParamFlags.READWRITE) },
-}));
+const registerCounterClass = () =>
+    getClassType(
+        registerClass(class extends GObject.Object {}, {
+            typeName: uniqueName(),
+            properties: { count: GObject.paramSpecInt("count", null, null, 0, 100, 0, GObject.ParamFlags.READWRITE) },
+        }),
+    );
 
 test("registering with a parent that has no class structure throws", () => {
     expect(() => registerNativeClass(uniqueName(), closureType)).toThrow();

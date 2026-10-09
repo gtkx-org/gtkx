@@ -20,7 +20,9 @@ import type { WebKitBackForwardListProps } from "@gtkx/jsx/webkit";
 import type { GtkTreeModelProps } from "@gtkx/jsx/gtk";
 import type { GApplicationProps, GSettingsProps } from "@gtkx/jsx/gio";
 `;
-const ACCEPTED = IMPORTS + `
+const ACCEPTED =
+    IMPORTS +
+    `
 export const connect = (probe: SignalPointers.Probe, child: SignalPointers.Child, feed: SignalPointers.Feed) => {
     probe.connect("object", (item: GObject.Object) => { void item; });
     probe.connect("boxed", (iter: Gtk.TextIter) => { void iter; });
@@ -83,38 +85,39 @@ export const containerSignals = (
 };
 `;
 const REJECTED = {
-    "fixed-array-emit": "export const emit = (probe: SignalPointers.Probe) => probe.emit(\"array\", [1, 2]);",
-    "application-array-emit": "export const emit = (application: Gio.Application) => " +
-        "application.emit(\"open\", [], 0, \"\");",
-    "settings-array-emit": "export const emit = (settings: Gio.Settings) => " +
-        "settings.emit(\"change-event\", null, 0);",
-    "direct-connect": "export const connect = (probe: SignalPointers.Probe) => " +
-        "probe.connect(\"direct\", () => undefined);",
-    "direct-emit": "export const emit = (probe: SignalPointers.Probe) => probe.emit(\"direct\", 0n);",
+    "fixed-array-emit": 'export const emit = (probe: SignalPointers.Probe) => probe.emit("array", [1, 2]);',
+    "application-array-emit":
+        "export const emit = (application: Gio.Application) => " + 'application.emit("open", [], 0, "");',
+    "settings-array-emit":
+        "export const emit = (settings: Gio.Settings) => " + 'settings.emit("change-event", null, 0);',
+    "direct-connect":
+        "export const connect = (probe: SignalPointers.Probe) => " + 'probe.connect("direct", () => undefined);',
+    "direct-emit": 'export const emit = (probe: SignalPointers.Probe) => probe.emit("direct", 0n);',
     "named-data-jsx": "export const view = <SignalPointersProbe onNamedData={() => undefined} />;",
-    "aliased-handler": "export type Handler = SignalPointers.ProbeSignals[\"alias\"];",
-    "nested-handler": "export type Handler = SignalPointers.ProbeSignals[\"nested\"];",
-    "out-pointer": "export type Handler = SignalPointers.ProbeSignals[\"out-pointer\"];",
-    "return-pointer": "export type Handler = SignalPointers.ProbeSignals[\"return-pointer\"];",
-    "skipped-return": "export type Handler = SignalPointers.ProbeSignals[\"skipped-return\"];",
+    "aliased-handler": 'export type Handler = SignalPointers.ProbeSignals["alias"];',
+    "nested-handler": 'export type Handler = SignalPointers.ProbeSignals["nested"];',
+    "out-pointer": 'export type Handler = SignalPointers.ProbeSignals["out-pointer"];',
+    "return-pointer": 'export type Handler = SignalPointers.ProbeSignals["return-pointer"];',
+    "skipped-return": 'export type Handler = SignalPointers.ProbeSignals["skipped-return"];',
     "unknown-array": "export const view = <SignalPointersProbe onUnknownArray={() => undefined} />;",
-    "callback-value": "export type Handler = SignalPointers.ProbeSignals[\"callback-value\"];",
+    "callback-value": 'export type Handler = SignalPointers.ProbeSignals["callback-value"];',
     "private-jsx": "export const view = <SignalPointersProbe onPrivateSignal={() => undefined} />;",
-    "interface-connect": "export const connect = (feed: SignalPointers.Feed) => " +
-        "feed.connect(\"iface-raw\", () => undefined);",
+    "interface-connect":
+        "export const connect = (feed: SignalPointers.Feed) => " + 'feed.connect("iface-raw", () => undefined);',
     "interface-props": "export const props: SignalPointersFeedProps = { onIfaceRaw: () => undefined };",
     "interface-private": "export const props: SignalPointersFeedProps = { onIfacePrivate: () => undefined };",
-    "inherited-emit": "export const emit = (child: SignalPointers.Child) => child.emit(\"iface-raw\", 0n);",
+    "inherited-emit": 'export const emit = (child: SignalPointers.Child) => child.emit("iface-raw", 0n);',
     "inherited-private": "export const view = <SignalPointersChild onIfacePrivate={() => undefined} />;",
-    "webkit-connect": "export const connect = (history: WebKit.BackForwardList) => " +
-        "history.connect(\"changed\", () => undefined);",
-    "webkit-emit": "export const emit = (history: WebKit.BackForwardList) => history.emit(\"changed\", null, 0n);",
+    "webkit-connect":
+        "export const connect = (history: WebKit.BackForwardList) => " + 'history.connect("changed", () => undefined);',
+    "webkit-emit": 'export const emit = (history: WebKit.BackForwardList) => history.emit("changed", null, 0n);',
     "webkit-jsx": "export const props: WebKitBackForwardListProps = { onChanged: () => undefined };",
     "tree-model-jsx": "export const props: GtkTreeModelProps = { onRowsReordered: () => undefined };",
-    "tree-model-map": "export type Handler = Gtk.TreeModelSignals[\"rows-reordered\"];",
+    "tree-model-map": 'export type Handler = Gtk.TreeModelSignals["rows-reordered"];',
 } as const;
 
 type RejectedName = keyof typeof REJECTED;
+const REJECTED_NAMES = Object.keys(REJECTED) as RejectedName[];
 
 const createHiddenSignalsProject = (
     prefix: string,
@@ -122,10 +125,7 @@ const createHiddenSignalsProject = (
     rejectedNames: readonly RejectedName[] = [],
 ): ReturnType<typeof createCliProject> => {
     const fixture = readFileSync(new URL("fixtures/gir/SignalPointers-1.0.gir", import.meta.url));
-    const rejectedFiles = Object.fromEntries(rejectedNames.map((name) => [
-        name + ".tsx",
-        IMPORTS + REJECTED[name],
-    ]));
+    const rejectedFiles = Object.fromEntries(rejectedNames.map((name) => [name + ".tsx", IMPORTS + REJECTED[name]]));
     const project = createCliProject({
         prefix,
         config: CONFIG,
@@ -142,4 +142,4 @@ const createHiddenSignalsProject = (
     return project;
 };
 
-export { ACCEPTED, createHiddenSignalsProject, type RejectedName };
+export { ACCEPTED, createHiddenSignalsProject, REJECTED_NAMES };

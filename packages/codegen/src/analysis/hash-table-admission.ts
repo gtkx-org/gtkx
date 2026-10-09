@@ -5,9 +5,7 @@ import { deriveElementTransfer, type GirParameter, type ParameterTransfer } from
 import { hasTypeMatching, isByteSequence, underlyingType } from "./type-shape.js";
 
 const BIGINT_CATEGORIES: ReadonlySet<PrimitiveCategory> = new Set(["bigint64", "biguint64", "gtype"]);
-const NUMERIC_CELL_CATEGORIES: ReadonlySet<PrimitiveCategory> = new Set([
-    ...BIGINT_CATEGORIES, "float32", "float64",
-]);
+const NUMERIC_CELL_CATEGORIES: ReadonlySet<PrimitiveCategory> = new Set([...BIGINT_CATEGORIES, "float32", "float64"]);
 
 const hasUnsupportedHashTableSlot = (library: Library, ref: TypeId | undefined): boolean =>
     hasTypeMatching(library, ref, (type) => {
@@ -18,8 +16,10 @@ const hasUnsupportedHashTableSlot = (library: Library, ref: TypeId | undefined):
         const key = underlyingType(library, type.key);
         const value = underlyingType(library, type.value);
 
-        return (key?.kind === "primitive" && BIGINT_CATEGORIES.has(key.category)) ||
-            (value?.kind === "primitive" && value.category === "gtype");
+        return (
+            (key?.kind === "primitive" && BIGINT_CATEGORIES.has(key.category)) ||
+            (value?.kind === "primitive" && value.category === "gtype")
+        );
     });
 
 const hasNumericCell = (library: Library, ref: TypeId): boolean => {
@@ -42,14 +42,18 @@ const hasTransferredNumericHashTable = (
 
     switch (type?.kind) {
         case "hashtable": {
-            return hasNumericCell(library, type.key) || hasNumericCell(library, type.value) ||
+            return (
+                hasNumericCell(library, type.key) ||
+                hasNumericCell(library, type.value) ||
                 hasTransferredNumericHashTable(library, type.key, elementTransfer) ||
-                hasTransferredNumericHashTable(library, type.value, elementTransfer);
+                hasTransferredNumericHashTable(library, type.value, elementTransfer)
+            );
         }
         case "carray":
         case "list": {
-            return !isByteSequence(library, type) &&
-                hasTransferredNumericHashTable(library, type.element, elementTransfer);
+            return (
+                !isByteSequence(library, type) && hasTransferredNumericHashTable(library, type.element, elementTransfer)
+            );
         }
         case undefined:
         case "class":

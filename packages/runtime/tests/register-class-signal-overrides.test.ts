@@ -1,11 +1,5 @@
 import * as Gio from "@gtkx/gi/gio";
-import {
-    Object as GObject,
-    ParamFlags,
-    type ParamSpec,
-    paramSpecString,
-    SignalFlags,
-} from "@gtkx/gi/gobject";
+import { Object as GObject, ParamFlags, type ParamSpec, paramSpecString, SignalFlags } from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { registerClass, TYPE_INT, TYPE_OBJECT, TYPE_STRING } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";

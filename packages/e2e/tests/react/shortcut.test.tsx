@@ -27,15 +27,9 @@ type ShortcutTreeProps = {
     onKeyPressed?: () => boolean;
 };
 
-const ShortcutTree = ({
-    accelerator,
-    callback,
-    controllerRef,
-    isMounted = true,
-    onKeyPressed,
-}: ShortcutTreeProps) => (
+const ShortcutTree = ({ accelerator, callback, controllerRef, isMounted = true, onKeyPressed }: ShortcutTreeProps) => (
     <GtkBox
-        controllers={(
+        controllers={
             <GtkShortcutController
                 ref={controllerRef}
                 propagationPhase={Gtk.PropagationPhase.CAPTURE}
@@ -48,7 +42,7 @@ const ShortcutTree = ({
                     )
                 }
             />
-        )}
+        }
     >
         <GtkEntry name="field" controllers={<GtkEventControllerKey onKeyPressed={onKeyPressed} />} />
     </GtkBox>
@@ -68,40 +62,42 @@ describe("declarative shortcuts", () => {
                 {isFirstMounted && (
                     <GtkButton
                         label="First"
-                        controllers={(
+                        controllers={
                             <GtkShortcutController
-                                shortcuts={(
+                                shortcuts={
                                     <GtkShortcut
                                         trigger={<GtkShortcutTrigger accelerator="F5" />}
-                                        action={(
-                                            <Action ref={(instance: Gtk.ShortcutAction | null) => {
-                                                first.current = instance;
-                                            }}
+                                        action={
+                                            <Action
+                                                ref={(instance: Gtk.ShortcutAction | null) => {
+                                                    first.current = instance;
+                                                }}
                                             />
-                                        )}
+                                        }
                                     />
-                                )}
+                                }
                             />
-                        )}
+                        }
                     />
                 )}
                 <GtkButton
                     label="Second"
-                    controllers={(
+                    controllers={
                         <GtkShortcutController
-                            shortcuts={(
+                            shortcuts={
                                 <GtkShortcut
                                     trigger={<GtkShortcutTrigger accelerator="F6" />}
-                                    action={(
-                                        <Action ref={(instance: Gtk.ShortcutAction | null) => {
-                                            second.current = instance;
-                                        }}
+                                    action={
+                                        <Action
+                                            ref={(instance: Gtk.ShortcutAction | null) => {
+                                                second.current = instance;
+                                            }}
                                         />
-                                    )}
+                                    }
                                 />
-                            )}
+                            }
                         />
-                    )}
+                    }
                 />
             </GtkBox>
         );
@@ -144,17 +140,14 @@ describe("declarative shortcuts", () => {
                 onMnemonicActivate={(): undefined => {
                     events.mnemonic += 1;
                 }}
-                controllers={(
+                controllers={
                     <GtkShortcutController
-                        shortcuts={(
+                        shortcuts={
                             <>
-                                <GtkShortcut
-                                    trigger={<GtkShortcutTrigger accelerator="F5" />}
-                                    action={<Action />}
-                                />
+                                <GtkShortcut trigger={<GtkShortcutTrigger accelerator="F5" />} action={<Action />} />
                                 <GtkShortcut
                                     trigger={<GtkShortcutTrigger accelerator="F6" />}
-                                    action={(
+                                    action={
                                         <GtkCallbackAction
                                             callback={() => {
                                                 controls += 1;
@@ -162,12 +155,12 @@ describe("declarative shortcuts", () => {
                                                 return true;
                                             }}
                                         />
-                                    )}
+                                    }
                                 />
                             </>
-                        )}
+                        }
                     />
-                )}
+                }
             />,
         );
         const target = await within(container).findByName("target");
@@ -258,17 +251,17 @@ describe("declarative shortcuts", () => {
         const { container } = await render(
             <GtkBox
                 name="host"
-                controllers={(
+                controllers={
                     <GtkShortcutController
-                        shortcuts={(
+                        shortcuts={
                             <GtkShortcut
-                                trigger={(
+                                trigger={
                                     <GtkKeyvalTrigger
                                         keyval={Gdk.KEY_F5}
                                         modifiers={Gdk.ModifierType.NO_MODIFIER_MASK}
                                     />
-                                )}
-                                action={(
+                                }
+                                action={
                                     <GtkCallbackAction
                                         callback={() => {
                                             calls += 1;
@@ -276,11 +269,11 @@ describe("declarative shortcuts", () => {
                                             return true;
                                         }}
                                     />
-                                )}
+                                }
                             />
-                        )}
+                        }
                     />
-                )}
+                }
             />,
         );
 
@@ -299,9 +292,7 @@ describe("declarative shortcuts", () => {
         const { container } = await render(
             <GtkBox
                 name="host"
-                controllers={(
-                    <GtkShortcutController shortcuts={<GtkShortcut trigger={trigger} action={action} />} />
-                )}
+                controllers={<GtkShortcutController shortcuts={<GtkShortcut trigger={trigger} action={action} />} />}
             />,
         );
 
@@ -310,8 +301,6 @@ describe("declarative shortcuts", () => {
     });
 
     it("rejects an invalid accelerator", async () => {
-        await expect(render(
-            <ShortcutTree accelerator="not an accelerator" callback={() => true} />,
-        )).rejects.toThrow();
+        await expect(render(<ShortcutTree accelerator="not an accelerator" callback={() => true} />)).rejects.toThrow();
     });
 });

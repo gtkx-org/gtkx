@@ -13,8 +13,10 @@ type WriteJsxStoreParams = {
 
 const jsxPeerDependencies = (externalPackages: string[]): Record<string, string> => {
     return Object.fromEntries(
-        sortStrings(["@gtkx/gi", "@gtkx/react", "@gtkx/runtime", "react", ...externalPackages])
-            .map((name) => [name, "*"]),
+        sortStrings(["@gtkx/gi", "@gtkx/react", "@gtkx/runtime", "react", ...externalPackages]).map((name) => [
+            name,
+            "*",
+        ]),
     );
 };
 

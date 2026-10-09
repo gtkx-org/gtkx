@@ -37,9 +37,11 @@ describe("configured element prop reference", () => {
         installConfiguredProps(project.root);
         writePropsConfig(project.root);
         installHoistedToolchain(project);
-        const result = spawnSync(process.execPath, [
-            join(project.nodeModules, "@gtkx/cli/bin/gtkx.js"), "docs", "--out", OUTPUT,
-        ], { cwd: project.root, encoding: "utf8", timeout: 120_000 });
+        const result = spawnSync(
+            process.execPath,
+            [join(project.nodeModules, "@gtkx/cli/bin/gtkx.js"), "docs", "--out", OUTPUT],
+            { cwd: project.root, encoding: "utf8", timeout: 120_000 },
+        );
 
         expect(result.status).toBe(0);
         expect(readButton(project.root)).toContain("### `auditCaption`");

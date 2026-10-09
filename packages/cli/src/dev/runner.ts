@@ -13,11 +13,7 @@ import { createFailureTracker, type FailureTracker } from "./failure-tracker.js"
 import { isMissingImport, missingImportName } from "./missing-import.js";
 import { createRefreshTracker, type RefreshTracker } from "./refresh-tracker.js";
 import { RESTART_EXIT_CODE } from "./supervisor.js";
-import {
-    createDevServerConfig,
-    type DevServerWatchEvent,
-    isServerConfigFile,
-} from "./vite-dev-server.js";
+import { createDevServerConfig, type DevServerWatchEvent, isServerConfigFile } from "./vite-dev-server.js";
 
 type LoadAppModule = (id: string) => Promise<Record<string, unknown>>;
 type ApplicationState = "primary" | "remote" | "shutDown" | "unregistered";
@@ -144,11 +140,7 @@ const isEvaluationCurrent = (
     return evaluated.ssrModule === loadedExports;
 };
 
-const loadInvalidatedModule = (
-    session: DevSession,
-    changedPath: string,
-    module: ModuleNode,
-): Promise<SettledLoad> =>
+const loadInvalidatedModule = (session: DevSession, changedPath: string, module: ModuleNode): Promise<SettledLoad> =>
     withExclusiveLoad(session.server, async () => {
         const revision = await session.deps.readFileRevision(changedPath);
         invalidateChangedModule(session, module);
@@ -161,11 +153,7 @@ const loadInvalidatedModule = (
         };
     });
 
-const settleAttempt = async (
-    session: DevSession,
-    changedPath: string,
-    module: ModuleNode,
-): Promise<SettleAttempt> => {
+const settleAttempt = async (session: DevSession, changedPath: string, module: ModuleNode): Promise<SettleAttempt> => {
     const { loadedExports, isSettled } = await loadInvalidatedModule(session, changedPath, module);
 
     if (isSettled) {
@@ -418,8 +406,9 @@ const hasChangedSchemaInputs = (session: DevSession, change: WatchedChange): boo
         session.hasPendingSchemaChange = true;
     }
 
-    return isComplete && (
-        session.hasPendingSchemaChange || new Set(files).symmetricDifference(session.schemaFiles).size > 0
+    return (
+        isComplete &&
+        (session.hasPendingSchemaChange || new Set(files).symmetricDifference(session.schemaFiles).size > 0)
     );
 };
 
@@ -467,7 +456,7 @@ const didRestartForChange = async (session: DevSession, change: WatchedChange): 
 };
 
 const applyChange = async (session: DevSession, change: WatchedChange): Promise<void> => {
-    if (session.controller.isShuttingDown() || await didRestartForChange(session, change)) {
+    if (session.controller.isShuttingDown() || (await didRestartForChange(session, change))) {
         return;
     }
 
@@ -502,17 +491,19 @@ const watchProjectFiles = (session: DevSession): void => {
     }
 };
 
-const onShutdownSignal = (session: DevSession): (() => Promise<void>) => async () => {
-    if (session.controller.isShuttingDown()) {
-        return;
-    }
+const onShutdownSignal =
+    (session: DevSession): (() => Promise<void>) =>
+    async () => {
+        if (session.controller.isShuttingDown()) {
+            return;
+        }
 
-    session.deps.log("Received shutdown signal - stopping dev runner...");
+        session.deps.log("Received shutdown signal - stopping dev runner...");
 
-    await session.controller.shutdown(() => {
-        session.deps.quitDefaultApplication();
-    });
-};
+        await session.controller.shutdown(() => {
+            session.deps.quitDefaultApplication();
+        });
+    };
 
 const closeAndExit = async (session: DevSession, code = 0): Promise<never> => {
     try {
@@ -573,9 +564,11 @@ const handleApplicationShutdown = (session: DevSession): void => {
     });
 };
 
-const onApplicationShutdown = (session: DevSession): (() => void) => () => {
-    handleApplicationShutdown(session);
-};
+const onApplicationShutdown =
+    (session: DevSession): (() => void) =>
+    () => {
+        handleApplicationShutdown(session);
+    };
 
 const refusedExitCode = (): number => (process.exitCode === undefined ? 1 : Number(process.exitCode));
 
@@ -589,16 +582,13 @@ const connectApplication = async (session: DevSession, liveApplicationId: string
 const stopForOwnedApplicationId = async (session: DevSession, liveApplicationId: string): Promise<void> => {
     session.deps.log(
         `Another process already owns ${liveApplicationId}, so this session can never show a window - ` +
-        "stopping dev runner. Quit that instance or change applicationId, then start gtkx dev again.",
+            "stopping dev runner. Quit that instance or change applicationId, then start gtkx dev again.",
     );
 
     await closeAndExit(session, OWNED_ID_EXIT_CODE);
 };
 
-const stopForStoppedApplication = async (
-    session: DevSession,
-    registrationState: ApplicationState,
-): Promise<void> => {
+const stopForStoppedApplication = async (session: DevSession, registrationState: ApplicationState): Promise<void> => {
     if (session.failure.hasReported()) {
         session.deps.log("Application stopped before the dev runner attached.");
         session.failure.fail();
@@ -637,10 +627,7 @@ const connectLiveApplication = async (session: DevSession, liveApplicationId: st
 const attachApplication = async (session: DevSession): Promise<void> => {
     const { deps, failure } = session;
 
-    const liveApplicationId = await deps.waitForApplicationId(
-        APPLICATION_MOUNT_TIMEOUT_MS,
-        () => !failure.isDown(),
-    );
+    const liveApplicationId = await deps.waitForApplicationId(APPLICATION_MOUNT_TIMEOUT_MS, () => !failure.isDown());
 
     if (failure.isDown()) {
         return;
@@ -663,11 +650,8 @@ const loadEntry = async (session: DevSession, entryPath: string): Promise<void> 
         const storybookConfig = process.env[DEV_STORYBOOK_ENV];
 
         if (storybookConfig !== undefined) {
-            session.storybook = createStorybookSession(
-                session.server,
-                entry,
-                storybookConfig,
-                (module) => session.deps.isRefreshBoundary(module),
+            session.storybook = createStorybookSession(session.server, entry, storybookConfig, (module) =>
+                session.deps.isRefreshBoundary(module),
             );
             await session.storybook.initialize();
         }

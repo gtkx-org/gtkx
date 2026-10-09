@@ -9,10 +9,7 @@ const { apiDocs } = referenceSession();
 describe("reference configuration updates", () => {
     it("reloads when a higher-priority configuration appears or is removed", async () => {
         const project = createProject();
-        writeFileSync(
-            join(project, "gtkx.config.mjs"),
-            'export default { applicationId: "org.gtkx.reference" };\n',
-        );
+        writeFileSync(join(project, "gtkx.config.mjs"), 'export default { applicationId: "org.gtkx.reference" };\n');
 
         try {
             const docs = (): Promise<string> => apiDocs({ symbol: "GtkButton", projectRoot: project });
@@ -21,7 +18,7 @@ describe("reference configuration updates", () => {
             writeFileSync(
                 selected,
                 'export default { applicationId: "org.gtkx.reference", ' +
-                'elements: { config: { GtkButton: { omittedProps: ["label"] } } } };\n',
+                    'elements: { config: { GtkButton: { omittedProps: ["label"] } } } };\n',
             );
 
             await expect.poll(docs).not.toContain("### `label`");

@@ -4,21 +4,21 @@ import { type Descriptor, registerClass, t } from "@gtkx/runtime";
 import { expect, test } from "vitest";
 import { fixtureLibrary } from "./helpers/fixture-library.js";
 import { prepareMemoryChecks } from "./helpers/memory-suite.js";
-import {
-    didThrow,
-    hammer,
-    RSS_BUDGET,
-    THROWING_RSS_BUDGET,
-} from "./helpers/memory.js";
+import { didThrow, hammer, RSS_BUDGET, THROWING_RSS_BUDGET } from "./helpers/memory.js";
 
 prepareMemoryChecks();
 
 const OWNED_STRING: Descriptor = { kind: "string", ownership: "full" };
 const library = fixtureLibrary("string-callback-transfer");
-const freeStringList = t.bind(library, "gtkx_string_list_consume", [
-    { kind: "array", arrayKind: "glist", itemDescriptor: OWNED_STRING, ownership: "full" },
-    { kind: "callback", argDescriptors: [OWNED_STRING], returnDescriptor: { kind: "void" }, scope: "call" },
-], { kind: "void" });
+const freeStringList = t.bind(
+    library,
+    "gtkx_string_list_consume",
+    [
+        { kind: "array", arrayKind: "glist", itemDescriptor: OWNED_STRING, ownership: "full" },
+        { kind: "callback", argDescriptors: [OWNED_STRING], returnDescriptor: { kind: "void" }, scope: "call" },
+    ],
+    { kind: "void" },
+);
 
 const receiveString = (text: string): number => text.length;
 
@@ -106,8 +106,10 @@ test("borrowed and full string callback returns stay bounded over twenty thousan
     expect(instance.methodStrArgOutRet(text)).toEqual([text, text.length]);
     expect(GIMarshallingTests.Object.vfuncStaticTypedName(Registered)).toBe(text);
 
-    expect(await hammer(20_000, () => {
-        instance.methodStrArgOutRet(text);
-        GIMarshallingTests.Object.vfuncStaticTypedName(Registered);
-    })).toBeLessThan(RSS_BUDGET);
+    expect(
+        await hammer(20_000, () => {
+            instance.methodStrArgOutRet(text);
+            GIMarshallingTests.Object.vfuncStaticTypedName(Registered);
+        }),
+    ).toBeLessThan(RSS_BUDGET);
 });

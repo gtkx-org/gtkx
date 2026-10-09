@@ -1,18 +1,16 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
-import {
-    isolateTypeConsumer,
-    runNativeConsumer,
-    typecheckFile,
-} from "./type-consumer.js";
+import { isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
-const CONFIG = 'export default { applicationId: "org.gtkx.typeinstance",' +
-    " agents: { reference: false, rules: false } };";
+const CONFIG =
+    'export default { applicationId: "org.gtkx.typeinstance",' + " agents: { reference: false, rules: false } };";
 const IMPORTS = `import * as GObject from "@gtkx/gi/gobject";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gio from "@gtkx/gi/gio";
 `;
-const ACCEPTED = IMPORTS + `import { registerClass } from "@gtkx/runtime";
+const ACCEPTED =
+    IMPORTS +
+    `import { registerClass } from "@gtkx/runtime";
 
 const initialize = (instance: GObject.TypeInstance): GObject.Value => {
     const value = new GObject.Value();
@@ -32,13 +30,14 @@ export const registered = initialize(new Local());
 `;
 const REJECTED: Record<string, string> = {
     boxed: "export const initialize = (value: GObject.Value, bytes: GLib.Bytes) => value.initFromInstance(bytes);",
-    variant: "export const initialize = (value: GObject.Value, variant: GLib.Variant) => " +
+    variant:
+        "export const initialize = (value: GObject.Value, variant: GLib.Variant) => " +
         "value.initFromInstance(variant);",
     empty: "export const initialize = (value: GObject.Value) => value.initFromInstance({});",
     array: "export const initialize = (value: GObject.Value) => value.initFromInstance([]);",
     number: "export const initialize = (value: GObject.Value) => value.initFromInstance(1);",
     bigint: "export const initialize = (value: GObject.Value) => value.initFromInstance(1n);",
-    string: "export const initialize = (value: GObject.Value) => value.initFromInstance(\"instance\");",
+    string: 'export const initialize = (value: GObject.Value) => value.initFromInstance("instance");',
     boolean: "export const initialize = (value: GObject.Value) => value.initFromInstance(false);",
     constructor: "export const initialize = (value: GObject.Value) => value.initFromInstance(GObject.Object);",
     symbol: "export const initialize = (value: GObject.Value) => value.initFromInstance(Symbol());",
@@ -78,24 +77,26 @@ try {
 }
 `;
 
-const rejectedFiles = Object.fromEntries(Object.entries(REJECTED).map(([name, source]) => [
-    `${name}.ts`, IMPORTS + source,
-]));
+const rejectedFiles = Object.fromEntries(
+    Object.entries(REJECTED).map(([name, source]) => [`${name}.ts`, IMPORTS + source]),
+);
 
 describe("generated TypeInstance contract", () => {
     const cleanup = new DisposableStack();
     let project: CliProject;
 
     beforeAll(() => {
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-type-instance-types-",
-            config: CONFIG,
-            files: {
-                "accepted.ts": ACCEPTED,
-                "native.ts": NATIVE_CONSUMER,
-                ...rejectedFiles,
-            },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-type-instance-types-",
+                config: CONFIG,
+                files: {
+                    "accepted.ts": ACCEPTED,
+                    "native.ts": NATIVE_CONSUMER,
+                    ...rejectedFiles,
+                },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });

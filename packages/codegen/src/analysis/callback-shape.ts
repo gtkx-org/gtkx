@@ -53,7 +53,8 @@ const isSupportedCallback = (
     callback: GirCallback,
     adaptedParameters: ReadonlySet<GirParameter> = new Set(),
 ): boolean => {
-    if (!callback.introspectable ||
+    if (
+        !callback.introspectable ||
         hasUnsupportedHashTableSlot(library, callback.returnValue.type) ||
         hasTransferredNumericHashTable(library, callback.returnValue.type, callback.returnValue.transferOwnership) ||
         hasScalarPointer(library, callback.returnValue.type, callback.returnValue.cType) ||
@@ -65,22 +66,28 @@ const isSupportedCallback = (
             callback.returnValue.type,
             callback.returnValue.transferOwnership,
             { direction: "to-native", isRetained: true },
-        )) {
+        )
+    ) {
         return false;
     }
 
     const ignored = callbackIgnoredParameters(library, callback);
 
-    return callback.parameters.every((parameter) =>
-        ignored.has(parameter) || adaptedParameters.has(parameter) ||
-        ((parameter.direction === "in" ||
-            !hasTransferredNumericHashTable(library, parameter.type, parameter.transferOwnership)) &&
-            !isCallerAllocatedContainer(library, parameter) &&
-            !hasInoutHandleIndirectionMismatch(library, parameter) &&
-            !hasUnsupportedCallbackInlineRecordArray({ library }, parameter) &&
-            !hasUnsupportedScalarParameter(library, parameter) && !hasUnknownLengthArray(library, parameter.type) &&
-            !hasPrimitivePointer(library, parameter.type) && !hasUnsupportedHashTableSlot(library, parameter.type) &&
-            !hasCallbackType(library, parameter.type)));
+    return callback.parameters.every(
+        (parameter) =>
+            ignored.has(parameter) ||
+            adaptedParameters.has(parameter) ||
+            ((parameter.direction === "in" ||
+                !hasTransferredNumericHashTable(library, parameter.type, parameter.transferOwnership)) &&
+                !isCallerAllocatedContainer(library, parameter) &&
+                !hasInoutHandleIndirectionMismatch(library, parameter) &&
+                !hasUnsupportedCallbackInlineRecordArray({ library }, parameter) &&
+                !hasUnsupportedScalarParameter(library, parameter) &&
+                !hasUnknownLengthArray(library, parameter.type) &&
+                !hasPrimitivePointer(library, parameter.type) &&
+                !hasUnsupportedHashTableSlot(library, parameter.type) &&
+                !hasCallbackType(library, parameter.type)),
+    );
 };
 
 const hasUnsupportedCallback = (library: Library, ref: TypeId | undefined): boolean =>

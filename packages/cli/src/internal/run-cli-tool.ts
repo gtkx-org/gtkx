@@ -14,8 +14,10 @@ const streamingOptions = (options: ExecFileSyncOptions | undefined): ExecFileSyn
     stdio: "inherit",
 });
 
-const optionsFor = (shouldStream: boolean | undefined, options: ExecFileSyncOptions | undefined): ExecFileSyncOptions |
-    undefined => (shouldStream === true ? streamingOptions(options) : options);
+const optionsFor = (
+    shouldStream: boolean | undefined,
+    options: ExecFileSyncOptions | undefined,
+): ExecFileSyncOptions | undefined => (shouldStream === true ? streamingOptions(options) : options);
 
 const failureMessage = (tool: string, target: string | undefined, error: unknown): string => {
     const details = formatChildProcessError(error);

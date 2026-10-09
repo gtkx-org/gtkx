@@ -1,16 +1,7 @@
 import { LATEST_PROTOCOL_VERSION } from "@modelcontextprotocol/sdk/types.js";
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import { once } from "node:events";
-import {
-    existsSync,
-    mkdirSync,
-    mkdtempSync,
-    readFileSync,
-    rmSync,
-    statSync,
-    watch,
-    writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, watch, writeFileSync } from "node:fs";
 import { createConnection, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
@@ -347,19 +338,24 @@ describe("a running MCP server", () => {
         const server = await trackedServer();
         const socket = await connectTreeApp(server.socketPath, PROBE_APP_ID);
         await callText(server.client, "gtkx_get_widget_tree", { applicationId: PROBE_APP_ID });
-        socket.write(encode({
-            jsonrpc: "2.0",
-            id: 2,
-            method: "app.register",
-            params: { applicationId: DELAYED_APP_ID, pid: process.pid },
-        }));
+        socket.write(
+            encode({
+                jsonrpc: "2.0",
+                id: 2,
+                method: "app.register",
+                params: { applicationId: DELAYED_APP_ID, pid: process.pid },
+            }),
+        );
 
-        expect(await callText(server.client, "gtkx_get_widget_tree", { applicationId: DELAYED_APP_ID }))
-            .toBe(PROBE_APP_ID);
-        expect(await isToolFailure(server.client, "gtkx_get_widget_tree", {
-            applicationId: PROBE_APP_ID,
-            appTimeout: 0,
-        })).toBe(true);
+        expect(await callText(server.client, "gtkx_get_widget_tree", { applicationId: DELAYED_APP_ID })).toBe(
+            PROBE_APP_ID,
+        );
+        expect(
+            await isToolFailure(server.client, "gtkx_get_widget_tree", {
+                applicationId: PROBE_APP_ID,
+                appTimeout: 0,
+            }),
+        ).toBe(true);
         socket.destroy();
         await waitForAppCount(server, 0);
         expect(await callJson(server.client, "gtkx_list_apps")).toEqual([]);
@@ -490,58 +486,74 @@ describe("a second MCP server on the same socket", () => {
 });
 
 describe("an application whose link stops being writable", () => {
-    it("fails the next request instead of waiting for the request timeout", async () => {
-        const server = await trackedServer();
-        const app = await connectFakeApp(server.socketPath);
-        await waitUntil(app.hasRegistered);
+    it(
+        "fails the next request instead of waiting for the request timeout",
+        async () => {
+            const server = await trackedServer();
+            const app = await connectFakeApp(server.socketPath);
+            await waitUntil(app.hasRegistered);
 
-        void callTool(server.client, "gtkx_type", {
-            widgetId: PROBE_WIDGET_ID,
-            text: "x".repeat(FLOOD_BYTES),
-        }).catch(() => null);
+            void callTool(server.client, "gtkx_type", {
+                widgetId: PROBE_WIDGET_ID,
+                text: "x".repeat(FLOOD_BYTES),
+            }).catch(() => null);
 
-        await waitUntil(app.hasFlooded);
-        app.socket.end();
-        await new Promise((resolve) => setTimeout(resolve, FIN_SETTLE_MS));
-        expect(await isToolFailure(server.client, "gtkx_click", { widgetId: PROBE_WIDGET_ID })).toBe(true);
-    }, LINK_TIMEOUT_MS);
+            await waitUntil(app.hasFlooded);
+            app.socket.end();
+            await new Promise((resolve) => setTimeout(resolve, FIN_SETTLE_MS));
+            expect(await isToolFailure(server.client, "gtkx_click", { widgetId: PROBE_WIDGET_ID })).toBe(true);
+        },
+        LINK_TIMEOUT_MS,
+    );
 });
 
 describe("an application that sends a message with no end to it", () => {
-    it("loses its connection while the server keeps serving", async () => {
-        const server = await trackedServer();
-        const socket = await connectRawApp(server.socketPath);
-        void sendOversizedMessage(socket);
-        await linkClosed(socket);
-        expect(await callJson(server.client, "gtkx_list_apps")).toEqual([]);
-    }, OVERSIZED_TIMEOUT_MS);
+    it(
+        "loses its connection while the server keeps serving",
+        async () => {
+            const server = await trackedServer();
+            const socket = await connectRawApp(server.socketPath);
+            void sendOversizedMessage(socket);
+            await linkClosed(socket);
+            expect(await callJson(server.client, "gtkx_list_apps")).toEqual([]);
+        },
+        OVERSIZED_TIMEOUT_MS,
+    );
 });
 
 describe("an application that stops reading what the server sends", () => {
-    it("loses its connection while the server keeps serving", async () => {
-        const server = await trackedServer();
-        const app = await connectFakeApp(server.socketPath);
-        await waitUntil(app.hasRegistered);
-        typeIntoStalledApp(server);
-        await waitUntil(app.hasFlooded);
-
-        for (let queued = 0; queued < STALLED_WRITE_BYTES; queued += FLOOD_BYTES) {
+    it(
+        "loses its connection while the server keeps serving",
+        async () => {
+            const server = await trackedServer();
+            const app = await connectFakeApp(server.socketPath);
+            await waitUntil(app.hasRegistered);
             typeIntoStalledApp(server);
-        }
+            await waitUntil(app.hasFlooded);
 
-        await waitForAppCount(server, 0);
-        expect(await callJson(server.client, "gtkx_list_apps")).toEqual([]);
-    }, LINK_TIMEOUT_MS);
+            for (let queued = 0; queued < STALLED_WRITE_BYTES; queued += FLOOD_BYTES) {
+                typeIntoStalledApp(server);
+            }
+
+            await waitForAppCount(server, 0);
+            expect(await callJson(server.client, "gtkx_list_apps")).toEqual([]);
+        },
+        LINK_TIMEOUT_MS,
+    );
 });
 
 describe("an application that sends a message the server cannot parse", () => {
-    it("keeps its connection and acts on the next message", async () => {
-        const server = await trackedServer();
-        const app = await connectFakeApp(server.socketPath);
-        await waitUntil(app.hasRegistered);
-        app.socket.write("this line is not json\n");
-        app.socket.write(encode({ jsonrpc: "2.0", id: 2, method: "app.unregister" }));
-        await waitForAppCount(server, 0);
-        expect(await callJson<unknown[]>(server.client, "gtkx_list_apps")).toHaveLength(0);
-    }, LINK_TIMEOUT_MS);
+    it(
+        "keeps its connection and acts on the next message",
+        async () => {
+            const server = await trackedServer();
+            const app = await connectFakeApp(server.socketPath);
+            await waitUntil(app.hasRegistered);
+            app.socket.write("this line is not json\n");
+            app.socket.write(encode({ jsonrpc: "2.0", id: 2, method: "app.unregister" }));
+            await waitForAppCount(server, 0);
+            expect(await callJson<unknown[]>(server.client, "gtkx_list_apps")).toHaveLength(0);
+        },
+        LINK_TIMEOUT_MS,
+    );
 });

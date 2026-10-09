@@ -14,11 +14,7 @@ const bundleRelativeUrl = (filename: string): string => {
     return `decodeURIComponent(new URL(${specifier}, import.meta.url).pathname)`;
 };
 
-const renderAssetUrl = (
-    filename: string,
-    type: string,
-    hostId: string,
-): { runtime: string } | undefined => {
+const renderAssetUrl = (filename: string, type: string, hostId: string): { runtime: string } | undefined => {
     if (type !== "asset") {
         return undefined;
     }

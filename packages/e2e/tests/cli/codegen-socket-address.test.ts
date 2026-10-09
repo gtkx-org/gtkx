@@ -3,10 +3,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
 import { isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
-const CONFIG = 'export default { applicationId: "org.gtkx.socketaddress", libraries: ["Gio-2.0"],' +
+const CONFIG =
+    'export default { applicationId: "org.gtkx.socketaddress", libraries: ["Gio-2.0"],' +
     " agents: { reference: false, rules: false } };";
 const IMPORTS = 'import * as Gio from "@gtkx/gi/gio";\n';
-const ACCEPTED = IMPORTS + `import * as GLib from "@gtkx/gi/glib";
+const ACCEPTED =
+    IMPORTS +
+    `import * as GLib from "@gtkx/gi/glib";
 
 export const bytesResult = (bytes: GLib.Bytes): ReturnType<Gio.Socket["receiveBytesFrom"]> => [bytes, null];
 export const messageResult: ReturnType<Gio.Socket["receiveMessage"]> = [0, null, null, 0];
@@ -15,17 +18,25 @@ export const readFamily = (socket: Gio.Socket): Gio.SocketFamily | null => {
     return address === null ? null : address.getFamily();
 };
 `;
-const CONTROL = IMPORTS + `export const listenerAddress = (
+const CONTROL =
+    IMPORTS +
+    `export const listenerAddress = (
     listener: Gio.SocketListener, address: Gio.SocketAddress,
 ): Gio.SocketAddress => listener.addAddress(address, Gio.SocketType.STREAM, Gio.SocketProtocol.TCP, null)[1];
 `;
 const REJECTED = {
-    "nonnull-bytes-address.ts": IMPORTS + "export const read = (socket: Gio.Socket): Gio.SocketAddress => " +
+    "nonnull-bytes-address.ts":
+        IMPORTS +
+        "export const read = (socket: Gio.Socket): Gio.SocketAddress => " +
         "socket.receiveBytesFrom(1, 1_000_000n, null)[1];",
-    "nonnull-message-address.ts": IMPORTS + "export const read = (socket: Gio.Socket): Gio.SocketAddress => " +
+    "nonnull-message-address.ts":
+        IMPORTS +
+        "export const read = (socket: Gio.Socket): Gio.SocketAddress => " +
         "socket.receiveMessage([], 0, null)[1];",
 };
-const CONSUMER = IMPORTS + `import assert from "node:assert/strict";
+const CONSUMER =
+    IMPORTS +
+    `import assert from "node:assert/strict";
 import { quit } from "@gtkx/runtime";
 
 try {
@@ -67,11 +78,13 @@ describe("generated socket receive address nullability", () => {
     let project: CliProject;
 
     beforeAll(() => {
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-socket-address-types-",
-            config: CONFIG,
-            files: { "accepted.ts": ACCEPTED, "control.ts": CONTROL, "probe.ts": CONSUMER, ...REJECTED },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-socket-address-types-",
+                config: CONFIG,
+                files: { "accepted.ts": ACCEPTED, "control.ts": CONTROL, "probe.ts": CONSUMER, ...REJECTED },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });
@@ -101,16 +114,22 @@ describe("generated socket receive address nullability", () => {
         });
         const page = reference.lookup("Gio.Socket", "class");
         expect(page.outcome).toBe("page");
-        expect(page).toHaveProperty("markdown", expect.stringContaining(
-            "receiveBytesFrom(size: number, timeoutUs: bigint | number, " +
-            "cancellable: NativeInstance<Gio.Cancellable> | null): " +
-            "[GLib.Bytes, Gio.SocketAddress | null]",
-        ));
-        expect(page).toHaveProperty("markdown", expect.stringContaining(
-            "receiveMessage(vectors: Gio.InputVector[], flags: number, " +
-            "cancellable: NativeInstance<Gio.Cancellable> | null): " +
-            "[number, Gio.SocketAddress | null, Gio.SocketControlMessage[] | null, number]",
-        ));
+        expect(page).toHaveProperty(
+            "markdown",
+            expect.stringContaining(
+                "receiveBytesFrom(size: number, timeoutUs: bigint | number, " +
+                    "cancellable: NativeInstance<Gio.Cancellable> | null): " +
+                    "[GLib.Bytes, Gio.SocketAddress | null]",
+            ),
+        );
+        expect(page).toHaveProperty(
+            "markdown",
+            expect.stringContaining(
+                "receiveMessage(vectors: Gio.InputVector[], flags: number, " +
+                    "cancellable: NativeInstance<Gio.Cancellable> | null): " +
+                    "[number, Gio.SocketAddress | null, Gio.SocketControlMessage[] | null, number]",
+            ),
+        );
     });
 
     it("receives connected TCP data and EOF after a cancelled receive", () => {

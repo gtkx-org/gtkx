@@ -33,7 +33,7 @@ const registryDocument = async (name: string): Promise<RegistryDocument> => {
     const response = await fetch(`${REGISTRY}${encodeURIComponent(name)}`);
     assert.equal(response.status, 200);
 
-    return await response.json() as RegistryDocument;
+    return (await response.json()) as RegistryDocument;
 };
 
 const assertChannels = async (beta: string | undefined): Promise<void> => {
@@ -49,9 +49,11 @@ const verifyChannelConsumer = async (root: string, env: NodeJS.ProcessEnv): Prom
     const consumer = join(root, "channel-consumer");
     mkdirSync(consumer, { recursive: true });
     writeFileSync(join(consumer, "package.json"), '{"private":true}\n');
-    await runAsync("npm", [
-        "install", "--ignore-scripts", "--no-audit", "--no-fund", ...NAMES.map((name) => `${name}@beta`),
-    ], { cwd: consumer, env });
+    await runAsync(
+        "npm",
+        ["install", "--ignore-scripts", "--no-audit", "--no-fund", ...NAMES.map((name) => `${name}@beta`)],
+        { cwd: consumer, env },
+    );
 
     for (const name of NAMES) {
         const manifestPath = join(consumer, "node_modules", name, "package.json");
@@ -62,20 +64,20 @@ const verifyChannelConsumer = async (root: string, env: NodeJS.ProcessEnv): Prom
 
 const verifyMisplacedTagRetry = async (directory: string, env: NodeJS.ProcessEnv): Promise<void> => {
     const name = NAMES[0];
-    await runAsync("npm", [
-        "dist-tag", "add", `${name}@0.1.0-beta.1`, "beta", "--registry", REGISTRY,
-    ], { env });
-    await assert.rejects(runAsync("tsx", [join(ROOT_DIR, "scripts", "release-package.ts")], {
-        cwd: directory,
-        env: { ...env, GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS: "2000" },
-    }));
+    await runAsync("npm", ["dist-tag", "add", `${name}@0.1.0-beta.1`, "beta", "--registry", REGISTRY], { env });
+    await assert.rejects(
+        runAsync("tsx", [join(ROOT_DIR, "scripts", "release-package.ts")], {
+            cwd: directory,
+            env: { ...env, GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS: "2000" },
+        }),
+    );
     const document = await registryDocument(name);
     assert.equal(document["dist-tags"].beta, "0.1.0-beta.1");
     assert.equal(document["dist-tags"].latest, "0.0.1");
     assert.equal(document["dist-tags"].rc, "0.1.0-rc.1");
-    await assert.rejects(runAsync("node", [
-        join(ROOT_DIR, "scripts", "verify-release-channel.ts"), "0.2.0-beta.1", directory,
-    ], { env }));
+    await assert.rejects(
+        runAsync("node", [join(ROOT_DIR, "scripts", "verify-release-channel.ts"), "0.2.0-beta.1", directory], { env }),
+    );
 };
 
 const verifyReleaseChannels = async (root: string, env: NodeJS.ProcessEnv): Promise<void> => {
@@ -88,9 +90,9 @@ const verifyReleaseChannels = async (root: string, env: NodeJS.ProcessEnv): Prom
         await runAsync("tsx", [join(ROOT_DIR, "scripts", "release-package.ts")], { cwd: directory, env });
     };
     const verify = async (version: string, directories: string[]): Promise<void> => {
-        await runAsync("node", [
-            join(ROOT_DIR, "scripts", "verify-release-channel.ts"), version, ...directories,
-        ], { env });
+        await runAsync("node", [join(ROOT_DIR, "scripts", "verify-release-channel.ts"), version, ...directories], {
+            env,
+        });
     };
 
     await publish(baseline[0]);

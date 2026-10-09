@@ -28,6 +28,4 @@ const fileStorage: StateStorage = {
     },
 };
 
-export {
-    fileStorage,
-};
+export { fileStorage };

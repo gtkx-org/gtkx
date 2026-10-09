@@ -112,9 +112,9 @@ it("collects an emitter whose signal handler captures itself", async () => {
 
 it("collects emitters whose signal handlers capture each other", async () => {
     const connections = crossCapturedConnections();
-    await gcUntil(() => connections.every(({ emitter, handler }) => (
-        emitter.deref() === undefined && handler.deref() === undefined
-    )));
+    await gcUntil(() =>
+        connections.every(({ emitter, handler }) => emitter.deref() === undefined && handler.deref() === undefined),
+    );
 
     for (const { emitter, handler } of connections) {
         expect(emitter.deref()).toBeUndefined();

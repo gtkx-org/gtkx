@@ -124,7 +124,8 @@ const ReorderControllers = ({ task, previousId, nextId, paintableRef }: ReorderC
         />
         <GtkEventControllerKey
             onKeyPressed={(keyval, _keycode, state) =>
-                didHandleReorderKey(task, { previousId, nextId }, { keyval, state })}
+                didHandleReorderKey(task, { previousId, nextId }, { keyval, state })
+            }
         />
     </>
 );
@@ -139,10 +140,7 @@ const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) => {
     return (
         <>
             {canReorder &&
-                createPortal(
-                    <GtkWidgetPaintable ref={paintableRef} widget={row as Gtk.Widget | null} />,
-                    rootElement,
-                )}
+                createPortal(<GtkWidgetPaintable ref={paintableRef} widget={row as Gtk.Widget | null} />, rootElement)}
             <AdwActionRow
                 ref={setRow}
                 title={title}
@@ -156,22 +154,18 @@ const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) => {
                 prefix={<TaskCompletion task={task} />}
                 suffix={<TaskActions task={task} />}
                 controllers={
-                    canReorder
-                        ? (
-                                <ReorderControllers
-                                    task={task}
-                                    previousId={previousId}
-                                    nextId={nextId}
-                                    paintableRef={paintableRef}
-                                />
-                            )
-                        : undefined
+                    canReorder ? (
+                        <ReorderControllers
+                            task={task}
+                            previousId={previousId}
+                            nextId={nextId}
+                            paintableRef={paintableRef}
+                        />
+                    ) : undefined
                 }
             />
         </>
     );
 };
 
-export {
-    TaskRow,
-};
+export { TaskRow };

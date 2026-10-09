@@ -54,7 +54,7 @@ const useInstalledProvider = (provider: Gtk.CssProvider | null, defaultCss: stri
         const display = Gdk.DisplayManager.get().getDefaultDisplay();
 
         if (display) {
-            Gtk.StyleContext.addProviderForDisplay(display, provider, 0xFF_FF_FF_FF);
+            Gtk.StyleContext.addProviderForDisplay(display, provider, 0xff_ff_ff_ff);
         }
 
         provider.loadFromString(defaultCss);
@@ -93,18 +93,15 @@ function CssEditor({ defaultCss }: CssEditorProps) {
         <>
             <GtkTextView
                 accessibleLabel="CSS editor"
-                buffer={(
+                buffer={
                     <GtkTextBuffer ref={bufferRef} onChanged={onChanged}>
                         <GtkTextTag ref={errorTagRef} name="error" underline={Pango.Underline.ERROR} />
                         <GtkTextTag ref={warningTagRef} name="warning" underline={Pango.Underline.SINGLE} />
                         {defaultCss}
                     </GtkTextBuffer>
-                )}
+                }
             />
-            {createPortal(
-                <GtkCssProvider ref={setProvider} onParsingError={onParsingError} />,
-                rootElement,
-            )}
+            {createPortal(<GtkCssProvider ref={setProvider} onParsingError={onParsingError} />, rootElement)}
         </>
     );
 }

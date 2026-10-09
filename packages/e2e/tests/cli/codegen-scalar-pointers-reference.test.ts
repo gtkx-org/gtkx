@@ -1,10 +1,7 @@
 import { loadApiReference, resolveGirPath } from "@gtkx/codegen";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CliProject } from "./cli-project.js";
-import {
-    createScalarPointerProject,
-    SCALAR_POINTER_OMITTED_METHODS,
-} from "./codegen-scalar-pointers-fixture.js";
+import { createScalarPointerProject, SCALAR_POINTER_OMITTED_METHODS } from "./codegen-scalar-pointers-fixture.js";
 
 describe("generated scalar C pointer omissions", () => {
     const cleanup = new DisposableStack();
@@ -32,7 +29,14 @@ describe("generated scalar C pointer omissions", () => {
         expect(element.outcome).toBe("page");
         expect(frame.outcome).toBe("page");
         for (const name of [
-            "readNumber", "editNumber", "readCount", "readArray", "useValues", "takeArray", "useInout", "count",
+            "readNumber",
+            "editNumber",
+            "readCount",
+            "readArray",
+            "useValues",
+            "takeArray",
+            "useInout",
+            "count",
         ]) {
             expect(probe).toHaveProperty("markdown", expect.stringContaining(`### \`${name}\``));
         }

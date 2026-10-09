@@ -6,7 +6,6 @@ Complete the [workspace setup](../../website/contributing/development.md), then 
 
 ```bash
 pnpm --filter animations dev
-pnpm --filter animations test
 ```
 
 See the [animations guide](https://gtkx.dev/v2/guide/animations) for native behavior and [React Spring](https://react-spring.dev/) for its animation APIs.

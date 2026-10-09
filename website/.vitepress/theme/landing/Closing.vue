@@ -5,26 +5,26 @@ import { EXAMPLES_URL, LICENSE } from "./content";
 </script>
 
 <template>
-  <section id="open-source" class="oss">
-    <div class="oss__inner">
-      <div class="oss__text">
-        <h2 class="oss__title">Built in the open</h2>
-        <p class="oss__body">
-          GTKX is {{ LICENSE }}-licensed. Help improve the framework, documentation, or examples.
-        </p>
-      </div>
-      <div class="oss__cta">
-        <Button variant="secondary" href="/contributing/">
-          <template #icon-left><Icon name="github" /></template>
-          Contribute
-        </Button>
-        <Button variant="ghost" :href="EXAMPLES_URL">
-          Browse examples
-          <template #icon-right><Icon name="external" :size="15" /></template>
-        </Button>
-      </div>
-    </div>
-  </section>
+    <section id="open-source" class="oss">
+        <div class="oss__inner">
+            <div class="oss__text">
+                <h2 class="oss__title">Built in the open</h2>
+                <p class="oss__body">
+                    GTKX is {{ LICENSE }}-licensed. Help improve the framework, documentation, or examples.
+                </p>
+            </div>
+            <div class="oss__cta">
+                <Button variant="secondary" href="/contributing/">
+                    <template #icon-left><Icon name="github" /></template>
+                    Contribute
+                </Button>
+                <Button variant="ghost" :href="EXAMPLES_URL">
+                    Browse examples
+                    <template #icon-right><Icon name="external" :size="15" /></template>
+                </Button>
+            </div>
+        </div>
+    </section>
 </template>
 
 <style scoped>

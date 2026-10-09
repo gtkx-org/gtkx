@@ -33,17 +33,13 @@ const renderBootstrapModule = (context: ModuleContext): string => {
     const directory = namespaceDirectory(context.namespace);
     const coreWrappers = CORE_WRAPPERS[directory] ?? [];
 
-    const retention = coreWrappers.length === 0
-        ? []
-        : [`retainWrapperClasses([${coreWrappers.join(", ")}]);`];
+    const retention = coreWrappers.length === 0 ? [] : [`retainWrapperClasses([${coreWrappers.join(", ")}]);`];
 
     const lines = [
         ...renderDependencyImports(context),
         ...renderOverrideImports(directory),
         ...renderRuntimeImport(context),
-        ...(coreWrappers.length === 0
-            ? []
-            : ['import { retainWrapperClasses } from "@gtkx/runtime/internal";']),
+        ...(coreWrappers.length === 0 ? [] : ['import { retainWrapperClasses } from "@gtkx/runtime/internal";']),
         ...renderModuleImports(context, directory, coreWrappers),
         "",
         ...retention,

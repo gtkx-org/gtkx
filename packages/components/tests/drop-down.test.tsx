@@ -44,16 +44,14 @@ const idAtSelected = (dropDown: Gtk.DropDown | null, items: IdItem[]): string | 
     items[dropDown?.getSelected() ?? -1]?.id;
 
 const drawSections = (hasHeaders: boolean): ReactNode =>
-    hasHeaders
-        ? (
-                <DropDown
-                    renderHeader={({ section: value }: { section: string }) => <GtkLabel>{value}</GtkLabel>}
-                    sections={SECTIONS}
-                />
-            )
-        : (
-                <DropDown sections={SECTIONS} />
-            );
+    hasHeaders ? (
+        <DropDown
+            renderHeader={({ section: value }: { section: string }) => <GtkLabel>{value}</GtkLabel>}
+            sections={SECTIONS}
+        />
+    ) : (
+        <DropDown sections={SECTIONS} />
+    );
 
 const expectRemovalReported = async (options: RemovalCase): Promise<void> => {
     const ref = createRef<Gtk.DropDown>();
@@ -146,9 +144,7 @@ describe("DropDown controlled selection", () => {
             selectionChanges.push(id);
         };
 
-        await render(
-            <DropDown ref={ref} selectedId="b" onSelectionChanged={onSelectionChanged} items={abcItems()} />,
-        );
+        await render(<DropDown ref={ref} selectedId="b" onSelectionChanged={onSelectionChanged} items={abcItems()} />);
         await userEvent.selectOptions(ref.current, 2);
 
         await waitFor(() => {
@@ -258,13 +254,15 @@ describe.each([DropDown, ComboRow])("dropdown value rendering", (Component) => {
     });
 
     it("propagates renderer errors", async () => {
-        await expect(renderValue(
-            <Component
-                items={[{ id: "choice", value: { label: "Choice" } }]}
-                renderItem={() => {
-                    throw new Error("Render failed");
-                }}
-            />,
-        )).rejects.toThrow();
+        await expect(
+            renderValue(
+                <Component
+                    items={[{ id: "choice", value: { label: "Choice" } }]}
+                    renderItem={() => {
+                        throw new Error("Render failed");
+                    }}
+                />,
+            ),
+        ).rejects.toThrow();
     });
 });

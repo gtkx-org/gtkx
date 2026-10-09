@@ -29,8 +29,16 @@ const extractNode = (archive: string, dir: string, version: string, arch: string
 
     runCliTool({
         tool: "tar",
-        args: ["-xJf", archive, "-C", dir, "--strip-components", STRIP_COMPONENTS,
-            `${release}/${NODE_PATH}`, `${release}/${LICENSE_FILENAME}`],
+        args: [
+            "-xJf",
+            archive,
+            "-C",
+            dir,
+            "--strip-components",
+            STRIP_COMPONENTS,
+            `${release}/${NODE_PATH}`,
+            `${release}/${LICENSE_FILENAME}`,
+        ],
         target: `Node.js ${version}`,
     });
 };

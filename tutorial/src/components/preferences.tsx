@@ -50,6 +50,4 @@ const Preferences = ({ onClose }: { onClose: () => void }) => {
     );
 };
 
-export {
-    Preferences,
-};
+export { Preferences };

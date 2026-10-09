@@ -187,7 +187,10 @@ const readVersions = (): readonly DocumentationVersion[] => {
         };
     });
 
-    assertUnique(parsed.map((version) => version.id), "version id");
+    assertUnique(
+        parsed.map((version) => version.id),
+        "version id",
+    );
     assertUnique(
         parsed.flatMap((version) => [version.prefix, ...version.aliases]),
         "version prefix or alias",

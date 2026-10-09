@@ -1,7 +1,6 @@
 import { REFRESH_EXPORT, REGISTER_REFRESH_EXPORT } from "./resource-shared.js";
 
-type InitModuleOptions = { isBuild: true; bundleReferenceId: string } |
-    { isBuild: false; devBundlePath: string };
+type InitModuleOptions = { isBuild: true; bundleReferenceId: string } | { isBuild: false; devBundlePath: string };
 
 const refreshCallbackSource = (): string[] => [
     "const refreshCallbacks = new Map();",
@@ -18,11 +17,11 @@ const refreshCallbackSource = (): string[] => [
 
 const buildInitModuleSource = (bundleReferenceId: string): string =>
     [
-        "import { fileURLToPath } from \"node:url\";",
-        "import { Resource, resourcesRegister } from \"@gtkx/gi/gio\";",
+        'import { fileURLToPath } from "node:url";',
+        'import { Resource, resourcesRegister } from "@gtkx/gi/gio";',
         "",
         `const bundleLocation = import.meta.ROLLUP_FILE_URL_${bundleReferenceId};`,
-        "const bundlePath = bundleLocation.startsWith(\"file:\") ? fileURLToPath(bundleLocation) : bundleLocation;",
+        'const bundlePath = bundleLocation.startsWith("file:") ? fileURLToPath(bundleLocation) : bundleLocation;',
         "const resource = Resource.load(bundlePath);",
         "resourcesRegister(resource);",
         "",
@@ -36,11 +35,11 @@ const devInitModuleSource = (bundlePath: string): string => {
     const bundlePathLiteral = JSON.stringify(bundlePath);
 
     return [
-        "import { existsSync, statSync } from \"node:fs\";",
-        "import { Resource, resourcesRegister, resourcesUnregister } from \"@gtkx/gi/gio\";",
+        'import { existsSync, statSync } from "node:fs";',
+        'import { Resource, resourcesRegister, resourcesUnregister } from "@gtkx/gi/gio";',
         "",
         "let current = null;",
-        "let lastSig = \"\";",
+        'let lastSig = "";',
         "",
         "function register() {",
         `    const next = Resource.load(${bundlePathLiteral});`,
@@ -53,7 +52,7 @@ const devInitModuleSource = (bundlePath: string): string => {
         "    if (!current) return;",
         "    resourcesUnregister(current);",
         "    current = null;",
-        "    lastSig = \"\";",
+        '    lastSig = "";',
         "}",
         "",
         ...refreshCallbackSource(),
@@ -64,7 +63,7 @@ const devInitModuleSource = (bundlePath: string): string => {
         "        return;",
         "    }",
         `    const { size, mtimeMs } = statSync(${bundlePathLiteral});`,
-        "    const sig = size + \":\" + mtimeMs;",
+        '    const sig = size + ":" + mtimeMs;',
         "    if (sig !== lastSig) {",
         "        register();",
         "        lastSig = sig;",

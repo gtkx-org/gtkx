@@ -124,11 +124,16 @@ function VideoPlayerProvider({ window, children }: DemoProviderProps) {
     const [bbbPaintable] = useState(() => Gdk.Texture.newFromResource(bbbPngPath));
     const { dialog, cancellable, portal } = useVideoFileDialog();
 
-    useSignal(window, "notify::fullscreened", () => {
-        setIsFullscreen(window?.isFullscreen() ?? false);
-    }, {
-        isImmediate: true,
-    });
+    useSignal(
+        window,
+        "notify::fullscreened",
+        () => {
+            setIsFullscreen(window?.isFullscreen() ?? false);
+        },
+        {
+            isImmediate: true,
+        },
+    );
 
     const handleOpen = () => {
         if (dialog !== null && cancellable.cancellable !== null) {
@@ -174,7 +179,7 @@ function VideoPlayerTitlebar() {
 
     return (
         <GtkHeaderBar
-            start={(
+            start={
                 <>
                     <GtkButton name="open-button" label="_Open" useUnderline onClicked={handleOpen} />
                     <GtkButton
@@ -203,8 +208,8 @@ function VideoPlayerTitlebar() {
                         />
                     </GtkButton>
                 </>
-            )}
-            end={(
+            }
+            end={
                 <GtkButton
                     name="fullscreen-button"
                     iconName={isFullscreen ? "view-restore-symbolic" : "view-fullscreen-symbolic"}
@@ -212,7 +217,7 @@ function VideoPlayerTitlebar() {
                     tooltipText={fullscreenLabel}
                     onClicked={handleToggleFullscreen}
                 />
-            )}
+            }
         />
     );
 }
@@ -228,13 +233,13 @@ function VideoPlayerDemo() {
             file={videoFile}
             autoplay
             graphicsOffload={Gtk.GraphicsOffloadEnabled.ENABLED}
-            controllers={(
+            controllers={
                 <GtkShortcutController
                     scope={Gtk.ShortcutScope.GLOBAL}
-                    shortcuts={(
+                    shortcuts={
                         <GtkShortcut
                             trigger={<GtkShortcutTrigger accelerator="F11" />}
-                            action={(
+                            action={
                                 <GtkCallbackAction
                                     callback={() => {
                                         handleToggleFullscreen();
@@ -242,11 +247,11 @@ function VideoPlayerDemo() {
                                         return true;
                                     }}
                                 />
-                            )}
+                            }
                         />
-                    )}
+                    }
                 />
-            )}
+            }
         />
     );
 }

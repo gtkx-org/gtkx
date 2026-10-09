@@ -21,12 +21,12 @@ const HeaderBar = ({ options, titleWidget, start, showBackButton }: HeaderBarPro
     <AdwHeaderBar
         showBackButton={showBackButton ?? true}
         titleWidget={resolveTitleWidget(options, titleWidget)}
-        start={(
+        start={
             <>
                 {start}
                 {options.headerStart}
             </>
-        )}
+        }
         end={options.headerEnd}
     />
 );

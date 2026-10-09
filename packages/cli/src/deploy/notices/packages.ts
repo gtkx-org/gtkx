@@ -20,7 +20,10 @@ const sourceUrl = (manifest: PackageManifest): string | null => {
         return null;
     }
 
-    const url = configured.replace(/^git\+/, "").replace(/\.git$/, "").replace(/^git:\/\//, "https://");
+    const url = configured
+        .replace(/^git\+/, "")
+        .replace(/\.git$/, "")
+        .replace(/^git:\/\//, "https://");
 
     return hostedGitInfo.fromUrl(url)?.browse() ?? (url.startsWith("http") ? url : null);
 };

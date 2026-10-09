@@ -12,7 +12,11 @@ const developerSection = (settings: DeploySettings): XmlNode[] => {
 };
 
 const descriptionSection = (settings: DeploySettings): XmlNode[] => [
-    element("description", {}, settings.description.map((paragraph) => text("p", paragraph))),
+    element(
+        "description",
+        {},
+        settings.description.map((paragraph) => text("p", paragraph)),
+    ),
 ];
 
 const providesSection = (settings: DeploySettings): XmlNode[] => [
@@ -23,7 +27,15 @@ const providesSection = (settings: DeploySettings): XmlNode[] => [
 ];
 
 const listSection = (tag: string, itemTag: string, values: string[]): XmlNode[] =>
-    values.length === 0 ? [] : [element(tag, {}, values.map((value) => text(itemTag, value)))];
+    values.length === 0
+        ? []
+        : [
+              element(
+                  tag,
+                  {},
+                  values.map((value) => text(itemTag, value)),
+              ),
+          ];
 
 const urlsSection = (settings: DeploySettings): XmlNode[] => {
     const homepage = settings.homepage === null ? [] : [{ tag: "homepage", url: settings.homepage }];
@@ -38,14 +50,11 @@ const screenshotsSection = (settings: DeploySettings): XmlNode[] => {
     }
 
     const entries = settings.screenshots.map((screenshot) =>
-        element(
-            "screenshot",
-            screenshot.isDefault ? { type: DEFAULT_SCREENSHOT_TYPE } : {},
-            [
-                text("image", screenshot.url),
-                ...(screenshot.caption === null ? [] : [text("caption", screenshot.caption)]),
-            ],
-        ));
+        element("screenshot", screenshot.isDefault ? { type: DEFAULT_SCREENSHOT_TYPE } : {}, [
+            text("image", screenshot.url),
+            ...(screenshot.caption === null ? [] : [text("caption", screenshot.caption)]),
+        ]),
+    );
 
     return [element("screenshots", {}, entries)];
 };
@@ -61,7 +70,13 @@ const releaseChildren = (release: DeployRelease): XmlNode[] => [
     ...(release.url === null ? [] : [{ tag: "url", attributes: { type: "details" }, text: release.url }]),
     ...(release.notes.length === 0
         ? []
-        : [element("description", {}, release.notes.map((note) => text("p", note)))]),
+        : [
+              element(
+                  "description",
+                  {},
+                  release.notes.map((note) => text("p", note)),
+              ),
+          ]),
 ];
 
 const releasesSection = (settings: DeploySettings): XmlNode[] => {
@@ -70,7 +85,8 @@ const releasesSection = (settings: DeploySettings): XmlNode[] => {
     }
 
     const entries = settings.releases.map((release) =>
-        element("release", releaseAttributes(release), releaseChildren(release)));
+        element("release", releaseAttributes(release), releaseChildren(release)),
+    );
 
     return [element("releases", {}, entries)];
 };

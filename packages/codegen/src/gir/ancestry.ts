@@ -36,11 +36,7 @@ const resolveClassOrInterface = (
     name: string,
 ): ResolvedAncestor | undefined => getAncestor(library.resolveType(defaultNamespace, name));
 
-const resolveInterface = (
-    library: Library,
-    defaultNamespace: string,
-    name: string,
-): ResolvedAncestor | undefined => {
+const resolveInterface = (library: Library, defaultNamespace: string, name: string): ResolvedAncestor | undefined => {
     const resolved = library.resolveType(defaultNamespace, name);
 
     return resolved?.kind === "interface" ? getAncestor(resolved) : undefined;
@@ -60,11 +56,7 @@ const resolveInterfaces = (library: Library, defaultNamespace: string, names: st
     return interfaces;
 };
 
-const seedAncestor = (
-    library: Library,
-    klass: GirClass,
-    namespaceName: string,
-): ResolvedAncestor | undefined => {
+const seedAncestor = (library: Library, klass: GirClass, namespaceName: string): ResolvedAncestor | undefined => {
     const namespace = library.namespaces.get(namespaceName);
 
     return namespace === undefined ? undefined : { klass, namespace, namespaceName };

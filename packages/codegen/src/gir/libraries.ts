@@ -47,7 +47,9 @@ const resolveBoundLibraries = (libraries: string[]): string[] => {
     const namespaces = new Set(libraries.map((library) => getNamespace(library)));
 
     return namespaces.has("Adw") && !namespaces.has("Gtk")
-        ? libraries.flatMap((library) => getNamespace(library) === "Adw" ? [library, TRANSITIVE_GTK_LIBRARY] : library)
+        ? libraries.flatMap((library) =>
+              getNamespace(library) === "Adw" ? [library, TRANSITIVE_GTK_LIBRARY] : library,
+          )
         : libraries;
 };
 

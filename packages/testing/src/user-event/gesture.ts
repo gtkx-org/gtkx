@@ -87,8 +87,7 @@ const unhover = (widget: Gtk.Widget): Promise<void> =>
 const rotate = (widget: Gtk.Widget, angle: number, deltaAngle: number = angle): Promise<void> =>
     dispatchOnControllers(widget, Gtk.GestureRotate, (controller) => {
         controller.emit("angle-changed", angle, deltaAngle);
-    },
-    );
+    });
 
 /** Zooms a widget's gestures. */
 const zoom = (widget: Gtk.Widget, scale: number): Promise<void> =>
@@ -207,8 +206,8 @@ const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: DragOpt
     if (widget instanceof Gtk.Range) {
         throw new TypeError(
             "userEvent.drag cannot drive a Gtk.Range's built-in slider " +
-            "(its drag reads pointer coordinates from the display); " +
-            "use userEvent.slide(range, value) or userEvent.keyboard for sliders",
+                "(its drag reads pointer coordinates from the display); " +
+                "use userEvent.slide(range, value) or userEvent.keyboard for sliders",
         );
     }
 
@@ -347,9 +346,10 @@ const dragAndDrop = async (
         });
 
         await wrapEvent(target, () => {
-            isAccepted = content === undefined
-                ? didEmitProviderDrop(target, activeDrags, options)
-                : didEmitAcceptedDrop(target, content, options);
+            isAccepted =
+                content === undefined
+                    ? didEmitProviderDrop(target, activeDrags, options)
+                    : didEmitAcceptedDrop(target, content, options);
         });
     } finally {
         await runInAct(() => {

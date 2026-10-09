@@ -75,7 +75,8 @@ const declarationModules = (options: PropsProgramOptions): DeclarationModules =>
     const sources: Map<string, string> = new Map();
     const loaded: Set<string> = new Set();
     const namespaces = new Map(
-        options.library.namespaces.values()
+        options.library.namespaces
+            .values()
             .filter((namespace) => externalPackageFor(namespace.name) === undefined)
             .map((namespace) => [namespaceDirectory(namespace), namespace]),
     );
@@ -91,9 +92,10 @@ const declarationModules = (options: PropsProgramOptions): DeclarationModules =>
             throw new Error(`The reference does not bind the ${directory} GIR namespace`);
         }
 
-        const declarations = options.declarationDir === undefined
-            ? generatedDeclarations(namespace, options)
-            : storedDeclarations(options.declarationDir, directory);
+        const declarations =
+            options.declarationDir === undefined
+                ? generatedDeclarations(namespace, options)
+                : storedDeclarations(options.declarationDir, directory);
 
         for (const [fileName, source] of declarations) {
             sources.set(fileName, source);
@@ -119,7 +121,7 @@ const moduleHostFor = (
         return text;
     },
     directoryExists: (path) => path.startsWith(VIRTUAL_GI_ROOT) || ts.sys.directoryExists(path),
-    realpath: (path) => path.startsWith(VIRTUAL_GI_ROOT) ? path : ts.sys.realpath?.(path) ?? path,
+    realpath: (path) => (path.startsWith(VIRTUAL_GI_ROOT) ? path : (ts.sys.realpath?.(path) ?? path)),
     getCurrentDirectory: () => options.resolveFrom,
 });
 
@@ -208,9 +210,10 @@ const compilerHost = (
             }
 
             const text = modules.sources.get(fileName);
-            const source = text === undefined
-                ? defaultHost.getSourceFile(fileName, version, onError, shouldCreateNewSourceFile)
-                : ts.createSourceFile(fileName, text, version, true);
+            const source =
+                text === undefined
+                    ? defaultHost.getSourceFile(fileName, version, onError, shouldCreateNewSourceFile)
+                    : ts.createSourceFile(fileName, text, version, true);
 
             if (source !== undefined) {
                 sourceFiles.set(fileName, source);
@@ -237,8 +240,9 @@ const resolveExports = (options: PropsProgramOptions, resolver: PropsResolver): 
     });
 
 const checkSources = (program: ts.Program, modules: DeclarationModules): [string, string][] => {
-    const sources = program.getSourceFiles().filter((source) =>
-        !modules.sources.has(source.fileName) && !program.isSourceFileDefaultLibrary(source));
+    const sources = program
+        .getSourceFiles()
+        .filter((source) => !modules.sources.has(source.fileName) && !program.isSourceFileDefaultLibrary(source));
     const diagnostics = [
         ...program.getOptionsDiagnostics(),
         ...program.getGlobalDiagnostics(),

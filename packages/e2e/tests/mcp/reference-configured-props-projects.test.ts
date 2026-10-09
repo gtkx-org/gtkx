@@ -1,10 +1,7 @@
 import { rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import {
-    createConfiguredProject,
-    referenceSession,
-} from "./reference-session.js";
+import { createConfiguredProject, referenceSession } from "./reference-session.js";
 
 const BASE_DECLARATION = "export interface SharedProps<T> { auditReplacement: T; }\n";
 

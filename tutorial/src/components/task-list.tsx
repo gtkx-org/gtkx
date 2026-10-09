@@ -83,16 +83,14 @@ const TaskCollection = ({ selection }: { selection: Selection }) => {
             <AdwClamp maximumSize={640} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
                     <TaskRows tasks={visible} canReorder={canReorder} listId={listId} />
-                    {visible.length === 0
-                        ? (
-                                <AdwStatusPage
-                                    cssClasses={["compact"]}
-                                    iconName={empty.icon}
-                                    title={empty.title}
-                                    description={markupEscapeText(empty.description, -1)}
-                                />
-                            )
-                        : null}
+                    {visible.length === 0 ? (
+                        <AdwStatusPage
+                            cssClasses={["compact"]}
+                            iconName={empty.icon}
+                            title={empty.title}
+                            description={markupEscapeText(empty.description, -1)}
+                        />
+                    ) : null}
                 </GtkBox>
             </AdwClamp>
         </GtkScrolledWindow>
@@ -106,6 +104,4 @@ const TaskList = ({ selection }: { selection: Selection }) => (
     </GtkBox>
 );
 
-export {
-    TaskList,
-};
+export { TaskList };

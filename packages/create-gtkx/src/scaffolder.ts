@@ -93,11 +93,14 @@ const APPLICATION_ID_FORMAT_ERROR = "Application ID must be reverse domain notat
 const APPLICATION_ID_PREFIX = "com.";
 const APPLICATION_ID_SUFFIX = ".app";
 
-const APPLICATION_ID_SEGMENT_LIMIT = APPLICATION_ID_MAX_LENGTH - APPLICATION_ID_PREFIX.length -
-    APPLICATION_ID_SUFFIX.length;
+const APPLICATION_ID_SEGMENT_LIMIT =
+    APPLICATION_ID_MAX_LENGTH - APPLICATION_ID_PREFIX.length - APPLICATION_ID_SUFFIX.length;
 
 const displayNameFromProjectName = (name: string): string =>
-    name.split("-").map((part) => upperFirst(part)).join(" ");
+    name
+        .split("-")
+        .map((part) => upperFirst(part))
+        .join(" ");
 
 const gitConfigValue = (key: string): string | null => {
     const git = tryResolveExecutable("git");
@@ -222,8 +225,7 @@ const validateTargetDir = (target: string): string | undefined => {
     return validateProjectName(deriveProjectName(target));
 };
 
-const validateTargetAnswer = (value: string | undefined): string | undefined =>
-    validateTargetDir(value ?? "");
+const validateTargetAnswer = (value: string | undefined): string | undefined => validateTargetDir(value ?? "");
 
 const promptTarget = async (): Promise<string> =>
     guardCancellation(
@@ -299,8 +301,7 @@ const isOptionEnabled = async (
     value: boolean | undefined,
     isInteractive: boolean | undefined,
     message: string,
-): Promise<boolean> =>
-    value ?? (!isInteractive || guardCancellation(await p.confirm({ message, initialValue: true })));
+): Promise<boolean> => value ?? (!isInteractive || guardCancellation(await p.confirm({ message, initialValue: true })));
 
 const formatFileList = (heading: string, files: string[]): string => {
     const indentedFiles = files.map((file) => `  ${file}`).join("\n");
@@ -404,8 +405,8 @@ const resolveTarget = async (options: CreateOptions): Promise<string> => {
 };
 
 const resolveApplicationId = async (options: CreateOptions, name: string): Promise<string> => {
-    const applicationId = options.applicationId ??
-        (options.isInteractive ? await promptApplicationId(name) : suggestApplicationId(name));
+    const applicationId =
+        options.applicationId ?? (options.isInteractive ? await promptApplicationId(name) : suggestApplicationId(name));
 
     const error = validateApplicationIdInput(applicationId);
 
@@ -413,7 +414,8 @@ const resolveApplicationId = async (options: CreateOptions, name: string): Promi
 };
 
 const resolveDisplayName = async (options: CreateOptions, name: string): Promise<string> => {
-    const value = options.displayName ??
+    const value =
+        options.displayName ??
         (options.isInteractive ? await promptDisplayName(name) : displayNameFromProjectName(name));
     const error = validateDisplayName(value);
 
@@ -597,19 +599,21 @@ const withoutInheritedScriptPolicy = async (run: () => Promise<void>): Promise<v
     }
 };
 
-const dependencyVersions = (names: string[]): Record<string, string> => Object.fromEntries(
-    names.map((dependency) => {
-        if (dependency.startsWith("@gtkx/")) {
-            return [dependency, `^${selfVersion}`];
-        }
+const dependencyVersions = (names: string[]): Record<string, string> =>
+    Object.fromEntries(
+        names.map((dependency) => {
+            if (dependency.startsWith("@gtkx/")) {
+                return [dependency, `^${selfVersion}`];
+            }
 
-        return [dependency, dependency === "typescript" ? TYPESCRIPT_VERSION : "latest"];
-    }),
-);
+            return [dependency, dependency === "typescript" ? TYPESCRIPT_VERSION : "latest"];
+        }),
+    );
 
 const dependencyArguments = (names: string[]): string[] =>
     Object.entries(dependencyVersions(names)).map(([name, version]) =>
-        version === "latest" ? name : `${name}@${version}`);
+        version === "latest" ? name : `${name}@${version}`,
+    );
 
 const writeDependencies = (root: string, devDependencies: string[]): void => {
     updateManifest(root, (manifest) => {
@@ -698,11 +702,7 @@ const printNextSteps = (resolved: ResolvedOptions): void => {
     p.note(`${installStep}${devCmd}${testingNote}`, `Run in ${resolved.root}`);
 };
 
-const createProjectStructure = async (
-    root: string,
-    resolved: ResolvedOptions,
-    plan: ScaffoldPlan,
-): Promise<void> => {
+const createProjectStructure = async (root: string, resolved: ResolvedOptions, plan: ScaffoldPlan): Promise<void> => {
     await runWithSpinner({
         pending: "Creating project structure...",
         done: "Project structure created",

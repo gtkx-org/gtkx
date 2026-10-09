@@ -23,77 +23,95 @@ const propertyType = (name: string): GObject.Type =>
     GObject.ObjectClass.peek(GIMarshallingTests.PropertiesObject).findProperty(name).valueType;
 const fixtureFloat = 314 / 100;
 
-const intValue = (n: number): GObject.Value => buildValue(named("gint"), (value) => {
-    value.setInt(n);
-});
+const intValue = (n: number): GObject.Value =>
+    buildValue(named("gint"), (value) => {
+        value.setInt(n);
+    });
 
-const uintValue = (n: number): GObject.Value => buildValue(named("guint"), (value) => {
-    value.setUint(n);
-});
+const uintValue = (n: number): GObject.Value =>
+    buildValue(named("guint"), (value) => {
+        value.setUint(n);
+    });
 
-const scharValue = (n: number): GObject.Value => buildValue(named("gchar"), (value) => {
-    value.setSchar(n);
-});
+const scharValue = (n: number): GObject.Value =>
+    buildValue(named("gchar"), (value) => {
+        value.setSchar(n);
+    });
 
-const ucharValue = (n: number): GObject.Value => buildValue(named("guchar"), (value) => {
-    value.setUchar(n);
-});
+const ucharValue = (n: number): GObject.Value =>
+    buildValue(named("guchar"), (value) => {
+        value.setUchar(n);
+    });
 
-const int64Value = (n: bigint): GObject.Value => buildValue(named("gint64"), (value) => {
-    value.setInt64(n);
-});
+const int64Value = (n: bigint): GObject.Value =>
+    buildValue(named("gint64"), (value) => {
+        value.setInt64(n);
+    });
 
-const uint64Value = (n: bigint): GObject.Value => buildValue(named("guint64"), (value) => {
-    value.setUint64(n);
-});
+const uint64Value = (n: bigint): GObject.Value =>
+    buildValue(named("guint64"), (value) => {
+        value.setUint64(n);
+    });
 
-const longValue = (n: bigint): GObject.Value => buildValue(named("glong"), (value) => {
-    value.setLong(n);
-});
+const longValue = (n: bigint): GObject.Value =>
+    buildValue(named("glong"), (value) => {
+        value.setLong(n);
+    });
 
-const ulongValue = (n: bigint): GObject.Value => buildValue(named("gulong"), (value) => {
-    value.setUlong(n);
-});
+const ulongValue = (n: bigint): GObject.Value =>
+    buildValue(named("gulong"), (value) => {
+        value.setUlong(n);
+    });
 
-const floatValue = (n: number): GObject.Value => buildValue(named("gfloat"), (value) => {
-    value.setFloat(n);
-});
+const floatValue = (n: number): GObject.Value =>
+    buildValue(named("gfloat"), (value) => {
+        value.setFloat(n);
+    });
 
-const doubleValue = (n: number): GObject.Value => buildValue(named("gdouble"), (value) => {
-    value.setDouble(n);
-});
+const doubleValue = (n: number): GObject.Value =>
+    buildValue(named("gdouble"), (value) => {
+        value.setDouble(n);
+    });
 
-const booleanValue = (isSet: boolean): GObject.Value => buildValue(named("gboolean"), (value) => {
-    value.setBoolean(isSet);
-});
+const booleanValue = (isSet: boolean): GObject.Value =>
+    buildValue(named("gboolean"), (value) => {
+        value.setBoolean(isSet);
+    });
 
-const stringValue = (s: string): GObject.Value => buildValue(named("gchararray"), (value) => {
-    value.setString(s);
-});
+const stringValue = (s: string): GObject.Value =>
+    buildValue(named("gchararray"), (value) => {
+        value.setString(s);
+    });
 
-const gtypeValue = (type: ValueType): GObject.Value => buildValue(named("GType"), (value) => {
-    value.setGtype(type);
-});
+const gtypeValue = (type: ValueType): GObject.Value =>
+    buildValue(named("GType"), (value) => {
+        value.setGtype(type);
+    });
 
-const variantValue = (v: GLib.Variant): GObject.Value => buildValue(named("GVariant"), (value) => {
-    value.setVariant(v);
-});
+const variantValue = (v: GLib.Variant): GObject.Value =>
+    buildValue(named("GVariant"), (value) => {
+        value.setVariant(v);
+    });
 
-const objectValue = (o: GObject.Object): GObject.Value => buildValue(GIMarshallingTests.Object, (value) => {
-    value.setObject(o);
-});
+const objectValue = (o: GObject.Object): GObject.Value =>
+    buildValue(GIMarshallingTests.Object, (value) => {
+        value.setObject(o);
+    });
 
-const enumValue = (v: number): GObject.Value => buildValue(propertyType("some-enum"), (value) => {
-    value.setEnum(v);
-});
+const enumValue = (v: number): GObject.Value =>
+    buildValue(propertyType("some-enum"), (value) => {
+        value.setEnum(v);
+    });
 
-const flagsValue = (v: number): GObject.Value => buildValue(propertyType("some-flags"), (value) => {
-    value.setFlags(v);
-});
+const flagsValue = (v: number): GObject.Value =>
+    buildValue(propertyType("some-flags"), (value) => {
+        value.setFlags(v);
+    });
 
-const boxedValue = (b: object): GObject.Value => buildValue(Regress.TestBoxed, (value) => {
-    value.setBoxed(b);
-});
+const boxedValue = (b: object): GObject.Value =>
+    buildValue(Regress.TestBoxed, (value) => {
+        value.setBoxed(b);
+    });
 
 test("gvalue returns and out params carry their C values", () => {
     expect(GIMarshallingTests.gvalueReturn()).toBe(42);
@@ -430,10 +448,12 @@ test("value setters reject payloads of the wrong type or range", () => {
     expect(() => ucharValue(256)).toThrow();
     // @ts-expect-error an int64 payload is not a symbol
     expect(() => int64Value(Symbol("nope"))).toThrow();
-    expect(() => buildValue(named("GObject"), (value) => {
-        // @ts-expect-error a gobject payload is not a plain object
-        value.setObject({});
-    })).toThrow();
+    expect(() =>
+        buildValue(named("GObject"), (value) => {
+            // @ts-expect-error a gobject payload is not a plain object
+            value.setObject({});
+        }),
+    ).toThrow();
     // @ts-expect-error an enum payload is not a symbol
     expect(() => enumValue(Symbol("nope"))).toThrow();
     // @ts-expect-error a boxed payload is not a symbol

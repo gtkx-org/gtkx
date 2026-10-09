@@ -5,8 +5,8 @@ import { builtinQueries } from "./queries.js";
 
 const bindQuery =
     <Args extends unknown[], Result>(query: (container: Container, ...args: Args) => Result, container: Container) =>
-        (...args: Args): Result =>
-            query(container, ...args);
+    (...args: Args): Result =>
+        query(container, ...args);
 
 const bindCustomQueries = <Q extends QueryMap>(customQueries: Q, container: Container): BoundCustomQueries<Q> => {
     const entries = Object.entries(customQueries).map(([key, query]) => [key, bindQuery(query, container)] as const);

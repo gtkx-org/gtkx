@@ -76,7 +76,8 @@ describe("renderer configuration before codegen", () => {
     it("loads installed element definitions without existing generated bindings", () => {
         const config = fixtureLibrariesConfig(["Documented-1.0"]).replace(
             "export default {",
-            () => 'import { BUILTIN_ELEMENTS } from "@gtkx/react/config";\n' +
+            () =>
+                'import { BUILTIN_ELEMENTS } from "@gtkx/react/config";\n' +
                 "export default { elements: { config: BUILTIN_ELEMENTS },",
         );
         using project = createCliProject({

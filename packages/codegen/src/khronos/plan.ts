@@ -16,34 +16,34 @@ type ParsedCType = {
 };
 
 type ParamPlan =
-    | { kind: "scalar"; scalar: GlScalar } |
-    { kind: "boolean" } |
-    { kind: "sync" } |
-    { kind: "string-in" } |
-    { kind: "string-array-in" } |
-    { kind: "array-in"; scalar: GlScalar } |
-    { kind: "ref-out"; scalar: GlScalar } |
-    { kind: "ref-array-out"; scalar: GlScalar; lenParamName: string } |
-    { kind: "ref-fixed-out"; scalar: GlScalar; length: number } |
-    { kind: "string-out"; lenParamName: string } |
-    { kind: "buffer" } |
-    { kind: "byte-offset" } |
-    { kind: "byte-offset-array" };
+    | { kind: "scalar"; scalar: GlScalar }
+    | { kind: "boolean" }
+    | { kind: "sync" }
+    | { kind: "string-in" }
+    | { kind: "string-array-in" }
+    | { kind: "array-in"; scalar: GlScalar }
+    | { kind: "ref-out"; scalar: GlScalar }
+    | { kind: "ref-array-out"; scalar: GlScalar; lenParamName: string }
+    | { kind: "ref-fixed-out"; scalar: GlScalar; length: number }
+    | { kind: "string-out"; lenParamName: string }
+    | { kind: "buffer" }
+    | { kind: "byte-offset" }
+    | { kind: "byte-offset-array" };
 
 type ReturnPlan =
-    | { kind: "void" } |
-    { kind: "scalar"; scalar: GlScalar } |
-    { kind: "boolean" } |
-    { kind: "string" } |
-    { kind: "sync" } |
-    { kind: "opaque-pointer" };
+    | { kind: "void" }
+    | { kind: "scalar"; scalar: GlScalar }
+    | { kind: "boolean" }
+    | { kind: "string" }
+    | { kind: "sync" }
+    | { kind: "opaque-pointer" };
 
 type GlExclusionReason =
-    | "callback-parameter" |
-    "compsize-output" |
-    "computed-output-length" |
-    "unsupported-shape" |
-    "override-owned";
+    | "callback-parameter"
+    | "compsize-output"
+    | "computed-output-length"
+    | "unsupported-shape"
+    | "override-owned";
 
 type GlPlanPolicy = {
     byteOffsetParams: Set<string>;
@@ -52,12 +52,12 @@ type GlPlanPolicy = {
 
 type CommandPlan =
     | {
-        isOk: true;
-        command: GlCommand;
-        params: ParamPlan[];
-        returnPlan: ReturnPlan;
-    } |
-    { isOk: false; command: GlCommand; reason: GlExclusionReason };
+          isOk: true;
+          command: GlCommand;
+          params: ParamPlan[];
+          returnPlan: ReturnPlan;
+      }
+    | { isOk: false; command: GlCommand; reason: GlExclusionReason };
 
 type ParamOutcome = { plan: ParamPlan } | { reason: GlExclusionReason };
 

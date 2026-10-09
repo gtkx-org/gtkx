@@ -29,9 +29,9 @@ const addFile = (path: string): void => {
 };
 
 const addEnvironment = (variables: string[], prefixes: string[]): void => {
-    const names = Object.keys(process.env).filter((name) =>
-        variables.includes(name) || prefixes.some((prefix) => name.startsWith(prefix)),
-    ).toSorted(compare);
+    const names = Object.keys(process.env)
+        .filter((name) => variables.includes(name) || prefixes.some((prefix) => name.startsWith(prefix)))
+        .toSorted(compare);
     add(names.map((name) => [name, process.env[name]]));
 };
 
@@ -42,7 +42,9 @@ const addGirDirectory = (path: string): void => {
         return;
     }
 
-    const names = readdirSync(path).filter((entry) => entry.endsWith(".gir")).toSorted(compare);
+    const names = readdirSync(path)
+        .filter((entry) => entry.endsWith(".gir"))
+        .toSorted(compare);
 
     for (const name of names) {
         addFile(join(path, name));
@@ -90,17 +92,50 @@ const addRuntime = (): void => {
 
 const addNative = (): void => {
     addEnvironment(
-        ["CARGO_ENCODED_RUSTFLAGS", "CC", "CXX", "CFLAGS", "CXXFLAGS", "CPPFLAGS", "AR", "LD", "LDFLAGS",
-            "PKG_CONFIG", "LIBRARY_PATH", "LD_LIBRARY_PATH", "CPATH", "C_INCLUDE_PATH", "CPLUS_INCLUDE_PATH"],
-        ["RUST", "CARGO_BUILD_", "CARGO_TARGET_", "CARGO_PROFILE_", "CC_", "CXX_", "CFLAGS_", "CXXFLAGS_",
-            "AR_", "PKG_CONFIG_", "HOST_", "TARGET_", "LIBFFI_", "GLIB_", "GOBJECT_", "GIO_"],
+        [
+            "CARGO_ENCODED_RUSTFLAGS",
+            "CC",
+            "CXX",
+            "CFLAGS",
+            "CXXFLAGS",
+            "CPPFLAGS",
+            "AR",
+            "LD",
+            "LDFLAGS",
+            "PKG_CONFIG",
+            "LIBRARY_PATH",
+            "LD_LIBRARY_PATH",
+            "CPATH",
+            "C_INCLUDE_PATH",
+            "CPLUS_INCLUDE_PATH",
+        ],
+        [
+            "RUST",
+            "CARGO_BUILD_",
+            "CARGO_TARGET_",
+            "CARGO_PROFILE_",
+            "CC_",
+            "CXX_",
+            "CFLAGS_",
+            "CXXFLAGS_",
+            "AR_",
+            "PKG_CONFIG_",
+            "HOST_",
+            "TARGET_",
+            "LIBFFI_",
+            "GLIB_",
+            "GOBJECT_",
+            "GIO_",
+        ],
     );
     query(process.env.RUSTC ?? "rustc", ["-vV"]);
     query("cargo", ["--version"]);
 
-    const commands = new Set(["cc", "c++", "ar", "ld", process.env.CC, process.env.CXX].filter(
-        (value): value is string => value !== undefined,
-    ));
+    const commands = new Set(
+        ["cc", "c++", "ar", "ld", process.env.CC, process.env.CXX].filter(
+            (value): value is string => value !== undefined,
+        ),
+    );
 
     for (const command of commands) {
         query(command, ["--version"]);
@@ -110,8 +145,13 @@ const addNative = (): void => {
     query("pkg-config", ["--modversion", "libffi"]);
     query("pkg-config", ["--cflags", "--libs", "glib-2.0", "gobject-2.0", "gio-2.0"]);
 
-    const directories = [join(homedir(), ".cargo"), process.env.CARGO_HOME, ".cargo", "packages/.cargo",
-        "packages/native/.cargo"].filter((value): value is string => value !== undefined);
+    const directories = [
+        join(homedir(), ".cargo"),
+        process.env.CARGO_HOME,
+        ".cargo",
+        "packages/.cargo",
+        "packages/native/.cargo",
+    ].filter((value): value is string => value !== undefined);
 
     for (const directory of directories) {
         addFile(join(directory, "config"));

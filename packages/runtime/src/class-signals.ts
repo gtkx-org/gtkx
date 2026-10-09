@@ -27,10 +27,23 @@ const classRef = bind(LIB, "g_type_class_ref", [biguint64T], structT("borrowed")
 const classUnref = bind(LIB, "g_type_class_unref", [structT("borrowed")], voidT);
 const interfaceRef = bind(LIB, "g_type_default_interface_ref", [biguint64T], structT("borrowed"));
 const interfaceUnref = bind(LIB, "g_type_default_interface_unref", [structT("borrowed")], voidT);
-const signalNew = bind(LIB, "g_signal_newv", [
-    stringT("borrowed"), biguint64T, uint32T, bufferT, bufferT, bufferT, bufferT, biguint64T, uint32T,
-    sizedArrayT(biguint64T, 8, "borrowed"),
-], uint32T);
+const signalNew = bind(
+    LIB,
+    "g_signal_newv",
+    [
+        stringT("borrowed"),
+        biguint64T,
+        uint32T,
+        bufferT,
+        bufferT,
+        bufferT,
+        bufferT,
+        biguint64T,
+        uint32T,
+        sizedArrayT(biguint64T, 8, "borrowed"),
+    ],
+    uint32T,
+);
 
 const accumulatorSymbols = {
     "first-wins": "g_signal_accumulator_first_wins",
@@ -98,8 +111,18 @@ function prepareClassSignals(signals: ClassSignal[], parent: bigint, interfaces:
 
     return (type) => {
         for (const signal of prepared) {
-            signalNew(signal.name, type, signal.flags, null, signal.accumulator, null, null, signal.returnType,
-                signal.paramTypes.length, signal.paramTypes);
+            signalNew(
+                signal.name,
+                type,
+                signal.flags,
+                null,
+                signal.accumulator,
+                null,
+                null,
+                signal.returnType,
+                signal.paramTypes.length,
+                signal.paramTypes,
+            );
         }
     };
 }

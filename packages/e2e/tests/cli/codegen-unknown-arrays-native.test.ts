@@ -7,7 +7,8 @@ describe("generated unknown-length array omissions", () => {
     it("uses supported native alternatives and the sized Pixbuf shadow", () => {
         using consumer = createCliProject({
             prefix: "gtkx-cli-known-array-values-",
-            config: 'export default { applicationId: "org.gtkx.knownarrayvalues", libraries: ["GdkPixbuf-2.0"],' +
+            config:
+                'export default { applicationId: "org.gtkx.knownarrayvalues", libraries: ["GdkPixbuf-2.0"],' +
                 " agents: { reference: false, rules: false } };",
             files: { "probe.ts": NATIVE_CONSUMER },
         });

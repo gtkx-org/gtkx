@@ -1,10 +1,7 @@
 import { isPathInside, isRecord } from "@gtkx/utils";
 import { lstatSync, readdirSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
-import {
-    BUILD_MANIFEST_FILENAME,
-    BUILD_MANIFEST_GENERATOR,
-} from "./build-manifest.js";
+import { BUILD_MANIFEST_FILENAME, BUILD_MANIFEST_GENERATOR } from "./build-manifest.js";
 import { hasSymlinkComponent, prepareOutputDirectory, readRegularFile } from "./output-directory.js";
 
 const DEFAULT_BUILD_OUT_DIR = "dist";
@@ -88,7 +85,7 @@ const assertSafeBuildLocation = (root: string, outDir: string): void => {
     if (ancestor !== null) {
         throw new Error(
             `Build output ${outputName(root, outDir)} is nested inside the earlier GTKX build ` +
-            outputName(root, ancestor),
+                outputName(root, ancestor),
         );
     }
 };
@@ -104,14 +101,11 @@ const nonReusableBuildOutputError = (root: string, outDir: string): Error => {
 
     if (descendant !== null) {
         return new Error(
-            `Build output ${outputName(root, outDir)} contains the earlier GTKX build ` +
-            outputName(root, descendant),
+            `Build output ${outputName(root, outDir)} contains the earlier GTKX build ` + outputName(root, descendant),
         );
     }
 
-    return new Error(
-        `Build output ${outputName(root, outDir)} is nonempty and is not an earlier GTKX build`,
-    );
+    return new Error(`Build output ${outputName(root, outDir)} is nonempty and is not an earlier GTKX build`);
 };
 
 const resolveBuildOutDir = (root: string, configured?: string): string => {

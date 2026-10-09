@@ -14,28 +14,28 @@ const SourceViewer = () => {
 
     return (
         <GtkScrolledWindow vexpand hexpand>
-            {currentDemo?.sourceCode
-                ? (
-                        <GtkSourceView
-                            accessibleLabel="Source code"
-                            editable={false}
-                            showLineNumbers
-                            tabWidth={4}
-                            leftMargin={20}
-                            rightMargin={20}
-                            topMargin={20}
-                            bottomMargin={20}
-                            monospace
-                            buffer={(
-                                <GtkSourceBuffer
-                                    text={currentDemo.sourceCode}
-                                    language={GtkSource.LanguageManager.getDefault().getLanguage("typescript-jsx")}
-                                    styleScheme={styleScheme}
-                                />
-                            )}
+            {currentDemo?.sourceCode ? (
+                <GtkSourceView
+                    accessibleLabel="Source code"
+                    editable={false}
+                    showLineNumbers
+                    tabWidth={4}
+                    leftMargin={20}
+                    rightMargin={20}
+                    topMargin={20}
+                    bottomMargin={20}
+                    monospace
+                    buffer={
+                        <GtkSourceBuffer
+                            text={currentDemo.sourceCode}
+                            language={GtkSource.LanguageManager.getDefault().getLanguage("typescript-jsx")}
+                            styleScheme={styleScheme}
                         />
-                    )
-                : <EmptyState message="No source" />}
+                    }
+                />
+            ) : (
+                <EmptyState message="No source" />
+            )}
         </GtkScrolledWindow>
     );
 };

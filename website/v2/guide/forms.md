@@ -65,12 +65,12 @@ You can also import `FormProvider` from `@gtkx/forms` to supply the control to r
 
 ## Choose a row
 
-| Row | Stored value |
-| --- | --- |
-| `EntryRow`, `PasswordEntryRow` | Text |
-| `SwitchRow` | Boolean |
-| `SpinRow` | Number |
-| `ComboRow` | Item ID |
+| Row                            | Stored value |
+| ------------------------------ | ------------ |
+| `EntryRow`, `PasswordEntryRow` | Text         |
+| `SwitchRow`                    | Boolean      |
+| `SpinRow`                      | Number       |
+| `ComboRow`                     | Item ID      |
 
 The rows retain their native props, children, refs and signal handlers. React Hook Form owns the value, so configure a spin row's range through a JSX `GtkAdjustment`, and use `setValue` or `reset` to change its current value. Those form updates do not echo back as user edits.
 

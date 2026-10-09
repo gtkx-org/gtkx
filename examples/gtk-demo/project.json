@@ -3,73 +3,56 @@
     "name": "gtk-demo",
     "targets": {
         "codegen": {
-            "command": "gtkx codegen",
+            "command": "node ../../scripts/ci/run.mjs 'gtkx codegen'",
             "options": {
                 "cwd": "{projectRoot}"
             },
-            "cache": false,
-            "dependsOn": [
-                "gtkx:_build:bindings",
-                "@gtkx/cli:build"
-            ],
-            "outputs": [
-                "{projectRoot}/node_modules/.gtkx/gi/**/*.{js,d.ts,json}",
-                "{projectRoot}/node_modules/.gtkx/jsx/**/*.{js,d.ts,json}",
-                "{projectRoot}/node_modules/.gtkx/*.d.ts"
-            ]
-        },
-        "build": {
             "cache": true,
-            "dependsOn": [
-                "^build",
-                "codegen"
-            ],
+            "dependsOn": ["gtkx:_build:bindings", "@gtkx/cli:build"],
+            "outputs": ["{projectRoot}/node_modules/.gtkx"],
             "inputs": [
                 "default",
                 "^production",
                 {
                     "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
                     "transitive": true
-                }
-            ],
-            "outputs": [
-                "{projectRoot}/dist/**"
+                },
+                "{workspaceRoot}/scripts/ci/**/*"
             ]
         },
+        "build": {
+            "cache": true,
+            "dependsOn": ["^build", "codegen"],
+            "inputs": [
+                "default",
+                "^production",
+                {
+                    "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
+                    "transitive": true
+                },
+                "{workspaceRoot}/scripts/ci/**/*"
+            ],
+            "outputs": ["{projectRoot}/dist/**"],
+            "command": "node ../../scripts/ci/run.mjs 'pnpm run build'",
+            "options": {
+                "cwd": "{projectRoot}"
+            }
+        },
         "typecheck": {
-            "dependsOn": [
-                "^build",
-                "codegen"
-            ]
+            "dependsOn": ["^build", "codegen"]
         },
         "dev": {
             "cache": false,
             "continuous": true,
-            "dependsOn": [
-                "^build",
-                "codegen"
-            ]
+            "dependsOn": ["^build", "codegen"]
         },
         "start": {
             "cache": false,
             "continuous": true,
-            "dependsOn": [
-                "build"
-            ]
-        },
-        "test": {
-            "parallelism": false,
-            "dependsOn": [
-                "...",
-                "codegen",
-                "@gtkx/testing:build"
-            ]
+            "dependsOn": ["build"]
         },
         "lint": {
-            "dependsOn": [
-                "...",
-                "codegen"
-            ]
+            "dependsOn": ["...", "codegen"]
         }
     }
 }

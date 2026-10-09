@@ -8,7 +8,7 @@ const useRootContainer = (): Container => rootElement;
 
 const createPortaledComponent =
     (Component: ElementType, useContainer: () => Container = useRootContainer): ((props: unknown) => ReactNode) =>
-        (props: unknown): ReactNode =>
-            createPortal(<Component {...(isRecord(props) ? props : {})} />, useContainer());
+    (props: unknown): ReactNode =>
+        createPortal(<Component {...(isRecord(props) ? props : {})} />, useContainer());
 
 export { createPortaledComponent };

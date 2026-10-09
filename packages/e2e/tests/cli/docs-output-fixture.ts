@@ -1,16 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect } from "vitest";
-import {
-    type CliProject,
-    createCliProject,
-    type DisposableCliProject,
-    runCliOrThrow,
-} from "./cli-project.js";
+import { type CliProject, createCliProject, type DisposableCliProject, runCliOrThrow } from "./cli-project.js";
 
 const REFERENCE_OUTPUT = "docs/reference";
-const REFERENCE_CONFIG = 'export default { applicationId: "org.gtkx.referenceoutput",' +
-    " agents: { reference: true, rules: false } };";
+const REFERENCE_CONFIG =
+    'export default { applicationId: "org.gtkx.referenceoutput",' + " agents: { reference: true, rules: false } };";
 
 type ReferenceManifest = {
     namespaces: { name: string; link: string; elements: { text: string; link: string }[] }[];
@@ -33,9 +28,4 @@ const expectReferenceLinks = ({ basePath, expected }: { basePath: string; expect
     expect(readReferencePage(project, "gtk/button.md")).toContain(`[GtkWidget](${expected}/gtk/widget)`);
 };
 
-export {
-    createReferenceOutputProject,
-    expectReferenceLinks,
-    readReferencePage,
-    REFERENCE_OUTPUT,
-};
+export { createReferenceOutputProject, expectReferenceLinks, readReferencePage, REFERENCE_OUTPUT };

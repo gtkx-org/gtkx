@@ -6,12 +6,12 @@ import { prettyWidget } from "./pretty-widget.js";
 import { formatRole, prettyRoles } from "./role-helpers.js";
 
 type QueryDescriptor =
-    | { queryType: "role"; role: Gtk.AccessibleRole; options?: ByRoleOptions | undefined } |
-    { queryType: "text"; text: Matcher } |
-    { queryType: "labelText"; text: Matcher } |
-    { queryType: "name"; name: Matcher } |
-    { queryType: "placeholderText"; text: Matcher } |
-    { queryType: "displayValue"; value: Matcher };
+    | { queryType: "role"; role: Gtk.AccessibleRole; options?: ByRoleOptions | undefined }
+    | { queryType: "text"; text: Matcher }
+    | { queryType: "labelText"; text: Matcher }
+    | { queryType: "name"; name: Matcher }
+    | { queryType: "placeholderText"; text: Matcher }
+    | { queryType: "displayValue"; value: Matcher };
 
 const roleOptionFormatters: ((options: ByRoleOptions) => string | null)[] = [
     (o) => (o.name ? `name ${formatTextMatcher(o.name)}` : null),

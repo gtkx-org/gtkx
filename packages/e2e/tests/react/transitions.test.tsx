@@ -29,8 +29,10 @@ it("commits a transition scheduled by a native button outside act", async () => 
     for (const value of [1, 2, 3]) {
         button.emit("clicked");
         const deadline = Date.now() + 3000;
-        while (Date.now() < deadline &&
-            screen.getByName("transition-value", { as: Gtk.Label }).getLabel() !== String(value)) {
+        while (
+            Date.now() < deadline &&
+            screen.getByName("transition-value", { as: Gtk.Label }).getLabel() !== String(value)
+        ) {
             await new Promise((resolve) => setTimeout(resolve, 10));
         }
         expect(screen.getByName("transition-value")).toHaveTextContent(String(value));
@@ -48,9 +50,14 @@ it("unmounts while a native signal has scheduled a transition", async () => {
 it("unmounts a failed transition and reports its error", async () => {
     const errors: unknown[] = [];
     const button = createRef<Gtk.Button>();
-    const root = createRoot({ ...rootElement }, { onUncaughtError: (error) => {
-        errors.push(error);
-    } });
+    const root = createRoot(
+        { ...rootElement },
+        {
+            onUncaughtError: (error) => {
+                errors.push(error);
+            },
+        },
+    );
     const Probe = () => {
         const [failed, setFailed] = useState(false);
         if (failed) {

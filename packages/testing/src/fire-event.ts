@@ -50,8 +50,11 @@ const dispatchEvent = async (event: WidgetEvent): Promise<void> => {
 };
 
 const isWidgetEvent = (value: object): value is WidgetEvent =>
-    "target" in value && "signalName" in value && "args" in value &&
-    typeof value.signalName === "string" && Array.isArray(value.args);
+    "target" in value &&
+    "signalName" in value &&
+    "args" in value &&
+    typeof value.signalName === "string" &&
+    Array.isArray(value.args);
 
 /**
  * Emits a recorded signal emission inside React's act environment, so any resulting state updates are
@@ -68,11 +71,7 @@ function fireEvent(event: WidgetEvent): Promise<void>;
  * @param signalName Name of the signal to emit.
  * @param args Arguments passed to the signal handlers.
  */
-function fireEvent(
-    target: Pick<GObject.Object, "__type__">,
-    signalName: string,
-    ...args: unknown[]
-): Promise<void>;
+function fireEvent(target: Pick<GObject.Object, "__type__">, signalName: string, ...args: unknown[]): Promise<void>;
 
 function fireEvent(
     eventOrTarget: WidgetEvent | Pick<GObject.Object, "__type__">,

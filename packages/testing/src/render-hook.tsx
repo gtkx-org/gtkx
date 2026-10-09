@@ -32,7 +32,7 @@ async function renderHook<Result, Props>(
     callback: (props: Props) => Result,
     options?: RenderHookOptions<Props>,
 ): Promise<RenderHookResult<Result, Props>> {
-    const initialProps = (options as { initialProps?: Props } | undefined)?.initialProps as Props;
+    const initialProps = options?.initialProps as Props;
     const resultRef: { current: Result | undefined } = { current: undefined };
     let currentProps: Props = initialProps;
 

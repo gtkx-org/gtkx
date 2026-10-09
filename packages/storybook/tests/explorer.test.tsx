@@ -92,9 +92,15 @@ describe("native story explorer", () => {
         await showExplorer(catalog);
         expect(screen.queryByName("count")).toBeNull();
 
-        await act(() => catalog.load([{
-            id: "counter.stories.tsx", title: "Counter", load: () => Promise.resolve(counterStories),
-        }]));
+        await act(() =>
+            catalog.load([
+                {
+                    id: "counter.stories.tsx",
+                    title: "Counter",
+                    load: () => Promise.resolve(counterStories),
+                },
+            ]),
+        );
         await userEvent.click(screen.getByName("storybook-story-components-counter--default"));
         expect(screen.getByName("count")).toHaveTextContent(/^2$/);
 
@@ -109,16 +115,22 @@ describe("native story explorer", () => {
         await userEvent.click(screen.getByName("storybook-story-components-counter--default"));
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Increment" }));
 
-        await act(() => catalog.load([{
-            id: "counter.stories.tsx", title: "Counter",
-            load: () => Promise.resolve({
-                ...counterStories,
-                default: {
-                    ...counterStories.default,
-                    args: { ...counterStories.default.args, initialCount: 40, label: "Updated increment" },
+        await act(() =>
+            catalog.load([
+                {
+                    id: "counter.stories.tsx",
+                    title: "Counter",
+                    load: () =>
+                        Promise.resolve({
+                            ...counterStories,
+                            default: {
+                                ...counterStories.default,
+                                args: { ...counterStories.default.args, initialCount: 40, label: "Updated increment" },
+                            },
+                        }),
                 },
-            }),
-        }]));
+            ]),
+        );
 
         expect(screen.getByName("count")).toHaveTextContent(/^40$/);
         await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Updated increment" }));
@@ -150,10 +162,14 @@ describe("native story explorer", () => {
 
     it("preserves application and parent window context and dismisses owned dialogs on unmount", async () => {
         const catalog = new StoryCatalog();
-        await catalog.load([{
-            id: "presentation.stories.tsx", title: "Presentation",
-            load: () => Promise.resolve({ default: { title: "Presentation", component: Presentation }, Default: {} }),
-        }]);
+        await catalog.load([
+            {
+                id: "presentation.stories.tsx",
+                title: "Presentation",
+                load: () =>
+                    Promise.resolve({ default: { title: "Presentation", component: Presentation }, Default: {} }),
+            },
+        ]);
         const result = await showExplorer(catalog);
 
         expect(screen.getByName("story-application")).toHaveTextContent("org.gtkx.Storybook");
@@ -171,17 +187,25 @@ describe("native story explorer", () => {
 
     it("owns window story presentation and destroys old windows when switching", async () => {
         const catalog = new StoryCatalog();
-        await catalog.load([{
-            id: "windows.stories.tsx", title: "Windows",
-            load: () => Promise.resolve({
-                default: { title: "Windows" },
-                First: {
-                    parameters: { gtkx: { preview: "window" } },
-                    render: () => <AdwWindow title="Story window"><GtkLabel>Window content</GtkLabel></AdwWindow>,
-                },
-                Second: { render: () => <GtkLabel>Embedded content</GtkLabel> },
-            }),
-        }]);
+        await catalog.load([
+            {
+                id: "windows.stories.tsx",
+                title: "Windows",
+                load: () =>
+                    Promise.resolve({
+                        default: { title: "Windows" },
+                        First: {
+                            parameters: { gtkx: { preview: "window" } },
+                            render: () => (
+                                <AdwWindow title="Story window">
+                                    <GtkLabel>Window content</GtkLabel>
+                                </AdwWindow>
+                            ),
+                        },
+                        Second: { render: () => <GtkLabel>Embedded content</GtkLabel> },
+                    }),
+            },
+        ]);
         const result = await showExplorer(catalog);
         const window = screen.getByRole(Gtk.AccessibleRole.WINDOW, { name: "Story window" });
         const explorer = screen.getByRole(Gtk.AccessibleRole.WINDOW, { name: "GTKX Storybook" });
@@ -203,16 +227,22 @@ describe("native story explorer", () => {
 
     it("keeps navigation usable after a selected story throws during rendering", async () => {
         const catalog = new StoryCatalog();
-        await catalog.load([{
-            id: "recovery.stories.tsx", title: "Recovery",
-            load: () => Promise.resolve({
-                default: { title: "Recovery" },
-                Healthy: { render: () => <GtkLabel name="healthy-story">Healthy</GtkLabel> },
-                Broken: { render: (): ReactNode => {
-                    throw new Error("Broken story");
-                } },
-            }),
-        }]);
+        await catalog.load([
+            {
+                id: "recovery.stories.tsx",
+                title: "Recovery",
+                load: () =>
+                    Promise.resolve({
+                        default: { title: "Recovery" },
+                        Healthy: { render: () => <GtkLabel name="healthy-story">Healthy</GtkLabel> },
+                        Broken: {
+                            render: (): ReactNode => {
+                                throw new Error("Broken story");
+                            },
+                        },
+                    }),
+            },
+        ]);
         const result = await showExplorer(catalog);
         await userEvent.click(screen.getByName("storybook-story-recovery--broken"));
         await expect(result.rerender(<Storybook catalog={catalog} />)).rejects.toThrow();

@@ -46,11 +46,14 @@ const startWithWindow = (applicationCase: ApplicationCase) => {
     const completion = application.runAsync(["probe"]);
     completions.push(completion);
     let settled = false;
-    void completion.then(() => {
-        settled = true;
-    }, () => {
-        settled = true;
-    });
+    void completion.then(
+        () => {
+            settled = true;
+        },
+        () => {
+            settled = true;
+        },
+    );
     const [window] = activatedWindows;
 
     if (!window) {
@@ -73,32 +76,35 @@ afterEach(async () => {
 });
 
 describe.each(applicationCases)("$name application window lifetime", (applicationCase) => {
-    it.each(["close", "destroy"] as const)("shuts down after the last of two windows is removed by %s", async (remove) => {
-        const run = startWithWindow(applicationCase);
-        const secondWindow = createWindow(applicationCase, run.application);
-        run.window.present();
-        secondWindow.present();
+    it.each(["close", "destroy"] as const)(
+        "shuts down after the last of two windows is removed by %s",
+        async (remove) => {
+            const run = startWithWindow(applicationCase);
+            const secondWindow = createWindow(applicationCase, run.application);
+            run.window.present();
+            secondWindow.present();
 
-        await setImmediate();
+            await setImmediate();
 
-        expect(run.settled()).toBe(false);
-        expect(run.application.getWindows()).toHaveLength(2);
-        run.window.close();
+            expect(run.settled()).toBe(false);
+            expect(run.application.getWindows()).toHaveLength(2);
+            run.window.close();
 
-        await setImmediate();
+            await setImmediate();
 
-        expect(run.settled()).toBe(false);
-        expect(run.shutdowns()).toBe(0);
-        expect(run.application.getWindows()).toEqual([secondWindow]);
-        secondWindow[remove]();
+            expect(run.settled()).toBe(false);
+            expect(run.shutdowns()).toBe(0);
+            expect(run.application.getWindows()).toEqual([secondWindow]);
+            secondWindow[remove]();
 
-        await expect(run.completion).resolves.toBe(0);
+            await expect(run.completion).resolves.toBe(0);
 
-        expect(run.shutdowns()).toBe(1);
-        expect(run.application.getWindows()).toHaveLength(0);
-        expect(run.application.getIsRegistered()).toBe(false);
-        expect(Gio.Application.getDefault()).toBeNull();
-    });
+            expect(run.shutdowns()).toBe(1);
+            expect(run.application.getWindows()).toHaveLength(0);
+            expect(run.application.getIsRegistered()).toBe(false);
+            expect(Gio.Application.getDefault()).toBeNull();
+        },
+    );
 
     it("retains hidden windows, including windows hidden by closing", async () => {
         const run = startWithWindow(applicationCase);

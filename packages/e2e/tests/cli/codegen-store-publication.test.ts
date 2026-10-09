@@ -22,7 +22,7 @@ import { describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow, startCli, TSX_LOADER } from "./cli-project.js";
 import { fixtureLibrariesConfig } from "./codegen-helpers.js";
 
-const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/typescript/bin/tsc", import.meta.url));
+const TYPESCRIPT_CLI = fileURLToPath(new URL("../../../../node_modules/@typescript/native/bin/tsc", import.meta.url));
 const CODEGEN_ENTRY = new URL("../../../codegen/dist/index.js", import.meta.url).href;
 const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
 const COMMON_PROBE = `import type * as Gtk from "@gtkx/gi/gtk";
@@ -34,17 +34,21 @@ const HOOK_SLOTS_PROBE = `import type * as HookSlots from "@gtkx/gi/hookslots";
 
 export type Generated = keyof typeof HookSlots;
 `;
-const TSCONFIG = `${JSON.stringify({
-    compilerOptions: {
-        module: "ESNext",
-        moduleResolution: "Bundler",
-        noEmit: true,
-        skipLibCheck: true,
-        strict: true,
-        target: "ESNext",
+const TSCONFIG = `${JSON.stringify(
+    {
+        compilerOptions: {
+            module: "ESNext",
+            moduleResolution: "Bundler",
+            noEmit: true,
+            skipLibCheck: true,
+            strict: true,
+            target: "ESNext",
+        },
+        files: ["probe.ts"],
     },
-    files: ["probe.ts"],
-}, null, 4)}\n`;
+    null,
+    4,
+)}\n`;
 const LOCK_WAIT_MS = 10_000;
 const IMPORT_PROBE = `import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -124,11 +128,9 @@ const waitForZombie = async (pid: number): Promise<void> => {
 };
 
 const startZombieOwner = async (): Promise<{ parent: ChildProcess; pid: number }> => {
-    const parent = spawn(
-        process.execPath,
-        ["--input-type=module", "--eval", ZOMBIE_OWNER_SCRIPT],
-        { stdio: ["ignore", "pipe", "ignore"] },
-    );
+    const parent = spawn(process.execPath, ["--input-type=module", "--eval", ZOMBIE_OWNER_SCRIPT], {
+        stdio: ["ignore", "pipe", "ignore"],
+    });
     const stdout = parent.stdout;
 
     const pid = await new Promise<number>((resolve, reject) => {
@@ -166,16 +168,14 @@ const runTypecheck = (project: CliProject): number | null =>
     }).status;
 
 const runImportProbe = (project: CliProject, source: string): number | null =>
-    spawnSync(
-        process.execPath,
-        ["--import", TSX_LOADER, "--input-type=module", "--eval", source],
-        { cwd: project.root, timeout: 60_000 },
-    ).status;
+    spawnSync(process.execPath, ["--import", TSX_LOADER, "--input-type=module", "--eval", source], {
+        cwd: project.root,
+        timeout: 60_000,
+    }).status;
 
 const runImport = (project: CliProject): number | null => runImportProbe(project, IMPORT_PROBE);
 
-const runTransitionImport = (project: CliProject): number | null =>
-    runImportProbe(project, TRANSITION_IMPORT_PROBE);
+const runTransitionImport = (project: CliProject): number | null => runImportProbe(project, TRANSITION_IMPORT_PROBE);
 
 const runInterleavedOwners = (first: CliProject, second: CliProject): number | null =>
     spawnSync(
@@ -214,16 +214,16 @@ const writeConfig = (project: CliProject, source: string): void => {
 };
 
 const pairGenerationCount = (project: CliProject): number =>
-    readdirSync(join(project.nodeModules, ".gtkx"), { withFileTypes: true })
-        .filter((entry) => entry.isDirectory() && entry.name.startsWith(".pair-generation-"))
-        .length;
+    readdirSync(join(project.nodeModules, ".gtkx"), { withFileTypes: true }).filter(
+        (entry) => entry.isDirectory() && entry.name.startsWith(".pair-generation-"),
+    ).length;
 
 const detachedGenerationCount = (project: CliProject, store: string): number =>
-    readdirSync(join(project.nodeModules, ".gtkx"), { withFileTypes: true })
-        .filter((entry) =>
+    readdirSync(join(project.nodeModules, ".gtkx"), { withFileTypes: true }).filter(
+        (entry) =>
             entry.isDirectory() &&
-            (entry.name.startsWith(`.${store}-generation-`) || entry.name.startsWith(`.${store}-legacy-`)))
-        .length;
+            (entry.name.startsWith(`.${store}-generation-`) || entry.name.startsWith(`.${store}-legacy-`)),
+    ).length;
 
 const seedStoreArtifacts = (project: CliProject, store: string): void => {
     for (const kind of ["generation", "legacy"]) {

@@ -68,17 +68,15 @@ function SwappedChildApp({
 }) {
     return (
         <GtkApplicationWindow ref={windowRef}>
-            {isFirst
-                ? (
-                        <GtkLabel ref={firstRef} key="first">
-                            First
-                        </GtkLabel>
-                    )
-                : (
-                        <GtkLabel ref={secondRef} key="second">
-                            Second
-                        </GtkLabel>
-                    )}
+            {isFirst ? (
+                <GtkLabel ref={firstRef} key="first">
+                    First
+                </GtkLabel>
+            ) : (
+                <GtkLabel ref={secondRef} key="second">
+                    Second
+                </GtkLabel>
+            )}
         </GtkApplicationWindow>
     );
 }
@@ -140,12 +138,7 @@ const NestedChild = ({
 }) => (
     <ParentedTree parentRef={parentRef}>
         {(parent) => (
-            <GtkWindow
-                ref={childRef}
-                transientFor={isParented ? parent : null}
-                defaultWidth={50}
-                defaultHeight={50}
-            />
+            <GtkWindow ref={childRef} transientFor={isParented ? parent : null} defaultWidth={50} defaultHeight={50} />
         )}
     </ParentedTree>
 );
@@ -194,11 +187,11 @@ const renderProbedWindow = async (props: GtkApplicationWindowProps): Promise<Gtk
 
 const capturing =
     (held: Captured2) =>
-        (widget: Gtk.Widget | null): void => {
-            if (widget) {
-                held.widget = widget;
-            }
-        };
+    (widget: Gtk.Widget | null): void => {
+        if (widget) {
+            held.widget = widget;
+        }
+    };
 
 const capturedWidget = (held: Captured2): Gtk.Widget => {
     if (!held.widget) {
@@ -211,9 +204,12 @@ const capturedWidget = (held: Captured2): Gtk.Widget => {
 const createDeferred = (): DeferredPromise => {
     const { promise, resolve } = Promise.withResolvers<string>();
 
-    return { promise, resolve: () => {
-        resolve("loaded");
-    } };
+    return {
+        promise,
+        resolve: () => {
+            resolve("loaded");
+        },
+    };
 };
 
 const activityTree = (mode: "visible" | "hidden", held: Captured2, isVisible = true): ReactNode => (

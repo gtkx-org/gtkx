@@ -15,9 +15,6 @@ export {
     type ServerRequestParams,
     ServerRequestParamsSchemas,
 } from "./protocol/schemas.js";
-export {
-    MCP_SOCKET_PATH_ENV,
-    resolveMcpSocketPath,
-} from "./socket-path.js";
+export { MCP_SOCKET_PATH_ENV, resolveMcpSocketPath } from "./socket-path.js";
 export { ProtocolConnection } from "./transport.js";
 export type { JSONRPCRequest, Result } from "@modelcontextprotocol/sdk/types.js";

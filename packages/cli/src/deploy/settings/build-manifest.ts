@@ -11,11 +11,7 @@ import {
     configDigest,
     type RecordedPackage,
 } from "../../internal/build-manifest.js";
-import {
-    assertUniqueSchemaBasenames,
-    projectRelativeSchemaPath,
-    SCHEMA_SUFFIX,
-} from "../../settings/schema.js";
+import { assertUniqueSchemaBasenames, projectRelativeSchemaPath, SCHEMA_SUFFIX } from "../../settings/schema.js";
 
 type ResolvedBuildManifest = {
     packages: RecordedPackage[];

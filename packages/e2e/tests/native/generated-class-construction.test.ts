@@ -10,10 +10,11 @@ drainAfterEachTest();
 const registrations = { count: 0 };
 const uniqueName = () => `GtkxGeneratedClassConstruction${String(registrations.count++)}`;
 const registerObject = () => registerClass(class extends GObject.Object {}, { typeName: uniqueName() });
-const counterClass = () => registerClass(class extends GObject.Object {}, {
-    typeName: uniqueName(),
-    properties: { count: GObject.paramSpecInt("count", null, null, 0, 100, 0, GObject.ParamFlags.READWRITE) },
-});
+const counterClass = () =>
+    registerClass(class extends GObject.Object {}, {
+        typeName: uniqueName(),
+        properties: { count: GObject.paramSpecInt("count", null, null, 0, 100, 0, GObject.ParamFlags.READWRITE) },
+    });
 
 const construct = (gtype: bigint, names: string[] = [], values: ExternalObject<Handle>[] = []) => {
     let handle: ExternalObject<Handle> | undefined;
@@ -56,7 +57,8 @@ test("a subclass of a registered subclass derives from both ancestors", () => {
 
 test("a registered class implements the interfaces it declares", () => {
     const Registered = registerClass(class extends GObject.Object {}, {
-        typeName: uniqueName(), implements: [GObject.TypePlugin],
+        typeName: uniqueName(),
+        implements: [GObject.TypePlugin],
     });
     expect(GObject.typeIsA(Registered, GObject.TypePlugin)).toBe(true);
 });
@@ -134,11 +136,14 @@ test("construction hands the original wrapper to the association callback", () =
 
 test("a registered wrapper is associated before its constructed vfunc runs", () => {
     const order: string[] = [];
-    const Registered = registerClass(class extends GObject.Object {
-        override vfuncConstructed(): void {
-            order.push("constructed");
-        }
-    }, { typeName: uniqueName() });
+    const Registered = registerClass(
+        class extends GObject.Object {
+            override vfuncConstructed(): void {
+                order.push("constructed");
+            }
+        },
+        { typeName: uniqueName() },
+    );
     const wrapper = Object.create(Registered.prototype) as object;
     newObject(getClassType(Registered), [], [], wrapper, (handle, bound) => {
         setHandle(bound, handle);
@@ -154,15 +159,20 @@ test("two constructions of the same type yield distinct instances", () => {
 
 test("an association failure returns to the caller and subsequent construction succeeds", () => {
     const constructed: GObject.Object[] = [];
-    const Registered = registerClass(class extends GObject.Object {
-        override vfuncConstructed(): void {
-            super.vfuncConstructed();
-            constructed.push(this);
-        }
-    }, { typeName: uniqueName() });
-    expect(() => newObject(getClassType(Registered), [], [], {}, () => {
-        throw new Error("Association failed");
-    })).toThrow();
+    const Registered = registerClass(
+        class extends GObject.Object {
+            override vfuncConstructed(): void {
+                super.vfuncConstructed();
+                constructed.push(this);
+            }
+        },
+        { typeName: uniqueName() },
+    );
+    expect(() =>
+        newObject(getClassType(Registered), [], [], {}, () => {
+            throw new Error("Association failed");
+        }),
+    ).toThrow();
     expect(constructed).toEqual([]);
     const instance = new Registered({});
     expect(getType(getHandle(instance))).toBe(getClassType(Registered));
@@ -193,10 +203,12 @@ test("class initialization observes its registered type before construction", ()
 });
 
 test("a public class initializer exception propagates to registration", () => {
-    expect(() => registerClass(class extends GObject.Object {}, {
-        typeName: uniqueName(),
-        classInit() {
-            throw new Error("Initialization failed");
-        },
-    })).toThrow();
+    expect(() =>
+        registerClass(class extends GObject.Object {}, {
+            typeName: uniqueName(),
+            classInit() {
+                throw new Error("Initialization failed");
+            },
+        }),
+    ).toThrow();
 });

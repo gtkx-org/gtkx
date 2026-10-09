@@ -43,9 +43,12 @@ const takeAfterCallback = (
     if (route === "return") {
         return t.bind(library, "gtkx_separate_holder_return_after_callback", [t.struct(), callback], descriptor);
     }
-    const invoke = t.bind(library, "gtkx_separate_holder_out_after_callback", [
-        t.struct(), callback, t.ref(descriptor),
-    ], t.void);
+    const invoke = t.bind(
+        library,
+        "gtkx_separate_holder_out_after_callback",
+        [t.struct(), callback, t.ref(descriptor)],
+        t.void,
+    );
 
     return (holder, visit) => {
         const out: { value: unknown } = { value: null };
@@ -98,10 +101,12 @@ for (const { name, id, make } of layouts) {
 
                 for (const state of [0, 1, 2]) {
                     withHolder(id, type.kind, state, (holder) => {
-                        expect(() => invoke(holder, () => {
-                            entries += 1;
-                            throw new Error("callback failure");
-                        })).toThrow();
+                        expect(() =>
+                            invoke(holder, () => {
+                                entries += 1;
+                                throw new Error("callback failure");
+                            }),
+                        ).toThrow();
                         expect(holderIsNull(holder)).toBe(true);
                     });
                 }
@@ -110,9 +115,12 @@ for (const { name, id, make } of layouts) {
             });
         }
 
-        const visitOwned = t.bind(library, "gtkx_separate_visit_owned", [
-            t.uint32, t.uint32, t.callback([descriptor], t.void, { scope: "call" }),
-        ], t.void);
+        const visitOwned = t.bind(
+            library,
+            "gtkx_separate_visit_owned",
+            [t.uint32, t.uint32, t.callback([descriptor], t.void, { scope: "call" })],
+            t.void,
+        );
 
         test(`${name} ${type.name} owned callback arguments survive repeated native delivery`, async () => {
             const before = released(type.kind);
@@ -124,7 +132,10 @@ for (const { name, id, make } of layouts) {
                     retained.push(...values);
                     seen.push(values.map((value) => getValue(type.kind, value)));
                 });
-                expect(seen).toEqual([[3, 7], [3, 7]]);
+                expect(seen).toEqual([
+                    [3, 7],
+                    [3, 7],
+                ]);
                 expect(retained.map((value) => getValue(type.kind, value))).toEqual([3, 7, 3, 7]);
                 expect(released(type.kind) - before).toBe(0);
             } finally {
@@ -139,11 +150,13 @@ for (const { name, id, make } of layouts) {
             const seen: unknown[][] = [];
 
             try {
-                expect(() => visitOwned(id, type.kind, (values: unknown[]) => {
-                    retained.push(...values);
-                    seen.push(values.map((value) => getValue(type.kind, value)));
-                    throw new Error("callback failure");
-                })).toThrow();
+                expect(() =>
+                    visitOwned(id, type.kind, (values: unknown[]) => {
+                        retained.push(...values);
+                        seen.push(values.map((value) => getValue(type.kind, value)));
+                        throw new Error("callback failure");
+                    }),
+                ).toThrow();
                 expect(seen).toEqual([[3, 7]]);
                 expect(retained.map((value) => getValue(type.kind, value))).toEqual([3, 7]);
             } finally {

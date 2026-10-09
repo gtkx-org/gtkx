@@ -38,7 +38,10 @@ type ControlledEntryProps = { entryRef: RefObject<Gtk.Entry | null>; initial: st
 type SharedAnchorViewsProps = { hasAnchor: boolean; hasSecondaryView: boolean };
 type ChangingAnchorViewProps = { useSecondAnchor: boolean };
 
-const CARRIERS: [string, TextProps][] = [["text prop", directText], ["entry buffer", bufferedText]];
+const CARRIERS: [string, TextProps][] = [
+    ["text prop", directText],
+    ["entry buffer", bufferedText],
+];
 
 const renderTextBuffer = async <P,>(
     initialProps: NoInfer<P>,
@@ -81,15 +84,13 @@ const buildNestedTagContent = (outerText: string, innerText: string): ReactNode 
 );
 
 const buildMarkOrTag = (item: string, markRef: RefObject<Gtk.TextMark | null>): ReactNode =>
-    item === "M"
-        ? (
-                <GtkTextMark key="M" ref={markRef} />
-            )
-        : (
-                <GtkTextTag key={item} name={item}>
-                    {item.repeat(3)}
-                </GtkTextTag>
-            );
+    item === "M" ? (
+        <GtkTextMark key="M" ref={markRef} />
+    ) : (
+        <GtkTextTag key={item} name={item}>
+            {item.repeat(3)}
+        </GtkTextTag>
+    );
 
 const requireMark = (markRef: RefObject<Gtk.TextMark | null>): Gtk.TextMark => {
     const mark = markRef.current;
@@ -104,7 +105,7 @@ const requireMark = (markRef: RefObject<Gtk.TextMark | null>): Gtk.TextMark => {
 const buildTaggedTextView = (ref: RefObject<Gtk.TextView | null>) => (items: string[]) => (
     <GtkTextView
         ref={ref}
-        buffer={(
+        buffer={
             <GtkTextBuffer>
                 {items.map((item) => (
                     <GtkTextTag key={item} name={item} foreground="blue">
@@ -112,23 +113,23 @@ const buildTaggedTextView = (ref: RefObject<Gtk.TextView | null>) => (items: str
                     </GtkTextTag>
                 ))}
             </GtkTextBuffer>
-        )}
+        }
     />
 );
 
 const buildToggleContent =
     (name: string, tagText: string) =>
-        (hasTag: boolean): ReactNode => (
-            <>
-                Start
-                {hasTag && (
-                    <GtkTextTag name={name} foreground="green">
-                        {tagText}
-                    </GtkTextTag>
-                )}
-                End
-            </>
-        );
+    (hasTag: boolean): ReactNode => (
+        <>
+            Start
+            {hasTag && (
+                <GtkTextTag name={name} foreground="green">
+                    {tagText}
+                </GtkTextTag>
+            )}
+            End
+        </>
+    );
 
 const buildCollidingTags = (
     viewRef: RefObject<Gtk.TextView | null>,
@@ -138,22 +139,26 @@ const buildCollidingTags = (
 ) => (
     <GtkTextView
         ref={viewRef}
-        buffer={(
+        buffer={
             <GtkTextBuffer>
                 {isMounted && (
                     <>
-                        <GtkTextTag ref={firstRef} name="shared">first</GtkTextTag>
-                        <GtkTextTag ref={secondRef} name="shared">second</GtkTextTag>
+                        <GtkTextTag ref={firstRef} name="shared">
+                            first
+                        </GtkTextTag>
+                        <GtkTextTag ref={secondRef} name="shared">
+                            second
+                        </GtkTextTag>
                     </>
                 )}
             </GtkTextBuffer>
-        )}
+        }
     />
 );
 
 const buildAnchorView = (hasAnchor: boolean) => (
     <GtkTextView
-        buffer={(
+        buffer={
             <GtkTextBuffer>
                 Start
                 {hasAnchor && (
@@ -163,20 +168,20 @@ const buildAnchorView = (hasAnchor: boolean) => (
                 )}
                 End
             </GtkTextBuffer>
-        )}
+        }
     />
 );
 
 const buildMarkedView = (viewRef: RefObject<Gtk.TextView | null>, markRef: RefObject<Gtk.TextMark | null>) => (
     <GtkTextView
         ref={viewRef}
-        buffer={(
+        buffer={
             <GtkTextBuffer>
                 AB
                 <GtkTextMark ref={markRef} />
                 CD
             </GtkTextBuffer>
-        )}
+        }
     />
 );
 
@@ -187,28 +192,23 @@ const buildOptionalMarkedView = (
 ) => (
     <GtkTextView
         ref={viewRef}
-        buffer={(
+        buffer={
             <GtkTextBuffer>
                 AB
                 {hasMark && <GtkTextMark ref={markRef} />}
                 CD
             </GtkTextBuffer>
-        )}
+        }
     />
 );
 
 const buildReorderableMarkView =
-    (viewRef: RefObject<Gtk.TextView | null>, markRef: RefObject<Gtk.TextMark | null>) =>
-        (order: string[]) => (
-            <GtkTextView
-                ref={viewRef}
-                buffer={(
-                    <GtkTextBuffer>
-                        {order.map((item) => buildMarkOrTag(item, markRef))}
-                    </GtkTextBuffer>
-                )}
-            />
-        );
+    (viewRef: RefObject<Gtk.TextView | null>, markRef: RefObject<Gtk.TextMark | null>) => (order: string[]) => (
+        <GtkTextView
+            ref={viewRef}
+            buffer={<GtkTextBuffer>{order.map((item) => buildMarkOrTag(item, markRef))}</GtkTextBuffer>}
+        />
+    );
 
 const buildPaintableView = (viewRef: RefObject<Gtk.TextView | null>) => (content: ReactNode) => (
     <GtkTextView ref={viewRef} buffer={<GtkTextBuffer>{content}</GtkTextBuffer>} />
@@ -267,7 +267,7 @@ const SharedAnchorViews = ({ hasAnchor, hasSecondaryView }: SharedAnchorViewsPro
         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
             <GtkTextView
                 name="primary-view"
-                buffer={(
+                buffer={
                     <GtkTextBuffer ref={setBuffer}>
                         before
                         {hasAnchor && (
@@ -283,7 +283,7 @@ const SharedAnchorViews = ({ hasAnchor, hasSecondaryView }: SharedAnchorViewsPro
                         )}
                         after
                     </GtkTextBuffer>
-                )}
+                }
             />
             {hasSecondaryView && buffer && (
                 <GtkTextView name="secondary-view" buffer={buffer}>
@@ -312,12 +312,12 @@ const ChangingAnchorView = ({ useSecondAnchor }: ChangingAnchorViewProps) => {
 
     return (
         <GtkTextView
-            buffer={(
+            buffer={
                 <GtkTextBuffer>
                     <GtkTextChildAnchor ref={setFirstAnchor} />
                     <GtkTextChildAnchor ref={setSecondAnchor} />
                 </GtkTextBuffer>
-            )}
+            }
         >
             {anchor && <GtkButton name="changing-anchor-child" textChildAnchor={anchor} />}
         </GtkTextView>
@@ -325,7 +325,13 @@ const ChangingAnchorView = ({ useSecondAnchor }: ChangingAnchorViewProps) => {
 };
 
 const buildReplacementAnchorView = (replacement: string) => (
-    <GtkTextView buffer={<GtkTextBuffer><GtkTextChildAnchor replacement={replacement} /></GtkTextBuffer>} />
+    <GtkTextView
+        buffer={
+            <GtkTextBuffer>
+                <GtkTextChildAnchor replacement={replacement} />
+            </GtkTextBuffer>
+        }
+    />
 );
 
 const buildSharedAnchorViews = (hasSecondaryView: boolean, hasAnchor = true) => (
@@ -414,13 +420,7 @@ describe("render - TextView", () => {
         });
 
         it("renders multiple text segments", async () => {
-            await renderTextBuffer(undefined, () => (
-                <>
-                    Hello
-                    {" "}
-                    World
-                </>
-            ));
+            await renderTextBuffer(undefined, () => <>Hello World</>);
 
             expect(screen.getByRole(Gtk.AccessibleRole.TEXT_BOX)).toHaveDisplayValue("Hello World");
         });
@@ -440,9 +440,7 @@ describe("render - TextView", () => {
         it("applies TextTag to wrapped text", async () => {
             const { buffer } = await renderTextBuffer(undefined, () => (
                 <>
-                    Hello
-                    {" "}
-                    <GtkTextTag name="bold">World</GtkTextTag>
+                    Hello <GtkTextTag name="bold">World</GtkTextTag>
                 </>
             ));
 
@@ -561,11 +559,7 @@ describe("render - TextView", () => {
 
         it("handles text change inside nested tag", async () => {
             const { buffer, rerender } = await renderTextBuffer("Inner", (innerText: string) => (
-                <>
-                    {buildNestedTagContent("Outer ", innerText)}
-                    {" "}
-                    After
-                </>
+                <>{buildNestedTagContent("Outer ", innerText)} After</>
             ));
 
             expect(getBufferText(buffer)).toBe("Outer Inner After");
@@ -683,12 +677,10 @@ describe("render - TextView - tag colors", () => {
         it("embeds widget at anchor position", async () => {
             const { buffer } = await renderTextBuffer(undefined, () => (
                 <>
-                    Click here:
-                    {" "}
+                    Click here:{" "}
                     <GtkTextChildAnchor>
                         <GtkButton label="Button" />
-                    </GtkTextChildAnchor>
-                    {" "}
+                    </GtkTextChildAnchor>{" "}
                     to continue.
                 </>
             ));
@@ -712,8 +704,7 @@ describe("render - TextView - tag colors", () => {
         it("creates tagged text correctly", async () => {
             const { buffer } = await renderTextBuffer("World", (boldText: string) => (
                 <>
-                    Hello
-                    {" "}
+                    Hello{" "}
                     <GtkTextTag name="bold" weight={Pango.Weight.BOLD}>
                         {boldText}
                     </GtkTextTag>
@@ -728,9 +719,7 @@ describe("render - TextView - tag colors", () => {
             await renderTextBuffer(true, (hasMiddle: boolean) => (
                 <>
                     Start
-                    {hasMiddle && " Middle"}
-                    {" "}
-                    End
+                    {hasMiddle && " Middle"} End
                 </>
             ));
 
@@ -739,15 +728,13 @@ describe("render - TextView - tag colors", () => {
 
         it("renders with conditional TextTag", async () => {
             const { buffer } = await renderTextBuffer(true, (isBold: boolean) =>
-                isBold
-                    ? (
-                            <GtkTextTag name="bold" weight={Pango.Weight.BOLD}>
-                                Bold
-                            </GtkTextTag>
-                        )
-                    : (
-                            "Normal"
-                        ),
+                isBold ? (
+                    <GtkTextTag name="bold" weight={Pango.Weight.BOLD}>
+                        Bold
+                    </GtkTextTag>
+                ) : (
+                    "Normal"
+                ),
             );
 
             expect(getBufferText(buffer)).toBe("Bold");
@@ -783,18 +770,14 @@ describe("render - TextView - tag colors", () => {
         it("maintains correct text order with mixed content", async () => {
             const { buffer } = await renderTextBuffer(undefined, () => (
                 <>
-                    Start
-                    {" "}
+                    Start{" "}
                     <GtkTextTag name="tag1" foreground="red">
                         Red
-                    </GtkTextTag>
-                    {" "}
-                    Middle
-                    {" "}
+                    </GtkTextTag>{" "}
+                    Middle{" "}
                     <GtkTextTag name="tag2" foreground="blue">
                         Blue
-                    </GtkTextTag>
-                    {" "}
+                    </GtkTextTag>{" "}
                     End
                 </>
             ));
@@ -880,13 +863,13 @@ describe("render - TextChildAnchor identity", () => {
         await render(
             <GtkTextView
                 ref={viewRef}
-                buffer={(
+                buffer={
                     <GtkTextBuffer>
                         before
                         <GtkTextChildAnchor ref={anchorRef} replacement="👻" />
                         after
                     </GtkTextBuffer>
-                )}
+                }
             />,
         );
         const buffer = getTextBuffer(viewRef);

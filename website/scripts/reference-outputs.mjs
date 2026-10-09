@@ -45,7 +45,7 @@ const assertDeclaredOutputs = (versions) => {
         if (declared !== needed) {
             throw new Error(
                 `website/project.json declares ${name} outputs [${declared}], but versions.json needs [${needed}]. ` +
-                "Run pnpm --filter @gtkx/website reference-sync.",
+                    "Run pnpm --filter @gtkx/website reference-sync.",
             );
         }
     }

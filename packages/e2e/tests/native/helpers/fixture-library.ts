@@ -12,10 +12,19 @@ const fixtureLibrary = (name: string, pkg = "glib-2.0"): string => {
     beforeAll(() => {
         const flags = execFileSync(resolveExecutable("pkg-config"), ["--cflags", "--libs", pkg], {
             encoding: "utf8",
-        }).trim().split(/\s+/);
+        })
+            .trim()
+            .split(/\s+/);
         execFileSync(resolveExecutable("cc"), [
-            "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror",
-            join(import.meta.dirname, "../fixtures", `${name}.c`), "-o", library, ...flags,
+            "-shared",
+            "-fPIC",
+            "-Wall",
+            "-Wextra",
+            "-Werror",
+            join(import.meta.dirname, "../fixtures", `${name}.c`),
+            "-o",
+            library,
+            ...flags,
         ]);
     });
 

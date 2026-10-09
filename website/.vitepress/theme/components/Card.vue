@@ -1,8 +1,8 @@
 <template>
-  <div class="card">
-    <span class="card__glow" />
-    <div class="card__body"><slot /></div>
-  </div>
+    <div class="card">
+        <span class="card__glow" />
+        <div class="card__body"><slot /></div>
+    </div>
 </template>
 
 <style scoped>

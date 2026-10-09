@@ -42,7 +42,9 @@ const selectAll = (widget: ClipboardTarget): void => {
 describe("clipboard editing", () => {
     it.each([
         <GtkSearchEntry name="source" text="Copy me" />,
-        <GtkListBox><AdwEntryRow name="source" title="Name" text="Copy me" /></GtkListBox>,
+        <GtkListBox>
+            <AdwEntryRow name="source" title="Name" text="Copy me" />
+        </GtkListBox>,
     ])("copies through an editable delegate: %s", async (element) => {
         const destination = await renderClipboardPair(element);
         const source = screen.getByName("source");
@@ -59,9 +61,12 @@ describe("clipboard editing", () => {
     });
 
     it.each(["entry", "text-view"])("keeps readonly %s text intact when cut", async (kind) => {
-        const source = kind === "entry"
-            ? <GtkEntry name="source" text="Read only" editable={false} />
-            : <GtkTextView name="source" editable={false} buffer={<GtkTextBuffer text="Read only" />} />;
+        const source =
+            kind === "entry" ? (
+                <GtkEntry name="source" text="Read only" editable={false} />
+            ) : (
+                <GtkTextView name="source" editable={false} buffer={<GtkTextBuffer text="Read only" />} />
+            );
 
         await renderClipboardPair(source);
         const widget = screen.getByName("source", { as: Gtk.Widget });
@@ -79,12 +84,14 @@ describe("clipboard editing", () => {
         const destination = await renderClipboardPair(
             <GtkTextView
                 name="source"
-                buffer={(
+                buffer={
                     <GtkTextBuffer enableUndo>
                         {"Remove "}
-                        <GtkTextTag name="protected" editable={false}>keep</GtkTextTag>
+                        <GtkTextTag name="protected" editable={false}>
+                            keep
+                        </GtkTextTag>
                     </GtkTextBuffer>
-                )}
+                }
             />,
         );
 

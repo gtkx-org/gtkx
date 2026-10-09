@@ -64,8 +64,10 @@ const COMPILATION_MODES = ["infer", "syntax", "annotation", "all"] as const;
 const PANIC_THRESHOLDS = ["none", "critical_errors", "all_errors"] as const;
 const REACT_COMPILER_TARGET = "19";
 
-const librarySchema = girLibrary('must be of the form "Name-Version", such as "Adw-1"')
-    .refine((library) => !IMPLICIT_LIBRARIES.has(library), { error: "is bound implicitly; remove it" });
+const librarySchema = girLibrary('must be of the form "Name-Version", such as "Adw-1"').refine(
+    (library) => !IMPLICIT_LIBRARIES.has(library),
+    { error: "is bound implicitly; remove it" },
+);
 
 const librariesSchema = z
     .array(librarySchema, { error: "must be a non-empty string array or omitted" })

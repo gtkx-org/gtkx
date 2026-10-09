@@ -18,22 +18,14 @@ const SIBLING_LABELS = (
 );
 
 function CountLabel({ count }: { count: number }) {
-    return (
-        <GtkLabel>
-            Count:
-            {" "}
-            {count}
-        </GtkLabel>
-    );
+    return <GtkLabel>Count: {count}</GtkLabel>;
 }
 
 function MiddleSegmentLabel({ shouldShowMiddle }: { shouldShowMiddle: boolean }) {
     return (
         <GtkLabel>
             Start
-            {shouldShowMiddle && " Middle"}
-            {" "}
-            End
+            {shouldShowMiddle && " Middle"} End
         </GtkLabel>
     );
 }
@@ -108,15 +100,7 @@ describe("render - Label text children", () => {
                 };
             });
 
-            return (
-                <GtkLabel>
-                    Clicked
-                    {" "}
-                    {count}
-                    {" "}
-                    times
-                </GtkLabel>
-            );
+            return <GtkLabel>Clicked {count} times</GtkLabel>;
         }
 
         await render(<App />);

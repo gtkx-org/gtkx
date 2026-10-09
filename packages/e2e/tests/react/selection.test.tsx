@@ -619,10 +619,7 @@ describe("userEvent click - repeat and non-activating containers", () => {
 
 describe("userEvent click - multiple-selection list boxes", () => {
     it("replaces the selection across clicks when a single click does not activate", async () => {
-        const refs = await renderRowBox(
-            { selectionMode: Gtk.SelectionMode.MULTIPLE, activateOnSingleClick: false },
-            2,
-        );
+        const refs = await renderRowBox({ selectionMode: Gtk.SelectionMode.MULTIPLE, activateOnSingleClick: false }, 2);
 
         await userEvent.click(screen.getByText("Row 0"));
         expect(getSelection(refs)).toEqual([true, false]);
@@ -654,10 +651,7 @@ describe("userEvent click - multiple-selection list boxes", () => {
 
 describe("userEvent click - selection notifications", () => {
     it("never reports an empty selection while replacing it", async () => {
-        const refs = await renderRowBox(
-            { selectionMode: Gtk.SelectionMode.MULTIPLE, activateOnSingleClick: false },
-            3,
-        );
+        const refs = await renderRowBox({ selectionMode: Gtk.SelectionMode.MULTIPLE, activateOnSingleClick: false }, 3);
 
         const listBox = refs[0]?.current?.getParent() as Gtk.ListBox;
         const reported: boolean[][] = [];

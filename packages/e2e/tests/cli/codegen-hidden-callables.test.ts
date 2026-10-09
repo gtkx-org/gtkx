@@ -4,14 +4,28 @@ import type { CliProject } from "./cli-project.js";
 import {
     ACCEPTED,
     createHiddenCallablesProject,
+    REJECTED_NAMES,
     NATIVE_CONSUMER,
 } from "./codegen-hidden-callables-fixture.js";
-import { typecheckFile } from "./type-consumer.js";
+import { typecheckFiles } from "./type-consumer.js";
 
 const OMISSIONS = [
-    "takeDirect", "takeAlias", "readDirect", "readAlias", "returnDirect", "returnAlias", "discardPointer",
-    "takeArray", "takeList", "takeHashValues", "readHashKeys", "takeNested", "newWithData",
-    "rawList", "rawArray", "rawHash",
+    "takeDirect",
+    "takeAlias",
+    "readDirect",
+    "readAlias",
+    "returnDirect",
+    "returnAlias",
+    "discardPointer",
+    "takeArray",
+    "takeList",
+    "takeHashValues",
+    "readHashKeys",
+    "takeNested",
+    "newWithData",
+    "rawList",
+    "rawArray",
+    "rawHash",
 ];
 
 describe("generated raw-pointer callable omissions", () => {
@@ -19,22 +33,29 @@ describe("generated raw-pointer callable omissions", () => {
     let project: CliProject;
 
     beforeAll(() => {
-        project = cleanup.use(createHiddenCallablesProject(
-            "gtkx-cli-hidden-callable-types-",
-            {
-                "accepted.tsx": ACCEPTED,
-                "native.ts": NATIVE_CONSUMER,
-            },
-        ));
+        project = cleanup.use(
+            createHiddenCallablesProject(
+                "gtkx-cli-hidden-callable-types-",
+                {
+                    "accepted.tsx": ACCEPTED,
+                    "native.ts": NATIVE_CONSUMER,
+                },
+                REJECTED_NAMES,
+            ),
+        );
     });
 
     afterAll(() => {
         cleanup.dispose();
     });
 
-    it("preserves safe values, annotated arrays, typed handles and existing adapters", () => {
-        expect(typecheckFile(project, "accepted.tsx")).toBe(0);
-        expect(typecheckFile(project, "native.ts")).toBe(0);
+    it("preserves supported consumers and rejects the omitted public contracts", () => {
+        const accepted = ["accepted.tsx", "native.ts"];
+        const rejected = REJECTED_NAMES.map((name) => `${name}.tsx`);
+
+        for (const [file, result] of typecheckFiles(project, [...accepted, ...rejected])) {
+            expect({ file, ...result }).toMatchObject({ status: accepted.includes(file) ? 0 : 1 });
+        }
     });
 
     it("keeps class and namespace reference output aligned with supported callables", () => {
@@ -57,8 +78,12 @@ describe("generated raw-pointer callable omissions", () => {
         expect(value).toHaveProperty("markdown", expect.stringContaining("### `setBoxed`"));
         expect(reference.lookup("CallablePointers.safeCount", "function").outcome).toBe("page");
         for (const name of [
-            "CallablePointers.acceptPointer", "CallablePointers.getPointer", "GObject.typeGetQdata",
-            "GObject.typeFreeInstance", "GObject.enumRegisterStatic", "GObject.flagsRegisterStatic",
+            "CallablePointers.acceptPointer",
+            "CallablePointers.getPointer",
+            "GObject.typeGetQdata",
+            "GObject.typeFreeInstance",
+            "GObject.enumRegisterStatic",
+            "GObject.flagsRegisterStatic",
         ]) {
             expect(reference.lookup(name, "function").outcome).toBe("notFound");
         }

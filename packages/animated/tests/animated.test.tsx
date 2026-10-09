@@ -86,9 +86,11 @@ const Truncated = ({ boxRef }: { boxRef: RefObject<Gtk.Box | null> }): ReactNode
 const FadeCustom = ({ renders, isForwarding }: { renders: number[]; isForwarding: boolean }): ReactNode => {
     const styles = useSpring({ from: { opacity: 0 }, to: { opacity: 1 }, config: LONG });
 
-    return isForwarding
-        ? <AnimatedForwarding opacity={styles.opacity} renders={renders} />
-        : <AnimatedOpaque opacity={styles.opacity} renders={renders} />;
+    return isForwarding ? (
+        <AnimatedForwarding opacity={styles.opacity} renders={renders} />
+    ) : (
+        <AnimatedOpaque opacity={styles.opacity} renders={renders} />
+    );
 };
 
 const Counter = ({ labelRef }: { labelRef: RefObject<Gtk.Label | null> }): ReactNode => {
@@ -144,9 +146,7 @@ const Wobbly = ({ labelRef, to }: OpacityProps): ReactNode => {
         config: config.wobbly,
     });
 
-    return (
-        <AnimatedLabel ref={labelRef} opacity={styles.opacity} marginStart={styles.marginStart} label="wobbly" />
-    );
+    return <AnimatedLabel ref={labelRef} opacity={styles.opacity} marginStart={styles.marginStart} label="wobbly" />;
 };
 
 const NestedText = (): ReactNode => {

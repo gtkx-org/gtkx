@@ -72,7 +72,8 @@ const waitForApplicationId = async (timeoutMs: number, shouldKeepWaiting: () => 
 
 const readFileRevision = (path: string): Promise<string> => readFile(path, "utf8");
 
-const devPlugins = (configFile: string, catalogWrites: CatalogWrites): DevRunnerDeps["plugins"] =>
+const devPlugins =
+    (configFile: string, catalogWrites: CatalogWrites): DevRunnerDeps["plugins"] =>
     (entryPath) => [
         ...gtkxVitePlugins({ mode: DEV_MODE, entryPath, configFile, onCatalogsWritten: catalogWrites.record }),
         ...gtkxFastRefresh(),

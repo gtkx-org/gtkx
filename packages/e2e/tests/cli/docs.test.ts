@@ -69,29 +69,17 @@ describe("gtkx docs", () => {
         expect(written).toContain(COLLIDING_PROPERTY_PAGE);
         expect(written).toContain(STATIC_ELEMENT_PAGE);
         expect(readPage(state.project, ELEMENT_PAGE)).toContain("GtkButton");
-        expect(readPage(state.project, ELEMENT_PAGE)).not.toContain(
-            "Each GTKX element rendered into it must create",
-        );
-        expect(readPage(state.project, COLLIDING_PROPERTY_PAGE)).toContain(
-            "read with `GObject.getProperty`",
-        );
+        expect(readPage(state.project, ELEMENT_PAGE)).not.toContain("Each GTKX element rendered into it must create");
+        expect(readPage(state.project, COLLIDING_PROPERTY_PAGE)).toContain("read with `GObject.getProperty`");
         const staticElement = readPage(state.project, STATIC_ELEMENT_PAGE);
         expect(staticElement).toContain("## Static methods");
         expect(staticElement).toContain(
             "Static methods are called on `GioUnix.DesktopAppInfo`, imported from `@gtkx/gi/giounix`.",
         );
-        expect(staticElement).toContain(
-            "search(searchString: string): string[][]",
-        );
-        expect(staticElement).toContain(
-            "new(desktopId: string): GioUnix.DesktopAppInfo | null",
-        );
-        expect(staticElement).toContain(
-            "newFromFilename(filename: string): GioUnix.DesktopAppInfo | null",
-        );
-        expect(staticElement).toContain(
-            "newFromKeyfile(keyFile: GLib.KeyFile): GioUnix.DesktopAppInfo | null",
-        );
+        expect(staticElement).toContain("search(searchString: string): string[][]");
+        expect(staticElement).toContain("new(desktopId: string): GioUnix.DesktopAppInfo | null");
+        expect(staticElement).toContain("newFromFilename(filename: string): GioUnix.DesktopAppInfo | null");
+        expect(staticElement).toContain("newFromKeyfile(keyFile: GLib.KeyFile): GioUnix.DesktopAppInfo | null");
         expect(staticElement).toContain("list of strvs.");
         expect(staticElement).not.toContain("GLib.strfreev()");
         expect(staticElement).not.toContain("GLib.free()");
@@ -162,9 +150,7 @@ describe("gtkx docs", () => {
         expect(dbusConnectionPage).not.toContain("\n".repeat(3));
         const sidebar = readPage(state.project, SIDEBAR_PAGE);
         expect(sidebar).toContain("This remains a React `ReactNode` slot");
-        expect(sidebar).toContain(
-            `[AdwSidebarSection](${BASE_PATH}/adw/sidebar-section)`,
-        );
+        expect(sidebar).toContain(`[AdwSidebarSection](${BASE_PATH}/adw/sidebar-section)`);
         expect(readPage(state.project, APPLICATION_PAGE)).toContain(
             "https://gtkx.dev/v2/tutorial/actions-menus-shortcuts",
         );

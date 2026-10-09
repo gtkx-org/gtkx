@@ -23,35 +23,35 @@ const links = [
 </script>
 
 <template>
-  <header class="nav" @keydown.escape="menuOpen = false">
-    <a class="nav__brand" href="#top" aria-label="GTKX home">
-      <img src="/gtkx-mark.svg" width="30" height="30" alt="" />
-      <span class="nav__word">GTKX</span>
-      <Badge>{{ featuredLabel }}</Badge>
-    </a>
-    <nav class="nav__links" aria-label="Main">
-      <a v-for="l in links" :key="l.href" :href="l.href">{{ l.label }}</a>
-    </nav>
-    <div class="nav__actions">
-      <IconButton label="Dark theme" :aria-pressed="isDark" @click="toggle">
-        <Icon class="nav__sun" name="sun" />
-        <Icon class="nav__moon" name="moon" />
-      </IconButton>
-      <IconButton label="GTKX on GitHub" :href="REPO_URL"><Icon name="github" /></IconButton>
-      <IconButton
-        class="nav__burger"
-        :label="menuOpen ? 'Close menu' : 'Open menu'"
-        :aria-expanded="menuOpen"
-        aria-controls="nav-menu"
-        @click="menuOpen = !menuOpen"
-      >
-        <Icon :name="menuOpen ? 'close' : 'menu'" />
-      </IconButton>
-    </div>
-    <nav v-show="menuOpen" id="nav-menu" class="nav__menu" aria-label="Main">
-      <a v-for="l in links" :key="l.href" :href="l.href" @click="menuOpen = false">{{ l.label }}</a>
-    </nav>
-  </header>
+    <header class="nav" @keydown.escape="menuOpen = false">
+        <a class="nav__brand" href="#top" aria-label="GTKX home">
+            <img src="/gtkx-mark.svg" width="30" height="30" alt="" />
+            <span class="nav__word">GTKX</span>
+            <Badge>{{ featuredLabel }}</Badge>
+        </a>
+        <nav class="nav__links" aria-label="Main">
+            <a v-for="l in links" :key="l.href" :href="l.href">{{ l.label }}</a>
+        </nav>
+        <div class="nav__actions">
+            <IconButton label="Dark theme" :aria-pressed="isDark" @click="toggle">
+                <Icon class="nav__sun" name="sun" />
+                <Icon class="nav__moon" name="moon" />
+            </IconButton>
+            <IconButton label="GTKX on GitHub" :href="REPO_URL"><Icon name="github" /></IconButton>
+            <IconButton
+                class="nav__burger"
+                :label="menuOpen ? 'Close menu' : 'Open menu'"
+                :aria-expanded="menuOpen"
+                aria-controls="nav-menu"
+                @click="menuOpen = !menuOpen"
+            >
+                <Icon :name="menuOpen ? 'close' : 'menu'" />
+            </IconButton>
+        </div>
+        <nav v-show="menuOpen" id="nav-menu" class="nav__menu" aria-label="Main">
+            <a v-for="l in links" :key="l.href" :href="l.href" @click="menuOpen = false">{{ l.label }}</a>
+        </nav>
+    </header>
 </template>
 
 <style scoped>

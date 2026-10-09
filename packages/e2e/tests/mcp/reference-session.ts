@@ -6,9 +6,7 @@ import { callText, createProject, type McpServer, startServer } from "./app-sess
 
 const REFERENCE_TIMEOUT = 120_000;
 const REQUEST_OPTIONS = { timeout: REFERENCE_TIMEOUT };
-const CONFIGURED_PROPS_FIXTURE = fileURLToPath(
-    new URL("../cli/fixtures/configured-props/@audit", import.meta.url),
-);
+const CONFIGURED_PROPS_FIXTURE = fileURLToPath(new URL("../cli/fixtures/configured-props/@audit", import.meta.url));
 const PROPS_MODULE = "@audit/element-props";
 
 const writePropsConfig = (root: string, exportName = "AliasProps", moduleName = PROPS_MODULE): void => {
@@ -56,10 +54,4 @@ const referenceSession = () => {
     return { apiDocs, listApi, readResource, searchApi, state };
 };
 
-export {
-    createConfiguredProject,
-    PROPS_MODULE,
-    referenceSession,
-    REQUEST_OPTIONS,
-    writePropsConfig,
-};
+export { createConfiguredProject, PROPS_MODULE, referenceSession, REQUEST_OPTIONS, writePropsConfig };

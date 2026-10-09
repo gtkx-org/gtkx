@@ -6,10 +6,7 @@ import type { NormalizerFn, NormalizerOptions } from "./types.js";
  * @param options Toggles for trimming and whitespace collapsing.
  * @returns A function that normalizes a string for comparison against a matcher.
  */
-const getDefaultNormalizer = ({
-    trim = true,
-    collapseWhitespace = true,
-}: NormalizerOptions = {}): NormalizerFn => {
+const getDefaultNormalizer = ({ trim = true, collapseWhitespace = true }: NormalizerOptions = {}): NormalizerFn => {
     return (text: string): string => {
         let result = text;
 

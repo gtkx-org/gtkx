@@ -393,9 +393,7 @@ const buildCheckFeaturePart = (tag: string, checkStates: Map<string, FeatureStat
 };
 
 const buildCheckFeatureParts = (group: { tags: string[] }, checkStates: Map<string, FeatureState>): string[] =>
-    group.tags
-        .map((tag) => buildCheckFeaturePart(tag, checkStates))
-        .filter((part): part is string => part !== null);
+    group.tags.map((tag) => buildCheckFeaturePart(tag, checkStates)).filter((part): part is string => part !== null);
 
 const createDefaultFgColor = () => buildRgba(0, 0, 0, 1);
 const createDefaultBgColor = () => buildRgba(1, 1, 1, 1);
@@ -455,24 +453,39 @@ function useFontFeaturesState() {
 
     const setSize = (nextSize: number) => {
         setFontDesc((current) =>
-            Pango.unitsToDouble(current.getSize()) === nextSize ? current : fontDescriptionWithSize(current, nextSize));
+            Pango.unitsToDouble(current.getSize()) === nextSize ? current : fontDescriptionWithSize(current, nextSize),
+        );
     };
 
     return {
-        fontDesc, setFontDesc,
-        checkStates, setCheckStates,
-        radioStates, setRadioStates,
-        fgColor, setFgColor,
-        bgColor, setBgColor,
-        size, setSize,
-        letterSpacing, setLetterSpacing,
-        lineHeight, setLineHeight,
-        viewMode, setViewMode,
-        previewText, setPreviewText,
-        previewSelection, setPreviewSelection,
-        sampleCounterRef, savedTextRef,
-        previewLabelRef, editTextViewRef,
-        editTextTagRef, editScrolledWindowRef,
+        fontDesc,
+        setFontDesc,
+        checkStates,
+        setCheckStates,
+        radioStates,
+        setRadioStates,
+        fgColor,
+        setFgColor,
+        bgColor,
+        setBgColor,
+        size,
+        setSize,
+        letterSpacing,
+        setLetterSpacing,
+        lineHeight,
+        setLineHeight,
+        viewMode,
+        setViewMode,
+        previewText,
+        setPreviewText,
+        previewSelection,
+        setPreviewSelection,
+        sampleCounterRef,
+        savedTextRef,
+        previewLabelRef,
+        editTextViewRef,
+        editTextTagRef,
+        editScrolledWindowRef,
     };
 }
 
@@ -914,7 +927,7 @@ const SliderScaleCell = (props: SliderEntryRowProps) => (
             hexpand
             widthRequest={100}
             valign={Gtk.Align.BASELINE_FILL}
-            adjustment={(
+            adjustment={
                 <GtkAdjustment
                     value={props.value}
                     lower={props.lower}
@@ -922,7 +935,7 @@ const SliderScaleCell = (props: SliderEntryRowProps) => (
                     stepIncrement={props.stepIncrement}
                     pageIncrement={props.pageIncrement}
                 />
-            )}
+            }
             onValueChanged={(scale) => {
                 props.onValueChanged(scale.getValue());
             }}
@@ -960,11 +973,11 @@ const FontFeaturesExpander = ({ state, handlers }: FontFeaturesSectionProps) => 
     return (
         <GtkExpander
             name="features-expander"
-            labelWidget={(
+            labelWidget={
                 <GtkLabel xalign={0} marginTop={10} marginBottom={10} cssClasses={["title-4"]}>
                     OpenType Features
                 </GtkLabel>
-            )}
+            }
         >
             <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                 {FEATURE_GROUPS.map((group) => (
@@ -1042,27 +1055,29 @@ const FeatureGroupBox = ({
         <GtkLabel xalign={0} halign={Gtk.Align.START} marginTop={10} marginBottom={10} cssClasses={["heading"]}>
             {group.title}
         </GtkLabel>
-        {group.type === "radio"
-            ? <FeatureRadioGroup group={group} radioStates={radioStates} onSelectRadio={onSelectRadio} />
-            : group.tags.map((tag) => (
-                    <GtkCheckButton
-                        key={tag}
-                        label={getFeatureDisplayName(tag)}
-                        active={checkStates.get(tag) === "active"}
-                        inconsistent={checkStates.get(tag) === "inconsistent"}
-                        onToggled={() => {
-                            onToggleCheck(tag);
-                        }}
-                        controllers={(
-                            <GtkGestureClick
-                                button={3}
-                                onPressed={() => {
-                                    onResetToInconsistent(tag);
-                                }}
-                            />
-                        )}
-                    />
-                ))}
+        {group.type === "radio" ? (
+            <FeatureRadioGroup group={group} radioStates={radioStates} onSelectRadio={onSelectRadio} />
+        ) : (
+            group.tags.map((tag) => (
+                <GtkCheckButton
+                    key={tag}
+                    label={getFeatureDisplayName(tag)}
+                    active={checkStates.get(tag) === "active"}
+                    inconsistent={checkStates.get(tag) === "inconsistent"}
+                    onToggled={() => {
+                        onToggleCheck(tag);
+                    }}
+                    controllers={
+                        <GtkGestureClick
+                            button={3}
+                            onPressed={() => {
+                                onResetToInconsistent(tag);
+                            }}
+                        />
+                    }
+                />
+            ))
+        )}
     </GtkBox>
 );
 
@@ -1276,7 +1291,7 @@ const FontFeaturesEditView = ({
             ref={textViewRef}
             wrapMode={Gtk.WrapMode.WORD}
             valign={Gtk.Align.FILL}
-            buffer={(
+            buffer={
                 <GtkTextBuffer onChanged={applyEditTag}>
                     <GtkTextTag
                         ref={textTagRef}
@@ -1287,22 +1302,15 @@ const FontFeaturesEditView = ({
                         fontFeatures={fontFeatures}
                     />
                 </GtkTextBuffer>
-            )}
+            }
         />
     );
 };
 
 const FontFeaturesPreview = (props: FontFeaturesPreviewProps) => {
     const { state, styles, handlers, stackPage, previewAttributes } = props;
-    const {
-        editScrolledWindowRef,
-        editTextViewRef,
-        editTextTagRef,
-        fontDesc,
-        fgColor,
-        letterSpacing,
-        lineHeight,
-    } = state;
+    const { editScrolledWindowRef, editTextViewRef, editTextTagRef, fontDesc, fgColor, letterSpacing, lineHeight } =
+        state;
     const { bgStyle, pangoFontFeaturesString } = styles;
 
     return (
@@ -1391,12 +1399,12 @@ const didHandleEscape = (state: FontFeaturesState): boolean => {
 const FontFeaturesEscapeController = ({ state }: { state: FontFeaturesState }) => (
     <GtkShortcutController
         scope={Gtk.ShortcutScope.MANAGED}
-        shortcuts={(
+        shortcuts={
             <GtkShortcut
                 trigger={<GtkShortcutTrigger accelerator="Escape" />}
                 action={<GtkCallbackAction callback={() => didHandleEscape(state)} />}
             />
-        )}
+        }
     />
 );
 
@@ -1420,7 +1428,7 @@ function FontFeaturesTitlebar() {
     return (
         <GtkHeaderBar
             name="font-features-header"
-            start={(
+            start={
                 <GtkButton
                     name="reset"
                     accessibleLabel="Reset"
@@ -1428,7 +1436,7 @@ function FontFeaturesTitlebar() {
                     tooltipText="Reset"
                     onClicked={handlers.resetAll}
                 />
-            )}
+            }
         />
     );
 }

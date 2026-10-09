@@ -41,7 +41,4 @@ const hasUnsupportedNestedArrayParameter = (library: Library, parameter: GirPara
     (parameter.direction !== "out" && hasUnsupportedNestedArrayInput(library, parameter.type)) ||
     (parameter.direction !== "in" && hasUnsupportedNestedArrayOutput(library, parameter.type));
 
-export {
-    hasUnsupportedNestedArrayOutput,
-    hasUnsupportedNestedArrayParameter,
-};
+export { hasUnsupportedNestedArrayOutput, hasUnsupportedNestedArrayParameter };

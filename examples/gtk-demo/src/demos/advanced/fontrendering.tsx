@@ -592,7 +592,8 @@ function useOverlayAnimation(state: FontRenderingState) {
             pixelAlphaRef,
             outlineAlphaRef,
             setIsAnimating,
-        }));
+        }),
+    );
 }
 
 const drawSmallSurface = (ctx: DrawTextModeContext) => {
@@ -846,7 +847,7 @@ function FontRenderingTitlebar() {
     return (
         <GtkHeaderBar
             name="fontrendering-header"
-            titleWidget={(
+            titleWidget={
                 <GtkBox cssClasses={["linked"]}>
                     <GtkToggleButton
                         ref={setTextToggle}
@@ -869,7 +870,7 @@ function FontRenderingTitlebar() {
                         }}
                     />
                 </GtkBox>
-            )}
+            }
         />
     );
 }
@@ -1095,11 +1096,11 @@ function FontRenderingProvider({ children }: DemoProviderProps) {
 const FontRenderingZoomShortcuts = ({ zoomIn, zoomOut }: ZoomShortcutsProps) => (
     <GtkShortcutController
         scope={Gtk.ShortcutScope.MANAGED}
-        shortcuts={(
+        shortcuts={
             <>
                 <GtkShortcut
                     trigger={<GtkShortcutTrigger accelerator="<Control>plus" />}
-                    action={(
+                    action={
                         <GtkCallbackAction
                             callback={() => {
                                 zoomIn();
@@ -1107,11 +1108,11 @@ const FontRenderingZoomShortcuts = ({ zoomIn, zoomOut }: ZoomShortcutsProps) => 
                                 return true;
                             }}
                         />
-                    )}
+                    }
                 />
                 <GtkShortcut
                     trigger={<GtkShortcutTrigger accelerator="<Control>minus" />}
-                    action={(
+                    action={
                         <GtkCallbackAction
                             callback={() => {
                                 zoomOut();
@@ -1119,10 +1120,10 @@ const FontRenderingZoomShortcuts = ({ zoomIn, zoomOut }: ZoomShortcutsProps) => 
                                 return true;
                             }}
                         />
-                    )}
+                    }
                 />
             </>
-        )}
+        }
     />
 );
 

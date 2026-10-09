@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { callTool, isToolFailure } from "./app-session.js";
-import {
-    referenceSession,
-    REQUEST_OPTIONS,
-} from "./reference-session.js";
+import { referenceSession, REQUEST_OPTIONS } from "./reference-session.js";
 
 const { apiDocs, state } = referenceSession();
 
@@ -30,14 +27,17 @@ describe("gtkx_get_api_docs", () => {
 
     it("lists the candidates behind an ambiguous name", async () => {
         const ambiguous = await callTool(
-            state.server.client, "gtkx_get_api_docs", { symbol: "Orientation" }, REQUEST_OPTIONS,
+            state.server.client,
+            "gtkx_get_api_docs",
+            { symbol: "Orientation" },
+            REQUEST_OPTIONS,
         );
         expect(JSON.stringify(ambiguous)).toContain("Gtk.Orientation");
     });
 
     it("fails for a symbol the bindings do not declare", async () => {
-        expect(await isToolFailure(
-            state.server.client, "gtkx_get_api_docs", { symbol: "Gtk.Absent" }, REQUEST_OPTIONS,
-        )).toBe(true);
+        expect(
+            await isToolFailure(state.server.client, "gtkx_get_api_docs", { symbol: "Gtk.Absent" }, REQUEST_OPTIONS),
+        ).toBe(true);
     });
 });

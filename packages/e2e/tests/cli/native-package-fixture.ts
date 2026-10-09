@@ -29,11 +29,14 @@ const installNativePackage = (root: string, layout: NativeLayout): void => {
     } else if (layout === "installed") {
         const platform = join(destination, "node_modules", PACKAGE_NAME);
         mkdirSync(platform, { recursive: true });
-        writeFileSync(join(platform, "package.json"), JSON.stringify({
-            name: PACKAGE_NAME,
-            version: nativeManifest.version,
-            main: BINARY_NAME,
-        }));
+        writeFileSync(
+            join(platform, "package.json"),
+            JSON.stringify({
+                name: PACKAGE_NAME,
+                version: nativeManifest.version,
+                main: BINARY_NAME,
+            }),
+        );
         copyFileSync(join(NATIVE_ROOT, BINARY_NAME), join(platform, BINARY_NAME));
     }
 };

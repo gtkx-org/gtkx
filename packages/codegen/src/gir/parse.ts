@@ -135,7 +135,8 @@ const nodePosition = (node: RawNode): number => {
 };
 
 const getOrderedChildren = (node: RawNode, tags: string[]): { tag: string; node: RawNode }[] =>
-    tags.flatMap((tag) => getChildren(node, tag).map((child) => ({ tag, node: child })))
+    tags
+        .flatMap((tag) => getChildren(node, tag).map((child) => ({ tag, node: child })))
         .toSorted((left, right) => nodePosition(left.node) - nodePosition(right.node));
 
 const getChild = (node: RawNode | undefined, tag: string): RawNode | undefined => {

@@ -31,7 +31,7 @@ const routerStoppedError = (): Error => new Error("GTKX MCP server stopped while
 const appWaitTimeoutError = (timeout: number): Error =>
     new Error(
         `Timeout waiting for app registration after ${String(timeout)}ms. ` +
-        "Make sure your GTKX app is running with 'gtkx dev'.",
+            "Make sure your GTKX app is running with 'gtkx dev'.",
     );
 
 function appRegisteredEvent(info: AppInfo): AppRegisteredEvent {
@@ -176,7 +176,10 @@ class AppRouter extends EventTarget {
     }
 
     getApps(): AppInfo[] {
-        return this.apps.values().map((app) => app.info).toArray();
+        return this.apps
+            .values()
+            .map((app) => app.info)
+            .toArray();
     }
 
     hasConnectedApps(): boolean {

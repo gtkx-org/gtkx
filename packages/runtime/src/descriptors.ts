@@ -104,10 +104,7 @@ type BoxedOptions = {
 } & Pick<BoxedDescriptor, "isValueSafe">;
 
 /** Callback result, closure ownership, and lifetime options. */
-type CallbackOptions = Pick<
-    CallbackDescriptor,
-    "hasDestroy" | "hasUserData" | "userDataIndex" | "canThrow"
-> & {
+type CallbackOptions = Pick<CallbackDescriptor, "hasDestroy" | "hasUserData" | "userDataIndex" | "canThrow"> & {
     [Key in "destroyKind" | "scope"]?: CallbackDescriptor[Key] | undefined;
 };
 
@@ -217,11 +214,7 @@ const isGtypeDescriptor = (descriptor: Descriptor): descriptor is TypeDescriptor
     descriptor.kind === "biguint64" && "type" in descriptor;
 
 /** Builds a C-string descriptor, including optional buffer length and record-owned storage. */
-const stringT = (
-    ownership: Ownership = "borrowed",
-    length?: number,
-    hasOwnedStorage?: boolean,
-): StringDescriptor => {
+const stringT = (ownership: Ownership = "borrowed", length?: number, hasOwnedStorage?: boolean): StringDescriptor => {
     const result: StringDescriptor = { kind: "string", ownership };
 
     if (length !== undefined) {
@@ -271,12 +264,7 @@ const hashTableT = (
 });
 
 /** Builds an enum descriptor from a GType function or an explicit set of members. */
-const enumT = (
-    sharedLibrary: string,
-    typeFnName: string,
-    isSigned: boolean,
-    members?: number[],
-): EnumDescriptor => {
+const enumT = (sharedLibrary: string, typeFnName: string, isSigned: boolean, members?: number[]): EnumDescriptor => {
     const result: EnumDescriptor = {
         kind: "enum",
         sharedLibrary,

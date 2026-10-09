@@ -17,15 +17,7 @@ import {
     GtkSwitch,
     GtkViewport,
 } from "@gtkx/jsx/gtk";
-import {
-    type Dispatch,
-    type ReactNode,
-    type RefCallback,
-    type SetStateAction,
-    useMemo,
-    useRef,
-    useState,
-} from "react";
+import { type Dispatch, type ReactNode, type RefCallback, type SetStateAction, useMemo, useRef, useState } from "react";
 import type { Demo } from "../types.js";
 import sourceCode from "./listbox-controls.tsx?raw";
 
@@ -121,11 +113,7 @@ const LabeledRow = ({
     mnemonicWidget,
     children,
 }: LabeledRowProps) => (
-    <GtkListBoxRow
-        selectable={false}
-        activatable={isActivatable}
-        accessibleLabel={labelText.replace("_", "")}
-    >
+    <GtkListBoxRow selectable={false} activatable={isActivatable} accessibleLabel={labelText.replace("_", "")}>
         <GtkBox>
             <GtkLabel
                 ref={labelRef}

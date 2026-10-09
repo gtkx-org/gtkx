@@ -14,15 +14,14 @@ describe("reference configuration updates", () => {
         writeFileSync(
             join(project, "gtkx.config.mjs"),
             'import libraries from "./libraries.mjs";\n' +
-            'export default { applicationId: "org.gtkx.reference", libraries };\n',
+                'export default { applicationId: "org.gtkx.reference", libraries };\n',
         );
 
         try {
             expect(await listApi({ projectRoot: project })).toContain("GtkSource");
             writeFileSync(dependency, "export default undefined;\n");
 
-            await expect.poll(() => listApi({ projectRoot: project }))
-                .not.toContain("GtkSource");
+            await expect.poll(() => listApi({ projectRoot: project })).not.toContain("GtkSource");
         } finally {
             rmSync(project, { recursive: true, force: true });
         }

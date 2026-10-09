@@ -4,27 +4,27 @@ packages:
   - website
 
 catalog:
-  '@types/ejs': ^3.1.5
-  '@types/node': ^26.5.1
-  '@types/react': ^19.3.0
+  "@types/ejs": ^3.1.5
+  "@types/node": ^26.5.1
+  "@types/react": ^19.3.0
   ejs: ^6.0.1
   react: ^19.3.0
-  typescript: ^6.0.3
+  typescript: npm:@typescript/typescript6@^6.0.2
   vite: ^8.3.2
   vitest: 5.0.3
   yaml: ^2.9.1
   zod: ^4.6.5
 
 allowBuilds:
-  '@swc/core': true
+  "@swc/core": true
   esbuild: true
   nx: true
 
 overrides:
-  'nx>smol-toml': ^1.8.0
+  "nx>smol-toml": ^1.8.0
   axios: ^1.20.0
   brace-expansion: ^5.0.12
 
 patchedDependencies:
   # TODO: Remove this patch once reconciler declarations use compatible React Context and Portal types. https://github.com/gtkx-org/gtkx/issues/752
-  '@types/react-reconciler@0.33.0': patches/@types__react-reconciler@0.33.0.patch
+  "@types/react-reconciler@0.33.0": patches/@types__react-reconciler@0.33.0.patch

@@ -20,18 +20,22 @@ const createControlledComponent = <P extends GObject.Object, V>(
     const ControlledElement = (props: Props): ReactNode => {
         const ref = useRef<P | null>(null);
         const mergedRef = useMergedRef(props.ref as Ref<P> | undefined, ref);
-        const value = operations.parse === undefined ? props[prop] as V | undefined : operations.parse(props[prop]);
+        const value = operations.parse === undefined ? (props[prop] as V | undefined) : operations.parse(props[prop]);
         const notify = useControlledValue(ref, value, prop, operations);
-        const context = useMemo(() => operations.adoptedChildType === undefined
-            ? null
-            : { typeName: operations.adoptedChildType, notify }, [notify]);
+        const context = useMemo(
+            () =>
+                operations.adoptedChildType === undefined ? null : { typeName: operations.adoptedChildType, notify },
+            [notify],
+        );
         const nativeProps = { ...props, ref: mergedRef };
         Reflect.deleteProperty(nativeProps, prop);
         const element = <Component {...nativeProps} />;
 
-        return context === null
-            ? element
-            : <ControlledChildrenContext value={context}>{element}</ControlledChildrenContext>;
+        return context === null ? (
+            element
+        ) : (
+            <ControlledChildrenContext value={context}>{element}</ControlledChildrenContext>
+        );
     };
 
     return ControlledElement;

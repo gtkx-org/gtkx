@@ -6,7 +6,7 @@ import { didSettle, drainAfterEachTest } from "./helpers/memory.js";
 drainAfterEachTest();
 
 const MATCH_METHODS = ["match", "matchAll", "matchFull", "matchAllFull"] as const;
-type MatchMethod = typeof MATCH_METHODS[number];
+type MatchMethod = (typeof MATCH_METHODS)[number];
 
 const encoder = new TextEncoder();
 const BYTE_SUBJECTS = [
@@ -18,9 +18,7 @@ const match = (method: MatchMethod, subject: string): MatchInfo => {
     const regex = Regex.new("é+", 0, 0);
     assert(regex);
 
-    return method === "match" || method === "matchAll"
-        ? regex[method](subject, 0)[1]
-        : regex[method](subject, 0, 0)[1];
+    return method === "match" || method === "matchAll" ? regex[method](subject, 0)[1] : regex[method](subject, 0, 0)[1];
 };
 
 const storeCopy = (info: MatchInfo): { value: Value; original: WeakRef<MatchInfo> } => {
@@ -46,8 +44,8 @@ const storeNested = (): { value: Value; original: WeakRef<MatchInfo> } => {
 };
 
 const replaceAndStore = (
-    replace: (regex: Regex, shouldStop: RegexEvalCallback) => string =
-        (regex, shouldStop) => regex.replaceEval("é one two", 0, 0, shouldStop),
+    replace: (regex: Regex, shouldStop: RegexEvalCallback) => string = (regex, shouldStop) =>
+        regex.replaceEval("é one two", 0, 0, shouldStop),
 ): {
     value: Value;
     original: WeakRef<MatchInfo>;
@@ -158,8 +156,8 @@ describe("regex match ownership through native values", () => {
 
     it.each(BYTE_SUBJECTS)("retains $label callback text after collection", async ({ create }) => {
         const subject = create("é one two");
-        const { value, original, builder, result, words } = replaceAndStore(
-            (regex, shouldStop) => regex.replaceEval(subject, 0, 0, shouldStop),
+        const { value, original, builder, result, words } = replaceAndStore((regex, shouldStop) =>
+            regex.replaceEval(subject, 0, 0, shouldStop),
         );
         subject.fill(0);
         expect(result).toBe("é [one] [two]");
@@ -178,16 +176,20 @@ describe("regex match ownership through native values", () => {
         const regex = Regex.new("é+", 0, 0);
         assert(regex);
         expect(() => regex.matchFull("éé", 1, 0)).toThrow();
-        expect(() => regex.replaceEval("éé", 0, 0, () => {
-            throw new Error("replacement failed");
-        })).toThrow();
-        expect(regex.replaceEval(["é", "é"], 0, 0, (info, builder) => {
-            const text = info.fetch(0);
-            assert(text !== null);
-            builder.append(text);
+        expect(() =>
+            regex.replaceEval("éé", 0, 0, () => {
+                throw new Error("replacement failed");
+            }),
+        ).toThrow();
+        expect(
+            regex.replaceEval(["é", "é"], 0, 0, (info, builder) => {
+                const text = info.fetch(0);
+                assert(text !== null);
+                builder.append(text);
 
-            return false;
-        })).toBe("éé");
+                return false;
+            }),
+        ).toBe("éé");
         expect(regex.match("éé", 0)[1].fetch(0)).toBe("éé");
     });
 });

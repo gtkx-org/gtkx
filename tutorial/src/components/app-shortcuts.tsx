@@ -1,10 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import {
-    GtkCallbackAction,
-    GtkShortcut,
-    GtkShortcutController,
-    GtkShortcutTrigger,
-} from "@gtkx/jsx/gtk";
+import { GtkCallbackAction, GtkShortcut, GtkShortcutController, GtkShortcutTrigger } from "@gtkx/jsx/gtk";
 import { openTaskId } from "../navigation.js";
 import { useStore } from "../store/index.js";
 import { useRequestDeleteTask } from "./dialogs.js";
@@ -39,16 +34,14 @@ const AppShortcuts = () => {
     return (
         <GtkShortcutController
             scope={Gtk.ShortcutScope.GLOBAL}
-            shortcuts={(
+            shortcuts={
                 <>
                     {shortcut("<Control>f", didToggleSearch)}
                     {shortcut("Delete", didDeleteOpenTask)}
                 </>
-            )}
+            }
         />
     );
 };
 
-export {
-    AppShortcuts,
-};
+export { AppShortcuts };

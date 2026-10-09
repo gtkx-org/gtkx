@@ -139,10 +139,7 @@ const readSource = (path: string): string | null => {
     }
 };
 
-const parseImportsInWith = (
-    path: string,
-    staticSources: (module: ParsedModule) => string[],
-): SourceImport[] | null => {
+const parseImportsInWith = (path: string, staticSources: (module: ParsedModule) => string[]): SourceImport[] | null => {
     if (sourceLanguage(path) === undefined) {
         return [];
     }

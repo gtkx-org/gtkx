@@ -40,14 +40,7 @@ type ParameterPair = {
     inherited: GirParameter;
 };
 
-const RESERVED_SIGNAL_MEMBERS = new Set([
-    "connect",
-    "disconnect",
-    "emit",
-    "on",
-    "once",
-    "off",
-]);
+const RESERVED_SIGNAL_MEMBERS = new Set(["connect", "disconnect", "emit", "on", "once", "off"]);
 
 const resolveDirectInterfaces = (
     context: AncestryContext,
@@ -316,8 +309,8 @@ const reconcileAccessorType = (
 
     throw new Error(
         `Cannot type the ${direction} accessor of ${jsName}: ${declared.owner} declares it as ${declared.type} ` +
-        `and ${candidate.owner} declares it as ${candidate.type}. Both are bases of the same class, so no single ` +
-        "member satisfies them; correct the GIR the disagreeing base comes from.",
+            `and ${candidate.owner} declares it as ${candidate.type}. Both are bases of the same class, so no single ` +
+            "member satisfies them; correct the GIR the disagreeing base comes from.",
     );
 };
 
@@ -379,11 +372,7 @@ const collectInheritedMethods = (context: ModuleContext, klass: GirClass): Inher
     return accumulator;
 };
 
-const absorbInheritedMethods = (
-    context: ModuleContext,
-    klass: GirClass,
-    accumulator: InheritedMethods,
-): void => {
+const absorbInheritedMethods = (context: ModuleContext, klass: GirClass, accumulator: InheritedMethods): void => {
     const scope = instanceScope(klass.name, klass);
 
     for (const method of klass.methods) {
@@ -445,11 +434,7 @@ const hasEnumConflict = (
     return ownEnum !== undefined && inheritedEnum !== undefined && ownEnum !== inheritedEnum;
 };
 
-const hasDroppedCallbackParameter = (
-    context: ModuleContext,
-    own: GirFunction,
-    inherited: GirFunction,
-): boolean => {
+const hasDroppedCallbackParameter = (context: ModuleContext, own: GirFunction, inherited: GirFunction): boolean => {
     const ownCount = inputParameters(context.library, own).length;
 
     return inputParameters(context.library, inherited)
@@ -470,8 +455,7 @@ const hasParameterConflict = (context: ModuleContext, own: GirFunction, inherite
 
     return inputParameterPairs(context, own, inherited).some(
         (pair) =>
-            hasEnumConflict(context, pair.own.type, pair.inherited.type) ||
-            !areParametersComparable(context, pair),
+            hasEnumConflict(context, pair.own.type, pair.inherited.type) || !areParametersComparable(context, pair),
     );
 };
 

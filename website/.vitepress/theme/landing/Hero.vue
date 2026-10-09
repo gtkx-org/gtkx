@@ -8,42 +8,42 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
 </script>
 
 <template>
-  <section id="top" class="hero">
-    <span class="glow" />
-    <div class="hero__grid stack-md">
-      <div class="hero__col">
-        <p class="overline hero__eyebrow">// React · Node · TypeScript · libadwaita · GTK4</p>
-        <h1 class="hero__title">
-          The React framework for <span class="gtkx-gradient-text">Linux</span>
-        </h1>
-        <p class="hero__lede">
-          Build native apps with Adwaita and GTK widgets, TypeScript, and the Node.js ecosystem.
-        </p>
-        <div class="hero__actions">
-          <div id="install" class="hero__install">
-            <CodeBlock variant="terminal" :frame="false" :code="CREATE_COMMAND" />
-          </div>
-          <div class="hero__cta">
-            <Button size="lg" :href="docsLink('guide/getting-started')">
-              {{ featuredVersion.status === "prerelease" ? "Try the beta" : "Get started" }}
-              <template #icon-right><Icon name="arrow" :size="17" /></template>
-            </Button>
-            <Button size="lg" variant="secondary" :href="REPO_URL">
-              <template #icon-left><Icon name="github" /></template>
-              View on GitHub
-            </Button>
-          </div>
-          <p v-if="featuredVersion.status === 'prerelease'" class="hero__version">
-            Prefer the stable release?
-            <a :href="documentationLink(currentVersion, 'guide/getting-started')">Use GTKX {{ currentVersion.label }}.</a>
-          </p>
+    <section id="top" class="hero">
+        <span class="glow" />
+        <div class="hero__grid stack-md">
+            <div class="hero__col">
+                <p class="overline hero__eyebrow">// React · Node · TypeScript · libadwaita · GTK4</p>
+                <h1 class="hero__title">The React framework for <span class="gtkx-gradient-text">Linux</span></h1>
+                <p class="hero__lede">
+                    Build native apps with Adwaita and GTK widgets, TypeScript, and the Node.js ecosystem.
+                </p>
+                <div class="hero__actions">
+                    <div id="install" class="hero__install">
+                        <CodeBlock variant="terminal" :frame="false" :code="CREATE_COMMAND" />
+                    </div>
+                    <div class="hero__cta">
+                        <Button size="lg" :href="docsLink('guide/getting-started')">
+                            {{ featuredVersion.status === "prerelease" ? "Try the beta" : "Get started" }}
+                            <template #icon-right><Icon name="arrow" :size="17" /></template>
+                        </Button>
+                        <Button size="lg" variant="secondary" :href="REPO_URL">
+                            <template #icon-left><Icon name="github" /></template>
+                            View on GitHub
+                        </Button>
+                    </div>
+                    <p v-if="featuredVersion.status === 'prerelease'" class="hero__version">
+                        Prefer the stable release?
+                        <a :href="documentationLink(currentVersion, 'guide/getting-started')"
+                            >Use GTKX {{ currentVersion.label }}.</a
+                        >
+                    </p>
+                </div>
+            </div>
+            <div class="hero__col hero__visual">
+                <CodeBlock title="src/index.tsx" :snippet="snippets.hero" />
+            </div>
         </div>
-      </div>
-      <div class="hero__col hero__visual">
-        <CodeBlock title="src/index.tsx" :snippet="snippets.hero" />
-      </div>
-    </div>
-  </section>
+    </section>
 </template>
 
 <style scoped>

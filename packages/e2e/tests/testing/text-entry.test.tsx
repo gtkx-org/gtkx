@@ -14,7 +14,7 @@ const ControlledNotes = ({ initial }: { initial: string }): ReactNode => {
 
     return (
         <GtkTextView
-            buffer={(
+            buffer={
                 <GtkTextBuffer
                     enableUndo
                     text={notes}
@@ -22,7 +22,7 @@ const ControlledNotes = ({ initial }: { initial: string }): ReactNode => {
                         setNotes(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), false));
                     }}
                 />
-            )}
+            }
         />
     );
 };

@@ -37,8 +37,8 @@ const generateNamespaceModule = (namespace: GirNamespace, library: Library): Nam
     if (!context.module.hasExports()) {
         throw new Error(
             `GIR file at ${namespace.girFile} has nothing to generate: its ${namespace.name} namespace produces a ` +
-            "module with no exports, so the file is empty, truncated, or declares only entries GIR marks as not " +
-            "introspectable",
+                "module with no exports, so the file is empty, truncated, or declares only entries GIR marks as not " +
+                "introspectable",
         );
     }
 

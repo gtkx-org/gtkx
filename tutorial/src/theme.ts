@@ -6,6 +6,4 @@ const applyColorScheme = (value: string): void => {
     manager.setColorScheme(colorSchemeValue(value));
 };
 
-export {
-    applyColorScheme,
-};
+export { applyColorScheme };

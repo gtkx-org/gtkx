@@ -229,11 +229,11 @@ const buildArg = (options: BuildArgOptions, name: string, track: (alias: string)
 
 const trackInto =
     (usedTypes: Set<string>) =>
-        (alias: string): string => {
-            usedTypes.add(alias);
+    (alias: string): string => {
+        usedTypes.add(alias);
 
-            return alias;
-        };
+        return alias;
+    };
 
 const planArgs = (
     plan: CommandPlan & { isOk: true },

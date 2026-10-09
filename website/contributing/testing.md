@@ -9,18 +9,20 @@ Choose the suite that exercises the changed behavior: native widget interactions
 
 ## Where tests live
 
-| Location | Observable behavior exercised |
-| --- | --- |
-| `packages/e2e/tests` | Rendering, widget relationships, prop updates, signals, accessibility, input, runtime integration, and the testing library itself. |
-| `packages/e2e/tests/native` | Generated bindings against compiled GObject Introspection fixtures: ownership, callbacks, arrays, strings, records, errors, and object lifetimes. |
-| `packages/e2e/tests/cli`, `mcp`, and `create-gtkx` | CLI configuration, codegen, development sessions, bundling, deployment, process lifecycles, MCP sessions, and scaffolding. |
-| `packages/e2e/tests/publish.test.ts` | Installing, scaffolding, building, and testing consumer applications through a local package registry. |
-| `packages/e2e/tests/tutorial.test.ts` | The tutorial as an installed consumer, including chapter checkpoints, startup, typechecking, tests, localization, and packaging. |
-| `packages/native/tests` and `packages/runtime/tests` | Native addon and JavaScript runtime behavior. |
-| Other package `tests/` directories | Package behavior such as forms, navigation, animation, localization, and stories. |
-| `examples/gtk-demo/tests` and `examples/storybook/tests` | Native widget demonstrations and the story explorer in consuming applications. |
+| Location                                             | Observable behavior exercised                                                                                                                     |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/e2e/tests`                                 | Rendering, widget relationships, prop updates, signals, accessibility, input, runtime integration, and the testing library itself.                |
+| `packages/e2e/tests/native`                          | Generated bindings against compiled GObject Introspection fixtures: ownership, callbacks, arrays, strings, records, errors, and object lifetimes. |
+| `packages/e2e/tests/cli`, `mcp`, and `create-gtkx`   | CLI configuration, codegen, development sessions, bundling, deployment, process lifecycles, MCP sessions, and scaffolding.                        |
+| `packages/e2e/tests/publish.test.ts`                 | Installing, scaffolding, building, and testing consumer applications through a local package registry.                                            |
+| `packages/e2e/tests/tutorial.test.ts`                | The tutorial as an installed consumer, including chapter checkpoints, startup, typechecking, tests, localization, and packaging.                  |
+| `packages/native/tests` and `packages/runtime/tests` | Native addon and JavaScript runtime behavior.                                                                                                     |
+| Other package `tests/` directories                   | Package behavior such as forms, navigation, animation, localization, and stories.                                                                 |
+| `examples/storybook/tests`                           | Story explorer behavior in a consuming application.                                                                                               |
 
-Nx discovers package tests from their Vitest configurations and declares prerequisite builds and generated fixtures. Examples use package scripts so Nx can discover them before the CLI plugin is built. There is no root Vitest aggregator. `pnpm test` runs the workspace's `test` targets, while `pnpm e2e` runs the `e2e` target in `packages/e2e`. That package keeps its integration suites in `vitest.integration.config.ts` and its CLI and published-consumer suites in `vitest.config.ts`.
+Nx discovers package tests from their Vitest configurations and declares prerequisite builds and generated fixtures. The Storybook example uses a package script so Nx can discover its tests before the CLI plugin is built. There is no root Vitest aggregator. `pnpm test` runs the workspace's `test` targets, while `pnpm e2e` runs the CLI, MCP, and scaffolder checks. Published-consumer and tutorial acceptance checks run separately with `pnpm acceptance`.
+
+The `packages/e2e` directory contains several test scopes. Tests that import and call GTKX directly are integration tests; CLI and installed-consumer tests exercise its external interfaces. Their configurations are `vitest.integration.config.ts`, `vitest.config.ts`, and `vitest.acceptance.config.ts`, respectively.
 
 ## Run the relevant suite
 
@@ -56,10 +58,12 @@ The shared Vitest configuration derives its worker limit from available CPU para
 GTKX_MAX_WORKERS=2 pnpm nx run @gtkx/e2e:test
 ```
 
-The `test` target runs query performance checks separately with one worker through its private `_test:performance` dependency. Focus that suite when changing query performance:
+The animated, Cairo, components, CSS, forms, i18n, navigation, runtime, and Storybook package suites cache transformed modules in `node_modules/.vitest-cache` between runs. File contents, Vitest configuration, and the lockfile determine cache validity. To investigate a suspected cache issue, pass `--fsModuleCache=false` to Vitest or clear its cache from the package directory with `pnpm exec vitest --clearCache`.
+
+Query performance checks run separately with one worker. Run them when changing query performance:
 
 ```bash
-pnpm nx run @gtkx/e2e:_test:performance
+pnpm benchmark
 ```
 
 ## How native tests run headlessly
@@ -92,23 +96,26 @@ pnpm nx run @gtkx/e2e:test -- --project=e2e-native
 
 Its configuration adds the fixture shared libraries to the loader path and enables available glibc heap checks. Tests use explicit garbage collection where object lifetime behavior requires it.
 
-The native package's shared `test` target also runs AddressSanitizer through its private `_test:asan` dependency:
+Run the native package's ordinary tests and AddressSanitizer separately:
 
 ```bash
 pnpm nx run @gtkx/native:test
+pnpm test:asan
 ```
 
 The sanitizer run tests both the addon and generated binding fixtures with leak detection. It requires the nightly Rust toolchain pinned in `packages/native/tools/rust-toolchain.toml` and the `libasan.so.8` runtime. It selects the host's x64 or arm64 Linux target and writes a separate instrumented addon under `packages/native/build/asan`, using `packages/native/target/asan` for compilation. A Node preload redirects GTKX's addon imports to the instrumented binary in sanitizer processes. Other native addons keep their usual resolution, and the ordinary GTKX binary remains available to other targets.
+
+CI's required `tests` check also runs AddressSanitizer when the sanitizer target's inputs are affected. It uses Nx's task-level affected detection with `NX_LEGACY_AFFECTED=false`. Manually dispatching the complete CI workflow includes the sanitizer run; the Native safety workflow runs it independently on manual dispatch.
 
 ## Consumer and packaging checks
 
 Workspace imports can pass while a published package is missing a file, export, template, or dependency. The published-consumer Vitest project installs packages from a private Verdaccio registry. Nx builds the package set before the tests; Vitest's global setup publishes it once per run and closes the registry afterward.
 
-Both suites are part of `pnpm e2e`. Select one through Nx when working on package contents or deployment:
+Run both suites with `pnpm acceptance`. Select one when working on package contents or deployment:
 
 ```bash
-pnpm nx run @gtkx/e2e:e2e -- tests/publish.test.ts
-pnpm nx run @gtkx/e2e:e2e -- tests/tutorial.test.ts
+pnpm acceptance -- tests/publish.test.ts
+pnpm acceptance -- tests/tutorial.test.ts
 ```
 
 The registry starts through `gtkx:local-registry`. Its configuration in `.verdaccio/config.yml` keeps `@gtkx/*` and `create-gtkx` local while forwarding other packages to npm. Test runs use temporary storage and isolated npm configuration. They need network access for upstream dependencies and the relevant system packaging tools.
@@ -139,9 +146,11 @@ pnpm typecheck
 pnpm lint
 ```
 
-These root commands are aliases for `nx run-many -t <target>`. `pnpm lint` includes ESLint, Codescythe, actionlint, ShellCheck, rustfmt, Clippy, and cargo-audit through the graph. CI exposes five checks: tests, build, typecheck, lint, and e2e. Typechecking runs separately from the build.
+These root commands invoke `nx run-many -t <target>`. `pnpm lint` includes Oxlint, scoped ESLint compatibility checks, Oxfmt, Codescythe, workflow checks, container execution checks, rustfmt, and Clippy, then runs the uncached cargo-audit target. CI exposes five checks: tests, build, typecheck, lint, and e2e. Pull requests, pushes, and merge queues run affected Nx targets; manually dispatching CI runs the complete groups. Typechecking remains a separate task in the combined distributed graph.
 
-The e2e check combines eight Vitest shards on separate runners, each with its own registry setup. Reproduce one shard with `pnpm e2e -- --shard=1/8`; `pnpm e2e` still runs the complete suite locally.
+Nx discovers one `e2e-ci--<test-file>` target per CLI E2E file and schedules these through the aggregate `@gtkx/e2e:e2e-ci` target. Each file declares its build and generated binding prerequisites. This lets Nx schedule and cache files independently. `pnpm e2e` still runs the complete CLI group locally; use Vitest file filters for a focused run. Acceptance tests create their registry once in a separate run.
+
+CI selects published-consumer acceptance checks for changes to tutorial content, scaffolding, packaging, and release infrastructure, using the paths declared in `.github/workflows/ci.yml`. It calls the reusable Published consumers workflow, whose result contributes to the required `e2e` check alongside the distributed checks. A manual CI run includes acceptance checks, and Published consumers can also be dispatched independently. Publishing a release validates the staged packages with the published-consumer acceptance suite before publishing them to npm.
 
 Run `pnpm nx run gtkx:_lint:workflows` to check workflows and composite action steps, including their inline shell commands. The target feeds composite steps to actionlint as a temporary workflow, so composite diagnostics refer to the transformed YAML. See [Development Setup](/contributing/development#prerequisites) for the Go, ShellCheck, and cargo-audit prerequisites. `pnpm nx run @gtkx/native:_lint:audit` checks current RustSec advisories without caching the result.
 

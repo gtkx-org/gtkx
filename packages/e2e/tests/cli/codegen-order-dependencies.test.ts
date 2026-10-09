@@ -1,13 +1,7 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createCliProject, runCliOrThrow } from "./cli-project.js";
-import {
-    configure,
-    constantGir,
-    dependentGir,
-    importValue,
-    writeGir,
-} from "./codegen-freshness-fixture.js";
+import { configure, constantGir, dependentGir, importValue, writeGir } from "./codegen-freshness-fixture.js";
 
 describe("gtkx codegen GIR freshness", () => {
     it("follows root traversal order for shared dependency versions", () => {

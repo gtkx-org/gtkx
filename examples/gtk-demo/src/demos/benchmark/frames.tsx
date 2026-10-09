@@ -19,8 +19,7 @@ const COLOR_WIDGET_TYPE_NAME = "GtkxFramesColorWidget";
 const TIME_SPAN_US = 3_000_000;
 const RANDOM_UNIT_STEPS = 1_000_000;
 
-const GtkxFramesColorWidget: (props: ColorWidgetProps) => ReactNode =
-    createElementComponent(COLOR_WIDGET_TYPE_NAME);
+const GtkxFramesColorWidget: (props: ColorWidgetProps) => ReactNode = createElementComponent(COLOR_WIDGET_TYPE_NAME);
 
 const FramesContext = createContext<FramesContextValue | null>(null);
 
@@ -99,11 +98,11 @@ function FramesTitlebar() {
     return (
         <GtkHeaderBar
             name="frames-header"
-            end={(
+            end={
                 <GtkLabel accessibleRole={Gtk.AccessibleRole.STATUS} attributes={fpsAttrs}>
                     {`${fps.toFixed(2)} fps`}
                 </GtkLabel>
-            )}
+            }
         />
     );
 }

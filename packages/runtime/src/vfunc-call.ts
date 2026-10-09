@@ -21,14 +21,21 @@ import { findClassVfuncDescriptor, findInterfaceVfuncDescriptor, vfuncArgs } fro
 type Invoker = (instance: object, inputs: unknown[]) => unknown;
 type InvokerCache = WeakMap<AnyClass, Map<string, Invoker>>;
 type ResolvedSlot = { descriptor: VfuncDescriptor; interfaceType?: bigint };
-type VfuncInput = { kind: "value"; arg: Arg; inputIndex: number } |
-    { kind: "length"; arg: Arg; sourceInputIndex: number };
+type VfuncInput =
+    | { kind: "value"; arg: Arg; inputIndex: number }
+    | { kind: "length"; arg: Arg; sourceInputIndex: number };
 
 const NO_BASELINE = -1;
 
 const SEEDED_SLOTS: Record<string, RefSeeds> = {
-    "LayoutManagerClass.measure": new Map([[6, NO_BASELINE], [7, NO_BASELINE]]),
-    "WidgetClass.measure": new Map([[5, NO_BASELINE], [6, NO_BASELINE]]),
+    "LayoutManagerClass.measure": new Map([
+        [6, NO_BASELINE],
+        [7, NO_BASELINE],
+    ]),
+    "WidgetClass.measure": new Map([
+        [5, NO_BASELINE],
+        [6, NO_BASELINE],
+    ]),
 };
 
 const parentInvokers: InvokerCache = new WeakMap();
@@ -129,8 +136,7 @@ function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, call
     return (instance, inputs) => {
         if (inputs.length !== inputCount) {
             throw new Error(
-                `${caller}: ${label} expects ${String(inputCount)} arguments, ` +
-                `received ${String(inputs.length)}`,
+                `${caller}: ${label} expects ${String(inputCount)} arguments, ` + `received ${String(inputs.length)}`,
             );
         }
 
@@ -263,7 +269,8 @@ function callVfunc(owner: AnyClass, key: string, instance: object, inputs: unkno
     const instanceType = resolveInstanceType(key, instance, slot);
 
     const invoker = cachedInvoker(vfuncInvokers, owner, `${key}:${String(instanceType)}`, () =>
-        buildInvoker(slot, instanceType, "callVfunc"));
+        buildInvoker(slot, instanceType, "callVfunc"),
+    );
 
     return invoker(instance, inputs);
 }

@@ -17,11 +17,7 @@ export {
     registerConstructProperties,
 } from "./object.js";
 export { promisify, trimFinish } from "./promisify.js";
-export {
-    coerceObjectProperty,
-    getDeclaredPropertyName,
-    isReadableProperty,
-} from "./properties.js";
+export { coerceObjectProperty, getDeclaredPropertyName, isReadableProperty } from "./properties.js";
 export {
     type Interface,
     registerClass,
@@ -92,13 +88,7 @@ export {
     typeParent,
     valueIsA,
 } from "./type.js";
-export {
-    fromValue,
-    type JsValue,
-    toValueHandle,
-    tryToValueHandle,
-    ValueMarshalError,
-} from "./value.js";
+export { fromValue, type JsValue, toValueHandle, tryToValueHandle, ValueMarshalError } from "./value.js";
 export { callParent, callVfunc } from "./vfunc-call.js";
 export { alloc, type ExternalObject, type Handle } from "@gtkx/native";
 export { type AnyClass } from "@gtkx/utils";

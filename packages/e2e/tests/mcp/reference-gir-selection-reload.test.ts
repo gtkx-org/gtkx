@@ -13,10 +13,7 @@ describe("reference configuration updates", () => {
         const later = join(project, "later");
         mkdirSync(earlier);
         mkdirSync(later);
-        const original = readFileSync(
-            new URL("../cli/fixtures/gir/Documented-1.0.gir", import.meta.url),
-            "utf8",
-        );
+        const original = readFileSync(new URL("../cli/fixtures/gir/Documented-1.0.gir", import.meta.url), "utf8");
         writeFileSync(join(later, "Documented-1.0.gir"), original);
         const config = {
             applicationId: "org.gtkx.reference",
@@ -39,8 +36,7 @@ describe("reference configuration updates", () => {
 
             await expect.poll(docs).toContain("A higher priority reference was selected.");
             rmSync(selected);
-            await expect.poll(docs)
-                .toContain("Holds a short piece of text the user jotted down.");
+            await expect.poll(docs).toContain("Holds a short piece of text the user jotted down.");
         } finally {
             rmSync(project, { recursive: true, force: true });
         }

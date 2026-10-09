@@ -10,9 +10,7 @@
     {
         "slug": "the-task-store",
         "title": "Add Tasks",
-        "dependencies": [
-            "zustand"
-        ]
+        "dependencies": ["zustand"]
     },
     {
         "slug": "completing-and-deleting",
@@ -25,10 +23,7 @@
     {
         "slug": "lists-and-the-sidebar",
         "title": "Add Lists and a Sidebar",
-        "dependencies": [
-            "@gtkx/navigation",
-            "@gtkx/css"
-        ]
+        "dependencies": ["@gtkx/navigation", "@gtkx/css"]
     },
     {
         "slug": "an-adaptive-layout",
@@ -41,9 +36,7 @@
     {
         "slug": "the-task-editor",
         "title": "Edit Tasks",
-        "dependencies": [
-            "@gtkx/forms"
-        ]
+        "dependencies": ["@gtkx/forms"]
     },
     {
         "slug": "actions-menus-shortcuts",
@@ -52,9 +45,7 @@
     {
         "slug": "trash-and-toasts",
         "title": "Add Undo and Delete Confirmation",
-        "dependencies": [
-            "@gtkx/components"
-        ]
+        "dependencies": ["@gtkx/components"]
     },
     {
         "slug": "preferences-and-theming",
@@ -79,9 +70,7 @@
     {
         "slug": "internationalization",
         "title": "Translate the App",
-        "dependencies": [
-            "@gtkx/i18n"
-        ]
+        "dependencies": ["@gtkx/i18n"]
     },
     {
         "slug": "flatpak",

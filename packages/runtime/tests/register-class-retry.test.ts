@@ -20,12 +20,14 @@ describe("registerClass retry after a rejected registration", () => {
             declare retryLevel: number;
         }
 
-        expect(() => registerClass(Retried, {
-            typeName: occupied,
-            properties: {
-                retryLevel: GObject.paramSpecInt("retry-level", null, null, 0, 10, 3, GObject.ParamFlags.READWRITE),
-            },
-        })).toThrow();
+        expect(() =>
+            registerClass(Retried, {
+                typeName: occupied,
+                properties: {
+                    retryLevel: GObject.paramSpecInt("retry-level", null, null, 0, 10, 3, GObject.ParamFlags.READWRITE),
+                },
+            }),
+        ).toThrow();
 
         registerClass(Retried, {
             typeName: uniqueName("GtkxRetryProperties"),

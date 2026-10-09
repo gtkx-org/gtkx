@@ -12,7 +12,7 @@ describe("gtkx_get_api_docs", () => {
         writeFileSync(
             join(project, "gtkx.config.mjs"),
             'export default { applicationId: "org.gtkx.reference", ' +
-            'elements: { config: { GtkButton: { omittedProps: ["label"] } } } };\n',
+                'elements: { config: { GtkButton: { omittedProps: ["label"] } } } };\n',
         );
 
         try {

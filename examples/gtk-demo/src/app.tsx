@@ -167,9 +167,10 @@ const ShortcutsDialog = ({ onClose }: ShortcutsDialogProps) => (
     </AdwShortcutsDialog>
 );
 
-const renderPageSwitcher = (stack: Adw.ViewStack | null) => stack === null
-    ? undefined
-    : <AdwViewSwitcher accessibleLabel="Demo pages" policy={Adw.ViewSwitcherPolicy.WIDE} stack={stack} />;
+const renderPageSwitcher = (stack: Adw.ViewStack | null) =>
+    stack === null ? undefined : (
+        <AdwViewSwitcher accessibleLabel="Demo pages" policy={Adw.ViewSwitcherPolicy.WIDE} stack={stack} />
+    );
 
 const renderAppMenu = () => (
     <GMenu
@@ -188,7 +189,7 @@ const renderAppMenu = () => (
 const AppHeaderBar = ({ hasDemo, isSearchActive, pageStack, onRun, onSearchToggle }: AppHeaderBarProps) => (
     <AdwHeaderBar
         titleWidget={renderPageSwitcher(pageStack)}
-        start={(
+        start={
             <>
                 <GtkButton
                     label="Run"
@@ -209,8 +210,8 @@ const AppHeaderBar = ({ hasDemo, isSearchActive, pageStack, onRun, onSearchToggl
                     focusOnClick={false}
                 />
             </>
-        )}
-        end={(
+        }
+        end={
             <GtkMenuButton
                 accessibleLabel="Main Menu"
                 tooltipText="Main Menu"
@@ -219,14 +220,14 @@ const AppHeaderBar = ({ hasDemo, isSearchActive, pageStack, onRun, onSearchToggl
                 focusOnClick={false}
                 menuModel={renderAppMenu()}
             />
-        )}
+        }
     />
 );
 
 const shortcut = (accelerator: string, run: () => void) => (
     <GtkShortcut
         trigger={<GtkShortcutTrigger accelerator={accelerator} />}
-        action={(
+        action={
             <GtkCallbackAction
                 callback={() => {
                     run();
@@ -234,20 +235,20 @@ const shortcut = (accelerator: string, run: () => void) => (
                     return true;
                 }}
             />
-        )}
+        }
     />
 );
 
 const AppShortcuts = ({ onSearchToggle, onPageNext, onPagePrev }: AppShortcutsProps) => (
     <GtkShortcutController
         scope={Gtk.ShortcutScope.GLOBAL}
-        shortcuts={(
+        shortcuts={
             <>
                 {shortcut("<Control>f", onSearchToggle)}
                 {shortcut("<Control>Page_Down", onPageNext)}
                 {shortcut("<Control>Page_Up", onPagePrev)}
             </>
-        )}
+        }
     />
 );
 
@@ -359,7 +360,7 @@ const MainWindowBody = ({
         name="main-window-body"
         vexpand
         hexpand
-        controllers={(
+        controllers={
             <AppShortcuts
                 onSearchToggle={onSearchToggle}
                 onPageNext={() => {
@@ -369,7 +370,7 @@ const MainWindowBody = ({
                     onPageChange("info");
                 }}
             />
-        )}
+        }
     >
         <Sidebar
             isSearchActive={isSearchActive}
@@ -467,7 +468,7 @@ const MainWindow = () => {
             })}
         >
             <AdwToolbarView
-                topBar={(
+                topBar={
                     <AppHeaderBar
                         hasDemo={!!currentDemo?.component}
                         isSearchActive={chrome.isSearchActive}
@@ -475,7 +476,7 @@ const MainWindow = () => {
                         onRun={handleRun}
                         onSearchToggle={search.setSearchActive}
                     />
-                )}
+                }
             >
                 <MainWindowContent
                     chrome={chrome}

@@ -1,22 +1,11 @@
 import { isPathInside, sortStrings, toPosixPath } from "@gtkx/utils";
-import {
-    copyFileSync,
-    existsSync,
-    mkdirSync,
-    readFileSync,
-    realpathSync,
-    writeFileSync,
-} from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import type { SourceImport } from "../internal/source-imports.js";
 import { I18N_TYPES_FILENAME, i18nTypesPath } from "../i18n/types.js";
 import { discoverProjectImports } from "../internal/import-scan.js";
 import { createRetainedStagingDir } from "../internal/staging-dir.js";
-import {
-    isBareRelativeAsset,
-    parseIconSpecifier,
-    parseResourceSpecifier,
-} from "../vite-plugins/asset-specifier.js";
+import { isBareRelativeAsset, parseIconSpecifier, parseResourceSpecifier } from "../vite-plugins/asset-specifier.js";
 import { compileSchemas } from "./compile.js";
 import { createSchemaResolver, type ParsedSchemaFile, parseSchemaFile } from "./parser.js";
 import { renderEnvModule } from "./render.js";
@@ -68,9 +57,7 @@ const schemaFileFor = ({ importer, source }: SourceImport): string | null =>
     isRelativeImport(source) && source.endsWith(SCHEMA_SUFFIX) ? resolve(dirname(importer), source) : null;
 
 const findImportedSchemaFiles = (imports: SourceImport[]): string[] => {
-    const files = imports
-        .map((entry) => schemaFileFor(entry))
-        .filter((path): path is string => path !== null);
+    const files = imports.map((entry) => schemaFileFor(entry)).filter((path): path is string => path !== null);
 
     return sortStrings(new Set(files));
 };
@@ -168,7 +155,7 @@ const assertUniqueSchemaBasenames = (schemaFiles: string[]): void => {
         if (owner !== undefined && owner !== filePath) {
             throw new Error(
                 `Cannot generate types for both ${owner} and ${filePath}: relative GSettings schema imports are ` +
-                `typed by basename, and both files are named ${name}. Rename one of them.`,
+                    `typed by basename, and both files are named ${name}. Rename one of them.`,
             );
         }
 

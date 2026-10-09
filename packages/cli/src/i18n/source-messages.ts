@@ -4,14 +4,7 @@ import { type NodePath, parseSync as parseBabelSync, type Scope, traverse, types
 import { isPathInside, isPathWithin, toPosixPath } from "@gtkx/utils";
 import { type GetTextTranslationRecord, po } from "gettext-parser";
 import { runExtractor } from "i18next-cli";
-import {
-    existsSync,
-    mkdirSync,
-    mkdtempSync,
-    readFileSync,
-    rmSync,
-    writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { parseSync, Visitor } from "vite";
 import type { CatalogProject } from "./catalogs.js";
@@ -122,10 +115,7 @@ const sourceErrorMessage = (error: unknown): string => {
         return String(error);
     }
 
-    if (
-        "code" in error &&
-        error.code === "BABEL_PARSE_ERROR"
-    ) {
+    if ("code" in error && error.code === "BABEL_PARSE_ERROR") {
         const separator = error.message.indexOf(": ");
 
         if (separator !== -1) {
@@ -153,9 +143,7 @@ const sourceExtractionError = (
     }
 
     const file = projectSourcePath(root, path);
-    const location = point === null
-        ? file
-        : `${file}:${String(point.line)}:${String(point.column + 1)}`;
+    const location = point === null ? file : `${file}:${String(point.line)}:${String(point.column + 1)}`;
 
     return new SourceExtractionError(`${location}: ${sourceErrorMessage(error)}`, { cause: error });
 };
@@ -186,12 +174,7 @@ const errorSourcePoint = (error: unknown): SourcePoint | null => {
     return "location" in error && isSourcePoint(error.location) ? error.location : null;
 };
 
-const atSourceNode = <T>(
-    root: string,
-    path: string,
-    node: LocatableNode,
-    operation: () => T,
-): T => {
+const atSourceNode = <T>(root: string, path: string, node: LocatableNode, operation: () => T): T => {
     try {
         return operation();
     } catch (error) {
@@ -199,13 +182,8 @@ const atSourceNode = <T>(
     }
 };
 
-const atExtractedLocation = <T>(
-    root: string,
-    locations: SourceLocation[],
-    operation: () => T,
-): T => {
-    const location = locations.find((candidate) =>
-        candidate.line !== undefined && candidate.column !== undefined);
+const atExtractedLocation = <T>(root: string, locations: SourceLocation[], operation: () => T): T => {
+    const location = locations.find((candidate) => candidate.line !== undefined && candidate.column !== undefined);
 
     if (location?.line === undefined || location.column === undefined) {
         return operation();
@@ -214,12 +192,7 @@ const atExtractedLocation = <T>(
     try {
         return operation();
     } catch (error) {
-        throw sourceExtractionError(
-            root,
-            location.file,
-            { column: location.column, line: location.line },
-            error,
-        );
+        throw sourceExtractionError(root, location.file, { column: location.column, line: location.line }, error);
     }
 };
 
@@ -253,8 +226,7 @@ const splitContext = (key: string): { context: string | null; msgid: string } =>
     return { context: key.slice(index + CONTEXT_SEPARATOR.length), msgid: key.slice(0, index) };
 };
 
-const namespaceFor = (entry: ExtractedKey): string =>
-    typeof entry.ns === "string" ? entry.ns : DEFAULT_NAMESPACE;
+const namespaceFor = (entry: ExtractedKey): string => (typeof entry.ns === "string" ? entry.ns : DEFAULT_NAMESPACE);
 
 const validateIdentity = (context: string | null, msgid: string): void => {
     if (context === "" || msgid.length === 0) {
@@ -287,9 +259,7 @@ const pointSource = (entry: ExtractedKey, msgid: string): string => {
         return entry.defaultValue;
     }
 
-    return entry.defaultValue === msgid || msgid.endsWith(`.${entry.defaultValue}`)
-        ? msgid
-        : entry.defaultValue;
+    return entry.defaultValue === msgid || msgid.endsWith(`.${entry.defaultValue}`) ? msgid : entry.defaultValue;
 };
 
 const pointMessage = (entry: ExtractedKey): SourceMessage => {
@@ -338,11 +308,7 @@ const groupedPlurals = (root: string, entries: ExtractedKey[]): PluralGroup[] =>
     const groups: Map<string, PluralGroup> = new Map();
 
     for (const entry of entries) {
-        const { baseKey, variant } = atExtractedLocation(
-            root,
-            entry.locations ?? [],
-            () => expandedPlural(entry),
-        );
+        const { baseKey, variant } = atExtractedLocation(root, entry.locations ?? [], () => expandedPlural(entry));
         const namespace = namespaceFor(entry);
         const key = `${namespace}\0${baseKey}`;
         const group = groups.get(key) ?? { baseKey, namespace, variants: [] };
@@ -397,7 +363,8 @@ const pluralMessages = (root: string, entries: ExtractedKey[]): SourceMessage[] 
             root,
             group.variants.flatMap((variant) => variant.locations),
             () => pluralMessage(group),
-        ));
+        ),
+    );
 
 const assertCardinal = (entry: ExtractedKey): void => {
     if (entry.isOrdinal === true) {
@@ -427,8 +394,7 @@ const sourceMessages = (root: string, entries: ExtractedKey[]): SourceMessage[] 
     }
 
     return [
-        ...points.map((entry) =>
-            atExtractedLocation(root, entry.locations ?? [], () => pointMessage(entry))),
+        ...points.map((entry) => atExtractedLocation(root, entry.locations ?? [], () => pointMessage(entry))),
         ...pluralMessages(root, plurals),
     ];
 };
@@ -458,21 +424,22 @@ const inferLocations = (message: SourceMessage, sources: Map<string, string>): S
 };
 
 const normalizedSourceFiles = (root: string, paths: string[]): string[] => {
-    const files = paths
-        .map((path) => resolve(root, path))
-        .filter((path) => isPathWithin(root, path));
+    const files = paths.map((path) => resolve(root, path)).filter((path) => isPathWithin(root, path));
 
-    return new Set(files).values().toArray().toSorted((left, right) => left.localeCompare(right));
+    return new Set(files)
+        .values()
+        .toArray()
+        .toSorted((left, right) => left.localeCompare(right));
 };
 
-type StaticKeyWrapper = ESTree.ParenthesizedExpression |
-    ESTree.TSAsExpression |
-    ESTree.TSSatisfiesExpression |
-    ESTree.TSTypeAssertion |
-    ESTree.TSNonNullExpression;
+type StaticKeyWrapper =
+    | ESTree.ParenthesizedExpression
+    | ESTree.TSAsExpression
+    | ESTree.TSSatisfiesExpression
+    | ESTree.TSTypeAssertion
+    | ESTree.TSNonNullExpression;
 
-const isStaticKeyWrapper = (key: ESTree.Node): key is StaticKeyWrapper =>
-    STATIC_KEY_WRAPPER_TYPES.has(key.type);
+const isStaticKeyWrapper = (key: ESTree.Node): key is StaticKeyWrapper => STATIC_KEY_WRAPPER_TYPES.has(key.type);
 
 const unwrapStaticWrapper = (node: ESTree.Node): ESTree.Node =>
     isStaticKeyWrapper(node) ? unwrapStaticWrapper(node.expression) : node;
@@ -512,9 +479,7 @@ const propertyName = (property: ESTree.ObjectProperty): string | null => {
         return property.key.name;
     }
 
-    return property.key.type === "Literal" && typeof property.key.value === "string"
-        ? property.key.value
-        : null;
+    return property.key.type === "Literal" && typeof property.key.value === "string" ? property.key.value : null;
 };
 
 const assertSupportedOptionProperty = (property: ESTree.ObjectPropertyKind): void => {
@@ -594,9 +559,11 @@ const importedBinding = (binding: ResolvedBinding | undefined): ImportedBinding 
 
     const source = declaration.node.source.value;
 
-    return namedImportedBinding(path, source) ??
+    return (
+        namedImportedBinding(path, source) ??
         defaultImportedBinding(path, source) ??
-        namespaceImportedBinding(path, source);
+        namespaceImportedBinding(path, source)
+    );
 };
 
 const babelPropertyName = (property: types.ObjectProperty): string | null => {
@@ -623,10 +590,12 @@ const isBoundIdentifier = (node: types.Node | null, name: string): boolean => {
 
 const isHookPatternBinding = (pattern: types.VariableDeclarator["id"], name: string): boolean => {
     if (types.isObjectPattern(pattern)) {
-        return pattern.properties.some((property) =>
-            types.isObjectProperty(property) &&
-            babelPropertyName(property) === "t" &&
-            isBoundIdentifier(property.value, name));
+        return pattern.properties.some(
+            (property) =>
+                types.isObjectProperty(property) &&
+                babelPropertyName(property) === "t" &&
+                isBoundIdentifier(property.value, name),
+        );
     }
 
     if (types.isArrayPattern(pattern)) {
@@ -643,9 +612,7 @@ const importedTranslationHook = (scope: Scope, call: types.CallExpression): Impo
 
     const imported = importedBinding(scope.getBinding(call.callee.name));
 
-    return imported?.imported === "useTranslation" && TRANSLATION_MODULES.has(imported.source)
-        ? imported
-        : null;
+    return imported?.imported === "useTranslation" && TRANSLATION_MODULES.has(imported.source) ? imported : null;
 };
 
 const translationHookBinding = (binding: ResolvedBinding): TranslationHookBinding | null => {
@@ -658,8 +625,7 @@ const translationHookBinding = (binding: ResolvedBinding): TranslationHookBindin
     const pattern = path.node.id;
     const initializer = path.node.init;
 
-    if (!isHookPatternBinding(pattern, binding.identifier.name) ||
-        !types.isCallExpression(initializer)) {
+    if (!isHookPatternBinding(pattern, binding.identifier.name) || !types.isCallExpression(initializer)) {
         return null;
     }
 
@@ -717,18 +683,18 @@ const isImportedTranslationObject = (scope: Scope, object: types.Node): boolean 
 
     const imported = importedBinding(scope.getBinding(object.name));
 
-    return imported !== null &&
+    return (
+        imported !== null &&
         TRANSLATION_MODULES.has(imported.source) &&
-        (imported.style === "namespace" || (imported.source === "i18next" && imported.imported === "default"));
+        (imported.style === "namespace" || (imported.source === "i18next" && imported.imported === "default"))
+    );
 };
 
 const constantVariableDeclarator = (binding: ResolvedBinding): NodePath<types.VariableDeclarator> | null => {
     const path = binding.path;
     const declaration = path.parentPath;
 
-    if (!path.isVariableDeclarator() ||
-        !declaration.isVariableDeclaration() ||
-        declaration.node.kind !== "const") {
+    if (!path.isVariableDeclarator() || !declaration.isVariableDeclaration() || declaration.node.kind !== "const") {
         return null;
     }
 
@@ -743,10 +709,12 @@ const isTranslationHookResultBinding = (binding: ResolvedBinding | undefined): b
     const path = constantVariableDeclarator(binding);
     const initializer = path?.node.init;
 
-    return path !== null &&
+    return (
+        path !== null &&
         types.isIdentifier(path.node.id) &&
         types.isCallExpression(initializer) &&
-        importedTranslationHook(path.scope, initializer) !== null;
+        importedTranslationHook(path.scope, initializer) !== null
+    );
 };
 
 const isHookTranslationMember = (scope: Scope, member: TranslationMemberExpression): boolean => {
@@ -775,8 +743,9 @@ const isTranslationFunctionValue = (scope: Scope, node: types.Node): boolean => 
         return true;
     }
 
-    return (types.isMemberExpression(node) || types.isOptionalMemberExpression(node)) &&
-        isTranslationMember(scope, node);
+    return (
+        (types.isMemberExpression(node) || types.isOptionalMemberExpression(node)) && isTranslationMember(scope, node)
+    );
 };
 
 const isTranslationBindCall = (scope: Scope, node: types.Node): boolean => {
@@ -784,8 +753,7 @@ const isTranslationBindCall = (scope: Scope, node: types.Node): boolean => {
         return false;
     }
 
-    return babelMemberName(node.callee) === "bind" &&
-        isTranslationFunctionValue(scope, node.callee.object);
+    return babelMemberName(node.callee) === "bind" && isTranslationFunctionValue(scope, node.callee.object);
 };
 
 const isTranslationObjectPatternAlias = (
@@ -795,14 +763,18 @@ const isTranslationObjectPatternAlias = (
     const pattern = path.node.id;
     const initializer = path.node.init;
 
-    if (!types.isObjectPattern(pattern) ||
+    if (
+        !types.isObjectPattern(pattern) ||
         !isHookPatternBinding(pattern, binding.identifier.name) ||
-        !types.isIdentifier(initializer)) {
+        !types.isIdentifier(initializer)
+    ) {
         return false;
     }
 
-    return isImportedTranslationObject(path.scope, initializer) ||
-        isTranslationHookResultBinding(path.scope.getBinding(initializer.name));
+    return (
+        isImportedTranslationObject(path.scope, initializer) ||
+        isTranslationHookResultBinding(path.scope.getBinding(initializer.name))
+    );
 };
 
 const isTranslationAliasBinding = (binding: ResolvedBinding | undefined): boolean => {
@@ -822,10 +794,12 @@ const isTranslationAliasBinding = (binding: ResolvedBinding | undefined): boolea
 
     const initializer = path.node.init;
 
-    return types.isIdentifier(path.node.id) &&
+    return (
+        types.isIdentifier(path.node.id) &&
         initializer !== null &&
         initializer !== undefined &&
-        (isTranslationFunctionValue(path.scope, initializer) || isTranslationBindCall(path.scope, initializer));
+        (isTranslationFunctionValue(path.scope, initializer) || isTranslationBindCall(path.scope, initializer))
+    );
 };
 
 const translationFunctionKind = (scope: Scope, name: string): TranslationCallKind | null => {
@@ -897,11 +871,13 @@ const babelStaticKey = (node: types.Node | null | undefined): string | null => {
         return node.quasis[0]?.value.cooked ?? null;
     }
 
-    if (types.isParenthesizedExpression(node) ||
+    if (
+        types.isParenthesizedExpression(node) ||
         types.isTSAsExpression(node) ||
         types.isTSSatisfiesExpression(node) ||
         types.isTSTypeAssertion(node) ||
-        types.isTSNonNullExpression(node)) {
+        types.isTSNonNullExpression(node)
+    ) {
         return babelStaticKey(node.expression);
     }
 
@@ -917,21 +893,20 @@ const babelObjectExpression = (node: types.Node | null | undefined): types.Objec
         return node;
     }
 
-    if (types.isParenthesizedExpression(node) ||
+    if (
+        types.isParenthesizedExpression(node) ||
         types.isTSAsExpression(node) ||
         types.isTSSatisfiesExpression(node) ||
         types.isTSTypeAssertion(node) ||
-        types.isTSNonNullExpression(node)) {
+        types.isTSNonNullExpression(node)
+    ) {
         return babelObjectExpression(node.expression);
     }
 
     return null;
 };
 
-const babelNamedProperty = (
-    object: types.ObjectExpression | null,
-    name: string,
-): types.ObjectProperty | null => {
+const babelNamedProperty = (object: types.ObjectExpression | null, name: string): types.ObjectProperty | null => {
     if (object === null) {
         return null;
     }
@@ -968,10 +943,7 @@ const hookKeyPrefix = (callee: NodePath<types.Identifier>): string => {
     const binding = callee.scope.getBinding(callee.node.name);
     const hook = binding === undefined ? null : translationHookBinding(binding);
 
-    return babelStringProperty(
-        hook === null ? null : babelObjectExpression(hook.call.arguments[1]),
-        "keyPrefix",
-    ) ?? "";
+    return babelStringProperty(hook === null ? null : babelObjectExpression(hook.call.arguments[1]), "keyPrefix") ?? "";
 };
 
 const prefixedTranslationKey = (prefix: string, key: string): string => {
@@ -1081,10 +1053,7 @@ const registerIdentifierTranslationCall = (
     }
 };
 
-const registerTranslationCall = (
-    callPath: NodePath<types.CallExpression>,
-    references: TranslationReferences,
-): void => {
+const registerTranslationCall = (callPath: NodePath<types.CallExpression>, references: TranslationReferences): void => {
     assertSupportedWrappedCallee(callPath);
     const callee = callPath.get("callee");
 
@@ -1100,11 +1069,13 @@ const registerTranslationCall = (
 };
 
 const unwrapTranslationCallee = (node: types.Node): types.Node => {
-    if (types.isParenthesizedExpression(node) ||
+    if (
+        types.isParenthesizedExpression(node) ||
         types.isTSAsExpression(node) ||
         types.isTSSatisfiesExpression(node) ||
         types.isTSTypeAssertion(node) ||
-        types.isTSNonNullExpression(node)) {
+        types.isTSNonNullExpression(node)
+    ) {
         return unwrapTranslationCallee(node.expression);
     }
 
@@ -1116,8 +1087,9 @@ const isTranslationCallee = (scope: Scope, node: types.Node): boolean => {
         return translationFunctionKind(scope, node.name) !== null;
     }
 
-    return (types.isMemberExpression(node) || types.isOptionalMemberExpression(node)) &&
-        isTranslationMember(scope, node);
+    return (
+        (types.isMemberExpression(node) || types.isOptionalMemberExpression(node)) && isTranslationMember(scope, node)
+    );
 };
 
 const assertSupportedWrappedCallee = (callPath: NodePath<types.CallExpression>): void => {
@@ -1159,10 +1131,7 @@ const registerUnrecognizedElementMasks = (
     }
 };
 
-const registerElementReference = (
-    elementPath: NodePath,
-    references: TranslationReferences,
-): void => {
+const registerElementReference = (elementPath: NodePath, references: TranslationReferences): void => {
     const start = nodeStart(elementPath);
     const point = registerSourceLocation(elementPath.node, references);
     references.elements.add(start);
@@ -1285,9 +1254,7 @@ const assertSupportedTransKey = (attribute: ESTree.JSXAttribute): void => {
         return;
     }
 
-    const key = attribute.value?.type === "JSXExpressionContainer"
-        ? attribute.value.expression
-        : attribute.value;
+    const key = attribute.value?.type === "JSXExpressionContainer" ? attribute.value.expression : attribute.value;
     assertStaticTranslationKey(key);
 };
 
@@ -1296,9 +1263,7 @@ const assertSupportedTransStringAttribute = (attribute: ESTree.JSXAttribute, nam
         return;
     }
 
-    const value = attribute.value?.type === "JSXExpressionContainer"
-        ? attribute.value.expression
-        : attribute.value;
+    const value = attribute.value?.type === "JSXExpressionContainer" ? attribute.value.expression : attribute.value;
     assertStaticTranslationKey(value);
 };
 
@@ -1373,8 +1338,7 @@ const assertSupportedTranslationSyntax = (root: string, path: string, source: st
     return references;
 };
 
-const extractedLocationFile = (root: string, file: string): string =>
-    resolve(root, file);
+const extractedLocationFile = (root: string, file: string): string => resolve(root, file);
 
 const isRecognizedLocation = (
     root: string,
@@ -1413,9 +1377,10 @@ const recognizedEntry = (
     entry: ExtractedKey,
 ): ExtractedKey | null => {
     const extractedLocations = entry.locations ?? [];
-    const locations = extractedLocations.length === 0
-        ? recognizedKeyLocations(references, entry.key)
-        : extractedLocations.filter((location) => isRecognizedLocation(root, references, location));
+    const locations =
+        extractedLocations.length === 0
+            ? recognizedKeyLocations(references, entry.key)
+            : extractedLocations.filter((location) => isRecognizedLocation(root, references, location));
 
     return locations.length === 0 ? null : { ...entry, locations };
 };
@@ -1425,25 +1390,21 @@ type NestedReferenceParts = { base: string; options: string };
 const quotedNestedReferenceParts = (content: string, quote: string): NestedReferenceParts | null => {
     const end = content.indexOf(quote, 1);
 
-    return end === -1
-        ? null
-        : { base: content.slice(1, end), options: content.slice(end + 1) };
+    return end === -1 ? null : { base: content.slice(1, end), options: content.slice(end + 1) };
 };
 
 const nestedReferenceParts = (value: string): NestedReferenceParts | null => {
     const content = value.trim();
     const quote = content[0];
 
-    if (quote === "\"" || quote === "'") {
+    if (quote === '"' || quote === "'") {
         return quotedNestedReferenceParts(content, quote);
     }
 
     const separator = content.indexOf(",");
     const base = (separator === -1 ? content : content.slice(0, separator)).trim();
 
-    return base.length === 0
-        ? null
-        : { base, options: separator === -1 ? "" : content.slice(separator + 1) };
+    return base.length === 0 ? null : { base, options: separator === -1 ? "" : content.slice(separator + 1) };
 };
 
 const nestedReferenceContext = (options: string): string | null => {
@@ -1517,9 +1478,8 @@ const nestedReferenceKeys = (content: string): string[] => {
     }
 
     const context = nestedReferenceContext(parts.options);
-    const contextual = context === null
-        ? []
-        : [`${parts.base}_${context}`, `${parts.base}${CONTEXT_SEPARATOR}${context}`];
+    const contextual =
+        context === null ? [] : [`${parts.base}_${context}`, `${parts.base}${CONTEXT_SEPARATOR}${context}`];
 
     return NESTED_COUNT.test(parts.options)
         ? [parts.base, ...contextual, ...nestedPluralKeys(parts.base, context)]
@@ -1638,11 +1598,7 @@ const retainRecognizedEntries = (
 const fileSourcePointKey = (file: string, line: number, column: number): string =>
     `${file}\0${sourceLocationKey(line, column)}`;
 
-const registerExtractedSourcePoint = (
-    root: string,
-    points: Set<string>,
-    location: ExtractedLocation,
-): void => {
+const registerExtractedSourcePoint = (root: string, points: Set<string>, location: ExtractedLocation): void => {
     if (location.line !== undefined && location.column !== undefined) {
         points.add(fileSourcePointKey(resolve(root, location.file), location.line, location.column));
     }
@@ -1719,9 +1675,7 @@ const findSourceMessages = async (root: string, sourceFiles: string[]): Promise<
         onLoad(code, path) {
             const sourceReferences = references.get(resolve(root, path));
 
-            return sourceReferences === undefined
-                ? code
-                : maskUnrecognizedTranslations(code, sourceReferences);
+            return sourceReferences === undefined ? code : maskUnrecognizedTranslations(code, sourceReferences);
         },
         onEnd(keys) {
             registerNestedLocations(root, references, keys);
@@ -1781,9 +1735,7 @@ const renderCatalogCall = (message: SourceMessage): string => {
             : `npgettext(${JSON.stringify(message.context)}, ${msgid}, ${plural}, 0);`;
     }
 
-    return message.context === null
-        ? `gettext(${msgid});`
-        : `pgettext(${JSON.stringify(message.context)}, ${msgid});`;
+    return message.context === null ? `gettext(${msgid});` : `pgettext(${JSON.stringify(message.context)}, ${msgid});`;
 };
 
 const locatedOwners = (
@@ -1814,10 +1766,7 @@ const sourceOwners = (
     return located.length > 0 ? located : [{ path: SYNTHETIC_FILENAME, line: undefined }];
 };
 
-const syntheticEntries = (
-    project: CatalogProject,
-    messages: SourceMessage[],
-): Map<string, SyntheticEntry[]> => {
+const syntheticEntries = (project: CatalogProject, messages: SourceMessage[]): Map<string, SyntheticEntry[]> => {
     const entries: Map<string, SyntheticEntry[]> = new Map();
 
     for (const message of messages) {
@@ -1874,11 +1823,7 @@ const renderSyntheticSource = (entries: SyntheticEntry[]): string => {
     return `${lines.join("\n")}\n`;
 };
 
-const writeSyntheticSources = (
-    workDir: string,
-    project: CatalogProject,
-    messages: SourceMessage[],
-): string => {
+const writeSyntheticSources = (workDir: string, project: CatalogProject, messages: SourceMessage[]): string => {
     const entries = syntheticEntries(project, messages);
     const paths: string[] = [];
 
@@ -1916,10 +1861,7 @@ const extractSourceMessages = ({ project, messages, output, workDir }: SourceExt
     });
 };
 
-const retainMetadataReferences = (
-    translations: GetTextTranslationRecord,
-    metadataPaths: ReadonlySet<string>,
-): void => {
+const retainMetadataReferences = (translations: GetTextTranslationRecord, metadataPaths: ReadonlySet<string>): void => {
     const messages = Object.values(translations).flatMap((context) => Object.values(context));
 
     for (const message of messages) {
@@ -1992,11 +1934,7 @@ const extractCatalogTemplate = ({
     }
 };
 
-const extractSourceCatalogTo = async (
-    project: CatalogProject,
-    paths: string[],
-    output: string,
-): Promise<void> => {
+const extractSourceCatalogTo = async (project: CatalogProject, paths: string[], output: string): Promise<void> => {
     const sourceFiles = normalizedSourceFiles(project.root, paths);
     const messages = await findSourceMessages(project.root, sourceFiles);
     writePotfiles(project, sourceFiles);

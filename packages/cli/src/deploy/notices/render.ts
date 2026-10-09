@@ -27,8 +27,7 @@ const detailLines = (notice: Notice): string[] => [
     ...(notice.source === null ? [] : [`Source: ${notice.source}`]),
 ];
 
-const bodyLines = (notice: Notice): string[] =>
-    notice.text === null ? notice.copyright : ["", notice.text];
+const bodyLines = (notice: Notice): string[] => (notice.text === null ? notice.copyright : ["", notice.text]);
 
 const renderNotice = (notice: Notice): string[] => [
     NOTICE_RULE,

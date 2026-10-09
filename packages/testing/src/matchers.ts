@@ -80,37 +80,37 @@ type ClassArguments = { expected: ClassExpectation[]; isExact: boolean };
 type QueryAll<Args extends unknown[]> = (container: Container, ...args: Args) => object[];
 
 type BooleanAccessibleState =
-    Gtk.AccessibleState.BUSY |
-    Gtk.AccessibleState.DISABLED |
-    Gtk.AccessibleState.EXPANDED |
-    Gtk.AccessibleState.HIDDEN |
-    Gtk.AccessibleState.SELECTED |
-    Gtk.AccessibleState.VISITED;
+    | Gtk.AccessibleState.BUSY
+    | Gtk.AccessibleState.DISABLED
+    | Gtk.AccessibleState.EXPANDED
+    | Gtk.AccessibleState.HIDDEN
+    | Gtk.AccessibleState.SELECTED
+    | Gtk.AccessibleState.VISITED;
 
 type TristateAccessibleState = Gtk.AccessibleState.CHECKED | Gtk.AccessibleState.PRESSED;
 
 type StringAccessibleProperty =
-    Gtk.AccessibleProperty.DESCRIPTION |
-    Gtk.AccessibleProperty.HELP_TEXT |
-    Gtk.AccessibleProperty.KEY_SHORTCUTS |
-    Gtk.AccessibleProperty.LABEL |
-    Gtk.AccessibleProperty.PLACEHOLDER |
-    Gtk.AccessibleProperty.ROLE_DESCRIPTION |
-    Gtk.AccessibleProperty.VALUE_TEXT;
+    | Gtk.AccessibleProperty.DESCRIPTION
+    | Gtk.AccessibleProperty.HELP_TEXT
+    | Gtk.AccessibleProperty.KEY_SHORTCUTS
+    | Gtk.AccessibleProperty.LABEL
+    | Gtk.AccessibleProperty.PLACEHOLDER
+    | Gtk.AccessibleProperty.ROLE_DESCRIPTION
+    | Gtk.AccessibleProperty.VALUE_TEXT;
 
 type BooleanAccessibleProperty =
-    Gtk.AccessibleProperty.HAS_POPUP |
-    Gtk.AccessibleProperty.MODAL |
-    Gtk.AccessibleProperty.MULTI_LINE |
-    Gtk.AccessibleProperty.MULTI_SELECTABLE |
-    Gtk.AccessibleProperty.READ_ONLY |
-    Gtk.AccessibleProperty.REQUIRED;
+    | Gtk.AccessibleProperty.HAS_POPUP
+    | Gtk.AccessibleProperty.MODAL
+    | Gtk.AccessibleProperty.MULTI_LINE
+    | Gtk.AccessibleProperty.MULTI_SELECTABLE
+    | Gtk.AccessibleProperty.READ_ONLY
+    | Gtk.AccessibleProperty.REQUIRED;
 
 type NumberAccessibleProperty =
-    Gtk.AccessibleProperty.LEVEL |
-    Gtk.AccessibleProperty.VALUE_MAX |
-    Gtk.AccessibleProperty.VALUE_MIN |
-    Gtk.AccessibleProperty.VALUE_NOW;
+    | Gtk.AccessibleProperty.LEVEL
+    | Gtk.AccessibleProperty.VALUE_MAX
+    | Gtk.AccessibleProperty.VALUE_MIN
+    | Gtk.AccessibleProperty.VALUE_NOW;
 
 /** A text matcher that also takes normalization options for the text it reads. */
 type TextContentMatcher = (
@@ -650,11 +650,7 @@ function readTextContent(widget: Gtk.Widget, options?: TextContentOptions): stri
     return text === null ? null : normalizeTextContent(text, options);
 }
 
-function toHaveTextContent(
-    received: unknown,
-    expected?: TextExpectation,
-    options?: TextContentOptions,
-): MatcherResult {
+function toHaveTextContent(received: unknown, expected?: TextExpectation, options?: TextContentOptions): MatcherResult {
     const read = (widget: Gtk.Widget): string | null => readTextContent(widget, options);
 
     return textMatcher("toHaveTextContent", read, "substring")(received, expected);
@@ -663,7 +659,7 @@ function toHaveTextContent(
 function notApplicable(matcherName: string, stateName: string, widget: Gtk.Widget): Error {
     return new Error(
         `${matcherName}: widget does not expose a ${stateName} ` +
-        `(role ${Gtk.AccessibleRole[widget.getAccessibleRole()]})\n${describeWidget(widget)}`,
+            `(role ${Gtk.AccessibleRole[widget.getAccessibleRole()]})\n${describeWidget(widget)}`,
     );
 }
 

@@ -176,9 +176,7 @@ const RESOLVER_SYNTAX_CASES: ResolverSyntaxCase[] = [
 ];
 
 const scriptNames = (outDir: string): string[] =>
-    readdirSync(outDir, { recursive: true, encoding: "utf8" }).filter((name) =>
-        SCRIPT_EXTENSIONS.has(extname(name)),
-    );
+    readdirSync(outDir, { recursive: true, encoding: "utf8" }).filter((name) => SCRIPT_EXTENSIONS.has(extname(name)));
 
 const reactManifest = (): ReactManifest => {
     const manifest = readFileSync(join(WORKSPACE_ROOT, "packages", "react", "package.json"), "utf8");
@@ -249,44 +247,52 @@ describe("gtkx build (self-contained bundle)", () => {
         expect(state.source).not.toMatch(/rendererVersion:\s*[\w$]+\(/);
     });
 
-    it("allows application code to observe its module URL", async () => {
-        const project = createAppProject({
-            applicationId: "com.gtkx.clibundleurl",
-            entry: MODULE_URL_ENTRY,
-            prefix: "gtkx-bundle-url-",
-        });
+    it(
+        "allows application code to observe its module URL",
+        async () => {
+            const project = createAppProject({
+                applicationId: "com.gtkx.clibundleurl",
+                entry: MODULE_URL_ENTRY,
+                prefix: "gtkx-bundle-url-",
+            });
 
-        try {
-            await buildAppProject({ project, outDir: OUT_DIR });
-            const run = runNode(join(project.root, OUT_DIR, BUNDLE_NAME));
-            expect(run.status).toBe(0);
-            expect(run.stdout.trim()).toMatch(/^module-url file:/);
-        } finally {
-            removeAppProject(project);
-        }
-    }, BUILD_TIMEOUT);
+            try {
+                await buildAppProject({ project, outDir: OUT_DIR });
+                const run = runNode(join(project.root, OUT_DIR, BUNDLE_NAME));
+                expect(run.status).toBe(0);
+                expect(run.stdout.trim()).toMatch(/^module-url file:/);
+            } finally {
+                removeAppProject(project);
+            }
+        },
+        BUILD_TIMEOUT,
+    );
 });
 
 describe("gtkx build (worker chunks)", () => {
-    it("holds every emitted chunk to the same rule", async () => {
-        const project = createAppProject({
-            applicationId: "com.gtkx.clibundleworker",
-            entry: WORKER_APP_ENTRY,
-            files: { [SHARED_SOURCE_PATH]: SHARED_SOURCE, [WORKER_SOURCE_PATH]: WORKER_SOURCE },
-            prefix: "gtkx-bundle-worker-",
-        });
+    it(
+        "holds every emitted chunk to the same rule",
+        async () => {
+            const project = createAppProject({
+                applicationId: "com.gtkx.clibundleworker",
+                entry: WORKER_APP_ENTRY,
+                files: { [SHARED_SOURCE_PATH]: SHARED_SOURCE, [WORKER_SOURCE_PATH]: WORKER_SOURCE },
+                prefix: "gtkx-bundle-worker-",
+            });
 
-        try {
-            await buildAppProject({ project, outDir: OUT_DIR });
-            const emitted = scriptNames(join(project.root, OUT_DIR));
-            expect(emitted).toContain(BUNDLE_NAME);
-            expect(emitted.filter((name) => name.startsWith(ASSETS_DIR))).toHaveLength(1);
-            expect(emitted.filter((name) => name.startsWith(WORKER_DIR))).toHaveLength(1);
-            expect(emitted.map((name) => extname(name))).toEqual(emitted.map(() => ESM_EXTENSION));
-        } finally {
-            removeAppProject(project);
-        }
-    }, BUILD_TIMEOUT);
+            try {
+                await buildAppProject({ project, outDir: OUT_DIR });
+                const emitted = scriptNames(join(project.root, OUT_DIR));
+                expect(emitted).toContain(BUNDLE_NAME);
+                expect(emitted.filter((name) => name.startsWith(ASSETS_DIR))).toHaveLength(1);
+                expect(emitted.filter((name) => name.startsWith(WORKER_DIR))).toHaveLength(1);
+                expect(emitted.map((name) => extname(name))).toEqual(emitted.map(() => ESM_EXTENSION));
+            } finally {
+                removeAppProject(project);
+            }
+        },
+        BUILD_TIMEOUT,
+    );
 });
 
 describe("gtkx build (bundle that would resolve a module at runtime)", () => {
@@ -322,34 +328,42 @@ describe("gtkx build (bundle that would resolve a module at runtime)", () => {
         BUILD_TIMEOUT,
     );
 
-    it("fails when an unrelated nested binding reuses the resolver name", async () => {
-        const project = createAppProject({
-            applicationId: "com.gtkx.clibundlescope",
-            entry: SCOPED_RESOLVER_ENTRY,
-            prefix: "gtkx-bundle-scope-",
-        });
+    it(
+        "fails when an unrelated nested binding reuses the resolver name",
+        async () => {
+            const project = createAppProject({
+                applicationId: "com.gtkx.clibundlescope",
+                entry: SCOPED_RESOLVER_ENTRY,
+                prefix: "gtkx-bundle-scope-",
+            });
 
-        try {
-            await expect(buildAppProject({ project, outDir: OUT_DIR })).rejects.toThrow();
-        } finally {
-            removeAppProject(project);
-        }
-    }, BUILD_TIMEOUT);
+            try {
+                await expect(buildAppProject({ project, outDir: OUT_DIR })).rejects.toThrow();
+            } finally {
+                removeAppProject(project);
+            }
+        },
+        BUILD_TIMEOUT,
+    );
 
-    it("allows a local function that only shares the factory name", async () => {
-        const project = createAppProject({
-            applicationId: "com.gtkx.clibundlelocalscope",
-            entry: LOCAL_FACTORY_ENTRY,
-            prefix: "gtkx-bundle-local-scope-",
-        });
+    it(
+        "allows a local function that only shares the factory name",
+        async () => {
+            const project = createAppProject({
+                applicationId: "com.gtkx.clibundlelocalscope",
+                entry: LOCAL_FACTORY_ENTRY,
+                prefix: "gtkx-bundle-local-scope-",
+            });
 
-        try {
-            await buildAppProject({ project, outDir: OUT_DIR });
-            const run = runNode(join(project.root, OUT_DIR, BUNDLE_NAME));
-            expect(run.status).toBe(0);
-            expect(run.stdout).toContain(":picomatch");
-        } finally {
-            removeAppProject(project);
-        }
-    }, BUILD_TIMEOUT);
+            try {
+                await buildAppProject({ project, outDir: OUT_DIR });
+                const run = runNode(join(project.root, OUT_DIR, BUNDLE_NAME));
+                expect(run.status).toBe(0);
+                expect(run.stdout).toContain(":picomatch");
+            } finally {
+                removeAppProject(project);
+            }
+        },
+        BUILD_TIMEOUT,
+    );
 });

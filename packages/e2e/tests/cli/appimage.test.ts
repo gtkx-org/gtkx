@@ -6,9 +6,11 @@ import { createCliProject, runCli, runCliOrThrow } from "./cli-project.js";
 
 const APPLICATION_ID = "com.gtkx.appimage-probe";
 const ARTIFACT_NAME = "appimage-probe.AppImage";
-const APPLICATION_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">' +
+const APPLICATION_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">' +
     '<rect width="128" height="128" fill="#3584e4"/></svg>\n';
-const ACTION_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">' +
+const ACTION_ICON =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128">' +
     '<circle cx="64" cy="64" r="48" fill="#e01b24"/></svg>\n';
 const CONFIG = `export default {
     applicationId: "${APPLICATION_ID}",
@@ -37,11 +39,7 @@ const iconPath = (size: string, context: string, extension: string): string =>
 const withCompression = (compression: string): string =>
     CONFIG.replace("appimage: {", () => `appimage: { compression: ${JSON.stringify(compression)},`);
 
-const extractedIcon = (
-    icons: Record<string, string | Buffer>,
-    extension: string,
-    config = CONFIG,
-): Buffer => {
+const extractedIcon = (icons: Record<string, string | Buffer>, extension: string, config = CONFIG): Buffer => {
     using project = createCliProject({
         prefix: "gtkx-appimage-icons-",
         config,
@@ -63,27 +61,37 @@ const extractedIcon = (
 
 describe("AppImage application icons", () => {
     it("packages a scalable application icon ahead of raster and action icons", () => {
-        const icon = extractedIcon({
-            [iconPath("scalable", "apps", "svg")]: APPLICATION_ICON,
-            [iconPath("512x512", "apps", "png")]: RASTER_512,
-            [iconPath("scalable", "actions", "svg")]: ACTION_ICON,
-        }, "svg");
+        const icon = extractedIcon(
+            {
+                [iconPath("scalable", "apps", "svg")]: APPLICATION_ICON,
+                [iconPath("512x512", "apps", "png")]: RASTER_512,
+                [iconPath("scalable", "actions", "svg")]: ACTION_ICON,
+            },
+            "svg",
+        );
         expect(icon).toEqual(Buffer.from(APPLICATION_ICON));
     });
 
     it("chooses effective raster size and ignores another icon context", () => {
-        const icon = extractedIcon({
-            [iconPath("128x128@4", "apps", "png")]: RASTER_512,
-            [iconPath("192x192", "apps", "png")]: RASTER_192,
-            [iconPath("scalable", "actions", "svg")]: ACTION_ICON,
-        }, "png");
+        const icon = extractedIcon(
+            {
+                [iconPath("128x128@4", "apps", "png")]: RASTER_512,
+                [iconPath("192x192", "apps", "png")]: RASTER_192,
+                [iconPath("scalable", "actions", "svg")]: ACTION_ICON,
+            },
+            "png",
+        );
         expect(icon).toEqual(RASTER_512);
     });
 
     it("packages an explicitly configured zstd AppImage", () => {
-        const icon = extractedIcon({
-            [iconPath("scalable", "apps", "svg")]: APPLICATION_ICON,
-        }, "svg", withCompression("zstd"));
+        const icon = extractedIcon(
+            {
+                [iconPath("scalable", "apps", "svg")]: APPLICATION_ICON,
+            },
+            "svg",
+            withCompression("zstd"),
+        );
         expect(icon).toEqual(Buffer.from(APPLICATION_ICON));
     });
 

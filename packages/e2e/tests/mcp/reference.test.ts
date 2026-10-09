@@ -21,9 +21,9 @@ describe("gtkx_list_api", () => {
     });
 
     it("fails for a namespace the project does not bind", async () => {
-        expect(await isToolFailure(
-            state.server.client, "gtkx_list_api", { namespace: "Absent" }, REQUEST_OPTIONS,
-        )).toBe(true);
+        expect(
+            await isToolFailure(state.server.client, "gtkx_list_api", { namespace: "Absent" }, REQUEST_OPTIONS),
+        ).toBe(true);
     });
 });
 
@@ -31,12 +31,12 @@ describe("gtkx_search_api", () => {
     it("finds symbols by substring, narrowed by namespace and kind", async () => {
         const matches = await searchApi({ query: "headerbar", namespace: "Gtk", kind: "class" });
         expect(matches).toContain("HeaderBar");
-        expect(matches).toContain("\"kind\": \"class\"");
+        expect(matches).toContain('"kind": "class"');
     });
 
     it("reports that nothing matched an unknown query", async () => {
         const matches = await searchApi({ query: "nosuchsymbolanywhere" });
-        expect(matches).not.toContain("\"namespace\"");
+        expect(matches).not.toContain('"namespace"');
     });
 
     it("fails when the query is missing", async () => {

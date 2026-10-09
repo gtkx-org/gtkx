@@ -13,24 +13,44 @@ import { afterEach, describe, expect, it } from "vitest";
 type BufferWrite = (view: Gtk.TextView, buffer: Gtk.TextBuffer | null) => void;
 
 const WRITES: { name: string; write: BufferWrite }[] = [
-    { name: "setBuffer", write: (view, buffer) => {
-        view.setBuffer(buffer);
-    } },
-    { name: "buffer property", write: (view, buffer) => {
-        view.buffer = buffer;
-    } },
-    { name: "GObject.setProperty", write: (view, buffer) => {
-        GObject.setProperty(view, "buffer", buffer);
-    } },
-    { name: "descriptor property write", write: (view, buffer) => {
-        setProperty(view, "buffer", t.object("borrowed", () => Gtk.TextBuffer, "GtkTextBuffer"), buffer);
-    } },
-    { name: "GValue property write", write: (view, buffer) => {
-        const value = new GObject.Value();
-        value.init(getClassType(Gtk.TextBuffer));
-        value.setObject(buffer);
-        view.setProperty("buffer", value);
-    } },
+    {
+        name: "setBuffer",
+        write: (view, buffer) => {
+            view.setBuffer(buffer);
+        },
+    },
+    {
+        name: "buffer property",
+        write: (view, buffer) => {
+            view.buffer = buffer;
+        },
+    },
+    {
+        name: "GObject.setProperty",
+        write: (view, buffer) => {
+            GObject.setProperty(view, "buffer", buffer);
+        },
+    },
+    {
+        name: "descriptor property write",
+        write: (view, buffer) => {
+            setProperty(
+                view,
+                "buffer",
+                t.object("borrowed", () => Gtk.TextBuffer, "GtkTextBuffer"),
+                buffer,
+            );
+        },
+    },
+    {
+        name: "GValue property write",
+        write: (view, buffer) => {
+            const value = new GObject.Value();
+            value.init(getClassType(Gtk.TextBuffer));
+            value.setObject(buffer);
+            view.setProperty("buffer", value);
+        },
+    },
 ];
 
 const renderTextView = async () => {

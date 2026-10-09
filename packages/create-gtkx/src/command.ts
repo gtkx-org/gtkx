@@ -92,7 +92,9 @@ const createStrictOptions = (): ParseArgsOptionsConfig => {
 const STRICT_OPTIONS = createStrictOptions();
 
 const BOOLEAN_OPTIONS = new Set(
-    Object.entries(STRICT_OPTIONS).filter(([, option]) => option.type === "boolean").map(([name]) => `--${name}`),
+    Object.entries(STRICT_OPTIONS)
+        .filter(([, option]) => option.type === "boolean")
+        .map(([name]) => `--${name}`),
 );
 
 const normalizeBooleanArgument = (argument: string): string => {
@@ -109,8 +111,10 @@ const normalizeBooleanArgument = (argument: string): string => {
     return value === "false" ? `--no-${option.slice(2)}` : argument;
 };
 
-const canonicalOption = (token: OptionToken): [string, string | boolean] =>
-    [kebabCase(token.name), token.value ?? !token.rawName.startsWith("--no-")];
+const canonicalOption = (token: OptionToken): [string, string | boolean] => [
+    kebabCase(token.name),
+    token.value ?? !token.rawName.startsWith("--no-"),
+];
 
 /* TODO: Keep ordered token parsing until Citty respects the order of positive and negated flags.
  * https://github.com/gtkx-org/gtkx/issues/732
@@ -118,7 +122,8 @@ const canonicalOption = (token: OptionToken): [string, string | boolean] =>
 const parseCreateArguments = (rawArgs: string[]): CreateCommandArgs => {
     const { tokens, positionals } = parseArgs({
         args: rawArgs.map((argument) =>
-            normalizeBooleanArgument(argument === "--noInteractive" ? "--no-interactive" : argument)),
+            normalizeBooleanArgument(argument === "--noInteractive" ? "--no-interactive" : argument),
+        ),
         options: STRICT_OPTIONS,
         allowPositionals: true,
         allowNegative: true,

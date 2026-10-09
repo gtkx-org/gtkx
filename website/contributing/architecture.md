@@ -72,11 +72,11 @@ The owning-thread requirement extends to native wrappers and widget operations. 
 
 Three forms of lifetime meet in an application:
 
-| Lifetime | Owner | GTKX's role |
-| --- | --- | --- |
-| Component lifetime | React's tree, keys, and effects. | Mount, update, and unmount host instances; release renderer handlers and behaviors. |
-| JavaScript wrapper lifetime | JavaScript reachability and native wrapper references. | Preserve wrapper identity for tracked native objects and associate wrappers with native handles. |
-| Native allocation lifetime | GObject reference counts or each native type's copy, reference, and free operations. | Honor ownership descriptors and release allocations through the correct mechanism. |
+| Lifetime                    | Owner                                                                                | GTKX's role                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| Component lifetime          | React's tree, keys, and effects.                                                     | Mount, update, and unmount host instances; release renderer handlers and behaviors.              |
+| JavaScript wrapper lifetime | JavaScript reachability and native wrapper references.                               | Preserve wrapper identity for tracked native objects and associate wrappers with native handles. |
+| Native allocation lifetime  | GObject reference counts or each native type's copy, reference, and free operations. | Honor ownership descriptors and release allocations through the correct mechanism.               |
 
 Unmounting a component removes its placement and renderer-managed connections. It does not imply that every JavaScript reference to the object has vanished or that every native reference count has reached zero. Windows and dialogs also have explicit presentation and close behavior. Memory bugs therefore require examining both the React lifetime and the native ownership contract.
 
@@ -84,13 +84,13 @@ Likewise, a controlled prop and a native widget property are two representations
 
 ## Finding the responsible layer
 
-| Observable problem | Start reading |
-| --- | --- |
-| A generated method has an incorrect type, argument order, or return shape. | `packages/codegen/src/gir`, `analysis`, and `store/gi`. |
-| A correctly described call produces an invalid value or loses native memory. | `packages/runtime/src/fn.ts`, then `packages/native/src/ffi/codec` and `handle.rs`. |
-| A JSX prop is missing or has the wrong type. | `packages/codegen/src/store/jsx` and `packages/react/src/element-config.ts`. |
-| A prop type is correct but the widget receives the wrong update. | `packages/react/src/reconciler/apply-props.ts` and the registered element behaviors. |
-| A child appears in the wrong place, disappears, or fails to reorder. | `packages/react/src/reconciler/child-routing.ts` and `placement.ts`. |
-| Signals, timers, or shutdown stop making progress. | `packages/runtime/src/lifecycle.ts` and `packages/native/src/runloop.rs`. |
+| Observable problem                                                           | Start reading                                                                        |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| A generated method has an incorrect type, argument order, or return shape.   | `packages/codegen/src/gir`, `analysis`, and `store/gi`.                              |
+| A correctly described call produces an invalid value or loses native memory. | `packages/runtime/src/fn.ts`, then `packages/native/src/ffi/codec` and `handle.rs`.  |
+| A JSX prop is missing or has the wrong type.                                 | `packages/codegen/src/store/jsx` and `packages/react/src/element-config.ts`.         |
+| A prop type is correct but the widget receives the wrong update.             | `packages/react/src/reconciler/apply-props.ts` and the registered element behaviors. |
+| A child appears in the wrong place, disappears, or fails to reorder.         | `packages/react/src/reconciler/child-routing.ts` and `placement.ts`.                 |
+| Signals, timers, or shutdown stop making progress.                           | `packages/runtime/src/lifecycle.ts` and `packages/native/src/runloop.rs`.            |
 
 A renderer symptom can begin in generated metadata; a native ownership failure can begin in an incorrect GIR annotation. Follow the failing operation across the relevant boundaries.

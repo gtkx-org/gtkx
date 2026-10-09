@@ -251,8 +251,7 @@ const buildValue = (descriptor: AccessibleDescriptor, jsValue: unknown): GObject
     }
 };
 
-const isAccessibleProp = (name: string): name is keyof AccessibleProps =>
-    Object.hasOwn(ACCESSIBLE_PROP_MAP, name);
+const isAccessibleProp = (name: string): name is keyof AccessibleProps => Object.hasOwn(ACCESSIBLE_PROP_MAP, name);
 
 const hasAccessibleProps = (props: Props): boolean => {
     for (const name in props) {

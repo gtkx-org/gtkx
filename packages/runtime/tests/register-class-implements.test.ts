@@ -26,7 +26,7 @@ type SectionInterface = typeof Gio.ListModel | typeof Gtk.SectionModel;
 type LevelStoreClass = (new () => Gio.ListModelImpl) & { prototype: Gio.ListModelImpl };
 type SplicedBase<T> = Omit<typeof GObject, never> & (new (props?: object) => GObject & T);
 
-const LAST_POSITION = 0xFF_FF_FF_FF;
+const LAST_POSITION = 0xff_ff_ff_ff;
 const BUILDER_NUL_TERMINATED = -1;
 const uniqueName = createTypeNameFactory("_");
 const undestroyableToplevels = new Gio.ListStore({ itemType: TYPE_OBJECT });
@@ -96,8 +96,10 @@ function createWidgetAdopter(typeName: string, iface: Interface<unknown>): Gtk.W
 function buildObject(typeName: string, id: string, body: string): GObject | null {
     const builder = new Gtk.Builder();
 
-    builder.addFromString(`<interface><object class="${typeName}" id="${id}">${body}</object></interface>`,
-        BUILDER_NUL_TERMINATED);
+    builder.addFromString(
+        `<interface><object class="${typeName}" id="${id}">${body}</object></interface>`,
+        BUILDER_NUL_TERMINATED,
+    );
 
     return builder.getObject(id);
 }
@@ -645,7 +647,10 @@ describe("registerClass — implements, chaining up out of a slot the class fill
         const store = new ChainedSectioned() as ChainedSectioned & Gtk.SectionModel;
         expect(store.vfuncGetSection(0)).toEqual([0, 3]);
         expect(store.getSection(2)).toEqual([0, 3]);
-        expect(store.chained).toEqual([[0, 3], [0, 3]]);
+        expect(store.chained).toEqual([
+            [0, 3],
+            [0, 3],
+        ]);
     });
 
     it("names the interface when it installs no implementation to chain up to", () => {
@@ -695,7 +700,7 @@ describe("registerClass — implements, GtkBuilder", () => {
         class Pane extends GObject {}
         const typeName = uniqueName("GtkxBuiltPane");
         registerClass(Pane, { typeName, implements: [Gtk.Orientable, Gtk.Buildable] });
-        const body = "<property name=\"orientation\">vertical</property>";
+        const body = '<property name="orientation">vertical</property>';
         const pane = buildObject(typeName, "pane", body) as (Gtk.Orientable & Gtk.Buildable) | null;
         expect(pane).not.toBeNull();
         expect(pane?.getOrientation()).toBe(Gtk.Orientation.VERTICAL);

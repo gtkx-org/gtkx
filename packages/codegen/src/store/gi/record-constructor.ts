@@ -32,9 +32,7 @@ type RecordConstructorSpec = {
 };
 
 const isWritableFieldSlot = (context: ModuleContext, entry: RecordFieldSlot): entry is WritableFieldSlot =>
-    entry.field.writable &&
-    isEmittableField(context, entry.field) &&
-    isStorableFieldType(context, entry.field.type);
+    entry.field.writable && isEmittableField(context, entry.field) && isStorableFieldType(context, entry.field.type);
 
 const renderRecordConstructorProp = (context: ModuleContext, entry: RecordFieldSlot): string | undefined => {
     const { field } = entry;
@@ -79,14 +77,16 @@ const isSelfReturning = (context: ModuleContext, record: GirRecord, callable: Gi
 
 const renderStaticCall = (context: ModuleContext, callable: GirFunction, name: string): string => {
     const args = inputParameters(context.library, callable).map(({ parameter, index }) =>
-        parameterIdentifier(parameter, index));
+        parameterIdentifier(parameter, index),
+    );
 
     return `${name}(${args.join(", ")})`;
 };
 
 const constructionHint = (context: ModuleContext, spec: RecordConstructorSpec): string | undefined => {
     const candidates = staticMembers(context, spec.callables).filter(({ callable }) =>
-        isSelfReturning(context, spec.record, callable));
+        isSelfReturning(context, spec.record, callable),
+    );
 
     const candidate = candidates.find(({ name }) => name === "new") ?? candidates[0];
 
@@ -112,9 +112,7 @@ const renderUnconstructibleGuard = (context: ModuleContext, spec: RecordConstruc
 const defaultConstructorCall = (context: ModuleContext, spec: RecordConstructorSpec): string | undefined => {
     const constructor = defaultRecordConstructor(context, context.namespace.name, spec.record);
 
-    return constructor?.cIdentifier === undefined
-        ? undefined
-        : `${toCamelIdentifier(constructor.cIdentifier)}()`;
+    return constructor?.cIdentifier === undefined ? undefined : `${toCamelIdentifier(constructor.cIdentifier)}()`;
 };
 
 const renderEmptyConstructor = (className: string, isErrorSubclass: boolean): string =>

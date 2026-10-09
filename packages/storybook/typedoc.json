@@ -1,9 +1,5 @@
 {
-    "entryPoints": [
-        "./src/index.ts",
-        "./src/config.ts",
-        "./src/explorer.ts"
-    ],
+    "entryPoints": ["./src/index.ts", "./src/config.ts", "./src/explorer.ts"],
     "intentionallyNotExported": [
         "Annotations",
         "ArgsFrom",

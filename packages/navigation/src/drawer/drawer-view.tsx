@@ -1,13 +1,7 @@
 import type { DrawerNavigationState, ParamListBase } from "@react-navigation/core";
 import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import {
-    AdwHeaderBar,
-    AdwOverlaySplitView,
-    AdwToolbarView,
-    AdwViewStack,
-    AdwWindowTitle,
-} from "@gtkx/jsx/adw";
+import { AdwHeaderBar, AdwOverlaySplitView, AdwToolbarView, AdwViewStack, AdwWindowTitle } from "@gtkx/jsx/adw";
 import { GtkButton, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { DrawerActions } from "@react-navigation/core";
 import { useCallback, useEffect, useRef } from "react";
@@ -46,14 +40,17 @@ type DrawerPageProps = {
 const PACK_TYPES = { start: Gtk.PackType.START, end: Gtk.PackType.END } as const;
 
 const useSidebarSync = (navigation: DrawerNavigationHelpers): ((isShown: boolean | null) => void) =>
-    useCallback((isShown: boolean | null) => {
-        if (isShown === null) {
-            return;
-        }
+    useCallback(
+        (isShown: boolean | null) => {
+            if (isShown === null) {
+                return;
+            }
 
-        const action = isShown ? DrawerActions.openDrawer() : DrawerActions.closeDrawer();
-        navigation.dispatch({ ...action, target: navigation.getState().key });
-    }, [navigation]);
+            const action = isShown ? DrawerActions.openDrawer() : DrawerActions.closeDrawer();
+            navigation.dispatch({ ...action, target: navigation.getState().key });
+        },
+        [navigation],
+    );
 
 const useCloseOnNavigate = (
     state: DrawerNavigationState<ParamListBase>,

@@ -107,14 +107,16 @@ describe("useBindSetting", () => {
         const ref = createRef<Gtk.Switch>();
         await render(<GtkSwitch ref={ref} />);
 
-        await expect(renderHook(() => {
-            useBindSetting({
-                settings,
-                schema: SCHEMA,
-                key: "enabled",
-                object: ref.current,
-                property: "missingProperty",
-            });
-        })).rejects.toThrow();
+        await expect(
+            renderHook(() => {
+                useBindSetting({
+                    settings,
+                    schema: SCHEMA,
+                    key: "enabled",
+                    object: ref.current,
+                    property: "missingProperty",
+                });
+            }),
+        ).rejects.toThrow();
     });
 });

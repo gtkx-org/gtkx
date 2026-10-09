@@ -3,7 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
 import { isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
-const CONFIG = 'export default { applicationId: "org.gtkx.dirlifetime", libraries: ["GLib-2.0"],' +
+const CONFIG =
+    'export default { applicationId: "org.gtkx.dirlifetime", libraries: ["GLib-2.0"],' +
     " agents: { reference: false, rules: false } };";
 const CONSUMER = `import assert from "node:assert/strict";
 import { mkdirSync, mkdtempDisposableSync, writeFileSync } from "node:fs";
@@ -44,16 +45,17 @@ try {
     quit();
 }
 `;
-const TREE_READER = 'import * as GLib from "@gtkx/gi/glib";' +
+const TREE_READER =
+    'import * as GLib from "@gtkx/gi/glib";' +
     " export const read = (tree: GLib.Tree): [number, number] => [tree.height(), tree.nnodes()];";
 const REJECTED: Record<string, string> = {
-    "tree-destroy-call.ts": 'import * as GLib from "@gtkx/gi/glib";' +
-        " export const destroy = (tree: GLib.Tree) => tree.destroy();",
+    "tree-destroy-call.ts":
+        'import * as GLib from "@gtkx/gi/glib";' + " export const destroy = (tree: GLib.Tree) => tree.destroy();",
     "tree-destroy-member.ts": 'import * as GLib from "@gtkx/gi/glib"; export type Destroy = GLib.Tree["destroy"];',
     "close-call.ts": 'import * as GLib from "@gtkx/gi/glib"; export const close = (dir: GLib.Dir) => dir.close();',
     "close-member.ts": 'import * as GLib from "@gtkx/gi/glib"; export type Close = GLib.Dir["close"];',
-    "nonnull-result.ts": 'import * as GLib from "@gtkx/gi/glib";' +
-        " export const read = (dir: GLib.Dir): string => dir.readName();",
+    "nonnull-result.ts":
+        'import * as GLib from "@gtkx/gi/glib";' + " export const read = (dir: GLib.Dir): string => dir.readName();",
 };
 
 describe("generated directory and tree lifetime contracts", () => {
@@ -61,11 +63,13 @@ describe("generated directory and tree lifetime contracts", () => {
     let project: CliProject;
 
     beforeAll(() => {
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-dir-types-",
-            config: CONFIG,
-            files: { "probe.ts": CONSUMER, "tree-reader.ts": TREE_READER, ...REJECTED },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-dir-types-",
+                config: CONFIG,
+                files: { "probe.ts": CONSUMER, "tree-reader.ts": TREE_READER, ...REJECTED },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });

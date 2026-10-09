@@ -9,6 +9,4 @@ const TaskScreen = ({ route }: SplitViewScreenProps<RootParamList, "Task">) => {
     return task ? <TaskDetail key={task.id} task={task} /> : null;
 };
 
-export {
-    TaskScreen,
-};
+export { TaskScreen };

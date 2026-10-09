@@ -24,24 +24,27 @@ const settleAccessible = (): void => {
 const useAccessibleMap = (props: Props): Ref<GObject.Object> | undefined => {
     const latestProps = useLatestRef(props);
     const isActive = hasAccessibleProps(props);
-    const attach = useCallback((object: GObject.Object | null) => {
-        if (!(object instanceof Gtk.Widget)) {
-            return;
-        }
+    const attach = useCallback(
+        (object: GObject.Object | null) => {
+            if (!(object instanceof Gtk.Widget)) {
+                return;
+            }
 
-        const target: AccessibleMapTarget = { object, props: latestProps };
-        const onMapped = (): undefined => {
-            pendingMap.add(target);
-            setTimeout(settleAccessible, 0);
-        };
+            const target: AccessibleMapTarget = { object, props: latestProps };
+            const onMapped = (): undefined => {
+                pendingMap.add(target);
+                setTimeout(settleAccessible, 0);
+            };
 
-        object.on("map", onMapped);
+            object.on("map", onMapped);
 
-        return () => {
-            object.off("map", onMapped);
-            pendingMap.delete(target);
-        };
-    }, [latestProps]);
+            return () => {
+                object.off("map", onMapped);
+                pendingMap.delete(target);
+            };
+        },
+        [latestProps],
+    );
 
     return isActive ? attach : undefined;
 };

@@ -37,7 +37,7 @@ const resolveBinaryName = ({ applicationId, deploy, manifest }: IdentityRequest)
     if (!BINARY_NAME_PATTERN.test(derived)) {
         throw new Error(
             `Cannot use "${derived}" as a package name: it must match ${String(BINARY_NAME_PATTERN)}. ` +
-            "Set `deploy.binaryName`.",
+                "Set `deploy.binaryName`.",
         );
     }
 
@@ -53,7 +53,7 @@ const resolveSummary = ({ deploy, manifest }: IdentityRequest): string => {
     if (summary === undefined) {
         throw new Error(
             "Cannot deploy without a summary: set `deploy.summary` in gtkx.config.ts, " +
-            "or `description` in package.json.",
+                "or `description` in package.json.",
         );
     }
 
@@ -78,7 +78,7 @@ const resolveDeveloper = ({ applicationId, deploy, manifest }: IdentityRequest):
     if (name === null) {
         throw new Error(
             "Cannot deploy without a developer: set `deploy.developer.name` in gtkx.config.ts, " +
-            "or `author` in package.json.",
+                "or `author` in package.json.",
         );
     }
 

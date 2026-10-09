@@ -1,13 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
-import {
-    expectSelectedTab,
-    findTab,
-    focusedRouteName,
-    type StateHistory,
-    TabsApp,
-} from "./helpers/tab-fixtures.js";
+import { expectSelectedTab, findTab, focusedRouteName, type StateHistory, TabsApp } from "./helpers/tab-fixtures.js";
 
 describe("tabs - edge cases", () => {
     it("ignores a click on the selected tab", async () => {

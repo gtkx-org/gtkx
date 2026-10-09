@@ -14,22 +14,22 @@ interface ParamSpec extends GeneratedParamSpec {}
 
 type SourceInstance<TSource> = [TSource] extends [AnyClass]
     ? TSource extends {
-        __impl__: (...args: never[]) => infer TInstance;
-    }
+          __impl__: (...args: never[]) => infer TInstance;
+      }
         ? TInstance
         : TSource extends AnyClass<infer TInstance>
-            ? TInstance
-            : never
+          ? TInstance
+          : never
     : never;
 
 type OverridePropertySpec<TName extends string, TSource> = [TSource] extends [AnyClass]
     ? [SourceInstance<TSource>] extends [never]
-            ? ParamSpec
-            : Camelized<Dashed<TName>> extends
-            | keyof ReadableProperties<SourceInstance<TSource>> |
-            keyof WritableProperties<SourceInstance<TSource>>
-                ? DescriptorFreePropertySpec<ParamSpec>
-                : ParamSpec
+        ? ParamSpec
+        : Camelized<Dashed<TName>> extends
+                | keyof ReadableProperties<SourceInstance<TSource>>
+                | keyof WritableProperties<SourceInstance<TSource>>
+          ? DescriptorFreePropertySpec<ParamSpec>
+          : ParamSpec
     : ParamSpec;
 
 /**

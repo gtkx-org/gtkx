@@ -37,9 +37,9 @@ const CASES = [
 const TSX_LOADER = new URL("../../../scripts/tsx.ts", import.meta.url).href;
 
 const runFixture = async (mode: string, artifact: string): Promise<number | null> => {
-    const child = spawnWithParentDeathSignal(process.execPath, [
-        "--import", TSX_LOADER, FIXTURE, mode, artifact,
-    ], { stdio: "ignore" });
+    const child = spawnWithParentDeathSignal(process.execPath, ["--import", TSX_LOADER, FIXTURE, mode, artifact], {
+        stdio: "ignore",
+    });
     const closed: Promise<number | null> = new Promise((resolve, reject) => {
         child.once("error", reject);
         child.once("close", (code) => {
@@ -59,11 +59,15 @@ const runFixture = async (mode: string, artifact: string): Promise<number | null
 };
 
 describe("public runtime quit cleanup", () => {
-    it.each(CASES)("$title", async ({ mode, events }) => {
-        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-quit-cleanup-"));
-        const artifact = join(directory.path, "events.json");
-        expect(await runFixture(mode, artifact)).toBe(0);
-        const recorded: unknown = JSON.parse(readFileSync(artifact, "utf8"));
-        expect(recorded).toEqual(events);
-    }, 30_000);
+    it.each(CASES)(
+        "$title",
+        async ({ mode, events }) => {
+            using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-quit-cleanup-"));
+            const artifact = join(directory.path, "events.json");
+            expect(await runFixture(mode, artifact)).toBe(0);
+            const recorded: unknown = JSON.parse(readFileSync(artifact, "utf8"));
+            expect(recorded).toEqual(events);
+        },
+        30_000,
+    );
 });

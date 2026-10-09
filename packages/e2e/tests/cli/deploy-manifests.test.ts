@@ -41,11 +41,7 @@ import {
 
 const RUNTIME_DEB_DEPENDS = ["libatomic1", "libgcc-s1", "libstdc++6"];
 
-const RUNTIME_RPM_DEPENDS = [
-    "libatomic.so.1()(64bit)",
-    "libgcc_s.so.1()(64bit)",
-    "libstdc++.so.6()(64bit)",
-];
+const RUNTIME_RPM_DEPENDS = ["libatomic.so.1()(64bit)", "libgcc_s.so.1()(64bit)", "libstdc++.so.6()(64bit)"];
 
 const COVERED_SONAMES = [
     "ld-linux-aarch64.so.1",
@@ -186,10 +182,12 @@ describe("gtkx deploy (application icon selection)", () => {
 
         expect(runCli(project, ["deploy", "--print-manifests", "--target", "deb"]).status).toBe(0);
 
-        expect(outputNames(project)).toEqual(expect.arrayContaining([
-            join(STAGE_PREFIX, "share", "icons", scaled),
-            join(STAGE_PREFIX, "share", "icons", symbolic),
-        ]));
+        expect(outputNames(project)).toEqual(
+            expect.arrayContaining([
+                join(STAGE_PREFIX, "share", "icons", scaled),
+                join(STAGE_PREFIX, "share", "icons", symbolic),
+            ]),
+        );
     });
 });
 

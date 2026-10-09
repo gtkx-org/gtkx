@@ -21,10 +21,7 @@ const collectNotices = ({
 }: NoticeRequest): Record<DeployTargetName, NoticeSection[]> => {
     const lib = `lib/${settings.binaryName}`;
     const platform = libraryNotices(settings);
-    const common = [
-        ...bundledNotices(`${lib}/${BUNDLE_FILENAME}`, `${lib}/${BINDING_FILENAME}`, packages),
-        platform,
-    ];
+    const common = [...bundledNotices(`${lib}/${BUNDLE_FILENAME}`, `${lib}/${BINDING_FILENAME}`, packages), platform];
     const bundled = shouldIncludeNode ? [nodeNotices(settings, node), ...common] : common;
 
     return {

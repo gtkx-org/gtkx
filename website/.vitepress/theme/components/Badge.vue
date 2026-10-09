@@ -1,5 +1,5 @@
 <template>
-  <span class="badge"><slot /></span>
+    <span class="badge"><slot /></span>
 </template>
 
 <style scoped>

@@ -7,8 +7,8 @@ const rowTexts = (container: Gtk.Widget | null): (string | null)[] =>
     container === null
         ? []
         : within(container)
-                .queryAllByRole(Gtk.AccessibleRole.LABEL)
-                .map((widget) => getWidgetText(widget));
+              .queryAllByRole(Gtk.AccessibleRole.LABEL)
+              .map((widget) => getWidgetText(widget));
 
 const labelTexts = (container: Gtk.Widget | null): string[] =>
     rowTexts(container).filter((text): text is string => text !== null && text.length > 0);

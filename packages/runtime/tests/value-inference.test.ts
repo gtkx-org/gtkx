@@ -1,4 +1,5 @@
 import * as Gdk from "@gtkx/gi/gdk";
+import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import { TYPE_INT, Value } from "@gtkx/gi/gobject";
 import * as GObject from "@gtkx/gi/gobject";
@@ -34,6 +35,16 @@ const createConstantForUncheckedValue = (value: unknown): void => {
 
 const makeRgba = (red: number, green: number, blue: number): Gdk.RGBA =>
     new (Gdk.RGBA as new (props: object) => Gdk.RGBA)({ red, green, blue, alpha: 1 });
+
+const getClipboard = (): Gdk.Clipboard => {
+    const display = Gdk.Display.getDefault();
+
+    if (display === null) {
+        throw new Error("reading the clipboard back needs a display");
+    }
+
+    return display.getClipboard();
+};
 
 describe("a JavaScript value passed where a GObject.Value is expected", () => {
     it("holds a string as gchararray", () => {
@@ -222,15 +233,63 @@ describe("a binding handing a value back", () => {
     });
 
     it("surfaces what a value read back from the clipboard holds", async () => {
-        const display = Gdk.Display.getDefault();
-
-        if (display === null) {
-            throw new Error("reading the clipboard back needs a display");
-        }
-
-        const clipboard = display.getClipboard();
+        const clipboard = getClipboard();
         clipboard.set("copied");
         expect(await clipboard.readValueAsync(TYPE_STRING, 0, null)).toBe("copied");
+    });
+
+    it("reads boxed and interface values back from the clipboard", async () => {
+        const clipboard = getClipboard();
+        const color = makeRgba(0.25, 0.5, 0.75);
+        const file = Gio.File.newForPath("/tmp/gtkx-clipboard");
+
+        try {
+            clipboard.set(color);
+            const receivedColor = await clipboard.readValueAsync(Gdk.RGBA, 0, null);
+            expect(receivedColor).toBeInstanceOf(Gdk.RGBA);
+            expect(receivedColor).toMatchObject({ red: 0.25, green: 0.5, blue: 0.75, alpha: 1 });
+
+            clipboard.set(file);
+            const receivedFile = await clipboard.readValueAsync(Gio.File, 0, null);
+            expect(receivedFile).toBeInstanceOf(Gio.File);
+            expect(receivedFile).toBe(file);
+        } finally {
+            clipboard.setContent(null);
+        }
+    });
+
+    it("reads a serialized texture from the clipboard through a native PNG stream", async () => {
+        const clipboard = getClipboard();
+        const texture = Gdk.MemoryTexture.new(1, 1, Gdk.MemoryFormat.R8G8B8A8, GLib.Bytes.new([255, 0, 0, 255]), 4);
+        const value = new Value();
+        value.init(Gdk.Texture);
+        value.setObject(texture);
+
+        try {
+            clipboard.set(value);
+            const [input, mimeType] = await clipboard.readAsync(["image/png"], GLib.PRIORITY_DEFAULT, null);
+            expect(mimeType).toBe("image/png");
+
+            if (input === null) {
+                throw new Error("clipboard returned no PNG stream");
+            }
+
+            const output = Gio.MemoryOutputStream.newResizable();
+            await output.spliceAsync(
+                input,
+                Gio.OutputStreamSpliceFlags.CLOSE_SOURCE | Gio.OutputStreamSpliceFlags.CLOSE_TARGET,
+                GLib.PRIORITY_DEFAULT,
+                null,
+            );
+            const decoded = Gdk.Texture.newFromBytes(output.stealAsBytes());
+            expect([decoded.getWidth(), decoded.getHeight()]).toEqual([1, 1]);
+            const downloader = Gdk.TextureDownloader.new(decoded);
+            downloader.setFormat(Gdk.MemoryFormat.R8G8B8A8);
+            const [pixels] = downloader.downloadBytes();
+            expect(pixels.getData()?.subarray(0, 4)).toEqual(new Uint8Array([255, 0, 0, 255]));
+        } finally {
+            clipboard.setContent(null);
+        }
     });
 
     it("surfaces null for a value holding nothing", () => {

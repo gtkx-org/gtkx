@@ -53,18 +53,20 @@ describe("gtkx dev Node options", () => {
                 "node_modules/node-options-probe/default.cjs": 'module.exports = "default";',
             },
         });
-        const result = spawnSync(process.execPath, [
-            ...args, CLI_ENTRY, "dev", "--cwd", project.root, "--", ...APPLICATION_ARGS,
-        ], {
-            cwd: project.root,
-            encoding: "utf8",
-            env: { ...cliEnvironment(project), NODE_OPTIONS: options },
-            timeout: 120_000,
-        });
+        const result = spawnSync(
+            process.execPath,
+            [...args, CLI_ENTRY, "dev", "--cwd", project.root, "--", ...APPLICATION_ARGS],
+            {
+                cwd: project.root,
+                encoding: "utf8",
+                env: { ...cliEnvironment(project), NODE_OPTIONS: options },
+                timeout: 120_000,
+            },
+        );
 
         expect(result.status).toBe(0);
         const observed: unknown = JSON.parse(readFileSync(join(project.root, "result.json"), "utf8"));
-        expect(observed).toMatchObject({ selection, options, args: APPLICATION_ARGS, ...title && { title } });
+        expect(observed).toMatchObject({ selection, options, args: APPLICATION_ARGS, ...(title && { title }) });
     });
 
     it("preserves rejection of invalid Node options before application startup", () => {

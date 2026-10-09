@@ -97,7 +97,7 @@ const namespaceIndexPage = (
         `# ${namespace.name} elements`,
         "",
         `Elements in this namespace are imported from \`@gtkx/jsx/${namespace.directory}\`; the matching ` +
-        `classes, enums, and functions are imported from \`@gtkx/gi/${namespace.directory}\`.`,
+            `classes, enums, and functions are imported from \`@gtkx/gi/${namespace.directory}\`.`,
         "",
         "| Element | Description |",
         "| --- | --- |",
@@ -105,15 +105,15 @@ const namespaceIndexPage = (
         ...(bases.length === 0
             ? []
             : [
-                    "",
-                    "## Abstract bases",
-                    "",
-                    "These types supply inherited props and metadata, without exporting JSX components.",
-                    "",
-                    "| Base | Description |",
-                    "| --- | --- |",
-                    ...rows(bases),
-                ]),
+                  "",
+                  "## Abstract bases",
+                  "",
+                  "These types supply inherited props and metadata, without exporting JSX components.",
+                  "",
+                  "| Base | Description |",
+                  "| --- | --- |",
+                  ...rows(bases),
+              ]),
         "",
     ].join("\n");
 };
@@ -129,21 +129,21 @@ const fileIndexPage = (namespaces: DocsNamespace[], libraries: string[]): string
         "# Element reference",
         "",
         `Every JSX element generated from ${librariesList} by \`gtkx codegen\` has a page here, regenerated ` +
-        "whenever the GIR libraries or the project's element configuration change. These pages describe " +
-        "this project's bindings exactly, so they are the authority on props, signals, and method signatures.",
+            "whenever the GIR libraries or the project's element configuration change. These pages describe " +
+            "this project's bindings exactly, so they are the authority on props, signals, and method signatures.",
         "",
         "Abstract base pages document the props inherited by concrete elements; these base types cannot " +
-        "be rendered themselves.",
+            "be rendered themselves.",
         "",
         "Every path here is from the project root, ready to read as-is.",
         "",
         "One page per element, at `<namespace>/<element>.md`, where the element file name is its class name in " +
-        "kebab-case without the namespace prefix: `AdwHeaderBar` is `adw/header-bar.md`, `GtkButton` is " +
-        "`gtk/button.md`. Read a page directly by that path rather than searching for it.",
+            "kebab-case without the namespace prefix: `AdwHeaderBar` is `adw/header-bar.md`, `GtkButton` is " +
+            "`gtk/button.md`. Read a page directly by that path rather than searching for it.",
         "",
         "Each page lists the element's props (GObject properties plus what GTKX adds, with types and defaults), " +
-        "its signals as `on<Signal>` handler props with exact signatures, static methods on the matching GI class, " +
-        "and the instance methods reachable through `ref`.",
+            "its signals as `on<Signal>` handler props with exact signatures, static methods on the matching GI class, " +
+            "and the instance methods reachable through `ref`.",
         "",
         "| Namespace | Import | Elements | Index |",
         "| --- | --- | --- | --- |",
@@ -165,22 +165,22 @@ const rootIndexPage = (namespaces: DocsNamespace[], libraries: string[], linkSty
 
     return [
         "---",
-        "description: \"Generated reference documentation for every JSX element in this project's GIR libraries.\"",
+        'description: "Generated reference documentation for every JSX element in this project\'s GIR libraries."',
         "---",
         "",
         "# Element Reference",
         "",
         "This reference documents every JSX element generated from the GObject-Introspection data for " +
-        `${librariesList}, together with the namespaces they pull in. It is produced by \`gtkx docs\` ` +
-        "using the same pipeline that generates the `@gtkx/jsx` and `@gtkx/gi` bindings, so every page " +
-        "matches the types your editor sees.",
+            `${librariesList}, together with the namespaces they pull in. It is produced by \`gtkx docs\` ` +
+            "using the same pipeline that generates the `@gtkx/jsx` and `@gtkx/gi` bindings, so every page " +
+            "matches the types your editor sees.",
         "",
         "Abstract base pages document inherited props without offering a renderable JSX component.",
         "",
         "Each element page lists:",
         "",
         "- **Props** derived from GObject properties, plus the element props GTKX adds (such as `children` " +
-        "and named slots), with types, defaults, and upstream documentation.",
+            "and named slots), with types, defaults, and upstream documentation.",
         "- **Signals** as `on<Signal>` handler props with their exact handler signatures.",
         "- **Static methods** available on the matching class from `@gtkx/gi/<namespace>`.",
         "- **Methods** available on the underlying instance through the `ref` prop.",
@@ -240,7 +240,7 @@ const ownedEntry = (entry: string, source: string): string => {
 
     throw new Error(
         `Refusing to generate documentation outside the output directory: ${source} maps to \`${entry}\`, ` +
-        "which is not an entry inside it. The GIR that declares it is malformed.",
+            "which is not an entry inside it. The GIR that declares it is malformed.",
     );
 };
 
@@ -338,7 +338,7 @@ const readDocsManifest = (manifestPath: string): DocsManifest | undefined => {
 const outDirRefusal = (outDir: string, reason: string): Error =>
     new Error(
         `Refusing to generate documentation into ${outDir}: ${reason}. Point the output directory at an ` +
-        "empty directory or at one gtkx generated, or remove it yourself first.",
+            "empty directory or at one gtkx generated, or remove it yourself first.",
     );
 
 const giInputs = (options: DocsOptions, girFiles: string[]): GiInputs => ({
@@ -366,7 +366,7 @@ const assertOwnedOutDir = (options: DocsOptions, manifest: DocsManifest | undefi
     throw outDirRefusal(
         options.outDir,
         `it is not empty and holds no ${MANIFEST_FILENAME} written by \`gtkx docs\`, ` +
-        "so its contents are not gtkx's to replace",
+            "so its contents are not gtkx's to replace",
     );
 };
 
@@ -440,8 +440,8 @@ const writeDocs = (options: DocsOptions): DocsResult => {
         library,
         props: input.props,
         resolveFrom: input.resolveFrom,
-        declarationDir: options.declarationDir ??
-            freshDeclarationDir(input.resolveFrom, giInputs(options, library.girFiles)),
+        declarationDir:
+            options.declarationDir ?? freshDeclarationDir(input.resolveFrom, giInputs(options, library.girFiles)),
     });
     const { pages, namespaces } = generatePages({ options, basePath: input.basePath, linkStyle, library, props });
     clearOutDir(options, previous);

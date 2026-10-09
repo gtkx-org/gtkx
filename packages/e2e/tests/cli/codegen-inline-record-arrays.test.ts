@@ -76,11 +76,13 @@ describe("generated inline record array admission", () => {
 
     beforeAll(() => {
         const fixture = readFileSync(new URL("fixtures/gir/InlineRecordArrays-1.0.gir", import.meta.url));
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-inline-record-arrays-",
-            config: CONFIG,
-            files: { "gir/InlineRecordArrays-1.0.gir": fixture, "accepted.ts": ACCEPTED, ...REJECTED_FILES },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-inline-record-arrays-",
+                config: CONFIG,
+                files: { "gir/InlineRecordArrays-1.0.gir": fixture, "accepted.ts": ACCEPTED, ...REJECTED_FILES },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });

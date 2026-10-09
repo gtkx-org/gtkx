@@ -16,8 +16,8 @@ const GeneralScreen = ({ navigation }: TabScreenProps<SettingsParamList, "Genera
             General
         </GtkLabel>
         <GtkLabel cssClasses={["dim-label"]} halign={Gtk.Align.START} xalign={0} wrap>
-            Tabs are an AdwViewStack driven by the AdwViewSwitcher in the header bar. Each tab mounts the first time
-            it is shown.
+            Tabs are an AdwViewStack driven by the AdwViewSwitcher in the header bar. Each tab mounts the first time it
+            is shown.
         </GtkLabel>
         <GtkButton
             label="About this app"

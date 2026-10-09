@@ -28,24 +28,19 @@ import {
     slot,
     value,
 } from "./reconciler/behaviors.js";
-import {
-    type ElementBehavior,
-    type ElementConfig,
-    forTypes,
-    registerElements,
-} from "./reconciler/registry.js";
+import { type ElementBehavior, type ElementConfig, forTypes, registerElements } from "./reconciler/registry.js";
 
 type AdwChildSetter =
-    | Adw.Bin |
-    Adw.BreakpointBin |
-    Adw.Clamp |
-    Adw.Dialog |
-    Adw.NavigationPage |
-    Adw.SplitButton |
-    Adw.StatusPage |
-    Adw.TabOverview |
-    Adw.ToastOverlay |
-    Adw.Toggle;
+    | Adw.Bin
+    | Adw.BreakpointBin
+    | Adw.Clamp
+    | Adw.Dialog
+    | Adw.NavigationPage
+    | Adw.SplitButton
+    | Adw.StatusPage
+    | Adw.TabOverview
+    | Adw.ToastOverlay
+    | Adw.Toggle;
 
 type AdwContentSetter = Adw.ApplicationWindow | Adw.BottomSheet | Adw.OverlaySplitView | Adw.Window;
 type BreakpointHost = Adw.ApplicationWindow | Adw.Window | Adw.Dialog;
@@ -62,7 +57,10 @@ const prefixSuffix = [
 ];
 
 const preferencesDialogChildren = methodSlot<Adw.PreferencesDialog, Adw.PreferencesPage>(
-    "children", Adw.PreferencesPage, "add", "remove",
+    "children",
+    Adw.PreferencesPage,
+    "add",
+    "remove",
 );
 
 const alertDialogExtraChild = setterSlot<Adw.AlertDialog, Gtk.Widget>("children", Gtk.Widget, "setExtraChild");
@@ -162,7 +160,10 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                 },
             }),
             methodSlot<Gtk.Widget, Gtk.EventController>(
-                "controllers", Gtk.EventController, "addController", "removeController",
+                "controllers",
+                Gtk.EventController,
+                "addController",
+                "removeController",
             ),
             setterSlot<Gtk.Widget, Gtk.LayoutManager>("layoutManager", Gtk.LayoutManager, "setLayoutManager"),
             slot<Gtk.Widget, Gio.ActionGroup>("actionGroups", Gio.ActionGroup, {
@@ -179,14 +180,10 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [boxSlot<Gtk.Box>()],
     },
     GtkListBox: {
-        behaviors: [
-            rowSlot<Gtk.ListBox>(),
-        ],
+        behaviors: [rowSlot<Gtk.ListBox>()],
     },
     GtkFlowBox: {
-        behaviors: [
-            rowSlot<Gtk.FlowBox>(),
-        ],
+        behaviors: [rowSlot<Gtk.FlowBox>()],
     },
     GtkOverlay: {
         behaviors: [
@@ -205,34 +202,44 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     GtkShortcutController: {
         behaviors: [
             methodSlot<Gtk.ShortcutController, Gtk.Shortcut>(
-                "shortcuts", Gtk.Shortcut, "addShortcut", "removeShortcut",
+                "shortcuts",
+                Gtk.Shortcut,
+                "addShortcut",
+                "removeShortcut",
             ),
         ],
     },
     GtkCallbackAction: {
-        behaviors: [{
-            create: (props) => Gtk.CallbackAction.new(props.callback as Gtk.ShortcutFunc),
-        }],
+        behaviors: [
+            {
+                create: (props) => Gtk.CallbackAction.new(props.callback as Gtk.ShortcutFunc),
+            },
+        ],
     },
     GtkShortcutTrigger: {
-        behaviors: [{
-            create: (props) => {
-                const trigger = Gtk.ShortcutTrigger.parseString(props.accelerator as string);
+        behaviors: [
+            {
+                create: (props) => {
+                    const trigger = Gtk.ShortcutTrigger.parseString(props.accelerator as string);
 
-                if (trigger === null) {
-                    throw new Error("Invalid shortcut accelerator");
-                }
+                    if (trigger === null) {
+                        throw new Error("Invalid shortcut accelerator");
+                    }
 
-                return trigger;
+                    return trigger;
+                },
             },
-        }],
+        ],
     },
     GtkTextChildAnchor: {
-        behaviors: [{
-            create: (props) => props.replacement === undefined
-                ? Gtk.TextChildAnchor.new()
-                : Gtk.TextChildAnchor.newWithReplacement(props.replacement as string),
-        }],
+        behaviors: [
+            {
+                create: (props) =>
+                    props.replacement === undefined
+                        ? Gtk.TextChildAnchor.new()
+                        : Gtk.TextChildAnchor.newWithReplacement(props.replacement as string),
+            },
+        ],
     },
     GtkTextView: {
         behaviors: [
@@ -333,18 +340,21 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     GtkConstraintLayout: {
         behaviors: [
             methodSlot<Gtk.ConstraintLayout, Gtk.Constraint>(
-                "constraints", Gtk.Constraint, "addConstraint", "removeConstraint",
+                "constraints",
+                Gtk.Constraint,
+                "addConstraint",
+                "removeConstraint",
             ),
             methodSlot<Gtk.ConstraintLayout, Gtk.ConstraintGuide>(
-                "guides", Gtk.ConstraintGuide, "addGuide", "removeGuide",
+                "guides",
+                Gtk.ConstraintGuide,
+                "addGuide",
+                "removeGuide",
             ),
-
         ],
     },
     GtkStack: {
-        behaviors: [
-            methodSlot<Gtk.Stack, Gtk.Widget>("children", Gtk.Widget, "addChild", "remove"),
-        ],
+        behaviors: [methodSlot<Gtk.Stack, Gtk.Widget>("children", Gtk.Widget, "addChild", "remove")],
     },
     GtkNotebook: {
         behaviors: [
@@ -433,10 +443,14 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkDrawingArea: {
         behaviors: [
-            value<Gtk.DrawingArea, Gtk.DrawingAreaDrawFunc | null>("drawFunc", (area, draw) => {
-                area.setDrawFunc(draw);
-                area.queueDraw();
-            }, null),
+            value<Gtk.DrawingArea, Gtk.DrawingAreaDrawFunc | null>(
+                "drawFunc",
+                (area, draw) => {
+                    area.setDrawFunc(draw);
+                    area.queueDraw();
+                },
+                null,
+            ),
         ],
     },
     GtkDragSource: {
@@ -459,10 +473,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [sidebarItems],
     },
     AdwMultiLayoutView: {
-        behaviors: [
-            multiLayoutLayouts,
-            multiLayoutSlots,
-        ],
+        behaviors: [multiLayoutLayouts, multiLayoutSlots],
     },
     AdwClampScrollable: {
         behaviors: [
@@ -485,7 +496,10 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [
             childSetter,
             methodSlot<Adw.BreakpointBin, Adw.Breakpoint>(
-                "breakpoints", Adw.Breakpoint, "addBreakpoint", "removeBreakpoint",
+                "breakpoints",
+                Adw.Breakpoint,
+                "addBreakpoint",
+                "removeBreakpoint",
             ),
         ],
     },
@@ -496,10 +510,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: prefixSuffix,
     },
     AdwExpanderRow: {
-        behaviors: [
-            ...prefixSuffix,
-            methodSlot<Adw.ExpanderRow, Gtk.Widget>("rows", Gtk.Widget, "addRow", "remove"),
-        ],
+        behaviors: [...prefixSuffix, methodSlot<Adw.ExpanderRow, Gtk.Widget>("rows", Gtk.Widget, "addRow", "remove")],
     },
     AdwNavigationSplitView: {
         behaviors: [contentSetterSlot<Adw.NavigationSplitView, Adw.NavigationPage>(Adw.NavigationPage)],
@@ -564,9 +575,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         ],
     },
     AdwViewStack: {
-        behaviors: [
-            methodSlot<Adw.ViewStack, Gtk.Widget>("children", Gtk.Widget, "add", "remove"),
-        ],
+        behaviors: [methodSlot<Adw.ViewStack, Gtk.Widget>("children", Gtk.Widget, "add", "remove")],
     },
     AdwToolbarView: {
         behaviors: [
@@ -588,9 +597,7 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [methodSlot<Adw.ShortcutsSection, Adw.ShortcutsItem>("children", Adw.ShortcutsItem, "add")],
     },
     AdwToggleGroup: {
-        behaviors: [
-            methodSlot<Adw.ToggleGroup, Adw.Toggle>("children", Adw.Toggle, "add", "remove"),
-        ],
+        behaviors: [methodSlot<Adw.ToggleGroup, Adw.Toggle>("children", Adw.Toggle, "add", "remove")],
     },
     AdwAlertDialog: {
         behaviors: [

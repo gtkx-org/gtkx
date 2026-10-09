@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { ACCEPTED, createCallerContainerProject } from "./codegen-caller-containers-fixture.js";
-import { typecheckFile } from "./type-consumer.js";
+import {
+    ACCEPTED,
+    callerContainerRejectedFiles,
+    createCallerContainerProject,
+    REJECTED,
+} from "./codegen-caller-containers-fixture.js";
+import { typecheckFiles } from "./type-consumer.js";
 
 describe("generated caller-allocated container admission", () => {
-    it("preserves ordinary inputs, fixed buffers, records, Icon serialization and optional TLS queries", () => {
+    it("preserves supported consumers and rejects caller-allocated container contracts", () => {
+        const rejected = callerContainerRejectedFiles(REJECTED);
         using project = createCallerContainerProject("gtkx-cli-caller-containers-accepted-", {
             "accepted.ts": ACCEPTED,
+            ...rejected,
         });
-        expect(typecheckFile(project, "accepted.ts")).toBe(0);
+        for (const [file, result] of typecheckFiles(project, ["accepted.ts", ...Object.keys(rejected)])) {
+            expect({ file, ...result }).toMatchObject({ status: file === "accepted.ts" ? 0 : 1 });
+        }
     });
 });

@@ -100,27 +100,29 @@ const useStackPages = (
 ): StackPages => {
     const [tracking, setTracking] = useState<PageTracking>(() => initialTracking(state, descriptors, offset));
 
-    if (!hasSameMembers(tracking.order, neededKeys(state, tracking.closing, offset)) ||
+    if (
+        !hasSameMembers(tracking.order, neededKeys(state, tracking.closing, offset)) ||
         tracking.focusedKey !== getFocusedKey(state, offset) ||
-        tracking.descriptors !== descriptors) {
+        tracking.descriptors !== descriptors
+    ) {
         setTracking(advance(tracking, state, descriptors, offset));
     }
 
     const release = useCallback((key: string) => {
-        setTracking((current) => (current.closing[key] === undefined
-            ? current
-            : {
-                    ...current,
-                    order: current.order.filter((entry) => entry !== key),
-                    closing: withoutKeys(current.closing, [key]),
-                }));
+        setTracking((current) =>
+            current.closing[key] === undefined
+                ? current
+                : {
+                      ...current,
+                      order: current.order.filter((entry) => entry !== key),
+                      closing: withoutKeys(current.closing, [key]),
+                  },
+        );
     }, []);
 
     const sources = { state, descriptors, closing: tracking.closing };
 
-    const pages = tracking.order
-        .map((key) => resolvePage(key, sources, describe))
-        .filter((page) => page !== undefined);
+    const pages = tracking.order.map((key) => resolvePage(key, sources, describe)).filter((page) => page !== undefined);
 
     return { pages, release };
 };

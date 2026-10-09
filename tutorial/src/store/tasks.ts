@@ -49,9 +49,10 @@ const createTasksSlice: StateCreator<Store, Mutators, [], TasksSlice> = (set) =>
                 completedAt: isDone ? new Date().toISOString() : null,
             }),
         })),
-    setImportant: (id, isImportant) => set((state) => ({
-        tasks: patch(state.tasks, id, { important: isImportant }),
-    })),
+    setImportant: (id, isImportant) =>
+        set((state) => ({
+            tasks: patch(state.tasks, id, { important: isImportant }),
+        })),
     updateTask: (id, fields) => set((state) => ({ tasks: patch(state.tasks, id, fields) })),
     moveToTrash: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: true }) })),
     restore: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: false }) })),
@@ -68,7 +69,4 @@ const createTasksSlice: StateCreator<Store, Mutators, [], TasksSlice> = (set) =>
     markNotified: (id, due) => set((state) => ({ tasks: patch(state.tasks, id, { lastNotifiedDue: due }) })),
 });
 
-export {
-    createTasksSlice,
-    type TasksSlice,
-};
+export { createTasksSlice, type TasksSlice };

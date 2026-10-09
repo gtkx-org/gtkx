@@ -10,22 +10,17 @@ type SettingValue<
     K extends SettingsSchemaKeys,
     P extends keyof K,
     V extends SettingsSchemaValues = Record<never, never>,
-> =
-    P extends keyof V
-        ? K[P] extends "enum"
-            ? V[P][keyof V[P]]
-            : V[P] extends readonly (infer C extends string)[]
-                ? WithChoices<SettingKindValue<K[P] & string>, C>
-                : SettingKindValue<K[P] & string>
-        : SettingKindValue<K[P] & string>;
+> = P extends keyof V
+    ? K[P] extends "enum"
+        ? V[P][keyof V[P]]
+        : V[P] extends readonly (infer C extends string)[]
+          ? WithChoices<SettingKindValue<K[P] & string>, C>
+          : SettingKindValue<K[P] & string>
+    : SettingKindValue<K[P] & string>;
 
 type SettingsSchemaValues = Record<string, Readonly<Record<string, number>> | readonly string[]>;
 
-type WithChoices<T, C extends string> = T extends string
-    ? C
-    : T extends (infer Item)[]
-        ? WithChoices<Item, C>[]
-        : T;
+type WithChoices<T, C extends string> = T extends string ? C : T extends (infer Item)[] ? WithChoices<Item, C>[] : T;
 
 /** A GSettings schema, as described by the modules GTKX generates from a project's `.gschema.xml` files. */
 type SettingsSchema<

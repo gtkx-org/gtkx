@@ -85,12 +85,20 @@ it("loads the runtime package without generated bindings installed", () => {
     cpSync(join(source, "dist"), join(target, "dist"), { recursive: true });
     cpSync(join(source, "package.json"), join(target, "package.json"));
 
-    const result = spawnSync(process.execPath, ["--input-type=module", "-e", `
+    const result = spawnSync(
+        process.execPath,
+        [
+            "--input-type=module",
+            "-e",
+            `
         import assert from "node:assert/strict";
         import { quit, TYPE_BOOLEAN, typeFromName } from "@gtkx/runtime";
         assert.equal(typeFromName("gboolean"), TYPE_BOOLEAN);
         quit();
-    `], { cwd: project.root, encoding: "utf8", timeout: 60_000 });
+    `,
+        ],
+        { cwd: project.root, encoding: "utf8", timeout: 60_000 },
+    );
 
     expect(result.stderr).toBe("");
     expect(result.status).toBe(0);

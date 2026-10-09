@@ -41,6 +41,4 @@ const WindowActions = () => {
     );
 };
 
-export {
-    WindowActions,
-};
+export { WindowActions };

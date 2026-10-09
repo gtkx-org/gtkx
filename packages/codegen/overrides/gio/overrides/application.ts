@@ -1,4 +1,12 @@
-import { type AnyClass, callParent, getClassType, registerClass, registerWrapperClass, typeName, type WrapperClass } from "@gtkx/runtime";
+import {
+    type AnyClass,
+    callParent,
+    getClassType,
+    registerClass,
+    registerWrapperClass,
+    typeName,
+    type WrapperClass,
+} from "@gtkx/runtime";
 import { getVfuncRegistry, keepAlive } from "@gtkx/runtime/internal";
 import { Application as GeneratedApplication, ApplicationFlags } from "../gio.js";
 
@@ -246,7 +254,8 @@ const wrapApplicationConstructor = <C extends AnyClass<Application>>(base: C): C
 };
 
 /** The application class, with GJS-compatible construction and asynchronous execution. */
-const Application: WrapperClass<typeof GeneratedApplication, Application> = wrapApplicationConstructor(GeneratedApplication);
+const Application: WrapperClass<typeof GeneratedApplication, Application> =
+    wrapApplicationConstructor(GeneratedApplication);
 
 const releaseDefaultApplication = (application: Application): void => {
     if (Application.getDefault() === application) {
@@ -457,8 +466,11 @@ Application.prototype.runAsync = function (argv: string[] | null): Promise<numbe
         } else {
             const activity = refreshApplicationActivity(this);
 
-            if (activity.uses === 0 && activity.idleDeadline === undefined &&
-                (this.getFlags() & ApplicationFlags.IS_SERVICE) !== 0) {
+            if (
+                activity.uses === 0 &&
+                activity.idleDeadline === undefined &&
+                (this.getFlags() & ApplicationFlags.IS_SERVICE) !== 0
+            ) {
                 activity.idleDeadline = performance.now() + 10_000;
             }
 
@@ -473,8 +485,4 @@ Application.prototype.runAsync = function (argv: string[] | null): Promise<numbe
     return run.promise;
 };
 
-export {
-    Application,
-    updateApplicationActivity,
-    wrapApplicationConstructor,
-};
+export { Application, updateApplicationActivity, wrapApplicationConstructor };

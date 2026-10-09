@@ -16,16 +16,18 @@ describe("generated reference output lookup", () => {
         expect(reference.lookup("GtkWidget", "element").outcome).toBe("notFound");
         const widget = reference.lookup("Gtk.Widget", "class");
         expect(widget.outcome).toBe("page");
-        expect(widget).toHaveProperty("markdown", expect.not.stringContaining(
-            "Also available as the `GtkWidget` JSX element",
-        ));
+        expect(widget).toHaveProperty(
+            "markdown",
+            expect.not.stringContaining("Also available as the `GtkWidget` JSX element"),
+        );
         for (const name of ["GtkButton", "GtkShortcutTrigger"]) {
             expect(reference.lookup(name, "element")).toMatchObject({
                 outcome: "page",
                 symbol: { name, kind: "element" },
             });
         }
-        expect(reference.symbols({ namespace: "Gtk", kinds: ["element"] }).map((symbol) => symbol.name))
-            .not.toContain("GtkWidget");
+        expect(reference.symbols({ namespace: "Gtk", kinds: ["element"] }).map((symbol) => symbol.name)).not.toContain(
+            "GtkWidget",
+        );
     });
 });

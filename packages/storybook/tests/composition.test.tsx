@@ -34,8 +34,9 @@ describe("portable native stories", () => {
         expectTypeOf(Default).parameter(0).toEqualTypeOf<Partial<CounterProps>>();
         expectTypeOf(Default.args).toEqualTypeOf<Partial<CounterProps>>();
         expectTypeOf<Record<never, never>>().toExtend<StoryObj<typeof stories.default>>();
-        expectTypeOf<{ args: { label: string; initialCount: number } }>()
-            .not.toExtend<StoryObj<{ component: typeof Counter }>>();
+        expectTypeOf<{ args: { label: string; initialCount: number } }>().not.toExtend<
+            StoryObj<{ component: typeof Counter }>
+        >();
         await render(<Default />);
 
         expect(screen.getByName("count")).toHaveTextContent(/^2$/);

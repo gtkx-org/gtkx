@@ -15,7 +15,7 @@ GTKX 1.4 is out. The headline is [`@gtkx/navigation`](/guide/navigation), React 
   <img src="/tasks-screenshot.png" width="900" height="600" loading="lazy" alt="The Tasks app: an adaptive Adwaita window with a sidebar of smart views and colored user lists on the left, and a boxed task list on the right." />
 </picture>
 
-*The tutorial's Tasks app now expresses its sidebar, content, and task detail as one `createSplitViewNavigator` tree.*
+_The tutorial's Tasks app now expresses its sidebar, content, and task detail as one `createSplitViewNavigator` tree._
 
 ## React Navigation, drawn by Adwaita
 

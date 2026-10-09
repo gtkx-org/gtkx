@@ -42,15 +42,15 @@ const StorybookView = ({ catalog, title = "GTKX Storybook" }: StorybookViewProps
         <AdwOverlaySplitView
             minSidebarWidth={220}
             maxSidebarWidth={300}
-            sidebar={(
+            sidebar={
                 <AdwToolbarView
-                    topBar={(
+                    topBar={
                         <AdwHeaderBar
-                            titleWidget={(
+                            titleWidget={
                                 <AdwWindowTitle title={title} subtitle={`${String(snapshot.stories.length)} stories`} />
-                            )}
+                            }
                         />
-                    )}
+                    }
                 >
                     <StoryNavigator
                         stories={snapshot.stories}
@@ -59,20 +59,20 @@ const StorybookView = ({ catalog, title = "GTKX Storybook" }: StorybookViewProps
                         onSelect={setSelectedId}
                     />
                 </AdwToolbarView>
-            )}
+            }
         >
-            {selected
-                ? <StorybookPreview key={selected.id} entry={selected} />
-                : (
-                        <AdwToolbarView topBar={<AdwHeaderBar />}>
-                            <AdwStatusPage
-                                name="storybook-empty"
-                                title={snapshot.isLoading ? "Loading stories" : "Choose a story"}
-                                iconName="applications-development-symbolic"
-                                description="Stories from your project appear in the sidebar."
-                            />
-                        </AdwToolbarView>
-                    )}
+            {selected ? (
+                <StorybookPreview key={selected.id} entry={selected} />
+            ) : (
+                <AdwToolbarView topBar={<AdwHeaderBar />}>
+                    <AdwStatusPage
+                        name="storybook-empty"
+                        title={snapshot.isLoading ? "Loading stories" : "Choose a story"}
+                        iconName="applications-development-symbolic"
+                        description="Stories from your project appear in the sidebar."
+                    />
+                </AdwToolbarView>
+            )}
         </AdwOverlaySplitView>
     );
 };

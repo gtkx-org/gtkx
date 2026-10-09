@@ -14,6 +14,4 @@ const createTask = (fields: TaskIdentity & Partial<Omit<Task, keyof TaskIdentity
     ...fields,
 });
 
-export {
-    createTask,
-};
+export { createTask };

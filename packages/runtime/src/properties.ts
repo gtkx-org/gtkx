@@ -120,7 +120,10 @@ const interfaceListProperties = bind(
 );
 const classInstallProperty = bind(LIB, "g_object_class_install_property", [CLASS_T, uint32T, PARAM_T], voidT);
 const classOverrideProperty = bind(
-    LIB, "g_object_class_override_property", [CLASS_T, uint32T, stringT("borrowed")], voidT,
+    LIB,
+    "g_object_class_override_property",
+    [CLASS_T, uint32T, stringT("borrowed")],
+    voidT,
 );
 
 const defaultInterfaceRef = bind(LIB, "g_type_default_interface_ref", [biguint64T], CLASS_T);
@@ -649,11 +652,7 @@ function interfaceAccessorFor(dispatch: PropertyDispatch, pspec: PropertySpec): 
     return accessor;
 }
 
-function resolveAccessor(
-    dispatch: PropertyDispatch,
-    propertyId: number,
-    pspec: PropertySpec,
-): PropertyAccessor {
+function resolveAccessor(dispatch: PropertyDispatch, propertyId: number, pspec: PropertySpec): PropertyAccessor {
     const accessor = dispatch.accessors[propertyId - FIRST_PROPERTY_ID];
 
     if (accessor !== undefined) {
@@ -768,7 +767,7 @@ function assertCanonicalName(klass: AnyClass, name: string, propertyName: string
 
     throw new TypeError(
         `registerClass: ${klass.name} keys the property '${name}' to a GObject.ParamSpec named ` +
-        `'${propertyName}', which is the name GObject notifies under; name the ParamSpec '${canonicalCase(name)}'`,
+            `'${propertyName}', which is the name GObject notifies under; name the ParamSpec '${canonicalCase(name)}'`,
     );
 }
 
@@ -829,14 +828,16 @@ function recordDeclaredNames(klass: AnyClass, accessors: DeclaredAccessor[]): vo
 function buildPropertyDispatch(source: PropertyDispatchSource): PropertyDispatch {
     const declared = buildAccessors(source);
 
-    const elementProperties = Object.fromEntries(declared.map((accessor) => {
-        const entry: ElementPropertyEntry = [accessor.propertyName, accessor.flags];
-        if (isParamWritable(accessor.flags) && !isParamConstructOnly(accessor.flags)) {
-            entry.push(fromValue(defaultValueFor(accessor.handle)));
-        }
+    const elementProperties = Object.fromEntries(
+        declared.map((accessor) => {
+            const entry: ElementPropertyEntry = [accessor.propertyName, accessor.flags];
+            if (isParamWritable(accessor.flags) && !isParamConstructOnly(accessor.flags)) {
+                entry.push(fromValue(defaultValueFor(accessor.handle)));
+            }
 
-        return [accessor.memberName, entry];
-    }));
+            return [accessor.memberName, entry];
+        }),
+    );
 
     return { accessors: [...declared], delegates: interfaceDelegatesFor(source.adoptedTypes), elementProperties };
 }
@@ -856,9 +857,7 @@ function installPropertyDispatch(klass: AnyClass, dispatch: PropertyDispatch): v
  * `undefined` when the accessor names no property the class declared itself.
  */
 function getDeclaredPropertyName(object: object, accessor: string): string | undefined {
-    const declared = (object as Record<PropertyKey, unknown>)[DECLARED_NAMES] as
-        | Record<string, string> |
-        undefined;
+    const declared = (object as Record<PropertyKey, unknown>)[DECLARED_NAMES] as Record<string, string> | undefined;
 
     return declared?.[accessor];
 }

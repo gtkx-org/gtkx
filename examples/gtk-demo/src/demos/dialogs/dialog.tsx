@@ -45,15 +45,7 @@ const dialogDemo: Demo = {
     isResizable: false,
 };
 
-const DialogEntryField = ({
-    row,
-    label,
-    entryName,
-    text,
-    setText,
-    widget,
-    setWidget,
-}: DialogEntryFieldProps) => (
+const DialogEntryField = ({ row, label, entryName, text, setText, widget, setWidget }: DialogEntryFieldProps) => (
     <>
         <GtkGridLayoutChild column={0} row={row}>
             <GtkLabel useUnderline mnemonicWidget={widget}>

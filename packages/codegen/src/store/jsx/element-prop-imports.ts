@@ -34,11 +34,8 @@ const elementBasePropTypeFor = (glibName: string): ElementPropTypeRef | undefine
     return props?.composition === "factory" ? undefined : props;
 };
 
-const isInheritedFactoryProps = (
-    glibName: string,
-    ancestor: string,
-    props: ElementPropsExport | undefined,
-): boolean => ancestor !== glibName && props?.composition === "factory";
+const isInheritedFactoryProps = (glibName: string, ancestor: string, props: ElementPropsExport | undefined): boolean =>
+    ancestor !== glibName && props?.composition === "factory";
 
 const collectConfiguredConstructOnlyProps = (
     glibNames: Iterable<string>,
@@ -65,7 +62,8 @@ const collectConfiguredConstructOnlyProps = (
 
 const configuredConstructOnlyPropsFor = (glibName: string, glibNames: Iterable<string>): string[] =>
     collectConfiguredConstructOnlyProps(glibNames, (ancestor, props) =>
-        isInheritedFactoryProps(glibName, ancestor, props));
+        isInheritedFactoryProps(glibName, ancestor, props),
+    );
 
 const inheritableConfiguredConstructOnlyPropsFor = (glibNames: Iterable<string>): string[] =>
     collectConfiguredConstructOnlyProps(glibNames, (_ancestor, props) => props?.composition === "factory");

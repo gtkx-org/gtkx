@@ -1,14 +1,10 @@
 import { loadApiReference, resolveGirPath } from "@gtkx/codegen";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCliOrThrow } from "./cli-project.js";
-import {
-    isolateTypeConsumer,
-    runNativeConsumer,
-    typecheckFile,
-} from "./type-consumer.js";
+import { isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
-const CONFIG = 'export default { applicationId: "org.gtkx.hiddendata",' +
-    " agents: { reference: false, rules: false } };";
+const CONFIG =
+    'export default { applicationId: "org.gtkx.hiddendata",' + " agents: { reference: false, rules: false } };";
 const CONSUMER = `import assert from "node:assert/strict";
 import * as GLib from "@gtkx/gi/glib";
 import * as Gio from "@gtkx/gi/gio";

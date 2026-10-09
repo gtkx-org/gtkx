@@ -23,23 +23,24 @@ test.each(["tabs", "drawer"])("a removed %s route starts lazy again when its sav
     };
     const renderSecond = (): ReactNode => <MountProbe text="Second Content" onMount={onMount} />;
     const ref = createNavigationContainerRef<Params>();
-    const routes = [{ key: "first", name: "First" }, { key: "second", name: "Second" }];
+    const routes = [
+        { key: "first", name: "First" },
+        { key: "second", name: "Second" },
+    ];
 
     await render(
         <NavigationContainer ref={ref} initialState={{ index: 1, routes }}>
-            {kind === "tabs"
-                ? (
-                        <Tabs.Navigator>
-                            <Tabs.Screen name="First" component={First} />
-                            <Tabs.Screen name="Second">{renderSecond}</Tabs.Screen>
-                        </Tabs.Navigator>
-                    )
-                : (
-                        <Drawer.Navigator>
-                            <Drawer.Screen name="First" component={First} />
-                            <Drawer.Screen name="Second">{renderSecond}</Drawer.Screen>
-                        </Drawer.Navigator>
-                    )}
+            {kind === "tabs" ? (
+                <Tabs.Navigator>
+                    <Tabs.Screen name="First" component={First} />
+                    <Tabs.Screen name="Second">{renderSecond}</Tabs.Screen>
+                </Tabs.Navigator>
+            ) : (
+                <Drawer.Navigator>
+                    <Drawer.Screen name="First" component={First} />
+                    <Drawer.Screen name="Second">{renderSecond}</Drawer.Screen>
+                </Drawer.Navigator>
+            )}
         </NavigationContainer>,
     );
 

@@ -18,9 +18,7 @@ const processIdentity = (pid: number): ProcessIdentity | undefined => {
     const sessionId = Number(fields?.[3]);
     const startTime = fields?.[19];
 
-    return startTime !== undefined && Number.isSafeInteger(sessionId)
-        ? { pid, sessionId, startTime }
-        : undefined;
+    return startTime !== undefined && Number.isSafeInteger(sessionId) ? { pid, sessionId, startTime } : undefined;
 };
 
 const isMarked = (pid: number, isMatch: MarkerMatcher): boolean => {
@@ -48,10 +46,7 @@ const killProcess = (identity: ProcessIdentity, isMatch: MarkerMatcher): void =>
 
     const current = processIdentity(identity.pid);
 
-    if (
-        current?.sessionId !== identity.sessionId ||
-        current.startTime !== identity.startTime
-    ) {
+    if (current?.sessionId !== identity.sessionId || current.startTime !== identity.startTime) {
         return;
     }
 
@@ -81,8 +76,8 @@ const killMarkedProcesses = (marker: string): void => {
 };
 
 const killMarkedProcessRun = (runPrefix: string): void => {
-    killMatchingProcesses((assignment) =>
-        assignment.startsWith(runPrefix) && JOB_ID_PATTERN.test(assignment.slice(runPrefix.length)),
+    killMatchingProcesses(
+        (assignment) => assignment.startsWith(runPrefix) && JOB_ID_PATTERN.test(assignment.slice(runPrefix.length)),
     );
 };
 

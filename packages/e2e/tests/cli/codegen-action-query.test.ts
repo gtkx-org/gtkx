@@ -3,10 +3,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
 import { isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
-const CONFIG = 'export default { applicationId: "org.gtkx.actionquery", libraries: ["Gio-2.0"],' +
+const CONFIG =
+    'export default { applicationId: "org.gtkx.actionquery", libraries: ["Gio-2.0"],' +
     " agents: { reference: false, rules: false } };";
 const IMPORTS = 'import * as Gio from "@gtkx/gi/gio";\nimport * as GLib from "@gtkx/gi/glib";\n';
-const CONSUMER = IMPORTS + `import assert from "node:assert/strict";
+const CONSUMER =
+    IMPORTS +
+    `import assert from "node:assert/strict";
 import { quit, registerClass } from "@gtkx/runtime";
 
 type Query = ReturnType<Gio.ActionGroup["queryAction"]>;
@@ -77,18 +80,23 @@ try {
     quit();
 }
 `;
-const CONTROL = IMPORTS + `export const read = (group: Gio.ActionGroup): [boolean, boolean] => {
+const CONTROL =
+    IMPORTS +
+    `export const read = (group: Gio.ActionGroup): [boolean, boolean] => {
     const [found, enabled] = group.queryAction("plain");
     return [found, enabled];
 };
 `;
 const OUTPUTS = ["GLib.VariantType", "GLib.VariantType", "GLib.Variant", "GLib.Variant"];
 const REJECTED = Object.fromEntries(
-    ["queryAction", "vfuncQueryAction"].flatMap((method) => OUTPUTS.map((type, index) => [
-        `${method}-${String(index + 2)}.ts`,
-        IMPORTS + `export const read = (group: Gio.ActionGroup): ${type} => ` +
-        `group.${method}("plain")[${String(index + 2)}];`,
-    ])),
+    ["queryAction", "vfuncQueryAction"].flatMap((method) =>
+        OUTPUTS.map((type, index) => [
+            `${method}-${String(index + 2)}.ts`,
+            IMPORTS +
+                `export const read = (group: Gio.ActionGroup): ${type} => ` +
+                `group.${method}("plain")[${String(index + 2)}];`,
+        ]),
+    ),
 );
 
 describe("generated action query nullability", () => {
@@ -96,11 +104,13 @@ describe("generated action query nullability", () => {
     let project: CliProject;
 
     beforeAll(() => {
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-action-query-types-",
-            config: CONFIG,
-            files: { "probe.ts": CONSUMER, "control.ts": CONTROL, ...REJECTED },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-action-query-types-",
+                config: CONFIG,
+                files: { "probe.ts": CONSUMER, "control.ts": CONTROL, ...REJECTED },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });
@@ -128,12 +138,14 @@ describe("generated action query nullability", () => {
             resolveFrom: project.root,
         });
         const page = reference.lookup("Gio.ActionGroup", "interface");
-        const tuple = "[boolean, boolean, GLib.VariantType | null, GLib.VariantType | null, " +
+        const tuple =
+            "[boolean, boolean, GLib.VariantType | null, GLib.VariantType | null, " +
             "GLib.Variant | null, GLib.Variant | null]";
         expect(page.outcome).toBe("page");
         expect(page).toHaveProperty("markdown", expect.stringContaining(`queryAction(actionName: string): ${tuple}`));
         expect(page).toHaveProperty(
-            "markdown", expect.stringContaining(`vfuncQueryAction(actionName: string): ${tuple}`),
+            "markdown",
+            expect.stringContaining(`vfuncQueryAction(actionName: string): ${tuple}`),
         );
     });
 

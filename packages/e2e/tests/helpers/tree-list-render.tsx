@@ -24,15 +24,12 @@ const getRowText = (row: Gtk.TreeListRow): string => {
     return item instanceof Gtk.StringObject ? item.getString() : "";
 };
 
-const renderTreeItem = (item: GObject.Object, isExpanderHidden: boolean): ReactNode => (
-    item instanceof Gtk.TreeListRow
-        ? (
-                <GtkTreeExpander listRow={item} hideExpander={isExpanderHidden}>
-                    <GtkLabel>{getRowText(item)}</GtkLabel>
-                </GtkTreeExpander>
-            )
-        : null
-);
+const renderTreeItem = (item: GObject.Object, isExpanderHidden: boolean): ReactNode =>
+    item instanceof Gtk.TreeListRow ? (
+        <GtkTreeExpander listRow={item} hideExpander={isExpanderHidden}>
+            <GtkLabel>{getRowText(item)}</GtkLabel>
+        </GtkTreeExpander>
+    ) : null;
 
 const renderTree = (model: ReactElement, options: TreeOptions = {}): Promise<RefObject<Gtk.ListView | null>> =>
     renderListView({

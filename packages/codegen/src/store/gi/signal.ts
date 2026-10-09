@@ -82,15 +82,15 @@ const renderSignalMembers = (context: ModuleContext, klass: GirClass): string[] 
     return [
         renderBlock(
             `connect<TThis, K extends ${signalName}<TThis>>(` +
-            `this: TThis & ${receiver}<TThis, "connect">, ` +
-            `signal: K, handler: ${handlerMap}<TThis>[K], isAfter?: boolean): ${handlerId}`,
+                `this: TThis & ${receiver}<TThis, "connect">, ` +
+                `signal: K, handler: ${handlerMap}<TThis>[K], isAfter?: boolean): ${handlerId}`,
             "return connectSignalByName(this, signal, handler, isAfter);",
         ),
         renderBlock(
             `emit<K extends ${emissionName}<TThis>, TThis = this>(` +
-            `this: TThis & ${receiver}<TThis, "emit">, ` +
-            `sigName: K, ...args: ${args}<TThis, K>): ` +
-            `${result}<TThis, K>`,
+                `this: TThis & ${receiver}<TThis, "emit">, ` +
+                `sigName: K, ...args: ${args}<TThis, K>): ` +
+                `${result}<TThis, K>`,
             `return emitSignalByName(this, sigName, args) as ${result}<TThis, K>;`,
         ),
     ];
@@ -110,11 +110,7 @@ const renderSyntheticSignalMarker = (
     return `markSyntheticSignalMembers(${targetName}, ["connect", "disconnect", "emit", "off", "on", "once"]);`;
 };
 
-const renderSignalRegistration = (
-    context: ModuleContext,
-    klass: GirClass,
-    targetName: string,
-): string | undefined => {
+const renderSignalRegistration = (context: ModuleContext, klass: GirClass, targetName: string): string | undefined => {
     if (klass.glibGetType === undefined) {
         return undefined;
     }
@@ -131,10 +127,11 @@ const renderSignalRegistration = (
     context.addRuntimeInternalImport("installSignalDispatch");
     context.addRuntimeImport("t");
     const callbackCases = signals.map((signal) => renderCallbackCase(context, signal));
-    const emitCases = signals.filter((signal) => canEmitSignal(context.library, signal))
+    const emitCases = signals
+        .filter((signal) => canEmitSignal(context.library, signal))
         .map((signal) => renderEmitCase(context, signal));
-    const callbackDefault = "default:\n    throw new globalThis.Error(\"Unknown signal '\" + signal + \"'\");";
-    const emitDefault = "default:\n    throw new globalThis.Error(\"Unknown signal '\" + sigName + \"'\");";
+    const callbackDefault = 'default:\n    throw new globalThis.Error("Unknown signal \'" + signal + "\'");';
+    const emitDefault = 'default:\n    throw new globalThis.Error("Unknown signal \'" + sigName + "\'");';
     const callbackBody = indent([...callbackCases, callbackDefault].join("\n"), 1);
     const callbackSwitch = `switch (canonicalSignalName(signal)) {\n${callbackBody}\n}`;
     const emitBody = indent([...emitCases, emitDefault].join("\n"), 1);
@@ -146,8 +143,7 @@ const renderSignalRegistration = (
     const names = signals.map((signal) => sourceStringLiteral(signal.name.replaceAll("_", "-"))).join(", ");
 
     const registration =
-        `installSignalDispatch(${targetName}, [${names}], {\n` +
-        `${indent(members.join(",\n\n"), 1)}\n});`;
+        `installSignalDispatch(${targetName}, [${names}], {\n` + `${indent(members.join(",\n\n"), 1)}\n});`;
 
     return marker === undefined ? registration : `${marker}\n${registration}`;
 };
@@ -262,18 +258,11 @@ const gobjectObjectMapRef = (context: ModuleContext, suffix: string): string => 
     return `${context.addCrossNamespaceImport("GObject")}.Object${suffix}`;
 };
 
-const renderSignalMetadataInterface = (
-    context: ModuleContext,
-    klass: GirClass,
-    className: string,
-): string => {
+const renderSignalMetadataInterface = (context: ModuleContext, klass: GirClass, className: string): string => {
     const map = `${className}${SIGNALS_SUFFIX}`;
     const emitMap = `${className}${SIGNAL_EMIT_SUFFIX}`;
 
-    const lines = [
-        `__signals__?: ${map};`,
-        `__signalEmit__?: ${emitMap};`,
-    ];
+    const lines = [`__signals__?: ${map};`, `__signalEmit__?: ${emitMap};`];
     appendSignalMemberMetadata({ context, klass, map, emitMap, lines });
 
     return renderBracedOrEmpty(`export interface ${className}`, lines.join("\n"));
@@ -325,10 +314,7 @@ const appendSignalMemberMetadata = (options: SignalMemberMetadataOptions): void 
 };
 
 const renderSignalHandlerType = (context: ModuleContext, signal: GirCallable): string => {
-    const params = renderHandlerParameters(
-        signal.parameters,
-        (ref, nullable) => renderTsType(context, ref, nullable),
-    );
+    const params = renderHandlerParameters(signal.parameters, (ref, nullable) => renderTsType(context, ref, nullable));
 
     return `(${params.join(", ")}) => ${renderResultType(context, signal, {
         shouldIncludeCallerAllocated: false,
@@ -337,11 +323,7 @@ const renderSignalHandlerType = (context: ModuleContext, signal: GirCallable): s
     })}`;
 };
 
-const renderResultType = (
-    context: ModuleContext,
-    signal: GirCallable,
-    options: SignalResultTypeOptions,
-): string => {
+const renderResultType = (context: ModuleContext, signal: GirCallable, options: SignalResultTypeOptions): string => {
     const { shouldIncludeCallerAllocated, isOptOut, direction } = options;
 
     return renderHandlerResultType({
@@ -350,10 +332,10 @@ const renderResultType = (
         renderType: (ref, nullable, transfer) =>
             direction === "to-native"
                 ? renderParameterTsType(context, ref, {
-                        isNullable: nullable,
-                        isValueWidened: false,
-                        canAcceptTypedArrayViews: transfer === "none",
-                    })
+                      isNullable: nullable,
+                      isValueWidened: false,
+                      canAcceptTypedArrayViews: transfer === "none",
+                  })
                 : renderTsType(context, ref, nullable),
         shouldIncludeCallerAllocated,
         isOptOut,
@@ -366,10 +348,11 @@ const renderSignalEmitEntry = (context: ModuleContext, signal: GirCallable): str
     }
     const args = renderHandlerParameters(
         signal.parameters,
-        (ref, nullable, transfer) => renderParameterTsType(context, ref, {
-            isNullable: nullable,
-            canAcceptTypedArrayViews: transfer === "none",
-        }),
+        (ref, nullable, transfer) =>
+            renderParameterTsType(context, ref, {
+                isNullable: nullable,
+                canAcceptTypedArrayViews: transfer === "none",
+            }),
         isCallerAllocatedOut,
     );
 
@@ -495,7 +478,7 @@ const renderCallback = (context: ModuleContext, signal: GirCallable): string => 
         }),
         options: [
             "hasDestroy: true",
-            "destroyKind: \"closureNotify\"",
+            'destroyKind: "closureNotify"',
             "hasUserData: true",
             `userDataIndex: ${userDataIndex}`,
         ],

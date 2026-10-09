@@ -26,8 +26,8 @@ const notifiedAccessor = (name: string): string => lowerFirst(name.slice(NOTIFY_
 const unknownSignalError = (typeName: string, name: string): Error =>
     new Error(
         `The handler prop '${name}' of <${typeName}> names no signal ${typeName} carries. Name a ` +
-        `signal the element carries, or declare the one '${name}' stands for on ${typeName} when ` +
-        "its class is registered.",
+            `signal the element carries, or declare the one '${name}' stands for on ${typeName} when ` +
+            "its class is registered.",
     );
 
 const lookedUpSignal = (target: SignalTarget, name: string): string => {
@@ -144,8 +144,8 @@ const eachChangedName = (prev: Props, next: Props, visit: (name: string) => void
 const propChangeError = (typeName: string, name: string): Error =>
     new Error(
         `Cannot change the construct-only prop '${name}' of <${typeName}> after it is created. ` +
-        "It is only accepted while the element is being built, so give the element a key that " +
-        `changes with '${name}' and React will build a new one.`,
+            "It is only accepted while the element is being built, so give the element a key that " +
+            `changes with '${name}' and React will build a new one.`,
     );
 
 const hasAppliedValue = (value: unknown): boolean => (Array.isArray(value) ? value.length > 0 : value !== undefined);
@@ -296,10 +296,4 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
     applyHandlers(target, info, prev, next);
 };
 
-export {
-    discardAccessible,
-    flushAccessible,
-    applyElementProps,
-    applyAdoptedProps,
-    assertPropsCanChange,
-};
+export { discardAccessible, flushAccessible, applyElementProps, applyAdoptedProps, assertPropsCanChange };

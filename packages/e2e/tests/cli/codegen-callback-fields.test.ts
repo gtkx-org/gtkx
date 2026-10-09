@@ -3,12 +3,7 @@ import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, removeCliProject, runCli, runCliOrThrow } from "./cli-project.js";
 import { fixtureConfig } from "./codegen-helpers.js";
-import {
-    compileNativeFixture,
-    isolateTypeConsumer,
-    runNativeConsumer,
-    typecheckFile,
-} from "./type-consumer.js";
+import { compileNativeFixture, isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
 const FIXTURE = fileURLToPath(new URL("fixtures/callback-fields.c", import.meta.url));
 const GIR_PATH = fileURLToPath(new URL("fixtures/gir", import.meta.url));

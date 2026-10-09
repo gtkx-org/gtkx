@@ -58,9 +58,12 @@ describe("deploy target file paths", () => {
         const runtimeLength = Number(offset.stdout.trim());
         writeFileSync(runtimePath, readFileSync(artifact).subarray(0, runtimeLength));
         const path = kind === "relative" ? "custom runtime" : runtimePath;
-        writeFileSync(join(project.root, "gtkx.config.ts"), config(`appimage: {
+        writeFileSync(
+            join(project.root, "gtkx.config.ts"),
+            config(`appimage: {
             fileName: "${ARTIFACT_NAME}", runtimeFile: ${JSON.stringify(path)},
-        },`));
+        },`),
+        );
         runCliOrThrow(project, ["deploy", "--target", "appimage"]);
         const extraction = spawnSync(artifact, ["--appimage-extract", `${APPLICATION_ID}.svg`], {
             cwd: project.root,
@@ -89,12 +92,16 @@ describe("deploy target file paths", () => {
             hasStore: true,
         });
         if (kind !== "default") {
-            const path = kind === "relative"
-                ? "lockfile directory/package-lock.json"
-                : join(project.root, "lockfile directory", "package-lock.json");
-            writeFileSync(join(project.root, "gtkx.config.ts"), config(`flatpak: {
+            const path =
+                kind === "relative"
+                    ? "lockfile directory/package-lock.json"
+                    : join(project.root, "lockfile directory", "package-lock.json");
+            writeFileSync(
+                join(project.root, "gtkx.config.ts"),
+                config(`flatpak: {
                 ${SOURCE}, lockfile: ${JSON.stringify(path)},
-            },`));
+            },`),
+            );
         }
         const temporary = join(project.root, "temporary");
         mkdirSync(temporary);

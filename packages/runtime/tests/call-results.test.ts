@@ -2,12 +2,7 @@ import { t } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
 const string = t.string("borrowed");
-const parseInteger = t.bind(
-    "libglib-2.0.so.0",
-    "g_ascii_strtoll",
-    [string, t.ref(string), t.uint32],
-    t.bigint64,
-);
+const parseInteger = t.bind("libglib-2.0.so.0", "g_ascii_strtoll", [string, t.ref(string), t.uint32], t.bigint64);
 
 const parseIntegerTuple = t.fn("libglib-2.0.so.0", "g_ascii_strtoll", {
     args: [{ type: string }, { type: string, direction: "out" }, { type: t.uint32 }],

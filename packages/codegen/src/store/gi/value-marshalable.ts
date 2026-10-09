@@ -19,7 +19,8 @@ const hasOwnCopySemantics = (record: GirRecord): boolean =>
 const isOpaqueRecord = (record: GirRecord): boolean => record.opaque || record.disguised;
 
 const isValueSafeArray = (scope: Scope, type: Extract<GirType, { kind: "carray" }>): boolean =>
-    type.fixedSize !== undefined && type.arrayCType?.endsWith("*") !== true &&
+    type.fixedSize !== undefined &&
+    type.arrayCType?.endsWith("*") !== true &&
     isValueSafeRef(scope, type.element, type.elementCType);
 
 const isValueSafeAlias = (scope: Scope, type: Extract<GirType, { kind: "alias" }>): boolean =>
@@ -95,23 +96,32 @@ const defaultRecordConstructor = (
     context: ValueMarshalContext,
     namespaceName: string,
     record: GirRecord,
-): GirFunction | undefined => record.constructors.find((constructor) => {
-    const result = constructor.returnValue;
-    const name = result.type === undefined ? undefined : context.library.nameFor(result.type);
+): GirFunction | undefined =>
+    record.constructors.find((constructor) => {
+        const result = constructor.returnValue;
+        const name = result.type === undefined ? undefined : context.library.nameFor(result.type);
 
-    return constructor.name === "new" && constructor.introspectable && constructor.cIdentifier !== undefined &&
-        constructor.movedTo === undefined && constructor.shadowedBy === undefined &&
-        !constructor.throws && constructor.parameters.length === 0 &&
-        result.transferOwnership === "full" && !result.nullable && !result.skip &&
-        name?.namespaceName === namespaceName && name.typeName === record.name;
-});
+        return (
+            constructor.name === "new" &&
+            constructor.introspectable &&
+            constructor.cIdentifier !== undefined &&
+            constructor.movedTo === undefined &&
+            constructor.shadowedBy === undefined &&
+            !constructor.throws &&
+            constructor.parameters.length === 0 &&
+            result.transferOwnership === "full" &&
+            !result.nullable &&
+            !result.skip &&
+            name?.namespaceName === namespaceName &&
+            name.typeName === record.name
+        );
+    });
 
 const isConstructibleRecord = (context: ValueMarshalContext, namespaceName: string, record: GirRecord): boolean =>
-    !isOpaqueRecord(record) && (
-        isFieldInitializable(context, namespaceName, record) ||
+    !isOpaqueRecord(record) &&
+    (isFieldInitializable(context, namespaceName, record) ||
         hasBoxedZeroInitialization(namespaceName, record) ||
-        (hasOwnCopySemantics(record) && defaultRecordConstructor(context, namespaceName, record) !== undefined)
-    );
+        (hasOwnCopySemantics(record) && defaultRecordConstructor(context, namespaceName, record) !== undefined));
 
 export {
     defaultRecordConstructor,

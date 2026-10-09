@@ -61,7 +61,7 @@ const inlineArrayStride = (context: ModuleContext, array: Extract<GirType, { kin
 
 const bitMask = (width: number): number => {
     if (width >= 32) {
-        return 0xFF_FF_FF_FF;
+        return 0xff_ff_ff_ff;
     }
 
     return (1 << width) - 1;
@@ -199,7 +199,8 @@ const layoutOfRecord = (
     nextVisited.add(key);
 
     const inputs: FieldLayoutInput[] = Array.from(resolved.value.fields, (field) =>
-        fieldLayoutInput(context, field, nextVisited));
+        fieldLayoutInput(context, field, nextVisited),
+    );
 
     if (inputs.length === 0) {
         return POINTER_LAYOUT;
@@ -227,11 +228,4 @@ const resolveAliasLayout = (
     return layoutOfType(context, ref, resolved.value.targetCType, visited);
 };
 
-export {
-    computeRecordFieldSlots,
-    inlineArrayStride,
-    recordInlineSize,
-    bitMask,
-    mergeBitfield,
-    type RecordFieldSlot,
-};
+export { computeRecordFieldSlots, inlineArrayStride, recordInlineSize, bitMask, mergeBitfield, type RecordFieldSlot };

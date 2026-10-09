@@ -4,6 +4,7 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import { createStagingDir } from "./staging.js";
+import { transpileModules } from "./store/transpile.js";
 
 type ProjectFile = {
     fileName: string;
@@ -87,10 +88,7 @@ const DECLARATION_OPTIONS = ts.convertCompilerOptionsFromJson(
     ".",
 ).options;
 
-const MODULE_OPTIONS = ts.convertCompilerOptionsFromJson(
-    { ...BASE_COMPILER_OPTIONS, ...MODULE_EMIT },
-    ".",
-).options;
+const MODULE_OPTIONS = ts.convertCompilerOptionsFromJson({ ...BASE_COMPILER_OPTIONS, ...MODULE_EMIT }, ".").options;
 
 const TS_EXTENSION_PATTERN = /\.tsx?$/;
 const DECLARATION_EXTENSION = ".d.ts";
@@ -205,17 +203,20 @@ const originLines = (diagnosed: DiagnosedFile[], files: ProjectFile[]): string[]
         ([origin, generated]) => `Generated from ${origin}: ${[...generated].join(", ")}`,
     );
 
-const diagnosticError = (params: ProjectContext, diagnostics: ts.Diagnostic[]): Error => {
-    const diagnosed = projectDiagnosticFiles(diagnostics, params.projectDir);
-    const { label } = params;
-
-    if (diagnosed.length === 0) {
-        return new Error(`Compiling ${label} failed:\n${ts.formatDiagnostics(diagnostics, FORMAT_HOST).trim()}`);
-    }
-
+const diagnosedError = (params: ProjectContext, diagnosed: DiagnosedFile[]): Error => {
     const lines = [...diagnosed.map((entry) => entry.text), ...originLines(diagnosed, params.files)];
 
-    return new Error(`Compiling ${label} failed:\n${lines.join("\n")}`);
+    return new Error(`Compiling ${params.label} failed:\n${lines.join("\n")}`);
+};
+
+const diagnosticError = (params: ProjectContext, diagnostics: ts.Diagnostic[]): Error => {
+    const diagnosed = projectDiagnosticFiles(diagnostics, params.projectDir);
+
+    if (diagnosed.length === 0) {
+        return new Error(`Compiling ${params.label} failed:\n${ts.formatDiagnostics(diagnostics, FORMAT_HOST).trim()}`);
+    }
+
+    return diagnosedError(params, diagnosed);
 };
 
 const keepFailedProject = (input: FailedProjectInput): Error => {
@@ -241,12 +242,16 @@ const projectCompilerPaths = (params: CompileProjectParams): ts.MapLike<string[]
         return undefined;
     }
 
-    const config = ts.getParsedCommandLineOfConfigFile(configFile, {}, {
-        ...ts.sys,
-        onUnRecoverableConfigFileDiagnostic: (diagnostic) => {
-            throw diagnosticError(params, [diagnostic]);
+    const config = ts.getParsedCommandLineOfConfigFile(
+        configFile,
+        {},
+        {
+            ...ts.sys,
+            onUnRecoverableConfigFileDiagnostic: (diagnostic) => {
+                throw diagnosticError(params, [diagnostic]);
+            },
         },
-    });
+    );
     if (config?.options.paths === undefined) {
         return undefined;
     }
@@ -312,29 +317,28 @@ const isPureAnnotated = (text: string, node: ts.Node): boolean =>
         text.slice(range.pos, range.end).includes(PURE_ANNOTATION_TEXT),
     );
 
-const dropCommentsExceptPureAnnotations =
-    (): ts.TransformerFactory<ts.SourceFile> => (context) => (sourceFile) => {
-        const { text } = sourceFile;
+const dropCommentsExceptPureAnnotations = (): ts.TransformerFactory<ts.SourceFile> => (context) => (sourceFile) => {
+    const { text } = sourceFile;
 
-        const visit = (node: ts.Node): ts.Node => {
-            const isPure = isPureAnnotated(text, node);
-            const visited = ts.visitEachChild(node, visit, context);
-            ts.setEmitFlags(visited, ts.EmitFlags.NoLeadingComments | ts.EmitFlags.NoTrailingComments);
+    const visit = (node: ts.Node): ts.Node => {
+        const isPure = isPureAnnotated(text, node);
+        const visited = ts.visitEachChild(node, visit, context);
+        ts.setEmitFlags(visited, ts.EmitFlags.NoLeadingComments | ts.EmitFlags.NoTrailingComments);
 
-            if (isPure) {
-                ts.addSyntheticLeadingComment(
-                    visited,
-                    ts.SyntaxKind.MultiLineCommentTrivia,
-                    PURE_ANNOTATION_COMMENT,
-                    false,
-                );
-            }
+        if (isPure) {
+            ts.addSyntheticLeadingComment(
+                visited,
+                ts.SyntaxKind.MultiLineCommentTrivia,
+                PURE_ANNOTATION_COMMENT,
+                false,
+            );
+        }
 
-            return visited;
-        };
-
-        return ts.visitEachChild(sourceFile, visit, context);
+        return visited;
     };
+
+    return ts.visitEachChild(sourceFile, visit, context);
+};
 
 const emitModule = (module: SourceModule, projectDir: string): ts.Diagnostic[] => {
     const fileName = join(projectDir, module.fileName);
@@ -345,7 +349,7 @@ const emitModule = (module: SourceModule, projectDir: string): ts.Diagnostic[] =
         transformers: { after: [dropCommentsExceptPureAnnotations()] },
     });
 
-    const diagnostics = [...declaration.diagnostics ?? [], ...javascript.diagnostics ?? []];
+    const diagnostics = [...(declaration.diagnostics ?? []), ...(javascript.diagnostics ?? [])];
 
     if (diagnostics.length > 0) {
         return diagnostics;
@@ -358,6 +362,16 @@ const emitModule = (module: SourceModule, projectDir: string): ts.Diagnostic[] =
 };
 
 const emitModules = (params: EmitModulesParams): void => {
+    const diagnosed = transpileModules(params);
+
+    if (diagnosed !== undefined) {
+        if (diagnosed.length > 0) {
+            throw diagnosedError(params, diagnosed);
+        }
+
+        return;
+    }
+
     const diagnostics: ts.Diagnostic[] = [];
 
     for (const module of params.files) {
@@ -411,4 +425,4 @@ const checkModules = (params: { modules: SourceModule[]; resolveFrom: string; la
     rmSync(keepAt, { recursive: true, force: true });
 };
 
-export { checkModules, emitModules, keepFailedProject, transpileDeclaration, type SourceModule };
+export { checkModules, emitModules, keepFailedProject, transpileDeclaration, type DiagnosedFile, type SourceModule };

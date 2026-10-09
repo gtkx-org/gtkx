@@ -1,11 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import {
-    type CliProject,
-    createCliProject,
-    removeCliProject,
-    runCli,
-    STORE_LIBRARIES,
-} from "./cli-project.js";
+import { type CliProject, createCliProject, removeCliProject, runCli, STORE_LIBRARIES } from "./cli-project.js";
 import { config, expectModules, GI_MODULES, isStoreMarked, linkPath, markStore } from "./codegen-helpers.js";
 
 describe("gtkx codegen (a project that generates no store)", () => {

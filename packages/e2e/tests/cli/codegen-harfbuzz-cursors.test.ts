@@ -3,10 +3,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type CliProject, createCliProject, runCliOrThrow } from "./cli-project.js";
 import { isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
-const CONFIG = 'export default { applicationId: "org.gtkx.harfbuzzcursors", libraries: ["HarfBuzz-0.0"],' +
+const CONFIG =
+    'export default { applicationId: "org.gtkx.harfbuzzcursors", libraries: ["HarfBuzz-0.0"],' +
     " agents: { reference: false, rules: false } };";
 const IMPORTS = 'import * as HarfBuzz from "@gtkx/gi/harfbuzz";\n';
-const CONSUMER = IMPORTS + `import assert from "node:assert/strict";
+const CONSUMER =
+    IMPORTS +
+    `import assert from "node:assert/strict";
 import { quit } from "@gtkx/runtime";
 
 const encoder = new TextEncoder();
@@ -60,7 +63,9 @@ try {
     quit();
 }
 `;
-const CONTROL = IMPORTS + `export const unicodeStatus = (
+const CONTROL =
+    IMPORTS +
+    `export const unicodeStatus = (
     buffer: HarfBuzz.buffer_t, source: Parameters<typeof HarfBuzz.bufferDeserializeUnicode>[1],
 ): number => HarfBuzz.bufferDeserializeUnicode(buffer, source, HarfBuzz.buffer_serialize_format_t.TEXT)[0];
 export const glyphStatus = (
@@ -68,10 +73,14 @@ export const glyphStatus = (
 ): number => HarfBuzz.bufferDeserializeGlyphs(buffer, source, null, HarfBuzz.buffer_serialize_format_t.TEXT)[0];
 `;
 const REJECTED = {
-    "unicode-string-tail.ts": IMPORTS + `export const tail = (
+    "unicode-string-tail.ts":
+        IMPORTS +
+        `export const tail = (
     buffer: HarfBuzz.buffer_t, source: Parameters<typeof HarfBuzz.bufferDeserializeUnicode>[1],
 ): string => HarfBuzz.bufferDeserializeUnicode(buffer, source, HarfBuzz.buffer_serialize_format_t.TEXT)[1];`,
-    "glyph-string-tail.ts": IMPORTS + `export const tail = (
+    "glyph-string-tail.ts":
+        IMPORTS +
+        `export const tail = (
     buffer: HarfBuzz.buffer_t, source: Parameters<typeof HarfBuzz.bufferDeserializeGlyphs>[1],
 ): string => HarfBuzz.bufferDeserializeGlyphs(buffer, source, null, HarfBuzz.buffer_serialize_format_t.TEXT)[1];`,
 };
@@ -81,11 +90,13 @@ describe("generated HarfBuzz deserializer cursors", () => {
     let project: CliProject;
 
     beforeAll(() => {
-        project = cleanup.use(createCliProject({
-            prefix: "gtkx-cli-harfbuzz-cursor-types-",
-            config: CONFIG,
-            files: { "probe.ts": CONSUMER, "control.ts": CONTROL, ...REJECTED },
-        }));
+        project = cleanup.use(
+            createCliProject({
+                prefix: "gtkx-cli-harfbuzz-cursor-types-",
+                config: CONFIG,
+                files: { "probe.ts": CONSUMER, "control.ts": CONTROL, ...REJECTED },
+            }),
+        );
         runCliOrThrow(project, ["codegen"]);
         isolateTypeConsumer(project);
     });

@@ -26,7 +26,7 @@ const stripBuildMetadata = (version: string): string => {
 
     warn(
         `Dropping the build metadata from version "${version}": Debian and RPM cannot express it. ` +
-        `Packaging ${stripped} instead; set \`deploy.release\` to distinguish rebuilds.`,
+            `Packaging ${stripped} instead; set \`deploy.release\` to distinguish rebuilds.`,
     );
 
     return stripped;

@@ -169,8 +169,8 @@ function newObjectWithProperties<T extends object>(gtype: bigint, props: object,
         }
     }
 
-    const existing = constructFactories.get(wrapper.constructor)?.() ??
-        newObject(gtype, names, values, wrapper, registerWrapper);
+    const existing =
+        constructFactories.get(wrapper.constructor)?.() ?? newObject(gtype, names, values, wrapper, registerWrapper);
 
     if (existing !== null) {
         return existing as T;
@@ -243,12 +243,7 @@ function setProperty<
  * @param jsValue The value to set.
  */
 function setProperty(obj: object, propertyName: string, descriptor: Descriptor, jsValue: unknown): void;
-function setProperty(
-    obj: object,
-    propertyName: string,
-    descriptorOrValue: unknown,
-    jsValue?: unknown,
-): void {
+function setProperty(obj: object, propertyName: string, descriptorOrValue: unknown, jsValue?: unknown): void {
     if (arguments.length === 3) {
         const property = writableObjectPropertyFor(obj, propertyName, descriptorOrValue);
         gObjectSetProperty(getHandle(obj), property.name, property.value);

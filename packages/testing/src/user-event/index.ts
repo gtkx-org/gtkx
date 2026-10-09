@@ -3,17 +3,7 @@ import { delay } from "../timers.js";
 import { requireWidget } from "../widget-target.js";
 import { scroll, slide } from "./adjustment.js";
 import { click, dblClick, tripleClick } from "./click.js";
-import {
-    drag,
-    dragAndDrop,
-    drop,
-    hover,
-    longPress,
-    rotate,
-    swipe,
-    unhover,
-    zoom,
-} from "./gesture.js";
+import { drag, dragAndDrop, drop, hover, longPress, rotate, swipe, unhover, zoom } from "./gesture.js";
 import { keyboard, tab } from "./keyboard.js";
 import { pointer, type PointerInput } from "./pointer.js";
 import { deselectOptions, selectOptions } from "./selection.js";
@@ -143,13 +133,13 @@ type UserEvent = {
 
 const onWidget =
     <Args extends unknown[]>(helper: (widget: Gtk.Widget, ...args: Args) => Promise<void>) =>
-        (target: Gtk.Accessible, ...args: Args): Promise<void> =>
-            helper(requireWidget(target), ...args);
+    (target: Gtk.Accessible, ...args: Args): Promise<void> =>
+        helper(requireWidget(target), ...args);
 
 const onWidgetPair =
     <Args extends unknown[]>(helper: (source: Gtk.Widget, target: Gtk.Widget, ...args: Args) => Promise<void>) =>
-        (source: Gtk.Accessible, target: Gtk.Accessible, ...args: Args): Promise<void> =>
-            helper(requireWidget(source), requireWidget(target), ...args);
+    (source: Gtk.Accessible, target: Gtk.Accessible, ...args: Args): Promise<void> =>
+        helper(requireWidget(source), requireWidget(target), ...args);
 
 /** User interactions that dispatch GTK events and gestures. */
 const userEvent: UserEvent = {
@@ -168,10 +158,10 @@ const settle = (ms: number | null | undefined): Promise<void> => {
 function createInstance(state: UserEventState, options: UserEventOptions): UserEvent {
     const after =
         <Args extends unknown[]>(helper: (...args: Args) => Promise<void>) =>
-            async (...args: Args): Promise<void> => {
-                await helper(...args);
-                await settle(options.delay);
-            };
+        async (...args: Args): Promise<void> => {
+            await helper(...args);
+            await settle(options.delay);
+        };
 
     return {
         setup: (overrides?: UserEventOptions): UserEvent => createInstance(state, { ...options, ...overrides }),
@@ -197,9 +187,7 @@ function createInstance(state: UserEventState, options: UserEventOptions): UserE
         dragAndDrop: after(onWidgetPair(dragAndDrop)),
         slide: after(onWidget(slide)),
         scroll: after(onWidget(scroll)),
-        keyboard: after(
-            onWidget((widget: Gtk.Widget, input: string): Promise<void> => keyboard(state, widget, input)),
-        ),
+        keyboard: after(onWidget((widget: Gtk.Widget, input: string): Promise<void> => keyboard(state, widget, input))),
         pointer: after(
             onWidget((widget: Gtk.Widget, input: PointerInput): Promise<void> => pointer(state, widget, input)),
         ),

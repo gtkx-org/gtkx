@@ -27,7 +27,8 @@ describe("generated raw-pointer native property omissions", () => {
     it("preserves supported operations without exposing the native data property", () => {
         using consumer = createCliProject({
             prefix: "gtkx-cli-hidden-property-values-",
-            config: 'export default { applicationId: "org.gtkx.hiddenpropertyvalues", libraries: ["Gio-2.0"],' +
+            config:
+                'export default { applicationId: "org.gtkx.hiddenpropertyvalues", libraries: ["Gio-2.0"],' +
                 " agents: { reference: false, rules: false } };",
             files: { "probe.ts": NATIVE_CONSUMER },
         });

@@ -26,23 +26,23 @@ const DUPLICATE_MODULE = join("src", "duplicate-font.ts");
 const DYNAMIC_FONT_ASSET = join("data", "probe-dynamic.ttc");
 const DYNAMIC_MODULE = join("src", "dynamic-font.ts");
 
-const fontFixture = (name: string): Buffer =>
-    readFileSync(fileURLToPath(new URL(`fixtures/${name}`, import.meta.url)));
+const fontFixture = (name: string): Buffer => readFileSync(fileURLToPath(new URL(`fixtures/${name}`, import.meta.url)));
 
-const PACKAGE_MANIFEST = `${JSON.stringify({
-    name: "probe-fonts",
-    version: "1.0.0",
-    exports: { "./probe.woff": "./probe.woff" },
-}, null, 4)}\n`;
+const PACKAGE_MANIFEST = `${JSON.stringify(
+    {
+        name: "probe-fonts",
+        version: "1.0.0",
+        exports: { "./probe.woff": "./probe.woff" },
+    },
+    null,
+    4,
+)}\n`;
 
-const NESTED_SOURCE =
-    'export { default as nestedFontFamily } from "../data/probe.otf?font";\n';
+const NESTED_SOURCE = 'export { default as nestedFontFamily } from "../data/probe.otf?font";\n';
 
-const DUPLICATE_SOURCE =
-    'export { default as duplicateFontFamily } from "../extra/probe.otf?font";\n';
+const DUPLICATE_SOURCE = 'export { default as duplicateFontFamily } from "../extra/probe.otf?font";\n';
 
-const OUTSIDE_SOURCE =
-    'export { default as outsideFontFamily } from "./probe.ttc?font";\n';
+const OUTSIDE_SOURCE = 'export { default as outsideFontFamily } from "./probe.ttc?font";\n';
 
 const DYNAMIC_SOURCE =
     "const dynamicFontFamily = async (): Promise<string> =>\n" +
@@ -155,13 +155,14 @@ it("uses the generated bindings", () => { expect(GLib.MAJOR_VERSION).toBe(2); })
 `,
             },
         });
-        const run = () => spawnSync(process.execPath, [VITEST_ENTRY, "run", "--root", APP_DIR], {
-            cwd: project.root,
-            encoding: "utf8",
-            env: { ...cliEnvironment(project), GTKX_DISABLE_PREFLIGHT: "0" },
-            killSignal: "SIGKILL",
-            timeout: RUN_TIMEOUT,
-        });
+        const run = () =>
+            spawnSync(process.execPath, [VITEST_ENTRY, "run", "--root", APP_DIR], {
+                cwd: project.root,
+                encoding: "utf8",
+                env: { ...cliEnvironment(project), GTKX_DISABLE_PREFLIGHT: "0" },
+                killSignal: "SIGKILL",
+                timeout: RUN_TIMEOUT,
+            });
 
         const rejected = run();
         expect(rejected.error).toBeUndefined();

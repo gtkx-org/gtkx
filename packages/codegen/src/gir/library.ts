@@ -314,10 +314,12 @@ class Library {
         return this.typeTables[tid.nsId]?.types[tid.id];
     }
 
-    nameFor(tid: TypeId): {
-        namespaceName: string;
-        typeName: string;
-    } | undefined {
+    nameFor(tid: TypeId):
+        | {
+              namespaceName: string;
+              typeName: string;
+          }
+        | undefined {
         const typeName = this.typeTables[tid.nsId]?.names[tid.id];
         const namespaceName = this.nsNameById[tid.nsId];
 

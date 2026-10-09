@@ -49,15 +49,15 @@ type ApiSymbolQuery = {
 
 /** What an indexed symbol is: one of the GIR symbol kinds, or a JSX element. */
 type ApiSymbolKind =
-    "alias" |
-    "callback" |
-    "class" |
-    "constant" |
-    "element" |
-    "enum" |
-    "function" |
-    "interface" |
-    "record";
+    | "alias"
+    | "callback"
+    | "class"
+    | "constant"
+    | "element"
+    | "enum"
+    | "function"
+    | "interface"
+    | "record";
 
 /** An indexed symbol, without its reference page. */
 type ApiSymbol = {
@@ -86,23 +86,23 @@ type ApiNamespaceSummary = {
 /** What an `ApiReference.lookup` found: a rendered page, several candidates for the name, or nothing. */
 type ApiLookupResult =
     | {
-        /** Discriminant selecting the variant. */
-        outcome: "page";
-        /** Index entry for the symbol the query resolved to. */
-        symbol: ApiSymbol;
-        /** The symbol's complete reference page, rendered as Markdown. */
-        markdown: string;
-    } |
-    {
-        /** Discriminant selecting the variant. */
-        outcome: "ambiguous";
-        /** Every symbol the name answers to, to be narrowed by namespace or kind. */
-        candidates: ApiSymbol[];
-    } |
-    {
-        /** Discriminant selecting the variant. */
-        outcome: "notFound";
-    };
+          /** Discriminant selecting the variant. */
+          outcome: "page";
+          /** Index entry for the symbol the query resolved to. */
+          symbol: ApiSymbol;
+          /** The symbol's complete reference page, rendered as Markdown. */
+          markdown: string;
+      }
+    | {
+          /** Discriminant selecting the variant. */
+          outcome: "ambiguous";
+          /** Every symbol the name answers to, to be narrowed by namespace or kind. */
+          candidates: ApiSymbol[];
+      }
+    | {
+          /** Discriminant selecting the variant. */
+          outcome: "notFound";
+      };
 
 /** A fuzzy search over indexed symbol names. */
 type ApiSearchOptions = {
@@ -282,7 +282,8 @@ const valueEntries = (namespace: GirNamespace, library: Library): GiSymbolEntry[
             doc: callback.doc,
             callback,
         })),
-    ...namespace.aliases.filter((alias) => isEmittableAlias(library, alias))
+    ...namespace.aliases
+        .filter((alias) => isEmittableAlias(library, alias))
         .map<GiSymbolEntry>((alias) => ({
             kind: "alias",
             namespace,
@@ -559,8 +560,10 @@ class ApiReference {
     }
 
     hasFreshInputs(): boolean {
-        return isGiFingerprintFresh(this.giFingerprint, this.giInputs) &&
-            hasFreshPropsDependencies(this.propsCatalog.dependencies);
+        return (
+            isGiFingerprintFresh(this.giFingerprint, this.giInputs) &&
+            hasFreshPropsDependencies(this.propsCatalog.dependencies)
+        );
     }
 
     /**
@@ -663,12 +666,12 @@ class ApiReference {
             "# API Reference",
             "",
             `Generated bindings for ${librariesList} and the namespaces they pull in. Classes, interfaces, ` +
-            "records, enums, callbacks, aliases, functions, and constants are imported from " +
-            "`@gtkx/gi/<namespace>`; JSX elements are imported from `@gtkx/jsx/<namespace>`.",
+                "records, enums, callbacks, aliases, functions, and constants are imported from " +
+                "`@gtkx/gi/<namespace>`; JSX elements are imported from `@gtkx/jsx/<namespace>`.",
             "",
             "Every symbol has a reference page addressed by its qualified name (for example `Adw.Toast`, " +
-            "`Gtk.Orientation`, `GLib.idleAdd`) and every JSX element by its element name " +
-            "(for example `AdwToast`).",
+                "`Gtk.Orientation`, `GLib.idleAdd`) and every JSX element by its element name " +
+                "(for example `AdwToast`).",
             "",
             "| Namespace | Import | Symbols | JSX elements |",
             "| --- | --- | --- | --- |",

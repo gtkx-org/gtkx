@@ -10,12 +10,7 @@ import { forEachAncestor } from "../../analysis/inheritance.js";
 import { renderHandlerParameters, renderHandlerResultType } from "../../analysis/param-structure.js";
 import { isEmittableProperty } from "../../analysis/property-admission.js";
 import { isEmittableSignal } from "../../analysis/signal-admission.js";
-import {
-    isNativeInstanceType,
-    recordTypeTarget,
-    renderBaseType,
-    type TsTypeTarget,
-} from "../../analysis/ts-type.js";
+import { isNativeInstanceType, recordTypeTarget, renderBaseType, type TsTypeTarget } from "../../analysis/ts-type.js";
 import { ancestorChain } from "../../gir/ancestry.js";
 import { type GirProperty, isConstructableProperty } from "../../gir/property.js";
 import { renderJsDoc } from "../../writer/doc.js";
@@ -110,14 +105,10 @@ const renderObjectPropType = (
 
 const appendPropertyLines = (state: PropCollectorState, property: GirProperty, jsName: string): void => {
     const readType = renderReactPropType(state.types, property.type);
-    const writeType = renderReactPropType(
-        state.types,
-        property.type,
-        {
-            isInput: true,
-            canAcceptTypedArrayViews: property.transferOwnership === "none",
-        },
-    );
+    const writeType = renderReactPropType(state.types, property.type, {
+        isInput: true,
+        canAcceptTypedArrayViews: property.transferOwnership === "none",
+    });
     const spec = annotationSpec(property.annotations);
     const doc = renderJsDoc(property.doc, undefined, spec);
     const isRequired = state.requiredProps.has(property.name);
@@ -137,9 +128,7 @@ const appendPropertyLines = (state: PropCollectorState, property: GirProperty, j
 
     const handlerType = `((value: ${readType} | null, self: Self) => void) | null | undefined`;
 
-    state.propLines.push(
-        `${notifyDoc(property, jsName, spec)}onNotify${upperFirst(jsName)}?: ${handlerType};`,
-    );
+    state.propLines.push(`${notifyDoc(property, jsName, spec)}onNotify${upperFirst(jsName)}?: ${handlerType};`);
 };
 
 const acceptCollectorProperty = (state: PropCollectorState, property: GirProperty): void => {
@@ -248,9 +237,14 @@ const walkIntrinsicElementMembers = (walk: IntrinsicElementMemberWalk): void => 
     const ancestry = { library, namespace };
     visitMembers(klass);
 
-    forEachAncestor(ancestry, klass, (ancestor) => {
-        visitMembers(ancestor.klass);
-    }, isIntrinsicElementAncestor);
+    forEachAncestor(
+        ancestry,
+        klass,
+        (ancestor) => {
+            visitMembers(ancestor.klass);
+        },
+        isIntrinsicElementAncestor,
+    );
 };
 
 const isGObjectType = (library: Library, ref: TypeId | undefined): boolean => {
@@ -301,7 +295,8 @@ const renderSignalHandler = (options: SignalRenderOptions): string => {
 
     const params = [
         ...renderHandlerParameters(signal.parameters, (ref, nullable) =>
-            renderReactPropType(types, ref, { isNullable: nullable })),
+            renderReactPropType(types, ref, { isNullable: nullable }),
+        ),
         `self: ${selfType}`,
     ];
 
@@ -358,11 +353,7 @@ const renderReactPropType = (
     ref: TypeId | undefined,
     options: ReactPropTypeOptions = {},
 ): string => {
-    const {
-        isNullable = false,
-        isInput = false,
-        canAcceptTypedArrayViews = true,
-    } = options;
+    const { isNullable = false, isInput = false, canAcceptTypedArrayViews = true } = options;
     const base = renderBaseType(context.library, reactTarget(context, isInput, canAcceptTypedArrayViews), ref);
 
     return isNullable ? `${base} | null` : base;

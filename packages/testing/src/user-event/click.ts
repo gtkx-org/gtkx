@@ -49,12 +49,7 @@ const getClickPoint = (clicked: Gtk.Widget, carrier: Gtk.Widget): PressPoint => 
     return { x: bounds.getX() + bounds.getWidth() / 2, y: bounds.getY() + bounds.getHeight() / 2 };
 };
 
-const emitGesture = (
-    point: PressPoint,
-    controllers: Gtk.GestureClick[],
-    nPress: number,
-    signal: ClickPhase,
-): void => {
+const emitGesture = (point: PressPoint, controllers: Gtk.GestureClick[], nPress: number, signal: ClickPhase): void => {
     for (const controller of controllers) {
         controller.emit(signal, nPress, point.x, point.y);
     }
@@ -235,8 +230,7 @@ const applyContainerClick: NativeClick = (widget, nPress) => {
 const directClickFor = (widget: Gtk.Widget): DirectClick => {
     const native = nativeClickFor(widget, true);
     const container = native === null ? containerFor(widget) : null;
-    const gestures =
-        native !== null || container !== null ? getAuthoredClickGestures(widget) : clickGestures(widget);
+    const gestures = native !== null || container !== null ? getAuthoredClickGestures(widget) : clickGestures(widget);
     const target: ClickTarget = { widget, container, gestures, isClaiming: true, native };
 
     return { sites: targetSites(widget, target), outcome: native ?? (container === null ? null : applyContainerClick) };

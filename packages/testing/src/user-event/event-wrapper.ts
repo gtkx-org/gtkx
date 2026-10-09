@@ -82,7 +82,7 @@ const waitForActionable = async (widget: Gtk.Widget): Promise<void> => {
     if (failure !== null) {
         throw new Error(
             `Cannot dispatch user event: ${describeWidget(widget)} did not become actionable ` +
-            `within ${String(timeout)}ms because ${failure}`,
+                `within ${String(timeout)}ms because ${failure}`,
         );
     }
 };

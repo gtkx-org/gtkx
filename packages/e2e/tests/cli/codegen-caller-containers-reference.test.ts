@@ -33,10 +33,12 @@ describe("generated caller-allocated container admission references", () => {
         expect(icon).toHaveProperty("markdown", expect.stringContaining("### `vfuncSerialize`"));
         expect(icon).toHaveProperty("markdown", expect.stringContaining("### `serialize`"));
         expect(reference.lookup("Gio.TlsConnection", "class")).toHaveProperty(
-            "markdown", expect.stringContaining("getChannelBindingData(type: Gio.TlsChannelBindingType): boolean"),
+            "markdown",
+            expect.stringContaining("getChannelBindingData(type: Gio.TlsChannelBindingType): boolean"),
         );
         expect(reference.lookup("Gio.DtlsConnection", "interface")).toHaveProperty(
-            "markdown", expect.stringContaining("getChannelBindingData(type: Gio.TlsChannelBindingType): boolean"),
+            "markdown",
+            expect.stringContaining("getChannelBindingData(type: Gio.TlsChannelBindingType): boolean"),
         );
     });
 });

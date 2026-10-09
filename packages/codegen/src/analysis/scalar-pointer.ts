@@ -4,8 +4,8 @@ import { isInoutParameter, isOutParameter } from "../gir/parameter.js";
 import { carrayFor, cTypePointerDepth, hasScalarPointer, isScalarRef } from "./type-shape.js";
 
 const hasUnsupportedScalarParameter = (library: Library, parameter: GirParameter): boolean => {
-    const hasOutIndirection = isOutParameter(parameter) ||
-        (isInoutParameter(parameter) && carrayFor(library, parameter.type) !== undefined);
+    const hasOutIndirection =
+        isOutParameter(parameter) || (isInoutParameter(parameter) && carrayFor(library, parameter.type) !== undefined);
 
     if (hasScalarPointer(library, parameter.type, undefined, hasOutIndirection)) {
         return true;

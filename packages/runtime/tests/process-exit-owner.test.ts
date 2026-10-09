@@ -22,9 +22,11 @@ const runFixture = async (
     mode: string,
 ): Promise<{ code: number | null; signal: NodeJS.Signals | null }> => {
     const filename = fileURLToPath(FIXTURES[fixture]);
-    const child = spawnWithParentDeathSignal(process.execPath, [
-        "--import", TSX_LOADER, "--expose-gc", filename, mode,
-    ], { stdio: "ignore" });
+    const child = spawnWithParentDeathSignal(
+        process.execPath,
+        ["--import", TSX_LOADER, "--expose-gc", filename, mode],
+        { stdio: "ignore" },
+    );
     const closed: Promise<{ code: number | null; signal: NodeJS.Signals | null }> = new Promise((resolve, reject) => {
         child.once("error", reject);
         child.once("close", (code, signal) => {
@@ -44,7 +46,11 @@ const runFixture = async (
 };
 
 describe("process exit after native owner cleanup is queued", () => {
-    it.each(CASES)("preserves status $status through $fixture $mode", async ({ fixture, mode, status }) => {
-        expect(await runFixture(fixture, mode)).toEqual({ code: status, signal: null });
-    }, 30_000);
+    it.each(CASES)(
+        "preserves status $status through $fixture $mode",
+        async ({ fixture, mode, status }) => {
+            expect(await runFixture(fixture, mode)).toEqual({ code: status, signal: null });
+        },
+        30_000,
+    );
 });

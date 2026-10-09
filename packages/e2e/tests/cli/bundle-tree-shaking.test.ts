@@ -1,13 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import {
-    type AppProbe,
-    buildAppProject,
-    createAppProject,
-    probeAppProject,
-    removeAppProject,
-} from "./app-project.js";
+import { type AppProbe, buildAppProject, createAppProject, probeAppProject, removeAppProject } from "./app-project.js";
 
 const BUILD_TIMEOUT = 120_000;
 const OUT_DIR = "dist";
@@ -151,22 +145,26 @@ describe("gtkx build (metadata tree shaking)", () => {
 });
 
 describe("gtkx build (Variant constructor tree shaking)", () => {
-    it("drops unused Variant packing from GLib consumers", async () => {
-        const probe = await probeAppProject({
-            applicationId: "com.gtkx.clipurehelperprobe",
-            entry: GLIB_APP_ENTRY,
-            outDir: OUT_DIR,
-            prefix: "gtkx-bundle-pure-helpers-",
-        });
+    it(
+        "drops unused Variant packing from GLib consumers",
+        async () => {
+            const probe = await probeAppProject({
+                applicationId: "com.gtkx.clipurehelperprobe",
+                entry: GLIB_APP_ENTRY,
+                outDir: OUT_DIR,
+                prefix: "gtkx-bundle-pure-helpers-",
+            });
 
-        try {
-            const bundle = readFileSync(join(probe.project.root, probe.reported), "utf8");
+            try {
+                const bundle = readFileSync(join(probe.project.root, probe.reported), "utf8");
 
-            expect(probe.run.status).toBe(0);
-            expect(probe.run.stdout).toContain("clock-running=true\n");
-            expect(bundle).not.toContain("Variant dictionaries require a plain object");
-        } finally {
-            removeAppProject(probe.project);
-        }
-    }, BUILD_TIMEOUT);
+                expect(probe.run.status).toBe(0);
+                expect(probe.run.stdout).toContain("clock-running=true\n");
+                expect(bundle).not.toContain("Variant dictionaries require a plain object");
+            } finally {
+                removeAppProject(probe.project);
+            }
+        },
+        BUILD_TIMEOUT,
+    );
 });

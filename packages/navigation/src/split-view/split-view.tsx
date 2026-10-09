@@ -57,17 +57,20 @@ const useContentSync = (
     viewRef: ViewRef,
     navigation: SplitViewNavigationHelpers,
 ): ((isShown: boolean | null) => void) =>
-    useCallback((isShown: boolean | null) => {
-        if (isShown === null || isShown === hasContent(navigation.getState())) {
-            return;
-        }
+    useCallback(
+        (isShown: boolean | null) => {
+            if (isShown === null || isShown === hasContent(navigation.getState())) {
+                return;
+            }
 
-        if (!isShown) {
-            popContent(navigation);
-        }
+            if (!isShown) {
+                popContent(navigation);
+            }
 
-        settleShowContent(viewRef, isShown, hasContent(navigation.getState()));
-    }, [viewRef, navigation]);
+            settleShowContent(viewRef, isShown, hasContent(navigation.getState()));
+        },
+        [viewRef, navigation],
+    );
 
 const EscapeGuard = (): ReactNode => (
     <GtkEventControllerKey
@@ -83,9 +86,12 @@ const SidebarPage = ({ descriptor }: { descriptor: SplitViewDescriptor }): React
         return <AdwNavigationPage title={options.title ?? route.name}>{descriptor.render()}</AdwNavigationPage>;
     }
 
-    const topBar = options.header === undefined
-        ? <HeaderBar options={options} showBackButton={false} />
-        : <>{options.header({ route, navigation, options, back: undefined })}</>;
+    const topBar =
+        options.header === undefined ? (
+            <HeaderBar options={options} showBackButton={false} />
+        ) : (
+            <>{options.header({ route, navigation, options, back: undefined })}</>
+        );
 
     return (
         <AdwNavigationPage title={options.title ?? route.name}>
@@ -117,18 +123,18 @@ const SplitView = (props: SplitViewProps): ReactNode => {
                 title={contentTitle(state, descriptors)}
                 controllers={collapsed && props.popOnEscape === false ? <EscapeGuard /> : null}
             >
-                {hasContent(state)
-                    ? (
-                            <StackView
-                                offset={1}
-                                popOnEscape={props.popOnEscape}
-                                state={state}
-                                navigation={navigation}
-                                descriptors={descriptors}
-                                describe={describe}
-                            />
-                        )
-                    : <>{contentPlaceholder}</>}
+                {hasContent(state) ? (
+                    <StackView
+                        offset={1}
+                        popOnEscape={props.popOnEscape}
+                        state={state}
+                        navigation={navigation}
+                        descriptors={descriptors}
+                        describe={describe}
+                    />
+                ) : (
+                    <>{contentPlaceholder}</>
+                )}
             </AdwNavigationPage>
         </AdwNavigationSplitView>
     );

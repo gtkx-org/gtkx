@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
+import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwActionRow, AdwSidebar, AdwSidebarItem, AdwSidebarSection } from "@gtkx/jsx/adw";
@@ -411,14 +412,14 @@ describe("userEvent.click", () => {
                 onRowActivated={(row) => {
                     activations.push(row.getName());
                 }}
-                controllers={(
+                controllers={
                     <GtkGestureClick
                         onPressed={(nPress, x, y) => {
                             presses.push([nPress, x, y]);
                         }}
                         onReleased={releases.callback}
                     />
-                )}
+                }
             >
                 <GtkListBoxRow name="first">
                     <GtkLabel>First</GtkLabel>
@@ -563,7 +564,7 @@ describe("userEvent.clear", () => {
         const { findByRole } = await renderScoped(
             <GtkEntry
                 text="abc"
-                controllers={(
+                controllers={
                     <GtkEventControllerKey
                         onKeyPressed={(keyval) => {
                             presses.push(keyval);
@@ -571,7 +572,7 @@ describe("userEvent.clear", () => {
                             return Gdk.EVENT_PROPAGATE;
                         }}
                     />
-                )}
+                }
             />,
         );
 
@@ -612,14 +613,14 @@ describe("userEvent.clear", () => {
     it("throws, leaving the text intact, when a tag protects part of a text view", async () => {
         await render(
             <GtkTextView
-                buffer={(
+                buffer={
                     <GtkTextBuffer>
                         {"erasable "}
                         <GtkTextTag name="keep" editable={false}>
                             prompt
                         </GtkTextTag>
                     </GtkTextBuffer>
-                )}
+                }
             />,
         );
 
@@ -838,14 +839,14 @@ describe("controller fan-out", () => {
             <GtkButton
                 label="Fan out"
                 onClicked={clicks.callback}
-                controllers={(
+                controllers={
                     <GtkGestureClick
                         onPressed={(nPress, x, y) => {
                             presses.push([nPress, x, y]);
                         }}
                         onReleased={releases.callback}
                     />
-                )}
+                }
             />,
         );
 
@@ -905,12 +906,12 @@ describe("controller fan-out", () => {
         const { findByName } = await renderScoped(
             <GtkEntry
                 name="multi-key"
-                controllers={(
+                controllers={
                     <>
                         <GtkEventControllerKey onKeyPressed={firstPressed.callback} />
                         <GtkEventControllerKey onKeyPressed={secondPressed.callback} />
                     </>
-                )}
+                }
             />,
         );
 
@@ -946,6 +947,36 @@ describe("userEvent.drop", () => {
 });
 
 describe("userEvent.dragAndDrop", () => {
+    it("delivers boxed colors and texture objects from prepared content", async () => {
+        const color = new Gdk.RGBA();
+        color.red = 0.25;
+        color.green = 0.5;
+        color.blue = 0.75;
+        color.alpha = 1;
+        const handleColor = dropHandler((value) => value.getBoxed());
+        const colorPair = await renderDragAndDropPair({
+            onDrop: handleColor.onDrop,
+            onPrepare: () => Gdk.ContentProvider.newForValue(color),
+            types: [GObject.typeFromName("GdkRGBA")],
+        });
+        await userEvent.dragAndDrop(colorPair.source, colorPair.target);
+        expect(handleColor.calls[0]?.[0]).toBeInstanceOf(Gdk.RGBA);
+        expect(handleColor.calls[0]?.[0]).toMatchObject({ red: 0.25, green: 0.5, blue: 0.75, alpha: 1 });
+
+        const texture = Gdk.MemoryTexture.new(1, 1, Gdk.MemoryFormat.R8G8B8A8, GLib.Bytes.new([255, 0, 0, 255]), 4);
+        const textureValue = new GObject.Value();
+        textureValue.init(Gdk.Texture);
+        textureValue.setObject(texture);
+        const handleTexture = dropHandler((value) => value.getObject());
+        const texturePair = await renderDragAndDropPair({
+            onDrop: handleTexture.onDrop,
+            onPrepare: () => Gdk.ContentProvider.newForValue(textureValue),
+            types: [GObject.typeFromName("GdkTexture")],
+        });
+        await userEvent.dragAndDrop(texturePair.source, texturePair.target);
+        expect(handleTexture.calls[0]?.[0]).toBe(texture);
+    });
+
     it.each(["prepared", ""])("drops the source's prepared content %j", async (text) => {
         const handleDrop = dropHandler((value) => value.getString());
         const ends = callCounter();
@@ -1135,11 +1166,9 @@ describe("userEvent.keyboard: shortcuts", () => {
         await render(
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
-                controllers={(
-                    <GtkShortcutController
-                        shortcuts={<GtkShortcut trigger={enter} action={activateDefault} />}
-                    />
-                )}
+                controllers={
+                    <GtkShortcutController shortcuts={<GtkShortcut trigger={enter} action={activateDefault} />} />
+                }
             >
                 <AdwSidebar ref={sidebarRef} mode={Adw.SidebarMode.PAGE} selected={0} onActivated={onActivated}>
                     <AdwSidebarSection>
@@ -1179,12 +1208,7 @@ describe("userEvent.keyboard: key controller propagation", () => {
     it("delivers presses and releases, with the held modifiers, to an ancestor's key controller", async () => {
         const pressed = await pressKeyOnProbe("{Escape}");
 
-        expect(pressed.ancestorPresses).toContainEqual([
-            Gdk.KEY_Escape,
-            0,
-            0,
-            expect.any(Gtk.EventControllerKey),
-        ]);
+        expect(pressed.ancestorPresses).toContainEqual([Gdk.KEY_Escape, 0, 0, expect.any(Gtk.EventControllerKey)]);
 
         const releases: [number, number, Gdk.ModifierType][] = [];
         const field = await renderKeyControllerTree(

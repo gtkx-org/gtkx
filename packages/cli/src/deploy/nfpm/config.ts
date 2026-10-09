@@ -126,11 +126,7 @@ const releaseFor = (settings: DeploySettings, packager: NfpmPackager): string =>
 const descriptionFor = (settings: DeploySettings, packager: NfpmPackager): string =>
     packager === "rpm" ? rpmDescription(settings) : debDescription(settings);
 
-const renderNfpmConfig = (
-    payload: DeployPayload,
-    packager: NfpmPackager,
-    glibcMinimum: string | null,
-): NfpmConfig => {
+const renderNfpmConfig = (payload: DeployPayload, packager: NfpmPackager, glibcMinimum: string | null): NfpmConfig => {
     const settings = payload.settings;
     const isRpm = packager === "rpm";
     const staged = stagedFilesFor(payload, packager);

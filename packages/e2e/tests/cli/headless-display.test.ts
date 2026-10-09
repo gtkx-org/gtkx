@@ -63,13 +63,13 @@ const VITEST_DIST_PLUGIN_MODULE = new URL("../../../vitest/dist/index.js", impor
 const VITEST_ENTRY = fileURLToPath(new URL("../../../../node_modules/vitest/vitest.mjs", import.meta.url));
 const headlessProbe = (compositor: "sway" | "weston"): string =>
     `const { resolveHeadlessOptions, startHeadlessDisplay } = await import(${JSON.stringify(HEADLESS_MODULE)});` +
-    "await startHeadlessDisplay(resolveHeadlessOptions({ size: \"640x480\", " +
+    'await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480", ' +
     `compositor: ${JSON.stringify(compositor)} }));` +
     String.raw`process.stdout.write(JSON.stringify({ runtimeDir: process.env.XDG_RUNTIME_DIR }) + "\n");` +
     "setInterval(() => {}, 1000);";
 const startupProbe = (compositor: "sway" | "weston"): string =>
     `const { resolveHeadlessOptions, startHeadlessDisplay } = await import(${JSON.stringify(HEADLESS_MODULE)});` +
-    "try { await startHeadlessDisplay(resolveHeadlessOptions({ size: \"640x480\", " +
+    'try { await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480", ' +
     `compositor: ${JSON.stringify(compositor)} })); } ` +
     String.raw`catch { process.stdout.write("rejected\n"); process.exit(0); }` +
     String.raw`process.stdout.write("started\n"); process.exit(0);`;
@@ -140,8 +140,7 @@ const SETTLED_COMPOSITOR_SCRIPT = [
     "",
 ].join("\n");
 const GUARDED_PROCESS_PROBE =
-    String.raw`process.stdout.write((process.env.GTKX_PROCESS_GUARD ?? "") + "\n");` +
-    "process.stdin.resume();";
+    String.raw`process.stdout.write((process.env.GTKX_PROCESS_GUARD ?? "") + "\n");` + "process.stdin.resume();";
 const DECOY_PROCESS_PROBE = "setInterval(() => {}, 1000);";
 const PLUGIN_START_PROBE = `const { default: gtkx } = await import(${JSON.stringify(VITEST_PLUGIN_MODULE)}); gtkx();`;
 
@@ -214,13 +213,12 @@ const ownedDisplayProcesses = (runtimeDir: string): ProcessEntry[] => {
     const entries = processEntries();
     const groups = new Set(
         entries
-            .filter((entry) =>
-                entry.pid === entry.processGroupId &&
-                hasProcessMarker(entry.pid) &&
-                (
-                    entry.args.some((argument) => argument.includes(runtimeDir)) ||
-                    hasRuntimeEnvironment(entry.pid, runtimeDir)
-                ),
+            .filter(
+                (entry) =>
+                    entry.pid === entry.processGroupId &&
+                    hasProcessMarker(entry.pid) &&
+                    (entry.args.some((argument) => argument.includes(runtimeDir)) ||
+                        hasRuntimeEnvironment(entry.pid, runtimeDir)),
             )
             .map((entry) => entry.processGroupId),
     );
@@ -418,7 +416,7 @@ const staleSwayConfig = (size: string): string =>
 const staleBusConfig = (runtimeDir: string): string =>
     [
         '<!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-BUS Bus Configuration 1.0//EN" ' +
-        '"https://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">',
+            '"https://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">',
         "<busconfig>",
         "  <type>session</type>",
         `  <listen>unix:path=${join(runtimeDir, "bus")}</listen>`,
@@ -548,9 +546,7 @@ describe("headless display process ownership", () => {
 
         try {
             probe.child.kill("SIGKILL");
-            await waitUntil(() =>
-                probe.processes.every((entry) => !isRunning(entry)) && !existsSync(probe.runtimeDir),
-            );
+            await waitUntil(() => probe.processes.every((entry) => !isRunning(entry)) && !existsSync(probe.runtimeDir));
             expect(probe.processes.some((entry) => entry.args[0]?.endsWith("/sway") === true)).toBe(true);
             expect(probe.processes.some((entry) => entry.args[0]?.endsWith("/dbus-daemon") === true)).toBe(true);
             expect(existsSync(probe.runtimeDir)).toBe(false);
@@ -565,9 +561,7 @@ describe("headless display process ownership", () => {
         try {
             killProcessGroup(probe.guard);
             probe.child.kill("SIGKILL");
-            await waitUntil(() =>
-                probe.processes.every((entry) => !isRunning(entry)) && !existsSync(probe.runtimeDir),
-            );
+            await waitUntil(() => probe.processes.every((entry) => !isRunning(entry)) && !existsSync(probe.runtimeDir));
             expect(probe.processes.some((entry) => entry.args[0]?.endsWith("/sway") === true)).toBe(true);
             expect(existsSync(probe.runtimeDir)).toBe(false);
         } finally {
@@ -580,10 +574,11 @@ describe("headless display process ownership", () => {
 
         try {
             probe.owner.kill("SIGKILL");
-            await waitUntil(() =>
-                !isRunning(probe.worker) &&
-                probe.processes.every((entry) => !isRunning(entry)) &&
-                !existsSync(probe.runtimeDir),
+            await waitUntil(
+                () =>
+                    !isRunning(probe.worker) &&
+                    probe.processes.every((entry) => !isRunning(entry)) &&
+                    !existsSync(probe.runtimeDir),
             );
             expect(isRunning(probe.worker)).toBe(false);
             expect(existsSync(probe.runtimeDir)).toBe(false);
@@ -606,9 +601,7 @@ describe("headless display process ownership", () => {
             expect(isRunning(bus)).toBe(true);
             expect(existsSync(join(probe.runtimeDir, "compositor.stderr.log"))).toBe(true);
             probe.child.kill("SIGKILL");
-            await waitUntil(() =>
-                probe.processes.every((entry) => !isRunning(entry)) && !existsSync(probe.runtimeDir),
-            );
+            await waitUntil(() => probe.processes.every((entry) => !isRunning(entry)) && !existsSync(probe.runtimeDir));
             expect(existsSync(probe.runtimeDir)).toBe(false);
         } finally {
             stopProbe(probe);
@@ -663,11 +656,11 @@ describe("headless display process ownership", () => {
         const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-guard-rollback-"));
 
         try {
-            expect(() => spawnWithParentDeathSignal(
-                process.execPath,
-                ["--input-type=module", "-e", DECOY_PROCESS_PROBE],
-                { cleanupDirectories: [runtimeDir, join(runtimeDir, "missing")] },
-            )).toThrow();
+            expect(() =>
+                spawnWithParentDeathSignal(process.execPath, ["--input-type=module", "-e", DECOY_PROCESS_PROBE], {
+                    cleanupDirectories: [runtimeDir, join(runtimeDir, "missing")],
+                }),
+            ).toThrow();
         } finally {
             rmSync(runtimeDir, { recursive: true, force: true });
         }
@@ -676,9 +669,9 @@ describe("headless display process ownership", () => {
 
 describe("headless display startup failures", () => {
     it("fails when the session bus exits before its socket appears", async () => {
-        expect(
-            await startupOutcome("gtkx-headless-bus-failure-", "sway", { "dbus-daemon": FAILING_BUS_SCRIPT }),
-        ).toBe("rejected");
+        expect(await startupOutcome("gtkx-headless-bus-failure-", "sway", { "dbus-daemon": FAILING_BUS_SCRIPT })).toBe(
+            "rejected",
+        );
     });
 
     it("fails when the compositor exits while its socket is already on disk", async () => {

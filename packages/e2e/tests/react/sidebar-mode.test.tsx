@@ -24,22 +24,37 @@ const modeValue = (mode: Adw.SidebarMode): GObject.Value => {
     return value;
 };
 const WRITES: { name: string; write: ModeWrite }[] = [
-    { name: "method", write: (sidebar, mode) => {
-        sidebar.setMode(mode);
-    } },
-    { name: "property", write: (sidebar, mode) => {
-        sidebar.mode = mode;
-    } },
-    { name: "GObject.setProperty", write: (sidebar, mode) => {
-        GObject.setProperty(sidebar, "mode", mode);
-    } },
-    { name: "descriptor property", write: (sidebar, mode) => {
-        const descriptor = t.enum("libadwaita-1.so.0", "adw_sidebar_mode_get_type", false);
-        setProperty(sidebar, "mode", descriptor, mode);
-    } },
-    { name: "GValue property", write: (sidebar, mode) => {
-        sidebar.setProperty("mode", modeValue(mode));
-    } },
+    {
+        name: "method",
+        write: (sidebar, mode) => {
+            sidebar.setMode(mode);
+        },
+    },
+    {
+        name: "property",
+        write: (sidebar, mode) => {
+            sidebar.mode = mode;
+        },
+    },
+    {
+        name: "GObject.setProperty",
+        write: (sidebar, mode) => {
+            GObject.setProperty(sidebar, "mode", mode);
+        },
+    },
+    {
+        name: "descriptor property",
+        write: (sidebar, mode) => {
+            const descriptor = t.enum("libadwaita-1.so.0", "adw_sidebar_mode_get_type", false);
+            setProperty(sidebar, "mode", descriptor, mode);
+        },
+    },
+    {
+        name: "GValue property",
+        write: (sidebar, mode) => {
+            sidebar.setProperty("mode", modeValue(mode));
+        },
+    },
 ];
 
 const sidebarFixture = (mode: Adw.SidebarMode = Adw.SidebarMode.SIDEBAR) => {
@@ -133,9 +148,7 @@ describe("Sidebar native mode compatibility", () => {
             <AdwBreakpointBin
                 widthRequest={400}
                 heightRequest={200}
-                breakpoints={(
-                    <AdwBreakpoint ref={breakpointRef} condition={inactiveCondition} />
-                )}
+                breakpoints={<AdwBreakpoint ref={breakpointRef} condition={inactiveCondition} />}
             >
                 <Fixture hasSuffix={hasSuffix} />
             </AdwBreakpointBin>

@@ -35,21 +35,19 @@ function ConstraintsVflDemo() {
             buttons === null
                 ? null
                 : new Map<string, Gtk.ConstraintTarget>([
-                        ["button1", buttons.button1],
-                        ["button2", buttons.button2],
-                        ["button3", buttons.button3],
-                    ]),
+                      ["button1", buttons.button1],
+                      ["button2", buttons.button2],
+                      ["button3", buttons.button3],
+                  ]),
         [buttons],
     );
 
     return (
         <ConstraintContainer
             handlers={handlers}
-            layoutManager={(
-                <GtkConstraintLayout
-                    vfl={views && [{ lines: VFL_CONSTRAINTS, hspacing: 8, vspacing: 8, views }]}
-                />
-            )}
+            layoutManager={
+                <GtkConstraintLayout vfl={views && [{ lines: VFL_CONSTRAINTS, hspacing: 8, vspacing: 8, views }]} />
+            }
         />
     );
 }

@@ -1513,13 +1513,13 @@ const ShadertoyGLAreaPanel = ({
                 onUnrealize={handleUnrealize}
                 hexpand
                 vexpand
-                controllers={(
+                controllers={
                     <GtkGestureDrag
                         onDragBegin={dragHandlers.handleDragBegin}
                         onDragUpdate={dragHandlers.handleDragUpdate}
                         onDragEnd={dragHandlers.handleDragEnd}
                     />
-                )}
+                }
             />
         </GtkGraphicsOffload>
     </GtkAspectFrame>
@@ -1546,7 +1546,7 @@ const ShadertoyEditor = ({
 
 const ShadertoyControls = ({ onRun, onClear, onLoadPreset }: ShadertoyControlsProps) => (
     <GtkCenterBox
-        startWidget={(
+        startWidget={
             <GtkBox spacing={6}>
                 <GtkButton
                     iconName="view-refresh-symbolic"
@@ -1563,8 +1563,8 @@ const ShadertoyControls = ({ onRun, onClear, onLoadPreset }: ShadertoyControlsPr
                     onClicked={onClear}
                 />
             </GtkBox>
-        )}
-        endWidget={(
+        }
+        endWidget={
             <GtkBox spacing={6}>
                 {SHADER_PRESETS.map((preset) => (
                     <GtkButton
@@ -1579,7 +1579,7 @@ const ShadertoyControls = ({ onRun, onClear, onLoadPreset }: ShadertoyControlsPr
                     </GtkButton>
                 ))}
             </GtkBox>
-        )}
+        }
     />
 );
 

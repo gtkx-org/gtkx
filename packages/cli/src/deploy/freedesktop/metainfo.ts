@@ -31,7 +31,10 @@ const normalizeExtraFragment = (fragment: string, index: number): string => {
 const indentFragment = (fragment: string, depth: number): string => {
     const indentation = " ".repeat(depth * 4);
 
-    return fragment.split(/\r?\n/).map((line) => `${indentation}${line}`).join("\n");
+    return fragment
+        .split(/\r?\n/)
+        .map((line) => `${indentation}${line}`)
+        .join("\n");
 };
 
 const appendExtraFragments = (document: string, fragments: string[]): string => {

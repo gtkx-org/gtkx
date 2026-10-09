@@ -61,7 +61,10 @@ const mcp = defineCommand({
 });
 
 const splitPatterns = (value: string): string[] =>
-    value.split(",").map((pattern) => pattern.trim()).filter((pattern) => pattern.length > 0);
+    value
+        .split(",")
+        .map((pattern) => pattern.trim())
+        .filter((pattern) => pattern.length > 0);
 
 const report = (name: ClientName, result: ClientResult): void => {
     if (result.kind === "manual") {

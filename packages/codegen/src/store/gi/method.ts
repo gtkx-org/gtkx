@@ -193,17 +193,14 @@ const parameterAnnotation = (
     }
 
     const isNullable = parameter.nullable || isForcedNullable;
-    const base = direction === "to-native"
-        ? renderParameterTsType(
-                context,
-                parameter.type,
-                {
-                    isNullable,
-                    isValueWidened: isValueRead(parameter),
-                    canAcceptTypedArrayViews: parameter.transferOwnership === "none",
-                },
-            )
-        : renderTsType(context, parameter.type, isNullable);
+    const base =
+        direction === "to-native"
+            ? renderParameterTsType(context, parameter.type, {
+                  isNullable,
+                  isValueWidened: isValueRead(parameter),
+                  canAcceptTypedArrayViews: parameter.transferOwnership === "none",
+              })
+            : renderTsType(context, parameter.type, isNullable);
 
     return requiresClosureAnnotation(context, fn, parameter) ? closureAnnotation(context, base) : base;
 };
@@ -229,15 +226,10 @@ const renderInputParameters = (context: ModuleContext, fn: GirFunction, options:
             hasSeenOptional = true;
         }
 
-        const annotation = parameterAnnotation(
-            context,
-            fn,
-            parameter,
-            {
-                isForcedNullable: options.isNullableExtra(parameter),
-                direction: options.direction,
-            },
-        );
+        const annotation = parameterAnnotation(context, fn, parameter, {
+            isForcedNullable: options.isNullableExtra(parameter),
+            direction: options.direction,
+        });
         parts.push(formatParameterPart(name, annotation, hasSeenOptional));
     }
 
@@ -251,7 +243,7 @@ const isReturnedOutParameter = (context: ModuleContext, parameter: GirParameter)
     isOutParameter(parameter) ||
     (isCallerAllocatedOut(parameter) &&
         (isCollectibleCallerOut(context, parameter) || isFixedArrayCallerOut(context, parameter))) ||
-        (isInoutParameter(parameter) && !isInPlaceInout(context, parameter));
+    (isInoutParameter(parameter) && !isInPlaceInout(context, parameter));
 
 const returnedOutParameters = (
     context: ModuleContext,
@@ -286,10 +278,10 @@ const renderReturnedTsType = (
 
     return direction === "to-native"
         ? renderParameterTsType(context, ref, {
-                isNullable,
-                isValueWidened: false,
-                canAcceptTypedArrayViews: transferOwnership === "none",
-            })
+              isNullable,
+              isValueWidened: false,
+              canAcceptTypedArrayViews: transferOwnership === "none",
+          })
         : renderTsType(context, ref, isNullable);
 };
 
@@ -325,15 +317,11 @@ const primaryReturnType = (
     }
 
     if (override === undefined) {
-        return renderReturnedTsType(
-            context,
-            fn.returnValue.type,
-            {
-                isNullable: fn.returnValue.nullable,
-                transferOwnership: fn.returnValue.transferOwnership,
-                direction,
-            },
-        );
+        return renderReturnedTsType(context, fn.returnValue.type, {
+            isNullable: fn.returnValue.nullable,
+            transferOwnership: fn.returnValue.transferOwnership,
+            direction,
+        });
     }
 
     return fn.returnValue.nullable ? `${override} | null` : override;
@@ -344,11 +332,7 @@ const renderMethodReturnType = (
     fn: GirFunction,
     options: MethodReturnTypeOptions = {},
 ): string => {
-    const {
-        primaryTypeOverride,
-        excludedParameters = new Set<GirParameter>(),
-        direction = "from-native",
-    } = options;
+    const { primaryTypeOverride, excludedParameters = new Set<GirParameter>(), direction = "from-native" } = options;
     const outs = returnedOutParameters(context, fn, excludedParameters);
     const primary = primaryReturnType(context, fn, primaryTypeOverride, direction);
 
@@ -479,8 +463,11 @@ const adaptedArgument = (
     index: number,
     hasSeenOptional: boolean,
 ): string | undefined => {
-    if (parameter.isVarargs || promisify.closureIndices.has(index) ||
-        (isOutParameter(parameter) && !isCallerAllocatedOut(parameter))) {
+    if (
+        parameter.isVarargs ||
+        promisify.closureIndices.has(index) ||
+        (isOutParameter(parameter) && !isCallerAllocatedOut(parameter))
+    ) {
         return undefined;
     }
 
@@ -533,11 +520,7 @@ const collectAdaptedArguments = (promisify: AdaptedPromisifyContext): string[] =
     return expressions;
 };
 
-const adaptedArguments = (
-    context: ModuleContext,
-    asyncFn: GirFunction,
-    cancellableIndex: number,
-): string[] => {
+const adaptedArguments = (context: ModuleContext, asyncFn: GirFunction, cancellableIndex: number): string[] => {
     const promisify: AdaptedPromisifyContext = {
         context,
         asyncFn,
@@ -632,10 +615,11 @@ const renderPromisifiedSignature = (
 
     const finishReturn = shouldTrimFinishBoolean(context, finishFn)
         ? foldOutParamShape(
-                undefined,
-                returnedOutParameters(context, finishFn).map(({ parameter }) =>
-                    renderOutTsType(context, parameter, "from-native")),
-            )
+              undefined,
+              returnedOutParameters(context, finishFn).map(({ parameter }) =>
+                  renderOutTsType(context, parameter, "from-native"),
+              ),
+          )
         : renderMethodReturnType(context, finishFn);
 
     return { signature: withNullableReceiver(context, asyncFn, signature), returnType: `Promise<${finishReturn}>` };
@@ -661,10 +645,12 @@ const isAsyncReadyCallback = (context: ModuleContext, parameter: GirParameter): 
     const ref = parameter.type;
     const name = ref === undefined ? undefined : context.library.nameFor(ref);
 
-    return ref !== undefined &&
+    return (
+        ref !== undefined &&
         context.library.typeFor(ref)?.kind === "callback" &&
         name?.namespaceName === "Gio" &&
-        name.typeName === "AsyncReadyCallback";
+        name.typeName === "AsyncReadyCallback"
+    );
 };
 
 const renderMethodBody = (context: ModuleContext, fn: GirFunction, options: WriteMethodBodyOptions): string => {
@@ -853,11 +839,7 @@ const planOutParam = (
     };
 };
 
-const planCallerOut = (
-    context: ModuleContext,
-    parameter: GirParameter,
-    argIndex: ArgIndexOptions,
-): CallArgPlan => {
+const planCallerOut = (context: ModuleContext, parameter: GirParameter, argIndex: ArgIndexOptions): CallArgPlan => {
     if (isCollectibleCallerOut(context, parameter)) {
         context.addRuntimeImport("getHandle");
 
@@ -950,13 +932,7 @@ const planInParam = (
     );
 
     const descriptor =
-        callback ??
-        renderDescriptor(
-            context,
-            parameter.type,
-            parameter.transferOwnership,
-            planContext.argIndex,
-        );
+        callback ?? renderDescriptor(context, parameter.type, parameter.transferOwnership, planContext.argIndex);
 
     return {
         paramLiteral: paramDescriptorLiteral(descriptor, { isRequired: isRequiredParameter(parameter) }),

@@ -75,10 +75,12 @@ const ownedProcesses = (owner: string): ProcessIdentity[] =>
 const isRunning = (identity: ProcessIdentity): boolean => {
     const current = processIdentity(identity.pid);
 
-    return current?.startTime === identity.startTime &&
+    return (
+        current?.startTime === identity.startTime &&
         current.state !== "Z" &&
         current.state !== "X" &&
-        current.state !== "x";
+        current.state !== "x"
+    );
 };
 
 const waitUntil = async (isReady: () => boolean): Promise<void> => {
@@ -154,8 +156,7 @@ const killOwned = async (owner: string): Promise<void> => {
 
 const expectWrapperShutdown = async (signal: "SIGTERM" | "SIGKILL"): Promise<void> => {
     const config =
-        "export default { applicationId: \"com.gtkx.devowner\", " +
-        `libraries: ${JSON.stringify(STORE_LIBRARIES)} };\n`;
+        'export default { applicationId: "com.gtkx.devowner", ' + `libraries: ${JSON.stringify(STORE_LIBRARIES)} };\n`;
     using project = createCliProject({
         prefix: "gtkx-dev-owner-",
         config,
@@ -185,9 +186,7 @@ const expectWrapperShutdown = async (signal: "SIGTERM" | "SIGKILL"): Promise<voi
             true,
         );
         child.kill(signal);
-        await waitUntil(
-            () => processes.every((entry) => !isRunning(entry)) && ownedProcesses(owner).length === 0,
-        );
+        await waitUntil(() => processes.every((entry) => !isRunning(entry)) && ownedProcesses(owner).length === 0);
         expect(ownedProcesses(owner)).toEqual([]);
     } finally {
         await killOwned(owner);
@@ -202,7 +201,8 @@ const expectDevShutdown = async (
 ): Promise<void> => {
     using project = createCliProject({
         prefix: "gtkx-dev-shutdown-",
-        config: "export default { applicationId: \"com.gtkx.devshutdown\", " +
+        config:
+            'export default { applicationId: "com.gtkx.devshutdown", ' +
             `libraries: ${JSON.stringify(STORE_LIBRARIES)} };\n`,
         files: { "src/index.tsx": entry },
         hasStore: true,

@@ -27,11 +27,9 @@ const URL_QUERY = "?url";
 const DEFAULT_BINDING = "default";
 const RESOURCE_BINDING = JSON.stringify(RESOURCE_PATH_EXPORT);
 
-const QUERY_ADVICE =
-    `A URL asset exports only its default filesystem path; import the default instead of ${RESOURCE_BINDING}.`;
+const QUERY_ADVICE = `A URL asset exports only its default filesystem path; import the default instead of ${RESOURCE_BINDING}.`;
 
-const RESOURCE_ADVICE =
-    `A resource asset exports only its default GResource path and ${RESOURCE_BINDING}, and nothing else.`;
+const RESOURCE_ADVICE = `A resource asset exports only its default GResource path and ${RESOURCE_BINDING}, and nothing else.`;
 
 const ICON_ADVICE = "An icon asset exports only its default icon-theme name, and nothing else.";
 
@@ -108,8 +106,8 @@ const adviceFor = (source: string): string => {
 const unbackedBindingError = (path: string, binding: NamedBinding): Error =>
     new Error(
         `${path}: ${JSON.stringify(binding.source)} does not export ${JSON.stringify(binding.name)}, which ` +
-        "gtkx build rejects and gtkx dev would bind as undefined. " +
-        adviceFor(binding.source),
+            "gtkx build rejects and gtkx dev would bind as undefined. " +
+            adviceFor(binding.source),
     );
 
 const isCheckedSource = (path: string): boolean => !path.startsWith(VIRTUAL_PREFIX) && !NODE_MODULES.test(path);

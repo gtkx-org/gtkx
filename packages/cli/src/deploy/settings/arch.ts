@@ -34,7 +34,11 @@ const isHostArch = (name: DeployArchName): boolean => name === hostArchName();
 
 const elfMachineFor = (name: DeployArchName): number => ELF_MACHINE_TABLE[name];
 
-const parseArchList = (value: string): string[] => value.split(",").map((name) => name.trim()).filter(Boolean);
+const parseArchList = (value: string): string[] =>
+    value
+        .split(",")
+        .map((name) => name.trim())
+        .filter(Boolean);
 
 const archesFor = (names: string[]): [DeployArchName, ...DeployArchName[]] => {
     const requested = sortStrings(new Set(names.map((name) => assertKnownArch(name.trim()))));

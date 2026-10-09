@@ -1,8 +1,6 @@
 {
     "extends": "../../tsconfig.test.json",
-    "files": [
-        "${configDir}/node_modules/.gtkx/env.d.ts"
-    ],
+    "files": ["${configDir}/node_modules/.gtkx/env.d.ts"],
     "references": [
         {
             "path": "./tsconfig.app.json"

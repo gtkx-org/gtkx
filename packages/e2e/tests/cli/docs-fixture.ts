@@ -13,8 +13,7 @@ const MENU_ITEM_PAGE = "gio/menu-item.md";
 const FIXTURE_GIR = fileURLToPath(new URL("fixtures/gir", import.meta.url));
 
 const config = (body = "", libraries = STORE_LIBRARIES): string =>
-    `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(libraries)}` +
-    `${body} };\n`;
+    `export default { applicationId: "${APPLICATION_ID}", libraries: ${JSON.stringify(libraries)}` + `${body} };\n`;
 
 const docsDir = (project: CliProject): string => join(project.root, OUT_DIR);
 

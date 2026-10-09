@@ -5,8 +5,10 @@ import { getPropertyName } from "../reconciler/metadata.js";
 import { useObjectValue } from "./use-object-value.js";
 
 /** Every property `T` declares that is also readable off the instance, in camelCase. */
-type PropertyName<T extends Pick<GObject.Object, "__properties__" | "__type__">> =
-    Extract<keyof NoInfer<ReadableProperties<T>>, string>;
+type PropertyName<T extends Pick<GObject.Object, "__properties__" | "__type__">> = Extract<
+    keyof NoInfer<ReadableProperties<T>>,
+    string
+>;
 
 /**
  * Subscribes to a GObject property and returns its current value, re-rendering when the property changes.

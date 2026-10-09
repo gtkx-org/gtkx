@@ -10,12 +10,17 @@ const library = fixtureLibrary("bounded-array-writes", "gobject-2.0");
 const holderDescriptor = t.struct("full", { sharedLibrary: library, freeFnName: "gtkx_bounded_holder_free" });
 const borrowedHolder = t.struct();
 const recordDescriptor = t.struct("full", {
-    sharedLibrary: library, copyFnName: "gtkx_bounded_value_copy", freeFnName: "gtkx_bounded_value_free",
+    sharedLibrary: library,
+    copyFnName: "gtkx_bounded_value_copy",
+    freeFnName: "gtkx_bounded_value_free",
 });
 const holderFor = (kind: number, length = 2, isAllocated = true): ExternalObject<Handle> =>
-    t.bind(library, "gtkx_bounded_holder_new", [t.uint32, t.uint32, t.boolean], holderDescriptor)(
-        kind, length, isAllocated,
-    ) as ExternalObject<Handle>;
+    t.bind(
+        library,
+        "gtkx_bounded_holder_new",
+        [t.uint32, t.uint32, t.boolean],
+        holderDescriptor,
+    )(kind, length, isAllocated) as ExternalObject<Handle>;
 const count = (holder: ExternalObject<Handle>): number =>
     t.bind(library, "gtkx_bounded_holder_count", [borrowedHolder], t.uint32)(holder) as number;
 const clear = (holder: ExternalObject<Handle>): void => {
@@ -68,7 +73,7 @@ for (const length of [3, 1, 0]) {
         const seen: unknown[] = [];
 
         invoke(holder, (values: Ref, size: Ref) => {
-            seeds.push(...values.value as ExternalObject<Handle>[]);
+            seeds.push(...(values.value as ExternalObject<Handle>[]));
             seen.push(seeds.map((value) => read(value)));
             size.value = length;
             values.value = replacements;
@@ -96,7 +101,7 @@ for (const length of [3, 1, 0]) {
         const seen: unknown[] = [];
 
         invoke(holder, (values: Ref, size: Ref) => {
-            seeds.push(...values.value as ExternalObject<Handle>[]);
+            seeds.push(...(values.value as ExternalObject<Handle>[]));
             seen.push(seeds.map((value) => read(value)));
             size.value = length;
             values.value = replacements;
@@ -150,9 +155,11 @@ test("sized callback validation preserves the existing array", () => {
     const holder = holderFor(0);
     const invoke = t.bind(library, "gtkx_bounded_holder_visit", [borrowedHolder, stringCallback], t.void);
 
-    expect(() => invoke(holder, (values: Ref) => {
-        values.value = {};
-    })).toThrow();
+    expect(() =>
+        invoke(holder, (values: Ref) => {
+            values.value = {};
+        }),
+    ).toThrow();
     expect(strings(holder)).toEqual(initialStrings);
     clear(holder);
 });
@@ -200,7 +207,7 @@ test("fixed callback records clear using the original extent", async () => {
     const seen: unknown[] = [];
 
     invoke(holder, (values: Ref, length: Ref) => {
-        seeds.push(...values.value as ExternalObject<Handle>[]);
+        seeds.push(...(values.value as ExternalObject<Handle>[]));
         seen.push(seeds.map((value) => read(value)));
         length.value = 0;
         values.value = null;

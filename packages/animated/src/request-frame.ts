@@ -52,9 +52,11 @@ const isCoolingDown = (widget: Gtk.Widget): boolean => {
 const findDriverWidget = (): Gtk.Widget | null => {
     const candidates = Gtk.Window.listToplevels().filter((widget) => hasClock(widget));
 
-    return candidates.find((widget) => !scheduler.stalledUntil.has(widget)) ??
+    return (
+        candidates.find((widget) => !scheduler.stalledUntil.has(widget)) ??
         candidates.find((widget) => !isCoolingDown(widget)) ??
-        null;
+        null
+    );
 };
 
 const flush = (): void => {

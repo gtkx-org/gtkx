@@ -120,16 +120,13 @@ const hasSideEffectFontImport = (code: string, id: string): boolean => {
     );
 };
 
-const retainSideEffectFontImport = (
-    code: string,
-    id: string,
-): { code: string; moduleSideEffects: true } | null =>
-    hasSideEffectFontImport(code, id)
-        ? { code, moduleSideEffects: true }
-        : null;
+const retainSideEffectFontImport = (code: string, id: string): { code: string; moduleSideEffects: true } | null =>
+    hasSideEffectFontImport(code, id) ? { code, moduleSideEffects: true } : null;
 
-const fontBanner = (state: PluginState) => (chunk: Rollup.RenderedChunk): string =>
-    state.emitted.size === 0 ? "" : xdgDataDirsBanner(chunk);
+const fontBanner =
+    (state: PluginState) =>
+    (chunk: Rollup.RenderedChunk): string =>
+        state.emitted.size === 0 ? "" : xdgDataDirsBanner(chunk);
 
 function gtkxFont(): Plugin {
     const state: PluginState = { isBuild: false, root: "", emitted: new Set(), importers: new Map() };

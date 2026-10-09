@@ -384,9 +384,11 @@ describe("useProperty (registration)", () => {
 
 describe("useProperty (addressable names)", () => {
     it("types an installed property with the value type the class declares", () => {
-        expectTypeOf(useProperty<Gtk.Label, "label">).parameter(0)
+        expectTypeOf(useProperty<Gtk.Label, "label">)
+            .parameter(0)
             .toEqualTypeOf<Gtk.Label | null | undefined>();
-        expectTypeOf(useSignal<Gtk.Button, "clicked">).parameter(0)
+        expectTypeOf(useSignal<Gtk.Button, "clicked">)
+            .parameter(0)
             .toEqualTypeOf<Gtk.Button | null | undefined>();
         expectTypeOf(useCelsius).returns.toEqualTypeOf<number | undefined>();
         expectTypeOf(useInstalledCaption).returns.toEqualTypeOf<string | undefined>();

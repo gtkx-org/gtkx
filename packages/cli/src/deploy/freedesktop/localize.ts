@@ -82,25 +82,22 @@ const localizeMetadata = (metadata: StagedMetadata, project: CatalogProject | nu
                 extension: ".metainfo.xml",
                 template: metadata.metainfo,
             }),
-            mimePackage: metadata.mimePackage === null
-                ? null
-                : mergeCatalogs(project, workDir, {
-                        mode: "--xml",
-                        stem: "mime",
-                        extension: ".xml",
-                        template: metadata.mimePackage,
-                    }),
+            mimePackage:
+                metadata.mimePackage === null
+                    ? null
+                    : mergeCatalogs(project, workDir, {
+                          mode: "--xml",
+                          stem: "mime",
+                          extension: ".xml",
+                          template: metadata.mimePackage,
+                      }),
         };
     } finally {
         rmSync(workDir, { recursive: true, force: true });
     }
 };
 
-const extractMetadataMessages = (
-    metadata: StagedMetadata,
-    project: CatalogProject,
-    catalogTemplate?: string,
-): void => {
+const extractMetadataMessages = (metadata: StagedMetadata, project: CatalogProject, catalogTemplate?: string): void => {
     const potPath = catalogTemplate ?? join(project.poDir, `${project.domain}.pot`);
 
     if (!existsSync(potPath)) {

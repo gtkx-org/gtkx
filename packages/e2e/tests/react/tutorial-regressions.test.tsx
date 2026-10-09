@@ -65,7 +65,11 @@ const headerStart = (buttonRef: Ref<Gtk.Button | null>, isDetail: boolean, onBac
     );
 };
 
-const ReuseShell = ({ buttonRef, isDetail, onBack }: {
+const ReuseShell = ({
+    buttonRef,
+    isDetail,
+    onBack,
+}: {
     buttonRef: Ref<Gtk.Button | null>;
     isDetail: boolean;
     onBack: () => void;
@@ -94,11 +98,11 @@ const detailShell = (buttonRef: Ref<Gtk.Button | null>, onBack: () => void): Rea
     <AdwNavigationSplitView>
         <AdwNavigationPage title="Details">
             <AdwToolbarView
-                topBar={(
+                topBar={
                     <AdwHeaderBar
                         start={<GtkButton ref={buttonRef} iconName="go-previous-symbolic" onClicked={onBack} />}
                     />
-                )}
+                }
             >
                 <GtkLabel>Detail body</GtkLabel>
             </AdwToolbarView>

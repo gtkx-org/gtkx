@@ -1,10 +1,6 @@
 import { mkdirSync, symlinkSync } from "node:fs";
 import { dirname, join } from "node:path";
-import {
-    relativeIconPath,
-    resolveApplicationIcon,
-    type ResolvedApplicationIcon,
-} from "../internal/icon-path.js";
+import { relativeIconPath, resolveApplicationIcon, type ResolvedApplicationIcon } from "../internal/icon-path.js";
 import { createRetainedStagingDir } from "../internal/staging-dir.js";
 import { prependXdgDataDir } from "../internal/xdg-data-dirs.js";
 
@@ -24,11 +20,7 @@ const stageIconSource = (shareDir: string, applicationId: string, source: Resolv
     symlinkSync(source.path, target, "file");
 };
 
-const prepareDevIconDir = (
-    root: string,
-    applicationId: string,
-    configured: string | undefined,
-): string | null => {
+const prepareDevIconDir = (root: string, applicationId: string, configured: string | undefined): string | null => {
     const source = resolveApplicationIcon(root, applicationId, configured);
 
     if (source.kind === "none") {

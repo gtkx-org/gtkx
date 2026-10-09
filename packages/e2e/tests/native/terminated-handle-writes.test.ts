@@ -13,29 +13,38 @@ const recordDescriptor = t.struct("full", {
     copyFnName: "gtkx_terminated_value_copy",
     freeFnName: "gtkx_terminated_value_free",
 });
-const referenceDescriptor = t.fundamental(
-    library, "gtkx_terminated_reference_ref", "gtkx_terminated_reference_unref", { ownership: "full" },
-);
+const referenceDescriptor = t.fundamental(library, "gtkx_terminated_reference_ref", "gtkx_terminated_reference_unref", {
+    ownership: "full",
+});
 const handleTypes = [
     { name: "object", kind: 0, item: t.object("full"), argument: t.object(), isCopied: false },
     { name: "record", kind: 1, item: recordDescriptor, argument: t.struct(), isCopied: true },
     {
-        name: "boxed", kind: 2,
+        name: "boxed",
+        kind: 2,
         item: t.boxed("GtkxTerminatedValue", {
-            ownership: "full", sharedLibrary: library, getTypeFnName: "gtkx_terminated_value_get_type",
+            ownership: "full",
+            sharedLibrary: library,
+            getTypeFnName: "gtkx_terminated_value_get_type",
         }),
-        argument: t.struct(), isCopied: true,
+        argument: t.struct(),
+        isCopied: true,
     },
     {
-        name: "fundamental", kind: 3, item: referenceDescriptor,
+        name: "fundamental",
+        kind: 3,
+        item: referenceDescriptor,
         argument: t.fundamental(library, "gtkx_terminated_reference_ref", "gtkx_terminated_reference_unref"),
         isCopied: false,
     },
 ];
 const holderFor = (kind: number, state = 2): ExternalObject<Handle> =>
-    t.bind(library, "gtkx_terminated_holder_new", [t.uint32, t.uint32], holderDescriptor)(
-        kind, state,
-    ) as ExternalObject<Handle>;
+    t.bind(
+        library,
+        "gtkx_terminated_holder_new",
+        [t.uint32, t.uint32],
+        holderDescriptor,
+    )(kind, state) as ExternalObject<Handle>;
 const count = (holder: ExternalObject<Handle>): number =>
     t.bind(library, "gtkx_terminated_holder_count", [t.struct()], t.uint32)(holder) as number;
 const clear = (holder: ExternalObject<Handle>): void => {
@@ -95,7 +104,7 @@ for (const type of handleTypes) {
         const seen: unknown[] = [];
 
         invoke(holder, (ref: Ref) => {
-            retained.push(...ref.value as ExternalObject<Handle>[]);
+            retained.push(...(ref.value as ExternalObject<Handle>[]));
             seen.push(retained.map((value) => read(type.kind, value)));
             ref.value = replacements;
         });
@@ -156,11 +165,13 @@ test("terminated callback input validation preserves native ownership", async ()
     const retained: ExternalObject<Handle>[] = [];
     const seen: unknown[] = [];
 
-    expect(() => invoke(holder, (ref: Ref) => {
-        retained.push(...ref.value as ExternalObject<Handle>[]);
-        seen.push(retained.map((value) => read(1, value)));
-        ref.value = {};
-    })).toThrow();
+    expect(() =>
+        invoke(holder, (ref: Ref) => {
+            retained.push(...(ref.value as ExternalObject<Handle>[]));
+            seen.push(retained.map((value) => read(1, value)));
+            ref.value = {};
+        }),
+    ).toThrow();
     expect(seen).toEqual([[3, 7]]);
     expect(nativeValues(holder)).toEqual([3, 7]);
     expect(releases(1) - before).toBe(0);
@@ -174,7 +185,8 @@ test("terminated field cleanup resolution fails before displacing native storage
     const before = releases(1);
     const holder = holderFor(1);
     const descriptor = t.struct("full", {
-        sharedLibrary: library, freeFnName: "gtkx_terminated_missing_free",
+        sharedLibrary: library,
+        freeFnName: "gtkx_terminated_missing_free",
     });
 
     expect(() => {

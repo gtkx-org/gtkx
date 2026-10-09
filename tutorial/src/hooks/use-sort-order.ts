@@ -7,11 +7,12 @@ const useSortOrder = (): [SortOrder, (order: SortOrder) => void] => {
     const settings = useAppSettings();
     const [value, setValue] = useSetting(settings, schema, "sort-order");
 
-    return [sortOrderFromSetting(value), (order) => {
-        setValue(sortOrderToSetting(order));
-    }];
+    return [
+        sortOrderFromSetting(value),
+        (order) => {
+            setValue(sortOrderToSetting(order));
+        },
+    ];
 };
 
-export {
-    useSortOrder,
-};
+export { useSortOrder };

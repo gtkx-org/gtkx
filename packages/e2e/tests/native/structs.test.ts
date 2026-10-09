@@ -217,11 +217,7 @@ test("a fixed-size array field round-trips exactly its own length", () => {
     expect(struct.justInt).toBe(5);
 });
 
-const mismatchedFixedArrays: [number[]][] = [
-    [[9, 8]],
-    [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]],
-    [[]],
-];
+const mismatchedFixedArrays: [number[]][] = [[[9, 8]], [[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]], [[]]];
 
 test.each(mismatchedFixedArrays)("a fixed-size array field rejects the mismatched length %#", (value) => {
     const struct = new Regress.TestStructFixedArray({});

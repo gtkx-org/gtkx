@@ -18,10 +18,7 @@ import { isUnownableStruct, transferOwnership } from "./descriptor-render.js";
 import { hasTransferredNumericHashTableInput, hasUnsupportedHashTableSlot } from "./hash-table-admission.js";
 import { hasUnsupportedInlineRecordArray } from "./inline-record-array-admission.js";
 import { inoutHandleIndirection } from "./inout-handle.js";
-import {
-    hasUnsupportedNestedArrayOutput,
-    hasUnsupportedNestedArrayParameter,
-} from "./nested-array-admission.js";
+import { hasUnsupportedNestedArrayOutput, hasUnsupportedNestedArrayParameter } from "./nested-array-admission.js";
 import { closureAndDestroyIndices } from "./param-structure.js";
 import { hasUnsupportedScalarParameter } from "./scalar-pointer.js";
 import {
@@ -206,11 +203,7 @@ const hasDetachedCallback = (context: ModuleContext, parameters: GirParameter[])
     );
 };
 
-const isRefusedTransfer = (
-    context: ModuleContext,
-    ref: TypeId | undefined,
-    transfer: ParameterTransfer,
-): boolean => {
+const isRefusedTransfer = (context: ModuleContext, ref: TypeId | undefined, transfer: ParameterTransfer): boolean => {
     if (ref === undefined || transferOwnership(transfer) !== "full") {
         return false;
     }
@@ -226,8 +219,7 @@ const isLentInPlace = (context: ModuleContext, parameter: GirParameter): boolean
 const isRefusedParamTransfer = (context: ModuleContext, parameter: GirParameter): boolean =>
     !isLentInPlace(context, parameter) && isRefusedTransfer(context, parameter.type, parameter.transferOwnership);
 
-const bareCTypeSpelling = (spelling: string): string =>
-    spelling.replaceAll(/\bconst\b/gu, "").replaceAll(/\s+/gu, "");
+const bareCTypeSpelling = (spelling: string): string => spelling.replaceAll(/\bconst\b/gu, "").replaceAll(/\s+/gu, "");
 
 const isByValueRecord = (context: ModuleContext, ref: TypeId | undefined, cType: string | undefined): boolean => {
     if (ref === undefined || cType === undefined || cType.includes("*")) {
@@ -247,8 +239,7 @@ const isByValueRecord = (context: ModuleContext, ref: TypeId | undefined, cType:
     }
 
     return (
-        bareCTypeSpelling(declared) === bareCTypeSpelling(cType) &&
-        recordInlineSize(context, type.value) !== undefined
+        bareCTypeSpelling(declared) === bareCTypeSpelling(cType) && recordInlineSize(context, type.value) !== undefined
     );
 };
 
@@ -291,10 +282,12 @@ const hasUnsupportedCallbackParam = (
 };
 
 const hasAsyncCallback = (context: ModuleContext, callable: GirFunction): boolean =>
-    callable.parameters.some((parameter) =>
-        parameter.direction === "in" &&
-        parameter.scope === "async" &&
-        underlyingType(context.library, parameter.type)?.kind === "callback");
+    callable.parameters.some(
+        (parameter) =>
+            parameter.direction === "in" &&
+            parameter.scope === "async" &&
+            underlyingType(context.library, parameter.type)?.kind === "callback",
+    );
 
 const hasUnsupportedInlineRecordArrayParameter = (
     context: ModuleContext,
@@ -303,29 +296,25 @@ const hasUnsupportedInlineRecordArrayParameter = (
 ): boolean => {
     const hasOutIndirection = parameter.direction !== "in" && !isCallerAllocatedOut(parameter);
 
-    if (parameter.direction !== "out" && hasUnsupportedInlineRecordArray(
-        context,
-        parameter.type,
-        parameter.transferOwnership,
-        {
+    if (
+        parameter.direction !== "out" &&
+        hasUnsupportedInlineRecordArray(context, parameter.type, parameter.transferOwnership, {
             direction: "to-native",
             hasOutIndirection,
             isCallerAllocated: parameter.direction === "inout",
             isRetained: hasAsyncCallback(context, callable),
-        },
-    )) {
+        })
+    ) {
         return true;
     }
 
-    return parameter.direction !== "in" && hasUnsupportedInlineRecordArray(
-        context,
-        parameter.type,
-        parameter.transferOwnership,
-        {
+    return (
+        parameter.direction !== "in" &&
+        hasUnsupportedInlineRecordArray(context, parameter.type, parameter.transferOwnership, {
             direction: "from-native",
             hasOutIndirection,
             isCallerAllocated: parameter.callerAllocates || parameter.direction === "inout",
-        },
+        })
     );
 };
 
@@ -334,7 +323,8 @@ const hasUnboundPointer = (context: ModuleContext, callable: GirFunction): boole
         return false;
     }
 
-    if (hasUnsupportedHashTableSlot(context.library, callable.returnValue.type) ||
+    if (
+        hasUnsupportedHashTableSlot(context.library, callable.returnValue.type) ||
         hasUnsupportedHashTableSlot(context.library, callable.instance?.type) ||
         hasUnsupportedNestedArrayOutput(context.library, callable.returnValue.type) ||
         hasScalarPointer(context.library, callable.returnValue.type, callable.returnValue.cType) ||
@@ -343,41 +333,46 @@ const hasUnboundPointer = (context: ModuleContext, callable: GirFunction): boole
         hasPrimitivePointer(context.library, callable.returnValue.type) ||
         hasPrimitivePointer(context.library, callable.instance?.type) ||
         hasCallbackType(context.library, callable.returnValue.type) ||
-        hasUnsupportedInlineRecordArray(
-            context,
-            callable.returnValue.type,
-            callable.returnValue.transferOwnership,
-            { direction: "from-native" },
-        )) {
+        hasUnsupportedInlineRecordArray(context, callable.returnValue.type, callable.returnValue.transferOwnership, {
+            direction: "from-native",
+        })
+    ) {
         return true;
     }
 
     const claimed = closureAndDestroyIndices(callable);
 
-    return callable.parameters.some((parameter, index) =>
-        !claimed.has(index) && (hasUnsupportedHashTableSlot(context.library, parameter.type) ||
-            hasTransferredNumericHashTableInput(context.library, parameter) ||
-            hasUnsupportedNestedArrayParameter(context.library, parameter) ||
-            hasUnsupportedScalarParameter(context.library, parameter) ||
-            hasUnknownLengthArray(context.library, parameter.type) ||
-            hasPrimitivePointer(context.library, parameter.type) ||
-            hasUnsupportedInlineRecordArrayParameter(context, callable, parameter) ||
-            hasUnsupportedCallbackParam(context, callable, parameter)));
+    return callable.parameters.some(
+        (parameter, index) =>
+            !claimed.has(index) &&
+            (hasUnsupportedHashTableSlot(context.library, parameter.type) ||
+                hasTransferredNumericHashTableInput(context.library, parameter) ||
+                hasUnsupportedNestedArrayParameter(context.library, parameter) ||
+                hasUnsupportedScalarParameter(context.library, parameter) ||
+                hasUnknownLengthArray(context.library, parameter.type) ||
+                hasPrimitivePointer(context.library, parameter.type) ||
+                hasUnsupportedInlineRecordArrayParameter(context, callable, parameter) ||
+                hasUnsupportedCallbackParam(context, callable, parameter)),
+    );
 };
 
 const hasUnmarshalableParam = (context: ModuleContext, callable: GirFunction): boolean => {
-    if (callable.instance !== undefined &&
+    if (
+        callable.instance !== undefined &&
         (hasTransferredNumericHashTableInput(context.library, callable.instance) ||
             hasUnsupportedScalarParameter(context.library, callable.instance) ||
-            isRefusedParamTransfer(context, callable.instance))) {
+            isRefusedParamTransfer(context, callable.instance))
+    ) {
         return true;
     }
 
-    return hasUnboundPointer(context, callable) ||
+    return (
+        hasUnboundPointer(context, callable) ||
         isRefusedTransfer(context, callable.returnValue.type, callable.returnValue.transferOwnership) ||
         isByValueRecord(context, callable.returnValue.type, callable.returnValue.cType) ||
         hasDetachedCallback(context, callable.parameters) ||
-        callable.parameters.some((parameter) => isUnmarshalableCallParam(context, parameter));
+        callable.parameters.some((parameter) => isUnmarshalableCallParam(context, parameter))
+    );
 };
 
 export { hasDetachedClosure, hasUnmarshalableParam };

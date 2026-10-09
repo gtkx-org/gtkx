@@ -69,11 +69,7 @@ const copyPreservedEntries = (previous: string, path: string, preservedEntries: 
     }
 };
 
-const capturePreviousOutput = (
-    path: string,
-    previous: string,
-    hasPrevious: boolean,
-): void => {
+const capturePreviousOutput = (path: string, previous: string, hasPrevious: boolean): void => {
     mkdirSync(dirname(path), { recursive: true });
 
     if (hasPrevious) {
@@ -109,9 +105,7 @@ const restoreOutputDirectory = (
     temporary.remove();
 };
 
-const createOutputDirectoryTransaction = (
-    request: OutputDirectoryTransactionRequest,
-): OutputDirectoryTransaction => {
+const createOutputDirectoryTransaction = (request: OutputDirectoryTransactionRequest): OutputDirectoryTransaction => {
     const { hasPrevious, path, previous, temporary } = request;
     let isFinished = false;
 
@@ -164,9 +158,4 @@ const prepareOutputDirectory = (
     });
 };
 
-export {
-    type OutputDirectoryTransaction,
-    hasSymlinkComponent,
-    prepareOutputDirectory,
-    readRegularFile,
-};
+export { type OutputDirectoryTransaction, hasSymlinkComponent, prepareOutputDirectory, readRegularFile };

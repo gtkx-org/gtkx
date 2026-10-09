@@ -64,15 +64,11 @@ const renderConstructorPropsInterface = (context: ModuleContext, klass: GirClass
 
         const isRequired = required.has(property.name);
         const name = `${toCamelIdentifier(property.name)}${isRequired ? "" : "?"}`;
-        const type = renderParameterTsType(
-            context,
-            property.type,
-            {
-                isNullable: !isRequired && isNullableProperty(context, property),
-                isValueWidened: false,
-                canAcceptTypedArrayViews: property.transferOwnership === "none",
-            },
-        );
+        const type = renderParameterTsType(context, property.type, {
+            isNullable: !isRequired && isNullableProperty(context, property),
+            isValueWidened: false,
+            canAcceptTypedArrayViews: property.transferOwnership === "none",
+        });
 
         return `${propertyDoc(property)}${name}: ${type}${isRequired ? "" : " | undefined"};`;
     });
@@ -99,7 +95,8 @@ const isSelfReturning = (context: ModuleContext, klass: GirClass, callable: GirF
 
 const constructionHint = (context: ModuleContext, klass: GirClass, callables: Callables): string | undefined => {
     const candidates = staticMembers(context, callables).filter(({ callable }) =>
-        isSelfReturning(context, klass, callable));
+        isSelfReturning(context, klass, callable),
+    );
 
     const candidate =
         candidates.find(({ name }) => name === "newFull") ??
@@ -111,7 +108,8 @@ const constructionHint = (context: ModuleContext, klass: GirClass, callables: Ca
     }
 
     const args = inputParameters(context.library, candidate.callable).map(({ parameter, index }) =>
-        parameterIdentifier(parameter, index));
+        parameterIdentifier(parameter, index),
+    );
 
     return `${candidate.name}(${args.join(", ")})`;
 };
@@ -124,11 +122,7 @@ const fundamentalMessage = (qualified: string, hint: string | undefined): string
         : `${reason}; use ${qualified}.${hint} instead.`;
 };
 
-const SINGLETON_ACTIONS: Set<string> = new Set([
-    "Gtk.ActivateAction",
-    "Gtk.MnemonicAction",
-    "Gtk.NothingAction",
-]);
+const SINGLETON_ACTIONS: Set<string> = new Set(["Gtk.ActivateAction", "Gtk.MnemonicAction", "Gtk.NothingAction"]);
 
 const INITIALIZATION_INTERFACES: Set<string> = new Set(["AsyncInitable", "Initable"]);
 const FACTORY_INITIALIZED_CLASSES: Set<string> = new Set(["Gtk.CallbackAction"]);
@@ -139,14 +133,11 @@ const requiresFactoryInitialization = (context: ModuleContext, klass: GirClass):
             return true;
         }
 
-        const interfaces = resolveInterfaces(
-            context.library,
-            ancestor.namespaceName,
-            ancestor.klass.implements,
-        );
+        const interfaces = resolveInterfaces(context.library, ancestor.namespaceName, ancestor.klass.implements);
 
-        if (interfaces.some((entry) =>
-            entry.namespaceName === "Gio" && INITIALIZATION_INTERFACES.has(entry.klass.name))) {
+        if (
+            interfaces.some((entry) => entry.namespaceName === "Gio" && INITIALIZATION_INTERFACES.has(entry.klass.name))
+        ) {
             return true;
         }
     }
@@ -157,9 +148,7 @@ const requiresFactoryInitialization = (context: ModuleContext, klass: GirClass):
 const initializationMessage = (qualified: string, hint: string | undefined): string => {
     const reason = `Cannot construct ${qualified} with new: it must be initialized by a factory`;
 
-    return hint === undefined
-        ? `${reason}.`
-        : `${reason}; use ${qualified}.${hint} instead.`;
+    return hint === undefined ? `${reason}.` : `${reason}; use ${qualified}.${hint} instead.`;
 };
 
 const renderInitializationGuard = (context: ModuleContext, spec: ClassConstructorSpec): string => {
@@ -250,9 +239,4 @@ const renderTranslatingConstructor = (
     return renderBlock(`constructor(props: ${className}ConstructorProps${defaultProps})`, "super(props);");
 };
 
-export {
-    isFundamentalClass,
-    renderConstructorPropsInterface,
-    renderClassConstructor,
-    requiresFactoryInitialization,
-};
+export { isFundamentalClass, renderConstructorPropsInterface, renderClassConstructor, requiresFactoryInitialization };

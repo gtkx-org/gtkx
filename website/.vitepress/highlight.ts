@@ -11,8 +11,15 @@ const THEME: ThemeRegistrationRaw = {
     bg: "transparent",
     settings: [
         {
-            scope: ["keyword.control", "storage.type", "storage.modifier", "keyword.operator.new",
-                "keyword.operator.expression", "constant.language", "variable.language"],
+            scope: [
+                "keyword.control",
+                "storage.type",
+                "storage.modifier",
+                "keyword.operator.new",
+                "keyword.operator.expression",
+                "constant.language",
+                "variable.language",
+            ],
             settings: { foreground: "var(--syntax-keyword)" },
         },
         {

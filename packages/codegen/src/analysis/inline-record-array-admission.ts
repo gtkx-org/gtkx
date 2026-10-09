@@ -145,9 +145,7 @@ const hasUnsupportedCallbackOutput = (context: AdmissionContext, parameter: GirP
     });
 };
 
-const hasUnsupportedCallbackInlineRecordArray = (
-    context: AdmissionContext,
-    parameter: GirParameter,
-): boolean => hasUnsupportedCallbackInput(context, parameter) || hasUnsupportedCallbackOutput(context, parameter);
+const hasUnsupportedCallbackInlineRecordArray = (context: AdmissionContext, parameter: GirParameter): boolean =>
+    hasUnsupportedCallbackInput(context, parameter) || hasUnsupportedCallbackOutput(context, parameter);
 
 export { hasUnsupportedCallbackInlineRecordArray, hasUnsupportedInlineRecordArray };

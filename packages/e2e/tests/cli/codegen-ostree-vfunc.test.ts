@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { createCliProject, runCliOrThrow } from "./cli-project.js";
 import { isolateTypeConsumer, runNativeConsumer, typecheckFile } from "./type-consumer.js";
 
-const CONFIG = 'export default { applicationId: "org.gtkx.ostreevfunc", libraries: ["OSTree-1.0"],' +
+const CONFIG =
+    'export default { applicationId: "org.gtkx.ostreevfunc", libraries: ["OSTree-1.0"],' +
     " agents: { reference: false, rules: false } };";
 const CONSUMER = `import assert from "node:assert/strict";
 import { mkdtempDisposableSync } from "node:fs";
@@ -115,9 +116,12 @@ describe("generated OSTree native vfunc call admission", () => {
         const page = reference.lookup("OSTree.RepoFinder", "interface");
         expect(page.outcome).toBe("page");
         expect(page).toHaveProperty("markdown", expect.stringContaining(EXPECTED_SIGNATURE));
-        expect(page).toHaveProperty("markdown", expect.stringContaining(
-            "Calling the native implementation through this member, `super`, `callVfunc` or `callParent` throws.",
-        ));
+        expect(page).toHaveProperty(
+            "markdown",
+            expect.stringContaining(
+                "Calling the native implementation through this member, `super`, `callVfunc` or `callParent` throws.",
+            ),
+        );
         expect(page).toHaveProperty("markdown", expect.stringContaining("Overriding it remains supported."));
         expect(page).toHaveProperty("markdown", expect.stringContaining("### `vfuncResolveAsync`"));
         expect(page).toHaveProperty("markdown", expect.stringContaining("### `resolveAsync`"));

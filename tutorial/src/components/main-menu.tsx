@@ -7,7 +7,7 @@ const MainMenu = () => (
         primary
         iconName="open-menu-symbolic"
         tooltipText={t("Main Menu")}
-        menuModel={(
+        menuModel={
             <GMenu
                 items={[
                     { section: [{ label: t("New Task"), action: "win.new" }] },
@@ -20,10 +20,8 @@ const MainMenu = () => (
                     { section: [{ label: t("About Tasks"), action: "win.about" }] },
                 ]}
             />
-        )}
+        }
     />
 );
 
-export {
-    MainMenu,
-};
+export { MainMenu };

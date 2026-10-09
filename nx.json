@@ -2,15 +2,12 @@
     "$schema": "./node_modules/nx/schemas/nx-schema.json",
     "analytics": false,
     "namedInputs": {
-        "default": [
-            "{projectRoot}/**/*",
-            "sharedGlobals"
-        ],
+        "default": ["{projectRoot}/**/*", "sharedGlobals"],
         "production": [
             "default",
             "!{projectRoot}/tests/**/*",
             "!{projectRoot}/tsconfig.test.json",
-            "!{projectRoot}/vitest.config.ts"
+            "!{projectRoot}/vitest*.config.ts"
         ],
         "sharedGlobals": [
             "{workspaceRoot}/tsconfig.base.json",
@@ -26,11 +23,13 @@
             },
             "{workspaceRoot}/scripts/cache-environment.ts",
             {
-                "runtime": "node scripts/cache-environment.ts runtime"
+                "runtime": "node scripts/ci/run.mjs \"node scripts/cache-environment.ts runtime\""
             },
             "{workspaceRoot}/.github/actions/setup-ci/**/*",
+            "{workspaceRoot}/scripts/ci/**/*",
+            "{workspaceRoot}/.nx/workflows/**/*",
             {
-                "env": "ImageVersion"
+                "runtime": "node scripts/ci/run.mjs 'tsc --version'"
             }
         ],
         "nativeEnvironment": [
@@ -48,13 +47,13 @@
                 "env": "CARGO_BUILD_TARGET"
             },
             {
-                "runtime": "node scripts/cache-environment.ts native"
+                "runtime": "node scripts/ci/run.mjs \"node scripts/cache-environment.ts native\""
             }
         ]
     },
     "plugins": [
         {
-            "plugin": "@nx/js/typescript",
+            "plugin": "./scripts/ci/typescript-plugin.mjs",
             "options": {
                 "typecheck": {
                     "targetName": "typecheck"
@@ -64,78 +63,73 @@
                     "configName": "tsconfig.lib.json"
                 }
             },
-            "exclude": [
-                "packages/e2e/tests/cli/fixtures/**",
-                "tutorial/**"
-            ]
+            "exclude": ["packages/e2e/tests/cli/fixtures/**", "tutorial/**"]
         },
         {
-            "plugin": "@nx/eslint/plugin",
+            "plugin": "./scripts/ci/oxlint-plugin.mjs",
             "options": {
                 "targetName": "lint"
             },
-            "exclude": [
-                "packages/e2e/tests/cli/fixtures/**",
-                "tutorial/**"
-            ]
+            "exclude": ["packages/e2e/tests/cli/fixtures/**", "tutorial/**"]
         },
         {
-            "plugin": "@nx/vitest",
+            "plugin": "./scripts/ci/eslint-plugin.mjs",
+            "options": {
+                "targetName": "_lint:eslint"
+            },
+            "exclude": ["packages/e2e/tests/cli/fixtures/**", "tutorial/**"]
+        },
+        {
+            "plugin": "./scripts/ci/vitest-plugin.mjs",
             "options": {
                 "testTargetName": "test",
                 "testMode": "run"
             },
-            "exclude": [
-                "examples/**",
-                "packages/e2e/**",
-                "tutorial/**"
-            ]
+            "exclude": ["examples/**", "packages/e2e/**", "tutorial/**"]
         },
         {
-            "plugin": "@nx/vitest",
-            "include": [
-                "packages/e2e/vitest.config.ts"
-            ],
+            "plugin": "./scripts/ci/vitest-plugin.mjs",
+            "include": ["packages/e2e/vitest.config.ts"],
             "options": {
                 "testTargetName": "e2e",
-                "testMode": "run"
+                "testMode": "run",
+                "ciTargetName": "e2e-ci",
+                "ciGroupName": "CLI E2E",
+                "discoverTestFiles": "glob"
             }
         }
     ],
     "targetDefaults": {
         "build": [
             {
-                "dependsOn": [
-                    "...",
-                    "gtkx:_build:bindings"
-                ],
-                "inputs": [
-                    "...",
-                    "sharedGlobals"
-                ]
+                "dependsOn": ["...", "gtkx:_build:bindings"],
+                "inputs": ["...", "sharedGlobals"]
             },
             {
                 "filter": {
-                    "plugin": "@nx/js/typescript"
+                    "plugin": "./scripts/ci/typescript-plugin.mjs"
                 },
                 "options": {
-                    "args": [
-                        "--noCheck"
-                    ]
+                    "args": ["--noCheck"]
                 }
             }
         ],
         "lint": {
-            "dependsOn": [
-                "gtkx:_build:bindings",
-                "@gtkx/gl:codegen"
+            "dependsOn": ["^build", "gtkx:_build:bindings", "@gtkx/gl:codegen", "_lint:eslint"],
+            "inputs": [
+                "...",
+                "default",
+                "^production",
+                "sharedGlobals",
+                "{workspaceRoot}/pnpm-lock.yaml",
+                {
+                    "dependentTasksOutputFiles": "**/*.{d.ts,d.mts}",
+                    "transitive": true
+                }
             ]
         },
         "test": {
-            "dependsOn": [
-                "^build",
-                "gtkx:_build:bindings"
-            ],
+            "dependsOn": ["^build", "gtkx:_build:bindings"],
             "inputs": [
                 "...",
                 "default",
@@ -153,15 +147,10 @@
         "release": {
             "cache": false,
             "parallelism": false,
-            "dependsOn": [
-                "build",
-                "^release"
-            ]
+            "dependsOn": ["build", "^release"]
         },
         "e2e": {
-            "dependsOn": [
-                "^build"
-            ],
+            "dependsOn": ["^build"],
             "inputs": [
                 "...",
                 {
@@ -169,17 +158,49 @@
                     "transitive": true
                 }
             ]
+        },
+        "e2e-ci": {
+            "inputs": [
+                "...",
+                "default",
+                "^production",
+                {
+                    "dependentTasksOutputFiles": "**/*.{js,node,d.ts,d.mts}",
+                    "transitive": true
+                }
+            ]
+        },
+        "e2e-ci--**/**": {
+            "dependsOn": ["^build", "gtkx:_build:bindings"],
+            "inputs": [
+                "...",
+                "default",
+                "^production",
+                {
+                    "dependentTasksOutputFiles": "**/*.{js,node,d.ts,d.mts}",
+                    "transitive": true
+                }
+            ],
+            "cache": true
+        },
+        "_lint:eslint": {
+            "dependsOn": ["^build", "gtkx:_build:bindings", "@gtkx/gl:codegen"],
+            "inputs": [
+                "...",
+                "default",
+                "^production",
+                "sharedGlobals",
+                "{workspaceRoot}/pnpm-lock.yaml",
+                {
+                    "dependentTasksOutputFiles": "**/*.{d.ts,d.mts}",
+                    "transitive": true
+                }
+            ]
         }
     },
     "release": {
         "versionPlans": {
-            "ignorePatternsForPlanCheck": [
-                "**/tests/**",
-                "**/*.test.ts",
-                "**/*.test.tsx",
-                "**/typedoc.json",
-                "**/*.md"
-            ]
+            "ignorePatternsForPlanCheck": ["**/tests/**", "**/*.test.ts", "**/*.test.tsx", "**/typedoc.json", "**/*.md"]
         },
         "version": {
             "git": {

@@ -9,8 +9,8 @@ type Observation = { pid: number; value: string };
 const ASSET = "data/executor";
 const OBSERVATION = "node_modules/asset-observation.json";
 const FAILURE = "node_modules/asset-failure.json";
-const FIRST = Buffer.from([0x7F, 0x45, 0x4C, 0x46, 1, 0, 0, 0]);
-const SECOND = Buffer.from([0x7F, 0x45, 0x4C, 0x46, 2, 0, 0, 0]);
+const FIRST = Buffer.from([0x7f, 0x45, 0x4c, 0x46, 1, 0, 0, 0]);
+const SECOND = Buffer.from([0x7f, 0x45, 0x4c, 0x46, 2, 0, 0, 0]);
 const BOOTSTRAP = `import { writeFileSync } from "node:fs";
 try {
     await import("./app.ts");
@@ -40,29 +40,31 @@ it("reloads binary URL assets, replacements, recreations, and recovered source e
     const closed = once(child, "close");
     child.stdout?.resume();
     child.stderr?.resume();
-    const observe = (): Observation => JSON.parse(
-        readFileSync(join(project.root, OBSERVATION), "utf8"),
-    ) as Observation;
+    const observe = (): Observation => JSON.parse(readFileSync(join(project.root, OBSERVATION), "utf8")) as Observation;
     const poll = { timeout: 30_000 };
 
     try {
         await expect.poll(observe, poll).toMatchObject({ value: FIRST.toString("hex") });
         const initial = observe();
         unlinkSync(join(project.root, ASSET));
-        await expect.poll(() => {
-            try {
-                process.kill(initial.pid, 0);
+        await expect
+            .poll(() => {
+                try {
+                    process.kill(initial.pid, 0);
 
-                return false;
-            } catch {
-                return true;
-            }
-        }, poll).toBe(true);
-        await expect.poll(() => {
-            const failed = JSON.parse(readFileSync(join(project.root, FAILURE), "utf8")) as { pid: number };
+                    return false;
+                } catch {
+                    return true;
+                }
+            }, poll)
+            .toBe(true);
+        await expect
+            .poll(() => {
+                const failed = JSON.parse(readFileSync(join(project.root, FAILURE), "utf8")) as { pid: number };
 
-            return failed.pid;
-        }, poll).toBeGreaterThan(0);
+                return failed.pid;
+            }, poll)
+            .toBeGreaterThan(0);
         expect(child.exitCode).toBeNull();
         writeFileSync(join(project.root, ASSET), SECOND);
         await expect.poll(observe, poll).toMatchObject({ value: SECOND.toString("hex") });
@@ -78,15 +80,17 @@ it("reloads binary URL assets, replacements, recreations, and recovered source e
         const replaced = observe();
         expect(replaced.pid).not.toBe(changed.pid);
         writeFileSync(join(project.root, "src/app.ts"), 'throw new Error("Unavailable");\n');
-        await expect.poll(() => {
-            try {
-                process.kill(replaced.pid, 0);
+        await expect
+            .poll(() => {
+                try {
+                    process.kill(replaced.pid, 0);
 
-                return false;
-            } catch {
-                return true;
-            }
-        }, poll).toBe(true);
+                    return false;
+                } catch {
+                    return true;
+                }
+            }, poll)
+            .toBe(true);
         expect(child.exitCode).toBeNull();
         writeFileSync(join(project.root, ASSET), FIRST);
         writeFileSync(join(project.root, "src/app.ts"), ENTRY);

@@ -265,8 +265,9 @@ const interfacePrerequisiteExtends = (iface: ResolvedQualifiedInterface, context
 };
 
 const hasIntersectionProps = (klass: GirClass, namespace: GirNamespace, library: Library): boolean =>
-    ancestorGlibNames(klass, namespace, library)
-        .some((name) => elementPropTypeFor(name)?.composition === "intersection");
+    ancestorGlibNames(klass, namespace, library).some(
+        (name) => elementPropTypeFor(name)?.composition === "intersection",
+    );
 
 const renderPropsDeclaration = (name: string, parents: string[], body: string, isIntersection: boolean): string => {
     if (isIntersection) {
@@ -338,9 +339,7 @@ const renderInterfacePropsBlock = (
     return { block, objectPropNames };
 };
 
-const renderJsxAugmentation = (
-    namespaceElements: GlibNamedClass[],
-): string => {
+const renderJsxAugmentation = (namespaceElements: GlibNamedClass[]): string => {
     const elementLines = namespaceElements
         .filter(isMountableElement)
         .map((entry) => `${getDoc(entry.klass)}${entry.glibName}: ${entry.glibName}Props;`)

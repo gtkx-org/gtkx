@@ -35,17 +35,14 @@ describe("gtkx codegen (where the documentation goes)", () => {
         removeCliProject(state.project);
     });
 
-    it.each(DOCUMENTED_MODULE_CASES)(
-        "documents $title in its declaration alone",
-        ({ store, stem, docs, stripped }) => {
-            expect(state.status).toBe(0);
-            const declared = generatedModule(state.project, store, `${stem}.d.ts`);
-            expect(docs.filter((text) => !declared.includes(text))).toEqual([]);
-            expect(stripped.filter((text) => declared.includes(text))).toEqual([]);
-            const emitted = generatedModule(state.project, store, `${stem}.js`).split(PURE).join("");
-            expect(emitted).not.toMatch(COMMENT);
-        },
-    );
+    it.each(DOCUMENTED_MODULE_CASES)("documents $title in its declaration alone", ({ store, stem, docs, stripped }) => {
+        expect(state.status).toBe(0);
+        const declared = generatedModule(state.project, store, `${stem}.d.ts`);
+        expect(docs.filter((text) => !declared.includes(text))).toEqual([]);
+        expect(stripped.filter((text) => declared.includes(text))).toEqual([]);
+        const emitted = generatedModule(state.project, store, `${stem}.js`).split(PURE).join("");
+        expect(emitted).not.toMatch(COMMENT);
+    });
 
     it.each(HOVER_CASES)("surfaces the documentation of $title on hover", ({ text, doc, omits }) => {
         expect(state.status).toBe(0);

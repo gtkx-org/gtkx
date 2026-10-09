@@ -130,11 +130,4 @@ const quit = (): typeof Gdk.EVENT_PROPAGATE | typeof Gdk.EVENT_STOP => {
 const createPortal = (children: ReactNode, container: Container, key?: string): ReactPortal =>
     reconciler.createPortal(children, container, null, key ?? null);
 
-export {
-    createRoot,
-    quit,
-    createPortal,
-    type CaughtErrorInfo,
-    type Root,
-    type RootOptions,
-};
+export { createRoot, quit, createPortal, type CaughtErrorInfo, type Root, type RootOptions };

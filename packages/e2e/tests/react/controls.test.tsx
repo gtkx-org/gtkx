@@ -66,11 +66,13 @@ const ScaleWithAdjustment = ({
     <GtkScale
         ref={scaleRef}
         adjustment={<GtkAdjustment {...config} />}
-        onValueChanged={onValueChanged
-            ? (scale) => {
-                    onValueChanged(scale.getValue());
-                }
-            : undefined}
+        onValueChanged={
+            onValueChanged
+                ? (scale) => {
+                      onValueChanged(scale.getValue());
+                  }
+                : undefined
+        }
     />
 );
 
@@ -147,9 +149,7 @@ describe("render - Scale marks", () => {
         expect(scale).toHaveClass("marks-before");
         expect(scale).not.toHaveClass("marks-after");
 
-        await rerender(
-            <ScaleWithMarks marks={[{ value: 50, position: Gtk.PositionType.BOTTOM, markup: "Middle" }]} />,
-        );
+        await rerender(<ScaleWithMarks marks={[{ value: 50, position: Gtk.PositionType.BOTTOM, markup: "Middle" }]} />);
 
         expect(screen.getByRole(Gtk.AccessibleRole.SLIDER)).toBe(scale);
         expect(screen.getByText("Middle")).toBeVisible();
@@ -433,9 +433,9 @@ describe("render - LevelBar", () => {
         function App({ shouldShowExtra }: { shouldShowExtra: boolean }) {
             const offsets = shouldShowExtra
                 ? [
-                        { name: "always", value: 0.5 },
-                        { name: "extra", value: 0.75 },
-                    ]
+                      { name: "always", value: 0.5 },
+                      { name: "extra", value: 0.75 },
+                  ]
                 : [{ name: "always", value: 0.5 }];
 
             return <GtkLevelBar ref={ref} offsets={offsets} />;

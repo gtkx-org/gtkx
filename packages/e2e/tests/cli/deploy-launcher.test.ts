@@ -38,19 +38,22 @@ const files = (): Record<string, string> => ({
     }));\n`,
 });
 
-const createLauncherProject = (config: string) => createCliProject({
-    prefix: "gtkx-deploy-launcher-",
-    config,
-    files: files(),
-    hasStore: true,
-});
+const createLauncherProject = (config: string) =>
+    createCliProject({
+        prefix: "gtkx-deploy-launcher-",
+        config,
+        files: files(),
+        hasStore: true,
+    });
 
 describe("gtkx deploy (generated launcher)", () => {
     it("passes literal environment values, Node flags, the bundle, and application arguments", () => {
-        using project = createLauncherProject(deployConfig(
-            `launcherEnv: { PROBE_LITERAL: ${JSON.stringify(LITERAL_VALUE)}, UV_THREADPOOL_SIZE: "16" },
+        using project = createLauncherProject(
+            deployConfig(
+                `launcherEnv: { PROBE_LITERAL: ${JSON.stringify(LITERAL_VALUE)}, UV_THREADPOOL_SIZE: "16" },
         nodeFlags: ${JSON.stringify(NODE_FLAGS)},`,
-        ));
+            ),
+        );
 
         runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"]);
         const stage = join(project.root, "build", process.arch, "stage");
@@ -80,12 +83,12 @@ describe("gtkx deploy (generated launcher)", () => {
         ).toContain(`Node.js ${DEFAULT_NODE_VERSION}`);
     });
 
-    it.each([
-        'launcherEnv: { "BAD-NAME": "value" },',
-        'nodeFlags: ["script.mjs"],',
-    ])("rejects unsafe launcher configuration", (launcher) => {
-        using project = createLauncherProject(deployConfig(launcher));
+    it.each(['launcherEnv: { "BAD-NAME": "value" },', 'nodeFlags: ["script.mjs"],'])(
+        "rejects unsafe launcher configuration",
+        (launcher) => {
+            using project = createLauncherProject(deployConfig(launcher));
 
-        expect(() => runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"])).toThrow();
-    });
+            expect(() => runCliOrThrow(project, ["deploy", "--print-manifests", "--target", "deb"])).toThrow();
+        },
+    );
 });

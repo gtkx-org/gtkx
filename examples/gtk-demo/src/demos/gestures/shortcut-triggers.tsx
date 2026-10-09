@@ -33,17 +33,17 @@ type ShortcutLabelProps = {
 const ShortcutLabel = ({ name, accelerator, children, onActivate }: ShortcutLabelProps) => (
     <GtkLabel
         name={name}
-        controllers={(
+        controllers={
             <GtkShortcutController
                 scope={Gtk.ShortcutScope.GLOBAL}
-                shortcuts={(
+                shortcuts={
                     <GtkShortcut
                         trigger={<GtkShortcutTrigger accelerator={accelerator} />}
                         action={<GtkCallbackAction callback={onActivate} />}
                     />
-                )}
+                }
             />
-        )}
+        }
     >
         {children}
     </GtkLabel>
@@ -67,11 +67,7 @@ function ShortcutTriggersDemo() {
             marginEnd={6}
         >
             <GtkListBox name="list-box" selectionMode={Gtk.SelectionMode.NONE}>
-                <ShortcutLabel
-                    name="label-ctrl-g"
-                    accelerator="<Control>g"
-                    onActivate={activate("Ctrl-G activated")}
-                >
+                <ShortcutLabel name="label-ctrl-g" accelerator="<Control>g" onActivate={activate("Ctrl-G activated")}>
                     Press Ctrl-G
                 </ShortcutLabel>
                 <ShortcutLabel name="label-x" accelerator="x" onActivate={activate("X activated")}>

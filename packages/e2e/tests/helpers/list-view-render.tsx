@@ -51,7 +51,7 @@ const createItemStore = (): ItemStore => {
     };
 
     const updateItem = (object: GObject.Object, item: GObject.Object | null): void => {
-        update(entries.map((entry) => entry.host === object ? { ...entry, item } : entry));
+        update(entries.map((entry) => (entry.host === object ? { ...entry, item } : entry)));
     };
 
     const bind = (object: GObject.Object): void => {
@@ -96,29 +96,25 @@ function ItemFactory({ renderItem }: { renderItem: ItemRenderer }): ReactNode {
                 onUnbind={store.unbind}
                 onTeardown={store.teardown}
             />
-            {entries.map((entry) => createPortal(
-                entry.item === null ? null : renderItem(entry.item), entry.host, entry.key,
-            ))}
+            {entries.map((entry) =>
+                createPortal(entry.item === null ? null : renderItem(entry.item), entry.host, entry.key),
+            )}
         </>
     );
 }
 
-const renderLabel = (item: GObject.Object): ReactNode => (
-    item instanceof Gtk.StringObject ? <GtkLabel>{item.getString()}</GtkLabel> : null
-);
+const renderLabel = (item: GObject.Object): ReactNode =>
+    item instanceof Gtk.StringObject ? <GtkLabel>{item.getString()}</GtkLabel> : null;
 
-const renderButton = (item: GObject.Object, onClicked: (name: string) => void): ReactNode => (
-    item instanceof Gtk.StringObject
-        ? (
-                <GtkButton
-                    label={BUTTON_LABEL}
-                    onClicked={() => {
-                        onClicked(item.getString());
-                    }}
-                />
-            )
-        : null
-);
+const renderButton = (item: GObject.Object, onClicked: (name: string) => void): ReactNode =>
+    item instanceof Gtk.StringObject ? (
+        <GtkButton
+            label={BUTTON_LABEL}
+            onClicked={() => {
+                onClicked(item.getString());
+            }}
+        />
+    ) : null;
 
 const itemFactory = (): ReactElement => <ItemFactory renderItem={renderLabel} />;
 

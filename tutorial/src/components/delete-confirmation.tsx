@@ -30,6 +30,4 @@ const DeleteConfirmation = ({ task }: { task: Task }) => {
     );
 };
 
-export {
-    DeleteConfirmation,
-};
+export { DeleteConfirmation };

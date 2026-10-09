@@ -3,6 +3,7 @@
 .nx/migrate-runs
 .nx/self-healing
 .nx/workspace-data
+.nx/ci
 *.log
 *.tsbuildinfo
 /.claude/worktrees/

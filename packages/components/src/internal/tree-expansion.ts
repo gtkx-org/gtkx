@@ -92,12 +92,4 @@ function adoptIndex(expansion: TreeExpansion, index: CollectionIndex): void {
     expansion.order = null;
 }
 
-export {
-    adoptIndex,
-    adoptOrder,
-    createTreeExpansion,
-    markExpanded,
-    orderFor,
-    pruneSlots,
-    type TreeExpansion,
-};
+export { adoptIndex, adoptOrder, createTreeExpansion, markExpanded, orderFor, pruneSlots, type TreeExpansion };

@@ -247,18 +247,12 @@ test("fundamental arrays reject elements that carry no native handle", () => {
 
 test("fundamental arrays reject other native families and recover", () => {
     expect(() => {
-        Reflect.apply(
-            Regress.testArrayOfFundamentalObjectsIn,
-            Regress,
-            [[new Regress.TestObj({})]],
-        );
+        Reflect.apply(Regress.testArrayOfFundamentalObjectsIn, Regress, [[new Regress.TestObj({})]]);
     }).toThrow();
     expect(() => {
-        Reflect.apply(
-            Regress.testArrayOfFundamentalObjectsIn,
-            Regress,
-            [[new GIMarshallingTests.BoxedStruct({ long: 1n })]],
-        );
+        Reflect.apply(Regress.testArrayOfFundamentalObjectsIn, Regress, [
+            [new GIMarshallingTests.BoxedStruct({ long: 1n })],
+        ]);
     }).toThrow();
 
     const valid = Regress.TestFundamentalSubObject.new("valid-after-rejection");

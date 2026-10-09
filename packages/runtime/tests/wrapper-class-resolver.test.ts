@@ -1,14 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import { Value } from "@gtkx/gi/gobject";
-import {
-    fromNative,
-    getClassType,
-    getHandle,
-    read,
-    registerWrapperClassResolver,
-    t,
-    wrapHandle,
-} from "@gtkx/runtime";
+import { fromNative, getClassType, getHandle, read, registerWrapperClassResolver, t, wrapHandle } from "@gtkx/runtime";
 import { beforeAll, describe, expect, it } from "vitest";
 
 const WIDTH_OFFSET = 8;

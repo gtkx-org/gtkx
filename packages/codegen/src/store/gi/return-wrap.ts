@@ -63,9 +63,7 @@ const wrapAlias = (
     isNullable: boolean,
     valueExpression: string,
 ): string =>
-    target === undefined
-        ? valueExpression
-        : wrapReturnValue(context, { ref: target, isNullable, valueExpression });
+    target === undefined ? valueExpression : wrapReturnValue(context, { ref: target, isNullable, valueExpression });
 
 const wrapValue = (context: ModuleContext, ref: TypeId, valueExpression: string): string => {
     context.addRuntimeImport("fromNative");

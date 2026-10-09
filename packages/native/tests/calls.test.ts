@@ -41,24 +41,31 @@ test("a bound descriptor stays reusable across calls", () => {
 });
 
 test("cursor return descriptors reject ownership of another argument's buffer", () => {
-    expect(() => bind("libc.so.6", "memchr", [
-        {
-            kind: "array",
-            arrayKind: "sized",
-            itemDescriptor: { kind: "uint8" },
-            ownership: "borrowed",
-            sizeParamIndex: 2,
-        },
-        { kind: "int32" },
-        { kind: "uint64" },
-    ], {
-        kind: "array",
-        arrayKind: "cursor",
-        itemDescriptor: { kind: "uint8" },
-        ownership: "full",
-        baseParamIndex: 0,
-        sizeParamIndex: 2,
-    })).toThrow();
+    expect(() =>
+        bind(
+            "libc.so.6",
+            "memchr",
+            [
+                {
+                    kind: "array",
+                    arrayKind: "sized",
+                    itemDescriptor: { kind: "uint8" },
+                    ownership: "borrowed",
+                    sizeParamIndex: 2,
+                },
+                { kind: "int32" },
+                { kind: "uint64" },
+            ],
+            {
+                kind: "array",
+                arrayKind: "cursor",
+                itemDescriptor: { kind: "uint8" },
+                ownership: "full",
+                baseParamIndex: 0,
+                sizeParamIndex: 2,
+            },
+        ),
+    ).toThrow();
 });
 
 test.each([
@@ -76,8 +83,9 @@ test("a byte vector rejects an item containing an interior NUL", () => {
 });
 
 test("a bigint64 return carries a value beyond the safe integer range", () => {
-    expect(call(parseInteger, [encoder.encode("9223372036854775807"), null, 10]).value)
-        .toBe(9_223_372_036_854_775_807n);
+    expect(call(parseInteger, [encoder.encode("9223372036854775807"), null, 10]).value).toBe(
+        9_223_372_036_854_775_807n,
+    );
 });
 
 test.each([null, undefined])("a ref result identifies its argument and preserves its seed (%s)", (value) => {
@@ -98,10 +106,12 @@ test.each([new Uint8Array(), encoder.encode("café")])("a no-length byte ref rej
 
 test.each(["gtkx", ""])("fixed byte references carry bounded text (%s)", (text) => {
     const bytes = encoder.encode(`${text}\0`);
-    const compare = bind(LIBC, "strcmp", [
-        { kind: "ref", innerDescriptor: { ...BORROWED_BYTES, length: bytes.length } },
-        BORROWED_BYTES,
-    ], { kind: "int32" });
+    const compare = bind(
+        LIBC,
+        "strcmp",
+        [{ kind: "ref", innerDescriptor: { ...BORROWED_BYTES, length: bytes.length } }, BORROWED_BYTES],
+        { kind: "int32" },
+    );
 
     expect(call(compare, [bytes, encoder.encode(text)])).toEqual({
         value: 0,
@@ -115,10 +125,12 @@ test.each([
     { name: "unterminated storage", bytes: encoder.encode("gtkx"), length: 4 },
     { name: "zero capacity", bytes: new Uint8Array(), length: 0 },
 ])("fixed byte references reject $name before native entry", ({ bytes, length }) => {
-    const compare = bind(LIBC, "strcmp", [
-        { kind: "ref", innerDescriptor: { ...BORROWED_BYTES, length } },
-        BORROWED_BYTES,
-    ], { kind: "int32" });
+    const compare = bind(
+        LIBC,
+        "strcmp",
+        [{ kind: "ref", innerDescriptor: { ...BORROWED_BYTES, length } }, BORROWED_BYTES],
+        { kind: "int32" },
+    );
 
     expect(() => call(compare, [bytes, encoder.encode("gtkx")])).toThrow();
 });
@@ -135,10 +147,12 @@ test("a call without refs returns an empty output list", () => {
 });
 
 test("a scalar output writes into the caller's allocated storage", () => {
-    const split = bind("libm.so.6", "modf", [
+    const split = bind(
+        "libm.so.6",
+        "modf",
+        [{ kind: "float64" }, { kind: "ref", innerDescriptor: { kind: "float64" } }],
         { kind: "float64" },
-        { kind: "ref", innerDescriptor: { kind: "float64" } },
-    ], { kind: "float64" });
+    );
     const integer = alloc(8);
 
     expect(call(split, [12.75, integer])).toEqual({ value: 0.75, outputs: [] });
@@ -189,7 +203,9 @@ test("an empty byte buffer argument stays distinct from a null one", () => {
 
 test("a resolved function handle marshals null arguments", () => {
     const pointer = bindFunctionPointer(
-        resolveFunction(fixture, "gtkx_call_copy_nullable_bytes"), [BORROWED_BYTES], OWNED_BYTES,
+        resolveFunction(fixture, "gtkx_call_copy_nullable_bytes"),
+        [BORROWED_BYTES],
+        OWNED_BYTES,
         "gtkx_call_copy_nullable_bytes",
     );
 

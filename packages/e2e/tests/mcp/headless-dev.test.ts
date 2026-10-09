@@ -17,9 +17,7 @@ import {
 } from "./app-session.js";
 
 type SwayDisplay = { pid: number; runtimeDir: string };
-type SwayOutput = { name?: string } & Partial<
-    Record<"current_mode", { width?: number; height?: number }>
->;
+type SwayOutput = { name?: string } & Partial<Record<"current_mode", { width?: number; height?: number }>>;
 type TestState = { app?: ChildProcess; project?: string; runtimeRoot?: string; server?: McpServer };
 
 const APP_TIMEOUT_MS = 120_000;
@@ -112,7 +110,9 @@ const waitForRemoval = async (path: string): Promise<void> => {
 const imageSignature = (result: CallToolResult): string => {
     const image = result.content.find((entry) => entry.type === "image");
 
-    return Buffer.from(image?.data ?? "", "base64").subarray(0, 8).toString("hex");
+    return Buffer.from(image?.data ?? "", "base64")
+        .subarray(0, 8)
+        .toString("hex");
 };
 
 const outputDimensions = (display: SwayDisplay): { width: number; height: number } => {
@@ -172,45 +172,53 @@ afterEach(async () => {
 });
 
 describe("gtkx dev --headless", () => {
-    it("starts at the requested size and stays connected over a short private MCP socket", async () => {
-        state.project = createProject();
-        const runtimeDir = createLongRuntime();
-        state.server = await startServer(state.project, runtimeDir);
-        const screenshotPath = join(state.project, "headless.png");
-        const screenshot = callTool(state.server.client, "gtkx_take_screenshot", {
-            applicationId: APPLICATION_ID,
-            appTimeout: APP_TIMEOUT_MS,
-            path: screenshotPath,
-        });
-        state.app = startApp(state.project, runtimeDir, ["--headless", "--size", "800x600"]);
-        const appPid = state.app.pid;
+    it(
+        "starts at the requested size and stays connected over a short private MCP socket",
+        async () => {
+            state.project = createProject();
+            const runtimeDir = createLongRuntime();
+            state.server = await startServer(state.project, runtimeDir);
+            const screenshotPath = join(state.project, "headless.png");
+            const screenshot = callTool(state.server.client, "gtkx_take_screenshot", {
+                applicationId: APPLICATION_ID,
+                appTimeout: APP_TIMEOUT_MS,
+                path: screenshotPath,
+            });
+            state.app = startApp(state.project, runtimeDir, ["--headless", "--size", "800x600"]);
+            const appPid = state.app.pid;
 
-        if (appPid === undefined) {
-            throw new Error("Headless dev process did not start");
-        }
+            if (appPid === undefined) {
+                throw new Error("Headless dev process did not start");
+            }
 
-        const display = await waitForSwayDisplay(appPid);
-        const result = await screenshot;
-        expect(imageSignature(result)).toBe(PNG_SIGNATURE);
-        expect(outputDimensions(display)).toEqual({ width: 800, height: 600 });
-        expect(existsSync(screenshotPath)).toBe(true);
-        await stopApp(state.app);
-        await waitForRemoval(display.runtimeDir);
-        expect(existsSync(display.runtimeDir)).toBe(false);
-    }, APP_TIMEOUT_MS);
+            const display = await waitForSwayDisplay(appPid);
+            const result = await screenshot;
+            expect(imageSignature(result)).toBe(PNG_SIGNATURE);
+            expect(outputDimensions(display)).toEqual({ width: 800, height: 600 });
+            expect(existsSync(screenshotPath)).toBe(true);
+            await stopApp(state.app);
+            await waitForRemoval(display.runtimeDir);
+            expect(existsSync(display.runtimeDir)).toBe(false);
+        },
+        APP_TIMEOUT_MS,
+    );
 });
 
 describe("a long MCP runtime path", () => {
-    it("connects when the app starts before the server creates the fallback directory", async () => {
-        state.project = createProject();
-        const runtimeDir = createLongRuntime();
-        state.app = startApp(state.project, runtimeDir);
-        await new Promise((resolve) => setTimeout(resolve, 250));
-        state.server = await startServer(state.project, runtimeDir);
-        const tree = await callText(state.server.client, "gtkx_get_widget_tree", {
-            applicationId: APPLICATION_ID,
-            appTimeout: APP_TIMEOUT_MS,
-        });
-        expect(tree).toContain("<ApplicationWindow");
-    }, APP_TIMEOUT_MS);
+    it(
+        "connects when the app starts before the server creates the fallback directory",
+        async () => {
+            state.project = createProject();
+            const runtimeDir = createLongRuntime();
+            state.app = startApp(state.project, runtimeDir);
+            await new Promise((resolve) => setTimeout(resolve, 250));
+            state.server = await startServer(state.project, runtimeDir);
+            const tree = await callText(state.server.client, "gtkx_get_widget_tree", {
+                applicationId: APPLICATION_ID,
+                appTimeout: APP_TIMEOUT_MS,
+            });
+            expect(tree).toContain("<ApplicationWindow");
+        },
+        APP_TIMEOUT_MS,
+    );
 });

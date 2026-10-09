@@ -175,16 +175,19 @@ abstract class Surface {
 
     /** Creates an image surface of the given `format` and size as compatible as possible with `other`. */
     static createSimilarImage(other: Surface, format: Format, width: number, height: number): ImageSurface {
-        const handle =
-            cairoSurfaceCreateSimilarImage(getHandle(other), format, width, height) as ExternalObject<Handle>;
+        const handle = cairoSurfaceCreateSimilarImage(
+            getHandle(other),
+            format,
+            width,
+            height,
+        ) as ExternalObject<Handle>;
 
         return wrapHandle(checkSurface(handle), ImageSurface);
     }
 
     /** Creates a surface that draws onto the given rectangle of `target`. */
     static createForRectangle(target: Surface, x: number, y: number, width: number, height: number): Surface {
-        const handle =
-            cairoSurfaceCreateForRectangle(getHandle(target), x, y, width, height) as ExternalObject<Handle>;
+        const handle = cairoSurfaceCreateForRectangle(getHandle(target), x, y, width, height) as ExternalObject<Handle>;
 
         return wrapSurface(checkSurface(handle));
     }
@@ -310,10 +313,7 @@ abstract class Surface {
 class ImageSurface extends Surface {
     /** Creates an image surface of the given pixel `format` and size, the same as `new ImageSurface(...)`. */
     static create(format: Format, width: number, height: number): ImageSurface {
-        return wrapHandle(
-            checkSurface(cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>),
-            this,
-        );
+        return wrapHandle(checkSurface(cairoImageSurfaceCreate(format, width, height) as ExternalObject<Handle>), this);
     }
 
     /** Loads a PNG file into a new image surface; throws when the file is missing or invalid. */

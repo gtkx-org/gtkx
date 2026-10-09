@@ -8,6 +8,4 @@ const TaskTitle = ({ id }: { id: string }) => {
     return <AdwWindowTitle title={title ?? t("Task")} />;
 };
 
-export {
-    TaskTitle,
-};
+export { TaskTitle };

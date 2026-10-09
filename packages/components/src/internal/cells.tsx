@@ -397,11 +397,11 @@ function useItemSlot(
         return identity.item === undefined
             ? null
             : {
-                    itemKey: identity.itemKey,
-                    item: identity.item,
-                    row,
-                    args: itemArgs(identity.item, position, row, identity.isExpanded),
-                };
+                  itemKey: identity.itemKey,
+                  item: identity.item,
+                  row,
+                  args: itemArgs(identity.item, position, row, identity.isExpanded),
+              };
     }
 
     const { collection, expandedIds } = state.read();
@@ -510,10 +510,7 @@ function createCollectionStateStore(initial: CollectionState): CollectionStateSt
     };
 }
 
-function useCollectionState(
-    collection: Collection,
-    expandedIds: string[] | null | undefined,
-): CollectionStateStore {
+function useCollectionState(collection: Collection, expandedIds: string[] | null | undefined): CollectionStateStore {
     const [state] = useState(() => createCollectionStateStore({ collection, expandedIds }));
 
     useInsertionEffect(() => {
@@ -544,21 +541,19 @@ function wrapExpander(
     const { item, row } = slot;
 
     const expander: ReactNode =
-        row === null
-            ? (
-                    content
-                )
-            : (
-                    <GtkTreeExpander
-                        listRow={row}
-                        hideExpander={item.shouldHideExpander ?? false}
-                        indentForDepth={item.shouldIndentForDepth ?? true}
-                        indentForIcon={item.shouldIndentForIcon ?? true}
-                        accessibleDescription={expanderDescriptionFor(slot, descriptions)}
-                    >
-                        {content}
-                    </GtkTreeExpander>
-                );
+        row === null ? (
+            content
+        ) : (
+            <GtkTreeExpander
+                listRow={row}
+                hideExpander={item.shouldHideExpander ?? false}
+                indentForDepth={item.shouldIndentForDepth ?? true}
+                indentForIcon={item.shouldIndentForIcon ?? true}
+                accessibleDescription={expanderDescriptionFor(slot, descriptions)}
+            >
+                {content}
+            </GtkTreeExpander>
+        );
 
     return expander;
 }
@@ -576,9 +571,7 @@ function itemBody(
     const renderItem = render as ListItemRenderer<unknown>;
     const content = renderItem(slot.args);
 
-    return (
-        <Fragment key={slot.itemKey}>{hasExpander ? wrapExpander(slot, content, descriptions) : content}</Fragment>
-    );
+    return <Fragment key={slot.itemKey}>{hasExpander ? wrapExpander(slot, content, descriptions) : content}</Fragment>;
 }
 
 function rowText(value: string | undefined): string | null {
@@ -602,11 +595,7 @@ function rowPropsFor(slot: ItemSlot | null, rowProps: ListRowPropsResolver<never
     };
 }
 
-function applyRowProps(
-    host: Gtk.ColumnViewRow,
-    props: ResolvedRowProps,
-    previous: ResolvedRowProps | null,
-): void {
+function applyRowProps(host: Gtk.ColumnViewRow, props: ResolvedRowProps, previous: ResolvedRowProps | null): void {
     if (previous?.accessibleLabel !== props.accessibleLabel) {
         host.accessibleLabel = props.accessibleLabel;
     }
@@ -663,32 +652,26 @@ function HeaderCellImpl({ entry, render, collection }: HeaderCellProps): ReactNo
     return createPortal(headerBody(slotRefFor(item), render, collection), entry.host, entry.key);
 }
 
-function NativeItemCell<T extends GObject.Object>({
-    entry,
-    render,
-    keys,
-    size,
-}: NativeItemCellProps<T>): ReactNode {
+function NativeItemCell<T extends GObject.Object>({ entry, render, keys, size }: NativeItemCellProps<T>): ReactNode {
     const position = useProperty(entry.host, "position");
     const item = useProperty(entry.host, "item") ?? null;
     let body: ReactNode = null;
 
     if (item !== null && position !== undefined) {
         const content = render({ item: item as T, index: position });
-        const child = content == null || typeof content === "boolean"
-            ? <GtkBox widthRequest={size.width} heightRequest={size.height} />
-            : content;
+        const child =
+            content == null || typeof content === "boolean" ? (
+                <GtkBox widthRequest={size.width} heightRequest={size.height} />
+            ) : (
+                content
+            );
         body = <Fragment key={keys.keyFor(item)}>{child}</Fragment>;
     }
 
     return createPortal(body, entry.host, entry.key);
 }
 
-function headerBody(
-    ref: SlotRef | null,
-    render: ListSectionRenderer<never>,
-    collection: Collection,
-): ReactNode {
+function headerBody(ref: SlotRef | null, render: ListSectionRenderer<never>, collection: Collection): ReactNode {
     if (ref === null) {
         return null;
     }
@@ -798,11 +781,4 @@ const useRowProps = (
     };
 };
 
-export {
-    useItemCells,
-    useRowProps,
-    useSectionHeader,
-    ItemPortals,
-    NativeItemPortals,
-    type CellSize,
-};
+export { useItemCells, useRowProps, useSectionHeader, ItemPortals, NativeItemPortals, type CellSize };
