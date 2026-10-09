@@ -70,6 +70,10 @@
             "outputs": ["{workspaceRoot}/build/native-tests/gi-tests/build"]
         },
         "e2e": {
+            "command": "node ../../scripts/ci/run.mjs 'vitest run'",
+            "options": {
+                "cwd": "{projectRoot}"
+            },
             "dependsOn": ["^build", "gtkx:_build:bindings", "codegen", "@gtkx/native:test-asan"],
             "inputs": [
                 "...",

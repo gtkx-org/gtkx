@@ -86,14 +86,6 @@
                 "testMode": "run"
             },
             "exclude": ["examples/**", "packages/e2e/**", "tutorial/**"]
-        },
-        {
-            "plugin": "./scripts/ci/vitest-plugin.mjs",
-            "include": ["packages/e2e/vitest.config.ts"],
-            "options": {
-                "testTargetName": "e2e",
-                "testMode": "run"
-            }
         }
     ],
     "targetDefaults": {
