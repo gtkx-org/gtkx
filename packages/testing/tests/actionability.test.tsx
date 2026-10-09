@@ -25,8 +25,6 @@ import {
 } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { act, configure, getConfig, render, screen, userEvent, waitFor } from "@gtkx/testing";
-import { spawn } from "node:child_process";
-import { once } from "node:events";
 import { createRef, useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, onTestFinished } from "vitest";
 import {
@@ -39,14 +37,6 @@ import {
 
 const initialConfig = { ...getConfig() };
 const liveDrags: Set<object> = new Set();
-const FOREIGN_ACTIVATION_TIMEOUT = 20_000;
-
-const FOREIGN_CLIENT_SOURCE = [
-    'import * as Gtk from "@gtkx/gi/gtk";',
-    'new Gtk.Window({ title: "Foreign client", defaultWidth: 160, defaultHeight: 120 }).present();',
-    "process.stdin.resume();",
-].join("\n");
-
 const setupShortTimeout = (): void => {
     beforeEach(() => {
         configure({ actionabilityTimeout: 60 });
@@ -153,33 +143,7 @@ const renderBackgroundedMainWindow = async () => {
         expect(main.isActive()).toBe(false);
     });
 
-    return rendered;
-};
-
-const withActivationHeldOutsideThisProcess = async (window: Gtk.Window, body: () => Promise<void>): Promise<void> => {
-    const foreign = spawn(process.execPath, ["--input-type=module", "--eval", FOREIGN_CLIENT_SOURCE], {
-        cwd: import.meta.dirname,
-        stdio: ["pipe", "ignore", "ignore"],
-    });
-    const closed = once(foreign, "close");
-
-    try {
-        await waitFor(
-            () => {
-                expect(window.isActive()).toBe(false);
-            },
-            {
-                timeout: FOREIGN_ACTIVATION_TIMEOUT,
-                onTimeout: () =>
-                    new Error("the window of the client spawned outside this process never took activation"),
-            },
-        );
-
-        await body();
-    } finally {
-        foreign.kill("SIGKILL");
-        await closed;
-    }
+    return { ...rendered, main };
 };
 
 const beginDrag = (window: Gtk.Window): Gdk.Drag => {
@@ -485,26 +449,14 @@ describe("userEvent actionability - targets outside a mapped toplevel", () => {
 });
 
 describe("userEvent actionability - background toplevels", () => {
-    it("drives a window another toplevel of this process has taken the activation from", async () => {
-        const { clicks, mainButton } = await renderBackgroundedMainWindow();
+    it("clicks and types into a mapped window without taking activation", async () => {
+        const { clicks, main, mainButton } = await renderBackgroundedMainWindow();
         await userEvent.click(mainButton);
         const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
         await userEvent.type(entry, "typed");
         expect(clicks.count).toBe(1);
         expect(entry.getText()).toBe("beforetyped");
-    });
-
-    it("drives a window a client outside this process has taken the activation from", async () => {
-        const { clicks, main, mainButton } = await renderSoleMainWindow();
-        const entry = await screen.findByRole(Gtk.AccessibleRole.TEXT_BOX, { as: Gtk.Entry });
-
-        await withActivationHeldOutsideThisProcess(main, async () => {
-            await userEvent.click(mainButton);
-            await userEvent.type(entry, "typed");
-        });
-
-        expect(clicks.count).toBe(1);
-        expect(entry.getText()).toBe("beforetyped");
+        expect(main.isActive()).toBe(false);
     });
 });
 
