@@ -174,8 +174,8 @@ catalogs:
       specifier: ^19.3.0
       version: 19.3.0
     ejs:
-      specifier: ^6.0.1
-      version: 6.0.1
+      specifier: ^7.0.1
+      version: 7.0.1
     react:
       specifier: ^19.3.0
       version: 19.3.0
@@ -717,7 +717,7 @@ importers:
         version: 0.2.2
       ejs:
         specifier: 'catalog:'
-        version: 6.0.1
+        version: 7.0.1
       nypm:
         specifier: ^0.6.10
         version: 0.6.10
@@ -5227,8 +5227,8 @@ packages:
     engines: {node: '>=0.12.18'}
     hasBin: true
 
-  ejs@6.0.1:
-    resolution: {integrity: sha512-UaaM14yby8U3k02ihS1Bmj5Kz2d7CCQM1scxpgs4Mhkq8F1wR2gl3+Ts4h5Ne4Mnt7M9m4Dw7jsuMr3+xO4vZA==}
+  ejs@7.0.1:
+    resolution: {integrity: sha512-TrAb1fY4jNY6aQrNjMJsoWQxGUK47A38JxuUvnt75vDcAA9Ln7ur6FHo+irVa5Bwd3w9rdUT3xLSl5MRgHIugg==}
     engines: {node: '>=0.12.18'}
     hasBin: true
 
@@ -11562,7 +11562,7 @@ snapshots:
 
   ejs@5.0.1: {}
 
-  ejs@6.0.1: {}
+  ejs@7.0.1: {}
 
   electron-to-chromium@1.5.428: {}
 
