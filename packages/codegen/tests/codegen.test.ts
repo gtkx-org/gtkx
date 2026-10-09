@@ -111,6 +111,82 @@ describe("generated bindings", () => {
         );
     });
 
+    it("exposes only signal pointer slots whose ownership can be honored", async () => {
+        using directory = createProject();
+        const pointer = '<type name="gpointer" c:type="gpointer"/>';
+        const shapes = [
+            { name: "pointer-return", type: pointer, isReturn: true },
+            {
+                name: "array-parameter",
+                type: `<array fixed-size="2" zero-terminated="0" c:type="gpointer*">${pointer}</array>`,
+                isReturn: false,
+            },
+            {
+                name: "list-parameter",
+                type: `<array name="GLib.PtrArray" c:type="GPtrArray*">${pointer}</array>`,
+                isReturn: false,
+            },
+        ];
+        const signals = shapes.flatMap((shape) =>
+            ["none", "container", "full"].map((transfer) => {
+                const slot = shape.isReturn
+                    ? `<return-value transfer-ownership="${transfer}">${shape.type}</return-value>`
+                    : `<return-value transfer-ownership="none"><type name="none" c:type="void"/></return-value>
+                       <parameters><parameter name="pointers" transfer-ownership="${transfer}">
+                         ${shape.type}
+                       </parameter></parameters>`;
+                return `<glib:signal name="${transfer}-${shape.name}" when="last">${slot}</glib:signal>`;
+            }),
+        );
+        writeFileSync(
+            join(directory.path, "SignalOwnership-1.0.gir"),
+            `<?xml version="1.0"?>
+             <repository version="1.2" xmlns="http://www.gtk.org/introspection/core/1.0"
+               xmlns:c="http://www.gtk.org/introspection/c/1.0" xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+               <include name="GObject" version="2.0"/>
+               <namespace name="SignalOwnership" version="1.0" shared-library="libsignalownership.so"
+                 c:identifier-prefixes="SignalOwnership" c:symbol-prefixes="signal_ownership">
+                 <class name="Emitter" c:type="SignalOwnershipEmitter" parent="GObject.Object"
+                   glib:type-name="SignalOwnershipEmitter" glib:get-type="signal_ownership_emitter_get_type">
+                   ${signals.join("\n")}
+                 </class>
+               </namespace>
+             </repository>`,
+        );
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["SignalOwnership-1.0"], girPath: resolveGirPath([directory.path]), gi });
+        const consumer = 'import { Emitter } from "@gtkx/gi/signalownership"; declare const emitter: Emitter;';
+        expect(
+            diagnostics(
+                directory.path,
+                `${consumer}
+                 emitter.connect("none-pointer-return", () => 1n);
+                 export const pointer: bigint | null = emitter.emit("none-pointer-return");
+                 ${[
+                     "none-array-parameter",
+                     "container-array-parameter",
+                     "none-list-parameter",
+                     "container-list-parameter",
+                 ]
+                     .map(
+                         (signal) =>
+                             `emitter.connect("${signal}", (pointers) => { const values: (bigint | null)[] = pointers; void values; });`,
+                     )
+                     .join("\n")}`,
+            ),
+        ).toEqual([]);
+        for (const signal of [
+            "container-pointer-return",
+            "full-pointer-return",
+            "full-array-parameter",
+            "full-list-parameter",
+        ]) {
+            expect(diagnostics(directory.path, `${consumer} emitter.connect("${signal}", () => 1n);`)).toEqual(
+                expect.arrayContaining([expect.stringContaining(signal)]),
+            );
+        }
+    });
+
     it("rejects missing and malformed metadata without publishing a store", async () => {
         using directory = createProject();
         const { gi } = resolveStore(directory.path);

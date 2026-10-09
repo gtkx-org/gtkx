@@ -357,7 +357,7 @@ const hasUnboundPointer = (context: ModuleContext, callable: GirFunction): boole
             callable.returnValue.type,
             callable.returnValue.transferOwnership,
         ) ||
-        hasUnsupportedOpaquePointer(context.library, callable.instance?.type) ||
+        hasUnsupportedOpaquePointer(context.library, callable.instance?.type, "none") ||
         hasCallbackType(context.library, callable.returnValue.type) ||
         hasUnsupportedInlineRecordArray(context, callable.returnValue.type, callable.returnValue.transferOwnership, {
             direction: "from-native",

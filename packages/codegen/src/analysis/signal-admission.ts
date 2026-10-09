@@ -1,5 +1,5 @@
 import type { Library } from "../gir/library.js";
-import type { GirCallable } from "../gir/parameter.js";
+import type { GirCallable, ParameterTransfer } from "../gir/parameter.js";
 import type { TypeId } from "../gir/type-id.js";
 import { hasCallbackType } from "./callback-shape.js";
 import { hasUnsupportedHashTableSlot } from "./hash-table-admission.js";
@@ -12,20 +12,21 @@ import {
     underlyingType,
 } from "./type-shape.js";
 
-const isSupportedSignalType = (library: Library, type: TypeId | undefined): boolean =>
+const isSupportedSignalType = (library: Library, type: TypeId | undefined, transfer: ParameterTransfer): boolean =>
     !hasUnsupportedHashTableSlot(library, type) &&
-    !hasUnsupportedOpaquePointer(library, type) &&
+    !hasUnsupportedOpaquePointer(library, type, transfer) &&
     !hasUnknownLengthArray(library, type) &&
     !hasCallbackType(library, type);
 
 const isEmittableSignal = (library: Library, signal: GirCallable): boolean =>
     signal.introspectable &&
-    isSupportedSignalType(library, signal.returnValue.type) &&
+    isSupportedSignalType(library, signal.returnValue.type, signal.returnValue.transferOwnership) &&
     (isOpaquePointer(library, signal.returnValue.type) ||
         !hasScalarPointer(library, signal.returnValue.type, signal.returnValue.cType)) &&
     signal.parameters.every(
         (parameter) =>
-            isSupportedSignalType(library, parameter.type) && !hasUnsupportedScalarParameter(library, parameter),
+            isSupportedSignalType(library, parameter.type, parameter.transferOwnership) &&
+            !hasUnsupportedScalarParameter(library, parameter),
     );
 
 const canEmitSignal = (library: Library, signal: GirCallable): boolean =>

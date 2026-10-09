@@ -18,7 +18,7 @@ const isOpaquePointer = (library: Library, type: TypeId | undefined): boolean =>
 const hasUnsupportedOpaquePointer = (
     library: Library,
     type: TypeId | undefined,
-    transfer: ParameterTransfer = "none",
+    transfer: ParameterTransfer,
 ): boolean => {
     if (isOpaquePointer(library, type)) return transfer !== "none";
     const resolved = underlyingType(library, type);
