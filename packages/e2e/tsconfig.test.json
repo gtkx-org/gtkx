@@ -31,5 +31,5 @@
     "compilerOptions": {
         "rootDir": "../.."
     },
-    "include": ["tests/**/*.ts", "tests/**/*.tsx", "tests/**/*.mts", "../../gtkx.config.ts"]
+    "include": ["tests/**/*.ts", "tests/**/*.tsx", "tests/**/*.mts"]
 }
