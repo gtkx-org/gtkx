@@ -1,4 +1,5 @@
 import { alloc, type ExternalObject, getType, type Handle } from "@gtkx/native";
+import { encodePointer, retainPropertyPointer } from "@gtkx/native/internal";
 import type { Descriptor } from "./descriptor-types.js";
 import { bind, createBindCache } from "./bind.js";
 import {
@@ -31,6 +32,8 @@ import {
 import { read, write } from "./field.js";
 import { LIB, PARAM_T, VALUE_SIZE, VALUE_T, VARIANT_T } from "./library.js";
 import { fromNative, toNative } from "./native-value.js";
+import { wrapCallbackValue } from "./callback.js";
+import { compileDescriptor } from "./scalar-plan.js";
 import {
     INT32_MAXIMUM,
     INT32_MINIMUM,
@@ -448,6 +451,38 @@ const scalarGArrayValueType = (descriptor: ArrayDescriptor): ValueType =>
         };
     });
 
+const valuePointerStorage: WeakMap<
+    ExternalObject<Handle>,
+    { pointer: ExternalObject<Handle>; source: unknown }
+> = new WeakMap();
+const containerValueTypes: WeakMap<Descriptor, ValueType> = new WeakMap();
+const transferredPropertyGetters: WeakMap<Descriptor, ValueGetter> = new WeakMap();
+const pointerNumberValueType = bindValueType("pointer", biguint64T);
+
+const pointerSourceValues = (value: unknown): unknown[] => {
+    if (Array.isArray(value)) return value.flatMap(pointerSourceValues);
+    if (value instanceof Map) return [...value.entries()].flatMap(pointerSourceValues);
+    return [value];
+};
+
+const borrowDescriptor = (descriptor: Descriptor): Descriptor => {
+    if (descriptor.kind === "array") {
+        return { ...descriptor, ownership: "borrowed", itemDescriptor: borrowDescriptor(descriptor.itemDescriptor) };
+    }
+    if (descriptor.kind === "hashtable") {
+        return {
+            ...descriptor,
+            ownership: "borrowed",
+            keyDescriptor: borrowDescriptor(descriptor.keyDescriptor),
+            valueDescriptor: borrowDescriptor(descriptor.valueDescriptor),
+        };
+    }
+    return "ownership" in descriptor ? { ...descriptor, ownership: "borrowed" } : descriptor;
+};
+
+const containerValueType = (descriptor: Descriptor): ValueType =>
+    containerValueTypes.getOrInsertComputed(descriptor, () => bindValueType("boxed", borrowDescriptor(descriptor)));
+
 const objectPtrArrayValueTypes: WeakMap<ArrayDescriptor, ValueType> = new WeakMap();
 
 const objectPtrArrayValueType = (descriptor: ArrayDescriptor & { itemDescriptor: ObjectDescriptor }): ValueType =>
@@ -785,6 +820,42 @@ function toValue(descriptor: Descriptor, value: unknown): ExternalObject<Handle>
     return gValue;
 }
 
+const retainCallbackProperty = (owner: ExternalObject<Handle>, name: string, value: ExternalObject<Handle>): void => {
+    retainPropertyPointer(owner, name, valuePointerStorage.get(value)?.pointer ?? null);
+};
+
+function toValueForType(descriptor: Descriptor, jsValue: unknown, type: bigint): ExternalObject<Handle> {
+    const value = newValueForType(type);
+    const fundamental = typeFundamental(type);
+    if (fundamental === TYPE_POINTER && type !== TYPE_GTYPE) {
+        if (jsValue == null) {
+            pointerValueType.set(value, null);
+        } else if (descriptor.kind === "biguint64") {
+            pointerNumberValueType.set(value, jsValue);
+        } else {
+            const borrowed = borrowDescriptor(descriptor);
+            const plan = compileDescriptor(borrowed);
+            const encoded = plan.encode(
+                borrowed.kind === "callback" ? wrapCallbackValue(borrowed, jsValue) : toNative(borrowed, jsValue),
+            );
+            const storage = encodePointer(plan.abi, encoded);
+            valuePointerStorage.set(value, { pointer: storage, source: [pointerSourceValues(jsValue), encoded] });
+            pointerValueType.set(value, storage);
+        }
+    } else if (fundamental === TYPE_BOXED && (descriptor.kind === "array" || descriptor.kind === "hashtable")) {
+        const target =
+            descriptor.kind === "hashtable" || descriptor.arrayKind === "glist" || descriptor.arrayKind === "gslist"
+                ? containerValueType(descriptor)
+                : resolveValueType(descriptor);
+        target.set(value, toNative(descriptor, jsValue));
+    } else if (descriptor.kind === "boxed" || descriptor.kind === "fundamental") {
+        resolveValueType(descriptor).set(value, resolveNativeValue(descriptor, jsValue));
+    } else {
+        intoValue(value, toWholeNumber(descriptor, jsValue));
+    }
+    return value;
+}
+
 /**
  * Reads what a `GObject.Value` holds as its JavaScript form, wrapping an object, boxed, param, variant,
  * or fundamental payload in the class registered for its GType, and handing back a string, number,
@@ -839,6 +910,22 @@ const fromArrayValueForDescriptor = (descriptor: ArrayDescriptor, value: Externa
 };
 
 const fromValueForDescriptor = (descriptor: Descriptor, value: ExternalObject<Handle>): unknown => {
+    const type = getValueType(value);
+    const fundamental = typeFundamental(type);
+    if (fundamental === TYPE_POINTER && type !== TYPE_GTYPE) {
+        if (pointerValueType.get(value) === null) return null;
+        if (descriptor.kind === "biguint64") return pointerNumberValueType.get(value);
+        const get = bind(LIB, "g_value_get_pointer", [VALUE_T], borrowDescriptor(descriptor));
+        return fromNative(descriptor, get(value));
+    }
+    if (
+        fundamental === TYPE_BOXED &&
+        (descriptor.kind === "hashtable" ||
+            (descriptor.kind === "array" && (descriptor.arrayKind === "glist" || descriptor.arrayKind === "gslist")))
+    ) {
+        return fromNative(descriptor, containerValueType(descriptor).get(value));
+    }
+
     if (isStringHashTable(descriptor)) {
         return fromNative(descriptor, stringHashTableValueType.get(value));
     }
@@ -858,6 +945,29 @@ const fromValueForDescriptor = (descriptor: Descriptor, value: ExternalObject<Ha
     return fromValue(value);
 };
 
+/**
+ * GI property transfer annotations can provide a container reference in addition to the GValue's
+ * own boxed reference. Consume it only for property reads; generic GValues retain borrowed semantics.
+ * See https://github.com/GNOME/pygobject/blob/main/gi/pygi-property.c and gi/pygi-cache-hashtable.c.
+ */
+const fromPropertyValueForDescriptor = (descriptor: Descriptor, value: ExternalObject<Handle>): unknown => {
+    if (
+        descriptor.kind === "hashtable" &&
+        descriptor.ownership === "full" &&
+        typeFundamental(getValueType(value)) === TYPE_BOXED
+    ) {
+        const get = transferredPropertyGetters.getOrInsertComputed(descriptor, () =>
+            bind(LIB, "g_value_get_boxed", [VALUE_T], {
+                ...descriptor,
+                keyDescriptor: borrowDescriptor(descriptor.keyDescriptor),
+                valueDescriptor: borrowDescriptor(descriptor.valueDescriptor),
+            }),
+        );
+        return fromNative(descriptor, get(value));
+    }
+    return fromValueForDescriptor(descriptor, value);
+};
+
 const inferredValueGuard: ValueGuard = (jsValue) => inferValueGType(jsValue, wrapperGType(jsValue)) !== TYPE_INVALID;
 
 const byteArrayValueGuard: ValueGuard = (jsValue) =>
@@ -870,10 +980,6 @@ const valueGuardOverrideFor = (valueType: bigint): ValueGuard | undefined => {
 
     return valueType === getByteArrayType() ? byteArrayValueGuard : undefined;
 };
-
-function newValueForDescriptor(descriptor: Descriptor): ExternalObject<Handle> {
-    return newValueForType(resolveDescriptorType(descriptor));
-}
 
 function outValueForDescriptor(
     descriptor: Descriptor,
@@ -913,14 +1019,16 @@ export {
     setBoxedValue,
     type JsValue,
     toValue,
+    toValueForType,
+    retainCallbackProperty,
     toValueHandle,
     tryToValueHandle,
     ValueMarshalError,
     fromValue,
     fromObjectPropertyValue,
     fromValueForDescriptor,
+    fromPropertyValueForDescriptor,
     valueGuardOverrideFor,
-    newValueForDescriptor,
     newValueForType,
     outValueForDescriptor,
     outValueForBoxedDescriptor,

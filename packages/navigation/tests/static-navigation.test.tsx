@@ -5,6 +5,8 @@ import {
     createDrawerNavigator,
     createDrawerScreen,
     createNavigationContainerRef,
+    createSplitViewNavigator,
+    createSplitViewScreen,
     createStackNavigator,
     createStackScreen,
     createStaticNavigation,
@@ -51,6 +53,13 @@ const StaticDrawer = createDrawerNavigator({
     },
 });
 
+const StaticSplit = createSplitViewNavigator({
+    screens: {
+        Home: createSplitViewScreen({ screen: StaticHome, options: { title: "Sidebar" } }),
+        Details: createSplitViewScreen({ screen: StaticDetails, options: { title: "Content" } }),
+    },
+});
+
 const GatedStack = createStackNavigator({
     screens: {
         Home: StaticHome,
@@ -69,6 +78,7 @@ const App = createStaticNavigation(RootStack);
 const TypedApp = createStaticNavigation(TypedStack);
 const TabsApp = createStaticNavigation(StaticTabs);
 const DrawerApp = createStaticNavigation(StaticDrawer);
+const SplitApp = createStaticNavigation(StaticSplit);
 const GatedApp = createStaticNavigation(GatedStack);
 const NestedApp = createStaticNavigation(NestedStack);
 
@@ -113,6 +123,17 @@ describe("static - navigation", () => {
 });
 
 describe("static - screen factories", () => {
+    it("keeps the static split sidebar while opening and closing content", async () => {
+        const ref = createNavigationContainerRef();
+        await render(<SplitApp ref={ref} />);
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Go to details" }));
+        expect(await screen.findByText("Details 42")).toBeVisible();
+        expect(screen.getByText("Home Content")).toBeVisible();
+        await act(() => ref.goBack());
+        expect(screen.queryByText("Details 42")).toBeNull();
+        expect(screen.getByText("Home Content")).toBeVisible();
+    });
+
     it("applies a createStackScreen config", async () => {
         await render(<TypedApp />);
         await screen.findByText("Typed Home");

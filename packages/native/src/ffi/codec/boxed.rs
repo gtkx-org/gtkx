@@ -2,6 +2,7 @@ use anyhow::bail;
 use glib::translate::IntoGlib as _;
 use glib::{self};
 
+use super::Codec;
 use super::prelude::*;
 use crate::ffi::library_cache::FfiCache;
 use crate::handle::{Boxed, BoxedFreeFn, Handle, HandleClass};
@@ -24,6 +25,7 @@ pub struct BoxedCodec {
     pub size: Option<usize>,
     pub inline: bool,
     pub value_safe: bool,
+    pub abi_fields: Option<Vec<Codec>>,
 }
 
 unsafe fn write_inline_value(
@@ -186,6 +188,10 @@ impl BoxedCodec {
 }
 
 impl Encoder for BoxedCodec {
+    fn value_layout(&self) -> Option<(&[Codec], usize)> {
+        self.abi_fields.as_deref().zip(self.size)
+    }
+
     fn object_ptr_context(&self) -> &'static str {
         "Boxed object"
     }

@@ -1,13 +1,16 @@
 import { resolveExecutable } from "@gtkx/utils";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
+import { rmSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 const NATIVE_ROOT = join(import.meta.dirname, "..");
 const NATIVE_TESTS = join(NATIVE_ROOT, "..", "e2e", "tests", "native");
 const SUPPRESSIONS = join(NATIVE_TESTS, "lsan.supp");
-const CONFIGS = [join(NATIVE_ROOT, "vitest.config.ts"), join(NATIVE_TESTS, "vitest.config.ts")];
+const CONFIGS = [join(NATIVE_TESTS, "vitest.config.ts")];
 const VITEST_ARGS = process.argv.slice(2);
+const COVERAGE = join(NATIVE_ROOT, "../../build/native-tests/coverage");
+const FULL_SUITE = VITEST_ARGS.length === 0;
 const OUTPUT = join(NATIVE_ROOT, "build", "asan");
 const nightlyEnvironment = { ...process.env };
 delete nightlyEnvironment.RUSTUP_TOOLCHAIN;
@@ -69,10 +72,13 @@ run(
     ],
     {
         ...process.env,
+        CARGO_ENCODED_RUSTFLAGS: "-Zsanitizer=address",
         RUSTFLAGS: "-Zsanitizer=address",
         RUSTUP_TOOLCHAIN: nightly,
     },
 );
+
+if (FULL_SUITE) rmSync(COVERAGE, { recursive: true, force: true });
 
 const testEnvironment = {
     ...process.env,
@@ -84,6 +90,8 @@ const testEnvironment = {
         .join(" "),
     LD_PRELOAD: runtime,
     GTKX_ASAN_RUNTIME: runtime,
+    GTKX_NATIVE_LEAK_PROBE: "0",
+    ...(FULL_SUITE ? { GTKX_NATIVE_COVERAGE_DIR: COVERAGE } : {}),
     ASAN_OPTIONS: [
         "detect_leaks=1",
         "fast_unwind_on_malloc=0",
@@ -96,6 +104,26 @@ const testEnvironment = {
 };
 
 for (const config of CONFIGS) {
+    const probe = spawnSync(
+        resolveExecutable("pnpm"),
+        ["exec", "vitest", "run", "--root", dirname(config), "--config", config, "--maxWorkers", "1"],
+        {
+            env: { ...testEnvironment, GTKX_NATIVE_LEAK_PROBE: "1" },
+            cwd: NATIVE_ROOT,
+            encoding: "utf8",
+            timeout: 120_000,
+        },
+    );
+    const probeOutput = `${probe.stdout ?? ""}${probe.stderr ?? ""}`;
+
+    if (
+        probe.status !== 1 ||
+        !probeOutput.includes("LeakSanitizer found unreleased native allocations after this test")
+    ) {
+        throw new Error(`The per-test leak check did not reject its canary:\n${probeOutput}`, { cause: probe.error });
+    }
+
+    console.info("The per-test LeakSanitizer canary rejected its deliberate leak.");
     run(
         "pnpm",
         [
@@ -112,4 +140,8 @@ for (const config of CONFIGS) {
         ],
         testEnvironment,
     );
+}
+
+if (FULL_SUITE) {
+    run("pnpm", ["exec", "tsx", join(NATIVE_TESTS, "../helpers/native-fixtures-coverage.ts")], process.env);
 }

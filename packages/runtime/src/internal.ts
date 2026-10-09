@@ -56,17 +56,7 @@ export {
     type SignalName,
 } from "./signal.js";
 export { retainWrapperClasses };
-export { resolveType } from "./type.js";
-export {
-    fromValue,
-    getBoxedValue,
-    getValueType,
-    inoutValueForBoxedDescriptor,
-    newValueForDescriptor,
-    outValueForBoxedDescriptor,
-    setBoxedValue,
-    toValue,
-} from "./value.js";
+export { fromValue, getBoxedValue, getValueType, setBoxedValue, toValue } from "./value.js";
 export { registerClassOption } from "./class-options.js";
 export {
     connectNativeSignal,
@@ -77,3 +67,4 @@ export {
 } from "./native-lifetime.js";
 export { initializeWrapper } from "./wrapper-brand.js";
 export { keepAlive, setWrapperBorrow } from "@gtkx/native";
+export { armParentDeath } from "@gtkx/native/internal";

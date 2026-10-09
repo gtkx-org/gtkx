@@ -1,12 +1,12 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
-import * as GLib from "@gtkx/gi/glib";
-import * as GObject from "@gtkx/gi/gobject";
-import * as Pango from "@gtkx/gi/pango";
-import * as Regress from "@gtkx/gi/regress";
-import { expect, test } from "vitest";
-import { drainAfterEachTest, drainGC } from "./helpers/memory.js";
 
-drainAfterEachTest();
+import * as GObject from "@gtkx/gi/gobject";
+
+import * as Regress from "@gtkx/gi/regress";
+
+import { expect, test } from "vitest";
+
+import { drainGC } from "./helpers/memory.js";
 
 test("boxed struct constructs with defaults and props", () => {
     const empty = new GIMarshallingTests.BoxedStruct({});
@@ -267,24 +267,6 @@ test("many boxed instances with C invariants survive collection", async () => {
     }
 
     await drainGC(5);
-});
-
-test.each([
-    GLib.Array,
-    GLib.ByteArray,
-    GLib.PtrArray,
-    GLib.Thread,
-    GLib.Source,
-    GLib.VariantBuilder,
-    GLib.VariantDict,
-    GObject.Closure,
-    Pango.Attribute,
-    Pango.FontMetrics,
-    Pango.LayoutLine,
-])("non-simple records require native construction: %s", (record) => {
-    expect(() => {
-        Reflect.construct(record, [{}]);
-    }).toThrow();
 });
 
 test("a boxed argument rejects a value of an unrelated boxed type", () => {

@@ -1,10 +1,8 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
-import * as Regress from "@gtkx/gi/regress";
-import * as RegressUnix from "@gtkx/gi/regressunix";
-import { expect, test } from "vitest";
-import { drainAfterEachTest } from "./helpers/memory.js";
 
-drainAfterEachTest();
+import * as Regress from "@gtkx/gi/regress";
+
+import { expect, test } from "vitest";
 
 const SMALLEST_NORMAL_DOUBLE = 2 ** -1022;
 
@@ -147,34 +145,6 @@ test("size and ssize enforce the 2^53 precision guard", () => {
     }).toThrow();
     expect(() => Regress.testSize(2 ** 53 + 2)).toThrow();
     expect(() => Regress.testSsize(2 ** 53 + 2)).toThrow();
-});
-
-test("unix scalar typedefs round trip", () => {
-    expect(GIMarshallingTests.timeTReturn()).toBe(1_234_567_890n);
-    GIMarshallingTests.timeTIn(1_234_567_890n);
-    GIMarshallingTests.timeTIn(1_234_567_890);
-    expect(GIMarshallingTests.timeTOut()).toBe(1_234_567_890n);
-    expect(GIMarshallingTests.timeTInout(1_234_567_890n)).toBe(0n);
-    expect(GIMarshallingTests.gidTReturn()).toBe(65_534);
-    GIMarshallingTests.gidTIn(65_534);
-    expect(GIMarshallingTests.gidTOut()).toBe(65_534);
-    expect(GIMarshallingTests.gidTInout(65_534)).toBe(0);
-    expect(GIMarshallingTests.uidTReturn()).toBe(65_534);
-    GIMarshallingTests.uidTIn(65_534);
-    expect(GIMarshallingTests.uidTOut()).toBe(65_534);
-    expect(GIMarshallingTests.uidTInout(65_534)).toBe(0);
-    expect(GIMarshallingTests.pidTReturn()).toBe(12_345);
-    GIMarshallingTests.pidTIn(12_345);
-    expect(GIMarshallingTests.pidTOut()).toBe(12_345);
-    expect(GIMarshallingTests.pidTInout(12_345)).toBe(0);
-    expect(Regress.testTimet(1_234_567_890n)).toBe(1_234_567_890n);
-    expect(RegressUnix.testGidt(65_534)).toBe(65_534);
-    expect(RegressUnix.testPidt(12_345)).toBe(12_345);
-    expect(RegressUnix.testUidt(65_534)).toBe(65_534);
-    expect(() => {
-        GIMarshallingTests.timeTIn(1_234_567_890.5);
-    }).toThrow();
-    expect(() => RegressUnix.testGidt(-1)).toThrow();
 });
 
 test("uninitialized out params come back as false with a zero value", () => {

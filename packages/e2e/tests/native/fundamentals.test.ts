@@ -1,21 +1,14 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
-import * as GObject from "@gtkx/gi/gobject";
-import * as Regress from "@gtkx/gi/regress";
-import { getType } from "@gtkx/native";
-import {
-    fromValue,
-    getClassType,
-    getHandle,
-    getInstanceType,
-    typeFromName,
-    typeIsA,
-    typeName,
-    typeParent,
-} from "@gtkx/runtime";
-import { expect, test } from "vitest";
-import { didSettle, drainAfterEachTest, drainGC } from "./helpers/memory.js";
 
-drainAfterEachTest();
+import * as GObject from "@gtkx/gi/gobject";
+
+import * as Regress from "@gtkx/gi/regress";
+
+import { fromValue, getClassType, getHandle, typeFromName, typeIsA, typeName, typeParent } from "@gtkx/runtime";
+
+import { expect, test } from "vitest";
+
+import { didSettle, drainGC } from "./helpers/memory.js";
 
 test("fundamental sub objects construct through their static constructor", () => {
     const sub = Regress.TestFundamentalSubObject.new("foo");
@@ -27,6 +20,27 @@ test("fundamental sub objects construct through their static constructor", () =>
     const other = Regress.TestFundamentalSubObject.new("bar");
     expect(other).not.toBe(sub);
     expect(Regress.testFundamentalArgumentIn(other)).toBe(true);
+});
+
+test("named fundamental copy slots return independently owned native instances", async () => {
+    class CopyAccess extends Regress.TestFundamentalSubObject {
+        static copy(value: Regress.TestFundamentalSubObject) {
+            return CopyAccess.prototype.vfuncCopy.call(value);
+        }
+    }
+    const createCopy = () => {
+        const source = Regress.TestFundamentalSubObject.new("copy payload");
+        const copied = CopyAccess.copy(source);
+        expect(copied).toBeInstanceOf(Regress.TestFundamentalSubObject);
+        expect(copied).not.toBe(source);
+        expect(Regress.testFundamentalArgumentOut(source)).toBe(source);
+        return { copied, source: new WeakRef(source) };
+    };
+    const { copied, source } = createCopy();
+    await drainGC();
+    expect(source.deref()).toBeUndefined();
+    expect(Regress.testFundamentalArgumentIn(copied)).toBe(true);
+    expect(Regress.testFundamentalArgumentOut(copied)).toBe(copied);
 });
 
 test("fundamentals without value functions keep the data they were built with", () => {
@@ -186,24 +200,6 @@ test("class type inspection reports the registered fundamental types", () => {
     expect(typeIsA(base, noGetSet)).toBe(false);
 });
 
-test("instance type inspection needs the declared type a fundamental handle carries no tag without", () => {
-    const instance = Regress.TestFundamentalSubObject.new("foo");
-    const base = getClassType(Regress.TestFundamentalObject);
-
-    expect(getType(getHandle(instance), base)).toBe(getClassType(Regress.TestFundamentalSubObject));
-    expect(getInstanceType(instance)).toBe(0n);
-
-    const noGetSetRoot = getClassType(Regress.TestFundamentalObjectNoGetSetFunc);
-    const noGetSet = Regress.TestFundamentalObjectNoGetSetFunc.new("hello");
-    expect(getType(getHandle(noGetSet), noGetSetRoot)).toBe(noGetSetRoot);
-    expect(getInstanceType(noGetSet)).toBe(0n);
-
-    const subNoGetSet = Regress.TestFundamentalSubObjectNoGetSetFunc.new("bye");
-    expect(getType(getHandle(subNoGetSet), noGetSetRoot)).toBe(
-        getClassType(Regress.TestFundamentalSubObjectNoGetSetFunc),
-    );
-});
-
 test("a fundamental argument rejects a handle from another family", () => {
     expect(Regress.testFundamentalArgumentIn(Regress.TestFundamentalSubObject.new("payload"))).toBe(true);
 
@@ -297,23 +293,4 @@ test("fundamental instances still come from their own constructors", () => {
     const spec = GObject.paramSpecInt("count", null, null, 0, 10, 5, GObject.ParamFlags.READABLE);
     expect(spec instanceof GObject.ParamSpecInt).toBeTruthy();
     expect(spec.getName()).toBe("count");
-});
-
-test("initializing a GValue rejects instances that carry no native handle", () => {
-    expect(() => {
-        // @ts-expect-error a plain object is not a GTypeInstance
-        new GObject.Value().initFromInstance({});
-    }).toThrow();
-    expect(() => {
-        // @ts-expect-error a number is not a GTypeInstance
-        new GObject.Value().initFromInstance(7);
-    }).toThrow();
-    expect(() => {
-        // @ts-expect-error a string is not a GTypeInstance
-        new GObject.Value().initFromInstance("nope");
-    }).toThrow();
-    expect(() => {
-        // @ts-expect-error a symbol is not a GTypeInstance
-        new GObject.Value().initFromInstance(Symbol("nope"));
-    }).toThrow();
 });

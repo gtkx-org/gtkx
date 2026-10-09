@@ -192,7 +192,7 @@ const renderTypedSequenceType = (library: Library, target: TsTypeTarget, type: C
 };
 
 const renderSequenceType = (library: Library, target: TsTypeTarget, type: CArrayType | ListType): string => {
-    if (type.kind === "carray" && hasUnknownArrayLength(type)) {
+    if (type.kind === "carray" && hasUnknownArrayLength(type) && !target.isInput) {
         return "number";
     }
 

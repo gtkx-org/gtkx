@@ -3,11 +3,16 @@ import type { GirParameter, ParameterTransfer } from "../gir/parameter.js";
 import type { CArrayType, TypeId } from "../gir/type-id.js";
 import type { GirType } from "../gir/type.js";
 import type { ModuleContext } from "../writer/context.js";
-import { isCallerAllocatedOut, isInoutParameter } from "../gir/parameter.js";
+import { EXTERNAL_RECORD_COPY_STRATEGIES } from "../gir/external-namespaces.js";
+import { isCallerAllocatedOut } from "../gir/parameter.js";
+import { isBoxedRecord } from "../gir/record.js";
+import { isValueMarshalable } from "../store/gi/value-marshalable.js";
 import { itemComparatorParameters } from "../store/gi/item-comparators.js";
 import {
     isCollectibleCallerOut,
     isFixedArrayCallerOut,
+    isSizedArrayCallerOut,
+    isGArrayCallerOut,
     isHandlePassedInPlace,
     isRecordInout,
 } from "../store/gi/param-marshal.js";
@@ -18,12 +23,18 @@ import { isUnownableStruct, transferOwnership } from "./descriptor-render.js";
 import { hasTransferredNumericHashTableInput, hasUnsupportedHashTableSlot } from "./hash-table-admission.js";
 import { hasUnsupportedInlineRecordArray } from "./inline-record-array-admission.js";
 import { inoutHandleIndirection } from "./inout-handle.js";
+import { byValueRecordAbi } from "./record-value-abi.js";
 import { hasUnsupportedNestedArrayOutput, hasUnsupportedNestedArrayParameter } from "./nested-array-admission.js";
 import { closureAndDestroyIndices } from "./param-structure.js";
-import { hasUnsupportedScalarParameter } from "./scalar-pointer.js";
+import {
+    hasUnsupportedScalarParameter,
+    hasUnsupportedOpaquePointer,
+    isOpaquePointer,
+    isIndirectScalarParameter,
+    isPointerValueParameter,
+} from "./scalar-pointer.js";
 import {
     cTypePointerDepth,
-    hasPrimitivePointer,
     hasScalarPointer,
     hasUnknownLengthArray,
     isScalarRef,
@@ -66,10 +77,19 @@ const isPointerElement = (context: ModuleContext, element: TypeId): boolean => {
     return type !== undefined && isPointerType(context, type);
 };
 
-const carrayIndirection = (context: ModuleContext, type: CArrayType): number =>
-    POINTER_DEPTH + (isPointerElement(context, type.element) ? POINTER_DEPTH : 0);
+const carrayIndirection = (context: ModuleContext, type: CArrayType, hasOutIndirection: boolean): number => {
+    const element = underlyingType(context.library, type.element);
+    if (element?.kind === "carray") {
+        return POINTER_DEPTH + carrayIndirection(context, element, false);
+    }
 
-const typeIndirection = (context: ModuleContext, type: GirType): number | undefined => {
+    const isRecordPointer =
+        element?.kind === "record" && cTypePointerDepth(type.elementCType) > Number(hasOutIndirection);
+
+    return POINTER_DEPTH + (isRecordPointer || isPointerElement(context, type.element) ? POINTER_DEPTH : 0);
+};
+
+const typeIndirection = (context: ModuleContext, type: GirType, hasOutIndirection: boolean): number | undefined => {
     switch (type.kind) {
         case "primitive": {
             return type.category === "string" ? POINTER_DEPTH : undefined;
@@ -83,7 +103,7 @@ const typeIndirection = (context: ModuleContext, type: GirType): number | undefi
             return POINTER_DEPTH;
         }
         case "carray": {
-            return carrayIndirection(context, type);
+            return carrayIndirection(context, type, hasOutIndirection);
         }
         case "alias":
         case "enum":
@@ -93,14 +113,18 @@ const typeIndirection = (context: ModuleContext, type: GirType): number | undefi
     }
 };
 
-const baseIndirection = (context: ModuleContext, ref: TypeId | undefined): number | undefined => {
+const baseIndirection = (
+    context: ModuleContext,
+    ref: TypeId | undefined,
+    hasOutIndirection: boolean,
+): number | undefined => {
     if (isScalarRef(context.library, ref)) {
         return 0;
     }
 
     const type = ref === undefined ? undefined : underlyingType(context.library, ref);
 
-    return type === undefined ? undefined : typeIndirection(context, type);
+    return type === undefined ? undefined : typeIndirection(context, type, hasOutIndirection);
 };
 
 const declaredIndirection = (parameter: GirParameter): number | undefined => {
@@ -120,17 +144,14 @@ const marshalledIndirection = (context: ModuleContext, parameter: GirParameter):
         return handleDepth;
     }
 
-    const base = baseIndirection(context, parameter.type);
+    const isPassedInPlace = isCallerAllocatedOut(parameter) || isHandlePassedInPlace(context, parameter);
+    const base = baseIndirection(context, parameter.type, parameter.direction !== "in" && !isPassedInPlace);
 
     if (base === undefined) {
         return undefined;
     }
 
-    if (isCallerAllocatedOut(parameter) || isHandlePassedInPlace(context, parameter)) {
-        return base;
-    }
-
-    if (isInoutParameter(parameter) && !isScalarRef(context.library, parameter.type)) {
+    if (isPassedInPlace) {
         return base;
     }
 
@@ -144,11 +165,15 @@ const hasCallerSuppliedLength = (context: ModuleContext, parameter: GirParameter
 };
 
 const isUnmarshalableCallerOut = (context: ModuleContext, parameter: GirParameter): boolean => {
-    if (hasCallerSuppliedLength(context, parameter)) {
+    if (hasCallerSuppliedLength(context, parameter) && !isSizedArrayCallerOut(context, parameter)) {
         return true;
     }
 
-    if (isFixedArrayCallerOut(context, parameter)) {
+    if (
+        isFixedArrayCallerOut(context, parameter) ||
+        isSizedArrayCallerOut(context, parameter) ||
+        isGArrayCallerOut(context, parameter)
+    ) {
         return false;
     }
 
@@ -156,6 +181,8 @@ const isUnmarshalableCallerOut = (context: ModuleContext, parameter: GirParamete
 };
 
 const hasIndirectionMismatch = (context: ModuleContext, parameter: GirParameter): boolean => {
+    if (isIndirectScalarParameter(context.library, parameter) || isPointerValueParameter(context.library, parameter))
+        return false;
     const declared = declaredIndirection(parameter);
     const marshalled = marshalledIndirection(context, parameter);
 
@@ -164,22 +191,6 @@ const hasIndirectionMismatch = (context: ModuleContext, parameter: GirParameter)
     }
 
     return declared !== marshalled;
-};
-
-const isTypeErasedCallback = (context: ModuleContext, parameter: GirParameter): boolean => {
-    if (parameter.closureIndex === undefined) {
-        return false;
-    }
-
-    const type = parameter.type === undefined ? undefined : underlyingType(context.library, parameter.type);
-
-    return type?.kind === "callback" && type.value.parameters.length === 0;
-};
-
-const isCallbackParam = (context: ModuleContext, parameter: GirParameter): boolean => {
-    const type = parameter.type === undefined ? undefined : underlyingType(context.library, parameter.type);
-
-    return type?.kind === "callback";
 };
 
 const hasDetachedClosure = (parameter: GirParameter, index: number): boolean => {
@@ -192,15 +203,6 @@ const hasDetachedClosure = (parameter: GirParameter, index: number): boolean => 
     const notifyIndex = parameter.destroyIndex;
 
     return notifyIndex !== undefined && notifyIndex !== index + (userDataIndex === undefined ? 1 : 2);
-};
-
-const hasDetachedCallback = (context: ModuleContext, parameters: GirParameter[]): boolean => {
-    const claimed = closureAndDestroyIndices({ parameters });
-
-    return parameters.some(
-        (parameter, index) =>
-            !claimed.has(index) && isCallbackParam(context, parameter) && hasDetachedClosure(parameter, index),
-    );
 };
 
 const isRefusedTransfer = (context: ModuleContext, ref: TypeId | undefined, transfer: ParameterTransfer): boolean => {
@@ -216,8 +218,22 @@ const isRefusedTransfer = (context: ModuleContext, ref: TypeId | undefined, tran
 const isLentInPlace = (context: ModuleContext, parameter: GirParameter): boolean =>
     isCallerAllocatedOut(parameter) || isRecordInout(context, parameter);
 
-const isRefusedParamTransfer = (context: ModuleContext, parameter: GirParameter): boolean =>
-    !isLentInPlace(context, parameter) && isRefusedTransfer(context, parameter.type, parameter.transferOwnership);
+const isRefusedParamTransfer = (context: ModuleContext, parameter: GirParameter): boolean => {
+    if (isLentInPlace(context, parameter) || transferOwnership(parameter.transferOwnership) !== "full") {
+        return false;
+    }
+
+    const type = underlyingType(context.library, parameter.type);
+    const hasNoCopy =
+        type?.kind === "record" &&
+        !isBoxedRecord(type.value) &&
+        type.value.freeFunc !== undefined &&
+        type.value.copyFunc === undefined &&
+        !EXTERNAL_RECORD_COPY_STRATEGIES.has(type.value.cType ?? "") &&
+        !isValueMarshalable(context, type.namespace.name, type.value);
+
+    return hasNoCopy || isRefusedTransfer(context, parameter.type, parameter.transferOwnership);
+};
 
 const bareCTypeSpelling = (spelling: string): string => spelling.replaceAll(/\bconst\b/gu, "").replaceAll(/\s+/gu, "");
 
@@ -248,11 +264,16 @@ const isUnmarshalableCallParam = (context: ModuleContext, parameter: GirParamete
         return false;
     }
 
-    if (isTypeErasedCallback(context, parameter) || isRefusedParamTransfer(context, parameter)) {
+    if (isRefusedParamTransfer(context, parameter)) {
         return true;
     }
 
-    if (isByValueRecord(context, parameter.type, parameter.cType)) {
+    if (
+        isByValueRecord(context, parameter.type, parameter.cType) &&
+        (parameter.direction !== "in" ||
+            transferOwnership(parameter.transferOwnership) !== "borrowed" ||
+            byValueRecordAbi(context, parameter.type, parameter.cType) === undefined)
+    ) {
         return true;
     }
 
@@ -327,11 +348,16 @@ const hasUnboundPointer = (context: ModuleContext, callable: GirFunction): boole
         hasUnsupportedHashTableSlot(context.library, callable.returnValue.type) ||
         hasUnsupportedHashTableSlot(context.library, callable.instance?.type) ||
         hasUnsupportedNestedArrayOutput(context.library, callable.returnValue.type) ||
-        hasScalarPointer(context.library, callable.returnValue.type, callable.returnValue.cType) ||
+        (!isOpaquePointer(context.library, callable.returnValue.type) &&
+            hasScalarPointer(context.library, callable.returnValue.type, callable.returnValue.cType)) ||
         hasUnknownLengthArray(context.library, callable.returnValue.type) ||
         hasUnknownLengthArray(context.library, callable.instance?.type) ||
-        hasPrimitivePointer(context.library, callable.returnValue.type) ||
-        hasPrimitivePointer(context.library, callable.instance?.type) ||
+        hasUnsupportedOpaquePointer(
+            context.library,
+            callable.returnValue.type,
+            callable.returnValue.transferOwnership,
+        ) ||
+        hasUnsupportedOpaquePointer(context.library, callable.instance?.type, "none") ||
         hasCallbackType(context.library, callable.returnValue.type) ||
         hasUnsupportedInlineRecordArray(context, callable.returnValue.type, callable.returnValue.transferOwnership, {
             direction: "from-native",
@@ -349,8 +375,8 @@ const hasUnboundPointer = (context: ModuleContext, callable: GirFunction): boole
                 hasTransferredNumericHashTableInput(context.library, parameter) ||
                 hasUnsupportedNestedArrayParameter(context.library, parameter) ||
                 hasUnsupportedScalarParameter(context.library, parameter) ||
-                hasUnknownLengthArray(context.library, parameter.type) ||
-                hasPrimitivePointer(context.library, parameter.type) ||
+                (parameter.direction !== "in" && hasUnknownLengthArray(context.library, parameter.type)) ||
+                hasUnsupportedOpaquePointer(context.library, parameter.type, parameter.transferOwnership) ||
                 hasUnsupportedInlineRecordArrayParameter(context, callable, parameter) ||
                 hasUnsupportedCallbackParam(context, callable, parameter)),
     );
@@ -370,7 +396,8 @@ const hasUnmarshalableParam = (context: ModuleContext, callable: GirFunction): b
         hasUnboundPointer(context, callable) ||
         isRefusedTransfer(context, callable.returnValue.type, callable.returnValue.transferOwnership) ||
         isByValueRecord(context, callable.returnValue.type, callable.returnValue.cType) ||
-        hasDetachedCallback(context, callable.parameters) ||
+        (hasAsyncCallback(context, callable) &&
+            callable.parameters.some((parameter) => isByValueRecord(context, parameter.type, parameter.cType))) ||
         callable.parameters.some((parameter) => isUnmarshalableCallParam(context, parameter))
     );
 };

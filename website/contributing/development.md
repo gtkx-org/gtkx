@@ -11,7 +11,7 @@ Build the workspace, run an example, then use focused Nx targets while making ch
 
 Use Linux with Node.js 26.7 or later. The repository's `package.json` pins pnpm through its `packageManager` field. If your runtimes are managed by mise, run the commands below through `mise exec --`, for example `mise exec -- pnpm install`.
 
-Distributed CI pins Node.js 26.8.2 in its workflow, agent setup, and workload Dockerfile. Publishing and published-consumer workflows read `engines.node` from the root `package.json` to select a compatible version.
+Distributed CI pins Node.js 26.8.2 in its workflow, agent setup, and workload Dockerfile. Publishing workflows read `engines.node` from the root `package.json` to select a compatible version.
 
 Workspace `tsc` commands use the native TypeScript 7 compiler through the `@typescript/native` dependency alias. The `typescript` catalog entry aliases the TypeScript 6 compatibility package so code generation, Vue tooling, and batched semantic tests retain the stable compiler API. Use `pnpm exec tsc --version` to check the native compiler and `pnpm exec tsc6 --version` for the compatibility compiler. Application templates and the tutorial declare their own TypeScript dependency.
 
@@ -85,9 +85,9 @@ Use `pnpm format` to apply Oxfmt to hand-written JavaScript, TypeScript, Vue, st
 
 The formatter preserves import and package manifest ordering. Generated outputs, test fixtures, changelogs, and generated agent instructions are excluded. Embedded code formatting is disabled so tutorial code fences and their patches remain unchanged. Rust formatting uses the pinned nightly rustfmt described below.
 
-CI uses Nx's affected graph to select checks. Pull requests compare against their merge base, pushes against the last successful run on `main`, and merge queues against the previous merge-group commit. CI also selects native sanitizers from their task inputs and published-consumer acceptance from relevant file changes; their results contribute to the required `tests` and `e2e` checks. A manual CI run checks the complete workspace, including both validations. Locally, the root commands above still run every matching target; use a package target for focused iteration.
+CI uses Nx's affected graph to select checks. Pull requests compare against their merge base, pushes against the last successful run on `main`, and merge queues against the previous merge-group commit. Native sanitizers are a required dependency of E2E coverage. A manual CI run checks the complete workspace. Locally, root commands run every matching target; use a package target for focused iteration.
 
-Nx Cloud distributes build, test, typecheck, lint, and per-file CLI E2E tasks across two to four agents. Each agent runs at most two Nx tasks, and each Vitest task uses at most two workers. `.nx/workflows/distribution-config.yaml` controls agent counts; `.nx/workflows/agents.yaml` defines their setup. Required GitHub checks remain `tests`, `build`, `typecheck`, `lint`, and `e2e`.
+Nx Cloud distributes build, test, typecheck, lint, and React and native E2E tasks across two to four agents. Each agent runs at most two Nx tasks, and each Vitest task uses at most two workers. `.nx/workflows/distribution-config.yaml` controls agent counts; `.nx/workflows/agents.yaml` defines their setup. Required GitHub checks remain `tests`, `build`, `typecheck`, `lint`, and `e2e`.
 
 The standard Nx agent image hosts Docker; actual GTKX commands execute inside the Ubuntu 26.04 image defined in `scripts/ci/Dockerfile`. This requires Nx dedicated compute with Docker enabled. Docker layer caching uses `NX_DOCKER_CACHE_REGISTRY` when the add-on is enabled. Dependency downloads and Cargo compilation outputs use separate agent caches. The coordinator builds the same workload image using GitHub's Docker cache. Initialization compares native and runtime fingerprints and fails if the two environments differ; rebuild both image caches after changing system dependencies.
 
@@ -96,11 +96,11 @@ Typed Oxlint and scoped ESLint checks depend on built package declarations. Thei
 Nx plugin adapters and explicit project commands call `scripts/ci/run.mjs`. With `GTKX_CI_CONTAINER` set, it runs the command inside the named container with the same workspace path, user identity, and declared task environment. Local commands run directly. New CI targets must use this wrapper and declare complete cache outputs. CI validates the resolved task graph before starting agents; reproduce that check with:
 
 ```bash
-pnpm exec nx run-many -t build,test,typecheck,lint,e2e-ci,test-asan --graph=/tmp/gtkx-task-graph.json
+pnpm exec nx run-many -t build,test,typecheck,lint,e2e --graph=/tmp/gtkx-task-graph.json
 node scripts/ci/validate-graph.mjs /tmp/gtkx-task-graph.json
 ```
 
-The coordinator forwards only `GTKX_MAX_WORKERS`, `NODE_OPTIONS`, and the two environment fingerprints. Nx manages its own authentication and execution variables. Keep GitHub credentials, publication tokens, and deployment permissions in GitHub Actions. Published-consumer acceptance uses a separate Nx execution environment and disables agents because its local registry, package mutations, and nested release commands must share one machine. Publication, Pages deployment, and release management also remain in GitHub Actions.
+The coordinator forwards only `GTKX_MAX_WORKERS`, `NODE_OPTIONS`, and the two environment fingerprints. Nx manages its own authentication and execution variables. Keep GitHub credentials, publication tokens, and deployment permissions in GitHub Actions. Publication, Pages deployment, and release management also remain in GitHub Actions.
 
 ASAN uses a second distributed command to preserve its task-level affected selection. The live Rust advisory audit is recorded on the coordinator and always refreshes advisories. The coordinator requests explicit completion and closes the Nx run in a guarded cleanup step, including after failures. Workflows without an Nx token run the same container tasks locally.
 
@@ -202,6 +202,6 @@ pnpm lint
 pnpm e2e
 ```
 
-Published-consumer and tutorial checks run with `pnpm acceptance`. Use `pnpm test:asan` after changes to native ownership, callbacks, marshalling, or teardown, and `pnpm benchmark` after changes to query performance. These checks run separately from the ordinary test targets; [Testing](/contributing/testing) describes their dependencies and focused commands.
+Run `pnpm e2e` for React and generated native bindings. Use `pnpm test:asan` to focus on native ownership, callbacks, marshalling and teardown. Package integration tests run with `pnpm test`; [Testing](/contributing/testing) describes ownership and focused commands.
 
 Published-package changes use an Nx version plan created by `pnpm plan`. Documentation-only and test-only changes do not need one. The [contribution guide](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md) covers submission and version plans; [Publishing Releases](/contributing/releases) is for maintainers.

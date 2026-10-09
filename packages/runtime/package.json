@@ -61,8 +61,5 @@
     "dependencies": {
         "@gtkx/native": "workspace:*",
         "@gtkx/utils": "workspace:*"
-    },
-    "devDependencies": {
-        "@gtkx/vitest": "workspace:*"
     }
 }

@@ -91,4 +91,5 @@ export {
 export { fromValue, type JsValue, toValueHandle, tryToValueHandle, ValueMarshalError } from "./value.js";
 export { callParent, callVfunc } from "./vfunc-call.js";
 export { alloc, type ExternalObject, type Handle } from "@gtkx/native";
+export { onLog, type LogLevel, type LogListener, type LogSubscription } from "@gtkx/native";
 export { type AnyClass } from "@gtkx/utils";

@@ -7,6 +7,7 @@ pub mod bind;
 pub mod bind_field;
 pub mod call;
 pub mod copy;
+pub mod encode_pointer;
 pub mod function;
 pub mod get_fundamental_wrapper;
 pub mod get_type;

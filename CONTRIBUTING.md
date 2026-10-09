@@ -21,11 +21,11 @@ pnpm typecheck
 
 `pnpm build` emits JavaScript and declarations without full TypeScript checking. Run `pnpm typecheck` to check package, example, and workspace types; CI runs it as a separate check.
 
-Run `pnpm format` to format hand-written files with Oxfmt, or `pnpm nx format:write --base=origin/main` to format changed files. `pnpm format:check` checks formatting without changing files, and `pnpm lint` includes that check. Generated outputs, test fixtures, changelogs, and generated agent instructions are excluded; Markdown code fences remain unchanged because tutorial checkpoints use them as source files and patches. Rust source remains checked by rustfmt.
+Run `pnpm format` to format hand-written files with Oxfmt, or `pnpm nx format:write --base=origin/main` to format changed files. `pnpm format:check` checks formatting without changing files, and `pnpm lint` includes that check. Generated outputs, test fixtures, changelogs, and generated agent instructions are excluded; Markdown code fences retain their authored formatting. Rust source remains checked by rustfmt.
 
 Use `pnpm exec nx affected -t build,test,typecheck,lint --base=origin/main` to check changed projects and their dependents locally. CI compares pull requests to their merge base and pushes to the last successful main-branch run; manually dispatch CI to check the complete workspace.
 
-Run `pnpm e2e` for CLI and MCP checks, `pnpm test:asan` for native memory safety, and `pnpm benchmark` for query performance. Published consumer and tutorial validation is available through `pnpm acceptance`. CI selects ASAN from its task inputs and published consumers from changes to tutorial, packaging, and release files; their failures block the existing `tests` and `e2e` checks. Both validations can also be dispatched separately; release publication validates the staged native artifacts through installed consumers.
+Run `pnpm e2e` for React and generated native binding coverage, `pnpm test:asan` for the native suite alone. Native E2E tests require AddressSanitizer and check leaks after every test. Package integration tests run through `pnpm test`.
 
 Use the [pull request template](.github/PULL_REQUEST_TEMPLATE.md) to summarize the change and validation in at most twenty words. Remove unused sections and add `Closes #N` only when the pull request resolves that issue. Include a screenshot for visible UI changes.
 
@@ -51,7 +51,7 @@ Maintainers follow [Publishing Releases](https://gtkx.dev/contributing/releases)
 
 ## Documentation and examples
 
-[Maintaining Documentation](https://gtkx.dev/contributing/documentation) covers the website workflow. Examples demonstrate application development; retain example tests only when they teach testing. Framework regression coverage belongs in package integration suites. The Storybook example demonstrates `composeStories`, and `tutorial` consumes registry packages outside the workspace; run `pnpm acceptance -- tests/tutorial.test.ts` to validate it against the working tree.
+[Maintaining Documentation](https://gtkx.dev/contributing/documentation) covers the website workflow. Examples demonstrate application development; retain example tests only when they teach testing. Framework regression coverage belongs in package integration suites. The Storybook example demonstrates `composeStories`, and `tutorial` consumes registry packages outside the workspace. Run its application tests from the tutorial directory.
 
 ### Documentation versions
 

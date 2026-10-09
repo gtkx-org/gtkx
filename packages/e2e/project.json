@@ -10,17 +10,6 @@
             "{workspaceRoot}/packages/native/build.rs",
             "{workspaceRoot}/rust-toolchain.toml",
             "nativeEnvironment"
-        ],
-        "acceptance": [
-            "default",
-            "{workspaceRoot}/scripts/**/*",
-            "{workspaceRoot}/tutorial/**/*",
-            "{workspaceRoot}/website/v2/tutorial/**/*",
-            "{workspaceRoot}/.verdaccio/config.yml",
-            {
-                "env": "GTKX_RELEASE_NATIVE_ARTIFACTS"
-            },
-            "nativeEnvironment"
         ]
     },
     "targets": {
@@ -80,62 +69,28 @@
             ],
             "outputs": ["{workspaceRoot}/build/native-tests/gi-tests/build"]
         },
-        "test": {
-            "command": "node ../../scripts/ci/run.mjs 'vitest run --config vitest.integration.config.ts --exclude '\\''**/tests/testing/query-perf.test.tsx'\\'''",
-            "options": {
-                "cwd": "{projectRoot}"
-            },
-            "cache": true,
-            "dependsOn": ["^build", "codegen", "_test:fixtures"],
-            "inputs": ["...", "integration", "{workspaceRoot}/scripts/ci/**/*"],
-            "outputs": []
-        },
         "e2e": {
-            "dependsOn": ["^build", "gtkx:_build:bindings"],
-            "inputs": ["...", "default", "^production"],
-            "parallelism": false
-        },
-        "acceptance": {
-            "command": "vitest run --config vitest.acceptance.config.ts",
+            "command": "node ../../scripts/ci/run.mjs 'vitest run'",
             "options": {
                 "cwd": "{projectRoot}"
             },
-            "dependsOn": ["^build", "gtkx:_build:bindings"],
-            "cache": true,
+            "dependsOn": ["^build", "gtkx:_build:bindings", "codegen", "@gtkx/native:test-asan"],
             "inputs": [
-                "acceptance",
+                "...",
+                "integration",
                 "^production",
                 {
                     "dependentTasksOutputFiles": "**/*.{js,node,d.ts}",
                     "transitive": true
                 }
             ],
-            "outputs": [],
-            "parallelism": false
+            "cache": true
         },
         "lint": {
             "dependsOn": ["...", "codegen", "_test:fixtures"]
         },
         "typecheck": {
             "dependsOn": ["...", "^build", "codegen", "_test:fixtures"]
-        },
-        "benchmark": {
-            "command": "vitest run --config vitest.integration.config.ts --project=integration tests/testing/query-perf.test.tsx --maxWorkers=1",
-            "options": {
-                "cwd": "{projectRoot}"
-            },
-            "cache": false,
-            "parallelism": false,
-            "dependsOn": ["^build", "codegen"],
-            "inputs": [
-                "integration",
-                "^production",
-                {
-                    "dependentTasksOutputFiles": "**/*.node",
-                    "transitive": true
-                }
-            ],
-            "outputs": []
         },
         "_lint:eslint": {
             "dependsOn": ["...", "codegen", "_test:fixtures"]

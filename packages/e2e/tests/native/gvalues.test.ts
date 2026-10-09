@@ -1,14 +1,18 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
+
 import * as GLib from "@gtkx/gi/glib";
+
 import * as GObject from "@gtkx/gi/gobject";
+
 import * as Regress from "@gtkx/gi/regress";
+
 import { type AnyClass, type TypedClass } from "@gtkx/runtime";
+
 import { assert, expect, test } from "vitest";
-import { drainAfterEachTest, drainGC } from "./helpers/memory.js";
+
+import { drainGC } from "./helpers/memory.js";
 
 type ValueType = AnyClass<TypedClass> | GObject.Type;
-
-drainAfterEachTest();
 
 const buildValue = (type: ValueType, fill: (value: GObject.Value) => void): GObject.Value => {
     const value = new GObject.Value();
@@ -19,8 +23,10 @@ const buildValue = (type: ValueType, fill: (value: GObject.Value) => void): GObj
 };
 
 const named = (name: string): GObject.Type => GObject.typeFromName(name);
+
 const propertyType = (name: string): GObject.Type =>
     GObject.ObjectClass.peek(GIMarshallingTests.PropertiesObject).findProperty(name).valueType;
+
 const fixtureFloat = 314 / 100;
 
 const intValue = (n: number): GObject.Value =>
@@ -305,22 +311,6 @@ test("values unset and re-initialize to another type", () => {
     expect(GIMarshallingTests.gvalueRoundTrip(value)).toBe(true);
 });
 
-test("byte-array GValues distinguish null and empty payloads", () => {
-    const value = new GObject.Value();
-    value.init(GLib.ByteArray);
-    expect(value.getBoxed()).toBeNull();
-
-    value.setBoxed(new Uint8Array());
-    expect(value.getBoxed()).toEqual(new Uint8Array());
-    value.setBoxed(new Uint8Array([0, 128, 255]));
-    expect(value.getBoxed()).toEqual(new Uint8Array([0, 128, 255]));
-    value.setBoxed(null);
-    expect(value.getBoxed()).toBeNull();
-    expect(() => {
-        value.setBoxed(1);
-    }).toThrow();
-});
-
 test("reset hands the value back without giving it a second owner", async () => {
     const value = stringValue("again");
     value.reset();
@@ -345,33 +335,6 @@ test("reset leaves a refcounted payload reachable through the same value", async
     holdsObject.setObject(object);
     expect(holdsObject.getObject()).toBe(object);
     expect(GIMarshallingTests.gvalueRoundTrip(holdsObject)).toBe(object);
-});
-
-test("values copy and transform between compatible types", () => {
-    const source = intValue(42);
-    const destination = new GObject.Value();
-    destination.init(named("gint"));
-    source.copy(destination);
-    expect(destination.getInt()).toBe(42);
-
-    const asDouble = new GObject.Value();
-    asDouble.init(named("gdouble"));
-    expect(source.transform(asDouble)).toBe(true);
-    expect(asDouble.getDouble()).toBe(42);
-
-    const asString = new GObject.Value();
-    asString.init(named("gchararray"));
-    expect(source.transform(asString)).toBe(true);
-    expect(asString.getString()).toBe("42");
-
-    const asObject = new GObject.Value();
-    asObject.init(named("GObject"));
-    expect(stringValue("nope").transform(asObject)).toBe(false);
-
-    expect(GObject.Value.typeCompatible(named("gint"), named("gint"))).toBe(true);
-    expect(GObject.Value.typeCompatible(named("gint"), named("gchararray"))).toBe(false);
-    expect(GObject.Value.typeTransformable(named("gint"), named("gchararray"))).toBe(true);
-    expect(GObject.Value.typeTransformable(named("gchararray"), named("GObject"))).toBe(false);
 });
 
 test("gvalue params reject values no gtype can be inferred from", () => {

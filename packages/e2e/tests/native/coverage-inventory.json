@@ -1,0 +1,165 @@
+{
+    "upstream": "https://github.com/GNOME/gobject-introspection-tests",
+    "revision": "5987255086f59ca271a3a0aa53fbbb15b189be65",
+    "refresh": "Run pnpm test:asan --skip-nx-cache without filters, then pnpm exec tsx packages/e2e/tests/helpers/native-fixtures-coverage.ts --write",
+    "methodology": "V8 precise execution coverage of generated namespace functions, concrete constructors, class/interface methods and each getter/setter, matched by receiver and source range. Native tests assert their upstream contracts under ASan with per-test LSan. This measures generated callable coverage, not C branch coverage. The raw GIR audit independently requires bindings for every introspectable callable, signal, property access mode and virtual method; lifecycle-only vfuncs require metadata but have no generated call proxy. Declarations disabled by the upstream scanner are listed separately. Signal contracts are asserted separately by the signal and property suites. diagnosticOnly entries assert missing upstream C symbols; they do not execute a native implementation.",
+    "evidence": "build/native-tests/coverage/inventory.json",
+    "suites": [
+        "abi-validation.test.ts",
+        "abi-values.test.ts",
+        "arrays-c.test.ts",
+        "arrays-containers.test.ts",
+        "boxed.test.ts",
+        "cairo-coverage.test.ts",
+        "callbacks.test.ts",
+        "enums-flags.test.ts",
+        "errors.test.ts",
+        "flat-values.test.ts",
+        "fundamentals.test.ts",
+        "gvalues.test.ts",
+        "hashtables.test.ts",
+        "inout-coverage.test.ts",
+        "marshalling-coverage.test.ts",
+        "marshalling-signals.test.ts",
+        "nested-arrays.test.ts",
+        "numbers.test.ts",
+        "objects.test.ts",
+        "outputs.test.ts",
+        "pointer-callbacks.test.ts",
+        "properties.test.ts",
+        "regress-coverage.test.ts",
+        "regress-properties.test.ts",
+        "regress-records.test.ts",
+        "scalar-abi.test.ts",
+        "signals.test.ts",
+        "strings.test.ts",
+        "structs.test.ts",
+        "transfer-matrix.test.ts",
+        "vfuncs-interfaces.test.ts"
+    ],
+    "upstreamSurface": [
+        {
+            "namespace": "GIMarshallingTests",
+            "callableCount": 658,
+            "generatedCallableCount": 658,
+            "omittedCallables": [],
+            "scannerExcludedCallables": [],
+            "missingNativeSymbols": [
+                "gi_marshalling_tests_object_full_in",
+                "gi_marshalling_tests_object_method_variant_array_in"
+            ],
+            "signalCount": 11,
+            "generatedSignalCount": 11,
+            "omittedSignals": [],
+            "scannerExcludedSignals": [],
+            "propertyCount": 49,
+            "generatedPropertyCount": 49,
+            "omittedProperties": [],
+            "scannerExcludedProperties": [],
+            "virtualMethodCount": 34,
+            "generatedVirtualMethodCount": 34,
+            "omittedVirtualMethods": [],
+            "scannerExcludedVirtualMethods": [],
+            "lifecycleVirtualMethods": []
+        },
+        {
+            "namespace": "Regress",
+            "callableCount": 383,
+            "generatedCallableCount": 383,
+            "omittedCallables": [],
+            "scannerExcludedCallables": [
+                "regress_annotation_object_watch",
+                "regress_foo_object_new_cookie",
+                "regress_foo_object_skipped_method",
+                "regress_foo_object_take_all",
+                "regress_foo_rectangle_new",
+                "regress_foo_skip_me",
+                "regress_foo_some_variant",
+                "regress_foo_some_variant_ptr",
+                "regress_foo_test_varargs_callback",
+                "regress_foo_test_varargs_callback2",
+                "regress_foo_test_varargs_callback3",
+                "regress_not_introspectable_via_alias",
+                "regress_random_function_with_skipped_structure",
+                "regress_test_skip_unannotated_callback",
+                "regress_test_value_get_fundamental_object",
+                "regress_test_value_set_fundamental_object"
+            ],
+            "missingNativeSymbols": [
+                "regress_foo_async_ready_callback",
+                "regress_foo_bunion_get_contained_type",
+                "regress_foo_dbus_data_method",
+                "regress_foo_destroy_notify_callback",
+                "regress_foo_test_const_char_param",
+                "regress_foo_test_const_char_retval",
+                "regress_foo_test_const_struct_param",
+                "regress_foo_test_const_struct_retval",
+                "regress_foo_test_unsigned_type",
+                "regress_set_abort_on_error"
+            ],
+            "signalCount": 27,
+            "generatedSignalCount": 27,
+            "omittedSignals": [],
+            "scannerExcludedSignals": [],
+            "propertyCount": 23,
+            "generatedPropertyCount": 23,
+            "omittedProperties": [],
+            "scannerExcludedProperties": ["FooObject::hidden"],
+            "virtualMethodCount": 12,
+            "generatedVirtualMethodCount": 12,
+            "omittedVirtualMethods": [],
+            "scannerExcludedVirtualMethods": [],
+            "lifecycleVirtualMethods": ["TestFundamentalObject::finalize"]
+        }
+    ],
+    "namespaces": {
+        "GIMarshallingTests": {
+            "generated": 866,
+            "executed": 858,
+            "unavailable": [
+                {
+                    "reason": "Abstract record with no upstream constructor, factory or function returning an instance.",
+                    "members": ["NotSimpleStruct.get:pointer", "NotSimpleStruct.set:pointer"]
+                },
+                {
+                    "reason": "Abstract union with no upstream constructor, factory or function returning an instance.",
+                    "members": [
+                        "UnregisteredUnion.get:long",
+                        "UnregisteredUnion.set:long",
+                        "UnregisteredUnion.get:size",
+                        "UnregisteredUnion.set:size",
+                        "UnregisteredUnion.get:str",
+                        "UnregisteredUnion.set:str"
+                    ]
+                }
+            ],
+            "diagnosticOnly": ["Object.method:fullIn", "Object.method:methodVariantArrayIn"]
+        },
+        "Regress": {
+            "generated": 609,
+            "executed": 607,
+            "unavailable": [
+                {
+                    "reason": "Private owned pointer; overwriting it would corrupt the boxed destructor's ownership.",
+                    "members": ["TestBoxed.set:priv"]
+                },
+                {
+                    "reason": "Native reference-count bookkeeping; arbitrary mutation invalidates object lifetime.",
+                    "members": ["TestBoxedC.set:refcount"]
+                }
+            ],
+            "diagnosticOnly": [
+                "Regress.function:fooAsyncReadyCallback",
+                "Regress.function:fooDestroyNotifyCallback",
+                "Regress.function:fooTestConstCharParam",
+                "Regress.function:fooTestConstCharRetval",
+                "Regress.function:fooTestConstStructParam",
+                "Regress.function:fooTestConstStructRetval",
+                "Regress.function:fooTestUnsignedType",
+                "Regress.function:setAbortOnError",
+                "FooDBusData.method:method",
+                "FooBUnion.method:getContainedType"
+            ]
+        }
+    }
+}

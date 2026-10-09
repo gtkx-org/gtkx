@@ -15,47 +15,21 @@
             "path": "../config/tsconfig.lib.json"
         },
         {
-            "path": "../create-gtkx/tsconfig.lib.json"
-        },
-        {
-            "path": "../gl/tsconfig.lib.json"
-        },
-        {
-            "path": "../i18n/tsconfig.lib.json"
-        },
-        {
-            "path": "../mcp/tsconfig.lib.json"
-        },
-        {
             "path": "../react/tsconfig.lib.json"
         },
         {
             "path": "../runtime/tsconfig.lib.json"
         },
         {
-            "path": "../storybook/tsconfig.lib.json"
-        },
-        {
             "path": "../testing/tsconfig.lib.json"
         },
         {
             "path": "../utils/tsconfig.lib.json"
-        },
-        {
-            "path": "../vitest/tsconfig.lib.json"
         }
     ],
     "files": ["./node_modules/.gtkx/env.d.ts"],
     "compilerOptions": {
         "rootDir": "../.."
     },
-    "include": [
-        "tests/**/*.ts",
-        "tests/**/*.tsx",
-        "tests/**/*.mts",
-        "../../gtkx.config.ts",
-        "../../scripts/native-artifact.ts",
-        "../../scripts/nx-registry.ts",
-        "../../scripts/publish-manifest.ts"
-    ]
+    "include": ["tests/**/*.ts", "tests/**/*.tsx", "tests/**/*.mts"]
 }

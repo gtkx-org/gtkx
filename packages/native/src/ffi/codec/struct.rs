@@ -1,9 +1,12 @@
 use anyhow::bail;
 
+use super::Codec;
 use super::prelude::*;
 use crate::ffi::library_cache::FfiCache;
 use crate::handle::{BoxedFreeFn, Handle};
 use crate::host::error_reporter::ReportErr as _;
+
+mod cairo_path;
 
 const LENT_ONLY: &str = "a plain struct declares no free function and has no known size, so nothing names the function that would release it: it can only be lent (transfer none), never handed over";
 
@@ -26,10 +29,16 @@ pub struct StructCodec {
     pub shared_library: Option<String>,
     pub copy_fn_name: Option<String>,
     pub free_fn_name: Option<String>,
+    pub copy_strategy: Option<String>,
     pub value_safe: bool,
+    pub abi_fields: Option<Vec<Codec>>,
 }
 
 impl Encoder for StructCodec {
+    fn value_layout(&self) -> Option<(&[Codec], usize)> {
+        self.abi_fields.as_deref().zip(self.size)
+    }
+
     fn owned_release(&self) -> anyhow::Result<Option<ffi::ReleaseKind>> {
         if self.ownership.is_borrowed() {
             return Ok(None);
@@ -112,6 +121,19 @@ impl StructCodec {
     /// Hands back a pointer this side no longer owns: the declared copy function when there is
     /// one, a byte copy when the size makes that sound, and an error when neither is available.
     fn duplicate(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
+        if let Some(strategy) = self.copy_strategy.as_deref() {
+            let library = self.shared_library.as_deref().ok_or_else(|| {
+                anyhow::anyhow!("A foreign record copy strategy requires its shared library")
+            })?;
+            anyhow::ensure!(
+                self.free_fn()?.is_some(),
+                "A foreign record copy strategy requires a free function"
+            );
+            return match strategy {
+                "cairo-path" => cairo_path::copy(library, ptr),
+                _ => bail!("Unsupported foreign record copy strategy {strategy:?}"),
+            };
+        }
         if let Some((copy_fn, _)) = self.lifecycle_fns()? {
             return Ok(unsafe { copy_fn(ptr.cast_const()) });
         }
@@ -131,6 +153,9 @@ impl StructCodec {
     /// Wraps a pointer the callee keeps owning: copied through the declared copy function, else
     /// through a byte copy when the size makes one sound, else borrowed for the call's duration.
     fn borrow_or_copy(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
+        if self.copy_strategy.is_some() {
+            return self.take_ownership(self.duplicate(ptr)?);
+        }
         if let Some((copy_fn, free_fn)) = self.lifecycle_fns()? {
             return Ok(Handle::owned_struct_with_free_fn(
                 unsafe { copy_fn(ptr.cast_const()) },

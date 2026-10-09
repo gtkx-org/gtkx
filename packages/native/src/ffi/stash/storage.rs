@@ -237,6 +237,7 @@ pub enum StashData {
     F64Vec(Vec<f64>),
     StringArray(Vec<std::ffi::CString>, Vec<*mut c_void>),
     ObjectArray(Vec<crate::handle::Handle>, Vec<*mut c_void>),
+    NestedArray(Vec<super::Stash>, Vec<*mut c_void>),
     List(ListData),
     CString(std::ffi::CString),
     GArray(GArrayData),
@@ -273,7 +274,7 @@ impl CallerAllocation {
     #[must_use]
     pub fn zeroed(byte_len: usize) -> Self {
         Self {
-            ptr: unsafe { glib::ffi::g_malloc0(byte_len) },
+            ptr: unsafe { glib::ffi::g_malloc0(byte_len.max(1)) },
             byte_len,
         }
     }
@@ -327,6 +328,11 @@ impl StashStorage {
         if let StashData::PtrSlot(_, Some(inner)) = &self.data {
             inner.disarm_pending_transfer();
         }
+        if let StashData::NestedArray(items, _) = &self.data {
+            for item in items {
+                item.disarm_pending_transfer();
+            }
+        }
     }
 
     #[inline]
@@ -344,7 +350,10 @@ impl StashStorage {
     }
 
     pub fn owns_element_buffer(&self) -> bool {
-        matches!(self.data, StashData::Handle(_)) || self.byte_len().is_some()
+        matches!(
+            self.data,
+            StashData::Handle(_) | StashData::NestedArray(_, _)
+        ) || self.byte_len().is_some()
     }
 
     pub fn byte_len(&self) -> Option<usize> {
@@ -364,6 +373,7 @@ impl StashStorage {
             | StashData::Handle(_)
             | StashData::StringArray(_, _)
             | StashData::ObjectArray(_, _)
+            | StashData::NestedArray(_, _)
             | StashData::List(_)
             | StashData::CString(_)
             | StashData::GArray(_)
@@ -438,6 +448,7 @@ impl Drop for StashStorage {
             | StashData::F64Vec(_)
             | StashData::StringArray(_, _)
             | StashData::ObjectArray(_, _)
+            | StashData::NestedArray(_, _)
             | StashData::CString(_)
             | StashData::Buffer(_)
             | StashData::PtrSlot(_, _)

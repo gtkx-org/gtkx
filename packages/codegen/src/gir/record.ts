@@ -1,6 +1,7 @@
 import type { ParseContext } from "./type-id.js";
 import { documentedFromNode, type GirAnnotations } from "./annotations.js";
 import { collectFields, type GirField } from "./field.js";
+import { EXTERNAL_RECORD_FREE_FUNCTIONS } from "./external-namespaces.js";
 import { functionFromNode, type GirFunction } from "./function.js";
 import { attr, getChildren, GIR_CONSTRUCTOR_TAG, isAttrTrue, type RawNode } from "./parse.js";
 
@@ -25,7 +26,8 @@ type GirRecord = {
 };
 
 const recordFromNode = (node: RawNode, isVtable: boolean, isUnion: boolean, context: ParseContext): GirRecord => {
-    const freeFunc = attr(node, "free-function");
+    const cType = attr(node, "c:type");
+    const freeFunc = attr(node, "free-function") ?? EXTERNAL_RECORD_FREE_FUNCTIONS.get(cType ?? "");
     const methods = getChildren(node, "method")
         .map((method) => functionFromNode(method, context))
         .filter((method) => freeFunc === undefined || method.cIdentifier !== freeFunc);
@@ -41,7 +43,7 @@ const recordFromNode = (node: RawNode, isVtable: boolean, isUnion: boolean, cont
         isVtable,
         ...documentedFromNode(node),
         name: attr(node, "name") ?? attr(node, "glib:name") ?? "",
-        cType: attr(node, "c:type"),
+        cType,
         glibTypeName: attr(node, "glib:type-name"),
         glibGetType: attr(node, "glib:get-type"),
         copyFunc: attr(node, "copy-function"),

@@ -1,3 +1,5 @@
+import { tIndirect, tPointerValue } from "../../analysis/descriptor.js";
+import { isIndirectScalarParameter, isPointerValueParameter } from "../../analysis/scalar-pointer.js";
 import { camelCase, escapeIdentifierStart, sourceStringLiteral } from "@gtkx/utils";
 import type { GirFunction } from "../../gir/function.js";
 import type { GirType } from "../../gir/type.js";
@@ -5,9 +7,11 @@ import type { ModuleContext } from "../../writer/context.js";
 import {
     isSkippedPrimaryReturn,
     renderCallbackType,
+    renderByValueRecordDescriptor,
     renderDescriptor,
     renderSelfDescriptor,
     shouldOmitPrimaryReturn,
+    transferOwnership,
 } from "../../analysis/descriptor-render.js";
 import {
     arrayLengthSources,
@@ -29,6 +33,8 @@ import {
     isClosureType,
     isCollectibleCallerOut,
     isFixedArrayCallerOut,
+    isSizedArrayCallerOut,
+    isGArrayCallerOut,
     isHandlePassedInPlace,
     isHandlePassing,
     isValueType,
@@ -242,7 +248,10 @@ const isInPlaceInout = (context: ModuleContext, parameter: GirParameter): boolea
 const isReturnedOutParameter = (context: ModuleContext, parameter: GirParameter): boolean =>
     isOutParameter(parameter) ||
     (isCallerAllocatedOut(parameter) &&
-        (isCollectibleCallerOut(context, parameter) || isFixedArrayCallerOut(context, parameter))) ||
+        (isCollectibleCallerOut(context, parameter) ||
+            isFixedArrayCallerOut(context, parameter) ||
+            isSizedArrayCallerOut(context, parameter) ||
+            isGArrayCallerOut(context, parameter))) ||
     (isInoutParameter(parameter) && !isInPlaceInout(context, parameter));
 
 const returnedOutParameters = (
@@ -834,7 +843,12 @@ const planOutParam = (
     });
 
     return {
-        paramLiteral: paramDescriptorLiteral(descriptor, { direction: "out", isConsumed }),
+        paramLiteral: paramDescriptorLiteral(
+            isIndirectScalarParameter(context.library, parameter)
+                ? tIndirect(descriptor, transferOwnership(parameter.transferOwnership))
+                : descriptor,
+            { direction: "out", isConsumed },
+        ),
         inputExpr: undefined,
     };
 };
@@ -853,7 +867,15 @@ const planCallerOut = (context: ModuleContext, parameter: GirParameter, argIndex
         };
     }
 
-    if (isFixedArrayCallerOut(context, parameter)) {
+    if (isGArrayCallerOut(context, parameter)) {
+        const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, argIndex);
+        return {
+            paramLiteral: paramDescriptorLiteral(`{ ...${descriptor}, isCallerAllocated: true }`, { direction: "out" }),
+            inputExpr: undefined,
+        };
+    }
+
+    if (isFixedArrayCallerOut(context, parameter) || isSizedArrayCallerOut(context, parameter)) {
         const descriptor = renderDescriptor(context, parameter.type, "none", {
             ...argIndex,
             isCallerAllocated: true,
@@ -929,10 +951,21 @@ const planInParam = (
         parameter.type,
         parameter,
         itemComparatorArgDescriptors(context, fn, parameter),
+        planContext.argIndex.argIndexOffset,
     );
 
-    const descriptor =
-        callback ?? renderDescriptor(context, parameter.type, parameter.transferOwnership, planContext.argIndex);
+    const base =
+        callback ??
+        renderByValueRecordDescriptor(
+            context,
+            parameter,
+            renderDescriptor(context, parameter.type, parameter.transferOwnership, planContext.argIndex),
+        );
+    const descriptor = isIndirectScalarParameter(context.library, parameter)
+        ? tIndirect(base, transferOwnership(parameter.transferOwnership))
+        : isPointerValueParameter(context.library, parameter)
+          ? tPointerValue(base)
+          : base;
 
     return {
         paramLiteral: paramDescriptorLiteral(descriptor, { isRequired: isRequiredParameter(parameter) }),

@@ -267,5 +267,3 @@ export {
     Split,
     splitView,
 };
-
-export { getAncestor } from "./widget-ancestors.js";

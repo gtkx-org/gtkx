@@ -22,8 +22,7 @@
             "{workspaceRoot}/scripts/tsx.ts",
             "{workspaceRoot}/scripts/workspace-paths.ts",
             "{workspaceRoot}/packages/e2e/tests/native/**/*",
-            "{workspaceRoot}/packages/e2e/tests/helpers/native-fixtures.ts",
-            "{workspaceRoot}/packages/e2e/tests/helpers/native-fixtures-compile.ts"
+            "{workspaceRoot}/packages/e2e/tests/helpers/native-fixtures*.ts"
         ]
     },
     "targets": {
@@ -62,21 +61,23 @@
             "inputs": ["...", "default", "^default", "{workspaceRoot}/scripts/ci/**/*"]
         },
         "lint": {
-            "dependsOn": ["^build", "build", "_lint:rust", "_lint:eslint"]
+            "dependsOn": ["^build", "build", "_lint:rust"]
         },
         "test-asan": {
             "dependsOn": ["build", "@gtkx/e2e:_test:fixtures", "@gtkx/runtime:build"],
             "cache": true,
-            "inputs": ["nativeTests", "^production", "{workspaceRoot}/scripts/ci/**/*"],
+            "inputs": [
+                "nativeTests",
+                "^production",
+                "{workspaceRoot}/scripts/ci/**/*",
+                { "env": "NODE_OPTIONS" },
+                { "env": "LD_LIBRARY_PATH" }
+            ],
             "outputs": [],
             "command": "node ../../scripts/ci/run.mjs 'pnpm run test-asan'",
             "options": {
                 "cwd": "{projectRoot}"
             }
-        },
-        "test": {
-            "dependsOn": ["build"],
-            "inputs": ["...", "nativeTests"]
         },
         "release": {
             "cache": false,
@@ -84,9 +85,6 @@
         },
         "typecheck": {
             "dependsOn": ["...", "build"]
-        },
-        "_lint:eslint": {
-            "dependsOn": ["^build", "build"]
         }
     }
 }

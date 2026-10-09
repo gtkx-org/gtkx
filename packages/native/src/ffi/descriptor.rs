@@ -6,8 +6,8 @@ use napi_derive::napi;
 use crate::ffi::codec::{
     ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BoxedCodec, BufferCodec, BytesCodec,
     CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind,
-    ElementOwnership, FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec, ObjectCodec,
-    Ownership, RefCodec, StructCodec, VoidCodec,
+    ElementOwnership, Encoder, FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec,
+    ObjectCodec, Ownership, RefCodec, StructCodec, VoidCodec,
 };
 
 const MAX_DESCRIPTOR_DEPTH: u32 = 32;
@@ -77,6 +77,62 @@ fn byte_capacity(length: Option<i64>) -> Result<Option<usize>> {
     })
 }
 
+fn record_abi_fields(
+    fields: Option<Descriptors>,
+    size: Option<u32>,
+    ownership: Ownership,
+    caller_allocated: Option<bool>,
+) -> Result<Option<Vec<Codec>>> {
+    let Some(fields) = fields else {
+        return Ok(None);
+    };
+    let invalid = |message: &str| Error::new(Status::InvalidArg, message);
+    let size = size
+        .filter(|&size| size > 0)
+        .ok_or_else(|| invalid("A record passed by value requires a positive native size"))?;
+    if !ownership.is_borrowed() || caller_allocated.unwrap_or(false) {
+        return Err(invalid(
+            "A record passed by value requires borrowed input ownership",
+        ));
+    }
+    let fields = fields
+        .0
+        .into_iter()
+        .map(Descriptor::into_codec)
+        .collect::<Result<Vec<_>>>()?;
+    if fields.is_empty()
+        || !fields.iter().all(|field| {
+            matches!(
+                field,
+                Codec::Integer(_) | Codec::BigInt(_) | Codec::Float(_) | Codec::Buffer(_)
+            )
+        })
+    {
+        return Err(invalid(
+            "Record ABI fields must describe nonempty scalar or pointer storage",
+        ));
+    }
+    let mut layout = libffi::middle::Type::structure(fields.iter().map(Encoder::libffi_type));
+    layout
+        .struct_offsets(libffi::low::ffi_abi_FFI_DEFAULT_ABI)
+        .map_err(|error| {
+            Error::new(
+                Status::InvalidArg,
+                format!("Invalid record ABI layout: {error:?}"),
+            )
+        })?;
+    let native_size = unsafe { (*layout.as_raw_ptr()).size };
+    if native_size != size as usize {
+        return Err(Error::new(
+            Status::InvalidArg,
+            format!(
+                "Record ABI layout occupies {native_size} bytes, but its native size is {size}"
+            ),
+        ));
+    }
+    Ok(Some(fields))
+}
+
 /// Describes how a single native value (a function argument, a return value, or a struct field)
 /// is marshalled between JavaScript and C. The `kind` field selects the variant.
 #[napi(
@@ -123,6 +179,9 @@ pub enum Descriptor {
         size: Option<u32>,
         is_inline: Option<bool>,
         is_value_safe: Option<bool>,
+        /// Native field layout for a record passed by value as a function input.
+        #[napi(ts_type = "Array<Descriptor>")]
+        abi_fields: Option<Descriptors>,
     },
     Struct {
         ownership: Ownership,
@@ -132,7 +191,11 @@ pub enum Descriptor {
         shared_library: Option<String>,
         copy_fn_name: Option<String>,
         free_fn_name: Option<String>,
+        copy_strategy: Option<String>,
         is_value_safe: Option<bool>,
+        /// Native field layout for a record passed by value as a function input.
+        #[napi(ts_type = "Array<Descriptor>")]
+        abi_fields: Option<Descriptors>,
     },
     Fundamental {
         ownership: Ownership,
@@ -174,6 +237,8 @@ pub enum Descriptor {
         destroy_kind: Option<DestroyNotifyKind>,
         has_user_data: Option<bool>,
         user_data_index: Option<u32>,
+        user_data_arg_index: Option<u32>,
+        destroy_arg_index: Option<u32>,
         can_throw: Option<bool>,
         scope: CallbackScope,
         release_with_completion: Option<bool>,
@@ -281,6 +346,7 @@ impl Descriptor {
                 size,
                 is_inline,
                 is_value_safe,
+                abi_fields,
             } => Codec::Boxed(BoxedCodec {
                 ownership,
                 type_name,
@@ -291,6 +357,7 @@ impl Descriptor {
                 size: size.map(|n| n as usize),
                 inline: is_inline.unwrap_or(false),
                 value_safe: is_value_safe.unwrap_or(false),
+                abi_fields: record_abi_fields(abi_fields, size, ownership, is_caller_allocated)?,
             }),
             Self::Struct {
                 ownership,
@@ -300,7 +367,9 @@ impl Descriptor {
                 shared_library,
                 copy_fn_name,
                 free_fn_name,
+                copy_strategy,
                 is_value_safe,
+                abi_fields,
             } => Codec::Struct(StructCodec {
                 ownership,
                 size: size.map(|n| n as usize),
@@ -309,7 +378,9 @@ impl Descriptor {
                 shared_library,
                 copy_fn_name,
                 free_fn_name,
+                copy_strategy,
                 value_safe: is_value_safe.unwrap_or(false),
+                abi_fields: record_abi_fields(abi_fields, size, ownership, is_caller_allocated)?,
             }),
             Self::Fundamental {
                 ownership,
@@ -388,6 +459,8 @@ impl Descriptor {
                 destroy_kind,
                 has_user_data,
                 user_data_index,
+                user_data_arg_index,
+                destroy_arg_index,
                 can_throw,
                 scope,
                 release_with_completion,
@@ -411,6 +484,8 @@ impl Descriptor {
                     destroy_kind: destroy_kind.unwrap_or_default(),
                     has_user_data,
                     user_data_index: user_data_index.map(|n| n as usize),
+                    user_data_arg_index: user_data_arg_index.map(|n| n as usize),
+                    destroy_arg_index: destroy_arg_index.map(|n| n as usize),
                     can_throw: can_throw.unwrap_or(false),
                     scope,
                     release_policy,

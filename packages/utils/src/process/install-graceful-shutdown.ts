@@ -84,6 +84,10 @@ const beginShutdown = (state: ShutdownState, signal: NodeJS.Signals): void => {
 };
 
 const handle = (state: ShutdownState, signal: NodeJS.Signals): void => {
+    if (state.hasExited) {
+        return;
+    }
+
     if (state.firstSignal === null) {
         beginShutdown(state, signal);
 
@@ -98,7 +102,8 @@ const handle = (state: ShutdownState, signal: NodeJS.Signals): void => {
     finish(state, signal, false);
 };
 
-function installGracefulShutdown(options: GracefulShutdownOptions): void {
+/** Installs process shutdown handlers and returns a disposer for callers with a shorter lifetime. */
+function installGracefulShutdown(options: GracefulShutdownOptions): () => void {
     const state: ShutdownState = {
         options,
         forceKillMs: options.forceKillAfterMs ?? DEFAULT_FORCE_KILL_TIMEOUT_MS,
@@ -110,11 +115,20 @@ function installGracefulShutdown(options: GracefulShutdownOptions): void {
         coalesceTimer: null,
     };
 
-    for (const sig of HANDLED_SIGNALS) {
-        process.on(sig, () => {
-            handle(state, sig);
-        });
-    }
+    const removeListeners = HANDLED_SIGNALS.map((signal) => {
+        const listener = (): void => handle(state, signal);
+        process.on(signal, listener);
+
+        return (): void => {
+            process.off(signal, listener);
+        };
+    });
+
+    return () => {
+        state.hasExited = true;
+        clearTimers(state);
+        for (const remove of removeListeners) remove();
+    };
 }
 
 export { installGracefulShutdown };

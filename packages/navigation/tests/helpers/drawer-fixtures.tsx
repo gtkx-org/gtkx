@@ -12,14 +12,11 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
 import { createDrawerNavigator, createStackNavigator, DrawerActions, useNavigation } from "@gtkx/navigation";
 import { screen, within } from "@gtkx/testing";
-import { useEffect } from "react";
-import { expect } from "vitest";
 
 import { getAncestor } from "./widget-ancestors.js";
 
 type StateHistory = (NavigationState | undefined)[];
 type ScreenConfig = { name: string; text: string; options?: DrawerNavigationOptions };
-type MountProbeProps = { text: string; onMount: () => void };
 
 const Drawer = createDrawerNavigator();
 const NestedStack = createStackNavigator();
@@ -66,14 +63,6 @@ const DrawerScreen = ({ text }: { text: string }): ReactNode => {
             />
         </GtkBox>
     );
-};
-
-const MountProbe = ({ text, onMount }: MountProbeProps): ReactNode => {
-    useEffect(() => {
-        onMount();
-    }, [onMount]);
-
-    return <GtkLabel>{text}</GtkLabel>;
 };
 
 const NestedHome = (): ReactNode => {
@@ -130,11 +119,6 @@ const querySidebarLabel = (label: string): Gtk.Widget | null => {
 const toggleButton = (): Gtk.Widget => screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: TOGGLE_NAME });
 const splitView = (): Adw.OverlaySplitView => getAncestor(toggleButton(), Adw.OverlaySplitView);
 
-const expectHeaderTitle = (title: string): void => {
-    const headerBar = getAncestor(toggleButton(), Adw.HeaderBar);
-    expect(within(headerBar).getByText(title)).toBeVisible();
-};
-
 const lastState = (states: readonly (NavigationState | undefined)[]): NavigationState => {
     const state = states.at(-1);
 
@@ -175,10 +159,8 @@ export {
     Drawer,
     drawerScreens,
     getDrawerStatus,
-    expectHeaderTitle,
     INBOX,
     lastState,
-    MountProbe,
     NestedStackScreen,
     querySidebarLabel,
     routeKey,

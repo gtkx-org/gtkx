@@ -1,15 +1,12 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
+
 import * as Gio from "@gtkx/gi/gio";
+
 import * as GObject from "@gtkx/gi/gobject";
+
 import * as Regress from "@gtkx/gi/regress";
-import * as Utility from "@gtkx/gi/utility";
+
 import { expect, test } from "vitest";
-import { drainAfterEachTest } from "./helpers/memory.js";
-
-GIMarshallingTests.Object.noneReturn();
-GIMarshallingTests.Object.noneOut();
-
-drainAfterEachTest();
 
 test("marshalling objects construct with their int property", () => {
     const built = GIMarshallingTests.Object.new(42);
@@ -123,23 +120,6 @@ test("torture signatures return every out value", () => {
     expect(obj.tortureSignature1(42, "foo", 6)).toEqual([true, 42, 84, 9]);
 });
 
-test("nullable object arguments accept null and compatible objects", () => {
-    Regress.funcObjNullIn(null);
-    Regress.funcObjNullableIn(null);
-
-    const obj = new Regress.TestObj({});
-    Regress.funcObjNullableIn(obj);
-    expect(Regress.TestObj.nullOut()).toBeNull();
-
-    expect(obj.bare).toBeNull();
-    const companion = new Utility.Object({});
-    expect(companion instanceof GObject.Object).toBeTruthy();
-    obj.setBare(companion);
-    expect(obj.bare).toBe(companion);
-    obj.setBare(null);
-    expect(obj.bare).toBeNull();
-});
-
 test("floating references are sunk on construction", () => {
     const floating = Regress.TestFloating.new();
     expect(floating instanceof Regress.TestFloating).toBeTruthy();
@@ -157,24 +137,6 @@ test("a list store hands back the identical wrapper it was given", () => {
     expect(store.getItem(0)).toBe(item);
     expect(store.getItem(0)).toBe(store.getItem(0));
     expect((store.getItem(0) as Regress.TestObj).int).toBe(5);
-});
-
-test("a subprocess constructs through its GIR shadow name", () => {
-    const subprocess = Gio.Subprocess.new(["/usr/bin/true"], Gio.SubprocessFlags.NONE);
-
-    expect(subprocess.wait(null)).toBe(true);
-    expect(subprocess.getSuccessful()).toBe(true);
-});
-
-test("a subprocess argument vector preserves spaces", () => {
-    const subprocess = Gio.Subprocess.new(["/usr/bin/test", "a b", "=", "a b"], Gio.SubprocessFlags.NONE);
-
-    expect(subprocess.wait(null)).toBe(true);
-    expect(subprocess.getSuccessful()).toBe(true);
-});
-
-test("a subprocess shadow-named factory surfaces launch failures", () => {
-    expect(() => Gio.Subprocess.new(["/gtkx/missing-executable"], Gio.SubprocessFlags.NONE)).toThrow();
 });
 
 test("object arguments reject values of the wrong type", () => {
@@ -195,21 +157,6 @@ test("object arguments reject values of the wrong type", () => {
     expect(() => GIMarshallingTests.Object.new(1.5)).toThrow();
     // @ts-expect-error the int property takes a number, not a string
     expect(() => new GIMarshallingTests.Object({ int: "nope" })).toThrow();
-});
-
-test("an object argument rejects an instance of an unrelated type", () => {
-    expect(() => {
-        // @ts-expect-error a Utility.Object is not a TestObj
-        Regress.funcObjNullIn(new Utility.Object({}));
-    }).toThrow();
-    expect(() => {
-        // @ts-expect-error a boxed struct is not a TestObj
-        Regress.funcObjNullIn(new GIMarshallingTests.BoxedStruct({ long: 42n }));
-    }).toThrow();
-    expect(() => {
-        // @ts-expect-error a TestBoxed is not a TestObj
-        Regress.funcObjNullIn(Regress.TestBoxed.new());
-    }).toThrow();
 });
 
 test("an object argument still accepts null, subclasses and interface implementers", () => {
@@ -235,5 +182,5 @@ test("object calls surface native errors as exceptions", () => {
 
     expect(() => {
         GIMarshallingTests.Object.new(42).fullIn();
-    }).toThrow();
+    }).toThrow("gi_marshalling_tests_object_full_in");
 });

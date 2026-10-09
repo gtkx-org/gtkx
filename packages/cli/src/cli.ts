@@ -1,9 +1,9 @@
 import { assertSupportedNodeVersion } from "@gtkx/config/internal";
-import { defineCommand, runMain } from "citty";
-import packageManifest from "../package.json" with { type: "json" };
+import { runMain } from "citty";
+import { createCommand } from "./command.js";
 import { splitApplicationArgs } from "./internal/application-args.js";
-import { printError, withErrorBoundary } from "./internal/errors.js";
-import "./internal/parent-process.js";
+import { printError } from "./internal/errors.js";
+import { getInitialProcessGroupOwner, initialParentId } from "./internal/parent-process.js";
 
 try {
     assertSupportedNodeVersion();
@@ -11,62 +11,12 @@ try {
     printError(error);
 }
 
-const version = packageManifest.version;
-const { cliArgs } = splitApplicationArgs(process.argv.slice(2));
-
-const main = defineCommand({
-    meta: {
-        name: "gtkx",
-        version,
-        description: "Create, develop, and package Linux applications with GTKX",
-    },
-    subCommands: {
-        storybook: async () => {
-            const { storybook } = await import("./commands/storybook.js");
-
-            return withErrorBoundary(storybook);
-        },
-        dev: async () => {
-            const { dev } = await import("./commands/dev.js");
-
-            return withErrorBoundary(dev);
-        },
-        build: async () => {
-            const { build } = await import("./commands/build.js");
-
-            return withErrorBoundary(build);
-        },
-        deploy: async () => {
-            const { deploy } = await import("./commands/deploy.js");
-
-            return withErrorBoundary(deploy);
-        },
-        codegen: async () => {
-            const { codegen } = await import("./commands/codegen.js");
-
-            return withErrorBoundary(codegen);
-        },
-        docs: async () => {
-            const { docs } = await import("./commands/docs.js");
-
-            return withErrorBoundary(docs);
-        },
-        mcp: async () => {
-            const { mcp } = await import("./commands/mcp.js");
-
-            return withErrorBoundary(mcp);
-        },
-        create: async () => {
-            const { scaffoldCommand } = await import("create-gtkx");
-
-            return withErrorBoundary(scaffoldCommand);
-        },
-        cleanup: async () => {
-            const { cleanup } = await import("./commands/cleanup.js");
-
-            return withErrorBoundary(cleanup);
-        },
-    },
-});
-
-await runMain(main, { rawArgs: cliArgs });
+const { cliArgs, applicationArgs } = splitApplicationArgs(process.argv.slice(2));
+if (cliArgs[0] === "dev" || cliArgs[0] === "storybook") {
+    const { armParentDeath } = await import("@gtkx/runtime/internal");
+    const owner = getInitialProcessGroupOwner();
+    if (!armParentDeath(initialParentId, owner?.pid, owner?.startTime)) {
+        printError(new Error("The process that launched gtkx exited during startup"));
+    }
+}
+await runMain(createCommand({ applicationArgs, onError: printError }), { rawArgs: cliArgs });

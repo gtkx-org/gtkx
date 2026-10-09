@@ -1,7 +1,7 @@
 use std::ffi::c_void;
 use std::rc::Rc;
 
-use glib::translate::from_glib_none;
+use glib::translate::from_glib_full;
 use napi::bindgen_prelude::*;
 use napi::{Env, sys};
 use napi_derive::napi;
@@ -77,7 +77,8 @@ pub fn set_wrapper(env: Env, handle: &External<Handle>, wrapper: Object<'_>) -> 
 
     let mut ref_count: u32 = 0;
     unsafe { sys::napi_reference_ref(env.raw(), raw_ref, &raw mut ref_count) };
-    let pinned: glib::Object = unsafe { from_glib_none(gobject_ptr) };
+    let pinned: glib::Object =
+        unsafe { from_glib_full(glib::gobject_ffi::g_object_ref(gobject_ptr)) };
     let owned = handle.take_owned();
     let (wrapper_handle, generation) = unsafe { wrapper::install(gobject_ptr, raw_ref) };
     handle.track_wrapper(&wrapper_handle);

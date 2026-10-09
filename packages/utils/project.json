@@ -10,6 +10,9 @@
         },
         "typecheck": {
             "dependsOn": ["build", "^typecheck"]
+        },
+        "test": {
+            "dependsOn": []
         }
     }
 }

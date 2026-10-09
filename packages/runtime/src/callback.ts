@@ -16,7 +16,7 @@ import { copyValue } from "./value.js";
 import { popSeedFrame, pushSeedFrame, type RefSeeds } from "./vfunc-seeds.js";
 
 type Callback = (...args: unknown[]) => unknown;
-type CallbackKind = "vfunc" | "signal" | "signal-class" | "callback";
+type CallbackKind = "vfunc" | "static-vfunc" | "signal" | "signal-class" | "callback";
 type CallbackTraits = {
     isInstanceBound: boolean;
     hasInstanceArg: boolean;
@@ -51,6 +51,7 @@ type CallbackPlan = {
 };
 
 const CALLBACK_TRAITS: Record<CallbackKind, CallbackTraits> = {
+    "static-vfunc": { isInstanceBound: false, hasInstanceArg: false, hasFoldedLengths: true, hasFoldedInputs: true },
     callback: { isInstanceBound: false, hasInstanceArg: false, hasFoldedLengths: true, hasFoldedInputs: true },
     signal: { isInstanceBound: false, hasInstanceArg: true, hasFoldedLengths: false, hasFoldedInputs: false },
     "signal-class": { isInstanceBound: true, hasInstanceArg: true, hasFoldedLengths: false, hasFoldedInputs: false },

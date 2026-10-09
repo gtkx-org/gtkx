@@ -9,11 +9,22 @@ impl Encoder for BufferCodec {
             return Ok(ffi::Stash::Ptr(view.ptr()));
         }
         match value.get_type()? {
+            ValueType::BigInt => {
+                let integer = value::read_napi::<BigInt>(value)?;
+                let (negative, word, lossless) = integer.get_u64();
+                anyhow::ensure!(
+                    !negative && lossless,
+                    "Pointer address exceeds the unsigned pointer range"
+                );
+                Ok(ffi::Stash::Ptr(usize::try_from(word)? as *mut c_void))
+            }
             ValueType::External => Ok(ffi::Stash::Ptr(value::opaque_ptr(value, "buffer")?)),
             ValueType::Null | ValueType::Undefined => Ok(ffi::Stash::Ptr(std::ptr::null_mut())),
             other => {
                 bail_expected!(
-                    format!("an ArrayBufferView, native handle, or null, got {other:?}"),
+                    format!(
+                        "a bigint address, ArrayBufferView, native handle, or null, got {other:?}"
+                    ),
                     "buffer"
                 )
             }
@@ -38,10 +49,63 @@ impl Encoder for BufferCodec {
             None => self.encode(env, value),
         }
     }
-
-    reject_return_codec!("Buffer");
 }
 
-impl Decoder for BufferCodec {}
+impl Decoder for BufferCodec {
+    fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
+        unsafe {
+            self.read_value(
+                env,
+                stash.as_ptr("pointer return")?,
+                "pointer return",
+                Ownership::Borrowed,
+            )
+        }
+    }
 
-impl PtrWriter for BufferCodec {}
+    unsafe fn read_value<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+        _context: &str,
+        _transfer: Ownership,
+    ) -> anyhow::Result<Unknown<'e>> {
+        if ptr.is_null() {
+            return Ok(value::js_null(env)?);
+        }
+        Ok(BigInt::from(ptr as u64).into_unknown(env)?)
+    }
+}
+
+impl PtrWriter for BufferCodec {
+    fn write_value_to_ptr(
+        &self,
+        env: &Env,
+        slot: ffi::Slot,
+        value: Unknown<'_>,
+        _init: SlotInit,
+    ) -> anyhow::Result<Option<ffi::PendingTransfer>> {
+        let encoded = self.encode(env, value)?;
+        unsafe { slot.store(encoded.as_ptr("pointer value")?) };
+        Ok(None)
+    }
+
+    fn write_return_to_ptr(
+        &self,
+        env: &Env,
+        ret: ffi::Slot,
+        value: &std::result::Result<Unknown<'_>, ()>,
+    ) {
+        let pointer = match value {
+            Ok(value) => self
+                .encode(env, *value)
+                .and_then(|encoded| encoded.as_ptr("pointer return"))
+                .unwrap_or_else(|error| {
+                    reject_callback_return(*env, &error);
+                    std::ptr::null_mut()
+                }),
+            Err(()) => std::ptr::null_mut(),
+        };
+        unsafe { ret.store(pointer) };
+    }
+}

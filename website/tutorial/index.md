@@ -66,20 +66,6 @@ After the **Run it** checks pass, save a commit in your project so you can revie
 
 The [completed 1.6 source](https://github.com/gtkx-org/gtkx/tree/v1.6.0/examples/tutorial) provides a reference for the finished app. It includes later features, so copy only the change a chapter describes when following along.
 
-## Chapter checkpoints
-
-The [checkpoint generator](https://github.com/gtkx-org/gtkx/tree/main/tutorial/checkpoints) reconstructs all 18 stable chapters from these examples. From a current GTKX repository checkout:
-
-```bash
-pnpm tutorial:checkpoints --version v1 --chapter the-task-store --output /tmp/gtkx-tasks
-cd /tmp/gtkx-tasks
-npm install
-npm test
-npm run dev
-```
-
-Use a new output directory. `--version v1` selects the stable pages and GTKX 1.6.0 dependencies. After installing dependencies, run `npm run typecheck`, `npm run build`, and `npm test` in the generated project to check that chapter. Continue to use each chapter's **Run it** checks to inspect the interaction.
-
 ## Next
 
 Continue to [Create a Window](/tutorial/your-first-window).

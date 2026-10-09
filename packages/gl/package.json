@@ -53,7 +53,13 @@
     },
     "devDependencies": {
         "@gtkx/codegen": "workspace:*",
+        "@gtkx/config": "workspace:*",
+        "@gtkx/react": "workspace:*",
+        "@gtkx/testing": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "@types/node": "catalog:"
+        "@gtkx/vitest": "workspace:*",
+        "@types/node": "catalog:",
+        "@types/react": "catalog:",
+        "vitest": "catalog:"
     }
 }

@@ -1,3 +1,4 @@
+import type { ServerOptions } from "@gtkx/mcp/server";
 import { info } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
@@ -30,35 +31,38 @@ const init = defineCommand({
     },
 });
 
-const mcp = defineCommand({
-    meta: {
-        name: "mcp",
-        description: "Run the MCP server that exposes this project's running app and generated API reference",
-    },
-    args: {
-        tools: {
-            type: "string",
-            description:
-                "Comma-separated tool name patterns to register, `*` matching any run of characters and a " +
-                "leading `!` excluding. Overrides `mcp.tools` in gtkx.config.ts",
+const createMcpCommand = (options: Pick<ServerOptions, "signal" | "transport" | "socketPath"> = {}) =>
+    defineCommand({
+        meta: {
+            name: "mcp",
+            description: "Run the MCP server that exposes this project's running app and generated API reference",
         },
-        "read-only": {
-            type: "boolean",
-            description: "Register only the tools that read state, leaving out the ones that drive the app",
+        args: {
+            tools: {
+                type: "string",
+                description:
+                    "Comma-separated tool name patterns to register, `*` matching any run of characters and a " +
+                    "leading `!` excluding. Overrides `mcp.tools` in gtkx.config.ts",
+            },
+            "read-only": {
+                type: "boolean",
+                description: "Register only the tools that read state, leaving out the ones that drive the app",
+            },
+            ...cwdArg,
         },
-        ...cwdArg,
-    },
-    subCommands: { init },
-    async run({ args }) {
-        const { runMcpServer } = await import("@gtkx/mcp/server");
+        subCommands: { init },
+        async run({ args, rawArgs }) {
+            if (rawArgs[0] === "init") return;
+            const { runMcpServer } = await import("@gtkx/mcp/server");
 
-        await runMcpServer({
-            cwd: resolveCwd(args),
-            ...(args.tools !== undefined && { tools: splitPatterns(args.tools) }),
-            ...(args["read-only"] !== undefined && { isReadOnly: args["read-only"] }),
-        });
-    },
-});
+            return await runMcpServer({
+                ...options,
+                cwd: resolveCwd(args),
+                ...(args.tools !== undefined && { tools: splitPatterns(args.tools) }),
+                ...(args["read-only"] !== undefined && { isReadOnly: args["read-only"] }),
+            });
+        },
+    });
 
 const splitPatterns = (value: string): string[] =>
     value
@@ -81,4 +85,4 @@ const report = (name: ClientName, result: ClientResult): void => {
     info("mcp: restart the editor for it to pick the server up");
 };
 
-export { mcp };
+export { createMcpCommand };

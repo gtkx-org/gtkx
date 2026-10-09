@@ -1,3 +1,4 @@
+import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { loadConfig } from "@gtkx/config";
 import { configDependenciesFor, type McpSettings, resolveMcpSettings } from "@gtkx/config/internal";
@@ -35,24 +36,36 @@ import { SocketServer } from "./socket-server.js";
 import { selectTools } from "./tool-filter.js";
 import { defineTool, imageContent, registerTool, textContent, textError, type Tool } from "./tool.js";
 
+/** Configuration for an independently managed MCP server. */
 type CreateMcpServerOptions = {
+    /** MCP transport; defaults to the process standard input and output. */
+    transport?: Transport;
+    /** Project root used for API reference requests without an explicit root. */
+    cwd?: string;
     socketPath?: string;
     version: string;
     settings?: McpSettings;
 };
 
+/** Server configuration when running from an application or command entry point. */
 type ServerOptions = {
+    transport?: Transport;
+    socketPath?: string;
+    signal?: AbortSignal;
     cwd?: string;
     tools?: string[];
     isReadOnly?: boolean;
 };
 
+/** Lifecycle of a server and its owned application socket. */
 type McpServerHandle = {
     start(): Promise<void>;
     stop(): Promise<void>;
 };
 
 type ServerLifecycle = {
+    transport: Transport | undefined;
+    disconnectStdio: (() => void) | undefined;
     socketServer: SocketServer;
     mcpServer: McpServer;
     appRouter: AppRouter;
@@ -194,11 +207,24 @@ function describeParams<Shape extends Record<string, z.ZodType>>(
     return Object.fromEntries(described) as Shape;
 }
 
-const connectStdio = async (mcpServer: McpServer, stop: () => Promise<void>): Promise<void> => {
+const connectStdio = async (mcpServer: McpServer, stop: () => Promise<void>): Promise<() => void> => {
     const transport = new StdioServerTransport();
-    process.stdin.on("end", () => void stop());
-    process.stdin.on("close", () => void stop());
-    await mcpServer.connect(transport);
+    const disconnected = (): void => {
+        void stop().catch((error: unknown) => log.error(String(error)));
+    };
+    const dispose = (): void => {
+        process.stdin.off("end", disconnected);
+        process.stdin.off("close", disconnected);
+    };
+    process.stdin.on("end", disconnected);
+    process.stdin.on("close", disconnected);
+    try {
+        await mcpServer.connect(transport);
+        return dispose;
+    } catch (error) {
+        dispose();
+        throw error;
+    }
 };
 
 const logSocketError = (event: Event): void => {
@@ -438,6 +464,7 @@ function stopServer(state: ServerLifecycle): Promise<void> {
             await Promise.allSettled([startup]);
         }
 
+        state.disconnectStdio?.();
         await state.socketServer.stop();
         await state.mcpServer.close();
     })();
@@ -465,7 +492,11 @@ function startServer(state: ServerLifecycle): Promise<void> {
             }
 
             log.info(`socket server listening on ${state.socketPath}`);
-            await connectStdio(state.mcpServer, () => stopServer(state));
+            if (state.transport === undefined) {
+                state.disconnectStdio = await connectStdio(state.mcpServer, () => stopServer(state));
+            } else {
+                await state.mcpServer.connect(state.transport);
+            }
         } catch (error) {
             if (!wasStopRequested(state)) {
                 state.isStopRequested = true;
@@ -488,8 +519,11 @@ const createServerHandle = (
     mcpServer: McpServer,
     appRouter: AppRouter,
     socketPath: string,
+    transport: Transport | undefined,
 ): McpServerHandle => {
     const state: ServerLifecycle = {
+        transport,
+        disconnectStdio: undefined,
         socketServer,
         mcpServer,
         appRouter,
@@ -502,6 +536,7 @@ const createServerHandle = (
     return { start: () => startServer(state), stop: () => stopServer(state) };
 };
 
+/** Creates a server that can be started and stopped without owning the process lifecycle. */
 const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     const socketAddress = resolveMcpSocketAddress(options.socketPath);
     const socketPath = socketAddress.path;
@@ -525,11 +560,14 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     });
 
     const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version }, { instructions: INSTRUCTIONS });
-    const referenceProvider = createReferenceProvider({ getAppRoot: () => appRouter.getProjectRoot() });
+    const referenceProvider = createReferenceProvider({
+        getAppRoot: () => appRouter.getProjectRoot(),
+        getWorkingDirectory: () => options.cwd ?? process.cwd(),
+    });
     registerTools(mcpServer, appRouter, referenceProvider, options.settings ?? DEFAULT_SETTINGS);
     registerReferenceResources(mcpServer, referenceProvider);
 
-    return createServerHandle(socketServer, mcpServer, appRouter, socketPath);
+    return createServerHandle(socketServer, mcpServer, appRouter, socketPath, options.transport);
 };
 
 const configuredSettings = async (cwd: string): Promise<McpSettings> => {
@@ -579,15 +617,46 @@ const parseServerArgs = (argv: string[]): ServerOptions => {
     };
 };
 
-async function main(options: ServerOptions = {}): Promise<void> {
+async function main(options: ServerOptions = {}): Promise<McpServerHandle> {
     const settings = await resolveSettings(options);
-    const server = createMcpServer({ version, settings });
-
-    installGracefulShutdown({
-        onSignal: () => server.stop(),
+    options.signal?.throwIfAborted();
+    const server = createMcpServer({
+        version,
+        settings,
+        ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
+        ...(options.socketPath === undefined ? {} : { socketPath: options.socketPath }),
+        ...(options.transport === undefined ? {} : { transport: options.transport }),
     });
-
-    await server.start();
+    const stop = (): void => {
+        void server.stop().catch((error: unknown) => log.error(String(error)));
+    };
+    const disposeShutdown =
+        options.signal === undefined ? installGracefulShutdown({ onSignal: () => server.stop() }) : undefined;
+    options.signal?.addEventListener("abort", stop, { once: true });
+    try {
+        await server.start();
+    } catch (error) {
+        options.signal?.removeEventListener("abort", stop);
+        disposeShutdown?.();
+        throw error;
+    }
+    return {
+        start: () => server.start(),
+        stop: () => {
+            options.signal?.removeEventListener("abort", stop);
+            disposeShutdown?.();
+            return server.stop();
+        },
+    };
 }
 
-export { log, main, main as runMcpServer, parseServerArgs };
+export {
+    createMcpServer,
+    type CreateMcpServerOptions,
+    type McpServerHandle,
+    type ServerOptions,
+    log,
+    main,
+    main as runMcpServer,
+    parseServerArgs,
+};

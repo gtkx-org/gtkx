@@ -1,21 +1,28 @@
 import { type ExternalObject, type Handle, newObject } from "@gtkx/native";
-import { type AnyClass, getParentClass } from "@gtkx/utils";
+import { type AnyClass, getParentClass, toCamelIdentifier } from "@gtkx/utils";
 import type { Descriptor } from "./descriptor-types.js";
 import type { ReadableProperties, WritableProperties } from "./property-types.js";
 import { bind } from "./bind.js";
-import { objectT, stringT, voidT } from "./descriptors.js";
+import { objectT, preserveArrayNull, stringT, voidT } from "./descriptors.js";
 import { LIB, VALUE_T } from "./library.js";
 import {
     coerceConstructPropertyValue,
     type ConstructProperty,
     constructPropertyFor,
     readableObjectPropertyFor,
+    propertyValueType,
     writableObjectPropertyFor,
 } from "./properties.js";
 import { propertyWriteComplete } from "./property-brand.js";
-import { getHandle, registerWrapper } from "./registry.js";
+import { getHandle, getInstanceType, registerWrapper } from "./registry.js";
 import { TYPE_OBJECT, typeIsA } from "./type.js";
-import { fromObjectPropertyValue, fromValueForDescriptor, newValueForDescriptor, toValue } from "./value.js";
+import {
+    fromObjectPropertyValue,
+    fromPropertyValueForDescriptor,
+    newValueForType,
+    toValueForType,
+    retainCallbackProperty,
+} from "./value.js";
 
 /**
  * One construct property a wrapper class accepts: the canonical `GObject` name it is set under,
@@ -25,6 +32,18 @@ type ConstructBinding = [name: string, descriptor: Descriptor];
 /** The construct properties a wrapper class accepts, keyed by the camelCased name callers give them. */
 type ConstructBindings = Record<string, ConstructBinding>;
 type ResolvedBindings = { generation: number; bindings: ConstructBindings };
+
+const callbackPropertyValues: WeakMap<object, Map<string, ExternalObject<Handle>>> = new WeakMap();
+
+const retainPropertyCallback = (object: object, name: string, value: ExternalObject<Handle>): void => {
+    let values = callbackPropertyValues.get(object);
+    if (values === undefined) {
+        values = new Map();
+        callbackPropertyValues.set(object, values);
+    }
+    values.set(name, value);
+    retainCallbackProperty(getHandle(object), name, value);
+};
 
 const constructFactories: WeakMap<object, () => object> = new WeakMap();
 const declaredBindings: WeakMap<AnyClass, ConstructBindings> = new WeakMap();
@@ -127,7 +146,11 @@ function constructPropertyForEntry(
 
     return {
         name: binding[0],
-        value: toValue(binding[1], coerceConstructPropertyValue(source.gtype, binding[0], value)),
+        value: toValueForType(
+            binding[1],
+            coerceConstructPropertyValue(source.gtype, binding[0], value),
+            propertyValueType(source.gtype, binding[0]),
+        ),
     };
 }
 
@@ -172,11 +195,14 @@ function newObjectWithProperties<T extends object>(gtype: bigint, props: object,
     const existing =
         constructFactories.get(wrapper.constructor)?.() ?? newObject(gtype, names, values, wrapper, registerWrapper);
 
-    if (existing !== null) {
-        return existing as T;
+    const result = existing === null ? wrapper : (existing as T);
+    for (const [index, name] of names.entries()) {
+        if (bindings[toCamelIdentifier(name)]?.[1].kind === "callback") {
+            const value = values[index];
+            if (value !== undefined) retainPropertyCallback(result, name, value);
+        }
     }
-
-    return wrapper;
+    return result;
 }
 
 /**
@@ -208,17 +234,26 @@ function getProperty(obj: object, propertyName: string, descriptor?: Descriptor)
         throw new TypeError("getProperty requires a property descriptor when called with three arguments");
     }
 
-    const value = newValueForDescriptor(descriptor);
+    const value = newValueForType(propertyValueType(getInstanceType(obj), propertyName));
     gObjectGetProperty(getHandle(obj), propertyName, value);
 
-    return fromValueForDescriptor(descriptor, value);
+    const result = fromPropertyValueForDescriptor(descriptor, value);
+    return typeof result === "function" ? result.bind(obj) : result;
 }
 
 function getObjectProperty(obj: object, propertyName: string): unknown {
     const property = readableObjectPropertyFor(obj, propertyName);
     gObjectGetProperty(getHandle(obj), property.name, property.value);
 
-    return fromObjectPropertyValue(property.value);
+    const descriptor = constructBindingsFor(obj.constructor as AnyClass)[toCamelIdentifier(property.name)]?.[1];
+    const result =
+        descriptor === undefined
+            ? fromObjectPropertyValue(property.value)
+            : fromPropertyValueForDescriptor(
+                  descriptor.kind === "array" ? preserveArrayNull(descriptor) : descriptor,
+                  property.value,
+              );
+    return typeof result === "function" ? result.bind(obj) : result;
 }
 
 /**
@@ -245,10 +280,18 @@ function setProperty<
 function setProperty(obj: object, propertyName: string, descriptor: Descriptor, jsValue: unknown): void;
 function setProperty(obj: object, propertyName: string, descriptorOrValue: unknown, jsValue?: unknown): void {
     if (arguments.length === 3) {
-        const property = writableObjectPropertyFor(obj, propertyName, descriptorOrValue);
+        const binding = constructBindingsFor(obj.constructor as AnyClass)[toCamelIdentifier(propertyName)];
+        const property = writableObjectPropertyFor(obj, propertyName, descriptorOrValue, binding?.[1]);
         gObjectSetProperty(getHandle(obj), property.name, property.value);
+        if (binding?.[1].kind === "callback") retainPropertyCallback(obj, property.name, property.value);
     } else {
-        gObjectSetProperty(getHandle(obj), propertyName, toValue(descriptorOrValue as Descriptor, jsValue));
+        const value = toValueForType(
+            descriptorOrValue as Descriptor,
+            jsValue,
+            propertyValueType(getInstanceType(obj), propertyName),
+        );
+        gObjectSetProperty(getHandle(obj), propertyName, value);
+        if ((descriptorOrValue as Descriptor).kind === "callback") retainPropertyCallback(obj, propertyName, value);
     }
 
     (obj as { [propertyWriteComplete]?: (name: string) => void })[propertyWriteComplete]?.(propertyName);

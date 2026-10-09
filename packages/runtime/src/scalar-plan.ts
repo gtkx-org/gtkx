@@ -313,7 +313,10 @@ const referencePlan = (descriptor: Extract<Descriptor, { kind: "ref" }>): Scalar
         return {
             abi,
             inner,
-            encode: refConversion(inner.encode, inner.abi.kind === "bytes" ? inner.abi.length : undefined),
+            encode: refConversion(
+                inner.abi.kind === "array" && inner.abi.isCallerAllocated === true ? identity : inner.encode,
+                inner.abi.kind === "bytes" ? inner.abi.length : undefined,
+            ),
             decode(value) {
                 if (value == null) {
                     return { value: null };
@@ -492,8 +495,67 @@ const booleanPlan: ScalarPlan = {
     decode: (value) => value !== 0,
 };
 
+const indirectPlan = (descriptor: Extract<Descriptor, { kind: "indirect" }>): ScalarPlan => {
+    const inner = compileDescriptor(descriptor.innerDescriptor);
+    if (compileOutputStorage(inner.abi) === undefined) {
+        throw new TypeError("An indirect descriptor requires a scalar value");
+    }
+    return {
+        abi: {
+            kind: "array",
+            arrayKind: "fixed",
+            fixedSize: 1,
+            itemDescriptor: inner.abi,
+            ownership: descriptor.ownership,
+        },
+        encode: (value) => (value == null ? null : [inner.encode(value)]),
+        decode: (value) => (value == null ? null : inner.decode((value as unknown[])[0])),
+    };
+};
+
+const pointerValuePlan = (descriptor: Extract<Descriptor, { kind: "pointerValue" }>): ScalarPlan => {
+    const inner = compileDescriptor(descriptor.innerDescriptor);
+    const widths: Partial<Record<NativeDescriptor["kind"], number>> = {
+        int8: 8,
+        uint8: 8,
+        int16: 16,
+        uint16: 16,
+        int32: 32,
+        uint32: 32,
+        int64: 64,
+        uint64: 64,
+        bigint64: 64,
+        biguint64: 64,
+    };
+    const bits = widths[inner.abi.kind];
+    if (bits === undefined) throw new TypeError("A pointer value requires an integer descriptor");
+    const signed = inner.abi.kind.startsWith("int") || inner.abi.kind === "bigint64";
+    const bigint = inner.abi.kind === "bigint64" || inner.abi.kind === "biguint64";
+    return {
+        abi: { kind: "buffer" },
+        encode(value) {
+            const encoded = inner.encode(value);
+            if (typeof encoded !== "number" && typeof encoded !== "bigint")
+                throw new TypeError("Expected an integer pointer value");
+            const word = BigInt(encoded);
+            const narrowed = signed ? BigInt.asIntN(bits, word) : BigInt.asUintN(bits, word);
+            if (narrowed !== word) throw new RangeError("Integer pointer value exceeds its declared range");
+            return BigInt.asUintN(64, word);
+        },
+        decode(value) {
+            const word = value == null ? 0n : (value as bigint);
+            const narrowed = signed ? BigInt.asIntN(bits, word) : BigInt.asUintN(bits, word);
+            return inner.decode(bigint ? narrowed : Number(narrowed));
+        },
+    };
+};
+
 const buildPlan = (descriptor: Descriptor): ScalarPlan => {
     switch (descriptor.kind) {
+        case "indirect":
+            return indirectPlan(descriptor);
+        case "pointerValue":
+            return pointerValuePlan(descriptor);
         case "boolean": {
             return booleanPlan;
         }

@@ -66,6 +66,9 @@
     "devDependencies": {
         "@types/ejs": "catalog:",
         "@types/node": "catalog:",
-        "typescript": "catalog:"
+        "typescript": "catalog:",
+        "vitest": "catalog:",
+        "test-console": "^2.0.0",
+        "@types/test-console": "^2.0.3"
     }
 }

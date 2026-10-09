@@ -2,14 +2,17 @@ import { sanitizeTypeIdentifier } from "@gtkx/utils";
 import type { CArrayType, TypeId } from "../../gir/type-id.js";
 import type { GirType } from "../../gir/type.js";
 import type { ModuleContext } from "../../writer/context.js";
+import { inoutHandleIndirection } from "../../analysis/inout-handle.js";
 import { underlyingType } from "../../analysis/type-shape.js";
 import { type GirParameter, isCallerAllocatedOut, isInoutParameter } from "../../gir/parameter.js";
 import { isBoxedRecord } from "../../gir/record.js";
+import { EXTERNAL_CALLER_ALLOCATORS } from "../../gir/external-namespaces.js";
 import { recordInlineSize } from "./record-layout.js";
 import { isConstructibleRecord } from "./value-marshalable.js";
 
 type TypeName = { namespaceName: string; typeName: string };
-type CallerOutAllocation = TypeName & ({ strategy: "construct" } | { strategy: "boxed"; size: number });
+type CallerOutAllocation = TypeName &
+    ({ strategy: "construct" } | { strategy: "boxed"; size: number } | { strategy: "factory"; factory: string });
 
 const isHandlePassedInPlace = (context: ModuleContext, parameter: GirParameter): boolean => {
     if (parameter.direction !== "out" && parameter.direction !== "inout") {
@@ -17,7 +20,7 @@ const isHandlePassedInPlace = (context: ModuleContext, parameter: GirParameter):
     }
 
     return (
-        (parameter.callerAllocates || parameter.direction === "inout") &&
+        (parameter.callerAllocates || inoutHandleIndirection(context.library, parameter) === 1) &&
         parameter.type !== undefined &&
         isHandlePassing(context, parameter.type)
     );
@@ -54,12 +57,12 @@ const recordCallerOutAllocation = (
         return undefined;
     }
 
-    if (isConstructibleRecord(context, type.namespace.name, type.value)) {
-        return { ...name, strategy: "construct" };
+    if (isBoxedRecord(type.value) && type.namespace.sharedLibrary !== undefined) {
+        return { ...name, strategy: "boxed", size };
     }
 
-    return isBoxedRecord(type.value) && type.namespace.sharedLibrary !== undefined
-        ? { ...name, strategy: "boxed", size }
+    return isConstructibleRecord(context, type.namespace.name, type.value)
+        ? { ...name, strategy: "construct" }
         : undefined;
 };
 
@@ -69,6 +72,12 @@ const callerOutAllocation = (context: ModuleContext, parameter: GirParameter): C
 
     if (name === undefined || type === undefined) {
         return undefined;
+    }
+
+    const factory = EXTERNAL_CALLER_ALLOCATORS.get(`${name.namespaceName}.${name.typeName}`);
+
+    if (factory !== undefined) {
+        return { ...name, strategy: "factory", factory };
     }
 
     if (type.kind === "class") {
@@ -86,6 +95,10 @@ const renderCallerOutInstance = (context: ModuleContext, parameter: GirParameter
     }
 
     const classExpression = context.qualify(allocation.namespaceName, sanitizeTypeIdentifier(allocation.typeName));
+
+    if (allocation.strategy === "factory") {
+        return `${classExpression}.${allocation.factory}()`;
+    }
 
     if (allocation.strategy === "construct") {
         return `new ${classExpression}()`;
@@ -141,6 +154,21 @@ const hasInlineElementStride = (context: ModuleContext, array: CArrayType): bool
     }
 };
 
+const isGArrayCallerOut = (context: ModuleContext, parameter: GirParameter): boolean => {
+    const type = underlyingType(context.library, parameter.type);
+    return isCallerAllocatedOut(parameter) && type?.kind === "list" && type.flavor === "garray";
+};
+
+const isSizedArrayCallerOut = (context: ModuleContext, parameter: GirParameter): boolean => {
+    const type = underlyingType(context.library, parameter.type);
+    return (
+        isCallerAllocatedOut(parameter) &&
+        type?.kind === "carray" &&
+        type.lengthParameterIndex !== undefined &&
+        hasInlineElementStride(context, type)
+    );
+};
+
 const isFixedArrayCallerOut = (context: ModuleContext, parameter: GirParameter): boolean => {
     if (!isCallerAllocatedOut(parameter)) {
         return false;
@@ -161,7 +189,9 @@ const isAllocatableCallerOut = (context: ModuleContext, parameter: GirParameter)
     underlyingParamKind(context, parameter) === "record" && isCollectibleCallerOut(context, parameter);
 
 const isRecordInout = (context: ModuleContext, parameter: GirParameter): boolean =>
-    isInoutParameter(parameter) && underlyingParamKind(context, parameter) === "record";
+    isInoutParameter(parameter) &&
+    underlyingParamKind(context, parameter) === "record" &&
+    inoutHandleIndirection(context.library, parameter) === 1;
 
 const isHandlePassing = (context: ModuleContext, ref: TypeId): boolean => {
     const type = context.library.typeFor(ref);
@@ -209,6 +239,8 @@ export {
     isHandlePassedInPlace,
     isCollectibleCallerOut,
     isFixedArrayCallerOut,
+    isSizedArrayCallerOut,
+    isGArrayCallerOut,
     isRecordInout,
     isHandlePassing,
     renderCallerOutInstance,

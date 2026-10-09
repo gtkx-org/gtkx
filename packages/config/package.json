@@ -67,5 +67,8 @@
         "jiti": "^2.7.0",
         "vite": "catalog:",
         "zod": "catalog:"
+    },
+    "devDependencies": {
+        "vitest": "catalog:"
     }
 }

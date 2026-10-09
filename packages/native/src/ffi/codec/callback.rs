@@ -43,6 +43,8 @@ pub struct CallbackCodec {
     pub destroy_kind: DestroyNotifyKind,
     pub has_user_data: bool,
     pub user_data_index: Option<usize>,
+    pub user_data_arg_index: Option<usize>,
+    pub destroy_arg_index: Option<usize>,
     pub can_throw: bool,
     pub scope: CallbackScope,
     pub(crate) release_policy: CallbackReleasePolicy,
@@ -71,8 +73,6 @@ pub(crate) fn validate_callback_outputs(
 }
 
 impl Encoder for CallbackCodec {
-    reject_return_codec!("Callback");
-
     fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {
         types.push(libffi::Type::pointer());
         if self.has_user_data {
@@ -84,10 +84,29 @@ impl Encoder for CallbackCodec {
     }
 
     fn encode(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        self.encode_with_reference(env, value, false)
+    }
+}
+
+impl CallbackCodec {
+    pub(crate) fn encode_weak(&self, env: Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
+        self.encode_with_reference(&env, value, true)
+    }
+
+    fn encode_with_reference(
+        &self,
+        env: &Env,
+        value: Unknown<'_>,
+        weak: bool,
+    ) -> anyhow::Result<ffi::Stash> {
         let js_fn = match value.get_type()? {
             ValueType::Function => {
                 validate_callback_outputs(&self.arg_codecs, &self.return_codec)?;
-                ClosureHandle::from_js_value(env, &value)?
+                if weak {
+                    ClosureHandle::weak_from_js_value(env, &value)?
+                } else {
+                    ClosureHandle::from_js_value(env, &value)?
+                }
             }
             ValueType::Null | ValueType::Undefined => {
                 return Ok(self.null_callback_value());
@@ -142,7 +161,39 @@ impl Encoder for CallbackCodec {
     }
 }
 
-impl Decoder for CallbackCodec {}
+impl Decoder for CallbackCodec {
+    fn decode_call<'e>(&self, env: &'e Env, stash: &ffi::Stash) -> anyhow::Result<Unknown<'e>> {
+        unsafe {
+            self.read_value(
+                env,
+                stash.as_ptr("callback pointer")?,
+                "callback pointer",
+                Ownership::Borrowed,
+            )
+        }
+    }
+
+    unsafe fn read_value<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+        _context: &str,
+        _transfer: Ownership,
+    ) -> anyhow::Result<Unknown<'e>> {
+        if ptr.is_null() {
+            return Ok(value::js_null(env)?);
+        }
+        anyhow::ensure!(
+            !self.has_user_data && !self.has_destroy,
+            "A bare callback pointer cannot carry closure data"
+        );
+        Ok(ffi::closure::DecodedCallback {
+            function: External::new(crate::handle::Handle::function(ptr, None, false, false)),
+            user_data: Either::B(Null),
+        }
+        .into_unknown(env)?)
+    }
+}
 
 impl PtrWriter for CallbackCodec {}
 

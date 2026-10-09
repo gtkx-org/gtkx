@@ -53,6 +53,10 @@ type T = {
     fundamental: typeof helpers.fundamentalT;
     /** Wraps a descriptor in a pointer to it, for an output or inout argument. */
     ref: typeof helpers.refT;
+    /** Describes a pointer to a single scalar value. */
+    indirect: typeof helpers.indirectT;
+    /** Describes an integer carried in a pointer word. */
+    pointerValue: typeof helpers.pointerValueT;
     /** Builds a descriptor for a `GHashTable`, marshalled as an array of key/value pairs. */
     hashTable: typeof helpers.hashTableT;
     /** Builds a descriptor for an enumeration, resolving its GType from the named `get_type` function. */
@@ -113,6 +117,8 @@ const t: T = {
     struct: helpers.structT,
     fundamental: helpers.fundamentalT,
     ref: helpers.refT,
+    indirect: helpers.indirectT,
+    pointerValue: helpers.pointerValueT,
     hashTable: helpers.hashTableT,
     enum: helpers.enumT,
     flags: helpers.flagsT,

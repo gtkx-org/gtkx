@@ -23,9 +23,17 @@ impl std::fmt::Debug for ClosureHandle {
 
 impl ClosureHandle {
     pub fn from_js_value<'a, V: JsValue<'a>>(env: &Env, value: &V) -> Result<Self> {
+        Self::with_strength(env, value, 1)
+    }
+
+    pub fn weak_from_js_value<'a, V: JsValue<'a>>(env: &Env, value: &V) -> Result<Self> {
+        Self::with_strength(env, value, 0)
+    }
+
+    fn with_strength<'a, V: JsValue<'a>>(env: &Env, value: &V, count: u32) -> Result<Self> {
         let mut raw_ref = std::ptr::null_mut();
         let status =
-            unsafe { sys::napi_create_reference(env.raw(), value.raw(), 1, &raw mut raw_ref) };
+            unsafe { sys::napi_create_reference(env.raw(), value.raw(), count, &raw mut raw_ref) };
         check_status!(status, "Failed to create reference")?;
         Ok(Self(JsRef {
             raw: raw_ref,
@@ -38,6 +46,9 @@ impl ClosureHandle {
         let status =
             unsafe { sys::napi_get_reference_value(env.raw(), self.0.raw, &raw mut raw_value) };
         check_status!(status, "Failed to get reference value")?;
+        if raw_value.is_null() {
+            return Err(Error::from_reason("The callback owner has been collected"));
+        }
         unsafe { T::from_napi_value(env.raw(), raw_value) }
     }
 }

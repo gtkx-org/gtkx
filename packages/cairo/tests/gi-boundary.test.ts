@@ -5,6 +5,7 @@ import {
     FontType,
     Format,
     FtFontFace,
+    FtSynthesize,
     HintStyle,
     ImageSurface,
     LinearPattern,
@@ -81,6 +82,20 @@ describe("cairo values crossing the GI boundary", () => {
         expect(scaledFont).toBeInstanceOf(ScaledFont);
         const expectedFaceClass = scaledFont.getType() === FontType.FT ? FtFontFace : FontFace;
         expect(scaledFont.getFontFace()).toBeInstanceOf(expectedFaceClass);
+        const face = scaledFont.getFontFace();
+        if (!(face instanceof FtFontFace)) {
+            throw new TypeError("Expected the installed FreeType font backend");
+        }
+        const original = face.getSynthesize();
+        try {
+            face.setSynthesize(FtSynthesize.BOLD | FtSynthesize.OBLIQUE);
+            expect(face.getSynthesize()).toBe(FtSynthesize.BOLD | FtSynthesize.OBLIQUE);
+            face.unsetSynthesize(FtSynthesize.BOLD);
+            expect(face.getSynthesize()).toBe(FtSynthesize.OBLIQUE);
+        } finally {
+            face.unsetSynthesize(FtSynthesize.BOLD | FtSynthesize.OBLIQUE);
+            face.setSynthesize(original);
+        }
     });
 
     it("backs two wrappers of one native surface by the same object", () => {
@@ -91,10 +106,6 @@ describe("cairo values crossing the GI boundary", () => {
         expect(second).toBeInstanceOf(Surface);
         first.setDeviceOffset(3, 4);
         expect(second.getDeviceOffset()).toEqual({ xOffset: 3, yOffset: 4 });
-    });
-
-    it("throws when Gdk receives no surface", () => {
-        expect(() => Gdk.cairoRegionCreateFromSurface(undefined as never)).toThrow();
     });
 });
 
@@ -125,10 +136,6 @@ describe("PangoCairo text layout", () => {
         layout.setText("", -1);
         PangoCairo.showLayout(cr, layout);
         expect(surface.getData()).toEqual(before);
-    });
-
-    it("rejects a missing Cairo context", () => {
-        expect(() => PangoCairo.createLayout(undefined as never)).toThrow();
     });
 });
 

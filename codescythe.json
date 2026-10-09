@@ -18,6 +18,7 @@
         "packages/runtime/src/index.ts",
         "packages/storybook/src/index.ts",
         "packages/testing/src/index.ts",
+        "packages/utils/src/index.ts",
         "packages/vitest/src/index.ts",
         "packages/cli/src/{cli,vitest-plugin}.ts",
         "packages/config/src/vite-plugin.ts",
@@ -33,7 +34,6 @@
         "scripts/cache-environment.ts",
         "scripts/codescythe.ts",
         "scripts/gtkx.bootstrap.ts",
-        "scripts/local-registry.ts",
         "packages/e2e/tests/helpers/native-fixtures.ts",
         "packages/e2e/tests/helpers/native-fixtures-compile.ts",
         "scripts/prepare-release.ts",
@@ -41,7 +41,6 @@
         "scripts/release-package.ts",
         "scripts/release.ts",
         "scripts/tsx.ts",
-        "scripts/tutorial-checkpoints.ts",
         "scripts/verify-release-channel.ts",
         "packages/gl/scripts/codegen.ts",
         "examples/*/src/{app,index}.{ts,tsx}",
@@ -55,15 +54,15 @@
         "packages/utils/src/process/process-guard.ts",
         "packages/vitest/src/worker-preload.ts",
         "packages/**/tests/**/fixtures/*.{ts,tsx}",
-        "**/tests/setup.ts",
+        "**/tests/**/setup.ts",
         "examples/**/*.test.{ts,tsx}",
         "packages/e2e/elements.ts",
         "packages/native/main.js",
         "packages/vitest/src/headless.ts",
-        "**/vitest.*.config.ts",
-        "packages/e2e/tests/helpers/registry-setup.ts",
         "packages/native/tools/asan-loader.ts",
-        "scripts/link-bindings.ts"
+        "scripts/link-bindings.ts",
+        "packages/e2e/tests/helpers/native-fixtures-coverage.ts",
+        "packages/e2e/tests/native/leak-probe.ts"
     ],
     "project": [
         "packages/**/*.{ts,tsx,mts,cts,js,mjs,cjs}",
@@ -73,14 +72,7 @@
         "gtkx.config.ts",
         "vitest.config*.ts"
     ],
-    "ignore": [
-        "packages/e2e/tests/cli/fixtures/configured-props/**",
-        "packages/e2e/tests/cli/fixtures/react-compiler/*.d.mts",
-        "packages/native/index.{js,d.ts}",
-        "packages/**/*.d.ts",
-        "examples/**/*.d.ts",
-        "packages/*/bin/**"
-    ],
+    "ignore": ["packages/native/index.{js,d.ts}", "packages/**/*.d.ts", "examples/**/*.d.ts", "packages/*/bin/**"],
     "testFilePatterns": [],
     "aliases": {
         "@gtkx/native": ["./packages/native/main.js"],

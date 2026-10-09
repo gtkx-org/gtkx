@@ -6,8 +6,7 @@ import { rootElement, useApplication, useParentWindow } from "@gtkx/react";
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
-import { StoryCatalog } from "../src/catalog.js";
-import { Storybook } from "../src/explorer-view.js";
+import { StoryCatalog, Storybook } from "@gtkx/storybook/explorer";
 import * as counterStories from "./fixtures/counter.stories.js";
 
 const loadCounter = async (): Promise<StoryCatalog> => {

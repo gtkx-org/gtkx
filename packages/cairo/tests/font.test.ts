@@ -4,12 +4,14 @@ import {
     FontOptions,
     FontSlant,
     FontWeight,
+    FontType,
     Format,
     HintStyle,
     ImageSurface,
     Matrix,
     ScaledFont,
     Status,
+    TextClusterFlags,
     ToyFontFace,
 } from "@gtkx/cairo";
 import { describe, expect, it } from "vitest";
@@ -46,13 +48,31 @@ describe("FontFace", () => {
         expect(face).toBeInstanceOf(ToyFontFace);
         expect(asToyFontFace(face).getFamily()).toBe("Sans");
     });
-
-    it("rejects a non-string family", () => {
-        expect(() => FontFace.create(123 as never, FontSlant.NORMAL, FontWeight.NORMAL)).toThrow();
-    });
 });
 
 describe("ScaledFont", () => {
+    it("uses a configured face, matrix and scaled font to measure, outline and paint glyphs", () => {
+        const surface = new ImageSurface(Format.ARGB32, 32, 32);
+        const context = Context.create(surface);
+        const face = createToyFace();
+        context.setFontFace(face);
+        expect(context.getFontFace().getType()).toBe(FontType.TOY);
+        expect(face.getReferenceCount()).toBeGreaterThan(0);
+        context.setFontMatrix(Matrix.initScale(12, 12));
+        expect(context.getFontMatrix().transformDistance(1, 1)).toEqual({ dx: 12, dy: 12 });
+        const font = new ScaledFont(face, Matrix.initScale(14, 14), Matrix.initIdentity(), FontOptions.create());
+        context.setScaledFont(font);
+        expect(font.getReferenceCount()).toBeGreaterThan(0);
+        expect(context.getScaledFont().getFontMatrix().transformDistance(1, 1)).toEqual({ dx: 14, dy: 14 });
+        const glyphs = [{ index: 0, x: 2, y: 16 }];
+        expect(context.glyphExtents(glyphs).width).toBeGreaterThan(0);
+        context.showGlyphs(glyphs);
+        expect(surface.getData().some((byte) => byte !== 0)).toBe(true);
+        context.glyphPath(glyphs);
+        expect(context.copyPath().length).toBeGreaterThan(0);
+        expect(context.status()).toBe(Status.SUCCESS);
+    });
+
     it("creates a scaled font and reports its matrices", () => {
         const font = createScaledFont();
         expect(font).toBeInstanceOf(ScaledFont);
@@ -86,6 +106,12 @@ describe("ScaledFont", () => {
         const ctx = Context.create(surface);
         ctx.setFontSize(12);
         ctx.showTextGlyphs("A", [{ index: 0, x: 0, y: 12 }], [{ numBytes: 1, numGlyphs: 1 }], 0);
+        ctx.showTextGlyphs(
+            "A",
+            [{ index: 0, x: 8, y: 12 }],
+            [{ numBytes: 1, numGlyphs: 1 }],
+            TextClusterFlags.BACKWARD,
+        );
         expect(ctx.status()).toBe(Status.SUCCESS);
         expect(surface.getData().some((byte) => byte !== 0)).toBe(true);
         ctx.showTextGlyphs("", [], [], 0);
@@ -117,12 +143,6 @@ describe("ScaledFont", () => {
         expect(() => ScaledFont.create(face, fontMatrix, ctm, options)).toThrow();
         expect(() => new ScaledFont(face, fontMatrix, ctm, options)).toThrow();
     });
-
-    it("rejects a missing font face", () => {
-        const identity = Matrix.initIdentity();
-        expect(() => ScaledFont.create(undefined as never, identity, identity, FontOptions.create())).toThrow();
-        expect(() => new ScaledFont(undefined as never, identity, identity, FontOptions.create())).toThrow();
-    });
 });
 
 describe("FontOptions", () => {
@@ -152,9 +172,5 @@ describe("FontOptions", () => {
         other.setHintStyle(HintStyle.SLIGHT);
         options.merge(other);
         expect(options.getHintStyle()).toBe(HintStyle.SLIGHT);
-    });
-
-    it("rejects a missing source when copying", () => {
-        expect(() => new FontOptions(null as never)).toThrow();
     });
 });

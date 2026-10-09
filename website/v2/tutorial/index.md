@@ -68,33 +68,7 @@ Examples name the file to edit. A complete-file example replaces that file. A `d
 
 After the **Run it** checks pass, save a commit in your project so you can review the next chapter's changes with `git diff` or return to a working state. Keep the lockfile with that commit.
 
-## Use the repository build
-
-Complete the [contributor setup](/contributing/), then build and publish the workspace packages to a local registry from the GTKX checkout:
-
-```bash
-pnpm local-registry
-```
-
-Keep that terminal running. In a second terminal, from the GTKX checkout, generate the first chapter and install its dependencies:
-
-```bash
-pnpm tutorial:checkpoints --chapter your-first-window --output /tmp/gtkx-tasks
-cd /tmp/gtkx-tasks
-NPM_CONFIG_REGISTRY=http://127.0.0.1:4873 NPM_CONFIG_CACHE="$(mktemp -d)" npm install
-npm run typecheck
-npm run dev
-```
-
-The checkpoint command reconstructs the first chapter from its examples; `npm install` then installs current packages from the local registry. Start with that project to follow the complete tutorial. Keep the registry running and use its address for dependency installs in later chapters. The first chapter explains its application shell.
-
-## Chapter checkpoints
-
-The [checkpoint generator](https://github.com/gtkx-org/gtkx/tree/main/tutorial/checkpoints) reconstructs every chapter from the named code fences. Select the chapter slug with `--chapter` and a new directory with `--output`. For current v2 code, install dependencies from the local registry as shown above.
-
-The generator writes the selected chapter and all preceding edits into a new project. Run that project's typecheck and build commands and follow the chapter's **Run it** checks to inspect its behavior. Run `npm test` from Add Tasks onward, once the tutorial introduces the test suite. The [finished source](https://github.com/gtkx-org/gtkx/tree/main/tutorial) is a separate reference for the complete app.
-
-To validate the finished app and every v2 checkpoint together, stop the manual registry and run `pnpm nx run @gtkx/e2e:e2e -- tests/tutorial.test.ts` from the GTKX checkout. This Vitest suite manages its own registry and temporary applications.
+The [finished source](https://github.com/gtkx-org/gtkx/tree/main/tutorial) is a reference for the complete app. It includes later features, so copy only the change a chapter describes when following along.
 
 ## Next
 

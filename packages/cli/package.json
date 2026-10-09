@@ -91,13 +91,17 @@
     },
     "devDependencies": {
         "@gtkx/react": "workspace:*",
+        "@gtkx/storybook": "workspace:*",
         "@gtkx/testing": "workspace:*",
         "@types/babel__core": "^7.20.5",
         "@types/gettext-parser": "^9.0.0",
         "@types/hosted-git-info": "^3.0.5",
         "@types/semver": "^7.8.0",
         "@types/spdx-expression-parse": "^4.0.0",
-        "vitest": "catalog:"
+        "vitest": "catalog:",
+        "test-console": "^2.0.0",
+        "@types/test-console": "^2.0.3",
+        "@modelcontextprotocol/sdk": "^1.32.1"
     },
     "peerDependencies": {
         "@gtkx/react": "workspace:*",

@@ -14,20 +14,19 @@ const printError = (cause: unknown): never => {
     process.exit(ERROR_EXIT_CODE);
 };
 
-const withErrorBoundary = <T extends ArgsDef>(command: CommandDef<T>): CommandDef<T> => {
+const withErrorBoundary = <T extends ArgsDef>(
+    command: CommandDef<T>,
+    onError?: (cause: unknown) => never,
+): CommandDef<T> => {
     const run = command.run;
-
-    if (run === undefined) {
-        return command;
-    }
-
+    if (run === undefined || onError === undefined) return command;
     return {
         ...command,
         run: async (context): Promise<unknown> => {
             try {
                 return await run(context);
             } catch (error) {
-                return printError(error);
+                return onError(error);
             }
         },
     };

@@ -1,5 +1,6 @@
 import type { ExternalObject, Handle } from "@gtkx/native";
 import { type AnyClass, camelCase, kebabCase, toCamelIdentifier } from "@gtkx/utils";
+import type { Descriptor } from "./descriptor-types.js";
 import type { ElementPropertyEntry } from "./element-metadata.js";
 import { bind } from "./bind.js";
 import { biguint64T, fundamentalT, refT, sizedArrayT, stringT, structT, uint32T, voidT } from "./descriptors.js";
@@ -25,10 +26,20 @@ import {
     instanceClassName,
     type InterfaceProperty,
 } from "./registry.js";
-import { TYPE_INTERFACE, TYPE_INVALID, TYPE_OBJECT, typeFundamental, typeIsA, typeName } from "./type.js";
+import {
+    TYPE_GTYPE,
+    TYPE_INTERFACE,
+    TYPE_INVALID,
+    TYPE_OBJECT,
+    TYPE_POINTER,
+    typeFundamental,
+    typeIsA,
+    typeName,
+} from "./type.js";
 import {
     fromValue,
     newValueForType,
+    toValueForType,
     valueGuardOverrideFor,
     type ValueNarrower,
     valueNarrowerFor,
@@ -388,6 +399,12 @@ function propertyCheckFor(gtype: bigint, name: string): PropertyCheck | null {
     return checks.getOrInsertComputed(name, () => lookupPropertyCheck(gtype, name));
 }
 
+function propertyValueType(gtype: bigint, name: string): bigint {
+    const check = propertyCheckFor(gtype, name);
+    if (check === null) throw new TypeError(`No GObject property named '${name}'`);
+    return check.valueType;
+}
+
 function objectPropertyCheckFor(instance: object, name: string): PropertyCheck {
     const gtype = getInstanceType(instance);
     const check = typeIsA(gtype, TYPE_OBJECT) ? propertyCheckFor(gtype, name) : null;
@@ -406,11 +423,25 @@ function readableObjectPropertyFor(instance: object, name: string): ConstructPro
     return { name: check.propertyName, value: newValueForType(check.valueType) };
 }
 
-function writableObjectPropertyFor(instance: object, name: string, value: unknown): ConstructProperty {
+function writableObjectPropertyFor(
+    instance: object,
+    name: string,
+    value: unknown,
+    descriptor?: Descriptor,
+): ConstructProperty {
     const check = objectPropertyCheckFor(instance, name);
     assertMutable(instance, check, value);
-
-    return { name: check.propertyName, value: checkedValueFor(instance, check, value) };
+    const requiresDescriptor =
+        descriptor !== undefined &&
+        (descriptor.kind === "array" ||
+            descriptor.kind === "hashtable" ||
+            (typeFundamental(check.valueType) === TYPE_POINTER && check.valueType !== TYPE_GTYPE));
+    if (!requiresDescriptor) {
+        return { name: check.propertyName, value: checkedValueFor(instance, check, value) };
+    }
+    const gValue = toValueForType(descriptor, check.narrowValue(value), check.valueType);
+    assertValueValidates(instance, check, value, gValue);
+    return { name: check.propertyName, value: gValue };
 }
 
 function truncateToWhole(check: PropertyCheck, value: number): number {
@@ -905,6 +936,7 @@ export {
     makeSetProperty,
     newParamSpecOverride,
     readableObjectPropertyFor,
+    propertyValueType,
     SET_PROPERTY_VFUNC,
     installClassProperties,
     installPropertyDispatch,

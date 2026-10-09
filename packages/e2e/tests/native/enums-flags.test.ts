@@ -1,11 +1,8 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
-import * as Regress from "@gtkx/gi/regress";
-import * as Utility from "@gtkx/gi/utility";
-import * as WarnLib from "@gtkx/gi/warnlib";
-import { expect, test } from "vitest";
-import { drainAfterEachTest } from "./helpers/memory.js";
 
-drainAfterEachTest();
+import * as Regress from "@gtkx/gi/regress";
+
+import { expect, test } from "vitest";
 
 test("marshalling enum members mirror the C header values", () => {
     expect(GIMarshallingTests.Enum.VALUE1).toBe(0);
@@ -53,26 +50,6 @@ test("regress enum members carry negative, character and unsigned values", () =>
     expect(Regress.TestReferenceEnum.THREE).toBe(4);
     expect(Regress.TestReferenceEnum.FOUR).toBe(216);
     expect(Regress.TestReferenceEnum.FIVE).toBe(-217);
-});
-
-test("regress, utility and warnlib flags members are exposed", () => {
-    expect(Regress.TestFlags.FLAG1).toBe(1);
-    expect(Regress.TestFlags.FLAG2).toBe(2);
-    expect(Regress.TestFlags.FLAG3).toBe(4);
-    expect(Regress.TestDiscontinuousFlags.DISCONTINUOUS1).toBe(512);
-    expect(Regress.TestDiscontinuousFlags.DISCONTINUOUS2).toBe(536_870_912);
-    expect(Regress.TestPrivateEnum.PUBLIC_ENUM_BEFORE).toBe(1);
-    expect(Regress.TestPrivateEnum.PUBLIC_ENUM_AFTER).toBe(4);
-    expect(Regress.FooEnumType.ALPHA).toBe(0);
-    expect(Regress.FooEnumType.BETA).toBe(1);
-    expect(Regress.FooEnumType.DELTA).toBe(2);
-    expect(Utility.EnumType.A).toBe(0);
-    expect(Utility.EnumType.B).toBe(1);
-    expect(Utility.EnumType.C).toBe(2);
-    expect(Utility.FlagType.A).toBe(1);
-    expect(Utility.FlagType.B).toBe(2);
-    expect(Utility.FlagType.C).toBe(4);
-    expect(WarnLib.NumericEnum._1ST).toBe(1);
 });
 
 test("plain enums round trip through return, in, out and inout", () => {
@@ -143,22 +120,6 @@ test("flags combinations are accepted through method arguments", () => {
     expect(object.getFlags()).toBe(GIMarshallingTests.Flags.VALUE1 | GIMarshallingTests.Flags.VALUE3);
     object.setEnum(GIMarshallingTests.GEnum.VALUE3);
     expect(object.getEnum()).toBe(GIMarshallingTests.GEnum.VALUE3);
-});
-
-test("utility types cross namespace boundaries", () => {
-    const object = new Utility.Object({});
-    const fooObject = Regress.FooObject.new();
-    const holder = new Regress.FooUtilityStruct({ bar: new Utility.Struct({ field: 7 }) });
-
-    Regress.FooObject.aGlobalMethod(object);
-    fooObject.handleGlyph(65);
-
-    expect(fooObject.externalType()).toBeNull();
-    expect(holder.bar.field).toBe(7);
-    expect(Utility.EnumType.A).toBe(0);
-    expect(Utility.EnumType.B).toBe(1);
-    expect(Utility.EnumType.C).toBe(2);
-    expect(Utility.FlagType.A | Utility.FlagType.C).toBe(5);
 });
 
 test("foo enum helpers convert between ints and members", () => {

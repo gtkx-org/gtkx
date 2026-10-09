@@ -12,6 +12,8 @@ type DevWatch = {
 };
 
 type SupervisorState = {
+    finish: (code: number) => void;
+    fail: (error: Error) => void;
     runnerPath: string;
     entryPath: string;
     configFile: string;
@@ -30,6 +32,7 @@ type SupervisorState = {
 };
 
 type DevSupervisorOptions = {
+    signal?: AbortSignal;
     entryPath: string;
     configFile: string;
     storybookConfig?: string | undefined;
@@ -75,7 +78,8 @@ const handleChildExit = (state: SupervisorState, code: number | null, signal: No
         return;
     }
 
-    process.exit(code ?? exitCodeForSignal(signal));
+    closeWatchers(state);
+    state.finish(code ?? exitCodeForSignal(signal));
 };
 
 const launch = (state: SupervisorState): void => {
@@ -92,6 +96,7 @@ const launch = (state: SupervisorState): void => {
     );
 
     state.child = child;
+    child.once("error", state.fail);
 
     child.on("exit", (code, signal) => {
         handleChildExit(state, code, signal);
@@ -371,8 +376,8 @@ const shutdownOnSignal = (state: SupervisorState, signal: NodeJS.Signals): Promi
         state.child.kill(signal);
     });
 
-const installShutdown = (state: SupervisorState): void => {
-    installGracefulShutdown({
+const installShutdown = (state: SupervisorState): (() => void) => {
+    return installGracefulShutdown({
         onSignal: (signal) => shutdownOnSignal(state, signal),
         onForce: () => state.child?.kill("SIGKILL"),
         forceKillAfterMs: FORCE_KILL_TIMEOUT_MS,
@@ -380,10 +385,13 @@ const installShutdown = (state: SupervisorState): void => {
     });
 };
 
-const runDevSupervisor = async (options: DevSupervisorOptions): Promise<never> => {
+const runDevSupervisor = async (options: DevSupervisorOptions): Promise<number> => {
+    const completion = Promise.withResolvers<number>();
     const { entryPath, configFile, storybookConfig, cwd, args = [], watch } = options;
 
     const state: SupervisorState = {
+        finish: completion.resolve,
+        fail: completion.reject,
         runnerPath: fileURLToPath(DEV_RUNNER_URL),
         entryPath,
         configFile,
@@ -401,11 +409,34 @@ const runDevSupervisor = async (options: DevSupervisorOptions): Promise<never> =
         capturedChildExit: undefined,
     };
 
+    const stop = (): void => {
+        const timer = setTimeout(() => state.child?.kill("SIGKILL"), FORCE_KILL_TIMEOUT_MS);
+        void shutdownOnSignal(state, "SIGTERM").then(
+            () => {
+                clearTimeout(timer);
+                completion.resolve(state.capturedChildExit ?? 0);
+            },
+            (error: unknown) => {
+                clearTimeout(timer);
+                completion.reject(error);
+            },
+        );
+    };
+    options.signal?.throwIfAborted();
     installConfigWatchers(state);
-    installShutdown(state);
-    launch(state);
-
-    return new Promise<never>((): void => undefined);
+    const disposeShutdown = options.signal === undefined ? installShutdown(state) : undefined;
+    options.signal?.addEventListener("abort", stop, { once: true });
+    try {
+        launch(state);
+        const code = await completion.promise;
+        if (options.signal === undefined) process.exitCode = code;
+        return code;
+    } finally {
+        options.signal?.removeEventListener("abort", stop);
+        disposeShutdown?.();
+        closeWatchers(state);
+        if (state.restartTimer.handle !== null) clearTimeout(state.restartTimer.handle);
+    }
 };
 
 export { RESTART_EXIT_CODE, runDevSupervisor, type DevWatch };

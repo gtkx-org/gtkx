@@ -65,7 +65,6 @@ const tVoid: string = descriptorName("void");
 const tBoolean: string = descriptorName("boolean");
 const tUint8: string = descriptorName("uint8");
 const tUint64: string = descriptorName("uint64");
-const tBiguint64: string = descriptorName("biguint64");
 const tGtype: string = descriptorName("gtype");
 const tBuffer: string = descriptorName("buffer");
 
@@ -127,6 +126,7 @@ const tStruct = (ownership: Ownership, options: StructOptions): string =>
             optionalTrueEntry("isValueSafe", options.isValueSafe),
             optionalLiteralEntry("sharedLibrary", options.sharedLibrary),
             optionalLiteralEntry("copyFnName", options.copyFnName),
+            optionalLiteralEntry("copyStrategy", options.copyStrategy),
             optionalLiteralEntry("freeFnName", options.freeFnName),
         ]),
     ]);
@@ -149,6 +149,10 @@ const tFundamental = (lib: string, refFunc: string, unrefFunc: string, options: 
             optionalTrueEntry("isValueSafe", options.isValueSafe),
         ]),
     ]);
+
+const tIndirect = (inner: string, ownership: Ownership): string =>
+    call("indirect", [inner, sourceStringLiteral(ownership)]);
+const tPointerValue = (inner: string): string => call("pointerValue", [inner]);
 
 const tRef = (inner: string, isInout = false): string => call("ref", [inner, isInout ? "true" : undefined]);
 
@@ -261,7 +265,6 @@ export {
     tBoolean,
     tUint8,
     tUint64,
-    tBiguint64,
     tGtype,
     tBuffer,
     tScalar,
@@ -272,6 +275,8 @@ export {
     tInlineStruct,
     tFundamental,
     tRef,
+    tIndirect,
+    tPointerValue,
     tHashTable,
     tEnum,
     tFlags,

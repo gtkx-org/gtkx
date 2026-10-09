@@ -1,1 +1,1 @@
-export { armParentDeath } from "./index.js";
+export { armParentDeath, encodePointer, retainPropertyPointer } from "./index.js";

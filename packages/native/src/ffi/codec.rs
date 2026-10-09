@@ -181,6 +181,11 @@ impl SlotInit {
 pub trait Encoder {
     fn encode(&self, _env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
         let ptr = self.checked_handle_ptr(value, self.object_ptr_context(), |_| Ok(()))?;
+        if let Some((_, size)) = self.value_layout() {
+            anyhow::ensure!(!ptr.is_null(), "A record passed by value cannot be null");
+            value::handle_ptr_checked(value, "Record value", |handle| handle.check_range(0, size))?;
+            return Ok(ffi::Stash::Inline(ptr));
+        }
         if ptr.is_null() {
             return Ok(ffi::Stash::Ptr(ptr));
         }
@@ -231,8 +236,15 @@ pub trait Encoder {
         self.owned_release()
     }
 
+    fn value_layout(&self) -> Option<(&[Codec], usize)> {
+        None
+    }
+
     fn libffi_type(&self) -> libffi::Type {
-        libffi::Type::pointer()
+        self.value_layout()
+            .map_or_else(libffi::Type::pointer, |(fields, _)| {
+                libffi::Type::structure(fields.iter().map(Encoder::libffi_type))
+            })
     }
 
     fn append_ffi_arg_types(&self, types: &mut Vec<libffi::Type>) {

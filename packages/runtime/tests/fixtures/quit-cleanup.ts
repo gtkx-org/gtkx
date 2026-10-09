@@ -1,4 +1,4 @@
-import { keepAlive } from "@gtkx/native";
+import { keepAlive } from "@gtkx/runtime/internal";
 import { onExit, quit } from "@gtkx/runtime";
 import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";

@@ -643,9 +643,11 @@ impl Handle {
                     .upgrade()
                     .is_some_and(|wrapper| wrapper.is_reachable())
                 {
-                    use glib::translate::FromGlibPtrNone as _;
+                    use glib::translate::FromGlibPtrFull as _;
                     return Ok(Some(unsafe {
-                        glib::Object::from_glib_none(ptr.get().cast::<glib::gobject_ffi::GObject>())
+                        glib::Object::from_glib_full(glib::gobject_ffi::g_object_ref(
+                            ptr.get().cast::<glib::gobject_ffi::GObject>(),
+                        ))
                     }));
                 }
                 anyhow::bail!("{INVALIDATED_HANDLE}")
