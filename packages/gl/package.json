@@ -41,8 +41,8 @@
         "src"
     ],
     "scripts": {
-        "codegen": "node --import ../../scripts/tsx.ts ./scripts/codegen.ts",
-        "release": "node ../../scripts/release-package.ts"
+        "codegen": "node --import ../../scripts/register-workspace-loader.ts ./scripts/codegen.ts",
+        "release": "node ../../scripts/release/publish-package.ts"
     },
     "engines": {
         "node": ">=26.7.0"

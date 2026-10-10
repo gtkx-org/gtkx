@@ -24,16 +24,11 @@ test("native release builds restore only checksum-verified staged artifacts", ()
     }
 
     const build = (...args: string[]) =>
-        spawnSync(
-            process.execPath,
-            [
-                "--import",
-                import.meta.resolve("tsx/esm"),
-                fileURLToPath(new URL("../packages/native/tools/build.ts", import.meta.url)),
-                ...args,
-            ],
-            { cwd: directory.path, encoding: "utf8", timeout: 10_000 },
-        );
+        spawnSync(process.execPath, [fileURLToPath(new URL("./build.ts", import.meta.url)), ...args], {
+            cwd: directory.path,
+            encoding: "utf8",
+            timeout: 10_000,
+        });
 
     const restored = build("--from-artifacts");
     expect(restored.status).toBe(0);

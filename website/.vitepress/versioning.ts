@@ -1,3 +1,4 @@
+import packageManifest from "../../packages/create-gtkx/package.json" with { type: "json" };
 import manifest from "../versions.json" with { type: "json" };
 
 type DocumentationItem = {
@@ -166,11 +167,11 @@ const assertAvailablePrefixes = (entries: readonly DocumentationVersion[]): void
     }
 };
 
-const packageVersion = manifest.packageVersion;
+const packageVersion = packageManifest.version;
 
 const readVersions = (): readonly DocumentationVersion[] => {
     if (packageVersion === "") {
-        throw new Error("versions.json must declare the packageVersion the working-tree label derives from.");
+        throw new Error("create-gtkx must declare the package version the working-tree label derives from.");
     }
 
     const parsed = manifest.versions.map((version) => {
@@ -313,6 +314,7 @@ export {
     guideItems,
     isDocumentationPath,
     normalizeDocumentationPath,
+    packageVersion,
     REFERENCE_ROOT,
     resolveVersionPath,
     retentionPolicy,

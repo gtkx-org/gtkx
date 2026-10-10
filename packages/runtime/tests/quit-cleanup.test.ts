@@ -34,7 +34,7 @@ const CASES = [
     },
 ];
 
-const TSX_LOADER = new URL("../../../scripts/tsx.ts", import.meta.url).href;
+const TSX_LOADER = new URL("../../../scripts/register-workspace-loader.ts", import.meta.url).href;
 
 const runFixture = async (mode: string, artifact: string): Promise<number | null> => {
     const child = spawnWithParentDeathSignal(process.execPath, ["--import", TSX_LOADER, FIXTURE, mode, artifact], {

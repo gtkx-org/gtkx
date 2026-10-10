@@ -14,11 +14,10 @@ type VersionArguments = {
     specifier?: string;
 };
 
-const ROOT = join(import.meta.dirname, "..");
+const ROOT = join(import.meta.dirname, "../..");
 const VERSION_MANIFEST_PATH = join(ROOT, "packages/create-gtkx/package.json");
 const VERSION_PLANS_PATH = join(ROOT, ".nx/version-plans");
 const TUTORIAL_MANIFEST_PATH = join(ROOT, "tutorial/package.json");
-const VERSIONS_PATH = join(ROOT, "website/versions.json");
 const GIT_OPTIONS = { stageChanges: false, gitCommit: false, gitTag: false, gitPush: false };
 
 const readVersion = (): string =>
@@ -86,13 +85,6 @@ const syncTutorialManifest = (version: string): void => {
     writeFileSync(TUTORIAL_MANIFEST_PATH, `${JSON.stringify(manifest, null, 4)}\n`);
 };
 
-const syncDocumentationVersions = (version: string): void => {
-    const manifest = JSON.parse(readFileSync(VERSIONS_PATH, "utf8")) as { packageVersion: string };
-    manifest.packageVersion = version;
-
-    writeFileSync(VERSIONS_PATH, `${JSON.stringify(manifest, null, 4)}\n`);
-};
-
 const main = async (): Promise<void> => {
     const { values } = parseArgs({
         options: {
@@ -128,7 +120,6 @@ const main = async (): Promise<void> => {
 
     if (!isDryRun) {
         syncTutorialManifest(workspaceVersion);
-        syncDocumentationVersions(workspaceVersion);
     }
 
     await releaseChangelog({

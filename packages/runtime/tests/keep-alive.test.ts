@@ -5,7 +5,7 @@ import { expect, test } from "vitest";
 
 const run = promisify(execFile);
 const fixture = fileURLToPath(new URL("./fixtures/keep-alive.ts", import.meta.url));
-const loader = new URL("../../../scripts/tsx.ts", import.meta.url).href;
+const loader = new URL("../../../scripts/register-workspace-loader.ts", import.meta.url).href;
 
 test.each([
     { mode: "held", output: "COMPLETED" },

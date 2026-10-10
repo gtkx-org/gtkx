@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import { verifyNativeArtifacts } from "../../../scripts/native-artifact.js";
+import { verifyNativeArtifacts } from "./verify-artifacts.ts";
 
 const args = process.argv.slice(2);
 

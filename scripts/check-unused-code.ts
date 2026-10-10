@@ -1,4 +1,4 @@
-import type { Analysis } from "codescythe";
+import { analyze } from "codescythe";
 import { spawnSync } from "node:child_process";
 import { cpSync, mkdtempDisposableSync, realpathSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
@@ -27,31 +27,10 @@ writeFileSync(
     }),
 );
 
-const cli = fileURLToPath(import.meta.resolve("codescythe/bin/codescythe.js"));
 const forwardedArgs = process.argv.slice(2);
-const shouldReportAnalysis = forwardedArgs.length === 0;
-const args = [cli, "--directory", root, "--config", configPath, ...(shouldReportAnalysis ? ["--json"] : forwardedArgs)];
-const result = spawnSync(process.execPath, args, {
-    cwd: root,
-    stdio: ["inherit", shouldReportAnalysis ? "pipe" : "inherit", "inherit"],
-    encoding: "utf8",
-    maxBuffer: 16 * 1024 * 1024,
-});
 
-if (result.error !== undefined) {
-    throw result.error;
-}
-
-if (result.signal !== null) {
-    throw new Error(`Codescythe terminated with signal ${result.signal}`);
-}
-
-if (shouldReportAnalysis) {
-    if (result.stdout.length === 0) {
-        throw new Error(`Codescythe exited with status ${String(result.status)} without an analysis report`);
-    }
-
-    const analysis = JSON.parse(result.stdout) as Analysis;
+if (forwardedArgs.length === 0) {
+    const analysis = analyze({ cwd: root, config: configPath });
 
     for (const file of Object.keys(analysis.issues.files)) {
         console.log(`unused file ${file}`);
@@ -72,6 +51,22 @@ if (shouldReportAnalysis) {
     if (analysis.counters.files === 0 && analysis.counters.exports === 0 && analysis.counters.unresolved === 0) {
         console.log("No dead TypeScript code found");
     }
-}
 
-process.exitCode = result.status ?? 1;
+    process.exitCode = analysis.counters.files || analysis.counters.exports || analysis.counters.unresolved ? 1 : 0;
+} else {
+    const cli = fileURLToPath(import.meta.resolve("codescythe/bin/codescythe.js"));
+    const result = spawnSync(process.execPath, [cli, "--directory", root, "--config", configPath, ...forwardedArgs], {
+        cwd: root,
+        stdio: "inherit",
+    });
+
+    if (result.error !== undefined) {
+        throw result.error;
+    }
+
+    if (result.signal !== null) {
+        throw new Error(`Codescythe terminated with signal ${result.signal}`);
+    }
+
+    process.exitCode = result.status ?? 1;
+}

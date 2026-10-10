@@ -39,7 +39,7 @@
         "src"
     ],
     "scripts": {
-        "release": "node ../../scripts/release-package.ts"
+        "release": "node ../../scripts/release/publish-package.ts"
     },
     "dependencies": {
         "@babel/helper-validator-identifier": "^8.0.6",

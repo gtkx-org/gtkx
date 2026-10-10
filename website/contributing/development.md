@@ -11,7 +11,7 @@ Build the workspace and run an example while making changes. CI verifies the cha
 
 Use Linux with Node.js 26.7 or later. The repository's `package.json` pins pnpm through its `packageManager` field. If your runtimes are managed by mise, run the commands below through `mise exec --`, for example `mise exec -- pnpm install`.
 
-The CI agent image pins Node.js in `scripts/ci/Dockerfile`. Publishing and fallback workflows read `engines.node` from the root `package.json` to select a compatible version.
+The CI agent image pins Node.js in `.github/ci/Dockerfile`. Publishing and fallback workflows read `engines.node` from the root `package.json` to select a compatible version.
 
 Workspace `tsc` commands use the native TypeScript 7 compiler through the `@typescript/native` dependency alias. The `typescript` catalog entry aliases the TypeScript 6 compatibility package so code generation, Vue tooling, and batched semantic tests retain the stable compiler API. Use `pnpm exec tsc --version` to check the native compiler and `pnpm exec tsc6 --version` for the compatibility compiler. Application templates and the tutorial declare their own TypeScript dependency.
 
@@ -79,7 +79,7 @@ The formatter preserves import and package manifest ordering. Generated outputs,
 
 CI uses Nx's affected graph to select checks. Pull requests compare against their merge base, pushes against the last successful run on `main`, and merge queues against the previous merge-group commit. Native sanitizers are a required dependency of E2E coverage. A manual CI run checks the complete workspace. Focused package targets remain available for reproducing failures; see [Testing](/contributing/testing#ci-verification-and-failure-reproduction).
 
-The `verify` job coordinates build, test, typecheck, lint, and React and native E2E tasks through Nx Cloud. Three or four managed Nx Agents run the tasks, according to the affected workspace size. The coordinator and agents use the same Ubuntu 26.04 image built from `scripts/ci/Dockerfile`; Nx runs directly inside that environment. Vitest workers use their tool defaults. The job also checks current Rust advisories and reports its result as `Verify workspace`. Configure branch protection to require this check.
+The `verify` job coordinates build, test, typecheck, lint, and React and native E2E tasks through Nx Cloud. Three or four managed Nx Agents run the tasks, according to the affected workspace size. The coordinator and agents use the same Ubuntu 26.04 image built from `.github/ci/Dockerfile`; Nx runs directly inside that environment. Vitest workers use their tool defaults. The job also checks current Rust advisories and reports its result as `Verify workspace`. Configure branch protection to require this check.
 
 The `image` job creates the versioned GHCR image from `.nx/workflows/agents.yaml` if it does not exist, then resolves its digest for the coordinator. Published image tags are never overwritten. Bump the image version in `agents.yaml` whenever the Dockerfile, its Node or Go pins, the root package manager pin, or either Rust toolchain changes. Bump it also when refreshing distribution packages. Agent initialization restores dependency downloads and Rust build artifacts, then installs workspace dependencies.
 

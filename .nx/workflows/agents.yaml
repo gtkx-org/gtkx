@@ -12,8 +12,6 @@ launch-templates:
           key: '"gtkx-agent"|.nx/workflows/agents.yaml|pnpm-lock.yaml|packages/native/Cargo.lock'
           paths: |
             .pnpm-store
-            /home/workflows/.cargo/registry
-            /home/workflows/.cargo/git
             packages/native/target
           base-branch: main
       - name: Install workspace dependencies

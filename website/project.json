@@ -17,7 +17,8 @@
         "@gtkx/runtime",
         "@gtkx/storybook",
         "@gtkx/testing",
-        "@gtkx/vitest"
+        "@gtkx/vitest",
+        "create-gtkx"
     ],
     "targets": {
         "build": {
@@ -105,6 +106,7 @@
             "inputs": [
                 "{projectRoot}/**/*.{ts,vue,json}",
                 "{projectRoot}/.vitepress/**/*.{ts,vue,json}",
+                "{workspaceRoot}/packages/create-gtkx/package.json",
                 "sharedGlobals",
                 {
                     "externalDependencies": ["vue-tsc", "typescript", "vue", "vitepress"]

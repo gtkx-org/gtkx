@@ -149,7 +149,7 @@ jobs:
           package-manager-cache: false
 
       - name: Verify complete release channel before publication
-        run: node scripts/release.ts --verify-only
+        run: node scripts/release/publish-release.ts --verify-only
 
       - name: Publish GitHub release
         if: steps.release.outputs.is-draft == 'true'

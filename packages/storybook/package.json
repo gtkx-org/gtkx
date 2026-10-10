@@ -51,7 +51,7 @@
         "src"
     ],
     "scripts": {
-        "release": "node ../../scripts/release-package.ts"
+        "release": "node ../../scripts/release/publish-package.ts"
     },
     "engines": {
         "node": ">=26.7.0"
