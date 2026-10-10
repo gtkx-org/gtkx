@@ -23,7 +23,13 @@
             "outputs": []
         },
         "build": {
-            "dependsOn": ["@gtkx/config:build", "@gtkx/native:build", "@gtkx/runtime:build", "@gtkx/utils:build"]
+            "dependsOn": [
+                "@gtkx/cairo:build",
+                "@gtkx/config:build",
+                "@gtkx/native:build",
+                "@gtkx/runtime:build",
+                "@gtkx/utils:build"
+            ]
         }
     }
 }

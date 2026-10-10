@@ -119,9 +119,11 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-26.04
     timeout-minutes: 120
+    env:
+      SWC_NATIVE_BINDING_CACHE: /tmp/swc-native-cache
     container:
       image: ${{ needs.image.outputs.image }}
-      options: --user 0
+      options: --user 0 --privileged --shm-size=2g
     steps:
       - name: Report image preparation failure
         if: needs.image.result != 'success'
@@ -185,9 +187,21 @@ jobs:
           NX_LEGACY_AFFECTED: "false"
         run: |
           if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
-            pnpm exec nx run-many -t build,test,typecheck,lint,e2e
+            pnpm exec nx run-many -t build,test,typecheck,lint,test-asan
           else
-            pnpm exec nx affected -t build,test,typecheck,lint,e2e
+            pnpm exec nx affected -t build,test,typecheck,lint,test-asan
+          fi
+
+      - name: Run end-to-end checks
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          NX_LEGACY_AFFECTED: "false"
+          NX_CLOUD_DISTRIBUTED_EXECUTION: "false"
+        run: |
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            pnpm exec nx run-many -t e2e
+          else
+            pnpm exec nx affected -t e2e
           fi
 
       - name: Check current Rust advisories

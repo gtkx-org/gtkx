@@ -69,5 +69,13 @@
     "devDependencies": {
         "vitest": "catalog:",
         "@gtkx/react": "workspace:*"
+    },
+    "peerDependencies": {
+        "@gtkx/react": "workspace:*"
+    },
+    "peerDependenciesMeta": {
+        "@gtkx/react": {
+            "optional": true
+        }
     }
 }
