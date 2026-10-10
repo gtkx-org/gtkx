@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { Session } from "node:inspector/promises";
 import { dirname, join, relative } from "node:path";
 import { afterAll, beforeAll, expect, inject } from "vitest";
-import type {} from "../context.js";
+import type {} from "../context.d.ts";
 
 const { coverageDirectory: directory } = inject("nativeTest");
 

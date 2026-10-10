@@ -6,7 +6,7 @@ type NativeTestContext = {
 };
 
 declare module "vitest" {
-    export interface ProvidedContext {
+    interface ProvidedContext {
         nativeTest: NativeTestContext;
     }
 }

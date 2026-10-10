@@ -2,7 +2,6 @@ import { globSync, readFileSync, writeFileSync } from "node:fs";
 import type { Profiler } from "node:inspector";
 import { join } from "node:path";
 import ts from "typescript";
-import { nativeCoverage } from "../../../native/tools/test-paths.js";
 
 type Surface = { owner: string; name: string; kind: string; isStatic: boolean };
 type ScriptReport = Profiler.ScriptCoverage & { source: string };
@@ -197,7 +196,7 @@ export const collectExecutedCoverage = (directory: string) => {
 };
 
 if (import.meta.main) {
-    const directory = process.argv[2] ?? nativeCoverage;
+    const directory = process.argv[2] ?? join(tests, "../../../../build/native-tests/coverage");
     const result = collectExecutedCoverage(directory);
     writeFileSync(join(directory, "inventory.json"), `${JSON.stringify(result, null, 4)}\n`);
     for (const [namespace, entry] of Object.entries(result))

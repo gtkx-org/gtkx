@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { defineConfig, mergeConfig } from "vitest/config";
 import { sourceResolveConfig } from "../../../../vitest.config.base.js";
-import type { NativeTestContext } from "./context.js";
+import type { NativeTestContext } from "./context.d.ts";
 import { nativeCoverage, nativeTests } from "../../../native/tools/test-paths.js";
 
 const fixtureLibraries = join(nativeTests, "../../../../build/native-tests/gi-tests/build");

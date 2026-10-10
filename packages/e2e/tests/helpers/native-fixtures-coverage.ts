@@ -1,13 +1,12 @@
 import { execFileSync } from "node:child_process";
 import { globSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { nativeCoverage } from "../../../native/tools/test-paths.js";
 import { isDeepStrictEqual } from "node:util";
 import { collectExecutedCoverage, keyFor } from "./native-fixtures-executed.js";
 import { auditNativeFixtureOmissions } from "./native-fixtures-omissions.js";
 
 const tests = join(import.meta.dirname, "../native");
-const directory = nativeCoverage;
+const directory = join(tests, "../../../../build/native-tests/coverage");
 const suites = globSync("**/*.test.ts", { cwd: tests, exclude: ["**/node_modules/**"] }).sort();
 const reports = globSync("**/*.test.ts.json", { cwd: directory })
     .map((name) => name.slice(0, -5))

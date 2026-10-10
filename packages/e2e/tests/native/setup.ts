@@ -1,7 +1,7 @@
 import { t } from "@gtkx/runtime";
 import assert from "node:assert/strict";
 import { afterEach, inject } from "vitest";
-import type {} from "./context.js";
+import type {} from "./context.d.ts";
 import { drainGC } from "./helpers/memory.js";
 import "./helpers/coverage.js";
 
