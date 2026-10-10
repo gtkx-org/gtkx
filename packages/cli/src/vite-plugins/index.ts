@@ -1,3 +1,4 @@
+import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin } from "vite";
 import { createConfigLoader } from "@gtkx/config/internal";
 import createConfigPlugin from "@gtkx/config/vite-plugin";
@@ -19,6 +20,7 @@ type GtkxVitePluginOptions = {
     buildManifest?: BuildManifestCollector | undefined;
     configFile?: string | undefined;
     entryPath?: string | undefined;
+    loadConfig?: ConfigLoader | undefined;
     mode?: string | undefined;
     onCatalogsWritten?: CatalogWriteListener | undefined;
     shouldPreserveI18nMetadata?: boolean | undefined;
@@ -39,11 +41,13 @@ const gtkxVitePlugins = (options: GtkxVitePluginOptions = {}): Plugin[] => {
         staging = createProjectStaging(),
         localeDir,
     } = options;
-    const loadConfig = createConfigLoader({
-        ...(mode !== undefined && { mode }),
-        ...(configFile !== undefined && { configFile }),
-        ...(shouldWarnGraduatedFuture !== undefined && { shouldWarnGraduatedFuture }),
-    });
+    const loadConfig =
+        options.loadConfig ??
+        createConfigLoader({
+            ...(mode !== undefined && { mode }),
+            ...(configFile !== undefined && { configFile }),
+            ...(shouldWarnGraduatedFuture !== undefined && { shouldWarnGraduatedFuture }),
+        });
 
     return [
         createConfigPlugin({ name: "gtkx:config", loadConfig, localeDir }),
