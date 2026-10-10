@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+prebuilt=false
+if [[ "${1:-}" == --prebuilt ]]; then
+  prebuilt=true
+  shift
+fi
+
 : "${GTKX_CI_CONTAINER:?Set a unique workload container name}"
 workspace="$(pwd -P)"
 if [[ -n "${NX_HEAD:-}" && "$(git rev-parse HEAD)" != "$NX_HEAD" ]]; then
@@ -37,7 +43,7 @@ PROFILE
   fi
 fi
 
-if [[ "${GTKX_CI_PREBUILT:-false}" != true ]]; then
+if [[ "$prebuilt" == false ]]; then
   docker buildx build --load --file scripts/ci/Dockerfile \
     --build-arg "GTKX_UID=$(id -u)" --build-arg "GTKX_GID=$(id -g)" \
     --tag "$GTKX_CI_CONTAINER:local" "$@" .

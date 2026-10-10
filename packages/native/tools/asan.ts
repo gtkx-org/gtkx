@@ -106,7 +106,7 @@ const testEnvironment = {
 for (const config of CONFIGS) {
     const probe = spawnSync(
         resolveExecutable("pnpm"),
-        ["exec", "vitest", "run", "--root", dirname(config), "--config", config, "--maxWorkers", "1"],
+        ["exec", "vitest", "run", "--root", dirname(config), "--config", config],
         {
             env: { ...testEnvironment, GTKX_NATIVE_LEAK_PROBE: "1" },
             cwd: NATIVE_ROOT,

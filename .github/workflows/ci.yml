@@ -19,58 +19,45 @@ concurrency:
 
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
-  GTKX_MAX_WORKERS: "2"
   NODE_OPTIONS: --max-old-space-size=8192
-  NX_DAEMON: "false"
 
 jobs:
-  changes:
-    runs-on: ubuntu-26.04
-    timeout-minutes: 5
-    outputs:
-      base: ${{ steps.shas.outputs.base }}
-      head: ${{ steps.shas.outputs.head }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1
-        id: shas
-
-  distributed:
-    needs: changes
+  verify:
+    name: Verify workspace
     runs-on: ubuntu-26.04
     timeout-minutes: 120
     env:
-      NX_BASE: ${{ needs.changes.outputs.base }}
-      NX_HEAD: ${{ needs.changes.outputs.head }}
-      NX_CI_EXECUTION_ENV: checks
       NX_CLOUD_CONTINUOUS_ASSIGNMENT: "true"
       GTKX_CI_CONTAINER: gtkx-ci
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      - name: Determine affected commit range
+        uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: "26.8.2"
           package-manager-cache: false
 
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
 
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
 
-      - name: Identify workload user
+      - name: Capture runner UID/GID
         id: workload-user
         run: |
           echo "uid=$(id -u)" >> "$GITHUB_OUTPUT"
           echo "gid=$(id -g)" >> "$GITHUB_OUTPUT"
 
-      - name: Build Ubuntu 26.04 workload image
+      - name: Build CI image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
         with:
           context: .
@@ -84,18 +71,17 @@ jobs:
           cache-from: type=gha,scope=gtkx-ci
           cache-to: type=gha,scope=gtkx-ci,mode=max
 
-      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      - name: Cache container pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: .nx/ci/pnpm-store
           key: workload-pnpm-v2-${{ runner.arch }}-${{ hashFiles('scripts/ci/Dockerfile', 'scripts/ci/start-workload.sh', 'pnpm-lock.yaml') }}
           restore-keys: workload-pnpm-v2-${{ runner.arch }}-
 
-      - name: Start Ubuntu 26.04 workload
+      - name: Initialize CI container and dependencies
         id: workload
-        env:
-          GTKX_CI_PREBUILT: "true"
         run: |
-          bash scripts/ci/start-workload.sh
+          bash scripts/ci/start-workload.sh --prebuilt
           cat .nx/ci/environment >> "$GITHUB_ENV"
 
       - name: Validate distributed task graph
@@ -111,22 +97,21 @@ jobs:
         run: >-
           pnpm exec nx-cloud start-ci-run
           --distribute-on=".nx/workflows/distribution-config.yaml"
-          --with-env-vars="GTKX_MAX_WORKERS,NODE_OPTIONS,GTKX_CI_RUNTIME_HASH,GTKX_CI_NATIVE_HASH"
+          --with-env-vars="NODE_OPTIONS,GTKX_CI_RUNTIME_HASH,GTKX_CI_NATIVE_HASH"
           --stop-agents-after="build,test,typecheck,lint,e2e"
           --stop-agents-on-failure=false
           --require-explicit-completion
 
-      - name: Run build, package tests, typecheck, lint and E2E
-        id: tasks
+      - name: Run workspace checks
         env:
           EVENT_NAME: ${{ github.event_name }}
           NX_LEGACY_AFFECTED: "false"
           NX_NO_CLOUD: ${{ env.NX_CLOUD_ACCESS_TOKEN == '' && 'true' || 'false' }}
         run: |
           if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
-            pnpm exec nx run-many -t build,test,typecheck,lint,e2e --parallel=2
+            pnpm exec nx run-many -t build,test,typecheck,lint,e2e
           else
-            pnpm exec nx affected -t build,test,typecheck,lint,e2e --parallel=2
+            pnpm exec nx affected -t build,test,typecheck,lint,e2e
           fi
 
       - name: Check current Rust advisories
@@ -138,7 +123,7 @@ jobs:
             node scripts/ci/run.mjs 'cargo audit --file packages/native/Cargo.lock --deny unsound'
           fi
 
-      - name: Run self-healing CI
+      - name: Request Nx CI fixes
         if: always() && steps.workload.outcome == 'success' && steps.agents.outcome == 'success' && env.NX_CLOUD_ACCESS_TOKEN != ''
         run: pnpm exec nx fix-ci
 
@@ -147,37 +132,9 @@ jobs:
         timeout-minutes: 2
         run: pnpm exec nx-cloud complete-ci-run
 
-      - name: Remove workload container
+      - name: Remove CI container
         if: always()
         run: |
           if docker container inspect "$GTKX_CI_CONTAINER" >/dev/null 2>&1; then
             docker rm --force "$GTKX_CI_CONTAINER"
           fi
-
-  checks:
-    needs: distributed
-    if: always()
-    name: ${{ matrix.check }}
-    runs-on: ubuntu-26.04
-    timeout-minutes: 5
-    strategy:
-      fail-fast: false
-      matrix:
-        check: [tests, build, typecheck, lint]
-    steps:
-      - name: Require distributed checks
-        env:
-          RESULT: ${{ needs.distributed.result }}
-        run: test "$RESULT" = success
-
-  e2e:
-    if: always()
-    needs: distributed
-    runs-on: ubuntu-26.04
-    timeout-minutes: 5
-    steps:
-      - name: Require distributed checks
-        env:
-          DISTRIBUTED: ${{ needs.distributed.result }}
-        run: |
-          test "$DISTRIBUTED" = success
