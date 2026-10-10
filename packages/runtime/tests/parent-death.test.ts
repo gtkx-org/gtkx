@@ -5,7 +5,7 @@ import { collectOutput, waitForMarker } from "./helpers/child-output.js";
 
 test("losing the owner shuts down the child runtime", async () => {
     const fixture = fileURLToPath(new URL("./fixtures/parent-death.ts", import.meta.url));
-    const loader = new URL("../../../scripts/tsx.ts", import.meta.url).href;
+    const loader = new URL("../../../scripts/register-workspace-loader.ts", import.meta.url).href;
     const owner = spawn(process.execPath, ["--import", loader, fixture, "owner"], {
         stdio: ["ignore", "pipe", "pipe"],
     });

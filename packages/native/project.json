@@ -19,8 +19,8 @@
             "{workspaceRoot}/packages/codegen/overrides/**/*",
             "{workspaceRoot}/packages/runtime/src/**/*",
             "{workspaceRoot}/packages/vitest/src/**/*",
-            "{workspaceRoot}/scripts/tsx.ts",
-            "{workspaceRoot}/scripts/workspace-paths.ts",
+            "{workspaceRoot}/scripts/register-workspace-loader.ts",
+            "{workspaceRoot}/scripts/resolve-workspace-aliases.ts",
             "{workspaceRoot}/packages/e2e/tests/native/**/*",
             "{workspaceRoot}/packages/e2e/tests/helpers/native-fixtures*.ts"
         ]
@@ -32,7 +32,7 @@
             "inputs": [
                 "crate",
                 "{projectRoot}/tools/build.ts",
-                "{workspaceRoot}/scripts/native-artifact.ts",
+                "{projectRoot}/tools/verify-artifacts.ts",
                 "{projectRoot}/artifacts/**/*"
             ],
             "outputs": ["{projectRoot}/index.d.ts", "{projectRoot}/index.js", "{projectRoot}/native.*.node"],
@@ -87,7 +87,7 @@
             },
             "configurations": {
                 "release-artifacts": {
-                    "command": "node tools/prepublish.ts --from-artifacts && node ../../scripts/release-package.ts"
+                    "command": "node tools/prepublish.ts --from-artifacts && node ../../scripts/release/publish-package.ts"
                 }
             }
         },

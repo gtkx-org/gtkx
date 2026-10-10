@@ -14,7 +14,7 @@ type SignalledRun = SignalledExit & {
 };
 
 const FIXTURE = fileURLToPath(new URL("fixtures/exit-signal.ts", import.meta.url));
-const TSX_LOADER = new URL("../../../scripts/tsx.ts", import.meta.url).href;
+const TSX_LOADER = new URL("../../../scripts/register-workspace-loader.ts", import.meta.url).href;
 const FIXTURE_ARGS = ["--import", TSX_LOADER, FIXTURE];
 const READY_MARKER = "READY";
 const READY_SUBJECT = "the exit fixture";

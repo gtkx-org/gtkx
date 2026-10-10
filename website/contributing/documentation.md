@@ -35,7 +35,7 @@ Guides and tutorials explain tasks; API reference pages describe callable contra
 
 The manifest drives navigation, sidebars, page mapping between versions, banners, canonical URLs, per-version `llms.txt` and `llms-full.txt`, and TypeDoc output paths.
 
-Exactly one version must use `worktree`; the build rejects any other count. Its empty `label` derives from the manifest's `packageVersion`, which release preparation synchronizes with the package version. A tag-pinned version records its shipped label and rebuilds from the specified tag and commit, keeping its API reference tied to the release. Each release tag retains one working-tree entry so its own checkout can regenerate that reference when archived.
+Exactly one version must use `worktree`; the build rejects any other count. Its empty `label` derives from the version in `packages/create-gtkx/package.json`, which also supplies the prerelease installation command on the landing page. A tag-pinned version records its shipped label and rebuilds from the specified tag and commit, keeping its API reference tied to the release. Each release tag retains one working-tree entry so its own checkout can regenerate that reference when archived.
 
 Between releases, the current version uses the working tree and follows `main`. When adding the next prerelease, make it the working-tree version, pin the outgoing current reference to its release tag and commit, and write its derived label into the manifest.
 
@@ -57,7 +57,7 @@ Keep existing heading anchors when reorganizing a page, or leave links to the mo
 
 Complete promotion on the prepared release branch before advancing `main`. That push starts tagging and publishing automatically; the tag must already contain the stable documentation and package READMEs.
 
-1. [Prepare the stable release](/contributing/releases#prepare-a-release) with `specifier=2.0.0`, then check out the resulting `release/next` branch. Confirm that package versions and `website/versions.json`'s `packageVersion` are `2.0.0`. Promotion changes documentation placement; it does not bump the release version. For a local rehearsal, run `pnpm prepare-release --specifier 2.0.0` in an isolated checkout instead.
+1. [Prepare the stable release](/contributing/releases#prepare-a-release) with `specifier=2.0.0`, then check out the resulting `release/next` branch. Confirm that package versions, including `packages/create-gtkx/package.json`, are `2.0.0`; the website derives its working-tree label from that version. Promotion changes documentation placement; it does not bump the release version. For a local rehearsal, run `pnpm prepare-release --specifier 2.0.0` in an isolated checkout instead.
 2. Before retiring an existing `old` version, review links to its prefix and aliases, including historical posts. Point those links to a supported guide or a source permalink at the appropriate release tag. Delete the retired version's directories and manifest entry, then run `pnpm --filter @gtkx/website reference-sync`. Promotion refuses to proceed while an old version remains. The outgoing current version must already have a pinned reference tag and commit.
 3. Move the current documentation to its archive prefix and the prerelease to the root:
 

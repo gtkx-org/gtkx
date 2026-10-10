@@ -10,9 +10,9 @@
         "build": "nx run-many -t build",
         "codegen": "nx run-many -t codegen --skip-nx-cache",
         "plan": "nx release plan",
-        "postinstall": "tsc -b --noCheck --force packages/vitest/tsconfig.lib.json && node scripts/link-bindings.ts",
-        "prepare-release": "node scripts/prepare-release.ts",
-        "release": "node scripts/release.ts",
+        "postinstall": "tsc -b --noCheck --force packages/vitest/tsconfig.lib.json && node scripts/link-generated-bindings.ts",
+        "prepare-release": "node scripts/release/prepare-release.ts",
+        "release": "node scripts/release/publish-release.ts",
         "format": "oxfmt --write ."
     },
     "nx": {

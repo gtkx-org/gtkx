@@ -16,16 +16,13 @@
             "{workspaceRoot}/tsconfig.test.json",
             "{workspaceRoot}/gtkx.config.base.ts",
             "{workspaceRoot}/vitest.config.base.ts",
-            "{workspaceRoot}/scripts/workspace-paths.ts",
-            "{workspaceRoot}/scripts/tsx.ts",
-            "{workspaceRoot}/scripts/ci/Dockerfile",
+            "{workspaceRoot}/scripts/resolve-workspace-aliases.ts",
+            "{workspaceRoot}/scripts/register-workspace-loader.ts",
+            "{workspaceRoot}/.github/ci/Dockerfile",
             "{workspaceRoot}/.nx/workflows/agents.yaml",
+            "{workspaceRoot}/scripts/compute-environment-hash.ts",
             {
-                "env": "GTKX_GIR_PATH"
-            },
-            "{workspaceRoot}/scripts/cache-environment.ts",
-            {
-                "runtime": "node scripts/cache-environment.ts runtime"
+                "runtime": "node scripts/compute-environment-hash.ts runtime"
             },
             "{workspaceRoot}/.github/actions/setup-ci/**/*",
             {
@@ -33,21 +30,9 @@
             }
         ],
         "nativeEnvironment": [
-            "{workspaceRoot}/scripts/cache-environment.ts",
+            "{workspaceRoot}/scripts/compute-environment-hash.ts",
             {
-                "env": "RUSTUP_TOOLCHAIN"
-            },
-            {
-                "env": "RUSTFLAGS"
-            },
-            {
-                "env": "CARGO_ENCODED_RUSTFLAGS"
-            },
-            {
-                "env": "CARGO_BUILD_TARGET"
-            },
-            {
-                "runtime": "node scripts/cache-environment.ts native"
+                "runtime": "node scripts/compute-environment-hash.ts native"
             }
         ]
     },

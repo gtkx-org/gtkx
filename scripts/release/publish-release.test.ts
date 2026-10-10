@@ -6,11 +6,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { expect, onTestFinished, test } from "vitest";
-import { publishPackage } from "./release-package.ts";
+import { publishPackage } from "./publish-package.ts";
 
 type RegistryDocument = { "dist-tags": Record<string, string>; versions: Record<string, unknown> };
 
-const ROOT = join(import.meta.dirname, "..");
+const ROOT = join(import.meta.dirname, "../..");
 const run = promisify(execFile);
 
 const registryFixture = async (version = "1.0.0") => {
@@ -117,7 +117,7 @@ test("the package command publishes with pnpm and verifies registry visibility",
     state.document = undefined;
     writeFileSync(join(directory, ".npmrc"), `//${new URL(url).host}/:_authToken=fixture-token\n`);
 
-    await run(process.execPath, [join(ROOT, "scripts/release-package.ts")], {
+    await run(process.execPath, [join(ROOT, "scripts/release/publish-package.ts")], {
         cwd: directory,
         env: { ...process.env, NPM_CONFIG_PROVENANCE: "false", GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS: "1000" },
         timeout: 30_000,
@@ -144,7 +144,7 @@ test("Node alone verifies the complete release before GitHub publication", async
     }
 
     state.document = { "dist-tags": { [tag]: version }, versions: { [version]: {} } };
-    const args = [join(ROOT, "scripts/release.ts"), "--verify-only"];
+    const args = [join(ROOT, "scripts/release/publish-release.ts"), "--verify-only"];
     const options = { env: { ...process.env, NPM_CONFIG_REGISTRY: url }, timeout: 10_000 };
 
     await run(process.execPath, args, options);

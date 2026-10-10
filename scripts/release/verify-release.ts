@@ -22,7 +22,7 @@ type ReleasePackage = {
 type RegistryPackage = ReleasePackage & { registry: URL };
 type RegistryDocument = { "dist-tags"?: Record<string, string>; versions?: Record<string, unknown> };
 
-const ROOT = join(import.meta.dirname, "..");
+const ROOT = join(import.meta.dirname, "../..");
 const NATIVE_PLATFORMS: Record<string, string> = {
     "x86_64-unknown-linux-gnu": "linux-x64-gnu",
     "aarch64-unknown-linux-gnu": "linux-arm64-gnu",

@@ -7,7 +7,7 @@ import {
     visibilityTimeoutMs,
     type RegistryPackage,
     type ReleasePackage,
-} from "./release-registry.ts";
+} from "./verify-release.ts";
 
 const resolveRegistry = (entry: ReleasePackage): RegistryPackage => {
     if (entry.registry !== undefined) {

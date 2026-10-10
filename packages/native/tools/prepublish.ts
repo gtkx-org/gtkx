@@ -2,14 +2,14 @@ import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { nativeArtifactHash, verifyNativeArtifacts } from "../../../scripts/native-artifact.ts";
-import { publishPackage } from "../../../scripts/release-package.ts";
+import { publishPackage } from "../../../scripts/release/publish-package.ts";
 import {
     nativePlatforms,
     readManifest,
     visibilityTimeoutMs,
     type PackageManifest,
-} from "../../../scripts/release-registry.ts";
+} from "../../../scripts/release/verify-release.ts";
+import { nativeArtifactHash, verifyNativeArtifacts } from "./verify-artifacts.ts";
 
 const { values } = parseArgs({ options: { "from-artifacts": { type: "boolean", default: false } } });
 const timeoutMs = visibilityTimeoutMs(process.env.GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS);

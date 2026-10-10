@@ -1,7 +1,7 @@
 import { registerHooks } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { register } from "tsx/esm/api";
-import { workspaceAliases } from "./workspace-paths.ts";
+import { workspaceAliases } from "./resolve-workspace-aliases.ts";
 
 register({ tsconfig: fileURLToPath(new URL("../tsconfig.base.json", import.meta.url)) });
 

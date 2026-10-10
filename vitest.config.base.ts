@@ -1,5 +1,5 @@
 import { defineConfig } from "vitest/config";
-import { workspaceAliases } from "./scripts/workspace-paths.js";
+import { workspaceAliases } from "./scripts/resolve-workspace-aliases.js";
 
 const INLINE_DEPS: RegExp[] = [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/];
 
