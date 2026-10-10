@@ -43,7 +43,7 @@ pub struct RegisterClassVfunc {
     pub arg_descriptors: Vec<Descriptor>,
     /// Descriptor for the value the JavaScript implementation returns.
     pub return_descriptor: Descriptor,
-    pub can_throw: Option<bool>,
+    pub can_throw: bool,
     /// The JavaScript function that implements the vfunc.
     #[napi(ts_type = "(...args: never[]) => unknown")]
     pub r#fn: VfuncCallback,
@@ -65,10 +65,10 @@ pub struct RegisterClassInterface {
 #[napi(object, object_to_js = false)]
 pub struct RegisterClassOptions {
     /// Virtual function overrides for the class itself.
-    pub vfuncs: Option<Vec<RegisterClassVfunc>>,
+    pub vfuncs: Vec<RegisterClassVfunc>,
     /// Interfaces the class implements, each with its own vfuncs.
-    pub interfaces: Option<Vec<RegisterClassInterface>>,
-    pub flags: Option<u32>,
+    pub interfaces: Vec<RegisterClassInterface>,
+    pub flags: u32,
     #[napi(ts_type = "(handle: ExternalObject<Handle>, gtype: bigint) => void")]
     pub initialize: Option<VfuncCallback>,
 }
@@ -86,7 +86,7 @@ impl TryFrom<RegisterClassVfunc> for ResolvedVfunc {
                 .map(Descriptor::into_codec)
                 .collect::<Result<_>>()?,
             return_codec: vfunc.return_descriptor.into_codec()?,
-            can_throw: vfunc.can_throw.unwrap_or(false),
+            can_throw: vfunc.can_throw,
         };
         validate_callback_signature(&resolved.arg_codecs, &resolved.return_codec)
             .map_err(|error| Error::from_reason(error.to_string()))?;
@@ -111,7 +111,6 @@ impl TryFrom<RegisterClassInterface> for ResolvedInterface {
     }
 }
 
-#[derive(Default)]
 struct ResolvedOptions {
     vfuncs: Vec<ResolvedVfunc>,
     interfaces: Vec<ResolvedInterface>,
@@ -124,16 +123,14 @@ impl TryFrom<RegisterClassOptions> for ResolvedOptions {
 
     fn try_from(options: RegisterClassOptions) -> Result<Self> {
         Ok(Self {
-            type_flags: options.flags.unwrap_or(0),
+            type_flags: options.flags,
             vfuncs: options
                 .vfuncs
-                .unwrap_or_default()
                 .into_iter()
                 .map(ResolvedVfunc::try_from)
                 .collect::<Result<_>>()?,
             interfaces: options
                 .interfaces
-                .unwrap_or_default()
                 .into_iter()
                 .map(ResolvedInterface::try_from)
                 .collect::<Result<_>>()?,
@@ -446,7 +443,7 @@ impl ClassRegistration {
 pub fn register_class(
     name: String,
     parent_type: BigInt,
-    options: Option<RegisterClassOptions>,
+    options: RegisterClassOptions,
 ) -> Result<BigInt> {
     let name = glib::GString::from_string_checked(name).map_err(|err| {
         Error::new(
@@ -455,10 +452,7 @@ pub fn register_class(
         )
     })?;
     let parent_type = type_from_bigint(&parent_type, "register_class: parent")?;
-    let resolved = match options {
-        Some(options) => ResolvedOptions::try_from(options)?,
-        None => ResolvedOptions::default(),
-    };
+    let resolved = ResolvedOptions::try_from(options)?;
     let type_ = native_result(
         "register_class",
         ClassRegistration {

@@ -953,6 +953,7 @@ function installDeclaredSignalMethods(klass: AnyClass, table: Map<string, Declar
 
 const toNativeVfunc = (descriptor: DiscoveredVfunc): NativeRegisterClassVfunc => ({
     ...descriptor,
+    canThrow: descriptor.canThrow ?? false,
     argDescriptors: descriptor.argDescriptors.map((descriptor) => toAbi(descriptor)),
     returnDescriptor: toAbi(descriptor.returnDescriptor),
     fn: adaptCallback(descriptor, descriptor.fn as (...args: unknown[]) => unknown),
@@ -997,17 +998,11 @@ function toNativeOptions(
     interfaceBindings: InterfaceVfuncBinding[],
     source: AnyRegisterClassOptions,
 ): NativeRegisterClassOptions {
-    const options: NativeRegisterClassOptions = { flags: source.abstract === true ? 16 : 0 };
-
-    if (classVfuncs.length > 0) {
-        options.vfuncs = classVfuncs.map((descriptor) => toNativeVfunc(descriptor));
-    }
-
-    if (interfaceBindings.length > 0) {
-        options.interfaces = interfaceBindings.map((binding) => toNativeInterface(binding));
-    }
-
-    return options;
+    return {
+        flags: source.abstract === true ? 16 : 0,
+        vfuncs: classVfuncs.map((descriptor) => toNativeVfunc(descriptor)),
+        interfaces: interfaceBindings.map((binding) => toNativeInterface(binding)),
+    };
 }
 
 export { type Interface, registerClass, type RegisteredClass, type SignalGType, type SignalSpec };
