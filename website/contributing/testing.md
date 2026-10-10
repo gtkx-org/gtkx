@@ -57,13 +57,9 @@ pnpm nx run @gtkx/components:test -- tests/drop-down.test.tsx
 pnpm nx run @gtkx/e2e:e2e
 ```
 
-Nx prepares prerequisite builds and generated bindings and caches each suite. CI runs affected `build`, `test`, `typecheck`, `lint` and `e2e` targets in one graph. The native sanitizer task is an E2E dependency and runs once. A manual CI dispatch runs the complete graph. Required checks are `tests`, `build`, `typecheck`, `lint` and `e2e`.
+Nx prepares prerequisite builds and generated bindings and caches each suite. CI runs affected `build`, `test`, `typecheck`, `lint` and `e2e` targets in one graph. The native sanitizer task is an E2E dependency and runs once. A manual CI dispatch runs the complete graph. The `verify` GitHub job reports the combined result as `Verify workspace`. Configure branch protection to require this check.
 
-The shared configuration limits workers according to available CPU parallelism. Set `GTKX_MAX_WORKERS` to reduce resource use:
-
-```bash
-GTKX_MAX_WORKERS=2 pnpm nx run @gtkx/components:test
-```
+Vitest uses its default worker concurrency. Local Nx runs use the default task concurrency; Nx Cloud schedules distributed tasks on the agents. The repository does not override these limits.
 
 ## Native fixtures and sanitizers
 

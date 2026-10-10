@@ -63,7 +63,8 @@ process.exit(result.status ?? 1);
     const args = ["two words", "an'apostrophe", "$HOME", "; exit 9"];
     const result = run(
         "node -e 'setTimeout(() => { console.log(JSON.stringify({args:process.argv.slice(1),cwd:process.cwd(),path:process.env.PATH," +
-            "ci:process.env.CI,workers:process.env.GTKX_MAX_WORKERS,container:process.env.GTKX_CI_CONTAINER," +
+            "ci:process.env.CI,nodeOptions:process.env.NODE_OPTIONS,container:process.env.GTKX_CI_CONTAINER," +
+            "runtimeHash:process.env.GTKX_CI_RUNTIME_HASH,nativeHash:process.env.GTKX_CI_NATIVE_HASH," +
             "secret:process.env.GTKX_TEST_SECRET})); process.exit(17); }, 50)'",
         args,
         {
@@ -73,9 +74,11 @@ process.exit(result.status ?? 1);
                 PATH: `${directory}:${process.env.PATH}`,
                 GTKX_TEST_CONTAINER_PATH: process.env.PATH,
                 GTKX_CI_CONTAINER: "gtkx-boundary-test",
+                GTKX_CI_RUNTIME_HASH: "runtime-fingerprint",
+                GTKX_CI_NATIVE_HASH: "native-fingerprint",
                 GTKX_TEST_SECRET: "outside-only",
                 CI: "true",
-                GTKX_MAX_WORKERS: "2",
+                NODE_OPTIONS: "--max-old-space-size=2048",
             },
         },
     );
@@ -85,8 +88,10 @@ process.exit(result.status ?? 1);
     assert.deepEqual(output.args, args);
     assert.equal(output.cwd, join(workspace, "packages/css"));
     assert.equal(output.ci, "true");
-    assert.equal(output.workers, "2");
+    assert.equal(output.nodeOptions, "--max-old-space-size=2048");
     assert.equal(output.container, undefined);
+    assert.equal(output.runtimeHash, undefined);
+    assert.equal(output.nativeHash, undefined);
     assert.equal(output.secret, undefined);
     assert.ok(
         output.path.startsWith(

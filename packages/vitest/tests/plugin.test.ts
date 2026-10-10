@@ -36,7 +36,7 @@ describe("headless Vitest integration", () => {
         writeFileSync(
             join(directory.path, "vitest.config.mjs"),
             `import gtkx from ${JSON.stringify(pluginPath)};
-            export default { plugins: [gtkx({ size: "640x480" })], test: { include: ["*.test.mjs"], maxWorkers: 2 } };`,
+            export default { plugins: [gtkx({ size: "640x480" })], test: { include: ["*.test.mjs"] } };`,
         );
         for (const name of ["first", "second"]) writeFileSync(join(directory.path, `${name}.test.mjs`), probe(name));
         const runner = await createVitest({

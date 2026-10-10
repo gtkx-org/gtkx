@@ -87,7 +87,7 @@ The formatter preserves import and package manifest ordering. Generated outputs,
 
 CI uses Nx's affected graph to select checks. Pull requests compare against their merge base, pushes against the last successful run on `main`, and merge queues against the previous merge-group commit. Native sanitizers are a required dependency of E2E coverage. A manual CI run checks the complete workspace. Locally, root commands run every matching target; use a package target for focused iteration.
 
-Nx Cloud distributes build, test, typecheck, lint, and React and native E2E tasks across two to four agents. Each agent runs at most two Nx tasks, and each Vitest task uses at most two workers. `.nx/workflows/distribution-config.yaml` controls agent counts; `.nx/workflows/agents.yaml` defines their setup. Required GitHub checks remain `tests`, `build`, `typecheck`, `lint`, and `e2e`.
+Nx Cloud distributes build, test, typecheck, lint, and React and native E2E tasks across three to four agents. Nx Cloud schedules tasks on the agents; local Nx runs and Vitest workers use their tool defaults. `.nx/workflows/distribution-config.yaml` controls agent counts; `.nx/workflows/agents.yaml` defines their setup. One GitHub job, `verify`, selects the affected commits, runs the checks, and reports their combined result as `Verify workspace`. Configure branch protection to require this check.
 
 The standard Nx agent image hosts Docker; actual GTKX commands execute inside the Ubuntu 26.04 image defined in `scripts/ci/Dockerfile`. This requires Nx dedicated compute with Docker enabled. Docker layer caching uses `NX_DOCKER_CACHE_REGISTRY` when the add-on is enabled. Dependency downloads and Cargo compilation outputs use separate agent caches. The coordinator builds the same workload image using GitHub's Docker cache. Initialization compares native and runtime fingerprints and fails if the two environments differ; rebuild both image caches after changing system dependencies.
 
@@ -100,9 +100,9 @@ pnpm exec nx run-many -t build,test,typecheck,lint,e2e --graph=/tmp/gtkx-task-gr
 node scripts/ci/validate-graph.mjs /tmp/gtkx-task-graph.json
 ```
 
-The coordinator forwards only `GTKX_MAX_WORKERS`, `NODE_OPTIONS`, and the two environment fingerprints. Nx manages its own authentication and execution variables. Keep GitHub credentials, publication tokens, and deployment permissions in GitHub Actions. Publication, Pages deployment, and release management also remain in GitHub Actions.
+The coordinator forwards only `NODE_OPTIONS` and the two environment fingerprints, `GTKX_CI_RUNTIME_HASH` and `GTKX_CI_NATIVE_HASH`. Nx manages its own authentication and execution variables. Keep GitHub credentials, publication tokens, and deployment permissions in GitHub Actions. Publication, Pages deployment, and release management also remain in GitHub Actions.
 
-ASAN uses a second distributed command to preserve its task-level affected selection. The live Rust advisory audit is recorded on the coordinator and always refreshes advisories. The coordinator requests explicit completion and closes the Nx run in a guarded cleanup step, including after failures. Workflows without an Nx token run the same container tasks locally.
+The native sanitizer task runs as an E2E dependency in the same distributed graph. The live Rust advisory audit is recorded on the coordinator and always refreshes advisories. The coordinator requests explicit completion and closes the Nx run in a guarded cleanup step, including after failures. Workflows without an Nx token run the same container tasks locally.
 
 ## Generated bindings
 

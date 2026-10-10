@@ -12,7 +12,6 @@ concurrency:
 
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
-  GTKX_MAX_WORKERS: "2"
   NODE_OPTIONS: --max-old-space-size=8192
 
 jobs:
