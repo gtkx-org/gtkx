@@ -14,12 +14,12 @@
     },
     "targets": {
         "codegen": {
-            "command": "node ../../scripts/ci/run.mjs 'gtkx codegen'",
+            "command": "gtkx codegen",
             "options": {
                 "cwd": "{projectRoot}"
             },
             "cache": true,
-            "dependsOn": ["gtkx:_build:bindings", "@gtkx/cli:build"],
+            "dependsOn": ["gtkx:bindings", "@gtkx/cli:build"],
             "outputs": ["{projectRoot}/node_modules/.gtkx"],
             "inputs": [
                 "default",
@@ -27,8 +27,7 @@
                 {
                     "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
                     "transitive": true
-                },
-                "{workspaceRoot}/scripts/ci/**/*"
+                }
             ]
         },
         "_test:fixtures": {
@@ -41,20 +40,19 @@
                 "{workspaceRoot}/packages/runtime/package.json",
                 "{workspaceRoot}/packages/utils/src/**/*",
                 "sharedGlobals",
-                "nativeEnvironment",
-                "{workspaceRoot}/scripts/ci/**/*"
+                "nativeEnvironment"
             ],
             "outputs": [
                 "{workspaceRoot}/build/native-tests/node_modules/.gtkx",
                 "{projectRoot}/tests/native/node_modules"
             ],
-            "command": "node ../../scripts/ci/run.mjs 'pnpm run _test:fixtures'",
+            "command": "pnpm run _test:fixtures",
             "options": {
                 "cwd": "{projectRoot}"
             }
         },
         "_test:fixtures:compile": {
-            "command": "node ../../scripts/ci/run.mjs 'tsx tests/helpers/native-fixtures-compile.ts'",
+            "command": "tsx tests/helpers/native-fixtures-compile.ts",
             "options": {
                 "cwd": "{projectRoot}"
             },
@@ -64,17 +62,16 @@
                 "{projectRoot}/tests/helpers/native-fixtures-compile.ts",
                 "{workspaceRoot}/packages/utils/src/**/*",
                 "sharedGlobals",
-                "nativeEnvironment",
-                "{workspaceRoot}/scripts/ci/**/*"
+                "nativeEnvironment"
             ],
             "outputs": ["{workspaceRoot}/build/native-tests/gi-tests/build"]
         },
         "e2e": {
-            "command": "node ../../scripts/ci/run.mjs 'vitest run'",
+            "command": "vitest run",
             "options": {
                 "cwd": "{projectRoot}"
             },
-            "dependsOn": ["^build", "gtkx:_build:bindings", "codegen", "@gtkx/native:test-asan"],
+            "dependsOn": ["^build", "gtkx:bindings", "codegen", "@gtkx/native:test-asan"],
             "inputs": [
                 "...",
                 "integration",

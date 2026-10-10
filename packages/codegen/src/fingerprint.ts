@@ -1,4 +1,4 @@
-import type { ElementPropsExport, ModuleExport } from "@gtkx/react/config";
+import type { ElementPropsExport, ModuleExport } from "@gtkx/config/elements";
 import { createHash, type Hash } from "node:crypto";
 import { type Dirent, existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";

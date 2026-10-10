@@ -6,22 +6,24 @@
             "dependsOn": ["...", "_typecheck:overrides"]
         },
         "_typecheck:overrides": {
-            "command": "node ../../scripts/ci/run.mjs 'tsc -p overrides/tsconfig.json'",
+            "command": "tsc -p overrides/tsconfig.json",
             "options": {
                 "cwd": "packages/codegen"
             },
             "cache": true,
-            "dependsOn": ["gtkx:_build:bindings"],
+            "dependsOn": ["gtkx:bindings"],
             "inputs": [
                 "default",
                 "^production",
                 {
                     "dependentTasksOutputFiles": "**/*.d.ts",
                     "transitive": true
-                },
-                "{workspaceRoot}/scripts/ci/**/*"
+                }
             ],
             "outputs": []
+        },
+        "build": {
+            "dependsOn": ["@gtkx/config:build", "@gtkx/native:build", "@gtkx/runtime:build", "@gtkx/utils:build"]
         }
     }
 }

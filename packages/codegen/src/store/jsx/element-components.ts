@@ -1,4 +1,4 @@
-import type { ModuleExport } from "@gtkx/react/config";
+import type { ModuleExport } from "@gtkx/config/elements";
 import { sanitizeTypeIdentifier, sourceStringLiteral } from "@gtkx/utils";
 import type { Library } from "../../gir/library.js";
 import type { GirNamespace } from "../../gir/namespace.js";

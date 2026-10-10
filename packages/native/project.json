@@ -33,26 +33,25 @@
                 "crate",
                 "{projectRoot}/tools/build.ts",
                 "{workspaceRoot}/scripts/native-artifact.ts",
-                "{projectRoot}/artifacts/**/*",
-                "{workspaceRoot}/scripts/ci/**/*"
+                "{projectRoot}/artifacts/**/*"
             ],
             "outputs": ["{projectRoot}/index.d.ts", "{projectRoot}/index.js", "{projectRoot}/native.*.node"],
-            "command": "node ../../scripts/ci/run.mjs 'pnpm run build'",
+            "command": "pnpm run build",
             "options": {
                 "cwd": "{projectRoot}"
             },
             "configurations": {
                 "release-artifacts": {
-                    "command": "node ../../scripts/ci/run.mjs 'pnpm run build --from-artifacts'"
+                    "command": "pnpm run build --from-artifacts"
                 }
             }
         },
         "_lint:rust": {
             "cache": true,
             "dependsOn": [],
-            "inputs": ["crate", "{workspaceRoot}/rustfmt.toml", "{workspaceRoot}/scripts/ci/**/*"],
+            "inputs": ["crate", "{workspaceRoot}/rustfmt.toml"],
             "outputs": [],
-            "command": "node ../../scripts/ci/run.mjs 'pnpm run _lint:rust'",
+            "command": "pnpm run _lint:rust",
             "options": {
                 "cwd": "{projectRoot}"
             }
@@ -66,12 +65,15 @@
             "inputs": [
                 "nativeTests",
                 "^production",
-                "{workspaceRoot}/scripts/ci/**/*",
-                { "env": "NODE_OPTIONS" },
-                { "env": "LD_LIBRARY_PATH" }
+                {
+                    "env": "NODE_OPTIONS"
+                },
+                {
+                    "env": "LD_LIBRARY_PATH"
+                }
             ],
             "outputs": [],
-            "command": "node ../../scripts/ci/run.mjs 'pnpm run test-asan'",
+            "command": "pnpm run test-asan",
             "options": {
                 "cwd": "{projectRoot}"
             }
@@ -85,7 +87,7 @@
             },
             "configurations": {
                 "release-artifacts": {
-                    "command": "pnpm exec tsx tools/prepublish.ts --from-artifacts && pnpm exec tsx ../../scripts/release-package.ts"
+                    "command": "node tools/prepublish.ts --from-artifacts && node ../../scripts/release-package.ts"
                 }
             }
         },

@@ -1,0 +1,9 @@
+{
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "name": "@gtkx/forms",
+    "targets": {
+        "build": {
+            "dependsOn": ["...", "gtkx:bindings"]
+        }
+    }
+}

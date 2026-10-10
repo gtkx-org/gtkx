@@ -1,4 +1,4 @@
-import type { ElementPropsExport } from "@gtkx/react/config";
+import type { ElementPropsExport } from "@gtkx/config/elements";
 import type { Library } from "./gir/library.js";
 import type { PreparedStore, StoreOptions } from "./store/store-fs.js";
 import {

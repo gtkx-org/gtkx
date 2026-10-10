@@ -1,4 +1,9 @@
-import { type ElementConfig, forTypes, internal } from "./reconciler/registry.js";
+import type { ElementConfigOptions, ModuleExport } from "./config.ts";
+
+const forTypes = (types: string[], config: ElementConfigOptions): Record<string, ElementConfigOptions> =>
+    Object.fromEntries(types.map((type) => [type, config]));
+
+const internal = (name: string): ModuleExport => ({ module: "@gtkx/react/internal", export: name });
 
 const SINGLE_CHILD_TYPES: string[] = [
     "AdwBin",
@@ -37,7 +42,7 @@ const CONTENT_SETTER_TYPES: string[] = ["AdwBottomSheet", "AdwOverlaySplitView"]
  * Built-in GTK and Adwaita element metadata: base props, component wrappers, omitted properties,
  * and parent-created objects. Contains no behaviors and can be imported without loading GI bindings.
  */
-const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
+const BUILTIN_ELEMENTS: Record<string, ElementConfigOptions> = {
     ...forTypes(SINGLE_CHILD_TYPES, {
         props: internal("ChildrenProps"),
         omittedProps: ["child"],
@@ -307,3 +312,5 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfig> = {
 };
 
 export { SINGLE_CHILD_TYPES, CONTENT_SETTER_TYPES, BUILTIN_ELEMENTS };
+
+export type { ElementConfigOptions, ElementPropsExport, ModuleExport } from "./config.ts";

@@ -54,7 +54,8 @@
             "@gtkx/testing/internal": ["./packages/testing/src/internal.ts"],
             "@gtkx/utils": ["./packages/utils/src/index.ts"],
             "@gtkx/vitest": ["./packages/vitest/src/index.ts"],
-            "@gtkx/vitest/headless": ["./packages/vitest/src/headless.ts"]
+            "@gtkx/vitest/headless": ["./packages/vitest/src/headless.ts"],
+            "@gtkx/config/elements": ["./packages/config/src/builtin-elements.ts"]
         },
         "resolveJsonModule": true,
         "rewriteRelativeImportExtensions": true,

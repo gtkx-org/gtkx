@@ -35,7 +35,7 @@ runs:
         fi
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
-          build-essential meson ninja-build gettext locales-all pkg-config shellcheck \
+          build-essential meson ninja-build gettext locales-all pkg-config shellcheck file \
           libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev libwebkitgtk-6.0-dev \
           libgstreamer1.0-dev libgirepository1.0-dev libostree-dev gobject-introspection \
           gvfs libgles2 libgl1-mesa-dri mesa-vulkan-drivers sway weston xwayland-run dbus \

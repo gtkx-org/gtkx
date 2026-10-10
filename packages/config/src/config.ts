@@ -358,5 +358,7 @@ export {
     type ResolvedReactCompilerOptions,
     type Config,
     type ElementConfigOptions,
+    type ElementPropsExport,
+    type ModuleExport,
     type ResolvedConfig,
 };

@@ -97,7 +97,7 @@ Application examples and the React E2E suite use `@gtkx/cli/vitest-plugin` when 
 
 ## Other checks
 
-CI builds, typechecking and static analysis complement tests. Lint includes formatting, unused-code checks, workflow checks, the container command harness, rustfmt and Clippy. The CI coordinator also checks current Rust advisories.
+CI builds, typechecking and static analysis complement tests. Lint includes formatting, unused-code checks, workflow checks, rustfmt and Clippy. The root Vitest suite covers release tooling and native artifact restoration. CI also checks current Rust advisories.
 
 CI builds the website for documentation changes. Inspect affected pages when changing layout or navigation. For a visible widget or application change, run the affected example and inspect its live widget tree, interactions and screenshots.
 

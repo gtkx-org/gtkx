@@ -48,7 +48,7 @@
     ],
     "scripts": {
         "_build:templates": "mkdir -p dist/templates && cp -R src/templates/. dist/templates/",
-        "release": "tsx ../../scripts/release-package.ts"
+        "release": "node ../../scripts/release-package.ts"
     },
     "engines": {
         "node": ">=26.7.0"

@@ -1,15 +1,19 @@
 FROM node:26.8.2-bookworm-slim AS node
 FROM golang:1.26.6-bookworm AS go
+FROM docker:28.3.1-cli AS docker
 FROM ubuntu:26.04
+
+LABEL org.opencontainers.image.source="https://github.com/gtkx-org/gtkx"
 
 SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
 
-ENV HOME=/home/gtkx \
-    CARGO_HOME=/home/gtkx/.cargo \
-    RUSTUP_HOME=/home/gtkx/.rustup \
-    GOPATH=/home/gtkx/go \
+ENV HOME=/home/workflows \
+    CARGO_HOME=/home/workflows/.cargo \
+    RUSTUP_HOME=/home/workflows/.rustup \
+    GOPATH=/home/workflows/go \
+    NPM_CONFIG_PREFIX=/home/workflows/.npm-global \
     GOTOOLCHAIN=local \
-    PATH=/home/gtkx/.cargo/bin:/home/gtkx/.local/bin:/home/gtkx/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    PATH=/home/workflows/.npm-global/bin:/home/workflows/.cargo/bin:/home/workflows/.local/bin:/home/workflows/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
     CARGO_INCREMENTAL=0 \
@@ -21,7 +25,7 @@ ENV HOME=/home/gtkx \
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         ca-certificates curl git openssh-client procps tar unzip util-linux xz-utils \
-        build-essential meson ninja-build gettext locales-all pkg-config shellcheck \
+        build-essential meson ninja-build gettext locales-all pkg-config shellcheck file \
         libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev libwebkitgtk-6.0-dev \
         libgstreamer1.0-dev libgirepository1.0-dev libostree-dev gobject-introspection \
         gvfs libgles2 libgl1-mesa-dri mesa-vulkan-drivers sway weston xwayland-run dbus \
@@ -37,25 +41,25 @@ RUN apt-get update && \
     done && \
     test -f "$VK_DRIVER_FILES"
 
+COPY --from=docker /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=docker /usr/local/libexec/docker /usr/local/libexec/docker
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
 COPY --from=node /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/npm
 COPY --from=go /usr/local/go /usr/local/go
 
-ARG GTKX_UID=1001
-ARG GTKX_GID=1001
-
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && \
     ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx && \
-    test "$GTKX_UID" -ge 1000 && test "$GTKX_GID" -ge 1000 && \
     if getent passwd ubuntu >/dev/null; then userdel --remove ubuntu; fi && \
     if getent group ubuntu >/dev/null; then groupdel ubuntu; fi && \
-    groupadd --gid "$GTKX_GID" gtkx && \
-    useradd --create-home --uid "$GTKX_UID" --gid gtkx --home-dir /home/gtkx --shell /bin/bash gtkx
+    groupadd --gid 10001 workflows && \
+    useradd --create-home --uid 10000 --gid workflows --home-dir /home/workflows --shell /bin/bash workflows && \
+    mkdir -p /home/workflows/workspace /home/workflows/.npm-global/{bin,lib} /home/workflows/.nvm && \
+    chown -R 10000:10001 /home/workflows
 
 COPY rust-toolchain.toml /opt/gtkx-toolchains/rust-toolchain.toml
 COPY packages/native/tools/rust-toolchain.toml /opt/gtkx-toolchains/native/rust-toolchain.toml
 
-USER ${GTKX_UID}:${GTKX_GID}
+USER workflows
 WORKDIR /opt/gtkx-toolchains
 
 RUN case "$(dpkg --print-architecture)" in \
@@ -80,7 +84,7 @@ WORKDIR /opt/gtkx-toolchains
 RUN rustup default "$(python3 -c 'import tomllib; print(tomllib.load(open("rust-toolchain.toml", "rb"))["toolchain"]["channel"])')" && \
     cargo install cargo-audit --version 0.22.2 --locked
 
-WORKDIR /home/gtkx
+WORKDIR /home/workflows
 
 RUN pipx install 'git+https://github.com/flatpak/flatpak-builder-tools.git@de2225a6dee4818c1339b3cdbf29f90c471fcb7e#subdirectory=node' && \
     go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -version && \
@@ -93,12 +97,8 @@ RUN package_manager="$(node --input-type=module -e 'import { readFileSync } from
     npm install --global --cache /tmp/gtkx-npm-cache "$package_manager" && \
     rm -rf /tmp/gtkx-npm-cache
 
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends file && \
-    rm -rf /var/lib/apt/lists/*
+RUN chown -R 10000:10001 /home/workflows/.npm-global
 
-COPY --chmod=755 scripts/ci/container-entrypoint.sh /usr/local/bin/gtkx-ci-entrypoint
-
-USER ${GTKX_UID}:${GTKX_GID}
-ENTRYPOINT ["gtkx-ci-entrypoint"]
-CMD ["sleep", "infinity"]
+USER workflows
+WORKDIR /home/workflows/workspace
+ENTRYPOINT ["/home/workflows/executor-binary/nx-cloud-workflow-executor"]

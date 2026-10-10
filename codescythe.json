@@ -33,7 +33,6 @@
         "packages/native/tools/build.ts",
         "scripts/cache-environment.ts",
         "scripts/codescythe.ts",
-        "scripts/gtkx.bootstrap.ts",
         "packages/e2e/tests/helpers/native-fixtures.ts",
         "packages/e2e/tests/helpers/native-fixtures-compile.ts",
         "scripts/prepare-release.ts",
@@ -41,7 +40,6 @@
         "scripts/release-package.ts",
         "scripts/release.ts",
         "scripts/tsx.ts",
-        "scripts/verify-release-channel.ts",
         "packages/gl/scripts/codegen.ts",
         "examples/*/src/{app,index}.{ts,tsx}",
         "examples/*/src/**/*.stories.tsx",
@@ -62,14 +60,17 @@
         "packages/native/tools/asan-loader.ts",
         "scripts/link-bindings.ts",
         "packages/e2e/tests/helpers/native-fixtures-coverage.ts",
-        "packages/e2e/tests/native/leak-probe.ts"
+        "packages/e2e/tests/native/leak-probe.ts",
+        "scripts/**/*.test.ts",
+        "packages/codegen/src/cli.ts",
+        "packages/config/src/builtin-elements.ts"
     ],
     "project": [
         "packages/**/*.{ts,tsx,mts,cts,js,mjs,cjs}",
         "examples/**/*.{ts,tsx}",
         "scripts/**/*.ts",
         "eslint.config.ts",
-        "gtkx.config.ts",
+        "gtkx.config.base.ts",
         "vitest.config*.ts"
     ],
     "ignore": ["packages/native/index.{js,d.ts}", "packages/**/*.d.ts", "examples/**/*.d.ts", "packages/*/bin/**"],

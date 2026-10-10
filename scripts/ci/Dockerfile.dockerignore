@@ -2,5 +2,3 @@
 !package.json
 !rust-toolchain.toml
 !packages/native/tools/rust-toolchain.toml
-!scripts/ci/Dockerfile
-!scripts/ci/container-entrypoint.sh

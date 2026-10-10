@@ -2,23 +2,10 @@
     "$schema": "./node_modules/nx/schemas/project-schema.json",
     "name": "gtkx",
     "targets": {
-        "_build:bindings": {
-            "command": "node scripts/ci/run.mjs 'node --import ./scripts/tsx.ts packages/cli/src/cli.ts codegen --config scripts/gtkx.bootstrap.ts'",
-            "cache": true,
-            "dependsOn": ["@gtkx/native:build"],
-            "outputs": ["{workspaceRoot}/node_modules/.gtkx"],
-            "inputs": [
-                "default",
-                "{workspaceRoot}/**/*.{js,jsx,mjs,mts,ts,tsx,json,xml,po,pot}",
-                "{workspaceRoot}/packages/codegen/overrides/**/*",
-                "nativeEnvironment",
-                "{workspaceRoot}/scripts/ci/**/*"
-            ]
-        },
         "codegen": {
-            "command": "node scripts/ci/run.mjs 'node packages/cli/dist/cli.js codegen'",
+            "command": "node packages/cli/dist/cli.js codegen --config gtkx.config.base.ts",
             "cache": true,
-            "dependsOn": ["@gtkx/cli:build"],
+            "dependsOn": ["bindings", "@gtkx/cli:build"],
             "outputs": ["{workspaceRoot}/.gtkx/reference"],
             "inputs": [
                 "default",
@@ -26,18 +13,17 @@
                 {
                     "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
                     "transitive": true
-                },
-                "{workspaceRoot}/scripts/ci/**/*"
+                }
             ]
         },
         "typecheck": {
-            "command": "node scripts/ci/run.mjs 'tsc --noEmit'",
+            "command": "tsc --noEmit",
             "cache": true,
             "dependsOn": ["build", "^typecheck"],
             "inputs": [
                 "{workspaceRoot}/tsconfig.json",
                 "{workspaceRoot}/eslint.config.ts",
-                "{workspaceRoot}/gtkx.config.ts",
+                "{workspaceRoot}/gtkx.config.base.ts",
                 "{workspaceRoot}/scripts/**/*",
                 "{workspaceRoot}/packages/**/*.{ts,tsx,mts,json}",
                 "{workspaceRoot}/examples/**/*.{ts,tsx,mts,json}",
@@ -46,20 +32,18 @@
                 {
                     "dependentTasksOutputFiles": "**/*.{d.ts,d.mts}",
                     "transitive": true
-                },
-                "{workspaceRoot}/scripts/ci/**/*"
+                }
             ]
         },
         "lint": {
-            "command": "node scripts/ci/run.mjs 'oxlint . --ignore-pattern packages --ignore-pattern examples --ignore-pattern tutorial --ignore-pattern website'",
+            "command": "oxlint . --ignore-pattern packages --ignore-pattern examples --ignore-pattern tutorial --ignore-pattern website",
             "cache": true,
-            "dependsOn": ["build", "_lint:codescythe", "_lint:workflows", "_lint:ci", "_lint:format"],
+            "dependsOn": ["build", "_lint:codescythe", "_lint:workflows", "_lint:format", "_lint:eslint"],
             "inputs": [
                 "default",
                 "^default",
                 "{workspaceRoot}/packages/native/.gitignore",
                 "{workspaceRoot}/website/.gitignore",
-                "{workspaceRoot}/scripts/ci/**/*",
                 "{workspaceRoot}/.oxlintrc.json",
                 "{workspaceRoot}/pnpm-lock.yaml"
             ]
@@ -71,9 +55,9 @@
             "cache": true
         },
         "_lint:codescythe": {
-            "command": "node scripts/ci/run.mjs 'tsx scripts/codescythe.ts'",
+            "command": "tsx scripts/codescythe.ts",
             "cache": true,
-            "dependsOn": ["_build:bindings", "@gtkx/gl:codegen"],
+            "dependsOn": ["bindings", "@gtkx/gl:codegen"],
             "inputs": [
                 "{workspaceRoot}/codescythe.json",
                 "{workspaceRoot}/package.json",
@@ -81,7 +65,7 @@
                 "{workspaceRoot}/.gitignore",
                 "{workspaceRoot}/tsconfig.json",
                 "{workspaceRoot}/eslint.config.ts",
-                "{workspaceRoot}/gtkx.config.ts",
+                "{workspaceRoot}/gtkx.config.base.ts",
                 "{workspaceRoot}/scripts/**/*",
                 "{workspaceRoot}/packages/**/*",
                 "{workspaceRoot}/examples/**/*",
@@ -92,8 +76,7 @@
                 {
                     "dependentTasksOutputFiles": "**/*.{js,ts,json}",
                     "transitive": true
-                },
-                "{workspaceRoot}/scripts/ci/**/*"
+                }
             ]
         },
         "_lint:workflows": {
@@ -103,41 +86,68 @@
                 "{workspaceRoot}/project.json",
                 "{workspaceRoot}/.github/**/*",
                 {
-                    "runtime": "node scripts/ci/run.mjs 'go version'"
+                    "runtime": "go version"
                 },
                 {
-                    "runtime": "node scripts/ci/run.mjs 'shellcheck --version'"
+                    "runtime": "shellcheck --version"
                 },
                 {
                     "env": "SHELLCHECK_OPTS"
-                },
-                "{workspaceRoot}/scripts/ci/**/*",
-                "{workspaceRoot}/scripts/ci/**/*.sh"
+                }
             ],
             "outputs": [],
             "options": {
                 "parallel": false,
                 "commands": [
-                    "node scripts/ci/run.mjs 'go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -pyflakes='",
-                    "node scripts/ci/run.mjs 'bash -euo pipefail -c '\\''for action in .github/actions/*/action.yml .github/actions/*/action.yaml; do if [ -f \"$action\" ]; then go run github.com/mikefarah/yq/v4@v4.54.1 \"{\\\"on\\\":{\\\"workflow_dispatch\\\":{\\\"inputs\\\":((.inputs // {}) | with_entries(.value.type = \\\"string\\\"))}},\\\"jobs\\\":{\\\"composite\\\":{\\\"runs-on\\\":\\\"ubuntu-latest\\\",\\\"steps\\\":.runs.steps}}}\" \"$action\" | go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -pyflakes= -stdin-filename \"$action\" -; fi; done'\\'''",
-                    "node scripts/ci/run.mjs 'shellcheck scripts/ci/*.sh'"
+                    "go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -pyflakes=",
+                    "bash -euo pipefail -c 'for action in .github/actions/*/action.yml .github/actions/*/action.yaml; do if [ -f \"$action\" ]; then go run github.com/mikefarah/yq/v4@v4.54.1 \"{\\\"on\\\":{\\\"workflow_dispatch\\\":{\\\"inputs\\\":((.inputs // {}) | with_entries(.value.type = \\\"string\\\"))}},\\\"jobs\\\":{\\\"composite\\\":{\\\"runs-on\\\":\\\"ubuntu-latest\\\",\\\"steps\\\":.runs.steps}}}\" \"$action\" | go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12 -pyflakes= -stdin-filename \"$action\" -; fi; done'"
                 ]
             }
         },
-        "_lint:ci": {
-            "command": "node scripts/ci/run.mjs 'node --test scripts/ci/run.test.mjs'",
-            "cache": true,
-            "inputs": ["default", "^default", "{workspaceRoot}/scripts/ci/**/*"],
-            "outputs": []
-        },
         "_lint:format": {
-            "command": "node scripts/ci/run.mjs 'oxfmt --check .'",
+            "command": "oxfmt --check .",
             "cache": true,
             "inputs": [
                 "{workspaceRoot}/**/*",
                 {
                     "externalDependencies": ["oxfmt"]
                 }
+            ],
+            "outputs": []
+        },
+        "bindings": {
+            "command": "node packages/codegen/dist/cli.js --config gtkx.config.base.ts",
+            "cache": true,
+            "dependsOn": ["@gtkx/codegen:build"],
+            "outputs": ["{workspaceRoot}/node_modules/.gtkx"],
+            "inputs": [
+                "{workspaceRoot}/gtkx.config.base.ts",
+                "{workspaceRoot}/package.json",
+                "{workspaceRoot}/pnpm-lock.yaml",
+                "{workspaceRoot}/packages/runtime/package.json",
+                "{workspaceRoot}/packages/react/package.json",
+                "{workspaceRoot}/packages/codegen/overrides/**/*",
+                "sharedGlobals",
+                {
+                    "dependentTasksOutputFiles": "**/*.{js,node,d.ts,json}",
+                    "transitive": true
+                }
+            ]
+        },
+        "test": {
+            "dependsOn": ["@gtkx/utils:build"],
+            "inputs": ["default", "^production", "{workspaceRoot}/packages/native/tools/**/*"]
+        },
+        "_lint:eslint": {
+            "command": "eslint scripts",
+            "cache": true,
+            "dependsOn": ["@gtkx/utils:build"],
+            "inputs": [
+                "default",
+                "^production",
+                "sharedGlobals",
+                "{workspaceRoot}/eslint.config.ts",
+                "{workspaceRoot}/pnpm-lock.yaml"
             ],
             "outputs": []
         }

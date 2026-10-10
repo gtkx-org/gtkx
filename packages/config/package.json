@@ -45,6 +45,12 @@
             "import": "./dist/vite-plugin.js",
             "require": null,
             "default": "./dist/vite-plugin.js"
+        },
+        "./elements": {
+            "types": "./dist/builtin-elements.d.ts",
+            "import": "./dist/builtin-elements.js",
+            "require": null,
+            "default": "./dist/builtin-elements.js"
         }
     },
     "sideEffects": false,
@@ -53,7 +59,7 @@
         "src"
     ],
     "scripts": {
-        "release": "tsx ../../scripts/release-package.ts"
+        "release": "node ../../scripts/release-package.ts"
     },
     "engines": {
         "node": ">=26.7.0"

@@ -3,7 +3,7 @@
     "name": "@gtkx/vitest",
     "targets": {
         "test": {
-            "dependsOn": ["build", "^build", "gtkx:_build:bindings"]
+            "dependsOn": ["build", "^build", "gtkx:bindings"]
         },
         "lint": {
             "dependsOn": ["^build", "_lint:eslint"]

@@ -210,6 +210,9 @@ importers:
       '@gtkx/cairo':
         specifier: workspace:*
         version: link:packages/cairo
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:packages/config
       '@gtkx/native':
         specifier: workspace:*
         version: link:packages/native
@@ -624,12 +627,12 @@ importers:
       '@gtkx/cairo':
         specifier: workspace:*
         version: link:../cairo
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../config
       '@gtkx/native':
         specifier: workspace:*
         version: link:../native
-      '@gtkx/react':
-        specifier: workspace:*
-        version: link:../react
       '@gtkx/runtime':
         specifier: workspace:*
         version: link:../runtime
@@ -655,6 +658,9 @@ importers:
         specifier: 'catalog:'
         version: '@typescript/typescript6@6.0.2'
     devDependencies:
+      '@gtkx/react':
+        specifier: workspace:*
+        version: link:../react
       vitest:
         specifier: 'catalog:'
         version: 5.0.3(@types/node@26.5.1)(vite@8.3.3(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))

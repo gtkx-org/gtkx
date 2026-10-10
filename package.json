@@ -11,8 +11,8 @@
         "codegen": "nx run-many -t codegen --skip-nx-cache",
         "plan": "nx release plan",
         "postinstall": "tsc -b --noCheck --force packages/vitest/tsconfig.lib.json && node scripts/link-bindings.ts",
-        "prepare-release": "tsx ./scripts/prepare-release.ts",
-        "release": "tsx ./scripts/release.ts",
+        "prepare-release": "node scripts/prepare-release.ts",
+        "release": "node scripts/release.ts",
         "format": "oxfmt --write ."
     },
     "nx": {
@@ -20,6 +20,7 @@
     },
     "devDependencies": {
         "@gtkx/cairo": "workspace:*",
+        "@gtkx/config": "workspace:*",
         "@gtkx/native": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/runtime": "workspace:*",

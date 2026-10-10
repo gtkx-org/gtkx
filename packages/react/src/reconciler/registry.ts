@@ -57,18 +57,9 @@ type ModuleExport = NonNullable<ProjectElementConfig["component"]>;
 type ElementPropsExport = NonNullable<ProjectElementConfig["props"]>;
 
 /** How one GLib type is rendered. */
-type ElementConfig<T extends GObject.Object = GObject.Object> = {
-    /** The element has no GObject of its own; its parent container creates one, as it does for pages. */
-    isLazy?: boolean;
+type ElementConfig<T extends GObject.Object = GObject.Object> = ProjectElementConfig & {
     /** Behaviors bound to the type, consulted in registration order and inherited by its subtypes. */
     behaviors?: ElementBehavior<T>[];
-    /** Component that wraps the generated element. */
-    component?: ModuleExport;
-    /** Base props interface the generated props extend. */
-    props?: ElementPropsExport;
-    /** GObject properties to leave out of the generated props, such as those a behavior writes from children. */
-    omittedProps?: string[];
-    acceptedChildTypes?: string[];
 };
 
 /** Every registered element config, keyed by GLib type name. */
@@ -146,8 +137,6 @@ const defineBehavior = <T extends GObject.Object>(hooks: ElementBehavior<T>): El
 const forTypes = (types: string[], config: ElementConfig<never>): Record<string, ElementConfig<never>> =>
     Object.fromEntries(types.map((type) => [type, config]));
 
-const internal = (name: string): ModuleExport => ({ module: "@gtkx/react/internal", export: name });
-
 export {
     ELEMENTS,
     mergeElementConfigs,
@@ -155,7 +144,6 @@ export {
     defineElements,
     defineBehavior,
     forTypes,
-    internal,
     type Props,
     type PlaceInfo,
     type DetachInfo,

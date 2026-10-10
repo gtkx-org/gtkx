@@ -1,4 +1,4 @@
-import type { ElementPropsExport } from "@gtkx/react/config";
+import type { ElementPropsExport } from "@gtkx/config/elements";
 
 type ElementPropTypeRef = ElementPropsExport & { type: string };
 type ElementProps = Record<string, ElementPropsExport>;

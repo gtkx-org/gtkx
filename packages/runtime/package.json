@@ -53,7 +53,7 @@
         "!**/*.tsbuildinfo"
     ],
     "scripts": {
-        "release": "tsx ../../scripts/release-package.ts"
+        "release": "node ../../scripts/release-package.ts"
     },
     "engines": {
         "node": ">=26.7.0"

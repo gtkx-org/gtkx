@@ -18,6 +18,9 @@
         },
         {
             "path": "../native/tsconfig.lib.json"
+        },
+        {
+            "path": "../config/tsconfig.lib.json"
         }
     ]
 }

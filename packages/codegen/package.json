@@ -48,15 +48,15 @@
         "src"
     ],
     "scripts": {
-        "release": "tsx ../../scripts/release-package.ts"
+        "release": "node ../../scripts/release-package.ts"
     },
     "engines": {
         "node": ">=26.7.0"
     },
     "dependencies": {
         "@gtkx/cairo": "workspace:*",
+        "@gtkx/config": "workspace:*",
         "@gtkx/native": "workspace:*",
-        "@gtkx/react": "workspace:*",
         "@gtkx/runtime": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@types/node": "catalog:",
@@ -67,6 +67,7 @@
         "typescript": "catalog:"
     },
     "devDependencies": {
-        "vitest": "catalog:"
+        "vitest": "catalog:",
+        "@gtkx/react": "workspace:*"
     }
 }
