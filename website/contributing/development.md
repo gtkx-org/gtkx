@@ -106,7 +106,7 @@ The native sanitizer task runs as an E2E dependency in the same distributed grap
 
 ## Generated bindings
 
-The root `gtkx.config.ts` defines the shared configuration imported by workspace packages. It selects the workspace's additional native libraries and reads `GTKX_GIR_PATH` when GIR files are installed outside the normal search paths.
+The root `gtkx.config.ts` defines the shared configuration imported by workspace packages. It selects the workspace's additional native libraries. Codegen reads `GTKX_GIR_PATH` when GIR files are installed outside the normal search paths.
 
 Regenerate the workspace's bindings and other codegen targets through Nx:
 

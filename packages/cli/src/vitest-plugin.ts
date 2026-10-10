@@ -1,5 +1,6 @@
 import type { Plugin } from "vite";
 import gtkxVitest, { type PluginOptions } from "@gtkx/vitest";
+import { createProjectStaging } from "./internal/project-staging.js";
 import { gtkxEnsureStore } from "./vite-plugins/ensure-store.js";
 import { gtkxFontWorkerEnv } from "./vite-plugins/font-worker-env.js";
 import { gtkxIconWorkerEnv } from "./vite-plugins/icon-worker-env.js";
@@ -13,13 +14,17 @@ import { gtkxSettingsWorkerEnv } from "./vite-plugins/settings-worker-env.js";
  *
  * @returns The plugins to spread into a Vitest config.
  */
-const gtkx = (options: PluginOptions = {}): Plugin[] => [
-    gtkxEnsureStore(options.configFile),
-    ...gtkxVitePlugins({ configFile: options.configFile }),
-    gtkxSettingsWorkerEnv(options.configFile),
-    gtkxFontWorkerEnv(options.configFile),
-    gtkxIconWorkerEnv(options.configFile),
-    gtkxVitest(options),
-];
+const gtkx = (options: PluginOptions = {}): Plugin[] => {
+    const staging = createProjectStaging();
+
+    return [
+        gtkxEnsureStore(options.configFile),
+        ...gtkxVitePlugins({ configFile: options.configFile, localeDir: options.localeDir, staging }),
+        gtkxSettingsWorkerEnv(staging.schemas, options.configFile),
+        gtkxFontWorkerEnv(staging.fonts, options.configFile),
+        gtkxIconWorkerEnv(options.configFile),
+        gtkxVitest(options),
+    ];
+};
 
 export default gtkx;

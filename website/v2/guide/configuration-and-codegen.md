@@ -68,6 +68,8 @@ Both packages use namespace subpaths; neither has a bare root import. Use [`@gtk
 
 Leave generation enabled for an ordinary application. `codegen: false` is for projects that reuse an installed binding store. If a generated store needs rebuilding, run `gtkx codegen --force` in the project that generates it.
 
+Concurrent generation waits up to ten minutes for each binding-store lock. Use `gtkx codegen --lock-timeout 900000` to change that wait in milliseconds, or pass `lockTimeoutMs` to the `@gtkx/codegen` `runCodegen` API.
+
 ### Production bindings
 
 Production builds remove unused generated classes. Import a class as a runtime value when the app needs its type registration, including when using `GObject.typeFromName`. A side-effect-only namespace import initializes the namespace but does not retain every class. Development and tests do not bundle.

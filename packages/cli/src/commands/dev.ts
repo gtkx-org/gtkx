@@ -36,7 +36,7 @@ const createDevCommand = (options: { signal?: AbortSignal; applicationArgs?: str
             const { cwd, entry: entryPath, configFile, configDependencies } = await prepareProject(args, DEV_MODE);
             const watch: DevWatch | undefined = await resolveConfigWatch(cwd, DEV_MODE, configFile, configDependencies);
             const applicationArgs = options.applicationArgs ?? splitApplicationArgs(rawArgs).applicationArgs;
-            const stopHeadless = args.headless ? await startHeadlessDevDisplay(args.size) : undefined;
+            const headless = args.headless ? await startHeadlessDevDisplay(args.size) : undefined;
 
             try {
                 return await runDevSupervisor({
@@ -44,11 +44,12 @@ const createDevCommand = (options: { signal?: AbortSignal; applicationArgs?: str
                     cwd,
                     configFile,
                     args: applicationArgs,
+                    mcpSocketPath: headless?.mcpSocketPath,
                     watch,
                     ...(options.signal === undefined ? {} : { signal: options.signal }),
                 });
             } finally {
-                stopHeadless?.();
+                headless?.stop();
             }
         },
     });

@@ -1,14 +1,12 @@
 import type { InlineConfig, ModuleNode, Plugin, ViteDevServer } from "vite";
 import { error, warn } from "@gtkx/utils";
 import { isCatalogSource } from "../i18n/catalogs.js";
-import { hasUnstagedFontImport } from "../internal/font-staging.js";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
 import { sourceLanguage } from "../internal/source-imports.js";
 import { projectSchemaFiles, SCHEMA_SUFFIX, stageAndCompileProjectSchemas } from "../settings/schema.js";
 import { createStorybookSession, type StorybookSession } from "../storybook/session.js";
 import { isUrlSpecifier } from "../vite-plugins/asset-specifier.js";
 import { createChangeQueue, type WatchedChange } from "./change-queue.js";
-import { DEV_STORYBOOK_ENV } from "./entry-env.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
 import { isMissingImport, missingImportName } from "./missing-import.js";
 import { createRefreshTracker, type RefreshTracker } from "./refresh-tracker.js";
@@ -34,6 +32,7 @@ type DevRunnerDeps = {
     staleExportName(previous: Record<string, unknown>, current: Record<string, unknown>): string | null;
     readFileRevision(path: string): Promise<string>;
     hasWrittenCatalog(path: string): boolean;
+    hasUnstagedFontImport(root: string, path: string): boolean;
     deployOutDir: string | undefined;
     plugins(entryPath: string): Plugin[];
     log(message: string): void;
@@ -42,6 +41,10 @@ type DevRunnerDeps = {
 
 type DevRunner = {
     run(entryPath: string): Promise<void>;
+};
+
+type DevRunnerOptions = {
+    storybookConfig?: string | undefined;
 };
 
 type ShutdownController = {
@@ -446,7 +449,7 @@ const didRestartForChange = async (session: DevSession, change: WatchedChange): 
         return true;
     }
 
-    if (change.event !== "unlink" && hasUnstagedFontImport(root, change.path)) {
+    if (change.event !== "unlink" && session.deps.hasUnstagedFontImport(root, change.path)) {
         await restartForFont(session, change.path);
 
         return true;
@@ -642,13 +645,15 @@ const attachApplication = async (session: DevSession): Promise<void> => {
     await connectLiveApplication(session, liveApplicationId);
 };
 
-const loadEntry = async (session: DevSession, entryPath: string): Promise<void> => {
+const loadEntry = async (
+    session: DevSession,
+    entryPath: string,
+    storybookConfig: string | undefined,
+): Promise<void> => {
     session.deps.log(`Loading entry: ${entryPath}`);
 
     try {
         const entry = await loadModuleExclusively(session.server, entryPath);
-        const storybookConfig = process.env[DEV_STORYBOOK_ENV];
-
         if (storybookConfig !== undefined) {
             session.storybook = createStorybookSession(session.server, entry, storybookConfig, (module) =>
                 session.deps.isRefreshBoundary(module),
@@ -697,7 +702,7 @@ const createSession = (server: ViteDevServer, deps: DevRunnerDeps): DevSession =
     };
 };
 
-const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
+const createDevRunner = (deps: DevRunnerDeps, options: DevRunnerOptions = {}): DevRunner => ({
     async run(entryPath: string): Promise<void> {
         const server = await deps.createServer(
             createDevServerConfig(process.cwd(), deps.deployOutDir, deps.plugins(entryPath)),
@@ -711,7 +716,7 @@ const createDevRunner = (deps: DevRunnerDeps): DevRunner => ({
 
         deps.watchApplicationShutdown(onApplicationShutdown(session));
         watchProjectFiles(session);
-        await loadEntry(session, entryPath);
+        await loadEntry(session, entryPath, options.storybookConfig);
         await attachApplication(session);
         announceReady(session);
     },

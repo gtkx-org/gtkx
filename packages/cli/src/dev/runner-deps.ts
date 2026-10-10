@@ -6,6 +6,8 @@ import { info, installGracefulShutdown } from "@gtkx/utils";
 import { readFile } from "node:fs/promises";
 import { createServer } from "vite";
 import type { ApplicationState, DevRunnerDeps } from "./runner.js";
+import { hasUnstagedFontImport } from "../internal/font-staging.js";
+import type { ProjectStaging } from "../internal/project-staging.js";
 import { startMcpClient, stopMcpClient } from "../mcp/index.js";
 import {
     mergeTestingModule,
@@ -18,6 +20,12 @@ import { gtkxFastRefresh } from "../vite-plugins/fast-refresh/swc-refresh.js";
 import { gtkxVitePlugins } from "../vite-plugins/index.js";
 import { gtkxReactDomPrebundle } from "../vite-plugins/react-dom-prebundle.js";
 import { type CatalogWrites, createCatalogWrites } from "./catalog-writes.js";
+
+type DevRunnerDepsOptions = {
+    mcpSocketPath?: string | undefined;
+    staging: ProjectStaging;
+    localeDir?: string | null | undefined;
+};
 
 const DEV_MODE = "development";
 const APPLICATION_POLL_INTERVAL_MS = 50;
@@ -73,9 +81,17 @@ const waitForApplicationId = async (timeoutMs: number, shouldKeepWaiting: () => 
 const readFileRevision = (path: string): Promise<string> => readFile(path, "utf8");
 
 const devPlugins =
-    (configFile: string, catalogWrites: CatalogWrites): DevRunnerDeps["plugins"] =>
+    (configFile: string, catalogWrites: CatalogWrites, options: DevRunnerDepsOptions): DevRunnerDeps["plugins"] =>
     (entryPath) => [
-        ...gtkxVitePlugins({ mode: DEV_MODE, entryPath, configFile, onCatalogsWritten: catalogWrites.record }),
+        ...gtkxVitePlugins({
+            mode: DEV_MODE,
+            entryPath,
+            configFile,
+            onCatalogsWritten: catalogWrites.record,
+            shouldWarnGraduatedFuture: false,
+            staging: options.staging,
+            localeDir: options.localeDir,
+        }),
         ...gtkxFastRefresh(),
         gtkxReactDomPrebundle(),
     ];
@@ -84,11 +100,12 @@ const createDevRunnerDeps = (
     configFile: string,
     deployOutDir: string | undefined,
     catalogWrites: CatalogWrites,
+    options: DevRunnerDepsOptions,
 ): DevRunnerDeps => ({
     createServer,
     waitForApplicationId,
     getConfiguredApplicationId: async (root: string) => {
-        const loaded = await loadConfig(root, { mode: DEV_MODE, configFile });
+        const loaded = await loadConfig(root, { mode: DEV_MODE, configFile, shouldWarnGraduatedFuture: false });
 
         return loaded.config.applicationId;
     },
@@ -102,7 +119,7 @@ const createDevRunnerDeps = (
             return mergeTestingModule(publicApi, internals);
         });
 
-        return startMcpClient(applicationId);
+        return startMcpClient(applicationId, options.mcpSocketPath);
     },
     stopMcpClient,
     watchApplicationShutdown,
@@ -126,13 +143,17 @@ const createDevRunnerDeps = (
     staleExportName,
     readFileRevision,
     hasWrittenCatalog: catalogWrites.hasWritten,
+    hasUnstagedFontImport: (root, path) => hasUnstagedFontImport(options.staging.fonts, root, path),
     deployOutDir,
-    plugins: devPlugins(configFile, catalogWrites),
+    plugins: devPlugins(configFile, catalogWrites, options),
     log: info,
     exit: (code: number): never => process.exit(code),
 });
 
-const defaultDevRunnerDeps = (configFile: string, deployOutDir: string | undefined): DevRunnerDeps =>
-    createDevRunnerDeps(configFile, deployOutDir, createCatalogWrites());
+const defaultDevRunnerDeps = (
+    configFile: string,
+    deployOutDir: string | undefined,
+    options: DevRunnerDepsOptions,
+): DevRunnerDeps => createDevRunnerDeps(configFile, deployOutDir, createCatalogWrites(), options);
 
 export { defaultDevRunnerDeps };

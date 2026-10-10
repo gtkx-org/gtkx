@@ -103,7 +103,6 @@ jobs:
     environment: npm-release
     env:
       NPM_CONFIG_PROVENANCE: "true"
-      GTKX_RELEASE_NATIVE_ARTIFACTS: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -118,7 +117,7 @@ jobs:
       - uses: ./.github/actions/setup-ci
 
       - name: Release
-        run: pnpm release
+        run: pnpm release --from-artifacts
 
   publish-release:
     needs: publish

@@ -3,7 +3,7 @@ import { type ChildProcess, fork as nodeFork } from "node:child_process";
 import { type FSWatcher, statSync, watch as watchFs } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEV_CONFIG_ENV, DEV_ENTRY_ENV, DEV_STORYBOOK_ENV } from "./entry-env.js";
+import { DEV_RUNNER_READY, type DevRunnerBootstrap } from "./bootstrap.js";
 
 type DevWatch = {
     paths: string[];
@@ -18,6 +18,7 @@ type SupervisorState = {
     entryPath: string;
     configFile: string;
     storybookConfig: string | undefined;
+    mcpSocketPath: string | undefined;
     cwd: string;
     args: string[];
     watch: DevWatch | undefined;
@@ -36,6 +37,7 @@ type DevSupervisorOptions = {
     entryPath: string;
     configFile: string;
     storybookConfig?: string | undefined;
+    mcpSocketPath?: string | undefined;
     cwd: string;
     args?: string[] | undefined;
     watch?: DevWatch | undefined;
@@ -47,8 +49,8 @@ const DEV_RUNNER_URL = new URL("../../bin/gtkx-dev-runner.js", import.meta.url);
 const FORCE_KILL_TIMEOUT_MS = 5000;
 const CONFIG_DEBOUNCE_MS = 150;
 const RESTART_EXIT_CODE = 75;
-const forkRunner = (modulePath: string, args: string[], env: NodeJS.ProcessEnv, cwd: string): ChildProcess =>
-    nodeFork(modulePath, args, { cwd, env, stdio: "inherit", detached: true });
+const forkRunner = (modulePath: string, args: string[], cwd: string): ChildProcess =>
+    nodeFork(modulePath, args, { cwd, stdio: "inherit", detached: true });
 
 const captureShutdownExit = (state: SupervisorState, code: number | null, signal: NodeJS.Signals | null): void => {
     if (code !== null) {
@@ -83,20 +85,36 @@ const handleChildExit = (state: SupervisorState, code: number | null, signal: No
 };
 
 const launch = (state: SupervisorState): void => {
-    const child = forkRunner(
-        state.runnerPath,
-        state.args,
-        {
-            ...process.env,
-            [DEV_CONFIG_ENV]: state.configFile,
-            [DEV_ENTRY_ENV]: state.entryPath,
-            [DEV_STORYBOOK_ENV]: state.storybookConfig,
-        },
-        state.cwd,
-    );
+    const child = forkRunner(state.runnerPath, state.args, state.cwd);
 
     state.child = child;
     child.once("error", state.fail);
+    const isCurrentRunner = (): boolean => !state.isShuttingDown && state.child === child && !child.killed;
+
+    child.once("message", (message: unknown) => {
+        if (!isCurrentRunner()) {
+            return;
+        }
+
+        if (message !== DEV_RUNNER_READY) {
+            child.kill("SIGTERM");
+            state.fail(new Error("Unexpected dev runner startup message"));
+
+            return;
+        }
+
+        const bootstrap: DevRunnerBootstrap = {
+            entryPath: state.entryPath,
+            configFile: state.configFile,
+            storybookConfig: state.storybookConfig,
+            mcpSocketPath: state.mcpSocketPath,
+        };
+        child.send(bootstrap, (error) => {
+            if (error !== null && isCurrentRunner()) {
+                state.fail(error);
+            }
+        });
+    });
 
     child.on("exit", (code, signal) => {
         handleChildExit(state, code, signal);
@@ -387,7 +405,7 @@ const installShutdown = (state: SupervisorState): (() => void) => {
 
 const runDevSupervisor = async (options: DevSupervisorOptions): Promise<number> => {
     const completion = Promise.withResolvers<number>();
-    const { entryPath, configFile, storybookConfig, cwd, args = [], watch } = options;
+    const { entryPath, configFile, storybookConfig, mcpSocketPath, cwd, args = [], watch } = options;
 
     const state: SupervisorState = {
         finish: completion.resolve,
@@ -396,6 +414,7 @@ const runDevSupervisor = async (options: DevSupervisorOptions): Promise<number> 
         entryPath,
         configFile,
         storybookConfig,
+        mcpSocketPath,
         cwd,
         args,
         watch,

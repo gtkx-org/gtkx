@@ -4,7 +4,7 @@ import { resourceBasePath } from "./resource-base-path.ts";
 const GTKX_CONFIG_VIRTUAL_ID = "virtual:gtkx-config";
 const RESOLVED_GTKX_CONFIG_VIRTUAL_ID = `\0${GTKX_CONFIG_VIRTUAL_ID}`;
 
-const renderConfigModule = (config: ResolvedConfig): string => {
+const renderConfigModule = (config: ResolvedConfig, localeDir: string | null = null): string => {
     const lazyJson = JSON.stringify(Object.fromEntries(config.lazyElements.map((type) => [type, { isLazy: true }])));
 
     const behaviorImports =
@@ -18,6 +18,7 @@ const renderConfigModule = (config: ResolvedConfig): string => {
     return [
         ...behaviorImports,
         `export const applicationId = ${JSON.stringify(config.applicationId)};`,
+        `export const localeDir = ${JSON.stringify(localeDir)};`,
         `export const resourceBasePath = ${JSON.stringify(resourceBasePath(config.applicationId))};`,
         `export const userEventSignals = ${JSON.stringify(config.userEventSignals)};`,
         config.elements === null

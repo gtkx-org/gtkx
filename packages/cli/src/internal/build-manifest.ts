@@ -26,7 +26,7 @@ const BUILD_MANIFEST_FILENAME = "gtkx-schemas.json";
 const BUILD_NOTICES_FILENAME = "BUNDLED-NOTICES";
 const BUILD_METADATA_FILENAMES: ReadonlySet<string> = new Set([BUILD_MANIFEST_FILENAME, BUILD_NOTICES_FILENAME]);
 const BUILD_MANIFEST_GENERATOR = "gtkx-build";
-const BUILD_MANIFEST_FORMAT_VERSION = 3;
+const BUILD_MANIFEST_FORMAT_VERSION = 4;
 
 const canonicalConfig = (value: unknown): unknown => {
     if (Array.isArray(value)) {

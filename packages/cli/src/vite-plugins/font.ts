@@ -5,6 +5,7 @@ import type { AssetEmitter } from "./asset-emitter.js";
 import { prependBanner } from "../internal/banner.js";
 import { fontFileName, FONTS_DIR } from "../internal/font-path.js";
 import { stagedFontStatus } from "../internal/font-staging.js";
+import { createRetainedStagingDir, type RetainedStagingDir } from "../internal/staging-dir.js";
 import { SOURCE_ID_RE, sourceLanguage } from "../internal/source-imports.js";
 import { xdgDataDirsBanner } from "../internal/xdg-banner.js";
 import { parseFontSpecifier } from "./asset-specifier.js";
@@ -13,6 +14,7 @@ import { stripQuery } from "./strip-query.js";
 import { createVirtualNamespace } from "./virtual-module.js";
 
 type PluginState = {
+    staging: RetainedStagingDir;
     isBuild: boolean;
     root: string;
     emitted: Set<string>;
@@ -95,7 +97,7 @@ const loadFontModule = (ctx: LoadContext, state: PluginState, id: string): strin
 
     if (state.isBuild) {
         emitFont(ctx, state, filePath, content);
-    } else if (stagedFontStatus(filePath, content) === "absent") {
+    } else if (stagedFontStatus(state.staging, filePath, content) === "absent") {
         return ctx.error(unstagedFontError(filePath, state.importers.get(id) ?? state.root));
     }
 
@@ -128,8 +130,8 @@ const fontBanner =
     (chunk: Rollup.RenderedChunk): string =>
         state.emitted.size === 0 ? "" : xdgDataDirsBanner(chunk);
 
-function gtkxFont(): Plugin {
-    const state: PluginState = { isBuild: false, root: "", emitted: new Set(), importers: new Map() };
+function gtkxFont(staging: RetainedStagingDir = createRetainedStagingDir("fonts")): Plugin {
+    const state: PluginState = { staging, isBuild: false, root: "", emitted: new Set(), importers: new Map() };
 
     return {
         name: "gtkx:font",
@@ -170,6 +172,10 @@ function gtkxFont(): Plugin {
             }
 
             return prependBanner(options, fontBanner(state));
+        },
+
+        closeBundle() {
+            staging.release();
         },
     };
 }

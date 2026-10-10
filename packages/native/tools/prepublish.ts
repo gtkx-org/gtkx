@@ -2,11 +2,15 @@ import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { parseArgs } from "node:util";
 import { nativeArtifactHash, verifyNativeArtifacts } from "../../../scripts/native-artifact.js";
-import { publishPackage } from "../../../scripts/pnpm-publish.js";
+import { publishPackage, visibilityTimeoutMs } from "../../../scripts/pnpm-publish.js";
 import { distTagForVersion, type PackageManifest } from "../../../scripts/publish-manifest.js";
 import { checkReleaseChannel } from "../../../scripts/release-channel.js";
 import { nativePlatforms } from "../../../scripts/release-package-set.js";
+
+const { values } = parseArgs({ options: { "from-artifacts": { type: "boolean", default: false } } });
+const timeoutMs = visibilityTimeoutMs(process.env.GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS);
 
 const packageDir = process.cwd();
 const manifestPath = join(packageDir, "package.json");
@@ -38,7 +42,7 @@ execFileSync(resolveExecutable("napi"), ["create-npm-dirs"], { cwd: packageDir, 
 
 const platforms = nativePlatforms(packageDir);
 
-if (process.env.GTKX_RELEASE_NATIVE_ARTIFACTS === "true") {
+if (values["from-artifacts"]) {
     const artifacts = platforms.map((platform) => verifyNativeArtifacts(artifactsDir, platform.split("-", 2)[1] ?? ""));
     const javascript = new Set([
         nativeArtifactHash(join(packageDir, "index.js")),
@@ -75,7 +79,7 @@ for (const platform of platforms) {
 
     writeFileSync(platformManifestPath, `${JSON.stringify(platformManifest, null, 2)}\n`);
     await checkReleaseChannel([platformDir]);
-    await publishPackage(platformDir, tag);
+    await publishPackage(platformDir, tag, timeoutMs);
 }
 
 manifest.optionalDependencies = optionalDependencies;

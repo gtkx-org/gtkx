@@ -1,6 +1,7 @@
 import { t } from "@gtkx/runtime";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { applicationId } from "virtual:gtkx-config";
+import { applicationId, localeDir } from "virtual:gtkx-config";
 
 const LIBC = "libc.so.6";
 const LC_ALL = 6;
@@ -22,13 +23,34 @@ function requireStringResult(result: unknown): string {
 }
 
 function initializeLocale(): string {
-    const localeDir = process.env.GTKX_LOCALE_DIR ?? fileURLToPath(new URL("locale", import.meta.url));
+    const directory = localeDir ?? bundledLocaleDir();
     requireStringResult(setLocaleBinding(LC_ALL, ""));
-    requireStringResult(bindTextDomainBinding(applicationId, localeDir));
+    requireStringResult(bindTextDomainBinding(applicationId, directory));
     requireStringResult(bindTextDomainCodesetBinding(applicationId, GETTEXT_CODESET));
     requireStringResult(textDomainBinding(applicationId));
 
     return new Intl.NumberFormat().resolvedOptions().locale;
+}
+
+function bundledLocaleDir(): string {
+    const configUrl = new URL("gtkx-i18n.json", import.meta.url);
+
+    if (!existsSync(configUrl)) {
+        return fileURLToPath(new URL("locale", configUrl));
+    }
+
+    const config: unknown = JSON.parse(readFileSync(configUrl, "utf8"));
+
+    if (
+        typeof config !== "object" ||
+        config === null ||
+        !("localeDir" in config) ||
+        typeof config.localeDir !== "string"
+    ) {
+        throw new TypeError("Invalid GTKX locale configuration");
+    }
+
+    return fileURLToPath(new URL(config.localeDir, configUrl));
 }
 
 export { locale };

@@ -22,7 +22,7 @@ const packWithNfpm = async (
     packager: NfpmPackager,
     configPath: string,
 ): Promise<DeployArtifact> => {
-    const nfpm = await resolveNfpm();
+    const nfpm = await resolveNfpm(payload.settings.paths.root, payload.settings.deploy.tools?.nfpm);
     const output = payload.settings.paths.output;
     mkdirSync(output, { recursive: true });
     const target = join(output, artifactNameFor(payload, packager));

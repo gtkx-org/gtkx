@@ -1,5 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { createMcpServer } from "@gtkx/mcp/server";
 import { runCommand } from "citty";
 import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -21,11 +22,18 @@ const invoke = async (args: string[], selected = createCommand()) => {
     return output + errors;
 };
 
-const withSession = async (name: string, root: string, readyPath: string, verify: () => Promise<void>) => {
+const withSession = async (
+    name: string,
+    root: string,
+    readyPath: string,
+    verify: () => Promise<void>,
+    args: string[] = [],
+    applicationArgs: string[] = [],
+) => {
     const controller = new AbortController();
     const running = invoke(
-        [name, "--cwd", root, "--headless", "--size", "640x480"],
-        createCommand({ signal: controller.signal }),
+        [name, "--cwd", root, "--headless", "--size", "640x480", ...args],
+        createCommand({ signal: controller.signal, applicationArgs }),
     );
     try {
         await Promise.race([
@@ -154,31 +162,80 @@ describe("CLI commands", () => {
         expect(files.some((file) => file.endsWith("bundle.mjs"))).toBe(true);
     });
 
-    it("starts, refreshes source and configuration, and stops a real dev session", async () => {
+    it("preserves arguments, configuration, translations and MCP across headless dev restarts", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "ready.txt");
+        const argumentsPath = join(project.root, "arguments.json");
+        const applicationArgs = ["--example", "a value", "--config=app-owned"];
+        project.write("po/LINGUAS", "fr\n");
+        project.write("po/fr.po", readFileSync(new URL("../../i18n/tests/fixtures/fr.po", import.meta.url), "utf8"));
+        vi.stubEnv("LANG", "fr_FR.UTF-8");
+        vi.stubEnv("LC_ALL", "fr_FR.UTF-8");
+        vi.stubEnv("LANGUAGE", "fr");
         const application = (revision: string) => `import { Application } from "@gtkx/gi/gio";
+            import { t } from "@gtkx/i18n";
             import { applicationId } from "virtual:gtkx-config";
             import { writeFileSync } from "node:fs";
             export const application = new Application({ applicationId });
+            application.setDefault();
             application.register(null);
             application.hold();
-            writeFileSync(${JSON.stringify(readyPath)}, ${JSON.stringify(revision)} + ":" + applicationId);`;
+            writeFileSync(${JSON.stringify(argumentsPath)}, JSON.stringify(process.argv.slice(2)));
+            writeFileSync(${JSON.stringify(readyPath)}, ${JSON.stringify(revision)} + ":" + applicationId + ":" + t("Hello, {{name}}!", { name: "Ada" }));`;
         project.write("src/index.ts", application("initial"));
-        await withSession("dev", project.root, readyPath, async () => {
-            project.write("src/index.ts", application("updated"));
-            await expect
-                .poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 })
-                .toBe("updated:org.gtkx.example");
-            const configPath = join(project.root, "gtkx.config.ts");
-            project.write(
-                "gtkx.config.ts",
-                readFileSync(configPath, "utf8").replace("org.gtkx.example", "org.gtkx.reloaded"),
-            );
-            await expect
-                .poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 })
-                .toBe("updated:org.gtkx.reloaded");
+        project.write("custom.config.ts", readFileSync(join(project.root, "gtkx.config.ts"), "utf8"));
+        project.write("gtkx.config.ts", 'export default { applicationId: "org.gtkx.unselected", codegen: false };');
+        vi.stubEnv("GTKX_MCP_SOCKET_PATH", undefined);
+        vi.stubEnv("XDG_RUNTIME_DIR", project.root);
+        const [clientTransport, transport] = InMemoryTransport.createLinkedPair();
+        const server = createMcpServer({
+            transport,
+            socketPath: join(project.root, "gtkx-mcp.sock"),
+            version: "1.0.0",
         });
+        const client = new Client({ name: "dev-session-test", version: "1.0.0" });
+        try {
+            await server.start();
+            await client.connect(clientTransport);
+            await withSession(
+                "dev",
+                project.root,
+                readyPath,
+                async () => {
+                    expect(readFileSync(readyPath, "utf8")).toBe("initial:org.gtkx.example:Bonjour, Ada !");
+                    expect(JSON.parse(readFileSync(argumentsPath, "utf8"))).toEqual(applicationArgs);
+                    expect(process.env.GTKX_MCP_SOCKET_PATH).toBeUndefined();
+                    const apps = await client.callTool({
+                        name: "gtkx_list_apps",
+                        arguments: { waitForApps: true, timeout: 30_000 },
+                    });
+                    expect(JSON.stringify(apps)).toContain("org.gtkx.example");
+                    project.write("src/index.ts", application("updated"));
+                    await expect
+                        .poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 })
+                        .toBe("updated:org.gtkx.example:Bonjour, Ada !");
+                    const configPath = join(project.root, "custom.config.ts");
+                    project.write(
+                        "custom.config.ts",
+                        readFileSync(configPath, "utf8").replace("org.gtkx.example", "org.gtkx.reloaded"),
+                    );
+                    await expect
+                        .poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 })
+                        .toBe("updated:org.gtkx.reloaded:Bonjour, Ada !");
+                    expect(JSON.parse(readFileSync(argumentsPath, "utf8"))).toEqual(applicationArgs);
+                    await expect
+                        .poll(async () => JSON.stringify(await client.callTool({ name: "gtkx_list_apps" })), {
+                            timeout: 30_000,
+                        })
+                        .toContain("org.gtkx.reloaded");
+                },
+                ["--config", "custom.config.ts"],
+                applicationArgs,
+            );
+        } finally {
+            await client.close();
+            await server.stop();
+        }
     });
 
     it("starts a real storybook session and stops its application", async () => {

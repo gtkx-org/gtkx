@@ -19,6 +19,7 @@ const createProject = (config: Record<string, unknown> = {}) => {
         "components",
         "config",
         "css",
+        "i18n",
         "native",
         "react",
         "runtime",

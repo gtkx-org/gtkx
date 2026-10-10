@@ -1,7 +1,7 @@
 import { loadConfig } from "@gtkx/config";
-import { error } from "@gtkx/utils";
 import { resolve } from "node:path";
-import { DEV_CONFIG_ENV, DEV_ENTRY_ENV } from "./entry-env.js";
+import { createProjectStaging } from "../internal/project-staging.js";
+import { receiveDevRunnerBootstrap } from "./bootstrap.js";
 import { prepareDevFontDir } from "./font-dir.js";
 import { prepareDevIconDir } from "./icon-dir.js";
 import { prepareDevLocaleDir } from "./locale-dir.js";
@@ -16,28 +16,23 @@ const main = async (): Promise<void> => {
     }
 
     const cwd = process.cwd();
-    const entryArg = process.env[DEV_ENTRY_ENV];
-
-    if (!entryArg) {
-        error(`Missing ${DEV_ENTRY_ENV}`);
-        process.exit(1);
-    }
-
-    const configFile = process.env[DEV_CONFIG_ENV];
-
-    if (!configFile) {
-        error(`Missing ${DEV_CONFIG_ENV}`);
-        process.exit(1);
-    }
-
-    const { config, root } = await loadConfig(cwd, { mode: "development", configFile });
-    prepareDevLocaleDir(root, config.applicationId);
-    prepareDevSchemaDir(root);
+    const { entryPath: entryArg, configFile, storybookConfig, mcpSocketPath } = await receiveDevRunnerBootstrap();
+    const { config, root } = await loadConfig(cwd, {
+        mode: "development",
+        configFile,
+        shouldWarnGraduatedFuture: false,
+    });
+    const staging = createProjectStaging();
+    const localeDir = prepareDevLocaleDir(root, config.applicationId);
+    prepareDevSchemaDir(root, staging.schemas);
     prepareDevIconDir(root, config.applicationId, config.applicationIcon);
-    prepareDevFontDir(root);
+    prepareDevFontDir(root, staging.fonts);
     const entryPath = resolve(cwd, entryArg);
     const { defaultDevRunnerDeps } = await import("./runner-deps.js");
-    const runner = createDevRunner(defaultDevRunnerDeps(configFile, config.deploy?.outDir));
+    const runner = createDevRunner(
+        defaultDevRunnerDeps(configFile, config.deploy?.outDir, { mcpSocketPath, staging, localeDir }),
+        { storybookConfig },
+    );
     await runner.run(entryPath);
 };
 

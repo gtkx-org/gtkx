@@ -1,11 +1,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { Session } from "node:inspector/promises";
 import { dirname, join, relative } from "node:path";
-import { afterAll, beforeAll, expect } from "vitest";
+import { afterAll, beforeAll, expect, inject } from "vitest";
+import type {} from "../context.js";
 
-const directory = process.env.GTKX_NATIVE_COVERAGE_DIR;
+const { coverageDirectory: directory } = inject("nativeTest");
 
-if (directory !== undefined && process.env.GTKX_NATIVE_LEAK_PROBE !== "1") {
+if (directory !== undefined) {
     const session = new Session();
 
     beforeAll(async () => {

@@ -46,7 +46,7 @@ const createStorybookCommand = (options: { signal?: AbortSignal; applicationArgs
             const entryPath = createStorybookEntry(cwd);
             const watch = await resolveConfigWatch(cwd, DEV_MODE, context.configFile, context.configDependencies);
             const applicationArgs = options.applicationArgs ?? splitApplicationArgs(rawArgs).applicationArgs;
-            const stopHeadless = args.headless ? await startHeadlessDevDisplay(args.size) : undefined;
+            const headless = args.headless ? await startHeadlessDevDisplay(args.size) : undefined;
 
             try {
                 return await runDevSupervisor({
@@ -56,10 +56,11 @@ const createStorybookCommand = (options: { signal?: AbortSignal; applicationArgs
                     configFile: context.configFile,
                     storybookConfig: args["storybook-config"] ?? "",
                     args: applicationArgs,
+                    mcpSocketPath: headless?.mcpSocketPath,
                     watch,
                 });
             } finally {
-                stopHeadless?.();
+                headless?.stop();
             }
         },
     });

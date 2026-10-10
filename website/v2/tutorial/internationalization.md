@@ -238,13 +238,12 @@ import { resolve } from "node:path";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-    plugins: [gtkx()],
+    plugins: [gtkx({ localeDir: resolve(import.meta.dirname, "dist/locale") })],
     test: {
         include: ["tests/**/*.i18n.tsx"],
         setupFiles: ["./tests/setup.ts"],
         bail: 1,
         env: {
-            GTKX_LOCALE_DIR: resolve(import.meta.dirname, "dist/locale"),
             LANG: "fr_FR.UTF-8",
             LANGUAGE: "fr",
             LC_ALL: "fr_FR.UTF-8",
@@ -355,7 +354,7 @@ LC_ALL=fr_FR.UTF-8 LANG=fr_FR.UTF-8 LANGUAGE=fr \
 ./build/out/Tasks-1.0.0-x86_64.AppImage
 ```
 
-The launcher locates the packaged catalog through `GTKX_LOCALE_DIR`. Translated metadata, including the application name, is written into the desktop entry and AppStream file. Optional screenshots and release notes use the same PO catalog when present in the deploy configuration.
+The generated `gtkx-i18n.json` locates catalogs relative to the application bundle, including after the package is moved to another installation prefix. Translated metadata, including the application name, is written into the desktop entry and AppStream file. Optional screenshots and release notes use the same PO catalog when present in the deploy configuration.
 
 ## Next
 

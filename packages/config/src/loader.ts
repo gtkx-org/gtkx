@@ -25,6 +25,8 @@ type LoadConfigOptions = {
      * top-level values, and the name is passed to a config authored as a function.
      */
     mode?: string | undefined;
+    /** Whether to report graduated future flags; supervising processes can own these warnings. Defaults to true. */
+    shouldWarnGraduatedFuture?: boolean | undefined;
 } & Partial<Record<"configFile", string | undefined>>;
 
 /** Reads a project's configuration once per directory, caching what it loads and what it resolves. */
@@ -35,7 +37,6 @@ type ConfigLoader = {
     resolve: (cwd: string) => Promise<ResolvedConfig>;
 };
 
-const GRADUATED_FUTURE_ENV = "GTKX_GRADUATED_FUTURE_SHOWN";
 const graduatedFutureWarnings: Map<string, string> = new Map();
 
 const rejectMissingLocalConfig = (source: string, options: ConfigResolutionOptions): undefined => {
@@ -76,16 +77,11 @@ const warnGraduatedFuture = (config: unknown, root: string): void => {
     const keys = graduatedFutureKeys(config);
     const signature = keys.join(",");
 
-    if (
-        keys.length === 0 ||
-        graduatedFutureWarnings.get(root) === signature ||
-        process.env[GRADUATED_FUTURE_ENV] === signature
-    ) {
+    if (keys.length === 0 || graduatedFutureWarnings.get(root) === signature) {
         return;
     }
 
     graduatedFutureWarnings.set(root, signature);
-    process.env[GRADUATED_FUTURE_ENV] = signature;
     warn(`GTKX 2 ignores graduated future flags: ${keys.join(", ")}. Remove them from gtkx.config.ts.`);
 };
 
@@ -131,7 +127,9 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
 
         const config = result.config;
         validateConfig(config, configFile);
-        warnGraduatedFuture(config, root);
+        if (options.shouldWarnGraduatedFuture !== false) {
+            warnGraduatedFuture(config, root);
+        }
 
         const loaded = {
             config,

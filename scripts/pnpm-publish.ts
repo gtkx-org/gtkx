@@ -13,9 +13,7 @@ const VISIBILITY_INTERVAL_MS = 1000;
 const REGISTRY_REQUEST_TIMEOUT_MS = 10_000;
 const EMPTY_CONFIG_VALUES = new Set(["", "undefined", "null"]);
 
-const visibilityTimeoutMs = (): number => {
-    const configured = process.env[VISIBILITY_TIMEOUT_ENV];
-
+const visibilityTimeoutMs = (configured: string | undefined): number => {
     if (configured === undefined || configured === "") {
         return DEFAULT_VISIBILITY_TIMEOUT_MS;
     }
@@ -181,8 +179,7 @@ const waitForVisibility = async (packageDir: string, tag: string, timeoutMs: num
     throw new Error(`${expected} did not become visible within ${limit}`);
 };
 
-const publishPackage = async (packageDir: string, tag: string): Promise<void> => {
-    const timeoutMs = visibilityTimeoutMs();
+const publishPackage = async (packageDir: string, tag: string, timeoutMs: number): Promise<void> => {
     const { name, version, manifest } = packageIdentity(packageDir);
     const registry = registryFor(packageDir, name, manifest);
     const versionUrl = new URL(`${encodeURIComponent(name)}/${encodeURIComponent(version)}`, registry);

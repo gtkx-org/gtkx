@@ -158,15 +158,13 @@ const addNative = (): void => {
         addFile(join(directory, "config.toml"));
     }
 
-    if (process.env.GTKX_RELEASE_NATIVE_ARTIFACTS === "true") {
-        const suffix = `linux-${process.arch}-gnu`;
-        const names = [`native.${suffix}.node`, `index.${suffix}.js`, `index.${suffix}.d.ts`];
+    const suffix = `linux-${process.arch}-gnu`;
+    const names = [`native.${suffix}.node`, `index.${suffix}.js`, `index.${suffix}.d.ts`];
 
-        for (const name of names) {
-            const artifact = join("packages/native/artifacts", name);
-            addFile(artifact);
-            addFile(`${artifact}.sha256`);
-        }
+    for (const name of names) {
+        const artifact = join("packages/native/artifacts", name);
+        addFile(artifact);
+        addFile(`${artifact}.sha256`);
     }
 };
 

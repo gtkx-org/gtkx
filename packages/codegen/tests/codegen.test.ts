@@ -1,4 +1,14 @@
-import { mkdtempDisposableSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+    closeSync,
+    constants,
+    mkdtempDisposableSync,
+    mkdirSync,
+    openSync,
+    readFileSync,
+    symlinkSync,
+    writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -48,6 +58,30 @@ const diagnostics = (root: string, source: string) => {
 };
 
 describe("generated bindings", () => {
+    it("honors the requested store lock timeout and generates after the lock is released", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        const storeRoot = dirname(gi.storeDir);
+        mkdirSync(storeRoot, { recursive: true });
+        const lockFd = openSync(storeRoot, constants.O_RDONLY | constants.O_DIRECTORY);
+        const options = {
+            libraries: ["Gio-2.0"],
+            girPath: resolveGirPath(undefined, directory.path),
+            gi,
+            lockTimeoutMs: 25,
+        };
+
+        try {
+            execFileSync("flock", ["--exclusive", "3"], { stdio: ["ignore", "ignore", "ignore", lockFd] });
+            await expect(runCodegen(options)).rejects.toThrow("raise the 25ms limit");
+        } finally {
+            closeSync(lockFd);
+        }
+
+        expect(await runCodegen(options)).toMatchObject({ isRegenerated: true });
+        expect(readGeneratedLibraries(gi.storeDir)).toBeDefined();
+    });
+
     it("generates upstream GIR declarations, checks consumers and reuses fresh output", async () => {
         using directory = createProject();
         const { gi } = resolveStore(directory.path);

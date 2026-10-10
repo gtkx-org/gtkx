@@ -5,6 +5,7 @@ import { isPathWithin, logger, toPosixPath } from "@gtkx/utils";
 import { existsSync, mkdirSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join, posix, relative, resolve } from "node:path";
+import { I18N_RUNTIME_CONFIG_FILENAME, renderI18nRuntimeConfig } from "../i18n/runtime-config.js";
 import {
     type CatalogProject,
     compileCatalogs,
@@ -39,9 +40,9 @@ type I18nState = {
 };
 
 const BOOTSTRAP_SPECIFIER = "@gtkx/i18n/bootstrap";
-const LOCALE_URL_PLACEHOLDER = "__GTKX_BUNDLE_LOCALE_DIR__";
+const LOCALE_URL_PLACEHOLDER = "__GTKX_BUNDLE_LOCALE_CONFIG__";
 const LOCALE_MODULE_PATHS = new Set(["dist/locale.js", "src/locale.ts"]);
-const LOCALE_URL_PATTERN = /new URL\((["'])locale\1,\s*import\.meta\.url\)/;
+const LOCALE_URL_PATTERN = /new URL\((["'])gtkx-i18n\.json\1,\s*import\.meta\.url\)/;
 
 const isI18nLocaleModule = (state: I18nState, id: string): boolean => {
     if (state.i18nRoot.length === 0) {
@@ -57,7 +58,7 @@ const markLocaleUrl = (code: string): string =>
     code.replace(LOCALE_URL_PATTERN, () => `new URL(${JSON.stringify(LOCALE_URL_PLACEHOLDER)}, import.meta.url)`);
 
 const localeUrlForChunk = (fileName: string): string => {
-    const path = posix.relative(posix.dirname(fileName), LOCALE_DIRNAME);
+    const path = posix.relative(posix.dirname(fileName), I18N_RUNTIME_CONFIG_FILENAME);
 
     return path.length === 0 ? "." : path;
 };
@@ -245,6 +246,13 @@ const gtkxI18n = ({
 
         generateBundle() {
             buildCatalogs(state);
+            if (state.project !== null) {
+                this.emitFile({
+                    type: "asset",
+                    fileName: I18N_RUNTIME_CONFIG_FILENAME,
+                    source: renderI18nRuntimeConfig(LOCALE_DIRNAME),
+                });
+            }
         },
     };
 };
