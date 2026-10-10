@@ -238,6 +238,66 @@ describe("CLI commands", () => {
         }
     });
 
+    it("keeps the running app registered while configuration is invalid and restarts after repair", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "ready.txt");
+        const editedPath = join(project.root, "edited.txt");
+        const configPath = join(project.root, "custom.config.ts");
+        const config = readFileSync(join(project.root, "gtkx.config.ts"), "utf8");
+        project.write("custom.config.ts", config);
+        project.write(
+            "src/index.ts",
+            `import { Application } from "@gtkx/gi/gio";
+            import { applicationId } from "virtual:gtkx-config";
+            import { existsSync, writeFileSync } from "node:fs";
+            export const application = new Application({ applicationId: applicationId + ".Runtime" });
+            application.setDefault();
+            application.register(null);
+            application.hold();
+            if (!existsSync(${JSON.stringify(editedPath)})) {
+                writeFileSync(${JSON.stringify(configPath)}, 'export default { applicationId: "invalid" };');
+                writeFileSync(${JSON.stringify(editedPath)}, "edited");
+            }
+            writeFileSync(${JSON.stringify(readyPath)}, application.applicationId);`,
+        );
+        const socketPath = join(project.root, "mcp.sock");
+        vi.stubEnv("GTKX_MCP_SOCKET_PATH", socketPath);
+        const [clientTransport, transport] = InMemoryTransport.createLinkedPair();
+        const server = createMcpServer({ transport, socketPath, version: "1.0.0" });
+        const client = new Client({ name: "config-edit-test", version: "1.0.0" });
+        try {
+            await server.start();
+            await client.connect(clientTransport);
+            await withSession(
+                "dev",
+                project.root,
+                readyPath,
+                async () => {
+                    expect(readFileSync(readyPath, "utf8")).toBe("org.gtkx.example.Runtime");
+                    const apps = await client.callTool({
+                        name: "gtkx_list_apps",
+                        arguments: { waitForApps: true, timeout: 10_000 },
+                    });
+                    expect(JSON.stringify(apps)).toContain("org.gtkx.example");
+                    expect(JSON.stringify(apps)).not.toContain("org.gtkx.example.Runtime");
+                    project.write("custom.config.ts", config.replace("org.gtkx.example", "org.gtkx.repaired"));
+                    await expect
+                        .poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 })
+                        .toBe("org.gtkx.repaired.Runtime");
+                    await expect
+                        .poll(async () => JSON.stringify(await client.callTool({ name: "gtkx_list_apps" })), {
+                            timeout: 30_000,
+                        })
+                        .toContain("org.gtkx.repaired");
+                },
+                ["--config", "custom.config.ts"],
+            );
+        } finally {
+            await client.close();
+            await server.stop();
+        }
+    });
+
     it("starts a real storybook session and stops its application", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "ready.txt");
