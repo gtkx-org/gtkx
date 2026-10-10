@@ -25,6 +25,8 @@ The two main reusable pieces are the compiled call interface and the resolved sy
 
 Native calls also check argument counts, and object codecs check declared native types when those types can be resolved.
 
+The runtime composes unbound field reads and writes from compiled native field accessors and allocates scalar output storage by its ABI width. It also resolves and caches `get_type` results through ordinary function-pointer calls; native optional symbol lookup distinguishes absent symbols from library-loading failures. Callback descriptors arrive at the addon with explicit defaults and scope decisions, while native validation enforces their lifetime constraints.
+
 ## Values, temporary storage, and ownership
 
 The runtime's shared conversion plans serve calls, fields, callbacks, references, and collections. They normalize scalar and collection inputs, encode and decode strings, and choose their public JavaScript representations. The native [`ffi/codec`](https://github.com/gtkx-org/gtkx/tree/main/packages/native/src/ffi/codec) modules pack those normalized values into ABI storage and C or GLib containers, retaining responsibility for bounds, terminators, traversal, allocation, and ownership. A `Stash` holds an invocation's temporary allocations, callback state, and pending ownership transfers.
@@ -76,7 +78,7 @@ Promise wrappers for GIO-style operations remain a separate layer. [`promisify.t
 
 ## GLib inside Node's event loop
 
-Importing the public native package runs its bootstrap and initializes the native environment. [`runloop.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/runloop.rs) acquires GLib's default main context on that Node thread and connects it to the thread's libuv loop.
+Importing the runtime loads the native addon through its bootstrap and initializes the native environment. [`runloop.rs`](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/runloop.rs) acquires GLib's default main context on that Node thread and connects it to the thread's libuv loop.
 
 The integration uses three kinds of libuv handle:
 

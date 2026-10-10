@@ -470,6 +470,10 @@ const nestedPlan = (descriptor: NestedDescriptor): ScalarPlan => {
                 abi: {
                     ...descriptor,
                     scope: callbackScope(descriptor),
+                    hasDestroy: descriptor.hasDestroy ?? false,
+                    destroyKind: descriptor.destroyKind ?? "destroyNotify",
+                    hasUserData: descriptor.hasUserData ?? false,
+                    canThrow: descriptor.canThrow ?? false,
                     releaseWithCompletion:
                         descriptor.scope === "notified" &&
                         descriptor.hasDestroy !== true &&

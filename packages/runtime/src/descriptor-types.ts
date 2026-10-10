@@ -1,5 +1,8 @@
 import type { Descriptor as NativeDescriptor, Ownership } from "@gtkx/native";
 
+type NativeCallbackDescriptor = Extract<NativeDescriptor, { kind: "callback" }>;
+type CallbackDefaults = "scope" | "hasDestroy" | "destroyKind" | "hasUserData" | "canThrow";
+
 type Descriptor =
     | Exclude<
           NativeDescriptor,
@@ -23,13 +26,13 @@ type Descriptor =
           valueDescriptor: Descriptor;
       })
     | (Omit<
-          Extract<NativeDescriptor, { kind: "callback" }>,
-          "argDescriptors" | "returnDescriptor" | "scope" | "releaseWithCompletion"
-      > & {
-          scope?: Extract<NativeDescriptor, { kind: "callback" }>["scope"];
-          argDescriptors: Descriptor[];
-          returnDescriptor: Descriptor;
-      })
+          NativeCallbackDescriptor,
+          "argDescriptors" | "returnDescriptor" | "releaseWithCompletion" | CallbackDefaults
+      > &
+          Partial<Pick<NativeCallbackDescriptor, CallbackDefaults>> & {
+              argDescriptors: Descriptor[];
+              returnDescriptor: Descriptor;
+          })
     | (Omit<Extract<NativeDescriptor, { kind: "ref" }>, "innerDescriptor"> & { innerDescriptor: Descriptor });
 
 export type { Descriptor };

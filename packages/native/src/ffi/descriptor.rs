@@ -233,15 +233,15 @@ pub enum Descriptor {
         arg_descriptors: Descriptors,
         #[napi(ts_type = "Descriptor")]
         return_descriptor: NestedDescriptor,
-        has_destroy: Option<bool>,
-        destroy_kind: Option<DestroyNotifyKind>,
-        has_user_data: Option<bool>,
+        has_destroy: bool,
+        destroy_kind: DestroyNotifyKind,
+        has_user_data: bool,
         user_data_index: Option<u32>,
         user_data_arg_index: Option<u32>,
         destroy_arg_index: Option<u32>,
-        can_throw: Option<bool>,
+        can_throw: bool,
         scope: CallbackScope,
-        release_with_completion: Option<bool>,
+        release_with_completion: bool,
     },
     Ref {
         #[napi(ts_type = "Descriptor")]
@@ -251,17 +251,19 @@ pub enum Descriptor {
 }
 
 fn callback_lifetime(
-    scope: CallbackScope,
+    scope: &CallbackScope,
     has_destroy: bool,
     has_user_data: bool,
     release_with_completion: bool,
-) -> Result<(CallbackScope, CallbackReleasePolicy)> {
-    let scope = if scope == CallbackScope::Notified && !has_destroy {
-        CallbackScope::Forever
-    } else {
-        scope
-    };
-    if release_with_completion && (scope != CallbackScope::Forever || has_destroy || !has_user_data)
+) -> Result<CallbackReleasePolicy> {
+    if *scope == CallbackScope::Notified && !has_destroy {
+        return Err(Error::new(
+            Status::InvalidArg,
+            "A notified callback requires a destroy notifier",
+        ));
+    }
+    if release_with_completion
+        && (*scope != CallbackScope::Forever || has_destroy || !has_user_data)
     {
         return Err(Error::new(
             Status::InvalidArg,
@@ -273,7 +275,7 @@ fn callback_lifetime(
     } else {
         CallbackReleasePolicy::Scope
     };
-    Ok((scope, policy))
+    Ok(policy)
 }
 
 impl NestedDescriptor {
@@ -465,14 +467,8 @@ impl Descriptor {
                 scope,
                 release_with_completion,
             } => {
-                let has_destroy = has_destroy.unwrap_or(false);
-                let has_user_data = has_user_data.unwrap_or(false);
-                let (scope, release_policy) = callback_lifetime(
-                    scope,
-                    has_destroy,
-                    has_user_data,
-                    release_with_completion.unwrap_or(false),
-                )?;
+                let release_policy =
+                    callback_lifetime(&scope, has_destroy, has_user_data, release_with_completion)?;
                 Codec::Callback(CallbackCodec {
                     arg_codecs: arg_descriptors
                         .0
@@ -481,12 +477,12 @@ impl Descriptor {
                         .collect::<Result<Vec<_>>>()?,
                     return_codec: return_descriptor.into_codec()?,
                     has_destroy,
-                    destroy_kind: destroy_kind.unwrap_or_default(),
+                    destroy_kind,
                     has_user_data,
                     user_data_index: user_data_index.map(|n| n as usize),
                     user_data_arg_index: user_data_arg_index.map(|n| n as usize),
                     destroy_arg_index: destroy_arg_index.map(|n| n as usize),
-                    can_throw: can_throw.unwrap_or(false),
+                    can_throw,
                     scope,
                     release_policy,
                 })
