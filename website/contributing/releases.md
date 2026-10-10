@@ -37,7 +37,7 @@ For the first stable release, complete [documentation promotion](/contributing/d
 
 Review `release/next`, approve its latest commit, and wait for its required checks. Merge through GitHub using the repository's configured squash method. GitHub creates the signed commit on `main`; CI then verifies that exact merge commit. If `main` has moved or the prepared release changes, refresh the release PR and review the new head before merging.
 
-Repository merge rules enforce review approval, the `tests`, `build`, `typecheck`, `lint`, and `e2e` checks, and CodeQL merge protection. Release automation relies on those rules. CodeQL also runs on `main`, independently of CI; tagging does not wait for that analysis.
+Repository merge rules enforce review approval, the `Verify workspace` check, and CodeQL merge protection. Release automation relies on those rules. CodeQL also runs on `main`, independently of CI; tagging does not wait for that analysis.
 
 ## Tag and publish
 
