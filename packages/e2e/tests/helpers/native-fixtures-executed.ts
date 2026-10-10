@@ -2,7 +2,7 @@ import { globSync, readFileSync, writeFileSync } from "node:fs";
 import type { Profiler } from "node:inspector";
 import { join } from "node:path";
 import ts from "typescript";
-import { nativeCoverage } from "../native/paths.js";
+import { nativeCoverage } from "../../../native/tools/test-paths.js";
 
 type Surface = { owner: string; name: string; kind: string; isStatic: boolean };
 type ScriptReport = Profiler.ScriptCoverage & { source: string };

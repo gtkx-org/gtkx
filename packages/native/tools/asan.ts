@@ -3,7 +3,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { rmSync } from "node:fs";
 import { pathToFileURL } from "node:url";
-import { nativeCoverage as COVERAGE, nativeTests as NATIVE_TESTS } from "../../e2e/tests/native/paths.js";
+import { nativeCoverage as COVERAGE, nativeTests as NATIVE_TESTS } from "./test-paths.js";
 
 const NATIVE_ROOT = join(import.meta.dirname, "..");
 const SUPPRESSIONS = join(NATIVE_TESTS, "lsan.supp");

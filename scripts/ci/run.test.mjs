@@ -248,7 +248,7 @@ test("native release builds restore only checksum-verified staged artifacts", (t
     assert.match(withBuildFlags.stderr, /cannot accept build arguments/);
 });
 
-test("release configurations reach native builds through all package dependencies", { timeout: 60_000 }, (t) => {
+test("CI checks are acyclic and release configurations reach native builds", { timeout: 60_000 }, (t) => {
     const directory = mkdtempSync(join(tmpdir(), "gtkx-release-graph-"));
     t.after(() => rmSync(directory, { recursive: true, force: true }));
     const result = spawnSync(
@@ -260,11 +260,13 @@ test("release configurations reach native builds through all package dependencie
 const require = createRequire(import.meta.url);
 const { createProjectGraphAsync } = require("nx/src/project-graph/project-graph");
 const { createTaskGraph } = require("nx/src/tasks-runner/create-task-graph");
+const { findCycle } = require("nx/src/tasks-runner/task-graph-utils");
 const graph = await createProjectGraphAsync();
+const checks = createTaskGraph(graph, {}, Object.keys(graph.nodes), ["build", "test", "typecheck", "lint", "e2e"], undefined, {});
 const projects = Object.keys(graph.nodes).filter(name => graph.nodes[name].data.targets?.release);
 const release = createTaskGraph(graph, {}, projects, ["release"], "release-artifacts", {});
 const local = createTaskGraph(graph, {}, projects, ["release"], undefined, {});
-console.log(JSON.stringify({ release, local, native: graph.nodes["@gtkx/native"].data.targets }));`,
+console.log(JSON.stringify({ checksCycle: findCycle(checks), release, local, native: graph.nodes["@gtkx/native"].data.targets }));`,
         ],
         {
             cwd: workspace,
@@ -282,7 +284,8 @@ console.log(JSON.stringify({ release, local, native: graph.nodes["@gtkx/native"]
         },
     );
     assert.equal(result.status, 0, result.stderr);
-    const { release, local, native } = JSON.parse(result.stdout);
+    const { checksCycle, release, local, native } = JSON.parse(result.stdout);
+    assert.equal(checksCycle, null, checksCycle?.join(" -> "));
     const nativeBuilds = Object.values(release.tasks).filter(
         (task) => task.target.project === "@gtkx/native" && task.target.target === "build",
     );

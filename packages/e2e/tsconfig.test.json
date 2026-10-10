@@ -31,5 +31,5 @@
     "compilerOptions": {
         "rootDir": "../.."
     },
-    "include": ["tests/**/*.ts", "tests/**/*.tsx", "tests/**/*.mts"]
+    "include": ["tests/**/*.ts", "tests/**/*.tsx", "tests/**/*.mts", "../native/tools/test-paths.ts"]
 }

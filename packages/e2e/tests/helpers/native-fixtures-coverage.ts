@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { globSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { nativeCoverage } from "../native/paths.js";
+import { nativeCoverage } from "../../../native/tools/test-paths.js";
 import { isDeepStrictEqual } from "node:util";
 import { collectExecutedCoverage, keyFor } from "./native-fixtures-executed.js";
 import { auditNativeFixtureOmissions } from "./native-fixtures-omissions.js";
