@@ -78,6 +78,9 @@
         "@gtkx/native": ["./packages/native/main.js"],
         "@gtkx/native/internal": ["./packages/native/internal.js"],
         "@gtkx/native/internal/binding": ["./packages/native/binding.js"],
+        "../dist/command.js": ["./packages/cli/src/command.ts"],
+        "../dist/vitest-plugin.js": ["./packages/cli/src/vitest-plugin.ts"],
+        "../dist/vite-plugins/index.js": ["./packages/cli/src/vite-plugins/index.ts"],
         "../src/resources.js": ["./packages/i18n/src/resources.d.ts"]
     }
 }

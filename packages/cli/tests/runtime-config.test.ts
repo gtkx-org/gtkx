@@ -1,3 +1,4 @@
+import { createConfigLoader } from "@gtkx/config/internal";
 import { runCommand } from "citty";
 import { execFileSync } from "node:child_process";
 import { cpSync, readFileSync, readdirSync } from "node:fs";
@@ -5,12 +6,47 @@ import { join } from "node:path";
 import { createServer } from "vite";
 import { describe, expect, it } from "vitest";
 import { createCommand } from "../dist/command.js";
+import { gtkxVitePlugins } from "../dist/vite-plugins/index.js";
 import gtkx from "../dist/vitest-plugin.js";
 import { createProject } from "./project.js";
 
 const frenchEnvironment = { ...process.env, LANG: "fr_FR.UTF-8", LC_ALL: "fr_FR.UTF-8", LANGUAGE: "fr" };
 
 describe("runtime configuration", () => {
+    it("keeps the preloaded configuration when it changes before Vite starts", async () => {
+        using project = createProject();
+        const configFile = "custom.config.ts";
+        const config = `export default {
+            applicationId: "org.gtkx.production",
+            codegen: false,
+            $development: { applicationId: "org.gtkx.initial" },
+        };`;
+        project.write(configFile, config);
+        project.write("src/index.ts", 'export { applicationId, resourceBasePath } from "virtual:gtkx-config";');
+        const loadConfig = createConfigLoader({
+            configFile,
+            mode: "development",
+            shouldWarnGraduatedFuture: false,
+        });
+        await loadConfig.load(project.root);
+        project.write(configFile, config.replace("org.gtkx.initial", "org.gtkx.changed"));
+        const entryPath = join(project.root, "src/index.ts");
+        const server = await createServer({
+            configFile: false,
+            root: project.root,
+            plugins: gtkxVitePlugins({ configFile, entryPath, mode: "development", loadConfig }),
+            server: { middlewareMode: true, ws: false },
+            appType: "custom",
+        });
+        try {
+            const entry = await server.ssrLoadModule(entryPath);
+            expect(entry.applicationId).toBe("org.gtkx.initial");
+            expect(entry.resourceBasePath).toBe("/org/gtkx/initial");
+        } finally {
+            await server.close();
+        }
+    });
+
     it("keeps translations working in built and relocated deployment bundles", async () => {
         using project = createProject({
             applicationIcon: "icon.svg",

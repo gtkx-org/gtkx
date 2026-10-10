@@ -1,4 +1,4 @@
-import { loadConfig } from "@gtkx/config";
+import type { ConfigLoader } from "@gtkx/config";
 import * as Gio from "@gtkx/gi/gio";
 import * as GObject from "@gtkx/gi/gobject";
 import { onExit } from "@gtkx/runtime";
@@ -22,6 +22,8 @@ import { gtkxReactDomPrebundle } from "../vite-plugins/react-dom-prebundle.js";
 import { type CatalogWrites, createCatalogWrites } from "./catalog-writes.js";
 
 type DevRunnerDepsOptions = {
+    applicationId: string;
+    loadConfig: ConfigLoader;
     mcpSocketPath?: string | undefined;
     staging: ProjectStaging;
     localeDir?: string | null | undefined;
@@ -87,6 +89,7 @@ const devPlugins =
             mode: DEV_MODE,
             entryPath,
             configFile,
+            loadConfig: options.loadConfig,
             onCatalogsWritten: catalogWrites.record,
             shouldWarnGraduatedFuture: false,
             staging: options.staging,
@@ -104,11 +107,7 @@ const createDevRunnerDeps = (
 ): DevRunnerDeps => ({
     createServer,
     waitForApplicationId,
-    getConfiguredApplicationId: async (root: string) => {
-        const loaded = await loadConfig(root, { mode: DEV_MODE, configFile, shouldWarnGraduatedFuture: false });
-
-        return loaded.config.applicationId;
-    },
+    applicationId: options.applicationId,
     startMcpClient: (applicationId, loadAppModule) => {
         setTestingModuleLoader(async () => {
             const [publicApi, internals] = await Promise.all([

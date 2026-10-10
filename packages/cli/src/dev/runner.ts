@@ -19,7 +19,7 @@ type ApplicationState = "primary" | "remote" | "shutDown" | "unregistered";
 type DevRunnerDeps = {
     createServer(config: InlineConfig): Promise<ViteDevServer>;
     waitForApplicationId(timeoutMs: number, shouldKeepWaiting: () => boolean): Promise<string | null>;
-    getConfiguredApplicationId(root: string): Promise<string | undefined>;
+    applicationId: string;
     startMcpClient(applicationId: string, loadAppModule: LoadAppModule): Promise<unknown>;
     stopMcpClient(): void;
     watchApplicationShutdown(onShutdown: () => void): void;
@@ -575,9 +575,9 @@ const onApplicationShutdown =
 
 const refusedExitCode = (): number => (process.exitCode === undefined ? 1 : Number(process.exitCode));
 
-const connectApplication = async (session: DevSession, liveApplicationId: string): Promise<void> => {
+const connectApplication = async (session: DevSession): Promise<void> => {
     const { deps, server } = session;
-    const applicationId = (await deps.getConfiguredApplicationId(process.cwd())) ?? liveApplicationId;
+    const { applicationId } = deps;
     deps.log(`Connected application ID: ${applicationId}`);
     await deps.startMcpClient(applicationId, (id) => loadModuleExclusively(server, id));
 };
@@ -613,7 +613,7 @@ const connectLiveApplication = async (session: DevSession, liveApplicationId: st
     const registrationState = session.deps.getApplicationRegistrationState();
 
     if (registrationState === "primary") {
-        await connectApplication(session, liveApplicationId);
+        await connectApplication(session);
 
         return;
     }
