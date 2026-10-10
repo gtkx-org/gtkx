@@ -10,22 +10,13 @@ The workspace needs Linux, Node.js 26.7 or later, pnpm, the pinned Rust toolchai
 
 ## Submit a focused change
 
-Use a short imperative commit subject of at most ten words. Before opening a pull request, run the checks relevant to the change:
+Use a short imperative commit subject of at most ten words. Rely on the normal CI workflow's `Verify workspace` check for affected builds, tests, typechecking, linting, and E2E coverage, plus the current Rust advisory audit. CI compares pull requests to their merge base and pushes to the last successful main-branch run; manually dispatch CI to check the complete workspace.
 
-```bash
-pnpm build
-pnpm test
-pnpm lint
-pnpm typecheck
-```
+`pnpm build` emits JavaScript and declarations without full TypeScript checking. CI checks package, example, and workspace types separately. Native E2E coverage depends on AddressSanitizer and checks leaks after every test.
 
-`pnpm build` emits JavaScript and declarations without full TypeScript checking. Run `pnpm typecheck` to check package, example, and workspace types; CI runs it as a separate check.
+Run `pnpm format` to format hand-written files with Oxfmt, or `pnpm nx format:write --base=origin/main` to format changed files. CI checks formatting as part of linting. Generated outputs, test fixtures, changelogs, and generated agent instructions are excluded; Markdown code fences retain their authored formatting. Rust source remains checked by rustfmt.
 
-Run `pnpm format` to format hand-written files with Oxfmt, or `pnpm nx format:write --base=origin/main` to format changed files. `pnpm format:check` checks formatting without changing files, and `pnpm lint` includes that check. Generated outputs, test fixtures, changelogs, and generated agent instructions are excluded; Markdown code fences retain their authored formatting. Rust source remains checked by rustfmt.
-
-Use `pnpm exec nx affected -t build,test,typecheck,lint --base=origin/main` to check changed projects and their dependents locally. CI compares pull requests to their merge base and pushes to the last successful main-branch run; manually dispatch CI to check the complete workspace.
-
-Run `pnpm e2e` for React and generated native binding coverage, `pnpm test:asan` for the native suite alone. Native E2E tests require AddressSanitizer and check leaks after every test. Package integration tests run through `pnpm test`.
+Use the focused Nx targets described in [Testing](https://gtkx.dev/contributing/testing) when reproducing a CI failure.
 
 Use the [pull request template](.github/PULL_REQUEST_TEMPLATE.md) to summarize the change and validation in at most twenty words. Remove unused sections and add `Closes #N` only when the pull request resolves that issue. Include a screenshot for visible UI changes.
 

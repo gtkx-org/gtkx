@@ -8,7 +8,9 @@ const fixtureLibraries = join(nativeTests, "../../../../build/native-tests/gi-te
 const asanRuntime = process.env.LD_PRELOAD;
 
 if (asanRuntime === undefined || !process.env.ASAN_OPTIONS?.split(":").includes("detect_leaks=1")) {
-    throw new Error("Native E2E tests require AddressSanitizer and LeakSanitizer. Run pnpm test:asan.");
+    throw new Error(
+        "Native E2E tests require AddressSanitizer and LeakSanitizer. Run pnpm exec nx run @gtkx/native:test-asan.",
+    );
 }
 
 const project = (name: string, include: string[], context: NativeTestContext) =>

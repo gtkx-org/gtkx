@@ -5,7 +5,7 @@ description: "Set up the GTKX repository, build packages, run examples, and work
 
 # Development Setup
 
-Build the workspace, run an example, then use focused Nx targets while making changes. The [package map](/contributing/tech-stack#package-map) identifies each package's role.
+Build the workspace and run an example while making changes. CI verifies the change through its `Verify workspace` check. The [package map](/contributing/tech-stack#package-map) identifies each package's role.
 
 ## Prerequisites
 
@@ -17,13 +17,7 @@ Workspace `tsc` commands use the native TypeScript 7 compiler through the `@type
 
 Install Rust through rustup so `rust-toolchain.toml` selects the pinned compiler and Clippy. Native formatting and sanitizers use a separate nightly; its installation command is under [Change native code](#change-native-code).
 
-Full linting also requires Go 1.26 or later, ShellCheck on `PATH`, and the pinned Rust advisory checker:
-
-```bash
-cargo install cargo-audit --version 0.22.2 --locked
-```
-
-Keep Cargo's binary directory on `PATH`. The workflow lint target downloads its pinned actionlint and yq versions through `go run`; the advisory audit refreshes the RustSec database on every run.
+The CI environment also supplies Go, ShellCheck, and the pinned Rust advisory checker. The workflow lint target downloads its pinned actionlint and yq versions through `go run`; the advisory audit refreshes the RustSec database on every run.
 
 The full workspace needs more system libraries than a minimal application:
 
@@ -70,8 +64,6 @@ For subsequent work, use the target for the package you are changing:
 
 ```bash
 pnpm nx run @gtkx/react:build
-pnpm nx run @gtkx/react:typecheck
-pnpm nx run @gtkx/react:lint
 ```
 
 Nx runs the required dependency targets. A package build can therefore rebuild another package or regenerate bindings first. Inspect the graph and an individual project's targets with:
@@ -81,24 +73,19 @@ pnpm nx show projects
 pnpm nx show project @gtkx/react
 ```
 
-Use `pnpm format` to apply Oxfmt to hand-written JavaScript, TypeScript, Vue, styles, configuration, and Markdown files. `pnpm format:check` checks the same files without rewriting them and also runs as part of `pnpm lint`. To format only files changed from `main`, run `pnpm nx format:write --base=origin/main`; Nx detects the root `.oxfmtrc.json` configuration.
+Use `pnpm format` to apply Oxfmt to hand-written JavaScript, TypeScript, Vue, styles, configuration, and Markdown files. CI checks the same files as part of linting. To format only files changed from `main`, run `pnpm nx format:write --base=origin/main`; Nx detects the root `.oxfmtrc.json` configuration.
 
 The formatter preserves import and package manifest ordering. Generated outputs, test fixtures, changelogs, and generated agent instructions are excluded. Embedded code formatting is disabled so tutorial code fences and their patches remain unchanged. Rust formatting uses the pinned nightly rustfmt described below.
 
-CI uses Nx's affected graph to select checks. Pull requests compare against their merge base, pushes against the last successful run on `main`, and merge queues against the previous merge-group commit. Native sanitizers are a required dependency of E2E coverage. A manual CI run checks the complete workspace. Locally, root commands run every matching target; use a package target for focused iteration.
+CI uses Nx's affected graph to select checks. Pull requests compare against their merge base, pushes against the last successful run on `main`, and merge queues against the previous merge-group commit. Native sanitizers are a required dependency of E2E coverage. A manual CI run checks the complete workspace. Focused package targets remain available for reproducing failures; see [Testing](/contributing/testing#ci-verification-and-failure-reproduction).
 
-Nx Cloud distributes build, test, typecheck, lint, and React and native E2E tasks across three to four agents. Nx Cloud schedules tasks on the agents; local Nx runs and Vitest workers use their tool defaults. `.nx/workflows/distribution-config.yaml` controls agent counts; `.nx/workflows/agents.yaml` defines their setup. One GitHub job, `verify`, selects the affected commits, runs the checks, and reports their combined result as `Verify workspace`. Configure branch protection to require this check.
+Nx Cloud distributes build, test, typecheck, lint, and React and native E2E tasks across three to four agents. Nx Cloud schedules tasks on the agents; local Nx runs and Vitest workers use their tool defaults. `.nx/workflows/distribution-config.yaml` controls agent counts; `.nx/workflows/agents.yaml` defines their setup. One GitHub job, `verify`, selects the affected commits, runs these checks and the current Rust advisory audit, and reports their combined result as `Verify workspace`. Configure branch protection to require this check.
 
 The standard Nx agent image hosts Docker; actual GTKX commands execute inside the Ubuntu 26.04 image defined in `scripts/ci/Dockerfile`. This requires Nx dedicated compute with Docker enabled. Docker layer caching uses `NX_DOCKER_CACHE_REGISTRY` when the add-on is enabled. Dependency downloads and Cargo compilation outputs use separate agent caches. The coordinator builds the same workload image using GitHub's Docker cache. Initialization compares native and runtime fingerprints and fails if the two environments differ; rebuild both image caches after changing system dependencies.
 
 Typed Oxlint and scoped ESLint checks depend on built package declarations. Their cache inputs include dependent declarations and the lockfile; the shared compiler-version input also invalidates tasks when the native TypeScript compiler changes.
 
-Nx plugin adapters and explicit project commands call `scripts/ci/run.mjs`. With `GTKX_CI_CONTAINER` set, it runs the command inside the named container with the same workspace path, user identity, and declared task environment. Local commands run directly. New CI targets must use this wrapper and declare complete cache outputs. CI validates the resolved task graph before starting agents; reproduce that check with:
-
-```bash
-pnpm exec nx run-many -t build,test,typecheck,lint,e2e --graph=/tmp/gtkx-task-graph.json
-node scripts/ci/validate-graph.mjs /tmp/gtkx-task-graph.json
-```
+Nx plugin adapters and explicit project commands call `scripts/ci/run.mjs`. With `GTKX_CI_CONTAINER` set, it runs the command inside the named container with the same workspace path, user identity, and declared task environment. Local commands run directly. New CI targets must use this wrapper and declare complete cache outputs. CI validates the resolved task graph before starting agents.
 
 The coordinator forwards only `NODE_OPTIONS` and the two environment fingerprints, `GTKX_CI_RUNTIME_HASH` and `GTKX_CI_NATIVE_HASH`. Nx manages its own authentication and execution variables. Keep GitHub credentials, publication tokens, and deployment permissions in GitHub Actions. Publication, Pages deployment, and release management also remain in GitHub Actions.
 
@@ -165,11 +152,9 @@ Rebuild after changing native code, then start a fresh app or test process to lo
 
 ```bash
 pnpm nx run @gtkx/native:build
-pnpm nx run @gtkx/native:lint
-pnpm test:asan
 ```
 
-The build invokes `napi build` in release mode and produces the platform-specific `.node` file and generated addon declarations. Rust linting runs the pinned nightly rustfmt check, Clippy with warnings treated as errors, and cargo-audit against the current RustSec advisories. Changes that affect ownership, callbacks, marshalling, or teardown also belong in the native integration verification described in [Testing](/contributing/testing#native-integration-and-sanitizers).
+The build invokes `napi build` in release mode and produces the platform-specific `.node` file and generated addon declarations. CI runs the pinned nightly rustfmt check, Clippy with warnings treated as errors, and cargo-audit against the current RustSec advisories. Changes that affect ownership, callbacks, marshalling, or teardown also belong in the native integration coverage described in [Testing](/contributing/testing#native-fixtures-and-sanitizers).
 
 ## Work on the website
 
@@ -192,16 +177,6 @@ The working-tree API pages are generated from public source entrypoints after bu
 
 ## Prepare a change for review
 
-Use [Testing](/contributing/testing) to select the checks that exercise your change. The broad workspace commands are:
-
-```bash
-pnpm build
-pnpm typecheck
-pnpm test
-pnpm lint
-pnpm e2e
-```
-
-Run `pnpm e2e` for React and generated native bindings. Use `pnpm test:asan` to focus on native ownership, callbacks, marshalling and teardown. Package integration tests run with `pnpm test`; [Testing](/contributing/testing) describes ownership and focused commands.
+Add coverage in the suite that owns the behavior, then rely on CI's `Verify workspace` check. [Testing](/contributing/testing) describes coverage ownership and how to reproduce a failing target. A manual dispatch of the normal CI workflow runs the complete workspace graph.
 
 Published-package changes use an Nx version plan created by `pnpm plan`. Documentation-only and test-only changes do not need one. The [contribution guide](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md) covers submission and version plans; [Publishing Releases](/contributing/releases) is for maintainers.

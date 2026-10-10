@@ -82,7 +82,7 @@ All paths below are relative to the repository root. Package names normally matc
 
 ## Build and development tools
 
-pnpm manages the workspace and its shared dependency catalog. Nx discovers TypeScript, Oxlint, scoped ESLint, and Vitest targets, combines them with explicit package targets, orders their dependencies, and caches eligible results. `pnpm build`, `pnpm test`, `pnpm lint`, and `pnpm typecheck` are entry points into that task graph.
+pnpm manages the workspace and its shared dependency catalog. Nx discovers TypeScript, Oxlint, scoped ESLint, and Vitest targets, combines them with explicit package targets, orders their dependencies, and caches eligible results. `pnpm build` builds the workspace for development. The normal CI workflow's `Verify workspace` check runs affected build, test, typecheck, lint, and E2E targets, plus the current Rust advisory audit. A manual CI dispatch runs the complete workspace graph.
 
 The CLI uses Vite for application development and bundling. Its plugin stack integrates generated bindings, native assets, styles, settings, localization, and the application runtime. SWC transforms TypeScript and JSX for Fast Refresh during development; the React Compiler runs through Babel, and React Fast Refresh updates components in a running development session.
 
@@ -98,6 +98,6 @@ The website uses VitePress, Vue, and Shiki. Its prose lives under `website/`, an
 
 GitHub Actions runs checks, prepares releases, publishes packages, and deploys the website to GitHub Pages. Nx version plans record published-package changes. Consumer validation uses a private Verdaccio registry to test the packages produced by the repository. Application distribution through `gtkx deploy` supports Flatpak, Debian packages, RPM packages, and AppImage; see [Deploying](/v2/guide/deploying) for those application workflows.
 
-Continue with [Development Setup](/contributing/development) to build the workspace, or [Testing](/contributing/testing) to choose a verification path.
+Continue with [Development Setup](/contributing/development) to build the workspace, or [Testing](/contributing/testing) to understand CI coverage and reproduce failures.
 
 The scoped React fallbacks preserve the existing checks where the native rules currently misclassify generic controlled-property reads and the intentional layout-effect regression. The TypeScript 6 compiler API remains in code generation and batched semantic tests; compiler commands and generated-consumer CLI checks use TypeScript 7.

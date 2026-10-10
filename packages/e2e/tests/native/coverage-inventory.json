@@ -1,7 +1,7 @@
 {
     "upstream": "https://github.com/GNOME/gobject-introspection-tests",
     "revision": "5987255086f59ca271a3a0aa53fbbb15b189be65",
-    "refresh": "Run pnpm test:asan --skip-nx-cache without filters, then pnpm exec tsx packages/e2e/tests/helpers/native-fixtures-coverage.ts --write",
+    "refresh": "Run pnpm exec nx run @gtkx/native:test-asan --skip-nx-cache without filters, then pnpm exec tsx packages/e2e/tests/helpers/native-fixtures-coverage.ts --write",
     "methodology": "V8 precise execution coverage of generated namespace functions, concrete constructors, class/interface methods and each getter/setter, matched by receiver and source range. Native tests assert their upstream contracts under ASan with per-test LSan. This measures generated callable coverage, not C branch coverage. The raw GIR audit independently requires bindings for every introspectable callable, signal, property access mode and virtual method; lifecycle-only vfuncs require metadata but have no generated call proxy. Declarations disabled by the upstream scanner are listed separately. Signal contracts are asserted separately by the signal and property suites. diagnosticOnly entries assert missing upstream C symbols; they do not execute a native implementation.",
     "evidence": "build/native-tests/coverage/inventory.json",
     "suites": [

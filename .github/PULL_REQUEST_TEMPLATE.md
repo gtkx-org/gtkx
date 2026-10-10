@@ -6,6 +6,6 @@
 
 ## Validation
 
-<!-- List relevant checks and results, including typecheck for TypeScript changes, or explain why testing was unnecessary. -->
+<!-- Summarize CI results and any manual UI verification. -->
 
 <!-- Follow CONTRIBUTING.md for screenshots, documentation, and Nx version plans. -->
