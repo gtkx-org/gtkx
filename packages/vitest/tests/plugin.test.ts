@@ -1,3 +1,4 @@
+import { resolveExecutable } from "@gtkx/utils";
 import { existsSync, mkdirSync, mkdtempDisposableSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,6 +8,27 @@ import { createVitest } from "vitest/node";
 import { resolveHeadlessOptions, startHeadlessDisplay } from "../src/headless.js";
 
 const workspace = fileURLToPath(new URL("../../..", import.meta.url));
+const writeDelayedCompositor = (directory: string): void => {
+    const sway = resolveExecutable("sway");
+    writeFileSync(
+        join(directory, "sway"),
+        `#!/usr/bin/env python3
+import os
+import socket
+import sys
+import time
+
+path = os.path.join(os.environ["XDG_RUNTIME_DIR"], "wayland-1")
+with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as listener:
+    listener.bind(path)
+    time.sleep(0.5)
+os.unlink(path)
+os.execv(${JSON.stringify(sway)}, ["sway", *sys.argv[1:]])
+`,
+        { mode: 0o755 },
+    );
+};
+
 const probe = (name: string) => `import { test, expect } from "vitest";
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -64,25 +86,42 @@ describe("headless Vitest integration", () => {
         for (const root of roots) await expect.poll(() => existsSync(root)).toBe(false);
     });
 
-    it("starts and tears down an owned display while restoring its caller's environment", async () => {
-        const before = {
-            runtime: process.env.XDG_RUNTIME_DIR,
-            display: process.env.WAYLAND_DISPLAY,
-            bus: process.env.DBUS_SESSION_BUS_ADDRESS,
-        };
-        const stop = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
-        const runtime = process.env.XDG_RUNTIME_DIR;
-        try {
-            expect(runtime).toBeDefined();
-            if (runtime === undefined) throw new Error("Missing display runtime directory");
-            expect(existsSync(join(runtime, process.env.WAYLAND_DISPLAY ?? ""))).toBe(true);
-        } finally {
-            stop();
-            stop();
-        }
-        expect(process.env.XDG_RUNTIME_DIR).toBe(before.runtime);
-        expect(process.env.WAYLAND_DISPLAY).toBe(before.display);
-        expect(process.env.DBUS_SESSION_BUS_ADDRESS).toBe(before.bus);
-        expect(runtime === undefined || existsSync(runtime)).toBe(false);
-    });
+    it.each(["normal", "delayed"])(
+        "starts and tears down an owned display with %s compositor startup while restoring its caller's environment",
+        async (startup) => {
+            using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-vitest-compositor-"));
+            const originalPath = process.env.PATH;
+            try {
+                if (startup === "delayed") {
+                    writeDelayedCompositor(directory.path);
+                    process.env.PATH = `${directory.path}:${originalPath ?? ""}`;
+                }
+                const before = {
+                    runtime: process.env.XDG_RUNTIME_DIR,
+                    display: process.env.WAYLAND_DISPLAY,
+                    bus: process.env.DBUS_SESSION_BUS_ADDRESS,
+                };
+                const stop = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
+                const runtime = process.env.XDG_RUNTIME_DIR;
+                try {
+                    expect(runtime).toBeDefined();
+                    if (runtime === undefined) throw new Error("Missing display runtime directory");
+                    expect(existsSync(join(runtime, process.env.WAYLAND_DISPLAY ?? ""))).toBe(true);
+                } finally {
+                    stop();
+                    stop();
+                }
+                expect(process.env.XDG_RUNTIME_DIR).toBe(before.runtime);
+                expect(process.env.WAYLAND_DISPLAY).toBe(before.display);
+                expect(process.env.DBUS_SESSION_BUS_ADDRESS).toBe(before.bus);
+                expect(runtime === undefined || existsSync(runtime)).toBe(false);
+            } finally {
+                if (originalPath === undefined) {
+                    delete process.env.PATH;
+                } else {
+                    process.env.PATH = originalPath;
+                }
+            }
+        },
+    );
 });

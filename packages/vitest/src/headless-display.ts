@@ -469,11 +469,11 @@ const waitUntilConnectable = async (monitor: ChildMonitor): Promise<void> => {
 };
 
 const attachCompositorClient = async (compositor: SpawnedCompositor, monitor: ChildMonitor): Promise<() => void> => {
+    await waitUntilConnectable(monitor);
+
     if (compositor.requiresVirtualSeat) {
         return startVirtualSeat(monitor.path);
     }
-
-    await waitUntilConnectable(monitor);
 
     return noVirtualSeat;
 };
