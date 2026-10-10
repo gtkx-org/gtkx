@@ -9,10 +9,10 @@ This runbook is for maintainers. Contributors record package changes with [versi
 
 ## Prepare a release
 
-Run the Release PR workflow from GitHub Actions or the CLI:
+Run the Release workflow from GitHub Actions or the CLI:
 
 ```bash
-gh workflow run release-pr.yml
+gh workflow run release.yml
 ```
 
 Release preparation runs only on request and never writes to `main`. The same workflow tags prepared releases after main CI succeeds.

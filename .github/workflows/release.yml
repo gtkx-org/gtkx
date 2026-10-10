@@ -1,4 +1,4 @@
-name: Release PR
+name: Release
 
 on:
   workflow_run:
@@ -63,7 +63,7 @@ jobs:
             echo "version=$version"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Mint the release bot token
+      - name: Generate the release bot token
         if: steps.release.outputs.prepared == 'true'
         id: app
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0

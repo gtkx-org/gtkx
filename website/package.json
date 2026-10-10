@@ -12,8 +12,7 @@
         "reference-sync": "node scripts/references.mjs sync",
         "dev": "vitepress dev",
         "build": "vitepress build",
-        "preview": "vitepress preview",
-        "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+        "preview": "vitepress preview"
     },
     "devDependencies": {
         "shiki": "^4.5.0",

@@ -57,11 +57,6 @@
                 "cwd": "{projectRoot}"
             }
         },
-        "_lint:audit": {
-            "command": "node scripts/ci/run.mjs 'cargo audit --file packages/native/Cargo.lock --deny unsound'",
-            "cache": false,
-            "inputs": ["...", "default", "^default", "{workspaceRoot}/scripts/ci/**/*"]
-        },
         "lint": {
             "dependsOn": ["^build", "build", "_lint:rust"]
         },

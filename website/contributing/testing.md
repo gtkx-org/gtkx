@@ -1,6 +1,6 @@
 ---
 title: "Testing"
-description: "Run package contracts and sanitized generated-binding tests."
+description: "Understand CI coverage, package contracts, and sanitized generated-binding tests."
 ---
 
 # Testing
@@ -38,26 +38,17 @@ Prefer one clear scenario for each distinct contract. Consolidate historical bug
 
 The current React suite covers the shared child adapter used by `GtkDragIcon`, but does not retain a dedicated native drag-session case.
 
-## Run tests
+## CI verification and failure reproduction
+
+Rely on the normal CI workflow for verification. CI runs affected `build`, `test`, `typecheck`, `lint` and `e2e` targets in one graph, plus the current Rust advisory audit. A manual CI dispatch runs the complete graph. The `verify` GitHub job reports the combined result as `Verify workspace`. Configure branch protection to require this check.
+
+Package `test` targets run integration and unit tests. The `@gtkx/e2e:e2e` target runs React and depends on `@gtkx/native:test-asan`, which runs the sanitized native suite once. Native tests have no ordinary unsanitized test target. Nx prepares prerequisite builds and generated bindings and caches each suite.
+
+When diagnosing a CI failure, reproduce the owning target and optionally pass a Vitest file filter through Nx:
 
 ```bash
-pnpm test
-pnpm e2e
-pnpm test:asan
+pnpm exec nx run @gtkx/components:test -- tests/drop-down.test.tsx
 ```
-
-`pnpm test` runs package-local integration and unit tests. `pnpm e2e` runs React and depends on the sanitized native suite. `pnpm test:asan` selects that same native suite directly. Native tests have no ordinary unsanitized test target.
-
-Run a package or pass a Vitest file filter through Nx:
-
-```bash
-pnpm nx run @gtkx/components:test
-pnpm nx run @gtkx/utils:test
-pnpm nx run @gtkx/components:test -- tests/drop-down.test.tsx
-pnpm nx run @gtkx/e2e:e2e
-```
-
-Nx prepares prerequisite builds and generated bindings and caches each suite. CI runs affected `build`, `test`, `typecheck`, `lint` and `e2e` targets in one graph. The native sanitizer task is an E2E dependency and runs once. A manual CI dispatch runs the complete graph. The `verify` GitHub job reports the combined result as `Verify workspace`. Configure branch protection to require this check.
 
 Vitest uses its default worker concurrency. Local Nx runs use the default task concurrency; Nx Cloud schedules distributed tasks on the agents. The repository does not override these limits.
 
@@ -65,14 +56,14 @@ Vitest uses its default worker concurrency. Local Nx runs use the default task c
 
 The native E2E suite generates bindings from a pinned checkout of GNOME's `gobject-introspection-tests`. `GIMarshallingTests` supplies marshalling cases; `Regress` supplies general binding cases. Exercise the generated APIs with inputs and assertions appropriate to their upstream contracts, including ownership, callbacks, containers, fields, properties, signals and vfuncs.
 
-A complete `pnpm test:asan` run collects V8 execution coverage of both generated namespaces. It checks every exported function, concrete constructor, class/interface method, getter and setter by its receiver and source range. The gate rejects untested APIs and obsolete exclusions. Filtered runs support diagnosis without enforcing whole-suite coverage. Signals are asserted through their generated emitters and listeners, including zero, one and multiple listeners for transferred arguments.
+A complete `@gtkx/native:test-asan` run collects V8 execution coverage of both generated namespaces. It checks every exported function, concrete constructor, class/interface method, getter and setter by its receiver and source range. The gate rejects untested APIs and obsolete exclusions. Filtered runs support diagnosis without enforcing whole-suite coverage. Signals are asserted through their generated emitters and listeners, including zero, one and multiple listeners for transferred arguments.
 
 The checked-in `packages/e2e/tests/native/coverage-inventory.json` records the coverage summary and precise exclusions. An independent raw GIR audit requires bindings for every introspectable callable, signal, property access mode and virtual method in both namespaces. Lifecycle-only vfuncs require metadata but have no generated call proxy. The audit lists declarations explicitly disabled by the upstream scanner separately. A few scanner declarations have no C implementation: their tests assert the missing-symbol diagnostic. Other exclusions are fields on abstract records with no upstream factory and unsafe writes to private ownership bookkeeping.
 
 After reviewing a deliberate API or suite change, refresh the summary from a complete run:
 
 ```bash
-pnpm test:asan --skip-nx-cache
+pnpm exec nx run @gtkx/native:test-asan --skip-nx-cache
 pnpm exec tsx packages/e2e/tests/helpers/native-fixtures-coverage.ts --write
 ```
 
@@ -106,14 +97,8 @@ Application examples and the React E2E suite use `@gtkx/cli/vitest-plugin` when 
 
 ## Other checks
 
-```bash
-pnpm build
-pnpm typecheck
-pnpm lint
-```
+CI builds, typechecking and static analysis complement tests. Lint includes formatting, unused-code checks, workflow checks, the container command harness, rustfmt and Clippy. The CI coordinator also checks current Rust advisories.
 
-Build, typechecking and static analysis complement tests. Lint includes formatting, unused-code checks, workflow checks, the container command harness, rustfmt and Clippy. `pnpm lint` also checks current Rust advisories.
-
-For a documentation change, build the website and inspect the resulting page. For a visible widget or application change, run the affected example and inspect its live widget tree, interactions and screenshots.
+CI builds the website for documentation changes. Inspect affected pages when changing layout or navigation. For a visible widget or application change, run the affected example and inspect its live widget tree, interactions and screenshots.
 
 To diagnose a failure, reproduce it with the owning suite's configuration. Check prerequisites first when no test starts: native build, GIR discovery, fixture compilation, generated bindings, compositor and session bus. `screen.debug()` and `screen.logRoles()` help explain UI assertions. The live application also exposes inspection through [MCP](/v2/guide/mcp).
