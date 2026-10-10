@@ -6,6 +6,7 @@
         "**/vitest.*.config.ts",
         "**/vite.config.ts",
         "**/gtkx.config.ts",
+        "gtkx.config.base.ts",
         "vitest.config.base.ts",
         "eslint.config.ts",
         "packages/*/env.d.ts",

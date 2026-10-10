@@ -11,7 +11,7 @@ Build the workspace and run an example while making changes. CI verifies the cha
 
 Use Linux with Node.js 26.7 or later. The repository's `package.json` pins pnpm through its `packageManager` field. If your runtimes are managed by mise, run the commands below through `mise exec --`, for example `mise exec -- pnpm install`.
 
-Distributed CI pins Node.js 26.8.2 in its workflow, agent setup, and workload Dockerfile. Publishing workflows read `engines.node` from the root `package.json` to select a compatible version.
+The CI agent image pins Node.js in `scripts/ci/Dockerfile`. Publishing and fallback workflows read `engines.node` from the root `package.json` to select a compatible version.
 
 Workspace `tsc` commands use the native TypeScript 7 compiler through the `@typescript/native` dependency alias. The `typescript` catalog entry aliases the TypeScript 6 compatibility package so code generation, Vue tooling, and batched semantic tests retain the stable compiler API. Use `pnpm exec tsc --version` to check the native compiler and `pnpm exec tsc6 --version` for the compatibility compiler. Application templates and the tutorial declare their own TypeScript dependency.
 
@@ -79,21 +79,23 @@ The formatter preserves import and package manifest ordering. Generated outputs,
 
 CI uses Nx's affected graph to select checks. Pull requests compare against their merge base, pushes against the last successful run on `main`, and merge queues against the previous merge-group commit. Native sanitizers are a required dependency of E2E coverage. A manual CI run checks the complete workspace. Focused package targets remain available for reproducing failures; see [Testing](/contributing/testing#ci-verification-and-failure-reproduction).
 
-Nx Cloud distributes build, test, typecheck, lint, and React and native E2E tasks across three to four agents. Nx Cloud schedules tasks on the agents; local Nx runs and Vitest workers use their tool defaults. `.nx/workflows/distribution-config.yaml` controls agent counts; `.nx/workflows/agents.yaml` defines their setup. One GitHub job, `verify`, selects the affected commits, runs these checks and the current Rust advisory audit, and reports their combined result as `Verify workspace`. Configure branch protection to require this check.
+The `verify` job coordinates build, test, typecheck, lint, and React and native E2E tasks through Nx Cloud. Three or four managed Nx Agents run the tasks, according to the affected workspace size. The coordinator and agents use the same Ubuntu 26.04 image built from `scripts/ci/Dockerfile`; Nx runs directly inside that environment. Vitest workers use their tool defaults. The job also checks current Rust advisories and reports its result as `Verify workspace`. Configure branch protection to require this check.
 
-The standard Nx agent image hosts Docker; actual GTKX commands execute inside the Ubuntu 26.04 image defined in `scripts/ci/Dockerfile`. This requires Nx dedicated compute with Docker enabled. Docker layer caching uses `NX_DOCKER_CACHE_REGISTRY` when the add-on is enabled. Dependency downloads and Cargo compilation outputs use separate agent caches. The coordinator builds the same workload image using GitHub's Docker cache. Initialization compares native and runtime fingerprints and fails if the two environments differ; rebuild both image caches after changing system dependencies.
+The `image` job creates the versioned GHCR image from `.nx/workflows/agents.yaml` if it does not exist, then resolves its digest for the coordinator. Published image tags are never overwritten. Bump the image version in `agents.yaml` whenever the Dockerfile, its Node or Go pins, the root package manager pin, or either Rust toolchain changes. Bump it also when refreshing distribution packages. Agent initialization restores dependency downloads and Rust build artifacts, then installs workspace dependencies.
+
+Custom managed images require the Nx Cloud dedicated compute add-on. The first publication creates a private GHCR package: make the `gtkx-ci` package public in its package settings, then rerun CI so Nx Agents can pull it. Image publication uses the repository's GitHub token and runs only for trusted checkouts with an Nx token. No separate registry credential is required.
+
+Fork pull requests and runs without an Nx token use the same Nx task graph directly on one Ubuntu 26.04 runner. The shared `.github/actions/setup-ci` action installs that fallback environment and restores package and Rust caches. Nx schedules independent tasks in parallel and uses remote caching when an access token is available. Runtime and native environment fingerprints are included in cache inputs so system library and toolchain changes invalidate the relevant tasks.
 
 Typed Oxlint and scoped ESLint checks depend on built package declarations. Their cache inputs include dependent declarations and the lockfile; the shared compiler-version input also invalidates tasks when the native TypeScript compiler changes.
 
-Nx plugin adapters and explicit project commands call `scripts/ci/run.mjs`. With `GTKX_CI_CONTAINER` set, it runs the command inside the named container with the same workspace path, user identity, and declared task environment. Local commands run directly. New CI targets must use this wrapper and declare complete cache outputs. CI validates the resolved task graph before starting agents.
+Nx's standard TypeScript, Oxlint, ESLint, and Vitest plugins infer package targets. Other project commands run directly and declare their dependencies and cache outputs in `project.json`.
 
-The coordinator forwards only `NODE_OPTIONS` and the two environment fingerprints, `GTKX_CI_RUNTIME_HASH` and `GTKX_CI_NATIVE_HASH`. Nx manages its own authentication and execution variables. Keep GitHub credentials, publication tokens, and deployment permissions in GitHub Actions. Publication, Pages deployment, and release management also remain in GitHub Actions.
-
-The native sanitizer task runs as an E2E dependency in the same distributed graph. The live Rust advisory audit is recorded on the coordinator and always refreshes advisories. The coordinator requests explicit completion and closes the Nx run in a guarded cleanup step, including after failures. Workflows without an Nx token run the same container tasks locally.
+The native sanitizer task runs as an E2E dependency. The live Rust advisory audit always refreshes advisories. When Nx Cloud is enabled, CI records the audit, requests fixes for failures, and closes the run after checks finish, including after failures. Publication, Pages deployment, and release management remain in their own GitHub Actions workflows.
 
 ## Generated bindings
 
-The root `gtkx.config.ts` defines the shared configuration imported by workspace packages. It selects the workspace's additional native libraries. Codegen reads `GTKX_GIR_PATH` when GIR files are installed outside the normal search paths.
+The root `gtkx.config.base.ts` defines the shared configuration imported by workspace packages. It selects the workspace's additional native libraries. The root generation targets select it explicitly with `--config`; package and application configs keep the normal `gtkx.config.ts` filename. Codegen reads `GTKX_GIR_PATH` when GIR files are installed outside the normal search paths.
 
 Regenerate the workspace's bindings and other codegen targets through Nx:
 
@@ -107,7 +109,7 @@ For only the root bindings, TypeScript declarations, and widget reference:
 pnpm nx run gtkx:codegen
 ```
 
-Nx uses a private bootstrap target to generate bindings before building the CLI. The public `codegen` target runs the built CLI and also refreshes `.gtkx/reference`.
+The `bindings` target runs the compiled generator with the normal root config. Its dependencies are limited to the generator, config, utilities, runtime, and native bridge; renderer metadata lives in the config package so React does not need to build first. Packages that consume generated bindings depend on this target explicitly. The public `codegen` target runs the built CLI and also refreshes `.gtkx/reference`.
 
 `pnpm codegen` bypasses Nx task-result caching so explicit regeneration also refreshes the generated blocks in `AGENTS.md` and `CLAUDE.md`. These files can contain developer-owned instructions and are never restored from a shared cache. Dependency builds use cached binding and reference outputs during ordinary CI tasks.
 

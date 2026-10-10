@@ -68,7 +68,7 @@
         "build": "tsx tools/build.ts",
         "_lint:rust": "(cd tools && env -u RUSTUP_TOOLCHAIN cargo fmt --manifest-path ../Cargo.toml --check) && cargo clippy --locked --all-targets -- -D warnings",
         "test-asan": "tsx tools/asan.ts",
-        "release": "tsx tools/prepublish.ts && tsx ../../scripts/release-package.ts"
+        "release": "node tools/prepublish.ts && node ../../scripts/release-package.ts"
     },
     "engines": {
         "node": ">=26.7.0"

@@ -1,14 +1,13 @@
-import { runCodegen as runCodegenCore } from "@gtkx/codegen";
-import { getShadowingStorePaths, sweepProjectStaging } from "@gtkx/codegen/internal";
-import { type Config, loadConfig } from "@gtkx/config";
 import {
-    createConfigReloader,
-    isAgentRulesEnabled,
-    resolveElementComponents,
-    resolveElementProps,
-    resolveLazyElements,
-    resolveOmittedProps,
-} from "@gtkx/config/internal";
+    type CodegenInputs,
+    generateBindings,
+    getShadowingStorePaths,
+    isCodegenStale,
+    resolveCodegenInputs,
+    sweepProjectStaging,
+} from "@gtkx/codegen/internal";
+import { type Config, loadConfig } from "@gtkx/config";
+import { createConfigReloader, isAgentRulesEnabled } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -18,9 +17,8 @@ import { clearI18nTypes, emitI18nTypes } from "../i18n/types.js";
 import { upsertAgentRules } from "../internal/agent-rules.js";
 import { discoverSourceFiles } from "../internal/source-imports.js";
 import { emitSchemaEnv } from "../settings/schema.js";
-import { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./freshness.js";
 import { type ReferenceResult, writeReference } from "./reference.js";
-import { type CodegenContext, type CodegenStore, resolveCodegenContext } from "./store-resolver.js";
+import { type CodegenContext, resolveCodegenContext } from "./store-resolver.js";
 
 type RunCodegenOptions = {
     cwd?: string;
@@ -49,15 +47,6 @@ type RunCodegenResult = {
     reference?: ReferenceResult | undefined;
 };
 
-type CodegenOptionsInput = {
-    store: CodegenStore;
-    libraries: string[];
-    girPath: string[];
-    elements: Config["elements"];
-};
-
-type PreparedCodegen = CodegenInputs & { isForced: boolean };
-
 type EnsureGeneratedOptions = {
     shouldAnnounce?: boolean;
     lockTimeoutMs?: number | undefined;
@@ -65,11 +54,6 @@ type EnsureGeneratedOptions = {
     configFile?: string | undefined;
     shouldPreserveI18nMetadata?: boolean | undefined;
 };
-
-const GIR_PATH_MISSING_MESSAGE =
-    "No GIR search paths available. Install gobject-introspection " +
-    "(Linux: `sudo dnf install gobject-introspection-devel` or `sudo apt install libgirepository1.0-dev`), " +
-    "or set `girPath` in gtkx.config.ts.";
 
 const removeStores = (paths: string[]): void => {
     for (const path of paths) {
@@ -82,30 +66,6 @@ const removeShadowingStores = (cwd: string): void => {
     removeStores(getShadowingStorePaths(cwd));
 };
 
-const codegenOptions = ({ store, libraries, girPath, elements }: CodegenOptionsInput) => ({
-    libraries,
-    girPath,
-    gi: {
-        storeDir: store.giStoreDir,
-        linkDir: store.giLinkDir,
-        version: store.runtimeVersion,
-        owner: store.owner,
-    },
-    jsx:
-        store.react === null
-            ? undefined
-            : {
-                  storeDir: store.jsxStoreDir,
-                  linkDir: store.jsxLinkDir,
-                  version: store.react.version,
-                  owner: store.owner,
-              },
-    userComponents: resolveElementComponents(elements),
-    userProps: resolveElementProps(elements),
-    userLazyElements: resolveLazyElements(elements),
-    userOmittedProps: resolveOmittedProps(elements),
-});
-
 const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
     isRegenerated: false,
     namespaces: 0,
@@ -115,18 +75,6 @@ const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
     configFile,
     libraries: [],
 });
-
-const prepareCodegen = (options: RunCodegenOptions, cwd: string, config: Config): PreparedCodegen => {
-    const { girPath, libraries, store } = options.inputs ?? resolveCodegenInputs(cwd, config);
-
-    if (girPath.length === 0) {
-        throw new Error(GIR_PATH_MISSING_MESSAGE);
-    }
-
-    const isForced = options.isForced === true || isCodegenStale({ girPath, libraries, store });
-
-    return { girPath, libraries, store, isForced };
-};
 
 const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenResult> => {
     const cwd = options.cwd ?? process.cwd();
@@ -145,13 +93,14 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
         return disabledCodegenResult(configFile);
     }
 
-    const { girPath, libraries, store, isForced } = prepareCodegen(options, cwd, config);
-
-    const result = await runCodegenCore({
-        ...codegenOptions({ store, libraries, girPath, elements: config.elements }),
-        isForced,
+    const result = await generateBindings({
+        cwd,
+        config,
+        ...(options.inputs !== undefined && { inputs: options.inputs }),
+        isForced: options.isForced === true,
         lockTimeoutMs: options.lockTimeoutMs,
     });
+    const { girPath, libraries, store, isForced } = result;
 
     const reference = await writeReference({
         root: cwd,

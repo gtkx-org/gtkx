@@ -7,9 +7,9 @@
         },
         "_build:templates": {
             "cache": true,
-            "inputs": ["{projectRoot}/src/templates/**/*", "{workspaceRoot}/scripts/ci/**/*"],
+            "inputs": ["{projectRoot}/src/templates/**/*"],
             "outputs": ["{projectRoot}/dist/templates/**"],
-            "command": "node ../../scripts/ci/run.mjs 'pnpm run _build:templates'",
+            "command": "pnpm run _build:templates",
             "options": {
                 "cwd": "{projectRoot}"
             }

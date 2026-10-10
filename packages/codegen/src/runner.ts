@@ -1,4 +1,4 @@
-import type { ElementPropsExport } from "@gtkx/react/config";
+import type { ElementPropsExport } from "@gtkx/config/elements";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import ts from "typescript";

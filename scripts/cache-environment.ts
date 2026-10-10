@@ -20,12 +20,12 @@ const query = (command: string, args: string[]): string => {
 };
 
 const addFile = (path: string): void => {
-    add(path);
-    add(existsSync(path));
-
-    if (existsSync(path)) {
-        hash.update(readFileSync(path));
+    if (!existsSync(path)) {
+        return;
     }
+
+    add(path);
+    hash.update(readFileSync(path));
 };
 
 const addEnvironment = (variables: string[], prefixes: string[]): void => {
@@ -145,13 +145,15 @@ const addNative = (): void => {
     query("pkg-config", ["--modversion", "libffi"]);
     query("pkg-config", ["--cflags", "--libs", "glib-2.0", "gobject-2.0", "gio-2.0"]);
 
-    const directories = [
-        join(homedir(), ".cargo"),
-        process.env.CARGO_HOME,
-        ".cargo",
-        "packages/.cargo",
-        "packages/native/.cargo",
-    ].filter((value): value is string => value !== undefined);
+    const directories = new Set(
+        [
+            join(homedir(), ".cargo"),
+            process.env.CARGO_HOME,
+            ".cargo",
+            "packages/.cargo",
+            "packages/native/.cargo",
+        ].filter((value): value is string => value !== undefined),
+    );
 
     for (const directory of directories) {
         addFile(join(directory, "config"));

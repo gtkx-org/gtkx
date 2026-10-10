@@ -40,7 +40,7 @@ The current React suite covers the shared child adapter used by `GtkDragIcon`, b
 
 ## CI verification and failure reproduction
 
-Rely on the normal CI workflow for verification. CI runs affected `build`, `test`, `typecheck`, `lint` and `e2e` targets in one graph, plus the current Rust advisory audit. A manual CI dispatch runs the complete graph. The `verify` GitHub job reports the combined result as `Verify workspace`. Configure branch protection to require this check.
+Rely on the normal CI workflow for verification. CI distributes affected `build`, `test`, `typecheck`, `lint` and `test-asan` targets through Nx Agents, then runs affected `e2e` targets on the GitHub coordinator with Nx caching. The coordinator container allows nested namespaces and mounts needed by WebKit's Bubblewrap sandbox; managed agent templates do not expose these container permissions. A manual CI dispatch runs all projects. CI also runs the current Rust advisory audit. The `verify` GitHub job reports the combined result as `Verify workspace`. Configure branch protection to require this check.
 
 Package `test` targets run integration and unit tests. The `@gtkx/e2e:e2e` target runs React and depends on `@gtkx/native:test-asan`, which runs the sanitized native suite once. Native tests have no ordinary unsanitized test target. Nx prepares prerequisite builds and generated bindings and caches each suite.
 
@@ -97,7 +97,7 @@ Application examples and the React E2E suite use `@gtkx/cli/vitest-plugin` when 
 
 ## Other checks
 
-CI builds, typechecking and static analysis complement tests. Lint includes formatting, unused-code checks, workflow checks, the container command harness, rustfmt and Clippy. The CI coordinator also checks current Rust advisories.
+CI builds, typechecking and static analysis complement tests. Lint includes formatting, unused-code checks, workflow checks, rustfmt and Clippy. The root Vitest suite covers release tooling and native artifact restoration. CI also checks current Rust advisories.
 
 CI builds the website for documentation changes. Inspect affected pages when changing layout or navigation. For a visible widget or application change, run the affected example and inspect its live widget tree, interactions and screenshots.
 

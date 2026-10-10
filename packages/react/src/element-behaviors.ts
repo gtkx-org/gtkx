@@ -12,7 +12,7 @@ import type {
     MainOption,
     ScaleMark,
 } from "./prop-types.js";
-import { BUILTIN_ELEMENTS, CONTENT_SETTER_TYPES, SINGLE_CHILD_TYPES } from "./element-config.js";
+import { BUILTIN_ELEMENTS, CONTENT_SETTER_TYPES, SINGLE_CHILD_TYPES } from "@gtkx/config/elements";
 import {
     applicationCreator,
     boxSlot,

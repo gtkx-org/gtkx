@@ -19,122 +19,208 @@ concurrency:
 
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN }}
+  NX_NO_CLOUD: ${{ (github.ref == 'refs/heads/main' && secrets.NX_WRITE_TOKEN || secrets.NX_READ_TOKEN) == '' && 'true' || 'false' }}
   NODE_OPTIONS: --max-old-space-size=8192
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
+  image:
+    name: Prepare CI image
+    runs-on: ubuntu-26.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    concurrency:
+      group: gtkx-ci-image
+      cancel-in-progress: false
+      queue: max
+    outputs:
+      image: ${{ steps.ready.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Select CI environment
+        id: environment
+        env:
+          TRUSTED_CHECKOUT: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          if [[ -n "$NX_CLOUD_ACCESS_TOKEN" && "$TRUSTED_CHECKOUT" == true ]]; then
+            echo "image=$(awk '$1 == "image:" { print $2; exit }' .nx/workflows/agents.yaml)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Docker Buildx
+        if: steps.environment.outputs.image != ''
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
+
+      - name: Log in to GHCR
+        if: steps.environment.outputs.image != ''
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Look up immutable image
+        id: existing
+        if: steps.environment.outputs.image != ''
+        env:
+          CI_IMAGE: ${{ steps.environment.outputs.image }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api --paginate /orgs/gtkx-org/packages/container/gtkx-ci/versions --jq '.[].metadata.container.tags[]' > "$RUNNER_TEMP/image-tags" 2> "$RUNNER_TEMP/image-error"; then
+            if grep -Fxq "${CI_IMAGE##*:}" "$RUNNER_TEMP/image-tags"; then
+              echo 'exists=true' >> "$GITHUB_OUTPUT"
+            else
+              echo 'exists=false' >> "$GITHUB_OUTPUT"
+            fi
+          elif grep -Fq '(HTTP 404)' "$RUNNER_TEMP/image-error"; then
+            echo 'exists=false' >> "$GITHUB_OUTPUT"
+          else
+            cat "$RUNNER_TEMP/image-error" >&2
+            exit 1
+          fi
+
+      - name: Publish missing CI image
+        if: steps.existing.outputs.exists == 'false'
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
+        with:
+          context: .
+          file: scripts/ci/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.environment.outputs.image }}
+          cache-from: type=gha,scope=gtkx-ci
+          cache-to: type=gha,mode=max,scope=gtkx-ci
+
+      - name: Resolve public image digest
+        id: ready
+        if: steps.environment.outputs.image != ''
+        env:
+          CI_IMAGE: ${{ steps.environment.outputs.image }}
+        run: |
+          docker logout ghcr.io
+          if ! manifest="$(docker buildx imagetools inspect "$CI_IMAGE" --format '{{json .Manifest}}')"; then
+            echo '::error::Make the gtkx-ci GHCR package public so Nx Agents can pull it, then rerun CI.'
+            exit 1
+          fi
+          digest="$(jq -er '.digest' <<< "$manifest")"
+          echo "image=${CI_IMAGE%:*}@$digest" >> "$GITHUB_OUTPUT"
+
   verify:
     name: Verify workspace
+    needs: image
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-26.04
     timeout-minutes: 120
     env:
-      NX_CLOUD_CONTINUOUS_ASSIGNMENT: "true"
-      GTKX_CI_CONTAINER: gtkx-ci
+      SWC_NATIVE_BINDING_CACHE: /tmp/swc-native-cache
+    container:
+      image: ${{ needs.image.outputs.image }}
+      options: --user 0 --privileged --shm-size=2g
     steps:
+      - name: Report image preparation failure
+        if: needs.image.result != 'success'
+        run: |
+          echo '::error::CI image preparation failed. See the Prepare CI image job.'
+          exit 1
+
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Trust container workspace
+        if: needs.image.outputs.image != ''
+        run: git config --system --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Determine affected commit range
         uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1
 
-      - name: Set up Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+      - name: Set up fallback workspace
+        id: fallback
+        if: needs.image.outputs.image == ''
+        uses: ./.github/actions/setup-ci
+
+      - name: Set up fallback Go
+        if: needs.image.outputs.image == ''
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
         with:
-          node-version: "26.8.2"
-          package-manager-cache: false
+          go-version: "1.26.6"
+          cache: false
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
-
-      - name: Capture runner UID/GID
-        id: workload-user
-        run: |
-          echo "uid=$(id -u)" >> "$GITHUB_OUTPUT"
-          echo "gid=$(id -g)" >> "$GITHUB_OUTPUT"
-
-      - name: Build CI image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc
-        with:
-          context: .
-          file: scripts/ci/Dockerfile
-          load: true
-          push: false
-          tags: ${{ env.GTKX_CI_CONTAINER }}:local
-          build-args: |
-            GTKX_UID=${{ steps.workload-user.outputs.uid }}
-            GTKX_GID=${{ steps.workload-user.outputs.gid }}
-          cache-from: type=gha,scope=gtkx-ci
-          cache-to: type=gha,scope=gtkx-ci,mode=max
-
-      - name: Cache container pnpm store
+      - name: Cache pnpm downloads
+        if: needs.image.outputs.image != ''
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
-          path: .nx/ci/pnpm-store
-          key: workload-pnpm-v2-${{ runner.arch }}-${{ hashFiles('scripts/ci/Dockerfile', 'scripts/ci/start-workload.sh', 'pnpm-lock.yaml') }}
-          restore-keys: workload-pnpm-v2-${{ runner.arch }}-
+          path: .pnpm-store
+          key: pnpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-${{ runner.arch }}-
 
-      - name: Initialize CI container and dependencies
-        id: workload
-        run: |
-          bash scripts/ci/start-workload.sh --prebuilt
-          cat .nx/ci/environment >> "$GITHUB_ENV"
+      - name: Install workspace dependencies
+        id: install
+        if: needs.image.outputs.image != ''
+        run: pnpm install --frozen-lockfile --store-dir .pnpm-store
 
-      - name: Validate distributed task graph
-        env:
-          NX_NO_CLOUD: "true"
-        run: |
-          pnpm exec nx run-many -t build,test,typecheck,lint,e2e --graph=.nx/ci/task-graph.json
-          node scripts/ci/validate-graph.mjs .nx/ci/task-graph.json
-
-      - name: Start Nx Agents
-        id: agents
+      - name: Start Nx CI run
+        id: cloud
         if: env.NX_CLOUD_ACCESS_TOKEN != ''
-        run: >-
-          pnpm exec nx-cloud start-ci-run
-          --distribute-on=".nx/workflows/distribution-config.yaml"
-          --with-env-vars="NODE_OPTIONS,GTKX_CI_RUNTIME_HASH,GTKX_CI_NATIVE_HASH"
-          --stop-agents-after="build,test,typecheck,lint,e2e"
-          --stop-agents-on-failure=false
-          --require-explicit-completion
+        env:
+          CI_IMAGE: ${{ needs.image.outputs.image }}
+        run: |
+          if [[ -n "$CI_IMAGE" ]]; then
+            pnpm exec nx-cloud start-ci-run --distribute-on=.nx/workflows/distribution-config.yaml --require-explicit-completion --with-env-vars=NODE_OPTIONS
+          else
+            pnpm exec nx-cloud start-ci-run --no-distribution --require-explicit-completion
+          fi
 
       - name: Run workspace checks
         env:
           EVENT_NAME: ${{ github.event_name }}
           NX_LEGACY_AFFECTED: "false"
-          NX_NO_CLOUD: ${{ env.NX_CLOUD_ACCESS_TOKEN == '' && 'true' || 'false' }}
         run: |
           if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
-            pnpm exec nx run-many -t build,test,typecheck,lint,e2e
+            pnpm exec nx run-many -t build,test,typecheck,lint,test-asan
           else
-            pnpm exec nx affected -t build,test,typecheck,lint,e2e
+            pnpm exec nx affected -t build,test,typecheck,lint,test-asan
+          fi
+
+      - name: Run end-to-end checks
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          NX_LEGACY_AFFECTED: "false"
+          NX_CLOUD_DISTRIBUTED_EXECUTION: "false"
+        run: |
+          if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
+            pnpm exec nx run-many -t e2e
+          else
+            pnpm exec nx affected -t e2e
           fi
 
       - name: Check current Rust advisories
-        if: ${{ !cancelled() && steps.workload.outcome == 'success' && (steps.agents.outcome == 'success' || env.NX_CLOUD_ACCESS_TOKEN == '') }}
+        if: ${{ !cancelled() && (steps.install.outcome == 'success' || steps.fallback.outcome == 'success') }}
         run: |
+          if ! command -v cargo-audit > /dev/null; then
+            cargo install cargo-audit --version 0.22.2 --locked
+          fi
           if [[ -n "$NX_CLOUD_ACCESS_TOKEN" ]]; then
-            pnpm exec nx-cloud record -- node scripts/ci/run.mjs 'cargo audit --file packages/native/Cargo.lock --deny unsound'
+            pnpm exec nx-cloud record -- cargo audit --file packages/native/Cargo.lock --deny unsound
           else
-            node scripts/ci/run.mjs 'cargo audit --file packages/native/Cargo.lock --deny unsound'
+            cargo audit --file packages/native/Cargo.lock --deny unsound
           fi
 
       - name: Request Nx CI fixes
-        if: always() && steps.workload.outcome == 'success' && steps.agents.outcome == 'success' && env.NX_CLOUD_ACCESS_TOKEN != ''
+        if: always() && steps.cloud.outcome == 'success'
         run: pnpm exec nx fix-ci
 
       - name: Complete Nx CI run
-        if: always() && steps.workload.outcome == 'success' && steps.agents.outcome != 'skipped' && env.NX_CLOUD_ACCESS_TOKEN != ''
+        if: always() && steps.cloud.outcome != 'skipped' && env.NX_CLOUD_ACCESS_TOKEN != ''
         timeout-minutes: 2
         run: pnpm exec nx-cloud complete-ci-run
-
-      - name: Remove CI container
-        if: always()
-        run: |
-          if docker container inspect "$GTKX_CI_CONTAINER" >/dev/null 2>&1; then
-            docker rm --force "$GTKX_CI_CONTAINER"
-          fi

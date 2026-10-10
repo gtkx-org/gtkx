@@ -4,6 +4,9 @@ self-hosted-runner:
     - ubuntu-26.04-arm
 
 paths:
+  .github/workflows/ci.yml:
+    ignore:
+      - '^unexpected key "queue" for "concurrency" section\.'
   .github/workflows/publish.yml:
     ignore:
       - '^unexpected key "queue" for "concurrency" section\.'

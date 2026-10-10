@@ -29,11 +29,10 @@
                 {
                     "dependentTasksOutputFiles": "**/*.{md,js,d.ts,json}",
                     "transitive": true
-                },
-                "{workspaceRoot}/scripts/ci/**/*"
+                }
             ],
             "outputs": ["{projectRoot}/.vitepress/dist"],
-            "command": "node ../scripts/ci/run.mjs 'pnpm run build'",
+            "command": "pnpm run build",
             "options": {
                 "cwd": "{projectRoot}"
             }
@@ -46,12 +45,12 @@
         },
         "reference-current": {
             "cache": true,
-            "dependsOn": ["^build", "gtkx:_build:bindings"],
+            "dependsOn": ["^build", "gtkx:bindings"],
             "inputs": [
                 "default",
                 "^production",
                 {
-                    "runtime": "node scripts/ci/run.mjs 'git rev-parse HEAD'"
+                    "runtime": "git rev-parse HEAD"
                 },
                 {
                     "dependentTasksOutputFiles": "**/*.{d.ts,d.mts,d.ts.map,d.mts.map}",
@@ -64,11 +63,10 @@
                         "typedoc-plugin-zod",
                         "typedoc-vitepress-theme"
                     ]
-                },
-                "{workspaceRoot}/scripts/ci/**/*"
+                }
             ],
             "outputs": ["{projectRoot}/v2/reference"],
-            "command": "node ../scripts/ci/run.mjs 'pnpm run reference-current'",
+            "command": "pnpm run reference-current",
             "options": {
                 "cwd": "{projectRoot}"
             }
@@ -78,12 +76,11 @@
             "inputs": [
                 "{projectRoot}/scripts/reference*.mjs",
                 {
-                    "runtime": "node scripts/ci/run.mjs 'node website/scripts/references.mjs pins'"
-                },
-                "{workspaceRoot}/scripts/ci/**/*"
+                    "runtime": "node website/scripts/references.mjs pins"
+                }
             ],
             "outputs": ["{projectRoot}/reference"],
-            "command": "node ../scripts/ci/run.mjs 'pnpm run reference-stable'",
+            "command": "pnpm run reference-stable",
             "options": {
                 "cwd": "{projectRoot}"
             }
@@ -102,7 +99,7 @@
             "dependsOn": ["...", "reference"]
         },
         "typecheck": {
-            "command": "node ../scripts/ci/run.mjs 'vue-tsc --noEmit -p tsconfig.json'",
+            "command": "vue-tsc --noEmit -p tsconfig.json",
             "cache": true,
             "dependsOn": [],
             "inputs": [
@@ -111,8 +108,7 @@
                 "sharedGlobals",
                 {
                     "externalDependencies": ["vue-tsc", "typescript", "vue", "vitepress"]
-                },
-                "{workspaceRoot}/scripts/ci/**/*"
+                }
             ],
             "options": {
                 "cwd": "website"

@@ -1,4 +1,5 @@
-import type { ElementConfig, ElementPropsExport, ModuleExport } from "@gtkx/react/config";
+import type { ElementConfigOptions } from "@gtkx/config";
+import { BUILTIN_ELEMENTS, type ElementPropsExport, type ModuleExport } from "@gtkx/config/elements";
 import type { OmittedProps } from "../store/jsx/omitted-props.js";
 import { PROPS_ORIGIN, resolvePropsModule } from "../docs/props-modules.js";
 
@@ -16,15 +17,7 @@ type BuiltinElements = {
 
 type DocsBuiltinElements = BuiltinElements & { acceptedChildTypes: Record<string, string[]> };
 
-const CONFIG_SPECIFIER = "@gtkx/react/config";
-
-const importBuiltinElements = async (): Promise<Record<string, ElementConfig>> => {
-    const imported = (await import(/* @vite-ignore */ CONFIG_SPECIFIER)) as typeof import("@gtkx/react/config");
-
-    return imported.BUILTIN_ELEMENTS;
-};
-
-const applyBuiltinElement = (target: BuiltinElements, type: string, config: ElementConfig): void => {
+const applyBuiltinElement = (target: BuiltinElements, type: string, config: ElementConfigOptions): void => {
     if (config.component !== undefined) {
         target.components[type] = config.component;
     }
@@ -42,30 +35,29 @@ const applyBuiltinElement = (target: BuiltinElements, type: string, config: Elem
     }
 };
 
-const collectBuiltinElements = (target: BuiltinElements, elements: Record<string, ElementConfig>): void => {
+const collectBuiltinElements = (target: BuiltinElements, elements: Record<string, ElementConfigOptions>): void => {
     for (const [type, config] of Object.entries(elements)) {
         applyBuiltinElement(target, type, config);
     }
 };
 
 /**
- * Reads the framework's built-in element config by importing the `config` entrypoint of the installed
- * `@gtkx/react`.
+ * Reads the framework's built-in element metadata without importing the renderer or generated bindings.
  */
-const readBuiltinElements = async (): Promise<BuiltinElements> => {
+const readBuiltinElements = (): Promise<BuiltinElements> => {
     const result: BuiltinElements = {
         components: {},
         lazyElements: [],
         props: {},
         omittedProps: {},
     };
-    collectBuiltinElements(result, await importBuiltinElements());
+    collectBuiltinElements(result, BUILTIN_ELEMENTS);
 
-    return result;
+    return Promise.resolve(result);
 };
 
-const readBuiltinElementsForDocs = async (): Promise<DocsBuiltinElements> => {
-    const elements = await importBuiltinElements();
+const readBuiltinElementsForDocs = (): Promise<DocsBuiltinElements> => {
+    const elements = BUILTIN_ELEMENTS;
     const result: DocsBuiltinElements = {
         components: {},
         lazyElements: [],
@@ -89,8 +81,8 @@ const readBuiltinElementsForDocs = async (): Promise<DocsBuiltinElements> => {
         }
     }
 
-    return result;
+    return Promise.resolve(result);
 };
 
-export type { ModuleExport } from "@gtkx/react/config";
+export type { ModuleExport } from "@gtkx/config/elements";
 export { readBuiltinElements, readBuiltinElementsForDocs, type BuiltinElements };

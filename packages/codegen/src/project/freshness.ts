@@ -1,9 +1,9 @@
 import type { Config } from "@gtkx/config";
-import { resolveGirPath, resolveLibraries } from "@gtkx/codegen";
-import { resolveBoundLibraries } from "@gtkx/codegen/internal";
+import { resolveGirPath } from "../gir/gir-path.js";
+import { resolveBoundLibraries, resolveLibraries } from "../gir/libraries.js";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
-import { type CodegenStore, resolveCodegenStore } from "./store-resolver.js";
+import { type CodegenStore, resolveCodegenStore } from "./store.js";
 
 type ExportTarget = string | { [condition: string]: ExportTarget };
 type StoreExports = Record<string, ExportTarget>;

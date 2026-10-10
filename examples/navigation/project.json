@@ -3,12 +3,12 @@
     "name": "navigation",
     "targets": {
         "codegen": {
-            "command": "node ../../scripts/ci/run.mjs 'gtkx codegen'",
+            "command": "gtkx codegen",
             "options": {
                 "cwd": "{projectRoot}"
             },
             "cache": true,
-            "dependsOn": ["gtkx:_build:bindings", "@gtkx/cli:build"],
+            "dependsOn": ["gtkx:bindings", "@gtkx/cli:build"],
             "outputs": ["{projectRoot}/node_modules/.gtkx"],
             "inputs": [
                 "default",
@@ -16,8 +16,7 @@
                 {
                     "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
                     "transitive": true
-                },
-                "{workspaceRoot}/scripts/ci/**/*"
+                }
             ]
         },
         "build": {
@@ -29,11 +28,10 @@
                 {
                     "dependentTasksOutputFiles": "**/*.{js,d.ts,json}",
                     "transitive": true
-                },
-                "{workspaceRoot}/scripts/ci/**/*"
+                }
             ],
             "outputs": ["{projectRoot}/dist/**"],
-            "command": "node ../../scripts/ci/run.mjs 'pnpm run build'",
+            "command": "pnpm run build",
             "options": {
                 "cwd": "{projectRoot}"
             }

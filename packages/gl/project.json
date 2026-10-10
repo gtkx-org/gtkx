@@ -4,16 +4,15 @@
     "targets": {
         "codegen": {
             "cache": true,
-            "dependsOn": ["gtkx:_build:bindings"],
+            "dependsOn": ["@gtkx/codegen:build"],
             "inputs": [
                 "{projectRoot}/scripts/**/*",
                 "{projectRoot}/src/overrides.ts",
                 "^production",
-                "{workspaceRoot}/packages/codegen/src/khronos/**/*",
-                "{workspaceRoot}/scripts/ci/**/*"
+                "{workspaceRoot}/packages/codegen/src/khronos/**/*"
             ],
             "outputs": ["{projectRoot}/src/generated/**"],
-            "command": "node ../../scripts/ci/run.mjs 'pnpm run codegen'",
+            "command": "pnpm run codegen",
             "options": {
                 "cwd": "{projectRoot}"
             }

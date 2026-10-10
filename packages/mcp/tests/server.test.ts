@@ -45,7 +45,7 @@ const openServer = async (options: Partial<CreateMcpServerOptions> = {}) => {
 
 const textResult = async (client: Client, name: string, args: Record<string, unknown> = {}) => {
     const result = CallToolResultSchema.parse(await client.callTool({ name, arguments: args }));
-    expect(result.isError).not.toBe(true);
+    expect(result).not.toMatchObject({ isError: true });
     return result.content
         .filter((content) => content.type === "text")
         .map((content) => content.text)
