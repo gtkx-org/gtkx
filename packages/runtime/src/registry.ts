@@ -1,15 +1,15 @@
 import {
     type ExternalObject,
-    getFundamentalWrapper,
+    getFundamentalIdentity,
     getType,
     getTypeClass,
     getWrapper,
     type Handle,
-    setFundamentalWrapper,
     setWrapper,
 } from "@gtkx/native";
 import { type AnyClass, walkClassChain } from "@gtkx/utils";
 import type { Descriptor } from "./descriptor-types.js";
+import { forgetFundamentalWrapper, getFundamentalWrapper, setFundamentalWrapper } from "./fundamental-cache.js";
 import { copyLayerMembers, createMixinLayer, installMixins, type Mixin, type MixinReceiver } from "./mixin.js";
 import {
     TYPE_INVALID,
@@ -473,15 +473,28 @@ function wrapFundamentalHandle(handle: ExternalObject<Handle> | null | undefined
         return null;
     }
 
-    const existing = getFundamentalWrapper(handle);
+    const identity = getFundamentalIdentity(handle);
 
-    if (existing) {
-        return existing;
+    if (identity !== null) {
+        const existing = getFundamentalWrapper(identity.key);
+
+        if (existing !== undefined) {
+            const existingHandle = handleMap.get(existing);
+            const current = existingHandle === undefined ? null : getFundamentalIdentity(existingHandle);
+
+            if (current?.owned === true && current.key === identity.key) {
+                return existing;
+            }
+
+            forgetFundamentalWrapper(existing);
+        }
     }
 
     const instance: object = Object.create(cls.prototype) as object;
     setHandle(instance, handle);
-    setFundamentalWrapper(handle, instance);
+    if (identity?.owned === true) {
+        setFundamentalWrapper(identity.key, instance);
+    }
 
     return instance;
 }
@@ -700,6 +713,9 @@ function getHandle(instance: object): ExternalObject<Handle> {
 
 /** Associates a native handle with a wrapper instance. */
 function setHandle(instance: object, handle: ExternalObject<Handle>): void {
+    if (handleMap.get(instance) !== handle) {
+        forgetFundamentalWrapper(instance);
+    }
     handleMap.set(instance, handle);
 }
 

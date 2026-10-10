@@ -8,7 +8,6 @@ use crate::handle::{Handle, HandleClass, INVALIDATED_HANDLE};
 mod closure;
 mod view;
 
-pub mod fundamental_wrapper;
 pub mod pending_wrapper;
 pub mod wrapper;
 
