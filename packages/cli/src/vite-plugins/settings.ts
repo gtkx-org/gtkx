@@ -56,9 +56,7 @@ const ensureSchemaDir = (state: PluginState): string => {
         return existing;
     }
 
-    const runnerDir = process.env.GTKX_DEV_SCHEMA_DIR;
-
-    return runnerDir ? state.schemaDir.adopt(runnerDir) : state.schemaDir.retain();
+    return state.schemaDir.retain();
 };
 
 const compileSchemaDir = (state: PluginState): void => {
@@ -252,9 +250,12 @@ const watchSchemaFiles = (state: PluginState, server: ViteDevServer): void => {
     server.watcher.on("unlink", refreshSchemaTypes);
 };
 
-function gtkxSettings(buildManifest?: BuildManifestCollector): Plugin {
+function gtkxSettings(
+    buildManifest?: BuildManifestCollector,
+    schemaDir: RetainedStagingDir = createRetainedStagingDir(SCHEMA_STAGING_PREFIX),
+): Plugin {
     const state: PluginState = {
-        schemaDir: createRetainedStagingDir(SCHEMA_STAGING_PREFIX),
+        schemaDir,
         rootDir: process.cwd(),
         isBuild: false,
         schemaEnvTimer: null,

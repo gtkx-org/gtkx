@@ -1,8 +1,9 @@
 import { sortStringsBy, warn } from "@gtkx/utils";
 import { existsSync, rmSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, posix, resolve } from "node:path";
 import type { DeploySettings, DeployTargetName, NodeRuntime, NoticeSection, StagedFile } from "../types.js";
 import { LOCALE_DIRNAME } from "../../i18n/catalogs.js";
+import { I18N_RUNTIME_CONFIG_FILENAME, renderI18nRuntimeConfig } from "../../i18n/runtime-config.js";
 import { BUILD_METADATA_FILENAMES } from "../../internal/build-manifest.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
@@ -93,10 +94,24 @@ const assertStagedArchitecture = (settings: DeploySettings, staged: StagedFile[]
     }
 };
 
-const stageCatalogs = (settings: DeploySettings, root: string): StagedFile[] =>
-    listFilesRecursive(join(settings.paths.dist, LOCALE_DIRNAME)).map((file) =>
+const stageCatalogs = (settings: DeploySettings, root: string): StagedFile[] => {
+    const files = listFilesRecursive(join(settings.paths.dist, LOCALE_DIRNAME)).map((file) =>
         copyInto(root, join(SHARE_LOCALE, file.rel), file.absPath),
     );
+
+    if (existsSync(join(settings.paths.dist, I18N_RUNTIME_CONFIG_FILENAME))) {
+        const libDir = libDirFor(settings);
+        files.push(
+            writeInto(
+                root,
+                join(libDir, I18N_RUNTIME_CONFIG_FILENAME),
+                renderI18nRuntimeConfig(posix.relative(libDir, SHARE_LOCALE)),
+            ),
+        );
+    }
+
+    return files;
+};
 
 const stageNodeBinary = (settings: DeploySettings, root: string, node: NodeRuntime | null): StagedFile[] =>
     node === null ? [] : [copyInto(root, join(libDirFor(settings), NODE_FILENAME), node.path, EXECUTABLE_MODE)];

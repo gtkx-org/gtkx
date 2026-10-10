@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -9,6 +11,7 @@ import { createInterface } from "node:readline";
 import { setTimeout } from "node:timers/promises";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
+import { tsImport } from "tsx/esm/api";
 
 const workspace = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const runner = join(workspace, "scripts/ci/run.mjs");
@@ -199,3 +202,140 @@ test(
         assert.ok(project.targets.build.dependsOn.includes("gtkx:_build:bindings"));
     },
 );
+
+test("native release builds restore only checksum-verified staged artifacts", (t) => {
+    const directory = mkdtempSync(join(tmpdir(), "gtkx-native-release-"));
+    t.after(() => rmSync(directory, { recursive: true, force: true }));
+    const artifacts = join(directory, "artifacts");
+    mkdirSync(artifacts);
+    const platform = `linux-${process.arch}-gnu`;
+    const files = new Map([
+        [`native.${platform}.node`, "staged native binary"],
+        [`index.${platform}.js`, "export const staged = true;"],
+        [`index.${platform}.d.ts`, "export declare const staged: true;"],
+    ]);
+    for (const [name, contents] of files) {
+        writeFileSync(join(artifacts, name), contents);
+        const checksum = createHash("sha256").update(contents).digest("hex");
+        writeFileSync(join(artifacts, `${name}.sha256`), `${checksum}  ${name}\n`);
+    }
+    const build = (...args) =>
+        spawnSync(
+            process.execPath,
+            ["--import", require.resolve("tsx/esm"), join(workspace, "packages/native/tools/build.ts"), ...args],
+            {
+                cwd: directory,
+                env: localEnvironment,
+                encoding: "utf8",
+                timeout: 10_000,
+            },
+        );
+    const restored = build("--from-artifacts");
+    assert.equal(restored.status, 0, restored.stderr);
+    assert.equal(
+        readFileSync(join(directory, `native.${platform}.node`), "utf8"),
+        files.get(`native.${platform}.node`),
+    );
+    assert.equal(readFileSync(join(directory, "index.js"), "utf8"), files.get(`index.${platform}.js`));
+    assert.equal(readFileSync(join(directory, "index.d.ts"), "utf8"), files.get(`index.${platform}.d.ts`));
+    writeFileSync(join(artifacts, `index.${platform}.js`), "corrupt artifact");
+    const corrupted = build("--from-artifacts");
+    assert.notEqual(corrupted.status, 0);
+    assert.match(corrupted.stderr, /checksum mismatch/);
+    assert.equal(readFileSync(join(directory, "index.js"), "utf8"), files.get(`index.${platform}.js`));
+    const withBuildFlags = build("--from-artifacts", "--debug");
+    assert.notEqual(withBuildFlags.status, 0);
+    assert.match(withBuildFlags.stderr, /cannot accept build arguments/);
+});
+
+test("CI checks are acyclic and release configurations reach native builds", { timeout: 60_000 }, (t) => {
+    const directory = mkdtempSync(join(tmpdir(), "gtkx-release-graph-"));
+    t.after(() => rmSync(directory, { recursive: true, force: true }));
+    const result = spawnSync(
+        process.execPath,
+        [
+            "--input-type=module",
+            "-e",
+            `import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const { createProjectGraphAsync } = require("nx/src/project-graph/project-graph");
+const { createTaskGraph } = require("nx/src/tasks-runner/create-task-graph");
+const { findCycle } = require("nx/src/tasks-runner/task-graph-utils");
+const graph = await createProjectGraphAsync();
+const checks = createTaskGraph(graph, {}, Object.keys(graph.nodes), ["build", "test", "typecheck", "lint", "e2e"], undefined, {});
+const projects = Object.keys(graph.nodes).filter(name => graph.nodes[name].data.targets?.release);
+const release = createTaskGraph(graph, {}, projects, ["release"], "release-artifacts", {});
+const local = createTaskGraph(graph, {}, projects, ["release"], undefined, {});
+console.log(JSON.stringify({ checksCycle: findCycle(checks), release, local, native: graph.nodes["@gtkx/native"].data.targets }));`,
+        ],
+        {
+            cwd: workspace,
+            env: {
+                ...localEnvironment,
+                NX_DAEMON: "false",
+                NX_NO_CLOUD: "true",
+                NX_CLOUD_ACCESS_TOKEN: "",
+                NX_CACHE_PROJECT_GRAPH: "false",
+                NX_WORKSPACE_DATA_DIRECTORY: join(directory, "workspace-data"),
+            },
+            encoding: "utf8",
+            timeout: 55_000,
+            maxBuffer: 8 * 1024 * 1024,
+        },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const { checksCycle, release, local, native } = JSON.parse(result.stdout);
+    assert.equal(checksCycle, null, checksCycle?.join(" -> "));
+    const nativeBuilds = Object.values(release.tasks).filter(
+        (task) => task.target.project === "@gtkx/native" && task.target.target === "build",
+    );
+    assert.equal(nativeBuilds.length, 1);
+    assert.equal(nativeBuilds[0].target.configuration, "release-artifacts");
+    assert.ok(
+        release.dependencies["@gtkx/native:release:release-artifacts"].includes("@gtkx/native:build:release-artifacts"),
+    );
+    assert.ok(release.dependencies["gtkx:_build:bindings"].includes("@gtkx/native:build:release-artifacts"));
+    assert.equal(local.tasks["@gtkx/native:build"].target.configuration, undefined);
+    assert.match(native.build.configurations["release-artifacts"].command, /build --from-artifacts/);
+    assert.match(native.release.configurations["release-artifacts"].command, /prepublish\.ts --from-artifacts/);
+});
+
+test("release publishing and verification use explicitly supplied registry deadlines", async (t) => {
+    const directory = mkdtempSync(join(tmpdir(), "gtkx-release-registry-"));
+    t.after(() => rmSync(directory, { recursive: true, force: true }));
+    let visible = true;
+    const requests = [];
+    const registry = createServer((request, response) => {
+        requests.push(request.url);
+        response.setHeader("Content-Type", "application/json");
+        response.end(
+            JSON.stringify(
+                request.url.endsWith("/1.0.0")
+                    ? { version: "1.0.0" }
+                    : { "dist-tags": visible ? { latest: "1.0.0" } : {} },
+            ),
+        );
+    });
+    registry.listen(0, "127.0.0.1");
+    await once(registry, "listening");
+    t.after(() => registry.close());
+    const address = registry.address();
+    assert.ok(address && typeof address === "object");
+    writeFileSync(
+        join(directory, "package.json"),
+        JSON.stringify({
+            name: "@gtkx/release-fixture",
+            version: "1.0.0",
+            publishConfig: { registry: `http://127.0.0.1:${address.port}` },
+        }),
+    );
+    const { publishPackage } = await tsImport("../pnpm-publish.ts", import.meta.url);
+    const { verifyReleaseChannel } = await tsImport("../release-channel.ts", import.meta.url);
+    await publishPackage(directory, "latest", 1_000);
+    await verifyReleaseChannel([directory], 1_000);
+    assert.ok(requests.some((path) => path.endsWith("/1.0.0")));
+    assert.ok(requests.some((path) => !path.endsWith("/1.0.0")));
+    visible = false;
+    await assert.rejects(publishPackage(directory, "latest", 50), /within 50 ms/);
+    await assert.rejects(verifyReleaseChannel([directory], 50), /within 50 ms/);
+});

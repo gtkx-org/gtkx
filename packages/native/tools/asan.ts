@@ -3,13 +3,12 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { rmSync } from "node:fs";
 import { pathToFileURL } from "node:url";
+import { nativeCoverage as COVERAGE, nativeTests as NATIVE_TESTS } from "./test-paths.js";
 
 const NATIVE_ROOT = join(import.meta.dirname, "..");
-const NATIVE_TESTS = join(NATIVE_ROOT, "..", "e2e", "tests", "native");
 const SUPPRESSIONS = join(NATIVE_TESTS, "lsan.supp");
 const CONFIGS = [join(NATIVE_TESTS, "vitest.config.ts")];
 const VITEST_ARGS = process.argv.slice(2);
-const COVERAGE = join(NATIVE_ROOT, "../../build/native-tests/coverage");
 const FULL_SUITE = VITEST_ARGS.length === 0;
 const OUTPUT = join(NATIVE_ROOT, "build", "asan");
 const nightlyEnvironment = { ...process.env };
@@ -89,9 +88,6 @@ const testEnvironment = {
         .filter(Boolean)
         .join(" "),
     LD_PRELOAD: runtime,
-    GTKX_ASAN_RUNTIME: runtime,
-    GTKX_NATIVE_LEAK_PROBE: "0",
-    ...(FULL_SUITE ? { GTKX_NATIVE_COVERAGE_DIR: COVERAGE } : {}),
     ASAN_OPTIONS: [
         "detect_leaks=1",
         "fast_unwind_on_malloc=0",
@@ -106,9 +102,9 @@ const testEnvironment = {
 for (const config of CONFIGS) {
     const probe = spawnSync(
         resolveExecutable("pnpm"),
-        ["exec", "vitest", "run", "--root", dirname(config), "--config", config],
+        ["exec", "vitest", "run", "--root", dirname(config), "--config", config, "--project", "e2e-native-leak-probe"],
         {
-            env: { ...testEnvironment, GTKX_NATIVE_LEAK_PROBE: "1" },
+            env: testEnvironment,
             cwd: NATIVE_ROOT,
             encoding: "utf8",
             timeout: 120_000,
@@ -134,6 +130,8 @@ for (const config of CONFIGS) {
             dirname(config),
             "--config",
             config,
+            "--project",
+            FULL_SUITE ? "e2e-native" : "e2e-native-filtered",
             "--testTimeout",
             "120000",
             ...VITEST_ARGS,

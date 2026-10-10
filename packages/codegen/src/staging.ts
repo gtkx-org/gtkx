@@ -24,7 +24,6 @@ const STAGING_SUFFIX = ".tmp-";
 const OWNER_PATTERN = /^(?<pid>\d+)(?:-(?<identity>[a-f\d]{64}|unknown))?-/u;
 const LOCK_FILENAME = ".codegen.lock";
 const DEFAULT_LOCK_WAIT_TIMEOUT_MS = 600_000;
-const LOCK_WAIT_TIMEOUT_ENV = "GTKX_CODEGEN_LOCK_TIMEOUT_MS";
 const PROCESS_START_FIELD = 19;
 const BOOT_ID_PATH = "/proc/sys/kernel/random/boot_id";
 const LOCK_CHILD_FD = 3;
@@ -154,18 +153,6 @@ const lockOwner = (): LockOwner => ({
     token: randomUUID(),
 });
 
-const lockWaitTimeout = (): number => {
-    const source = process.env[LOCK_WAIT_TIMEOUT_ENV];
-
-    if (source === undefined) {
-        return DEFAULT_LOCK_WAIT_TIMEOUT_MS;
-    }
-
-    const requested = Number(source);
-
-    return Number.isFinite(requested) && requested > 0 ? requested : DEFAULT_LOCK_WAIT_TIMEOUT_MS;
-};
-
 const lockHolderArgs = (timeout: number): string[] => [
     "--exclusive",
     "--timeout",
@@ -178,7 +165,7 @@ const lockHolderArgs = (timeout: number): string[] => [
 const lockTimeoutMessage = (root: string, timeout: number, elapsed: number): string =>
     `Timed out after ${String(elapsed)}ms waiting to generate stores in ${root}; another codegen process still ` +
     `holds the store lock. Wait for it to finish, or raise the ${String(timeout)}ms limit with ` +
-    `${LOCK_WAIT_TIMEOUT_ENV}=<milliseconds>.`;
+    "`gtkx codegen --lock-timeout <milliseconds>` or the `lockTimeoutMs` codegen option.";
 
 const lockFailureMessage = (root: string, code: number | null): string => {
     const exit = code === null ? "a signal" : `code ${String(code)}`;
@@ -234,11 +221,10 @@ const writeLockOwner = (fd: number, owner: LockOwner): void => {
     fsyncSync(fd);
 };
 
-const acquireLock = async (root: string): Promise<StoreLock> => {
+const acquireLock = async (root: string, timeout: number): Promise<StoreLock> => {
     const path = join(root, LOCK_FILENAME);
     const executable = resolveExecutable("flock");
     const lockFd = openSync(root, constants.O_RDONLY | constants.O_DIRECTORY);
-    const timeout = lockWaitTimeout();
     let ownerFd: number | undefined;
 
     try {
@@ -298,12 +284,19 @@ const releaseLocks = (locks: StoreLock[]): void => {
     }
 };
 
-const acquireStoreLocks = async (targets: string[]): Promise<() => void> => {
+const acquireStoreLocks = async (
+    targets: string[],
+    timeout: number = DEFAULT_LOCK_WAIT_TIMEOUT_MS,
+): Promise<() => void> => {
+    if (!Number.isFinite(timeout) || timeout <= 0) {
+        throw new Error("lockTimeoutMs must be a positive finite number of milliseconds");
+    }
+
     const locks: StoreLock[] = [];
 
     try {
         for (const root of storeRoots(targets)) {
-            locks.push(await acquireLock(root));
+            locks.push(await acquireLock(root, timeout));
         }
     } catch (error) {
         releaseLocks(locks);

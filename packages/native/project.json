@@ -34,15 +34,17 @@
                 "{projectRoot}/tools/build.ts",
                 "{workspaceRoot}/scripts/native-artifact.ts",
                 "{projectRoot}/artifacts/**/*",
-                {
-                    "env": "GTKX_RELEASE_NATIVE_ARTIFACTS"
-                },
                 "{workspaceRoot}/scripts/ci/**/*"
             ],
             "outputs": ["{projectRoot}/index.d.ts", "{projectRoot}/index.js", "{projectRoot}/native.*.node"],
             "command": "node ../../scripts/ci/run.mjs 'pnpm run build'",
             "options": {
                 "cwd": "{projectRoot}"
+            },
+            "configurations": {
+                "release-artifacts": {
+                    "command": "node ../../scripts/ci/run.mjs 'pnpm run build --from-artifacts'"
+                }
             }
         },
         "_lint:rust": {
@@ -81,7 +83,16 @@
         },
         "release": {
             "cache": false,
-            "dependsOn": ["build"]
+            "dependsOn": ["build"],
+            "command": "pnpm run release",
+            "options": {
+                "cwd": "{projectRoot}"
+            },
+            "configurations": {
+                "release-artifacts": {
+                    "command": "pnpm exec tsx tools/prepublish.ts --from-artifacts && pnpm exec tsx ../../scripts/release-package.ts"
+                }
+            }
         },
         "typecheck": {
             "dependsOn": ["...", "build"]

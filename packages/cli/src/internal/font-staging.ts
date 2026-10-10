@@ -5,13 +5,11 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { parseFontSpecifier } from "../vite-plugins/asset-specifier.js";
 import { fontFileName, FONTS_DIR } from "./font-path.js";
 import { discoverSourceFiles, importsIn, type SourceImport, sourceLanguage } from "./source-imports.js";
-import { createRetainedStagingDir } from "./staging-dir.js";
+import type { RetainedStagingDir } from "./staging-dir.js";
 
 type FontStagingStatus = "absent" | "staged" | "unmanaged";
 
-const FONT_DIR_ENV = "GTKX_DEV_FONT_DIR";
 const FONT_QUERY = "?font";
-const fontStaging = createRetainedStagingDir("fonts");
 
 const isRelativeImport = (source: string): boolean => source.startsWith("./") || source.startsWith("../");
 
@@ -85,14 +83,14 @@ const stageFont = (fontsDir: string, sourcePath: string): void => {
     symlinkSync(sourcePath, target, "file");
 };
 
-const stagedFontsDir = (): string | null => {
-    const shareDir = process.env[FONT_DIR_ENV];
+const stagedFontsDir = (staging: RetainedStagingDir): string | null => {
+    const shareDir = staging.getPath();
 
-    return shareDir === undefined || shareDir.length === 0 ? null : join(shareDir, FONTS_DIR);
+    return shareDir === null ? null : join(shareDir, FONTS_DIR);
 };
 
-const stagedFontStatus = (sourcePath: string, content: Buffer): FontStagingStatus => {
-    const fontsDir = stagedFontsDir();
+const stagedFontStatus = (staging: RetainedStagingDir, sourcePath: string, content: Buffer): FontStagingStatus => {
+    const fontsDir = stagedFontsDir(staging);
 
     if (fontsDir === null) {
         return "unmanaged";
@@ -104,8 +102,8 @@ const stagedFontStatus = (sourcePath: string, content: Buffer): FontStagingStatu
 const isUnstagedFont = (fontsDir: string, sourcePath: string): boolean =>
     existingPath(stagedPath(fontsDir, sourcePath, readFileSync(sourcePath))) === null;
 
-const hasUnstagedFontImport = (root: string, filePath: string): boolean => {
-    const fontsDir = stagedFontsDir();
+const hasUnstagedFontImport = (staging: RetainedStagingDir, root: string, filePath: string): boolean => {
+    const fontsDir = stagedFontsDir(staging);
 
     if (fontsDir === null || !hasFontImportMention(filePath)) {
         return false;
@@ -114,16 +112,14 @@ const hasUnstagedFontImport = (root: string, filePath: string): boolean => {
     return projectFontFiles(root).some((sourcePath) => isUnstagedFont(fontsDir, sourcePath));
 };
 
-const stageProjectFonts = (root: string): string => {
-    const shareDir = fontStaging.retain();
+const stageProjectFonts = (root: string, staging: RetainedStagingDir): string => {
+    const shareDir = staging.retain();
     const fontsDir = join(shareDir, FONTS_DIR);
     mkdirSync(fontsDir, { recursive: true });
 
     for (const sourcePath of projectFontFiles(root)) {
         stageFont(fontsDir, sourcePath);
     }
-
-    process.env[FONT_DIR_ENV] = shareDir;
 
     return shareDir;
 };

@@ -71,6 +71,8 @@ Flatpak needs `flatpak` and either `flatpak-builder` or the `org.flatpak.Builder
 `file`. GTKX downloads and verifies `nfpm` for Debian/RPM packaging and `appimagetool` for AppImage packaging.
 The command reports missing tools with installation hints.
 
+To use a local nFPM installation, set `deploy.tools.nfpm` to an executable name such as `"nfpm"` or a path such as `"./tools/nfpm"`. Relative paths start at the project root. This skips the pinned nFPM download for Debian and RPM packages.
+
 ## Preview and build
 
 From a scaffolded project on Fedora, preview an RPM:

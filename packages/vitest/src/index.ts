@@ -8,7 +8,11 @@ import { reapStaleHeadlessDisplaysAtStartup } from "./reap-headless-displays.ts"
  * Options accepted by the GTKX Vitest plugin. Every headless display
  * setting is optional and falls back to a built-in default when omitted.
  */
-type PluginOptions = Partial<HeadlessOptions> & Partial<Record<"configFile", string | undefined>>;
+type PluginOptions = Partial<HeadlessOptions> &
+    Partial<Record<"configFile", string | undefined>> & {
+        /** Compiled gettext catalog directory, resolved relative to the test project's root. */
+        localeDir?: string | undefined;
+    };
 
 const GTKX_INLINE_DEPS: RegExp[] = [/@gtkx\/(?!native)/, /[/\\]\.gtkx[/\\]/];
 const DEFAULT_TIMEOUT = 30_000;
@@ -40,12 +44,13 @@ const headlessPreloadSpecifier = (options: Partial<HeadlessOptions>): string => 
 const gtkx = (options: PluginOptions = {}): Plugin => {
     assertSupportedNodeVersion();
     reapStaleHeadlessDisplaysAtStartup();
-    const { configFile, ...headlessOptions } = options;
+    const { configFile, localeDir, ...headlessOptions } = options;
     const loadConfig = createConfigLoader({ configFile });
 
     return createConfigPlugin({
         name: "gtkx:vitest",
         loadConfig,
+        localeDir,
         config(config) {
             return {
                 test: {

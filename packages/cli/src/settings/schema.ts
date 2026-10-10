@@ -4,7 +4,7 @@ import { basename, dirname, join, relative, resolve } from "node:path";
 import type { SourceImport } from "../internal/source-imports.js";
 import { I18N_TYPES_FILENAME, i18nTypesPath } from "../i18n/types.js";
 import { discoverProjectImports } from "../internal/import-scan.js";
-import { createRetainedStagingDir } from "../internal/staging-dir.js";
+import { createRetainedStagingDir, type RetainedStagingDir } from "../internal/staging-dir.js";
 import { isBareRelativeAsset, parseIconSpecifier, parseResourceSpecifier } from "../vite-plugins/asset-specifier.js";
 import { compileSchemas } from "./compile.js";
 import { createSchemaResolver, type ParsedSchemaFile, parseSchemaFile } from "./parser.js";
@@ -163,7 +163,10 @@ const assertUniqueSchemaBasenames = (schemaFiles: string[]): void => {
     }
 };
 
-const stageAndCompileProjectSchemas = (root: string): string | null => {
+const stageAndCompileProjectSchemas = (
+    root: string,
+    staging: RetainedStagingDir = createRetainedStagingDir("schemas"),
+): string | null => {
     const { files: schemaFiles } = projectSchemaFiles(root);
     assertUniqueSchemaBasenames(schemaFiles);
 
@@ -171,7 +174,6 @@ const stageAndCompileProjectSchemas = (root: string): string | null => {
         return null;
     }
 
-    const staging = createRetainedStagingDir("schemas");
     const dir = staging.retain();
 
     try {

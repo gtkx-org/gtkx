@@ -6,8 +6,8 @@ import { verifyNativeArtifacts } from "../../../scripts/native-artifact.js";
 
 const args = process.argv.slice(2);
 
-if (process.env.GTKX_RELEASE_NATIVE_ARTIFACTS === "true") {
-    if (args.length > 0) {
+if (args[0] === "--from-artifacts") {
+    if (args.length > 1) {
         throw new Error("Staged native release artifacts cannot accept build arguments");
     }
 

@@ -1,5 +1,5 @@
 import { gt, valid } from "semver";
-import { packageIdentity, registryFor, visibilityTimeoutMs, waitForVisibility } from "./pnpm-publish.js";
+import { packageIdentity, registryFor, waitForVisibility } from "./pnpm-publish.js";
 import { distTagForVersion } from "./publish-manifest.js";
 
 type ReleasePackage = {
@@ -72,9 +72,8 @@ const checkReleaseChannel = async (directories: string[]): Promise<void> => {
     await assertChannelCanAdvance(releasePackages(directories));
 };
 
-const verifyReleaseChannel = async (directories: string[]): Promise<void> => {
+const verifyReleaseChannel = async (directories: string[], timeoutMs: number): Promise<void> => {
     const packages = releasePackages(directories);
-    const timeoutMs = visibilityTimeoutMs();
     await assertChannelCanAdvance(packages);
 
     for (const entry of packages) {

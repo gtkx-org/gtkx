@@ -47,6 +47,8 @@ type CodegenRunnerOptions = {
     userOmittedProps?: OmittedProps;
     /** Regenerates both stores even when their fingerprints are fresh. */
     isForced?: boolean;
+    /** Maximum wait for each generated-store lock in milliseconds. Defaults to ten minutes. */
+    lockTimeoutMs?: number | undefined;
 };
 
 /** What a `runCodegen` run produced. */
@@ -91,7 +93,7 @@ const runCodegen = async (options: CodegenRunnerOptions): Promise<CodegenRunnerR
         stores.push(options.jsx.storeDir);
     }
 
-    const release = await acquireStoreLocks(stores);
+    const release = await acquireStoreLocks(stores, options.lockTimeoutMs);
 
     try {
         const store = await emitStores(options);

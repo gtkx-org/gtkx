@@ -27,6 +27,7 @@ type RunCodegenOptions = {
     mode?: string | undefined;
     configFile?: string | undefined;
     isForced?: boolean;
+    lockTimeoutMs?: number | undefined;
     inputs?: CodegenInputs;
     resolved?: LoadedConfig;
     shouldPreserveI18nMetadata?: boolean | undefined;
@@ -59,6 +60,7 @@ type PreparedCodegen = CodegenInputs & { isForced: boolean };
 
 type EnsureGeneratedOptions = {
     shouldAnnounce?: boolean;
+    lockTimeoutMs?: number | undefined;
     mode?: string;
     configFile?: string | undefined;
     shouldPreserveI18nMetadata?: boolean | undefined;
@@ -148,6 +150,7 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     const result = await runCodegenCore({
         ...codegenOptions({ store, libraries, girPath, elements: config.elements }),
         isForced,
+        lockTimeoutMs: options.lockTimeoutMs,
     });
 
     const reference = await writeReference({
@@ -219,14 +222,12 @@ const maybeAnnounceStale = (shouldAnnounce: boolean | undefined, inputs: Codegen
     }
 };
 
-const isPreflightSkipped = (options: EnsureGeneratedOptions): boolean =>
-    options.shouldAnnounce === true && process.env.GTKX_DISABLE_PREFLIGHT === "1";
-
 const generate = async (context: CodegenContext, options: EnsureGeneratedOptions): Promise<boolean> => {
     if (context.config.codegen === false) {
         const result = await runCodegen({
             cwd: context.root,
             mode: options.mode,
+            lockTimeoutMs: options.lockTimeoutMs,
             resolved: { config: context.config, configFile: context.configFile },
             shouldPreserveI18nMetadata: options.shouldPreserveI18nMetadata,
         });
@@ -241,6 +242,7 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
     const result = await runCodegen({
         cwd: context.root,
         mode: options.mode,
+        lockTimeoutMs: options.lockTimeoutMs,
         resolved,
         shouldPreserveI18nMetadata: options.shouldPreserveI18nMetadata,
         ...(inputs !== null && { inputs }),
@@ -250,10 +252,9 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
 };
 
 const ensureGeneratedIn = async (context: CodegenContext, options: EnsureGeneratedOptions = {}): Promise<boolean> =>
-    !isPreflightSkipped(options) && generate(context, options);
+    generate(context, options);
 
 const ensureGenerated = async (cwd: string, options: EnsureGeneratedOptions = {}): Promise<boolean> =>
-    !isPreflightSkipped(options) &&
     generate(await resolveCodegenContext(cwd, options.mode, options.configFile), options);
 
 const resolveConfigWatch = async (

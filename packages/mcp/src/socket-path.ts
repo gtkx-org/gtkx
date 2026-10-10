@@ -95,7 +95,6 @@ const cleanupMcpSocketAddress = (address: McpSocketAddress): void => {
 
 export {
     cleanupMcpSocketAddress,
-    MCP_SOCKET_PATH_ENV,
     prepareMcpSocketAddress,
     resolveMcpSocketAddress,
     resolveMcpSocketPath,

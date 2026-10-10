@@ -90,6 +90,7 @@
         "yaml": "catalog:"
     },
     "devDependencies": {
+        "@gtkx/i18n": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/storybook": "workspace:*",
         "@gtkx/testing": "workspace:*",

@@ -1,4 +1,5 @@
 import { createServer } from "vite";
+import { spawnSync } from "node:child_process";
 import { mkdtempDisposableSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -63,6 +64,30 @@ describe("project configuration", () => {
         await expect(reloader.reload()).rejects.toThrow();
         writeFileSync(dependency, 'export default "org.gtkx.second";');
         expect((await reloader.reload()).config.applicationId).toBe("org.gtkx.second");
+    });
+
+    it("reports graduated flags once per project and lets supervisors own their warnings", () => {
+        using first = project();
+        using second = project();
+        for (const directory of [first, second]) {
+            writeFileSync(
+                join(directory.path, "gtkx.config.ts"),
+                'export default { applicationId: "org.gtkx.test", codegen: false, future: { v2TreeShaking: true } };',
+            );
+        }
+        const script = `
+            import { loadConfig } from ${JSON.stringify(new URL("../src/index.ts", import.meta.url).href)};
+            const first = ${JSON.stringify(first.path)};
+            const second = ${JSON.stringify(second.path)};
+            await loadConfig(first, { shouldWarnGraduatedFuture: false });
+            await loadConfig(first);
+            await loadConfig(first);
+            await loadConfig(second);
+            await loadConfig(second);
+        `;
+        const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], { encoding: "utf8" });
+        expect(result.status).toBe(0);
+        expect(result.stderr.match(/ignores graduated future flags/g)).toHaveLength(2);
     });
 
     it("rejects missing, invalid and out-of-project configurations", async () => {

@@ -1,5 +1,5 @@
 import { mkdtempSync, renameSync, rmSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { runCliTool } from "../../internal/run-cli-tool.js";
 import { cacheDir, downloadFile } from "../download.js";
 
@@ -64,11 +64,9 @@ const downloadNfpm = async (dir: string, binary: string): Promise<string> => {
     return binary;
 };
 
-const resolveNfpm = async (): Promise<string> => {
-    const override = process.env.GTKX_NFPM;
-
-    if (override !== undefined && override.length > 0) {
-        return override;
+const resolveNfpm = async (root: string, override?: string): Promise<string> => {
+    if (override !== undefined) {
+        return override.includes("/") ? resolve(root, override) : override;
     }
 
     const dir = cacheDir(["nfpm", NFPM_VERSION]);

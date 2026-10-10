@@ -2,9 +2,10 @@ import type { UserConfig } from "vite";
 import type { Plugin } from "vitest/config";
 import { createConfigLoader, viteProjectRoot } from "@gtkx/config/internal";
 import { stageProjectFonts } from "../internal/font-staging.js";
+import type { RetainedStagingDir } from "../internal/staging-dir.js";
 import { prependXdgDataDir } from "../internal/xdg-data-dirs.js";
 
-function gtkxFontWorkerEnv(configFile?: string): Plugin {
+function gtkxFontWorkerEnv(staging: RetainedStagingDir, configFile?: string): Plugin {
     const loadConfig = createConfigLoader({ configFile });
 
     return {
@@ -13,7 +14,7 @@ function gtkxFontWorkerEnv(configFile?: string): Plugin {
 
         async config(config: UserConfig) {
             const loaded = await loadConfig.load(viteProjectRoot(config));
-            const shareDir = stageProjectFonts(loaded.root);
+            const shareDir = stageProjectFonts(loaded.root, staging);
             const existing = config.test?.env?.XDG_DATA_DIRS ?? process.env.XDG_DATA_DIRS;
 
             return {

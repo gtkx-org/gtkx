@@ -579,6 +579,9 @@ importers:
         specifier: 'catalog:'
         version: 2.9.1
     devDependencies:
+      '@gtkx/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@gtkx/react':
         specifier: workspace:*
         version: link:../react

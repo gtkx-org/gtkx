@@ -21,7 +21,6 @@ const forwardedVariables = [
     "NO_COLOR",
     "TERM",
     "GTKX_GIR_PATH",
-    "GTKX_RELEASE_NATIVE_ARTIFACTS",
     "GI_TYPELIB_PATH",
     "LD_LIBRARY_PATH",
     "PKG_CONFIG_PATH",

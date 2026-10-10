@@ -224,6 +224,11 @@ const scriptsSchema = z.strictObject({
     postRemove: text(SCRIPT_ERROR).optional(),
 });
 
+const toolsSchema = z.strictObject({
+    /** nFPM executable name or path relative to the project root. Defaults to a verified pinned download. */
+    nfpm: text("must be an nFPM executable name or path").optional(),
+});
+
 const debSchema = z.strictObject({
     /** Debian package name. Defaults to `deploy.binaryName`. */
     packageName: text("must be a Debian package name").optional(),
@@ -494,6 +499,8 @@ const deploySchema = z.strictObject({
     scripts: scriptsSchema.optional(),
     /** Node.js runtime bundled with prebuilt packages and launcher compile-cache settings. */
     node: nodeRuntimeSchema.optional(),
+    /** Overrides for executables used to build packages. */
+    tools: toolsSchema.optional(),
     /** Per-format package signing options. */
     signing: signingSchema.optional(),
     /** AppImage packaging options. */

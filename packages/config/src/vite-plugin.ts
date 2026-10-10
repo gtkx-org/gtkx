@@ -1,4 +1,5 @@
 import type { Plugin, UserConfig } from "vite";
+import { resolve } from "node:path";
 import { type ConfigLoader, createConfigLoader } from "./loader.ts";
 import { GTKX_CONFIG_VIRTUAL_ID, renderConfigModule, RESOLVED_GTKX_CONFIG_VIRTUAL_ID } from "./virtual.ts";
 import { viteProjectRoot } from "./vite-root.ts";
@@ -17,12 +18,16 @@ const loadVirtualModule = async (
     id: string,
     loadConfig: ConfigLoader,
     state: PluginState,
+    localeDir: string | null | undefined,
 ): Promise<string | undefined> => {
     if (id !== RESOLVED_GTKX_CONFIG_VIRTUAL_ID) {
         return undefined;
     }
 
-    return renderConfigModule(await loadConfig.resolve(state.root));
+    return renderConfigModule(
+        await loadConfig.resolve(state.root),
+        localeDir == null ? null : resolve(state.root, localeDir),
+    );
 };
 
 /**
@@ -34,6 +39,8 @@ const createConfigPlugin = (options: {
     name: string;
     /** Loader the configuration is resolved through, defaulting to a fresh caching loader. */
     loadConfig?: ConfigLoader;
+    /** Catalog directory for development or tests, resolved relative to the project root. */
+    localeDir?: string | null | undefined;
     /** Extra Vite configuration contributed from the plugin's `config` hook, given the user's own configuration. */
     config?: (config: UserConfig) => Omit<UserConfig, "plugins">;
 }): Plugin => {
@@ -53,7 +60,7 @@ const createConfigPlugin = (options: {
         },
         load: {
             filter: { id: RESOLVED_VIRTUAL_ID_RE },
-            handler: (id: string) => loadVirtualModule(id, loadConfig, state),
+            handler: (id: string) => loadVirtualModule(id, loadConfig, state, options.localeDir),
         },
     };
 };

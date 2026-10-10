@@ -6,10 +6,9 @@ import { sourceResolveConfig } from "../../vitest.config.base.js";
 export default mergeConfig(
     sourceResolveConfig,
     defineConfig({
-        plugins: [gtkx()],
+        plugins: [gtkx({ localeDir: resolve(import.meta.dirname, "tests/fixtures/locale") })],
         test: {
             env: {
-                GTKX_LOCALE_DIR: resolve(import.meta.dirname, "tests/fixtures/locale"),
                 LANG: "fr_FR.UTF-8",
                 LANGUAGE: "fr",
                 LC_ALL: "fr_FR.UTF-8",
