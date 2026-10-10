@@ -36,6 +36,14 @@ pub struct CallDescriptor {
     pub(crate) arg_order: Vec<usize>,
 }
 
+/// The native argument positions of the values encoded by the descriptors, including callback
+/// data and destroy arguments. A variadic fixed count is expressed after this expansion.
+#[napi(object, object_to_js = false)]
+pub struct CallLayout {
+    pub arg_order: Vec<u32>,
+    pub fixed_arg_count: Option<u32>,
+}
+
 /// A vtable slot to precompile a call to, together with how its arguments and return value are
 /// marshalled. Chain-up binds the slot against the parent type, so the call reaches the
 /// implementation the parent provides rather than the override installed on the subclass.
@@ -60,6 +68,8 @@ pub struct BindVfuncOptions {
     pub arg_descriptors: Vec<Descriptor>,
     /// Descriptor for the value the slot returns.
     pub return_descriptor: Descriptor,
+    /// Runtime-planned argument positions, including hidden callback arguments.
+    pub layout: CallLayout,
 }
 
 impl CallDescriptor {
@@ -90,74 +100,41 @@ impl CallDescriptor {
     }
 }
 
-fn build_arg_types(
-    arg_codecs: &[Codec],
-    fixed_arg_count: Option<usize>,
-) -> (Vec<Type>, Option<usize>) {
+fn build_arg_types(arg_codecs: &[Codec]) -> Vec<Type> {
     let mut arg_types = Vec::with_capacity(arg_codecs.len());
-    let mut fixed_type_count = None;
-
-    for (index, codec) in arg_codecs.iter().enumerate() {
-        if fixed_arg_count == Some(index) {
-            fixed_type_count = Some(arg_types.len());
-        }
-
+    for codec in arg_codecs {
         codec.append_ffi_arg_types(&mut arg_types);
     }
-
-    if fixed_arg_count == Some(arg_codecs.len()) {
-        fixed_type_count = Some(arg_types.len());
-    }
-
-    (arg_types, fixed_type_count)
+    arg_types
 }
 
-fn argument_order(arg_codecs: &[Codec], count: usize) -> Result<Vec<usize>> {
-    let mut reserved = vec![None; count];
-    let mut sequential = Vec::new();
-    let mut source = 0;
-    for codec in arg_codecs {
-        sequential.push(source);
-        source += 1;
-        if let Codec::Callback(callback) = codec {
-            let extras = [
-                (callback.has_user_data, callback.user_data_arg_index),
-                (callback.has_destroy, callback.destroy_arg_index),
-            ];
-            for (present, target) in extras {
-                if !present {
-                    if target.is_some() {
-                        return Err(Error::from_reason(
-                            "A callback position requires its matching argument",
-                        ));
-                    }
-                    continue;
-                }
-                if let Some(target) = target {
-                    let slot = reserved.get_mut(target).ok_or_else(|| {
-                        Error::from_reason(
-                            "Callback argument position exceeds the native signature",
-                        )
-                    })?;
-                    if slot.replace(source).is_some() {
-                        return Err(Error::from_reason("Callback argument positions overlap"));
-                    }
-                } else {
-                    sequential.push(source);
-                }
-                source += 1;
-            }
-        }
+fn validate_argument_order(layout: CallLayout, count: usize) -> Result<Vec<usize>> {
+    if layout.arg_order.len() != count {
+        return Err(Error::from_reason(
+            "Argument order must contain every native argument",
+        ));
     }
-    let mut sequential = sequential.into_iter();
-    reserved
-        .into_iter()
-        .map(|reserved| {
-            reserved
-                .or_else(|| sequential.next())
-                .ok_or_else(|| Error::from_reason("Incomplete callback argument layout"))
-        })
-        .collect()
+    let mut seen = vec![false; count];
+    let mut order = Vec::with_capacity(count);
+    for index in layout.arg_order {
+        let index = index as usize;
+        let slot = seen.get_mut(index).ok_or_else(|| {
+            Error::from_reason("Argument order index exceeds the native signature")
+        })?;
+        if std::mem::replace(slot, true) {
+            return Err(Error::from_reason("Argument order indices must be unique"));
+        }
+        order.push(index);
+    }
+    if layout
+        .fixed_arg_count
+        .is_some_and(|fixed| fixed as usize > count)
+    {
+        return Err(Error::from_reason(
+            "fixedArgCount exceeds the number of native arguments",
+        ));
+    }
+    Ok(order)
 }
 
 pub(crate) fn prepare(
@@ -165,18 +142,19 @@ pub(crate) fn prepare(
     label: String,
     arg_codecs: Vec<Codec>,
     return_codec: Codec,
-    fixed_arg_count: Option<usize>,
+    layout: CallLayout,
 ) -> Result<CallDescriptor> {
-    let (arg_types, fixed_type_count) = build_arg_types(&arg_codecs, fixed_arg_count);
+    let arg_types = build_arg_types(&arg_codecs);
     let native_arg_count = arg_types.len();
-    let arg_order = argument_order(&arg_codecs, native_arg_count)?;
+    let fixed_arg_count = layout.fixed_arg_count;
+    let arg_order = validate_argument_order(layout, native_arg_count)?;
     let arg_types: Vec<Type> = arg_order
         .iter()
         .map(|&index| arg_types[index].clone())
         .collect();
     let return_type = return_codec.libffi_type();
-    let cif = match fixed_type_count {
-        Some(fixed) => Cif::new_variadic(arg_types, fixed, return_type),
+    let cif = match fixed_arg_count {
+        Some(fixed) => Cif::new_variadic(arg_types, fixed as usize, return_type),
         None => Builder::new().res(return_type).args(arg_types).into_cif(),
     };
 
@@ -255,23 +233,16 @@ fn vfunc_offset_bounds(
 /// reusable call descriptor that `call` can invoke. The symbol itself is resolved on the first
 /// call, so binding a symbol the installed library does not export fails only when it is called.
 ///
-/// `fixedArgCount` marks the callee as variadic, naming how many of `argDescriptors` precede the
-/// ellipsis. Omitting it binds a plain fixed-arity call.
+/// `layout` supplies the runtime-planned argument ordering and expanded variadic fixed count.
 #[napi(catch_unwind)]
 pub fn bind(
     shared_library: String,
     symbol_name: String,
     arg_descriptors: Vec<Descriptor>,
     return_descriptor: Descriptor,
-    fixed_arg_count: Option<u32>,
+    layout: CallLayout,
 ) -> Result<External<CallDescriptor>> {
     let (arg_codecs, return_codec) = into_codecs(arg_descriptors, return_descriptor)?;
-    if fixed_arg_count.is_some_and(|count| count as usize > arg_codecs.len()) {
-        return Err(Error::new(
-            Status::InvalidArg,
-            "fixedArgCount exceeds the number of argument descriptors",
-        ));
-    }
 
     Ok(External::new(prepare(
         CallTarget::Symbol {
@@ -280,7 +251,7 @@ pub fn bind(
         symbol_name,
         arg_codecs,
         return_codec,
-        fixed_arg_count.map(|count| count as usize),
+        layout,
     )?))
 }
 
@@ -290,6 +261,7 @@ pub fn bind_function_pointer(
     arg_descriptors: Vec<Descriptor>,
     return_descriptor: Descriptor,
     label: String,
+    layout: CallLayout,
 ) -> Result<External<CallDescriptor>> {
     let _leases = crate::handle::LeaseScope::open();
     native_result("bind_function_pointer", function_handle.function_ptr())?;
@@ -301,7 +273,7 @@ pub fn bind_function_pointer(
         label,
         arg_codecs,
         return_codec,
-        None,
+        layout,
     )?))
 }
 
@@ -350,6 +322,6 @@ pub fn bind_vfunc(options: BindVfuncOptions) -> Result<External<CallDescriptor>>
         options.label,
         arg_codecs,
         return_codec,
-        None,
+        options.layout,
     )?))
 }

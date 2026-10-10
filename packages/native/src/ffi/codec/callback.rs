@@ -43,8 +43,6 @@ pub struct CallbackCodec {
     pub destroy_kind: DestroyNotifyKind,
     pub has_user_data: bool,
     pub user_data_index: Option<usize>,
-    pub user_data_arg_index: Option<usize>,
-    pub destroy_arg_index: Option<usize>,
     pub can_throw: bool,
     pub scope: CallbackScope,
     pub(crate) release_policy: CallbackReleasePolicy,

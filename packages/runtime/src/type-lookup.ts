@@ -17,7 +17,7 @@ const resolveType = (sharedLibrary: string, typeFnName: string): bigint => {
         if (handle == null) {
             return 0n;
         }
-        const descriptor = bindFunctionPointer(handle, [], { kind: "biguint64" }, typeFnName);
+        const descriptor = bindFunctionPointer(handle, [], { kind: "biguint64" }, typeFnName, { argOrder: [] });
 
         return call(descriptor, []).value as bigint;
     });

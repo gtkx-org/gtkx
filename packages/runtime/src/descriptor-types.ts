@@ -32,6 +32,8 @@ type Descriptor =
           Partial<Pick<NativeCallbackDescriptor, CallbackDefaults>> & {
               argDescriptors: Descriptor[];
               returnDescriptor: Descriptor;
+              userDataArgIndex?: number;
+              destroyArgIndex?: number;
           })
     | (Omit<Extract<NativeDescriptor, { kind: "ref" }>, "innerDescriptor"> & { innerDescriptor: Descriptor });
 

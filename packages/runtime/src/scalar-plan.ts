@@ -126,10 +126,16 @@ const enumClass = (descriptor: EnumDescriptor): ExternalObject<Handle> => {
     if (cached !== undefined) {
         return cached;
     }
-    const typeCall = nativeBind(descriptor.sharedLibrary, descriptor.getTypeFnName, [], typeT);
+    const typeCall = nativeBind(descriptor.sharedLibrary, descriptor.getTypeFnName, [], typeT, { argOrder: [] });
     const type = nativeCall(typeCall, []).value as bigint;
-    const fundamentalCall = nativeBind(LIB, "g_type_fundamental", [typeT], typeT);
-    const nameCall = nativeBind(LIB, "g_type_name", [typeT], { kind: "bytes", ownership: "borrowed" });
+    const fundamentalCall = nativeBind(LIB, "g_type_fundamental", [typeT], typeT, { argOrder: [0] });
+    const nameCall = nativeBind(
+        LIB,
+        "g_type_name",
+        [typeT],
+        { kind: "bytes", ownership: "borrowed" },
+        { argOrder: [0] },
+    );
     const fundamentalName = decoder.decode(
         nativeCall(nameCall, [nativeCall(fundamentalCall, [type]).value]).value as Uint8Array,
     );
@@ -160,7 +166,7 @@ const enumMembership = (descriptor: EnumDescriptor): ((value: number) => boolean
 
         return (value) => (value & mask) >>> 0 === value >>> 0;
     }
-    const valueCall = nativeBind(LIB, "g_enum_get_value", [pointerT, integerT], pointerT);
+    const valueCall = nativeBind(LIB, "g_enum_get_value", [pointerT, integerT], pointerT, { argOrder: [0, 1] });
 
     return (value) => nativeCall(valueCall, [handle, value]).value !== null;
 };
@@ -468,11 +474,12 @@ const nestedPlan = (descriptor: NestedDescriptor): ScalarPlan => {
         case "callback": {
             return {
                 abi: {
-                    ...descriptor,
+                    kind: "callback",
                     scope: callbackScope(descriptor),
                     hasDestroy: descriptor.hasDestroy ?? false,
                     destroyKind: descriptor.destroyKind ?? "destroyNotify",
                     hasUserData: descriptor.hasUserData ?? false,
+                    ...(descriptor.userDataIndex === undefined ? {} : { userDataIndex: descriptor.userDataIndex }),
                     canThrow: descriptor.canThrow ?? false,
                     releaseWithCompletion:
                         descriptor.scope === "notified" &&

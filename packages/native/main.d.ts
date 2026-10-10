@@ -34,6 +34,7 @@ export type {
     CallbackFailure,
     CallbackScope,
     CallDescriptor,
+    CallLayout,
     CallOutput,
     CallResult,
     DecodedCallback,

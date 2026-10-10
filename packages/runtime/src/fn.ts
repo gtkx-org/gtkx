@@ -4,6 +4,7 @@ import type { Descriptor } from "./descriptor-types.js";
 import type { RefSeeds } from "./vfunc-seeds.js";
 import { type Arg, isCallerAllocatedArg, isOutputArg, isRefArg, isUnpackedArg, requiresInputArg } from "./arg.js";
 import { createCall } from "./call.js";
+import { callLayout } from "./call-layout.js";
 import { wrapCallbackValue } from "./callback.js";
 import { boxedT, isGtypeDescriptor, refT } from "./descriptors.js";
 import { checkError } from "./error.js";
@@ -306,7 +307,7 @@ const bindNativeCallable = (
         symbol,
         nativeArgTypes.map((argument) => toAbi(argument)),
         toAbi(spec.returns),
-        spec.fixedArgCount,
+        callLayout(nativeArgTypes, spec.fixedArgCount),
     );
 
     return fromNativeCallable(descriptor, spec);

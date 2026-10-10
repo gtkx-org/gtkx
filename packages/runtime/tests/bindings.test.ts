@@ -38,3 +38,25 @@ test("native function resolution is lazy and reports absent symbols", () => {
     expect(() => absent()).toThrow();
     expect(() => absentLibrary()).toThrow();
 });
+
+test("variadic calls preserve their fixed arguments and promoted values", () => {
+    const print = t.fn("libc.so.6", "snprintf", {
+        args: [{ type: t.buffer }, { type: t.biguint64 }, { type: t.string() }, { type: t.int32 }, { type: t.float64 }],
+        returns: t.int32,
+        fixedArgCount: 3,
+    });
+    const output = new Uint8Array(64);
+
+    expect(print(output, BigInt(output.length), "%d:%.2f", 7, 12.75)).toBe(7);
+    expect(new TextDecoder().decode(output.subarray(0, 7))).toBe("7:12.75");
+});
+
+test.each([-1, 0.5, 2, Number.NaN])("invalid variadic fixed count %s fails during binding", (fixedArgCount) => {
+    expect(() =>
+        t.fn("libgtkx-missing.so", "missing", {
+            args: [{ type: t.int32 }],
+            returns: t.void,
+            fixedArgCount,
+        }),
+    ).toThrow(/fixedArgCount/);
+});

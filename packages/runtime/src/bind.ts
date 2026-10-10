@@ -1,6 +1,7 @@
 import { bind as nativeBind } from "@gtkx/native";
 import type { Descriptor } from "./descriptor-types.js";
 import { createCall } from "./call.js";
+import { callLayout } from "./call-layout.js";
 import { toAbi } from "./scalar-plan.js";
 
 /**
@@ -25,6 +26,7 @@ function bind(
         symbol,
         argDescriptors.map((argument) => toAbi(argument)),
         toAbi(returnDescriptor),
+        callLayout(argDescriptors),
     );
 
     const invoke = createCall(descriptor, argDescriptors, returnDescriptor);

@@ -1,6 +1,7 @@
 import type { AnyClass } from "@gtkx/utils";
 import { bindVfunc, type BindVfuncOptions } from "@gtkx/native";
 import { type Arg, isCallerAllocatedArg, requiresInputArg } from "./arg.js";
+import { callLayout } from "./call-layout.js";
 import { buildNativeArgTypes, fromNativeCallable } from "./fn.js";
 import { foldedInputLengthSources, foldedValueLength } from "./folded-lengths.js";
 import { toNative } from "./native-value.js";
@@ -79,12 +80,14 @@ function bindOptionsFor(
     label: string,
 ): BindVfuncOptions {
     const { descriptor, interfaceType } = slot;
+    const argDescriptors = buildNativeArgTypes(args, descriptor.canThrow === true);
 
     const options: BindVfuncOptions = {
         byteOffset: descriptor.byteOffset,
         label,
-        argDescriptors: buildNativeArgTypes(args, descriptor.canThrow === true).map((descriptor) => toAbi(descriptor)),
+        argDescriptors: argDescriptors.map((descriptor) => toAbi(descriptor)),
         returnDescriptor: toAbi(descriptor.returnDescriptor),
+        layout: callLayout(argDescriptors),
     };
 
     if (descriptor.vtableSize !== undefined) {
