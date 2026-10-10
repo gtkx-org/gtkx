@@ -135,6 +135,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Trust container workspace
+        if: needs.image.outputs.image != ''
+        run: git config --system --add safe.directory "$GITHUB_WORKSPACE"
+
       - name: Determine affected commit range
         uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1
 
