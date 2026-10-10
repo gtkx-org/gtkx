@@ -70,40 +70,33 @@ impl LibraryCache {
         Ok(*symbol)
     }
 
+    /// # Safety
+    ///
+    /// Same contract as `resolve_symbol`: `T` must match the exported symbol's layout and ABI,
+    /// and the returned value is usable only while this cache keeps the library mapped.
+    pub unsafe fn resolve_symbol_optional<T: Copy>(
+        &mut self,
+        library_name: &str,
+        symbol_name: &str,
+    ) -> anyhow::Result<Option<T>> {
+        let library = self.get_or_load(library_name)?;
+        match unsafe { library.get::<T>(symbol_name.as_bytes()) } {
+            Ok(symbol) => Ok(Some(*symbol)),
+            Err(libloading::Error::DlSym { .. } | libloading::Error::DlSymUnknown) => Ok(None),
+            Err(error) => anyhow::bail!("Failed to find symbol '{symbol_name}': {error}"),
+        }
+    }
+
     pub fn resolve_type(
         &mut self,
         library_name: &str,
         get_type_fn_name: &str,
     ) -> anyhow::Result<glib::Type> {
-        self.resolve_type_with(library_name, get_type_fn_name, |cache| {
-            unsafe { cache.resolve_symbol::<GetTypeFn>(library_name, get_type_fn_name) }.map(Some)
-        })
-    }
-
-    pub fn resolve_type_optional(
-        &mut self,
-        library_name: &str,
-        get_type_fn_name: &str,
-    ) -> anyhow::Result<glib::Type> {
-        self.resolve_type_with(library_name, get_type_fn_name, |cache| {
-            let library = cache.get_or_load(library_name)?;
-            let symbol = unsafe { library.get::<GetTypeFn>(get_type_fn_name.as_bytes()) };
-            Ok(symbol.ok().map(|symbol| *symbol))
-        })
-    }
-
-    fn resolve_type_with(
-        &mut self,
-        library_name: &str,
-        get_type_fn_name: &str,
-        lookup: impl FnOnce(&mut Self) -> anyhow::Result<Option<GetTypeFn>>,
-    ) -> anyhow::Result<glib::Type> {
         if let Some(cached) = self.cached_type(library_name, get_type_fn_name) {
             return Ok(cached);
         }
-        let Some(get_type_fn) = lookup(self)? else {
-            return Ok(glib::Type::INVALID);
-        };
+        let get_type_fn =
+            unsafe { self.resolve_symbol::<GetTypeFn>(library_name, get_type_fn_name) }?;
         Ok(self.invoke_and_cache_type(library_name, get_type_fn_name, get_type_fn))
     }
 
@@ -261,14 +254,5 @@ impl FfiCache {
         get_type_fn_name: &str,
     ) -> anyhow::Result<glib::Type> {
         self.libs.resolve_type(library_name, get_type_fn_name)
-    }
-
-    pub fn resolve_type_optional(
-        &mut self,
-        library_name: &str,
-        get_type_fn_name: &str,
-    ) -> anyhow::Result<glib::Type> {
-        self.libs
-            .resolve_type_optional(library_name, get_type_fn_name)
     }
 }

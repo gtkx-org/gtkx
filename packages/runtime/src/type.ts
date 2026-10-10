@@ -1,4 +1,3 @@
-import { resolveType as nativeResolveType } from "@gtkx/native";
 import type { Descriptor } from "./descriptor-types.js";
 import { bind } from "./bind.js";
 import {
@@ -18,6 +17,7 @@ import {
 import { LIB } from "./library.js";
 import { isScalarStorageDescriptor } from "./output-storage.js";
 import { toAbi } from "./scalar-plan.js";
+import { resolveType } from "./type-lookup.js";
 
 /** Object tagged with its GLib type through a `__type__` GType field. */
 type TypedClass = {
@@ -28,7 +28,6 @@ type TypedClass = {
 type ResolvableKind = "enum" | "flags" | "boxed" | "fundamental" | "array";
 type ResolvableDescriptor = Extract<Descriptor, { kind: ResolvableKind }>;
 
-const resolvedTypeCache: Map<string, bigint> = new Map();
 const gTypeFromName = bind(LIB, "g_type_from_name", [stringT("borrowed")], biguint64T);
 const gTypeIsA = bind(LIB, "g_type_is_a", [biguint64T, biguint64T], booleanT);
 const gTypeParent = bind(LIB, "g_type_parent", [biguint64T], biguint64T);
@@ -178,26 +177,6 @@ function typeName(type: bigint): string | null {
 function valueIsA(value: unknown, gtype: bigint): boolean {
     return isTypedClass(value) && typeIsA(value.__type__, gtype);
 }
-
-/**
- * Resolves the GType produced by a `get_type` function in a shared library, caching
- * the result per library and function name.
- * @param sharedLibrary Path or name of the shared library exporting the function.
- * @param typeFnName Name of the `*_get_type` function to call.
- */
-const resolveType = (sharedLibrary: string, typeFnName: string): bigint => {
-    const key = `${sharedLibrary}:${typeFnName}`;
-    const cached = resolvedTypeCache.get(key);
-
-    if (cached !== undefined) {
-        return cached;
-    }
-
-    const gtype = nativeResolveType(sharedLibrary, typeFnName);
-    resolvedTypeCache.set(key, gtype);
-
-    return gtype;
-};
 
 const resolveBoxedType = (descriptor: BoxedDescriptor): bigint => {
     if (descriptor.getTypeFnName && descriptor.sharedLibrary) {

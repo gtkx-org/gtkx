@@ -1,6 +1,7 @@
-import { type ExternalObject, type Handle, read } from "@gtkx/native";
+import type { ExternalObject, Handle } from "@gtkx/native";
 import { bind } from "./bind.js";
 import { biguint64T, booleanT, stringT, uint32T, voidT } from "./descriptors.js";
+import { read } from "./field.js";
 import { LIB, PARAM_T, VALUE_T } from "./library.js";
 import { getHandle, getInstanceType } from "./registry.js";
 import {

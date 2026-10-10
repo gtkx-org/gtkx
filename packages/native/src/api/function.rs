@@ -19,6 +19,25 @@ pub fn resolve_function(shared_library: String, symbol_name: String) -> Result<E
     Ok(External::new(Handle::function(ptr, None, false, false)))
 }
 
+/// Resolves a library-backed function handle, returning null when the symbol is absent.
+/// Library-loading failures and invalid symbol names are reported as errors.
+#[allow(clippy::needless_pass_by_value)]
+#[napi(catch_unwind)]
+pub fn resolve_function_optional(
+    shared_library: String,
+    symbol_name: String,
+) -> Result<Option<External<Handle>>> {
+    let ptr = native_result(
+        "resolve_function_optional",
+        FfiCache::with(|state| unsafe {
+            state
+                .libs
+                .resolve_symbol_optional::<*mut c_void>(&shared_library, &symbol_name)
+        }),
+    )?;
+    Ok(ptr.map(|ptr| External::new(Handle::function(ptr, None, false, false))))
+}
+
 #[napi(catch_unwind)]
 pub fn read_function_pointer(owner: &External<Handle>, offset: f64) -> Result<External<Handle>> {
     let _leases = crate::handle::LeaseScope::open();

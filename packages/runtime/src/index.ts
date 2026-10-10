@@ -7,6 +7,7 @@ export { createErrorDomain, type ErrorDomain } from "./error.js";
 export { type Field, type StridedField } from "./field.js";
 export { read, write } from "./field.js";
 export { onExit, quit } from "./lifecycle.js";
+export { onLog, type LogLevel, type LogListener, type LogSubscription } from "./logging.js";
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
 export { installMixins, type Mixin } from "./mixin.js";
 export { fromNative, toHashTableEntries, toNative } from "./native-value.js";
@@ -91,5 +92,4 @@ export {
 export { fromValue, type JsValue, toValueHandle, tryToValueHandle, ValueMarshalError } from "./value.js";
 export { callParent, callVfunc } from "./vfunc-call.js";
 export { alloc, type ExternalObject, type Handle } from "@gtkx/native";
-export { onLog, type LogLevel, type LogListener, type LogSubscription } from "@gtkx/native";
 export { type AnyClass } from "@gtkx/utils";

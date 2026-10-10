@@ -21,7 +21,6 @@ pub mod parent_death;
 pub mod quit;
 pub mod read;
 pub mod register_class;
-pub mod resolve_type;
 pub mod set_fundamental_wrapper;
 pub mod set_wrapper;
 pub mod set_wrapper_borrow;

@@ -1,6 +1,6 @@
 export {
+    addLogListener,
     alloc,
-    allocField,
     bind,
     bindField,
     bindFunctionPointer,
@@ -18,16 +18,15 @@ export {
     newObject,
     ownMatchInfo,
     quit,
-    read,
     readField,
     readFunctionPointer,
     registerClass,
+    removeLogListener,
     resolveFunction,
-    resolveType,
+    resolveFunctionOptional,
     setFundamentalWrapper,
     setWrapper,
     setWrapperBorrow,
-    write,
     writeField,
 } from "./index.js";
 export type {
@@ -55,7 +54,7 @@ export type {
 declare module "./index.js" {
     /**
      * An opaque handle to a native memory region: a GObject, a boxed value, or a raw allocation.
-     * Produced by `alloc` and consumed by the memory and wrapper functions (`read`, `write`,
+     * Produced by `alloc` and consumed by the memory and wrapper functions (`readField`, `writeField`,
      * `copy`, `getType`, `getWrapper`, `setWrapper`). Its bytes are not accessible from JavaScript.
      */
     export type Handle = { _opaque: "Handle" };
@@ -73,20 +72,3 @@ declare module "./index.js" {
     export type Ref = { value: unknown };
     export type CallbackFailure = { nativeError: ExternalObject<Handle>; thrown: unknown };
 }
-
-type LogLevel = "error" | "critical" | "warning" | "message" | "info" | "debug";
-
-type LogListener = (level: LogLevel, domain: string, message: string) => void;
-
-type LogSubscription = { unsubscribe(): void };
-
-/**
- * Subscribes to GLib logs from every thread. The listener receives the level, domain, and message.
- * Records reach JavaScript asynchronously; yield to the event loop before checking collected logs.
- *
- * Fatal logs, including levels made fatal by `logSetAlwaysFatal`, abort before delivery and never
- * reach the listener. Unsubscribing stops new records but leaves already queued deliveries intact.
- */
-declare function onLog(listener: LogListener): LogSubscription;
-
-export { type LogLevel, type LogListener, type LogSubscription, onLog };

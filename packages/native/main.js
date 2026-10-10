@@ -1,19 +1,7 @@
 import "./bootstrap.js";
-import { addLogListener, removeLogListener } from "./index.js";
-
-const onLog = (listener) => {
-    const id = addLogListener(listener);
-
-    return {
-        unsubscribe: () => {
-            removeLogListener(id);
-        },
-    };
-};
-
 export {
+    addLogListener,
     alloc,
-    allocField,
     ArrayKind,
     bind,
     bindField,
@@ -36,16 +24,14 @@ export {
     Ownership,
     ownMatchInfo,
     quit,
-    read,
     readField,
     readFunctionPointer,
     registerClass,
+    removeLogListener,
     resolveFunction,
-    resolveType,
+    resolveFunctionOptional,
     setFundamentalWrapper,
     setWrapper,
     setWrapperBorrow,
-    write,
     writeField,
 } from "./index.js";
-export { onLog };

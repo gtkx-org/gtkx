@@ -2,11 +2,9 @@ use std::ffi::c_void;
 
 use napi::Env;
 use napi::bindgen_prelude::*;
-use napi_derive::napi;
 
-use crate::api::{byte_count_from_f64, handle_memory_range, native_result};
+use crate::api::{handle_memory_range, native_result};
 use crate::ffi::codec::{Codec, PtrWriter as _, SlotInit};
-use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
 
 struct DisplacedField<'a> {
@@ -89,23 +87,4 @@ pub(crate) fn write_field_at<'e>(
     }
 
     ().into_unknown(env)
-}
-
-/// Encodes `value` with `fieldDescriptor` and writes it into the handle's memory at `offset` bytes,
-/// rejecting a handle that points at nothing rather than writing at the bare offset.
-///
-/// The descriptor is compiled on every call. For repeated access, `bindField` compiles it once;
-/// `readField` and `writeField` still receive the byte offset on each call.
-#[napi(catch_unwind)]
-pub fn write<'env>(
-    env: &'env Env,
-    handle: &External<Handle>,
-    field_descriptor: Descriptor,
-    offset: f64,
-    value: Unknown<'_>,
-) -> Result<Unknown<'env>> {
-    let offset = byte_count_from_f64(offset, "field write: offset")?;
-    let field_codec = field_descriptor.into_codec()?;
-
-    write_field_at(env, handle, &field_codec, offset, value)
 }

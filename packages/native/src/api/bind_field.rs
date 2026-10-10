@@ -2,7 +2,6 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::alloc::alloc_handle;
 use crate::api::byte_count_from_f64;
 use crate::api::read::read_field_at;
 use crate::api::write::write_field_at;
@@ -15,29 +14,12 @@ pub struct FieldDescriptor {
 }
 
 /// Compiles `fieldDescriptor` for reuse with `readField` and `writeField` at any byte offset.
-/// Unlike `read` and `write`, these accessors do not recompile it on each call.
-///
-/// Binding costs about as much as one unbound access. Hoist the binding into a module-level
-/// constant or other reusable storage to avoid paying that cost on every access.
+/// Hoist the binding into reusable storage to avoid compiling the descriptor on every access.
 #[napi(catch_unwind)]
 pub fn bind_field(field_descriptor: Descriptor) -> Result<External<FieldDescriptor>> {
     let codec = field_descriptor.into_codec()?;
 
     Ok(External::new(FieldDescriptor { codec }))
-}
-
-#[napi(catch_unwind)]
-pub fn alloc_field(descriptor: &External<FieldDescriptor>) -> Result<External<Handle>> {
-    let size = descriptor.codec.field_size().ok_or_else(|| {
-        Error::new(
-            Status::InvalidArg,
-            "The field has no declared allocation size",
-        )
-    })?;
-    let handle = alloc_handle(size, None);
-    let size_hint = handle.size_hint();
-
-    Ok(External::new_with_size_hint(handle, size_hint))
 }
 
 /// Reads and decodes the field a previously bound `descriptor` marshals, sitting `offset` bytes

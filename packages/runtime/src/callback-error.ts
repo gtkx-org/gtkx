@@ -1,8 +1,9 @@
-import { type CallbackFailure, type ExternalObject, type Handle, resolveType } from "@gtkx/native";
+import type { CallbackFailure, ExternalObject, Handle } from "@gtkx/native";
 import type { ErrorLike } from "./error.js";
 import { bind } from "./bind.js";
 import { boxedT, int32T, stringT, uint32T } from "./descriptors.js";
 import { LIB } from "./library.js";
+import { resolveType } from "./type-lookup.js";
 
 const cache: { newError?: ReturnType<typeof bind>; quark?: number; errorType?: bigint } = {};
 

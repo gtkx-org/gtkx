@@ -1,13 +1,4 @@
-import {
-    bindField,
-    type ExternalObject,
-    type FieldDescriptor,
-    type Handle,
-    read as nativeRead,
-    write as nativeWrite,
-    readField,
-    writeField,
-} from "@gtkx/native";
+import { bindField, type ExternalObject, type FieldDescriptor, type Handle, readField, writeField } from "@gtkx/native";
 import type { Descriptor } from "./descriptor-types.js";
 import { compileDescriptor } from "./scalar-plan.js";
 
@@ -90,15 +81,11 @@ const field = (descriptor: Descriptor, offset: number): Field => {
     };
 };
 
-const read = (handle: ExternalObject<Handle>, descriptor: Descriptor, offset: number): unknown => {
-    const plan = compileDescriptor(descriptor);
-
-    return plan.decode(nativeRead(handle, plan.abi, offset));
-};
+const read = (handle: ExternalObject<Handle>, descriptor: Descriptor, offset: number): unknown =>
+    fieldAt(descriptor).read(handle, offset);
 
 const write = (handle: ExternalObject<Handle>, descriptor: Descriptor, offset: number, value: unknown): void => {
-    const plan = compileDescriptor(descriptor);
-    nativeWrite(handle, plan.abi, offset, plan.encode(value));
+    fieldAt(descriptor).write(handle, offset, value);
 };
 
 export { read, write, field, type Field, fieldAt, fixedArrayEntries, type StridedField };

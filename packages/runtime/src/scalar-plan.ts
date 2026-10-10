@@ -3,9 +3,10 @@ import {
     getTypeClass,
     type Handle,
     bind as nativeBind,
+    bindField,
     call as nativeCall,
     type Descriptor as NativeDescriptor,
-    read as nativeRead,
+    readField,
     type Ref,
 } from "@gtkx/native";
 import { isArrayBuffer, isUint8Array } from "node:util/types";
@@ -155,7 +156,7 @@ const enumMembership = (descriptor: EnumDescriptor): ((value: number) => boolean
     }
     const handle = enumClass(descriptor);
     if (descriptor.kind === "flags") {
-        const mask = nativeRead(handle, unsignedT, 8) as number;
+        const mask = readField(bindField(unsignedT), handle, 8) as number;
 
         return (value) => (value & mask) >>> 0 === value >>> 0;
     }
