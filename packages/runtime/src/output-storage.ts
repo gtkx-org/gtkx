@@ -6,7 +6,7 @@ import {
     type Handle,
     readField,
     writeField,
-} from "@gtkx/native";
+} from "./native.js";
 
 type StorageHandle = ExternalObject<Handle>;
 type OutputStorage = {

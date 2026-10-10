@@ -27,6 +27,8 @@
     "author": "Eugenio Depalo <eugeniodepalo@gmail.com>",
     "type": "module",
     "sideEffects": [
+        "./src/native.ts",
+        "./dist/native.js",
         "./src/exit-hook.ts",
         "./dist/exit-hook.js",
         "./src/index.ts",

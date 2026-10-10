@@ -1,4 +1,4 @@
-import type { Descriptor as NativeDescriptor, Ownership } from "@gtkx/native";
+import type { Descriptor as NativeDescriptor, Ownership } from "./native.js";
 
 type NativeCallbackDescriptor = Extract<NativeDescriptor, { kind: "callback" }>;
 type CallbackDefaults = "scope" | "hasDestroy" | "destroyKind" | "hasUserData" | "canThrow";

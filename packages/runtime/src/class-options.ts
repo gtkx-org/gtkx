@@ -1,4 +1,4 @@
-import type { ExternalObject, Handle } from "@gtkx/native";
+import type { ExternalObject, Handle } from "./native.js";
 import type { AnyClass } from "@gtkx/utils";
 
 type ClassInitializer = (handle: ExternalObject<Handle>) => void;

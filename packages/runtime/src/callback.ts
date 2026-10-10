@@ -1,4 +1,4 @@
-import { copy } from "@gtkx/native";
+import { copy } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import type { CallbackDescriptor, RefDescriptor } from "./descriptors.js";
 import {

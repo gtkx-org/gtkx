@@ -1,4 +1,4 @@
-import { alloc, type ExternalObject, type Handle } from "@gtkx/native";
+import { alloc, type ExternalObject, type Handle } from "./native.js";
 import { type AnyClass, toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import type { Descriptor } from "./descriptor-types.js";
 import type { ResolvedSignalEmitMap, ResolvedSignalMap, SignalArguments, SignalResult } from "./signal-brand.js";

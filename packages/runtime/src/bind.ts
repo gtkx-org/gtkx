@@ -1,4 +1,4 @@
-import { bind as nativeBind } from "@gtkx/native";
+import { bind as nativeBind } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import { createCall } from "./call.js";
 import { callLayout } from "./call-layout.js";

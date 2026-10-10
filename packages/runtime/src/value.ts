@@ -1,5 +1,4 @@
-import { alloc, type ExternalObject, getType, type Handle } from "@gtkx/native";
-import { encodePointer, retainPropertyPointer } from "@gtkx/native/internal";
+import { alloc, encodePointer, type ExternalObject, getType, type Handle, retainPropertyPointer } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import { bind, createBindCache } from "./bind.js";
 import {

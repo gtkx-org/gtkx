@@ -42,14 +42,10 @@
             "default": "./binding.js"
         }
     },
-    "sideEffects": [
-        "./bootstrap.js",
-        "./main.js"
-    ],
+    "sideEffects": false,
     "files": [
         "binding.js",
         "binding.d.ts",
-        "bootstrap.js",
         "index.js",
         "index.d.ts",
         "internal.js",

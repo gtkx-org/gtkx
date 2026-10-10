@@ -1,4 +1,4 @@
-import { quit as nativeQuit } from "@gtkx/native";
+import { quit as nativeQuit } from "./native.js";
 
 const shutdownCallbacks: (() => void)[] = [];
 

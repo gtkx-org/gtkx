@@ -1,4 +1,4 @@
-import { bindFunctionPointer, call, resolveFunctionOptional } from "@gtkx/native";
+import { bindFunctionPointer, call, resolveFunctionOptional } from "./native.js";
 
 const resolvedTypes: Map<string, Map<string, bigint>> = new Map();
 

@@ -6,7 +6,7 @@ import {
     getWrapper,
     type Handle,
     setWrapper,
-} from "@gtkx/native";
+} from "./native.js";
 import { type AnyClass, walkClassChain } from "@gtkx/utils";
 import type { Descriptor } from "./descriptor-types.js";
 import { forgetFundamentalWrapper, getFundamentalWrapper, setFundamentalWrapper } from "./fundamental-cache.js";

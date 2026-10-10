@@ -1,4 +1,4 @@
-import type { CallbackFailure, ExternalObject, Handle } from "@gtkx/native";
+import type { CallbackFailure, ExternalObject, Handle } from "./native.js";
 import type { ErrorLike } from "./error.js";
 import { bind } from "./bind.js";
 import { boxedT, int32T, stringT, uint32T } from "./descriptors.js";

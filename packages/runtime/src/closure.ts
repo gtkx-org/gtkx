@@ -1,4 +1,4 @@
-import { type ExternalObject, type Handle, readFunctionPointer, resolveFunction } from "@gtkx/native";
+import { type ExternalObject, type Handle, readFunctionPointer, resolveFunction } from "./native.js";
 import { type AnyClass } from "@gtkx/utils";
 import { bind, createBindCache } from "./bind.js";
 import {

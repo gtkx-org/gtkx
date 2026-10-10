@@ -1,4 +1,4 @@
-import { type CallDescriptor, type ExternalObject, call as nativeCall, type Ref } from "@gtkx/native";
+import { type CallDescriptor, type ExternalObject, call as nativeCall, type Ref } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import type { StorageHandle } from "./output-storage.js";
 

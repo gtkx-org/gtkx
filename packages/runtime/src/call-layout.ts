@@ -1,4 +1,4 @@
-import type { CallLayout } from "@gtkx/native";
+import type { CallLayout } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 
 const argumentCount = (descriptor: Descriptor): number =>

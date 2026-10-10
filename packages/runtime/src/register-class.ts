@@ -3,7 +3,7 @@ import {
     type RegisterClassInterface as NativeRegisterClassInterface,
     type RegisterClassOptions as NativeRegisterClassOptions,
     type RegisterClassVfunc as NativeRegisterClassVfunc,
-} from "@gtkx/native";
+} from "./native.js";
 import { type AnyClass, getParentClass, kebabCase, walkClassChain } from "@gtkx/utils";
 import type { Descriptor } from "./descriptor-types.js";
 import type { Camelized, Dashed, ReadableProperties, WritableProperties } from "./property-types.js";

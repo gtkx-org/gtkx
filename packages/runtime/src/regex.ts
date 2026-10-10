@@ -1,5 +1,5 @@
 import type { AnyClass } from "@gtkx/utils";
-import { type ExternalObject, getMatchInfoBase, getMatchInfoType, type Handle, ownMatchInfo } from "@gtkx/native";
+import { type ExternalObject, getMatchInfoBase, getMatchInfoType, type Handle, ownMatchInfo } from "./native.js";
 import { type Arg } from "./arg.js";
 import { bind } from "./bind.js";
 import {

@@ -1,4 +1,4 @@
-import type { ArrayKind, Ownership } from "@gtkx/native";
+import type { ArrayKind, Ownership } from "./native.js";
 import type { AnyClass } from "@gtkx/utils";
 import type { Descriptor } from "./descriptor-types.js";
 

@@ -1,4 +1,4 @@
-import { type ExternalObject, type Handle, resolveFunction } from "@gtkx/native";
+import { type ExternalObject, type Handle, resolveFunction } from "./native.js";
 import type { SignalSpec } from "./register-class.js";
 import { bind } from "./bind.js";
 import { biguint64T, booleanT, bufferT, sizedArrayT, stringT, structT, uint32T, voidT } from "./descriptors.js";

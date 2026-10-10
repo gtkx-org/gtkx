@@ -1,4 +1,4 @@
-import { bindField, type ExternalObject, type FieldDescriptor, type Handle, readField, writeField } from "@gtkx/native";
+import { bindField, type ExternalObject, type FieldDescriptor, type Handle, readField, writeField } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import { compileDescriptor } from "./scalar-plan.js";
 

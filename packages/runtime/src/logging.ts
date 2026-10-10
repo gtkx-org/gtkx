@@ -1,4 +1,4 @@
-import { addLogListener, removeLogListener } from "@gtkx/native";
+import { addLogListener, removeLogListener } from "./native.js";
 
 type LogLevel = "error" | "critical" | "warning" | "message" | "info" | "debug";
 

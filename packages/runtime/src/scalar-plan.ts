@@ -8,7 +8,7 @@ import {
     type Descriptor as NativeDescriptor,
     readField,
     type Ref,
-} from "@gtkx/native";
+} from "./native.js";
 import { isArrayBuffer, isUint8Array } from "node:util/types";
 import type { Descriptor } from "./descriptor-types.js";
 import { callbackFailure } from "./callback-error.js";

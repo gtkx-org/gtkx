@@ -1,4 +1,4 @@
-import type { ExternalObject, Handle } from "@gtkx/native";
+import type { ExternalObject, Handle } from "./native.js";
 import { bind } from "./bind.js";
 import { biguint64T, booleanT, stringT, uint32T, voidT } from "./descriptors.js";
 import { read } from "./field.js";

@@ -1,5 +1,5 @@
-import type { CallDescriptor, ExternalObject, Handle, Ref } from "@gtkx/native";
-import { bind as nativeBind } from "@gtkx/native";
+import type { CallDescriptor, ExternalObject, Handle, Ref } from "./native.js";
+import { bind as nativeBind } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import type { RefSeeds } from "./vfunc-seeds.js";
 import { type Arg, isCallerAllocatedArg, isOutputArg, isRefArg, isUnpackedArg, requiresInputArg } from "./arg.js";

@@ -1,4 +1,4 @@
-import type { ExternalObject, Handle, Ref } from "@gtkx/native";
+import type { ExternalObject, Handle, Ref } from "./native.js";
 import { isError } from "./callback-error.js";
 import { getWrapperClass, wrapHandle } from "./registry.js";
 import { getErrorType } from "./type.js";

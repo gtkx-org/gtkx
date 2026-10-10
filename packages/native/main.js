@@ -1,4 +1,3 @@
-import "./bootstrap.js";
 export {
     addLogListener,
     alloc,

@@ -1,4 +1,4 @@
-import type { ExternalObject, Handle } from "@gtkx/native";
+import type { ExternalObject, Handle } from "./native.js";
 import { type AnyClass, camelCase, kebabCase, toCamelIdentifier } from "@gtkx/utils";
 import type { Descriptor } from "./descriptor-types.js";
 import type { ElementPropertyEntry } from "./element-metadata.js";
