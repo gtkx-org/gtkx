@@ -2,7 +2,7 @@
 __default__: major
 ---
 
-Compile overrides as ordinary TypeScript modules alongside generated bindings, with concrete generated types and semantic typechecking. Keep native marshalling and lifetime primitives in runtime.
+Typecheck binding overrides as TypeScript modules with concrete generated types.
 
 Replace `createApplication(ApplicationClass, props)` and `ApplicationClass.create(props)` with `new ApplicationClass(props)`. Construct Gio, Gtk, Adw, and custom application subclasses normally. Use `getIsRegistered()` and `getIsRemote()` in place of registration-state helpers, and observe completion through `runAsync(argv)`. Pass an argument array or `null`; omitting the argument is an error. The associated application helper types are removed. Generated methods support nullable receivers where declared by GIR.
 

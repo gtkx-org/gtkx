@@ -169,6 +169,29 @@ jobs:
         if: needs.image.outputs.image != ''
         run: pnpm install --frozen-lockfile --store-dir .pnpm-store
 
+      - name: Check release plans
+        if: >-
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.user.type != 'Bot' &&
+          !(github.event.pull_request.head.ref == 'release/next' &&
+            github.event.pull_request.head.repo.full_name == github.repository)
+        run: |
+          plan_backup="$(mktemp -d)"
+          restore_plans() {
+            for plan in "$plan_backup"/*.md; do
+              [[ -e "$plan" ]] || continue
+              mv -- "$plan" .nx/version-plans/
+            done
+            rmdir -- "$plan_backup"
+          }
+          trap restore_plans EXIT
+          while IFS= read -r -d '' plan; do
+            if git diff --quiet "$NX_BASE" "$NX_HEAD" -- "$plan"; then
+              mv -- "$plan" "$plan_backup/"
+            fi
+          done < <(git ls-files -z -- '.nx/version-plans/*.md')
+          pnpm exec nx release plan:check --base="$NX_BASE" --head="$NX_HEAD"
+
       - name: Start Nx CI run
         id: cloud
         if: env.NX_CLOUD_ACCESS_TOKEN != ''

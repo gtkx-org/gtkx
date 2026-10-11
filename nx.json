@@ -158,7 +158,27 @@
     },
     "release": {
         "versionPlans": {
-            "ignorePatternsForPlanCheck": ["**/tests/**", "**/*.test.ts", "**/*.test.tsx", "**/typedoc.json", "**/*.md"]
+            "ignorePatternsForPlanCheck": [
+                "/packages/*/tests/**",
+                "/packages/**/*.md",
+                "/packages/**/*.test.*",
+                "/packages/**/*.spec.*",
+                "/packages/**/*.bench.*",
+                "/packages/*/project.json",
+                "/packages/*/tsconfig.json",
+                "/packages/*/tsconfig.test.json",
+                "/packages/*/vitest*.config.ts",
+                "/packages/*/typedoc.json",
+                "/packages/*/gtkx.config.ts",
+                "/packages/codegen/overrides/tsconfig.json",
+                "/packages/native/.gitignore",
+                "/packages/native/tools/asan-loader.ts",
+                "/packages/native/tools/asan.ts",
+                "/packages/native/tools/test-paths.ts",
+                "/packages/native/tools/scheduler-benchmark.*",
+                "/packages/native/tools/rust-toolchain.toml",
+                "!/packages/create-gtkx/src/templates/**"
+            ]
         },
         "version": {
             "git": {

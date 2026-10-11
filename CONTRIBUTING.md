@@ -24,7 +24,7 @@ Breaking removals require a warning in an earlier minor release. Renamed symbols
 
 ## Add a version plan
 
-Changes to published packages need an Nx version plan:
+User-facing changes to published packages need an Nx version plan:
 
 ```bash
 pnpm plan
@@ -34,7 +34,9 @@ Write the changelog message for the people who will use the release.
 
 Choose `major` for a breaking change, `minor` for a feature, or `patch` for a fix. During the beta, these choices organize the changelog; releases continue on the beta train until a maintainer changes it. The `pre*` bumps are for maintainers starting a prerelease from a stable version.
 
-Documentation, tests, and files outside `packages/` need no plan. Bot pull requests are exempt. For other published-package changes, include a plan when the change needs a changelog entry.
+Documentation, repository tests, benchmarks, test configuration, Nx targets, and files outside published packages need no plan. Changes to shipped source, application templates (including their tests), package manifests, and package build logic remain checked. Keep release notes focused on behavior, APIs, compatibility, and performance that framework users experience.
+
+PR CI runs `nx release plan:check` against the PR commit range using only plans added or updated by that PR. Bot pull requests and the repository's `release/next` PR are exempt; release preparation consumes the existing plans. The exclusions live in `release.versionPlans.ignorePatternsForPlanCheck` in `nx.json`.
 
 ## Publish a release
 
