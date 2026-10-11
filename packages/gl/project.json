@@ -2,6 +2,7 @@
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "name": "@gtkx/gl",
     "targets": {
+        "lint": {},
         "codegen": {
             "cache": true,
             "dependsOn": ["@gtkx/codegen:build"],

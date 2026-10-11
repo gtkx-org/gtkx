@@ -2,6 +2,7 @@
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "name": "hello-world",
     "targets": {
+        "lint": {},
         "codegen": {
             "command": "gtkx codegen",
             "options": {
@@ -49,7 +50,7 @@
             "continuous": true,
             "dependsOn": ["build"]
         },
-        "lint": {
+        "lint-oxlint": {
             "dependsOn": ["...", "codegen"]
         }
     }

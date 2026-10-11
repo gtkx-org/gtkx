@@ -2,6 +2,9 @@
     "$schema": "./node_modules/nx/schemas/project-schema.json",
     "name": "gtkx",
     "targets": {
+        "lint": {
+            "dependsOn": ["...", "_lint:codescythe", "_lint:workflows", "_lint:format"]
+        },
         "codegen": {
             "command": "node packages/cli/dist/cli.js codegen --config gtkx.config.base.ts",
             "cache": true,
@@ -35,10 +38,10 @@
                 }
             ]
         },
-        "lint": {
+        "lint-oxlint": {
             "command": "oxlint . --ignore-pattern packages --ignore-pattern examples --ignore-pattern tutorial --ignore-pattern website",
             "cache": true,
-            "dependsOn": ["build", "_lint:codescythe", "_lint:workflows", "_lint:format", "_lint:eslint"],
+            "dependsOn": ["build"],
             "inputs": [
                 "default",
                 "^default",
@@ -138,7 +141,7 @@
             "dependsOn": ["@gtkx/utils:build"],
             "inputs": ["default", "^production", "{workspaceRoot}/packages/native/tools/**/*"]
         },
-        "_lint:eslint": {
+        "lint-eslint": {
             "command": "eslint packages/native/tools",
             "cache": true,
             "dependsOn": ["@gtkx/utils:build"],

@@ -26,6 +26,9 @@
         ]
     },
     "targets": {
+        "lint": {
+            "dependsOn": ["lint-oxlint", "lint-rust"]
+        },
         "build": {
             "dependsOn": [],
             "cache": true,
@@ -46,18 +49,18 @@
                 }
             }
         },
-        "_lint:rust": {
+        "lint-rust": {
             "cache": true,
             "dependsOn": [],
             "inputs": ["crate", "{workspaceRoot}/rustfmt.toml"],
             "outputs": [],
-            "command": "pnpm run _lint:rust",
+            "command": "pnpm run lint-rust",
             "options": {
                 "cwd": "{projectRoot}"
             }
         },
-        "lint": {
-            "dependsOn": ["^build", "build", "_lint:rust"]
+        "lint-oxlint": {
+            "dependsOn": ["^build", "build"]
         },
         "test-asan": {
             "dependsOn": ["build", "@gtkx/e2e:_test:fixtures", "@gtkx/runtime:build"],

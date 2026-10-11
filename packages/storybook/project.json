@@ -2,6 +2,7 @@
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "name": "@gtkx/storybook",
     "targets": {
+        "lint": {},
         "build": {
             "dependsOn": ["...", "gtkx:bindings"]
         }

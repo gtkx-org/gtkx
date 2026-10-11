@@ -2,8 +2,9 @@
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "name": "@gtkx/config",
     "targets": {
-        "lint": {
-            "dependsOn": ["^build", "_lint:eslint"]
+        "lint": {},
+        "lint-oxlint": {
+            "dependsOn": ["^build"]
         },
         "build": {
             "dependsOn": ["^build"]

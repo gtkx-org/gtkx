@@ -21,6 +21,7 @@
         "create-gtkx"
     ],
     "targets": {
+        "lint": {},
         "build": {
             "cache": true,
             "dependsOn": ["reference"],
@@ -96,7 +97,7 @@
             "continuous": true,
             "dependsOn": ["build"]
         },
-        "lint": {
+        "lint-oxlint": {
             "dependsOn": ["...", "reference"]
         },
         "typecheck": {

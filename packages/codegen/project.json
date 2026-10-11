@@ -2,6 +2,7 @@
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "name": "@gtkx/codegen",
     "targets": {
+        "lint": {},
         "typecheck": {
             "dependsOn": ["...", "_typecheck:overrides"]
         },

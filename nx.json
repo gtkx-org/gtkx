@@ -53,14 +53,14 @@
         {
             "plugin": "@nx/oxlint",
             "options": {
-                "targetName": "lint"
+                "targetName": "lint-oxlint"
             },
             "exclude": ["tutorial/**"]
         },
         {
             "plugin": "@nx/eslint/plugin",
             "options": {
-                "targetName": "_lint:eslint"
+                "targetName": "lint-eslint"
             },
             "exclude": ["tutorial/**"]
         },
@@ -88,7 +88,13 @@
             }
         ],
         "lint": {
-            "dependsOn": ["^build", "gtkx:bindings", "@gtkx/gl:codegen", "_lint:eslint"],
+            "executor": "nx:noop",
+            "cache": true,
+            "dependsOn": ["lint-oxlint", "lint-eslint"],
+            "outputs": []
+        },
+        "lint-oxlint": {
+            "dependsOn": ["^build", "gtkx:bindings", "@gtkx/gl:codegen"],
             "inputs": [
                 "...",
                 "default",
@@ -132,7 +138,7 @@
                 }
             ]
         },
-        "_lint:eslint": {
+        "lint-eslint": {
             "dependsOn": ["^build", "gtkx:bindings", "@gtkx/gl:codegen"],
             "inputs": [
                 "...",

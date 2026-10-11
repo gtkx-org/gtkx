@@ -2,6 +2,7 @@
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "name": "storybook-example",
     "targets": {
+        "lint": {},
         "codegen": {
             "command": "gtkx codegen",
             "options": {
@@ -35,10 +36,10 @@
             },
             "inputs": ["...", "default", "^default"]
         },
-        "lint": {
+        "lint-oxlint": {
             "dependsOn": ["...", "codegen"]
         },
-        "_lint:eslint": {
+        "lint-eslint": {
             "dependsOn": ["...", "codegen"]
         }
     }

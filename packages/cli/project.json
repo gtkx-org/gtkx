@@ -2,6 +2,7 @@
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "name": "@gtkx/cli",
     "targets": {
+        "lint": {},
         "test": {
             "dependsOn": ["build", "^build", "gtkx:bindings"]
         },

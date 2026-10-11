@@ -13,6 +13,7 @@
         ]
     },
     "targets": {
+        "lint": {},
         "codegen": {
             "command": "gtkx codegen",
             "options": {
@@ -83,13 +84,13 @@
             ],
             "cache": true
         },
-        "lint": {
+        "lint-oxlint": {
             "dependsOn": ["...", "codegen", "_test:fixtures"]
         },
         "typecheck": {
             "dependsOn": ["...", "^build", "codegen", "_test:fixtures"]
         },
-        "_lint:eslint": {
+        "lint-eslint": {
             "dependsOn": ["...", "codegen", "_test:fixtures"]
         }
     }
