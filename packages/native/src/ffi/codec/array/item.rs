@@ -46,14 +46,13 @@ impl ItemCodec {
                     | (IntegerCodec::U16, ViewKind::Uint16)
                     | (IntegerCodec::I32, ViewKind::Int32)
                     | (IntegerCodec::U32, ViewKind::Uint32)
-                    | (IntegerCodec::I64, ViewKind::BigInt64)
-                    | (IntegerCodec::U64, ViewKind::BigUint64)
             ),
             Self::Float(FloatCodec::F32) => view_kind == ViewKind::Float32,
             Self::Float(FloatCodec::F64) => view_kind == ViewKind::Float64,
             Self::BigInt(kind) => matches!(
                 (kind, view_kind),
-                (BigIntCodec::I64, ViewKind::BigInt64) | (BigIntCodec::U64, ViewKind::BigUint64)
+                (BigIntCodec::I64 | BigIntCodec::I64Word, ViewKind::BigInt64)
+                    | (BigIntCodec::U64 | BigIntCodec::U64Word, ViewKind::BigUint64)
             ),
             Self::Pointer | Self::Bytes => false,
         }

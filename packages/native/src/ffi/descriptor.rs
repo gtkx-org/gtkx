@@ -3,12 +3,14 @@ use std::cell::Cell;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
+use crate::api::reference::ReferenceDescriptor;
 use crate::ffi::codec::{
-    ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BoxedCodec, BufferCodec, BytesCodec,
-    CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind,
+    ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BoxedCodec, BoxedTypeSource, BufferCodec,
+    BytesCodec, CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind,
     ElementOwnership, Encoder, FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec,
     ObjectCodec, Ownership, RefCodec, StructCodec, VoidCodec,
 };
+use crate::ffi::lifecycle::{FunctionResolver, RecordConverter, TypeResolver};
 
 const MAX_DESCRIPTOR_DEPTH: u32 = 32;
 
@@ -81,7 +83,7 @@ fn record_abi_fields(
     fields: Option<Descriptors>,
     size: Option<u32>,
     ownership: Ownership,
-    caller_allocated: Option<bool>,
+    caller_allocated: bool,
 ) -> Result<Option<Vec<Codec>>> {
     let Some(fields) = fields else {
         return Ok(None);
@@ -90,7 +92,7 @@ fn record_abi_fields(
     let size = size
         .filter(|&size| size > 0)
         .ok_or_else(|| invalid("A record passed by value requires a positive native size"))?;
-    if !ownership.is_borrowed() || caller_allocated.unwrap_or(false) {
+    if !ownership.is_borrowed() || caller_allocated {
         return Err(invalid(
             "A record passed by value requires borrowed input ownership",
         ));
@@ -148,10 +150,12 @@ pub enum Descriptor {
     Uint16,
     Int32,
     Uint32,
-    Int64,
-    Uint64,
-    Bigint64,
-    Biguint64,
+    Bigint64 {
+        is_direct_word: bool,
+    },
+    Biguint64 {
+        is_direct_word: bool,
+    },
     Float32,
     Float64,
     Bytes {
@@ -159,26 +163,28 @@ pub enum Descriptor {
         length: Option<i64>,
         /// Whether the instance holding the slot owns the string in it, so that a write releases
         /// what it displaces. Set only on record fields GIR spells as a non-`const` `char *`.
-        has_owned_storage: Option<bool>,
+        has_owned_storage: bool,
     },
     Object {
         ownership: Ownership,
-        is_call_scoped: Option<bool>,
-        /// `GType` name of the declared type, which an argument's instance must be one of.
-        type_name: Option<String>,
+        is_call_scoped: bool,
+        #[napi(ts_type = "ExternalObject<TypeResolver>")]
+        type_resolver: Option<TypeResolver>,
     },
     Void,
     Buffer,
     Boxed {
         ownership: Ownership,
         type_name: String,
-        shared_library: Option<String>,
-        get_type_fn_name: Option<String>,
-        free_fn_name: Option<String>,
-        is_caller_allocated: Option<bool>,
+        #[napi(ts_type = "ExternalObject<TypeResolver>")]
+        type_resolver: TypeResolver,
+        has_type_getter: bool,
+        #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+        free_resolver: Option<FunctionResolver>,
+        is_caller_allocated: bool,
         size: Option<u32>,
-        is_inline: Option<bool>,
-        is_value_safe: Option<bool>,
+        is_inline: bool,
+        is_value_safe: bool,
         /// Native field layout for a record passed by value as a function input.
         #[napi(ts_type = "Array<Descriptor>")]
         abi_fields: Option<Descriptors>,
@@ -186,40 +192,43 @@ pub enum Descriptor {
     Struct {
         ownership: Ownership,
         size: Option<u32>,
-        is_caller_allocated: Option<bool>,
-        is_inline: Option<bool>,
-        shared_library: Option<String>,
-        copy_fn_name: Option<String>,
-        free_fn_name: Option<String>,
-        copy_strategy: Option<String>,
-        is_value_safe: Option<bool>,
+        is_caller_allocated: bool,
+        is_inline: bool,
+        #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+        copy_resolver: Option<FunctionResolver>,
+        #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+        free_resolver: Option<FunctionResolver>,
+        #[napi(ts_type = "ExternalObject<RecordConverter>")]
+        copy_converter: Option<RecordConverter>,
+        is_value_safe: bool,
         /// Native field layout for a record passed by value as a function input.
         #[napi(ts_type = "Array<Descriptor>")]
         abi_fields: Option<Descriptors>,
     },
     Fundamental {
         ownership: Ownership,
-        shared_library: String,
-        ref_fn_name: String,
-        unref_fn_name: String,
-        type_name: Option<String>,
-        is_caller_allocated: Option<bool>,
-        is_inline: Option<bool>,
-        is_value_safe: Option<bool>,
+        #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+        ref_resolver: Option<FunctionResolver>,
+        #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+        unref_resolver: Option<FunctionResolver>,
+        unref_label: String,
+        is_caller_allocated: bool,
+        is_inline: bool,
+        is_value_safe: bool,
     },
     Array {
         #[napi(ts_type = "Descriptor")]
         item_descriptor: NestedDescriptor,
         array_kind: ArrayKind,
         ownership: Ownership,
-        element_ownership: Option<ElementOwnership>,
+        element_ownership: ElementOwnership,
         base_param_index: Option<u32>,
         size_param_index: Option<u32>,
         fixed_size: Option<u32>,
         element_size: Option<u32>,
-        is_bytes: Option<bool>,
-        is_caller_allocated: Option<bool>,
-        is_zero_terminated: Option<bool>,
+        is_bytes: bool,
+        is_caller_allocated: bool,
+        is_zero_terminated: bool,
     },
     Hashtable {
         #[napi(ts_type = "Descriptor")]
@@ -241,10 +250,14 @@ pub enum Descriptor {
         scope: CallbackScope,
         release_with_completion: bool,
     },
+    Reference {
+        #[napi(ts_type = "ExternalObject<ReferenceDescriptor>")]
+        reference: ReferenceDescriptor,
+    },
     Ref {
         #[napi(ts_type = "Descriptor")]
         inner_descriptor: NestedDescriptor,
-        inout: Option<bool>,
+        inout: bool,
     },
 }
 
@@ -283,7 +296,7 @@ impl NestedDescriptor {
 
     fn into_hash_table_key(self) -> Result<Box<Codec>> {
         let codec = self.into_codec()?;
-        if matches!(codec.as_ref(), Codec::BigInt(_)) {
+        if matches!(codec.as_ref(), Codec::BigInt(kind) if !kind.is_direct_word()) {
             return Err(Error::new(
                 Status::InvalidArg,
                 "BigInt GHashTable keys have no supported storage contract",
@@ -302,10 +315,16 @@ impl Descriptor {
             Self::Uint16 => Codec::Integer(IntegerCodec::U16),
             Self::Int32 => Codec::Integer(IntegerCodec::I32),
             Self::Uint32 => Codec::Integer(IntegerCodec::U32),
-            Self::Int64 => Codec::Integer(IntegerCodec::I64),
-            Self::Uint64 => Codec::Integer(IntegerCodec::U64),
-            Self::Bigint64 => Codec::BigInt(BigIntCodec::I64),
-            Self::Biguint64 => Codec::BigInt(BigIntCodec::U64),
+            Self::Bigint64 { is_direct_word } => Codec::BigInt(if is_direct_word {
+                BigIntCodec::I64Word
+            } else {
+                BigIntCodec::I64
+            }),
+            Self::Biguint64 { is_direct_word } => Codec::BigInt(if is_direct_word {
+                BigIntCodec::U64Word
+            } else {
+                BigIntCodec::U64
+            }),
             Self::Float32 => Codec::Float(FloatCodec::F32),
             Self::Float64 => Codec::Float(FloatCodec::F64),
             Self::Void => Codec::Void(VoidCodec),
@@ -317,17 +336,13 @@ impl Descriptor {
             } => Codec::Bytes(BytesCodec {
                 ownership,
                 length: byte_capacity(length)?,
-                has_owned_storage: has_owned_storage.unwrap_or(false),
+                has_owned_storage,
             }),
             Self::Object {
                 ownership,
                 is_call_scoped,
-                type_name,
-            } => Codec::Object(ObjectCodec::new(
-                ownership,
-                is_call_scoped.unwrap_or(false),
-                type_name,
-            )),
+                type_resolver,
+            } => Codec::Object(ObjectCodec::new(ownership, is_call_scoped, type_resolver)),
             other => other.into_instance_codec()?,
         })
     }
@@ -339,9 +354,9 @@ impl Descriptor {
             Self::Boxed {
                 ownership,
                 type_name,
-                shared_library,
-                get_type_fn_name,
-                free_fn_name,
+                type_resolver,
+                has_type_getter,
+                free_resolver,
                 is_caller_allocated,
                 size,
                 is_inline,
@@ -350,13 +365,17 @@ impl Descriptor {
             } => Codec::Boxed(BoxedCodec {
                 ownership,
                 type_name,
-                shared_library,
-                get_type_fn_name,
-                free_fn_name,
-                caller_allocated: is_caller_allocated.unwrap_or(false),
+                type_resolver,
+                type_source: if has_type_getter {
+                    BoxedTypeSource::TypeGetter
+                } else {
+                    BoxedTypeSource::RegisteredName
+                },
+                free_resolver,
+                caller_allocated: is_caller_allocated,
                 size: size.map(|n| n as usize),
-                inline: is_inline.unwrap_or(false),
-                value_safe: is_value_safe.unwrap_or(false),
+                inline: is_inline,
+                value_safe: is_value_safe,
                 abi_fields: record_abi_fields(abi_fields, size, ownership, is_caller_allocated)?,
             }),
             Self::Struct {
@@ -364,41 +383,38 @@ impl Descriptor {
                 size,
                 is_caller_allocated,
                 is_inline,
-                shared_library,
-                copy_fn_name,
-                free_fn_name,
-                copy_strategy,
+                copy_resolver,
+                free_resolver,
+                copy_converter,
                 is_value_safe,
                 abi_fields,
             } => Codec::Struct(StructCodec {
                 ownership,
                 size: size.map(|n| n as usize),
-                caller_allocated: is_caller_allocated.unwrap_or(false),
-                inline: is_inline.unwrap_or(false),
-                shared_library,
-                copy_fn_name,
-                free_fn_name,
-                copy_strategy,
-                value_safe: is_value_safe.unwrap_or(false),
+                caller_allocated: is_caller_allocated,
+                inline: is_inline,
+                copy_resolver,
+                free_resolver,
+                copy_converter,
+                value_safe: is_value_safe,
                 abi_fields: record_abi_fields(abi_fields, size, ownership, is_caller_allocated)?,
             }),
             Self::Fundamental {
                 ownership,
-                shared_library,
-                ref_fn_name,
-                unref_fn_name,
-                type_name: _,
+                ref_resolver,
+                unref_resolver,
+                unref_label,
                 is_caller_allocated,
                 is_inline,
                 is_value_safe,
             } => Codec::Fundamental(FundamentalCodec {
                 ownership,
-                shared_library,
-                ref_fn_name,
-                unref_fn_name,
-                caller_allocated: is_caller_allocated.unwrap_or(false),
-                inline: is_inline.unwrap_or(false),
-                value_safe: is_value_safe.unwrap_or(false),
+                ref_resolver,
+                unref_resolver,
+                unref_label,
+                caller_allocated: is_caller_allocated,
+                inline: is_inline,
+                value_safe: is_value_safe,
             }),
             nested => nested.into_nested_codec()?,
         })
@@ -429,14 +445,14 @@ impl Descriptor {
                         fixed_size,
                     },
                     element_size.map(|n| n as usize),
-                    is_bytes.unwrap_or(false),
-                    element_ownership.unwrap_or_default(),
+                    is_bytes,
+                    element_ownership,
                 )
                 .map_err(|error| Error::from_reason(error.to_string()))?;
-                if is_zero_terminated.unwrap_or(false) {
+                if is_zero_terminated {
                     codec = codec.zero_terminated();
                 }
-                if is_caller_allocated.unwrap_or(false) {
+                if is_caller_allocated {
                     codec = codec
                         .caller_allocated()
                         .map_err(|error| Error::from_reason(error.to_string()))?;
@@ -481,13 +497,19 @@ impl Descriptor {
                     release_policy,
                 })
             }
+            Self::Reference { reference } => Codec::Ref(reference.codec),
             Self::Ref {
                 inner_descriptor,
                 inout,
-            } => Codec::Ref(RefCodec::new(
-                *inner_descriptor.into_codec()?,
-                inout.unwrap_or(false),
-            )?),
+            } => {
+                let inner = *inner_descriptor.into_codec()?;
+                if !inner.is_scalar() {
+                    return Err(Error::from_reason(
+                        "Non-scalar references require compiled reference storage",
+                    ));
+                }
+                Codec::Ref(RefCodec::new(inner, inout)?)
+            }
             _ => unreachable!("descriptors without nested descriptors are handled by into_codec"),
         })
     }

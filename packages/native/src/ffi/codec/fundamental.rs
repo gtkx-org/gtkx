@@ -1,15 +1,15 @@
 use anyhow::bail;
 
 use super::prelude::*;
-use crate::ffi::library_cache::FfiCache;
+use crate::ffi::lifecycle::FunctionResolver;
 use crate::handle::{Fundamental, Handle, HandleClass, RefFn, UnrefFn};
 
 #[derive(Debug, Clone)]
 pub struct FundamentalCodec {
     pub ownership: Ownership,
-    pub shared_library: String,
-    pub ref_fn_name: String,
-    pub unref_fn_name: String,
+    pub ref_resolver: Option<FunctionResolver>,
+    pub unref_resolver: Option<FunctionResolver>,
+    pub unref_label: String,
     pub caller_allocated: bool,
     pub inline: bool,
     pub value_safe: bool,
@@ -17,13 +17,22 @@ pub struct FundamentalCodec {
 
 impl FundamentalCodec {
     pub fn lookup_fns(&self) -> anyhow::Result<(Option<RefFn>, Option<UnrefFn>)> {
-        FfiCache::with(|state| {
-            state.lookup_fundamental_fns(
-                &self.shared_library,
-                &self.ref_fn_name,
-                &self.unref_fn_name,
-            )
-        })
+        let ref_fn = self
+            .ref_resolver
+            .as_ref()
+            .map(|resolver| unsafe { resolver.get::<RefFn>() })
+            .transpose()?;
+        let unref_fn = self
+            .unref_resolver
+            .as_ref()
+            .map(|resolver| unsafe { resolver.get::<UnrefFn>() })
+            .transpose()?;
+        anyhow::ensure!(
+            ref_fn.is_some() || unref_fn.is_none(),
+            "Fundamental type declares unref '{}' without a ref function; a wrapper built from it would release a reference it never took",
+            self.unref_label
+        );
+        Ok((ref_fn, unref_fn))
     }
 
     fn wrap_ptr(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
@@ -52,7 +61,7 @@ impl Encoder for FundamentalCodec {
                 HandleClass::Fundamental | HandleClass::Opaque
             ),
             "Expected an instance of the fundamental type released by {}, got a {:?} handle",
-            self.unref_fn_name,
+            self.unref_label,
             handle.class()
         );
 
@@ -63,7 +72,7 @@ impl Encoder for FundamentalCodec {
         anyhow::ensure!(
             std::ptr::fn_addr_eq(expected, actual),
             "Expected an instance of the fundamental type released by {}, got one released by a different function",
-            self.unref_fn_name
+            self.unref_label
         );
 
         Ok(())

@@ -1,35 +1,28 @@
 use anyhow::bail;
+use libffi::middle as libffi;
 
 use super::prelude::*;
-use super::{IntegerCodec, forward_ffi_encoder};
 
 #[derive(Debug, Clone, Copy)]
 pub enum BigIntCodec {
     I64,
     U64,
-}
-
-impl IntegerBacked for BigIntCodec {
-    fn ffi_codec(&self) -> IntegerCodec {
-        match self {
-            Self::I64 => IntegerCodec::I64,
-            Self::U64 => IntegerCodec::U64,
-        }
-    }
+    I64Word,
+    U64Word,
 }
 
 impl BigIntCodec {
     fn name(self) -> &'static str {
         match self {
-            Self::I64 => "bigint64",
-            Self::U64 => "biguint64",
+            Self::I64 | Self::I64Word => "bigint64",
+            Self::U64 | Self::U64Word => "biguint64",
         }
     }
 
     fn zero_stash(self) -> ffi::Stash {
         match self {
-            Self::I64 => ffi::Stash::I64(0),
-            Self::U64 => ffi::Stash::U64(0),
+            Self::I64 | Self::I64Word => ffi::Stash::I64(0),
+            Self::U64 | Self::U64Word => ffi::Stash::U64(0),
         }
     }
 
@@ -42,16 +35,16 @@ impl BigIntCodec {
         Ok(int)
     }
 
-    fn checked_to_stash(self, value: i128) -> anyhow::Result<ffi::Stash> {
+    pub(super) fn checked_to_stash(self, value: i128) -> anyhow::Result<ffi::Stash> {
         match self {
-            Self::I64 => i64::try_from(value).map(ffi::Stash::I64).map_err(|_| {
+            Self::I64 | Self::I64Word => i64::try_from(value).map(ffi::Stash::I64).map_err(|_| {
                 anyhow::anyhow!(
                     "Value {value} is out of range for bigint64 [{}, {}]",
                     i64::MIN,
                     i64::MAX
                 )
             }),
-            Self::U64 => u64::try_from(value).map(ffi::Stash::U64).map_err(|_| {
+            Self::U64 | Self::U64Word => u64::try_from(value).map(ffi::Stash::U64).map_err(|_| {
                 anyhow::anyhow!(
                     "Value {value} is out of range for biguint64 [0, {}]",
                     u64::MAX
@@ -68,18 +61,30 @@ impl BigIntCodec {
         self.checked_to_stash(int)
     }
 
-    unsafe fn read_i128(self, ptr: *const u8) -> i128 {
+    pub(super) unsafe fn read_i128(self, ptr: *const u8) -> i128 {
         unsafe {
             match self {
-                Self::I64 => i128::from(ptr.cast::<i64>().read_unaligned()),
-                Self::U64 => i128::from(ptr.cast::<u64>().read_unaligned()),
+                Self::I64 | Self::I64Word => i128::from(ptr.cast::<i64>().read_unaligned()),
+                Self::U64 | Self::U64Word => i128::from(ptr.cast::<u64>().read_unaligned()),
+            }
+        }
+    }
+
+    /// # Safety
+    ///
+    /// `ptr` must point at eight initialized, readable bytes.
+    pub(crate) unsafe fn read_stash(self, ptr: *const u8) -> ffi::Stash {
+        unsafe {
+            match self {
+                Self::I64 | Self::I64Word => ffi::Stash::I64(ptr.cast::<i64>().read_unaligned()),
+                Self::U64 | Self::U64Word => ffi::Stash::U64(ptr.cast::<u64>().read_unaligned()),
             }
         }
     }
 
     #[must_use]
     pub fn byte_size(self) -> usize {
-        self.ffi_codec().byte_size()
+        size_of::<u64>()
     }
 
     /// # Safety
@@ -99,7 +104,7 @@ impl BigIntCodec {
             Self::integer_from_value(v).map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))
         };
         match self {
-            Self::I64 => array
+            Self::I64 | Self::I64Word => array
                 .iter()
                 .enumerate()
                 .map(|(i, &v)| {
@@ -109,7 +114,7 @@ impl BigIntCodec {
                 })
                 .collect::<anyhow::Result<Vec<i64>>>()
                 .map(Into::into),
-            Self::U64 => array
+            Self::U64 | Self::U64Word => array
                 .iter()
                 .enumerate()
                 .map(|(i, &v)| {
@@ -122,18 +127,43 @@ impl BigIntCodec {
         }
     }
 
-    pub(super) fn to_pointer_words(array: &[Unknown<'_>]) -> anyhow::Result<Vec<*mut c_void>> {
+    #[must_use]
+    pub fn is_direct_word(self) -> bool {
+        matches!(self, Self::I64Word | Self::U64Word)
+    }
+
+    pub(super) fn pointer_word(self, value: i128) -> anyhow::Result<*mut c_void> {
+        if matches!(self, Self::I64Word) {
+            let word = isize::try_from(value)
+                .map_err(|_| anyhow::anyhow!("Value {value} is not a valid signed pointer word"))?;
+            Ok(word as *mut c_void)
+        } else {
+            let word = usize::try_from(value)
+                .map_err(|_| anyhow::anyhow!("Value {value} is not a valid pointer word"))?;
+            Ok(word as *mut c_void)
+        }
+    }
+
+    pub(super) fn encode_pointer_word(self, value: Unknown<'_>) -> anyhow::Result<*mut c_void> {
+        let integer = Self::integer_from_value(value)?;
+        self.checked_to_stash(integer)?;
+        self.pointer_word(integer)
+    }
+
+    pub(super) fn to_pointer_words(
+        self,
+        array: &[Unknown<'_>],
+    ) -> anyhow::Result<Vec<*mut c_void>> {
         array
             .iter()
             .enumerate()
             .map(|(i, &v)| {
                 let int = Self::integer_from_value(v)
                     .map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))?;
-                let word = usize::try_from(int).map_err(|_| {
-                    anyhow::anyhow!("Array element {i}: value {int} is not a valid pointer")
-                })?;
-
-                Ok(word as *mut c_void)
+                self.checked_to_stash(int)
+                    .map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))?;
+                self.pointer_word(int)
+                    .map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))
             })
             .collect()
     }
@@ -149,7 +179,26 @@ impl Encoder for BigIntCodec {
         self.checked_to_stash(int)
     }
 
-    forward_ffi_encoder!();
+    fn libffi_type(&self) -> libffi::Type {
+        match self {
+            Self::I64 | Self::I64Word => libffi::Type::i64(),
+            Self::U64 | Self::U64Word => libffi::Type::u64(),
+        }
+    }
+
+    fn call_cif(
+        &self,
+        cif: &libffi::Cif,
+        ptr: libffi::CodePtr,
+        args: &[libffi::Arg<'_>],
+    ) -> anyhow::Result<ffi::Stash> {
+        Ok(unsafe {
+            match self {
+                Self::I64 | Self::I64Word => ffi::Stash::I64(cif.call::<i64>(ptr, args)),
+                Self::U64 | Self::U64Word => ffi::Stash::U64(cif.call::<u64>(ptr, args)),
+            }
+        })
+    }
 }
 
 impl Decoder for BigIntCodec {
@@ -161,8 +210,8 @@ impl Decoder for BigIntCodec {
                 other => bail!("Expected a 64-bit Stash for {}, got {other:?}", self.name()),
             },
             ReadSource::Value(ptr, _context) => match self {
-                Self::I64 => i128::from(ptr as i64),
-                Self::U64 => i128::from(ptr as u64),
+                Self::I64 | Self::I64Word => i128::from(ptr as i64),
+                Self::U64 | Self::U64Word => i128::from(ptr as u64),
             },
             ReadSource::Slot(ptr, _context) => unsafe { self.read_i128(ptr.cast()) },
         };

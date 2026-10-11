@@ -29,7 +29,6 @@ const UV_PRIORITIZED: c_int = 8;
 
 const HANDLE_ALIGN: usize = 16;
 
-const DISPATCH_BUDGET: Duration = Duration::from_millis(4);
 static CONTEXT_OWNER: Mutex<Option<ThreadId>> = Mutex::new(None);
 
 type UvVoidCb = unsafe extern "C" fn(*mut c_void);
@@ -182,6 +181,7 @@ struct RunloopState {
     pollers: HashMap<c_int, *mut c_void>,
     fds: Vec<GPollFD>,
     n_fds: usize,
+    dispatch_budget: Duration,
 }
 
 impl RunloopState {
@@ -294,17 +294,23 @@ impl RunloopState {
 }
 
 unsafe extern "C" fn on_prepare(_handle: *mut c_void) {
-    let Some(ctx) = RUNLOOP.with_borrow(|slot| slot.as_ref().map(|state| state.ctx)) else {
+    let Some((ctx, dispatch_budget)) = RUNLOOP.with_borrow(|slot| {
+        slot.as_ref()
+            .map(|state| (state.ctx, state.dispatch_budget))
+    }) else {
         return;
     };
 
-    let deadline = Instant::now() + DISPATCH_BUDGET;
+    let started = Instant::now();
     loop {
         let mut dispatched = false;
         crate::host::node_env::run_dispatch_scope(|| {
             dispatched = unsafe { g_main_context_iteration(ctx, GFALSE) } != 0;
         });
-        if !dispatched || Instant::now() >= deadline || RUNLOOP.with_borrow(Option::is_none) {
+        if !dispatched
+            || started.elapsed() >= dispatch_budget
+            || RUNLOOP.with_borrow(Option::is_none)
+        {
             break;
         }
     }
@@ -335,7 +341,7 @@ fn clear_context_owner() {
     }
 }
 
-pub fn install(env: &Env) -> napi::Result<()> {
+pub fn install(env: &Env, dispatch_budget: Duration) -> napi::Result<()> {
     if RUNLOOP.with_borrow(Option::is_some) {
         return Ok(());
     }
@@ -407,6 +413,7 @@ pub fn install(env: &Env) -> napi::Result<()> {
                 8
             ],
             n_fds: 0,
+            dispatch_budget,
         });
     });
 

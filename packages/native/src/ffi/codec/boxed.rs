@@ -4,7 +4,7 @@ use glib::{self};
 
 use super::Codec;
 use super::prelude::*;
-use crate::ffi::library_cache::FfiCache;
+use crate::ffi::lifecycle::{FunctionResolver, TypeResolver};
 use crate::handle::{Boxed, BoxedFreeFn, Handle, HandleClass};
 
 const POINTER_TYPE: &str = "it is registered as a plain pointer type rather than a boxed one, so \
@@ -14,13 +14,19 @@ fn is_boxed_type(type_: glib::Type) -> bool {
     type_.is_a(glib::Type::BOXED)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BoxedTypeSource {
+    RegisteredName,
+    TypeGetter,
+}
+
 #[derive(Debug, Clone)]
 pub struct BoxedCodec {
     pub ownership: Ownership,
     pub type_name: String,
-    pub shared_library: Option<String>,
-    pub get_type_fn_name: Option<String>,
-    pub free_fn_name: Option<String>,
+    pub type_resolver: TypeResolver,
+    pub type_source: BoxedTypeSource,
+    pub free_resolver: Option<FunctionResolver>,
     pub caller_allocated: bool,
     pub size: Option<usize>,
     pub inline: bool,
@@ -53,24 +59,14 @@ unsafe fn write_inline_value(
 
 impl BoxedCodec {
     pub fn type_(&self) -> anyhow::Result<Option<glib::Type>> {
-        if let Some(type_) = glib::Type::from_name(&self.type_name) {
-            return Ok(Some(type_));
-        }
-        self.try_resolve_type_from_library()
-    }
-
-    fn lookup_free_fn(library_name: &str, free_fn_name: &str) -> anyhow::Result<BoxedFreeFn> {
-        FfiCache::with(|state| unsafe {
-            state.resolve_symbol::<BoxedFreeFn>(library_name, free_fn_name)
-        })
+        self.type_resolver.get()
     }
 
     fn free_fn(&self) -> anyhow::Result<Option<BoxedFreeFn>> {
-        let Some(free_fn_name) = self.free_fn_name.as_deref() else {
+        let Some(resolver) = &self.free_resolver else {
             return Ok(None);
         };
-        let library_name = self.shared_library.as_deref().unwrap_or("(no library)");
-        Self::lookup_free_fn(library_name, free_fn_name)
+        unsafe { resolver.get::<BoxedFreeFn>() }
             .map(Some)
             .map_err(|e| anyhow::anyhow!("Cannot decode boxed '{}': {e}", self.type_name))
     }
@@ -113,7 +109,7 @@ impl BoxedCodec {
     }
 
     fn adopted_or_struct(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
-        if self.free_fn_name.is_none() && self.type_()?.is_none() {
+        if self.free_resolver.is_none() && self.type_()?.is_none() {
             return Ok(Handle::owned_struct(ptr));
         }
 
@@ -173,17 +169,6 @@ impl BoxedCodec {
         }
         copy_into_slot(slot, src_ptr, size);
         Ok(None)
-    }
-
-    fn try_resolve_type_from_library(&self) -> anyhow::Result<Option<glib::Type>> {
-        let (Some(library_name), Some(get_type_fn_name)) =
-            (self.shared_library.as_ref(), self.get_type_fn_name.as_ref())
-        else {
-            return Ok(None);
-        };
-
-        let type_ = FfiCache::with(|state| state.resolve_type(library_name, get_type_fn_name))?;
-        Ok(Some(type_).filter(|t| t.is_valid()))
     }
 }
 

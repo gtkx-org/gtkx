@@ -49,9 +49,10 @@ fn execute_call_inner<'e>(
     completion_index: Option<usize>,
 ) -> anyhow::Result<CallResult<'e>> {
     let _leases = crate::handle::LeaseScope::open();
-    let label = &descriptor.label;
-    let return_codec = &descriptor.return_codec;
-    let arg_codecs = &descriptor.arg_codecs;
+    let signature = &descriptor.signature;
+    let label = &signature.label;
+    let return_codec = &signature.return_codec;
+    let arg_codecs = &signature.arg_codecs;
 
     let stashes = arg_codecs
         .iter()
@@ -72,19 +73,19 @@ fn execute_call_inner<'e>(
         .with_context(|| format!("calling {label}"))?;
 
     let mut ffi_args: SmallVec<[libffi::Arg<'_>; 8]> =
-        SmallVec::with_capacity(descriptor.native_arg_count);
+        SmallVec::with_capacity(signature.native_arg_count);
     for stash in &stashes {
         stash.append_libffi_args(&mut ffi_args);
     }
 
     anyhow::ensure!(
-        descriptor.native_arg_count == ffi_args.len(),
+        signature.native_arg_count == ffi_args.len(),
         "{label}: the call interface declares {} native arguments but {} were marshalled",
-        descriptor.native_arg_count,
+        signature.native_arg_count,
         ffi_args.len()
     );
 
-    let ordered_args: SmallVec<[libffi::Arg<'_>; 8]> = descriptor
+    let ordered_args: SmallVec<[libffi::Arg<'_>; 8]> = signature
         .arg_order
         .iter()
         .map(|&index| ffi_args[index].clone())
@@ -93,7 +94,7 @@ fn execute_call_inner<'e>(
 
     let symbol = descriptor.symbol()?;
     let trap = CriticalTrap::arm();
-    let called = return_codec.call_cif(&descriptor.cif, symbol, &ordered_args);
+    let called = return_codec.call_cif(&signature.cif, symbol, &ordered_args);
     drop(ordered_args);
     let critical = trap.disarm();
 
@@ -158,8 +159,7 @@ fn completion_callback(stash: &ffi::Stash) -> anyhow::Result<&ffi::CallbackValue
 fn lends_element_buffer(codec: &Codec, stash: &ffi::Stash) -> bool {
     let borrows_a_buffer = match codec {
         Codec::Array(array) => array.ownership.is_borrowed(),
-        Codec::Ref(reference) => reference.inner_codec().is_scalar(),
-        Codec::Buffer(_) => true,
+        Codec::Ref(_) | Codec::Buffer(_) => true,
         _ => false,
     };
 
@@ -240,19 +240,27 @@ fn decode_outputs<'env>(
     stashes: &[ffi::Stash],
 ) -> anyhow::Result<Vec<CallOutput<'env>>> {
     let mut outputs = Vec::new();
+    let mut first_error = None;
 
     for (i, (codec, &value)) in arg_codecs.iter().zip(values).enumerate() {
         if matches!(codec, Codec::Ref(reference) if !reference.inner_codec().is_scalar())
             && !matches!(value.get_type()?, ValueType::Null | ValueType::Undefined)
         {
-            outputs.push(CallOutput {
-                index: u32::try_from(i)?,
-                value: codec.decode_with_context(env, &stashes[i], stashes, arg_codecs)?,
-            });
+            match codec.decode_with_context(env, &stashes[i], stashes, arg_codecs) {
+                Ok(value) => outputs.push(CallOutput {
+                    index: u32::try_from(i)?,
+                    value,
+                }),
+                Err(error) if first_error.is_none() => first_error = Some(error),
+                Err(_) => {}
+            }
         }
     }
 
-    Ok(outputs)
+    match first_error {
+        Some(error) => Err(error),
+        None => Ok(outputs),
+    }
 }
 
 #[napi(catch_unwind)]
@@ -270,13 +278,14 @@ pub fn call<'env>(
             .ok_or_else(|| Error::new(Status::GenericFailure, "missing argument"))?;
         parsed_values.push(item);
     }
-    if parsed_values.len() != descriptor.arg_codecs.len() {
+    let signature = &descriptor.signature;
+    if parsed_values.len() != signature.arg_codecs.len() {
         return Err(Error::new(
             Status::InvalidArg,
             format!(
                 "{}: expected {} arguments, received {}",
-                descriptor.label,
-                descriptor.arg_codecs.len(),
+                signature.label,
+                signature.arg_codecs.len(),
                 parsed_values.len()
             ),
         ));

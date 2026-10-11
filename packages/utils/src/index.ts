@@ -8,6 +8,13 @@ export { isDeepEqual, isRecord } from "./predicate/index.ts";
 export {
     type CleanupDirectoryIdentity,
     cleanupDirectoryIdentity,
+    captureProcessGroupOwner,
+    isProcessGroupOwner,
+    type ProcessIdentity,
+    readProcessIdentity,
+    readProcessStatus,
+    type ProcessWatchOperations,
+    watchProcessGroupOwner,
     exitCodeForSignal,
     installGracefulShutdown,
     isProcessAlive,

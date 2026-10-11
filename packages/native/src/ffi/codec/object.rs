@@ -2,6 +2,7 @@ use glib::translate::{Borrowed, IntoGlib as _, ToGlibPtr, from_glib_borrow, from
 use glib::{self};
 
 use super::prelude::*;
+use crate::ffi::lifecycle::TypeResolver;
 use crate::handle::{Handle, HandleClass};
 
 unsafe fn keeps_own_construction_ref(gobject_ptr: *mut glib::gobject_ffi::GObject) -> bool {
@@ -75,34 +76,27 @@ unsafe fn object_ref_full(ptr: *mut c_void) -> *mut c_void {
 pub struct ObjectCodec {
     pub ownership: Ownership,
     pub is_call_scoped: bool,
-    /// `GType` name of the declared parameter type, as GIR spells it in `glib:type-name`.
-    pub type_name: Option<String>,
-    resolved_type: std::cell::Cell<Option<glib::Type>>,
+    pub type_resolver: Option<TypeResolver>,
 }
 
 impl ObjectCodec {
     #[must_use]
-    pub fn new(ownership: Ownership, is_call_scoped: bool, type_name: Option<String>) -> Self {
+    pub fn new(
+        ownership: Ownership,
+        is_call_scoped: bool,
+        type_resolver: Option<TypeResolver>,
+    ) -> Self {
         Self {
             ownership,
             is_call_scoped,
-            type_name,
-            resolved_type: std::cell::Cell::new(None),
+            type_resolver,
         }
     }
 
-    /// The `GType` the declared type registers under, once something has registered it. A type
-    /// nothing has registered cannot have an instance either, so an unresolved name leaves the
-    /// check off rather than failing the call.
-    fn expected_type(&self) -> Option<glib::Type> {
-        if let Some(type_) = self.resolved_type.get() {
-            return Some(type_);
-        }
-
-        let type_ = glib::Type::from_name(self.type_name.as_deref()?)?;
-        self.resolved_type.set(Some(type_));
-
-        Some(type_)
+    fn expected_type(&self) -> anyhow::Result<Option<glib::Type>> {
+        self.type_resolver
+            .as_ref()
+            .map_or(Ok(None), TypeResolver::get)
     }
 
     unsafe fn gobject_value<'e>(
@@ -125,7 +119,7 @@ impl Encoder for ObjectCodec {
     }
 
     fn check_instance(&self, handle: &Handle) -> anyhow::Result<()> {
-        let Some(expected) = self.expected_type() else {
+        let Some(expected) = self.expected_type()? else {
             return Ok(());
         };
         let Some(gobject_ptr) = handle.as_gobject_ptr() else {

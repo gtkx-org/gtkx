@@ -9,7 +9,8 @@ use crate::ffi::{HashTableData, StashData, StashStorage};
 type CVoidPtr = *mut c_void;
 
 fn is_boxed_scalar(codec: &Codec) -> bool {
-    matches!(codec, Codec::Float(_) | Codec::BigInt(_))
+    matches!(codec, Codec::Float(_))
+        || matches!(codec, Codec::BigInt(kind) if !kind.is_direct_word())
 }
 
 /// Whether a hash table entry codec takes ownership of what it encodes, so that the callee is
@@ -60,10 +61,10 @@ impl HashTableEntryCodec {
             Self::Float(FloatCodec::F32) => bail!(
                 "A 32-bit float cannot be a GHashTable key: GLib has no hash function that reads a gfloat"
             ),
-            Self::BigInt(_) => bail!(
+            Self::BigInt(kind) if !kind.is_direct_word() => bail!(
                 "A 64-bit integer cannot be a GHashTable key: g_int64_hash dereferences every key the table is handed, including the ones the callee passes beside it, and only the entries encoded here are boxed"
             ),
-            Self::Integer(_) | Self::Handle(_) | Self::PtrArray(_) => Ok((
+            Self::Integer(_) | Self::BigInt(_) | Self::Handle(_) | Self::PtrArray(_) => Ok((
                 Some(glib::ffi::g_direct_hash),
                 Some(glib::ffi::g_direct_equal),
             )),
@@ -72,6 +73,7 @@ impl HashTableEntryCodec {
 
     pub fn free_func(&self) -> anyhow::Result<glib::ffi::GDestroyNotify> {
         match self {
+            Self::BigInt(kind) if kind.is_direct_word() => Ok(None),
             Self::Bytes | Self::Float(_) | Self::BigInt(_) => Ok(Some(glib::ffi::g_free)),
             Self::Integer(_) => Ok(None),
             Self::Handle(codec) => Self::transferred_entry_destroy(codec),
@@ -126,6 +128,7 @@ impl HashTableEntryCodec {
 
                 boxed_entry(&float.checked_to_stash(value::read_napi::<f64>(value)?)?)
             }
+            Self::BigInt(bigint) if bigint.is_direct_word() => bigint.encode_pointer_word(value),
             Self::BigInt(bigint) => boxed_entry(&bigint.entry_stash(value)?),
             Self::Handle(codec) => {
                 let ptr = codec.checked_handle_ptr(value, "GHashTable entry", |_| Ok(()))?;
@@ -174,10 +177,10 @@ unsafe extern "C" fn g_ptr_array_unref_wrapper(ptr: *mut c_void) {
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 fn direct_pointer(codec: IntegerCodec, value: f64) -> *mut c_void {
     match codec {
-        IntegerCodec::I8 | IntegerCodec::I16 | IntegerCodec::I32 | IntegerCodec::I64 => {
+        IntegerCodec::I8 | IntegerCodec::I16 | IntegerCodec::I32 => {
             value as i64 as isize as *mut c_void
         }
-        IntegerCodec::U8 | IntegerCodec::U16 | IntegerCodec::U32 | IntegerCodec::U64 => {
+        IntegerCodec::U8 | IntegerCodec::U16 | IntegerCodec::U32 => {
             value as u64 as usize as *mut c_void
         }
     }
@@ -226,14 +229,7 @@ impl HashTableCodec {
     }
 
     fn tuple(value: Unknown<'_>) -> anyhow::Result<(Unknown<'_>, Unknown<'_>)> {
-        anyhow::ensure!(
-            value.is_array()?,
-            "Expected [key, value] tuple in GHashTable"
-        );
         let array: Array<'_> = value::read_napi(value)?;
-        if array.len() != 2 {
-            bail!("Expected [key, value] tuple in GHashTable");
-        }
         let key = array
             .get(0)?
             .ok_or_else(|| anyhow::anyhow!("GHashTable tuple key is missing"))?;
@@ -407,7 +403,7 @@ impl HashTableCodec {
                     let key_value = self
                         .key_codec
                         .read(env, ReadCtx::value(key_ptr, "hash table key"))?;
-                    let value_context = if matches!(self.value_codec.as_ref(), Codec::BigInt(_))
+                    let value_context = if matches!(self.value_codec.as_ref(), Codec::BigInt(kind) if !kind.is_direct_word())
                         && !value_ptr.is_null()
                     {
                         ReadCtx::slot(value_ptr, "hash table value")

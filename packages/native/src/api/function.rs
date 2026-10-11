@@ -4,38 +4,29 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::api::{byte_count_from_f64, handle_memory_range, native_result};
-use crate::ffi::library_cache::FfiCache;
+use crate::ffi::library_cache::LibraryHandle;
 use crate::handle::Handle;
 
+/// Opens exactly one library candidate with the process-wide loader flags and lifetime.
 #[allow(clippy::needless_pass_by_value)]
 #[napi(catch_unwind)]
-pub fn resolve_function(shared_library: String, symbol_name: String) -> Result<External<Handle>> {
-    let ptr = native_result(
-        "resolve_function",
-        FfiCache::with(|state| unsafe {
-            state.resolve_symbol::<*mut c_void>(&shared_library, &symbol_name)
-        }),
-    )?;
-    Ok(External::new(Handle::function(ptr, None, false, false)))
+pub fn open_library(candidate: String) -> Result<External<LibraryHandle>> {
+    native_result("open_library", LibraryHandle::open(&candidate)).map(External::new)
 }
 
-/// Resolves a library-backed function handle, returning null when the symbol is absent.
-/// Library-loading failures and invalid symbol names are reported as errors.
+/// Resolves an executable handle that retains its library. Optional lookup returns null only
+/// for absent symbols; malformed names and loader errors remain errors.
 #[allow(clippy::needless_pass_by_value)]
 #[napi(catch_unwind)]
-pub fn resolve_function_optional(
-    shared_library: String,
+pub fn resolve_symbol(
+    library: &External<LibraryHandle>,
     symbol_name: String,
+    optional: bool,
 ) -> Result<Option<External<Handle>>> {
-    let ptr = native_result(
-        "resolve_function_optional",
-        FfiCache::with(|state| unsafe {
-            state
-                .libs
-                .resolve_symbol_optional::<*mut c_void>(&shared_library, &symbol_name)
-        }),
-    )?;
-    Ok(ptr.map(|ptr| External::new(Handle::function(ptr, None, false, false))))
+    let ptr = native_result("resolve_symbol", unsafe {
+        library.resolve_symbol::<*mut c_void>(&symbol_name, optional)
+    })?;
+    Ok(ptr.map(|ptr| External::new(Handle::library_function(ptr, library.owner()))))
 }
 
 #[napi(catch_unwind)]

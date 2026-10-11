@@ -2,6 +2,7 @@ import type { AnyClass } from "@gtkx/utils";
 import { bindVfunc, type BindVfuncOptions } from "./native.js";
 import { type Arg, isCallerAllocatedArg, requiresInputArg } from "./arg.js";
 import { callLayout } from "./call-layout.js";
+import type { Descriptor } from "./descriptor-types.js";
 import { buildNativeArgTypes, fromNativeCallable } from "./fn.js";
 import { foldedInputLengthSources, foldedValueLength } from "./folded-lengths.js";
 import { toNative } from "./native-value.js";
@@ -76,11 +77,10 @@ const marshalVfuncInput = (input: VfuncInput, values: unknown[]): unknown =>
 function bindOptionsFor(
     slot: ResolvedSlot,
     instanceType: bigint | undefined,
-    args: Arg[],
+    argDescriptors: Descriptor[],
     label: string,
 ): BindVfuncOptions {
     const { descriptor, interfaceType } = slot;
-    const argDescriptors = buildNativeArgTypes(args, descriptor.canThrow === true);
 
     const options: BindVfuncOptions = {
         byteOffset: descriptor.byteOffset,
@@ -114,6 +114,7 @@ function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, call
 
     const args = vfuncArgs(descriptor);
     const canThrow = descriptor.canThrow === true;
+    const argDescriptors = buildNativeArgTypes(args, canThrow);
     const label = `${descriptor.className}.${descriptor.vfuncName}`;
     const inputPlan = vfuncInputs(args, descriptor);
     const inputCount = inputPlan.filter((input) => input.kind === "value").length;
@@ -127,12 +128,13 @@ function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, call
     };
 
     const shaped = fromNativeCallable(
-        bindVfunc(bindOptionsFor(slot, instanceType, args, label)),
+        bindVfunc(bindOptionsFor(slot, instanceType, argDescriptors, label)),
         {
             args,
             returns: descriptor.returnDescriptor,
             canThrow,
         },
+        argDescriptors,
         takeRefSeeds,
     );
 

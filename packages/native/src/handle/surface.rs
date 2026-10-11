@@ -3,7 +3,7 @@ use std::ffi::c_void;
 
 use glib::prelude::{ObjectExt as _, ObjectType as _};
 
-use crate::ffi::library_cache::FfiCache;
+use crate::ffi::library_cache::LibraryHandle;
 
 type IsDestroyedFn = unsafe extern "C" fn(*mut c_void) -> glib::ffi::gboolean;
 type DestroyFn = unsafe extern "C" fn(*mut c_void);
@@ -30,16 +30,13 @@ fn surface_fns() -> Option<(IsDestroyedFn, DestroyFn)> {
         return Some(cached);
     }
 
-    let resolved = FfiCache::with(|cache| {
-        let is_destroyed = unsafe {
-            cache.resolve_symbol::<IsDestroyedFn>(GTK_LIBRARY, "gdk_surface_is_destroyed")
-        }
-        .ok()?;
-        let destroy =
-            unsafe { cache.resolve_symbol::<DestroyFn>(GTK_LIBRARY, "gdk_surface_destroy") }
-                .ok()?;
-        Some((is_destroyed, destroy))
-    })?;
+    let library = LibraryHandle::open(GTK_LIBRARY).ok()?;
+    let is_destroyed =
+        unsafe { library.resolve_symbol::<IsDestroyedFn>("gdk_surface_is_destroyed", true) }
+            .ok()??;
+    let destroy =
+        unsafe { library.resolve_symbol::<DestroyFn>("gdk_surface_destroy", true) }.ok()??;
+    let resolved = (is_destroyed, destroy);
 
     SURFACE_FNS.with(|slot| slot.set(Some(resolved)));
     Some(resolved)

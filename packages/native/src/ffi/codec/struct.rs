@@ -2,11 +2,8 @@ use anyhow::bail;
 
 use super::Codec;
 use super::prelude::*;
-use crate::ffi::library_cache::FfiCache;
+use crate::ffi::lifecycle::{FunctionResolver, RecordConverter};
 use crate::handle::{BoxedFreeFn, Handle};
-use crate::host::error_reporter::ReportErr as _;
-
-mod cairo_path;
 
 const LENT_ONLY: &str = "a plain struct declares no free function and has no known size, so nothing names the function that would release it: it can only be lent (transfer none), never handed over";
 
@@ -26,10 +23,9 @@ pub struct StructCodec {
     pub size: Option<usize>,
     pub caller_allocated: bool,
     pub inline: bool,
-    pub shared_library: Option<String>,
-    pub copy_fn_name: Option<String>,
-    pub free_fn_name: Option<String>,
-    pub copy_strategy: Option<String>,
+    pub copy_resolver: Option<FunctionResolver>,
+    pub free_resolver: Option<FunctionResolver>,
+    pub copy_converter: Option<RecordConverter>,
     pub value_safe: bool,
     pub abi_fields: Option<Vec<Codec>>,
 }
@@ -63,33 +59,21 @@ impl StructCodec {
     /// The declared copy and free functions, resolved together: a copy is only usable when
     /// something also names how to release what it returns.
     fn lifecycle_fns(&self) -> anyhow::Result<Option<(StructCopyFn, BoxedFreeFn)>> {
-        let (Some(library), Some(copy_fn_name), Some(free_fn_name)) = (
-            self.shared_library.as_deref(),
-            self.copy_fn_name.as_deref(),
-            self.free_fn_name.as_deref(),
-        ) else {
-            return Ok(None);
-        };
-
-        FfiCache::with(|state| unsafe {
-            Ok(Some((
-                state.resolve_symbol::<StructCopyFn>(library, copy_fn_name)?,
-                state.resolve_symbol::<BoxedFreeFn>(library, free_fn_name)?,
-            )))
-        })
-    }
-
-    fn free_fn(&self) -> anyhow::Result<Option<BoxedFreeFn>> {
-        let (Some(library), Some(free_fn_name)) =
-            (self.shared_library.as_deref(), self.free_fn_name.as_deref())
+        let (Some(copy), Some(free)) = (self.copy_resolver.as_ref(), self.free_resolver.as_ref())
         else {
             return Ok(None);
         };
 
-        FfiCache::with(|state| unsafe {
-            state.resolve_symbol::<BoxedFreeFn>(library, free_fn_name)
-        })
-        .map(Some)
+        Ok(Some(unsafe {
+            (copy.get::<StructCopyFn>()?, free.get::<BoxedFreeFn>()?)
+        }))
+    }
+
+    fn free_fn(&self) -> anyhow::Result<Option<BoxedFreeFn>> {
+        self.free_resolver
+            .as_ref()
+            .map(|resolver| unsafe { resolver.get::<BoxedFreeFn>() })
+            .transpose()
     }
 
     /// Paths that store or read a pointer in place never release what was there before, so they
@@ -104,35 +88,21 @@ impl StructCodec {
     /// free function, or its size makes it a `g_free`-able block this side can own outright.
     fn ensure_transfer(&self, transfer: Ownership) -> anyhow::Result<()> {
         anyhow::ensure!(
-            transfer.is_borrowed() || self.names_free_fn() || self.size.is_some(),
+            transfer.is_borrowed() || self.free_resolver.is_some() || self.size.is_some(),
             "{LENT_ONLY}"
         );
 
         Ok(())
     }
 
-    /// Whether a free function can actually be resolved, which takes the library the symbol lives
-    /// in as well as its name. A name on its own would fall back to `g_free` and free the struct
-    /// through the wrong destructor.
-    fn names_free_fn(&self) -> bool {
-        self.shared_library.is_some() && self.free_fn_name.is_some()
-    }
-
     /// Hands back a pointer this side no longer owns: the declared copy function when there is
     /// one, a byte copy when the size makes that sound, and an error when neither is available.
     fn duplicate(&self, ptr: *mut c_void) -> anyhow::Result<*mut c_void> {
-        if let Some(strategy) = self.copy_strategy.as_deref() {
-            let library = self.shared_library.as_deref().ok_or_else(|| {
-                anyhow::anyhow!("A foreign record copy strategy requires its shared library")
+        if let Some(converter) = &self.copy_converter {
+            let free = self.free_fn()?.ok_or_else(|| {
+                anyhow::anyhow!("A foreign record conversion requires a free function")
             })?;
-            anyhow::ensure!(
-                self.free_fn()?.is_some(),
-                "A foreign record copy strategy requires a free function"
-            );
-            return match strategy {
-                "cairo-path" => cairo_path::copy(library, ptr),
-                _ => bail!("Unsupported foreign record copy strategy {strategy:?}"),
-            };
+            return converter.copy(ptr, free);
         }
         if let Some((copy_fn, _)) = self.lifecycle_fns()? {
             return Ok(unsafe { copy_fn(ptr.cast_const()) });
@@ -153,7 +123,7 @@ impl StructCodec {
     /// Wraps a pointer the callee keeps owning: copied through the declared copy function, else
     /// through a byte copy when the size makes one sound, else borrowed for the call's duration.
     fn borrow_or_copy(&self, ptr: *mut c_void) -> anyhow::Result<Handle> {
-        if self.copy_strategy.is_some() {
+        if self.copy_converter.is_some() {
             return self.take_ownership(self.duplicate(ptr)?);
         }
         if let Some((copy_fn, free_fn)) = self.lifecycle_fns()? {
@@ -283,8 +253,7 @@ impl PtrWriter for StructCodec {
         value: &std::result::Result<Unknown<'_>, ()>,
     ) {
         write_return_object_ptr(ret, value, |ptr| {
-            unsafe { self.ref_for_transfer(ptr) }
-                .report_err("Struct return")
+            callback_acquisition(unsafe { self.ref_for_transfer(ptr) }, "Struct return")
                 .unwrap_or(std::ptr::null_mut())
         });
     }

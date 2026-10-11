@@ -64,6 +64,10 @@ const callLayout = (descriptors: Descriptor[], fixedArgCount?: number): CallLayo
         layout.fixedArgCount = descriptors
             .slice(0, fixedArgCount)
             .reduce((total, descriptor) => total + argumentCount(descriptor), 0);
+        const fixedCount = layout.fixedArgCount;
+        if (argOrder.some((source, target) => source < fixedCount !== target < fixedCount)) {
+            throw new TypeError("Callback argument positions cannot cross the fixed/variadic boundary");
+        }
     }
 
     return layout;

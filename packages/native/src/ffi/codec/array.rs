@@ -8,7 +8,7 @@ use null_terminated::terminated_ptrs;
 
 use super::bytes::bytes_to_glib_full;
 use super::prelude::*;
-use crate::ffi::codec::{Codec, FloatCodec, lossless_f64};
+use crate::ffi::codec::{Codec, FloatCodec};
 use crate::value::TypedView;
 
 mod byte_array;
@@ -119,10 +119,6 @@ impl ArrayCodec {
             .ok_or_else(|| anyhow::anyhow!("Caller-allocated array size overflow"))?;
         value::checked_array_length(byte_len)?;
         Ok(Some(byte_len))
-    }
-
-    pub(crate) fn is_byte_array(&self) -> bool {
-        matches!(self.container, ArrayContainerCodec::ByteArray(_))
     }
 
     pub(crate) fn is_length_bounded(&self) -> bool {
@@ -741,10 +737,8 @@ impl ArrayCodec {
             }
             ItemCodec::BigInt(kind) => {
                 if encoder.holds_pointer_slots() {
-                    return encoder.encode_pointer_words(
-                        super::BigIntCodec::to_pointer_words(array)?,
-                        self.ownership,
-                    );
+                    return encoder
+                        .encode_pointer_words(kind.to_pointer_words(array)?, self.ownership);
                 }
 
                 let storage = if zero_terminated {
@@ -950,11 +944,9 @@ impl ArrayCodec {
     }
 
     fn pointer_word_stash(&self, item_ptr: *mut c_void) -> anyhow::Result<Option<ffi::Stash>> {
-        let word = item_ptr as isize;
-
         Ok(match ItemCodec::from_codec(&self.item_codec) {
             Some(ItemCodec::Integer(kind)) => {
-                Some(kind.checked_to_stash(lossless_f64(word as i128, "list element")?)?)
+                Some(kind.checked_to_stash(kind.number_from_ptr_raw(item_ptr, "list element")?)?)
             }
             _ => None,
         })

@@ -1,0 +1,352 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::{Rc, Weak};
+
+use napi::Env;
+use napi::bindgen_prelude::*;
+use napi_derive::napi;
+
+use crate::api::native_result;
+use crate::ffi::Stash;
+use crate::ffi::codec::{Codec, RefCodec};
+use crate::ffi::descriptor::Descriptor;
+use crate::host::callback_error::CallbackErrorScope;
+use crate::value::ClosureHandle;
+
+#[napi(string_enum = "camelCase")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReferenceMode {
+    Slot,
+    Inout,
+    FixedBytes,
+    CallerArray,
+    CallerContainer,
+    ArrayBuffer,
+    ArraySlot,
+}
+
+#[derive(Debug, Clone)]
+pub struct ReferenceDescriptor {
+    pub(crate) codec: RefCodec,
+}
+
+impl FromNapiValue for ReferenceDescriptor {
+    unsafe fn from_napi_value(env: sys::napi_env, value: sys::napi_value) -> Result<Self> {
+        let external = unsafe { <&External<Self>>::from_napi_value(env, value)? };
+        Ok((**external).clone())
+    }
+}
+
+thread_local! {
+    static REFERENCE_SEEDS: RefCell<HashMap<usize, Vec<Weak<ReferenceSeed>>>> = RefCell::new(HashMap::new());
+}
+
+#[derive(Debug)]
+pub(crate) struct ReferenceSeed {
+    value: RefCell<Option<ClosureHandle>>,
+}
+
+impl ReferenceSeed {
+    fn new(env: &Env, seed: Unknown<'_>) -> Result<Rc<Self>> {
+        let mut array = env.create_array(1)?;
+        array.set(0, seed)?;
+        let seed = Rc::new(Self {
+            value: RefCell::new(Some(ClosureHandle::from_js_value(env, &array)?)),
+        });
+        let key = env.raw() as usize;
+        REFERENCE_SEEDS.with_borrow_mut(|environments| {
+            if let std::collections::hash_map::Entry::Vacant(entry) = environments.entry(key) {
+                env.add_env_cleanup_hook(key, |key| {
+                    let seeds = REFERENCE_SEEDS.with_borrow_mut(|entries| entries.remove(&key));
+                    for seed in seeds
+                        .into_iter()
+                        .flatten()
+                        .filter_map(|weak| weak.upgrade())
+                    {
+                        seed.value.borrow_mut().take();
+                    }
+                })?;
+                entry.insert(Vec::new());
+            }
+            if let Some(seeds) = environments.get_mut(&key) {
+                if seeds.len() % 64 == 0 {
+                    seeds.retain(|weak| weak.strong_count() > 0);
+                }
+                seeds.push(Rc::downgrade(&seed));
+            }
+            Ok::<_, Error>(())
+        })?;
+        Ok(seed)
+    }
+
+    fn read<'e>(&self, env: &'e Env) -> Result<Unknown<'e>> {
+        read_callback_value(env, &self.value)
+    }
+}
+
+#[derive(Debug)]
+struct ReferenceRequest {
+    codec: RefCodec,
+    seed: Rc<ReferenceSeed>,
+    mode: ReferenceMode,
+    capacity: Option<usize>,
+    owners: Vec<crate::handle::Handle>,
+}
+
+#[derive(Debug)]
+enum ReferenceState {
+    Prepared(RefCell<Option<ReferenceRequest>>),
+    Callback(Rc<RefCell<Option<ClosureHandle>>>),
+}
+
+#[derive(Debug)]
+pub struct ReferenceStorage {
+    identity: Rc<()>,
+    state: ReferenceState,
+}
+
+pub(crate) struct CallbackReference {
+    value: Rc<RefCell<Option<ClosureHandle>>>,
+}
+
+impl Drop for CallbackReference {
+    fn drop(&mut self) {
+        self.value.borrow_mut().take();
+    }
+}
+
+impl CallbackReference {
+    pub(crate) fn read<'e>(&self, env: &'e Env) -> Result<Unknown<'e>> {
+        read_callback_value(env, &self.value)
+    }
+}
+
+fn read_callback_value<'e>(
+    env: &'e Env,
+    value: &RefCell<Option<ClosureHandle>>,
+) -> Result<Unknown<'e>> {
+    let held = value.borrow();
+    let held = held
+        .as_ref()
+        .ok_or_else(|| Error::from_reason("The reference storage borrow has ended"))?;
+    let array: Array<'_> = held.get(env)?;
+    array
+        .get::<Unknown<'_>>(0)?
+        .ok_or_else(|| Error::from_reason("Reference storage contains no value"))
+}
+
+impl ReferenceStorage {
+    pub(crate) fn take(
+        &self,
+        env: &Env,
+        identity: &Rc<()>,
+        independent: bool,
+    ) -> anyhow::Result<Stash> {
+        anyhow::ensure!(
+            Rc::ptr_eq(&self.identity, identity),
+            "Reference storage belongs to another descriptor"
+        );
+        let ReferenceState::Prepared(storage) = &self.state else {
+            anyhow::bail!("Callback reference storage cannot be used as call argument storage")
+        };
+        let request = storage
+            .borrow_mut()
+            .take()
+            .ok_or_else(|| anyhow::anyhow!("Reference storage has already been consumed"))?;
+        let seed = request.seed.read(env)?;
+        let mut owners = Vec::new();
+        collect_seed_owners(request.codec.inner_codec(), seed, &mut owners, false)?;
+        let encoded = request.codec.prepare_storage(
+            env,
+            seed,
+            request.mode,
+            request.capacity,
+            independent,
+        )?;
+        let mut prepared = match encoded {
+            Stash::Storage(storage) => storage,
+            Stash::Ptr(ptr) => crate::ffi::StashStorage::unit(ptr),
+            _ => anyhow::bail!("Reference storage did not produce pointer-shaped storage"),
+        };
+        for owner in owners {
+            prepared = prepared.with_reference_owner(&owner, independent)?;
+        }
+        for owner in &request.owners {
+            if !independent {
+                prepared = prepared.with_reference_owner(owner, false)?;
+            }
+        }
+        if !independent {
+            prepared = prepared.with_reference_seed(request.seed);
+        }
+        Ok(Stash::Storage(prepared))
+    }
+
+    pub(crate) fn callback<'e>(
+        env: &'e Env,
+        codec: &RefCodec,
+        seed: Unknown<'e>,
+    ) -> Result<(Unknown<'e>, CallbackReference)> {
+        let mut array = env.create_array(1)?;
+        array.set(0, seed)?;
+        let value = Rc::new(RefCell::new(Some(ClosureHandle::from_js_value(
+            env, &array,
+        )?)));
+        let storage = Self {
+            identity: codec.identity(),
+            state: ReferenceState::Callback(Rc::clone(&value)),
+        };
+        Ok((
+            External::new(storage).into_unknown(env)?,
+            CallbackReference { value },
+        ))
+    }
+}
+
+/// Compiles the ABI and ownership contract for an owned non-scalar reference transaction.
+#[napi(catch_unwind)]
+pub fn compile_reference(
+    inner_descriptor: Descriptor,
+    inout: bool,
+) -> Result<External<ReferenceDescriptor>> {
+    let inner = inner_descriptor.into_codec()?;
+    if inner.is_scalar() {
+        return Err(Error::from_reason(
+            "Scalar references use allocated ABI storage",
+        ));
+    }
+    Ok(External::new(ReferenceDescriptor {
+        codec: RefCodec::new(inner, inout)?,
+    }))
+}
+
+/// Owns a normalized reference seed and explicit ABI mode. The matching call prepares storage
+/// within its lease scope, preserving synchronous buffer views and owning asynchronous buffers.
+#[napi(catch_unwind)]
+pub fn create_reference_storage(
+    env: Env,
+    descriptor: &External<ReferenceDescriptor>,
+    seed: Unknown<'_>,
+    mode: ReferenceMode,
+    capacity: Option<BigInt>,
+) -> Result<External<ReferenceStorage>> {
+    let _errors = CallbackErrorScope::open(env);
+    let _leases = crate::handle::LeaseScope::open();
+    let capacity = capacity
+        .map(|capacity| {
+            let (negative, length, lossless) = capacity.get_u64();
+            anyhow::ensure!(
+                !negative && lossless,
+                "Reference capacity must fit an unsigned platform size"
+            );
+            let length = usize::try_from(length)?;
+            crate::value::checked_array_length(length)?;
+            Ok(length)
+        })
+        .transpose();
+    let capacity = native_result("reference capacity", capacity)?;
+    native_result("reference storage", descriptor.codec.validate_mode(mode))?;
+    let mut owners = Vec::new();
+    native_result(
+        "reference owners",
+        collect_seed_owners(descriptor.codec.inner_codec(), seed, &mut owners, true),
+    )?;
+    let owners = owners
+        .into_iter()
+        .map(|owner| owner.retain_owned().unwrap_or(owner))
+        .collect();
+    let request = ReferenceRequest {
+        codec: descriptor.codec.clone(),
+        seed: ReferenceSeed::new(&env, seed)?,
+        mode,
+        capacity,
+        owners,
+    };
+    Ok(External::new(ReferenceStorage {
+        identity: descriptor.codec.identity(),
+        state: ReferenceState::Prepared(RefCell::new(Some(request))),
+    }))
+}
+
+/// Reads normalized callback reference storage while its invocation remains active.
+#[napi(catch_unwind)]
+pub fn read_reference_storage<'e>(
+    env: &'e Env,
+    storage: &External<ReferenceStorage>,
+) -> Result<Unknown<'e>> {
+    let ReferenceState::Callback(value) = &storage.state else {
+        return Err(Error::from_reason(
+            "Only an active callback reference can be read",
+        ));
+    };
+    read_callback_value(env, value)
+}
+
+/// Replaces the normalized callback output, which is committed to native storage after the
+/// JavaScript callback returns successfully.
+#[napi(catch_unwind)]
+pub fn write_reference_storage(
+    env: Env,
+    storage: &External<ReferenceStorage>,
+    value: Unknown<'_>,
+) -> Result<()> {
+    let ReferenceState::Callback(held) = &storage.state else {
+        return Err(Error::from_reason(
+            "Only an active callback reference can be written",
+        ));
+    };
+    let held = held.borrow();
+    let held = held
+        .as_ref()
+        .ok_or_else(|| Error::from_reason("The reference storage borrow has ended"))?;
+    let mut array: Array<'_> = held.get(&env)?;
+    array.set(0, value)
+}
+
+fn collect_seed_owners(
+    codec: &Codec,
+    seed: Unknown<'_>,
+    owners: &mut Vec<crate::handle::Handle>,
+    include_transferred: bool,
+) -> anyhow::Result<()> {
+    if matches!(seed.get_type()?, ValueType::Null | ValueType::Undefined) {
+        return Ok(());
+    }
+    if codec.is_handle_backed() {
+        let handle: &External<crate::handle::Handle> = crate::value::read_napi(seed)?;
+        if include_transferred || codec.transfer().is_borrowed() {
+            owners.push((**handle).clone());
+        }
+        return Ok(());
+    }
+    match codec {
+        Codec::Array(array) if seed.is_array()? => {
+            let values: Array<'_> = crate::value::read_napi(seed)?;
+            for index in 0..values.len() {
+                if let Some(value) = values.get(index)? {
+                    collect_seed_owners(&array.item_codec, value, owners, include_transferred)?;
+                }
+            }
+        }
+        Codec::HashTable(table) => {
+            let values: Array<'_> = crate::value::read_napi(seed)?;
+            for index in 0..values.len() {
+                if let Some(entry) = values.get::<Array<'_>>(index)? {
+                    if let Some(key) = entry.get(0)? {
+                        collect_seed_owners(&table.key_codec, key, owners, include_transferred)?;
+                    }
+                    if let Some(value) = entry.get(1)? {
+                        collect_seed_owners(
+                            &table.value_codec,
+                            value,
+                            owners,
+                            include_transferred,
+                        )?;
+                    }
+                }
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}

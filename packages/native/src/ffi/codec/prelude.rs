@@ -4,9 +4,7 @@ pub(super) use std::ffi::c_void;
 pub(super) use napi::bindgen_prelude::*;
 pub(super) use napi::{Env, Status, ValueType};
 
-pub(super) use super::{
-    Decoder, Encoder, IntegerBacked, Ownership, PtrWriter, ReadCtx, ReadSource, SlotInit,
-};
+pub(super) use super::{Decoder, Encoder, Ownership, PtrWriter, ReadCtx, ReadSource, SlotInit};
 use crate::handle::Handle;
 use crate::host::error_reporter::ReportErr as _;
 pub(super) use crate::{ffi, value};
@@ -23,6 +21,27 @@ pub(super) fn reject_callback_return(env: Env, error: &anyhow::Error) {
         env,
         Error::new(Status::InvalidArg, error.to_string()),
     );
+}
+
+fn callback_exception_pending() -> bool {
+    if crate::host::callback_error::CallbackErrorScope::has_error() {
+        return true;
+    }
+    crate::host::node_env::try_env().is_some_and(|env| {
+        let mut pending = false;
+        let status = unsafe { sys::napi_is_exception_pending(env.raw(), &raw mut pending) };
+        status == sys::Status::napi_ok && pending
+    })
+}
+
+pub(super) fn callback_acquisition<T>(
+    result: anyhow::Result<T>,
+    context: &'static str,
+) -> Option<T> {
+    if result.is_err() && callback_exception_pending() {
+        return None;
+    }
+    result.report_err(context)
 }
 
 macro_rules! reject_return_codec {
@@ -99,7 +118,7 @@ macro_rules! write_return_transferred {
             value: &::std::result::Result<::napi::bindgen_prelude::Unknown<'_>, ()>,
         ) {
             self.write_return_with_ownership(env, ret, value, self.ownership, |ptr| {
-                $crate::host::error_reporter::ReportErr::report_err(
+                $crate::ffi::codec::prelude::callback_acquisition(
                     unsafe { self.ref_for_transfer(ptr) },
                     $label,
                 )
@@ -258,10 +277,11 @@ where
     let Ok(unknown) = value else {
         return std::ptr::null_mut();
     };
-    encode(*unknown)
-        .and_then(|stash| transfer_container(stash, context))
-        .report_err(context)
-        .unwrap_or(std::ptr::null_mut())
+    callback_acquisition(
+        encode(*unknown).and_then(|stash| transfer_container(stash, context)),
+        context,
+    )
+    .unwrap_or(std::ptr::null_mut())
 }
 
 pub(super) fn transfer_container(stash: ffi::Stash, context: &str) -> anyhow::Result<*mut c_void> {

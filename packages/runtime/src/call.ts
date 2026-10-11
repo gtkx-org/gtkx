@@ -1,4 +1,4 @@
-import { type CallDescriptor, type ExternalObject, call as nativeCall, type Ref } from "./native.js";
+import { type BoundCall, call as nativeCall, type Ref } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import type { StorageHandle } from "./output-storage.js";
 
@@ -15,7 +15,7 @@ const isCompletionCallback = (descriptor: Descriptor): boolean =>
     descriptor.argDescriptors[1]?.kind === "object";
 
 const createCall = (
-    descriptor: ExternalObject<CallDescriptor>,
+    descriptor: BoundCall,
     argDescriptors: Descriptor[],
     returnDescriptor: Descriptor,
 ): ((values: unknown[]) => unknown) => {

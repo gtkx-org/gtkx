@@ -1,4 +1,4 @@
-import { alloc, type ExternalObject, type Handle, read, t, write } from "@gtkx/runtime";
+import { alloc, type ExternalObject, getHandle, type Handle, read, t, write } from "@gtkx/runtime";
 import { expect, test } from "vitest";
 
 test.each([false, true])("callbacks sort native storage with user data set to %s", (hasUserData) => {
@@ -85,4 +85,104 @@ test.each([
     const callback = t.callback([t.buffer], t.void, { ...options, userDataIndex: 0 });
 
     expect(() => t.bind("libgtkx-missing.so", "missing", [callback], t.void)).toThrow(/callback.*position/i);
+});
+
+test.each([false, true])(
+    "variadic fixed-prefix callbacks preserve hidden arguments with explicit positions %s",
+    (explicit) => {
+        class AsyncResult {}
+
+        const callback = t.callback(
+            [t.struct(), t.struct("borrowed", { wrapperClass: AsyncResult }), t.buffer],
+            t.void,
+            {
+                hasUserData: true,
+                userDataIndex: 2,
+                scope: "async",
+                ...(explicit ? { userDataArgIndex: 2 } : {}),
+            },
+        );
+        const create = t.fn("libgio-2.0.so.0", "g_simple_async_result_new_error", {
+            args: [
+                { type: t.struct() },
+                { type: callback },
+                { type: t.uint32 },
+                { type: t.int32 },
+                { type: t.string() },
+                { type: t.int32 },
+                { type: t.float64 },
+            ],
+            returns: t.struct("full", {
+                sharedLibrary: "libgobject-2.0.so.0",
+                freeFnName: "g_object_unref",
+                wrapperClass: AsyncResult,
+            }),
+            fixedArgCount: 5,
+        });
+        const complete = t.bind("libgio-2.0.so.0", "g_simple_async_result_complete", [t.struct()], t.void);
+        const errorType = t.struct("full", { sharedLibrary: "libglib-2.0.so.0", freeFnName: "g_error_free" });
+        const propagate = t.bind(
+            "libgio-2.0.so.0",
+            "g_simple_async_result_propagate_error",
+            [t.struct(), t.ref(errorType)],
+            t.boolean,
+        );
+        const quark = t.bind("libglib-2.0.so.0", "g_quark_from_string", [t.string()], t.uint32);
+        const messages: unknown[] = [];
+        const result = create(
+            null,
+            (_source: unknown, completed: AsyncResult) => {
+                const error: { value: ExternalObject<Handle> | null } = { value: null };
+                if (propagate(getHandle(completed), error) && error.value !== null) {
+                    messages.push(read(error.value, t.string(), 8));
+                }
+            },
+            quark("gtkx-runtime-variadic-callback"),
+            1,
+            "%d:%.2f",
+            7,
+            12.75,
+        );
+
+        expect(messages).toEqual([]);
+        expect(result).toBeInstanceOf(AsyncResult);
+        if (result instanceof AsyncResult) {
+            complete(getHandle(result));
+        }
+        expect(messages).toEqual(["7:12.75"]);
+    },
+);
+
+test.each([
+    { fixedArgCount: 1, userDataArgIndex: 2, hasDestroy: false },
+    { fixedArgCount: 1, userDataArgIndex: 0, hasDestroy: false },
+    { fixedArgCount: 1, destroyArgIndex: 3, hasDestroy: true },
+    { fixedArgCount: 1, destroyArgIndex: 0, hasDestroy: true },
+])("callback arguments cannot cross the variadic boundary: %j", ({ fixedArgCount, ...options }) => {
+    const callback = t.callback([t.buffer], t.void, { ...options, hasUserData: true, userDataIndex: 0 });
+    const movesIntoFixed = options.userDataArgIndex === 0 || options.destroyArgIndex === 0;
+    const descriptors = movesIntoFixed ? [t.int32, callback] : [callback, t.int32];
+
+    expect(() =>
+        t.fn("libgtkx-missing.so", "missing", {
+            args: descriptors.map((type) => ({ type })),
+            returns: t.void,
+            fixedArgCount,
+        }),
+    ).toThrow(/callback.*fixed\/variadic boundary/i);
+});
+
+test.each([
+    { fixedArgCount: 2, userDataArgIndex: 0 },
+    { fixedArgCount: 1, userDataArgIndex: 1 },
+])("callback arguments can reorder within the same variadic region: %j", ({ fixedArgCount, userDataArgIndex }) => {
+    const callback = t.callback([t.buffer], t.void, { hasUserData: true, userDataIndex: 0, userDataArgIndex });
+
+    expect(() =>
+        t.fn("libgtkx-missing.so", "missing", {
+            args: [{ type: t.int32 }, { type: callback }, { type: t.int32 }],
+            returns: t.void,
+            fixedArgCount,
+        }),
+    ).not.toThrow();
 });

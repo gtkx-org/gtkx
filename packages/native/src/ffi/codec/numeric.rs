@@ -3,10 +3,6 @@ use libffi::middle as libffi;
 
 use super::prelude::*;
 
-const MAX_SAFE_INTEGER_I128: i128 = 9_007_199_254_740_992;
-
-const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_992.0;
-
 trait NumberCast: Copy {
     fn to_f64(self) -> f64;
 
@@ -28,25 +24,7 @@ macro_rules! impl_number_cast {
     };
 }
 
-macro_rules! impl_number_cast_64 {
-    ($($ty:ty),+ $(,)?) => {
-        $(impl NumberCast for $ty {
-            #[allow(clippy::cast_precision_loss)]
-            fn to_f64(self) -> f64 {
-                self as f64
-            }
-
-            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            fn from_f64(value: f64) -> Self {
-                value as Self
-            }
-        })+
-    };
-}
-
 impl_number_cast!(u8, i8, u16, i16, u32, i32);
-
-impl_number_cast_64!(u64, i64);
 
 #[allow(clippy::cast_possible_truncation)]
 fn narrow_f32(value: f64) -> f32 {
@@ -61,8 +39,6 @@ pub enum IntegerCodec {
     I16,
     U32,
     I32,
-    U64,
-    I64,
 }
 
 macro_rules! impl_integer_codec_dispatch {
@@ -161,8 +137,6 @@ impl_integer_codec_dispatch! {
     I16: i16,
     U32: u32,
     I32: i32,
-    U64: u64,
-    I64: i64,
 }
 
 macro_rules! impl_numeric_codecs {
@@ -240,22 +214,12 @@ macro_rules! impl_numeric_codecs {
                 _init: $crate::ffi::codec::SlotInit,
             ) -> anyhow::Result<Option<$crate::ffi::PendingTransfer>> {
                 let n = <$kind>::number_from_value(value)?;
-                self.check_range(n)?;
+                self.checked_to_stash(n)?;
                 unsafe { self.write_ptr(slot.as_ptr().cast::<u8>(), n) };
                 Ok(None)
             }
         }
     };
-}
-
-#[allow(clippy::cast_precision_loss)]
-pub fn lossless_f64(value: i128, context: &str) -> anyhow::Result<f64> {
-    if !(-MAX_SAFE_INTEGER_I128..=MAX_SAFE_INTEGER_I128).contains(&value) {
-        bail!(
-            "{context}: value {value} exceeds the 2^53 range JavaScript numbers represent exactly; use a bigint codec (t.bigint64/t.biguint64) for this slot"
-        );
-    }
-    Ok(value as f64)
 }
 
 fn coerce_number(value: Unknown<'_>, label: &str) -> anyhow::Result<f64> {
@@ -272,7 +236,6 @@ impl IntegerCodec {
             Self::U8 | Self::I8 => 1,
             Self::U16 | Self::I16 => 2,
             Self::U32 | Self::I32 => 4,
-            Self::U64 | Self::I64 => 8,
         }
     }
 
@@ -284,8 +247,6 @@ impl IntegerCodec {
             Self::I16 => "i16",
             Self::U32 => "u32",
             Self::I32 => "i32",
-            Self::U64 => "u64",
-            Self::I64 => "i64",
         }
     }
 
@@ -304,8 +265,6 @@ impl IntegerCodec {
             Self::U16 => (0.0, f64::from(u16::MAX)),
             Self::I32 => (f64::from(i32::MIN), f64::from(i32::MAX)),
             Self::U32 => (0.0, f64::from(u32::MAX)),
-            Self::I64 => (-MAX_SAFE_INTEGER, MAX_SAFE_INTEGER),
-            Self::U64 => (0.0, MAX_SAFE_INTEGER),
         };
         if value < min || value > max {
             bail!("Value {value} is out of range for {name} [{min}, {max}]");
@@ -329,36 +288,17 @@ impl IntegerCodec {
 
     /// # Safety
     ///
-    /// `ptr` must point at `length * self.byte_size()` initialized, readable bytes that stay
-    /// valid for the whole call. Alignment is not required: every element is read with
-    /// `read_unaligned`.
+    /// `ptr` must point at `length * self.byte_size()` initialized, readable bytes.
     pub unsafe fn checked_read_slice(
         self,
         ptr: *const u8,
         length: usize,
-        context: &str,
+        _context: &str,
     ) -> anyhow::Result<Vec<f64>> {
-        unsafe {
-            match self {
-                Self::I64 | Self::U64 => (0..length)
-                    .map(|i| self.checked_read_ptr(ptr.add(i * self.byte_size()), context))
-                    .collect(),
-                other => Ok(other.read_slice(ptr, length)),
-            }
-        }
+        Ok(unsafe { self.read_slice(ptr, length) })
     }
 
-    unsafe fn checked_read_ptr(self, ptr: *const u8, context: &str) -> anyhow::Result<f64> {
-        unsafe {
-            match self {
-                Self::I64 => lossless_f64(i128::from(ptr.cast::<i64>().read_unaligned()), context),
-                Self::U64 => lossless_f64(i128::from(ptr.cast::<u64>().read_unaligned()), context),
-                other => Ok(other.read_ptr(ptr)),
-            }
-        }
-    }
-
-    pub fn number_from_ptr_raw(self, ptr: *mut c_void, context: &str) -> anyhow::Result<f64> {
+    pub fn number_from_ptr_raw(self, ptr: *mut c_void, _context: &str) -> anyhow::Result<f64> {
         match self {
             #[allow(clippy::cast_precision_loss)]
             Self::I8 | Self::I16 => Ok(ptr as isize as f64),
@@ -366,8 +306,6 @@ impl IntegerCodec {
             Self::U8 | Self::U16 => Ok(ptr as usize as f64),
             Self::I32 => Ok(f64::from(ptr as i32)),
             Self::U32 => Ok(f64::from(ptr as u32)),
-            Self::I64 => lossless_f64(i128::from(ptr as i64), context),
-            Self::U64 => lossless_f64(i128::from(ptr as u64), context),
         }
     }
 
@@ -387,7 +325,6 @@ impl IntegerCodec {
                 Self::I32 => ret
                     .cast::<i64>()
                     .write_unaligned(i64::from(i32::from_f64(value))),
-                Self::I64 => ret.cast::<i64>().write_unaligned(i64::from_f64(value)),
                 Self::U8 => ret
                     .cast::<u64>()
                     .write_unaligned(u64::from(u8::from_f64(value))),
@@ -397,7 +334,6 @@ impl IntegerCodec {
                 Self::U32 => ret
                     .cast::<u64>()
                     .write_unaligned(u64::from(u32::from_f64(value))),
-                Self::U64 => ret.cast::<u64>().write_unaligned(u64::from_f64(value)),
             }
         }
     }
@@ -407,7 +343,10 @@ impl_numeric_codecs!(
     IntegerCodec,
     "integer",
     value: |codec, ptr, context| codec.number_from_ptr_raw(ptr, context)?,
-    slot: |codec, ptr, context| unsafe { codec.checked_read_ptr(ptr.cast::<u8>(), context)? },
+    slot: |codec, ptr, context| {
+        let _ = context;
+        unsafe { codec.read_ptr(ptr.cast::<u8>()) }
+    },
 );
 
 #[derive(Debug, Clone, Copy)]
@@ -452,26 +391,7 @@ impl FloatCodec {
         }
     }
 
-    fn name(self) -> &'static str {
-        match self {
-            Self::F32 => "f32",
-            Self::F64 => "f64",
-        }
-    }
-
-    pub(super) fn check_range(self, value: f64) -> anyhow::Result<()> {
-        if let Self::F32 = self
-            && value.is_finite()
-            && (value > f64::from(f32::MAX) || value < -f64::from(f32::MAX))
-        {
-            let name = self.name();
-            bail!("Value {value} is out of range for {name}");
-        }
-        Ok(())
-    }
-
     pub fn checked_to_stash(self, value: f64) -> anyhow::Result<ffi::Stash> {
-        self.check_range(value)?;
         Ok(match self {
             Self::F32 => ffi::Stash::F32(narrow_f32(value)),
             Self::F64 => ffi::Stash::F64(value),
@@ -482,9 +402,7 @@ impl FloatCodec {
         match self {
             Self::F32 => {
                 let mut out = Vec::with_capacity(values.len());
-                for (i, &v) in values.iter().enumerate() {
-                    self.check_range(v)
-                        .map_err(|e| anyhow::anyhow!("Array element {i}: {e}"))?;
+                for &v in values {
                     out.push(narrow_f32(v));
                 }
                 Ok(out.into())

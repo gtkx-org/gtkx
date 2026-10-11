@@ -17,16 +17,12 @@ enum Flow {
 fn inline_record_capability(codec: &Codec) -> InlineRecordCapability {
     match codec {
         Codec::Boxed(boxed) if boxed.value_safe => InlineRecordCapability::ValueSafe,
-        Codec::Boxed(boxed)
-            if boxed.shared_library.is_some() && boxed.get_type_fn_name.is_some() =>
-        {
+        Codec::Boxed(boxed) if boxed.type_source == super::BoxedTypeSource::TypeGetter => {
             InlineRecordCapability::Ownable
         }
         Codec::Struct(struct_) if struct_.value_safe => InlineRecordCapability::ValueSafe,
         Codec::Struct(struct_)
-            if struct_.shared_library.is_some()
-                && struct_.copy_fn_name.is_some()
-                && struct_.free_fn_name.is_some() =>
+            if struct_.copy_resolver.is_some() && struct_.free_resolver.is_some() =>
         {
             InlineRecordCapability::Ownable
         }

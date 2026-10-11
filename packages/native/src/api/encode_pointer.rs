@@ -9,6 +9,7 @@ use crate::ffi::Stash;
 use crate::ffi::codec::{CallbackScope, Codec, Encoder as _};
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
+use crate::host::callback_error::CallbackErrorScope;
 
 unsafe extern "C" fn release_encoded(ptr: *mut c_void) {
     unsafe { drop(Box::from_raw(ptr.cast::<Stash>())) };
@@ -24,6 +25,7 @@ pub fn encode_pointer(
     descriptor: Descriptor,
     value: Unknown<'_>,
 ) -> Result<External<Handle>> {
+    let _errors = CallbackErrorScope::open(env);
     let codec = descriptor.into_codec()?;
     let is_callback = matches!(&codec, Codec::Callback(callback) if callback.scope == CallbackScope::Call && !callback.has_user_data && !callback.has_destroy);
     if !is_callback

@@ -41,3 +41,26 @@ test("wrappers retain their assigned handle across field operations", () => {
     expect(read(storage, t.int32, 0)).toBe(17);
     expect(() => getHandle({})).toThrow();
 });
+
+test("function output shaping shares the compiled reference storage contract", () => {
+    const parse = t.fn("libc.so.6", "strtol", {
+        args: [{ type: t.string() }, { type: t.string(), direction: "out" }, { type: t.int32 }],
+        returns: t.int64,
+    });
+
+    expect(parse("123tail", 10)).toEqual([123, "tail"]);
+    expect(parse("42rest", 10)).toEqual([42, "rest"]);
+});
+
+test("byte-array output preserves its Uint8Array representation", () => {
+    const duplicate = t.bind(
+        "libglib-2.0.so.0",
+        "g_memdup2",
+        [t.fixedArray(t.uint8, 3), t.biguint64],
+        t.fixedArray(t.uint8, 3, "full", { isBytes: true }),
+    );
+
+    const copied = duplicate(new Uint8Array([1, 0, 255]), 3n);
+    expect(copied).toBeInstanceOf(Uint8Array);
+    expect(copied).toEqual(new Uint8Array([1, 0, 255]));
+});

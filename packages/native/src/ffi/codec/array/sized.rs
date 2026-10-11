@@ -61,15 +61,10 @@ impl ArrayContainer for SizedArrayCodec {
 }
 
 impl ArrayCodec {
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    fn validated_size(size: f64, param_index: usize) -> anyhow::Result<usize> {
-        const MAX_EXACT_INTEGER: f64 = 9_007_199_254_740_992.0;
-
-        if !(0.0..=MAX_EXACT_INTEGER).contains(&size) {
-            bail!("Array size parameter at index {param_index} has invalid value: {size}");
-        }
-
-        Ok(size as usize)
+    fn validated_size(size: i128, param_index: usize) -> anyhow::Result<usize> {
+        usize::try_from(size).map_err(|_| {
+            anyhow::anyhow!("Array size parameter at index {param_index} has invalid value: {size}")
+        })
     }
 
     pub(super) fn size_from_args(
@@ -77,37 +72,42 @@ impl ArrayCodec {
         arg_codecs: &[Codec],
         size_param_index: usize,
     ) -> anyhow::Result<usize> {
-        if size_param_index >= ffi_args.len() {
+        let Some(ffi_arg) = ffi_args.get(size_param_index) else {
             bail!(
                 "Size parameter index {} is out of bounds (args count: {})",
                 size_param_index,
                 ffi_args.len()
             );
-        }
+        };
+        let arg_codec = arg_codecs.get(size_param_index).ok_or_else(|| {
+            anyhow::anyhow!("Size parameter index {size_param_index} has no argument codec")
+        })?;
 
-        let ffi_arg = &ffi_args[size_param_index];
-        let arg_codec = &arg_codecs[size_param_index];
-
-        if let Codec::Ref(ref_codec) = arg_codec
-            && let Codec::Integer(integer_codec) = ref_codec.inner_codec()
-        {
-            match ffi_arg {
-                ffi::Stash::Storage(storage) => {
-                    let size = unsafe { integer_codec.read_ptr(storage.ptr() as *const u8) };
+        if let Codec::Ref(ref_codec) = arg_codec {
+            let ptr = match ffi_arg {
+                ffi::Stash::Storage(storage) => storage.ptr(),
+                ffi::Stash::Ptr(ptr) => *ptr,
+                _ => std::ptr::null_mut(),
+            };
+            if !ptr.is_null() {
+                let size = match ref_codec.inner_codec() {
+                    Codec::Integer(kind) => Some(
+                        kind.to_stash(unsafe { kind.read_ptr(ptr.cast::<u8>()) })
+                            .to_integer()?,
+                    ),
+                    Codec::BigInt(kind) => {
+                        Some(unsafe { kind.read_stash(ptr.cast::<u8>()) }.to_integer()?)
+                    }
+                    _ => None,
+                };
+                if let Some(size) = size {
                     return Self::validated_size(size, size_param_index);
                 }
-                ffi::Stash::Ptr(ptr) if !ptr.is_null() => {
-                    let size = unsafe { integer_codec.read_ptr(*ptr as *const u8) };
-                    return Self::validated_size(size, size_param_index);
-                }
-                _ => {}
             }
         }
 
-        if let Codec::Integer(_) = arg_codec
-            && let Ok(size) = ffi_arg.to_number()
-        {
-            return Self::validated_size(size, size_param_index);
+        if matches!(arg_codec, Codec::Integer(_) | Codec::BigInt(_)) {
+            return Self::validated_size(ffi_arg.to_integer()?, size_param_index);
         }
 
         bail!(

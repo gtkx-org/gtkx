@@ -3,12 +3,16 @@ use std::ffi::c_void;
 
 use glib::translate::IntoGlib as _;
 
-use crate::handle::UnrefFn;
+use crate::handle::{Handle, RecordLease, UnrefFn};
 
 pub struct StashStorage {
     ptr: *mut c_void,
     data: StashData,
     pending_transfer: Cell<Vec<PendingTransfer>>,
+    reference_owners: Vec<Handle>,
+    reference_leases: Vec<RecordLease>,
+    reference_seed: Option<std::rc::Rc<crate::api::reference::ReferenceSeed>>,
+    reference_extent: Option<usize>,
 }
 
 impl std::fmt::Debug for StashStorage {
@@ -194,7 +198,7 @@ pub fn build_list(ops: &ListOps, ptrs: &[*mut c_void]) -> *mut c_void {
 
 #[derive(Debug)]
 pub enum ListPayload {
-    Handles(Vec<crate::handle::Handle>),
+    Handles(Vec<Handle>),
     Strings {
         strings: Vec<std::ffi::CString>,
         items_duped: bool,
@@ -224,7 +228,7 @@ pub struct GPtrArrayData {
 #[derive(Debug)]
 pub enum StashData {
     Unit,
-    Handle(crate::handle::Handle),
+    Handle(Handle),
     U8Vec(Vec<u8>),
     I8Vec(Vec<i8>),
     U16Vec(Vec<u16>),
@@ -236,7 +240,7 @@ pub enum StashData {
     F32Vec(Vec<f32>),
     F64Vec(Vec<f64>),
     StringArray(Vec<std::ffi::CString>, Vec<*mut c_void>),
-    ObjectArray(Vec<crate::handle::Handle>, Vec<*mut c_void>),
+    ObjectArray(Vec<Handle>, Vec<*mut c_void>),
     NestedArray(Vec<super::Stash>, Vec<*mut c_void>),
     List(ListData),
     CString(std::ffi::CString),
@@ -297,7 +301,41 @@ impl StashStorage {
             ptr,
             data,
             pending_transfer: Cell::new(Vec::new()),
+            reference_owners: Vec::new(),
+            reference_leases: Vec::new(),
+            reference_seed: None,
+            reference_extent: None,
         }
+    }
+
+    pub(crate) fn with_reference_owner(
+        mut self,
+        owner: &Handle,
+        independent: bool,
+    ) -> anyhow::Result<Self> {
+        if let Some(lease) = owner.acquire_record_lease()? {
+            self.reference_leases.push(lease);
+        }
+        let retained = if independent {
+            owner.retain_owned()?
+        } else {
+            owner.clone()
+        };
+        self.reference_owners.push(retained);
+        Ok(self)
+    }
+
+    pub(crate) fn with_reference_seed(
+        mut self,
+        seed: std::rc::Rc<crate::api::reference::ReferenceSeed>,
+    ) -> Self {
+        self.reference_seed = Some(seed);
+        self
+    }
+
+    pub(crate) fn with_reference_extent(mut self, byte_len: usize) -> Self {
+        self.reference_extent = Some(byte_len);
+        self
     }
 
     pub fn unit(ptr: *mut c_void) -> Self {
@@ -352,7 +390,7 @@ impl StashStorage {
     pub fn owns_element_buffer(&self) -> bool {
         matches!(
             self.data,
-            StashData::Handle(_) | StashData::NestedArray(_, _)
+            StashData::Handle(_) | StashData::NestedArray(_, _) | StashData::PtrSlot(_, _)
         ) || self.byte_len().is_some()
     }
 
@@ -380,7 +418,7 @@ impl StashStorage {
             | StashData::GPtrArray(_)
             | StashData::GByteArray(_)
             | StashData::PtrSlot(_, _)
-            | StashData::HashTable(_) => None,
+            | StashData::HashTable(_) => self.reference_extent,
         }
     }
 }

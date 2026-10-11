@@ -34,6 +34,6 @@ test("type lookup retains the first loadable library fallback", () => {
     expect(resolveType(`libc.so.6,${library}`, "g_array_get_type")).toBe(TYPE_INVALID);
 });
 
-test("malformed symbol names fail instead of resolving as absent", () => {
-    expect(() => resolveType(library, "g_error_get_type\0suffix")).toThrow("Failed to find symbol");
+test.each(["\0suffix", "\0"])("malformed symbol suffix %j fails instead of resolving as absent", (suffix) => {
+    expect(() => resolveType(library, `g_error_get_type${suffix}`)).toThrow(/symbol.*NUL/i);
 });

@@ -6,6 +6,7 @@ use napi::bindgen_prelude::*;
 use crate::api::{handle_memory_range, native_result};
 use crate::ffi::codec::{Codec, Decoder as _, ReadCtx};
 use crate::handle::Handle;
+use crate::host::callback_error::CallbackErrorScope;
 use crate::value;
 
 fn decode_field<'e>(
@@ -22,6 +23,7 @@ pub(crate) fn read_field_at<'e>(
     field_codec: &Codec,
     offset: usize,
 ) -> Result<Unknown<'e>> {
+    let _errors = CallbackErrorScope::open(*env);
     let _leases = crate::handle::LeaseScope::open();
     let size = field_codec.field_size();
     let field_ptr = handle_memory_range(handle, offset, size.unwrap_or(0), "field read")?;

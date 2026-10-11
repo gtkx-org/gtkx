@@ -12,7 +12,8 @@ use std::sync::atomic::{AtomicBool, Ordering};
 pub use boxed::{Boxed, BoxedFreeFn};
 pub use fundamental::{Fundamental, RefFn, UnrefFn};
 use glib::prelude::{ObjectExt as _, ObjectType as _};
-pub(crate) use lease::LeaseScope;
+pub(crate) use lease::{ConversionLease, LeaseScope, RecordLease};
+use libloading::os::unix::Library;
 
 use crate::ffi::PendingTransfer;
 
@@ -165,7 +166,7 @@ enum HandleKind {
     Boxed(Boxed),
     Fundamental(Fundamental),
     Struct {
-        ptr: *mut c_void,
+        ptr: Cell<*mut c_void>,
         free_fn: Option<BoxedFreeFn>,
     },
     Borrowed(*mut c_void),
@@ -181,6 +182,7 @@ enum HandleKind {
     Function {
         ptr: *mut c_void,
         owner: Option<Handle>,
+        library: Option<Arc<Library>>,
         once: bool,
         lent: bool,
     },
@@ -195,6 +197,7 @@ struct HandleInner {
     fields: FieldStore,
     invalidated: Cell<bool>,
     allocated_bytes: Cell<Option<usize>>,
+    active_record_leases: Cell<usize>,
 }
 
 /// A shared reference to one native instance. Cloning shares the same instance, so a value that
@@ -235,6 +238,7 @@ impl From<HandleKind> for Handle {
                 fields: FieldStore::default(),
                 invalidated: Cell::new(false),
                 allocated_bytes: Cell::new(None),
+                active_record_leases: Cell::new(0),
             }),
         }
     }
@@ -263,6 +267,7 @@ impl Handle {
         let handle: Self = HandleKind::Function {
             ptr,
             owner,
+            library: None,
             once,
             lent,
         }
@@ -271,6 +276,20 @@ impl Handle {
             record_borrow(&handle);
         }
         handle
+    }
+
+    /// An executable address that retains the library exporting it independently of any
+    /// JavaScript library handle or compiled signature.
+    #[must_use]
+    pub fn library_function(ptr: *mut c_void, library: Arc<Library>) -> Self {
+        HandleKind::Function {
+            ptr,
+            owner: None,
+            library: Some(library),
+            once: false,
+            lent: false,
+        }
+        .into()
     }
 
     #[must_use]
@@ -290,6 +309,24 @@ impl Handle {
         };
         anyhow::ensure!(!ptr.is_null(), "{NULL_HANDLE}");
         Ok(ptr)
+    }
+
+    /// Validates a lifecycle operation whose address can be retained and invoked during native
+    /// destruction, independently of JavaScript execution or callback borrow scopes.
+    pub fn lifecycle_function_ptr(&self) -> anyhow::Result<*mut c_void> {
+        anyhow::ensure!(
+            matches!(
+                self.inner.kind,
+                HandleKind::Function {
+                    library: Some(_),
+                    once: false,
+                    lent: false,
+                    ..
+                }
+            ),
+            "A lifecycle operation requires a library-backed function handle"
+        );
+        self.function_ptr()
     }
 
     #[must_use]
@@ -331,12 +368,19 @@ impl Handle {
                 Self::field(&owner.retain_owned()?, *offset, self.allocated_bytes())
             }
             HandleKind::Pointer { owner, ptr } => Self::pointer(*ptr, &owner.retain_owned()?),
-            HandleKind::Function { owner, ptr, .. } => Self::function(
-                *ptr,
-                owner.as_ref().map(Handle::retain_owned).transpose()?,
-                false,
-                false,
-            ),
+            HandleKind::Function {
+                owner,
+                ptr,
+                library,
+                ..
+            } => HandleKind::Function {
+                ptr: *ptr,
+                owner: owner.as_ref().map(Handle::retain_owned).transpose()?,
+                library: library.clone(),
+                once: false,
+                lent: false,
+            }
+            .into(),
             _ => self.clone(),
         };
         Ok(retained)
@@ -369,7 +413,72 @@ impl Handle {
     /// struct declares no free function of its own.
     #[must_use]
     pub fn owned_struct_with_free_fn(ptr: *mut c_void, free_fn: Option<BoxedFreeFn>) -> Self {
-        HandleKind::Struct { ptr, free_fn }.into()
+        HandleKind::Struct {
+            ptr: Cell::new(ptr),
+            free_fn,
+        }
+        .into()
+    }
+
+    /// Moves a converted record into a native transfer transaction after validating its release
+    /// operation. Aliases of the returned handle expire together when ownership moves.
+    pub(crate) fn take_converted_struct(
+        &self,
+        expected_free: BoxedFreeFn,
+    ) -> anyhow::Result<*mut c_void> {
+        anyhow::ensure!(!self.is_invalidated(), "{INVALIDATED_HANDLE}");
+        anyhow::ensure!(
+            self.inner.active_record_leases.get() == 0,
+            "A record retained by an active native operation cannot transfer ownership"
+        );
+        let HandleKind::Struct { ptr, free_fn } = &self.inner.kind else {
+            anyhow::bail!("A record converter must return an owned struct handle");
+        };
+        anyhow::ensure!(
+            !ConversionLease::is_active(ptr.get()),
+            "A record converter cannot consume its scoped source"
+        );
+        anyhow::ensure!(
+            free_fn.is_some_and(|free| std::ptr::fn_addr_eq(free, expected_free)),
+            "A converted record must have the declared native release operation"
+        );
+        anyhow::ensure!(
+            self.inner.fields.allocations.borrow().is_empty(),
+            "A converted record cannot transfer separately owned field storage"
+        );
+        anyhow::ensure!(!ptr.get().is_null(), "{NULL_HANDLE}");
+        let transferred = ptr.replace(std::ptr::null_mut());
+        self.invalidate();
+        Ok(transferred)
+    }
+
+    /// Releases a directly owned record immediately and expires every alias. Native destruction
+    /// remains responsible for the release operation, including separately owned field storage.
+    pub(crate) fn dispose_struct(&self) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            self.inner.active_record_leases.get() == 0,
+            "A record retained by an active native operation cannot be disposed"
+        );
+        let HandleKind::Struct { ptr, free_fn } = &self.inner.kind else {
+            anyhow::bail!("Only a directly owned struct handle can be disposed");
+        };
+        anyhow::ensure!(
+            !ConversionLease::is_active(ptr.get()),
+            "A scoped conversion source cannot be disposed"
+        );
+        let released = ptr.replace(std::ptr::null_mut());
+        self.invalidate();
+        if !released.is_null() {
+            unsafe {
+                match free_fn {
+                    Some(free) => free(released),
+                    None => glib::ffi::g_free(released),
+                }
+            }
+        }
+        let fields = std::mem::take(&mut *self.inner.fields.allocations.borrow_mut());
+        drop(fields);
+        Ok(())
     }
 
     /// Records how many bytes the handle's own allocation holds, which only the caller that
@@ -665,7 +774,23 @@ impl Handle {
         if let Some(object) = self.acquire_lease()? {
             LeaseScope::retain(object)?;
         }
+        if let Some(record) = self.acquire_record_lease()? {
+            LeaseScope::retain_record(record)?;
+        }
         Ok(())
+    }
+
+    pub(crate) fn acquire_record_lease(&self) -> anyhow::Result<Option<RecordLease>> {
+        anyhow::ensure!(!self.is_invalidated(), "{INVALIDATED_HANDLE}");
+        match &self.inner.kind {
+            HandleKind::Struct { .. } => Ok(Some(RecordLease::new(self))),
+            HandleKind::Field { owner, .. }
+            | HandleKind::Pointer { owner, .. }
+            | HandleKind::Function {
+                owner: Some(owner), ..
+            } => owner.acquire_record_lease(),
+            _ => Ok(None),
+        }
     }
 
     /// Releases the reference the handle owns, for a caller that wants the handle to stop holding
@@ -683,9 +808,8 @@ impl Handle {
         }
 
         match &self.inner.kind {
-            HandleKind::Object { ptr, .. } => ptr.get(),
-            HandleKind::Struct { ptr, .. }
-            | HandleKind::Borrowed(ptr)
+            HandleKind::Object { ptr, .. } | HandleKind::Struct { ptr, .. } => ptr.get(),
+            HandleKind::Borrowed(ptr)
             | HandleKind::Static(ptr)
             | HandleKind::Pointer { ptr, .. }
             | HandleKind::Function { ptr, .. }
@@ -731,13 +855,14 @@ impl Drop for HandleKind {
             }
             Self::CallbackData { ptr, destroy } => unsafe { destroy(*ptr) },
             Self::Struct { ptr, free_fn } => {
+                let ptr = ptr.get();
                 if ptr.is_null() {
                     return;
                 }
                 unsafe {
                     match free_fn {
-                        Some(free_fn) => free_fn(*ptr),
-                        None => glib::ffi::g_free(*ptr),
+                        Some(free_fn) => free_fn(ptr),
+                        None => glib::ffi::g_free(ptr),
                     }
                 }
             }

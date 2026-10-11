@@ -22,8 +22,6 @@ const scalarSizes: Partial<Record<Descriptor["kind"], number>> = {
     uint16: 2,
     int32: 4,
     uint32: 4,
-    int64: 8,
-    uint64: 8,
     bigint64: 8,
     biguint64: 8,
     float32: 4,

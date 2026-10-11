@@ -215,13 +215,28 @@ impl Stash {
             Self::U16(value) => Ok(f64::from(*value)),
             Self::I32(value) => Ok(f64::from(*value)),
             Self::U32(value) => Ok(f64::from(*value)),
-            Self::I64(value) => crate::ffi::codec::lossless_f64(i128::from(*value), "call result"),
-            Self::U64(value) => crate::ffi::codec::lossless_f64(i128::from(*value), "call result"),
+            Self::I64(_) | Self::U64(_) => {
+                anyhow::bail!("A 64-bit integer requires bigint transport")
+            }
             Self::F32(value) => Ok(f64::from(*value)),
             Self::F64(value) => Ok(*value),
             Self::Ptr(_) | Self::Inline(_) | Self::Storage(_) | Self::Callback(_) | Self::Void => {
                 anyhow::bail!("Expected a numeric Stash, got {self:?}")
             }
+        }
+    }
+
+    pub fn to_integer(&self) -> anyhow::Result<i128> {
+        match self {
+            Self::I8(value) => Ok(i128::from(*value)),
+            Self::U8(value) => Ok(i128::from(*value)),
+            Self::I16(value) => Ok(i128::from(*value)),
+            Self::U16(value) => Ok(i128::from(*value)),
+            Self::I32(value) => Ok(i128::from(*value)),
+            Self::U32(value) => Ok(i128::from(*value)),
+            Self::I64(value) => Ok(i128::from(*value)),
+            Self::U64(value) => Ok(i128::from(*value)),
+            _ => anyhow::bail!("Expected an integer Stash, got {self:?}"),
         }
     }
 

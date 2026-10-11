@@ -1,29 +1,39 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{LazyLock, Mutex, MutexGuard, OnceLock};
 
 use glib::{LogField, LogLevel, LogWriterOutput};
 use napi::Status;
-use napi::bindgen_prelude::FnArgs;
+use napi::bindgen_prelude::{BigInt, FnArgs};
 use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 
 use super::error_reporter;
 
 static INSTALLED: OnceLock<()> = OnceLock::new();
-static LISTENERS: LazyLock<Mutex<HashMap<u32, LogListener>>> =
-    LazyLock::new(|| Mutex::new(HashMap::new()));
-static NEXT_LISTENER_ID: AtomicU32 = AtomicU32::new(1);
+static SINKS: LazyLock<Mutex<LogSinks>> = LazyLock::new(|| Mutex::new(LogSinks::default()));
+
+#[derive(Default)]
+struct LogSinks {
+    sequence: u64,
+    environments: HashMap<usize, LogSink>,
+}
 
 #[derive(Clone)]
 pub(crate) struct LogRecord {
+    pub(crate) sequence: u64,
     pub(crate) level: String,
     pub(crate) domain: String,
     pub(crate) message: String,
 }
 
-pub(crate) type LogListener =
-    ThreadsafeFunction<LogRecord, (), FnArgs<(String, String, String)>, Status, false, true>;
+pub(crate) type LogSink = ThreadsafeFunction<
+    LogRecord,
+    (),
+    FnArgs<(BigInt, String, String, String)>,
+    Status,
+    false,
+    true,
+>;
 
 /// State of the trap on one thread: `armed` for as long as a native call is on that thread's
 /// stack, `caught` holding the first `G_LOG_LEVEL_CRITICAL` the callee logged while it was.
@@ -104,24 +114,61 @@ fn write_log(level: LogLevel, fields: &[LogField<'_>]) -> LogWriterOutput {
     glib::log_writer_default(level, fields)
 }
 
-pub(crate) fn add_listener(listener: LogListener) -> u32 {
-    let id = NEXT_LISTENER_ID.fetch_add(1, Ordering::Relaxed);
-    listeners().insert(id, listener);
-    id
+pub(crate) fn install_sink(environment: usize, sink: LogSink) -> napi::Result<()> {
+    let mut sinks = sinks();
+    if sinks.environments.contains_key(&environment) {
+        return Err(napi::Error::new(
+            Status::InvalidArg,
+            "A log sink is already installed for this environment",
+        ));
+    }
+    sinks.environments.insert(environment, sink);
+    Ok(())
 }
 
-pub(crate) fn remove_listener(id: u32) {
-    listeners().remove(&id);
+pub(crate) fn remove_sink(environment: usize) {
+    sinks().environments.remove(&environment);
 }
 
-fn listeners() -> MutexGuard<'static, HashMap<u32, LogListener>> {
-    LISTENERS
+pub(crate) fn subscription_fence(environment: usize) -> napi::Result<u64> {
+    let mut sinks = sinks();
+    sinks.sequence += 1;
+    let sequence = sinks.sequence;
+    let sink = sinks.environments.get(&environment).ok_or_else(|| {
+        napi::Error::new(
+            Status::InvalidArg,
+            "No log sink is installed for this environment",
+        )
+    })?;
+    let status = sink.call(
+        LogRecord {
+            sequence,
+            level: "fence".to_owned(),
+            domain: String::new(),
+            message: String::new(),
+        },
+        ThreadsafeFunctionCallMode::NonBlocking,
+    );
+    if status != Status::Ok {
+        return Err(napi::Error::new(
+            status,
+            "Failed to enqueue a log subscription fence",
+        ));
+    }
+    Ok(sequence)
+}
+
+fn sinks() -> MutexGuard<'static, LogSinks> {
+    SINKS
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 fn notify_listeners(level: LogLevel, fields: &[LogField<'_>]) {
+    let mut sinks = sinks();
+    sinks.sequence += 1;
     let record = LogRecord {
+        sequence: sinks.sequence,
         level: level_name(level).to_owned(),
         domain: field_value(fields, "GLIB_DOMAIN").unwrap_or("").to_owned(),
         message: field_value(fields, "MESSAGE")
@@ -129,8 +176,8 @@ fn notify_listeners(level: LogLevel, fields: &[LogField<'_>]) {
             .to_owned(),
     };
 
-    listeners().retain(|_, listener| {
-        listener.call(record.clone(), ThreadsafeFunctionCallMode::NonBlocking) == Status::Ok
+    sinks.environments.retain(|_, sink| {
+        sink.call(record.clone(), ThreadsafeFunctionCallMode::NonBlocking) == Status::Ok
     });
 }
 

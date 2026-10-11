@@ -6,6 +6,7 @@ use napi::bindgen_prelude::*;
 use crate::api::{handle_memory_range, native_result};
 use crate::ffi::codec::{Codec, PtrWriter as _, SlotInit};
 use crate::handle::Handle;
+use crate::host::callback_error::CallbackErrorScope;
 
 struct DisplacedField<'a> {
     fields: &'a crate::handle::FieldStore,
@@ -49,6 +50,7 @@ pub(crate) fn write_field_at<'e>(
     offset: usize,
     value: Unknown<'_>,
 ) -> Result<Unknown<'e>> {
+    let _errors = CallbackErrorScope::open(*env);
     let _leases = crate::handle::LeaseScope::open();
     let field_ptr = handle_memory_range(
         handle,

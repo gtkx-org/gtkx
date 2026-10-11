@@ -29,14 +29,14 @@ mod void;
 pub(crate) use admission::{validate_call_signature, validate_callback_signature};
 pub use array::{ArrayBounds, ArrayCodec, ArrayKind, ElementOwnership};
 pub use bigint::BigIntCodec;
-pub use boxed::BoxedCodec;
+pub use boxed::{BoxedCodec, BoxedTypeSource};
 pub use buffer::BufferCodec;
 pub use bytes::{BytesCodec, bytes_to_glib_full, read_bytes};
 pub use callback::{CallbackCodec, CallbackScope, DestroyNotifyKind};
 pub(crate) use callback::{CallbackReleasePolicy, validate_callback_outputs};
 pub use fundamental::FundamentalCodec;
 pub use hashtable::{HashTableCodec, HashTableEntryCodec};
-pub use numeric::{FloatCodec, IntegerCodec, lossless_f64};
+pub use numeric::{FloatCodec, IntegerCodec};
 pub use object::ObjectCodec;
 pub(crate) use object::{
     acquire_construction_ref, release_construction_ref, tracked_gobject_value,
@@ -44,35 +44,6 @@ pub(crate) use object::{
 pub use r#ref::RefCodec;
 pub use r#struct::StructCodec;
 pub use void::VoidCodec;
-
-pub(crate) trait IntegerBacked {
-    fn ffi_codec(&self) -> IntegerCodec;
-}
-
-macro_rules! forward_ffi_encoder {
-    () => {
-        fn libffi_type(&self) -> ::libffi::middle::Type {
-            $crate::ffi::codec::Encoder::libffi_type(&$crate::ffi::codec::IntegerBacked::ffi_codec(
-                self,
-            ))
-        }
-
-        fn call_cif(
-            &self,
-            cif: &::libffi::middle::Cif,
-            ptr: ::libffi::middle::CodePtr,
-            args: &[::libffi::middle::Arg<'_>],
-        ) -> ::anyhow::Result<$crate::ffi::Stash> {
-            $crate::ffi::codec::Encoder::call_cif(
-                &$crate::ffi::codec::IntegerBacked::ffi_codec(self),
-                cif,
-                ptr,
-                args,
-            )
-        }
-    };
-}
-pub(crate) use forward_ffi_encoder;
 
 /// Ownership transfer mode for a marshalled value: `borrowed` leaves the native side owning it,
 /// `full` transfers ownership (and the responsibility to free it) across the FFI boundary.
@@ -540,7 +511,7 @@ impl std::fmt::Display for Codec {
             Self::Object(_) => write!(f, "Object"),
             Self::Boxed(t) => write!(f, "Boxed({})", t.type_name),
             Self::Struct(t) => write!(f, "Struct({})", t.ownership),
-            Self::Fundamental(t) => write!(f, "Fundamental({})", t.unref_fn_name),
+            Self::Fundamental(t) => write!(f, "Fundamental({})", t.unref_label),
             Self::Array(_) => write!(f, "Array"),
             Self::Buffer(_) => write!(f, "Buffer"),
             Self::HashTable(_) => write!(f, "HashTable"),

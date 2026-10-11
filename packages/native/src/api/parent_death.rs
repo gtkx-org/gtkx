@@ -1,230 +1,213 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::io;
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
-use std::time::Duration;
+use std::sync::{Arc, Mutex, Weak};
+use std::thread::JoinHandle;
 
+use napi::Env;
+use napi::bindgen_prelude::External;
 use napi_derive::napi;
 
-struct ProcessStat {
-    parent: u32,
-    start_time: String,
-    state: u8,
+struct ActiveMonitor {
+    cancellation: OwnedFd,
+    thread: Option<JoinHandle<()>>,
 }
 
-enum OwnerMonitor {
-    PidFd(OwnedFd),
-    Proc { pid: u32, start_time: String },
+impl Drop for ActiveMonitor {
+    fn drop(&mut self) {
+        let event = 1_u64;
+        loop {
+            let result = unsafe {
+                libc::write(
+                    self.cancellation.as_raw_fd(),
+                    (&raw const event).cast(),
+                    size_of::<u64>(),
+                )
+            };
+            if result >= 0 || io::Error::last_os_error().kind() != io::ErrorKind::Interrupted {
+                break;
+            }
+        }
+        if let Some(thread) = self.thread.take() {
+            let _result = thread.join();
+        }
+    }
 }
 
-const PROC_POLL_INTERVAL: Duration = Duration::from_millis(50);
+#[derive(Default)]
+struct WatchState {
+    descriptor: Option<OwnedFd>,
+    active: Option<ActiveMonitor>,
+}
 
-fn process_stat(pid: u32) -> io::Result<ProcessStat> {
-    let stat = std::fs::read_to_string(format!("/proc/{pid}/stat"))?;
-    let mut fields = stat
-        .rsplit_once(") ")
-        .map(|(_, fields)| fields)
-        .map(str::split_whitespace)
-        .ok_or_else(|| io::Error::other(format!("Failed to identify process {pid}")))?;
-    let state = fields
-        .next()
-        .and_then(|value| value.as_bytes().first().copied())
-        .ok_or_else(|| io::Error::other(format!("Failed to identify process {pid}")))?;
-    let parent = fields
-        .next()
-        .ok_or_else(|| io::Error::other(format!("Failed to identify process {pid}")))?
-        .parse()
-        .map_err(|error| io::Error::other(format!("Failed to identify process {pid}: {error}")))?;
-    let start_time = fields
-        .nth(17)
-        .map(str::to_owned)
-        .ok_or_else(|| io::Error::other(format!("Failed to identify process {pid}")))?;
+pub struct ProcessWatch {
+    state: Arc<Mutex<WatchState>>,
+}
 
-    Ok(ProcessStat {
-        parent,
-        start_time,
-        state,
+thread_local! {
+    static PROCESS_WATCHES: RefCell<HashMap<usize, Vec<Weak<Mutex<WatchState>>>>> = RefCell::new(HashMap::new());
+}
+
+fn register_watch(env: &Env, state: &Arc<Mutex<WatchState>>) -> napi::Result<()> {
+    let key = env.raw() as usize;
+    PROCESS_WATCHES.with_borrow_mut(|environments| {
+        if let std::collections::hash_map::Entry::Vacant(entry) = environments.entry(key) {
+            env.add_env_cleanup_hook(key, |key| {
+                let watches = PROCESS_WATCHES.with_borrow_mut(|entries| entries.remove(&key));
+                for state in watches
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|weak| weak.upgrade())
+                {
+                    *state
+                        .lock()
+                        .unwrap_or_else(std::sync::PoisonError::into_inner) = WatchState::default();
+                }
+            })?;
+            entry.insert(Vec::new());
+        }
+        if let Some(watches) = environments.get_mut(&key) {
+            if watches.len() % 64 == 0 {
+                watches.retain(|weak| {
+                    weak.upgrade().is_some_and(|state| {
+                        let state = state
+                            .lock()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner);
+                        state.descriptor.is_some() || state.active.is_some()
+                    })
+                });
+            }
+            watches.push(Arc::downgrade(state));
+        }
+        Ok(())
     })
 }
 
-fn is_process_ancestor(ancestor: u32, process: u32) -> io::Result<bool> {
-    let mut current = process_stat(process)?.parent;
-
-    while current > 1 {
-        if current == ancestor {
-            return Ok(true);
-        }
-
-        current = process_stat(current)?.parent;
-    }
-
-    Ok(false)
+fn failure(error: &io::Error) -> napi::Error {
+    napi::Error::from_reason(error.to_string())
 }
 
-fn open_pidfd(pid: u32) -> io::Result<OwnedFd> {
-    let native_pid = libc::pid_t::try_from(pid)
-        .map_err(|error| io::Error::new(io::ErrorKind::InvalidInput, error))?;
-    let raw_descriptor = unsafe { libc::syscall(libc::SYS_pidfd_open, native_pid, 0) };
-
-    if raw_descriptor < 0 {
-        return Err(io::Error::last_os_error());
-    }
-
-    let descriptor = i32::try_from(raw_descriptor)
-        .map_err(|error| io::Error::new(io::ErrorKind::InvalidData, error))?;
-
-    Ok(unsafe { OwnedFd::from_raw_fd(descriptor) })
-}
-
-fn did_process_exit(descriptor: &OwnedFd, timeout: libc::c_int) -> io::Result<bool> {
-    let mut poll_descriptor = libc::pollfd {
+fn process_exited(descriptor: &OwnedFd) -> io::Result<bool> {
+    let mut descriptor = libc::pollfd {
         fd: descriptor.as_raw_fd(),
         events: libc::POLLIN,
         revents: 0,
     };
-
     loop {
-        let result = unsafe { libc::poll(&raw mut poll_descriptor, 1, timeout) };
-
-        if result > 0 {
-            if poll_descriptor.revents & (libc::POLLIN | libc::POLLHUP) != 0 {
-                return Ok(true);
-            }
-
-            return Err(io::Error::other("Process owner poll failed"));
+        let result = unsafe { libc::poll(&raw mut descriptor, 1, 0) };
+        if result >= 0 {
+            return Ok(result > 0);
         }
-
-        if result == 0 {
-            return Ok(false);
-        }
-
         let error = io::Error::last_os_error();
-
         if error.kind() != io::ErrorKind::Interrupted {
             return Err(error);
         }
     }
 }
 
-fn is_same_live_process(pid: u32, expected_start_time: &str) -> io::Result<bool> {
-    let current = process_stat(pid)?;
-
-    Ok(current.start_time == expected_start_time && !matches!(current.state, b'Z' | b'X' | b'x'))
-}
-
-fn is_pidfd_fallback(error: &io::Error) -> bool {
-    matches!(error.raw_os_error(), Some(libc::ENOSYS | libc::EPERM))
-}
-
-fn prepare_owner_monitor(
-    owner: u32,
-    expected_start_time: &str,
-) -> io::Result<Option<OwnerMonitor>> {
-    match open_pidfd(owner) {
-        Ok(descriptor) => {
-            if process_stat(owner)?.start_time != expected_start_time {
-                return Ok(None);
-            }
-
-            Ok(Some(OwnerMonitor::PidFd(descriptor)))
+fn monitor(descriptor: &OwnedFd, cancellation: &OwnedFd, target: libc::pid_t) {
+    let mut descriptors = [
+        libc::pollfd {
+            fd: descriptor.as_raw_fd(),
+            events: libc::POLLIN,
+            revents: 0,
+        },
+        libc::pollfd {
+            fd: cancellation.as_raw_fd(),
+            events: libc::POLLIN,
+            revents: 0,
+        },
+    ];
+    loop {
+        let result = unsafe { libc::poll(descriptors.as_mut_ptr(), 2, -1) };
+        if result < 0 && io::Error::last_os_error().kind() == io::ErrorKind::Interrupted {
+            continue;
         }
-        Err(error) if is_pidfd_fallback(&error) => {
-            if !is_same_live_process(owner, expected_start_time)? {
-                return Ok(None);
-            }
-
-            Ok(Some(OwnerMonitor::Proc {
-                pid: owner,
-                start_time: expected_start_time.to_owned(),
-            }))
+        if descriptors[1].revents == 0 {
+            unsafe { libc::kill(target, libc::SIGTERM) };
         }
-        Err(error) => Err(error),
+        return;
     }
 }
 
-fn did_owner_exit(monitor: &OwnerMonitor) -> io::Result<bool> {
-    match monitor {
-        OwnerMonitor::PidFd(descriptor) => did_process_exit(descriptor, 0),
-        OwnerMonitor::Proc { pid, start_time } => Ok(!is_same_live_process(*pid, start_time)?),
+/// Opens an owned pidfd without applying process ancestry or identity policy.
+/// Returns none when the kernel or sandbox does not permit pidfds.
+#[napi(catch_unwind)]
+pub fn open_process_watch(env: Env, pid: u32) -> napi::Result<Option<External<ProcessWatch>>> {
+    let pid =
+        libc::pid_t::try_from(pid).map_err(|error| napi::Error::from_reason(error.to_string()))?;
+    let descriptor = unsafe { libc::syscall(libc::SYS_pidfd_open, pid, 0) };
+    if descriptor < 0 {
+        let error = io::Error::last_os_error();
+        return if matches!(
+            error.raw_os_error(),
+            Some(libc::ENOSYS | libc::EPERM | libc::EACCES)
+        ) {
+            Ok(None)
+        } else {
+            Err(failure(&error))
+        };
     }
+    let descriptor =
+        i32::try_from(descriptor).map_err(|error| napi::Error::from_reason(error.to_string()))?;
+    let state = Arc::new(Mutex::new(WatchState {
+        descriptor: Some(unsafe { OwnedFd::from_raw_fd(descriptor) }),
+        active: None,
+    }));
+    register_watch(&env, &state)?;
+    Ok(Some(External::new(ProcessWatch { state })))
 }
 
-fn wait_for_owner_exit(monitor: OwnerMonitor) {
-    match monitor {
-        OwnerMonitor::PidFd(descriptor) => {
-            let _result = did_process_exit(&descriptor, -1);
-        }
-        OwnerMonitor::Proc { pid, start_time } => {
-            while is_same_live_process(pid, &start_time).unwrap_or(false) {
-                std::thread::sleep(PROC_POLL_INTERVAL);
-            }
-        }
+/// Starts independent SIGTERM delivery on process exit. A dead process returns false.
+/// Closing the watch, collecting it, or tearing down its environment cancels monitoring.
+#[napi(catch_unwind)]
+pub fn activate_process_watch(watch: &External<ProcessWatch>) -> napi::Result<bool> {
+    let mut state = watch
+        .state
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if state.active.is_some() {
+        return Err(napi::Error::from_reason("Process watch is already active"));
     }
-}
-
-fn monitor_process_group_owner(owner: u32, expected_start_time: &str) -> io::Result<bool> {
-    let current_process = std::process::id();
-    let current_group = unsafe { libc::getpgrp() };
-
-    if u32::try_from(current_group).ok() != Some(owner) {
+    let descriptor = state
+        .descriptor
+        .take()
+        .ok_or_else(|| napi::Error::from_reason("Process watch is closed"))?;
+    if process_exited(&descriptor).map_err(|error| failure(&error))? {
         return Ok(false);
     }
-
-    let Some(monitor) = prepare_owner_monitor(owner, expected_start_time)? else {
-        return Ok(false);
-    };
-
-    if !is_process_ancestor(owner, current_process)? {
-        return Ok(false);
+    let cancellation = unsafe { libc::eventfd(0, libc::EFD_CLOEXEC) };
+    if cancellation < 0 {
+        return Err(failure(&io::Error::last_os_error()));
     }
-
-    if did_owner_exit(&monitor)? {
-        return Ok(false);
-    }
-
-    let signal_target = libc::pid_t::try_from(current_process)
-        .map_err(|error| io::Error::new(io::ErrorKind::InvalidInput, error))?;
-
-    std::thread::Builder::new()
+    let cancellation = unsafe { OwnedFd::from_raw_fd(cancellation) };
+    let thread_cancellation = cancellation.try_clone().map_err(|error| failure(&error))?;
+    let target = unsafe { libc::getpid() };
+    let thread = std::thread::Builder::new()
         .name("gtkx-parent-death".to_owned())
-        .spawn(move || {
-            wait_for_owner_exit(monitor);
-
-            unsafe {
-                libc::kill(signal_target, libc::SIGTERM);
-            }
-        })?;
-
+        .spawn(move || monitor(&descriptor, &thread_cancellation, target))
+        .map_err(|error| failure(&error))?;
+    state.active = Some(ActiveMonitor {
+        cancellation,
+        thread: Some(thread),
+    });
     Ok(true)
 }
 
+/// Cancels monitoring and synchronously releases all owned descriptors. May be repeated.
 #[napi(catch_unwind)]
-pub fn arm_parent_death(
-    expected_parent: u32,
-    expected_process_group_owner: Option<u32>,
-    expected_process_group_owner_start_time: Option<String>,
-) -> napi::Result<bool> {
-    let armed = unsafe { libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM) };
+pub fn close_process_watch(watch: &External<ProcessWatch>) {
+    *watch
+        .state
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = WatchState::default();
+}
 
-    if armed != 0 {
-        return Err(napi::Error::from_reason(
-            io::Error::last_os_error().to_string(),
-        ));
+#[napi(catch_unwind)]
+pub fn arm_parent_death(expected_parent: u32) -> napi::Result<bool> {
+    if unsafe { libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM) } != 0 {
+        return Err(failure(&io::Error::last_os_error()));
     }
-
-    let parent = unsafe { libc::getppid() };
-
-    if parent < 0 || u32::try_from(parent).ok() != Some(expected_parent) {
-        return Ok(false);
-    }
-
-    match (
-        expected_process_group_owner,
-        expected_process_group_owner_start_time,
-    ) {
-        (None, None) => Ok(true),
-        (Some(owner), Some(start_time)) => monitor_process_group_owner(owner, &start_time)
-            .map_err(|error| napi::Error::from_reason(error.to_string())),
-        _ => Err(napi::Error::from_reason(
-            "Incomplete process group owner identity",
-        )),
-    }
+    Ok(u32::try_from(unsafe { libc::getppid() }).ok() == Some(expected_parent))
 }

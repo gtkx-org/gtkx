@@ -1,12 +1,17 @@
 export {
-    addLogListener,
     alloc,
-    bind,
+    attachCall,
     bindField,
-    bindFunctionPointer,
-    bindVfunc,
     call,
+    compileCall,
+    compileReference,
+    compileVfuncSlot,
     copy,
+    createFunctionResolver,
+    createRecordConverter,
+    createReferenceStorage,
+    createTypeResolver,
+    disposeHandle,
     getFundamentalIdentity,
     getMatchInfoBase,
     getMatchInfoType,
@@ -14,26 +19,30 @@ export {
     getTypeClass,
     getWrapper,
     init,
+    installLogSink,
+    logSubscriptionFence,
     keepAlive,
     newObject,
+    openLibrary,
     ownMatchInfo,
     quit,
     readField,
     readFunctionPointer,
+    readReferenceStorage,
+    readVfuncSlot,
     registerClass,
-    removeLogListener,
-    resolveFunction,
-    resolveFunctionOptional,
+    resolveSymbol,
     setWrapper,
     setWrapperBorrow,
     writeField,
+    writeReferenceStorage,
 } from "./index.js";
 export type {
     ArrayKind,
-    BindVfuncOptions,
     CallbackFailure,
     CallbackScope,
     CallDescriptor,
+    CallSignature,
     CallLayout,
     CallOutput,
     CallResult,
@@ -44,12 +53,21 @@ export type {
     ExternalObject,
     FieldDescriptor,
     FundamentalIdentity,
+    FunctionResolver,
     Handle,
+    LibraryHandle,
     Ownership,
+    RecordConverter,
+    ReferenceDescriptor,
+    ReferenceMode,
+    ReferenceStorage,
     Ref,
     RegisterClassInterface,
     RegisterClassOptions,
     RegisterClassVfunc,
+    TypeResolver,
+    VfuncSlot,
+    VfuncSlotOptions,
 } from "./index.js";
 
 declare module "./index.js" {
@@ -60,10 +78,25 @@ declare module "./index.js" {
      */
     export type Handle = { _opaque: "Handle" };
     /**
-     * An opaque, precompiled binding of a native function, produced by `bind` and passed to `call`.
-     * It stores the target symbol and argument/return marshalling; the symbol resolves on first call.
+     * An opaque binding of a compiled signature to an owned executable handle, passed to `call`.
      */
     export type CallDescriptor = { _opaque: "CallDescriptor" };
+    /** An ABI signature compiled independently of its executable target. */
+    export type CallSignature = { _opaque: "CallSignature" };
+    /** A reference to a shared library that remains loaded for the life of the process. */
+    export type LibraryHandle = { _opaque: "LibraryHandle" };
+    /** A validated vtable position whose implementation is acquired when read. */
+    export type VfuncSlot = { _opaque: "VfuncSlot" };
+    /** An environment-bound lazy GType resolver that retries unregistered types. */
+    export type TypeResolver = { _opaque: "TypeResolver" };
+    /** An environment-bound lazy resolver for a permanent native lifecycle function. */
+    export type FunctionResolver = { _opaque: "FunctionResolver" };
+    /** A synchronous record acquisition callback invoked while native source storage is leased. */
+    export type RecordConverter = { _opaque: "RecordConverter" };
+    /** A compiled non-scalar reference layout, paired with storage prepared for that layout. */
+    export type ReferenceDescriptor = { _opaque: "ReferenceDescriptor" };
+    /** An owned call transaction or a scoped callback output slot. */
+    export type ReferenceStorage = { _opaque: "ReferenceStorage" };
     /**
      * An opaque, precompiled binding of a struct field, produced by `bindField` and passed to
      * `readField` and `writeField`. It captures the marshalling of the field's bytes; the byte

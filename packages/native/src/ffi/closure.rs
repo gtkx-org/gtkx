@@ -13,6 +13,7 @@ use napi::bindgen_prelude::{
 use napi::{Env, Status, ValueType};
 use napi_derive::napi;
 
+use crate::api::reference::{CallbackReference, ReferenceStorage};
 use crate::ffi::Stash;
 use crate::ffi::codec::{
     CallbackCodec, CallbackScope, Codec, Decoder as _, DestroyNotifyKind, Encoder as _,
@@ -38,12 +39,6 @@ impl JsValuesTupleIntoVec for CallbackArgs {
     fn into_vec(self, _env: napi::sys::napi_env) -> napi::Result<Vec<napi::sys::napi_value>> {
         Ok(self.0)
     }
-}
-
-fn wrap_ref<'e>(env: &'e Env, value: Unknown<'e>) -> anyhow::Result<Unknown<'e>> {
-    let mut ref_obj: Object<'e> = Object::new(env)?;
-    ref_obj.set_named_property("value", value)?;
-    Ok(ref_obj.to_unknown())
 }
 
 /// The memory a C caller lends for the length of one invocation, as the handles the arguments were
@@ -331,6 +326,7 @@ struct ClosureArgs<'e> {
 
 struct RefSlot<'e> {
     obj: Unknown<'e>,
+    storage: Option<CallbackReference>,
     inner_ptr: *mut c_void,
     inner_codec: &'e Codec,
     init: SlotInit,
@@ -408,11 +404,15 @@ impl ClosureData {
                     Codec::Integer(kind) => {
                         kind.to_stash(unsafe { kind.read_ptr(arg_ptr.cast::<u8>()) })
                     }
+                    Codec::BigInt(kind) => unsafe { kind.read_stash(arg_ptr.cast::<u8>()) },
                     // A C caller hands an out or inout element count as a pointer to the count.
                     // The address is the sibling a length-bounded array reads its extent from, the
                     // same shape `Stash::Ptr` carries in the outgoing direction.
                     Codec::Ref(ref_codec)
-                        if matches!(ref_codec.inner_codec(), Codec::Integer(_)) =>
+                        if matches!(
+                            ref_codec.inner_codec(),
+                            Codec::Integer(_) | Codec::BigInt(_)
+                        ) =>
                     {
                         Stash::Ptr(unsafe { arg_ptr.cast::<*mut c_void>().read_unaligned() })
                     }
@@ -471,12 +471,15 @@ impl ClosureData {
             value::js_null(env)?
         };
 
+        let (obj, storage) = if inner_ptr.is_null() {
+            (value::js_null(env)?, None)
+        } else {
+            let (obj, storage) = ReferenceStorage::callback(env, ref_codec, seed)?;
+            (obj, Some(storage))
+        };
         Ok(RefSlot {
-            obj: if inner_ptr.is_null() {
-                value::js_null(env)?
-            } else {
-                wrap_ref(env, seed)?
-            },
+            obj,
+            storage,
             inner_ptr,
             inner_codec: ref_codec.inner_codec(),
             array_extent,
@@ -704,9 +707,12 @@ impl ClosureData {
             if slot.inner_ptr.is_null() {
                 continue;
             }
-            let Some(new_value) = read_ref_value(env, slot.obj) else {
+            let Some(storage) = &slot.storage else {
                 continue;
             };
+            let new_value = storage
+                .read(env)
+                .map_err(|error| CallbackError::Infrastructure(error.into()))?;
             let target = unsafe { crate::ffi::Slot::new(slot.inner_ptr) };
             let written = match slot.inner_codec {
                 Codec::Array(array) => array.write_value_with_extent(
@@ -894,11 +900,6 @@ fn seed_ref<'e>(
         Some(unknown) => Ok(unknown),
         None => Ok(value::js_null(env)?),
     }
-}
-
-fn read_ref_value<'e>(env: &'e Env, ref_obj: Unknown<'e>) -> Option<Unknown<'e>> {
-    let obj = Object::from_raw(env.raw(), ref_obj.raw());
-    obj.get_named_property::<Unknown<'_>>("value").ok()
 }
 
 unsafe extern "C" fn closure_entry(

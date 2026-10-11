@@ -1,1 +1,8 @@
-export { armParentDeath, encodePointer, retainPropertyPointer } from "./index.js";
+export {
+    activateProcessWatch,
+    armParentDeath,
+    closeProcessWatch,
+    encodePointer,
+    openProcessWatch,
+    retainPropertyPointer,
+} from "./index.js";

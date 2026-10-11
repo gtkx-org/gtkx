@@ -9,8 +9,11 @@ import {
     readField,
     type Ref,
 } from "./native.js";
-import { isArrayBuffer, isUint8Array } from "node:util/types";
 import type { Descriptor } from "./descriptor-types.js";
+import { functionResolver, typeResolver } from "./descriptor-lifecycle.js";
+import { cairoPathConverter } from "./foreign-record.js";
+import { numericPlan } from "./numeric-plan.js";
+import { compileReferenceStorage, type ReferencePlan } from "./reference-storage.js";
 import { callbackFailure } from "./callback-error.js";
 import { isGtypeDescriptor } from "./descriptors.js";
 import { normalizeHashTableEntries } from "./hash-table.js";
@@ -29,6 +32,7 @@ type ScalarPlan = {
     decode: Conversion;
     inner?: ScalarPlan;
     storage?: OutputStorage;
+    referenceStorage?: ReferencePlan;
 };
 type Callback = (...args: unknown[]) => unknown;
 type CallbackShape = {
@@ -40,11 +44,12 @@ type CallbackShape = {
 type EnumDescriptor = Extract<Descriptor, { kind: "enum" | "flags" }>;
 
 const identity: Conversion = (value) => value;
+const compilingDescriptors = new WeakSet<Descriptor>();
 const classHandles: Map<string, Map<string, ExternalObject<Handle>>> = new Map();
 const integerT: NativeDescriptor = { kind: "int32" };
 const unsignedT: NativeDescriptor = { kind: "uint32" };
-const typeT: NativeDescriptor = { kind: "biguint64" };
-const pointerT: NativeDescriptor = { kind: "struct", ownership: "borrowed" };
+const typeT: NativeDescriptor = { kind: "biguint64", isDirectWord: false };
+const pointerT: Descriptor = { kind: "struct", ownership: "borrowed" };
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { ignoreBOM: true });
 const signalDefaultReturn: unique symbol = Symbol("signalDefaultReturn");
@@ -64,7 +69,7 @@ const defaultAbiReturn = (descriptor: NativeDescriptor): unknown => {
 };
 
 const stringPlan = (descriptor: Extract<Descriptor, { kind: "string" }>): ScalarPlan => ({
-    abi: { ...descriptor, kind: "bytes" },
+    abi: toAbi({ ...descriptor, kind: "bytes" }),
     encode(value) {
         if (value == null) {
             return value;
@@ -95,26 +100,6 @@ const encodeByteArray: Conversion = (value) => {
     });
 };
 
-const encodeBigInt: Conversion = (value) => {
-    if (typeof value !== "number") {
-        return value;
-    }
-    if (!Number.isSafeInteger(value) && Math.abs(value) !== 2 ** 53) {
-        throw new RangeError("Expected an integer number within the exact 2^53 range or a bigint");
-    }
-
-    return BigInt(value);
-};
-
-const encodeBigIntArray: Conversion = (value) => {
-    if (value == null || ArrayBuffer.isView(value)) {
-        return value;
-    }
-    const items = value as readonly unknown[];
-
-    return items.some((item) => typeof item === "number") ? items.map((item) => encodeBigInt(item)) : items;
-};
-
 const enumClass = (descriptor: EnumDescriptor): ExternalObject<Handle> => {
     let library = classHandles.get(descriptor.sharedLibrary);
     if (library === undefined) {
@@ -129,13 +114,9 @@ const enumClass = (descriptor: EnumDescriptor): ExternalObject<Handle> => {
     const typeCall = nativeBind(descriptor.sharedLibrary, descriptor.getTypeFnName, [], typeT, { argOrder: [] });
     const type = nativeCall(typeCall, []).value as bigint;
     const fundamentalCall = nativeBind(LIB, "g_type_fundamental", [typeT], typeT, { argOrder: [0] });
-    const nameCall = nativeBind(
-        LIB,
-        "g_type_name",
-        [typeT],
-        { kind: "bytes", ownership: "borrowed" },
-        { argOrder: [0] },
-    );
+    const nameCall = nativeBind(LIB, "g_type_name", [typeT], toAbi({ kind: "bytes", ownership: "borrowed" }), {
+        argOrder: [0],
+    });
     const fundamentalName = decoder.decode(
         nativeCall(nameCall, [nativeCall(fundamentalCall, [type]).value]).value as Uint8Array,
     );
@@ -166,7 +147,8 @@ const enumMembership = (descriptor: EnumDescriptor): ((value: number) => boolean
 
         return (value) => (value & mask) >>> 0 === value >>> 0;
     }
-    const valueCall = nativeBind(LIB, "g_enum_get_value", [pointerT, integerT], pointerT, { argOrder: [0, 1] });
+    const pointer = toAbi(pointerT);
+    const valueCall = nativeBind(LIB, "g_enum_get_value", [pointer, integerT], pointer, { argOrder: [0, 1] });
 
     return (value) => nativeCall(valueCall, [handle, value]).value !== null;
 };
@@ -253,20 +235,34 @@ const arrayEncoder = (descriptor: Extract<Descriptor, { kind: "array" }>, encode
         return encodeByteArray;
     }
 
-    return encode === encodeBigInt ? encodeBigIntArray : mapCollection(encode);
+    const convert = mapCollection(encode);
+    return (value) => {
+        if (ArrayBuffer.isView(value)) {
+            return value;
+        }
+        return convert(value);
+    };
 };
 
 const arrayPlan = (descriptor: Extract<Descriptor, { kind: "array" }>): ScalarPlan => {
     const item = compileDescriptor(descriptor.itemDescriptor);
     const { preserveNull = false, ...layout } = descriptor;
     const shouldUseByteTransport = hasByteTransport(descriptor, item.abi);
-    const decode: Conversion =
-        shouldUseByteTransport && descriptor.isBytes !== true
-            ? (value) => [...(value as Uint8Array)]
-            : mapCollection(item.decode);
+    const decode: Conversion = shouldUseByteTransport
+        ? descriptor.isBytes === true
+            ? identity
+            : (value) => [...(value as Uint8Array)]
+        : mapCollection(item.decode);
 
     return {
-        abi: { ...layout, itemDescriptor: item.abi, ...(shouldUseByteTransport && { isBytes: true }) },
+        abi: {
+            ...layout,
+            itemDescriptor: item.abi,
+            elementOwnership: descriptor.elementOwnership ?? "separate",
+            isBytes: shouldUseByteTransport || (descriptor.isBytes ?? false),
+            isCallerAllocated: descriptor.isCallerAllocated ?? false,
+            isZeroTerminated: descriptor.isZeroTerminated ?? false,
+        },
         encode: arrayEncoder(descriptor, item.encode),
         decode(value) {
             if (value === null) {
@@ -282,56 +278,21 @@ const arrayPlan = (descriptor: Extract<Descriptor, { kind: "array" }>): ScalarPl
     };
 };
 
-const fixedRefBuffer = (value: unknown, length: number): Uint8Array => {
-    if (length === 0) {
-        throw new RangeError("A string reference needs room for its terminator");
-    }
-    const buffer = new Uint8Array(length);
-    if (value == null) {
-        return buffer;
-    }
-    if (!isUint8Array(value) || !isArrayBuffer(value.buffer)) {
-        throw new TypeError("Expected a Uint8Array with an ArrayBuffer backing store");
-    }
-    buffer.set(value.subarray(0, length - 1));
-
-    return buffer;
-};
-
-const refConversion = (convert: Conversion, length?: number): Conversion => {
-    const wrap: Conversion = length === undefined ? (value) => ({ value }) : (value) => fixedRefBuffer(value, length);
-
-    return (value) => {
-        if (value == null) {
-            return value;
-        }
-        const inner: unknown = Reflect.get(value, "value");
-
-        return wrap(inner == null ? inner : convert(inner));
-    };
-};
-
 const referencePlan = (descriptor: Extract<Descriptor, { kind: "ref" }>): ScalarPlan => {
     const inner = compileDescriptor(descriptor.innerDescriptor);
     const storage = compileOutputStorage(inner.abi);
-    const abi = { ...descriptor, innerDescriptor: inner.abi };
+    const abi = { ...descriptor, innerDescriptor: inner.abi, inout: descriptor.inout ?? false };
 
     if (storage === undefined) {
+        const referenceStorage = compileReferenceStorage(descriptor, inner.abi);
         return {
-            abi,
+            abi: referenceStorage.abi,
             inner,
-            encode: refConversion(
-                inner.abi.kind === "array" && inner.abi.isCallerAllocated === true ? identity : inner.encode,
-                inner.abi.kind === "bytes" ? inner.abi.length : undefined,
-            ),
-            decode(value) {
-                if (value == null) {
-                    return { value: null };
-                }
-                const seed: unknown = Reflect.get(value, "value");
-
-                return { value: descriptor.inout === true ? inner.decode(seed) : seed };
-            },
+            referenceStorage,
+            encode: (value) => referenceStorage.encode(value, inner.encode),
+            decode: (value) => ({
+                value: value != null && descriptor.inout === true ? inner.decode(referenceStorage.read(value)) : null,
+            }),
         };
     }
 
@@ -361,6 +322,7 @@ const writeCallbackOutputs = (plans: ScalarPlan[], values: unknown[], decoded: u
                   {
                       index,
                       storage: plan.storage,
+                      referenceStorage: plan.referenceStorage,
                       value: plan.inner.encode((decoded[index] as Ref).value),
                   },
               ]
@@ -368,10 +330,10 @@ const writeCallbackOutputs = (plans: ScalarPlan[], values: unknown[], decoded: u
     );
 
     for (const output of outputs) {
-        if (output.storage === undefined) {
-            (values[output.index] as Ref).value = output.value;
-        } else {
+        if (output.storage !== undefined) {
             output.storage.write(values[output.index] as StorageHandle, output.value);
+        } else {
+            output.referenceStorage?.write(values[output.index], output.value);
         }
     }
 };
@@ -513,13 +475,13 @@ const indirectPlan = (descriptor: Extract<Descriptor, { kind: "indirect" }>): Sc
         throw new TypeError("An indirect descriptor requires a scalar value");
     }
     return {
-        abi: {
+        abi: toAbi({
             kind: "array",
             arrayKind: "fixed",
             fixedSize: 1,
-            itemDescriptor: inner.abi,
+            itemDescriptor: descriptor.innerDescriptor,
             ownership: descriptor.ownership,
-        },
+        }),
         encode: (value) => (value == null ? null : [inner.encode(value)]),
         decode: (value) => (value == null ? null : inner.decode((value as unknown[])[0])),
     };
@@ -534,8 +496,6 @@ const pointerValuePlan = (descriptor: Extract<Descriptor, { kind: "pointerValue"
         uint16: 16,
         int32: 32,
         uint32: 32,
-        int64: 64,
-        uint64: 64,
         bigint64: 64,
         biguint64: 64,
     };
@@ -592,11 +552,7 @@ const buildPlan = (descriptor: Descriptor): ScalarPlan => {
             return stringPlan(descriptor);
         }
         case "bigint64":
-        case "biguint64": {
-            return { abi: descriptor, encode: encodeBigInt, decode: identity };
-        }
-        case "bytes":
-        case "object":
+        case "biguint64":
         case "int8":
         case "uint8":
         case "int16":
@@ -607,17 +563,107 @@ const buildPlan = (descriptor: Descriptor): ScalarPlan => {
         case "uint64":
         case "float32":
         case "float64":
-        case "void":
-        case "buffer":
-        case "boxed":
-        case "struct":
+            return numericPlan(descriptor);
+        case "bytes": {
+            return {
+                abi: { ...descriptor, hasOwnedStorage: descriptor.hasOwnedStorage ?? false },
+                encode: identity,
+                decode: identity,
+            };
+        }
+        case "object": {
+            const { typeName, ...layout } = descriptor;
+            return {
+                abi: {
+                    ...layout,
+                    isCallScoped: descriptor.isCallScoped ?? false,
+                    ...(typeName === undefined ? {} : { typeResolver: typeResolver(typeName) }),
+                },
+                encode: identity,
+                decode: identity,
+            };
+        }
+        case "boxed": {
+            const { abiFields, sharedLibrary, getTypeFnName, freeFnName, ...layout } = descriptor;
+            return {
+                abi: {
+                    ...layout,
+                    typeResolver: typeResolver(descriptor.typeName, sharedLibrary, getTypeFnName),
+                    hasTypeGetter: sharedLibrary !== undefined && getTypeFnName !== undefined,
+                    ...(freeFnName === undefined
+                        ? {}
+                        : { freeResolver: functionResolver(sharedLibrary ?? "(no library)", freeFnName) }),
+                    isCallerAllocated: descriptor.isCallerAllocated ?? false,
+                    isInline: descriptor.isInline ?? false,
+                    isValueSafe: descriptor.isValueSafe ?? false,
+                    ...(abiFields === undefined ? {} : { abiFields: abiFields.map((field) => toAbi(field)) }),
+                },
+                encode: identity,
+                decode: identity,
+            };
+        }
+        case "struct": {
+            const { abiFields, sharedLibrary, copyFnName, freeFnName, copyStrategy, ...layout } = descriptor;
+            if (copyStrategy !== undefined && copyStrategy !== "cairo-path") {
+                throw new TypeError(`Unsupported foreign record copy strategy '${copyStrategy}'`);
+            }
+            return {
+                abi: {
+                    ...layout,
+                    ...(sharedLibrary === undefined || freeFnName === undefined
+                        ? {}
+                        : {
+                              freeResolver: functionResolver(sharedLibrary, freeFnName),
+                              ...(copyFnName === undefined
+                                  ? {}
+                                  : { copyResolver: functionResolver(sharedLibrary, copyFnName) }),
+                          }),
+                    ...(copyStrategy === undefined
+                        ? {}
+                        : { copyConverter: cairoPathConverter(sharedLibrary ?? "(no library)") }),
+                    isCallerAllocated: descriptor.isCallerAllocated ?? false,
+                    isInline: descriptor.isInline ?? false,
+                    isValueSafe: descriptor.isValueSafe ?? false,
+                    ...(abiFields === undefined ? {} : { abiFields: abiFields.map((field) => toAbi(field)) }),
+                },
+                encode: identity,
+                decode: identity,
+            };
+        }
         case "fundamental": {
+            const { sharedLibrary, refFnName, unrefFnName, typeName: _typeName, ...layout } = descriptor;
+            return {
+                abi: {
+                    ...layout,
+                    unrefLabel: unrefFnName,
+                    ...(refFnName === "" ? {} : { refResolver: functionResolver(sharedLibrary, refFnName) }),
+                    ...(unrefFnName === "" ? {} : { unrefResolver: functionResolver(sharedLibrary, unrefFnName) }),
+                    isCallerAllocated: descriptor.isCallerAllocated ?? false,
+                    isInline: descriptor.isInline ?? false,
+                    isValueSafe: descriptor.isValueSafe ?? false,
+                },
+                encode: identity,
+                decode: identity,
+            };
+        }
+        case "void":
+        case "buffer": {
             return { abi: descriptor, encode: identity, decode: identity };
         }
     }
 };
 
-const compileDescriptor = (descriptor: Descriptor): ScalarPlan => buildPlan(descriptor);
+const compileDescriptor = (descriptor: Descriptor): ScalarPlan => {
+    if (compilingDescriptors.has(descriptor)) {
+        throw new TypeError("Descriptor nesting must not contain cycles");
+    }
+    compilingDescriptors.add(descriptor);
+    try {
+        return buildPlan(descriptor);
+    } finally {
+        compilingDescriptors.delete(descriptor);
+    }
+};
 
 const toAbi = (descriptor: Descriptor): NativeDescriptor => compileDescriptor(descriptor).abi;
 
