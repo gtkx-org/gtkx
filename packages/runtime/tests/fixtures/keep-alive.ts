@@ -1,5 +1,4 @@
-import { onExit, quit } from "@gtkx/runtime";
-import { keepAlive } from "@gtkx/runtime/internal";
+import { keepAlive, onExit, quit } from "@gtkx/runtime";
 
 const held = process.argv[2] === "held";
 let completed = false;

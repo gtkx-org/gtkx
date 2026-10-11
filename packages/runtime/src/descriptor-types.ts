@@ -1,21 +1,37 @@
 import type { Descriptor as NativeDescriptor, Ownership } from "./native.js";
 
+/** @inline */
 type NativeCallbackDescriptor = Extract<NativeDescriptor, { kind: "callback" }>;
+/** @inline */
 type CallbackDefaults = "scope" | "hasDestroy" | "destroyKind" | "hasUserData" | "canThrow";
+/** @inline */
 type InstanceDefaults = "isCallerAllocated" | "isInline" | "isValueSafe";
+/** @inline */
 type ArrayDefaults = "elementOwnership" | "isBytes" | "isCallerAllocated" | "isZeroTerminated";
+/** @inline */
 type OptionalMetadata<T, Keys extends keyof T> = Omit<T, Keys> & Partial<Pick<T, Keys>>;
+/** @inline */
 type BytesDescriptor = OptionalMetadata<Extract<NativeDescriptor, { kind: "bytes" }>, "hasOwnedStorage">;
+/** @inline */
+type ObjectDescriptor = Omit<
+    OptionalMetadata<Extract<NativeDescriptor, { kind: "object" }>, "isCallScoped">,
+    "typeResolver"
+> & {
+    typeName?: string;
+};
+/** @inline */
 type RecordDescriptor<Kind extends "boxed" | "struct"> = Omit<
     OptionalMetadata<Extract<NativeDescriptor, { kind: Kind }>, InstanceDefaults>,
     "abiFields" | "typeResolver" | "hasTypeGetter" | "freeResolver" | "copyResolver" | "copyConverter"
 >;
+/** @inline */
 interface BoxedDescriptor extends RecordDescriptor<"boxed"> {
     abiFields?: Descriptor[];
     sharedLibrary?: string;
     getTypeFnName?: string;
     freeFnName?: string;
 }
+/** @inline */
 interface StructDescriptor extends RecordDescriptor<"struct"> {
     abiFields?: Descriptor[];
     sharedLibrary?: string;
@@ -23,6 +39,7 @@ interface StructDescriptor extends RecordDescriptor<"struct"> {
     freeFnName?: string;
     copyStrategy?: string;
 }
+/** @inline */
 type FundamentalDescriptor = Omit<
     OptionalMetadata<Extract<NativeDescriptor, { kind: "fundamental" }>, InstanceDefaults>,
     "refResolver" | "unrefResolver" | "unrefLabel"
@@ -32,6 +49,21 @@ type FundamentalDescriptor = Omit<
     unrefFnName: string;
     typeName?: string;
 };
+/** @inline */
+interface ArrayDescriptor extends Omit<
+    OptionalMetadata<Extract<NativeDescriptor, { kind: "array" }>, ArrayDefaults>,
+    "itemDescriptor"
+> {
+    itemDescriptor: Descriptor;
+    preserveNull?: boolean;
+}
+/** @inline */
+interface ReferenceDescriptor extends Omit<
+    OptionalMetadata<Extract<NativeDescriptor, { kind: "ref" }>, "inout">,
+    "innerDescriptor"
+> {
+    innerDescriptor: Descriptor;
+}
 
 type Descriptor =
     | Exclude<
@@ -58,9 +90,7 @@ type Descriptor =
     | { kind: "biguint64" }
     | BytesDescriptor
     | (Omit<BytesDescriptor, "kind"> & { kind: "string" })
-    | (Omit<OptionalMetadata<Extract<NativeDescriptor, { kind: "object" }>, "isCallScoped">, "typeResolver"> & {
-          typeName?: string;
-      })
+    | ObjectDescriptor
     | BoxedDescriptor
     | StructDescriptor
     | FundamentalDescriptor
@@ -70,10 +100,7 @@ type Descriptor =
     | { kind: "unichar" }
     | { kind: "enum"; sharedLibrary: string; getTypeFnName: string; isSigned: boolean; members?: number[] }
     | { kind: "flags"; sharedLibrary: string; getTypeFnName: string; isSigned: boolean; mask?: number }
-    | (Omit<OptionalMetadata<Extract<NativeDescriptor, { kind: "array" }>, ArrayDefaults>, "itemDescriptor"> & {
-          itemDescriptor: Descriptor;
-          preserveNull?: boolean;
-      })
+    | ArrayDescriptor
     | (Omit<Extract<NativeDescriptor, { kind: "hashtable" }>, "keyDescriptor" | "valueDescriptor"> & {
           keyDescriptor: Descriptor;
           valueDescriptor: Descriptor;
@@ -88,8 +115,6 @@ type Descriptor =
               userDataArgIndex?: number;
               destroyArgIndex?: number;
           })
-    | (Omit<OptionalMetadata<Extract<NativeDescriptor, { kind: "ref" }>, "inout">, "innerDescriptor"> & {
-          innerDescriptor: Descriptor;
-      });
+    | ReferenceDescriptor;
 
 export type { Descriptor };

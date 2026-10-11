@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { captureProcessGroupOwner, readProcessIdentity, watchProcessGroupOwner } from "@gtkx/utils";
+import { captureProcessGroupOwner, readProcessIdentity, readProcessStatus, watchProcessGroupOwner } from "@gtkx/utils";
 
 const role = process.argv[2];
 const mode = process.argv[3] ?? "native";
@@ -36,7 +36,7 @@ if (role === "owner") {
         const killOwner = (): void => {
             process.kill(owner.pid, "SIGKILL");
             const deadline = Date.now() + 5000;
-            while (readProcessIdentity(owner.pid) !== undefined) {
+            while (readProcessStatus(owner.pid) !== undefined) {
                 if (Date.now() > deadline) {
                     throw new Error("Owner failed to die during arming race");
                 }
@@ -45,6 +45,9 @@ if (role === "owner") {
         };
         closed = watchProcessGroupOwner(owner, {
             open: (pid) => {
+                if (mode === "race-before-open") {
+                    killOwner();
+                }
                 const watch = openProcessWatch(pid) ?? undefined;
                 if (mode === "race-open") {
                     killOwner();
@@ -60,6 +63,26 @@ if (role === "owner") {
             close: closeProcessWatch,
         });
         armed = closed !== undefined;
+    } else if (mode === "open-error") {
+        const { activateProcessWatch, closeProcessWatch, openProcessWatch } = await import("@gtkx/native/internal");
+        let reported = false;
+        try {
+            watchProcessGroupOwner(owner, {
+                open: () => openProcessWatch(0) ?? undefined,
+                activate: activateProcessWatch,
+                close: closeProcessWatch,
+            });
+        } catch (error) {
+            if (!(error instanceof Error) || readProcessIdentity(owner.pid)?.startTime !== owner.startTime) {
+                throw new Error("Owner disappeared during native open failure", { cause: error });
+            }
+            process.stdout.write("LIVE OWNER OPEN ERROR\n");
+            reported = true;
+        }
+        if (!reported) {
+            throw new Error("Native open failure was hidden");
+        }
+        armed = false;
     } else if (mode.startsWith("fallback")) {
         if (!armParentDeath(process.ppid)) {
             throw new Error("Fixture parent died");
@@ -73,7 +96,7 @@ if (role === "owner") {
     } else {
         armed = armParentDeath(process.ppid, owner.pid, mode === "wrong-start" ? "0" : owner.startTime);
     }
-    if (mode === "wrong-start" || mode.startsWith("race")) {
+    if (mode === "wrong-start" || mode === "open-error" || mode.startsWith("race")) {
         process.stdout.write(`INVALID OWNER ${String(armed)}\n`);
     } else {
         if (!armed) {
@@ -81,6 +104,20 @@ if (role === "owner") {
         }
         keepAlive(true);
         process.stdout.write(`TARGET ARMED ${String(process.pid)}\n`);
+        if (mode === "fallback-count") {
+            let signals = 0;
+            process.removeAllListeners("SIGTERM");
+            process.on("SIGTERM", () => {
+                signals++;
+                if (signals === 1) {
+                    setTimeout(() => {
+                        process.stdout.write(`FALLBACK SIGNALS ${String(signals)}\n`);
+                        process.exit(0);
+                    }, 200);
+                }
+            });
+            process.kill(owner.pid, "SIGKILL");
+        }
         if (mode === "fallback-cancel") {
             closed?.();
             process.kill(owner.pid, "SIGKILL");

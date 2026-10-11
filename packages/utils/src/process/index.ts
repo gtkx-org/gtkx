@@ -11,6 +11,7 @@ export {
 export {
     isProcessAlive,
     type ProcessIdentity,
+    type ProcessStatus,
     readProcessIdentity,
     readProcessStatFields,
     readProcessStatus,

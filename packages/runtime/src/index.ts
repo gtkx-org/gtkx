@@ -7,6 +7,13 @@ export { createErrorDomain, type ErrorDomain } from "./error.js";
 export { type Field, type StridedField } from "./field.js";
 export { read, write } from "./field.js";
 export { onExit, quit } from "./lifecycle.js";
+/**
+ * Keeps the Node event loop alive for native work in a helper process.
+ * This switch is not reference counted: coordinate overlapping operations and
+ * disable it only after the last operation finishes. Application elements manage
+ * this automatically.
+ */
+export { keepAlive } from "./native.js";
 export { onLog, type LogLevel, type LogListener, type LogSubscription } from "./logging.js";
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
 export { installMixins, type Mixin } from "./mixin.js";

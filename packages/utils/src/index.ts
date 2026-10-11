@@ -11,6 +11,7 @@ export {
     captureProcessGroupOwner,
     isProcessGroupOwner,
     type ProcessIdentity,
+    type ProcessStatus,
     readProcessIdentity,
     readProcessStatus,
     type ProcessWatchOperations,

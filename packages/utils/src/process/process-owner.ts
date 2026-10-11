@@ -93,16 +93,17 @@ const fallbackWatch = (owner: ProcessIdentity, target: ProcessIdentity): (() => 
         }
         void worker.terminate();
     };
-    worker.on("error", () => {
-        if (!closed) {
+    const signalFailure = (): void => {
+        if (closed) {
+            return;
+        }
+        closed = true;
+        if (Atomics.load(state, 0) !== OWNER_GUARD_STATE.closed) {
             process.kill(process.pid, "SIGTERM");
         }
-    });
-    worker.on("exit", () => {
-        if (!closed) {
-            process.kill(process.pid, "SIGTERM");
-        }
-    });
+    };
+    worker.on("error", signalFailure);
+    worker.on("exit", signalFailure);
     worker.unref();
     const outcome = Atomics.wait(state, 0, OWNER_GUARD_STATE.starting, 5000);
     const status = Atomics.load(state, 0);
@@ -124,7 +125,15 @@ const watchProcessGroupOwner = <T>(
     if (target === undefined || !isProcessGroupOwner(owner, target)) {
         return undefined;
     }
-    const watch = operations.open(owner.pid);
+    let watch: T | undefined;
+    try {
+        watch = operations.open(owner.pid);
+    } catch (error) {
+        if (readProcessIdentity(owner.pid)?.startTime !== owner.startTime) {
+            return undefined;
+        }
+        throw error;
+    }
     if (watch === undefined) {
         const close = fallbackWatch(owner, target);
         if (close === undefined || !isProcessGroupOwner(owner, target)) {
