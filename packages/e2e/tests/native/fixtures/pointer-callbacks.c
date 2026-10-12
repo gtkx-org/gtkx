@@ -5,8 +5,13 @@ typedef gint (*GtkxIntCallback)(gint);
 typedef struct {
     GObject parent_instance;
     GtkxIntCallback callback;
+    GtkxIntCallback write_only_callback;
     guint id;
     gboolean invoke_before_set;
+    guint fail_next_set;
+    gboolean invoke_during_get;
+    gboolean invoke_on_every_get;
+    gboolean fail_next_get;
 } GtkxCallbackObject;
 
 typedef struct {
@@ -24,12 +29,22 @@ static void gtkx_callback_object_set_property(GObject *object, guint property_id
 {
     GtkxCallbackObject *self = (GtkxCallbackObject *)object;
 
-    if (property_id == 1) {
-        if (self->invoke_before_set && self->callback != NULL) {
-            self->invoke_before_set = FALSE;
-            self->callback(0);
+    if (property_id == 1 || property_id == 2) {
+        GtkxIntCallback *callback = property_id == 1 ? &self->callback : &self->write_only_callback;
+        guint failure = self->fail_next_set;
+        self->fail_next_set = 0;
+        if (failure == 1) {
+            g_critical("fixture callback setter failed before storing");
+            return;
         }
-        self->callback = (GtkxIntCallback)g_value_get_pointer(value);
+        if (self->invoke_before_set && *callback != NULL) {
+            self->invoke_before_set = FALSE;
+            (*callback)(0);
+        }
+        *callback = (GtkxIntCallback)g_value_get_pointer(value);
+        if (failure == 2) {
+            g_critical("fixture callback setter failed after storing");
+        }
     } else {
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
     }
@@ -41,7 +56,17 @@ static void gtkx_callback_object_get_property(GObject *object, guint property_id
     GtkxCallbackObject *self = (GtkxCallbackObject *)object;
 
     if (property_id == 1) {
-        g_value_set_pointer(value, self->callback);
+        if (self->fail_next_get) {
+            self->fail_next_get = FALSE;
+            g_critical("fixture callback getter failed");
+            return;
+        }
+        GtkxIntCallback callback = self->callback;
+        if ((self->invoke_during_get || self->invoke_on_every_get) && callback != NULL) {
+            self->invoke_during_get = FALSE;
+            callback(0);
+        }
+        g_value_set_pointer(value, callback);
     } else {
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
     }
@@ -66,6 +91,9 @@ static void gtkx_callback_object_class_init(GtkxCallbackObjectClass *klass)
     g_object_class_install_property(object_class, 1,
         g_param_spec_pointer("callback", "Callback", "Stored integer callback",
                              G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+    g_object_class_install_property(object_class, 2,
+        g_param_spec_pointer("write-only-callback", "Write-only callback", "Stored integer callback",
+                             G_PARAM_WRITABLE));
 }
 
 static void gtkx_callback_object_init(GtkxCallbackObject *self)
@@ -89,9 +117,34 @@ gint gtkx_callback_object_invoke(GtkxCallbackObject *self, gint value)
     return self->callback == NULL ? -1 : self->callback(value);
 }
 
+gint gtkx_callback_object_invoke_write_only(GtkxCallbackObject *self, gint value)
+{
+    return self->write_only_callback == NULL ? -1 : self->write_only_callback(value);
+}
+
+void gtkx_callback_object_invoke_during_next_get(GtkxCallbackObject *self)
+{
+    self->invoke_during_get = TRUE;
+}
+
+void gtkx_callback_object_invoke_on_every_get(GtkxCallbackObject *self)
+{
+    self->invoke_on_every_get = TRUE;
+}
+
+void gtkx_callback_object_fail_next_get(GtkxCallbackObject *self)
+{
+    self->fail_next_get = TRUE;
+}
+
 void gtkx_callback_object_invoke_before_next_set(GtkxCallbackObject *self)
 {
     self->invoke_before_set = TRUE;
+}
+
+void gtkx_callback_object_fail_next_set(GtkxCallbackObject *self, gboolean after_store)
+{
+    self->fail_next_set = after_store ? 2 : 1;
 }
 
 void gtkx_callback_object_hold(GtkxCallbackObject *self)

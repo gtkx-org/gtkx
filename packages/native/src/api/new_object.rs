@@ -210,7 +210,7 @@ pub fn new_object<'env>(
             let name = name
                 .to_str()
                 .map_err(|error| Error::from_reason(error.to_string()))?;
-            crate::api::value_pointer::retain_property_value(env, ptr, name, *value, false)?;
+            crate::api::value_pointer::retain_property_value(env, ptr, name, *value)?;
         }
 
         match critical {

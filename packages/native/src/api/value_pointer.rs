@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::ffi::{CStr, CString, c_void};
 use std::marker::PhantomData;
+use std::rc::Rc;
 
 use glib::prelude::StaticType as _;
 use napi::Env;
@@ -114,7 +115,15 @@ unsafe extern "C" fn release_property_pointer(ptr: *mut c_void) {
 }
 
 struct PropertyPointer {
-    storage: Option<Handle>,
+    generation: Rc<()>,
+    storage: Vec<Handle>,
+}
+
+type RetainedCallback<'e> = (Handle, Unknown<'e>);
+
+struct PropertyCallbacks<'e> {
+    generation: Option<Rc<()>>,
+    values: Vec<RetainedCallback<'e>>,
 }
 
 struct ActivePropertyValue {
@@ -125,6 +134,33 @@ struct ActivePropertyValue {
 
 thread_local! {
     static ACTIVE_VALUES: RefCell<Vec<ActivePropertyValue>> = const { RefCell::new(Vec::new()) };
+    static PROPERTY_READS: RefCell<Vec<(usize, String)>> = const { RefCell::new(Vec::new()) };
+}
+
+struct PropertyReadScope {
+    depth: usize,
+}
+
+impl PropertyReadScope {
+    fn open(object: *mut glib::gobject_ffi::GObject, name: &str) -> Option<Self> {
+        PROPERTY_READS.with_borrow_mut(|reads| {
+            if reads
+                .iter()
+                .any(|(current, property)| *current == object as usize && property == name)
+            {
+                return None;
+            }
+            let depth = reads.len();
+            reads.push((object as usize, name.to_owned()));
+            Some(Self { depth })
+        })
+    }
+}
+
+impl Drop for PropertyReadScope {
+    fn drop(&mut self) {
+        PROPERTY_READS.with_borrow_mut(|reads| reads.truncate(self.depth));
+    }
 }
 
 pub(crate) struct PropertyValueScope<'e> {
@@ -172,6 +208,9 @@ impl Drop for PropertyValueScope<'_> {
 }
 
 fn active_property_callback(env: &Env, ptr: *mut c_void) -> Result<Option<(Handle, Unknown<'_>)>> {
+    if ptr.is_null() {
+        return Ok(None);
+    }
     let retained = ACTIVE_VALUES.with_borrow(|active| {
         active
             .iter()
@@ -188,14 +227,14 @@ fn active_property_callback(env: &Env, ptr: *mut c_void) -> Result<Option<(Handl
         .transpose()
 }
 
-fn property_callback<'e>(
+fn property_callbacks<'e>(
     env: &'e Env,
     object: *mut glib::gobject_ffi::GObject,
     name: &str,
-) -> Result<Option<(Handle, Unknown<'e>)>> {
+) -> Result<PropertyCallbacks<'e>> {
     let slot = format!("gtkx-property-pointer::{name}");
     let key = CString::new(slot.as_str()).map_err(|error| Error::from_reason(error.to_string()))?;
-    let storage = unsafe {
+    let retained = unsafe {
         let quark = glib::ffi::g_quark_try_string(key.as_ptr());
         if quark == 0 {
             None
@@ -203,17 +242,155 @@ fn property_callback<'e>(
             glib::gobject_ffi::g_object_get_qdata(object, quark)
                 .cast::<PropertyPointer>()
                 .as_ref()
-                .and_then(|property| property.storage.clone())
+                .map(|property| (property.generation.clone(), property.storage.clone()))
         }
     };
-    let Some(storage) = storage else {
-        return Ok(None);
+    let Some((generation, storage)) = retained else {
+        return Ok(PropertyCallbacks {
+            generation: None,
+            values: Vec::new(),
+        });
     };
     let root = match unsafe { wrapper::wrapper_value(env, object) } {
         Some(wrapper) => roots::get(env, wrapper.into_unknown(env)?, &slot)?,
         None => ().into_unknown(env)?,
     };
-    Ok(Some((storage, root)))
+    let roots: Option<Array<'e>> = if root.is_array()? {
+        Some(crate::value::read_napi(root)?)
+    } else {
+        None
+    };
+    let mut values = Vec::with_capacity(storage.len());
+    for (index, storage) in storage.into_iter().enumerate() {
+        let index = u32::try_from(index).map_err(|error| Error::from_reason(error.to_string()))?;
+        let root = roots
+            .as_ref()
+            .map(|roots| roots.get::<Unknown<'e>>(index))
+            .transpose()?
+            .flatten()
+            .unwrap_or(().into_unknown(env)?);
+        values.push((storage, root));
+    }
+    Ok(PropertyCallbacks {
+        generation: Some(generation),
+        values,
+    })
+}
+
+fn merge_callbacks<'e>(
+    retained: &mut Vec<RetainedCallback<'e>>,
+    values: impl IntoIterator<Item = RetainedCallback<'e>>,
+) {
+    for (storage, root) in values {
+        if !storage.as_ptr().is_null()
+            && !retained
+                .iter()
+                .any(|(current, _)| current.as_ptr() == storage.as_ptr())
+        {
+            retained.push((storage, root));
+        }
+    }
+}
+
+fn store_property_callbacks<'e>(
+    env: &'e Env,
+    object: *mut glib::gobject_ffi::GObject,
+    name: &str,
+    values: &[RetainedCallback<'e>],
+) -> Result<()> {
+    let slot = format!("gtkx-property-pointer::{name}");
+    let key = CString::new(slot.as_str()).map_err(|error| Error::from_reason(error.to_string()))?;
+    if let Some(wrapper) = unsafe { wrapper::wrapper_value(env, object) } {
+        let wrapper = wrapper.into_unknown(env)?;
+        if values.is_empty() {
+            roots::remove(*env, wrapper, &slot)?;
+        } else {
+            let length = u32::try_from(values.len())
+                .map_err(|error| Error::from_reason(error.to_string()))?;
+            let mut retained = env.create_array(length)?;
+            for (index, (_, root)) in (0..length).zip(values) {
+                retained.set(index, *root)?;
+            }
+            roots::set(*env, wrapper, &slot, retained.into_unknown(env)?)?;
+        }
+    }
+    let data = Box::into_raw(Box::new(PropertyPointer {
+        generation: Rc::new(()),
+        storage: values.iter().map(|(storage, _)| storage.clone()).collect(),
+    }))
+    .cast();
+    unsafe {
+        glib::gobject_ffi::g_object_set_qdata_full(
+            object,
+            glib::ffi::g_quark_from_string(key.as_ptr()),
+            data,
+            Some(release_property_pointer),
+        );
+    }
+    Ok(())
+}
+
+fn reconcile_property_callbacks<'e>(
+    env: &'e Env,
+    object: *mut glib::gobject_ffi::GObject,
+    name: &str,
+    candidates: &[RetainedCallback<'e>],
+) -> Result<()> {
+    let before = property_callbacks(env, object, name)?;
+    let mut retained = before.values;
+    merge_callbacks(&mut retained, candidates.iter().cloned());
+    if retained.is_empty() {
+        return Ok(());
+    }
+    let name_c = CString::new(name).map_err(|error| Error::from_reason(error.to_string()))?;
+    let property = unsafe {
+        glib::gobject_ffi::g_object_class_find_property(
+            (*object).g_type_instance.g_class.cast(),
+            name_c.as_ptr(),
+        )
+        .as_ref()
+    };
+    let readable = property.is_some_and(|property| {
+        property.flags & glib::gobject_ffi::G_PARAM_READABLE != 0
+            && unsafe { glib::gobject_ffi::g_type_fundamental(property.value_type) }
+                == glib::gobject_ffi::G_TYPE_POINTER
+    });
+    if !readable {
+        return store_property_callbacks(env, object, name, &retained);
+    }
+    store_property_callbacks(env, object, name, &retained)?;
+    if CallbackErrorScope::has_error() {
+        return Ok(());
+    }
+    let Some(_reading) = PropertyReadScope::open(object, name) else {
+        return Ok(());
+    };
+    let generation = property_callbacks(env, object, name)?.generation;
+    let _retained = PropertyValueScope::push(env, retained.iter().cloned());
+    let mut value = glib::Value::from_type(glib::Type::POINTER);
+    let target = glib::translate::ToGlibPtrMut::to_glib_none_mut(&mut value).0;
+    let trap = CriticalTrap::arm();
+    unsafe { glib::gobject_ffi::g_object_get_property(object, name_c.as_ptr(), target) };
+    let critical = trap.disarm();
+    let after = property_callbacks(env, object, name)?;
+    let unchanged = match (&generation, &after.generation) {
+        (Some(before), Some(after)) => Rc::ptr_eq(before, after),
+        (None, None) => true,
+        _ => false,
+    };
+    merge_callbacks(&mut retained, after.values);
+    if critical.is_none() && !CallbackErrorScope::has_error() && unchanged {
+        let ptr = unsafe { glib::gobject_ffi::g_value_get_pointer(target) };
+        let current = match retained
+            .into_iter()
+            .find(|(storage, _)| storage.as_ptr() == ptr)
+        {
+            Some(current) => Some(current),
+            None => active_property_callback(env, ptr)?,
+        };
+        retained = current.into_iter().collect();
+    }
+    store_property_callbacks(env, object, name, &retained)
 }
 
 /// Reads a property and returns a callback target that owns any managed trampoline it exposes.
@@ -234,7 +411,8 @@ pub fn get_object_property<'e>(
     let target = value_ptr(value)?;
     let name_c =
         CString::new(name.as_str()).map_err(|error| Error::from_reason(error.to_string()))?;
-    let previous = property_callback(env, object, &name)?;
+    let previous = property_callbacks(env, object, &name)?;
+    let _reading = PropertyReadScope::open(object, &name);
     let trap = CriticalTrap::arm();
     unsafe { glib::gobject_ffi::g_object_get_property(object, name_c.as_ptr(), target) };
     if let Some(message) = trap.disarm() {
@@ -248,17 +426,33 @@ pub fn get_object_property<'e>(
         return ().into_unknown(env);
     }
     let ptr = unsafe { glib::gobject_ffi::g_value_get_pointer(target) };
-    if ptr.is_null() {
-        return ().into_unknown(env);
-    }
-    let retained = match previous {
-        Some((storage, root)) if storage.as_ptr() == ptr => Some((storage, root)),
-        _ => property_callback(env, object, &name)?.filter(|(storage, _)| storage.as_ptr() == ptr),
+    let after = property_callbacks(env, object, &name)?;
+    let unchanged = match (&previous.generation, &after.generation) {
+        (Some(previous), Some(after)) => Rc::ptr_eq(previous, after),
+        (None, None) => true,
+        _ => false,
     };
+    let managed = previous.generation.is_some() || after.generation.is_some();
+    let mut candidates = previous.values;
+    merge_callbacks(&mut candidates, after.values);
+    let retained = candidates
+        .into_iter()
+        .find(|(storage, _)| storage.as_ptr() == ptr);
     let retained = match retained {
         Some(retained) => Some(retained),
         None => active_property_callback(env, ptr)?,
     };
+    if managed && unchanged && !CallbackErrorScope::has_error() {
+        store_property_callbacks(
+            env,
+            object,
+            &name,
+            &retained.iter().cloned().collect::<Vec<_>>(),
+        )?;
+    }
+    if ptr.is_null() {
+        return ().into_unknown(env);
+    }
     let Some((storage, root)) = retained else {
         return ().into_unknown(env);
     };
@@ -282,51 +476,22 @@ pub(crate) fn retain_property_value<'e>(
     object: *mut glib::gobject_ffi::GObject,
     name: &str,
     value: Unknown<'e>,
-    replace: bool,
 ) -> Result<()> {
     let handle: &External<Handle> = crate::value::read_napi(value)?;
     let storage = handle.pointer_storage();
-    let key = CString::new(format!("gtkx-property-pointer::{name}"))
-        .map_err(|error| Error::from_reason(error.to_string()))?;
-    let quark = unsafe { glib::ffi::g_quark_from_string(key.as_ptr()) };
-    let previous = unsafe { glib::gobject_ffi::g_object_get_qdata(object, quark) };
-    if !replace && !previous.is_null() {
-        return Ok(());
-    }
-    if storage.is_none() && previous.is_null() {
-        let target = value_ptr(handle)?;
-        if !replace
-            || unsafe { glib::gobject_ffi::g_type_fundamental((*target).g_type) }
-                != glib::gobject_ffi::G_TYPE_POINTER
-        {
-            return Ok(());
-        }
-    }
-    if let Some(wrapper) = unsafe { wrapper::wrapper_value(env, object) } {
-        let slot = key
-            .to_str()
-            .map_err(|error| Error::from_reason(error.to_string()))?;
-        if storage.is_some() {
-            roots::set(
-                *env,
-                wrapper.into_unknown(env)?,
-                slot,
-                roots::get(env, value, "pointer")?,
-            )?;
-        } else {
-            roots::remove(*env, wrapper.into_unknown(env)?, slot)?;
-        }
-    }
-    let data = Box::into_raw(Box::new(PropertyPointer { storage })).cast();
-    unsafe {
-        glib::gobject_ffi::g_object_set_qdata_full(
-            object,
-            quark,
-            data,
-            Some(release_property_pointer),
+    let previous = property_callbacks(env, object, name)?;
+    let mut candidates = previous.values;
+    if let Some(storage) = storage {
+        merge_callbacks(
+            &mut candidates,
+            [(storage, roots::get(env, value, "pointer")?)],
         );
     }
-    Ok(())
+    if candidates.is_empty() {
+        return Ok(());
+    }
+    store_property_callbacks(env, object, name, &candidates)?;
+    reconcile_property_callbacks(env, object, name, &candidates)
 }
 
 fn validate_property_write(
@@ -381,17 +546,26 @@ pub fn set_object_property<'e>(
     let name_c =
         CString::new(name.as_str()).map_err(|error| Error::from_reason(error.to_string()))?;
     validate_property_write(object, &name_c, value_ptr)?;
-    let previous = property_callback(env, object, &name)?;
-    let _incoming = PropertyValueScope::for_values(env, &[value])?;
-    let _previous = PropertyValueScope::push(env, previous);
-    retain_property_value(env, object, &name, value, true)?;
+    let previous = property_callbacks(env, object, &name)?;
+    let mut candidates = previous.values;
+    if let Some(storage) = handle.pointer_storage() {
+        merge_callbacks(
+            &mut candidates,
+            [(storage, roots::get(env, value, "pointer")?)],
+        );
+    }
+    let _retained = PropertyValueScope::push(env, candidates.iter().cloned());
+    if !candidates.is_empty() || previous.generation.is_some() {
+        store_property_callbacks(env, object, &name, &candidates)?;
+    }
     let trap = CriticalTrap::arm();
     unsafe { glib::gobject_ffi::g_object_set_property(object, name_c.as_ptr(), value_ptr) };
     let critical = trap.disarm();
+    let reconciled = reconcile_property_callbacks(env, object, &name, &candidates);
     if let Some(message) = critical {
         return Err(Error::from_reason(format!(
             "g_object_set_property: {message}"
         )));
     }
-    Ok(())
+    reconciled
 }

@@ -49,7 +49,12 @@ const callbackObjectType = t.bind(library, "gtkx_callback_object_get_type", [], 
 const getId = t.bind(library, "gtkx_callback_object_id", [t.object()], t.uint32);
 const wasFinalized = t.bind(library, "gtkx_callback_object_was_finalized", [t.uint32], t.boolean);
 const invoke = t.bind(library, "gtkx_callback_object_invoke", [t.object(), t.int32], t.int32);
+const invokeWriteOnly = t.bind(library, "gtkx_callback_object_invoke_write_only", [t.object(), t.int32], t.int32);
+const invokeDuringNextGet = t.bind(library, "gtkx_callback_object_invoke_during_next_get", [t.object()], t.void);
+const invokeOnEveryGet = t.bind(library, "gtkx_callback_object_invoke_on_every_get", [t.object()], t.void);
+const failNextGet = t.bind(library, "gtkx_callback_object_fail_next_get", [t.object()], t.void);
 const invokeBeforeNextSet = t.bind(library, "gtkx_callback_object_invoke_before_next_set", [t.object()], t.void);
+const failNextSet = t.bind(library, "gtkx_callback_object_fail_next_set", [t.object(), t.boolean], t.void);
 const hold = t.bind(library, "gtkx_callback_object_hold", [t.object()], t.void);
 const release = t.bind(library, "gtkx_callback_object_release", [], t.void);
 const invokeHeld = t.bind(library, "gtkx_callback_object_invoke_held", [t.int32], t.int32);
@@ -69,6 +74,10 @@ class CallbackObject {
 
     set callback(callback: StoredCallback | null) {
         setProperty(this, "callback", callbackDescriptor, callback);
+    }
+
+    set writeOnlyCallback(callback: StoredCallback | null) {
+        setProperty(this, "write-only-callback", callbackDescriptor, callback);
     }
 
     invoke(value: number): number {
@@ -358,6 +367,200 @@ test("reentrant callback property notification retains the innermost replacement
     expect(await didSettle(() => replaced.deref() === undefined)).toBe(true);
     expect(object.invoke(12)).toBe(42);
     expect(state.replacement?.deref()).toBeDefined();
+});
+
+test.each(["clear", "replace"] as const)(
+    "a native setter retains its final callback after a nested %s before storing",
+    async (change) => {
+        const object = new CallbackObject();
+        const state: { nested?: WeakRef<StoredCallback> } = {};
+        const original = (() => {
+            const callback = (): number => {
+                if (change === "clear") {
+                    object.callback = null;
+                } else {
+                    const replacement = (value: number): number => value + 50;
+                    state.nested = new WeakRef(replacement);
+                    object.callback = replacement;
+                }
+                return 0;
+            };
+            object.callback = callback;
+            return new WeakRef(callback);
+        })();
+        invokeBeforeNextSet(getHandle(object));
+        const incoming = (() => {
+            const callback = (value: number): number => value + 30;
+            object.callback = callback;
+            return new WeakRef(callback);
+        })();
+
+        await drainGC();
+        expect(incoming.deref()).toBeDefined();
+        expect(object.invoke(12)).toBe(42);
+        expect(object.callback?.(12)).toBe(42);
+        expect(await didSettle(() => original.deref() === undefined && state.nested?.deref() === undefined)).toBe(true);
+        object.callback = null;
+        expect(await didSettle(() => incoming.deref() === undefined)).toBe(true);
+    },
+);
+
+test.each([false, true])(
+    "a native setter failure preserves the callback actually stored, afterStore=%s",
+    async (afterStore) => {
+        const { object, original } = (() => {
+            const callback = (value: number): number => value + 30;
+            return { object: new CallbackObject({ callback }), original: new WeakRef(callback) };
+        })();
+        failNextSet(getHandle(object), afterStore);
+        const incoming = (() => {
+            const callback = (value: number): number => value + 50;
+            expect(() => {
+                object.callback = callback;
+            }).toThrow("fixture callback setter failed");
+            return new WeakRef(callback);
+        })();
+
+        await drainGC();
+        const retained = afterStore ? incoming : original;
+        const released = afterStore ? original : incoming;
+        expect(retained.deref()).toBeDefined();
+        expect(object.invoke(12)).toBe(afterStore ? 62 : 42);
+        expect(object.callback?.(12)).toBe(afterStore ? 62 : 42);
+        expect(await didSettle(() => released.deref() === undefined)).toBe(true);
+        object.callback = null;
+        expect(await didSettle(() => retained.deref() === undefined)).toBe(true);
+    },
+);
+
+test("reconciling a callback property preserves a replacement made by its getter", async () => {
+    const object = new CallbackObject();
+    const state: { replacement?: WeakRef<StoredCallback> } = {};
+    invokeDuringNextGet(getHandle(object));
+    const incoming = (() => {
+        const callback = (value: number): number => {
+            const replacement = (next: number): number => next + 50;
+            state.replacement = new WeakRef(replacement);
+            object.callback = replacement;
+            return value + 30;
+        };
+        object.callback = callback;
+        return new WeakRef(callback);
+    })();
+
+    await drainGC();
+    expect(state.replacement?.deref()).toBeDefined();
+    expect(object.invoke(12)).toBe(62);
+    expect(object.callback?.(12)).toBe(62);
+    object.callback = null;
+    expect(await didSettle(() => incoming.deref() === undefined && state.replacement?.deref() === undefined)).toBe(
+        true,
+    );
+});
+
+test("a getter snapshot retains its callback when reading also replaces the property", async () => {
+    const object = new CallbackObject();
+    const original = (() => {
+        const callback = (value: number): number => {
+            if (value === 0) object.callback = (next) => next + 50;
+            return value + 30;
+        };
+        object.callback = callback;
+        return new WeakRef(callback);
+    })();
+    invokeDuringNextGet(getHandle(object));
+    const state: { saved: StoredCallback | null } = { saved: object.callback };
+
+    await drainGC();
+    expect(original.deref()).toBeDefined();
+    expect(state.saved?.(12)).toBe(42);
+    expect(object.invoke(12)).toBe(62);
+    expect(object.callback?.(12)).toBe(62);
+    state.saved = null;
+    expect(await didSettle(() => original.deref() === undefined)).toBe(true);
+});
+
+test("a property getter that writes on every read does not recurse through reconciliation", async () => {
+    const object = new CallbackObject();
+    invokeOnEveryGet(getHandle(object));
+    const retained = (() => {
+        const callback = (value: number): number => {
+            if (value === 0) object.callback = callback;
+            return value + 30;
+        };
+        object.callback = callback;
+        return new WeakRef(callback);
+    })();
+
+    await drainGC();
+    expect(retained.deref()).toBeDefined();
+    expect(object.invoke(12)).toBe(42);
+    expect(object.callback?.(12)).toBe(42);
+    object.callback = null;
+    expect(await didSettle(() => retained.deref() === undefined)).toBe(true);
+});
+
+test("write-only callback properties survive reentry and rejected writes without retaining unreachable objects", async () => {
+    const references = await (async () => {
+        const object = new CallbackObject();
+        const original = (() => {
+            const callback = (): number => {
+                object.writeOnlyCallback = null;
+                return 0;
+            };
+            object.writeOnlyCallback = callback;
+            return new WeakRef(callback);
+        })();
+        invokeBeforeNextSet(getHandle(object));
+        const incoming = (() => {
+            const callback = (value: number): number => value + 30;
+            object.writeOnlyCallback = callback;
+            return new WeakRef(callback);
+        })();
+
+        await drainGC();
+        expect(incoming.deref()).toBeDefined();
+        expect(invokeWriteOnly(getHandle(object), 12)).toBe(42);
+        failNextSet(getHandle(object), false);
+        expect(() => {
+            object.writeOnlyCallback = null;
+        }).toThrow("fixture callback setter failed");
+        await drainGC();
+        expect(incoming.deref()).toBeDefined();
+        expect(invokeWriteOnly(getHandle(object), 12)).toBe(42);
+        return { object: new WeakRef(object), original, incoming, id: object.id };
+    })();
+
+    expect(
+        await didSettle(
+            () =>
+                references.object.deref() === undefined &&
+                references.original.deref() === undefined &&
+                references.incoming.deref() === undefined &&
+                wasFinalized(references.id) === true,
+        ),
+    ).toBe(true);
+});
+
+test("a failed reconciliation getter preserves the stored callback until a reliable read", async () => {
+    const { object, original } = (() => {
+        const callback = (value: number): number => value + 30;
+        return { object: new CallbackObject({ callback }), original: new WeakRef(callback) };
+    })();
+    failNextGet(getHandle(object));
+    const incoming = (() => {
+        const callback = (value: number): number => value + 50;
+        object.callback = callback;
+        return new WeakRef(callback);
+    })();
+
+    await drainGC();
+    expect(incoming.deref()).toBeDefined();
+    expect(object.invoke(12)).toBe(62);
+    expect(object.callback?.(12)).toBe(62);
+    expect(await didSettle(() => original.deref() === undefined)).toBe(true);
+    object.callback = null;
+    expect(await didSettle(() => incoming.deref() === undefined)).toBe(true);
 });
 
 test.each(["clear", "replace"] as const)(

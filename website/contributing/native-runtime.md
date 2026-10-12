@@ -160,7 +160,9 @@ Property validation uses a fresh GC-owned `GValue` for each operation. A class-l
 
 Pointer-valued `GValue`s own their encoded backing storage in native handles. Property assignment and construction attach callback storage to the receiving native object. Native-managed weak-key associations keep JavaScript callback dependencies visible to V8, including callbacks that capture their owner, while native attachment ownership keeps the executable storage valid through replacement and finalization.
 
-Reading a callback property returns a snapshot that retains its trampoline independently of later property replacement or clearing. During construction, native attachment markers distinguish the original constructor values from writes made by reentrant callbacks, so adopting constructor storage preserves replacements and cleared properties.
+Native retains candidate callback storage before entering a property setter. After the setter returns, including when it reports a GLib critical, native reads the resulting pointer of a readable property and reconciles retained storage with that value. This covers nested writes both before and after the outer setter stores its pointer. For write-only properties, failed reads, or getters that reenter a write, native conservatively retains candidates until a later reliable read or object finalization can release them.
+
+Reading a callback property returns a snapshot that retains its trampoline independently of later property replacement or clearing. Constructor values remain retained through native construction, and final property reconciliation preserves the values actually stored after reentrant replacements or clearing.
 
 Library overrides can identify a borrowed relationship that needs protection. The Window override supplies the native default-widget setter to `setWrapperBorrow`; native retains the dependent wrapper, leases both objects during cleanup, and clears the pointer directly before deferred wrapper teardown. The override neither keeps its own retention map nor constructs a JavaScript wrapper to perform cleanup.
 
