@@ -11,12 +11,14 @@ use glib::translate::{Borrowed, from_glib_borrow};
 use napi::bindgen_prelude::*;
 use napi::{Env, sys};
 
-use crate::handle::surface;
+use crate::handle::{Handle, surface};
 use crate::host::callback_error::CallbackErrorScope;
 use crate::host::node_env;
 use crate::host::panic_handler::guard_ffi_boundary;
 use crate::host::release_queue::{self, Owner};
-use crate::value::ClosureHandle;
+use crate::value::roots;
+
+pub(crate) const BORROW_ROOT: &str = "wrapper-borrow";
 
 pub struct WrapperHandle {
     napi_ref: Cell<sys::napi_ref>,
@@ -29,7 +31,40 @@ struct WrapperBorrow {
     id: usize,
     owner: usize,
     dependent: usize,
-    cleanup: ClosureHandle,
+    owner_handle: Handle,
+    dependent_handle: Handle,
+    clear: Handle,
+}
+
+impl WrapperBorrow {
+    fn clear(&self, env: &Env) -> Result<()> {
+        let _owner_lease = crate::api::native_result(
+            "clearing wrapper borrow",
+            self.owner_handle.acquire_lease(),
+        )?;
+        let _dependent_lease = crate::api::native_result(
+            "clearing wrapper borrow",
+            self.dependent_handle.acquire_lease(),
+        )?;
+        let owner = self.owner_handle.as_gobject_ptr().ok_or_else(|| {
+            Error::from_reason("The borrowed pointer owner is no longer a live GObject")
+        })?;
+        let clear = crate::api::native_result(
+            "clearing wrapper borrow",
+            self.clear.lifecycle_function_ptr(),
+        )?;
+        if let Some(wrapper) = unsafe { wrapper_value(env, owner) } {
+            roots::remove(*env, wrapper.into_unknown(env)?, BORROW_ROOT)?;
+        }
+        let clear = unsafe {
+            std::mem::transmute::<*mut c_void, unsafe extern "C" fn(*mut c_void, *mut c_void)>(
+                clear,
+            )
+        };
+        unsafe { clear(owner.cast(), std::ptr::null_mut()) };
+
+        Ok(())
+    }
 }
 
 impl WrapperHandle {
@@ -49,10 +84,7 @@ impl WrapperHandle {
     }
 }
 
-pub(crate) unsafe fn track_handle(
-    gobject: *mut glib::gobject_ffi::GObject,
-    handle: &crate::handle::Handle,
-) {
+pub(crate) unsafe fn track_handle(gobject: *mut glib::gobject_ffi::GObject, handle: &Handle) {
     if let Some(wrapper) = unsafe { handle_qdata(gobject) } {
         handle.track_wrapper(unsafe { wrapper.as_ref() });
     }
@@ -105,7 +137,13 @@ pub(crate) unsafe fn active_identity(gobject: *mut glib::gobject_ffi::GObject) -
         .then_some(handle.notification_id)
 }
 
-pub(crate) fn set_borrow(owner: usize, dependent: usize, cleanup: ClosureHandle) {
+pub(crate) fn set_borrow(
+    owner: usize,
+    dependent: usize,
+    owner_handle: Handle,
+    dependent_handle: Handle,
+    clear: Handle,
+) {
     let id = next_identity(&NEXT_BORROW);
     WRAPPER_BORROWS.with_borrow_mut(|borrows| {
         borrows.insert(
@@ -114,7 +152,9 @@ pub(crate) fn set_borrow(owner: usize, dependent: usize, cleanup: ClosureHandle)
                 id,
                 owner,
                 dependent,
-                cleanup,
+                owner_handle,
+                dependent_handle,
+                clear,
             },
         );
     });
@@ -160,11 +200,7 @@ fn release_borrows(identity: usize) -> bool {
         if node_env::try_env().is_some() {
             node_env::run_dispatch_scope(|| {
                 let env = node_env::env();
-                let result = borrow
-                    .cleanup
-                    .get::<Function<'_, (), ()>>(&env)
-                    .and_then(|cleanup| cleanup.call(()));
-                match result {
+                match borrow.clear(&env) {
                     Ok(()) => succeeded = true,
                     Err(error) => CallbackErrorScope::deliver(env, error),
                 }

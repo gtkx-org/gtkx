@@ -1,32 +1,23 @@
-import { getHandle, wrapHandle } from "@gtkx/runtime";
-import { initializeWrapper, type NativeHandle, propertyWriteComplete, setWrapperBorrow } from "@gtkx/runtime/internal";
-import { type Widget, Window } from "../gtk.js";
+import { getHandle } from "@gtkx/runtime";
+import { initializeWrapper, propertyWriteComplete, resolveFunction, setWrapperBorrow } from "@gtkx/runtime/internal";
+import { Window } from "../gtk.js";
 
-const retainedDefaults: WeakMap<Window, Widget> = new WeakMap();
 const methods: {
     setDefaultWidget: Window["setDefaultWidget"];
     setProperty: Window["setProperty"];
 } = Window.prototype;
 const { setDefaultWidget, setProperty } = methods;
 
-const clearNativeDefault =
-    (handle: NativeHandle): (() => void) =>
-    () => {
-        setDefaultWidget.call(wrapHandle(handle, Window), null);
-    };
+const clearNativeDefault = resolveFunction("libgtk-4.so.1", "gtk_window_set_default_widget");
 
 function retainCurrentDefault(window: Window): void {
     const widget = window.getDefaultWidget();
     const handle = getHandle(window);
 
     if (widget === null) {
-        retainedDefaults.delete(window);
         setWrapperBorrow(handle, null, null);
     } else {
-        if (retainedDefaults.get(window) !== widget) {
-            retainedDefaults.set(window, widget);
-        }
-        setWrapperBorrow(handle, getHandle(widget), clearNativeDefault(handle));
+        setWrapperBorrow(handle, getHandle(widget), clearNativeDefault);
     }
 }
 

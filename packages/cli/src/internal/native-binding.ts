@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 
-const resolveBinding = (projectManifest, arch) => {
+const resolveBinding = (projectManifest: string, arch: "x64" | "arm64"): string | undefined => {
     const projectRequire = createRequire(projectManifest);
     const nativeManifest = projectRequire.resolve("@gtkx/native/package.json");
     const nativeRoot = dirname(nativeManifest);

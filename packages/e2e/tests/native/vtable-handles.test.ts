@@ -6,10 +6,8 @@ import {
     type Descriptor,
     type ExternalObject,
     getType,
-    getTypeClass,
     type Handle,
     openLibrary,
-    readFunctionPointer,
     readVfuncSlot,
     resolveSymbol,
 } from "@gtkx/native";
@@ -132,10 +130,10 @@ test("an interface target retains its owning class across handle collection", as
     expect(call(descriptor, [store]).value).toBe(1);
 });
 
-test("a class function read retains the class owner after its external handle is collected", async () => {
+test("a class target retains its owning class across handle collection", async () => {
     const { descriptor, references } = (() => {
-        const owner = getTypeClass(objectType);
-        const target = readFunctionPointer(owner, 16);
+        const slot = compileVfuncSlot({ instanceType: objectType, byteOffset: 16, label: "GObject.constructor" });
+        const target = readVfuncSlot(slot);
         const signature = compileCall(
             [{ kind: "biguint64", isDirectWord: false }, { kind: "uint32" }, { kind: "buffer" }],
             objectReturn,
@@ -144,7 +142,7 @@ test("a class function read retains the class owner after its external handle is
         );
         return {
             descriptor: attachCall(signature, target),
-            references: [new WeakRef(owner), new WeakRef(target), new WeakRef(signature)],
+            references: [new WeakRef(slot), new WeakRef(target), new WeakRef(signature)],
         };
     })();
 

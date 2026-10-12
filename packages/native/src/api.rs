@@ -6,9 +6,8 @@ pub mod alloc;
 pub mod bind;
 pub mod bind_field;
 pub mod call;
+pub mod closure;
 pub mod copy;
-pub mod dispose;
-pub mod encode_pointer;
 pub mod function;
 pub mod fundamental_identity;
 pub mod get_type;
@@ -26,6 +25,7 @@ pub mod register_class;
 pub mod set_wrapper;
 pub mod set_wrapper_borrow;
 pub mod type_class;
+pub mod value_pointer;
 pub mod vtable;
 pub mod write;
 

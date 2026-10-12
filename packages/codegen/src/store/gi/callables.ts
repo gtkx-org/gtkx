@@ -104,6 +104,7 @@ const RUNTIME_OWNED_LIFETIME_METHODS: Set<string> = new Set([
     "take_ref",
     "unref",
 ]);
+const RUNTIME_OWNED_LIFETIME_SYMBOLS: Set<string> = new Set(["g_closure_sink", "g_param_spec_sink"]);
 
 const renderInstanceMethodSignature: InstanceMemberRenderer = instanceMemberRenderer(
     (context, callable, { name, finishFn }) =>
@@ -447,6 +448,7 @@ const isEmittableCallable = (context: ModuleContext, callable: GirFunction): boo
     callable.shadowedBy === undefined &&
     callable.cIdentifier !== undefined &&
     !RUNTIME_OWNED_LIFETIME_METHODS.has(callable.name) &&
+    !RUNTIME_OWNED_LIFETIME_SYMBOLS.has(callable.cIdentifier) &&
     !hasUnmarshalableParam(context, callable);
 
 const constructorMemberName = (girName: string): string | undefined => {

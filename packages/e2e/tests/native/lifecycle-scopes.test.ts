@@ -1,3 +1,4 @@
+import * as GObject from "@gtkx/gi/gobject";
 import {
     alloc,
     bindField,
@@ -8,10 +9,10 @@ import {
     openLibrary,
     readField,
     resolveSymbol,
+    setValuePointer,
     writeField,
 } from "@gtkx/native";
-import { encodePointer } from "@gtkx/native/internal";
-import { read, t, write } from "@gtkx/runtime";
+import { getHandle, read, t, write } from "@gtkx/runtime";
 import { expect, test } from "vitest";
 
 const glib = "libglib-2.0.so.0";
@@ -29,7 +30,7 @@ const resolveOperation = (name: string): ExternalObject<Handle> => {
     return handle;
 };
 
-test.each(["read", "write", "encode"])(
+test.each(["read", "write", "pointer"])(
     "a caught lifecycle failure during %s leaves its enclosing native callback usable",
     (operation) => {
         const failure = new Error(`lifecycle ${operation} failure`);
@@ -51,6 +52,8 @@ test.each(["read", "write", "encode"])(
         };
         const field = bindField(descriptor);
         const source = newVariant(42);
+        const value = new GObject.Value();
+        value.init(GObject.typeFromName("gpointer"));
         const slot = alloc(8);
         writeField(bindField({ kind: "buffer" }), slot, 0, source);
         const invoke = (): unknown => {
@@ -60,7 +63,8 @@ test.each(["read", "write", "encode"])(
                 case "write":
                     return writeField(field, slot, 0, source);
                 default:
-                    return encodePointer(descriptor, source);
+                    setValuePointer(getHandle(value), descriptor, source);
+                    return source;
             }
         };
         const values = alloc(8);

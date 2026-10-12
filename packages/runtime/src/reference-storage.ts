@@ -3,11 +3,9 @@ import {
     createReferenceStorage,
     type Descriptor as NativeDescriptor,
     type ExternalObject,
-    readReferenceStorage,
+    type Ref,
     type ReferenceDescriptor,
     type ReferenceMode,
-    type ReferenceStorage,
-    writeReferenceStorage,
 } from "./native.js";
 import { isArrayBuffer, isUint8Array } from "node:util/types";
 import type { Descriptor } from "./descriptor-types.js";
@@ -104,8 +102,10 @@ const compileReferenceStorage = (descriptor: RefDescriptor, inner: NativeDescrip
 
             return createReferenceStorage(reference, encoded, mode);
         },
-        read: (value) => readReferenceStorage(value as ExternalObject<ReferenceStorage>),
-        write: (value, replacement) => writeReferenceStorage(value as ExternalObject<ReferenceStorage>, replacement),
+        read: (value) => (value as Ref).value,
+        write(value, replacement) {
+            (value as Ref).value = replacement;
+        },
     };
 };
 

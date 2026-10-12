@@ -67,4 +67,5 @@ export {
 } from "./native-lifetime.js";
 export { initializeWrapper } from "./wrapper-brand.js";
 export { keepAlive, setWrapperBorrow } from "./native.js";
+export { resolveFunction } from "./native-bindings.js";
 export { armParentDeath } from "./parent-death.js";

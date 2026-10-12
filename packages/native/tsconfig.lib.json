@@ -1,6 +1,6 @@
 {
     "extends": "../../tsconfig.lib.json",
-    "include": ["internal.d.ts", "binding.d.ts"],
+    "include": ["main.d.ts"],
     "references": [
         {
             "path": "../utils/tsconfig.lib.json"

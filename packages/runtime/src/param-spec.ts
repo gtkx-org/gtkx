@@ -1,6 +1,6 @@
 import type { ExternalObject, Handle } from "./native.js";
 import { bind } from "./bind.js";
-import { biguint64T, booleanT, stringT, uint32T, voidT } from "./descriptors.js";
+import { biguint64T, booleanT, fundamentalT, stringT, uint32T } from "./descriptors.js";
 import { read } from "./field.js";
 import { LIB, PARAM_T, VALUE_T } from "./library.js";
 import { getHandle, getInstanceType } from "./registry.js";
@@ -94,14 +94,12 @@ const SCALAR_GUARDS: Map<bigint, ValueGuard> = new Map([
 
 const layout = { wasChecked: false };
 const paramValueValidate = bind(LIB, "g_param_value_validate", [PARAM_T, VALUE_T], booleanT);
-const paramSpecUnref = bind(LIB, "g_param_spec_unref", [PARAM_T], voidT);
-const paramSpecRefSink = bind(LIB, "g_param_spec_ref_sink", [PARAM_T], PARAM_T);
 
 const newParamSpecBoolean = bind(
     LIB,
     "g_param_spec_boolean",
     [stringT("borrowed"), stringT("borrowed"), stringT("borrowed"), booleanT, uint32T],
-    PARAM_T,
+    fundamentalT(LIB, "g_param_spec_ref_sink", "g_param_spec_unref", { typeName: "GParam" }),
 );
 
 const getParamFlags = (pspec: ExternalObject<Handle>): number => read(pspec, uint32T, FLAGS_BYTE_OFFSET) as number;
@@ -252,17 +250,12 @@ function valueGuardFor(valueType: bigint): ValueGuard {
 
 function readProbeLayout(flags: number): ParamLayout {
     const probe = newParamSpecBoolean(LAYOUT_PROBE_NAME, null, null, false, flags) as ExternalObject<Handle>;
-    paramSpecRefSink(probe);
 
-    try {
-        return {
-            flags: getParamFlags(probe),
-            valueType: getParamValueType(probe),
-            ownerType: getParamOwnerType(probe),
-        };
-    } finally {
-        paramSpecUnref(probe);
-    }
+    return {
+        flags: getParamFlags(probe),
+        valueType: getParamValueType(probe),
+        ownerType: getParamOwnerType(probe),
+    };
 }
 
 function isLayoutIntact(flags: number): boolean {

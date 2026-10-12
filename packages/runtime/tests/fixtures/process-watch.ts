@@ -1,7 +1,7 @@
 import { readdirSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { isMainThread, parentPort, Worker } from "node:worker_threads";
-import { activateProcessWatch, armParentDeath, closeProcessWatch, openProcessWatch } from "@gtkx/native/internal";
+import { activateProcessWatch, armParentDeath, closeProcessWatch, openProcessWatch } from "@gtkx/native";
 import { readProcessIdentity, watchProcessGroupOwner } from "@gtkx/utils";
 
 if (!isMainThread) {

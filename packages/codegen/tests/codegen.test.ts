@@ -58,6 +58,26 @@ const diagnostics = (root: string, source: string) => {
 };
 
 describe("generated bindings", () => {
+    it("omits closure and parameter reference sinking from generated consumers", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["GObject-2.0"], girPath: resolveGirPath(undefined, directory.path), gi });
+
+        expect(
+            diagnostics(
+                directory.path,
+                `import { Closure, ParamSpec } from "@gtkx/gi/gobject";
+                declare const closure: Closure;
+                declare const spec: ParamSpec;
+                closure.sink();
+                spec.sink();`,
+            ),
+        ).toEqual([
+            expect.stringContaining("Property 'sink' does not exist on type 'Closure'"),
+            expect.stringContaining("Property 'sink' does not exist on type 'ParamSpec'"),
+        ]);
+    });
+
     it("honors the requested store lock timeout and generates after the lock is released", async () => {
         using directory = createProject();
         const { gi } = resolveStore(directory.path);

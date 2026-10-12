@@ -1,4 +1,4 @@
-import type { ExternalObject, Handle } from "./native.js";
+import { type ExternalObject, type Handle, getTypeClass } from "./native.js";
 import { type AnyClass, camelCase, kebabCase, toCamelIdentifier } from "@gtkx/utils";
 import type { Descriptor } from "./descriptor-types.js";
 import type { ElementPropertyEntry } from "./element-metadata.js";
@@ -56,7 +56,6 @@ type PropertyCheck = {
     canHoldValue: ValueGuard;
     narrowValue: ValueNarrower;
     write?: ValueWriter;
-    scratch?: ExternalObject<Handle>;
 };
 
 type AccessorBase = PropertyCheck & {
@@ -111,8 +110,6 @@ const OVERRIDE_PARAM_T = fundamentalT(LIB, "g_param_spec_ref_sink", "g_param_spe
 const interfaceStorages: Map<string, symbol> = new Map();
 const paramSpecDefaultValue = bind(LIB, "g_param_spec_get_default_value", [PARAM_T], VALUE_T);
 const paramSpecName = bind(LIB, "g_param_spec_get_name", [PARAM_T], stringT("borrowed"));
-const typeClassRef = bind(LIB, "g_type_class_ref", [biguint64T], CLASS_T);
-const typeClassUnref = bind(LIB, "g_type_class_unref", [CLASS_T], voidT);
 const propertyChecks: Map<bigint, Map<string, PropertyCheck | null>> = new Map();
 const classFindProperty = bind(LIB, "g_object_class_find_property", [CLASS_T, stringT("borrowed")], PARAM_T);
 
@@ -137,8 +134,12 @@ const classOverrideProperty = bind(
     voidT,
 );
 
-const defaultInterfaceRef = bind(LIB, "g_type_default_interface_ref", [biguint64T], CLASS_T);
-const defaultInterfaceUnref = bind(LIB, "g_type_default_interface_unref", [CLASS_T], voidT);
+const defaultInterfaceRef = bind(
+    LIB,
+    "g_type_default_interface_ref",
+    [biguint64T],
+    structT("full", { sharedLibrary: LIB, freeFnName: "g_type_default_interface_unref" }),
+);
 const interfaceFindProperty = bind(LIB, "g_object_interface_find_property", [CLASS_T, stringT("borrowed")], PARAM_T);
 const paramSpecOverrideNew = bind(LIB, "g_param_spec_override", [stringT("borrowed"), PARAM_T], OVERRIDE_PARAM_T);
 
@@ -194,21 +195,13 @@ const sourceLabel = (source: bigint | AnyClass, gtype: bigint): string =>
 const findInterfaceSpec = (gtype: bigint, name: string): ExternalObject<Handle> | null => {
     const vtable = defaultInterfaceRef(gtype) as ExternalObject<Handle>;
 
-    try {
-        return interfaceFindProperty(vtable, name) as ExternalObject<Handle> | null;
-    } finally {
-        defaultInterfaceUnref(vtable);
-    }
+    return interfaceFindProperty(vtable, name) as ExternalObject<Handle> | null;
 };
 
 const findClassSpec = (gtype: bigint, name: string): ExternalObject<Handle> | null => {
-    const klass = typeClassRef(gtype) as ExternalObject<Handle>;
+    const klass = getTypeClass(gtype);
 
-    try {
-        return classFindProperty(klass, name) as ExternalObject<Handle> | null;
-    } finally {
-        typeClassUnref(klass);
-    }
+    return classFindProperty(klass, name) as ExternalObject<Handle> | null;
 };
 
 const findSourceSpec = (source: bigint | AnyClass, name: string): ExternalObject<Handle> => {
@@ -355,8 +348,7 @@ function checkedValueFor(instance: object, check: PropertyCheck, value: unknown)
 }
 
 function assertValueAccepted(instance: object, check: PropertyCheck, value: unknown): void {
-    check.scratch ??= newValueForType(check.valueType);
-    fillCheckedValue(instance, check, check.scratch, value);
+    checkedValueFor(instance, check, value);
 }
 
 function constructValueFor(wrapper: object, check: PropertyCheck, value: unknown): ConstructProperty {
@@ -370,27 +362,17 @@ function constructValueFor(wrapper: object, check: PropertyCheck, value: unknown
  * rather than looking for a generated accessor, which codegen omits when a method shares the name.
  */
 function isReadableProperty(gtype: bigint, propertyName: string): boolean {
-    const klass = typeClassRef(gtype) as ExternalObject<Handle>;
+    const klass = getTypeClass(gtype);
+    const pspec = findPropertySpec(klass, propertyName);
 
-    try {
-        const pspec = findPropertySpec(klass, propertyName);
-
-        return pspec !== null && isParamReadable(getParamFlags(pspec));
-    } finally {
-        typeClassUnref(klass);
-    }
+    return pspec !== null && isParamReadable(getParamFlags(pspec));
 }
 
 function lookupPropertyCheck(gtype: bigint, name: string): PropertyCheck | null {
-    const klass = typeClassRef(gtype) as ExternalObject<Handle>;
+    const klass = getTypeClass(gtype);
+    const pspec = findPropertySpec(klass, name);
 
-    try {
-        const pspec = findPropertySpec(klass, name);
-
-        return pspec === null ? null : checkFor(pspec, name);
-    } finally {
-        typeClassUnref(klass);
-    }
+    return pspec === null ? null : checkFor(pspec, name);
 }
 
 function propertyCheckFor(gtype: bigint, name: string): PropertyCheck | null {
@@ -455,15 +437,15 @@ function truncateToWhole(check: PropertyCheck, value: number): number {
 }
 
 function validatedNumber(check: PropertyCheck, number: number): number {
-    check.scratch ??= newValueForType(check.valueType);
+    const gValue = newValueForType(check.valueType);
 
     try {
-        writeHeld(check, check.scratch, number);
+        writeHeld(check, gValue, number);
     } catch {
         return number;
     }
 
-    return wasParamValueModified(check.handle, check.scratch) ? (fromValue(check.scratch) as number) : number;
+    return wasParamValueModified(check.handle, gValue) ? (fromValue(gValue) as number) : number;
 }
 
 function coerceNumber(check: PropertyCheck, value: number): number {
@@ -520,15 +502,10 @@ function constructPropertyFor(
     value: unknown,
     wrapper: object,
 ): ConstructProperty | undefined {
-    const klass = typeClassRef(gtype) as ExternalObject<Handle>;
+    const klass = getTypeClass(gtype);
+    const pspec = findPropertySpec(klass, name);
 
-    try {
-        const pspec = findPropertySpec(klass, name);
-
-        return pspec === null ? undefined : constructValueFor(wrapper, checkFor(pspec, name), value);
-    } finally {
-        typeClassUnref(klass);
-    }
+    return pspec === null ? undefined : constructValueFor(wrapper, checkFor(pspec, name), value);
 }
 
 function readStored(instance: Record<symbol, unknown>, accessor: PropertyAccessor): unknown {
@@ -909,19 +886,15 @@ function installClassProperties(
 
 function installInterfaceProperties(klass: ExternalObject<Handle>, type: bigint, nextId: number): number {
     const vtable = defaultInterfaceRef(type);
-    try {
-        const pspecs = interfaceListProperties(vtable, { value: 0 }) as ExternalObject<Handle>[];
-        for (const pspec of pspecs) {
-            const name = paramSpecName(pspec) as string;
-            if (classFindProperty(klass, name) === null) {
-                classOverrideProperty(klass, nextId++, name);
-            }
+    const pspecs = interfaceListProperties(vtable, { value: 0 }) as ExternalObject<Handle>[];
+    for (const pspec of pspecs) {
+        const name = paramSpecName(pspec) as string;
+        if (classFindProperty(klass, name) === null) {
+            classOverrideProperty(klass, nextId++, name);
         }
-
-        return nextId;
-    } finally {
-        defaultInterfaceUnref(vtable);
     }
+
+    return nextId;
 }
 
 export {

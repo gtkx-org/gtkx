@@ -6,10 +6,14 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::api::type_from_bigint;
-use crate::handle::{BoxedFreeFn, ConversionLease, Handle};
+use crate::handle::{BoxedFreeFn, Handle};
 use crate::host::callback_error::CallbackErrorScope;
 use crate::host::node_env;
 use crate::value::ClosureHandle;
+
+mod cairo_path;
+
+pub use cairo_path::RecordConverterOptions;
 
 thread_local! {
     static RESOLVERS: RefCell<HashMap<usize, Vec<Weak<ResolverCallback>>>> = RefCell::new(HashMap::new());
@@ -191,18 +195,9 @@ pub fn create_function_resolver(
     }))))
 }
 
-/// A synchronous runtime conversion performed while native still owns the source's call lease.
-/// The callback must return a directly owned record with the descriptor's release operation.
+/// A native record copy strategy retaining its library-backed lifecycle operations.
 #[derive(Debug, Clone)]
-pub struct RecordConverter(Rc<ResolverCallback>);
-
-struct ConversionSource(Handle);
-
-impl Drop for ConversionSource {
-    fn drop(&mut self) {
-        self.0.invalidate();
-    }
-}
+pub struct RecordConverter(Rc<cairo_path::CairoPathCopy>);
 
 impl RecordConverter {
     pub(crate) fn copy(
@@ -210,31 +205,7 @@ impl RecordConverter {
         ptr: *mut std::ffi::c_void,
         free: BoxedFreeFn,
     ) -> anyhow::Result<*mut std::ffi::c_void> {
-        let env = node_env::try_env().ok_or_else(|| {
-            anyhow::anyhow!("A record converter requires its active Node environment")
-        })?;
-        anyhow::ensure!(
-            env.raw() == self.0.env,
-            "A record converter belongs to a different Node environment"
-        );
-        let convert = self
-            .0
-            .callback
-            .borrow()
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("The record converter environment has been released"))?
-            .get::<Function<'_, External<Handle>, Unknown<'_>>>(&env)?;
-        let _source_lease = ConversionLease::new(ptr);
-        let source = ConversionSource(Handle::from_glib_borrow(ptr));
-        let returned = convert
-            .call(External::new(source.0.clone()))
-            .map_err(|error| {
-                let message = error.to_string();
-                CallbackErrorScope::deliver(env, error);
-                anyhow::anyhow!(message)
-            })?;
-        let owned: &External<Handle> = crate::value::read_napi(returned)?;
-        owned.take_converted_struct(free)
+        self.0.copy(ptr, free)
     }
 }
 
@@ -245,16 +216,12 @@ impl FromNapiValue for RecordConverter {
     }
 }
 
-/// Retains a synchronous record conversion without invoking it during signature compilation.
-/// Every source handle expires when conversion returns, including when conversion throws.
-#[allow(clippy::needless_pass_by_value)]
+/// Compiles a native record copy strategy without resolving its lifecycle operations yet.
 #[napi(catch_unwind)]
 pub fn create_record_converter(
-    env: Env,
-    #[napi(ts_arg_type = "(source: ExternalObject<Handle>) => ExternalObject<Handle>")]
-    convert: Function<'_, External<Handle>, Unknown<'_>>,
+    options: RecordConverterOptions,
 ) -> Result<External<RecordConverter>> {
-    Ok(External::new(RecordConverter(ResolverCallback::new(
-        &env, &convert,
-    )?)))
+    Ok(External::new(RecordConverter(Rc::new(
+        cairo_path::CairoPathCopy::new(options)?,
+    ))))
 }

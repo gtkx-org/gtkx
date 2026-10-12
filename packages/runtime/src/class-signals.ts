@@ -1,7 +1,7 @@
-import { type ExternalObject, type Handle, resolveFunction } from "./native.js";
+import { type ExternalObject, type Handle, getTypeClass, resolveFunction } from "./native.js";
 import type { SignalSpec } from "./register-class.js";
 import { bind } from "./bind.js";
-import { biguint64T, booleanT, bufferT, sizedArrayT, stringT, structT, uint32T, voidT } from "./descriptors.js";
+import { biguint64T, booleanT, bufferT, sizedArrayT, stringT, structT, uint32T } from "./descriptors.js";
 import { LIB } from "./library.js";
 import { canonicalSignalName } from "./signal.js";
 import { TYPE_BOOLEAN, TYPE_INTERFACE, TYPE_NONE, typeIsA } from "./type.js";
@@ -23,10 +23,12 @@ type PreparedSignal = {
 const signalIsValidName = bind(LIB, "g_signal_is_valid_name", [stringT("borrowed")], booleanT);
 const typeIsValue = bind(LIB, "g_type_check_is_value_type", [biguint64T], booleanT);
 const signalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
-const classRef = bind(LIB, "g_type_class_ref", [biguint64T], structT("borrowed"));
-const classUnref = bind(LIB, "g_type_class_unref", [structT("borrowed")], voidT);
-const interfaceRef = bind(LIB, "g_type_default_interface_ref", [biguint64T], structT("borrowed"));
-const interfaceUnref = bind(LIB, "g_type_default_interface_unref", [structT("borrowed")], voidT);
+const interfaceRef = bind(
+    LIB,
+    "g_type_default_interface_ref",
+    [biguint64T],
+    structT("full", { sharedLibrary: LIB, freeFnName: "g_type_default_interface_unref" }),
+);
 const signalNew = bind(
     LIB,
     "g_signal_newv",
@@ -83,17 +85,15 @@ function prepareAccumulator(
 }
 
 function checkExistingSignals(signals: PreparedSignal[], type: bigint): void {
-    const isInterface = typeIsA(type, TYPE_INTERFACE);
-    const handle = isInterface ? interfaceRef(type) : classRef(type);
-    const unref = isInterface ? interfaceUnref : classUnref;
+    if (typeIsA(type, TYPE_INTERFACE)) {
+        interfaceRef(type);
+    } else {
+        getTypeClass(type);
+    }
 
-    try {
-        const existing = signals.find((signal) => signalLookup(signal.name, type) !== 0);
-        if (existing !== undefined) {
-            throw new TypeError(`Signal '${existing.name}' already exists`);
-        }
-    } finally {
-        unref(handle);
+    const existing = signals.find((signal) => signalLookup(signal.name, type) !== 0);
+    if (existing !== undefined) {
+        throw new TypeError(`Signal '${existing.name}' already exists`);
     }
 }
 

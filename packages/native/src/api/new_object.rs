@@ -185,7 +185,7 @@ pub fn new_object<'env>(
     env: &'env Env,
     gtype: BigInt,
     names: Vec<String>,
-    #[napi(ts_arg_type = "ExternalObject<Handle>[]")] values: Vec<ValueHandle>,
+    #[napi(ts_arg_type = "ExternalObject<Handle>[]")] values: Vec<Unknown<'env>>,
     wrapper: Object<'env>,
     #[napi(ts_arg_type = "(handle: ExternalObject<Handle>, wrapper: object) => void")]
     associate: Associator<'env>,
@@ -194,11 +194,24 @@ pub fn new_object<'env>(
     let result = (|| {
         let type_ = type_from_bigint(&gtype, "new_object:")?;
         ensure_instantiable(type_)?;
-        let properties = ConstructProperties::new(names, &values)?;
+        let handles = values
+            .iter()
+            .map(|value| ValueHandle::from_unknown(*value))
+            .collect::<Result<Vec<_>>>()?;
+        let properties = ConstructProperties::new(names, &handles)?;
+        let _property_values =
+            crate::api::value_pointer::PropertyValueScope::for_values(env, &values)?;
         let guard =
             unsafe { pending_wrapper::push(type_.into_glib(), wrapper.raw(), associate.raw()) };
         let (ptr, critical) = unsafe { construct(type_, &properties) }?;
         let existing = finish_construction(env, ptr, &guard, type_, &wrapper, &associate)?;
+
+        for (name, value) in properties.names.iter().zip(&values) {
+            let name = name
+                .to_str()
+                .map_err(|error| Error::from_reason(error.to_string()))?;
+            crate::api::value_pointer::retain_property_value(env, ptr, name, *value, false)?;
+        }
 
         match critical {
             Some(message) => Err(Error::new(Status::GenericFailure, message)),

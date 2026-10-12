@@ -7,20 +7,19 @@ use glib::translate::{FromGlib as _, IntoGlib as _};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::handle_memory_ptr;
-use crate::handle::{Boxed as NativeBoxed, Handle};
+use crate::api::{handle_memory_ptr, native_result};
+use crate::handle::{Boxed as NativeBoxed, Handle, HandleClass, LeaseScope};
 
 struct OwnedMatchInfo {
     references: UnsafeCell<i32>,
     base: *mut glib::ffi::GMatchInfo,
-    subject: *mut glib::ffi::GBytes,
+    _subject: Handle,
 }
 
 impl Drop for OwnedMatchInfo {
     fn drop(&mut self) {
         unsafe {
             glib::ffi::g_match_info_unref(self.base);
-            glib::ffi::g_bytes_unref(self.subject);
         }
     }
 }
@@ -59,6 +58,26 @@ fn boxed_pointer(handle: &Handle, expected: glib::Type) -> Result<*mut c_void> {
     handle_memory_ptr(handle, "MatchInfo ownership")
 }
 
+unsafe extern "C" fn release_match_subject(ptr: *mut c_void) {
+    unsafe { glib::ffi::g_free(ptr) };
+}
+
+/// Copies encoded regex input into native-owned storage and appends its required NUL terminator.
+#[allow(clippy::needless_pass_by_value)]
+#[napi(catch_unwind)]
+pub fn create_match_subject(bytes: Uint8Array) -> Result<External<Handle>> {
+    let length = bytes
+        .len()
+        .checked_add(1)
+        .ok_or_else(|| Error::from_reason("MatchInfo subject exceeds the allocation size limit"))?;
+    let pointer = unsafe { glib::ffi::g_malloc0(length) };
+    unsafe { std::ptr::copy_nonoverlapping(bytes.as_ptr(), pointer.cast::<u8>(), bytes.len()) };
+    let handle = Handle::owned_struct_with_free_fn(pointer, Some(release_match_subject))
+        .with_allocated_bytes(length);
+    let size_hint = handle.size_hint();
+    Ok(External::new_with_size_hint(handle, size_hint))
+}
+
 #[napi(catch_unwind)]
 #[must_use]
 pub fn get_match_info_type() -> BigInt {
@@ -68,21 +87,38 @@ pub fn get_match_info_type() -> BigInt {
 #[napi(catch_unwind)]
 pub fn own_match_info(
     raw_match_info: &External<Handle>,
-    subject_bytes: &External<Handle>,
+    subject: &External<Handle>,
 ) -> Result<External<Handle>> {
-    let base = boxed_pointer(raw_match_info, glib::MatchInfo::static_type())?
-        .cast::<glib::ffi::GMatchInfo>();
-    let subject =
-        boxed_pointer(subject_bytes, glib::Bytes::static_type())?.cast::<glib::ffi::GBytes>();
-    let input = unsafe { glib::ffi::g_match_info_get_string(base) };
-    let mut length = 0;
-    let data = unsafe { glib::ffi::g_bytes_get_data(subject, &raw mut length) };
-    if length == 0 || unsafe { *data.cast::<u8>().add(length - 1) } != 0 {
+    let _lease = LeaseScope::open();
+    if !subject.is_owned_struct_with_free_fn(release_match_subject) {
+        return Err(Error::new(
+            Status::InvalidArg,
+            "MatchInfo requires native-owned regex subject storage",
+        ));
+    }
+    let length = subject
+        .allocated_bytes()
+        .filter(|length| *length > 0)
+        .ok_or_else(|| Error::from_reason("MatchInfo subject storage has no bounded bytes"))?;
+    let data = handle_memory_ptr(subject, "MatchInfo subject")?;
+    native_result("MatchInfo subject", subject.check_range(0, length))?;
+    if unsafe { *data.cast::<u8>().add(length - 1) } != 0 {
         return Err(Error::new(
             Status::InvalidArg,
             "MatchInfo subject bytes must end with NUL",
         ));
     }
+    if raw_match_info.boxed_type() != Some(glib::MatchInfo::static_type())
+        && raw_match_info.class() != HandleClass::Opaque
+    {
+        return Err(Error::new(
+            Status::InvalidArg,
+            "Expected a boxed or call-scoped GMatchInfo handle",
+        ));
+    }
+    let base =
+        handle_memory_ptr(raw_match_info, "MatchInfo ownership")?.cast::<glib::ffi::GMatchInfo>();
+    let input = unsafe { glib::ffi::g_match_info_get_string(base) };
     if input.cast::<c_void>() != data {
         return Err(Error::new(
             Status::InvalidArg,
@@ -92,7 +128,7 @@ pub fn own_match_info(
     let info = Box::new(OwnedMatchInfo {
         references: UnsafeCell::new(0),
         base: unsafe { glib::ffi::g_match_info_ref(base) },
-        subject: unsafe { glib::ffi::g_bytes_ref(subject) },
+        _subject: (**subject).clone(),
     });
     unsafe { glib::ffi::g_atomic_ref_count_init(info.references.get()) };
     let handle = Handle::from(NativeBoxed::from_glib_full(

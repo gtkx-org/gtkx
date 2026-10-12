@@ -1,6 +1,6 @@
-import { type ExternalObject, type Handle, readFunctionPointer, resolveFunction } from "./native.js";
+import { createClosure as createNativeClosure, type ExternalObject, type Handle } from "./native.js";
 import { type AnyClass } from "@gtkx/utils";
-import { bind, createBindCache } from "./bind.js";
+import { bind } from "./bind.js";
 import {
     boxedT,
     bufferT,
@@ -11,10 +11,11 @@ import {
     uint32T,
     voidT,
 } from "./descriptors.js";
-import { CLOSURE_SIZE, LIB, VALUE_SIZE, VALUE_T } from "./library.js";
+import { LIB, VALUE_SIZE, VALUE_T } from "./library.js";
 import { describeValueKind, getClassType, getHandle, getWrapperClass, wrapHandle } from "./registry.js";
 import { resolveBoxedType, typeIsA } from "./type.js";
 import { fromValue, getValueType, intoValue } from "./value.js";
+import { compileDescriptor } from "./scalar-plan.js";
 
 /**
  * Handler backing a `GClosure`. It receives the closure's parameters already converted from their
@@ -28,16 +29,9 @@ type ClosureCallback = (...args: never[]) => unknown;
 type ClosureRelease = () => void;
 type ClosureKind = "callback" | "signal";
 
-const CCLOSURE_CALLBACK_OFFSET = CLOSURE_SIZE;
 const N_PARAM_VALUES_INDEX = 2;
 const MARSHAL_DATA_INDEX = 5;
 const CLOSURE_T = boxedT("GClosure", { sharedLibrary: LIB, getTypeFnName: "g_closure_get_type" });
-
-const OWNED_CLOSURE_T = boxedT("GClosure", {
-    ownership: "full",
-    sharedLibrary: LIB,
-    getTypeFnName: "g_closure_get_type",
-});
 
 const MARSHAL_VALUE_T = boxedT("GValue", {
     sharedLibrary: LIB,
@@ -66,20 +60,13 @@ const MARSHAL_T = callbackT(
 );
 
 const NESTED_VALUE_T = structT("borrowed");
-const gCclosureNew = bind(LIB, "g_cclosure_new", [MARSHAL_T], OWNED_CLOSURE_T);
+const marshalPlan = compileDescriptor(MARSHAL_T);
 const gValueGetBoxed = bind(LIB, "g_value_get_boxed", [VALUE_T], NESTED_VALUE_T);
 const gValueReset = bind(LIB, "g_value_reset", [VALUE_T], voidT);
-const gClosureRef = bind(LIB, "g_closure_ref", [CLOSURE_T], voidT);
-const gClosureSink = bind(LIB, "g_closure_sink", [CLOSURE_T], voidT);
-const gClosureSetMarshal = bind(LIB, "g_closure_set_marshal", [CLOSURE_T, bufferT], voidT);
-const cclosureNewCache = createBindCache();
-const genericMarshal: { function?: ExternalObject<Handle> } = {};
+const callbackPlans = new Map<string, ReturnType<typeof compileDescriptor>>();
 const closureReleaseRegistry: FinalizationRegistry<ClosureRelease> = new FinalizationRegistry((release) => {
     release();
 });
-
-const genericClosureMarshal = (): ExternalObject<Handle> =>
-    (genericMarshal.function ??= resolveFunction(LIB, "g_cclosure_marshal_generic"));
 
 const isClosureInstance = (value: object): boolean =>
     typeIsA(getClassType(value.constructor as AnyClass), resolveBoxedType(CLOSURE_T));
@@ -110,16 +97,11 @@ function marshalFor(callback: ClosureCallback, kind: ClosureKind): (...args: unk
 
 function createClosure(callback: ClosureCallback, kind: ClosureKind, release?: ClosureRelease): ExternalObject<Handle> {
     const marshal = marshalFor(callback, kind);
-    const handle = gCclosureNew(marshal) as ExternalObject<Handle>;
+    const handle = createNativeClosure(marshalPlan.abi, marshalPlan.encode(marshal), false);
 
     if (release !== undefined) {
         closureReleaseRegistry.register(marshal, release);
     }
-
-    const nativeMarshal = readFunctionPointer(handle, CCLOSURE_CALLBACK_OFFSET);
-    gClosureRef(handle);
-    gClosureSink(handle);
-    gClosureSetMarshal(handle, nativeMarshal);
 
     return handle;
 }
@@ -138,16 +120,12 @@ function newCCallbackClosure(
     fn: unknown,
     release?: ClosureRelease,
 ): ExternalObject<Handle> {
-    const create = cclosureNewCache(key, LIB, "g_cclosure_new", [callback], OWNED_CLOSURE_T);
-    const handle = create(fn) as ExternalObject<Handle>;
+    const plan = callbackPlans.getOrInsertComputed(key, () => compileDescriptor(callback));
+    const handle = createNativeClosure(plan.abi, plan.encode(fn), true);
 
     if (release !== undefined && typeof fn === "function") {
         closureReleaseRegistry.register(fn, release);
     }
-
-    gClosureRef(handle);
-    gClosureSink(handle);
-    gClosureSetMarshal(handle, genericClosureMarshal());
 
     return handle;
 }

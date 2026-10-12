@@ -26,6 +26,9 @@ int gtkx_cairo_active_owners(int kind) {
 }
 
 cairo_surface_t *cairo_image_surface_create(cairo_format_t format, int width, int height) {
+    if (failure == 3) {
+        return NULL;
+    }
     cairo_surface_t *(*create)(cairo_format_t, int, int) = operation("cairo_image_surface_create");
     cairo_surface_t *result = create(format, width, height);
     if (result != NULL) {
@@ -41,6 +44,9 @@ void cairo_surface_destroy(cairo_surface_t *surface) {
 }
 
 cairo_t *cairo_create(cairo_surface_t *surface) {
+    if (failure == 4) {
+        return NULL;
+    }
     cairo_t *(*create)(cairo_surface_t *) = operation("cairo_create");
     cairo_t *result = create(surface);
     if (result != NULL) {
@@ -66,6 +72,9 @@ cairo_status_t cairo_status(cairo_t *context) {
 }
 
 cairo_path_t *cairo_copy_path(cairo_t *context) {
+    if (failure == 5) {
+        return NULL;
+    }
     cairo_path_t *(*copy)(cairo_t *) = operation("cairo_copy_path");
     cairo_path_t *result = copy(context);
     if (result != NULL) {

@@ -32,7 +32,7 @@ if (role === "owner") {
     let closed: (() => void) | undefined;
     let armed: boolean;
     if (mode.startsWith("race")) {
-        const { activateProcessWatch, closeProcessWatch, openProcessWatch } = await import("@gtkx/native/internal");
+        const { activateProcessWatch, closeProcessWatch, openProcessWatch } = await import("@gtkx/native");
         const killOwner = (): void => {
             process.kill(owner.pid, "SIGKILL");
             const deadline = Date.now() + 5000;
@@ -64,7 +64,7 @@ if (role === "owner") {
         });
         armed = closed !== undefined;
     } else if (mode === "open-error") {
-        const { activateProcessWatch, closeProcessWatch, openProcessWatch } = await import("@gtkx/native/internal");
+        const { activateProcessWatch, closeProcessWatch, openProcessWatch } = await import("@gtkx/native");
         let reported = false;
         try {
             watchProcessGroupOwner(owner, {

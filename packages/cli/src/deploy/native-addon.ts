@@ -1,8 +1,8 @@
-import { resolveBinding } from "@gtkx/native/internal/binding";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import type { DeployArchName, DeploySettings } from "./types.js";
+import { resolveBinding } from "../internal/native-binding.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
 import { cacheDir, downloadFile, readCachedDigest, writeAtomically } from "./download.js";
 import { isHostArch } from "./settings/arch.js";

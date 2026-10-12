@@ -1,8 +1,7 @@
 import * as Regress from "@gtkx/gi/regress";
-import { disposeHandle } from "@gtkx/native";
 import { type ExternalObject, getHandle, type Handle, read, t, write } from "@gtkx/runtime";
 import { expect, test } from "vitest";
-import { drainGC } from "./helpers/memory.js";
+import { didSettle, drainGC } from "./helpers/memory.js";
 
 test("caller-allocated Cairo matrices own independent writable storage", () => {
     const matrix = Regress.testCairoMatrixOutCallerAllocates();
@@ -47,20 +46,24 @@ const path = (ownership: "borrowed" | "full") =>
 
 const copyBorrowedPath = t.bind("libc.so.6", "memmove", [t.buffer, t.buffer, t.biguint64], path("borrowed"));
 
-test("borrowed Cairo results are converted before the source owner is disposed", () => {
+test("borrowed Cairo results survive collection of the source owner", async () => {
     const context = Regress.testCairoContextNoneReturn();
     context.newPath();
     try {
         context.moveTo(7, 8);
         context.lineTo(9, 10);
-        const original = getHandle(Regress.testCairoPathFullReturn());
-        const count = read(original, t.int32, 16);
-        const copied = copyBorrowedPath(original, original, 0n) as ExternalObject<Handle>;
-        disposeHandle(original);
+        const { source, count, copied } = (() => {
+            const original = getHandle(Regress.testCairoPathFullReturn());
+            return {
+                source: new WeakRef(original),
+                count: read(original, t.int32, 16),
+                copied: copyBorrowedPath(original, original, 0n) as ExternalObject<Handle>,
+            };
+        })();
+        expect(await didSettle(() => source.deref() === undefined)).toBe(true);
 
         expect(read(copied, t.int32, 0)).toBe(0);
         expect(read(copied, t.int32, 16)).toBe(count);
-        disposeHandle(copied);
     } finally {
         context.newPath();
     }
@@ -74,11 +77,9 @@ test("failed Cairo status conversion cleans temporary owners and preserves the s
     write(original, t.int32, 0, 0);
     const copied = copyBorrowedPath(original, original, 0n) as ExternalObject<Handle>;
     expect(read(copied, t.int32, 0)).toBe(0);
-    disposeHandle(original);
-    disposeHandle(copied);
 });
 
-test("full Cairo callback returns copy the path while its callback borrow remains valid", () => {
+test("full Cairo callback returns survive source collection and expire the callback borrow", async () => {
     const copyList = t.bind(
         "libglib-2.0.so.0",
         "g_list_copy_deep",
@@ -92,20 +93,24 @@ test("full Cairo callback returns copy the path while its callback borrow remain
         ],
         t.list(path("full"), "full"),
     );
-    const original = getHandle(Regress.testCairoPathFullReturn());
-    const count = read(original, t.int32, 16);
     let callbackSource: ExternalObject<Handle> | undefined;
-    const copied = copyList([original], (source: ExternalObject<Handle>) => {
-        callbackSource = source;
-        return source;
-    }) as ExternalObject<Handle>[];
-    disposeHandle(original);
+    const { source, count, copied } = (() => {
+        const original = getHandle(Regress.testCairoPathFullReturn());
+        return {
+            source: new WeakRef(original),
+            count: read(original, t.int32, 16),
+            copied: copyList([original], (source: ExternalObject<Handle>) => {
+                callbackSource = source;
+                return source;
+            }) as ExternalObject<Handle>[],
+        };
+    })();
+    expect(await didSettle(() => source.deref() === undefined)).toBe(true);
 
     expect(copied).toHaveLength(1);
     for (const result of copied) {
         expect(read(result, t.int32, 0)).toBe(0);
         expect(read(result, t.int32, 16)).toBe(count);
-        disposeHandle(result);
     }
     if (callbackSource === undefined) {
         throw new Error("The native copy callback did not run");

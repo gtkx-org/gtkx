@@ -1,10 +1,10 @@
 import type { Plugin } from "vite";
-import { resolveBinding } from "@gtkx/native/internal/binding";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { arch, platform } from "node:os";
 import { dirname, join } from "node:path";
 import { BINDING_FILENAME } from "../deploy/native-addon.js";
+import { resolveBinding } from "../internal/native-binding.js";
 import { stripQuery } from "./strip-query.js";
 
 function resolvePlatformBinary(root: string): Buffer {

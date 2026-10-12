@@ -1,19 +1,14 @@
 import type { AnyClass } from "@gtkx/utils";
-import { type ExternalObject, getMatchInfoBase, getMatchInfoType, type Handle, ownMatchInfo } from "./native.js";
-import { type Arg } from "./arg.js";
-import { bind } from "./bind.js";
 import {
-    booleanT,
-    boxedT,
-    bufferT,
-    callbackT,
-    int32T,
-    int64T,
-    stringT,
-    structT,
-    uint32T,
-    uint64T,
-} from "./descriptors.js";
+    createMatchSubject,
+    type ExternalObject,
+    getMatchInfoBase,
+    getMatchInfoType,
+    type Handle,
+    ownMatchInfo,
+} from "./native.js";
+import { type Arg } from "./arg.js";
+import { booleanT, boxedT, bufferT, callbackT, int32T, int64T, stringT, uint32T } from "./descriptors.js";
 import { fn } from "./fn.js";
 import { LIB } from "./library.js";
 import { getHandle, getWrapperClass, registerWrapperClass, wrapHandle } from "./registry.js";
@@ -26,7 +21,6 @@ type MatchParams = {
 };
 
 type Subject = {
-    bytes: ExternalObject<Handle>;
     data: ExternalObject<Handle>;
     length: number;
 };
@@ -45,20 +39,6 @@ const OWNED_MATCH_INFO = boxedT("GMatchInfo", {
     sharedLibrary: LIB,
     getTypeFnName: "g_match_info_get_type",
 });
-const BYTES = boxedT("GBytes", { ownership: "borrowed", sharedLibrary: LIB, getTypeFnName: "g_bytes_get_type" });
-const gBytesNew = bind(
-    LIB,
-    "g_bytes_new",
-    [bufferT, uint64T],
-    boxedT("GBytes", {
-        ownership: "full",
-        sharedLibrary: LIB,
-        getTypeFnName: "g_bytes_get_type",
-    }),
-);
-const gBytesGetData = bind(LIB, "g_bytes_get_data", [BYTES, bufferT], structT());
-const gMatchInfoRef = bind(LIB, "g_match_info_ref", [MATCH_INFO], OWNED_MATCH_INFO);
-
 const MATCH_ARGS: Arg[] = [
     {
         type: boxedT("GRegex", { ownership: "borrowed", sharedLibrary: LIB, getTypeFnName: "g_regex_get_type" }),
@@ -102,12 +82,12 @@ const encoder = new TextEncoder();
 
 const encodeSubject = (subject: MatchParams["subject"]): Uint8Array => {
     if (typeof subject === "string") {
-        return encoder.encode(`${subject}\0`);
+        return encoder.encode(subject);
     }
     if (Array.isArray(subject) && subject.every((part) => typeof part === "string")) {
-        return encoder.encode(`${subject.join("")}\0`);
+        return encoder.encode(subject.join(""));
     }
-    const encoded = new Uint8Array(subject.length + 1);
+    const encoded = new Uint8Array(subject.length);
     encoded.set(subject);
 
     return encoded;
@@ -115,14 +95,11 @@ const encodeSubject = (subject: MatchParams["subject"]): Uint8Array => {
 
 const createSubject = (subject: MatchParams["subject"]): Subject => {
     const encoded = encodeSubject(subject);
-    const bytes = gBytesNew(encoded, encoded.length) as ExternalObject<Handle>;
-    const data = gBytesGetData(bytes, null) as ExternalObject<Handle>;
-
-    return { bytes, data, length: encoded.length - 1 };
+    return { data: createMatchSubject(encoded), length: encoded.length };
 };
 
 const managedMatchInfo = (raw: ExternalObject<Handle>, subject: Subject): object =>
-    wrapHandle(ownMatchInfo(raw, subject.bytes), getWrapperClass(getMatchInfoType()));
+    wrapHandle(ownMatchInfo(raw, subject.data), getWrapperClass(getMatchInfoType()));
 
 const matchWithSubject = <MatchInfo extends object>(
     boundFn: (...inputs: unknown[]) => unknown,
@@ -183,9 +160,7 @@ function replaceRegexEval(
     const input = createSubject(subject);
     const shouldStopWithOwnedMatch = shouldStop as (info: object, result: object) => boolean;
     const isLastMatch = (info: object, result: object): boolean => {
-        const raw = gMatchInfoRef(getHandle(info)) as ExternalObject<Handle>;
-
-        return shouldStopWithOwnedMatch(managedMatchInfo(raw, input), result);
+        return shouldStopWithOwnedMatch(managedMatchInfo(getHandle(info), input), result);
     };
 
     return gRegexReplaceEval(

@@ -34,6 +34,7 @@
         "pointer-callbacks.test.ts",
         "properties.test.ts",
         "reference-storage.test.ts",
+        "regex-ownership.test.ts",
         "regress-coverage.test.ts",
         "regress-properties.test.ts",
         "regress-records.test.ts",

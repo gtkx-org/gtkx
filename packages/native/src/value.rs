@@ -6,6 +6,7 @@ use napi::{Env, ValueType};
 use crate::handle::{Handle, HandleClass, INVALIDATED_HANDLE};
 
 mod closure;
+pub(crate) mod roots;
 mod view;
 
 pub mod pending_wrapper;

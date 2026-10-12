@@ -1,4 +1,4 @@
-import { alloc, encodePointer, type ExternalObject, getType, type Handle, retainPropertyPointer } from "./native.js";
+import { alloc, type ExternalObject, getType, type Handle, setValuePointer } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import { bind, createBindCache } from "./bind.js";
 import {
@@ -450,19 +450,9 @@ const scalarGArrayValueType = (descriptor: ArrayDescriptor): ValueType =>
         };
     });
 
-const valuePointerStorage: WeakMap<
-    ExternalObject<Handle>,
-    { pointer: ExternalObject<Handle>; source: unknown }
-> = new WeakMap();
 const containerValueTypes: WeakMap<Descriptor, ValueType> = new WeakMap();
 const transferredPropertyGetters: WeakMap<Descriptor, ValueGetter> = new WeakMap();
 const pointerNumberValueType = bindValueType("pointer", biguint64T);
-
-const pointerSourceValues = (value: unknown): unknown[] => {
-    if (Array.isArray(value)) return value.flatMap(pointerSourceValues);
-    if (value instanceof Map) return [...value.entries()].flatMap(pointerSourceValues);
-    return [value];
-};
 
 const borrowDescriptor = (descriptor: Descriptor): Descriptor => {
     if (descriptor.kind === "array") {
@@ -819,10 +809,6 @@ function toValue(descriptor: Descriptor, value: unknown): ExternalObject<Handle>
     return gValue;
 }
 
-const retainCallbackProperty = (owner: ExternalObject<Handle>, name: string, value: ExternalObject<Handle>): void => {
-    retainPropertyPointer(owner, name, valuePointerStorage.get(value)?.pointer ?? null);
-};
-
 function toValueForType(descriptor: Descriptor, jsValue: unknown, type: bigint): ExternalObject<Handle> {
     const value = newValueForType(type);
     const fundamental = typeFundamental(type);
@@ -837,9 +823,7 @@ function toValueForType(descriptor: Descriptor, jsValue: unknown, type: bigint):
             const encoded = plan.encode(
                 borrowed.kind === "callback" ? wrapCallbackValue(borrowed, jsValue) : toNative(borrowed, jsValue),
             );
-            const storage = encodePointer(plan.abi, encoded);
-            valuePointerStorage.set(value, { pointer: storage, source: [pointerSourceValues(jsValue), encoded] });
-            pointerValueType.set(value, storage);
+            setValuePointer(value, plan.abi, encoded);
         }
     } else if (fundamental === TYPE_BOXED && (descriptor.kind === "array" || descriptor.kind === "hashtable")) {
         const target =
@@ -1019,7 +1003,6 @@ export {
     type JsValue,
     toValue,
     toValueForType,
-    retainCallbackProperty,
     toValueHandle,
     tryToValueHandle,
     ValueMarshalError,

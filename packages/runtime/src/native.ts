@@ -5,7 +5,6 @@ const DISPATCH_BUDGET_MS = 4;
 init(DISPATCH_BUDGET_MS);
 
 export * from "@gtkx/native";
-export * from "@gtkx/native/internal";
 export {
     bind,
     bindFunctionPointer,

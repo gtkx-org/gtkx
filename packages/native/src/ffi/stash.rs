@@ -59,7 +59,11 @@ impl CallbackValue {
             state_ptr,
             has_user_data,
             destroy_ptr,
-            held_state: owned_state.map(Box::into_raw),
+            held_state: owned_state.map(|state| {
+                let state = Box::into_raw(state);
+                unsafe { (*state).data_ref().state_ptr.set(state) };
+                state
+            }),
             pending_transfer: Cell::new(None),
         }
     }

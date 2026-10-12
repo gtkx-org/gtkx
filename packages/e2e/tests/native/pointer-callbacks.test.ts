@@ -1,9 +1,83 @@
 import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
-import { registerClass } from "@gtkx/runtime";
-import { expect, test } from "vitest";
-import { drainGC } from "./helpers/memory.js";
+import { setObjectProperty } from "@gtkx/native";
+import {
+    getClassType,
+    getHandle,
+    newObjectWithProperties,
+    offSignal,
+    onSignal,
+    registerClass,
+    registerConstructProperties,
+    registerWrapperClass,
+    t,
+} from "@gtkx/runtime";
+import { getProperty, getVfuncRegistry, setProperty, toValue } from "@gtkx/runtime/internal";
+import { resolveExecutable } from "@gtkx/utils";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, expect, test } from "vitest";
+import { didSettle, drainGC } from "./helpers/memory.js";
+
+const directory = mkdtempSync(join(tmpdir(), "gtkx-pointer-callbacks-"));
+const library = join(directory, "libgtkx-pointer-callbacks.so");
+const compileFlags = execFileSync(resolveExecutable("pkg-config"), ["--cflags", "--libs", "gobject-2.0"], {
+    encoding: "utf8",
+})
+    .trim()
+    .split(/\s+/);
+execFileSync(resolveExecutable("gcc"), [
+    "-shared",
+    "-fPIC",
+    "-fsanitize=address",
+    "-Wall",
+    "-Wextra",
+    "-Werror",
+    join(import.meta.dirname, "fixtures/pointer-callbacks.c"),
+    "-o",
+    library,
+    ...compileFlags,
+]);
+afterAll(() => rmSync(directory, { recursive: true, force: true }));
+
+type StoredCallback = (value: number) => number;
+const callbackDescriptor = t.callback([t.int32], t.int32, { scope: "call" });
+const callbackObjectType = t.bind(library, "gtkx_callback_object_get_type", [], t.biguint64)() as bigint;
+const getId = t.bind(library, "gtkx_callback_object_id", [t.object()], t.uint32);
+const wasFinalized = t.bind(library, "gtkx_callback_object_was_finalized", [t.uint32], t.boolean);
+const invoke = t.bind(library, "gtkx_callback_object_invoke", [t.object(), t.int32], t.int32);
+const invokeBeforeNextSet = t.bind(library, "gtkx_callback_object_invoke_before_next_set", [t.object()], t.void);
+const hold = t.bind(library, "gtkx_callback_object_hold", [t.object()], t.void);
+const release = t.bind(library, "gtkx_callback_object_release", [], t.void);
+const invokeHeld = t.bind(library, "gtkx_callback_object_invoke_held", [t.int32], t.int32);
+
+class CallbackObject {
+    constructor(props: { callback?: StoredCallback | null } = {}) {
+        return newObjectWithProperties(getClassType(new.target), props, this);
+    }
+
+    get id(): number {
+        return getId(getHandle(this)) as number;
+    }
+
+    get callback(): StoredCallback | null {
+        return getProperty(this, "callback", callbackDescriptor) as StoredCallback | null;
+    }
+
+    set callback(callback: StoredCallback | null) {
+        setProperty(this, "callback", callbackDescriptor, callback);
+    }
+
+    invoke(value: number): number {
+        return invoke(getHandle(this), value) as number;
+    }
+}
+
+registerWrapperClass(CallbackObject, callbackObjectType, getVfuncRegistry(GObject.Object));
+registerConstructProperties(CallbackObject, { callback: ["callback", callbackDescriptor] });
 
 test("opaque pointers preserve exact addresses and null through generated calls", () => {
     for (const pointer of [null, 1n, 0x123456789abcn]) {
@@ -71,14 +145,257 @@ test("type-erased interface callbacks reach their registered implementation", ()
     expect(calls).toEqual(["method", "callback"]);
 });
 
-test("callback-valued properties accept construction, replacement, and clearing", () => {
-    const object = new Regress.AnnotationObject({ functionProperty: (value) => value + 1 });
-    expect(object.functionProperty).toBeNull();
-    object.functionProperty = (value) => value + 2;
-    expect(object.functionProperty).toBeNull();
-    object.functionProperty = null;
-    expect(object.functionProperty).toBeNull();
-    expect(new Regress.AnnotationObject({ functionProperty: (value) => value }).functionProperty).toBeNull();
+test("constructed callback properties remain callable through native storage after collection", async () => {
+    const { object, reference } = (() => {
+        const callback = (value: number): number => value + 17;
+        return { object: new CallbackObject({ callback }), reference: new WeakRef(callback) };
+    })();
+
+    await drainGC();
+    expect(object.invoke(25)).toBe(42);
+    expect(object.callback?.(25)).toBe(42);
+    expect(reference.deref()).toBeDefined();
+});
+
+test("replacing and clearing callback properties releases their previous JavaScript callbacks", async () => {
+    const object = new CallbackObject();
+    const first = (() => {
+        const callback = (value: number): number => value + 1;
+        object.callback = callback;
+        return new WeakRef(callback);
+    })();
+    await drainGC();
+    expect(object.invoke(40)).toBe(41);
+    const second = (() => {
+        const callback = (value: number): number => value + 2;
+        object.callback = callback;
+        return new WeakRef(callback);
+    })();
+
+    expect(await didSettle(() => first.deref() === undefined)).toBe(true);
+    expect(object.invoke(40)).toBe(42);
+    expect(second.deref()).toBeDefined();
+    object.callback = null;
+    expect(await didSettle(() => second.deref() === undefined)).toBe(true);
+    expect(object.callback).toBeNull();
+    expect(object.invoke(40)).toBe(-1);
+});
+
+test("rejecting a mismatched native property value preserves its previous callback", async () => {
+    const { object, reference } = (() => {
+        const callback = (value: number): number => value + 30;
+        return { object: new CallbackObject({ callback }), reference: new WeakRef(callback) };
+    })();
+
+    await drainGC();
+    expect(() => setObjectProperty(getHandle(object), "callback", toValue(t.int32, 42))).toThrow();
+    await drainGC();
+    expect(object.invoke(12)).toBe(42);
+    expect(object.callback?.(12)).toBe(42);
+    expect(reference.deref()).toBeDefined();
+});
+
+test("saved callback getters retain their callback through replacement, clearing, and collection", async () => {
+    const object = new CallbackObject();
+    const saved = (() => {
+        const callback = (value: number): number => value + 17;
+        object.callback = callback;
+        const callable = object.callback;
+        if (callable === null) throw new Error("The native callback property was empty");
+        return { callable, reference: new WeakRef(callback) };
+    })();
+    object.callback = (value) => value + 1;
+    await drainGC();
+    expect(saved.callable(25)).toBe(42);
+    expect(object.invoke(25)).toBe(26);
+    object.callback = null;
+    await drainGC();
+    expect(saved.callable(25)).toBe(42);
+    expect(saved.reference.deref()).toBeDefined();
+    expect(object.invoke(25)).toBe(-1);
+});
+
+test("collecting a saved callback getter releases its superseded callback and captured object", async () => {
+    const references = (() => {
+        const object = new CallbackObject();
+        const callback = (value: number): number => value + object.id;
+        object.callback = callback;
+        const saved = object.callback;
+        if (saved === null) throw new Error("The native callback property was empty");
+        object.callback = null;
+        expect(saved(7)).toBe(object.id + 7);
+        return {
+            object: new WeakRef(object),
+            callback: new WeakRef(callback),
+            callable: new WeakRef(saved),
+            id: object.id,
+        };
+    })();
+
+    expect(
+        await didSettle(
+            () =>
+                references.callable.deref() === undefined &&
+                references.callback.deref() === undefined &&
+                references.object.deref() === undefined &&
+                wasFinalized(references.id) === true,
+        ),
+    ).toBe(true);
+});
+
+test("callback replacement during constructed retains the replacement after construction returns", async () => {
+    const state: { replacement?: WeakRef<StoredCallback> } = {};
+    class ReplaceDuringConstruction extends CallbackObject {
+        vfuncConstructed(): void {
+            const callback = (value: number): number => value + 30;
+            state.replacement = new WeakRef(callback);
+            this.callback = callback;
+        }
+    }
+    const Registered = registerClass(ReplaceDuringConstruction, {
+        typeName: "GtkxCallbackReplacementDuringConstruction",
+    });
+    const { object, original } = (() => {
+        const callback = (value: number): number => value + 20;
+        return { object: new Registered({ callback }), original: new WeakRef(callback) };
+    })();
+
+    expect(await didSettle(() => original.deref() === undefined)).toBe(true);
+    expect(object.invoke(12)).toBe(42);
+    expect(state.replacement?.deref()).toBeDefined();
+});
+
+test("clearing a callback during constructed releases the original after construction returns", async () => {
+    class ClearDuringConstruction extends CallbackObject {
+        vfuncConstructed(): void {
+            this.callback = null;
+        }
+    }
+    const Registered = registerClass(ClearDuringConstruction, { typeName: "GtkxCallbackClearDuringConstruction" });
+    const { object, original } = (() => {
+        const callback = (value: number): number => value + 20;
+        return { object: new Registered({ callback }), original: new WeakRef(callback) };
+    })();
+
+    expect(await didSettle(() => original.deref() === undefined)).toBe(true);
+    expect(object.callback).toBeNull();
+    expect(object.invoke(12)).toBe(-1);
+});
+
+test("a callback getter saved during constructed survives clearing its original property", async () => {
+    const state: { saved?: StoredCallback } = {};
+    class SaveDuringConstruction extends CallbackObject {
+        vfuncConstructed(): void {
+            const callback = this.callback;
+            if (callback === null) throw new Error("The construction callback was empty");
+            state.saved = callback;
+            this.callback = null;
+        }
+    }
+    const Registered = registerClass(SaveDuringConstruction, { typeName: "GtkxSavedCallbackDuringConstruction" });
+    const { object, original } = (() => {
+        const callback = (value: number): number => value + 30;
+        return { object: new Registered({ callback }), original: new WeakRef(callback) };
+    })();
+
+    await drainGC();
+    expect(state.saved?.(12)).toBe(42);
+    expect(original.deref()).toBeDefined();
+    expect(object.callback).toBeNull();
+    delete state.saved;
+    expect(await didSettle(() => original.deref() === undefined)).toBe(true);
+});
+
+test("a callback getter saved by native setter reentry survives replacing the original property", async () => {
+    const object = new CallbackObject();
+    const state: { saved?: StoredCallback } = {};
+    const original = (() => {
+        const callback = (value: number): number => {
+            if (value === 0) {
+                const saved = object.callback;
+                if (saved === null) throw new Error("The previous callback was empty");
+                state.saved = saved;
+            }
+            return value + 30;
+        };
+        object.callback = callback;
+        return new WeakRef(callback);
+    })();
+
+    await drainGC();
+    invokeBeforeNextSet(getHandle(object));
+    object.callback = (value) => value + 50;
+    await drainGC();
+    expect(state.saved?.(12)).toBe(42);
+    expect(object.invoke(12)).toBe(62);
+    object.callback = null;
+    await drainGC();
+    expect(state.saved?.(12)).toBe(42);
+    delete state.saved;
+    expect(await didSettle(() => original.deref() === undefined)).toBe(true);
+});
+
+test("reentrant callback property notification retains the innermost replacement", async () => {
+    const object = new CallbackObject();
+    const state: { replaced: boolean; replacement?: WeakRef<StoredCallback> } = { replaced: false };
+    const replace = (): void => {
+        if (state.replaced) return;
+        state.replaced = true;
+        expect(object.invoke(12)).toBe(32);
+        const callback = (value: number): number => value + 30;
+        state.replacement = new WeakRef(callback);
+        object.callback = callback;
+    };
+    onSignal(object, "notify::callback", replace);
+    const replaced = (() => {
+        const callback = (value: number): number => value + 20;
+        object.callback = callback;
+        return new WeakRef(callback);
+    })();
+    offSignal(object, "notify::callback", replace);
+
+    expect(state.replaced).toBe(true);
+    expect(await didSettle(() => replaced.deref() === undefined)).toBe(true);
+    expect(object.invoke(12)).toBe(42);
+    expect(state.replacement?.deref()).toBeDefined();
+});
+
+test.each(["clear", "replace"] as const)(
+    "a stored callback can %s its own property before returning to native code",
+    async (change) => {
+        const object = new CallbackObject();
+        const original = (() => {
+            const callback = (value: number): number => {
+                object.callback = change === "clear" ? null : (next) => next + 50;
+                return value + 30;
+            };
+            object.callback = callback;
+            return new WeakRef(callback);
+        })();
+
+        await drainGC();
+        expect(object.invoke(12)).toBe(42);
+        expect(await didSettle(() => original.deref() === undefined)).toBe(true);
+        expect(object.invoke(12)).toBe(change === "clear" ? -1 : 62);
+    },
+);
+
+test("a self-clearing callback remains alive until its outermost native invocation returns", async () => {
+    const object = new CallbackObject();
+    const original = (() => {
+        const callback = (value: number): number => {
+            if (value === 1) return object.invoke(0) + 1;
+            object.callback = null;
+            return 41;
+        };
+        object.callback = callback;
+        return new WeakRef(callback);
+    })();
+
+    await drainGC();
+    expect(object.invoke(1)).toBe(42);
+    expect(await didSettle(() => original.deref() === undefined)).toBe(true);
+    expect(object.invoke(1)).toBe(-1);
 });
 
 test("pointer-valued signals deliver both nonnull addresses and null", () => {
@@ -112,12 +429,48 @@ test("interface signals preserve integers encoded in pointer words", () => {
     expect(values).toEqual([0, -37, 2147483647]);
 });
 
-test("callback properties do not retain objects captured by their own callback", async () => {
-    const reference = (() => {
-        const object = new Regress.AnnotationObject({});
-        object.functionProperty = (value) => object.stringProperty?.length ?? value;
-        return new WeakRef(object);
+test("self-capturing callback properties allow their object and callback to be collected", async () => {
+    const references = (() => {
+        const object = new CallbackObject();
+        const callback = (value: number): number => object.id + value;
+        object.callback = callback;
+        expect(object.invoke(7)).toBe(object.id + 7);
+        return { object: new WeakRef(object), callback: new WeakRef(callback), id: object.id };
     })();
-    await drainGC();
-    expect(reference.deref()).toBeUndefined();
+
+    expect(
+        await didSettle(
+            () =>
+                references.object.deref() === undefined &&
+                references.callback.deref() === undefined &&
+                wasFinalized(references.id) === true,
+        ),
+    ).toBe(true);
+});
+
+test("native object ownership retains a callback until the native reference is released", async () => {
+    const references = (() => {
+        const object = new CallbackObject();
+        const callback = (value: number): number => object.id + value;
+        object.callback = callback;
+        hold(getHandle(object));
+        return { object: new WeakRef(object), callback: new WeakRef(callback), id: object.id };
+    })();
+
+    try {
+        await drainGC();
+        expect(invokeHeld(7)).toBe(references.id + 7);
+        expect(wasFinalized(references.id)).toBe(false);
+    } finally {
+        release();
+    }
+
+    expect(
+        await didSettle(
+            () =>
+                references.object.deref() === undefined &&
+                references.callback.deref() === undefined &&
+                wasFinalized(references.id) === true,
+        ),
+    ).toBe(true);
 });

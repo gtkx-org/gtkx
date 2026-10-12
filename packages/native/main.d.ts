@@ -1,20 +1,25 @@
 export {
+    activateProcessWatch,
     alloc,
+    armParentDeath,
     attachCall,
     bindField,
     call,
+    closeProcessWatch,
     compileCall,
     compileReference,
     compileVfuncSlot,
     copy,
+    createClosure,
+    createMatchSubject,
     createFunctionResolver,
     createRecordConverter,
     createReferenceStorage,
     createTypeResolver,
-    disposeHandle,
     getFundamentalIdentity,
     getMatchInfoBase,
     getMatchInfoType,
+    getObjectProperty,
     getType,
     getTypeClass,
     getWrapper,
@@ -24,18 +29,18 @@ export {
     keepAlive,
     newObject,
     openLibrary,
+    openProcessWatch,
     ownMatchInfo,
     quit,
     readField,
-    readFunctionPointer,
-    readReferenceStorage,
     readVfuncSlot,
     registerClass,
     resolveSymbol,
+    setObjectProperty,
+    setValuePointer,
     setWrapper,
     setWrapperBorrow,
     writeField,
-    writeReferenceStorage,
 } from "./index.js";
 export type {
     ArrayKind,
@@ -57,7 +62,9 @@ export type {
     Handle,
     LibraryHandle,
     Ownership,
+    ProcessWatch,
     RecordConverter,
+    RecordConverterOptions,
     ReferenceDescriptor,
     ReferenceMode,
     ReferenceStorage,
@@ -85,17 +92,19 @@ declare module "./index.js" {
     export type CallSignature = { _opaque: "CallSignature" };
     /** A reference to a shared library that remains loaded for the life of the process. */
     export type LibraryHandle = { _opaque: "LibraryHandle" };
+    /** An owned process watch that can deliver termination when the watched process exits. */
+    export type ProcessWatch = { _opaque: "ProcessWatch" };
     /** A validated vtable position whose implementation is acquired when read. */
     export type VfuncSlot = { _opaque: "VfuncSlot" };
     /** An environment-bound lazy GType resolver that retries unregistered types. */
     export type TypeResolver = { _opaque: "TypeResolver" };
     /** An environment-bound lazy resolver for a permanent native lifecycle function. */
     export type FunctionResolver = { _opaque: "FunctionResolver" };
-    /** A synchronous record acquisition callback invoked while native source storage is leased. */
+    /** A native record copy strategy with lazily resolved lifecycle operations. */
     export type RecordConverter = { _opaque: "RecordConverter" };
     /** A compiled non-scalar reference layout, paired with storage prepared for that layout. */
     export type ReferenceDescriptor = { _opaque: "ReferenceDescriptor" };
-    /** An owned call transaction or a scoped callback output slot. */
+    /** An owned call transaction prepared for a compiled reference layout. */
     export type ReferenceStorage = { _opaque: "ReferenceStorage" };
     /**
      * An opaque, precompiled binding of a struct field, produced by `bindField` and passed to

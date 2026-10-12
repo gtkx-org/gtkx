@@ -10,10 +10,9 @@ use napi::bindgen_prelude::{
     Either, External, Function, JsObjectValue, JsValue, JsValuesTupleIntoVec, Null, Object,
     ToNapiValue as _, Unknown,
 };
-use napi::{Env, Status, ValueType};
+use napi::{Env, Property, PropertyAttributes, Status, ValueType};
 use napi_derive::napi;
 
-use crate::api::reference::{CallbackReference, ReferenceStorage};
 use crate::ffi::Stash;
 use crate::ffi::codec::{
     CallbackCodec, CallbackScope, Codec, Decoder as _, DestroyNotifyKind, Encoder as _,
@@ -240,6 +239,9 @@ impl ClosureState {
             return;
         }
         let holds = unsafe { (*state).holds.get() }.saturating_sub(1);
+        if holds == 0 && unsafe { (*state).data_ref() }.defer_destroy() {
+            return;
+        }
         unsafe { (*state).holds.set(holds) };
         if holds == 0 {
             drop(unsafe { Box::from_raw(state) });
@@ -326,7 +328,6 @@ struct ClosureArgs<'e> {
 
 struct RefSlot<'e> {
     obj: Unknown<'e>,
-    storage: Option<CallbackReference>,
     inner_ptr: *mut c_void,
     inner_codec: &'e Codec,
     init: SlotInit,
@@ -471,15 +472,22 @@ impl ClosureData {
             value::js_null(env)?
         };
 
-        let (obj, storage) = if inner_ptr.is_null() {
-            (value::js_null(env)?, None)
+        let obj = if inner_ptr.is_null() {
+            value::js_null(env)?
         } else {
-            let (obj, storage) = ReferenceStorage::callback(env, ref_codec, seed)?;
-            (obj, Some(storage))
+            let mut cell = Object::new(env)?;
+            cell.define_properties(&[Property::new()
+                .with_utf8_name("value")?
+                .with_value(&seed)
+                .with_property_attributes(
+                    PropertyAttributes::Writable
+                        | PropertyAttributes::Enumerable
+                        | PropertyAttributes::Configurable,
+                )])?;
+            (&cell).into_unknown(env)?
         };
         Ok(RefSlot {
             obj,
-            storage,
             inner_ptr,
             inner_codec: ref_codec.inner_codec(),
             array_extent,
@@ -707,11 +715,9 @@ impl ClosureData {
             if slot.inner_ptr.is_null() {
                 continue;
             }
-            let Some(storage) = &slot.storage else {
-                continue;
-            };
-            let new_value = storage
-                .read(env)
+            let cell = Object::from_raw(env.raw(), slot.obj.raw());
+            let new_value = cell
+                .get_named_property::<Unknown<'_>>("value")
                 .map_err(|error| CallbackError::Infrastructure(error.into()))?;
             let target = unsafe { crate::ffi::Slot::new(slot.inner_ptr) };
             let written = match slot.inner_codec {

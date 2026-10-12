@@ -13,12 +13,9 @@ const importBeforeWorker = async (target: string): Promise<unknown> => {
     return JSON.parse(result.stdout);
 };
 
-test.each(["@gtkx/native", "@gtkx/native/internal", "@gtkx/native/internal/binding"])(
-    "importing %s leaves the main context available to the runtime thread",
-    async (target) => {
-        expect(await importBeforeWorker(target)).toEqual({ typeName: "gint" });
-    },
-);
+test("importing @gtkx/native leaves the main context available to the runtime thread", async () => {
+    expect(await importBeforeWorker("@gtkx/native")).toEqual({ typeName: "gint" });
+});
 
 test.each(["@gtkx/runtime", "@gtkx/runtime/internal", "leaf"])(
     "importing %s initializes the runtime before module-level bindings execute",

@@ -12,7 +12,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 pub use boxed::{Boxed, BoxedFreeFn};
 pub use fundamental::{Fundamental, RefFn, UnrefFn};
 use glib::prelude::{ObjectExt as _, ObjectType as _};
-pub(crate) use lease::{ConversionLease, LeaseScope, RecordLease};
+pub(crate) use lease::{LeaseScope, RecordLease};
 use libloading::os::unix::Library;
 
 use crate::ffi::PendingTransfer;
@@ -195,9 +195,9 @@ enum HandleKind {
 struct HandleInner {
     kind: HandleKind,
     fields: FieldStore,
+    pointer_storage: RefCell<Option<(Handle, bool)>>,
     invalidated: Cell<bool>,
     allocated_bytes: Cell<Option<usize>>,
-    active_record_leases: Cell<usize>,
 }
 
 /// A shared reference to one native instance. Cloning shares the same instance, so a value that
@@ -236,9 +236,9 @@ impl From<HandleKind> for Handle {
             inner: Rc::new(HandleInner {
                 kind,
                 fields: FieldStore::default(),
+                pointer_storage: RefCell::new(None),
                 invalidated: Cell::new(false),
                 allocated_bytes: Cell::new(None),
-                active_record_leases: Cell::new(0),
             }),
         }
     }
@@ -420,65 +420,22 @@ impl Handle {
         .into()
     }
 
-    /// Moves a converted record into a native transfer transaction after validating its release
-    /// operation. Aliases of the returned handle expire together when ownership moves.
-    pub(crate) fn take_converted_struct(
-        &self,
-        expected_free: BoxedFreeFn,
-    ) -> anyhow::Result<*mut c_void> {
-        anyhow::ensure!(!self.is_invalidated(), "{INVALIDATED_HANDLE}");
-        anyhow::ensure!(
-            self.inner.active_record_leases.get() == 0,
-            "A record retained by an active native operation cannot transfer ownership"
-        );
-        let HandleKind::Struct { ptr, free_fn } = &self.inner.kind else {
-            anyhow::bail!("A record converter must return an owned struct handle");
-        };
-        anyhow::ensure!(
-            !ConversionLease::is_active(ptr.get()),
-            "A record converter cannot consume its scoped source"
-        );
-        anyhow::ensure!(
-            free_fn.is_some_and(|free| std::ptr::fn_addr_eq(free, expected_free)),
-            "A converted record must have the declared native release operation"
-        );
-        anyhow::ensure!(
-            self.inner.fields.allocations.borrow().is_empty(),
-            "A converted record cannot transfer separately owned field storage"
-        );
-        anyhow::ensure!(!ptr.get().is_null(), "{NULL_HANDLE}");
-        let transferred = ptr.replace(std::ptr::null_mut());
-        self.invalidate();
-        Ok(transferred)
+    pub(crate) fn is_owned_struct_with_free_fn(&self, expected: BoxedFreeFn) -> bool {
+        matches!(&self.inner.kind, HandleKind::Struct { free_fn: Some(free), .. } if std::ptr::fn_addr_eq(*free, expected))
     }
 
-    /// Releases a directly owned record immediately and expires every alias. Native destruction
-    /// remains responsible for the release operation, including separately owned field storage.
-    pub(crate) fn dispose_struct(&self) -> anyhow::Result<()> {
-        anyhow::ensure!(
-            self.inner.active_record_leases.get() == 0,
-            "A record retained by an active native operation cannot be disposed"
-        );
-        let HandleKind::Struct { ptr, free_fn } = &self.inner.kind else {
-            anyhow::bail!("Only a directly owned struct handle can be disposed");
-        };
-        anyhow::ensure!(
-            !ConversionLease::is_active(ptr.get()),
-            "A scoped conversion source cannot be disposed"
-        );
-        let released = ptr.replace(std::ptr::null_mut());
-        self.invalidate();
-        if !released.is_null() {
-            unsafe {
-                match free_fn {
-                    Some(free) => free(released),
-                    None => glib::ffi::g_free(released),
-                }
-            }
-        }
-        let fields = std::mem::take(&mut *self.inner.fields.allocations.borrow_mut());
-        drop(fields);
-        Ok(())
+    pub(crate) fn set_pointer_storage(&self, storage: Handle, is_callback: bool) {
+        self.inner
+            .pointer_storage
+            .replace(Some((storage, is_callback)));
+    }
+
+    pub(crate) fn pointer_storage(&self) -> Option<Handle> {
+        self.inner
+            .pointer_storage
+            .borrow()
+            .as_ref()
+            .and_then(|(storage, is_callback)| is_callback.then(|| storage.clone()))
     }
 
     /// Records how many bytes the handle's own allocation holds, which only the caller that

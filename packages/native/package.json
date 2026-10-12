@@ -32,24 +32,12 @@
         ".": {
             "types": "./main.d.ts",
             "default": "./main.js"
-        },
-        "./internal": {
-            "types": "./internal.d.ts",
-            "default": "./internal.js"
-        },
-        "./internal/binding": {
-            "types": "./binding.d.ts",
-            "default": "./binding.js"
         }
     },
     "sideEffects": false,
     "files": [
-        "binding.js",
-        "binding.d.ts",
         "index.js",
         "index.d.ts",
-        "internal.js",
-        "internal.d.ts",
         "main.js",
         "main.d.ts"
     ],

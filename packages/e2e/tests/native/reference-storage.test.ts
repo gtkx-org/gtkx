@@ -9,10 +9,8 @@ import {
     type ExternalObject,
     type Handle,
     openLibrary,
-    readReferenceStorage,
-    type ReferenceStorage,
+    type Ref,
     resolveSymbol,
-    writeReferenceStorage,
 } from "@gtkx/native";
 import * as Gio from "@gtkx/gi/gio";
 import { getHandle, read, t } from "@gtkx/runtime";
@@ -87,7 +85,7 @@ test("reference storage validates explicit modes and returned capacity before re
     expect(() => call(target, [storage, 2, 0n])).toThrow("exceeds its capacity");
 });
 
-test("callback reference transport expires when its invocation returns", () => {
+test("callback reference cells cannot change native storage after their invocation returns", () => {
     const reference = compileReference(bytes, true);
     const callback: Descriptor = {
         kind: "callback",
@@ -111,25 +109,24 @@ test("callback reference transport expires when its invocation returns", () => {
     ]);
     const source = alloc(16);
 
-    let held: ExternalObject<ReferenceStorage> | undefined;
+    const held: { cell?: Ref } = {};
     call(sort, [
         source,
         2n,
         8n,
-        (left: ExternalObject<ReferenceStorage>, right: ExternalObject<ReferenceStorage>) => {
-            held = left;
-            expect(readReferenceStorage(left)).toBeNull();
-            expect(readReferenceStorage(right)).toBeNull();
-            writeReferenceStorage(left, null);
-            writeReferenceStorage(right, null);
+        (left: Ref, right: Ref) => {
+            held.cell = left;
+            expect(left.value).toBeNull();
+            expect(right.value).toBeNull();
+            left.value = null;
+            right.value = null;
             return 0;
         },
     ]);
     expect([read(source, t.string(), 0), read(source, t.string(), 8)]).toEqual([null, null]);
-    if (held === undefined) throw new Error("The comparator did not receive reference storage");
-    const expired = held;
-    expect(() => readReferenceStorage(expired)).toThrow("borrow has ended");
-    expect(() => writeReferenceStorage(expired, null)).toThrow("borrow has ended");
+    if (held.cell === undefined) throw new Error("The comparator did not receive reference storage");
+    held.cell.value = encoder.encode("after return");
+    expect([read(source, t.string(), 0), read(source, t.string(), 8)]).toEqual([null, null]);
 });
 
 test("failed public output conversion releases later owned reference outputs", async () => {
