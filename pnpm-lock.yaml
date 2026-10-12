@@ -301,6 +301,34 @@ importers:
         specifier: ^10.4.1
         version: 10.4.1(eslint@10.12.0(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)
 
+  examples/adwaita-demo:
+    dependencies:
+      '@gtkx/components':
+        specifier: workspace:*
+        version: link:../../packages/components
+      '@gtkx/react':
+        specifier: workspace:*
+        version: link:../../packages/react
+      '@gtkx/runtime':
+        specifier: workspace:*
+        version: link:../../packages/runtime
+      react:
+        specifier: 'catalog:'
+        version: 19.3.0
+    devDependencies:
+      '@gtkx/cli':
+        specifier: workspace:*
+        version: link:../../packages/cli
+      '@gtkx/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@gtkx/testing':
+        specifier: workspace:*
+        version: link:../../packages/testing
+      vite:
+        specifier: 'catalog:'
+        version: 8.3.3(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
+
   examples/animations:
     dependencies:
       '@gtkx/animated':

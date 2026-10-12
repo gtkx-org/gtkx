@@ -1,0 +1,25 @@
+{
+    "name": "adwaita-demo",
+    "version": "0.0.0",
+    "private": true,
+    "license": "MPL-2.0",
+    "description": "The official libadwaita 1.9.3 demo reimplemented with GTKX",
+    "type": "module",
+    "scripts": {
+        "build": "gtkx build",
+        "dev": "gtkx dev",
+        "start": "node dist/bundle.mjs"
+    },
+    "dependencies": {
+        "@gtkx/react": "workspace:*",
+        "react": "catalog:",
+        "@gtkx/runtime": "workspace:*",
+        "@gtkx/components": "workspace:*"
+    },
+    "devDependencies": {
+        "@gtkx/cli": "workspace:*",
+        "@gtkx/config": "workspace:*",
+        "vite": "catalog:",
+        "@gtkx/testing": "workspace:*"
+    }
+}

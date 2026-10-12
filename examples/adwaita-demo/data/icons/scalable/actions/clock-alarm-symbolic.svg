@@ -1,0 +1,25 @@
+<svg xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:gpa="https://www.gtk.org/grappa" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" width="16" height="16" gpa:version="1" gpa:state="0" gpa:state-names="outline empty">
+  <defs id="defs1" fill="url(&quot;#gpa:foreground&quot;) rgb(0,0,0)" stroke="none" class="foreground foreground-fill" gpa:states="none" gpa:animation-repeat="0" gpa:animation-segment="0" gpa:fill="foreground">
+    </defs>
+  <path id="hands" fill="none" stroke="url(&quot;#gpa:foreground&quot;) rgb(0,0,0)" stroke-opacity="1" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dasharray="none" stroke-dashoffset="22.5589" d="M 8 5 L 8 8 L 10 9" class="transparent-fill foreground-stroke" gpa:stroke-width="0.25 1 1.5" gpa:stroke="foreground" gpa:fill="none" gpa:states="outline">
+    </path>
+  <path id="alarmclock" fill="none" stroke="url(&quot;#gpa:foreground&quot;) rgb(0,0,0)" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="22.5589" d="M 1.86201739 3.96615624 L 1.6081512 3.71229005 C 1.35783327 3.461972, 1.3578335 3.05612636, 1.60815132 2.80580854 L 2.82299018 1.59096956 C 3.07330799 1.34065175, 3.47915387 1.34065163, 3.72947168 1.59096944 L 3.98333788 1.84483576 M 10.9954853 11.995719 L 11.9954853 13.9957199 M 4.99548483 11.9957199 L 3.99548459 13.995719 M 14.1463709 3.96615887 L 14.400238 3.71229267 C 14.6505556 3.46197391, 14.6505537 3.0561254, 14.4002342 2.80580831 L 13.1853952 1.5909692 C 12.9350767 1.34065127, 12.529232 1.34065092, 12.2789145 1.59096885 L 12.0250483 1.84483516 M 12.9954844 7.99571896 C 12.9954844 10.757143, 10.7569084 12.995719, 7.99548435 12.995719 C 5.23406076 12.995719, 2.99548531 10.757143, 2.99548483 7.99571991 C 2.99548483 5.23429585, 5.23406124 2.99571967, 7.99548483 2.99571967 C 10.7569084 2.99571991, 12.9954844 5.23429537, 12.9954844 7.99571896 Z" class="transparent-fill foreground-stroke" gpa:stroke-width="0.5 2 3" gpa:stroke="foreground" gpa:fill="none" gpa:states="outline">
+    </path>
+  <metadata>
+    <rdf:RDF>
+      <cc:Work>
+        <cc:license rdf:resource="https://creativecommons.org/publicdomain/zero/1.0/"></cc:license>
+        <dc:subject>
+          <rdf:Bag>
+            <rdf:li>clock alarm clock-alarm adw</rdf:li>
+          </rdf:Bag>
+        </dc:subject>
+        <dc:creator>
+          <cc:Agent>
+            <dc:title>Jakub Steiner</dc:title>
+          </cc:Agent>
+        </dc:creator>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+</svg>

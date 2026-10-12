@@ -16,6 +16,7 @@
         "**/gtkx-env.d.ts",
         "**/.gtkx/**",
         ".codescythe-*/**",
+        "examples/adwaita-demo/src/styles/demo.css",
         "packages/gl/src/generated/**",
         "packages/native/index.js",
         "packages/native/index.d.ts",

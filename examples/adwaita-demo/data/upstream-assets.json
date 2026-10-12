@@ -1,0 +1,388 @@
+[
+    {
+        "file": "data/icons/scalable/apps/org.gnome.Adwaita1.Demo.svg",
+        "upstream": "data/org.gnome.Adwaita1.Demo.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC-BY-SA-4.0",
+        "authors": ["GNOME Design Team"]
+    },
+    {
+        "file": "data/icons/symbolic/apps/org.gnome.Adwaita1.Demo-symbolic.svg",
+        "upstream": "data/org.gnome.Adwaita1.Demo-symbolic.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC-BY-SA-4.0",
+        "authors": ["GNOME Design Team"]
+    },
+    {
+        "file": "data/icons/scalable/actions/animations-symbolic.svg",
+        "upstream": "icons/animations.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/camera-photo-symbolic.svg",
+        "upstream": "icons/camera-photo.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/camera-video-symbolic.svg",
+        "upstream": "icons/camera-video.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/clock-alarm-symbolic.svg",
+        "upstream": "icons/clock-alarm.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/clock-stopwatch-symbolic.svg",
+        "upstream": "icons/clock-stopwatch.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/clock-timer-symbolic.svg",
+        "upstream": "icons/clock-timer.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/clock-world-symbolic.svg",
+        "upstream": "icons/clock-world.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/edit-redo-symbolic-rtl.svg",
+        "upstream": "icons/edit-redo-rtl.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/edit-redo-symbolic.svg",
+        "upstream": "icons/edit-redo.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/edit-undo-symbolic-rtl.svg",
+        "upstream": "icons/edit-undo-rtl.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/edit-undo-symbolic.svg",
+        "upstream": "icons/edit-undo.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/format-justify-center-symbolic.svg",
+        "upstream": "icons/format-justify-center.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/format-justify-fill-symbolic.svg",
+        "upstream": "icons/format-justify-fill.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/format-justify-left-symbolic.svg",
+        "upstream": "icons/format-justify-left.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/format-justify-right-symbolic.svg",
+        "upstream": "icons/format-justify-right.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/media-skip-backward-symbolic.svg",
+        "upstream": "icons/media-skip-backward.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/media-skip-forward-symbolic.svg",
+        "upstream": "icons/media-skip-forward.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/preferences-window-layout-symbolic.svg",
+        "upstream": "icons/preferences-window-layout.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/preferences-window-search-symbolic.svg",
+        "upstream": "icons/preferences-window-search.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/style-classes-symbolic.svg",
+        "upstream": "icons/style-classes.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/tab-audio-muted-symbolic-rtl.svg",
+        "upstream": "icons/tab-audio-muted-rtl.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/tab-audio-muted-symbolic.svg",
+        "upstream": "icons/tab-audio-muted.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/tab-audio-playing-symbolic-rtl.svg",
+        "upstream": "icons/tab-audio-playing-rtl.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/tab-audio-playing-symbolic.svg",
+        "upstream": "icons/tab-audio-playing.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/tab-new-symbolic.svg",
+        "upstream": "icons/tab-new.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/view-dual-symbolic.svg",
+        "upstream": "icons/view-dual.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/view-sidebar-end-symbolic-rtl.svg",
+        "upstream": "icons/view-sidebar-end-rtl.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/view-sidebar-end-symbolic.svg",
+        "upstream": "icons/view-sidebar-end.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/view-sidebar-start-symbolic-rtl.svg",
+        "upstream": "icons/view-sidebar-start-rtl.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/view-sidebar-start-symbolic.svg",
+        "upstream": "icons/view-sidebar-start.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/welcome-symbolic.svg",
+        "upstream": "icons/welcome.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-about-symbolic.svg",
+        "upstream": "icons/widget-about.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-banner-symbolic.svg",
+        "upstream": "icons/widget-banner.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-bottom-sheet-symbolic.svg",
+        "upstream": "icons/widget-bottom-sheet.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-buttons-symbolic.svg",
+        "upstream": "icons/widget-buttons.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-carousel-symbolic.svg",
+        "upstream": "icons/widget-carousel.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-clamp-symbolic.svg",
+        "upstream": "icons/widget-clamp.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-dialog-symbolic.svg",
+        "upstream": "icons/widget-dialog.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-list-symbolic.svg",
+        "upstream": "icons/widget-list.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-multi-layout-symbolic.svg",
+        "upstream": "icons/widget-multi-layout.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-navigation-view-symbolic.svg",
+        "upstream": "icons/widget-navigation-view.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-split-views-symbolic-rtl.svg",
+        "upstream": "icons/widget-split-views-rtl.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-split-views-symbolic.svg",
+        "upstream": "icons/widget-split-views.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-tab-view-symbolic.svg",
+        "upstream": "icons/widget-tab-view.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-toast-symbolic.svg",
+        "upstream": "icons/widget-toast.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-toggle-group-symbolic.svg",
+        "upstream": "icons/widget-toggle-group.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-view-switcher-symbolic.svg",
+        "upstream": "icons/widget-view-switcher.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-wrap-box-symbolic-rtl.svg",
+        "upstream": "icons/widget-wrap-box-rtl.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/widget-wrap-box-symbolic.svg",
+        "upstream": "icons/widget-wrap-box.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/actions/window-new-symbolic.svg",
+        "upstream": "icons/window-new.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC0-1.0",
+        "authors": ["Jakub Steiner"]
+    },
+    {
+        "file": "data/icons/scalable/apps/org.gnome.Boxes.svg",
+        "upstream": "icons/org.gnome.Boxes.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC-BY-SA-4.0",
+        "authors": ["GNOME Design Team"],
+        "licenseSource": "https://github.com/GNOME/gnome-boxes/blob/main/data/icons/org.gnome.Boxes.Source.svg"
+    },
+    {
+        "file": "data/icons/scalable/apps/org.example.Typeset.svg",
+        "upstream": "icons/org.example.Typeset.svg",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "CC-BY-SA-4.0",
+        "authors": ["GNOME Design Team"]
+    },
+    {
+        "file": "src/styles/demo.css",
+        "upstream": "style.css",
+        "revision": "5789add99c79cee0fae624b56706c7c0bea7fb2b",
+        "license": "LGPL-2.1-or-later",
+        "authors": ["libadwaita contributors"]
+    }
+]

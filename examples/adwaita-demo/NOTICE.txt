@@ -1,0 +1,30 @@
+GTKX Adwaita Demo
+
+Reference implementation:
+https://github.com/GNOME/libadwaita/tree/5789add99c79cee0fae624b56706c7c0bea7fb2b/demo
+
+Original libadwaita demo:
+Copyright 2017–2022 Purism SPC
+Copyright 2023–2024 GNOME Foundation Inc.
+Original developers include Adrien Plazas, Alice Mikhaylenko, Andrei Lișiță,
+Guido Günther, Jamie Murphy, Julian Sparber, Manuel Genovés, and Zander Brown.
+Original design and artwork: GNOME Design Team and the individual authors
+identified in the SVG metadata and data/upstream-assets.json.
+
+src/styles/demo.css is copied from the reference's demo/style.css and is
+licensed under LGPL-2.1-or-later. The license is in data/licenses/LGPL-2.1.txt.
+New React and GTKX implementation files use the repository's MPL-2.0 license.
+
+Symbolic action icons retain their embedded CC0-1.0 notices and authors.
+The CC0 text is in data/licenses/CC0-1.0.txt.
+
+The Adwaita Demo application icon, Typeset icon, and GNOME Boxes icon are by
+the GNOME Design Team under CC-BY-SA-4.0. Their original source metadata
+identifies this license; the Typeset and Adwaita Demo source artwork is
+retained beside the exported icons. The GNOME Boxes source notice is at:
+https://github.com/GNOME/gnome-boxes/blob/main/data/icons/org.gnome.Boxes.Source.svg
+The license is in data/licenses/CC-BY-SA-4.0.txt.
+
+Artwork is copied without visual modifications. Resource aliases preserve
+the official demo's icon names. data/upstream-assets.json maps every copied
+runtime asset to its source, revision, authors, and license.

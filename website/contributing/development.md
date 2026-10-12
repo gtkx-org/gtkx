@@ -125,10 +125,11 @@ Use an example that exercises the behavior you are changing:
 pnpm nx run hello-world:dev
 ```
 
-The `hello-world` example is a small application shell and counter. `gtk-demo` covers a wider set of native widgets, and `storybook-example` launches the native story explorer:
+The `hello-world` example is a small application shell and counter. `gtk-demo` covers a wider set of native widgets. `adwaita-demo` reimplements the official libadwaita 1.9.3 demo, including its adaptive navigation, controls, dialogs, animations, and tab windows; it needs libadwaita 1.9 or later. `storybook-example` launches the native story explorer:
 
 ```bash
 pnpm nx run gtk-demo:dev
+pnpm nx run adwaita-demo:dev
 pnpm nx run storybook-example:dev
 ```
 

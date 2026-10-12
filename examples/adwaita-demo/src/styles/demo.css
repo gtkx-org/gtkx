@@ -1,0 +1,100 @@
+/* Mimic the status page. */
+.avatar-page,
+.timed-animation-page {
+  margin: 36px 12px;
+}
+
+.avatar-page > box > label.title,
+.timed-animation-page > box > label.title {
+  margin-bottom: 12px;
+}
+
+.avatar-page > box > label.description {
+  margin-bottom: 36px;
+}
+
+#animation-sample {
+  min-width: 30px;
+  min-height: 30px;
+  border-radius: 24px;
+  background: linear-gradient(to bottom, var(--green-2), var(--green-5));
+}
+
+.tab-page {
+  --accent-bg-color: rgb(0 0 0 / 60%);
+  --accent-fg-color: white;
+  --accent-color: rgb(0 0 0 / 75%);
+
+  --grey-bg-color: white;
+
+  background: hsl(from var(--hue) h s 92%);
+}
+
+@media (prefers-color-scheme: dark) {
+  .tab-page {
+    --accent-bg-color: rgb(255 255 255 / 60%);
+    --accent-fg-color: rgb(0 0 0 / 80%);
+    --accent-color: rgb(255 255 255 / 75%);
+
+    --grey-bg-color: #363636;
+
+    background: hsl(from var(--hue) h s 20%);
+  }
+}
+
+.tab-page-color-1 {
+  --hue: var(--blue-3);
+}
+
+.tab-page-color-2 {
+  --hue: var(--green-3);
+}
+
+.tab-page-color-3 {
+  --hue: var(--yellow-3);
+}
+
+.tab-page-color-4 {
+  --hue: var(--orange-3);
+}
+
+.tab-page-color-5 {
+  --hue: var(--red-3);
+}
+
+.tab-page-color-6 {
+  --hue: var(--purple-3);
+}
+
+.tab-page-color-7 {
+  --hue: var(--brown-3);
+}
+
+.tab-page-color-8 {
+  background: var(--grey-bg-color);
+}
+
+.tag {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  color: inherit;
+  border-radius: 99px;
+}
+
+.tag:dir(ltr) {
+  padding-left: 12px;
+}
+
+.tag:dir(rtl) {
+  padding-right: 12px;
+}
+
+.tag button {
+  margin: 3px;
+  min-width: 0;
+  min-height: 0;
+  padding: 6px;
+}
+
+.toolbar-demo {
+  border-radius: 15px;
+}
