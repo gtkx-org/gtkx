@@ -1,15 +1,11 @@
-use std::rc::Rc;
-
-use libffi::middle::{Builder, Cif, CodePtr, Type};
+use libffi::middle::{Builder, Cif, Type};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::native_result;
 use crate::ffi::codec::{Codec, Encoder as _, validate_call_signature};
 use crate::ffi::descriptor::Descriptor;
-use crate::handle::Handle;
 
-pub(crate) struct CompiledSignature {
+pub struct CallSignature {
     pub(crate) label: String,
     pub(crate) arg_codecs: Vec<Codec>,
     pub(crate) return_codec: Codec,
@@ -18,27 +14,12 @@ pub(crate) struct CompiledSignature {
     pub(crate) arg_order: Vec<usize>,
 }
 
-pub struct CallSignature {
-    inner: Rc<CompiledSignature>,
-}
-
-pub struct CallDescriptor {
-    pub(crate) signature: Rc<CompiledSignature>,
-    target: Handle,
-}
-
 /// The native argument positions of the values encoded by the descriptors, including callback
 /// data and destroy arguments. A variadic fixed count is expressed after this expansion.
 #[napi(object, object_to_js = false)]
 pub struct CallLayout {
     pub arg_order: Vec<u32>,
     pub fixed_arg_count: Option<u32>,
-}
-
-impl CallDescriptor {
-    pub(crate) fn symbol(&self) -> anyhow::Result<CodePtr> {
-        self.target.begin_function_call().map(CodePtr)
-    }
 }
 
 fn build_arg_types(arg_codecs: &[Codec]) -> Vec<Type> {
@@ -83,7 +64,7 @@ fn prepare(
     arg_codecs: Vec<Codec>,
     return_codec: Codec,
     layout: CallLayout,
-) -> Result<CompiledSignature> {
+) -> Result<CallSignature> {
     let arg_types = build_arg_types(&arg_codecs);
     let native_arg_count = arg_types.len();
     let fixed_arg_count = layout.fixed_arg_count;
@@ -98,7 +79,7 @@ fn prepare(
         None => Builder::new().res(return_type).args(arg_types).into_cif(),
     };
 
-    Ok(CompiledSignature {
+    Ok(CallSignature {
         label,
         arg_codecs,
         return_codec,
@@ -134,22 +115,5 @@ pub fn compile_call(
 ) -> Result<External<CallSignature>> {
     let (arg_codecs, return_codec) = into_codecs(arg_descriptors, return_descriptor)?;
     let signature = prepare(label, arg_codecs, return_codec, layout)?;
-    Ok(External::new(CallSignature {
-        inner: Rc::new(signature),
-    }))
-}
-
-/// Attaches an owned executable handle to a compiled signature. The returned descriptor retains
-/// both owners and checks the executable handle's borrow and one-shot lifetime on every call.
-#[napi(catch_unwind)]
-pub fn attach_call(
-    signature: &External<CallSignature>,
-    function_handle: &External<Handle>,
-) -> Result<External<CallDescriptor>> {
-    let _leases = crate::handle::LeaseScope::open();
-    native_result("attach_call", function_handle.function_ptr())?;
-    Ok(External::new(CallDescriptor {
-        signature: Rc::clone(&signature.inner),
-        target: (**function_handle).clone(),
-    }))
+    Ok(External::new(signature))
 }

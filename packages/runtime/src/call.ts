@@ -1,4 +1,4 @@
-import { type BoundCall, call as nativeCall, type Ref } from "./native.js";
+import { type BoundCall, createReferenceStorage, call as nativeCall, type Ref } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import type { StorageHandle } from "./output-storage.js";
 
@@ -33,7 +33,16 @@ const createCall = (
         if (values.length !== args.length) {
             throw new TypeError("Argument count does not match the bound signature");
         }
-        const encoded = args.map((plan, index) => plan.encode(values[index]));
+        const encoded = args.map((plan, index) => {
+            if (plan.referenceStorage === undefined) {
+                return plan.encode(values[index]);
+            }
+            const request = plan.referenceStorage.encode(values[index]);
+
+            return request == null
+                ? request
+                : createReferenceStorage(descriptor.signature, index, request.seed, request.mode, request.capacity);
+        });
         const result = nativeCall(descriptor, encoded, completionIndex);
 
         const returned = returns.decode(result.value);

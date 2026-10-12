@@ -3,7 +3,6 @@ use std::cell::Cell;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::reference::ReferenceDescriptor;
 use crate::ffi::codec::{
     ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BoxedCodec, BoxedTypeSource, BufferCodec,
     BytesCodec, CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind,
@@ -250,10 +249,6 @@ pub enum Descriptor {
         scope: CallbackScope,
         release_with_completion: bool,
     },
-    Reference {
-        #[napi(ts_type = "ExternalObject<ReferenceDescriptor>")]
-        reference: ReferenceDescriptor,
-    },
     Ref {
         #[napi(ts_type = "Descriptor")]
         inner_descriptor: NestedDescriptor,
@@ -497,19 +492,10 @@ impl Descriptor {
                     release_policy,
                 })
             }
-            Self::Reference { reference } => Codec::Ref(reference.codec),
             Self::Ref {
                 inner_descriptor,
                 inout,
-            } => {
-                let inner = *inner_descriptor.into_codec()?;
-                if !inner.is_scalar() {
-                    return Err(Error::from_reason(
-                        "Non-scalar references require compiled reference storage",
-                    ));
-                }
-                Codec::Ref(RefCodec::new(inner, inout)?)
-            }
+            } => Codec::Ref(RefCodec::new(*inner_descriptor.into_codec()?, inout)?),
             _ => unreachable!("descriptors without nested descriptors are handled by into_codec"),
         })
     }

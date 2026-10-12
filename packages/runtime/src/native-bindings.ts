@@ -1,6 +1,4 @@
 import {
-    attachCall,
-    type CallDescriptor,
     type CallLayout,
     type CallResult,
     type CallSignature,
@@ -17,7 +15,10 @@ import {
     type VfuncSlotOptions,
 } from "@gtkx/native";
 
-type BoundCall = { resolve: () => ExternalObject<CallDescriptor> };
+type BoundCall = {
+    signature: ExternalObject<CallSignature>;
+    resolve: () => ExternalObject<Handle>;
+};
 type BindVfuncOptions = VfuncSlotOptions & {
     argDescriptors: Descriptor[];
     returnDescriptor: Descriptor;
@@ -60,8 +61,8 @@ const resolveFunction = (sharedLibrary: string, symbol: string): ExternalObject<
 };
 
 const lazyCall = (signature: ExternalObject<CallSignature>, target: () => ExternalObject<Handle>): BoundCall => {
-    let attached: ExternalObject<CallDescriptor> | undefined;
-    return { resolve: () => (attached ??= attachCall(signature, target())) };
+    let resolved: ExternalObject<Handle> | undefined;
+    return { signature, resolve: () => (resolved ??= target()) };
 };
 
 const bind = (
@@ -82,8 +83,8 @@ const bindFunctionPointer = (
     label: string,
     layout: CallLayout,
 ): BoundCall => {
-    const descriptor = attachCall(compileCall(argDescriptors, returnDescriptor, label, layout), handle);
-    return { resolve: () => descriptor };
+    const signature = compileCall(argDescriptors, returnDescriptor, label, layout);
+    return { signature, resolve: () => handle };
 };
 
 const bindVfunc = ({ argDescriptors, returnDescriptor, layout, ...options }: BindVfuncOptions): BoundCall => {
@@ -93,7 +94,7 @@ const bindVfunc = ({ argDescriptors, returnDescriptor, layout, ...options }: Bin
 };
 
 const call = (descriptor: BoundCall, values: unknown[], completionIndex?: number): CallResult =>
-    nativeCall(descriptor.resolve(), values, completionIndex);
+    nativeCall(descriptor.signature, descriptor.resolve(), values, completionIndex);
 
 export { bind, bindFunctionPointer, bindVfunc, call, resolveFunction, resolveFunctionOptional };
 export type { BoundCall, BindVfuncOptions };

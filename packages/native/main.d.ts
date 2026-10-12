@@ -2,12 +2,10 @@ export {
     activateProcessWatch,
     alloc,
     armParentDeath,
-    attachCall,
     bindField,
     call,
     closeProcessWatch,
     compileCall,
-    compileReference,
     compileVfuncSlot,
     copy,
     createClosure,
@@ -46,7 +44,6 @@ export type {
     ArrayKind,
     CallbackFailure,
     CallbackScope,
-    CallDescriptor,
     CallSignature,
     CallLayout,
     CallOutput,
@@ -65,7 +62,6 @@ export type {
     ProcessWatch,
     RecordConverter,
     RecordConverterOptions,
-    ReferenceDescriptor,
     ReferenceMode,
     ReferenceStorage,
     Ref,
@@ -84,10 +80,6 @@ declare module "./index.js" {
      * `copy`, `getType`, `getWrapper`, `setWrapper`). Its bytes are not accessible from JavaScript.
      */
     export type Handle = { _opaque: "Handle" };
-    /**
-     * An opaque binding of a compiled signature to an owned executable handle, passed to `call`.
-     */
-    export type CallDescriptor = { _opaque: "CallDescriptor" };
     /** An ABI signature compiled independently of its executable target. */
     export type CallSignature = { _opaque: "CallSignature" };
     /** A reference to a shared library that remains loaded for the life of the process. */
@@ -102,9 +94,7 @@ declare module "./index.js" {
     export type FunctionResolver = { _opaque: "FunctionResolver" };
     /** A native record copy strategy with lazily resolved lifecycle operations. */
     export type RecordConverter = { _opaque: "RecordConverter" };
-    /** A compiled non-scalar reference layout, paired with storage prepared for that layout. */
-    export type ReferenceDescriptor = { _opaque: "ReferenceDescriptor" };
-    /** An owned call transaction prepared for a compiled reference layout. */
+    /** An owned reference seed prepared for one argument of a compiled call signature. */
     export type ReferenceStorage = { _opaque: "ReferenceStorage" };
     /**
      * An opaque, precompiled binding of a struct field, produced by `bindField` and passed to

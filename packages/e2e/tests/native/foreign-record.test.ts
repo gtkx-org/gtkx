@@ -1,6 +1,5 @@
 import * as Regress from "@gtkx/gi/regress";
 import {
-    attachCall,
     call,
     compileCall,
     createFunctionResolver,
@@ -57,8 +56,8 @@ const borrowedCopy = (
         "borrowed path conversion",
         { argOrder: [0, 1, 2] },
     );
-    const bound = attachCall(signature, symbol("libc.so.6", "memmove"));
-    return (source) => call(bound, [source, source, 0n]).value as ExternalObject<Handle>;
+    const target = symbol("libc.so.6", "memmove");
+    return (source) => call(signature, target, [source, source, 0n]).value as ExternalObject<Handle>;
 };
 
 test("native record copy operations resolve lazily and are retained for subsequent conversions", () => {

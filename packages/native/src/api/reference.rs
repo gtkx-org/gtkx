@@ -6,10 +6,10 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
+use crate::api::bind::CallSignature;
 use crate::api::native_result;
 use crate::ffi::Stash;
 use crate::ffi::codec::{Codec, RefCodec};
-use crate::ffi::descriptor::Descriptor;
 use crate::host::callback_error::CallbackErrorScope;
 use crate::value::ClosureHandle;
 
@@ -23,18 +23,6 @@ pub enum ReferenceMode {
     CallerContainer,
     ArrayBuffer,
     ArraySlot,
-}
-
-#[derive(Debug, Clone)]
-pub struct ReferenceDescriptor {
-    pub(crate) codec: RefCodec,
-}
-
-impl FromNapiValue for ReferenceDescriptor {
-    unsafe fn from_napi_value(env: sys::napi_env, value: sys::napi_value) -> Result<Self> {
-        let external = unsafe { <&External<Self>>::from_napi_value(env, value)? };
-        Ok((**external).clone())
-    }
 }
 
 thread_local! {
@@ -152,35 +140,33 @@ impl ReferenceStorage {
     }
 }
 
-/// Compiles the ABI and ownership contract for an owned non-scalar reference transaction.
-#[napi(catch_unwind)]
-pub fn compile_reference(
-    inner_descriptor: Descriptor,
-    inout: bool,
-) -> Result<External<ReferenceDescriptor>> {
-    let inner = inner_descriptor.into_codec()?;
-    if inner.is_scalar() {
-        return Err(Error::from_reason(
-            "Scalar references use allocated ABI storage",
-        ));
-    }
-    Ok(External::new(ReferenceDescriptor {
-        codec: RefCodec::new(inner, inout)?,
-    }))
-}
-
-/// Owns a normalized reference seed and explicit ABI mode. The matching call prepares storage
-/// within its lease scope, preserving synchronous buffer views and owning asynchronous buffers.
+/// Owns a normalized reference seed for an argument in a compiled call signature. The argument
+/// index precedes ABI expansion and reordering. The matching call prepares storage within its
+/// lease scope, preserving synchronous buffer views and owning asynchronous buffers.
 #[napi(catch_unwind)]
 pub fn create_reference_storage(
     env: Env,
-    descriptor: &External<ReferenceDescriptor>,
+    signature: &External<CallSignature>,
+    arg_index: u32,
     seed: Unknown<'_>,
     mode: ReferenceMode,
     capacity: Option<BigInt>,
 ) -> Result<External<ReferenceStorage>> {
     let _errors = CallbackErrorScope::open(env);
     let _leases = crate::handle::LeaseScope::open();
+    let codec = match signature.arg_codecs.get(arg_index as usize) {
+        Some(Codec::Ref(codec)) if !codec.inner_codec().is_scalar() => codec,
+        Some(_) => {
+            return Err(Error::from_reason(
+                "Reference storage requires a non-scalar reference argument",
+            ));
+        }
+        None => {
+            return Err(Error::from_reason(
+                "Reference argument index exceeds the compiled signature",
+            ));
+        }
+    };
     let capacity = capacity
         .map(|capacity| {
             let (negative, length, lossless) = capacity.get_u64();
@@ -194,25 +180,25 @@ pub fn create_reference_storage(
         })
         .transpose();
     let capacity = native_result("reference capacity", capacity)?;
-    native_result("reference storage", descriptor.codec.validate_mode(mode))?;
+    native_result("reference storage", codec.validate_mode(mode))?;
     let mut owners = Vec::new();
     native_result(
         "reference owners",
-        collect_seed_owners(descriptor.codec.inner_codec(), seed, &mut owners, true),
+        collect_seed_owners(codec.inner_codec(), seed, &mut owners, true),
     )?;
     let owners = owners
         .into_iter()
         .map(|owner| owner.retain_owned().unwrap_or(owner))
         .collect();
     let request = ReferenceRequest {
-        codec: descriptor.codec.clone(),
+        codec: codec.clone(),
         seed: ReferenceSeed::new(&env, seed)?,
         mode,
         capacity,
         owners,
     };
     Ok(External::new(ReferenceStorage {
-        identity: descriptor.codec.identity(),
+        identity: codec.identity(),
         request: RefCell::new(Some(request)),
     }))
 }

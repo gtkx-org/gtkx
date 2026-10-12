@@ -8,6 +8,8 @@ Generated bindings and `@gtkx/runtime` describe signatures, ABI layouts, transfe
 
 Native-owned handles normally follow JavaScript garbage collection. Native code also manages scoped temporaries and dependencies that must survive a call, property assignment, or wrapper teardown. Application operations such as closing a window or finishing a Cairo surface retain their library-defined behavior.
 
+Calls accept a compiled signature and an owned executable handle separately. Native validates the executable lifetime on every invocation. Reference storage belongs to a specific compiled argument and retains its seed owners before further JavaScript conversions can run; native consumes that storage once and settles its ownership transfers.
+
 [Guide](https://gtkx.dev/v2/guide/getting-started) · [GTKX](https://gtkx.dev)
 
 GTKX runs on Linux with Node.js and system native libraries. See [Getting Started](https://gtkx.dev/v2/guide/getting-started) for supported versions and installation. This README describes the 2.0 beta.

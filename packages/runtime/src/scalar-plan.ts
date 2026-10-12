@@ -13,7 +13,7 @@ import type { Descriptor } from "./descriptor-types.js";
 import { functionResolver, typeResolver } from "./descriptor-lifecycle.js";
 import { cairoPathConverter } from "./foreign-record.js";
 import { numericPlan } from "./numeric-plan.js";
-import { compileReferenceStorage, type ReferencePlan } from "./reference-storage.js";
+import { compileReferencePlan, type ReferencePlan } from "./reference-storage.js";
 import { callbackFailure } from "./callback-error.js";
 import { isGtypeDescriptor } from "./descriptors.js";
 import { normalizeHashTableEntries } from "./hash-table.js";
@@ -284,12 +284,12 @@ const referencePlan = (descriptor: Extract<Descriptor, { kind: "ref" }>): Scalar
     const abi = { ...descriptor, innerDescriptor: inner.abi, inout: descriptor.inout ?? false };
 
     if (storage === undefined) {
-        const referenceStorage = compileReferenceStorage(descriptor, inner.abi);
+        const referenceStorage = compileReferencePlan(descriptor, inner.abi, inner.encode);
         return {
-            abi: referenceStorage.abi,
+            abi,
             inner,
             referenceStorage,
-            encode: (value) => referenceStorage.encode(value, inner.encode),
+            encode: referenceStorage.encode,
             decode: (value) => ({
                 value: value != null && descriptor.inout === true ? inner.decode(referenceStorage.read(value)) : null,
             }),

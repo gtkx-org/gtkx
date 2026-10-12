@@ -1,25 +1,19 @@
-import {
-    compileReference,
-    createReferenceStorage,
-    type Descriptor as NativeDescriptor,
-    type ExternalObject,
-    type Ref,
-    type ReferenceDescriptor,
-    type ReferenceMode,
-} from "./native.js";
+import type { Descriptor as NativeDescriptor, Ref, ReferenceMode } from "./native.js";
 import { isArrayBuffer, isUint8Array } from "node:util/types";
 import type { Descriptor } from "./descriptor-types.js";
 
 type RefDescriptor = Extract<Descriptor, { kind: "ref" }>;
 type Conversion = (value: unknown) => unknown;
+type ReferenceRequest = {
+    seed: unknown;
+    mode: ReferenceMode;
+    capacity?: bigint | undefined;
+};
 type ReferencePlan = {
-    abi: NativeDescriptor;
-    encode: (value: unknown, convert: Conversion) => unknown;
+    encode: (value: unknown) => ReferenceRequest | null | undefined;
     read: (value: unknown) => unknown;
     write: (value: unknown, replacement: unknown) => void;
 };
-
-const references = new WeakMap<RefDescriptor, { signature: string; reference: ExternalObject<ReferenceDescriptor> }>();
 
 const fixedBuffer = (value: unknown, length: number): Uint8Array => {
     if (length === 0) {
@@ -55,37 +49,33 @@ const arrayCapacity = (value: unknown): bigint | undefined => {
     return value;
 };
 
-const compileReferenceStorage = (descriptor: RefDescriptor, inner: NativeDescriptor): ReferencePlan => {
-    const signature = JSON.stringify(descriptor);
-    const cached = references.get(descriptor);
-    const reference =
-        cached?.signature === signature ? cached.reference : compileReference(inner, descriptor.inout ?? false);
-    references.set(descriptor, { signature, reference });
-
+const compileReferencePlan = (
+    descriptor: RefDescriptor,
+    inner: NativeDescriptor,
+    convert: Conversion,
+): ReferencePlan => {
     return {
-        abi: { kind: "reference", reference },
-        encode(value, convert) {
+        encode(value) {
             if (value == null) {
                 return value;
             }
             const seed: unknown = Reflect.get(value, "value");
             if (inner.kind === "bytes" && inner.length !== undefined && inner.length !== null) {
-                return createReferenceStorage(
-                    reference,
-                    fixedBuffer(seed == null ? seed : convert(seed), inner.length),
-                    "fixedBytes",
-                );
+                return {
+                    seed: fixedBuffer(seed == null ? seed : convert(seed), inner.length),
+                    mode: "fixedBytes",
+                };
             }
             if (descriptor.inout === true) {
-                return createReferenceStorage(reference, seed == null ? seed : convert(seed), "inout");
+                return { seed: seed == null ? seed : convert(seed), mode: "inout" };
             }
             if (inner.kind === "array" && inner.isCallerAllocated) {
                 return inner.arrayKind === "garray"
-                    ? createReferenceStorage(reference, null, "callerContainer")
-                    : createReferenceStorage(reference, null, "callerArray", arrayCapacity(seed));
+                    ? { seed: null, mode: "callerContainer" }
+                    : { seed: null, mode: "callerArray", capacity: arrayCapacity(seed) };
             }
             if (seed == null) {
-                return createReferenceStorage(reference, null, "slot");
+                return { seed: null, mode: "slot" };
             }
             if (inner.kind !== "array") {
                 throw new TypeError(`Expected Null for Ref<${inner.kind}>`);
@@ -100,7 +90,7 @@ const compileReferenceStorage = (descriptor: RefDescriptor, inner: NativeDescrip
                 throw new TypeError("Expected Array, Null, or Undefined for Ref<Array>");
             }
 
-            return createReferenceStorage(reference, encoded, mode);
+            return { seed: encoded, mode };
         },
         read: (value) => (value as Ref).value,
         write(value, replacement) {
@@ -109,4 +99,4 @@ const compileReferenceStorage = (descriptor: RefDescriptor, inner: NativeDescrip
     };
 };
 
-export { compileReferenceStorage, type ReferencePlan };
+export { compileReferencePlan, type ReferencePlan };

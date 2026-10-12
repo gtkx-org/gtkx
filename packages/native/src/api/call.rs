@@ -7,11 +7,12 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use smallvec::SmallVec;
 
-use super::bind::CallDescriptor;
+use super::bind::CallSignature;
 use super::native_result;
 use crate::ffi::closure::ClosureData;
 use crate::ffi::codec::{CallbackScope, Codec, Decoder as _, Encoder as _};
 use crate::ffi::{self};
+use crate::handle::Handle;
 use crate::host::callback_error::CallbackErrorScope;
 use crate::host::log_writer::CriticalTrap;
 
@@ -29,12 +30,13 @@ pub struct CallResult<'env> {
 
 fn execute_call<'e>(
     env: &'e Env,
-    descriptor: &CallDescriptor,
+    signature: &CallSignature,
+    target: &Handle,
     values: &[Unknown<'e>],
     completion_index: Option<usize>,
 ) -> anyhow::Result<CallResult<'e>> {
     let _errors = CallbackErrorScope::open(*env);
-    let result = execute_call_inner(env, descriptor, values, completion_index);
+    let result = execute_call_inner(env, signature, target, values, completion_index);
     anyhow::ensure!(
         !CallbackErrorScope::has_error(),
         "A native callback threw an exception"
@@ -44,12 +46,12 @@ fn execute_call<'e>(
 
 fn execute_call_inner<'e>(
     env: &'e Env,
-    descriptor: &CallDescriptor,
+    signature: &CallSignature,
+    target: &Handle,
     values: &[Unknown<'e>],
     completion_index: Option<usize>,
 ) -> anyhow::Result<CallResult<'e>> {
     let _leases = crate::handle::LeaseScope::open();
-    let signature = &descriptor.signature;
     let label = &signature.label;
     let return_codec = &signature.return_codec;
     let arg_codecs = &signature.arg_codecs;
@@ -92,7 +94,7 @@ fn execute_call_inner<'e>(
         .collect();
     drop(ffi_args);
 
-    let symbol = descriptor.symbol()?;
+    let symbol = libffi::CodePtr(target.begin_function_call()?);
     let trap = CriticalTrap::arm();
     let called = return_codec.call_cif(&signature.cif, symbol, &ordered_args);
     drop(ordered_args);
@@ -263,10 +265,12 @@ fn decode_outputs<'env>(
     }
 }
 
+/// Calls a compiled signature through an executable handle, checking its lifetime on every call.
 #[napi(catch_unwind)]
 pub fn call<'env>(
     env: &'env Env,
-    descriptor: &External<CallDescriptor>,
+    signature: &External<CallSignature>,
+    target: &External<Handle>,
     values: Array<'_>,
     completion_index: Option<u32>,
 ) -> Result<CallResult<'env>> {
@@ -278,7 +282,6 @@ pub fn call<'env>(
             .ok_or_else(|| Error::new(Status::GenericFailure, "missing argument"))?;
         parsed_values.push(item);
     }
-    let signature = &descriptor.signature;
     if parsed_values.len() != signature.arg_codecs.len() {
         return Err(Error::new(
             Status::InvalidArg,
@@ -294,7 +297,8 @@ pub fn call<'env>(
         "FFI call",
         execute_call(
             env,
-            descriptor,
+            signature,
+            target,
             &parsed_values,
             completion_index.map(|index| index as usize),
         ),

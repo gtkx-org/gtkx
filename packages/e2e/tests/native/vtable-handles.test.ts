@@ -1,5 +1,4 @@
 import {
-    attachCall,
     call,
     compileCall,
     compileVfuncSlot,
@@ -50,29 +49,31 @@ const collect = async (references: WeakRef<object>[]): Promise<void> => {
     expect(references.every((reference) => reference.deref() === undefined)).toBe(true);
 };
 
-test("a compiled signature can attach independent executable targets", () => {
+test("a compiled signature can call independent executable targets", () => {
     const signature = compileCall([{ kind: "int32" }], { kind: "int32" }, "integer transform", { argOrder: [0] });
-    const absolute = attachCall(signature, symbol("abs"));
-    const upper = attachCall(signature, symbol("toupper"));
+    const absolute = symbol("abs");
+    const upper = symbol("toupper");
 
-    expect(call(absolute, [-97]).value).toBe(97);
-    expect(call(upper, [97]).value).toBe(65);
-    expect(call(absolute, [-5]).value).toBe(5);
-    expect(() => call(upper, [])).toThrow("expected 1 arguments");
+    expect(call(signature, absolute, [-97]).value).toBe(97);
+    expect(call(signature, upper, [97]).value).toBe(65);
+    expect(call(signature, absolute, [-5]).value).toBe(5);
+    expect(() => call(signature, upper, [])).toThrow("expected 1 arguments");
 });
 
-test("an attached target retains its compiled signature and executable after their handles are collected", async () => {
-    const { descriptor, references } = (() => {
-        const signature = compileCall([{ kind: "int32" }], { kind: "int32" }, "abs", { argOrder: [0] });
-        const target = symbol("abs");
+test("an executable target retains its library after the library handle is collected", async () => {
+    const signature = compileCall([{ kind: "int32" }], { kind: "int32" }, "abs", { argOrder: [0] });
+    const { target, references } = (() => {
+        const library = openLibrary("libc.so.6");
+        const target = resolveSymbol(library, "abs", false);
+        if (target == null) throw new Error("Missing libc symbol abs");
         return {
-            descriptor: attachCall(signature, target),
-            references: [new WeakRef(signature), new WeakRef(target)],
+            target,
+            references: [new WeakRef(library)],
         };
     })();
 
     await collect(references);
-    expect(call(descriptor, [-42]).value).toBe(42);
+    expect(call(signature, target, [-42]).value).toBe(42);
 });
 
 test("class and interface slot compilation rejects incompatible type kinds", () => {
@@ -112,26 +113,27 @@ test("unimplemented interfaces and empty default slots fail only when read", () 
 });
 
 test("an interface target retains its owning class across handle collection", async () => {
-    const { descriptor, references } = (() => {
+    const { signature, target, references } = (() => {
         const slot = compileVfuncSlot({ ...listModelSlot, instanceType: listStoreType });
         const target = readVfuncSlot(slot);
         const signature = compileCall([objectArgument], { kind: "uint32" }, listModelSlot.label, { argOrder: [0] });
         return {
-            descriptor: attachCall(signature, target),
-            references: [new WeakRef(slot), new WeakRef(target), new WeakRef(signature)],
+            signature,
+            target,
+            references: [new WeakRef(slot)],
         };
     })();
     const store = newStore(objectType) as ExternalObject<Handle>;
     const item = newStore(objectType);
 
     await collect(references);
-    expect(call(descriptor, [store]).value).toBe(0);
+    expect(call(signature, target, [store]).value).toBe(0);
     append(store, item);
-    expect(call(descriptor, [store]).value).toBe(1);
+    expect(call(signature, target, [store]).value).toBe(1);
 });
 
 test("a class target retains its owning class across handle collection", async () => {
-    const { descriptor, references } = (() => {
+    const { signature, target, references } = (() => {
         const slot = compileVfuncSlot({ instanceType: objectType, byteOffset: 16, label: "GObject.constructor" });
         const target = readVfuncSlot(slot);
         const signature = compileCall(
@@ -141,12 +143,13 @@ test("a class target retains its owning class across handle collection", async (
             { argOrder: [0, 1, 2] },
         );
         return {
-            descriptor: attachCall(signature, target),
-            references: [new WeakRef(slot), new WeakRef(target), new WeakRef(signature)],
+            signature,
+            target,
+            references: [new WeakRef(slot)],
         };
     })();
 
     await collect(references);
-    const instance = call(descriptor, [objectType, 0, null]).value as ExternalObject<Handle>;
+    const instance = call(signature, target, [objectType, 0, null]).value as ExternalObject<Handle>;
     expect(getType(instance)).toBe(objectType);
 });
