@@ -69,6 +69,16 @@ const sidebarItems = indexedSlot<Adw.SidebarSection, Adw.SidebarItem>("children"
 const isWidget = childMatcher(Gtk.Widget);
 const TEXT_CHILD_ANCHOR_PROP = "textChildAnchor";
 
+const tabViewParent = (child: Gtk.Widget): Adw.TabView | null => {
+    for (let parent = child.getParent(); parent !== null; parent = parent.getParent()) {
+        if (parent instanceof Adw.TabView) {
+            return parent;
+        }
+    }
+
+    return null;
+};
+
 const textViewAnchorChildren: ElementBehavior<Gtk.TextView> = {
     attach: (view, child, info) => {
         const anchor = info.props[TEXT_CHILD_ANCHOR_PROP];
@@ -554,18 +564,26 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     AdwTabView: {
         behaviors: [
             slot<Adw.TabView, Gtk.Widget>("children", Gtk.Widget, {
-                attach: (view, child, info) => view.insert(child, info.index),
-                reorder: (view, _child, info) => {
-                    if (info.adopted instanceof Adw.TabPage) {
+                attach: (view, child, info) =>
+                    info.props.parent instanceof Adw.TabPage
+                        ? view.addPage(child, info.props.parent)
+                        : view.insert(child, Math.max(view.getNPinnedPages(), Math.min(info.index, view.getNPages()))),
+                reorder: (view, child, info) => {
+                    if (info.adopted instanceof Adw.TabPage && tabViewParent(child) === view) {
                         view.reorderPage(info.adopted, info.index);
                     }
+
+                    return info.adopted;
                 },
-                detach: (view, _child, info) => {
-                    if (info.adopted instanceof Adw.TabPage) {
-                        view.closePage(info.adopted);
+                detach: (_view, child, info) => {
+                    const owner = tabViewParent(child);
+
+                    if (info.adopted instanceof Adw.TabPage && owner !== null) {
+                        owner.setPagePinned(info.adopted, false);
+                        owner.closePage(info.adopted);
                     }
                 },
-                resolve: (view, child) => view.getPage(child),
+                resolve: (_view, child) => tabViewParent(child)?.getPage(child) ?? null,
             }),
         ],
     },

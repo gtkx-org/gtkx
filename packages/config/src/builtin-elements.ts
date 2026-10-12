@@ -207,6 +207,7 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfigOptions> = {
     },
     AdwTabPage: {
         isLazy: true,
+        props: { ...internal("ChildrenProps"), constructOnly: ["parent"] },
     },
     AdwLayout: {
         isLazy: true,

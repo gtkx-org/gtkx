@@ -197,22 +197,26 @@ const detachElement = (instance: ElementNode): void => {
 
     for (const entries of instance.placements.values()) {
         for (const entry of entries) {
-            detachSubtree(entry.node);
+            if (!instance.externalChildren.has(entry.node)) {
+                detachSubtree(entry.node);
+            }
         }
     }
 
     for (const child of instance.content) {
-        detachSubtree(child);
+        if (!instance.externalChildren.has(child)) {
+            detachSubtree(child);
+        }
     }
 
     teardownPlacements(instance);
+    instance.children = instance.children.filter((child) => instance.externalChildren.has(child));
+    instance.content = instance.content.filter((child) => instance.externalChildren.has(child));
 
     if (instance.object instanceof Gtk.Widget) {
         releaseCssClasses(instance.object, instance);
         releaseStyle(instance.object);
     }
-
-    containerNodes.delete(instance.object);
 };
 
 const detachSubtree = (instance: AnyNode): void => {
@@ -255,7 +259,9 @@ const updateInstance = (instance: Instance, prev: Props, next: Props): void => {
 
 const attachToContainer = (container: Container, child: AnyNode, before: AnyNode | null): void => {
     if (!isRootElement(container)) {
-        attachChild(getOrCreateContainerNode(container), child, before);
+        const parent = getOrCreateContainerNode(container);
+        parent.externalChildren.add(child);
+        attachChild(parent, child, before);
     }
 };
 
@@ -263,7 +269,9 @@ const detachFromContainer = (container: Container, child: AnyNode): void => {
     detachSubtree(child);
 
     if (!isRootElement(container)) {
-        detachChild(getOrCreateContainerNode(container), child);
+        const parent = getOrCreateContainerNode(container);
+        detachChild(parent, child);
+        parent.externalChildren.delete(child);
     }
 };
 

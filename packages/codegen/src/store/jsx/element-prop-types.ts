@@ -1,6 +1,7 @@
 import type { GirAnnotations } from "../../gir/annotations.js";
 import type { GirIndex, GirTypeEntry } from "./gir-index.js";
 import { girConstructOnlyPropNames } from "./element-construct-only.js";
+import { configuredConstructOnlyPropsFor } from "./element-prop-imports.js";
 import { getGlibName } from "./intrinsic-elements.js";
 
 type LazyElementSpec = {
@@ -16,7 +17,8 @@ type LazyElementSpec = {
 const createLazyElementSpec = (context: GirIndex, element: string, entry: GirTypeEntry): LazyElementSpec => {
     const typeName = `${element}ElementProps`;
     const baseName = getGlibName(entry.klass) ?? element;
-    const omitted = girConstructOnlyPropNames(context, entry);
+    const supported = new Set(configuredConstructOnlyPropsFor(element, [element]));
+    const omitted = girConstructOnlyPropNames(context, entry).filter((name) => !supported.has(name));
     const omitUnion = omitted.map((name) => JSON.stringify(name)).join(" | ");
     const base = omitted.length === 0 ? `${baseName}Props` : `Omit<${baseName}Props, ${omitUnion}>`;
 

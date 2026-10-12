@@ -295,13 +295,21 @@ const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): v
 };
 
 const teardownPlacements = (parent: ElementNode): void => {
-    for (const entries of parent.placements.values()) {
+    for (const [slot, entries] of parent.placements) {
+        const retained: PlacedChild[] = [];
         for (const entry of entries) {
-            detachEntry(parent, entry, 0);
+            if (parent.externalChildren.has(entry.node)) {
+                retained.push(entry);
+            } else {
+                detachEntry(parent, entry, 0);
+            }
+        }
+        if (retained.length === 0) {
+            parent.placements.delete(slot);
+        } else {
+            parent.placements.set(slot, retained);
         }
     }
-
-    parent.placements.clear();
 };
 
 export { flushAdoptions, placeChild, teardownPlacements, unplaceChild };

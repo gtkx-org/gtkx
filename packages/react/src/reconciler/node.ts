@@ -34,6 +34,7 @@ type ElementNode = SignalTarget & {
     props: Props;
     children: PlaceableNode[];
     placements: Map<string, PlacedChild[]>;
+    externalChildren: Set<AnyNode>;
     ownedClasses: Set<string>;
     parent: ParentNode | null;
     content: ContentChild[];
@@ -110,6 +111,7 @@ const createElementNode = (
     children: [],
     handlers: new Map(),
     placements: new Map(),
+    externalChildren: new Set(),
     ownedClasses: new Set(),
     parent: null,
     content: [],

@@ -32,6 +32,14 @@ Pass `rootElement` from `@gtkx/react` when the object needs React ownership with
 
 See the [`createPortal` reference](/v2/reference/@gtkx/react/index/functions/createPortal) for GTKX's arguments, and React's [portal documentation](https://react.dev/reference/react-dom/createPortal) for context and component lifetime.
 
+## Synchronous native callbacks
+
+Some native signals need an object returned before their handler finishes. For example, `AdwTabOverview.onCreateTab` returns the new `Adw.TabPage`, and `AdwTabView.onCreateWindow` returns the destination `Adw.TabView`.
+
+Use `flushSync` from `@gtkx/react` around the state update or root render that creates the JSX object. Once `flushSync` returns, its ref has been assigned and the native handler can return the object. Ordinary event handlers can keep using normal React updates; reserve synchronous commits for native contracts that require them. Call `flushSync` from an event handler, not while rendering or running an effect.
+
+An independent `createRoot(container)` owns its rendered children separately from the component that created the container. Explicitly unmount that root when its content is no longer needed. This lets a tab keep its native widget and React state after libadwaita transfers it to another window and the original window closes. The [Adwaita demo](https://github.com/gtkx-org/gtkx/tree/main/examples/adwaita-demo) demonstrates this lifecycle with native tab creation and transfer.
+
 ## Windows
 
 Window elements present themselves on mount and destroy the native window on unmount. Render a secondary window conditionally:
