@@ -26,6 +26,15 @@
                     "dependentTasksOutputFiles": "**/*.ts"
                 }
             ]
+        },
+        "test": {
+            "dependsOn": ["...", "codegen"],
+            "inputs": [
+                "...",
+                {
+                    "dependentTasksOutputFiles": "**/*.ts"
+                }
+            ]
         }
     }
 }

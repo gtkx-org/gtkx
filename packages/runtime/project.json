@@ -2,6 +2,9 @@
     "$schema": "../../node_modules/nx/schemas/project-schema.json",
     "name": "@gtkx/runtime",
     "targets": {
-        "lint": {}
+        "lint": {},
+        "typecheck": {
+            "dependsOn": ["...", "gtkx:bindings"]
+        }
     }
 }
