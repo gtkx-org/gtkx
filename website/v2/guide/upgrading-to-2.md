@@ -144,6 +144,8 @@ Record constructors now require either public writable value fields, a supported
 
 Generated methods that expose unmanaged native addresses are also omitted. Replace `GLib.Bytes.getRegion` with `getData` or `newFromBytes`, use `GLib.Variant.getDataAsBytes` instead of `getData`, and close a `Gio.MemoryOutputStream` before calling `stealAsBytes` instead of `getData` or `stealData`.
 
+Remove calls to `GObject.Closure.sink()` and `GObject.ParamSpec.sink()`. These generated methods are removed as part of the GTKX 2 ownership model: native handles manage reference sinking and release automatically, so no replacement call is needed.
+
 `@gtkx/gl` no longer exposes `getDebugMessageLog` or `debugMessageCallback`, whose native contracts require caller-owned memory or callback lifetime management. Remove those calls; the shader, program, and pipeline info-log helpers remain available. Replace `clientWaitSyncLoop` with the generated `clientWaitSync`, which accepts the full timeout as a `bigint`.
 
 ## Verify the upgrade
