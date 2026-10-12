@@ -27,7 +27,7 @@ describe("native tab lifecycle", () => {
                         onCreateTab={() => {
                             flushSync(() => setCreated(true));
                             returned.page = page.current;
-                            return page.current;
+                            return page.current ?? undefined;
                         }}
                     >
                         <AdwTabView
@@ -226,5 +226,86 @@ describe("native tab lifecycle", () => {
         expect(result).not.toBeNull();
         expect(result).toBe(target.current);
         expect(screen.getByDisplayValue("New window")).toBeRooted();
+    });
+
+    it("reorders JSX tabs within pin groups while retaining a transferred tab's position", async () => {
+        const view = createRef<Adw.TabView>();
+        const other = createRef<Adw.TabView>();
+        const foreign = createRef<Adw.TabPage>();
+        const pages = new Map(["A", "B", "C"].map((id) => [id, createRef<Adw.TabPage>()]));
+        const app = (order: string[]) => (
+            <GtkBox>
+                <AdwTabView ref={view}>
+                    {order.map((id) => (
+                        <AdwTabPage key={id} ref={pages.get(id)} title={id}>
+                            <GtkEntry text={id} />
+                        </AdwTabPage>
+                    ))}
+                </AdwTabView>
+                <AdwTabView ref={other}>
+                    <AdwTabPage ref={foreign} title="Foreign">
+                        <GtkEntry text="Foreign" />
+                    </AdwTabPage>
+                </AdwTabView>
+            </GtkBox>
+        );
+        const { rerender } = await render(app(["A", "B", "C"]));
+        const nativeView = view.current;
+        const nativeOther = other.current;
+        const pinned = pages.get("B")?.current;
+        const foreignPage = foreign.current;
+        if (!nativeView || !nativeOther || !pinned || !foreignPage) throw new Error("Expected tab views and pages");
+        await act(() => {
+            nativeView.setPagePinned(pinned, true);
+            nativeOther.transferPage(foreignPage, nativeView, 2);
+        });
+        await rerender(app(["C", "A", "B"]));
+        expect(
+            Array.from({ length: nativeView.getNPages() }, (_, index) => nativeView.getNthPage(index).getTitle()),
+        ).toEqual(["B", "C", "Foreign", "A"]);
+        expect(nativeView.getNthPage(0)).toBe(pinned);
+        expect(nativeView.getNthPage(2)).toBe(foreignPage);
+        await rerender(app(["A", "B", "C"]));
+        expect(
+            Array.from({ length: nativeView.getNPages() }, (_, index) => nativeView.getNthPage(index).getTitle()),
+        ).toEqual(["B", "A", "Foreign", "C"]);
+        const transferred = pages.get("C")?.current;
+        if (!transferred) throw new Error("Expected the transferred tab");
+        await act(() => nativeView.transferPage(transferred, nativeOther, 0));
+        await rerender(app(["C", "B", "A"]));
+        expect(nativeOther.getNthPage(0)).toBe(transferred);
+        expect(
+            Array.from({ length: nativeView.getNPages() }, (_, index) => nativeView.getNthPage(index).getTitle()),
+        ).toEqual(["B", "A", "Foreign"]);
+    });
+
+    it("appends JSX tabs after native tabs transferred into an otherwise empty view", async () => {
+        const source = createRef<Adw.TabView>();
+        const target = createRef<Adw.TabView>();
+        const transferred = createRef<Adw.TabPage>();
+        const app = (showNew: boolean) => (
+            <GtkBox>
+                <AdwTabView ref={source}>
+                    <AdwTabPage ref={transferred} title="Transferred">
+                        <GtkEntry text="Transferred" />
+                    </AdwTabPage>
+                </AdwTabView>
+                <AdwTabView ref={target}>
+                    {showNew && (
+                        <AdwTabPage title="New">
+                            <GtkEntry text="New" />
+                        </AdwTabPage>
+                    )}
+                </AdwTabView>
+            </GtkBox>
+        );
+        const { rerender } = await render(app(false));
+        await act(() => {
+            if (source.current && target.current && transferred.current)
+                source.current.transferPage(transferred.current, target.current, 0);
+        });
+        await rerender(app(true));
+        expect(target.current?.getNthPage(0)).toBe(transferred.current);
+        expect(target.current?.getNthPage(1).getTitle()).toBe("New");
     });
 });

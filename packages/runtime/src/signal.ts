@@ -133,6 +133,7 @@ const gQuarkFromString = bind(LIB, "g_quark_from_string", [stringT("borrowed")],
 const gSignalLookup = bind(LIB, "g_signal_lookup", [stringT("borrowed"), biguint64T], uint32T);
 const gSignalName = bind(LIB, "g_signal_name", [uint32T], stringT("borrowed"));
 const gSignalQuery = bind(LIB, "g_signal_query", [uint32T, bufferT], voidT);
+const gObjectRef = bind(LIB, "g_object_ref", [objectT("borrowed")], voidT);
 const signalTypesCache: Map<number, { paramTypes: bigint[]; returnType: bigint }> = new Map();
 const signalNameCache: Map<bigint, string[]> = new Map();
 const gSignalListIds = bind(LIB, "g_signal_list_ids", [biguint64T, refT(uint32T)], sizedArrayT(uint32T, 1, "full"));
@@ -539,6 +540,9 @@ const readEmitOutputs = (reads: (() => unknown)[]): unknown[] => reads.map((read
  * @param signal Signal name, optionally including a `::detail` suffix.
  * @param args Arguments to pass, including output and inout arguments.
  * @param returns Descriptor for the signal's return value, omitted when it returns void.
+ * @remarks
+ * Borrowed object returns receive the reference that `g_signal_emit` normally adds while copying
+ * its return `GValue`; `g_signal_emitv` leaves that step to the caller.
  */
 function emitSignal(instance: object, signal: string, args: EmitArg[], returns?: Descriptor): unknown {
     const signalId = getSignalId(instance, signal);
@@ -554,8 +558,17 @@ function emitSignal(instance: object, signal: string, args: EmitArg[], returns?:
 
     const returnValue = newValueForType(returnType);
     gSignalEmitv(values, signalId, detail, returnValue);
+    const result = fromValueForDescriptor(returns, returnValue);
+    if (
+        returns.kind === "object" &&
+        returns.ownership === "borrowed" &&
+        typeof result === "object" &&
+        result !== null
+    ) {
+        gObjectRef(getHandle(result));
+    }
 
-    return packTupleResult(readEmitOutputs(reads), fromValueForDescriptor(returns, returnValue), true);
+    return packTupleResult(readEmitOutputs(reads), result, true);
 }
 
 const createSignalDispatch = (spec: SignalDispatchSpec): SignalDispatch => {

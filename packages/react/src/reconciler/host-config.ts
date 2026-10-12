@@ -13,6 +13,7 @@ import {
     assertPropsCanChange,
     discardAccessible,
     flushAccessible,
+    flushDependentProps,
 } from "./apply-props.js";
 import { attachChild, detachChild } from "./child-routing.js";
 import { resolveElementNode } from "./instance.js";
@@ -91,6 +92,7 @@ const hostConfig = {
     getPublicInstance: (instance: Instance): object => getPublicInstance(instance),
     prepareForCommit: (): null => null,
     resetAfterCommit: (): void => {
+        flushDependentProps();
         flushTextHosts();
         flushAccessible();
         flushStyles();
@@ -234,6 +236,12 @@ const detachSubtree = (instance: AnyNode): void => {
         disconnectAllHandlers(lazyTarget(instance, instance.adopted));
     }
 
+    if (instance.kind === LAZY_KIND) {
+        for (const prop of instance.propChildren) {
+            detachSubtree(prop);
+        }
+    }
+
     for (const child of instance.children) {
         detachSubtree(child);
     }
@@ -311,7 +319,7 @@ const createNode = (type: string, props: Props): Instance => {
 
     if (node.kind === ELEMENT_KIND) {
         containerNodes.set(node.object, node);
-        applyElementProps(node, {}, props);
+        applyElementProps(node, {}, props, node.props);
     }
 
     return node;

@@ -119,6 +119,14 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfigOptions> = {
             constructOnly: ["callback"],
         },
     },
+    GtkCustomLayout: {
+        component: internal("createCustomLayoutComponent"),
+        props: {
+            ...internal("GtkCustomLayoutElementProps"),
+            composition: "factory",
+            constructOnly: ["requestMode", "measure", "allocate"],
+        },
+    },
     GtkShortcutTrigger: {
         component: internal("createShortcutTriggerComponent"),
         props: {
@@ -207,7 +215,20 @@ const BUILTIN_ELEMENTS: Record<string, ElementConfigOptions> = {
     },
     AdwTabPage: {
         isLazy: true,
-        props: { ...internal("ChildrenProps"), constructOnly: ["parent"] },
+        props: { ...internal("AdwTabPageProps"), constructOnly: ["parent"] },
+    },
+    AdwTabBar: {
+        props: internal("AdwTabDropProps"),
+    },
+    AdwTabOverview: {
+        props: internal("AdwTabDropProps"),
+        omittedProps: ["child"],
+    },
+    AdwAboutDialog: {
+        props: {
+            ...internal("AdwAboutDialogProps"),
+            constructOnly: ["links", "creditSections", "acknowledgementSections", "legalSections", "otherApps"],
+        },
     },
     AdwLayout: {
         isLazy: true,

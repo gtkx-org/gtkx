@@ -109,7 +109,7 @@ const value = <P extends GObject.Object, V>(
         const nextValue = next[prop] === undefined ? defaultValue : next[prop];
 
         if (nextValue !== undefined && !Object.is(prev[prop], next[prop])) {
-            apply(object, nextValue as V);
+            applyWrite(prop, () => apply(object, nextValue as V));
         }
 
         return [prop];

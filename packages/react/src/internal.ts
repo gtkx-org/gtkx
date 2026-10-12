@@ -19,6 +19,7 @@ export { createMenuComponent, createMenuItemComponent } from "./components/menu.
 /** @internal */
 export { createPortaledComponent } from "./components/portaled.js";
 export { createCallbackActionComponent, createShortcutTriggerComponent } from "./components/shortcut.js";
+export { createCustomLayoutComponent } from "./components/custom-layout.js";
 /** @internal */
 export { createWindowComponent } from "./components/window.js";
 export { settleAccessible } from "./hooks/use-accessible-map.js";
@@ -31,6 +32,11 @@ export type {
     constructOnlyProps,
     ScaleMark,
     CreditSection,
+    AboutDialogLink,
+    AboutDialogSection,
+    AboutDialogLegalSection,
+    AboutDialogOtherApp,
+    TabExtraDropTarget,
     MainOption,
     ActionAccel,
     ChildrenProps,
@@ -42,6 +48,7 @@ export type {
     AdwToggleGroupProps,
     GtkShortcutControllerProps,
     GtkCallbackActionElementProps,
+    GtkCustomLayoutElementProps,
     GtkShortcutTriggerElementProps,
     GtkOverlayProps,
     GtkTextChildAnchorProps,
@@ -53,6 +60,9 @@ export type {
     GtkLevelBarProps,
     GtkSizeGroupProps,
     GtkAboutDialogProps,
+    AdwAboutDialogProps,
+    AdwTabDropProps,
+    AdwTabPageProps,
     GtkApplicationProps,
     GtkDropTargetProps,
     GtkDrawingAreaProps,

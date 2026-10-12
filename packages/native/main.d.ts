@@ -8,6 +8,7 @@ export {
     compileCall,
     compileVfuncSlot,
     copy,
+    createCallback,
     createClosure,
     createMatchSubject,
     createFunctionResolver,

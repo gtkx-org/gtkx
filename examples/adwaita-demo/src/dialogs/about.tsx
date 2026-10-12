@@ -3,44 +3,40 @@ import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAboutDialog } from "@gtkx/jsx/adw";
 import * as os from "node:os";
-import { useEffect, useState } from "react";
 import notice from "../../NOTICE.txt?raw";
 import lgpl from "../../data/licenses/LGPL-2.1.txt?raw";
 import cc0 from "../../data/licenses/CC0-1.0.txt?raw";
 import ccBySa from "../../data/licenses/CC-BY-SA-4.0.txt?raw";
 
 const AppAboutDialog = ({ onClose }: { onClose: () => void }) => {
-    const [dialog, setDialog] = useState<Adw.AboutDialog | null>(null);
-    useEffect(() => {
-        if (!dialog) {
-            return;
-        }
-        dialog.addLegalSection(
-            "Original libadwaita demo",
-            GLib.markupEscapeText(notice, -1),
-            Gtk.License.CUSTOM,
-            GLib.markupEscapeText(lgpl, -1),
-        );
-        dialog.addLegalSection(
-            "Symbolic icons",
-            "Authors credited in the original SVG metadata",
-            Gtk.License.CUSTOM,
-            GLib.markupEscapeText(cc0, -1),
-        );
-        dialog.addLegalSection(
-            "Application artwork",
-            "GNOME Design Team",
-            Gtk.License.CUSTOM,
-            GLib.markupEscapeText(ccBySa, -1),
-        );
-        dialog.addLink(
-            "Original Demo",
-            "https://github.com/GNOME/libadwaita/tree/5789add99c79cee0fae624b56706c7c0bea7fb2b/demo",
-        );
-    }, [dialog]);
     return (
         <AdwAboutDialog
-            ref={setDialog}
+            links={[
+                {
+                    title: "Original Demo",
+                    url: "https://github.com/GNOME/libadwaita/tree/5789add99c79cee0fae624b56706c7c0bea7fb2b/demo",
+                },
+            ]}
+            legalSections={[
+                {
+                    title: "Original libadwaita demo",
+                    copyright: GLib.markupEscapeText(notice, -1),
+                    licenseType: Gtk.License.CUSTOM,
+                    license: GLib.markupEscapeText(lgpl, -1),
+                },
+                {
+                    title: "Symbolic icons",
+                    copyright: "Authors credited in the original SVG metadata",
+                    licenseType: Gtk.License.CUSTOM,
+                    license: GLib.markupEscapeText(cc0, -1),
+                },
+                {
+                    title: "Application artwork",
+                    copyright: "GNOME Design Team",
+                    licenseType: Gtk.License.CUSTOM,
+                    license: GLib.markupEscapeText(ccBySa, -1),
+                },
+            ]}
             applicationName="Adwaita Demo (GTKX)"
             applicationIcon="org.gnome.Adwaita1.Demo"
             developerName="GTKX"

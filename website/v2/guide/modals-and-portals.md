@@ -106,6 +106,26 @@ const RenameDialog = ({ onResponse }: { onResponse: (id: string) => void }) => (
 
 Place extra content between the heading and response buttons as children, as shown by the entry above.
 
+### About dialog metadata
+
+`AdwAboutDialog` accepts `links`, `creditSections`, `acknowledgementSections`, `legalSections`, and `otherApps` as arrays:
+
+```tsx
+import * as Gtk from "@gtkx/gi/gtk";
+import { AdwAboutDialog } from "@gtkx/jsx/adw";
+
+<AdwAboutDialog
+    applicationName="Notes"
+    links={[{ title: "User Guide", url: "https://example.org/guide" }]}
+    creditSections={[{ name: "Design", people: ["Ada Lovelace"] }]}
+    acknowledgementSections={[{ name: "Thanks", people: ["Our translators"] }]}
+    legalSections={[{ title: "Sample data", copyright: "© Example", licenseType: Gtk.License.MIT_X11 }]}
+    otherApps={[{ appid: "org.example.Calendar", name: "Calendar", summary: "Plan your day" }]}
+/>
+```
+
+Libadwaita cannot remove these entries. Each array becomes fixed when its first nonempty value is applied; equivalent arrays on later renders are accepted. To change or remove a populated list, give the dialog a new React `key`. Legal-section copyright and custom license text accept Pango markup, so escape externally supplied plain text with `GLib.markupEscapeText`.
+
 ## Finding the parent window
 
 `useParentWindow()` from `@gtkx/react` returns the nearest window once its native instance exists. It returns `null` while the instance is unavailable or when there is no window ancestor. The lookup follows component ancestry through portals, so portaled dialogs can still use their originating window.

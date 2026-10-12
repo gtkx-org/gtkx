@@ -1,24 +1,7 @@
-import type * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwAboutDialog, AdwHeaderBar, AdwStatusPage, AdwToolbarView } from "@gtkx/jsx/adw";
 import { GtkButton } from "@gtkx/jsx/gtk";
 import { useState } from "react";
-
-const configuredDialogs = new WeakSet<Adw.AboutDialog>();
-
-const configureDialog = (dialog: Adw.AboutDialog | null) => {
-    if (dialog === null || configuredDialogs.has(dialog)) return;
-    configuredDialogs.add(dialog);
-    dialog.addLink("_Documentation", "https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.AboutDialog.html");
-    dialog.addLegalSection(
-        "Fonts",
-        null,
-        Gtk.License.CUSTOM,
-        "This application uses font data from <a href='https://example.org'>somewhere</a>.",
-    );
-    dialog.addAcknowledgementSection("Special thanks to", ["My cat"]);
-    dialog.addOtherApp("org.gnome.Adwaita1.Demo", "Adwaita Demo", "Tour of the features in Libadwaita");
-};
 
 const releaseNotes =
     "<p>This release adds the following features:</p><ul>" +
@@ -43,7 +26,28 @@ export const AboutPage = () => {
             </AdwStatusPage>
             {open && (
                 <AdwAboutDialog
-                    ref={configureDialog}
+                    links={[
+                        {
+                            title: "_Documentation",
+                            url: "https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/class.AboutDialog.html",
+                        },
+                    ]}
+                    legalSections={[
+                        {
+                            title: "Fonts",
+                            licenseType: Gtk.License.CUSTOM,
+                            license:
+                                "This application uses font data from <a href='https://example.org'>somewhere</a>.",
+                        },
+                    ]}
+                    acknowledgementSections={[{ name: "Special thanks to", people: ["My cat"] }]}
+                    otherApps={[
+                        {
+                            appid: "org.gnome.Adwaita1.Demo",
+                            name: "Adwaita Demo",
+                            summary: "Tour of the features in Libadwaita",
+                        },
+                    ]}
                     applicationIcon="org.example.Typeset"
                     applicationName="Typeset"
                     developerName="Angela Avery"

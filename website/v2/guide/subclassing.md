@@ -106,6 +106,36 @@ This is type setup, not a component mount effect. If it throws, registration fai
 
 ## Overriding virtual functions
 
+### Custom layout callbacks
+
+For a container whose custom behavior is measurement and allocation, pass a `GtkCustomLayout` through `layoutManager`:
+
+```tsx
+import { AdwBin } from "@gtkx/jsx/adw";
+import { GtkCustomLayout, GtkLabel } from "@gtkx/jsx/gtk";
+
+<AdwBin
+    layoutManager={
+        <GtkCustomLayout
+            measure={(widget, orientation, forSize) =>
+                widget.getFirstChild()?.measure(orientation, forSize) ?? [0, 0, -1, -1]
+            }
+            allocate={(widget, width, height, baseline) => {
+                widget.getFirstChild()?.allocate(width, height, baseline, null);
+            }}
+        />
+    }
+>
+    <GtkLabel>Custom layout</GtkLabel>
+</AdwBin>;
+```
+
+`measure` returns `[minimum, natural, minimumBaseline, naturalBaseline]`. Both `measure` and `allocate` are required; `requestMode` is optional and defaults to constant size. Rerendering with new callbacks keeps the same native layout and invalidates its measurements, so inline callbacks can read current props.
+
+GTKX retains these callbacks for the layout's lifetime, including when GTK owns the layout after its JavaScript reference is dropped. This also applies to `Gtk.CustomLayout.new()`; callbacks are released with their owner and can capture the layout without permanently retaining it.
+
+### Subclass virtual methods
+
 Implement the generated `vfunc` method with its declared signature. Use `super` to chain to the parent implementation:
 
 ```ts

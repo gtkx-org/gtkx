@@ -2,23 +2,24 @@ import type { SignalHandler } from "@gtkx/runtime";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { coerceObjectProperty, getInstanceType, signalForHandlerName, TYPE_INVALID } from "@gtkx/runtime";
-import { isDeepEqual, kebabCase, lowerFirst, unsanitizeIdentifier } from "@gtkx/utils";
+import { drain, isDeepEqual, kebabCase, lowerFirst, unsanitizeIdentifier } from "@gtkx/utils";
 import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
-import { getPropertyName, hasProperty, type TypeInfo, typeInfoFor } from "./metadata.js";
+import { getPropertyName, hasProperty, isReadableProperty, type TypeInfo, typeInfoFor } from "./metadata.js";
 import { type ElementNode, type SignalTarget } from "./node.js";
-import { applyWrite, connectHandler, disconnectHandler } from "./signals.js";
+import { applyMutation, applyWrite, connectHandler, disconnectHandler } from "./signals.js";
 import { updateStyle } from "./style.js";
 import { bufferText, hasSameText, isContentPaintableProp, markTextDirty, TEXT_PROP } from "./text.js";
 
 type PropDelta = { name: string; value: unknown; prevValue: unknown };
-type BehaviorUpdateContext = { node: ElementNode; prev: Props; next: Props; consumed: Set<string> };
+type BehaviorUpdateContext = { target: SignalTarget; prev: Props; next: Props; consumed: Set<string> };
 type PropChange = { prev: Props; next: Props };
 
 const REACT_RESERVED_PROPS = new Set(["children", "ref", "key"]);
 const NOTIFY_PREFIX = "onNotify";
 const HANDLER_NAME = /^on[A-Z]/;
 const accessibleDirty: Map<ElementNode, Props> = new Map();
+const dependentPropsDirty: Set<ElementNode> = new Set();
 
 const isHandlerName = (name: string): boolean => HANDLER_NAME.test(name);
 const notifiedAccessor = (name: string): string => lowerFirst(name.slice(NOTIFY_PREFIX.length));
@@ -174,7 +175,7 @@ const collectConsumed = (ctx: BehaviorUpdateContext, behavior: ElementBehavior):
         return;
     }
 
-    const result = behavior.update(ctx.node.object, ctx.prev, ctx.next);
+    const result = behavior.update(ctx.target.object, ctx.prev, ctx.next);
 
     if (result === undefined) {
         return;
@@ -185,9 +186,9 @@ const collectConsumed = (ctx: BehaviorUpdateContext, behavior: ElementBehavior):
     }
 };
 
-const runBehaviorUpdates = (node: ElementNode, info: TypeInfo, prev: Props, next: Props): Set<string> => {
+const runBehaviorUpdates = (target: SignalTarget, info: TypeInfo, prev: Props, next: Props): Set<string> => {
     const consumed: Set<string> = new Set();
-    const ctx: BehaviorUpdateContext = { node, prev, next, consumed };
+    const ctx: BehaviorUpdateContext = { target, prev, next, consumed };
 
     for (const behavior of info.behaviors) {
         collectConsumed(ctx, behavior);
@@ -260,9 +261,10 @@ const flushAccessible = (): void => {
 
 const discardAccessible = (node: ElementNode): void => {
     accessibleDirty.delete(node);
+    dependentPropsDirty.delete(node);
 };
 
-const applyElementProps = (node: ElementNode, prev: Props, next: Props): void => {
+const applyElementProps = (node: ElementNode, prev: Props, next: Props, initialized?: Props): void => {
     const info = typeInfoFor(node.typeName);
     const consumed = runBehaviorUpdates(node, info, prev, next);
     if (node.object instanceof Gtk.Widget) {
@@ -271,21 +273,28 @@ const applyElementProps = (node: ElementNode, prev: Props, next: Props): void =>
         consumed.add("cssClasses");
     }
 
+    node.behaviorProps = new Set(consumed);
+    for (const name of Object.keys(initialized ?? {})) {
+        consumed.add(name);
+    }
+
     applyValueEntries(node, info, { prev, next }, consumed);
     restoreActionableSensitivity(node, info, prev, next);
     applyHandlers(node, info, prev, next);
     markAccessible(node, prev);
     node.props = next;
+    if (initialized !== undefined) {
+        markDependentPropsDirty(node);
+    }
 };
-
-const isSkippedAdoptedName = (info: TypeInfo, name: string): boolean => isReservedName(name, info);
 
 const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void => {
     const { object, typeName } = target;
     const info = typeInfoFor(typeName);
+    const consumed = runBehaviorUpdates(target, info, prev, next);
 
     eachChangedName(prev, next, (name) => {
-        if (isSkippedAdoptedName(info, name) || Object.is(prev[name], next[name])) {
+        if (isSkippedValueName(name, info, consumed) || Object.is(prev[name], next[name])) {
             return;
         }
 
@@ -296,4 +305,41 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
     applyHandlers(target, info, prev, next);
 };
 
-export { discardAccessible, flushAccessible, applyElementProps, applyAdoptedProps, assertPropsCanChange };
+const markDependentPropsDirty = (node: ElementNode): void => {
+    dependentPropsDirty.add(node);
+};
+
+const restoreDependentProps = (node: ElementNode): void => {
+    const info = typeInfoFor(node.typeName);
+
+    applyMutation(() => {
+        for (const [name, value] of Object.entries(node.props)) {
+            if (
+                value === undefined ||
+                !isReadableProperty(info, name) ||
+                !info.construct.has(name) ||
+                isSkippedValueName(name, info, node.behaviorProps) ||
+                (value !== null && typeof value === "object" && !(value instanceof GObject.Object))
+            ) {
+                continue;
+            }
+            if (!Object.is(Reflect.get(node.object, name), value)) {
+                writeValue(node.object, name, value);
+            }
+        }
+    });
+};
+
+const flushDependentProps = (): void => {
+    drain(dependentPropsDirty, restoreDependentProps);
+};
+
+export {
+    discardAccessible,
+    flushAccessible,
+    flushDependentProps,
+    markDependentPropsDirty,
+    applyElementProps,
+    applyAdoptedProps,
+    assertPropsCanChange,
+};

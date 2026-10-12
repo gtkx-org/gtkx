@@ -40,6 +40,8 @@ The main menu opens Preferences, Keyboard Shortcuts, Inspector, Adaptive Preview
 
 Page implementations live in `src/pages`, with the registry in `src/page-registry.ts`. The JSX keeps native Adwaita navigation, breakpoints, gestures, dialogs, animation timing, and tab behavior visible. The Style Classes page includes the full gallery and its secondary dialogs; the About Dialog page retains the fictional Typeset sample.
 
+The tab demo shares a `createTabCollection` across windows so JSX page state survives native transfers. Pinning, tab drop targets, About dialog metadata, text direction, and the animation layout are configured declaratively. The stylesheet uses the CLI’s regular CSS import pipeline.
+
 ## Reference and differences
 
 This implementation was written from the official GNOME sources. [Discussion 791](https://github.com/gtkx-org/gtkx/discussions/791) prompted the example; its linked implementation is not a source dependency.

@@ -6,11 +6,16 @@ import * as Gtk from "@gtkx/gi/gtk";
 import type {
     ActionAccel,
     AlertDialogResponse,
+    AboutDialogLink,
+    AboutDialogSection,
+    AboutDialogLegalSection,
+    AboutDialogOtherApp,
     CreditSection,
     DragSourceIcon,
     LevelBarOffset,
     MainOption,
     ScaleMark,
+    TabExtraDropTarget,
 } from "./prop-types.js";
 import { BUILTIN_ELEMENTS, CONTENT_SETTER_TYPES, SINGLE_CHILD_TYPES } from "@gtkx/config/elements";
 import {
@@ -28,7 +33,13 @@ import {
     slot,
     value,
 } from "./reconciler/behaviors.js";
-import { type ElementBehavior, type ElementConfig, forTypes, registerElements } from "./reconciler/registry.js";
+import {
+    type ElementBehavior,
+    type ElementConfig,
+    type PlaceInfo,
+    forTypes,
+    registerElements,
+} from "./reconciler/registry.js";
 
 type AdwChildSetter =
     | Adw.Bin
@@ -68,6 +79,11 @@ const sidebarSections = indexedSlot<Adw.Sidebar, Adw.SidebarSection>("children",
 const sidebarItems = indexedSlot<Adw.SidebarSection, Adw.SidebarItem>("children", Adw.SidebarItem);
 const isWidget = childMatcher(Gtk.Widget);
 const TEXT_CHILD_ANCHOR_PROP = "textChildAnchor";
+const tabExtraDropTarget = value<Adw.TabBar | Adw.TabOverview, TabExtraDropTarget | null>(
+    "extraDropTarget",
+    (tabs, target) => tabs.setupExtraDropTarget(target?.actions ?? 0, target?.types ?? null),
+    null,
+);
 
 const tabViewParent = (child: Gtk.Widget): Adw.TabView | null => {
     for (let parent = child.getParent(); parent !== null; parent = parent.getParent()) {
@@ -77,6 +93,34 @@ const tabViewParent = (child: Gtk.Widget): Adw.TabView | null => {
     }
 
     return null;
+};
+
+const tabInsertionPosition = (view: Adw.TabView, info: PlaceInfo): number => {
+    const successor = info.children
+        .slice(info.index + 1)
+        .find(
+            (child) => child instanceof Gtk.Widget && tabViewParent(child) === view && !view.getPage(child).getPinned(),
+        );
+
+    return successor instanceof Gtk.Widget ? view.getPagePosition(view.getPage(successor)) : view.getNPages();
+};
+
+const reorderTabPages = (view: Adw.TabView, children: readonly GObject.Object[]): void => {
+    const pages = children
+        .filter((child): child is Gtk.Widget => child instanceof Gtk.Widget && tabViewParent(child) === view)
+        .map((child) => view.getPage(child));
+    const ordered = [...pages.filter((page) => page.getPinned()), ...pages.filter((page) => !page.getPinned())];
+    const known = new Set(pages);
+    const positions = Array.from({ length: view.getNPages() }, (_, index) => index).filter((index) =>
+        known.has(view.getNthPage(index)),
+    );
+
+    for (const [index, position] of positions.entries()) {
+        const page = ordered[index];
+        if (page !== undefined && view.getPagePosition(page) !== position) {
+            view.reorderPage(page, position);
+        }
+    }
 };
 
 const textViewAnchorChildren: ElementBehavior<Gtk.TextView> = {
@@ -158,6 +202,11 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     },
     GtkWidget: {
         behaviors: [
+            value<Gtk.Widget, Gtk.TextDirection | null>(
+                "textDirection",
+                (widget, direction) => widget.setDirection(direction ?? Gtk.TextDirection.NONE),
+                Gtk.TextDirection.NONE,
+            ),
             {
                 update: () => [TEXT_CHILD_ANCHOR_PROP],
             },
@@ -223,6 +272,18 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [
             {
                 create: (props) => Gtk.CallbackAction.new(props.callback as Gtk.ShortcutFunc),
+            },
+        ],
+    },
+    GtkCustomLayout: {
+        behaviors: [
+            {
+                create: (props) =>
+                    Gtk.CustomLayout.new(
+                        (props.requestMode as Gtk.CustomRequestModeFunc | null) ?? null,
+                        props.measure as Gtk.CustomMeasureFunc,
+                        props.allocate as Gtk.CustomAllocateFunc,
+                    ),
             },
         ],
     },
@@ -408,6 +469,46 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
             }),
         ],
     },
+    AdwAboutDialog: {
+        behaviors: [
+            list<Adw.AboutDialog, AboutDialogLink>("links", {
+                add: (dialog, link) => dialog.addLink(link.title, link.url),
+            }),
+            list<Adw.AboutDialog, AboutDialogSection>("creditSections", {
+                add: (dialog, section) => dialog.addCreditSection(section.name ?? null, section.people),
+            }),
+            list<Adw.AboutDialog, AboutDialogSection>("acknowledgementSections", {
+                add: (dialog, section) => dialog.addAcknowledgementSection(section.name ?? null, section.people),
+            }),
+            list<Adw.AboutDialog, AboutDialogLegalSection>("legalSections", {
+                add: (dialog, section) =>
+                    dialog.addLegalSection(
+                        section.title,
+                        section.copyright ?? null,
+                        section.licenseType,
+                        section.license ?? null,
+                    ),
+            }),
+            list<Adw.AboutDialog, AboutDialogOtherApp>("otherApps", {
+                add: (dialog, app) => dialog.addOtherApp(app.appid, app.name, app.summary),
+            }),
+        ],
+    },
+    AdwTabBar: {
+        behaviors: [tabExtraDropTarget],
+    },
+    AdwTabOverview: {
+        behaviors: [childSetterSlot<Adw.TabOverview>(), tabExtraDropTarget],
+    },
+    AdwTabPage: {
+        behaviors: [
+            value<Adw.TabPage, boolean>(
+                "pinned",
+                (page, pinned) => tabViewParent(page.getChild())?.setPagePinned(page, pinned),
+                false,
+            ),
+        ],
+    },
     GtkScale: {
         behaviors: [
             list<Gtk.Scale, ScaleMark>("marks", {
@@ -567,11 +668,9 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
                 attach: (view, child, info) =>
                     info.props.parent instanceof Adw.TabPage
                         ? view.addPage(child, info.props.parent)
-                        : view.insert(child, Math.max(view.getNPinnedPages(), Math.min(info.index, view.getNPages()))),
-                reorder: (view, child, info) => {
-                    if (info.adopted instanceof Adw.TabPage && tabViewParent(child) === view) {
-                        view.reorderPage(info.adopted, info.index);
-                    }
+                        : view.insert(child, tabInsertionPosition(view, info)),
+                reorder: (view, _child, info) => {
+                    reorderTabPages(view, info.children);
 
                     return info.adopted;
                 },

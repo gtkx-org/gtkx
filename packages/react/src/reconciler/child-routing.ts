@@ -23,17 +23,31 @@ const placedSuccessor = (owner: ElementNode, from: number): PlaceableNode | null
     return owner.children.slice(from).find((sibling) => entries.some((entry) => entry.node === sibling)) ?? null;
 };
 
-const attachPropToElement = (parent: ElementNode, node: PropNode, before: AnyNode | null): void => {
+const propOwner = (parent: ElementNode | LazyNode | null): ElementNode | null =>
+    parent?.kind === LAZY_KIND ? parent.propertyHost : parent;
+
+const attachPropToElement = (parent: ElementNode | LazyNode, node: PropNode, before: AnyNode | null): void => {
     node.parent = parent;
+    const owner = propOwner(parent);
+
+    if (owner === null) {
+        return;
+    }
 
     for (const child of node.children) {
-        placeChild(parent, node.slot, child, asPlaceable(before));
+        placeChild(owner, node.slot, child, asPlaceable(before));
     }
 };
 
-const detachPropFromElement = (parent: ElementNode, node: PropNode): void => {
+const detachPropFromElement = (parent: ElementNode | LazyNode, node: PropNode): void => {
+    const owner = propOwner(parent);
+
+    if (owner === null) {
+        return;
+    }
+
     for (const child of node.children) {
-        unplaceChild(parent, node.slot, child);
+        unplaceChild(owner, node.slot, child);
     }
 };
 
@@ -94,7 +108,7 @@ const attachToProp = (parent: PropNode, child: AnyNode, before: AnyNode | null):
         return;
     }
 
-    const owner = parent.parent;
+    const owner = propOwner(parent.parent);
 
     if (owner === null) {
         return;
@@ -130,6 +144,13 @@ const syncLazy = (node: LazyNode): void => {
 };
 
 const attachToLazy = (parent: LazyNode, child: AnyNode, before: AnyNode | null): void => {
+    if (child.kind === PROP_KIND) {
+        parent.propChildren.add(child);
+        attachPropToElement(parent, child, before);
+
+        return;
+    }
+
     if (insertChild(parent, child, before) === null) {
         return;
     }
@@ -180,7 +201,7 @@ const detachFromProp = (parent: PropNode, child: AnyNode): void => {
     }
 
     remove(parent.children, placeable);
-    const owner = parent.parent;
+    const owner = propOwner(parent.parent);
 
     if (owner === null) {
         return;
@@ -190,6 +211,13 @@ const detachFromProp = (parent: PropNode, child: AnyNode): void => {
 };
 
 const detachFromLazy = (parent: LazyNode, child: AnyNode): void => {
+    if (child.kind === PROP_KIND) {
+        parent.propChildren.delete(child);
+        detachPropFromElement(parent, child);
+
+        return;
+    }
+
     const placeable = asPlaceable(child);
 
     if (placeable !== null) {

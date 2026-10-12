@@ -50,6 +50,8 @@ const DESCRIPTOR_FREE_PROPERTY_SPEC_FACTORIES: Set<string> = new Set([
     "g_param_spec_variant",
 ]);
 
+const CALLBACK_OWNER_FACTORIES: Set<string> = new Set(["gtk_custom_layout_new"]);
+
 const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | undefined => {
     if (fn.cIdentifier === undefined) {
         return undefined;
@@ -71,6 +73,7 @@ const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | u
         isReturnSkipped: returnPlan.isSkipped,
         isReturnUnpacked: returnPlan.isUnpacked,
         canThrow: fn.throws,
+        returnsCallbackOwner: CALLBACK_OWNER_FACTORIES.has(fn.cIdentifier),
     });
 };
 

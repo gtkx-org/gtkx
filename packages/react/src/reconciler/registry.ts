@@ -12,6 +12,8 @@ type PlaceInfo = {
     index: number;
     /** Object of the preceding child in the slot, or null when the child comes first. */
     sibling: GObject.Object | null;
+    /** Objects in this slot, in their current JSX order. */
+    children: readonly GObject.Object[];
     /** Object adopted for this child by an earlier attach, or null before it has one. */
     adopted: GObject.Object | null;
     /** Props of the child element. */

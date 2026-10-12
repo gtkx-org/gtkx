@@ -67,6 +67,52 @@ type CreditSection = {
     people: string[];
 };
 
+/** One additional link in an `Adw.AboutDialog`. */
+type AboutDialogLink = {
+    /** Link label, with underscores marking mnemonics. */
+    title: string;
+    /** Address opened when the link is activated. */
+    url: string;
+};
+
+/** One credit or acknowledgement section in an `Adw.AboutDialog`. */
+type AboutDialogSection = {
+    /** Optional section heading. */
+    name?: string | null;
+    /** Names, email addresses or links in the format accepted by libadwaita. */
+    people: string[];
+};
+
+/** One legal section in an `Adw.AboutDialog`. */
+type AboutDialogLegalSection = {
+    /** Heading of the section. */
+    title: string;
+    /** Copyright information as Pango markup. */
+    copyright?: string | null;
+    /** Built-in license, or `Gtk.License.CUSTOM` when supplying `license`. */
+    licenseType: Gtk.License;
+    /** Custom license text as Pango markup; ignored for built-in licenses. */
+    license?: string | null;
+};
+
+/** One related application in an `Adw.AboutDialog`. */
+type AboutDialogOtherApp = {
+    /** Application ID, also used to look up its icon. */
+    appid: string;
+    /** Application name. */
+    name: string;
+    /** Short description of the application. */
+    summary: string;
+};
+
+/** Extra content accepted by tabs in an `Adw.TabBar` or `Adw.TabOverview`. */
+type TabExtraDropTarget = {
+    /** Supported drag actions. */
+    actions: Gdk.DragAction;
+    /** GTypes or generated classes accepted by the target. */
+    types: NonNullable<Parameters<Adw.TabBar["setupExtraDropTarget"]>[1]>;
+};
+
 /** One command-line option a `Gtk.Application` accepts. */
 type MainOption = {
     /** Name the option is spelled with after two dashes, such as `verbose` for `--verbose`. */
@@ -190,6 +236,8 @@ type Style = StyleProperties & Partial<Record<`&${string}`, StyleProperties>>;
 
 /** Objects a widget takes through a method call rather than a property. */
 type GtkWidgetProps = {
+    /** Text direction override; `null` or omission restores GTK's default direction. */
+    textDirection?: Gtk.TextDirection | null | undefined;
     /** `Gtk.EventController` elements added to the widget. */
     controllers?: ReactNode | null | undefined;
     /** `Gio.ActionGroup` elements inserted into the widget, each under its own `prefix`. */
@@ -237,6 +285,16 @@ type GtkShortcutControllerProps = {
 type GtkCallbackActionElementProps = {
     callback: Gtk.ShortcutFunc;
 } & GeneratedElementProps<object, "callback">;
+
+/** Callbacks defining a `Gtk.CustomLayout`; updates keep the native layout instance. */
+type GtkCustomLayoutElementProps = {
+    /** Request mode, defaulting to constant size. */
+    requestMode?: Gtk.CustomRequestModeFunc | null | undefined;
+    /** Computes minimum, natural and baseline sizes for the owning widget. */
+    measure: Gtk.CustomMeasureFunc;
+    /** Allocates the owning widget's children. */
+    allocate: Gtk.CustomAllocateFunc;
+};
 
 type GtkShortcutTriggerElementProps = {
     accelerator: string;
@@ -314,6 +372,32 @@ type GtkAboutDialogProps = {
      */
     creditSections?: CreditSection[] | null | undefined;
 };
+
+/** Additional metadata for an `Adw.AboutDialog`, fixed once each nonempty list is applied. */
+type AdwAboutDialogProps = {
+    /** Additional links below the website. Give the dialog a new key to replace this list. */
+    links?: AboutDialogLink[] | null | undefined;
+    /** Additional credits sections. Give the dialog a new key to replace this list. */
+    creditSections?: AboutDialogSection[] | null | undefined;
+    /** Acknowledgement sections. Give the dialog a new key to replace this list. */
+    acknowledgementSections?: AboutDialogSection[] | null | undefined;
+    /** Copyright and license sections. Give the dialog a new key to replace this list. */
+    legalSections?: AboutDialogLegalSection[] | null | undefined;
+    /** Related applications. Give the dialog a new key to replace this list. */
+    otherApps?: AboutDialogOtherApp[] | null | undefined;
+};
+
+/** Configuration shared by `Adw.TabBar` and `Adw.TabOverview`. */
+type AdwTabDropProps = {
+    /** Additional drop formats and actions; removing the prop disables the extra target. */
+    extraDropTarget?: TabExtraDropTarget | null | undefined;
+};
+
+/** Props of a page owned by an `Adw.TabView`. */
+type AdwTabPageProps = {
+    /** Whether its current owning view pins this page; removing the prop unpins it. */
+    pinned?: boolean | undefined;
+} & ChildrenProps;
 
 /** Props of a `Gtk.Application` element, whose `children` are the windows it owns. */
 type GtkApplicationProps = {
@@ -414,6 +498,11 @@ export {
     type ScaleMark,
     type LevelBarOffset,
     type CreditSection,
+    type AboutDialogLink,
+    type AboutDialogSection,
+    type AboutDialogLegalSection,
+    type AboutDialogOtherApp,
+    type TabExtraDropTarget,
     type MainOption,
     type ActionAccel,
     type DragSourceIcon,
@@ -426,6 +515,7 @@ export {
     type AdwToggleGroupProps,
     type GtkShortcutControllerProps,
     type GtkCallbackActionElementProps,
+    type GtkCustomLayoutElementProps,
     type GtkShortcutTriggerElementProps,
     type GtkOverlayProps,
     type GtkTextChildAnchorProps,
@@ -437,6 +527,9 @@ export {
     type GtkLevelBarProps,
     type GtkSizeGroupProps,
     type GtkAboutDialogProps,
+    type AdwAboutDialogProps,
+    type AdwTabDropProps,
+    type AdwTabPageProps,
     type GtkApplicationProps,
     type GtkDropTargetProps,
     type GtkDrawingAreaProps,

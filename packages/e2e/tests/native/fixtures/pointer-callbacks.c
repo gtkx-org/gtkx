@@ -21,6 +21,8 @@ typedef struct {
 static guint next_id;
 static GHashTable *finalized;
 static GtkxCallbackObject *held;
+static guint return_object_signal;
+static guint return_full_object_signal;
 
 G_DEFINE_TYPE(GtkxCallbackObject, gtkx_callback_object, G_TYPE_OBJECT)
 
@@ -88,6 +90,12 @@ static void gtkx_callback_object_class_init(GtkxCallbackObjectClass *klass)
     object_class->set_property = gtkx_callback_object_set_property;
     object_class->get_property = gtkx_callback_object_get_property;
     object_class->finalize = gtkx_callback_object_finalize;
+    return_object_signal = g_signal_new("return-object-borrowed", G_TYPE_FROM_CLASS(klass),
+                                        G_SIGNAL_RUN_LAST, 0, g_signal_accumulator_first_wins,
+                                        NULL, NULL, G_TYPE_OBJECT, 0);
+    return_full_object_signal = g_signal_new("return-object-full", G_TYPE_FROM_CLASS(klass),
+                                             G_SIGNAL_RUN_LAST, 0, g_signal_accumulator_first_wins,
+                                             NULL, NULL, G_TYPE_OBJECT, 0);
     g_object_class_install_property(object_class, 1,
         g_param_spec_pointer("callback", "Callback", "Stored integer callback",
                              G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
@@ -100,6 +108,20 @@ static void gtkx_callback_object_init(GtkxCallbackObject *self)
 {
     self->callback = NULL;
     self->id = ++next_id;
+}
+
+GtkxCallbackObject *gtkx_callback_object_new(GtkxIntCallback callback)
+{
+    GtkxCallbackObject *self = g_object_new(gtkx_callback_object_get_type(), NULL);
+    self->callback = callback;
+    return self;
+}
+
+GObject *gtkx_callback_object_emit_return_object(GtkxCallbackObject *self, gboolean full)
+{
+    GObject *result = NULL;
+    g_signal_emit(self, full ? return_full_object_signal : return_object_signal, 0, &result);
+    return result;
 }
 
 guint gtkx_callback_object_id(GtkxCallbackObject *self)

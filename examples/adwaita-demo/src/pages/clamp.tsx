@@ -60,15 +60,13 @@ export const ClampPage = () => {
                         <AdwComboRow
                             title="Unit"
                             selected={unit}
-                            onMap={(row) => row.setSelected(unit)}
                             expression={expression}
                             model={
                                 <AdwEnumListModel
                                     enumType={resolveType("libadwaita-1.so.0", "adw_length_unit_get_type")}
                                 />
                             }
-                            onNotifySelected={(value, row) => {
-                                if (!row.getMapped()) return;
+                            onNotifySelected={(value) => {
                                 if (
                                     value === Adw.LengthUnit.PX ||
                                     value === Adw.LengthUnit.PT ||

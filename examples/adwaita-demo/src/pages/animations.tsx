@@ -1,4 +1,6 @@
 import * as Adw from "@gtkx/gi/adw";
+import * as Graphene from "@gtkx/gi/graphene";
+import * as Gsk from "@gtkx/gi/gsk";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     AdwBin,
@@ -15,23 +17,9 @@ import {
     AdwViewStack,
     AdwViewStackPage,
 } from "@gtkx/jsx/adw";
-import {
-    GtkAdjustment,
-    GtkBox,
-    GtkButton,
-    GtkLabel,
-    GtkScrolledWindow,
-    type GtkLayoutManagerProps,
-} from "@gtkx/jsx/gtk";
-import { createElementComponent, createPortal, rootElement } from "@gtkx/react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-
-import { AnimationLayout } from "./animation-layout.js";
-
-const AnimationLayoutElement: (props: GtkLayoutManagerProps<AnimationLayout>) => ReactNode = createElementComponent(
-    "GtkxAdwaitaDemoAnimationLayout",
-    AnimationLayout,
-);
+import { GtkAdjustment, GtkBox, GtkButton, GtkCustomLayout, GtkLabel, GtkScrolledWindow } from "@gtkx/jsx/gtk";
+import { createPortal, rootElement } from "@gtkx/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const easingLabels = [
     "Linear",
@@ -99,6 +87,7 @@ const NumberRow = ({ title, value, lower, upper, step = 1, page = 10, digits = 0
 
 const AnimationsPage = () => {
     const [sample, setSample] = useState<Adw.Bin | null>(null);
+    const [target, setTarget] = useState<Adw.CallbackAnimationTarget | null>(null);
     const [stack, setStack] = useState<Adw.ViewStack | null>(null);
     const [kind, setKind] = useState("Timed");
     const [timedState, setTimedState] = useState(Adw.AnimationState.IDLE);
@@ -117,15 +106,19 @@ const AnimationsPage = () => {
     const timed = useRef<Adw.TimedAnimation | null>(null);
     const spring = useRef<Adw.SpringAnimation | null>(null);
     const [easingModel] = useState(() => Gtk.StringList.new(easingLabels));
-    const [layout, setLayout] = useState<AnimationLayout | null>(null);
+    const progress = useRef(0);
     const params = useMemo(() => Adw.SpringParams.newFull(damping, mass, stiffness), [damping, mass, stiffness]);
-    const target = useMemo(
-        () =>
-            Adw.CallbackAnimationTarget.new((value) => {
-                layout?.setProgress(value);
-            }),
-        [layout],
-    );
+    const attachSample = useCallback((widget: Adw.Bin | null) => {
+        setSample(widget);
+        setTarget(
+            widget === null
+                ? null
+                : Adw.CallbackAnimationTarget.new((value) => {
+                      progress.current = value;
+                      widget.queueAllocate();
+                  }),
+        );
+    }, []);
 
     useEffect(
         () => () => {
@@ -154,6 +147,7 @@ const AnimationsPage = () => {
     return (
         <>
             {sample &&
+                target &&
                 createPortal(
                     <>
                         <AdwTimedAnimation
@@ -196,9 +190,31 @@ const AnimationsPage = () => {
                         <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                             <AdwClamp maximumSize={400} tighteningThreshold={300}>
                                 <AdwBin
-                                    ref={setSample}
+                                    ref={attachSample}
                                     marginBottom={36}
-                                    layoutManager={<AnimationLayoutElement ref={setLayout} />}
+                                    layoutManager={
+                                        <GtkCustomLayout
+                                            measure={(widget, orientation, forSize) =>
+                                                widget.getFirstChild()?.measure(orientation, forSize) ?? [0, 0, -1, -1]
+                                            }
+                                            allocate={(widget, width, height, baseline) => {
+                                                const child = widget.getFirstChild();
+                                                if (child === null) return;
+                                                const [childWidth] = child.measure(Gtk.Orientation.HORIZONTAL, -1);
+                                                const offset = Math.trunc(
+                                                    (width - childWidth) * (progress.current - 0.5),
+                                                );
+                                                child.allocate(
+                                                    width,
+                                                    height,
+                                                    baseline,
+                                                    Gsk.Transform.new().translate(
+                                                        new Graphene.Point({ x: offset, y: 0 }),
+                                                    ),
+                                                );
+                                            }}
+                                        />
+                                    }
                                 >
                                     <AdwBin
                                         halign={Gtk.Align.CENTER}
@@ -215,7 +231,7 @@ const AnimationsPage = () => {
                             </GtkLabel>
                         </GtkBox>
                         <GtkBox
-                            ref={(box) => box?.setDirection(Gtk.TextDirection.LTR)}
+                            textDirection={Gtk.TextDirection.LTR}
                             valign={Gtk.Align.CENTER}
                             halign={Gtk.Align.CENTER}
                             marginTop={30}

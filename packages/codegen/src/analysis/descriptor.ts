@@ -48,7 +48,7 @@ type RuntimeFnSpec = Extract<Parameters<RuntimeDescriptors["fn"]>[2], { args: un
 type FnSpecParts = {
     args: string;
     returns: string;
-} & Required<Pick<RuntimeFnSpec, "isReturnSkipped" | "isReturnUnpacked" | "canThrow">>;
+} & Required<Pick<RuntimeFnSpec, "isReturnSkipped" | "isReturnUnpacked" | "canThrow" | "returnsCallbackOwner">>;
 
 type CallbackSpecParts = {
     argTypes: string[];
@@ -250,12 +250,13 @@ const tFn = (lib: string, cIdentifier: string, spec: FnSpecParts): string => {
     const skipEntry = spec.isReturnSkipped ? `, ${SKIPPED_RETURN_ENTRY}` : "";
     const unpackEntry = spec.isReturnUnpacked ? `, ${UNPACKED_RETURN_ENTRY}` : "";
     const throwsEntry = spec.canThrow ? ", canThrow: true" : "";
+    const ownerEntry = spec.returnsCallbackOwner ? ", returnsCallbackOwner: true" : "";
 
     return pure(
         call("fn", [
             sourceStringLiteral(lib),
             sourceStringLiteral(cIdentifier),
-            `() => ({ args: ${spec.args}, returns: ${spec.returns}${skipEntry}${unpackEntry}${throwsEntry} })`,
+            `() => ({ args: ${spec.args}, returns: ${spec.returns}${skipEntry}${unpackEntry}${throwsEntry}${ownerEntry} })`,
         ]),
     );
 };

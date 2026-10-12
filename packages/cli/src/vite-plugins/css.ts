@@ -7,12 +7,17 @@ type CssResolveRequest = Parameters<typeof resolveToVirtual>[1];
 type CssLoadContext = { addWatchFile: (file: string) => void };
 
 const CSS_RE = /\.css$/i;
-const INJECT_SUFFIX = "?inject";
+const INJECT_SUFFIX = ".js";
 const VIRTUAL_PREFIX = "\0gtkx-css:";
 const VIRTUAL_ID_RE = new RegExp(`^${VIRTUAL_PREFIX}`);
-const { isVirtual, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
+const { isVirtual, toVirtualId, fromVirtualId, resolveToVirtual } = createVirtualNamespace(VIRTUAL_PREFIX);
 
-const resolveCssId = async (ctx: CssResolveContext, request: CssResolveRequest): Promise<string | undefined> => {
+const injectedCssId = (filePath: string): string => toVirtualId(filePath) + INJECT_SUFFIX;
+
+const resolveCssId = async (
+    ctx: CssResolveContext,
+    request: CssResolveRequest,
+): Promise<{ id: string; moduleSideEffects: true } | undefined> => {
     if (!CSS_RE.test(request.source)) {
         return;
     }
@@ -23,7 +28,7 @@ const resolveCssId = async (ctx: CssResolveContext, request: CssResolveRequest):
         return;
     }
 
-    return virtualId + INJECT_SUFFIX;
+    return { id: injectedCssId(fromVirtualId(virtualId)), moduleSideEffects: true };
 };
 
 const loadInjectedCss = (ctx: CssLoadContext, id: string): string | undefined => {
@@ -61,4 +66,4 @@ function gtkxCss(): Plugin {
     };
 }
 
-export { gtkxCss };
+export { gtkxCss, injectedCssId };

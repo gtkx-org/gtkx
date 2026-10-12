@@ -31,6 +31,7 @@ type TypeInfo = {
     defaults: Record<string, unknown>;
 };
 
+const READABLE = 1;
 const WRITABLE = 2;
 const CONSTRUCT = 4;
 const CONSTRUCT_ONLY = 8;
@@ -195,6 +196,9 @@ const getTypeInfo = (object: object): TypeInfo | undefined => {
 
 const hasProperty = (info: TypeInfo, accessor: string): boolean => Object.hasOwn(info.properties, accessor);
 
+const isReadableProperty = (info: TypeInfo, accessor: string): boolean =>
+    ((info.properties[accessor]?.[FLAGS] ?? 0) & READABLE) !== 0;
+
 const propertyNameFor = (info: TypeInfo, accessor: string): string | undefined => info.properties[accessor]?.[NAME];
 
 const getPropertyName = (object: object, accessor: string): string | undefined => {
@@ -205,4 +209,4 @@ const getPropertyName = (object: object, accessor: string): string | undefined =
     );
 };
 
-export { getPropertyName, hasProperty, typeInfoFor, type TypeInfo };
+export { getPropertyName, hasProperty, isReadableProperty, typeInfoFor, type TypeInfo };

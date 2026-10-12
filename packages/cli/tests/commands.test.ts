@@ -1,9 +1,12 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createMcpServer } from "@gtkx/mcp/server";
+import { resolveHeadlessOptions, startHeadlessDisplay } from "@gtkx/vitest/headless";
 import { runCommand } from "citty";
-import { existsSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
+import { execFile } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import { stdout, stderr } from "test-console";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createCommand } from "../dist/command.js";
@@ -62,6 +65,56 @@ describe("CLI commands", () => {
         project.write("keep.txt", "keep");
         await expect(invoke(["build", "--cwd", project.root, "--out", "../outside"])).rejects.toThrow();
         expect(readFileSync(join(project.root, "keep.txt"), "utf8")).toBe("keep");
+    });
+
+    it("applies imported CSS in development and production, including stylesheet edits", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "style.txt");
+        const stylesheet = (width: number) =>
+            `@define-color cli_css_probe rgb(3, 6, 9); .cli-css-probe { color: @cli_css_probe; min-width: ${width}px; }`;
+        project.write("src/theme.css", stylesheet(231));
+        project.write(
+            "src/index.tsx",
+            `import "./theme.css";
+            import * as Gtk from "@gtkx/gi/gtk";
+            import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+            import { GtkLabel } from "@gtkx/jsx/gtk";
+            import { createRoot } from "@gtkx/react";
+            import { writeFileSync } from "node:fs";
+            createRoot().render(
+                <AdwApplication applicationId="org.gtkx.cssprobe">
+                    <AdwApplicationWindow>
+                        <GtkLabel label="Probe" cssClasses={["cli-css-probe"]} onMap={(label) => {
+                            setTimeout(() => {
+                                const [width] = label.measure(Gtk.Orientation.HORIZONTAL, -1);
+                                writeFileSync(${JSON.stringify(readyPath)}, String(width));
+                                if (process.env.NODE_ENV === "production") process.exit(0);
+                            }, 100);
+                        }} />
+                    </AdwApplicationWindow>
+                </AdwApplication>
+            );`,
+        );
+        const width = () => Number(readFileSync(readyPath, "utf8"));
+        await withSession("dev", project.root, readyPath, async () => {
+            expect(width()).toBe(231);
+            project.write("src/theme.css", stylesheet(257));
+            await expect.poll(width, { timeout: 30_000 }).toBe(257);
+        });
+        rmSync(readyPath);
+        await invoke(["build", "--cwd", project.root]);
+        const stopDisplay = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
+        try {
+            await promisify(execFile)(process.execPath, [join(project.root, "dist/bundle.mjs")], { timeout: 30_000 });
+            expect(width()).toBe(257);
+            expect(
+                readdirSync(join(project.root, "dist"), { recursive: true }).some((file) =>
+                    String(file).endsWith(".css"),
+                ),
+            ).toBe(false);
+        } finally {
+            stopDisplay();
+        }
     });
 
     it("generates upstream bindings and documentation through their command arguments", async () => {

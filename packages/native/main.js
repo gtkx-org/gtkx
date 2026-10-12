@@ -10,6 +10,7 @@ export {
     compileVfuncSlot,
     CallbackScope,
     copy,
+    createCallback,
     createClosure,
     createMatchSubject,
     createFunctionResolver,

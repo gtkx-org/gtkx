@@ -6,6 +6,7 @@ import { sourceLanguage } from "../internal/source-imports.js";
 import { projectSchemaFiles, SCHEMA_SUFFIX, stageAndCompileProjectSchemas } from "../settings/schema.js";
 import { createStorybookSession, type StorybookSession } from "../storybook/session.js";
 import { isUrlSpecifier } from "../vite-plugins/asset-specifier.js";
+import { injectedCssId } from "../vite-plugins/css.js";
 import { createChangeQueue, type WatchedChange } from "./change-queue.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
 import { isMissingImport, missingImportName } from "./missing-import.js";
@@ -415,6 +416,17 @@ const hasChangedSchemaInputs = (session: DevSession, change: WatchedChange): boo
     );
 };
 
+const didRestartForStylesheet = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
+    if (!session.server.moduleGraph.getModuleById(injectedCssId(change.path))) {
+        return false;
+    }
+
+    session.deps.log(`Stylesheet ${change.event}: ${change.path}`);
+    await requestRestart(session);
+
+    return true;
+};
+
 const didRestartForUrlAsset = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
     const fileModules = session.server.moduleGraph.getModulesByFile(change.path);
 
@@ -455,7 +467,7 @@ const didRestartForChange = async (session: DevSession, change: WatchedChange): 
         return true;
     }
 
-    return didRestartForUrlAsset(session, change);
+    return (await didRestartForStylesheet(session, change)) || didRestartForUrlAsset(session, change);
 };
 
 const applyChange = async (session: DevSession, change: WatchedChange): Promise<void> => {

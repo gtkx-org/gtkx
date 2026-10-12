@@ -1,6 +1,6 @@
+import { createTabCollection } from "@gtkx/components";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
-import * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -12,12 +12,11 @@ import {
     AdwTabBar,
     AdwTabButton,
     AdwTabOverview,
-    AdwTabPage,
     AdwTabView,
     AdwToolbarView,
     AdwWindow,
 } from "@gtkx/jsx/adw";
-import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
+import { GMenu, GSimpleAction, GSimpleActionGroup, GThemedIcon } from "@gtkx/jsx/gio";
 import { GtkButton, GtkCallbackAction, GtkEntry, GtkShortcut, GtkShortcutController } from "@gtkx/jsx/gtk";
 import { createRoot, flushSync, type Root, useApplication, useProperty, useSignal } from "@gtkx/react";
 import { createRef, type RefObject, useEffect, useMemo, useState } from "react";
@@ -31,14 +30,7 @@ type TabData = {
     attention: boolean;
     indicator: boolean;
     muted: boolean;
-};
-
-type TabHandle = {
-    id: number;
-    root: Root;
-    page: RefObject<Adw.TabPage | null>;
-    parent: Adw.TabPage | null;
-    data: TabData;
+    pinned: boolean;
 };
 
 type WindowHandle = { root: Root; window: Adw.Window; view: Adw.TabView };
@@ -47,59 +39,36 @@ const stringType = GObject.typeFromName("gchararray");
 
 const escapeMarkup = (text: string) => GLib.markupEscapeText(text, -1);
 
-const DemoTab = ({
-    id,
-    pageRef,
-    data,
-    parentPage,
-    demo,
-}: {
-    id: number;
-    pageRef: RefObject<Adw.TabPage | null>;
-    data: TabData;
-    parentPage: Adw.TabPage | null;
-    demo: TabDemo;
-}) => {
-    const icon = useMemoIcon(data.showIcon ? data.iconName : null);
-    const indicatorIcon = useMemoIcon(
-        data.indicator ? (data.muted ? "tab-audio-muted-symbolic" : "tab-audio-playing-symbolic") : null,
-    );
-
-    useEffect(() => () => demo.forgetTab(id), [demo, id]);
-
-    return (
-        <AdwTabPage
-            ref={pageRef}
-            parent={parentPage ?? undefined}
-            title={data.title}
-            tooltip={`Elaborate tooltip for <b>${escapeMarkup(data.title)}</b>`}
-            icon={icon}
-            loading={data.loading}
-            needsAttention={data.attention}
-            indicatorIcon={indicatorIcon}
-            indicatorTooltip={data.indicator ? (data.muted ? "Unmute Tab" : "Mute Tab") : ""}
-            indicatorActivatable
-            thumbnailXalign={0.5}
-            thumbnailYalign={0.5}
-        >
-            <AdwBin cssClasses={["tab-page", `tab-page-color-${data.color}`]}>
-                <GtkEntry
-                    halign={Gtk.Align.CENTER}
-                    valign={Gtk.Align.CENTER}
-                    text={data.title}
-                    accessibleLabel="Tab title"
-                    onChanged={(entry) => demo.updateId(id, { title: entry.getText() })}
-                />
-            </AdwBin>
-        </AdwTabPage>
-    );
-};
-
-const useMemoIcon = (name: string | null) => useMemo(() => (name === null ? null : Gio.ThemedIcon.new(name)), [name]);
-
 class TabDemo {
     private nextId = 1;
-    private readonly tabs = new Map<number, TabHandle>();
+    private readonly tabs = createTabCollection<TabData>({
+        pageProps: (data, getPage) => ({
+            title: data.title,
+            tooltip: `Elaborate tooltip for <b>${escapeMarkup(data.title)}</b>`,
+            pinned: data.pinned,
+            icon: data.showIcon ? <GThemedIcon name={data.iconName} /> : null,
+            loading: data.loading,
+            needsAttention: data.attention,
+            indicatorIcon: data.indicator ? (
+                <GThemedIcon name={data.muted ? "tab-audio-muted-symbolic" : "tab-audio-playing-symbolic"} />
+            ) : null,
+            indicatorTooltip: data.indicator ? (data.muted ? "Unmute Tab" : "Mute Tab") : "",
+            indicatorActivatable: true,
+            thumbnailXalign: 0.5,
+            thumbnailYalign: 0.5,
+            children: (
+                <AdwBin cssClasses={["tab-page", `tab-page-color-${data.color}`]}>
+                    <GtkEntry
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                        text={data.title}
+                        accessibleLabel="Tab title"
+                        onChanged={(entry) => this.updatePage(getPage(), { title: entry.getText() })}
+                    />
+                </AdwBin>
+            ),
+        }),
+    });
     private readonly windows = new Map<Adw.TabView, WindowHandle>();
 
     createWindow(application: Gtk.Application, populate = false): Adw.TabView {
@@ -129,10 +98,7 @@ class TabDemo {
             return;
         }
         this.windows.delete(view);
-        const pages = Array.from({ length: view.getNPages() }, (_, index) => view.getNthPage(index));
-        for (const page of pages) {
-            this.releaseTab(page);
-        }
+        this.tabs.removeView(view);
         handle.root.unmount();
     }
 
@@ -141,10 +107,10 @@ class TabDemo {
     }
 
     createTab(view: Adw.TabView, original?: Adw.TabPage): Adw.TabPage {
-        const source = original === undefined ? undefined : this.find(original);
+        const source = original === undefined ? undefined : this.tabs.get(original);
         const id = this.nextId++;
-        const data = source
-            ? { ...source.data }
+        const data: TabData = source
+            ? { ...source, pinned: false }
             : {
                   title: `Tab ${id}`,
                   iconName: this.randomIcon(view),
@@ -154,82 +120,30 @@ class TabDemo {
                   attention: false,
                   indicator: false,
                   muted: false,
+                  pinned: false,
               };
-        const handle: TabHandle = {
-            id,
-            root: createRoot(view),
-            page: createRef<Adw.TabPage>(),
-            parent: original ?? null,
-            data,
-        };
-        this.tabs.set(id, handle);
-        flushSync(() =>
-            handle.root.render(
-                <DemoTab
-                    id={handle.id}
-                    pageRef={handle.page}
-                    data={handle.data}
-                    parentPage={handle.parent}
-                    demo={this}
-                />,
-            ),
-        );
-        const page = handle.page.current;
-        if (page === null) {
-            this.tabs.delete(id);
-            handle.root.unmount();
-            throw new Error("The tab page did not render");
-        }
-        if (original === undefined) {
-            view.reorderPage(page, view.getNPages() - 1);
-        }
-        view.setSelectedPage(page);
+        const page = this.tabs.append(view, data, { parent: original });
         page.getChild().childFocus(Gtk.DirectionType.TAB_FORWARD);
         return page;
     }
 
-    find(page: Adw.TabPage): TabHandle | undefined {
-        return [...this.tabs.values()].find((handle) => handle.page.current === page);
-    }
-
-    update(handle: TabHandle, update: Partial<TabData>): void {
-        handle.data = { ...handle.data, ...update };
-        handle.root.render(
-            <DemoTab id={handle.id} pageRef={handle.page} data={handle.data} parentPage={handle.parent} demo={this} />,
-        );
-    }
-
-    updateId(id: number, update: Partial<TabData>): void {
-        const handle = this.tabs.get(id);
-        if (handle) {
-            this.update(handle, update);
-        }
-    }
-
     updatePage(page: Adw.TabPage | null | undefined, update: Partial<TabData>): void {
-        const handle = page ? this.find(page) : undefined;
-        if (handle) {
-            this.update(handle, update);
-        }
+        if (!page) return;
+        const data = this.tabs.get(page);
+        if (data) this.tabs.update(page, { ...data, ...update });
     }
 
     toggleMute(page: Adw.TabPage): void {
-        const handle = this.find(page);
-        if (handle) {
-            this.update(handle, { muted: !handle.data.muted });
-        }
+        const data = this.tabs.get(page);
+        if (data) this.tabs.update(page, { ...data, muted: !data.muted });
     }
 
     releaseTab(page: Adw.TabPage): void {
-        const handle = this.find(page);
-        if (handle) {
-            this.tabs.delete(handle.id);
-            handle.root.unmount();
-        }
+        this.tabs.remove(page);
     }
 
-    forgetTab(id: number): void {
-        this.tabs.delete(id);
+    transferTab(page: Adw.TabPage, target: Adw.TabView): void {
+        this.tabs.transfer(page, target);
     }
 
     randomIcon(view: Adw.TabView): string {
@@ -281,7 +195,7 @@ const DemoWindow = ({ demo, application, windowRef, viewRef }: DemoWindowProps) 
     const move = () => {
         if (view && current) {
             const target = demo.createWindow(application);
-            view.transferPage(current, target, 0);
+            demo.transferTab(current, target);
         }
     };
     const closeEmpty = (self: Adw.TabView) => {
@@ -376,14 +290,14 @@ const DemoWindow = ({ demo, application, windowRef, viewRef }: DemoWindowProps) 
                                 {action(
                                     "pin",
                                     () => {
-                                        if (current) view?.setPagePinned(current, true);
+                                        demo.updatePage(current, { pinned: true });
                                     },
                                     !pinned,
                                 )}
                                 {action(
                                     "unpin",
                                     () => {
-                                        if (current) view?.setPagePinned(current, false);
+                                        demo.updatePage(current, { pinned: false });
                                     },
                                     pinned,
                                 )}
@@ -456,10 +370,8 @@ const DemoWindow = ({ demo, application, windowRef, viewRef }: DemoWindowProps) 
             }
         >
             <AdwTabOverview
-                ref={(instance) => {
-                    setOverview(instance);
-                    instance?.setupExtraDropTarget(Gdk.DragAction.COPY, [stringType]);
-                }}
+                ref={setOverview}
+                extraDropTarget={{ actions: Gdk.DragAction.COPY, types: [stringType] }}
                 view={view ?? undefined}
                 open={view !== null && open}
                 onNotifyOpen={(value) => {
@@ -512,7 +424,7 @@ const DemoWindow = ({ demo, application, windowRef, viewRef }: DemoWindowProps) 
                             <AdwTabBar
                                 visible={!narrow}
                                 view={view ?? undefined}
-                                ref={(bar) => bar?.setupExtraDropTarget(Gdk.DragAction.COPY, [stringType])}
+                                extraDropTarget={{ actions: Gdk.DragAction.COPY, types: [stringType] }}
                                 onExtraDragDrop={drop}
                             />
                         </>

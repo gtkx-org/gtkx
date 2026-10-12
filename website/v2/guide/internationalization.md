@@ -104,6 +104,19 @@ LANG=fr_FR.UTF-8 LANGUAGE=fr gtkx dev
 
 Gettext translations follow the startup environment. Intl-based formatting uses the process's default locale. Changing i18next's language does not change libc's active gettext locale; restart the process to change the application's translation language.
 
+## Text direction
+
+GTK chooses the default text direction from the application's locale. Use `textDirection` on a widget when content needs an explicit direction, such as a left-to-right animation or technical value:
+
+```tsx
+import * as Gtk from "@gtkx/gi/gtk";
+import { GtkLabel } from "@gtkx/jsx/gtk";
+
+<GtkLabel textDirection={Gtk.TextDirection.LTR}>192.0.2.1</GtkLabel>;
+```
+
+Removing `textDirection`, passing `null`, or using `Gtk.TextDirection.NONE` restores GTK's default direction.
+
 ## Translate package metadata
 
 A normal `gtkx deploy` refreshes the catalog with application and metadata messages, then compiles and packages the translations. The same PO files supply desktop-entry names, AppStream text, and MIME descriptions.

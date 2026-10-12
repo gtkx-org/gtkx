@@ -64,10 +64,12 @@ const instantiate = (typeName: string, type: bigint, input: Props): GObject.Obje
     return new cls(input);
 };
 
-const createObject = (typeName: string, type: bigint, input: Props): GObject.Object => {
+const createObject = (typeName: string, type: bigint, input: Props): { object: GObject.Object; initialized: Props } => {
     const create = ELEMENTS[typeName]?.behaviors?.find((behavior) => behavior.create !== undefined)?.create;
 
-    return create === undefined ? instantiate(typeName, type, input) : create(input);
+    return create === undefined
+        ? { object: instantiate(typeName, type, input), initialized: input }
+        : { object: create(input), initialized: {} };
 };
 
 const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch): ElementNode | LazyNode => {
@@ -78,9 +80,11 @@ const resolveElementNode = (typeName: string, props: Props, dispatch: Dispatch):
     }
 
     const type = typeFromName(typeName);
-    const object = createObject(typeName, type, constructInput(info, props));
+    const { object, initialized } = createObject(typeName, type, constructInput(info, props));
+    const node = createElementNode(typeName, object, dispatch, contentKindFor(type));
+    node.props = initialized;
 
-    return createElementNode(typeName, object, dispatch, contentKindFor(type));
+    return node;
 };
 
 export { resolveElementNode };

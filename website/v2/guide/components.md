@@ -1,11 +1,11 @@
 ---
 title: "Components"
-description: "Render lists, tables, dropdowns, and toast notifications from React state."
+description: "Render lists, tables, dropdowns, tabs, and toast notifications from React state."
 ---
 
 # Components
 
-`@gtkx/components` renders native collections from data and render functions. It manages their GTK models and factories. `@gtkx/components` also provides `ComboRow` and toast helpers.
+`@gtkx/components` renders native collections from data and render functions. It manages their GTK models and factories. `@gtkx/components` also provides `ComboRow`, managed tab collections, and toast helpers.
 
 `@gtkx/components` is a separate install:
 
@@ -117,6 +117,78 @@ Leave `selectedIndex` out for native selection, or set it to keep selection unde
 GTKX suppresses `onRowSelected` while applying its own selection updates. Other native selection changes still reach the handler, including changes made through native methods. Update the controlled value in that handler to keep the new selection; otherwise GTKX restores the requested row.
 
 The tutorial's [sidebar](/v2/tutorial/lists-and-the-sidebar#keeping-gtk4-and-the-route-in-agreement) drives one from the current route.
+
+## Tabs across windows
+
+Ordinary `AdwTabView` children work for tabs that share their parent's React lifetime. Use `createTabCollection<T>()` when native drag-and-drop can move pages between windows. Each managed page has an independent React root, preserving its component state when its original window closes.
+
+```tsx
+import { createTabCollection } from "@gtkx/components";
+import { AdwTabView } from "@gtkx/jsx/adw";
+import { GtkEntry } from "@gtkx/jsx/gtk";
+
+type Tab = { title: string; pinned: boolean };
+
+const tabs = createTabCollection<Tab>({
+    pageProps: (item, getPage) => ({
+        title: item.title,
+        pinned: item.pinned,
+        children: (
+            <GtkEntry
+                text={item.title}
+                onChanged={(entry) => {
+                    const current = getPage();
+                    const latest = current && tabs.get(current);
+                    if (current && latest) {
+                        tabs.update(current, { ...latest, title: entry.getText() });
+                    }
+                }}
+            />
+        ),
+    }),
+});
+
+<AdwTabView
+    ref={viewRef}
+    onClosePage={(page, view) => {
+        view.closePageFinish(page, true);
+        tabs.remove(page);
+        return true;
+    }}
+/>
+```
+
+Call `tabs.append(view, item)` from an event handler to synchronously render and return the native page. An overview's `onCreateTab` can return that page directly. Pass `{ parent: original }` for related pages, or `{ select: false }` to retain selection. New pages append within their pinned or unpinned group.
+
+`tabs.transfer(page, target)` moves a page to another view. Native tab dragging works too. `tabs.update(page, item)` preserves the page's identity and component state, including after transfer. `tabs.remove(page)` unmounts it from its current native owner. Before closing a window, call `tabs.removeView(view)` to release only the managed pages still in that view; call `tabs.dispose()` when the collection's owner finishes. Accept or reject native close requests in `onClosePage`, then remove the page after accepting.
+
+Keep the collection alive for every window using it. Independent roots do not inherit the originating window's React context: pass required values through the item or include providers in the returned content. Window creation and native close decisions remain application responsibilities; the [Adwaita demo](https://github.com/gtkx-org/gtkx/tree/main/examples/adwaita-demo) shows the complete window lifecycle.
+
+### Native tab configuration
+
+`AdwTabPage` accepts `pinned` in ordinary JSX and in a collection's `pageProps`. Updating it pins or unpins the page through its current native view. Reordering keyed JSX pages preserves the requested relative order within each pin group. Pinning a page follows libadwaita’s insertion order.
+
+Both `AdwTabBar` and `AdwTabOverview` accept `extraDropTarget`, so supported drag actions and data types can follow React state:
+
+```tsx
+import * as Gdk from "@gtkx/gi/gdk";
+import * as GObject from "@gtkx/gi/gobject";
+import { AdwTabBar } from "@gtkx/jsx/adw";
+
+<AdwTabBar
+    view={view}
+    extraDropTarget={{ actions: Gdk.DragAction.COPY, types: [GObject.typeFromName("gchararray")] }}
+    onExtraDragDrop={(page, value) => {
+        const item = tabs.get(page);
+        const title = value.getString();
+        if (!item || title === null) return false;
+        tabs.update(page, { ...item, title });
+        return true;
+    }}
+/>
+```
+
+Removing `extraDropTarget` disables the additional drop target. Types can be GType values or generated classes. Use explicit `null` when clearing nullable object props such as a tab's `icon`.
 
 ## Toasts
 

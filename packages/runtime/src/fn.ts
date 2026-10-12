@@ -1,17 +1,17 @@
 import type { BoundCall, ExternalObject, Handle, Ref } from "./native.js";
-import { bind as nativeBind } from "./native.js";
+import { bind as nativeBind, createCallback } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import type { RefSeeds } from "./vfunc-seeds.js";
 import { type Arg, isCallerAllocatedArg, isOutputArg, isRefArg, isUnpackedArg, requiresInputArg } from "./arg.js";
 import { createCall } from "./call.js";
 import { callLayout } from "./call-layout.js";
 import { wrapCallbackValue } from "./callback.js";
-import { boxedT, isGtypeDescriptor, refT } from "./descriptors.js";
+import { boxedT, isGtypeDescriptor, refT, structT } from "./descriptors.js";
 import { checkError } from "./error.js";
 import { LIB } from "./library.js";
 import { fromNative, toNative } from "./native-value.js";
 import { getHandle } from "./registry.js";
-import { toAbi } from "./scalar-plan.js";
+import { compileDescriptor, toAbi } from "./scalar-plan.js";
 import { hasSurfacedPrimary, packTupleResult } from "./tuple.js";
 import { TYPE_INVALID } from "./type.js";
 import { fromValue, getValueType } from "./value.js";
@@ -37,6 +37,8 @@ type FnSpec = {
     fixedArgCount?: number;
     /** The callee returns a `GValue`, surfaced as what it holds rather than as the value itself. */
     isReturnUnpacked?: boolean;
+    /** The returned GObject owns all bare callback arguments until its lifetime ends. */
+    returnsCallbackOwner?: boolean;
 };
 
 type ArgSpec = {
@@ -52,6 +54,7 @@ type ArgSpec = {
 };
 
 const NO_OUT_PARAMS: unknown[] = [];
+const objectCallbacks: WeakMap<object, ExternalObject<Handle>[]> = new WeakMap();
 
 const hasGtypeInput = (descriptor: Descriptor): boolean =>
     isGtypeDescriptor(descriptor) || (descriptor.kind === "array" && isGtypeDescriptor(descriptor.itemDescriptor));
@@ -302,6 +305,10 @@ const bindNativeCallable = (
     symbol: string,
     spec: FnSpec,
 ): ((...inputs: unknown[]) => unknown) => {
+    if (spec.returnsCallbackOwner === true) {
+        return bindCallbackOwner(sharedLibrary, symbol, spec);
+    }
+
     const nativeArgTypes = buildNativeArgTypes(spec.args, spec.canThrow ?? false);
     const descriptor = nativeBind(
         sharedLibrary,
@@ -312,6 +319,42 @@ const bindNativeCallable = (
     );
 
     return fromNativeCallable(descriptor, spec, nativeArgTypes);
+};
+
+const bindCallbackOwner = (
+    sharedLibrary: string,
+    symbol: string,
+    spec: FnSpec,
+): ((...inputs: unknown[]) => unknown) => {
+    if (spec.returns.kind !== "object" || spec.args.some((arg) => arg.direction !== undefined)) {
+        throw new TypeError("A callback owner factory requires a GObject return and input arguments");
+    }
+    const callbacks = spec.args.flatMap((arg, index) =>
+        arg.type.kind === "callback" ? [{ index, descriptor: arg.type, plan: compileDescriptor(arg.type) }] : [],
+    );
+    const invoke = bindNativeCallable(sharedLibrary, symbol, {
+        ...spec,
+        returnsCallbackOwner: false,
+        args: spec.args.map((arg) => (arg.type.kind === "callback" ? { ...arg, type: structT() } : arg)),
+    });
+
+    return (...inputs) => {
+        const handles: ExternalObject<Handle>[] = [];
+        for (const { index, descriptor, plan } of callbacks) {
+            const callback = inputs[index];
+            if (callback == null) {
+                continue;
+            }
+            const handle = createCallback(plan.abi, plan.encode(wrapCallbackValue(descriptor, callback)));
+            inputs[index] = handle;
+            handles.push(handle);
+        }
+        const owner = invoke(...inputs);
+        if (typeof owner === "object" && owner !== null) {
+            objectCallbacks.set(owner, handles);
+        }
+        return owner;
+    };
 };
 
 /**

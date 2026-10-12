@@ -27,7 +27,7 @@ import { AppAboutDialog } from "./dialogs/about.js";
 import { PreferencesDialog } from "./dialogs/preferences.js";
 import { ShortcutsDialog } from "./dialogs/shortcuts.js";
 import { pages, sections } from "./page-registry.js";
-import { DemoStyles } from "./styles.js";
+import "./styles/demo.css";
 import "./icons.js";
 
 const collapseCondition = Adw.BreakpointCondition.parse("max-width: 500sp");
@@ -250,7 +250,6 @@ const App = () => {
                 });
             }}
         >
-            <DemoStyles />
             {open && <MainWindow onClose={() => setOpen(false)} />}
         </AdwApplication>
     );

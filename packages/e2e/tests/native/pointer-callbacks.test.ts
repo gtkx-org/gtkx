@@ -3,6 +3,9 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Regress from "@gtkx/gi/regress";
 import { setObjectProperty } from "@gtkx/native";
 import {
+    connectSignal,
+    disconnectSignal,
+    emitSignal,
     getClassType,
     getHandle,
     newObjectWithProperties,
@@ -58,6 +61,11 @@ const failNextSet = t.bind(library, "gtkx_callback_object_fail_next_set", [t.obj
 const hold = t.bind(library, "gtkx_callback_object_hold", [t.object()], t.void);
 const release = t.bind(library, "gtkx_callback_object_release", [], t.void);
 const invokeHeld = t.bind(library, "gtkx_callback_object_invoke_held", [t.int32], t.int32);
+const createCallbackObject = t.fn(library, "gtkx_callback_object_new", {
+    args: [{ type: callbackDescriptor }],
+    returns: t.object("full"),
+    returnsCallbackOwner: true,
+});
 
 class CallbackObject {
     constructor(props: { callback?: StoredCallback | null } = {}) {
@@ -87,6 +95,92 @@ class CallbackObject {
 
 registerWrapperClass(CallbackObject, callbackObjectType, getVfuncRegistry(GObject.Object));
 registerConstructProperties(CallbackObject, { callback: ["callback", callbackDescriptor] });
+
+test("factory callbacks survive native ownership and release when the returned object is finalized", async () => {
+    const references = (() => {
+        const callback = (value: number): number => value + 17;
+        const object = createCallbackObject(callback) as CallbackObject;
+        hold(getHandle(object));
+        return { object: new WeakRef(object), callback: new WeakRef(callback), id: object.id };
+    })();
+
+    try {
+        await drainGC();
+        expect(invokeHeld(25)).toBe(42);
+        expect(references.object.deref()).toBeDefined();
+        expect(references.callback.deref()).toBeDefined();
+        expect(wasFinalized(references.id)).toBe(false);
+    } finally {
+        release();
+    }
+
+    expect(
+        await didSettle(
+            () =>
+                references.object.deref() === undefined &&
+                references.callback.deref() === undefined &&
+                wasFinalized(references.id) === true,
+        ),
+    ).toBe(true);
+});
+
+test("factory callbacks can capture their returned object without retaining an unreachable cycle", async () => {
+    const references = (() => {
+        const callback = (value: number): number => value + object.id;
+        const object = createCallbackObject(callback) as CallbackObject;
+        expect(object.invoke(7)).toBe(object.id + 7);
+        return { object: new WeakRef(object), callback: new WeakRef(callback), id: object.id };
+    })();
+
+    expect(
+        await didSettle(
+            () =>
+                references.object.deref() === undefined &&
+                references.callback.deref() === undefined &&
+                wasFinalized(references.id) === true,
+        ),
+    ).toBe(true);
+});
+
+test.each(["borrowed", "full"] as const)(
+    "%s object signal returns survive native and synthetic emissions and release afterward",
+    async (ownership) => {
+        const source = new CallbackObject();
+        const signal = `return-object-${ownership}`;
+        const emitNative = t.fn(library, "gtkx_callback_object_emit_return_object", {
+            args: [{ type: t.object() }, { type: t.boolean }],
+            returns: t.object(ownership),
+        });
+        const references = await (async () => {
+            const target = new CallbackObject();
+            const id = target.id;
+            const handlerId = connectSignal(source, signal, {
+                callback: t.callback([t.object(), t.void], t.object(ownership), {
+                    scope: "notified",
+                    hasUserData: true,
+                    userDataIndex: 1,
+                    hasDestroy: true,
+                    destroyKind: "closureNotify",
+                }),
+                handler: () => target,
+                isAfter: false,
+            });
+            for (let index = 0; index < 3; index++) {
+                expect(emitNative(getHandle(source), ownership === "full")).toBe(target);
+                expect(emitSignal(source, signal, [], t.object(ownership))).toBe(target);
+                await drainGC();
+                expect(target.id).toBe(id);
+                expect(wasFinalized(id)).toBe(false);
+            }
+            disconnectSignal(source, handlerId);
+            return { object: new WeakRef(target), id };
+        })();
+
+        expect(
+            await didSettle(() => references.object.deref() === undefined && wasFinalized(references.id) === true),
+        ).toBe(true);
+    },
+);
 
 test("opaque pointers preserve exact addresses and null through generated calls", () => {
     for (const pointer of [null, 1n, 0x123456789abcn]) {
