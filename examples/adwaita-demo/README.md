@@ -2,6 +2,8 @@
 
 The official [libadwaita 1.9.3 demo](https://github.com/GNOME/libadwaita/tree/5789add99c79cee0fae624b56706c7c0bea7fb2b/demo), reimplemented in React and GTKX. The reference is pinned to `5789add99c79cee0fae624b56706c7c0bea7fb2b`; the application uses JSX and public native APIs throughout.
 
+![Adwaita demo tab overview](screenshot.png)
+
 ## Run
 
 Follow the [workspace setup](../../CONTRIBUTING.md#set-up-the-workspace). This example requires libadwaita 1.9 or later for its sidebar and shortcuts widgets. The initial reference environment uses libadwaita 1.9.3 and GTK 4.22.4.
