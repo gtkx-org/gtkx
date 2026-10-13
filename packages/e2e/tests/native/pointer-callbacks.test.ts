@@ -6,17 +6,16 @@ import {
     connectSignal,
     disconnectSignal,
     emitSignal,
-    getClassType,
     getHandle,
-    newObjectWithProperties,
     offSignal,
     onSignal,
     registerClass,
     registerConstructProperties,
     registerWrapperClass,
     t,
+    toClosure,
 } from "@gtkx/runtime";
-import { getProperty, getVfuncRegistry, setProperty, toValue } from "@gtkx/runtime/internal";
+import { getProperty, getVfuncRegistry, installSignalDispatch, setProperty, toValue } from "@gtkx/runtime/internal";
 import { resolveExecutable } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -67,9 +66,9 @@ const createCallbackObject = t.fn(library, "gtkx_callback_object_new", {
     returnsCallbackOwner: true,
 });
 
-class CallbackObject {
+class CallbackObject extends GObject.Object {
     constructor(props: { callback?: StoredCallback | null } = {}) {
-        return newObjectWithProperties(getClassType(new.target), props, this);
+        super(props);
     }
 
     get id(): number {
@@ -95,6 +94,20 @@ class CallbackObject {
 
 registerWrapperClass(CallbackObject, callbackObjectType, getVfuncRegistry(GObject.Object));
 registerConstructProperties(CallbackObject, { callback: ["callback", callbackDescriptor] });
+for (const ownership of ["borrowed", "full"] as const) {
+    const signal = `return-object-${ownership}`;
+    installSignalDispatch(CallbackObject, [signal], {
+        callback: () =>
+            t.callback([t.object(), t.void], t.object(ownership), {
+                scope: "notified",
+                hasUserData: true,
+                userDataIndex: 1,
+                hasDestroy: true,
+                destroyKind: "closureNotify",
+            }),
+        emit: (instance) => emitSignal(instance, signal, [], t.object(ownership)),
+    });
+}
 
 test("factory callbacks survive native ownership and release when the returned object is finalized", async () => {
     const references = (() => {
@@ -181,6 +194,275 @@ test.each(["borrowed", "full"] as const)(
         ).toBe(true);
     },
 );
+
+test.each(["borrowed", "full"] as const)(
+    "%s object returns from generic closures survive synthetic emissions and release afterward",
+    async (ownership) => {
+        const source = new CallbackObject();
+        const signal = `return-object-${ownership}`;
+        const references = await (async () => {
+            const target = new CallbackObject();
+            const handler = GObject.signalConnectClosure(source, signal, () => target, false);
+            try {
+                for (let index = 0; index < 3; index++) {
+                    expect(emitSignal(source, signal, [], t.object(ownership))).toBe(target);
+                    await drainGC();
+                    expect(wasFinalized(target.id)).toBe(false);
+                }
+            } finally {
+                GObject.signalHandlerDisconnect(source, handler);
+            }
+            return { object: new WeakRef(target), id: target.id };
+        })();
+        expect(
+            await didSettle(() => references.object.deref() === undefined && wasFinalized(references.id) === true),
+        ).toBe(true);
+    },
+);
+
+test("an inherited generic class closure preserves a borrowed object return", async () => {
+    class Inherited extends CallbackObject {}
+    const Registered = registerClass(Inherited, { typeName: "GtkxInheritedObjectReturn" });
+    const signal = GObject.signalLookup("return-object-borrowed", Registered);
+    const references = await (async () => {
+        const target = new CallbackObject();
+        const reference = new WeakRef(target);
+        GObject.signalOverrideClassClosure(signal, Registered, () => reference.deref() ?? null);
+        const source = new Registered();
+        expect(emitSignal(source, "return-object-borrowed", [], t.object())).toBe(target);
+        await drainGC();
+        expect(wasFinalized(target.id)).toBe(false);
+        return { object: reference, id: target.id };
+    })();
+    expect(await didSettle(() => references.object.deref() === undefined && wasFinalized(references.id) === true)).toBe(
+        true,
+    );
+});
+
+test("an inherited typed class closure preserves object and null returns", async () => {
+    class Inherited extends CallbackObject {
+        returned: WeakRef<CallbackObject> | null = null;
+
+        onReturnObjectBorrowed(): CallbackObject | null {
+            return this.returned?.deref() ?? null;
+        }
+    }
+    const Registered = registerClass(Inherited, { typeName: "GtkxInheritedTypedObjectReturn" });
+    const source = new Registered();
+    const emitNative = t.fn(library, "gtkx_callback_object_emit_return_object", {
+        args: [{ type: t.object() }, { type: t.boolean }],
+        returns: t.object(),
+    });
+    expect(emitSignal(source, "return-object-borrowed", [], t.object())).toBeNull();
+    const references = await (async () => {
+        const target = new CallbackObject();
+        source.returned = new WeakRef(target);
+        expect(emitNative(getHandle(source), false)).toBe(target);
+        expect(emitSignal(source, "return-object-borrowed", [], t.object())).toBe(target);
+        await drainGC();
+        expect(wasFinalized(target.id)).toBe(false);
+        source.returned = null;
+        return { object: new WeakRef(target), id: target.id };
+    })();
+    expect(await didSettle(() => references.object.deref() === undefined && wasFinalized(references.id) === true)).toBe(
+        true,
+    );
+});
+
+test("generic closures return objects from signals without generated metadata", async () => {
+    const source = new CallbackObject();
+    const references = (() => {
+        const target = new CallbackObject();
+        const handler = GObject.signalConnectClosure(source, "return-object-unregistered", () => target, false);
+        try {
+            expect(emitSignal(source, "return-object-unregistered", [], t.object())).toBe(target);
+        } finally {
+            GObject.signalHandlerDisconnect(source, handler);
+        }
+        return { object: new WeakRef(target), id: target.id };
+    })();
+    expect(await didSettle(() => references.object.deref() === undefined && wasFinalized(references.id) === true)).toBe(
+        true,
+    );
+});
+
+test.each([false, true])(
+    "non-signal closures ignore opaque invocation hints with boxed=%s arguments",
+    async (boxed) => {
+        const source = new CallbackObject();
+        const invokeClosure = t.fn(library, "gtkx_callback_object_invoke_closure", {
+            args: [
+                {
+                    type: t.boxed("GClosure", {
+                        sharedLibrary: "libgobject-2.0.so.0",
+                        getTypeFnName: "g_closure_get_type",
+                    }),
+                },
+                { type: t.object() },
+                { type: t.boolean },
+            ],
+            returns: t.object("full"),
+        });
+        const references = (() => {
+            const target = new CallbackObject();
+            expect(
+                invokeClosure(
+                    toClosure(() => target),
+                    getHandle(source),
+                    boxed,
+                ),
+            ).toBe(target);
+            return { object: new WeakRef(target), id: target.id };
+        })();
+        expect(
+            await didSettle(() => references.object.deref() === undefined && wasFinalized(references.id) === true),
+        ).toBe(true);
+    },
+);
+
+test.each([
+    ["generic", "generic"],
+    ["typed", "generic"],
+    ["generic", "typed"],
+    ["typed", "typed"],
+] as const)("synthetic emissions retain discarded and final results from %s then %s handlers", async (first, last) => {
+    for (const signal of ["return-object-last", "return-object-discard"]) {
+        const source = new CallbackObject();
+        const references = await (async () => {
+            const targets = [new CallbackObject(), new CallbackObject()];
+            const handlers = targets.map((target, index) => {
+                const handler = (): CallbackObject => target;
+                return (index === 0 ? first : last) === "generic"
+                    ? GObject.signalConnectClosure(source, signal, handler, false)
+                    : connectSignal(source, signal, {
+                          callback: t.callback([t.object(), t.void], t.object(), {
+                              scope: "notified",
+                              hasUserData: true,
+                              userDataIndex: 1,
+                              hasDestroy: true,
+                              destroyKind: "closureNotify",
+                          }),
+                          handler,
+                          isAfter: false,
+                      });
+            });
+            try {
+                for (let index = 0; index < 3; index++) {
+                    expect(emitSignal(source, signal, [], t.object())).toBe(
+                        signal === "return-object-last" ? targets[1] : null,
+                    );
+                    await drainGC();
+                    for (const target of targets) {
+                        expect(wasFinalized(target.id)).toBe(false);
+                    }
+                }
+            } finally {
+                for (const handler of handlers) disconnectSignal(source, handler);
+            }
+            return targets.map((target) => ({ object: new WeakRef(target), id: target.id }));
+        })();
+        expect(
+            await didSettle(() =>
+                references.every(({ object, id }) => object.deref() === undefined && wasFinalized(id) === true),
+            ),
+        ).toBe(true);
+    }
+});
+
+test("native re-emission of the same signal stays separate from its synthetic parent", async () => {
+    const connectReentrant = t.fn(library, "gtkx_callback_object_connect_reentrant", {
+        args: [{ type: t.object() }],
+        returns: t.biguint64,
+    });
+    const nestedReturnId = t.fn(library, "gtkx_callback_object_nested_return_id", {
+        args: [{ type: t.object() }],
+        returns: t.uint32,
+    });
+    const source = new CallbackObject();
+    const nativeHandler = connectReentrant(getHandle(source)) as bigint;
+    const references = await (async () => {
+        const target = new CallbackObject();
+        let calls = 0;
+        const handler = connectSignal(source, "return-object-reentrant", {
+            callback: t.callback([t.object(), t.void], t.object(), {
+                scope: "notified",
+                hasUserData: true,
+                userDataIndex: 1,
+                hasDestroy: true,
+                destroyKind: "closureNotify",
+            }),
+            handler: () => {
+                calls++;
+                return target;
+            },
+            isAfter: false,
+        });
+        try {
+            expect(emitSignal(source, "return-object-reentrant", [], t.object())).toBe(target);
+            expect(calls).toBe(2);
+            expect(nestedReturnId(getHandle(source))).toBe(target.id);
+            await drainGC();
+            expect(wasFinalized(target.id)).toBe(false);
+        } finally {
+            disconnectSignal(source, handler);
+            disconnectSignal(source, nativeHandler);
+        }
+        return { object: new WeakRef(target), id: target.id };
+    })();
+    expect(await didSettle(() => references.object.deref() === undefined && wasFinalized(references.id) === true)).toBe(
+        true,
+    );
+});
+
+test("nested synthetic emissions and failed callbacks restore the enclosing emission", async () => {
+    const source = new CallbackObject();
+    const references = await (async () => {
+        const target = new CallbackObject();
+        let nested = false;
+        let fail = true;
+        const nestedResults: unknown[] = [];
+        const handler = connectSignal(source, "return-object-borrowed", {
+            callback: t.callback([t.object(), t.void], t.object(), {
+                scope: "notified",
+                hasUserData: true,
+                userDataIndex: 1,
+                hasDestroy: true,
+                destroyKind: "closureNotify",
+            }),
+            handler: () => {
+                if (nested) {
+                    if (fail) throw new Error("nested callback failed");
+                    return target;
+                }
+                nested = true;
+                try {
+                    nestedResults.push(emitSignal(source, "return-object-borrowed", [], t.object()));
+                } finally {
+                    nested = false;
+                }
+                return target;
+            },
+            isAfter: false,
+        });
+        try {
+            expect(() => emitSignal(source, "return-object-borrowed", [], t.object())).toThrow(
+                "nested callback failed",
+            );
+            fail = false;
+            expect(emitSignal(source, "return-object-borrowed", [], t.object())).toBe(target);
+            expect(nestedResults).toEqual([target]);
+            await drainGC();
+            expect(wasFinalized(target.id)).toBe(false);
+        } finally {
+            disconnectSignal(source, handler);
+        }
+        expect(emitSignal(source, "return-object-borrowed", [], t.object())).toBeNull();
+        return { object: new WeakRef(target), id: target.id };
+    })();
+    expect(await didSettle(() => references.object.deref() === undefined && wasFinalized(references.id) === true)).toBe(
+        true,
+    );
+});
 
 test("opaque pointers preserve exact addresses and null through generated calls", () => {
     for (const pointer of [null, 1n, 0x123456789abcn]) {
@@ -349,7 +631,7 @@ test("collecting a saved callback getter releases its superseded callback and ca
 test("callback replacement during constructed retains the replacement after construction returns", async () => {
     const state: { replacement?: WeakRef<StoredCallback> } = {};
     class ReplaceDuringConstruction extends CallbackObject {
-        vfuncConstructed(): void {
+        override vfuncConstructed(): void {
             const callback = (value: number): number => value + 30;
             state.replacement = new WeakRef(callback);
             this.callback = callback;
@@ -370,7 +652,7 @@ test("callback replacement during constructed retains the replacement after cons
 
 test("clearing a callback during constructed releases the original after construction returns", async () => {
     class ClearDuringConstruction extends CallbackObject {
-        vfuncConstructed(): void {
+        override vfuncConstructed(): void {
             this.callback = null;
         }
     }
@@ -388,7 +670,7 @@ test("clearing a callback during constructed releases the original after constru
 test("a callback getter saved during constructed survives clearing its original property", async () => {
     const state: { saved?: StoredCallback } = {};
     class SaveDuringConstruction extends CallbackObject {
-        vfuncConstructed(): void {
+        override vfuncConstructed(): void {
             const callback = this.callback;
             if (callback === null) throw new Error("The construction callback was empty");
             state.saved = callback;

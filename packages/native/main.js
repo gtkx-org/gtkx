@@ -19,6 +19,7 @@ export {
     createTypeResolver,
     DestroyNotifyKind,
     ElementOwnership,
+    emitSignal,
     getFundamentalIdentity,
     getMatchInfoBase,
     getMatchInfoType,

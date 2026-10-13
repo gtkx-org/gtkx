@@ -27,6 +27,35 @@ unsafe extern "C" fn release_callback(data: *mut c_void, _closure: *mut gobject_
     unsafe { ClosureState::destroy(data) };
 }
 
+/// The generic C marshal takes a borrowed callback result into its `GValue`. During emitv,
+/// retain each result before an accumulator or a later handler can reset that `GValue`. Native
+/// emissions use a different argument array and retain their existing C return convention.
+unsafe extern "C" fn marshal_borrowed_object(
+    closure: *mut gobject_ffi::GClosure,
+    return_value: *mut gobject_ffi::GValue,
+    n_param_values: u32,
+    param_values: *const gobject_ffi::GValue,
+    invocation_hint: *mut c_void,
+    marshal_data: *mut c_void,
+) {
+    unsafe {
+        gobject_ffi::g_cclosure_marshal_generic(
+            closure,
+            return_value,
+            n_param_values,
+            param_values,
+            invocation_hint,
+            marshal_data,
+        );
+        if !return_value.is_null() && super::signal::is_synthetic_emission(param_values) {
+            let object = gobject_ffi::g_value_get_object(return_value);
+            if !object.is_null() {
+                gobject_ffi::g_object_ref(object);
+            }
+        }
+    }
+}
+
 /// Creates a non-floating `GClosure` whose finalizer owns the callback and marshal trampoline.
 /// A generic marshal invokes the supplied typed callback; otherwise the callback is the marshal.
 #[napi(catch_unwind)]
@@ -80,7 +109,12 @@ pub fn create_closure(
         closure.cast(),
     ));
     let marshal: MarshalFn = if generic_marshal {
-        gobject_ffi::g_cclosure_marshal_generic
+        if matches!(codec.return_codec.as_ref(), Codec::Object(object) if object.ownership.is_borrowed())
+        {
+            marshal_borrowed_object
+        } else {
+            gobject_ffi::g_cclosure_marshal_generic
+        }
     } else {
         unsafe { std::mem::transmute::<*mut c_void, MarshalFn>(function) }
     };

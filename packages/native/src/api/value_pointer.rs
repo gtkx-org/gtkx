@@ -77,7 +77,7 @@ fn encode(env: &Env, codec: &Codec, value: Unknown<'_>) -> Result<(Handle, bool)
     Ok((Handle::pointer(ptr, &owner), is_callback))
 }
 
-fn value_ptr(value: &Handle) -> Result<*mut glib::gobject_ffi::GValue> {
+pub(crate) fn value_ptr(value: &Handle) -> Result<*mut glib::gobject_ffi::GValue> {
     if value.boxed_type() != Some(glib::BoxedValue::static_type()) {
         return Err(Error::from_reason("Expected a GValue handle"));
     }

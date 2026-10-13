@@ -12,6 +12,8 @@ typedef struct {
     gboolean invoke_during_get;
     gboolean invoke_on_every_get;
     gboolean fail_next_get;
+    gboolean emitting_nested;
+    guint nested_return_id;
 } GtkxCallbackObject;
 
 typedef struct {
@@ -82,6 +84,16 @@ static void gtkx_callback_object_finalize(GObject *object)
     G_OBJECT_CLASS(gtkx_callback_object_parent_class)->finalize(object);
 }
 
+static gboolean discard_return_object(GSignalInvocationHint *hint, GValue *accumulated,
+                                      const GValue *returned, gpointer data)
+{
+    (void)hint;
+    (void)accumulated;
+    (void)returned;
+    (void)data;
+    return TRUE;
+}
+
 static void gtkx_callback_object_class_init(GtkxCallbackObjectClass *klass)
 {
     GObjectClass *object_class = G_OBJECT_CLASS(klass);
@@ -96,6 +108,15 @@ static void gtkx_callback_object_class_init(GtkxCallbackObjectClass *klass)
     return_full_object_signal = g_signal_new("return-object-full", G_TYPE_FROM_CLASS(klass),
                                              G_SIGNAL_RUN_LAST, 0, g_signal_accumulator_first_wins,
                                              NULL, NULL, G_TYPE_OBJECT, 0);
+    g_signal_new("return-object-unregistered", G_TYPE_FROM_CLASS(klass),
+                 G_SIGNAL_RUN_LAST, 0, g_signal_accumulator_first_wins,
+                 NULL, NULL, G_TYPE_OBJECT, 0);
+    g_signal_new("return-object-last", G_TYPE_FROM_CLASS(klass),
+                 G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL, G_TYPE_OBJECT, 0);
+    g_signal_new("return-object-discard", G_TYPE_FROM_CLASS(klass),
+                 G_SIGNAL_RUN_LAST, 0, discard_return_object, NULL, NULL, G_TYPE_OBJECT, 0);
+    g_signal_new("return-object-reentrant", G_TYPE_FROM_CLASS(klass),
+                 G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL, G_TYPE_OBJECT, 0);
     g_object_class_install_property(object_class, 1,
         g_param_spec_pointer("callback", "Callback", "Stored integer callback",
                              G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
@@ -122,6 +143,50 @@ GObject *gtkx_callback_object_emit_return_object(GtkxCallbackObject *self, gbool
     GObject *result = NULL;
     g_signal_emit(self, full ? return_full_object_signal : return_object_signal, 0, &result);
     return result;
+}
+
+static GObject *reemit_return_object(GtkxCallbackObject *self, gpointer data)
+{
+    (void)data;
+    if (!self->emitting_nested) {
+        GObject *result = NULL;
+        self->emitting_nested = TRUE;
+        g_signal_emit_by_name(self, "return-object-reentrant", &result);
+        self->emitting_nested = FALSE;
+        self->nested_return_id = result == NULL ? 0 : ((GtkxCallbackObject *)result)->id;
+    }
+    return NULL;
+}
+
+gulong gtkx_callback_object_connect_reentrant(GtkxCallbackObject *self)
+{
+    return g_signal_connect(self, "return-object-reentrant", G_CALLBACK(reemit_return_object), NULL);
+}
+
+guint gtkx_callback_object_nested_return_id(GtkxCallbackObject *self)
+{
+    return self->nested_return_id;
+}
+
+GObject *gtkx_callback_object_invoke_closure(GClosure *closure, GObject *source, gboolean boxed)
+{
+    GValue argument = G_VALUE_INIT;
+    GValue result = G_VALUE_INIT;
+    GObject *object;
+
+    if (boxed) {
+        g_value_init(&argument, G_TYPE_BYTES);
+        g_value_take_boxed(&argument, g_bytes_new_static("test", 4));
+    } else {
+        g_value_init(&argument, G_TYPE_OBJECT);
+        g_value_set_object(&argument, source);
+    }
+    g_value_init(&result, G_TYPE_OBJECT);
+    g_closure_invoke(closure, &result, 1, &argument, GINT_TO_POINTER(1));
+    object = g_value_dup_object(&result);
+    g_value_unset(&argument);
+    g_value_unset(&result);
+    return object;
 }
 
 guint gtkx_callback_object_id(GtkxCallbackObject *self)

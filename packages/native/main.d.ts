@@ -15,6 +15,7 @@ export {
     createRecordConverter,
     createReferenceStorage,
     createTypeResolver,
+    emitSignal,
     getFundamentalIdentity,
     getMatchInfoBase,
     getMatchInfoType,
