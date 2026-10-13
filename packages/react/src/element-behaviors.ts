@@ -40,6 +40,7 @@ import {
     forTypes,
     registerElements,
 } from "./reconciler/registry.js";
+import { applyWrite } from "./reconciler/signals.js";
 
 type AdwChildSetter =
     | Adw.Bin
@@ -83,6 +84,23 @@ const tabExtraDropTarget = value<Adw.TabBar | Adw.TabOverview, TabExtraDropTarge
     "extraDropTarget",
     (tabs, target) => tabs.setupExtraDropTarget(target?.actions ?? 0, target?.types ?? null),
     null,
+);
+
+/**
+ * GTK 4.22 updates the label widget's mnemonic mode without refreshing the check button's
+ * accessible label. Reassigning the existing label refreshes that native accessibility property.
+ * https://github.com/GNOME/gtk/blob/4.22.4/gtk/gtkcheckbutton.c#L1161
+ */
+const checkButtonUnderline = value<Gtk.CheckButton, boolean>(
+    "useUnderline",
+    (button, useUnderline) => {
+        button.setUseUnderline(useUnderline);
+        const label = button.getLabel();
+        if (label !== null) {
+            applyWrite("label", () => button.setLabel(label));
+        }
+    },
+    false,
 );
 
 const tabViewParent = (child: Gtk.Widget): Adw.TabView | null => {
@@ -199,6 +217,15 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     }),
     GtkWindow: {
         behaviors: [childSetterSlot()],
+    },
+    GtkMenuButton: {
+        behaviors: [
+            setterSlot<Gtk.MenuButton, Gtk.Popover>("children", Gtk.Popover, "setPopover"),
+            childSetterSlot<Gtk.MenuButton>(),
+        ],
+    },
+    GtkCheckButton: {
+        behaviors: [checkButtonUnderline, childSetterSlot<Gtk.CheckButton>()],
     },
     GtkWidget: {
         behaviors: [

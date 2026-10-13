@@ -17,7 +17,10 @@ type PopoverFixture = {
 const popoverMenuButton = (popoverRef: RefObject<Gtk.Popover | null>): ReactNode => (
     <GtkMenuButton label="Open">
         <GtkPopover ref={popoverRef}>
-            <GtkLabel>Inside the popover</GtkLabel>
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkLabel>Inside the popover</GtkLabel>
+                <GtkButton label="Popover action" />
+            </GtkBox>
         </GtkPopover>
     </GtkMenuButton>
 );

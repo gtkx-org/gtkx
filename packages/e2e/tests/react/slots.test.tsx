@@ -16,7 +16,7 @@ import {
     GtkStack,
 } from "@gtkx/jsx/gtk";
 import { createPortal, useApplication } from "@gtkx/react";
-import { render, screen, waitFor, within } from "@gtkx/testing";
+import { act, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
 import { createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { createApplicationRenderer } from "../helpers/application-render.js";
@@ -363,6 +363,56 @@ describe("render - Slot", () => {
 
         expect(menuButtonRef.current).toContainElement(popoverRef.current);
         expect(menuButtonRef.current).toHaveObjectProperty("popover", popoverRef.current);
+    });
+
+    it("opens a JSX popover without replacing its menu button's label", async () => {
+        const menuButtonRef = createRef<Gtk.MenuButton>();
+        const popoverRef = createRef<Gtk.Popover>();
+        await render(
+            <GtkMenuButton ref={menuButtonRef} label="Open">
+                <GtkPopover ref={popoverRef}>
+                    <GtkButton label="Popover action" />
+                </GtkPopover>
+            </GtkMenuButton>,
+        );
+        expect(menuButtonRef.current?.getLabel()).toBe("Open");
+        expect(menuButtonRef.current?.getPopover()).toBe(popoverRef.current);
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON));
+        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Popover action" })).toBeRooted();
+        expect(popoverRef.current?.getMapped()).toBe(true);
+    });
+
+    it("keeps a custom menu button face while replacing and removing its JSX popover", async () => {
+        const menuButtonRef = createRef<Gtk.MenuButton>();
+        const faceRef = createRef<Gtk.Label>();
+        const popoverRef = createRef<Gtk.Popover>();
+        const app = (version: number | null) => (
+            <GtkMenuButton ref={menuButtonRef}>
+                <GtkLabel ref={faceRef}>Custom face</GtkLabel>
+                {version !== null && (
+                    <GtkPopover key={version} ref={popoverRef}>
+                        <GtkButton label={`Action ${version}`} />
+                    </GtkPopover>
+                )}
+            </GtkMenuButton>
+        );
+        const { rerender } = await render(app(0));
+        const face = faceRef.current;
+        const originalPopover = popoverRef.current;
+        expect(menuButtonRef.current?.getChild()).toBe(face);
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON));
+        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Action 0" })).toBeRooted();
+        await act(() => popoverRef.current?.popdown());
+        await rerender(app(1));
+        expect(menuButtonRef.current?.getChild()).toBe(face);
+        expect(menuButtonRef.current?.getPopover()).toBe(popoverRef.current);
+        expect(popoverRef.current).not.toBe(originalPopover);
+        expect(originalPopover?.getParent()).toBeNull();
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.TOGGLE_BUTTON));
+        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Action 1" })).toBeRooted();
+        await rerender(app(null));
+        expect(menuButtonRef.current?.getChild()).toBe(face);
+        expect(menuButtonRef.current?.getPopover()).toBeNull();
     });
 
     it("handles multiple slots on same parent", async () => {
