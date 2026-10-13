@@ -165,7 +165,8 @@ const hostConfig = {
     waitForCommitToBeReady: (): null => null,
     getSuspendedCommitReason: (): null => null,
     NotPendingTransition: null,
-    HostTransitionContext: createContext(null),
+    // TODO: Remove this cast once reconciler declarations use compatible React Context types. https://github.com/gtkx-org/gtkx/issues/752
+    HostTransitionContext: createContext(null) as unknown as ReactReconciler.ReactContext<null>,
 };
 
 const reconciler: ReactReconciler.Reconciler<Container, Instance, TextNode, unknown, unknown, object> =

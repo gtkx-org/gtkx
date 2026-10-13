@@ -24,7 +24,3 @@ overrides:
   "nx>smol-toml": ^1.8.0
   axios: ^1.20.0
   brace-expansion: ^5.0.12
-
-patchedDependencies:
-  # TODO: Remove this patch once reconciler declarations use compatible React Context and Portal types. https://github.com/gtkx-org/gtkx/issues/752
-  "@types/react-reconciler@0.33.0": patches/@types__react-reconciler@0.33.0.patch
