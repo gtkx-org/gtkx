@@ -67,6 +67,7 @@ const openContainer = (containerInfo: Container, options: RootOptions): OpaqueRo
         options.onCaughtError ?? logCaughtRenderError,
         options.onRecoverableError ?? logRecoverableRenderError,
         (): void => undefined,
+        null,
     ) as OpaqueRoot;
 };
 
