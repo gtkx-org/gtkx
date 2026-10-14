@@ -129,8 +129,7 @@ const quit = (): typeof Gdk.EVENT_PROPAGATE | typeof Gdk.EVENT_STOP => {
  * @param container The GObject to render into, or {@link rootElement} to render at the top level.
  */
 const createPortal = (children: ReactNode, container: Container, key?: string): ReactPortal =>
-    // TODO: Remove this cast once reconciler declarations use compatible React Portal types. https://github.com/gtkx-org/gtkx/issues/752
-    reconciler.createPortal(children, container, null, key ?? null) as unknown as ReactPortal;
+    reconciler.createPortal(children, container, null, key ?? null);
 
 /**
  * Commits updates scheduled by the callback before returning. Use this when a native signal
