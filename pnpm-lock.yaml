@@ -226,7 +226,7 @@ importers:
         specifier: ^23.3.0
         version: 23.3.0(@babel/traverse@7.29.8(supports-color@7.2.0))(@swc/core@1.16.13)(@zkochan/js-yaml@0.0.7)(eslint@10.12.0(jiti@2.7.0)(supports-color@7.2.0))(nx@23.3.0(@swc/core@1.16.13))(supports-color@7.2.0)(verdaccio@6.10.5(encoding@0.1.13)(supports-color@7.2.0)(typanion@3.14.0))
       '@nx/js':
-        specifier: ^23.2.1
+        specifier: ^23.3.0
         version: 23.3.0(@babel/traverse@7.29.8(supports-color@7.2.0))(@swc/core@1.16.13)(nx@23.3.0(@swc/core@1.16.13))(supports-color@7.2.0)(verdaccio@6.10.5(encoding@0.1.13)(supports-color@7.2.0)(typanion@3.14.0))
       '@nx/oxlint':
         specifier: 23.3.0
