@@ -73,7 +73,7 @@
         "@gtkx/runtime": "workspace:*",
         "@gtkx/utils": "workspace:*",
         "@gtkx/vitest": "workspace:*",
-        "@swc/core": "^1.16.13",
+        "@swc/core": "^1.16.18",
         "@types/react-refresh": "^0.14.7",
         "babel-plugin-react-compiler": "^1.0.0",
         "citty": "^0.2.2",
