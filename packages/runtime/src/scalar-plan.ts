@@ -3,13 +3,14 @@ import {
     getTypeClass,
     type Handle,
     bind as nativeBind,
-    bindField,
+    bindFunction,
     call as nativeCall,
     type Descriptor as NativeDescriptor,
     readField,
     type Ref,
 } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
+import { callLayout } from "./call-layout.js";
 import { functionResolver, typeResolver } from "./descriptor-lifecycle.js";
 import { cairoPathConverter } from "./foreign-record.js";
 import { numericPlan } from "./numeric-plan.js";
@@ -143,7 +144,7 @@ const enumMembership = (descriptor: EnumDescriptor): ((value: number) => boolean
     }
     const handle = enumClass(descriptor);
     if (descriptor.kind === "flags") {
-        const mask = readField(bindField(unsignedT), handle, 8) as number;
+        const mask = readField(unsignedT, handle, 8) as number;
 
         return (value) => (value & mask) >>> 0 === value >>> 0;
     }
@@ -441,14 +442,22 @@ const nestedPlan = (descriptor: NestedDescriptor): ScalarPlan => {
                     hasDestroy: descriptor.hasDestroy ?? false,
                     destroyKind: descriptor.destroyKind ?? "destroyNotify",
                     hasUserData: descriptor.hasUserData ?? false,
-                    ...(descriptor.userDataIndex === undefined ? {} : { userDataIndex: descriptor.userDataIndex }),
-                    canThrow: descriptor.canThrow ?? false,
                     releaseWithCompletion:
                         descriptor.scope === "notified" &&
                         descriptor.hasDestroy !== true &&
                         descriptor.hasUserData === true,
-                    argDescriptors: descriptor.argDescriptors.map((descriptor) => toAbi(descriptor)),
-                    returnDescriptor: toAbi(descriptor.returnDescriptor),
+                    signature: bindFunction(
+                        descriptor.argDescriptors.map((argument) => toAbi(argument)),
+                        toAbi(descriptor.returnDescriptor),
+                        "callback",
+                        callLayout(descriptor.argDescriptors),
+                        {
+                            canThrow: descriptor.canThrow ?? false,
+                            ...(descriptor.userDataIndex === undefined
+                                ? {}
+                                : { userDataIndex: descriptor.userDataIndex }),
+                        },
+                    ),
                 },
                 encode: (value) => encodeCallback(descriptor, value),
                 decode: identity,

@@ -66,5 +66,6 @@ export {
     type NativeHandle,
 } from "./native-lifetime.js";
 export { initializeWrapper } from "./wrapper-brand.js";
-export { keepAlive, setWrapperBorrow } from "./native.js";
+export { keepAlive } from "./keep-alive.js";
+export { setWrapperBorrow } from "./native.js";
 export { resolveFunction } from "./native-bindings.js";

@@ -1,12 +1,4 @@
-import {
-    alloc,
-    bindField,
-    type Descriptor,
-    type ExternalObject,
-    type Handle,
-    readField,
-    writeField,
-} from "./native.js";
+import { alloc, type Descriptor, type ExternalObject, type Handle, readField, writeField } from "./native.js";
 
 type StorageHandle = ExternalObject<Handle>;
 type OutputStorage = {
@@ -35,20 +27,19 @@ const compileOutputStorage = (descriptor: Descriptor): OutputStorage | undefined
     if (size === undefined) {
         return undefined;
     }
-    const field = bindField(descriptor);
 
     return {
         allocate(value) {
             const handle = alloc(size);
             if (value != null) {
-                writeField(field, handle, 0, value);
+                writeField(descriptor, handle, 0, value);
             }
 
             return handle;
         },
-        read: (handle) => readField(field, handle, 0),
+        read: (handle) => readField(descriptor, handle, 0),
         write: (handle, value) => {
-            writeField(field, handle, 0, value);
+            writeField(descriptor, handle, 0, value);
         },
     };
 };

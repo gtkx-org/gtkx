@@ -85,21 +85,14 @@ pub(crate) fn value_ptr(value: &Handle) -> Result<*mut glib::gobject_ffi::GValue
         .map(<*mut c_void>::cast)
 }
 
-/// Creates a bare callback pointer whose handle owns its trampoline and JavaScript callback.
-#[napi(catch_unwind, ts_return_type = "ExternalObject<Handle>")]
-pub fn create_callback<'e>(
+pub(crate) fn create_callback<'e>(
     env: &'e Env,
-    descriptor: Descriptor,
+    codec: &Codec,
     callback: Unknown<'e>,
 ) -> Result<Unknown<'e>> {
-    let _errors = CallbackErrorScope::open(*env);
-    let _leases = LeaseScope::open();
-    let codec = descriptor.into_codec()?;
-    if !matches!(codec, Codec::Callback(_)) {
-        return Err(Error::from_reason("Expected a callback descriptor"));
-    }
-    let (storage, _) = encode(env, &codec, callback)?;
-    let handle = crate::value::handle_to_unknown(env, storage)?;
+    let (storage, _) = encode(env, codec, callback)?;
+    let function = Handle::function(storage.as_ptr(), Some(storage), false, false);
+    let handle = crate::value::handle_to_unknown(env, function)?;
     roots::set(*env, handle, "callback", callback)?;
     Ok(handle)
 }

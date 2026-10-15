@@ -4,16 +4,15 @@ use crate::handle::{Handle, INVALIDATED_HANDLE, NULL_HANDLE};
 
 pub mod alloc;
 pub mod bind;
-pub mod bind_field;
 pub mod call;
 pub mod closure;
 pub mod copy;
+pub mod field;
 pub mod function;
 pub mod fundamental_identity;
 pub mod get_type;
 pub mod get_wrapper;
 pub mod init;
-pub mod keep_alive;
 pub mod log_listener;
 pub mod match_info;
 pub mod new_object;

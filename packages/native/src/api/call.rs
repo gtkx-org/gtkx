@@ -7,7 +7,7 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use smallvec::SmallVec;
 
-use super::bind::CallSignature;
+use super::bind::FunctionSignature;
 use super::native_result;
 use crate::ffi::closure::ClosureData;
 use crate::ffi::codec::{CallbackScope, Codec, Decoder as _, Encoder as _};
@@ -30,7 +30,7 @@ pub struct CallResult<'env> {
 
 fn execute_call<'e>(
     env: &'e Env,
-    signature: &CallSignature,
+    signature: &FunctionSignature,
     target: &Handle,
     values: &[Unknown<'e>],
     completion_index: Option<usize>,
@@ -46,7 +46,7 @@ fn execute_call<'e>(
 
 fn execute_call_inner<'e>(
     env: &'e Env,
-    signature: &CallSignature,
+    signature: &FunctionSignature,
     target: &Handle,
     values: &[Unknown<'e>],
     completion_index: Option<usize>,
@@ -269,11 +269,12 @@ fn decode_outputs<'env>(
 #[napi(catch_unwind)]
 pub fn call<'env>(
     env: &'env Env,
-    signature: &External<CallSignature>,
+    signature: &External<FunctionSignature>,
     target: &External<Handle>,
     values: Array<'_>,
     completion_index: Option<u32>,
 ) -> Result<CallResult<'env>> {
+    signature.ensure_callable()?;
     let mut parsed_values: SmallVec<[Unknown<'env>; 8]> =
         SmallVec::with_capacity(values.len() as usize);
     for i in 0..values.len() {

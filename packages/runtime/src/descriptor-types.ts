@@ -3,7 +3,7 @@ import type { Descriptor as NativeDescriptor, Ownership } from "./native.js";
 /** @inline */
 type NativeCallbackDescriptor = Extract<NativeDescriptor, { kind: "callback" }>;
 /** @inline */
-type CallbackDefaults = "scope" | "hasDestroy" | "destroyKind" | "hasUserData" | "canThrow";
+type CallbackDefaults = "scope" | "hasDestroy" | "destroyKind" | "hasUserData";
 /** @inline */
 type InstanceDefaults = "isCallerAllocated" | "isInline" | "isValueSafe";
 /** @inline */
@@ -105,13 +105,12 @@ type Descriptor =
           keyDescriptor: Descriptor;
           valueDescriptor: Descriptor;
       })
-    | (Omit<
-          NativeCallbackDescriptor,
-          "argDescriptors" | "returnDescriptor" | "releaseWithCompletion" | CallbackDefaults
-      > &
+    | (Omit<NativeCallbackDescriptor, "signature" | "releaseWithCompletion" | CallbackDefaults> &
           Partial<Pick<NativeCallbackDescriptor, CallbackDefaults>> & {
               argDescriptors: Descriptor[];
               returnDescriptor: Descriptor;
+              userDataIndex?: number;
+              canThrow?: boolean;
               userDataArgIndex?: number;
               destroyArgIndex?: number;
           })

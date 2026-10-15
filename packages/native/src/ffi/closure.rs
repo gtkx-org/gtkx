@@ -1,6 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::ffi::{CString, c_char, c_void};
+use std::ops::Deref;
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
 
@@ -12,6 +13,7 @@ use napi::bindgen_prelude::{
 };
 use napi::{Env, Property, PropertyAttributes, Status, ValueType};
 use napi_derive::napi;
+use smallvec::SmallVec;
 
 use crate::ffi::Stash;
 use crate::ffi::codec::{
@@ -76,10 +78,7 @@ pub struct ClosureData {
     js_fn: RefCell<Option<ClosureHandle>>,
     owner: Arc<Owner>,
     native_parent: Cell<*mut c_void>,
-    pub arg_codecs: Vec<Codec>,
-    pub return_codec: Codec,
-    pub user_data_index: Option<usize>,
-    can_throw: bool,
+    pub signature: crate::api::bind::FunctionSignature,
     is_oneshot: bool,
     pub state_ptr: Cell<*mut ClosureState>,
     oneshot_fired: Cell<bool>,
@@ -90,24 +89,26 @@ pub struct ClosureData {
     retained_transfers: RefCell<Vec<crate::ffi::PendingTransfer>>,
 }
 
+impl Deref for ClosureData {
+    type Target = crate::api::bind::FunctionPlan;
+
+    fn deref(&self) -> &Self::Target {
+        &self.signature
+    }
+}
+
 impl ClosureData {
     #[must_use]
     pub fn new(
         js_fn: ClosureHandle,
-        arg_codecs: Vec<Codec>,
-        return_codec: Codec,
-        user_data_index: Option<usize>,
-        can_throw: bool,
+        signature: crate::api::bind::FunctionSignature,
         is_oneshot: bool,
     ) -> Self {
         Self {
             js_fn: RefCell::new(Some(js_fn)),
             owner: release_queue::owner(),
             native_parent: Cell::new(std::ptr::null_mut()),
-            arg_codecs,
-            return_codec,
-            user_data_index,
-            can_throw,
+            signature,
             is_oneshot,
             state_ptr: Cell::new(std::ptr::null_mut()),
             oneshot_fired: Cell::new(false),
@@ -207,19 +208,7 @@ impl ClosureState {
         });
         let data_ref: &'static ClosureData = unsafe { &*data_ptr };
 
-        let mut cif_arg_types: Vec<libffi::Type> = Vec::with_capacity(data_ref.arg_codecs.len());
-        for codec in &data_ref.arg_codecs {
-            codec.append_ffi_arg_types(&mut cif_arg_types);
-        }
-
-        if data_ref.can_throw {
-            cif_arg_types.push(libffi::Type::pointer());
-        }
-
-        let cif_return_type: libffi::Type = data_ref.return_codec.libffi_type();
-        let cif = libffi::Cif::new(cif_arg_types, cif_return_type);
-
-        let closure = libffi::Closure::new(cif, closure_entry, data_ref);
+        let closure = libffi::Closure::new(data_ref.cif.clone(), closure_entry, data_ref);
         let code_ptr = *closure.code_ptr() as *mut c_void;
 
         Self {
@@ -251,20 +240,10 @@ impl ClosureState {
     #[must_use]
     pub fn boxed(
         js_fn: ClosureHandle,
-        arg_codecs: Vec<Codec>,
-        return_codec: Codec,
-        user_data_index: Option<usize>,
-        can_throw: bool,
+        signature: crate::api::bind::FunctionSignature,
         is_oneshot: bool,
     ) -> Box<Self> {
-        let data = ClosureData::new(
-            js_fn,
-            arg_codecs,
-            return_codec,
-            user_data_index,
-            can_throw,
-            is_oneshot,
-        );
+        let data = ClosureData::new(js_fn, signature, is_oneshot);
         Box::new(Self::new(data))
     }
 }
@@ -930,7 +909,13 @@ unsafe extern "C" fn closure_entry(
             }
             return;
         }
-        let state_ptr = unsafe { data.handle_call(args, (&raw mut *result).cast::<c_void>()) };
+        let mut logical_args: SmallVec<[*const c_void; 8]> =
+            SmallVec::from_elem(std::ptr::null(), data.native_arg_count);
+        for (native_index, &logical_index) in data.arg_order.iter().enumerate() {
+            logical_args[logical_index] = unsafe { *args.add(native_index) };
+        }
+        let state_ptr =
+            unsafe { data.handle_call(logical_args.as_ptr(), (&raw mut *result).cast::<c_void>()) };
         if let Some(ptr) = state_ptr {
             release_queue::defer(move || {
                 guard_ffi_boundary("callback one-shot cleanup", || {

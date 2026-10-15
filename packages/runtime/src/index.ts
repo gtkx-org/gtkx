@@ -13,7 +13,7 @@ export { onExit, quit } from "./lifecycle.js";
  * disable it only after the last operation finishes. Application elements manage
  * this automatically.
  */
-export { keepAlive } from "./native.js";
+export { keepAlive } from "./keep-alive.js";
 export { onLog, type LogLevel, type LogListener, type LogSubscription } from "./logging.js";
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
 export { installMixins, type Mixin } from "./mixin.js";

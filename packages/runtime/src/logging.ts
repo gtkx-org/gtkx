@@ -25,6 +25,7 @@ const deliver = (sequence: bigint, level: LogLevel | "fence", domain: string, me
         return;
     }
 
+    const errors: unknown[] = [];
     for (const subscription of subscriptions.values()) {
         if (sequence <= subscription.start || (subscription.end !== undefined && sequence >= subscription.end)) {
             continue;
@@ -32,10 +33,16 @@ const deliver = (sequence: bigint, level: LogLevel | "fence", domain: string, me
         try {
             subscription.listener(level, domain, message);
         } catch (error) {
-            queueMicrotask(() => {
-                throw error;
-            });
+            errors.push(error);
         }
+    }
+
+    if (errors.length === 1) {
+        throw errors[0];
+    }
+
+    if (errors.length > 1) {
+        throw new AggregateError(errors, "GLib log listeners failed");
     }
 };
 
@@ -51,6 +58,8 @@ const createSubscription = (id: symbol): LogSubscription => ({
 /**
  * Subscribes to GLib logs from every thread. The listener receives the level, domain, and message.
  * Records reach JavaScript asynchronously; yield to the event loop before checking collected logs.
+ * Listener errors are thrown after every listener receives the record; multiple errors become an
+ * `AggregateError`.
  *
  * Fatal logs, including levels made fatal by `logSetAlwaysFatal`, abort before delivery and never
  * reach the listener. Unsubscribing stops new records but leaves already queued deliveries intact.

@@ -40,11 +40,16 @@ if (mode === "workers" && isMainThread) {
     } else if (mode === "throw") {
         const thrown: unknown[] = [];
         const records: string[] = [];
+        const originalErrors: Error[] = [];
+        const sameErrors: boolean[] = [];
         process.on("uncaughtException", (error: Error) => {
+            sameErrors.push(error === originalErrors[thrown.length]);
             thrown.push(error.message);
         });
         const first = onLog((_level, _domain, message) => {
-            throw new Error(message);
+            const error = new Error(message);
+            originalErrors.push(error);
+            throw error;
         });
         const second = onLog((_level, _domain, message) => {
             records.push(message);
@@ -53,6 +58,41 @@ if (mode === "workers" && isMainThread) {
         emit("second record");
         first.unsubscribe();
         second.unsubscribe();
+        setTimeout(() => process.stdout.write(JSON.stringify({ thrown, records, sameErrors })), 100);
+    } else if (mode === "throw-multiple") {
+        const thrown: unknown[] = [];
+        const records: string[] = [];
+        const firstError = new Error("first listener failed");
+        const secondError = new Error("second listener failed");
+        process.on("uncaughtException", (error: Error) => {
+            thrown.push({
+                aggregate: error instanceof AggregateError,
+                sameErrors:
+                    error instanceof AggregateError &&
+                    error.errors.length === 2 &&
+                    error.errors[0] === firstError &&
+                    error.errors[1] === secondError,
+            });
+        });
+        const subscriptions = [
+            onLog(() => {
+                throw firstError;
+            }),
+            onLog((_level, _domain, message) => {
+                records.push(`middle:${message}`);
+            }),
+            onLog(() => {
+                throw secondError;
+            }),
+            onLog((_level, _domain, message) => {
+                records.push(`last:${message}`);
+            }),
+        ];
+        emit("first record");
+        emit("second record");
+        for (const subscription of subscriptions) {
+            subscription.unsubscribe();
+        }
         setTimeout(() => process.stdout.write(JSON.stringify({ thrown, records })), 100);
     } else if (mode === "fatal") {
         onLog(() => process.stdout.write("FATAL LISTENER RAN\n"));

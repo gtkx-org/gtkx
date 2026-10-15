@@ -12,21 +12,21 @@ use crate::handle::BoxedFreeFn;
 pub struct RecordConverterOptions {
     #[napi(ts_type = "'cairo-path'")]
     pub kind: String,
-    #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+    #[napi(ts_type = "() => ExternalObject<Handle>")]
     pub surface_create: FunctionResolver,
-    #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+    #[napi(ts_type = "() => ExternalObject<Handle>")]
     pub surface_destroy: FunctionResolver,
-    #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+    #[napi(ts_type = "() => ExternalObject<Handle>")]
     pub context_create: FunctionResolver,
-    #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+    #[napi(ts_type = "() => ExternalObject<Handle>")]
     pub context_destroy: FunctionResolver,
-    #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+    #[napi(ts_type = "() => ExternalObject<Handle>")]
     pub append_path: FunctionResolver,
-    #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+    #[napi(ts_type = "() => ExternalObject<Handle>")]
     pub copy_path: FunctionResolver,
-    #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+    #[napi(ts_type = "() => ExternalObject<Handle>")]
     pub context_status: FunctionResolver,
-    #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+    #[napi(ts_type = "() => ExternalObject<Handle>")]
     pub path_destroy: FunctionResolver,
 }
 

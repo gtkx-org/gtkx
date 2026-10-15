@@ -1,12 +1,12 @@
 import type { BoundCall, ExternalObject, Handle, Ref } from "./native.js";
-import { bind as nativeBind, createCallback } from "./native.js";
+import { bind as nativeBind, createFunction } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import type { RefSeeds } from "./vfunc-seeds.js";
 import { type Arg, isCallerAllocatedArg, isOutputArg, isRefArg, isUnpackedArg, requiresInputArg } from "./arg.js";
 import { createCall } from "./call.js";
 import { callLayout } from "./call-layout.js";
 import { wrapCallbackValue } from "./callback.js";
-import { boxedT, isGtypeDescriptor, refT, structT } from "./descriptors.js";
+import { boxedT, bufferT, isGtypeDescriptor, refT } from "./descriptors.js";
 import { checkError } from "./error.js";
 import { LIB } from "./library.js";
 import { fromNative, toNative } from "./native-value.js";
@@ -335,7 +335,7 @@ const bindCallbackOwner = (
     const invoke = bindNativeCallable(sharedLibrary, symbol, {
         ...spec,
         returnsCallbackOwner: false,
-        args: spec.args.map((arg) => (arg.type.kind === "callback" ? { ...arg, type: structT() } : arg)),
+        args: spec.args.map((arg) => (arg.type.kind === "callback" ? { ...arg, type: bufferT } : arg)),
     });
 
     return (...inputs) => {
@@ -345,7 +345,10 @@ const bindCallbackOwner = (
             if (callback == null) {
                 continue;
             }
-            const handle = createCallback(plan.abi, plan.encode(wrapCallbackValue(descriptor, callback)));
+            if (plan.abi.kind !== "callback") throw new TypeError("A callback factory requires a callback signature");
+            const handle = createFunction(plan.abi.signature, plan.encode(wrapCallbackValue(descriptor, callback)), {
+                kind: "pointer",
+            });
             inputs[index] = handle;
             handles.push(handle);
         }

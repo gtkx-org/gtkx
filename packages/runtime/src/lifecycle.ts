@@ -1,3 +1,4 @@
+import { stopKeepingAlive } from "./keep-alive.js";
 import { quit as nativeQuit } from "./native.js";
 
 const shutdownCallbacks: (() => void)[] = [];
@@ -30,6 +31,7 @@ function createQuit(): () => void {
             runCleanup(callback);
         }
 
+        runCleanup(stopKeepingAlive);
         runCleanup(nativeQuit);
 
         if (errors.length === 1) {

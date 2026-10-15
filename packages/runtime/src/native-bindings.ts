@@ -1,25 +1,30 @@
 import {
     type CallLayout,
     type CallResult,
-    type CallSignature,
+    type FunctionSignature,
     call as nativeCall,
-    compileCall,
-    compileVfuncSlot,
+    bindFunction,
     type Descriptor,
     type ExternalObject,
     type Handle,
     type LibraryHandle,
     openLibrary,
-    readVfuncSlot,
+    getTypeClass,
+    readField,
+    type DecodedCallback,
     resolveSymbol,
-    type VfuncSlotOptions,
 } from "@gtkx/native";
 
 type BoundCall = {
-    signature: ExternalObject<CallSignature>;
+    signature: ExternalObject<FunctionSignature>;
     resolve: () => ExternalObject<Handle>;
 };
-type BindVfuncOptions = VfuncSlotOptions & {
+type BindVfuncOptions = {
+    instanceType?: bigint;
+    interfaceType?: bigint;
+    byteOffset: number;
+    vtableSize?: number;
+    label: string;
     argDescriptors: Descriptor[];
     returnDescriptor: Descriptor;
     layout: CallLayout;
@@ -60,7 +65,7 @@ const resolveFunction = (sharedLibrary: string, symbol: string): ExternalObject<
     return handle;
 };
 
-const lazyCall = (signature: ExternalObject<CallSignature>, target: () => ExternalObject<Handle>): BoundCall => {
+const lazyCall = (signature: ExternalObject<FunctionSignature>, target: () => ExternalObject<Handle>): BoundCall => {
     let resolved: ExternalObject<Handle> | undefined;
     return { signature, resolve: () => (resolved ??= target()) };
 };
@@ -72,7 +77,7 @@ const bind = (
     returnDescriptor: Descriptor,
     layout: CallLayout,
 ): BoundCall => {
-    const signature = compileCall(argDescriptors, returnDescriptor, symbol, layout);
+    const signature = bindFunction(argDescriptors, returnDescriptor, symbol, layout);
     return lazyCall(signature, () => resolveFunction(sharedLibrary, symbol));
 };
 
@@ -83,14 +88,37 @@ const bindFunctionPointer = (
     label: string,
     layout: CallLayout,
 ): BoundCall => {
-    const signature = compileCall(argDescriptors, returnDescriptor, label, layout);
+    const signature = bindFunction(argDescriptors, returnDescriptor, label, layout);
     return { signature, resolve: () => handle };
 };
 
 const bindVfunc = ({ argDescriptors, returnDescriptor, layout, ...options }: BindVfuncOptions): BoundCall => {
-    const slot = compileVfuncSlot(options);
-    const signature = compileCall(argDescriptors, returnDescriptor, options.label, layout);
-    return lazyCall(signature, () => readVfuncSlot(slot));
+    if (!Number.isSafeInteger(options.byteOffset) || options.byteOffset < 0 || options.byteOffset % 8 !== 0) {
+        throw new RangeError(`${options.label}: a vfunc offset must be a nonnegative aligned byte count`);
+    }
+    const type = options.instanceType ?? options.interfaceType;
+    if (type === undefined) throw new TypeError(`${options.label}: a vfunc requires an owning type`);
+    const signature = bindFunction(argDescriptors, returnDescriptor, options.label, layout);
+    const descriptor: Descriptor = {
+        kind: "callback",
+        signature,
+        scope: "call",
+        hasUserData: false,
+        hasDestroy: false,
+        destroyKind: "destroyNotify",
+        releaseWithCompletion: false,
+    };
+    return lazyCall(signature, () => {
+        const vtable = getTypeClass(type, {
+            ...(options.instanceType === undefined || options.interfaceType === undefined
+                ? {}
+                : { interfaceType: options.interfaceType }),
+            ...(options.vtableSize === undefined ? {} : { vtableSize: options.vtableSize }),
+        });
+        const callback = readField(descriptor, vtable, options.byteOffset) as DecodedCallback | null;
+        if (callback === null) throw new Error(`${options.label}: the owning type provides no implementation`);
+        return callback.function;
+    });
 };
 
 const call = (descriptor: BoundCall, values: unknown[], completionIndex?: number): CallResult =>

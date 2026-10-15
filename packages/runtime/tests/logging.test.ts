@@ -159,6 +159,18 @@ test("handled listener exceptions leave other subscriptions and queued records d
     expect(JSON.parse(result.stdout)).toEqual({
         thrown: ["first record", "second record"],
         records: ["first record", "second record"],
+        sameErrors: [true, true],
+    });
+});
+
+test("log listener failures are aggregated after fanout without interrupting later records", async () => {
+    const result = await run(process.execPath, ["--import", loader, fixture, "throw-multiple"], { timeout: 10_000 });
+    expect(JSON.parse(result.stdout)).toEqual({
+        thrown: [
+            { aggregate: true, sameErrors: true },
+            { aggregate: true, sameErrors: true },
+        ],
+        records: ["middle:first record", "last:first record", "middle:second record", "last:second record"],
     });
 });
 

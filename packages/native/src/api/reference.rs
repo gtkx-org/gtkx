@@ -6,7 +6,7 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
-use crate::api::bind::CallSignature;
+use crate::api::bind::FunctionSignature;
 use crate::api::native_result;
 use crate::ffi::Stash;
 use crate::ffi::codec::{Codec, RefCodec};
@@ -146,7 +146,7 @@ impl ReferenceStorage {
 #[napi(catch_unwind)]
 pub fn create_reference_storage(
     env: Env,
-    signature: &External<CallSignature>,
+    signature: &External<FunctionSignature>,
     arg_index: u32,
     seed: Unknown<'_>,
     mode: ReferenceMode,
@@ -154,6 +154,7 @@ pub fn create_reference_storage(
 ) -> Result<External<ReferenceStorage>> {
     let _errors = CallbackErrorScope::open(env);
     let _leases = crate::handle::LeaseScope::open();
+    signature.ensure_callable()?;
     let codec = match signature.arg_codecs.get(arg_index as usize) {
         Some(Codec::Ref(codec)) if !codec.inner_codec().is_scalar() => codec,
         Some(_) => {

@@ -32,6 +32,14 @@ pub(crate) fn read_field_at<'e>(
         return value::handle_to_unknown(env, Handle::field(handle, offset, size));
     }
 
+    if let Codec::Callback(callback) = field_codec {
+        let ptr = unsafe { field_ptr.cast::<*mut c_void>().read_unaligned() };
+        return native_result(
+            "field read",
+            callback.decode_pointer(env, ptr, Some(handle.clone())),
+        );
+    }
+
     native_result(
         "field read",
         decode_field(env, field_ptr.cast_const(), field_codec),

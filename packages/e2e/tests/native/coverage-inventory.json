@@ -17,6 +17,7 @@
         "errors.test.ts",
         "flat-values.test.ts",
         "foreign-record.test.ts",
+        "function-signatures.test.ts",
         "fundamentals.test.ts",
         "gvalues.test.ts",
         "hashtables.test.ts",

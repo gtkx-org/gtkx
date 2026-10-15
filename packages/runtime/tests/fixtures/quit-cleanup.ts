@@ -17,12 +17,19 @@ const registerCallbacks = (mode: string, record: (event: string) => void): void 
     onExit(() => {
         record("second");
 
-        if (mode === "single-error" || mode === "multiple-errors") {
+        if (mode === "reenabled-error") {
+            keepAlive(false);
+        }
+
+        if (mode === "single-error" || mode === "multiple-errors" || mode === "reenabled-error") {
             throw new Error("Second cleanup failed");
         }
     });
     onExit(() => {
         record("third");
+        if (mode === "reenabled-error") {
+            keepAlive(true);
+        }
     });
 };
 
@@ -39,7 +46,7 @@ const run = (mode: string, artifact: string): void => {
 
     keepAlive(true);
 
-    if (mode === "single-error" || mode === "multiple-errors") {
+    if (mode === "single-error" || mode === "multiple-errors" || mode === "reenabled-error") {
         assert.throws(quit);
         record("thrown");
     } else {
@@ -48,6 +55,7 @@ const run = (mode: string, artifact: string): void => {
     }
 
     quit();
+    keepAlive(true);
     record("repeated");
 };
 

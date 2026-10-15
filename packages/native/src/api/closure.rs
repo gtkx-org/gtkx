@@ -6,11 +6,13 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
+use crate::api::bind::FunctionSignature;
 use crate::api::native_result;
 use crate::ffi::Stash;
 use crate::ffi::closure::ClosureState;
-use crate::ffi::codec::{CallbackScope, Codec, DestroyNotifyKind, Encoder as _};
-use crate::ffi::descriptor::Descriptor;
+use crate::ffi::codec::{
+    CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind, Encoder as _,
+};
 use crate::handle::{Boxed, Handle};
 use crate::host::callback_error::CallbackErrorScope;
 
@@ -56,32 +58,64 @@ unsafe extern "C" fn marshal_borrowed_object(
     }
 }
 
-/// Creates a non-floating `GClosure` whose finalizer owns the callback and marshal trampoline.
-/// A generic marshal invokes the supplied typed callback; otherwise the callback is the marshal.
-#[napi(catch_unwind)]
-pub fn create_closure(
-    env: Env,
-    callback_descriptor: Descriptor,
+#[napi(
+    discriminant = "kind",
+    discriminant_case = "camelCase",
+    object_to_js = false
+)]
+#[derive(Clone, Copy)]
+pub enum FunctionOptions {
+    Pointer,
+    Closure { generic_marshal: bool },
+}
+
+/// Creates an owned callback pointer or a non-floating `GClosure` from a compiled signature.
+/// For closures, a generic marshal calls the typed callback; otherwise the callback is the marshal.
+#[napi(catch_unwind, ts_return_type = "ExternalObject<Handle>")]
+pub fn create_function<'e>(
+    env: &'e Env,
+    signature: &External<FunctionSignature>,
+    callback: Unknown<'e>,
+    options: FunctionOptions,
+) -> Result<Unknown<'e>> {
+    let _errors = CallbackErrorScope::open(*env);
+    let _leases = crate::handle::LeaseScope::open();
+    signature.ensure_callback()?;
+    let is_closure = matches!(options, FunctionOptions::Closure { .. });
+    let codec = CallbackCodec {
+        signature: (**signature).clone(),
+        scope: if is_closure {
+            CallbackScope::Notified
+        } else {
+            CallbackScope::Call
+        },
+        has_user_data: is_closure,
+        has_destroy: is_closure,
+        destroy_kind: if is_closure {
+            DestroyNotifyKind::ClosureNotify
+        } else {
+            DestroyNotifyKind::DestroyNotify
+        },
+        release_policy: CallbackReleasePolicy::Scope,
+    };
+    match options {
+        FunctionOptions::Pointer => {
+            super::value_pointer::create_callback(env, &Codec::Callback(codec), callback)
+        }
+        FunctionOptions::Closure { generic_marshal } => {
+            let handle = create_closure(env, &codec, callback, generic_marshal)?;
+            crate::value::handle_to_unknown(env, handle)
+        }
+    }
+}
+
+fn create_closure(
+    env: &Env,
+    codec: &CallbackCodec,
     callback: Unknown<'_>,
     generic_marshal: bool,
-) -> Result<External<Handle>> {
-    let _errors = CallbackErrorScope::open(env);
-    let _leases = crate::handle::LeaseScope::open();
-    let Codec::Callback(codec) = callback_descriptor.into_codec()? else {
-        return Err(Error::from_reason(
-            "A GClosure requires a callback descriptor",
-        ));
-    };
-    if codec.scope != CallbackScope::Notified
-        || !codec.has_user_data
-        || !codec.has_destroy
-        || codec.destroy_kind != DestroyNotifyKind::ClosureNotify
-    {
-        return Err(Error::from_reason(
-            "A GClosure callback requires notified scope, user data and a closure notifier",
-        ));
-    }
-    let Stash::Callback(encoded) = native_result("create_closure", codec.encode(&env, callback))?
+) -> Result<Handle> {
+    let Stash::Callback(encoded) = native_result("create_function", codec.encode(env, callback))?
     else {
         return Err(Error::from_reason(
             "A GClosure requires an encoded callback",
@@ -109,8 +143,7 @@ pub fn create_closure(
         closure.cast(),
     ));
     let marshal: MarshalFn = if generic_marshal {
-        if matches!(codec.return_codec.as_ref(), Codec::Object(object) if object.ownership.is_borrowed())
-        {
+        if matches!(&codec.return_codec, Codec::Object(object) if object.ownership.is_borrowed()) {
             marshal_borrowed_object
         } else {
             gobject_ffi::g_cclosure_marshal_generic
@@ -123,6 +156,5 @@ pub fn create_closure(
         gobject_ffi::g_closure_sink(closure);
         gobject_ffi::g_closure_set_marshal(closure, Some(marshal));
     }
-    let size_hint = handle.size_hint();
-    Ok(External::new_with_size_hint(handle, size_hint))
+    Ok(handle)
 }

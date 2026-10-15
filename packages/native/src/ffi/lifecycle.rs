@@ -100,6 +100,23 @@ struct LazyResolver<T> {
     resolved: OnceCell<T>,
 }
 
+impl<T> LazyResolver<T> {
+    unsafe fn from_napi_value(env: sys::napi_env, value: sys::napi_value) -> Result<Rc<Self>> {
+        let env = Env::from(env);
+        let resolve = unsafe { Unknown::from_napi_value(env.raw(), value)? };
+        if resolve.get_type()? != ValueType::Function {
+            return Err(Error::new(
+                Status::InvalidArg,
+                "A lifecycle resolver must be a function",
+            ));
+        }
+        Ok(Rc::new(Self {
+            callback: ResolverCallback::new(&env, &resolve)?,
+            resolved: OnceCell::new(),
+        }))
+    }
+}
+
 /// A runtime-supplied `GType` lookup, activated only when a codec needs its declared type.
 /// Registered types are cached; an unregistered name remains eligible for later resolution.
 #[derive(Debug, Clone)]
@@ -127,8 +144,7 @@ impl TypeResolver {
 
 impl FromNapiValue for TypeResolver {
     unsafe fn from_napi_value(env: sys::napi_env, value: sys::napi_value) -> Result<Self> {
-        let external = unsafe { <&External<Self>>::from_napi_value(env, value)? };
-        Ok((**external).clone())
+        Ok(Self(unsafe { LazyResolver::from_napi_value(env, value)? }))
     }
 }
 
@@ -165,34 +181,8 @@ impl FunctionResolver {
 
 impl FromNapiValue for FunctionResolver {
     unsafe fn from_napi_value(env: sys::napi_env, value: sys::napi_value) -> Result<Self> {
-        let external = unsafe { <&External<Self>>::from_napi_value(env, value)? };
-        Ok((**external).clone())
+        Ok(Self(unsafe { LazyResolver::from_napi_value(env, value)? }))
     }
-}
-
-/// Retains a lazy runtime `GType` lookup without invoking it during signature compilation.
-#[allow(clippy::needless_pass_by_value)]
-#[napi(catch_unwind)]
-pub fn create_type_resolver(
-    env: Env,
-    resolve: Function<'_, (), BigInt>,
-) -> Result<External<TypeResolver>> {
-    Ok(External::new(TypeResolver(Rc::new(LazyResolver {
-        callback: ResolverCallback::new(&env, &resolve)?,
-        resolved: OnceCell::new(),
-    }))))
-}
-
-/// Retains a lazy runtime lifecycle lookup without invoking it during signature compilation.
-#[napi(catch_unwind)]
-pub fn create_function_resolver(
-    env: Env,
-    #[napi(ts_arg_type = "() => ExternalObject<Handle>")] resolve: Function<'_, (), Unknown<'_>>,
-) -> Result<External<FunctionResolver>> {
-    Ok(External::new(FunctionResolver(Rc::new(LazyResolver {
-        callback: ResolverCallback::new(&env, &resolve)?,
-        resolved: OnceCell::new(),
-    }))))
 }
 
 /// A native record copy strategy retaining its library-backed lifecycle operations.

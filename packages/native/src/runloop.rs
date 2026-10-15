@@ -39,7 +39,6 @@ struct UvApi {
     handle_size: unsafe extern "C" fn(c_int) -> usize,
     handle_set_data: unsafe extern "C" fn(*mut c_void, *mut c_void),
     handle_get_data: unsafe extern "C" fn(*const c_void) -> *mut c_void,
-    reference: unsafe extern "C" fn(*mut c_void),
     unreference: unsafe extern "C" fn(*mut c_void),
     close: unsafe extern "C" fn(*mut c_void, Option<UvVoidCb>),
     prepare_init: unsafe extern "C" fn(*mut c_void, *mut c_void) -> c_int,
@@ -59,7 +58,6 @@ impl UvApi {
                 handle_size: *lib.get(b"uv_handle_size")?,
                 handle_set_data: *lib.get(b"uv_handle_set_data")?,
                 handle_get_data: *lib.get(b"uv_handle_get_data")?,
-                reference: *lib.get(b"uv_ref")?,
                 unreference: *lib.get(b"uv_unref")?,
                 close: *lib.get(b"uv_close")?,
                 prepare_init: *lib.get(b"uv_prepare_init")?,
@@ -444,21 +442,6 @@ fn fail_install(
         napi::Status::GenericFailure,
         format!("{call} failed while installing the GLib runloop (uv error {rc})"),
     )
-}
-
-pub fn set_keep_alive(enable: bool) {
-    RUNLOOP.with_borrow(|slot| {
-        if let Some(state) = slot.as_ref() {
-            let uv = uv();
-            unsafe {
-                if enable {
-                    (uv.reference)(state.prepare);
-                } else {
-                    (uv.unreference)(state.prepare);
-                }
-            }
-        }
-    });
 }
 
 pub fn teardown() {

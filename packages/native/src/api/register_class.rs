@@ -6,10 +6,11 @@ use napi::bindgen_prelude::*;
 use napi::{Env, sys};
 use napi_derive::napi;
 
+use crate::api::bind::{CallLayout, CallbackOptions, FunctionSignature, prepare};
 use crate::api::vtable::{query_type, validate_vfunc_offset};
 use crate::api::{native_result, type_from_bigint};
 use crate::ffi::closure::{ClosureData, ClosureState};
-use crate::ffi::codec::{Codec, validate_callback_signature};
+use crate::ffi::codec::Encoder as _;
 use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
 use crate::host::callback_error::CallbackErrorScope;
@@ -77,20 +78,37 @@ impl TryFrom<RegisterClassVfunc> for ResolvedVfunc {
     type Error = Error;
 
     fn try_from(vfunc: RegisterClassVfunc) -> Result<Self> {
-        let resolved = Self {
+        let arg_codecs = vfunc
+            .arg_descriptors
+            .into_iter()
+            .map(Descriptor::into_codec)
+            .collect::<Result<Vec<_>>>()?;
+        let return_codec = vfunc.return_descriptor.into_codec()?;
+        let mut arg_types = Vec::new();
+        for codec in &arg_codecs {
+            codec.append_ffi_arg_types(&mut arg_types);
+        }
+        let native_arg_count = u32::try_from(arg_types.len())
+            .map_err(|_| Error::from_reason("The vfunc has too many native arguments"))?;
+        let layout = CallLayout {
+            arg_order: (0..native_arg_count).collect(),
+            fixed_arg_count: None,
+        };
+        let signature = prepare(
+            "vfunc".to_owned(),
+            arg_codecs,
+            return_codec,
+            layout,
+            Some(CallbackOptions {
+                user_data_index: None,
+                can_throw: Some(vfunc.can_throw),
+            }),
+        )?;
+        Ok(Self {
             byte_offset: vfunc.byte_offset as usize,
             js_fn: vfunc.r#fn.0,
-            arg_codecs: vfunc
-                .arg_descriptors
-                .into_iter()
-                .map(Descriptor::into_codec)
-                .collect::<Result<_>>()?,
-            return_codec: vfunc.return_descriptor.into_codec()?,
-            can_throw: vfunc.can_throw,
-        };
-        validate_callback_signature(&resolved.arg_codecs, &resolved.return_codec)
-            .map_err(|error| Error::from_reason(error.to_string()))?;
-        Ok(resolved)
+            signature,
+        })
     }
 }
 
@@ -142,9 +160,7 @@ impl TryFrom<RegisterClassOptions> for ResolvedOptions {
 struct ResolvedVfunc {
     byte_offset: usize,
     js_fn: ClosureHandle,
-    arg_codecs: Vec<Codec>,
-    return_codec: Codec,
-    can_throw: bool,
+    signature: FunctionSignature,
 }
 
 struct ResolvedInterface {
@@ -159,18 +175,9 @@ impl ResolvedVfunc {
         let Self {
             byte_offset,
             js_fn,
-            arg_codecs,
-            return_codec,
-            can_throw,
+            signature,
         } = self;
-        let state = ClosureState::new(ClosureData::new(
-            js_fn,
-            arg_codecs,
-            return_codec,
-            None,
-            can_throw,
-            false,
-        ));
+        let state = ClosureState::new(ClosureData::new(js_fn, signature, false));
         unsafe {
             let slot = vtable_base
                 .cast::<u8>()

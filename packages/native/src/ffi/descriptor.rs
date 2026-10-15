@@ -3,6 +3,7 @@ use std::cell::Cell;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
+use crate::api::bind::FunctionSignature;
 use crate::ffi::codec::{
     ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BoxedCodec, BoxedTypeSource, BufferCodec,
     BytesCodec, CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind,
@@ -167,7 +168,7 @@ pub enum Descriptor {
     Object {
         ownership: Ownership,
         is_call_scoped: bool,
-        #[napi(ts_type = "ExternalObject<TypeResolver>")]
+        #[napi(ts_type = "() => bigint")]
         type_resolver: Option<TypeResolver>,
     },
     Void,
@@ -175,10 +176,10 @@ pub enum Descriptor {
     Boxed {
         ownership: Ownership,
         type_name: String,
-        #[napi(ts_type = "ExternalObject<TypeResolver>")]
+        #[napi(ts_type = "() => bigint")]
         type_resolver: TypeResolver,
         has_type_getter: bool,
-        #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+        #[napi(ts_type = "() => ExternalObject<Handle>")]
         free_resolver: Option<FunctionResolver>,
         is_caller_allocated: bool,
         size: Option<u32>,
@@ -193,9 +194,9 @@ pub enum Descriptor {
         size: Option<u32>,
         is_caller_allocated: bool,
         is_inline: bool,
-        #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+        #[napi(ts_type = "() => ExternalObject<Handle>")]
         copy_resolver: Option<FunctionResolver>,
-        #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+        #[napi(ts_type = "() => ExternalObject<Handle>")]
         free_resolver: Option<FunctionResolver>,
         #[napi(ts_type = "ExternalObject<RecordConverter>")]
         copy_converter: Option<RecordConverter>,
@@ -206,9 +207,9 @@ pub enum Descriptor {
     },
     Fundamental {
         ownership: Ownership,
-        #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+        #[napi(ts_type = "() => ExternalObject<Handle>")]
         ref_resolver: Option<FunctionResolver>,
-        #[napi(ts_type = "ExternalObject<FunctionResolver>")]
+        #[napi(ts_type = "() => ExternalObject<Handle>")]
         unref_resolver: Option<FunctionResolver>,
         unref_label: String,
         is_caller_allocated: bool,
@@ -237,15 +238,11 @@ pub enum Descriptor {
         ownership: Ownership,
     },
     Callback {
-        #[napi(ts_type = "Array<Descriptor>")]
-        arg_descriptors: Descriptors,
-        #[napi(ts_type = "Descriptor")]
-        return_descriptor: NestedDescriptor,
+        #[napi(ts_type = "ExternalObject<FunctionSignature>")]
+        signature: FunctionSignature,
         has_destroy: bool,
         destroy_kind: DestroyNotifyKind,
         has_user_data: bool,
-        user_data_index: Option<u32>,
-        can_throw: bool,
         scope: CallbackScope,
         release_with_completion: bool,
     },
@@ -464,30 +461,20 @@ impl Descriptor {
                 ownership,
             }),
             Self::Callback {
-                arg_descriptors,
-                return_descriptor,
+                signature,
                 has_destroy,
                 destroy_kind,
                 has_user_data,
-                user_data_index,
-                can_throw,
                 scope,
                 release_with_completion,
             } => {
                 let release_policy =
                     callback_lifetime(&scope, has_destroy, has_user_data, release_with_completion)?;
                 Codec::Callback(CallbackCodec {
-                    arg_codecs: arg_descriptors
-                        .0
-                        .into_iter()
-                        .map(Self::into_codec)
-                        .collect::<Result<Vec<_>>>()?,
-                    return_codec: return_descriptor.into_codec()?,
+                    signature,
                     has_destroy,
                     destroy_kind,
                     has_user_data,
-                    user_data_index: user_data_index.map(|n| n as usize),
-                    can_throw,
                     scope,
                     release_policy,
                 })

@@ -1,8 +1,7 @@
 import * as Regress from "@gtkx/gi/regress";
 import {
     call,
-    compileCall,
-    createFunctionResolver,
+    bindFunction,
     createRecordConverter,
     type Descriptor,
     type ExternalObject,
@@ -27,14 +26,14 @@ const symbol = (library: string, name: string): ExternalObject<Handle> => {
 
 const operations = (resolve: (name: string) => ExternalObject<Handle>): RecordConverterOptions => ({
     kind: "cairo-path",
-    surfaceCreate: createFunctionResolver(() => resolve("cairo_image_surface_create")),
-    surfaceDestroy: createFunctionResolver(() => resolve("cairo_surface_destroy")),
-    contextCreate: createFunctionResolver(() => resolve("cairo_create")),
-    contextDestroy: createFunctionResolver(() => resolve("cairo_destroy")),
-    appendPath: createFunctionResolver(() => resolve("cairo_append_path")),
-    copyPath: createFunctionResolver(() => resolve("cairo_copy_path")),
-    contextStatus: createFunctionResolver(() => resolve("cairo_status")),
-    pathDestroy: createFunctionResolver(() => resolve("cairo_path_destroy")),
+    surfaceCreate: () => resolve("cairo_image_surface_create"),
+    surfaceDestroy: () => resolve("cairo_surface_destroy"),
+    contextCreate: () => resolve("cairo_create"),
+    contextDestroy: () => resolve("cairo_destroy"),
+    appendPath: () => resolve("cairo_append_path"),
+    copyPath: () => resolve("cairo_copy_path"),
+    contextStatus: () => resolve("cairo_status"),
+    pathDestroy: () => resolve("cairo_path_destroy"),
 });
 
 const borrowedCopy = (
@@ -47,10 +46,10 @@ const borrowedCopy = (
         isCallerAllocated: false,
         isInline: false,
         isValueSafe: false,
-        freeResolver: createFunctionResolver(release),
+        freeResolver: release,
         copyConverter,
     };
-    const signature = compileCall(
+    const signature = bindFunction(
         [{ kind: "buffer" }, { kind: "buffer" }, { kind: "biguint64", isDirectWord: false }],
         record,
         "borrowed path conversion",

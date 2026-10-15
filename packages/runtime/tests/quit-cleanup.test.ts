@@ -32,6 +32,11 @@ const CASES = [
         mode: "multiple-errors",
         events: ["first", "second", "third", "thrown", "repeated"],
     },
+    {
+        title: "releases a runtime held again during cleanup after an earlier callback throws",
+        mode: "reenabled-error",
+        events: ["first", "second", "third", "thrown", "repeated"],
+    },
 ];
 
 const TSX_LOADER = new URL("../../../scripts/register-workspace-loader.ts", import.meta.url).href;

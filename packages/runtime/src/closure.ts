@@ -1,4 +1,4 @@
-import { createClosure as createNativeClosure, type ExternalObject, type Handle } from "./native.js";
+import { createFunction, type ExternalObject, type Handle } from "./native.js";
 import { type AnyClass } from "@gtkx/utils";
 import { bind } from "./bind.js";
 import {
@@ -97,7 +97,11 @@ function marshalFor(callback: ClosureCallback, kind: ClosureKind): (...args: unk
 
 function createClosure(callback: ClosureCallback, kind: ClosureKind, release?: ClosureRelease): ExternalObject<Handle> {
     const marshal = marshalFor(callback, kind);
-    const handle = createNativeClosure(marshalPlan.abi, marshalPlan.encode(marshal), false);
+    if (marshalPlan.abi.kind !== "callback") throw new TypeError("A closure requires a callback signature");
+    const handle = createFunction(marshalPlan.abi.signature, marshalPlan.encode(marshal), {
+        kind: "closure",
+        genericMarshal: false,
+    });
 
     if (release !== undefined) {
         closureReleaseRegistry.register(marshal, release);
@@ -121,7 +125,8 @@ function newCCallbackClosure(
     release?: ClosureRelease,
 ): ExternalObject<Handle> {
     const plan = callbackPlans.getOrInsertComputed(key, () => compileDescriptor(callback));
-    const handle = createNativeClosure(plan.abi, plan.encode(fn), true);
+    if (plan.abi.kind !== "callback") throw new TypeError("A closure requires a callback signature");
+    const handle = createFunction(plan.abi.signature, plan.encode(fn), { kind: "closure", genericMarshal: true });
 
     if (release !== undefined && typeof fn === "function") {
         closureReleaseRegistry.register(fn, release);

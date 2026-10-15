@@ -32,7 +32,7 @@ Before terminating a worker that owns GTKX, finish its native operations or canc
 
 ## Keeping a helper process alive
 
-An application element, normally `AdwApplication`, keeps GTKX's GLib integration referenced automatically. A plain Node helper has no application lifecycle, so pending GIO work alone does not keep the process alive. Hold the integration around the operation with `keepAlive` from `@gtkx/runtime`:
+An application element, normally `AdwApplication`, keeps the Node event loop alive automatically. A plain Node helper has no application lifecycle, so pending GIO work alone does not keep the process alive. Hold the event loop around the operation with `keepAlive` from `@gtkx/runtime`:
 
 ```ts
 import { keepAlive } from "@gtkx/runtime";
@@ -45,4 +45,4 @@ try {
 }
 ```
 
-`keepAlive` is a process-wide switch. Coordinate overlapping operations and release it after the last one. Application components should leave this to their application element.
+`keepAlive` is a switch for the current JavaScript environment. Coordinate overlapping operations and release it after the last one. Application components should leave this to their application element. Calling `quit()` releases the hold and prevents it from being enabled again.

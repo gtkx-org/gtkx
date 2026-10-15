@@ -1,19 +1,12 @@
-import {
-    bind,
-    type BoundCall,
-    call,
-    createFunctionResolver,
-    createTypeResolver,
-    type ExternalObject,
-    type FunctionResolver,
-    resolveFunction,
-    type TypeResolver,
-} from "./native.js";
+import { bind, type BoundCall, call, type ExternalObject, type Handle, resolveFunction } from "./native.js";
 import { LIB } from "./library.js";
 
 const encoder = new TextEncoder();
-const functions: Map<string, ExternalObject<FunctionResolver>> = new Map();
-const types: Map<string, ExternalObject<TypeResolver>> = new Map();
+type FunctionResolver = () => ExternalObject<Handle>;
+type TypeResolver = () => bigint;
+
+const functions: Map<string, FunctionResolver> = new Map();
+const types: Map<string, TypeResolver> = new Map();
 const getters: Map<string, BoundCall> = new Map();
 let typeFromName: BoundCall | undefined;
 
@@ -39,23 +32,28 @@ const invokeTypeGetter = (sharedLibrary: string, symbol: string): bigint => {
     return call(getter, []).value as bigint;
 };
 
-const typeResolver = (name: string, sharedLibrary?: string, getTypeFnName?: string): ExternalObject<TypeResolver> => {
+const typeResolver = (name: string, sharedLibrary?: string, getTypeFnName?: string): TypeResolver => {
     const key = JSON.stringify([name, sharedLibrary, getTypeFnName]);
-    return types.getOrInsertComputed(key, () =>
-        createTypeResolver(() => {
+    return types.getOrInsertComputed(key, () => {
+        let resolved = 0n;
+        return () => {
+            if (resolved !== 0n) return resolved;
             const registered = lookupType(name);
-            return registered !== 0n || sharedLibrary === undefined || getTypeFnName === undefined
-                ? registered
-                : invokeTypeGetter(sharedLibrary, getTypeFnName);
-        }),
-    );
+            resolved =
+                registered !== 0n || sharedLibrary === undefined || getTypeFnName === undefined
+                    ? registered
+                    : invokeTypeGetter(sharedLibrary, getTypeFnName);
+            return resolved;
+        };
+    });
 };
 
-const functionResolver = (sharedLibrary: string, symbol: string): ExternalObject<FunctionResolver> => {
+const functionResolver = (sharedLibrary: string, symbol: string): FunctionResolver => {
     const key = JSON.stringify([sharedLibrary, symbol]);
-    return functions.getOrInsertComputed(key, () =>
-        createFunctionResolver(() => resolveFunction(sharedLibrary, symbol)),
-    );
+    return functions.getOrInsertComputed(key, () => {
+        let resolved: ExternalObject<Handle> | undefined;
+        return () => (resolved ??= resolveFunction(sharedLibrary, symbol));
+    });
 };
 
 export { functionResolver, typeResolver };

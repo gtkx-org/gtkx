@@ -1,7 +1,10 @@
+use std::ops::Deref;
+
 use libffi::middle as libffi;
 use napi_derive::napi;
 
 use super::prelude::*;
+use crate::api::bind::{FunctionPlan, FunctionSignature};
 use crate::ffi::closure::ClosureState;
 use crate::ffi::codec::Codec;
 use crate::value::ClosureHandle;
@@ -37,15 +40,20 @@ pub enum DestroyNotifyKind {
 
 #[derive(Debug, Clone)]
 pub struct CallbackCodec {
-    pub arg_codecs: Vec<Codec>,
-    pub return_codec: Box<Codec>,
+    pub signature: FunctionSignature,
     pub has_destroy: bool,
     pub destroy_kind: DestroyNotifyKind,
     pub has_user_data: bool,
-    pub user_data_index: Option<usize>,
-    pub can_throw: bool,
     pub scope: CallbackScope,
     pub(crate) release_policy: CallbackReleasePolicy,
+}
+
+impl Deref for CallbackCodec {
+    type Target = FunctionPlan;
+
+    fn deref(&self) -> &Self::Target {
+        &self.signature
+    }
 }
 
 impl DestroyNotifyKind {
@@ -99,6 +107,7 @@ impl CallbackCodec {
     ) -> anyhow::Result<ffi::Stash> {
         let js_fn = match value.get_type()? {
             ValueType::Function => {
+                self.signature.ensure_callback()?;
                 validate_callback_outputs(&self.arg_codecs, &self.return_codec)?;
                 if weak {
                     ClosureHandle::weak_from_js_value(env, &value)?
@@ -114,14 +123,7 @@ impl CallbackCodec {
 
         let is_oneshot = self.scope == CallbackScope::Async;
 
-        let state = ClosureState::boxed(
-            js_fn,
-            self.arg_codecs.clone(),
-            (*self.return_codec).clone(),
-            self.user_data_index,
-            self.can_throw,
-            is_oneshot,
-        );
+        let state = ClosureState::boxed(js_fn, self.signature.clone(), is_oneshot);
         let fn_ptr = state.code_ptr;
 
         let destroy = self.has_destroy.then(|| {
@@ -178,6 +180,17 @@ impl Decoder for CallbackCodec {
         _context: &str,
         _transfer: Ownership,
     ) -> anyhow::Result<Unknown<'e>> {
+        self.decode_pointer(env, ptr, None)
+    }
+}
+
+impl CallbackCodec {
+    pub(crate) fn decode_pointer<'e>(
+        &self,
+        env: &'e Env,
+        ptr: *mut c_void,
+        owner: Option<crate::handle::Handle>,
+    ) -> anyhow::Result<Unknown<'e>> {
         if ptr.is_null() {
             return Ok(value::js_null(env)?);
         }
@@ -186,7 +199,7 @@ impl Decoder for CallbackCodec {
             "A bare callback pointer cannot carry closure data"
         );
         Ok(ffi::closure::DecodedCallback {
-            function: External::new(crate::handle::Handle::function(ptr, None, false, false)),
+            function: External::new(crate::handle::Handle::function(ptr, owner, false, false)),
             user_data: Either::B(Null),
         }
         .into_unknown(env)?)

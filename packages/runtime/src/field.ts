@@ -1,10 +1,9 @@
-import { bindField, type ExternalObject, type FieldDescriptor, type Handle, readField, writeField } from "./native.js";
+import { type ExternalObject, type Handle, readField, writeField } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import { compileDescriptor } from "./scalar-plan.js";
 
 /**
- * A field of a native struct at a fixed offset, bound once against the descriptor its bytes are
- * marshalled through, so the descriptor is not parsed again on access.
+ * A field of a native struct at a fixed offset, bound once against the runtime conversion plan for its descriptor.
  */
 type Field = {
     /** Reads and decodes the field out of `handle`'s memory. */
@@ -48,12 +47,11 @@ const fixedArrayEntries = <T>(value: FixedArrayValue<T>, expectedLength: number)
  */
 const fieldAt = (descriptor: Descriptor): StridedField => {
     const plan = compileDescriptor(descriptor);
-    const bound: ExternalObject<FieldDescriptor> = bindField(plan.abi);
 
     return {
-        read: (handle, offset) => plan.decode(readField(bound, handle, offset)),
+        read: (handle, offset) => plan.decode(readField(plan.abi, handle, offset)),
         write: (handle, offset, value) => {
-            writeField(bound, handle, offset, plan.encode(value));
+            writeField(plan.abi, handle, offset, plan.encode(value));
         },
     };
 };
