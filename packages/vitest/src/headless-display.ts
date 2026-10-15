@@ -590,17 +590,15 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
         return makeTeardown([
             stopExitWatch,
             capturedStderr.stop,
-            () => {
-                killSpawned(spawned);
-            },
             stopVirtualSeat,
             stopNotifications,
             removeRuntime,
+            () => killSpawned(spawned),
         ]);
     } catch (error) {
         runCleanups(monitorStops);
-        killSpawned(spawned);
         removeRuntime();
+        killSpawned(spawned);
         throw error;
     }
 };
