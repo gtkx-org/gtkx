@@ -823,7 +823,7 @@ function toValueForType(descriptor: Descriptor, jsValue: unknown, type: bigint):
             const encoded = plan.encode(
                 borrowed.kind === "callback" ? wrapCallbackValue(borrowed, jsValue) : toNative(borrowed, jsValue),
             );
-            setValuePointer(value, plan.abi, encoded);
+            setValuePointer(value, plan.compiled, encoded);
         }
     } else if (fundamental === TYPE_BOXED && (descriptor.kind === "array" || descriptor.kind === "hashtable")) {
         const target =

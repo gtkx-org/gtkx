@@ -1,4 +1,5 @@
 import {
+    compileDescriptor,
     alloc,
     call as nativeCall,
     type FunctionSignature,
@@ -24,7 +25,9 @@ const symbol = (library: string, name: string): ExternalObject<Handle> => {
     return handle;
 };
 const nativeBind = (name: string, args: Descriptor[]) => ({
-    signature: bindFunction(args, { kind: "void" }, name, { argOrder: args.map((_, index) => index) }),
+    signature: bindFunction(args.map(compileDescriptor), compileDescriptor({ kind: "void" }), name, {
+        argOrder: args.map((_, index) => index),
+    }),
     target: symbol("libc.so.6", name),
 });
 const call = (
@@ -70,9 +73,14 @@ test("reference storage requires a non-scalar reference argument in the compiled
 });
 
 test("reference storage uses logical argument positions before ABI reordering", () => {
-    const signature = bindFunction([ref(bytes, false), bytes, { kind: "int32" }], { kind: "void" }, "strtol", {
-        argOrder: [1, 0, 2],
-    });
+    const signature = bindFunction(
+        [compileDescriptor(ref(bytes, false)), compileDescriptor(bytes), compileDescriptor({ kind: "int32" })],
+        compileDescriptor({ kind: "void" }),
+        "strtol",
+        {
+            argOrder: [1, 0, 2],
+        },
+    );
     const storage = createReferenceStorage(signature, 0, null, "slot");
     const result = nativeCall(signature, symbol("libc.so.6", "strtol"), [storage, encoder.encode("123tail"), 10]);
     expect(result.outputs).toEqual([{ index: 0, value: encoder.encode("tail") }]);
@@ -107,8 +115,8 @@ test("callback reference cells cannot change native storage after their invocati
     const callback: Descriptor = {
         kind: "callback",
         signature: bindFunction(
-            [reference, reference],
-            { kind: "int32" },
+            [compileDescriptor(reference), compileDescriptor(reference)],
+            compileDescriptor({ kind: "int32" }),
             "reference comparator",
             { argOrder: [0, 1] },
             {},
@@ -237,7 +245,13 @@ test("asynchronous reference storage owns typed seeds until completion", async (
     };
     const callback: Descriptor = {
         kind: "callback",
-        signature: bindFunction([pointer], { kind: "int32" }, "completion callback", { argOrder: [0] }, {}),
+        signature: bindFunction(
+            [compileDescriptor(pointer)],
+            compileDescriptor({ kind: "int32" }),
+            "completion callback",
+            { argOrder: [0] },
+            {},
+        ),
         hasDestroy: false,
         destroyKind: "destroyNotify",
         hasUserData: false,
@@ -245,8 +259,14 @@ test("asynchronous reference storage owns typed seeds until completion", async (
         releaseWithCompletion: false,
     };
     const signature = bindFunction(
-        [{ kind: "int32" }, { kind: "uint32" }, callback, array, pointer],
-        { kind: "uint32" },
+        [
+            compileDescriptor({ kind: "int32" }),
+            compileDescriptor({ kind: "uint32" }),
+            compileDescriptor(callback),
+            compileDescriptor(array),
+            compileDescriptor(pointer),
+        ],
+        compileDescriptor({ kind: "uint32" }),
         "g_timeout_add_full",
         { argOrder: [0, 1, 2, 3, 4] },
     );
@@ -278,7 +298,7 @@ test("asynchronous reference outputs reject ownership transfers before native in
     const reference = ref({ ...bytes, ownership: "full" }, true);
     const callback: Descriptor = {
         kind: "callback",
-        signature: bindFunction([], { kind: "void" }, "completion callback", { argOrder: [] }, {}),
+        signature: bindFunction([], compileDescriptor({ kind: "void" }), "completion callback", { argOrder: [] }, {}),
         hasDestroy: false,
         destroyKind: "destroyNotify",
         hasUserData: false,

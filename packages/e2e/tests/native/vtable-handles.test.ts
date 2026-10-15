@@ -1,4 +1,5 @@
 import {
+    compileDescriptor,
     call,
     bindFunction,
     type Descriptor,
@@ -52,7 +53,12 @@ const collect = async (references: WeakRef<object>[]): Promise<void> => {
 };
 
 test("a compiled signature can call independent executable targets", () => {
-    const signature = bindFunction([{ kind: "int32" }], { kind: "int32" }, "integer transform", { argOrder: [0] });
+    const signature = bindFunction(
+        [compileDescriptor({ kind: "int32" })],
+        compileDescriptor({ kind: "int32" }),
+        "integer transform",
+        { argOrder: [0] },
+    );
     const absolute = symbol("abs");
     const upper = symbol("toupper");
 
@@ -63,7 +69,12 @@ test("a compiled signature can call independent executable targets", () => {
 });
 
 test("an executable target retains its library after the library handle is collected", async () => {
-    const signature = bindFunction([{ kind: "int32" }], { kind: "int32" }, "abs", { argOrder: [0] });
+    const signature = bindFunction(
+        [compileDescriptor({ kind: "int32" })],
+        compileDescriptor({ kind: "int32" }),
+        "abs",
+        { argOrder: [0] },
+    );
     const { target, references } = (() => {
         const library = openLibrary("libc.so.6");
         const target = resolveSymbol(library, "abs", false);
@@ -89,12 +100,15 @@ const callbackField = (signature: ExternalObject<FunctionSignature>): Descriptor
 });
 
 const readFunction = (signature: ExternalObject<FunctionSignature>, owner: ExternalObject<Handle>, offset: number) => {
-    const callback = readField(callbackField(signature), owner, offset) as DecodedCallback | null;
+    const callback = readField(compileDescriptor(callbackField(signature)), owner, offset) as DecodedCallback | null;
     if (callback === null) throw new Error("The vtable has no implementation");
     return callback.function;
 };
 
-const countSignature = () => bindFunction([objectArgument], { kind: "uint32" }, listModelSlot.label, { argOrder: [0] });
+const countSignature = () =>
+    bindFunction([compileDescriptor(objectArgument)], compileDescriptor({ kind: "uint32" }), listModelSlot.label, {
+        argOrder: [0],
+    });
 
 test("class and interface vtables reject incompatible type kinds", () => {
     expect(() => getTypeClass(objectType, { interfaceType: objectType, vtableSize: 40 })).toThrow("not an interface");
@@ -109,8 +123,8 @@ test("class fields reject reads beyond the owning class size", () => {
 test.each(["GEnum", "GFlags"])("%s class fields preserve readable bounded memory", (name) => {
     const type = typeFromName(name);
     const owner = getTypeClass(type);
-    expect(readField({ kind: "biguint64", isDirectWord: false }, owner, 0)).toBe(type);
-    expect(() => readField({ kind: "uint32" }, owner, 1_048_576)).toThrow();
+    expect(readField(compileDescriptor({ kind: "biguint64", isDirectWord: false }), owner, 0)).toBe(type);
+    expect(() => readField(compileDescriptor({ kind: "uint32" }), owner, 1_048_576)).toThrow();
 });
 
 test("interface vtables require bounded metadata and reject reads beyond it", () => {
@@ -125,7 +139,7 @@ test("unimplemented interfaces reject acquisition and empty default slots decode
         "does not implement interface",
     );
     const owner = getTypeClass(listModelType, { vtableSize: 40 });
-    expect(readField(callbackField(countSignature()), owner, listModelSlot.byteOffset)).toBeNull();
+    expect(readField(compileDescriptor(callbackField(countSignature())), owner, listModelSlot.byteOffset)).toBeNull();
 });
 
 test("an interface target retains its owning class across handle collection", async () => {
@@ -152,8 +166,12 @@ test("a class target retains its owning class across handle collection", async (
     const { signature, target, references } = (() => {
         const owner = getTypeClass(objectType);
         const signature = bindFunction(
-            [{ kind: "biguint64", isDirectWord: false }, { kind: "uint32" }, { kind: "buffer" }],
-            objectReturn,
+            [
+                compileDescriptor({ kind: "biguint64", isDirectWord: false }),
+                compileDescriptor({ kind: "uint32" }),
+                compileDescriptor({ kind: "buffer" }),
+            ],
+            compileDescriptor(objectReturn),
             "GObject.constructor",
             { argOrder: [0, 1, 2] },
         );

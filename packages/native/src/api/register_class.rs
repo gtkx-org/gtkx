@@ -7,11 +7,11 @@ use napi::{Env, sys};
 use napi_derive::napi;
 
 use crate::api::bind::{CallLayout, CallbackOptions, FunctionSignature, prepare};
+use crate::api::descriptor::CompiledDescriptor;
 use crate::api::vtable::{query_type, validate_vfunc_offset};
 use crate::api::{native_result, type_from_bigint};
 use crate::ffi::closure::{ClosureData, ClosureState};
 use crate::ffi::codec::Encoder as _;
-use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
 use crate::host::callback_error::CallbackErrorScope;
 use crate::host::node_env;
@@ -41,9 +41,11 @@ pub struct RegisterClassVfunc {
     /// Byte offset of the vfunc slot within the class (or interface) struct.
     pub byte_offset: u32,
     /// Descriptor for each argument passed to the JavaScript implementation.
-    pub arg_descriptors: Vec<Descriptor>,
+    #[napi(ts_type = "Array<ExternalObject<CompiledDescriptor>>")]
+    pub arg_descriptors: Vec<CompiledDescriptor>,
     /// Descriptor for the value the JavaScript implementation returns.
-    pub return_descriptor: Descriptor,
+    #[napi(ts_type = "ExternalObject<CompiledDescriptor>")]
+    pub return_descriptor: CompiledDescriptor,
     pub can_throw: bool,
     /// The JavaScript function that implements the vfunc.
     #[napi(ts_type = "(...args: never[]) => unknown")]
@@ -81,9 +83,9 @@ impl TryFrom<RegisterClassVfunc> for ResolvedVfunc {
         let arg_codecs = vfunc
             .arg_descriptors
             .into_iter()
-            .map(Descriptor::into_codec)
-            .collect::<Result<Vec<_>>>()?;
-        let return_codec = vfunc.return_descriptor.into_codec()?;
+            .map(CompiledDescriptor::into_codec)
+            .collect::<Vec<_>>();
+        let return_codec = vfunc.return_descriptor.into_codec();
         let mut arg_types = Vec::new();
         for codec in &arg_codecs {
             codec.append_ffi_arg_types(&mut arg_types);

@@ -1,4 +1,12 @@
-import { bind, type BoundCall, call, type ExternalObject, type Handle, resolveFunction } from "./native.js";
+import {
+    bind,
+    type BoundCall,
+    call,
+    compileDescriptor,
+    type ExternalObject,
+    type Handle,
+    resolveFunction,
+} from "./native.js";
 import { LIB } from "./library.js";
 
 const encoder = new TextEncoder();
@@ -17,8 +25,8 @@ const lookupType = (name: string): bigint => {
     typeFromName ??= bind(
         LIB,
         "g_type_from_name",
-        [{ kind: "bytes", ownership: "borrowed", hasOwnedStorage: false }],
-        { kind: "biguint64", isDirectWord: false },
+        [compileDescriptor({ kind: "bytes", ownership: "borrowed", hasOwnedStorage: false })],
+        compileDescriptor({ kind: "biguint64", isDirectWord: false }),
         { argOrder: [0] },
     );
     return call(typeFromName, [encoder.encode(name)]).value as bigint;
@@ -27,7 +35,9 @@ const lookupType = (name: string): bigint => {
 const invokeTypeGetter = (sharedLibrary: string, symbol: string): bigint => {
     const key = JSON.stringify([sharedLibrary, symbol]);
     const getter = getters.getOrInsertComputed(key, () =>
-        bind(sharedLibrary, symbol, [], { kind: "biguint64", isDirectWord: false }, { argOrder: [] }),
+        bind(sharedLibrary, symbol, [], compileDescriptor({ kind: "biguint64", isDirectWord: false }), {
+            argOrder: [],
+        }),
     );
     return call(getter, []).value as bigint;
 };

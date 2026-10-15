@@ -1,6 +1,7 @@
 import type { AnyClass } from "@gtkx/utils";
 import { bindVfunc, type BindVfuncOptions } from "./native.js";
 import { type Arg, isCallerAllocatedArg, requiresInputArg } from "./arg.js";
+import { type CallPlan, compileCallPlan } from "./call.js";
 import { callLayout } from "./call-layout.js";
 import type { Descriptor } from "./descriptor-types.js";
 import { buildNativeArgTypes, fromNativeCallable } from "./fn.js";
@@ -15,7 +16,6 @@ import {
     resolveWrapperType,
     type VfuncDescriptor,
 } from "./registry.js";
-import { toAbi } from "./scalar-plan.js";
 import { TYPE_INVALID, typeInterfaces, typeIsA, typeParent } from "./type.js";
 import { type RefSeeds, seedsFor } from "./vfunc-seeds.js";
 import { findClassVfuncDescriptor, findInterfaceVfuncDescriptor, vfuncArgs } from "./vfunc.js";
@@ -78,6 +78,7 @@ function bindOptionsFor(
     slot: ResolvedSlot,
     instanceType: bigint | undefined,
     argDescriptors: Descriptor[],
+    plans: CallPlan,
     label: string,
 ): BindVfuncOptions {
     const { descriptor, interfaceType } = slot;
@@ -85,8 +86,8 @@ function bindOptionsFor(
     const options: BindVfuncOptions = {
         byteOffset: descriptor.byteOffset,
         label,
-        argDescriptors: argDescriptors.map((descriptor) => toAbi(descriptor)),
-        returnDescriptor: toAbi(descriptor.returnDescriptor),
+        argDescriptors: plans.args.map((argument) => argument.compiled),
+        returnDescriptor: plans.returns.compiled,
         layout: callLayout(argDescriptors),
     };
 
@@ -115,6 +116,7 @@ function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, call
     const args = vfuncArgs(descriptor);
     const canThrow = descriptor.canThrow === true;
     const argDescriptors = buildNativeArgTypes(args, canThrow);
+    const plans = compileCallPlan(argDescriptors, descriptor.returnDescriptor);
     const label = `${descriptor.className}.${descriptor.vfuncName}`;
     const inputPlan = vfuncInputs(args, descriptor);
     const inputCount = inputPlan.filter((input) => input.kind === "value").length;
@@ -128,13 +130,13 @@ function buildInvoker(slot: ResolvedSlot, instanceType: bigint | undefined, call
     };
 
     const shaped = fromNativeCallable(
-        bindVfunc(bindOptionsFor(slot, instanceType, argDescriptors, label)),
+        bindVfunc(bindOptionsFor(slot, instanceType, argDescriptors, plans, label)),
         {
             args,
             returns: descriptor.returnDescriptor,
             canThrow,
         },
-        argDescriptors,
+        plans,
         takeRefSeeds,
     );
 

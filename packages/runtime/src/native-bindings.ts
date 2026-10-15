@@ -4,7 +4,8 @@ import {
     type FunctionSignature,
     call as nativeCall,
     bindFunction,
-    type Descriptor,
+    type CompiledDescriptor,
+    compileDescriptor,
     type ExternalObject,
     type Handle,
     type LibraryHandle,
@@ -25,8 +26,8 @@ type BindVfuncOptions = {
     byteOffset: number;
     vtableSize?: number;
     label: string;
-    argDescriptors: Descriptor[];
-    returnDescriptor: Descriptor;
+    argDescriptors: ExternalObject<CompiledDescriptor>[];
+    returnDescriptor: ExternalObject<CompiledDescriptor>;
     layout: CallLayout;
 };
 
@@ -73,8 +74,8 @@ const lazyCall = (signature: ExternalObject<FunctionSignature>, target: () => Ex
 const bind = (
     sharedLibrary: string,
     symbol: string,
-    argDescriptors: Descriptor[],
-    returnDescriptor: Descriptor,
+    argDescriptors: ExternalObject<CompiledDescriptor>[],
+    returnDescriptor: ExternalObject<CompiledDescriptor>,
     layout: CallLayout,
 ): BoundCall => {
     const signature = bindFunction(argDescriptors, returnDescriptor, symbol, layout);
@@ -83,8 +84,8 @@ const bind = (
 
 const bindFunctionPointer = (
     handle: ExternalObject<Handle>,
-    argDescriptors: Descriptor[],
-    returnDescriptor: Descriptor,
+    argDescriptors: ExternalObject<CompiledDescriptor>[],
+    returnDescriptor: ExternalObject<CompiledDescriptor>,
     label: string,
     layout: CallLayout,
 ): BoundCall => {
@@ -99,7 +100,7 @@ const bindVfunc = ({ argDescriptors, returnDescriptor, layout, ...options }: Bin
     const type = options.instanceType ?? options.interfaceType;
     if (type === undefined) throw new TypeError(`${options.label}: a vfunc requires an owning type`);
     const signature = bindFunction(argDescriptors, returnDescriptor, options.label, layout);
-    const descriptor: Descriptor = {
+    const descriptor = compileDescriptor({
         kind: "callback",
         signature,
         scope: "call",
@@ -107,7 +108,7 @@ const bindVfunc = ({ argDescriptors, returnDescriptor, layout, ...options }: Bin
         hasDestroy: false,
         destroyKind: "destroyNotify",
         releaseWithCompletion: false,
-    };
+    });
     return lazyCall(signature, () => {
         const vtable = getTypeClass(type, {
             ...(options.instanceType === undefined || options.interfaceType === undefined

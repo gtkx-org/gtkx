@@ -5,10 +5,10 @@ use libffi::middle::{Builder, Cif, Type};
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
+use crate::api::descriptor::CompiledDescriptor;
 use crate::ffi::codec::{
     Codec, Encoder as _, validate_call_signature, validate_callback_signature,
 };
-use crate::ffi::descriptor::Descriptor;
 
 #[derive(Clone)]
 pub struct FunctionSignature(Rc<FunctionPlan>);
@@ -200,29 +200,25 @@ pub(crate) fn prepare(
     })))
 }
 
-fn into_codecs(
-    arg_descriptors: Vec<Descriptor>,
-    return_descriptor: Descriptor,
-) -> Result<(Vec<Codec>, Codec)> {
-    let arg_codecs = arg_descriptors
-        .into_iter()
-        .map(Descriptor::into_codec)
-        .collect::<Result<Vec<_>>>()?;
-    let return_codec = return_descriptor.into_codec()?;
-    Ok((arg_codecs, return_codec))
-}
-
-/// Validates and compiles argument and return marshalling without resolving a call target.
-/// `layout` supplies the runtime-planned argument ordering and expanded variadic fixed count.
+/// Validates compiled descriptors for calls and callbacks and prepares their shared ABI/CIF
+/// without resolving a call target. `layout` supplies the native argument ordering and expanded
+/// variadic fixed count.
 #[napi(catch_unwind)]
 pub fn bind_function(
-    arg_descriptors: Vec<Descriptor>,
-    return_descriptor: Descriptor,
+    #[napi(ts_arg_type = "Array<ExternalObject<CompiledDescriptor>>")] arg_descriptors: Vec<
+        CompiledDescriptor,
+    >,
+    #[napi(ts_arg_type = "ExternalObject<CompiledDescriptor>")]
+    return_descriptor: CompiledDescriptor,
     label: String,
     layout: CallLayout,
     callback: Option<CallbackOptions>,
 ) -> Result<External<FunctionSignature>> {
-    let (arg_codecs, return_codec) = into_codecs(arg_descriptors, return_descriptor)?;
+    let arg_codecs = arg_descriptors
+        .into_iter()
+        .map(CompiledDescriptor::into_codec)
+        .collect();
+    let return_codec = return_descriptor.into_codec();
     let signature = prepare(label, arg_codecs, return_codec, layout, callback)?;
     Ok(External::new(signature))
 }

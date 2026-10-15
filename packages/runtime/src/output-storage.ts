@@ -1,4 +1,12 @@
-import { alloc, type Descriptor, type ExternalObject, type Handle, readField, writeField } from "./native.js";
+import {
+    alloc,
+    type CompiledDescriptor,
+    type Descriptor,
+    type ExternalObject,
+    type Handle,
+    readField,
+    writeField,
+} from "./native.js";
 
 type StorageHandle = ExternalObject<Handle>;
 type OutputStorage = {
@@ -22,24 +30,28 @@ const scalarSizes: Partial<Record<Descriptor["kind"], number>> = {
 
 const isScalarStorageDescriptor = (descriptor: Descriptor): boolean => scalarSizes[descriptor.kind] !== undefined;
 
-const compileOutputStorage = (descriptor: Descriptor): OutputStorage | undefined => {
+const compileOutputStorage = (
+    descriptor: Descriptor,
+    compiled: () => ExternalObject<CompiledDescriptor>,
+): OutputStorage | undefined => {
     const size = scalarSizes[descriptor.kind];
     if (size === undefined) {
         return undefined;
     }
+    const storageDescriptor = compiled();
 
     return {
         allocate(value) {
             const handle = alloc(size);
             if (value != null) {
-                writeField(descriptor, handle, 0, value);
+                writeField(storageDescriptor, handle, 0, value);
             }
 
             return handle;
         },
-        read: (handle) => readField(descriptor, handle, 0),
+        read: (handle) => readField(storageDescriptor, handle, 0),
         write: (handle, value) => {
-            writeField(descriptor, handle, 0, value);
+            writeField(storageDescriptor, handle, 0, value);
         },
     };
 };

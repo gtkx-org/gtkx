@@ -4,6 +4,7 @@ export {
     bindFunction,
     call,
     CallbackScope,
+    compileDescriptor,
     copy,
     createFunction,
     createMatchSubject,

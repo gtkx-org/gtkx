@@ -8,7 +8,7 @@ import {
     type Ref,
 } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
-import { createCall } from "./call.js";
+import { compileCallPlan, createCall } from "./call.js";
 import { callLayout } from "./call-layout.js";
 import {
     type ArrayDescriptor,
@@ -36,7 +36,6 @@ import {
     wrapHandle,
     wrapObject,
 } from "./registry.js";
-import { toAbi } from "./scalar-plan.js";
 import { resolveDescriptorType } from "./type.js";
 
 type MarshalledKind = "object" | "struct" | "boxed" | "fundamental" | "array" | "hashtable";
@@ -151,17 +150,19 @@ function decodedCallbackCallable(
     let invoke: ReturnType<typeof createCall> | undefined;
 
     return (...inputs) => {
-        invoke ??= createCall(
-            bindFunctionPointer(
-                target.function,
-                argDescriptors.map((argument) => toAbi(argument)),
-                toAbi(descriptor.returnDescriptor),
-                "decoded callback",
-                callLayout(argDescriptors),
-            ),
-            argDescriptors,
-            descriptor.returnDescriptor,
-        );
+        if (invoke === undefined) {
+            const plans = compileCallPlan(argDescriptors, descriptor.returnDescriptor);
+            invoke = createCall(
+                bindFunctionPointer(
+                    target.function,
+                    plans.args.map((argument) => argument.compiled),
+                    plans.returns.compiled,
+                    "decoded callback",
+                    callLayout(argDescriptors),
+                ),
+                plans,
+            );
+        }
         const values = decodedCallbackValues(descriptor, target, inputs);
 
         if (!canThrow) {

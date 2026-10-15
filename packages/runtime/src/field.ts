@@ -47,11 +47,12 @@ const fixedArrayEntries = <T>(value: FixedArrayValue<T>, expectedLength: number)
  */
 const fieldAt = (descriptor: Descriptor): StridedField => {
     const plan = compileDescriptor(descriptor);
+    const compiled = plan.compiled;
 
     return {
-        read: (handle, offset) => plan.decode(readField(plan.abi, handle, offset)),
+        read: (handle, offset) => plan.decode(readField(compiled, handle, offset)),
         write: (handle, offset, value) => {
-            writeField(plan.abi, handle, offset, plan.encode(value));
+            writeField(compiled, handle, offset, plan.encode(value));
         },
     };
 };

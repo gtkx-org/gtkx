@@ -1,5 +1,6 @@
 import * as Regress from "@gtkx/gi/regress";
 import {
+    compileDescriptor,
     call,
     bindFunction,
     createRecordConverter,
@@ -50,8 +51,12 @@ const borrowedCopy = (
         copyConverter,
     };
     const signature = bindFunction(
-        [{ kind: "buffer" }, { kind: "buffer" }, { kind: "biguint64", isDirectWord: false }],
-        record,
+        [
+            compileDescriptor({ kind: "buffer" }),
+            compileDescriptor({ kind: "buffer" }),
+            compileDescriptor({ kind: "biguint64", isDirectWord: false }),
+        ],
+        compileDescriptor(record),
         "borrowed path conversion",
         { argOrder: [0, 1, 2] },
     );

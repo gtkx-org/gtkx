@@ -3,9 +3,9 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 use crate::api::byte_count_from_f64;
+use crate::api::descriptor::CompiledDescriptor;
 use crate::api::read::read_field_at;
 use crate::api::write::write_field_at;
-use crate::ffi::descriptor::Descriptor;
 use crate::handle::Handle;
 
 /// Reads and decodes the field described by `descriptor`, sitting `offset` bytes
@@ -15,13 +15,13 @@ use crate::handle::Handle;
 #[napi(catch_unwind)]
 pub fn read_field<'env>(
     env: &'env Env,
-    descriptor: Descriptor,
+    descriptor: &External<CompiledDescriptor>,
     handle: &External<Handle>,
     offset: f64,
 ) -> Result<Unknown<'env>> {
     let offset = byte_count_from_f64(offset, "field read: offset")?;
 
-    read_field_at(env, handle, &descriptor.into_codec()?, offset)
+    read_field_at(env, handle, descriptor, offset)
 }
 
 /// Encodes `value` with `descriptor` and writes it `offset` bytes into the
@@ -30,12 +30,12 @@ pub fn read_field<'env>(
 #[napi(catch_unwind)]
 pub fn write_field<'env>(
     env: &'env Env,
-    descriptor: Descriptor,
+    descriptor: &External<CompiledDescriptor>,
     handle: &External<Handle>,
     offset: f64,
     value: Unknown<'_>,
 ) -> Result<Unknown<'env>> {
     let offset = byte_count_from_f64(offset, "field write: offset")?;
 
-    write_field_at(env, handle, &descriptor.into_codec()?, offset, value)
+    write_field_at(env, handle, descriptor, offset, value)
 }

@@ -8,11 +8,11 @@ use napi::Env;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
+use crate::api::descriptor::CompiledDescriptor;
 use crate::api::{handle_memory_range, native_result};
 use crate::ffi::Stash;
 use crate::ffi::closure::DecodedCallback;
 use crate::ffi::codec::{CallbackScope, Codec, Encoder as _};
-use crate::ffi::descriptor::Descriptor;
 use crate::handle::{Handle, LeaseScope};
 use crate::host::callback_error::CallbackErrorScope;
 use crate::host::log_writer::CriticalTrap;
@@ -102,7 +102,7 @@ pub(crate) fn create_callback<'e>(
 pub fn set_value_pointer<'e>(
     env: &'e Env,
     #[napi(ts_arg_type = "ExternalObject<Handle>")] value_handle: Unknown<'e>,
-    descriptor: Descriptor,
+    descriptor: &External<CompiledDescriptor>,
     value: Unknown<'e>,
 ) -> Result<()> {
     let _errors = CallbackErrorScope::open(*env);
@@ -114,8 +114,7 @@ pub fn set_value_pointer<'e>(
     {
         return Err(Error::from_reason("Expected an initialized pointer GValue"));
     }
-    let codec = descriptor.into_codec()?;
-    let (storage, is_callback) = encode(env, &codec, value)?;
+    let (storage, is_callback) = encode(env, descriptor, value)?;
     roots::set(*env, value_handle, "pointer", value)?;
     unsafe { glib::gobject_ffi::g_value_set_pointer(target, storage.as_ptr()) };
     handle.set_pointer_storage(storage, is_callback);

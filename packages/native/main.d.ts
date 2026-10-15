@@ -2,6 +2,7 @@ export {
     alloc,
     bindFunction,
     call,
+    compileDescriptor,
     copy,
     createFunction,
     createMatchSubject,
@@ -39,6 +40,7 @@ export type {
     CallLayout,
     CallOutput,
     CallResult,
+    CompiledDescriptor,
     DecodedCallback,
     Descriptor,
     DestroyNotifyKind,
@@ -68,6 +70,8 @@ declare module "./index.js" {
      * `copy`, `getType`, `getWrapper`, `setWrapper`). Its bytes are not accessible from JavaScript.
      */
     export type Handle = { _opaque: "Handle" };
+    /** A validated native value codec reusable across fields, pointer values, and function signatures. */
+    export type CompiledDescriptor = { _opaque: "CompiledDescriptor" };
     /** A compiled ABI signature and marshalling plan shared by calls and callback trampolines. */
     export type FunctionSignature = { _opaque: "FunctionSignature" };
     /** A reference to a shared library that remains loaded for the life of the process. */

@@ -1,8 +1,7 @@
 import { bind as nativeBind } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
-import { createCall } from "./call.js";
+import { compileCallPlan, createCall } from "./call.js";
 import { callLayout } from "./call-layout.js";
-import { toAbi } from "./scalar-plan.js";
 
 /**
  * Precompiles a call to a C function, marshalling the values it is given through the argument
@@ -21,15 +20,16 @@ function bind(
     argDescriptors: Descriptor[],
     returnDescriptor: Descriptor,
 ): (...values: unknown[]) => unknown {
+    const plans = compileCallPlan(argDescriptors, returnDescriptor);
     const descriptor = nativeBind(
         sharedLibrary,
         symbol,
-        argDescriptors.map((argument) => toAbi(argument)),
-        toAbi(returnDescriptor),
+        plans.args.map((argument) => argument.compiled),
+        plans.returns.compiled,
         callLayout(argDescriptors),
     );
 
-    const invoke = createCall(descriptor, argDescriptors, returnDescriptor);
+    const invoke = createCall(descriptor, plans);
 
     return (...values) => invoke(values);
 }

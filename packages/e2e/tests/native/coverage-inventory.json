@@ -13,6 +13,7 @@
         "cairo-conversion.test.ts",
         "cairo-coverage.test.ts",
         "callbacks.test.ts",
+        "compiled-descriptors.test.ts",
         "enums-flags.test.ts",
         "errors.test.ts",
         "flat-values.test.ts",

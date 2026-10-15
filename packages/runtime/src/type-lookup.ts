@@ -1,4 +1,4 @@
-import { bindFunctionPointer, call, resolveFunctionOptional } from "./native.js";
+import { bindFunctionPointer, call, compileDescriptor, resolveFunctionOptional } from "./native.js";
 
 const resolvedTypes: Map<string, Map<string, bigint>> = new Map();
 
@@ -17,9 +17,15 @@ const resolveType = (sharedLibrary: string, typeFnName: string): bigint => {
         if (handle == null) {
             return 0n;
         }
-        const descriptor = bindFunctionPointer(handle, [], { kind: "biguint64", isDirectWord: false }, typeFnName, {
-            argOrder: [],
-        });
+        const descriptor = bindFunctionPointer(
+            handle,
+            [],
+            compileDescriptor({ kind: "biguint64", isDirectWord: false }),
+            typeFnName,
+            {
+                argOrder: [],
+            },
+        );
 
         return call(descriptor, []).value as bigint;
     });

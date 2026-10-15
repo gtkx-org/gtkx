@@ -2,7 +2,9 @@ import { type BoundCall, createReferenceStorage, call as nativeCall, type Ref } 
 import type { Descriptor } from "./descriptor-types.js";
 import type { StorageHandle } from "./output-storage.js";
 
-import { compileDescriptor } from "./scalar-plan.js";
+import { compileDescriptors, type DescriptorPlans } from "./scalar-plan.js";
+
+type CallPlan = DescriptorPlans & { completionIndex: number | undefined };
 
 const isCompletionCallback = (descriptor: Descriptor): boolean =>
     descriptor.kind === "callback" &&
@@ -14,20 +16,23 @@ const isCompletionCallback = (descriptor: Descriptor): boolean =>
     descriptor.argDescriptors[0]?.kind === "object" &&
     descriptor.argDescriptors[1]?.kind === "object";
 
+const compileCallPlan = (argDescriptors: Descriptor[], returnDescriptor: Descriptor): CallPlan => {
+    const index = argDescriptors.findIndex((arg) => isCompletionCallback(arg));
+    return {
+        ...compileDescriptors(argDescriptors, returnDescriptor),
+        completionIndex: index === -1 ? undefined : index,
+    };
+};
+
 const createCall = (
     descriptor: BoundCall,
-    argDescriptors: Descriptor[],
-    returnDescriptor: Descriptor,
+    { args, returns, completionIndex }: CallPlan,
 ): ((values: unknown[]) => unknown) => {
-    const args = argDescriptors.map((descriptor) => compileDescriptor(descriptor));
-    const returns = compileDescriptor(returnDescriptor);
     const scalarOutputs = args.flatMap((plan, index) =>
         plan.inner !== undefined && plan.storage !== undefined
             ? [{ index, inner: plan.inner, storage: plan.storage }]
             : [],
     );
-    const index = argDescriptors.findIndex((arg) => isCompletionCallback(arg));
-    const completionIndex = index === -1 ? undefined : index;
 
     return (values) => {
         if (values.length !== args.length) {
@@ -65,4 +70,4 @@ const createCall = (
     };
 };
 
-export { createCall };
+export { compileCallPlan, createCall, type CallPlan };

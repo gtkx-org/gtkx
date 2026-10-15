@@ -34,7 +34,7 @@ import {
     type VfuncDescriptor,
     wrapHandle,
 } from "./registry.js";
-import { adaptCallback, toAbi } from "./scalar-plan.js";
+import { adaptCallback, compileDescriptors } from "./scalar-plan.js";
 import { classSignalMember, naturalSignalMember, signalEmitMapOverride, signalMapOverride } from "./signal-brand.js";
 import {
     canonicalSignalName,
@@ -951,13 +951,16 @@ function installDeclaredSignalMethods(klass: AnyClass, table: Map<string, Declar
     });
 }
 
-const toNativeVfunc = (descriptor: DiscoveredVfunc): NativeRegisterClassVfunc => ({
-    ...descriptor,
-    canThrow: descriptor.canThrow ?? false,
-    argDescriptors: descriptor.argDescriptors.map((descriptor) => toAbi(descriptor)),
-    returnDescriptor: toAbi(descriptor.returnDescriptor),
-    fn: adaptCallback(descriptor, descriptor.fn as (...args: unknown[]) => unknown),
-});
+const toNativeVfunc = (descriptor: DiscoveredVfunc): NativeRegisterClassVfunc => {
+    const plans = compileDescriptors(descriptor.argDescriptors, descriptor.returnDescriptor);
+    return {
+        ...descriptor,
+        canThrow: descriptor.canThrow ?? false,
+        argDescriptors: plans.args.map((argument) => argument.compiled),
+        returnDescriptor: plans.returns.compiled,
+        fn: adaptCallback(descriptor, descriptor.fn as (...args: unknown[]) => unknown, plans),
+    };
+};
 
 function toNativeInterface(binding: InterfaceVfuncBinding): NativeRegisterClassInterface {
     const nativeInterface: NativeRegisterClassInterface = {
