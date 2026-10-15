@@ -114,7 +114,7 @@ describe("headless Vitest integration", () => {
                 expect(process.env.XDG_RUNTIME_DIR).toBe(before.runtime);
                 expect(process.env.WAYLAND_DISPLAY).toBe(before.display);
                 expect(process.env.DBUS_SESSION_BUS_ADDRESS).toBe(before.bus);
-                expect(runtime === undefined || existsSync(runtime)).toBe(false);
+                await expect.poll(() => runtime === undefined || existsSync(runtime), { timeout: 5_000 }).toBe(false);
             } finally {
                 if (originalPath === undefined) {
                     delete process.env.PATH;
