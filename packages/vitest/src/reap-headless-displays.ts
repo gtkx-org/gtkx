@@ -73,7 +73,8 @@ const readOwnedFile = (path: string, runtimeDir: string, userId: number, require
     if (dirname(path) !== runtimeDir) return undefined;
     let descriptor: number | undefined;
     try {
-        descriptor = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW);
+        // CodeQL requires a private creation mode even for read-only opens.
+        descriptor = openSync(path, constants.O_RDONLY | constants.O_NONBLOCK | constants.O_NOFOLLOW, 0o600);
         const stat = fstatSync(descriptor);
         if (
             !stat.isFile() ||
