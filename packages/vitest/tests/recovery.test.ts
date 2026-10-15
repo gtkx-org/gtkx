@@ -1,7 +1,16 @@
 import { isProcessAlive, type ProcessIdentity, readProcessIdentity, resolveExecutable } from "@gtkx/utils";
 import { type ChildProcess, execFileSync, spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
-import { existsSync, mkdirSync, mkdtempDisposableSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
+import {
+    existsSync,
+    mkdirSync,
+    mkdtempDisposableSync,
+    readFileSync,
+    renameSync,
+    rmSync,
+    utimesSync,
+    writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
@@ -271,22 +280,70 @@ it.each([
     },
 );
 
-it.each(["missing", "corrupt"])("stops owned helpers normally with a %s runtime marker", async (markerState) => {
-    const display = await startOwner();
-    try {
+it.each(["missing", "corrupt"])("stops owned helpers and descendants with a %s runtime marker", async (markerState) => {
+    await withUnreadableDescendant(async (display, descendant) => {
         const marker = join(display.runtimeDir, ".gtkx-headless-runtime");
         if (markerState === "missing") rmSync(marker);
         else writeFileSync(marker, "incomplete");
         const exited = once(display.child, "exit");
         display.child.send("stop");
         await exited;
-        await expect.poll(() => display.helpers.some((helper) => isProcessAlive(helper.pid))).toBe(false);
+        expect(display.helpers.some((helper) => isProcessAlive(helper.pid))).toBe(false);
+        expect(isProcessAlive(descendant.pid)).toBe(false);
+        expect(existsSync(display.runtimeDir)).toBe(false);
+    });
+});
+
+it.each(["missing", "corrupt"])("restores a %s marker when a helper leader is already gone", async (markerState) => {
+    await withUnreadableDescendant(async (display, descendant, leader) => {
+        process.kill(leader.pid, "SIGKILL");
+        await expect.poll(() => isProcessAlive(leader.pid)).toBe(false);
+        const marker = join(display.runtimeDir, ".gtkx-headless-runtime");
+        if (markerState === "missing") rmSync(marker);
+        else writeFileSync(marker, "incomplete");
+        const exited = once(display.child, "exit");
+        display.child.send("stop");
+        await exited;
+        expect(isProcessAlive(descendant.pid)).toBe(true);
         ageRuntime(display.runtimeDir);
         const candidates = findStaleHeadlessDisplays().filter((entry) => entry.runtimeDir === display.runtimeDir);
+        expect(candidates).toHaveLength(1);
+        expect(reapStaleHeadlessDisplays(candidates)).toEqual([]);
+        expect(existsSync(marker)).toBe(true);
+        process.kill(descendant.pid, "SIGKILL");
+        await expect.poll(() => isProcessAlive(descendant.pid)).toBe(false);
         expect(reapStaleHeadlessDisplays(candidates)).toEqual([display.runtimeDir]);
-    } finally {
-        await removeDisplay(display);
-    }
+    });
+});
+
+it("stops owned helpers without adopting a replacement runtime directory or its processes", async () => {
+    await withUnreadableDescendant(async (display, descendant) => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-headless-replacement-"));
+        renameSync(display.runtimeDir, join(directory.path, "original-runtime"));
+        mkdirSync(display.runtimeDir, { mode: 0o700 });
+        const sentinel = join(display.runtimeDir, "unrelated");
+        writeFileSync(sentinel, "preserve");
+        const unrelated = spawn(process.execPath, ["--eval", 'process.send("ready"); setInterval(() => {}, 1000);'], {
+            stdio: ["ignore", "ignore", "ignore", "ipc"],
+            env: { ...process.env, XDG_RUNTIME_DIR: display.runtimeDir, GTKX_HEADLESS_RUNTIME: display.runtimeDir },
+        });
+        try {
+            await once(unrelated, "message");
+            const exited = once(display.child, "exit");
+            display.child.send("stop");
+            await exited;
+            expect(display.helpers.some((helper) => isProcessAlive(helper.pid))).toBe(false);
+            expect(isProcessAlive(descendant.pid)).toBe(false);
+            expect(isProcessAlive(unrelated.pid)).toBe(true);
+            expect(readFileSync(sentinel, "utf8")).toBe("preserve");
+        } finally {
+            if (unrelated.exitCode === null && unrelated.signalCode === null) {
+                const exited = once(unrelated, "exit");
+                unrelated.kill("SIGKILL");
+                await exited;
+            }
+        }
+    });
 });
 
 it("preserves running helpers when their runtime ownership marker is corrupt", async () => {

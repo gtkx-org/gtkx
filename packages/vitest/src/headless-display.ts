@@ -1,4 +1,4 @@
-import { isProcessAlive, type ProcessIdentity, readProcessIdentity, resolveExecutable } from "@gtkx/utils";
+import { cleanupDirectoryIdentity, isProcessAlive, readProcessIdentity, resolveExecutable } from "@gtkx/utils";
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import {
     chmodSync,
@@ -22,7 +22,7 @@ import {
     HEADLESS_RUNTIME_MARKER,
 } from "./headless-config.ts";
 import { startNotificationService } from "./notification-service.ts";
-import { stopHeadlessRuntime } from "./reap-headless-displays.ts";
+import { type HeadlessRuntime, stopHeadlessRuntime } from "./reap-headless-displays.ts";
 import { startVirtualSeat } from "./virtual-seat.ts";
 
 /**
@@ -510,10 +510,10 @@ const makeTeardown = (stops: (() => void)[]): (() => void) => {
 };
 
 const makeRemoveRuntime =
-    (env: EnvSnapshot, runtimeDir: string): (() => void) =>
+    (env: EnvSnapshot, runtime: HeadlessRuntime): (() => void) =>
     (): void => {
         restoreEnv(env);
-        stopHeadlessRuntime(runtimeDir);
+        stopHeadlessRuntime(runtime);
     };
 
 const startBus = (runtimeDir: string, busSocketPath: string): ChildProcess => {
@@ -527,18 +527,20 @@ const startBus = (runtimeDir: string, busSocketPath: string): ChildProcess => {
     });
 };
 
-const createHeadlessRuntimeDirectory = (): string => {
+const createHeadlessRuntime = (): HeadlessRuntime => {
     const runtimeDir = mkdtempSync(join(tmpdir(), "gtkx-xdg-"));
 
     try {
         chmodSync(runtimeDir, 0o700);
         const owner = readProcessIdentity(process.pid);
         if (owner === undefined) throw new Error("Cannot identify the headless display owner");
+        const cleanupDirectory = cleanupDirectoryIdentity(runtimeDir);
+        if (cleanupDirectory === undefined) throw new Error("Cannot identify the headless runtime directory");
         const markerPath = join(runtimeDir, HEADLESS_RUNTIME_MARKER);
         writeFileSync(markerPath, createHeadlessRuntimeMarker(runtimeDir, owner), { flag: "wx", mode: 0o600 });
         chmodSync(markerPath, 0o600);
 
-        return runtimeDir;
+        return { cleanupDirectory, owner, helpers: [] };
     } catch (error) {
         rmSync(runtimeDir, { recursive: true, force: true });
         throw error;
@@ -547,20 +549,21 @@ const createHeadlessRuntimeDirectory = (): string => {
 
 const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => void> => {
     const env: EnvSnapshot = {};
-    const runtimeDir = createHeadlessRuntimeDirectory();
+    const runtime = createHeadlessRuntime();
+    const runtimeDir = runtime.cleanupDirectory.path;
     const spawned: ChildProcess[] = [];
-    const helperIdentities: ProcessIdentity[] = [];
     const monitorStops: (() => void)[] = [];
-    const removeRuntime = makeRemoveRuntime(env, runtimeDir);
+    const removeRuntime = makeRemoveRuntime(env, runtime);
     const recordChild = (child: ChildProcess): void => {
         spawned.push(child);
         child.unref();
         const identity = child.pid === undefined ? undefined : readProcessIdentity(child.pid);
-        const owner = readProcessIdentity(process.pid);
-        if (identity === undefined || owner === undefined) return;
-        helperIdentities.push(identity);
+        if (identity === undefined) return;
+        runtime.helpers.push(identity);
         const pending = join(runtimeDir, `${HEADLESS_RUNTIME_MARKER}.tmp`);
-        writeFileSync(pending, createHeadlessRuntimeMarker(runtimeDir, owner, helperIdentities), { mode: 0o600 });
+        writeFileSync(pending, createHeadlessRuntimeMarker(runtimeDir, runtime.owner, runtime.helpers), {
+            mode: 0o600,
+        });
         renameSync(pending, join(runtimeDir, HEADLESS_RUNTIME_MARKER));
     };
 

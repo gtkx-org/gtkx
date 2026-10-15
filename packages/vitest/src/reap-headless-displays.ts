@@ -7,11 +7,24 @@ import {
     readProcessStatFields,
     removeCleanupDirectory,
 } from "@gtkx/utils";
-import { closeSync, constants, fstatSync, lstatSync, openSync, readdirSync, readFileSync, readSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import {
+    closeSync,
+    constants,
+    fstatSync,
+    lstatSync,
+    openSync,
+    readdirSync,
+    readFileSync,
+    readSync,
+    renameSync,
+    writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import {
     createBusConfig,
+    createHeadlessRuntimeMarker,
     HEADLESS_HELPER_ENV,
     HEADLESS_RUNTIME_MARKER,
     isSwayConfig,
@@ -22,6 +35,12 @@ type StaleHeadlessDisplay = {
     runtimeDir: string;
     cleanupDirectory: CleanupDirectoryIdentity;
     owner?: ProcessIdentity;
+};
+
+type HeadlessRuntime = {
+    cleanupDirectory: CleanupDirectoryIdentity;
+    owner: ProcessIdentity;
+    helpers: ProcessIdentity[];
 };
 
 type RuntimeProcesses = {
@@ -310,10 +329,14 @@ const signalRuntimeHelper = (identity: ProcessIdentity, userId: number, signal: 
     }
 };
 
-const runtimeHelpers = (runtimeDir: string, userId: number, processes: RuntimeProcesses): ProcessIdentity[] => {
+const runtimeHelpers = (
+    recorded: readonly ProcessIdentity[],
+    processes: RuntimeProcesses,
+    runtimeDir?: string,
+): ProcessIdentity[] => {
     const helpers = new Map<number, ProcessIdentity>();
-    const recorded = runtimeState(runtimeDir, userId)?.helpers ?? [];
-    for (const helper of [...recorded, ...(processes.helpers.get(runtimeDir) ?? [])]) {
+    const marked = runtimeDir === undefined ? [] : (processes.helpers.get(runtimeDir) ?? []);
+    for (const helper of [...recorded, ...marked]) {
         if (isCurrentOwner(helper)) helpers.set(helper.pid, helper);
     }
     for (const leader of recorded) {
@@ -334,12 +357,11 @@ const runtimeHelpers = (runtimeDir: string, userId: number, processes: RuntimePr
     return [...helpers.values()];
 };
 
-const hasRuntimeProcesses = (runtimeDir: string, userId: number): boolean => {
+const hasRuntimeProcesses = (runtimeDir: string, userId: number, recorded: readonly ProcessIdentity[]): boolean => {
     const processes = findRuntimeProcesses(userId);
-    const recorded = runtimeState(runtimeDir, userId)?.helpers ?? [];
     return (
         processes.live.has(runtimeDir) ||
-        runtimeHelpers(runtimeDir, userId, processes).length > 0 ||
+        runtimeHelpers(recorded, processes, runtimeDir).length > 0 ||
         recorded.some((leader) =>
             processes.members.some((member) => member.processGroupId === leader.pid || member.sessionId === leader.pid),
         )
@@ -351,7 +373,8 @@ const didReapCandidate = (candidate: StaleHeadlessDisplay, userId: number, proce
         return false;
     }
 
-    const helpers = runtimeHelpers(candidate.runtimeDir, userId, processes);
+    const recorded = runtimeState(candidate.runtimeDir, userId)?.helpers ?? [];
+    const helpers = runtimeHelpers(recorded, processes, candidate.runtimeDir);
     if (
         candidate.owner !== undefined &&
         !helpers.every((identity) => signalRuntimeHelper(identity, userId, "SIGKILL"))
@@ -363,7 +386,7 @@ const didReapCandidate = (candidate: StaleHeadlessDisplay, userId: number, proce
     const pause = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
     while (helpers.some(isCurrentOwner) && Date.now() < deadline) Atomics.wait(pause, 0, 0, 10);
 
-    if (hasRuntimeProcesses(candidate.runtimeDir, userId)) return false;
+    if (hasRuntimeProcesses(candidate.runtimeDir, userId, recorded)) return false;
 
     removeCleanupDirectory(candidate.cleanupDirectory);
 
@@ -402,24 +425,28 @@ const reapStaleHeadlessDisplaysAtStartup = (): void => {
     info(`removed stale headless runtime ${noun}: ${removed.join(", ")}`);
 };
 
-const stopHeadlessRuntime = (runtimeDir: string): void => {
+const stopHeadlessRuntime = ({ cleanupDirectory, owner, helpers: recorded }: HeadlessRuntime): void => {
     const userId = currentUserId();
-    const directory = cleanupDirectoryIdentity(runtimeDir);
-    const owner = userId === undefined ? undefined : runtimeState(runtimeDir, userId)?.owner;
-    if (userId === undefined || directory === undefined || owner?.pid !== process.pid || !isCurrentOwner(owner)) {
+    if (userId === undefined || owner.pid !== process.pid || !isCurrentOwner(owner)) {
         return;
     }
+    const runtimeDir = cleanupDirectory.path;
+    const isOriginalDirectory = (): boolean =>
+        isSameCleanupDirectory(cleanupDirectoryIdentity(runtimeDir), cleanupDirectory);
     const captured = new Map<number, ProcessIdentity>();
     const helpers = (): ProcessIdentity[] => {
-        for (const helper of runtimeHelpers(runtimeDir, userId, findRuntimeProcesses(userId))) {
+        const processes = findRuntimeProcesses(userId);
+        for (const helper of runtimeHelpers(recorded, processes, isOriginalDirectory() ? runtimeDir : undefined)) {
             captured.set(helper.pid, helper);
         }
         return [...captured.values()].filter(isCurrentOwner);
     };
     for (const helper of helpers()) signalRuntimeHelper(helper, userId, "SIGTERM");
     const removeIfStopped = (): boolean => {
-        if ([...captured.values()].some(isCurrentOwner) || hasRuntimeProcesses(runtimeDir, userId)) return false;
-        removeCleanupDirectory(directory);
+        if ([...captured.values()].some(isCurrentOwner)) return false;
+        if (!isOriginalDirectory()) return true;
+        if (hasRuntimeProcesses(runtimeDir, userId, recorded)) return false;
+        removeCleanupDirectory(cleanupDirectory);
         return true;
     };
     if (removeIfStopped()) return;
@@ -432,7 +459,14 @@ const stopHeadlessRuntime = (runtimeDir: string): void => {
         }
         Atomics.wait(pause, 0, 0, 10);
     }
-    removeIfStopped();
+    if (removeIfStopped() || !isOriginalDirectory()) return;
+    try {
+        const pending = join(runtimeDir, `${HEADLESS_RUNTIME_MARKER}.${randomUUID()}`);
+        writeFileSync(pending, createHeadlessRuntimeMarker(runtimeDir, owner, recorded), { flag: "wx", mode: 0o600 });
+        renameSync(pending, join(runtimeDir, HEADLESS_RUNTIME_MARKER));
+    } catch {
+        return;
+    }
 };
 
 export {
@@ -440,5 +474,6 @@ export {
     reapStaleHeadlessDisplays,
     reapStaleHeadlessDisplaysAtStartup,
     stopHeadlessRuntime,
+    type HeadlessRuntime,
     type StaleHeadlessDisplay,
 };
