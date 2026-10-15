@@ -110,6 +110,7 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
             writeFileSync(configPath, createSwayConfig(width, height));
 
             return spawn(resolveExecutable("sway"), ["-c", configPath], {
+                detached: true,
                 stdio: ["ignore", "ignore", "pipe"],
                 env: { ...process.env, [HEADLESS_HELPER_ENV]: runtimeDir },
             });
@@ -131,6 +132,7 @@ const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
                     "--socket=wayland-0",
                 ],
                 {
+                    detached: true,
                     stdio: ["ignore", "ignore", "pipe"],
                     env: { ...process.env, [HEADLESS_HELPER_ENV]: runtimeDir },
                 },
@@ -519,6 +521,7 @@ const startBus = (runtimeDir: string, busSocketPath: string): ChildProcess => {
     writeBusConfig(busConfigPath, busSocketPath);
 
     return spawn(resolveExecutable("dbus-daemon"), [`--config-file=${busConfigPath}`], {
+        detached: true,
         stdio: ["ignore", "ignore", "pipe"],
         env: { ...process.env, [HEADLESS_HELPER_ENV]: runtimeDir },
     });

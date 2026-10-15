@@ -109,6 +109,47 @@ describe("development process shutdown", () => {
         );
     });
 
+    it("keeps the session bus available during cleanup after a terminal interrupt", async () => {
+        using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
+        const readyPath = join(project.root, "ready.txt");
+        const cleanupPath = join(project.root, "cleanup.txt");
+        project.write(
+            "src/index.ts",
+            `import { BusType, DBusCallFlags, busGetSync } from "@gtkx/gi/gio";
+            import { onExit } from "@gtkx/runtime";
+            import { writeFileSync } from "node:fs";
+            const bus = busGetSync(BusType.SESSION, null);
+            bus.setExitOnClose(false);
+            onExit(() => {
+                bus.callSync("org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus", "GetId", null, null, DBusCallFlags.NONE, 1000, null);
+                writeFileSync(${JSON.stringify(cleanupPath)}, "bus available");
+            });
+            writeFileSync(${JSON.stringify(readyPath)}, String(process.pid));`,
+        );
+        const running = observeChild(
+            spawn(process.execPath, [cliPath, "dev", "--cwd", project.root, "--headless", "--size", "640x480"], {
+                stdio: "pipe",
+                detached: true,
+            }),
+        );
+        let runner: ProcessIdentity | undefined;
+        try {
+            await running.waitForFile(readyPath);
+            const runnerPid = Number(readFileSync(readyPath, "utf8"));
+            runner = readProcessIdentity(runnerPid);
+            const supervisorPid = running.child.pid;
+            if (supervisorPid === undefined) {
+                throw new Error("The dev supervisor did not start");
+            }
+            process.kill(-supervisorPid, "SIGINT");
+            expect(await running.waitForExit()).toEqual({ code: 0, signal: null });
+            expect(readFileSync(cleanupPath, "utf8")).toBe("bus available");
+            expect(isProcessAlive(runnerPid)).toBe(false);
+        } finally {
+            await running.stop(runner);
+        }
+    });
+
     it("cleans up the application when the runner's IPC connection closes", async () => {
         await withDevProcess(
             (root) => {
