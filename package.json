@@ -47,7 +47,7 @@
         "semver": "^7.8.5",
         "tsx": "^4.23.15",
         "typescript": "catalog:",
-        "typescript-eslint": "^8.71.1",
+        "typescript-eslint": "^8.71.2",
         "vitest": "catalog:",
         "vue-eslint-parser": "^10.4.1"
     },
