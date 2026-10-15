@@ -8,27 +8,15 @@ export { isDeepEqual, isRecord } from "./predicate/index.ts";
 export {
     type CleanupDirectoryIdentity,
     cleanupDirectoryIdentity,
-    captureProcessGroupOwner,
-    isProcessGroupOwner,
     type ProcessIdentity,
-    type ProcessStatus,
     readProcessIdentity,
-    readProcessStatus,
-    type ProcessWatchOperations,
-    watchProcessGroupOwner,
     exitCodeForSignal,
     installGracefulShutdown,
     isProcessAlive,
-    killProcessGroup,
-    type ProcessGroupIdentity,
-    processGroupIdentity,
     readProcessStatFields,
     removeCleanupDirectory,
     resolveExecutable,
-    spawnWithParentDeathSignal,
-    spawnWithParentDeathSupervisor,
     tryResolveExecutable,
-    watchParentProcess,
 } from "./process/index.ts";
 export { drain } from "./set/index.ts";
 export {

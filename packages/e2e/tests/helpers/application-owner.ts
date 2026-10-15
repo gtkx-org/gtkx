@@ -1,5 +1,4 @@
-import type { ChildProcess } from "node:child_process";
-import { spawnWithParentDeathSignal } from "@gtkx/utils";
+import { type ChildProcess, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { collectOutput, waitForMarker } from "./child-output.js";
 
@@ -12,7 +11,7 @@ const OWNED_TIMEOUT_MS = 20_000;
 const owners: ChildProcess[] = [];
 
 const startApplicationOwner = async (applicationId: string): Promise<void> => {
-    const child = spawnWithParentDeathSignal(process.execPath, [...OWNER_ARGS, applicationId], {
+    const child = spawn(process.execPath, [...OWNER_ARGS, applicationId], {
         stdio: ["ignore", "pipe", "pipe"],
     });
 

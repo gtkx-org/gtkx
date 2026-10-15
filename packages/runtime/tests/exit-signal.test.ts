@@ -1,5 +1,4 @@
-import type { ChildProcess } from "node:child_process";
-import { spawnWithParentDeathSignal } from "@gtkx/utils";
+import { type ChildProcess, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { collectOutput, waitForMarker } from "./helpers/child-output.js";
@@ -31,22 +30,26 @@ const waitForClose = (child: ChildProcess): Promise<SignalledExit> =>
 
 const runUntilSignalled = async (signal: NodeJS.Signals, mode?: string): Promise<SignalledRun> => {
     const args = mode === undefined ? FIXTURE_ARGS : [...FIXTURE_ARGS, mode];
-    const child = spawnWithParentDeathSignal(process.execPath, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn(process.execPath, args, { stdio: ["ignore", "pipe", "pipe"] });
     const read = collectOutput(child);
-
-    await waitForMarker({
-        child,
-        read,
-        marker: READY_MARKER,
-        subject: READY_SUBJECT,
-        timeoutMs: READY_TIMEOUT_MS,
-    });
-
     const closed = waitForClose(child);
-    child.kill(signal);
-    const exit = await closed;
 
-    return { output: read(), ...exit };
+    try {
+        await waitForMarker({
+            child,
+            read,
+            marker: READY_MARKER,
+            subject: READY_SUBJECT,
+            timeoutMs: READY_TIMEOUT_MS,
+        });
+
+        child.kill(signal);
+        const exit = await closed;
+        return { output: read(), ...exit };
+    } finally {
+        child.kill("SIGKILL");
+        await closed;
+    }
 };
 
 describe("onExit for a process stopped by a signal", () => {

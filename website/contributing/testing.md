@@ -69,7 +69,7 @@ pnpm exec tsx packages/e2e/tests/helpers/native-fixtures-coverage.ts --write
 
 The first command reports a stale inventory after the tests pass if its summary needs updating. Detailed API-to-suite execution evidence is written to `build/native-tests/coverage/inventory.json`. Coverage establishes which generated wrappers ran; assertions and sanitizers establish their behavior.
 
-GTKX does not maintain custom C test fixtures. Historical probes without an upstream equivalent are retired. Observable runtime behavior such as keep-alive, quit, logging and parent death belongs in the runtime suite, using TypeScript child processes where process isolation is necessary.
+GTKX does not maintain custom C test fixtures. Historical probes without an upstream equivalent are retired. Observable runtime behavior such as keep-alive, quit and logging belongs in the runtime suite, using TypeScript child processes where process isolation is necessary.
 
 The fixture preparation target downloads and builds the pinned upstream source and generates bindings:
 
@@ -89,7 +89,7 @@ Review leak suppressions narrowly. Eight upstream signal emitters leak their ori
 
 ## Native UI integration
 
-`@gtkx/vitest` gives each test worker a private Wayland compositor, runtime directory and D-Bus session. Guards clean those resources up when the worker or runner exits. Package suites merge the shared source-resolution configuration, which resolves workspace TypeScript and inlines GTKX dependencies.
+`@gtkx/vitest` gives each test worker a private Wayland compositor, runtime directory and D-Bus session. Worker teardown releases these resources during normal shutdown. Subsequent Vitest, dev or Storybook startup, or `gtkx cleanup`, reclaims stale sessions left by interrupted runs. Package suites merge the shared source-resolution configuration, which resolves workspace TypeScript and inlines GTKX dependencies.
 
 Importing `@gtkx/testing` installs matchers and rendering cleanup. `render` is asynchronous. Use `screen` and `within` to query accessible widget state, `userEvent` for interactions, and `waitFor` for asynchronous outcomes. Keep native assertions focused on externally observable state.
 

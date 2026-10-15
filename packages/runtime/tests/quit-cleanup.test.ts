@@ -1,4 +1,4 @@
-import { spawnWithParentDeathSignal } from "@gtkx/utils";
+import { spawn } from "node:child_process";
 import { mkdtempDisposableSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -37,7 +37,7 @@ const CASES = [
 const TSX_LOADER = new URL("../../../scripts/register-workspace-loader.ts", import.meta.url).href;
 
 const runFixture = async (mode: string, artifact: string): Promise<number | null> => {
-    const child = spawnWithParentDeathSignal(process.execPath, ["--import", TSX_LOADER, FIXTURE, mode, artifact], {
+    const child = spawn(process.execPath, ["--import", TSX_LOADER, FIXTURE, mode, artifact], {
         stdio: "ignore",
     });
     const closed: Promise<number | null> = new Promise((resolve, reject) => {

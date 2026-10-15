@@ -33,9 +33,8 @@ const headlessPreloadSpecifier = (options: Partial<HeadlessOptions>): string => 
  * setup files, and sets the environment needed for headless GTK4 rendering.
  *
  * Each worker's compositor, session bus, and private runtime directory are torn
- * down when the worker exits, and a guard process tears them down as well when
- * the worker or the Vitest process that launched it is killed with `SIGKILL`.
- * Creating the plugin reaps stale `gtkx-xdg-*` runtime directories left behind
+ * down when the worker exits normally. Creating the plugin reaps orphaned
+ * display helpers and stale `gtkx-xdg-*` runtime directories left behind
  * by earlier runs, which `gtkx cleanup` also does on demand.
  *
  * @param options Headless display settings (size, compositor) forwarded to each worker.

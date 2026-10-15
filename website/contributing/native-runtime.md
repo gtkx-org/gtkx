@@ -147,7 +147,6 @@ The native package is an implementation detail, so its interface can change to k
 | `readReferenceStorage`, `writeReferenceStorage`                              | Removed. Callback references exchange normalized JavaScript cells; native retains responsibility for ABI output storage and borrow expiry.                                                                                                          |
 | `createMatchSubject`, `getMatchInfoType`, `ownMatchInfo`, `getMatchInfoBase` | Native allocates terminated subject storage and owns it together with match information, including copies and borrowed views. Runtime supplies text encoding and regex behavior.                                                                    |
 | `keepAlive`, `quit`                                                          | Keep ref/unref and teardown of the existing native event-loop handles. Runtime already owns exit callbacks and error aggregation.                                                                                                                   |
-| `armParentDeath`                                                             | Runtime composes direct-parent arming with process-owner policy in utils. Native owns cancellable pidfd watches; an independent worker handles unsupported pidfds.                                                                                  |
 | `resolveBinding`                                                             | CLI-owned JavaScript packaging logic in `cli/src/internal/native-binding.ts`; locates the addon binary without loading it.                                                                                                                          |
 
 The sections below describe the implemented ownership boundaries. The full scheduler split was evaluated with an isolated benchmark and is not adopted; native retains the scheduling machinery described below.
@@ -224,11 +223,7 @@ Coverage exercises native copy results, full-transfer callback paths, failed sta
 
 ### Process supervision
 
-CLI captures the initial process-group owner through utils, which owns ancestry, start-time, process-state, and `/proc` policy. Runtime composes this policy with narrow native operations to arm `PR_SET_PDEATHSIG` with an immediate parent recheck, open an owned pidfd, and activate a cancellable monitor independent of JavaScript's main loop. Utils rechecks process identity, group membership, and ancestry around watch creation and activation to reject startup and PID-reuse races.
-
-Unsupported or forbidden pidfds use a dedicated worker importing only process-status utilities and its guard protocol. An atomic readiness handshake confirms activation before startup succeeds. Both monitoring paths deliver SIGTERM even when the application's main loop is blocked; JavaScript cleanup still requires main-loop progress. Native watch closure cancels and joins its monitoring thread, and environment cleanup releases active watches through one registry per environment. Fallback cancellation atomically prevents new signals and waits for any already-claimed signal before returning.
-
-Real subprocess coverage includes direct-parent death, ancestor group-owner death while the direct parent lives, unrelated owners, wrong start times, stopped and zombie owners, death during watch opening and activation, pidfd fallback, blocked main loops, and descriptor cleanup after explicit closure or worker termination. Exit-signal coverage remains in place.
+The CLI supervises its application runner, forwards shutdown signals, and forces termination if shutdown times out. The runner exits when its IPC connection to the CLI closes. Headless compositors and session buses are released during normal teardown; subsequent Vitest, dev or Storybook startup, or `gtkx cleanup`, reclaims stale sessions left by interrupted runs.
 
 ### Event-loop scheduling
 

@@ -29,16 +29,16 @@ export default defineConfig({
 });
 ```
 
-The plugin gives each worker a private headless display and session bus. Its default compositor is Sway; it also needs `dbus-daemon` and `setpriv`. On Fedora 44, install these with:
+The plugin gives each worker a private headless display and session bus. Its default compositor is Sway; it also needs `dbus-daemon`. On Fedora 44, install these with:
 
 ```bash
-sudo dnf install sway dbus-daemon util-linux
+sudo dnf install sway dbus-daemon
 ```
 
 Check that the commands are available, then run the tests:
 
 ```bash
-command -v sway dbus-daemon setpriv
+command -v sway dbus-daemon
 npm test
 ```
 
@@ -54,7 +54,7 @@ Headless development uses the same environment:
 gtkx dev --headless --size 1280x720
 ```
 
-The default size is `1024x768`. Keep the launching terminal or supervisor running for the session. GTKX removes its temporary runtime on shutdown; use `gtkx cleanup --dry-run` to inspect stale runtimes and `gtkx cleanup` to remove them.
+The default size is `1024x768`. Use Ctrl+C to stop the session and release its headless resources. Subsequent development or test runs reclaim stale sessions left by interrupted runs; use `gtkx cleanup --dry-run` to inspect them and `gtkx cleanup` to remove them.
 
 ### Sway in a restricted container
 

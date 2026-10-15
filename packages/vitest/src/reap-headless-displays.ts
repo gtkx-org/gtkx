@@ -1,17 +1,31 @@
-import { type CleanupDirectoryIdentity, cleanupDirectoryIdentity, info, removeCleanupDirectory } from "@gtkx/utils";
+import {
+    type CleanupDirectoryIdentity,
+    cleanupDirectoryIdentity,
+    info,
+    type ProcessIdentity,
+    readProcessIdentity,
+    removeCleanupDirectory,
+} from "@gtkx/utils";
 import { constants, lstatSync, readdirSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import {
     createBusConfig,
-    createHeadlessRuntimeMarker,
+    HEADLESS_HELPER_ENV,
     HEADLESS_RUNTIME_MARKER,
     isSwayConfig,
+    readHeadlessRuntimeState,
 } from "./headless-config.ts";
 
 type StaleHeadlessDisplay = {
     runtimeDir: string;
     cleanupDirectory: CleanupDirectoryIdentity;
+    owner?: ProcessIdentity;
+};
+
+type RuntimeProcesses = {
+    live: Set<string>;
+    helpers: Map<string, ProcessIdentity[]>;
 };
 
 const RUNTIME_DIRECTORY_PATTERN = /^gtkx-xdg-[A-Za-z0-9]{6}$/;
@@ -85,6 +99,8 @@ const hasOnlyBusConfig = (runtimeDir: string): boolean => {
 };
 
 const hasGeneratedRuntimeFiles = (runtimeDir: string, userId: number): boolean => {
+    const marker = readOwnedFile(join(runtimeDir, HEADLESS_RUNTIME_MARKER), runtimeDir, userId, 0o600);
+    if (readHeadlessRuntimeState(runtimeDir, marker) !== undefined) return true;
     const bus = readOwnedFile(join(runtimeDir, "session.conf"), runtimeDir, userId);
 
     if (bus !== createBusConfig(join(runtimeDir, "bus"))) {
@@ -92,10 +108,8 @@ const hasGeneratedRuntimeFiles = (runtimeDir: string, userId: number): boolean =
     }
 
     const sway = readOwnedFile(join(runtimeDir, "sway.conf"), runtimeDir, userId);
-    const marker = readOwnedFile(join(runtimeDir, HEADLESS_RUNTIME_MARKER), runtimeDir, userId, 0o600);
-
     return (
-        marker === createHeadlessRuntimeMarker(runtimeDir) ||
+        marker === ["gtkx-headless-runtime-v1", `runtime=${runtimeDir}`, ""].join("\n") ||
         (sway !== undefined && isSwayConfig(sway)) ||
         hasOnlyBusConfig(runtimeDir)
     );
@@ -134,18 +148,17 @@ const runtimeFromArgument = (argument: string): string | undefined => {
         : undefined;
 };
 
-const runtimeFromEnvironment = (pid: number): string | undefined => {
+const runtimeFromEnvironment = (pid: number): { runtimeDir: string; helper: boolean } | undefined => {
     try {
         const prefix = "XDG_RUNTIME_DIR=";
-        const entry = readFileSync(`/proc/${String(pid)}/environ`, "utf8")
-            .split("\0")
-            .find((value) => value.startsWith(prefix));
+        const environment = readFileSync(`/proc/${String(pid)}/environ`, "utf8").split("\0");
+        const entry = environment.find((value) => value.startsWith(prefix));
         const runtimeDir = entry?.slice(prefix.length);
 
         return runtimeDir !== undefined &&
             RUNTIME_DIRECTORY_PATTERN.test(basename(runtimeDir)) &&
             dirname(runtimeDir) === RUNTIME_ROOT
-            ? runtimeDir
+            ? { runtimeDir, helper: environment.includes(`${HEADLESS_HELPER_ENV}=${runtimeDir}`) }
             : undefined;
     } catch {
         return undefined;
@@ -165,23 +178,33 @@ const addRuntimeArguments = (live: Set<string>, processArgs: string[]): void => 
     }
 };
 
-const addProcessRuntimes = (live: Set<string>, pid: number): void => {
+const addProcessRuntimes = (processes: RuntimeProcesses, pid: number): void => {
     const processArgs = readProcessArguments(pid);
 
     if (processArgs === undefined) {
         return;
     }
 
-    addRuntimeArguments(live, processArgs);
-    const runtimeDir = runtimeFromEnvironment(pid);
+    const references = new Set<string>();
+    addRuntimeArguments(references, processArgs);
+    const runtime = runtimeFromEnvironment(pid);
+    const identity = readProcessIdentity(pid);
 
-    if (runtimeDir !== undefined) {
-        live.add(runtimeDir);
+    if (runtime !== undefined) {
+        references.add(runtime.runtimeDir);
+        if (runtime.helper && identity !== undefined) {
+            const helpers = processes.helpers.get(runtime.runtimeDir) ?? [];
+            helpers.push(identity);
+            processes.helpers.set(runtime.runtimeDir, helpers);
+        }
+    }
+    for (const runtimeDir of references) {
+        processes.live.add(runtimeDir);
     }
 };
 
-const findLiveRuntimeDirectories = (userId: number): Set<string> => {
-    const live: Set<string> = new Set();
+const findRuntimeProcesses = (userId: number): RuntimeProcesses => {
+    const processes: RuntimeProcesses = { live: new Set(), helpers: new Map() };
     const processEntries = readdirSync("/proc");
 
     for (const entry of processEntries) {
@@ -191,17 +214,27 @@ const findLiveRuntimeDirectories = (userId: number): Set<string> => {
             continue;
         }
 
-        addProcessRuntimes(live, pid);
+        addProcessRuntimes(processes, pid);
     }
 
-    return live;
+    return processes;
 };
+
+const runtimeState = (runtimeDir: string, userId: number) =>
+    readHeadlessRuntimeState(
+        runtimeDir,
+        readOwnedFile(join(runtimeDir, HEADLESS_RUNTIME_MARKER), runtimeDir, userId, 0o600),
+    );
+
+const isCurrentOwner = (owner: ProcessIdentity): boolean =>
+    readProcessIdentity(owner.pid)?.startTime === owner.startTime;
 
 const classifyRuntimeDirectory = (name: string, userId: number, live: ReadonlySet<string>): StaleHeadlessDisplay[] => {
     const runtimeDir = join(RUNTIME_ROOT, name);
+    const owner = runtimeState(runtimeDir, userId)?.owner;
 
     if (
-        live.has(runtimeDir) ||
+        (owner === undefined ? live.has(runtimeDir) : isCurrentOwner(owner)) ||
         !isPrivateRuntimeDirectory(runtimeDir, userId) ||
         !hasGeneratedRuntimeFiles(runtimeDir, userId)
     ) {
@@ -210,7 +243,7 @@ const classifyRuntimeDirectory = (name: string, userId: number, live: ReadonlySe
 
     const cleanupDirectory = cleanupDirectoryIdentity(runtimeDir);
 
-    return cleanupDirectory === undefined ? [] : [{ runtimeDir, cleanupDirectory }];
+    return cleanupDirectory === undefined ? [] : [{ runtimeDir, cleanupDirectory, ...(owner && { owner }) }];
 };
 
 const findStaleHeadlessDisplays = (): StaleHeadlessDisplay[] => {
@@ -220,7 +253,7 @@ const findStaleHeadlessDisplays = (): StaleHeadlessDisplay[] => {
         return [];
     }
 
-    const live = findLiveRuntimeDirectories(userId);
+    const { live } = findRuntimeProcesses(userId);
 
     return readdirSync(RUNTIME_ROOT, { withFileTypes: true })
         .filter((entry) => entry.isDirectory() && RUNTIME_DIRECTORY_PATTERN.test(entry.name))
@@ -230,16 +263,81 @@ const findStaleHeadlessDisplays = (): StaleHeadlessDisplay[] => {
 const isSameCleanupDirectory = (left: CleanupDirectoryIdentity | undefined, right: CleanupDirectoryIdentity): boolean =>
     left?.device === right.device && left.inode === right.inode && left.userId === right.userId;
 
-const isReapable = (candidate: StaleHeadlessDisplay, userId: number, live: ReadonlySet<string>): boolean =>
-    !live.has(candidate.runtimeDir) &&
-    isSameCleanupDirectory(cleanupDirectoryIdentity(candidate.runtimeDir), candidate.cleanupDirectory) &&
-    isPrivateRuntimeDirectory(candidate.runtimeDir, userId) &&
-    hasGeneratedRuntimeFiles(candidate.runtimeDir, userId);
+const isReapable = (candidate: StaleHeadlessDisplay, userId: number, live: ReadonlySet<string>): boolean => {
+    const owner = runtimeState(candidate.runtimeDir, userId)?.owner;
+    const ownershipMatches =
+        owner === undefined
+            ? candidate.owner === undefined && !live.has(candidate.runtimeDir)
+            : owner.pid === candidate.owner?.pid &&
+              owner.startTime === candidate.owner.startTime &&
+              !isCurrentOwner(owner);
+    return (
+        ownershipMatches &&
+        isSameCleanupDirectory(cleanupDirectoryIdentity(candidate.runtimeDir), candidate.cleanupDirectory) &&
+        isPrivateRuntimeDirectory(candidate.runtimeDir, userId) &&
+        hasGeneratedRuntimeFiles(candidate.runtimeDir, userId)
+    );
+};
 
-const didReapCandidate = (candidate: StaleHeadlessDisplay, userId: number, live: ReadonlySet<string>): boolean => {
-    if (!isReapable(candidate, userId, live)) {
+const signalRuntimeHelper = (
+    identity: ProcessIdentity,
+    runtimeDir: string,
+    userId: number,
+    signal: NodeJS.Signals,
+): boolean => {
+    const runtime = runtimeFromEnvironment(identity.pid);
+    const recorded = runtimeState(runtimeDir, userId)?.helpers.some(
+        (helper) => helper.pid === identity.pid && helper.startTime === identity.startTime,
+    );
+    if (
+        !isOwnedProcessId(identity.pid, userId) ||
+        (!recorded && (runtime?.runtimeDir !== runtimeDir || !runtime.helper)) ||
+        !isCurrentOwner(identity)
+    ) {
+        return true;
+    }
+    try {
+        process.kill(identity.pid, signal);
+        return true;
+    } catch {
+        return !isCurrentOwner(identity);
+    }
+};
+
+const runtimeHelpers = (runtimeDir: string, userId: number, processes: RuntimeProcesses): ProcessIdentity[] => {
+    const helpers = new Map<number, ProcessIdentity>();
+    for (const helper of [
+        ...(runtimeState(runtimeDir, userId)?.helpers ?? []),
+        ...(processes.helpers.get(runtimeDir) ?? []),
+    ]) {
+        if (isCurrentOwner(helper)) helpers.set(helper.pid, helper);
+    }
+    return [...helpers.values()];
+};
+
+const hasRuntimeProcesses = (runtimeDir: string, userId: number): boolean => {
+    const processes = findRuntimeProcesses(userId);
+    return processes.live.has(runtimeDir) || runtimeHelpers(runtimeDir, userId, processes).length > 0;
+};
+
+const didReapCandidate = (candidate: StaleHeadlessDisplay, userId: number, processes: RuntimeProcesses): boolean => {
+    if (!isReapable(candidate, userId, processes.live)) {
         return false;
     }
+
+    const helpers = runtimeHelpers(candidate.runtimeDir, userId, processes);
+    if (
+        candidate.owner !== undefined &&
+        !helpers.every((identity) => signalRuntimeHelper(identity, candidate.runtimeDir, userId, "SIGKILL"))
+    ) {
+        return false;
+    }
+
+    const deadline = Date.now() + 500;
+    const pause = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+    while (helpers.some(isCurrentOwner) && Date.now() < deadline) Atomics.wait(pause, 0, 0, 10);
+
+    if (hasRuntimeProcesses(candidate.runtimeDir, userId)) return false;
 
     removeCleanupDirectory(candidate.cleanupDirectory);
 
@@ -255,11 +353,11 @@ const reapStaleHeadlessDisplays = (
         return [];
     }
 
-    const live = findLiveRuntimeDirectories(userId);
+    const processes = findRuntimeProcesses(userId);
     const removed: string[] = [];
 
     for (const candidate of candidates) {
-        if (didReapCandidate(candidate, userId, live)) {
+        if (didReapCandidate(candidate, userId, processes)) {
             removed.push(candidate.runtimeDir);
         }
     }
@@ -278,9 +376,37 @@ const reapStaleHeadlessDisplaysAtStartup = (): void => {
     info(`removed stale headless runtime ${noun}: ${removed.join(", ")}`);
 };
 
+const stopHeadlessRuntime = (runtimeDir: string): void => {
+    const userId = currentUserId();
+    const directory = cleanupDirectoryIdentity(runtimeDir);
+    const owner = userId === undefined ? undefined : runtimeState(runtimeDir, userId)?.owner;
+    if (userId === undefined || directory === undefined || owner?.pid !== process.pid || !isCurrentOwner(owner)) {
+        return;
+    }
+    const helpers = (): ProcessIdentity[] => runtimeHelpers(runtimeDir, userId, findRuntimeProcesses(userId));
+    for (const helper of helpers()) signalRuntimeHelper(helper, runtimeDir, userId, "SIGTERM");
+    const removeIfStopped = (): boolean => {
+        if (hasRuntimeProcesses(runtimeDir, userId)) return false;
+        removeCleanupDirectory(directory);
+        return true;
+    };
+    if (removeIfStopped()) return;
+    const started = Date.now();
+    const pause = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
+    while (Date.now() - started < 1000) {
+        if (removeIfStopped()) return;
+        if (Date.now() - started >= 250) {
+            for (const helper of helpers()) signalRuntimeHelper(helper, runtimeDir, userId, "SIGKILL");
+        }
+        Atomics.wait(pause, 0, 0, 10);
+    }
+    removeIfStopped();
+};
+
 export {
     findStaleHeadlessDisplays,
     reapStaleHeadlessDisplays,
     reapStaleHeadlessDisplaysAtStartup,
+    stopHeadlessRuntime,
     type StaleHeadlessDisplay,
 };

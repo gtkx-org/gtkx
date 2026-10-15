@@ -1,10 +1,7 @@
 export {
-    activateProcessWatch,
     alloc,
-    armParentDeath,
     bindField,
     call,
-    closeProcessWatch,
     compileCall,
     compileVfuncSlot,
     copy,
@@ -29,7 +26,6 @@ export {
     keepAlive,
     newObject,
     openLibrary,
-    openProcessWatch,
     ownMatchInfo,
     quit,
     readField,
@@ -61,7 +57,6 @@ export type {
     Handle,
     LibraryHandle,
     Ownership,
-    ProcessWatch,
     RecordConverter,
     RecordConverterOptions,
     ReferenceMode,
@@ -86,8 +81,6 @@ declare module "./index.js" {
     export type CallSignature = { _opaque: "CallSignature" };
     /** A reference to a shared library that remains loaded for the life of the process. */
     export type LibraryHandle = { _opaque: "LibraryHandle" };
-    /** An owned process watch that can deliver termination when the watched process exits. */
-    export type ProcessWatch = { _opaque: "ProcessWatch" };
     /** A validated vtable position whose implementation is acquired when read. */
     export type VfuncSlot = { _opaque: "VfuncSlot" };
     /** An environment-bound lazy GType resolver that retries unregistered types. */

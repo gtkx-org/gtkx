@@ -21,13 +21,13 @@ The CI environment also supplies Go, ShellCheck, and the pinned Rust advisory ch
 
 The full workspace needs more system libraries than a minimal application:
 
-| Work                              | System dependencies                                                                                                                      |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Native addon and bindings         | A C build toolchain, `pkg-config`, GObject Introspection, GLib, GTK4, and libadwaita development files.                                  |
-| Workspace library selection       | GtkSourceView 5 and WebKitGTK 6.0 development files and GIR metadata.                                                                    |
-| Native integration fixtures       | Git, Meson, Ninja, and the introspection scanner.                                                                                        |
-| Headless examples and tests       | A supported compositor, normally Sway, `dbus-daemon`, `setpriv`, Mesa rendering support, fonts, icons, MIME data, and GSettings schemas. |
-| Localization and packaging checks | GNU gettext and the packaging tools used by the target formats, including RPM and Debian tooling and Flatpak helpers.                    |
+| Work                              | System dependencies                                                                                                           |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Native addon and bindings         | A C build toolchain, `pkg-config`, GObject Introspection, GLib, GTK4, and libadwaita development files.                       |
+| Workspace library selection       | GtkSourceView 5 and WebKitGTK 6.0 development files and GIR metadata.                                                         |
+| Native integration fixtures       | Git, Meson, Ninja, and the introspection scanner.                                                                             |
+| Headless examples and tests       | A supported compositor, normally Sway, `dbus-daemon`, Mesa rendering support, fonts, icons, MIME data, and GSettings schemas. |
+| Localization and packaging checks | GNU gettext and the packaging tools used by the target formats, including RPM and Debian tooling and Flatpak helpers.         |
 
 GTKX's application baseline is GTK 4.20 and libadwaita 1.8 or later. Distribution package names and available versions vary. The [CI setup action](https://github.com/gtkx-org/gtkx/blob/main/.github/actions/setup-ci/action.yml) installs the complete verification environment on Ubuntu 26.04, including packaging tools and fonts.
 
@@ -141,7 +141,7 @@ After the initial dependency build, the example's local CLI can also start a hea
 pnpm --filter hello-world exec gtkx dev --headless --size 1280x720
 ```
 
-Keep the process's parent session alive while inspecting the app. Use the live widget tree, interactions, and screenshots to verify visible changes. The [MCP guide](/v2/guide/mcp) explains how to connect, and the [Storybook guide](/v2/guide/storybook) covers controls and reusable stories.
+Use Ctrl+C to stop the development session and release its headless resources. Use the live widget tree, interactions, and screenshots to verify visible changes. The [MCP guide](/v2/guide/mcp) explains how to connect, and the [Storybook guide](/v2/guide/storybook) covers controls and reusable stories.
 
 ## Change native code
 

@@ -17,7 +17,6 @@ pub mod keep_alive;
 pub mod log_listener;
 pub mod match_info;
 pub mod new_object;
-pub mod parent_death;
 pub mod quit;
 pub mod read;
 pub mod reference;
