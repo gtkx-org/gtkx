@@ -11,7 +11,6 @@ pub struct StashStorage {
     pending_transfer: Cell<Vec<PendingTransfer>>,
     reference_owners: Vec<Handle>,
     reference_leases: Vec<RecordLease>,
-    reference_seed: Option<std::rc::Rc<crate::api::reference::ReferenceSeed>>,
     reference_extent: Option<usize>,
 }
 
@@ -250,7 +249,6 @@ pub enum StashData {
     Buffer(Vec<u8>),
     PtrSlot(Vec<*mut c_void>, Option<Box<StashStorage>>),
     HashTable(HashTableData),
-    CallerAllocation(CallerAllocation),
 }
 
 /// A `GHashTable` built here and handed to a callee.
@@ -266,35 +264,6 @@ pub struct HashTableData {
     pub retained_entries: Vec<*mut c_void>,
 }
 
-/// A zero-initialized `g_malloc`ed buffer handed to a callee that fills it in place, kept at
-/// malloc alignment so SIMD-aligned element types can be written into it, and freed on drop.
-#[derive(Debug)]
-pub struct CallerAllocation {
-    ptr: *mut c_void,
-    byte_len: usize,
-}
-
-impl CallerAllocation {
-    #[must_use]
-    pub fn zeroed(byte_len: usize) -> Self {
-        Self {
-            ptr: unsafe { glib::ffi::g_malloc0(byte_len.max(1)) },
-            byte_len,
-        }
-    }
-
-    #[must_use]
-    pub fn ptr(&self) -> *mut c_void {
-        self.ptr
-    }
-}
-
-impl Drop for CallerAllocation {
-    fn drop(&mut self) {
-        unsafe { glib::ffi::g_free(self.ptr) };
-    }
-}
-
 impl StashStorage {
     pub fn new(ptr: *mut c_void, data: StashData) -> Self {
         Self {
@@ -303,7 +272,6 @@ impl StashStorage {
             pending_transfer: Cell::new(Vec::new()),
             reference_owners: Vec::new(),
             reference_leases: Vec::new(),
-            reference_seed: None,
             reference_extent: None,
         }
     }
@@ -323,14 +291,6 @@ impl StashStorage {
         };
         self.reference_owners.push(retained);
         Ok(self)
-    }
-
-    pub(crate) fn with_reference_seed(
-        mut self,
-        seed: std::rc::Rc<crate::api::reference::ReferenceSeed>,
-    ) -> Self {
-        self.reference_seed = Some(seed);
-        self
     }
 
     pub(crate) fn with_reference_extent(mut self, byte_len: usize) -> Self {
@@ -406,7 +366,6 @@ impl StashStorage {
             StashData::I64Vec(v) => Some(size_of_val(v.as_slice())),
             StashData::F32Vec(v) => Some(size_of_val(v.as_slice())),
             StashData::F64Vec(v) => Some(size_of_val(v.as_slice())),
-            StashData::CallerAllocation(allocation) => Some(allocation.byte_len),
             StashData::Unit
             | StashData::Handle(_)
             | StashData::StringArray(_, _)
@@ -489,8 +448,7 @@ impl Drop for StashStorage {
             | StashData::NestedArray(_, _)
             | StashData::CString(_)
             | StashData::Buffer(_)
-            | StashData::PtrSlot(_, _)
-            | StashData::CallerAllocation(_) => {}
+            | StashData::PtrSlot(_, _) => {}
         }
     }
 }

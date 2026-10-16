@@ -1,4 +1,4 @@
-import { type BoundCall, createReferenceStorage, call as nativeCall, type Ref } from "./native.js";
+import { type BoundCall, call as nativeCall, type Ref } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import type { StorageHandle } from "./output-storage.js";
 
@@ -28,6 +28,7 @@ const createCall = (
     descriptor: BoundCall,
     { args, returns, completionIndex }: CallPlan,
 ): ((values: unknown[]) => unknown) => {
+    const hasReferences = args.some((plan) => plan.referenceStorage !== undefined);
     const scalarOutputs = args.flatMap((plan, index) =>
         plan.inner !== undefined && plan.storage !== undefined
             ? [{ index, inner: plan.inner, storage: plan.storage }]
@@ -38,17 +39,18 @@ const createCall = (
         if (values.length !== args.length) {
             throw new TypeError("Argument count does not match the bound signature");
         }
-        const encoded = args.map((plan, index) => {
-            if (plan.referenceStorage === undefined) {
-                return plan.encode(values[index]);
+        const encoded: unknown[] = [];
+        const encode = (index: number): unknown => {
+            const plan = args[index];
+            if (plan === undefined) {
+                throw new RangeError("Argument index exceeds the bound signature");
             }
-            const request = plan.referenceStorage.encode(values[index]);
-
-            return request == null
-                ? request
-                : createReferenceStorage(descriptor.signature, index, request.seed, request.mode, request.capacity);
-        });
-        const result = nativeCall(descriptor, encoded, completionIndex);
+            const value = plan.encode(values[index]);
+            encoded[index] = value;
+            return value;
+        };
+        const normalized = hasReferences ? encode : args.map((_, index) => encode(index));
+        const result = nativeCall(descriptor, normalized, completionIndex);
 
         const returned = returns.decode(result.value);
         const outputs = result.outputs.flatMap((output) => {

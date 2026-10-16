@@ -1,4 +1,4 @@
-import { alloc, type ExternalObject, getHandle, type Handle, read, t, write } from "@gtkx/runtime";
+import { alloc, type ExternalObject, getHandle, type Handle, read, t, wrapHandle, write } from "@gtkx/runtime";
 import { expect, test } from "vitest";
 
 test.each([false, true])("callbacks sort native storage with user data set to %s", (hasUserData) => {
@@ -50,6 +50,70 @@ test.each([false, true])("retained callbacks accept explicit hidden positions se
     expect(calls).toBe(0);
     await promise;
     expect(calls).toBe(1);
+});
+
+test("callbacks copy returned records into caller-owned storage on repeated calls", () => {
+    class Record {}
+
+    const callback = t.callback(
+        [t.struct("borrowed", { size: 8, isCallerAllocated: true, wrapperClass: Record }), t.buffer],
+        t.void,
+        { scope: "call", hasUserData: true, userDataIndex: 1 },
+    );
+    const visit = t.fn("libglib-2.0.so.0", "g_list_foreach", {
+        args: [{ type: t.list(t.struct()) }, { type: callback }],
+        returns: t.void,
+    });
+    const storage = alloc(8);
+    const source = alloc(8);
+    const replacement = wrapHandle(source, Record);
+    const seen: number[] = [];
+
+    const replace = (record: Record): Record => {
+        seen.push(read(getHandle(record), t.int32, 0) as number);
+        return replacement;
+    };
+
+    write(source, t.int32, 0, 42);
+    write(source, t.int32, 4, -7);
+    visit([storage], replace);
+    expect(read(storage, t.int32, 0)).toBe(42);
+    expect(read(storage, t.int32, 4)).toBe(-7);
+
+    write(source, t.int32, 0, 81);
+    write(source, t.int32, 4, 19);
+    visit([storage], replace);
+    expect(read(storage, t.int32, 0)).toBe(81);
+    expect(read(storage, t.int32, 4)).toBe(19);
+    expect(seen).toEqual([0, 42]);
+
+    visit([storage], (record: Record) => record);
+    expect(read(storage, t.int32, 0)).toBe(81);
+    expect(read(storage, t.int32, 4)).toBe(19);
+
+    expect(() => visit([storage], () => wrapHandle(alloc(4), Record))).toThrow("exceeds the handle's 4 bytes");
+    expect(read(storage, t.int32, 0)).toBe(81);
+    expect(read(storage, t.int32, 4)).toBe(19);
+});
+
+test.each([-1, 0.5, 2 ** 32, Number.NaN])("callback record output rejects an invalid byte size %s", (size) => {
+    class Record {}
+
+    const callback = t.callback(
+        [t.struct("borrowed", { size, isCallerAllocated: true, wrapperClass: Record }), t.buffer],
+        t.void,
+        { scope: "call", hasUserData: true, userDataIndex: 1 },
+    );
+    const visit = t.fn("libglib-2.0.so.0", "g_list_foreach", {
+        args: [{ type: t.list(t.struct()) }, { type: callback }],
+        returns: t.void,
+    });
+    const target = alloc(8);
+    const source = alloc(8);
+    write(source, t.int32, 0, 42);
+
+    expect(() => visit([target], () => wrapHandle(source, Record))).toThrow("record size must fit");
+    expect(read(target, t.int32, 0)).toBe(0);
 });
 
 test("callback user data can precede its function pointer", () => {

@@ -1,5 +1,5 @@
 import * as GLib from "@gtkx/gi/glib";
-import { alloc, createMatchSubject, getMatchInfoBase, ownMatchInfo } from "@gtkx/native";
+import { alloc, getMatchInfoBase, ownMatchInfo } from "@gtkx/native";
 import { getHandle, t, write } from "@gtkx/runtime";
 import { expect, test } from "vitest";
 import { drainGC } from "./helpers/memory.js";
@@ -68,9 +68,11 @@ test("replacement callbacks can retain their match and subject after returning t
 test("match ownership rejects unrelated, unterminated, and incorrectly typed native storage", () => {
     const [, info] = compile("a").match("a", 0);
     const raw = getMatchInfoBase(getHandle(info));
-    const subject = createMatchSubject(encoder.encode("a"));
+    const subject = alloc(2);
+    write(subject, t.uint8, 0, 97);
 
-    expect(() => ownMatchInfo(raw, alloc(2))).toThrow("native-owned regex subject storage");
+    expect(() => ownMatchInfo(raw, raw)).toThrow("native-owned regex subject storage");
+    expect(() => ownMatchInfo(raw, alloc(0))).toThrow("subject storage has no bounded bytes");
     expect(() => ownMatchInfo(raw, subject)).toThrow("does not reference the supplied subject bytes");
     expect(() => ownMatchInfo(alloc(8), subject)).toThrow("Expected a boxed or call-scoped GMatchInfo handle");
     write(subject, t.uint8, 1, 1);

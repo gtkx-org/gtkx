@@ -4,7 +4,6 @@ import {
     call as nativeCall,
     type FunctionSignature,
     bindFunction,
-    createReferenceStorage,
     type Descriptor,
     type ExternalObject,
     type Handle,
@@ -15,7 +14,7 @@ import {
 import * as Gio from "@gtkx/gi/gio";
 import { getHandle, read, t } from "@gtkx/runtime";
 import { expect, test } from "vitest";
-import { drainGC } from "./helpers/memory.js";
+import { didSettle, drainGC } from "./helpers/memory.js";
 
 const bytes: Descriptor = { kind: "bytes", ownership: "borrowed", hasOwnedStorage: false };
 const encoder = new TextEncoder();
@@ -32,7 +31,7 @@ const nativeBind = (name: string, args: Descriptor[]) => ({
 });
 const call = (
     bound: { signature: ExternalObject<FunctionSignature>; target: ExternalObject<Handle> },
-    values: unknown[],
+    values: unknown[] | ((index: number) => unknown),
     completionIndex?: number,
 ) => nativeCall(bound.signature, bound.target, values, completionIndex);
 const ref = (innerDescriptor: Descriptor, inout: boolean): Descriptor => ({ kind: "ref", innerDescriptor, inout });
@@ -53,23 +52,19 @@ test("owned reference transactions preserve unchanged, replaced, and null string
     expect(input.value).toBeNull();
 });
 
-test("reference storage rejects different ownership contracts and repeated consumption", () => {
-    const borrowed = ref(bytes, false);
-    const owned = ref({ ...bytes, ownership: "full" }, false);
-    const target = nativeBind("strtol", [bytes, borrowed, { kind: "int32" }]);
-    const other = nativeBind("strtol", [bytes, owned, { kind: "int32" }]);
-    const wrong = createReferenceStorage(other.signature, 1, null, "slot");
-    expect(() => call(target, [encoder.encode("1tail"), wrong, 10])).toThrow("another descriptor");
-    const storage = createReferenceStorage(target.signature, 1, null, "slot");
-    expect(call(target, [encoder.encode("1tail"), storage, 10]).outputs[0]?.value).toEqual(encoder.encode("tail"));
-    expect(() => call(target, [encoder.encode("1tail"), storage, 10])).toThrow("already been consumed");
-});
+test("plain reference cells can be reused across calls and independently bound signatures", () => {
+    const arguments_ = [bytes, ref(bytes, false), { kind: "int32" } satisfies Descriptor];
+    const first = nativeBind("strtol", arguments_);
+    const second = nativeBind("strtol", arguments_);
+    const cell = { value: null };
 
-test("reference storage requires a non-scalar reference argument in the compiled signature", () => {
-    const target = nativeBind("getpid", [{ kind: "int32" }, ref({ kind: "int32" }, false)]);
-    expect(() => createReferenceStorage(target.signature, 0, null, "slot")).toThrow("non-scalar reference");
-    expect(() => createReferenceStorage(target.signature, 1, null, "slot")).toThrow("non-scalar reference");
-    expect(() => createReferenceStorage(target.signature, 2, null, "slot")).toThrow("exceeds the compiled signature");
+    expect(call(first, [encoder.encode("1tail"), cell, 10]).outputs).toEqual([
+        { index: 1, value: encoder.encode("tail") },
+    ]);
+    expect(call(second, [encoder.encode("2next"), cell, 10]).outputs).toEqual([
+        { index: 1, value: encoder.encode("next") },
+    ]);
+    expect(call(first, [encoder.encode("3"), cell, 10]).outputs).toEqual([{ index: 1, value: encoder.encode("") }]);
 });
 
 test("reference storage uses logical argument positions before ABI reordering", () => {
@@ -81,15 +76,15 @@ test("reference storage uses logical argument positions before ABI reordering", 
             argOrder: [1, 0, 2],
         },
     );
-    const storage = createReferenceStorage(signature, 0, null, "slot");
-    const result = nativeCall(signature, symbol("libc.so.6", "strtol"), [storage, encoder.encode("123tail"), 10]);
+    const result = nativeCall(signature, symbol("libc.so.6", "strtol"), [
+        { value: null },
+        encoder.encode("123tail"),
+        10,
+    ]);
     expect(result.outputs).toEqual([{ index: 0, value: encoder.encode("tail") }]);
 });
 
-test("reference storage validates explicit modes and returned capacity before reading memory", () => {
-    const string = nativeBind("strtol", [bytes, ref(bytes, false), { kind: "int32" }]);
-    expect(() => createReferenceStorage(string.signature, 1, null, "callerArray", 1n)).toThrow("array descriptor");
-    expect(() => createReferenceStorage(string.signature, 1, null, "inout")).toThrow("out reference");
+test("caller-allocated reference outputs remain bounded by their supplied allocation", () => {
     const array = ref(
         {
             kind: "array",
@@ -105,9 +100,53 @@ test("reference storage validates explicit modes and returned capacity before re
         false,
     );
     const target = nativeBind("memset", [array, { kind: "int32" }, { kind: "biguint64", isDirectWord: false }]);
-    expect(() => createReferenceStorage(target.signature, 0, null, "callerArray", -1n)).toThrow("capacity");
-    const storage = createReferenceStorage(target.signature, 0, null, "callerArray", 1n);
+    const storage = { value: alloc(1) };
+    expect(call(target, [storage, 1, 0n]).outputs).toEqual([{ index: 0, value: [0] }]);
     expect(() => call(target, [storage, 2, 0n])).toThrow("exceeds its capacity");
+    expect(call(target, [{ value: alloc(0) }, 0, 0n]).outputs).toEqual([{ index: 0, value: [] }]);
+});
+
+test("runtime allocates caller array capacity with its element width and rejects excessive sizes", () => {
+    const fill = t.bind(
+        "libc.so.6",
+        "memset",
+        [
+            t.ref(t.array(t.uint32, "sized", "borrowed", { isCallerAllocated: true, sizeParamIndex: 1 })),
+            t.int32,
+            t.biguint64,
+        ],
+        t.void,
+    );
+    const output: { value: unknown } = { value: 2n };
+    fill(output, 2, 8n);
+    expect(output.value).toEqual([0x02020202, 0x02020202]);
+    const empty: { value: unknown } = { value: 0 };
+    fill(empty, 0, 0n);
+    expect(empty.value).toEqual([]);
+    expect(() => fill({ value: 134_217_729 }, 0, 0n)).toThrow("exceeds the supported range");
+});
+
+test("fixed caller-allocated references reject undersized allocations before native writes", () => {
+    const array = ref(
+        {
+            kind: "array",
+            itemDescriptor: { kind: "uint8" },
+            arrayKind: "fixed",
+            fixedSize: 2,
+            ownership: "borrowed",
+            elementOwnership: "separate",
+            isBytes: false,
+            isCallerAllocated: true,
+            isZeroTerminated: false,
+        },
+        false,
+    );
+    const target = nativeBind("memset", [array, { kind: "int32" }, { kind: "biguint64", isDirectWord: false }]);
+    const storage = alloc(1);
+
+    expect(() => call(target, [{ value: storage }, 42, 2n])).toThrow();
+    expect(read(storage, t.uint8, 0)).toBe(0);
+    expect(call(target, [{ value: alloc(2) }, 42, 2n]).outputs).toEqual([{ index: 0, value: [42, 42] }]);
 });
 
 test("callback reference cells cannot change native storage after their invocation returns", () => {
@@ -190,8 +229,10 @@ test("synchronous reference buffers preserve typed subview mutation", () => {
 });
 
 test.each(["borrowed", "full"] as const)(
-    "deferred %s reference seeds retain nested native owners across garbage collection",
-    async (ownership) => {
+    "%s reference seeds retain nested native owners during later argument reentry and collection",
+    (ownership) => {
+        const gc = globalThis.gc;
+        if (gc === undefined) throw new Error("Reference ownership tests require --expose-gc");
         const object: Descriptor = { kind: "object", ownership, isCallScoped: false };
         const array = ref(
             {
@@ -209,17 +250,79 @@ test.each(["borrowed", "full"] as const)(
         );
         const name = t.bind("libgio-2.0.so.0", "g_action_get_name", [t.object()], t.string());
         const target = nativeBind("memset", [array, { kind: "int32" }, { kind: "biguint64", isDirectWord: false }]);
-        const storage = createReferenceStorage(
-            target.signature,
-            0,
-            [getHandle(new Gio.SimpleAction({ name: "retained" }))],
-            "inout",
-        );
-        await drainGC();
-        const output = call(target, [storage, 0, 0n]).outputs[0]?.value as unknown[];
+        const nested = nativeBind("strtol", [bytes, ref(bytes, false), { kind: "int32" }]);
+        const output = call(target, (index) => {
+            if (index === 0) return { value: [getHandle(new Gio.SimpleAction({ name: "retained" }))] };
+            if (index === 1) {
+                call(nested, [encoder.encode("1nested"), { value: null }, 10]);
+                gc();
+                return 0;
+            }
+            return 0n;
+        }).outputs[0]?.value as unknown[];
         expect(name(output[0])).toBe("retained");
     },
 );
+
+test("a failed argument producer releases earlier reference owners and leaves the signature reusable", async () => {
+    const target = nativeBind("memset", [
+        ref({ kind: "object", ownership: "borrowed", isCallScoped: false }, true),
+        { kind: "int32" },
+        { kind: "biguint64", isDirectWord: false },
+    ]);
+    const held: { reference?: WeakRef<Gio.SimpleAction> } = {};
+    const failure = new Error("argument production failed");
+
+    expect(() =>
+        call(target, (index) => {
+            if (index === 0) {
+                const action = new Gio.SimpleAction({ name: "released" });
+                held.reference = new WeakRef(action);
+                return { value: getHandle(action) };
+            }
+            throw failure;
+        }),
+    ).toThrow(failure);
+    const reference = held.reference;
+    if (reference === undefined) throw new Error("The producer did not create its reference seed");
+    expect(await didSettle(() => reference.deref() === undefined)).toBe(true);
+
+    const action = new Gio.SimpleAction({ name: "recovered" });
+    const name = t.bind("libgio-2.0.so.0", "g_action_get_name", [t.object()], t.string());
+    const output = call(target, [{ value: getHandle(action) }, 0, 0n]).outputs[0]?.value;
+    expect(name(output)).toBe("recovered");
+});
+
+test("reference buffers detached by a later argument producer are rejected before native access", () => {
+    const array = ref(
+        {
+            kind: "array",
+            itemDescriptor: { kind: "uint8" },
+            arrayKind: "fixed",
+            fixedSize: 3,
+            ownership: "borrowed",
+            elementOwnership: "separate",
+            isBytes: false,
+            isCallerAllocated: false,
+            isZeroTerminated: false,
+        },
+        true,
+    );
+    const target = nativeBind("memset", [array, { kind: "int32" }, { kind: "biguint64", isDirectWord: false }]);
+    const seed = Uint8Array.of(7, 8, 9);
+
+    expect(() =>
+        call(target, (index) => {
+            if (index === 0) return { value: seed };
+            if (index === 1) {
+                structuredClone(seed.buffer, { transfer: [seed.buffer] });
+                return 0;
+            }
+            return 0n;
+        }),
+    ).toThrow();
+    expect(call(target, [{ value: Uint8Array.of(4, 5, 6) }, 0, 0n]).outputs).toEqual([{ index: 0, value: [4, 5, 6] }]);
+});
 
 test("asynchronous reference storage owns typed seeds until completion", async () => {
     const array = ref(
@@ -273,7 +376,6 @@ test("asynchronous reference storage owns typed seeds until completion", async (
     const target = { signature, target: symbol("libglib-2.0.so.0", "g_timeout_add_full") };
     const { promise, resolve } = Promise.withResolvers<number[]>();
     const seed = Uint8Array.of(7, 8, 9);
-    const storage = createReferenceStorage(signature, 3, seed, "inout");
     call(
         target,
         [
@@ -284,7 +386,7 @@ test("asynchronous reference storage owns typed seeds until completion", async (
                 resolve([read(data, t.uint8, 0), read(data, t.uint8, 1), read(data, t.uint8, 2)] as number[]);
                 return 0;
             },
-            storage,
+            { value: seed },
             null,
         ],
         2,
@@ -306,8 +408,9 @@ test("asynchronous reference outputs reject ownership transfers before native in
         releaseWithCompletion: false,
     };
     const target = nativeBind("getpid", [reference, callback]);
-    const storage = createReferenceStorage(target.signature, 0, encoder.encode("still owned"), "inout");
-    expect(() => call(target, [storage, () => undefined], 1)).toThrow("must borrow all native resources");
+    expect(() => call(target, [{ value: encoder.encode("still owned") }, () => undefined], 1)).toThrow(
+        "must borrow all native resources",
+    );
 });
 
 test("reference array replacements inside a typed seed retain its remaining bound", () => {

@@ -1,10 +1,9 @@
 use std::ffi::{CStr, c_char};
-use std::rc::Rc;
 
 use anyhow::bail;
 
 use super::prelude::*;
-use crate::api::reference::{ReferenceMode, ReferenceStorage};
+use crate::api::reference::ReferenceRequest;
 use crate::ffi::codec::Codec;
 use crate::ffi::{StashData, StashStorage};
 
@@ -12,7 +11,6 @@ use crate::ffi::{StashData, StashStorage};
 pub struct RefCodec {
     inner_codec: Box<Codec>,
     inout: bool,
-    identity: Rc<()>,
 }
 
 impl RefCodec {
@@ -26,7 +24,6 @@ impl RefCodec {
         Ok(Self {
             inner_codec: Box::new(inner_codec),
             inout,
-            identity: Rc::new(()),
         })
     }
 
@@ -58,161 +55,93 @@ impl RefCodec {
 
     #[must_use]
     pub fn supports_inner(inner: &Codec) -> bool {
-        match inner {
-            Codec::Callback(_) | Codec::Void(_) | Codec::Buffer(_) | Codec::Ref(_) => false,
-            Codec::Integer(_)
-            | Codec::BigInt(_)
-            | Codec::Float(_)
-            | Codec::Bytes(_)
-            | Codec::Object(_)
-            | Codec::Boxed(_)
-            | Codec::Struct(_)
-            | Codec::Fundamental(_)
-            | Codec::Array(_)
-            | Codec::HashTable(_) => true,
-        }
+        !matches!(
+            inner,
+            Codec::Callback(_) | Codec::Void(_) | Codec::Buffer(_) | Codec::Ref(_)
+        )
     }
 
-    pub(crate) fn identity(&self) -> Rc<()> {
-        Rc::clone(&self.identity)
-    }
-
-    pub(crate) fn validate_mode(&self, mode: ReferenceMode) -> anyhow::Result<()> {
-        if let Codec::Bytes(bytes) = &*self.inner_codec
-            && bytes.length.is_some()
-        {
-            anyhow::ensure!(
-                mode == ReferenceMode::FixedBytes,
-                "Fixed byte references require fixed byte storage"
-            );
-            return Ok(());
-        }
-        if let Codec::Array(array) = &*self.inner_codec
-            && array.caller_allocated
-        {
-            let expected = if array.is_garray_container() {
-                ReferenceMode::CallerContainer
-            } else {
-                ReferenceMode::CallerArray
-            };
-            anyhow::ensure!(
-                !self.inout && mode == expected,
-                "Caller-allocated references require matching caller storage"
-            );
-            return Ok(());
-        }
-        anyhow::ensure!(
-            mode != ReferenceMode::FixedBytes,
-            "Fixed byte storage requires a bytes descriptor with an extent"
-        );
-        match mode {
-            ReferenceMode::Inout => {
-                anyhow::ensure!(self.inout, "An out reference cannot use inout storage");
-            }
-            ReferenceMode::Slot => {
-                anyhow::ensure!(!self.inout, "An inout reference requires seeded storage");
-            }
-            ReferenceMode::ArrayBuffer | ReferenceMode::ArraySlot => anyhow::ensure!(
-                !self.inout && matches!(&*self.inner_codec, Codec::Array(_)),
-                "Array seed storage requires an array output descriptor"
-            ),
-            ReferenceMode::CallerArray | ReferenceMode::CallerContainer => {
-                bail!("Caller-allocated storage requires a caller-allocated array descriptor")
-            }
-            ReferenceMode::FixedBytes => unreachable!(),
-        }
-        Ok(())
+    pub(crate) fn is_caller_allocated_buffer(&self) -> bool {
+        matches!(&*self.inner_codec, Codec::Array(array) if array.caller_allocated && !array.is_garray_container())
     }
 
     pub(crate) fn prepare_storage(
         &self,
         env: &Env,
         seed: Unknown<'_>,
-        mode: ReferenceMode,
-        capacity: Option<usize>,
         independent: bool,
     ) -> anyhow::Result<ffi::Stash> {
         anyhow::ensure!(
             !self.inner_codec.is_scalar(),
             "Scalar references use allocated ABI storage"
         );
-        match mode {
-            ReferenceMode::Slot => {
-                anyhow::ensure!(!self.inout, "An inout reference requires seeded storage");
-                Ok(Self::null_ptr_stash())
-            }
-            ReferenceMode::Inout => {
-                anyhow::ensure!(self.inout, "An out reference cannot use inout storage");
-                let input = self.inout_array_input();
-                let codec = &*self.inner_codec;
-                let encoded = match input {
-                    Some(input) if independent => input.encode_owned(env, seed)?,
-                    Some(input) => input.encode(env, seed)?,
-                    None if independent => codec.encode_owned(env, seed)?,
-                    None => codec.encode(env, seed)?,
-                };
-                Self::indirect_storage(Self::bounded_seed(env, seed, encoded)?)
-            }
-            ReferenceMode::FixedBytes => {
-                let Codec::Bytes(bytes) = &*self.inner_codec else {
-                    bail!("Fixed byte storage requires a bytes descriptor")
-                };
-                let Some(length) = bytes.length else {
-                    bail!("Fixed byte storage requires a declared extent")
-                };
-                Self::encode_fixed_bytes(seed, length)
-            }
-            ReferenceMode::CallerArray => {
-                let Codec::Array(array) = &*self.inner_codec else {
-                    bail!("Caller-allocated storage requires an array descriptor")
-                };
-                anyhow::ensure!(!self.inout, "Caller-allocated array storage is output-only");
-                let Some(byte_len) = array.caller_allocation_len(capacity)? else {
-                    bail!("Caller-allocated storage requires a bounded caller-allocated array")
-                };
-                let allocation = ffi::CallerAllocation::zeroed(byte_len);
-                Ok(ffi::Stash::Storage(StashStorage::new(
-                    allocation.ptr(),
-                    StashData::CallerAllocation(allocation),
-                )))
-            }
-            ReferenceMode::CallerContainer => {
-                let Codec::Array(array) = &*self.inner_codec else {
-                    bail!("Caller-allocated storage requires an array descriptor")
-                };
-                anyhow::ensure!(
-                    !self.inout && array.caller_allocated && array.is_garray_container(),
-                    "Caller container storage requires a caller-allocated GArray output"
-                );
+        anyhow::ensure!(
+            !independent || Self::supports_async_output(&self.inner_codec),
+            "Asynchronous reference outputs must borrow all native resources until completion"
+        );
+        if let Codec::Bytes(bytes) = &*self.inner_codec
+            && let Some(length) = bytes.length
+        {
+            return Self::encode_fixed_bytes(seed, length);
+        }
+        if let Codec::Array(array) = &*self.inner_codec
+            && array.caller_allocated
+        {
+            anyhow::ensure!(!self.inout, "Caller-allocated array storage is output-only");
+            if array.is_garray_container() {
                 let mut allocation = array.clone();
                 allocation.ownership = Ownership::Borrowed;
                 allocation.caller_allocated = false;
-                allocation.encode_owned(env, value::js_array(env, Vec::new())?)
+                return allocation.encode_owned(env, value::js_array(env, Vec::new())?);
             }
-            ReferenceMode::ArrayBuffer | ReferenceMode::ArraySlot => {
-                let Codec::Array(array) = &*self.inner_codec else {
-                    bail!("Array seed storage requires an array descriptor")
-                };
-                anyhow::ensure!(
-                    !self.inout && !array.caller_allocated,
-                    "Array seed storage requires an ordinary array output"
-                );
-                let encoded = if independent {
-                    array.encode_owned(env, seed)?
-                } else {
-                    array.encode(env, seed)?
-                };
-                let encoded = Self::bounded_seed(env, seed, encoded)?;
-                if mode == ReferenceMode::ArrayBuffer {
-                    anyhow::ensure!(
-                        array.is_length_bounded(),
-                        "Direct array storage requires an extent"
-                    );
-                    Ok(encoded)
-                } else {
-                    Self::indirect_storage(encoded)
-                }
-            }
+            let handle: &External<crate::handle::Handle> = value::read_napi(seed)?;
+            let byte_len = handle.allocated_bytes().ok_or_else(|| {
+                anyhow::anyhow!("Caller-allocated arrays require a bounded allocation")
+            })?;
+            value::checked_array_length(byte_len)?;
+            let minimum = array.caller_allocation_len(Some(0))?.unwrap_or(0);
+            let stride = array.element_stride()?;
+            anyhow::ensure!(
+                byte_len >= minimum && stride > 0 && byte_len.is_multiple_of(stride),
+                "Caller-allocated array storage has insufficient capacity or invalid alignment"
+            );
+            let ptr =
+                crate::api::handle_memory_range(handle, 0, byte_len, "caller-allocated array")?;
+            let retained = if independent {
+                handle.retain_owned()?
+            } else {
+                (**handle).clone()
+            };
+            return Ok(ffi::Stash::Storage(
+                StashStorage::new(ptr, StashData::Handle(retained)).with_reference_extent(byte_len),
+            ));
+        }
+        if self.inout {
+            let input = self.inout_array_input();
+            let encoded = match input {
+                Some(input) if independent => input.encode_owned(env, seed)?,
+                Some(input) => input.encode(env, seed)?,
+                None if independent => self.inner_codec.encode_owned(env, seed)?,
+                None => self.inner_codec.encode(env, seed)?,
+            };
+            return Self::indirect_storage(Self::bounded_seed(env, seed, encoded)?);
+        }
+        if matches!(seed.get_type()?, ValueType::Null | ValueType::Undefined) {
+            return Ok(Self::null_ptr_stash());
+        }
+        let Codec::Array(array) = &*self.inner_codec else {
+            bail!("Expected Null for an output reference seed")
+        };
+        let encoded = if independent {
+            array.encode_owned(env, seed)?
+        } else {
+            array.encode(env, seed)?
+        };
+        let encoded = Self::bounded_seed(env, seed, encoded)?;
+        if array.is_length_bounded() {
+            Ok(encoded)
+        } else {
+            Self::indirect_storage(encoded)
         }
     }
 
@@ -308,8 +237,7 @@ impl Encoder for RefCodec {
         if matches!(value.get_type()?, ValueType::Null | ValueType::Undefined) {
             return Ok(ffi::Stash::Ptr(std::ptr::null_mut()));
         }
-        let storage: &External<ReferenceStorage> = value::read_napi(value)?;
-        storage.take(env, &self.identity, false)
+        ReferenceRequest::capture(self, value)?.prepare(env, false)
     }
 
     fn encode_owned(&self, env: &Env, value: Unknown<'_>) -> anyhow::Result<ffi::Stash> {
@@ -318,12 +246,7 @@ impl Encoder for RefCodec {
         } else if matches!(value.get_type()?, ValueType::Null | ValueType::Undefined) {
             Ok(ffi::Stash::Ptr(std::ptr::null_mut()))
         } else {
-            anyhow::ensure!(
-                Self::supports_async_output(&self.inner_codec),
-                "Asynchronous reference outputs must borrow all native resources until completion"
-            );
-            let storage: &External<ReferenceStorage> = value::read_napi(value)?;
-            storage.take(env, &self.identity, true)
+            ReferenceRequest::capture(self, value)?.prepare(env, true)
         }
     }
 

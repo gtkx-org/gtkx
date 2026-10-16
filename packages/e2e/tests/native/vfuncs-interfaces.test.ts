@@ -254,6 +254,27 @@ test("a caller-allocated GValue out parameter is filled from the override", () =
     expect(seen).toEqual([true]);
 });
 
+test("caller-allocated GValue outputs copy owned strings independently of their source", () => {
+    const source = new GObject.Value();
+    source.init(GObject.typeFromName("gchararray"));
+    source.setString("retained string");
+
+    class CallerAllocatedString extends GIMarshallingTests.Object {
+        override vfuncVfuncCallerAllocatedOutParameter(_target: GObject.Value): GObject.Value {
+            return source;
+        }
+    }
+
+    const Registered = registerClass(CallerAllocatedString, { typeName: uniqueName("GtkxCallerAllocatedString") });
+    const instance = new Registered({});
+
+    expect(instance.vfuncCallerAllocatedOutParameter()).toBe("retained string");
+    expect(source.getString()).toBe("retained string");
+    source.setString("replacement string");
+    expect(instance.vfuncCallerAllocatedOutParameter()).toBe("replacement string");
+    expect(source.getString()).toBe("replacement string");
+});
+
 test("a call-scoped callback handed to a vfunc runs from JavaScript", () => {
     const seen: (number | string)[] = [];
 

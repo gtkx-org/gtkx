@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 
 use napi::bindgen_prelude::*;
-use napi_derive::napi;
 
 use crate::api::type_from_bigint;
 use crate::handle::{BoxedFreeFn, Handle};
@@ -190,6 +189,10 @@ impl FromNapiValue for FunctionResolver {
 pub struct RecordConverter(Rc<cairo_path::CairoPathCopy>);
 
 impl RecordConverter {
+    pub(crate) fn new(options: RecordConverterOptions) -> Result<Self> {
+        Ok(Self(Rc::new(cairo_path::CairoPathCopy::new(options)?)))
+    }
+
     pub(crate) fn copy(
         &self,
         ptr: *mut std::ffi::c_void,
@@ -197,21 +200,4 @@ impl RecordConverter {
     ) -> anyhow::Result<*mut std::ffi::c_void> {
         self.0.copy(ptr, free)
     }
-}
-
-impl FromNapiValue for RecordConverter {
-    unsafe fn from_napi_value(env: sys::napi_env, value: sys::napi_value) -> Result<Self> {
-        let external = unsafe { <&External<Self>>::from_napi_value(env, value)? };
-        Ok((**external).clone())
-    }
-}
-
-/// Compiles a native record copy strategy without resolving its lifecycle operations yet.
-#[napi(catch_unwind)]
-pub fn create_record_converter(
-    options: RecordConverterOptions,
-) -> Result<External<RecordConverter>> {
-    Ok(External::new(RecordConverter(Rc::new(
-        cairo_path::CairoPathCopy::new(options)?,
-    ))))
 }

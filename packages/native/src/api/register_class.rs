@@ -6,12 +6,10 @@ use napi::bindgen_prelude::*;
 use napi::{Env, sys};
 use napi_derive::napi;
 
-use crate::api::bind::{CallLayout, CallbackOptions, FunctionSignature, prepare};
-use crate::api::descriptor::CompiledDescriptor;
+use crate::api::bind::FunctionSignature;
 use crate::api::vtable::{query_type, validate_vfunc_offset};
 use crate::api::{native_result, type_from_bigint};
 use crate::ffi::closure::{ClosureData, ClosureState};
-use crate::ffi::codec::Encoder as _;
 use crate::handle::Handle;
 use crate::host::callback_error::CallbackErrorScope;
 use crate::host::node_env;
@@ -40,13 +38,9 @@ impl FromNapiValue for VfuncCallback {
 pub struct RegisterClassVfunc {
     /// Byte offset of the vfunc slot within the class (or interface) struct.
     pub byte_offset: u32,
-    /// Descriptor for each argument passed to the JavaScript implementation.
-    #[napi(ts_type = "Array<ExternalObject<CompiledDescriptor>>")]
-    pub arg_descriptors: Vec<CompiledDescriptor>,
-    /// Descriptor for the value the JavaScript implementation returns.
-    #[napi(ts_type = "ExternalObject<CompiledDescriptor>")]
-    pub return_descriptor: CompiledDescriptor,
-    pub can_throw: bool,
+    /// Shared callback signature, without a hidden user-data argument.
+    #[napi(ts_type = "ExternalObject<FunctionSignature>")]
+    pub signature: FunctionSignature,
     /// The JavaScript function that implements the vfunc.
     #[napi(ts_type = "(...args: never[]) => unknown")]
     pub r#fn: VfuncCallback,
@@ -80,36 +74,16 @@ impl TryFrom<RegisterClassVfunc> for ResolvedVfunc {
     type Error = Error;
 
     fn try_from(vfunc: RegisterClassVfunc) -> Result<Self> {
-        let arg_codecs = vfunc
-            .arg_descriptors
-            .into_iter()
-            .map(CompiledDescriptor::into_codec)
-            .collect::<Vec<_>>();
-        let return_codec = vfunc.return_descriptor.into_codec();
-        let mut arg_types = Vec::new();
-        for codec in &arg_codecs {
-            codec.append_ffi_arg_types(&mut arg_types);
+        vfunc.signature.ensure_callback()?;
+        if vfunc.signature.user_data_index.is_some() {
+            return Err(Error::from_reason(
+                "register_class: a vfunc cannot have a hidden user-data argument",
+            ));
         }
-        let native_arg_count = u32::try_from(arg_types.len())
-            .map_err(|_| Error::from_reason("The vfunc has too many native arguments"))?;
-        let layout = CallLayout {
-            arg_order: (0..native_arg_count).collect(),
-            fixed_arg_count: None,
-        };
-        let signature = prepare(
-            "vfunc".to_owned(),
-            arg_codecs,
-            return_codec,
-            layout,
-            Some(CallbackOptions {
-                user_data_index: None,
-                can_throw: Some(vfunc.can_throw),
-            }),
-        )?;
         Ok(Self {
             byte_offset: vfunc.byte_offset as usize,
             js_fn: vfunc.r#fn.0,
-            signature,
+            signature: vfunc.signature,
         })
     }
 }

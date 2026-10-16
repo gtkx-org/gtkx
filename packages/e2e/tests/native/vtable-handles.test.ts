@@ -11,6 +11,7 @@ import {
     getTypeClass,
     type DecodedCallback,
     type FunctionSignature,
+    registerClass,
     resolveSymbol,
 } from "@gtkx/native";
 import { resolveType, t, typeFromName } from "@gtkx/runtime";
@@ -31,6 +32,15 @@ const objectArgument: Descriptor = { kind: "object", ownership: "borrowed", isCa
 const objectReturn: Descriptor = { kind: "object", ownership: "full", isCallScoped: false };
 const newStore = t.bind(gio, "g_list_store_new", [t.biguint64], t.object("full"));
 const append = t.bind(gio, "g_list_store_append", [t.object(), t.object()], t.void);
+const itemCount = t.bind(gio, "g_list_model_get_n_items", [t.object()], t.uint32);
+const newInstance = t.bind(
+    gobject,
+    "g_object_new_with_properties",
+    [t.biguint64, t.uint32, t.buffer, t.buffer],
+    t.object("full"),
+);
+let nextType = 0;
+const uniqueTypeName = (): string => `GtkxSharedVfunc${String(process.pid)}_${String(nextType++)}`;
 
 const symbol = (name: string): ExternalObject<Handle> => {
     const handle = resolveSymbol(openLibrary("libc.so.6"), name, false);
@@ -109,6 +119,87 @@ const countSignature = () =>
     bindFunction([compileDescriptor(objectArgument)], compileDescriptor({ kind: "uint32" }), listModelSlot.label, {
         argOrder: [0],
     });
+
+const constantCount =
+    (count: number): (() => number) =>
+    () =>
+        count;
+
+test("registered interfaces share a signature and retain it after its JavaScript handle is collected", async () => {
+    const { types, references } = (() => {
+        const argument = compileDescriptor(objectArgument);
+        const returns = compileDescriptor({ kind: "uint32" });
+        const signature = bindFunction([argument], returns, listModelSlot.label, { argOrder: [0] });
+        const types = [17, 29].map((count) =>
+            registerClass(uniqueTypeName(), objectType, {
+                flags: 0,
+                vfuncs: [],
+                interfaces: [
+                    {
+                        type: listModelType,
+                        vtableSize: listModelSlot.vtableSize,
+                        vfuncs: [{ byteOffset: listModelSlot.byteOffset, signature, fn: constantCount(count) }],
+                    },
+                ],
+            }),
+        );
+
+        return { types, references: [new WeakRef(signature), new WeakRef(argument), new WeakRef(returns)] };
+    })();
+
+    await collect(references);
+    expect(types.map((type) => itemCount(newInstance(type, 0, null, null)))).toEqual([17, 29]);
+});
+
+const invalidSignatures = [
+    {
+        name: "hidden user-data",
+        create: () =>
+            bindFunction(
+                [compileDescriptor(objectArgument)],
+                compileDescriptor({ kind: "uint32" }),
+                "userdata",
+                {
+                    argOrder: [0],
+                },
+                { userDataIndex: 0 },
+            ),
+        message: /hidden user-data/,
+    },
+    {
+        name: "variadic",
+        create: () =>
+            bindFunction([compileDescriptor(objectArgument)], compileDescriptor({ kind: "uint32" }), "variadic", {
+                argOrder: [0],
+                fixedArgCount: 1,
+            }),
+        message: /variadic/,
+    },
+];
+
+for (const target of ["class", "interface"]) {
+    test.each(invalidSignatures)(
+        `a ${target} vfunc rejects a $name signature before registering its type`,
+        ({ create, message }) => {
+            const name = uniqueTypeName();
+            const vfunc = { byteOffset: listModelSlot.byteOffset, signature: create(), fn: () => 0 };
+
+            expect(() =>
+                registerClass(name, objectType, {
+                    flags: 0,
+                    vfuncs: target === "class" ? [vfunc] : [],
+                    interfaces:
+                        target === "interface"
+                            ? [{ type: listModelType, vtableSize: listModelSlot.vtableSize, vfuncs: [vfunc] }]
+                            : [],
+                }),
+            ).toThrow(message);
+            expect(typeFromName(name)).toBe(0n);
+            const type = registerClass(name, objectType, { flags: 0, vfuncs: [], interfaces: [] });
+            expect(getType(newInstance(type, 0, null, null) as ExternalObject<Handle>)).toBe(type);
+        },
+    );
+}
 
 test("class and interface vtables reject incompatible type kinds", () => {
     expect(() => getTypeClass(objectType, { interfaceType: objectType, vtableSize: 40 })).toThrow("not an interface");

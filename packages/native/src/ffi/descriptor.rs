@@ -10,7 +10,9 @@ use crate::ffi::codec::{
     ElementOwnership, Encoder, FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec,
     ObjectCodec, Ownership, RefCodec, StructCodec, VoidCodec,
 };
-use crate::ffi::lifecycle::{FunctionResolver, RecordConverter, TypeResolver};
+use crate::ffi::lifecycle::{
+    FunctionResolver, RecordConverter, RecordConverterOptions, TypeResolver,
+};
 
 const MAX_DESCRIPTOR_DEPTH: u32 = 32;
 
@@ -198,8 +200,7 @@ pub enum Descriptor {
         copy_resolver: Option<FunctionResolver>,
         #[napi(ts_type = "() => ExternalObject<Handle>")]
         free_resolver: Option<FunctionResolver>,
-        #[napi(ts_type = "ExternalObject<RecordConverter>")]
-        copy_converter: Option<RecordConverter>,
+        copy_converter: Option<RecordConverterOptions>,
         is_value_safe: bool,
         /// Native field layout for a record passed by value as a function input.
         #[napi(ts_type = "Array<Descriptor>")]
@@ -387,7 +388,7 @@ impl Descriptor {
                 inline: is_inline,
                 copy_resolver,
                 free_resolver,
-                copy_converter,
+                copy_converter: copy_converter.map(RecordConverter::new).transpose()?,
                 value_safe: is_value_safe,
                 abi_fields: record_abi_fields(abi_fields, size, ownership, is_caller_allocated)?,
             }),

@@ -122,8 +122,11 @@ const bindVfunc = ({ argDescriptors, returnDescriptor, layout, ...options }: Bin
     });
 };
 
-const call = (descriptor: BoundCall, values: unknown[], completionIndex?: number): CallResult =>
-    nativeCall(descriptor.signature, descriptor.resolve(), values, completionIndex);
+const call = (
+    descriptor: BoundCall,
+    values: unknown[] | ((index: number) => unknown),
+    completionIndex?: number,
+): CallResult => nativeCall(descriptor.signature, descriptor.resolve(), values, completionIndex);
 
 export { bind, bindFunctionPointer, bindVfunc, call, resolveFunction, resolveFunctionOptional };
 export type { BoundCall, BindVfuncOptions };

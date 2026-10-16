@@ -9,6 +9,7 @@ use smallvec::SmallVec;
 
 use super::bind::FunctionSignature;
 use super::native_result;
+use super::reference::ReferenceRequest;
 use crate::ffi::closure::ClosureData;
 use crate::ffi::codec::{CallbackScope, Codec, Decoder as _, Encoder as _};
 use crate::ffi::{self};
@@ -32,7 +33,7 @@ fn execute_call<'e>(
     env: &'e Env,
     signature: &FunctionSignature,
     target: &Handle,
-    values: &[Unknown<'e>],
+    values: Either<Array<'e>, Function<'e, u32, Unknown<'e>>>,
     completion_index: Option<usize>,
 ) -> anyhow::Result<CallResult<'e>> {
     let _errors = CallbackErrorScope::open(*env);
@@ -48,7 +49,7 @@ fn execute_call_inner<'e>(
     env: &'e Env,
     signature: &FunctionSignature,
     target: &Handle,
-    values: &[Unknown<'e>],
+    values: Either<Array<'e>, Function<'e, u32, Unknown<'e>>>,
     completion_index: Option<usize>,
 ) -> anyhow::Result<CallResult<'e>> {
     let _leases = crate::handle::LeaseScope::open();
@@ -56,17 +57,55 @@ fn execute_call_inner<'e>(
     let return_codec = &signature.return_codec;
     let arg_codecs = &signature.arg_codecs;
 
+    if let Either::A(array) = &values {
+        anyhow::ensure!(
+            array.len() as usize == arg_codecs.len(),
+            "{label}: expected {} arguments, received {}",
+            arg_codecs.len(),
+            array.len()
+        );
+    }
+    let mut parsed_values: SmallVec<[Unknown<'e>; 8]> = SmallVec::with_capacity(arg_codecs.len());
+    let mut references = Vec::with_capacity(arg_codecs.len());
+    for (index, codec) in arg_codecs.iter().enumerate() {
+        let index = u32::try_from(index)?;
+        let value = match &values {
+            Either::A(array) => array
+                .get(index)?
+                .ok_or_else(|| anyhow::anyhow!("missing argument"))?,
+            Either::B(produce) => produce.call(index).map_err(|error| {
+                CallbackErrorScope::deliver(*env, error);
+                anyhow::anyhow!("Argument production failed")
+            })?,
+        };
+        let reference = match codec {
+            Codec::Ref(reference)
+                if !reference.inner_codec().is_scalar()
+                    && !matches!(value.get_type()?, ValueType::Null | ValueType::Undefined) =>
+            {
+                Some(
+                    ReferenceRequest::capture(reference, value)
+                        .with_context(|| format!("preparing arg {index} of {label}"))?,
+                )
+            }
+            _ => None,
+        };
+        parsed_values.push(value);
+        references.push(reference);
+    }
     let stashes = arg_codecs
         .iter()
-        .zip(values)
+        .zip(&parsed_values)
+        .zip(&references)
         .enumerate()
-        .map(|(i, (codec, &value))| {
-            let encoded = if completion_index.is_some() {
+        .map(|(i, ((codec, &value), reference))| {
+            let encoded = if let Some(reference) = reference {
+                reference.prepare(env, completion_index.is_some())
+            } else if completion_index.is_some() {
                 codec.encode_owned(env, value)
             } else {
                 codec.encode(env, value)
             };
-
             encoded.with_context(|| format!("encoding arg {i} of {label}"))
         })
         .collect::<anyhow::Result<Vec<ffi::Stash>>>()?;
@@ -104,7 +143,7 @@ fn execute_call_inner<'e>(
 
     commit_pending_transfers(completion.as_ref(), arg_codecs, &stashes);
 
-    let outputs = decode_outputs(env, arg_codecs, values, &stashes);
+    let outputs = decode_outputs(env, arg_codecs, &parsed_values, &stashes);
 
     let return_value = return_codec
         .decode_with_context(env, &result, &stashes, arg_codecs)
@@ -266,41 +305,24 @@ fn decode_outputs<'env>(
 }
 
 /// Calls a compiled signature through an executable handle, checking its lifetime on every call.
+/// An argument producer normalizes arguments in order; each reference seed is retained before
+/// requesting the next argument. Native buffers are prepared after all arguments are normalized.
 #[napi(catch_unwind)]
 pub fn call<'env>(
     env: &'env Env,
     signature: &External<FunctionSignature>,
     target: &External<Handle>,
-    values: Array<'_>,
+    values: Either<Array<'env>, Function<'env, u32, Unknown<'env>>>,
     completion_index: Option<u32>,
 ) -> Result<CallResult<'env>> {
     signature.ensure_callable()?;
-    let mut parsed_values: SmallVec<[Unknown<'env>; 8]> =
-        SmallVec::with_capacity(values.len() as usize);
-    for i in 0..values.len() {
-        let item: Unknown<'env> = values
-            .get(i)?
-            .ok_or_else(|| Error::new(Status::GenericFailure, "missing argument"))?;
-        parsed_values.push(item);
-    }
-    if parsed_values.len() != signature.arg_codecs.len() {
-        return Err(Error::new(
-            Status::InvalidArg,
-            format!(
-                "{}: expected {} arguments, received {}",
-                signature.label,
-                signature.arg_codecs.len(),
-                parsed_values.len()
-            ),
-        ));
-    }
     native_result(
         "FFI call",
         execute_call(
             env,
             signature,
             target,
-            &parsed_values,
+            values,
             completion_index.map(|index| index as usize),
         ),
     )

@@ -140,7 +140,7 @@ impl TypedView {
         };
         check_status!(status, "Failed to read typed-array info")?;
         let kind = ViewKind::try_from(raw_kind)?;
-        Self::reject_if_shared(env, array_buffer)?;
+        Self::validate_backing_buffer(env, array_buffer)?;
         Ok(Self {
             ptr: data,
             byte_length: length * kind.element_size(),
@@ -165,7 +165,7 @@ impl TypedView {
             )
         };
         check_status!(status, "Failed to read DataView info")?;
-        Self::reject_if_shared(env, array_buffer)?;
+        Self::validate_backing_buffer(env, array_buffer)?;
         Ok(Self {
             ptr: data,
             byte_length,
@@ -174,7 +174,7 @@ impl TypedView {
         })
     }
 
-    fn reject_if_shared(env: &Env, buffer: sys::napi_value) -> Result<()> {
+    fn validate_backing_buffer(env: &Env, buffer: sys::napi_value) -> Result<()> {
         let mut is_array_buffer = false;
         let status =
             unsafe { sys::napi_is_arraybuffer(env.raw(), buffer, &raw mut is_array_buffer) };
@@ -183,6 +183,16 @@ impl TypedView {
             return Err(Error::new(
                 Status::InvalidArg,
                 "SharedArrayBuffer-backed views cannot cross the FFI boundary",
+            ));
+        }
+        let mut detached = false;
+        let status =
+            unsafe { sys::napi_is_detached_arraybuffer(env.raw(), buffer, &raw mut detached) };
+        check_status!(status, "Failed to inspect a view's backing buffer")?;
+        if detached {
+            return Err(Error::new(
+                Status::InvalidArg,
+                "Detached ArrayBuffer views cannot cross the FFI boundary",
             ));
         }
         Ok(())

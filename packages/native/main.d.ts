@@ -3,11 +3,7 @@ export {
     bindFunction,
     call,
     compileDescriptor,
-    copy,
     createFunction,
-    createMatchSubject,
-    createRecordConverter,
-    createReferenceStorage,
     emitSignal,
     getFundamentalIdentity,
     getMatchInfoBase,
@@ -52,10 +48,7 @@ export type {
     Handle,
     LibraryHandle,
     Ownership,
-    RecordConverter,
     RecordConverterOptions,
-    ReferenceMode,
-    ReferenceStorage,
     Ref,
     RegisterClassInterface,
     RegisterClassOptions,
@@ -67,7 +60,7 @@ declare module "./index.js" {
     /**
      * An opaque handle to a native memory region: a GObject, a boxed value, or a raw allocation.
      * Produced by `alloc` and consumed by the memory and wrapper functions (`readField`, `writeField`,
-     * `copy`, `getType`, `getWrapper`, `setWrapper`). Its bytes are not accessible from JavaScript.
+     * `getType`, `getWrapper`, `setWrapper`). Its bytes are not accessible from JavaScript.
      */
     export type Handle = { _opaque: "Handle" };
     /** A validated native value codec reusable across fields, pointer values, and function signatures. */
@@ -76,10 +69,6 @@ declare module "./index.js" {
     export type FunctionSignature = { _opaque: "FunctionSignature" };
     /** A reference to a shared library that remains loaded for the life of the process. */
     export type LibraryHandle = { _opaque: "LibraryHandle" };
-    /** A native record copy strategy with lazily resolved lifecycle operations. */
-    export type RecordConverter = { _opaque: "RecordConverter" };
-    /** An owned reference seed prepared for one argument of a compiled call signature. */
-    export type ReferenceStorage = { _opaque: "ReferenceStorage" };
     export type Ref = { value: unknown };
     export type CallbackFailure = { nativeError: ExternalObject<Handle>; thrown: unknown };
 }

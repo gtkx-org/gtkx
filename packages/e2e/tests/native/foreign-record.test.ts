@@ -3,12 +3,10 @@ import {
     compileDescriptor,
     call,
     bindFunction,
-    createRecordConverter,
     type Descriptor,
     type ExternalObject,
     type Handle,
     openLibrary,
-    type RecordConverter,
     type RecordConverterOptions,
     resolveSymbol,
 } from "@gtkx/native";
@@ -38,7 +36,7 @@ const operations = (resolve: (name: string) => ExternalObject<Handle>): RecordCo
 });
 
 const borrowedCopy = (
-    copyConverter: ExternalObject<RecordConverter>,
+    copyConverter: RecordConverterOptions,
     release: () => ExternalObject<Handle> = () => symbol(cairo, "cairo_path_destroy"),
 ): ((source: ExternalObject<Handle>) => ExternalObject<Handle>) => {
     const record: Descriptor = {
@@ -64,16 +62,16 @@ const borrowedCopy = (
     return (source) => call(signature, target, [source, source, 0n]).value as ExternalObject<Handle>;
 };
 
-test("native record copy operations resolve lazily and are retained for subsequent conversions", () => {
+test("compiled record copy operations retain their snapshot and resolve lazily for subsequent conversions", () => {
     const resolved: string[] = [];
-    const copy = borrowedCopy(
-        createRecordConverter(
-            operations((name) => {
-                resolved.push(name);
-                return symbol(cairo, name);
-            }),
-        ),
-    );
+    const options = operations((name) => {
+        resolved.push(name);
+        return symbol(cairo, name);
+    });
+    const copy = borrowedCopy(options);
+    options.copyPath = () => {
+        throw new Error("Compiled record conversion must retain its original operations");
+    };
     expect(resolved).toEqual([]);
     const source = getHandle(Regress.testCairoPathFullReturn());
     const count = read(source, t.int32, 16);
@@ -93,14 +91,12 @@ test("throwing record operation resolution preserves the exact exception and can
     const failure = new Error("path operation unavailable");
     let failing = true;
     const copy = borrowedCopy(
-        createRecordConverter(
-            operations((name) => {
-                if (name === "cairo_create" && failing) {
-                    throw failure;
-                }
-                return symbol(cairo, name);
-            }),
-        ),
+        operations((name) => {
+            if (name === "cairo_create" && failing) {
+                throw failure;
+            }
+            return symbol(cairo, name);
+        }),
     );
     const source = getHandle(Regress.testCairoPathFullReturn());
     let thrown: unknown;
@@ -117,8 +113,9 @@ test("throwing record operation resolution preserves the exact exception and can
 });
 
 test("native record conversion rejects an incompatible release operation without changing the source", () => {
-    const copy = borrowedCopy(createRecordConverter(operations((name) => symbol(cairo, name))), () =>
-        symbol("libglib-2.0.so.0", "g_free"),
+    const copy = borrowedCopy(
+        operations((name) => symbol(cairo, name)),
+        () => symbol("libglib-2.0.so.0", "g_free"),
     );
     const source = getHandle(Regress.testCairoPathFullReturn());
 

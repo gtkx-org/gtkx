@@ -20,7 +20,7 @@ fn boxed_type_from_bigint(gtype: Option<BigInt>) -> Result<Option<glib::Type>> {
 }
 
 pub(crate) fn alloc_handle(size: usize, type_: Option<glib::Type>) -> Handle {
-    let ptr = unsafe { g_malloc0(size) };
+    let ptr = unsafe { g_malloc0(size.max(1)) };
     let handle = match type_ {
         Some(type_) => Handle::from(Boxed::from_glib_full(type_, ptr)),
         None => Handle::owned_struct(ptr),

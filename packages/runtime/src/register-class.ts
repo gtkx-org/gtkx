@@ -1,4 +1,5 @@
 import {
+    bindFunction,
     registerClass as nativeRegisterClass,
     type RegisterClassInterface as NativeRegisterClassInterface,
     type RegisterClassOptions as NativeRegisterClassOptions,
@@ -8,6 +9,7 @@ import { type AnyClass, getParentClass, kebabCase, walkClassChain } from "@gtkx/
 import type { Descriptor } from "./descriptor-types.js";
 import type { Camelized, Dashed, ReadableProperties, WritableProperties } from "./property-types.js";
 import { wrapCallback } from "./callback.js";
+import { callLayout } from "./call-layout.js";
 import { type ClassSignal, prepareClassSignals } from "./class-signals.js";
 import { prepareClassOptions } from "./class-options.js";
 import { registerElementMetadata } from "./element-metadata.js";
@@ -954,10 +956,14 @@ function installDeclaredSignalMethods(klass: AnyClass, table: Map<string, Declar
 const toNativeVfunc = (descriptor: DiscoveredVfunc): NativeRegisterClassVfunc => {
     const plans = compileDescriptors(descriptor.argDescriptors, descriptor.returnDescriptor);
     return {
-        ...descriptor,
-        canThrow: descriptor.canThrow ?? false,
-        argDescriptors: plans.args.map((argument) => argument.compiled),
-        returnDescriptor: plans.returns.compiled,
+        byteOffset: descriptor.byteOffset,
+        signature: bindFunction(
+            plans.args.map((argument) => argument.compiled),
+            plans.returns.compiled,
+            `${descriptor.className}.${descriptor.vfuncName}`,
+            callLayout(descriptor.argDescriptors),
+            { canThrow: descriptor.canThrow ?? false },
+        ),
         fn: adaptCallback(descriptor, descriptor.fn as (...args: unknown[]) => unknown, plans),
     };
 };

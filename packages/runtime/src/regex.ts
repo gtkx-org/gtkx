@@ -1,14 +1,8 @@
 import type { AnyClass } from "@gtkx/utils";
-import {
-    createMatchSubject,
-    type ExternalObject,
-    getMatchInfoBase,
-    getMatchInfoType,
-    type Handle,
-    ownMatchInfo,
-} from "./native.js";
+import { alloc, type ExternalObject, getMatchInfoBase, getMatchInfoType, type Handle, ownMatchInfo } from "./native.js";
 import { type Arg } from "./arg.js";
-import { booleanT, boxedT, bufferT, callbackT, int32T, int64T, stringT, uint32T } from "./descriptors.js";
+import { bind } from "./bind.js";
+import { booleanT, boxedT, bufferT, callbackT, int32T, int64T, stringT, uint32T, uint64T } from "./descriptors.js";
 import { fn } from "./fn.js";
 import { LIB } from "./library.js";
 import { getHandle, getWrapperClass, registerWrapperClass, wrapHandle } from "./registry.js";
@@ -79,6 +73,7 @@ const gRegexReplaceEval = fn(LIB, "g_regex_replace_eval", {
     canThrow: true,
 });
 const encoder = new TextEncoder();
+const memcpy = bind("libc.so.6", "memcpy", [bufferT, bufferT, uint64T], bufferT);
 
 const encodeSubject = (subject: MatchParams["subject"]): Uint8Array => {
     if (typeof subject === "string") {
@@ -95,7 +90,11 @@ const encodeSubject = (subject: MatchParams["subject"]): Uint8Array => {
 
 const createSubject = (subject: MatchParams["subject"]): Subject => {
     const encoded = encodeSubject(subject);
-    return { data: createMatchSubject(encoded), length: encoded.length };
+    const data = alloc(encoded.length + 1);
+    if (encoded.length > 0) {
+        memcpy(data, encoded, encoded.length);
+    }
+    return { data, length: encoded.length };
 };
 
 const managedMatchInfo = (raw: ExternalObject<Handle>, subject: Subject): object =>

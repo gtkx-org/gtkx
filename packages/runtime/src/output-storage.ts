@@ -28,13 +28,15 @@ const scalarSizes: Partial<Record<Descriptor["kind"], number>> = {
     float64: 8,
 };
 
-const isScalarStorageDescriptor = (descriptor: Descriptor): boolean => scalarSizes[descriptor.kind] !== undefined;
+const scalarStorageSize = (descriptor: Descriptor): number | undefined => scalarSizes[descriptor.kind];
+
+const isScalarStorageDescriptor = (descriptor: Descriptor): boolean => scalarStorageSize(descriptor) !== undefined;
 
 const compileOutputStorage = (
     descriptor: Descriptor,
     compiled: () => ExternalObject<CompiledDescriptor>,
 ): OutputStorage | undefined => {
-    const size = scalarSizes[descriptor.kind];
+    const size = scalarStorageSize(descriptor);
     if (size === undefined) {
         return undefined;
     }
@@ -56,4 +58,4 @@ const compileOutputStorage = (
     };
 };
 
-export { compileOutputStorage, isScalarStorageDescriptor, type OutputStorage, type StorageHandle };
+export { compileOutputStorage, isScalarStorageDescriptor, scalarStorageSize, type OutputStorage, type StorageHandle };

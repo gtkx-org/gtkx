@@ -6,7 +6,6 @@ pub mod alloc;
 pub mod bind;
 pub mod call;
 pub mod closure;
-pub mod copy;
 pub mod descriptor;
 pub mod field;
 pub mod function;

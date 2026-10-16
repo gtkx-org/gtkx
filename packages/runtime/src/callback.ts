@@ -1,4 +1,4 @@
-import { copy } from "./native.js";
+import { type CompiledDescriptor, compileDescriptor, type ExternalObject, writeField } from "./native.js";
 import type { Descriptor } from "./descriptor-types.js";
 import type { CallbackDescriptor, RefDescriptor } from "./descriptors.js";
 import {
@@ -58,6 +58,8 @@ const CALLBACK_TRAITS: Record<CallbackKind, CallbackTraits> = {
     vfunc: { isInstanceBound: true, hasInstanceArg: true, hasFoldedLengths: true, hasFoldedInputs: true },
 };
 
+const inlineRecords = new Map<number, ExternalObject<CompiledDescriptor>>();
+
 const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, source: object): void => {
     if (descriptor.kind === "boxed" && descriptor.typeName === "GValue") {
         copyValue(getHandle(target), getHandle(source));
@@ -66,7 +68,20 @@ const fillCallerAllocatedBuffer = (descriptor: Descriptor, target: object, sourc
     }
 
     if ((descriptor.kind === "boxed" || descriptor.kind === "struct") && descriptor.size !== undefined) {
-        copy(getHandle(target), getHandle(source), descriptor.size);
+        const record = inlineRecords.getOrInsertComputed(descriptor.size, (size) => {
+            if (!Number.isInteger(size) || size < 0 || size > 0xffffffff) {
+                throw new RangeError("A caller-allocated record size must fit an unsigned 32-bit byte count");
+            }
+            return compileDescriptor({
+                kind: "struct",
+                ownership: "borrowed",
+                size,
+                isCallerAllocated: false,
+                isInline: true,
+                isValueSafe: false,
+            });
+        });
+        writeField(record, getHandle(target), 0, getHandle(source));
 
         return;
     }

@@ -420,8 +420,8 @@ impl Handle {
         .into()
     }
 
-    pub(crate) fn is_owned_struct_with_free_fn(&self, expected: BoxedFreeFn) -> bool {
-        matches!(&self.inner.kind, HandleKind::Struct { free_fn: Some(free), .. } if std::ptr::fn_addr_eq(*free, expected))
+    pub(crate) fn is_owned_struct(&self) -> bool {
+        matches!(&self.inner.kind, HandleKind::Struct { .. })
     }
 
     pub(crate) fn set_pointer_storage(&self, storage: Handle, is_callback: bool) {

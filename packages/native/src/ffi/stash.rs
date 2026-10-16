@@ -9,9 +9,8 @@ use crate::ffi::closure::{ClosureData, ClosureState};
 mod storage;
 
 pub use storage::{
-    CallerAllocation, GArrayData, GLIST_OPS, GPtrArrayData, GSLIST_OPS, HashTableData, ListData,
-    ListNode, ListOps, ListPayload, PendingTransfer, ReleaseKind, StashData, StashStorage,
-    build_list,
+    GArrayData, GLIST_OPS, GPtrArrayData, GSLIST_OPS, HashTableData, ListData, ListNode, ListOps,
+    ListPayload, PendingTransfer, ReleaseKind, StashData, StashStorage, build_list,
 };
 
 #[derive(Debug)]

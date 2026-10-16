@@ -58,26 +58,6 @@ fn boxed_pointer(handle: &Handle, expected: glib::Type) -> Result<*mut c_void> {
     handle_memory_ptr(handle, "MatchInfo ownership")
 }
 
-unsafe extern "C" fn release_match_subject(ptr: *mut c_void) {
-    unsafe { glib::ffi::g_free(ptr) };
-}
-
-/// Copies encoded regex input into native-owned storage and appends its required NUL terminator.
-#[allow(clippy::needless_pass_by_value)]
-#[napi(catch_unwind)]
-pub fn create_match_subject(bytes: Uint8Array) -> Result<External<Handle>> {
-    let length = bytes
-        .len()
-        .checked_add(1)
-        .ok_or_else(|| Error::from_reason("MatchInfo subject exceeds the allocation size limit"))?;
-    let pointer = unsafe { glib::ffi::g_malloc0(length) };
-    unsafe { std::ptr::copy_nonoverlapping(bytes.as_ptr(), pointer.cast::<u8>(), bytes.len()) };
-    let handle = Handle::owned_struct_with_free_fn(pointer, Some(release_match_subject))
-        .with_allocated_bytes(length);
-    let size_hint = handle.size_hint();
-    Ok(External::new_with_size_hint(handle, size_hint))
-}
-
 #[napi(catch_unwind)]
 #[must_use]
 pub fn get_match_info_type() -> BigInt {
@@ -90,7 +70,7 @@ pub fn own_match_info(
     subject: &External<Handle>,
 ) -> Result<External<Handle>> {
     let _lease = LeaseScope::open();
-    if !subject.is_owned_struct_with_free_fn(release_match_subject) {
+    if !subject.is_owned_struct() {
         return Err(Error::new(
             Status::InvalidArg,
             "MatchInfo requires native-owned regex subject storage",
