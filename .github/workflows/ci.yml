@@ -142,7 +142,7 @@ jobs:
         run: git config --system --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Determine affected commit range
-        uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1
+        uses: nrwl/nx-set-shas@e602fada7ad5987b0f7b1905e7a99ea1c661514c
 
       - name: Set up fallback workspace
         id: fallback
