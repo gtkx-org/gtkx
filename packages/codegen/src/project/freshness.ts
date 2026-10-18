@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { type CodegenStore, resolveCodegenStore } from "./store.js";
 
-type ExportTarget = string | { [condition: string]: ExportTarget };
+type ExportTarget = string | null | { [condition: string]: ExportTarget };
 type StoreExports = Record<string, ExportTarget>;
 
 type CodegenInputs = {
@@ -33,7 +33,11 @@ const namespaceExport = (library: string): string => {
 };
 
 const targetFiles = (target: ExportTarget): string[] =>
-    typeof target === "string" ? [target] : Object.values(target).flatMap((nested) => targetFiles(nested));
+    target === null
+        ? []
+        : typeof target === "string"
+          ? [target]
+          : Object.values(target).flatMap((nested) => targetFiles(nested));
 
 const indexExtension = (target: string): string | undefined => {
     if (target.endsWith("/index.d.ts")) {

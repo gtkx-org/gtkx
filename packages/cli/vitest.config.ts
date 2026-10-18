@@ -9,6 +9,7 @@ export default defineConfig(
             name: "cli",
             include: ["tests/**/*.test.ts"],
             pool: "forks",
+            server: { deps: { external: [/\/packages\/config\/src\//] } },
             disableConsoleIntercept: true,
             testTimeout: 120_000,
             hookTimeout: 120_000,

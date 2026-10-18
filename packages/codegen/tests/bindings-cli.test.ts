@@ -6,6 +6,7 @@ import {
     mkdirSync,
     mkdtempDisposableSync,
     readFileSync,
+    statSync,
     symlinkSync,
     writeFileSync,
 } from "node:fs";
@@ -22,7 +23,7 @@ const manifest = JSON.parse(readFileSync(join(packageRoot, "package.json"), "utf
     dependencies: Record<string, string>;
 };
 
-it("generates bindings from project configuration before renderer and native artifacts exist", async () => {
+it("generates and reuses bindings before renderer and native artifacts exist", async () => {
     using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-bindings-cli-"));
     const modules = join(directory.path, "node_modules");
     const codegen = join(modules, "@gtkx/codegen");
@@ -54,13 +55,18 @@ it("generates bindings from project configuration before renderer and native art
         'import { defineConfig } from "@gtkx/config"; export default defineConfig({ applicationId: "org.gtkx.bindings", libraries: ["Gio-2.0"] });',
     );
     const args = [join(codegen, "dist/cli.js"), "--cwd", directory.path, "--config", "gtkx.config.base.ts"];
-    const first = await execute(process.execPath, args, { timeout: 60_000 });
+    await execute(process.execPath, args, { timeout: 60_000 });
 
-    expect(first.stdout + first.stderr).toContain("regenerated bindings");
-    expect(existsSync(join(modules, "@gtkx/gi/gio/index.d.ts"))).toBe(true);
-    expect(existsSync(join(modules, "@gtkx/jsx/gtk/index.d.ts"))).toBe(true);
+    const bindingFiles = [join(modules, "@gtkx/gi/gio/index.d.ts"), join(modules, "@gtkx/jsx/gtk/index.d.ts")];
+    const bindingIdentities = () =>
+        bindingFiles.map((file) => {
+            const { ino, mtimeNs } = statSync(file, { bigint: true });
+
+            return { ino, mtimeNs };
+        });
+    const initialBindings = bindingIdentities();
     expect(existsSync(join(directory.path, ".gtkx/reference"))).toBe(false);
     expect(existsSync(join(directory.path, "AGENTS.md"))).toBe(false);
-    const second = await execute(process.execPath, args, { timeout: 60_000 });
-    expect(second.stdout + second.stderr).toContain("bindings up to date");
+    await execute(process.execPath, args, { timeout: 60_000 });
+    expect(bindingIdentities()).toEqual(initialBindings);
 });
