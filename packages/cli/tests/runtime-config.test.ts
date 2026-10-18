@@ -148,4 +148,71 @@ describe("runtime configuration", () => {
             await secondServer.close();
         }
     });
+
+    it("retains imported schema dependencies across process restarts during invalid edits", () => {
+        using project = createProject();
+        project.write(
+            "base.gschema.xml",
+            `<schemalist><schema id="org.gtkx.base">
+                <key name="value" type="s"><default>'initial'</default></key>
+            </schema></schemalist>`,
+        );
+        project.write(
+            "alternate.gschema.xml",
+            `<schemalist><schema id="org.gtkx.base">
+                <key name="value" type="s"><default>'updated'</default></key>
+                <key name="enabled" type="b"><default>true</default></key>
+            </schema></schemalist>`,
+        );
+        project.write(
+            "child.gschema.xml",
+            '<schemalist><schema id="org.gtkx.child" path="/org/gtkx/child/" extends="org.gtkx.base"/></schemalist>',
+        );
+        project.write("src/index.ts", 'export { default } from "../child.gschema.xml";');
+        const original = 'export { default } from "../base.gschema.xml";';
+        const replacement = 'export { default } from "../alternate.gschema.xml";';
+        project.write("src/base.ts", original);
+        project.write(
+            "start.mjs",
+            `import { createServer } from ${JSON.stringify(import.meta.resolve("vite"))};
+            import gtkx from ${JSON.stringify(new URL("../dist/vitest-plugin.js", import.meta.url).href)};
+            import { execFileSync } from "node:child_process";
+            const server = await createServer({
+                configFile: false,
+                root: process.argv[2],
+                plugins: gtkx(),
+                server: { middlewareMode: true, ws: false, watch: null },
+                appType: "custom",
+            });
+            try {
+                const schemaDir = server.config.test?.env?.GSETTINGS_SCHEMA_DIR;
+                console.log(execFileSync("gsettings", ["get", "org.gtkx.child", "value"], {
+                    encoding: "utf8",
+                    env: { ...process.env, GSETTINGS_SCHEMA_DIR: schemaDir, GSETTINGS_BACKEND: "memory" },
+                }).trim());
+            } finally {
+                await server.close();
+            }`,
+        );
+        const start = () =>
+            execFileSync(process.execPath, [join(project.root, "start.mjs"), project.root], {
+                encoding: "utf8",
+                timeout: 30_000,
+            }).trim();
+        const declarations = () => readFileSync(join(project.root, "node_modules/.gtkx/env.d.ts"), "utf8");
+
+        expect(start()).toBe("'initial'");
+        const initialDeclarations = declarations();
+        project.write("src/base.ts", `${original} export const =`);
+        expect(start()).toBe("'initial'");
+        expect(declarations()).toBe(initialDeclarations);
+
+        project.write("src/base.ts", replacement);
+        expect(start()).toBe("'updated'");
+        expect(declarations()).toContain("alternate.gschema.xml");
+        expect(declarations()).not.toContain("base.gschema.xml");
+        expect(declarations()).toContain("enabled");
+        project.write("src/base.ts", `${replacement} export const =`);
+        expect(start()).toBe("'updated'");
+    });
 });

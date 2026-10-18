@@ -1,8 +1,8 @@
 import { isRecord } from "@gtkx/utils";
-import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
 import { basename, dirname, join } from "node:path";
+import { z } from "zod";
 import packageManifest from "../../package.json" with { type: "json" };
 import { moduleHash } from "./module-hash.js";
 import {
@@ -15,18 +15,12 @@ import {
 } from "./source-imports.js";
 import { isStagingOwnerRunning, STAGING_SUFFIX, writeAtomically } from "./staging-file.js";
 
-type ScannedFile = {
-    hash: string;
-    sources: string[];
-};
+type ScanIndex = Record<string, string[]>;
 
-type ScanIndex = Map<string, ScannedFile>;
-
-type ScanCache = Map<string, ScanIndex>;
+type ScanCache = z.infer<typeof cacheSchema>;
 
 type ScanResult = {
     index: ScanIndex;
-    isChanged: boolean;
     isComplete: boolean;
 };
 
@@ -40,10 +34,12 @@ const PARSER_MANIFEST = "vite/package.json";
 const UNKNOWN_PARSER = "unknown";
 const SCANNER_MODULES = ["./source-imports.js", "./import-scan.js"];
 const identity: { value: string | undefined } = { value: undefined };
+const cacheSchema = z.object({
+    version: z.string(),
+    dirs: z.record(z.string(), z.record(z.string(), z.array(z.string()).catch([])).catch({})),
+});
 
 const scanCachePath = (root: string): string => join(root, ...CACHE_FILE);
-
-const hashSource = (code: string): string => createHash("sha256").update(code).digest("hex");
 
 const readJson = (path: string): unknown => {
     try {
@@ -65,52 +61,17 @@ const scannerHash = (): string =>
 const cacheVersion = (): string =>
     (identity.value ??= `${packageManifest.version}+${parserVersion()}+${scannerHash()}`);
 
-const isStringArray = (value: unknown): value is string[] =>
-    Array.isArray(value) && value.every((entry) => typeof entry === "string");
-
-const scannedFile = (value: unknown): ScannedFile | null => {
-    if (!isRecord(value)) {
-        return null;
-    }
-
-    const { hash, sources } = value;
-
-    return typeof hash === "string" && isStringArray(sources) ? { hash, sources } : null;
-};
-
-const scanIndexFrom = (value: unknown): ScanIndex => {
-    const index: ScanIndex = new Map();
-
-    if (!isRecord(value)) {
-        return index;
-    }
-
-    for (const [file, entry] of Object.entries(value)) {
-        const scanned = scannedFile(entry);
-
-        if (scanned !== null) {
-            index.set(file, scanned);
-        }
-    }
-
-    return index;
-};
-
 const readCache = (path: string): ScanCache => {
-    const parsed = readJson(path);
-    const cache: ScanCache = new Map();
+    const parsed = cacheSchema.safeParse(readJson(path));
 
-    if (!isRecord(parsed) || parsed.version !== cacheVersion() || !isRecord(parsed.dirs)) {
-        return cache;
+    if (!parsed.success || parsed.data.version !== cacheVersion()) {
+        return { version: cacheVersion(), dirs: {} };
     }
 
-    for (const [dir, files] of Object.entries(parsed.dirs)) {
-        if (existsSync(dir)) {
-            cache.set(dir, scanIndexFrom(files));
-        }
-    }
-
-    return cache;
+    return {
+        version: parsed.data.version,
+        dirs: Object.fromEntries(Object.entries(parsed.data.dirs).filter(([dir]) => existsSync(dir))),
+    };
 };
 
 const pruneStaging = (path: string): void => {
@@ -132,11 +93,6 @@ const pruneStaging = (path: string): void => {
     }
 };
 
-const cachePayload = (cache: ScanCache): unknown => ({
-    version: cacheVersion(),
-    dirs: Object.fromEntries([...cache].map(([dir, index]) => [dir, Object.fromEntries(index)])),
-});
-
 const writeCache = (path: string, cache: ScanCache): void => {
     try {
         mkdirSync(dirname(path), { recursive: true });
@@ -145,70 +101,41 @@ const writeCache = (path: string, cache: ScanCache): void => {
     }
 
     pruneStaging(path);
-    writeAtomically(path, JSON.stringify(cachePayload(cache)));
-};
-
-const retainCached = (path: string, cached: ScannedFile | undefined, index: ScanIndex): "invalid" => {
-    if (cached !== undefined) {
-        index.set(path, cached);
-    }
-
-    return "invalid";
-};
-
-const scanFile = (path: string, previous: ScanIndex, index: ScanIndex): "changed" | "unchanged" | "invalid" => {
-    const cached = previous.get(path);
-    const code = readSource(path);
-
-    if (code === null) {
-        return retainCached(path, cached, index);
-    }
-
-    const hash = hashSource(code);
-
-    if (cached?.hash === hash) {
-        index.set(path, cached);
-
-        return "unchanged";
-    }
-
-    const sources = importSourcesIn(path, code);
-
-    if (sources === null) {
-        return retainCached(path, cached, index);
-    }
-
-    index.set(path, { hash, sources });
-
-    return "changed";
+    writeAtomically(path, JSON.stringify(cache));
 };
 
 const scanSourceDir = (dir: string, previous: ScanIndex): ScanResult => {
-    const index: ScanIndex = new Map();
-    let isChanged = false;
+    const index: ScanIndex = {};
     let isComplete = true;
 
     for (const path of discoverSourceFiles(dir)) {
-        const result = scanFile(path, previous, index);
-        isChanged ||= result === "changed";
-        isComplete &&= result !== "invalid";
+        const code = readSource(path);
+        const sources = code === null ? null : importSourcesIn(path, code);
+        isComplete &&= sources !== null;
+        const retained = sources ?? previous[path];
+
+        if (retained !== undefined) {
+            index[path] = retained;
+        }
     }
 
-    return { index, isChanged: isChanged || index.size !== previous.size, isComplete };
+    return { index, isComplete };
 };
 
 const toSourceImports = (index: ScanIndex): SourceImport[] =>
-    sortSourceImports([...index].flatMap(([importer, { sources }]) => sources.map((source) => ({ importer, source }))));
+    sortSourceImports(
+        Object.entries(index).flatMap(([importer, sources]) => sources.map((source) => ({ importer, source }))),
+    );
 
 const discoverProjectImports = (root: string): ProjectImports => {
     const dir = sourceDirFor(root);
     const path = scanCachePath(root);
     const cache = readCache(path);
-    const previous = cache.get(dir) ?? new Map<string, ScannedFile>();
-    const { index, isChanged, isComplete } = scanSourceDir(dir, previous);
+    const previous = cache.dirs[dir];
+    const { index, isComplete } = scanSourceDir(dir, previous ?? {});
 
-    if (isComplete && (isChanged || !cache.has(dir))) {
-        cache.set(dir, index);
+    if (isComplete && JSON.stringify(previous) !== JSON.stringify(index)) {
+        cache.dirs[dir] = index;
         writeCache(path, cache);
     }
 
