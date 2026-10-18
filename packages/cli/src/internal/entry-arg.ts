@@ -1,6 +1,6 @@
 import type { PositionalArgDef, StringArgDef } from "citty";
 import { statSync } from "node:fs";
-import { resolve } from "node:path";
+import { extname, resolve } from "node:path";
 
 const DEFAULT_ENTRY_BASE = "src/index";
 const DEFAULT_ENTRY_EXTENSIONS = [".tsx", ".jsx", ".ts", ".js"];
@@ -53,6 +53,10 @@ const resolveDefaultEntry = (cwd: string): string => {
 
 const resolveGivenEntry = (cwd: string, entry: string): string => {
     const path = resolve(cwd, entry);
+
+    if ([".cjs", ".cts"].includes(extname(path))) {
+        throw new Error(`Application entry must use ESM: ${path}`);
+    }
 
     if (!isFile(path)) {
         throw new Error(`No entry file at ${path}.`);

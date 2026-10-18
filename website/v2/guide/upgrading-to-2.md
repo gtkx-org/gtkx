@@ -9,6 +9,8 @@ GTKX 2.0 makes the behaviors previewed in 1.6 unconditional and removes their co
 
 Upgrade to Node.js 26.7 or newer and set `"type": "module"` in `package.json`; GTKX packages are ESM-only and explicitly reject `require()`. Localized projects also need GNU gettext 0.25 or newer.
 
+Use ESM `import` and `export` in application code, configuration files, and their local helpers. Convert `.cjs` and `.cts` files to ESM. Configuration runs through Node's native loader, so TypeScript configuration must use erasable syntax. Storybook main configuration uses `.ts`, `.mts`, `.js`, or `.mjs`; keep JSX in previews and stories. External CommonJS dependencies remain supported through ESM imports.
+
 ## Clean up the configuration
 
 Delete the `future` block and any retired ids under `deprecations.silence`. A graduated flag left at `true` is temporarily accepted with a warning; `false` is rejected because the old behavior no longer exists.

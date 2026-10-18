@@ -1,10 +1,9 @@
-import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 
 const PROPS_ORIGIN: string = fileURLToPath(import.meta.url);
-const NODE_TYPES_ROOT = dirname(dirname(createRequire(import.meta.url).resolve("@types/node/package.json")));
+const NODE_TYPES_ROOT = dirname(dirname(fileURLToPath(import.meta.resolve("@types/node/package.json"))));
 const VIRTUAL_GI_ROOT: string = join(dirname(PROPS_ORIGIN), "__gtkx_reference_gi__");
 
 const PROPS_COMPILER_OPTIONS: ts.CompilerOptions = {

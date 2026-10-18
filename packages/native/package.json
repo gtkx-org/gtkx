@@ -33,6 +33,8 @@
         "./package.json": "./package.json",
         ".": {
             "types": "./main.d.ts",
+            "import": "./main.js",
+            "require": null,
             "default": "./main.js"
         }
     },

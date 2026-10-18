@@ -1,15 +1,15 @@
-import { createJiti, type Jiti, type TransformOptions, type TransformResult } from "jiti";
+import { createJiti, type Jiti } from "jiti";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { createRequire, registerHooks } from "node:module";
+import { registerHooks } from "node:module";
 import { extname, sep } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
-type CaptureState = { cacheKey: string; dependencies: Set<string>; transformer: Jiti };
+type CaptureState = { cacheKey: string; dependencies: Set<string>; resolver: Jiti };
 type CapturedConfig<T> = { dependencies: string[]; value: T };
 
 const captureStorage: AsyncLocalStorage<CaptureState> = new AsyncLocalStorage();
 const dependenciesByValue: WeakMap<object, string[]> = new WeakMap();
-const CACHE_BUSTED_EXTENSIONS: ReadonlySet<string> = new Set([".cjs", ".js", ".json", ".mjs"]);
+const CACHE_BUSTED_EXTENSIONS: ReadonlySet<string> = new Set([".js", ".json", ".mjs", ".mts", ".ts"]);
 
 const isTrackedPath = (path: string): boolean => !path.includes(`${sep}node_modules${sep}`);
 
@@ -47,39 +47,50 @@ const cacheBustedUrl = (url: string): string => {
 const registerResolutionHook = (): ReturnType<typeof registerHooks> =>
     registerHooks({
         resolve(specifier, context, nextResolve) {
-            const result = nextResolve(specifier, context);
+            let result;
+
+            try {
+                result = nextResolve(specifier, context);
+            } catch (error) {
+                const state = captureStorage.getStore();
+                const fallback = captureStorage.exit(() =>
+                    state?.resolver.esmResolve(specifier, {
+                        ...(context.parentURL !== undefined && { parentURL: context.parentURL }),
+                        try: true,
+                    }),
+                );
+
+                if (fallback === undefined) {
+                    throw error;
+                }
+
+                result = nextResolve(fallback, context);
+            }
+
             addUrl(result.url);
 
             return { ...result, url: cacheBustedUrl(result.url) };
         },
     });
 
-const clearNativeModuleCache = (dependencies: Iterable<string>): void => {
-    const cache = createRequire(import.meta.url).cache;
-
-    for (const path of dependencies) {
-        Reflect.deleteProperty(cache, path);
+const importConfigModule: Jiti["import"] = async <T>(path: string, options?: { default?: true }): Promise<T> => {
+    if ([".cjs", ".cts"].includes(extname(path))) {
+        throw new Error(`Configuration modules must use ESM: ${path}`);
     }
+
+    const value = (await import(pathToFileURL(path).href, {
+        ...(extname(path) === ".json" && { with: { type: "json" } }),
+    })) as Record<string, unknown>;
+
+    return (options?.default ? (value.default ?? { ...value }) : value) as T;
 };
 
-const transformConfigModule = (options: TransformOptions): TransformResult => {
-    const state = captureStorage.getStore();
-
-    if (state === undefined) {
-        throw new Error("Configuration transformation started outside a dependency capture");
-    }
-
-    if (options.filename !== undefined) {
-        addPath(options.filename);
-    }
-
-    return { code: state.transformer.transform(options) };
-};
+const createConfigImporter = (): Jiti =>
+    Object.assign(createJiti(import.meta.url, { fsCache: false, moduleCache: false }), { import: importConfigModule });
 
 const setConfigDependencies = (value: object, dependencies: Iterable<string>): void => {
     const paths = [...new Set(dependencies)];
     dependenciesByValue.set(value, paths);
-    clearNativeModuleCache(paths);
 };
 
 const configDependenciesFor = (value: unknown): string[] =>
@@ -89,7 +100,7 @@ const captureConfigDependencies = async <T>(operation: () => Promise<T>): Promis
     const state: CaptureState = {
         cacheKey: process.hrtime.bigint().toString(),
         dependencies: new Set(),
-        transformer: createJiti(import.meta.url, { fsCache: false, moduleCache: false }),
+        resolver: createJiti(import.meta.url, { fsCache: false, moduleCache: false }),
     };
     const hook = registerResolutionHook();
 
@@ -108,4 +119,16 @@ const captureConfigDependencies = async <T>(operation: () => Promise<T>): Promis
     }
 };
 
-export { captureConfigDependencies, configDependenciesFor, setConfigDependencies, transformConfigModule };
+const loadConfigModule = async (path: string): Promise<unknown> => {
+    const captured = await captureConfigDependencies(() => importConfigModule(path, { default: true }));
+
+    return captured.value;
+};
+
+export {
+    captureConfigDependencies,
+    configDependenciesFor,
+    createConfigImporter,
+    loadConfigModule,
+    setConfigDependencies,
+};

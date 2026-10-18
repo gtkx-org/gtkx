@@ -36,10 +36,6 @@ export default defineConfig(
         rules: { "react-hooks/set-state-in-effect": "error" },
     },
     {
-        files: ["**/*.cjs"],
-        rules: { "no-dupe-args": "error", "no-octal": "error" },
-    },
-    {
         files: ["website/**/*.vue"],
         extends: [tseslint.configs.recommended, vue.configs["flat/essential"]],
         languageOptions: {

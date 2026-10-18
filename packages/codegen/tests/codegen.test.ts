@@ -28,7 +28,7 @@ const createProject = () => {
     const directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-codegen-test-"));
     const modules = join(directory.path, "node_modules");
     mkdirSync(join(modules, "@gtkx"), { recursive: true });
-    for (const name of ["runtime", "cairo", "react"]) {
+    for (const name of ["runtime", "cairo", "react", "native"]) {
         symlinkSync(join(workspace, "packages", name), join(modules, "@gtkx", name), "dir");
     }
     for (const name of ["@types", "react", "csstype"]) {
@@ -174,6 +174,25 @@ describe("generated bindings", () => {
         expect(
             diagnostics(directory.path, `${imports} export const button = createElement(GtkButton, { label: 42 });`),
         ).not.toEqual([]);
+        execFileSync(
+            process.execPath,
+            [
+                "--input-type=module",
+                "-e",
+                `import assert from "node:assert/strict";
+                import { createRequire } from "node:module";
+                import { File } from "@gtkx/gi/gio";
+                import { init } from "@gtkx/native";
+                assert.equal(File.newForPath("/tmp/example").getPath(), "/tmp/example");
+                assert.equal(typeof init, "function");
+                const require = createRequire(import.meta.url);
+                for (const name of ["@gtkx/gi/gio", "@gtkx/jsx/gtk", "@gtkx/native"]) {
+                    import.meta.resolve(name);
+                    assert.throws(() => require(name), { code: "ERR_PACKAGE_PATH_NOT_EXPORTED" });
+                }`,
+            ],
+            { cwd: directory.path, stdio: "pipe", timeout: 20_000 },
+        );
     });
 
     it("indexes upstream class, function and documentation contracts", () => {

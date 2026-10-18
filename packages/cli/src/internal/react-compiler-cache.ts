@@ -1,9 +1,9 @@
 import type { ResolvedReactCompilerOptions } from "@gtkx/config/internal";
 import { isRecord } from "@gtkx/utils";
 import { createHash } from "node:crypto";
-import { mkdirSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
+import { findPackageJSON } from "node:module";
+import { join } from "node:path";
 import packageManifest from "../../package.json" with { type: "json" };
 import { moduleHash } from "./module-hash.js";
 import { isStagingOwnerRunning, STAGING_SUFFIX, writeAtomically } from "./staging-file.js";
@@ -58,37 +58,14 @@ const manifestIdentity = (value: unknown): string | undefined =>
         ? `${value.name}@${value.version}`
         : undefined;
 
-const tryResolve = (resolver: NodeJS.Require, specifier: string): string | undefined => {
+const manifestPathFor = (name: string, from: string): string | undefined => {
     try {
-        return resolver.resolve(specifier);
+        const path = findPackageJSON(name, from);
+
+        return path === undefined ? undefined : realpathSync(path);
     } catch {
         return undefined;
     }
-};
-
-const manifestNear = (entry: string, name: string): string | undefined => {
-    for (let dir = dirname(entry); dir !== dirname(dir); dir = dirname(dir)) {
-        const candidate = join(dir, "package.json");
-
-        if (manifestIdentity(readManifest(candidate))?.startsWith(`${name}@`) === true) {
-            return candidate;
-        }
-    }
-
-    return undefined;
-};
-
-const manifestPathFor = (name: string, from: string): string | undefined => {
-    const resolver = createRequire(from);
-    const direct = tryResolve(resolver, `${name}/package.json`);
-
-    if (direct !== undefined) {
-        return direct;
-    }
-
-    const entry = tryResolve(resolver, name);
-
-    return entry === undefined ? undefined : manifestNear(entry, name);
 };
 
 const visitPackage = (name: string, from: string, walk: ToolchainWalk): void => {

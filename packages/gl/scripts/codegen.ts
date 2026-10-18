@@ -1,15 +1,13 @@
 import { runGlCodegen } from "@gtkx/codegen/internal";
 import { createLogger } from "@gtkx/utils";
-import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const log = createLogger("gl");
-const require = createRequire(import.meta.url);
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 
 const registryPath = join(
-    dirname(require.resolve("@gtkx/codegen/package.json")),
+    dirname(fileURLToPath(import.meta.resolve("@gtkx/codegen/package.json"))),
     "src",
     "khronos",
     "registry",

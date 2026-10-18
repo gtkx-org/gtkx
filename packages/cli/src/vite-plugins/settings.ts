@@ -33,7 +33,7 @@ type SchemaResolveRequest = Parameters<typeof resolveToVirtual>[1];
 
 const VIRTUAL_PREFIX = "\0gtkx-settings:";
 const SCHEMA_STAGING_PREFIX = "schemas";
-const SOURCE_MODULE_RE = /\.[cm]?[jt]sx?$/;
+const SOURCE_MODULE_RE = /\.(?:[jt]sx?|m[jt]s)$/;
 const SCHEMA_ID_RE = /\.gschema\.xml$/;
 const SCHEMA_ENV_DEBOUNCE_MS = 50;
 const VIRTUAL_ID_RE = new RegExp(`^${VIRTUAL_PREFIX}`);

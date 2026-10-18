@@ -71,8 +71,10 @@ const RETAINED_GENERATIONS = 3;
 const GENERATION_OWNER_PATTERN =
     /^\.(?:gi|jsx|pair)-(?:generation|legacy)-\d+-(?<pid>\d+)(?:-(?<identity>[a-f\d]{64}|unknown))?-/u;
 
-const subpathExport = (stem: string): { types: string; default: string } => ({
+const subpathExport = (stem: string): { types: string; import: string; require: null; default: string } => ({
     types: `./${stem}.d.ts`,
+    import: `./${stem}.js`,
+    require: null,
     default: `./${stem}.js`,
 });
 

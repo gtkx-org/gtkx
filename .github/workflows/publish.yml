@@ -33,7 +33,7 @@ jobs:
             echo "::error::Run this workflow from the release tag"
             exit 1
           fi
-          package_version="$(node -p "JSON.parse(require('node:fs').readFileSync('packages/create-gtkx/package.json', 'utf8')).version")"
+          package_version="$(jq -r '.version' packages/create-gtkx/package.json)"
           if [ "${GITHUB_REF_NAME}" != "v${package_version}" ]; then
             echo "::error::Tag ${GITHUB_REF_NAME} does not match package version ${package_version}"
             exit 1

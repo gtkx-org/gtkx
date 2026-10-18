@@ -7,7 +7,9 @@ const CONFIG_LOCATIONS = ["gtkx.config", ".config/gtkx", ".config/gtkx.config"];
 
 const configCandidatePaths = (directory: string): string[] =>
     CONFIG_LOCATIONS.flatMap((location) =>
-        SUPPORTED_EXTENSIONS.map((extension) => join(directory, `${location}${extension}`)),
+        SUPPORTED_EXTENSIONS.filter((extension) => extension !== ".cjs" && extension !== ".cts").map((extension) =>
+            join(directory, `${location}${extension}`),
+        ),
     );
 
 const isLocalConfigSource = (source: string): boolean => source.startsWith(".") || isAbsolute(source);

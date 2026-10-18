@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { copyFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { verifyNativeArtifacts } from "./verify-artifacts.ts";
 
 const args = process.argv.slice(2);
@@ -16,8 +16,7 @@ if (args[0] === "--from-artifacts") {
     copyFileSync(artifacts.javascript, join(process.cwd(), "index.js"));
     copyFileSync(artifacts.declarations, join(process.cwd(), "index.d.ts"));
 } else {
-    const require = createRequire(join(process.cwd(), "package.json"));
-    const cli = join(dirname(require.resolve("@napi-rs/cli/package.json")), "dist", "cli.js");
+    const cli = join(dirname(fileURLToPath(import.meta.resolve("@napi-rs/cli/package.json"))), "dist", "cli.js");
     const separator = args.indexOf("--");
     const napiArgs = separator === -1 ? args : args.slice(0, separator);
     const cargoArgs = separator === -1 ? [] : args.slice(separator + 1);

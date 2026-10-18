@@ -37,7 +37,8 @@ test("isolated ${name}", async () => {
     const root = process.env.XDG_RUNTIME_DIR;
     expect(existsSync(join(root, process.env.WAYLAND_DISPLAY))).toBe(true);
     expect(process.env.DBUS_SESSION_BUS_ADDRESS).toContain(root);
-    const worker = new Worker('require("node:worker_threads").parentPort.postMessage(process.env.XDG_RUNTIME_DIR)', { eval: true });
+    const workerSource = 'import { parentPort } from "node:worker_threads"; parentPort.postMessage(process.env.XDG_RUNTIME_DIR);';
+    const worker = new Worker(new URL("data:text/javascript," + encodeURIComponent(workerSource)));
     const inherited = await new Promise((resolve, reject) => { worker.once("message", resolve); worker.once("error", reject); });
     expect(inherited).toBe(root);
     await worker.terminate();

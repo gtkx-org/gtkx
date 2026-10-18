@@ -1,7 +1,7 @@
+import { loadConfigModule } from "@gtkx/config/internal";
 import { isPathInside, sortStringsBy } from "@gtkx/utils";
-import { createJiti } from "jiti";
 import { globSync, statSync } from "node:fs";
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { extname, isAbsolute, relative, resolve, sep } from "node:path";
 
 type StorybookConfig = {
     stories: string[];
@@ -17,14 +17,15 @@ type StorybookFiles = {
 
 const STORYBOOK_CONFIG_BASE = ".storybook/main";
 const STORYBOOK_PREVIEW_BASE = ".storybook/preview";
-const EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mts", ".mjs"];
+const CONFIG_EXTENSIONS = [".ts", ".js", ".mts", ".mjs"];
+const PREVIEW_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mts", ".mjs"];
 const DEFAULT_STORIES = ["src/**/*.stories.{ts,tsx,js,jsx,mts,mjs}"];
 const DEFAULT_EXCLUDES = ["**/node_modules/**", "**/.git/**", "**/.gtkx/**", "**/dist/**", "**/build/**"];
 
 const isFile = (path: string): boolean => statSync(path, { throwIfNoEntry: false })?.isFile() === true;
 
-const findConfigFile = (root: string, base: string): string | undefined =>
-    EXTENSIONS.map((extension) => resolve(root, `${base}${extension}`)).find((path) => isFile(path));
+const findConfigFile = (root: string, base: string, extensions: string[]): string | undefined =>
+    extensions.map((extension) => resolve(root, `${base}${extension}`)).find((path) => isFile(path));
 
 const projectPath = (root: string, path: string): string => {
     const absolute = resolve(root, path);
@@ -38,10 +39,14 @@ const projectPath = (root: string, path: string): string => {
 
 const resolveStorybookConfigPath = (root: string, configured?: string): string | undefined => {
     if (configured === undefined) {
-        return findConfigFile(root, STORYBOOK_CONFIG_BASE);
+        return findConfigFile(root, STORYBOOK_CONFIG_BASE, CONFIG_EXTENSIONS);
     }
 
     const path = projectPath(root, configured);
+
+    if (!CONFIG_EXTENSIONS.includes(extname(path))) {
+        throw new Error(`Storybook configuration must use an ESM JavaScript or TypeScript file: ${path}`);
+    }
 
     if (!isFile(path)) {
         throw new Error(`Storybook configuration does not exist: ${path}`);
@@ -98,7 +103,7 @@ const autoTitle = (root: string, path: string): string =>
         .split(sep)
         .join("/")
         .replace(/^src\//, "")
-        .replace(/\.stories\.[cm]?[jt]sx?$/, "");
+        .replace(/\.stories\.(?:[jt]sx?|m[jt]s)$/, "");
 
 const discoverStorybookFiles = (
     root: string,
@@ -106,7 +111,9 @@ const discoverStorybookFiles = (
     config: StorybookConfig,
 ): StorybookFiles => {
     const previewPath =
-        config.preview === undefined ? findConfigFile(root, STORYBOOK_PREVIEW_BASE) : projectPath(root, config.preview);
+        config.preview === undefined
+            ? findConfigFile(root, STORYBOOK_PREVIEW_BASE, PREVIEW_EXTENSIONS)
+            : projectPath(root, config.preview);
 
     if (previewPath !== undefined && !isFile(previewPath)) {
         throw new Error(`Storybook preview does not exist: ${previewPath}`);
@@ -129,18 +136,14 @@ const discoverStorybookFiles = (
 
 const prepareStorybookFiles = async (root: string, configured?: string): Promise<StorybookFiles> => {
     const configPath = resolveStorybookConfigPath(root, configured);
-    const jiti = createJiti(resolve(root, "package.json"), { moduleCache: false, fsCache: false });
-    const value = configPath === undefined ? {} : await jiti.import(configPath, { default: true });
+    const value = configPath === undefined ? {} : await loadConfigModule(configPath);
 
     return discoverStorybookFiles(root, configPath, parseStorybookConfig(value));
 };
 
 const isStorybookConfigCandidate = (root: string, path: string): boolean =>
-    EXTENSIONS.some(
-        (extension) =>
-            path === resolve(root, `${STORYBOOK_CONFIG_BASE}${extension}`) ||
-            path === resolve(root, `${STORYBOOK_PREVIEW_BASE}${extension}`),
-    );
+    CONFIG_EXTENSIONS.some((extension) => path === resolve(root, `${STORYBOOK_CONFIG_BASE}${extension}`)) ||
+    PREVIEW_EXTENSIONS.some((extension) => path === resolve(root, `${STORYBOOK_PREVIEW_BASE}${extension}`));
 
 export {
     discoverStorybookFiles,

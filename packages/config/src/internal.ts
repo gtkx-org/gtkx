@@ -1,4 +1,4 @@
-export { configDependenciesFor } from "./config-dependencies.ts";
+export { configDependenciesFor, loadConfigModule } from "./config-dependencies.ts";
 export { createConfigReloader } from "./config-reloader.ts";
 export { configCandidatePaths } from "./config-source.ts";
 export type { McpSettings, ResolvedReactCompilerOptions } from "./config.ts";

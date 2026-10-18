@@ -1,6 +1,5 @@
 import { isRecord } from "@gtkx/utils";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
-import { createRequire } from "node:module";
 import { basename, dirname, join } from "node:path";
 import { z } from "zod";
 import packageManifest from "../../package.json" with { type: "json" };
@@ -41,7 +40,7 @@ const cacheSchema = z.object({
 
 const scanCachePath = (root: string): string => join(root, ...CACHE_FILE);
 
-const readJson = (path: string): unknown => {
+const readJson = (path: string | URL): unknown => {
     try {
         return JSON.parse(readFileSync(path, "utf8")) as unknown;
     } catch {
@@ -50,7 +49,7 @@ const readJson = (path: string): unknown => {
 };
 
 const parserVersion = (): string => {
-    const manifest = readJson(createRequire(import.meta.url).resolve(PARSER_MANIFEST));
+    const manifest = readJson(new URL(import.meta.resolve(PARSER_MANIFEST)));
 
     return isRecord(manifest) && typeof manifest.version === "string" ? manifest.version : UNKNOWN_PARSER;
 };

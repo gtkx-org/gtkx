@@ -57,7 +57,7 @@ jobs:
             echo "prepared=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          version="$(node -p "require('./packages/create-gtkx/package.json').version")"
+          version="$(jq -r '.version' packages/create-gtkx/package.json)"
           {
             echo "prepared=true"
             echo "version=$version"
@@ -121,7 +121,7 @@ jobs:
             echo "state=unprepared" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          version="$(node -p "require('./packages/create-gtkx/package.json').version")"
+          version="$(jq -r '.version' packages/create-gtkx/package.json)"
           releases="$(gh api "repos/${GITHUB_REPOSITORY}/releases" --paginate --slurp)"
           release="$(jq -c --arg tag "v${version}" '[.[][] | select(.tag_name == $tag)] | first' <<<"$releases")"
           if [ "$release" != "null" ]; then

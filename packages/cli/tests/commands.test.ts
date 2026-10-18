@@ -434,14 +434,24 @@ describe("CLI commands", () => {
     it("starts a real storybook session and stops its application", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "ready.txt");
+        const previewPath = join(project.root, "preview.txt");
+        project.write(".storybook/paths.mts", 'export const stories = ["stories/**/*.stories.tsx"];');
+        project.write(".storybook/main.mts", 'import { stories } from "./paths.mjs"; export default { stories };');
         project.write(
-            "src/example.stories.ts",
+            ".storybook/preview.tsx",
+            `import { writeFileSync } from "node:fs";
+            writeFileSync(${JSON.stringify(previewPath)}, "preview");
+            export default { decorators: [(Story) => <Story />] };`,
+        );
+        project.write(
+            "stories/example.stories.tsx",
             `import { writeFileSync } from "node:fs";
             writeFileSync(${JSON.stringify(readyPath)}, "ready");
             export default { title: "Example" }; export const Empty = { render: () => null };`,
         );
         await withSession("storybook", project.root, readyPath, () => {
             expect(readFileSync(readyPath, "utf8")).toBe("ready");
+            expect(readFileSync(previewPath, "utf8")).toBe("preview");
             return Promise.resolve();
         });
     });

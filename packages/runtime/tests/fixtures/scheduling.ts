@@ -120,12 +120,13 @@ const runDescriptors = async (): Promise<void> => {
     };
     const events: string[] = [];
     const produce = async (fd: number, done: Promise<void>): Promise<void> => {
+        const source = `import { workerData } from "node:worker_threads";
+            import { writeSync } from "node:fs";
+            setInterval(() => {}, 1000);
+            setTimeout(() => writeSync(workerData, Buffer.from("a")), 100);`;
         const producer = new Worker(
-            `const { workerData } = require("node:worker_threads");
-             const { writeSync } = require("node:fs");
-             setInterval(() => {}, 1000);
-             setTimeout(() => writeSync(workerData, Buffer.from("a")), 100);`,
-            { eval: true, workerData: fd },
+            new URL(`data:text/javascript,${encodeURIComponent(source)}`),
+            { workerData: fd },
         );
         try {
             await done;

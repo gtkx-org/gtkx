@@ -21,7 +21,7 @@ const SOURCE_LANGUAGES: Map<string, SourceLanguage> = new Map([
     [".tsx", "tsx"],
 ]);
 
-const SOURCE_ID_RE = /\.[cm]?[jt]sx?(?:\?.*)?$/i;
+const SOURCE_ID_RE = /\.(?:[jt]sx?|m[jt]s)(?:\?.*)?$/i;
 
 const sourceLanguage = (path: string): SourceLanguage | undefined => {
     if (path.endsWith(".d.ts") || path.endsWith(".d.mts")) {

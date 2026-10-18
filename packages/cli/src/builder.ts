@@ -63,6 +63,7 @@ const forcedConfig = async (options: BuildOptions, root: string, assetsDir: stri
             assetsInlineLimit: 0,
             rolldownOptions: {
                 output: {
+                    format: "es",
                     entryFileNames: ENTRY_FILE_NAMES,
                     chunkFileNames: posix.join(assetsDir, CHUNK_STEM + ESM_EXTENSION),
                     keepNames: true,

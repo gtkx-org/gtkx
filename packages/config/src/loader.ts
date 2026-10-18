@@ -2,7 +2,7 @@ import { isPathInside, warn } from "@gtkx/utils";
 import { loadConfig as loadConfigFile } from "c12";
 import { existsSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { captureConfigDependencies, setConfigDependencies, transformConfigModule } from "./config-dependencies.ts";
+import { captureConfigDependencies, createConfigImporter, setConfigDependencies } from "./config-dependencies.ts";
 import { missingConfigFileError } from "./config-error.ts";
 import { type ConfigResolutionOptions, localConfigSourcePath } from "./config-source.ts";
 import { type Config, graduatedFutureKeys, resolveConfig, type ResolvedConfig, validateConfig } from "./config.ts";
@@ -105,7 +105,7 @@ const loadConfig = async (cwd: string, options: LoadConfigOptions = {}): Promise
             packageJson: false,
             omit$Keys: true,
             context: { mode: options.mode },
-            jitiOptions: { fsCache: false, transform: transformConfigModule },
+            jiti: createConfigImporter(),
             resolve: rejectMissingLocalConfig,
             ...(requestedConfigFile !== undefined && { configFile: requestedConfigFile }),
             ...(options.mode !== undefined && { envName: options.mode }),

@@ -7,23 +7,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { isRecord } from "./config-error.ts";
 import { localConfigSourcePath } from "./config-source.ts";
 
-const MODULE_EXTENSIONS: ReadonlySet<string> = new Set([".cjs", ".cts", ".js", ".mjs", ".mts", ".ts"]);
-const RESOLVABLE_EXTENSIONS = [
-    ".js",
-    ".ts",
-    ".mjs",
-    ".cjs",
-    ".mts",
-    ".cts",
-    ".json",
-    ".jsonc",
-    ".json5",
-    ".yaml",
-    ".yml",
-    ".toml",
-];
+const MODULE_EXTENSIONS: ReadonlySet<string> = new Set([".js", ".mjs", ".mts", ".ts"]);
+const RESOLVABLE_EXTENSIONS = [".js", ".ts", ".mjs", ".mts", ".json", ".jsonc", ".json5", ".yaml", ".yml", ".toml"];
 const JAVASCRIPT_FALLBACKS: Readonly<Record<string, string[]>> = {
-    ".cjs": [".cts"],
     ".js": [".ts"],
     ".jsx": [".tsx"],
     ".mjs": [".mts"],
@@ -43,7 +29,7 @@ type ModuleSources = { all: string[]; extended: string[] };
 const parserPlugins = (path: string): ("decorators" | "jsx" | "typescript")[] => {
     const extension = extname(path).toLowerCase();
 
-    return ["decorators", ...([".cts", ".mts", ".ts"].includes(extension) ? ["typescript" as const] : [])];
+    return ["decorators", ...([".mts", ".ts"].includes(extension) ? ["typescript" as const] : [])];
 };
 
 function expressionSources(value: types.Expression): string[] {
@@ -84,8 +70,8 @@ const parseModule = (path: string): ParsedModule | undefined => {
                 babelrc: false,
                 configFile: false,
                 filename: path,
-                parserOpts: { allowReturnOutsideFunction: true, plugins: parserPlugins(path) },
-                sourceType: "unambiguous",
+                parserOpts: { plugins: parserPlugins(path) },
+                sourceType: "module",
             }) ?? undefined
         );
     } catch {
@@ -99,17 +85,6 @@ const addSource = (sources: Set<string>, source: types.StringLiteral | null | un
     }
 };
 
-const requireSource = (call: types.CallExpression): types.StringLiteral | undefined =>
-    types.isIdentifier(call.callee, { name: "require" }) && types.isStringLiteral(call.arguments[0])
-        ? call.arguments[0]
-        : undefined;
-
-const importEqualsSource = (declaration: types.TSImportEqualsDeclaration): types.StringLiteral | undefined => {
-    const { moduleReference } = declaration;
-
-    return types.isTSExternalModuleReference(moduleReference) ? moduleReference.expression : undefined;
-};
-
 const propertySources = (property: types.ObjectProperty): string[] =>
     isExtendsProperty(property) && types.isExpression(property.value) ? extendsSources(property.value) : [];
 
@@ -118,9 +93,6 @@ const collectModuleSources = (ast: ParsedModule): ModuleSources => {
     const extended: Set<string> = new Set();
 
     traverse(ast, {
-        CallExpression: (nodePath) => {
-            addSource(sources, requireSource(nodePath.node));
-        },
         ExportAllDeclaration: (nodePath) => {
             addSource(sources, nodePath.node.source);
         },
@@ -139,9 +111,6 @@ const collectModuleSources = (ast: ParsedModule): ModuleSources => {
                 sources.add(source);
                 extended.add(source);
             }
-        },
-        TSImportEqualsDeclaration: (nodePath) => {
-            addSource(sources, importEqualsSource(nodePath.node));
         },
     });
 
