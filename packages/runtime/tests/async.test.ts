@@ -34,7 +34,7 @@ test("finish failures reject the operation without losing the original error", a
 });
 
 test("finish failures preserve errors and their causes across realms", async () => {
-    const error: Error = runInNewContext("new Error('finish failed', { cause: new Error('original failure') })");
+    const error = runInNewContext("new Error('finish failed', { cause: new Error('original failure') })") as Error;
     const cause = error.cause;
     const result = promisify(
         operation,
