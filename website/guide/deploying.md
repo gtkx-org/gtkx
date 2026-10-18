@@ -50,7 +50,7 @@ Set `deploy.targets` for the project's usual formats, or override them for one r
 gtkx deploy --target deb,rpm
 ```
 
-With neither setting, GTKX builds a Flatpak. Finished packages land in `build/out/`; generated metadata and manifests remain under `build/` for review.
+With neither setting, GTKX builds a Flatpak. Finished packages are written to `build/out/`; generated metadata and manifests remain under `build/` for review.
 
 ## Preview and build
 

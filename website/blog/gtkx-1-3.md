@@ -8,21 +8,19 @@ image: /animations-demo.png
 
 <p class="post-date">August 21, 2026</p>
 
-GTKX 1.3 is out. The headline is [`@gtkx/animated`](/guide/animations), React Spring's engine with a GTK target, alongside a per-widget [`style`](/guide/css) prop that springs can drive, a new [`@gtkx/cairo`](/guide/cairo) package and a much larger [`registerClass`](/guide/subclassing). Read the [`changelog`](https://github.com/gtkx-org/gtkx/releases/tag/v1.3.0) for the full list of changes.
+GTKX 1.3 adds [`@gtkx/animated`](/guide/animations) for React Spring animations, a per-widget [`style`](/guide/css) prop, a [`@gtkx/cairo`](/guide/cairo) package, and additional [`registerClass`](/guide/subclassing) options. Read the [changelog](https://github.com/gtkx-org/gtkx/releases/tag/v1.3.0) for the full list of changes.
 
 <video src="/animations-demo.webm" poster="/animations-demo.webp" width="1120" height="480" autoplay loop muted playsinline controls preload="metadata" aria-label="GTKX animation demos showing fades, slides, progress, list transitions, transforms, and animated colors. Sidebar pages demonstrate springs, trails, chains, and imperative controls."></video>
 
 _The [`animations`](https://github.com/gtkx-org/gtkx/tree/v1.3.0/examples/animations) example, one page per primitive, driving real GTK widgets._
 
-Until now, animating anything in GTKX meant reaching for GTK's own machinery: an `Adw.TimedAnimation`, a `Gtk.Revealer`, a tick callback and some arithmetic. All of it works, and none of it composes with React. A revealer animates the one thing a revealer animates. A tick callback that moves a margin has to be started, stopped, and torn down by hand, and it has no idea that the component owning it has just re-rendered with a different target.
-
-React already has an answer to that, and it is React Spring. 1.3 does not reimplement it; it gives it somewhere to write:
+GTK and Adwaita provide animations through widgets such as `Gtk.Revealer`, animation objects, and frame callbacks. Custom animations also need lifecycle handling when a React component updates or unmounts. `@gtkx/animated` connects React Spring's hooks and lifecycle to GTK properties:
 
 ```bash
 npm install @gtkx/animated@^1.3.0
 ```
 
-## Springs are written onto widgets, not into a shared style sheet
+## Animating widget props {#springs-are-written-onto-widgets-not-into-a-shared-style-sheet}
 
 `animated(Component)` returns the same component with props that also accept a `SpringValue` or an `Interpolation`:
 
@@ -47,15 +45,13 @@ Writes are silent as far as your handlers are concerned. Animating a `GtkSpinBut
 
 ## Numbers are fitted to the property they land on
 
-CSS accepts a fractional pixel and an opacity of 1.03 without comment. GObject does not: a `gint` property rejects `12.7`, and a property with a range rejects anything outside it. A spring produces exactly those values, constantly — that is what a spring is.
-
-So every animated write is fitted to its target. A value headed for a whole-number property is truncated toward zero, and a value outside the range a property allows is clamped to it. A `config.wobbly` spring that overshoots `opacity` past 1 lands on 1; a margin that dips below 0 lands on 0. Non-numbers pass through untouched, which is why a `Gsk.Transform` works.
+Springs can produce fractional values or overshoot their target. GObject properties may require integers or restrict the allowed range. GTKX truncates whole-number properties toward zero and clamps values to their property's range. For example, an opacity above 1 becomes 1, and a negative margin becomes 0. Non-numeric values, such as `Gsk.Transform`, pass through unchanged.
 
 The one thing to know is that GTK margins cannot go negative, so a widget slides in by shrinking a margin rather than by growing one from a negative start.
 
 ## Moving a widget
 
-There is no transform shorthand, on purpose. GTK positions widgets through layout, not through a string a parser has to take apart, so a position is animated where a container lets you set one. Inside a `GtkFixed`, that is the `transform` of a `GtkFixedLayoutChild`, and an interpolation builds one:
+Animate position through the layout properties exposed by the container. Inside a `GtkFixed`, use the `transform` of a `GtkFixedLayoutChild` and build its value with an interpolation:
 
 ```tsx
 import { animated, to, useSpring } from "@gtkx/animated";
@@ -85,7 +81,7 @@ That is the `Transforms` page in the video. Elsewhere, animate the margins, the 
 
 ## Styling what has no property
 
-Some of what you want to animate is not a GObject property at all. There is no `color` on a `Gtk.Label`, no `background` on a `Gtk.Box`, no `border-radius` anywhere. GTK4 exposes those through CSS and nothing else, which until now put them out of reach of a spring.
+GTK exposes text color, background, and border radius through CSS rather than GObject properties.
 
 1.3 adds a [`style`](/guide/css) prop to every widget:
 
@@ -123,9 +119,9 @@ const styles = useSpring({ from: { color: "red" }, to: { color: "blue" } });
 <AnimatedLabel style={styles} label="Due today" />;
 ```
 
-`style` is typed as a curated list of the properties GTK4 actually understands, not the whole web set. GTK4 CSS covers paint and typography and has no layout, so <span v-pre>`style={{ display: "flex" }}`</span> fails to compile rather than turning into a runtime warning you have to notice — width, alignment and spacing stay in the widget's own props, where GTK puts them.
+`style` accepts GTK4 CSS properties. Browser layout properties such as <span v-pre>`style={{ display: "flex" }}`</span> fail typechecking. Configure layout through widget props such as width requests, alignment, and spacing.
 
-## The rest of React Spring is the same React Spring
+## React Spring APIs {#the-rest-of-react-spring-is-the-same-react-spring}
 
 `useSpring`, `useSprings`, `useTrail`, `useTransition`, `useChain` and `useSpringRef`, `useSpringValue` and its imperative `start`, `pause`, `resume` and `set`, the `Spring`, `Trail` and `Transition` render-prop components, `config`, `easings`, `to`, `SpringValue`, `Controller` and the types — all exported from `@gtkx/animated`, all behaving as the React Spring documentation describes them.
 
@@ -137,9 +133,9 @@ React Spring's scheduler is repointed at GTK. Animations advance in the update p
 
 Windows come and go, so the driver does too: when the driving window is unmapped, another mapped window picks the animations up, and if the clock stops ticking, that window is set aside for a moment and a different one takes over. When no window is mapped at all, a timer paces the frames, so a spring still reaches its target and its `onRest` still fires.
 
-## Reduced motion is two settings, not one
+## Animation preferences {#reduced-motion-is-two-settings-not-one}
 
-The web has one `prefers-reduced-motion`. GTK has two, and they mean different things.
+GTK exposes separate settings for disabling animations and requesting reduced motion.
 
 `gtk-enable-animations` is the toolkit-wide switch, and `@gtkx/animated` follows it the way GTK's own transitions do: while animations are off, every spring jumps to its target and the rest of the lifecycle — `onChange`, `onRest` — runs as usual. `gtk-interface-reduced-motion`, on GTK 4.22 and later, is the desktop preference behind the `prefers-reduced-motion` media query, and it asks for _less_ motion rather than none. Springs keep running, and the component decides what to reduce:
 
@@ -166,7 +162,7 @@ Cairo has moved out of the generated binding store into its own package, [`@gtkx
 
 Two things got easier to pass. A GType parameter accepts the registered class alongside the numeric GType, so `Gio.ListStore.new(Gtk.Label)` works, and a `const GValue *` parameter accepts a plain JavaScript value with the GType inferred, the way GJS does it. Both are documented in [Configuration and codegen](/guide/configuration-and-codegen).
 
-The rest is correctness: required arguments and flag values are validated instead of marshalled as garbage, UCS-4 arrays and caller-allocated fixed arrays bind, fundamental identity survives a round trip through C, an error thrown out of a vfunc reaches the C caller as a real `GError`, and ownership transfer for structs, boxed types and fundamentals no longer leaks or double-frees.
+The rest is correctness: required arguments and flag values are validated instead of marshalled as garbage, UCS-4 arrays and caller-allocated fixed arrays bind, fundamental identity survives a round trip through C, an error thrown out of a vfunc reaches the C caller as a real `GError`, and fixes address ownership-transfer leaks and double-frees in structs, boxed types, and fundamentals.
 
 ## Upgrading
 
@@ -176,12 +172,12 @@ Some C functions are gone from the generated store. They double-free, hop thread
 
 A method named `on<SignalName>` is now installed as that signal's class-closure default handler, GJS-style, when the type actually carries a signal of that name. This is new behavior applied to old code: a helper you called `onShow` on a `Gtk.Widget` subclass now runs on every `show` emission. Rename any `on`-prefixed method that was never meant to be a handler. A name that does not match a real signal is left alone.
 
-Several things throw where they used to limp along: a missing required argument, an invalid flag value, a cairo constructor whose cairo call failed, and a `registerClass` call with a `typeName` GObject will not accept, a `cssName` on a non-widget class, or a signal the parent already carries.
+Calls now throw for missing required arguments, invalid flag values, Cairo construction errors, and invalid `registerClass` options. These include a rejected `typeName`, a `cssName` on a non-widget class, or a signal already declared by the parent.
 
-Nothing is removed yet, but `Gdk.RGBA.create`, the `Graphene.Point`, `Rect` and `Size` `create` helpers, and the `@gtkx/gi/cairo` subpath are all deprecated and go away in 2.0.
+The convenience APIs `Gdk.RGBA.create`, the `Graphene.Point`, `Rect` and `Size` `create` helpers, and the `@gtkx/gi/cairo` subpath remain available in 1.x but are deprecated for removal in 2.0.
 
 One change is quieter. `@media (prefers-color-scheme: dark)`, `prefers-contrast` and `prefers-reduced-motion` blocks inside a [`css`](/guide/css) template used to be inert. They apply now, so rules that were silently dead take effect on the next run.
 
 ## What's next
 
-The [roadmap](https://github.com/orgs/gtkx-org/projects/1) continues with [`@gtkx/navigation`](https://github.com/gtkx-org/gtkx/issues/479) on top of Adwaita and React Navigation (shipped in [1.4](/blog/gtkx-1-4)), and [`@gtkx/forms`](https://github.com/gtkx-org/gtkx/issues/480) on top of React Hook Form (shipped in [1.5](/blog/gtkx-1-5)). The [issue tracker](https://github.com/gtkx-org/gtkx/issues) is where the next work gets argued about.
+The [roadmap](https://github.com/orgs/gtkx-org/projects/1) continues with [`@gtkx/navigation`](https://github.com/gtkx-org/gtkx/issues/479) on top of Adwaita and React Navigation (shipped in [1.4](/blog/gtkx-1-4)), and [`@gtkx/forms`](https://github.com/gtkx-org/gtkx/issues/480) on top of React Hook Form (shipped in [1.5](/blog/gtkx-1-5)). Further work is tracked in [issues](https://github.com/gtkx-org/gtkx/issues).

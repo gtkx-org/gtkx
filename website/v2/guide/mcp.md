@@ -9,20 +9,20 @@ description: "Inspect a running GTKX app and look up its generated bindings from
 
 ## Setup
 
-Install the server and the testing package that powers its widget tools. Scaffolded projects may already include them.
+Install the server and the testing package used by its widget tools. Scaffolded projects may already include them.
 
 ::: code-group
 
 ```bash [npm]
-npm install -D @gtkx/mcp@beta @gtkx/testing@beta
+npm install -D @gtkx/mcp@2 @gtkx/testing@2
 ```
 
 ```bash [pnpm]
-pnpm add -D @gtkx/mcp@beta @gtkx/testing@beta
+pnpm add -D @gtkx/mcp@2 @gtkx/testing@2
 ```
 
 ```bash [yarn]
-yarn add -D @gtkx/mcp@beta @gtkx/testing@beta
+yarn add -D @gtkx/mcp@2 @gtkx/testing@2
 ```
 
 :::

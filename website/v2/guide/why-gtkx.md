@@ -5,7 +5,7 @@ description: "Where GTKX fits: native Linux interfaces, React state, and Node.js
 
 # Why GTKX
 
-GTKX builds native Linux applications with React and TypeScript. JSX creates Adwaita and GTK widgets; React keeps them in sync with application state. Choose it when you want a Linux desktop interface and a React development workflow.
+GTKX builds native Linux applications with React and TypeScript. JSX creates Adwaita and GTK widgets; React keeps them in sync with application state.
 
 ## Platform scope
 

@@ -50,9 +50,9 @@ GLib supplies the desktop data directory and replaces the saved file atomically.
 
 ## Turning it on
 
-Wrap the store creator from [Add Tasks](/v2/tutorial/the-task-store) in `persist`. Nothing inside it changes.
+Wrap the store creator from [Add Tasks](/v2/tutorial/the-task-store) in `persist`. Keep the existing actions and add the persistence options below.
 
-The import line in `src/store/index.ts`:
+Add these imports to `src/store/index.ts`:
 
 ```diff [src/store/index.ts]
 @@ -1,0 +2,2 @@
@@ -60,7 +60,7 @@ The import line in `src/store/index.ts`:
 +import { fileStorage } from "./storage.js";
 ```
 
-Then `src/store/index.ts`, with the action bodies left alone:
+Then update the store definition, keeping its existing action bodies:
 
 ```diff [src/store/index.ts]
 @@ -18,33 +18,57 @@
@@ -223,4 +223,4 @@ If you set `XDG_DATA_HOME`, use that directory instead. [Package the App](/v2/tu
 
 ## Next
 
-[Add Lists and a Sidebar](/v2/tutorial/lists-and-the-sidebar) splits the store into slices and gives tasks a list to belong to, reachable from a sidebar.
+[Add Lists and a Sidebar](/v2/tutorial/lists-and-the-sidebar) splits the store into slices and adds a sidebar for selecting lists.

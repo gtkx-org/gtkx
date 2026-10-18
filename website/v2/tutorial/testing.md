@@ -4,7 +4,7 @@ description: "Test Tasks through real native widgets in an isolated headless ses
 
 # Test the App
 
-Extend the entry-row tests from [Add Tasks](/v2/tutorial/the-task-store#test-the-entry-row) to cover the completed app. Use `@gtkx/testing` to exercise it through the native accessibility tree, with real Adwaita widgets and no visible test window. These are integration tests: they render the app and drive its widgets directly from TypeScript.
+Extend the entry-row tests from [Add Tasks](/v2/tutorial/the-task-store#test-the-entry-row) to cover the completed app. Use `@gtkx/testing` to render the app and interact with its Adwaita widgets in a headless session. These are integration tests: they drive widgets directly from TypeScript.
 
 ## Isolate the application data
 

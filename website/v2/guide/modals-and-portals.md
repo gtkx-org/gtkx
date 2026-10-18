@@ -1,6 +1,6 @@
 ---
 title: "Modals and Portals"
-description: "Rendering surfaces that live outside the widget tree: portals, windows, and Adwaita dialogs."
+description: "Render windows, Adwaita dialogs, and objects outside their surrounding container."
 ---
 
 # Modals and Portals
@@ -59,7 +59,7 @@ const MirrorWindow = ({ open }: { open: boolean }) =>
 
 Plain `AdwWindow` and `GtkWindow` elements default `transientFor` to their nearest window ancestor. An explicit value selects another parent; `null` keeps the window independent.
 
-Wire `onCloseRequest` to clear the state that mounted a secondary window, so React stays in charge of when it goes away.
+Handle `onCloseRequest` by clearing the state that rendered the secondary window.
 
 ## Dialogs
 
@@ -78,7 +78,7 @@ const Notice = ({ onClose }: { onClose: () => void }) => (
 
 Specialized dialogs keep the same lifecycle. Place their content in the supported JSX slots; for example, `AdwPreferencesDialog` takes `AdwPreferencesPage` children.
 
-Set `canClose={false}` when the dialog is not ready to go away, and handle `onCloseAttempt` to decide what happens instead. Unmounting still closes the dialog unconditionally.
+Set `canClose={false}` when the dialog must stay open, and handle `onCloseAttempt` to respond to a close request. Unmounting still closes the dialog unconditionally.
 
 `AdwAlertDialog` takes plain-text `heading` and `body` values and a declarative `responses` array. Its `onResponse` prop receives the selected response ID:
 

@@ -1,5 +1,5 @@
 ---
-title: "GTKX 1.0: The React framework for Linux"
+title: "GTKX 1.0: React for native Linux applications"
 description: "GTKX 1.0 brings React and TypeScript to native Linux apps, with generated bindings, Fast Refresh, and integration tests."
 image: /tasks-screenshot.png
 ---
@@ -8,9 +8,9 @@ image: /tasks-screenshot.png
 
 <p class="post-date">August 4, 2026</p>
 
-After months of hard work, GTKX 1.0 is finally out.
+GTKX 1.0 is available.
 
-GTKX is the React framework for Linux. It provides the missing declarative layer on top of the already mature GTK4 APIs: you write JSX, and GTKX creates GObject instances.
+GTKX is a React framework for native Linux applications. It creates GObject instances from JSX using generated GTK4 bindings.
 
 GTKX runs React on Node.js and renders native widgets. Components describe the interface for the current state, React updates the widget tree, and Fast Refresh applies edits to the running app. Node APIs and compatible npm libraries are available alongside GTK and Gio.
 
@@ -79,7 +79,7 @@ The app is an ordinary Node.js process. The Tasks app in the [tutorial](/tutoria
   <img src="/tasks-screenshot.png" width="900" height="600" loading="lazy" alt="The Tasks app: an adaptive Adwaita window with a sidebar of smart views and colored user lists on the left, and a boxed task list on the right." />
 </picture>
 
-_The tutorial's Tasks app. All driven declaratively by GTKX._
+_The Tasks app built in the tutorial._
 
 GTKX targets Linux. It exposes native library APIs through generated bindings and GTKX integration code; it does not provide a renderer for other desktop platforms.
 
@@ -104,9 +104,9 @@ libraries: ["Gtk-4.0", "Adw-1", "WebKit-6.0"],
 
 `import { WebKitWebView } from "@gtkx/jsx/webkit"` then resolves, with `WebKit.WebView`'s full method set behind its `ref`; the [`browser`](https://github.com/gtkx-org/gtkx/tree/v1.0.0/examples/browser) example is that one entry grown into a small web browser.
 
-## Every GObject is an element, every property is a prop
+## Generated elements and props {#every-gobject-is-an-element-every-property-is-a-prop}
 
-What generation buys is coverage without invention. A row from the tutorial's task list, trimmed to its check button and its drag-to-reorder controllers:
+Generated elements expose native properties and signals as JSX props. This row from the tutorial's task list uses a check button and drag-to-reorder controllers:
 
 ```tsx
 <AdwActionRow
@@ -149,7 +149,7 @@ What generation buys is coverage without invention. A row from the tutorial's ta
 />
 ```
 
-All GObjects are built as JSX, nothing is imperative if it doesn't need to be.
+The row and controllers are declared in JSX. The synchronous drag handler creates the content provider it must return to GTK.
 
 ## Where the generated surface stops
 
@@ -203,13 +203,13 @@ Some widgets carry an API that is too complex to be handled by element behaviors
 />
 ```
 
-Cost tracks the viewport rather than the result set. Syncing a million rows through that `items` prop was 2,228 ms and roughly 891 MB of resident memory in v0; in 1.0 it is 277 ms and 111 MB.
+The collection views create widgets for visible items and recycle them as the user scrolls. They still retain the item data supplied by the application.
 
 `GridView`, `ColumnView`, and `DropDown` get the same treatment. `ListView` and `ColumnView` also group items under section headers and expand nested ones into a tree; `DropDown` takes the section headers, and `GridView` stays flat. Cell recycling stays native, and React state inside a cell behaves normally. [`@gtkx/components`](/guide/components) also carries Adwaita's combo row and a toast provider.
 
-## There is no mock GTK
+## Testing native widgets {#there-is-no-mock-gtk}
 
-`@gtkx/testing` queries the accessibility tree the way Testing Library queries the DOM, and `userEvent` checks that a widget is sensitive, mapped, allocated, and in an active window before it interacts with it, so a test fails, naming the condition that was not met, instead of silently doing nothing:
+`@gtkx/testing` queries the accessibility tree using a Testing Library-style API. Before interacting, `userEvent` checks that a widget is sensitive, mapped, allocated, and in an active window. If a condition is unmet, the test reports it:
 
 ```tsx
 it("adds a task from the entry row", async () => {
@@ -242,11 +242,11 @@ export const useSortOrder = (): [SortOrder, (order: SortOrder) => void] => {
 };
 ```
 
-`gtkx docs` emits reference pages for the elements your own project generated, with the props, signal handlers, and `ref` methods each one actually has. The [`@gtkx/mcp`](/guide/mcp) server exposes those same pages to an agent and lets it read the widget tree of the running app, query it, and click through it. Shipping the thing is documented too: a [desktop entry and an AppStream file](/tutorial/packaging), then a [Flatpak manifest and a Flathub submission](/tutorial/flatpak).
+`gtkx docs` emits reference pages for the project's generated elements, including props, signal handlers, and `ref` methods. The [`@gtkx/mcp`](/guide/mcp) server exposes those pages to coding agents and provides tools to inspect and interact with the running app. The tutorial covers [desktop entries and AppStream metadata](/tutorial/packaging), then [Flatpak packaging and submission to Flathub](/tutorial/flatpak).
 
 ## What 1.0 means
 
-The generated elements and their prop rules, `gtkx.config.ts`, and the element behavior contract are frozen. So are the surfaces this post has been using around them: the hooks and `createRoot` in `@gtkx/react`, the components, `@gtkx/testing`, `@gtkx/css`, `@gtkx/gl`, and `registerClass` in `@gtkx/runtime`. Breaking changes are out for the 1.x line. A minor release may bind more of what GIR describes and add behaviors, and upgrading regenerates what is under `node_modules/.gtkx` without renaming any of it.
+The 1.0 release establishes the public APIs for generated elements, configuration, element behaviors, rendering, components, testing, styling, OpenGL, and subclassing. Later 1.x releases extend these APIs and bind additional GIR declarations. Check each release's upgrade notes for compatibility changes, including safety-related removals.
 
 ## Coming from v0
 
@@ -262,15 +262,15 @@ Almost every import path moved. Widgets come from `@gtkx/jsx/<namespace>` instea
 +createRoot().render(<App />);
 ```
 
-with the application itself now an element you render. The changes are mechanical. The [v1.0.0 release notes](https://github.com/gtkx-org/gtkx/releases/tag/v1.0.0) list them in full, and [Getting Started](/guide/getting-started) documents the current shape end to end.
+The application itself is now an element you render. The [v1.0.0 release notes](https://github.com/gtkx-org/gtkx/releases/tag/v1.0.0) list the migrations, and [Getting Started](/guide/getting-started) documents the maintained 1.x setup.
 
 ## What's next
 
-1.0 freezes the surface, not the pace. The [roadmap](https://github.com/orgs/gtkx-org/projects/1) is public, and its original items have shipped: a [`gtkx deploy`](https://github.com/gtkx-org/gtkx/issues/477) command that builds and publishes to Flatpak or DEB/RPM in [1.1](/blog/gtkx-1-1), [`@gtkx/animated`](https://github.com/gtkx-org/gtkx/issues/478) on top of React Spring in [1.3](/blog/gtkx-1-3), [`@gtkx/navigation`](https://github.com/gtkx-org/gtkx/issues/479) on top of Adwaita and React Navigation in [1.4](/blog/gtkx-1-4), and [`@gtkx/forms`](https://github.com/gtkx-org/gtkx/issues/480) for React Hook Form-driven Adwaita forms in [1.5](/blog/gtkx-1-5). The [issue tracker](https://github.com/gtkx-org/gtkx/issues) is where the next work gets ordered.
+The original [roadmap](https://github.com/orgs/gtkx-org/projects/1) items have since shipped: [`gtkx deploy`](https://github.com/gtkx-org/gtkx/issues/477) for application packaging in [1.1](/blog/gtkx-1-1), [`@gtkx/animated`](https://github.com/gtkx-org/gtkx/issues/478) for React Spring integration in [1.3](/blog/gtkx-1-3), [`@gtkx/navigation`](https://github.com/gtkx-org/gtkx/issues/479) for Adwaita and React Navigation in [1.4](/blog/gtkx-1-4), and [`@gtkx/forms`](https://github.com/gtkx-org/gtkx/issues/480) for React Hook Form integration in [1.5](/blog/gtkx-1-5). Planned work is tracked in [issues](https://github.com/gtkx-org/gtkx/issues).
 
 ## Thanks, and where to start
 
-GTKX is a thin layer over other people's work: GTK and the GNOME platform, GObject-Introspection, libffi, React and `react-reconciler`, and napi-rs. Thank you also to everyone who filed, tested, and argued through the [release candidates](https://github.com/gtkx-org/gtkx/releases).
+GTKX builds on GTK and the GNOME platform, GObject-Introspection, libffi, React and `react-reconciler`, and napi-rs. Thanks to their contributors and to everyone who tested and reported issues in the [release candidates](https://github.com/gtkx-org/gtkx/releases).
 
 The [guide](/guide/why-gtkx) covers the rest, and the [tutorial](/tutorial/) builds a task manager through packaging and preparation for Flathub. Submission still requires a tested package and [Flathub review](https://docs.flathub.org/docs/for-app-authors/submission); the time depends on the application and requested changes.
 

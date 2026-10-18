@@ -19,7 +19,7 @@ See the [component reference](/reference/@gtkx/components/) for props. Hooks tha
 
 ### ListView
 
-`ListView<T, S>` wraps `Gtk.ListView`. Pass `items` as `{ id, value }` pairs plus a `renderItem`. Selection is controlled: nothing stays selected unless `selectedIds` is fed back from `onSelectionChanged`.
+`ListView<T, S>` wraps `Gtk.ListView`. Pass `items` as `{ id, value }` pairs plus a `renderItem`. Selection is controlled: update `selectedIds` from `onSelectionChanged` to retain the selection.
 
 ```tsx
 import { ListView } from "@gtkx/components";
@@ -42,7 +42,7 @@ To group rows under headers, pass `sections` in place of `items`: each `ListSect
 
 ### GridView
 
-`GridView<T>` gives `Gtk.GridView`, the icon-grid counterpart, the same `items`, `renderItem`, controlled selection, and size estimates, and adds `minColumns`, `maxColumns`, `singleClickActivate`, and `onActivate`.
+`GridView<T>` renders a grid with the same `items`, `renderItem`, controlled selection, and size estimates as `ListView`. Use `minColumns` and `maxColumns` to size the grid, and `singleClickActivate` and `onActivate` for activation.
 
 ### ColumnView
 
@@ -65,7 +65,7 @@ const columns: ColumnViewColumn<Employee>[] = [
 />
 ```
 
-Nesting `ListItem.children` turns a `ColumnView` into a tree as well, driven by the same `expandedIds` and `onExpandedChange`. The first column draws the expander and the depth indentation, leaving the columns after it aligned at every depth; hiding it with `visible: false` hands the expander to the next column along.
+`ColumnView` also supports trees through `ListItem.children`, `expandedIds`, and `onExpandedChange`. The first visible column draws the expander and indentation; the other columns stay aligned at each depth. Hiding that column with `visible: false` moves the expander to the next visible column.
 
 ### DropDown
 
@@ -81,7 +81,7 @@ import { DropDown } from "@gtkx/components";
 />
 ```
 
-`ComboRow<T, S>` from `@gtkx/components/adw` takes the same collection props and renders an `Adw.ComboRow`, presenting the choice as a row inside a preferences group, as the tutorial's [preferences chapter](/tutorial/preferences-and-theming) does.
+`ComboRow<T, S>` from `@gtkx/components/adw` takes the same collection props and renders an `Adw.ComboRow` inside a preferences group. See the tutorial's [preferences chapter](/tutorial/preferences-and-theming) for an example.
 
 ### GtkListBox
 
@@ -110,7 +110,7 @@ Leave `selectedIndex` out for native selection, or set it to keep selection unde
 
 GTKX suppresses `onRowSelected` while applying its own selection updates. Other native selection changes still reach the handler, including changes made through native methods. Update the controlled value in that handler to keep the new selection; otherwise GTKX restores the requested row.
 
-The tutorial's [sidebar](/tutorial/lists-and-the-sidebar#keeping-gtk4-and-the-route-in-agreement) drives one from the current route.
+The tutorial's [sidebar](/tutorial/lists-and-the-sidebar#keeping-gtk4-and-the-route-in-agreement) controls selection from the current route.
 
 ## Toasts
 
@@ -155,4 +155,4 @@ Render `Notifications` inside an application window. Clicking the button shows a
 
 ## Next
 
-Continue with [Modals and Portals](/guide/modals-and-portals) for the mounting model behind these components: `createPortal`, the `rootElement` container, and extra windows. The worked dialog walkthrough lives in the tutorial's [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts#mounting-dialogs) chapter.
+Continue with [Modals and Portals](/guide/modals-and-portals) for the mounting model behind these components: `createPortal`, the `rootElement` container, and extra windows. The tutorial demonstrates dialogs in its [Menus, Accelerators, and Shortcuts](/tutorial/actions-menus-shortcuts#mounting-dialogs) chapter.

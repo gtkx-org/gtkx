@@ -30,7 +30,7 @@ const TaggedScale = registerClass(TaggedScaleBase, {
 type TaggedScale = InstanceType<typeof TaggedScale>;
 ```
 
-Keep the returned class: it carries the registered properties and signals into TypeScript. Register once at module scope, before rendering instances. See the [`registerClass` reference](/reference/@gtkx/runtime/functions/registerClass) for registration options.
+Use the returned class so TypeScript recognizes the registered properties and signals. Register once at module scope, before rendering instances. See the [`registerClass` reference](/reference/@gtkx/runtime/functions/registerClass) for registration options.
 
 ## Rendering a registered class
 
@@ -78,7 +78,7 @@ Pass an instance or ref to `useProperty(ref, "tag")` to subscribe to a registere
 
 The `signals` option registers custom signals. Each entry names its parameter GTypes and, when needed, its return GType. Use the returned class so GTKX's signal helpers recognize the declared names. Custom JSX components should include their signal handler props in their prop type.
 
-Handlers receive the signal arguments; JSX handlers also receive the emitting object last. See the [JSX prop model](/guide/configuration-and-codegen#the-jsx-prop-model) for consumption and the [`registerClass` reference](/reference/@gtkx/runtime/functions/registerClass) for signal options.
+Handlers receive the signal arguments; JSX handlers also receive the emitting object last. See the [JSX prop model](/guide/configuration-and-codegen#the-jsx-prop-model) for handler props and the [`registerClass` reference](/reference/@gtkx/runtime/functions/registerClass) for signal options.
 
 ## Default handlers
 
@@ -112,7 +112,7 @@ Output parameters become return values, grouped into a tuple when there are seve
 
 ### Slots with no generated member
 
-Use [`callParent`](/reference/@gtkx/runtime/functions/callParent) when the slot has no generated member, including `vfuncDispose`. Pass the class whose override is running, the vfunc name, the instance, and its arguments. The same helper can chain interface slots that TypeScript cannot resolve through `super`.
+Use [`callParent`](/reference/@gtkx/runtime/functions/callParent) when the virtual function has no generated member, including `vfuncDispose`. Pass the class whose override is running, the vfunc name, the instance, and its arguments. The same helper can chain interface slots that TypeScript cannot resolve through `super`.
 
 ## Implementing an interface
 
@@ -148,15 +148,15 @@ Write vfuncs as prototype methods, not arrow-function fields. The `Impl` type ch
 
 Registration adds the interface's public members to instances. Inside the class, declare any added member you call, such as `declare itemsChanged: Gio.ListModel["itemsChanged"];`. Use a base class whose native state agrees with the implementation you provide.
 
-### Throwing out of a slot you fill
+### Reporting a vfunc error {#throwing-out-of-a-slot-you-fill}
 
-Throw from a vfunc that reports errors through `GError`. GTKX preserves a thrown `GLib.Error` and converts other exceptions into a native error. A slot without an error channel cannot report failure that way; see [Error Handling](/guide/error-handling).
+Throw from a vfunc that reports errors through `GError`. GTKX preserves a thrown `GLib.Error` and converts other exceptions into a native error. A virtual function without an error channel cannot report failure that way; see [Error Handling](/guide/error-handling).
 
 ## Elements that cannot be children
 
 Express native object relationships through JSX props and supported child slots. For an object that needs React ownership without native child placement, use [a portal](/guide/modals-and-portals). Add native placement rules through [element configuration](/guide/configuration-and-codegen#advanced-customizing-elements).
 
-## What an override of `constructed` can see
+## Initialization order {#what-an-override-of-constructed-can-see}
 
 `vfuncConstructed` runs after native construct properties are set, while `super()` is still executing. JavaScript field initializers and the constructor body have not run yet. Use declared fields or native properties for state this override needs; private fields are unavailable at that point.
 

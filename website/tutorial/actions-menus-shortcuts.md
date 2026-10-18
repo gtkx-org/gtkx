@@ -4,7 +4,7 @@ description: "Connect window actions, menus, shortcuts, and dialogs to the task 
 
 # Add Menus and Shortcuts
 
-[Edit Tasks](/tutorial/the-task-editor) added the editor route. Now give New Task one handler that its button, menu item, and accelerator can share. Add About and Keyboard Shortcuts dialogs alongside it.
+[Edit Tasks](/tutorial/the-task-editor) added the editor route. Connect the New Task button, menu item, and keyboard shortcut to a shared handler. Add About and Keyboard Shortcuts dialogs alongside it.
 
 ## Reach navigation from window commands
 
@@ -147,7 +147,7 @@ export const MainMenu = () => (
 );
 ```
 
-`GMenu.items` describes the menu declaratively. Its action names point to the window actions above; `primary` gives this menu button the native F10 binding.
+`GMenu.items` describes the menu declaratively. Its action names point to the window actions above; `primary` lets F10 open this menu.
 
 In `src/app.tsx`, add `actionAccels` to the existing application:
 

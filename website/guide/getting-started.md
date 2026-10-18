@@ -31,8 +31,6 @@ The package names are listed in Fedora's [GTK](https://packages.fedoraproject.or
 pkg-config --modversion gtk4 libadwaita-1 glib-2.0
 ```
 
-This setup was checked in a fresh Fedora 44 container with Node.js 26.8.2, GTK 4.22.5, libadwaita 1.9.4, and GLib 2.88.3. A project created from the published GTKX 1.6.0 packages passed typechecking, build, and its scaffolded test. Its counter window was also opened and exercised in a graphical session.
-
 Other distributions need equivalent development packages meeting the minimum versions above. See [GTK's Linux installation guide](https://www.gtk.org/docs/installations/linux) for package names. A runtime-only package is insufficient for code generation.
 
 Run the app from a graphical desktop session. In a development container, the container also needs access to the session's display and D-Bus; installing libraries alone does not provide that connection.

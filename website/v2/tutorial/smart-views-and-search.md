@@ -458,7 +458,7 @@ export const TaskList = ({ selection }: { selection: Selection }) => {
 };
 ```
 
-`GtkSearchBar` owns the search entry and handles dismissal with Escape. Its notify handler keeps that dismissal in the store. `GtkSearchEntry.onSearchChanged` reports edits after the native search delay.
+`GtkSearchBar` owns the search entry and handles dismissal with Escape. Its notify handler updates the store when search closes. `GtkSearchEntry.onSearchChanged` reports edits after the native search delay.
 
 `AdwStatusPage.description` accepts Pango markup. Escape the generated message with GLib's `markupEscapeText` so queries containing `&`, `<`, or markup tags appear literally. The add row stays available when no tasks match.
 

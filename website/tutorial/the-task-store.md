@@ -8,7 +8,7 @@ Connect the list from [Display Tasks](/tutorial/a-list-of-tasks) to a store, the
 
 ## Shared task state
 
-Tasks will share state between the list, sidebar, editor, and keyboard actions. This tutorial uses [Zustand](https://zustand.docs.pmnd.rs/learn/getting-started/introduction), whose React hooks work with GTKX without an adapter. Its documentation covers store creation and subscriptions; this chapter connects that store to native widgets.
+Tasks will share state between the list, sidebar, editor, and keyboard actions. This tutorial uses [Zustand](https://zustand.docs.pmnd.rs/learn/getting-started/introduction), whose React hooks work with GTKX. Its documentation covers store creation and subscriptions; this chapter connects that store to native widgets.
 
 ## Install Zustand
 
@@ -81,7 +81,7 @@ export const seedTasks: Task[] = [
 ];
 ```
 
-Relative due dates give the later Today view sample content whenever you run the app.
+Relative due dates give the Today view sample content on a fresh start. Once persistence is enabled, saved dates remain unchanged.
 
 ## The store
 
@@ -169,7 +169,7 @@ The `"personal"` list ID is temporary. [Add Lists and a Sidebar](/tutorial/lists
 
 ## Run it
 
-Save `task-list.tsx` and watch the window. An empty row titled "Add a task…" appears at the top of the card, above the seeded tasks. Type `Buy oat milk` into it and press Enter. The task appears at the bottom of the list and the entry clears, ready for the next one. Press Enter on the empty entry and nothing happens, because `addTask` trims the title to nothing and returns early.
+Save `task-list.tsx`. The **Add a task…** entry appears above the sample tasks. Type `Buy oat milk` and press Enter: the task appears at the bottom of the list and the entry clears. Press Enter again to confirm that an empty title creates no task.
 
 Restart the app. The seeded tasks return and newly added tasks are gone because the store is still in memory. [Save Tasks](/tutorial/saving-to-disk) adds persistence.
 
@@ -216,7 +216,7 @@ describe("adding tasks", () => {
 });
 ```
 
-These tests type into real native widgets. They cover adding a task, trimming and displaying literal text, and rejecting a blank title. `beforeEach` restores the sample tasks; GTKX unmounts rendered trees between tests. `App` renders an application, so pass `rootElement` as its container.
+These tests type into the app's widgets. They cover adding a task, trimming and displaying literal text, and rejecting a blank title. `beforeEach` restores the sample tasks; GTKX unmounts rendered trees between tests. `App` renders an application, so pass `rootElement` as its container.
 
 ```bash
 npm test

@@ -7,11 +7,11 @@ Create a root with `createRoot`, render an `AdwApplication`, and compose widgets
 In an existing GTKX app:
 
 ```sh
-npm install @gtkx/react@beta
+npm install @gtkx/react@2
 ```
 
 [Guide](https://gtkx.dev/v2/guide/getting-started) · [API reference](https://gtkx.dev/v2/reference/@gtkx/react/) · [GTKX](https://gtkx.dev)
 
-**GTKX 2.0 beta.** Requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started).
+GTKX requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started).
 
 [MPL-2.0](https://github.com/gtkx-org/gtkx/blob/main/LICENSE).

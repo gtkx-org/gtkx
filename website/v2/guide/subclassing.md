@@ -30,7 +30,7 @@ const TaggedScale = registerClass(TaggedScaleBase, {
 type TaggedScale = InstanceType<typeof TaggedScale>;
 ```
 
-Keep the returned class: it carries the registered properties and signals into TypeScript. Register once at module scope, before rendering instances. See the [`registerClass` reference](/v2/reference/@gtkx/runtime/functions/registerClass) for registration options.
+Use the returned class so TypeScript recognizes the registered properties and signals. Register once at module scope, before rendering instances. See the [`registerClass` reference](/v2/reference/@gtkx/runtime/functions/registerClass) for registration options.
 
 ## Rendering a registered class
 
@@ -90,7 +90,7 @@ The hook returns `undefined` while its target is absent. React state keeps the s
 
 The `signals` option registers custom signals. Each entry names its parameter GTypes and, when needed, its return GType. Use the returned class so GTKX's signal helpers recognize the declared names. Custom JSX components should include their signal handler props in their prop type.
 
-Handlers receive the signal arguments; JSX handlers also receive the emitting object last. See the [JSX prop model](/v2/guide/configuration-and-codegen#the-jsx-prop-model) for consumption and the [`registerClass` reference](/v2/reference/@gtkx/runtime/functions/registerClass) for signal options.
+Handlers receive the signal arguments; JSX handlers also receive the emitting object last. See the [JSX prop model](/v2/guide/configuration-and-codegen#the-jsx-prop-model) for handler props and the [`registerClass` reference](/v2/reference/@gtkx/runtime/functions/registerClass) for signal options.
 
 ## Default handlers
 
@@ -154,7 +154,7 @@ Output parameters become return values, grouped into a tuple when there are seve
 
 ### Slots with no generated member
 
-Use [`callParent`](/v2/reference/@gtkx/runtime/functions/callParent) when the slot has no generated member, including `vfuncDispose`. Pass the class whose override is running, the vfunc name, the instance, and its arguments. The same helper can chain interface slots that TypeScript cannot resolve through `super`.
+Use [`callParent`](/v2/reference/@gtkx/runtime/functions/callParent) when the virtual function has no generated member, including `vfuncDispose`. Pass the class whose override is running, the vfunc name, the instance, and its arguments. The same helper can chain interface slots that TypeScript cannot resolve through `super`.
 
 ## Implementing an interface
 
@@ -192,7 +192,7 @@ Registration adds the interface's public members to instances. Inside the class,
 
 ### Reporting a vfunc error
 
-Throw from a vfunc that reports errors through `GError`. GTKX preserves a thrown `GLib.Error` and converts other exceptions into a native error. A slot without an error channel cannot report failure that way; see [Error Handling](/v2/guide/error-handling).
+Throw from a vfunc that reports errors through `GError`. GTKX preserves a thrown `GLib.Error` and converts other exceptions into a native error. A virtual function without an error channel cannot report failure that way; see [Error Handling](/v2/guide/error-handling).
 
 ## Elements that cannot be children
 

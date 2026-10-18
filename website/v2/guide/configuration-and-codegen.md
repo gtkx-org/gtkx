@@ -54,7 +54,7 @@ Run generation after installing dependencies or changing the configured librarie
 gtkx codegen
 ```
 
-GTKX generates real modules under `node_modules/.gtkx` and links them as `@gtkx/gi` and `@gtkx/jsx`. They belong to the project and are not separate npm dependencies. Development and production builds also check whether generation is needed.
+GTKX generates modules under `node_modules/.gtkx` and links them as `@gtkx/gi` and `@gtkx/jsx`. They belong to the project and are not separate npm dependencies. Development and production builds also check whether generation is needed.
 
 Import classes, enums, and functions from GI modules, and elements from JSX modules:
 
@@ -96,7 +96,7 @@ Pass a registered GI class wherever a method takes a GType. See [Native Values](
 
 ## Passing a GValue
 
-Most input values accept a JavaScript payload directly. See [Native Values](/v2/guide/native-values#passing-a-gvalue) for typed nulls, output values, and explicit wrappers.
+For most `GValue` inputs, pass a JavaScript value directly. See [Native Values](/v2/guide/native-values#passing-a-gvalue) for typed nulls, output values, and explicit wrappers.
 
 ### Generated return values
 

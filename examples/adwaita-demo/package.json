@@ -3,7 +3,7 @@
     "version": "0.0.0",
     "private": true,
     "license": "MPL-2.0",
-    "description": "The official libadwaita 1.9.3 demo reimplemented with GTKX",
+    "description": "GTKX port of the libadwaita 1.9.3 demo",
     "type": "module",
     "scripts": {
         "build": "gtkx build",

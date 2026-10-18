@@ -9,15 +9,13 @@ description: "Build a Linux task manager with React and Adwaita, then test, tran
   <img src="/tasks-screenshot.png" width="900" height="600" loading="lazy" alt="The Tasks app: an adaptive Adwaita window with a sidebar of smart views and colored user lists on the left, and a boxed task list on the right." />
 </picture>
 
-Build **Tasks**, a Linux task manager, from an empty directory to localized Flatpak, deb, rpm, and AppImage packages. You will add adaptive layouts, settings, keyboard shortcuts, dialogs, notifications, and translations, then prepare the app for Flathub.
+Build **Tasks**, a Linux task manager, from an empty directory, then test, translate, and package it as a Flatpak, deb, rpm, and AppImage. You will add adaptive layouts, settings, keyboard shortcuts, dialogs, notifications, and translations, then prepare the app for Flathub.
 
 Each chapter keeps the app runnable and includes checks for the feature you added.
 
 The tutorial assumes familiarity with [React](https://react.dev/learn) and [TypeScript](https://www.typescriptlang.org/docs/handbook/2/basic-types.html). It focuses on using GTKX with libadwaita and GTK4. You need Linux, the native development libraries, and Node.js 26.7 or later; [Getting Started](/v2/guide/getting-started) covers installation.
 
-::: warning Development version
-This tutorial follows GTKX 2.0 development on `main` and may include changes after the latest published beta. Start with the `beta` tag as shown below and keep GTKX packages on the same version. For a walkthrough tied to a stable release, follow the [GTKX 1.6 tutorial](/tutorial/).
-:::
+This tutorial uses GTKX 2.0. Keep GTKX packages on the same version. For GTKX 1.6, use the [1.6 tutorial](/tutorial/).
 
 ## Check your setup
 
@@ -32,15 +30,15 @@ Scaffold the project:
 ::: code-group
 
 ```bash [npm]
-npm create gtkx@beta
+npm create gtkx@2
 ```
 
 ```bash [pnpm]
-pnpm create gtkx@beta
+pnpm create gtkx@2
 ```
 
 ```bash [yarn]
-yarn create gtkx@beta
+yarn create gtkx@2
 ```
 
 :::

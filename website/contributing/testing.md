@@ -1,11 +1,11 @@
 ---
 title: "Testing"
-description: "Understand CI coverage, package contracts, and sanitized generated-binding tests."
+description: "Run GTKX tests, reproduce CI failures, and check native bindings with memory sanitizers."
 ---
 
 # Testing
 
-Tests exercise public behavior through real implementations. Package integration suites own their contracts; `packages/e2e` contains React and generated native binding coverage. Use mocks only for slow operations or isolation that real behavior cannot provide. The [application testing guide](/v2/guide/testing) explains native rendering, queries, input and assertions.
+Tests exercise public behavior through real implementations. Package integration suites cover each package's public behavior; `packages/e2e` contains React and generated native binding coverage. Use mocks only for slow operations or isolation that real behavior cannot provide. The [application testing guide](/v2/guide/testing) explains native rendering, queries, input and assertions.
 
 ## Coverage ownership
 
@@ -15,9 +15,9 @@ The JavaScript suites use Vitest. Classify tests by the interface they exercise:
 | ----------- | ----------------------------------------------------------------------------------------------- |
 | animated    | The public `animated` adapter, native updates, refs and cleanup through `@gtkx/testing`.        |
 | cairo       | Public bindings against Cairo, including drawing, surfaces, paths, fonts, patterns and regions. |
-| cli         | Every command through argument parsing and actual filesystem, build or session behavior.        |
+| cli         | Command parsing and filesystem, build or session behavior.                                      |
 | codegen     | Real GIR input, emitted bindings/reference and consumer typechecking.                           |
-| components  | Collection, selection, factory and toast behavior through `@gtkx/testing`.                      |
+| components  | Collection, selection, factory, tab and toast behavior through `@gtkx/testing`.                 |
 | config      | Loading, validation, merging, paths and reload with actual configuration files.                 |
 | create-gtkx | Scaffolding options, generated files, errors and installation boundaries.                       |
 | css         | Computed GTK styling from public CSS APIs.                                                      |
@@ -54,11 +54,11 @@ Vitest uses its default worker concurrency. Local Nx runs use the default task c
 
 ## Native fixtures and sanitizers
 
-The native E2E suite generates bindings from a pinned checkout of GNOME's `gobject-introspection-tests`. `GIMarshallingTests` supplies marshalling cases; `Regress` supplies general binding cases. Exercise the generated APIs with inputs and assertions appropriate to their upstream contracts, including ownership, callbacks, containers, fields, properties, signals and vfuncs.
+The native integration suite generates bindings from a pinned checkout of GNOME's `gobject-introspection-tests`. `GIMarshallingTests` supplies marshalling cases; `Regress` supplies general binding cases. Exercise the generated APIs with inputs and assertions appropriate to their upstream contracts, including ownership, callbacks, containers, fields, properties, signals and vfuncs.
 
 A complete `@gtkx/native:test-asan` run collects V8 execution coverage of both generated namespaces. It checks every exported function, concrete constructor, class/interface method, getter and setter by its receiver and source range. The gate rejects untested APIs and obsolete exclusions. Filtered runs support diagnosis without enforcing whole-suite coverage. Signals are asserted through their generated emitters and listeners, including zero, one and multiple listeners for transferred arguments.
 
-The checked-in `packages/e2e/tests/native/coverage-inventory.json` records the coverage summary and precise exclusions. An independent raw GIR audit requires bindings for every introspectable callable, signal, property access mode and virtual method in both namespaces. Lifecycle-only vfuncs require metadata but have no generated call proxy. The audit lists declarations explicitly disabled by the upstream scanner separately. A few scanner declarations have no C implementation: their tests assert the missing-symbol diagnostic. Other exclusions are fields on abstract records with no upstream factory and unsafe writes to private ownership bookkeeping.
+The checked-in `packages/e2e/tests/native/coverage-inventory.json` records the coverage summary and precise exclusions. An independent raw GIR audit requires bindings for every introspectable callable, signal, property access mode and virtual method in both namespaces. Lifecycle-only vfuncs require metadata but have no generated call proxy. The audit lists declarations explicitly disabled by the upstream scanner separately. A few scanner declarations have no C implementation: their tests assert that symbol resolution fails. Other exclusions are fields on abstract records with no upstream factory and unsafe writes to private ownership bookkeeping.
 
 After reviewing a deliberate API or suite change, refresh the summary from a complete run:
 
@@ -69,7 +69,7 @@ pnpm exec tsx packages/e2e/tests/helpers/native-fixtures-coverage.ts --write
 
 The first command reports a stale inventory after the tests pass if its summary needs updating. Detailed API-to-suite execution evidence is written to `build/native-tests/coverage/inventory.json`. Coverage establishes which generated wrappers ran; assertions and sanitizers establish their behavior.
 
-GTKX does not maintain custom C test fixtures. Historical probes without an upstream equivalent are retired. Observable runtime behavior such as keep-alive, quit and logging belongs in the runtime suite, using TypeScript child processes where process isolation is necessary.
+Most native cases use the upstream GNOME fixtures. Local C fixtures in `packages/e2e/tests/native/fixtures` cover pointer and callback ownership and Cairo path conversion. Their tests compile these fixtures into temporary shared libraries. Observable runtime behavior such as keep-alive, quit and logging belongs in the runtime suite, using TypeScript child processes where process isolation is necessary.
 
 The fixture preparation target downloads and builds the pinned upstream source and generates bindings:
 
@@ -85,7 +85,7 @@ ASan uses the nightly Rust toolchain pinned in `packages/native/tools/rust-toolc
 
 Native test setup requires ASan and exposed garbage collection. After each test it drains pending cleanup and collects garbage before calling LeakSanitizer. Test-specific teardown must release retained references first. Cases in one process run sequentially so allocations and cleanup are attributable to the active test. Sanitizer errors and leak reports fail the suite; an absent sanitizer must not silently pass.
 
-Review leak suppressions narrowly. Eight upstream signal emitters leak their original argument storage even without listeners; their exact allocation stacks are suppressed and documented in `lsan.supp`. The tests still exercise every ownership variant and check for other leaks after each case. Reachable objects can still be retained incorrectly, so assertions about observable ownership or finalization remain useful where the upstream fixtures expose them.
+Review leak suppressions narrowly. Some upstream signal emitters leak their original argument storage even without listeners; their exact allocation stacks are suppressed and documented in `lsan.supp`. The tests still exercise every ownership variant and check for other leaks after each case. Reachable objects can still be retained incorrectly, so assertions about observable ownership or finalization remain useful where the upstream fixtures expose them.
 
 ## Native UI integration
 
@@ -93,7 +93,7 @@ Review leak suppressions narrowly. Eight upstream signal emitters leak their ori
 
 Importing `@gtkx/testing` installs matchers and rendering cleanup when the runner exposes global `expect` and `afterEach` hooks, as the workspace configuration does. `render` is asynchronous. Use `screen` and `within` to query accessible widget state, `userEvent` for interactions, and `waitFor` for asynchronous outcomes. Keep native assertions focused on externally observable state.
 
-Application examples and the React E2E suite use `@gtkx/cli/vitest-plugin` when they need application transformations such as settings schemas, assets or custom elements. The Storybook example keeps its own consuming-application tests. The tutorial application is outside the workspace and runs its application tests from its own directory.
+Application examples and the React integration suite use `@gtkx/cli/vitest-plugin` when they need application transformations such as settings schemas, assets or custom elements. The Storybook example keeps its own consuming-application tests. The tutorial application is outside the workspace and runs its application tests from its own directory.
 
 ## Consumer and packaging checks
 

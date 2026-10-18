@@ -1,5 +1,5 @@
 ---
-description: "Give every row a checkbox, a star, and a delete button wired straight to store actions."
+description: "Add row controls for completing, starring, and deleting tasks."
 ---
 
 # Complete, Star, and Delete Tasks
@@ -8,7 +8,7 @@ In [Add Tasks](/tutorial/the-task-store) you moved the task array into a Zustand
 
 ## More actions on the store
 
-Add store actions for completion, importance, and deletion. They share a helper that updates a task by id.
+Add store actions for completion, importance, and deletion. They share a helper that updates a task by ID.
 
 In `src/store/index.ts`, add the helper and the actions:
 
@@ -30,9 +30,9 @@ In `src/store/index.ts`, add the helper and the actions:
 +    moveToTrash: (id) => set((state) => ({ tasks: patch(state.tasks, id, { deleted: true }) })),
 ```
 
-`setDone` stamps `completedAt` when it sets `done` to true, and clears it again when you untick the box.
+`setDone` records the completion time in `completedAt` and clears it when you uncheck the box.
 
-`moveToTrash` sets a flag instead of removing the task from the array. That keeps the data available for the Trash view in [Filter and Search Tasks](/tutorial/smart-views-and-search) and for undo in [Add Undo and Delete Confirmation](/tutorial/trash-and-toasts). For now the list just has to stop showing deleted tasks.
+`moveToTrash` sets a flag instead of removing the task from the array. That keeps the data available for the Trash view in [Filter and Search Tasks](/tutorial/smart-views-and-search) and for undo in [Add Undo and Delete Confirmation](/tutorial/trash-and-toasts). For now, hide deleted tasks from the list.
 
 In `src/components/task-list.tsx`, filter the deleted tasks out before rendering:
 
@@ -126,16 +126,16 @@ With `useMarkup`, the row reads its title as markup. Escape the task title with 
 
 ## Run it
 
-Save the files. The rows in the open window now carry a checkbox on the left and a star on the right.
+Save the files. Each row now has a checkbox, a star, and a trash button.
 
 Tick the checkbox on **Welcome to Tasks**. Its title gets a strikethrough, and the box stays ticked.
 
-Click an unfilled star. Its icon fills in and stays filled. Click it again and it empties.
+Click an unfilled star. Its icon fills in. Click it again to clear it.
 
-Click the trash button on a row. The row leaves the list. The task is still in the store, only flagged, and the list is filtering it out.
+Click the trash button on a row. The row leaves the list. The task remains in the store with `deleted: true`.
 
 Now quit and start the app again. The seeded tasks return with their original values: this chapter's changes still live only in memory.
 
 ## Next
 
-[Save Tasks](/tutorial/saving-to-disk) puts the store on disk, so everything you ticked, starred, and typed is still there the next time you launch.
+[Save Tasks](/tutorial/saving-to-disk) persists tasks and their changes between launches.

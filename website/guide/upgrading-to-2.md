@@ -5,7 +5,7 @@ description: "Prepare a GTKX 1.6 application, then move it to GTKX 2.0."
 
 # Upgrading to 2.0
 
-GTKX 1.6 can enable most 2.0 behavior before the package upgrade. Adopt those changes one at a time, then upgrade your installed `@gtkx/*` packages together. GTKX 2.0 is in beta; the [2.0 migration checklist](/v2/guide/upgrading-to-2) covers all current changes, including application lifecycle and Variant APIs. `@gtkx/gi` and `@gtkx/jsx` remain generated packages, not installation targets.
+GTKX 1.6 can enable most 2.0 behavior before the package upgrade. Adopt those changes one at a time, then upgrade your installed `@gtkx/*` packages together. The [2.0 migration checklist](/v2/guide/upgrading-to-2) covers all current changes, including application lifecycle and Variant APIs. `@gtkx/gi` and `@gtkx/jsx` remain generated packages, not installation targets.
 
 ## Prepare on 1.6
 
@@ -30,7 +30,7 @@ Work through all seven flags:
 
 Silencing a warning only hides it. The behavior still changes in 2.0. The [future-flags guide](/guide/configuration-and-codegen#future-flags) explains the less common resource and tree-shaking cases.
 
-Replace `libraries: "*"` with the additional GIR roots the project actually uses. An explicit list keeps generated bindings stable across development machines.
+Replace `libraries: "*"` with the additional GIR roots the project uses. An explicit list controls which namespaces are bound; generated APIs still depend on the installed GIR versions.
 
 ## Update the runtime and configuration
 

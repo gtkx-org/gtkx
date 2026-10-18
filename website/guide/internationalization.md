@@ -90,7 +90,7 @@ Generated declarations under `node_modules/.gtkx` let TypeScript check message k
 
 ## Develop and build
 
-`gtkx dev` prepares the catalogs before loading your application. Source saves update the template and translation types before Fast Refresh; they leave translator-owned PO files alone. Run codegen or a build to merge source changes into those files. Saving a PO file or `LINGUAS` restarts the application because gettext caches catalogs for the lifetime of the process.
+`gtkx dev` prepares the catalogs before loading your application. Saving source files updates the template and translation types before Fast Refresh without modifying PO files. Run codegen or a build to merge source changes into those files. Saving a PO file or `LINGUAS` restarts the application because gettext caches catalogs for the lifetime of the process.
 
 `gtkx build` compiles the catalogs into `dist/locale` beside the bundle. GTKX initializes localization before the application entry module runs and locates that directory automatically.
 

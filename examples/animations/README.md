@@ -1,6 +1,6 @@
 # Animations example
 
-An interactive tour of `@gtkx/animated`, including springs, list transitions, layout transforms, and reduced motion.
+Examples of springs, list transitions, layout transforms, and reduced motion using `@gtkx/animated`.
 
 Complete the [workspace setup](../../CONTRIBUTING.md#set-up-the-workspace), then run from the repository root:
 

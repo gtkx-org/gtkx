@@ -8,7 +8,7 @@ description: "Change the persisted manual order with drag and drop or keyboard s
 
 ## Add the reorder action
 
-Each task already has a `position`. Add one action to `src/store/tasks.ts` that moves a task to another task's index and rewrites those positions:
+Each task already has a `position`. Add an action to `src/store/tasks.ts` that moves a task to another task's index and updates the positions:
 
 ```diff [src/store/tasks.ts]
 @@ -14,0 +15 @@
@@ -71,11 +71,11 @@ Add `isReorderable` to the selector import in `src/components/task-list.tsx`. Co
 +                                />
 ```
 
-The neighboring IDs give the keyboard command the same destinations a pointer drop receives.
+The neighboring IDs let keyboard and pointer interactions use the same reorder action.
 
 ## Add the row controllers
 
-GTKX attaches generated controller elements through a widget's `controllers` prop. The pointer path uses GTK4's drag source and drop target; the keyboard path uses a key controller. The [GTK4 drag-and-drop overview](https://docs.gtk.org/gtk4/drag-and-drop.html) covers the native interaction model.
+GTKX attaches generated controller elements through a widget's `controllers` prop. Drag and drop uses GTK4's drag source and drop target; keyboard reordering uses a key controller. The [GTK4 drag-and-drop overview](https://docs.gtk.org/gtk4/drag-and-drop.html) covers the native interaction model.
 
 Update the imports and props in `src/components/task-row.tsx`:
 
@@ -208,7 +208,9 @@ export const TaskRow = ({ task, canReorder, previousId, nextId }: TaskRowProps) 
 };
 ```
 
-`GtkWidgetPaintable` observes the row through a callback ref and a root portal. It stays mounted while reordering is enabled, so repeated drags reuse the same paintable. `onPrepare` sets its pointer offset and returns the task ID in a content provider; that synchronous native return is created inside the signal handler. A `TYPE_STRING` payload arrives through GTK's external input boundary as a [GObject.Value](https://docs.gtk.org/gobject/struct.Value.html), so the drop handler verifies that its string names a task before sending both IDs to the store. The key controller sends the current row and its previous or next neighbor to the same action.
+`GtkWidgetPaintable` observes the row through a callback ref. Its root portal stays mounted while reordering is enabled, so repeated drags reuse the same paintable. `onPrepare` sets the drag icon's pointer offset and returns a content provider containing the task ID.
+
+GTK delivers a `TYPE_STRING` drop as a [GObject.Value](https://docs.gtk.org/gobject/struct.Value.html). The handler checks that its string names an existing task before reordering. The key controller sends the current row and its previous or next neighbor to the same action.
 
 When reordering is unavailable, the row has none of these controllers and exposes no keyboard-shortcut metadata.
 

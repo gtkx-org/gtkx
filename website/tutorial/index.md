@@ -9,7 +9,7 @@ description: "Build a Linux task manager with React and Adwaita, then test, tran
   <img src="/tasks-screenshot.png" width="900" height="600" loading="lazy" alt="The Tasks app: an adaptive Adwaita window with a sidebar of smart views and colored user lists on the left, and a boxed task list on the right." />
 </picture>
 
-Build **Tasks**, a Linux task manager, from an empty directory to localized Flatpak, deb, rpm, and AppImage packages. You will add adaptive layouts, settings, keyboard shortcuts, dialogs, notifications, and translations, then prepare the app for Flathub.
+Build **Tasks**, a Linux task manager, from an empty directory, then test, translate, and package it as a Flatpak, deb, rpm, and AppImage. You will add adaptive layouts, settings, keyboard shortcuts, dialogs, notifications, and translations, then prepare the app for Flathub.
 
 Each chapter keeps the app runnable and includes checks for the feature you added.
 
@@ -52,7 +52,7 @@ cd tasks
 npm run dev
 ```
 
-This opens the stable initializer's small GTK counter. The next chapter enables Adwaita and replaces it with the standard Adwaita application shell used for the rest of the tutorial.
+This opens the GTKX 1.6 counter example. The next chapter enables Adwaita and replaces the counter with the Tasks application shell.
 
 Leave `npm run dev` running as you work. Fast Refresh applies component edits to the open window; changes that need a restart relaunch the app. Saving `gtkx.config.ts` regenerates bindings and relaunches it too.
 

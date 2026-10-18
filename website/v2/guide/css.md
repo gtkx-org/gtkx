@@ -5,7 +5,7 @@ description: "Apply widget styles and reusable classes in GTKX."
 
 # CSS
 
-GTKX provides a `style` prop for individual widgets and `@gtkx/css` for reusable styles. Start with [Adwaita's style classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/style-classes.html) when they cover the design. For custom rules, use [GTK's supported CSS properties](https://docs.gtk.org/gtk4/css-properties.html); layout stays in widget props.
+GTKX provides a `style` prop for individual widgets and `@gtkx/css` for reusable styles. Use [Adwaita's style classes](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/style-classes.html) for standard widget styling. For custom rules, use [GTK's supported CSS properties](https://docs.gtk.org/gtk4/css-properties.html); layout stays in widget props.
 
 ## Style one widget
 
@@ -62,7 +62,7 @@ Identical styles reuse the same class and are inserted once. Interpolating a gen
 
 ## Combine classes
 
-`cx` returns the array that `cssClasses` expects. It drops empty and conditional values while preserving ordinary class names:
+`cx` returns the array that `cssClasses` expects. It keeps nonempty class names and ignores boolean, `null`, and `undefined` arguments:
 
 ```tsx
 import { css, cx } from "@gtkx/css";

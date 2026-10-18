@@ -8,12 +8,12 @@ description: "Choose an Adwaita navigator and connect its pages, headers, and na
 `@gtkx/navigation` renders [React Navigation](https://reactnavigation.org) with Adwaita widgets. Install it alongside GTKX:
 
 ```bash
-npm install @gtkx/navigation@beta
+npm install @gtkx/navigation@2
 ```
 
 Choose a navigator for the layout:
 
-| Navigator                           | Use it for                                     | Native surface                     |
+| Navigator                           | Use it for                                     | Native widgets                     |
 | ----------------------------------- | ---------------------------------------------- | ---------------------------------- |
 | [Stack](#stack-navigator)           | Moving through a sequence of pages             | `AdwNavigationView`                |
 | [Tabs](#tab-navigator)              | Switching between a few peer sections          | `AdwViewStack` and a view switcher |
@@ -48,7 +48,7 @@ State restoration and navigation outside the tree use React Navigation's [contai
 
 ## Stack navigator
 
-`createStackNavigator` renders an `AdwNavigationView`. Define the route parameters to type-check screens, `navigate` calls, and `route.params`:
+`createStackNavigator` renders an `AdwNavigationView`. Define the route parameters to typecheck screens, `navigate` calls, and `route.params`:
 
 ```tsx
 import * as Gtk from "@gtkx/gi/gtk";

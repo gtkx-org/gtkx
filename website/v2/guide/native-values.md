@@ -18,7 +18,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 const isWidget = GObject.typeIsA(Gtk.Label, Gtk.Widget);
 ```
 
-Generated classes and interfaces, and subclasses registered with `registerClass`, can be passed this way. A plain JavaScript subclass has no registration of its own. Returned GTypes and signal handler arguments remain `bigint` values.
+Generated classes and interfaces, and subclasses registered with `registerClass`, can be passed this way. A plain JavaScript subclass has no registration of its own. GTypes returned by bindings or passed to signal handlers remain `bigint` values.
 
 ## Passing a GValue
 

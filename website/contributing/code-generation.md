@@ -7,7 +7,7 @@ description: "How GTKX turns GIR libraries into project-specific JavaScript bind
 
 `@gtkx/codegen` reads a project's GIR libraries and emits executable ESM bindings, TypeScript declarations, JSX components, and reference pages. Its generated descriptors supply runtime with native call signatures; runtime does not load libgirepository to discover them.
 
-The public orchestration lives in [`packages/codegen/src/runner.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/runner.ts). The CLI integrates it with project configuration in [`packages/cli/src/codegen/run-codegen.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/cli/src/codegen/run-codegen.ts). For using the command and configuring libraries, see [Configuration and Codegen](/v2/guide/configuration-and-codegen).
+The public generation entry point is [`packages/codegen/src/runner.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/runner.ts). The CLI integrates it with project configuration in [`packages/cli/src/codegen/run-codegen.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/cli/src/codegen/run-codegen.ts). For command usage and library configuration, see [Configuration and Codegen](/v2/guide/configuration-and-codegen).
 
 ## Inputs and outputs
 
@@ -20,7 +20,7 @@ The public orchestration lives in [`packages/codegen/src/runner.ts`](https://git
 | Project element configuration           | Project-specific additions and overrides to those element definitions.                        |
 | Installed runtime and renderer versions | Versions recorded in the generated stores and inputs to their freshness checks.               |
 
-Adwaita's `Adw-1` is the default root. Its dependencies bring in GTK4 and the rest of the GNOME foundation. Additional configured roots extend that graph. The selection logic is in [`gir/libraries.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/gir/libraries.ts).
+Adwaita's `Adw-1` is the default root. Its dependencies include GTK4, GDK, GIO, GObject, and GLib. Configuring additional libraries extends that dependency graph. The selection logic is in [`gir/libraries.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/gir/libraries.ts).
 
 The main outputs are:
 
@@ -43,12 +43,12 @@ GIR annotations affect runtime correctness as well as documentation. An array's 
 
 ## Type analysis and callable shaping
 
-The `src/analysis` modules turn the parsed model into TypeScript types and runtime descriptor expressions. Those are two views of the same native contract. A method's public signature may omit bookkeeping arguments while its native signature must retain them.
+The `src/analysis` modules turn the parsed model into TypeScript types and runtime descriptor expressions. Both describe the same native contract. A method's public signature may omit bookkeeping arguments while its native signature must retain them.
 
 The callable pipeline accounts for these differences:
 
 - Array lengths and callback bookkeeping can be derived or folded into the values exposed to JavaScript.
-- Out parameters become returned values; a C return and multiple surfaced outputs may become a tuple.
+- Out parameters become returned values; a C return and output parameters may become a tuple.
 - A trailing `GError**` becomes exception behavior while remaining an argument in the native call.
 - Recognized asynchronous start/finish pairs gain promise-based wrappers.
 - Records need field sizes, offsets, alignment, and ownership information in addition to their declared field types.
@@ -75,7 +75,7 @@ GI methods generally defer descriptor construction and native binding through ru
 
 The JSX pipeline uses the same parsed library to identify element classes and derive prop and signal types. It combines those with GTKX's built-in element configuration and the project's custom configuration.
 
-[`packages/config/src/builtin-elements.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/config/src/builtin-elements.ts) is deliberately usable without loading native bindings. It describes which props an element adds or omits, which component factory wraps it, and whether its parent creates the underlying object. Runtime attachment and update behavior lives separately in `element-behaviors.ts`.
+[`packages/config/src/builtin-elements.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/config/src/builtin-elements.ts) can be imported without loading native bindings. It describes which props an element adds or omits, which component factory wraps it, and whether its parent creates the underlying object. The renderer defines attachment and update behavior in `packages/react/src/element-behaviors.ts`.
 
 Generated element components call the renderer's `createElementComponent` factory with the GType name and class reference. Each generated class registers its property and signal metadata, so retaining the class also preserves that metadata in production bundles and application subclasses. An inherited wrapper can add application, window, or dialog lifecycle behavior.
 
@@ -89,10 +89,10 @@ Generation acquires store locks, prepares new output in staging directories, and
 
 Freshness is content-based. The GI fingerprint covers the generator, relevant dependency versions, overrides, selected roots, search paths, store version, and GIR contents. JSX has its own fingerprint for the renderer version and element configuration; regenerating GI also invalidates JSX. Documentation fingerprints include their rendering options and element configuration. These checks are implemented in [`fingerprint.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/fingerprint.ts).
 
-The store compiler uses Oxc to emit JavaScript and isolated declarations from generated TypeScript, then removes successful temporary TypeScript sources. Declarations retain documentation; JavaScript retains pure annotations for tree shaking and drops other comments. The existing TypeScript emitter remains available when native transformer bindings cannot load, including Node's `--no-addons` mode. Emission diagnostics live in [`compile.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/compile.ts), with native emission in [`store/transpile.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/transpile.ts). Store emission does not run full semantic checking. The OpenGL generator separately checks its generated sources through `checkModules`, also with `skipLibCheck: true`. Check the consuming project's types and exercise its native bindings after generation.
+The store compiler uses Oxc to emit JavaScript and isolated declarations, then removes the temporary TypeScript sources after successful emission. Declarations retain documentation; JavaScript retains pure annotations for tree shaking and drops other comments. A TypeScript emitter handles environments where the native transformer bindings cannot load, including Node's `--no-addons` mode. Emission diagnostics live in [`compile.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/compile.ts), with native emission in [`store/transpile.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/store/transpile.ts). Store emission does not run full semantic checking. The OpenGL generator separately checks its generated sources through `checkModules`, also with `skipLibCheck: true`. Check the consuming project's types and exercise its native bindings after generation.
 
 ## Reference documentation and OpenGL
 
 Element reference pages reuse the GIR model, type rendering, and element prop configuration. [`docs/pipeline.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/docs/pipeline.ts) produces pages for URL-based website navigation or file-based project references. The CLI writes `.gtkx/reference` through [`codegen/reference.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/cli/src/codegen/reference.ts).
 
-OpenGL bindings have a separate input pipeline under [`src/khronos`](https://github.com/gtkx-org/gtkx/tree/main/packages/codegen/src/khronos). It parses the bundled Khronos XML registry, selects and plans supported bindings, and renders modules used by `@gtkx/gl`. It shares generator infrastructure, but it does not derive OpenGL's function signatures from GIR.
+OpenGL bindings have a separate input pipeline under [`src/khronos`](https://github.com/gtkx-org/gtkx/tree/main/packages/codegen/src/khronos). It parses the bundled Khronos XML registry, selects and plans supported bindings, and renders modules used by `@gtkx/gl`. It shares generator infrastructure with GIR generation and obtains OpenGL function signatures from the Khronos registry.

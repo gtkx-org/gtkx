@@ -5,7 +5,7 @@ description: "Test GTKX components with native widgets, accessible queries, and 
 
 # Testing
 
-`@gtkx/testing` renders real GTKX components and provides queries, interactions, and assertions for their native widgets. Its API follows React Testing Library conventions.
+`@gtkx/testing` renders GTKX components and provides queries, interactions, and assertions for native widgets. Its API follows React Testing Library conventions.
 
 ## Setup
 
@@ -42,7 +42,7 @@ command -v sway dbus-daemon setpriv
 npm test
 ```
 
-This setup was checked in the Fedora 44 environment described in [Getting Started](/guide/getting-started#native-libraries-on-fedora-44). See the [plugin reference](/reference/@gtkx/vitest/) for display size and compositor options.
+See the [plugin reference](/reference/@gtkx/vitest/) for display size and compositor options.
 
 With the GTKX Vitest plugin, importing `@gtkx/testing` registers widget matchers and automatic cleanup. No additional setup file is needed.
 
@@ -71,7 +71,7 @@ it("saves the display name", async () => {
 });
 ```
 
-Ordinary components render inside a harness window. An application component that creates its own window needs `rootElement` instead:
+Components render inside a test window by default. An application component that creates its own window needs `rootElement` instead:
 
 ```tsx
 import { rootElement } from "@gtkx/react";
@@ -102,7 +102,7 @@ await user.type(entry, "Replacement");
 await user.click(saveButton);
 ```
 
-Use `slide(range, value)` for a slider. `drag` drives authored drag gestures and cannot drive a range's native slider. The [interaction reference](/reference/@gtkx/testing/) covers the available helpers.
+Use `slide(range, value)` for a slider. `drag` drives application-defined drag gestures and cannot drive a range's native slider. The [interaction reference](/reference/@gtkx/testing/) covers the available helpers.
 
 `fireEvent(object, signalName, ...args)` emits a GObject signal directly. It returns a promise, so await it. Use it when testing a signal handler or a tree without a visible window. Wrap state changes made outside these helpers in `act`.
 

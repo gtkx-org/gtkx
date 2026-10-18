@@ -1,10 +1,10 @@
 # Tasks
 
-Tasks is the complete Linux application built by the [GTKX tutorial](https://gtkx.dev/v2/tutorial/). Its Adwaita foundation combines adaptive navigation, forms, settings, actions, dialogs, notifications, localization, persistence, testing, and Linux packaging.
+Tasks is the Linux task manager built in the [GTKX tutorial](https://gtkx.dev/v2/tutorial/). It organizes tasks into lists, saves changes between sessions, and sends due-date reminders while running.
 
 ![Tasks in an adaptive Adwaita window](assets/screenshot.png)
 
-This app is excluded from the pnpm workspace and installs the published GTKX beta packages declared in [package.json](package.json). Install the [native prerequisites](https://gtkx.dev/v2/guide/getting-started), then run from this directory:
+This app is excluded from the pnpm workspace and installs the GTKX packages declared in [package.json](package.json). Install the [native prerequisites](https://gtkx.dev/v2/guide/getting-started), then run from this directory:
 
 ```bash
 npm install

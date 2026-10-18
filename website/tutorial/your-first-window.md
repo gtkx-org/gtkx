@@ -8,7 +8,7 @@ You have a scaffolded project that runs. Replace its contents with the first pie
 
 ## What the scaffolder made
 
-`gtkx.config.ts` configures the application and generated bindings. `src/index.tsx` mounts the component tree, and `src/app.tsx` contains the counter demo you will replace. `src/gtkx-env.d.ts` connects TypeScript to the generated declarations.
+`gtkx.config.ts` configures the application and generated bindings. `src/index.tsx` mounts the component tree, and `src/app.tsx` contains the counter you will replace. `src/gtkx-env.d.ts` connects TypeScript to the generated declarations.
 
 `gtkx.config.ts`:
 
@@ -30,7 +30,7 @@ export default defineConfig({
 });
 ```
 
-The tutorial uses Adwaita for application structure. On the stable release, `v2DefaultLibraries` includes Adwaita and GTK4; `libraries` lists any additional native libraries you need. See [Configuration and Codegen](/guide/configuration-and-codegen) for the configuration reference and future flags.
+The tutorial uses Adwaita for application structure. In GTKX 1.6, `v2DefaultLibraries` includes Adwaita and GTK4; `libraries` lists any additional native libraries you need. See [Configuration and Codegen](/guide/configuration-and-codegen) for the configuration reference and future flags.
 
 Keep the application ID you chose in the introduction, and use it wherever later examples show `com.gtkx.tutorial`.
 
@@ -79,7 +79,7 @@ GObject properties become camelCase props, such as `widthRequest`. Signals becom
 
 `AdwApplication` takes its application ID from `gtkx.config.ts` and starts the application when it mounts. Rendering `AdwApplicationWindow` opens the window; removing it from the tree closes it.
 
-The minimum size keeps narrow-window testing available as you add [Adapt the Layout](/tutorial/an-adaptive-layout).
+The minimum width leaves room to test the narrow layout in [Adapt the Layout](/tutorial/an-adaptive-layout).
 
 ## Giving the window a header bar
 
@@ -125,7 +125,7 @@ The header bar picks up the window title. `AdwStatusPage` supplies the empty sta
 
 ## Run it
 
-Save `src/app.tsx` and look at the window that has been open since the introduction. The counter is replaced by a window 360 logical pixels wide at its narrowest, titled **Tasks** in a header bar, with a checkbox icon centered above the words **No Tasks Yet**.
+Save `src/app.tsx`. The window now shows a **Tasks** header and a checkbox icon above **No Tasks Yet**. Resize it to check the minimum width of 360 logical pixels.
 
 Change the status page title to `Nothing Here Yet` and save. Fast Refresh updates the text in the open window.
 

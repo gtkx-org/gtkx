@@ -3,7 +3,7 @@
     "version": "0.0.0",
     "private": true,
     "license": "MPL-2.0",
-    "description": "Adwaita showcase of typed React Navigation stack, tab and drawer navigators",
+    "description": "Drawer, stack, and tab navigation with React Navigation and Adwaita",
     "type": "module",
     "scripts": {
         "build": "gtkx build",

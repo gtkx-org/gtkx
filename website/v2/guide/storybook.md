@@ -12,7 +12,7 @@ description: "Browse native GTKX component stories, edit arguments, record actio
 In an existing GTKX project:
 
 ```sh
-npm install -D @gtkx/storybook@beta
+npm install -D @gtkx/storybook@2
 ```
 
 Create `.storybook/main.ts`:
@@ -101,6 +101,6 @@ Pass shared preview configuration as the second argument to `composeStories`. Na
 
 Control edits rerender the current story and retry previews that failed to render. Reset restores default arguments and remounts it. Switching stories unmounts the previous preview, including its windows and dialogs. Content stories receive the explorer's application and parent-window contexts; a story owning a separate window sets `parameters: { gtkx: { preview: "window" } }`.
 
-GTKX reuses Storybook 10's composition APIs. This is a standalone native explorer. Browser addons, a browser manager, MDX, Autodocs, `play`, loaders, Storybook preview hooks, and static interactive publishing need other integrations and are unsupported. Configured globals are available in context; there is no global toolbar.
+GTKX reuses Storybook 10's composition APIs. This is a standalone native explorer. Browser addons, a browser manager, MDX, Autodocs, `play`, loaders, Storybook preview hooks, and static interactive publishing are unsupported. Configured globals are available in context; there is no global toolbar.
 
 The [example project](https://github.com/gtkx-org/gtkx/tree/main/examples/storybook) demonstrates controls, dialog and window stories, and native integration tests.

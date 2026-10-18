@@ -8,7 +8,7 @@ description: "Change the persisted manual order with drag and drop or keyboard s
 
 ## Add the reorder action
 
-Each task already has a `position`. Add one action to `src/store/tasks.ts` that moves a task to another task's index and rewrites those positions:
+Each task already has a `position`. Add an action to `src/store/tasks.ts` that moves a task to another task's index and updates the positions:
 
 ```diff [src/store/tasks.ts]
 @@ -14,0 +15 @@
@@ -71,11 +71,11 @@ Compute it once in `src/components/task-list.tsx`, then give each row its neighb
 +                                />
 ```
 
-The neighboring IDs give the keyboard command the same destinations a pointer drop receives.
+The neighboring IDs let keyboard and pointer interactions use the same reorder action.
 
 ## Add the row controllers
 
-GTKX attaches generated controller elements through a widget's `controllers` prop. The pointer path uses GTK4's drag source and drop target; the keyboard path uses a key controller. The [GTK4 drag-and-drop overview](https://docs.gtk.org/gtk4/drag-and-drop.html) covers the native interaction model.
+GTKX attaches generated controller elements through a widget's `controllers` prop. Drag and drop uses GTK4's drag source and drop target; keyboard reordering uses a key controller. The [GTK4 drag-and-drop overview](https://docs.gtk.org/gtk4/drag-and-drop.html) covers the native interaction model.
 
 Update the imports and props in `src/components/task-row.tsx`:
 

@@ -80,7 +80,7 @@ export default defineConfig({
 
 GTKX derives the version, license, author, and homepage from `package.json`. It uses this configuration to generate the desktop entry and AppStream metadata.
 
-The notification entry gives Tasks a place in the desktop's notification settings. D-Bus activation lets notification actions reach the app when it is closed. These settings complete the [reminder](/tutorial/reminders) workflow.
+The notification entry lists Tasks in the desktop's notification settings. D-Bus activation lets notification actions reach the app when it is closed. These settings complete the [reminder](/tutorial/reminders) workflow.
 
 The [finished configuration](https://github.com/gtkx-org/gtkx/blob/v1.6.0/examples/tutorial/gtkx.config.ts) also includes screenshots and release notes. Add those when preparing your own release; the [configuration reference](/reference/@gtkx/config/index/type-aliases/Config) describes the available options.
 
@@ -105,7 +105,7 @@ GTKX builds the app, validates its metadata, and writes the install tree and tar
 
 ## Create packages
 
-Build the three formats used in this chapter:
+Build the AppImage, deb, and rpm packages:
 
 ```bash
 npm run deploy -- --target appimage,deb,rpm

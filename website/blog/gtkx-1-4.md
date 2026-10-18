@@ -8,7 +8,7 @@ image: /tasks-screenshot.png
 
 <p class="post-date">August 25, 2026</p>
 
-GTKX 1.4 is out. The headline is [`@gtkx/navigation`](/guide/navigation), React Navigation rendered by native libadwaita widgets, with stack, tab, drawer, and adaptive split view navigators. The release also adds opt-in resource and icon imports, controlled list-box selection, explicit minimum library versions for packages, and another round of native-boundary fixes. Read the [`changelog`](https://github.com/gtkx-org/gtkx/releases/tag/v1.4.0) for the full list of changes.
+GTKX 1.4 adds [`@gtkx/navigation`](/guide/navigation), which connects React Navigation to libadwaita stack, tab, drawer, and adaptive split view widgets. It also adds opt-in resource and icon imports, controlled list-box selection, explicit minimum library versions for packages, and native binding fixes. Read the [changelog](https://github.com/gtkx-org/gtkx/releases/tag/v1.4.0) for the full list of changes.
 
 <picture>
   <source srcset="/tasks-screenshot.webp" type="image/webp" />
@@ -19,16 +19,16 @@ _The tutorial's Tasks app now expresses its sidebar, content, and task detail as
 
 ## React Navigation, drawn by Adwaita
 
-React Navigation has a useful split at its center. The core owns routes, params, actions, events, focus, nesting, state persistence, and the static and dynamic configuration APIs. A renderer decides what those ideas look like on a platform.
+React Navigation's core manages routes, params, actions, events, focus, nesting, state persistence, and configuration. A renderer connects that state to platform widgets.
 
-`@gtkx/navigation` supplies that renderer for GTK. There is no React Native in the package:
+`@gtkx/navigation` provides an Adwaita renderer:
 
 - `createStackNavigator` renders an `AdwNavigationView`.
 - `createTabNavigator` renders an `AdwViewStack` with an `AdwViewSwitcher` or `AdwViewSwitcherBar`.
 - `createDrawerNavigator` renders an `AdwOverlaySplitView`.
 - `createSplitViewNavigator` renders an `AdwNavigationSplitView` with a navigation stack in its content pane.
 
-That means the navigation state follows React Navigation while every visible control follows the GNOME platform. Pages use Adwaita's transitions. Header bars use its back buttons. Tabs have view-switcher accessibility. A drawer can become an overlay, and a master/detail view can fold to one pane at a breakpoint.
+The navigators use Adwaita's transitions, header bars, back buttons, and accessible view switchers. Drawers can become overlays, and split views can collapse to one pane at a breakpoint.
 
 Install the package separately:
 
@@ -98,13 +98,13 @@ Screen options shape native headers. `title` names the page, `headerStart` and `
 
 ## Tabs and drawers keep their platform behavior
 
-Tabs are pages of an `AdwViewStack`, not buttons made to resemble tabs. Put the switcher in the header or in an `AdwViewSwitcherBar` below the content, choose an icon and badge per screen, and mount a lazy screen only when it is first opened. A `tabPress` event can prevent a switch, and `popToTopOnBlur` resets a nested stack when its tab loses focus.
+Tabs are pages of an `AdwViewStack`. Put the switcher in the header or in an `AdwViewSwitcherBar` below the content. Each screen can have an icon and badge and can mount lazily when first opened. A `tabPress` event can prevent a switch, and `popToTopOnBlur` resets a nested stack when its tab loses focus.
 
 The drawer uses an `AdwOverlaySplitView`, with screen routes in its sidebar and the active screen in its content pane. `collapsed` turns the sidebar from a fixed pane into an overlay; `openDrawer`, `closeDrawer`, `toggleDrawer`, and `DrawerActions` update the same state that a swipe or sidebar dismissal updates. `drawerContent` can replace the sidebar while `DrawerItemList` keeps the default route list inside a custom shell.
 
 Navigators nest as single widgets. A drawer or tab screen can host a stack, and the outer screen hides its header so only the inner page's header remains. Actions bubble through the tree, which is why a stack page can dispatch `DrawerActions.toggleDrawer()` without reaching through widget refs.
 
-## A split view is more than a drawer
+## Adaptive split views {#a-split-view-is-more-than-a-drawer}
 
 `createSplitViewNavigator` models the master/detail layout used throughout GNOME. Its first screen is the sidebar; every other screen belongs to the content stack. Navigating from a folder list to `Messages` selects that route and its params, pushing it when it is absent and returning to it when it is already below the current detail page. Popping the first content route reveals a `contentPlaceholder` rather than removing the sidebar.
 
@@ -114,7 +114,7 @@ That is now how the [GTKX tutorial](/tutorial/) builds Tasks. Its selected smart
 
 ## Test what the user can reach
 
-Navigation does not need navigator-specific test machinery. [`@gtkx/testing`](/guide/testing) clicks the visible header button, list row, or tab, types into the screen, or sends Escape to the window. A push or pop is complete immediately under the default test render because animations are disabled, so the assertion is simply what has appeared and what is no longer mapped.
+Use [`@gtkx/testing`](/guide/testing) to click header buttons, rows, and tabs, type into a screen, or send Escape to the window. Test rendering disables animations by default. Assert which page appears and which page is no longer mapped after the interaction.
 
 The [`navigation`](https://github.com/gtkx-org/gtkx/tree/v1.4.0/examples/navigation) example is a small mail-style app that nests a drawer, a stack, and tabs. Its tests open a message, start a reply, attempt to leave it, answer the discard dialog, switch drawer sections and tabs, and toggle Adwaita's color scheme through the same controls a user sees.
 
@@ -148,4 +148,4 @@ A struct or boxed value lent to a callback now aliases the native caller's memor
 
 ## What's next
 
-The next packages on the roadmap, [`@gtkx/forms`](https://github.com/gtkx-org/gtkx/issues/480) and [`@gtkx/i18n`](https://github.com/gtkx-org/gtkx/issues/524), shipped together in [GTKX 1.5](/blog/gtkx-1-5). The [issue tracker](https://github.com/gtkx-org/gtkx/issues) is where the next work gets argued about.
+The next packages on the roadmap, [`@gtkx/forms`](https://github.com/gtkx-org/gtkx/issues/480) and [`@gtkx/i18n`](https://github.com/gtkx-org/gtkx/issues/524), shipped together in [GTKX 1.5](/blog/gtkx-1-5). Further work is tracked in [issues](https://github.com/gtkx-org/gtkx/issues).

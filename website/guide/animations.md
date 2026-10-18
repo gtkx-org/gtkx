@@ -28,11 +28,11 @@ export const FadeIn = () => {
 };
 ```
 
-This works for every element in `@gtkx/jsx` and for components of your own. Keeping the wrapper at module scope also gives React a stable component type, so it does not remount between renders.
+Keeping the wrapper at module scope gives React a stable component type, so it does not remount between renders.
 
 Property access such as `animated.GtkLabel` remains available in GTKX 1.6 for compatibility, but is deprecated and removed in 2.0. Import the component and use the call form above. It works for elements that are not widgets, such as `GtkAdjustment`, and components of your own, while letting a production bundle retain only the components it reaches.
 
-Each frame, the current values are written straight onto the widget through its `ref`, so the component does not re-render while the spring runs. Writable GObject props such as `opacity`, margins, size requests, and adjustment values can be animated this way. The `style` prop, labels, and text children also accept animated values:
+For writable GObject props, each frame updates the native object through its `ref` without rerendering the component. This includes `opacity`, margins, size requests, and adjustment values. The `style` prop, labels, and text children also accept animated values:
 
 ```tsx
 const { count } = useSpring({ from: { count: 0 }, to: { count: 100 } });
@@ -42,9 +42,9 @@ const { count } = useSpring({ from: { count: 0 }, to: { count: 100 } });
 
 GTKX truncates whole-number properties, such as margins, toward zero and clamps values to the native property range. An opacity spring cannot exceed 1, and margins cannot be negative. To slide a widget using a margin, animate from a positive margin to zero.
 
-The wrapper passes a `ref` through. A component of your own that forwards it to the widget it renders gets the same per-frame writes, while one that keeps the `ref` re-renders with the current values instead.
+A custom component that forwards its `ref` to the native object receives the same updates. Otherwise, the wrapper rerenders the component with the current values.
 
-Props that are not GObject properties, such as the `accessible*` props, still animate: the component re-renders with the current value on each frame. `style` is the exception, and it gets its own section next.
+Props that are not GObject properties, such as the `accessible*` props, still animate: the component re-renders with the current value on each frame. `style` updates its CSS provider without rerendering.
 
 ## Animated styles
 
@@ -85,7 +85,7 @@ This also supports effects such as `border-radius`, `box-shadow`, and `filter`.
 
 ## Moving widgets
 
-GTK positions widgets through layout, so a position is animated where a container lets you set one. Inside a `GtkFixed`, the `transform` of a `GtkFixedLayoutChild` is a `Gsk.Transform`, and an interpolation builds one from the spring:
+To animate position, use a container that exposes it. Inside a `GtkFixed`, the `transform` of a `GtkFixedLayoutChild` is a `Gsk.Transform`, and an interpolation builds one from the spring:
 
 ```tsx
 import { animated, useSpring } from "@gtkx/animated";
@@ -110,7 +110,7 @@ export const Slide = ({ isOpen }: { isOpen: boolean }) => {
 };
 ```
 
-Elsewhere, animate the margins, the size requests, a `Gtk.Paned`'s `position`, or a CSS `transform` through `style`, which moves what the widget paints without disturbing the layout around it.
+Elsewhere, animate the margins, the size requests, a `Gtk.Paned`'s `position`, or a CSS `transform` through `style`, which changes the painted position without changing layout.
 
 ## React Spring APIs
 

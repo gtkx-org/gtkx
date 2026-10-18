@@ -17,11 +17,11 @@ gh workflow run release.yml
 
 Release preparation runs only on request and never writes to `main`. The same workflow tags prepared releases after main CI succeeds.
 
-| Inputs            | Result                                                                                                                                                                                                   |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Both empty        | Consume pending plans on the current release train: the next beta during beta development, or the bump requested by plans on a stable train. With no pending plans, stop without opening a pull request. |
-| `specifier=2.0.0` | End the beta and prepare the stable release, even without pending plans.                                                                                                                                 |
-| `preid=rc`        | Change the prerelease identifier, even without pending plans.                                                                                                                                            |
+| Inputs            | Result                                                                                                                                                                                        |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Both empty        | Consume pending plans. For stable versions, apply the requested bump; for prereleases, increment the existing prerelease version. With no pending plans, stop without opening a pull request. |
+| `specifier=2.0.0` | Prepare version 2.0.0, even without pending plans.                                                                                                                                            |
+| `preid=rc`        | Change the prerelease identifier, even without pending plans.                                                                                                                                 |
 
 The workflow versions all packages, updates tutorial ranges and the documentation version, prepends release notes to `CHANGELOG.md`, and deletes consumed plans. It opens or refreshes `release/next` as the release bot, with a GitHub-signed commit. Preview those preparation steps locally without writing files:
 
@@ -41,7 +41,7 @@ Repository merge rules enforce review approval, the `Verify workspace` check, an
 
 ## Tag and publish
 
-Successful completion of main CI starts the tag job in Release PR. It requires that commit to be the merge of `release/next` and recognizes a prepared release from the version's changelog entry and release state. It creates the annotated `vX.Y.Z` tag and draft GitHub release, then dispatches Publish from that tag. A normal commit without a prepared version does not publish. Rerunning the successful CI run can redispatch the same draft.
+Successful completion of main CI starts the tag job in the Release workflow. It requires that commit to be the merge of `release/next` and recognizes a prepared release from the version's changelog entry and release state. It creates the annotated `vX.Y.Z` tag and draft GitHub release, then dispatches Publish from that tag. A normal commit without a prepared version does not publish. Rerunning the successful CI run can redispatch the same draft.
 
 To curate the draft notes:
 

@@ -5,7 +5,7 @@ description: "Migrate a GTKX 1.x application to GTKX 2, including configuration,
 
 # Upgrading to 2.0
 
-GTKX 2.0 is in beta. It makes the behaviors previewed in 1.6 unconditional and removes their compatibility APIs. [Prepare on 1.6](/guide/upgrading-to-2#prepare-on-1-6), then upgrade your installed `@gtkx/*` packages to the same 2.0 beta and work through this checklist. Do not install `@gtkx/gi` or `@gtkx/jsx`; codegen creates them for the project.
+GTKX 2.0 makes the behaviors previewed in 1.6 unconditional and removes their compatibility APIs. [Prepare on 1.6](/guide/upgrading-to-2#prepare-on-1-6), then upgrade your installed `@gtkx/*` packages to the same 2.0 version and work through this checklist. Do not install `@gtkx/gi` or `@gtkx/jsx`; codegen creates them for the project.
 
 Upgrade to Node.js 26.7 or newer and set `"type": "module"` in `package.json`; GTKX packages are ESM-only and explicitly reject `require()`. Localized projects also need GNU gettext 0.25 or newer.
 

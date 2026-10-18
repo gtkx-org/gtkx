@@ -8,7 +8,7 @@ image: /tasks-forms.png
 
 <p class="post-date">August 27, 2026</p>
 
-GTKX 1.5 is out with two new packages for work almost every application has to do: [`@gtkx/forms`](/guide/forms) connects React Hook Form to native Adwaita controls, and [`@gtkx/i18n`](/guide/internationalization) connects React translation APIs to GNU gettext. Forms stay typed from the saved value to the widget. Translation stays in standard PO catalogs, while the GTKX CLI owns extraction, generated types, compilation, localized desktop metadata, and packaging. Read the [`changelog`](https://github.com/gtkx-org/gtkx/releases/tag/v1.5.0) for the full list of changes.
+GTKX 1.5 adds [`@gtkx/forms`](/guide/forms), which connects React Hook Form to Adwaita controls, and [`@gtkx/i18n`](/guide/internationalization), which connects React translation APIs to GNU gettext. Form controls are typed against the application's values. Translations use PO catalogs, with CLI support for extraction, types, compilation, desktop metadata, and packaging. Read the [changelog](https://github.com/gtkx-org/gtkx/releases/tag/v1.5.0) for the full list of changes.
 
 <picture>
   <source srcset="/tasks-forms.webp" type="image/webp" />
@@ -19,7 +19,7 @@ _The tutorial task editor now uses React Hook Form for its native title and impo
 
 ## React Hook Form, rendered by Adwaita
 
-`@gtkx/forms` is an adapter around React Hook Form, not a second form-state implementation. `useForm`, `FormProvider`, `Controller`, field arrays, form context, state, and watchers come from React Hook Form. GTKX supplies the native controls that speak its value, validation, focus, blur, disabled, dirty, reset, and submission protocols:
+`@gtkx/forms` re-exports React Hook Form's hooks, providers, controllers, and types. GTKX supplies native controls that integrate with its value, validation, focus, blur, disabled, dirty, reset, and submission behavior:
 
 - `EntryRow` and `PasswordEntryRow` bind string fields to `AdwEntryRow` and `AdwPasswordEntryRow`.
 - `SwitchRow` binds a boolean field to `AdwSwitchRow`.
@@ -61,9 +61,9 @@ Validation is native too. An invalid row gains Adwaita's error style, exposes GT
 
 The [forms guide](/guide/forms) covers validation, disabled fields, custom controls, selection, and programmatic updates. The [tutorial task editor](/tutorial/the-task-editor) puts the adapter in a complete application with navigation and persisted state.
 
-## The real react-i18next API, with gettext storage
+## react-i18next with gettext storage {#the-real-react-i18next-api-with-gettext-storage}
 
-`@gtkx/i18n` registers a real backend on the default `i18next` singleton and re-exports `react-i18next`. Existing component patterns remain the same: `useTranslation`, `withTranslation`, `Translation`, `Trans`, providers, SSR helpers, defaults, and context are the upstream implementations. The direct `t` and `init` exports use that same configured singleton. These exports keep the upstream API shape; gettext still supplies process-wide catalog lookup, and GTKX does not provide a browser or server renderer.
+`@gtkx/i18n` registers a backend on the default `i18next` singleton and re-exports `react-i18next`. Hooks, translation components, providers, and context use the upstream implementations. The direct `t` and `init` exports share the configured singleton. Catalog lookup uses the process-wide locale; GTKX does not provide a browser or server renderer.
 
 The storage model follows the Linux desktop. Source messages become a gettext POT template, translators edit PO files, builds compile MO catalogs, and GLib performs the runtime lookup. Interpolation keeps i18next's `{{name}}` syntax, while an explicit singular and plural pair becomes one gettext plural entry:
 
@@ -91,7 +91,7 @@ _One French PO catalog drives the application UI and the metadata installed with
 
 ## Strict messages, generated from the application
 
-Translation keys often become strings that TypeScript cannot check. GTKX codegen instead follows `t` bindings through direct imports, hooks, HOCs, render callbacks, aliases, ESM, and CommonJS. It extracts each statically recoverable message and writes an application-specific declaration in `node_modules/.gtkx/i18n.d.ts`.
+In 1.5, codegen follows `t` bindings through direct imports, hooks, HOCs, render callbacks, aliases, ESM, and CommonJS. It extracts statically recoverable messages and writes application-specific declarations in `node_modules/.gtkx/i18n.d.ts`.
 
 That declaration narrows literal keys and records their contract. TypeScript rejects an unknown literal, a missing or misspelled interpolation variable, a plural without a numeric `count`, and a contextual call without the matching literal context. The strict translator flows through direct `t`, `useTranslation`, `withTranslation`, and the `Translation` render callback; there is no registry for an application author to maintain.
 
@@ -103,7 +103,7 @@ Extraction is equally automatic. The project chooses locales in `po/LINGUAS` and
 
 The generated launcher finds that tree relative to the installed application. Deb and RPM packages use `/usr/share/locale`, Flatpak uses `/app/share/locale`, and AppImage uses the image's runtime mount point. Source-mode Flatpak builds carry the same inputs. There is no format-specific locale path in application code and no second set of metadata translations.
 
-The [internationalization tutorial](/tutorial/internationalization) takes the Tasks app from its first `t` call through a French integration test and localized Flatpak, deb, RPM, and AppImage artifacts. It deliberately starts from only `LINGUAS`; every mechanical catalog and packaging step is performed through the CLI.
+The [internationalization tutorial](/tutorial/internationalization) adds translation calls and a French catalog to Tasks, checks a translated message in an integration test, and packages the catalogs with the app. It starts with `LINGUAS` and uses the CLI to generate and update catalog files.
 
 ## Also in 1.5
 
@@ -124,4 +124,4 @@ Forms require generated `Adw-1` bindings. Internationalization requires GNU gett
 
 ## What's next
 
-Forms and internationalization close the remaining application-scale items from the original public roadmap. The next priorities will come from real applications using the whole stack; the [project board](https://github.com/orgs/gtkx-org/projects/1) and [issue tracker](https://github.com/gtkx-org/gtkx/issues) are where that work is scoped.
+Forms and internationalization complete the remaining items on the original roadmap. Further work is tracked on the [project board](https://github.com/orgs/gtkx-org/projects/1) and [issue tracker](https://github.com/gtkx-org/gtkx/issues).

@@ -7,11 +7,11 @@ Render components, query widgets by accessible role or name, drive pointer and k
 In an existing GTKX app:
 
 ```sh
-npm install -D @gtkx/testing@beta
+npm install -D @gtkx/testing@2
 ```
 
 [Guide](https://gtkx.dev/v2/guide/testing) · [API reference](https://gtkx.dev/v2/reference/@gtkx/testing/) · [GTKX](https://gtkx.dev)
 
-**GTKX 2.0 beta.** Requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started).
+GTKX requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started).
 
 [MPL-2.0](https://github.com/gtkx-org/gtkx/blob/main/LICENSE).

@@ -63,7 +63,7 @@ Import the file wherever GTKX needs a schema:
 import schema from "../../data/com.gtkx.tutorial.gschema.xml";
 ```
 
-The import returns the generated schema module. Its key names and stored value kinds flow into `useSetting` and `useBindSetting`.
+The import returns a generated schema module. `useSetting` and `useBindSetting` use it to check key names and value types.
 
 ## Bind the window size
 
@@ -302,7 +302,7 @@ Apply it when the setting changes in `src/components/window.tsx`:
 +    }, [colorScheme]);
 ```
 
-The default table entry follows the desktop scheme; the other entries ask Adwaita to keep the app light or dark.
+The `default` choice follows the desktop theme; `light` and `dark` override it for the app.
 
 Include Preferences in the dialog type:
 

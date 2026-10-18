@@ -78,7 +78,7 @@ export const useReminders = (tasks: Task[], reminderMinutes: number): Reminder[]
 };
 ```
 
-The hook checks immediately and once a minute, returning every due task in the same sweep. It skips completed, deleted, and already-notified tasks. The cursor survives task and preference changes, catching thresholds crossed during a delayed interval. Each sweep checks at least the most recent minute; the cursor extends that window after a longer pause. Selected reminders remain queued until dispatched or made ineligible by a task edit.
+The hook checks immediately and once a minute. It skips completed, deleted, and already-notified tasks. It remembers the previous check time across task and preference changes, so a delayed timer still catches crossed reminder thresholds. Each check covers at least the most recent minute. Selected reminders remain queued until sent or made ineligible by a task edit.
 
 ## Send a notification
 
@@ -116,7 +116,7 @@ export const ReminderNotification = ({ id, due }: Reminder) => {
 };
 ```
 
-`GNotification` is a generated JSX element. The portal owns its lifetime; the state-backed ref makes the native object available to the effect. Notification content uses native methods, so set it after mounting and before sending. Before dispatch, read the current task again: it may have been completed, deleted, or rescheduled since the sweep. The same predicate checks eligibility in both places and prevents effect replay from resending a recorded due value.
+The portal creates and releases the `GNotification`; its ref stores the object in React state so the effect can set its content and send it. Before sending, read the task again: it may have been completed, deleted, or rescheduled since the last check. Reusing `isPendingReminder` here also prevents an effect rerun from sending the same reminder twice.
 
 The task ID identifies the desktop notification, allowing a later reminder to replace it. Recording the due value marks a dispatch attempt; the desktop does not acknowledge delivery through `sendNotification`. See [Gio's notification documentation](https://docs.gtk.org/gio/class.Notification.html) for desktop delivery and activation requirements.
 

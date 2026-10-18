@@ -1,6 +1,6 @@
 ---
 title: "Modals and Portals"
-description: "Rendering surfaces that live outside the widget tree: portals, windows, and Adwaita dialogs."
+description: "Render windows, Adwaita dialogs, and objects outside their surrounding container."
 ---
 
 # Modals and Portals
@@ -47,7 +47,7 @@ const MirrorWindow = ({ open }: { open: boolean }) =>
 
 A window element presents itself on mount and destroys the window on unmount. `AdwApplicationWindow` registers with the application ancestor it finds in the React tree, normally `AdwApplication`, and throws when there is none. `AdwToolbarView` and `AdwHeaderBar` give the secondary window a header and toolbar layout. Relationships between top-level windows are expressed with `transientFor`, which the underlying `GtkWindow` defaults to the nearest window ancestor in the React tree; pass it explicitly to point at another window, or pass `null` for a fully independent one.
 
-Wire `onCloseRequest` to clear the state that mounted a secondary window, so React stays in charge of when it goes away.
+Handle `onCloseRequest` by clearing the state that rendered the secondary window.
 
 ## Dialogs
 
@@ -64,9 +64,9 @@ const Notice = ({ onClose }: { onClose: () => void }) => (
 );
 ```
 
-Reach for `AdwDialog` when a plain surface is enough, and for a more specific element such as `AdwAlertDialog` or `AdwPreferencesDialog` when you want its behavior. Each carries the same contract and takes its own props and children directly. A plain `AdwDialog`'s children fill its whole surface, while a specialized one places them where its own layout expects: `AdwPreferencesDialog` takes `AdwPreferencesPage` children.
+Use `AdwDialog` for custom content, `AdwAlertDialog` for a message and response buttons, or `AdwPreferencesDialog` for preferences. Each follows the same lifecycle. Place content in its supported JSX slots; for example, `AdwPreferencesDialog` takes `AdwPreferencesPage` children.
 
-Set `canClose={false}` when the dialog is not ready to go away, and handle `onCloseAttempt` to decide what happens instead. Unmounting still closes the dialog unconditionally.
+Set `canClose={false}` when the dialog must stay open, and handle `onCloseAttempt` to respond to a close request. Unmounting still closes the dialog unconditionally.
 
 `AdwAlertDialog` is the message-and-buttons modal. Its `heading` and `body` props are plain strings, it takes a declarative `responses` array, and the chosen button's `id` arrives on `onResponse`:
 

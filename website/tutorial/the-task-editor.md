@@ -66,7 +66,7 @@ export const TaskScreen = ({ route }: SplitViewScreenProps<RootParamList, "Task"
 };
 ```
 
-The route stores an ID; the screen reads the current task from the store. The key gives a different task fresh native widgets and form defaults when the existing route changes IDs. Back removes the editor page; opening it again creates a new page.
+The route stores an ID; the screen reads the current task from the store. When the route changes to another task, the key recreates the widgets and resets the form defaults. Back removes the editor page; reopening it creates a new page.
 
 ## Add the editing action
 

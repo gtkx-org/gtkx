@@ -5,17 +5,17 @@ description: "How GTKX reconciles React trees into native GObjects, routes child
 
 # React Renderer
 
-`@gtkx/react` is a custom React renderer for native GObjects. It translates React's host operations into object construction, property updates, signal connections, and container-specific child placement. Generated JSX supplies the typed component surface, and generated GI supplies the classes and methods the renderer uses.
+`@gtkx/react` is a custom React renderer for native GObjects. It translates React's host operations into object construction, property updates, signal connections, and container-specific child placement. Generated JSX provides typed components, and generated GI provides the native classes and methods they use.
 
 The reconciler is configured in [`reconciler/host-config.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/host-config.ts). It uses mutation mode with concurrent roots, Node timers, and microtasks. Persistence and hydration are disabled. GTK performs layout and painting after the renderer changes the native tree.
 
 ## Generated components and host elements
 
-A generated component such as `GtkButton` is a typed factory around a host element whose name is a GType name, such as `GtkButton`. Its reference to the generated GI class retains that class's registration and metadata in a bundled application.
+A generated component creates a host element named for its GType, such as `GtkButton`. Its reference to the generated GI class retains that class's registration and metadata in a bundled application.
 
 [`components/element.tsx`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/components/element.tsx) builds that host element. It examines props containing React elements and routes them through internal `gtkx:prop` elements. This turns a named prop containing JSX into a reconcilable subtree associated with a slot name, while ordinary `children` remain in the default slot.
 
-The renderer distinguishes four node kinds in [`reconciler/node.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/node.ts):
+The renderer defines its node kinds in [`reconciler/node.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/node.ts):
 
 | Kind    | Meaning                                                                               |
 | ------- | ------------------------------------------------------------------------------------- |
@@ -24,13 +24,13 @@ The renderer distinguishes four node kinds in [`reconciler/node.ts`](https://git
 | Lazy    | A declaration for an object created by its parent, adopted after placement.           |
 | Text    | Text content associated with a supported text host.                                   |
 
-Function components and React context providers are reconciled by React itself. They do not add GObjects. This is why a React tree and the widget tree visible in an inspector are related but have different shapes.
+Function components and React context providers are reconciled by React itself. They do not add GObjects. The widget tree visible in an inspector therefore omits these React-only nodes.
 
 ## Metadata and element behaviors
 
-The renderer combines native type ancestry with generated property and signal metadata. [`reconciler/metadata.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/metadata.ts) resolves property flags, construction requirements, defaults, signal names, configured user-event signals, and behaviors inherited from classes and interfaces. Metadata registered for custom classes joins that system and invalidates cached type information when it changes.
+The renderer combines native type ancestry with generated property and signal metadata. [`reconciler/metadata.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/metadata.ts) resolves property flags, construction requirements, defaults, signal names, configured user-event signals, and behaviors inherited from classes and interfaces. Custom classes use the same metadata registry; changes invalidate cached type information.
 
-There are two complementary definitions for an element:
+Element configuration and runtime behavior are defined separately:
 
 - [`builtin-elements.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/config/src/builtin-elements.ts) describes its generated surface: additional props, omitted native props, component wrappers, accepted child types, and parent-created instances. It can be imported during generation without loading native bindings.
 - [`element-behaviors.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/element-behaviors.ts) registers native construction, specialized prop updates, and child placement operations.
@@ -41,7 +41,7 @@ Shared builders in [`reconciler/behaviors.ts`](https://github.com/gtkx-org/gtkx/
 
 When React creates an instance, [`reconciler/instance.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/instance.ts) resolves its metadata, selects construction props, and either invokes the registered class constructor or an element-specific creation behavior. Lazy elements defer native object creation to their parent instead.
 
-[`reconciler/apply-props.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/apply-props.ts) then applies element behaviors, writes remaining values, connects handlers, and marks work that must finish at commit time. Behavior-consumed props are excluded from generic property assignment. React's `children`, `ref`, and `key` are reserved for their respective React and renderer roles.
+[`reconciler/apply-props.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/apply-props.ts) then applies element behaviors, writes remaining values, connects handlers, and marks work that must finish at commit time. Props handled by an element behavior are excluded from generic property assignment. React's `children`, `ref`, and `key` are reserved for their respective React and renderer roles.
 
 On an update, unchanged values are skipped. Removing a prop can restore its recorded default. A construct-only native property cannot be changed on an existing instance; the renderer rejects that update, so an application must change the element's key when it needs a newly constructed object.
 
@@ -55,7 +55,7 @@ GObject containers expose different APIs. A box has ordered children, an applica
 
 Lazy nodes represent native objects a parent creates as a consequence of adding a child. Examples include stack pages, notebook pages, and layout-child objects. The node initially records props and children without constructing that object. Placement obtains the object from the parent, adopts it, and applies the lazy node's props and handlers to it. Changing the leaf child can require removing the old placement and adopting a different parent-created object.
 
-This is also why adding a new supported container can involve both configuration and behavior. Correct prop declarations make the JSX legal to write; correct placement semantics make it function when mounted.
+When adding container support, check both generated prop configuration and runtime child-placement behavior.
 
 ## Text, styles, and accessibility
 
@@ -69,7 +69,7 @@ Handler props map to GObject signals using generated metadata or registered cust
 
 [`reconciler/signals.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/signals.ts) keeps a handler record for each connected prop. If the signal and target object remain the same, a rerender replaces the stored JavaScript handler while retaining the existing native connection. Removing a handler prop disconnects it.
 
-The wrapper dispatches handlers with React's discrete event priority. It also knows when the renderer is applying a property write or tree mutation. Configured user-event signals generated by those writes are suppressed; property notification suppression is matched to the property being written where possible. This prevents a controlled update from being mistaken for new user input while allowing the next real interaction to reach the latest handler.
+The wrapper dispatches handlers with React's discrete event priority and tracks renderer property writes and tree mutations. Configured user-event signals generated by those writes are suppressed; property notification suppression is matched to the property being written where possible. This prevents prop updates from triggering user-input handlers. Subsequent user interactions reach the latest handler.
 
 Signal behavior changes should be checked through an actual interaction and through a prop-driven update, since those paths can emit the same native signal for different reasons.
 
@@ -79,7 +79,7 @@ Controlled selection and visibility use [`components/controlled.tsx`](https://gi
 
 The collection components render their selection model, `Gtk.FlattenListModel`, and collection root through JSX. [`use-collection.tsx`](https://github.com/gtkx-org/gtkx/blob/main/packages/components/src/internal/use-collection.tsx) binds their committed references to a JavaScript controller, then updates the collection index and native model together before applying controlled selection and expansion. Unmounting detaches the model graph and clears its groups.
 
-The root implements `Gio.ListModel`. Its synchronous `get_item` callback supplies each section's model when GTK requests it, creating the level store and optional `Gtk.TreeListModel` at that point. Tree child models and row objects are likewise created only when native callbacks require an immediate return value. This keeps ordinary model ownership declarative while preserving the native callback construction exception.
+The root implements `Gio.ListModel`. Its synchronous `get_item` callback supplies each section's model when GTK requests it, creating the level store and optional `Gtk.TreeListModel` at that point. Tree child models and row objects are likewise created only when native callbacks require an immediate return value. These synchronous callbacks create native return values directly; JSX owns the rest of the model graph.
 
 ## Roots, portals, and presentation
 

@@ -58,7 +58,7 @@ Flatpak is the default. Set `deploy.targets` for the project's usual formats, or
 gtkx deploy --target deb,rpm
 ```
 
-Packages land in `build/out`. Manifests and staged files are under `build/<arch>/`. `gtkx deploy --out packages`
+Packages are written to `build/out`. Manifests and staged files are under `build/<arch>/`. `gtkx deploy --out packages`
 changes this deployment directory to `packages`, with finished artifacts in `packages/out`.
 
 ### Build tools
@@ -216,8 +216,8 @@ changes.
 
 Source mode rebuilds the application bundle; native npm dependencies still use their packaged binaries.
 Review those dependencies against [Flathub's source-build requirements](https://docs.flathub.org/docs/for-app-authors/requirements#building-from-source)
-and test the final manifest before submission. A successful preview does not validate that build or establish
-Flathub readiness. The [Flatpak tutorial](/v2/tutorial/flatpak) walks through the GTKX workflow.
+and test the final manifest before submission. A successful preview does not validate the source build or
+confirm compliance with Flathub requirements. The [Flatpak tutorial](/v2/tutorial/flatpak) walks through the GTKX workflow.
 
 ## Flatpak in containers
 

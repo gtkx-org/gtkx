@@ -4,7 +4,7 @@ description: "Add Undo, permanent-delete confirmation, and a New List dialog."
 
 # Add Undo and Delete Confirmation
 
-[Add Menus and Shortcuts](/v2/tutorial/actions-menus-shortcuts) connected the delete commands. Give them one shared handler that closes an open editor, moves the task to Trash, and offers Undo. Add permanent-delete confirmation and the New List dialog alongside it.
+[Add Menus and Shortcuts](/v2/tutorial/actions-menus-shortcuts) connected the delete commands. Give them a shared handler that closes an open editor, moves the task to Trash, and offers Undo. Add permanent-delete confirmation and the New List dialog alongside it.
 
 ## Add the toast overlay
 
@@ -13,11 +13,11 @@ Install the GTKX collection and toast components from `tasks/`:
 ::: code-group
 
 ```bash [npm]
-npm install @gtkx/components@beta
+npm install @gtkx/components@2
 ```
 
 ```bash [pnpm]
-pnpm add @gtkx/components@beta
+pnpm add @gtkx/components@2
 ```
 
 :::
@@ -335,7 +335,7 @@ export const NewListDialog = () => {
 };
 ```
 
-The native Add response is disabled until the name has content. Its handler trims the accepted name, so `addList` in `src/store/lists.ts` can use it directly:
+The Add response is disabled until the name contains non-whitespace text. Its handler trims the accepted name, so `addList` in `src/store/lists.ts` can use it directly:
 
 ```diff [src/store/lists.ts]
 @@ -13,5 +13,2 @@
@@ -473,7 +473,7 @@ Connect the shared delete handler in `src/components/task-buttons.tsx`:
 
 ## Run it
 
-Delete from a row, its editor, and the Delete key. Each path offers Undo and closes the editor when needed. Try a title containing `&` or `<b>`: the toast preserves the text.
+Delete a task using its row button, editor button, and the Delete key on separate attempts. Each action offers Undo and closes the editor when needed. Try a title containing `&` or `<b>`: the toast preserves the text.
 
 Open Trash and delete again. Cancel and Escape preserve the task; Delete removes it permanently. Add another task afterward and check that it appears last in manual order.
 

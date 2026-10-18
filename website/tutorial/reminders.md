@@ -98,7 +98,7 @@ export const buildReminder = (task: Task, due: string): Gio.Notification => {
 };
 ```
 
-This is an explicit imperative boundary: `Gio.Notification` requires a title in its native constructor, and GTKX does not yet expose that constructor as a usable JSX contract. The rest of the app continues to instantiate GObjects through JSX. The [Gio notification reference](https://docs.gtk.org/gio/class.Notification.html) covers notification fields and application actions.
+In GTKX 1.6, create the notification with `Gio.Notification.new(title)` because the generated JSX does not expose that constructor. The rest of the app creates GObjects through JSX. The [Gio notification reference](https://docs.gtk.org/gio/class.Notification.html) covers notification fields and application actions.
 
 ## Send and record together
 

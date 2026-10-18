@@ -154,11 +154,10 @@ const toAliases = (value: unknown): string[] => {
 const versionLabel = (version: string): string => {
     const at = version.indexOf("-");
     const core = at === -1 ? version : version.slice(0, at);
-    const prerelease = at === -1 ? "" : version.slice(at + 1);
     const [major = "0", minor = "0"] = core.split(".", 2);
     const base = `${major}.${minor}`;
 
-    return prerelease ? `${base} ${prerelease.replaceAll(".", " ")}` : `${base} stable`;
+    return at === -1 ? `${base} stable` : base;
 };
 
 const toReference = (reference: { source: string; tag: string; commit: string }): ReferenceSource => {
@@ -346,7 +345,6 @@ export {
     guideGroups,
     isDocumentationPath,
     normalizeDocumentationPath,
-    packageVersion,
     REFERENCE_ROOT,
     resolveVersionPath,
     retentionPolicy,

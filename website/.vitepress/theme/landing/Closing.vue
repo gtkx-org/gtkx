@@ -8,7 +8,7 @@ import { EXAMPLES_URL, LICENSE } from "./content";
     <section id="open-source" class="oss">
         <div class="oss__inner">
             <div class="oss__text">
-                <h2 class="oss__title">Built in the open</h2>
+                <h2 class="oss__title">Contributing to GTKX</h2>
                 <p class="oss__body">
                     GTKX is {{ LICENSE }}-licensed. Help improve the framework, documentation, or examples.
                 </p>

@@ -7,10 +7,10 @@ description: "Translate GTKX applications and package metadata with gettext cata
 
 `@gtkx/i18n` connects React translation APIs to GNU gettext. Your application's `applicationId` is its gettext domain, and `po/` holds its translation catalogs. GTKX uses those catalogs for both the application and its desktop metadata.
 
-Install `@gtkx/i18n@beta` and GNU gettext 0.25 or later. On Fedora 44:
+Install `@gtkx/i18n@2` and GNU gettext 0.25 or later. On Fedora 44:
 
 ```bash
-npm install @gtkx/i18n@beta
+npm install @gtkx/i18n@2
 sudo dnf install gettext
 xgettext --version
 msgfmt --version
@@ -92,7 +92,7 @@ Generated declarations under `node_modules/.gtkx` extend the upstream translatio
 
 ## Develop and build
 
-`gtkx dev` prepares the catalogs before loading your application. Source saves update the template and translation types before Fast Refresh; they leave translator-owned PO files alone. Run codegen or a build to merge source changes into those files. Saving a PO file or `LINGUAS` restarts the application because gettext caches catalogs for the lifetime of the process.
+`gtkx dev` prepares the catalogs before loading your application. Saving source files updates the template and translation types before Fast Refresh without modifying PO files. Run codegen or a build to merge source changes into those files. Saving a PO file or `LINGUAS` restarts the application because gettext caches catalogs for the lifetime of the process.
 
 `gtkx build` compiles the catalogs into `dist/locale` beside the bundle. GTKX initializes localization before the application entry module runs and locates that directory automatically.
 

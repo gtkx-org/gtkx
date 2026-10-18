@@ -32,7 +32,7 @@ pnpm plan
 
 Write the changelog message for the people who will use the release.
 
-Choose `major` for a breaking change, `minor` for a feature, or `patch` for a fix. During the beta, these choices organize the changelog; releases continue on the beta train until a maintainer changes it. The `pre*` bumps are for maintainers starting a prerelease from a stable version.
+Choose `major` for a breaking change, `minor` for a feature, or `patch` for a fix. When the current version is a prerelease, these choices organize the changelog while releases continue with the existing prerelease identifier. The `pre*` bumps are for maintainers starting a prerelease from a stable version.
 
 Documentation, repository tests, benchmarks, test configuration, Nx targets, and files outside published packages need no plan. Changes to shipped source, application templates (including their tests), package manifests, and package build logic remain checked. Keep release notes focused on behavior, APIs, compatibility, and performance that framework users experience.
 

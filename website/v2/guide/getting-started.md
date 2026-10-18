@@ -5,7 +5,7 @@ description: "Install the prerequisites, create a GTKX app, and run the developm
 
 # Getting Started
 
-Create a Linux desktop app with React and TypeScript, then edit it while its window stays open. This guide uses GTKX 2 beta.
+Create a Linux desktop app with React and TypeScript, then edit it while its window stays open. This guide uses GTKX 2.0.
 
 ## What you need
 
@@ -31,8 +31,6 @@ The package names are listed in Fedora's [GTK](https://packages.fedoraproject.or
 pkg-config --modversion gtk4 libadwaita-1 glib-2.0
 ```
 
-This setup was checked in a fresh Fedora 44 container with Node.js 26.8.2, GTK 4.22.5, libadwaita 1.9.4, and GLib 2.88.3. A project created from the published GTKX 2.0.0-beta.10 packages passed typechecking, build, and its scaffolded test, and opened in a headless development session.
-
 Other distributions need equivalent development packages meeting the minimum versions above. See [GTK's Linux installation guide](https://www.gtk.org/docs/installations/linux) for package names. A runtime-only package is insufficient for code generation.
 
 Run the app from a graphical desktop session. In a development container, the container also needs access to the session's display and D-Bus; installing libraries alone does not provide that connection.
@@ -42,15 +40,15 @@ Run the app from a graphical desktop session. In a development container, the co
 ::: code-group
 
 ```bash [npm]
-npm create gtkx@beta
+npm create gtkx@2
 ```
 
 ```bash [pnpm]
-pnpm create gtkx@beta
+pnpm create gtkx@2
 ```
 
 ```bash [yarn]
-yarn create gtkx@beta
+yarn create gtkx@2
 ```
 
 :::
@@ -65,8 +63,6 @@ npm run dev
 The starter uses an Adwaita application window with a counter. Click the button to increase the count. Change its label in `src/app.tsx` and save; the open window should update.
 
 For noninteractive creation and existing directories, see [Scaffold Options](/v2/guide/scaffold-options).
-
-The [tutorial](/v2/tutorial/) follows development on `main` and may use APIs added after the published beta. Check its version prerequisites before continuing beyond this starter.
 
 ## The dev loop
 

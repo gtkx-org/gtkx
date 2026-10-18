@@ -9,7 +9,7 @@ description: "Inspect a running GTKX app and look up its generated bindings from
 
 ## Setup
 
-Install the server and the testing package that powers its widget tools. Scaffolded projects may already include them.
+Install the server and the testing package used by its widget tools. Scaffolded projects may already include them.
 
 ::: code-group
 

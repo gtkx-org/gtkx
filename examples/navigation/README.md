@@ -1,6 +1,6 @@
 # Navigation example
 
-A mail-style app with nested drawer, stack, and tab navigators, native Back controls, unsaved-change confirmation, and theme changes.
+A mail interface with nested drawer, stack, and tab navigators, Back controls, unsaved-change confirmation, and theme selection.
 
 Complete the [workspace setup](../../CONTRIBUTING.md#set-up-the-workspace), then run from the repository root:
 

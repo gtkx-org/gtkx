@@ -8,9 +8,9 @@ image: /tasks-screenshot.png
 
 <p class="post-date">August 11, 2026</p>
 
-GTKX 1.1 is out. It is a small release introducing a new `gtkx deploy` command, in addition to several bug fixes. Read the [`changelog`](https://github.com/gtkx-org/gtkx/releases/tag/v1.1.0) for the full list of changes.
+GTKX 1.1 adds the `gtkx deploy` command and fixes bugs. Read the [changelog](https://github.com/gtkx-org/gtkx/releases/tag/v1.1.0) for the full list of changes.
 
-The 1.0 tutorial required eleven packaging files, including build scripts, desktop metadata, and a Flatpak manifest. GTKX 1.1 generates those shared pieces from the application configuration:
+The 1.0 tutorial maintained build scripts, desktop metadata, and a Flatpak manifest by hand. GTKX 1.1 generates these files from the application configuration:
 
 ```bash
 gtkx deploy
@@ -18,7 +18,7 @@ gtkx deploy
 
 ## Configuration
 
-Everything the command needs lives in a `deploy` block in `gtkx.config.ts`:
+Set deployment options in the `deploy` block of `gtkx.config.ts`:
 
 ```ts
 deploy: {
@@ -34,9 +34,9 @@ Most of the remaining metadata is derived rather than configured. Name, version,
 
 ## Metadata is validated before the build
 
-The desktop entry and the metainfo depend only on configuration, so they are rendered and validated early, before the app is bundled. A category typo or a summary ending in a period fails in about two seconds, with the validator's own message, rather than after a full Flatpak build.
+The desktop entry and AppStream metadata are generated and validated before bundling. Invalid metadata stops the build with the validator's message and the relevant configuration key.
 
-AppStream is where the command is stricter than the exit code it gets: an error and a warning both stop the deploy, for every format, because every one of them ships the same metainfo to a software center, and the message names the config key that fixes the rule. Advisory infos are reported and let through. The desktop entry is the lenient one, since `desktop-file-validate` calls things like a missing main category a hint: its errors stop the deploy, and its warnings and hints are reported while the build continues.
+In 1.1, AppStream errors and warnings stop deployment for every format; informational messages are reported without stopping it. For desktop entries, `desktop-file-validate` errors stop deployment, while warnings and hints allow the build to continue.
 
 ## What the output looks like
 
@@ -50,13 +50,13 @@ lib/<app>/gtkx.node           the native addon
 share/...                     desktop entry, metainfo, icons, schemas
 ```
 
-It goes under `/usr` for deb, rpm, and AppImage, and under `/app` for Flatpak. Nothing has to be rewritten between the two, because the launcher resolves everything relative to its own location and the bundle resolves the addon and the compiled schemas from beside itself. AppImage was not in the original plan for this release. Once the staging step existed, adding it was one module over the same tree, so it went in.
+The payload goes under `/usr` for Debian, RPM, and AppImage, and under `/app` for Flatpak. The launcher resolves paths relative to its location, and the bundle loads the addon and compiled schemas from beside itself. Each format uses the same staged tree.
 
 ## Flathub
 
-`gtkx deploy --target flatpak` builds from the staged tree, offline, in seconds. Flathub builds every submission from source instead, so `deploy.flatpak.mode: "source"` emits a manifest that does the same: a `git` source pinned to your release, built in the project's own subdirectory of the clone, npm dependencies vendored for the network-isolated sandbox with `flatpak-node-generator`, and the generated metadata carried as inline sources, so nothing generated has to be committed to the repository. It wants a `package-lock.json` or a `yarn.lock`, because the Node SDK extension the sandbox mounts carries npm and yarn and has no network to fetch anything else.
+`gtkx deploy --target flatpak` builds a Flatpak from the staged application. Preparing the runtime and build dependencies may require downloads. For a Flathub source build, `deploy.flatpak.mode: "source"` emits a manifest pinned to a Git release. It uses `flatpak-node-generator` to vendor npm dependencies and embeds generated metadata as inline sources. In 1.1, this requires a `package-lock.json` or `yarn.lock`, matching the package managers available in the Node SDK extension.
 
-Sandbox permissions are the one thing still written by hand. They are a security decision rather than something to infer from configuration, and the default asks for a window and hardware rendering and nothing else.
+Configure sandbox permissions explicitly. The defaults allow display access and hardware rendering; add permissions only when the application needs them.
 
 ## What you need installed
 
@@ -70,4 +70,4 @@ There are no breaking changes in 1.1. Add a `deploy` block and check the generat
 
 ## What's next
 
-The [roadmap](https://github.com/orgs/gtkx-org/projects/1) continues with [`@gtkx/animated`](https://github.com/gtkx-org/gtkx/issues/478) on top of React Spring (shipped in [1.3](/blog/gtkx-1-3)), [`@gtkx/navigation`](https://github.com/gtkx-org/gtkx/issues/479) on top of Adwaita and React Navigation (shipped in [1.4](/blog/gtkx-1-4)), and [`@gtkx/forms`](https://github.com/gtkx-org/gtkx/issues/480) on top of React Hook Form (shipped in [1.5](/blog/gtkx-1-5)). The [issue tracker](https://github.com/gtkx-org/gtkx/issues) is where the next work gets argued about.
+The [roadmap](https://github.com/orgs/gtkx-org/projects/1) continues with [`@gtkx/animated`](https://github.com/gtkx-org/gtkx/issues/478) on top of React Spring (shipped in [1.3](/blog/gtkx-1-3)), [`@gtkx/navigation`](https://github.com/gtkx-org/gtkx/issues/479) on top of Adwaita and React Navigation (shipped in [1.4](/blog/gtkx-1-4)), and [`@gtkx/forms`](https://github.com/gtkx-org/gtkx/issues/480) on top of React Hook Form (shipped in [1.5](/blog/gtkx-1-5)). Further work is tracked in [issues](https://github.com/gtkx-org/gtkx/issues).

@@ -20,7 +20,7 @@ export default defineConfig({
 });
 ```
 
-GTKX 1.x includes `Gtk-4.0` by default. Enabling `v2DefaultLibraries` also includes `Adw-1`, providing the Adwaita foundation used throughout these guides. List additional libraries by GIR name and version, for example `libraries: ["WebKit-6.0"]`.
+GTKX 1.x includes `Gtk-4.0` by default. Enabling `v2DefaultLibraries` also includes `Adw-1`, providing the Adwaita widgets used throughout these guides. List additional libraries by GIR name and version, for example `libraries: ["WebKit-6.0"]`.
 
 `defineConfig` provides editor completion. The CLI validates the configuration when it loads it. The application ID is required and uses a reverse-DNS name such as `com.example.Tasks`.
 
@@ -40,7 +40,7 @@ Run generation after installing dependencies or changing the configured librarie
 gtkx codegen
 ```
 
-GTKX generates real modules under `node_modules/.gtkx` and links them as `@gtkx/gi` and `@gtkx/jsx`. They belong to the project and are not separate npm dependencies. Development and production builds also check whether generation is needed.
+GTKX generates modules under `node_modules/.gtkx` and links them as `@gtkx/gi` and `@gtkx/jsx`. They belong to the project and are not separate npm dependencies. Development and production builds also check whether generation is needed.
 
 Import classes, enums, and functions from GI modules, and elements from JSX modules:
 
@@ -50,7 +50,7 @@ import { AdwHeaderBar } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
 ```
 
-The stable release also supports importing elements from the bare `@gtkx/jsx` entry point. Prefer namespace imports when preparing for 2.0, which removes that entry point. Use [`@gtkx/cairo`](/guide/cairo) for Cairo; the stable `@gtkx/gi/cairo` compatibility export is also removed in 2.0.
+GTKX 1.6 also supports importing elements from the bare `@gtkx/jsx` entry point. Prefer namespace imports when preparing for 2.0, which removes that entry point. Use [`@gtkx/cairo`](/guide/cairo) for Cairo; the 1.6 `@gtkx/gi/cairo` compatibility export is also removed in 2.0.
 
 `codegen: false` reuses an installed binding store. Leave generation enabled for an ordinary application so its bindings stay aligned with its configuration.
 
@@ -77,7 +77,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 const isWidget = GObject.typeIsA(Gtk.Label, Gtk.Widget);
 ```
 
-Generated classes and interfaces, and subclasses registered with `registerClass`, can be passed this way. A plain JavaScript subclass has no registration of its own. Returned GTypes and signal handler arguments remain `bigint` values.
+Generated classes and interfaces, and subclasses registered with `registerClass`, can be passed this way. A plain JavaScript subclass has no registration of its own. GTypes returned by bindings or passed to signal handlers remain `bigint` values.
 
 ## Passing a GValue
 

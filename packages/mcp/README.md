@@ -6,6 +6,6 @@ Connect a coding agent to generated widget references and the live application t
 
 [Guide](https://gtkx.dev/v2/guide/mcp) · [GTKX](https://gtkx.dev)
 
-**GTKX 2.0 beta.** Requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started).
+GTKX requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started).
 
 [MPL-2.0](https://github.com/gtkx-org/gtkx/blob/main/LICENSE).

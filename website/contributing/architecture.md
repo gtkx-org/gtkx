@@ -23,13 +23,13 @@ Generated @gtkx/gi methods
 @gtkx/runtime → @gtkx/native → Native libraries
 ```
 
-The [renderer](https://github.com/gtkx-org/gtkx/tree/main/packages/react) translates React commits into native operations. Generated methods supply signatures to [runtime](https://github.com/gtkx-org/gtkx/tree/main/packages/runtime), which converts values and calls the [native bridge](https://github.com/gtkx-org/gtkx/tree/main/packages/native).
+The [renderer](https://github.com/gtkx-org/gtkx/tree/main/packages/react) translates React commits into native operations. Generated methods supply signatures to the [runtime](https://github.com/gtkx-org/gtkx/tree/main/packages/runtime), which converts values and calls the [native bridge](https://github.com/gtkx-org/gtkx/tree/main/packages/native).
 
 GI bindings also work without React: function calls and GObject subclasses can use runtime directly. Component libraries normally use JSX and GI APIs without depending on native pointer representation.
 
 ## Generation and execution
 
-GTKX separates information obtained from GObject Introspection Repository files, or GIR files, from operations performed while the application runs.
+GTKX reads GObject Introspection Repository (GIR) files during code generation, before the application runs.
 
 ```text
 GIR libraries + element configuration
@@ -41,9 +41,9 @@ GIR libraries + element configuration
 
 During generation, `@gtkx/codegen` reads the configured GIR libraries and their transitive dependencies. It determines JavaScript names, TypeScript types, callable signatures, transfer rules, and the metadata needed by the renderer. It emits two linked package stores, `@gtkx/gi` and `@gtkx/jsx`, plus a project reference when enabled.
 
-During execution, Node imports those generated ESM modules, including their actual class definitions and method implementations. Their wrappers and descriptors drive `@gtkx/runtime` and the native bridge, which resolve symbols in the installed shared libraries and call them through libffi. Native type lookup and GObject property operations still happen at runtime. `@gtkx/runtime` has no knowledge of libgirepository: consumers supply all call descriptors and shapes, and GIR analysis belongs to generation.
+During execution, Node imports the generated ESM classes and methods. Their descriptors tell `@gtkx/runtime` and the native bridge how to resolve and call functions in the installed shared libraries through libffi. Native type lookup and GObject property access happen at runtime. GIR analysis belongs to code generation; `@gtkx/runtime` receives call descriptors from its consumers and does not load libgirepository.
 
-This distinction explains why generated imports are local project artifacts. The project's library selection and GIR versions define the available API. Changing a GIR search path changes generated declarations; it does not install a native library that implements those declarations. See [Configuration and Codegen](/v2/guide/configuration-and-codegen) for the application-facing configuration.
+The project's library selection and GIR versions define the generated API. Changing a GIR search path changes generated declarations; it does not install a native library that implements those declarations. See [Configuration and Codegen](/v2/guide/configuration-and-codegen) for the application-facing configuration.
 
 The entry points for this boundary are the [codegen runner](https://github.com/gtkx-org/gtkx/blob/main/packages/codegen/src/runner.ts), the [runtime callable adapter](https://github.com/gtkx-org/gtkx/blob/main/packages/runtime/src/fn.ts), and the [native binding API](https://github.com/gtkx-org/gtkx/blob/main/packages/native/src/api/bind.rs).
 
@@ -58,7 +58,7 @@ Consider a component that renders a button and updates a label when the button i
 5. GTK delivers the button's signal through the GLib main context. The runtime calls the connected JavaScript handler, and the renderer gives that handler React's discrete event priority.
 6. The handler changes React state. React reconciles again, and the renderer updates the existing native label where the element's identity permits reuse.
 
-There are two related trees: React's component tree and the native object tree. Function components have no native object of their own. Named slots and parent-created page objects introduce additional routing, and portals can place a native object outside its surrounding React subtree while preserving React context. The [renderer page](/contributing/react-renderer) explains those differences.
+React's component tree and the native object tree have different shapes. Function components have no native object of their own. Named slots and parent-created page objects introduce additional routing, and portals can place a native object outside its surrounding React subtree while preserving React context. The [renderer page](/contributing/react-renderer) explains those differences.
 
 ## One owning event-loop thread
 
@@ -70,7 +70,7 @@ The owning-thread requirement extends to native wrappers and widget operations. 
 
 ## State and ownership
 
-Three forms of lifetime meet in an application:
+Component, wrapper, and native allocation lifetimes have separate owners:
 
 | Lifetime                    | Owner                                                                                | GTKX's role                                                                                      |
 | --------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
@@ -78,9 +78,9 @@ Three forms of lifetime meet in an application:
 | JavaScript wrapper lifetime | JavaScript reachability and native wrapper references.                               | Preserve wrapper identity for tracked native objects and associate wrappers with native handles. |
 | Native allocation lifetime  | GObject reference counts or each native type's copy, reference, and free operations. | Honor ownership descriptors and release allocations through the correct mechanism.               |
 
-Unmounting a component removes its placement and renderer-managed connections. It does not imply that every JavaScript reference to the object has vanished or that every native reference count has reached zero. Windows and dialogs also have explicit presentation and close behavior. Memory bugs therefore require examining both the React lifetime and the native ownership contract.
+Unmounting a component removes its placement and renderer-managed connections. Other JavaScript or native references can keep the object alive. Windows and dialogs also have explicit presentation and close behavior. When investigating a memory bug, check both the React lifetime and the native ownership contract.
 
-Likewise, a controlled prop and a native widget property are two representations of state. Writing a prop can itself emit a native signal. The renderer tracks its own mutations and suppresses configured user-event signals caused by those writes so they do not become feedback loops. Genuine user input continues through the connected handler.
+A controlled prop and a native widget property represent the same application state. Writing a prop can itself emit a native signal. The renderer tracks its own mutations and suppresses configured user-event signals caused by those writes so they do not become feedback loops. User input continues through the connected handler.
 
 ## Finding the responsible layer
 

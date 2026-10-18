@@ -21,7 +21,7 @@ flatpak install --user --reinstall build/out/com.gtkx.tutorial-1.0.0-x86_64.flat
 flatpak run --env=LANG=fr_FR.UTF-8 --env=LANGUAGE=fr --env=LC_ALL=fr_FR.UTF-8 com.gtkx.tutorial
 ```
 
-Use the artifact matching your architecture. Tasks loads the installed catalog from `/app/share/locale`. On a fresh Flatpak installation, the translated starter task appears as **Arroser les plantes**.
+Use the package matching your architecture. Tasks loads the installed catalog from `/app/share/locale`. On a fresh Flatpak installation, the translated starter task appears as **Arroser les plantes**.
 
 ## Check storage and reminders
 

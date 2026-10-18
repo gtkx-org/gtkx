@@ -7,11 +7,11 @@ Connect Adwaita entry, password, spin, switch, and combo rows to React Hook Form
 In an existing GTKX app:
 
 ```sh
-npm install @gtkx/forms@beta
+npm install @gtkx/forms@2
 ```
 
 [Guide](https://gtkx.dev/v2/guide/forms) · [API reference](https://gtkx.dev/v2/reference/@gtkx/forms/) · [GTKX](https://gtkx.dev)
 
-**GTKX 2.0 beta.** Requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started).
+GTKX requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started).
 
 [MPL-2.0](https://github.com/gtkx-org/gtkx/blob/main/LICENSE).

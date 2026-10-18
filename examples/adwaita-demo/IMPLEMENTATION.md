@@ -11,7 +11,7 @@ These notes describe the completed implementation and the checks to repeat when 
 | Welcome           | Native toolbar and introductory status page                                                                                                      |
 | Navigation View   | Tagged pages, branching navigation, native back                                                                                                  |
 | Split Views       | Navigation and overlay dialogs; collapse, show/hide, start/end placement                                                                         |
-| View Switcher     | Views; switcher moves below at 550sp without losing selection                                                                                    |
+| View Switcher     | Switcher moves below the views at 550sp without losing selection                                                                                 |
 | Tab View          | Editable tabs, overview, duplication, pinning, loading/attention/indicator, context actions, text drops, reordering and transfer between windows |
 | Bottom Sheet      | Native drag/open/close; bottom margin follows bar height                                                                                         |
 | Carousel          | Orientation, dots/lines, scroll-wheel and long-swipe controls; animated return                                                                   |
@@ -19,7 +19,7 @@ These notes describe the completed implementation and the checks to repeat when 
 | Toggle Groups     | Text, icon, alignment and camera-mode groups                                                                                                     |
 | Buttons           | Split-button variants and menus                                                                                                                  |
 | Banner            | Reveal, text, button label and style; action feedback                                                                                            |
-| Toasts            | Simple, long, repeated action, undo, current/all dismissal                                                                                       |
+| Toasts            | Basic and long toasts, repeated actions, undo, current/all dismissal                                                                             |
 | Spinner           | Native spinner paintable                                                                                                                         |
 | Avatar            | Initials, text, size, image open/remove/export, contact gallery                                                                                  |
 | Alert Dialog      | Responses, default/cancel semantics, result toast                                                                                                |
@@ -27,7 +27,7 @@ These notes describe the completed implementation and the checks to repeat when 
 | Clamp             | Maximum size, threshold, length unit                                                                                                             |
 | Wrap Box          | Responsive tags with add/remove                                                                                                                  |
 | Multi-Layout View | Shared child identity across layouts at 500sp                                                                                                    |
-| Style Classes     | Complete gallery, responsive rows, nested status/sidebar dialogs                                                                                 |
+| Style Classes     | Upstream gallery, responsive rows, nested status/sidebar dialogs                                                                                 |
 | Animations        | Timed/spring parameters; play/pause/resume/reset/skip and state-sensitive controls                                                               |
 
 The shell starts at 1000 by 720, collapses at 500sp, supports sidebar filtering and its empty state, and recreates page-local state when selecting a different page. Its menu provides preferences and subpages, shortcuts, Inspector, adaptive preview, and GTKX application About metadata.
@@ -44,7 +44,7 @@ If a change exposes a renderer limitation, add observable regression coverage in
 
 ## Validation
 
-The original implementation was checked with libadwaita 1.9.3 and GTK 4.22.4. Those versions describe the reference environment, not a compatibility guarantee for other native-library versions. CI's packages are defined in [the CI image](../../.github/ci/Dockerfile).
+The original implementation was checked with libadwaita 1.9.3 and GTK 4.22.4. Recheck compatibility when changing GTK or libadwaita versions. CI's packages are defined in [the CI image](../../.github/ci/Dockerfile).
 
 For changes to the demo:
 
