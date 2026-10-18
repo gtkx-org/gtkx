@@ -24,17 +24,17 @@ Breaking removals require a warning in an earlier minor release. Renamed symbols
 
 ## Add a version plan
 
-User-facing changes to published packages need an Nx version plan:
+Changes to public APIs, application behavior, or developer workflows need an Nx version plan:
 
 ```bash
 pnpm plan
 ```
 
-Write the changelog message for the people who will use the release.
+Write the changelog message for the people who will use the release. Describe observable behavior, compatibility changes, or required migrations. Omit private refactoring, dependency plumbing, and test-only changes. Publication alone does not make a package API public: `@gtkx/native` is entirely private implementation. Its internal changes need no plan; a native fix that changes application behavior should describe that effect without listing internal APIs.
 
 Choose `major` for a breaking change, `minor` for a feature, or `patch` for a fix. When the current version is a prerelease, these choices organize the changelog while releases continue with the existing prerelease identifier. The `pre*` bumps are for maintainers starting a prerelease from a stable version.
 
-Documentation, repository tests, benchmarks, test configuration, Nx targets, and files outside published packages need no plan. Changes to shipped source, application templates (including their tests), package manifests, and package build logic remain checked. Keep release notes focused on behavior, APIs, compatibility, and performance that framework users experience.
+Documentation, repository tests, benchmarks, test configuration, Nx targets, private native implementation, and files outside published packages need no plan. Other shipped source, application templates (including their tests), package manifests, and package build logic remain checked. Keep release notes focused on behavior, APIs, compatibility, and performance that framework users experience.
 
 PR CI runs `nx release plan:check` against the PR commit range using only plans added or updated by that PR. Bot pull requests and the repository's `release/next` PR are exempt; release preparation consumes the existing plans. The exclusions live in `release.versionPlans.ignorePatternsForPlanCheck` in `nx.json`.
 

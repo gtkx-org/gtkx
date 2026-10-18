@@ -2,4 +2,4 @@
 __default__: patch
 ---
 
-Remove native parent-death watches and headless helper guards. Preserve supervisor shutdown and recover abandoned headless sessions at startup.
+Headless development and test sessions no longer require `setpriv`. After a forced termination, recover abandoned sessions on the next startup or with `gtkx cleanup`.

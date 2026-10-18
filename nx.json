@@ -171,12 +171,7 @@
                 "/packages/*/typedoc.json",
                 "/packages/*/gtkx.config.ts",
                 "/packages/codegen/overrides/tsconfig.json",
-                "/packages/native/.gitignore",
-                "/packages/native/tools/asan-loader.ts",
-                "/packages/native/tools/asan.ts",
-                "/packages/native/tools/test-paths.ts",
-                "/packages/native/tools/scheduler-benchmark.*",
-                "/packages/native/tools/rust-toolchain.toml",
+                "/packages/native/**",
                 "!/packages/create-gtkx/src/templates/**"
             ]
         },

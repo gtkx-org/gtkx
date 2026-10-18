@@ -5,7 +5,7 @@ description: "Prepare, review, tag, and publish a GTKX release, and recover an i
 
 # Publishing Releases
 
-This runbook is for maintainers. Contributors record package changes with [version plans](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md#add-a-version-plan).
+This runbook is for maintainers. Contributors record user-facing changes with [version plans](https://github.com/gtkx-org/gtkx/blob/main/CONTRIBUTING.md#add-a-version-plan). Plans describe public APIs, application behavior, and developer workflows. Omit private implementation changes, including changes to `@gtkx/native` that have no observable effect on applications.
 
 ## Prepare a release
 

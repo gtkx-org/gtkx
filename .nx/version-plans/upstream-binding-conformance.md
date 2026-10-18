@@ -2,4 +2,4 @@
 __default__: minor
 ---
 
-Support container in/out parameters, nested string arrays, caller-allocated variable arrays, record inputs by value, scalar and opaque pointer arguments, callback properties, and Cairo path copies. Preserve floating-object references, native property and signal types, static vfunc arguments, and collection ownership.
+Expand generated bindings to support nested string arrays, container input/output parameters, caller-allocated arrays, records passed by value, and callback-valued properties. Fix property, signal, and virtual-function argument conversion, and keep returned collections and Cairo paths usable after their source objects are collected.
