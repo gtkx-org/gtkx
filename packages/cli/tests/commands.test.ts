@@ -4,8 +4,9 @@ import { createMcpServer } from "@gtkx/mcp/server";
 import { resolveHeadlessOptions, startHeadlessDisplay } from "@gtkx/vitest/headless";
 import { runCommand } from "citty";
 import { execFile } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { setTimeout } from "node:timers/promises";
 import { promisify } from "node:util";
 import { stdout, stderr } from "test-console";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -372,6 +373,62 @@ describe("CLI commands", () => {
             await client.close();
             await server.stop();
         }
+    });
+
+    it("reloads imported configuration after atomic saves and missing directories are created", async () => {
+        using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
+        const readyPath = join(project.root, "ready.txt");
+        const attemptedPath = join(project.root, "attempted.txt");
+        const config = readFileSync(join(project.root, "gtkx.config.ts"), "utf8");
+        project.write(
+            "gtkx.config.ts",
+            `import { applicationId } from "./settings.ts";\n${config.replace('"org.gtkx.example"', "applicationId")}`,
+        );
+        const settings = (applicationId: string) => `export const applicationId = ${JSON.stringify(applicationId)};`;
+        project.write("settings.ts", settings("org.gtkx.initial"));
+        project.write(
+            "src/index.ts",
+            `import { Application } from "@gtkx/gi/gio";
+            import { applicationId } from "virtual:gtkx-config";
+            import { writeFileSync } from "node:fs";
+            export const application = new Application({ applicationId });
+            application.setDefault();
+            application.register(null);
+            application.hold();
+            writeFileSync(${JSON.stringify(readyPath)}, applicationId);`,
+        );
+
+        await withSession("dev", project.root, readyPath, async () => {
+            expect(readFileSync(readyPath, "utf8")).toBe("org.gtkx.initial");
+            project.write("settings.tmp", settings("org.gtkx.atomic"));
+            renameSync(join(project.root, "settings.tmp"), join(project.root, "settings.ts"));
+            await expect.poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 }).toBe("org.gtkx.atomic");
+
+            project.write(
+                "gtkx.config.ts",
+                `import { writeFileSync } from "node:fs";
+                export default async () => {
+                    writeFileSync(${JSON.stringify(attemptedPath)}, "attempted");
+                    const { applicationId } = await import("./generated/nested/settings.ts");
+                    ${config.replace("export default", "return").replace('"org.gtkx.example"', "applicationId")}
+                };`,
+            );
+            await expect.poll(() => existsSync(attemptedPath), { timeout: 30_000 }).toBe(true);
+            expect(readFileSync(readyPath, "utf8")).toBe("org.gtkx.atomic");
+            project.write("generated/nested/settings.ts", settings("org.gtkx.recovered"));
+            await expect.poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 }).toBe("org.gtkx.recovered");
+
+            project.write("generated/nested/settings.ts", settings("org.gtkx.updated"));
+            await expect.poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 }).toBe("org.gtkx.updated");
+
+            rmSync(join(project.root, "generated/nested"), { recursive: true });
+            await setTimeout(20);
+            project.write("generated/nested/settings.ts", settings("org.gtkx.recreated"));
+            await expect.poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 }).toBe("org.gtkx.recreated");
+
+            project.write("generated/nested/settings.ts", settings("org.gtkx.latest"));
+            await expect.poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 }).toBe("org.gtkx.latest");
+        });
     });
 
     it("starts a real storybook session and stops its application", async () => {

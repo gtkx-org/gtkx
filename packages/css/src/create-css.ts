@@ -1,6 +1,6 @@
 import type { CSSInterpolation, RegisteredCache, SerializedStyles } from "@emotion/serialize";
 import { serializeStyles } from "@emotion/serialize";
-import { eachRule, terminateDeclarations } from "./serialize-rule.js";
+import { serializeRule, terminateDeclarations } from "./serialize-rule.js";
 import { StyleSheet } from "./stylesheet.js";
 
 /** A `cx` argument: a non-empty class name, or a boolean or nullish value that is dropped. */
@@ -70,9 +70,7 @@ const insertStyles = (state: CssState, serialized: SerializedStyles): void => {
     const className = getClassName(serialized);
     const styles = terminateDeclarations(serialized.styles);
 
-    eachRule(`.${className}{${styles}}`, (rule) => {
-        state.sheet.insert(rule);
-    });
+    state.sheet.insert(serializeRule(`.${className}{${styles}}`));
 
     state.registered[className] = styles;
 };
@@ -82,9 +80,7 @@ const insertWithoutScoping = (state: CssState, serialized: SerializedStyles): vo
         return;
     }
 
-    eachRule(serialized.styles, (rule) => {
-        state.sheet.insert(rule);
-    });
+    state.sheet.insert(serializeRule(serialized.styles));
 };
 
 const cssClassName = (state: CssState, args: CSSInterpolation[]): string => {

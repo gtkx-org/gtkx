@@ -1,6 +1,14 @@
-import { basename, extname, isAbsolute, resolve } from "node:path";
+import { SUPPORTED_EXTENSIONS } from "c12";
+import { basename, extname, isAbsolute, join, resolve } from "node:path";
 
 type ConfigResolutionOptions = { configFile?: string | undefined; cwd?: string | undefined };
+
+const CONFIG_LOCATIONS = ["gtkx.config", ".config/gtkx", ".config/gtkx.config"];
+
+const configCandidatePaths = (directory: string): string[] =>
+    CONFIG_LOCATIONS.flatMap((location) =>
+        SUPPORTED_EXTENSIONS.map((extension) => join(directory, `${location}${extension}`)),
+    );
 
 const isLocalConfigSource = (source: string): boolean => source.startsWith(".") || isAbsolute(source);
 
@@ -22,4 +30,4 @@ const localConfigSourcePath = (source: string, options: ConfigResolutionOptions)
         : resolve(cwd, source);
 };
 
-export { localConfigSourcePath, type ConfigResolutionOptions };
+export { configCandidatePaths, localConfigSourcePath, type ConfigResolutionOptions };

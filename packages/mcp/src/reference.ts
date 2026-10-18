@@ -10,7 +10,7 @@ import { readBuiltinElementsForDocs } from "@gtkx/codegen/internal";
 import { loadConfig } from "@gtkx/config";
 import { errorMessage } from "@gtkx/utils";
 import {
-    CONFIG_EXTENSIONS,
+    configCandidatePaths,
     configDependenciesFor,
     resolveAcceptedChildTypes,
     resolveElementProps,
@@ -19,7 +19,7 @@ import {
 import { type McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { type CallToolResult, ErrorCode, McpError, type ReadResourceResult } from "@modelcontextprotocol/sdk/types.js";
 import { existsSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { z } from "zod";
 import { defineTool, textContent, textError, type Tool, type ToolArgs } from "./tool.js";
 
@@ -74,7 +74,6 @@ type ResourceServer = Pick<McpServer, "registerResource">;
 
 const FRESHNESS_INTERVAL_MS = 2000;
 const FAILURE_RETRY_MS = 5000;
-const CONFIG_LOCATIONS = ["gtkx.config", ".config/gtkx", ".config/gtkx.config"];
 
 const PROJECT_SOURCE_LABELS: Record<ProjectSource, string> = {
     argument: "requested with `projectRoot`",
@@ -145,11 +144,6 @@ const isFresh = (loaded: LoadedReference): boolean =>
 
         return current.mtimeMs === file.mtimeMs && current.size === file.size;
     }) && loaded.reference.hasFreshInputs();
-
-const configCandidatePaths = (directory: string): string[] =>
-    CONFIG_LOCATIONS.flatMap((location) =>
-        CONFIG_EXTENSIONS.map((extension) => join(directory, `${location}${extension}`)),
-    );
 
 const hasConfigFile = (directory: string): boolean => configCandidatePaths(directory).some((path) => existsSync(path));
 

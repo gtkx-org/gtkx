@@ -1,5 +1,6 @@
 export { configDependenciesFor } from "./config-dependencies.ts";
 export { createConfigReloader } from "./config-reloader.ts";
+export { configCandidatePaths } from "./config-source.ts";
 export type { McpSettings, ResolvedReactCompilerOptions } from "./config.ts";
 export {
     APPLICATION_ID_MAX_LENGTH,
@@ -17,4 +18,3 @@ export { createConfigLoader } from "./loader.ts";
 export { assertSupportedNodeVersion, DEFAULT_NODE_VERSION, MINIMUM_NODE_VERSION } from "./node-version.ts";
 export { resourceBasePath } from "./resource-base-path.ts";
 export { viteProjectRoot } from "./vite-root.ts";
-export { SUPPORTED_EXTENSIONS as CONFIG_EXTENSIONS } from "c12";

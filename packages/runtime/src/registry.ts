@@ -318,16 +318,7 @@ function peekedTypeLabel(type: bigint | AnyClass, gtype: bigint): string {
 }
 
 function getTypeClassHandle(gtype: bigint): ExternalObject<Handle> {
-    const cached = typeClassHandles.get(gtype);
-
-    if (cached !== undefined) {
-        return cached;
-    }
-
-    const handle = getTypeClass(gtype);
-    typeClassHandles.set(gtype, handle);
-
-    return handle;
+    return typeClassHandles.getOrInsertComputed(gtype, getTypeClass);
 }
 
 /**

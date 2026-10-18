@@ -71,6 +71,18 @@ describe("css selectors and at-rules", () => {
         expect(prelit.color).toEqual(GREEN);
     });
 
+    it("keeps nested self selectors after the parent declarations", async () => {
+        const className = css`
+            color: rgb(255, 0, 0);
+            & {
+                color: rgb(0, 0, 255);
+            }
+            color: rgb(0, 255, 0);
+        `;
+
+        expect(await probeColor([className])).toEqual(BLUE);
+    });
+
     it("keeps GTK named colors and at-rules intact", async () => {
         const className = css`
             color: alpha(@theme_fg_color, 0.4);
@@ -86,6 +98,21 @@ describe("css selectors and at-rules", () => {
         const style = await probeStyle({ classNames: [className] });
         expect(style.alpha).toBeCloseTo(0.4, 2);
         expect(style.minWidth).toBeGreaterThanOrEqual(143);
+    });
+
+    it("applies nested keyframes to the styled widget", async () => {
+        const className = css`
+            color: rgb(255, 0, 0);
+            animation: gtkx-css-test-finish 0s forwards;
+
+            @KEYFRAMES gtkx-css-test-finish {
+                to {
+                    color: rgb(0, 0, 255);
+                }
+            }
+        `;
+
+        expect(await probeColor([className])).toEqual(BLUE);
     });
 });
 
@@ -176,6 +203,17 @@ describe("injectGlobal", () => {
         const style = await probeStyle({ classNames: ["gtkx-global-probe"] });
         expect(style.color).toEqual(BLUE);
         expect(style.minWidth).toBeGreaterThanOrEqual(159);
+    });
+
+    it.each([
+        [".gtkx-global-parent &", "gtkx-global-parent"],
+        ["&.gtkx-global-self", "gtkx-global-self"],
+        ["&, &.gtkx-global-list", "gtkx-global-list"],
+        [".gtkx-global\\&literal &", "gtkx-global&literal"],
+    ])("resolves the root nesting selector in %s", async (selector, className) => {
+        injectGlobal(`& { color: rgb(255, 0, 0); } ${selector} { color: rgb(0, 0, 255); }`);
+
+        expect(await probeColor([className])).toEqual(BLUE);
     });
 
     it("keeps the styles in place when the same declarations are injected twice", async () => {

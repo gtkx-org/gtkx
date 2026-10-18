@@ -9,7 +9,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 import { useProperty, useSignal } from "@gtkx/react";
 import { registerClass } from "@gtkx/runtime";
 import { act, render, renderHook, waitFor } from "@gtkx/testing";
-import { createRef, forwardRef, memo } from "react";
+import { createRef, forwardRef, memo, useState } from "react";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { createTypeNameFactory } from "../helpers/unique-name.js";
 
@@ -479,6 +479,23 @@ describe("useSignal (emission)", () => {
         await waitFor(() => {
             expect(names).toContain("label");
         });
+    });
+
+    it("uses the updated handler for notifications emitted by the same commit", async () => {
+        const seen: string[] = [];
+        const SignalLabel = ({ value }: { value: string }): ReactNode => {
+            const [label, setLabel] = useState<Gtk.Label | null>(null);
+            useSignal(label, "notify::label", () => {
+                seen.push(value);
+            });
+
+            return <GtkLabel ref={setLabel} label={value} />;
+        };
+
+        const { rerender } = await render(<SignalLabel value="first" />);
+        await rerender(<SignalLabel value="second" />);
+
+        expect(seen).toEqual(["second"]);
     });
 });
 

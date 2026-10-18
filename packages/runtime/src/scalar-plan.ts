@@ -106,39 +106,32 @@ const encodeByteArray: Conversion = (value) => {
 };
 
 const enumClass = (descriptor: EnumDescriptor): ExternalObject<Handle> => {
-    let library = classHandles.get(descriptor.sharedLibrary);
-    if (library === undefined) {
-        library = new Map();
-        classHandles.set(descriptor.sharedLibrary, library);
-    }
+    const library = classHandles.getOrInsertComputed(descriptor.sharedLibrary, () => new Map());
     const key = `${descriptor.kind}:${descriptor.getTypeFnName}`;
-    const cached = library.get(key);
-    if (cached !== undefined) {
-        return cached;
-    }
-    const type = compileNativeDescriptor(typeT);
-    const typeCall = nativeBind(descriptor.sharedLibrary, descriptor.getTypeFnName, [], type, { argOrder: [] });
-    const gtype = nativeCall(typeCall, []).value as bigint;
-    const fundamentalCall = nativeBind(LIB, "g_type_fundamental", [type], type, { argOrder: [0] });
-    const nameCall = nativeBind(
-        LIB,
-        "g_type_name",
-        [type],
-        compileDescriptor({ kind: "bytes", ownership: "borrowed" }).compiled,
-        {
-            argOrder: [0],
-        },
-    );
-    const fundamentalName = decoder.decode(
-        nativeCall(nameCall, [nativeCall(fundamentalCall, [gtype]).value]).value as Uint8Array,
-    );
-    if (fundamentalName !== (descriptor.kind === "enum" ? "GEnum" : "GFlags")) {
-        throw new TypeError(`Expected a registered ${descriptor.kind} type`);
-    }
-    const handle = getTypeClass(gtype);
-    library.set(key, handle);
 
-    return handle;
+    return library.getOrInsertComputed(key, () => {
+        const type = compileNativeDescriptor(typeT);
+        const typeCall = nativeBind(descriptor.sharedLibrary, descriptor.getTypeFnName, [], type, { argOrder: [] });
+        const gtype = nativeCall(typeCall, []).value as bigint;
+        const fundamentalCall = nativeBind(LIB, "g_type_fundamental", [type], type, { argOrder: [0] });
+        const nameCall = nativeBind(
+            LIB,
+            "g_type_name",
+            [type],
+            compileDescriptor({ kind: "bytes", ownership: "borrowed" }).compiled,
+            {
+                argOrder: [0],
+            },
+        );
+        const fundamentalName = decoder.decode(
+            nativeCall(nameCall, [nativeCall(fundamentalCall, [gtype]).value]).value as Uint8Array,
+        );
+        if (fundamentalName !== (descriptor.kind === "enum" ? "GEnum" : "GFlags")) {
+            throw new TypeError(`Expected a registered ${descriptor.kind} type`);
+        }
+
+        return getTypeClass(gtype);
+    });
 };
 
 const explicitMembership = (descriptor: EnumDescriptor): ((value: number) => boolean) => {

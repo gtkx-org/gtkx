@@ -1,6 +1,6 @@
 import type { CSSObject } from "@emotion/serialize";
 import { serializeStyles } from "@emotion/serialize";
-import { eachRule, terminateDeclarations } from "./serialize-rule.js";
+import { serializeRule, terminateDeclarations } from "./serialize-rule.js";
 
 const scopedRule = (className: string, style: object): string => {
     const declarations = terminateDeclarations(serializeStyles([style as CSSObject]).styles);
@@ -9,13 +9,7 @@ const scopedRule = (className: string, style: object): string => {
         return "";
     }
 
-    const rules: string[] = [];
-
-    eachRule(`.${className}{${declarations}}`, (rule) => {
-        rules.push(rule);
-    });
-
-    return rules.join("");
+    return serializeRule(`.${className}{${declarations}}`);
 };
 
 export { scopedRule };

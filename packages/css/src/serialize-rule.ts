@@ -1,25 +1,56 @@
-import type { Element, Middleware } from "stylis";
-import { compile, middleware, rulesheet, stringify, serialize as stylisSerialize } from "stylis";
-import { escapeNamedColors } from "./named-colors.js";
+import postcss from "postcss";
+import nested from "postcss-nested";
+import selectorParser from "postcss-selector-parser";
 
-const removeLabel = (element: Element): void => {
-    if (element.type !== "decl" || element.props !== "label") {
-        return;
-    }
+const AT_RULE_KEYWORDS: Set<string> = new Set(["define-color", "import", "keyframes", "media"]);
 
-    element.return = "";
-    element.value = "";
-};
+const rootSelector = selectorParser((root) => {
+    root.walkNesting((node) => {
+        node.remove();
+    });
+    root.each((selector) => {
+        if (selector.toString().trim().length === 0) {
+            selector.remove();
+        }
+    });
+});
 
-const stringifyGtk: Middleware = (element, index, children, callback) => {
-    if (element.type === "@define-color") {
-        element.return = element.value;
+const processor = postcss([
+    {
+        postcssPlugin: "gtkx-css",
+        Once(root) {
+            root.raws.semicolon = true;
+            root.walk((node) => {
+                if (node.type === "decl" && node.prop === "label") {
+                    node.remove();
+                }
 
-        return element.return;
-    }
+                if (node.type === "atrule" && AT_RULE_KEYWORDS.has(node.name.toLowerCase())) {
+                    node.name = node.name.toLowerCase();
+                }
 
-    return stringify(element, index, children, callback);
-};
+                if ((node.type === "rule" || node.type === "atrule") && node.nodes !== undefined) {
+                    node.raws.semicolon = true;
+                    node.prepend(node.nodes.filter((child) => child.type === "decl"));
+                }
+            });
+        },
+        OnceExit(root) {
+            root.walkRules((rule) => {
+                if (!rule.selector.includes("&")) {
+                    return;
+                }
+
+                rule.selector = rootSelector.processSync(rule.selector).trim();
+
+                if (rule.selector.length === 0) {
+                    rule.remove();
+                }
+            });
+        },
+    },
+    nested({ unwrap: ["define-color", "import"] }),
+]);
 
 const terminateDeclarations = (styles: string): string => {
     const trimmed = styles.trimEnd();
@@ -31,19 +62,6 @@ const terminateDeclarations = (styles: string): string => {
     return `${trimmed};`;
 };
 
-const eachRule = (input: string, visit: (rule: string) => void): void => {
-    const escaped = escapeNamedColors(input);
+const serializeRule = (input: string): string => processor.process(input, { from: undefined }).css;
 
-    stylisSerialize(
-        compile(escaped.css),
-        middleware([
-            removeLabel,
-            stringifyGtk,
-            rulesheet((rule) => {
-                visit(escaped.restore(rule));
-            }),
-        ]),
-    );
-};
-
-export { eachRule, terminateDeclarations };
+export { serializeRule, terminateDeclarations };

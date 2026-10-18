@@ -1,22 +1,8 @@
 import { createHash } from "node:crypto";
+import { z } from "zod";
 
-type RecordedPackage = {
-    name: string;
-    version: string | null;
-    license: string | null;
-    source: string | null;
-    copyright: string[];
-    text: string | null;
-};
-
-type BuildManifest = {
-    generator: typeof BUILD_MANIFEST_GENERATOR;
-    formatVersion: typeof BUILD_MANIFEST_FORMAT_VERSION;
-    configFile: string;
-    configDigest: string;
-    schemas: string[];
-    packages: RecordedPackage[];
-};
+type RecordedPackage = z.infer<typeof recordedPackageSchema>;
+type BuildManifest = z.infer<typeof buildManifestSchema>;
 
 type BuildManifestCollector = {
     schemas: string[];
@@ -27,6 +13,24 @@ const BUILD_NOTICES_FILENAME = "BUNDLED-NOTICES";
 const BUILD_METADATA_FILENAMES: ReadonlySet<string> = new Set([BUILD_MANIFEST_FILENAME, BUILD_NOTICES_FILENAME]);
 const BUILD_MANIFEST_GENERATOR = "gtkx-build";
 const BUILD_MANIFEST_FORMAT_VERSION = 4;
+
+const recordedPackageSchema = z.object({
+    name: z.string(),
+    version: z.string().nullable(),
+    license: z.string().nullable(),
+    source: z.string().nullable(),
+    copyright: z.array(z.string()),
+    text: z.string().nullable(),
+});
+
+const buildManifestSchema = z.object({
+    generator: z.literal(BUILD_MANIFEST_GENERATOR),
+    formatVersion: z.literal(BUILD_MANIFEST_FORMAT_VERSION),
+    configFile: z.string(),
+    configDigest: z.string(),
+    schemas: z.array(z.string()),
+    packages: z.array(recordedPackageSchema),
+});
 
 const canonicalConfig = (value: unknown): unknown => {
     if (Array.isArray(value)) {
@@ -57,6 +61,7 @@ export {
     BUILD_NOTICES_FILENAME,
     BUILD_MANIFEST_FORMAT_VERSION,
     BUILD_MANIFEST_GENERATOR,
+    buildManifestSchema,
     configDigest,
     createBuildManifestCollector,
     type BuildManifest,

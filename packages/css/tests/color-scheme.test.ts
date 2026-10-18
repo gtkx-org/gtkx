@@ -1,4 +1,4 @@
-import { css } from "@gtkx/css";
+import { css, injectGlobal } from "@gtkx/css";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { afterEach, describe, expect, it } from "vitest";
@@ -58,5 +58,30 @@ describe("scheme media queries", () => {
         expect(await probeMinWidth([className])).toBeLessThan(CONTRAST_WIDTH);
         defaultSettings().gtkInterfaceContrast = Gtk.InterfaceContrast.MORE;
         expect(await probeMinWidth([className])).toBeGreaterThanOrEqual(CONTRAST_WIDTH);
+    });
+
+    it("keeps nested media overrides after trailing parent declarations", async () => {
+        const className = css`
+            @MEDIA (prefers-color-scheme: dark) {
+                min-width: ${DARK_WIDTH}px;
+            }
+            min-width: ${LIGHT_WIDTH}px;
+        `;
+
+        Adw.StyleManager.getDefault().setColorScheme(Adw.ColorScheme.FORCE_DARK);
+        expect(await probeMinWidth([className])).toBeGreaterThanOrEqual(DARK_WIDTH);
+    });
+
+    it("resolves root nesting selectors inside media queries", async () => {
+        injectGlobal(`
+            @media (prefers-color-scheme: dark) {
+                .gtkx-global-media & {
+                    min-width: ${DARK_WIDTH}px;
+                }
+            }
+        `);
+
+        Adw.StyleManager.getDefault().setColorScheme(Adw.ColorScheme.FORCE_DARK);
+        expect(await probeMinWidth(["gtkx-global-media"])).toBeGreaterThanOrEqual(DARK_WIDTH);
     });
 });

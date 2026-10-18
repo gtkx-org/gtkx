@@ -1,3 +1,4 @@
+import { errorCode } from "@gtkx/utils";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { REFERENCE_PATH } from "../codegen/reference.js";
@@ -81,9 +82,6 @@ const nextContents = (contents: string): string => {
 
     return replaceBlock(contents, renderBlock(heading));
 };
-
-const errorCode = (error: unknown): string | undefined =>
-    error instanceof Error ? (error as NodeJS.ErrnoException).code : undefined;
 
 const readOrUndefined = (path: string): string | undefined => {
     try {

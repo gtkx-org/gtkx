@@ -1,7 +1,8 @@
 import { error, exitCodeForSignal, info, installGracefulShutdown } from "@gtkx/utils";
+import { type FSWatcher, watch as watchFs } from "chokidar";
 import { type ChildProcess, fork as nodeFork } from "node:child_process";
-import { type FSWatcher, statSync, watch as watchFs } from "node:fs";
-import { basename, dirname, join, relative } from "node:path";
+import { existsSync, statSync } from "node:fs";
+import { basename, dirname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEV_RUNNER_READY, type DevRunnerBootstrap } from "./bootstrap.js";
 
@@ -22,7 +23,7 @@ type SupervisorState = {
     cwd: string;
     args: string[];
     watch: DevWatch | undefined;
-    watchers: FSWatcher[];
+    watchers: Map<string, FSWatcher>;
     changedPaths: Set<string>;
     restartTimer: DebounceTimer;
     child: ChildProcess | null;
@@ -80,7 +81,6 @@ const handleChildExit = (state: SupervisorState, code: number | null, signal: No
         return;
     }
 
-    closeWatchers(state);
     state.finish(code ?? exitCodeForSignal(signal));
 };
 
@@ -146,27 +146,71 @@ const relaunchAfterExit = (state: SupervisorState): void => {
 
 const isSupervisorShuttingDown = (state: SupervisorState): boolean => state.isShuttingDown;
 
-const reconcileConfigWatchers = (
+const reconcileConfigWatchers = async (
     state: SupervisorState,
     paths: string[],
-    previous: ReadonlyMap<string, string | null>,
-): void => {
-    const changed = changedWatchPaths(previous, paths);
+    ignoreInitial = false,
+): Promise<void> => {
+    const watch = state.watch;
 
-    closeWatchers(state);
-
-    if (state.watch !== undefined) {
-        state.watch.paths = paths;
-    }
-
-    if (state.isShuttingDown) {
+    if (watch === undefined || state.isShuttingDown) {
         return;
     }
 
-    installConfigWatchers(state);
+    const added = paths.filter((path) => !watch.paths.includes(path) && existsSync(path));
+    watch.paths = paths;
+    const targets = new Set(paths.map(configWatchDirectory));
+    const pending: Promise<void>[] = [];
 
-    if (changed.length > 0 && !state.isRestartPending) {
-        scheduleRestart(state, changed);
+    for (const [path, watcher] of state.watchers) {
+        if (!targets.has(path)) {
+            state.watchers.delete(path);
+            pending.push(watcher.close());
+        }
+    }
+
+    for (const path of targets) {
+        if (state.watchers.has(path)) {
+            continue;
+        }
+
+        const watcher = watchFs(path, { depth: 0, ignoreInitial });
+        state.watchers.set(path, watcher);
+        watcher.on("all", (event, changed) => {
+            if (
+                !state.isShuttingDown &&
+                state.watchers.get(path) === watcher &&
+                watch.paths.some((target) => target === changed || target.startsWith(changed + sep))
+            ) {
+                if (event === "unlinkDir" && changed === path) {
+                    state.watchers.delete(path);
+                    void watcher.close();
+                }
+
+                scheduleRestart(state, [changed]);
+            }
+        });
+        watcher.on("error", (cause) => {
+            error(`Configuration watch failed for ${path}`, cause);
+        });
+        if (ignoreInitial) {
+            pending.push(
+                new Promise<void>((resolve) => {
+                    watcher
+                        .once("ready", resolve)
+                        .once("error", () => resolve())
+                        .on("unlinkDir", (removed) => {
+                            if (removed === path) resolve();
+                        });
+                }),
+            );
+        }
+    }
+
+    await Promise.all(pending);
+
+    if (!ignoreInitial && added.length > 0 && !state.isRestartPending && !state.isShuttingDown) {
+        scheduleRestart(state, added);
     }
 };
 
@@ -192,16 +236,13 @@ const restart = async (state: SupervisorState): Promise<void> => {
 
     state.isRestarting = true;
     info(`${consumeChangedPaths(state)} changed; regenerating bindings...`);
-    closeWatchers(state);
-    watch.paths = watch.resolvePaths();
-    const previous = snapshotWatchPaths(watch.paths);
-    installConfigWatchers(state);
+    await reconcileConfigWatchers(state, watch.resolvePaths());
 
     try {
         const paths = await watch.regenerate();
-        reconcileConfigWatchers(state, paths, previous);
+        await reconcileConfigWatchers(state, paths);
     } catch (error_) {
-        reconcileConfigWatchers(state, watch.resolvePaths(), previous);
+        await reconcileConfigWatchers(state, watch.resolvePaths());
         error("Codegen failed; keeping the current dev runner. Fix the error and save again.", error_);
         runPendingRestart(state);
 
@@ -247,21 +288,6 @@ const scheduleRestart = (state: SupervisorState, changedPaths: string[] = []): v
     }, CONFIG_DEBOUNCE_MS);
 };
 
-const watchedChangePath = (
-    state: SupervisorState,
-    directory: string,
-    names: Set<string>,
-    filename: string | Buffer | null,
-): string | undefined => {
-    if (filename === null || state.isShuttingDown) {
-        return undefined;
-    }
-
-    const name = basename(filename.toString());
-
-    return names.has(name) ? join(directory, name) : undefined;
-};
-
 const isDirectory = (path: string): boolean => {
     try {
         return statSync(path, { throwIfNoEntry: false })?.isDirectory() === true;
@@ -270,9 +296,8 @@ const isDirectory = (path: string): boolean => {
     }
 };
 
-const nearestWatchTarget = (path: string): { directory: string; name: string } => {
+const configWatchDirectory = (path: string): string => {
     let directory = dirname(path);
-    let name = basename(path);
 
     while (!isDirectory(directory)) {
         const parent = dirname(directory);
@@ -281,118 +306,38 @@ const nearestWatchTarget = (path: string): { directory: string; name: string } =
             break;
         }
 
-        name = basename(directory);
         directory = parent;
     }
 
-    return { directory, name };
+    return directory;
 };
 
-const watchTargets = (paths: string[]): Set<string> =>
-    new Set(
-        paths.flatMap((path) => {
-            const { directory, name } = nearestWatchTarget(path);
-
-            return [path, join(directory, name)];
-        }),
-    );
-
-const watchPathState = (path: string): string | null => {
-    try {
-        const stat = statSync(path, { bigint: true, throwIfNoEntry: false });
-
-        return stat === undefined
-            ? null
-            : [stat.dev, stat.ino, stat.mode, stat.size, stat.mtimeNs, stat.ctimeNs].join(":");
-    } catch {
-        return null;
-    }
+const closeWatchers = async (state: SupervisorState): Promise<void> => {
+    const watchers = [...state.watchers.values()];
+    state.watchers.clear();
+    await Promise.all(watchers.map((watcher) => watcher.close()));
 };
 
-const snapshotWatchPaths = (paths: string[]): Map<string, string | null> =>
-    new Map([...watchTargets(paths)].map((path) => [path, watchPathState(path)]));
+const shutdownOnSignal = async (state: SupervisorState, signal: NodeJS.Signals): Promise<void> => {
+    state.isShuttingDown = true;
+    const closed = closeWatchers(state);
 
-const changedWatchPaths = (previous: ReadonlyMap<string, string | null>, paths: string[]): string[] =>
-    [...watchTargets(paths)].filter((path) => {
-        const current = watchPathState(path);
-
-        return previous.has(path) ? previous.get(path) !== current : current !== null;
-    });
-
-const groupWatchNamesByDirectory = (paths: string[]): Map<string, Set<string>> => {
-    const namesByDirectory: Map<string, Set<string>> = new Map();
-
-    for (const path of paths) {
-        const { directory, name } = nearestWatchTarget(path);
-        const names = namesByDirectory.get(directory) ?? new Set<string>();
-        names.add(name);
-        namesByDirectory.set(directory, names);
+    if (state.restartTimer.handle !== null) {
+        clearTimeout(state.restartTimer.handle);
+        state.restartTimer.handle = null;
     }
 
-    return namesByDirectory;
-};
+    const child = state.child;
 
-const watchConfigDirectory = (state: SupervisorState, directory: string, names: Set<string>): void => {
-    try {
-        const watcher = watchFs(directory, (_event, filename) => {
-            const changed = watchedChangePath(state, directory, names, filename);
-
-            if (changed !== undefined) {
-                scheduleRestart(state, [changed]);
-            }
+    if (child !== null) {
+        await new Promise<void>((resolve) => {
+            child.once("exit", resolve);
+            child.kill(signal);
         });
-
-        watcher.on("error", (cause) => {
-            error(`Configuration watch failed for ${directory}`, cause);
-        });
-        state.watchers.push(watcher);
-    } catch (error_) {
-        error(`Configuration watch failed for ${directory}`, error_);
     }
+
+    await closed;
 };
-
-const installConfigWatchers = (state: SupervisorState): void => {
-    const watch = state.watch;
-
-    if (watch === undefined || watch.paths.length === 0) {
-        return;
-    }
-
-    for (const [directory, names] of groupWatchNamesByDirectory(watch.paths)) {
-        watchConfigDirectory(state, directory, names);
-    }
-};
-
-const closeWatchers = (state: SupervisorState): void => {
-    for (const watcher of state.watchers) {
-        watcher.close();
-    }
-
-    state.watchers = [];
-};
-
-const shutdownOnSignal = (state: SupervisorState, signal: NodeJS.Signals): Promise<void> =>
-    new Promise<void>((resolve) => {
-        state.isShuttingDown = true;
-        closeWatchers(state);
-
-        if (state.restartTimer.handle !== null) {
-            clearTimeout(state.restartTimer.handle);
-            state.restartTimer.handle = null;
-        }
-
-        if (!state.child) {
-            resolve();
-
-            return;
-        }
-
-        state.child.once("exit", () => {
-            resolve();
-        });
-
-        state.child.kill(signal);
-    });
 
 const installShutdown = (state: SupervisorState): (() => void) => {
     return installGracefulShutdown({
@@ -418,12 +363,12 @@ const runDevSupervisor = async (options: DevSupervisorOptions): Promise<number> 
         cwd,
         args,
         watch,
-        watchers: [],
+        watchers: new Map(),
         changedPaths: new Set(),
         restartTimer: { handle: null },
         child: null,
         isShuttingDown: false,
-        isRestarting: false,
+        isRestarting: true,
         isRestartPending: false,
         capturedChildExit: undefined,
     };
@@ -442,18 +387,21 @@ const runDevSupervisor = async (options: DevSupervisorOptions): Promise<number> 
         );
     };
     options.signal?.throwIfAborted();
-    installConfigWatchers(state);
     const disposeShutdown = options.signal === undefined ? installShutdown(state) : undefined;
     options.signal?.addEventListener("abort", stop, { once: true });
     try {
-        launch(state);
+        await Promise.race([reconcileConfigWatchers(state, watch?.paths ?? [], true), completion.promise]);
+        if (!state.isShuttingDown) {
+            launch(state);
+            runPendingRestart(state);
+        }
         const code = await completion.promise;
         if (options.signal === undefined) process.exitCode = code;
         return code;
     } finally {
         options.signal?.removeEventListener("abort", stop);
         disposeShutdown?.();
-        closeWatchers(state);
+        await closeWatchers(state);
         if (state.restartTimer.handle !== null) clearTimeout(state.restartTimer.handle);
     }
 };

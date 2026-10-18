@@ -1,8 +1,7 @@
 import type * as GObject from "@gtkx/gi/gobject";
 import type { SignalMap, SignalName } from "@gtkx/runtime/internal";
 import { offSignal, onSignal, type SignalHandler } from "@gtkx/runtime";
-import { useLayoutEffect } from "react";
-import { useLatestRef } from "./use-latest-ref.js";
+import { useEffectEvent, useLayoutEffect } from "react";
 
 /** Options for {@link useSignal}. */
 type UseSignalOptions = {
@@ -27,14 +26,13 @@ function useSignal<T extends Pick<GObject.Object, "__signals__" | "__type__">, S
     handler: SignalMap<T>[S],
     { isAfter = false, isImmediate = false }: UseSignalOptions = {},
 ): void {
-    const handlerRef = useLatestRef<SignalHandler>(handler as SignalHandler);
+    const emit = useEffectEvent(handler as SignalHandler);
 
     useLayoutEffect(() => {
         if (object == null) {
             return;
         }
 
-        const emit: SignalHandler = (...args) => handlerRef.current(...args);
         onSignal(object, signal, emit, isAfter);
 
         try {
@@ -49,7 +47,7 @@ function useSignal<T extends Pick<GObject.Object, "__signals__" | "__type__">, S
         return () => {
             offSignal(object, signal, emit);
         };
-    }, [handlerRef, object, signal, isAfter, isImmediate]);
+    }, [object, signal, isAfter, isImmediate]);
 }
 
 export { useSignal };

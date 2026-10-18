@@ -1,81 +1,10 @@
 import {
-    canonicalDetailedSignalName,
     connectSignalByName,
     disconnectSignal,
+    findSignalListener,
     type SignalHandler,
-    type SignalHandlerId,
-    trackSignalDisconnect,
+    trackSignalListener,
 } from "./signal.js";
-
-const listenerTable: WeakMap<object, Map<string, Map<SignalHandler, SignalHandlerId[]>>> = new WeakMap();
-
-const findListenerHandlerId = (instance: object, signal: string, handler: SignalHandler): SignalHandlerId | undefined =>
-    listenerTable.get(instance)?.get(canonicalDetailedSignalName(signal))?.get(handler)?.at(-1);
-
-const trackListener = (instance: object, signal: string, handler: SignalHandler, handlerId: SignalHandlerId): void => {
-    const key = canonicalDetailedSignalName(signal);
-    let bySignal = listenerTable.get(instance);
-
-    if (!bySignal) {
-        bySignal = new Map();
-        listenerTable.set(instance, bySignal);
-    }
-
-    let byHandler = bySignal.get(key);
-
-    if (!byHandler) {
-        byHandler = new Map();
-        bySignal.set(key, byHandler);
-    }
-
-    let handlerIds = byHandler.get(handler);
-
-    if (!handlerIds) {
-        handlerIds = [];
-        byHandler.set(handler, handlerIds);
-    }
-
-    handlerIds.push(handlerId);
-    trackSignalDisconnect(instance, handlerId, untrackHandlerId);
-};
-
-const removeTrackedHandlerId = (handlerIds: SignalHandlerId[], handlerId: SignalHandlerId): number => {
-    const index = handlerIds.lastIndexOf(handlerId);
-
-    if (index !== -1) {
-        handlerIds.splice(index, 1);
-    }
-
-    return handlerIds.length;
-};
-
-const removeHandlerIdFrom = (byHandler: Map<SignalHandler, SignalHandlerId[]>, handlerId: SignalHandlerId): void => {
-    for (const [handler, handlerIds] of byHandler) {
-        if (removeTrackedHandlerId(handlerIds, handlerId) === 0) {
-            byHandler.delete(handler);
-        }
-    }
-};
-
-function untrackHandlerId(instance: object, handlerId: SignalHandlerId): void {
-    const bySignal = listenerTable.get(instance);
-
-    if (bySignal === undefined) {
-        return;
-    }
-
-    for (const [signal, byHandler] of bySignal) {
-        removeHandlerIdFrom(byHandler, handlerId);
-
-        if (byHandler.size === 0) {
-            bySignal.delete(signal);
-        }
-    }
-
-    if (bySignal.size === 0) {
-        listenerTable.delete(instance);
-    }
-}
 
 /**
  * Connects a handler to a signal and tracks it so it can later be removed with
@@ -88,7 +17,7 @@ function untrackHandlerId(instance: object, handlerId: SignalHandlerId): void {
  */
 function onSignal(instance: object, signal: string, handler: SignalHandler, isAfter?: boolean): void {
     const handlerId = connectSignalByName(instance, signal, handler, isAfter);
-    trackListener(instance, signal, handler, handlerId);
+    trackSignalListener(instance, handlerId, handler);
 }
 
 /**
@@ -104,15 +33,13 @@ function onceSignal(instance: object, signal: string, handler: SignalHandler, is
     let handlerId = 0n;
 
     const wrapped: SignalHandler = (...args) => {
-        untrackHandlerId(instance, handlerId);
         disconnectSignal(instance, handlerId);
 
         return handler(...args);
     };
 
     handlerId = connectSignalByName(instance, signal, wrapped, isAfter);
-    trackListener(instance, signal, wrapped, handlerId);
-    trackListener(instance, signal, handler, handlerId);
+    trackSignalListener(instance, handlerId, handler);
 }
 
 /**
@@ -124,13 +51,12 @@ function onceSignal(instance: object, signal: string, handler: SignalHandler, is
  * @param handler The handler to disconnect.
  */
 function offSignal(instance: object, signal: string, handler: SignalHandler): void {
-    const handlerId = findListenerHandlerId(instance, signal, handler);
+    const handlerId = findSignalListener(instance, signal, handler);
 
     if (handlerId === undefined) {
         return;
     }
 
-    untrackHandlerId(instance, handlerId);
     disconnectSignal(instance, handlerId);
 }
 

@@ -4,6 +4,7 @@ import { createJiti, type Jiti } from "jiti";
 import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { isRecord } from "./config-error.ts";
 import { localConfigSourcePath } from "./config-source.ts";
 
 const MODULE_EXTENSIONS: ReadonlySet<string> = new Set([".cjs", ".cts", ".js", ".mjs", ".mts", ".ts"]);
@@ -38,9 +39,6 @@ const DATA_PARSERS: Readonly<Record<string, (source: string) => unknown>> = {
 
 type PackageImports = { file: string; imports: Record<string, unknown>; root: string };
 type ModuleSources = { all: string[]; extended: string[] };
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-    typeof value === "object" && value !== null && !Array.isArray(value);
 
 const parserPlugins = (path: string): ("decorators" | "jsx" | "typescript")[] => {
     const extension = extname(path).toLowerCase();

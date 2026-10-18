@@ -1,13 +1,12 @@
 import type { Config } from "@gtkx/config";
-import { isPathInside, isRecord, sortStrings, toPosixPath } from "@gtkx/utils";
+import { isPathInside, sortStrings, toPosixPath } from "@gtkx/utils";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import type { DeploySettings } from "../types.js";
 import {
     BUILD_MANIFEST_FILENAME,
-    BUILD_MANIFEST_FORMAT_VERSION,
-    BUILD_MANIFEST_GENERATOR,
     type BuildManifest,
+    buildManifestSchema,
     configDigest,
     type RecordedPackage,
 } from "../../internal/build-manifest.js";
@@ -26,61 +25,14 @@ type ExpectedBuildConfig = {
 const invalidManifest = (path: string): Error =>
     new Error(`Cannot deploy: ${path} is not a valid GTKX build manifest. Run \`gtkx build\` again.`);
 
-const recordedStrings = (value: unknown[], path: string): string[] =>
-    value.map((entry) => {
-        if (typeof entry !== "string") {
-            throw invalidManifest(path);
-        }
-
-        return entry;
-    });
-
-const recordedText = (value: unknown, path: string): string | null => {
-    if (value === null || typeof value === "string") {
-        return value;
-    }
-
-    throw invalidManifest(path);
-};
-
-const recordedPackage = (value: unknown, path: string): RecordedPackage => {
-    if (!isRecord(value) || typeof value.name !== "string" || !Array.isArray(value.copyright)) {
-        throw invalidManifest(path);
-    }
-
-    return {
-        name: value.name,
-        version: recordedText(value.version, path),
-        license: recordedText(value.license, path),
-        source: recordedText(value.source, path),
-        copyright: recordedStrings(value.copyright, path),
-        text: recordedText(value.text, path),
-    };
-};
-
 const parseBuildManifest = (value: unknown, path: string): BuildManifest => {
-    if (
-        !isRecord(value) ||
-        value.generator !== BUILD_MANIFEST_GENERATOR ||
-        value.formatVersion !== BUILD_MANIFEST_FORMAT_VERSION ||
-        typeof value.configFile !== "string" ||
-        typeof value.configDigest !== "string" ||
-        !Array.isArray(value.schemas) ||
-        !Array.isArray(value.packages)
-    ) {
+    const result = buildManifestSchema.safeParse(value);
+
+    if (!result.success) {
         throw invalidManifest(path);
     }
 
-    const packages: unknown[] = value.packages;
-
-    return {
-        generator: BUILD_MANIFEST_GENERATOR,
-        formatVersion: BUILD_MANIFEST_FORMAT_VERSION,
-        configFile: value.configFile,
-        configDigest: value.configDigest,
-        schemas: recordedStrings(value.schemas, path),
-        packages: packages.map((entry) => recordedPackage(entry, path)),
-    };
+    return result.data;
 };
 
 const isFile = (path: string): boolean => statSync(path, { throwIfNoEntry: false })?.isFile() === true;

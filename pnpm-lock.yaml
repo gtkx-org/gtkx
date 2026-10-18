@@ -570,6 +570,9 @@ importers:
       babel-plugin-react-compiler:
         specifier: ^1.0.0
         version: 1.0.0
+      chokidar:
+        specifier: ^5.0.0
+        version: 5.0.0
       citty:
         specifier: ^0.2.2
         version: 0.2.2
@@ -609,6 +612,9 @@ importers:
       yaml:
         specifier: 'catalog:'
         version: 2.9.1
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.7
     devDependencies:
       '@gtkx/i18n':
         specifier: workspace:*
@@ -812,16 +818,16 @@ importers:
       postcss:
         specifier: ^8.5.30
         version: 8.5.30
-      stylis:
-        specifier: ^4.4.0
-        version: 4.4.0
+      postcss-nested:
+        specifier: ^9.0.0
+        version: 9.0.0(postcss@8.5.30)
+      postcss-selector-parser:
+        specifier: ^7.1.6
+        version: 7.1.6
     devDependencies:
       '@gtkx/vitest':
         specifier: workspace:*
         version: link:../vitest
-      '@types/stylis':
-        specifier: ^4.2.7
-        version: 4.2.7
 
   packages/e2e:
     devDependencies:
@@ -4130,9 +4136,6 @@ packages:
   '@types/spdx-expression-parse@4.0.0':
     resolution: {integrity: sha512-odQzy87phelGS4inXOzjmusx4hoCVD0IbxUANxHzVkmTzMRTNnUPoq1urIl7S1qf09KcDWKLFIftPmLtgbsAHA==}
 
-  '@types/stylis@4.2.7':
-    resolution: {integrity: sha512-VgDNokpBoKF+wrdvhAAfS55OMQpL6QRglwTwNC3kIgBrzZxA4WsFj+2eLfEA/uMUDzBcEhYmjSbwQakn/i3ajA==}
-
   '@types/test-console@2.0.3':
     resolution: {integrity: sha512-o46sYob58kh4nPxv3vnqS4iDI5Lr+FBV3iT53Wd0qJW5qx4jYg+jWsgU/Ysf+PIXB0J/tvh7dhoH1UrYMynE4Q==}
 
@@ -6779,6 +6782,12 @@ packages:
   pkg-types@2.3.3:
     resolution: {integrity: sha512-j/lCFdcppV0JxWpCEITdbDltBxPP6cHT+yNJ6Go2OgoSA9518X847X9z0p6LtA4Nc16+eQzCZjRrWanTGvHJ5w==}
 
+  postcss-nested@9.0.0:
+    resolution: {integrity: sha512-cYlRG8MiABEAPvxMj1ms9Ame0Xi31AlSe0pY9I61dhUOKUZ6PQU/4i0WdVetUYKlowi3552nnbjhdYYbf2o7UA==}
+    engines: {node: ^22.0.0 || ^24.0.0 || >= 26.0.0}
+    peerDependencies:
+      postcss: ^8.2.14
+
   postcss-selector-parser@7.1.6:
     resolution: {integrity: sha512-7qASPzhKF2l2KLboRZux8CCTRMdGiV08vWmyKzPz22qZ7ZjQBOeY7rNzNoCLSUiftJ7HUq0GERHmxw/t0dCdMw==}
     engines: {node: '>=4'}
@@ -7264,9 +7273,6 @@ packages:
 
   strnum@2.4.2:
     resolution: {integrity: sha512-rDG3Ah4TV0k1hWvLSzkZtMmLN9+eS+h3knq4MP6A42Y3Yh5qGNnOUs1jJkoSr8FG5dsL28c7KgkIBzSEykqtuw==}
-
-  stylis@4.4.0:
-    resolution: {integrity: sha512-5Z9ZpRzfuH6l/UAvCPAPUo3665Nk2wLaZU3x+TLHKVzIz33+sbJqbtrYoC3KD4/uVOr2Zp+L0LySezP9OHV9yA==}
 
   supports-color@7.2.0:
     resolution: {integrity: sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==}
@@ -10532,8 +10538,6 @@ snapshots:
 
   '@types/spdx-expression-parse@4.0.0': {}
 
-  '@types/stylis@4.2.7': {}
-
   '@types/test-console@2.0.3': {}
 
   '@types/unist@3.0.3': {}
@@ -13660,6 +13664,11 @@ snapshots:
       exsolve: 1.1.1
       pathe: 2.0.3
 
+  postcss-nested@9.0.0(postcss@8.5.30):
+    dependencies:
+      postcss: 8.5.30
+      postcss-selector-parser: 7.1.6
+
   postcss-selector-parser@7.1.6:
     dependencies:
       cssesc: 3.0.0
@@ -14237,8 +14246,6 @@ snapshots:
   strnum@2.4.2:
     dependencies:
       anynum: 1.0.1
-
-  stylis@4.4.0: {}
 
   supports-color@7.2.0:
     dependencies:

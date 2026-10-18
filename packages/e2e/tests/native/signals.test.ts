@@ -2,9 +2,10 @@ import * as GObject from "@gtkx/gi/gobject";
 
 import * as Regress from "@gtkx/gi/regress";
 
-import { getInstanceType, registerClass } from "@gtkx/runtime";
+import { getInstanceType, offSignal, registerClass } from "@gtkx/runtime";
 
 import { expect, test } from "vitest";
+import { didSettle } from "./helpers/memory.js";
 
 const suffix = String(process.pid);
 
@@ -41,7 +42,10 @@ const Picking = registerClass(Picky, {
     signals: { pick: { paramTypes: [GObject.TYPE_STRING] } },
 });
 
-const Muting = registerClass(Mute, { typeName: `GtkxSignalsMute${suffix}`, signals: { hum: {} } });
+const Muting = registerClass(Mute, {
+    typeName: `GtkxSignalsMute${suffix}`,
+    signals: { hum: {}, "muted-tone": { flags: GObject.SignalFlags.DETAILED } },
+});
 
 const askCalls: [unknown, unknown][] = [];
 
@@ -150,6 +154,97 @@ test("on, once and off connect and remove handlers by function", () => {
     obj.emit("test");
     obj.emit("test");
     expect(seen).toEqual(["on", "once"]);
+});
+
+test("off removes the latest listener while preserving direct connections of the same function", () => {
+    const obj = new Regress.TestObj({});
+    const seen: string[] = [];
+    const handler = () => seen.push("shared");
+    obj.connect("test", handler);
+    obj.on("test", handler);
+    obj.on("test", () => seen.push("marker"));
+    obj.on("test", handler, true);
+
+    obj.off("test", handler);
+    obj.emit("test");
+    expect(seen).toEqual(["shared", "shared", "marker"]);
+
+    seen.length = 0;
+    obj.off("test", handler);
+    obj.off("test", handler);
+    obj.emit("test");
+    expect(seen).toEqual(["shared", "marker"]);
+});
+
+test("once can be cancelled by its original function and disconnects before reentrant emissions", () => {
+    const obj = new Muting({});
+    let calls = 0;
+    const handler = () => {
+        calls += 1;
+        if (calls === 1) obj.emit("hum");
+    };
+    obj.once("hum", handler);
+    obj.off("hum", handler);
+    obj.emit("hum");
+    expect(calls).toBe(0);
+
+    obj.once("hum", handler);
+    obj.emit("hum");
+    obj.emit("hum");
+    expect(calls).toBe(1);
+});
+
+test("off canonicalizes the signal base without changing its detail", () => {
+    const obj = new Muting({});
+    let calls = 0;
+    const handler = () => calls++;
+    obj.on("muted-tone::my_detail", handler);
+    obj.once("muted-tone::my-detail", handler);
+
+    offSignal(obj, "muted_tone::my_detail", handler);
+    obj.emit("muted-tone::my_detail");
+    expect(calls).toBe(0);
+    obj.emit("muted-tone::my-detail");
+    obj.emit("muted-tone::my-detail");
+    expect(calls).toBe(1);
+});
+
+test.each(["on", "once"] as const)("%s releases its callback after native disconnection", async (method) => {
+    const obj = new Regress.TestObj({});
+    let calls = 0;
+    const callback = (() => {
+        const handler = () => calls++;
+        obj[method]("test", handler);
+        return new WeakRef(handler);
+    })();
+    const handlerId = GObject.signalHandlerFind(
+        obj,
+        GObject.SignalMatchType.ID,
+        GObject.signalLookup("test", Regress.TestObj),
+        0,
+        null,
+        null,
+        null,
+    );
+    expect(handlerId).not.toBe(0n);
+    GObject.signalHandlerDisconnect(obj, handlerId);
+
+    expect(await didSettle(() => callback.deref() === undefined)).toBe(true);
+    obj.emit("test");
+    expect(calls).toBe(0);
+});
+
+test.each(["on", "once"] as const)("%s permits self-capturing listeners to be collected", async (method) => {
+    const references = (() => {
+        const obj = new Regress.TestObj({});
+        const handler = () => obj.int;
+        obj[method]("test", handler);
+        return { object: new WeakRef(obj), handler: new WeakRef(handler) };
+    })();
+
+    expect(
+        await didSettle(() => references.object.deref() === undefined && references.handler.deref() === undefined),
+    ).toBe(true);
 });
 
 test("an object signal argument arrives as the very wrapper it was emitted with", () => {
