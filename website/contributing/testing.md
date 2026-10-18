@@ -9,7 +9,7 @@ Tests exercise public behavior through real implementations. Package integration
 
 ## Coverage ownership
 
-All suites use Vitest. Tests in `utils` are unit tests; the other package-local suites are integration tests. React and native bindings form the E2E suites. These exercise the GTKX stack through code, with React driven by `@gtkx/testing`.
+The JavaScript suites use Vitest. Classify tests by the interface they exercise: tests that call framework code directly, including rendering with `@gtkx/testing`, are integration tests; E2E tests drive an application through its user interface. Unit tests cover an individual unit. The `packages/e2e` directory and Nx `e2e` target names predate this distinction; their React and generated-binding coverage exercises the stack through code.
 
 | Package     | Essential contract                                                                              |
 | ----------- | ----------------------------------------------------------------------------------------------- |
@@ -91,9 +91,15 @@ Review leak suppressions narrowly. Eight upstream signal emitters leak their ori
 
 `@gtkx/vitest` gives each test worker a private Wayland compositor, runtime directory and D-Bus session. Worker teardown releases these resources during normal shutdown. Subsequent Vitest, dev or Storybook startup, or `gtkx cleanup`, reclaims stale sessions left by interrupted runs. Package suites merge the shared source-resolution configuration, which resolves workspace TypeScript and inlines GTKX dependencies.
 
-Importing `@gtkx/testing` installs matchers and rendering cleanup. `render` is asynchronous. Use `screen` and `within` to query accessible widget state, `userEvent` for interactions, and `waitFor` for asynchronous outcomes. Keep native assertions focused on externally observable state.
+Importing `@gtkx/testing` installs matchers and rendering cleanup when the runner exposes global `expect` and `afterEach` hooks, as the workspace configuration does. `render` is asynchronous. Use `screen` and `within` to query accessible widget state, `userEvent` for interactions, and `waitFor` for asynchronous outcomes. Keep native assertions focused on externally observable state.
 
 Application examples and the React E2E suite use `@gtkx/cli/vitest-plugin` when they need application transformations such as settings schemas, assets or custom elements. The Storybook example keeps its own consuming-application tests. The tutorial application is outside the workspace and runs its application tests from its own directory.
+
+## Consumer and packaging checks
+
+The CLI suite creates temporary projects and exercises development, builds, and deployment through the command parser. These projects link built workspace packages; they do not validate installation from a registry. The codegen suite likewise checks generated imports in temporary consumers linked to the workspace.
+
+The `tutorial/` application consumes registry packages outside the workspace. Run its typecheck and application tests from that directory when validating a published release. For package-resolution or publication changes, also verify an ordinary project using the packaged artifacts; a workspace build alone cannot establish that those artifacts install and run correctly.
 
 ## Other checks
 

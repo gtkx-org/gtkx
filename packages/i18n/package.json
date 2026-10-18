@@ -13,7 +13,9 @@
         "gettext",
         "localization",
         "linux",
-        "desktop"
+        "desktop",
+        "i18next",
+        "react-i18next"
     ],
     "homepage": "https://gtkx.dev",
     "bugs": {

@@ -6,6 +6,8 @@ description: "Send desktop reminders and route their actions into the app."
 
 [Reorder Tasks](/v2/tutorial/drag-to-reorder) completed task-list interaction. Add a reminder when a task reaches its configured lead time, then connect the notification's actions to the application.
 
+Reminders are checked while the app is running. Closing Tasks stops the timer; installing the app allows actions on an already-sent notification to reopen it, but does not schedule reminders in the background.
+
 ## Record the notified due date
 
 Add `lastNotifiedDue: string | null` to `Task` in `src/types.ts`. Set it to `null` in the seed helper and in the task created by `addTask`.

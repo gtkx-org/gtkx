@@ -33,7 +33,7 @@ That means the navigation state follows React Navigation while every visible con
 Install the package separately:
 
 ```bash
-npm install @gtkx/navigation
+npm install @gtkx/navigation@^1.4.0
 ```
 
 The renderer needs libadwaita bindings, so an app scaffolded with GTK alone adds `Adw-1` and lets codegen refresh the store:

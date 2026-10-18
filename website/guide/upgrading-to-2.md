@@ -5,7 +5,7 @@ description: "Prepare a GTKX 1.6 application, then move it to GTKX 2.0."
 
 # Upgrading to 2.0
 
-GTKX 1.6 can enable most 2.0 behavior before the package upgrade. Adopt those changes one at a time, then update every `@gtkx/*` package together and finish the checklist below.
+GTKX 1.6 can enable most 2.0 behavior before the package upgrade. Adopt those changes one at a time, then upgrade your installed `@gtkx/*` packages together. GTKX 2.0 is in beta; the [2.0 migration checklist](/v2/guide/upgrading-to-2) covers all current changes, including application lifecycle and Variant APIs. `@gtkx/gi` and `@gtkx/jsx` remain generated packages, not installation targets.
 
 ## Prepare on 1.6
 
@@ -22,7 +22,7 @@ Work through all seven flags:
 
 - `v2ByteArrays` returns GIR byte sequences as `Uint8Array`. Check array mutation, `Array.isArray`, and JSON serialization.
 - `v2ValueReturns` unwraps returned `GObject.Value` instances and types their contents as `unknown`; narrow the value where it is used.
-- `v2FinishResults` removes a leading success boolean from promisified finish results when failure already rejects.
+- `v2FinishResults` removes a leading success boolean from multi-value promisified finish results when failure already rejects.
 - `v2InoutReturns` stops repeating an inout record or boxed value in the return tuple. The object passed in is still mutated.
 - `v2ResourceImports` replaces `#data/` imports with relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports. Run `gtkx build` to find stale specifiers.
 - `v2DefaultLibraries` binds Adwaita and GTK by default. Remove `Adw-1` and `Gtk-4.0` from `libraries`, then run the application and check its appearance.

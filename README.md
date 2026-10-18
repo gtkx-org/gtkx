@@ -38,7 +38,7 @@ cd my-app
 npm run dev
 ```
 
-The native addon ships prebuilt for x64 and arm64 glibc Linux. Other targets require building it from the repository with Rust.
+The native addon ships prebuilt for x64 and arm64 glibc Linux. Building it from source requires Rust and the [workspace prerequisites](https://gtkx.dev/contributing/development).
 
 ## Build with React
 

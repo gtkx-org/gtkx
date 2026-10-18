@@ -32,7 +32,7 @@ The renderer combines native type ancestry with generated property and signal me
 
 There are two complementary definitions for an element:
 
-- [`element-config.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/element-config.ts) describes its generated surface: additional props, omitted native props, component wrappers, accepted child types, and parent-created instances. It can be imported during generation without loading native bindings.
+- [`builtin-elements.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/config/src/builtin-elements.ts) describes its generated surface: additional props, omitted native props, component wrappers, accepted child types, and parent-created instances. It can be imported during generation without loading native bindings.
 - [`element-behaviors.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/element-behaviors.ts) registers native construction, specialized prop updates, and child placement operations.
 
 Shared builders in [`reconciler/behaviors.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/reconciler/behaviors.ts) implement recurring attachment patterns such as a single child setter, ordered box children, and indexed collections. The registry combines these operations through type ancestry. Controlled values and layout effects use components and hooks instead of a separate host lifecycle.

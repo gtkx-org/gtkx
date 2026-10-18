@@ -51,7 +51,7 @@ After testing the prebuilt package, update `gtkx.config.ts` for source mode:
 
 Use your application's public repository URL. Install [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/tree/master/node) using its installation instructions; GTKX uses it to prepare the offline dependency sources.
 
-Commit the configuration, application sources, lockfile, icons, license, and translation catalogs. Generated MO files stay out of Git; the build reproduces them. Then generate the manifest:
+Commit the configuration, application sources, lockfile, icons, license, and translation catalogs, then push that commit to the configured repository. The source build must be able to fetch it. Generated MO files stay out of Git; the build reproduces them. Then generate the manifest:
 
 ```bash
 npm run deploy -- --target flatpak --print-manifests

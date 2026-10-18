@@ -120,7 +120,7 @@ Translate the formatters in `src/format.ts`, keeping the existing date helpers:
 
 Gettext counts must be non-negative safe integers. An overdue date has a negative `days` value, so pass `-days` as the count. `toLocaleDateString` and `toLocaleString` format dates using the process locale.
 
-These edits provide the messages exercised in this chapter. Apply the same approach to the remaining authored labels, dialogs, notifications, and starter content; the [finished source](https://github.com/gtkx-org/gtkx/tree/v1.6.0/examples/tutorial/src) shows each location. Keep user-entered names, action names, settings keys, and other identifiers unchanged. Starter content is translated on first creation; changing locale does not rewrite saved tasks.
+These edits provide the messages exercised in this chapter. After completing its checks, apply the same approach to the remaining authored labels, dialogs, notifications, and starter content; the [finished source](https://github.com/gtkx-org/gtkx/tree/v1.6.0/examples/tutorial/src) shows each location. Keep user-entered names, action names, settings keys, and other identifiers unchanged. Starter content is translated on first creation; changing locale does not rewrite saved tasks.
 
 Use literal message keys and retain the names `t` and `useTranslation`: GTKX's extractor rejects aliases and dynamic keys. Codegen generates the message and interpolation types, so there is no separate list of keys to maintain.
 
@@ -305,7 +305,7 @@ describe("Tasks in French", () => {
 });
 ```
 
-The tests mount the real app, exercise translated controls and empty results, and reject an unavailable drag after filtering. They use the setup file from the testing chapter, including its isolated data directory.
+The tests mount the real app, exercise translated controls and empty results, and reject an unavailable drag after filtering. They use the setup file from the testing chapter, including its isolated data directory. The queries match the partial translation above; update their labels as you translate the rest of the interface.
 
 Replace the `scripts` field in `package.json` with this block; keep the remaining package fields:
 

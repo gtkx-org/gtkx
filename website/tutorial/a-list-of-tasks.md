@@ -4,7 +4,7 @@ description: "Model a task and display sample data in a scrollable list."
 
 # Display Tasks
 
-Replace the empty state from [Create a Window](/tutorial/your-first-window) with a list of tasks. Start with sample data; the next chapter adds editing.
+Replace the empty state from [Create a Window](/tutorial/your-first-window) with a list of tasks. Start with sample data; the next chapter adds an entry row for new tasks.
 
 ## Define the task model
 

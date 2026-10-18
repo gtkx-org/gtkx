@@ -20,6 +20,23 @@ Edit exported API documentation at its package source, then regenerate it. Gener
 
 Guides and tutorials explain tasks; API reference pages describe callable contracts. Use small examples, link to reference details, and assume familiarity with React and TypeScript. The [documentation principles](/contributing/principles#write-focused-consistent-documentation) cover style and scope.
 
+## Structure and style
+
+Keep the main navigation focused on the Guide, Tutorial, API Reference, and Examples. Project resources belong in the Project menu. Group guides by the reader's task: getting started, building interfaces, native integration, development tools, and shipping or upgrading. Keep the tutorial in chapter order.
+
+Use the [React documentation](https://react.dev/learn) as a reference for separating learning from API lookup, the [Vue guide](https://vuejs.org/guide/introduction.html) for topic grouping and learning paths, and [Electron's documentation](https://www.electronjs.org/docs/latest/) for the desktop workflow from setup to distribution. GTKX examples must still use this project's generated APIs; upstream GTK or Adwaita examples describe native concepts, not GTKX syntax.
+
+Start a page with its purpose and prerequisites. Explain the GTKX-specific steps, then link to the next task or reference details. Prefer complete, small examples over repeated API inventories. Package READMEs should identify the package, show installation or its intended entry point, and link to the matching guide and reference. Package descriptions and keywords should describe that package's role and relevant integrations.
+
+Check commands, imports, exported names, defaults, and requirements against the version being documented. The working tree is authoritative for the development docs; use the pinned release for stable docs. Preserve historical release announcements and changelogs as records of those releases.
+
+Before publishing documentation changes:
+
+- Build the website to check page registration, Markdown, and page links. Check heading fragments too; a successful page-link check does not prove an anchor exists.
+- Inspect desktop and mobile navigation, the version switcher, and search on the rendered site.
+- Run changed examples with the documented dependencies. For tutorial edits, apply the chapter's changes to the preceding chapter, not only to the finished application.
+- Keep old URLs and heading anchors usable when reorganizing content. Update package READMEs and metadata when a package's role changes.
+
 ## Documentation versions
 
 [`website/versions.json`](https://github.com/gtkx-org/gtkx/blob/main/website/versions.json) defines each documented version:
@@ -39,7 +56,7 @@ Exactly one version must use `worktree`; the build rejects any other count. Its 
 
 Between releases, the current version uses the working tree and follows `main`. When adding the next prerelease, make it the working-tree version, pin the outgoing current reference to its release tag and commit, and write its derived label into the manifest.
 
-Reference generation checks the Nx output paths in `website/package.json` against the manifest. A mismatch fails the build because stale paths could restore cached output to the wrong directory. Synchronize declarations after changing prefixes:
+Reference generation checks the Nx output paths in `website/project.json` against the manifest. A mismatch fails the build because stale paths could restore cached output to the wrong directory. Synchronize declarations after changing prefixes:
 
 ```bash
 pnpm --filter @gtkx/website reference-sync
@@ -47,7 +64,7 @@ pnpm --filter @gtkx/website reference-sync
 
 ## Add or move pages
 
-Guide and tutorial pages live under their version's prefix: `website/guide` for the root version and `website/v2/guide` for `/v2`. Register them in `guideItems` or `tutorialItems` in `website/.vitepress/versioning.ts`. The build rejects unlisted pages so versions cannot silently diverge.
+Guide and tutorial pages live under their version's prefix: `website/guide` for the root version and `website/v2/guide` for `/v2`. Register them in `guideGroups` or `tutorialItems` in `website/.vitepress/versioning.ts`. The build rejects unlisted pages so versions cannot silently diverge.
 
 Contributor pages follow `main` independently of releases. Register them in `website/.vitepress/contributing.ts`. They appear in every version's navigation, search, and `llms.txt` exports, and remain at `/contributing/` during promotion.
 

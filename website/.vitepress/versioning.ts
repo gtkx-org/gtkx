@@ -6,6 +6,11 @@ type DocumentationItem = {
     path: string;
 };
 
+type DocumentationGroup = {
+    text: string;
+    items: DocumentationItem[];
+};
+
 type VersionStatus = "current" | "prerelease" | "old";
 
 type ReferenceSource = { source: "worktree" } | { source: "tag"; tag: string; commit: string };
@@ -31,32 +36,59 @@ const GUIDE_ROOT = "guide/why-gtkx";
 const TUTORIAL_ROOT = "tutorial/";
 const REFERENCE_ROOT = "reference/";
 
-const guideItems: DocumentationItem[] = [
-    { text: "Why GTKX", path: GUIDE_ROOT },
-    { text: "Getting Started", path: "guide/getting-started" },
-    { text: "Configuration and Codegen", path: "guide/configuration-and-codegen" },
-    { text: "Scaffold Options", path: "guide/scaffold-options" },
-    { text: "Assets and Build Output", path: "guide/assets" },
-    { text: "Native Values", path: "guide/native-values" },
-    { text: "Async Operations", path: "guide/async-operations" },
-    { text: "Workers and Helper Processes", path: "guide/workers" },
-    { text: "Error Handling", path: "guide/error-handling" },
-    { text: "Subclassing GObject", path: "guide/subclassing" },
-    { text: "Components", path: "guide/components" },
-    { text: "Forms", path: "guide/forms" },
-    { text: "Modals and Portals", path: "guide/modals-and-portals" },
-    { text: "Navigation", path: "guide/navigation" },
-    { text: "CSS", path: "guide/css" },
-    { text: "Animations", path: "guide/animations" },
-    { text: "Cairo", path: "guide/cairo" },
-    { text: "OpenGL", path: "guide/opengl" },
-    { text: "Internationalization", path: "guide/internationalization" },
-    { text: "Testing", path: "guide/testing" },
-    { text: "Storybook", path: "guide/storybook" },
-    { text: "MCP", path: "guide/mcp" },
-    { text: "Deploying", path: "guide/deploying" },
-    { text: "Upgrading to 2.0", path: "guide/upgrading-to-2" },
+const guideGroups: DocumentationGroup[] = [
+    {
+        text: "Getting Started",
+        items: [
+            { text: "Why GTKX", path: GUIDE_ROOT },
+            { text: "Getting Started", path: "guide/getting-started" },
+            { text: "Scaffold Options", path: "guide/scaffold-options" },
+            { text: "Configuration and Codegen", path: "guide/configuration-and-codegen" },
+        ],
+    },
+    {
+        text: "Building Interfaces",
+        items: [
+            { text: "Components", path: "guide/components" },
+            { text: "Navigation", path: "guide/navigation" },
+            { text: "Forms", path: "guide/forms" },
+            { text: "Modals and Portals", path: "guide/modals-and-portals" },
+            { text: "CSS", path: "guide/css" },
+            { text: "Animations", path: "guide/animations" },
+        ],
+    },
+    {
+        text: "Native Integration",
+        items: [
+            { text: "Native Values", path: "guide/native-values" },
+            { text: "Async Operations", path: "guide/async-operations" },
+            { text: "Workers and Helper Processes", path: "guide/workers" },
+            { text: "Subclassing GObject", path: "guide/subclassing" },
+            { text: "Cairo", path: "guide/cairo" },
+            { text: "OpenGL", path: "guide/opengl" },
+        ],
+    },
+    {
+        text: "Development Tools",
+        items: [
+            { text: "Error Handling", path: "guide/error-handling" },
+            { text: "Testing", path: "guide/testing" },
+            { text: "Storybook", path: "guide/storybook" },
+            { text: "App Inspection (MCP)", path: "guide/mcp" },
+        ],
+    },
+    {
+        text: "Shipping and Upgrading",
+        items: [
+            { text: "Assets and Build Output", path: "guide/assets" },
+            { text: "Internationalization", path: "guide/internationalization" },
+            { text: "Deploying", path: "guide/deploying" },
+            { text: "Upgrading to 2.0", path: "guide/upgrading-to-2" },
+        ],
+    },
 ];
+
+const guideItems: DocumentationItem[] = guideGroups.flatMap((group) => group.items);
 
 const tutorialItems: DocumentationItem[] = [
     { text: "Introduction", path: TUTORIAL_ROOT },
@@ -311,7 +343,7 @@ export {
     type DocumentationVersion,
     featuredVersion,
     GUIDE_ROOT,
-    guideItems,
+    guideGroups,
     isDocumentationPath,
     normalizeDocumentationPath,
     packageVersion,

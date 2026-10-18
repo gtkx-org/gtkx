@@ -7,7 +7,7 @@ description: "Awaiting promisified GIO calls, canceling them, and keeping long w
 
 GTKX turns compatible GIO async/finish pairs into promises. By default in GTKX 1.6, `loadContentsAsync` resolves to the native success flag, a numeric byte array, and the optional etag. A failed call rejects, so callers can skip the success flag when destructuring. A call whose C return is void and that has a single out-parameter resolves to that value directly instead of a tuple.
 
-The [`v2FinishResults` future flag](/guide/configuration-and-codegen#future-flags) removes only the redundant success flag. The separate `v2ByteArrays` flag changes the contents to a `Uint8Array`. With both enabled, `loadContentsAsync` resolves to the contents and optional etag, while `replaceContentsAsync` resolves to its etag directly. Explicit finish methods keep their native return shape.
+The [`v2FinishResults` future flag](/guide/configuration-and-codegen#future-flags) removes only the redundant success flag. The separate `v2ByteArrays` flag changes the contents to a `Uint8Array`. With both enabled, `loadContentsAsync` resolves to the contents and optional etag, while `replaceContentsAsync` resolves to its etag directly. Boolean-only results and explicit finish methods keep their native return shape.
 
 ## Awaiting async operations
 

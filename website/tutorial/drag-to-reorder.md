@@ -1,5 +1,5 @@
 ---
-description: "Reorder tasks by pointer or keyboard where the complete manual list is visible."
+description: "Change the persisted manual order with drag and drop or keyboard shortcuts."
 ---
 
 # Reorder Tasks
@@ -29,9 +29,9 @@ Each task already has a `position`. Add one action to `src/store/tasks.ts` that 
 
 Callers validate the IDs at their input boundary, so the action can use them directly. The store's existing persistence writes the new positions to disk.
 
-## Limit reordering to the complete manual list
+## Enable reordering in manual views {#limit-reordering-to-the-complete-manual-list}
 
-A displayed order can be edited only when the screen contains the complete ordered set. Title and date sorts derive their order, while search, Open/Done filtering, and Trash show subsets that do not have an unambiguous insertion point.
+Reordering changes the global manual order, including when you move tasks within a list, Today, or Important. Disable it for derived sorts, search results, Open/Done filters, and Trash so those views keep their displayed order.
 
 Add the shared decision to `src/store/selectors.ts`:
 
@@ -203,7 +203,7 @@ When reordering is unavailable, the row has none of these controllers and expose
 
 Choose Manual sorting and the All filter, clear the search box, and focus a task. Press <kbd>Alt</kbd>+<kbd>Up</kbd> or <kbd>Alt</kbd>+<kbd>Down</kbd>; the row moves one position. Dragging it onto another row changes the same persisted order.
 
-Switch to Title, search for a task, select Open or Done, or open Trash. Pointer dragging and the reorder keys are disabled in each partial or derived view. Return to Manual with All selected and an empty search to reorder again.
+Switch to Title, search for a task, select Open or Done, or open Trash. Pointer dragging and the reorder keys are disabled in each of those views. Return to Manual with All selected and an empty search to reorder again.
 
 ## Next
 

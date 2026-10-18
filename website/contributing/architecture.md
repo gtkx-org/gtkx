@@ -64,7 +64,7 @@ There are two related trees: React's component tree and the native object tree. 
 
 The native addon acquires GLib's default main context on the Node thread that initializes it. It integrates that context with libuv using prepare, timer, and file-descriptor polling handles. Node remains the outer event loop, allowing Node I/O, timers, promises, React scheduling, and GLib sources to make progress in the same application process.
 
-Application startup is adapted to that arrangement. GTKX invokes GLib's local command-line handling to register and activate an application without entering a blocking `g_application_run()` loop. The application keeps the Node loop alive while active, and its teardown releases that hold. React's application component waits for activation before rendering its children.
+Application startup is adapted to that arrangement. The generated GIO application override invokes GLib's local command-line handling to register and activate an application without entering a blocking `g_application_run()` loop. The application keeps the Node loop alive while active, and its teardown releases that hold. React's application component waits for activation before rendering its children.
 
 The owning-thread requirement extends to native wrappers and widget operations. Worker threads are useful for computation with plain data, which can be sent back to the owning thread. They are not additional GTK render threads. Details and source links are in [Native Runtime](/contributing/native-runtime).
 
@@ -84,13 +84,13 @@ Likewise, a controlled prop and a native widget property are two representations
 
 ## Finding the responsible layer
 
-| Observable problem                                                           | Start reading                                                                        |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| A generated method has an incorrect type, argument order, or return shape.   | `packages/codegen/src/gir`, `analysis`, and `store/gi`.                              |
-| A correctly described call produces an invalid value or loses native memory. | `packages/runtime/src/fn.ts`, then `packages/native/src/ffi/codec` and `handle.rs`.  |
-| A JSX prop is missing or has the wrong type.                                 | `packages/codegen/src/store/jsx` and `packages/react/src/element-config.ts`.         |
-| A prop type is correct but the widget receives the wrong update.             | `packages/react/src/reconciler/apply-props.ts` and the registered element behaviors. |
-| A child appears in the wrong place, disappears, or fails to reorder.         | `packages/react/src/reconciler/child-routing.ts` and `placement.ts`.                 |
-| Signals, timers, or shutdown stop making progress.                           | `packages/runtime/src/lifecycle.ts` and `packages/native/src/runloop.rs`.            |
+| Observable problem                                                           | Start reading                                                                                                                         |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| A generated method has an incorrect type, argument order, or return shape.   | `packages/codegen/src/gir`, `analysis`, and `store/gi`.                                                                               |
+| A correctly described call produces an invalid value or loses native memory. | `packages/runtime/src/fn.ts`, then `packages/native/src/ffi/codec` and `handle.rs`.                                                   |
+| A JSX prop is missing or has the wrong type.                                 | `packages/codegen/src/store/jsx` and `packages/config/src/builtin-elements.ts`.                                                       |
+| A prop type is correct but the widget receives the wrong update.             | `packages/react/src/reconciler/apply-props.ts` and the registered element behaviors.                                                  |
+| A child appears in the wrong place, disappears, or fails to reorder.         | `packages/react/src/reconciler/child-routing.ts` and `placement.ts`.                                                                  |
+| Signals, timers, or shutdown stop making progress.                           | `packages/codegen/overrides/gio/overrides/application.ts`, `packages/runtime/src/lifecycle.ts`, and `packages/native/src/runloop.rs`. |
 
 A renderer symptom can begin in generated metadata; a native ownership failure can begin in an incorrect GIR annotation. Follow the failing operation across the relevant boundaries.

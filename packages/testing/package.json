@@ -13,7 +13,9 @@
         "testing",
         "testing-library",
         "linux",
-        "desktop"
+        "desktop",
+        "vitest",
+        "accessibility"
     ],
     "homepage": "https://gtkx.dev",
     "bugs": {

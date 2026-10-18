@@ -13,7 +13,9 @@
         "rust",
         "napi",
         "linux",
-        "desktop"
+        "desktop",
+        "libffi",
+        "gobject"
     ],
     "homepage": "https://gtkx.dev",
     "bugs": {

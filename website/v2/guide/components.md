@@ -5,7 +5,7 @@ description: "Render lists, tables, dropdowns, tabs, and toast notifications fro
 
 # Components
 
-`@gtkx/components` renders native collections from data and render functions. It manages their GTK models and factories. `@gtkx/components` also provides `ComboRow`, managed tab collections, and toast helpers.
+`@gtkx/components` renders native collections from data and render functions, managing their GTK models and factories. It also provides managed tabs and toast helpers.
 
 `@gtkx/components` is a separate install:
 
@@ -13,7 +13,7 @@ description: "Render lists, tables, dropdowns, tabs, and toast notifications fro
 npm install @gtkx/components@beta
 ```
 
-Full prop lists are in the [@gtkx/components reference](/v2/reference/@gtkx/components/), and the hooks that bridge GObject state into React ship with `@gtkx/react`, whose signatures are in the [@gtkx/react reference](/v2/reference/@gtkx/react/).
+See the [component reference](/v2/reference/@gtkx/components/) for props. Hooks that connect GObject state to React come from [`@gtkx/react`](/v2/reference/@gtkx/react/).
 
 ## List components
 
@@ -91,7 +91,7 @@ The callback receives `null` when the model becomes empty.
 
 ### GtkListBox
 
-Not every list wants a model. `Gtk.ListBox` takes its rows as children, so it needs no component wrapper: `<GtkListBox>` from `@gtkx/jsx/gtk` is a plain JSX element, and a sidebar or a settings list is data mapped to `<AdwActionRow>` children. What it does add is `selectedIndex`, which makes the box's own selection a controlled prop:
+`GtkListBox` takes JSX rows directly, making it suitable for short lists such as a sidebar or settings group. Its `selectedIndex` prop controls the selected row:
 
 ```tsx
 import { AdwActionRow } from "@gtkx/jsx/adw";

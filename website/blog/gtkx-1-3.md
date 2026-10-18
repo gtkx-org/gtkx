@@ -19,7 +19,7 @@ Until now, animating anything in GTKX meant reaching for GTK's own machinery: an
 React already has an answer to that, and it is React Spring. 1.3 does not reimplement it; it gives it somewhere to write:
 
 ```bash
-npm install @gtkx/animated
+npm install @gtkx/animated@^1.3.0
 ```
 
 ## Springs are written onto widgets, not into a shared style sheet
@@ -172,12 +172,7 @@ The rest is correctness: required arguments and flag values are validated instea
 
 There are breaking changes in 1.3, and most of them can reach code that works today.
 
-Some C functions are gone from the generated store. They double-free, hop threads, or hand raw pointers across the boundary, and no amount of care at the call site makes them safe: the `g_object_*_data` and `*_qdata` family, `g_thread_new` and friends, the ref-counted string functions, and the in-place string mutators that return their own argument. A callable whose callback parameter has a `closure` or `destroy` index that is not adjacent to it is dropped for the same reason. Where a replacement exists it is the obvious one:
-
-```diff
--const isRevoked = receiver.getData("revoked") !== null;
-+const isRevoked = receiver.isFloating();
-```
+Some C functions are gone from the generated store. They double-free, hop threads, or hand raw pointers across the boundary, and no amount of care at the call site makes them safe: the `g_object_*_data` and `*_qdata` family, `g_thread_new` and friends, the ref-counted string functions, and the in-place string mutators that return their own argument. A callable whose callback parameter has a `closure` or `destroy` index that is not adjacent to it is dropped for the same reason. Keep application-owned data in React state, a JavaScript field, or a `WeakMap` keyed by the wrapper. `isFloating()` only reports GObject reference ownership; it cannot replace arbitrary stored data.
 
 A method named `on<SignalName>` is now installed as that signal's class-closure default handler, GJS-style, when the type actually carries a signal of that name. This is new behavior applied to old code: a helper you called `onShow` on a `Gtk.Widget` subclass now runs on every `show` emission. Rename any `on`-prefixed method that was never meant to be a handler. A name that does not match a real signal is left alone.
 

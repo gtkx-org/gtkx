@@ -1,6 +1,6 @@
 # Native Storybook example
 
-Complete the [workspace setup](../../website/contributing/development.md), then run from the repository root:
+Complete the [workspace setup](../../CONTRIBUTING.md#set-up-the-workspace), then run from the repository root:
 
 ```sh
 pnpm nx dev storybook-example
@@ -16,7 +16,7 @@ Select a counter story, edit Controls, then click the preview button and inspect
 
 The confirmation story opens a dialog; the progress story owns a window that closes when you leave it. Shared decorators and initial globals live in `.storybook/preview.tsx`.
 
-The same stories run as native integration fixtures. The three tests demonstrate shared decorators and argument overrides, dialog interaction, and window cleanup:
+The same stories run as native integration fixtures. The tests demonstrate shared decorators and argument overrides, dialog interaction, and window cleanup:
 
 ```sh
 pnpm nx test storybook-example

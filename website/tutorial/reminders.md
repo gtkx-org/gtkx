@@ -6,6 +6,8 @@ description: "Send one desktop reminder for each due date, with actions that sur
 
 [Reorder Tasks](/tutorial/drag-to-reorder) completed task-list interaction. This chapter sends a desktop notification when a task enters its reminder window and keeps notification actions working when they launch the app.
 
+Reminders are checked while the app is running. Closing Tasks stops the timer; installing the app allows actions on an already-sent notification to reopen it, but does not schedule reminders in the background.
+
 ## Remember which due date was notified
 
 The reminder marker belongs to the task because tasks already persist. Add it to `Task` in `src/types.ts`:

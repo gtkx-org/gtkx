@@ -12,7 +12,7 @@ import {
     documentationLink,
     type DocumentationVersion,
     GUIDE_ROOT,
-    guideItems,
+    guideGroups,
     isDocumentationPath,
     normalizeDocumentationPath,
     REFERENCE_ROOT,
@@ -145,7 +145,9 @@ const versionReferenceSidebar = (version: DocumentationVersion): DefaultTheme.Si
     referenceSidebars.get(version.id) ?? [];
 
 const guideSidebar = (version: DocumentationVersion): DefaultTheme.SidebarItem[] => [
-    ...sidebarItems(version, guideItems),
+    ...guideGroups
+        .map((group) => ({ text: group.text, items: sidebarItems(version, group.items) }))
+        .filter((group) => group.items.length > 0),
     { text: "API Reference", link: documentationLink(version, REFERENCE_ROOT) },
 ];
 
@@ -173,12 +175,25 @@ const blogSidebar: DefaultTheme.SidebarItem[] = [
 ];
 
 const navigation = (version: DocumentationVersion): DefaultTheme.NavItem[] => [
-    { text: "Guide", link: documentationLink(version, GUIDE_ROOT) },
-    { text: "Tutorial", link: documentationLink(version, TUTORIAL_ROOT) },
-    { text: "Reference", link: documentationLink(version, REFERENCE_ROOT) },
-    { text: "Contributing", link: `/${CONTRIBUTING_ROOT}`, activeMatch: "^/contributing/" },
-    { text: "Blog", link: "/blog/" },
+    { text: "Guide", link: documentationLink(version, GUIDE_ROOT), activeMatch: `${version.prefix}/guide/` },
+    { text: "Tutorial", link: documentationLink(version, TUTORIAL_ROOT), activeMatch: `${version.prefix}/tutorial/` },
+    {
+        text: "API Reference",
+        link: documentationLink(version, REFERENCE_ROOT),
+        activeMatch: `${version.prefix}/reference/`,
+    },
     { text: "Examples", link: `https://github.com/gtkx-org/gtkx/tree/${version.examplesRef}/examples` },
+    {
+        text: "Project",
+        activeMatch: "^/(contributing/|blog/|versions)",
+        items: [
+            { text: "Contributing", link: `/${CONTRIBUTING_ROOT}` },
+            { text: "Blog", link: "/blog/" },
+            { text: "Releases", link: "https://github.com/gtkx-org/gtkx/releases" },
+            { text: "Discussions", link: "https://github.com/gtkx-org/gtkx/discussions" },
+            { text: "Documentation Versions", link: "/versions" },
+        ],
+    },
     { component: "VersionSelect" },
 ];
 

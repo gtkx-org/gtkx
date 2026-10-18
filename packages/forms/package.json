@@ -12,7 +12,8 @@
         "react-hook-form",
         "forms",
         "linux",
-        "desktop"
+        "desktop",
+        "validation"
     ],
     "homepage": "https://gtkx.dev",
     "bugs": {

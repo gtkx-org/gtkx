@@ -1,7 +1,7 @@
 {
     "name": "@gtkx/runtime",
     "version": "2.0.0-beta.11",
-    "description": "Runtime support for generated GTKX bindings.",
+    "description": "Runtime for generated GObject Introspection bindings in GTKX.",
     "keywords": [
         "gtkx",
         "gtk",
@@ -12,7 +12,8 @@
         "bindings",
         "typescript",
         "linux",
-        "desktop"
+        "desktop",
+        "gobject-introspection"
     ],
     "homepage": "https://gtkx.dev",
     "bugs": {

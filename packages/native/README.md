@@ -2,16 +2,12 @@
 
 Native addon for GTKX foreign-function calls.
 
-This is an internal GTKX package. The Rust addon calls system GObject libraries through libffi and manages native memory, with all native functions exported from `@gtkx/native`. It is installed through GTKX runtime dependencies; application code uses the generated `@gtkx/gi` bindings. Prebuilt binaries target x64 and arm64 glibc Linux.
+This internal Rust addon calls system libraries through libffi, integrates the GLib and Node.js event loops, and manages native memory. GTKX installs it through runtime dependencies; application code normally uses the generated `@gtkx/gi` bindings. Prebuilt binaries target x64 and arm64 glibc Linux.
 
-Generated bindings and `@gtkx/runtime` describe signatures, ABI layouts, transfer rules, and JavaScript behavior. The addon acquires native references, owns temporary storage and callback trampolines, transfers ownership, and releases memory. JavaScript can request allocations and provide native copy/free symbols through descriptors; it does not manually balance native references or choose when a handle is freed.
-
-Native-owned handles normally follow JavaScript garbage collection. Native code also manages scoped temporaries and dependencies that must survive a call, property assignment, or wrapper teardown. Application operations such as closing a window or finishing a Cairo surface retain their library-defined behavior.
-
-Calls accept a compiled signature and an owned executable handle separately. Native validates the executable lifetime on every invocation. Reference storage belongs to a specific compiled argument and retains its seed owners before further JavaScript conversions can run; native consumes that storage once and settles its ownership transfers.
+Generated bindings and `@gtkx/runtime` describe call signatures and ownership rules. The addon manages native references, temporary storage, callbacks, and memory release. See [Native Runtime](https://gtkx.dev/contributing/native-runtime) for its architecture and ownership contracts.
 
 [Guide](https://gtkx.dev/v2/guide/getting-started) · [GTKX](https://gtkx.dev)
 
-GTKX runs on Linux with Node.js and system native libraries. See [Getting Started](https://gtkx.dev/v2/guide/getting-started) for supported versions and installation. This README describes the 2.0 beta.
+**GTKX 2.0 beta.** Requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started).
 
 [MPL-2.0](https://github.com/gtkx-org/gtkx/blob/main/LICENSE).

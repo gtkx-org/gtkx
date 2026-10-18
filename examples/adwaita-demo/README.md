@@ -6,7 +6,7 @@ The official [libadwaita 1.9.3 demo](https://github.com/GNOME/libadwaita/tree/57
 
 ## Run
 
-Follow the [workspace setup](../../CONTRIBUTING.md#set-up-the-workspace). This example requires libadwaita 1.9 or later for its sidebar and shortcuts widgets. The initial reference environment uses libadwaita 1.9.3 and GTK 4.22.4.
+Follow the [workspace setup](../../CONTRIBUTING.md#set-up-the-workspace). This example requires libadwaita 1.9 or later for its sidebar widgets. The initial reference environment uses libadwaita 1.9.3 and GTK 4.22.4.
 
 From the repository root:
 

@@ -44,7 +44,7 @@ npm test
 
 This setup was checked in the Fedora 44 environment described in [Getting Started](/v2/guide/getting-started#native-libraries-on-fedora-44). See the [plugin reference](/v2/reference/@gtkx/vitest/) for display size and compositor options.
 
-Importing `@gtkx/testing` registers widget matchers and automatic cleanup. No additional setup file is needed.
+With the GTKX Vitest plugin, importing `@gtkx/testing` registers widget matchers and automatic cleanup. No additional setup file is needed.
 
 The private session bus contains GTKX's minimal notifications service. Other desktop services, such as portals and keyrings, are absent; provide any D-Bus services the component under test needs on that bus.
 
@@ -116,7 +116,7 @@ Use `slide(range, value)` for a slider. `drag` drives authored drag gestures and
 
 Use `dragAndDrop(source, target)` to transfer a drag source's typed content to a `GtkDropTarget`. Use `drop(target, content)` when testing how a target handles a supplied value.
 
-`fireEvent(object, signalName, ...args)` emits a GObject signal directly. Use it when testing a signal handler or a tree without a visible window. Wrap state changes made outside these helpers in `act`.
+`fireEvent(object, signalName, ...args)` emits a GObject signal directly. Await its promise so the resulting React updates finish before asserting. Use it when testing a signal handler or a tree without a visible window. Wrap state changes made outside these helpers in `act`.
 
 For asynchronous assertions, use `waitFor`; for a widget leaving the tree, use `waitForElementToBeRemoved`. Their timeout defaults to one second and can be changed per call or through `configure`.
 

@@ -13,7 +13,7 @@ description: "Render lists, tables, dropdowns, and toast notifications from Reac
 npm install @gtkx/components@1.6.0
 ```
 
-Full prop lists are in the [@gtkx/components reference](/reference/@gtkx/components/), and the hooks that bridge GObject state into React ship with `@gtkx/react`, whose signatures are in the [@gtkx/react reference](/reference/@gtkx/react/).
+See the [component reference](/reference/@gtkx/components/) for props. Hooks that connect GObject state to React come from [`@gtkx/react`](/reference/@gtkx/react/).
 
 ## List components
 
@@ -85,7 +85,7 @@ import { DropDown } from "@gtkx/components";
 
 ### GtkListBox
 
-Not every list wants a model. `Gtk.ListBox` takes its rows as children, so it needs no component wrapper: `<GtkListBox>` from `@gtkx/jsx/gtk` is a plain JSX element, and a sidebar or a settings list is data mapped to `<AdwActionRow>` children. What it does add is `selectedIndex`, which makes the box's own selection a controlled prop:
+`GtkListBox` takes JSX rows directly, making it suitable for short lists such as a sidebar or settings group. Its `selectedIndex` prop controls the selected row:
 
 ```tsx
 import { AdwActionRow } from "@gtkx/jsx/adw";

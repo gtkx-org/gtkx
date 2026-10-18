@@ -44,7 +44,7 @@ npm test
 
 This setup was checked in the Fedora 44 environment described in [Getting Started](/guide/getting-started#native-libraries-on-fedora-44). See the [plugin reference](/reference/@gtkx/vitest/) for display size and compositor options.
 
-Importing `@gtkx/testing` registers widget matchers and automatic cleanup. No additional setup file is needed.
+With the GTKX Vitest plugin, importing `@gtkx/testing` registers widget matchers and automatic cleanup. No additional setup file is needed.
 
 ### Sway in a restricted container
 

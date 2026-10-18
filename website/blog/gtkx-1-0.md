@@ -14,10 +14,10 @@ GTKX is the React framework for Linux. It provides the missing declarative layer
 
 GTKX runs React on Node.js and renders native widgets. Components describe the interface for the current state, React updates the widget tree, and Fast Refresh applies edits to the running app. Node APIs and compatible npm libraries are available alongside GTK and Gio.
 
-Scaffold an app and the rest of this post is what you get:
+This post describes GTKX 1.0. To follow the maintained 1.x documentation, scaffold a 1.x app:
 
 ```bash
-npm create gtkx
+npm create gtkx@1
 ```
 
 It needs Linux, Node.js 24 or later, and the GTK4 and GLib development packages. [Getting Started](/guide/getting-started) covers the first run.

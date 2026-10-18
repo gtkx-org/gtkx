@@ -12,23 +12,25 @@ Most generated methods accept JavaScript values directly. This guide covers the 
 GTKX accepts a registered class wherever a binding takes a GType:
 
 ```ts
-import * as Gio from "@gtkx/gi/gio";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 
-const store = Gio.ListStore.new(Gtk.Label);
+const isWidget = GObject.typeIsA(Gtk.Label, Gtk.Widget);
 ```
 
 Generated classes and interfaces, and subclasses registered with `registerClass`, can be passed this way. A plain JavaScript subclass has no registration of its own. Returned GTypes and signal handler arguments remain `bigint` values.
 
 ## Passing a GValue
 
-When a binding reads a `GObject.Value`, GTKX usually accepts the JavaScript payload directly:
+When a binding reads a `GObject.Value`, GTKX usually accepts the JavaScript payload directly. For example, a `GtkDragSource` can use this `onPrepare` handler:
 
 ```ts
 import * as Gdk from "@gtkx/gi/gdk";
 
-const provider = Gdk.ContentProvider.newForValue("Copied text");
+const prepareDrag = () => Gdk.ContentProvider.newForValue("Copied text");
 ```
+
+`onPrepare` must return its provider synchronously, so this native callback creates it directly. Create persistent GObjects through JSX.
 
 Use an explicitly initialized `GObject.Value` when the operation requires a particular native type, including an interface type for clipboard or drag-and-drop matching. A binding that fills a value instead takes a new, uninitialized `GObject.Value`; its generated signature identifies this case. Signal handlers continue to receive the value object.
 
@@ -38,7 +40,7 @@ For nullable value parameters, `null` means no value object. To represent a type
 
 Returned byte sequences use `Uint8Array`; byte inputs accept `Uint8Array` or `number[]`. Returned `GObject.Value` objects are unpacked to their payloads, typed as `unknown`.
 
-Promisified operations omit a redundant success boolean when failure already rejects. Inout records and boxed values are updated in place without being repeated in the return value. See [Async Operations](/v2/guide/async-operations) for promise usage.
+Promisified operations omit a redundant leading success boolean from multi-value finish results; boolean-only results remain booleans. Inout records and boxed values are updated in place without being repeated in the return value. See [Async Operations](/v2/guide/async-operations) for promise usage.
 
 ## Next
 

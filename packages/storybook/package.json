@@ -10,7 +10,9 @@
         "react",
         "storybook",
         "csf",
-        "linux"
+        "linux",
+        "gnome",
+        "desktop"
     ],
     "homepage": "https://gtkx.dev",
     "bugs": {

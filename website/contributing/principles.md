@@ -85,7 +85,7 @@ Use `Rc` for Rust state confined to one thread. Do not add `Arc` for that state 
 
 ## Keep generation metadata free of native initialization
 
-Generation configuration and metadata must be importable without loading generated GI bindings or initializing the UI. Keep descriptions separate from native operations, as in [`element-config.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/element-config.ts) and [`element-behaviors.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/element-behaviors.ts). Preserve that boundary for new props, elements, and extensions.
+Generation configuration and metadata must be importable without loading generated GI bindings or initializing the UI. Keep descriptions separate from native operations, as in [`builtin-elements.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/config/src/builtin-elements.ts) and [`element-behaviors.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/react/src/element-behaviors.ts). Preserve that boundary for new props, elements, and extensions.
 
 ## Respect the native UI thread
 
@@ -95,15 +95,15 @@ Follow the owning-thread contract in [`runloop.rs`](https://github.com/gtkx-org/
 
 ## Test behavior at the right level
 
-Around 90% of the suite must be end-to-end or integration tests. Use consumer interfaces: render and interact with widgets, call generated bindings against real libraries, or build and run an installed application.
+Aim for roughly 80% integration, 10% end-to-end, and 10% unit coverage. Integration tests exercise framework code directly; end-to-end tests drive the real user interface. Use consumer interfaces: render and interact with widgets, call generated bindings against real libraries, or build and run an installed application.
 
-Do not add unit tests unless extremely complex logic needs exhaustive case coverage. Argue that exception explicitly; a pure function or routine helper does not qualify on that basis alone.
+Use unit tests for complex logic that benefits from focused case coverage. A pure function or routine helper does not need a test solely because it exists.
 
 Test observable behavior, never private helpers, intermediate values, or implementation details. Cover happy paths, supported edge cases, and errors. For errors, assert only that the operation throws or rejects and check status codes where applicable. Do not assert message text, logs, console formatting, or cosmetic details.
 
 ### Minimize mocks
 
-Use real implementations. Mocks are permitted only at filesystem and network boundaries, and should cover the smallest necessary surface. Do not mock the renderer, native bindings, or package internals. Use native fixtures, real widgets, isolated displays, and local services.
+Use real implementations. Use mocks only for slow operations or isolation that real behavior cannot provide, covering the smallest necessary surface. Do not mock the renderer, native bindings, or package internals. Use native fixtures, real widgets, isolated displays, and local services.
 
 [Testing](/contributing/testing) lists suites and commands.
 
@@ -131,4 +131,4 @@ Use **The React framework for Linux** as the slogan. GTKX is the product name. M
 
 Production behavior must serve consumers. Keep workspace layout, linking, cache, test, and build-orchestration fixes in repository configuration, scripts, fixtures, or the environment. Do not add production resolution fallbacks, path special cases, or concurrency mechanisms just to accommodate this checkout.
 
-Validate behavior in an ordinary consumer project. The [consumer and packaging checks](/contributing/testing#consumer-and-packaging-checks) exercise installed packages outside workspace imports.
+Validate behavior in an ordinary consumer project. The [consumer and packaging guidance](/contributing/testing#consumer-and-packaging-checks) distinguishes workspace fixtures from installed-package validation.

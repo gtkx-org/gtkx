@@ -7,7 +7,7 @@ description: "Await native operations, handle failures, and cancel work with Gio
 
 GTKX turns compatible GIR async/finish pairs into promise-returning methods. Await the method and handle failures with `try`/`catch`.
 
-The promise resolves to the finish function's useful results: one value directly, or a tuple for several. A leading success boolean is omitted when failure already throws; explicit finish methods keep their native return shape. For example, `loadContentsAsync` resolves to the contents and optional etag, while `replaceContentsAsync` resolves to the etag alone.
+The promise resolves to the finish function's useful results: one value directly, or a tuple for several. A leading success boolean is omitted when the finish function also returns output values and failure already throws. Boolean-only results and explicit finish methods keep their native return shape. For example, `loadContentsAsync` resolves to the contents and optional etag, while `replaceContentsAsync` resolves to the etag alone.
 
 Check the generated signature for the libraries your project binds. An `Async` suffix alone does not establish that a method returns a promise. Some GIO operations, including the closure-based `copyAsync` and `moveAsync`, retain their callback form.
 

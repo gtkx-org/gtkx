@@ -67,4 +67,4 @@ If an existing version has a missing or incorrect channel tag, the retry fails r
 
 If the GitHub release was published but the Website dispatch failed, rerun only the failed `publish-release` job. It recognizes the already-published release and retries the Website dispatch without changing the immutable release. Starting a new full Publish run still requires a draft.
 
-The registry visibility timeout is ten minutes per package. `GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS` overrides it for `pnpm release` or the publish scripts. It must be a positive integer in milliseconds; invalid values fail before upload. Beta 5 took three to four minutes to become visible.
+The registry visibility timeout is ten minutes per package. `GTKX_PUBLISH_VISIBILITY_TIMEOUT_MS` overrides it for `pnpm release` or the publish scripts. It must be a positive integer in milliseconds; invalid values fail before upload.

@@ -2,7 +2,7 @@
 
 A small browser using WebKitGTK, native navigation controls, and React state.
 
-Complete the [workspace setup](../../website/contributing/development.md), including the WebKitGTK 6.0 development package. Then run from the repository root:
+Complete the [workspace setup](../../CONTRIBUTING.md#set-up-the-workspace), including the WebKitGTK 6.0 development package. Then run from the repository root:
 
 ```bash
 pnpm --filter browser dev

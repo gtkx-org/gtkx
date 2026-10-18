@@ -177,16 +177,16 @@ Install navigation and CSS support from the project directory:
 ::: code-group
 
 ```bash [npm]
-npm install @gtkx/navigation@1.6.0 @gtkx/css@1.6.0
+npm install @gtkx/navigation@1.6.0 @gtkx/css@1.6.0 @react-navigation/core@^7
 ```
 
 ```bash [pnpm]
-pnpm add @gtkx/navigation@1.6.0 @gtkx/css@1.6.0
+pnpm add @gtkx/navigation@1.6.0 @gtkx/css@1.6.0 @react-navigation/core@^7
 ```
 
 :::
 
-GTKX integrates React Navigation with libadwaita. Its split view navigator uses `AdwNavigationSplitView`: the first declared screen is the sidebar, and the remaining screens share a content stack. It supplies each screen's navigation page and header bar.
+Install `@react-navigation/core` directly because [Edit Tasks](/tutorial/the-task-editor) augments its types. GTKX integrates React Navigation with libadwaita. Its split view navigator uses `AdwNavigationSplitView`: the first declared screen is the sidebar, and the remaining screens share a content stack. It supplies each screen's navigation page and header bar.
 
 Create `src/navigation.ts`:
 

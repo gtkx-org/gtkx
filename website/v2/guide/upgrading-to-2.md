@@ -1,11 +1,11 @@
 ---
 title: "Upgrading to 2.0"
-description: "Move a GTKX 1.x application to the final GTKX 2 behavior."
+description: "Migrate a GTKX 1.x application to GTKX 2, including configuration, imports, and native API changes."
 ---
 
 # Upgrading to 2.0
 
-GTKX 2.0 makes the behaviors previewed in 1.6 unconditional and removes their compatibility APIs. Upgrade all `@gtkx/*` packages together, then work through this checklist.
+GTKX 2.0 is in beta. It makes the behaviors previewed in 1.6 unconditional and removes their compatibility APIs. [Prepare on 1.6](/guide/upgrading-to-2#prepare-on-1-6), then upgrade your installed `@gtkx/*` packages to the same 2.0 beta and work through this checklist. Do not install `@gtkx/gi` or `@gtkx/jsx`; codegen creates them for the project.
 
 Upgrade to Node.js 26.7 or newer and set `"type": "module"` in `package.json`; GTKX packages are ESM-only and explicitly reject `require()`. Localized projects also need GNU gettext 0.25 or newer.
 
@@ -30,7 +30,7 @@ The `"*"` wildcard is gone, and explicitly listing `Adw-1` or `Gtk-4.0` is rejec
 
 - GIR byte sequences are `Uint8Array`. Check code using array mutation, `Array.isArray`, or JSON serialization.
 - A returned `GObject.Value` is unwrapped and typed `unknown`; narrow it at the call site.
-- Promisified finish methods omit a leading success boolean when failure already rejects. `loadContentsAsync` resolves to `[Uint8Array, string | null]`.
+- Promisified methods omit a leading success boolean from multi-value finish results when failure already rejects. `loadContentsAsync` resolves to `[Uint8Array, string | null]`.
 - Inout records and boxed values mutate the object passed in instead of repeating it in the return value.
 - Assets use relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports.
 - Generated classes register with their own definitions, so production builds retain only reached bindings. Import a class if `GObject.typeFromName` must find it.
@@ -58,6 +58,8 @@ import { ComboRow, ToastProvider, useToast } from "@gtkx/components";
 
 Use `useToast().dismissAll()` in place of `useToastOverlay().dismissAll()`. `show()` returns the native `Adw.Toast`; call its `dismiss()` method to dismiss that toast. The forwarding `useToast().dismiss(toast)` method and `ToastOverlayController` type are removed.
 
+## Update runtime imports
+
 Import `createElementComponent` from `@gtkx/react` instead of `@gtkx/react/config`. The config subpath remains for renderer behavior and element registration APIs.
 
 Subscribe to native logs with `onLog(listener)` from `@gtkx/runtime` and release the subscription with `unsubscribe()`. The native addon is an internal implementation detail; application code should import runtime APIs.
@@ -68,23 +70,13 @@ The generated wrapper-retention helper `retainWrapperClasses` now belongs to `@g
 
 Use generated APIs instead of the removed runtime backing exports: `GObject.getProperty` and `GObject.setProperty`, ParamSpec accessors such as `spec.flags`, a `GObject.Value` instance's `getBoxed()` and `setBoxed()` methods, `GLib.Regex` matching methods, and generated class-structure methods. Replace `GObject.paramSpecOverride(name, source)` with `GObject.ParamSpec.override(name, source)`.
 
-Application lifecycle methods and the Variant class belong to their generated namespaces:
+## Update application lifecycle code
 
-```ts
-import * as Adw from "@gtkx/gi/adw";
-import { Variant } from "@gtkx/gi/glib";
-
-const application = new Adw.Application({ applicationId: "org.example.App" });
-const target = new Variant("(s)", ["task-id"]);
-```
+React applications should keep rendering `AdwApplication` and `AdwApplicationWindow` through JSX. The replacements below apply to code that manages an application lifecycle directly.
 
 Replace `createApplication(ApplicationClass, props)` and `ApplicationClass.create(props)` with `new ApplicationClass(props)`. This works for Gio, Gtk, Adw, and custom application subclasses. Replace `getApplicationInstance(application)` and `application.getRegistrationState()` with `application.getIsRegistered()` and, once registered, `application.getIsRemote()`. Use the `activate` signal to build the primary instance's UI and the `runAsync(argv)` promise to observe completion.
 
-The `ApplicationInstance`, `ApplicationRegistrationState`, `ApplicationClass`, and `ApplicationConstructor` helper types are removed. Use generated application classes and their constructor props directly. The Variant `ByteArray` type is now `VariantByteArray` in `@gtkx/gi/glib`. Use `Gio.Application` in place of the removed `CommandLineApplication` interface. Runtime shutdown remains `quit()` from `@gtkx/runtime`.
-
-The `toVariant` and `fromVariant` helpers are removed. Replace `toVariant(signature, value)` with `new GLib.Variant(signature, value)`, `fromVariant(value)` with `value.deepUnpack()`, and recursive `fromVariant` calls with `value.recursiveUnpack()`. For native replies, `fromVariant("(s)", reply)` becomes `reply.deepUnpack<"(s)">()`. `FromVariantOptions` and `RecursiveFromVariantOptions` are removed too.
-
-Variant dictionaries now use objects for every key type; replace `Map` inputs and reads with object properties. GTKX continues to use exact `bigint` values for 64-bit integers. See [Calling D-Bus directly](/v2/guide/async-operations#calling-d-bus-directly) for the unpacking modes and GJS compatibility aliases.
+The `ApplicationInstance`, `ApplicationRegistrationState`, `ApplicationClass`, and `ApplicationConstructor` helper types are removed. Use generated application classes and their constructor props directly. Use `Gio.Application` in place of the removed `CommandLineApplication` interface. Runtime shutdown remains `quit()` from `@gtkx/runtime`.
 
 Replace `runApplication(application, argv)` with `application.runAsync(argv): Promise<number>` and `quitApplication(application)` with `application.quit()`. Pass an array beginning with the program name, or `null` or `[]` for no arguments; omitting the argument is an error. `RunApplicationResult` is removed. Command-line handling starts immediately while Node keeps control of the event loop. Observe the promise's exit status and handle startup or shutdown rejections.
 
@@ -93,6 +85,14 @@ An active run finishes automatically when it has no application windows or outst
 GTKX tracks JavaScript holds and application windows; it cannot observe arbitrary holds acquired directly by native C code. Explicit holds survive forced shutdown and must still be balanced with `release()`; an unmatched release throws `RangeError`. Full native shutdown can run only once per instance; restarted applications and those already quit by native code may retain registration until finalization. Create another application when another complete lifecycle is needed.
 
 React holds an application until its first activated tree commits. React's `quit()`, `root.unmount()`, and `root.render(null)` remove the UI while allowing explicit background holds to keep the application running. Release those holds when the work finishes. If initial asynchronous rendering or Suspense commits without a window, hold the application until that work can create one.
+
+## Update Variant values
+
+Import `Variant` from `@gtkx/gi/glib`; its `ByteArray` type is now `VariantByteArray` in that namespace.
+
+The `toVariant` and `fromVariant` helpers are removed. Replace `toVariant(signature, value)` with `new GLib.Variant(signature, value)`, `fromVariant(value)` with `value.deepUnpack()`, and recursive `fromVariant` calls with `value.recursiveUnpack()`. For native replies, `fromVariant("(s)", reply)` becomes `reply.deepUnpack<"(s)">()`. `FromVariantOptions` and `RecursiveFromVariantOptions` are removed too.
+
+Variant dictionaries now use objects for every key type; replace `Map` inputs and reads with object properties. GTKX continues to use exact `bigint` values for 64-bit integers. See [Calling D-Bus directly](/v2/guide/async-operations#calling-d-bus-directly) for the unpacking modes and GJS compatibility aliases.
 
 ## Move GObject ownership into JSX
 

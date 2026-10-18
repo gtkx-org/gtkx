@@ -1,13 +1,13 @@
 # @gtkx/codegen
 
-Generate TypeScript bindings and JSX elements from GIR libraries.
+Generate TypeScript and JSX bindings from GObject Introspection data.
 
-GTKX uses this package to generate `@gtkx/gi`, `@gtkx/jsx`, and the project widget reference. In applications, declare native libraries in `gtkx.config.ts` and run `npm run codegen`; direct use of the generator is intended for tooling.
+GTKX reads GObject Introspection Repository (GIR) files to generate `@gtkx/gi`, `@gtkx/jsx`, and the project widget reference. In applications, declare native libraries in `gtkx.config.ts` and run `npm run codegen`; direct use of the generator is intended for tooling.
 
-Library overrides are ordinary TypeScript modules in `overrides/<namespace>/overrides/`. The generator compiles them into the same package as the generated declarations, connects their exports through each namespace barrel, and installs prototype patches through namespace bootstrap. Override implementations import concrete generated classes; runtime supplies the native marshalling and lifetime primitives. Run `pnpm nx run @gtkx/codegen:typecheck` to check these sources against freshly generated bindings.
+Contributors can add library overrides in `overrides/<namespace>/overrides/`. See [Code Generation](https://gtkx.dev/contributing/code-generation) for the generation pipeline and override conventions.
 
 [Guide](https://gtkx.dev/v2/guide/configuration-and-codegen) · [API reference](https://gtkx.dev/v2/reference/@gtkx/codegen/) · [GTKX](https://gtkx.dev)
 
-GTKX runs on Linux with Node.js and system native libraries. See [Getting Started](https://gtkx.dev/v2/guide/getting-started) for supported versions and installation. This README describes the 2.0 beta.
+**GTKX 2.0 beta.** Requires Linux, Node.js, and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started).
 
 [MPL-2.0](https://github.com/gtkx-org/gtkx/blob/main/LICENSE).

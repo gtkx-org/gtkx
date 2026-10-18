@@ -1,38 +1,27 @@
-# Adwaita demo implementation plan
+# Adwaita demo implementation notes
 
-Reimplement the official libadwaita 1.9.3 demo in GTKX, preserving its layouts, controls, native interactions, and adaptive behavior. The reference is GNOME/libadwaita commit `5789add99c79cee0fae624b56706c7c0bea7fb2b`. The community implementation mentioned in Discussion 791 is inspiration only; implementation follows the official C and UI sources.
+This example reimplements the official [libadwaita 1.9.3 demo](https://github.com/GNOME/libadwaita/tree/5789add99c79cee0fae624b56706c7c0bea7fb2b/demo), pinned to commit `5789add99c79cee0fae624b56706c7c0bea7fb2b`. Use its C and UI sources when comparing behavior. See the [README](README.md) for run commands, known native-library differences, and licensing.
 
-## Milestones
+These notes describe the completed implementation and the checks to repeat when changing it. The [page registry](src/page-registry.ts) defines the sidebar's categories and order.
 
-- [x] Create `feat/adwaita-demo` and check out the pinned reference.
-- [x] Prove native tab creation and transfer, animation allocation, and multi-layout identity.
-- [x] Add workspace configuration, application shell, search, grouped sidebar, resources, and Welcome.
-- [x] Implement controls, lists, feedback, and dialog pages.
-- [x] Implement adaptive navigation, carousel, bottom sheet, multi-layout, preferences, and shortcuts.
-- [x] Implement Avatar file workflows and the complete style gallery.
-- [x] Complete timed and spring animation controls.
-- [x] Complete tab operations, overview, transfer, and window lifecycle.
-- [x] Verify the running application, production output, types, formatting, lint, and relevant integration suites.
-- [x] Finish README, source and asset notices, and contributor documentation.
+## Behavior to preserve
 
-## Parity checklist
-
-| Page              | Required observable behavior                                                                                                                     |
+| Page              | Observable behavior                                                                                                                              |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Welcome           | Native toolbar and introductory status page                                                                                                      |
-| Navigation View   | Four tagged pages, branching navigation, native back                                                                                             |
+| Navigation View   | Tagged pages, branching navigation, native back                                                                                                  |
 | Split Views       | Navigation and overlay dialogs; collapse, show/hide, start/end placement                                                                         |
-| View Switcher     | Four views; switcher moves below at 550sp without losing selection                                                                               |
+| View Switcher     | Views; switcher moves below at 550sp without losing selection                                                                                    |
 | Tab View          | Editable tabs, overview, duplication, pinning, loading/attention/indicator, context actions, text drops, reordering and transfer between windows |
 | Bottom Sheet      | Native drag/open/close; bottom margin follows bar height                                                                                         |
 | Carousel          | Orientation, dots/lines, scroll-wheel and long-swipe controls; animated return                                                                   |
 | Boxed Lists       | Action, entry, password, spin, switch, combo, expandable and button rows                                                                         |
 | Toggle Groups     | Text, icon, alignment and camera-mode groups                                                                                                     |
-| Buttons           | Six split-button variants and menus                                                                                                              |
+| Buttons           | Split-button variants and menus                                                                                                                  |
 | Banner            | Reveal, text, button label and style; action feedback                                                                                            |
 | Toasts            | Simple, long, repeated action, undo, current/all dismissal                                                                                       |
 | Spinner           | Native spinner paintable                                                                                                                         |
-| Avatar            | Initials, text, size, image open/remove/export, 30 contacts                                                                                      |
+| Avatar            | Initials, text, size, image open/remove/export, contact gallery                                                                                  |
 | Alert Dialog      | Responses, default/cancel semantics, result toast                                                                                                |
 | About Dialog      | Typeset sample metadata, release notes, links, credits and legal sections                                                                        |
 | Clamp             | Maximum size, threshold, length unit                                                                                                             |
@@ -41,42 +30,34 @@ Reimplement the official libadwaita 1.9.3 demo in GTKX, preserving its layouts, 
 | Style Classes     | Complete gallery, responsive rows, nested status/sidebar dialogs                                                                                 |
 | Animations        | Timed/spring parameters; play/pause/resume/reset/skip and state-sensitive controls                                                               |
 
-The shell starts at 1000 by 720, collapses at 500sp, supports sidebar filtering and its empty state, and recreates page-local state when selecting a different page. Include preferences and subpages, shortcuts, Inspector, adaptive preview, and GTKX application About metadata.
+The shell starts at 1000 by 720, collapses at 500sp, supports sidebar filtering and its empty state, and recreates page-local state when selecting a different page. Its menu provides preferences and subpages, shortcuts, Inspector, adaptive preview, and GTKX application About metadata.
 
-## Implementation constraints
+## Implementation boundaries
 
-Use generated JSX and public native APIs. All widget trees are JSX and signal handlers are props. Keep page-specific components together. Native operations remain native; synchronize React state with user-driven changes. Avoid non-null assertions, double casts through unknown, and inline implementation comments.
+Keep widget trees in JSX and signals in props, using generated bindings and public native APIs. Keep page-specific components together and synchronize React state with native user interactions. Independent tab windows remain open after the main window closes; closing the last window exits the application.
 
-Tab creation callbacks must return native objects synchronously. Transfers must preserve widget identity, page state, and cleanup after subsequent rerenders. Resolve any renderer gap in the framework with observable integration coverage rather than bypassing JSX ownership in the example.
+The [tab demo](src/pages/tab-view.tsx) uses `createTabCollection` to preserve page identity and React state across windows. Tab creation callbacks return native objects synchronously. Transfers must preserve editing state and cleanup after later renders and source-window closure. Window creation, focus, close decisions, and animation playback remain event-driven native operations.
+
+The [animation demo](src/pages/animations.tsx) uses `GtkCustomLayout`. Its callbacks must remain valid for the layout's lifetime, including after garbage collection. Text direction, About metadata, tab drop targets, and pinning use declarative props. Imported CSS uses the standard GTKX build pipeline.
+
+If a change exposes a renderer limitation, add observable regression coverage in the relevant framework package. Preserve JSX ownership in the example. Existing package tests cover tab transfers and cleanup, native callback ownership, object slots, selection and adjustment initialization, and stylesheet updates.
 
 ## Validation
 
-Use libadwaita 1.9.3 and GTK 4.22.4 as the initial tested environment. Verify CI's actual GIR availability before claiming compatibility. Inspect all pages through the running app and MCP, including matching reference screenshots, wide/narrow sizes, light/dark, high contrast, RTL, keyboard focus, and repeated open/close. Check real desktop gestures and file dialogs separately from direct signal-based integration tests.
+The original implementation was checked with libadwaita 1.9.3 and GTK 4.22.4. Those versions describe the reference environment, not a compatibility guarantee for other native-library versions. CI's packages are defined in [the CI image](../../.github/ci/Dockerfile).
 
-Framework regressions belong in package integration suites. Keep native interface happy paths small; do not add an example test suite unless it teaches testing. Run example build/typecheck/lint, focused affected package tests, and production resource checks. Published framework changes require a version plan.
+For changes to the demo:
 
-## Resources
+- Run the affected example and framework build, typecheck, lint, and integration checks described in [CONTRIBUTING.md](../../CONTRIBUTING.md).
+- Inspect affected pages in the running app through MCP, using the same native-library versions as the reference for screenshot comparisons.
+- Check wide and narrow layouts, light and dark themes, high contrast, RTL, and keyboard focus when the change affects layout or input.
+- Exercise desktop gestures and file dialogs directly. Signal-driven integration tests do not verify those paths.
+- Launch the production bundle and check its compiled icons and stylesheet.
 
-Track copied artwork in `data/upstream-assets.json`, preserve source metadata, and retain individual license notices. The upstream stylesheet and any adapted upstream material retain their applicable notices. The Typeset artwork has a separate CC BY-SA 4.0 source notice.
+For tab changes, check overview creation, duplication, pinning, closing, dragging a tab into another window, tearing off a tab, and editing after the source window closes. For animation changes, check playback controls and callback lifetime. For Avatar changes, export, reopen, and remove an image using a supported renderer.
 
-## Validation results
+The original live checks covered these flows, including the production bundle and adaptive preview. The native Cairo avatar-export limitation, style-gallery measurement warning, and toast-dismissal race are documented in the README with their tested library versions. Repeat the relevant checks after changes; historical results do not replace current validation.
 
-Validated against the installed native libadwaita 1.9.3 demo and its pinned C/UI sources on GTK 4.22.4. All 21 pages were inspected live. Interaction checks covered native navigation and resizing, carousel wheel input, bottom-sheet opening, retained multi-layout child identity, editable controls, alerts and toast undo, preferences subpages, sidebar filtering, shortcuts, and adaptive preview. The shell was inspected in light, dark, high contrast, RTL, and phone preview modes.
+## Upstream resources
 
-Tab checks cover native overview creation, duplication, pinning, closing, editable state after transfer, source-window closure, and an actual desktop drag that tears off a tab. Framework integration coverage protects synchronous native callbacks and native widget identity across ownership changes. Timed and spring animations use the declarative `GtkCustomLayout` binding, which preserves layout identity when callbacks change and retains callbacks for the layout's lifetime. Integration coverage verifies callbacks after garbage collection and their release when the layout becomes unreachable.
-
-Avatar export, reopening the saved PNG, and image removal were verified with GL. The Cairo export fallback and the Style Classes check-button grid sizing warning were reproduced in native C independently of GTKX. The libadwaita 1.9.3 toast dismissal race was also reproduced in C; the example tracks and dismisses individual toasts to avoid it.
-
-Local checks: affected example/framework typecheck and lint; eight code-generation tests; ten configuration tests; 130 related renderer integration tests. All 55 resource-manifest entries match the pinned upstream bytes. CI uses Ubuntu 26.04 packages from `.github/ci/Dockerfile`; no CI run has been submitted by this local work.
-
-The final production bundle was launched and visually inspected on the isolated Wayland display, including its compiled icons and stylesheet. Build, typecheck, lint, and whitespace checks passed. Closing the main window preserves independent tab windows; closing the last tab exits the application.
-
-## Framework follow-up
-
-The demo now uses declarative `textDirection`, About dialog metadata, tab `extraDropTarget` and `pinned` props, and `GtkCustomLayout` callbacks. `createTabCollection` owns independent page roots across windows; window creation, focus, close decisions, and animation playback remain event-driven native operations. Imported CSS uses the standard GTKX pipeline.
-
-The follow-up fixes writable properties being applied twice, controlled selection/value loss when JSX models or adjustments attach, ignored JSX object slots on lazy elements, pinned tab reorder positions, custom layout callback lifetimes, and borrowed object return ownership in synthetic signal emission. Live migration also exposed a stylesheet injection module being consumed by Vite as browser CSS and missing stylesheet edit invalidation; both paths have an integration regression covering native styling and production execution.
-
-Live checks confirm tab pin/unpin, JSX icons, styled pages, editing after transfer and source-window closure, declarative About dialog credits, and timed/spring animation movement. Package regression coverage includes tab collection cleanup and identity, lazy icon replacement/removal/transfer, model and adjustment initialization/replacement, declarative metadata, and callback ownership under garbage collection.
-
-Follow-up checks passed: 815 renderer integration tests, 122 components tests, eight code-generation tests, ten configuration tests, 651 native ASan/LSan tests including callback/signal ownership fixtures, and the CLI’s dev/edit/production stylesheet regression. All affected TypeScript and lint checks, workspace reference synchronization, formatting, and whitespace checks pass. The final production bundle was launched separately and visually inspected with styled tab pages, JSX icons, overview thumbnails, and synchronous new-tab creation.
+Track reused artwork in [data/upstream-assets.json](data/upstream-assets.json), preserve its source metadata, and retain each license notice under `data/licenses`. The stylesheet and other adapted material retain their applicable notices. The Typeset artwork has a separate CC BY-SA 4.0 notice. Check resource paths and packaged bytes when changing assets.
