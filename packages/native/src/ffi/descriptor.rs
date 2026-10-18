@@ -8,11 +8,12 @@ use crate::ffi::codec::{
     ArrayBounds, ArrayCodec, ArrayKind, BigIntCodec, BoxedCodec, BoxedTypeSource, BufferCodec,
     BytesCodec, CallbackCodec, CallbackReleasePolicy, CallbackScope, Codec, DestroyNotifyKind,
     ElementOwnership, Encoder, FloatCodec, FundamentalCodec, HashTableCodec, IntegerCodec,
-    ObjectCodec, Ownership, RefCodec, StructCodec, VoidCodec,
+    MatchInfoCodec, ObjectCodec, Ownership, RefCodec, StructCodec, VoidCodec,
 };
 use crate::ffi::lifecycle::{
     FunctionResolver, RecordConverter, RecordConverterOptions, TypeResolver,
 };
+use crate::ffi::match_info::MatchInfoPlan;
 
 const MAX_DESCRIPTOR_DEPTH: u32 = 32;
 
@@ -175,6 +176,14 @@ pub enum Descriptor {
     },
     Void,
     Buffer,
+    /// A `GMatchInfo` whose subject is retained in a private boxed holder. The optional index
+    /// names an enclosing outbound call's buffer argument, including in callback descriptors.
+    /// Inputs must be borrowed; full ownership is supported for received values only.
+    /// Array and hash table elements cannot use this descriptor.
+    MatchInfo {
+        ownership: Ownership,
+        subject_arg_index: Option<u32>,
+    },
     Boxed {
         ownership: Ownership,
         type_name: String,
@@ -288,11 +297,22 @@ impl NestedDescriptor {
     }
 
     fn into_hash_table_key(self) -> Result<Box<Codec>> {
-        let codec = self.into_codec()?;
+        let codec = self.into_container_item()?;
         if matches!(codec.as_ref(), Codec::BigInt(kind) if !kind.is_direct_word()) {
             return Err(Error::new(
                 Status::InvalidArg,
                 "BigInt GHashTable keys have no supported storage contract",
+            ));
+        }
+        Ok(codec)
+    }
+
+    fn into_container_item(self) -> Result<Box<Codec>> {
+        let codec = self.into_codec()?;
+        if MatchInfoPlan::contains(&codec) {
+            return Err(Error::new(
+                Status::InvalidArg,
+                "MatchInfo cannot be used in array or hash table descriptors",
             ));
         }
         Ok(codec)
@@ -322,6 +342,13 @@ impl Descriptor {
             Self::Float64 => Codec::Float(FloatCodec::F64),
             Self::Void => Codec::Void(VoidCodec),
             Self::Buffer => Codec::Buffer(BufferCodec),
+            Self::MatchInfo {
+                ownership,
+                subject_arg_index,
+            } => Codec::MatchInfo(MatchInfoCodec {
+                ownership,
+                subject_arg_index: subject_arg_index.map(|index| index as usize),
+            }),
             Self::Bytes {
                 ownership,
                 length,
@@ -429,7 +456,7 @@ impl Descriptor {
                 is_zero_terminated,
             } => {
                 let mut codec = ArrayCodec::new(
-                    item_descriptor.into_codec()?,
+                    item_descriptor.into_container_item()?,
                     array_kind,
                     ownership,
                     ArrayBounds {
@@ -458,7 +485,7 @@ impl Descriptor {
                 ownership,
             } => Codec::HashTable(HashTableCodec {
                 key_codec: key_descriptor.into_hash_table_key()?,
-                value_codec: value_descriptor.into_codec()?,
+                value_codec: value_descriptor.into_container_item()?,
                 ownership,
             }),
             Self::Callback {

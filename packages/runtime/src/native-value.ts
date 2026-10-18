@@ -38,13 +38,14 @@ import {
 } from "./registry.js";
 import { resolveDescriptorType } from "./type.js";
 
-type MarshalledKind = "object" | "struct" | "boxed" | "fundamental" | "array" | "hashtable";
+type MarshalledKind = "object" | "struct" | "boxed" | "matchInfo" | "fundamental" | "array" | "hashtable";
 type MarshalledDescriptor = Extract<Descriptor, { kind: MarshalledKind }>;
 
 const MARSHALLED_KINDS: Set<Descriptor["kind"]> = new Set<MarshalledKind>([
     "object",
     "struct",
     "boxed",
+    "matchInfo",
     "fundamental",
     "array",
     "hashtable",
@@ -225,7 +226,8 @@ function fromNative(descriptor: Descriptor, value: unknown): unknown {
         case "struct": {
             return wrapHandle(value as ExternalObject<Handle> | null, (descriptor as StructDescriptor).wrapperClass);
         }
-        case "boxed": {
+        case "boxed":
+        case "matchInfo": {
             return boxedFromNative(descriptor, value);
         }
         case "fundamental": {
@@ -289,6 +291,7 @@ function toNative(descriptor: Descriptor, value: unknown): unknown {
         case "object":
         case "struct":
         case "boxed":
+        case "matchInfo":
         case "fundamental": {
             const instance = value as object | null | undefined;
 

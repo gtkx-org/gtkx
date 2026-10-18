@@ -58,6 +58,30 @@ const diagnostics = (root: string, source: string) => {
 };
 
 describe("generated bindings", () => {
+    it("generates MatchInfo consumers through regex methods and callbacks", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["GLib-2.0"], girPath: resolveGirPath(undefined, directory.path), gi });
+
+        expect(
+            diagnostics(
+                directory.path,
+                `import { type MatchInfo, type Regex, RegexMatchFlags } from "@gtkx/gi/glib";
+                declare const regex: Regex;
+                const [matched, info]: [boolean, MatchInfo] = regex.match("hello", RegexMatchFlags.DEFAULT);
+                export const fetched: string | null = info.fetch(0);
+                export const replaced: string = regex.replaceEval(
+                    "hello", 0, RegexMatchFlags.DEFAULT,
+                    (match: MatchInfo, result) => {
+                        result.append(match.fetch(0) ?? "");
+                        return false;
+                    },
+                );
+                export { matched };`,
+            ),
+        ).toEqual([]);
+    });
+
     it("omits closure and parameter reference sinking from generated consumers", async () => {
         using directory = createProject();
         const { gi } = resolveStore(directory.path);

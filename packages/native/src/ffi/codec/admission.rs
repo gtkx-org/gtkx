@@ -41,6 +41,7 @@ fn inline_record_capability(codec: &Codec) -> InlineRecordCapability {
         | Codec::Buffer(_)
         | Codec::HashTable(_)
         | Codec::Callback(_)
+        | Codec::MatchInfo(_)
         | Codec::Ref(_) => InlineRecordCapability::Unsupported,
     }
 }
@@ -103,6 +104,14 @@ fn validate_flow(codec: &Codec, flow: Flow) -> anyhow::Result<()> {
         "By-value records require a direct synchronous function input"
     );
     match codec {
+        Codec::MatchInfo(info) => {
+            anyhow::ensure!(
+                !matches!(flow, Flow::ToNative { retained: true })
+                    && (!matches!(flow, Flow::ToNative { .. }) || info.ownership.is_borrowed()),
+                "MatchInfo cannot transfer or retain a raw native pointer without its subject owner"
+            );
+            Ok(())
+        }
         Codec::Array(array) => {
             anyhow::ensure!(
                 !array.is_input_only() || matches!(flow, Flow::ToNative { .. }),
@@ -116,6 +125,10 @@ fn validate_flow(codec: &Codec, flow: Flow) -> anyhow::Result<()> {
             validate_flow(&table.value_codec, flow)
         }
         Codec::Callback(callback) => {
+            anyhow::ensure!(
+                callback.signature.match_info.is_none() || callback.scope == CallbackScope::Call,
+                "MatchInfo callbacks require call scope to retain their subject"
+            );
             validate_inline_callback_signature(&callback.arg_codecs, &callback.return_codec)
         }
         Codec::Ref(reference) => validate_flow(reference.inner_codec(), flow),

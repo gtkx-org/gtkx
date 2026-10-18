@@ -47,6 +47,8 @@ type T = {
     object: typeof helpers.objectT;
     /** Builds a descriptor for a `GBoxed` value of the named type. */
     boxed: typeof helpers.boxedT;
+    /** Builds a descriptor for a regex match that retains its subject. */
+    matchInfo: typeof helpers.matchInfoT;
     /** Builds a descriptor for a plain C struct. */
     struct: typeof helpers.structT;
     /** Builds a descriptor for a fundamental type whose lifetime is managed by named ref and unref functions. */
@@ -114,6 +116,7 @@ const t: T = {
     string: helpers.stringT,
     object: helpers.objectT,
     boxed: helpers.boxedT,
+    matchInfo: helpers.matchInfoT,
     struct: helpers.structT,
     fundamental: helpers.fundamentalT,
     ref: helpers.refT,

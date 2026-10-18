@@ -45,6 +45,7 @@ import {
     tGtype,
     tHashTable,
     tList,
+    tMatchInfo,
     tObject,
     tRef,
     tScalar,
@@ -766,9 +767,19 @@ const recordExpression = (
     resolved: Extract<EntityType, { kind: "record" }>,
     ownership: Ownership,
     placement: RecordPlacement = {},
-): string =>
-    fundamentalRecordPath(context, resolved, ownership, placement) ??
-    plainRecordExpression(context, resolved, ownership, placement);
+): string => {
+    if (resolved.namespace.name === "GLib" && resolved.value.name === "MatchInfo") {
+        return tMatchInfo(
+            ownership,
+            fallbackClassThunk(context, resolved.namespace.name, resolved.value.name, placement.isReceived === true),
+        );
+    }
+
+    return (
+        fundamentalRecordPath(context, resolved, ownership, placement) ??
+        plainRecordExpression(context, resolved, ownership, placement)
+    );
+};
 
 const flagsMask = (resolved: Extract<EntityType, { kind: "enum" }>): number =>
     resolved.value.members.reduce((mask, member) => (mask | Number(member.value)) >>> 0, 0);

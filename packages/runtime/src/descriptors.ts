@@ -54,6 +54,12 @@ type BoxedDescriptor = Extract<Descriptor, { kind: "boxed" }> & {
     fallbackClass?: () => AnyClass;
 };
 
+/** Descriptor for a `GMatchInfo` whose holder retains its subject storage. */
+type MatchInfoDescriptor = Extract<Descriptor, { kind: "matchInfo" }> & {
+    /** Retains and supplies the wrapper when none is registered. */
+    fallbackClass?: () => AnyClass;
+};
+
 /** Descriptor variant for a plain C struct, extended with the class its decoded value is wrapped in. */
 type StructDescriptor = Extract<Descriptor, { kind: "struct" }> & {
     /** Class a decoded value is wrapped in; without it the wrapper comes from the value's own GType. */
@@ -251,6 +257,28 @@ const objectT = (
 
     return result;
 };
+
+/**
+ * Builds a `GMatchInfo` descriptor that retains the searched subject.
+ * Inputs borrow the match for the call; full ownership is supported for received values only.
+ * MatchInfo values cannot be elements of array or hash-table descriptors.
+ *
+ * @param ownership Whether a decoded match transfers ownership to the caller.
+ * @param subjectArgIndex Position of the native-owned subject buffer in the enclosing outbound
+ * call, including when this descriptor belongs to a callback invoked by that call. Omit when
+ * the subject is already retained by a MatchInfo argument or an active enclosing call.
+ * @param fallbackClass Returns the wrapper class when none is registered for the holder type.
+ */
+const matchInfoT = (
+    ownership: Ownership = "borrowed",
+    subjectArgIndex?: number,
+    fallbackClass?: () => AnyClass,
+): MatchInfoDescriptor => ({
+    kind: "matchInfo",
+    ownership,
+    ...(subjectArgIndex === undefined ? {} : { subjectArgIndex }),
+    ...(fallbackClass === undefined ? {} : { fallbackClass }),
+});
 
 /** Wraps a descriptor in a pointer to it, for an output or inout argument. */
 const refT = (innerDescriptor: Descriptor, isInout = false): RefDescriptor =>
@@ -654,6 +682,7 @@ export {
     enumT,
     flagsT,
     boxedT,
+    matchInfoT,
     structT,
     fundamentalLifecycleFor,
     fundamentalT,

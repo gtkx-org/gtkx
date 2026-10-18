@@ -25,7 +25,7 @@ type TypedClass = {
     __type__: bigint;
 };
 
-type ResolvableKind = "enum" | "flags" | "boxed" | "fundamental" | "array";
+type ResolvableKind = "enum" | "flags" | "boxed" | "matchInfo" | "fundamental" | "array";
 type ResolvableDescriptor = Extract<Descriptor, { kind: ResolvableKind }>;
 
 const gTypeFromName = bind(LIB, "g_type_from_name", [stringT("borrowed")], biguint64T);
@@ -91,6 +91,7 @@ const TYPE_VARIANT: bigint = typeFromName("GVariant");
 /** GType tag for a Unicode character stored as `guint`. */
 const TYPE_UNICHAR: bigint = typeFromName("guint");
 const getErrorType: () => bigint = lazyType("GError");
+const getMatchInfoType = lazyType("GtkxMatchInfo");
 const getStrvType = (): bigint => resolveType(LIB, "g_strv_get_type");
 
 const PLAIN_DESCRIPTOR_TYPES: Partial<Record<Descriptor["kind"], bigint>> = {
@@ -119,6 +120,7 @@ const RESOLVABLE_DESCRIPTOR_KINDS: Set<Descriptor["kind"]> = new Set<ResolvableK
     "enum",
     "flags",
     "boxed",
+    "matchInfo",
     "fundamental",
     "array",
 ]);
@@ -278,6 +280,9 @@ function resolveDescriptorType(descriptor: Descriptor): bigint {
         }
         case "boxed": {
             return resolveBoxedType(descriptor);
+        }
+        case "matchInfo": {
+            return getMatchInfoType();
         }
         case "fundamental": {
             return resolveFundamentalType(descriptor);

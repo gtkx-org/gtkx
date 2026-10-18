@@ -67,6 +67,29 @@ describe("CLI commands", () => {
         expect(readFileSync(join(project.root, "keep.txt"), "utf8")).toBe("keep");
     });
 
+    it("preserves match wrappers when a production bundle imports only Regex", async () => {
+        using project = createProject({ codegen: true, libraries: ["GLib-2.0"] });
+        project.write(
+            "src/index.ts",
+            `import { Regex } from "@gtkx/gi/glib";
+            const regex = Regex.new("(hello)", 0, 0);
+            if (regex === null) throw new Error("Could not compile regex");
+            const [matched, info] = regex.match("hello", 0);
+            const replaced = regex.replaceEval("hello", 0, 0, (match, result) => {
+                result.append("[" + match.fetch(0) + "]");
+                return true;
+            });
+            process.stdout.write(JSON.stringify({ matched, matches: info.fetchAll(), replaced }));`,
+        );
+
+        await invoke(["build", "--cwd", project.root]);
+        const result = await promisify(execFile)(process.execPath, [join(project.root, "dist/bundle.mjs")], {
+            timeout: 30_000,
+        });
+
+        expect(JSON.parse(result.stdout)).toEqual({ matched: true, matches: ["hello", "hello"], replaced: "[hello]" });
+    });
+
     it("applies imported CSS in development and production, including stylesheet edits", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "style.txt");

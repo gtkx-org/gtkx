@@ -3,6 +3,7 @@ pub mod codec;
 pub mod descriptor;
 pub mod library_cache;
 pub mod lifecycle;
+pub(crate) mod match_info;
 
 mod slot;
 mod stash;

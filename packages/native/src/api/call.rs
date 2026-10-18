@@ -45,6 +45,32 @@ fn execute_call<'e>(
     result
 }
 
+fn encode_arguments(
+    env: Env,
+    signature: &FunctionSignature,
+    values: &[Unknown<'_>],
+    references: &[Option<ReferenceRequest<'_, '_>>],
+    retained: bool,
+) -> anyhow::Result<Vec<ffi::Stash>> {
+    signature
+        .arg_codecs
+        .iter()
+        .zip(values)
+        .zip(references)
+        .enumerate()
+        .map(|(i, ((codec, &value), reference))| {
+            let encoded = if let Some(reference) = reference {
+                reference.prepare(&env, retained)
+            } else if retained {
+                codec.encode_owned(&env, value)
+            } else {
+                codec.encode(&env, value)
+            };
+            encoded.with_context(|| format!("encoding arg {i} of {}", signature.label))
+        })
+        .collect()
+}
+
 fn execute_call_inner<'e>(
     env: &'e Env,
     signature: &FunctionSignature,
@@ -56,6 +82,10 @@ fn execute_call_inner<'e>(
     let label = &signature.label;
     let return_codec = &signature.return_codec;
     let arg_codecs = &signature.arg_codecs;
+    let subjects = signature
+        .match_info
+        .as_ref()
+        .map(ffi::match_info::SubjectScope::open);
 
     if let Either::A(array) = &values {
         anyhow::ensure!(
@@ -78,6 +108,9 @@ fn execute_call_inner<'e>(
                 anyhow::anyhow!("Argument production failed")
             })?,
         };
+        if let Some(subjects) = &subjects {
+            subjects.capture(index as usize, value)?;
+        }
         let reference = match codec {
             Codec::Ref(reference)
                 if !reference.inner_codec().is_scalar()
@@ -93,22 +126,16 @@ fn execute_call_inner<'e>(
         parsed_values.push(value);
         references.push(reference);
     }
-    let stashes = arg_codecs
-        .iter()
-        .zip(&parsed_values)
-        .zip(&references)
-        .enumerate()
-        .map(|(i, ((codec, &value), reference))| {
-            let encoded = if let Some(reference) = reference {
-                reference.prepare(env, completion_index.is_some())
-            } else if completion_index.is_some() {
-                codec.encode_owned(env, value)
-            } else {
-                codec.encode(env, value)
-            };
-            encoded.with_context(|| format!("encoding arg {i} of {label}"))
-        })
-        .collect::<anyhow::Result<Vec<ffi::Stash>>>()?;
+    let stashes = encode_arguments(
+        *env,
+        signature,
+        &parsed_values,
+        &references,
+        completion_index.is_some(),
+    )?;
+    if let Some(subjects) = &subjects {
+        subjects.validate()?;
+    }
 
     let completion = AsyncCompletion::resolve(completion_index, arg_codecs, &stashes)
         .with_context(|| format!("calling {label}"))?;

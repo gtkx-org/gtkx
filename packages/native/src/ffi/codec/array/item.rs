@@ -23,7 +23,11 @@ impl ItemCodec {
             Codec::Float(kind) => Self::Float(*kind),
             Codec::Bytes(_) => Self::Bytes,
             Codec::Array(_) | Codec::Buffer(_) => Self::Pointer,
-            Codec::Object(_) | Codec::Boxed(_) | Codec::Struct(_) | Codec::Fundamental(_) => {
+            Codec::Object(_)
+            | Codec::Boxed(_)
+            | Codec::MatchInfo(_)
+            | Codec::Struct(_)
+            | Codec::Fundamental(_) => {
                 unreachable!("handle-backed codecs are classified as pointers above")
             }
             Codec::Void(_) | Codec::HashTable(_) | Codec::Callback(_) | Codec::Ref(_) => {

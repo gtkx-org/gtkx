@@ -1,9 +1,7 @@
-import { installMatchInfo, matchAllRegex, matchRegex, replaceRegexEval } from "@gtkx/runtime/internal";
-import { MatchInfo as RawMatchInfo, Regex, type RegexEvalCallback, type RegexMatchFlags } from "../glib.js";
+import { createRegexBindings } from "@gtkx/runtime/internal";
+import { MatchInfo, Regex, type RegexEvalCallback, type RegexMatchFlags } from "../glib.js";
 
-export abstract class MatchInfo extends RawMatchInfo {}
-
-installMatchInfo(MatchInfo, RawMatchInfo);
+const { matchAllRegex, matchRegex, replaceRegexEval } = createRegexBindings(MatchInfo);
 
 declare module "../glib.js" {
     interface Regex {
@@ -76,7 +74,7 @@ declare module "../glib.js" {
 }
 
 Regex.prototype.match = function (this: Regex, subject: string, matchOptions: RegexMatchFlags): [boolean, MatchInfo] {
-    return matchRegex<MatchInfo>(this, subject, 0, matchOptions);
+    return matchRegex(this, subject, 0, matchOptions);
 };
 
 Regex.prototype.matchAll = function (
@@ -84,7 +82,7 @@ Regex.prototype.matchAll = function (
     subject: string,
     matchOptions: RegexMatchFlags,
 ): [boolean, MatchInfo] {
-    return matchAllRegex<MatchInfo>(this, subject, 0, matchOptions);
+    return matchAllRegex(this, subject, 0, matchOptions);
 };
 
 Regex.prototype.matchFull = function (
@@ -93,7 +91,7 @@ Regex.prototype.matchFull = function (
     startPosition: number,
     matchOptions: RegexMatchFlags,
 ): [boolean, MatchInfo] {
-    return matchRegex<MatchInfo>(this, subject, startPosition, matchOptions);
+    return matchRegex(this, subject, startPosition, matchOptions);
 };
 
 Regex.prototype.matchAllFull = function (
@@ -102,7 +100,7 @@ Regex.prototype.matchAllFull = function (
     startPosition: number,
     matchOptions: RegexMatchFlags,
 ): [boolean, MatchInfo] {
-    return matchAllRegex<MatchInfo>(this, subject, startPosition, matchOptions);
+    return matchAllRegex(this, subject, startPosition, matchOptions);
 };
 
 Regex.prototype.replaceEval = function (

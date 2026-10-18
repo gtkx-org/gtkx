@@ -671,6 +671,7 @@ const buildPlan = (descriptor: Descriptor): PlanDefinition => {
                 decode: identity,
             };
         }
+        case "matchInfo":
         case "void":
         case "buffer": {
             return { abi: descriptor, encode: identity, decode: identity };

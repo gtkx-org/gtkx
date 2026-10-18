@@ -20,5 +20,6 @@ pub fn init(env: Env, dispatch_budget_ms: f64) -> napi::Result<()> {
             )
         })?;
     node_env::install(env)?;
+    crate::ffi::match_info::type_();
     runloop::install(&env, dispatch_budget)
 }

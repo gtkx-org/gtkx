@@ -19,6 +19,7 @@ mod bytes;
 mod callback;
 mod fundamental;
 mod hashtable;
+mod match_info;
 mod numeric;
 mod object;
 mod prelude;
@@ -36,6 +37,7 @@ pub use callback::{CallbackCodec, CallbackScope, DestroyNotifyKind};
 pub(crate) use callback::{CallbackReleasePolicy, validate_callback_outputs};
 pub use fundamental::FundamentalCodec;
 pub use hashtable::{HashTableCodec, HashTableEntryCodec};
+pub use match_info::MatchInfoCodec;
 pub use numeric::{FloatCodec, IntegerCodec};
 pub use object::ObjectCodec;
 pub(crate) use object::{
@@ -434,6 +436,7 @@ pub enum Codec {
     Void(VoidCodec),
     Object(ObjectCodec),
     Boxed(BoxedCodec),
+    MatchInfo(MatchInfoCodec),
     Struct(StructCodec),
     Fundamental(FundamentalCodec),
     Array(ArrayCodec),
@@ -471,6 +474,7 @@ impl Codec {
         match self {
             Self::Object(codec) => codec.ownership,
             Self::Boxed(codec) => codec.ownership,
+            Self::MatchInfo(codec) => codec.ownership,
             Self::Struct(codec) => codec.ownership,
             Self::Bytes(codec) => codec.ownership,
             Self::Array(codec) => codec.ownership,
@@ -490,7 +494,11 @@ impl Codec {
     pub fn is_handle_backed(&self) -> bool {
         matches!(
             self,
-            Codec::Object(_) | Codec::Boxed(_) | Codec::Struct(_) | Codec::Fundamental(_)
+            Codec::Object(_)
+                | Codec::Boxed(_)
+                | Codec::MatchInfo(_)
+                | Codec::Struct(_)
+                | Codec::Fundamental(_)
         )
     }
 
@@ -510,6 +518,7 @@ impl std::fmt::Display for Codec {
             Self::Void(_) => write!(f, "Void"),
             Self::Object(_) => write!(f, "Object"),
             Self::Boxed(t) => write!(f, "Boxed({})", t.type_name),
+            Self::MatchInfo(_) => write!(f, "MatchInfo"),
             Self::Struct(t) => write!(f, "Struct({})", t.ownership),
             Self::Fundamental(t) => write!(f, "Fundamental({})", t.unref_label),
             Self::Array(_) => write!(f, "Array"),

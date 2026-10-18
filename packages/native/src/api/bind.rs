@@ -9,6 +9,7 @@ use crate::api::descriptor::CompiledDescriptor;
 use crate::ffi::codec::{
     Codec, Encoder as _, validate_call_signature, validate_callback_signature,
 };
+use crate::ffi::match_info::MatchInfoPlan;
 
 #[derive(Clone)]
 pub struct FunctionSignature(Rc<FunctionPlan>);
@@ -29,6 +30,7 @@ pub struct FunctionPlan {
     pub(crate) arg_order: Vec<usize>,
     pub(crate) user_data_index: Option<usize>,
     pub(crate) can_throw: bool,
+    pub(crate) match_info: Option<MatchInfoPlan>,
     call_error: Option<String>,
     callback_error: Option<String>,
 }
@@ -39,6 +41,10 @@ impl FunctionSignature {
             return Err(Error::from_reason(
                 "A callback signature with an implicit error argument cannot be called",
             ));
+        }
+        if let Some(plan) = &self.match_info {
+            plan.validate(&self.arg_codecs)
+                .map_err(|error| Error::from_reason(error.to_string()))?;
         }
         match &self.call_error {
             Some(error) => Err(Error::from_reason(error.clone())),
@@ -185,6 +191,7 @@ pub(crate) fn prepare(
         Some(fixed) => Cif::new_variadic(arg_types, fixed as usize, return_type),
         None => Builder::new().res(return_type).args(arg_types).into_cif(),
     };
+    let match_info = MatchInfoPlan::compile(&arg_codecs, &return_codec);
 
     Ok(FunctionSignature(Rc::new(FunctionPlan {
         label,
@@ -195,6 +202,7 @@ pub(crate) fn prepare(
         arg_order,
         user_data_index,
         can_throw,
+        match_info,
         call_error,
         callback_error,
     })))

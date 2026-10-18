@@ -38,7 +38,7 @@ export { newParamSpecOverride } from "./properties.js";
 export { propertyWriteComplete } from "./property-brand.js";
 export type { DescriptorFreePropertySpec } from "./property-brand.js";
 export type { Camelized, Dashed, ReadableProperties, WritableProperties } from "./property-types.js";
-export { installMatchInfo, matchAllRegex, matchRegex, replaceRegexEval } from "./regex.js";
+export { createRegexBindings } from "./regex.js";
 export { getExactWrapperClass, getVfuncRegistry, peekTypeClass, resolveWrapperClass } from "./registry.js";
 export type { SignalMethodReceiver };
 export { classSignalMember, naturalSignalMember, signalEmitMapOverride, signalMapOverride } from "./signal-brand.js";

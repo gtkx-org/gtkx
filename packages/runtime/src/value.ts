@@ -552,6 +552,9 @@ const resolveValueType = (descriptor: Descriptor): ValueType => {
         case "boxed": {
             return boxedValueType(resolveBoxedType(descriptor));
         }
+        case "matchInfo": {
+            return boxedValueType(resolveDescriptorType(descriptor));
+        }
         case "fundamental": {
             return fundamentalValueType(resolveFundamentalType(descriptor));
         }
@@ -831,7 +834,7 @@ function toValueForType(descriptor: Descriptor, jsValue: unknown, type: bigint):
                 ? containerValueType(descriptor)
                 : resolveValueType(descriptor);
         target.set(value, toNative(descriptor, jsValue));
-    } else if (descriptor.kind === "boxed" || descriptor.kind === "fundamental") {
+    } else if (descriptor.kind === "boxed" || descriptor.kind === "matchInfo" || descriptor.kind === "fundamental") {
         resolveValueType(descriptor).set(value, resolveNativeValue(descriptor, jsValue));
     } else {
         intoValue(value, toWholeNumber(descriptor, jsValue));

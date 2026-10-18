@@ -184,6 +184,7 @@ const isPassThroughPlan = (plan: ArgSpec, index: number): boolean =>
 const KINDS_PASSED_AS_POINTER: ReadonlySet<Descriptor["kind"]> = new Set<Descriptor["kind"]>([
     "array",
     "boxed",
+    "matchInfo",
     "buffer",
     "indirect",
     "pointerValue",

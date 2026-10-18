@@ -59,9 +59,14 @@ const renderGtypeExpression = (
     return renderResolveGtype(context, typeFnName);
 };
 
-const renderSourceGtype = (context: ModuleContext, source: TypeSource): string | undefined =>
-    source.glibGetType === undefined
+const renderSourceGtype = (context: ModuleContext, source: TypeSource): string | undefined => {
+    if (context.namespace.name === "GLib" && source.glibGetType === "g_match_info_get_type") {
+        return renderInternGtype(context, "GtkxMatchInfo");
+    }
+
+    return source.glibGetType === undefined
         ? undefined
         : renderGtypeExpression(context, source.glibGetType, source.glibTypeName);
+};
 
 export { gtypeTsType, gtypeParamTsType, gtypeMemberDeclaration, renderSourceGtype };

@@ -99,6 +99,13 @@ const tObject = (ownership: Ownership, fallbackClass?: string, typeName?: string
         typeName === undefined ? undefined : sourceStringLiteral(typeName),
     ]);
 
+const tMatchInfo = (ownership: Ownership, fallbackClass?: string): string =>
+    call("matchInfo", [
+        sourceStringLiteral(ownership),
+        fallbackClass === undefined ? undefined : "undefined",
+        fallbackClass,
+    ]);
+
 const tBoxed = (glibName: string, options: BoxedOptions): string =>
     call("boxed", [
         sourceStringLiteral(glibName),
@@ -271,6 +278,7 @@ export {
     tScalar,
     tString,
     tObject,
+    tMatchInfo,
     tBoxed,
     tStruct,
     tInlineStruct,
