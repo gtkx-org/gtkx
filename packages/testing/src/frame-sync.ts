@@ -1,21 +1,9 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as GLib from "@gtkx/gi/glib";
+import { once } from "@gtkx/utils";
 import { cancelTimeout, scheduleTimeout } from "./timers.js";
 
 const CLOCK_STALL_FALLBACK_MS = 500;
-
-const once = (callback: () => void): (() => void) => {
-    let isCalled = false;
-
-    return () => {
-        if (isCalled) {
-            return;
-        }
-
-        isCalled = true;
-        callback();
-    };
-};
 
 const hasFrameClock = (widget: Gtk.Widget | null): widget is Gtk.Widget => widget?.getFrameClock() != null;
 

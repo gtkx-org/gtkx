@@ -1,9 +1,10 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import type { ReactElement, ReactNode } from "react";
+import type { ReactElement, ReactNode, RefObject } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkSignalListItemFactory, GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal, useProperty } from "@gtkx/react";
-import { Fragment, memo, useInsertionEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useLatestRef } from "@gtkx/react/internal";
+import { Fragment, memo, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type {
     ExpanderDescriptions,
     ListItem,
@@ -95,11 +96,6 @@ type CollectionState = {
     expandedIds: string[] | null | undefined;
 };
 
-type CollectionStateStore = {
-    read: () => CollectionState;
-    write: (state: CollectionState) => void;
-};
-
 type ItemIdentity = {
     itemKey: string;
     item: ListItem | undefined;
@@ -115,7 +111,7 @@ type ItemIdentityStore = {
 type ItemCellProps = {
     entry: CellEntry<Gtk.ListItem>;
     render: ListItemRenderer<never>;
-    state: CollectionStateStore;
+    state: RefObject<CollectionState>;
     hasExpander: boolean;
     expanderDescriptions: ExpanderDescriptions | null | undefined;
 } & ItemIdentity;
@@ -132,7 +128,7 @@ type ItemPortalsProps = {
 type ItemRowProps = {
     entry: CellEntry<Gtk.ColumnViewRow>;
     rowProps: ListRowPropsResolver<never>;
-    state: CollectionStateStore;
+    state: RefObject<CollectionState>;
 } & ItemIdentity;
 
 type RowPortalsProps = {
@@ -386,7 +382,7 @@ function slotFor(options: ItemSlotOptions): ItemSlot | null {
 
 function useItemSlot(
     entry: CellEntry<PositionedHost>,
-    state: CollectionStateStore,
+    state: RefObject<CollectionState>,
     identity: ItemIdentity,
 ): ItemSlot | null {
     const position = useProperty(entry.host, "position");
@@ -404,7 +400,7 @@ function useItemSlot(
               };
     }
 
-    const { collection, expandedIds } = state.read();
+    const { collection, expandedIds } = state.current;
 
     return slotFor({ item, position, row, collection, expandedIds });
 }
@@ -497,27 +493,6 @@ function useRememberIdentity(entry: CellEntry<PositionedHost>, slot: ItemSlot | 
     useLayoutEffect(() => {
         entry.identity.write(renderedIdentity(entry, slot));
     });
-}
-
-function createCollectionStateStore(initial: CollectionState): CollectionStateStore {
-    let current = initial;
-
-    return {
-        read: () => current,
-        write: (state) => {
-            current = state;
-        },
-    };
-}
-
-function useCollectionState(collection: Collection, expandedIds: string[] | null | undefined): CollectionStateStore {
-    const [state] = useState(() => createCollectionStateStore({ collection, expandedIds }));
-
-    useInsertionEffect(() => {
-        state.write({ collection, expandedIds });
-    }, [state, collection, expandedIds]);
-
-    return state;
 }
 
 function expanderDescriptionFor(
@@ -701,7 +676,7 @@ const ItemPortals = ({
     expanderDescriptions,
 }: ItemPortalsProps): ReactNode => {
     const entries = usePortalEntries(registry);
-    const state = useCollectionState(collection, expandedIds);
+    const state = useLatestRef({ collection, expandedIds });
 
     return entries.map((entry) => (
         <ItemCell
@@ -718,7 +693,7 @@ const ItemPortals = ({
 
 const RowPortals = ({ registry, rowProps, collection, expandedIds }: RowPortalsProps): ReactNode => {
     const entries = usePortalEntries(registry);
-    const state = useCollectionState(collection, expandedIds);
+    const state = useLatestRef({ collection, expandedIds });
 
     return entries.map((entry) => (
         <ItemRow

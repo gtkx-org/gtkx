@@ -1,3 +1,4 @@
+import { normalizeError } from "@gtkx/utils";
 import { getHandle } from "./registry.js";
 
 /**
@@ -20,12 +21,8 @@ type TrimmedFinish<T> = T extends readonly [boolean, infer Only]
       ? Rest
       : never;
 
-const attachCreationStack = (error: unknown, creationStack: Error | undefined): void => {
-    if (creationStack === undefined || !(error instanceof Error)) {
-        return;
-    }
-
-    if (error.cause !== undefined || !Object.isExtensible(error)) {
+const attachCreationStack = (error: Error, creationStack: Error | undefined): void => {
+    if (creationStack === undefined || error.cause !== undefined || !Object.isExtensible(error)) {
         return;
     }
 
@@ -38,8 +35,9 @@ const settle = <R extends object, T>(settlement: Settlement<R, T>, asyncResult: 
     try {
         resolve(finish(asyncResult as R));
     } catch (error) {
-        attachCreationStack(error, creationStack);
-        reject(error instanceof Error ? error : new Error(String(error)));
+        const failure = normalizeError(error);
+        attachCreationStack(failure, creationStack);
+        reject(failure);
     }
 };
 

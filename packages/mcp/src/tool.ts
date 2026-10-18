@@ -1,6 +1,7 @@
 import type { McpServer, ToolCallback } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { z } from "zod";
+import { errorMessage } from "@gtkx/utils";
 import { ProtocolError } from "./protocol/errors.js";
 
 type ToolArgs<Shape extends Record<string, z.ZodType>> = { [K in keyof Shape]: z.output<Shape[K]> };
@@ -35,7 +36,7 @@ const errorToResult = (error: unknown): CallToolResult => {
         return textError(hasStringHint(error.data) ? `${error.message}\n${error.data.hint}` : error.message);
     }
 
-    return textError(error instanceof Error ? error.message : String(error));
+    return textError(errorMessage(error));
 };
 
 const runTool = async (

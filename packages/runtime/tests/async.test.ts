@@ -1,4 +1,5 @@
 import { promisify, trimFinish } from "@gtkx/runtime";
+import { runInNewContext } from "node:vm";
 import { expect, test } from "vitest";
 
 const operation = (...args: unknown[]): void => {
@@ -30,6 +31,21 @@ test("finish failures reject the operation without losing the original error", a
     );
 
     await expect(result).rejects.toBe(error);
+});
+
+test("finish failures preserve errors and their causes across realms", async () => {
+    const error: Error = runInNewContext("new Error('finish failed', { cause: new Error('original failure') })");
+    const cause = error.cause;
+    const result = promisify(
+        operation,
+        () => {
+            throw error;
+        },
+        null,
+    );
+
+    await expect(result).rejects.toBe(error);
+    expect(error.cause).toBe(cause);
 });
 
 test("throwing starts reject and successful finish tuples discard the success flag", async () => {

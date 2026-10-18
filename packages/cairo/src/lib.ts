@@ -13,11 +13,7 @@ const CONTEXT_T: BoxedDescriptor = t.boxed("CairoContext", {
     getTypeFnName: "cairo_gobject_context_get_type",
 });
 
-const CONTEXT_FULL_T: BoxedDescriptor = t.boxed("CairoContext", {
-    ownership: "full",
-    sharedLibrary: CAIRO_GOBJECT_LIBRARY,
-    getTypeFnName: "cairo_gobject_context_get_type",
-});
+const CONTEXT_FULL_T: BoxedDescriptor = { ...CONTEXT_T, ownership: "full" };
 
 const SURFACE_T: BoxedDescriptor = t.boxed("CairoSurface", {
     ownership: "borrowed",
@@ -25,11 +21,7 @@ const SURFACE_T: BoxedDescriptor = t.boxed("CairoSurface", {
     getTypeFnName: "cairo_gobject_surface_get_type",
 });
 
-const SURFACE_FULL_T: BoxedDescriptor = t.boxed("CairoSurface", {
-    ownership: "full",
-    sharedLibrary: CAIRO_GOBJECT_LIBRARY,
-    getTypeFnName: "cairo_gobject_surface_get_type",
-});
+const SURFACE_FULL_T: BoxedDescriptor = { ...SURFACE_T, ownership: "full" };
 
 const DEVICE_T: BoxedDescriptor = t.boxed("CairoDevice", {
     ownership: "borrowed",
@@ -43,11 +35,7 @@ const PATTERN_T: BoxedDescriptor = t.boxed("CairoPattern", {
     getTypeFnName: "cairo_gobject_pattern_get_type",
 });
 
-const PATTERN_FULL_T: BoxedDescriptor = t.boxed("CairoPattern", {
-    ownership: "full",
-    sharedLibrary: CAIRO_GOBJECT_LIBRARY,
-    getTypeFnName: "cairo_gobject_pattern_get_type",
-});
+const PATTERN_FULL_T: BoxedDescriptor = { ...PATTERN_T, ownership: "full" };
 
 const REGION_T: BoxedDescriptor = t.boxed("CairoRegion", {
     ownership: "borrowed",
@@ -55,11 +43,7 @@ const REGION_T: BoxedDescriptor = t.boxed("CairoRegion", {
     getTypeFnName: "cairo_gobject_region_get_type",
 });
 
-const REGION_FULL_T: BoxedDescriptor = t.boxed("CairoRegion", {
-    ownership: "full",
-    sharedLibrary: CAIRO_GOBJECT_LIBRARY,
-    getTypeFnName: "cairo_gobject_region_get_type",
-});
+const REGION_FULL_T: BoxedDescriptor = { ...REGION_T, ownership: "full" };
 
 const FONT_OPTIONS_T: BoxedDescriptor = t.boxed("CairoFontOptions", {
     ownership: "borrowed",
@@ -67,11 +51,7 @@ const FONT_OPTIONS_T: BoxedDescriptor = t.boxed("CairoFontOptions", {
     getTypeFnName: "cairo_gobject_font_options_get_type",
 });
 
-const FONT_OPTIONS_FULL_T: BoxedDescriptor = t.boxed("CairoFontOptions", {
-    ownership: "full",
-    sharedLibrary: CAIRO_GOBJECT_LIBRARY,
-    getTypeFnName: "cairo_gobject_font_options_get_type",
-});
+const FONT_OPTIONS_FULL_T: BoxedDescriptor = { ...FONT_OPTIONS_T, ownership: "full" };
 
 const FONT_FACE_T: BoxedDescriptor = t.boxed("CairoFontFace", {
     ownership: "borrowed",
@@ -79,11 +59,7 @@ const FONT_FACE_T: BoxedDescriptor = t.boxed("CairoFontFace", {
     getTypeFnName: "cairo_gobject_font_face_get_type",
 });
 
-const FONT_FACE_FULL_T: BoxedDescriptor = t.boxed("CairoFontFace", {
-    ownership: "full",
-    sharedLibrary: CAIRO_GOBJECT_LIBRARY,
-    getTypeFnName: "cairo_gobject_font_face_get_type",
-});
+const FONT_FACE_FULL_T: BoxedDescriptor = { ...FONT_FACE_T, ownership: "full" };
 
 const SCALED_FONT_T: BoxedDescriptor = t.boxed("CairoScaledFont", {
     ownership: "borrowed",
@@ -91,11 +67,7 @@ const SCALED_FONT_T: BoxedDescriptor = t.boxed("CairoScaledFont", {
     getTypeFnName: "cairo_gobject_scaled_font_get_type",
 });
 
-const SCALED_FONT_FULL_T: BoxedDescriptor = t.boxed("CairoScaledFont", {
-    ownership: "full",
-    sharedLibrary: CAIRO_GOBJECT_LIBRARY,
-    getTypeFnName: "cairo_gobject_scaled_font_get_type",
-});
+const SCALED_FONT_FULL_T: BoxedDescriptor = { ...SCALED_FONT_T, ownership: "full" };
 
 const MATRIX_T: BoxedDescriptor = t.boxed("cairo_matrix_t", { ownership: "borrowed", sharedLibrary: CAIRO_LIBRARY });
 

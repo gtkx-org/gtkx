@@ -1,3 +1,4 @@
+import { normalizeError } from "@gtkx/utils";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { inspect } from "node:util";
 import type { Args, ArgTypes } from "./types.js";
@@ -140,7 +141,7 @@ const bindCallback =
             store.record(options.name, values);
         };
         const fail = (cause: unknown): void => {
-            const error = cause instanceof Error ? cause : new Error(String(cause));
+            const error = normalizeError(cause);
             store.record(options.name, values, error);
 
             if (options.onError === undefined) {

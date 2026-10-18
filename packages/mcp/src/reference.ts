@@ -8,6 +8,7 @@ import {
 } from "@gtkx/codegen";
 import { readBuiltinElementsForDocs } from "@gtkx/codegen/internal";
 import { loadConfig } from "@gtkx/config";
+import { errorMessage } from "@gtkx/utils";
 import {
     CONFIG_EXTENSIONS,
     configDependenciesFor,
@@ -313,9 +314,7 @@ const scopedResult = async (
 
         return withProjectNote(render(scoped.reference), projectNote(scoped));
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-
-        return withProjectNote(textError(message), projectNote(resolved));
+        return withProjectNote(textError(errorMessage(error)), projectNote(resolved));
     }
 };
 

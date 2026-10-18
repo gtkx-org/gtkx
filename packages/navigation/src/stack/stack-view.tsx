@@ -2,6 +2,7 @@ import type * as Adw from "@gtkx/gi/adw";
 import type { ParamListBase, StackNavigationState } from "@react-navigation/core";
 import type { ReactNode, RefObject } from "react";
 import { AdwNavigationPage, AdwNavigationView, AdwToolbarView } from "@gtkx/jsx/adw";
+import { useLatestRef } from "@gtkx/react/internal";
 import { useCallback, useEffect, useRef } from "react";
 import type { Describe } from "./stack-pages.js";
 import type { OptionsByKey } from "./sync-navigation-stack.js";
@@ -47,16 +48,6 @@ const previousDescriptor = (
     return previousKey === undefined ? undefined : descriptors[previousKey];
 };
 
-const useLatest = <T,>(value: T): RefObject<T> => {
-    const ref = useRef(value);
-
-    useEffect(() => {
-        ref.current = value;
-    }, [value]);
-
-    return ref;
-};
-
 const useStackSync = (
     viewRef: ViewRef,
     state: StackNavigationState<ParamListBase>,
@@ -84,7 +75,7 @@ const usePoppedHandler = (
     options: RefObject<OptionsByKey>,
     offset: number,
 ): (() => void) => {
-    const navigationRef = useLatest(navigation);
+    const navigationRef = useLatestRef(navigation);
     const isScheduledRef = useRef(false);
 
     return useCallback(() => {
@@ -169,7 +160,7 @@ const StackView = (props: StackViewProps): ReactNode => {
     const { state, navigation, descriptors, describe, popOnEscape, offset = 0 } = props;
     const viewRef = useRef<Adw.NavigationView | null>(null);
     const { pages, release } = useStackPages(state, descriptors, describe, offset);
-    const options = useLatest<OptionsByKey>(Object.fromEntries(pages.map((page) => [page.route.key, page.options])));
+    const options = useLatestRef<OptionsByKey>(Object.fromEntries(pages.map((page) => [page.route.key, page.options])));
     const onPopped = usePoppedHandler(viewRef, navigation, options, offset);
     useStackSync(viewRef, state, options, offset);
 

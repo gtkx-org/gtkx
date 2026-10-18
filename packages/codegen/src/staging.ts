@@ -1,13 +1,9 @@
 import { errorCode, readProcessStatFields, resolveExecutable, sortStrings } from "@gtkx/utils";
 import { type ChildProcess, spawn } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import {
     closeSync,
     constants,
-    fstatSync,
-    fsyncSync,
-    ftruncateSync,
-    lstatSync,
     mkdirSync,
     mkdtempSync,
     openSync,
@@ -15,23 +11,17 @@ import {
     readFileSync,
     realpathSync,
     rmSync,
-    unlinkSync,
-    writeSync,
 } from "node:fs";
 import { basename, dirname, join } from "node:path";
 
 const STAGING_SUFFIX = ".tmp-";
 const OWNER_PATTERN = /^(?<pid>\d+)(?:-(?<identity>[a-f\d]{64}|unknown))?-/u;
-const LOCK_FILENAME = ".codegen.lock";
 const DEFAULT_LOCK_WAIT_TIMEOUT_MS = 600_000;
 const PROCESS_START_FIELD = 19;
 const BOOT_ID_PATH = "/proc/sys/kernel/random/boot_id";
 const LOCK_CHILD_FD = 3;
 const LOCK_CONFLICT_EXIT_CODE = 75;
 const STOPPED_PROCESS_STATES: ReadonlySet<string> = new Set(["Z", "X", "x"]);
-
-type LockOwner = { createdAt: number; identity: string | null; pid: number; token: string };
-type StoreLock = LockOwner & { lockFd: number; ownerFd: number; path: string };
 
 const readBootId = (): string | null => {
     try {
@@ -146,13 +136,6 @@ const createStagingDir = (target: string): string => {
     return mkdtempSync(`${target}${STAGING_SUFFIX}${String(process.pid)}-${identity}-`);
 };
 
-const lockOwner = (): LockOwner => ({
-    createdAt: Date.now(),
-    identity: processIdentity(process.pid),
-    pid: process.pid,
-    token: randomUUID(),
-});
-
 const lockHolderArgs = (timeout: number): string[] => [
     "--exclusive",
     "--timeout",
@@ -196,74 +179,20 @@ const waitForLockHolder = (child: ChildProcess, root: string, timeout: number): 
     });
 };
 
-const openLockFile = (path: string): number => {
-    let fd: number;
-
-    try {
-        fd = openSync(path, constants.O_CREAT | constants.O_RDWR | constants.O_NOFOLLOW, 0o600);
-    } catch {
-        throw new Error(`Cannot use ${path} as a generated-store lock`);
-    }
-
-    const stat = fstatSync(fd);
-
-    if (stat.isFile() && stat.nlink === 1) {
-        return fd;
-    }
-
-    closeSync(fd);
-    throw new Error(`Cannot use ${path} as a generated-store lock`);
-};
-
-const writeLockOwner = (fd: number, owner: LockOwner): void => {
-    ftruncateSync(fd, 0);
-    writeSync(fd, JSON.stringify(owner), 0, "utf8");
-    fsyncSync(fd);
-};
-
-const acquireLock = async (root: string, timeout: number): Promise<StoreLock> => {
-    const path = join(root, LOCK_FILENAME);
+const acquireLock = async (root: string, timeout: number): Promise<number> => {
     const executable = resolveExecutable("flock");
     const lockFd = openSync(root, constants.O_RDONLY | constants.O_DIRECTORY);
-    let ownerFd: number | undefined;
 
     try {
         const child = spawn(executable, lockHolderArgs(timeout), {
             stdio: ["ignore", "ignore", "ignore", lockFd],
         });
         await waitForLockHolder(child, root, timeout);
-        ownerFd = openLockFile(path);
-        const owner = lockOwner();
-        writeLockOwner(ownerFd, owner);
-
-        return { ...owner, lockFd, ownerFd, path };
+        return lockFd;
     } catch (error) {
-        if (ownerFd !== undefined) {
-            closeSync(ownerFd);
-        }
-
         closeSync(lockFd);
         throw error;
     }
-};
-
-const removeOwnedLockFile = (lock: StoreLock): void => {
-    try {
-        const owner = fstatSync(lock.ownerFd);
-        const path = lstatSync(lock.path, { throwIfNoEntry: false });
-
-        if (path?.isFile() === true && path.dev === owner.dev && path.ino === owner.ino) {
-            unlinkSync(lock.path);
-        }
-    } catch {
-        return;
-    }
-};
-
-const releaseLock = (lock: StoreLock): void => {
-    removeOwnedLockFile(lock);
-    closeSync(lock.ownerFd);
-    closeSync(lock.lockFd);
 };
 
 const storeRoots = (targets: string[]): string[] => {
@@ -278,9 +207,9 @@ const storeRoots = (targets: string[]): string[] => {
     return sortStrings([...roots]);
 };
 
-const releaseLocks = (locks: StoreLock[]): void => {
-    for (const lock of locks.toReversed()) {
-        releaseLock(lock);
+const releaseLocks = (locks: number[]): void => {
+    for (const lockFd of locks.toReversed()) {
+        closeSync(lockFd);
     }
 };
 
@@ -292,7 +221,7 @@ const acquireStoreLocks = async (
         throw new Error("lockTimeoutMs must be a positive finite number of milliseconds");
     }
 
-    const locks: StoreLock[] = [];
+    const locks: number[] = [];
 
     try {
         for (const root of storeRoots(targets)) {

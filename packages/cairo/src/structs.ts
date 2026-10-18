@@ -3,16 +3,12 @@ import {
     type ExternalObject,
     getHandle,
     type Handle,
-    read,
     registerWrapperClass,
     resolveType,
     setHandle,
+    type StridedField,
     t,
-    toNative,
-    write,
 } from "@gtkx/runtime";
-
-type FieldDescriptor = typeof t.float64 | typeof t.int32 | typeof t.biguint64;
 
 /** Initial field values for a `Rectangle`; a field left out or set to null keeps zero. */
 type RectangleConstructorProps = {
@@ -65,25 +61,13 @@ const RECTANGLE_SIZE = 32;
 const RECTANGLE_INT_SIZE = 16;
 const GLYPH_SIZE = 24;
 const TEXT_CLUSTER_SIZE = 8;
-const DOUBLE = t.float64;
-const INT = t.int32;
-const ULONG = t.biguint64;
+const DOUBLE = t.fieldAt(t.float64);
+const INT = t.fieldAt(t.int32);
+const ULONG = t.fieldAt(t.biguint64);
 
-const readField = (instance: object, descriptor: FieldDescriptor, offset: number): number =>
-    read(getHandle(instance), descriptor, offset) as number;
-
-const writeField = (instance: object, descriptor: FieldDescriptor, offset: number, value: unknown): void => {
-    write(getHandle(instance), descriptor, offset, toNative(descriptor, value));
-};
-
-const writeInitial = (
-    handle: ExternalObject<Handle>,
-    descriptor: FieldDescriptor,
-    offset: number,
-    value: unknown,
-): void => {
+const writeInitial = (handle: ExternalObject<Handle>, field: StridedField, offset: number, value: unknown): void => {
     if (value != null) {
-        write(handle, descriptor, offset, toNative(descriptor, value));
+        field.write(handle, offset, value);
     }
 };
 
@@ -108,42 +92,42 @@ class Rectangle {
 
     /** Horizontal position of the left edge. */
     get x(): number {
-        return readField(this, DOUBLE, 0);
+        return DOUBLE.read(getHandle(this), 0) as number;
     }
 
     /** Horizontal position of the left edge. */
     set x(value: number) {
-        writeField(this, DOUBLE, 0, value);
+        DOUBLE.write(getHandle(this), 0, value);
     }
 
     /** Vertical position of the top edge. */
     get y(): number {
-        return readField(this, DOUBLE, 8);
+        return DOUBLE.read(getHandle(this), 8) as number;
     }
 
     /** Vertical position of the top edge. */
     set y(value: number) {
-        writeField(this, DOUBLE, 8, value);
+        DOUBLE.write(getHandle(this), 8, value);
     }
 
     /** Width of the rectangle. */
     get width(): number {
-        return readField(this, DOUBLE, 16);
+        return DOUBLE.read(getHandle(this), 16) as number;
     }
 
     /** Width of the rectangle. */
     set width(value: number) {
-        writeField(this, DOUBLE, 16, value);
+        DOUBLE.write(getHandle(this), 16, value);
     }
 
     /** Height of the rectangle. */
     get height(): number {
-        return readField(this, DOUBLE, 24);
+        return DOUBLE.read(getHandle(this), 24) as number;
     }
 
     /** Height of the rectangle. */
     set height(value: number) {
-        writeField(this, DOUBLE, 24, value);
+        DOUBLE.write(getHandle(this), 24, value);
     }
 }
 
@@ -168,42 +152,42 @@ class RectangleInt {
 
     /** Horizontal position of the left edge. */
     get x(): number {
-        return readField(this, INT, 0);
+        return INT.read(getHandle(this), 0) as number;
     }
 
     /** Horizontal position of the left edge. */
     set x(value: number) {
-        writeField(this, INT, 0, value);
+        INT.write(getHandle(this), 0, value);
     }
 
     /** Vertical position of the top edge. */
     get y(): number {
-        return readField(this, INT, 4);
+        return INT.read(getHandle(this), 4) as number;
     }
 
     /** Vertical position of the top edge. */
     set y(value: number) {
-        writeField(this, INT, 4, value);
+        INT.write(getHandle(this), 4, value);
     }
 
     /** Width of the rectangle. */
     get width(): number {
-        return readField(this, INT, 8);
+        return INT.read(getHandle(this), 8) as number;
     }
 
     /** Width of the rectangle. */
     set width(value: number) {
-        writeField(this, INT, 8, value);
+        INT.write(getHandle(this), 8, value);
     }
 
     /** Height of the rectangle. */
     get height(): number {
-        return readField(this, INT, 12);
+        return INT.read(getHandle(this), 12) as number;
     }
 
     /** Height of the rectangle. */
     set height(value: number) {
-        writeField(this, INT, 12, value);
+        INT.write(getHandle(this), 12, value);
     }
 }
 
@@ -227,32 +211,32 @@ class Glyph {
 
     /** Index of the glyph in the font. */
     get index(): bigint {
-        return read(getHandle(this), ULONG, 0) as bigint;
+        return ULONG.read(getHandle(this), 0) as bigint;
     }
 
     /** Index of the glyph in the font. */
     set index(value: bigint) {
-        writeField(this, ULONG, 0, value);
+        ULONG.write(getHandle(this), 0, value);
     }
 
     /** Horizontal position of the glyph origin. */
     get x(): number {
-        return readField(this, DOUBLE, 8);
+        return DOUBLE.read(getHandle(this), 8) as number;
     }
 
     /** Horizontal position of the glyph origin. */
     set x(value: number) {
-        writeField(this, DOUBLE, 8, value);
+        DOUBLE.write(getHandle(this), 8, value);
     }
 
     /** Vertical position of the glyph origin. */
     get y(): number {
-        return readField(this, DOUBLE, 16);
+        return DOUBLE.read(getHandle(this), 16) as number;
     }
 
     /** Vertical position of the glyph origin. */
     set y(value: number) {
-        writeField(this, DOUBLE, 16, value);
+        DOUBLE.write(getHandle(this), 16, value);
     }
 }
 
@@ -275,22 +259,22 @@ class TextCluster {
 
     /** Number of UTF-8 bytes the cluster covers. */
     get numBytes(): number {
-        return readField(this, INT, 0);
+        return INT.read(getHandle(this), 0) as number;
     }
 
     /** Number of UTF-8 bytes the cluster covers. */
     set numBytes(value: number) {
-        writeField(this, INT, 0, value);
+        INT.write(getHandle(this), 0, value);
     }
 
     /** Number of glyphs the cluster covers. */
     get numGlyphs(): number {
-        return readField(this, INT, 4);
+        return INT.read(getHandle(this), 4) as number;
     }
 
     /** Number of glyphs the cluster covers. */
     set numGlyphs(value: number) {
-        writeField(this, INT, 4, value);
+        INT.write(getHandle(this), 4, value);
     }
 }
 

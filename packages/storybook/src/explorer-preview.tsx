@@ -4,6 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { AdwHeaderBar, AdwStatusPage, AdwToolbarView, AdwWindowTitle } from "@gtkx/jsx/adw";
 import { GtkBox, GtkButton, GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { createPortal, rootElement } from "@gtkx/react";
+import { normalizeError } from "@gtkx/utils";
 import { Component, useCallback, useMemo, useState } from "react";
 import type { StoryEntry } from "./catalog.js";
 import type { Args, ComposedStory } from "./types.js";
@@ -32,7 +33,7 @@ class PreviewBoundary extends Component<BoundaryProps, BoundaryState> {
     }
 
     static getDerivedStateFromError(error: unknown): Pick<BoundaryState, "error"> {
-        return { error: error instanceof Error ? error : new Error(String(error)) };
+        return { error: normalizeError(error) };
     }
 
     override state: BoundaryState = { error: null, args: this.props.args };
