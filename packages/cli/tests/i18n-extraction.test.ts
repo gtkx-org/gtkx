@@ -1,6 +1,6 @@
 import { runCommand } from "citty";
 import { po } from "gettext-parser";
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createCommand } from "../dist/command.js";
@@ -19,6 +19,93 @@ const T_IMPORT = 'import { t } from "@gtkx/i18n";';
 const TRANS_IMPORT = 'import { Trans } from "@gtkx/i18n";';
 
 describe("translation extraction", () => {
+    it("merges repeated messages and preserves references to filenames containing spaces", async () => {
+        using project = createProject();
+        project.write("po/LINGUAS", "");
+        project.write(
+            "src/a.ts",
+            `${T_IMPORT}\nt("first", "Shared text");\nt("button", "Open", { context: "button" });\nt("%s files");`,
+        );
+        project.write(
+            "src/z space.ts",
+            `${T_IMPORT}\nt("second", "Shared text");\nt("first", "Shared text");\nt("%s files");`,
+        );
+
+        await extract(project.root);
+
+        expect(
+            readMessages(project.root).map((message) => [
+                message.msgctxt ?? "",
+                message.msgid,
+                message.comments?.reference?.replaceAll("\n", " "),
+                message.comments?.flag ?? "",
+            ]),
+        ).toEqual([
+            ["", "Shared text", "src/a.ts:2 \u2068src/z space.ts\u2069:2 \u2068src/z space.ts\u2069:3", ""],
+            ["", "%s files", "src/a.ts:4 \u2068src/z space.ts\u2069:4", "javascript-format"],
+            ["button", "Open", "src/a.ts:3", ""],
+        ]);
+
+        const path = join(project.root, "po/org.gtkx.example.pot");
+        const previous = readFileSync(path, "utf8");
+        const timestamp = new Date("2000-01-01T00:00:00Z");
+        utimesSync(path, timestamp, timestamp);
+
+        await extract(project.root);
+
+        expect(readFileSync(path, "utf8")).toBe(previous);
+        expect(statSync(path).mtimeMs).toBe(timestamp.getTime());
+    });
+
+    it("retains metadata comments and leaves unchanged catalog templates untouched", async () => {
+        using project = createProject();
+        project.write("po/LINGUAS", "");
+        project.write("src/messages.ts", `${T_IMPORT}\nt("Source text");\nt("Metadata title");`);
+        project.write(
+            "po/org.gtkx.example.pot",
+            `msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\\n"
+
+#. Application title
+#: po/.gtkx-metadata/org.gtkx.example.template.desktop:1
+msgid "Metadata title"
+msgstr ""
+
+#: src/removed.ts:1
+msgid "Removed source"
+msgstr ""
+`,
+        );
+
+        await extract(project.root);
+
+        expect(readMessages(project.root)).toEqual([
+            expect.objectContaining({ msgid: "Source text", comments: { reference: "src/messages.ts:2" } }),
+            expect.objectContaining({
+                msgid: "Metadata title",
+                comments: {
+                    extracted: "Application title",
+                    reference: "src/messages.ts:3 po/.gtkx-metadata/org.gtkx.example.template.desktop:1",
+                },
+            }),
+        ]);
+
+        const path = join(project.root, "po/org.gtkx.example.pot");
+        const previous = readFileSync(path, "utf8").replace(
+            /^"POT-Creation-Date: .*\\n"$/m,
+            '"POT-Creation-Date: 2000-01-01 00:00+0000\\n"',
+        );
+        project.write("po/org.gtkx.example.pot", previous);
+        const timestamp = new Date("2000-01-01T00:00:00Z");
+        utimesSync(path, timestamp, timestamp);
+
+        await extract(project.root);
+
+        expect(readFileSync(path, "utf8")).toBe(previous);
+        expect(statSync(path).mtimeMs).toBe(timestamp.getTime());
+    });
+
     it("preserves source strings, contexts, plurals, references, and native format flags", async () => {
         using project = createProject();
         project.write("po/LINGUAS", "");

@@ -69,4 +69,12 @@ it("generates and reuses bindings before renderer and native artifacts exist", a
     expect(existsSync(join(directory.path, "AGENTS.md"))).toBe(false);
     await execute(process.execPath, args, { timeout: 60_000 });
     expect(bindingIdentities()).toEqual(initialBindings);
+    await Promise.all([
+        execute(process.execPath, [...args, "--force"], { timeout: 60_000 }),
+        execute(process.execPath, [...args, "--force"], { timeout: 60_000 }),
+    ]);
+    const regeneratedBindings = bindingIdentities();
+    expect(regeneratedBindings).not.toEqual(initialBindings);
+    await execute(process.execPath, args, { timeout: 60_000 });
+    expect(bindingIdentities()).toEqual(regeneratedBindings);
 });

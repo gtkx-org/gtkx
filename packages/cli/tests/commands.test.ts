@@ -141,6 +141,122 @@ describe("CLI commands", () => {
         }
     });
 
+    it("refreshes component state and restarts for import and bundled asset changes", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "resources.json");
+        const failedPath = join(project.root, "load-failed.txt");
+        const icon = (color: string) =>
+            `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="${color}"/></svg>`;
+        project.write("src/a.data", "first");
+        project.write("src/b.data", "second");
+        project.write("src/probe.svg", icon("blue"));
+        for (const name of ["a", "b"]) {
+            project.write(
+                `src/data-${name}.ts`,
+                `export { default as path } from "./${name}.data?resource=/org/gtkx/probe/value";`,
+            );
+        }
+        const component = (label: string, data: string) => `
+            import { Display } from "@gtkx/gi/gdk";
+            import { resourcesLookupData } from "@gtkx/gi/gio";
+            import { IconTheme } from "@gtkx/gi/gtk";
+            import { GtkLabel } from "@gtkx/jsx/gtk";
+            import { randomUUID } from "node:crypto";
+            import { writeFileSync } from "node:fs";
+            import { useEffect, useState } from "react";
+            import { path } from "./data-${data}.ts";
+            import iconName from "./probe.svg?icon=gtkx-resource-probe";
+            export function Probe() {
+                const [token] = useState(() => randomUUID());
+                const label = ${JSON.stringify(label)};
+                useEffect(() => {
+                    const display = Display.getDefault();
+                    if (display === null) throw new Error("No display");
+                    const text = (resource) => new TextDecoder().decode(resourcesLookupData(resource, 0).getData());
+                    writeFileSync(${JSON.stringify(readyPath)}, JSON.stringify({
+                        pid: process.pid,
+                        token,
+                        label,
+                        value: text(path),
+                        hasIcon: IconTheme.getForDisplay(display).hasIcon(iconName),
+                        icon: text("/org/gtkx/example/icons/gtkx-resource-probe.svg"),
+                    }));
+                    if (process.env.NODE_ENV === "production") process.exit(0);
+                }, [label, token]);
+                return <GtkLabel label={label} />;
+            }
+        `;
+        project.write("src/probe.tsx", component("initial", "a"));
+        project.write(
+            "src/index.tsx",
+            `import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+            import { createRoot } from "@gtkx/react";
+            import { writeFileSync } from "node:fs";
+            const { Probe } = await import("./probe.tsx").catch((cause) => {
+                writeFileSync(${JSON.stringify(failedPath)}, String(process.pid));
+                throw cause;
+            });
+            createRoot().render(
+                <AdwApplication applicationId="org.gtkx.example">
+                    <AdwApplicationWindow><Probe /></AdwApplicationWindow>
+                </AdwApplication>
+            );`,
+        );
+        const observation = () =>
+            JSON.parse(readFileSync(readyPath, "utf8")) as {
+                pid: number;
+                token: string;
+                label: string;
+                value: string;
+                hasIcon: boolean;
+                icon: string;
+            };
+        await withSession("dev", project.root, readyPath, async () => {
+            const initial = observation();
+            expect(initial).toMatchObject({ label: "initial", value: "first", hasIcon: true, icon: icon("blue") });
+            project.write("src/probe.tsx", component("refreshed", "a"));
+            await expect.poll(() => observation().label, { timeout: 30_000 }).toBe("refreshed");
+            expect(observation()).toMatchObject({ pid: initial.pid, token: initial.token, value: "first" });
+
+            project.write("src/probe.tsx", component("replaced", "b"));
+            await expect.poll(() => observation().value, { timeout: 30_000 }).toBe("second");
+            const replaced = observation();
+            expect(replaced.pid).not.toBe(initial.pid);
+            expect(replaced.token).not.toBe(initial.token);
+
+            project.write("src/b.data", "updated");
+            await expect.poll(() => observation().value, { timeout: 30_000 }).toBe("updated");
+            const updated = observation();
+            expect(updated.pid).not.toBe(replaced.pid);
+
+            project.write("src/probe.svg", icon("red"));
+            await expect.poll(() => observation().icon, { timeout: 30_000 }).toBe(icon("red"));
+            expect(observation()).toMatchObject({ hasIcon: true, value: "updated" });
+            expect(observation().pid).not.toBe(updated.pid);
+
+            const beforeRemoval = observation();
+            rmSync(join(project.root, "src/b.data"));
+            await expect.poll(() => existsSync(failedPath), { timeout: 30_000 }).toBe(true);
+            project.write("src/b.data", "recovered");
+            await expect.poll(() => observation().value, { timeout: 30_000 }).toBe("recovered");
+            expect(observation().pid).not.toBe(beforeRemoval.pid);
+        });
+        rmSync(readyPath);
+        await invoke(["build", "--cwd", project.root]);
+        const stopDisplay = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
+        try {
+            await promisify(execFile)(process.execPath, [join(project.root, "dist/bundle.mjs")], { timeout: 30_000 });
+            expect(observation()).toMatchObject({
+                label: "replaced",
+                value: "recovered",
+                hasIcon: true,
+                icon: icon("red"),
+            });
+        } finally {
+            stopDisplay();
+        }
+    });
+
     it("generates upstream bindings and documentation through their command arguments", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
         expect(await invoke(["codegen", "--cwd", project.root])).toContain("codegen");
@@ -409,7 +525,7 @@ describe("CLI commands", () => {
                 `import { writeFileSync } from "node:fs";
                 export default async () => {
                     writeFileSync(${JSON.stringify(attemptedPath)}, "attempted");
-                    const { applicationId } = await import("./generated/nested/settings.ts");
+                    const { applicationId } = await import("./generated/nested/settings.js");
                     ${config.replace("export default", "return").replace('"org.gtkx.example"', "applicationId")}
                 };`,
             );

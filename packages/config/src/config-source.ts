@@ -4,13 +4,26 @@ import { basename, extname, isAbsolute, join, resolve } from "node:path";
 type ConfigResolutionOptions = { configFile?: string | undefined; cwd?: string | undefined };
 
 const CONFIG_LOCATIONS = ["gtkx.config", ".config/gtkx", ".config/gtkx.config"];
+const CONFIG_EXTENSIONS = SUPPORTED_EXTENSIONS.filter((extension) => extension !== ".cjs" && extension !== ".cts");
 
 const configCandidatePaths = (directory: string): string[] =>
     CONFIG_LOCATIONS.flatMap((location) =>
-        SUPPORTED_EXTENSIONS.filter((extension) => extension !== ".cjs" && extension !== ".cts").map((extension) =>
-            join(directory, `${location}${extension}`),
-        ),
+        CONFIG_EXTENSIONS.map((extension) => join(directory, `${location}${extension}`)),
     );
+
+const configSourceCandidates = (path: string): string[] => {
+    const extension = extname(path);
+    const fallback = extension === ".js" ? ".ts" : extension === ".mjs" ? ".mts" : undefined;
+
+    if (extension.length > 0) {
+        return fallback === undefined ? [path] : [path, `${path.slice(0, -extension.length)}${fallback}`];
+    }
+
+    return [
+        path,
+        ...CONFIG_EXTENSIONS.flatMap((candidate) => [`${path}${candidate}`, join(path, `index${candidate}`)]),
+    ];
+};
 
 const isLocalConfigSource = (source: string): boolean => source.startsWith(".") || isAbsolute(source);
 
@@ -32,4 +45,4 @@ const localConfigSourcePath = (source: string, options: ConfigResolutionOptions)
         : resolve(cwd, source);
 };
 
-export { configCandidatePaths, localConfigSourcePath, type ConfigResolutionOptions };
+export { configCandidatePaths, configSourceCandidates, localConfigSourcePath, type ConfigResolutionOptions };

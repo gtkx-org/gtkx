@@ -1,10 +1,10 @@
 import type { ExtractedKey, ExtractedKeysMap, Logger, Plugin } from "i18next-cli";
 import { type NodePath, parseSync as parseBabelSync, type Scope, traverse, types } from "@babel/core";
 import { isPathInside, isPathWithin, toPosixPath } from "@gtkx/utils";
-import { type GetTextTranslationRecord, po } from "gettext-parser";
+import { type GetTextTranslation, type GetTextTranslationRecord, po } from "gettext-parser";
 import { runExtractor } from "i18next-cli";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { existsSync, mkdtempDisposableSync, readFileSync, writeFileSync } from "node:fs";
+import { isAbsolute, join, relative, resolve } from "node:path";
 import type { CatalogProject } from "./catalogs.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
 import { sourceLanguage } from "../internal/source-imports.js";
@@ -28,16 +28,10 @@ type SourceMessage = {
     sourceKey: string;
 };
 
-type SyntheticEntry = {
-    call: string;
-    line: number | undefined;
-};
-
-type SourceExtraction = {
-    messages: SourceMessage[];
-    output: string;
-    project: CatalogProject;
-    workDir: string;
+type CatalogSource = {
+    message: SourceMessage;
+    path: string;
+    line: number;
 };
 
 type CatalogTemplateExtraction = {
@@ -1652,125 +1646,101 @@ const renderCatalogCall = (message: SourceMessage): string => {
     return message.context === null ? `gettext(${msgid});` : `pgettext(${JSON.stringify(message.context)}, ${msgid});`;
 };
 
-const locatedOwners = (
+const sourceOwners = (
     project: CatalogProject,
     message: SourceMessage,
 ): { path: string; line: number | undefined }[] => {
-    const owners: { path: string; line: number | undefined }[] = [];
+    const owners = new Map<string, { path: string; line: number | undefined }>();
 
     for (const location of message.locations) {
         const path = projectPath(project.root, location.file);
 
         if (path !== null) {
-            owners.push({ path, line: location.line });
+            owners.set(`${path}\0${String(location.line)}`, { path, line: location.line });
         }
     }
 
-    const unique = new Map(owners.map((owner) => [`${owner.path}\0${String(owner.line)}`, owner]));
-
-    return unique.values().toArray();
+    return owners.size > 0 ? owners.values().toArray() : [{ path: SYNTHETIC_FILENAME, line: undefined }];
 };
 
-const sourceOwners = (
-    project: CatalogProject,
-    message: SourceMessage,
-): { path: string; line: number | undefined }[] => {
-    const located = locatedOwners(project, message);
-
-    return located.length > 0 ? located : [{ path: SYNTHETIC_FILENAME, line: undefined }];
-};
-
-const syntheticEntries = (project: CatalogProject, messages: SourceMessage[]): Map<string, SyntheticEntry[]> => {
-    const entries: Map<string, SyntheticEntry[]> = new Map();
-
-    for (const message of messages) {
-        for (const owner of sourceOwners(project, message)) {
-            const owned = entries.get(owner.path) ?? [];
-            owned.push({ call: renderCatalogCall(message), line: owner.line });
-            entries.set(owner.path, owned);
-        }
-    }
-
-    if (entries.size === 0) {
-        entries.set(SYNTHETIC_FILENAME, []);
-    }
-
-    return entries;
-};
-
-const compareSyntheticEntries = (left: SyntheticEntry, right: SyntheticEntry): number =>
-    (left.line ?? Number.MAX_SAFE_INTEGER) - (right.line ?? Number.MAX_SAFE_INTEGER);
-
-const lastSyntheticLine = (entries: SyntheticEntry[]): number => {
+const catalogSources = (project: CatalogProject, messages: SourceMessage[]): CatalogSource[] => {
+    const sources = messages
+        .flatMap((message) => sourceOwners(project, message).map((owner) => ({ ...owner, message })))
+        .toSorted(
+            (left, right) =>
+                left.path.localeCompare(right.path) ||
+                (left.line ?? Number.MAX_SAFE_INTEGER) - (right.line ?? Number.MAX_SAFE_INTEGER),
+        );
+    let path = "";
     let line = 0;
 
-    for (const entry of entries) {
-        line = Math.max(line, entry.line ?? 0);
-    }
+    return sources.map((source) => {
+        if (source.path !== path) {
+            path = source.path;
+            line = 0;
+        }
 
-    return line;
+        line = Math.max(1, source.line ?? line + 1);
+
+        return { ...source, line };
+    });
 };
 
-const appendSyntheticEntry = (lines: string[], entry: SyntheticEntry, requestedLine: number): void => {
-    const index = requestedLine - 1;
-    const existing = lines[index];
+const restoreCatalogReferences = (output: string, sources: CatalogSource[]): void => {
+    const catalog = po.parse(readFileSync(output));
+    const references: Map<GetTextTranslation, { order: number; paths: Set<string> }> = new Map();
 
-    if (existing === undefined || existing.length === 0) {
-        lines[index] = entry.call;
+    for (const { message, path, line } of sources) {
+        const translation = catalog.translations[message.context ?? ""]?.[message.singular];
 
-        return;
+        if (translation === undefined) {
+            throw new Error(`GNU gettext did not extract ${JSON.stringify(message.singular)}`);
+        }
+
+        const entry = references.get(translation) ?? { order: references.size, paths: new Set<string>() };
+        const filename = /[ \t]/.test(path) ? `\u2068${path}\u2069` : path;
+        entry.paths.add(`${filename}:${String(line)}`);
+        references.set(translation, entry);
     }
 
-    lines[index] = `${existing} ${entry.call}`;
-};
-
-const renderSyntheticSource = (entries: SyntheticEntry[]): string => {
-    const lines: string[] = [];
-    const sorted = entries.toSorted(compareSyntheticEntries);
-    let nextLine = lastSyntheticLine(entries) + 1;
-
-    for (const entry of sorted) {
-        const requestedLine = Math.max(1, entry.line ?? nextLine++);
-        appendSyntheticEntry(lines, entry, requestedLine);
+    for (const [translation, { paths }] of references) {
+        const reference = [...paths].join(" ");
+        translation.comments = {
+            ...translation.comments,
+            reference:
+                translation.comments?.reference === undefined
+                    ? reference
+                    : `${reference} ${translation.comments.reference}`,
+        };
     }
 
-    return `${lines.join("\n")}\n`;
+    writeFileSync(
+        output,
+        po.compile(catalog, {
+            foldLength: 0,
+            sort: (left, right) =>
+                (references.get(left)?.order ?? Number.MAX_SAFE_INTEGER) -
+                (references.get(right)?.order ?? Number.MAX_SAFE_INTEGER),
+        }),
+    );
 };
 
-const writeSyntheticSources = (workDir: string, project: CatalogProject, messages: SourceMessage[]): string => {
-    const entries = syntheticEntries(project, messages);
-    const paths: string[] = [];
-
-    for (const [path, owned] of entries) {
-        const target = join(workDir, path);
-        mkdirSync(dirname(target), { recursive: true });
-        writeFileSync(target, renderSyntheticSource(owned));
-        paths.push(path);
-    }
-
-    const potfiles = join(workDir, POTFILES_FILENAME);
-    writeFileSync(potfiles, `${paths.toSorted((left, right) => left.localeCompare(right)).join("\n")}\n`);
-
-    return potfiles;
-};
-
-const extractSourceMessages = ({ project, messages, output, workDir }: SourceExtraction): void => {
-    const potfilesPath = writeSyntheticSources(workDir, project, messages);
-
+const extractSourceMessages = (sources: CatalogSource[], output: string): void => {
     runCliTool({
         tool: "xgettext",
         args: [
             "--language=JavaScript",
             "--from-code=UTF-8",
             "--force-po",
+            "--no-location",
             "--keyword=gettext:1",
             "--keyword=ngettext:1,2",
             "--keyword=pgettext:1c,2",
             "--keyword=npgettext:1c,2,3",
-            `--directory=${workDir}`,
-            `--files-from=${potfilesPath}`,
             `--output=${output}`,
+            "-",
         ],
+        options: { input: sources.map(({ message }) => renderCatalogCall(message)).join("\n") },
         target: output,
     });
 };
@@ -1828,24 +1798,19 @@ const extractCatalogTemplate = ({
     shouldPreserveMetadataMessages,
     output = resolve(project.poDir, `${project.domain}.pot`),
 }: CatalogTemplateExtraction): void => {
-    const workDir = mkdtempSync(join(project.poDir, ".gtkx-i18n-"));
-    const source = join(workDir, "source.pot");
-    const hasPreviousTemplate = existsSync(output);
+    using workDir = mkdtempDisposableSync(join(project.poDir, ".gtkx-i18n-"));
+    const source = join(workDir.path, "source.pot");
+    const sources = catalogSources(project, messages);
+    extractSourceMessages(sources, source);
 
-    try {
-        if (shouldPreserveMetadataMessages && hasPreviousTemplate) {
-            const fragment = join(workDir, "metadata.pot");
-            extractMetadataFragment(project, output, fragment);
-            extractSourceMessages({ project, messages, output: source, workDir });
-            joinMetadataFragment(source, fragment);
-        } else {
-            extractSourceMessages({ project, messages, output: source, workDir });
-        }
-
-        replaceCatalogTemplate(source, output);
-    } finally {
-        rmSync(workDir, { recursive: true, force: true });
+    if (shouldPreserveMetadataMessages && existsSync(output)) {
+        const fragment = join(workDir.path, "metadata.pot");
+        extractMetadataFragment(project, output, fragment);
+        joinMetadataFragment(source, fragment);
     }
+
+    restoreCatalogReferences(source, sources);
+    replaceCatalogTemplate(source, output);
 };
 
 const extractSourceCatalogTo = async (project: CatalogProject, paths: string[], output: string): Promise<void> => {

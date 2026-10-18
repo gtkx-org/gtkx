@@ -29,6 +29,8 @@ GTKX derives resource paths from the configured application ID: `com.example.Tas
 
 Production builds load their `gtkx.gresource` file automatically.
 
+During development, changing, removing, or restoring an imported resource or icon restarts the app. Changing the imports that select those assets also restarts it, so resources from removed imports are released.
+
 ## Production build output
 
 `gtkx build` writes to `dist/`. Use `--out` for another independently runnable build:

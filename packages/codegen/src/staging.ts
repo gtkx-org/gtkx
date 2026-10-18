@@ -237,4 +237,4 @@ const acquireStoreLocks = async (
     };
 };
 
-export { acquireStoreLocks, createStagingDir, isProcessRunning, processIdentityToken, sweepStagingDirs };
+export { acquireStoreLocks, createStagingDir, sweepStagingDirs };

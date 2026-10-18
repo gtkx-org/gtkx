@@ -2,11 +2,13 @@ import type { InlineConfig, ModuleNode, Plugin, ViteDevServer } from "vite";
 import { error, warn } from "@gtkx/utils";
 import { isCatalogSource } from "../i18n/catalogs.js";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
-import { sourceLanguage } from "../internal/source-imports.js";
+import { parseRuntimeImportsIn, sourceLanguage } from "../internal/source-imports.js";
 import { projectSchemaFiles, SCHEMA_SUFFIX, stageAndCompileProjectSchemas } from "../settings/schema.js";
 import { createStorybookSession, type StorybookSession } from "../storybook/session.js";
 import { isUrlSpecifier } from "../vite-plugins/asset-specifier.js";
 import { injectedCssId } from "../vite-plugins/css.js";
+import { REL_SEPARATOR, toVirtualId } from "../vite-plugins/resource-shared.js";
+import { stripQuery } from "../vite-plugins/strip-query.js";
 import { createChangeQueue, type WatchedChange } from "./change-queue.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
 import { isMissingImport, missingImportName } from "./missing-import.js";
@@ -60,6 +62,7 @@ type DevSession = {
     refreshTracker: RefreshTracker;
     failure: FailureTracker;
     pendingSaves: Map<string, string>;
+    imports: Map<string, Set<string>>;
     schemaFiles: Set<string>;
     hasPendingSchemaChange: boolean;
     storybook: StorybookSession | undefined;
@@ -427,17 +430,39 @@ const didRestartForStylesheet = async (session: DevSession, change: WatchedChang
     return true;
 };
 
-const didRestartForUrlAsset = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
+const didRestartForAsset = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
     const fileModules = session.server.moduleGraph.getModulesByFile(change.path);
+    const resourcePrefix = toVirtualId(change.path) + REL_SEPARATOR;
+    const isResource = session.server.moduleGraph.idToModuleMap.keys().some((id) => id.startsWith(resourcePrefix));
 
-    if (fileModules?.values().some((module) => module.id !== null && isUrlSpecifier(module.id))) {
-        session.deps.log(`URL asset ${change.event}: ${change.path}`);
+    if (isResource || fileModules?.values().some((module) => module.id !== null && isUrlSpecifier(module.id))) {
+        session.deps.log(`Asset ${change.event}: ${change.path}`);
         await requestRestart(session);
 
         return true;
     }
 
     return false;
+};
+
+const didRestartForImports = async (session: DevSession, path: string): Promise<boolean> => {
+    const previous = session.imports.get(path);
+    const current = previous === undefined ? null : parseRuntimeImportsIn(path);
+
+    if (previous === undefined || current === null) {
+        return false;
+    }
+
+    const specifiers = new Set(current.map((entry) => entry.source));
+
+    if (previous.symmetricDifference(specifiers).size === 0) {
+        return false;
+    }
+
+    session.deps.log(`Module imports changed: ${path}`);
+    await requestRestart(session);
+
+    return true;
 };
 
 const didRestartForChange = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
@@ -467,7 +492,11 @@ const didRestartForChange = async (session: DevSession, change: WatchedChange): 
         return true;
     }
 
-    return (await didRestartForStylesheet(session, change)) || didRestartForUrlAsset(session, change);
+    return (
+        (await didRestartForStylesheet(session, change)) ||
+        (await didRestartForAsset(session, change)) ||
+        didRestartForImports(session, change.path)
+    );
 };
 
 const applyChange = async (session: DevSession, change: WatchedChange): Promise<void> => {
@@ -696,7 +725,23 @@ const announceReady = (session: DevSession): void => {
     session.deps.log("HMR enabled - watching for changes...");
 };
 
-const createSession = (server: ViteDevServer, deps: DevRunnerDeps): DevSession => {
+const trackModuleImports = (imports: Map<string, Set<string>>): Plugin => ({
+    name: "gtkx:dev-imports",
+    enforce: "pre",
+    transform(_code, id) {
+        const path = stripQuery(id);
+
+        if (!imports.has(path) && sourceLanguage(path) !== undefined) {
+            const entries = parseRuntimeImportsIn(path);
+
+            if (entries !== null) {
+                imports.set(path, new Set(entries.map((entry) => entry.source)));
+            }
+        }
+    },
+});
+
+const createSession = (server: ViteDevServer, deps: DevRunnerDeps, imports: Map<string, Set<string>>): DevSession => {
     const refreshTracker = createRefreshTracker(deps.performRefresh);
 
     return {
@@ -708,6 +753,7 @@ const createSession = (server: ViteDevServer, deps: DevRunnerDeps): DevSession =
             announceFailure(server, cause);
         }, refreshTracker.isRefreshing),
         pendingSaves: new Map(),
+        imports,
         schemaFiles: new Set(projectSchemaFiles(server.config.root).files),
         hasPendingSchemaChange: false,
         storybook: undefined,
@@ -716,10 +762,14 @@ const createSession = (server: ViteDevServer, deps: DevRunnerDeps): DevSession =
 
 const createDevRunner = (deps: DevRunnerDeps, options: DevRunnerOptions = {}): DevRunner => ({
     async run(entryPath: string): Promise<void> {
+        const imports = new Map<string, Set<string>>();
         const server = await deps.createServer(
-            createDevServerConfig(process.cwd(), deps.deployOutDir, deps.plugins(entryPath)),
+            createDevServerConfig(process.cwd(), deps.deployOutDir, [
+                trackModuleImports(imports),
+                ...deps.plugins(entryPath),
+            ]),
         );
-        const session = createSession(server, deps);
+        const session = createSession(server, deps, imports);
         deps.installShutdownHandlers(onShutdownSignal(session));
 
         deps.watchUncaughtErrors((cause) => {

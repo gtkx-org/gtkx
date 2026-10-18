@@ -14,8 +14,8 @@ import {
     discardPreparedStore,
     ensureStoreLink,
     type PreparedStore,
-    publishPreparedStore,
-    publishStorePair,
+    hasStoreLayout,
+    publishStores,
     reclaimStoreArtifacts,
     type StoreOptions,
 } from "./store/store-fs.js";
@@ -69,7 +69,6 @@ type StoreResult = {
     intrinsicElements: number;
 };
 
-type JsxStoreResult = StoreResult & { store: PreparedStore | undefined };
 type GiStoreResult = { isRegenerated: boolean; namespaces: number; store: PreparedStore | undefined };
 
 /**
@@ -158,46 +157,6 @@ const jsxUserOptions = (options: CodegenRunnerOptions) => ({
     userOmittedProps: options.userOmittedProps ?? {},
 });
 
-const emitJsxStore = async (input: {
-    options: CodegenRunnerOptions;
-    jsx: StoreOptions;
-    loadLibrary: () => Library;
-    isGiRegenerated: boolean;
-    namespaces: number;
-}): Promise<JsxStoreResult> => {
-    const { options, jsx, loadLibrary, isGiRegenerated, namespaces } = input;
-    const { runJsxCodegen } = await import("./jsx.js");
-
-    const jsxResult = await runJsxCodegen({
-        getLibrary: loadLibrary,
-        jsx,
-        ...jsxUserOptions(options),
-        isGiRegenerated,
-        isForced: options.isForced === true,
-    });
-
-    return {
-        isRegenerated: isGiRegenerated || jsxResult.isRegenerated,
-        namespaces,
-        intrinsicElements: jsxResult.intrinsicElementCount,
-        store: jsxResult.store,
-    };
-};
-
-const prepareStores = (stores: (StoreOptions | undefined)[]): void => {
-    const resolved = stores.filter((store): store is StoreOptions => store !== undefined);
-
-    for (const store of resolved) {
-        sweepStagingDirs(store.storeDir);
-    }
-
-    reclaimStoreArtifacts(resolved);
-
-    for (const store of resolved) {
-        ensureStoreLink(store);
-    }
-};
-
 const emitGiStore = (options: CodegenRunnerOptions, loadLibrary: () => Library): GiStoreResult => {
     const { gi, libraries, girPath } = options;
     const giInputs = { girFiles: [] as string[], libraries, girPath, storeVersion: gi.version };
@@ -212,61 +171,57 @@ const emitGiStore = (options: CodegenRunnerOptions, loadLibrary: () => Library):
     return { isRegenerated, namespaces: result.namespaces, store: result.store };
 };
 
-const publishGiStore = (gi: GiStoreResult): StoreResult => {
-    if (gi.store !== undefined) {
-        publishPreparedStore(gi.store);
-    }
-
-    return { isRegenerated: gi.isRegenerated, namespaces: gi.namespaces, intrinsicElements: 0 };
-};
-
-const emitStorePair = async (input: {
-    gi: GiStoreResult;
-    jsx: StoreOptions;
-    loadLibrary: () => Library;
-    options: CodegenRunnerOptions;
-}): Promise<StoreResult> => {
-    const { gi, jsx, loadLibrary, options } = input;
-    let jsxResult: JsxStoreResult | undefined;
-
-    try {
-        jsxResult = await emitJsxStore({
-            options,
-            jsx,
-            loadLibrary,
-            isGiRegenerated: gi.isRegenerated,
-            namespaces: gi.namespaces,
-        });
-
-        if (gi.store !== undefined || jsxResult.store !== undefined) {
-            publishStorePair({ gi: gi.store, giLink: options.gi, jsx: jsxResult.store, jsxLink: jsx });
-        }
-
-        return jsxResult;
-    } catch (error) {
-        discardPreparedStore(gi.store);
-        discardPreparedStore(jsxResult?.store);
-        throw error;
-    }
-};
-
-const emitStores = async (options: CodegenRunnerOptions): Promise<StoreResult> => {
-    const { gi, jsx, libraries, girPath } = options;
+const emitStores = async (input: CodegenRunnerOptions): Promise<StoreResult> => {
+    const { gi, jsx, libraries, girPath } = input;
 
     if (girPath.length === 0) {
         throw new Error("codegen needs at least one GIR search path; pass the result of resolveGirPath");
     }
 
-    prepareStores([gi, jsx]);
+    const options = hasStoreLayout(gi, jsx) ? input : { ...input, isForced: true };
+    reclaimStoreArtifacts(gi);
+
+    for (const store of [gi, jsx]) {
+        if (store !== undefined) {
+            sweepStagingDirs(store.storeDir);
+            ensureStoreLink(store);
+        }
+    }
+
     let library: Library | undefined;
     const loadLibrary = (): Library => (library ??= Library.load(libraries, girPath));
     const giResult = emitGiStore(options, loadLibrary);
+    let jsxStore: PreparedStore | undefined;
+    let intrinsicElements = 0;
 
-    if (jsx === undefined) {
-        return publishGiStore(giResult);
+    try {
+        if (jsx !== undefined) {
+            const { runJsxCodegen } = await import("./jsx.js");
+            const result = await runJsxCodegen({
+                getLibrary: loadLibrary,
+                jsx,
+                ...jsxUserOptions(options),
+                isGiRegenerated: giResult.isRegenerated,
+                isForced: options.isForced === true,
+            });
+            jsxStore = result.store;
+            intrinsicElements = result.intrinsicElementCount;
+        }
+
+        if (giResult.store !== undefined || jsxStore !== undefined) {
+            publishStores({ gi: giResult.store, giLink: gi, jsx: jsxStore, jsxLink: jsx });
+        }
+
+        return {
+            isRegenerated: giResult.isRegenerated || jsxStore !== undefined,
+            namespaces: giResult.namespaces,
+            intrinsicElements,
+        };
+    } catch (error) {
+        discardPreparedStore(giResult.store);
+        discardPreparedStore(jsxStore);
+        throw error;
     }
-
-    return emitStorePair({ gi: giResult, jsx, loadLibrary, options });
 };
 
 export { runCodegen, runGlCodegen, type CodegenRunnerOptions, type CodegenRunnerResult };

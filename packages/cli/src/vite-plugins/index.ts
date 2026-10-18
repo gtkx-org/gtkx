@@ -69,7 +69,7 @@ const gtkxVitePlugins = (options: GtkxVitePluginOptions = {}): Plugin[] => {
         gtkxAssetImports(),
         gtkxBuiltUrl(),
         gtkxFont(staging.fonts),
-        gtkxResources(loadConfig, entryPath),
+        gtkxResources(loadConfig),
         gtkxCss(),
         gtkxReactCompiler(loadConfig),
     ];

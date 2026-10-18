@@ -1,19 +1,4 @@
-import { REFRESH_EXPORT, REGISTER_REFRESH_EXPORT } from "./resource-shared.js";
-
 type InitModuleOptions = { isBuild: true; bundleReferenceId: string } | { isBuild: false; devBundlePath: string };
-
-const refreshCallbackSource = (): string[] => [
-    "const refreshCallbacks = new Map();",
-    "",
-    `export function ${REGISTER_REFRESH_EXPORT}(key, callback) {`,
-    "    refreshCallbacks.set(key, callback);",
-    "    callback();",
-    "}",
-    "",
-    "function runRefreshCallbacks() {",
-    "    for (const callback of refreshCallbacks.values()) callback();",
-    "}",
-];
 
 const buildInitModuleSource = (bundleReferenceId: string): string =>
     [
@@ -25,10 +10,7 @@ const buildInitModuleSource = (bundleReferenceId: string): string =>
         "const resource = Resource.load(bundlePath);",
         "resourcesRegister(resource);",
         "",
-        ...refreshCallbackSource(),
-        "",
         "export function ensureRegistered() {}",
-        `export function ${REFRESH_EXPORT}() {}`,
     ].join("\n");
 
 const devInitModuleSource = (bundlePath: string): string => {
@@ -55,8 +37,6 @@ const devInitModuleSource = (bundlePath: string): string => {
         '    lastSig = "";',
         "}",
         "",
-        ...refreshCallbackSource(),
-        "",
         "export function ensureRegistered() {",
         `    if (!existsSync(${bundlePathLiteral})) {`,
         "        unregister();",
@@ -71,11 +51,6 @@ const devInitModuleSource = (bundlePath: string): string => {
         "}",
         "",
         "ensureRegistered();",
-        "",
-        `export function ${REFRESH_EXPORT}() {`,
-        "    ensureRegistered();",
-        "    runRefreshCallbacks();",
-        "}",
     ].join("\n");
 };
 

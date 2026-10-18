@@ -2,7 +2,12 @@ import { isPathInside, warn } from "@gtkx/utils";
 import { loadConfig as loadConfigFile } from "c12";
 import { existsSync } from "node:fs";
 import { relative, resolve } from "node:path";
-import { captureConfigDependencies, createConfigImporter, setConfigDependencies } from "./config-dependencies.ts";
+import {
+    addConfigSource,
+    captureConfigDependencies,
+    createConfigImporter,
+    setConfigDependencies,
+} from "./config-dependencies.ts";
 import { missingConfigFileError } from "./config-error.ts";
 import { type ConfigResolutionOptions, localConfigSourcePath } from "./config-source.ts";
 import { type Config, graduatedFutureKeys, resolveConfig, type ResolvedConfig, validateConfig } from "./config.ts";
@@ -42,7 +47,13 @@ const graduatedFutureWarnings: Map<string, string> = new Map();
 const rejectMissingLocalConfig = (source: string, options: ConfigResolutionOptions): undefined => {
     const path = localConfigSourcePath(source, options);
 
-    if (path !== undefined && !existsSync(path)) {
+    if (path === undefined) {
+        return;
+    }
+
+    addConfigSource(path);
+
+    if (!existsSync(path)) {
         throw new Error(`Extended configuration does not exist at ${path}`);
     }
 };

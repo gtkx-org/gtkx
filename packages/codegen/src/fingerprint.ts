@@ -3,11 +3,15 @@ import { createHash, type Hash } from "node:crypto";
 import { type Dirent, existsSync, readdirSync, readFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { z } from "zod";
 import packageManifest from "../package.json" with { type: "json" };
-import { hasFreshPropsDependencies, isPropsDependencies, type PropsDependencies } from "./docs/props-dependencies.js";
+import {
+    hasFreshPropsDependencies,
+    propsDependenciesSchema,
+    type PropsDependencies,
+} from "./docs/props-dependencies.js";
 import { EXTERNAL_NAMESPACES } from "./gir/external-namespaces.js";
 import { locateGirFile } from "./gir/libraries.js";
-import { arrayGuard, hasFields, isNumber, isString } from "./guards.js";
 import { readJsonFile } from "./json.js";
 
 type GiInputs = {
@@ -17,12 +21,14 @@ type GiInputs = {
     storeVersion: string | undefined;
 };
 
-type GiFingerprint = {
-    value: string;
-    girFiles: string[];
-    libraries: string[];
-    girPath: string[];
-};
+const giFingerprintSchema = z.object({
+    value: z.string(),
+    girFiles: z.array(z.string()),
+    libraries: z.array(z.string()),
+    girPath: z.array(z.string()),
+});
+
+type GiFingerprint = z.infer<typeof giFingerprintSchema>;
 
 type DocsFingerprintInput = {
     resolveFrom: string;
@@ -33,11 +39,13 @@ type DocsFingerprintInput = {
     acceptedChildTypes: Record<string, string[]>;
 };
 
-type DocsFingerprint = {
-    value: string;
-    gi: GiFingerprint;
-    props: PropsDependencies;
-};
+const docsFingerprintSchema = z.object({
+    value: z.string(),
+    gi: giFingerprintSchema,
+    props: propsDependenciesSchema,
+});
+
+type DocsFingerprint = z.infer<typeof docsFingerprintSchema>;
 
 type JsxFingerprintInput = {
     reactVersion: string;
@@ -47,12 +55,14 @@ type JsxFingerprintInput = {
     omittedProps: Record<string, string[]>;
 };
 
-type JsxFingerprint = {
-    value: string;
-    intrinsicElementCount: number;
-};
+const jsxFingerprintSchema = z.object({
+    value: z.string(),
+    intrinsicElementCount: z.number(),
+});
 
-type InstalledManifest = { name: string; version: string };
+type JsxFingerprint = z.infer<typeof jsxFingerprintSchema>;
+
+const installedManifestSchema = z.object({ name: z.string(), version: z.string() });
 
 const FINGERPRINT_FILENAME = ".codegen-fingerprint.json";
 const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -82,9 +92,6 @@ const hashTree = (hash: Hash, label: string, root: string): void => {
     }
 };
 
-const isInstalledManifest = (value: unknown): value is InstalledManifest =>
-    hasFields<InstalledManifest>(value, { name: isString, version: isString });
-
 const tryResolve = (specifier: string): string | undefined => {
     try {
         return fileURLToPath(import.meta.resolve(specifier));
@@ -98,9 +105,9 @@ const manifestVersion = (path: string | undefined, name: string): string | undef
         return undefined;
     }
 
-    const manifest = readJsonFile(path);
+    const manifest = installedManifestSchema.safeParse(readJsonFile(path));
 
-    return isInstalledManifest(manifest) && manifest.name === name ? manifest.version : undefined;
+    return manifest.success && manifest.data.name === name ? manifest.data.version : undefined;
 };
 
 const packageRootFor = (name: string): string | undefined => {
@@ -197,20 +204,6 @@ const computeGiFingerprint = (inputs: GiInputs): GiFingerprint => ({
 
 const readSentinel = (storeDir: string): unknown => readJsonFile(join(storeDir, FINGERPRINT_FILENAME));
 
-const isGiFingerprint = (value: unknown): value is GiFingerprint =>
-    hasFields<GiFingerprint>(value, {
-        value: isString,
-        girFiles: arrayGuard(isString),
-        libraries: arrayGuard(isString),
-        girPath: arrayGuard(isString),
-    });
-
-const isDocsFingerprint = (value: unknown): value is DocsFingerprint =>
-    hasFields<DocsFingerprint>(value, { value: isString, gi: isGiFingerprint, props: isPropsDependencies });
-
-const isJsxFingerprint = (value: unknown): value is JsxFingerprint =>
-    hasFields<JsxFingerprint>(value, { value: isString, intrinsicElementCount: isNumber });
-
 const recordedGiValue = (sentinel: GiFingerprint, inputs: GiInputs): string | undefined => {
     if (!hasMatchingRecordedInputs(sentinel, inputs)) {
         return undefined;
@@ -226,9 +219,9 @@ const recordedGiValue = (sentinel: GiFingerprint, inputs: GiInputs): string | un
 };
 
 const isGiStoreFresh = (giStoreDir: string, inputs: GiInputs): boolean => {
-    const sentinel = readSentinel(giStoreDir);
+    const sentinel = giFingerprintSchema.safeParse(readSentinel(giStoreDir));
 
-    return isGiFingerprint(sentinel) && isGiFingerprintFresh(sentinel, inputs);
+    return sentinel.success && isGiFingerprintFresh(sentinel.data, inputs);
 };
 
 const isGiFingerprintFresh = (fingerprint: GiFingerprint, inputs: GiInputs): boolean =>
@@ -265,12 +258,13 @@ const computeDocsFingerprint = (
 };
 
 const isDocsOutputFresh = (outDir: string, inputs: GiInputs, input: DocsFingerprintInput): boolean => {
-    const sentinel = readSentinel(outDir);
+    const parsed = docsFingerprintSchema.safeParse(readSentinel(outDir));
 
-    if (!isDocsFingerprint(sentinel)) {
+    if (!parsed.success) {
         return false;
     }
 
+    const sentinel = parsed.data;
     const giValue = recordedGiValue(sentinel.gi, inputs);
 
     return (
@@ -324,12 +318,13 @@ const jsxStoreFreshness = (
     jsxStoreDir: string,
     input: JsxFingerprintInput,
 ): { isFresh: boolean; intrinsicElementCount: number } => {
-    const sentinel = readSentinel(jsxStoreDir);
+    const parsed = jsxFingerprintSchema.safeParse(readSentinel(jsxStoreDir));
 
-    if (!isJsxFingerprint(sentinel)) {
+    if (!parsed.success) {
         return { isFresh: false, intrinsicElementCount: 0 };
     }
 
+    const sentinel = parsed.data;
     return sentinel.value === hashJsx(input)
         ? { isFresh: true, intrinsicElementCount: sentinel.intrinsicElementCount }
         : { isFresh: false, intrinsicElementCount: 0 };

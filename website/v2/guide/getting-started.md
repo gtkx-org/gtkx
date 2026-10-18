@@ -66,7 +66,7 @@ For noninteractive creation and existing directories, see [Scaffold Options](/v2
 
 ## The dev loop
 
-`npm run dev` runs `gtkx dev`. Fast Refresh updates edited components in the open window. Changes it cannot patch restart the app.
+`npm run dev` runs `gtkx dev`. Fast Refresh updates component bodies in the open window while preserving state. Changing a module's runtime imports or re-exports, or editing an imported resource or icon, restarts the app and resets its state. Other changes that Fast Refresh cannot patch also restart the app.
 
 | Command          | Result                                                              |
 | ---------------- | ------------------------------------------------------------------- |

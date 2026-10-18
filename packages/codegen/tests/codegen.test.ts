@@ -2,13 +2,19 @@ import { execFileSync } from "node:child_process";
 import {
     closeSync,
     constants,
+    cpSync,
+    existsSync,
     mkdtempDisposableSync,
     mkdirSync,
     openSync,
     readFileSync,
+    realpathSync,
+    renameSync,
+    rmSync,
     symlinkSync,
     writeFileSync,
 } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,6 +28,7 @@ import {
     resolveStore,
     runCodegen,
 } from "../src/index.js";
+import { writeDocs } from "../src/internal.js";
 
 const workspace = fileURLToPath(new URL("../../..", import.meta.url));
 const createProject = () => {
@@ -149,8 +156,101 @@ describe("generated bindings", () => {
             ),
         ).not.toEqual([]);
         expect(await runCodegen(options)).toMatchObject({ isRegenerated: false });
+        writeFileSync(join(gi.storeDir, ".codegen-fingerprint.json"), "null");
+        expect(await runCodegen(options)).toMatchObject({ isRegenerated: true });
+        const legacyStore = join(directory.path, "legacy-gi");
+        cpSync(realpathSync(gi.storeDir), legacyStore, { recursive: true });
+        rmSync(gi.storeDir);
+        renameSync(legacyStore, gi.storeDir);
+        expect(await runCodegen(options)).toMatchObject({ isRegenerated: true });
         expect(await runCodegen({ ...options, isForced: true })).toMatchObject({ isRegenerated: true });
         expect(readFileSync(join(gi.linkDir, "package.json"), "utf8")).toContain("@gtkx/gi");
+    });
+
+    it("adds and removes JSX while preserving published bindings through failed generation", async () => {
+        using directory = createProject();
+        const { gi, jsx } = resolveStore(directory.path);
+        if (jsx === null) throw new Error("JSX store was not resolved");
+        const options = { libraries: ["Gio-2.0"], girPath: resolveGirPath(undefined, directory.path), gi };
+        await runCodegen(options);
+        expect(existsSync(jsx.linkDir)).toBe(false);
+        await runCodegen({ ...options, jsx });
+        const previousJsx = realpathSync(join(jsx.linkDir, "gio", "index.d.ts"));
+        expect(readGeneratedElements(jsx.linkDir).length).toBeGreaterThan(0);
+
+        await expect(runCodegen({ ...options, libraries: ["Missing-1.0"], jsx })).rejects.toThrow();
+        expect(realpathSync(join(jsx.linkDir, "gio", "index.d.ts"))).toBe(previousJsx);
+        writeFileSync(join(jsx.storeDir, ".codegen-fingerprint.json"), "{}");
+        expect(await runCodegen({ ...options, jsx })).toMatchObject({ isRegenerated: true });
+
+        await runCodegen({ ...options, libraries: ["GLib-2.0"] });
+        expect(existsSync(jsx.linkDir)).toBe(false);
+        expect(readGeneratedLibraries(gi.linkDir)?.libraries).toEqual(["GLib-2.0"]);
+        const previousGi = dirname(createRequire(previousJsx).resolve("@gtkx/gi/package.json"));
+        expect(readGeneratedLibraries(previousGi)?.libraries).toContain("Gio-2.0");
+
+        await runCodegen({ ...options, jsx });
+        expect(readGeneratedElements(jsx.linkDir).length).toBeGreaterThan(0);
+        expect(await runCodegen({ ...options, jsx })).toMatchObject({ isRegenerated: false });
+    });
+
+    it("shares matching bindings and rejects incompatible changes from another project", async () => {
+        using directory = createProject();
+        const { gi, jsx } = resolveStore(directory.path);
+        if (jsx === null) throw new Error("JSX store was not resolved");
+        const options = { libraries: ["Gio-2.0"], girPath: resolveGirPath(undefined, directory.path), gi, jsx };
+        await runCodegen(options);
+        const consumer = join(directory.path, "consumer");
+        mkdirSync(consumer);
+        const shared = resolveStore(consumer);
+        if (shared.jsx === null) throw new Error("Shared JSX store was not resolved");
+        const sharedOptions = { ...options, gi: shared.gi, jsx: shared.jsx, isForced: true };
+        await runCodegen(sharedOptions);
+        await expect(runCodegen({ ...sharedOptions, libraries: ["GLib-2.0"] })).rejects.toThrow();
+        await expect(runCodegen({ ...sharedOptions, jsx: undefined })).rejects.toThrow();
+        expect(readGeneratedLibraries(gi.linkDir)?.libraries).toContain("Gio-2.0");
+        expect(readGeneratedElements(jsx.linkDir).length).toBeGreaterThan(0);
+
+        const customStore = (name: string) => ({
+            ...gi,
+            storeDir: join(dirname(gi.storeDir), name),
+            linkDir: join(directory.path, name, "node_modules", "@gtkx", "gi"),
+        });
+        const first = customStore("first");
+        const second = customStore("second");
+        const unrelated = join(dirname(first.linkDir), "jsx", "sentinel.txt");
+        mkdirSync(dirname(unrelated), { recursive: true });
+        writeFileSync(unrelated, "preserve");
+        await runCodegen({ ...options, gi: first, jsx: undefined, libraries: ["GLib-2.0"] });
+        await runCodegen({ ...options, gi: second, jsx: undefined, libraries: ["GObject-2.0"] });
+        expect(readGeneratedLibraries(first.linkDir)?.libraries).toEqual(["GLib-2.0"]);
+        expect(readGeneratedLibraries(second.linkDir)?.libraries).toContain("GObject-2.0");
+        expect(readGeneratedLibraries(gi.linkDir)?.libraries).toContain("Gio-2.0");
+        expect(readGeneratedElements(jsx.linkDir).length).toBeGreaterThan(0);
+        expect(readFileSync(unrelated, "utf8")).toBe("preserve");
+    });
+
+    it("refreshes reference pages when their props dependencies or cached metadata change", () => {
+        using directory = createProject();
+        const props = join(directory.path, "props.ts");
+        const base = join(directory.path, "base.ts");
+        writeFileSync(props, 'export type { CustomProps } from "./base.js";');
+        writeFileSync(base, "export interface CustomProps { caption: string }");
+        const options = {
+            libraries: ["Gtk-4.0"],
+            girPath: resolveGirPath(undefined, directory.path),
+            resolveFrom: directory.path,
+            outDir: join(directory.path, "reference"),
+            props: { GtkButton: { module: "./props.js", export: "CustomProps" } },
+        };
+        expect(writeDocs(options).isRegenerated).toBe(true);
+        expect(writeDocs(options).isRegenerated).toBe(false);
+        writeFileSync(base, "export interface CustomProps { replacement: string }");
+        expect(writeDocs(options).isRegenerated).toBe(true);
+        expect(readFileSync(join(options.outDir, "gtk", "button.md"), "utf8")).toContain("### `replacement`");
+        writeFileSync(join(options.outDir, ".codegen-fingerprint.json"), "{}");
+        expect(writeDocs(options).isRegenerated).toBe(true);
+        expect(writeDocs(options).isRegenerated).toBe(false);
     });
 
     it("generates JSX bindings that accept documented props and reject incompatible consumers", async () => {

@@ -1,13 +1,12 @@
 import type { ConfigLoader } from "@gtkx/config";
-import type { ModuleNode, Plugin, ResolvedConfig, Rolldown, UserConfig, ViteDevServer } from "vite";
+import type { Plugin, ResolvedConfig, Rolldown, UserConfig, ViteDevServer } from "vite";
 import { createConfigLoader, resourceBasePath, viteProjectRoot } from "@gtkx/config/internal";
-import { error, info, isPathInside, isRecord, sortStrings, toPosixPath } from "@gtkx/utils";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { info, isPathInside, isRecord, sortStrings, toPosixPath } from "@gtkx/utils";
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { basename, dirname, extname, isAbsolute, join, posix, relative, sep } from "node:path";
 import { parseSync } from "vite";
-import { withExclusiveLoad } from "../internal/module-loads.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
-import { parseRuntimeImportsIn, type SourceImport, sourceLanguage } from "../internal/source-imports.js";
+import { sourceLanguage } from "../internal/source-imports.js";
 import { createRetainedStagingDir, type RetainedStagingDir, withStagingDir } from "../internal/staging-dir.js";
 import { ASSET_RE } from "./asset-extensions.js";
 import { isBareRelativeAsset, parseIconSpecifier, parseResourceSpecifier } from "./asset-specifier.js";
@@ -18,8 +17,6 @@ import {
     fromVirtualId,
     ICON_NAME_SEPARATOR,
     isVirtual,
-    REFRESH_EXPORT,
-    REGISTER_REFRESH_EXPORT,
     REL_SEPARATOR,
     RESOURCE_PATH_EXPORT,
     toVirtualId,
@@ -40,14 +37,6 @@ type PluginState = {
     root: string;
     isBuild: boolean;
     entries: Map<string, ResourceEntry>;
-    bundledSpecifiers: Map<string, Set<string>>;
-    moduleDependencies: Map<string, Set<string>>;
-    prunedDependencies: Map<string, Set<string>>;
-    declaredEntries: Map<string, Map<string, ResourceEntry>>;
-    declaredIcons: Map<string, Map<string, ResourceEntry>>;
-    entryModule: string | null;
-    sourcePaths: Set<string>;
-    missingSourcePaths: Set<string>;
     stagingDir: RetainedStagingDir;
     devBundlePath: string;
     server: ViteDevServer | null;
@@ -94,16 +83,6 @@ type RetainedIconModuleId = {
 };
 
 type ResourceModuleId = string | RetainedIconModuleId;
-
-type ImporterReconciliation = {
-    currentBundled: Set<string>;
-    currentDependencies: Set<string>;
-    file: string;
-    imports: SourceImport[];
-    key: string;
-    previousBundled: Set<string> | undefined;
-    previousDependencies: Set<string> | undefined;
-};
 
 type DerivedIconEntry = {
     iconIdentity: string;
@@ -389,39 +368,10 @@ const compileDevBundle = (state: PluginState): void => {
     state.compiledSignature = entriesSignature(state);
 };
 
-const isRefreshHook = (value: unknown): value is () => void => typeof value === "function";
-
-const refreshRegisteredDevBundle = (state: PluginState): void => {
-    const server = state.server;
-
-    if (!server) {
-        return;
-    }
-
-    const refresh: unknown = server.moduleGraph.getModuleById(VIRTUAL_INIT)?.ssrModule?.[REFRESH_EXPORT];
-
-    if (isRefreshHook(refresh)) {
-        refresh();
-    }
-};
-
 const registerDevAsset = (state: PluginState): void => {
     if (entriesSignature(state) !== state.compiledSignature) {
         compileDevBundle(state);
     }
-};
-
-const importerKey = (importer: string): string => stripQuery(importer);
-
-const trackBundledSpecifier = (state: PluginState, importer: string | undefined, source: string): void => {
-    if (importer === undefined) {
-        return;
-    }
-
-    const key = importerKey(importer);
-    const specifiers = state.bundledSpecifiers.get(key) ?? new Set<string>();
-    specifiers.add(source);
-    state.bundledSpecifiers.set(key, specifiers);
 };
 
 const createResourceEntry = (sourcePath: string, resourcePath: string): ResourceEntry => ({
@@ -445,61 +395,9 @@ const activateEntry = (state: PluginState, entry: ResourceEntry): ResourceEntry 
     }
 
     state.entries.set(entry.resourcePath, entry);
-    state.sourcePaths.add(entry.sourcePath);
+    state.server?.watcher.add(dirname(entry.sourcePath));
 
     return entry;
-};
-
-const isDeclarativeImporter = (state: PluginState, importer: string | undefined): importer is string =>
-    !state.isBuild && importer !== undefined;
-
-const setSourceAvailability = (state: PluginState, file: string, isAvailable: boolean): void => {
-    if (isAvailable) {
-        state.missingSourcePaths.delete(file);
-
-        return;
-    }
-
-    state.missingSourcePaths.add(file);
-};
-
-const isDeclaredSourceAvailable = (state: PluginState, sourcePath: string): boolean => {
-    const isAvailable = existsSync(sourcePath);
-    setSourceAvailability(state, sourcePath, isAvailable);
-
-    return isAvailable;
-};
-
-const declareEntry = (state: PluginState, importer: string, entry: ResourceEntry): ResourceEntry => {
-    const key = importerKey(importer);
-    const declarations = state.declaredEntries.get(key) ?? new Map<string, ResourceEntry>();
-    const existing = declarations.get(entry.resourcePath);
-
-    if (existing !== undefined && existing.sourcePath !== entry.sourcePath) {
-        throw new Error(
-            `${existing.sourcePath} and ${entry.sourcePath} both resolve to the GResource path ` + entry.resourcePath,
-        );
-    }
-
-    const declared = existing ?? entry;
-    declarations.set(entry.resourcePath, declared);
-    state.declaredEntries.set(key, declarations);
-    state.server?.watcher.add(dirname(declared.sourcePath));
-
-    return declared;
-};
-
-const declareIcon = (state: PluginState, importer: string, iconIdentity: string, entry: ResourceEntry): void => {
-    const key = importerKey(importer);
-    const declarations = state.declaredIcons.get(key) ?? new Map<string, ResourceEntry>();
-    const existing = declarations.get(iconIdentity);
-
-    if (existing !== undefined && existing.sourcePath !== entry.sourcePath) {
-        throw new Error(`${existing.sourcePath} and ${entry.sourcePath} both claim the themed icon ${iconIdentity}`);
-    }
-
-    declarations.set(iconIdentity, existing ?? entry);
-    state.declaredIcons.set(key, declarations);
 };
 
 const assertIconIdentityAvailable = (state: PluginState, iconIdentity: string, sourcePath: string): void => {
@@ -510,80 +408,19 @@ const assertIconIdentityAvailable = (state: PluginState, iconIdentity: string, s
     }
 };
 
-const declareResolvedIcon = (
-    state: PluginState,
-    importer: string | undefined,
-    iconIdentity: string,
-    entry: ResourceEntry,
-): void => {
-    if (isDeclarativeImporter(state, importer)) {
-        declareIcon(state, importer, iconIdentity, entry);
-    }
-};
-
-const registerEntry = (state: PluginState, absPath: string, rel: string, importer?: string): ResourceEntry => {
+const registerEntry = (state: PluginState, absPath: string, rel: string): ResourceEntry => {
     const resourcePath = validateResourcePath(rel.startsWith("/") ? rel : `${state.prefix}/${rel}`);
-    let entry = createResourceEntry(absPath, resourcePath);
 
-    if (isDeclarativeImporter(state, importer)) {
-        entry = declareEntry(state, importer, entry);
-
-        if (!isImporterActive(state, importer) || !isDeclaredSourceAvailable(state, absPath)) {
-            return entry;
-        }
-    }
-
-    return activateEntry(state, entry);
+    return activateEntry(state, createResourceEntry(absPath, resourcePath));
 };
 
-const registerIconEntry = (
-    state: PluginState,
-    sourcePath: string,
-    derived: DerivedIconEntry,
-    importer: string | undefined,
-): ResourceEntry => {
-    const shouldActivate =
-        !isDeclarativeImporter(state, importer) ||
-        (isImporterActive(state, importer) && isDeclaredSourceAvailable(state, sourcePath));
-
-    if (shouldActivate) {
-        assertIconIdentityAvailable(state, derived.iconIdentity, sourcePath);
-    }
-
-    const entry = registerEntry(state, sourcePath, derived.resourcePath, importer);
-    declareResolvedIcon(state, importer, derived.iconIdentity, entry);
-
-    if (shouldActivate) {
-        state.iconOwners.set(derived.iconIdentity, entry);
-    }
+const registerIconEntry = (state: PluginState, sourcePath: string, derived: DerivedIconEntry): ResourceEntry => {
+    assertIconIdentityAvailable(state, derived.iconIdentity, sourcePath);
+    const entry = registerEntry(state, sourcePath, derived.resourcePath);
+    state.iconOwners.set(derived.iconIdentity, entry);
 
     return entry;
 };
-
-const isTrackedSource = (state: PluginState, file: string): boolean => state.sourcePaths.has(file);
-
-const hasSourceEntry = (entries: Map<string, ResourceEntry>, file: string): boolean => {
-    for (const entry of entries.values()) {
-        if (entry.sourcePath === file) {
-            return true;
-        }
-    }
-
-    return false;
-};
-
-const hasDeclaredSource = (declarations: Map<string, Map<string, ResourceEntry>>, file: string): boolean => {
-    for (const entries of declarations.values()) {
-        if (hasSourceEntry(entries, file)) {
-            return true;
-        }
-    }
-
-    return false;
-};
-
-const isDeclaredSource = (state: PluginState, file: string): boolean =>
-    hasDeclaredSource(state.declaredEntries, file) || hasDeclaredSource(state.declaredIcons, file);
 
 const virtualAssetId = (entry: ResourceEntry): string =>
     toVirtualId(entry.sourcePath) + REL_SEPARATOR + entry.resourcePath;
@@ -594,14 +431,20 @@ const virtualIconId = ({ entry, iconName }: ResolvedIconEntry): string =>
 const resolveAssetSource = async (
     ctx: ResolveContext,
     request: { assetSource: string; importer: string | undefined; options: Record<string, unknown> | undefined },
-): Promise<string | undefined> => {
+): Promise<string> => {
     const resolved = await ctx.resolve(request.assetSource, request.importer, {
         ...request.options,
         skipSelf: true,
     });
 
     if (!resolved || resolved.external) {
-        return undefined;
+        throw Object.assign(
+            new Error(`${JSON.stringify(request.assetSource)} could not be resolved to a bundled asset`),
+            {
+                code: "GTKX_UNRESOLVED_IMPORT",
+                specifier: request.assetSource,
+            },
+        );
     }
 
     const sourcePath = stripQuery(resolved.id);
@@ -617,12 +460,8 @@ const resolveAssetEntry = async (
     ctx: ResolveContext,
     state: PluginState,
     request: AssetResolveRequest,
-): Promise<ResourceEntry | undefined> => {
+): Promise<ResourceEntry> => {
     const sourcePath = await resolveAssetSource(ctx, request);
-
-    if (sourcePath === undefined) {
-        return undefined;
-    }
 
     return registerEntry(
         state,
@@ -630,7 +469,6 @@ const resolveAssetEntry = async (
         request.resourcePath === null
             ? derivedResourcePath(state, sourcePath)
             : validateResourcePath(request.resourcePath),
-        request.importer,
     );
 };
 
@@ -638,17 +476,13 @@ const resolveIconEntry = async (
     ctx: ResolveContext,
     state: PluginState,
     request: IconResolveRequest,
-): Promise<ResolvedIconEntry | undefined> => {
+): Promise<ResolvedIconEntry> => {
     const sourcePath = await resolveAssetSource(ctx, request);
-
-    if (sourcePath === undefined) {
-        return undefined;
-    }
 
     const derived = derivedIconEntry(state, sourcePath, request.iconName);
 
     return {
-        entry: registerIconEntry(state, sourcePath, derived, request.importer),
+        entry: registerIconEntry(state, sourcePath, derived),
         iconName: derived.iconName,
     };
 };
@@ -684,16 +518,12 @@ const virtualAssetMetadata = (virtualId: string): { absPath: string; iconName: s
 const resourcePathExport = (entry: ResourceEntry, iconName: string | null): string[] =>
     iconName === null ? [`export const ${RESOURCE_PATH_EXPORT} = ${JSON.stringify(entry.resourcePath)};`] : [];
 
-const assetModuleImports = (iconName: string | null): string[] => {
-    const initBindings = iconName === null ? "ensureRegistered" : `ensureRegistered, ${REGISTER_REFRESH_EXPORT}`;
-
-    return [
-        `import { ${initBindings} } from ${JSON.stringify(VIRTUAL_INIT)};`,
-        ...(iconName === null
-            ? []
-            : ['import { Display } from "@gtkx/gi/gdk";', 'import { IconTheme } from "@gtkx/gi/gtk";']),
-    ];
-};
+const assetModuleImports = (iconName: string | null): string[] => [
+    `import { ensureRegistered } from ${JSON.stringify(VIRTUAL_INIT)};`,
+    ...(iconName === null
+        ? []
+        : ['import { Display } from "@gtkx/gi/gdk";', 'import { IconTheme } from "@gtkx/gi/gtk";']),
+];
 
 const iconThemeRegistration = (state: PluginState, iconName: string | null): string[] => {
     if (iconName === null) {
@@ -711,42 +541,18 @@ const iconThemeRegistration = (state: PluginState, iconName: string | null): str
         "    const paths = theme.getResourcePath() ?? [];",
         "    theme.setResourcePath(paths.includes(resourceIconPath) ? [...paths] : [...paths, resourceIconPath]);",
         "}",
-        `${REGISTER_REFRESH_EXPORT}(resourceIconPath, refreshIconTheme);`,
+        "refreshIconTheme();",
     ];
-};
-
-const loadedResourceEntry = (
-    state: PluginState,
-    sourcePath: string,
-    resourcePath: string,
-): { entry: ResourceEntry; isRegistered: boolean } => {
-    const registered = state.entries.get(resourcePath);
-
-    if (registered === undefined) {
-        return { entry: createResourceEntry(sourcePath, resourcePath), isRegistered: false };
-    }
-
-    if (registered.sourcePath !== sourcePath) {
-        throw new Error(
-            `${registered.sourcePath} and ${sourcePath} both resolve to the GResource path ${resourcePath}`,
-        );
-    }
-
-    return { entry: registered, isRegistered: true };
-};
-
-const compileLoadedDevAsset = (state: PluginState, isRegistered: boolean): void => {
-    if (isRegistered && !state.isBuild) {
-        registerDevAsset(state);
-    }
 };
 
 const loadAssetModule = (state: PluginState, virtualId: string): string => {
     const { absPath, iconName, rel } = virtualAssetMetadata(virtualId);
     const resourcePath = validateResourcePath(rel);
-    const { entry, isRegistered } = loadedResourceEntry(state, absPath, resourcePath);
+    const entry = registerEntry(state, absPath, resourcePath);
     const defaultValue = iconName ?? entry.resourcePath;
-    compileLoadedDevAsset(state, isRegistered);
+    if (!state.isBuild) {
+        registerDevAsset(state);
+    }
 
     return [
         ...assetModuleImports(iconName),
@@ -784,453 +590,6 @@ const finalizeBuildBundle = (
     info(`Compiled ${String(state.entries.size)} resource(s) into ${BUNDLE_FILENAME}`);
 };
 
-const refreshDevRegistration = (state: PluginState): void => {
-    compileDevBundle(state);
-
-    try {
-        refreshRegisteredDevBundle(state);
-    } catch (error_) {
-        error("Failed to refresh GResource bundle:", error_);
-    }
-};
-
-const isSameSpecifiers = (left: Set<string> | undefined, right: Set<string>): boolean =>
-    left === undefined ? right.size === 0 : left.size === right.size && [...right].every((source) => left.has(source));
-
-const bundledSpecifiersIn = (imports: SourceImport[]): Set<string> =>
-    new Set(
-        imports
-            .filter(
-                (entry) => parseResourceSpecifier(entry.source) !== null || parseIconSpecifier(entry.source) !== null,
-            )
-            .map((entry) => entry.source),
-    );
-
-const isSourceModule = (file: string): boolean => sourceLanguage(file) !== undefined;
-
-const isBundledSource = (source: string): boolean =>
-    parseResourceSpecifier(source) !== null || parseIconSpecifier(source) !== null;
-
-const validateUnbundledSource = (source: string): void => {
-    if (isLegacyDataSpecifier(source)) {
-        throw new Error(`${JSON.stringify(source)} uses the legacy #data asset form`);
-    }
-
-    rejectInvalidSpecifier(source);
-};
-
-const resolvedModuleDependency = async (
-    ctx: ResolveContext,
-    source: string,
-    importer: string,
-): Promise<string | null> => {
-    if (isBundledSource(source)) {
-        return null;
-    }
-
-    validateUnbundledSource(source);
-    const resolved = await ctx.resolve(source, importer, { skipSelf: true });
-
-    if (resolved === null) {
-        throw Object.assign(new Error(`${JSON.stringify(source)} could not be resolved from ${importer}`), {
-            code: "GTKX_UNRESOLVED_IMPORT",
-            specifier: source,
-        });
-    }
-
-    return resolved.external ? null : importerKey(resolved.id);
-};
-
-const resolvedModuleDependencies = async (
-    ctx: ResolveContext,
-    imports: SourceImport[],
-    importer: string,
-): Promise<Set<string>> => {
-    const dependencies: Set<string> = new Set();
-
-    for (const entry of imports) {
-        const dependency = await resolvedModuleDependency(ctx, entry.source, importer);
-
-        if (dependency !== null) {
-            dependencies.add(dependency);
-        }
-    }
-
-    return dependencies;
-};
-
-const importerReconciliation = async (
-    ctx: ResolveContext,
-    state: PluginState,
-    id: string,
-): Promise<ImporterReconciliation | null> => {
-    const file = stripQuery(id);
-    const key = importerKey(file);
-
-    if (state.isBuild || !isSourceModule(file)) {
-        return null;
-    }
-
-    const imports = parseRuntimeImportsIn(file);
-
-    if (imports === null) {
-        return null;
-    }
-
-    return {
-        currentBundled: bundledSpecifiersIn(imports),
-        currentDependencies: await resolvedModuleDependencies(ctx, imports, file),
-        file,
-        imports,
-        key,
-        previousBundled: state.bundledSpecifiers.get(key),
-        previousDependencies: state.moduleDependencies.get(key),
-    };
-};
-
-const moduleNodeKey = (module: ModuleNode): string => importerKey(module.id ?? module.file ?? module.url);
-
-const moduleNodeFor = (state: PluginState, id: string): ModuleNode | undefined => {
-    const server = state.server;
-
-    if (server === null) {
-        return undefined;
-    }
-
-    return server.moduleGraph.getModuleById(id) ?? server.moduleGraph.getModuleById(importerKey(id));
-};
-
-const restoreDependencies = (pruned: Set<string>, current: Set<string>): void => {
-    for (const dependency of current) {
-        pruned.delete(dependency);
-    }
-};
-
-const pruneRemovedDependencies = (
-    pruned: Set<string>,
-    previous: Set<string> | undefined,
-    current: Set<string>,
-): void => {
-    if (previous === undefined) {
-        return;
-    }
-
-    for (const dependency of previous) {
-        if (!current.has(dependency)) {
-            pruned.add(dependency);
-        }
-    }
-};
-
-const storePrunedDependencies = (state: PluginState, key: string, pruned: Set<string>): void => {
-    if (pruned.size === 0) {
-        state.prunedDependencies.delete(key);
-
-        return;
-    }
-
-    state.prunedDependencies.set(key, pruned);
-};
-
-const updatePrunedDependencies = (
-    state: PluginState,
-    key: string,
-    previous: Set<string> | undefined,
-    current: Set<string>,
-): void => {
-    const pruned = state.prunedDependencies.get(key) ?? new Set<string>();
-    restoreDependencies(pruned, current);
-    pruneRemovedDependencies(pruned, previous, current);
-    storePrunedDependencies(state, key, pruned);
-};
-
-const isPrunedDependency = (state: PluginState, importer: ModuleNode, imported: ModuleNode): boolean =>
-    state.prunedDependencies.get(moduleNodeKey(importer))?.has(moduleNodeKey(imported)) === true;
-
-const fallbackRootModules = (state: PluginState): string[] => {
-    const roots: string[] = [];
-
-    for (const key of state.moduleDependencies.keys()) {
-        if (moduleNodeFor(state, key)?.importers.size === 0) {
-            roots.push(key);
-        }
-    }
-
-    return roots;
-};
-
-const enqueueCurrentDependencies = (state: PluginState, key: string, pending: string[]): void => {
-    const dependencies = state.moduleDependencies.get(key) ?? [];
-
-    for (const dependency of dependencies) {
-        pending.push(dependency);
-    }
-};
-
-const enqueueGraphDependencies = (state: PluginState, key: string, pending: string[]): void => {
-    const module = moduleNodeFor(state, key);
-
-    if (module === undefined) {
-        return;
-    }
-
-    for (const imported of module.importedModules) {
-        if (!isPrunedDependency(state, module, imported)) {
-            pending.push(moduleNodeKey(imported));
-        }
-    }
-};
-
-const visitActiveImporter = (state: PluginState, active: Set<string>, pending: string[], key: string): void => {
-    if (active.has(key)) {
-        return;
-    }
-
-    active.add(key);
-    enqueueCurrentDependencies(state, key, pending);
-    enqueueGraphDependencies(state, key, pending);
-};
-
-const activeImporterKeys = (state: PluginState): Set<string> => {
-    const active: Set<string> = new Set();
-    const roots = state.entryModule === null ? fallbackRootModules(state) : [state.entryModule];
-    const pending = [...roots];
-
-    while (pending.length > 0) {
-        const key = pending.pop();
-
-        if (key === undefined || active.has(key)) {
-            continue;
-        }
-
-        visitActiveImporter(state, active, pending, key);
-    }
-
-    return active;
-};
-
-const isImporterActive = (state: PluginState, importer: string): boolean =>
-    activeImporterKeys(state).has(importerKey(importer));
-
-const activateDeclaredIcon = (state: PluginState, iconIdentity: string, entry: ResourceEntry): void => {
-    const existing = state.iconOwners.get(iconIdentity);
-
-    if (existing !== undefined && existing.sourcePath !== entry.sourcePath) {
-        throw new Error(`${existing.sourcePath} and ${entry.sourcePath} both claim the themed icon ${iconIdentity}`);
-    }
-
-    state.iconOwners.set(iconIdentity, activateEntry(state, entry));
-};
-
-const activateDeclaredEntries = (state: PluginState, importer: string): void => {
-    const entries = state.declaredEntries.get(importer)?.values() ?? [];
-
-    for (const entry of entries) {
-        if (isDeclaredSourceAvailable(state, entry.sourcePath)) {
-            activateEntry(state, entry);
-        }
-    }
-};
-
-const activateDeclaredIcons = (state: PluginState, importer: string): void => {
-    const icons = state.declaredIcons.get(importer) ?? [];
-
-    for (const [iconIdentity, entry] of icons) {
-        if (isDeclaredSourceAvailable(state, entry.sourcePath)) {
-            activateDeclaredIcon(state, iconIdentity, entry);
-        }
-    }
-};
-
-const activateDeclaredClaims = (state: PluginState, active: Set<string>): void => {
-    for (const importer of sortStrings(active)) {
-        activateDeclaredEntries(state, importer);
-        activateDeclaredIcons(state, importer);
-    }
-};
-
-const rebuildActiveClaims = (state: PluginState): void => {
-    const previous = {
-        entries: state.entries,
-        iconOwners: state.iconOwners,
-        sourcePaths: state.sourcePaths,
-    };
-
-    state.entries = new Map();
-    state.iconOwners = new Map();
-    state.sourcePaths = new Set();
-
-    try {
-        activateDeclaredClaims(state, activeImporterKeys(state));
-    } catch (error_) {
-        state.entries = previous.entries;
-        state.iconOwners = previous.iconOwners;
-        state.sourcePaths = previous.sourcePaths;
-        throw error_;
-    }
-};
-
-const forgetImporterDeclarations = (state: PluginState, importer: string): void => {
-    state.declaredEntries.delete(importer);
-    state.declaredIcons.delete(importer);
-};
-
-const cloneMapValues = <Value>(source: Map<string, Value>, clone: (value: Value) => Value): Map<string, Value> =>
-    new Map([...source].map(([key, value]) => [key, clone(value)]));
-
-const reconciliationCandidate = (state: PluginState): PluginState => ({
-    ...state,
-    bundledSpecifiers: cloneMapValues(state.bundledSpecifiers, (values) => new Set(values)),
-    moduleDependencies: cloneMapValues(state.moduleDependencies, (values) => new Set(values)),
-    prunedDependencies: cloneMapValues(state.prunedDependencies, (values) => new Set(values)),
-    declaredEntries: cloneMapValues(state.declaredEntries, (entries) => new Map(entries)),
-    declaredIcons: cloneMapValues(state.declaredIcons, (entries) => new Map(entries)),
-    missingSourcePaths: new Set(state.missingSourcePaths),
-});
-
-const storeBundledSpecifiers = (state: PluginState, importer: string, specifiers: Set<string>): void => {
-    if (specifiers.size === 0) {
-        state.bundledSpecifiers.delete(importer);
-
-        return;
-    }
-
-    state.bundledSpecifiers.set(importer, specifiers);
-};
-
-const applyImporterGraph = (state: PluginState, reconciliation: ImporterReconciliation): void => {
-    updatePrunedDependencies(
-        state,
-        reconciliation.key,
-        reconciliation.previousDependencies,
-        reconciliation.currentDependencies,
-    );
-
-    state.moduleDependencies.set(reconciliation.key, reconciliation.currentDependencies);
-    storeBundledSpecifiers(state, reconciliation.key, reconciliation.currentBundled);
-};
-
-const declareReconciledResource = async (
-    ctx: ResolveContext,
-    state: PluginState,
-    importer: string,
-    source: string,
-): Promise<void> => {
-    const resourceSpecifier = parseResourceSpecifier(source);
-
-    if (resourceSpecifier === null) {
-        return;
-    }
-
-    const entry = await resolveAssetEntry(ctx, state, {
-        assetSource: resourceSpecifier.assetSource,
-        importer,
-        resourcePath: resourceSpecifier.resourcePath,
-        options: undefined,
-    });
-
-    if (entry === undefined || state.missingSourcePaths.has(entry.sourcePath)) {
-        throw new Error(`${JSON.stringify(source)} did not resolve to a bundled resource`);
-    }
-};
-
-const declareReconciledIcon = async (
-    ctx: ResolveContext,
-    state: PluginState,
-    importer: string,
-    source: string,
-): Promise<void> => {
-    const iconSpecifier = parseIconSpecifier(source);
-
-    if (iconSpecifier === null) {
-        return;
-    }
-
-    const entry = await resolveIconEntry(ctx, state, {
-        assetSource: iconSpecifier.assetSource,
-        iconName: iconSpecifier.iconName,
-        importer,
-        options: undefined,
-    });
-
-    if (entry === undefined || state.missingSourcePaths.has(entry.entry.sourcePath)) {
-        throw new Error(`${JSON.stringify(source)} did not resolve to a bundled icon`);
-    }
-};
-
-const declareReconciledSource = async (
-    ctx: ResolveContext,
-    state: PluginState,
-    importer: string,
-    source: string,
-): Promise<void> => {
-    await declareReconciledResource(ctx, state, importer, source);
-    await declareReconciledIcon(ctx, state, importer, source);
-};
-
-const declareReconciledImports = async (
-    ctx: ResolveContext,
-    state: PluginState,
-    reconciliation: ImporterReconciliation,
-): Promise<void> => {
-    for (const entry of reconciliation.imports) {
-        if (isBundledSource(entry.source)) {
-            await declareReconciledSource(ctx, state, reconciliation.file, entry.source);
-        }
-    }
-};
-
-const prepareReconciliation = async (
-    ctx: ResolveContext,
-    state: PluginState,
-    reconciliation: ImporterReconciliation,
-): Promise<PluginState> => {
-    const candidate = reconciliationCandidate(state);
-
-    const isBundledChanged = !isSameSpecifiers(reconciliation.previousBundled, reconciliation.currentBundled);
-
-    if (isBundledChanged) {
-        forgetImporterDeclarations(candidate, reconciliation.key);
-    }
-
-    applyImporterGraph(candidate, reconciliation);
-    rebuildActiveClaims(candidate);
-
-    if (isBundledChanged) {
-        await declareReconciledImports(ctx, candidate, reconciliation);
-    }
-
-    return candidate;
-};
-
-const commitReconciliation = (state: PluginState, candidate: PluginState): void => {
-    state.entries = candidate.entries;
-    state.bundledSpecifiers = candidate.bundledSpecifiers;
-    state.moduleDependencies = candidate.moduleDependencies;
-    state.prunedDependencies = candidate.prunedDependencies;
-    state.declaredEntries = candidate.declaredEntries;
-    state.declaredIcons = candidate.declaredIcons;
-    state.missingSourcePaths = candidate.missingSourcePaths;
-    state.sourcePaths = candidate.sourcePaths;
-    state.iconOwners = candidate.iconOwners;
-};
-
-const reconcileImporter = async (ctx: ResolveContext, state: PluginState, id: string): Promise<void> => {
-    const reconciliation = await importerReconciliation(ctx, state, id);
-
-    if (reconciliation === null) {
-        return;
-    }
-
-    const previousSignature = entriesSignature(state);
-    const candidate = await prepareReconciliation(ctx, state, reconciliation);
-    commitReconciliation(state, candidate);
-
-    if (entriesSignature(state) !== previousSignature) {
-        refreshDevRegistration(state);
-    }
-};
-
 const resolveResourceConfig = async (state: PluginState, config: UserConfig, loadConfig: ConfigLoader) => {
     const loaded = await loadConfig.load(viteProjectRoot(config));
     state.prefix = resourceBasePath(loaded.config.applicationId);
@@ -1241,54 +600,8 @@ const resolveResourceConfig = async (state: PluginState, config: UserConfig, loa
     };
 };
 
-const refreshTrackedSource = (state: PluginState, file: string): void => {
-    if (!isTrackedSource(state, file)) {
-        return;
-    }
-
-    try {
-        refreshDevRegistration(state);
-    } catch (error_) {
-        error("GResource refresh failed:", error_);
-    }
-};
-
-const rebuildForSourceAvailability = (state: PluginState, previousSignature: string): void => {
-    try {
-        rebuildActiveClaims(state);
-
-        if (entriesSignature(state) !== previousSignature) {
-            refreshDevRegistration(state);
-        }
-    } catch (error_) {
-        error("GResource source update failed:", error_);
-    }
-};
-
-const updateTrackedSourceAvailability = (state: PluginState, file: string, isAvailable: boolean): void => {
-    if (!isTrackedSource(state, file) && !state.missingSourcePaths.has(file) && !isDeclaredSource(state, file)) {
-        return;
-    }
-
-    const previousSignature = entriesSignature(state);
-    setSourceAvailability(state, file, isAvailable);
-    rebuildForSourceAvailability(state, previousSignature);
-};
-
 const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void => {
     state.server = server;
-
-    const onChange = (file: string): void => {
-        refreshTrackedSource(state, file);
-    };
-
-    const onAdd = (file: string): void => {
-        updateTrackedSourceAvailability(state, file, true);
-    };
-
-    const onUnlink = (file: string): void => {
-        updateTrackedSourceAvailability(state, file, false);
-    };
 
     const onClose = (): void => {
         releaseStagingDir(state);
@@ -1296,9 +609,6 @@ const attachResourceWatcher = (state: PluginState, server: ViteDevServer): void 
 
     server.httpServer?.once("close", onClose);
     server.watcher.once("close", onClose);
-    server.watcher.on("change", onChange);
-    server.watcher.on("add", onAdd);
-    server.watcher.on("unlink", onUnlink);
 };
 
 const applyResolvedConfig = (state: PluginState, config: ResolvedConfig): void => {
@@ -1355,7 +665,7 @@ const resolveExplicitResourceId = async (
         options: request.options,
     });
 
-    return entry === undefined ? undefined : virtualAssetId(entry);
+    return virtualAssetId(entry);
 };
 
 const resolveIconResourceId = async (
@@ -1376,7 +686,7 @@ const resolveIconResourceId = async (
         options: request.options,
     });
 
-    return resolved === undefined ? undefined : { id: virtualIconId(resolved), moduleSideEffects: true };
+    return { id: virtualIconId(resolved), moduleSideEffects: true };
 };
 
 const resolveBundledResourceId = async (
@@ -1393,14 +703,12 @@ const resolveBundledResourceId = async (
 
     if (parseResourceSpecifier(request.source) !== null) {
         const resolved = await resolveExplicitResourceId(ctx, state, request);
-        trackBundledSpecifier(state, request.importer, request.source);
 
         return resolved;
     }
 
     if (parseIconSpecifier(request.source) !== null) {
         const resolved = await resolveIconResourceId(ctx, state, request);
-        trackBundledSpecifier(state, request.importer, request.source);
 
         return resolved;
     }
@@ -1459,9 +767,7 @@ const createResourcesPlugin = (state: PluginState, loadConfig: ConfigLoader): Pl
         },
     },
 
-    async transform(code, id) {
-        await withExclusiveLoad(state, () => reconcileImporter(this, state, id));
-
+    transform(code, id) {
         return retainSideEffectIconImport(code, id);
     },
 
@@ -1474,20 +780,12 @@ const createResourcesPlugin = (state: PluginState, loadConfig: ConfigLoader): Pl
     },
 });
 
-function gtkxResources(loadConfig: ConfigLoader = createConfigLoader(), entryPath?: string): Plugin {
+function gtkxResources(loadConfig: ConfigLoader = createConfigLoader()): Plugin {
     const state: PluginState = {
         prefix: "",
         root: "",
         isBuild: false,
         entries: new Map(),
-        bundledSpecifiers: new Map(),
-        moduleDependencies: new Map(),
-        prunedDependencies: new Map(),
-        declaredEntries: new Map(),
-        declaredIcons: new Map(),
-        entryModule: entryPath === undefined ? null : importerKey(entryPath),
-        sourcePaths: new Set(),
-        missingSourcePaths: new Set(),
         stagingDir: createRetainedStagingDir(DEV_STAGING_PREFIX),
         devBundlePath: "",
         server: null,

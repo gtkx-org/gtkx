@@ -11,6 +11,8 @@ Upgrade to Node.js 26.7 or newer and set `"type": "module"` in `package.json`; G
 
 Use ESM `import` and `export` in application code, configuration files, and their local helpers. Convert `.cjs` and `.cts` files to ESM. Configuration runs through Node's native loader, so TypeScript configuration must use erasable syntax. Storybook main configuration uses `.ts`, `.mts`, `.js`, or `.mjs`; keep JSX in previews and stories. External CommonJS dependencies remain supported through ESM imports.
 
+Stop running apps and dev sessions before the first `gtkx codegen --force` after upgrading. Codegen replaces older generated-store layouts with a new snapshot. GI-only generation removes obsolete JSX bindings owned by the project; installing React again regenerates them.
+
 ## Clean up the configuration
 
 Delete the `future` block and any retired ids under `deprecations.silence`. A graduated flag left at `true` is temporarily accepted with a warning; `false` is rejected because the old behavior no longer exists.
@@ -35,6 +37,7 @@ The `"*"` wildcard is gone, and explicitly listing `Adw-1` or `Gtk-4.0` is rejec
 - Promisified methods omit a leading success boolean from multi-value finish results when failure already rejects. `loadContentsAsync` resolves to `[Uint8Array, string | null]`.
 - Inout records and boxed values mutate the object passed in instead of repeating it in the return value.
 - Assets use relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports.
+- Changes to runtime imports, re-exports, or imported resources and icons restart development apps and reset their state. Edits to component bodies still use Fast Refresh.
 - Generated classes register with their own definitions, so production builds retain only reached bindings. Import a class if `GObject.typeFromName` must find it.
 
 Run `tsc --noEmit` after these changes. The typechecker catches the value and tuple changes; `gtkx build` catches stale resource imports.

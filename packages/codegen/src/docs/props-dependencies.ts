@@ -1,36 +1,23 @@
 import { createHash } from "node:crypto";
 import { dirname } from "node:path";
 import ts from "typescript";
-import { arrayGuard, hasFields, isString } from "../guards.js";
+import { z } from "zod";
 import { PROPS_COMPILER_OPTIONS, PROPS_ORIGIN } from "./props-modules.js";
 
-type PropsResolution = {
-    specifier: string;
-    containingFile: string;
-    fileName: string | null;
-};
+const propsResolutionSchema = z.object({
+    specifier: z.string(),
+    containingFile: z.string(),
+    fileName: z.string().nullable(),
+});
 
-type PropsDependencies = {
-    files: string[];
-    resolutions: PropsResolution[];
-    value: string;
-};
+const propsDependenciesSchema = z.object({
+    files: z.array(z.string()),
+    resolutions: z.array(propsResolutionSchema),
+    value: z.string(),
+});
 
-const isResolvedFile = (value: unknown): value is string | null => value === null || isString(value);
-
-const isPropsResolution = (value: unknown): value is PropsResolution =>
-    hasFields<PropsResolution>(value, {
-        specifier: isString,
-        containingFile: isString,
-        fileName: isResolvedFile,
-    });
-
-const isPropsDependencies = (value: unknown): value is PropsDependencies =>
-    hasFields<PropsDependencies>(value, {
-        files: arrayGuard(isString),
-        resolutions: arrayGuard(isPropsResolution),
-        value: isString,
-    });
+type PropsResolution = z.infer<typeof propsResolutionSchema>;
+type PropsDependencies = z.infer<typeof propsDependenciesSchema>;
 
 const dependencyHash = (sources: Iterable<[string, string]>): string => {
     const hash = createHash("sha256");
@@ -93,7 +80,7 @@ const hasFreshPropsDependencies = (dependencies: PropsDependencies): boolean => 
 
 export {
     hasFreshPropsDependencies,
-    isPropsDependencies,
+    propsDependenciesSchema,
     propsDependencies,
     type PropsDependencies,
     type PropsResolution,

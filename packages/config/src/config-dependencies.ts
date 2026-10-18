@@ -3,6 +3,8 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { registerHooks } from "node:module";
 import { extname, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { isRecord } from "./config-error.ts";
+import { configSourceCandidates } from "./config-source.ts";
 
 type CaptureState = { cacheKey: string; dependencies: Set<string>; resolver: Jiti };
 type CapturedConfig<T> = { dependencies: string[]; value: T };
@@ -22,6 +24,18 @@ const addPath = (path: string): void => {
 const addUrl = (url: string): void => {
     if (url.startsWith("file:")) {
         addPath(fileURLToPath(url));
+    }
+};
+
+const addConfigSource = (path: string): void => {
+    for (const candidate of configSourceCandidates(path)) {
+        addPath(candidate);
+    }
+};
+
+const addFailedSource = (error: unknown): void => {
+    if (isRecord(error) && typeof error.url === "string" && error.url.startsWith("file:")) {
+        addConfigSource(fileURLToPath(error.url));
     }
 };
 
@@ -61,6 +75,7 @@ const registerResolutionHook = (): ReturnType<typeof registerHooks> =>
                 );
 
                 if (fallback === undefined) {
+                    addFailedSource(error);
                     throw error;
                 }
 
@@ -126,6 +141,7 @@ const loadConfigModule = async (path: string): Promise<unknown> => {
 };
 
 export {
+    addConfigSource,
     captureConfigDependencies,
     configDependenciesFor,
     createConfigImporter,

@@ -3,12 +3,10 @@ import { randomUUID } from "node:crypto";
 import {
     chmodSync,
     cpSync,
-    type Dirent,
     existsSync,
     lstatSync,
     mkdirSync,
     readdirSync,
-    readFileSync,
     realpathSync,
     renameSync,
     rmSync,
@@ -17,9 +15,11 @@ import {
     writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, relative } from "node:path";
+import { z } from "zod";
 import { keepFailedProject, type SourceModule } from "../compile.js";
 import { FINGERPRINT_FILENAME } from "../fingerprint.js";
-import { createStagingDir, isProcessRunning, processIdentityToken } from "../staging.js";
+import { readJsonFile } from "../json.js";
+import { createStagingDir } from "../staging.js";
 import { compileStore } from "./compile-store.js";
 
 /** Where one generated store is written and how it is reached. */
@@ -60,16 +60,17 @@ type WriteStoreParams = Pick<StoreOptions, "storeDir" | "linkDir"> & {
     rawFiles?: RawFile[];
 };
 
-type StoreIdentity = { anchor: string; owner: string };
-type StoreGeneration = { modifiedAt: number; path: string };
-type PreparedStore = { dir: string; keepAt: string; link: StoreLink };
+type PreparedStore = { dir: string; keepAt: string };
+
+const storeIdentitySchema = z.object({ anchor: z.string(), owner: z.string() });
+const fingerprintValueSchema = z.object({ value: z.string() });
+const jsxManifestSchema = z.object({ name: z.literal("@gtkx/jsx") });
+type StoreIdentity = z.infer<typeof storeIdentitySchema>;
 
 const STORE_DIR_MODE = 0o755;
 const FAILED_STORE_SUFFIX = ".failed";
 const IDENTITY_FILENAME = ".codegen-owner.json";
 const RETAINED_GENERATIONS = 3;
-const GENERATION_OWNER_PATTERN =
-    /^\.(?:gi|jsx|pair)-(?:generation|legacy)-\d+-(?<pid>\d+)(?:-(?<identity>[a-f\d]{64}|unknown))?-/u;
 
 const subpathExport = (stem: string): { types: string; import: string; require: null; default: string } => ({
     types: `./${stem}.d.ts`,
@@ -110,7 +111,7 @@ const prepareStore = (params: WriteStoreParams): PreparedStore => {
         throw keepFailedProject({ projectDir: tmp, keepAt, error });
     }
 
-    return { dir: tmp, keepAt, link: params };
+    return { dir: tmp, keepAt };
 };
 
 const buildTempStore = (tmp: string, params: WriteStoreParams, owner: string | undefined): void => {
@@ -160,249 +161,6 @@ const writePackageJson = (storeDir: string, manifest: Manifest): void => {
     writeFileSync(join(storeDir, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 };
 
-const hasPathEntry = (path: string): boolean => {
-    try {
-        lstatSync(path);
-
-        return true;
-    } catch {
-        return false;
-    }
-};
-
-const generationPath = (storeDir: string, kind: string): string => {
-    const identity = processIdentityToken(process.pid) ?? "unknown";
-
-    return join(
-        dirname(storeDir),
-        `.${basename(storeDir)}-${kind}-${String(Date.now())}-${String(process.pid)}-${identity}-${randomUUID()}`,
-    );
-};
-
-const isSymlink = (path: string): boolean => {
-    try {
-        return lstatSync(path).isSymbolicLink();
-    } catch {
-        return false;
-    }
-};
-
-const publishPreparedStore = (prepared: PreparedStore): void => {
-    const { link } = prepared;
-    const generation = generationPath(link.storeDir, "generation");
-    renameSync(prepared.dir, generation);
-
-    if (hasPathEntry(link.storeDir) && !isSymlink(link.storeDir)) {
-        symlinkRelative(link.linkDir, generation);
-        renameSync(link.storeDir, generationPath(link.storeDir, "legacy"));
-    }
-
-    symlinkRelative(link.storeDir, generation);
-    ensureStoreLink(link);
-    reclaimGenerations(link.storeDir);
-    rmSync(prepared.keepAt, { recursive: true, force: true });
-};
-
-const pairRoot = (links: StoreLink[]): string => {
-    const roots = new Set(links.map((link) => realpathSync(dirname(link.storeDir))));
-
-    if (roots.size !== 1) {
-        throw new Error("The generated @gtkx/gi and @gtkx/jsx stores must share one directory");
-    }
-
-    const root = roots.values().next().value;
-
-    if (root === undefined) {
-        throw new Error("Cannot resolve the generated store directory");
-    }
-
-    return root;
-};
-
-const pairStorePath = (pair: string, link: StoreLink): string => join(pair, basename(link.storeDir));
-
-const materializePairStore = (pair: string, link: StoreLink, prepared: PreparedStore | undefined): void => {
-    const destination = pairStorePath(pair, link);
-
-    if (prepared === undefined) {
-        cpSync(realpathSync(link.storeDir), destination, { recursive: true });
-
-        return;
-    }
-
-    renameSync(prepared.dir, destination);
-};
-
-const hasPairLayout = (current: string, links: StoreLink[]): boolean =>
-    links.every((link) => {
-        try {
-            return realpathSync(link.storeDir) === realpathSync(pairStorePath(current, link));
-        } catch {
-            return false;
-        }
-    });
-
-const materializeBaselineStore = (baseline: string, pair: string, link: StoreLink): void => {
-    const destination = pairStorePath(baseline, link);
-
-    if (!existsSync(join(link.storeDir, "package.json"))) {
-        cpSync(pairStorePath(pair, link), destination, { recursive: true });
-
-        return;
-    }
-
-    if (isSymlink(link.storeDir)) {
-        symlinkRelative(destination, realpathSync(link.storeDir));
-
-        return;
-    }
-
-    cpSync(link.storeDir, destination, { recursive: true });
-};
-
-const migrateStoreToPair = (current: string, baseline: string, link: StoreLink): void => {
-    if (hasPathEntry(link.storeDir) && !isSymlink(link.storeDir)) {
-        symlinkRelative(link.linkDir, pairStorePath(baseline, link));
-        renameSync(link.storeDir, generationPath(link.storeDir, "legacy"));
-    }
-
-    symlinkRelative(link.storeDir, pairStorePath(current, link));
-    symlinkRelative(link.linkDir, link.storeDir);
-};
-
-const migrateStoresToPair = (current: string, baseline: string, links: StoreLink[]): void => {
-    for (const link of links) {
-        migrateStoreToPair(current, baseline, link);
-    }
-};
-
-const canonicalizeStoreLinks = (links: StoreLink[]): void => {
-    for (const link of links) {
-        symlinkRelative(link.linkDir, link.storeDir);
-    }
-};
-
-const pinStorePair = (giDir: string, jsxDir: string): void => {
-    const gi = realpathSync(giDir);
-    const jsx = realpathSync(jsxDir);
-    const link = join(jsx, "node_modules", "@gtkx", "gi");
-
-    if (hasPathEntry(link) && !isSymlink(link)) {
-        rmSync(link, { recursive: true, force: true });
-    }
-
-    symlinkRelative(link, gi);
-};
-
-const pinExistingStorePair = (gi: StoreLink, jsx: StoreLink): void => {
-    if (existsSync(join(gi.storeDir, "package.json")) && existsSync(join(jsx.storeDir, "package.json"))) {
-        pinStorePair(realpathSync(gi.storeDir), realpathSync(jsx.storeDir));
-    }
-};
-
-const storedPairDirectories = (root: string): string[] => {
-    const entries = readdirSync(root, { withFileTypes: true });
-
-    return entries
-        .filter((entry) => entry.isDirectory() && entry.name.startsWith(".pair-generation-"))
-        .map((entry) => join(root, entry.name));
-};
-
-const hasCompletePair = (pair: string, gi: StoreLink, jsx: StoreLink): boolean =>
-    existsSync(join(pairStorePath(pair, gi), "package.json")) &&
-    existsSync(join(pairStorePath(pair, jsx), "package.json"));
-
-const pinStoredPairs = (root: string, gi: StoreLink, jsx: StoreLink): void => {
-    for (const pair of storedPairDirectories(root)) {
-        if (hasCompletePair(pair, gi, jsx)) {
-            pinStorePair(pairStorePath(pair, gi), pairStorePath(pair, jsx));
-        }
-    }
-};
-
-const createBaselinePair = (root: string, pair: string, gi: StoreLink, jsx: StoreLink): string => {
-    const baseline = generationPath(join(root, "pair"), "generation");
-    mkdirSync(baseline);
-
-    for (const link of [gi, jsx]) {
-        materializeBaselineStore(baseline, pair, link);
-    }
-
-    pinStorePair(pairStorePath(baseline, gi), pairStorePath(baseline, jsx));
-
-    return baseline;
-};
-
-const preparePairLayout = (root: string, pair: string, gi: StoreLink, jsx: StoreLink): string => {
-    const current = join(root, "current");
-    const links = [gi, jsx];
-
-    if (hasPairLayout(current, links)) {
-        canonicalizeStoreLinks(links);
-
-        return current;
-    }
-
-    if (links.every((link) => !existsSync(join(link.storeDir, "package.json")))) {
-        symlinkRelative(current, pair);
-        migrateStoresToPair(current, pair, links);
-
-        return current;
-    }
-
-    const baseline = createBaselinePair(root, pair, gi, jsx);
-    symlinkRelative(current, baseline);
-    migrateStoresToPair(current, baseline, links);
-
-    return current;
-};
-
-const publishStorePair = (input: {
-    gi: PreparedStore | undefined;
-    giLink: StoreLink;
-    jsx: PreparedStore | undefined;
-    jsxLink: StoreLink;
-}): void => {
-    const links = [input.giLink, input.jsxLink];
-    const root = pairRoot(links);
-    const pair = generationPath(join(root, "pair"), "generation");
-    mkdirSync(pair);
-    materializePairStore(pair, input.giLink, input.gi);
-    materializePairStore(pair, input.jsxLink, input.jsx);
-    pinExistingStorePair(input.giLink, input.jsxLink);
-    pinStoredPairs(root, input.giLink, input.jsxLink);
-    const current = preparePairLayout(root, pair, input.giLink, input.jsxLink);
-    symlinkRelative(current, pair);
-
-    for (const prepared of [input.gi, input.jsx]) {
-        if (prepared !== undefined) {
-            rmSync(prepared.keepAt, { recursive: true, force: true });
-        }
-    }
-
-    reclaimPairGenerations(root, links);
-};
-
-const discardPreparedStore = (prepared: PreparedStore | undefined): void => {
-    if (prepared !== undefined) {
-        rmSync(prepared.dir, { recursive: true, force: true });
-    }
-};
-
-const isStoreGeneration = (entry: Dirent, storeName: string): boolean =>
-    entry.isDirectory() &&
-    (entry.name.startsWith(`.${storeName}-generation-`) || entry.name.startsWith(`.${storeName}-legacy-`));
-
-const readGeneration = (parent: string, entry: Dirent): StoreGeneration | null => {
-    const path = join(parent, entry.name);
-
-    try {
-        return { modifiedAt: statSync(path).mtimeMs, path };
-    } catch {
-        return null;
-    }
-};
-
 const realpathOrNull = (path: string): string | null => {
     try {
         return realpathSync(path);
@@ -411,191 +169,141 @@ const realpathOrNull = (path: string): string | null => {
     }
 };
 
-const isGenerationWriterRunning = (generation: StoreGeneration): boolean => {
-    const owner = GENERATION_OWNER_PATTERN.exec(basename(generation.path))?.groups;
+const storeRoot = (gi: StoreLink, jsx?: StoreLink): string => {
+    const root = realpathSync(dirname(gi.storeDir));
 
-    if (owner?.pid === undefined) {
-        return false;
+    if (jsx !== undefined && realpathSync(dirname(jsx.storeDir)) !== root) {
+        throw new Error("The generated @gtkx/gi and @gtkx/jsx stores must share one directory");
     }
 
-    const pid = Number(owner.pid);
-
-    if (pid === process.pid || !isProcessRunning(pid)) {
-        return false;
-    }
-
-    return owner.identity === undefined || owner.identity === "unknown" || processIdentityToken(pid) === owner.identity;
+    return join(root, `.${basename(gi.storeDir)}-store`);
 };
 
-const removeAbandonedGenerations = (removable: StoreGeneration[]): Set<StoreGeneration> => {
-    const removed: Set<StoreGeneration> = new Set();
+const hasStoreLayout = (gi: StoreLink, jsx?: StoreLink): boolean => {
+    const root = storeRoot(gi, jsx);
+    const current = realpathOrNull(join(root, "current"));
 
-    for (const generation of removable) {
-        if (isGenerationWriterRunning(generation)) {
-            continue;
+    return (
+        current !== null &&
+        dirname(current) === root &&
+        basename(current).startsWith(".generation-") &&
+        realpathOrNull(gi.storeDir) === join(current, "gi") &&
+        existsSync(join(current, "gi", "package.json")) &&
+        (jsx === undefined
+            ? !existsSync(join(current, "jsx"))
+            : realpathOrNull(jsx.storeDir) === join(current, "jsx") && existsSync(join(current, "jsx", "package.json")))
+    );
+};
+
+const materializeStore = (destination: string, link: StoreLink, prepared: PreparedStore | undefined): void => {
+    if (prepared === undefined) {
+        cpSync(realpathSync(link.storeDir), destination, { recursive: true });
+    } else {
+        renameSync(prepared.dir, destination);
+    }
+};
+
+const replaceStoreLink = (linkPath: string, target: string): void => {
+    if (lstatSync(linkPath, { throwIfNoEntry: false })?.isDirectory()) {
+        rmSync(linkPath, { recursive: true });
+    }
+
+    symlinkRelative(linkPath, target);
+};
+
+const reclaimStoreArtifacts = (gi: StoreLink): void => {
+    const root = storeRoot(gi);
+    const current = realpathOrNull(join(root, "current"));
+
+    if (current === null || !basename(current).startsWith(".generation-")) {
+        return;
+    }
+
+    const entries = readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+    const previous = entries
+        .filter((entry) => entry.name.startsWith(".generation-") && join(root, entry.name) !== current)
+        .map((entry) => ({ path: join(root, entry.name), modifiedAt: statSync(join(root, entry.name)).mtimeMs }))
+        .toSorted((left, right) => right.modifiedAt - left.modifiedAt);
+    for (const entry of previous.slice(RETAINED_GENERATIONS - 1)) {
+        rmSync(entry.path, { recursive: true, force: true });
+    }
+};
+
+const publishStores = (input: {
+    gi: PreparedStore | undefined;
+    giLink: StoreOptions;
+    jsx?: PreparedStore | undefined;
+    jsxLink?: StoreOptions | undefined;
+}): void => {
+    const { giLink, jsxLink } = input;
+    const root = storeRoot(giLink, jsxLink);
+    const current = join(root, "current");
+    const legacyJsx = basename(giLink.storeDir) === "gi" ? join(dirname(root), "jsx") : undefined;
+    const oldJsx = storeIdentity(join(current, "jsx")) ?? (legacyJsx === undefined ? null : storeIdentity(legacyJsx));
+    const obsoleteJsx =
+        jsxLink === undefined && legacyJsx !== undefined
+            ? [legacyJsx, join(dirname(giLink.linkDir), "jsx")].filter(
+                  (path) =>
+                      path !== giLink.storeDir &&
+                      path !== giLink.linkDir &&
+                      jsxManifestSchema.safeParse(readJsonFile(join(path, "package.json"))).success,
+              )
+            : [];
+
+    if (
+        jsxLink === undefined &&
+        giLink.owner !== undefined &&
+        oldJsx?.anchor === dirname(root) &&
+        oldJsx.owner !== giLink.owner &&
+        existsSync(oldJsx.owner)
+    ) {
+        throw new Error(`Cannot remove the generated @gtkx/jsx store shared with ${oldJsx.owner}`);
+    }
+
+    const generation = join(root, `.generation-${String(Date.now())}-${randomUUID()}`);
+    mkdirSync(generation, { recursive: true });
+
+    try {
+        materializeStore(join(generation, "gi"), giLink, input.gi);
+
+        if (jsxLink !== undefined) {
+            materializeStore(join(generation, "jsx"), jsxLink, input.jsx);
+            const giPin = join(generation, "jsx", "node_modules", "@gtkx", "gi");
+            replaceStoreLink(giPin, join(generation, "gi"));
         }
 
-        rmSync(generation.path, { recursive: true, force: true });
-        removed.add(generation);
+        for (const [name, link] of [
+            ["gi", giLink],
+            ["jsx", jsxLink],
+        ] as const) {
+            if (link !== undefined) {
+                replaceStoreLink(link.storeDir, join(current, name));
+                replaceStoreLink(link.linkDir, link.storeDir);
+            }
+        }
+
+        symlinkRelative(current, generation);
+    } catch (error) {
+        rmSync(generation, { recursive: true, force: true });
+        throw error;
     }
 
-    return removed;
-};
-
-const listGenerations = (storeDir: string): StoreGeneration[] => {
-    const parent = realpathSync(dirname(storeDir));
-    const storeName = basename(storeDir);
-
-    return readdirSync(parent, { withFileTypes: true })
-        .filter((entry) => isStoreGeneration(entry, storeName))
-        .map((entry) => readGeneration(parent, entry))
-        .filter((generation): generation is StoreGeneration => generation !== null);
-};
-
-const reclaimGenerations = (storeDir: string): void => {
-    const current = realpathOrNull(storeDir);
-    const previous = listGenerations(storeDir)
-        .filter((generation) => generation.path !== current)
-        .toSorted((left, right) => right.modifiedAt - left.modifiedAt);
-    const retainedPrevious = current === null ? RETAINED_GENERATIONS : RETAINED_GENERATIONS - 1;
-
-    removeAbandonedGenerations(previous.slice(retainedPrevious));
-};
-
-const listPairGenerations = (root: string): StoreGeneration[] =>
-    readdirSync(root, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory() && entry.name.startsWith(".pair-generation-"))
-        .map((entry) => readGeneration(root, entry))
-        .filter((generation): generation is StoreGeneration => generation !== null);
-
-const activePairPath = (root: string, path: string): string | null => {
-    const store = realpathOrNull(path);
-
-    if (store === null) {
-        return null;
+    for (const path of obsoleteJsx) {
+        rmSync(path, { recursive: true, force: true });
     }
 
-    const pair = dirname(store);
-
-    return basename(pair).startsWith(".pair-generation-") && dirname(pair) === root ? pair : null;
-};
-
-const activePairPaths = (root: string, links: StoreLink[]): Set<string> =>
-    new Set(
-        [
-            realpathOrNull(join(root, "current")),
-            ...links.flatMap((link) => [activePairPath(root, link.storeDir), activePairPath(root, link.linkDir)]),
-        ].filter((path): path is string => path !== null),
-    );
-
-const retainedPairGenerations = (root: string, links: StoreLink[]): StoreGeneration[] => {
-    const protectedPaths = activePairPaths(root, links);
-    const generations = listPairGenerations(root).toSorted((left, right) => right.modifiedAt - left.modifiedAt);
-    const unprotected = generations.filter((generation) => !protectedPaths.has(generation.path));
-    const complete = unprotected.filter((generation) =>
-        links.every((link) => existsSync(join(pairStorePath(generation.path, link), "package.json"))),
-    );
-    const incomplete = unprotected.filter((generation) => !complete.includes(generation));
-    const retainedCount = Math.max(0, RETAINED_GENERATIONS - (generations.length - unprotected.length));
-    const removed = removeAbandonedGenerations([...incomplete, ...complete.slice(retainedCount)]);
-
-    return generations.filter((generation) => !removed.has(generation));
-};
-
-const referencedStoreGeneration = (pair: StoreGeneration, link: StoreLink): string | null => {
-    try {
-        return realpathSync(pairStorePath(pair.path, link));
-    } catch {
-        return null;
-    }
-};
-
-const referencedStoreGenerations = (pairs: StoreGeneration[], links: StoreLink[]): Set<string> => {
-    const referenced = pairs
-        .flatMap((pair) => links.map((link) => referencedStoreGeneration(pair, link)))
-        .filter((path): path is string => path !== null);
-
-    return new Set(referenced);
-};
-
-const activeStoreGenerations = (links: StoreLink[]): string[] =>
-    links
-        .flatMap((link) => [realpathOrNull(link.storeDir), realpathOrNull(link.linkDir)])
-        .filter((path): path is string => path !== null);
-
-const isServedFromGeneration = (storeDir: string, generations: StoreGeneration[]): boolean => {
-    const active = realpathOrNull(storeDir);
-
-    return active !== null && generations.some((generation) => generation.path === active);
-};
-
-const reclaimDetachedGenerations = (storeDir: string, referenced: Set<string>): void => {
-    const generations = listGenerations(storeDir).toSorted((left, right) => right.modifiedAt - left.modifiedAt);
-    const unreferenced = generations.filter((generation) => !referenced.has(generation.path));
-    const referencedCount = generations.length - unreferenced.length;
-    const retainedCount = isServedFromGeneration(storeDir, generations)
-        ? Math.max(0, RETAINED_GENERATIONS - referencedCount)
-        : 0;
-
-    removeAbandonedGenerations(unreferenced.slice(retainedCount));
-};
-
-const reclaimPairGenerations = (root: string, links: StoreLink[]): void => {
-    const pairs = retainedPairGenerations(root, links);
-    const referenced = referencedStoreGenerations(pairs, links);
-
-    for (const path of activeStoreGenerations(links)) {
-        referenced.add(path);
+    for (const prepared of [input.gi, input.jsx]) {
+        if (prepared !== undefined) {
+            rmSync(prepared.keepAt, { recursive: true, force: true });
+        }
     }
 
-    for (const link of links) {
-        reclaimDetachedGenerations(link.storeDir, referenced);
-    }
+    reclaimStoreArtifacts(giLink);
 };
 
-const reclaimIndependentStores = (links: StoreLink[]): void => {
-    for (const link of links) {
-        reclaimGenerations(link.storeDir);
-    }
-};
-
-const completeGeneratedStoreLinks = (links: StoreLink[]): StoreLink[] => {
-    const link = links.length === 1 ? links[0] : undefined;
-
-    if (link === undefined || basename(link.storeDir) !== "gi") {
-        return links;
-    }
-
-    return [
-        link,
-        {
-            storeDir: join(dirname(link.storeDir), "jsx"),
-            linkDir: join(dirname(link.linkDir), "jsx"),
-        },
-    ];
-};
-
-const reclaimStoreArtifacts = (links: StoreLink[]): void => {
-    const completeLinks = completeGeneratedStoreLinks(links);
-
-    if (completeLinks.length < 2) {
-        reclaimIndependentStores(completeLinks);
-
-        return;
-    }
-
-    const roots = new Set(completeLinks.map((link) => realpathSync(dirname(link.storeDir))));
-
-    if (roots.size !== 1) {
-        reclaimIndependentStores(completeLinks);
-
-        return;
-    }
-
-    const root = roots.values().next().value;
-
-    if (root !== undefined) {
-        reclaimPairGenerations(root, completeLinks);
+const discardPreparedStore = (prepared: PreparedStore | undefined): void => {
+    if (prepared !== undefined) {
+        rmSync(prepared.dir, { recursive: true, force: true });
     }
 };
 
@@ -617,38 +325,10 @@ const ensureStoreLink = (link: StoreLink): void => {
     }
 };
 
-const readJson = (path: string): unknown => {
-    try {
-        return JSON.parse(readFileSync(path, "utf8"));
-    } catch {
-        return null;
-    }
-};
+const storeIdentity = (storeDir: string): StoreIdentity | null =>
+    storeIdentitySchema.safeParse(readJsonFile(join(storeDir, IDENTITY_FILENAME))).data ?? null;
 
-const storeIdentity = (storeDir: string): StoreIdentity | null => {
-    const value = readJson(join(storeDir, IDENTITY_FILENAME));
-
-    if (
-        typeof value === "object" &&
-        value !== null &&
-        "anchor" in value &&
-        "owner" in value &&
-        typeof value.anchor === "string" &&
-        typeof value.owner === "string"
-    ) {
-        return { anchor: value.anchor, owner: value.owner };
-    }
-
-    return null;
-};
-
-const fingerprintValue = (value: unknown): string | null => {
-    if (typeof value === "object" && value !== null && "value" in value && typeof value.value === "string") {
-        return value.value;
-    }
-
-    return null;
-};
+const fingerprintValue = (value: unknown): string | null => fingerprintValueSchema.safeParse(value).data?.value ?? null;
 
 const desiredFingerprint = (rawFiles: RawFile[] | undefined): string | null => {
     const fingerprint = rawFiles?.find((file) => file.relativePath === FINGERPRINT_FILENAME);
@@ -679,7 +359,7 @@ const resolveStoreOwner = (params: WriteStoreParams): string | undefined => {
         return owner;
     }
 
-    const current = fingerprintValue(readJson(join(params.storeDir, FINGERPRINT_FILENAME)));
+    const current = fingerprintValue(readJsonFile(join(params.storeDir, FINGERPRINT_FILENAME)));
     const desired = desiredFingerprint(params.rawFiles);
 
     if (current !== desired || current === null) {
@@ -715,8 +395,8 @@ export {
     ensureStoreLink,
     namespaceBarrel,
     prepareStore,
-    publishPreparedStore,
-    publishStorePair,
+    hasStoreLayout,
+    publishStores,
     reclaimStoreArtifacts,
     type PreparedStore,
     type StoreOptions,

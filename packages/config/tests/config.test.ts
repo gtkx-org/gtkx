@@ -77,7 +77,10 @@ describe("project configuration", () => {
             import { createConfigReloader } from ${JSON.stringify(new URL("../src/internal.ts", import.meta.url).href)};
             const root = ${JSON.stringify(directory.path)};
             const write = (path, content) => writeFileSync(join(root, path), content);
-            write("package.json", JSON.stringify({ type: "module", imports: { "#value": "./value.ts" } }));
+            write("package.json", JSON.stringify({
+                type: "module",
+                imports: { "#value": "./value.ts", "#created": "./mapped/settings.mts" },
+            }));
             write("gtkx.config.ts", 'import base from "./base.js"; export default { ...base, codegen: false };');
             write("base.ts", 'import applicationId from "#value"; export default { applicationId };');
             write("value.ts", 'export default "org.gtkx.first";');
@@ -87,11 +90,36 @@ describe("project configuration", () => {
             await assert.rejects(reloader.reload());
             write("value.ts", 'export default "org.gtkx.second";');
             assert.equal((await reloader.reload()).config.applicationId, "org.gtkx.second");
-            write("base.ts", 'export { default } from "./created/settings.mjs";');
+            write("value.ts", 'export default {');
             await assert.rejects(reloader.reload());
-            mkdirSync(join(root, "created"));
-            write("created/settings.mts", 'export default { applicationId: "org.gtkx.created" };');
-            assert.equal((await reloader.reload()).config.applicationId, "org.gtkx.created");
+            write("value.ts", 'export default "org.gtkx.repaired";');
+            assert.equal((await reloader.reload()).config.applicationId, "org.gtkx.repaired");
+            for (const [source, directory, extension] of [
+                ["./typescript/settings.js", "typescript", "ts"],
+                ["./module/settings.mjs", "module", "mts"],
+                ["#created", "mapped", "mts"],
+            ]) {
+                write("base.ts", 'export { default } from "' + source + '";');
+                await assert.rejects(reloader.reload());
+                mkdirSync(join(root, directory));
+                const applicationId = "org.gtkx." + directory;
+                write(directory + "/settings." + extension, 'export default { applicationId: "' + applicationId + '" };');
+                assert.equal((await reloader.reload()).config.applicationId, applicationId);
+            }
+            write("gtkx.config.ts", 'export default { extends: ' + JSON.stringify(join(root, "layers/base.jsonc")) + ', codegen: false };');
+            await assert.rejects(reloader.reload());
+            mkdirSync(join(root, "layers"));
+            write("layers/base.jsonc", '{ "applicationId": "org.gtkx.layer" }');
+            assert.equal((await reloader.reload()).config.applicationId, "org.gtkx.layer");
+            write("layers/base.jsonc", '{');
+            await assert.rejects(reloader.reload());
+            write("layers/base.jsonc", '{ "applicationId": "org.gtkx.layerrepaired" }');
+            assert.equal((await reloader.reload()).config.applicationId, "org.gtkx.layerrepaired");
+            write("gtkx.config.ts", 'export default { extends: "./directory", codegen: false };');
+            await assert.rejects(reloader.reload());
+            mkdirSync(join(root, "directory"));
+            write("directory/gtkx.config.ts", 'export default { applicationId: "org.gtkx.directory" };');
+            assert.equal((await reloader.reload()).config.applicationId, "org.gtkx.directory");
         `;
         const result = spawnSync(process.execPath, ["--input-type=module", "-e", script], {
             encoding: "utf8",
