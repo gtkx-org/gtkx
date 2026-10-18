@@ -4,7 +4,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkSignalListItemFactory, GtkTreeExpander } from "@gtkx/jsx/gtk";
 import { createPortal, useProperty } from "@gtkx/react";
 import { useLatestRef } from "@gtkx/react/internal";
-import { Fragment, memo, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createRef, Fragment, memo, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import type {
     ExpanderDescriptions,
     ListItem,
@@ -35,7 +35,7 @@ type CellHost = FactoryHost & {
 type CellEntry<H extends FactoryHost> = {
     key: string;
     host: H;
-    identity: ItemIdentityStore;
+    identity: RefObject<ItemIdentity | null>;
 };
 
 type FactoryHandlers = {
@@ -101,11 +101,6 @@ type ItemIdentity = {
     item: ListItem | undefined;
     position: number;
     isExpanded: boolean;
-};
-
-type ItemIdentityStore = {
-    read: () => ItemIdentity | null;
-    write: (identity: ItemIdentity) => void;
 };
 
 type ItemCellProps = {
@@ -227,7 +222,7 @@ function notifyRegistry<H extends FactoryHost>(state: CellRegistryState<H>): voi
 function createEntry<H extends FactoryHost>(state: CellRegistryState<H>, host: H): CellEntry<H> {
     state.serial += 1;
 
-    return { key: `gtkx-cell-${String(state.serial)}`, host, identity: createItemIdentityStore() };
+    return { key: `gtkx-cell-${String(state.serial)}`, host, identity: createRef<ItemIdentity>() };
 }
 
 function setupHost<H extends FactoryHost>(state: CellRegistryState<H>, host: H): void {
@@ -431,7 +426,7 @@ function isSameItemIdentity(previous: ItemIdentity, next: ItemIdentity): boolean
 }
 
 function isSameItemCell(previous: ItemCellProps, next: ItemCellProps): boolean {
-    const identity = previous.entry.identity.read() ?? previous;
+    const identity = previous.entry.identity.current ?? previous;
 
     return (
         previous.entry === next.entry &&
@@ -443,20 +438,9 @@ function isSameItemCell(previous: ItemCellProps, next: ItemCellProps): boolean {
 }
 
 function isSameItemRow(previous: ItemRowProps, next: ItemRowProps): boolean {
-    const identity = previous.entry.identity.read() ?? previous;
+    const identity = previous.entry.identity.current ?? previous;
 
     return previous.entry === next.entry && previous.rowProps === next.rowProps && isSameItemIdentity(identity, next);
-}
-
-function createItemIdentityStore(): ItemIdentityStore {
-    let current: ItemIdentity | null = null;
-
-    return {
-        read: () => current,
-        write: (identity) => {
-            current = identity;
-        },
-    };
 }
 
 function createNativeItemKeyStore(): NativeItemKeyStore {
@@ -490,8 +474,9 @@ function renderedIdentity(entry: CellEntry<PositionedHost>, slot: ItemSlot | nul
 }
 
 function useRememberIdentity(entry: CellEntry<PositionedHost>, slot: ItemSlot | null): void {
+    const identityRef = entry.identity;
     useLayoutEffect(() => {
-        entry.identity.write(renderedIdentity(entry, slot));
+        identityRef.current = renderedIdentity(entry, slot);
     });
 }
 

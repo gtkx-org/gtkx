@@ -1,12 +1,10 @@
 import type { ExtractedKey, ExtractedKeysMap, Logger, Plugin } from "i18next-cli";
-import type { ESTree } from "vite";
 import { type NodePath, parseSync as parseBabelSync, type Scope, traverse, types } from "@babel/core";
 import { isPathInside, isPathWithin, toPosixPath } from "@gtkx/utils";
 import { type GetTextTranslationRecord, po } from "gettext-parser";
 import { runExtractor } from "i18next-cli";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
-import { parseSync, Visitor } from "vite";
 import type { CatalogProject } from "./catalogs.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
 import { sourceLanguage } from "../internal/source-imports.js";
@@ -62,12 +60,9 @@ type PluralGroup = {
 };
 
 type TranslationReferences = {
-    calls: Set<number>;
-    elements: Set<number>;
     entryLocations: Map<string, SourcePoint[]>;
     locations: Map<string, SourcePoint>;
     masks: SourceMask[];
-    sourcePoints: Map<number, SourcePoint>;
 };
 type SourceMask = { end: number; start: number };
 type SourcePoint = { column: number; line: number };
@@ -80,6 +75,7 @@ type ImportedBinding = {
 };
 type TranslationHookBinding = { call: types.CallExpression; isCanonical: boolean };
 type TranslationMemberExpression = types.MemberExpression | types.OptionalMemberExpression;
+type TranslationExpression = types.CallExpression | types.JSXOpeningElement;
 type ResolvedBinding = NonNullable<ReturnType<Scope["getBinding"]>>;
 type LocatableNode = { loc?: { start: SourcePoint } | null | undefined };
 
@@ -433,24 +429,24 @@ const normalizedSourceFiles = (root: string, paths: string[]): string[] => {
 };
 
 type StaticKeyWrapper =
-    | ESTree.ParenthesizedExpression
-    | ESTree.TSAsExpression
-    | ESTree.TSSatisfiesExpression
-    | ESTree.TSTypeAssertion
-    | ESTree.TSNonNullExpression;
+    | types.ParenthesizedExpression
+    | types.TSAsExpression
+    | types.TSSatisfiesExpression
+    | types.TSTypeAssertion
+    | types.TSNonNullExpression;
 
-const isStaticKeyWrapper = (key: ESTree.Node): key is StaticKeyWrapper => STATIC_KEY_WRAPPER_TYPES.has(key.type);
+const isStaticKeyWrapper = (key: types.Node): key is StaticKeyWrapper => STATIC_KEY_WRAPPER_TYPES.has(key.type);
 
-const unwrapStaticWrapper = (node: ESTree.Node): ESTree.Node =>
+const unwrapStaticWrapper = (node: types.Node): types.Node =>
     isStaticKeyWrapper(node) ? unwrapStaticWrapper(node.expression) : node;
 
-const isStaticTranslationKey = (key: ESTree.Node | null | undefined): boolean => {
+const isStaticTranslationKey = (key: types.Node | null | undefined): boolean => {
     if (key === undefined || key === null) {
         return false;
     }
 
-    if (key.type === "Literal") {
-        return typeof key.value === "string";
+    if (types.isStringLiteral(key)) {
+        return true;
     }
 
     if (key.type === "TemplateLiteral") {
@@ -468,21 +464,23 @@ const isStaticTranslationKey = (key: ESTree.Node | null | undefined): boolean =>
     return false;
 };
 
-const assertStaticTranslationKey = (key: ESTree.Node | null | undefined): void => {
+const assertStaticTranslationKey = (key: types.Node | null | undefined): void => {
     if (!isStaticTranslationKey(key)) {
         throw new Error("Translation keys must be string literals");
     }
 };
 
-const propertyName = (property: ESTree.ObjectProperty): string | null => {
-    if (!property.computed && property.key.type === "Identifier") {
-        return property.key.name;
+const propertyName = (property: types.ObjectProperty | types.ObjectMethod): string | null => {
+    const key = property.key;
+
+    if (!property.computed && types.isIdentifier(key)) {
+        return key.name;
     }
 
-    return property.key.type === "Literal" && typeof property.key.value === "string" ? property.key.value : null;
+    return types.isStringLiteral(key) ? key.value : null;
 };
 
-const assertSupportedOptionProperty = (property: ESTree.ObjectPropertyKind): void => {
+const assertSupportedOptionProperty = (property: types.ObjectExpression["properties"][number]): void => {
     if (property.type === "SpreadElement") {
         throw new Error("Translation extraction requires explicit option properties");
     }
@@ -498,11 +496,11 @@ const assertSupportedOptionProperty = (property: ESTree.ObjectPropertyKind): voi
     }
 
     if (STATIC_SOURCE_OPTION_NAMES.has(name)) {
-        assertStaticTranslationKey(property.value);
+        assertStaticTranslationKey(types.isObjectProperty(property) ? property.value : undefined);
     }
 };
 
-const assertSupportedOptionObject = (options: ESTree.Node | null | undefined): void => {
+const assertSupportedOptionObject = (options: types.Node | null | undefined): void => {
     if (options === null || options === undefined) {
         return;
     }
@@ -566,16 +564,6 @@ const importedBinding = (binding: ResolvedBinding | undefined): ImportedBinding 
     );
 };
 
-const babelPropertyName = (property: types.ObjectProperty): string | null => {
-    const key = property.key;
-
-    if (!property.computed && types.isIdentifier(key)) {
-        return key.name;
-    }
-
-    return types.isStringLiteral(key) ? key.value : null;
-};
-
 const isBoundIdentifier = (node: types.Node | null, name: string): boolean => {
     if (types.isIdentifier(node)) {
         return node.name === name;
@@ -593,7 +581,7 @@ const isHookPatternBinding = (pattern: types.VariableDeclarator["id"], name: str
         return pattern.properties.some(
             (property) =>
                 types.isObjectProperty(property) &&
-                babelPropertyName(property) === "t" &&
+                propertyName(property) === "t" &&
                 isBoundIdentifier(property.value, name),
         );
     }
@@ -822,16 +810,6 @@ const translationElementKind = (path: NodePath, name: string): TranslationCallKi
     return imported.local === imported.imported ? "canonical" : "alias";
 };
 
-const nodeStart = (path: NodePath): number => {
-    const start = path.node.start;
-
-    if (start === null || start === undefined) {
-        throw new Error("Translation extraction could not locate a source expression");
-    }
-
-    return start;
-};
-
 const registerSourceMask = (node: types.Node, references: TranslationReferences): void => {
     const { start, end } = node;
 
@@ -871,13 +849,7 @@ const babelStaticKey = (node: types.Node | null | undefined): string | null => {
         return node.quasis[0]?.value.cooked ?? null;
     }
 
-    if (
-        types.isParenthesizedExpression(node) ||
-        types.isTSAsExpression(node) ||
-        types.isTSSatisfiesExpression(node) ||
-        types.isTSTypeAssertion(node) ||
-        types.isTSNonNullExpression(node)
-    ) {
+    if (isStaticKeyWrapper(node)) {
         return babelStaticKey(node.expression);
     }
 
@@ -893,13 +865,7 @@ const babelObjectExpression = (node: types.Node | null | undefined): types.Objec
         return node;
     }
 
-    if (
-        types.isParenthesizedExpression(node) ||
-        types.isTSAsExpression(node) ||
-        types.isTSSatisfiesExpression(node) ||
-        types.isTSTypeAssertion(node) ||
-        types.isTSNonNullExpression(node)
-    ) {
+    if (isStaticKeyWrapper(node)) {
         return babelObjectExpression(node.expression);
     }
 
@@ -912,7 +878,7 @@ const babelNamedProperty = (object: types.ObjectExpression | null, name: string)
     }
 
     for (const property of object.properties) {
-        if (types.isObjectProperty(property) && babelPropertyName(property) === name) {
+        if (types.isObjectProperty(property) && propertyName(property) === name) {
             return property;
         }
     }
@@ -994,13 +960,8 @@ const registerCallReference = (
     references: TranslationReferences,
     keyPrefix: string,
 ): void => {
-    references.calls.add(nodeStart(callPath));
     const firstArgument = callPath.node.arguments[0];
     const point = registerSourceLocation(firstArgument ?? callPath.node, references);
-
-    if (point !== null) {
-        references.sourcePoints.set(nodeStart(callPath), point);
-    }
 
     registerEntryLocation(extractedEntryKey(callPath.node, keyPrefix), point, references);
 };
@@ -1035,9 +996,9 @@ const registerIdentifierTranslationCall = (
     callPath: NodePath<types.CallExpression>,
     callee: NodePath,
     references: TranslationReferences,
-): void => {
+): boolean => {
     if (!callee.isIdentifier()) {
-        return;
+        return false;
     }
 
     const kind = translationFunctionKind(callee.scope, callee.node.name);
@@ -1048,38 +1009,31 @@ const registerIdentifierTranslationCall = (
 
     if (kind === "canonical") {
         registerCallReference(callPath, references, hookKeyPrefix(callee));
+
+        return true;
     } else if (callee.node.name === "t") {
         registerSourceMask(callee.node, references);
     }
+
+    return false;
 };
 
-const registerTranslationCall = (callPath: NodePath<types.CallExpression>, references: TranslationReferences): void => {
+const registerTranslationCall = (
+    callPath: NodePath<types.CallExpression>,
+    references: TranslationReferences,
+): boolean => {
     assertSupportedWrappedCallee(callPath);
     const callee = callPath.get("callee");
 
     if (callee.isIdentifier()) {
-        registerIdentifierTranslationCall(callPath, callee, references);
-
-        return;
+        return registerIdentifierTranslationCall(callPath, callee, references);
     }
 
     if (callee.isMemberExpression() && isTranslationMember(callee.scope, callee.node)) {
         throw new Error("Translation calls must use the named t export");
     }
-};
 
-const unwrapTranslationCallee = (node: types.Node): types.Node => {
-    if (
-        types.isParenthesizedExpression(node) ||
-        types.isTSAsExpression(node) ||
-        types.isTSSatisfiesExpression(node) ||
-        types.isTSTypeAssertion(node) ||
-        types.isTSNonNullExpression(node)
-    ) {
-        return unwrapTranslationCallee(node.expression);
-    }
-
-    return node;
+    return false;
 };
 
 const isTranslationCallee = (scope: Scope, node: types.Node): boolean => {
@@ -1094,7 +1048,7 @@ const isTranslationCallee = (scope: Scope, node: types.Node): boolean => {
 
 const assertSupportedWrappedCallee = (callPath: NodePath<types.CallExpression>): void => {
     const callee = callPath.node.callee;
-    const unwrapped = unwrapTranslationCallee(callee);
+    const unwrapped = unwrapStaticWrapper(callee);
 
     if (unwrapped !== callee && isTranslationCallee(callPath.scope, unwrapped)) {
         throw new Error("Translation call expressions cannot wrap their callee");
@@ -1102,7 +1056,7 @@ const assertSupportedWrappedCallee = (callPath: NodePath<types.CallExpression>):
 };
 
 const assertSupportedOptionalCall = (callPath: NodePath<types.OptionalCallExpression>): void => {
-    const callee = unwrapTranslationCallee(callPath.node.callee);
+    const callee = unwrapStaticWrapper(callPath.node.callee);
 
     if (isTranslationCallee(callPath.scope, callee)) {
         throw new Error("Translation calls cannot use optional chaining");
@@ -1110,7 +1064,7 @@ const assertSupportedOptionalCall = (callPath: NodePath<types.OptionalCallExpres
 };
 
 const assertUnsupportedTranslationTag = (tagPath: NodePath<types.TaggedTemplateExpression>): void => {
-    const tag = unwrapTranslationCallee(tagPath.node.tag);
+    const tag = unwrapStaticWrapper(tagPath.node.tag);
 
     if (isTranslationCallee(tagPath.scope, tag)) {
         throw new Error("Translation calls cannot use tagged-template syntax");
@@ -1131,21 +1085,14 @@ const registerUnrecognizedElementMasks = (
     }
 };
 
-const registerElementReference = (elementPath: NodePath, references: TranslationReferences): void => {
-    const start = nodeStart(elementPath);
-    const point = registerSourceLocation(elementPath.node, references);
-    references.elements.add(start);
-
-    if (point !== null) {
-        references.sourcePoints.set(start, point);
-    }
-};
-
-const registerTranslationElement = (elementPath: NodePath, references: TranslationReferences): void => {
+const registerTranslationElement = (
+    elementPath: NodePath<types.JSXOpeningElement>,
+    references: TranslationReferences,
+): boolean => {
     const name = elementPath.get("name");
 
     if (!name.isJSXIdentifier()) {
-        return;
+        return false;
     }
 
     const kind = translationElementKind(name, name.node.name);
@@ -1155,10 +1102,14 @@ const registerTranslationElement = (elementPath: NodePath, references: Translati
     }
 
     if (kind === "canonical") {
-        registerElementReference(elementPath, references);
+        registerSourceLocation(elementPath.node, references);
+
+        return true;
     } else if (TRANS_ELEMENTS.has(name.node.name)) {
         registerUnrecognizedElementMasks(elementPath, name, references);
     }
+
+    return false;
 };
 
 const maskUnrecognizedTranslations = (source: string, references: TranslationReferences): string => {
@@ -1172,36 +1123,39 @@ const maskUnrecognizedTranslations = (source: string, references: TranslationRef
     return masked;
 };
 
-const translationReferences = (
-    root: string,
-    path: string,
-    source: string,
-    lang: ReturnType<typeof sourceLanguage>,
-): TranslationReferences => {
+const translationReferences = (root: string, path: string, source: string): TranslationReferences => {
+    const references: TranslationReferences = {
+        entryLocations: new Map(),
+        locations: new Map(),
+        masks: [],
+    };
+    const lang = sourceLanguage(path);
+
+    if (lang === undefined) {
+        return references;
+    }
+
     const parsed = parseTranslationReferences(root, path, source, lang);
 
     if (parsed === null) {
         throw new Error(`Translation extraction could not parse ${path}`);
     }
 
-    const references: TranslationReferences = {
-        calls: new Set(),
-        elements: new Set(),
-        entryLocations: new Map(),
-        locations: new Map(),
-        masks: [],
-        sourcePoints: new Map(),
-    };
+    const expressions: TranslationExpression[] = [];
 
     traverse(parsed, {
         CallExpression(callPath) {
             atSourceNode(root, path, callPath.node, () => {
-                registerTranslationCall(callPath, references);
+                if (registerTranslationCall(callPath, references)) {
+                    expressions.push(callPath.node);
+                }
             });
         },
         JSXOpeningElement(elementPath) {
             atSourceNode(root, path, elementPath.node, () => {
-                registerTranslationElement(elementPath, references);
+                if (registerTranslationElement(elementPath, references)) {
+                    expressions.push(elementPath.node);
+                }
             });
         },
         OptionalCallExpression(callPath) {
@@ -1216,21 +1170,29 @@ const translationReferences = (
         },
     });
 
+    for (const expression of expressions) {
+        const location = types.isCallExpression(expression) ? (expression.arguments[0] ?? expression) : expression;
+
+        atSourceNode(root, path, location, () => {
+            if (types.isCallExpression(expression)) {
+                assertSupportedTranslationCall(expression);
+            } else {
+                assertSupportedTransElement(expression);
+            }
+        });
+    }
+
     return references;
 };
 
-const assertSupportedTranslationCall = (node: ESTree.CallExpression, references: TranslationReferences): void => {
-    if (!references.calls.has(node.start)) {
-        return;
-    }
-
+const assertSupportedTranslationCall = (node: types.CallExpression): void => {
     assertStaticTranslationKey(node.arguments[0]);
     assertSupportedTranslationOptions(node.arguments[1], node.arguments[2]);
 };
 
 const assertSupportedTranslationOptions = (
-    second: ESTree.Node | null | undefined,
-    third: ESTree.Node | null | undefined,
+    second: types.Node | null | undefined,
+    third: types.Node | null | undefined,
 ): void => {
     if (third !== undefined && third !== null) {
         assertStaticTranslationKey(second);
@@ -1246,10 +1208,10 @@ const assertSupportedTranslationOptions = (
     assertSupportedOptionObject(second);
 };
 
-const isNamedJsxAttribute = (attribute: ESTree.JSXAttribute, name: string): boolean =>
+const isNamedJsxAttribute = (attribute: types.JSXAttribute, name: string): boolean =>
     attribute.name.type === "JSXIdentifier" && attribute.name.name === name;
 
-const assertSupportedTransKey = (attribute: ESTree.JSXAttribute): void => {
+const assertSupportedTransKey = (attribute: types.JSXAttribute): void => {
     if (!isNamedJsxAttribute(attribute, "i18nKey")) {
         return;
     }
@@ -1258,7 +1220,7 @@ const assertSupportedTransKey = (attribute: ESTree.JSXAttribute): void => {
     assertStaticTranslationKey(key);
 };
 
-const assertSupportedTransStringAttribute = (attribute: ESTree.JSXAttribute, name: string): void => {
+const assertSupportedTransStringAttribute = (attribute: types.JSXAttribute, name: string): void => {
     if (!isNamedJsxAttribute(attribute, name)) {
         return;
     }
@@ -1267,13 +1229,13 @@ const assertSupportedTransStringAttribute = (attribute: ESTree.JSXAttribute, nam
     assertStaticTranslationKey(value);
 };
 
-const assertSupportedTransOptions = (attribute: ESTree.JSXAttribute): void => {
+const assertSupportedTransOptions = (attribute: types.JSXAttribute): void => {
     if (isNamedJsxAttribute(attribute, "tOptions") && attribute.value?.type === "JSXExpressionContainer") {
         assertSupportedOptionObject(attribute.value.expression);
     }
 };
 
-const assertSupportedTransAttribute = (attribute: ESTree.JSXAttributeItem): void => {
+const assertSupportedTransAttribute = (attribute: types.JSXOpeningElement["attributes"][number]): void => {
     if (attribute.type === "JSXSpreadAttribute") {
         throw new Error("Translation extraction requires explicit component properties");
     }
@@ -1284,58 +1246,10 @@ const assertSupportedTransAttribute = (attribute: ESTree.JSXAttributeItem): void
     assertSupportedTransOptions(attribute);
 };
 
-const assertSupportedTransElement = (node: ESTree.JSXOpeningElement, references: TranslationReferences): void => {
-    if (!references.elements.has(node.start)) {
-        return;
-    }
-
+const assertSupportedTransElement = (node: types.JSXOpeningElement): void => {
     for (const attribute of node.attributes) {
         assertSupportedTransAttribute(attribute);
     }
-};
-
-const assertSupportedTranslationSyntax = (root: string, path: string, source: string): TranslationReferences => {
-    const lang = sourceLanguage(path);
-
-    if (lang === undefined) {
-        return {
-            calls: new Set(),
-            elements: new Set(),
-            entryLocations: new Map(),
-            locations: new Map(),
-            masks: [],
-            sourcePoints: new Map(),
-        };
-    }
-
-    let parsed: ReturnType<typeof parseSync>;
-
-    try {
-        parsed = parseSync(projectSourcePath(root, path), source, { lang });
-    } catch (error) {
-        throw sourceExtractionError(root, path, errorSourcePoint(error), error);
-    }
-
-    const references = translationReferences(root, path, source, lang);
-
-    new Visitor({
-        CallExpression(node) {
-            try {
-                assertSupportedTranslationCall(node, references);
-            } catch (error) {
-                throw sourceExtractionError(root, path, references.sourcePoints.get(node.start) ?? null, error);
-            }
-        },
-        JSXOpeningElement(node) {
-            try {
-                assertSupportedTransElement(node, references);
-            } catch (error) {
-                throw sourceExtractionError(root, path, references.sourcePoints.get(node.start) ?? null, error);
-            }
-        },
-    }).visit(parsed.program);
-
-    return references;
 };
 
 const extractedLocationFile = (root: string, file: string): string => resolve(root, file);
@@ -1664,7 +1578,7 @@ const findSourceMessages = async (root: string, sourceFiles: string[]): Promise<
     const references: Map<string, TranslationReferences> = new Map();
 
     for (const [file, source] of sources) {
-        references.set(file, assertSupportedTranslationSyntax(root, file, source));
+        references.set(file, translationReferences(root, file, source));
     }
 
     let extracted: ExtractedKeysMap | undefined;
