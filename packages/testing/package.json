@@ -62,7 +62,7 @@
         "@gtkx/runtime": "workspace:*",
         "@gtkx/react": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "@vitest/pretty-format": "5.0.4"
+        "@vitest/pretty-format": "5.0.5"
     },
     "peerDependencies": {
         "@types/react": "^19.3",

@@ -8,10 +8,10 @@ catalog:
   "@types/node": ^26.5.1
   "@types/react": ^19.3.0
   ejs: ^7.0.1
-  react: ^19.3.0
+  react: ^19.3.1
   typescript: npm:@typescript/typescript6@^6.0.2
   vite: ^8.3.4
-  vitest: 5.0.4
+  vitest: 5.0.5
   yaml: ^2.9.1
   zod: ^4.6.7
 

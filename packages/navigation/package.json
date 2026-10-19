@@ -48,8 +48,8 @@
     },
     "dependencies": {
         "@gtkx/react": "workspace:*",
-        "@react-navigation/core": "^7.23.0",
-        "@react-navigation/routers": "^7.6.4"
+        "@react-navigation/core": "^7.24.0",
+        "@react-navigation/routers": "^7.6.5"
     },
     "peerDependencies": {
         "@types/react": "^19.3",
