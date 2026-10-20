@@ -18,7 +18,7 @@ Run `pnpm format` to format hand-written files with Oxfmt, or `pnpm nx format:wr
 
 Use the focused Nx targets described in [Testing](https://gtkx.dev/contributing/testing) when reproducing a CI failure.
 
-Keep pull request descriptions to a simple summary of the change in a few paragraphs at most, without a `Validation` section. Follow the [pull request template](.github/PULL_REQUEST_TEMPLATE.md) and add `Closes #N` only when the pull request resolves that issue. Include a screenshot for visible UI changes.
+Follow the [pull request template](.github/PULL_REQUEST_TEMPLATE.md) and add `Closes #N` only when the pull request resolves that issue. Include a screenshot for visible UI changes.
 
 Breaking removals require a warning in an earlier minor release. Renamed symbols use `@deprecated` with their introduction version; behavior changes need a CLI warning and an opt-in migration path. A removal-only major adds no unrelated features, and its migration guide changes with every deprecation.
 
