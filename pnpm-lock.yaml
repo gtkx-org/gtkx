@@ -589,8 +589,8 @@ importers:
         specifier: ^10.1.1
         version: 10.1.1
       i18next-cli:
-        specifier: 1.75.3
-        version: 1.75.3(@types/node@26.5.1)(react@19.3.1)(typescript@6.0.3)
+        specifier: 1.76.0
+        version: 1.76.0(@types/node@26.5.1)(react@19.3.1)(typescript@6.0.3)
       react:
         specifier: ^19.3
         version: 19.3.1
@@ -945,8 +945,8 @@ importers:
         specifier: ^19.3
         version: 19.3.1
       react-i18next:
-        specifier: ^17.0.20
-        version: 17.0.20(i18next@26.4.7(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3)
+        specifier: ^17.0.21
+        version: 17.0.21(i18next@26.4.7(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3)
     devDependencies:
       '@gtkx/config':
         specifier: workspace:*
@@ -2168,6 +2168,12 @@ packages:
   '@eslint/plugin-kit@0.7.3':
     resolution: {integrity: sha512-IkO+/KEUvwbVpiURZg+P7zF74z5Jxe0UgJxVni+RtoHQ6IZieXaO02kmadomap/q+l6bc/jdPGGqTjhuZnuz1Q==}
     engines: {node: ^20.19.0 || ^22.13.0 || >=24}
+
+  '@formatjs/icu-messageformat-parser@3.5.21':
+    resolution: {integrity: sha512-Vnl7IOSyMRaP4Pjv48etkT2nlcIwzh4QWIa3hewzGlZZPBbft+TbMir4MijpDViOLN/1hvkGC10oYMuilsG+fw==}
+
+  '@formatjs/icu-skeleton-parser@2.1.12':
+    resolution: {integrity: sha512-ca7tZMLpfHX3sUD7hP6gE/qr6Iq89EDd3ZLeRhbsB7r0UD55DGJq+tmFLzrGrnx5StahUevQmQQVtbDRHsfDHA==}
 
   '@gerrit0/mini-shiki@3.23.0':
     resolution: {integrity: sha512-bEMORlG0cqdjVyCEuU0cDQbORWX+kYCeo0kV1lbxF5bt4r7SID2l9bqsxJEM0zndaxpOUT7riCyIVEuqq/Ynxg==}
@@ -5890,8 +5896,8 @@ packages:
     resolution: {integrity: sha512-eKCa6bwnJhvxj14kZk5NCPc6Hb6BdsU9DZcOnmQKSnO1VKrfV0zCvtttPZUsBvjmNDn8rpcJfpwSYnHBjc95MQ==}
     engines: {node: '>=18.18.0'}
 
-  i18next-cli@1.75.3:
-    resolution: {integrity: sha512-JsQ9i0nVD2YhZEYpVcHAJuZ/jUjfiX5iD8JbIwb8OnzMNWeXySv1TKvTigsGBrfJ4Q6AVh1pNVOMrwTXHAUzaw==}
+  i18next-cli@1.76.0:
+    resolution: {integrity: sha512-k6pbeJIr6uTgKDG66vdM4LfgDBA8/V3v5hqsvyPx5oERd7VT8w3f4zNSnJIxRsujXRJuYq+WaQXfvO8aKZk1rQ==}
     engines: {node: '>=22'}
     hasBin: true
 
@@ -6368,6 +6374,10 @@ packages:
   merge2@1.4.1:
     resolution: {integrity: sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==}
     engines: {node: '>= 8'}
+
+  messageformat@4.1.0:
+    resolution: {integrity: sha512-ZLId0BYfsNhC6/MRwVFw1yTLgG9cbJwfTsjYSS2C59PdfJWVRsX7hthADvsXefBtTg2FKso0VAJmMJJOtnJ75w==}
+    engines: {node: ^20.19 || ^22.12 || >=24}
 
   methods@1.1.2:
     resolution: {integrity: sha512-iclAHeNqNm68zFtnZ0e+1L2yUIdvzNoauKU4WBA3VvH/vPFieF7qfRlwUZU+DA9P9bPXIS90ulxoUoCH23sV2w==}
@@ -6882,8 +6892,8 @@ packages:
       '@types/react':
         optional: true
 
-  react-i18next@17.0.20:
-    resolution: {integrity: sha512-rzSSirf0NP9vfcUXHZAksIuyMWl7L/T/7nm8S+sSIFuIzku54qcyyVAOZXbawPNpUxGkDx/eosSv4DrpzcxuOQ==}
+  react-i18next@17.0.21:
+    resolution: {integrity: sha512-bcOTaZQKsNb4KKIc+T6Dx1Cf0x3UTV5io8X1PyaC38oOeNEbU5CNkW+5QmOGEyDSEbK/QC2kLXOgL9zeCIxR3g==}
     peerDependencies:
       i18next: '>= 26.2.0'
       react: '>= 16.8.0'
@@ -8985,6 +8995,12 @@ snapshots:
     dependencies:
       '@eslint/core': 1.2.1
       levn: 0.4.1
+
+  '@formatjs/icu-messageformat-parser@3.5.21':
+    dependencies:
+      '@formatjs/icu-skeleton-parser': 2.1.12
+
+  '@formatjs/icu-skeleton-parser@2.1.12': {}
 
   '@gerrit0/mini-shiki@3.23.0':
     dependencies:
@@ -12610,9 +12626,10 @@ snapshots:
 
   human-signals@8.0.1: {}
 
-  i18next-cli@1.75.3(@types/node@26.5.1)(react@19.3.1)(typescript@6.0.3):
+  i18next-cli@1.76.0(@types/node@26.5.1)(react@19.3.1)(typescript@6.0.3):
     dependencies:
       '@croct/json5-parser': 0.2.2
+      '@formatjs/icu-messageformat-parser': 3.5.21
       '@swc/core': 1.16.18
       chokidar: 5.0.0
       commander: 15.0.0
@@ -12624,9 +12641,10 @@ snapshots:
       jiti: 2.7.0
       jsonc-parser: 3.3.1
       magic-string: 1.4.3
+      messageformat: 4.1.0
       minimatch: 10.2.6
       ora: 9.4.1
-      react-i18next: 17.0.20(i18next@26.4.7(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3)
+      react-i18next: 17.0.21(i18next@26.4.7(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3)
       yaml: 2.9.1
     transitivePeerDependencies:
       - '@swc/helpers'
@@ -13057,6 +13075,8 @@ snapshots:
 
   merge2@1.4.1:
     optional: true
+
+  messageformat@4.1.0: {}
 
   methods@1.1.2:
     optional: true
@@ -13767,7 +13787,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  react-i18next@17.0.20(i18next@26.4.7(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3):
+  react-i18next@17.0.21(i18next@26.4.7(typescript@6.0.3))(react@19.3.1)(typescript@6.0.3):
     dependencies:
       '@babel/runtime': 7.29.7
       html-parse-stringify: 4.0.1
