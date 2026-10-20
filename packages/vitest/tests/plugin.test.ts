@@ -1,13 +1,31 @@
 import { resolveExecutable } from "@gtkx/utils";
-import { existsSync, mkdirSync, mkdtempDisposableSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+    existsSync,
+    mkdirSync,
+    mkdtempDisposableSync,
+    readdirSync,
+    readFileSync,
+    symlinkSync,
+    writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
-import { createVitest } from "vitest/node";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createVitest, resolveConfig } from "vitest/node";
 import { resolveHeadlessOptions, startHeadlessDisplay } from "../src/headless.js";
 
 const workspace = fileURLToPath(new URL("../../..", import.meta.url));
+const pluginPath = join(workspace, "packages/vitest/dist/index.js");
+
+const writePathWithoutSway = (directory: string): string => {
+    const bin = join(directory, "bin");
+    mkdirSync(bin);
+    symlinkSync(resolveExecutable("dbus-daemon"), join(bin, "dbus-daemon"));
+
+    return bin;
+};
+
 const writeDelayedCompositor = (directory: string): void => {
     const sway = resolveExecutable("sway");
     writeFileSync(
@@ -45,12 +63,15 @@ test("isolated ${name}", async () => {
     writeFileSync(new URL("./${name}.json", import.meta.url), JSON.stringify({ root }));
 });`;
 
+afterEach(() => {
+    vi.unstubAllEnvs();
+});
+
 describe("headless Vitest integration", () => {
     it("runs independent workers and tears down their displays after the run", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-vitest-test-"));
         mkdirSync(join(directory.path, "node_modules"));
         symlinkSync(join(workspace, "node_modules/vitest"), join(directory.path, "node_modules/vitest"), "dir");
-        const pluginPath = join(workspace, "packages/vitest/dist/index.js");
         writeFileSync(join(directory.path, "package.json"), '{"type":"module"}');
         writeFileSync(
             join(directory.path, "gtkx.config.ts"),
@@ -85,6 +106,35 @@ describe("headless Vitest integration", () => {
             await runner.close();
         }
         for (const root of roots) await expect.poll(() => existsSync(root)).toBe(false);
+    });
+
+    it("resolves its configuration without sway but fails to create the runner", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-vitest-missing-"));
+        const config = join(directory.path, "vitest.config.mjs");
+        writeFileSync(config, `import gtkx from ${JSON.stringify(pluginPath)}; export default { plugins: [gtkx()] };`);
+        vi.stubEnv("PATH", writePathWithoutSway(directory.path));
+        await expect(resolveConfig({ root: directory.path, config })).resolves.toBeDefined();
+        await expect(createVitest({ root: directory.path, config, watch: false, reporters: [] })).rejects.toThrow();
+    });
+
+    it("rejects when sway is missing, leaving no runtime directory or environment changes", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-vitest-missing-"));
+        const runtimeRoot = join(directory.path, "tmp");
+        mkdirSync(runtimeRoot);
+        const before = {
+            runtime: process.env.XDG_RUNTIME_DIR,
+            display: process.env.WAYLAND_DISPLAY,
+            bus: process.env.DBUS_SESSION_BUS_ADDRESS,
+        };
+        vi.stubEnv("PATH", writePathWithoutSway(directory.path));
+        vi.stubEnv("TMPDIR", runtimeRoot);
+        await expect(startHeadlessDisplay(resolveHeadlessOptions({}))).rejects.toThrow();
+        expect(readdirSync(runtimeRoot)).toEqual([]);
+        expect({
+            runtime: process.env.XDG_RUNTIME_DIR,
+            display: process.env.WAYLAND_DISPLAY,
+            bus: process.env.DBUS_SESSION_BUS_ADDRESS,
+        }).toEqual(before);
     });
 
     it.each(["normal", "delayed"])(

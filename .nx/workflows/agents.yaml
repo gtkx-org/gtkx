@@ -1,7 +1,7 @@
 launch-templates:
   gtkx-linux-large:
     resource-class: docker_linux_amd64/large
-    image: ghcr.io/gtkx-org/gtkx-ci:ubuntu26-v1
+    image: ghcr.io/gtkx-org/gtkx-ci:ubuntu26-v2
     no-output-timeout: 30m
     init-steps:
       - name: Checkout

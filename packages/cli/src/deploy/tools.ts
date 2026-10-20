@@ -1,14 +1,12 @@
-import { tryResolveExecutable, warn } from "@gtkx/utils";
+import { missingToolLines, tryResolveExecutable, warn } from "@gtkx/utils";
 import { spawnSync } from "node:child_process";
 import type { DeployTool } from "./types.js";
-import { detectPackageFamily, installHints } from "./install-hints.js";
 
 type ToolReport = {
     missingRequired: DeployTool[];
     missingOptional: DeployTool[];
 };
 
-const DETAIL_COLUMN = 26;
 const FLATPAK_BUILDER_REF = "org.flatpak.Builder";
 const FLATPAK_NODE_GENERATOR_COMMAND = "flatpak-node-generator";
 const GENERATOR_PNPM_OPTION = "--pnpm-store-version";
@@ -135,25 +133,14 @@ const probeTools = (tools: DeployTool[]): ToolReport => {
     };
 };
 
-const pad = (text: string): string => text.padEnd(DETAIL_COLUMN);
-
-const toolLines = (tool: DeployTool, hints: string[]): string[] => [
-    `  ${pad(tool.command)}${tool.purpose}`,
-    ...hints.map((hint) => `  ${pad("")}${hint}`),
-];
-
-const missingToolsMessage = (report: ToolReport): string => {
-    const family = detectPackageFamily();
-    const required = report.missingRequired.flatMap((tool) => toolLines(tool, installHints(tool.command, family)));
-
-    return [
+const missingToolsMessage = (report: ToolReport): string =>
+    [
         "Cannot deploy without these tools:",
         "",
-        ...required,
+        ...missingToolLines(report.missingRequired),
         "",
         "Narrow the run with --target if you do not need every package format.",
     ].join("\n");
-};
 
 const assertTools = (report: ToolReport): void => {
     if (report.missingRequired.length > 0) {

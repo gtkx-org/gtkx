@@ -1,14 +1,12 @@
 import type { Config } from "@gtkx/config";
+import type { ExternalTool } from "@gtkx/utils";
 import type { ResolvedApplicationIcon } from "../internal/icon-path.js";
 
 type DeployConfig = NonNullable<Config["deploy"]>;
 type DeployArchName = NonNullable<DeployConfig["architectures"]>[number];
 type DeployTargetName = NonNullable<DeployConfig["targets"]>[number];
-type PackageFamily = "arch" | "debian" | "fedora" | "suse" | "unknown";
 
-type DeployTool = {
-    command: string;
-    purpose: string;
+type DeployTool = ExternalTool & {
     isOptional: boolean;
     isPresent?: () => boolean;
 };
@@ -199,6 +197,5 @@ export type {
     NodeRuntime,
     Notice,
     NoticeSection,
-    PackageFamily,
     StagedFile,
 };

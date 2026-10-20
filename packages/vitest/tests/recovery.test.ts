@@ -14,7 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it } from "vitest";
-import { type CompositorId, findStaleHeadlessDisplays, reapStaleHeadlessDisplays } from "../src/headless.js";
+import { findStaleHeadlessDisplays, reapStaleHeadlessDisplays } from "../src/headless.js";
 
 type DisplayOwner = {
     child: ChildProcess;
@@ -22,12 +22,12 @@ type DisplayOwner = {
     helpers: ProcessIdentity[];
 };
 
-const startOwner = async (compositor: CompositorId = "sway", env?: NodeJS.ProcessEnv): Promise<DisplayOwner> => {
+const startOwner = async (env?: NodeJS.ProcessEnv): Promise<DisplayOwner> => {
     const entry = new URL("../dist/headless.js", import.meta.url).href;
     const script = `
         import { readFileSync } from "node:fs";
         import { startHeadlessDisplay, resolveHeadlessOptions } from ${JSON.stringify(entry)};
-        const stop = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480", compositor: ${JSON.stringify(compositor)} }));
+        const stop = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
         process.on("exit", stop);
         process.on("message", () => { stop(); process.exit(0); });
         const children = readFileSync(
@@ -138,7 +138,7 @@ const withUnreadableDescendant = async (
     using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-headless-descendant-"));
     writeCompositorWithDescendant(directory.path);
     const reportPath = join(directory.path, "descendant.json");
-    const display = await startOwner("sway", {
+    const display = await startOwner({
         PATH: `${directory.path}:${process.env.PATH ?? ""}`,
         GTKX_DESCENDANT_REPORT: reportPath,
     });
@@ -245,14 +245,10 @@ it.each([
     expect(existsSync(marker)).toBe(true);
 });
 
-it.each([
-    { compositor: "sway", state: "intact" },
-    { compositor: "sway", state: "damaged" },
-    { compositor: "weston", state: "intact" },
-] satisfies { compositor: CompositorId; state: string }[])(
-    "recovers a killed owner's $compositor helpers and $state runtime while preserving an active display",
-    async ({ compositor, state }) => {
-        const abandoned = await startOwner(compositor);
+it.each(["intact", "damaged"])(
+    "recovers a killed owner's helpers and %s runtime while preserving an active display",
+    async (state) => {
+        const abandoned = await startOwner();
         let active: DisplayOwner | undefined;
         try {
             active = await startOwner();

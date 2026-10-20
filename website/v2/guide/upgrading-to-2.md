@@ -153,6 +153,8 @@ Remove calls to `GObject.Closure.sink()` and `GObject.ParamSpec.sink()`. These g
 
 `@gtkx/gl` no longer exposes `getDebugMessageLog` or `debugMessageCallback`, whose native contracts require caller-owned memory or callback lifetime management. Remove those calls; the shader, program, and pipeline info-log helpers remain available. Replace `clientWaitSyncLoop` with the generated `clientWaitSync`, which accepts the full timeout as a `bigint`.
 
+Headless displays always run Sway, so the Vitest plugin no longer accepts a `compositor` option and `@gtkx/vitest` no longer exports `CompositorId`. Delete the option and any `CompositorId` imports; tests need Sway, as described in the [testing setup](/v2/guide/testing#setup).
+
 ## Verify the upgrade
 
 ```bash

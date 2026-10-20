@@ -1,7 +1,7 @@
 import type { Plugin } from "vitest/config";
 import { assertSupportedNodeVersion, createConfigLoader } from "@gtkx/config/internal";
 import createConfigPlugin from "@gtkx/config/vite-plugin";
-import { type HeadlessOptions, STATIC_HEADLESS_ENV } from "./headless-display.ts";
+import { type HeadlessOptions, resolveHeadlessExecutables, STATIC_HEADLESS_ENV } from "./headless-display.ts";
 import { reapStaleHeadlessDisplaysAtStartup } from "./reap-headless-displays.ts";
 
 /**
@@ -37,7 +37,11 @@ const headlessPreloadSpecifier = (options: Partial<HeadlessOptions>): string => 
  * display helpers and stale `gtkx-xdg-*` runtime directories left behind
  * by earlier runs, which `gtkx cleanup` also does on demand.
  *
- * @param options Headless display settings (size, compositor) forwarded to each worker.
+ * When Sway or `dbus-daemon` is missing from `PATH`, Vitest fails to start,
+ * before any worker launches, with an error naming each missing tool. Loading
+ * the configuration without starting Vitest does not require them.
+ *
+ * @param options Plugin options; the headless display `size` is forwarded to each worker.
  * @returns A Vitest config plugin.
  */
 const gtkx = (options: PluginOptions = {}): Plugin => {
@@ -46,7 +50,7 @@ const gtkx = (options: PluginOptions = {}): Plugin => {
     const { configFile, localeDir, ...headlessOptions } = options;
     const loadConfig = createConfigLoader({ configFile });
 
-    return createConfigPlugin({
+    const configPlugin = createConfigPlugin({
         name: "gtkx:vitest",
         loadConfig,
         localeDir,
@@ -68,8 +72,15 @@ const gtkx = (options: PluginOptions = {}): Plugin => {
             };
         },
     });
+
+    return {
+        ...configPlugin,
+        configureVitest() {
+            resolveHeadlessExecutables();
+        },
+    };
 };
 
 export default gtkx;
-export { type CompositorId, type HeadlessOptions } from "./headless-display.ts";
+export { type HeadlessOptions } from "./headless-display.ts";
 export { type PluginOptions };

@@ -29,20 +29,19 @@ export default defineConfig({
 });
 ```
 
-The plugin gives each worker a private headless display and session bus. Its default compositor is Sway; it also needs `dbus-daemon`. On Fedora 44, install these with:
+The plugin gives each worker a private headless display and session bus, which need Sway and `dbus-daemon`. On Fedora 44, install these with:
 
 ```bash
 sudo dnf install sway dbus-daemon
 ```
 
-Check that the commands are available, then run the tests:
+Then run the tests:
 
 ```bash
-command -v sway dbus-daemon
 npm test
 ```
 
-See the [plugin reference](/v2/reference/@gtkx/vitest/) for display size and compositor options.
+If `sway` or `dbus-daemon` is missing from `PATH`, the run stops before any test starts and names each missing tool, with an install command when GTKX recognizes the distribution. See the [plugin reference](/v2/reference/@gtkx/vitest/) for the display size and other options.
 
 With the GTKX Vitest plugin, importing `@gtkx/testing` registers widget matchers and automatic cleanup. No additional setup file is needed.
 

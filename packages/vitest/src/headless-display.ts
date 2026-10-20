@@ -1,5 +1,13 @@
-import { cleanupDirectoryIdentity, isProcessAlive, readProcessIdentity, resolveExecutable } from "@gtkx/utils";
-import { type ChildProcess, spawn, spawnSync } from "node:child_process";
+import {
+    cleanupDirectoryIdentity,
+    type ExternalTool,
+    HEADLESS_DISPLAY_TOOLS,
+    isProcessAlive,
+    missingToolLines,
+    readProcessIdentity,
+    tryResolveExecutable,
+} from "@gtkx/utils";
+import { type ChildProcess, spawn } from "node:child_process";
 import {
     chmodSync,
     closeSync,
@@ -26,34 +34,16 @@ import { type HeadlessRuntime, stopHeadlessRuntime } from "./reap-headless-displ
 import { startVirtualSeat } from "./virtual-seat.ts";
 
 /**
- * Wayland compositors that can back a headless display.
- */
-type CompositorId = "sway" | "weston";
-
-/**
  * Settings for the per-worker headless Wayland display.
  */
 type HeadlessOptions = {
     /** Output resolution as a "WIDTHxHEIGHT" string, for example "1024x768". */
     size: string;
-    /** Wayland compositor used to back the headless display. */
-    compositor: CompositorId;
 };
 
 type EnvSnapshot = Record<string, string | undefined>;
 
-type CompositorDescriptor = {
-    socket: string;
-    env: Record<string, string>;
-    requiresVirtualSeat: boolean;
-    start: (runtimeDir: string, width: string, height: string) => ChildProcess;
-};
-
-type SpawnedCompositor = {
-    child: ChildProcess;
-    socket: string;
-    requiresVirtualSeat: boolean;
-};
+type HeadlessExecutables = Record<keyof typeof HEADLESS_DISPLAY_TOOLS, string>;
 
 type ChildMonitor = {
     label: string;
@@ -88,56 +78,15 @@ type SocketsWatch = {
 };
 
 const DEFAULT_HEADLESS_SIZE = "1024x768";
-const DEFAULT_HEADLESS_COMPOSITOR: CompositorId = "sway";
 const HEADLESS_SIZE_PATTERN = /^[1-9]\d*x[1-9]\d*$/;
+const COMPOSITOR_SOCKET = "wayland-1";
 
-const hasWestonFakeSeat = createWestonFakeSeatProbe();
-
-const compositorRegistry: Record<CompositorId, CompositorDescriptor> = {
-    sway: {
-        socket: "wayland-1",
-        requiresVirtualSeat: true,
-        env: {
-            WLR_BACKENDS: "headless",
-            WLR_RENDERER: "pixman",
-            WLR_RENDERER_ALLOW_SOFTWARE: "1",
-            WLR_LIBINPUT_NO_DEVICES: "1",
-            WLR_HEADLESS_OUTPUTS: "1",
-        },
-        start: (runtimeDir, width, height) => {
-            const configPath = join(runtimeDir, "sway.conf");
-
-            writeFileSync(configPath, createSwayConfig(width, height));
-
-            return spawn(resolveExecutable("sway"), ["-c", configPath], {
-                detached: true,
-                stdio: ["ignore", "ignore", "pipe"],
-                env: { ...process.env, [HEADLESS_HELPER_ENV]: runtimeDir },
-            });
-        },
-    },
-    weston: {
-        socket: "wayland-0",
-        requiresVirtualSeat: false,
-        env: {},
-        start: (runtimeDir, width, height) =>
-            spawn(
-                resolveExecutable("weston"),
-                [
-                    "--backend=headless",
-                    "--renderer=pixman",
-                    ...(hasWestonFakeSeat() ? ["--fake-seat"] : []),
-                    `--width=${width}`,
-                    `--height=${height}`,
-                    "--socket=wayland-0",
-                ],
-                {
-                    detached: true,
-                    stdio: ["ignore", "ignore", "pipe"],
-                    env: { ...process.env, [HEADLESS_HELPER_ENV]: runtimeDir },
-                },
-            ),
-    },
+const COMPOSITOR_ENV = {
+    WLR_BACKENDS: "headless",
+    WLR_RENDERER: "pixman",
+    WLR_RENDERER_ALLOW_SOFTWARE: "1",
+    WLR_LIBINPUT_NO_DEVICES: "1",
+    WLR_HEADLESS_OUTPUTS: "1",
 };
 
 const STATIC_HEADLESS_ENV = {
@@ -160,10 +109,7 @@ const resolveHeadlessOptions = (provided: Partial<HeadlessOptions>): HeadlessOpt
         throw new Error(`Invalid headless display size: ${size}`);
     }
 
-    return {
-        size,
-        compositor: provided.compositor ?? DEFAULT_HEADLESS_COMPOSITOR,
-    };
+    return { size };
 };
 
 const applyEnv = (snapshot: EnvSnapshot, values: Record<string, string>): void => {
@@ -186,21 +132,6 @@ const restoreEnv = (snapshot: EnvSnapshot): void => {
     }
 };
 
-function createWestonFakeSeatProbe(): () => boolean {
-    let isSupported: boolean | undefined;
-
-    return () => {
-        if (isSupported === undefined) {
-            const help = spawnSync(resolveExecutable("weston"), ["--help"], { encoding: "utf8" });
-            isSupported = `${help.stdout}${help.stderr}`.includes("--fake-seat");
-        }
-
-        return isSupported;
-    };
-}
-
-const isCompositorId = (value: string): value is CompositorId => Object.hasOwn(compositorRegistry, value);
-
 const readHeadlessOptions = (params: URLSearchParams): Partial<HeadlessOptions> => {
     const options: Partial<HeadlessOptions> = {};
     const size = params.get("size");
@@ -209,28 +140,41 @@ const readHeadlessOptions = (params: URLSearchParams): Partial<HeadlessOptions> 
         options.size = size;
     }
 
-    const compositor = params.get("compositor");
-
-    if (compositor !== null && isCompositorId(compositor)) {
-        options.compositor = compositor;
-    }
-
     return options;
 };
 
-const startCompositor = (runtimeDir: string, options: HeadlessOptions, env: EnvSnapshot): SpawnedCompositor => {
-    const descriptor = compositorRegistry[options.compositor];
-    const [width = "", height = ""] = options.size.split("x", 2);
-    applyEnv(env, descriptor.env);
+const missingToolsMessage = (missing: ExternalTool[]): string =>
+    ["GTKX cannot start a headless display without these tools:", "", ...missingToolLines(missing)].join("\n");
 
-    return {
-        child: descriptor.start(runtimeDir, width, height),
-        socket: descriptor.socket,
-        requiresVirtualSeat: descriptor.requiresVirtualSeat,
-    };
+const resolveHeadlessExecutables = (): HeadlessExecutables => {
+    const compositor = tryResolveExecutable(HEADLESS_DISPLAY_TOOLS.compositor.command);
+    const bus = tryResolveExecutable(HEADLESS_DISPLAY_TOOLS.bus.command);
+
+    if (compositor === undefined || bus === undefined) {
+        throw new Error(
+            missingToolsMessage([
+                ...(compositor === undefined ? [HEADLESS_DISPLAY_TOOLS.compositor] : []),
+                ...(bus === undefined ? [HEADLESS_DISPLAY_TOOLS.bus] : []),
+            ]),
+        );
+    }
+
+    return { bus, compositor };
 };
 
-const noVirtualSeat = (): void => undefined;
+const startCompositor = (executable: string, runtimeDir: string, options: HeadlessOptions): ChildProcess => {
+    const [width = "", height = ""] = options.size.split("x", 2);
+    const configPath = join(runtimeDir, "sway.conf");
+    writeFileSync(configPath, createSwayConfig(width, height));
+
+    return spawn(executable, ["-c", configPath], {
+        detached: true,
+        stdio: ["ignore", "ignore", "pipe"],
+        env: { ...process.env, [HEADLESS_HELPER_ENV]: runtimeDir },
+    });
+};
+
+const noop = (): void => undefined;
 
 const writeBusConfig = (busConfigPath: string, busSocketPath: string): void => {
     writeFileSync(busConfigPath, createBusConfig(busSocketPath));
@@ -386,7 +330,7 @@ const captureCompositorStderr = (child: ChildProcess, logPath: string): Captured
     const stderr = child.stderr;
 
     if (stderr === null) {
-        return { chunks: captured, logPath, stop: noVirtualSeat };
+        return { chunks: captured, logPath, stop: noop };
     }
 
     stderr.setEncoding("utf8");
@@ -480,16 +424,6 @@ const waitUntilConnectable = async (monitor: ChildMonitor): Promise<void> => {
     }
 };
 
-const attachCompositorClient = async (compositor: SpawnedCompositor, monitor: ChildMonitor): Promise<() => void> => {
-    await waitUntilConnectable(monitor);
-
-    if (compositor.requiresVirtualSeat) {
-        return startVirtualSeat(monitor.path);
-    }
-
-    return noVirtualSeat;
-};
-
 const killSpawned = (children: ChildProcess[]): void => {
     for (const child of children) {
         child.kill("SIGTERM");
@@ -516,11 +450,11 @@ const makeRemoveRuntime =
         stopHeadlessRuntime(runtime);
     };
 
-const startBus = (runtimeDir: string, busSocketPath: string): ChildProcess => {
+const startBus = (executable: string, runtimeDir: string, busSocketPath: string): ChildProcess => {
     const busConfigPath = join(runtimeDir, "session.conf");
     writeBusConfig(busConfigPath, busSocketPath);
 
-    return spawn(resolveExecutable("dbus-daemon"), [`--config-file=${busConfigPath}`], {
+    return spawn(executable, [`--config-file=${busConfigPath}`], {
         detached: true,
         stdio: ["ignore", "ignore", "pipe"],
         env: { ...process.env, [HEADLESS_HELPER_ENV]: runtimeDir },
@@ -548,6 +482,7 @@ const createHeadlessRuntime = (): HeadlessRuntime => {
 };
 
 const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => void> => {
+    const executables = resolveHeadlessExecutables();
     const env: EnvSnapshot = {};
     const runtime = createHeadlessRuntime();
     const runtimeDir = runtime.cleanupDirectory.path;
@@ -571,24 +506,26 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
         applyEnv(env, STATIC_HEADLESS_ENV);
         applyEnv(env, { XDG_RUNTIME_DIR: runtimeDir });
         const busSocketPath = join(runtimeDir, "bus");
-        const busChild = startBus(runtimeDir, busSocketPath);
+        const busChild = startBus(executables.bus, runtimeDir, busSocketPath);
         recordChild(busChild);
         const busMonitor = monitorChild(busChild, "D-Bus session bus", busSocketPath);
         monitorStops.push(busMonitor.stop);
         applyEnv(env, { DBUS_SESSION_BUS_ADDRESS: `unix:path=${busSocketPath}` });
-        const compositor = startCompositor(runtimeDir, options, env);
-        recordChild(compositor.child);
-        const compositorSocketPath = join(runtimeDir, compositor.socket);
-        const compositorMonitor = monitorChild(compositor.child, "Compositor", compositorSocketPath);
+        applyEnv(env, COMPOSITOR_ENV);
+        const compositor = startCompositor(executables.compositor, runtimeDir, options);
+        recordChild(compositor);
+        const compositorSocketPath = join(runtimeDir, COMPOSITOR_SOCKET);
+        const compositorMonitor = monitorChild(compositor, "Compositor", compositorSocketPath);
         monitorStops.push(compositorMonitor.stop);
-        applyEnv(env, { WAYLAND_DISPLAY: compositor.socket });
+        applyEnv(env, { WAYLAND_DISPLAY: COMPOSITOR_SOCKET });
         await waitForDisplaySockets({ compositorMonitor, busMonitor });
         await waitUntilConnectable(busMonitor);
-        const stopVirtualSeat = await attachCompositorClient(compositor, compositorMonitor);
+        await waitUntilConnectable(compositorMonitor);
+        const stopVirtualSeat = await startVirtualSeat(compositorSocketPath);
         const stopNotifications = await startNotificationService(`unix:path=${busSocketPath}`);
         runCleanups(monitorStops);
-        const capturedStderr = captureCompositorStderr(compositor.child, join(runtimeDir, "compositor.stderr.log"));
-        const stopExitWatch = watchCompositorExit(compositor.child, capturedStderr);
+        const capturedStderr = captureCompositorStderr(compositor, join(runtimeDir, "compositor.stderr.log"));
+        const stopExitWatch = watchCompositorExit(compositor, capturedStderr);
 
         return makeTeardown([
             stopExitWatch,
@@ -608,9 +545,9 @@ const startHeadlessDisplay = async (options: HeadlessOptions): Promise<() => voi
 
 export {
     STATIC_HEADLESS_ENV,
+    resolveHeadlessExecutables,
     resolveHeadlessOptions,
     readHeadlessOptions,
     startHeadlessDisplay,
-    type CompositorId,
     type HeadlessOptions,
 };

@@ -1,6 +1,6 @@
 import * as p from "@clack/prompts";
 import { APPLICATION_ID_MAX_LENGTH, isValidApplicationId } from "@gtkx/config/internal";
-import { errorMessage, tryResolveExecutable, upperFirst } from "@gtkx/utils";
+import { errorMessage, HEADLESS_DISPLAY_TOOLS, missingToolLines, tryResolveExecutable, upperFirst } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
 import { lstatSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
@@ -82,12 +82,6 @@ const INSTALL_COMMAND: Record<PackageManager, string> = Object.fromEntries(
 const INHERITED_SCRIPT_POLICY_VARS = ["npm_config_allow_scripts", "npm_config_allow-scripts"];
 const TESTING_TEMPLATES = new Set(["vitest.config.ts", "tests/app.test.tsx"]);
 const TYPESCRIPT_TEMPLATES = new Set(["tsconfig.json", "src/gtkx-env.d.ts"]);
-
-const HEADLESS_COMPOSITOR_NOTE = `
-
-To run tests, you need a headless Wayland compositor installed:
-  Fedora: sudo dnf install sway
-  Ubuntu: sudo apt install sway`;
 
 const APPLICATION_ID_FORMAT_ERROR = "Application ID must be reverse domain notation (e.g., com.example.myapp)";
 const APPLICATION_ID_PREFIX = "com.";
@@ -695,10 +689,20 @@ const initializeGitRepo = async (root: string, shouldInitialize: boolean): Promi
     }
 };
 
+const missingHeadlessToolsNote = (): string => {
+    const missing = Object.values(HEADLESS_DISPLAY_TOOLS).filter(
+        (tool) => tryResolveExecutable(tool.command) === undefined,
+    );
+
+    return missing.length === 0
+        ? ""
+        : ["", "", "To run tests, install these tools:", ...missingToolLines(missing)].join("\n");
+};
+
 const printNextSteps = (resolved: ResolvedOptions): void => {
     const devCmd = DEV_COMMAND[resolved.packageManager];
     const installStep = resolved.shouldInstallDependencies ? "" : `${INSTALL_COMMAND[resolved.packageManager]}\n`;
-    const testingNote = resolved.shouldIncludeTesting ? HEADLESS_COMPOSITOR_NOTE : "";
+    const testingNote = resolved.shouldIncludeTesting ? missingHeadlessToolsNote() : "";
     p.note(`${installStep}${devCmd}${testingNote}`, `Run in ${resolved.root}`);
 };
 
