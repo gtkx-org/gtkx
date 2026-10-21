@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/testing",
-    "version": "2.0.0-beta.11",
+    "version": "2.0.0-beta.12",
     "description": "Test GTKX applications with native widgets.",
     "keywords": [
         "gtkx",

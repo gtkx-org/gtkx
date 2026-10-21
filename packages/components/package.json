@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/components",
-    "version": "2.0.0-beta.11",
+    "version": "2.0.0-beta.12",
     "description": "Collection views, selection controls, tabs, and toasts for GTKX.",
     "keywords": [
         "gtkx",

@@ -1,6 +1,6 @@
 {
     "name": "@gtkx/codegen",
-    "version": "2.0.0-beta.11",
+    "version": "2.0.0-beta.12",
     "description": "Generate TypeScript and JSX bindings from GObject Introspection data.",
     "keywords": [
         "gtkx",

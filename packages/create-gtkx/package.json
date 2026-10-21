@@ -1,6 +1,6 @@
 {
     "name": "create-gtkx",
-    "version": "2.0.0-beta.11",
+    "version": "2.0.0-beta.12",
     "description": "Create native Linux applications with React and GTKX.",
     "keywords": [
         "gtkx",
