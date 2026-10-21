@@ -7,7 +7,7 @@ Use `ListView`, `GridView`, and `ColumnView` with React data and render function
 In an existing GTKX app:
 
 ```sh
-npm install @gtkx/components@2
+npm install @gtkx/components@beta
 ```
 
 [Guide](https://gtkx.dev/v2/guide/components) · [API reference](https://gtkx.dev/v2/reference/@gtkx/components/) · [GTKX](https://gtkx.dev)

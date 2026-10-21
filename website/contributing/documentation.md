@@ -28,7 +28,7 @@ Use the [React documentation](https://react.dev/learn) as a reference for separa
 
 Start a page with its purpose and prerequisites. Explain the GTKX-specific steps, then link to the next task or reference details. Prefer complete, small examples over repeated API inventories. Package READMEs should identify the package, show installation or its intended entry point, and link to the matching guide and reference. Package descriptions and keywords should describe that package's role and relevant integrations.
 
-Describe observable behavior and explain its limits. Avoid slogans, claims of superiority, unsupported performance claims, and words such as "easy" or "simple" that substitute for explaining a task. Keep terminology consistent and make each paragraph follow from the previous one.
+Describe observable behavior and explain its limits. Avoid claims of superiority, unsupported performance claims, and words such as "easy" or "simple" that substitute for explaining a task. Keep terminology consistent and make each paragraph follow from the previous one.
 
 Check commands, imports, exported names, defaults, and requirements against the version being documented. The working tree is authoritative for the development docs; use the pinned release for stable docs. Preserve historical release announcements and changelogs as records of those releases.
 
@@ -54,7 +54,7 @@ Before publishing documentation changes:
 
 The manifest drives navigation, sidebars, page mapping between versions, banners, canonical URLs, per-version `llms.txt` and `llms-full.txt`, and TypeDoc output paths.
 
-Exactly one version must use `worktree`; the build rejects any other count. Its empty `label` derives from the version in `packages/create-gtkx/package.json`. The landing page's installation command uses the featured documentation version's major number. A tag-pinned version records its shipped label and rebuilds from the specified tag and commit, keeping its API reference tied to the release. Each release tag retains one working-tree entry so its own checkout can regenerate that reference when archived.
+Exactly one version must use `worktree`; the build rejects any other count. Its empty `label` derives from the version in `packages/create-gtkx/package.json`, which also supplies the prerelease installation command on the landing page. A tag-pinned version records its shipped label and rebuilds from the specified tag and commit, keeping its API reference tied to the release. Each release tag retains one working-tree entry so its own checkout can regenerate that reference when archived.
 
 Between releases, the current version uses the working tree and follows `main`. When adding the next prerelease, make it the working-tree version, pin the outgoing current reference to its release tag and commit, and write its derived label into the manifest.
 
@@ -84,7 +84,7 @@ Complete promotion on the prepared release branch before advancing `main`. That 
    pnpm --filter @gtkx/website promote-version --to /v1 --examples-ref v2.0.0
    ```
 
-4. Review release copy in the promoted `website/guide`, `website/tutorial`, contributor pages, landing components, root `README.md`, and `packages/*/README.md`. Check installation commands and release status text against the version being published. Point 2.0 links at the new root paths and 1.x links at `/v1`; retain historical release names in dated posts and changelogs. Archived 1.x installation commands must remain pinned to 1.x. Keep the root README's link to `FUNDING.md`.
+4. Review release copy in the promoted `website/guide`, `website/tutorial`, contributor pages, landing components, root `README.md`, and `packages/*/README.md`. Replace beta installation commands and current-release status text with stable equivalents. Point 2.0 links at the new root paths and 1.x links at `/v1`; retain historical release names in dated posts and changelogs. Archived 1.x installation commands must remain pinned to 1.x. Keep the root README's link to `FUNDING.md`.
 5. Regenerate both API references and build the site:
 
    ```bash
@@ -96,7 +96,7 @@ Complete promotion on the prepared release branch before advancing `main`. That 
 
 6. Include these changes in the reviewed, signed release-branch history, then follow [Review and advance main](/contributing/releases#review-and-advance-main). A subsequent Release workflow run rebuilds that branch from `main`; it must not discard the reviewed promotion changes.
 
-The script moves each version's `guide`, `tutorial`, and `reference` directories, updates `versions.json`, and synchronizes the Nx reference output paths. It rewrites absolute documentation links in website Markdown by the version they target, preserving intentional links between versions. It does not rewrite release status prose or package commands, and it does not edit files outside `website/`. Generated reference links are corrected by regeneration.
+The script moves each version's `guide`, `tutorial`, and `reference` directories, updates `versions.json`, and synchronizes the Nx reference output paths. It rewrites absolute documentation links in website Markdown by the version they target, preserving intentional links between versions. It does not rewrite beta prose or package commands, and it does not edit files outside `website/`. Generated reference links are corrected by regeneration.
 
 Promotion keeps the new current reference on `worktree`. Pinning it now would leave no working-tree version; wait until adding the next prerelease, as described above.
 

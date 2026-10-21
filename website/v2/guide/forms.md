@@ -10,7 +10,7 @@ description: "Connect React Hook Form to native Adwaita rows, focus and validati
 Install the package:
 
 ```bash
-npm install @gtkx/forms@2
+npm install @gtkx/forms@beta
 ```
 
 The rows use the generated `@gtkx/jsx/adw` bindings included in GTKX 2 projects.

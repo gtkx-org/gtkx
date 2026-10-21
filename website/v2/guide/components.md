@@ -10,7 +10,7 @@ description: "Render lists, tables, dropdowns, tabs, and toast notifications fro
 `@gtkx/components` is a separate install:
 
 ```bash
-npm install @gtkx/components@2
+npm install @gtkx/components@beta
 ```
 
 See the [component reference](/v2/reference/@gtkx/components/) for props. Hooks that connect GObject state to React come from [`@gtkx/react`](/v2/reference/@gtkx/react/).

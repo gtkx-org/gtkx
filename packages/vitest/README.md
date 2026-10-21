@@ -4,7 +4,7 @@ Run GTKX tests in isolated headless displays.
 
 The Vitest plugin gives each worker a private Wayland display and D-Bus session. It requires Sway, `dbus-daemon`, and the native GTKX dependencies. Use `@gtkx/testing` to render and interact with widgets.
 
-Scaffolded projects use the `@gtkx/cli/vitest-plugin` entry point. For direct use, install `@gtkx/vitest@2` as a development dependency and configure its default export:
+Scaffolded projects use the `@gtkx/cli/vitest-plugin` entry point. For direct use, install `@gtkx/vitest@beta` as a development dependency and configure its default export:
 
 ```ts
 import gtkx from "@gtkx/vitest";

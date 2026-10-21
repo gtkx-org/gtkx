@@ -13,7 +13,7 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
         <div class="hero__grid stack-md">
             <div class="hero__col">
                 <p class="overline hero__eyebrow">// React · Node · TypeScript · libadwaita · GTK4</p>
-                <h1 class="hero__title">A React framework for <span class="gtkx-gradient-text">Linux</span></h1>
+                <h1 class="hero__title">The React framework for <span class="gtkx-gradient-text">Linux</span></h1>
                 <p class="hero__lede">
                     Build native apps with Adwaita and GTK widgets, TypeScript, and the Node.js ecosystem.
                 </p>
@@ -23,7 +23,7 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
                     </div>
                     <div class="hero__cta">
                         <Button size="lg" :href="docsLink('guide/getting-started')">
-                            Get started
+                            {{ featuredVersion.status === "prerelease" ? "Try the beta" : "Get started" }}
                             <template #icon-right><Icon name="arrow" :size="17" /></template>
                         </Button>
                         <Button size="lg" variant="secondary" :href="REPO_URL">
@@ -32,9 +32,9 @@ import { CREATE_COMMAND, docsLink, REPO_URL } from "./content";
                         </Button>
                     </div>
                     <p v-if="featuredVersion.status === 'prerelease'" class="hero__version">
-                        Using GTKX {{ currentVersion.id }}?
+                        Prefer the stable release?
                         <a :href="documentationLink(currentVersion, 'guide/getting-started')"
-                            >Read its documentation.</a
+                            >Use GTKX {{ currentVersion.label }}.</a
                         >
                     </p>
                 </div>

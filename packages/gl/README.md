@@ -7,7 +7,7 @@ Render with `GtkGLArea` using bindings generated from the Khronos registry. Call
 In an existing GTKX app:
 
 ```sh
-npm install @gtkx/gl@2
+npm install @gtkx/gl@beta
 ```
 
 [Guide](https://gtkx.dev/v2/guide/opengl) · [API reference](https://gtkx.dev/v2/reference/@gtkx/gl/) · [GTKX](https://gtkx.dev)

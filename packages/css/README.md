@@ -7,7 +7,7 @@ Use `css` to create a class name, `cx` to combine classes, and `injectGlobal` fo
 In an existing GTKX app:
 
 ```sh
-npm install @gtkx/css@2
+npm install @gtkx/css@beta
 ```
 
 [Guide](https://gtkx.dev/v2/guide/css) · [API reference](https://gtkx.dev/v2/reference/@gtkx/css/) · [GTKX](https://gtkx.dev)

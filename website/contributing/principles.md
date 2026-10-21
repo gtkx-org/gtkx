@@ -125,7 +125,7 @@ Guides and tutorials explain GTKX concepts and tasks with small examples. Link t
 
 Assume familiarity with the underlying languages and libraries; link to their official documentation for background. Explain GTKX's integration with React, GTK, and Adwaita without reteaching those projects.
 
-Use GTKX as the product name and describe it as a React framework for native Linux applications. Name GNOME, GTK, and Adwaita when explaining their role. Describe features and limitations directly, without slogans or unsupported comparisons.
+Use **The React framework for Linux** as the slogan. GTKX is the product name. Name GNOME, GTK, and Adwaita when explaining their role. Describe features and limitations directly, without unsupported comparisons.
 
 ## Keep production code focused on consumers
 

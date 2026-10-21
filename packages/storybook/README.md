@@ -7,7 +7,7 @@ Write Component Story Format stories, open them with `gtkx storybook`, and chang
 In an existing GTKX app:
 
 ```sh
-npm install -D @gtkx/storybook@2
+npm install -D @gtkx/storybook@beta
 ```
 
 [Guide](https://gtkx.dev/v2/guide/storybook) · [API reference](https://gtkx.dev/v2/reference/@gtkx/storybook/) · [GTKX](https://gtkx.dev)

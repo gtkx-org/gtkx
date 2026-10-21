@@ -177,11 +177,11 @@ Install navigation and CSS support from the project directory:
 ::: code-group
 
 ```bash [npm]
-npm install @gtkx/navigation@2 @gtkx/css@2 @react-navigation/core@^7
+npm install @gtkx/navigation@beta @gtkx/css@beta @react-navigation/core@^7
 ```
 
 ```bash [pnpm]
-pnpm add @gtkx/navigation@2 @gtkx/css@2 @react-navigation/core@^7
+pnpm add @gtkx/navigation@beta @gtkx/css@beta @react-navigation/core@^7
 ```
 
 :::

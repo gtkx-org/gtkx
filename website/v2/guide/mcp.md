@@ -14,15 +14,15 @@ Install the server and the testing package used by its widget tools. Scaffolded 
 ::: code-group
 
 ```bash [npm]
-npm install -D @gtkx/mcp@2 @gtkx/testing@2
+npm install -D @gtkx/mcp@beta @gtkx/testing@beta
 ```
 
 ```bash [pnpm]
-pnpm add -D @gtkx/mcp@2 @gtkx/testing@2
+pnpm add -D @gtkx/mcp@beta @gtkx/testing@beta
 ```
 
 ```bash [yarn]
-yarn add -D @gtkx/mcp@2 @gtkx/testing@2
+yarn add -D @gtkx/mcp@beta @gtkx/testing@beta
 ```
 
 :::

@@ -13,11 +13,11 @@ Install the GTKX collection and toast components from `tasks/`:
 ::: code-group
 
 ```bash [npm]
-npm install @gtkx/components@2
+npm install @gtkx/components@beta
 ```
 
 ```bash [pnpm]
-pnpm add @gtkx/components@2
+pnpm add @gtkx/components@beta
 ```
 
 :::

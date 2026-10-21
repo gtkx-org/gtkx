@@ -7,7 +7,7 @@ Create a root with `createRoot`, render an `AdwApplication`, and compose widgets
 In an existing GTKX app:
 
 ```sh
-npm install @gtkx/react@2
+npm install @gtkx/react@beta
 ```
 
 [Guide](https://gtkx.dev/v2/guide/getting-started) · [API reference](https://gtkx.dev/v2/reference/@gtkx/react/) · [GTKX](https://gtkx.dev)

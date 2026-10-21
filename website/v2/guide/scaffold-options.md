@@ -8,7 +8,7 @@ description: "Create projects without prompts, defer dependency installation, an
 For an interactive first project, follow [Getting Started](/v2/guide/getting-started). Use these options to script project creation:
 
 ```bash
-npm create gtkx@2 -- my-app --yes --application-id com.example.MyApp --display-name "My App"
+npm create gtkx@beta -- my-app --yes --application-id com.example.MyApp --display-name "My App"
 ```
 
 Without `--display-name`, noninteractive scaffolding derives a name from the project directory, so `my-app` becomes `My App`. `--skip-install` writes the project without installing dependencies; run your package manager's install command in that directory afterward.
@@ -24,5 +24,5 @@ If dependency installation fails, the generated project remains on disk. Resolve
 For the complete option list, run:
 
 ```bash
-npm create gtkx@2 -- --help
+npm create gtkx@beta -- --help
 ```

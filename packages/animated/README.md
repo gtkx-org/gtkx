@@ -7,7 +7,7 @@ Animate widget properties with `animated`, `useSpring`, and `useTransition`. GTK
 In an existing GTKX app:
 
 ```sh
-npm install @gtkx/animated@2
+npm install @gtkx/animated@beta
 ```
 
 [Guide](https://gtkx.dev/v2/guide/animations) · [API reference](https://gtkx.dev/v2/reference/@gtkx/animated/) · [GTKX](https://gtkx.dev)

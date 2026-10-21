@@ -8,7 +8,7 @@ description: "Choose an Adwaita navigator and connect its pages, headers, and na
 `@gtkx/navigation` renders [React Navigation](https://reactnavigation.org) with Adwaita widgets. Install it alongside GTKX:
 
 ```bash
-npm install @gtkx/navigation@2
+npm install @gtkx/navigation@beta
 ```
 
 Choose a navigator for the layout:

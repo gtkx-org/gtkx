@@ -27,7 +27,7 @@ import {
 } from "./versioning.js";
 
 const title = "GTKX";
-const description = "A React framework for native Linux applications using TypeScript, Adwaita, and GTK widgets.";
+const description = "The React framework for Linux. Build native apps with React, TypeScript, and Adwaita widgets.";
 const url = "https://gtkx.dev";
 const ogImage = `${url}/og.png`;
 const websiteRoot = join(dirname(fileURLToPath(import.meta.url)), "..");

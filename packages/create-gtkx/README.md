@@ -7,7 +7,7 @@ Scaffold an app with TypeScript or JavaScript, an Adwaita window, and optional V
 Start on Linux with Node.js and the [native prerequisites](https://gtkx.dev/v2/guide/getting-started) installed:
 
 ```sh
-npm create gtkx@2 my-app
+npm create gtkx@beta my-app
 cd my-app
 npm run dev
 ```

@@ -56,7 +56,7 @@ const cols: { h: string; items: Link[] }[] = [
                         <img src="/gtkx-mark.svg" width="32" height="32" alt="" />
                         <span class="footer__word">GTKX</span>
                     </div>
-                    <p class="footer__tag">A React framework for native Linux applications.</p>
+                    <p class="footer__tag">The React framework for Linux. Free &amp; open source.</p>
                 </div>
                 <div v-for="c in cols" :key="c.h" class="footer__col">
                     <p class="footer__h">{{ c.h }}</p>

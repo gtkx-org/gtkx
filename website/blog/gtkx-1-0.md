@@ -1,5 +1,5 @@
 ---
-title: "GTKX 1.0: React for native Linux applications"
+title: "GTKX 1.0: The React framework for Linux"
 description: "GTKX 1.0 brings React and TypeScript to native Linux apps, with generated bindings, Fast Refresh, and integration tests."
 image: /tasks-screenshot.png
 ---
@@ -10,7 +10,7 @@ image: /tasks-screenshot.png
 
 GTKX 1.0 is available.
 
-GTKX is a React framework for native Linux applications. It creates GObject instances from JSX using generated GTK4 bindings.
+GTKX is the React framework for Linux. It creates GObject instances from JSX using generated GTK4 bindings.
 
 GTKX runs React on Node.js and renders native widgets. Components describe the interface for the current state, React updates the widget tree, and Fast Refresh applies edits to the running app. Node APIs and compatible npm libraries are available alongside GTK and Gio.
 

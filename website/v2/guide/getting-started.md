@@ -5,7 +5,7 @@ description: "Install the prerequisites, create a GTKX app, and run the developm
 
 # Getting Started
 
-Create a Linux desktop app with React and TypeScript, then edit it while its window stays open. This guide uses GTKX 2.0.
+Create a Linux desktop app with React and TypeScript, then edit it while its window stays open. This guide uses the GTKX 2.0 beta.
 
 ## What you need
 
@@ -40,15 +40,15 @@ Run the app from a graphical desktop session. In a development container, the co
 ::: code-group
 
 ```bash [npm]
-npm create gtkx@2
+npm create gtkx@beta
 ```
 
 ```bash [pnpm]
-pnpm create gtkx@2
+pnpm create gtkx@beta
 ```
 
 ```bash [yarn]
-yarn create gtkx@2
+yarn create gtkx@beta
 ```
 
 :::
@@ -63,6 +63,8 @@ npm run dev
 The starter uses an Adwaita application window with a counter. Click the button to increase the count. Change its label in `src/app.tsx` and save; the open window should update.
 
 For noninteractive creation and existing directories, see [Scaffold Options](/v2/guide/scaffold-options).
+
+The [tutorial](/v2/tutorial/) follows development on `main` and may use APIs added after the published beta. Check its version prerequisites before continuing beyond this starter.
 
 ## The dev loop
 

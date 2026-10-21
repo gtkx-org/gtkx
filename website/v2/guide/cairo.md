@@ -8,7 +8,7 @@ description: "Use GTKX Cairo values in drawing callbacks and render images offsc
 `@gtkx/cairo` provides the drawing objects used by GTKX's native bindings. Install it alongside the rest of your app:
 
 ```bash
-npm install @gtkx/cairo@2
+npm install @gtkx/cairo@beta
 ```
 
 This guide covers the GTKX integration. For drawing techniques, use the [Cairo manual](https://www.cairographics.org/manual/); for available methods and types, see the [GTKX Cairo reference](/v2/reference/@gtkx/cairo/).

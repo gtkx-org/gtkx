@@ -7,15 +7,14 @@ import HowItWorks from "./HowItWorks.vue";
 import Nav from "./Nav.vue";
 import Platform from "./Platform.vue";
 import Showcase from "./Showcase.vue";
-import { docsLink } from "./content";
 </script>
 
 <template>
     <div class="landing">
         <a class="skip-link" href="#main">Skip to content</a>
-        <a class="ann" :href="docsLink('guide/upgrading-to-2')">
-            <span class="ann__tag">GTKX 2.0</span>
-            <span class="ann__txt">Read the migration guide</span>
+        <a class="ann" href="/blog/gtkx-2-0-beta-1">
+            <span class="ann__tag">NEW</span>
+            <span class="ann__txt">GTKX 2.0 beta is available</span>
             <span class="ann__arrow" aria-hidden="true">→</span>
         </a>
         <Nav />

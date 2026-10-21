@@ -14,7 +14,7 @@ const notice = computed(() => {
 
     const lead =
         active.status === "prerelease"
-            ? `These GTKX ${active.label} docs follow development on main.`
+            ? `These docs follow main and may include changes after GTKX ${active.label}.`
             : `GTKX ${active.label} is no longer the current release.`;
 
     return {

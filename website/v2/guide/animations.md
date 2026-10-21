@@ -8,7 +8,7 @@ description: "Animate native widget properties and GTK styles with React Spring.
 `@gtkx/animated` adapts [React Spring](https://www.react-spring.dev) to GTKX. Learn how to create and control springs in the React Spring docs; this guide covers how those values reach native GTKX elements. Install the package separately:
 
 ```bash
-npm install @gtkx/animated@2
+npm install @gtkx/animated@beta
 ```
 
 ## Animated components

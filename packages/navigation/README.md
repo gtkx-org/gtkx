@@ -7,7 +7,7 @@ Build stack, tab, drawer, and split-view navigation with native Adwaita containe
 In an existing GTKX app:
 
 ```sh
-npm install @gtkx/navigation@2
+npm install @gtkx/navigation@beta
 ```
 
 [Guide](https://gtkx.dev/v2/guide/navigation) · [API reference](https://gtkx.dev/v2/reference/@gtkx/navigation/) · [GTKX](https://gtkx.dev)

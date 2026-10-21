@@ -9,10 +9,10 @@ description: "Test GTKX components with native widgets, accessible queries, and 
 
 ## Setup
 
-Projects created with `npm create gtkx@2` can include testing setup. To add it to an existing project, install the test dependencies:
+Projects created with `npm create gtkx@beta` can include testing setup. To add it to an existing project, install the test dependencies:
 
 ```bash
-npm install -D @gtkx/testing@2 vitest
+npm install -D @gtkx/testing@beta vitest
 ```
 
 Add a `test` script that runs `vitest run`, and create `vitest.config.ts`:

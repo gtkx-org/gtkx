@@ -142,11 +142,11 @@ Install `@gtkx/forms` from the project directory:
 ::: code-group
 
 ```bash [npm]
-npm install @gtkx/forms@2
+npm install @gtkx/forms@beta
 ```
 
 ```bash [pnpm]
-pnpm add @gtkx/forms@2
+pnpm add @gtkx/forms@beta
 ```
 
 :::

@@ -7,7 +7,7 @@ Draw paths, text, and images in a `GtkDrawingArea` callback or on an offscreen s
 In an existing GTKX app:
 
 ```sh
-npm install @gtkx/cairo@2
+npm install @gtkx/cairo@beta
 ```
 
 [Guide](https://gtkx.dev/v2/guide/cairo) · [API reference](https://gtkx.dev/v2/reference/@gtkx/cairo/) · [GTKX](https://gtkx.dev)

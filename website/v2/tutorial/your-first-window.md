@@ -4,7 +4,7 @@ description: "Build the Tasks application shell with an Adwaita window and heade
 
 # Create a Window
 
-You have a project that runs. Replace its contents with the first piece of Tasks: an application, a window, and a header bar. If you skipped ahead, start at [the introduction](/v2/tutorial/) and come back once `npm create gtkx@2` has finished.
+You have a project that runs. Replace its contents with the first piece of Tasks: an application, a window, and a header bar. If you skipped ahead, start at [the introduction](/v2/tutorial/) and come back once `npm create gtkx@beta` has finished.
 
 ## What the scaffolder made
 

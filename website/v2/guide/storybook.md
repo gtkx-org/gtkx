@@ -12,7 +12,7 @@ description: "Browse native GTKX component stories, edit arguments, record actio
 In an existing GTKX project:
 
 ```sh
-npm install -D @gtkx/storybook@2
+npm install -D @gtkx/storybook@beta
 ```
 
 Create `.storybook/main.ts`:
