@@ -36,7 +36,7 @@ See the [`createPortal` reference](/v2/reference/@gtkx/react/index/functions/cre
 
 Some native signals need an object returned before their handler finishes. For example, `AdwTabOverview.onCreateTab` returns the new `Adw.TabPage`, and `AdwTabView.onCreateWindow` returns the destination `Adw.TabView`.
 
-Use `flushSync` from `@gtkx/react` around the state update or root render that creates the JSX object. Once `flushSync` returns, its ref has been assigned and the native handler can return the object. Ordinary event handlers can keep using normal React updates; reserve synchronous commits for native contracts that require them. Call `flushSync` from an event handler, not while rendering or running an effect.
+React commits asynchronously, so JSX rendered in response to the signal is not ready in time. Create the native object in the handler, keep it in state, and render into it with `createPortal` once React commits. For a new tab, append an `Adw.Bin` to the view and return its page; for a new window, construct the `Adw.TabView` and mount the window around it. The [tab view navigator](/v2/guide/navigation#tab-view-navigator) packages this pattern for tabs, and the list components use it for their cells.
 
 An independent `createRoot(container)` owns its rendered children separately from the component that created the container. Explicitly unmount that root when its content is no longer needed. This lets a tab keep its native widget and React state after libadwaita transfers it to another window and the original window closes. The [Adwaita demo](https://github.com/gtkx-org/gtkx/tree/main/examples/adwaita-demo) demonstrates this lifecycle with native tab creation and transfer.
 

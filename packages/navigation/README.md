@@ -2,7 +2,7 @@
 
 React Navigation navigators for GTKX.
 
-Build stack, tab, drawer, and split-view navigation with native Adwaita containers. Define typed routes, nest navigators, and adapt sidebar and content layouts to the available space.
+Build stack, tab, tab view, drawer, and split-view navigation with native Adwaita containers. Define typed routes, nest navigators, and adapt sidebar and content layouts to the available space.
 
 In an existing GTKX app:
 

@@ -13,12 +13,13 @@ npm install @gtkx/navigation@beta
 
 Choose a navigator for the layout:
 
-| Navigator                           | Use it for                                     | Native widgets                     |
-| ----------------------------------- | ---------------------------------------------- | ---------------------------------- |
-| [Stack](#stack-navigator)           | Moving through a sequence of pages             | `AdwNavigationView`                |
-| [Tabs](#tab-navigator)              | Switching between a few peer sections          | `AdwViewStack` and a view switcher |
-| [Drawer](#drawer-navigator)         | Choosing an application section from a sidebar | `AdwOverlaySplitView`              |
-| [Split view](#split-view-navigator) | Keeping a selection beside its detail pages    | `AdwNavigationSplitView`           |
+| Navigator                           | Use it for                                     | Native widgets                           |
+| ----------------------------------- | ---------------------------------------------- | ---------------------------------------- |
+| [Stack](#stack-navigator)           | Moving through a sequence of pages             | `AdwNavigationView`                      |
+| [Tabs](#tab-navigator)              | Switching between a few peer sections          | `AdwViewStack` and a view switcher       |
+| [Drawer](#drawer-navigator)         | Choosing an application section from a sidebar | `AdwOverlaySplitView`                    |
+| [Split view](#split-view-navigator) | Keeping a selection beside its detail pages    | `AdwNavigationSplitView`                 |
+| [Tab view](#tab-view-navigator)     | Opening any number of documents as tabs        | `AdwTabView` with a tab bar and overview |
 
 Scaffolded applications already generate the Adwaita bindings these navigators need. The package re-exports React Navigation's core hooks, actions and types. Use its [navigation documentation](https://reactnavigation.org/docs/navigation-object/) for those shared concepts and the [GTKX reference](/v2/reference/@gtkx/navigation/) for navigator options.
 
@@ -331,6 +332,49 @@ export const App = () => {
 In a collapsed split view, Back or Escape from the first content page returns directly to the sidebar. Sizing and sidebar placement are covered by the [split view configuration reference](/v2/reference/@gtkx/navigation/type-aliases/SplitViewNavigationConfig).
 
 Focus follows the selected content route even when the sidebar remains visible. A sidebar's `useFocusEffect` therefore stops when a content page is selected; refresh sidebar data based on the data source or navigation state instead.
+
+## Tab view navigator
+
+`createTabViewNavigator` renders its routes as the pages of an `AdwTabView`, with an `AdwTabBar` under the header and an optional `AdwTabOverview`. Unlike the tab navigator, it opens any number of tabs from one screen, so a document or browser window declares the screen once and opens it repeatedly:
+
+```tsx
+import * as Gtk from "@gtkx/gi/gtk";
+import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { createTabViewNavigator, type TabViewScreenProps } from "@gtkx/navigation";
+
+type DocumentParams = { Document: { title: string } };
+
+const Tabs = createTabViewNavigator<DocumentParams>();
+
+const Document = ({ route, navigation }: TabViewScreenProps<DocumentParams, "Document">) => (
+    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+        <GtkLabel label={route.params.title} />
+        <GtkButton
+            label="Open related"
+            onClicked={() => navigation.openTab("Document", { title: "Related" }, { parent: route.key })}
+        />
+    </GtkBox>
+);
+
+export const Documents = () => (
+    <Tabs.Navigator
+        overview={{ enableNewTab: true, onCreateTab: () => ({ name: "Document", params: { title: "Untitled" } }) }}
+        screenOptions={({ route }) => ({ title: route.params.title })}
+    >
+        <Tabs.Screen name="Document" component={Document} initialParams={{ title: "Untitled" }} />
+    </Tabs.Navigator>
+);
+```
+
+Tabs are addressed by route key. The navigation object adds `openTab`, `closeTab`, `closeOtherTabs`, `closeTabsBefore`, `closeTabsAfter`, `selectTab`, `reorderTab` and `pinTab`, also available as `TabViewActions`. Opening with `parent` places the tab after its parent and the parent's descendants, and closing it selects that parent again. Pinned tabs stay ahead of the others; the state's `pinnedKeys` lists them. Screen options map to the page: `title`, `icon`, `tooltip`, `keyword`, `loading`, `needsAttention`, the indicator options and the thumbnail alignment. The header shows the window title unless `headerTitle` is set. Screens mount when first selected unless `lazy: false`.
+
+Native interaction flows back into the state: selecting a tab emits a cancellable `tabPress`, dragging reorders the route, and the close button dispatches `closeTab`, which `usePreventRemove` can refuse. Closing the last tab is left unhandled, so a parent navigator or the container's `onUnhandledAction` decides whether the window closes. The [tab view configuration reference](/v2/reference/@gtkx/navigation/) lists the tab bar, overview, menu and drop target settings.
+
+### Windows and transfers
+
+libadwaita's `create-window` and `create-tab` signals expect an object before the handler returns, so the navigator creates native pages and views first and renders into them afterwards. Pass `onCreateWindow` to open a window for a tab dragged out: create an `Adw.TabView`, store it, and return it. Render the new window with its own `NavigationContainer` and a navigator that receives that view through the `view` prop; the transferred page becomes its initial route. A page dragged into another window is adopted by that navigator with its params, and its screen mounts again there, so keep tab state in params or an external store. `useTabView()` gives screens and header content the native view, `getPage(key)` and `transferTab(key, target)`.
+
+The [Adwaita demo](https://github.com/gtkx-org/gtkx/tree/main/examples/adwaita-demo) shows the complete window lifecycle with menus, shortcuts and the overview.
 
 ## Nesting navigators
 

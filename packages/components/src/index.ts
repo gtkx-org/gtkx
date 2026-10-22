@@ -5,7 +5,6 @@ export { GridView } from "./grid-view.js";
 export { ListItemFactory } from "./list-item-factory.js";
 export { ListView } from "./list-view.js";
 export { ToastProvider, useToast } from "./toast.js";
-export { createTabCollection } from "./tab-collection.js";
 export type {
     ColumnViewColumn,
     ColumnViewProps,
@@ -26,7 +25,4 @@ export type {
     ToastController,
     ToastOptions,
     ToastProviderProps,
-    TabAppendOptions,
-    TabCollection,
-    TabCollectionOptions,
 } from "./types.js";

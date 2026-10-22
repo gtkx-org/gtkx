@@ -15,7 +15,8 @@
         "react": "catalog:",
         "@gtkx/runtime": "workspace:*",
         "@gtkx/components": "workspace:*",
-        "@gtkx/css": "workspace:*"
+        "@gtkx/css": "workspace:*",
+        "@gtkx/navigation": "workspace:*"
     },
     "devDependencies": {
         "@gtkx/cli": "workspace:*",

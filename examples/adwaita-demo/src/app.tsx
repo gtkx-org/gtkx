@@ -27,6 +27,7 @@ import { AppAboutDialog } from "./dialogs/about.js";
 import { PreferencesDialog } from "./dialogs/preferences.js";
 import { ShortcutsDialog } from "./dialogs/shortcuts.js";
 import { pages, sections } from "./page-registry.js";
+import { TabDemoWindows } from "./pages/tab-view.js";
 import "./styles/demo.css";
 import "./icons.js";
 
@@ -251,6 +252,7 @@ const App = () => {
             }}
         >
             {open && <MainWindow onClose={() => setOpen(false)} />}
+            <TabDemoWindows />
         </AdwApplication>
     );
 };

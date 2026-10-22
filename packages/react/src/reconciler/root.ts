@@ -131,10 +131,4 @@ const quit = (): typeof Gdk.EVENT_PROPAGATE | typeof Gdk.EVENT_STOP => {
 const createPortal = (children: ReactNode, container: Container, key?: string): ReactPortal =>
     reconciler.createPortal(children, container, null, key ?? null) as unknown as ReactPortal;
 
-/**
- * Commits updates scheduled by the callback before returning. Use this when a native signal
- * must synchronously return a widget or page created by rendering JSX.
- */
-const flushSync = <T>(callback: () => T): T => reconciler.flushSyncFromReconciler(callback);
-
-export { createRoot, quit, createPortal, flushSync, type CaughtErrorInfo, type Root, type RootOptions };
+export { createRoot, quit, createPortal, type CaughtErrorInfo, type Root, type RootOptions };

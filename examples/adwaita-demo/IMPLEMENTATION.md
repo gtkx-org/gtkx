@@ -36,7 +36,7 @@ The shell starts at 1000 by 720, collapses at 500sp, supports sidebar filtering 
 
 Keep widget trees in JSX and signals in props, using generated bindings and public native APIs. Keep page-specific components together and synchronize React state with native user interactions. Independent tab windows remain open after the main window closes; closing the last window exits the application.
 
-The [tab demo](src/pages/tab-view.tsx) uses `createTabCollection` to preserve page identity and React state across windows. Tab creation callbacks return native objects synchronously. Transfers must preserve editing state and cleanup after later renders and source-window closure. Window creation, focus, close decisions, and animation playback remain event-driven native operations.
+The [tab demo](src/pages/tab-view.tsx) uses the tab view navigator from `@gtkx/navigation`: each window runs its own navigation container, tab data lives in route params, and `create-window` hands a native view to the next window's navigator. Transfers between windows move the native page and render its screen again in the receiving window. Window creation, focus, close decisions, and animation playback remain event-driven native operations.
 
 The [animation demo](src/pages/animations.tsx) uses `GtkCustomLayout`. Its callbacks must remain valid for the layout's lifetime, including after garbage collection. Text direction, About metadata, tab drop targets, and pinning use declarative props. Imported CSS uses the standard GTKX build pipeline.
 

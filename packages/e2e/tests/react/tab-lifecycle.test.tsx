@@ -2,32 +2,33 @@ import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwTabOverview, AdwTabPage, AdwTabView } from "@gtkx/jsx/adw";
 import { GtkBox, GtkEntry } from "@gtkx/jsx/gtk";
-import { createRoot, flushSync } from "@gtkx/react";
+import { createPortal, createRoot } from "@gtkx/react";
 import { act, render, screen, userEvent } from "@gtkx/testing";
 import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 
 describe("native tab lifecycle", () => {
-    it("returns a JSX page synchronously from the overview create-tab signal", async () => {
-        const overview = createRef<Adw.TabOverview>();
+    it("returns a native page created in the overview create-tab handler and renders into it", async () => {
         const view = createRef<Adw.TabView>();
-        const page = createRef<Adw.TabPage>();
         const returned = { page: null as Adw.TabPage | null };
         const App = () => {
-            const [created, setCreated] = useState(false);
+            const [hosts, setHosts] = useState<Adw.Bin[]>([]);
             const [viewInstance, setViewInstance] = useState<Adw.TabView | null>(null);
 
             return (
                 <GtkBox>
                     <AdwTabOverview
-                        ref={overview}
                         view={viewInstance ?? undefined}
                         open={viewInstance !== null}
                         enableNewTab
                         onCreateTab={() => {
-                            flushSync(() => setCreated(true));
-                            returned.page = page.current;
-                            return page.current ?? undefined;
+                            if (viewInstance === null) return undefined;
+                            const host = new Adw.Bin();
+                            const page = viewInstance.append(host);
+                            page.setTitle("Created");
+                            setHosts((current) => [...current, host]);
+                            returned.page = page;
+                            return page;
                         }}
                     >
                         <AdwTabView
@@ -39,13 +40,9 @@ describe("native tab lifecycle", () => {
                             <AdwTabPage title="Existing">
                                 <GtkEntry text="Existing" />
                             </AdwTabPage>
-                            {created && (
-                                <AdwTabPage ref={page} title="Created">
-                                    <GtkEntry text="New tab" />
-                                </AdwTabPage>
-                            )}
                         </AdwTabView>
                     </AdwTabOverview>
+                    {hosts.map((host, index) => createPortal(<GtkEntry text="New tab" />, host, String(index)))}
                 </GtkBox>
             );
         };
@@ -54,7 +51,8 @@ describe("native tab lifecycle", () => {
         await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "New Tab" }));
         expect(returned.page).not.toBeNull();
         expect(returned.page).toBe(view.current?.getNthPage(1));
-        expect(view.current?.getNthPage(1).getChild()).toHaveObjectProperty("text", "New tab");
+        const host = view.current?.getNthPage(1).getChild();
+        expect(host instanceof Adw.Bin ? host.getChild() : null).toHaveObjectProperty("text", "New tab");
     });
 
     it("removes a page from its actual view after a native transfer", async () => {
@@ -194,38 +192,40 @@ describe("native tab lifecycle", () => {
         expect(nativeView.getNPages()).toBe(2);
     });
 
-    it("returns a newly rendered view synchronously for native window creation", async () => {
+    it("returns a view created in the create-window handler and renders a page into it", async () => {
         const source = createRef<Adw.TabView>();
-        const target = createRef<Adw.TabView>();
         const App = () => {
-            const [created, setCreated] = useState(false);
+            const [targets, setTargets] = useState<Adw.TabView[]>([]);
             return (
                 <GtkBox>
                     <AdwTabView
                         ref={source}
                         onCreateWindow={() => {
-                            flushSync(() => setCreated(true));
-                            return target.current;
+                            const target = new Adw.TabView();
+                            setTargets((current) => [...current, target]);
+                            return target;
                         }}
                     />
-                    {created && (
-                        <AdwTabView ref={target}>
+                    {targets.map((target, index) =>
+                        createPortal(
                             <AdwTabPage title="New window">
                                 <GtkEntry text="New window" />
-                            </AdwTabPage>
-                        </AdwTabView>
+                            </AdwTabPage>,
+                            target,
+                            String(index),
+                        ),
                     )}
                 </GtkBox>
             );
         };
         await render(<App />);
-        let result: Adw.TabView | null = null;
+        const returned = { view: null as Adw.TabView | null };
         await act(() => {
-            result = source.current?.emit("create-window") ?? null;
+            returned.view = source.current?.emit("create-window") ?? null;
         });
-        expect(result).not.toBeNull();
-        expect(result).toBe(target.current);
-        expect(screen.getByDisplayValue("New window")).toBeRooted();
+        expect(returned.view).not.toBeNull();
+        expect(returned.view?.getNPages()).toBe(1);
+        expect(returned.view?.getNthPage(0).getTitle()).toBe("New window");
     });
 
     it("reorders JSX tabs within pin groups while retaining a transferred tab's position", async () => {

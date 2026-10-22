@@ -12,7 +12,6 @@ export {
     type CaughtErrorInfo,
     createPortal,
     createRoot,
-    flushSync,
     quit,
     type Root,
     type RootOptions,

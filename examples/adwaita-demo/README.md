@@ -42,7 +42,7 @@ The main menu opens Preferences, Keyboard Shortcuts, Inspector, Adaptive Preview
 
 Page implementations live in `src/pages`; `src/page-registry.ts` defines their sidebar order. The Style Classes page includes the upstream gallery and its secondary dialogs. The About Dialog page retains the fictional Typeset sample.
 
-The tab demo shares a `createTabCollection` across windows so JSX page state survives native transfers. Pinning, tab drop targets, About dialog metadata, text direction, and the animation layout are configured declaratively. The stylesheet uses the CLI’s CSS import pipeline.
+The tab demo uses the tab view navigator from `@gtkx/navigation`, so open tabs, pinning and transfers between windows live in navigation state. Pinning, tab drop targets, About dialog metadata, text direction, and the animation layout are configured declaratively. The stylesheet uses the CLI’s CSS import pipeline.
 
 ## Reference and differences
 

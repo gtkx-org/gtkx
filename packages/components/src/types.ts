@@ -1,7 +1,7 @@
 import type * as Adw from "@gtkx/gi/adw";
 import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
-import type { AdwComboRowProps, AdwTabPageProps, AdwToastProps } from "@gtkx/jsx/adw";
+import type { AdwComboRowProps, AdwToastProps } from "@gtkx/jsx/adw";
 import type {
     GtkColumnViewColumnProps,
     GtkColumnViewProps,
@@ -294,42 +294,6 @@ type ToastProviderProps = {
     children?: ReactNode | undefined;
 };
 
-/** Describes the JSX page rendered for each value in a {@link TabCollection}. */
-type TabCollectionOptions<T> = {
-    /** Native page props and JSX content. Call getPage in event handlers to access the mounted page. The collection owns its ref and parent relationship. */
-    pageProps: (item: T, getPage: () => Adw.TabPage | null) => Omit<AdwTabPageProps, "ref" | "parent">;
-};
-
-/** Options for adding a page to a {@link TabCollection}. */
-type TabAppendOptions = {
-    /** Inserts a related page after this parent and its descendants, using native tab ancestry. */
-    parent?: Adw.TabPage | undefined;
-    /** Selects the new page by default. */
-    select?: boolean | undefined;
-};
-
-/**
- * Owns independent JSX tab roots across native view transfers. Its lifetime can span several windows.
- * Remove a page after accepting its native close request, remove a view's pages before destroying that
- * view, and dispose the collection when its owner is finished.
- */
-type TabCollection<T> = {
-    /** Renders synchronously and returns the native page, including from an overview's create-tab handler. */
-    append: (view: Adw.TabView, item: T, options?: TabAppendOptions) => Adw.TabPage;
-    /** Returns a managed page's current value, or undefined for an unmanaged page. */
-    get: (page: Adw.TabPage) => T | undefined;
-    /** Updates the value and rerenders the existing JSX root, preserving component state and native identity. */
-    update: (page: Adw.TabPage, item: T) => void;
-    /** Unmounts a managed page from its current native owner; already removed pages are ignored. */
-    remove: (page: Adw.TabPage) => void;
-    /** Unmounts this collection's pages currently belonging to the given view, including transferred pages. */
-    removeView: (view: Adw.TabView) => void;
-    /** Moves a managed page to another view, appending within its pinned or unpinned group by default. */
-    transfer: (page: Adw.TabPage, target: Adw.TabView, position?: number) => void;
-    /** Unmounts every managed page. The collection may subsequently be reused. */
-    dispose: () => void;
-};
-
 export {
     type SelectionProps,
     type ExpanderDescriptions,
@@ -354,7 +318,4 @@ export {
     type ToastOptions,
     type ToastController,
     type ToastProviderProps,
-    type TabAppendOptions,
-    type TabCollection,
-    type TabCollectionOptions,
 };

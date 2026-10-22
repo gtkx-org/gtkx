@@ -2,7 +2,7 @@
 
 Collection views, selection controls, tabs, and toasts for GTKX.
 
-Use `ListView`, `GridView`, and `ColumnView` with React data and render functions, or `DropDown` and `ComboRow` for selection controls. `createTabCollection` preserves tab state across windows. `ToastProvider` and `useToast` manage notifications.
+Use `ListView`, `GridView`, and `ColumnView` with React data and render functions, or `DropDown` and `ComboRow` for selection controls. `ToastProvider` and `useToast` manage notifications.
 
 In an existing GTKX app:
 

@@ -75,5 +75,34 @@ export type {
     TabNavigatorProps,
     TabScreenProps,
 } from "./tabs/types.js";
+export {
+    createTabViewNavigator,
+    createTabViewScreen,
+    TabViewNavigator,
+    type TabViewTypeBag,
+} from "./tab-view/create-tab-view-navigator.js";
+export { type TabViewHandle, useTabView } from "./tab-view/tab-view-host.js";
+export { TabViewActions } from "./tab-view/tab-view-router.js";
+export type {
+    TabViewActionHelpers,
+    TabViewActionType,
+    TabViewDescriptor,
+    TabViewDescriptorMap,
+    TabViewExtraDropTarget,
+    TabViewHeaderProps,
+    TabViewIcon,
+    TabViewNavigationConfig,
+    TabViewNavigationEventMap,
+    TabViewNavigationHelpers,
+    TabViewNavigationOptions,
+    TabViewNavigationProp,
+    TabViewNavigationState,
+    TabViewNavigatorProps,
+    TabViewOpenOptions,
+    TabViewOverviewConfig,
+    TabViewRouterOptions,
+    TabViewScreenProps,
+    TabViewTarget,
+} from "./tab-view/types.js";
 export { DarkTheme, DefaultTheme, type Theme } from "./theme.js";
 export * from "@react-navigation/core";

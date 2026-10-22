@@ -1,6 +1,7 @@
-import { createTabCollection } from "@gtkx/components";
+import type { NavigationAction, NavigationState } from "@gtkx/navigation";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
+import type * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -9,17 +10,25 @@ import {
     AdwBreakpoint,
     AdwHeaderBar,
     AdwStatusPage,
-    AdwTabBar,
     AdwTabButton,
-    AdwTabOverview,
-    AdwTabView,
     AdwToolbarView,
     AdwWindow,
 } from "@gtkx/jsx/adw";
-import { GMenu, GSimpleAction, GSimpleActionGroup, GThemedIcon } from "@gtkx/jsx/gio";
+import { GMenu, GSimpleAction, GSimpleActionGroup } from "@gtkx/jsx/gio";
 import { GtkButton, GtkCallbackAction, GtkEntry, GtkShortcut, GtkShortcutController } from "@gtkx/jsx/gtk";
-import { createRoot, flushSync, type Root, useApplication, useProperty, useSignal } from "@gtkx/react";
-import { createRef, type RefObject, useEffect, useMemo, useState } from "react";
+import {
+    CommonActions,
+    createNavigationContainerRef,
+    createTabViewNavigator,
+    NavigationContainer,
+    TabViewActions,
+    type TabViewNavigationState,
+    type TabViewScreenProps,
+    useNavigationState,
+    usePreventRemove,
+} from "@gtkx/navigation";
+import { createPortal, rootElement, useApplication, useSignal } from "@gtkx/react";
+import { useState, useSyncExternalStore } from "react";
 
 type TabData = {
     title: string;
@@ -30,231 +39,189 @@ type TabData = {
     attention: boolean;
     indicator: boolean;
     muted: boolean;
-    pinned: boolean;
 };
 
-type WindowHandle = { root: Root; window: Adw.Window; view: Adw.TabView };
+type TabParams = { Tab: TabData };
+type TabState = TabViewNavigationState<TabParams>;
+type DemoWindowEntry = { key: string; view: Adw.TabView; populate: boolean };
+
+const Tabs = createTabViewNavigator<TabParams>();
 const narrowCondition = Adw.BreakpointCondition.parse("max-width: 600px");
-const stringType = GObject.typeFromName("gchararray");
+const extraDropTarget = { actions: Gdk.DragAction.COPY, types: [GObject.typeFromName("gchararray")] };
 
 const escapeMarkup = (text: string) => GLib.markupEscapeText(text, -1);
 
-class TabDemo {
-    private nextId = 1;
-    private readonly tabs = createTabCollection<TabData>({
-        pageProps: (data, getPage) => ({
-            title: data.title,
-            tooltip: `Elaborate tooltip for <b>${escapeMarkup(data.title)}</b>`,
-            pinned: data.pinned,
-            icon: data.showIcon ? <GThemedIcon name={data.iconName} /> : null,
-            loading: data.loading,
-            needsAttention: data.attention,
-            indicatorIcon: data.indicator ? (
-                <GThemedIcon name={data.muted ? "tab-audio-muted-symbolic" : "tab-audio-playing-symbolic"} />
-            ) : null,
-            indicatorTooltip: data.indicator ? (data.muted ? "Unmute Tab" : "Mute Tab") : "",
-            indicatorActivatable: true,
-            thumbnailXalign: 0.5,
-            thumbnailYalign: 0.5,
-            children: (
-                <AdwBin cssClasses={["tab-page", `tab-page-color-${data.color}`]}>
-                    <GtkEntry
-                        halign={Gtk.Align.CENTER}
-                        valign={Gtk.Align.CENTER}
-                        text={data.title}
-                        accessibleLabel="Tab title"
-                        onChanged={(entry) => this.updatePage(getPage(), { title: entry.getText() })}
-                    />
-                </AdwBin>
-            ),
-        }),
-    });
-    private readonly windows = new Map<Adw.TabView, WindowHandle>();
+let windows: DemoWindowEntry[] = [];
+let nextWindow = 1;
+let nextTab = 1;
+const listeners = new Set<() => void>();
 
-    createWindow(application: Gtk.Application, populate = false): Adw.TabView {
-        const root = createRoot();
-        const window = createRef<Adw.Window>();
-        const view = createRef<Adw.TabView>();
-        flushSync(() =>
-            root.render(<DemoWindow demo={this} application={application} windowRef={window} viewRef={view} />),
-        );
-        if (window.current === null || view.current === null) {
-            throw new Error("The tab window did not render");
-        }
-        const handle = { root, window: window.current, view: view.current };
-        this.windows.set(handle.view, handle);
-        if (populate) {
-            for (let index = 0; index < 3; index += 1) {
-                this.createTab(handle.view);
-            }
-        }
-        handle.view.invalidateThumbnails();
-        return handle.view;
-    }
-
-    closeWindow(view: Adw.TabView): void {
-        const handle = this.windows.get(view);
-        if (handle === undefined) {
-            return;
-        }
-        this.windows.delete(view);
-        this.tabs.removeView(view);
-        handle.root.unmount();
-    }
-
-    forgetWindow(view: Adw.TabView): void {
-        this.windows.delete(view);
-    }
-
-    createTab(view: Adw.TabView, original?: Adw.TabPage): Adw.TabPage {
-        const source = original === undefined ? undefined : this.tabs.get(original);
-        const id = this.nextId++;
-        const data: TabData = source
-            ? { ...source, pinned: false }
-            : {
-                  title: `Tab ${id}`,
-                  iconName: this.randomIcon(view),
-                  showIcon: true,
-                  color: Math.floor(Math.random() * 8) + 1,
-                  loading: false,
-                  attention: false,
-                  indicator: false,
-                  muted: false,
-                  pinned: false,
-              };
-        const page = this.tabs.append(view, data, { parent: original });
-        page.getChild().childFocus(Gtk.DirectionType.TAB_FORWARD);
-        return page;
-    }
-
-    updatePage(page: Adw.TabPage | null | undefined, update: Partial<TabData>): void {
-        if (!page) return;
-        const data = this.tabs.get(page);
-        if (data) this.tabs.update(page, { ...data, ...update });
-    }
-
-    toggleMute(page: Adw.TabPage): void {
-        const data = this.tabs.get(page);
-        if (data) this.tabs.update(page, { ...data, muted: !data.muted });
-    }
-
-    releaseTab(page: Adw.TabPage): void {
-        this.tabs.remove(page);
-    }
-
-    transferTab(page: Adw.TabPage, target: Adw.TabView): void {
-        this.tabs.transfer(page, target);
-    }
-
-    randomIcon(view: Adw.TabView): string {
-        const names = Gtk.IconTheme.getForDisplay(view.getDisplay()).getIconNames();
-        return names[Math.floor(Math.random() * names.length)] ?? "text-x-generic-symbolic";
-    }
-}
-
-type DemoWindowProps = {
-    demo: TabDemo;
-    application: Gtk.Application;
-    windowRef: RefObject<Adw.Window | null>;
-    viewRef: RefObject<Adw.TabView | null>;
+const notifyWindows = () => {
+    for (const listener of listeners) listener();
 };
 
-const DemoWindow = ({ demo, application, windowRef, viewRef }: DemoWindowProps) => {
-    const [view, setView] = useState<Adw.TabView | null>(null);
-    const [overview, setOverview] = useState<Adw.TabOverview | null>(null);
+const openWindow = (view: Adw.TabView, populate: boolean): Adw.TabView => {
+    windows = [...windows, { key: `window-${nextWindow++}`, view, populate }];
+    notifyWindows();
+    return view;
+};
+
+const closeWindow = (key: string) => {
+    windows = windows.filter((entry) => entry.key !== key);
+    notifyWindows();
+};
+
+const subscribeWindows = (listener: () => void) => {
+    listeners.add(listener);
+    return () => {
+        listeners.delete(listener);
+    };
+};
+
+const getWindows = () => windows;
+
+const randomIcon = (view: Adw.TabView): string => {
+    const names = Gtk.IconTheme.getForDisplay(view.getDisplay()).getIconNames();
+    return names[Math.floor(Math.random() * names.length)] ?? "text-x-generic-symbolic";
+};
+
+const newTabData = (view: Adw.TabView): TabData => ({
+    title: `Tab ${nextTab++}`,
+    iconName: randomIcon(view),
+    showIcon: true,
+    color: Math.floor(Math.random() * 8) + 1,
+    loading: false,
+    attention: false,
+    indicator: false,
+    muted: false,
+});
+
+const isTabState = (state: NavigationState | undefined): state is TabState => state?.type === "tabview";
+
+const TabContent = ({ route, navigation }: TabViewScreenProps<TabParams, "Tab">) => {
+    const pinned = useNavigationState((state) => isTabState(state) && state.pinnedKeys.includes(route.key));
+    usePreventRemove(pinned, () => undefined);
+
+    return (
+        <AdwBin cssClasses={["tab-page", `tab-page-color-${route.params.color}`]}>
+            <GtkEntry
+                halign={Gtk.Align.CENTER}
+                valign={Gtk.Align.CENTER}
+                text={route.params.title}
+                accessibleLabel="Tab title"
+                onChanged={(entry) => navigation.setParams({ title: entry.getText() })}
+            />
+        </AdwBin>
+    );
+};
+
+type ActionProps = { name: string; enabled?: boolean; onActivate: () => void };
+type ToggleProps = { name: string; value: boolean; onChange: (value: boolean) => void };
+type ShortcutProps = { trigger: string; onActivate: () => void };
+
+const Action = ({ name, enabled = true, onActivate }: ActionProps) => (
+    <GSimpleAction name={name} enabled={enabled} onActivate={onActivate} />
+);
+
+const Toggle = ({ name, value, onChange }: ToggleProps) => (
+    <GSimpleAction
+        name={name}
+        state={GLib.Variant.newBoolean(value)}
+        onChangeState={(next) => {
+            if (next) onChange(next.getBoolean());
+        }}
+    />
+);
+
+const Shortcut = ({ trigger, onActivate }: ShortcutProps) => (
+    <GtkShortcut
+        trigger={Gtk.ShortcutTrigger.parseString(trigger) ?? undefined}
+        action={
+            <GtkCallbackAction
+                callback={() => {
+                    onActivate();
+                    return true;
+                }}
+            />
+        }
+    />
+);
+
+const DemoWindow = ({ entry }: { entry: DemoWindowEntry }) => {
+    const { key, view, populate } = entry;
+    const application = useApplication();
+    const [container] = useState(() => createNavigationContainerRef<TabParams>());
+    const [state, setState] = useState<TabState | undefined>(undefined);
+    const [initialTab] = useState(() => newTabData(view));
     const [narrow, setNarrow] = useState(false);
     const [open, setOpen] = useState(false);
-    const [menuPage, setMenuPage] = useState<Adw.TabPage | null>(null);
-    const selectedPage = useProperty(view, "selectedPage");
-    const current = menuPage ?? selectedPage;
-    const pinned = useProperty(current, "pinned") ?? false;
-    const hasIcon = useProperty(current, "icon") != null;
-    const loading = useProperty(current, "loading") ?? false;
-    const attention = useProperty(current, "needsAttention") ?? false;
-    const hasIndicator = useProperty(current, "indicatorIcon") != null;
-    const count = useProperty(view, "nPages") ?? 0;
-    const [order, setOrder] = useState(0);
-    const position = useMemo(() => {
-        void order;
-        return view && current ? view.getPagePosition(current) : -1;
-    }, [view, current, order]);
-    const previous = view && position > 0 ? view.getNthPage(position - 1) : null;
-    const closeBefore = !pinned && previous !== null && !previous.getPinned();
-    const closeAfter = position >= 0 && position < count - 1;
+    const [menuKey, setMenuKey] = useState<string | null>(null);
+    const [menu, setMenu] = useState<Gio.Menu | null>(null);
     const [style] = useState(() => Adw.StyleManager.getDefault());
-    useSignal(style, "notify::dark", () => view?.invalidateThumbnails());
-    useSignal(style, "notify::high-contrast", () => view?.invalidateThumbnails());
+    useSignal(style, "notify::dark", () => view.invalidateThumbnails());
+    useSignal(style, "notify::high-contrast", () => view.invalidateThumbnails());
 
-    useEffect(
-        () => () => {
-            if (view) demo.forgetWindow(view);
-        },
-        [demo, view],
-    );
-    const createTab = () => (view ? demo.createTab(view) : undefined);
-    const move = () => {
-        if (view && current) {
-            const target = demo.createWindow(application);
-            demo.transferTab(current, target);
+    const routes = state?.routes ?? [];
+    const pinnedKeys = state?.pinnedKeys ?? [];
+    const menuTab = routes.find((route) => route.key === menuKey) ?? routes[state?.index ?? 0];
+    const pinned = menuTab !== undefined && pinnedKeys.includes(menuTab.key);
+    const position = menuTab === undefined ? -1 : routes.indexOf(menuTab);
+    const previous = position > 0 ? routes[position - 1] : undefined;
+    const closeBefore = !pinned && previous !== undefined && !pinnedKeys.includes(previous.key);
+    const closeAfter = position >= 0 && position < routes.length - 1;
+
+    const dispatch = (action: NavigationAction) => {
+        if (container.isReady()) container.dispatch(action);
+    };
+    const update = (patch: Partial<TabData>) => {
+        if (menuTab) dispatch({ ...CommonActions.setParams(patch), source: menuTab.key });
+    };
+    const createTab = () => dispatch(TabViewActions.openTab("Tab", newTabData(view)));
+    const moveToNewWindow = () => {
+        if (menuTab && position >= 0) {
+            view.transferPage(view.getNthPage(position), openWindow(new Adw.TabView(), false), 0);
         }
     };
-    const closeEmpty = (self: Adw.TabView) => {
-        queueMicrotask(() => {
-            if (self.getNPages() === 0 && !overview?.getOpen()) {
-                demo.closeWindow(self);
-            }
-        });
+    const readState = () => {
+        const root = container.getRootState();
+        setState(isTabState(root) ? root : undefined);
     };
-    const drop = (page: Adw.TabPage, value: GObject.Value) => {
-        const title = value.getString();
-        if (title === null) return false;
-        demo.updatePage(page, { title });
-        return true;
+    const openPopulatedWindow = () => {
+        openWindow(new Adw.TabView(), true);
     };
-    const action = (name: string, callback: () => void, enabled = true) => (
-        <GSimpleAction key={name} name={name} enabled={enabled} onActivate={callback} />
-    );
-    const stateful = (name: string, value: boolean, update: (value: boolean) => void) => (
-        <GSimpleAction
-            key={name}
-            name={name}
-            state={GLib.Variant.newBoolean(value)}
-            onChangeState={(next) => {
-                if (next) update(next.getBoolean());
-            }}
-        />
-    );
-    const shortcuts = [
-        {
-            trigger: "<Control>n",
-            callback: () => {
-                demo.createWindow(application, true);
-            },
-        },
-        {
-            trigger: "<Control>t",
-            callback: () => {
-                createTab();
-            },
-        },
-        {
-            trigger: "<Control>w",
-            callback: () => {
-                if (current) view?.closePage(current);
-            },
-        },
-        { trigger: "<Control><Shift>o", callback: () => setOpen((value) => !value) },
-    ];
+    const duplicate = () => {
+        if (menuTab) dispatch(TabViewActions.openTab("Tab", { ...menuTab.params }, { parent: menuTab.key }));
+    };
+    const pin = (value: boolean) => {
+        if (menuTab) dispatch(TabViewActions.pinTab(menuTab.key, value));
+    };
+    const close = () => {
+        if (menuTab) dispatch(TabViewActions.closeTab(menuTab.key));
+    };
+    const closeOthers = () => {
+        if (menuTab) dispatch(TabViewActions.closeOtherTabs(menuTab.key));
+    };
+    const closeBeforeTab = () => {
+        if (menuTab) dispatch(TabViewActions.closeTabsBefore(menuTab.key));
+    };
+    const closeAfterTab = () => {
+        if (menuTab) dispatch(TabViewActions.closeTabsAfter(menuTab.key));
+    };
+    const refreshIcon = () => update({ iconName: randomIcon(view) });
+    const setShowIcon = (showIcon: boolean) => update({ showIcon });
+    const setLoading = (loading: boolean) => update({ loading });
+    const setAttention = (attention: boolean) => update({ attention });
+    const setIndicator = (indicator: boolean) => update({ indicator });
+    const toggleOverview = () => setOpen((value) => !value);
 
     return (
         <AdwWindow
-            ref={windowRef}
             application={application}
             title="Tab View Demo"
             defaultWidth={800}
             defaultHeight={600}
             onCloseRequest={() => {
-                if (view) demo.closeWindow(view);
+                closeWindow(key);
                 return true;
             }}
             breakpoints={
@@ -270,12 +237,8 @@ const DemoWindow = ({ demo, application, windowRef, viewRef }: DemoWindowProps) 
                         prefix="win"
                         actions={
                             <>
-                                {action("window-new", () => {
-                                    demo.createWindow(application, true);
-                                })}
-                                {action("tab-new", () => {
-                                    createTab();
-                                })}
+                                <Action name="window-new" onActivate={openPopulatedWindow} />
+                                <Action name="tab-new" onActivate={createTab} />
                             </>
                         }
                     />
@@ -283,67 +246,39 @@ const DemoWindow = ({ demo, application, windowRef, viewRef }: DemoWindowProps) 
                         prefix="tab"
                         actions={
                             <>
-                                {action("move-to-new-window", move, !pinned && count > 1)}
-                                {action("duplicate", () => {
-                                    if (view && current) demo.createTab(view, current);
-                                })}
-                                {action(
-                                    "pin",
-                                    () => {
-                                        demo.updatePage(current, { pinned: true });
-                                    },
-                                    !pinned,
-                                )}
-                                {action(
-                                    "unpin",
-                                    () => {
-                                        demo.updatePage(current, { pinned: false });
-                                    },
-                                    pinned,
-                                )}
-                                {action(
-                                    "close",
-                                    () => {
-                                        if (current) view?.closePage(current);
-                                    },
-                                    !pinned,
-                                )}
-                                {action(
-                                    "close-other",
-                                    () => {
-                                        if (current) view?.closeOtherPages(current);
-                                    },
-                                    closeBefore || closeAfter,
-                                )}
-                                {action(
-                                    "close-before",
-                                    () => {
-                                        if (current) view?.closePagesBefore(current);
-                                    },
-                                    closeBefore,
-                                )}
-                                {action(
-                                    "close-after",
-                                    () => {
-                                        if (current) view?.closePagesAfter(current);
-                                    },
-                                    closeAfter,
-                                )}
-                                {action(
-                                    "refresh-icon",
-                                    () => {
-                                        if (view) demo.updatePage(current, { iconName: demo.randomIcon(view) });
-                                    },
-                                    hasIcon,
-                                )}
-                                {stateful("icon", hasIcon, (showIcon) => demo.updatePage(current, { showIcon }))}
-                                {stateful("loading", loading, (next) => demo.updatePage(current, { loading: next }))}
-                                {stateful("needs-attention", attention, (next) =>
-                                    demo.updatePage(current, { attention: next }),
-                                )}
-                                {stateful("indicator", hasIndicator, (indicator) =>
-                                    demo.updatePage(current, { indicator }),
-                                )}
+                                <Action
+                                    name="move-to-new-window"
+                                    enabled={!pinned && routes.length > 1}
+                                    onActivate={moveToNewWindow}
+                                />
+                                <Action name="duplicate" onActivate={duplicate} />
+                                <Action name="pin" enabled={!pinned} onActivate={() => pin(true)} />
+                                <Action name="unpin" enabled={pinned} onActivate={() => pin(false)} />
+                                <Action name="close" enabled={!pinned} onActivate={close} />
+                                <Action
+                                    name="close-other"
+                                    enabled={closeBefore || closeAfter}
+                                    onActivate={closeOthers}
+                                />
+                                <Action name="close-before" enabled={closeBefore} onActivate={closeBeforeTab} />
+                                <Action name="close-after" enabled={closeAfter} onActivate={closeAfterTab} />
+                                <Action
+                                    name="refresh-icon"
+                                    enabled={menuTab?.params.showIcon ?? false}
+                                    onActivate={refreshIcon}
+                                />
+                                <Toggle name="icon" value={menuTab?.params.showIcon ?? false} onChange={setShowIcon} />
+                                <Toggle name="loading" value={menuTab?.params.loading ?? false} onChange={setLoading} />
+                                <Toggle
+                                    name="needs-attention"
+                                    value={menuTab?.params.attention ?? false}
+                                    onChange={setAttention}
+                                />
+                                <Toggle
+                                    name="indicator"
+                                    value={menuTab?.params.indicator ?? false}
+                                    onChange={setIndicator}
+                                />
                             </>
                         }
                     />
@@ -352,170 +287,182 @@ const DemoWindow = ({ demo, application, windowRef, viewRef }: DemoWindowProps) 
             controllers={
                 <GtkShortcutController
                     scope={Gtk.ShortcutScope.MANAGED}
-                    shortcuts={shortcuts.map(({ trigger, callback }) => (
-                        <GtkShortcut
-                            key={trigger}
-                            trigger={Gtk.ShortcutTrigger.parseString(trigger) ?? undefined}
-                            action={
-                                <GtkCallbackAction
-                                    callback={() => {
-                                        callback();
-                                        return true;
-                                    }}
-                                />
-                            }
-                        />
-                    ))}
+                    shortcuts={
+                        <>
+                            <Shortcut trigger="<Control>n" onActivate={openPopulatedWindow} />
+                            <Shortcut trigger="<Control>t" onActivate={createTab} />
+                            <Shortcut trigger="<Control>w" onActivate={close} />
+                            <Shortcut trigger="<Control><Shift>o" onActivate={toggleOverview} />
+                        </>
+                    }
                 />
             }
         >
-            <AdwTabOverview
-                ref={setOverview}
-                extraDropTarget={{ actions: Gdk.DragAction.COPY, types: [stringType] }}
-                view={view ?? undefined}
-                open={view !== null && open}
-                onNotifyOpen={(value) => {
-                    setOpen(value ?? false);
-                    if (!value && view && view.getNPages() === 0) demo.closeWindow(view);
-                }}
-                enableNewTab
-                onCreateTab={createTab}
-                onExtraDragDrop={drop}
-            >
-                <AdwToolbarView
-                    topBarStyle={Adw.ToolbarStyle.RAISED}
-                    topBar={
-                        <>
-                            <AdwHeaderBar
-                                start={
-                                    <GtkButton
-                                        actionName="win.window-new"
-                                        iconName="window-new-symbolic"
-                                        tooltipText="New Window"
-                                        accessibleLabel="New Window"
-                                    />
-                                }
-                                end={
-                                    <>
-                                        {view && (
-                                            <AdwTabButton
-                                                visible={narrow}
-                                                view={view}
-                                                onClicked={() => setOpen(true)}
-                                            />
-                                        )}
-                                        <GtkButton
-                                            visible={!narrow}
-                                            iconName="view-grid-symbolic"
-                                            tooltipText="View Open Tabs"
-                                            accessibleLabel="View Open Tabs"
-                                            onClicked={() => setOpen(true)}
-                                        />
-                                        <GtkButton
-                                            visible={!narrow}
-                                            actionName="win.tab-new"
-                                            iconName="adw-tab-new-symbolic"
-                                            tooltipText="New Tab"
-                                            accessibleLabel="New Tab"
-                                        />
-                                    </>
-                                }
-                            />
-                            <AdwTabBar
-                                visible={!narrow}
-                                view={view ?? undefined}
-                                extraDropTarget={{ actions: Gdk.DragAction.COPY, types: [stringType] }}
-                                onExtraDragDrop={drop}
-                            />
-                        </>
+            {createPortal(
+                <GMenu
+                    ref={setMenu}
+                    items={[
+                        {
+                            section: [
+                                { label: "_Move to New Window", action: "tab.move-to-new-window" },
+                                { label: "D_uplicate", action: "tab.duplicate" },
+                            ],
+                        },
+                        {
+                            section: [
+                                {
+                                    label: pinned ? "Unp_in Tab" : "P_in Tab",
+                                    action: pinned ? "tab.unpin" : "tab.pin",
+                                },
+                            ],
+                        },
+                        {
+                            section: [
+                                { label: "Icon", action: "tab.icon" },
+                                { label: "R_efresh Icon", action: "tab.refresh-icon" },
+                            ],
+                        },
+                        {
+                            section: [
+                                { label: "Loa_ding", action: "tab.loading" },
+                                { label: "Needs _Attention", action: "tab.needs-attention" },
+                                { label: "Indicator", action: "tab.indicator" },
+                            ],
+                        },
+                        {
+                            section: [
+                                { label: "Close _Other Tabs", action: "tab.close-other" },
+                                { label: "Close Tabs to the _Left", action: "tab.close-before" },
+                                { label: "Close Tabs to the _Right", action: "tab.close-after" },
+                            ],
+                        },
+                        { section: [{ label: "_Close", action: "tab.close" }] },
+                    ]}
+                />,
+                rootElement,
+            )}
+            <NavigationContainer
+                ref={container}
+                onReady={() => {
+                    readState();
+                    if (populate) {
+                        dispatch(TabViewActions.openTab("Tab", newTabData(view)));
+                        dispatch(TabViewActions.openTab("Tab", newTabData(view)));
                     }
-                >
-                    <AdwTabView
-                        ref={(instance) => {
-                            viewRef.current = instance;
-                            setView(instance);
-                        }}
-                        onCreateWindow={() => demo.createWindow(application)}
-                        onClosePage={(page, self) => {
-                            if (page.getPinned()) {
-                                self.closePageFinish(page, false);
-                            } else {
-                                self.closePageFinish(page, true);
-                                demo.releaseTab(page);
-                            }
-                            return true;
-                        }}
-                        onPageDetached={(_page, _position, self) => closeEmpty(self)}
-                        onPageReordered={() => setOrder((value) => value + 1)}
-                        onSetupMenu={(page) => setMenuPage(page)}
-                        onIndicatorActivated={(page) => demo.toggleMute(page)}
-                        menuModel={
-                            <GMenu
-                                items={[
-                                    {
-                                        section: [
-                                            { label: "_Move to New Window", action: "tab.move-to-new-window" },
-                                            { label: "D_uplicate", action: "tab.duplicate" },
-                                        ],
-                                    },
-                                    {
-                                        section: [
-                                            {
-                                                label: pinned ? "Unp_in Tab" : "P_in Tab",
-                                                action: pinned ? "tab.unpin" : "tab.pin",
-                                            },
-                                        ],
-                                    },
-                                    {
-                                        section: [
-                                            { label: "Icon", action: "tab.icon" },
-                                            { label: "R_efresh Icon", action: "tab.refresh-icon" },
-                                        ],
-                                    },
-                                    {
-                                        section: [
-                                            { label: "Loa_ding", action: "tab.loading" },
-                                            { label: "Needs _Attention", action: "tab.needs-attention" },
-                                            { label: "Indicator", action: "tab.indicator" },
-                                        ],
-                                    },
-                                    {
-                                        section: [
-                                            { label: "Close _Other Tabs", action: "tab.close-other" },
-                                            { label: "Close Tabs to the _Left", action: "tab.close-before" },
-                                            { label: "Close Tabs to the _Right", action: "tab.close-after" },
-                                        ],
-                                    },
-                                    { section: [{ label: "_Close", action: "tab.close" }] },
-                                ]}
+                }}
+                onStateChange={readState}
+                onUnhandledAction={(unhandled) => {
+                    if (unhandled.type === "CLOSE_TAB") closeWindow(key);
+                }}
+            >
+                <Tabs.Navigator
+                    view={view}
+                    tabBarVisible={!narrow}
+                    extraDropTarget={extraDropTarget}
+                    onExtraDragDrop={(route, value) => {
+                        const title = value.getString();
+                        if (title === null) return false;
+                        dispatch({ ...CommonActions.setParams({ title }), source: route.key });
+                        return true;
+                    }}
+                    onCreateWindow={() => openWindow(new Adw.TabView(), false)}
+                    onSetupMenu={(route) => setMenuKey(route?.key ?? null)}
+                    menuModel={menu}
+                    overview={{
+                        open,
+                        onOpenChange: (value) => {
+                            setOpen(value);
+                            if (!value && view.getNPages() === 0) closeWindow(key);
+                        },
+                        enableNewTab: true,
+                        onCreateTab: () => ({ name: "Tab", params: newTabData(view) }),
+                    }}
+                    screenOptions={({ route }) => ({
+                        title: route.params.title,
+                        tooltip: `Elaborate tooltip for <b>${escapeMarkup(route.params.title)}</b>`,
+                        icon: route.params.showIcon ? route.params.iconName : null,
+                        loading: route.params.loading,
+                        needsAttention: route.params.attention,
+                        indicatorIcon: route.params.indicator
+                            ? route.params.muted
+                                ? "tab-audio-muted-symbolic"
+                                : "tab-audio-playing-symbolic"
+                            : null,
+                        indicatorActivatable: true,
+                        indicatorTooltip: route.params.indicator
+                            ? route.params.muted
+                                ? "Unmute Tab"
+                                : "Mute Tab"
+                            : "",
+                        thumbnailXalign: 0.5,
+                        thumbnailYalign: 0.5,
+                        headerStart: (
+                            <GtkButton
+                                actionName="win.window-new"
+                                iconName="window-new-symbolic"
+                                tooltipText="New Window"
+                                accessibleLabel="New Window"
                             />
-                        }
-                    />
-                </AdwToolbarView>
-            </AdwTabOverview>
+                        ),
+                        headerEnd: (
+                            <>
+                                <AdwTabButton visible={narrow} view={view} onClicked={() => setOpen(true)} />
+                                <GtkButton
+                                    visible={!narrow}
+                                    iconName="view-grid-symbolic"
+                                    tooltipText="View Open Tabs"
+                                    accessibleLabel="View Open Tabs"
+                                    onClicked={() => setOpen(true)}
+                                />
+                                <GtkButton
+                                    visible={!narrow}
+                                    actionName="win.tab-new"
+                                    iconName="adw-tab-new-symbolic"
+                                    tooltipText="New Tab"
+                                    accessibleLabel="New Tab"
+                                />
+                            </>
+                        ),
+                    })}
+                    screenListeners={({ route, navigation }) => ({
+                        indicatorActivated: () => navigation.setParams({ muted: !route.params.muted }),
+                    })}
+                >
+                    <Tabs.Screen name="Tab" component={TabContent} initialParams={initialTab} />
+                </Tabs.Navigator>
+            </NavigationContainer>
         </AdwWindow>
     );
 };
 
-const demo = new TabDemo();
+const TabDemoWindows = () => {
+    const entries = useSyncExternalStore(subscribeWindows, getWindows, getWindows);
 
-const TabViewPage = () => {
-    const application = useApplication();
     return (
-        <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
-            <AdwStatusPage
-                title="Tab View"
-                description="A modern tabbed browsing widget"
-                iconName="widget-tab-view-symbolic"
-            >
-                <GtkButton
-                    label="Run the Demo"
-                    halign={Gtk.Align.CENTER}
-                    onClicked={() => demo.createWindow(application, true)}
-                />
-            </AdwStatusPage>
-        </AdwToolbarView>
+        <>
+            {entries.map((entry) => (
+                <DemoWindow key={entry.key} entry={entry} />
+            ))}
+        </>
     );
 };
 
-export { TabViewPage };
+const TabViewPage = () => (
+    <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+        <AdwStatusPage
+            title="Tab View"
+            description="A modern tabbed browsing widget"
+            iconName="widget-tab-view-symbolic"
+        >
+            <GtkButton
+                label="Run the Demo"
+                halign={Gtk.Align.CENTER}
+                onClicked={() => {
+                    openWindow(new Adw.TabView(), true);
+                }}
+            />
+        </AdwStatusPage>
+    </AdwToolbarView>
+);
+
+export { TabDemoWindows, TabViewPage };
