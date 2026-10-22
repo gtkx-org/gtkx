@@ -3,12 +3,14 @@ import type { ComponentProps, ComponentType, ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { screen, userEvent } from "@gtkx/testing";
 import {
     createTabViewNavigator,
     NavigationContainer,
     type TabViewNavigationOptions,
     type TabViewScreenProps,
 } from "@gtkx/navigation";
+import { getAncestor } from "./widget-ancestors.js";
 
 type DocumentParams = { Document: { title: string } };
 
@@ -63,6 +65,12 @@ const DocumentScreen = ({ route, navigation }: TabViewScreenProps<DocumentParams
             }}
         />
         <GtkButton
+            label={`Navigate from ${route.params.title}`}
+            onClicked={() => {
+                navigation.navigate("Document", { title: "Navigated" });
+            }}
+        />
+        <GtkButton
             label={`Move ${route.params.title} first`}
             onClicked={() => {
                 navigation.reorderTab(route.key, 0);
@@ -91,14 +99,21 @@ const DocumentsApp = ({
     </NavigationContainer>
 );
 
-const focusedTitle = (state: NavigationState | undefined): string | undefined => {
-    const route = state?.routes[state.index];
+const routeTitle = (route: { params?: object } | undefined): string | undefined => {
     const params = route?.params;
 
     return params !== undefined && "title" in params && typeof params.title === "string" ? params.title : undefined;
 };
 
+const focusedTitle = (state: NavigationState | undefined): string | undefined => routeTitle(state?.routes[state.index]);
+
+const clickButton = async (name: string): Promise<void> => {
+    await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name }));
+};
+
+const viewOf = (text: string): Adw.TabView => getAncestor(screen.getByText(text), Adw.TabView);
+
 const pageTitles = (view: Adw.TabView): string[] =>
     Array.from({ length: view.getNPages() }, (_, index) => view.getNthPage(index).getTitle());
 
-export { DocumentsApp, focusedTitle, pageTitles };
+export { clickButton, type DocumentParams, DocumentsApp, focusedTitle, pageTitles, routeTitle, viewOf };

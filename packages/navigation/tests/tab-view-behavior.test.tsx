@@ -5,19 +5,19 @@ import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
 import { type TabViewScreenProps, usePreventRemove } from "@gtkx/navigation";
-import { act, render, screen, userEvent } from "@gtkx/testing";
+import { act, render, screen } from "@gtkx/testing";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
-import { DocumentsApp, focusedTitle, pageTitles } from "./helpers/tab-view-fixtures.js";
+import {
+    clickButton,
+    type DocumentParams,
+    DocumentsApp,
+    focusedTitle,
+    pageTitles,
+    routeTitle,
+    viewOf,
+} from "./helpers/tab-view-fixtures.js";
 import { getAncestor } from "./helpers/widget-ancestors.js";
-
-type DocumentParams = { Document: { title: string } };
-
-const clickButton = async (name: string): Promise<void> => {
-    await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name }));
-};
-
-const viewOf = (text: string): Adw.TabView => getAncestor(screen.getByText(text), Adw.TabView);
 
 const GuardedDocument = ({ route }: TabViewScreenProps<DocumentParams, "Document">): ReactNode => {
     usePreventRemove(true, () => undefined);
@@ -103,9 +103,7 @@ describe("tab view navigator behavior", () => {
             view.reorderPage(view.getNthPage(1), 0);
         });
         expect(pageTitles(view)).toEqual(["First", "First sibling"]);
-        expect(
-            states.at(-1)?.routes.map((route) => focusedTitle({ ...route, routes: [route], index: 0 } as never)),
-        ).toEqual(["First", "First sibling"]);
+        expect(states.at(-1)?.routes.map(routeTitle)).toEqual(["First", "First sibling"]);
     });
 
     it("reverts a native selection that a tabPress listener prevents", async () => {
@@ -128,6 +126,24 @@ describe("tab view navigator behavior", () => {
         });
         expect(view.getSelectedPage()?.getTitle()).toBe("First sibling");
         expect(focusedTitle(states.at(-1))).toBe("First sibling");
+    });
+
+    it("navigates to an open screen by selecting its last tab and updating its params", async () => {
+        const states: (NavigationState | undefined)[] = [];
+        await render(<DocumentsApp onStateChange={(state) => states.push(state)} />);
+        await screen.findByText("First content");
+        const view = viewOf("First content");
+        await clickButton("Open sibling of First");
+        await screen.findByText("First sibling content");
+        await act(() => {
+            view.setSelectedPage(view.getNthPage(0));
+        });
+
+        await clickButton("Navigate from First");
+        await screen.findByText("Navigated content");
+        expect(pageTitles(view)).toEqual(["First", "Navigated"]);
+        expect(states.at(-1)?.routes.map(routeTitle)).toEqual(["First", "Navigated"]);
+        expect(focusedTitle(states.at(-1))).toBe("Navigated");
     });
 
     it("closes the other unpinned tabs", async () => {

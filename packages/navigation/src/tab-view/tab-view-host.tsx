@@ -1,12 +1,12 @@
 import type * as GObject from "@gtkx/gi/gobject";
-import type { NavigationState, ParamListBase, RouteProp } from "@react-navigation/core";
+import type { ParamListBase, RouteProp } from "@react-navigation/core";
 import type { ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import { AdwBin, AdwTabBar, AdwTabOverview, AdwToolbarView } from "@gtkx/jsx/adw";
 import { createPortal, useProperty, useSignal } from "@gtkx/react";
 import { createContext, useContext, useLayoutEffect, useState, useSyncExternalStore } from "react";
-import type { PageRecord, PageStore } from "./page-registry.js";
+import type { AppliedOptions, PageRecord, PageStore } from "./page-registry.js";
 import type {
     TabViewDescriptor,
     TabViewDescriptorMap,
@@ -19,11 +19,11 @@ import type {
 import { HeaderBar } from "../shared/header-bar.js";
 import { getFocusedRoute, requireDescriptor } from "../shared/routes.js";
 import { createPageStore, ownerOf, recordOf, registerPage } from "./page-registry.js";
-import { createRouteKey, TabViewActions } from "./tab-view-router.js";
+import { createRouteKey, focusedKey, hasRoute, TabViewActions } from "./tab-view-router.js";
+import { useHasLoaded } from "../shared/use-has-loaded.js";
 
 type State = TabViewNavigationState<ParamListBase>;
 type Route = State["routes"][number];
-type RouteList = Pick<NavigationState, "routes" | "index">;
 
 type TabViewHostProps = TabViewNavigationConfig & {
     view: Adw.TabView;
@@ -60,59 +60,59 @@ const useTabView = (): TabViewHandle => {
     return handle;
 };
 
-const hasRoute = (state: RouteList, key: string): boolean => state.routes.some((route) => route.key === key);
-
-const focusedKey = (state: RouteList): string | undefined => state.routes[state.index]?.key;
-
 const toIcon = (icon: TabViewIcon | null | undefined): Gio.Icon | null =>
     typeof icon === "string" ? Gio.ThemedIcon.new(icon) : (icon ?? null);
 
-const applyPageOptions = (record: PageRecord, route: Route, options: TabViewNavigationOptions): void => {
-    const { page, applied } = record;
-    const title = options.title ?? route.name;
+type PageSync = (page: Adw.TabPage, previous: AppliedOptions, next: AppliedOptions) => void;
 
-    if (applied.title !== title) page.setTitle(title);
-    if (applied.icon !== options.icon) page.setIcon(toIcon(options.icon));
-    if (applied.tooltip !== options.tooltip) page.setTooltip(options.tooltip ?? "");
-    if (applied.keyword !== options.keyword) page.setKeyword(options.keyword ?? "");
-    if (applied.loading !== options.loading) page.setLoading(options.loading ?? false);
-    if (applied.needsAttention !== options.needsAttention) page.setNeedsAttention(options.needsAttention ?? false);
-    if (applied.indicatorIcon !== options.indicatorIcon) page.setIndicatorIcon(toIcon(options.indicatorIcon));
-    if (applied.indicatorActivatable !== options.indicatorActivatable) {
-        page.setIndicatorActivatable(options.indicatorActivatable ?? false);
-    }
-    if (applied.indicatorTooltip !== options.indicatorTooltip) page.setIndicatorTooltip(options.indicatorTooltip ?? "");
-    if (applied.liveThumbnail !== options.liveThumbnail) page.setLiveThumbnail(options.liveThumbnail ?? false);
-    if (applied.thumbnailXalign !== options.thumbnailXalign) page.setThumbnailXalign(options.thumbnailXalign ?? 0);
-    if (applied.thumbnailYalign !== options.thumbnailYalign) page.setThumbnailYalign(options.thumbnailYalign ?? 0);
-
-    record.applied = {
-        title,
-        icon: options.icon,
-        tooltip: options.tooltip,
-        keyword: options.keyword,
-        loading: options.loading,
-        needsAttention: options.needsAttention,
-        indicatorIcon: options.indicatorIcon,
-        indicatorActivatable: options.indicatorActivatable,
-        indicatorTooltip: options.indicatorTooltip,
-        liveThumbnail: options.liveThumbnail,
-        thumbnailXalign: options.thumbnailXalign,
-        thumbnailYalign: options.thumbnailYalign,
+const sync =
+    <K extends keyof AppliedOptions>(key: K, set: (page: Adw.TabPage, value: AppliedOptions[K]) => void): PageSync =>
+    (page, previous, next) => {
+        if (previous[key] !== next[key]) {
+            set(page, next[key]);
+        }
     };
+
+const pageSyncs: PageSync[] = [
+    sync("title", (page, title) => page.setTitle(title ?? "")),
+    sync("icon", (page, icon) => page.setIcon(toIcon(icon))),
+    sync("tooltip", (page, tooltip) => page.setTooltip(tooltip ?? "")),
+    sync("keyword", (page, keyword) => page.setKeyword(keyword ?? "")),
+    sync("loading", (page, loading) => page.setLoading(loading ?? false)),
+    sync("needsAttention", (page, value) => page.setNeedsAttention(value ?? false)),
+    sync("indicatorIcon", (page, icon) => page.setIndicatorIcon(toIcon(icon))),
+    sync("indicatorActivatable", (page, value) => page.setIndicatorActivatable(value ?? false)),
+    sync("indicatorTooltip", (page, value) => page.setIndicatorTooltip(value ?? "")),
+    sync("liveThumbnail", (page, value) => page.setLiveThumbnail(value ?? false)),
+    sync("thumbnailXalign", (page, value) => page.setThumbnailXalign(value ?? 0)),
+    sync("thumbnailYalign", (page, value) => page.setThumbnailYalign(value ?? 0)),
+];
+
+const applyPageOptions = (record: PageRecord, options: TabViewNavigationOptions): void => {
+    const next: AppliedOptions = { ...options, title: options.title ?? record.route.name };
+
+    for (const apply of pageSyncs) {
+        apply(record.page, record.applied, next);
+    }
+
+    record.applied = next;
 };
 
-const createPage = (view: Adw.TabView, store: PageStore, state: State, route: Route, position: number): PageRecord => {
+type PagePlacement = {
+    position: number;
+    pinned: boolean;
+    parent?: PageRecord;
+};
+
+const createPage = (view: Adw.TabView, store: PageStore, route: Route, placement: PagePlacement): PageRecord => {
     const host = new Adw.Bin();
-    const parentKey = state.parents[route.key];
-    const parent = parentKey === undefined ? undefined : store.get(parentKey);
     const pinnedCount = view.getNPinnedPages();
-    const page = state.pinnedKeys.includes(route.key)
-        ? view.insertPinned(host, Math.min(position, pinnedCount))
-        : parent !== undefined && ownerOf(parent.page) === view
-          ? view.addPage(host, parent.page)
-          : view.insert(host, Math.min(Math.max(position, pinnedCount), view.getNPages()));
-    const record: PageRecord = { key: route.key, name: route.name, params: route.params, page, host, applied: {} };
+    const page = placement.pinned
+        ? view.insertPinned(host, Math.min(placement.position, pinnedCount))
+        : placement.parent !== undefined && ownerOf(placement.parent.page) === view
+          ? view.addPage(host, placement.parent.page)
+          : view.insert(host, Math.min(Math.max(placement.position, pinnedCount), view.getNPages()));
+    const record: PageRecord = { route, page, host, applied: {} };
 
     registerPage(record);
     store.set(record);
@@ -120,8 +120,8 @@ const createPage = (view: Adw.TabView, store: PageStore, state: State, route: Ro
     return record;
 };
 
-const presentRecord = (view: Adw.TabView, store: PageStore, key: string): PageRecord | undefined => {
-    const record = store.get(key);
+const presentRecord = (view: Adw.TabView, store: PageStore, key: string | undefined): PageRecord | undefined => {
+    const record = key === undefined ? undefined : store.get(key);
 
     return record !== undefined && ownerOf(record.page) === view ? record : undefined;
 };
@@ -130,7 +130,7 @@ const adoptPages = (view: Adw.TabView, store: PageStore): void => {
     for (let position = 0; position < view.getNPages(); position += 1) {
         const record = recordOf(view.getNthPage(position));
 
-        if (record !== undefined && store.get(record.key) === undefined) {
+        if (record !== undefined && store.get(record.route.key) === undefined) {
             store.set(record);
         }
     }
@@ -152,7 +152,13 @@ const syncPages = (view: Adw.TabView, store: PageStore, state: State, descriptor
 
     state.routes.forEach((route, position) => {
         if (store.get(route.key) === undefined) {
-            createPage(view, store, state, route, position);
+            const parentKey = state.parents[route.key];
+
+            createPage(view, store, route, {
+                position,
+                pinned: state.pinnedKeys.includes(route.key),
+                parent: parentKey === undefined ? undefined : store.get(parentKey),
+            });
         }
     });
 
@@ -177,13 +183,12 @@ const syncPages = (view: Adw.TabView, store: PageStore, state: State, descriptor
     });
 
     for (const { route, record } of present) {
-        record.name = route.name;
-        record.params = route.params;
-        applyPageOptions(record, route, descriptors[route.key]?.options ?? {});
+        record.route = route;
+        applyPageOptions(record, descriptors[route.key]?.options ?? {});
     }
 
     const focus = focusedKey(state);
-    const focused = presentRecord(view, store, focus ?? "");
+    const focused = presentRecord(view, store, focus);
 
     if (focus !== store.lastFocus) {
         store.lastFocus = focus;
@@ -195,12 +200,7 @@ const syncPages = (view: Adw.TabView, store: PageStore, state: State, descriptor
 };
 
 const TabContent = ({ descriptor, isFocused }: TabContentProps): ReactNode => {
-    const shouldLoad = isFocused || descriptor.options.lazy === false;
-    const [hasLoaded, setHasLoaded] = useState(shouldLoad);
-
-    if (shouldLoad && !hasLoaded) {
-        setHasLoaded(true);
-    }
+    const hasLoaded = useHasLoaded(isFocused || descriptor.options.lazy === false);
 
     return hasLoaded ? descriptor.render() : null;
 };
@@ -219,7 +219,7 @@ const TabViewHost = (props: TabViewHostProps): ReactNode => {
     useSyncExternalStore(store.subscribe, store.getVersion, store.getVersion);
 
     const routeOf = (page: Adw.TabPage): RouteProp<ParamListBase> | undefined => {
-        const key = recordOf(page)?.key;
+        const key = recordOf(page)?.route.key;
 
         return key === undefined ? undefined : descriptors[key]?.route;
     };
@@ -289,7 +289,7 @@ const TabViewHost = (props: TabViewHostProps): ReactNode => {
 
     useLayoutEffect(() => {
         const selected = view.getSelectedPage();
-        const key = selected === null ? undefined : recordOf(selected)?.key;
+        const key = selected === null ? undefined : recordOf(selected)?.route.key;
         const current = navigation.getState();
 
         if (key === undefined || !hasRoute(current, key) || focusedKey(current) === key) {
@@ -299,7 +299,7 @@ const TabViewHost = (props: TabViewHostProps): ReactNode => {
         const event = navigation.emit({ type: "tabPress", target: key, canPreventDefault: true });
 
         if (event.defaultPrevented) {
-            const previous = presentRecord(view, store, focusedKey(current) ?? "");
+            const previous = presentRecord(view, store, focusedKey(current));
 
             if (previous !== undefined) {
                 view.setSelectedPage(previous.page);
@@ -312,7 +312,7 @@ const TabViewHost = (props: TabViewHostProps): ReactNode => {
     }, [selectedPage, navigation, view, store]);
 
     useSignal(view, "close-page", (page) => {
-        const key = recordOf(page)?.key;
+        const key = recordOf(page)?.route.key;
 
         if (key === undefined || !hasRoute(navigation.getState(), key)) {
             view.closePageFinish(page, true);
@@ -329,26 +329,19 @@ const TabViewHost = (props: TabViewHostProps): ReactNode => {
     useSignal(view, "page-attached", (page, position) => {
         const record = recordOf(page);
 
-        if (record === undefined || hasRoute(navigation.getState(), record.key)) {
+        if (record === undefined || hasRoute(navigation.getState(), record.route.key)) {
             return;
         }
 
         store.set(record);
         navigation.dispatch({
             type: "OPEN_TAB",
-            payload: {
-                name: record.name,
-                params: record.params,
-                key: record.key,
-                position,
-                pinned: page.getPinned(),
-                select: false,
-            },
+            payload: { ...record.route, position, pinned: page.getPinned(), select: false },
         });
     });
 
     useSignal(view, "page-detached", (page) => {
-        const key = recordOf(page)?.key;
+        const key = recordOf(page)?.route.key;
 
         if (key !== undefined && hasRoute(navigation.getState(), key)) {
             navigation.dispatch(TabViewActions.closeTab(key));
@@ -356,7 +349,7 @@ const TabViewHost = (props: TabViewHostProps): ReactNode => {
     });
 
     useSignal(view, "page-reordered", (page, position) => {
-        const key = recordOf(page)?.key;
+        const key = recordOf(page)?.route.key;
 
         if (key !== undefined && hasRoute(navigation.getState(), key)) {
             navigation.dispatch(TabViewActions.reorderTab(key, position));
@@ -364,7 +357,7 @@ const TabViewHost = (props: TabViewHostProps): ReactNode => {
     });
 
     useSignal(view, "indicator-activated", (page) => {
-        const key = recordOf(page)?.key;
+        const key = recordOf(page)?.route.key;
 
         if (key !== undefined && hasRoute(navigation.getState(), key)) {
             navigation.emit({ type: "indicatorActivated", target: key });
@@ -384,37 +377,19 @@ const TabViewHost = (props: TabViewHostProps): ReactNode => {
             return undefined;
         }
 
-        const host = new Adw.Bin();
-        const page = view.append(host);
-        const record: PageRecord = {
-            key: createRouteKey(target.name),
-            name: target.name,
-            params: target.params,
-            page,
-            host,
-            applied: {},
-        };
+        const route: Route = { key: createRouteKey(target.name), name: target.name, params: target.params };
+        const record = createPage(view, store, route, { position: view.getNPages(), pinned: false });
 
-        registerPage(record);
-        store.set(record);
-        navigation.dispatch({
-            type: "OPEN_TAB",
-            payload: {
-                name: record.name,
-                params: record.params,
-                key: record.key,
-                position: view.getPagePosition(page),
-            },
-        });
+        navigation.dispatch({ type: "OPEN_TAB", payload: { ...route, position: view.getPagePosition(record.page) } });
 
-        if (!hasRoute(navigation.getState(), record.key)) {
-            store.delete(record.key);
-            view.closePage(page);
+        if (!hasRoute(navigation.getState(), route.key)) {
+            store.delete(route.key);
+            view.closePage(record.page);
 
             return undefined;
         }
 
-        return page;
+        return record.page;
     };
 
     const drop = (page: Adw.TabPage, value: GObject.Value): boolean => {

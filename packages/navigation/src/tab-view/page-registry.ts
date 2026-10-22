@@ -1,7 +1,10 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import * as Adw from "@gtkx/gi/adw";
+import type { ParamListBase } from "@react-navigation/core";
 import type { ExistingTab } from "./tab-view-router.js";
-import type { TabViewNavigationOptions } from "./types.js";
+import type { TabViewNavigationOptions, TabViewNavigationState } from "./types.js";
+
+type Route = TabViewNavigationState<ParamListBase>["routes"][number];
 
 /** Page property values last written from a route's options. */
 type AppliedOptions = Pick<
@@ -21,9 +24,7 @@ type AppliedOptions = Pick<
 
 /** A native page a tab view navigator created or adopted, with the host its content renders into. */
 type PageRecord = {
-    key: string;
-    name: string;
-    params: object | undefined;
+    route: Route;
     page: Adw.TabPage;
     host: Adw.Bin;
     applied: AppliedOptions;
@@ -79,11 +80,9 @@ const readExistingTabs = (view: Adw.TabView): ExistingTab[] => {
         const parentRecord = parent === null ? undefined : records.get(parent);
 
         tabs.push({
-            key: record.key,
-            name: record.name,
-            params: record.params,
+            route: record.route,
             pinned: page.getPinned(),
-            parent: parentRecord?.key,
+            parent: parentRecord?.route.key,
             selected: page === selected,
         });
     }
@@ -107,7 +106,7 @@ const createPageStore = (): PageStore => {
     return {
         get: (key) => byKey.get(key),
         set: (record) => {
-            byKey.set(record.key, record);
+            byKey.set(record.route.key, record);
             notify();
         },
         delete: (key) => {
@@ -128,4 +127,13 @@ const createPageStore = (): PageStore => {
     };
 };
 
-export { createPageStore, ownerOf, type PageRecord, type PageStore, readExistingTabs, recordOf, registerPage };
+export {
+    type AppliedOptions,
+    createPageStore,
+    ownerOf,
+    type PageRecord,
+    type PageStore,
+    readExistingTabs,
+    recordOf,
+    registerPage,
+};

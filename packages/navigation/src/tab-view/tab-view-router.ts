@@ -19,13 +19,13 @@ type Placement = Pick<State, "routes" | "index" | "pinnedKeys" | "parents">;
 
 /** A page already in the native view when the navigator mounts. */
 type ExistingTab = {
-    key?: string;
-    name: string;
-    params?: object;
+    route: Route;
     pinned: boolean;
     parent?: string;
     selected: boolean;
 };
+
+type CloseRange = "CLOSE_OTHER_TABS" | "CLOSE_TABS_BEFORE" | "CLOSE_TABS_AFTER";
 
 type TabViewRouterFactory = (options: TabViewRouterOptions) => Router<State, Action>;
 
@@ -58,7 +58,16 @@ const clamp = (value: number, min: number, max: number): number => Math.min(Math
 
 const isOpenTab = (action: NavigationAction): action is OpenTabAction => action.type === "OPEN_TAB";
 
-const focusedKey = (state: State): string | undefined => state.routes[state.index]?.key;
+const focusedKey = (state: Pick<State, "routes" | "index">): string | undefined => state.routes[state.index]?.key;
+
+const hasRoute = (state: Pick<State, "routes">, key: string): boolean =>
+    state.routes.some((route) => route.key === key);
+
+const closeRanges: Record<CloseRange, (position: number, target: number) => boolean> = {
+    CLOSE_OTHER_TABS: () => true,
+    CLOSE_TABS_BEFORE: (position, target) => position < target,
+    CLOSE_TABS_AFTER: (position, target) => position > target,
+};
 
 const withRoutes = (state: State, routes: Route[], focused: string | undefined): State => ({
     ...state,
@@ -172,16 +181,12 @@ const closeMany = (state: State, keys: readonly string[]): State | null => {
     return next;
 };
 
-const unpinnedKeys = (state: State, exclude: string, keep: (position: number, target: number) => boolean): string[] => {
-    const target = indexOfKey(state.routes, exclude);
-
-    return state.routes
+const unpinnedKeys = (state: State, target: number, keep: (position: number, target: number) => boolean): string[] =>
+    state.routes
         .filter(
-            (route, position) =>
-                route.key !== exclude && !state.pinnedKeys.includes(route.key) && keep(position, target),
+            (route, position) => position !== target && !state.pinnedKeys.includes(route.key) && keep(position, target),
         )
         .map((route) => route.key);
-};
 
 const openTab = (state: State, payload: OpenPayload, { routeNames, routeParamList }: RouterConfigOptions): Result => {
     const { name, key, select, position, pinned = false } = payload;
@@ -306,7 +311,7 @@ const navigate = (
             return {
                 ...state,
                 index,
-                routes: state.routes.map((candidate) => (candidate === route ? { ...route, params } : route)),
+                routes: state.routes.map((candidate) => (candidate === route ? { ...route, params } : candidate)),
             };
         }
     }
@@ -341,37 +346,21 @@ const initialPlacement = (
     };
 };
 
-const existingPlacement = (tabs: readonly ExistingTab[], { routeParamList }: RouterConfigOptions): Placement => {
-    const keys = tabs.map((tab) => tab.key ?? createRouteKey(tab.name));
-    const routes: Route[] = [];
-    const pinnedKeys: string[] = [];
-    const parents: Record<string, string> = {};
-    let index = 0;
-
-    tabs.forEach((tab, position) => {
-        const key = keys[position];
-
-        if (key === undefined) {
-            return;
-        }
-
-        routes.push({ key, name: tab.name, params: mergeParams(routeParamList[tab.name], tab.params) });
-
-        if (tab.pinned) {
-            pinnedKeys.push(key);
-        }
-
-        if (tab.parent !== undefined && keys.includes(tab.parent)) {
-            parents[key] = tab.parent;
-        }
-
-        if (tab.selected) {
-            index = routes.length - 1;
-        }
-    });
-
-    return { routes, index, pinnedKeys, parents };
-};
+const existingPlacement = (tabs: readonly ExistingTab[], { routeParamList }: RouterConfigOptions): Placement => ({
+    routes: tabs.map(({ route }) => ({ ...route, params: mergeParams(routeParamList[route.name], route.params) })),
+    index: Math.max(
+        tabs.findIndex((tab) => tab.selected),
+        0,
+    ),
+    pinnedKeys: tabs.filter((tab) => tab.pinned).map((tab) => tab.route.key),
+    parents: Object.fromEntries(
+        tabs.flatMap((tab) =>
+            tab.parent !== undefined && tabs.some((candidate) => candidate.route.key === tab.parent)
+                ? [[tab.route.key, tab.parent]]
+                : [],
+        ),
+    ),
+});
 
 const freshState = (placement: Placement, routeNames: string[]): State => ({
     stale: false,
@@ -393,7 +382,7 @@ const createTabViewRouter =
         type: "tabview",
 
         getInitialState(config) {
-            const existing = readExistingTabs().filter((tab) => config.routeNames.includes(tab.name));
+            const existing = readExistingTabs().filter((tab) => config.routeNames.includes(tab.route.name));
 
             return freshState(
                 existing.length === 0 ? initialPlacement(options, config) : existingPlacement(existing, config),
@@ -415,10 +404,8 @@ const createTabViewRouter =
                     params: mergeParams(routeParamList[route.name], route.params),
                 }));
             const pinned = new Set(partialState.pinnedKeys ?? []);
-            const routes = [
-                ...known.filter((route) => pinned.has(route.key)),
-                ...known.filter((route) => !pinned.has(route.key)),
-            ];
+            const pinnedRoutes = known.filter((route) => pinned.has(route.key));
+            const routes = [...pinnedRoutes, ...known.filter((route) => !pinned.has(route.key))];
 
             if (routes.length === 0) {
                 return freshState(initialPlacement(options, config), routeNames);
@@ -428,7 +415,7 @@ const createTabViewRouter =
                 {
                     routes,
                     index: clamp(partialState.index ?? 0, 0, routes.length - 1),
-                    pinnedKeys: routes.filter((route) => pinned.has(route.key)).map((route) => route.key),
+                    pinnedKeys: pinnedRoutes.map((route) => route.key),
                     parents: pruneParents(routes, partialState.parents ?? {}),
                 },
                 routeNames,
@@ -468,35 +455,14 @@ const createTabViewRouter =
 
                     return key === undefined ? null : closeOne(state, key);
                 }
-                case "CLOSE_OTHER_TABS": {
-                    const key = action.payload.key ?? focusedKey(state);
-
-                    return key === undefined
-                        ? null
-                        : closeMany(
-                              state,
-                              unpinnedKeys(state, key, () => true),
-                          );
-                }
-                case "CLOSE_TABS_BEFORE": {
-                    const key = action.payload.key ?? focusedKey(state);
-
-                    return key === undefined
-                        ? null
-                        : closeMany(
-                              state,
-                              unpinnedKeys(state, key, (position, target) => position < target),
-                          );
-                }
+                case "CLOSE_OTHER_TABS":
+                case "CLOSE_TABS_BEFORE":
                 case "CLOSE_TABS_AFTER": {
-                    const key = action.payload.key ?? focusedKey(state);
+                    const target = indexOfKey(state.routes, action.payload.key ?? focusedKey(state));
 
-                    return key === undefined
-                        ? null
-                        : closeMany(
-                              state,
-                              unpinnedKeys(state, key, (position, target) => position > target),
-                          );
+                    return target === -1
+                        ? state
+                        : closeMany(state, unpinnedKeys(state, target, closeRanges[action.type]));
                 }
                 case "SELECT_TAB":
                     return selectTab(state, action.payload.key);
@@ -522,4 +488,4 @@ const createTabViewRouter =
         actionCreators: TabViewActions,
     });
 
-export { createRouteKey, createTabViewRouter, type ExistingTab, TabViewActions };
+export { createRouteKey, createTabViewRouter, type ExistingTab, focusedKey, hasRoute, TabViewActions };

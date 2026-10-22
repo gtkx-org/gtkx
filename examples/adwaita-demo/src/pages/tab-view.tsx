@@ -115,13 +115,8 @@ const TabContent = ({ route, navigation }: TabViewScreenProps<TabParams, "Tab">)
     );
 };
 
-type ActionProps = { name: string; enabled?: boolean; onActivate: () => void };
 type ToggleProps = { name: string; value: boolean; onChange: (value: boolean) => void };
 type ShortcutProps = { trigger: string; onActivate: () => void };
-
-const Action = ({ name, enabled = true, onActivate }: ActionProps) => (
-    <GSimpleAction name={name} enabled={enabled} onActivate={onActivate} />
-);
 
 const Toggle = ({ name, value, onChange }: ToggleProps) => (
     <GSimpleAction
@@ -237,8 +232,8 @@ const DemoWindow = ({ entry }: { entry: DemoWindowEntry }) => {
                         prefix="win"
                         actions={
                             <>
-                                <Action name="window-new" onActivate={openPopulatedWindow} />
-                                <Action name="tab-new" onActivate={createTab} />
+                                <GSimpleAction name="window-new" onActivate={openPopulatedWindow} />
+                                <GSimpleAction name="tab-new" onActivate={createTab} />
                             </>
                         }
                     />
@@ -251,17 +246,17 @@ const DemoWindow = ({ entry }: { entry: DemoWindowEntry }) => {
                                     enabled={!pinned && routes.length > 1}
                                     onActivate={moveToNewWindow}
                                 />
-                                <Action name="duplicate" onActivate={duplicate} />
-                                <Action name="pin" enabled={!pinned} onActivate={() => pin(true)} />
-                                <Action name="unpin" enabled={pinned} onActivate={() => pin(false)} />
-                                <Action name="close" enabled={!pinned} onActivate={close} />
+                                <GSimpleAction name="duplicate" onActivate={duplicate} />
+                                <GSimpleAction name="pin" enabled={!pinned} onActivate={() => pin(true)} />
+                                <GSimpleAction name="unpin" enabled={pinned} onActivate={() => pin(false)} />
+                                <GSimpleAction name="close" enabled={!pinned} onActivate={close} />
                                 <Action
                                     name="close-other"
                                     enabled={closeBefore || closeAfter}
                                     onActivate={closeOthers}
                                 />
-                                <Action name="close-before" enabled={closeBefore} onActivate={closeBeforeTab} />
-                                <Action name="close-after" enabled={closeAfter} onActivate={closeAfterTab} />
+                                <GSimpleAction name="close-before" enabled={closeBefore} onActivate={closeBeforeTab} />
+                                <GSimpleAction name="close-after" enabled={closeAfter} onActivate={closeAfterTab} />
                                 <Action
                                     name="refresh-icon"
                                     enabled={menuTab?.params.showIcon ?? false}

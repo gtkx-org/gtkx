@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import { AdwBin, AdwViewStackPage } from "@gtkx/jsx/adw";
-import { useState } from "react";
+import { useHasLoaded } from "./use-has-loaded.js";
 
 type ScenePageProps = {
     name: string;
@@ -15,11 +15,7 @@ type ScenePageProps = {
 };
 
 const ScenePage = ({ name, title, isFocused, isLoaded, render, ...page }: ScenePageProps): ReactNode => {
-    const [hasLoaded, setHasLoaded] = useState(isLoaded);
-
-    if (isLoaded && !hasLoaded) {
-        setHasLoaded(true);
-    }
+    const hasLoaded = useHasLoaded(isLoaded);
 
     return (
         <AdwViewStackPage

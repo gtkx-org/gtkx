@@ -1,18 +1,11 @@
 import type { NavigationAction, NavigationState } from "@react-navigation/core";
 import type { ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
-import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox } from "@gtkx/jsx/gtk";
-import { act, render, screen, userEvent } from "@gtkx/testing";
+import { act, render, screen } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
-import { DocumentsApp, focusedTitle, pageTitles } from "./helpers/tab-view-fixtures.js";
+import { clickButton, DocumentsApp, focusedTitle, pageTitles, viewOf } from "./helpers/tab-view-fixtures.js";
 import { getAncestor } from "./helpers/widget-ancestors.js";
-
-const clickButton = async (name: string): Promise<void> => {
-    await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name }));
-};
-
-const viewOf = (text: string): Adw.TabView => getAncestor(screen.getByText(text), Adw.TabView);
 
 describe("tab view navigator", () => {
     it("opens the initial tab and renders its content", async () => {
