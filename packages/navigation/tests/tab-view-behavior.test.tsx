@@ -144,6 +144,39 @@ describe("tab view navigator behavior", () => {
         expect(pageTitles(view)).toEqual(["First", "Navigated"]);
         expect(states.at(-1)?.routes.map(routeTitle)).toEqual(["First", "Navigated"]);
         expect(focusedTitle(states.at(-1))).toBe("Navigated");
+        expect(states.at(-1)?.routes[1]?.params).toEqual({ title: "Navigated", kind: "note" });
+    });
+
+    it("identifies tabs by their id when navigating and opening", async () => {
+        const states: (NavigationState | undefined)[] = [];
+        await render(
+            <DocumentsApp getId={({ params }) => params.title} onStateChange={(state) => states.push(state)} />,
+        );
+        await screen.findByText("First content");
+        const view = viewOf("First content");
+        await clickButton("Open sibling of First");
+        await screen.findByText("First sibling content");
+
+        await act(() => {
+            view.setSelectedPage(view.getNthPage(0));
+        });
+        await clickButton("Open sibling of First");
+        expect(pageTitles(view)).toEqual(["First", "First sibling"]);
+        expect(focusedTitle(states.at(-1))).toBe("First sibling");
+
+        await act(() => {
+            view.setSelectedPage(view.getNthPage(0));
+        });
+        await clickButton("Navigate from First");
+        await screen.findByText("Navigated content");
+        expect(pageTitles(view)).toEqual(["First", "First sibling", "Navigated"]);
+
+        await act(() => {
+            view.setSelectedPage(view.getNthPage(0));
+        });
+        await clickButton("Navigate from First");
+        expect(pageTitles(view)).toEqual(["First", "First sibling", "Navigated"]);
+        expect(focusedTitle(states.at(-1))).toBe("Navigated");
     });
 
     it("closes the other unpinned tabs", async () => {

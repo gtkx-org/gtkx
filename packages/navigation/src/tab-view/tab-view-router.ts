@@ -188,8 +188,31 @@ const unpinnedKeys = (state: State, target: number, keep: (position: number, tar
         )
         .map((route) => route.key);
 
-const openTab = (state: State, payload: OpenPayload, { routeNames, routeParamList }: RouterConfigOptions): Result => {
+const routeId = (
+    { routeGetIdList }: RouterConfigOptions,
+    name: string,
+    params: object | undefined,
+): string | undefined => routeGetIdList[name]?.({ params });
+
+const lastRouteNamed = (state: State, name: string): Route | undefined =>
+    state.routes.findLast((route) => route.name === name);
+
+const routeWithId = (state: State, name: string, id: string, config: RouterConfigOptions): Route | undefined =>
+    state.routes.findLast((route) => route.name === name && routeId(config, name, route.params) === id);
+
+const focusRoute = (state: State, route: Route, params: object | undefined, select: boolean): State => {
+    const routes =
+        params === route.params
+            ? state.routes
+            : state.routes.map((candidate) => (candidate === route ? { ...route, params } : candidate));
+    const index = select ? indexOfKey(routes, route.key) : state.index;
+
+    return routes === state.routes && index === state.index ? state : { ...state, routes, index };
+};
+
+const openTab = (state: State, payload: OpenPayload, config: RouterConfigOptions): Result => {
     const { name, key, select, position, pinned = false } = payload;
+    const { routeNames, routeParamList } = config;
 
     if (!routeNames.includes(name)) {
         return null;
@@ -201,10 +224,18 @@ const openTab = (state: State, payload: OpenPayload, { routeNames, routeParamLis
         return select === false ? state : { ...state, index: existing };
     }
 
+    const params = mergeParams(routeParamList[name], payload.params);
+    const id = key === undefined ? routeId(config, name, payload.params) : undefined;
+    const same = id === undefined ? undefined : routeWithId(state, name, id, config);
+
+    if (same !== undefined) {
+        return focusRoute(state, same, params, select !== false);
+    }
+
     const route: Route = {
         key: key ?? createRouteKey(name),
         name,
-        params: mergeParams(routeParamList[name], payload.params),
+        params,
     };
     const parent =
         payload.parent !== undefined && indexOfKey(state.routes, payload.parent) !== -1 ? payload.parent : undefined;
@@ -292,31 +323,29 @@ const pinTab = (state: State, key: string, pinned: boolean): State | null => {
 const navigate = (
     state: State,
     payload: { name: string; params?: object; merge?: boolean },
-    options: RouterConfigOptions,
+    config: RouterConfigOptions,
 ): Result => {
-    if (!options.routeNames.includes(payload.name)) {
+    const { name, params, merge } = payload;
+
+    if (!config.routeNames.includes(name)) {
         return null;
     }
 
-    for (let index = state.routes.length - 1; index >= 0; index -= 1) {
-        const route = state.routes[index];
+    const id = routeId(config, name, params);
+    const target = id === undefined ? lastRouteNamed(state, name) : routeWithId(state, name, id, config);
 
-        if (route?.name === payload.name) {
-            if (payload.params === undefined) {
-                return { ...state, index };
-            }
-
-            const params = payload.merge === true ? { ...route.params, ...payload.params } : payload.params;
-
-            return {
-                ...state,
-                index,
-                routes: state.routes.map((candidate) => (candidate === route ? { ...route, params } : candidate)),
-            };
-        }
+    if (target === undefined) {
+        return openTab(state, { name, params }, config);
     }
 
-    return openTab(state, { name: payload.name, params: payload.params }, options);
+    const next =
+        params === undefined
+            ? target.params
+            : merge === true
+              ? { ...target.params, ...params }
+              : mergeParams(config.routeParamList[name], params);
+
+    return focusRoute(state, target, next, true);
 };
 
 const initialRouteName = (options: TabViewRouterOptions, routeNames: string[]): string => {
@@ -411,10 +440,12 @@ const createTabViewRouter =
                 return freshState(initialPlacement(options, config), routeNames);
             }
 
+            const focused = known[clamp(partialState.index ?? 0, 0, known.length - 1)]?.key;
+
             return freshState(
                 {
                     routes,
-                    index: clamp(partialState.index ?? 0, 0, routes.length - 1),
+                    index: Math.max(indexOfKey(routes, focused), 0),
                     pinnedKeys: pinnedRoutes.map((route) => route.key),
                     parents: pruneParents(routes, partialState.parents ?? {}),
                 },
@@ -429,7 +460,7 @@ const createTabViewRouter =
             );
 
             if (routes.length === 0) {
-                return freshState(initialPlacement(options, config), routeNames);
+                return { ...state, routeNames, ...initialPlacement(options, config) };
             }
 
             const keys = new Set(routes.map((route) => route.key));

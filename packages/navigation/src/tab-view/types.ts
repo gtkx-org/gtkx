@@ -58,7 +58,7 @@ type TabViewActionType =
 
 /** Action helpers added to the navigation object of tab view screens. Keys default to the selected tab. */
 type TabViewActionHelpers<ParamList extends ParamListBase> = {
-    /** Opens a new tab for a screen. */
+    /** Opens a new tab for a screen, or selects the open tab whose `getId` matches. */
     openTab<RouteName extends keyof ParamList>(
         name: RouteName,
         params?: ParamList[RouteName],

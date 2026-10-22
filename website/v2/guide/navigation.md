@@ -368,6 +368,8 @@ export const Documents = () => (
 
 Tabs are addressed by route key. The navigation object adds `openTab`, `closeTab`, `closeOtherTabs`, `closeTabsBefore`, `closeTabsAfter`, `selectTab`, `reorderTab` and `pinTab`, also available as `TabViewActions`. Opening with `parent` places the tab after its parent and the parent's descendants, and closing it selects that parent again. Pinned tabs stay ahead of the others; the state's `pinnedKeys` lists them. Screen options map to the page: `title`, `icon`, `tooltip`, `keyword`, `loading`, `needsAttention`, the indicator options and the thumbnail alignment. The header shows the window title unless `headerTitle` is set. Screens mount when first selected unless `lazy: false`.
 
+`navigate` selects the last open tab of a screen and updates its params, or opens one when none is open. Give the screen a `getId` to identify tabs by their params: `navigate` and `openTab` then select the tab with the same id and open a new tab for a new id.
+
 Native interaction flows back into the state: selecting a tab emits a cancellable `tabPress`, dragging reorders the route, and the close button dispatches `closeTab`, which `usePreventRemove` can refuse. Closing the last tab is left unhandled, so a parent navigator or the container's `onUnhandledAction` decides whether the window closes. The [tab view configuration reference](/v2/reference/@gtkx/navigation/) lists the tab bar, overview, menu and drop target settings.
 
 ### Windows and transfers

@@ -1,4 +1,4 @@
-import type { NavigationAction, NavigationState } from "@react-navigation/core";
+import type { InitialState, NavigationAction, NavigationState } from "@react-navigation/core";
 import type { ComponentProps, ComponentType, ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -12,12 +12,15 @@ import {
 } from "@gtkx/navigation";
 import { getAncestor } from "./widget-ancestors.js";
 
-type DocumentParams = { Document: { title: string } };
+type DocumentParams = { Document: { title: string; kind?: string } };
 
 type DocumentsAppProps = {
     navigator?: Partial<Omit<ComponentProps<typeof Documents.Navigator>, "children">>;
     options?: TabViewNavigationOptions;
     screen?: ComponentType<TabViewScreenProps<DocumentParams, "Document">>;
+    getId?: (options: { params: Readonly<DocumentParams["Document"]> }) => string | undefined;
+    navigationKey?: string;
+    initialState?: InitialState;
     onStateChange?: (state: NavigationState | undefined) => void;
     onUnhandledAction?: (action: NavigationAction) => void;
     prefix?: string;
@@ -83,16 +86,25 @@ const DocumentsApp = ({
     navigator,
     options,
     screen = DocumentScreen,
+    getId,
+    navigationKey,
+    initialState,
     onStateChange,
     onUnhandledAction,
     prefix = "First",
 }: DocumentsAppProps): ReactNode => (
-    <NavigationContainer onStateChange={onStateChange} onUnhandledAction={onUnhandledAction}>
+    <NavigationContainer
+        initialState={initialState}
+        onStateChange={onStateChange}
+        onUnhandledAction={onUnhandledAction}
+    >
         <Documents.Navigator {...navigator}>
             <Documents.Screen
                 name="Document"
                 component={screen}
-                initialParams={{ title: prefix }}
+                getId={getId}
+                navigationKey={navigationKey}
+                initialParams={{ title: prefix, kind: "note" }}
                 options={({ route }) => ({ title: route.params.title, headerShown: false, ...options })}
             />
         </Documents.Navigator>
