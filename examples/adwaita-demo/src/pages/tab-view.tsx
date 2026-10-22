@@ -241,7 +241,7 @@ const DemoWindow = ({ entry }: { entry: DemoWindowEntry }) => {
                         prefix="tab"
                         actions={
                             <>
-                                <Action
+                                <GSimpleAction
                                     name="move-to-new-window"
                                     enabled={!pinned && routes.length > 1}
                                     onActivate={moveToNewWindow}
@@ -250,14 +250,14 @@ const DemoWindow = ({ entry }: { entry: DemoWindowEntry }) => {
                                 <GSimpleAction name="pin" enabled={!pinned} onActivate={() => pin(true)} />
                                 <GSimpleAction name="unpin" enabled={pinned} onActivate={() => pin(false)} />
                                 <GSimpleAction name="close" enabled={!pinned} onActivate={close} />
-                                <Action
+                                <GSimpleAction
                                     name="close-other"
                                     enabled={closeBefore || closeAfter}
                                     onActivate={closeOthers}
                                 />
                                 <GSimpleAction name="close-before" enabled={closeBefore} onActivate={closeBeforeTab} />
                                 <GSimpleAction name="close-after" enabled={closeAfter} onActivate={closeAfterTab} />
-                                <Action
+                                <GSimpleAction
                                     name="refresh-icon"
                                     enabled={menuTab?.params.showIcon ?? false}
                                     onActivate={refreshIcon}
