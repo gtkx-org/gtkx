@@ -59,7 +59,7 @@
         "@gtkx/utils": "workspace:*",
         "postcss": "^8.5.31",
         "postcss-nested": "^9.0.0",
-        "postcss-selector-parser": "^7.1.6"
+        "postcss-selector-parser": "^7.1.7"
     },
     "devDependencies": {
         "@gtkx/vitest": "workspace:*"
