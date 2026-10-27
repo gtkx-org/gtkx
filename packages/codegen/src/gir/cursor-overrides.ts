@@ -11,9 +11,8 @@ const PARAMETERS_MISSING_ARRAY_EXTENT: Map<string, CursorParameterNames[]> = new
      */
     ["g_utf8_validate", [{ cursor: "end", base: "str", length: "max_len" }]],
     ["g_utf8_validate_len", [{ cursor: "end", base: "str", length: "max_len" }]],
-    /* TODO: Keep bounded borrowed cursors until HarfBuzz metadata describes the input lifetime and remaining
-     * extent.
-     * https://github.com/gtkx-org/gtkx/issues/735
+    /* HarfBuzz metadata describes these borrowed cursors as owned strings. Relate each cursor to its input and
+     * length instead.
      */
     ["hb_buffer_deserialize_glyphs", [{ cursor: "end_ptr", base: "buf", length: "buf_len", isMissingArrayType: true }]],
     [
