@@ -9,7 +9,3 @@ pnpm --filter gtk-demo dev
 ```
 
 See the [GTKX guides](https://gtkx.dev/v2/guide/components) and the demos under `src/demos`.
-
-## Media troubleshooting
-
-The Images demo enables looping on a shared media stream. GStreamer's native teardown race is tracked in [#758](https://github.com/gtkx-org/gtkx/issues/758); a fix in supported GStreamer releases has not been verified. See the [Images implementation](src/demos/drawing/images.tsx) for its current playback and cleanup behavior.
