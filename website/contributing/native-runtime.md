@@ -154,7 +154,7 @@ Reading a callback property returns a snapshot that retains its trampoline indep
 
 Library overrides can identify a borrowed relationship that needs protection. The Window override supplies the native default-widget setter to `setWrapperBorrow`; native retains the dependent wrapper, leases both objects during cleanup, and clears the pointer directly before deferred wrapper teardown. The override neither keeps its own retention map nor constructs a JavaScript wrapper to perform cleanup.
 
-Library compatibility workarounds remain in overrides. Sidebar detaches retired models and explicitly disposes detached rows for [issue #726](https://github.com/gtkx-org/gtkx/issues/726); ComboRow disconnects native handlers for [issue #727](https://github.com/gtkx-org/gtkx/issues/727). These calls change library behavior and are distinct from balancing references on runtime-owned handles.
+Library compatibility workarounds remain in overrides. Sidebar detaches retired models and explicitly disposes detached rows, because libadwaita leaves views retired by a mode change connected to their models. ComboRow disconnects the native handlers its default factory and item boxes hold, because libadwaita does not tie them to the row's lifetime. Both are permanent. These calls change library behavior and are distinct from balancing references on runtime-owned handles.
 
 ### Descriptor normalization
 

@@ -113,7 +113,7 @@ Use clear names, direct control flow, and small responsibilities. Comments must 
 
 GTKX is GLib-first: omit the `G` prefix from our identifiers, as in `useObjectValue`. Use GTK prefixes where they clarify a name, and preserve upstream names when referencing native APIs.
 
-Reserve comments for public API documentation and TODO/FIXME notes. Describe contracts and reasons, without narrating implementation. Each upstream workaround needs a nearby `TODO:` explaining why it exists, when it can be removed, and its GTKX tracking issue.
+Reserve comments for public API documentation, TODO/FIXME notes and upstream workarounds. Describe contracts and reasons, without narrating implementation. Each upstream workaround needs a nearby comment explaining why it exists. While an upstream fix is expected, make it a `TODO:` that also says when the workaround can be removed and links its GTKX tracking issue.
 
 Public API documentation describes the current API. Discuss earlier implementations only when documenting a deprecation and its transition.
 

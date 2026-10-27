@@ -86,8 +86,8 @@ const changedMode =
         }
     };
 
-/* TODO: Keep retired-view cleanup until libadwaita disconnects Sidebar models and suffixes on mode changes.
- * https://github.com/gtkx-org/gtkx/issues/726
+/* libadwaita leaves the views retired by a Sidebar mode change connected to their models, so a retained
+ * row can claim suffixes meant for the new view. Detach and dispose retired views on mode changes.
  */
 Object.defineProperty(Sidebar.prototype, initializeWrapper, {
     value: function (this: Sidebar): void {
