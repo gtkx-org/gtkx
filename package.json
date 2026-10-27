@@ -27,7 +27,7 @@
         "@gtkx/utils": "workspace:*",
         "@nx/eslint": "^23.3.0",
         "@nx/js": "^23.3.0",
-        "@nx/oxlint": "23.3.0",
+        "@nx/oxlint": "24.0.1",
         "@nx/vitest": "^23.3.0",
         "@types/node": "catalog:",
         "@types/react": "catalog:",
