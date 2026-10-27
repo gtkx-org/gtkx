@@ -6,8 +6,8 @@ type CursorParameterNames = {
 };
 
 const PARAMETERS_MISSING_ARRAY_EXTENT: Map<string, CursorParameterNames[]> = new Map([
-    /* TODO: Keep both bounded cursors until GLib metadata describes their remaining input extent.
-     * https://github.com/gtkx-org/gtkx/issues/756
+    /* GLib metadata describes these cursors as zero-terminated byte arrays, but a bounded validation leaves
+     * them inside the input with no terminator. Relate each cursor to its input and length instead.
      */
     ["g_utf8_validate", [{ cursor: "end", base: "str", length: "max_len" }]],
     ["g_utf8_validate_len", [{ cursor: "end", base: "str", length: "max_len" }]],
