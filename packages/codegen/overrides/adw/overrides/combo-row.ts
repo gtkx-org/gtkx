@@ -102,8 +102,8 @@ const destroyRow = (state: State): void => {
     state.boxes.clear();
 };
 
-/* TODO: Keep handler cleanup until libadwaita ties default-factory callbacks to the ComboRow lifetime.
- * https://github.com/gtkx-org/gtkx/issues/727
+/* libadwaita does not tie default-factory and item-box callbacks to the ComboRow lifetime, so a retained
+ * item widget can call back into a destroyed row. Disconnect them when the row is destroyed.
  */
 Object.defineProperty(ComboRow.prototype, initializeWrapper, {
     value: function (this: ComboRow): void {
