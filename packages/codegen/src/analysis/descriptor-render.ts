@@ -8,7 +8,6 @@ import type { ModuleContext } from "../writer/context.js";
 import { EXTERNAL_RECORD_COPY_STRATEGIES } from "../gir/external-namespaces.js";
 import {
     deriveElementTransfer,
-    type GirCursorBounds,
     type GirParameter,
     type GirReturnValue,
     isCallerAllocatedOut,
@@ -37,7 +36,6 @@ import {
     tBoxed,
     tByteArray,
     tCallback,
-    tCursorArray,
     tEnum,
     tFixedArray,
     tFlags,
@@ -61,12 +59,10 @@ type PrimaryReturnKind = "surfaced" | "void" | "skipped";
 type ArgIndexOptions = {
     argIndexOffset: number;
     argIndexMap: Map<number, number> | undefined;
-    cursor: GirCursorBounds | undefined;
     hasOutIndirection: boolean;
     isReceived: boolean;
 };
 
-type CursorArgIndexOptions = ArgIndexOptions & { cursor: GirCursorBounds };
 type CArrayExpressionOptions = ArgIndexOptions & { isCallerAllocated: boolean };
 
 type RenderDescriptorOptions = Partial<ArgIndexOptions> & {
@@ -173,7 +169,6 @@ const isVoidPrimaryReturn = (library: Library, returnValue: GirReturnValue): boo
 const argIndexOptions = (options: RenderDescriptorOptions): ArgIndexOptions => ({
     argIndexOffset: options.argIndexOffset ?? 0,
     argIndexMap: options.argIndexMap,
-    cursor: options.cursor,
     hasOutIndirection: options.hasOutIndirection === true,
     isReceived: options.isReceived === true,
 });
@@ -304,7 +299,6 @@ const renderParamDescriptor = (
 ): string => {
     const behindRef: RenderDescriptorOptions = {
         ...argIndex,
-        cursor: parameter.cursor,
         hasOutIndirection: true,
         isReceived: true,
     };
@@ -842,26 +836,9 @@ const elementExpression = (
 ): string =>
     renderDescriptor(context, ref.element, deriveElementTransfer(transfer), {
         ...options,
-        cursor: undefined,
         hasOutIndirection: false,
         isCallerAllocated: false,
     });
-
-const cursorArrayExpression = (
-    context: ModuleContext,
-    ref: CArrayType,
-    transfer: ParameterTransfer,
-    options: CursorArgIndexOptions & { layout: ArrayLayout },
-): string =>
-    tCursorArray(
-        elementExpression(context, ref, transfer, options),
-        {
-            baseIndex: mapArgIndex(options, options.cursor.baseIndex),
-            lengthIndex: mapArgIndex(options, options.cursor.lengthIndex),
-        },
-        transferOwnership(transfer),
-        options.layout,
-    );
 
 const isZeroTerminatedBeyondLength = (ref: CArrayType): boolean =>
     ref.isZeroTerminated && (ref.lengthParameterIndex !== undefined || ref.fixedSize !== undefined);
@@ -881,12 +858,7 @@ const arrayExpression = (
     transfer: ParameterTransfer,
     options: CArrayExpressionOptions,
 ): string => {
-    const { cursor } = options;
     const layout = arrayLayout(context, ref, options);
-
-    if (cursor !== undefined) {
-        return cursorArrayExpression(context, ref, transfer, { ...options, cursor, layout });
-    }
 
     if (hasUnknownArrayLength(ref)) {
         const item = elementExpression(context, ref, transfer, options);

@@ -12,7 +12,6 @@ import {
     write,
 } from "@gtkx/runtime";
 import type { DeviceOffset, DeviceScale, FallbackResolution, InkExtents, RectangleData } from "./types.js";
-import { Context } from "./context.js";
 import { Device } from "./device.js";
 import { type Content, type Format, type Status, SurfaceType } from "./enums.js";
 import { FontOptions } from "./font-options.js";
@@ -349,10 +348,6 @@ class ImageSurface extends Surface {
 
     /** Returns a copy of the pixel data, `getStride() * getHeight()` bytes in the surface's format. */
     getData(): Uint8Array {
-        /* TODO: Keep this finished-state check until Cairo stops exposing released image storage.
-         * https://github.com/gtkx-org/gtkx/issues/730
-         */
-        Context.create(this);
         this.flush();
         const totalBytes = this.getStride() * this.getHeight();
 

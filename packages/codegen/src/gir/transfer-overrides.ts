@@ -11,15 +11,9 @@ const RETURN_TRANSFER_OVERRIDES: Map<string, ParameterTransfer> = new Map([
 ]);
 
 const PARAMETER_TRANSFER_OVERRIDES: Map<string, ParameterTransfer> = new Map([
-    /* TODO: Keep element-only transfer until Gdk metadata expresses copied arrays with adopted elements.
-     * https://github.com/gtkx-org/gtkx/issues/747
+    /* This constructor copies the array and takes each element, but its metadata transfers the array too.
      */
     ["gdk_content_provider_new_union:providers", "elements"],
-    /* TODO: Keep both entries until Gtk metadata expresses copied arrays with adopted expression elements.
-     * https://github.com/gtkx-org/gtkx/issues/748
-     */
-    ["gtk_closure_expression_new:params", "elements"],
-    ["gtk_try_expression_new:expressions", "elements"],
 ]);
 
 export { PARAMETER_TRANSFER_OVERRIDES, RETURN_TRANSFER_OVERRIDES };

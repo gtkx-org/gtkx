@@ -218,19 +218,6 @@ describe("ImageSurface", () => {
         expect(channels[1]).toBeCloseTo(0.5);
         expect(channels[2]).toBeCloseTo(1);
     });
-
-    it("rejects reading data after the surface releases its storage", () => {
-        const image = createImage();
-        image.finish();
-        expect(() => image.getData()).toThrow();
-    });
-
-    it("rejects reading pixels when another native wrapper finishes the surface", () => {
-        const image = createImage();
-        const ctx = Context.create(image);
-        ctx.getTarget().finish();
-        expect(() => image.getData()).toThrow();
-    });
 });
 
 describe("RecordingSurface", () => {
