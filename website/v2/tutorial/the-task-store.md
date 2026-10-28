@@ -145,7 +145,7 @@ export const TaskList = () => {
     return (
         <GtkScrolledWindow vexpand>
             <AdwClamp maximumSize={640} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
-                <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
+                <GtkListBox valign={Gtk.Align.START} selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
                     <AdwEntryRow
                         title="Add a task…"
                         onEntryActivated={(self) => {
