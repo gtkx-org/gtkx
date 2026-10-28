@@ -401,6 +401,61 @@ describe("CLI commands", () => {
         });
     });
 
+    it("restarts instead of keeping stale global styles a refreshed module no longer injects", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "probe.json");
+        const theme = (version: number, globalRule: string) => `
+            import { css, injectGlobal } from "@gtkx/css";
+            injectGlobal\`${globalRule}\`;
+            export const accent = css({ color: "rgb(${String(version)}, 0, 0)" });
+            export const version = ${String(version)};
+        `;
+        project.write("src/theme.ts", theme(1, ".cli-global-probe { min-width: 231px; }"));
+        project.write(
+            "src/probe.tsx",
+            `import * as Gtk from "@gtkx/gi/gtk";
+            import { GtkLabel } from "@gtkx/jsx/gtk";
+            import { writeFileSync } from "node:fs";
+            import { useEffect, useRef } from "react";
+            import { accent, version } from "./theme.ts";
+            export function Probe() {
+                const label = useRef<Gtk.Label | null>(null);
+                useEffect(() => {
+                    setTimeout(() => {
+                        const [width] = label.current?.measure(Gtk.Orientation.HORIZONTAL, -1) ?? [0];
+                        writeFileSync(${JSON.stringify(readyPath)}, JSON.stringify({ pid: process.pid, version, width }));
+                    }, 100);
+                }, [version]);
+                return <GtkLabel ref={label} label="Probe" cssClasses={["cli-global-probe", accent]} />;
+            }`,
+        );
+        project.write(
+            "src/index.tsx",
+            `import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+            import { createRoot } from "@gtkx/react";
+            import { Probe } from "./probe.tsx";
+            createRoot().render(
+                <AdwApplication applicationId="org.gtkx.example">
+                    <AdwApplicationWindow><Probe /></AdwApplicationWindow>
+                </AdwApplication>
+            );`,
+        );
+        const observation = () =>
+            JSON.parse(readFileSync(readyPath, "utf8")) as { pid: number; version: number; width: number };
+        await withSession("dev", project.root, readyPath, async () => {
+            const initial = observation();
+            expect(initial).toMatchObject({ version: 1, width: 231 });
+
+            project.write("src/theme.ts", theme(2, ".cli-global-probe { min-width: 231px; }"));
+            await expect.poll(() => observation().version, { timeout: 30_000 }).toBe(2);
+            expect(observation()).toMatchObject({ pid: initial.pid, width: 231 });
+
+            project.write("src/theme.ts", theme(3, ".cli-other-probe { min-width: 231px; }"));
+            await expect.poll(() => observation().version, { timeout: 30_000 }).toBe(3);
+            expect(observation().width).toBeLessThan(231);
+        });
+    });
+
     it("generates upstream bindings and documentation through their command arguments", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
         expect(await invoke(["codegen", "--cwd", project.root])).toContain("codegen");

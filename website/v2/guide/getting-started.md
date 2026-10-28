@@ -64,7 +64,7 @@ The [tutorial](/v2/tutorial/) follows development on `main` and may use APIs add
 
 ## The dev loop
 
-`npm run dev` runs `gtkx dev`. Fast Refresh updates the open window while preserving state. A module that exports only components refreshes in place. Editing any other module, such as a custom hook or shared styles, refreshes the component modules that import it, directly or through other modules. If an edit reaches the entry module before a component module, the app restarts and resets its state. A component whose hook calls change remounts and resets only its own state. Changing a module's runtime imports or re-exports, editing an imported resource or icon, and other changes that Fast Refresh cannot patch also restart the app.
+`npm run dev` runs `gtkx dev`. Fast Refresh updates the open window while preserving state. A module that exports only components refreshes in place. Editing any other module, such as a custom hook or shared styles, refreshes the component modules that import it, directly or through other modules. If an edit reaches the entry module before a component module, the app restarts and resets its state. A component whose hook calls change remounts and resets only its own state. Changing a module's runtime imports, re-exports or `injectGlobal` rules, editing an imported stylesheet, resource or icon, and other changes that Fast Refresh cannot patch also restart the app.
 
 | Command          | Result                                                              |
 | ---------------- | ------------------------------------------------------------------- |

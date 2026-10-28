@@ -2,7 +2,12 @@ import type { InlineConfig, ModuleNode, Plugin, ViteDevServer } from "vite";
 import { error, warn } from "@gtkx/utils";
 import { isCatalogSource } from "../i18n/catalogs.js";
 import { loadModuleExclusively, withExclusiveLoad } from "../internal/module-loads.js";
-import { parseRuntimeImportsIn, sourceLanguage } from "../internal/source-imports.js";
+import {
+    GLOBAL_STYLES_SOURCE,
+    globalStylesIn,
+    parseRuntimeImportsIn,
+    sourceLanguage,
+} from "../internal/source-imports.js";
 import { projectSchemaFiles, SCHEMA_SUFFIX, stageAndCompileProjectSchemas } from "../settings/schema.js";
 import { createStorybookSession, type StorybookSession } from "../storybook/session.js";
 import { isUrlSpecifier } from "../vite-plugins/asset-specifier.js";
@@ -64,6 +69,7 @@ type DevSession = {
     failure: FailureTracker;
     pendingSaves: Map<string, string>;
     imports: Map<string, Set<string>>;
+    globalStyles: Map<string, string>;
     registrations: Set<string>;
     schemaFiles: Set<string>;
     hasPendingSchemaChange: boolean;
@@ -530,6 +536,20 @@ const didRestartForImports = async (session: DevSession, path: string): Promise<
     return true;
 };
 
+const didRestartForGlobalStyles = async (session: DevSession, path: string): Promise<boolean> => {
+    const previous = session.globalStyles.get(path);
+    const current = previous === undefined ? null : globalStylesIn(path);
+
+    if (current === null || current === previous) {
+        return false;
+    }
+
+    session.deps.log(`Global styles changed: ${path}`);
+    await requestRestart(session);
+
+    return true;
+};
+
 const didRestartForChange = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
     const { root } = session.server.config;
 
@@ -560,7 +580,8 @@ const didRestartForChange = async (session: DevSession, change: WatchedChange): 
     return (
         (await didRestartForStylesheet(session, change)) ||
         (await didRestartForAsset(session, change)) ||
-        didRestartForImports(session, change.path)
+        (await didRestartForImports(session, change.path)) ||
+        didRestartForGlobalStyles(session, change.path)
     );
 };
 
@@ -790,18 +811,35 @@ const announceReady = (session: DevSession): void => {
     session.deps.log("HMR enabled - watching for changes...");
 };
 
-const trackModuleImports = (imports: Map<string, Set<string>>): Plugin => ({
+const trackGlobalStyles = (globalStyles: Map<string, string>, path: string): void => {
+    const styles = globalStylesIn(path);
+
+    if (styles !== null) {
+        globalStyles.set(path, styles);
+    }
+};
+
+const trackModuleImports = (imports: Map<string, Set<string>>, globalStyles: Map<string, string>): Plugin => ({
     name: "gtkx:dev-imports",
     enforce: "pre",
     transform(_code, id) {
         const path = stripQuery(id);
 
-        if (!imports.has(path) && sourceLanguage(path) !== undefined) {
-            const entries = parseRuntimeImportsIn(path);
+        if (imports.has(path) || sourceLanguage(path) === undefined) {
+            return;
+        }
 
-            if (entries !== null) {
-                imports.set(path, new Set(entries.map((entry) => entry.source)));
-            }
+        const entries = parseRuntimeImportsIn(path);
+
+        if (entries === null) {
+            return;
+        }
+
+        const sources = new Set(entries.map((entry) => entry.source));
+        imports.set(path, sources);
+
+        if (sources.has(GLOBAL_STYLES_SOURCE)) {
+            trackGlobalStyles(globalStyles, path);
         }
     },
 });
@@ -821,6 +859,7 @@ const createSession = (
     server: ViteDevServer,
     deps: DevRunnerDeps,
     imports: Map<string, Set<string>>,
+    globalStyles: Map<string, string>,
     registrations: Set<string>,
 ): DevSession => {
     const refreshTracker = createRefreshTracker(deps.performRefresh);
@@ -835,6 +874,7 @@ const createSession = (
         }, refreshTracker.isRefreshing),
         pendingSaves: new Map(),
         imports,
+        globalStyles,
         registrations,
         schemaFiles: new Set(projectSchemaFiles(server.config.root).files),
         hasPendingSchemaChange: false,
@@ -845,15 +885,16 @@ const createSession = (
 const createDevRunner = (deps: DevRunnerDeps, options: DevRunnerOptions = {}): DevRunner => ({
     async run(entryPath: string): Promise<void> {
         const imports = new Map<string, Set<string>>();
+        const globalStyles = new Map<string, string>();
         const registrations = new Set<string>();
         const server = await deps.createServer(
             createDevServerConfig(process.cwd(), deps.deployOutDir, [
-                trackModuleImports(imports),
+                trackModuleImports(imports, globalStyles),
                 ...deps.plugins(entryPath),
                 trackRefreshRegistrations(registrations),
             ]),
         );
-        const session = createSession(server, deps, imports, registrations);
+        const session = createSession(server, deps, imports, globalStyles, registrations);
         deps.installShutdownHandlers(onShutdownSignal(session));
 
         deps.watchUncaughtErrors((cause) => {
