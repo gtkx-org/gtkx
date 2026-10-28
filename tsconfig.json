@@ -1,22 +1,6 @@
 {
     "extends": "./tsconfig.base.json",
-    "include": [
-        "**/scripts",
-        "**/vitest.config.ts",
-        "**/vitest.*.config.ts",
-        "**/vite.config.ts",
-        "**/gtkx.config.ts",
-        "gtkx.config.base.ts",
-        "vitest.config.base.ts",
-        "eslint.config.ts",
-        "packages/*/env.d.ts",
-        "packages/e2e/elements.ts",
-        "packages/native/main.d.ts",
-        "packages/cli/src/babel-modules.d.ts",
-        "packages/vitest/src/dbus-native.d.ts",
-        "packages/native/tools/**/*.ts"
-    ],
-    "exclude": ["tutorial"],
+    "files": [],
     "references": [
         {
             "path": "./packages/create-gtkx"
@@ -101,16 +85,12 @@
         },
         {
             "path": "./examples/adwaita-demo"
+        },
+        {
+            "path": "./website"
+        },
+        {
+            "path": "./tsconfig.workspace.json"
         }
-    ],
-    "compilerOptions": {
-        "composite": false,
-        "noEmit": true,
-        "declaration": false,
-        "declarationMap": false,
-        "outDir": "dist",
-        "incremental": true,
-        "allowImportingTsExtensions": true,
-        "rewriteRelativeImportExtensions": false
-    }
+    ]
 }

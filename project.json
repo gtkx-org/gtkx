@@ -20,11 +20,12 @@
             ]
         },
         "typecheck": {
-            "command": "tsc --noEmit",
+            "command": "tsc --noEmit -p tsconfig.workspace.json",
             "cache": true,
             "dependsOn": ["build", "^typecheck"],
             "inputs": [
                 "{workspaceRoot}/tsconfig.json",
+                "{workspaceRoot}/tsconfig.workspace.json",
                 "{workspaceRoot}/eslint.config.ts",
                 "{workspaceRoot}/gtkx.config.base.ts",
                 "{workspaceRoot}/scripts/**/*",
@@ -67,6 +68,7 @@
                 "{workspaceRoot}/pnpm-workspace.yaml",
                 "{workspaceRoot}/.gitignore",
                 "{workspaceRoot}/tsconfig.json",
+                "{workspaceRoot}/tsconfig.workspace.json",
                 "{workspaceRoot}/eslint.config.ts",
                 "{workspaceRoot}/gtkx.config.base.ts",
                 "{workspaceRoot}/scripts/**/*",
