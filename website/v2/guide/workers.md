@@ -20,9 +20,22 @@ worker.on("message", (rows) => setRows(rows));
 
 For `gtkx build` to emit the worker, its URL must appear directly inside `new Worker(...)` and name the source file through a relative path.
 
-During `gtkx dev` and Vitest, Node loads the worker's source directly. Its relative imports must name source files, and its syntax must work with [Node's type stripping](https://nodejs.org/api/typescript.html#type-stripping). For TypeScript imports, add `"allowImportingTsExtensions": true` to the scaffold's `compilerOptions`; it already uses `NodeNext` and `noEmit`. Exercise workers in tests as well as builds, since the production bundle can accept syntax that direct loading cannot.
+During `gtkx dev` and Vitest, Node loads the worker's source directly. Its relative imports must name source files or [`?url` assets](#importing-files-in-a-worker), and its syntax must work with [Node's type stripping](https://nodejs.org/api/typescript.html#type-stripping). For TypeScript imports, add `"allowImportingTsExtensions": true` to the scaffold's `compilerOptions`; it already uses `NodeNext` and `noEmit`. Exercise workers in tests as well as builds, since the production bundle can accept syntax that direct loading cannot.
 
 Only one thread in a process can own GTKX's GLib integration. An application's main thread owns it, so application workers must use Node APIs and send data back to the main thread; they cannot import generated GI modules or make GTKX native calls.
+
+## Importing files in a worker
+
+A worker imports project files with `?url`, as the main thread does:
+
+```ts
+import { readFileSync } from "node:fs";
+import captionsPath from "../../data/captions.txt?url";
+
+const captions = readFileSync(captionsPath, "utf8");
+```
+
+The import provides a real file path: the source file during `gtkx dev` and Vitest, and the copy in `dist/` after `gtkx build`. During `gtkx dev` and Vitest, a worker started with its own `execArgv` must include `process.execArgv` to keep this support. `?resource`, `?icon` and `?font` make assets available to GTK, so import them from the main thread. See [Assets](/v2/guide/assets#import-project-data).
 
 ## Standalone workers that own GTKX
 
