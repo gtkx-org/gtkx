@@ -231,6 +231,20 @@ describe.each([DropDown, ComboRow])("dropdown value rendering", (Component) => {
         expect(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX)).toHaveDisplayValue(text);
     });
 
+    it("marks the selected primitive in the popup with a checkmark", async () => {
+        const checkmarkOpacity = async (text: string): Promise<number | undefined> => {
+            const labels = await screen.findAllByText(text);
+            const marks = labels.map((label) => label.getNextSibling()).filter((mark) => mark instanceof Gtk.Image);
+            expect(marks.map((mark) => mark.getIconName())).toEqual(["object-select-symbolic"]);
+            return marks[0]?.getOpacity();
+        };
+        await renderValue(<Component items={valueItems(["First", "Second"])} selectedId="2" />);
+        const combo = screen.getByRole(Gtk.AccessibleRole.COMBO_BOX);
+        await userEvent.click(combo);
+        expect(await checkmarkOpacity("First")).toBe(0);
+        expect(await checkmarkOpacity("Second")).toBe(1);
+    });
+
     it.each([null, undefined, ""])("leaves an empty display for %s", async (value) => {
         await renderValue(<Component items={[{ id: "choice", value }]} />);
         expect(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX)).toHaveDisplayValue("");
