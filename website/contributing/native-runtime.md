@@ -132,7 +132,7 @@ The native package is an implementation detail. Its interface keeps JavaScript b
 | `alloc`, `readField`, `writeField`, `call`                               | Allocate storage, validate bounds and leases, invoke native functions, and settle ownership transfers.                                                |
 | `openLibrary`, `resolveSymbol`                                           | Open one library and resolve a symbol. Runtime chooses candidates and caches targets.                                                                 |
 | `getType`, `getTypeClass`, `registerClass`                               | Validate native types, own class and interface references, register GTypes, and retain callbacks. Runtime supplies class policy and metadata.         |
-| `getWrapper`, `setWrapper`                                               | Coordinate GObject references, JavaScript wrapper reachability, and cleanup ordering.                                                                 |
+| `getWrapper`, `setWrapper`, `setWrapperBorrow`                           | Coordinate GObject references, JavaScript wrapper reachability, dependent borrows, and cleanup ordering.                                              |
 | `newObject`, `getObjectProperty`, `setObjectProperty`, `setValuePointer` | Preserve construction and property-storage lifetimes, including callback dependencies and reentrant calls.                                            |
 | `init`, `quit`                                                           | Acquire and release native event-loop resources. Runtime initializes the addon, supplies its dispatch budget, and owns keep-alive and exit callbacks. |
 
@@ -152,7 +152,9 @@ Native retains candidate callback storage before entering a property setter. Aft
 
 Reading a callback property returns a snapshot that retains its trampoline independently of later property replacement or clearing. Constructor values remain retained through native construction, and final property reconciliation preserves the values actually stored after reentrant replacements or clearing.
 
-Library compatibility workarounds remain in overrides. ComboRow disconnects the native handlers its default factory and item boxes hold, because libadwaita does not tie them to the row's lifetime. This is permanent. These calls change library behavior and are distinct from balancing references on runtime-owned handles.
+Library overrides can identify a borrowed relationship that needs protection. The Window override supplies the native default-widget setter to `setWrapperBorrow`; native retains the dependent wrapper, leases both objects during cleanup, and clears the pointer directly before deferred wrapper teardown. The override neither keeps its own retention map nor constructs a JavaScript wrapper to perform cleanup.
+
+Library compatibility workarounds remain in overrides. Sidebar detaches retired models and explicitly disposes detached rows, because libadwaita leaves views retired by a mode change connected to their models. ComboRow disconnects the native handlers its default factory and item boxes hold, because libadwaita does not tie them to the row's lifetime. Both are permanent. These calls change library behavior and are distinct from balancing references on runtime-owned handles.
 
 ### Descriptor normalization
 

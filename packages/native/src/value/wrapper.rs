@@ -12,15 +12,59 @@ use napi::bindgen_prelude::*;
 use napi::{Env, sys};
 
 use crate::handle::{Handle, surface};
+use crate::host::callback_error::CallbackErrorScope;
 use crate::host::node_env;
 use crate::host::panic_handler::guard_ffi_boundary;
 use crate::host::release_queue::{self, Owner};
+use crate::value::roots;
+
+pub(crate) const BORROW_ROOT: &str = "wrapper-borrow";
 
 pub struct WrapperHandle {
     napi_ref: Cell<sys::napi_ref>,
     generation: Cell<u64>,
     wrapper_strong: Cell<bool>,
     notification_id: usize,
+}
+
+struct WrapperBorrow {
+    id: usize,
+    owner: usize,
+    dependent: usize,
+    owner_handle: Handle,
+    dependent_handle: Handle,
+    clear: Handle,
+}
+
+impl WrapperBorrow {
+    fn clear(&self, env: &Env) -> Result<()> {
+        let _owner_lease = crate::api::native_result(
+            "clearing wrapper borrow",
+            self.owner_handle.acquire_lease(),
+        )?;
+        let _dependent_lease = crate::api::native_result(
+            "clearing wrapper borrow",
+            self.dependent_handle.acquire_lease(),
+        )?;
+        let owner = self.owner_handle.as_gobject_ptr().ok_or_else(|| {
+            Error::from_reason("The borrowed pointer owner is no longer a live GObject")
+        })?;
+        let clear = crate::api::native_result(
+            "clearing wrapper borrow",
+            self.clear.lifecycle_function_ptr(),
+        )?;
+        if let Some(wrapper) = unsafe { wrapper_value(env, owner) } {
+            roots::remove(*env, wrapper.into_unknown(env)?, BORROW_ROOT)?;
+        }
+        let clear = unsafe {
+            std::mem::transmute::<*mut c_void, unsafe extern "C" fn(*mut c_void, *mut c_void)>(
+                clear,
+            )
+        };
+        unsafe { clear(owner.cast(), std::ptr::null_mut()) };
+
+        Ok(())
+    }
 }
 
 impl WrapperHandle {
@@ -48,9 +92,11 @@ pub(crate) unsafe fn track_handle(gobject: *mut glib::gobject_ffi::GObject, hand
 
 thread_local! {
     static LIVE_TOGGLE_REFS: RefCell<HashMap<usize, usize>> = RefCell::new(HashMap::new());
+    static WRAPPER_BORROWS: RefCell<HashMap<usize, WrapperBorrow>> = RefCell::new(HashMap::new());
 }
 
 static NEXT_NOTIFICATION: AtomicUsize = AtomicUsize::new(1);
+static NEXT_BORROW: AtomicUsize = AtomicUsize::new(1);
 static TOGGLE_OWNERS: LazyLock<Mutex<HashMap<usize, Arc<Owner>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
@@ -81,6 +127,94 @@ unsafe fn handle_qdata(
     gobject: *mut glib::gobject_ffi::GObject,
 ) -> Option<NonNull<Rc<WrapperHandle>>> {
     unsafe { borrow_object(gobject).qdata::<Rc<WrapperHandle>>(quark()) }
+}
+
+pub(crate) unsafe fn active_identity(gobject: *mut glib::gobject_ffi::GObject) -> Option<usize> {
+    let handle = unsafe { handle_qdata(gobject) }?;
+    let handle = unsafe { handle.as_ref() };
+
+    (!handle.napi_ref.get().is_null() && handle.generation.get() != 0)
+        .then_some(handle.notification_id)
+}
+
+pub(crate) fn set_borrow(
+    owner: usize,
+    dependent: usize,
+    owner_handle: Handle,
+    dependent_handle: Handle,
+    clear: Handle,
+) {
+    let id = next_identity(&NEXT_BORROW);
+    WRAPPER_BORROWS.with_borrow_mut(|borrows| {
+        borrows.insert(
+            owner,
+            WrapperBorrow {
+                id,
+                owner,
+                dependent,
+                owner_handle,
+                dependent_handle,
+                clear,
+            },
+        );
+    });
+}
+
+pub(crate) fn clear_borrow(owner: usize) {
+    WRAPPER_BORROWS.with_borrow_mut(|borrows| {
+        borrows.remove(&owner);
+    });
+}
+
+pub(crate) fn retire_borrows() {
+    WRAPPER_BORROWS.with_borrow_mut(HashMap::clear);
+}
+
+fn borrow_ids(identity: usize) -> Vec<(usize, usize)> {
+    WRAPPER_BORROWS.with_borrow(|borrows| {
+        borrows
+            .iter()
+            .filter_map(|(&owner, borrow)| {
+                (owner == identity || borrow.dependent == identity).then_some((owner, borrow.id))
+            })
+            .collect()
+    })
+}
+
+fn take_borrow(owner: usize, id: usize) -> Option<WrapperBorrow> {
+    WRAPPER_BORROWS.with_borrow_mut(|borrows| {
+        if borrows.get(&owner)?.id != id {
+            return None;
+        }
+
+        borrows.remove(&owner)
+    })
+}
+
+fn release_borrows(identity: usize) -> bool {
+    for (owner, id) in borrow_ids(identity) {
+        let Some(borrow) = take_borrow(owner, id) else {
+            continue;
+        };
+        let mut succeeded = false;
+        if node_env::try_env().is_some() {
+            node_env::run_dispatch_scope(|| {
+                let env = node_env::env();
+                match borrow.clear(&env) {
+                    Ok(()) => succeeded = true,
+                    Err(error) => CallbackErrorScope::deliver(env, error),
+                }
+            });
+        }
+        if !succeeded {
+            WRAPPER_BORROWS.with_borrow_mut(|borrows| {
+                borrows.entry(borrow.owner).or_insert(borrow);
+            });
+            return false;
+        }
+    }
+
+    true
 }
 
 fn apply_wrapper_level(handle: &WrapperHandle, napi_ref: sys::napi_ref, strong: bool) {
@@ -214,6 +348,12 @@ pub unsafe fn schedule_cleanup(
         let Some(handle) = handle else {
             return;
         };
+        if handle.generation.get() != generation {
+            return;
+        }
+        if !release_borrows(handle.notification_id) {
+            return;
+        }
         if handle.generation.get() != generation {
             return;
         }

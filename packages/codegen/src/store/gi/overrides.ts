@@ -9,6 +9,7 @@ type Override = {
 const OVERRIDES: Record<string, Override[]> = {
     adw: [
         { module: "application", exports: ["Application"], needsBootstrap: true },
+        { module: "sidebar", exports: "*", needsBootstrap: true },
         { module: "combo-row", exports: "*", needsBootstrap: true },
     ],
     gio: [
@@ -45,6 +46,7 @@ const OVERRIDES: Record<string, Override[]> = {
         { module: "application", exports: ["Application"], needsBootstrap: true },
         { module: "widget-class", exports: ["WidgetClass"], needsBootstrap: true },
         { module: "text-view", exports: "*", needsBootstrap: true },
+        { module: "window", exports: [], needsBootstrap: true },
     ],
 };
 
