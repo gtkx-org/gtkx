@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwSpinRow } from "@gtkx/jsx/adw";
 import {
     GtkAdjustment,
     GtkBox,
@@ -176,6 +177,18 @@ describe("ByRole", () => {
 
         expect(await findByRole(container, Gtk.AccessibleRole.GROUP, { name: "A group" })).toBeEmptyWidget();
         expect(await findByRole(container, Gtk.AccessibleRole.LABEL, { name: "visible" })).toHaveTextContent("visible");
+    });
+
+    it("names a widget from the content of an unnamed widget labelling it, as an Adwaita spin row does", async () => {
+        const { container } = await render(
+            <VBox>
+                <AdwSpinRow title="Amount" adjustment={<GtkAdjustment upper={100} stepIncrement={1} />} />
+            </VBox>,
+        );
+
+        expect(await findByRole(container, Gtk.AccessibleRole.SPIN_BUTTON, { name: "Amount" })).toHaveAccessibleName(
+            "Amount",
+        );
     });
 
     it("skips accessibility-hidden widgets by default and never-mapped ones either way", async () => {

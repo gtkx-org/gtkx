@@ -454,8 +454,11 @@ const isSelfLabelling = (widget: Gtk.Widget, targets: Gtk.Widget[]): boolean => 
     return targets.every((target) => own.has(target));
 };
 
+const referencedText = (target: Gtk.Widget): string =>
+    getWidgetAccessibleName(target) || collectLabels(target).join(" ");
+
 const labelledByText = (targets: Gtk.Widget[]): string | null => {
-    const texts = collectAccessibleNames(targets);
+    const texts = targets.map((target) => referencedText(target)).filter((text) => text !== "");
 
     return texts.length > 0 ? texts.join(" ") : null;
 };
