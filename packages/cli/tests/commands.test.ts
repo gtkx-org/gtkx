@@ -150,12 +150,12 @@ describe("CLI commands", () => {
         project.write("src/a.data", "first");
         project.write("src/b.data", "second");
         project.write("src/probe.svg", icon("blue"));
-        for (const name of ["a", "b"]) {
-            project.write(
-                `src/data-${name}.ts`,
-                `export { default as path } from "./${name}.data?resource=/org/gtkx/probe/value";`,
-            );
-        }
+        project.write(
+            "src/data-a.ts",
+            `import value from "./a.data?resource=/org/gtkx/probe/value";
+            export { value as path };`,
+        );
+        project.write("src/data-b.ts", `export { default as path } from "./b.data?resource=/org/gtkx/probe/value";`);
         const component = (label: string, data: string) => `
             import { Display } from "@gtkx/gi/gdk";
             import { resourcesLookupData } from "@gtkx/gi/gio";
