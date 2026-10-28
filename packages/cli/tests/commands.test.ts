@@ -10,6 +10,7 @@ import { setTimeout } from "node:timers/promises";
 import { promisify } from "node:util";
 import { stdout, stderr } from "test-console";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createVitest } from "vitest/node";
 import { createCommand } from "../dist/command.js";
 import { createProject } from "./project.js";
 
@@ -139,6 +140,72 @@ describe("CLI commands", () => {
         } finally {
             stopDisplay();
         }
+    });
+
+    it("runs workers that import asset URLs in development, tests and production", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "worker.json");
+        const sourcePath = join(project.root, "data/notes.txt");
+        project.write("data/notes.txt", "worker asset");
+        project.write(
+            "src/workers/read.ts",
+            `import { readFileSync } from "node:fs";
+            import { parentPort } from "node:worker_threads";
+            import notesPath from "../../data/notes.txt?url";
+            parentPort?.postMessage({ path: notesPath, text: readFileSync(notesPath, "utf8") });`,
+        );
+        project.write(
+            "src/index.ts",
+            `import { writeFileSync } from "node:fs";
+            import { Worker } from "node:worker_threads";
+            const worker = new Worker(new URL("./workers/read.ts", import.meta.url));
+            worker.once("message", (result) => writeFileSync(${JSON.stringify(readyPath)}, JSON.stringify(result)));
+            worker.once("error", (error) => writeFileSync(${JSON.stringify(readyPath)}, JSON.stringify({ error: String(error) })));`,
+        );
+        project.write(
+            "tests/worker.test.ts",
+            `import { fileURLToPath } from "node:url";
+            import { Worker } from "node:worker_threads";
+            import { expect, test } from "vitest";
+            test("reads an asset URL in a worker", async () => {
+                const worker = new Worker(new URL("../src/workers/read.ts", import.meta.url));
+                const result = await new Promise((resolve, reject) => {
+                    worker.once("message", resolve);
+                    worker.once("error", reject);
+                });
+                expect(result).toEqual({
+                    path: fileURLToPath(new URL("../data/notes.txt", import.meta.url)),
+                    text: "worker asset",
+                });
+            });`,
+        );
+        project.write(
+            "vitest.config.mjs",
+            `import gtkx from "@gtkx/cli/vitest-plugin";
+            export default { plugins: [gtkx()], test: { include: ["tests/*.test.ts"] } };`,
+        );
+        const result = () => JSON.parse(readFileSync(readyPath, "utf8")) as Record<string, string>;
+
+        await withSession("dev", project.root, readyPath, async () => {
+            await expect.poll(result).toEqual({ path: sourcePath, text: "worker asset" });
+        });
+        const runner = await createVitest({
+            root: project.root,
+            config: join(project.root, "vitest.config.mjs"),
+            watch: false,
+            reporters: [],
+        });
+        try {
+            const results = await runner.start();
+            expect(results.testModules.map((module) => module.state())).toEqual(["passed"]);
+        } finally {
+            await runner.close();
+        }
+        rmSync(readyPath);
+        await invoke(["build", "--cwd", project.root]);
+        await promisify(execFile)(process.execPath, [join(project.root, "dist/bundle.mjs")], { timeout: 30_000 });
+        expect(result().text).toBe("worker asset");
+        expect(result().path).toMatch(new RegExp(`^${RegExp.escape(join(project.root, "dist"))}/`));
     });
 
     it("refreshes component state and restarts for import and bundled asset changes", async () => {

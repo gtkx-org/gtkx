@@ -4,6 +4,7 @@ import { type ChildProcess, fork as nodeFork } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import { basename, dirname, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { WORKER_PRELOAD_ARGS } from "../internal/worker-preload-args.js";
 import { DEV_RUNNER_READY, type DevRunnerBootstrap } from "./bootstrap.js";
 
 type DevWatch = {
@@ -51,7 +52,12 @@ const FORCE_KILL_TIMEOUT_MS = 5000;
 const CONFIG_DEBOUNCE_MS = 150;
 const RESTART_EXIT_CODE = 75;
 const forkRunner = (modulePath: string, args: string[], cwd: string): ChildProcess =>
-    nodeFork(modulePath, args, { cwd, stdio: "inherit", detached: true });
+    nodeFork(modulePath, args, {
+        cwd,
+        stdio: "inherit",
+        detached: true,
+        execArgv: [...process.execArgv, ...WORKER_PRELOAD_ARGS],
+    });
 
 const captureShutdownExit = (state: SupervisorState, code: number | null, signal: NodeJS.Signals | null): void => {
     if (code !== null) {

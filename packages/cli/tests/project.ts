@@ -30,7 +30,7 @@ const createProject = (config: Record<string, unknown> = {}) => {
     ]) {
         symlinkSync(join(workspace, "packages", name), join(root, "node_modules/@gtkx", name), "dir");
     }
-    for (const name of ["@types", "react", "csstype", "tsx"]) {
+    for (const name of ["@types", "react", "csstype", "tsx", "vitest"]) {
         symlinkSync(join(workspace, "node_modules", name), join(root, "node_modules", name), "dir");
     }
     write(
