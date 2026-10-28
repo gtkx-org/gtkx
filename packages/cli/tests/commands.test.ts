@@ -257,6 +257,83 @@ describe("CLI commands", () => {
         }
     });
 
+    it("refreshes components through the non-component modules they import", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "probe.json");
+        const hook = (label: string, hasExtraState = false) => `
+            import { randomUUID } from "node:crypto";
+            import { useState } from "react";
+            export const useProbe = () => {
+                const [token] = useState(() => randomUUID());
+                ${hasExtraState ? "useState(0);" : ""}
+                return { token, label: ${JSON.stringify(label)} };
+            };
+        `;
+        project.write("src/use-probe.ts", hook("first"));
+        project.write("src/suffix.ts", 'export const suffix = "x";');
+        project.write("src/format.ts", 'import { suffix } from "./suffix.ts"; export const format = () => suffix;');
+        project.write("src/title.ts", 'export const title = "a";');
+        project.write(
+            "src/probe.tsx",
+            `import { GtkLabel } from "@gtkx/jsx/gtk";
+            import { writeFileSync } from "node:fs";
+            import { useEffect } from "react";
+            import { format } from "./format.ts";
+            import { title } from "./title.ts";
+            import { useProbe } from "./use-probe.ts";
+            export function Probe() {
+                const { token, label } = useProbe();
+                const suffix = format();
+                useEffect(() => {
+                    writeFileSync(${JSON.stringify(readyPath)}, JSON.stringify({ pid: process.pid, token, label, suffix, title }));
+                }, [token, label, suffix]);
+                return <GtkLabel label={label + suffix} />;
+            }`,
+        );
+        project.write(
+            "src/index.tsx",
+            `import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+            import { createRoot } from "@gtkx/react";
+            import { Probe } from "./probe.tsx";
+            import { title } from "./title.ts";
+            createRoot().render(
+                <AdwApplication applicationId="org.gtkx.example">
+                    <AdwApplicationWindow title={title}><Probe /></AdwApplicationWindow>
+                </AdwApplication>
+            );`,
+        );
+        const observation = () =>
+            JSON.parse(readFileSync(readyPath, "utf8")) as {
+                pid: number;
+                token: string;
+                label: string;
+                suffix: string;
+                title: string;
+            };
+        await withSession("dev", project.root, readyPath, async () => {
+            const initial = observation();
+            expect(initial).toMatchObject({ label: "first", suffix: "x", title: "a" });
+
+            project.write("src/use-probe.ts", hook("second"));
+            await expect.poll(() => observation().label, { timeout: 30_000 }).toBe("second");
+            expect(observation()).toMatchObject({ pid: initial.pid, token: initial.token });
+
+            project.write("src/suffix.ts", 'export const suffix = "y";');
+            await expect.poll(() => observation().suffix, { timeout: 30_000 }).toBe("y");
+            expect(observation()).toMatchObject({ pid: initial.pid, token: initial.token, label: "second" });
+
+            project.write("src/use-probe.ts", hook("third", true));
+            await expect.poll(() => observation().label, { timeout: 30_000 }).toBe("third");
+            const remounted = observation();
+            expect(remounted.pid).toBe(initial.pid);
+            expect(remounted.token).not.toBe(initial.token);
+
+            project.write("src/title.ts", 'export const title = "b";');
+            await expect.poll(() => observation().title, { timeout: 30_000 }).toBe("b");
+            expect(observation().pid).not.toBe(initial.pid);
+        });
+    });
+
     it("generates upstream bindings and documentation through their command arguments", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
         expect(await invoke(["codegen", "--cwd", project.root])).toContain("codegen");

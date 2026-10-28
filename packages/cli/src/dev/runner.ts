@@ -7,6 +7,7 @@ import { projectSchemaFiles, SCHEMA_SUFFIX, stageAndCompileProjectSchemas } from
 import { createStorybookSession, type StorybookSession } from "../storybook/session.js";
 import { isUrlSpecifier } from "../vite-plugins/asset-specifier.js";
 import { injectedCssId } from "../vite-plugins/css.js";
+import { REFRESH_REG } from "../vite-plugins/fast-refresh/refresh-filter.js";
 import { REL_SEPARATOR, toVirtualId } from "../vite-plugins/resource-shared.js";
 import { stripQuery } from "../vite-plugins/strip-query.js";
 import { createChangeQueue, type WatchedChange } from "./change-queue.js";
@@ -63,19 +64,27 @@ type DevSession = {
     failure: FailureTracker;
     pendingSaves: Map<string, string>;
     imports: Map<string, Set<string>>;
+    registrations: Set<string>;
     schemaFiles: Set<string>;
     hasPendingSchemaChange: boolean;
     storybook: StorybookSession | undefined;
 };
 
-type SettledLoad = {
-    loadedExports: Record<string, unknown>;
-    isSettled: boolean;
+type RefreshPlan = {
+    invalidated: Set<ModuleNode>;
+    boundaries: Set<ModuleNode>;
 };
 
-type SettleAttempt = {
-    loadedExports: Record<string, unknown> | null;
-    module: ModuleNode;
+type RefreshWalk = {
+    session: DevSession;
+    rejected: ReadonlySet<ModuleNode>;
+    visited: Set<ModuleNode>;
+    plan: RefreshPlan;
+};
+
+type PlanLoad = {
+    loaded: Map<ModuleNode, Record<string, unknown>>;
+    isSettled: boolean;
 };
 
 const APPLICATION_MOUNT_TIMEOUT_MS = 10_000;
@@ -86,6 +95,7 @@ const SKIP_REASON = `did not settle in ${String(LOAD_ATTEMPT_LIMIT)} attempts; s
 const DROPPED_REFRESH = "Fast Refresh dropped";
 const SAVE_ACTION = "File changed";
 const RETRY_ACTION = "Retrying pending save";
+const NONE_REJECTED: ReadonlySet<ModuleNode> = new Set();
 
 const announceFailure = (server: ViteDevServer, cause: unknown): void => {
     if (cause instanceof Error) {
@@ -111,21 +121,66 @@ const requestRestart = async (session: DevSession): Promise<never> => {
     return session.deps.exit(RESTART_EXIT_CODE);
 };
 
-const requiresRestart = (session: DevSession, module: ModuleNode): boolean => {
-    if (session.failure.isDown()) {
-        return true;
-    }
+const registersComponents = (
+    session: DevSession,
+    module: ModuleNode,
+    rejected: ReadonlySet<ModuleNode>,
+): boolean => module.id !== null && session.registrations.has(module.id) && !rejected.has(module);
 
-    const loadedExports = module.ssrModule;
-
-    if (!loadedExports) {
+const reachesBoundaries = (walk: RefreshWalk, module: ModuleNode): boolean => {
+    if (module.importers.size === 0) {
         return false;
     }
 
-    return !session.deps.isRefreshBoundary(loadedExports);
+    for (const importer of module.importers) {
+        if (walk.visited.has(importer)) {
+            continue;
+        }
+
+        walk.visited.add(importer);
+        walk.plan.invalidated.add(importer);
+
+        if (registersComponents(walk.session, importer, walk.rejected)) {
+            walk.plan.boundaries.add(importer);
+        } else if (!reachesBoundaries(walk, importer)) {
+            return false;
+        }
+    }
+
+    return true;
 };
 
-const invalidateChangedModule = (session: DevSession, module: ModuleNode): void => {
+const planPropagation = (
+    session: DevSession,
+    sources: readonly ModuleNode[],
+    rejected: ReadonlySet<ModuleNode>,
+): RefreshPlan | null => {
+    const walk: RefreshWalk = {
+        session,
+        rejected,
+        visited: new Set(sources),
+        plan: { invalidated: new Set(), boundaries: new Set() },
+    };
+
+    if (!sources.every((source) => reachesBoundaries(walk, source)) || walk.plan.boundaries.size === 0) {
+        return null;
+    }
+
+    return walk.plan;
+};
+
+const planChange = (session: DevSession, module: ModuleNode): RefreshPlan | null => {
+    if (registersComponents(session, module, NONE_REJECTED)) {
+        return { invalidated: new Set([module]), boundaries: new Set([module]) };
+    }
+
+    const plan = planPropagation(session, [module], NONE_REJECTED);
+    plan?.invalidated.add(module);
+
+    return plan;
+};
+
+const invalidateModuleAndImporters = (session: DevSession, module: ModuleNode): void => {
     session.server.moduleGraph.invalidateModule(module);
 
     for (const importer of module.importers) {
@@ -133,58 +188,49 @@ const invalidateChangedModule = (session: DevSession, module: ModuleNode): void 
     }
 };
 
-const isEvaluationCurrent = (
-    session: DevSession,
-    changedPath: string,
-    loadedExports: Record<string, unknown>,
-): boolean => {
+const isEvaluationCurrent = (session: DevSession, changedPath: string): boolean => {
     const evaluated = session.server.moduleGraph.getModuleById(changedPath);
 
     if (!evaluated?.ssrTransformResult) {
         return false;
     }
 
-    return evaluated.ssrModule === loadedExports;
+    return evaluated.ssrModule !== null;
 };
 
-const loadInvalidatedModule = (session: DevSession, changedPath: string, module: ModuleNode): Promise<SettledLoad> =>
+const loadPlan = (session: DevSession, changedPath: string, plan: RefreshPlan): Promise<PlanLoad> =>
     withExclusiveLoad(session.server, async () => {
         const revision = await session.deps.readFileRevision(changedPath);
-        invalidateChangedModule(session, module);
-        const loadedExports = await session.server.ssrLoadModule(changedPath);
+
+        for (const module of plan.invalidated) {
+            invalidateModuleAndImporters(session, module);
+        }
+
+        const loaded: Map<ModuleNode, Record<string, unknown>> = new Map();
+
+        for (const boundary of plan.boundaries) {
+            loaded.set(boundary, await session.server.ssrLoadModule(boundary.url));
+        }
+
         const settledRevision = await session.deps.readFileRevision(changedPath);
 
         return {
-            loadedExports,
-            isSettled: settledRevision === revision && isEvaluationCurrent(session, changedPath, loadedExports),
+            loaded,
+            isSettled: settledRevision === revision && isEvaluationCurrent(session, changedPath),
         };
     });
 
-const settleAttempt = async (session: DevSession, changedPath: string, module: ModuleNode): Promise<SettleAttempt> => {
-    const { loadedExports, isSettled } = await loadInvalidatedModule(session, changedPath, module);
-
-    if (isSettled) {
-        return { loadedExports, module };
-    }
-
-    return { loadedExports: null, module: session.server.moduleGraph.getModuleById(changedPath) ?? module };
-};
-
-const loadSettledExports = async (
+const loadSettledPlan = async (
     session: DevSession,
     changedPath: string,
-    changedModule: ModuleNode,
-): Promise<Record<string, unknown> | null> => {
-    let module = changedModule;
-
+    plan: RefreshPlan,
+): Promise<Map<ModuleNode, Record<string, unknown>> | null> => {
     for (let round = 0; round < LOAD_ATTEMPT_LIMIT && !session.controller.isShuttingDown(); round++) {
-        const attempt = await settleAttempt(session, changedPath, module);
+        const { loaded, isSettled } = await loadPlan(session, changedPath, plan);
 
-        if (attempt.loadedExports) {
-            return attempt.loadedExports;
+        if (isSettled) {
+            return loaded;
         }
-
-        module = attempt.module;
     }
 
     return null;
@@ -205,9 +251,9 @@ const droppedExportName = (previous: Record<string, unknown>, current: Record<st
 const unpatchedExportReason = (
     session: DevSession,
     previous: Record<string, unknown> | null,
-    current: Record<string, unknown>,
+    current: Record<string, unknown> | undefined,
 ): string | null => {
-    if (!previous) {
+    if (!previous || !current) {
         return null;
     }
 
@@ -226,32 +272,10 @@ const unpatchedExportReason = (
     return `renamed the component it exports as ${stale}, which the window is still rendering`;
 };
 
-const refreshChangedModule = async (
-    session: DevSession,
-    changedPath: string,
-    changedModule: ModuleNode,
-    previous: Record<string, unknown> | null,
-): Promise<void> => {
-    const loadedExports = await loadSettledExports(session, changedPath, changedModule);
+const rejectedBoundaries = (session: DevSession, loaded: Map<ModuleNode, Record<string, unknown>>): ModuleNode[] =>
+    [...loaded].filter(([, moduleExports]) => !session.deps.isRefreshBoundary(moduleExports)).map(([module]) => module);
 
-    if (session.controller.isShuttingDown()) {
-        return;
-    }
-
-    if (!loadedExports) {
-        warn(`Fast Refresh skipped: ${changedPath} ${SKIP_REASON}`);
-
-        return;
-    }
-
-    if (!session.deps.isRefreshBoundary(loadedExports)) {
-        await requestRestart(session);
-
-        return;
-    }
-
-    const unpatched = unpatchedExportReason(session, previous, loadedExports);
-
+const completeRefresh = async (session: DevSession, changedPath: string, unpatched: string | null): Promise<void> => {
     if (unpatched !== null) {
         warn(`${DROPPED_REFRESH}: ${changedPath} ${unpatched}`);
         await requestRestart(session);
@@ -265,6 +289,50 @@ const refreshChangedModule = async (
     session.deps.log("Fast Refresh complete");
 };
 
+const refreshChangedModule = async (
+    session: DevSession,
+    changedPath: string,
+    changedModule: ModuleNode,
+    previous: Record<string, unknown> | null,
+): Promise<void> => {
+    const rejected: Set<ModuleNode> = new Set();
+    let plan = planChange(session, changedModule);
+
+    while (plan !== null) {
+        const loaded = await loadSettledPlan(session, changedPath, plan);
+
+        if (session.controller.isShuttingDown()) {
+            return;
+        }
+
+        if (!loaded) {
+            warn(`Fast Refresh skipped: ${changedPath} ${SKIP_REASON}`);
+
+            return;
+        }
+
+        const rejectedNow = rejectedBoundaries(session, loaded);
+
+        if (rejectedNow.length === 0) {
+            await completeRefresh(
+                session,
+                changedPath,
+                unpatchedExportReason(session, previous, loaded.get(changedModule)),
+            );
+
+            return;
+        }
+
+        for (const module of rejectedNow) {
+            rejected.add(module);
+        }
+
+        plan = planPropagation(session, rejectedNow, rejected);
+    }
+
+    await requestRestart(session);
+};
+
 const applyModuleChange = async (session: DevSession, changedPath: string, action: string): Promise<void> => {
     const module = session.server.moduleGraph.getModuleById(changedPath);
 
@@ -274,7 +342,7 @@ const applyModuleChange = async (session: DevSession, changedPath: string, actio
 
     session.deps.log(`${action}: ${changedPath}`);
 
-    if (requiresRestart(session, module)) {
+    if (session.failure.isDown()) {
         await requestRestart(session);
 
         return;
@@ -741,7 +809,23 @@ const trackModuleImports = (imports: Map<string, Set<string>>): Plugin => ({
     },
 });
 
-const createSession = (server: ViteDevServer, deps: DevRunnerDeps, imports: Map<string, Set<string>>): DevSession => {
+const trackRefreshRegistrations = (registrations: Set<string>): Plugin => ({
+    name: "gtkx:dev-refresh-registrations",
+    transform(code, id) {
+        if (code.includes(REFRESH_REG)) {
+            registrations.add(id);
+        } else {
+            registrations.delete(id);
+        }
+    },
+});
+
+const createSession = (
+    server: ViteDevServer,
+    deps: DevRunnerDeps,
+    imports: Map<string, Set<string>>,
+    registrations: Set<string>,
+): DevSession => {
     const refreshTracker = createRefreshTracker(deps.performRefresh);
 
     return {
@@ -754,6 +838,7 @@ const createSession = (server: ViteDevServer, deps: DevRunnerDeps, imports: Map<
         }, refreshTracker.isRefreshing),
         pendingSaves: new Map(),
         imports,
+        registrations,
         schemaFiles: new Set(projectSchemaFiles(server.config.root).files),
         hasPendingSchemaChange: false,
         storybook: undefined,
@@ -763,13 +848,15 @@ const createSession = (server: ViteDevServer, deps: DevRunnerDeps, imports: Map<
 const createDevRunner = (deps: DevRunnerDeps, options: DevRunnerOptions = {}): DevRunner => ({
     async run(entryPath: string): Promise<void> {
         const imports = new Map<string, Set<string>>();
+        const registrations = new Set<string>();
         const server = await deps.createServer(
             createDevServerConfig(process.cwd(), deps.deployOutDir, [
                 trackModuleImports(imports),
                 ...deps.plugins(entryPath),
+                trackRefreshRegistrations(registrations),
             ]),
         );
-        const session = createSession(server, deps, imports);
+        const session = createSession(server, deps, imports, registrations);
         deps.installShutdownHandlers(onShutdownSignal(session));
 
         deps.watchUncaughtErrors((cause) => {

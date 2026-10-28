@@ -52,7 +52,7 @@ npm run dev
 
 This opens an Adwaita window with a counter. The next chapter replaces it with the Tasks application shell.
 
-Leave `npm run dev` running as you work. Fast Refresh applies component edits to the open window; changes that need a restart relaunch the app. Saving `gtkx.config.ts`, or a local file it imports, regenerates bindings and relaunches it too.
+Leave `npm run dev` running as you work. Fast Refresh applies edits to components, and to the hooks and styles they import, to the open window; changes that need a restart relaunch the app. Saving `gtkx.config.ts`, or a local file it imports, regenerates bindings and relaunches it too.
 
 ## How this tutorial works
 
