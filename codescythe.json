@@ -48,6 +48,7 @@
         "packages/cli/src/internal/compile-cache.ts",
         "packages/cli/src/dev/runner-main.ts",
         "packages/cli/src/refresh-runtime.ts",
+        "packages/cli/src/worker-preload.ts",
         "packages/create-gtkx/src/cli.ts",
         "packages/mcp/src/server.ts",
         "packages/vitest/src/worker-preload.ts",
