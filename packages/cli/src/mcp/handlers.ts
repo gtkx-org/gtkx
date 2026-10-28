@@ -15,7 +15,6 @@ import { loadTestingModule, type TestingModule } from "./testing-loader.js";
 import { readWidgetProperties } from "./widget-properties.js";
 
 type HandlerContext = {
-    app: Gtk.Application;
     registry: WidgetRegistry;
 };
 
@@ -25,7 +24,8 @@ type WidgetParams = { widgetId?: string | undefined };
 type TargetedHandler<Params> = (ctx: HandlerContext, target: WidgetTarget, params: Params) => Promise<Result>;
 type QueryParams = ServerRequestParams<"widget.query">;
 type QueryBy = QueryParams["by"];
-type QueryRunner = (testing: TestingModule, app: Gtk.Application, params: QueryParams) => Promise<Gtk.Widget[]>;
+type WindowQuery = (root: Gtk.Window) => Gtk.Widget[];
+type QueryRunner = (testing: TestingModule, params: QueryParams) => WindowQuery;
 
 const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
     "app.getWindows": validated(ServerRequestParamsSchemas["app.getWindows"], ({ registry }) =>
@@ -36,17 +36,16 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
             })),
         }),
     ),
-    "widget.getTree": validated(ServerRequestParamsSchemas["widget.getTree"], async ({ app, registry }, params) => {
+    "widget.getTree": validated(ServerRequestParamsSchemas["widget.getTree"], async ({ registry }, params) => {
         const testing = await loadTestingModule();
-        const container = params.rootId === undefined ? app : requireWidget(registry, params.rootId);
-
-        return {
-            tree: testing.prettyWidget(container, {
-                getId: (w) => registry.getOrCreateId(w),
-                shouldHighlight: false,
-                ...(params.maxDepth !== undefined && { maxDepth: params.maxDepth }),
-            }),
+        const roots = params.rootId === undefined ? registry.toplevels() : [requireWidget(registry, params.rootId)];
+        const options = {
+            getId: (w: Gtk.Widget) => registry.getOrCreateId(w),
+            shouldHighlight: false,
+            ...(params.maxDepth !== undefined && { maxDepth: params.maxDepth }),
         };
+
+        return { tree: roots.map((root) => testing.prettyWidget(root, options)).join("\n") };
     }),
     "widget.query": validated(ServerRequestParamsSchemas["widget.query"], handleQuery),
     "widget.getProps": targeted(
@@ -184,15 +183,7 @@ const resolveRole = (value: string | number): Gtk.AccessibleRole | undefined => 
     return typeof resolved === "number" ? resolved : undefined;
 };
 
-const matchesOrEmpty = async (find: () => Promise<Gtk.Widget[]>): Promise<Gtk.Widget[]> => {
-    try {
-        return await find();
-    } catch {
-        return [];
-    }
-};
-
-function runRoleQuery(testing: TestingModule, app: Gtk.Application, params: QueryParams): Promise<Gtk.Widget[]> {
+function runRoleQuery(testing: TestingModule, params: QueryParams): WindowQuery {
     const roleValue = resolveRole(params.value);
 
     if (roleValue === undefined) {
@@ -202,25 +193,26 @@ function runRoleQuery(testing: TestingModule, app: Gtk.Application, params: Quer
         );
     }
 
-    return matchesOrEmpty(() => testing.findAllByRole(app, roleValue, params.options));
+    return (root) => testing.queryAllByRole(root, roleValue, params.options);
 }
 
-function runTextQuery(testing: TestingModule, app: Gtk.Application, params: QueryParams): Promise<Gtk.Widget[]> {
-    return matchesOrEmpty(() => testing.findAllByText(app, String(params.value), params.options));
+function runTextQuery(testing: TestingModule, params: QueryParams): WindowQuery {
+    return (root) => testing.queryAllByText(root, String(params.value), params.options);
 }
 
-function runLabelTextQuery(testing: TestingModule, app: Gtk.Application, params: QueryParams): Promise<Gtk.Widget[]> {
-    return matchesOrEmpty(() => testing.findAllByLabelText(app, String(params.value), params.options));
+function runLabelTextQuery(testing: TestingModule, params: QueryParams): WindowQuery {
+    return (root) => testing.queryAllByLabelText(root, String(params.value), params.options);
 }
 
-async function runNameQuery(testing: TestingModule, app: Gtk.Application, params: QueryParams): Promise<Gtk.Widget[]> {
-    const matches = await Promise.all([
-        matchesOrEmpty(() => testing.findAllByName(app, String(params.value), params.options)),
-        runLabelTextQuery(testing, app, params),
-        runTextQuery(testing, app, params),
-    ]);
+function runNameQuery(testing: TestingModule, params: QueryParams): WindowQuery {
+    const byLabel = runLabelTextQuery(testing, params);
+    const byText = runTextQuery(testing, params);
 
-    return [...new Set(matches.flat())];
+    return (root) => [
+        ...testing.queryAllByName(root, String(params.value), params.options),
+        ...byLabel(root),
+        ...byText(root),
+    ];
 }
 
 const emptyQueryHint = (params: QueryParams): string =>
@@ -228,9 +220,19 @@ const emptyQueryHint = (params: QueryParams): string =>
     'Call gtkx_get_widget_tree to see what is mounted; by:"name" is the widest match, and by:"role" accepts ' +
     "options.name to match the accessible name of a known role.";
 
-async function handleQuery({ app, registry }: HandlerContext, params: QueryParams): Promise<Result> {
+async function handleQuery({ registry }: HandlerContext, params: QueryParams): Promise<Result> {
     const testing = await loadTestingModule();
-    const widgets = await QUERY_RUNNERS[params.by](testing, app, params);
+    const query = QUERY_RUNNERS[params.by](testing, params);
+    const matchToplevels = (): Gtk.Widget[] => {
+        const matches = new Set(registry.toplevels().flatMap(query));
+
+        if (matches.size === 0) {
+            throw new Error(emptyQueryHint(params));
+        }
+
+        return [...matches];
+    };
+    const widgets = await testing.waitFor(matchToplevels).catch((): Gtk.Widget[] => []);
     const resolveId = (widget: Gtk.Widget): string => registry.getOrCreateId(widget);
 
     return {

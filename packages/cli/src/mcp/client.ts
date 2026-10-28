@@ -161,7 +161,7 @@ class McpClient {
 
         this.registry.refresh();
 
-        return dispatch(request.method, request.params, { app: defaultApp, registry: this.registry });
+        return dispatch(request.method, request.params, { registry: this.registry });
     }
 
     async connect(): Promise<void> {
