@@ -274,6 +274,15 @@ describe("generated bindings", () => {
         expect(
             diagnostics(directory.path, `${imports} export const button = createElement(GtkButton, { label: 42 });`),
         ).not.toEqual([]);
+        expect(
+            diagnostics(
+                directory.path,
+                `import { createElement } from "react"; import { GtkStack } from "@gtkx/jsx/gtk";
+                export const stack = createElement(GtkStack, {
+                    onNotifyVisibleChild: (child) => child?.getName(),
+                });`,
+            ),
+        ).toEqual([]);
         execFileSync(
             process.execPath,
             [

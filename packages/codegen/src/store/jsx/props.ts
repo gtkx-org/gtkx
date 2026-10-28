@@ -118,11 +118,7 @@ const appendPropertyLines = (state: PropCollectorState, property: GirProperty, j
     if (isObjectProp(state.owner.library, property)) {
         const objectType = renderObjectPropType(state, property, jsName, writeType);
         state.propLines.push(`${doc}${name}: ${objectType}${nullable};`);
-
-        return;
-    }
-
-    if (isConstructableProperty(property)) {
+    } else if (isConstructableProperty(property)) {
         state.propLines.push(`${doc}${name}: ${writeType}${nullable};`);
     }
 
