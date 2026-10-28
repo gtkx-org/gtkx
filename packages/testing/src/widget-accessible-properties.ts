@@ -213,7 +213,7 @@ const tabPanelTitle = (widget: Gtk.Widget): string | null => {
 };
 
 const nameFromAuthor = (widget: Gtk.Widget): string | null =>
-    getWidgetLabelledByText(widget) ??
+    getWidgetLabelledByName(widget) ??
     readAccessibleString(widget, Gtk.AccessibleProperty.LABEL) ??
     readFirstText(widget, ["getTitle"]);
 
@@ -454,13 +454,17 @@ const isSelfLabelling = (widget: Gtk.Widget, targets: Gtk.Widget[]): boolean => 
     return targets.every((target) => own.has(target));
 };
 
-const referencedText = (target: Gtk.Widget): string =>
+const joinTexts = (texts: string[]): string | null => (texts.length > 0 ? texts.join(" ") : null);
+
+const labelledByText = (targets: Gtk.Widget[]): string | null => joinTexts(collectAccessibleNames(targets));
+
+const referencedName = (target: Gtk.Widget): string =>
     getWidgetAccessibleName(target) || collectLabels(target).join(" ");
 
-const labelledByText = (targets: Gtk.Widget[]): string | null => {
-    const texts = targets.map((target) => referencedText(target)).filter((text) => text !== "");
+const getWidgetLabelledByName = (widget: Gtk.Widget): string | null => {
+    const targets = readAccessibleWidgets(widget, Gtk.AccessibleRelation.LABELLED_BY);
 
-    return texts.length > 0 ? texts.join(" ") : null;
+    return targets === null ? null : joinTexts(targets.map(referencedName).filter((text) => text !== ""));
 };
 
 const getWidgetLabelledByText = (widget: Gtk.Widget): string | null => {
