@@ -2,7 +2,7 @@ import { isErrorLike } from "./error-like.ts";
 import { errorMessage } from "./error-message.ts";
 
 function normalizeError(error: unknown): Error {
-    if (Error.isError(error)) {
+    if (Error.isError(error) || error instanceof Error) {
         return error;
     }
 
