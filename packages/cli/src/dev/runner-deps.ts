@@ -17,6 +17,7 @@ import {
 } from "../mcp/testing-loader.js";
 import { isRefreshBoundary, performRefresh, staleExportName } from "../refresh-runtime.js";
 import { gtkxFastRefresh } from "../vite-plugins/fast-refresh/swc-refresh.js";
+import { gtkxGlobalStyles } from "../vite-plugins/global-styles.js";
 import { gtkxVitePlugins } from "../vite-plugins/index.js";
 import { gtkxReactDomPrebundle } from "../vite-plugins/react-dom-prebundle.js";
 import { type CatalogWrites, createCatalogWrites } from "./catalog-writes.js";
@@ -85,6 +86,7 @@ const readFileRevision = (path: string): Promise<string> => readFile(path, "utf8
 const devPlugins =
     (configFile: string, catalogWrites: CatalogWrites, options: DevRunnerDepsOptions): DevRunnerDeps["plugins"] =>
     (entryPath) => [
+        gtkxGlobalStyles(),
         ...gtkxVitePlugins({
             mode: DEV_MODE,
             entryPath,

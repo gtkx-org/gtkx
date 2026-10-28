@@ -92,12 +92,13 @@ describe("CLI commands", () => {
         expect(JSON.parse(result.stdout)).toEqual({ matched: true, matches: ["hello", "hello"], replaced: "[hello]" });
     });
 
-    it("applies imported CSS in development and production, including stylesheet edits", async () => {
+    it("applies imported CSS in development and production", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "style.txt");
-        const stylesheet = (width: number) =>
-            `@define-color cli_css_probe rgb(3, 6, 9); .cli-css-probe { color: @cli_css_probe; min-width: ${width}px; }`;
-        project.write("src/theme.css", stylesheet(231));
+        project.write(
+            "src/theme.css",
+            "@define-color cli_css_probe rgb(3, 6, 9); .cli-css-probe { color: @cli_css_probe; min-width: 231px; }",
+        );
         project.write(
             "src/index.tsx",
             `import "./theme.css";
@@ -122,16 +123,14 @@ describe("CLI commands", () => {
         );
         const width = () => Number(readFileSync(readyPath, "utf8"));
         await withSession("dev", project.root, readyPath, async () => {
-            expect(width()).toBe(231);
-            project.write("src/theme.css", stylesheet(257));
-            await expect.poll(width, { timeout: 30_000 }).toBe(257);
+            await expect.poll(width, { timeout: 30_000 }).toBe(231);
         });
         rmSync(readyPath);
         await invoke(["build", "--cwd", project.root]);
         const stopDisplay = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
         try {
             await promisify(execFile)(process.execPath, [join(project.root, "dist/bundle.mjs")], { timeout: 30_000 });
-            expect(width()).toBe(257);
+            expect(width()).toBe(231);
             expect(
                 readdirSync(join(project.root, "dist"), { recursive: true }).some((file) =>
                     String(file).endsWith(".css"),
@@ -401,7 +400,7 @@ describe("CLI commands", () => {
         });
     });
 
-    it("restarts instead of keeping stale global styles a refreshed module no longer injects", async () => {
+    it("replaces edited global styles and stylesheets in place, keeping state", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "probe.json");
         const theme = (version: number, globalRule: string) => `
@@ -411,22 +410,35 @@ describe("CLI commands", () => {
             export const version = ${String(version)};
         `;
         project.write("src/theme.ts", theme(1, ".cli-global-probe { min-width: 231px; }"));
+        project.write("src/sheet.css", ".cli-sheet-probe { min-width: 237px; }");
         project.write(
             "src/probe.tsx",
             `import * as Gtk from "@gtkx/gi/gtk";
-            import { GtkLabel } from "@gtkx/jsx/gtk";
-            import { writeFileSync } from "node:fs";
-            import { useEffect, useRef } from "react";
+            import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
+            import { randomUUID } from "node:crypto";
+            import { renameSync, writeFileSync } from "node:fs";
+            import { useEffect, useRef, useState } from "react";
+            import "./sheet.css";
             import { accent, version } from "./theme.ts";
+            const width = (label: Gtk.Label | null) => label?.measure(Gtk.Orientation.HORIZONTAL, -1)[0] ?? 0;
             export function Probe() {
-                const label = useRef<Gtk.Label | null>(null);
+                const [token] = useState(() => randomUUID());
+                const global = useRef<Gtk.Label | null>(null);
+                const sheet = useRef<Gtk.Label | null>(null);
                 useEffect(() => {
-                    setTimeout(() => {
-                        const [width] = label.current?.measure(Gtk.Orientation.HORIZONTAL, -1) ?? [0];
-                        writeFileSync(${JSON.stringify(readyPath)}, JSON.stringify({ pid: process.pid, version, width }));
+                    const timer = setInterval(() => {
+                        const observed = { pid: process.pid, token, version, global: width(global.current), sheet: width(sheet.current) };
+                        writeFileSync(${JSON.stringify(readyPath)} + ".tmp", JSON.stringify(observed));
+                        renameSync(${JSON.stringify(readyPath)} + ".tmp", ${JSON.stringify(readyPath)});
                     }, 100);
-                }, [version]);
-                return <GtkLabel ref={label} label="Probe" cssClasses={["cli-global-probe", accent]} />;
+                    return () => clearInterval(timer);
+                }, [token]);
+                return (
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                        <GtkLabel ref={global} label="Global" cssClasses={["cli-global-probe", accent]} />
+                        <GtkLabel ref={sheet} label="Sheet" cssClasses={["cli-sheet-probe"]} />
+                    </GtkBox>
+                );
             }`,
         );
         project.write(
@@ -441,18 +453,33 @@ describe("CLI commands", () => {
             );`,
         );
         const observation = () =>
-            JSON.parse(readFileSync(readyPath, "utf8")) as { pid: number; version: number; width: number };
+            JSON.parse(readFileSync(readyPath, "utf8")) as {
+                pid: number;
+                token: string;
+                version: number;
+                global: number;
+                sheet: number;
+            };
         await withSession("dev", project.root, readyPath, async () => {
-            const initial = observation();
-            expect(initial).toMatchObject({ version: 1, width: 231 });
+            await expect.poll(() => observation(), { timeout: 30_000 }).toMatchObject({ global: 231, sheet: 237 });
+            const { pid, token } = observation();
 
-            project.write("src/theme.ts", theme(2, ".cli-global-probe { min-width: 231px; }"));
-            await expect.poll(() => observation().version, { timeout: 30_000 }).toBe(2);
-            expect(observation()).toMatchObject({ pid: initial.pid, width: 231 });
+            project.write("src/theme.ts", theme(2, ".cli-global-probe { min-width: 241px; }"));
+            await expect.poll(() => observation().global, { timeout: 30_000 }).toBe(241);
+            expect(observation()).toMatchObject({ pid, token, version: 2 });
 
-            project.write("src/theme.ts", theme(3, ".cli-other-probe { min-width: 231px; }"));
+            project.write("src/theme.ts", theme(3, ".cli-other-probe { min-width: 241px; }"));
             await expect.poll(() => observation().version, { timeout: 30_000 }).toBe(3);
-            expect(observation().width).toBeLessThan(231);
+            expect(observation()).toMatchObject({ pid, token });
+            expect(observation().global).toBeLessThan(231);
+
+            project.write("src/sheet.css", ".cli-sheet-probe { min-width: 251px; }");
+            await expect.poll(() => observation().sheet, { timeout: 30_000 }).toBe(251);
+            expect(observation()).toMatchObject({ pid, token });
+
+            project.write("src/sheet.css", ".cli-other-probe { min-width: 251px; }");
+            await expect.poll(() => observation().sheet, { timeout: 30_000 }).toBeLessThan(237);
+            expect(observation()).toMatchObject({ pid, token, version: 3 });
         });
     });
 

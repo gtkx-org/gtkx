@@ -1,4 +1,5 @@
 import { css, cx, injectGlobal } from "@gtkx/css";
+import { injectGlobalFor } from "@gtkx/css/internal";
 import * as Gtk from "@gtkx/gi/gtk";
 import { describe, expect, it } from "vitest";
 import { probeColor, probeMinWidth, probeStyle } from "./helpers/probe.js";
@@ -227,6 +228,25 @@ describe("injectGlobal", () => {
         css(styles);
         injectGlobal(styles);
         expect(await probeMinWidth(["gtkx-global-after-class"])).toBeGreaterThanOrEqual(163);
+    });
+
+    it("replaces the rules an owner injected before in their original place", async () => {
+        const owner = "gtkx-css-owner";
+        injectGlobalFor(owner)(`
+            .gtkx-owned-kept { color: rgb(255, 0, 0); }
+            .gtkx-owned-removed { min-width: 171px; }
+            .gtkx-owned-overridden { color: rgb(255, 0, 0); }
+        `);
+        injectGlobal(".gtkx-owned-overridden { color: rgb(0, 0, 255); }");
+        expect(await probeMinWidth(["gtkx-owned-removed"])).toBeGreaterThanOrEqual(171);
+
+        injectGlobalFor(owner)(`
+            .gtkx-owned-kept { color: rgb(255, 0, 0); }
+            .gtkx-owned-overridden { color: rgb(0, 255, 0); }
+        `);
+        expect(await probeMinWidth(["gtkx-owned-removed"])).toBeLessThan(171);
+        expect(await probeColor(["gtkx-owned-kept"])).toEqual(RED);
+        expect(await probeColor(["gtkx-owned-overridden"])).toEqual(BLUE);
     });
 
     it("preserves valid selectors matching the named-color escape prefix", async () => {

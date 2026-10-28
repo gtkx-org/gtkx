@@ -20,6 +20,11 @@ type Css = {
     cx: (...classNames: CxToken[]) => string[];
     /** Serializes and inserts the given styles into the stylesheet globally, unscoped by any class. */
     injectGlobal: (...args: CSSInterpolation[]) => void;
+    /**
+     * Removes the global styles injected for `owner` and returns an `injectGlobal` whose styles belong to
+     * `owner`. They keep the stylesheet position of the owner's first styles.
+     */
+    injectGlobalFor: (owner: string) => (...args: CSSInterpolation[]) => void;
 };
 
 type TokenPartition = { rawClasses: string[]; registeredStyles: string[] };
@@ -75,12 +80,28 @@ const insertStyles = (state: CssState, serialized: SerializedStyles): void => {
     state.registered[className] = styles;
 };
 
-const insertWithoutScoping = (state: CssState, serialized: SerializedStyles): void => {
-    if (!didMarkNewStyle(state.global, serialized)) {
+const insertWithoutScoping = (
+    state: CssState,
+    inserted: Set<string>,
+    args: CSSInterpolation[],
+    owner?: string,
+): void => {
+    const serialized = serializeStyles(args, state.registered);
+
+    if (!didMarkNewStyle(inserted, serialized)) {
         return;
     }
 
-    state.sheet.insert(serializeRule(serialized.styles));
+    state.sheet.insert(serializeRule(serialized.styles), owner);
+};
+
+const injectGlobalFor = (state: CssState, owner: string): Css["injectGlobal"] => {
+    const inserted: Set<string> = new Set();
+    state.sheet.clear(owner);
+
+    return (...args) => {
+        insertWithoutScoping(state, inserted, args, owner);
+    };
 };
 
 const cssClassName = (state: CssState, args: CSSInterpolation[]): string => {
@@ -113,8 +134,9 @@ const createCss = (): Css => {
         css: (...args) => cssClassName(state, args),
         cx: (...classNames) => cxClassNames(state, classNames),
         injectGlobal: (...args) => {
-            insertWithoutScoping(state, serializeStyles(args, state.registered));
+            insertWithoutScoping(state, state.global, args);
         },
+        injectGlobalFor: (owner) => injectGlobalFor(state, owner),
     };
 };
 

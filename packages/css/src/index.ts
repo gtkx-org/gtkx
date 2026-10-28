@@ -1,6 +1,6 @@
-import { createCss, type Css } from "./create-css.js";
+import type { Css } from "./create-css.js";
+import { instance } from "./instance.js";
 
-const instance = createCss();
 /** Serializes and inserts GTK4 styles, returning their generated class. */
 const css: Css["css"] = instance.css;
 /** Combines class names and merges generated styles. */

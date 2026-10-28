@@ -89,7 +89,7 @@ injectGlobal`
 `;
 ```
 
-A plain `.css` import also works: the GTKX CLI turns it into an `injectGlobal` call. Global rules remain installed for the application's lifetime.
+A plain `.css` import also works: the GTKX CLI turns it into an `injectGlobal` call. Global rules remain installed for the application's lifetime. During `gtkx dev`, editing a stylesheet or a module's `injectGlobal` rules replaces the rules that file or module installed, so removed rules stop applying and the app keeps its state.
 
 ## Follow appearance preferences
 

@@ -21,9 +21,6 @@ const SOURCE_LANGUAGES: Map<string, SourceLanguage> = new Map([
     [".tsx", "tsx"],
 ]);
 
-const GLOBAL_STYLES_SOURCE = "@gtkx/css";
-const GLOBAL_STYLES_EXPORT = "injectGlobal";
-
 const SOURCE_ID_RE = /\.(?:[jt]sx?|m[jt]s)(?:\?.*)?$/i;
 
 const sourceLanguage = (path: string): SourceLanguage | undefined => {
@@ -102,18 +99,6 @@ const collectDynamicImportSources = (program: ESTree.Program, found: string[]): 
     }).visit(program);
 };
 
-const parseSource = (path: string, code: string, lang: SourceLanguage): ParseResult | null => {
-    let parsed: ParseResult;
-
-    try {
-        parsed = parseSync(path, code, { lang });
-    } catch {
-        return null;
-    }
-
-    return parsed.errors.length > 0 ? null : parsed;
-};
-
 const parseSourceWith = (
     path: string,
     code: string,
@@ -125,9 +110,15 @@ const parseSourceWith = (
         return [];
     }
 
-    const parsed = parseSource(path, code, lang);
+    let parsed: ParseResult;
 
-    if (parsed === null) {
+    try {
+        parsed = parseSync(path, code, { lang });
+    } catch {
+        return null;
+    }
+
+    if (parsed.errors.length > 0) {
         return null;
     }
 
@@ -158,46 +149,6 @@ const parseImportsInWith = (path: string, staticSources: (module: ParsedModule) 
     return code === null ? null : parseSourceWith(path, code, staticSources);
 };
 
-const globalStylesBindings = (module: ParsedModule): Set<string> =>
-    new Set(
-        module.staticImports
-            .filter((statement) => statement.moduleRequest.value === GLOBAL_STYLES_SOURCE)
-            .flatMap((statement) => statement.entries)
-            .filter((entry) => !entry.isType && entry.importName.name === GLOBAL_STYLES_EXPORT)
-            .map((entry) => entry.localName.value),
-    );
-
-const withoutPositions = (key: string, value: unknown): unknown =>
-    key === "start" || key === "end" ? undefined : value;
-
-const globalStylesIn = (path: string): string | null => {
-    const lang = sourceLanguage(path);
-    const code = readSource(path);
-    const parsed = lang === undefined || code === null ? null : parseSource(path, code, lang);
-
-    if (parsed === null) {
-        return null;
-    }
-
-    const bindings = globalStylesBindings(parsed.module);
-    const injected: unknown[] = [];
-
-    new Visitor({
-        CallExpression: (node) => {
-            if (node.callee.type === "Identifier" && bindings.has(node.callee.name)) {
-                injected.push(node.arguments);
-            }
-        },
-        TaggedTemplateExpression: (node) => {
-            if (node.tag.type === "Identifier" && bindings.has(node.tag.name)) {
-                injected.push(node.quasi);
-            }
-        },
-    }).visit(parsed.program);
-
-    return JSON.stringify(injected, withoutPositions);
-};
-
 const parseImportsIn = (path: string): SourceImport[] | null => parseImportsInWith(path, staticImportSources);
 
 const parseRuntimeImportsIn = (path: string): SourceImport[] | null =>
@@ -214,8 +165,6 @@ const sortSourceImports = (imports: SourceImport[]): SourceImport[] => sortStrin
 
 export {
     discoverSourceFiles,
-    GLOBAL_STYLES_SOURCE,
-    globalStylesIn,
     importSourcesIn,
     importsIn,
     parseRuntimeImportsIn,
