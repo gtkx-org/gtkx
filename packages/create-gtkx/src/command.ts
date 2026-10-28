@@ -1,7 +1,7 @@
 import * as p from "@clack/prompts";
 import { assertSupportedNodeVersion } from "@gtkx/config/internal";
-import { camelCase, errorMessage, kebabCase } from "@gtkx/utils";
-import { type ArgsDef, defineCommand, type ParsedArgs } from "citty";
+import { camelCase, errorMessage } from "@gtkx/utils";
+import { type ArgsDef, defineCommand, parseArgs as parseCittyArgs, type ParsedArgs } from "citty";
 import { parseArgs, type ParseArgsOptionsConfig } from "node:util";
 import { OperationCanceledError, ScaffoldAbortedError } from "./errors.js";
 import { PACKAGE_MANAGER_FLAG_DESCRIPTION } from "./package-managers.js";
@@ -58,11 +58,6 @@ const CREATE_ARGS = {
     },
 } as const satisfies ArgsDef;
 
-type OptionToken = Extract<
-    ReturnType<typeof parseArgs<{ tokens: true; strict: false }>>["tokens"][number],
-    { kind: "option" }
->;
-
 type CreateCommandArgs = Pick<ParsedArgs<typeof CREATE_ARGS>, keyof typeof CREATE_ARGS>;
 type CreateOption = Exclude<(typeof CREATE_ARGS)[keyof typeof CREATE_ARGS], { type: "positional" }>;
 
@@ -111,34 +106,23 @@ const normalizeBooleanArgument = (argument: string): string => {
     return value === "false" ? `--no-${option.slice(2)}` : argument;
 };
 
-const canonicalOption = (token: OptionToken): [string, string | boolean] => [
-    kebabCase(token.name),
-    token.value ?? !token.rawName.startsWith("--no-"),
-];
-
-/* TODO: Keep ordered token parsing until Citty respects the order of positive and negated flags.
- * https://github.com/gtkx-org/gtkx/issues/732
- */
 const parseCreateArguments = (rawArgs: string[]): CreateCommandArgs => {
-    const { tokens, positionals } = parseArgs({
-        args: rawArgs.map((argument) =>
-            normalizeBooleanArgument(argument === "--noInteractive" ? "--no-interactive" : argument),
-        ),
+    const args = rawArgs.map((argument) =>
+        normalizeBooleanArgument(argument === "--noInteractive" ? "--no-interactive" : argument),
+    );
+    const { positionals } = parseArgs({
+        args,
         options: STRICT_OPTIONS,
         allowPositionals: true,
         allowNegative: true,
         strict: true,
-        tokens: true,
     });
 
     if (positionals.length > 1) {
         throw new TypeError("Expected one project directory");
     }
 
-    return {
-        ...Object.fromEntries(tokens.filter((token) => token.kind === "option").map((token) => canonicalOption(token))),
-        name: positionals[0],
-    } as CreateCommandArgs;
+    return parseCittyArgs<typeof CREATE_ARGS>(args, CREATE_ARGS);
 };
 
 const scaffoldCommand = defineCommand({

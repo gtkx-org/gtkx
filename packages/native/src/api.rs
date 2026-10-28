@@ -20,7 +20,6 @@ pub mod read;
 pub mod reference;
 pub mod register_class;
 pub mod set_wrapper;
-pub mod set_wrapper_borrow;
 pub mod signal;
 pub mod type_class;
 pub mod value_pointer;

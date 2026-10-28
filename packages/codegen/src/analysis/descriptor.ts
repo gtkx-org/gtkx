@@ -1,7 +1,6 @@
 import type { Ownership } from "@gtkx/native";
 import type { Descriptor, t } from "@gtkx/runtime";
 import { sourceStringLiteral } from "@gtkx/utils";
-import type { GirCursorBounds } from "../gir/parameter.js";
 import { joinArgs, pure } from "../writer/emit.js";
 
 type RuntimeDescriptors = typeof t;
@@ -224,19 +223,6 @@ const tSizedArray = (
         arrayLayoutArg(ownership, layout),
     ]);
 
-const tCursorArray = (
-    element: string,
-    bounds: GirCursorBounds,
-    ownership: Ownership | undefined,
-    layout: ArrayLayout,
-): string =>
-    call("cursorArray", [
-        element,
-        `{ baseParamIndex: ${String(bounds.baseIndex)}, sizeParamIndex: ${String(bounds.lengthIndex)} }`,
-        ownership === undefined ? undefined : sourceStringLiteral(ownership),
-        arrayLayoutArg(ownership, layout),
-    ]);
-
 const tFixedArray = (element: string, length: number, ownership: Ownership | undefined, layout: ArrayLayout): string =>
     call("fixedArray", [
         element,
@@ -294,7 +280,6 @@ export {
     tArray,
     tSizedArray,
     tFixedArray,
-    tCursorArray,
     tCallback,
     tBind,
     tFn,

@@ -17,11 +17,6 @@ type ParameterDirection = "in" | "out" | "inout";
 type ParameterTransfer = "none" | "full" | "container" | "elements";
 type CallbackScope = "call" | "notified" | "async" | "forever";
 
-type GirCursorBounds = {
-    baseIndex: number;
-    lengthIndex: number;
-};
-
 type GirParameter = {
     name: string;
     type: TypeId | undefined;
@@ -36,7 +31,6 @@ type GirParameter = {
     closureIndex: number | undefined;
     destroyIndex: number | undefined;
     isVarargs: boolean;
-    cursor: GirCursorBounds | undefined;
 };
 
 type GirReturnValue = {
@@ -99,7 +93,6 @@ const parameterFromNode = (node: RawNode, context: ParseContext): GirParameter =
     closureIndex: intAttr(node, "closure"),
     destroyIndex: intAttr(node, "destroy"),
     isVarargs: getChild(node, "varargs") !== undefined,
-    cursor: undefined,
 });
 
 const isOutParameter = (parameter: GirParameter): boolean =>
@@ -154,7 +147,6 @@ export {
     isInoutParameter,
     parseCallable,
     type ParameterTransfer,
-    type GirCursorBounds,
     type GirParameter,
     type GirReturnValue,
     type GirCallable,

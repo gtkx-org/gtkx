@@ -39,7 +39,7 @@ The stores normally live under `node_modules/.gtkx/gi` and `node_modules/.gtkx/j
 
 The parsed model in `src/gir` represents classes, interfaces, records, callbacks, callable parameters, properties, enums, and container types. A `TypeId` identifies a slot within a namespace's type table. Subsequent passes resolve those identities through the `Library` instead of repeatedly interpreting XML or comparing raw type strings.
 
-GIR annotations affect runtime correctness as well as documentation. An array's companion length parameter, a callback's user-data and destroy parameters, a nullable pointer, and a transfer-full return each change the descriptor the native bridge needs. Targeted annotation corrections live alongside the parser in files such as `nullable-overrides.ts`, `transfer-overrides.ts`, and `finish-overrides.ts`.
+GIR annotations affect runtime correctness as well as documentation. An array's companion length parameter, a callback's user-data and destroy parameters, a nullable pointer, and a transfer-full return each change the descriptor the native bridge needs. Targeted annotation corrections live alongside the parser in files such as `transfer-overrides.ts` and `direction-overrides.ts`.
 
 ## Type analysis and callable shaping
 

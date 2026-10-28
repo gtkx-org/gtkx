@@ -22,6 +22,5 @@ export {
     setObjectProperty,
     setValuePointer,
     setWrapper,
-    setWrapperBorrow,
     writeField,
 } from "./index.js";

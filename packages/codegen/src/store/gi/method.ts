@@ -837,7 +837,6 @@ const planOutParam = (
 ): CallArgPlan => {
     const descriptor = renderDescriptor(context, parameter.type, parameter.transferOwnership, {
         ...argIndex,
-        cursor: parameter.cursor,
         hasOutIndirection: true,
         isReceived: true,
     });

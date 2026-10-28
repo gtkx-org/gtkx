@@ -108,12 +108,7 @@ pub unsafe fn js_byte_array(env: &Env, data: *const u8, len: usize) -> Result<Un
     } else {
         unsafe { std::slice::from_raw_parts(data, len) }
     };
-    let mut output = Uint8ArraySlice::copy_from(env, bytes)?;
-    /* TODO: Remove the extra copy once napi copy_from populates its managed allocation.
-     * https://github.com/gtkx-org/gtkx/issues/733
-     */
-    unsafe { output.as_mut() }.copy_from_slice(bytes);
-    output.into_unknown(env)
+    Uint8ArraySlice::copy_from(env, bytes)?.into_unknown(env)
 }
 
 pub fn js_array<'e>(env: &'e Env, items: Vec<Unknown<'e>>) -> Result<Unknown<'e>> {

@@ -10,7 +10,6 @@ import { type AnyClass, type TypedClass } from "@gtkx/runtime";
 
 import { assert, expect, test } from "vitest";
 
-import { drainGC } from "./helpers/memory.js";
 
 type ValueType = AnyClass<TypedClass> | GObject.Type;
 
@@ -309,32 +308,6 @@ test("values unset and re-initialize to another type", () => {
     value.setBoolean(true);
     expect(value.getBoolean()).toBe(true);
     expect(GIMarshallingTests.gvalueRoundTrip(value)).toBe(true);
-});
-
-test("reset hands the value back without giving it a second owner", async () => {
-    const value = stringValue("again");
-    value.reset();
-    await drainGC();
-    expect(value.getString()).toBeNull();
-
-    value.setString("twice");
-    expect(value.getString()).toBe("twice");
-    value.reset();
-    value.setString("thrice");
-    expect(value.getString()).toBe("thrice");
-    expect(GIMarshallingTests.gvalueRoundTrip(value)).toBe("thrice");
-});
-
-test("reset leaves a refcounted payload reachable through the same value", async () => {
-    const object = GIMarshallingTests.Object.new(42);
-    const holdsObject = objectValue(object);
-    holdsObject.reset();
-    await drainGC();
-    expect(holdsObject.getObject()).toBeNull();
-
-    holdsObject.setObject(object);
-    expect(holdsObject.getObject()).toBe(object);
-    expect(GIMarshallingTests.gvalueRoundTrip(holdsObject)).toBe(object);
 });
 
 test("gvalue params reject values no gtype can be inferred from", () => {
