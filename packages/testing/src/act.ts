@@ -9,7 +9,54 @@ type ActCallback<T> = () => T | PromiseLike<T>;
 /** Runs a callback inside React's act environment and settles with its result once updates flush. */
 type ActImplementation = <T>(callback: ActCallback<T>) => PromiseLike<T>;
 
-const actImplementation: ActImplementation = reactAct;
+/** A callback's settled result, either directly or once its returned promise settles. */
+type ActOutcome<T> = PromiseSettledResult<T> | Promise<PromiseSettledResult<T>>;
+
+const isThenable = <T>(value: unknown): value is PromiseLike<T> =>
+    value !== null && typeof value === "object" && typeof (value as PromiseLike<T>).then === "function";
+
+const settleAsync = async <T>(result: PromiseLike<T>): Promise<PromiseSettledResult<T>> => {
+    try {
+        return { status: "fulfilled", value: await result };
+    } catch (reason) {
+        return { status: "rejected", reason };
+    }
+};
+
+const settle = <T>(callback: ActCallback<T>): ActOutcome<T> => {
+    try {
+        const result = callback();
+
+        return isThenable<T>(result) ? settleAsync(result) : { status: "fulfilled", value: result };
+    } catch (reason) {
+        return { status: "rejected", reason };
+    }
+};
+
+const unwrap = <T>(outcome: PromiseSettledResult<T>): T => {
+    if (outcome.status === "rejected") {
+        throw outcome.reason;
+    }
+
+    return outcome.value;
+};
+
+// React's act leaves its queue installed when the callback throws, so later updates never render: https://github.com/react/react/issues/38031
+const actImplementation: ActImplementation = <T>(callback: ActCallback<T>): PromiseLike<T> => {
+    const attempt: { outcome?: ActOutcome<T> } = {};
+    const settled = reactAct(() => {
+        attempt.outcome = settle(callback);
+
+        return attempt.outcome;
+    });
+    const { outcome } = attempt;
+
+    if (!(outcome instanceof Promise) && outcome?.status === "rejected") {
+        throw outcome.reason;
+    }
+
+    return Promise.resolve(settled).then(unwrap);
+};
 /**
  * Runs a callback inside React's act environment, flushing pending state
  * updates and effects, and resolves once the work has settled.
@@ -24,9 +71,6 @@ const getIsReactActEnvironment = (): boolean | undefined => globalThis.IS_REACT_
 const setIsReactActEnvironment = (value: boolean | undefined): void => {
     Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", value);
 };
-
-const isThenable = <T>(value: unknown): value is PromiseLike<T> =>
-    value !== null && typeof value === "object" && typeof (value as PromiseLike<T>).then === "function";
 
 const restoreAfter = async <T>(result: PromiseLike<T>, previous: boolean | undefined): Promise<T> => {
     try {

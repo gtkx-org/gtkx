@@ -126,6 +126,16 @@ describe("act", () => {
             }),
         ).rejects.toThrow();
     });
+
+    it.each([
+        ["synchronously", failingCallback],
+        ["asynchronously", async () => Promise.resolve().then(failingCallback)],
+    ])("keeps rendering updates made outside act after a callback throws %s", async (_mode, callback) => {
+        await render(<DebouncedLabel />);
+
+        await expect(Promise.try(() => act(callback))).rejects.toThrow();
+        await expect(screen.findByText("Settled")).resolves.toBeDefined();
+    });
 });
 
 describe("waitFor", () => {
