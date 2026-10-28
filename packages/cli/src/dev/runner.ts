@@ -121,11 +121,8 @@ const requestRestart = async (session: DevSession): Promise<never> => {
     return session.deps.exit(RESTART_EXIT_CODE);
 };
 
-const registersComponents = (
-    session: DevSession,
-    module: ModuleNode,
-    rejected: ReadonlySet<ModuleNode>,
-): boolean => module.id !== null && session.registrations.has(module.id) && !rejected.has(module);
+const registersComponents = (session: DevSession, module: ModuleNode, rejected: ReadonlySet<ModuleNode>): boolean =>
+    module.id !== null && session.registrations.has(module.id) && !rejected.has(module);
 
 const reachesBoundaries = (walk: RefreshWalk, module: ModuleNode): boolean => {
     if (module.importers.size === 0) {
