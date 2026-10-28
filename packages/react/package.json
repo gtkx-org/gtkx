@@ -78,7 +78,7 @@
         "@gtkx/css": "workspace:*",
         "@gtkx/runtime": "workspace:*",
         "@gtkx/utils": "workspace:*",
-        "@types/react-reconciler": "^0.34.0",
+        "@types/react-reconciler": "^0.34.1",
         "react-merge-refs": "^3.0.2",
         "react-reconciler": "^0.34.0"
     },
