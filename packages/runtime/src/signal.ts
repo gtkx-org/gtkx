@@ -24,7 +24,7 @@ import { read } from "./field.js";
 import { LIB } from "./library.js";
 import { getClassType, getHandle, getInstanceType } from "./registry.js";
 import { packTupleResult } from "./tuple.js";
-import { TYPE_INVALID, type TypedClass, typeInterfaces, typeParent } from "./type.js";
+import { TYPE_INVALID, type TypedClass, typeInterfaces, typeName, typeParent } from "./type.js";
 import {
     fromValue,
     fromValueForDescriptor,
@@ -601,11 +601,18 @@ const signalDispatchFor = (instance: object, signal: string): SignalDispatch | u
     return signalDispatchForId(signalId, name);
 };
 
+const unknownSignalError = (operation: string, instance: object, signal: string): TypeError => {
+    const instanceType = getInstanceType(instance);
+    const owner = instanceType === TYPE_INVALID ? null : typeName(instanceType);
+
+    return new TypeError(`${operation}: unknown signal '${signal}' on ${owner ?? "a non-GObject value"}`);
+};
+
 const connectDispatcherFor = (instance: object, signal: string): SignalConnector => {
     const dispatch = signalDispatchFor(instance, signal);
 
     if (dispatch === undefined) {
-        throw new TypeError("connectSignal: unknown signal");
+        throw unknownSignalError("connectSignal", instance, signal);
     }
 
     return dispatch.connect;
@@ -615,7 +622,7 @@ const emitDispatcherFor = (instance: object, signal: string): SignalEmitter => {
     const dispatch = signalDispatchFor(instance, signal);
 
     if (dispatch === undefined) {
-        throw new TypeError("emitSignal: unknown signal");
+        throw unknownSignalError("emitSignal", instance, signal);
     }
 
     return dispatch.emit;
