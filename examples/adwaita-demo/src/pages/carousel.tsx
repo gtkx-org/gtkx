@@ -15,6 +15,8 @@ import {
 import { GtkBox, GtkButton, GtkSizeGroup, GtkStack, GtkStackPage, GtkStringList } from "@gtkx/jsx/gtk";
 import { type ReactNode, useState } from "react";
 
+const ORIENTATIONS = [Gtk.Orientation.HORIZONTAL, Gtk.Orientation.VERTICAL];
+
 export const CarouselPage = (): ReactNode => {
     const [carousel, setCarousel] = useState<Adw.Carousel | null>(null);
     const [emptyBox, setEmptyBox] = useState<Gtk.Box | null>(null);
@@ -63,12 +65,8 @@ export const CarouselPage = (): ReactNode => {
                                     model={<GtkStringList strings={["Horizontal", "Vertical"]} />}
                                     selected={orientation}
                                     onNotifySelected={(selected) => {
-                                        if (
-                                            selected === Gtk.Orientation.HORIZONTAL ||
-                                            selected === Gtk.Orientation.VERTICAL
-                                        ) {
-                                            setOrientation(selected);
-                                        }
+                                        const next = ORIENTATIONS[selected];
+                                        if (next !== undefined) setOrientation(next);
                                     }}
                                 />
                                 <AdwComboRow

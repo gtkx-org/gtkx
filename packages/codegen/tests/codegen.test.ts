@@ -280,6 +280,8 @@ describe("generated bindings", () => {
                 `import { createElement } from "react"; import { GtkStack } from "@gtkx/jsx/gtk";
                 export const stack = createElement(GtkStack, {
                     onNotifyVisibleChild: (child) => child?.getName(),
+                    onNotifyHhomogeneous: (isHomogeneous: boolean) => !isHomogeneous,
+                    onNotifyTransitionDuration: (duration: number) => duration.toFixed(),
                 });`,
             ),
         ).toEqual([]);

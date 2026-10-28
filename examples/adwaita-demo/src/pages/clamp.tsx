@@ -14,6 +14,8 @@ import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import { getClassType, resolveType } from "@gtkx/runtime";
 import { useState } from "react";
 
+const UNITS = [Adw.LengthUnit.PX, Adw.LengthUnit.PT, Adw.LengthUnit.SP];
+
 export const ClampPage = () => {
     const [maximumSize, setMaximumSize] = useState(400);
     const [threshold, setThreshold] = useState(300);
@@ -67,12 +69,8 @@ export const ClampPage = () => {
                                 />
                             }
                             onNotifySelected={(value) => {
-                                if (
-                                    value === Adw.LengthUnit.PX ||
-                                    value === Adw.LengthUnit.PT ||
-                                    value === Adw.LengthUnit.SP
-                                )
-                                    setUnit(value);
+                                const next = UNITS[value];
+                                if (next !== undefined) setUnit(next);
                             }}
                         />
                     </AdwPreferencesGroup>
