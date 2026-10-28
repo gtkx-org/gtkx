@@ -1,3 +1,4 @@
+import { ensureStoreLinks } from "@gtkx/codegen/internal";
 import { createConfigLoader } from "@gtkx/config/internal";
 import { resolve } from "node:path";
 import { createProjectStaging } from "../internal/project-staging.js";
@@ -29,6 +30,7 @@ const main = async (): Promise<void> => {
     prepareDevIconDir(root, config.applicationId, config.applicationIcon);
     prepareDevFontDir(root, staging.fonts);
     const entryPath = resolve(cwd, entryArg);
+    ensureStoreLinks(root);
     const { defaultDevRunnerDeps } = await import("./runner-deps.js");
     const runner = createDevRunner(
         defaultDevRunnerDeps(configFile, config.deploy?.outDir, {
