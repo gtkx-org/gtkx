@@ -56,7 +56,7 @@ const forcedConfig = async (options: BuildOptions, root: string, assetsDir: stri
             gtkxWorker(),
             gtkxNative(root),
             gtkxBuildManifest(root, buildManifest, buildConfigIdentity),
-            gtkxSelfContained(),
+            gtkxSelfContained(root),
         ],
         build: {
             ssr: entry,
