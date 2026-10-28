@@ -207,7 +207,6 @@ jobs:
       - name: Run workspace checks
         env:
           EVENT_NAME: ${{ github.event_name }}
-          NX_LEGACY_AFFECTED: "false"
         run: |
           if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
             pnpm exec nx run-many -t build,test,typecheck,lint,test-asan
@@ -218,7 +217,6 @@ jobs:
       - name: Run end-to-end checks
         env:
           EVENT_NAME: ${{ github.event_name }}
-          NX_LEGACY_AFFECTED: "false"
           NX_CLOUD_DISTRIBUTED_EXECUTION: "false"
         run: |
           if [[ "$EVENT_NAME" == workflow_dispatch ]]; then
