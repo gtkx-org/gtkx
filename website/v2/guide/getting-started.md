@@ -47,13 +47,9 @@ npm create gtkx@beta
 pnpm create gtkx@beta
 ```
 
-```bash [yarn]
-yarn create gtkx@beta
-```
-
 :::
 
-Choose a project directory, a display name, an application ID such as `com.example.MyApp`, and your package manager. Enable TypeScript and the Vitest setup for typed components and native widget tests. Then run:
+Choose a project directory, a display name, an application ID such as `com.example.MyApp`, and your package manager. Enable TypeScript and the Vitest setup for typed components and native widget tests. `yarn create` cannot run the prerelease scaffolder; to manage the project with Yarn, start it with npm or pnpm and choose Yarn as the package manager. Then run:
 
 ```bash
 cd my-app

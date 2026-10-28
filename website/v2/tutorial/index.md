@@ -37,13 +37,9 @@ npm create gtkx@beta
 pnpm create gtkx@beta
 ```
 
-```bash [yarn]
-yarn create gtkx@beta
-```
-
 :::
 
-Choose `tasks` as the project directory, **Tasks** as the display name, and `com.gtkx.tutorial` as the application ID. Enable TypeScript and the testing setup, and choose your package manager. The scaffolder installs the dependencies and initializes a Git repository.
+Choose `tasks` as the project directory, **Tasks** as the display name, and `com.gtkx.tutorial` as the application ID. Enable TypeScript and the testing setup, and choose your package manager. The scaffolder installs the dependencies and initializes a Git repository. `yarn create` cannot run the prerelease scaffolder; to manage the project with Yarn, start it with npm or pnpm and choose Yarn as the package manager.
 
 The commands below use npm; use the equivalent commands for your package manager. If you choose another application ID, substitute it consistently throughout the tutorial.
 
