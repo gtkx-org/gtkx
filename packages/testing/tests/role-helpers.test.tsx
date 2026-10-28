@@ -1,5 +1,5 @@
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkCheckButton, GtkLabel } from "@gtkx/jsx/gtk";
+import { GtkBox, GtkButton, GtkCheckButton, GtkLabel, GtkMenuButton, GtkPopover } from "@gtkx/jsx/gtk";
 import {
     getByName,
     getByRole,
@@ -93,6 +93,20 @@ describe("accessible name computation", () => {
     it("prefers a label, falls back to the tooltip, and drops the mnemonic marker", async () => {
         await render(<GtkButton tooltipText="Search" iconName="edit-find-symbolic" />);
         expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Search" })).toHaveAccessibleName("Search");
+        await render(
+            <GtkMenuButton
+                iconName="x-office-calendar-symbolic"
+                tooltipText="Pick Date"
+                popover={
+                    <GtkPopover>
+                        <GtkLabel>October</GtkLabel>
+                    </GtkPopover>
+                }
+            />,
+        );
+        expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Pick Date" })).toHaveAccessibleName(
+            "Pick Date",
+        );
         await render(<GtkButton label="Save" tooltipText="Save the file" />);
         expect(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Save" })).toHaveAccessibleName("Save");
         await render(<GtkButton label="_Add Connection" useUnderline />);

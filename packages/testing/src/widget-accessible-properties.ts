@@ -111,11 +111,20 @@ const namingLabelText = (widget: Gtk.Widget): string | null => {
 const isNamingLabelRole = (role: Gtk.AccessibleRole, shouldIncludePresentation: boolean): boolean =>
     role === Gtk.AccessibleRole.LABEL || (shouldIncludePresentation && role === Gtk.AccessibleRole.PRESENTATION);
 
+const accessibleDescendants = function* (widget: Gtk.Widget): Generator<Gtk.Widget> {
+    for (const child of children(widget)) {
+        if (readAccessibleBoolean(child, Gtk.AccessibleState.HIDDEN) !== true) {
+            yield child;
+            yield* accessibleDescendants(child);
+        }
+    }
+};
+
 const collectLabels = (widget: Gtk.Widget): string[] => {
     const isIncludePresentation = widget.getAccessibleRole() === Gtk.AccessibleRole.MENU_ITEM;
     const labels: string[] = [];
 
-    for (const descendant of descendants(widget)) {
+    for (const descendant of accessibleDescendants(widget)) {
         if (!isNamingLabelRole(descendant.getAccessibleRole(), isIncludePresentation)) {
             continue;
         }
