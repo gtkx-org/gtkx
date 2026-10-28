@@ -54,6 +54,11 @@ type ScaffoldPlan = {
     changes: ScaffoldChanges;
 };
 
+type Progress = {
+    stop: (message: string) => void;
+    error: (message: string) => void;
+};
+
 type SpinnerStep = {
     pending: string;
     done: string;
@@ -619,15 +624,27 @@ const writeDependencies = (root: string, devDependencies: string[]): void => {
 const formatRecovery = (resolved: ResolvedOptions): string =>
     `To finish setup, run ${INSTALL_COMMAND[resolved.packageManager]} in ${resolved.root}.`;
 
+const startProgress = (message: string): Progress => {
+    if (process.stdout.isTTY) {
+        const spinner = p.spinner();
+        spinner.start(message);
+
+        return spinner;
+    }
+
+    p.log.step(message);
+
+    return { stop: (done) => p.log.step(done), error: (failed) => p.log.error(failed) };
+};
+
 const runWithSpinner = async (step: SpinnerStep): Promise<void> => {
-    const spinner = p.spinner();
-    spinner.start(step.pending);
+    const progress = startProgress(step.pending);
 
     try {
         await step.run();
-        spinner.stop(step.done);
+        progress.stop(step.done);
     } catch (error) {
-        spinner.error(step.failed);
+        progress.error(step.failed);
         p.log.error(errorMessage(error));
         step.explain?.();
         throw new ScaffoldAbortedError(step.failed);
@@ -675,17 +692,16 @@ const initializeGitRepo = async (root: string, shouldInitialize: boolean): Promi
         return;
     }
 
-    const spinner = p.spinner();
-    spinner.start("Initializing git repository...");
+    const progress = startProgress("Initializing git repository...");
 
     try {
         const opts = { nodeOptions: { cwd: root }, throwOnError: true } as const;
         await x("git", ["init"], opts);
         await x("git", ["add", "-A"], opts);
         await x("git", ["commit", "-m", "Initial commit"], opts);
-        spinner.stop("Git repository initialized");
+        progress.stop("Git repository initialized");
     } catch {
-        spinner.error("Failed to initialize git repository");
+        progress.error("Failed to initialize git repository");
     }
 };
 

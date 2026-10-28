@@ -13,8 +13,9 @@ afterEach(() => {
 
 const create = async (target: string, args: string[] = []) => {
     process.exitCode = 0;
+    let output: readonly string[] = [];
     await stderr.inspectAsync(async () => {
-        await stdout.inspectAsync(async () => {
+        output = await stdout.inspectAsync(async () => {
             await runCommand(scaffoldCommand, {
                 rawArgs: [
                     target,
@@ -27,7 +28,7 @@ const create = async (target: string, args: string[] = []) => {
             });
         });
     });
-    return process.exitCode;
+    return { status: process.exitCode, output: output.join("") };
 };
 const read = (root: string, path: string) => readFileSync(join(root, path), "utf8");
 
@@ -38,7 +39,7 @@ describe("scaffold command", () => {
     ])("creates a usable project for $source", async ({ args, source, hasTypes, hasTests }) => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-test-"));
         const target = join(directory.path, "example");
-        expect(await create(target, args)).toBe(0);
+        expect((await create(target, args)).status).toBe(0);
         expect(read(target, source)).toContain("AdwApplication");
         expect(JSON.parse(read(target, "package.json"))).toMatchObject({
             name: "example",
@@ -57,9 +58,9 @@ describe("scaffold command", () => {
         mkdirSync(target);
         writeFileSync(join(target, "package.json"), '{"name":"keep"}');
         writeFileSync(join(target, "notes.txt"), "personal notes");
-        expect(await create(target)).toBe(1);
+        expect((await create(target)).status).toBe(1);
         expect(read(target, "package.json")).toBe('{"name":"keep"}');
-        expect(await create(target, ["--overwrite"])).toBe(0);
+        expect((await create(target, ["--overwrite"])).status).toBe(0);
         expect(read(target, "notes.txt")).toBe("personal notes");
         expect(JSON.parse(read(target, "package.json"))).toHaveProperty("name", "example");
     });
@@ -71,7 +72,7 @@ describe("scaffold command", () => {
         mkdirSync(target);
         mkdirSync(outside);
         symlinkSync(outside, join(target, "src"), "dir");
-        expect(await create(target, ["--overwrite"])).toBe(1);
+        expect((await create(target, ["--overwrite"])).status).toBe(1);
         expect(existsSync(join(outside, "app.tsx"))).toBe(false);
     });
 
@@ -84,11 +85,18 @@ describe("scaffold command", () => {
         mkdirSync(bin, { recursive: true });
         writeFileSync(
             join(bin, "npm"),
-            `#!${process.execPath}\nimport { appendFileSync } from "node:fs";\nappendFileSync("install.log", JSON.stringify(process.argv.slice(2)) + "\\n");\nprocess.exit(${status});\n`,
+            `#!${process.execPath}\nimport { appendFileSync } from "node:fs";\nimport { setTimeout } from "node:timers/promises";\nappendFileSync("install.log", JSON.stringify(process.argv.slice(2)) + "\\n");\nawait setTimeout(500);\nprocess.exit(${status});\n`,
             { mode: 0o755 },
         );
         const target = join(directory.path, "example");
-        expect(await create(target, ["--no-skip-install", "--package-manager", "npm", "--typescript"])).toBe(status);
+        const { status: exitCode, output } = await create(target, [
+            "--no-skip-install",
+            "--package-manager",
+            "npm",
+            "--typescript",
+        ]);
+        expect(exitCode).toBe(status);
+        expect(output.match(/Installing dependencies/g)).toHaveLength(1);
         const commands = read(target, "install.log").trim().split("\n");
         expect(commands).toHaveLength(calls);
         expect(commands[0]).toContain("@gtkx/react");
@@ -100,7 +108,7 @@ describe("scaffold command", () => {
         async (...args) => {
             using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-invalid-"));
             const target = join(directory.path, "example");
-            expect(await create(target, args)).toBe(1);
+            expect((await create(target, args)).status).toBe(1);
             expect(existsSync(join(target, "package.json"))).toBe(false);
         },
     );
