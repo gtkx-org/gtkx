@@ -151,8 +151,20 @@ const propChangeError = (typeName: string, name: string): Error =>
 
 const hasAppliedValue = (value: unknown): boolean => (Array.isArray(value) ? value.length > 0 : value !== undefined);
 
+type EquatableValue = { equal: (other: EquatableValue) => boolean };
+
+const isEquatableValue = (value: unknown): value is EquatableValue =>
+    typeof value === "object" && value !== null && typeof Reflect.get(value, "equal") === "function";
+
+const isSameNativeValue = (prev: unknown, next: unknown): boolean =>
+    Object.is(prev, next) ||
+    (isEquatableValue(prev) &&
+        isEquatableValue(next) &&
+        Object.getPrototypeOf(prev) === Object.getPrototypeOf(next) &&
+        prev.equal(next));
+
 const isConstructOnlyChange = (info: TypeInfo, name: string, change: PropChange): boolean =>
-    info.constructOnly.has(name) && !Object.is(change.prev[name], change.next[name]);
+    info.constructOnly.has(name) && !isSameNativeValue(change.prev[name], change.next[name]);
 
 const isDeclaredConstructOnlyChange = (info: TypeInfo, name: string, change: PropChange): boolean =>
     info.declaredConstructOnly.has(name) &&

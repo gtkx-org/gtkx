@@ -2,6 +2,7 @@ import type { GMenuProps } from "@gtkx/jsx/gio";
 import type { RefObject } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GMenu, GMenuItem, GSimpleAction } from "@gtkx/jsx/gio";
 import {
@@ -501,6 +502,34 @@ describe("render - PopoverMenu actions", () => {
         expect(windowRef.current?.hasAction("toggle")).toBe(true);
         await rerender(<App isEnabled={false} />);
         expect(windowRef.current?.hasAction("toggle")).toBe(false);
+    });
+
+    it("keeps a targeted action whose parameter type is recreated on each render", async () => {
+        const actionRef = createRef<Gio.SimpleAction>();
+        const appId = uniqueAppId();
+
+        function App({ typeString }: { typeString: string }) {
+            return (
+                <GtkApplication applicationId={appId} flags={APP_FLAGS}>
+                    <GtkApplicationWindow
+                        actions={
+                            <GSimpleAction
+                                ref={actionRef}
+                                name="open"
+                                parameterType={GLib.VariantType.new(typeString)}
+                                onActivate={() => null}
+                            />
+                        }
+                    />
+                </GtkApplication>
+            );
+        }
+
+        const { rerender } = await render(<App typeString="s" />, { container: rootElement });
+        const action = actionRef.current;
+        await rerender(<App typeString="s" />);
+        expect(actionRef.current).toBe(action);
+        await expect(rerender(<App typeString="i" />)).rejects.toThrow();
     });
 });
 
