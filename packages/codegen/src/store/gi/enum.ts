@@ -1,5 +1,5 @@
-import { escapeIdentifierStart, sanitizeTypeIdentifier, sourceStringLiteral, uniqBy } from "@gtkx/utils";
-import type { EnumMember, GirEnum } from "../../gir/enum.js";
+import { sanitizeTypeIdentifier, sourceStringLiteral, uniqBy } from "@gtkx/utils";
+import { type EnumMember, enumMemberKey, type GirEnum } from "../../gir/enum.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { hasAnnotations } from "../../gir/annotations.js";
 import { isEmittableEntity } from "../../gir/emittable.js";
@@ -92,8 +92,6 @@ const appendEnumDeclaration = (context: ModuleContext, enumeration: GirEnum, mem
     });
 };
 
-const enumMemberKey = (name: string): string => escapeIdentifierStart(name.toUpperCase().replaceAll("-", "_"));
-
 const renderQuarkExpression = (context: ModuleContext, errorDomain: string): string => {
     if (context.namespace.name === "GLib") {
         return `() => quarkFromString(${sourceStringLiteral(errorDomain)})`;
@@ -104,4 +102,4 @@ const renderQuarkExpression = (context: ModuleContext, errorDomain: string): str
     return `() => ${alias}.quarkFromString(${sourceStringLiteral(errorDomain)})`;
 };
 
-export { generateEnum, enumMemberKey };
+export { generateEnum };

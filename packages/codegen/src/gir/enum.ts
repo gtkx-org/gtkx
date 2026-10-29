@@ -1,3 +1,4 @@
+import { escapeIdentifierStart } from "@gtkx/utils";
 import { documentedFromNode, type GirAnnotations } from "./annotations.js";
 import { attr, getChildren, isAttrTrue, type RawNode } from "./parse.js";
 
@@ -39,4 +40,6 @@ const enumFromNode = (node: RawNode, kind: EnumKind): GirEnum => ({
     members: getChildren(node, "member").map((member) => enumMemberFromNode(member)),
 });
 
-export { enumFromNode, type EnumMember, type GirEnum };
+const enumMemberKey = (name: string): string => escapeIdentifierStart(name.toUpperCase().replaceAll("-", "_"));
+
+export { enumFromNode, enumMemberKey, type EnumMember, type GirEnum };

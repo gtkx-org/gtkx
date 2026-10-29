@@ -2,7 +2,7 @@ import { sanitizeTypeIdentifier, sortStringsBy, upperFirst } from "@gtkx/utils";
 import type { GirAnnotations } from "../gir/annotations.js";
 import type { GirCallback } from "../gir/callback.js";
 import type { GirClass } from "../gir/class.js";
-import type { EnumMember, GirEnum } from "../gir/enum.js";
+import { type EnumMember, enumMemberKey, type GirEnum } from "../gir/enum.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { GirRecord } from "../gir/record.js";
@@ -24,7 +24,6 @@ import {
 import { callbackSignature } from "../store/gi/callback.js";
 import { constantLiteral } from "../store/gi/constant.js";
 import { annotationSpec } from "../store/gi/doc-spec.js";
-import { enumMemberKey } from "../store/gi/enum.js";
 import {
     methodExportName,
     renderMethodReturnType,

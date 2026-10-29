@@ -348,6 +348,21 @@ describe("generated bindings", () => {
         expect(page("layout-slot")).not.toContain("### `children`");
     });
 
+    it("renders GIR enumeration member links with the emitted member names", async () => {
+        using directory = createProject();
+        const outDir = join(directory.path, "reference");
+        writeDocs({
+            ...(await readBuiltinElementsForDocs()),
+            libraries: ["Adw-1"],
+            girPath: resolveGirPath(undefined, directory.path),
+            resolveFrom: directory.path,
+            outDir,
+        });
+        const toastOverlay = readFileSync(join(outDir, "adw", "toast-overlay.md"), "utf8");
+        expect(toastOverlay).toContain("uses the `Gtk.AccessibleRole.GROUP` role");
+        expect(toastOverlay).not.toContain("`Gtk.AccessibleRole.group`");
+    });
+
     it("generates JSX bindings that accept documented props and reject incompatible consumers", async () => {
         using directory = createProject();
         const { gi, jsx } = resolveStore(directory.path);
