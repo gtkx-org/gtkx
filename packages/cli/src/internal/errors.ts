@@ -3,12 +3,16 @@ import { logger } from "@gtkx/utils";
 
 const ERROR_EXIT_CODE = 1;
 
-const printError = (cause: unknown): never => {
-    const message = cause instanceof Error ? cause.message : String(cause);
-    logger.error(message);
+const reportedErrors = (cause: unknown): unknown[] =>
+    cause instanceof SuppressedError ? [...reportedErrors(cause.suppressed), ...reportedErrors(cause.error)] : [cause];
 
-    if (cause instanceof Error && cause.stack !== undefined) {
-        logger.debug(cause.stack);
+const printError = (cause: unknown): never => {
+    for (const error of reportedErrors(cause)) {
+        logger.error(error instanceof Error ? error.message : String(error));
+
+        if (error instanceof Error && error.stack !== undefined) {
+            logger.debug(error.stack);
+        }
     }
 
     process.exit(ERROR_EXIT_CODE);
