@@ -490,6 +490,48 @@ describe("generated bindings", () => {
         }
     });
 
+    it("passes the receiver to methods of GIR regenerated from a typelib", async () => {
+        using directory = createProject();
+        writeFileSync(
+            join(directory.path, "Regenerated-1.0.gir"),
+            `<?xml version="1.0"?>
+             <repository version="1.0" xmlns="http://www.gtk.org/introspection/core/1.0"
+               xmlns:c="http://www.gtk.org/introspection/c/1.0" xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+               <include name="GObject" version="2.0"/>
+               <namespace name="Regenerated" version="1.0" shared-library="libgio-2.0.so.0" c:prefix="G">
+                 <class name="Cancellable" parent="GObject.Object" glib:type-name="GCancellable"
+                   glib:get-type="g_cancellable_get_type">
+                   <constructor name="new" c:identifier="g_cancellable_new">
+                     <return-value transfer-ownership="full"><type name="Cancellable"/></return-value>
+                   </constructor>
+                   <method name="cancel" c:identifier="g_cancellable_cancel">
+                     <return-value transfer-ownership="none"><type name="none"/></return-value>
+                   </method>
+                   <method name="is_cancelled" c:identifier="g_cancellable_is_cancelled">
+                     <return-value transfer-ownership="none"><type name="gboolean"/></return-value>
+                   </method>
+                 </class>
+               </namespace>
+             </repository>`,
+        );
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["Regenerated-1.0"], girPath: resolveGirPath([directory.path]), gi });
+        const cancelled = execFileSync(
+            process.execPath,
+            [
+                "--input-type=module",
+                "-e",
+                `import { Cancellable } from "@gtkx/gi/regenerated";
+                const first = Cancellable.new();
+                const second = Cancellable.new();
+                second.cancel();
+                console.log(JSON.stringify([first.isCancelled(), second.isCancelled()]));`,
+            ],
+            { cwd: directory.path, encoding: "utf8", stdio: "pipe", timeout: 20_000 },
+        );
+        expect(JSON.parse(cancelled)).toEqual([false, true]);
+    });
+
     it("rejects missing and malformed metadata without publishing a store", async () => {
         using directory = createProject();
         const { gi } = resolveStore(directory.path);
