@@ -90,22 +90,25 @@ describe("native story explorer", () => {
         const catalog = new StoryCatalog();
         await showExplorer(catalog);
         expect(screen.queryByName("count")).toBeNull();
+        expect(screen.getByText("0 stories")).toBeVisible();
 
         await act(() =>
             catalog.load([
                 {
                     id: "counter.stories.tsx",
                     title: "Counter",
-                    load: () => Promise.resolve(counterStories),
+                    load: () => Promise.resolve({ default: counterStories.default, Default: counterStories.Default }),
                 },
             ]),
         );
+        expect(screen.getByText("1 story")).toBeVisible();
         await userEvent.click(screen.getByName("storybook-story-components-counter--default"));
         expect(screen.getByName("count")).toHaveTextContent(/^2$/);
 
         await act(() => catalog.load([]));
         expect(screen.queryByName("count")).toBeNull();
         expect(screen.queryByName("storybook-story-components-counter--default")).toBeNull();
+        expect(screen.getByText("0 stories")).toBeVisible();
     });
 
     it("recomposes the selected story after metadata replacement", async () => {

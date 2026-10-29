@@ -27,6 +27,8 @@ type StorybookProps = {
 
 type StorybookViewProps = Pick<StorybookProps, "catalog" | "title">;
 
+const storyCount = (count: number): string => (count === 1 ? "1 story" : `${String(count)} stories`);
+
 const StorybookView = ({ catalog, title = "GTKX Storybook" }: StorybookViewProps): ReactNode => {
     const subscribe = useCallback((listener: () => void) => catalog.subscribe(listener), [catalog]);
     const getSnapshot = useCallback(() => catalog.getSnapshot(), [catalog]);
@@ -47,7 +49,7 @@ const StorybookView = ({ catalog, title = "GTKX Storybook" }: StorybookViewProps
                     topBar={
                         <AdwHeaderBar
                             titleWidget={
-                                <AdwWindowTitle title={title} subtitle={`${String(snapshot.stories.length)} stories`} />
+                                <AdwWindowTitle title={title} subtitle={storyCount(snapshot.stories.length)} />
                             }
                         />
                     }
