@@ -28,6 +28,11 @@ const buildDefaults: InlineConfig = {
         outDir: DEFAULT_OUT_DIR,
         minify: true,
         cssMinify: false,
+        rolldownOptions: {
+            output: {
+                minify: { compress: true, mangle: true, codegen: { removeWhitespace: false } },
+            },
+        },
     },
 };
 
@@ -62,6 +67,7 @@ const forcedConfig = async (options: BuildOptions, root: string, assetsDir: stri
             ssr: entry,
             assetsInlineLimit: 0,
             rolldownOptions: {
+                cwd: root,
                 output: {
                     format: "es",
                     entryFileNames: ENTRY_FILE_NAMES,

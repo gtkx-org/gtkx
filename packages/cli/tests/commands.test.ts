@@ -24,6 +24,8 @@ import { createVitest } from "vitest/node";
 import { createCommand } from "../dist/command.js";
 import { createProject } from "./project.js";
 
+const MAX_BUNDLE_LINE_LENGTH = 500;
+
 const invoke = async (args: string[], selected = createCommand()) => {
     let output = "";
     let errors = "";
@@ -77,6 +79,19 @@ describe("CLI commands", () => {
         project.write("keep.txt", "keep");
         await expect(invoke(["build", "--cwd", project.root, "--out", "../outside"])).rejects.toThrow();
         expect(readFileSync(join(project.root, "keep.txt"), "utf8")).toBe("keep");
+    });
+
+    it("keeps line breaks in production bundles so an error while loading points at a readable line", async () => {
+        using project = createProject();
+        project.write(
+            "src/index.ts",
+            'import { createElement } from "react";\nprocess.stdout.write(typeof createElement);',
+        );
+
+        await invoke(["build", "--cwd", project.root]);
+        const lines = readFileSync(join(project.root, "dist/bundle.mjs"), "utf8").split("\n");
+
+        expect(Math.max(...lines.map((line) => line.length))).toBeLessThan(MAX_BUNDLE_LINE_LENGTH);
     });
 
     it("builds identical output for the same project at another path", async () => {
