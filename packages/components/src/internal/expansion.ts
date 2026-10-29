@@ -34,29 +34,44 @@ function hasSameExpansion(expanded: Set<string>, wanted: Set<string>): boolean {
     return expanded.size === wanted.size && wanted.isSubsetOf(expanded);
 }
 
-function toggleOptions(collection: Collection, wanted: Set<string>): WalkOptions {
+function collapsingPositions(expansion: TreeExpansion, wanted: Set<string>): number[] {
+    const positions: number[] = [];
+
+    walkVisible({
+        index: expansion.index,
+        slots: expansion.slots,
+        marks: trackPaths(expansion.expanded.difference(wanted)),
+        visit: (row) => {
+            if (row.isMarked) {
+                positions.push(row.position);
+            }
+        },
+    });
+
+    return positions;
+}
+
+function expandOptions(collection: Collection, wanted: Set<string>): WalkOptions {
     const { expansion } = collection;
 
     return {
         index: expansion.index,
         slots: trackPaths(wanted),
-        marks: trackPaths(wanted.symmetricDifference(expansion.expanded)),
+        marks: trackPaths(wanted.difference(expansion.expanded)),
         visit: (row) => {
             if (row.isMarked) {
-                collection.rowAt(row.position)?.setExpanded(row.isOpen);
+                collection.rowAt(row.position)?.setExpanded(true);
             }
         },
     };
 }
 
-function walkApplying(expansion: TreeExpansion, options: WalkOptions): VisibleOrder {
-    expansion.isApplying = true;
-
-    try {
-        return walkVisible(options);
-    } finally {
-        expansion.isApplying = false;
+function toggleRows(collection: Collection, wanted: Set<string>): VisibleOrder {
+    for (const position of collapsingPositions(collection.expansion, wanted).toReversed()) {
+        collection.rowAt(position)?.setExpanded(false);
     }
+
+    return walkVisible(expandOptions(collection, wanted));
 }
 
 function applyWanted(collection: Collection, expandedIds: string[]): void {
@@ -67,7 +82,13 @@ function applyWanted(collection: Collection, expandedIds: string[]): void {
         return;
     }
 
-    adoptOrder(expansion, walkApplying(expansion, toggleOptions(collection, wanted)));
+    expansion.isApplying = true;
+
+    try {
+        adoptOrder(expansion, toggleRows(collection, wanted));
+    } finally {
+        expansion.isApplying = false;
+    }
 }
 
 function reportExpansion(context: ExpansionContext): void {

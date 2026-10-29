@@ -166,6 +166,26 @@ describe("ListView tree order", () => {
         await rerender(grownTree(), { expandedIds: ["a", "a0", "b"] });
         await expectRowTexts(ref, ["a", "a0", "a00", "a01", "a1", "b", "b0", "b1", "c"]);
     });
+    it("collapses rows from the last one up, so no collapse shifts rows still waiting", async () => {
+        const items = [
+            treeBranch("a", [treeLeaf("a0"), treeLeaf("a1")]),
+            treeBranch("b", [treeLeaf("b0"), treeLeaf("b1")]),
+            treeBranch("c", [treeLeaf("c0"), treeLeaf("c1")]),
+        ];
+        const { ref, rerender } = await renderListView<TreeName>(items, { expandedIds: ["a", "b", "c"] });
+        await expectRowTexts(ref, ["a", "a0", "a1", "b", "b0", "b1", "c", "c0", "c1"]);
+        const removedAt: number[] = [];
+        const model = getSelectionModel(ref);
+        const handler = model.connect("items-changed", (position: number, removed: number) => {
+            if (removed > 0) removedAt.push(position);
+        });
+
+        await rerender(items, { expandedIds: [] });
+        await expectRowTexts(ref, ["a", "b", "c"]);
+        model.disconnect(handler);
+
+        expect(removedAt).toEqual([7, 4, 1]);
+    });
 });
 
 describe("ListView tree structure changes", () => {
