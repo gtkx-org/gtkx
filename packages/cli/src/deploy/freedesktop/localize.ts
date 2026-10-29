@@ -37,28 +37,17 @@ const metadataTemplates = (project: CatalogProject, metadata: StagedMetadata): M
 
 const mergeCatalogs = (project: CatalogProject, workDir: string, request: MergeRequest): string => {
     const { extension, mode, stem, template } = request;
-    let current = join(workDir, `${stem}-source${extension}`);
-    writeFileSync(current, template);
+    const source = join(workDir, `${stem}-source${extension}`);
+    const output = join(workDir, `${stem}${extension}`);
+    writeFileSync(source, template);
 
-    for (const [index, catalog] of project.catalogs.entries()) {
-        const output = join(workDir, `${stem}-${String(index)}${extension}`);
+    runCliTool({
+        tool: "msgfmt",
+        args: [mode, `--template=${source}`, "-d", project.poDir, `--output-file=${output}`],
+        target: project.linguasPath,
+    });
 
-        runCliTool({
-            tool: "msgfmt",
-            args: [
-                mode,
-                `--template=${current}`,
-                `--locale=${catalog.locale}`,
-                `--output-file=${output}`,
-                catalog.path,
-            ],
-            target: catalog.path,
-        });
-
-        current = output;
-    }
-
-    return readFileSync(current, "utf8");
+    return readFileSync(output, "utf8");
 };
 
 const localizeMetadata = (metadata: StagedMetadata, project: CatalogProject | null): StagedMetadata => {

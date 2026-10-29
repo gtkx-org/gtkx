@@ -88,10 +88,22 @@ describe("runtime configuration", () => {
         expect(runBundle(join(project.root, "dist/bundle.mjs"))).toContain("Bonjour, Ada ! 2 fichiers");
         expect(runBundle(join(project.root, "dist/bundle.mjs"), chineseEnvironment)).toContain("Hello, Ada! 2 files");
         expect(runBundle(join(project.root, "dist/bundle.mjs"), unsupportedLocaleEnvironment)).toContain("Hello, Ada!");
+        const translateName = (locale: string, name: string) =>
+            project.write(
+                `po/${locale}.po`,
+                `${readFileSync(join(project.root, `po/${locale}.po`), "utf8")}\nmsgid "CLI Example"\nmsgstr "${name}"\n`,
+            );
+        translateName("fr", "CLI Example");
+        translateName("zh_CN", "CLI 示例");
         await runCommand(createCommand(), {
             rawArgs: ["deploy", "--cwd", project.root, "--skip-build", "--print-manifests", "--target", "deb"],
         });
         const stage = join(project.root, "build", process.arch, "stage");
+        const metainfo = readFileSync(join(stage, "share/metainfo/org.gtkx.example.metainfo.xml"), "utf8");
+        expect(metainfo.match(/<name xml:lang="[^"]+">[^<]*<\/name>/g)?.toSorted()).toEqual([
+            '<name xml:lang="fr">CLI Example</name>',
+            '<name xml:lang="zh-Hans-CN">CLI 示例</name>',
+        ]);
         const relocated = join(project.root, "relocated");
         cpSync(stage, relocated, { recursive: true });
         const [binary] = readdirSync(join(relocated, "lib"));
