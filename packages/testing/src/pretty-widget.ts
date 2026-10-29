@@ -216,6 +216,9 @@ const createWidgetPlugin = (options: PrettyWidgetOptions): NewPlugin => ({
         formatWidget(widget, indentation, 0, { getId: options.getId, config, maxDepth: options.maxDepth }),
 });
 
+/** Prints widgets in snapshots as their widget tree, in the format of {@link prettyWidget}. */
+const widgetSnapshotSerializer: NewPlugin = createWidgetPlugin({});
+
 const resolveMaxLength = (options: PrettyWidgetOptions): number => {
     const envLimit = process.env.DEBUG_PRINT_LIMIT ? Number(process.env.DEBUG_PRINT_LIMIT) : DEFAULT_MAX_LENGTH;
 
@@ -275,4 +278,4 @@ const logWidget = (container: Container | Container[], options?: PrettyWidgetOpt
     }
 };
 
-export { logWidget, prettyWidget, type PrettyWidgetOptions };
+export { logWidget, prettyWidget, widgetSnapshotSerializer, type PrettyWidgetOptions };

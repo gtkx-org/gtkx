@@ -2,7 +2,7 @@ import type * as GObject from "@gtkx/gi/gobject";
 import type { AnyClass } from "@gtkx/utils";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GMenu } from "@gtkx/jsx/gio";
-import { GtkButton, GtkMenuButton } from "@gtkx/jsx/gtk";
+import { GtkButton, GtkLabel, GtkMenuButton } from "@gtkx/jsx/gtk";
 import { getHandle, registerClass, wrapHandle } from "@gtkx/runtime";
 import { prettyRoles, prettyWidget, render, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
@@ -72,6 +72,20 @@ describe("prettyWidget", () => {
         const dump = prettyWidget(wrapAs(button, UnregisteredButton), { shouldHighlight: false });
         expect(dump).toContain("<UnregisteredButton");
         expect(dump).toContain("</UnregisteredButton>");
+    });
+});
+
+describe("widget snapshots", () => {
+    it("serialize a widget as its widget tree", async () => {
+        const { container } = await render(<GtkLabel>Saved</GtkLabel>);
+
+        expect(container).toMatchInlineSnapshot(`
+          <Window name="GtkWindow" role="window">
+            <Label name="GtkLabel" role="label">
+              Saved
+            </Label>
+          </Window>
+        `);
     });
 });
 
