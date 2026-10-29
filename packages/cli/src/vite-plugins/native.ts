@@ -1,10 +1,9 @@
 import type { Plugin } from "vite";
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { arch, platform } from "node:os";
 import { dirname, join } from "node:path";
 import { BINDING_FILENAME } from "../deploy/native-addon.js";
-import { resolveBinding } from "../internal/native-binding.js";
+import { resolveBinding, resolveNativeManifest } from "../internal/native-binding.js";
 import { stripQuery } from "./strip-query.js";
 
 function resolvePlatformBinary(root: string): Buffer {
@@ -20,7 +19,7 @@ function resolvePlatformBinary(root: string): Buffer {
         throw new Error(`Unsupported build architecture: ${currentArch}, only x64 and arm64 are supported`);
     }
 
-    const binary = resolveBinding(join(root, "package.json"), currentArch);
+    const binary = resolveBinding(root, currentArch);
 
     if (binary === undefined) {
         throw new Error(`Cannot find the @gtkx/native binary for linux-${currentArch}-gnu`);
@@ -72,12 +71,11 @@ const transformLoader = (
 };
 
 function gtkxNative(root: string): Plugin {
-    const projectRequire = createRequire(join(root, "package.json"));
     let cachedLoaderPath: string | undefined;
     let bindingReferenceId: string | null = null;
 
     const loaderPath = (): string => {
-        cachedLoaderPath ??= join(dirname(projectRequire.resolve("@gtkx/native/package.json")), "index.js");
+        cachedLoaderPath ??= join(dirname(resolveNativeManifest(root)), "index.js");
 
         return cachedLoaderPath;
     };

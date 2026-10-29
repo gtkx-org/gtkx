@@ -1,17 +1,13 @@
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { join } from "node:path";
 import type { DeployArchName, DeploySettings } from "./types.js";
-import { resolveBinding } from "../internal/native-binding.js";
+import { resolveBinding, resolveNativeManifest } from "../internal/native-binding.js";
 import { runCliTool } from "../internal/run-cli-tool.js";
 import { cacheDir, downloadFile, readCachedDigest, writeAtomically } from "./download.js";
 import { DEFAULT_REGISTRY, publishedTarball, type Tarball } from "./npm-registry.js";
 import { isHostArch } from "./settings/arch.js";
 
-type ProjectRequire = ReturnType<typeof createRequire>;
-
 const BINDING_FILENAME = "gtkx.node";
-const NATIVE_MANIFEST = "@gtkx/native/package.json";
 const PACKAGE_ROOT = "package";
 const STRIP_COMPONENTS = "1";
 const VERSION_PATTERN = /^[\w.+-]+$/;
@@ -36,8 +32,6 @@ const registryUrl = (): string => {
     return withoutTrailingSlash(configured !== undefined && configured.length > 0 ? configured : DEFAULT_REGISTRY);
 };
 
-const projectRequireFor = (root: string): ProjectRequire => createRequire(join(root, "package.json"));
-
 const manifestVersion = (manifest: unknown): string | null => {
     if (typeof manifest !== "object" || manifest === null || !("version" in manifest)) {
         return null;
@@ -48,8 +42,8 @@ const manifestVersion = (manifest: unknown): string | null => {
     return typeof version === "string" && VERSION_PATTERN.test(version) ? version : null;
 };
 
-const nativeVersion = (projectRequire: ProjectRequire): string => {
-    const parsed: unknown = JSON.parse(readFileSync(projectRequire.resolve(NATIVE_MANIFEST), "utf8"));
+const nativeVersion = (root: string): string => {
+    const parsed: unknown = JSON.parse(readFileSync(resolveNativeManifest(root), "utf8"));
     const version = manifestVersion(parsed);
 
     if (version === null) {
@@ -124,10 +118,9 @@ const resolveStagedAddon = async (settings: DeploySettings): Promise<string | nu
         return null;
     }
 
-    const projectRequire = projectRequireFor(settings.paths.root);
-    const resolved = resolveBinding(join(settings.paths.root, "package.json"), arch);
+    const resolved = resolveBinding(settings.paths.root, arch);
 
-    return resolved ?? (await downloadedBinary(arch, nativeVersion(projectRequire)));
+    return resolved ?? (await downloadedBinary(arch, nativeVersion(settings.paths.root)));
 };
 
 export { BINDING_FILENAME, resolveStagedAddon };

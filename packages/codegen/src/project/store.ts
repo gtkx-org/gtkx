@@ -30,14 +30,16 @@ const hasPackage = (require: NodeJS.Require, packageName: string): boolean => {
 
 const siblingStore = (giDir: string): string => join(dirname(giDir), "jsx");
 
-const resolveCodegenStore = (dir: string): CodegenStore => {
-    const require = createRequire(pathToFileURL(join(dir, "__gtkx_resolver__.js")).href);
+const requireFrom = (path: string): NodeJS.Require => createRequire(pathToFileURL(path).href);
 
-    if (!hasPackage(require, "@gtkx/native")) {
-        throw new Error("Cannot resolve @gtkx/native from the project; is it installed?");
+const resolveCodegenStore = (dir: string): CodegenStore => {
+    const require = requireFrom(join(dir, "__gtkx_resolver__.js"));
+    const store = resolveStore(dir);
+
+    if (!hasPackage(requireFrom(require.resolve("@gtkx/runtime/package.json")), "@gtkx/native")) {
+        throw new Error("Cannot resolve @gtkx/native from @gtkx/runtime; is it installed?");
     }
 
-    const store = resolveStore(dir);
     const hasReactRuntime = hasPackage(require, "react");
 
     return {
