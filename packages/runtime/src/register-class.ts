@@ -78,11 +78,16 @@ type DeclaredSignalBase<TSignals> = (keyof TSignals & string) | Dashed<keyof TSi
 /** Declared signal names, including detailed forms. */
 type DeclaredSignalName<TSignals> = DeclaredSignalBase<TSignals> | `${DeclaredSignalBase<TSignals>}::${string}`;
 
+/** Handler map of a registered instance: inherited and interface signals plus declared ones. */
+type RegisteredSignalMap<TSignalSurface, TSignals> = Omit<TSignalSurface, DeclaredSignalName<TSignals>> &
+    Record<DeclaredSignalName<TSignals>, (...args: never[]) => unknown>;
+
+/** Emission map of a registered instance: inherited and interface signals plus declared ones. */
+type RegisteredSignalEmitMap<TSignalEmitSurface, TSignals> = Omit<TSignalEmitSurface, DeclaredSignalName<TSignals>> &
+    Record<DeclaredSignalName<TSignals>, { args: unknown[]; result: unknown }>;
+
 /** Signal methods added for declared names. */
-type DeclaredSignalMethods<TSignals, TBlockedMembers extends PropertyKey> = {
-    /** Type-level map used by signal hooks. */
-    __signals__?: Record<DeclaredSignalName<TSignals>, (...args: never[]) => unknown>;
-} & Pick<
+type DeclaredSignalMethods<TSignals, TBlockedMembers extends PropertyKey> = Pick<
     {
         connect(
             signal: DeclaredSignalName<TSignals>,
@@ -288,10 +293,10 @@ type RegisteredInstance<
                   true
               >;
               [classSignalMember]?: Record<TClassInstanceSignals | Dashed<keyof TSignals & string>, true>;
-              [signalMapOverride]?: () => Omit<TSignalSurface, DeclaredSignalName<TSignals>> &
-                  Record<DeclaredSignalName<TSignals>, (...args: never[]) => unknown>;
-              [signalEmitMapOverride]?: () => Omit<TSignalEmitSurface, DeclaredSignalName<TSignals>> &
-                  Record<DeclaredSignalName<TSignals>, { args: unknown[]; result: unknown }>;
+              [signalMapOverride]?: () => RegisteredSignalMap<TSignalSurface, TSignals>;
+              [signalEmitMapOverride]?: () => RegisteredSignalEmitMap<TSignalEmitSurface, TSignals>;
+              __signals__?: RegisteredSignalMap<TSignalSurface, TSignals>;
+              __signalEmit__?: RegisteredSignalEmitMap<TSignalEmitSurface, TSignals>;
               [propertyMapOverride]?: () => TRegisteredPropertySurface;
               [writablePropertyMapOverride]?: () => TRegisteredWritablePropertySurface;
               __properties__: TRegisteredPropertySurface;

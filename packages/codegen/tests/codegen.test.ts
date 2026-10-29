@@ -142,9 +142,19 @@ describe("generated bindings", () => {
         expect(
             diagnostics(
                 directory.path,
-                `import { File } from "@gtkx/gi/gio";
+                `import { File, ListModel, type ListModelImpl } from "@gtkx/gi/gio";
+            import { Object as GObject, TYPE_OBJECT } from "@gtkx/gi/gobject";
+            import { registerClass } from "@gtkx/runtime";
             const file: File = File.newForPath("/tmp/example");
             const path: string | null = file.getPath();
+            class StoreBase extends GObject implements ListModelImpl {
+                vfuncGetItemType(): bigint { return TYPE_OBJECT; }
+                vfuncGetNItems(): number { return 0; }
+                vfuncGetItem(): GObject | null { return null; }
+            }
+            const Store = registerClass(StoreBase, { typeName: "ConsumerStore", implements: [ListModel] });
+            const model: ListModel = new Store();
+            model.connect("items-changed", (position: number, removed: number, added: number) => position + removed + added);
             export { path };`,
             ),
         ).toEqual([]);
