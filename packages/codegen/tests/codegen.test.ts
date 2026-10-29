@@ -298,6 +298,12 @@ describe("generated bindings", () => {
         expect(readGeneratedLibraries(gi.linkDir)?.libraries).toContain("Gio-2.0");
         expect(readGeneratedElements(jsx.linkDir).length).toBeGreaterThan(0);
         expect(readFileSync(unrelated, "utf8")).toBe("preserve");
+
+        const nestedCairo = join(directory.path, "nested-cairo");
+        mkdirSync(join(nestedCairo, "node_modules", "@gtkx"), { recursive: true });
+        rmSync(join(directory.path, "node_modules", "@gtkx", "cairo"));
+        symlinkSync(join(workspace, "packages", "cairo"), join(nestedCairo, "node_modules", "@gtkx", "cairo"), "dir");
+        expect(() => resolveStore(nestedCairo)).toThrow();
     });
 
     it("refreshes reference pages when their props dependencies or cached metadata change", () => {

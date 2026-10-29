@@ -2,6 +2,7 @@ import { isPathWithin } from "@gtkx/utils";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { StoreOptions } from "./store-fs.js";
+import { EXTERNAL_NAMESPACES } from "../gir/external-namespaces.js";
 import { sweepStagingDirs } from "../staging.js";
 
 /**
@@ -131,6 +132,32 @@ const checkConsumers = (projectRoot: string, nodeModules: string): void => {
     }
 };
 
+const findUnreachableExternal = (projectRoot: string, nodeModules: string): StoreConsumer | null => {
+    for (const { packageName } of EXTERNAL_NAMESPACES) {
+        const external = resolvePackage(projectRoot, packageName);
+
+        if (external !== null && !canImport(nodeModules, external.nodeModules)) {
+            return { name: packageName, nodeModules: external.nodeModules };
+        }
+    }
+
+    return null;
+};
+
+const unreachableExternalMessage = (external: StoreConsumer, nodeModules: string): string =>
+    `Cannot write the generated store to ${nodeModules}: ${external.name} is installed in ` +
+    `${external.nodeModules}, below it, so the generated bindings can never import it. Install ` +
+    `${external.name} in ${nodeModules} alongside @gtkx/runtime (in a workspace, add it to the root ` +
+    "package's dependencies), then run gtkx codegen again.";
+
+const checkExternals = (projectRoot: string, nodeModules: string): void => {
+    const external = findUnreachableExternal(projectRoot, nodeModules);
+
+    if (external !== null) {
+        throw new Error(unreachableExternalMessage(external, nodeModules));
+    }
+};
+
 const storePaths = (nodeModules: string): string[] =>
     STORE_NAMES.flatMap((name) => [join(nodeModules, STORE_DIR, name), join(nodeModules, SCOPE, name)]);
 
@@ -185,8 +212,9 @@ const sweepProjectStaging = (projectRoot: string): void => {
  *
  * @param projectRoot Directory containing the project's `package.json`.
  * @returns Store locations and versions, with `jsx` set to null when React is absent.
- * @throws If runtime cannot be resolved, or a binding consumer is installed above the selected
- * store and cannot import it.
+ * @throws If runtime cannot be resolved, a binding consumer is installed above the selected
+ * store and cannot import it, or a package the bindings import, such as `@gtkx/cairo`, is
+ * installed below the selected store.
  */
 const resolveStore = (projectRoot: string): ResolvedStore => {
     const root = resolve(projectRoot);
@@ -195,6 +223,7 @@ const resolveStore = (projectRoot: string): ResolvedStore => {
     const react = resolvePackage(root, "@gtkx/react");
     const nodeModules = storeNodeModules(runtime, react);
     checkConsumers(root, nodeModules);
+    checkExternals(root, nodeModules);
 
     return {
         gi: storeOptions(nodeModules, "gi", runtime.version, owner),
