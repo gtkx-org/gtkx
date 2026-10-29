@@ -13,6 +13,7 @@ import { annotationSpec } from "../store/gi/doc-spec.js";
 import { resolveAccessor, type ResolvedAccessor, resolvePropertyMetadata } from "../store/gi/property-accessor.js";
 import { acceptedChildTypesFor } from "../store/jsx/accepted-child-types.js";
 import { elementPropTypeFor } from "../store/jsx/element-prop-imports.js";
+import { LAZY_CHILDREN_PROP } from "../store/jsx/element-prop-types.js";
 import { isMountableElement } from "../store/jsx/generated-elements.js";
 import {
     getGlibName,
@@ -48,6 +49,7 @@ type ElementPageContext = {
     library: Library;
     linkFor: (glibName: string) => string | undefined;
     handwrittenProps: ReadonlyMap<string, HandwrittenProp[]>;
+    lazyOmittedProps: ReadonlyMap<string, string[]>;
 };
 
 type MemberOwner = {
@@ -299,18 +301,38 @@ const propertyEntries = (entry: GlibNamedClass, context: ElementPageContext, see
     return entries;
 };
 
+const lazyPropsNotes = (lazyOmitted: string[]): string[] => {
+    if (lazyOmitted.length === 0) {
+        return [];
+    }
+
+    const names = lazyOmitted.map((name) => `\`${name}\``).join(", ");
+
+    return [`The parent container creates this object, so its construct-only props are not accepted: ${names}.`];
+};
+
+const LAZY_CHILDREN_ENTRY: MetaDocEntry = {
+    name: LAZY_CHILDREN_PROP.name,
+    meta: `\`${LAZY_CHILDREN_PROP.type}\``,
+    doc: LAZY_CHILDREN_PROP.doc,
+};
+
 const propsSection = (entry: GlibNamedClass, context: ElementPageContext, selfType: string): string[] => {
-    const seen: Set<string> = new Set();
-    const entries = propertyEntries(entry, context, seen);
+    const lazyOmitted = context.lazyOmittedProps.get(entry.glibName);
+    const seen: Set<string> = new Set(lazyOmitted === undefined ? [] : [...lazyOmitted, LAZY_CHILDREN_PROP.name]);
+    const lazyEntries = lazyOmitted === undefined ? [] : [LAZY_CHILDREN_ENTRY];
+    const entries = [...lazyEntries, ...propertyEntries(entry, context, seen)];
 
     const omitted = omittedPropNamesFor(entry.glibName).map((name) => `\`${name}\``);
-    const omissionNote =
-        omitted.length === 0
+    const omissionNote = [
+        ...(omitted.length === 0
             ? []
             : [
                   `GIR props omitted from this element: ${omitted.join(", ")}. ` +
                       "Their notify handlers are omitted too; configured props can replace them.",
-              ];
+              ]),
+        ...lazyPropsNotes(lazyOmitted ?? []),
+    ];
     const intro = [
         `\`ref\` receives the \`${selfType}\` instance.`,
         "Every mutable property also has an `onNotify<Prop>` handler prop called with the new value " +

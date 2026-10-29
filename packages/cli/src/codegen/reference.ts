@@ -5,6 +5,7 @@ import {
     isAgentReferenceEnabled,
     resolveAcceptedChildTypes,
     resolveElementProps,
+    resolveLazyElements,
     resolveOmittedProps,
 } from "@gtkx/config/internal";
 import { join } from "node:path";
@@ -47,6 +48,7 @@ const writeReference = async (options: WriteReferenceOptions): Promise<Reference
         props: { ...builtin.props, ...resolveElementProps(config.elements) },
         acceptedChildTypes: { ...builtin.acceptedChildTypes, ...resolveAcceptedChildTypes(config.elements) },
         omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
+        lazyElements: [...builtin.lazyElements, ...resolveLazyElements(config.elements)],
         isForced: options.isForced === true,
     });
 

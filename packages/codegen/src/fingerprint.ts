@@ -37,6 +37,7 @@ type DocsFingerprintInput = {
     props: Record<string, ElementPropsExport>;
     omittedProps: Record<string, string[]>;
     acceptedChildTypes: Record<string, string[]>;
+    lazyElements: string[];
 };
 
 const docsFingerprintSchema = z.object({
@@ -243,6 +244,7 @@ const hashDocs = (giValue: string, input: DocsFingerprintInput, propsValue: stri
                 serializeElementProps(input.props),
                 serializeStringLists(input.omittedProps),
                 serializeStringLists(input.acceptedChildTypes),
+                sortAlpha(input.lazyElements),
             ]),
         )
         .digest("hex");

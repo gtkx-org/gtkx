@@ -14,6 +14,7 @@ import {
     configDependenciesFor,
     resolveAcceptedChildTypes,
     resolveElementProps,
+    resolveLazyElements,
     resolveOmittedProps,
 } from "@gtkx/config/internal";
 import { type McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -216,6 +217,7 @@ const loadReference = async (requestedRoot: string): Promise<LoadedReference> =>
         resolveFrom: root,
         props: { ...builtin.props, ...resolveElementProps(config.elements) },
         omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
+        lazyElements: [...builtin.lazyElements, ...resolveLazyElements(config.elements)],
         acceptedChildTypes: { ...builtin.acceptedChildTypes, ...resolveAcceptedChildTypes(config.elements) },
     });
 

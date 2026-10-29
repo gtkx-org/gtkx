@@ -1,7 +1,12 @@
 import { mergeOmittedProps, resolveGirPath, resolveLibraries } from "@gtkx/codegen";
 import { readBuiltinElementsForDocs, writeDocs } from "@gtkx/codegen/internal";
 import { loadConfig } from "@gtkx/config";
-import { resolveAcceptedChildTypes, resolveElementProps, resolveOmittedProps } from "@gtkx/config/internal";
+import {
+    resolveAcceptedChildTypes,
+    resolveElementProps,
+    resolveLazyElements,
+    resolveOmittedProps,
+} from "@gtkx/config/internal";
 import { info, isPathInside } from "@gtkx/utils";
 import { defineCommand } from "citty";
 import { resolve } from "node:path";
@@ -70,6 +75,7 @@ const docs = defineCommand({
             props: { ...builtin.props, ...resolveElementProps(config.elements) },
             acceptedChildTypes: { ...builtin.acceptedChildTypes, ...resolveAcceptedChildTypes(config.elements) },
             omittedProps: mergeOmittedProps(builtin.omittedProps, resolveOmittedProps(config.elements)),
+            lazyElements: [...builtin.lazyElements, ...resolveLazyElements(config.elements)],
             isForced: args.force,
         });
 

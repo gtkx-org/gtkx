@@ -28,7 +28,7 @@ import {
     resolveStore,
     runCodegen,
 } from "../src/index.js";
-import { writeDocs } from "../src/internal.js";
+import { readBuiltinElementsForDocs, writeDocs } from "../src/internal.js";
 
 const workspace = fileURLToPath(new URL("../../..", import.meta.url));
 const createProject = () => {
@@ -306,6 +306,25 @@ describe("generated bindings", () => {
         writeFileSync(join(options.outDir, ".codegen-fingerprint.json"), "{}");
         expect(writeDocs(options).isRegenerated).toBe(true);
         expect(writeDocs(options).isRegenerated).toBe(false);
+    });
+
+    it("documents the children slot of parent-created elements in place of their construct-only props", async () => {
+        using directory = createProject();
+        const outDir = join(directory.path, "reference");
+        writeDocs({
+            ...(await readBuiltinElementsForDocs()),
+            libraries: ["Adw-1"],
+            girPath: resolveGirPath(undefined, directory.path),
+            resolveFrom: directory.path,
+            outDir,
+        });
+        const page = (name: string) => readFileSync(join(outDir, "adw", `${name}.md`), "utf8");
+        expect(page("layout")).toContain("### `children`");
+        expect(page("layout")).not.toContain("### `content`");
+        expect(page("view-stack-page")).toContain("### `children`");
+        expect(page("view-stack-page")).not.toContain("### `child`\n");
+        expect(page("layout-slot")).toContain("### `id`");
+        expect(page("layout-slot")).not.toContain("### `children`");
     });
 
     it("generates JSX bindings that accept documented props and reject incompatible consumers", async () => {

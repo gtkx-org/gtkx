@@ -15,7 +15,9 @@ import { isEmittableConstant } from "../store/gi/constant.js";
 import { isEmittableNamespaceFunction, namespaceFunctionExportName } from "../store/gi/function.js";
 import { setAcceptedChildTypes } from "../store/jsx/accepted-child-types.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
+import { lazyOmittedProps } from "../store/jsx/element-prop-types.js";
 import { isMountableElement } from "../store/jsx/generated-elements.js";
+import { buildGirIndex } from "../store/jsx/gir-index.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
 import { type ElementPageContext, renderElementPage } from "./element-page.js";
@@ -37,6 +39,8 @@ type ApiReferenceOptions = {
     /** GObject properties the project omits from generated props; without it pages show props that do not exist. */
     omittedProps?: OmittedProps;
     acceptedChildTypes?: Record<string, string[]>;
+    /** Elements their parent container creates; without it their pages show construct-only props they reject. */
+    lazyElements?: string[];
 };
 
 /** Narrows an `ApiReference.symbols` enumeration. */
@@ -398,12 +402,13 @@ class ApiReference {
             resolveFrom,
             declarationDir: freshDeclarationDir(resolveFrom, this.giInputs),
         });
+        this.buildIndex();
         this.elementContext = {
             library: this.library,
             linkFor: (): string | undefined => undefined,
             handwrittenProps: this.propsCatalog.byType,
+            lazyOmittedProps: lazyOmittedProps(buildGirIndex(this.library), options.lazyElements ?? []),
         };
-        this.buildIndex();
     }
 
     private applyElementConfig(): void {

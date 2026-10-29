@@ -14,7 +14,9 @@ import { arrayGuard, hasFields, isString } from "../guards.js";
 import { readJsonFile } from "../json.js";
 import { setAcceptedChildTypes } from "../store/jsx/accepted-child-types.js";
 import { type ElementProps, setElementProps } from "../store/jsx/element-prop-imports.js";
+import { lazyOmittedProps } from "../store/jsx/element-prop-types.js";
 import { isMountableElement } from "../store/jsx/generated-elements.js";
+import { buildGirIndex } from "../store/jsx/gir-index.js";
 import { collectIntrinsicElementClasses, type GlibNamedClass } from "../store/jsx/intrinsic-elements.js";
 import { type OmittedProps, setOmittedProps } from "../store/jsx/omitted-props.js";
 import { type ElementPageContext, renderElementPage } from "./element-page.js";
@@ -47,6 +49,7 @@ type DocsOptions = {
     props?: ElementProps;
     omittedProps?: OmittedProps;
     acceptedChildTypes?: Record<string, string[]>;
+    lazyElements?: string[];
     isForced?: boolean;
 };
 
@@ -287,8 +290,9 @@ const generatePages = (input: {
     linkStyle: DocsLinkStyle;
     library: Library;
     props: PropsCatalog;
+    lazyElements: string[];
 }): GeneratedDocs => {
-    const { options, basePath, linkStyle, library, props } = input;
+    const { options, basePath, linkStyle, library, props, lazyElements } = input;
     const intrinsicElements = collectIntrinsicElementClasses(library);
     const byNamespace = groupElementsByNamespace(intrinsicElements);
     const linkByGlibName = buildElementLinks(intrinsicElements, basePath, linkStyle);
@@ -296,6 +300,7 @@ const generatePages = (input: {
         library,
         linkFor: (glibName) => linkByGlibName.get(glibName),
         handwrittenProps: props.byType,
+        lazyOmittedProps: lazyOmittedProps(buildGirIndex(library), lazyElements),
     };
     const pages: Page[] = [];
     const namespaces: DocsNamespace[] = [];
@@ -418,6 +423,7 @@ const docsFingerprintInput = (options: DocsOptions): DocsFingerprintInput => ({
     props: options.props ?? {},
     omittedProps: options.omittedProps ?? {},
     acceptedChildTypes: options.acceptedChildTypes ?? {},
+    lazyElements: options.lazyElements ?? [],
 });
 
 const writeDocs = (options: DocsOptions): DocsResult => {
@@ -443,7 +449,14 @@ const writeDocs = (options: DocsOptions): DocsResult => {
         declarationDir:
             options.declarationDir ?? freshDeclarationDir(input.resolveFrom, giInputs(options, library.girFiles)),
     });
-    const { pages, namespaces } = generatePages({ options, basePath: input.basePath, linkStyle, library, props });
+    const { pages, namespaces } = generatePages({
+        options,
+        basePath: input.basePath,
+        linkStyle,
+        library,
+        props,
+        lazyElements: input.lazyElements,
+    });
     clearOutDir(options, previous);
     mkdirSync(options.outDir, { recursive: true });
     const manifest: DocsManifest = { generator: MANIFEST_GENERATOR, namespaces };
