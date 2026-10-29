@@ -9,7 +9,7 @@ import type { ApplicationState, DevRunnerDeps } from "./runner.js";
 import { hasUnstagedFontImport } from "../internal/font-staging.js";
 import { openWorkerSources } from "../internal/worker-sources.js";
 import type { ProjectStaging } from "../internal/project-staging.js";
-import { startMcpClient, stopMcpClient } from "../mcp/index.js";
+import { reportMcpApplicationError, startMcpClient, stopMcpClient } from "../mcp/index.js";
 import {
     mergeTestingModule,
     setTestingModuleLoader,
@@ -124,6 +124,7 @@ const createDevRunnerDeps = (
         return startMcpClient(applicationId, options.mcpSocketPath);
     },
     stopMcpClient,
+    reportApplicationError: reportMcpApplicationError,
     watchApplicationShutdown,
     watchUncaughtErrors: (onUncaughtError) => {
         process.on("uncaughtException", onUncaughtError);

@@ -27,6 +27,7 @@ type DevRunnerDeps = {
     applicationId: string;
     startMcpClient(applicationId: string, loadAppModule: LoadAppModule): Promise<unknown>;
     stopMcpClient(): void;
+    reportApplicationError(cause: unknown): void;
     watchApplicationShutdown(onShutdown: () => void): void;
     watchUncaughtErrors(onUncaughtError: (cause: unknown) => void): void;
     watchWorkerSources(onSource: (path: string) => void): void;
@@ -926,6 +927,7 @@ const createSession = (
         refreshTracker,
         failure: createFailureTracker((cause) => {
             announceFailure(server, cause);
+            deps.reportApplicationError(cause);
         }, refreshTracker.isRefreshing),
         pendingSaves: new Map(),
         imports,

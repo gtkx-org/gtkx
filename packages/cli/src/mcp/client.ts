@@ -15,6 +15,7 @@ import { WidgetRegistry } from "./widget-registry.js";
 type McpClientOptions = {
     socketPath?: string;
     applicationId: string;
+    lastApplicationError: () => string | null;
 };
 
 type ConnectCallbacks = {
@@ -63,10 +64,12 @@ class McpClient {
     private isStopping = false;
     private pendingConnectReject: ((error: Error) => void) | null = null;
     private registry = new WidgetRegistry();
+    private lastApplicationError: () => string | null;
 
     constructor(options: McpClientOptions) {
         this.socketPath = resolveMcpSocketPath(options.socketPath);
         this.applicationId = options.applicationId;
+        this.lastApplicationError = options.lastApplicationError;
     }
 
     private handleClose(): void {
@@ -156,12 +159,25 @@ class McpClient {
         const defaultApp = Gio.Application.getDefault();
 
         if (!(defaultApp instanceof Gtk.Application)) {
-            throw new TypeError("Application not initialized");
+            throw new TypeError(this.notRunningMessage());
         }
 
         this.registry.refresh();
 
         return dispatch(request.method, request.params, { registry: this.registry });
+    }
+
+    private notRunningMessage(): string {
+        const applicationError = this.lastApplicationError();
+
+        if (applicationError === null) {
+            return "Application not initialized";
+        }
+
+        return (
+            "The application is not running. The last error gtkx dev reported for it was: " +
+            `${applicationError}\nFix the error and save the file; gtkx dev then restarts the application.`
+        );
     }
 
     async connect(): Promise<void> {

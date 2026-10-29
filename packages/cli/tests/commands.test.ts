@@ -882,6 +882,59 @@ describe("CLI commands", () => {
         });
     });
 
+    it("tells MCP clients which error stopped the application", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "ready.txt");
+        const failPath = join(project.root, ".gtkx", "fail");
+        project.write(
+            "src/index.tsx",
+            `import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+            import { createRoot } from "@gtkx/react";
+            import { existsSync, writeFileSync } from "node:fs";
+            import { useEffect, useState } from "react";
+            const Content = () => {
+                const [hasFailed, setHasFailed] = useState(false);
+                useEffect(() => {
+                    writeFileSync(${JSON.stringify(readyPath)}, "ready");
+                    const timer = setInterval(() => setHasFailed(existsSync(${JSON.stringify(failPath)})), 50);
+                    return () => clearInterval(timer);
+                }, []);
+                if (hasFailed) throw new Error("Rendering the preview failed");
+                return null;
+            };
+            createRoot().render(
+                <AdwApplication applicationId="org.gtkx.example">
+                    <AdwApplicationWindow><Content /></AdwApplicationWindow>
+                </AdwApplication>
+            );`,
+        );
+        const socketPath = join(project.root, "mcp.sock");
+        vi.stubEnv("GTKX_MCP_SOCKET_PATH", socketPath);
+        const [clientTransport, transport] = InMemoryTransport.createLinkedPair();
+        const server = createMcpServer({ transport, socketPath, version: "1.0.0" });
+        const client = new Client({ name: "application-failure-test", version: "1.0.0" });
+        try {
+            await server.start();
+            await client.connect(clientTransport);
+            await withSession("dev", project.root, readyPath, async () => {
+                const apps = await client.callTool({
+                    name: "gtkx_list_apps",
+                    arguments: { waitForApps: true, timeout: 30_000 },
+                });
+                expect(JSON.stringify(apps)).toContain("org.gtkx.example");
+                project.write(".gtkx/fail", "fail");
+                await expect
+                    .poll(async () => JSON.stringify(await client.callTool({ name: "gtkx_get_widget_tree" })), {
+                        timeout: 30_000,
+                    })
+                    .toContain("Rendering the preview failed");
+            });
+        } finally {
+            await client.close();
+            await server.stop();
+        }
+    });
+
     it("reloads imported configuration after atomic saves and missing directories are created", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
         const readyPath = join(project.root, "ready.txt");

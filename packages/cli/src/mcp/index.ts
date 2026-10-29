@@ -1,11 +1,17 @@
+import { errorMessage } from "@gtkx/utils";
 import { McpClient } from "./client.js";
 
 type McpClientController = {
     start: (applicationId: string, socketPath?: string) => Promise<McpClient>;
     stop: () => void;
+    reportApplicationError: (cause: unknown) => void;
 };
 
-const { start: startMcpClient, stop: stopMcpClient } = createMcpClientController();
+const {
+    start: startMcpClient,
+    stop: stopMcpClient,
+    reportApplicationError: reportMcpApplicationError,
+} = createMcpClientController();
 
 async function connectQuietly(client: McpClient): Promise<boolean> {
     try {
@@ -19,6 +25,7 @@ async function connectQuietly(client: McpClient): Promise<boolean> {
 
 function createMcpClientController(): McpClientController {
     let current: McpClient | null = null;
+    let applicationError: string | null = null;
 
     return {
         start: async (applicationId: string, socketPath?: string): Promise<McpClient> => {
@@ -26,7 +33,11 @@ function createMcpClientController(): McpClientController {
                 return current;
             }
 
-            const client = new McpClient({ applicationId, ...(socketPath !== undefined && { socketPath }) });
+            const client = new McpClient({
+                applicationId,
+                lastApplicationError: () => applicationError,
+                ...(socketPath !== undefined && { socketPath }),
+            });
             current = client;
             await connectQuietly(client);
 
@@ -40,7 +51,10 @@ function createMcpClientController(): McpClientController {
             current.disconnect();
             current = null;
         },
+        reportApplicationError: (cause: unknown): void => {
+            applicationError = errorMessage(cause);
+        },
     };
 }
 
-export { startMcpClient, stopMcpClient };
+export { reportMcpApplicationError, startMcpClient, stopMcpClient };
