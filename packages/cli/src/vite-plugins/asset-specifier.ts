@@ -36,7 +36,7 @@ const parseResourceSpecifier = (source: string): ResourceSpecifier | null => {
     const query = getQuery(source);
     const assetSource = stripQuery(source);
 
-    if (query === null || !ASSET_RE.test(assetSource)) {
+    if (query === null) {
         return null;
     }
 

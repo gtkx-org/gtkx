@@ -213,15 +213,15 @@ describe("CLI commands", () => {
         const failedPath = join(project.root, "load-failed.txt");
         const icon = (color: string) =>
             `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="${color}"/></svg>`;
-        project.write("src/a.data", "first");
-        project.write("src/b.data", "second");
+        project.write("src/a.txt", "first");
+        project.write("src/b.json", "second");
         project.write("src/probe.svg", icon("blue"));
         project.write(
             "src/data-a.ts",
-            `import value from "./a.data?resource=/org/gtkx/probe/value";
+            `import value from "./a.txt?resource=/org/gtkx/probe/value";
             export { value as path };`,
         );
-        project.write("src/data-b.ts", `export { default as path } from "./b.data?resource=/org/gtkx/probe/value";`);
+        project.write("src/data-b.ts", `export { default as path } from "./b.json?resource=/org/gtkx/probe/value";`);
         const component = (label: string, data: string) => `
             import { Display } from "@gtkx/gi/gdk";
             import { resourcesLookupData } from "@gtkx/gi/gio";
@@ -290,7 +290,7 @@ describe("CLI commands", () => {
             expect(replaced.pid).not.toBe(initial.pid);
             expect(replaced.token).not.toBe(initial.token);
 
-            project.write("src/b.data", "updated");
+            project.write("src/b.json", "updated");
             await expect.poll(() => observation().value, { timeout: 30_000 }).toBe("updated");
             const updated = observation();
             expect(updated.pid).not.toBe(replaced.pid);
@@ -301,9 +301,9 @@ describe("CLI commands", () => {
             expect(observation().pid).not.toBe(updated.pid);
 
             const beforeRemoval = observation();
-            rmSync(join(project.root, "src/b.data"));
+            rmSync(join(project.root, "src/b.json"));
             await expect.poll(() => existsSync(failedPath), { timeout: 30_000 }).toBe(true);
-            project.write("src/b.data", "recovered");
+            project.write("src/b.json", "recovered");
             await expect.poll(() => observation().value, { timeout: 30_000 }).toBe("recovered");
             expect(observation().pid).not.toBe(beforeRemoval.pid);
         });
