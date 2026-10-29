@@ -734,6 +734,12 @@ describe("CLI commands", () => {
             import { jsx } from "react/jsx-runtime";
             export const Badge = (props) => jsx(GtkLabel, props);`,
         );
+        workspace.write(
+            "packages/ui/index.d.ts",
+            `import type { GtkLabelProps } from "@gtkx/jsx/gtk";
+            import type { ReactNode } from "react";
+            export declare const Badge: (props: GtkLabelProps) => ReactNode;`,
+        );
         workspace.linkApp("packages/ui");
         const writeApp = (app: string, label: string, imports = "") => {
             mkdirSync(join(appDir(app), "node_modules/@studio"), { recursive: true });
@@ -788,6 +794,23 @@ describe("CLI commands", () => {
         );
         const run = (app: string, args: string[]) =>
             promisify(execFile)(process.execPath, args, { cwd: appDir(app), env, timeout: 300_000 });
+
+        workspace.write(
+            "apps/editor/tsconfig.json",
+            JSON.stringify({
+                compilerOptions: {
+                    module: "NodeNext",
+                    jsx: "react-jsx",
+                    strict: true,
+                    skipLibCheck: true,
+                    noEmit: true,
+                    types: ["node", "react"],
+                },
+                include: ["src"],
+            }),
+        );
+        await run("editor", [workspace.cli("editor"), "codegen"]);
+        await promisify(execFile)(workspace.tsc, ["-p", appDir("editor")], { env, timeout: 300_000 });
 
         await run("journal", [workspace.cli("journal"), "build"]);
         await run("editor", [workspace.cli("editor"), "build"]);

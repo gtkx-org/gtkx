@@ -165,6 +165,7 @@ const createPnpmWorkspace = (apps: Record<string, Record<string, unknown>>) => {
         write,
         linkApp,
         cli: (app: string) => join(root, "apps", app, "node_modules/@gtkx/cli/bin/gtkx.js"),
+        tsc: join(workspace, "node_modules/.bin/tsc"),
         [Symbol.dispose]: () => directory[Symbol.dispose](),
     };
 };

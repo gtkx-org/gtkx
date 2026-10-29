@@ -11,6 +11,8 @@ type CodegenStore = {
     jsxLinkDir: string;
     runtimeVersion: string;
     owner: string;
+    giDependencies: Record<string, string>;
+    jsxDependencies: Record<string, string>;
     react: CodegenReactPackage | null;
 };
 
@@ -49,6 +51,8 @@ const resolveCodegenStore = (dir: string): CodegenStore => {
         jsxLinkDir: store.jsx?.linkDir ?? siblingStore(store.gi.linkDir),
         runtimeVersion: store.gi.version,
         owner: store.gi.owner ?? realpathSync(dir),
+        giDependencies: store.gi.dependencies ?? {},
+        jsxDependencies: store.jsx?.dependencies ?? {},
         react: hasReactRuntime && store.jsx !== null ? { version: store.jsx.version } : null,
     };
 };

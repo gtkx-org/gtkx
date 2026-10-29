@@ -41,6 +41,7 @@ const generateBindings = async (options: GenerateBindingsOptions): Promise<Gener
             linkDir: store.giLinkDir,
             version: store.runtimeVersion,
             owner: store.owner,
+            dependencies: store.giDependencies,
         },
         jsx:
             store.react === null
@@ -50,6 +51,7 @@ const generateBindings = async (options: GenerateBindingsOptions): Promise<Gener
                       linkDir: store.jsxLinkDir,
                       version: store.react.version,
                       owner: store.owner,
+                      dependencies: store.jsxDependencies,
                   },
         userComponents: resolveElementComponents(config.elements),
         userProps: resolveElementProps(config.elements),
