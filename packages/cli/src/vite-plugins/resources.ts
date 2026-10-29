@@ -12,6 +12,7 @@ import { ASSET_RE } from "./asset-extensions.js";
 import { isBareRelativeAsset, parseIconSpecifier, parseResourceSpecifier } from "./asset-specifier.js";
 import { renderInitModule } from "./resource-init-module.js";
 import {
+    ASSET_MODULE_SUFFIX,
     BUNDLE_FILENAME,
     escapeXml,
     fromVirtualId,
@@ -19,6 +20,7 @@ import {
     isVirtual,
     REL_SEPARATOR,
     RESOURCE_PATH_EXPORT,
+    RESOURCE_RESOLVE_OPTION,
     toVirtualId,
     VIRTUAL_ID_RE,
     VIRTUAL_INIT,
@@ -422,11 +424,19 @@ const registerIconEntry = (state: PluginState, sourcePath: string, derived: Deri
     return entry;
 };
 
-const virtualAssetId = (entry: ResourceEntry): string =>
+const virtualEntryId = (entry: ResourceEntry): string =>
     toVirtualId(entry.sourcePath) + REL_SEPARATOR + entry.resourcePath;
 
+const virtualAssetId = (entry: ResourceEntry): string => virtualEntryId(entry) + ASSET_MODULE_SUFFIX;
+
 const virtualIconId = ({ entry, iconName }: ResolvedIconEntry): string =>
-    virtualAssetId(entry) + ICON_NAME_SEPARATOR + iconName;
+    virtualEntryId(entry) + ICON_NAME_SEPARATOR + iconName + ASSET_MODULE_SUFFIX;
+
+const resolveCustomOptions = (options: Record<string, unknown> | undefined): Record<string, unknown> => {
+    const custom = options?.["custom"];
+
+    return isRecord(custom) ? custom : {};
+};
 
 const resolveAssetSource = async (
     ctx: ResolveContext,
@@ -434,6 +444,7 @@ const resolveAssetSource = async (
 ): Promise<string> => {
     const resolved = await ctx.resolve(request.assetSource, request.importer, {
         ...request.options,
+        custom: { ...resolveCustomOptions(request.options), [RESOURCE_RESOLVE_OPTION]: true },
         skipSelf: true,
     });
 
@@ -502,7 +513,7 @@ const loadInitModule = (state: PluginState): string => {
 };
 
 const virtualAssetMetadata = (virtualId: string): { absPath: string; iconName: string | null; rel: string } => {
-    const rest = fromVirtualId(virtualId);
+    const rest = fromVirtualId(virtualId).slice(0, -ASSET_MODULE_SUFFIX.length);
     const separatorIndex = rest.indexOf(REL_SEPARATOR);
     const relAndMetadata = rest.slice(separatorIndex + REL_SEPARATOR.length);
     const iconSeparatorIndex = relAndMetadata.indexOf(ICON_NAME_SEPARATOR);

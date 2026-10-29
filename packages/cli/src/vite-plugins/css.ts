@@ -1,5 +1,7 @@
 import type { Plugin } from "vite";
+import { isRecord } from "@gtkx/utils";
 import { readFileSync } from "node:fs";
+import { RESOURCE_RESOLVE_OPTION } from "./resource-shared.js";
 import { createVirtualNamespace } from "./virtual-module.js";
 
 type CssResolveContext = Parameters<typeof resolveToVirtual>[0];
@@ -14,11 +16,17 @@ const { isVirtual, toVirtualId, fromVirtualId, resolveToVirtual } = createVirtua
 
 const injectedCssId = (filePath: string): string => toVirtualId(filePath) + INJECT_SUFFIX;
 
+const isResourceResolve = (options: CssResolveRequest["options"]): boolean => {
+    const custom = options?.["custom"];
+
+    return isRecord(custom) && custom[RESOURCE_RESOLVE_OPTION] === true;
+};
+
 const resolveCssId = async (
     ctx: CssResolveContext,
     request: CssResolveRequest,
 ): Promise<{ id: string; moduleSideEffects: true } | undefined> => {
-    if (!CSS_RE.test(request.source)) {
+    if (!CSS_RE.test(request.source) || isResourceResolve(request.options)) {
         return;
     }
 

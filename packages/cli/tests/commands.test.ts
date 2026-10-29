@@ -216,6 +216,8 @@ describe("CLI commands", () => {
         project.write("src/a.txt", "first");
         project.write("src/b.json", "second");
         project.write("src/probe.svg", icon("blue"));
+        project.write("src/notes.txt", "notes");
+        project.write("src/theme.css", "label { color: red; }");
         project.write(
             "src/data-a.ts",
             `import value from "./a.txt?resource=/org/gtkx/probe/value";
@@ -232,6 +234,8 @@ describe("CLI commands", () => {
             import { useEffect, useState } from "react";
             import { path } from "./data-${data}.ts";
             import iconName from "./probe.svg?icon=gtkx-resource-probe";
+            import notesPath from "./notes.txt?resource";
+            import themePath from "./theme.css?resource";
             export function Probe() {
                 const [token] = useState(() => randomUUID());
                 const label = ${JSON.stringify(label)};
@@ -246,6 +250,8 @@ describe("CLI commands", () => {
                         value: text(path),
                         hasIcon: IconTheme.getForDisplay(display).hasIcon(iconName),
                         icon: text("/org/gtkx/example/icons/gtkx-resource-probe.svg"),
+                        notes: text(notesPath),
+                        theme: text(themePath),
                     }));
                     if (process.env.NODE_ENV === "production") process.exit(0);
                 }, [label, token]);
@@ -276,10 +282,19 @@ describe("CLI commands", () => {
                 value: string;
                 hasIcon: boolean;
                 icon: string;
+                notes: string;
+                theme: string;
             };
         await withSession("dev", project.root, readyPath, async () => {
             const initial = observation();
-            expect(initial).toMatchObject({ label: "initial", value: "first", hasIcon: true, icon: icon("blue") });
+            expect(initial).toMatchObject({
+                label: "initial",
+                value: "first",
+                hasIcon: true,
+                icon: icon("blue"),
+                notes: "notes",
+                theme: "label { color: red; }",
+            });
             project.write("src/probe.tsx", component("refreshed", "a"));
             await expect.poll(() => observation().label, { timeout: 30_000 }).toBe("refreshed");
             expect(observation()).toMatchObject({ pid: initial.pid, token: initial.token, value: "first" });
@@ -317,6 +332,8 @@ describe("CLI commands", () => {
                 value: "recovered",
                 hasIcon: true,
                 icon: icon("red"),
+                notes: "notes",
+                theme: "label { color: red; }",
             });
         } finally {
             stopDisplay();
