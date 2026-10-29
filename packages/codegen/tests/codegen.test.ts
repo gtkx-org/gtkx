@@ -142,8 +142,8 @@ describe("generated bindings", () => {
         expect(
             diagnostics(
                 directory.path,
-                `import { File, ListModel, type ListModelImpl } from "@gtkx/gi/gio";
-            import { Object as GObject, TYPE_OBJECT } from "@gtkx/gi/gobject";
+                `import { Application, File, ListModel, type ListModelImpl } from "@gtkx/gi/gio";
+            import { Object as GObject, TYPE_INT, TYPE_OBJECT } from "@gtkx/gi/gobject";
             import { registerClass } from "@gtkx/runtime";
             const file: File = File.newForPath("/tmp/example");
             const path: string | null = file.getPath();
@@ -155,6 +155,51 @@ describe("generated bindings", () => {
             const Store = registerClass(StoreBase, { typeName: "ConsumerStore", implements: [ListModel] });
             const model: ListModel = new Store();
             model.connect("items-changed", (position: number, removed: number, added: number) => position + removed + added);
+            class ServiceBase extends Application {
+                declare count: number;
+                pulse(): boolean {
+                    this.emit("activate");
+                    this.emit("action-enabled-changed", "quit", true);
+                    this.emit("action-added::quit", "quit");
+                    const id: bigint = this.connect("shutdown", () => {});
+                    this.disconnect(id);
+                    const onStartup = (): void => {};
+                    this.on("startup", onStartup).once("activate", () => {}).off("startup", onStartup);
+                    this.connect("action-enabled-changed", (name, enabled) => name.length > 0 && enabled);
+                    this.connect("notify::application-id", (pspec) => pspec.getName());
+                    this.connect("notify::count", (pspec) => pspec.getName());
+                    // @ts-expect-error unknown signal
+                    this.emit("no-such-signal");
+                    // @ts-expect-error activate takes no arguments
+                    this.emit("activate", 1);
+                    // @ts-expect-error enabled is a boolean
+                    this.emit("action-enabled-changed", "quit", "yes");
+                    // @ts-expect-error activate has no details
+                    this.connect("activate::detail", () => {});
+                    // @ts-expect-error the action name is a string
+                    this.connect("action-added", (name: number) => name);
+                    // @ts-expect-error unknown signal
+                    this.on("no-such-signal", () => {});
+                    return this.emit("name-lost");
+                }
+            }
+            const Service = registerClass(ServiceBase, {
+                typeName: "ConsumerService",
+                signals: { bumped: { paramTypes: [TYPE_INT] } },
+            });
+            class CounterBase extends Service {
+                bump(): void {
+                    this.connect("bumped", () => {});
+                    this.emit("bumped", 1);
+                    // @ts-expect-error unknown signal
+                    this.emit("bumpd", 1);
+                }
+            }
+            export const Counter = registerClass(CounterBase, { typeName: "ConsumerCounter" });
+            new Counter().emit("bumped", 2);
+            declare const either: Application | ServiceBase;
+            either.emit("activate");
+            either.on("startup", () => {}).disconnect(either.connect("shutdown", () => {}));
             export { path };`,
             ),
         ).toEqual([]);

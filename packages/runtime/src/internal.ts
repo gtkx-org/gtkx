@@ -13,13 +13,16 @@ const signalEmit: typeof signalEmitImpl = signalEmitImpl;
 
 const retainWrapperClasses = (wrappers: readonly unknown[]): readonly unknown[] => wrappers;
 
-type SignalMethodReceiver<T, K extends PropertyKey> = T extends {
-    [naturalSignalMember]?: infer TMembers;
-}
-    ? K extends keyof NonNullable<TMembers>
-        ? never
-        : unknown
-    : unknown;
+type SignalMethodMember = "connect" | "disconnect" | "emit" | "off" | "on" | "once";
+
+/**
+ * `unknown` when the receiver's type keeps the signal method `K`, and the natural member's brand
+ * when a GIR method of that name replaces it. It is an indexed access rather than a conditional
+ * type so it also resolves for the polymorphic `this` of a subclass body.
+ */
+type SignalMethodReceiver<T, K extends SignalMethodMember> = NonNullable<
+    (T & { [naturalSignalMember]?: Record<SignalMethodMember, unknown> })[typeof naturalSignalMember]
+>[K];
 
 export { preserveArrayNull } from "./descriptors.js";
 /** @internal */
@@ -51,6 +54,7 @@ export {
     type SignalEmitArguments,
     type SignalEmitName,
     type SignalEmitResult,
+    type SignalHandlerFor,
     type SignalHandlerId,
     type SignalMap,
     type SignalName,

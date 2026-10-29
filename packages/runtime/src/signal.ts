@@ -1,7 +1,6 @@
 import { alloc, emitSignal as gSignalEmitv, type ExternalObject, type Handle } from "./native.js";
 import { type AnyClass, toCamelIdentifier, upperFirst } from "@gtkx/utils";
 import type { Descriptor } from "./descriptor-types.js";
-import type { ResolvedSignalEmitMap, ResolvedSignalMap, SignalArguments, SignalResult } from "./signal-brand.js";
 import { type Arg, isCallerAllocatedArg, isInoutArg, isOutputArg } from "./arg.js";
 import { bind } from "./bind.js";
 import { wrapCallback } from "./callback.js";
@@ -55,22 +54,20 @@ type SignalConnections = {
 
 const isSignalHandler = (value: unknown): value is SignalHandler => typeof value === "function";
 
-type DeclaredSignalMap<T> = T extends { __signals__?: infer TSignals } ? NonNullable<TSignals> : never;
-type SignalMap<T> = ResolvedSignalMap<T, DeclaredSignalMap<T>>;
+/** Shape every emission entry has, intersected into lookups so they stay indexable on a generic receiver. */
+type SignalEmission = { args: unknown[]; result: unknown };
+/**
+ * Maps are read by indexed access rather than conditional types, so they resolve against the
+ * polymorphic `this` of a subclass body as well as against concrete instances.
+ */
+type SignalMap<T> = NonNullable<(T & { __signals__?: unknown })["__signals__"]>;
 type SignalName<T> = keyof SignalMap<T> & string;
-type DeclaredSignalEmitMap<T> = T extends { __signalEmit__?: infer TSignals }
-    ? NonNullable<TSignals>
-    : T extends { __signals__?: infer TSignals }
-      ? {
-            [K in keyof NonNullable<TSignals>]: NonNullable<TSignals>[K] extends (...args: infer TArgs) => infer TResult
-                ? { args: TArgs; result: TResult }
-                : never;
-        }
-      : never;
-type SignalEmitMap<T> = ResolvedSignalEmitMap<T, DeclaredSignalEmitMap<T>>;
+type SignalBaseName<K extends string> = K extends `${infer TBase}::${string}` ? TBase : K;
+type SignalHandlerFor<T, K extends string> = SignalMap<T>[SignalBaseName<K> & SignalName<T>];
+type SignalEmitMap<T> = NonNullable<(T & { __signalEmit__?: unknown })["__signalEmit__"]>;
 type SignalEmitName<T> = keyof SignalEmitMap<T> & string;
-type SignalEmitArguments<T, K extends SignalEmitName<T>> = SignalArguments<SignalEmitMap<T>[K]>;
-type SignalEmitResult<T, K extends SignalEmitName<T>> = SignalResult<SignalEmitMap<T>[K]>;
+type SignalEmitArguments<T, K extends SignalEmitName<T>> = (SignalEmitMap<T>[K] & SignalEmission)["args"];
+type SignalEmitResult<T, K extends SignalEmitName<T>> = (SignalEmitMap<T>[K] & SignalEmission)["result"];
 
 type SignalConnector = (instance: object, signal: string, handler: SignalHandler, isAfter?: boolean) => SignalHandlerId;
 type SignalEmitter = (instance: object, signal: string, args: unknown[]) => unknown;
@@ -631,7 +628,7 @@ const emitDispatcherFor = (instance: object, signal: string): SignalEmitter => {
 function signalConnect<T extends object, K extends SignalName<NoInfer<T>>>(
     instance: T,
     signal: K,
-    handler: SignalMap<NoInfer<T>>[K],
+    handler: SignalHandlerFor<NoInfer<T>, K>,
     isAfter?: boolean,
 ): SignalHandlerId {
     return connectSignalByName(instance, signal, handler, isAfter);
@@ -680,6 +677,7 @@ export {
     type SignalEmitName,
     type SignalEmitResult,
     type SignalHandler,
+    type SignalHandlerFor,
     type SignalHandlerId,
     type SignalMap,
     type SignalName,

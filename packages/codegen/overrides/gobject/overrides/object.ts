@@ -6,7 +6,7 @@ import {
     type SignalHandler,
     type SignalHandlerId,
 } from "@gtkx/runtime";
-import type { SignalMap, SignalMethodReceiver, SignalName } from "@gtkx/runtime/internal";
+import type { SignalHandlerFor, SignalMethodReceiver, SignalName } from "@gtkx/runtime/internal";
 import { Object as GObject } from "../gobject.js";
 
 declare module "../gobject.js" {
@@ -33,7 +33,7 @@ declare module "../gobject.js" {
         on<TThis, K extends SignalName<TThis>>(
             this: TThis & SignalMethodReceiver<TThis, "on">,
             sigName: K,
-            callback: SignalMap<TThis>[K],
+            callback: SignalHandlerFor<TThis, K>,
             isAfter?: boolean,
         ): TThis;
 
@@ -48,7 +48,7 @@ declare module "../gobject.js" {
         once<TThis, K extends SignalName<TThis>>(
             this: TThis & SignalMethodReceiver<TThis, "once">,
             sigName: K,
-            callback: SignalMap<TThis>[K],
+            callback: SignalHandlerFor<TThis, K>,
             isAfter?: boolean,
         ): TThis;
 
@@ -62,7 +62,7 @@ declare module "../gobject.js" {
         off<TThis, K extends SignalName<TThis>>(
             this: TThis & SignalMethodReceiver<TThis, "off">,
             sigName: K,
-            callback: SignalMap<TThis>[K],
+            callback: SignalHandlerFor<TThis, K>,
         ): TThis;
     }
 }
