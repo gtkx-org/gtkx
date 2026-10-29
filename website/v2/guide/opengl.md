@@ -45,6 +45,14 @@ The bindings are generated from the OpenGL 4.6 core registry. Commands omit the 
 
 Object creation and deletion also have singular helpers: `gl.genBuffer()` returns one name, while `gl.genBuffers(count)` returns an array. Pass typed-array views directly for geometry uploads, alongside the byte length required by the command. `GLint64` and `GLuint64` use `bigint`, with BigInt typed arrays for their array arguments.
 
+Pass `null` as the lengths of `shaderSource` to read each source up to its end, as `NULL` does in C:
+
+```ts
+gl.shaderSource(shader, 1, [source], null);
+```
+
+The lengths count UTF-8 bytes, so `[source.length]`, which counts UTF-16 code units, truncates a source containing any non-ASCII character, even in a comment, and compilation then fails. A negative entry, such as `[-1]`, also marks a source that runs to its end.
+
 Generic state queries such as `getIntegerv` are not exported. Use the available typed queries for the object you are inspecting, such as `getShaderiv` or `getProgramiv`. Shader and program info-log helpers return the driver's diagnostics as strings.
 
 ## Manage context resources
