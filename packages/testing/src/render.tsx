@@ -1,4 +1,4 @@
-import type { CaughtErrorInfo, Root, RootElement } from "@gtkx/react";
+import type { Root, RootElement } from "@gtkx/react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { createRoot } from "@gtkx/react";
 import { isRootElement, settleAccessible } from "@gtkx/react/internal";
@@ -171,22 +171,15 @@ const settleRender = async (
     await settleWindow(settleTarget(resolved, container), findFailure, action);
 };
 
-const renderErrorHandlers = <Q extends QueryMap>(errors: RenderErrorState, options: RenderOptions<Q> | undefined) => {
-    const handleError = (error: unknown): void => {
+const renderErrorHandlers = <Q extends QueryMap>(errors: RenderErrorState, options: RenderOptions<Q> | undefined) => ({
+    onUncaughtError: (error: unknown): void => {
         errors.lastError = error instanceof Error ? error : new Error(String(error));
-    };
-
-    return {
-        onUncaughtError: handleError,
-        onCaughtError: (error: unknown, errorInfo: CaughtErrorInfo): void => {
-            handleError(error);
-            options?.onCaughtError?.(error, errorInfo);
-        },
-        onRecoverableError: (error: unknown, errorInfo: ErrorInfo): void => {
-            options?.onRecoverableError?.(error, errorInfo);
-        },
-    };
-};
+    },
+    onCaughtError: options?.onCaughtError,
+    onRecoverableError: (error: unknown, errorInfo: ErrorInfo): void => {
+        options?.onRecoverableError?.(error, errorInfo);
+    },
+});
 
 const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
     const settings = Gtk.Settings.getDefault();
@@ -211,10 +204,14 @@ const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
  * Widgets outside all toplevels or inside a hidden window cannot receive pointer or keyboard
  * input. `userEvent` rejects after `actionabilityTimeout`; use `fireEvent` to drive them directly.
  *
+ * Errors an error boundary catches go to `onCaughtError` and do not fail the test. An error no boundary
+ * catches rejects this render, or the next rerender, unmount or cleanup, with that error.
+ *
  * @param element React element to render.
  * @param options Container, wrapper, custom queries, and render settings.
  * @returns Bound queries, debug helpers, and rerender/unmount controls.
- * @throws If a shown window is not laid out and activated within `windowActivationTimeout`.
+ * @throws If a shown window is not laid out and activated within `windowActivationTimeout`, or the tree
+ * throws an error no boundary catches.
  */
 const render = async <Q extends QueryMap = Record<never, never>>(
     element: ReactNode,

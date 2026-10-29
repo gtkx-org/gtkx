@@ -182,7 +182,10 @@ type RenderOptions<Q extends QueryMap = Record<never, never>> = {
     isReactStrictMode?: boolean | undefined;
     /** Enable widget animations during the test. */
     areAnimationsEnabled?: boolean | undefined;
-    /** Called for errors caught by React error boundaries. */
+    /**
+     * Called for errors caught by React error boundaries, which never fail the test. They are logged when
+     * this is omitted.
+     */
     onCaughtError?: ((error: unknown, errorInfo: CaughtErrorInfo) => void) | undefined;
     /** Called for errors React recovered from automatically. */
     onRecoverableError?: ((error: unknown, errorInfo: ErrorInfo) => void) | undefined;

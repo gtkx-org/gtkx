@@ -43,14 +43,13 @@ describe("native story controls", () => {
                     }),
             },
         ]);
-        const explorer = <Storybook catalog={catalog} />;
-        const result = await render(explorer, { container: rootElement });
+        await render(<Storybook catalog={catalog} />, { container: rootElement });
         await userEvent.click(screen.getByText("Increment local state"));
         await userEvent.click(screen.getByName("storybook-control-enabled"));
-        await expect(result.rerender(explorer)).rejects.toThrow();
+        expect(await screen.findByName("storybook-preview-error")).toBeVisible();
 
         await replaceControl("text", "Repaired");
-        await expect(result.rerender(explorer)).rejects.toThrow();
+        expect(screen.getByName("storybook-preview-error")).toBeVisible();
         await userEvent.click(screen.getByName("storybook-control-enabled"));
 
         expect(screen.getByName("inspector-enabled")).toHaveTextContent(/^false$/);

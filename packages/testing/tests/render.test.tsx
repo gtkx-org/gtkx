@@ -20,7 +20,17 @@ import {
     waitFor,
     type WrapperComponent,
 } from "@gtkx/testing";
-import { Component, createContext, createRef, useContext, useEffect, useLayoutEffect, useState } from "react";
+import {
+    Component,
+    createContext,
+    createRef,
+    Suspense,
+    use,
+    useContext,
+    useEffect,
+    useLayoutEffect,
+    useState,
+} from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { withHostWindow, withStolenActivation } from "./widget-fixtures.js";
 
@@ -31,9 +41,20 @@ const initialConfig = { ...getConfig() };
 const WrapperContext = createContext("default");
 const entryRef = createRef<Gtk.Entry>();
 
+const failure = new Error("boom");
+
 const Thrower = (): ReactNode => {
-    throw new Error("boom");
+    throw failure;
 };
+
+const rejectLater = (error: Error): Promise<string> =>
+    new Promise((_resolve, reject) => {
+        setTimeout(() => {
+            reject(error);
+        }, 50);
+    });
+
+const Loaded = ({ load }: { load: Promise<string> }): ReactNode => <GtkLabel>{use(load)}</GtkLabel>;
 
 const WrappingProvider: WrapperComponent = ({ children }) => (
     <WrapperContext.Provider value="wrapped">{children}</WrapperContext.Provider>
@@ -230,24 +251,55 @@ describe("render", () => {
         expect(recoverableErrors).toBe(0);
     });
 
-    it("throws when the tree throws, reporting it to onCaughtError", async () => {
+    it("renders an error boundary's fallback, reporting the caught error to onCaughtError", async () => {
         const caughtErrors: CaughtErrorInfo[] = [];
 
-        await expect(
-            render(
-                <ErrorBoundary>
-                    <Thrower />
-                </ErrorBoundary>,
-                {
-                    onCaughtError: (_error, errorInfo) => {
-                        caughtErrors.push(errorInfo);
-                    },
+        await render(
+            <ErrorBoundary>
+                <Thrower />
+            </ErrorBoundary>,
+            {
+                onCaughtError: (_error, errorInfo) => {
+                    caughtErrors.push(errorInfo);
                 },
-            ),
-        ).rejects.toThrow();
+            },
+        );
 
+        expect(await screen.findByText("error")).toBeVisible();
         expect(caughtErrors).toHaveLength(1);
         expect(caughtErrors[0]?.errorBoundary).toBeInstanceOf(ErrorBoundary);
+        await cleanup();
+    });
+
+    it("keeps an error boundary's fallback for a load that fails after rendering", async () => {
+        const load = rejectLater(new Error("load failed"));
+
+        await render(
+            <ErrorBoundary>
+                <Suspense fallback={<GtkLabel>Loading</GtkLabel>}>
+                    <Loaded load={load} />
+                </Suspense>
+            </ErrorBoundary>,
+        );
+
+        expect(await screen.findByText("error")).toBeVisible();
+        await cleanup();
+    });
+
+    it("fails with an uncaught error itself, during render or at cleanup", async () => {
+        await expect(render(<Thrower />)).rejects.toBe(failure);
+
+        const loadFailure = new Error("load failed");
+        await render(
+            <Suspense fallback={<GtkLabel>Loading</GtkLabel>}>
+                <Loaded load={rejectLater(loadFailure)} />
+            </Suspense>,
+        );
+
+        await waitFor(() => {
+            expect(screen.queryByText("Loading")).toBeNull();
+        });
+        await expect(cleanup()).rejects.toBe(loadFailure);
     });
 });
 

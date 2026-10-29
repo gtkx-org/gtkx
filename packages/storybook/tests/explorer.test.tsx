@@ -245,9 +245,9 @@ describe("native story explorer", () => {
                     }),
             },
         ]);
-        const result = await showExplorer(catalog);
+        await showExplorer(catalog);
         await userEvent.click(screen.getByName("storybook-story-recovery--broken"));
-        await expect(result.rerender(<Storybook catalog={catalog} />)).rejects.toThrow();
+        expect(await screen.findByName("storybook-preview-error")).toBeVisible();
 
         await userEvent.click(screen.getByName("storybook-story-recovery--healthy"));
         expect(screen.getByName("healthy-story")).toBeVisible();
