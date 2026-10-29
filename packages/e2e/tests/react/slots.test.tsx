@@ -1,7 +1,15 @@
 import type { ReactNode, Ref, RefObject } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwActionRow, AdwExpanderRow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/adw";
+import {
+    AdwActionRow,
+    AdwButtonRow,
+    AdwEntryRow,
+    AdwExpanderRow,
+    AdwHeaderBar,
+    AdwSwitchRow,
+    AdwToolbarView,
+} from "@gtkx/jsx/adw";
 import {
     GtkApplicationWindow,
     GtkBox,
@@ -493,6 +501,24 @@ describe("render - ContainerProp", () => {
             }
             expect(labelRefs[1]?.current).toBeNull();
             expect(labelRefs[2]?.current).toBeNull();
+        });
+
+        it.each([
+            ["AdwActionRow", AdwActionRow],
+            ["AdwSwitchRow", AdwSwitchRow],
+            ["AdwEntryRow", AdwEntryRow],
+            ["AdwExpanderRow", AdwExpanderRow],
+            ["AdwButtonRow", AdwButtonRow],
+        ])("rejects a default child of %s instead of replacing the row's own content", async (_name, Row) => {
+            await expect(
+                render(
+                    <GtkListBox>
+                        <Row title="Autosave">
+                            <GtkButton label="Reset" />
+                        </Row>
+                    </GtkListBox>,
+                ),
+            ).rejects.toThrow();
         });
 
         it("adds child as prefix via prefix", async () => {

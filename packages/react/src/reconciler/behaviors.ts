@@ -10,6 +10,7 @@ import { hasSameText } from "./text.js";
 type SlotDetachInfo<C extends GObject.Object> = Omit<DetachInfo, "remaining"> & { remaining: readonly C[] };
 
 type SlotHooks<P extends GObject.Object, C extends GObject.Object> = {
+    accepts?: ((parent: P) => boolean) | undefined;
     attach: (parent: P, child: C, info: PlaceInfo) => unknown;
     detach?: (parent: P, child: C, info: SlotDetachInfo<C>) => void;
     reorder?: (parent: P, child: C, info: PlaceInfo) => unknown;
@@ -57,13 +58,18 @@ const isChildInstance = <C extends GObject.Object>(child: GObject.Object, cls: C
     return type !== TYPE_INVALID && typeIsA(getInstanceType(child), type);
 };
 
-const slotMatchers: WeakMap<ElementBehavior, { slotName: string; matches: (child: GObject.Object) => boolean }> =
-    new WeakMap();
+type SlotMatcher = { slotName: string; matches: (parent: GObject.Object, child: GObject.Object) => boolean };
 
-const slotAccepting = (behavior: ElementBehavior, child: GObject.Object): string | undefined => {
+const slotMatchers: WeakMap<ElementBehavior, SlotMatcher> = new WeakMap();
+
+const slotAccepting = (
+    behavior: ElementBehavior,
+    parent: GObject.Object,
+    child: GObject.Object,
+): string | undefined => {
     const matcher = slotMatchers.get(behavior);
 
-    return matcher?.matches(child) === true ? matcher.slotName : undefined;
+    return matcher?.matches(parent, child) === true ? matcher.slotName : undefined;
 };
 
 const childMatcher =
@@ -74,11 +80,11 @@ const childMatcher =
 const slotAttach =
     <P extends GObject.Object, C extends GObject.Object>(
         slotName: string,
-        isMatch: (child: GObject.Object) => child is C,
+        isMatch: (parent: GObject.Object, child: GObject.Object) => child is C,
         attach: SlotHooks<P, C>["attach"],
     ): NonNullable<ElementBehavior["attach"]> =>
     (object, child, info) => {
-        if (info.slot !== slotName || !isMatch(child)) {
+        if (info.slot !== slotName || !isMatch(object, child)) {
             return;
         }
 
@@ -90,8 +96,10 @@ const slot = <P extends GObject.Object, C extends GObject.Object>(
     childClass: ChildClass<C> | undefined,
     hooks: SlotHooks<P, C>,
 ): ElementBehavior => {
-    const matches = childMatcher(childClass);
-    const { attach, detach, reorder, resolve } = hooks;
+    const isChild = childMatcher(childClass);
+    const { accepts, attach, detach, reorder, resolve } = hooks;
+    const matches = (parent: GObject.Object, child: GObject.Object): child is C =>
+        isChild(child) && accepts?.(parent as P) !== false;
     const behavior: ElementBehavior = { attach: slotAttach(slotName, matches, attach) };
     slotMatchers.set(behavior, { slotName, matches });
 
@@ -174,8 +182,9 @@ const controlledText = (prop: string): ElementBehavior =>
         }
     });
 
-const childSetterSlot = <P extends ChildSetter>(): ElementBehavior<P> =>
+const childSetterSlot = <P extends ChildSetter>(accepts?: (parent: P) => boolean): ElementBehavior<P> =>
     slot<P, Gtk.Widget>("children", Gtk.Widget, {
+        accepts,
         attach: (parent, child) => {
             parent.setChild(child);
         },

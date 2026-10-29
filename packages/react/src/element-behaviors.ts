@@ -58,6 +58,14 @@ type AdwContentSetter = Adw.ApplicationWindow | Adw.BottomSheet | Adw.OverlaySpl
 type BreakpointHost = Adw.ApplicationWindow | Adw.Window | Adw.Dialog;
 type PrefixSuffixRow = Adw.ActionRow | Adw.EntryRow | Adw.ExpanderRow;
 
+const ROW_LAYOUTS = [
+    childMatcher(Adw.ActionRow),
+    childMatcher(Adw.EntryRow),
+    childMatcher(Adw.ExpanderRow),
+    childMatcher(Adw.ButtonRow),
+];
+const isPlainRow = (row: Gtk.ListBoxRow): boolean => !ROW_LAYOUTS.some((isLayoutRow) => isLayoutRow(row));
+
 const SLOT_SUFFIX = "Slot";
 const childSetter = childSetterSlot<AdwChildSetter>();
 const contentSetter = contentSetterSlot<AdwContentSetter>(Gtk.Widget);
@@ -206,9 +214,15 @@ const multiLayoutLayouts = slot<Adw.MultiLayoutView, Gtk.Widget>("layouts", Gtk.
 });
 
 const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
-    ...forTypes(SINGLE_CHILD_TYPES, {
-        behaviors: [childSetterSlot()],
-    }),
+    ...forTypes(
+        SINGLE_CHILD_TYPES.filter((type) => type !== "GtkListBoxRow"),
+        {
+            behaviors: [childSetterSlot()],
+        },
+    ),
+    GtkListBoxRow: {
+        behaviors: [childSetterSlot<Gtk.ListBoxRow>(isPlainRow)],
+    },
     ...forTypes(["GtkHeaderBar", "GtkActionBar"], {
         behaviors: [
             methodSlot<Gtk.HeaderBar | Gtk.ActionBar, Gtk.Widget>("start", Gtk.Widget, "packStart", "remove"),

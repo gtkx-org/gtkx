@@ -162,7 +162,7 @@ const didAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
 
 const slotsAccepting = (parent: ElementNode, child: GObject.Object): string[] => {
     const behaviorSlots = typeInfoFor(parent.typeName).behaviors.flatMap(
-        (behavior) => slotAccepting(behavior, child) ?? [],
+        (behavior) => slotAccepting(behavior, parent.object, child) ?? [],
     );
     const slots = new Set([...behaviorSlots, ...propertiesAccepting(parent.object, child)]);
 
