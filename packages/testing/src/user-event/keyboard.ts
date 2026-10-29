@@ -381,7 +381,20 @@ const keyStopsInPhase = (widget: Gtk.Widget, phase: Gtk.PropagationPhase): KeySt
     return stops;
 };
 
+const focusWithin = (widget: Gtk.Widget): Gtk.Widget | null => {
+    const root = widget.getRoot();
+    const focus = root instanceof Gtk.Window ? root.getFocus() : null;
+
+    return focus !== null && focus.isAncestor(widget) ? focus : null;
+};
+
 const propagationChain = (widget: Gtk.Widget): Gtk.Widget[] => {
+    const focus = focusWithin(widget);
+
+    if (focus !== null) {
+        return [focus, ...ancestors(focus)];
+    }
+
     const delegate = getEditableDelegate(widget);
     const below = delegate === null ? [] : [delegate];
 

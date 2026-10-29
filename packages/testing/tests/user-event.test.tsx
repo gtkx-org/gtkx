@@ -1326,6 +1326,23 @@ describe("userEvent.keyboard: key controller propagation", () => {
         expect(probe.ancestorPresses).toHaveLength(1);
         expect(probe.fieldPresses).toHaveLength(0);
     });
+
+    it("starts at the window's focus widget when the target contains it", async () => {
+        const order: string[] = [];
+        const field = await renderKeyControllerTree(
+            recordingKeyController(order, "ancestor"),
+            recordingKeyController(order, "focus"),
+        );
+        const ancestor = field.getParent();
+
+        if (ancestor === null) {
+            throw new TypeError("Field has no parent");
+        }
+
+        field.grabFocus();
+        await userEvent.keyboard(ancestor, "{Escape}");
+        expect(order).toEqual(["focus", "ancestor"]);
+    });
 });
 
 describe("userEvent.keyboard: editable delegate", () => {
