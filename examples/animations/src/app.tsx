@@ -15,7 +15,7 @@ const Showcase = () => {
 
     return (
         <AdwApplicationWindow title="GTKX Animations" defaultWidth={920} defaultHeight={640} onCloseRequest={quit}>
-            <AdwToolbarView topBar={<AdwHeaderBar />}>
+            <AdwToolbarView top={<AdwHeaderBar />}>
                 <GtkBox>
                     {stack && <GtkStackSidebar stack={stack} />}
                     <GtkStack ref={setStack} transitionType={Gtk.StackTransitionType.CROSSFADE} hexpand vexpand>

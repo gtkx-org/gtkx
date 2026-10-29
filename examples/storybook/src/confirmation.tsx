@@ -14,7 +14,7 @@ type ConfirmationDialogProps = {
 
 const ConfirmationDialog = ({ onCancel, onConfirm }: ConfirmationDialogProps): ReactNode => (
     <AdwDialog title="Discard draft?" contentWidth={360} onClosed={onCancel}>
-        <AdwToolbarView topBar={<AdwHeaderBar />}>
+        <AdwToolbarView top={<AdwHeaderBar />}>
             <GtkBox
                 orientation={Gtk.Orientation.VERTICAL}
                 spacing={12}

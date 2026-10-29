@@ -11,7 +11,7 @@ export const AlertsPage = () => {
     const [open, setOpen] = useState(false);
 
     return (
-        <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+        <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
             <AdwStatusPage iconName="widget-dialog-symbolic" title="Alert Dialog" description="Adaptive alert dialog">
                 <GtkButton
                     label="Alert Dialog"

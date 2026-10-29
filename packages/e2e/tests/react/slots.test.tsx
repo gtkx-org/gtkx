@@ -11,6 +11,7 @@ import {
     GtkLabel,
     GtkListBox,
     GtkMenuButton,
+    GtkOverlay,
     GtkPaned,
     GtkPopover,
     GtkStack,
@@ -82,15 +83,15 @@ const headerBarWithPack = (
 
 const toolbarWithBar = (
     ref: RefObject<Adw.ToolbarView | null>,
-    bar: { topBar?: ReactNode; bottomBar?: ReactNode },
+    bar: { top?: ReactNode; bottom?: ReactNode },
     content: ReactNode,
 ): ReactNode => (
-    <AdwToolbarView ref={ref} topBar={bar.topBar} bottomBar={bar.bottomBar}>
+    <AdwToolbarView ref={ref} top={bar.top} bottom={bar.bottom}>
         {content}
     </AdwToolbarView>
 );
 
-const renderToolbarWithSingleBar = async (bar: { topBar?: ReactNode; bottomBar?: ReactNode }) => {
+const renderToolbarWithSingleBar = async (bar: { top?: ReactNode; bottom?: ReactNode }) => {
     const toolbarRef = createRef<Adw.ToolbarView>();
     const contentRef = createRef<Gtk.Label>();
     await render(toolbarWithBar(toolbarRef, bar, <GtkLabel ref={contentRef}>Content</GtkLabel>));
@@ -864,11 +865,11 @@ describe("render - ContainerProp", () => {
         });
     });
 
-    describe("AdwToolbarView (topBar/bottomBar)", () => {
-        it("adds child to top bar via topBar", async () => {
+    describe("AdwToolbarView (top/bottom)", () => {
+        it("adds child to top bar via top", async () => {
             const barRef = createRef<Adw.HeaderBar>();
             const { toolbarRef, contentRef } = await renderToolbarWithSingleBar({
-                topBar: <AdwHeaderBar ref={barRef} />,
+                top: <AdwHeaderBar ref={barRef} />,
             });
             const toolbar = mountedRef(toolbarRef);
             expect(toolbar).toContainElement(barRef.current);
@@ -877,10 +878,10 @@ describe("render - ContainerProp", () => {
             expect(toolbar.getTopBarHeight()).toBeGreaterThan(0);
         });
 
-        it("adds child to bottom bar via bottomBar", async () => {
+        it("adds child to bottom bar via bottom", async () => {
             const barRef = createRef<Adw.HeaderBar>();
             const { toolbarRef, contentRef } = await renderToolbarWithSingleBar({
-                bottomBar: <AdwHeaderBar ref={barRef} />,
+                bottom: <AdwHeaderBar ref={barRef} />,
             });
             const toolbar = mountedRef(toolbarRef);
             expect(toolbar).toContainElement(barRef.current);
@@ -898,7 +899,7 @@ describe("render - ContainerProp", () => {
             await render(
                 <AdwToolbarView
                     ref={toolbarRef}
-                    topBar={
+                    top={
                         <>
                             <AdwHeaderBar ref={firstTopRef} />
                             <GtkLabel ref={secondTopRef}>Second Top Bar</GtkLabel>
@@ -922,7 +923,7 @@ describe("render - ContainerProp", () => {
 
             function App({ shouldShowTop }: { shouldShowTop: boolean }) {
                 return (
-                    <AdwToolbarView ref={toolbarRef} topBar={shouldShowTop ? <AdwHeaderBar ref={topRef} /> : null}>
+                    <AdwToolbarView ref={toolbarRef} top={shouldShowTop ? <AdwHeaderBar ref={topRef} /> : null}>
                         <GtkLabel ref={contentRef}>Content</GtkLabel>
                     </AdwToolbarView>
                 );
@@ -951,6 +952,67 @@ describe("render - ContainerProp", () => {
             });
             expect(contentRef.current).toBe(content);
             expect(toolbar.getContent()).toBe(content);
+        });
+
+        it("still places bars given through the deprecated topBar and bottomBar", async () => {
+            const toolbarRef = createRef<Adw.ToolbarView>();
+            const topRef = createRef<Adw.HeaderBar>();
+            const bottomRef = createRef<Gtk.Label>();
+
+            await render(
+                <AdwToolbarView
+                    ref={toolbarRef}
+                    topBar={<AdwHeaderBar ref={topRef} />}
+                    bottomBar={<GtkLabel ref={bottomRef}>Bottom</GtkLabel>}
+                >
+                    <GtkLabel>Content</GtkLabel>
+                </AdwToolbarView>,
+            );
+
+            const toolbar = mountedRef(toolbarRef);
+            expect(toolbar).toContainElement(topRef.current);
+            expect(toolbar).toContainElement(bottomRef.current);
+            expect(toolbar.getTopBarHeight()).toBeGreaterThan(0);
+            expect(toolbar.getBottomBarHeight()).toBeGreaterThan(0);
+        });
+    });
+
+    describe("GtkListBox (placeholder)", () => {
+        it("parents the placeholder to the box and releases it when the prop is removed", async () => {
+            const listBoxRef = createRef<Gtk.ListBox>();
+            const placeholderRef = createRef<Gtk.Label>();
+
+            function App({ shouldShowPlaceholder }: { shouldShowPlaceholder: boolean }) {
+                return (
+                    <GtkListBox
+                        ref={listBoxRef}
+                        placeholder={shouldShowPlaceholder ? <GtkLabel ref={placeholderRef}>Empty</GtkLabel> : null}
+                    />
+                );
+            }
+
+            const { rerender } = await render(<App shouldShowPlaceholder />);
+            const listBox = mountedRef(listBoxRef);
+            const placeholder = mountedRef(placeholderRef);
+            expect(placeholder.getParent()).toBe(listBox);
+            expect(placeholder).toBeVisible();
+            await rerender(<App shouldShowPlaceholder={false} />);
+            expect(placeholder.getParent()).toBeNull();
+        });
+    });
+
+    describe("GtkOverlay (overlay)", () => {
+        it("still stacks widgets given through the deprecated overlays", async () => {
+            const overlayRef = createRef<Gtk.Overlay>();
+            const overlayChildRef = createRef<Gtk.Label>();
+
+            await render(
+                <GtkOverlay ref={overlayRef} overlays={<GtkLabel ref={overlayChildRef}>Over</GtkLabel>}>
+                    <GtkLabel>Main</GtkLabel>
+                </GtkOverlay>,
+            );
+
+            expect(mountedRef(overlayChildRef).getParent()).toBe(mountedRef(overlayRef));
         });
     });
 });

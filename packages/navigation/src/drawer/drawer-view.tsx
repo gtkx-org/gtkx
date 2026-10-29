@@ -71,7 +71,7 @@ const useCloseOnNavigate = (
 };
 
 const DrawerContent = (props: DrawerContentProps): ReactNode => (
-    <AdwToolbarView topBar={<AdwHeaderBar />}>
+    <AdwToolbarView top={<AdwHeaderBar />}>
         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
             <DrawerItemList {...props} />
         </GtkScrolledWindow>
@@ -146,7 +146,7 @@ const DrawerView = ({ state, navigation, descriptors, drawerContent, ...config }
                 onNotifyShowSidebar={onShowSidebarChanged}
                 sidebar={<>{sidebar}</>}
             >
-                <AdwToolbarView topBar={<DrawerHeader descriptor={descriptor} navigation={navigation} />}>
+                <AdwToolbarView top={<DrawerHeader descriptor={descriptor} navigation={navigation} />}>
                     <AdwViewStack visibleChildName={focused.key}>
                         {state.routes.map((route) => (
                             <DrawerPage

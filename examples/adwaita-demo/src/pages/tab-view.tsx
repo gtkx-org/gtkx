@@ -443,7 +443,7 @@ const TabDemoWindows = () => {
 };
 
 const TabViewPage = () => (
-    <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+    <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
         <AdwStatusPage
             title="Tab View"
             description="A modern tabbed browsing widget"

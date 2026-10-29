@@ -15,7 +15,7 @@ export const AboutPage = () => {
     const [open, setOpen] = useState(false);
 
     return (
-        <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+        <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
             <AdwStatusPage iconName="widget-about-symbolic" title="About Dialog" description="An about dialog">
                 <GtkButton
                     label="Run Demo"

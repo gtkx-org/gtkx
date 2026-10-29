@@ -9,7 +9,7 @@ const Counter = () => {
 
     return (
         <AdwApplicationWindow title="Hello GTKX" defaultWidth={400} defaultHeight={300} onCloseRequest={quit}>
-            <AdwToolbarView topBar={<AdwHeaderBar />}>
+            <AdwToolbarView top={<AdwHeaderBar />}>
                 <GtkBox
                     orientation={Gtk.Orientation.VERTICAL}
                     spacing={20}

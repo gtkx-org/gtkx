@@ -8,7 +8,7 @@ const meta = {
     parameters: { gtkx: { preview: "window" } },
     render: () => (
         <AdwWindow title="Daily Progress" defaultWidth={480} defaultHeight={240}>
-            <AdwToolbarView topBar={<AdwHeaderBar />}>
+            <AdwToolbarView top={<AdwHeaderBar />}>
                 <GtkBox marginTop={24} marginBottom={24} marginStart={24} marginEnd={24}>
                     <CounterCard label="Complete task" step={1} unit="tasks" enabled />
                 </GtkBox>

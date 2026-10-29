@@ -6,7 +6,7 @@ export const SpinnerPage = () => {
     const [widget, setWidget] = useState<Gtk.Widget | null>(null);
 
     return (
-        <AdwToolbarView ref={setWidget} topBar={<AdwHeaderBar showTitle={false} />}>
+        <AdwToolbarView ref={setWidget} top={<AdwHeaderBar showTitle={false} />}>
             <AdwStatusPage
                 title="Spinner"
                 description="A modern spinner widget"

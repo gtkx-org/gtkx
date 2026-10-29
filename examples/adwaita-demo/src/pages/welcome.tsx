@@ -1,7 +1,7 @@
 import { AdwHeaderBar, AdwStatusPage, AdwToolbarView } from "@gtkx/jsx/adw";
 
 const WelcomePage = () => (
-    <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+    <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
         <AdwStatusPage
             iconName="welcome-symbolic"
             title="Welcome to Adwaita Demo"

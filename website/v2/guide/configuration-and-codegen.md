@@ -86,6 +86,7 @@ Generated elements follow the native API with GTKX naming conventions:
 - Signals use handler props, such as `onClicked`. GTKX passes the emitting object after the signal arguments.
 - Property notifications use `onNotifyX`, receiving the new value and the emitting object.
 - Object properties that accept elements can be expressed as JSX, with GTKX managing their lifetime.
+- Child slots that no property backs take their GtkBuilder child type, such as `start` and `end` on a header bar or `top` and `bottom` on a toolbar view.
 - Refs expose the corresponding GI instance for imperative APIs.
 
 Prefer JSX for object creation and child placement. The [generated element reference](#generating-element-reference-docs) shows the exact props, slots, and signals for each configured library.

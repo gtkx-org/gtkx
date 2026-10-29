@@ -57,7 +57,7 @@ import { createRoot, quit } from "@gtkx/react";
 const App = () => (
   <AdwApplication>
     <AdwApplicationWindow title="My App" onCloseRequest={() => quit()}>
-      <AdwToolbarView topBar={<AdwHeaderBar />}>
+      <AdwToolbarView top={<AdwHeaderBar />}>
         <GtkLabel>Hello from GTKX</GtkLabel>
       </AdwToolbarView>
     </AdwApplicationWindow>

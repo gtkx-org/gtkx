@@ -314,7 +314,7 @@ function ErrorstatesDemo({ onClose }: DemoProps) {
 
     return (
         <AdwDialog onClosed={() => onClose?.()} title="Error States" canClose followsContentSize>
-            <AdwToolbarView topBar={<AdwHeaderBar />}>
+            <AdwToolbarView top={<AdwHeaderBar />}>
                 <GtkGrid
                     rowSpacing={10}
                     columnSpacing={10}

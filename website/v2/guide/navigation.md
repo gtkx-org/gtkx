@@ -240,7 +240,7 @@ import { GtkScrolledWindow } from "@gtkx/jsx/gtk";
 import { type DrawerContentProps, DrawerItemList } from "@gtkx/navigation";
 
 const Sidebar = (props: DrawerContentProps) => (
-    <AdwToolbarView topBar={<AdwHeaderBar titleWidget={<AdwWindowTitle title="Mail" />} />}>
+    <AdwToolbarView top={<AdwHeaderBar titleWidget={<AdwWindowTitle title="Mail" />} />}>
         <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
             <DrawerItemList {...props} />
         </GtkScrolledWindow>

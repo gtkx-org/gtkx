@@ -965,7 +965,7 @@ const ColorsGridOverlay = () => {
             name="grid-overlay"
             vexpand
             hexpand
-            overlays={[
+            overlay={[
                 <GtkOverlayLayoutChild key="overlay-0">
                     <ColorsProgressBar model={models.sortModel} colorLimit={state.colorLimit} />
                 </GtkOverlayLayoutChild>,

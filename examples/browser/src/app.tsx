@@ -196,7 +196,7 @@ const BrowserWindow = ({ initialUrl }: { initialUrl: string }) => {
     return (
         <AdwApplicationWindow title="GTKX Browser" defaultWidth={1024} defaultHeight={768} onCloseRequest={quit}>
             <AdwToolbarView
-                topBar={
+                top={
                     <AdwHeaderBar
                         titleWidget={
                             <UrlEntry

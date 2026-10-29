@@ -179,7 +179,7 @@ function CssMultiplebgsDemo() {
             position={150}
             startChild={
                 <GtkOverlay
-                    overlays={
+                    overlay={
                         <GtkOverlayLayoutChild>
                             <GtkButton
                                 name="bricks-button"
