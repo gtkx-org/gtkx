@@ -182,6 +182,10 @@ function Local(t, Trans) {
             'import { useTranslation as useI18n } from "@gtkx/i18n";\nconst { t } = useI18n(); t("key");',
         ],
         ["a namespace member", 'import * as i18n from "@gtkx/i18n";\ni18n.t("key");'],
+        [
+            "the hook's i18n instance",
+            'import { useTranslation } from "@gtkx/i18n";\nconst { i18n } = useTranslation(); i18n.t("key");',
+        ],
         ["a wrapped callee", `${T_IMPORT}\n(t)("key");`],
         ["an optional call", `${T_IMPORT}\nt?.("key");`],
         ["a tagged template", `${T_IMPORT}\nt\`key\`;`],

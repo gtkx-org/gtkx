@@ -720,9 +720,56 @@ const isHookTranslationMember = (scope: Scope, member: TranslationMemberExpressi
     return types.isIdentifier(object) && isTranslationHookResultBinding(scope.getBinding(object.name));
 };
 
+const isHookInstanceBinding = (binding: ResolvedBinding | undefined): boolean => {
+    if (binding === undefined) {
+        return false;
+    }
+
+    const path = constantVariableDeclarator(binding);
+
+    if (path === null) {
+        return false;
+    }
+
+    const pattern = path.node.id;
+    const initializer = path.node.init;
+
+    return (
+        types.isObjectPattern(pattern) &&
+        types.isCallExpression(initializer) &&
+        importedTranslationHook(path.scope, initializer) !== null &&
+        pattern.properties.some(
+            (property) =>
+                types.isObjectProperty(property) &&
+                propertyName(property) === "i18n" &&
+                isBoundIdentifier(property.value, binding.identifier.name),
+        )
+    );
+};
+
+const isHookInstance = (scope: Scope, object: types.Node): boolean => {
+    if (types.isIdentifier(object)) {
+        return isHookInstanceBinding(scope.getBinding(object.name));
+    }
+
+    if (!types.isMemberExpression(object) || babelMemberName(object) !== "i18n") {
+        return false;
+    }
+
+    const hook = object.object;
+
+    if (types.isCallExpression(hook)) {
+        return importedTranslationHook(scope, hook) !== null;
+    }
+
+    return types.isIdentifier(hook) && isTranslationHookResultBinding(scope.getBinding(hook.name));
+};
+
 const isTranslationMember = (scope: Scope, member: TranslationMemberExpression): boolean =>
     babelMemberName(member) === "t" &&
-    (isImportedTranslationObject(scope, member.object) || isHookTranslationMember(scope, member));
+    (isImportedTranslationObject(scope, member.object) ||
+        isHookTranslationMember(scope, member) ||
+        isHookInstance(scope, member.object));
 
 const isDirectTranslationFunction = (scope: Scope, node: types.Node): boolean =>
     types.isIdentifier(node) && directTranslationFunctionKind(scope, node.name) !== null;
