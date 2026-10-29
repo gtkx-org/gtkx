@@ -59,7 +59,17 @@ function createTabNavigator<
     const ParamList extends ParamListBase,
     const NavigatorID extends string | undefined = string | undefined,
     const TypeBag extends NavigatorTypeBagBase = TabTypeBag<ParamList, NavigatorID>,
-    const Config extends StaticConfig<TypeBag> | undefined = undefined,
+>(): TypedNavigator<TypeBag, undefined>;
+/** Creates a tab navigator rendered with `AdwViewStack` and an `AdwViewSwitcher`. */
+function createTabNavigator<
+    const ParamList extends ParamListBase,
+    const NavigatorID extends string | undefined = string | undefined,
+    const TypeBag extends NavigatorTypeBagBase = TabTypeBag<ParamList, NavigatorID>,
+    const Config extends StaticConfig<TypeBag> = StaticConfig<TypeBag>,
+>(config: Config): TypedNavigator<TypeBag, Config>;
+function createTabNavigator<
+    const TypeBag extends NavigatorTypeBagBase,
+    const Config extends StaticConfig<TypeBag> | undefined,
 >(config?: Config): TypedNavigator<TypeBag, Config> {
     return createNavigatorFactory(TabNavigator)(config) as TypedNavigator<TypeBag, Config>;
 }

@@ -89,7 +89,20 @@ function createSplitViewNavigator<
     const ParamList extends ParamListBase,
     const NavigatorID extends string | undefined = string | undefined,
     const TypeBag extends NavigatorTypeBagBase = SplitViewTypeBag<ParamList, NavigatorID>,
-    const Config extends StaticConfig<TypeBag> | undefined = undefined,
+>(): TypedNavigator<TypeBag, undefined>;
+/**
+ * Creates a master/detail navigator rendered with `AdwNavigationSplitView`: the first screen fills the sidebar
+ * pane, the rest are a stack in the content pane, and a narrow window collapses the two into one.
+ */
+function createSplitViewNavigator<
+    const ParamList extends ParamListBase,
+    const NavigatorID extends string | undefined = string | undefined,
+    const TypeBag extends NavigatorTypeBagBase = SplitViewTypeBag<ParamList, NavigatorID>,
+    const Config extends StaticConfig<TypeBag> = StaticConfig<TypeBag>,
+>(config: Config): TypedNavigator<TypeBag, Config>;
+function createSplitViewNavigator<
+    const TypeBag extends NavigatorTypeBagBase,
+    const Config extends StaticConfig<TypeBag> | undefined,
 >(config?: Config): TypedNavigator<TypeBag, Config> {
     return createNavigatorFactory(SplitViewNavigator)(config) as TypedNavigator<TypeBag, Config>;
 }

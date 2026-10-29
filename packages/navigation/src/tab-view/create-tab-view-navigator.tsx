@@ -102,7 +102,17 @@ function createTabViewNavigator<
     const ParamList extends ParamListBase,
     const NavigatorID extends string | undefined = string | undefined,
     const TypeBag extends NavigatorTypeBagBase = TabViewTypeBag<ParamList, NavigatorID>,
-    const Config extends StaticConfig<TypeBag> | undefined = undefined,
+>(): TypedNavigator<TypeBag, undefined>;
+/** Creates a navigator whose routes are the pages of an `Adw.TabView`, with a tab bar and an optional overview. */
+function createTabViewNavigator<
+    const ParamList extends ParamListBase,
+    const NavigatorID extends string | undefined = string | undefined,
+    const TypeBag extends NavigatorTypeBagBase = TabViewTypeBag<ParamList, NavigatorID>,
+    const Config extends StaticConfig<TypeBag> = StaticConfig<TypeBag>,
+>(config: Config): TypedNavigator<TypeBag, Config>;
+function createTabViewNavigator<
+    const TypeBag extends NavigatorTypeBagBase,
+    const Config extends StaticConfig<TypeBag> | undefined,
 >(config?: Config): TypedNavigator<TypeBag, Config> {
     return createNavigatorFactory(TabViewNavigator)(config) as TypedNavigator<TypeBag, Config>;
 }
