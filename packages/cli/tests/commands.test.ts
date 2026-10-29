@@ -449,6 +449,43 @@ describe("CLI commands", () => {
         });
     });
 
+    it("brings the application back when Fast Refresh remounts it", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "probe.json");
+        const app = (version: number) => `
+            import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+            import { GtkLabel } from "@gtkx/jsx/gtk";
+            import { writeFileSync } from "node:fs";
+            import { useEffect, useState } from "react";
+            function Probe() {
+                useEffect(() => {
+                    writeFileSync(${JSON.stringify(readyPath)}, JSON.stringify({ version: ${String(version)} }));
+                }, []);
+                return <GtkLabel label="probe" />;
+            }
+            export function App() {
+                ${"useState(0);".repeat(version)}
+                return (
+                    <AdwApplication applicationId="org.gtkx.example">
+                        <AdwApplicationWindow><Probe /></AdwApplicationWindow>
+                    </AdwApplication>
+                );
+            }`;
+        project.write("src/app.tsx", app(1));
+        project.write(
+            "src/index.tsx",
+            `import { createRoot } from "@gtkx/react";
+            import { App } from "./app.tsx";
+            createRoot().render(<App />);`,
+        );
+        const observation = () => JSON.parse(readFileSync(readyPath, "utf8")) as { version: number };
+        await withSession("dev", project.root, readyPath, async () => {
+            expect(observation().version).toBe(1);
+            project.write("src/app.tsx", app(2));
+            await expect.poll(() => observation().version, { timeout: 30_000 }).toBe(2);
+        });
+    });
+
     it("replaces edited global styles and stylesheets in place, keeping state", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "probe.json");

@@ -59,7 +59,7 @@ const watchApplicationShutdown = (onShutdown: () => void): void => {
     const hookId = GObject.signalAddEmissionHook(signalId, 0, (_hint, values) => {
         const application = values[0]?.getObject();
 
-        if (application && application === Gio.Application.getDefault()) {
+        if (application && (application === Gio.Application.getDefault() || registeredApplications.has(application))) {
             registeredApplications.add(application);
             onShutdown();
         }
