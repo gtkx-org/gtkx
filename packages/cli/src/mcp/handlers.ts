@@ -105,7 +105,7 @@ const SEARCHED_BY: Record<QueryBy, string> = {
     text: "the text the widget renders",
     name:
         'the widget name (gtk_widget_get_name, which reports the GType name such as "GtkButton" when no name ' +
-        "was set), the accessible label, and the text the widget renders",
+        "was set), the accessible name, the accessible label, and the text the widget renders",
     labelText: "the accessible label, the labelled-by relation, and the label whose mnemonic targets the widget",
 };
 
@@ -204,12 +204,25 @@ function runLabelTextQuery(testing: TestingModule, params: QueryParams): WindowQ
     return (root) => testing.queryAllByLabelText(root, String(params.value), params.options);
 }
 
+function runAccessibleNameQuery(testing: TestingModule, params: QueryParams): WindowQuery {
+    const options = { ...params.options, name: String(params.value) };
+
+    return (root) => {
+        const widgets = [...testing.getRoles(root).values()].flat();
+        const roles = new Set(widgets.map((widget) => widget.getAccessibleRole()));
+
+        return [...roles].flatMap((role) => testing.queryAllByRole(root, role, options));
+    };
+}
+
 function runNameQuery(testing: TestingModule, params: QueryParams): WindowQuery {
+    const byAccessibleName = runAccessibleNameQuery(testing, params);
     const byLabel = runLabelTextQuery(testing, params);
     const byText = runTextQuery(testing, params);
 
     return (root) => [
         ...testing.queryAllByName(root, String(params.value), params.options),
+        ...byAccessibleName(root),
         ...byLabel(root),
         ...byText(root),
     ];
