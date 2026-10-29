@@ -58,7 +58,7 @@ gtkx codegen
 
 GTKX generates modules under `node_modules/.gtkx` and links them as `@gtkx/gi` and `@gtkx/jsx`. They belong to the project and are not separate npm dependencies. Development and production builds also check whether generation is needed.
 
-GI and JSX bindings are published together so they describe the same libraries. Projects without `@gtkx/react` generate only GI bindings and remove obsolete JSX bindings owned by that project. Installing React again regenerates JSX bindings. Projects sharing a dependency directory can continue sharing compatible generated bindings.
+GI and JSX bindings are published together so they describe the same libraries. Projects without `@gtkx/react` generate only GI bindings and remove obsolete JSX bindings owned by that project. Installing React again regenerates JSX bindings. Projects that resolve the same dependency directory share their generated bindings, as described in [Monorepos](#monorepos).
 
 Import classes, enums, and functions from GI modules, and elements from JSX modules:
 
@@ -77,6 +77,23 @@ Concurrent generation waits up to ten minutes for each binding-store lock. Use `
 ### Production bindings
 
 Production builds remove unused generated classes. Import a class as a runtime value when the app needs its type registration, including when using `GObject.typeFromName`. A side-effect-only namespace import initializes the namespace but does not retain every class. Development and tests do not bundle.
+
+## Monorepos
+
+GTKX apps work in pnpm, npm and Yarn workspaces with the package manager's default `node_modules` layout, alongside shared packages of components.
+
+Codegen writes the bindings into the `node_modules` directory the GTKX packages are installed in. In a workspace this is usually the root: pnpm keeps every package under the root `node_modules/.pnpm`, and npm and Yarn hoist them there. The bindings link `@gtkx/runtime`, `@gtkx/cairo`, `@gtkx/react` and `react` from the app, so they load the same copies the app does.
+
+Apps that resolve the same directory share one set of bindings, generated for the union of their `libraries`. Codegen stops with an error naming the other app when apps sharing bindings differ in anything else:
+
+- `girPath` or `elements`
+- whether they use `@gtkx/react`
+- a version of a GIR namespace, such as `Soup-2.4` and `Soup-3.0`
+- the installed copies of the GTKX packages, `react` or `@types/react`
+
+Keep these aligned across the workspace, for example with a pnpm catalog. An app can import bindings that only another app declared, but `gtkx deploy` derives an app's requirements from its own `libraries`, so declare every library each app imports.
+
+A shared package declares `@gtkx/react` as a peer dependency and imports `@gtkx/gi` and `@gtkx/jsx` subpaths like an app. List it in the dependencies of each app that uses it, so `gtkx dev` loads it through Vite.
 
 ## The JSX prop model
 
