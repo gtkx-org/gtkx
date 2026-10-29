@@ -24,7 +24,7 @@ function requireStringResult(result: unknown): string {
 
 function initializeLocale(): string {
     const directory = localeDir ?? bundledLocaleDir();
-    requireStringResult(setLocaleBinding(LC_ALL, ""));
+    setLocaleBinding(LC_ALL, "");
     requireStringResult(bindTextDomainBinding(applicationId, directory));
     requireStringResult(bindTextDomainCodesetBinding(applicationId, GETTEXT_CODESET));
     requireStringResult(textDomainBinding(applicationId));

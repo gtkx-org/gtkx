@@ -11,6 +11,7 @@ import gtkx from "../dist/vitest-plugin.js";
 import { createProject } from "./project.js";
 
 const frenchEnvironment = { ...process.env, LANG: "fr_FR.UTF-8", LC_ALL: "fr_FR.UTF-8", LANGUAGE: "fr" };
+const unsupportedLocaleEnvironment = { ...process.env, LANG: "xx_YY.UTF-8", LC_ALL: "xx_YY.UTF-8", LANGUAGE: "fr" };
 
 describe("runtime configuration", () => {
     it("keeps the preloaded configuration when it changes before Vite starts", async () => {
@@ -75,13 +76,14 @@ describe("runtime configuration", () => {
         );
 
         await runCommand(createCommand(), { rawArgs: ["build", "--cwd", project.root] });
-        const runBundle = (path: string) =>
+        const runBundle = (path: string, env = frenchEnvironment) =>
             execFileSync(process.execPath, [path], {
                 encoding: "utf8",
-                env: frenchEnvironment,
+                env,
                 timeout: 30_000,
             });
         expect(runBundle(join(project.root, "dist/bundle.mjs"))).toContain("Bonjour, Ada !");
+        expect(runBundle(join(project.root, "dist/bundle.mjs"), unsupportedLocaleEnvironment)).toContain("Hello, Ada!");
         await runCommand(createCommand(), {
             rawArgs: ["deploy", "--cwd", project.root, "--skip-build", "--print-manifests", "--target", "deb"],
         });
