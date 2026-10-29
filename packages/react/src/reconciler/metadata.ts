@@ -26,6 +26,7 @@ type TypeInfo = {
     signals: Record<string, string>;
     userEventSignals: Set<string>;
     behaviors: ElementBehavior[];
+    omittedProps: Set<string>;
     createProps: Set<string>;
     declaredConstructOnly: Set<string>;
     isLazy: boolean;
@@ -104,6 +105,7 @@ const accumulateAncestor = (info: TypeInfo, ancestor: string): void => {
     }
 
     info.behaviors.push(...(config?.behaviors ?? []));
+    addAll(info.omittedProps, config?.omittedProps);
     addAll(info.declaredConstructOnly, config?.props?.constructOnly);
 };
 
@@ -160,6 +162,7 @@ const buildTypeInfo = (name: string): TypeInfo => {
         signals: {},
         userEventSignals: new Set(),
         behaviors: [],
+        omittedProps: new Set(),
         createProps: new Set(),
         declaredConstructOnly: new Set(),
         isLazy: false,
@@ -221,7 +224,12 @@ const propertiesAccepting = (parent: object, child: object): string[] => {
     const childType = getInstanceType(child);
 
     return Object.entries(info?.properties ?? {})
-        .filter(([, entry]) => isSettableEntry(entry) && typeIsA(childType, propertyValueType(parentType, entry[NAME])))
+        .filter(
+            ([accessor, entry]) =>
+                info?.omittedProps.has(accessor) !== true &&
+                isSettableEntry(entry) &&
+                typeIsA(childType, propertyValueType(parentType, entry[NAME])),
+        )
         .map(([accessor]) => accessor);
 };
 
