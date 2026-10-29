@@ -267,6 +267,12 @@ const indexedSlot = <P extends IndexedChildHost<C>, C extends GObject.Object>(
         },
     });
 
+const focusWithin = (widget: Gtk.Widget): Gtk.Widget | null => {
+    const focus = widget.getRoot()?.getFocus() ?? null;
+
+    return focus === widget || focus?.isAncestor(widget) === true ? focus : null;
+};
+
 const rowSlot = <P extends Gtk.Widget & IndexedChildHost<Gtk.Widget>>(): ElementBehavior<P> =>
     slot<P, Gtk.Widget>("children", Gtk.Widget, {
         attach: (parent, child, info) => {
@@ -280,8 +286,10 @@ const rowSlot = <P extends Gtk.Widget & IndexedChildHost<Gtk.Widget>>(): Element
         },
         reorder: (parent, _child, info) => {
             const row = info.adopted as Gtk.Widget;
+            const focus = focusWithin(row);
             parent.remove(row);
             parent.insert(row, info.index);
+            focus?.grabFocus();
 
             return row;
         },

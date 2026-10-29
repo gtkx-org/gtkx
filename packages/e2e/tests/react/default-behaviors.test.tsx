@@ -187,6 +187,20 @@ describe("default child adapters", () => {
         expect(screen.queryByText("A")).toBeNull();
         expect(screen.queryByText("B")).toBeNull();
     });
+
+    it.each([
+        { name: "GtkBox", wrap: (children: ReactNode) => <GtkBox>{children}</GtkBox> },
+        { name: "GtkListBox", wrap: (children: ReactNode) => <GtkListBox>{children}</GtkListBox> },
+        { name: "GtkFlowBox", wrap: (children: ReactNode) => <GtkFlowBox>{children}</GtkFlowBox> },
+    ])("keeps keyboard focus in a moved $name child", async ({ wrap: container }) => {
+        const wrap = (names: string[]) => container(names.map((name) => <GtkButton key={name} label={name} />));
+        const { rerender } = await render(wrap(["A", "B", "C"]));
+        const moved = screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "A" });
+        moved.grabFocus();
+        await rerender(wrap(["B", "C", "A"]));
+        expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "C" })).toAppearBefore(moved);
+        expect(moved).toHaveFocus();
+    });
 });
 
 describe("default slots and non-widget children", () => {
