@@ -7,9 +7,11 @@ import type { DetachInfo, ElementBehavior, PlaceInfo, Props } from "./registry.j
 import { applyWrite } from "./signals.js";
 import { hasSameText } from "./text.js";
 
+type SlotDetachInfo<C extends GObject.Object> = Omit<DetachInfo, "remaining"> & { remaining: readonly C[] };
+
 type SlotHooks<P extends GObject.Object, C extends GObject.Object> = {
     attach: (parent: P, child: C, info: PlaceInfo) => unknown;
-    detach?: (parent: P, child: C, info: DetachInfo) => void;
+    detach?: (parent: P, child: C, info: SlotDetachInfo<C>) => void;
     reorder?: (parent: P, child: C, info: PlaceInfo) => unknown;
     resolve?: (parent: P, child: C) => GObject.Object | null;
 };
@@ -89,7 +91,7 @@ const slot = <P extends GObject.Object, C extends GObject.Object>(
 
     if (detach !== undefined) {
         behavior.detach = (object, child, info) => {
-            detach(object as P, child as C, info);
+            detach(object as P, child as C, info as SlotDetachInfo<C>);
         };
     }
 
@@ -167,8 +169,8 @@ const childSetterSlot = <P extends ChildSetter>(): ElementBehavior<P> =>
         attach: (parent, child) => {
             parent.setChild(child);
         },
-        detach: (parent) => {
-            parent.setChild(null);
+        detach: (parent, _child, info) => {
+            parent.setChild(info.remaining.at(-1) ?? null);
         },
     });
 
@@ -179,8 +181,8 @@ const contentSetterSlot = <P extends ContentSetter<C>, C extends Gtk.Widget = Gt
         attach: (parent, child) => {
             parent.setContent(child);
         },
-        detach: (parent) => {
-            parent.setContent(null);
+        detach: (parent, _child, info) => {
+            parent.setContent(info.remaining.at(-1) ?? null);
         },
     });
 

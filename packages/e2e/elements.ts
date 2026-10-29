@@ -72,7 +72,7 @@ export default mergeElementConfigs(
                     },
                     detach: (frame: Gtk.AspectFrame, _child, info) => {
                         if (info.slot === "children") {
-                            frame.setChild(null);
+                            frame.setChild((info.remaining.at(-1) as Gtk.Widget | undefined) ?? null);
                         }
                     },
                 },

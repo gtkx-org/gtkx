@@ -55,8 +55,8 @@ import {
     GtkViewport,
     GtkWindowHandle,
 } from "@gtkx/jsx/gtk";
-import { render, screen } from "@gtkx/testing";
-import { createRef } from "react";
+import { render, screen, waitFor } from "@gtkx/testing";
+import { createRef, Suspense, use } from "react";
 import { describe, expect, it } from "vitest";
 import { ItemFactory } from "../helpers/list-view-render.js";
 
@@ -124,6 +124,34 @@ describe("default child adapters", () => {
         expect(ref.current).toBeNull();
         expect(label?.getRoot()).toBeNull();
         await unmount();
+    });
+
+    it.each(containers)("restores $name content after its Suspense fallback", async ({ wrap }) => {
+        const content = createRef<Gtk.Label>();
+        const fallback = createRef<Gtk.Label>();
+        const { promise, resolve } = Promise.withResolvers<void>();
+        const Content = ({ isLoading }: { isLoading: boolean }) => {
+            if (isLoading) {
+                use(promise);
+            }
+
+            return <GtkLabel ref={content}>Content</GtkLabel>;
+        };
+        const view = (isLoading: boolean) =>
+            wrap(
+                <Suspense fallback={<GtkLabel ref={fallback}>Loading</GtkLabel>}>
+                    <Content isLoading={isLoading} />
+                </Suspense>,
+            );
+        const { rerender } = await render(view(false));
+        const label = content.current;
+        await rerender(view(true));
+        expect(fallback.current?.getParent()).not.toBeNull();
+        resolve();
+        await waitFor(() => expect(fallback.current).toBeNull());
+        expect(content.current).toBe(label);
+        expect(label?.getParent()).not.toBeNull();
+        expect(label?.getVisible()).toBe(true);
     });
 
     it("accepts a scrollable widget and replaces it without retaining the old child", async () => {

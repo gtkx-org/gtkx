@@ -29,6 +29,8 @@ type DetachInfo = {
     adopted: GObject.Object | null;
     /** Props of the child element. */
     props: Props;
+    /** Objects the same behavior keeps attached in this slot after the child leaves, in their JSX order. */
+    remaining: readonly GObject.Object[];
 };
 
 type ProjectElementConfig = NonNullable<NonNullable<Config["elements"]>["config"]>[string];

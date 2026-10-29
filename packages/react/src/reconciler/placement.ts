@@ -189,28 +189,36 @@ const attachEntry = (parent: ElementNode, entry: PlacedChild, index: number, sib
     });
 };
 
-const detachInfo = (entry: PlacedChild, index: number): DetachInfo => ({
+const detachInfo = (entry: PlacedChild, index: number, remaining: readonly PlacedChild[]): DetachInfo => ({
     index,
     slot: entry.slot,
     adopted: entry.adopted,
     props: entry.node.props,
+    remaining: remaining.filter((other) => other.behavior === entry.behavior).map((other) => other.object),
 });
 
-const runDetach = (parent: ElementNode, entry: PlacedChild, index: number): void => {
+const runDetach = (parent: ElementNode, entry: PlacedChild, info: DetachInfo): void => {
     const behavior = entry.behavior;
 
     if (behavior === null) {
-        writeSlot(parent, entry, null);
+        writeSlot(parent, entry, info.remaining.at(-1) ?? null);
 
         return;
     }
 
-    behavior.detach?.(parent.object, entry.object, detachInfo(entry, index));
+    behavior.detach?.(parent.object, entry.object, info);
 };
 
-const detachEntry = (parent: ElementNode, entry: PlacedChild, index: number): void => {
+const detachEntry = (
+    parent: ElementNode,
+    entry: PlacedChild,
+    index: number,
+    remaining: readonly PlacedChild[],
+): void => {
+    const info = detachInfo(entry, index, remaining);
+
     applyMutation(() => {
-        runDetach(parent, entry, index);
+        runDetach(parent, entry, info);
     });
 
     if (entry.node.kind === LAZY_KIND) {
@@ -220,8 +228,8 @@ const detachEntry = (parent: ElementNode, entry: PlacedChild, index: number): vo
 };
 
 const rebuild = (parent: ElementNode, entries: PlacedChild[]): void => {
-    for (const entry of entries) {
-        detachEntry(parent, entry, 0);
+    for (const [index, entry] of entries.entries()) {
+        detachEntry(parent, entry, 0, entries.slice(index + 1));
     }
 
     for (const [index, entry] of entries.entries()) {
@@ -314,18 +322,18 @@ const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): v
     const [entry] = entries.splice(index, 1);
 
     if (entry !== undefined) {
-        detachEntry(parent, entry, index);
+        detachEntry(parent, entry, index, entries);
     }
 };
 
 const teardownPlacements = (parent: ElementNode): void => {
     for (const [slot, entries] of parent.placements) {
         const retained: PlacedChild[] = [];
-        for (const entry of entries) {
+        for (const [index, entry] of entries.entries()) {
             if (parent.externalChildren.has(entry.node)) {
                 retained.push(entry);
             } else {
-                detachEntry(parent, entry, 0);
+                detachEntry(parent, entry, 0, [...retained, ...entries.slice(index + 1)]);
             }
         }
         if (retained.length === 0) {
