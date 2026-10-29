@@ -49,7 +49,7 @@ pnpm create gtkx@beta
 
 :::
 
-Choose a project directory, a display name, an application ID such as `com.example.MyApp`, and your package manager. Enable TypeScript and the Vitest setup for typed components and native widget tests. `yarn create` cannot run the prerelease scaffolder; to manage the project with Yarn, start it with npm or pnpm and choose Yarn as the package manager. Then run:
+Choose a project directory, a display name, an application ID such as `com.example.MyApp`, and your package manager. Enable TypeScript and the Vitest setup for typed components and native widget tests. `yarn create` cannot run the prerelease scaffolder; to manage the project with Yarn, start it with npm or pnpm and choose Yarn as the package manager. Yarn projects get a `.yarnrc.yml` with `nodeLinker: node-modules`, because GTKX generates its bindings into `node_modules` and does not support Plug'n'Play. Then run:
 
 ```bash
 cd my-app

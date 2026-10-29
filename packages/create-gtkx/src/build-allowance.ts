@@ -6,6 +6,7 @@ import { updateManifest } from "./manifest.js";
 
 const BUILT_DEPENDENCIES = ["@swc/core", "esbuild"];
 const PNPM_WORKSPACE_FILE = "pnpm-workspace.yaml";
+const YARN_CONFIG_FILE = ".yarnrc.yml";
 const writePnpmAllowance = (root: string): void => {
     const workspace = {
         packages: ["."],
@@ -21,6 +22,7 @@ const writeNpmAllowance = (root: string): void => {
 };
 
 const writeYarnAllowance = (root: string): void => {
+    writeFileSync(join(root, YARN_CONFIG_FILE), stringify({ nodeLinker: "node-modules" }));
     updateManifest(root, (manifest) => {
         manifest.dependenciesMeta = Object.fromEntries(BUILT_DEPENDENCIES.map((name) => [name, { built: true }]));
     });
@@ -42,4 +44,10 @@ const writeBuildAllowance = (root: string, packageManager: PackageManager): void
     writeNpmAllowance(root);
 };
 
-export { writeBuildAllowance };
+const PACKAGE_MANAGER_CONFIG_FILES: Record<PackageManager, string[]> = {
+    pnpm: [PNPM_WORKSPACE_FILE],
+    yarn: [YARN_CONFIG_FILE],
+    npm: [],
+};
+
+export { PACKAGE_MANAGER_CONFIG_FILES, writeBuildAllowance };

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { stdout, stderr } from "test-console";
 import { afterEach, describe, expect, it } from "vitest";
+import { parse } from "yaml";
 import { scaffoldCommand } from "../src/index.js";
 
 const initialExitCode = process.exitCode;
@@ -50,6 +51,13 @@ describe("scaffold command", () => {
         expect(existsSync(join(target, "vitest.config.ts"))).toBe(hasTests);
         expect(read(target, hasTypes ? "gtkx.config.ts" : "gtkx.config.js")).toContain("org.gtkx.example");
         expect(JSON.parse(read(target, ".mcp.json"))).toHaveProperty("mcpServers.gtkx");
+    });
+
+    it("configures Yarn to install packages into node_modules", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-"));
+        const target = join(directory.path, "example");
+        expect((await create(target, ["--package-manager", "yarn"])).status).toBe(0);
+        expect(parse(read(target, ".yarnrc.yml"))).toMatchObject({ nodeLinker: "node-modules" });
     });
 
     it("protects an occupied target and preserves unrelated files when overwriting", async () => {

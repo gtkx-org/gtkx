@@ -7,7 +7,7 @@ import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
 import packageManifest from "../package.json" with { type: "json" };
-import { writeBuildAllowance } from "./build-allowance.js";
+import { PACKAGE_MANAGER_CONFIG_FILES, writeBuildAllowance } from "./build-allowance.js";
 import { OperationCanceledError, ScaffoldAbortedError } from "./errors.js";
 import { updateManifest } from "./manifest.js";
 import {
@@ -555,7 +555,7 @@ const plannedScaffoldFiles = async (root: string, resolved: ResolvedOptions): Pr
 };
 
 const auxiliaryDestinations = (root: string, resolved: ResolvedOptions): string[] =>
-    resolved.packageManager === "pnpm" ? [join(root, "pnpm-workspace.yaml")] : [];
+    PACKAGE_MANAGER_CONFIG_FILES[resolved.packageManager].map((file) => join(root, file));
 
 const planScaffoldProject = async (root: string, resolved: ResolvedOptions): Promise<ScaffoldPlan> => {
     const files = await plannedScaffoldFiles(root, resolved);
