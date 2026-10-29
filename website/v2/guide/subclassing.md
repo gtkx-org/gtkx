@@ -88,7 +88,24 @@ The hook returns `undefined` while its target is absent. React state keeps the s
 
 ## Declaring signals
 
-The `signals` option registers custom signals. Each entry names its parameter GTypes and, when needed, its return GType. Use the returned class so GTKX's signal helpers recognize the declared names. Custom JSX components should include their signal handler props in their prop type.
+Declare custom signals with `withSignals` when the class emits or connects to them itself. It takes the base class and the signal specs, and the class extending it can use those names on `this`:
+
+```ts
+import * as GObject from "@gtkx/gi/gobject";
+import { registerClass, withSignals } from "@gtkx/runtime";
+
+class CounterBase extends withSignals(GObject.Object, {
+    "cycle-completed": { paramTypes: [GObject.TYPE_INT] },
+}) {
+    complete(cycles: number): void {
+        this.emit("cycle-completed", cycles);
+    }
+}
+
+const Counter = registerClass(CounterBase, { typeName: "ExampleCounter" });
+```
+
+`registerClass` installs these signals on the new type. Its `signals` option declares signals too, typed on the returned class rather than inside the class body; a name declared in both places is an error. Each entry names its parameter GTypes and, when needed, its return GType. Custom JSX components should include their signal handler props in their prop type.
 
 Handlers receive the signal arguments; JSX handlers also receive the emitting object last. See the [JSX prop model](/v2/guide/configuration-and-codegen#the-jsx-prop-model) for handler props and the [`registerClass` reference](/v2/reference/@gtkx/runtime/functions/registerClass) for signal options.
 

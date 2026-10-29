@@ -31,6 +31,7 @@ export {
     type RegisteredClass,
     type SignalGType,
     type SignalSpec,
+    withSignals,
 } from "./register-class.js";
 export {
     getClassType,

@@ -409,6 +409,7 @@ type PropertyVfuncSpec = {
 };
 
 type ArgPatch = { isCallerAllocated: true } | { isCallScoped: true };
+type SignalEntry = [name: string, spec: SignalSpec];
 type DeclaredSignals = { native: ClassSignal[]; table: Map<string, DeclaredSignalTypes> };
 
 const INSTANCE_ARG_INDEX = 0;
@@ -417,6 +418,8 @@ const TEARDOWN_VFUNC_NAMES: Set<string> = new Set(["dispose", "finalize"]);
 const DISPOSE_METHOD_NAME = "vfuncDispose";
 const ASYNC_INITABLE_TYPE_NAME = "GAsyncInitable";
 const INIT_ASYNC_METHOD_NAME = "vfuncInitAsync";
+
+const baseSignals: WeakMap<AnyClass, Record<string, SignalSpec>> = new WeakMap();
 
 const PROPERTY_VFUNC_SPECS: PropertyVfuncSpec[] = [
     { methodName: GET_PROPERTY_VFUNC, isValueOut: true, makeDispatch: makeGetProperty },
@@ -428,6 +431,39 @@ const VFUNC_METHOD_PATTERN = /^vfunc[A-Z0-9]/;
 const TYPE_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9\-_+]{2,}$/;
 const UPPER_CASE_PATTERN = /[A-Z]/;
 const SIGNAL_OVERRIDE_PATTERN = /^on[A-Z]/;
+
+/**
+ * Returns an unregistered subclass of `base` that declares `signals`, so a class extending it can emit,
+ * connect and listen to them on `this` inside its own body. {@link registerClass} installs these signals
+ * together with its `signals` option when it registers that class; a name declared in both is an error.
+ *
+ * @example
+ * ```ts
+ * class Counter extends withSignals(GObject.Object, { "cycle-completed": { paramTypes: [GObject.TYPE_INT] } }) {
+ *     tick(cycles: number): void {
+ *         this.emit("cycle-completed", cycles);
+ *     }
+ * }
+ *
+ * const RegisteredCounter = registerClass(Counter, { typeName: "ExampleCounter" });
+ * ```
+ *
+ * @param base The generated or registered class to extend.
+ * @param signals Signal specs keyed by name, as in the `signals` option of {@link registerClass}.
+ * @returns A base class whose instances carry the declared signals in their type.
+ */
+function withSignals<T extends AnyClass, TSignals extends Record<string, SignalSpec>>(
+    base: T,
+    signals: TSignals,
+): RegisteredClass<T, Record<never, PropertySpec>, TSignals, readonly []>;
+
+function withSignals(base: AnyClass, signals: Record<string, SignalSpec>): AnyClass {
+    const klass: AnyClass = class extends base {};
+    Object.defineProperty(klass, "name", { value: base.name });
+    baseSignals.set(klass, signals);
+
+    return klass;
+}
 
 /**
  * Registers a wrapper subclass as a GType with discovered vfuncs, properties, signals, and interfaces.
@@ -470,7 +506,7 @@ function registerClass(klass: AnyClass, options: AnyRegisterClassOptions = {}): 
     sortInterfaceTypes(parentType, declaredTypes);
     const adoptedTypes = declaredTypes.filter((gtype) => !typeIsA(parentType, gtype));
     const properties = options.properties ?? {};
-    const signals = resolveDeclaredSignals(klass, options.signals ?? {});
+    const signals = resolveDeclaredSignals(klass, collectSignalEntries(klass, options.signals ?? {}));
     const members = collectInstanceMembers(klass);
     const { methods, inheritedNames } = members;
     checkAsyncInitable(klass, adoptedTypes, methods);
@@ -939,15 +975,33 @@ function resolveDeclaredSignal(
     return { native, declared };
 }
 
-function resolveDeclaredSignals(klass: AnyClass, signals: Record<string, SignalSpec>): DeclaredSignals {
+function collectSignalEntries(klass: AnyClass, signals: Record<string, SignalSpec>): SignalEntry[] {
+    const entries: SignalEntry[] = Object.entries(signals);
+    let cls: AnyClass | null = klass;
+
+    while (cls !== null && getClassType(cls) === TYPE_INVALID) {
+        entries.push(...Object.entries(baseSignals.get(cls) ?? {}));
+        cls = getParentClass(cls);
+    }
+
+    return entries;
+}
+
+function resolveDeclaredSignals(klass: AnyClass, entries: SignalEntry[]): DeclaredSignals {
     const native: ClassSignal[] = [];
     const table: Map<string, DeclaredSignalTypes> = new Map();
 
-    for (const [name, spec] of Object.entries(signals)) {
+    for (const [name, spec] of entries) {
         assertLowerCaseSignalName(klass, name);
+        const canonicalName = canonicalSignalName(name);
+
+        if (table.has(canonicalName)) {
+            throw new TypeError(`registerClass: ${klass.name} declares the signal '${canonicalName}' more than once`);
+        }
+
         const resolved = resolveDeclaredSignal(klass, name, spec);
         native.push(resolved.native);
-        table.set(canonicalSignalName(name), resolved.declared);
+        table.set(canonicalName, resolved.declared);
     }
 
     return { native, table };
@@ -1039,4 +1093,4 @@ function toNativeOptions(
     };
 }
 
-export { type Interface, registerClass, type RegisteredClass, type SignalGType, type SignalSpec };
+export { type Interface, registerClass, type RegisteredClass, type SignalGType, type SignalSpec, withSignals };

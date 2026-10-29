@@ -2,7 +2,7 @@ import * as GObject from "@gtkx/gi/gobject";
 
 import * as Regress from "@gtkx/gi/regress";
 
-import { getInstanceType, offSignal, registerClass } from "@gtkx/runtime";
+import { getInstanceType, offSignal, registerClass, withSignals } from "@gtkx/runtime";
 
 import { expect, test } from "vitest";
 import { didSettle } from "./helpers/memory.js";
@@ -502,6 +502,34 @@ test("a declared signal carries its handler's return value back to the emitter",
 
     expect(instance.emit("shout", "again")).toBe(7);
     expect(heard).toEqual(["hey", "again"]);
+});
+
+test("signals declared on a typed base register beside the options' signals", () => {
+    class Ticker extends withSignals(Regress.TestObj, { ticked: { paramTypes: [GObject.TYPE_INT] } }) {
+        tick(count: number): void {
+            this.emit("ticked", count);
+        }
+    }
+
+    const Ticking = registerClass(Ticker, { typeName: `GtkxSignalsTicker${suffix}`, signals: { reset: {} } });
+    const instance = new Ticking({});
+    const seen: unknown[] = [];
+    instance.connect("ticked", (count) => {
+        seen.push(count);
+    });
+    instance.connect("reset", () => {
+        seen.push("reset");
+    });
+
+    instance.tick(3);
+    instance.emit("reset");
+    expect(seen).toEqual([3, "reset"]);
+    expect(GObject.signalLookup("ticked", Regress.TestObj)).toBe(0);
+
+    class Clashing extends withSignals(Regress.TestObj, { ticked: {} }) {}
+    expect(() =>
+        registerClass(Clashing, { typeName: `GtkxSignalsClashing${suffix}`, signals: { ticked: {} } }),
+    ).toThrow();
 });
 
 test("a class closure override runs with the emitter and returns its value", () => {

@@ -152,7 +152,7 @@ describe("generated bindings", () => {
                 type SocketAddress,
             } from "@gtkx/gi/gio";
             import { Object as GObject, TYPE_INT, TYPE_OBJECT } from "@gtkx/gi/gobject";
-            import { registerClass } from "@gtkx/runtime";
+            import { registerClass, withSignals } from "@gtkx/runtime";
             const file: File = File.newForPath("/tmp/example");
             const path: string | null = file.getPath();
             const cancellable: GObject = new Cancellable();
@@ -212,6 +212,24 @@ describe("generated bindings", () => {
             }
             export const Counter = registerClass(CounterBase, { typeName: "ConsumerCounter" });
             new Counter().emit("bumped", 2);
+            class TickerBase extends withSignals(Application, { ticked: { paramTypes: [TYPE_INT] } }) {
+                tick(): void {
+                    this.emit("ticked", 1);
+                    queueMicrotask(() => this.emit("ticked", 2));
+                    this.connect("ticked", () => {});
+                    this.on("ticked", () => {});
+                    this.emit("activate");
+                    // @ts-expect-error unknown signal
+                    this.emit("tickd", 1);
+                }
+            }
+            export const Ticker = registerClass(TickerBase, {
+                typeName: "ConsumerTicker",
+                signals: { reset: {} },
+            });
+            const ticker = new Ticker();
+            ticker.on("ticked", () => {});
+            ticker.emit("reset");
             declare const either: Application | ServiceBase;
             either.emit("activate");
             either.on("startup", () => {}).disconnect(either.connect("shutdown", () => {}));
