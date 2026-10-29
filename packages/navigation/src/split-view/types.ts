@@ -62,7 +62,7 @@ type SplitViewDescriptorMap = Record<string, SplitViewDescriptor>;
 type SplitViewNavigationConfig = {
     /** Whether the panes stack into one instead of sitting side by side; defaults to `false`. */
     collapsed?: boolean;
-    /** Fills the content pane while no content route is open; defaults to nothing. */
+    /** Fills the content pane, below an untitled header bar, while no content route is open; defaults to nothing. */
     contentPlaceholder?: ReactNode;
     /** Which side the sidebar sits on; defaults to `"start"`. */
     sidebarPosition?: "start" | "end";

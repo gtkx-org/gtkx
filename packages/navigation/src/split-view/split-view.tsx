@@ -3,7 +3,7 @@ import type { ParamListBase, RouteProp, StackNavigationState } from "@react-navi
 import type { ReactNode } from "react";
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwNavigationPage, AdwNavigationSplitView, AdwToolbarView } from "@gtkx/jsx/adw";
+import { AdwHeaderBar, AdwNavigationPage, AdwNavigationSplitView, AdwToolbarView } from "@gtkx/jsx/adw";
 import { GtkEventControllerKey } from "@gtkx/jsx/gtk";
 import { StackActions } from "@react-navigation/core";
 import { useCallback, useRef } from "react";
@@ -133,7 +133,7 @@ const SplitView = (props: SplitViewProps): ReactNode => {
                         describe={describe}
                     />
                 ) : (
-                    <>{contentPlaceholder}</>
+                    <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>{contentPlaceholder}</AdwToolbarView>
                 )}
             </AdwNavigationPage>
         </AdwNavigationSplitView>

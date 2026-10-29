@@ -295,7 +295,7 @@ export const Mail = ({ isNarrow }: { isNarrow: boolean }) => (
 
 In a split view, `navigate` selects a content route: it updates that route and removes pages above it. Choosing another folder therefore replaces the selection instead of adding another folder page. Use `push` to keep multiple copies of a content page.
 
-The sidebar stays pinned beneath the content routes. Going back from the first content page clears the selection and restores `contentPlaceholder`. An `initialRouteName` naming a content screen opens that screen instead of starting with the placeholder.
+The sidebar stays pinned beneath the content routes. Going back from the first content page clears the selection and restores `contentPlaceholder`, which sits below an untitled header bar so the window keeps its controls. An `initialRouteName` naming a content screen opens that screen instead of starting with the placeholder.
 
 Content pages use the stack's headers, back controls and transition events. The first selection fills an empty pane and emits no page transition. The sidebar has its own header without a back button.
 
