@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
+import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
@@ -55,6 +56,7 @@ import {
     GtkViewport,
     GtkWindowHandle,
 } from "@gtkx/jsx/gtk";
+import { typeFromName } from "@gtkx/runtime";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, Suspense, use } from "react";
 import { describe, expect, it } from "vitest";
@@ -239,7 +241,7 @@ describe("default slots and non-widget children", () => {
 
     it("updates the accepted native types of a drop controller", async () => {
         const ref = createRef<Gtk.DropTarget>();
-        const target = (types: bigint[]) => (
+        const target = (types: NonNullable<Parameters<Gtk.DropTarget["setGtypes"]>[0]>) => (
             <GtkLabel controllers={<GtkDropTarget ref={ref} types={types} />}>Drop here</GtkLabel>
         );
         const { rerender, unmount } = await render(target([GObject.TYPE_STRING]));
@@ -248,6 +250,8 @@ describe("default slots and non-widget children", () => {
         expect(controller?.getWidget()).toBe(screen.getByText("Drop here"));
         await rerender(target([GObject.TYPE_INT]));
         expect(controller?.getGtypes()).toEqual([GObject.TYPE_INT]);
+        await rerender(target([Gdk.FileList]));
+        expect(controller?.getGtypes()).toEqual([typeFromName("GdkFileList")]);
         await unmount();
         expect(controller?.getWidget()).toBeNull();
     });

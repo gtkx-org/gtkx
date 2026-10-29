@@ -1,7 +1,6 @@
 import type * as Adw from "@gtkx/gi/adw";
 import type * as Gdk from "@gtkx/gi/gdk";
 import type * as GLib from "@gtkx/gi/glib";
-import type * as GObject from "@gtkx/gi/gobject";
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { CSSProperties, ReactNode } from "react";
 
@@ -412,8 +411,8 @@ type GtkApplicationProps = {
 
 /** Props of a `Gtk.DropTarget` element. */
 type GtkDropTargetProps = {
-    /** GTypes the target accepts a drop of. */
-    types?: GObject.Type[] | null | undefined;
+    /** GTypes or generated classes the target accepts a drop of. */
+    types?: Parameters<Gtk.DropTarget["setGtypes"]>[0] | undefined;
 };
 
 /** Props of a `Gtk.DrawingArea` element. */
