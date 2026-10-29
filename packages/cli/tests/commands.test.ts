@@ -486,7 +486,7 @@ describe("CLI commands", () => {
         });
     });
 
-    it("replaces edited global styles and stylesheets in place, keeping state", async () => {
+    it("replaces edited global styles and stylesheets in place and refreshes their raw imports, keeping state", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "probe.json");
         const theme = (version: number, globalRule: string) => `
@@ -497,6 +497,7 @@ describe("CLI commands", () => {
         `;
         project.write("src/theme.ts", theme(1, ".cli-global-probe { min-width: 231px; }"));
         project.write("src/sheet.css", ".cli-sheet-probe { min-width: 237px; }");
+        project.write("src/snippet.css", ".cli-snippet-probe { min-width: 263px; }");
         project.write(
             "src/probe.tsx",
             `import * as Gtk from "@gtkx/gi/gtk";
@@ -505,15 +506,27 @@ describe("CLI commands", () => {
             import { renameSync, writeFileSync } from "node:fs";
             import { useEffect, useRef, useState } from "react";
             import "./sheet.css";
+            import sheetSource from "./sheet.css?raw";
+            import snippetSource from "./snippet.css?raw";
             import { accent, version } from "./theme.ts";
             const width = (label: Gtk.Label | null) => label?.measure(Gtk.Orientation.HORIZONTAL, -1)[0] ?? 0;
             export function Probe() {
                 const [token] = useState(() => randomUUID());
                 const global = useRef<Gtk.Label | null>(null);
                 const sheet = useRef<Gtk.Label | null>(null);
+                const snippet = useRef<Gtk.Label | null>(null);
                 useEffect(() => {
                     const timer = setInterval(() => {
-                        const observed = { pid: process.pid, token, version, global: width(global.current), sheet: width(sheet.current) };
+                        const observed = {
+                            pid: process.pid,
+                            token,
+                            version,
+                            global: width(global.current),
+                            sheet: width(sheet.current),
+                            snippet: width(snippet.current),
+                            sheetSource,
+                            snippetSource,
+                        };
                         writeFileSync(${JSON.stringify(readyPath)} + ".tmp", JSON.stringify(observed));
                         renameSync(${JSON.stringify(readyPath)} + ".tmp", ${JSON.stringify(readyPath)});
                     }, 100);
@@ -523,6 +536,7 @@ describe("CLI commands", () => {
                     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
                         <GtkLabel ref={global} label="Global" cssClasses={["cli-global-probe", accent]} />
                         <GtkLabel ref={sheet} label="Sheet" cssClasses={["cli-sheet-probe"]} />
+                        <GtkLabel ref={snippet} label="Snippet" cssClasses={["cli-snippet-probe"]} />
                     </GtkBox>
                 );
             }`,
@@ -545,9 +559,13 @@ describe("CLI commands", () => {
                 version: number;
                 global: number;
                 sheet: number;
+                snippet: number;
+                sheetSource: string;
+                snippetSource: string;
             };
         await withSession("dev", project.root, readyPath, async () => {
             await expect.poll(() => observation(), { timeout: 30_000 }).toMatchObject({ global: 231, sheet: 237 });
+            expect(observation().snippet).toBeLessThan(263);
             const { pid, token } = observation();
 
             project.write("src/theme.ts", theme(2, ".cli-global-probe { min-width: 241px; }"));
@@ -561,7 +579,17 @@ describe("CLI commands", () => {
 
             project.write("src/sheet.css", ".cli-sheet-probe { min-width: 251px; }");
             await expect.poll(() => observation().sheet, { timeout: 30_000 }).toBe(251);
+            await expect
+                .poll(() => observation().sheetSource, { timeout: 30_000 })
+                .toBe(".cli-sheet-probe { min-width: 251px; }");
             expect(observation()).toMatchObject({ pid, token });
+
+            project.write("src/snippet.css", ".cli-snippet-probe { min-width: 271px; }");
+            await expect
+                .poll(() => observation().snippetSource, { timeout: 30_000 })
+                .toBe(".cli-snippet-probe { min-width: 271px; }");
+            expect(observation()).toMatchObject({ pid, token });
+            expect(observation().snippet).toBeLessThan(263);
 
             project.write("src/sheet.css", ".cli-other-probe { min-width: 251px; }");
             await expect.poll(() => observation().sheet, { timeout: 30_000 }).toBeLessThan(237);

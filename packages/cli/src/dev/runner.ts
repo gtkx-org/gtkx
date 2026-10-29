@@ -538,8 +538,20 @@ const didRestartForWorker = async (session: DevSession, change: WatchedChange): 
     return true;
 };
 
+const loadedStylesheetFor = (session: DevSession, path: string): ModuleNode | undefined => {
+    const stylesheet = session.server.moduleGraph.getModuleById(injectedCssId(path));
+
+    return stylesheet?.ssrModule ? stylesheet : undefined;
+};
+
+const hasLoadedFileModule = (session: DevSession, path: string): boolean =>
+    session.server.moduleGraph
+        .getModulesByFile(path)
+        ?.values()
+        .some((module) => module.ssrModule !== null) ?? false;
+
 const didRestartForStylesheet = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
-    if (change.event === "change" || !session.server.moduleGraph.getModuleById(injectedCssId(change.path))) {
+    if (change.event === "change" || !loadedStylesheetFor(session, change.path)) {
         return false;
     }
 
@@ -642,15 +654,15 @@ const applyChange = async (session: DevSession, change: WatchedChange): Promise<
         return;
     }
 
-    const stylesheet = session.server.moduleGraph.getModuleById(injectedCssId(change.path));
+    const stylesheet = loadedStylesheetFor(session, change.path);
+
+    if (!stylesheet || hasLoadedFileModule(session, change.path)) {
+        await applySave(session, change.path, SAVE_ACTION);
+    }
 
     if (stylesheet) {
         await replaceStylesheet(session, change.path, stylesheet);
-
-        return;
     }
-
-    await applySave(session, change.path, SAVE_ACTION);
 };
 
 const watchProjectFiles = (session: DevSession): void => {
