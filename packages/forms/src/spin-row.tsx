@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { AdwSpinRow } from "@gtkx/jsx/adw";
 import { type FieldValues, useController } from "react-hook-form";
 import type { FormFieldPath, SpinRowProps } from "./types.js";
-import { selectText, useFieldWidget, widgetProps } from "./internal/field.js";
+import { useEditableFieldWidget, widgetProps } from "./internal/field.js";
 
 /** Renders an `Adw.SpinRow` controlled by React Hook Form. */
 function SpinRow<
@@ -14,7 +14,7 @@ function SpinRow<
     const { field, fieldState } = useController<TFieldValues, TName, TTransformedValues>(props);
     const rowProps = widgetProps(props);
 
-    const binding = useFieldWidget<Adw.SpinRow>(field, fieldState, rowProps, selectText);
+    const binding = useEditableFieldWidget<Adw.SpinRow>(field, fieldState, rowProps);
 
     const value = field.value ?? 0;
 

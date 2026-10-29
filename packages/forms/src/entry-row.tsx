@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { AdwEntryRow } from "@gtkx/jsx/adw";
 import { type FieldValues, useController } from "react-hook-form";
 import type { EntryRowProps, FormFieldPath } from "./types.js";
-import { selectText, useFieldWidget, widgetProps } from "./internal/field.js";
+import { useEditableFieldWidget, widgetProps } from "./internal/field.js";
 
 /** Renders an `Adw.EntryRow` controlled by React Hook Form. */
 function EntryRow<
@@ -14,7 +14,7 @@ function EntryRow<
     const { field, fieldState } = useController<TFieldValues, TName, TTransformedValues>(props);
     const rowProps = widgetProps(props);
 
-    const binding = useFieldWidget<Adw.EntryRow>(field, fieldState, rowProps, selectText);
+    const binding = useEditableFieldWidget<Adw.EntryRow>(field, fieldState, rowProps);
 
     const value = field.value ?? "";
 

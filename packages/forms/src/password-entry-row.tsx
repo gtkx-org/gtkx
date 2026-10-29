@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { AdwPasswordEntryRow } from "@gtkx/jsx/adw";
 import { type FieldValues, useController } from "react-hook-form";
 import type { FormFieldPath, PasswordEntryRowProps } from "./types.js";
-import { selectText, useFieldWidget, widgetProps } from "./internal/field.js";
+import { useEditableFieldWidget, widgetProps } from "./internal/field.js";
 
 /** Renders an `Adw.PasswordEntryRow` controlled by React Hook Form. */
 function PasswordEntryRow<
@@ -14,7 +14,7 @@ function PasswordEntryRow<
     const { field, fieldState } = useController<TFieldValues, TName, TTransformedValues>(props);
     const rowProps = widgetProps(props);
 
-    const binding = useFieldWidget<Adw.PasswordEntryRow>(field, fieldState, rowProps, selectText);
+    const binding = useEditableFieldWidget<Adw.PasswordEntryRow>(field, fieldState, rowProps);
 
     const value = field.value ?? "";
 

@@ -80,7 +80,7 @@ A form `ComboRow` uses a non-nullable string field. Supply an explicit default I
 
 ## Native validation feedback
 
-An invalid row gains Adwaita's `error` CSS class and exposes an accessible invalid state. When validation supplies a message, the row uses it as its tooltip. Correcting the field restores the caller's classes and tooltip.
+An invalid row gains Adwaita's `error` CSS class. The row and, for text and spin rows, the field that receives focus expose an accessible invalid state. When validation supplies a message, the row uses it as its tooltip. Correcting the field restores the caller's classes and tooltip.
 
 The rows do not add a persistent error label. Render one beside the row when your application needs visible feedback. Native handlers such as `onNotifyText` still run after the form receives an edit.
 

@@ -3,13 +3,23 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { GtkEventControllerFocus } from "@gtkx/jsx/gtk";
 import { useMergedRef } from "@gtkx/react/internal";
 import { type DistributedOmit, omit } from "@gtkx/utils";
-import { type ReactElement, type ReactNode, type Ref, type RefCallback, useCallback } from "react";
+import {
+    type ReactElement,
+    type ReactNode,
+    type Ref,
+    type RefCallback,
+    useCallback,
+    useLayoutEffect,
+    useRef,
+} from "react";
 
 type FormFieldPropName = keyof UseControllerProps;
 
 type FieldWidget = {
     grabFocus: () => boolean;
 };
+
+type EditableFieldWidget = FieldWidget & Pick<Gtk.Editable, "getDelegate" | "selectRegion">;
 
 type FieldWidgetOptions<Widget extends FieldWidget> = {
     ref?: Ref<Widget> | undefined;
@@ -98,12 +108,27 @@ const useFieldWidget = <Widget extends FieldWidget>(
     accessibleInvalid: (state.invalid && Gtk.AccessibleInvalidState.TRUE) || Gtk.AccessibleInvalidState.FALSE,
 });
 
-const selectText = (row: { selectRegion: (start: number, end: number) => void }): void => {
+const selectText = (row: EditableFieldWidget): void => {
     row.selectRegion(0, -1);
+};
+
+const useEditableFieldWidget = <Widget extends EditableFieldWidget>(
+    field: FieldBinding,
+    state: FieldState,
+    props: FieldWidgetOptions<Widget>,
+): FieldWidgetBinding<Widget> => {
+    const widgetRef = useRef<Widget | null>(null);
+    const binding = useFieldWidget(field, state, { ...props, ref: useMergedRef(props.ref, widgetRef) }, selectText);
+
+    useLayoutEffect(() => {
+        widgetRef.current?.getDelegate()?.updateState([Gtk.AccessibleState.INVALID], [binding.accessibleInvalid]);
+    }, [binding.accessibleInvalid]);
+
+    return binding;
 };
 
 const widgetProps = <Props extends Partial<Record<FormFieldPropName, unknown>>>(
     props: Props,
 ): DistributedOmit<Props, FormFieldPropName> => omit(props, FORM_FIELD_PROP_NAMES);
 
-export { selectText, useFieldWidget, widgetProps };
+export { useEditableFieldWidget, useFieldWidget, widgetProps };
