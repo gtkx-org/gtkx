@@ -231,6 +231,28 @@ describe("native story controls", () => {
         expect(screen.getByName("inspector-choice")).toHaveTextContent(/^42$/);
     });
 
+    it("renders the mapped value of an option with an argTypes mapping", async () => {
+        await showInspector({
+            default: {
+                ...controlMeta,
+                args: { choice: "accent" },
+                argTypes: {
+                    choice: {
+                        control: "select",
+                        options: ["accent", "warning"],
+                        mapping: { accent: { tone: "blue" }, warning: { tone: "yellow" } },
+                    },
+                },
+            },
+            Default: {},
+        });
+
+        expect(screen.getByName("storybook-control-choice")).toHaveDisplayValue("accent");
+        expect(screen.getByName("inspector-choice")).toHaveTextContent(/^\{"tone":"blue"\}$/);
+        await userEvent.selectOptions(screen.getByName("storybook-control-choice"), 2);
+        expect(screen.getByName("inspector-choice")).toHaveTextContent(/^\{"tone":"yellow"\}$/);
+    });
+
     it("preserves fractional values and step increments in range controls", async () => {
         await showInspector({
             default: {

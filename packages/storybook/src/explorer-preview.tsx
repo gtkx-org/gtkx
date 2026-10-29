@@ -7,7 +7,7 @@ import { createPortal, rootElement } from "@gtkx/react";
 import { normalizeError } from "@gtkx/utils";
 import { Component, useCallback, useMemo, useState } from "react";
 import type { StoryEntry } from "./catalog.js";
-import type { Args, ComposedStory } from "./types.js";
+import type { Args, ArgTypes, ComposedStory } from "./types.js";
 import { ActionsPanel } from "./actions-panel.js";
 import { ActionStore, bindActions } from "./actions.js";
 import { Controls } from "./controls.js";
@@ -66,6 +66,16 @@ const previewMode = (story: ComposedStory): "content" | "window" | "dialog" => {
     return mode;
 };
 
+const mapArgs = (args: Args, argTypes: ArgTypes): Args =>
+    Object.fromEntries(
+        Object.entries(args).map(([argument, value]) => {
+            const mapping = argTypes[argument]?.mapping;
+            const key = String(value);
+
+            return [argument, mapping !== undefined && Object.hasOwn(mapping, key) ? mapping[key] : value];
+        }),
+    );
+
 const PreviewContent = ({ story: Story, args }: { story: ComposedStory; args: Args }): ReactNode => {
     const mode = previewMode(Story);
 
@@ -122,7 +132,7 @@ const usePreviewState = ({ entry }: PreviewProps) => {
         [state.story, state.generation],
     );
     const boundArgs = useMemo(
-        () => bindActions(state.args, state.story.argTypes, state.actions, onError),
+        () => bindActions(mapArgs(state.args, state.story.argTypes), state.story.argTypes, state.actions, onError),
         [state.args, state.story.argTypes, state.actions, onError],
     );
 
