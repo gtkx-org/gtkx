@@ -333,8 +333,15 @@ const pluralMessage = ({ baseKey, namespace, variants }: PluralGroup): SourceMes
     const singular = one.defaultValue;
     const plural = other.defaultValue;
 
-    if (singular === plural || singular.length === 0 || plural.length === 0) {
-        throw new Error("GNU gettext plural source strings must be distinct and non-empty");
+    if (singular.length === 0 || plural.length === 0) {
+        throw new Error("GNU gettext plural source strings cannot be empty");
+    }
+
+    if (singular === plural) {
+        throw new Error(
+            `Both plural forms of "${msgid}" are "${singular}". Pass distinct defaultValue_one and defaultValue_other ` +
+                "options; GTKX 2 removed the t(singular, plural, options) overload.",
+        );
     }
 
     return {

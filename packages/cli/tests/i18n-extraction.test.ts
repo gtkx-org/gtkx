@@ -195,6 +195,7 @@ function Local(t, Trans) {
         ["a dynamic default", `${T_IMPORT}\nt("key", { defaultValue: value });`],
         ["a dynamic context", `${T_IMPORT}\nt("key", { context: value });`],
         ["a source string method", `${T_IMPORT}\nt("key", { defaultValue() {} });`],
+        ["one source string for both plural forms", `${T_IMPORT}\nt("{{count}} day", "{{count}} days", { count });`],
         [
             "a component alias",
             'import { Trans as Translation } from "@gtkx/i18n";\nconst element = <Translation i18nKey="key" />;',
