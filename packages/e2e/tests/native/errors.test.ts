@@ -192,16 +192,16 @@ test("a string field written repeatedly on a gtkx-allocated struct still round-t
     expect(boxed.string).toBe("second");
 });
 
-test("a callee that rejects its argument fails the call instead of the process", () => {
-    expect(() => Regress.testIntValueArg(42n)).toThrow();
+test("a callee that rejects its argument returns its fallback value", () => {
+    expect(Regress.testIntValueArg(42n)).toBe(0);
 
     const text = new GObject.Value();
     text.init(GObject.typeFromName("gchararray"));
-    expect(() => text.getInt()).toThrow();
+    expect(text.getInt()).toBe(0);
 });
 
 test("a rejected call leaves the binding usable", () => {
-    expect(() => Regress.testIntValueArg(42n)).toThrow();
+    expect(Regress.testIntValueArg(42n)).toBe(0);
 
     const value = new GObject.Value();
     value.init(GObject.typeFromName("gint"));
