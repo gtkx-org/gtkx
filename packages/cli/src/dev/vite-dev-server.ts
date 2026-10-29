@@ -47,6 +47,7 @@ const createDevServerConfig = (root: string, deployOutDir: string | undefined, p
     plugins: [watchErrorPlugin(), ...plugins],
     server: {
         middlewareMode: true,
+        ws: false,
         watch: {
             ignored: createWatchIgnore(root, deployOutDir),
             awaitWriteFinish: {

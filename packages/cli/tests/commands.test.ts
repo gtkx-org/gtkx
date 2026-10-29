@@ -609,6 +609,7 @@ describe("CLI commands", () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "ready.txt");
         const argumentsPath = join(project.root, "arguments.json");
+        const resourcesPath = join(project.root, "resources.json");
         const applicationArgs = ["--example", "a value", "--config=app-owned"];
         project.write("po/LINGUAS", "fr\n");
         project.write("po/fr.po", readFileSync(new URL("../../i18n/tests/fixtures/fr.po", import.meta.url), "utf8"));
@@ -624,6 +625,7 @@ describe("CLI commands", () => {
             application.register(null);
             application.hold();
             writeFileSync(${JSON.stringify(argumentsPath)}, JSON.stringify(process.argv.slice(2)));
+            writeFileSync(${JSON.stringify(resourcesPath)}, JSON.stringify(process.getActiveResourcesInfo()));
             writeFileSync(${JSON.stringify(readyPath)}, ${JSON.stringify(revision)} + ":" + applicationId + ":" + t("Hello, {{name}}!", { name: "Ada" }));`;
         project.write("src/index.ts", application("initial"));
         project.write("custom.config.ts", readFileSync(join(project.root, "gtkx.config.ts"), "utf8"));
@@ -648,6 +650,7 @@ describe("CLI commands", () => {
                     expect(readFileSync(readyPath, "utf8")).toBe("initial:org.gtkx.example:Bonjour, Ada !");
                     expect(JSON.parse(readFileSync(argumentsPath, "utf8"))).toEqual(applicationArgs);
                     expect(process.env.GTKX_MCP_SOCKET_PATH).toBeUndefined();
+                    expect(JSON.parse(readFileSync(resourcesPath, "utf8"))).not.toContain("TCPServerWrap");
                     const apps = await client.callTool({
                         name: "gtkx_list_apps",
                         arguments: { waitForApps: true, timeout: 30_000 },
