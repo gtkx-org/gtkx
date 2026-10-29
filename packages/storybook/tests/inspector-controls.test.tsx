@@ -271,6 +271,34 @@ describe("native story controls", () => {
         expect(screen.getByName("inspector-quantity")).toHaveTextContent(/^-0.75$/);
     });
 
+    it("shows conditional controls and arguments only while their arg or global condition holds", async () => {
+        await showInspector({
+            default: {
+                ...controlMeta,
+                argTypes: {
+                    ...controlMeta.argTypes,
+                    text: { control: "text", if: { arg: "enabled" } },
+                    quantity: { control: "number", if: { global: "density", eq: "compact" } },
+                },
+            },
+            Default: {},
+            Compact: { globals: { density: "compact" } },
+        });
+
+        expect(screen.queryByName("storybook-control-text")).toBeNull();
+        expect(screen.queryByName("storybook-control-quantity")).toBeNull();
+        expect(screen.getByName("inspector-text")).toHaveTextContent(/^unset$/);
+        expect(screen.getByName("inspector-quantity")).toHaveTextContent(/^unset$/);
+
+        await userEvent.click(screen.getByName("storybook-control-enabled"));
+        expect(screen.getByName("storybook-control-text")).toBeVisible();
+        expect(screen.getByName("inspector-text")).toHaveTextContent(/^Initial$/);
+
+        await userEvent.click(screen.getByName("storybook-story-inspector--compact"));
+        expect(screen.getByName("storybook-control-quantity")).toBeVisible();
+        expect(screen.getByName("inspector-quantity")).toHaveTextContent(/^2$/);
+    });
+
     it("shows and keeps fractional arguments in number controls without a fractional step", async () => {
         await showInspector({
             default: { ...controlMeta, args: { quantity: 0.25 }, argTypes: { quantity: { control: "number" } } },

@@ -70,7 +70,7 @@ For component Fast Refresh, keep the component in its own module and import it i
 
 Shared preview configuration belongs in `.storybook/preview.tsx`, exported as an object satisfying `Preview` from `@gtkx/storybook`. [Decorators](https://storybook.js.org/docs/writing-stories/decorators) return ordinary GTKX JSX and receive the resolved story context.
 
-Controls preserve absent arguments until you edit them. Choice controls display a placeholder for an unset value; selecting it clears the argument. Set `table.readonly: true` on an argument's metadata to show a disabled control, or `table.disable: true` to hide it.
+Controls preserve absent arguments until you edit them. Choice controls display a placeholder for an unset value; selecting it clears the argument. Set `table.readonly: true` on an argument's metadata to show a disabled control, or `table.disable: true` to hide it. A [conditional](https://storybook.js.org/docs/api/arg-types#if) `if` on an argument hides its control, and leaves the argument unset, while its arg or global condition is false.
 
 ## Reuse stories in native tests
 

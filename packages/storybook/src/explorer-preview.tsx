@@ -11,6 +11,7 @@ import type { Args, ArgTypes, ComposedStory } from "./types.js";
 import { ActionsPanel } from "./actions-panel.js";
 import { ActionStore, bindActions } from "./actions.js";
 import { Controls } from "./controls.js";
+import { isConditionalArgIncluded } from "./upstream.js";
 
 type PreviewProps = {
     entry: StoryEntry;
@@ -76,6 +77,14 @@ const mapArgs = (args: Args, argTypes: ArgTypes): Args =>
         }),
     );
 
+const includedArgs = (args: Args, argTypes: ArgTypes, globals: Args): Args =>
+    Object.fromEntries(
+        Object.entries(args).map(([argument, value]) => [
+            argument,
+            isConditionalArgIncluded(argTypes[argument] ?? {}, args, globals) ? value : undefined,
+        ]),
+    );
+
 const PreviewContent = ({ story: Story, args }: { story: ComposedStory; args: Args }): ReactNode => {
     const mode = previewMode(Story);
 
@@ -132,8 +141,14 @@ const usePreviewState = ({ entry }: PreviewProps) => {
         [state.story, state.generation],
     );
     const boundArgs = useMemo(
-        () => bindActions(mapArgs(state.args, state.story.argTypes), state.story.argTypes, state.actions, onError),
-        [state.args, state.story.argTypes, state.actions, onError],
+        () =>
+            bindActions(
+                includedArgs(mapArgs(state.args, state.story.argTypes), state.story.argTypes, state.story.globals),
+                state.story.argTypes,
+                state.actions,
+                onError,
+            ),
+        [state.args, state.story.argTypes, state.story.globals, state.actions, onError],
     );
 
     if (state.story !== entry.story) {
@@ -175,7 +190,7 @@ const StoryInspector = ({ entry, actions, args, onChange }: InspectorProps): Rea
             marginStart={12}
             marginEnd={12}
         >
-            <Controls argTypes={entry.controls} args={args} onChange={onChange} />
+            <Controls argTypes={entry.controls} args={args} globals={entry.story.globals} onChange={onChange} />
             <ActionsPanel store={actions} />
         </GtkBox>
     </GtkScrolledWindow>

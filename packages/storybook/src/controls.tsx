@@ -4,8 +4,9 @@ import { markupEscapeText } from "@gtkx/gi/glib";
 import { AdwActionRow, AdwEntryRow, AdwPreferencesGroup, AdwSpinRow, AdwSwitchRow } from "@gtkx/jsx/adw";
 import { GtkAdjustment } from "@gtkx/jsx/gtk";
 import type { Args, ArgTypes } from "./types.js";
+import { isConditionalArgIncluded } from "./upstream.js";
 
-type ControlsProps = { argTypes: ArgTypes; args: Args; onChange: (update: Args) => void };
+type ControlsProps = { argTypes: ArgTypes; args: Args; globals: Args; onChange: (update: Args) => void };
 
 const NO_SELECTION_ID = "no-selection";
 const NO_SELECTION_LABEL = "Choose option...";
@@ -197,13 +198,18 @@ const Control = (props: ControlProps): ReactNode => {
     }
 };
 
-const Controls = ({ argTypes, args, onChange }: ControlsProps): ReactNode => (
+const Controls = ({ argTypes, args, globals, onChange }: ControlsProps): ReactNode => (
     <AdwPreferencesGroup title="Controls">
         {Object.entries(argTypes).map(([argument, annotation]) => {
             const control: unknown = annotation?.control;
             const table = isObject(annotation?.table) ? annotation.table : {};
 
-            if (control === undefined || control === false || table.disable === true) {
+            if (
+                control === undefined ||
+                control === false ||
+                table.disable === true ||
+                !isConditionalArgIncluded(annotation ?? {}, args, globals)
+            ) {
                 return null;
             }
 
