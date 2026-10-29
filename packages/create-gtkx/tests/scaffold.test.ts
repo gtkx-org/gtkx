@@ -112,6 +112,27 @@ describe("scaffold command", () => {
         expect(read(target, "src/app.tsx")).toContain("AdwApplication");
     });
 
+    it("leaves dependency ranges to a package manager that keeps existing specifiers", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-ranges-"));
+        const bin = join(directory.path, "node_modules/.bin");
+        mkdirSync(bin, { recursive: true });
+        writeFileSync(
+            join(bin, "corepack"),
+            `#!${process.execPath}\nimport { readFileSync, writeFileSync } from "node:fs";\nif (process.argv[2] === "--version") process.exit(0);\nconst args = process.argv.slice(4);\nconst manifest = JSON.parse(readFileSync("package.json", "utf8"));\nconst field = args.includes("--save-dev") ? "devDependencies" : "dependencies";\nmanifest[field] ??= {};\nfor (const spec of args.filter((arg) => !arg.startsWith("-"))) {\n    const at = spec.lastIndexOf("@");\n    const [name, range] = at > 0 ? [spec.slice(0, at), spec.slice(at + 1)] : [spec, "^1.0.0"];\n    manifest[field][name] ??= range;\n}\nwriteFileSync("package.json", JSON.stringify(manifest));\n`,
+            { mode: 0o755 },
+        );
+        const target = join(directory.path, "example");
+        const { status } = await create(target, ["--no-skip-install", "--package-manager", "pnpm"]);
+        expect(status).toBe(0);
+        const manifest = JSON.parse(read(target, "package.json")) as Record<
+            "dependencies" | "devDependencies",
+            Record<string, string>
+        >;
+        const specifiers = { ...manifest.dependencies, ...manifest.devDependencies };
+        expect(specifiers).toHaveProperty("react", "^1.0.0");
+        expect(Object.values(specifiers)).not.toContain("latest");
+    });
+
     it.each([["--application-id", "invalid"], ["--package-manager", "missing"], ["--unknown"], ["extra-directory"]])(
         "rejects invalid arguments %j before writing files",
         async (...args) => {

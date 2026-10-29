@@ -615,10 +615,19 @@ const dependencyArguments = (names: string[]): string[] =>
         version === "latest" ? name : `${name}@${version}`,
     );
 
+const declaredDependencies = (value: unknown): Record<string, unknown> =>
+    typeof value === "object" && value !== null ? { ...value } : {};
+
 const writeDependencies = (root: string, devDependencies: string[]): void => {
     updateManifest(root, (manifest) => {
-        manifest.dependencies = dependencyVersions(DEPENDENCIES);
-        manifest.devDependencies = dependencyVersions(devDependencies);
+        manifest.dependencies = {
+            ...dependencyVersions(DEPENDENCIES),
+            ...declaredDependencies(manifest.dependencies),
+        };
+        manifest.devDependencies = {
+            ...dependencyVersions(devDependencies),
+            ...declaredDependencies(manifest.devDependencies),
+        };
     });
 };
 
@@ -660,11 +669,16 @@ const installAllDependencies = async (resolved: ResolvedOptions, devDependencies
         done: "Dependencies installed",
         failed: "Failed to install dependencies",
         run: async () => {
-            await withoutInheritedScriptPolicy(async () => {
-                const options = { cwd: root, packageManager, silent: true };
-                await addDependency(dependencyArguments(DEPENDENCIES), options);
-                await addDependency(dependencyArguments(devDependencies), { ...options, dev: true });
-            });
+            try {
+                await withoutInheritedScriptPolicy(async () => {
+                    const options = { cwd: root, packageManager, silent: true };
+                    await addDependency(dependencyArguments(DEPENDENCIES), options);
+                    await addDependency(dependencyArguments(devDependencies), { ...options, dev: true });
+                });
+            } catch (error) {
+                writeDependencies(root, devDependencies);
+                throw error;
+            }
         },
         explain: () => {
             p.log.info(formatRecovery(resolved));
@@ -745,11 +759,12 @@ const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     const plan = await planScaffoldProject(root, resolved);
     await validateTargetAvailability(root, resolved.target, options, plan.changes);
     await createProjectStructure(root, resolved, plan);
-    writeDependencies(root, devDeps);
     reportCompletedChanges(plan.changes);
 
     if (resolved.shouldInstallDependencies) {
         await installAllDependencies(resolved, devDeps);
+    } else {
+        writeDependencies(root, devDeps);
     }
 
     await initializeGitRepo(root, resolved.shouldInitializeGit);
