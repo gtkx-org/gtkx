@@ -5,6 +5,7 @@ import {
     type AnimatedProps,
     config,
     type FluidValue,
+    type SpringValue,
     useSpring,
 } from "@gtkx/animated";
 import * as Graphene from "@gtkx/gi/graphene";
@@ -25,7 +26,7 @@ import {
     type GtkStringListProps,
 } from "@gtkx/jsx/gtk";
 import { render, screen, waitFor } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, useEffect } from "react";
 import { describe, expect, expectTypeOf, it } from "vitest";
 
 type OpacityProps = { labelRef: RefObject<Gtk.Label | null>; to: number; duration?: number };
@@ -33,6 +34,7 @@ type SwitchProps = { labelRef: RefObject<Gtk.Label | null>; mode: "first" | "sec
 type ForwardingProps = { ref?: Ref<Gtk.Label | null>; opacity?: number; renders: number[] };
 type OpaqueProps = { opacity?: number; renders: number[] };
 type ForwardingTextProps = { ref?: Ref<Gtk.Label | null>; children?: ReactNode; renders: number[] };
+type PulseProps = { labelRef: RefObject<Gtk.Label | null>; onSpring?: (opacity: SpringValue<number>) => void };
 
 const ANIMATED = { areAnimationsEnabled: true };
 const AnimatedAdjustment = animated(GtkAdjustment);
@@ -55,6 +57,21 @@ const Fade = ({ labelRef, to, duration = SLOW.duration }: OpacityProps): ReactNo
     const styles = useSpring({ from: { opacity: 0 }, to: { opacity: to }, config: { duration } });
 
     return <AnimatedLabel ref={labelRef} opacity={styles.opacity} label="fade" />;
+};
+
+const Pulse = ({ labelRef, onSpring }: PulseProps): ReactNode => {
+    const styles = useSpring({
+        from: { opacity: 0.2 },
+        to: { opacity: 1 },
+        loop: { reverse: true },
+        config: { duration: 100 },
+    });
+
+    useEffect(() => {
+        onSpring?.(styles.opacity);
+    }, [onSpring, styles.opacity]);
+
+    return <AnimatedLabel ref={labelRef} opacity={styles.opacity} label="pulse" />;
 };
 
 const Switching = ({ labelRef, mode }: SwitchProps): ReactNode => {
@@ -218,6 +235,16 @@ function ForwardingText({ ref, children, renders }: ForwardingTextProps): ReactN
     return <GtkLabel ref={ref}>{children}</GtkLabel>;
 }
 
+const defaultSettings = (): Gtk.Settings => {
+    const settings = Gtk.Settings.getDefault();
+
+    if (settings === null) {
+        throw new Error("the default display has no Gtk.Settings");
+    }
+
+    return settings;
+};
+
 const expectOpacity = (label: Gtk.Label | null, opacity: number): Promise<void> =>
     waitFor(() => {
         expect(label?.getOpacity()).toBeCloseTo(opacity, 2);
@@ -237,6 +264,31 @@ describe("animated - spring values on widgets", () => {
         await waitFor(() => {
             expect(labelRef.current).toHaveObjectProperty("opacity", 1);
         });
+    });
+
+    it("settles a looping spring at its target when desktop animations are disabled", async () => {
+        const labelRef = createRef<Gtk.Label>();
+        await render(<Pulse labelRef={labelRef} />);
+        await expectOpacity(labelRef.current, 1);
+    });
+
+    it("ends a running loop when desktop animations are turned off", async () => {
+        const labelRef = createRef<Gtk.Label>();
+        const springs: { opacity?: SpringValue<number> } = {};
+        await render(
+            <Pulse
+                labelRef={labelRef}
+                onSpring={(opacity) => {
+                    springs.opacity = opacity;
+                }}
+            />,
+            ANIMATED,
+        );
+        await expectInFlight(labelRef.current);
+        defaultSettings().gtkEnableAnimations = false;
+        await waitFor(() => {
+            expect(springs.opacity?.idle).toBe(true);
+        }, SETTLE);
     });
 
     it("drives a widget property through its frames to the target", async () => {
