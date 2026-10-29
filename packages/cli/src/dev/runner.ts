@@ -830,6 +830,12 @@ const loadEntry = async (
             await session.storybook.initialize();
         }
     } catch (error_) {
+        if (session.controller.isShuttingDown()) {
+            session.failure.fail();
+
+            return;
+        }
+
         awaitMissingImport(session, entryPath, error_);
         session.failure.fail(error_);
     }
