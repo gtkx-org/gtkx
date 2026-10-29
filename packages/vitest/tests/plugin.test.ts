@@ -108,6 +108,48 @@ describe("headless Vitest integration", () => {
         for (const root of roots) await expect.poll(() => existsSync(root)).toBe(false);
     });
 
+    it("lets workers cancelled by bail exit through their exit handlers", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-vitest-bail-"));
+        mkdirSync(join(directory.path, "node_modules"));
+        symlinkSync(join(workspace, "node_modules/vitest"), join(directory.path, "node_modules/vitest"), "dir");
+        writeFileSync(join(directory.path, "package.json"), '{"type":"module"}');
+        writeFileSync(
+            join(directory.path, "gtkx.config.ts"),
+            'export default { applicationId: "org.gtkx.vitest", codegen: false };',
+        );
+        writeFileSync(
+            join(directory.path, "vitest.config.mjs"),
+            `import gtkx from ${JSON.stringify(pluginPath)};
+            export default { plugins: [gtkx()], test: { include: ["*.test.mjs"], bail: 1 } };`,
+        );
+        const names = ["first", "second"];
+        for (const name of names) {
+            writeFileSync(
+                join(directory.path, `${name}.test.mjs`),
+                `import { test } from "vitest";
+                import { writeFileSync } from "node:fs";
+                writeFileSync(new URL("./${name}.started", import.meta.url), "");
+                process.on("exit", () => writeFileSync(new URL("./${name}.exited", import.meta.url), ""));
+                test("fails", () => { throw new Error("expected failure"); });`,
+            );
+        }
+        const runner = await createVitest({
+            root: directory.path,
+            config: join(directory.path, "vitest.config.mjs"),
+            watch: false,
+            reporters: [],
+        });
+        try {
+            await runner.start();
+        } finally {
+            await runner.close();
+        }
+        const started = names.filter((name) => existsSync(join(directory.path, `${name}.started`)));
+        expect(started).not.toEqual([]);
+        for (const name of started)
+            await expect.poll(() => existsSync(join(directory.path, `${name}.exited`))).toBe(true);
+    });
+
     it("resolves its configuration without sway but fails to create the runner", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-vitest-missing-"));
         const config = join(directory.path, "vitest.config.mjs");
