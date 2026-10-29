@@ -118,7 +118,7 @@ describe("scaffold command", () => {
         mkdirSync(bin, { recursive: true });
         writeFileSync(
             join(bin, "corepack"),
-            `#!${process.execPath}\nimport { readFileSync, writeFileSync } from "node:fs";\nif (process.argv[2] === "--version") process.exit(0);\nconst args = process.argv.slice(4);\nconst manifest = JSON.parse(readFileSync("package.json", "utf8"));\nconst field = args.includes("--save-dev") ? "devDependencies" : "dependencies";\nmanifest[field] ??= {};\nfor (const spec of args.filter((arg) => !arg.startsWith("-"))) {\n    const at = spec.lastIndexOf("@");\n    const [name, range] = at > 0 ? [spec.slice(0, at), spec.slice(at + 1)] : [spec, "^1.0.0"];\n    manifest[field][name] ??= range;\n}\nwriteFileSync("package.json", JSON.stringify(manifest));\n`,
+            `#!${process.execPath}\nimport { readFileSync, writeFileSync } from "node:fs";\nif (process.argv[2] === "--version") process.exit(0);\nconst args = process.argv.slice(4);\nconst manifest = JSON.parse(readFileSync("package.json", "utf8"));\nconst field = args.includes("--save-dev") ? "devDependencies" : "dependencies";\nmanifest[field] ??= {};\nfor (const spec of args.filter((arg) => !arg.startsWith("-"))) {\n    const at = spec.lastIndexOf("@");\n    const [name, range] = at > 0 ? [spec.slice(0, at), spec.slice(at + 1).replace("^", "")] : [spec, "^1.0.0"];\n    manifest[field][name] ??= range;\n}\nwriteFileSync("package.json", JSON.stringify(manifest));\n`,
             { mode: 0o755 },
         );
         const target = join(directory.path, "example");
@@ -130,6 +130,7 @@ describe("scaffold command", () => {
         >;
         const specifiers = { ...manifest.dependencies, ...manifest.devDependencies };
         expect(specifiers).toHaveProperty("react", "^1.0.0");
+        expect(specifiers["@gtkx/react"]).toMatch(/^\^/);
         expect(Object.values(specifiers)).not.toContain("latest");
     });
 

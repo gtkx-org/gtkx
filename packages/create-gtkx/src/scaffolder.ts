@@ -618,14 +618,25 @@ const dependencyArguments = (names: string[]): string[] =>
 const declaredDependencies = (value: unknown): Record<string, unknown> =>
     typeof value === "object" && value !== null ? { ...value } : {};
 
-const writeDependencies = (root: string, devDependencies: string[]): void => {
+const isVersionRange = (version: string): boolean => version !== "latest";
+
+const isAnyVersion = (): boolean => true;
+
+const selectedVersions = (names: string[], isSelected: (version: string) => boolean): Record<string, string> =>
+    Object.fromEntries(Object.entries(dependencyVersions(names)).filter(([, version]) => isSelected(version)));
+
+const writeDependencies = (
+    root: string,
+    devDependencies: string[],
+    isSelected: (version: string) => boolean = isAnyVersion,
+): void => {
     updateManifest(root, (manifest) => {
         manifest.dependencies = {
-            ...dependencyVersions(DEPENDENCIES),
+            ...selectedVersions(DEPENDENCIES, isSelected),
             ...declaredDependencies(manifest.dependencies),
         };
         manifest.devDependencies = {
-            ...dependencyVersions(devDependencies),
+            ...selectedVersions(devDependencies, isSelected),
             ...declaredDependencies(manifest.devDependencies),
         };
     });
@@ -759,6 +770,7 @@ const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     const plan = await planScaffoldProject(root, resolved);
     await validateTargetAvailability(root, resolved.target, options, plan.changes);
     await createProjectStructure(root, resolved, plan);
+    writeDependencies(root, devDeps, isVersionRange);
     reportCompletedChanges(plan.changes);
 
     if (resolved.shouldInstallDependencies) {
