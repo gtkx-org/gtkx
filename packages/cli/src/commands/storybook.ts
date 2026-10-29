@@ -7,7 +7,7 @@ import { runDevSupervisor } from "../dev/supervisor.js";
 import { splitApplicationArgs } from "../internal/application-args.js";
 import { configArg, cwdArg, resolveCwd } from "../internal/entry-arg.js";
 import { prepareStorybookFiles } from "../storybook/config.js";
-import { createStorybookEntry } from "../storybook/entry.js";
+import { assertStorybookInstalled, createStorybookEntry } from "../storybook/entry.js";
 
 const DEV_MODE = "development";
 
@@ -40,6 +40,7 @@ const createStorybookCommand = (options: { signal?: AbortSignal; applicationArgs
             }
 
             const cwd = resolveCwd(args);
+            assertStorybookInstalled(cwd);
             await prepareStorybookFiles(cwd, args["storybook-config"]);
             const context = await resolveCodegenContext(cwd, DEV_MODE, args.config);
             await ensureGeneratedIn(context, { shouldAnnounce: true, mode: DEV_MODE });
