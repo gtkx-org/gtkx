@@ -473,11 +473,11 @@ Connect the shared delete handler in `src/components/task-buttons.tsx`:
 
 ## Run it
 
-Delete a task using its row button, editor button, and the Delete key on separate attempts. Each action offers Undo and closes the editor when needed. Try a title containing `&` or `<b>`: the toast preserves the text.
+Delete a task using its row button, editor button, and the Delete key outside the editor's text fields on separate attempts. Each action offers Undo and closes the editor when needed. Try a title containing `&` or `<b>`: the toast preserves the text.
 
 Open Trash and delete again. Cancel and Escape preserve the task; Delete removes it permanently. Add another task afterward and check that it appears last in manual order.
 
-Open New List. Add stays disabled for an empty or whitespace-only name. Enter a name, choose a color, and press Return; the saved list appears in the sidebar.
+Open New List. Add stays disabled for an empty or whitespace-only name. Choose a color, type a name in the entry, and press Return; the saved list appears in the sidebar.
 
 ## Next
 

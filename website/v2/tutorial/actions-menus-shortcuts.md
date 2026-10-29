@@ -354,7 +354,7 @@ Finish the window wiring:
 - Press F10 on the task list. New Task shows Ctrl+N in the menu.
 - Open Keyboard Shortcuts with Ctrl+Shift+/ on a US keyboard, then dismiss it with Escape.
 - Press Escape in an editor to return to the list. In a narrow window, Back from the list returns to the sidebar.
-- Press Delete with a task open. It moves to Trash; the next chapter closes its editor and offers Undo.
+- Open a task, press Tab to leave the title field, and press Delete. The task moves to Trash; the next chapter closes its editor and offers Undo. In the title or notes field, Delete edits the text instead.
 
 ## Next
 
