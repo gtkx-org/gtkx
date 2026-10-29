@@ -99,12 +99,18 @@ const SAVE_ACTION = "File changed";
 const RETRY_ACTION = "Retrying pending save";
 const NONE_REJECTED: ReadonlySet<ModuleNode> = new Set();
 
+const unreportedDetail = (server: ViteDevServer, cause: unknown): unknown =>
+    cause instanceof Error && server.config.logger.hasErrorLogged(cause) ? cause.message.split("\n", 1)[0] : cause;
+
 const announceFailure = (server: ViteDevServer, cause: unknown): void => {
     if (cause instanceof Error) {
         server.ssrFixStacktrace(cause);
     }
 
-    error("Application error; keeping the dev server up. Fix the error and save again.", cause);
+    error(
+        "Application error; keeping the dev server up. Fix the error and save again.",
+        unreportedDetail(server, cause),
+    );
 };
 
 const parkSession = (session: DevSession): void => {
@@ -381,7 +387,7 @@ const replaceStylesheet = async (session: DevSession, changedPath: string, style
             await session.server.ssrLoadModule(stylesheet.url);
         });
     } catch (error_) {
-        error("Hot reload failed:", error_);
+        error("Hot reload failed:", unreportedDetail(session.server, error_));
     }
 };
 
@@ -406,7 +412,7 @@ const applySave = async (session: DevSession, changedPath: string, action: strin
         }
 
         awaitMissingImport(session, changedPath, error_);
-        error("Hot reload failed:", error_);
+        error("Hot reload failed:", unreportedDetail(session.server, error_));
     }
 };
 
