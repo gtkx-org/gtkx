@@ -5,6 +5,7 @@ import { findPackageJSON } from "node:module";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { runCliTool } from "../internal/run-cli-tool.js";
+import { isUnchangedCatalog } from "./catalog-template.js";
 
 type Catalog = {
     locale: string;
@@ -192,7 +193,7 @@ const prepareCatalog = (catalog: Catalog, index: number, template: string, stagi
 
     return {
         content,
-        isChanged: !isExisting || !content.equals(readFileSync(catalog.path)),
+        isChanged: !isExisting || !isUnchangedCatalog(readFileSync(catalog.path, "latin1"), content.toString("latin1")),
         output,
         target: catalog.path,
     };

@@ -220,6 +220,28 @@ function Local(t, Trans) {
         expect(po.parse(readFileSync(join(project.root, "po/fr.po"))).headers.Language).toBe("fr");
     });
 
+    it("leaves catalogs untouched when only their template creation date differs", async () => {
+        using project = createProject();
+        project.write("po/LINGUAS", "fr\n");
+        project.write("src/messages.ts", `${T_IMPORT}\nt("Source text");`);
+
+        await extract(project.root);
+
+        const path = join(project.root, "po/fr.po");
+        const previous = readFileSync(path, "utf8").replace(
+            /^"POT-Creation-Date: .*\\n"$/m,
+            '"POT-Creation-Date: 2000-01-01 00:00+0000\\n"',
+        );
+        project.write("po/fr.po", previous);
+        const timestamp = new Date("2000-01-01T00:00:00Z");
+        utimesSync(path, timestamp, timestamp);
+
+        await extract(project.root);
+
+        expect(readFileSync(path, "utf8")).toBe(previous);
+        expect(statSync(path).mtimeMs).toBe(timestamp.getTime());
+    });
+
     it("preserves the rejection of angle-bracket type assertions", async () => {
         using project = createProject();
         project.write("po/LINGUAS", "");
