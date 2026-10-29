@@ -456,7 +456,7 @@ declare module "@react-navigation/core" {
 }
 ```
 
-GTKX uses the interface declared by `@react-navigation/core`, so augment that module. The same pattern works with a static navigator. See React Navigation's [TypeScript guide](https://reactnavigation.org/docs/typescript/) for nested screens and inferred route parameters.
+GTKX uses the interface declared by `@react-navigation/core`, so augment that module. Install it directly with `npm install @react-navigation/core@^7`: pnpm keeps transitive dependencies out of the project's `node_modules`, and TypeScript cannot augment a module it cannot resolve. The same pattern works with a static navigator. See React Navigation's [TypeScript guide](https://reactnavigation.org/docs/typescript/) for nested screens and inferred route parameters.
 
 ## Testing
 
