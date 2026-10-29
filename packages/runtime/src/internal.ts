@@ -34,7 +34,7 @@ export { fixedArrayEntries } from "./field.js";
 export { markSyntheticSignalMembers };
 export { getObjectProperty, getProperty, registerConstructFactory, setProperty } from "./object.js";
 export { getParamSpecFlags, getParamSpecOwnerType, getParamSpecValueType } from "./param-spec.js";
-export { newParamSpecOverride } from "./properties.js";
+export { newParamSpecOverride, propertyValueType } from "./properties.js";
 export { propertyWriteComplete } from "./property-brand.js";
 export type { DescriptorFreePropertySpec } from "./property-brand.js";
 export type { Camelized, Dashed, ReadableProperties, WritableProperties } from "./property-types.js";

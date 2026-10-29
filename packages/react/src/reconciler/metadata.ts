@@ -2,15 +2,18 @@ import {
     type AnyClass,
     getClassType,
     getDeclaredPropertyName,
+    getInstanceType,
     TYPE_INVALID,
     typeFromName,
     typeInterfaces,
+    typeIsA,
     typeName,
     typeParent,
 } from "@gtkx/runtime";
 import {
     elementMetadataVersion,
     type ElementPropertyEntry,
+    propertyValueType,
     registeredElementProperties,
     registeredElementSignals,
 } from "@gtkx/runtime/internal";
@@ -209,4 +212,17 @@ const getPropertyName = (object: object, accessor: string): string | undefined =
     );
 };
 
-export { getPropertyName, hasProperty, isReadableProperty, typeInfoFor, type TypeInfo };
+const isSettableEntry = (entry: ElementPropertyEntry): boolean =>
+    (entry[FLAGS] & (WRITABLE | CONSTRUCT_ONLY)) === WRITABLE;
+
+const propertiesAccepting = (parent: object, child: object): string[] => {
+    const info = getTypeInfo(parent);
+    const parentType = getInstanceType(parent);
+    const childType = getInstanceType(child);
+
+    return Object.entries(info?.properties ?? {})
+        .filter(([, entry]) => isSettableEntry(entry) && typeIsA(childType, propertyValueType(parentType, entry[NAME])))
+        .map(([accessor]) => accessor);
+};
+
+export { getPropertyName, hasProperty, isReadableProperty, propertiesAccepting, typeInfoFor, type TypeInfo };

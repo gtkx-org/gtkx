@@ -3,7 +3,8 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { drain, indexBeforeOrEnd } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
 import { applyAdoptedProps, discardAccessible, markDependentPropsDirty } from "./apply-props.js";
-import { typeInfoFor } from "./metadata.js";
+import { slotAccepting } from "./behaviors.js";
+import { propertiesAccepting, typeInfoFor } from "./metadata.js";
 import {
     DEFAULT_SLOT,
     createElementNode,
@@ -159,13 +160,33 @@ const didAttach = (ctx: AttachContext, behavior: ElementBehavior): boolean => {
     return true;
 };
 
-const unclaimedChildError = (parentTypeName: string, childTypeName: string): Error =>
-    new Error(
-        `<${childTypeName}> cannot be a child of <${parentTypeName}>. Pass it to the ` +
-            `<${parentTypeName}> prop that takes it, if there is one, portal it to rootElement with createPortal ` +
-            `if it does not belong inside <${parentTypeName}>, or register an attach behavior for ` +
-            `<${parentTypeName}> with defineElements from "@gtkx/react/config" if it belongs among its children.`,
+const slotsAccepting = (parent: ElementNode, child: GObject.Object): string[] => {
+    const behaviorSlots = typeInfoFor(parent.typeName).behaviors.flatMap(
+        (behavior) => slotAccepting(behavior, child) ?? [],
     );
+    const slots = new Set([...behaviorSlots, ...propertiesAccepting(parent.object, child)]);
+
+    return [...slots].filter((name) => name !== DEFAULT_SLOT);
+};
+
+const unclaimedChildError = (parent: ElementNode, entry: PlacedChild): Error => {
+    const parentTag = `<${parent.typeName}>`;
+    const childTag = `<${entry.typeName}>`;
+    const slots = slotsAccepting(parent, entry.object);
+
+    if (slots.length > 0) {
+        const props = slots.map((name) => `${name}={<${entry.typeName} />}`).join(" or ");
+
+        return new Error(`${childTag} cannot be a child of ${parentTag}. Pass it as a prop instead: ${props}.`);
+    }
+
+    return new Error(
+        `${childTag} cannot be a child of ${parentTag}. Pass it to the ` +
+            `${parentTag} prop that takes it, if there is one, portal it to rootElement with createPortal ` +
+            `if it does not belong inside ${parentTag}, or register an attach behavior for ` +
+            `${parentTag} with defineElements from "@gtkx/react/config" if it belongs among its children.`,
+    );
+};
 
 const runAttach = (parent: ElementNode, entry: PlacedChild, index: number, sibling: GObject.Object | null): void => {
     const ctx: AttachContext = { parent, entry, index, sibling };
@@ -177,7 +198,7 @@ const runAttach = (parent: ElementNode, entry: PlacedChild, index: number, sibli
     }
 
     if (entry.slot === DEFAULT_SLOT) {
-        throw unclaimedChildError(parent.typeName, entry.typeName);
+        throw unclaimedChildError(parent, entry);
     }
 
     setObjectSlot(parent, entry);

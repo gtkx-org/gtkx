@@ -57,6 +57,15 @@ const isChildInstance = <C extends GObject.Object>(child: GObject.Object, cls: C
     return type !== TYPE_INVALID && typeIsA(getInstanceType(child), type);
 };
 
+const slotMatchers: WeakMap<ElementBehavior, { slotName: string; matches: (child: GObject.Object) => boolean }> =
+    new WeakMap();
+
+const slotAccepting = (behavior: ElementBehavior, child: GObject.Object): string | undefined => {
+    const matcher = slotMatchers.get(behavior);
+
+    return matcher?.matches(child) === true ? matcher.slotName : undefined;
+};
+
 const childMatcher =
     <C extends GObject.Object>(cls: ChildClass<C> | undefined): ((child: GObject.Object) => child is C) =>
     (child): child is C =>
@@ -84,6 +93,7 @@ const slot = <P extends GObject.Object, C extends GObject.Object>(
     const matches = childMatcher(childClass);
     const { attach, detach, reorder, resolve } = hooks;
     const behavior: ElementBehavior = { attach: slotAttach(slotName, matches, attach) };
+    slotMatchers.set(behavior, { slotName, matches });
 
     if (reorder !== undefined) {
         behavior.reorder = (object, child, info) => reorder(object as P, child as C, info) ?? true;
@@ -286,4 +296,5 @@ export {
     setterSlot,
     indexedSlot,
     rowSlot,
+    slotAccepting,
 };
