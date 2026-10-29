@@ -91,7 +91,7 @@ Apps that resolve the same directory share one set of bindings, generated for th
 - a version of a GIR namespace, such as `Soup-2.4` and `Soup-3.0`
 - the installed copies of the GTKX packages, `react` or `@types/react`
 
-Keep these aligned across the workspace, for example with a pnpm catalog. An app can import bindings that only another app declared, but `gtkx deploy` derives an app's requirements from its own `libraries`, so declare every library each app imports.
+Keep these aligned across the workspace, for example with a pnpm catalog. After changing `girPath` or `elements` in every app, run `gtkx codegen --force` in one of them; the others share its bindings again the next time they generate theirs. An app can import bindings that only another app declared, but `gtkx deploy` derives an app's requirements from its own `libraries`, so declare every library each app imports.
 
 A shared package declares `@gtkx/react` as a peer dependency and imports `@gtkx/gi` and `@gtkx/jsx` subpaths like an app. List it in the dependencies of each app that uses it, so `gtkx dev` loads it through Vite.
 
