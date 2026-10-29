@@ -182,7 +182,7 @@ type TaskFields = Pick<Task, "important" | "title">;
 export const TaskDetail = ({ task }: { task: Task }) => {
     const updateTask = useStore((state) => state.updateTask);
     const setImportant = useStore((state) => state.setImportant);
-    const dueDate = task.due ? GLib.DateTime.newFromIso8601(task.due, null) : undefined;
+    const dueDate = task.due ? GLib.DateTime.newFromIso8601(task.due, null)?.toLocal() : undefined;
     const form = useForm<TaskFields>({
         defaultValues: { important: task.important, title: task.title },
     });
@@ -310,7 +310,7 @@ export const TaskDetail = ({ task }: { task: Task }) => {
 
 `submitTitle` invokes the form's submit handler without passing the native signal's widget as a web event. Blank titles stay invalid and unsaved; accepted titles are trimmed. Resetting only the importance field lets the header star update the switch without replacing an unfinished title.
 
-The calendar is JSX in the menu button's `popover` slot. Its native date is a `GLib.DateTime`; the selected day becomes an ISO string at 6 PM local time. `GLib.DateTime` is a boxed value, so creating it for a property does not create a GObject outside JSX.
+The calendar is JSX in the menu button's `popover` slot. Its native date is a `GLib.DateTime`. The stored ISO string is in UTC, so `toLocal()` converts it before the calendar reads its day, and the selected day becomes an ISO string at 6 PM local time. `GLib.DateTime` is a boxed value, so creating it for a property does not create a GObject outside JSX.
 
 The notes editor uses a `GtkTextBuffer` in the text view's `buffer` slot. `onChanged` writes the current text to the store. GTKX avoids rewriting identical buffer text, preserving the native cursor and undo history while that edit returns through the `text` prop.
 
