@@ -1,7 +1,9 @@
 import { isPathInside } from "@gtkx/utils";
 import { type GetTextTranslationRecord, po } from "gettext-parser";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync } from "node:fs";
+import { findPackageJSON } from "node:module";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { pathToFileURL } from "node:url";
 import { runCliTool } from "../internal/run-cli-tool.js";
 
 type Catalog = {
@@ -71,11 +73,19 @@ const requireFile = (path: string): void => {
 const requiresCatalogInitialization = (project: CatalogProject): boolean =>
     project.catalogs.some((catalog) => !existsSync(catalog.path));
 
+const hasI18nRuntime = (root: string): boolean => {
+    try {
+        return findPackageJSON("@gtkx/i18n", pathToFileURL(join(root, "package.json"))) !== undefined;
+    } catch {
+        return false;
+    }
+};
+
 const resolveCatalogProject = (root: string, domain: string): CatalogProject | null => {
     const projectRoot = resolve(root);
     const poDir = join(projectRoot, PO_DIRNAME);
 
-    if (!existsSync(poDir)) {
+    if (!existsSync(poDir) || !hasI18nRuntime(projectRoot)) {
         return null;
     }
 

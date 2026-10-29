@@ -78,6 +78,28 @@ describe("CLI commands", () => {
         expect(readFileSync(join(project.root, "keep.txt"), "utf8")).toBe("keep");
     });
 
+    it("leaves an existing gettext catalog alone in a project without @gtkx/i18n", async () => {
+        using project = createProject();
+        rmSync(join(project.root, "node_modules/@gtkx/i18n"));
+        const catalog = {
+            "po/LINGUAS": "it\n",
+            "po/POTFILES.in": "src/main.c\n",
+            "po/it.po":
+                'msgid ""\nmsgstr ""\n"Language: it\\n"\n\nmsgid "Daily Goal"\nmsgstr "Obiettivo giornaliero"\n',
+        };
+        for (const [path, content] of Object.entries(catalog)) {
+            project.write(path, content);
+        }
+
+        await invoke(["codegen", "--cwd", project.root]);
+        await invoke(["build", "--cwd", project.root]);
+
+        expect(readdirSync(join(project.root, "po")).toSorted()).toEqual(["LINGUAS", "POTFILES.in", "it.po"]);
+        for (const [path, content] of Object.entries(catalog)) {
+            expect(readFileSync(join(project.root, path), "utf8")).toBe(content);
+        }
+    });
+
     it("preserves match wrappers when a production bundle imports only Regex", async () => {
         using project = createProject({ codegen: true, libraries: ["GLib-2.0"] });
         project.write(
