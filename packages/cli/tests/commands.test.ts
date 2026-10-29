@@ -141,7 +141,7 @@ describe("CLI commands", () => {
         }
     });
 
-    it("runs workers that import asset URLs in development, tests and production", async () => {
+    it("runs workers that import asset URLs and raw text in development, tests and production", async () => {
         using project = createProject();
         const readyPath = join(project.root, "worker.json");
         const sourcePath = join(project.root, "data/notes.txt");
@@ -151,7 +151,8 @@ describe("CLI commands", () => {
             `import { readFileSync } from "node:fs";
             import { parentPort } from "node:worker_threads";
             import notesPath from "../../data/notes.txt?url";
-            parentPort?.postMessage({ path: notesPath, text: readFileSync(notesPath, "utf8") });`,
+            import notes from "../../data/notes.txt?raw";
+            parentPort?.postMessage({ path: notesPath, text: readFileSync(notesPath, "utf8"), raw: notes });`,
         );
         project.write(
             "src/index.ts",
@@ -175,6 +176,7 @@ describe("CLI commands", () => {
                 expect(result).toEqual({
                     path: fileURLToPath(new URL("../data/notes.txt", import.meta.url)),
                     text: "worker asset",
+                    raw: "worker asset",
                 });
             });`,
         );
@@ -186,7 +188,7 @@ describe("CLI commands", () => {
         const result = () => JSON.parse(readFileSync(readyPath, "utf8")) as Record<string, string>;
 
         await withSession("dev", project.root, readyPath, async () => {
-            await expect.poll(result).toEqual({ path: sourcePath, text: "worker asset" });
+            await expect.poll(result).toEqual({ path: sourcePath, text: "worker asset", raw: "worker asset" });
         });
         const runner = await createVitest({
             root: project.root,
@@ -204,6 +206,7 @@ describe("CLI commands", () => {
         await invoke(["build", "--cwd", project.root]);
         await promisify(execFile)(process.execPath, [join(project.root, "dist/bundle.mjs")], { timeout: 30_000 });
         expect(result().text).toBe("worker asset");
+        expect(result().raw).toBe("worker asset");
         expect(result().path).toMatch(new RegExp(`^${RegExp.escape(join(project.root, "dist"))}/`));
     });
 
