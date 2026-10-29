@@ -173,15 +173,19 @@ const unclaimedChildError = (parent: ElementNode, entry: PlacedChild): Error => 
     const parentTag = `<${parent.typeName}>`;
     const childTag = `<${entry.typeName}>`;
     const slots = slotsAccepting(parent, entry.object);
+    const placement =
+        entry.slot === DEFAULT_SLOT
+            ? `${childTag} cannot be a child of ${parentTag}.`
+            : `${childTag} cannot be passed as ${entry.slot}: it is a method of ${parentTag}, not a prop.`;
 
     if (slots.length > 0) {
         const props = slots.map((name) => `${name}={<${entry.typeName} />}`).join(" or ");
 
-        return new Error(`${childTag} cannot be a child of ${parentTag}. Pass it as a prop instead: ${props}.`);
+        return new Error(`${placement} Pass it as a prop instead: ${props}.`);
     }
 
     return new Error(
-        `${childTag} cannot be a child of ${parentTag}. Pass it to the ` +
+        `${placement} Pass it to the ` +
             `${parentTag} prop that takes it, if there is one, portal it to rootElement with createPortal ` +
             `if it does not belong inside ${parentTag}, or register an attach behavior for ` +
             `${parentTag} with defineElements from "@gtkx/react/config" if it belongs among its children.`,
@@ -197,7 +201,7 @@ const runAttach = (parent: ElementNode, entry: PlacedChild, index: number, sibli
         }
     }
 
-    if (entry.slot === DEFAULT_SLOT) {
+    if (entry.slot === DEFAULT_SLOT || typeof Reflect.get(parent.object, entry.slot) === "function") {
         throw unclaimedChildError(parent, entry);
     }
 

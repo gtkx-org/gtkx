@@ -862,6 +862,13 @@ describe("render - ContainerProp", () => {
                 secondRef,
             );
         });
+
+        it("rejects a child passed under a method name such as packStart", async () => {
+            await expect(
+                // @ts-expect-error packStart is a Gtk.HeaderBar method, not a prop
+                render(<GtkHeaderBar packStart={<GtkLabel>Start</GtkLabel>} />),
+            ).rejects.toThrow();
+        });
     });
 
     describe("AdwToolbarView (topBar/bottomBar)", () => {
