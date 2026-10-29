@@ -102,21 +102,30 @@ describe("useBindSetting", () => {
         expect(toggle.getActive()).toBe(false);
     });
 
-    it("rejects a property the native target does not provide", async () => {
+    it("binds nothing to a property the native target does not provide", async () => {
+        await resetSettingsKey(SCHEMA_ID, "enabled");
         const settings = await renderSettings(SCHEMA_ID);
         const ref = createRef<Gtk.Switch>();
         await render(<GtkSwitch ref={ref} />);
+        const toggle = ref.current;
+        if (toggle === null) {
+            throw new Error("Switch did not mount");
+        }
 
-        await expect(
-            renderHook(() => {
-                useBindSetting({
-                    settings,
-                    schema: SCHEMA,
-                    key: "enabled",
-                    object: ref.current,
-                    property: "missingProperty",
-                });
-            }),
-        ).rejects.toThrow();
+        await renderHook(() => {
+            useBindSetting({ settings, schema: SCHEMA, key: "enabled", object: toggle, property: "missingProperty" });
+        });
+
+        await act(() => {
+            settings.setBoolean("enabled", true);
+        });
+        expect(toggle.getActive()).toBe(false);
+
+        await act(() => {
+            settings.setBoolean("enabled", false);
+            toggle.setActive(true);
+        });
+        expect(settings.getBoolean("enabled")).toBe(false);
+        await resetSettingsKey(SCHEMA_ID, "enabled");
     });
 });
