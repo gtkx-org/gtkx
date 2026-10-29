@@ -146,7 +146,7 @@ const collectLabels = (widget: Gtk.Widget): string[] => {
 };
 
 const getWidgetLabelText = (widget: Gtk.Widget): string | null => {
-    if (widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) {
+    if (!(widget instanceof Gtk.Label) && widget.getAccessibleRole() !== Gtk.AccessibleRole.LABEL) {
         return null;
     }
 

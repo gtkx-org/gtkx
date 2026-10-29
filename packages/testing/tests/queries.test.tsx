@@ -247,6 +247,16 @@ describe("ByText", () => {
         expect(queryByText(container, "Searching for: rocket")).toBeNull();
     });
 
+    it("matches labels whose role is presentation, as in GTK's popover menu items", async () => {
+        const { container } = await render(
+            <GtkBox accessibleRole={Gtk.AccessibleRole.MENU_ITEM}>
+                <GtkLabel accessibleRole={Gtk.AccessibleRole.PRESENTATION}>Dark</GtkLabel>
+            </GtkBox>,
+        );
+
+        expect(await findByText(container, "Dark")).toHaveTextContent("Dark");
+    });
+
     it("returns every match, an empty list when there is none, and throws on ambiguity", async () => {
         const { container } = await renderTwoButtons();
         expect(await findAllByText(container, "Same")).toHaveLength(2);
