@@ -122,6 +122,20 @@ const renderClassInstanceMember: InstanceMemberRenderer = instanceMemberRenderer
               }),
 );
 
+const renderShadowingClassInstanceMember: InstanceMemberRenderer = instanceMemberRenderer(
+    (context, callable, { name, finishFn }, scope) => {
+        const implementation = renderClassInstanceMember(context, callable, scope, name);
+
+        if (implementation === undefined) {
+            return undefined;
+        }
+
+        const signature = memberSignatureText(context, callable, name, { finishFn });
+
+        return `${memberDoc(context, callable, finishFn)}${signature};\n${name}(...args: never[]): any;\n${implementation}`;
+    },
+);
+
 const memberDoc = (context: ModuleContext, callable: GirFunction, finishFn: GirFunction | undefined): string =>
     callableDoc(context, callable, { finishFn });
 
@@ -594,6 +608,7 @@ export {
     renderInstanceMethodSignature,
     renderInstanceMethodReturnType,
     renderClassInstanceMember,
+    renderShadowingClassInstanceMember,
     instanceMemberSpec,
     instanceMemberNote,
     instanceScope,

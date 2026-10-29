@@ -33,6 +33,7 @@ import {
     instanceScope,
     isEmittableCallable,
     renderClassInstanceMember,
+    renderShadowingClassInstanceMember,
     renderStaticHead,
     staticMembers,
 } from "./callables.js";
@@ -86,6 +87,7 @@ type AppendInstanceMethodsOptions = {
     scope: InstanceScope;
     members: string[];
     claimedNames: Set<string>;
+    shadowedNames: Set<string>;
 };
 
 type ClassDeclarationOptions = {
@@ -245,6 +247,7 @@ const renderClassMembers = (
         scope,
         members,
         claimedNames,
+        shadowedNames: instanceMethodCollisions(context, klass, callables.methods),
     });
 
     members.push(...renderVfuncMembers({ context, klass, mode: "implementation" }));
@@ -274,10 +277,13 @@ const renderClassMembers = (
 };
 
 const appendInstanceMethods = (options: AppendInstanceMethodsOptions): void => {
-    const { context, methods, scope, members, claimedNames } = options;
+    const { context, methods, scope, members, claimedNames, shadowedNames } = options;
 
     for (const callable of methods) {
-        const block = renderClassInstanceMember(context, callable, scope);
+        const render = shadowedNames.has(methodExportName(callable))
+            ? renderShadowingClassInstanceMember
+            : renderClassInstanceMember;
+        const block = render(context, callable, scope);
 
         if (block === undefined) {
             continue;
@@ -532,51 +538,19 @@ const renderExtendsClause = (options: ExtendsClauseOptions): string => {
     }
 
     const staticNames = shadowedStaticNames(context, klass, callables);
-    const instanceNames = [...instanceMethodCollisions(context, klass, callables.methods)];
 
-    if (staticNames.length === 0 && instanceNames.length === 0) {
+    if (staticNames.length === 0) {
         return ` extends ${parentExpression}`;
     }
 
     const className = sanitizeTypeIdentifier(klass.name);
     const baseName = `${localClassName(className)}$Base`;
-    const bridgeName = `${localClassName(className)}$InstanceBase`;
-    let parentBase = parentExpression;
-
-    if (staticNames.length > 0) {
-        const staticBaseType =
-            `${context.addRuntimeTypeImport("StaticBase")}<` +
-            `typeof ${parentExpression}, ${omittedKeys(staticNames)}>`;
-
-        if (instanceNames.length === 0) {
-            context.module.appendDeclaration({
-                name: baseName,
-                code: `const ${baseName}: ${staticBaseType} = ${parentExpression};`,
-                isLocal: true,
-            });
-
-            return ` extends ${baseName}`;
-        }
-
-        parentBase = `${bridgeName}$Base`;
-        context.module.appendDeclaration({
-            name: parentBase,
-            code: `declare const ${parentBase}: ${staticBaseType};`,
-            isLocal: true,
-        });
-    }
-
-    const bridgeMembers = instanceNames.map((name) => `${name}(this: never, ...args: never[]): any;`);
-
-    context.module.appendDeclaration({
-        name: bridgeName,
-        code: `declare abstract class ${bridgeName} extends ${parentBase} {\n${indentMembers(bridgeMembers)}\n}`,
-        isLocal: true,
-    });
+    const staticBaseType =
+        `${context.addRuntimeTypeImport("StaticBase")}<` + `typeof ${parentExpression}, ${omittedKeys(staticNames)}>`;
 
     context.module.appendDeclaration({
         name: baseName,
-        code: `const ${baseName}: typeof ${bridgeName} = ${parentExpression} as typeof ${bridgeName};`,
+        code: `const ${baseName}: ${staticBaseType} = ${parentExpression};`,
         isLocal: true,
     });
 

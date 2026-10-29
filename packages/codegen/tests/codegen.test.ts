@@ -142,11 +142,26 @@ describe("generated bindings", () => {
         expect(
             diagnostics(
                 directory.path,
-                `import { Application, File, ListModel, type ListModelImpl } from "@gtkx/gi/gio";
+                `import {
+                Application,
+                Cancellable,
+                File,
+                ListModel,
+                type ListModelImpl,
+                type Socket,
+                type SocketAddress,
+            } from "@gtkx/gi/gio";
             import { Object as GObject, TYPE_INT, TYPE_OBJECT } from "@gtkx/gi/gobject";
             import { registerClass } from "@gtkx/runtime";
             const file: File = File.newForPath("/tmp/example");
             const path: string | null = file.getPath();
+            const cancellable: GObject = new Cancellable();
+            declare const someObject: GObject;
+            declare const address: SocketAddress;
+            const socket = someObject as Socket;
+            const connected: boolean = socket.connect(address, null);
+            // @ts-expect-error a socket connects to an address
+            socket.connect("localhost");
             class StoreBase extends GObject implements ListModelImpl {
                 vfuncGetItemType(): bigint { return TYPE_OBJECT; }
                 vfuncGetNItems(): number { return 0; }
@@ -200,7 +215,7 @@ describe("generated bindings", () => {
             declare const either: Application | ServiceBase;
             either.emit("activate");
             either.on("startup", () => {}).disconnect(either.connect("shutdown", () => {}));
-            export { path };`,
+            export { cancellable, connected, path };`,
             ),
         ).toEqual([]);
         expect(
