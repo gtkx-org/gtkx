@@ -1,4 +1,5 @@
 import { sortStrings, sourceStringLiteral } from "@gtkx/utils";
+import type { PackageManager } from "./package-managers.js";
 import ejs from "ejs";
 import { readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -12,6 +13,7 @@ type TemplateContext = {
     importExtension: string;
     developerName: string;
     developerEmail: string | null;
+    packageManager: PackageManager;
 };
 
 const TEMPLATES_DIR = join(import.meta.dirname, "templates");

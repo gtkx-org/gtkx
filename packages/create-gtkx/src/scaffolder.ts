@@ -496,6 +496,7 @@ const templateContext = (resolved: ResolvedOptions): TemplateContext => ({
     importExtension: resolved.isTypescript ? ".js" : ".jsx",
     developerName: gitConfigValue("user.name") ?? resolved.displayName,
     developerEmail: gitConfigValue("user.email"),
+    packageManager: resolved.packageManager,
 });
 
 const assertSafeAncestor = (ancestor: string): void => {

@@ -53,11 +53,12 @@ describe("scaffold command", () => {
         expect(JSON.parse(read(target, ".mcp.json"))).toHaveProperty("mcpServers.gtkx");
     });
 
-    it("configures Yarn to install packages into node_modules", async () => {
+    it("configures Yarn to install into node_modules without committing its install state", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-yarn-"));
         const target = join(directory.path, "example");
         expect((await create(target, ["--package-manager", "yarn"])).status).toBe(0);
         expect(parse(read(target, ".yarnrc.yml"))).toMatchObject({ nodeLinker: "node-modules" });
+        expect(read(target, ".gitignore").split("\n")).toContain(".yarn/install-state.gz");
     });
 
     it("protects an occupied target and preserves unrelated files when overwriting", async () => {

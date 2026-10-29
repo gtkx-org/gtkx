@@ -3,3 +3,6 @@ dist/
 build/
 .gtkx/
 *.log
+<% if (packageManager === "yarn") { -%>
+.yarn/install-state.gz
+<% } -%>
