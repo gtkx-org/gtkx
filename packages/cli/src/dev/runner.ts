@@ -15,6 +15,7 @@ import { createFailureTracker, type FailureTracker } from "./failure-tracker.js"
 import { isMissingImport, missingImportName } from "./missing-import.js";
 import { createRefreshTracker, type RefreshTracker } from "./refresh-tracker.js";
 import { RESTART_EXIT_CODE } from "./supervisor.js";
+import { isRepeatedRegistration } from "./type-registration.js";
 import { createDevServerConfig, type DevServerWatchEvent, isServerConfigFile } from "./vite-dev-server.js";
 
 type LoadAppModule = (id: string) => Promise<Record<string, unknown>>;
@@ -98,7 +99,6 @@ const DROPPED_REFRESH = "Fast Refresh dropped";
 const SAVE_ACTION = "File changed";
 const RETRY_ACTION = "Retrying pending save";
 const NONE_REJECTED: ReadonlySet<ModuleNode> = new Set();
-const REPEATED_REGISTRATION_PATTERN = /Type name '[^']+' is already registered/;
 
 const unreportedDetail = (server: ViteDevServer, cause: unknown): unknown =>
     cause instanceof Error && server.config.logger.hasErrorLogged(cause) ? cause.message.split("\n", 1)[0] : cause;
@@ -404,8 +404,10 @@ const awaitMissingImport = (session: DevSession, changedPath: string, cause: unk
     session.pendingSaves.set(changedPath, missingName);
 };
 
-const isRepeatedRegistration = (cause: unknown): boolean =>
-    cause instanceof Error && REPEATED_REGISTRATION_PATTERN.test(cause.message);
+const restartForRegistration = async (session: DevSession, changedPath: string): Promise<void> => {
+    session.deps.log(`Registered GObject type changed: ${changedPath}`);
+    await requestRestart(session);
+};
 
 const applySave = async (session: DevSession, changedPath: string, action: string): Promise<void> => {
     try {
@@ -416,8 +418,7 @@ const applySave = async (session: DevSession, changedPath: string, action: strin
         }
 
         if (isRepeatedRegistration(error_)) {
-            session.deps.log(`Registered GObject type changed: ${changedPath}`);
-            await requestRestart(session);
+            await restartForRegistration(session, changedPath);
 
             return;
         }
@@ -847,9 +848,10 @@ const loadEntry = async (
     try {
         const entry = await loadModuleExclusively(session.server, entryPath);
         if (storybookConfig !== undefined) {
-            session.storybook = createStorybookSession(session.server, entry, storybookConfig, (module) =>
-                session.deps.isRefreshBoundary(module),
-            );
+            session.storybook = createStorybookSession(session.server, entry, storybookConfig, {
+                isRefreshBoundary: (module) => session.deps.isRefreshBoundary(module),
+                restartForRegistration: (changedPath) => restartForRegistration(session, changedPath),
+            });
             await session.storybook.initialize();
         }
     } catch (error_) {

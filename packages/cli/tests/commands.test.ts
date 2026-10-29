@@ -950,16 +950,30 @@ describe("CLI commands", () => {
             writeFileSync(${JSON.stringify(previewPath)}, "preview");
             export default { decorators: [(Story) => <Story />] };`,
         );
+        const badge = (text: string) => `
+            import { Label } from "@gtkx/gi/gtk";
+            import { registerClass } from "@gtkx/runtime";
+            class BadgeBase extends Label {}
+            export const Badge = registerClass(BadgeBase, { typeName: "StoryBadge" });
+            export const badgeText = ${JSON.stringify(text)};
+        `;
+        project.write("stories/badge.ts", badge("one"));
         project.write(
             "stories/example.stories.tsx",
             `import { writeFileSync } from "node:fs";
-            writeFileSync(${JSON.stringify(readyPath)}, "ready");
+            import { badgeText } from "./badge.ts";
+            writeFileSync(${JSON.stringify(readyPath)}, JSON.stringify({ pid: process.pid, badgeText }));
             export default { title: "Example" }; export const Empty = { render: () => null };`,
         );
-        await withSession("storybook", project.root, readyPath, () => {
-            expect(readFileSync(readyPath, "utf8")).toBe("ready");
+        const observation = () => JSON.parse(readFileSync(readyPath, "utf8")) as { pid: number; badgeText: string };
+        await withSession("storybook", project.root, readyPath, async () => {
+            const initial = observation();
+            expect(initial.badgeText).toBe("one");
             expect(readFileSync(previewPath, "utf8")).toBe("preview");
-            return Promise.resolve();
+
+            project.write("stories/badge.ts", badge("two"));
+            await expect.poll(() => observation().badgeText, { timeout: 30_000 }).toBe("two");
+            expect(observation().pid).not.toBe(initial.pid);
         });
     });
 
