@@ -11,6 +11,7 @@ import gtkx from "../dist/vitest-plugin.js";
 import { createProject } from "./project.js";
 
 const frenchEnvironment = { ...process.env, LANG: "fr_FR.UTF-8", LC_ALL: "fr_FR.UTF-8", LANGUAGE: "fr" };
+const chineseEnvironment = { ...process.env, LANG: "zh_CN.UTF-8", LC_ALL: "zh_CN.UTF-8", LANGUAGE: "zh_CN" };
 const unsupportedLocaleEnvironment = { ...process.env, LANG: "xx_YY.UTF-8", LC_ALL: "xx_YY.UTF-8", LANGUAGE: "fr" };
 
 describe("runtime configuration", () => {
@@ -64,11 +65,13 @@ describe("runtime configuration", () => {
         });
         project.write("LICENSE", "MIT License\nCopyright GTKX\nPermission is hereby granted, free of charge.\n");
         project.write("icon.svg", '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"/>');
-        project.write("po/LINGUAS", "fr\n");
+        project.write("po/LINGUAS", "fr\nzh_CN\n");
         project.write("po/fr.po", readFileSync(new URL("../../i18n/tests/fixtures/fr.po", import.meta.url), "utf8"));
         project.write(
             "src/message.ts",
-            'import { t } from "@gtkx/i18n"; export const greeting = t("Hello, {{name}}!", { name: "Ada" });',
+            `import { t } from "@gtkx/i18n";
+            const files = t("{{count}} file", { count: 2, defaultValue_one: "{{count}} file", defaultValue_other: "{{count}} files" });
+            export const greeting = t("Hello, {{name}}!", { name: "Ada" }) + " " + files;`,
         );
         project.write(
             "src/index.ts",
@@ -82,7 +85,8 @@ describe("runtime configuration", () => {
                 env,
                 timeout: 30_000,
             });
-        expect(runBundle(join(project.root, "dist/bundle.mjs"))).toContain("Bonjour, Ada !");
+        expect(runBundle(join(project.root, "dist/bundle.mjs"))).toContain("Bonjour, Ada ! 2 fichiers");
+        expect(runBundle(join(project.root, "dist/bundle.mjs"), chineseEnvironment)).toContain("Hello, Ada! 2 files");
         expect(runBundle(join(project.root, "dist/bundle.mjs"), unsupportedLocaleEnvironment)).toContain("Hello, Ada!");
         await runCommand(createCommand(), {
             rawArgs: ["deploy", "--cwd", project.root, "--skip-build", "--print-manifests", "--target", "deb"],

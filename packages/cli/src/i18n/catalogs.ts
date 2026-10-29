@@ -1,4 +1,5 @@
 import { isPathInside } from "@gtkx/utils";
+import { type GetTextTranslationRecord, po } from "gettext-parser";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { runCliTool } from "../internal/run-cli-tool.js";
@@ -36,6 +37,9 @@ const LINGUAS_FILENAME = "LINGUAS";
 const LOCALE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.@+-]*$/;
 const DOMAIN_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const MODE_MASK = 0o7777;
+const PLURAL_FORMS_PLACEHOLDER = "nplurals=INTEGER; plural=EXPRESSION;";
+const STRICT_CHECKS = ["--check"];
+const CHECKS_WITHOUT_PLURAL_RULE = ["--check-format", "--check-domain"];
 
 const parseLocales = (linguasPath: string): string[] => {
     const source = readFileSync(linguasPath, "utf8");
@@ -99,6 +103,21 @@ const resolveCatalogProject = (root: string, domain: string): CatalogProject | n
     };
 };
 
+const hasTranslatedPlural = (translations: GetTextTranslationRecord): boolean =>
+    Object.values(translations).some((context) =>
+        Object.values(context).some(
+            (message) => message.msgid_plural !== undefined && message.msgstr.some((value) => value.length > 0),
+        ),
+    );
+
+const catalogChecks = (path: string): string[] => {
+    const catalog = po.parse(readFileSync(path));
+    const isAwaitingPluralRule =
+        catalog.headers["Plural-Forms"] === PLURAL_FORMS_PLACEHOLDER && !hasTranslatedPlural(catalog.translations);
+
+    return isAwaitingPluralRule ? CHECKS_WITHOUT_PLURAL_RULE : STRICT_CHECKS;
+};
+
 const compileCatalogs = (project: CatalogProject, outputDir: string): string[] => {
     const localeDir = resolve(outputDir);
 
@@ -112,7 +131,7 @@ const compileCatalogs = (project: CatalogProject, outputDir: string): string[] =
 
         runCliTool({
             tool: "msgfmt",
-            args: ["--check", "--output-file", output, catalog.path],
+            args: [...catalogChecks(catalog.path), "--output-file", output, catalog.path],
             target: catalog.path,
         });
 

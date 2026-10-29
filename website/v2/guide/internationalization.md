@@ -41,7 +41,7 @@ Run codegen:
 gtkx codegen
 ```
 
-GTKX creates `po/<applicationId>.pot`, initializes the listed PO files, and generates translation types. Translators edit each catalog's `msgstr` values. Run codegen again after changing messages to update the template and merge those changes into the catalogs. Review fuzzy entries before release; removed messages remain as obsolete entries.
+GTKX creates `po/<applicationId>.pot`, initializes the listed PO files, and generates translation types. Translators edit each catalog's `msgstr` values. When `msginit` has no plural rule for a locale, such as `ar` or `zh_CN`, its catalog starts with a placeholder `Plural-Forms` header; replace it before translating plural messages. Run codegen again after changing messages to update the template and merge those changes into the catalogs. Review fuzzy entries before release; removed messages remain as obsolete entries.
 
 ## Plurals and context
 
