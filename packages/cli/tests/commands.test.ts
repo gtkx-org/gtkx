@@ -884,6 +884,37 @@ describe("CLI commands", () => {
         }
     });
 
+    it("keeps the dev session through malformed catalogs added while it runs", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "ready.txt");
+        const catalog = readFileSync(new URL("../../i18n/tests/fixtures/fr.po", import.meta.url), "utf8");
+        vi.stubEnv("LANG", "fr_FR.UTF-8");
+        vi.stubEnv("LC_ALL", "fr_FR.UTF-8");
+        vi.stubEnv("LANGUAGE", "fr");
+        project.write(
+            "src/index.ts",
+            `import { Application } from "@gtkx/gi/gio";
+            import { t } from "@gtkx/i18n";
+            import { applicationId } from "virtual:gtkx-config";
+            import { writeFileSync } from "node:fs";
+            export const application = new Application({ applicationId });
+            application.setDefault();
+            application.register(null);
+            application.hold();
+            writeFileSync(${JSON.stringify(readyPath)}, t("Hello, {{name}}!", { name: "Ada" }));`,
+        );
+        await withSession("dev", project.root, readyPath, async () => {
+            expect(readFileSync(readyPath, "utf8")).toBe("Hello, Ada!");
+            project.write("po/fr.po", `${catalog}\nmsgid "Unterminated\n`);
+            project.write("po/LINGUAS", "fr\n");
+            await expect
+                .poll(() => existsSync(join(project.root, "po/org.gtkx.example.pot")), { timeout: 30_000 })
+                .toBe(true);
+            project.write("po/fr.po", catalog);
+            await expect.poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 }).toBe("Bonjour, Ada !");
+        });
+    });
+
     it("keeps the running app registered while configuration is invalid and restarts after repair", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "ready.txt");

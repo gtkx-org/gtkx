@@ -1811,7 +1811,7 @@ const extractCatalogTemplate = ({
     project,
     messages,
     shouldPreserveMetadataMessages,
-    output = resolve(project.poDir, `${project.domain}.pot`),
+    output = project.template,
 }: CatalogTemplateExtraction): void => {
     using workDir = mkdtempDisposableSync(join(project.poDir, ".gtkx-i18n-"));
     const source = join(workDir.path, "source.pot");

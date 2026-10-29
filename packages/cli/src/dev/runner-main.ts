@@ -25,7 +25,7 @@ const main = async (): Promise<void> => {
     });
     const { config, root } = await loadConfig.load(cwd);
     const staging = createProjectStaging();
-    const localeDir = prepareDevLocaleDir(root, config.applicationId);
+    const localeDir = await prepareDevLocaleDir(root, config.applicationId);
     prepareDevSchemaDir(root, staging.schemas);
     prepareDevIconDir(root, config.applicationId, config.applicationIcon);
     prepareDevFontDir(root, staging.fonts);

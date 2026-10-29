@@ -12,6 +12,7 @@ import { REL_SEPARATOR, toVirtualId } from "../vite-plugins/resource-shared.js";
 import { stripQuery } from "../vite-plugins/strip-query.js";
 import { createChangeQueue, type WatchedChange } from "./change-queue.js";
 import { createFailureTracker, type FailureTracker } from "./failure-tracker.js";
+import { checkDevCatalogs } from "./locale-dir.js";
 import { isMissingImport, missingImportName } from "./missing-import.js";
 import { createRefreshTracker, type RefreshTracker } from "./refresh-tracker.js";
 import { RESTART_EXIT_CODE } from "./supervisor.js";
@@ -506,6 +507,15 @@ const restartForCatalog = async (session: DevSession, changedPath: string): Prom
     }
 
     session.deps.log(`Translation catalog changed: ${changedPath}`);
+
+    try {
+        await checkDevCatalogs(session.server.config.root, session.deps.applicationId);
+    } catch (error_) {
+        error("Translation catalogs failed; keeping the current application.", error_);
+
+        return;
+    }
+
     await requestRestart(session);
 };
 

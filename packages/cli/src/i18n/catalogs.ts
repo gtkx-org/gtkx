@@ -19,6 +19,7 @@ type CatalogProject = {
     poDir: string;
     poFiles: string[];
     root: string;
+    template: string;
 };
 
 type PreparedCatalog = {
@@ -110,6 +111,7 @@ const resolveCatalogProject = (root: string, domain: string): CatalogProject | n
         poDir,
         poFiles: catalogs.map((catalog) => catalog.path),
         root: projectRoot,
+        template: join(poDir, `${domain}.pot`),
     };
 };
 
@@ -207,12 +209,13 @@ const synchronizeCatalogs = (project: CatalogProject): WrittenCatalog[] => {
         return [];
     }
 
-    const template = join(project.poDir, `${project.domain}.pot`);
-    requireFile(template);
+    requireFile(project.template);
     const stagingDir = mkdtempSync(join(project.poDir, ".gtkx-catalog-"));
 
     try {
-        const merged = project.catalogs.map((catalog, index) => prepareCatalog(catalog, index, template, stagingDir));
+        const merged = project.catalogs.map((catalog, index) =>
+            prepareCatalog(catalog, index, project.template, stagingDir),
+        );
 
         return merged.filter((catalog) => catalog.isChanged).map((catalog) => replaceCatalog(catalog));
     } finally {
