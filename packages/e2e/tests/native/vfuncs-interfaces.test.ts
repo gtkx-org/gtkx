@@ -12,7 +12,7 @@ import { callParent, getClassType, getInstanceType, registerClass, typeIsA } fro
 
 import { expect, test } from "vitest";
 
-import { drainGC } from "./helpers/memory.js";
+import { didSettle, drainGC } from "./helpers/memory.js";
 
 type Holder<T> = { value: T | null };
 
@@ -105,6 +105,38 @@ test("an override reaches the parent implementation through callParent", () => {
     instance.methodWithDefaultImplementation(5);
     expect(seen).toEqual([5]);
     expect(instance.int).toBe(7);
+});
+
+test("a dispose override runs on explicit disposal and is skipped once its JavaScript object is collected", async () => {
+    const disposed: string[] = [];
+
+    class Disposing extends Regress.TestObj {
+        label = "";
+
+        vfuncDispose(): void {
+            disposed.push(this.label);
+            callParent(Disposing, "vfuncDispose", this);
+        }
+    }
+
+    const Registered = registerClass(Disposing, { typeName: uniqueName("GtkxDisposing") });
+    const explicit = new Registered({});
+    explicit.label = "explicit";
+    explicit.runDispose();
+
+    const references = (() => {
+        const instance = new Registered({});
+        const bare = new GObject.Object({});
+        instance.label = "collected";
+        instance.setBare(bare);
+
+        return { instance: new WeakRef(instance), bare: new WeakRef(bare) };
+    })();
+
+    expect(
+        await didSettle(() => references.instance.deref() === undefined && references.bare.deref() === undefined),
+    ).toBe(true);
+    expect(disposed).toEqual(["explicit"]);
 });
 
 test("a slot filled several types up the hierarchy is reached from a JavaScript override", () => {

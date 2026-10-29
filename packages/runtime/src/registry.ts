@@ -143,6 +143,7 @@ const vfuncRegistry: WeakMap<object, VfuncRegistry> = new WeakMap();
 const interfaceLayoutRegistry: Map<bigint, InterfaceLayout> = new Map();
 const wrapperClasses: WeakSet<AnyClass> = new WeakSet();
 const derivedClasses: WeakSet<AnyClass> = new WeakSet();
+const callScopedWrappers: WeakSet<object> = new WeakSet();
 const typeClassHandles: Map<bigint, ExternalObject<Handle>> = new Map();
 const wrapperClassResolvers: WeakMap<AnyClass, WrapperClassResolver> = new WeakMap();
 
@@ -712,6 +713,15 @@ function setHandle(instance: object, handle: ExternalObject<Handle>): void {
 
 function bindCallScopedWrapper(handle: ExternalObject<Handle>, instance: object): void {
     setHandle(instance, handle);
+    callScopedWrappers.add(instance);
+}
+
+/**
+ * Whether a wrapper was created for a single call-scoped argument because its object had no live
+ * wrapper, so it carries none of the instance's JavaScript state.
+ */
+function isCallScopedWrapper(instance: object): boolean {
+    return callScopedWrappers.has(instance);
 }
 
 function registerWrapper(handle: ExternalObject<Handle>, instance: object): void {
@@ -763,6 +773,7 @@ export {
     getInterfaceProperties,
     getInterfaceVfuncRegistry,
     instanceClassName,
+    isCallScopedWrapper,
     registerWrapper,
     resolveWrapperType,
     wrapCallScopedObject,

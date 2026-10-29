@@ -31,6 +31,7 @@ import {
     getClassType,
     getInterfaceMixin,
     getTypeClassHandle,
+    isCallScopedWrapper,
     markDerivedClass,
     registerClassType,
     type VfuncDescriptor,
@@ -61,6 +62,7 @@ import {
     typeName,
 } from "./type.js";
 import { findClassVfuncDescriptor, findInterfaceVfuncDescriptor } from "./vfunc.js";
+import { callParent } from "./vfunc-call.js";
 
 /** A generated interface value, such as `Gio.ListModel`, accepted by {@link registerClass}. */
 type Interface<TImpl, TInstance = object> = AnyClass & {
@@ -412,6 +414,7 @@ type DeclaredSignals = { native: ClassSignal[]; table: Map<string, DeclaredSigna
 const INSTANCE_ARG_INDEX = 0;
 const VALUE_ARG_INDEX = 2;
 const TEARDOWN_VFUNC_NAMES: Set<string> = new Set(["dispose", "finalize"]);
+const DISPOSE_METHOD_NAME = "vfuncDispose";
 const ASYNC_INITABLE_TYPE_NAME = "GAsyncInitable";
 const INIT_ASYNC_METHOD_NAME = "vfuncInitAsync";
 
@@ -434,6 +437,9 @@ const SIGNAL_OVERRIDE_PATTERN = /^on[A-Z]/;
  * `vfuncConstructed` runs before field initializers and the constructor body. Native-created
  * instances never run the JavaScript constructor, so native-required state belongs in properties
  * or `vfuncConstructed`. A new `Gio.AsyncInitable` must implement `vfuncInitAsync`.
+ *
+ * As in GJS, `vfuncDispose` runs only while the instance's JavaScript object is alive. A disposal
+ * that follows its garbage collection skips the override and runs the parent implementation.
  *
  * @param klass The wrapper subclass to register.
  * @param options Additional GType configuration.
@@ -670,9 +676,23 @@ function collectDiscoveredVfuncs(
     return result;
 }
 
+function skipDisposeWithoutWrapper(klass: AnyClass, dispose: VfuncFn): VfuncFn {
+    return function (this: object): unknown {
+        return isCallScopedWrapper(this) ? callParent(klass, DISPOSE_METHOD_NAME, this) : dispose.call(this);
+    };
+}
+
+function guardDispose(klass: AnyClass, methods: MethodTable): MethodTable {
+    const dispose = methods.get(DISPOSE_METHOD_NAME);
+
+    return dispose === undefined
+        ? methods
+        : new Map(methods).set(DISPOSE_METHOD_NAME, skipDisposeWithoutWrapper(klass, dispose));
+}
+
 function discoverClassVfuncs(klass: AnyClass, methods: MethodTable): DiscoveredVfunc[] {
     return collectDiscoveredVfuncs(
-        methods,
+        guardDispose(klass, methods),
         (methodName) => findClassVfuncDescriptor(klass, methodName) ?? undefined,
         PROPERTY_VFUNC_NAMES,
     );

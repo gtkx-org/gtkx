@@ -156,6 +156,10 @@ Output parameters become return values, grouped into a tuple when there are seve
 
 Use [`callParent`](/v2/reference/@gtkx/runtime/functions/callParent) when the virtual function has no generated member, including `vfuncDispose`. Pass the class whose override is running, the vfunc name, the instance, and its arguments. The same helper can chain interface slots that TypeScript cannot resolve through `super`.
 
+### Disposal
+
+As in GJS, `vfuncDispose` runs only while the instance's JavaScript object is alive, such as after `runDispose()` or when a window is destroyed. An object released by GTK is usually disposed after its JavaScript object has been garbage-collected; GTKX then skips the override, which could no longer reach the instance's JavaScript state, and runs the parent implementation. Stop timers and other JavaScript-driven work where it is started, such as in `vfuncUnmap` or an effect cleanup, rather than relying on `vfuncDispose`.
+
 ## Implementing an interface
 
 List the generated interface value in `implements` and implement its required vfunc methods. The generated `Impl` type checks their signatures:
