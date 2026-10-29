@@ -4,7 +4,16 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwActionRow, AdwSidebar, AdwSidebarItem, AdwSidebarSection } from "@gtkx/jsx/adw";
+import {
+    AdwActionRow,
+    AdwSidebar,
+    AdwSidebarItem,
+    AdwSidebarSection,
+    AdwTabBar,
+    AdwTabOverview,
+    AdwTabPage,
+    AdwTabView,
+} from "@gtkx/jsx/adw";
 import {
     GtkBox,
     GtkButton,
@@ -34,7 +43,7 @@ import {
     GtkToggleButton,
 } from "@gtkx/jsx/gtk";
 import { type BoundQueries, queryAllControllers, render, screen, userEvent, waitFor, within } from "@gtkx/testing";
-import { createRef } from "react";
+import { createRef, useState } from "react";
 import { describe, expect, it } from "vitest";
 import {
     callCounter,
@@ -478,6 +487,49 @@ describe("userEvent.click", () => {
         label.current?.stopEditing(false);
         await userEvent.pointer(await screen.findByText("Draft"), "click");
         expect(label.current?.getEditing()).toBe(true);
+    });
+
+    it("selects a tab view page from its tab bar tab and its overview thumbnail", async () => {
+        const overview = createRef<Adw.TabOverview>();
+        const TabbedPages = () => {
+            const [view, setView] = useState<Adw.TabView | null>(null);
+
+            return (
+                <AdwTabOverview ref={overview} view={view}>
+                    <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                        <AdwTabBar view={view} autohide={false} />
+                        <AdwTabView ref={setView}>
+                            <AdwTabPage title="First">
+                                <GtkLabel>First page</GtkLabel>
+                            </AdwTabPage>
+                            <AdwTabPage title="Second">
+                                <GtkLabel>Second page</GtkLabel>
+                            </AdwTabPage>
+                        </AdwTabView>
+                    </GtkBox>
+                </AdwTabOverview>
+            );
+        };
+        await render(<TabbedPages />);
+        const view = await screen.findByRole(Gtk.AccessibleRole.GROUP, { as: Adw.TabView });
+        const first = await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "First" });
+        const second = await screen.findByRole(Gtk.AccessibleRole.TAB, { name: "Second" });
+        await userEvent.click(second);
+        expect(view.getSelectedPage()?.getTitle()).toBe("Second");
+        await userEvent.pointer(first, "click");
+        expect(view.getSelectedPage()?.getTitle()).toBe("First");
+
+        overview.current?.setOpen(true);
+        const thumbnails = await screen.findAllByText("Second");
+        const thumbnail = thumbnails.find((widget) => !widget.isAncestor(second));
+
+        if (thumbnail === undefined) {
+            throw new Error("expected an overview thumbnail title");
+        }
+
+        await userEvent.click(thumbnail);
+        expect(view.getSelectedPage()?.getTitle()).toBe("Second");
+        expect(overview.current?.getOpen()).toBe(false);
     });
 });
 

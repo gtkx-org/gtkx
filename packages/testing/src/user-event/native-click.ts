@@ -4,6 +4,7 @@ import { applyHeaderClick } from "./column-header-click.js";
 import { applyEditableLabelClick, isEditableLabelText } from "./editable-label-click.js";
 import { applyRowClick } from "./list-row-click.js";
 import { applyTabClick, isNotebookTab } from "./notebook-tab-click.js";
+import { applyTabViewClick, isTabViewTab } from "./tab-view-click.js";
 
 type NativeClick = (widget: Gtk.Widget, nPress: number) => void;
 
@@ -46,6 +47,10 @@ const nativeClickFor = (widget: Gtk.Widget, isClicked: boolean): NativeClick | n
 
     if (isNotebookTab(widget)) {
         return applyTabClick;
+    }
+
+    if (isTabViewTab(widget)) {
+        return applyTabViewClick;
     }
 
     return isFactoryRow(widget) ? applyRowClick : null;
