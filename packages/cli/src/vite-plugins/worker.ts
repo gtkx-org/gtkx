@@ -1,6 +1,6 @@
 import type { Plugin, Rollup } from "vite";
 import { createHash } from "node:crypto";
-import { basename, extname } from "node:path";
+import { basename, extname, relative } from "node:path";
 import { ESM_EXTENSION } from "./esm-extension.js";
 import { stripQuery } from "./strip-query.js";
 
@@ -18,6 +18,7 @@ type WorkerReferences = {
 type EmitContext = {
     context: Rollup.PluginContext;
     references: WorkerReferences;
+    root: string;
 };
 
 type SourceRange = {
@@ -66,10 +67,10 @@ const SUGGESTED_EXTENSIONS: Record<string, string[]> = {
     ".mjs": [".mts"],
 };
 
-const workerFileName = (id: string): string => {
+const workerFileName = (root: string, id: string): string => {
     const path = stripQuery(id);
     const stem = basename(path, extname(path));
-    const digest = createHash("sha256").update(id).digest("hex").slice(0, 8);
+    const digest = createHash("sha256").update(relative(root, id)).digest("hex").slice(0, 8);
 
     return `${WORKER_DIR}/${stem}-${digest}${ESM_EXTENSION}`;
 };
@@ -141,7 +142,7 @@ const claimWorker = (emit: EmitContext, resolvedId: string): string => {
     const referenceId = emit.context.emitFile({
         type: "chunk",
         id: resolvedId,
-        fileName: workerFileName(resolvedId),
+        fileName: workerFileName(emit.root, resolvedId),
     });
 
     emit.references.byModule.set(resolvedId, referenceId);
@@ -236,7 +237,7 @@ const transformWorkerUrls = async (emit: EmitContext, code: string, id: string):
     return replacements.length === 0 ? null : { code: applyReplacements(code, replacements), map: null };
 };
 
-function gtkxWorker(): Plugin {
+function gtkxWorker(root: string): Plugin {
     const references: WorkerReferences = { byModule: new Map(), claimed: new Set() };
 
     return {
@@ -244,7 +245,7 @@ function gtkxWorker(): Plugin {
         apply: "build",
 
         transform(code, id) {
-            return transformWorkerUrls({ context: this, references }, code, id);
+            return transformWorkerUrls({ context: this, references, root }, code, id);
         },
 
         resolveFileUrl: {

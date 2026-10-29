@@ -4,6 +4,7 @@ import { createMcpServer } from "@gtkx/mcp/server";
 import { resolveHeadlessOptions, startHeadlessDisplay } from "@gtkx/vitest/headless";
 import { runCommand } from "citty";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import {
     copyFileSync,
     existsSync,
@@ -14,7 +15,7 @@ import {
     rmSync,
     symlinkSync,
 } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { promisify } from "node:util";
 import { stdout, stderr } from "test-console";
@@ -76,6 +77,33 @@ describe("CLI commands", () => {
         project.write("keep.txt", "keep");
         await expect(invoke(["build", "--cwd", project.root, "--out", "../outside"])).rejects.toThrow();
         expect(readFileSync(join(project.root, "keep.txt"), "utf8")).toBe("keep");
+    });
+
+    it("builds identical output for the same project at another path", async () => {
+        const build = async () => {
+            using project = createProject();
+            project.write(
+                "src/workers/count.ts",
+                'import { parentPort } from "node:worker_threads";\nparentPort?.postMessage(1);',
+            );
+            project.write(
+                "src/index.ts",
+                'import { Worker } from "node:worker_threads";\nnew Worker(new URL("./workers/count.ts", import.meta.url));',
+            );
+            await invoke(["build", "--cwd", project.root]);
+            const dist = join(project.root, "dist");
+            return new Map(
+                readdirSync(dist, { recursive: true, withFileTypes: true })
+                    .filter((entry) => entry.isFile())
+                    .map((entry) => join(entry.parentPath, entry.name))
+                    .map((path) => [
+                        relative(dist, path),
+                        createHash("sha256").update(readFileSync(path)).digest("hex"),
+                    ]),
+            );
+        };
+
+        expect(await build()).toEqual(await build());
     });
 
     it("leaves an existing gettext catalog alone in a project without @gtkx/i18n", async () => {

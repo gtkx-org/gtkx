@@ -53,7 +53,7 @@ const forcedConfig = async (options: BuildOptions, root: string, assetsDir: stri
                 shouldPreserveI18nMetadata,
                 configFile: options.configFile,
             }),
-            gtkxWorker(),
+            gtkxWorker(root),
             gtkxNative(root),
             gtkxBuildManifest(root, buildManifest, buildConfigIdentity),
             gtkxSelfContained(root),
