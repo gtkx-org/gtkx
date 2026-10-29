@@ -11,8 +11,6 @@ export {
     getTypeClass,
     getWrapper,
     init,
-    installLogSink,
-    logSubscriptionFence,
     newObject,
     openLibrary,
     quit,

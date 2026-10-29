@@ -66,8 +66,6 @@ Use `useToast().dismissAll()` in place of `useToastOverlay().dismissAll()`. `sho
 
 Import `createElementComponent` from `@gtkx/react` instead of `@gtkx/react/config`. The config subpath remains for renderer behavior and element registration APIs.
 
-Subscribe to native logs with `onLog(listener)` from `@gtkx/runtime` and release the subscription with `unsubscribe()`. The native addon is an internal implementation detail; application code should import runtime APIs.
-
 The generated wrapper-retention helper `retainWrapperClasses` now belongs to `@gtkx/runtime/internal`. Regenerate bindings with `gtkx codegen --force` after upgrading so their bootstrap imports match the runtime.
 
 ## Move GObject ownership into JSX

@@ -13,7 +13,6 @@ pub mod fundamental_identity;
 pub mod get_type;
 pub mod get_wrapper;
 pub mod init;
-pub mod log_listener;
 pub mod new_object;
 pub mod quit;
 pub mod read;

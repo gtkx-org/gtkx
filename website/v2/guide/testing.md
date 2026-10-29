@@ -127,11 +127,9 @@ Use widget matchers such as `toHaveTextContent`, `toHaveAccessibleName`, `toBeCh
 
 Snapshot assertions print a widget as its widget tree in the `screen.debug()` format, so `expect(container).toMatchSnapshot()` records the rendered widgets.
 
-A critical raised during a generated binding call throws or rejects, so an error-path test can catch it. Criticals outside a binding call and addon panics fail the test as uncaught exceptions; a GLib `ERROR` aborts the worker. See [Error Handling](/v2/guide/error-handling#errors-outside-binding-calls).
+GLib prints criticals and warnings to the test output without failing the test, and a GLib `ERROR` aborts the worker. Set GLib's `G_DEBUG` environment variable, for example to `fatal-criticals`, to make criticals abort the worker instead. Addon panics outside a binding call fail the test as uncaught exceptions. See [Error Handling](/v2/guide/error-handling#glib-criticals-and-warnings).
 
 A render error that an error boundary catches does not fail the test, so a test can assert the boundary's fallback; the `onCaughtError` render option receives it. An error no boundary catches rejects `render`, or the next `rerender`, `unmount` or cleanup, with that error.
-
-Warnings do not fail tests automatically. To make them failures, subscribe through `onLog` from `@gtkx/runtime`, collect warning records, and check them during teardown. Delivery is asynchronous: yield with `setImmediate` from `node:timers/promises` before checking or unsubscribing. Unsubscribing stops new records but does not cancel records already queued.
 
 ## Next
 

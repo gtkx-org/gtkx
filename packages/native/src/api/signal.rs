@@ -9,7 +9,6 @@ use napi_derive::napi;
 use crate::api::value_pointer::value_ptr;
 use crate::handle::{Handle, LeaseScope};
 use crate::host::callback_error::CallbackErrorScope;
-use crate::host::log_writer::CriticalTrap;
 
 thread_local! {
     static EMISSION_VALUES: Cell<*const gobject_ffi::GValue> = const { Cell::new(ptr::null()) };
@@ -76,11 +75,7 @@ pub fn emit_signal(
         None => ptr::null_mut(),
     };
     let _emission = EmissionScope::open(parameters.as_ptr());
-    let trap = CriticalTrap::arm();
     unsafe { gobject_ffi::g_signal_emitv(parameters.as_ptr(), signal_id, detail, result) };
-    if let Some(message) = trap.disarm() {
-        return Err(Error::from_reason(message));
-    }
     if CallbackErrorScope::has_error() {
         return Err(Error::from_reason("A signal callback threw an exception"));
     }

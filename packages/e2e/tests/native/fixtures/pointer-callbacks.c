@@ -11,7 +11,6 @@ typedef struct {
     guint fail_next_set;
     gboolean invoke_during_get;
     gboolean invoke_on_every_get;
-    gboolean fail_next_get;
     gboolean emitting_nested;
     guint nested_return_id;
 } GtkxCallbackObject;
@@ -60,11 +59,6 @@ static void gtkx_callback_object_get_property(GObject *object, guint property_id
     GtkxCallbackObject *self = (GtkxCallbackObject *)object;
 
     if (property_id == 1) {
-        if (self->fail_next_get) {
-            self->fail_next_get = FALSE;
-            g_critical("fixture callback getter failed");
-            return;
-        }
         GtkxIntCallback callback = self->callback;
         if ((self->invoke_during_get || self->invoke_on_every_get) && callback != NULL) {
             self->invoke_during_get = FALSE;
@@ -217,11 +211,6 @@ void gtkx_callback_object_invoke_during_next_get(GtkxCallbackObject *self)
 void gtkx_callback_object_invoke_on_every_get(GtkxCallbackObject *self)
 {
     self->invoke_on_every_get = TRUE;
-}
-
-void gtkx_callback_object_fail_next_get(GtkxCallbackObject *self)
-{
-    self->fail_next_get = TRUE;
 }
 
 void gtkx_callback_object_invoke_before_next_set(GtkxCallbackObject *self)

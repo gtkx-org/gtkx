@@ -41,6 +41,7 @@ The `"*"` wildcard is gone, and explicitly listing `Adw-1` or `Gtk-4.0` is rejec
 - Assets use relative `?resource`, `?icon`, `?font`, or `?url` imports. Settings schemas use query-free relative imports.
 - Changes to runtime imports, re-exports, or imported resources and icons restart development apps and reset their state. Edits to component bodies still use Fast Refresh.
 - Generated classes register with their own definitions, so production builds retain only reached bindings. Import a class if `GObject.typeFromName` must find it.
+- GLib criticals are logged by GLib, as in C and GJS applications, instead of becoming uncaught exceptions. They no longer end the application or fail tests; see [Error Handling](/v2/guide/error-handling#glib-criticals-and-warnings).
 
 Run `tsc --noEmit` after these changes. The typechecker catches the value and tuple changes; `gtkx build` catches stale resource imports.
 
@@ -70,8 +71,6 @@ Use `useToast().dismissAll()` in place of `useToastOverlay().dismissAll()`. `sho
 ## Update runtime imports
 
 Import `createElementComponent` from `@gtkx/react` instead of `@gtkx/react/config`. The config subpath remains for renderer behavior and element registration APIs.
-
-Subscribe to native logs with `onLog(listener)` from `@gtkx/runtime` and release the subscription with `unsubscribe()`. The native addon is an internal implementation detail; application code should import runtime APIs.
 
 Direct native calls using `bigint64` or `biguint64` descriptors now require bigint values. Runtime bindings still accept exactly representable integer Number inputs within ±2⁵³ and normalize them before crossing the native boundary.
 

@@ -1,6 +1,6 @@
 ---
 title: "Error Handling"
-description: "Match native errors by domain and code, and distinguish call failures from fatal errors."
+description: "Match native errors by domain and code, and see how GLib criticals and addon panics surface."
 ---
 
 # Error Handling
@@ -31,27 +31,23 @@ Checking a domain narrows the value to an error with `domain` and `code`. Check 
 
 For a native callback that expects an error value, create one through the generated `GLib.Error` API.
 
-## Criticals during binding calls
+## GLib criticals and warnings
 
-Some native functions log a `CRITICAL` instead of returning a `GError`. When that happens during a JavaScript-initiated binding call, GTKX throws an ordinary `Error` from the call. It has no native domain or code.
+Some native functions report misuse by logging a `CRITICAL` or `WARNING` instead of returning a `GError`. GTKX leaves these messages to GLib, as C and GJS applications do: GLib prints them to standard error, the binding call returns normally, and the application keeps running. A critical usually points at a programming error, such as an invalid argument, so fix the code that triggered it.
 
-A promisified method rejects if a critical occurs while starting the operation or running its finish function. Catch it around the awaited call just like another failure.
+GLib's [`G_DEBUG`](https://docs.gtk.org/glib/running.html) environment variable can make criticals or warnings abort the process while you debug them. GLib `ERROR` messages always abort.
 
-## Errors outside binding calls
+## Addon panics
 
-A native critical emitted with no active binding call cannot reach the `try`/`catch` that started the work. GTKX reports it through Node's uncaught-exception channel. Addon panics use the same channel, including reports sent from another thread.
+A panic in the GTKX native addon while it handles a binding call throws an ordinary `Error` from that call. It has no native domain or code.
 
-Use Node's [`uncaughtExceptionMonitor`](https://nodejs.org/api/process.html#event-uncaughtexceptionmonitor) for synchronous crash reporting while preserving its default process exit. Native state may already be invalid; do not resume normal application work after a fatal error.
-
-GLib `ERROR` messages are also reported, but GLib aborts regardless of JavaScript handling. Lower log levels, including GTK theme warnings, do not become GTKX exceptions; they keep GLib's normal logging behavior.
-
-There is no GTKX option to disable fatal-error reporting. Unhandled failures fail the test suite as well; see [Testing](/v2/guide/testing).
+A panic while native code calls back into JavaScript, or on another thread, cannot reach the `try`/`catch` that started the work. GTKX reports it through Node's uncaught-exception channel. Use Node's [`uncaughtExceptionMonitor`](https://nodejs.org/api/process.html#event-uncaughtexceptionmonitor) for synchronous crash reporting while preserving its default process exit. Native state may already be invalid; do not resume normal application work after a panic. An unhandled panic fails the test suite as well; see [Testing](/v2/guide/testing).
 
 ## React error boundaries
 
 An error boundary can replace a failed descendant's rendered UI with a fallback. Use it around a recoverable part of the interface, and render the fallback with GTKX elements. React's [error boundary documentation](https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary) describes the component contract.
 
-Boundaries do not catch ordinary event-handler failures or arbitrary rejected promises. Catch those failures in the signal handler or around the awaited operation, then update application state to show an error. A boundary also cannot recover from a native fatal error that leaves the process unsafe to continue.
+Boundaries do not catch ordinary event-handler failures or arbitrary rejected promises. Catch those failures in the signal handler or around the awaited operation, then update application state to show an error. A boundary also cannot recover from an addon panic that leaves the process unsafe to continue.
 
 ## Next
 

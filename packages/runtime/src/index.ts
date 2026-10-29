@@ -14,7 +14,6 @@ export { onExit, quit } from "./lifecycle.js";
  * this automatically.
  */
 export { keepAlive } from "./keep-alive.js";
-export { onLog, type LogLevel, type LogListener, type LogSubscription } from "./logging.js";
 export { offSignal, onceSignal, onSignal } from "./listeners.js";
 export { installMixins, type Mixin } from "./mixin.js";
 export { fromNative, toHashTableEntries, toNative } from "./native-value.js";

@@ -54,7 +54,6 @@ const invoke = t.bind(library, "gtkx_callback_object_invoke", [t.object(), t.int
 const invokeWriteOnly = t.bind(library, "gtkx_callback_object_invoke_write_only", [t.object(), t.int32], t.int32);
 const invokeDuringNextGet = t.bind(library, "gtkx_callback_object_invoke_during_next_get", [t.object()], t.void);
 const invokeOnEveryGet = t.bind(library, "gtkx_callback_object_invoke_on_every_get", [t.object()], t.void);
-const failNextGet = t.bind(library, "gtkx_callback_object_fail_next_get", [t.object()], t.void);
 const invokeBeforeNextSet = t.bind(library, "gtkx_callback_object_invoke_before_next_set", [t.object()], t.void);
 const failNextSet = t.bind(library, "gtkx_callback_object_fail_next_set", [t.object(), t.boolean], t.void);
 const hold = t.bind(library, "gtkx_callback_object_hold", [t.object()], t.void);
@@ -791,9 +790,7 @@ test.each([false, true])(
         failNextSet(getHandle(object), afterStore);
         const incoming = (() => {
             const callback = (value: number): number => value + 50;
-            expect(() => {
-                object.callback = callback;
-            }).toThrow("fixture callback setter failed");
+            object.callback = callback;
             return new WeakRef(callback);
         })();
 
@@ -898,9 +895,7 @@ test("write-only callback properties survive reentry and rejected writes without
         expect(incoming.deref()).toBeDefined();
         expect(invokeWriteOnly(getHandle(object), 12)).toBe(42);
         failNextSet(getHandle(object), false);
-        expect(() => {
-            object.writeOnlyCallback = null;
-        }).toThrow("fixture callback setter failed");
+        object.writeOnlyCallback = null;
         await drainGC();
         expect(incoming.deref()).toBeDefined();
         expect(invokeWriteOnly(getHandle(object), 12)).toBe(42);
@@ -916,27 +911,6 @@ test("write-only callback properties survive reentry and rejected writes without
                 wasFinalized(references.id) === true,
         ),
     ).toBe(true);
-});
-
-test("a failed reconciliation getter preserves the stored callback until a reliable read", async () => {
-    const { object, original } = (() => {
-        const callback = (value: number): number => value + 30;
-        return { object: new CallbackObject({ callback }), original: new WeakRef(callback) };
-    })();
-    failNextGet(getHandle(object));
-    const incoming = (() => {
-        const callback = (value: number): number => value + 50;
-        object.callback = callback;
-        return new WeakRef(callback);
-    })();
-
-    await drainGC();
-    expect(incoming.deref()).toBeDefined();
-    expect(object.invoke(12)).toBe(62);
-    expect(object.callback?.(12)).toBe(62);
-    expect(await didSettle(() => original.deref() === undefined)).toBe(true);
-    object.callback = null;
-    expect(await didSettle(() => incoming.deref() === undefined)).toBe(true);
 });
 
 test.each(["clear", "replace"] as const)(

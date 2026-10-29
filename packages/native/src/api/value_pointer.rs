@@ -15,7 +15,6 @@ use crate::ffi::closure::DecodedCallback;
 use crate::ffi::codec::{CallbackScope, Codec, Encoder as _};
 use crate::handle::{Handle, LeaseScope};
 use crate::host::callback_error::CallbackErrorScope;
-use crate::host::log_writer::CriticalTrap;
 use crate::value::{roots, wrapper};
 
 struct PointerStorage {
@@ -380,9 +379,7 @@ fn reconcile_property_callbacks<'e>(
     let _retained = PropertyValueScope::push(env, retained.iter().cloned());
     let mut value = glib::Value::from_type(glib::Type::POINTER);
     let target = glib::translate::ToGlibPtrMut::to_glib_none_mut(&mut value).0;
-    let trap = CriticalTrap::arm();
     unsafe { glib::gobject_ffi::g_object_get_property(object, name_c.as_ptr(), target) };
-    let critical = trap.disarm();
     let after = property_callbacks(env, object, name)?;
     let unchanged = match (&generation, &after.generation) {
         (Some(before), Some(after)) => Rc::ptr_eq(before, after),
@@ -390,7 +387,7 @@ fn reconcile_property_callbacks<'e>(
         _ => false,
     };
     merge_callbacks(&mut retained, after.values);
-    if critical.is_none() && !CallbackErrorScope::has_error() && unchanged {
+    if !CallbackErrorScope::has_error() && unchanged {
         let ptr = unsafe { glib::gobject_ffi::g_value_get_pointer(target) };
         let current = match retained
             .into_iter()
@@ -424,13 +421,7 @@ pub fn get_object_property<'e>(
         CString::new(name.as_str()).map_err(|error| Error::from_reason(error.to_string()))?;
     let previous = property_callbacks(env, object, &name)?;
     let _reading = PropertyReadScope::open(object, &name);
-    let trap = CriticalTrap::arm();
     unsafe { glib::gobject_ffi::g_object_get_property(object, name_c.as_ptr(), target) };
-    if let Some(message) = trap.disarm() {
-        return Err(Error::from_reason(format!(
-            "g_object_get_property: {message}"
-        )));
-    }
     if unsafe { glib::gobject_ffi::g_type_fundamental((*target).g_type) }
         != glib::gobject_ffi::G_TYPE_POINTER
     {
@@ -569,14 +560,6 @@ pub fn set_object_property<'e>(
     if !candidates.is_empty() || previous.generation.is_some() {
         store_property_callbacks(env, object, &name, &candidates)?;
     }
-    let trap = CriticalTrap::arm();
     unsafe { glib::gobject_ffi::g_object_set_property(object, name_c.as_ptr(), value_ptr) };
-    let critical = trap.disarm();
-    let reconciled = reconcile_property_callbacks(env, object, &name, &candidates);
-    if let Some(message) = critical {
-        return Err(Error::from_reason(format!(
-            "g_object_set_property: {message}"
-        )));
-    }
-    reconciled
+    reconcile_property_callbacks(env, object, &name, &candidates)
 }

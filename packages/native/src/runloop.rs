@@ -16,7 +16,7 @@ use glib::ffi::{
 use libloading::os::unix::Library;
 use napi::Env;
 
-use crate::host::{error_reporter, log_writer, panic_handler};
+use crate::host::{error_reporter, panic_handler};
 
 const UV_POLL: c_int = 8;
 const UV_PREPARE: c_int = 9;
@@ -344,7 +344,6 @@ pub fn install(env: &Env, dispatch_budget: Duration) -> napi::Result<()> {
         return Ok(());
     }
 
-    log_writer::install();
     panic_handler::install();
 
     let uv = UvApi::load().map_err(|err| {

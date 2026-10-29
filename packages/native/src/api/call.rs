@@ -15,7 +15,6 @@ use crate::ffi::codec::{CallbackScope, Codec, Decoder as _, Encoder as _};
 use crate::ffi::{self};
 use crate::handle::Handle;
 use crate::host::callback_error::CallbackErrorScope;
-use crate::host::log_writer::CriticalTrap;
 
 #[napi(object, object_from_js = false)]
 pub struct CallOutput<'env> {
@@ -161,10 +160,8 @@ fn execute_call_inner<'e>(
     drop(ffi_args);
 
     let symbol = libffi::CodePtr(target.begin_function_call()?);
-    let trap = CriticalTrap::arm();
     let called = return_codec.call_cif(&signature.cif, symbol, &ordered_args);
     drop(ordered_args);
-    let critical = trap.disarm();
 
     let result = called.with_context(|| format!("calling {label}"))?;
 
@@ -182,15 +179,9 @@ fn execute_call_inner<'e>(
         completion.retain(stashes);
     }
 
-    let outputs = outputs?;
-
-    if let Some(message) = critical {
-        anyhow::bail!("{label}: {message}");
-    }
-
     Ok(CallResult {
         value: return_value?,
-        outputs,
+        outputs: outputs?,
     })
 }
 
