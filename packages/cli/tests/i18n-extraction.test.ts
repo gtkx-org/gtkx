@@ -140,6 +140,9 @@ msgstr ""
             ["", "options", "", "src/messages.tsx:7", ""],
             ["button", "Open", "", "src/messages.tsx:4", ""],
         ]);
+        expect(po.parse(readFileSync(join(project.root, "po/org.gtkx.example.pot"))).headers).toMatchObject({
+            "Project-Id-Version": "org.gtkx.example",
+        });
     });
 
     it("extracts imported hooks and components while ignoring shadowed bindings", async () => {

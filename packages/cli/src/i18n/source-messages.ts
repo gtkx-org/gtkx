@@ -1725,12 +1725,13 @@ const restoreCatalogReferences = (output: string, sources: CatalogSource[]): voi
     );
 };
 
-const extractSourceMessages = (sources: CatalogSource[], output: string): void => {
+const extractSourceMessages = (project: CatalogProject, sources: CatalogSource[], output: string): void => {
     runCliTool({
         tool: "xgettext",
         args: [
             "--language=JavaScript",
             "--from-code=UTF-8",
+            `--package-name=${project.domain}`,
             "--force-po",
             "--no-location",
             "--keyword=gettext:1",
@@ -1784,10 +1785,17 @@ const extractMetadataFragment = (project: CatalogProject, input: string, output:
     writeFileSync(output, po.compile(fragment, { foldLength: 0 }));
 };
 
-const joinMetadataFragment = (output: string, fragment: string): void => {
+const joinMetadataFragment = (project: CatalogProject, output: string, fragment: string): void => {
     runCliTool({
         tool: "xgettext",
-        args: ["--language=PO", "--join-existing", "--force-po", `--output=${output}`, fragment],
+        args: [
+            "--language=PO",
+            "--join-existing",
+            `--package-name=${project.domain}`,
+            "--force-po",
+            `--output=${output}`,
+            fragment,
+        ],
         target: output,
     });
 };
@@ -1801,12 +1809,12 @@ const extractCatalogTemplate = ({
     using workDir = mkdtempDisposableSync(join(project.poDir, ".gtkx-i18n-"));
     const source = join(workDir.path, "source.pot");
     const sources = catalogSources(project, messages);
-    extractSourceMessages(sources, source);
+    extractSourceMessages(project, sources, source);
 
     if (shouldPreserveMetadataMessages && existsSync(output)) {
         const fragment = join(workDir.path, "metadata.pot");
         extractMetadataFragment(project, output, fragment);
-        joinMetadataFragment(source, fragment);
+        joinMetadataFragment(project, source, fragment);
     }
 
     restoreCatalogReferences(source, sources);

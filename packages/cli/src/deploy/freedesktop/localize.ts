@@ -123,6 +123,7 @@ const extractMetadataMessages = (metadata: StagedMetadata, project: CatalogProje
             tool: "xgettext",
             args: [
                 "--join-existing",
+                `--package-name=${project.domain}`,
                 "--force-po",
                 "--from-code=UTF-8",
                 `--output=${potPath}`,
