@@ -405,7 +405,10 @@ unsafe extern "C" fn on_toggle_notify(
         if owner.is_current_thread() {
             if release_queue::is_retiring()
                 || !LIVE_TOGGLE_REFS
-                    .with_borrow(|live| live.get(&(gobject as usize)) == Some(&notification_id))
+                    .try_with(|live| {
+                        live.borrow().get(&(gobject as usize)) == Some(&notification_id)
+                    })
+                    .unwrap_or(false)
             {
                 return;
             }
