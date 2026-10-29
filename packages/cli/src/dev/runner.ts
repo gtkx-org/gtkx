@@ -185,8 +185,24 @@ const invalidateModuleAndImporters = (session: DevSession, module: ModuleNode): 
     }
 };
 
+const evaluatedModuleFor = (session: DevSession, changedPath: string): ModuleNode | undefined => {
+    const { moduleGraph } = session.server;
+    const module = moduleGraph.getModuleById(changedPath);
+
+    if (module?.ssrModule) {
+        return module;
+    }
+
+    return (
+        moduleGraph
+            .getModulesByFile(changedPath)
+            ?.values()
+            .find((variant) => variant.ssrModule !== null) ?? module
+    );
+};
+
 const isEvaluationCurrent = (session: DevSession, changedPath: string): boolean => {
-    const evaluated = session.server.moduleGraph.getModuleById(changedPath);
+    const evaluated = evaluatedModuleFor(session, changedPath);
 
     if (!evaluated?.ssrTransformResult) {
         return false;
@@ -331,7 +347,7 @@ const refreshChangedModule = async (
 };
 
 const applyModuleChange = async (session: DevSession, changedPath: string, action: string): Promise<void> => {
-    const module = session.server.moduleGraph.getModuleById(changedPath);
+    const module = evaluatedModuleFor(session, changedPath);
 
     if (!module) {
         return;

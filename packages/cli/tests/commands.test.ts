@@ -339,20 +339,22 @@ describe("CLI commands", () => {
         project.write("src/suffix.ts", 'export const suffix = "x";');
         project.write("src/format.ts", 'import { suffix } from "./suffix.ts"; export const format = () => suffix;');
         project.write("src/title.ts", 'export const title = "a";');
+        project.write("src/greeting.glsl", "hello");
         project.write(
             "src/probe.tsx",
             `import { GtkLabel } from "@gtkx/jsx/gtk";
             import { writeFileSync } from "node:fs";
             import { useEffect } from "react";
             import { format } from "./format.ts";
+            import greeting from "./greeting.glsl?raw";
             import { title } from "./title.ts";
             import { useProbe } from "./use-probe.ts";
             export function Probe() {
                 const { token, label } = useProbe();
                 const suffix = format();
                 useEffect(() => {
-                    writeFileSync(${JSON.stringify(readyPath)}, JSON.stringify({ pid: process.pid, token, label, suffix, title }));
-                }, [token, label, suffix]);
+                    writeFileSync(${JSON.stringify(readyPath)}, JSON.stringify({ pid: process.pid, token, label, suffix, title, greeting }));
+                }, [token, label, suffix, greeting]);
                 return <GtkLabel label={label + suffix} />;
             }`,
         );
@@ -375,10 +377,15 @@ describe("CLI commands", () => {
                 label: string;
                 suffix: string;
                 title: string;
+                greeting: string;
             };
         await withSession("dev", project.root, readyPath, async () => {
             const initial = observation();
-            expect(initial).toMatchObject({ label: "first", suffix: "x", title: "a" });
+            expect(initial).toMatchObject({ label: "first", suffix: "x", title: "a", greeting: "hello" });
+
+            project.write("src/greeting.glsl", "hello again");
+            await expect.poll(() => observation().greeting, { timeout: 30_000 }).toBe("hello again");
+            expect(observation()).toMatchObject({ pid: initial.pid, token: initial.token });
 
             project.write("src/use-probe.ts", hook("second"));
             await expect.poll(() => observation().label, { timeout: 30_000 }).toBe("second");
