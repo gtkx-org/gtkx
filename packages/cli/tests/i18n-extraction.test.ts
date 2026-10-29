@@ -210,6 +210,16 @@ function Local(t, Trans) {
         await expect(extract(project.root)).rejects.toThrow();
     });
 
+    it("keeps a locale's catalog before the application has any messages", async () => {
+        using project = createProject();
+        project.write("po/LINGUAS", "fr\n");
+
+        await extract(project.root);
+        await extract(project.root);
+
+        expect(po.parse(readFileSync(join(project.root, "po/fr.po"))).headers.Language).toBe("fr");
+    });
+
     it("preserves the rejection of angle-bracket type assertions", async () => {
         using project = createProject();
         project.write("po/LINGUAS", "");

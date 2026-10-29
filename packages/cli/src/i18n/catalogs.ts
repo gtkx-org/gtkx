@@ -169,7 +169,7 @@ const mergeCatalog = (catalog: Catalog, template: string, output: string): void 
 
     runCliTool({
         tool: "msgmerge",
-        args: ["--quiet", "--no-wrap", `--output-file=${output}`, catalog.path, template],
+        args: ["--quiet", "--no-wrap", "--force-po", `--output-file=${output}`, catalog.path, template],
         target: catalog.path,
     });
 
