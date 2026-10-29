@@ -734,6 +734,47 @@ describe("CLI commands", () => {
         await expect(invoke(["docs", "--cwd", project.root, "--out", "../outside"])).rejects.toThrow("below");
     });
 
+    it("loads one copy of the bindings in tests after they are regenerated", async () => {
+        using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
+        project.write(
+            "src/cancellable.ts",
+            'import { Cancellable } from "@gtkx/gi/gio"; export const create = () => new Cancellable();',
+        );
+        const writeTest = (name: string) =>
+            project.write(
+                "tests/bindings.test.ts",
+                `import { Cancellable } from "@gtkx/gi/gio";
+                import { expect, test } from "vitest";
+                import { create } from "../src/cancellable.js";
+                test(${JSON.stringify(name)}, () => expect(create()).toBeInstanceOf(Cancellable));`,
+            );
+        project.write(
+            "vitest.config.mjs",
+            `import gtkx from "@gtkx/cli/vitest-plugin";
+            export default { plugins: [gtkx()], test: { include: ["tests/*.test.ts"] } };`,
+        );
+        const runTests = async () => {
+            const runner = await createVitest({
+                root: project.root,
+                config: join(project.root, "vitest.config.mjs"),
+                watch: false,
+                reporters: [],
+            });
+            try {
+                const results = await runner.start();
+                return results.testModules.map((module) => module.state());
+            } finally {
+                await runner.close();
+            }
+        };
+
+        writeTest("creates a cancellable");
+        expect(await runTests()).toEqual(["passed"]);
+        await invoke(["codegen", "--cwd", project.root, "--force"]);
+        writeTest("creates a cancellable after regeneration");
+        expect(await runTests()).toEqual(["passed"]);
+    });
+
     it("keeps the agent rules in step with the generated reference", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"], agents: { rules: true } });
         const rules = () => readFileSync(join(project.root, "AGENTS.md"), "utf8");
