@@ -89,10 +89,6 @@ function plannedSelection(context: SelectionContext, ids: string[]): MatchedRows
 
     const rows = collection.rowsFor(ids);
 
-    if (ids.length > 0 && rows.positions.length === 0) {
-        return null;
-    }
-
     if (selection instanceof Gtk.SingleSelection) {
         return { positions: rows.positions.slice(0, 1), ids: rows.ids.slice(0, 1) };
     }

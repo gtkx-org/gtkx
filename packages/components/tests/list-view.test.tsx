@@ -164,6 +164,24 @@ describe("ListView selection", () => {
         await rerender(firstSecondItems, { selected: [] });
         expect(labelTexts(ref.current)).toEqual(["First", "Second"]);
     });
+
+    it.each([
+        ["single", Gtk.SelectionMode.SINGLE],
+        ["multiple", Gtk.SelectionMode.MULTIPLE],
+    ])("leaves no %s row selected once the selected item leaves the list", async (_mode, selectionMode) => {
+        const reported: string[][] = [];
+        const options = { selectionMode, selected: ["2"], onSelectionChanged: (ids: string[]) => reported.push(ids) };
+        const { ref, rerender } = await renderListView(firstSecondThirdItems, options);
+        reported.length = 0;
+
+        await rerender(
+            firstSecondThirdItems.filter((item) => item.id !== "2"),
+            options,
+        );
+
+        expect(getSelectionModel(ref).getSelection().getSize()).toBe(0n);
+        expect(reported).toEqual([[]]);
+    });
 });
 
 describe("ListView selection through the widget", () => {
