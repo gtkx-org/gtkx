@@ -41,6 +41,14 @@ describe("FontFace", () => {
         expect(face.getWeight()).toBe(FontWeight.NORMAL);
     });
 
+    it("constructs a toy font face with new, as FontFace.create does", () => {
+        const face = new ToyFontFace("Serif", FontSlant.ITALIC, FontWeight.BOLD);
+        expect(face.status()).toBe(Status.SUCCESS);
+        expect(face.getFamily()).toBe("Serif");
+        expect(face.getSlant()).toBe(FontSlant.ITALIC);
+        expect(face.getWeight()).toBe(FontWeight.BOLD);
+    });
+
     it("wraps the face selected on a context as a toy font face", () => {
         const ctx = createContext();
         ctx.selectFontFace("Sans", FontSlant.NORMAL, FontWeight.NORMAL);

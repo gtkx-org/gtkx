@@ -4,8 +4,8 @@ import {
     type Handle,
     registerWrapperClass,
     registerWrapperClassResolver,
+    setHandle,
     t,
-    wrapHandle,
     type WrapperClassResolver,
 } from "@gtkx/runtime";
 import { type FontSlant, FontType, type FontWeight, type Status } from "./enums.js";
@@ -68,9 +68,9 @@ abstract class FontFace {
         registerWrapperClassResolver(this, fontFaceClassFor);
     }
 
-    /** Creates a toy font face from a family name, slant and weight. */
+    /** Creates a toy font face, the same as `new ToyFontFace(...)`. */
     static create(family: string, slant: FontSlant, weight: FontWeight): ToyFontFace {
-        return wrapHandle(cairoToyFontFaceCreate(family, slant, weight) as ExternalObject<Handle>, ToyFontFace);
+        return new ToyFontFace(family, slant, weight);
     }
 
     /** GType of `CairoFontFace`, the boxed type this class is registered under. */
@@ -92,8 +92,14 @@ abstract class FontFace {
     }
 }
 
-/** A toy font face, created with `FontFace.create` or a context's `selectFontFace`. */
+/** A toy font face, created with `new ToyFontFace(...)`, `FontFace.create` or a context's `selectFontFace`. */
 class ToyFontFace extends FontFace {
+    /** Creates a toy font face from a family name, slant and weight. */
+    constructor(family: string, slant: FontSlant, weight: FontWeight) {
+        super();
+        setHandle(this, cairoToyFontFaceCreate(family, slant, weight) as ExternalObject<Handle>);
+    }
+
     /** Returns the family name the font face was created with. */
     getFamily(): string {
         return cairoToyFontFaceGetFamily(getHandle(this)) as string;

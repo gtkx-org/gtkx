@@ -97,6 +97,19 @@ describe("Pattern (context sources)", () => {
 });
 
 describe("Pattern (statics)", () => {
+    it("constructs gradients and meshes with new, as the create statics do", () => {
+        expect(new LinearPattern(1, 2, 3, 4).getLinearPoints()).toEqual({ x0: 1, y0: 2, x1: 3, y1: 4 });
+        expect(new RadialPattern(1, 2, 3, 4, 5, 6).getRadialCircles()).toEqual({
+            x0: 1,
+            y0: 2,
+            r0: 3,
+            x1: 4,
+            y1: 5,
+            r1: 6,
+        });
+        expect(new MeshPattern().getPatchCount()).toBe(0);
+    });
+
     it("wraps solid and surface patterns as plain patterns", () => {
         const solid = Pattern.createRgb(0.25, 0.5, 0.75);
         const surface = Pattern.createForSurface(new ImageSurface(Format.ARGB32, 2, 2));

@@ -4,6 +4,7 @@ import {
     type Handle,
     registerWrapperClass,
     registerWrapperClassResolver,
+    setHandle,
     t,
     wrapHandle,
     type WrapperClassResolver,
@@ -214,14 +215,12 @@ abstract class Pattern {
         return checkPattern(wrapPattern(cairoPatternCreateRgba(red, green, blue, alpha)));
     }
 
-    /** Creates a linear gradient between `(x0, y0)` and `(x1, y1)`; add stops with `addColorStopRgba`. */
+    /** Creates a linear gradient, the same as `new LinearPattern(...)`. */
     static createLinear(x0: number, y0: number, x1: number, y1: number): LinearPattern {
-        const handle = cairoPatternCreateLinear(x0, y0, x1, y1) as ExternalObject<Handle>;
-
-        return checkPattern(wrapHandle(handle, LinearPattern));
+        return new LinearPattern(x0, y0, x1, y1);
     }
 
-    /** Creates a radial gradient between two circles; add stops with `addColorStopRgba`. */
+    /** Creates a radial gradient, the same as `new RadialPattern(...)`. */
     static createRadial(
         cx0: number,
         cy0: number,
@@ -230,14 +229,12 @@ abstract class Pattern {
         cy1: number,
         radius1: number,
     ): RadialPattern {
-        const handle = cairoPatternCreateRadial(cx0, cy0, radius0, cx1, cy1, radius1) as ExternalObject<Handle>;
-
-        return checkPattern(wrapHandle(handle, RadialPattern));
+        return new RadialPattern(cx0, cy0, radius0, cx1, cy1, radius1);
     }
 
-    /** Creates an empty mesh gradient; describe its patches with the `MeshPattern` methods. */
+    /** Creates an empty mesh gradient, the same as `new MeshPattern()`. */
     static createMesh(): MeshPattern {
-        return checkPattern(wrapHandle(cairoPatternCreateMesh() as ExternalObject<Handle>, MeshPattern));
+        return new MeshPattern();
     }
 
     /** Creates a pattern that paints with the content of `surface`. */
@@ -339,8 +336,15 @@ abstract class Pattern {
     }
 }
 
-/** A linear gradient pattern, created with `Pattern.createLinear`. */
+/** A linear gradient pattern, created with `new LinearPattern(...)` or `Pattern.createLinear`. */
 class LinearPattern extends Pattern {
+    /** Creates a linear gradient between `(x0, y0)` and `(x1, y1)`; add stops with `addColorStopRgba`. */
+    constructor(x0: number, y0: number, x1: number, y1: number) {
+        super();
+        setHandle(this, cairoPatternCreateLinear(x0, y0, x1, y1) as ExternalObject<Handle>);
+        checkPattern(this);
+    }
+
     /** Returns the two end points of the gradient. */
     getLinearPoints(): LinearPoints {
         const x0 = { value: 0 };
@@ -353,8 +357,15 @@ class LinearPattern extends Pattern {
     }
 }
 
-/** A radial gradient pattern, created with `Pattern.createRadial`. */
+/** A radial gradient pattern, created with `new RadialPattern(...)` or `Pattern.createRadial`. */
 class RadialPattern extends Pattern {
+    /** Creates a radial gradient between two circles; add stops with `addColorStopRgba`. */
+    constructor(cx0: number, cy0: number, radius0: number, cx1: number, cy1: number, radius1: number) {
+        super();
+        setHandle(this, cairoPatternCreateRadial(cx0, cy0, radius0, cx1, cy1, radius1) as ExternalObject<Handle>);
+        checkPattern(this);
+    }
+
     /** Returns the two circles of the gradient. */
     getRadialCircles(): RadialCircles {
         const x0 = { value: 0 };
@@ -370,10 +381,17 @@ class RadialPattern extends Pattern {
 }
 
 /**
- * A mesh gradient pattern, created with `Pattern.createMesh`: a set of Coons patches, each described between
- * `beginPatch` and `endPatch` by a path of up to four sides and the colors of its corners.
+ * A mesh gradient pattern, created with `new MeshPattern()` or `Pattern.createMesh`: a set of Coons patches, each
+ * described between `beginPatch` and `endPatch` by a path of up to four sides and the colors of its corners.
  */
 class MeshPattern extends Pattern {
+    /** Creates an empty mesh gradient; describe its patches with the methods below. */
+    constructor() {
+        super();
+        setHandle(this, cairoPatternCreateMesh() as ExternalObject<Handle>);
+        checkPattern(this);
+    }
+
     /** Starts describing a new patch. */
     beginPatch(): void {
         cairoMeshPatternBeginPatch(getHandle(this));
