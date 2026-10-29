@@ -69,7 +69,7 @@ type DeclaredAccessor = AccessorBase & {
     hasMemberAccessor: boolean;
 };
 
-type InterfaceAccessor = AccessorBase & { isInterfaceProperty: true };
+type InterfaceAccessor = AccessorBase & { isInterfaceProperty: true; memberName?: string };
 type PropertyAccessor = DeclaredAccessor | InterfaceAccessor;
 /** A `GObject.ParamSpec` wrapper describing one property's name, type, flags and default. */
 type PropertySpec = object;
@@ -77,6 +77,7 @@ type PropertySpec = object;
 type PropertyDispatch = {
     accessors: PropertyAccessor[];
     delegates: Map<string, InterfaceProperty>;
+    memberAccessors: Set<string>;
     elementProperties: Record<string, ElementPropertyEntry>;
 };
 
@@ -657,6 +658,12 @@ function interfaceAccessorFor(dispatch: PropertyDispatch, pspec: PropertySpec): 
         accessor.delegate = delegate;
     }
 
+    const memberName = camelCase(propertyName);
+
+    if (dispatch.memberAccessors.has(memberName)) {
+        accessor.memberName = memberName;
+    }
+
     return accessor;
 }
 
@@ -705,7 +712,9 @@ function readCurrent(instance: object, accessor: PropertyAccessor): unknown {
     }
 
     if (accessor.isInterfaceProperty === true) {
-        return readStored(instance as Record<symbol, unknown>, accessor);
+        return accessor.memberName === undefined
+            ? readStored(instance as Record<symbol, unknown>, accessor)
+            : (instance as Record<string, unknown>)[accessor.memberName];
     }
 
     const member = backingMemberFor(instance, accessor);
@@ -733,7 +742,11 @@ function writeCurrent(instance: object, accessor: PropertyAccessor, value: unkno
     }
 
     if (accessor.isInterfaceProperty === true) {
-        writeStored(instance as Record<symbol, unknown>, accessor, value);
+        if (accessor.memberName === undefined) {
+            writeStored(instance as Record<symbol, unknown>, accessor, value);
+        } else {
+            (instance as Record<string, unknown>)[accessor.memberName] = value;
+        }
 
         return;
     }
@@ -811,6 +824,25 @@ function addInterfaceDelegates(delegates: Map<string, InterfaceProperty>, gtype:
     }
 }
 
+function interfaceMemberAccessorsFor(klass: AnyClass, adoptedTypes: bigint[]): Set<string> {
+    const prototype = (klass as { prototype: object }).prototype;
+    const members: Set<string> = new Set();
+
+    for (const gtype of adoptedTypes) {
+        const pspecs = interfaceListProperties(defaultInterfaceRef(gtype), { value: 0 }) as ExternalObject<Handle>[];
+
+        for (const pspec of pspecs) {
+            const memberName = camelCase(paramSpecName(pspec) as string);
+
+            if (isMemberAccessor(memberDescriptorFor(prototype, memberName))) {
+                members.add(memberName);
+            }
+        }
+    }
+
+    return members;
+}
+
 function interfaceDelegatesFor(adoptedTypes: bigint[]): Map<string, InterfaceProperty> {
     const delegates: Map<string, InterfaceProperty> = new Map();
 
@@ -847,7 +879,12 @@ function buildPropertyDispatch(source: PropertyDispatchSource): PropertyDispatch
         }),
     );
 
-    return { accessors: [...declared], delegates: interfaceDelegatesFor(source.adoptedTypes), elementProperties };
+    return {
+        accessors: [...declared],
+        delegates: interfaceDelegatesFor(source.adoptedTypes),
+        memberAccessors: interfaceMemberAccessorsFor(source.klass, source.adoptedTypes),
+        elementProperties,
+    };
 }
 
 function installPropertyDispatch(klass: AnyClass, dispatch: PropertyDispatch): void {
