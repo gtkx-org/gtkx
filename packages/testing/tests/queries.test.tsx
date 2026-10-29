@@ -191,6 +191,22 @@ describe("ByRole", () => {
         );
     });
 
+    it("names check and radio menu items from their presentation labels, as GTK names model buttons", async () => {
+        const { container } = await render(
+            <VBox>
+                <GtkBox accessibleRole={Gtk.AccessibleRole.MENU_ITEM_CHECKBOX}>
+                    <GtkLabel accessibleRole={Gtk.AccessibleRole.PRESENTATION}>Words</GtkLabel>
+                </GtkBox>
+                <GtkBox accessibleRole={Gtk.AccessibleRole.MENU_ITEM_RADIO}>
+                    <GtkLabel accessibleRole={Gtk.AccessibleRole.PRESENTATION}>By Name</GtkLabel>
+                </GtkBox>
+            </VBox>,
+        );
+
+        expect(await findByRole(container, Gtk.AccessibleRole.MENU_ITEM_CHECKBOX, { name: "Words" })).toBeDefined();
+        expect(await findByRole(container, Gtk.AccessibleRole.MENU_ITEM_RADIO, { name: "By Name" })).toBeDefined();
+    });
+
     it("skips accessibility-hidden widgets by default and never-mapped ones either way", async () => {
         const hidden = await queryButtonsBesideHidden(<GtkButton label="Hidden" accessibleHidden />);
         expect(hidden.defaultMatches).toHaveLength(1);

@@ -120,8 +120,14 @@ const accessibleDescendants = function* (widget: Gtk.Widget): Generator<Gtk.Widg
     }
 };
 
+const MENU_ITEM_ROLES: Set<Gtk.AccessibleRole> = new Set<Gtk.AccessibleRole>([
+    Gtk.AccessibleRole.MENU_ITEM,
+    Gtk.AccessibleRole.MENU_ITEM_CHECKBOX,
+    Gtk.AccessibleRole.MENU_ITEM_RADIO,
+]);
+
 const collectLabels = (widget: Gtk.Widget): string[] => {
-    const isIncludePresentation = widget.getAccessibleRole() === Gtk.AccessibleRole.MENU_ITEM;
+    const isIncludePresentation = MENU_ITEM_ROLES.has(widget.getAccessibleRole());
     const labels: string[] = [];
 
     for (const descendant of accessibleDescendants(widget)) {
