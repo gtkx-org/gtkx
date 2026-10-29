@@ -87,6 +87,7 @@
         "semver": "^7.8.4",
         "spdx-expression-parse": "^5.0.0",
         "vite": "catalog:",
+        "vitefu": "^1.1.3",
         "yaml": "catalog:",
         "zod": "catalog:"
     },

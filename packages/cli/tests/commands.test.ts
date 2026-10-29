@@ -521,6 +521,48 @@ describe("CLI commands", () => {
         });
     });
 
+    it("renders elements from a linked workspace package built against @gtkx/react", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "kit.txt");
+        project.write(
+            "package.json",
+            JSON.stringify({ name: "cli-example", version: "1.0.0", type: "module", dependencies: { kit: "*" } }),
+        );
+        project.write(
+            "packages/kit/package.json",
+            JSON.stringify({
+                name: "kit",
+                type: "module",
+                exports: "./index.js",
+                peerDependencies: { "@gtkx/react": "*" },
+            }),
+        );
+        project.write(
+            "packages/kit/index.js",
+            `import { GtkLabel } from "@gtkx/jsx/gtk";
+            import { jsx } from "react/jsx-runtime";
+            export const Badge = (props) => jsx(GtkLabel, props);`,
+        );
+        symlinkSync(join(project.root, "packages/kit"), join(project.root, "node_modules/kit"), "dir");
+        project.write(
+            "src/index.tsx",
+            `import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+            import { createRoot } from "@gtkx/react";
+            import { Badge } from "kit";
+            import { writeFileSync } from "node:fs";
+            createRoot().render(
+                <AdwApplication applicationId="org.gtkx.example">
+                    <AdwApplicationWindow>
+                        <Badge label="kit" onMap={(label) => writeFileSync(${JSON.stringify(readyPath)}, label.getLabel())} />
+                    </AdwApplicationWindow>
+                </AdwApplication>
+            );`,
+        );
+        await withSession("dev", project.root, readyPath, async () => {
+            await expect.poll(() => readFileSync(readyPath, "utf8")).toBe("kit");
+        });
+    });
+
     it("replaces edited global styles and stylesheets in place and refreshes their raw imports, keeping state", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "probe.json");
