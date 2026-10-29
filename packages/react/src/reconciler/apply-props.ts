@@ -156,8 +156,12 @@ type EquatableValue = { equal: (other: EquatableValue) => boolean };
 const isEquatableValue = (value: unknown): value is EquatableValue =>
     typeof value === "object" && value !== null && typeof Reflect.get(value, "equal") === "function";
 
+const isSameArray = (prev: unknown[], next: unknown[]): boolean =>
+    prev.length === next.length && prev.every((item, index) => isSameNativeValue(item, next[index]));
+
 const isSameNativeValue = (prev: unknown, next: unknown): boolean =>
     Object.is(prev, next) ||
+    (Array.isArray(prev) && Array.isArray(next) && isSameArray(prev, next)) ||
     (isEquatableValue(prev) &&
         isEquatableValue(next) &&
         Object.getPrototypeOf(prev) === Object.getPrototypeOf(next) &&
