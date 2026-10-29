@@ -4,7 +4,16 @@ import { createMcpServer } from "@gtkx/mcp/server";
 import { resolveHeadlessOptions, startHeadlessDisplay } from "@gtkx/vitest/headless";
 import { runCommand } from "citty";
 import { execFile } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync } from "node:fs";
+import {
+    copyFileSync,
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    readdirSync,
+    renameSync,
+    rmSync,
+    symlinkSync,
+} from "node:fs";
 import { join } from "node:path";
 import { setTimeout } from "node:timers/promises";
 import { promisify } from "node:util";
@@ -696,10 +705,16 @@ describe("CLI commands", () => {
                 developer: { name: "GTKX", email: "hello@gtkx.dev" },
                 license: "MIT",
                 homepage: "https://gtkx.dev",
-                node: { source: "host", shouldStrip: false },
+                node: { source: "path", path: "tools/node", shouldStrip: false },
             },
         });
         project.write("LICENSE", "MIT License\nCopyright GTKX\nPermission is hereby granted, free of charge.\n");
+        const nodeLicense = "Node.js is licensed for use as follows: vendored runtime license";
+        project.write("vendor/node/LICENSE", nodeLicense);
+        mkdirSync(join(project.root, "vendor/node/bin"));
+        copyFileSync(process.execPath, join(project.root, "vendor/node/bin/node"));
+        mkdirSync(join(project.root, "tools"));
+        symlinkSync("../vendor/node/bin/node", join(project.root, "tools/node"));
         project.write(
             "icon.svg",
             '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="blue"/></svg>',
@@ -719,6 +734,11 @@ describe("CLI commands", () => {
             ]),
         );
         expect(files.some((file) => file.endsWith("bundle.mjs"))).toBe(true);
+        const notices = readFileSync(
+            join(project.root, "build", process.arch, "overlay/rpm/share/licenses/cli-example/THIRD-PARTY-NOTICES"),
+            "utf8",
+        );
+        expect(notices).toContain(nodeLicense);
     });
 
     it("preserves arguments, configuration, translations and MCP across headless dev restarts", async () => {
