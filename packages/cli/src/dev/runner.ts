@@ -98,6 +98,7 @@ const DROPPED_REFRESH = "Fast Refresh dropped";
 const SAVE_ACTION = "File changed";
 const RETRY_ACTION = "Retrying pending save";
 const NONE_REJECTED: ReadonlySet<ModuleNode> = new Set();
+const REPEATED_REGISTRATION_PATTERN = /Type name '[^']+' is already registered/;
 
 const unreportedDetail = (server: ViteDevServer, cause: unknown): unknown =>
     cause instanceof Error && server.config.logger.hasErrorLogged(cause) ? cause.message.split("\n", 1)[0] : cause;
@@ -403,11 +404,21 @@ const awaitMissingImport = (session: DevSession, changedPath: string, cause: unk
     session.pendingSaves.set(changedPath, missingName);
 };
 
+const isRepeatedRegistration = (cause: unknown): boolean =>
+    cause instanceof Error && REPEATED_REGISTRATION_PATTERN.test(cause.message);
+
 const applySave = async (session: DevSession, changedPath: string, action: string): Promise<void> => {
     try {
         await applyModuleChange(session, changedPath, action);
     } catch (error_) {
         if (session.controller.isShuttingDown()) {
+            return;
+        }
+
+        if (isRepeatedRegistration(error_)) {
+            session.deps.log(`Registered GObject type changed: ${changedPath}`);
+            await requestRestart(session);
+
             return;
         }
 

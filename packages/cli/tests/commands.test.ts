@@ -382,11 +382,20 @@ describe("CLI commands", () => {
         project.write("src/format.ts", 'import { suffix } from "./suffix.ts"; export const format = () => suffix;');
         project.write("src/title.ts", 'export const title = "a";');
         project.write("src/greeting.glsl", "hello");
+        const badge = (text: string) => `
+            import { Label } from "@gtkx/gi/gtk";
+            import { registerClass } from "@gtkx/runtime";
+            class BadgeBase extends Label {}
+            export const Badge = registerClass(BadgeBase, { typeName: "ProbeBadge" });
+            export const badgeText = ${JSON.stringify(text)};
+        `;
+        project.write("src/badge.ts", badge("one"));
         project.write(
             "src/probe.tsx",
             `import { GtkLabel } from "@gtkx/jsx/gtk";
             import { writeFileSync } from "node:fs";
             import { useEffect } from "react";
+            import { badgeText } from "./badge.ts";
             import { format } from "./format.ts";
             import greeting from "./greeting.glsl?raw";
             import { title } from "./title.ts";
@@ -395,7 +404,7 @@ describe("CLI commands", () => {
                 const { token, label } = useProbe();
                 const suffix = format();
                 useEffect(() => {
-                    writeFileSync(${JSON.stringify(readyPath)}, JSON.stringify({ pid: process.pid, token, label, suffix, title, greeting }));
+                    writeFileSync(${JSON.stringify(readyPath)}, JSON.stringify({ pid: process.pid, token, label, suffix, title, greeting, badgeText }));
                 }, [token, label, suffix, greeting]);
                 return <GtkLabel label={label + suffix} />;
             }`,
@@ -420,10 +429,17 @@ describe("CLI commands", () => {
                 suffix: string;
                 title: string;
                 greeting: string;
+                badgeText: string;
             };
         await withSession("dev", project.root, readyPath, async () => {
             const initial = observation();
-            expect(initial).toMatchObject({ label: "first", suffix: "x", title: "a", greeting: "hello" });
+            expect(initial).toMatchObject({
+                label: "first",
+                suffix: "x",
+                title: "a",
+                greeting: "hello",
+                badgeText: "one",
+            });
 
             project.write("src/greeting.glsl", "hello again");
             await expect.poll(() => observation().greeting, { timeout: 30_000 }).toBe("hello again");
@@ -445,7 +461,17 @@ describe("CLI commands", () => {
 
             project.write("src/title.ts", 'export const title = "b";');
             await expect.poll(() => observation().title, { timeout: 30_000 }).toBe("b");
-            expect(observation().pid).not.toBe(initial.pid);
+            const restarted = observation();
+            expect(restarted.pid).not.toBe(initial.pid);
+
+            project.write("src/badge.ts", badge("two"));
+            await expect.poll(() => observation().badgeText, { timeout: 30_000 }).toBe("two");
+            const registered = observation();
+            expect(registered.pid).not.toBe(restarted.pid);
+
+            project.write("src/use-probe.ts", hook("fourth", true));
+            await expect.poll(() => observation().label, { timeout: 30_000 }).toBe("fourth");
+            expect(observation()).toMatchObject({ pid: registered.pid, token: registered.token, badgeText: "two" });
         });
     });
 
