@@ -39,9 +39,28 @@ Changing `drawFunc` queues a repaint, including when a render supplies a new cal
 
 ## Share values with native libraries
 
-GTK and PangoCairo return the same managed classes that you import from `@gtkx/cairo`. Pass these objects directly between APIs. For example, `PangoCairo.createLayout(cr)` accepts the context from `drawFunc` without conversion.
+GTK and PangoCairo return the same managed classes that you import from `@gtkx/cairo`. Pass these objects directly between APIs. For example, `PangoCairo.showLayout(cr, layout)` accepts the context from `drawFunc` without conversion.
 
-Use PangoCairo for application text. Its [layout documentation](https://docs.gtk.org/PangoCairo/) covers shaping, font fallback and layout; import its bindings from `@gtkx/gi/pangocairo`.
+Use Pango for application text. Inside `drawFunc`, create the layout with the widget's `createPangoLayout(text)`, which uses the widget's font, and draw it with PangoCairo:
+
+```tsx
+import * as PangoCairo from "@gtkx/gi/pangocairo";
+import { GtkDrawingArea } from "@gtkx/jsx/gtk";
+
+const Caption = () => (
+    <GtkDrawingArea
+        contentWidth={200}
+        contentHeight={40}
+        drawFunc={(area, cr) => {
+            const layout = area.createPangoLayout("Mood this week");
+            cr.moveTo(8, 8);
+            PangoCairo.showLayout(cr, layout);
+        }}
+    />
+);
+```
+
+`PangoCairo.createLayout(cr)` creates a layout with Pango's default font rather than the widget's, so text drawn with it does not match the rest of the interface. Use it for offscreen rendering, and set a font with `layout.setFontDescription()`; `widget.getPangoContext().getFontDescription()` returns the font a widget uses. The [PangoCairo documentation](https://docs.gtk.org/PangoCairo/) covers shaping, font fallback and layout; import its bindings from `@gtkx/gi/pangocairo`.
 
 Values returned by native libraries use their concrete wrapper classes. Check `surface instanceof ImageSurface` before reading image pixels from a surface returned by `cr.getTarget()`.
 
