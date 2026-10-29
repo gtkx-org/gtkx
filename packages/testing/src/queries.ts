@@ -1,3 +1,4 @@
+import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
 import type { ByRoleOptions, ByRoleValue, Matcher, MatcherOptions, NormalizerFn, QueryFamilies } from "./types.js";
 import { buildQueries, type BuiltQueries, type QueryAllBy } from "./build-queries.js";
@@ -277,6 +278,16 @@ const hasMatchingAccessibleStates = (widget: Gtk.Widget, options: ByRoleOptions)
     hasMatchingDescriptionState(widget, options) &&
     hasMatchingValueState(widget, options);
 
+const isDialogContentShown = (widget: Gtk.Widget): boolean => {
+    if (!(widget instanceof Adw.Dialog)) {
+        return true;
+    }
+
+    const child = widget.getChild();
+
+    return child === null || child.getMapped();
+};
+
 const isMatchingWidgetType = <T extends Gtk.Accessible>(
     widget: Gtk.Widget,
     options?: MatcherOptions<T>,
@@ -310,7 +321,8 @@ function nameQueryFamily<Args extends unknown[], Element extends Gtk.Accessible>
 /**
  * Finds every widget under the container whose accessible role matches `role` and that satisfies the given options.
  * Widgets that are not mapped are never matched, and widgets excluded from the accessibility tree are
- * skipped unless `options.hidden` is set.
+ * skipped unless `options.hidden` is set. An Adwaita dialog matches once its content is shown, which
+ * libadwaita does a frame after the dialog opens.
  * @param container Widget subtree to search.
  * @param role Accessible role to match.
  * @param options Additional accessible name, state, and value constraints.
@@ -324,7 +336,7 @@ function queryAllByRole<T extends Gtk.Accessible = Gtk.Widget>(
     const isInaccessible = buildInaccessibilityCheck();
 
     const matches = findAll(container, (widget) => {
-        if (widget.getAccessibleRole() !== role) {
+        if (widget.getAccessibleRole() !== role || !isDialogContentShown(widget)) {
             return false;
         }
 

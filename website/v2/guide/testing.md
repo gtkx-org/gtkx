@@ -96,7 +96,7 @@ Prefer `screen.getByRole` with a `Gtk.AccessibleRole` enum and an accessible nam
 
 GTKX follows [Testing Library's query conventions](https://testing-library.com/docs/queries/about/). Other query families match label text, placeholders, display values, or the widget's `name` prop; see the [query reference](/v2/reference/@gtkx/testing/).
 
-Queries exclude widgets that are not mapped, including content on inactive stack pages. The `hidden` option on role queries only includes widgets excluded from the accessibility tree; it does not include unmapped widgets.
+Queries exclude widgets that are not mapped, including content on inactive stack pages. The `hidden` option on role queries only includes widgets excluded from the accessibility tree; it does not include unmapped widgets. A role query matches an Adwaita dialog only once its content is shown, which libadwaita does a frame after the dialog opens, so a dialog found with `findByRole` can be queried right away.
 
 A text button's child label takes precedence over its `accessibleLabel` prop. Query the visible label and use `within` when several buttons share it.
 

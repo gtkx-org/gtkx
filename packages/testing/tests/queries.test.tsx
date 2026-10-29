@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwSpinRow } from "@gtkx/jsx/adw";
+import { AdwDialog, AdwEntryRow, AdwPreferencesGroup, AdwSpinRow, AdwWindow } from "@gtkx/jsx/adw";
 import {
     GtkAdjustment,
     GtkBox,
@@ -50,8 +50,11 @@ import {
     queryByText,
     render,
     screen,
+    userEvent,
     within,
 } from "@gtkx/testing";
+import { rootElement } from "@gtkx/react";
+import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import { VBox } from "./widget-fixtures.js";
 
@@ -60,6 +63,30 @@ type LabelledRefs = {
     second: Gtk.Entry | null;
     labelled: Gtk.Entry | null;
     label: Gtk.Label | null;
+};
+
+const SignIn = (): ReactNode => {
+    const [isOpen, setIsOpen] = useState(false);
+
+    return (
+        <AdwWindow defaultWidth={400} defaultHeight={300}>
+            <VBox>
+                <GtkButton
+                    label="Sign In"
+                    onClicked={() => {
+                        setIsOpen(true);
+                    }}
+                />
+                {isOpen ? (
+                    <AdwDialog title="Sync Account">
+                        <AdwPreferencesGroup>
+                            <AdwEntryRow title="Email" />
+                        </AdwPreferencesGroup>
+                    </AdwDialog>
+                ) : null}
+            </VBox>
+        </AdwWindow>
+    );
 };
 
 const queryButtonsBesideHidden = async (hiddenButton: ReactNode) => {
@@ -221,6 +248,15 @@ describe("ByRole", () => {
         await expect(findByRole(container, Gtk.AccessibleRole.SLIDER, { timeout: 100 })).rejects.toThrow();
         await expect(findAllByRole(container, Gtk.AccessibleRole.SLIDER, { timeout: 100 })).rejects.toThrow();
         expect(() => queryByRole(container, Gtk.AccessibleRole.BUTTON)).toThrow();
+    });
+});
+
+describe("ByRole on dialogs", () => {
+    it("finds an Adwaita dialog once its content is shown", async () => {
+        await render(<SignIn />, { container: rootElement });
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Sign In" }));
+        const dialog = await screen.findByRole(Gtk.AccessibleRole.DIALOG, { name: "Sync Account" });
+        expect(within(dialog).getByRole(Gtk.AccessibleRole.TEXT_BOX, { name: "Email" })).toBeRooted();
     });
 });
 
