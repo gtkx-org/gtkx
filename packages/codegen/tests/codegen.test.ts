@@ -314,6 +314,13 @@ describe("generated bindings", () => {
         await expect(runCodegen({ ...sharedOptions, girPath: [consumer, ...girPath] })).rejects.toThrow();
         await expect(runCodegen({ ...sharedOptions, libraries: ["Gio-3.0"] })).rejects.toThrow();
         expect(readGeneratedElements(jsx.linkDir).length).toBeGreaterThan(0);
+        await runCodegen({ ...sharedOptions, jsx: { ...shared.jsx, version: "0.0.0" } });
+        await runCodegen(options);
+        await runCodegen({ ...sharedOptions, userLazyElements: ["GtkLabel"], isSharingForced: true });
+        await expect(runCodegen(options)).rejects.toThrow();
+        await runCodegen({ ...options, isSharingForced: true });
+        expect(readGeneratedLibraries(gi.linkDir)?.libraries).toEqual(["Gio-2.0"]);
+        await runCodegen({ ...sharedOptions, libraries: ["GLib-2.0"] });
 
         const otherReact = join(consumer, "node_modules", "react");
         mkdirSync(otherReact, { recursive: true });

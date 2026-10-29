@@ -10,7 +10,7 @@ import { runGiCodegen } from "./gi.js";
 import { Library } from "./gir/library.js";
 import { generateGlModules, type GlGenerationReport } from "./khronos/pipeline.js";
 import { acquireStoreLocks, sweepStagingDirs } from "./staging.js";
-import { registerSharedProject, sharedLibraries, type SharedProject } from "./store/shared-store.js";
+import { registerSharedProject, shareStore, type SharedProject } from "./store/shared-store.js";
 import {
     discardPreparedStore,
     ensureStoreLink,
@@ -52,6 +52,11 @@ type CodegenRunnerOptions = {
     userOmittedProps?: OmittedProps;
     /** Regenerates both stores even when their fingerprints are fresh. */
     isForced?: boolean;
+    /**
+     * Drops the projects sharing the store whose requirements conflict with this one instead of failing; they
+     * share it again when they next generate compatible bindings.
+     */
+    isSharingForced?: boolean;
     /** Maximum wait for each generated-store lock in milliseconds. Defaults to ten minutes. */
     lockTimeoutMs?: number | undefined;
 };
@@ -183,7 +188,6 @@ const sharedProject = (options: CodegenRunnerOptions): SharedProject => ({
         options.jsx === undefined
             ? null
             : hashElementConfig({
-                  reactVersion: options.jsx.version,
                   components: options.userComponents ?? {},
                   lazyElements: options.userLazyElements ?? [],
                   props: options.userProps ?? {},
@@ -200,7 +204,11 @@ const emitStores = async (input: CodegenRunnerOptions): Promise<StoreResult> => 
 
     const { owner } = gi;
     const project = sharedProject(input);
-    const libraries = owner === undefined ? input.libraries : sharedLibraries(gi.storeDir, owner, project);
+    const shared =
+        owner === undefined
+            ? null
+            : { owner, ...shareStore(gi.storeDir, owner, project, input.isSharingForced === true) };
+    const libraries = shared?.libraries ?? input.libraries;
     const options = hasStoreLayout(gi, jsx) ? { ...input, libraries } : { ...input, libraries, isForced: true };
     reclaimStoreArtifacts(gi);
 
@@ -236,8 +244,8 @@ const emitStores = async (input: CodegenRunnerOptions): Promise<StoreResult> => 
             publishStores({ gi: giResult.store, giLink: gi, jsx: jsxStore, jsxLink: jsx });
         }
 
-        if (owner !== undefined) {
-            registerSharedProject(gi.storeDir, owner, project);
+        if (shared !== null) {
+            registerSharedProject(gi.storeDir, shared.owner, project, shared);
         }
 
         return {

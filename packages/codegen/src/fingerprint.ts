@@ -297,8 +297,9 @@ const serializeStringLists = (map: Record<string, string[]>): [string, string][]
         .toSorted()
         .map((type) => [type, sortAlpha(map[type] ?? [])]);
 
-const serializeJsxInput = (input: JsxFingerprintInput): unknown[] => [
-    input.reactVersion,
+type ElementConfigInput = Omit<JsxFingerprintInput, "reactVersion">;
+
+const serializeElementConfig = (input: ElementConfigInput): unknown[] => [
     serializeModuleExports(input.components),
     input.lazyElements.toSorted(),
     serializeElementProps(input.props),
@@ -307,12 +308,12 @@ const serializeJsxInput = (input: JsxFingerprintInput): unknown[] => [
 
 const hashJsx = (input: JsxFingerprintInput): string =>
     createHash("sha256")
-        .update(JSON.stringify([codegenHash(), ...serializeJsxInput(input)]))
+        .update(JSON.stringify([codegenHash(), input.reactVersion, ...serializeElementConfig(input)]))
         .digest("hex");
 
-const hashElementConfig = (input: JsxFingerprintInput): string =>
+const hashElementConfig = (input: ElementConfigInput): string =>
     createHash("sha256")
-        .update(JSON.stringify(serializeJsxInput(input)))
+        .update(JSON.stringify(serializeElementConfig(input)))
         .digest("hex");
 
 const computeJsxFingerprint = (input: JsxFingerprintInput, intrinsicElementCount: number): JsxFingerprint => ({

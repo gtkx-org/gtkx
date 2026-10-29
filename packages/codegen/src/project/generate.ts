@@ -58,6 +58,7 @@ const generateBindings = async (options: GenerateBindingsOptions): Promise<Gener
         userLazyElements: resolveLazyElements(config.elements),
         userOmittedProps: resolveOmittedProps(config.elements),
         isForced,
+        isSharingForced: options.isForced === true,
         lockTimeoutMs: options.lockTimeoutMs,
     });
 
