@@ -7,6 +7,7 @@ import { readFile } from "node:fs/promises";
 import { createServer } from "vite";
 import type { ApplicationState, DevRunnerDeps } from "./runner.js";
 import { hasUnstagedFontImport } from "../internal/font-staging.js";
+import { openWorkerSources } from "../internal/worker-sources.js";
 import type { ProjectStaging } from "../internal/project-staging.js";
 import { startMcpClient, stopMcpClient } from "../mcp/index.js";
 import {
@@ -127,6 +128,11 @@ const createDevRunnerDeps = (
     watchUncaughtErrors: (onUncaughtError) => {
         process.on("uncaughtException", onUncaughtError);
         process.on("unhandledRejection", onUncaughtError);
+    },
+    watchWorkerSources: (onSource) => {
+        openWorkerSources().onmessage = (event) => {
+            onSource(String(event.data));
+        };
     },
     getApplicationRegistrationState: currentApplicationRegistrationState,
     installShutdownHandlers: (onSignal) => {

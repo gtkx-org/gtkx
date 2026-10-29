@@ -20,7 +20,7 @@ worker.on("message", (rows) => setRows(rows));
 
 For `gtkx build` to emit the worker, its URL must appear directly inside `new Worker(...)` and name the source file through a relative path.
 
-During `gtkx dev` and Vitest, Node loads the worker's source directly. Its relative imports must name source files or [`?url` and `?raw` assets](#importing-files-in-a-worker), and its syntax must work with [Node's type stripping](https://nodejs.org/api/typescript.html#type-stripping). For TypeScript imports, add `"allowImportingTsExtensions": true` to the scaffold's `compilerOptions`; it already uses `NodeNext` and `noEmit`. Exercise workers in tests as well as builds, since the production bundle can accept syntax that direct loading cannot.
+During `gtkx dev` and Vitest, Node loads the worker's source directly, and `gtkx dev` restarts the app when a file the worker loaded changes. Its relative imports must name source files or [`?url` and `?raw` assets](#importing-files-in-a-worker), and its syntax must work with [Node's type stripping](https://nodejs.org/api/typescript.html#type-stripping). For TypeScript imports, add `"allowImportingTsExtensions": true` to the scaffold's `compilerOptions`; it already uses `NodeNext` and `noEmit`. Exercise workers in tests as well as builds, since the production bundle can accept syntax that direct loading cannot.
 
 Only one thread in a process can own GTKX's GLib integration. An application's main thread owns it, so application workers must use Node APIs and send data back to the main thread; they cannot import generated GI modules or make GTKX native calls.
 

@@ -28,6 +28,7 @@ type DevRunnerDeps = {
     stopMcpClient(): void;
     watchApplicationShutdown(onShutdown: () => void): void;
     watchUncaughtErrors(onUncaughtError: (cause: unknown) => void): void;
+    watchWorkerSources(onSource: (path: string) => void): void;
     getApplicationRegistrationState(): ApplicationState;
     installShutdownHandlers(onSignal: () => void | Promise<void>): void;
     quitDefaultApplication(): void;
@@ -66,6 +67,7 @@ type DevSession = {
     imports: Map<string, Set<string>>;
     registrations: Set<string>;
     schemaFiles: Set<string>;
+    workerSources: Set<string>;
     hasPendingSchemaChange: boolean;
     storybook: StorybookSession | undefined;
 };
@@ -519,6 +521,17 @@ const hasChangedSchemaInputs = (session: DevSession, change: WatchedChange): boo
     );
 };
 
+const didRestartForWorker = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
+    if (!session.workerSources.has(change.path)) {
+        return false;
+    }
+
+    session.deps.log(`Worker module ${change.event}: ${change.path}`);
+    await requestRestart(session);
+
+    return true;
+};
+
 const didRestartForStylesheet = async (session: DevSession, change: WatchedChange): Promise<boolean> => {
     if (change.event === "change" || !session.server.moduleGraph.getModuleById(injectedCssId(change.path))) {
         return false;
@@ -593,6 +606,7 @@ const didRestartForChange = async (session: DevSession, change: WatchedChange): 
     }
 
     return (
+        (await didRestartForWorker(session, change)) ||
         (await didRestartForStylesheet(session, change)) ||
         (await didRestartForAsset(session, change)) ||
         didRestartForImports(session, change.path)
@@ -880,6 +894,7 @@ const createSession = (
         imports,
         registrations,
         schemaFiles: new Set(projectSchemaFiles(server.config.root).files),
+        workerSources: new Set(),
         hasPendingSchemaChange: false,
         storybook: undefined,
     };
@@ -901,6 +916,10 @@ const createDevRunner = (deps: DevRunnerDeps, options: DevRunnerOptions = {}): D
 
         deps.watchUncaughtErrors((cause) => {
             session.failure.report(cause);
+        });
+
+        deps.watchWorkerSources((path) => {
+            session.workerSources.add(path);
         });
 
         deps.watchApplicationShutdown(onApplicationShutdown(session));

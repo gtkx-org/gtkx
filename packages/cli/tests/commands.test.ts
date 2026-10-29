@@ -141,19 +141,17 @@ describe("CLI commands", () => {
         }
     });
 
-    it("runs workers that import asset URLs and raw text in development, tests and production", async () => {
+    it("runs workers with asset imports in development, tests and production and restarts for their edits", async () => {
         using project = createProject();
         const readyPath = join(project.root, "worker.json");
         const sourcePath = join(project.root, "data/notes.txt");
-        project.write("data/notes.txt", "worker asset");
-        project.write(
-            "src/workers/read.ts",
-            `import { readFileSync } from "node:fs";
+        const workerSource = `import { readFileSync } from "node:fs";
             import { parentPort } from "node:worker_threads";
             import notesPath from "../../data/notes.txt?url";
             import notes from "../../data/notes.txt?raw";
-            parentPort?.postMessage({ path: notesPath, text: readFileSync(notesPath, "utf8"), raw: notes });`,
-        );
+            parentPort?.postMessage({ path: notesPath, text: readFileSync(notesPath, "utf8"), raw: notes });`;
+        project.write("data/notes.txt", "worker asset");
+        project.write("src/workers/read.ts", workerSource);
         project.write(
             "src/index.ts",
             `import { writeFileSync } from "node:fs";
@@ -189,6 +187,17 @@ describe("CLI commands", () => {
 
         await withSession("dev", project.root, readyPath, async () => {
             await expect.poll(result).toEqual({ path: sourcePath, text: "worker asset", raw: "worker asset" });
+            project.write("data/notes.txt", "edited asset");
+            await expect.poll(result, { timeout: 30_000 }).toEqual({
+                path: sourcePath,
+                text: "edited asset",
+                raw: "edited asset",
+            });
+            project.write("data/notes.txt", "worker asset");
+            await expect.poll(result, { timeout: 30_000 }).toMatchObject({ raw: "worker asset" });
+            rmSync(readyPath);
+            project.write("src/workers/read.ts", workerSource);
+            await expect.poll(() => existsSync(readyPath), { timeout: 30_000 }).toBe(true);
         });
         const runner = await createVitest({
             root: project.root,
