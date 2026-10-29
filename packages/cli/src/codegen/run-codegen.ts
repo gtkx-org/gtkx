@@ -7,7 +7,7 @@ import {
     sweepProjectStaging,
 } from "@gtkx/codegen/internal";
 import { type Config, loadConfig } from "@gtkx/config";
-import { createConfigReloader, isAgentRulesEnabled } from "@gtkx/config/internal";
+import { createConfigReloader, isAgentReferenceEnabled, isAgentRulesEnabled } from "@gtkx/config/internal";
 import { info } from "@gtkx/utils";
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
@@ -112,7 +112,7 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     });
 
     if (isAgentRulesEnabled(config)) {
-        upsertAgentRules(cwd);
+        upsertAgentRules(cwd, isAgentReferenceEnabled(config));
     }
 
     return {

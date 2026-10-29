@@ -160,7 +160,10 @@ const agentsSchema = z.strictObject({
      * Defaults to `true`.
      */
     rules: z.boolean({ error: "must be a boolean" }).optional(),
-    /** Whether codegen writes the generated element reference to `.gtkx/reference`. Defaults to `true`. */
+    /**
+     * Whether codegen writes the generated element reference to `.gtkx/reference` and points the rules at it.
+     * `false` removes a reference generated earlier. Defaults to `true`.
+     */
     reference: z.boolean({ error: "must be a boolean" }).optional(),
 });
 

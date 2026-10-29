@@ -375,7 +375,7 @@ const assertOwnedOutDir = (options: DocsOptions, manifest: DocsManifest | undefi
     );
 };
 
-const clearOutDir = (options: DocsOptions, manifest: DocsManifest | undefined): void => {
+const clearOutDir = (outDir: string, manifest: DocsManifest | undefined): void => {
     if (manifest === undefined) {
         return;
     }
@@ -388,7 +388,7 @@ const clearOutDir = (options: DocsOptions, manifest: DocsManifest | undefined): 
     ];
 
     for (const entry of entries) {
-        rmSync(join(options.outDir, entry), { recursive: true, force: true });
+        rmSync(join(outDir, entry), { recursive: true, force: true });
     }
 };
 
@@ -457,7 +457,7 @@ const writeDocs = (options: DocsOptions): DocsResult => {
         props,
         lazyElements: input.lazyElements,
     });
-    clearOutDir(options, previous);
+    clearOutDir(options.outDir, previous);
     mkdirSync(options.outDir, { recursive: true });
     const manifest: DocsManifest = { generator: MANIFEST_GENERATOR, namespaces };
     writeFileSync(manifestPath, JSON.stringify(manifest));
@@ -468,4 +468,19 @@ const writeDocs = (options: DocsOptions): DocsResult => {
     return { isRegenerated: true, namespaces };
 };
 
-export { writeDocs };
+/** Removes the pages `writeDocs` generated into `outDir`, and the directory once nothing else is left in it. */
+const removeDocs = (outDir: string): void => {
+    const manifest = readDocsManifest(join(outDir, MANIFEST_FILENAME));
+
+    if (manifest === undefined) {
+        return;
+    }
+
+    clearOutDir(outDir, manifest);
+
+    if (readdirSync(outDir).length === 0) {
+        rmSync(outDir, { recursive: true, force: true });
+    }
+};
+
+export { removeDocs, writeDocs };

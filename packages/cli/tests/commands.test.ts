@@ -734,6 +734,22 @@ describe("CLI commands", () => {
         await expect(invoke(["docs", "--cwd", project.root, "--out", "../outside"])).rejects.toThrow("below");
     });
 
+    it("keeps the agent rules in step with the generated reference", async () => {
+        using project = createProject({ codegen: true, libraries: ["Gio-2.0"], agents: { rules: true } });
+        const rules = () => readFileSync(join(project.root, "AGENTS.md"), "utf8");
+        await invoke(["codegen", "--cwd", project.root]);
+        expect(rules()).toContain("`.gtkx/reference/index.md`");
+        expect(existsSync(join(project.root, ".gtkx/reference/index.md"))).toBe(true);
+
+        project.write(
+            "gtkx.config.ts",
+            `export default ${JSON.stringify({ applicationId: "org.gtkx.example", libraries: ["Gio-2.0"], agents: { reference: false } })};`,
+        );
+        await invoke(["codegen", "--cwd", project.root]);
+        expect(rules()).not.toContain(".gtkx/reference");
+        expect(existsSync(join(project.root, ".gtkx/reference"))).toBe(false);
+    });
+
     it("creates a project through the gtkx create alias", async () => {
         using project = createProject();
         const target = join(project.root, "created");

@@ -16,7 +16,14 @@ const END_MARKER = "<!-- END:gtkx-agent-rules -->";
 const BLOCK_PATTERN = /<!-- BEGIN:gtkx-agent-rules -->[\s\S]*?<!-- END:gtkx-agent-rules -->/;
 const TOP_LEVEL_HEADING = /^# /m;
 
-const rulesBody = (heading: string): string[] => [
+const referenceRules = [
+    `Read \`${REFERENCE_PATH}/index.md\` before writing widget code. It is generated from this project's own ` +
+        "GIR libraries and is the authority on which props, signals and methods exist. Do not infer a prop from " +
+        "another toolkit, from a C function name, or from a similar element.",
+    "",
+];
+
+const rulesBody = (heading: string, hasReference: boolean): string[] => [
     `${heading} GTKX`,
     "",
     "GTKX applications are Adwaita-first, with GTK4 underneath. Most GNOME UI code in your training data is C, " +
@@ -34,15 +41,12 @@ const rulesBody = (heading: string): string[] => [
         "`@gtkx/gi/<namespace>`. Both are generated for this project by `gtkx codegen`, not installed from npm, " +
         "so they match the GIR libraries this project declares.",
     "",
-    `Read \`${REFERENCE_PATH}/index.md\` before writing widget code. It is generated from this project's own ` +
-        "GIR libraries and is the authority on which props, signals and methods exist. Do not infer a prop from " +
-        "another toolkit, from a C function name, or from a similar element.",
-    "",
+    ...(hasReference ? referenceRules : []),
     "| Command | What it does |",
     "| --- | --- |",
     "| `gtkx dev` | Run the app with fast refresh |",
     "| `gtkx storybook` | Explore native component stories with controls and actions |",
-    "| `gtkx codegen` | Regenerate bindings and this reference |",
+    `| \`gtkx codegen\` | Regenerate bindings${hasReference ? " and this reference" : ""} |`,
     "| `gtkx cleanup` | Remove stale headless runtime and compile cache directories |",
     "| `tsc --noEmit` | Typecheck |",
     "| `vitest run` | Run the tests |",
@@ -54,7 +58,8 @@ const rulesBody = (heading: string): string[] => [
         "committing the block with your work keeps the tree clean.",
 ];
 
-const renderBlock = (heading: string): string => [BEGIN_MARKER, "", ...rulesBody(heading), "", END_MARKER].join("\n");
+const renderBlock = (heading: string, hasReference: boolean): string =>
+    [BEGIN_MARKER, "", ...rulesBody(heading, hasReference), "", END_MARKER].join("\n");
 
 const headingFor = (contents: string): string => (TOP_LEVEL_HEADING.test(contents) ? "##" : "#");
 const withTrailingNewline = (contents: string): string => (contents.endsWith("\n") ? contents : `${contents}\n`);
@@ -77,10 +82,10 @@ const replaceBlock = (contents: string, block: string): string => {
     return contents.slice(0, match.index) + block + contents.slice(match.index + match[0].length);
 };
 
-const nextContents = (contents: string): string => {
+const nextContents = (contents: string, hasReference: boolean): string => {
     const heading = headingFor(contents.replace(BLOCK_PATTERN, ""));
 
-    return replaceBlock(contents, renderBlock(heading));
+    return replaceBlock(contents, renderBlock(heading, hasReference));
 };
 
 const readOrUndefined = (path: string): string | undefined => {
@@ -119,12 +124,12 @@ const hasWrittenClaudeImport = (root: string): boolean => {
     }
 };
 
-const upsertAgentRules = (root: string): AgentRulesResult => {
+const upsertAgentRules = (root: string, hasReference: boolean): AgentRulesResult => {
     const agentsPath = join(root, AGENTS_FILENAME);
     const existing = readOrUndefined(agentsPath) ?? "";
     const files: string[] = [];
 
-    if (hasWritten(agentsPath, nextContents(existing))) {
+    if (hasWritten(agentsPath, nextContents(existing, hasReference))) {
         files.push(AGENTS_FILENAME);
     }
 
