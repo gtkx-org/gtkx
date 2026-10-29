@@ -173,7 +173,7 @@ const useApplicationLifecycle = (
                 onComplete();
 
                 if (lifecycle.isMounted) {
-                    setFailure({ error: cause });
+                    reconciler.flushSyncFromReconciler(() => setFailure({ error: cause }));
                 } else {
                     process.exitCode = 1;
                     error("Application shutdown failed:", cause);

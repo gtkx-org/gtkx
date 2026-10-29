@@ -744,6 +744,28 @@ describe("CLI commands", () => {
         }
     });
 
+    it("keeps the dev session up after the application fails while activating", async () => {
+        using project = createProject({ codegen: true });
+        const failedPath = join(project.root, "failed.txt");
+        const readyPath = join(project.root, "ready.txt");
+        const entry = (activate: string) => `import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+            import { createRoot } from "@gtkx/react";
+            import { writeFileSync } from "node:fs";
+            createRoot().render(
+                <AdwApplication applicationId="org.gtkx.example" onActivate={() => { ${activate} }}>
+                    <AdwApplicationWindow />
+                </AdwApplication>
+            );`;
+        project.write(
+            "src/index.tsx",
+            entry(`writeFileSync(${JSON.stringify(failedPath)}, "failed"); throw new Error("Activation failed");`),
+        );
+        await withSession("dev", project.root, failedPath, async () => {
+            project.write("src/index.tsx", entry(`writeFileSync(${JSON.stringify(readyPath)}, "ready");`));
+            await expect.poll(() => existsSync(readyPath), { timeout: 30_000 }).toBe(true);
+        });
+    });
+
     it("reloads imported configuration after atomic saves and missing directories are created", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
         const readyPath = join(project.root, "ready.txt");

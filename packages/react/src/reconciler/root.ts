@@ -41,8 +41,10 @@ declare const opaqueRoot: unique symbol;
 const log: Logger = createLogger("react");
 const activeRoots: Set<OpaqueRoot> = new Set();
 
-const rethrowUncaughtRenderError = (error: unknown): never => {
-    throw error;
+const rethrowUncaughtRenderError = (error: unknown): void => {
+    queueMicrotask(() => {
+        throw error;
+    });
 };
 
 const logCaughtRenderError = (error: unknown): void => {
