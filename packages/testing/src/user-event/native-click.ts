@@ -1,6 +1,7 @@
 import * as Gtk from "@gtkx/gi/gtk";
 import { getWidgetTypeName } from "../widget-getters.js";
 import { applyHeaderClick } from "./column-header-click.js";
+import { applyEditableLabelClick, isEditableLabelText } from "./editable-label-click.js";
 import { applyRowClick } from "./list-row-click.js";
 import { applyTabClick, isNotebookTab } from "./notebook-tab-click.js";
 
@@ -33,6 +34,10 @@ const toggleExpander = (widget: Gtk.Widget, nPress: number): void => {
 const nativeClickFor = (widget: Gtk.Widget, isClicked: boolean): NativeClick | null => {
     if (isClicked && isExpanderToggling(widget)) {
         return toggleExpander;
+    }
+
+    if (isClicked && isEditableLabelText(widget)) {
+        return applyEditableLabelClick;
     }
 
     if (isColumnHeader(widget)) {

@@ -11,6 +11,7 @@ import {
     GtkCheckButton,
     GtkDropDown,
     GtkDropTarget,
+    GtkEditableLabel,
     GtkEntry,
     GtkEventControllerKey,
     GtkEventControllerMotion,
@@ -467,6 +468,16 @@ describe("userEvent.click", () => {
         await userEvent.click(row);
         await userEvent.pointer(row, "click");
         expect(activations).toBe(2);
+    });
+
+    it("starts editing an editable label when its text is clicked or pointer-clicked", async () => {
+        const label = createRef<Gtk.EditableLabel>();
+        await render(<GtkEditableLabel ref={label} text="Draft" />);
+        await userEvent.click(await screen.findByText("Draft"));
+        expect(label.current?.getEditing()).toBe(true);
+        label.current?.stopEditing(false);
+        await userEvent.pointer(await screen.findByText("Draft"), "click");
+        expect(label.current?.getEditing()).toBe(true);
     });
 });
 
