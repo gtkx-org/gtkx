@@ -92,6 +92,19 @@ describe("CLI commands", () => {
         expect(JSON.parse(result.stdout)).toEqual({ matched: true, matches: ["hello", "hello"], replaced: "[hello]" });
     });
 
+    it("names the library to declare when a build imports bindings the store lacks", async () => {
+        using project = createProject({ codegen: true, libraries: ["GLib-2.0"] });
+        project.write(
+            "src/index.ts",
+            `import { LanguageManager } from "@gtkx/gi/gtksource";
+            LanguageManager.getDefault();`,
+        );
+
+        await expect(invoke(["build", "--cwd", project.root])).rejects.toThrow(
+            'Add "GtkSource-5" to `libraries` in gtkx.config.ts',
+        );
+    });
+
     it("applies imported CSS in development and production", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "style.txt");

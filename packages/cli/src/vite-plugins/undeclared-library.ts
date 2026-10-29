@@ -106,12 +106,16 @@ const undeclaredLibraryError = (source: string, namespace: string, girPath: stri
     );
 };
 
-const unresolvedModuleError = async (state: PluginState, generated: GeneratedModule): Promise<Error> => {
+const unresolvedModuleError = async (
+    state: PluginState,
+    generated: GeneratedModule,
+    resolverError?: unknown,
+): Promise<unknown> => {
     const options = getStoreOptions(state.root, generated.kind);
     const exportKey = `./${generated.namespace}`;
 
     if (options !== null && hasStoreModule(options.storeDir, exportKey)) {
-        return unreachableStoreError(generated, options);
+        return resolverError ?? unreachableStoreError(generated, options);
     }
 
     return undeclaredLibraryError(generated.source, generated.namespace, await girSearchPaths(state));
@@ -142,7 +146,11 @@ function gtkxUndeclaredLibrary(loadConfig: ConfigLoader = createConfigLoader()):
                     return;
                 }
 
-                const resolved = await this.resolve(source, importer, { ...options, skipSelf: true });
+                const resolved = await this.resolve(source, importer, { ...options, skipSelf: true }).catch(
+                    async (error: unknown) => {
+                        throw await unresolvedModuleError(state, generated, error);
+                    },
+                );
 
                 if (resolved !== null) {
                     return;
