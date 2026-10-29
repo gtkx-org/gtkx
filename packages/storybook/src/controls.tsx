@@ -29,8 +29,8 @@ const isWithinBoundsOrAbsent = (value: unknown, min: number, max: number): boole
 
 const controlTitle = (name: unknown, argument: string): string => (typeof name === "string" ? name : argument);
 
-const numberDigits = (step: number): number => {
-    const [coefficient = "", exponent = "0"] = String(step).split("e", 2);
+const numberDigits = (value: number): number => {
+    const [coefficient = "", exponent = "0"] = String(value).split("e", 2);
     const fraction = coefficient.split(".", 2)[1]?.length ?? 0;
     const digits = Math.max(0, fraction - Number(exponent));
 
@@ -75,7 +75,7 @@ const NumberControl = ({
             title={markupEscapeText(title, -1)}
             sensitive={!isDisabled}
             value={currentValue}
-            digits={numberDigits(step)}
+            digits={Math.max(numberDigits(step), numberDigits(currentValue))}
             numeric
             widthChars={8}
             adjustment={

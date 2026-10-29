@@ -270,4 +270,21 @@ describe("native story controls", () => {
         await replaceControl("quantity", "-0.75");
         expect(screen.getByName("inspector-quantity")).toHaveTextContent(/^-0.75$/);
     });
+
+    it("shows and keeps fractional arguments in number controls without a fractional step", async () => {
+        await showInspector({
+            default: { ...controlMeta, args: { quantity: 0.25 }, argTypes: { quantity: { control: "number" } } },
+            Default: {},
+        });
+        const control = within(screen.getByName("storybook-control-quantity")).getByRole(
+            Gtk.AccessibleRole.SPIN_BUTTON,
+        );
+
+        expect(control).toHaveDisplayValue("0.25");
+        await userEvent.keyboard(control, "{Enter}");
+        expect(screen.getByName("inspector-quantity")).toHaveTextContent(/^0.25$/);
+        await replaceControl("quantity", "1.5");
+        expect(screen.getByName("inspector-quantity")).toHaveTextContent(/^1.5$/);
+        expect(control).toHaveDisplayValue("1.5");
+    });
 });
