@@ -147,6 +147,7 @@ const useApplicationLifecycle = (
             reconciler.flushSyncFromReconciler(() => setActivated(false));
         };
         application.on("activate", onActivate);
+        application.on("open", onActivate);
         application.on("shutdown", onShutdown);
 
         if (lifecycle === previous) {
@@ -183,6 +184,7 @@ const useApplicationLifecycle = (
         return () => {
             lifecycle.isMounted = false;
             application.off("activate", onActivate);
+            application.off("open", onActivate);
             application.off("shutdown", onShutdown);
             lifecycle.releaseStartup?.();
 

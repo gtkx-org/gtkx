@@ -540,6 +540,32 @@ describe("render - Application main options", () => {
     });
 });
 
+describe("render - Application launched with files", () => {
+    it("renders its windows when it starts by opening files instead of activating", async () => {
+        const ref = createRef<Gtk.Application>();
+        const opened: (string | null)[] = [];
+
+        await withArgv(["/tmp/gtkx-open-probe.txt"], async () => {
+            await render(
+                <GtkApplication
+                    ref={ref}
+                    applicationId={uniqueAppId()}
+                    flags={Gio.ApplicationFlags.HANDLES_OPEN}
+                    onOpen={(files) => {
+                        opened.push(...files.map((file) => file.getBasename()));
+                    }}
+                >
+                    <GtkApplicationWindow defaultWidth={200} defaultHeight={100} />
+                </GtkApplication>,
+                { container: rootElement },
+            );
+        });
+
+        expect(opened).toEqual(["gtkx-open-probe.txt"]);
+        expect(ref.current?.getWindows()).toHaveLength(1);
+    });
+});
+
 describe("render - Application lifecycle", () => {
     it("opens and cleans up an application in StrictMode", async () => {
         const ref = createRef<Gtk.Application>();
