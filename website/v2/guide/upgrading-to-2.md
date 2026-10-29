@@ -9,6 +9,8 @@ GTKX 2.0 makes the behaviors previewed in 1.6 unconditional and removes their co
 
 Upgrade to Node.js 26.7 or newer and set `"type": "module"` in `package.json`; GTKX packages are ESM-only and explicitly reject `require()`. Localized projects also need GNU gettext 0.25 or newer.
 
+The 2.0 packages require React 19.3 or newer, and `@gtkx/testing` requires Vitest 5. Upgrade `react`, `@types/react`, and `vitest` together with the `@gtkx/*` packages.
+
 Use ESM `import` and `export` in application code, configuration files, and their local helpers. Convert `.cjs` and `.cts` files to ESM. Configuration runs through Node's native loader, so TypeScript configuration must use erasable syntax. Storybook main configuration uses `.ts`, `.mts`, `.js`, or `.mjs`; keep JSX in previews and stories. External CommonJS dependencies remain supported through ESM imports.
 
 Stop running apps and dev sessions before the first `gtkx codegen --force` after upgrading. Codegen replaces older generated-store layouts with a new snapshot. GI-only generation removes obsolete JSX bindings owned by the project; installing React again regenerates them.
@@ -60,6 +62,8 @@ Adwaita is part of the core packages. `ComboRow`, `ToastProvider`, and `useToast
 ```tsx
 import { ComboRow, ToastProvider, useToast } from "@gtkx/components";
 ```
+
+`DropDown` and `ComboRow` now call `onSelectionChanged` with `null` when their items become empty. Check for `null` before storing the ID.
 
 Use `useToast().dismissAll()` in place of `useToastOverlay().dismissAll()`. `show()` returns the native `Adw.Toast`; call its `dismiss()` method to dismiss that toast. The forwarding `useToast().dismiss(toast)` method and `ToastOverlayController` type are removed.
 
@@ -124,6 +128,12 @@ t("{{count}} file", {
 ```
 
 Run codegen after migrating. The generated declaration now uses i18next's standard `CustomTypeOptions` resources instead of GTKX's strict translation registry, so remove imports of GTKX-specific registry types and use types exported by `i18next` or `react-i18next`.
+
+GTKX no longer reads `GTKX_LOCALE_DIR`. A Vitest configuration that tests compiled catalogs passes their directory to the plugin instead:
+
+```ts
+plugins: [gtkx({ localeDir: resolve(import.meta.dirname, "dist/locale") })],
+```
 
 ## Replace removed APIs
 
