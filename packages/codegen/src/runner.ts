@@ -5,16 +5,18 @@ import ts from "typescript";
 import type { ModuleExport } from "./react/element-config.js";
 import type { OmittedProps } from "./store/jsx/omitted-props.js";
 import { checkModules } from "./compile.js";
-import { isGiStoreFresh } from "./fingerprint.js";
+import { hashElementConfig, isGiStoreFresh } from "./fingerprint.js";
 import { runGiCodegen } from "./gi.js";
 import { Library } from "./gir/library.js";
 import { generateGlModules, type GlGenerationReport } from "./khronos/pipeline.js";
 import { acquireStoreLocks, sweepStagingDirs } from "./staging.js";
+import { registerSharedProject, sharedLibraries, type SharedProject } from "./store/shared-store.js";
 import {
     discardPreparedStore,
     ensureStoreLink,
     type PreparedStore,
     hasStoreLayout,
+    linkStoreDependencies,
     publishStores,
     reclaimStoreArtifacts,
     type StoreOptions,
@@ -33,7 +35,10 @@ type CodegenRunnerOptions = {
     libraries: string[];
     /** Directories to search for `.gir` files. */
     girPath: string[];
-    /** Where to write and link the `@gtkx/gi` store. */
+    /**
+     * Where to write and link the `@gtkx/gi` store. With an `owner`, the store is shared with the other projects
+     * that generated it and binds the union of their libraries.
+     */
     gi: StoreOptions;
     /** Where to write and link the `@gtkx/jsx` store; omit to generate the gi store alone. */
     jsx?: StoreOptions | undefined;
@@ -171,19 +176,38 @@ const emitGiStore = (options: CodegenRunnerOptions, loadLibrary: () => Library):
     return { isRegenerated, namespaces: result.namespaces, store: result.store };
 };
 
+const sharedProject = (options: CodegenRunnerOptions): SharedProject => ({
+    libraries: options.libraries,
+    girPath: options.girPath,
+    jsx:
+        options.jsx === undefined
+            ? null
+            : hashElementConfig({
+                  reactVersion: options.jsx.version,
+                  components: options.userComponents ?? {},
+                  lazyElements: options.userLazyElements ?? [],
+                  props: options.userProps ?? {},
+                  omittedProps: options.userOmittedProps ?? {},
+              }),
+});
+
 const emitStores = async (input: CodegenRunnerOptions): Promise<StoreResult> => {
-    const { gi, jsx, libraries, girPath } = input;
+    const { gi, jsx, girPath } = input;
 
     if (girPath.length === 0) {
         throw new Error("codegen needs at least one GIR search path; pass the result of resolveGirPath");
     }
 
-    const options = hasStoreLayout(gi, jsx) ? input : { ...input, isForced: true };
+    const { owner } = gi;
+    const project = sharedProject(input);
+    const libraries = owner === undefined ? input.libraries : sharedLibraries(gi.storeDir, owner, project);
+    const options = hasStoreLayout(gi, jsx) ? { ...input, libraries } : { ...input, libraries, isForced: true };
     reclaimStoreArtifacts(gi);
 
     for (const store of [gi, jsx]) {
         if (store !== undefined) {
             sweepStagingDirs(store.storeDir);
+            linkStoreDependencies(store);
             ensureStoreLink(store);
         }
     }
@@ -210,6 +234,10 @@ const emitStores = async (input: CodegenRunnerOptions): Promise<StoreResult> => 
 
         if (giResult.store !== undefined || jsxStore !== undefined) {
             publishStores({ gi: giResult.store, giLink: gi, jsx: jsxStore, jsxLink: jsx });
+        }
+
+        if (owner !== undefined) {
+            registerSharedProject(gi.storeDir, owner, project);
         }
 
         return {

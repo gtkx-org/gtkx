@@ -21,7 +21,7 @@ const generatedLibraries = (root: string): GeneratedLibraries | null => {
 };
 
 const resolveLibraries = (root: string, config: Config): ResolvedLibraries => {
-    const generated = generatedLibraries(root);
+    const generated = config.codegen === false ? generatedLibraries(root) : null;
     const libraries = resolveBoundLibraries(generated?.libraries ?? expandLibraries(config.libraries));
     const deploy = config.deploy ?? {};
 

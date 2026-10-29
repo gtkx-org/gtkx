@@ -87,9 +87,9 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     await syncI18n(cwd, config.applicationId, options.shouldPreserveI18nMetadata);
     emitSchemaEnv(cwd);
 
-    if (config.codegen === false) {
-        removeShadowingStores(cwd);
+    removeShadowingStores(cwd);
 
+    if (config.codegen === false) {
         return disabledCodegenResult(configFile);
     }
 

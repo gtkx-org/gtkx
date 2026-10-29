@@ -92,7 +92,6 @@ const writeGiStore = (
     return prepareStore({
         storeDir: options.storeDir,
         linkDir: options.linkDir,
-        owner: options.owner,
         files: collected,
         manifest: buildManifest({
             name: "@gtkx/gi",

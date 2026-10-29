@@ -294,22 +294,34 @@ describe("generated bindings", () => {
         expect(await runCodegen({ ...options, jsx })).toMatchObject({ isRegenerated: false });
     });
 
-    it("shares matching bindings and rejects incompatible changes from another project", async () => {
+    it("shares bindings for the union of projects' libraries and rejects incompatible projects", async () => {
         using directory = createProject();
         const { gi, jsx } = resolveStore(directory.path);
         if (jsx === null) throw new Error("JSX store was not resolved");
-        const options = { libraries: ["Gio-2.0"], girPath: resolveGirPath(undefined, directory.path), gi, jsx };
+        const girPath = resolveGirPath(undefined, directory.path);
+        const options = { libraries: ["Gio-2.0"], girPath, gi, jsx };
         await runCodegen(options);
         const consumer = join(directory.path, "consumer");
         mkdirSync(consumer);
         const shared = resolveStore(consumer);
         if (shared.jsx === null) throw new Error("Shared JSX store was not resolved");
-        const sharedOptions = { ...options, gi: shared.gi, jsx: shared.jsx, isForced: true };
-        await runCodegen(sharedOptions);
-        await expect(runCodegen({ ...sharedOptions, libraries: ["GLib-2.0"] })).rejects.toThrow();
+        const sharedOptions = { ...options, gi: shared.gi, jsx: shared.jsx };
+        await runCodegen({ ...sharedOptions, libraries: ["GLib-2.0"] });
+        expect(readGeneratedLibraries(gi.linkDir)?.libraries).toEqual(["Gio-2.0", "GLib-2.0"]);
+        expect(await runCodegen(options)).toMatchObject({ isRegenerated: false });
         await expect(runCodegen({ ...sharedOptions, jsx: undefined })).rejects.toThrow();
-        expect(readGeneratedLibraries(gi.linkDir)?.libraries).toContain("Gio-2.0");
+        await expect(runCodegen({ ...sharedOptions, userLazyElements: ["GtkLabel"] })).rejects.toThrow();
+        await expect(runCodegen({ ...sharedOptions, girPath: [consumer, ...girPath] })).rejects.toThrow();
+        await expect(runCodegen({ ...sharedOptions, libraries: ["Gio-3.0"] })).rejects.toThrow();
         expect(readGeneratedElements(jsx.linkDir).length).toBeGreaterThan(0);
+
+        const otherReact = join(consumer, "node_modules", "react");
+        mkdirSync(otherReact, { recursive: true });
+        writeFileSync(join(otherReact, "package.json"), '{"name":"react","version":"19.0.0"}');
+        expect(() => resolveStore(consumer)).toThrow();
+        rmSync(consumer, { recursive: true });
+        await runCodegen(options);
+        expect(readGeneratedLibraries(gi.linkDir)?.libraries).toEqual(["Gio-2.0"]);
 
         const customStore = (name: string) => ({
             ...gi,
@@ -333,7 +345,11 @@ describe("generated bindings", () => {
         mkdirSync(join(nestedCairo, "node_modules", "@gtkx"), { recursive: true });
         rmSync(join(directory.path, "node_modules", "@gtkx", "cairo"));
         symlinkSync(join(workspace, "packages", "cairo"), join(nestedCairo, "node_modules", "@gtkx", "cairo"), "dir");
-        expect(() => resolveStore(nestedCairo)).toThrow();
+        const nested = resolveStore(nestedCairo);
+        await runCodegen({ ...options, gi: nested.gi, jsx: nested.jsx ?? undefined });
+        expect(createRequire(realpathSync(join(gi.linkDir, "package.json"))).resolve("@gtkx/cairo/package.json")).toBe(
+            realpathSync(join(workspace, "packages", "cairo", "package.json")),
+        );
     });
 
     it("refreshes reference pages when their props dependencies or cached metadata change", () => {

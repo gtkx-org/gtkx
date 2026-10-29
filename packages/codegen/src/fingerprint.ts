@@ -297,18 +297,22 @@ const serializeStringLists = (map: Record<string, string[]>): [string, string][]
         .toSorted()
         .map((type) => [type, sortAlpha(map[type] ?? [])]);
 
+const serializeJsxInput = (input: JsxFingerprintInput): unknown[] => [
+    input.reactVersion,
+    serializeModuleExports(input.components),
+    input.lazyElements.toSorted(),
+    serializeElementProps(input.props),
+    serializeStringLists(input.omittedProps),
+];
+
 const hashJsx = (input: JsxFingerprintInput): string =>
     createHash("sha256")
-        .update(
-            JSON.stringify([
-                codegenHash(),
-                input.reactVersion,
-                serializeModuleExports(input.components),
-                input.lazyElements.toSorted(),
-                serializeElementProps(input.props),
-                serializeStringLists(input.omittedProps),
-            ]),
-        )
+        .update(JSON.stringify([codegenHash(), ...serializeJsxInput(input)]))
+        .digest("hex");
+
+const hashElementConfig = (input: JsxFingerprintInput): string =>
+    createHash("sha256")
+        .update(JSON.stringify(serializeJsxInput(input)))
         .digest("hex");
 
 const computeJsxFingerprint = (input: JsxFingerprintInput, intrinsicElementCount: number): JsxFingerprint => ({
@@ -340,6 +344,7 @@ export {
     isGiFingerprintFresh,
     isDocsOutputFresh,
     computeJsxFingerprint,
+    hashElementConfig,
     jsxStoreFreshness,
     type DocsFingerprintInput,
     type GiInputs,

@@ -131,4 +131,11 @@ const compareVersions = (a: string, b: string): number => {
     return 0;
 };
 
-export { resolveBoundLibraries, resolveLibraries, discoverGirNamespaces, locateGirFile, type LibrarySelection };
+export {
+    resolveBoundLibraries,
+    resolveLibraries,
+    discoverGirNamespaces,
+    getNamespace,
+    locateGirFile,
+    type LibrarySelection,
+};

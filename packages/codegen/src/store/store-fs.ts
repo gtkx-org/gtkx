@@ -17,7 +17,6 @@ import {
 import { basename, dirname, join, relative } from "node:path";
 import { z } from "zod";
 import { keepFailedProject, type SourceModule } from "../compile.js";
-import { FINGERPRINT_FILENAME } from "../fingerprint.js";
 import { readJsonFile } from "../json.js";
 import { createStagingDir } from "../staging.js";
 import { compileStore } from "./compile-store.js";
@@ -30,9 +29,14 @@ type StoreOptions = {
     linkDir: string;
     /** Version stamped on the store's `package.json`, taken from the dependency the store is generated for. */
     version: string;
+    /**
+     * Packages the generated modules import, mapped to the installed directories they should load. Each is linked
+     * beside the store, so the bindings import the project's copies wherever the store is placed.
+     */
+    dependencies?: Record<string, string>;
 } & Partial<Record<"owner", string>>;
 
-type StoreLink = Pick<StoreOptions, "storeDir" | "linkDir">;
+type StoreLink = Pick<StoreOptions, "storeDir" | "linkDir" | "dependencies">;
 
 type Manifest = {
     name: string;
@@ -56,20 +60,15 @@ type RawFile = { relativePath: string; content: string };
 type WriteStoreParams = Pick<StoreOptions, "storeDir" | "linkDir"> & {
     files: SourceModule[];
     manifest: Manifest;
-    owner: string | undefined;
     rawFiles?: RawFile[];
 };
 
 type PreparedStore = { dir: string; keepAt: string };
 
-const storeIdentitySchema = z.object({ anchor: z.string(), owner: z.string() });
-const fingerprintValueSchema = z.object({ value: z.string() });
 const jsxManifestSchema = z.object({ name: z.literal("@gtkx/jsx") });
-type StoreIdentity = z.infer<typeof storeIdentitySchema>;
 
 const STORE_DIR_MODE = 0o755;
 const FAILED_STORE_SUFFIX = ".failed";
-const IDENTITY_FILENAME = ".codegen-owner.json";
 const RETAINED_GENERATIONS = 3;
 
 const subpathExport = (stem: string): { types: string; import: string; require: null; default: string } => ({
@@ -101,12 +100,11 @@ const buildManifest = (input: ManifestInput): Manifest => {
 };
 
 const prepareStore = (params: WriteStoreParams): PreparedStore => {
-    const owner = resolveStoreOwner(params);
     const tmp = createTempStore(params.storeDir);
     const keepAt = `${params.storeDir}${FAILED_STORE_SUFFIX}`;
 
     try {
-        buildTempStore(tmp, params, owner);
+        buildTempStore(tmp, params);
     } catch (error) {
         throw keepFailedProject({ projectDir: tmp, keepAt, error });
     }
@@ -114,7 +112,7 @@ const prepareStore = (params: WriteStoreParams): PreparedStore => {
     return { dir: tmp, keepAt };
 };
 
-const buildTempStore = (tmp: string, params: WriteStoreParams, owner: string | undefined): void => {
+const buildTempStore = (tmp: string, params: WriteStoreParams): void => {
     writePackageJson(tmp, params.manifest);
 
     for (const file of params.files) {
@@ -130,11 +128,6 @@ const buildTempStore = (tmp: string, params: WriteStoreParams, owner: string | u
 
     for (const raw of rawFiles) {
         writeFileSync(join(tmp, raw.relativePath), raw.content);
-    }
-
-    if (owner !== undefined) {
-        const identity: StoreIdentity = { anchor: realpathSync(dirname(params.storeDir)), owner };
-        writeFileSync(join(tmp, IDENTITY_FILENAME), `${JSON.stringify(identity, null, 2)}\n`);
     }
 };
 
@@ -239,7 +232,6 @@ const publishStores = (input: {
     const root = storeRoot(giLink, jsxLink);
     const current = join(root, "current");
     const legacyJsx = basename(giLink.storeDir) === "gi" ? join(dirname(root), "jsx") : undefined;
-    const oldJsx = storeIdentity(join(current, "jsx")) ?? (legacyJsx === undefined ? null : storeIdentity(legacyJsx));
     const obsoleteJsx =
         jsxLink === undefined && legacyJsx !== undefined
             ? [legacyJsx, join(dirname(giLink.linkDir), "jsx")].filter(
@@ -249,16 +241,6 @@ const publishStores = (input: {
                       jsxManifestSchema.safeParse(readJsonFile(join(path, "package.json"))).success,
               )
             : [];
-
-    if (
-        jsxLink === undefined &&
-        giLink.owner !== undefined &&
-        oldJsx?.anchor === dirname(root) &&
-        oldJsx.owner !== giLink.owner &&
-        existsSync(oldJsx.owner)
-    ) {
-        throw new Error(`Cannot remove the generated @gtkx/jsx store shared with ${oldJsx.owner}`);
-    }
 
     const generation = join(root, `.generation-${String(Date.now())}-${randomUUID()}`);
     mkdirSync(generation, { recursive: true });
@@ -315,61 +297,26 @@ const isStoreLinked = (link: StoreLink): boolean => {
     }
 };
 
+const linkStoreDependencies = (link: StoreLink): void => {
+    for (const [name, directory] of Object.entries(link.dependencies ?? {})) {
+        const path = join(dirname(link.storeDir), "node_modules", name);
+
+        if (realpathOrNull(path) !== directory) {
+            symlinkRelative(path, directory);
+        }
+    }
+};
+
 const ensureStoreLink = (link: StoreLink): void => {
     if (!existsSync(join(link.storeDir, "package.json"))) {
         return;
     }
 
+    linkStoreDependencies(link);
+
     if (!isStoreLinked(link)) {
         symlinkRelative(link.linkDir, link.storeDir);
     }
-};
-
-const storeIdentity = (storeDir: string): StoreIdentity | null =>
-    storeIdentitySchema.safeParse(readJsonFile(join(storeDir, IDENTITY_FILENAME))).data ?? null;
-
-const fingerprintValue = (value: unknown): string | null => fingerprintValueSchema.safeParse(value).data?.value ?? null;
-
-const desiredFingerprint = (rawFiles: RawFile[] | undefined): string | null => {
-    const fingerprint = rawFiles?.find((file) => file.relativePath === FINGERPRINT_FILENAME);
-
-    return fingerprint === undefined ? null : fingerprintValue(readJsonSource(fingerprint.content));
-};
-
-const readJsonSource = (source: string): unknown => {
-    try {
-        return JSON.parse(source);
-    } catch {
-        return null;
-    }
-};
-
-const resolveStoreOwner = (params: WriteStoreParams): string | undefined => {
-    const { owner } = params;
-
-    if (owner === undefined) {
-        return undefined;
-    }
-
-    mkdirSync(dirname(params.storeDir), { recursive: true });
-    const identity = storeIdentity(params.storeDir);
-    const anchor = realpathSync(dirname(params.storeDir));
-
-    if (identity?.anchor !== anchor || identity.owner === owner || !existsSync(identity.owner)) {
-        return owner;
-    }
-
-    const current = fingerprintValue(readJsonFile(join(params.storeDir, FINGERPRINT_FILENAME)));
-    const desired = desiredFingerprint(params.rawFiles);
-
-    if (current !== desired || current === null) {
-        throw new Error(
-            `Cannot replace the generated ${params.manifest.name} store shared with ${identity.owner}; ` +
-                "the projects require different generated bindings.",
-        );
-    }
-
-    return identity.owner;
 };
 
 const storeWriteMessage = (storeDir: string, error: unknown): string =>
@@ -396,6 +343,7 @@ export {
     namespaceBarrel,
     prepareStore,
     hasStoreLayout,
+    linkStoreDependencies,
     publishStores,
     reclaimStoreArtifacts,
     type PreparedStore,

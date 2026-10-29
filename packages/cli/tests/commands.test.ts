@@ -4,8 +4,9 @@ import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { createMcpServer } from "@gtkx/mcp/server";
 import { resolveHeadlessOptions, startHeadlessDisplay } from "@gtkx/vitest/headless";
 import { runCommand } from "citty";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
+import { once } from "node:events";
 import {
     copyFileSync,
     existsSync,
@@ -24,7 +25,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createVitest } from "vitest/node";
 import { parse } from "yaml";
 import { createCommand } from "../dist/command.js";
-import { createProject, linkWorkspaceBindings } from "./project.js";
+import { createPnpmWorkspace, createProject, linkWorkspaceBindings } from "./project.js";
 
 const MAX_BUNDLE_LINE_LENGTH = 500;
 
@@ -704,6 +705,119 @@ describe("CLI commands", () => {
         await withSession("dev", project.root, readyPath, async () => {
             await expect.poll(() => readFileSync(readyPath, "utf8")).toBe("kit");
         });
+    });
+
+    it("runs apps of an isolated pnpm workspace that bind different libraries", { timeout: 600_000 }, async () => {
+        using workspace = createPnpmWorkspace({
+            journal: { applicationId: "org.gtkx.journal", codegen: true },
+            editor: { applicationId: "org.gtkx.editor", codegen: true, libraries: ["GtkSource-5"] },
+        });
+        const env = Object.fromEntries(
+            Object.entries(process.env).filter(
+                ([name]) => !name.startsWith("VITEST") && name !== "NODE_ENV" && name !== "NODE_PATH",
+            ),
+        );
+        const appDir = (app: string) => join(workspace.root, "apps", app);
+        const readyPath = (app: string) => join(appDir(app), "ready.txt");
+        workspace.write(
+            "packages/ui/package.json",
+            JSON.stringify({
+                name: "@studio/ui",
+                type: "module",
+                exports: "./index.js",
+                peerDependencies: { "@gtkx/react": "*" },
+            }),
+        );
+        workspace.write(
+            "packages/ui/index.js",
+            `import { GtkLabel } from "@gtkx/jsx/gtk";
+            import { jsx } from "react/jsx-runtime";
+            export const Badge = (props) => jsx(GtkLabel, props);`,
+        );
+        workspace.linkApp("packages/ui");
+        const writeApp = (app: string, label: string, imports = "") => {
+            mkdirSync(join(appDir(app), "node_modules/@studio"), { recursive: true });
+            symlinkSync(join(workspace.root, "packages/ui"), join(appDir(app), "node_modules/@studio/ui"), "dir");
+            workspace.write(
+                `apps/${app}/package.json`,
+                JSON.stringify({ name: app, type: "module", dependencies: { "@studio/ui": "workspace:*" } }),
+            );
+            workspace.write(
+                `apps/${app}/src/index.tsx`,
+                `${imports}
+                import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+                import { createRoot } from "@gtkx/react";
+                import { Badge } from "@studio/ui";
+                import { writeFileSync } from "node:fs";
+                createRoot().render(
+                    <AdwApplication applicationId="org.gtkx.${app}">
+                        <AdwApplicationWindow>
+                            <Badge label={${label}} onMap={(badge) => {
+                                writeFileSync(${JSON.stringify(readyPath(app))}, badge.getLabel());
+                                if (process.env.NODE_ENV === "production") process.exit(0);
+                            }} />
+                        </AdwApplicationWindow>
+                    </AdwApplication>
+                );`,
+            );
+        };
+        writeApp("journal", '"journal"');
+        writeApp(
+            "editor",
+            'new GtkSource.Buffer().getLanguage() === null ? "editor" : "language"',
+            'import * as GtkSource from "@gtkx/gi/gtksource";',
+        );
+        workspace.write("apps/editor/node_modules/.gtkx/gi/package.json", '{"name":"@gtkx/gi","exports":{}}');
+        symlinkSync("../.gtkx/gi", join(appDir("editor"), "node_modules/@gtkx/gi"), "dir");
+        workspace.write(
+            "apps/editor/vitest.config.mjs",
+            `import gtkx from "@gtkx/cli/vitest-plugin";
+            export default { plugins: [gtkx()], test: { include: ["tests/*.test.tsx"] } };`,
+        );
+        workspace.write(
+            "apps/editor/tests/badge.test.tsx",
+            `import * as GtkSource from "@gtkx/gi/gtksource";
+            import { render, screen } from "@gtkx/testing";
+            import { Badge } from "@studio/ui";
+            import { expect, test } from "vitest";
+            test("renders the shared badge next to source bindings", async () => {
+                await render(<Badge label="shared" />);
+                expect(await screen.findByText("shared")).toBeTruthy();
+                expect(new GtkSource.Buffer().getLanguage()).toBeNull();
+            });`,
+        );
+        const run = (app: string, args: string[]) =>
+            promisify(execFile)(process.execPath, args, { cwd: appDir(app), env, timeout: 300_000 });
+
+        await run("journal", [workspace.cli("journal"), "build"]);
+        await run("editor", [workspace.cli("editor"), "build"]);
+        await run("editor", [join(appDir("editor"), "node_modules/vitest/vitest.mjs"), "run"]);
+
+        const stopDisplay = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
+        try {
+            for (const app of ["journal", "editor"]) {
+                await run(app, [join(appDir(app), "dist/bundle.mjs")]);
+            }
+        } finally {
+            stopDisplay();
+        }
+        expect(readFileSync(readyPath("journal"), "utf8")).toBe("journal");
+        expect(readFileSync(readyPath("editor"), "utf8")).toBe("editor");
+
+        rmSync(readyPath("journal"));
+        const session = spawn(process.execPath, [workspace.cli("journal"), "dev", "--headless", "--size", "640x480"], {
+            cwd: appDir("journal"),
+            env,
+            stdio: "ignore",
+        });
+        const exited = once(session, "exit");
+        try {
+            await expect.poll(() => existsSync(readyPath("journal")), { timeout: 120_000 }).toBe(true);
+            expect(readFileSync(readyPath("journal"), "utf8")).toBe("journal");
+        } finally {
+            session.kill("SIGTERM");
+            await exited;
+        }
     });
 
     it("replaces edited global styles and stylesheets in place and refreshes their raw imports, keeping state", async () => {
