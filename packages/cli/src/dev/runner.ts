@@ -786,15 +786,6 @@ const connectApplication = async (session: DevSession): Promise<void> => {
     await deps.startMcpClient(applicationId, (id) => loadModuleExclusively(server, id));
 };
 
-const stopForOwnedApplicationId = async (session: DevSession, liveApplicationId: string): Promise<void> => {
-    session.deps.log(
-        `Another process already owns ${liveApplicationId}, so this session can never show a window - ` +
-            "stopping dev runner. Quit that instance or change applicationId, then start gtkx dev again.",
-    );
-
-    await closeAndExit(session, OWNED_ID_EXIT_CODE);
-};
-
 const stopForStoppedApplication = async (session: DevSession, registrationState: ApplicationState): Promise<void> => {
     if (session.failure.hasReported()) {
         session.deps.log("Application stopped before the dev runner attached.");
@@ -813,7 +804,7 @@ const stopForStoppedApplication = async (session: DevSession, registrationState:
     await closeAndExit(session, refusedExitCode());
 };
 
-const connectLiveApplication = async (session: DevSession, liveApplicationId: string): Promise<void> => {
+const connectLiveApplication = async (session: DevSession): Promise<void> => {
     const registrationState = session.deps.getApplicationRegistrationState();
 
     if (registrationState === "primary") {
@@ -823,7 +814,7 @@ const connectLiveApplication = async (session: DevSession, liveApplicationId: st
     }
 
     if (registrationState === "remote") {
-        await stopForOwnedApplicationId(session, liveApplicationId);
+        await closeAndExit(session, OWNED_ID_EXIT_CODE);
 
         return;
     }
@@ -846,7 +837,7 @@ const attachApplication = async (session: DevSession): Promise<void> => {
         return;
     }
 
-    await connectLiveApplication(session, liveApplicationId);
+    await connectLiveApplication(session);
 };
 
 const loadEntry = async (
