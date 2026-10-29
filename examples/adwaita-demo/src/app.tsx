@@ -99,7 +99,7 @@ const MainWindow = ({ onClose }: { onClose: () => void }) => {
                             sidebar={
                                 <AdwNavigationPage title="Adwaita Demo">
                                     <AdwToolbarView
-                                        topBar={
+                                        top={
                                             <>
                                                 <AdwHeaderBar
                                                     start={

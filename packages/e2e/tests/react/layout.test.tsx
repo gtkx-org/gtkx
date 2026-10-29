@@ -315,7 +315,7 @@ function ClippedOverlayApp({
     return (
         <GtkOverlay
             ref={overlayRef}
-            overlays={[
+            overlay={[
                 <GtkOverlayLayoutChild key="a" clipOverlay={shouldClip}>
                     <GtkButton label="Clipped" />
                 </GtkOverlayLayoutChild>,
@@ -329,7 +329,7 @@ function ClippedOverlayApp({
 function TransientOverlayApp({ labelRef, shouldShow }: { labelRef: RefObject<Gtk.Label | null>; shouldShow: boolean }) {
     return (
         <GtkOverlay
-            overlays={
+            overlay={
                 shouldShow && (
                     <GtkOverlayLayoutChild>
                         <GtkButton label="Transient" />
@@ -352,7 +352,7 @@ function RemovableOverlayApp({
     return (
         <GtkOverlay
             ref={overlayRef}
-            overlays={
+            overlay={
                 shouldShow
                     ? [
                           <GtkOverlayLayoutChild key="a">
@@ -825,7 +825,7 @@ describe("render - GtkOverlayLayoutChild", () => {
         await render(
             <GtkOverlay
                 ref={overlayRef}
-                overlays={[
+                overlay={[
                     <GtkOverlayLayoutChild key="a" measure>
                         <GtkButton label="Overlay Button" />
                     </GtkOverlayLayoutChild>,

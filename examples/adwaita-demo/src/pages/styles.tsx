@@ -444,7 +444,7 @@ const StatusStylesDialog = ({ onClose }: { onClose: () => void }) => {
         >
             <AdwToolbarView
                 topBarStyle={Adw.ToolbarStyle.RAISED}
-                topBar={
+                top={
                     <AdwHeaderBar
                         start={
                             <GtkToggleButton
@@ -515,7 +515,7 @@ const SidebarStylesDialog = ({ onClose }: { onClose: () => void }) => {
                 onNotifyShowContent={(value) => setShowContent(value ?? false)}
                 sidebar={
                     <AdwNavigationPage title="Sidebar">
-                        <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+                        <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
                             <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                                 <GtkListBox
                                     tooltipText="navigation-sidebar"
@@ -538,7 +538,7 @@ const SidebarStylesDialog = ({ onClose }: { onClose: () => void }) => {
                 }
             >
                 <AdwNavigationPage title="Sidebar" tag="content">
-                    <AdwToolbarView topBar={<AdwHeaderBar />}>
+                    <AdwToolbarView top={<AdwHeaderBar />}>
                         <AdwStatusPage
                             title="Sidebar"
                             description={'"navigation-sidebar" style class on GtkListBox or GtkListView'}
@@ -574,9 +574,9 @@ const StyleDemoDialog = ({ onClose }: { onClose: () => void }) => {
                 <GSimpleActionGroup prefix="style" actions={<GSimpleAction name="dummy" onActivate={() => {}} />} />
             }
         >
-            <AdwToolbarView topBar={<AdwHeaderBar />}>
+            <AdwToolbarView top={<AdwHeaderBar />}>
                 <GtkOverlay
-                    overlays={
+                    overlay={
                         <GtkProgressBar
                             valign={Gtk.Align.START}
                             fraction={0.5}
@@ -639,7 +639,7 @@ export const StylesPage = () => {
     const [open, setOpen] = useState(false);
 
     return (
-        <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+        <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
             <AdwStatusPage
                 iconName="style-classes-symbolic"
                 title="Style Classes"

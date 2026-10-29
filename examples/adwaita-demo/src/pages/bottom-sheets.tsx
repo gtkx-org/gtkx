@@ -10,7 +10,7 @@ export const BottomSheetsPage = (): ReactNode => {
         <AdwBottomSheet
             onNotifyBottomBarHeight={(value) => setBottomBarHeight(value ?? 0)}
             sheet={
-                <AdwToolbarView topBar={<AdwHeaderBar />}>
+                <AdwToolbarView top={<AdwHeaderBar />}>
                     <AdwStatusPage iconName="go-down-symbolic" />
                 </AdwToolbarView>
             }
@@ -22,7 +22,7 @@ export const BottomSheetsPage = (): ReactNode => {
                 />
             }
         >
-            <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+            <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
                 <AdwStatusPage
                     iconName="widget-bottom-sheet-symbolic"
                     title="Bottom Sheet"

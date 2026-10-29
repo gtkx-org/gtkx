@@ -112,7 +112,7 @@ const StackPageContent = ({ descriptor, previous }: Omit<StackPageProps, "naviga
             <>{options.header({ route, navigation, options, back })}</>
         );
 
-    return <AdwToolbarView topBar={topBar}>{descriptor.render()}</AdwToolbarView>;
+    return <AdwToolbarView top={topBar}>{descriptor.render()}</AdwToolbarView>;
 };
 
 const StackPage = ({ descriptor, previous, navigation, onHidden }: StackPageProps): ReactNode => {

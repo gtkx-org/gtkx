@@ -34,7 +34,7 @@ const NavigationViewDialog = ({ onClosed }: { onClosed: () => void }): ReactNode
     >
         <AdwNavigationView>
             <AdwNavigationPage title="Page 1" tag="page-1">
-                <AdwToolbarView topBar={<AdwHeaderBar />}>
+                <AdwToolbarView top={<AdwHeaderBar />}>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}
                         spacing={18}
@@ -47,12 +47,12 @@ const NavigationViewDialog = ({ onClosed }: { onClosed: () => void }): ReactNode
                 </AdwToolbarView>
             </AdwNavigationPage>
             <AdwNavigationPage title="Page 2" tag="page-2">
-                <AdwToolbarView topBar={<AdwHeaderBar />}>
+                <AdwToolbarView top={<AdwHeaderBar />}>
                     <OpenPageButton page={4} />
                 </AdwToolbarView>
             </AdwNavigationPage>
             <AdwNavigationPage title="Page 3" tag="page-3">
-                <AdwToolbarView topBar={<AdwHeaderBar />}>
+                <AdwToolbarView top={<AdwHeaderBar />}>
                     <GtkLabel
                         label="Page 3"
                         valign={Gtk.Align.CENTER}
@@ -62,7 +62,7 @@ const NavigationViewDialog = ({ onClosed }: { onClosed: () => void }): ReactNode
                 </AdwToolbarView>
             </AdwNavigationPage>
             <AdwNavigationPage title="Page 4" tag="page-4">
-                <AdwToolbarView topBar={<AdwHeaderBar />}>
+                <AdwToolbarView top={<AdwHeaderBar />}>
                     <OpenPageButton page={3} />
                 </AdwToolbarView>
             </AdwNavigationPage>
@@ -75,7 +75,7 @@ export const NavigationViewPage = (): ReactNode => {
 
     return (
         <>
-            <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+            <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
                 <AdwStatusPage
                     iconName="widget-navigation-view-symbolic"
                     title="Navigation View"

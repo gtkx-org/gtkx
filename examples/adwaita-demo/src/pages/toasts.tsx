@@ -48,7 +48,7 @@ export const ToastsPage = () => {
     };
 
     return (
-        <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+        <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
             <AdwStatusPage iconName="widget-toast-symbolic" title="Toasts" description="Transient in-app notifications">
                 <AdwClamp maximumSize={400} tighteningThreshold={300}>
                     <AdwPreferencesGroup>

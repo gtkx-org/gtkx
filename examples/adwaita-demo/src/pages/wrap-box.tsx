@@ -26,7 +26,7 @@ export const WrapBoxPage = () => {
     };
 
     return (
-        <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+        <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
             <AdwStatusPage
                 iconName="widget-wrap-box-symbolic"
                 title="Wrap Box"

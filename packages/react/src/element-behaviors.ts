@@ -190,6 +190,17 @@ const multiLayoutSlots: ElementBehavior<Adw.MultiLayoutView> = {
     },
 };
 
+const overlaySlot = (name: string) =>
+    slot<Gtk.Overlay, Gtk.Widget>(name, Gtk.Widget, {
+        attach: (overlay, child) => {
+            overlay.addOverlay(child);
+        },
+        detach: (overlay, child) => {
+            overlay.removeOverlay(child);
+        },
+        resolve: layoutChild,
+    });
+
 const multiLayoutLayouts = slot<Adw.MultiLayoutView, Gtk.Widget>("layouts", Gtk.Widget, {
     attach: (view, content) => {
         const layout = new Adw.Layout({ content });
@@ -266,24 +277,16 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
         behaviors: [boxSlot<Gtk.Box>()],
     },
     GtkListBox: {
-        behaviors: [rowSlot<Gtk.ListBox>()],
+        behaviors: [
+            rowSlot<Gtk.ListBox>(),
+            setterSlot<Gtk.ListBox, Gtk.Widget>("placeholder", Gtk.Widget, "setPlaceholder"),
+        ],
     },
     GtkFlowBox: {
         behaviors: [rowSlot<Gtk.FlowBox>()],
     },
     GtkOverlay: {
-        behaviors: [
-            childSetterSlot<Gtk.Overlay>(),
-            slot<Gtk.Overlay, Gtk.Widget>("overlays", Gtk.Widget, {
-                attach: (overlay, child) => {
-                    overlay.addOverlay(child);
-                },
-                detach: (overlay, child) => {
-                    overlay.removeOverlay(child);
-                },
-                resolve: layoutChild,
-            }),
-        ],
+        behaviors: [childSetterSlot<Gtk.Overlay>(), overlaySlot("overlay"), overlaySlot("overlays")],
     },
     GtkShortcutController: {
         behaviors: [
@@ -724,6 +727,8 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
     AdwToolbarView: {
         behaviors: [
             contentSetterSlot<Adw.ToolbarView>(Gtk.Widget),
+            methodSlot<Adw.ToolbarView, Gtk.Widget>("top", Gtk.Widget, "addTopBar", "remove"),
+            methodSlot<Adw.ToolbarView, Gtk.Widget>("bottom", Gtk.Widget, "addBottomBar", "remove"),
             methodSlot<Adw.ToolbarView, Gtk.Widget>("topBar", Gtk.Widget, "addTopBar", "remove"),
             methodSlot<Adw.ToolbarView, Gtk.Widget>("bottomBar", Gtk.Widget, "addBottomBar", "remove"),
         ],

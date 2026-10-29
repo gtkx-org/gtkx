@@ -11,7 +11,7 @@ import {
 } from "@gtkx/jsx/adw";
 
 export const TogglesPage = () => (
-    <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+    <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
         <AdwStatusPage
             iconName="widget-toggle-group-symbolic"
             title="Toggle Groups"

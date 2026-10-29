@@ -120,7 +120,7 @@ const PreferencesDialog = ({ onClose }: { onClose: () => void }) => {
             {createPortal(
                 <>
                     <AdwNavigationPage ref={setFirst} title="Subpage">
-                        <AdwToolbarView topBar={<AdwHeaderBar />}>
+                        <AdwToolbarView top={<AdwHeaderBar />}>
                             <AdwStatusPage title="This Is a Subpage">
                                 <GtkButton
                                     label="Open Another Subpage"
@@ -133,7 +133,7 @@ const PreferencesDialog = ({ onClose }: { onClose: () => void }) => {
                         </AdwToolbarView>
                     </AdwNavigationPage>
                     <AdwNavigationPage ref={setSecond} title="Another Subpage">
-                        <AdwToolbarView topBar={<AdwHeaderBar />}>
+                        <AdwToolbarView top={<AdwHeaderBar />}>
                             <AdwStatusPage title="This Is Another Subpage" />
                         </AdwToolbarView>
                     </AdwNavigationPage>

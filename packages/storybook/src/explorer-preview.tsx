@@ -178,7 +178,7 @@ const StorybookPreview = ({ entry }: PreviewProps): ReactNode => {
         <AdwToolbarView
             hexpand
             vexpand
-            topBar={
+            top={
                 <AdwHeaderBar
                     titleWidget={<AdwWindowTitle title={entry.name} subtitle={entry.title} />}
                     end={<GtkButton label="Reset story" onClicked={reset} />}

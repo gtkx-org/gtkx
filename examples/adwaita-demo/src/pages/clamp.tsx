@@ -21,7 +21,7 @@ export const ClampPage = () => {
     const [expression] = useState(() => Gtk.PropertyExpression.new(getClassType(Adw.EnumListItem), null, "nick"));
 
     return (
-        <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+        <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
             <AdwStatusPage
                 iconName="widget-clamp-symbolic"
                 title="Clamp"

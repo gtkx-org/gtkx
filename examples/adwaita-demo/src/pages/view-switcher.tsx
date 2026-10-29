@@ -39,7 +39,7 @@ const ViewSwitcherDialog = ({ onClosed }: { onClosed: () => void }): ReactNode =
             }
         >
             <AdwToolbarView
-                topBar={
+                top={
                     <AdwHeaderBar
                         titleWidget={
                             !narrow && stack ? (
@@ -48,7 +48,7 @@ const ViewSwitcherDialog = ({ onClosed }: { onClosed: () => void }): ReactNode =
                         }
                     />
                 }
-                bottomBar={<AdwViewSwitcherBar stack={stack ?? undefined} reveal={narrow} />}
+                bottom={<AdwViewSwitcherBar stack={stack ?? undefined} reveal={narrow} />}
             >
                 <AdwViewStack ref={setStack}>
                     <AdwViewStackPage name="page1" title="_World" iconName="clock-world-symbolic" useUnderline>
@@ -97,7 +97,7 @@ export const ViewSwitcherPage = (): ReactNode => {
 
     return (
         <>
-            <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+            <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
                 <AdwStatusPage
                     iconName="widget-view-switcher-symbolic"
                     title="View Switcher"

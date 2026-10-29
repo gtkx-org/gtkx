@@ -95,7 +95,7 @@ const SidebarPage = ({ descriptor }: { descriptor: SplitViewDescriptor }): React
 
     return (
         <AdwNavigationPage title={options.title ?? route.name}>
-            <AdwToolbarView topBar={topBar}>{descriptor.render()}</AdwToolbarView>
+            <AdwToolbarView top={topBar}>{descriptor.render()}</AdwToolbarView>
         </AdwNavigationPage>
     );
 };

@@ -125,7 +125,7 @@ const AvatarPage = () => {
     };
 
     return (
-        <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+        <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
             <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} valign={Gtk.Align.START} cssClasses={["avatar-page"]}>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL}>
