@@ -91,6 +91,10 @@ const gestureTargetFor = (widget: Gtk.Widget, isInternalAllowed: boolean): Click
         return { widget, container: null, gestures, isClaiming: true, native: null };
     }
 
+    if (widget instanceof Gtk.WindowHandle) {
+        return { widget, container: null, gestures: getAuthoredClickGestures(widget), isClaiming: true, native: null };
+    }
+
     const container = containerFor(widget);
 
     if (container !== null) {

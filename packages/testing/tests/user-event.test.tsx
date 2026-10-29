@@ -6,6 +6,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     AdwActionRow,
+    AdwHeaderBar,
     AdwSidebar,
     AdwSidebarItem,
     AdwSidebarSection,
@@ -13,6 +14,7 @@ import {
     AdwTabOverview,
     AdwTabPage,
     AdwTabView,
+    AdwWindowTitle,
 } from "@gtkx/jsx/adw";
 import {
     GtkBox,
@@ -477,6 +479,16 @@ describe("userEvent.click", () => {
         await userEvent.click(row);
         await userEvent.pointer(row, "click");
         expect(activations).toBe(2);
+    });
+
+    it("clicks a header bar title without driving the window handle's internal gesture", async () => {
+        await render(<AdwHeaderBar titleWidget={<AdwWindowTitle title="Shopping" />} />);
+        const title = await screen.findByText("Shopping");
+
+        await userEvent.click(title);
+        await userEvent.pointer(title, "click");
+        await userEvent.dblClick(title);
+        expect(title.getRoot()).toBeInstanceOf(Gtk.Window);
     });
 
     it("starts editing an editable label when its text is clicked or pointer-clicked", async () => {
