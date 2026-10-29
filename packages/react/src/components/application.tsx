@@ -49,8 +49,11 @@ const commandLine = (applicationId: string | null): string[] => [
     ...process.argv.slice(2),
 ];
 
+const isRemoteInstance = (application: Gtk.Application): boolean =>
+    application.getIsRegistered() && application.getIsRemote();
+
 const reportOwnedApplicationId = (application: Gtk.Application): void => {
-    if (!application.getIsRegistered() || !application.getIsRemote()) {
+    if (!isRemoteInstance(application)) {
         return;
     }
 
@@ -72,6 +75,10 @@ const startApplication = (
     const generation = lifecycle.generation;
     void completion.then(
         (exitStatus) => {
+            if (isRemoteInstance(application)) {
+                application.quit();
+            }
+
             if (lifecycle.generation === generation) {
                 onComplete();
             }

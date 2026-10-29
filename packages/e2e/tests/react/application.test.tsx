@@ -341,7 +341,7 @@ const Probe = () => {
     return null;
 };
 
-const renderWindowCount = async (applicationId: string): Promise<number> => {
+const renderApplicationWithId = async (applicationId: string): Promise<Gtk.Application> => {
     const root = createRoot({ ...rootElement });
     mounted.push(root);
     const captured: Captured = { application: null };
@@ -359,7 +359,7 @@ const renderWindowCount = async (applicationId: string): Promise<number> => {
         );
     });
 
-    return captured.application?.getWindows().length ?? 0;
+    return requireWidget(captured.application, "GtkApplication");
 };
 
 const Probe2 = ({ onCleanup }: ProbeProps): ReactNode => {
@@ -973,14 +973,17 @@ afterEach(async () => {
 });
 
 describe("<GtkApplication> on an application ID another process already owns", () => {
-    it("draws no window when another process owns the application ID", async () => {
+    it("draws no window and unregisters when another process owns the application ID", async () => {
         const applicationId = uniqueAppId4();
         await startApplicationOwner(applicationId);
-        expect(await renderWindowCount(applicationId)).toBe(0);
+        const application = await renderApplicationWithId(applicationId);
+        expect(application.getWindows()).toHaveLength(0);
+        await expect.poll(() => application.getIsRegistered()).toBe(false);
     });
 
     it("opens a window when this process owns the application ID", async () => {
-        expect(await renderWindowCount(uniqueAppId4())).toBe(1);
+        const application = await renderApplicationWithId(uniqueAppId4());
+        expect(application.getWindows()).toHaveLength(1);
     });
 });
 
