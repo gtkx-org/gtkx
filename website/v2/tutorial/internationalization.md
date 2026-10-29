@@ -13,7 +13,7 @@ description: "Translate the interface and package metadata with GTKX's gettext i
 Install the integration:
 
 ```bash
-npm install @gtkx/i18n@2
+npm install @gtkx/i18n@beta
 ```
 
 GTKX requires GNU gettext 0.25 or newer for extraction and compilation. Its CLI reports missing build tools and installation instructions.

@@ -7,7 +7,7 @@ Translate React content with `useTranslation` and `Trans`. The CLI extracts mess
 In an existing GTKX app:
 
 ```sh
-npm install @gtkx/i18n@2
+npm install @gtkx/i18n@beta
 ```
 
 [Guide](https://gtkx.dev/v2/guide/internationalization) · [API reference](https://gtkx.dev/v2/reference/@gtkx/i18n/) · [GTKX](https://gtkx.dev)
