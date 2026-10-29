@@ -883,6 +883,9 @@ describe("CLI commands", () => {
             ]),
         );
         expect(files.some((file) => file.endsWith("bundle.mjs"))).toBe(true);
+        expect(
+            readFileSync(join(project.root, "build", process.arch, "targets/flatpak/org.gtkx.example.yml"), "utf8"),
+        ).toContain("separate-locales: false");
         const notices = readFileSync(
             join(project.root, "build", process.arch, "overlay/rpm/share/licenses/cli-example/THIRD-PARTY-NOTICES"),
             "utf8",
