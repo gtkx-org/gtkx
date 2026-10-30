@@ -1,7 +1,7 @@
 import type { Plugin } from "vite";
 import { sortStringsBy } from "@gtkx/utils";
 import { realpathSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, sep } from "node:path";
 import { BINDING_FILENAME } from "../deploy/native-addon.js";
 import { bundledNotices } from "../deploy/notices/bundled.js";
 import { packageNotice } from "../deploy/notices/packages.js";
@@ -30,6 +30,7 @@ type BuildConfigIdentity = {
 };
 
 const JSON_INDENT = 4;
+const NODE_MODULES = "node_modules";
 
 const packageIn = (dir: string): PackageSource | null => {
     const manifest = readPackageManifest(dir);
@@ -51,11 +52,13 @@ const packageForModule = (id: string): PackageSource | null => {
 
 const packageKey = ({ manifest }: PackageSource): string => `${manifest.name}@${manifest.version ?? ""}`;
 
-const packagesFor = (root: string, ids: string[]): RecordedPackage[] => {
+const isInstalled = ({ dir }: PackageSource): boolean => realpathSync(dir).split(sep).includes(NODE_MODULES);
+
+const packagesFor = (ids: string[]): RecordedPackage[] => {
     const found = ids
         .map((id) => packageForModule(id))
         .filter((entry) => entry !== null)
-        .filter((entry) => realpathSync(entry.dir) !== root);
+        .filter(isInstalled);
     const unique = new Map(found.map((entry) => [packageKey(entry), entry]));
 
     return sortStringsBy(unique.values(), packageKey).map(({ dir, manifest }) => ({
@@ -67,9 +70,7 @@ const packagesFor = (root: string, ids: string[]): RecordedPackage[] => {
 
 const renderManifest = (manifest: BuildManifest): string => `${JSON.stringify(manifest, null, JSON_INDENT)}\n`;
 
-function gtkxBuildManifest(root: string, collector: BuildManifestCollector, identity: BuildConfigIdentity): Plugin {
-    const projectRoot = realpathSync(root);
-
+function gtkxBuildManifest(collector: BuildManifestCollector, identity: BuildConfigIdentity): Plugin {
     return {
         name: "gtkx:build-manifest",
         apply: "build",
@@ -77,7 +78,7 @@ function gtkxBuildManifest(root: string, collector: BuildManifestCollector, iden
         generateBundle(_options, bundle) {
             const ids = Object.values(bundle).flatMap((output) => (output.type === "chunk" ? output.moduleIds : []));
 
-            const packages = packagesFor(projectRoot, ids);
+            const packages = packagesFor(ids);
             const manifest: BuildManifest = {
                 generator: BUILD_MANIFEST_GENERATOR,
                 formatVersion: BUILD_MANIFEST_FORMAT_VERSION,

@@ -145,6 +145,33 @@ describe("CLI commands", () => {
         expect(Math.max(...lines.map((line) => line.length))).toBeLessThan(MAX_BUNDLE_LINE_LENGTH);
     });
 
+    it("lists installed packages but not linked workspace packages as bundled third-party code", async () => {
+        using project = createProject();
+        project.write(
+            "packages/studio-kit/package.json",
+            JSON.stringify({
+                name: "@studio/kit",
+                version: "0.1.0",
+                private: true,
+                type: "module",
+                exports: "./index.js",
+            }),
+        );
+        project.write("packages/studio-kit/index.js", "export const kitLabel = (count) => `kit ${count}`;");
+        mkdirSync(join(project.root, "node_modules/@studio"));
+        symlinkSync(join(project.root, "packages/studio-kit"), join(project.root, "node_modules/@studio/kit"), "dir");
+        project.write(
+            "src/index.ts",
+            'import { kitLabel } from "@studio/kit";\nimport { createElement } from "react";\nprocess.stdout.write(kitLabel(process.argv.length) + typeof createElement);',
+        );
+
+        await invoke(["build", "--cwd", project.root]);
+        const notices = readFileSync(join(project.root, "dist/BUNDLED-NOTICES"), "utf8");
+
+        expect(notices).toContain("react");
+        expect(notices).not.toContain("@studio/kit");
+    });
+
     it("builds identical output for the same project at another path", async () => {
         const build = async () => {
             using project = createProject();
