@@ -61,6 +61,11 @@ const createCommand = (options: CommandOptions = {}) =>
 
                 return withErrorBoundary(cleanup, options.onError);
             },
+            upgrade: async () => {
+                const { upgrade } = await import("./commands/upgrade.js");
+
+                return withErrorBoundary(upgrade, options.onError);
+            },
         },
     });
 
