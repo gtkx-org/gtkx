@@ -1394,6 +1394,44 @@ describe("CLI commands", () => {
         });
     });
 
+    it("points application errors in development at the source line that threw", async () => {
+        using project = createProject();
+        writeWidgetApp(
+            project,
+            join(project.root, "ready.txt"),
+            [
+                `import { useEffect, useState } from "react";`,
+                `export const Content = () => {`,
+                `    const [isBroken, setIsBroken] = useState(false);`,
+                `    useEffect(() => setIsBroken(true), []);`,
+                `    if (isBroken) throw new Error("Rendering the card failed");`,
+                `    return null;`,
+                `};`,
+            ].join("\n"),
+        );
+        const session = spawn(
+            process.execPath,
+            [join(project.root, "node_modules/@gtkx/cli/bin/gtkx.js"), "dev", "--headless", "--size", "640x480"],
+            {
+                cwd: project.root,
+                env: Object.fromEntries(
+                    Object.entries(process.env).filter(([name]) => !name.startsWith("VITEST") && name !== "DISPLAY"),
+                ),
+            },
+        );
+        let output = "";
+        session.stdout.on("data", (chunk: Buffer) => (output += chunk.toString()));
+        session.stderr.on("data", (chunk: Buffer) => (output += chunk.toString()));
+        const exited = once(session, "exit");
+        try {
+            await expect.poll(() => output, { timeout: 60_000 }).toContain("Waiting for a change");
+            expect(output).toMatch(/at Content \(.*\/src\/content\.tsx:5:\d+\)/);
+        } finally {
+            session.kill("SIGTERM");
+            await exited;
+        }
+    });
+
     it("tells MCP clients which error stopped the application", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "ready.txt");
