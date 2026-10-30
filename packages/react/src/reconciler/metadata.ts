@@ -202,6 +202,25 @@ const getTypeInfo = (object: object): TypeInfo | undefined => {
 
 const hasProperty = (info: TypeInfo, accessor: string): boolean => Object.hasOwn(info.properties, accessor);
 
+const hasSetter = (object: object, name: string): boolean => {
+    let prototype = Reflect.getPrototypeOf(object);
+
+    while (prototype !== null) {
+        const descriptor = Object.getOwnPropertyDescriptor(prototype, name);
+
+        if (descriptor !== undefined) {
+            return descriptor.set !== undefined;
+        }
+
+        prototype = Reflect.getPrototypeOf(prototype);
+    }
+
+    return false;
+};
+
+const isKnownProp = (info: TypeInfo, object: object, name: string): boolean =>
+    hasProperty(info, name) || hasSetter(object, name);
+
 const isReadableProperty = (info: TypeInfo, accessor: string): boolean =>
     ((info.properties[accessor]?.[FLAGS] ?? 0) & READABLE) !== 0;
 
@@ -233,4 +252,12 @@ const propertiesAccepting = (parent: object, child: object): string[] => {
         .map(([accessor]) => accessor);
 };
 
-export { getPropertyName, hasProperty, isReadableProperty, propertiesAccepting, typeInfoFor, type TypeInfo };
+export {
+    getPropertyName,
+    hasProperty,
+    isKnownProp,
+    isReadableProperty,
+    propertiesAccepting,
+    typeInfoFor,
+    type TypeInfo,
+};

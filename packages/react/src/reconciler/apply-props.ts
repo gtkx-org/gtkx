@@ -2,10 +2,19 @@ import type { SignalHandler } from "@gtkx/runtime";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { coerceObjectProperty, getInstanceType, signalForHandlerName, TYPE_INVALID } from "@gtkx/runtime";
-import { drain, isDeepEqual, kebabCase, lowerFirst, unsanitizeIdentifier } from "@gtkx/utils";
+import { camelCase, drain, isDeepEqual, kebabCase, lowerFirst, unsanitizeIdentifier } from "@gtkx/utils";
+import { closestMatch } from "leven";
 import type { ElementBehavior, Props } from "./registry.js";
 import { applyAccessibleProps, isAccessibleProp } from "../utils/accessible-props.js";
-import { getPropertyName, hasProperty, isReadableProperty, type TypeInfo, typeInfoFor } from "./metadata.js";
+import { slotNameOf } from "./behaviors.js";
+import {
+    getPropertyName,
+    hasProperty,
+    isKnownProp,
+    isReadableProperty,
+    type TypeInfo,
+    typeInfoFor,
+} from "./metadata.js";
 import { type ElementNode, type SignalTarget } from "./node.js";
 import { applyMutation, applyWrite, connectHandler, disconnectHandler } from "./signals.js";
 import { updateStyle } from "./style.js";
@@ -30,6 +39,52 @@ const unknownSignalError = (typeName: string, name: string): Error =>
             `signal the element carries, or declare the one '${name}' stands for on ${typeName} when ` +
             "its class is registered.",
     );
+
+const FOREIGN_PROPS: Map<string, string> = new Map([
+    ["class", "cssClasses"],
+    ["className", "cssClasses"],
+    ["disabled", "sensitive"],
+    ["hidden", "visible"],
+]);
+
+const nearestProp = (name: string, candidates: string[]): string | undefined => {
+    const spelled = FOREIGN_PROPS.get(name) ?? camelCase(name);
+
+    if (spelled !== name && candidates.includes(spelled)) {
+        return spelled;
+    }
+
+    return closestMatch(name, candidates, { maxDistance: Math.max(2, Math.floor(name.length / 3)) });
+};
+
+const isSlotName = (info: TypeInfo, name: string): boolean =>
+    info.behaviors.some((behavior) => slotNameOf(behavior) === name);
+
+const unknownPropError = (target: SignalTarget, info: TypeInfo, name: string, consumed: Set<string>): Error => {
+    const candidates = [...Object.keys(info.properties), ...consumed].filter(
+        (candidate) => !info.omittedProps.has(candidate),
+    );
+    const nearest = nearestProp(name, candidates);
+    const hint =
+        nearest === undefined
+            ? `Check the element reference for the props <${target.typeName}> takes.`
+            : `Did you mean '${nearest}'?`;
+
+    return new Error(`<${target.typeName}> has no prop '${name}'. ${hint}`);
+};
+
+const assertKnownProp = (
+    target: SignalTarget,
+    info: TypeInfo,
+    delta: Omit<PropDelta, "prevValue">,
+    consumed: Set<string>,
+): void => {
+    const { name, value } = delta;
+
+    if (value !== null && value !== undefined && !isKnownProp(info, target.object, name) && !isSlotName(info, name)) {
+        throw unknownPropError(target, info, name, consumed);
+    }
+};
 
 const lookedUpSignal = (target: SignalTarget, name: string): string => {
     const type = getInstanceType(target.object);
@@ -108,7 +163,7 @@ const isBufferText = (node: ElementNode, name: string): node is ElementNode & { 
 
 const propText = (value: unknown): string => (typeof value === "string" ? value : JSON.stringify(value));
 
-const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta): void => {
+const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta, consumed: Set<string>): void => {
     const { name, value, prevValue } = delta;
 
     if (value !== undefined && isBufferText(node, name)) {
@@ -122,6 +177,8 @@ const applyEntry = (node: ElementNode, info: TypeInfo, delta: PropDelta): void =
 
         return;
     }
+
+    assertKnownProp(node, info, delta, consumed);
 
     const isInitialNull = value === null && prevValue === undefined;
 
@@ -219,7 +276,7 @@ const applyValueEntries = (node: ElementNode, info: TypeInfo, change: PropChange
             return;
         }
 
-        applyEntry(node, info, { name, value: change.next[name], prevValue: change.prev[name] });
+        applyEntry(node, info, { name, value: change.next[name], prevValue: change.prev[name] }, consumed);
     });
 };
 
@@ -314,6 +371,7 @@ const applyAdoptedProps = (target: SignalTarget, prev: Props, next: Props): void
             return;
         }
 
+        assertKnownProp(target, info, { name, value: next[name] }, consumed);
         setOrReset(object, info, name, next[name]);
     });
 

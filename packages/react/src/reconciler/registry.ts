@@ -46,7 +46,10 @@ type ElementBehavior<T extends GObject.Object = GObject.Object> = {
     detach?: (object: T, child: GObject.Object, info: DetachInfo) => void;
     /** Returns the object the container adopts for a child, overriding whatever `attach` returned. */
     resolve?: (object: T, child: GObject.Object) => GObject.Object | null;
-    /** Applies changed props and returns the names it consumed, which are then not set as GObject properties. */
+    /**
+     * Applies changed props and returns the names it consumed, which are then not set as GObject properties.
+     * A prop that no behavior consumes and that is not a property of the element throws.
+     */
     update?: (object: T, prev: Props, next: Props) => Iterable<string> | undefined;
     /**
      * Props the behavior can only apply while the element is being built, because the library exposes no

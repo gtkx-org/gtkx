@@ -82,6 +82,8 @@ const holdingOneChild = (behavior: ElementBehavior): ElementBehavior => {
 
 const holdsOneChild = (behavior: ElementBehavior): boolean => singleChildBehaviors.has(behavior);
 
+const slotNameOf = (behavior: ElementBehavior): string | undefined => slotMatchers.get(behavior)?.slotName;
+
 const childMatcher =
     <C extends GObject.Object>(cls: ChildClass<C> | undefined): ((child: GObject.Object) => child is C) =>
     (child): child is C =>
@@ -330,5 +332,6 @@ export {
     indexedSlot,
     rowSlot,
     slotAccepting,
+    slotNameOf,
     holdsOneChild,
 };

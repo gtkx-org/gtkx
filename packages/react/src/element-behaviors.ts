@@ -88,6 +88,7 @@ const sidebarSections = indexedSlot<Adw.Sidebar, Adw.SidebarSection>("children",
 const sidebarItems = indexedSlot<Adw.SidebarSection, Adw.SidebarItem>("children", Adw.SidebarItem);
 const isWidget = childMatcher(Gtk.Widget);
 const TEXT_CHILD_ANCHOR_PROP = "textChildAnchor";
+const ACTION_GROUP_PREFIX_PROP = "prefix";
 const tabExtraDropTarget = value<Adw.TabBar | Adw.TabOverview, TabExtraDropTarget | null>(
     "extraDropTarget",
     (tabs, target) => tabs.setupExtraDropTarget(target?.actions ?? 0, target?.types ?? null),
@@ -279,12 +280,19 @@ const BUILTIN_BEHAVIORS: Record<string, ElementConfig<never>> = {
             setterSlot<Gtk.Widget, Gtk.LayoutManager>("layoutManager", Gtk.LayoutManager, "setLayoutManager"),
             slot<Gtk.Widget, Gio.ActionGroup>("actionGroups", Gio.ActionGroup, {
                 attach: (widget, group, info) => {
-                    widget.insertActionGroup((info.props.prefix as string | null) ?? "", group);
+                    widget.insertActionGroup((info.props[ACTION_GROUP_PREFIX_PROP] as string | null) ?? "", group);
                 },
                 detach: (widget, _group, info) => {
-                    widget.insertActionGroup((info.props.prefix as string | null) ?? "", null);
+                    widget.insertActionGroup((info.props[ACTION_GROUP_PREFIX_PROP] as string | null) ?? "", null);
                 },
             }),
+        ],
+    },
+    GActionGroup: {
+        behaviors: [
+            {
+                update: () => [ACTION_GROUP_PREFIX_PROP],
+            },
         ],
     },
     GtkBox: {

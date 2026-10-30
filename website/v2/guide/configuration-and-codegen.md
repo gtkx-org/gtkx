@@ -113,6 +113,8 @@ Generated elements follow the native API with GTKX naming conventions:
 - Child slots that no property backs take their GtkBuilder child type, such as `start` and `end` on a header bar or `top` and `bottom` on a toolbar view.
 - Refs expose the corresponding GI instance for imperative APIs.
 
+A prop the element does not have, such as a typo, a C-style name like `margin_top` or a prop from another toolkit, throws an error that names the element and, where it can, the closest prop it does have.
+
 Prefer JSX for object creation and child placement. The [generated element reference](#generating-element-reference-docs) shows the exact props, slots, and signals for each configured library.
 
 ### Member names
@@ -166,7 +168,7 @@ export default defineConfig({
 });
 ```
 
-Wrap each behavior with `defineBehavior` from `@gtkx/react/config`, supplying its GI class as the type argument. Behaviors apply to descendants and run before built-in behaviors. The [ElementBehavior reference](/v2/reference/@gtkx/react/config/type-aliases/ElementBehavior) describes the hooks.
+Wrap each behavior with `defineBehavior` from `@gtkx/react/config`, supplying its GI class as the type argument. Behaviors apply to descendants and run before built-in behaviors. A behavior's `update` returns the names of the props it handles; any other prop must be a native property of the element. The [ElementBehavior reference](/v2/reference/@gtkx/react/config/type-aliases/ElementBehavior) describes the hooks.
 
 Declare additional props by augmenting the namespace module that owns them, with a top-level import of that module. Keep application effects and higher-level behavior in React components.
 

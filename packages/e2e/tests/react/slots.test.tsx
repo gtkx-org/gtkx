@@ -896,6 +896,13 @@ describe("render - ContainerProp", () => {
                 render(<GtkHeaderBar packStart={<GtkLabel>Start</GtkLabel>} />),
             ).rejects.toThrow();
         });
+
+        it("rejects a child passed under a name that is neither a prop nor a method", async () => {
+            await expect(
+                // @ts-expect-error titelWidget is a typo of titleWidget
+                render(<GtkHeaderBar titelWidget={<GtkLabel>Title</GtkLabel>} />),
+            ).rejects.toThrow();
+        });
     });
 
     describe("AdwToolbarView (top/bottom)", () => {

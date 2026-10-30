@@ -4,7 +4,7 @@ import { createLogger, drain, indexBeforeOrEnd, type Logger } from "@gtkx/utils"
 import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
 import { applyAdoptedProps, discardAccessible, markDependentPropsDirty } from "./apply-props.js";
 import { holdsOneChild, slotAccepting } from "./behaviors.js";
-import { propertiesAccepting, typeInfoFor } from "./metadata.js";
+import { isKnownProp, propertiesAccepting, typeInfoFor } from "./metadata.js";
 import {
     DEFAULT_SLOT,
     createElementNode,
@@ -209,6 +209,11 @@ const slotsAccepting = (parent: ElementNode, child: GObject.Object): string[] =>
     return [...slots].filter((name) => name !== DEFAULT_SLOT);
 };
 
+const unknownSlotReason = (parent: ElementNode, slot: string): string =>
+    typeof Reflect.get(parent.object, slot) === "function"
+        ? `it is a method of <${parent.typeName}>, not a prop.`
+        : `<${parent.typeName}> has no prop ${slot}.`;
+
 const unclaimedChildError = (parent: ElementNode, entry: PlacedChild): Error => {
     const parentTag = `<${parent.typeName}>`;
     const childTag = `<${entry.typeName}>`;
@@ -216,7 +221,7 @@ const unclaimedChildError = (parent: ElementNode, entry: PlacedChild): Error => 
     const placement =
         entry.slot === DEFAULT_SLOT
             ? `${childTag} cannot be a child of ${parentTag}.`
-            : `${childTag} cannot be passed as ${entry.slot}: it is a method of ${parentTag}, not a prop.`;
+            : `${childTag} cannot be passed as ${entry.slot}: ${unknownSlotReason(parent, entry.slot)}`;
 
     if (slots.length > 0) {
         const props = slots.map((name) => `${name}={<${entry.typeName} />}`).join(" or ");
@@ -241,7 +246,7 @@ const runAttach = (parent: ElementNode, entry: PlacedChild, index: number, sibli
         }
     }
 
-    if (entry.slot === DEFAULT_SLOT || typeof Reflect.get(parent.object, entry.slot) === "function") {
+    if (entry.slot === DEFAULT_SLOT || !isKnownProp(typeInfoFor(parent.typeName), parent.object, entry.slot)) {
         throw unclaimedChildError(parent, entry);
     }
 
