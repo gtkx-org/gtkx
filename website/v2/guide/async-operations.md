@@ -160,6 +160,27 @@ export const useQuitOnSignals = (save: () => void): void => {
 
 When the last `GLibUnix.signalAdd` source for a signal is removed, for example on unmount or after a Fast Refresh, GLib resets that signal to its default action. That silently disables GTKX's exit handling and every `process.on` listener, although Node still lists them. The next `SIGTERM` then ends the process without cleanup, and a Vitest worker ends without releasing its headless display.
 
+## Command-line apps
+
+With `HANDLES_COMMAND_LINE`, a second launch of a running app forwards its arguments to the primary instance and waits for its reply. GLib sends that reply when the `Gio.ApplicationCommandLine` is finalized or its `done()` method is called. GTKX finalizes it only after JavaScript garbage-collects the wrapper, so without `done()` the second launch can wait for minutes. Finish every command line in `onCommandLine`, setting the exit status first because `done()` freezes it before GLib applies the handler's return value:
+
+```tsx
+import type * as Gio from "@gtkx/gi/gio";
+
+const finish = (commandLine: Gio.ApplicationCommandLine, status: number): number => {
+    commandLine.setExitStatus(status);
+    commandLine.done();
+    return status;
+};
+
+export const handleCommandLine = (commandLine: Gio.ApplicationCommandLine, application: Gio.Application): number => {
+    application.activate();
+    return finish(commandLine, 0);
+};
+```
+
+Pass the handler as `onCommandLine` on the application element. A handler that answers after asynchronous work calls `setExitStatus` and `done()` when that work completes.
+
 ## Keeping a helper process alive
 
 Application elements manage the GLib lifecycle automatically. A standalone Node helper needs an explicit hold while native work is pending; see [helper processes](/v2/guide/workers#keeping-a-helper-process-alive).
