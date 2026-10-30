@@ -558,8 +558,13 @@ describe("useParentWindow", () => {
         expect(captured.actions).toBe(windowInstance);
     });
 
+    it("returns the test harness window for a tree rendered without a container", async () => {
+        const { container } = await render(<Probe slot="orphan" />);
+        expect(captured.orphan).toBe(container);
+    });
+
     it("returns null when there is no window ancestor", async () => {
-        await render(<Probe slot="orphan" />);
+        await render(<Probe slot="orphan" />, { container: new Gtk.Box() });
         expect(captured.orphan).toBeNull();
     });
 
