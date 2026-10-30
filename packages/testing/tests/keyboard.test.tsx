@@ -1,5 +1,6 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
+import { AdwDialog } from "@gtkx/jsx/adw";
 import {
     GtkBox,
     GtkButton,
@@ -7,6 +8,8 @@ import {
     GtkEntry,
     GtkEventControllerKey,
     GtkLabel,
+    GtkMenuButton,
+    GtkPopover,
     GtkShortcut,
     GtkShortcutController,
     GtkTextView,
@@ -211,5 +214,36 @@ describe("keyboard focus movement", () => {
         const buffer = notes.getBuffer();
         expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), true)).toBe("\t\n");
         expect(notes).toHaveFocus();
+    });
+});
+
+describe("keyboard in popovers", () => {
+    it("closes an open popover with Escape before an enclosing dialog handles it", async () => {
+        let closedDialogs = 0;
+
+        await render(
+            <AdwDialog
+                title="Edit"
+                onClosed={() => {
+                    closedDialogs++;
+                }}
+            >
+                <GtkMenuButton
+                    label="Color"
+                    popover={
+                        <GtkPopover>
+                            <GtkButton name="blue" label="Blue" />
+                        </GtkPopover>
+                    }
+                />
+            </AdwDialog>,
+        );
+
+        await userEvent.click(await screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Color" }));
+        const blue = await screen.findByName("blue");
+        await userEvent.keyboard(blue, "{Escape}");
+        expect(blue).not.toBeVisible();
+        expect(screen.getByRole(Gtk.AccessibleRole.DIALOG, { name: "Edit" })).toBeVisible();
+        expect(closedDialogs).toBe(0);
     });
 });
