@@ -23,6 +23,7 @@ import { renderMethodSignature, returnedOutParameters } from "./method.js";
 import {
     emitFieldWrite,
     hasOwnedFieldStorage,
+    isEmbeddedPointerRecordField,
     isEmittableField,
     isInlineField,
     isPublicField,
@@ -48,7 +49,10 @@ type RecordConstructorSpec = {
 };
 
 const isWritableFieldSlot = (context: ModuleContext, entry: RecordFieldSlot): entry is WritableFieldSlot =>
-    entry.field.writable && isEmittableField(context, entry.field) && isStorableFieldType(context, entry.field.type);
+    entry.field.writable &&
+    isEmittableField(context, entry.field) &&
+    !isEmbeddedPointerRecordField(context, entry.field) &&
+    isStorableFieldType(context, entry.field.type);
 
 const renderRecordConstructorProp = (context: ModuleContext, entry: RecordFieldSlot): string | undefined => {
     const { field } = entry;

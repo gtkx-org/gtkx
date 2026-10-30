@@ -68,6 +68,8 @@ Fundamental wrappers use a separate runtime weak cache. Native supplies a live i
 
 Some callback arguments borrow memory valid only for the current invocation. A borrow scope records their handles; leaving the invocation invalidates those handles, including on an error path. Field views inherit their owner's invalidation. Holding the JavaScript wrapper after that point does not extend the native borrow.
 
+Generated accessors read a record or union embedded by value in another record as a field view, as GJS does for nested boxed values. The view keeps its parent's handle, and therefore its memory, alive. When the embedded record holds pointers, the generated field has no setter: copying the record would alias pointers its parent owns.
+
 Executable targets also use opaque handles. Library symbols remain available with their library, call-scoped callbacks expire when their enclosing call ends, and one-shot callback handles expire before invocation. The runtime passes those handles directly to the native binding API.
 
 Runtime supplies lazy GType and lifecycle-function resolvers through [`descriptor-lifecycle.ts`](https://github.com/gtkx-org/gtkx/blob/main/packages/runtime/src/descriptor-lifecycle.ts). Native activates them when a codec needs the operation, including during output or callback decoding, so types registered by the callee remain visible. Unregistered types and failed lookups can be retried. Resolved lifecycle functions must come from permanently loaded libraries; native retains their handles, and destruction uses native function pointers without invoking JavaScript. Resolver callbacks belong to their Node environment and are released during environment teardown.

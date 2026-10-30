@@ -2,9 +2,11 @@ import * as GIMarshallingTests from "@gtkx/gi/gimarshallingtests";
 
 import * as Regress from "@gtkx/gi/regress";
 
+import { getHandle, wrapHandle } from "@gtkx/runtime";
+
 import { expect, test } from "vitest";
 
-import { drainGC } from "./helpers/memory.js";
+import { didSettle, drainGC } from "./helpers/memory.js";
 
 test("SimpleStruct round trips through construction, methods, and returnv", () => {
     const constructed = new GIMarshallingTests.SimpleStruct({ long: 6n, int8: 7 });
@@ -47,6 +49,21 @@ test("NestedStruct inline struct field reads alias the owner", () => {
     inner.long = 55n;
     expect(nested.simpleStruct.long).toBe(55n);
     expect(nested.simpleStruct.int8).toBe(2);
+});
+
+test("an embedded pointer-carrying struct view keeps its parent's memory alive", async () => {
+    const finalized: string[] = [];
+    const registry = new FinalizationRegistry((name: string) => finalized.push(name));
+    const view = (() => {
+        const union = GIMarshallingTests.StructuredUnion.new(GIMarshallingTests.StructuredUnionType.BOXED_STRUCT);
+        const member = wrapHandle(getHandle(union), GIMarshallingTests.StructuredUnionBoxedStruct);
+        registry.register(union, "union");
+        registry.register(member, "member");
+        return member.parent;
+    })();
+    expect(await didSettle(() => finalized.length === 2)).toBe(true);
+    expect([view.long, view.string]).toEqual([42n, "hello"]);
+    view.inv();
 });
 
 test("NestedStruct inline struct field writes copy the donor struct", () => {
