@@ -72,6 +72,8 @@ Shared preview configuration belongs in `.storybook/preview.tsx`, exported as an
 
 Controls preserve absent arguments until you edit them. Choice controls display a placeholder for an unset value; selecting it clears the argument. Set `table.readonly: true` on an argument's metadata to show a disabled control, or `table.disable: true` to hide it. A [conditional](https://storybook.js.org/docs/api/arg-types#if) `if` on an argument hides its control, and leaves the argument unset, while its arg or global condition is false.
 
+The explorer lists stories whose [tags](https://storybook.js.org/docs/writing-stories/tags) include `dev`, which every story has by default. Add `tags: ["!dev"]` to a story or its metadata to leave it out of the navigator; `composeStories` still returns it.
+
 ## Reuse stories in native tests
 
 With the [GTKX Vitest setup](/v2/guide/testing), import and compose the same module:
