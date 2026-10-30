@@ -1015,6 +1015,41 @@ describe("render - ContainerProp", () => {
             expect(toolbar.getTopBarHeight()).toBeGreaterThan(0);
             expect(toolbar.getBottomBarHeight()).toBeGreaterThan(0);
         });
+
+        it("accepts top, bottom and the deprecated aliases while they hold no bar", async () => {
+            const toolbarRef = createRef<Adw.ToolbarView>();
+            const topRef = createRef<Adw.HeaderBar>();
+
+            function App({ hasTop }: { hasTop: boolean }) {
+                return (
+                    <AdwToolbarView
+                        ref={toolbarRef}
+                        top={hasTop && <AdwHeaderBar ref={topRef} />}
+                        bottom={false}
+                        topBar={false}
+                        bottomBar={[]}
+                    >
+                        <GtkLabel>Content</GtkLabel>
+                    </AdwToolbarView>
+                );
+            }
+
+            const { rerender } = await render(<App hasTop={false} />);
+            expect(mountedRef(toolbarRef).getTopBarHeight()).toBe(0);
+            await rerender(<App hasTop />);
+            expect(mountedRef(toolbarRef)).toContainElement(topRef.current);
+        });
+
+        it("rejects a bar passed under a misspelled slot name", async () => {
+            await expect(
+                render(
+                    // @ts-expect-error topBars is a typo of topBar
+                    <AdwToolbarView topBars={<AdwHeaderBar />}>
+                        <GtkLabel>Content</GtkLabel>
+                    </AdwToolbarView>,
+                ),
+            ).rejects.toThrow("top");
+        });
     });
 
     describe("GtkListBox (placeholder)", () => {
@@ -1039,6 +1074,10 @@ describe("render - ContainerProp", () => {
             await rerender(<App shouldShowPlaceholder={false} />);
             expect(placeholder.getParent()).toBeNull();
         });
+
+        it("accepts a placeholder that holds no widget", async () => {
+            await expect(render(<GtkListBox placeholder={false} />)).resolves.toBeDefined();
+        });
     });
 
     describe("GtkOverlay (overlay)", () => {
@@ -1053,6 +1092,16 @@ describe("render - ContainerProp", () => {
             );
 
             expect(mountedRef(overlayChildRef).getParent()).toBe(mountedRef(overlayRef));
+        });
+
+        it("accepts overlay and the deprecated overlays while they hold no widget", async () => {
+            await expect(
+                render(
+                    <GtkOverlay overlay={false} overlays={[]}>
+                        <GtkLabel>Main</GtkLabel>
+                    </GtkOverlay>,
+                ),
+            ).resolves.toBeDefined();
         });
     });
 });
