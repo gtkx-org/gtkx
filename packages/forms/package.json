@@ -48,9 +48,9 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@gtkx/components": "workspace:*",
-        "@gtkx/react": "workspace:*",
-        "@gtkx/utils": "workspace:*",
+        "@gtkx/components": "workspace:^",
+        "@gtkx/react": "workspace:^",
+        "@gtkx/utils": "workspace:^",
         "react-hook-form": "^7.91.0"
     },
     "peerDependencies": {

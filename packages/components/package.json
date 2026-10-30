@@ -46,9 +46,9 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@gtkx/react": "workspace:*",
-        "@gtkx/runtime": "workspace:*",
-        "@gtkx/utils": "workspace:*"
+        "@gtkx/react": "workspace:^",
+        "@gtkx/runtime": "workspace:^",
+        "@gtkx/utils": "workspace:^"
     },
     "peerDependencies": {
         "@types/react": "^19.3",

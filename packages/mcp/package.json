@@ -58,14 +58,23 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@gtkx/codegen": "workspace:*",
-        "@gtkx/config": "workspace:*",
-        "@gtkx/react": "workspace:*",
-        "@gtkx/utils": "workspace:*",
+        "@gtkx/codegen": "workspace:^",
+        "@gtkx/config": "workspace:^",
+        "@gtkx/react": "workspace:^",
+        "@gtkx/utils": "workspace:^",
         "@modelcontextprotocol/sdk": "^1.32.2",
         "zod": "catalog:"
     },
     "devDependencies": {
         "vitest": "catalog:"
+    },
+    "peerDependencies": {
+        "@types/react": "^19.3",
+        "react": "^19.3"
+    },
+    "peerDependenciesMeta": {
+        "@types/react": {
+            "optional": true
+        }
     }
 }

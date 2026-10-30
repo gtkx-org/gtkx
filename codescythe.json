@@ -63,6 +63,7 @@
         "packages/e2e/tests/helpers/native-fixtures-coverage.ts",
         "packages/e2e/tests/native/leak-probe.ts",
         "packages/native/tools/**/*.test.ts",
+        "scripts/**/*.test.ts",
         "packages/codegen/src/cli.ts",
         "packages/config/src/builtin-elements.ts"
     ],

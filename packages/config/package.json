@@ -65,7 +65,7 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@gtkx/utils": "workspace:*",
+        "@gtkx/utils": "workspace:^",
         "c12": "^3.3.4",
         "defu": "^6.1.7",
         "jiti": "^2.7.0",

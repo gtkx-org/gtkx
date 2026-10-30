@@ -54,8 +54,8 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@gtkx/config": "workspace:*",
-        "@gtkx/utils": "workspace:*",
+        "@gtkx/config": "workspace:^",
+        "@gtkx/utils": "workspace:^",
         "@homebridge/dbus-native": "^0.7.9"
     },
     "devDependencies": {

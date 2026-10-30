@@ -55,8 +55,8 @@
     },
     "dependencies": {
         "@clack/prompts": "^1.8.1",
-        "@gtkx/config": "workspace:*",
-        "@gtkx/utils": "workspace:*",
+        "@gtkx/config": "workspace:^",
+        "@gtkx/utils": "workspace:^",
         "citty": "^0.2.2",
         "ejs": "catalog:",
         "nypm": "^0.6.11",

@@ -62,7 +62,7 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@gtkx/native": "workspace:*",
-        "@gtkx/utils": "workspace:*"
+        "@gtkx/native": "workspace:^",
+        "@gtkx/utils": "workspace:^"
     }
 }

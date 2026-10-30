@@ -56,7 +56,7 @@
     },
     "dependencies": {
         "@emotion/serialize": "^1.3.3",
-        "@gtkx/utils": "workspace:*",
+        "@gtkx/utils": "workspace:^",
         "postcss": "^8.5.31",
         "postcss-nested": "^9.0.1",
         "postcss-selector-parser": "^7.1.7"

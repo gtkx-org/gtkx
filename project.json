@@ -141,7 +141,12 @@
         },
         "test": {
             "dependsOn": ["@gtkx/utils:build"],
-            "inputs": ["default", "^production", "{workspaceRoot}/packages/native/tools/**/*"]
+            "inputs": [
+                "default",
+                "^production",
+                "{workspaceRoot}/packages/native/tools/**/*",
+                "{workspaceRoot}/packages/*/package.json"
+            ]
         },
         "lint-eslint": {
             "command": "eslint packages/native/tools",

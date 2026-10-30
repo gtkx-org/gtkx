@@ -59,9 +59,9 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@gtkx/components": "workspace:*",
-        "@gtkx/react": "workspace:*",
-        "@gtkx/utils": "workspace:*",
+        "@gtkx/components": "workspace:^",
+        "@gtkx/react": "workspace:^",
+        "@gtkx/utils": "workspace:^",
         "storybook": "10.6.3"
     },
     "peerDependencies": {

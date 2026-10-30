@@ -66,19 +66,19 @@
         "@babel/core": "^8.0.9",
         "@babel/preset-typescript": "^8.0.7",
         "@cantoo/fontkit": "^2.0.12",
-        "@gtkx/codegen": "workspace:*",
-        "@gtkx/config": "workspace:*",
-        "@gtkx/mcp": "workspace:*",
-        "@gtkx/native": "workspace:*",
-        "@gtkx/runtime": "workspace:*",
-        "@gtkx/utils": "workspace:*",
-        "@gtkx/vitest": "workspace:*",
+        "@gtkx/codegen": "workspace:^",
+        "@gtkx/config": "workspace:^",
+        "@gtkx/mcp": "workspace:^",
+        "@gtkx/native": "workspace:^",
+        "@gtkx/runtime": "workspace:^",
+        "@gtkx/utils": "workspace:^",
+        "@gtkx/vitest": "workspace:^",
         "@swc/core": "^1.16.20",
         "@types/react-refresh": "^0.14.7",
         "babel-plugin-react-compiler": "^1.0.0",
         "chokidar": "^6.0.0",
         "citty": "^0.2.2",
-        "create-gtkx": "workspace:*",
+        "create-gtkx": "workspace:^",
         "fast-xml-builder": "^1.3.1",
         "gettext-parser": "^10.0.0",
         "hosted-git-info": "^10.1.1",
@@ -107,15 +107,23 @@
         "@modelcontextprotocol/sdk": "^1.32.2"
     },
     "peerDependencies": {
-        "@gtkx/react": "workspace:*",
-        "@gtkx/testing": "workspace:*",
-        "react": "^19.3"
+        "@gtkx/react": "workspace:^",
+        "@gtkx/testing": "workspace:^",
+        "@types/react": "^19.3",
+        "react": "^19.3",
+        "vitest": ">=5"
     },
     "peerDependenciesMeta": {
         "@gtkx/react": {
             "optional": true
         },
         "@gtkx/testing": {
+            "optional": true
+        },
+        "@types/react": {
+            "optional": true
+        },
+        "vitest": {
             "optional": true
         }
     }

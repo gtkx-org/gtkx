@@ -47,7 +47,7 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@gtkx/runtime": "workspace:*"
+        "@gtkx/runtime": "workspace:^"
     },
     "devDependencies": {
         "@gtkx/vitest": "workspace:*",

@@ -53,8 +53,8 @@
         "node": ">=26.7.0"
     },
     "dependencies": {
-        "@gtkx/react": "workspace:*",
-        "@gtkx/runtime": "workspace:*",
+        "@gtkx/react": "workspace:^",
+        "@gtkx/runtime": "workspace:^",
         "@react-spring/core": "^10.1.2",
         "@react-spring/shared": "^10.1.2",
         "@react-spring/types": "^10.1.2"

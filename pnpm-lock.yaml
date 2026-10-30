@@ -485,10 +485,10 @@ importers:
   packages/animated:
     dependencies:
       '@gtkx/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../react
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
       '@react-spring/core':
         specifier: ^10.1.2
@@ -522,7 +522,7 @@ importers:
   packages/cairo:
     dependencies:
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
     devDependencies:
       '@gtkx/vitest':
@@ -544,29 +544,32 @@ importers:
         specifier: ^2.0.12
         version: 2.0.12
       '@gtkx/codegen':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../codegen
       '@gtkx/config':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../config
       '@gtkx/mcp':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../mcp
       '@gtkx/native':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../native
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@gtkx/vitest':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../vitest
       '@swc/core':
         specifier: ^1.16.20
         version: 1.16.20
+      '@types/react':
+        specifier: ^19.3
+        version: 19.3.0
       '@types/react-refresh':
         specifier: ^0.14.7
         version: 0.14.7
@@ -580,7 +583,7 @@ importers:
         specifier: ^0.2.2
         version: 0.2.2
       create-gtkx:
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../create-gtkx
       fast-xml-builder:
         specifier: ^1.3.1
@@ -662,19 +665,19 @@ importers:
   packages/codegen:
     dependencies:
       '@gtkx/cairo':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../cairo
       '@gtkx/config':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../config
       '@gtkx/native':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../native
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@types/node':
         specifier: 'catalog:'
@@ -708,13 +711,13 @@ importers:
   packages/components:
     dependencies:
       '@gtkx/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../react
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       react:
         specifier: ^19.3
@@ -739,7 +742,7 @@ importers:
   packages/config:
     dependencies:
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       c12:
         specifier: ^3.3.4
@@ -767,10 +770,10 @@ importers:
         specifier: ^1.8.1
         version: 1.8.1
       '@gtkx/config':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../config
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       citty:
         specifier: ^0.2.2
@@ -813,7 +816,7 @@ importers:
         specifier: ^1.3.3
         version: 1.3.3
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       postcss:
         specifier: ^8.5.31
@@ -871,13 +874,13 @@ importers:
   packages/forms:
     dependencies:
       '@gtkx/components':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../components
       '@gtkx/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../react
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       react:
         specifier: ^19.3
@@ -905,10 +908,10 @@ importers:
   packages/gl:
     dependencies:
       '@gtkx/native':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../native
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
     devDependencies:
       '@gtkx/codegen':
@@ -942,7 +945,7 @@ importers:
   packages/i18n:
     dependencies:
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
       i18next:
         specifier: ^26.5.11
@@ -973,20 +976,26 @@ importers:
   packages/mcp:
     dependencies:
       '@gtkx/codegen':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../codegen
       '@gtkx/config':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../config
       '@gtkx/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../react
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.2
         version: 1.32.2(supports-color@7.2.0)(zod@4.6.7)
+      '@types/react':
+        specifier: ^19.3
+        version: 19.3.0
+      react:
+        specifier: ^19.3
+        version: 19.3.1
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -1007,7 +1016,7 @@ importers:
   packages/navigation:
     dependencies:
       '@gtkx/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../react
       '@react-navigation/core':
         specifier: ^7.24.0
@@ -1038,16 +1047,16 @@ importers:
   packages/react:
     dependencies:
       '@gtkx/config':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../config
       '@gtkx/css':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../css
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@types/react-reconciler':
         specifier: ^0.34.1
@@ -1069,22 +1078,22 @@ importers:
   packages/runtime:
     dependencies:
       '@gtkx/native':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../native
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
 
   packages/storybook:
     dependencies:
       '@gtkx/components':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../components
       '@gtkx/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../react
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       react:
         specifier: ^19.3
@@ -1112,13 +1121,13 @@ importers:
   packages/testing:
     dependencies:
       '@gtkx/react':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../react
       '@gtkx/runtime':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../runtime
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@vitest/pretty-format':
         specifier: 5.0.5
@@ -1168,10 +1177,10 @@ importers:
   packages/vitest:
     dependencies:
       '@gtkx/config':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../config
       '@gtkx/utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../utils
       '@homebridge/dbus-native':
         specifier: ^0.7.9
