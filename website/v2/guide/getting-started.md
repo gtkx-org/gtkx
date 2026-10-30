@@ -114,7 +114,7 @@ GTKX packages are released together under one version. To update them, run this 
 npx gtkx upgrade
 ```
 
-It moves every `@gtkx/*` package in the project, or in each package of its workspace, to the newest release on the dist-tag the project follows, such as `beta`. Pass a version or dist-tag to choose one, as in `npx gtkx upgrade 2.0.1`. The command rewrites the versions in each `package.json` and in pnpm catalogs, keeping their range operators, then installs and deduplicates with the project's package manager. It fails, naming the packages, when the install leaves some on another version, for example through a Yarn catalog, `overrides` or `resolutions`; set those to the same version and install again.
+It moves every `@gtkx/*` package in the project, or in each package of its workspace, to the newest release on the dist-tag the project follows, such as `beta`. Pass a version or dist-tag to choose one, as in `npx gtkx upgrade 2.0.1`. The command rewrites the versions in each `package.json` and in pnpm catalogs, keeping their range operators, then installs and deduplicates with the project's package manager. A `peerDependencies` range, such as a shared package's `@gtkx/react`, moves only when it does not accept the new version, so a range like `^1.6.0 || ^2.0.0` stays as written. The command fails, naming the packages, when the install leaves some on another version, for example through a Yarn catalog, `overrides` or `resolutions`, or when a peer range it cannot rewrite still excludes the new version; change those and install again.
 
 The CLI of 2.0.0-beta.12 and earlier releases has no `upgrade` command. Run the newer one once with `npx @gtkx/cli@beta upgrade`.
 

@@ -198,6 +198,41 @@ describe("gtkx upgrade", () => {
         },
     );
 
+    it("moves a shared package's GTKX peer ranges only when they exclude the new version", async () => {
+        using project = createTemporaryProject({
+            "package.json": JSON.stringify({ name: "studio", private: true }),
+            "pnpm-workspace.yaml": "packages:\n  - packages/*\n",
+            "packages/ui/package.json": JSON.stringify({
+                name: "ui",
+                peerDependencies: {
+                    "@gtkx/react": "^1.6.0",
+                    "@gtkx/css": "^1.6.0 || ^2.0.0-beta.11",
+                    "@gtkx/runtime": ">=1.6.0",
+                },
+            }),
+        });
+
+        const output = await invoke(["upgrade", "2.0.0-beta.13", "--cwd", project.root]);
+
+        expect(JSON.parse(project.read("packages/ui/package.json"))).toHaveProperty("peerDependencies", {
+            "@gtkx/react": "^2.0.0-beta.13",
+            "@gtkx/css": "^1.6.0 || ^2.0.0-beta.11",
+            "@gtkx/runtime": ">=1.6.0",
+        });
+        expect(output).toContain("GTKX packages are on 2.0.0-beta.13");
+    });
+
+    it("fails when a GTKX peer range it cannot move still excludes the new version", async () => {
+        using project = createTemporaryProject({
+            "package.json": JSON.stringify({ name: "ui", peerDependencies: { "@gtkx/react": "1.5.x || 1.6.x" } }),
+            "pnpm-lock.yaml": "",
+        });
+
+        await expect(invoke(["upgrade", "2.0.0-beta.13", "--cwd", project.root])).rejects.toThrow(
+            "@gtkx/react 1.5.x || 1.6.x",
+        );
+    });
+
     it("fails when the install leaves GTKX packages on another version", async () => {
         using project = createTemporaryProject({
             "package.json": JSON.stringify({

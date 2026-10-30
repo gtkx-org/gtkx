@@ -1,8 +1,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { valid } from "semver";
+import { relative } from "node:path";
+import { satisfies, valid, validRange } from "semver";
 import { isMap, isScalar, parseDocument, type Document } from "yaml";
 import { z } from "zod";
-import { type DependencyField, isGtkxPackage, manifestPath, parseManifest } from "./manifest.js";
+import { type DependencyField, isGtkxPackage, manifestPath, parseManifest, readManifest } from "./manifest.js";
 import type { Workspace } from "./workspace.js";
 
 type SpecChange = { file: string; location: string; name: string; from: string; to: string };
@@ -14,7 +15,13 @@ type UpgradePlan = {
     write: () => void;
 };
 
-const UPGRADED_FIELDS: readonly DependencyField[] = ["dependencies", "devDependencies", "optionalDependencies"];
+const UPGRADED_FIELDS: readonly DependencyField[] = [
+    "dependencies",
+    "devDependencies",
+    "optionalDependencies",
+    "peerDependencies",
+];
+const PEER_FIELD: DependencyField = "peerDependencies";
 const VERSION_SPEC = /^(?<operator>\^|~|>=|=)?(?<version>\d\S*)$/;
 const CATALOG_PROTOCOL = "catalog:";
 const DEFAULT_INDENT = "  ";
@@ -34,6 +41,16 @@ const upgradedSpec = (spec: string, version: string): string | null => {
     return `${groups.operator ?? ""}${version}`;
 };
 
+const acceptsVersion = (range: string, version: string): boolean =>
+    satisfies(version, range, { includePrerelease: true });
+
+/**
+ * The spec `planManifest` writes for `spec` in `field`: peer ranges that already accept `version` stay as
+ * they are, so a deliberately wide range is never narrowed.
+ */
+const targetSpec = (field: DependencyField, spec: string, version: string): string | null =>
+    field === PEER_FIELD && acceptsVersion(spec, version) ? null : upgradedSpec(spec, version);
+
 const indentOf = (text: string): string => /^(?<indent>[ \t]+)"/m.exec(text)?.groups?.indent ?? DEFAULT_INDENT;
 
 const planManifest = (directory: string, version: string): UpgradePlan => {
@@ -48,7 +65,7 @@ const planManifest = (directory: string, version: string): UpgradePlan => {
         const specs = manifest[field] ?? {};
 
         for (const [name, spec] of Object.entries(specs).filter(([name]) => isGtkxPackage(name))) {
-            const to = upgradedSpec(spec, version);
+            const to = targetSpec(field, spec, version);
 
             if (to === null) {
                 if (!spec.startsWith(CATALOG_PROTOCOL)) {
@@ -120,7 +137,8 @@ const planCatalogs = (file: string, version: string): UpgradePlan => {
 
 /**
  * Rewrites every GTKX spec of the workspace's manifests and pnpm catalogs to `version`, keeping each spec's
- * range operator. Nothing is written until `write` runs.
+ * range operator. Peer ranges move only when they do not accept `version`. Nothing is written until `write`
+ * runs.
  */
 const planUpgrade = (workspace: Workspace, version: string): UpgradePlan => {
     const plans = [
@@ -140,4 +158,16 @@ const planUpgrade = (workspace: Workspace, version: string): UpgradePlan => {
     };
 };
 
-export { planUpgrade, type UpgradePlan };
+/**
+ * Lists the GTKX peer dependency ranges of the workspace's manifests that do not accept `version`, such as a
+ * range combining several versions that `planUpgrade` cannot move.
+ */
+const excludingPeerRanges = (workspace: Workspace, version: string): string[] =>
+    workspace.members.flatMap((member) =>
+        Object.entries(readManifest(member).peerDependencies ?? {})
+            .filter(([name, range]) => isGtkxPackage(name) && validRange(range) !== null)
+            .filter(([, range]) => !acceptsVersion(range, version))
+            .map(([name, range]) => `${relative(workspace.root, manifestPath(member))} ${name} ${range}`),
+    );
+
+export { excludingPeerRanges, planUpgrade, type UpgradePlan };
