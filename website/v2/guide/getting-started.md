@@ -106,6 +106,18 @@ createRoot().render(<App />);
 
 The starter's `<AdwApplication>` gets its application ID from `gtkx.config.ts`. [Create a Window](/v2/tutorial/your-first-window) explains the application, window, and close handler.
 
+## Updating GTKX
+
+GTKX packages are released together under one version. To update them, run this from the project directory:
+
+```bash
+npx gtkx upgrade
+```
+
+It moves every `@gtkx/*` package in the project, or in each package of its workspace, to the newest release on the dist-tag the project follows, such as `beta`. Pass a version or dist-tag to choose one, as in `npx gtkx upgrade 2.0.1`. The command rewrites the versions in each `package.json` and in pnpm catalogs, keeping their range operators, then installs and deduplicates with the project's package manager.
+
+`gtkx dev`, `gtkx build` and the other project commands warn when the installed GTKX packages are not all on one version.
+
 ## Troubleshooting
 
 - **Missing GIR file:** install the library's development package, then run `npx gtkx codegen` from the project. For libraries outside the standard directories, set [`girPath`](/v2/guide/configuration-and-codegen#the-config-file).

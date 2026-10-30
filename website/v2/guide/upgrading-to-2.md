@@ -5,11 +5,25 @@ description: "Migrate a GTKX 1.x application to GTKX 2, including configuration,
 
 # Upgrading to 2.0
 
-GTKX 2.0 makes the behaviors previewed in 1.6 unconditional and removes their compatibility APIs. [Prepare on 1.6](/guide/upgrading-to-2#prepare-on-1-6), then upgrade your installed `@gtkx/*` packages to the same 2.0 version and work through this checklist. Do not install `@gtkx/gi` or `@gtkx/jsx`; codegen creates them for the project.
+GTKX 2.0 makes the behaviors previewed in 1.6 unconditional and removes their compatibility APIs. [Prepare on 1.6](/guide/upgrading-to-2#prepare-on-1-6), then move every `@gtkx/*` package to the same 2.0 version and work through this checklist. Do not install `@gtkx/gi` or `@gtkx/jsx`; codegen creates them for the project.
 
 Upgrade to Node.js 26.7 or newer and set `"type": "module"` in `package.json`; GTKX packages are ESM-only and explicitly reject `require()`. Localized projects also need GNU gettext 0.25 or newer.
 
-The 2.0 packages require React 19.3 or newer, and `@gtkx/testing` requires Vitest 5. Upgrade `react`, `@types/react`, and `vitest` together with the `@gtkx/*` packages.
+The 2.0 packages require React 19.3 or newer, and `@gtkx/testing` requires Vitest 5. Upgrade `react`, `@types/react`, and `vitest` first, then run the 2.0 upgrade command from the project directory:
+
+::: code-group
+
+```bash [npm]
+npx @gtkx/cli@beta upgrade
+```
+
+```bash [pnpm]
+pnpm dlx @gtkx/cli@beta upgrade
+```
+
+:::
+
+The 1.x CLI has no `upgrade` command, so this runs the 2.0 CLI without installing it first. It moves every `@gtkx/*` package declared in the project, or in each package of its workspace, to the newest 2.0 beta, including pnpm catalog entries, then installs and deduplicates with the project's package manager. Later releases need only `npx gtkx upgrade`; see [Updating GTKX](/v2/guide/getting-started#updating-gtkx).
 
 Use ESM `import` and `export` in application code, configuration files, and their local helpers. Convert `.cjs` and `.cts` files to ESM. Configuration runs through Node's native loader, so TypeScript configuration must use erasable syntax. Storybook main configuration uses `.ts`, `.mts`, `.js`, or `.mjs`; keep JSX in previews and stories. External CommonJS dependencies remain supported through ESM imports.
 

@@ -15,7 +15,7 @@ Each chapter keeps the app runnable and includes checks for the feature you adde
 
 The tutorial assumes familiarity with [React](https://react.dev/learn) and [TypeScript](https://www.typescriptlang.org/docs/handbook/2/basic-types.html). It focuses on using GTKX with libadwaita and GTK4. You need Linux, the native development libraries, and Node.js 26.7 or later; [Getting Started](/v2/guide/getting-started) covers installation.
 
-This tutorial uses the GTKX 2.0 beta. Keep GTKX packages on the same version. For the stable release, use the [1.6 tutorial](/tutorial/).
+This tutorial uses the GTKX 2.0 beta. Keep GTKX packages on the same version; [`gtkx upgrade`](/v2/guide/getting-started#updating-gtkx) moves them together. For the stable release, use the [1.6 tutorial](/tutorial/).
 
 ## Check your setup
 
