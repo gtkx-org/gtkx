@@ -477,6 +477,23 @@ describe("generated bindings", () => {
         expect(toastOverlay).not.toContain("`Gtk.AccessibleRole.group`");
     });
 
+    it("documents element constructors and numeric defaults as the declarations type them", async () => {
+        using directory = createProject();
+        const outDir = join(directory.path, "reference");
+        writeDocs({
+            ...(await readBuiltinElementsForDocs()),
+            libraries: ["Adw-1"],
+            girPath: resolveGirPath(undefined, directory.path),
+            resolveFrom: directory.path,
+            outDir,
+        });
+        const page = (namespace: string, name: string) => readFileSync(join(outDir, namespace, `${name}.md`), "utf8");
+        expect(page("gtk", "overlay")).toContain("new(): Gtk.Overlay");
+        expect(page("adw", "timed-animation")).toMatch(/new\([^)]*\): Adw\.TimedAnimation/);
+        expect(page("gtk", "range")).toContain("default `1.7976931348623157e+308`");
+        expect(page("gtk", "aspect-frame")).toContain("default `0.5`");
+    });
+
     it("generates JSX bindings that accept documented props and reject incompatible consumers", async () => {
         using directory = createProject();
         const { gi, jsx } = resolveStore(directory.path);

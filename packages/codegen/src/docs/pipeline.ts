@@ -185,7 +185,7 @@ const rootIndexPage = (namespaces: DocsNamespace[], libraries: string[], linkSty
         "- **Props** derived from GObject properties, plus the element props GTKX adds (such as `children` " +
             "and named slots), with types, defaults, and upstream documentation.",
         "- **Signals** as `on<Signal>` handler props with their exact handler signatures.",
-        "- **Static methods** available on the matching class from `@gtkx/gi/<namespace>`.",
+        "- **Constructors** and **static methods** available on the matching class from `@gtkx/gi/<namespace>`.",
         "- **Methods** available on the underlying instance through the `ref` prop.",
         "",
         "## Namespaces",

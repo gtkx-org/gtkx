@@ -64,6 +64,7 @@ type StaticSectionOptions = {
 };
 
 const DOCS_DEFAULT_VALUES: Record<string, string> = { TRUE: "true", FALSE: "false", NULL: "null" };
+const DECIMAL_LITERAL = /^-?\d+\.\d+$/;
 const HEADING_LINE = /^#{1,5}\s/;
 const LEADING_NAMESPACES = ["Adw", "Gtk"];
 const DOCS_SIGNATURE_NAMESPACE = "$docs";
@@ -109,7 +110,8 @@ const renderDocsSignalSignature = (library: Library, signal: GirCallable, selfTy
 const renderDocsSignalHandlerType = (library: Library, signal: GirCallable): string =>
     `(${renderDocsHandlerParameters(library, signal).join(", ")}) => ${renderDocsHandlerResultType(library, signal)}`;
 
-const docsDefaultValue = (value: string): string => DOCS_DEFAULT_VALUES[value] ?? value;
+const docsDefaultValue = (value: string): string =>
+    DOCS_DEFAULT_VALUES[value] ?? (DECIMAL_LITERAL.test(value) ? String(Number(value)) : value);
 
 const demoteLine = (line: string, isInFence: boolean): { text: string; isInFence: boolean } => {
     if (isFenceLine(line)) {
