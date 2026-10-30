@@ -17,7 +17,13 @@ import { isMissingImport, missingImportName } from "./missing-import.js";
 import { createRefreshTracker, type RefreshTracker } from "./refresh-tracker.js";
 import { RESTART_EXIT_CODE } from "./supervisor.js";
 import { isRepeatedRegistration } from "./type-registration.js";
-import { createDevServerConfig, type DevServerWatchEvent, isServerConfigFile } from "./vite-dev-server.js";
+import {
+    createDevLogger,
+    createDevServerConfig,
+    type DevLogger,
+    type DevServerWatchEvent,
+    isServerConfigFile,
+} from "./vite-dev-server.js";
 
 type LoadAppModule = (id: string) => Promise<Record<string, unknown>>;
 type ApplicationState = "primary" | "remote" | "shutDown" | "unregistered";
@@ -478,7 +484,11 @@ const handleFileRemove = async (session: DevSession, removedPath: string): Promi
     await requestRestart(session);
 };
 
-const createShutdownController = (server: ViteDevServer, deps: DevRunnerDeps): ShutdownController => {
+const createShutdownController = (
+    server: ViteDevServer,
+    deps: DevRunnerDeps,
+    logger: DevLogger,
+): ShutdownController => {
     let isShuttingDown = false;
 
     return {
@@ -489,6 +499,7 @@ const createShutdownController = (server: ViteDevServer, deps: DevRunnerDeps): S
             }
 
             isShuttingDown = true;
+            logger.silenceErrors();
             await requestQuit();
             deps.stopMcpClient();
             await server.close();
@@ -926,6 +937,7 @@ const trackRefreshRegistrations = (registrations: Set<string>): Plugin => ({
 
 const createSession = (
     server: ViteDevServer,
+    logger: DevLogger,
     deps: DevRunnerDeps,
     imports: Map<string, Set<string>>,
     registrations: Set<string>,
@@ -935,7 +947,7 @@ const createSession = (
     return {
         server,
         deps: { ...deps, performRefresh: refreshTracker.performRefresh },
-        controller: createShutdownController(server, deps),
+        controller: createShutdownController(server, deps, logger),
         refreshTracker,
         failure: createFailureTracker((cause) => {
             announceFailure(server, cause);
@@ -955,14 +967,16 @@ const createDevRunner = (deps: DevRunnerDeps, options: DevRunnerOptions = {}): D
     async run(entryPath: string): Promise<void> {
         const imports = new Map<string, Set<string>>();
         const registrations = new Set<string>();
+        const logger = createDevLogger();
         const server = await deps.createServer(
-            createDevServerConfig(process.cwd(), deps.deployOutDir, [
-                trackModuleImports(imports),
-                ...deps.plugins(entryPath),
-                trackRefreshRegistrations(registrations),
-            ]),
+            createDevServerConfig(
+                process.cwd(),
+                deps.deployOutDir,
+                [trackModuleImports(imports), ...deps.plugins(entryPath), trackRefreshRegistrations(registrations)],
+                logger.logger,
+            ),
         );
-        const session = createSession(server, deps, imports, registrations);
+        const session = createSession(server, logger, deps, imports, registrations);
         deps.installShutdownHandlers(onShutdownSignal(session));
 
         deps.watchUncaughtErrors((cause) => {

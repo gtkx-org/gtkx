@@ -1,10 +1,15 @@
-import type { InlineConfig, Plugin, ResolvedConfig } from "vite";
+import { createLogger, type InlineConfig, type Logger, type Plugin, type ResolvedConfig } from "vite";
 import { warn } from "@gtkx/utils";
 import { join } from "node:path";
 import { crawlFrameworkPkgs } from "vitefu";
 import { createWatchIgnore } from "./watch-ignore.js";
 
 type DevServerWatchEvent = "add" | "change" | "unlink";
+
+type DevLogger = {
+    logger: Logger;
+    silenceErrors(): void;
+};
 
 const WRITE_STABILITY_THRESHOLD_MS = 50;
 const WRITE_POLL_INTERVAL_MS = 10;
@@ -62,9 +67,37 @@ const rendererLibrariesPlugin = (): Plugin => ({
     },
 });
 
-const createDevServerConfig = (root: string, deployOutDir: string | undefined, plugins: Plugin[]): InlineConfig => ({
+const createDevLogger = (): DevLogger => {
+    const logger = createLogger();
+    let isSilenced = false;
+
+    return {
+        logger: {
+            ...logger,
+            get hasWarned() {
+                return logger.hasWarned;
+            },
+            error: (message, options) => {
+                if (!isSilenced) {
+                    logger.error(message, options);
+                }
+            },
+        },
+        silenceErrors: () => {
+            isSilenced = true;
+        },
+    };
+};
+
+const createDevServerConfig = (
+    root: string,
+    deployOutDir: string | undefined,
+    plugins: Plugin[],
+    logger: Logger,
+): InlineConfig => ({
     root,
     appType: "custom",
+    customLogger: logger,
     plugins: [watchErrorPlugin(), rendererLibrariesPlugin(), ...plugins],
     server: {
         middlewareMode: true,
@@ -84,4 +117,4 @@ const createDevServerConfig = (root: string, deployOutDir: string | undefined, p
     },
 });
 
-export { createDevServerConfig, type DevServerWatchEvent, isServerConfigFile };
+export { createDevLogger, createDevServerConfig, type DevLogger, type DevServerWatchEvent, isServerConfigFile };

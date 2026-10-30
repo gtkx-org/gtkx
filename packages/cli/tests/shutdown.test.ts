@@ -61,7 +61,7 @@ const observeChild = (child: ChildProcess) => {
             }
         }
     };
-    return { child, waitForExit, waitForFile, stop };
+    return { child, output: () => output, waitForExit, waitForFile, stop };
 };
 
 const withDevProcess = async (
@@ -107,6 +107,37 @@ describe("development process shutdown", () => {
                 expect(child.kill(signal)).toBe(true);
             },
         );
+    });
+
+    it("stops without a module error when interrupted while the entry is still loading", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        project.write("src/later.ts", 'export const later = "loaded";');
+        project.write(
+            "src/index.ts",
+            `import { writeFileSync } from "node:fs";
+            writeFileSync(${JSON.stringify(readyPath)}, String(process.pid));
+            for (let round = 0; ; round++) {
+                const specifier = "./later.js?round=" + String(round);
+                await import(/* @vite-ignore */ specifier);
+            }`,
+        );
+        const stopDisplay = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
+        try {
+            const running = observeChild(
+                spawn(process.execPath, [cliPath, "dev", "--cwd", project.root], { stdio: "pipe" }),
+            );
+            try {
+                await running.waitForFile(readyPath);
+                expect(running.child.kill("SIGINT")).toBe(true);
+                expect(await running.waitForExit()).toEqual({ code: 0, signal: null });
+                expect(running.output()).not.toContain("Error when evaluating");
+            } finally {
+                await running.stop(undefined);
+            }
+        } finally {
+            stopDisplay();
+        }
     });
 
     it("keeps the session bus available during cleanup after a terminal interrupt", async () => {
