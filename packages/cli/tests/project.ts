@@ -45,4 +45,10 @@ const createProject = (config: Record<string, unknown> = {}) => {
     return { root, write, [Symbol.dispose]: () => directory[Symbol.dispose]() };
 };
 
-export { createProject };
+const linkWorkspaceBindings = (root: string) => {
+    for (const name of ["gi", "jsx"]) {
+        symlinkSync(join(workspace, "node_modules/.gtkx", name), join(root, "node_modules/@gtkx", name), "dir");
+    }
+};
+
+export { createProject, linkWorkspaceBindings };

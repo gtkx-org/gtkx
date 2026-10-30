@@ -1,5 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { CallToolResultSchema } from "@modelcontextprotocol/sdk/types.js";
 import { createMcpServer } from "@gtkx/mcp/server";
 import { resolveHeadlessOptions, startHeadlessDisplay } from "@gtkx/vitest/headless";
 import { runCommand } from "citty";
@@ -22,7 +23,7 @@ import { stdout, stderr } from "test-console";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createVitest } from "vitest/node";
 import { createCommand } from "../dist/command.js";
-import { createProject } from "./project.js";
+import { createProject, linkWorkspaceBindings } from "./project.js";
 
 const MAX_BUNDLE_LINE_LENGTH = 500;
 
@@ -64,6 +65,55 @@ const withSession = async (
         controller.abort();
         await running;
     }
+};
+
+const withMcpClient = async (root: string, run: (client: Client) => Promise<void>) => {
+    const socketPath = join(root, "mcp.sock");
+    vi.stubEnv("GTKX_MCP_SOCKET_PATH", socketPath);
+    const [clientTransport, transport] = InMemoryTransport.createLinkedPair();
+    const server = createMcpServer({ transport, socketPath, version: "1.0.0", cwd: root });
+    const client = new Client({ name: "cli-test", version: "1.0.0" });
+    try {
+        await server.start();
+        await client.connect(clientTransport);
+        await run(client);
+    } finally {
+        await client.close();
+        await server.stop();
+    }
+};
+
+const callTool = async (client: Client, name: string, args: Record<string, unknown> = {}) => {
+    const result = CallToolResultSchema.parse(await client.callTool({ name, arguments: args }));
+    const text = result.content.map((content) => (content.type === "text" ? content.text : "")).join("\n");
+    return { isError: result.isError === true, text };
+};
+
+const writeWidgetApp = (project: ReturnType<typeof createProject>, readyPath: string, content: string) => {
+    linkWorkspaceBindings(project.root);
+    project.write("src/content.tsx", content);
+    project.write(
+        "src/index.tsx",
+        `import { AdwApplication, AdwApplicationWindow } from "@gtkx/jsx/adw";
+        import { createRoot } from "@gtkx/react";
+        import { writeFileSync } from "node:fs";
+        import { useEffect } from "react";
+        import { Content } from "./content.tsx";
+        const Ready = () => {
+            useEffect(() => writeFileSync(${JSON.stringify(readyPath)}, "ready"), []);
+            return null;
+        };
+        createRoot().render(
+            <AdwApplication applicationId="org.gtkx.example">
+                <AdwApplicationWindow><Ready /><Content /></AdwApplicationWindow>
+            </AdwApplication>
+        );`,
+    );
+};
+
+const queryWidgets = async (client: Client, query: Record<string, unknown>) => {
+    const { text } = await callTool(client, "gtkx_query_widgets", query);
+    return (JSON.parse(text) as { widgets: { id: string; name: string | null }[] }).widgets;
 };
 
 afterEach(() => {
@@ -1126,14 +1176,7 @@ describe("CLI commands", () => {
                 </AdwApplication>
             );`,
         );
-        const socketPath = join(project.root, "mcp.sock");
-        vi.stubEnv("GTKX_MCP_SOCKET_PATH", socketPath);
-        const [clientTransport, transport] = InMemoryTransport.createLinkedPair();
-        const server = createMcpServer({ transport, socketPath, version: "1.0.0" });
-        const client = new Client({ name: "application-failure-test", version: "1.0.0" });
-        try {
-            await server.start();
-            await client.connect(clientTransport);
+        await withMcpClient(project.root, async (client) => {
             await withSession("dev", project.root, readyPath, async () => {
                 const apps = await client.callTool({
                     name: "gtkx_list_apps",
@@ -1147,10 +1190,25 @@ describe("CLI commands", () => {
                     })
                     .toContain("Rendering the preview failed");
             });
-        } finally {
-            await client.close();
-            await server.stop();
-        }
+        });
+    });
+
+    it("summarizes widgets by their accessible name", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        writeWidgetApp(
+            project,
+            readyPath,
+            `import { GtkButton } from "@gtkx/jsx/gtk";
+            export const Content = () => <GtkButton iconName="list-add-symbolic" tooltipText="New Note" />;`,
+        );
+        await withMcpClient(project.root, async (client) => {
+            await withSession("dev", project.root, readyPath, async () => {
+                expect(await queryWidgets(client, { by: "role", value: "button" })).toEqual([
+                    expect.objectContaining({ type: "Button", name: "New Note" }),
+                ]);
+            });
+        });
     });
 
     it("reloads imported configuration after atomic saves and missing directories are created", async () => {
@@ -1258,14 +1316,7 @@ describe("CLI commands", () => {
             writeFileSync(${JSON.stringify(readyPath)}, "ready");
             export default { title: "Example" }; export const Empty = { render: () => null };`,
         );
-        const socketPath = join(project.root, "mcp.sock");
-        vi.stubEnv("GTKX_MCP_SOCKET_PATH", socketPath);
-        const [clientTransport, transport] = InMemoryTransport.createLinkedPair();
-        const server = createMcpServer({ transport, socketPath, version: "1.0.0" });
-        const client = new Client({ name: "storybook-registration-test", version: "1.0.0" });
-        try {
-            await server.start();
-            await client.connect(clientTransport);
+        await withMcpClient(project.root, async (client) => {
             await withSession("storybook", project.root, readyPath, async () => {
                 const apps = await client.callTool({
                     name: "gtkx_list_apps",
@@ -1273,10 +1324,7 @@ describe("CLI commands", () => {
                 });
                 expect(JSON.stringify(apps)).toContain("org.gtkx.example.Storybook");
             });
-        } finally {
-            await client.close();
-            await server.stop();
-        }
+        });
     });
 
     it("reports actionable deployment configuration errors", async () => {

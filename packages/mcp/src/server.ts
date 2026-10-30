@@ -321,7 +321,7 @@ const widgetPropsTool = (appRouter: AppRouter): Tool =>
         title: "Get widget properties",
         kind: "readOnly",
         description:
-            "Read a widget's type, accessible role, name, text, sensitivity, visibility, CSS classes, " +
+            "Read a widget's type, accessible role, accessible name, text, sensitivity, visibility, CSS classes, " +
             `and descendants. Defaults to ${String(DEFAULT_SUBTREE_DEPTH)} levels; \`maxDepth\` changes ` +
             `the depth. Results contain at most ${String(MAX_SUBTREE_WIDGETS)} widgets, in breadth-first ` +
             "order. `hiddenChildren` counts omitted direct children; query that widget's ID to expand it. " +

@@ -56,7 +56,7 @@ Ask the agent to inspect the running app before changing it, then verify the res
 3. Click or type through the interaction tools.
 4. Take a screenshot to check the rendered result.
 
-The widget tools use the same queries and events as [`@gtkx/testing`](/v2/guide/testing). For large windows, request a subtree or limit the depth instead of repeatedly reading the whole tree. Widget IDs last only while their widgets are mounted; query again after the relevant UI is replaced.
+The widget tools use the same queries and events as [`@gtkx/testing`](/v2/guide/testing). Each widget summary reports the widget's GTK type as `type` and its accessible name as `name`, so an icon-only button reads as its tooltip, such as "New Note". For large windows, request a subtree or limit the depth instead of repeatedly reading the whole tree. Widget IDs last only while their widgets are mounted; query again after the relevant UI is replaced.
 
 Several apps can share a server. Without `applicationId`, tools use the app from the server's project, or the first connected app when no app comes from it. Use `gtkx_list_apps` to find the others and pass `applicationId` to target one. The [Storybook explorer](/v2/guide/storybook) registers under the project's application ID with a `.Storybook` suffix, so `gtkx dev` and `gtkx storybook` can run together. Widget requests wait briefly for an app that is still starting.
 
