@@ -168,7 +168,7 @@ type TabViewNavigationConfig = {
     tabBarInverted?: boolean;
     /** Renders an `AdwTabOverview` around the view. */
     overview?: TabViewOverviewConfig;
-    /** Context menu of the tabs. */
+    /** Context menu of the tabs, such as a `GMenu` rendered through `createPortal` into `rootElement` and kept from its ref. */
     menuModel?: Gio.MenuModel | null;
     /** Additional content accepted by drops on tabs. */
     extraDropTarget?: TabViewExtraDropTarget | null;
@@ -176,7 +176,7 @@ type TabViewNavigationConfig = {
     onExtraDragDrop?: (route: RouteProp<ParamListBase>, value: GObject.Value) => boolean;
     /** Returns the view of a new window when a tab is dragged out of this one. */
     onCreateWindow?: () => Adw.TabView | null;
-    /** Called with the tab whose context menu opens, or `null` when it closes. */
+    /** Called with the tab whose context menu opens, or `null` when it closes, after the chosen menu action has run. */
     onSetupMenu?: (route: RouteProp<ParamListBase> | null) => void;
     /** Keyboard shortcuts the view handles. */
     shortcuts?: Adw.TabViewShortcuts;

@@ -371,6 +371,53 @@ Tabs are addressed by route key. The navigation object adds `openTab`, `closeTab
 
 Native interaction flows back into the state: selecting a tab emits a cancellable `tabPress`, dragging reorders the route, and the close button dispatches `closeTab`, which `usePreventRemove` can refuse. Closing the last tab is left unhandled, so a parent navigator or the container's `onUnhandledAction` decides whether the window closes. The [tab view configuration reference](/v2/reference/@gtkx/navigation/) lists the tab bar, overview, menu and drop target settings.
 
+### Tab context menu
+
+`menuModel` sets the menu that right-clicking a tab or pressing Shift+F10 opens. The navigator passes it to a native view it created itself, so it takes the menu object rather than an element: render a `GMenu` through `createPortal` into `rootElement` and keep its ref in state. `onSetupMenu` reports the tab the menu opens for, and `null` once it closes after the chosen action has run:
+
+```tsx
+import type * as Gio from "@gtkx/gi/gio";
+import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
+import { AdwApplicationWindow } from "@gtkx/jsx/adw";
+import { NavigationContainer, TabViewActions, useNavigationContainerRef } from "@gtkx/navigation";
+import { createPortal, rootElement } from "@gtkx/react";
+import { useRef, useState } from "react";
+
+export const DocumentWindow = () => {
+    const navigation = useNavigationContainerRef<DocumentParams>();
+    const [menu, setMenu] = useState<Gio.Menu | null>(null);
+    const menuTab = useRef<string | null>(null);
+
+    return (
+        <AdwApplicationWindow
+            actions={
+                <GSimpleAction
+                    name="close-others"
+                    onActivate={() => navigation.dispatch(TabViewActions.closeOtherTabs(menuTab.current ?? undefined))}
+                />
+            }
+        >
+            {createPortal(
+                <GMenu ref={setMenu} items={[{ label: "Close Other Tabs", action: "win.close-others" }]} />,
+                rootElement,
+            )}
+            <NavigationContainer ref={navigation}>
+                <Tabs.Navigator
+                    menuModel={menu}
+                    onSetupMenu={(route) => {
+                        menuTab.current = route?.key ?? null;
+                    }}
+                >
+                    <Tabs.Screen name="Document" component={Document} />
+                </Tabs.Navigator>
+            </NavigationContainer>
+        </AdwApplicationWindow>
+    );
+};
+```
+
+Without a tab from `onSetupMenu`, as when the same action runs from a shortcut, the actions act on the selected tab.
+
 ### Windows and transfers
 
 libadwaita's `create-window` and `create-tab` signals expect an object before the handler returns, so the navigator creates native pages and views first and renders into them afterwards. Pass `onCreateWindow` to open a window for a tab dragged out: create an `Adw.TabView`, store it, and return it. Render the new window with its own `NavigationContainer` and a navigator that receives that view through the `view` prop; the transferred page becomes its initial route. A page dragged into another window is adopted by that navigator with its params, and its screen mounts again there, so keep tab state in params or an external store. `useTabView()` gives screens and header content the native view, `getPage(key)` and `transferTab(key, target)`.
