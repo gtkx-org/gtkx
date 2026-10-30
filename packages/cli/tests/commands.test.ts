@@ -707,16 +707,16 @@ describe("CLI commands", () => {
         });
     });
 
-    it("runs apps of an isolated pnpm workspace that bind different libraries", { timeout: 600_000 }, async () => {
+    it("runs apps of an isolated pnpm workspace that bind different libraries", { timeout: 900_000 }, async () => {
         using workspace = createPnpmWorkspace({
             journal: { applicationId: "org.gtkx.journal", codegen: true },
             editor: { applicationId: "org.gtkx.editor", codegen: true, libraries: ["GtkSource-5"] },
         });
-        const env = Object.fromEntries(
-            Object.entries(process.env).filter(
-                ([name]) => !name.startsWith("VITEST") && name !== "NODE_ENV" && name !== "NODE_PATH",
-            ),
-        );
+        const strippedEnv = new Set(["DISPLAY", "NODE_ENV", "NODE_PATH"]);
+        const childEnv = () =>
+            Object.fromEntries(
+                Object.entries(process.env).filter(([name]) => !name.startsWith("VITEST") && !strippedEnv.has(name)),
+            );
         const appDir = (app: string) => join(workspace.root, "apps", app);
         const readyPath = (app: string) => join(appDir(app), "ready.txt");
         workspace.write(
@@ -792,8 +792,13 @@ describe("CLI commands", () => {
                 expect(new GtkSource.Buffer().getLanguage()).toBeNull();
             });`,
         );
-        const run = (app: string, args: string[]) =>
-            promisify(execFile)(process.execPath, args, { cwd: appDir(app), env, timeout: 300_000 });
+        const run = (app: string, args: string[], timeout = 180_000) =>
+            promisify(execFile)(process.execPath, args, {
+                cwd: appDir(app),
+                env: childEnv(),
+                timeout,
+                killSignal: "SIGKILL",
+            });
 
         workspace.write(
             "apps/editor/tsconfig.json",
@@ -810,7 +815,7 @@ describe("CLI commands", () => {
             }),
         );
         await run("editor", [workspace.cli("editor"), "codegen"]);
-        await promisify(execFile)(workspace.tsc, ["-p", appDir("editor")], { env, timeout: 300_000 });
+        await promisify(execFile)(workspace.tsc, ["-p", appDir("editor")], { env: childEnv(), timeout: 180_000 });
 
         await run("journal", [workspace.cli("journal"), "build"]);
         await run("editor", [workspace.cli("editor"), "build"]);
@@ -819,7 +824,7 @@ describe("CLI commands", () => {
         const stopDisplay = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
         try {
             for (const app of ["journal", "editor"]) {
-                await run(app, [join(appDir(app), "dist/bundle.mjs")]);
+                await run(app, [join(appDir(app), "dist/bundle.mjs")], 60_000);
             }
         } finally {
             stopDisplay();
@@ -830,12 +835,20 @@ describe("CLI commands", () => {
         rmSync(readyPath("journal"));
         const session = spawn(process.execPath, [workspace.cli("journal"), "dev", "--headless", "--size", "640x480"], {
             cwd: appDir("journal"),
-            env,
-            stdio: "ignore",
+            env: childEnv(),
         });
+        let output = "";
+        session.stdout.on("data", (chunk: Buffer) => (output += chunk.toString()));
+        session.stderr.on("data", (chunk: Buffer) => (output += chunk.toString()));
         const exited = once(session, "exit");
+        const deadline = Date.now() + 120_000;
         try {
-            await expect.poll(() => existsSync(readyPath("journal")), { timeout: 120_000 }).toBe(true);
+            while (!existsSync(readyPath("journal"))) {
+                if (session.exitCode !== null || session.signalCode !== null || Date.now() > deadline) {
+                    throw new Error(`gtkx dev did not render the app:\n${output}`);
+                }
+                await setTimeout(200);
+            }
             expect(readFileSync(readyPath("journal"), "utf8")).toBe("journal");
         } finally {
             session.kill("SIGTERM");
