@@ -198,6 +198,23 @@ describe("gtkx upgrade", () => {
         },
     );
 
+    it("fails when the install leaves GTKX packages on another version", async () => {
+        using project = createTemporaryProject({
+            "package.json": JSON.stringify({
+                name: "app",
+                version: "1.0.0",
+                packageManager: "yarn@4.18.1",
+                dependencies: { "@gtkx/react": "catalog:", "@gtkx/css": "^2.0.0-beta.11" },
+            }),
+            ".yarnrc.yml": 'catalog:\n  "@gtkx/react": 2.0.0-beta.11\n',
+            "yarn.lock": "",
+            "node_modules/@gtkx/react/package.json": JSON.stringify({ name: "@gtkx/react", version: "2.0.0-beta.11" }),
+            "node_modules/@gtkx/css/package.json": JSON.stringify({ name: "@gtkx/css", version: "2.0.0-beta.13" }),
+        });
+
+        await expect(invoke(["upgrade", "2.0.0-beta.13", "--cwd", project.root])).rejects.toThrow();
+    });
+
     it("leaves the project untouched when the registry has no such release", async () => {
         const original = manifest({ "@gtkx/react": "^2.0.0-beta.11" });
         using project = createTemporaryProject({ "package.json": original, "package-lock.json": "{}" });

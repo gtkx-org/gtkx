@@ -4,7 +4,8 @@ import { relative } from "node:path";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 import { detectInstaller, installWorkspace, resolveTargetVersion } from "../upgrade/package-manager.js";
 import { planUpgrade, type UpgradePlan } from "../upgrade/specs.js";
-import { findWorkspace } from "../upgrade/workspace.js";
+import { installedGtkxPackages } from "../upgrade/version-skew.js";
+import { findWorkspace, type Workspace } from "../upgrade/workspace.js";
 import packageManifest from "../../package.json" with { type: "json" };
 
 const report = (root: string, plan: UpgradePlan): void => {
@@ -16,6 +17,25 @@ const report = (root: string, plan: UpgradePlan): void => {
 
     for (const kept of plan.kept) {
         info(`upgrade: ${relative(root, kept.file)} keeps ${kept.name} at ${kept.spec}`);
+    }
+};
+
+const assertInstalledVersion = (workspace: Workspace, version: string): void => {
+    const stale = [
+        ...new Set(
+            workspace.members
+                .flatMap((member) => installedGtkxPackages(member))
+                .filter((installed) => installed.version !== version)
+                .map((installed) => `${installed.name} ${installed.version}`),
+        ),
+    ].sort();
+
+    if (stale.length > 0) {
+        throw new Error(
+            `The installed GTKX packages are not all on ${version}: ${stale.join(", ")}. ` +
+                "A spec gtkx upgrade does not rewrite still selects them, such as a Yarn catalog, overrides, " +
+                `resolutions or a range that also accepts newer releases. Set it to ${version} and install again.`,
+        );
     }
 };
 
@@ -42,6 +62,7 @@ const upgrade = defineCommand({
         plan.write();
         info(`upgrade: installing with ${installer.name}`);
         await installWorkspace(installer);
+        assertInstalledVersion(workspace, version);
         info(`upgrade: GTKX packages are on ${version}`);
     },
 });
