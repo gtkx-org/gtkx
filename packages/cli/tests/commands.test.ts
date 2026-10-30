@@ -1211,6 +1211,41 @@ describe("CLI commands", () => {
         });
     });
 
+    it("keeps the dev session up when an MCP click makes the application throw", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        const content = (shouldThrow: boolean) =>
+            `import { GtkBox, GtkButton } from "@gtkx/jsx/gtk";
+            import { useLayoutEffect, useState } from "react";
+            const Preview = ({ part }: { part: string }) => {
+                useLayoutEffect(() => {
+                    if (${String(shouldThrow)}) throw new Error(\`Showing the \${part} failed\`);
+                }, []);
+                return null;
+            };
+            export const Content = () => {
+                const [isOpen, setIsOpen] = useState(false);
+                return (
+                    <GtkBox>
+                        <GtkButton label="Open" onClicked={() => setIsOpen(true)} />
+                        {isOpen && <><Preview part="header" /><Preview part="body" /></>}
+                    </GtkBox>
+                );
+            };`;
+        writeWidgetApp(project, readyPath, content(true));
+        await withMcpClient(project.root, async (client) => {
+            await withSession("dev", project.root, readyPath, async () => {
+                const [button] = await queryWidgets(client, { by: "role", value: "button", options: { name: "Open" } });
+                const click = await callTool(client, "gtkx_click", { widgetId: button?.id });
+                expect(click.isError).toBe(true);
+                expect(click.text).not.toBe("");
+                rmSync(readyPath);
+                project.write("src/content.tsx", content(false));
+                await expect.poll(() => existsSync(readyPath), { timeout: 30_000 }).toBe(true);
+            });
+        });
+    });
+
     it("reloads imported configuration after atomic saves and missing directories are created", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
         const readyPath = join(project.root, "ready.txt");

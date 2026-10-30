@@ -9,6 +9,7 @@ import {
     ServerRequestParamsSchemas,
     widgetNotFoundError,
 } from "@gtkx/mcp/internal";
+import { errorMessage } from "@gtkx/utils";
 import type { WidgetRegistry } from "./widget-registry.js";
 import { serializeWidget } from "./serialize-widget.js";
 import { loadTestingModule, type TestingModule } from "./testing-loader.js";
@@ -16,6 +17,7 @@ import { readWidgetProperties } from "./widget-properties.js";
 
 type HandlerContext = {
     registry: WidgetRegistry;
+    reportUncaughtError: (cause: unknown) => void;
 };
 
 type ValidatedHandler = (ctx: HandlerContext, params: unknown) => Promise<Result>;
@@ -58,28 +60,30 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
                 ...serializeWidget(widget, (target) => registry.getOrCreateId(target), testing, params.maxDepth),
             }),
     ),
-    "widget.click": targeted(ServerRequestParamsSchemas["widget.click"], async (_ctx, { testing, widget }) => {
-        await testing.userEvent.click(widget);
+    "widget.click": targeted(ServerRequestParamsSchemas["widget.click"], async (ctx, { testing, widget }) => {
+        await interact(ctx, testing, () => testing.userEvent.click(widget));
 
         return { success: true };
     }),
-    "widget.type": targeted(ServerRequestParamsSchemas["widget.type"], async (_ctx, { testing, widget }, params) => {
-        if (params.clear) {
-            await testing.userEvent.clear(widget);
-        }
+    "widget.type": targeted(ServerRequestParamsSchemas["widget.type"], async (ctx, { testing, widget }, params) => {
+        await interact(ctx, testing, async () => {
+            if (params.clear) {
+                await testing.userEvent.clear(widget);
+            }
 
-        await testing.userEvent.type(widget, params.text);
+            await testing.userEvent.type(widget, params.text);
+        });
 
         return { success: true };
     }),
     "widget.fireEvent": targeted(
         ServerRequestParamsSchemas["widget.fireEvent"],
-        async (_ctx, { testing, widget }, params) => {
+        async (ctx, { testing, widget }, params) => {
             const signalArgs = (params.args ?? []).map((arg) => extractSignalArg(arg));
             const isRealized = widget.getRealized();
             const isMapped = widget.getMapped();
             const isSensitive = widget.getSensitive();
-            await testing.fireEvent(widget, params.signal, ...signalArgs);
+            await interact(ctx, testing, () => testing.fireEvent(widget, params.signal, ...signalArgs));
 
             return {
                 signal: params.signal,
@@ -150,6 +154,26 @@ const requireWidget = (registry: WidgetRegistry, widgetId: string | undefined): 
     }
 
     return widget;
+};
+
+const collectedErrors = (cause: unknown): unknown[] => (cause instanceof AggregateError ? cause.errors : [cause]);
+
+const interact = async (ctx: HandlerContext, testing: TestingModule, run: () => Promise<void>): Promise<void> => {
+    try {
+        await run();
+    } catch (cause) {
+        if (!testing.isUncaughtError(cause)) {
+            throw cause;
+        }
+
+        const errors = collectedErrors(cause);
+
+        for (const error of errors) {
+            ctx.reportUncaughtError(error);
+        }
+
+        throw new Error(errors.map((error) => errorMessage(error)).join("\n"), { cause });
+    }
 };
 
 const extractSignalArg = (arg: unknown): unknown => {

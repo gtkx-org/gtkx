@@ -1,6 +1,7 @@
 type TestingPublicModule = typeof import("@gtkx/testing");
 type TestingInternalModule = typeof import("@gtkx/testing/internal");
-type TestingModule = TestingPublicModule & Pick<TestingInternalModule, "getTypeTag" | "getWidgetAccessibleName">;
+type TestingModule = TestingPublicModule &
+    Pick<TestingInternalModule, "getTypeTag" | "getWidgetAccessibleName" | "isUncaughtError">;
 type TestingModuleLoader = () => Promise<TestingModule>;
 
 type TestingModuleCache = {
@@ -21,6 +22,7 @@ function mergeTestingModule(publicApi: TestingPublicModule, internals: TestingIn
         ...publicApi,
         getTypeTag: internals.getTypeTag,
         getWidgetAccessibleName: internals.getWidgetAccessibleName,
+        isUncaughtError: internals.isUncaughtError,
     };
 }
 

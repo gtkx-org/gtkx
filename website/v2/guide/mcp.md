@@ -58,6 +58,8 @@ Ask the agent to inspect the running app before changing it, then verify the res
 
 The widget tools use the same queries and events as [`@gtkx/testing`](/v2/guide/testing). Each widget summary reports the widget's GTK type as `type` and its accessible name as `name`, so an icon-only button reads as its tooltip, such as "New Note". For large windows, request a subtree or limit the depth instead of repeatedly reading the whole tree. Widget IDs last only while their widgets are mounted; query again after the relevant UI is replaced.
 
+An error the app raises while handling an interaction, such as a render error after a click, comes back in the tool result. `gtkx dev` also reports it as it does for an error from keyboard or mouse input, and waits for a saved fix instead of stopping.
+
 Several apps can share a server. Without `applicationId`, tools use the app from the server's project, or the first connected app when no app comes from it. Use `gtkx_list_apps` to find the others and pass `applicationId` to target one. The [Storybook explorer](/v2/guide/storybook) registers under the project's application ID with a `.Storybook` suffix, so `gtkx dev` and `gtkx storybook` can run together. Widget requests wait briefly for an app that is still starting.
 
 Your client exposes each tool's parameters and description. Screenshots can also be saved to a file, and `returnImage: false` avoids returning the image when only the saved file is needed.

@@ -113,7 +113,7 @@ const createDevRunnerDeps = (
     waitForApplicationId,
     applicationId: options.applicationId,
     mcpApplicationId: options.mcpApplicationId,
-    startMcpClient: (applicationId, loadAppModule) => {
+    startMcpClient: (applicationId, loadAppModule, reportUncaughtError) => {
         setTestingModuleLoader(async () => {
             const [publicApi, internals] = await Promise.all([
                 loadAppModule("@gtkx/testing") as Promise<TestingPublicModule>,
@@ -123,7 +123,7 @@ const createDevRunnerDeps = (
             return mergeTestingModule(publicApi, internals);
         });
 
-        return startMcpClient(applicationId, options.mcpSocketPath);
+        return startMcpClient(applicationId, reportUncaughtError, options.mcpSocketPath);
     },
     stopMcpClient,
     reportApplicationError: reportMcpApplicationError,

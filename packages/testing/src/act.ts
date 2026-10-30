@@ -33,6 +33,24 @@ const settle = <T>(callback: ActCallback<T>): ActOutcome<T> => {
     }
 };
 
+const uncaughtErrors: WeakSet<object> = new WeakSet();
+
+const rethrowUncaught = (reason: unknown): never => {
+    if (typeof reason === "object" && reason !== null) {
+        uncaughtErrors.add(reason);
+    }
+
+    throw reason;
+};
+
+/**
+ * Whether an act scope rejected with this value because React collected it as an uncaught error, such as a render
+ * or commit error no error boundary caught, rather than because the act callback threw it. Outside act, React
+ * hands such errors to the root's `onUncaughtError`; several collected together arrive as one `AggregateError`.
+ */
+const isUncaughtError = (reason: unknown): boolean =>
+    typeof reason === "object" && reason !== null && uncaughtErrors.has(reason);
+
 const unwrap = <T>(outcome: PromiseSettledResult<T>): T => {
     if (outcome.status === "rejected") {
         throw outcome.reason;
@@ -55,7 +73,7 @@ const actImplementation: ActImplementation = <T>(callback: ActCallback<T>): Prom
         throw outcome.reason;
     }
 
-    return Promise.resolve(settled).then(unwrap);
+    return Promise.resolve(settled).then(unwrap, rethrowUncaught);
 };
 /**
  * Runs a callback inside React's act environment, flushing pending state
@@ -112,4 +130,4 @@ const runInAct = async (callback: () => unknown): Promise<void> => {
     await act(() => callback());
 };
 
-export { act, getIsReactActEnvironment, runWithActEnvironment, runInAct, setIsReactActEnvironment };
+export { act, getIsReactActEnvironment, isUncaughtError, runWithActEnvironment, runInAct, setIsReactActEnvironment };

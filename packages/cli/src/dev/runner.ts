@@ -27,7 +27,11 @@ type DevRunnerDeps = {
     waitForApplicationId(timeoutMs: number, shouldKeepWaiting: () => boolean): Promise<string | null>;
     applicationId: string;
     mcpApplicationId: string;
-    startMcpClient(applicationId: string, loadAppModule: LoadAppModule): Promise<unknown>;
+    startMcpClient(
+        applicationId: string,
+        loadAppModule: LoadAppModule,
+        reportUncaughtError: (cause: unknown) => void,
+    ): Promise<unknown>;
     stopMcpClient(): void;
     reportApplicationError(cause: unknown): void;
     watchApplicationShutdown(onShutdown: () => void): void;
@@ -784,7 +788,13 @@ const connectApplication = async (session: DevSession): Promise<void> => {
     const { deps, server } = session;
     const { mcpApplicationId } = deps;
     deps.log(`Connected application ID: ${mcpApplicationId}`);
-    await deps.startMcpClient(mcpApplicationId, (id) => loadModuleExclusively(server, id));
+    await deps.startMcpClient(
+        mcpApplicationId,
+        (id) => loadModuleExclusively(server, id),
+        (cause) => {
+            session.failure.report(cause);
+        },
+    );
 };
 
 const stopForStoppedApplication = async (session: DevSession, registrationState: ApplicationState): Promise<void> => {

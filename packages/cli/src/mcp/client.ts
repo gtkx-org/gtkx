@@ -16,6 +16,7 @@ type McpClientOptions = {
     socketPath?: string;
     applicationId: string;
     lastApplicationError: () => string | null;
+    reportUncaughtError: (cause: unknown) => void;
 };
 
 type ConnectCallbacks = {
@@ -65,11 +66,13 @@ class McpClient {
     private pendingConnectReject: ((error: Error) => void) | null = null;
     private registry = new WidgetRegistry();
     private lastApplicationError: () => string | null;
+    private reportUncaughtError: (cause: unknown) => void;
 
     constructor(options: McpClientOptions) {
         this.socketPath = resolveMcpSocketPath(options.socketPath);
         this.applicationId = options.applicationId;
         this.lastApplicationError = options.lastApplicationError;
+        this.reportUncaughtError = options.reportUncaughtError;
     }
 
     private handleClose(): void {
@@ -164,7 +167,10 @@ class McpClient {
 
         this.registry.refresh();
 
-        return dispatch(request.method, request.params, { registry: this.registry });
+        return dispatch(request.method, request.params, {
+            registry: this.registry,
+            reportUncaughtError: this.reportUncaughtError,
+        });
     }
 
     private notRunningMessage(): string {

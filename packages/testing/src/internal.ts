@@ -7,6 +7,7 @@ export {
     readAccessibleState,
     readAccessibleString,
 } from "./accessible-native.js";
+export { isUncaughtError } from "./act.js";
 export { cleanup, render } from "./production.js";
 export { renderChildren, type ChildrenBuilder } from "./render-children.js";
 export { getWidgetAccessibleName } from "./widget-accessible-properties.js";

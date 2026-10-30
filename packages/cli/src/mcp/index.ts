@@ -2,7 +2,11 @@ import { errorMessage } from "@gtkx/utils";
 import { McpClient } from "./client.js";
 
 type McpClientController = {
-    start: (applicationId: string, socketPath?: string) => Promise<McpClient>;
+    start: (
+        applicationId: string,
+        reportUncaughtError: (cause: unknown) => void,
+        socketPath?: string,
+    ) => Promise<McpClient>;
     stop: () => void;
     reportApplicationError: (cause: unknown) => void;
 };
@@ -28,7 +32,11 @@ function createMcpClientController(): McpClientController {
     let applicationError: string | null = null;
 
     return {
-        start: async (applicationId: string, socketPath?: string): Promise<McpClient> => {
+        start: async (
+            applicationId: string,
+            reportUncaughtError: (cause: unknown) => void,
+            socketPath?: string,
+        ): Promise<McpClient> => {
             if (current) {
                 return current;
             }
@@ -36,6 +44,7 @@ function createMcpClientController(): McpClientController {
             const client = new McpClient({
                 applicationId,
                 lastApplicationError: () => applicationError,
+                reportUncaughtError,
                 ...(socketPath !== undefined && { socketPath }),
             });
             current = client;
