@@ -14,7 +14,7 @@ import { join } from "node:path";
 import { resolveCatalogProject, synchronizeCatalogs } from "../i18n/catalogs.js";
 import { extractSourceCatalog } from "../i18n/source-messages.js";
 import { clearI18nTypes, emitI18nTypes } from "../i18n/types.js";
-import { upsertAgentRules } from "../internal/agent-rules.js";
+import { removeAgentRules, upsertAgentRules } from "../internal/agent-rules.js";
 import { discoverSourceFiles } from "../internal/source-imports.js";
 import { emitSchemaEnv } from "../settings/schema.js";
 import { type ReferenceResult, writeReference } from "./reference.js";
@@ -113,6 +113,8 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
 
     if (isAgentRulesEnabled(config)) {
         upsertAgentRules(cwd, isAgentReferenceEnabled(config));
+    } else {
+        removeAgentRules(cwd);
     }
 
     return {

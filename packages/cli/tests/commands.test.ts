@@ -1078,6 +1078,34 @@ describe("CLI commands", () => {
         expect(existsSync(join(project.root, ".gtkx/reference"))).toBe(false);
     });
 
+    it("removes the agent rules it wrote once rules are disabled", async () => {
+        using project = createProject({ codegen: true, libraries: ["Gio-2.0"], agents: { rules: true } });
+        const configure = (rules: boolean) =>
+            project.write(
+                "gtkx.config.ts",
+                `export default ${JSON.stringify({ applicationId: "org.gtkx.example", libraries: ["Gio-2.0"], agents: { rules } })};`,
+            );
+        const agentsPath = join(project.root, "AGENTS.md");
+        const claudePath = join(project.root, "CLAUDE.md");
+        await invoke(["codegen", "--cwd", project.root]);
+        expect(existsSync(claudePath)).toBe(true);
+
+        configure(false);
+        await invoke(["codegen", "--cwd", project.root]);
+        expect(existsSync(agentsPath)).toBe(false);
+        expect(existsSync(claudePath)).toBe(false);
+
+        project.write("AGENTS.md", "# Notes\n\nKeep this.\n");
+        configure(true);
+        await invoke(["codegen", "--cwd", project.root]);
+        expect(readFileSync(agentsPath, "utf8")).toContain("gtkx-agent-rules");
+
+        configure(false);
+        await invoke(["codegen", "--cwd", project.root]);
+        expect(readFileSync(agentsPath, "utf8")).toBe("# Notes\n\nKeep this.\n");
+        expect(existsSync(claudePath)).toBe(true);
+    });
+
     it("creates a project through the gtkx create alias", async () => {
         using project = createProject();
         const target = join(project.root, "created");

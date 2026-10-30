@@ -157,7 +157,8 @@ const elementsSchema = z.strictObject({
 const agentsSchema = z.strictObject({
     /**
      * Whether codegen maintains the GTKX rules in `AGENTS.md` and creates a missing `CLAUDE.md` import.
-     * Defaults to `true`.
+     * `false` removes rules written earlier, deleting `AGENTS.md` and the `CLAUDE.md` import when nothing else
+     * remains. Defaults to `true`.
      */
     rules: z.boolean({ error: "must be a boolean" }).optional(),
     /**

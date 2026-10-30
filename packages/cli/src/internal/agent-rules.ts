@@ -1,5 +1,5 @@
 import { errorCode } from "@gtkx/utils";
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { REFERENCE_PATH } from "../codegen/reference.js";
 
@@ -140,4 +140,31 @@ const upsertAgentRules = (root: string, hasReference: boolean): AgentRulesResult
     return { isWritten: files.length > 0, files };
 };
 
-export { upsertAgentRules };
+const removeAgentRules = (root: string): void => {
+    const agentsPath = join(root, AGENTS_FILENAME);
+    const existing = readOrUndefined(agentsPath);
+
+    if (existing === undefined || !BLOCK_PATTERN.test(existing)) {
+        return;
+    }
+
+    const remaining = existing
+        .replace(BLOCK_PATTERN, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+
+    if (remaining !== "") {
+        writeFileSync(agentsPath, `${remaining}\n`);
+
+        return;
+    }
+
+    rmSync(agentsPath);
+    const claudePath = join(root, CLAUDE_FILENAME);
+
+    if (readOrUndefined(claudePath) === CLAUDE_CONTENTS) {
+        rmSync(claudePath);
+    }
+};
+
+export { removeAgentRules, upsertAgentRules };
