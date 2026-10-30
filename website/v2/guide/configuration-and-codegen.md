@@ -27,6 +27,8 @@ Configuration modules and their local imports use ESM. Use `.ts`, `.mts`, `.js`,
 
 Install the corresponding GIR files before generating bindings. Use `girPath` when they live outside the standard search directories; relative paths start at the project root. Supplying a newer GIR file changes the declarations, not the library that runs your app.
 
+At run time the dynamic linker loads each library by the `shared-library` name its GIR file records, so a library built alongside the app has to be installed or on the linker's search path. Point `LD_LIBRARY_PATH` at its build directory for `gtkx dev`, `gtkx build` output and Vitest, as `meson devenv` does; a library the linker cannot find fails with the linker's reason, such as `cannot open shared object file`.
+
 ### Other settings {#every-option}
 
 Use the [configuration reference](/v2/reference/@gtkx/config/index/type-aliases/Config) for available settings. The React Compiler is enabled by default; `reactCompiler: false` disables it. Application icons and package metadata are covered in [Deploying](/v2/guide/deploying), and agent tool settings in [MCP](/v2/guide/mcp).

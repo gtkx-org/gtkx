@@ -29,8 +29,7 @@ impl LibraryHandle {
         if let Some(library) = with_libraries(|libraries| libraries.get(candidate).cloned()) {
             return Ok(Self { library });
         }
-        let loaded = unsafe { Library::open(Some(candidate), RTLD_NOW | RTLD_GLOBAL) }
-            .map_err(|error| anyhow::anyhow!("Failed to load library '{candidate}': {error}"))?;
+        let loaded = unsafe { Library::open(Some(candidate), RTLD_NOW | RTLD_GLOBAL) }?;
         let library = with_libraries(|libraries| {
             Arc::clone(
                 libraries
