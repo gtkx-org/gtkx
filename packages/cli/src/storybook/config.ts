@@ -2,6 +2,7 @@ import { loadConfigModule } from "@gtkx/config/internal";
 import { isPathInside, sortStringsBy } from "@gtkx/utils";
 import { globSync, statSync } from "node:fs";
 import { extname, isAbsolute, relative, resolve, sep } from "node:path";
+import { searchForWorkspaceRoot } from "vite";
 
 type StorybookConfig = {
     stories: string[];
@@ -23,6 +24,8 @@ const PREVIEW_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mts", ".mjs"];
 const DEFAULT_STORIES = ["src/**/*.stories.{ts,tsx,js,jsx,mts,mjs}"];
 const MDX_EXTENSION = ".mdx";
 const DEFAULT_EXCLUDES = ["**/node_modules/**", "**/.git/**", "**/.gtkx/**", "**/dist/**", "**/build/**"];
+const PARENT_PREFIX = /^(?:\.\.\/)+/;
+const ANY_DIRECTORY_PREFIX = "**/";
 
 const isFile = (path: string): boolean => statSync(path, { throwIfNoEntry: false })?.isFile() === true;
 
@@ -69,7 +72,6 @@ const patterns = (value: unknown, name: string): string[] => {
             typeof pattern !== "string" ||
             pattern.trim().length === 0 ||
             isAbsolute(pattern) ||
-            pattern.split(/[\\/]/).includes("..") ||
             pattern.startsWith("!")
         ) {
             throw new TypeError(`Storybook ${name} must contain project-relative glob patterns`);
@@ -102,8 +104,24 @@ const parseStorybookConfig = (value: unknown): StorybookConfig => {
     return { stories, exclude, preview };
 };
 
-const autoTitle = (root: string, path: string): string =>
-    relative(root, path)
+const storyPath = (workspaceRoot: string, path: string): string => {
+    if (!isPathInside(workspaceRoot, path)) {
+        throw new Error(`Storybook stories must be inside the workspace root ${workspaceRoot}: ${path}`);
+    }
+
+    return path;
+};
+
+const excludePatterns = (config: StorybookConfig): string[] => {
+    const patterns = [...DEFAULT_EXCLUDES, ...config.exclude];
+    const prefixes = new Set(config.stories.flatMap((pattern) => PARENT_PREFIX.exec(pattern)?.[0] ?? []));
+    const anywhere = patterns.filter((pattern) => pattern.startsWith(ANY_DIRECTORY_PREFIX));
+
+    return [...patterns, ...[...prefixes].flatMap((prefix) => anywhere.map((pattern) => `${prefix}${pattern}`))];
+};
+
+const autoTitle = (root: string, workspaceRoot: string, path: string): string =>
+    relative(isPathInside(root, path) ? root : workspaceRoot, path)
         .split(sep)
         .join("/")
         .replace(/^src\//, "")
@@ -123,15 +141,18 @@ const discoverStorybookFiles = (
         throw new Error(`Storybook preview does not exist: ${previewPath}`);
     }
 
+    const workspaceRoot = searchForWorkspaceRoot(root);
     const paths = globSync(config.stories, {
         cwd: root,
-        exclude: [...DEFAULT_EXCLUDES, ...config.exclude],
+        exclude: excludePatterns(config),
         withFileTypes: true,
     })
         .filter((entry) => entry.isFile())
-        .map((entry) => projectPath(root, resolve(entry.parentPath, entry.name)));
+        .map((entry) => storyPath(workspaceRoot, resolve(entry.parentPath, entry.name)));
     const matched = sortStringsBy([...new Set(paths)], (path) => path);
-    const stories = matched.filter((path) => !isMdx(path)).map((id) => ({ id, title: autoTitle(root, id) }));
+    const stories = matched
+        .filter((path) => !isMdx(path))
+        .map((id) => ({ id, title: autoTitle(root, workspaceRoot, id) }));
     const skippedMdx = matched.filter(isMdx);
 
     return { configPath, previewPath, stories, skippedMdx };

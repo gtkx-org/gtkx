@@ -27,6 +27,20 @@ export default defineConfig({
 
 Patterns are relative to the GTKX project root. Your `gtkx.config.ts` still defines the application settings and additional GIR libraries. [Asset imports](/v2/guide/assets) work as they do in the application. Start the explorer with `npx gtkx storybook`; add `--headless --size 1280x900` when you need a private display.
 
+### Stories from a shared package
+
+In a [monorepo](/v2/guide/configuration-and-codegen#monorepos), an app's patterns can reach the stories of a shared component package, as Storybook monorepo configurations do:
+
+```ts
+export default defineConfig({
+    stories: ["src/**/*.stories.tsx", "../../packages/ui/src/**/*.stories.tsx"],
+});
+```
+
+Every matched file must lie inside the workspace root, the directory holding `pnpm-workspace.yaml` or the `package.json` with `workspaces`; the explorer stops with an error naming any file outside it. The explorer runs with the app's `gtkx.config.ts`, so the app has to declare the libraries the shared stories import. Stories without a `title` are named by their path from the workspace root, such as `packages/ui/src/badge`.
+
+To browse a shared package's stories on their own, make it a GTKX project instead: give it a `gtkx.config.ts` with an application ID, add `@gtkx/cli`, `@gtkx/config`, `@gtkx/runtime`, `@gtkx/css`, `@gtkx/cairo` and `@gtkx/storybook` as development dependencies, and run `gtkx storybook` in its directory.
+
 ## Define stories
 
 For a component accepting `label`, `enabled`, and `onClicked`, write `button.stories.tsx`:

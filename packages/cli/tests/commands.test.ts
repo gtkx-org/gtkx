@@ -1890,6 +1890,58 @@ describe("CLI commands", () => {
         expect(output).toContain("introduction.mdx");
     });
 
+    it("lists storybook stories of a sibling workspace package", async () => {
+        using project = createProject({ codegen: true });
+        const app = "workspace/apps/timer";
+        const readyPath = join(project.root, "ready.txt");
+        const dependencyPath = join(project.root, "dependency.txt");
+        project.write("workspace/pnpm-workspace.yaml", "packages:\n  - apps/*\n  - packages/*\n");
+        project.write(`${app}/package.json`, JSON.stringify({ name: "timer", type: "module" }));
+        project.write(
+            `${app}/gtkx.config.ts`,
+            'export default { applicationId: "org.gtkx.timer", agents: { reference: false, rules: false } };',
+        );
+        project.write(
+            `${app}/.storybook/main.mts`,
+            'export default { stories: ["src/**/*.stories.tsx", "../../packages/ui/**/*.stories.tsx"] };',
+        );
+        project.write(
+            "workspace/packages/ui/src/badge.stories.tsx",
+            `import { writeFileSync } from "node:fs";
+            writeFileSync(${JSON.stringify(readyPath)}, "badge");
+            export default { title: "Badge" }; export const Empty = { render: () => null };`,
+        );
+        project.write(
+            "workspace/packages/ui/node_modules/kit/src/kit.stories.tsx",
+            `import { writeFileSync } from "node:fs";
+            writeFileSync(${JSON.stringify(dependencyPath)}, "kit");
+            export default { title: "Kit" }; export const Empty = { render: () => null };`,
+        );
+
+        await withSession("storybook", join(project.root, app), readyPath, async () => {
+            await expect.poll(() => readFileSync(readyPath, "utf8")).toBe("badge");
+        });
+
+        expect(existsSync(dependencyPath)).toBe(false);
+    });
+
+    it("rejects storybook stories outside the workspace root", async () => {
+        using project = createProject();
+        const app = join(project.root, "workspace/apps/timer");
+        project.write("workspace/pnpm-workspace.yaml", "packages:\n  - apps/*\n");
+        project.write("workspace/apps/timer/package.json", JSON.stringify({ name: "timer", type: "module" }));
+        project.write(
+            "workspace/apps/timer/.storybook/main.mts",
+            'export default { stories: ["../../../shared/**/*.stories.tsx"] };',
+        );
+        project.write(
+            "shared/badge.stories.tsx",
+            'export default { title: "Badge" }; export const Empty = { render: () => null };',
+        );
+
+        await expect(invoke(["storybook", "--cwd", app])).rejects.toThrow("inside the workspace root");
+    });
+
     it("registers the storybook explorer with MCP under its own application ID", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "ready.txt");
