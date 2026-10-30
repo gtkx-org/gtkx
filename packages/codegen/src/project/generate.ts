@@ -14,6 +14,7 @@ type GenerateBindingsOptions = {
     inputs?: CodegenInputs;
     isForced?: boolean;
     lockTimeoutMs?: number | undefined;
+    onRegenerate?: (() => void) | undefined;
 };
 
 type GenerateBindingsResult = CodegenRunnerResult & CodegenInputs & { isForced: boolean };
@@ -60,6 +61,7 @@ const generateBindings = async (options: GenerateBindingsOptions): Promise<Gener
         isForced,
         isSharingForced: options.isForced === true,
         lockTimeoutMs: options.lockTimeoutMs,
+        onRegenerate: options.onRegenerate,
     });
 
     return { ...result, ...inputs, isForced };

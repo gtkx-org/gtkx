@@ -31,6 +31,7 @@ type RunCodegenOptions = {
     inputs?: CodegenInputs;
     resolved?: LoadedConfig;
     shouldPreserveI18nMetadata?: boolean | undefined;
+    onRegenerate?: (() => void) | undefined;
 };
 
 type LoadedConfig = {
@@ -101,6 +102,7 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
         ...(options.inputs !== undefined && { inputs: options.inputs }),
         isForced: options.isForced === true,
         lockTimeoutMs: options.lockTimeoutMs,
+        onRegenerate: options.onRegenerate,
     });
     const { girPath, libraries, store, isForced } = result;
 
@@ -165,14 +167,17 @@ const resolveInputsOrNull = (cwd: string, config: Config): CodegenInputs | null 
     }
 };
 
-const maybeAnnounceStale = (shouldAnnounce: boolean | undefined, inputs: CodegenInputs | null): void => {
+const regenerationAnnouncement = (
+    shouldAnnounce: boolean | undefined,
+    inputs: CodegenInputs | null,
+): (() => void) | undefined => {
     if (!shouldAnnounce) {
-        return;
+        return undefined;
     }
 
-    if (inputs === null || isCodegenStale(inputs)) {
-        info("generated bindings missing; running codegen...");
-    }
+    const state = inputs === null || isCodegenStale(inputs) ? "missing" : "out of date";
+
+    return () => info(`generated bindings ${state}; running codegen...`);
 };
 
 const generate = async (context: CodegenContext, options: EnsureGeneratedOptions): Promise<boolean> => {
@@ -189,7 +194,6 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
     }
 
     const inputs = resolveInputsOrNull(context.root, context.config);
-    maybeAnnounceStale(options.shouldAnnounce, inputs);
     const resolved = { config: context.config, configFile: context.configFile };
 
     const result = await runCodegen({
@@ -198,6 +202,7 @@ const generate = async (context: CodegenContext, options: EnsureGeneratedOptions
         lockTimeoutMs: options.lockTimeoutMs,
         resolved,
         shouldPreserveI18nMetadata: options.shouldPreserveI18nMetadata,
+        onRegenerate: regenerationAnnouncement(options.shouldAnnounce, inputs),
         ...(inputs !== null && { inputs }),
     });
 

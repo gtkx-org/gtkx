@@ -1819,6 +1819,9 @@ describe("CLI commands", () => {
             project.write("gir/Extra-1.0.gir", gir(["user_name", "host_name"], "Extra"));
             await expect.poll(() => readFileSync(launchesPath, "utf8"), { timeout: 30_000 }).toBe("xxxx");
         });
+
+        project.write("gir/Probe-1.0.gir", gir(["user_name", "host_name", "real_name"]));
+        expect(await invoke(["build", "--cwd", project.root])).toContain("generated bindings out of date");
     });
 
     it("starts a real storybook session and stops its application", async () => {

@@ -61,6 +61,8 @@ type CodegenRunnerOptions = {
     isSharingForced?: boolean;
     /** Maximum wait for each generated-store lock in milliseconds. Defaults to ten minutes. */
     lockTimeoutMs?: number | undefined;
+    /** Called before the gi store is regenerated, so callers can report a step that can take a while. */
+    onRegenerate?: (() => void) | undefined;
 };
 
 /** What a `runCodegen` run produced. */
@@ -178,6 +180,7 @@ const emitGiStore = (options: CodegenRunnerOptions, loadLibrary: () => Library):
         return { isRegenerated, namespaces: 0, store: undefined };
     }
 
+    options.onRegenerate?.();
     const result = runGiCodegen(loadLibrary(), { gi, libraries, girPath });
 
     return { isRegenerated, namespaces: result.namespaces, store: result.store };
