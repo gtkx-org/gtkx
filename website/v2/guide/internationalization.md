@@ -88,7 +88,9 @@ Use ESM and the original names `t`, `useTranslation`, `Trans`, or `TransWithoutC
 
 GTKX rejects aliases, member calls such as `i18n.t(...)`, and dynamic keys during extraction. CommonJS, tagged templates, and ICU MessageFormat are not extraction forms. These restrictions keep the catalog aligned with the calls that reach gettext.
 
-Generated declarations under `node_modules/.gtkx` extend the upstream translation types. They check message keys and their required interpolation, count, and context options. Run codegen after adding messages; do not edit the declarations.
+Extraction follows `t` from its import or from a `useTranslation()` call in the same module. A `t` received in any other way, such as a function parameter, a prop, `withTranslation`, or the `Translation` render prop, is not extracted, and the generated declarations then reject its keys. Helpers outside components can import `t` from `@gtkx/i18n` instead, since gettext uses one language for the whole process.
+
+Generated declarations under `node_modules/.gtkx` extend the upstream translation types. They check message keys and contexts, and the interpolation values of an options object. As in i18next, they do not require the options object itself or a plural message's `count`: `t("Hello, {{name}}!")` compiles and renders the placeholder unchanged. Run codegen after adding messages; do not edit the declarations.
 
 ## Develop and build
 
