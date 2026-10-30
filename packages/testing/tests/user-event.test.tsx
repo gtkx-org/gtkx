@@ -20,6 +20,7 @@ import {
     GtkBox,
     GtkButton,
     GtkCheckButton,
+    GtkDragSource,
     GtkDropDown,
     GtkDropTarget,
     GtkEditableLabel,
@@ -845,6 +846,41 @@ describe("userEvent gestures", () => {
         expect(presses[1]).toEqual([0, 0]);
     });
 
+    it("dispatch to the nearest ancestor carrying the gesture, in that ancestor's coordinates", async () => {
+        const presses: [number, number][] = [];
+        const swipes: [number, number][] = [];
+        const { findByName } = await renderScoped(
+            <GtkBox
+                orientation={Gtk.Orientation.VERTICAL}
+                controllers={[
+                    <GtkGestureSwipe
+                        key="swipe"
+                        onSwipe={(velocityX, velocityY) => {
+                            swipes.push([velocityX, velocityY]);
+                        }}
+                    />,
+                    <GtkGestureLongPress
+                        key="long-press"
+                        onPressed={(x, y) => {
+                            presses.push([x, y]);
+                        }}
+                    />,
+                ]}
+            >
+                <GtkBox>
+                    <GtkLabel name="nested-gesture" marginStart={10} marginTop={20}>
+                        Nested
+                    </GtkLabel>
+                </GtkBox>
+            </GtkBox>,
+        );
+        const label = await findByName("nested-gesture");
+        await userEvent.longPress(label, 1, 2);
+        expect(presses).toEqual([[11, 22]]);
+        await userEvent.swipe(label, 5, 6);
+        expect(swipes).toEqual([[5, 6]]);
+    });
+
     it("throws when the widget carries no matching gesture controller", async () => {
         await render(<GtkLabel name="no-gesture">No gesture</GtkLabel>);
         const label = await screen.findByName("no-gesture");
@@ -1128,6 +1164,43 @@ describe("userEvent.dragAndDrop", () => {
         expect(handleDrop.calls[0]?.[0]).toBe("payload");
         expect(begins.count).toBe(1);
         expect(ends.count).toBe(1);
+    });
+
+    it("drags from and drops onto the nearest ancestors carrying the controllers", async () => {
+        const handleDrop = dropHandler((value) => value.getString());
+        const { findByName } = await renderScoped(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkBox
+                    controllers={
+                        <GtkDragSource
+                            actions={Gdk.DragAction.COPY}
+                            onPrepare={() => Gdk.ContentProvider.newForValue("cell")}
+                        />
+                    }
+                >
+                    <GtkLabel name="nested-source">Source</GtkLabel>
+                </GtkBox>
+                <GtkBox
+                    controllers={
+                        <GtkDropTarget
+                            types={[GObject.TYPE_STRING]}
+                            actions={Gdk.DragAction.COPY}
+                            onDrop={handleDrop.onDrop}
+                        />
+                    }
+                >
+                    <GtkLabel name="nested-target" marginStart={4}>
+                        Target
+                    </GtkLabel>
+                </GtkBox>
+            </GtkBox>,
+        );
+        const source = await findByName("nested-source");
+        const target = await findByName("nested-target");
+        await userEvent.dragAndDrop(source, target, undefined, { x: 1, y: 2 });
+        expect(handleDrop.calls).toEqual([["cell", 5, 2]]);
+        await userEvent.drop(target, "direct");
+        expect(handleDrop.calls[1]).toEqual(["direct", 4, 0]);
     });
 
     it("throws when the source has no DragSource controller", async () => {

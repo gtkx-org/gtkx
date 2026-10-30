@@ -79,37 +79,43 @@ type UserEvent = {
         widget: Gtk.Accessible,
         ...args: Parameters<typeof unhover> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Emits `angle-changed` on the widget's rotate gestures. */
+    /** Emits `angle-changed` on the rotate gestures of the widget or its nearest ancestor that has one. */
     rotate: (
         widget: Gtk.Accessible,
         ...args: Parameters<typeof rotate> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Emits `scale-changed` on the widget's zoom gestures. */
+    /** Emits `scale-changed` on the zoom gestures of the widget or its nearest ancestor that has one. */
     zoom: (
         widget: Gtk.Accessible,
         ...args: Parameters<typeof zoom> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Emits `swipe` with the given velocity on the widget's swipe gestures. */
+    /** Emits `swipe` with the given velocity on the swipe gestures of the widget or its nearest ancestor that has one. */
     swipe: (
         widget: Gtk.Accessible,
         ...args: Parameters<typeof swipe> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Emits `pressed` at the given point on the widget's long-press gestures. */
+    /** Emits `pressed` at the given point on the long-press gestures of the widget or its nearest ancestor that has one. */
     longPress: (
         widget: Gtk.Accessible,
         ...args: Parameters<typeof longPress> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Runs a begin, update, and end sequence on the widget's drag gestures, ending at the given offset. */
+    /**
+     * Runs a begin, update, and end sequence on the drag gestures of the widget or its nearest ancestor that has one,
+     * ending at the given offset.
+     */
     drag: (
         widget: Gtk.Accessible,
         ...args: Parameters<typeof drag> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Emits `drop` with the given content on the widget's drop targets. */
+    /** Emits `drop` with the given content on the drop targets of the widget or its nearest ancestor that has one. */
     drop: (
         widget: Gtk.Accessible,
         ...args: Parameters<typeof drop> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Requires a drag source on the source widget, then emits `drop` with the content on the target's drop targets. */
+    /**
+     * Begins a drag from the drag sources of the source widget or its nearest ancestor that has one, then emits `drop`
+     * with the content on the drop targets of the target widget or its nearest ancestor that has one.
+     */
     dragAndDrop: (
         source: Gtk.Accessible,
         target: Gtk.Accessible,

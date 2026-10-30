@@ -1,10 +1,11 @@
 import * as Gdk from "@gtkx/gi/gdk";
 import * as GObject from "@gtkx/gi/gobject";
+import * as Graphene from "@gtkx/gi/graphene";
 import * as Gtk from "@gtkx/gi/gtk";
 import { t, toValueHandle, wrapHandle } from "@gtkx/runtime";
 import { toValue } from "@gtkx/runtime/internal";
 import { runInAct } from "../act.js";
-import { getAllControllers } from "./controller.js";
+import { findControllerOwner } from "./controller.js";
 import { dispatchOnControllers, dispatchOnOrCreateControllers } from "./dispatch.js";
 import { wrapEvent } from "./event-wrapper.js";
 
@@ -71,6 +72,16 @@ const buildDropValue = (content: DropContent): GObject.Value => {
     return wrapHandle(handle, GObject.Value);
 };
 
+const toOwnerPoint = (widget: Gtk.Widget, owner: Gtk.Widget, x: number, y: number): DragOffset => {
+    if (widget === owner) {
+        return { x, y };
+    }
+
+    const [isComputed, translated] = widget.computePoint(owner, new Graphene.Point({ x, y }));
+
+    return isComputed ? { x: translated.x, y: translated.y } : { x, y };
+};
+
 /** Enters a widget. */
 const hover = (widget: Gtk.Widget): Promise<void> =>
     dispatchOnOrCreateControllers(widget, Gtk.EventControllerMotion, (controller) => {
@@ -91,11 +102,12 @@ const rotate = (widget: Gtk.Widget, angle: number, deltaAngle: number = angle): 
 
 /** Zooms a widget's gestures. */
 const zoom = (widget: Gtk.Widget, scale: number): Promise<void> =>
-    dispatchOnControllers(widget, Gtk.GestureZoom, (controller) => {
+    dispatchOnControllers(widget, Gtk.GestureZoom, (controller, owner) => {
         const instance: ZoomInstancePatch = controller;
         const hasOwnCenter = Object.hasOwn(instance, "getBoundingBoxCenter");
         const previousCenter = instance.getBoundingBoxCenter;
-        instance.getBoundingBoxCenter = () => [true, widget.getWidth() / 2, widget.getHeight() / 2];
+        const center = toOwnerPoint(widget, owner, widget.getWidth() / 2, widget.getHeight() / 2);
+        instance.getBoundingBoxCenter = () => [true, center.x, center.y];
 
         try {
             controller.emit("scale-changed", scale);
@@ -116,8 +128,9 @@ const swipe = (widget: Gtk.Widget, velocityX: number, velocityY: number): Promis
 
 /** Long-presses a widget. */
 const longPress = (widget: Gtk.Widget, x = 0, y = 0): Promise<void> =>
-    dispatchOnControllers(widget, Gtk.GestureLongPress, (controller) => {
-        controller.emit("pressed", x, y);
+    dispatchOnControllers(widget, Gtk.GestureLongPress, (controller, owner) => {
+        const point = toOwnerPoint(widget, owner, x, y);
+        controller.emit("pressed", point.x, point.y);
     });
 
 const restoreDragState = (saved: SavedDragState): void => {
@@ -211,20 +224,32 @@ const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: DragOpt
         );
     }
 
-    const start = { x: options.startX ?? 0, y: options.startY ?? 0 };
     const updates = resolveDragUpdates(dx, dy, options);
 
     await wrapEvent(widget, () => {
-        runDragSequence(getAllControllers(widget, Gtk.GestureDrag), start, updates);
+        const owner = findControllerOwner(widget, Gtk.GestureDrag);
+        const start = toOwnerPoint(widget, owner.widget, options.startX ?? 0, options.startY ?? 0);
+        runDragSequence(owner.controllers, start, updates);
     });
 };
 
+type DropSite = {
+    targets: Gtk.DropTarget[];
+    point: DragOffset;
+};
+
+const resolveDropSite = (target: Gtk.Widget, options: DropOptions): DropSite => {
+    const owner = findControllerOwner(target, Gtk.DropTarget);
+
+    return { targets: owner.controllers, point: toOwnerPoint(target, owner.widget, options.x ?? 0, options.y ?? 0) };
+};
+
 const didEmitAcceptedDrop = (target: Gtk.Widget, content: DropContent, options: DropOptions): boolean => {
-    const dropTargets = getAllControllers(target, Gtk.DropTarget);
+    const { targets, point } = resolveDropSite(target, options);
     let isAccepted = false;
 
-    for (const dropTarget of dropTargets) {
-        isAccepted = dropTarget.emit("drop", buildDropValue(content), options.x ?? 0, options.y ?? 0) || isAccepted;
+    for (const dropTarget of targets) {
+        isAccepted = dropTarget.emit("drop", buildDropValue(content), point.x, point.y) || isAccepted;
     }
 
     return isAccepted;
@@ -301,7 +326,7 @@ const beginDragSources = (
     return activeDrags;
 };
 
-const didEmitProviderValue = (provider: Gdk.ContentProvider, target: Gtk.DropTarget, options: DropOptions): boolean => {
+const didEmitProviderValue = (provider: Gdk.ContentProvider, target: Gtk.DropTarget, point: DragOffset): boolean => {
     const formats = target.getFormats();
     const type = formats === null ? GObject.TYPE_INVALID : formats.matchGtype(provider.refFormats());
 
@@ -313,14 +338,14 @@ const didEmitProviderValue = (provider: Gdk.ContentProvider, target: Gtk.DropTar
     value.init(type);
     provider.getValue(value);
 
-    return target.emit("drop", value, options.x ?? 0, options.y ?? 0);
+    return target.emit("drop", value, point.x, point.y);
 };
 
 const didEmitProviderDrop = (target: Gtk.Widget, drags: ActiveDrag[], options: DropOptions): boolean => {
-    const targets = getAllControllers(target, Gtk.DropTarget);
+    const { targets, point } = resolveDropSite(target, options);
 
     return drags.some(({ drag }) =>
-        targets.some((dropTarget) => didEmitProviderValue(drag.getContent(), dropTarget, options)),
+        targets.some((dropTarget) => didEmitProviderValue(drag.getContent(), dropTarget, point)),
     );
 };
 
@@ -342,7 +367,8 @@ const dragAndDrop = async (
 
     try {
         await wrapEvent(source, () => {
-            activeDrags = beginDragSources(source, getAllControllers(source, Gtk.DragSource), content);
+            const owner = findControllerOwner(source, Gtk.DragSource);
+            activeDrags = beginDragSources(owner.widget, owner.controllers, content);
         });
 
         await wrapEvent(target, () => {

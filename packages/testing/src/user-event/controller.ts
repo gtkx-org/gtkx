@@ -83,6 +83,30 @@ const getController = <T extends Gtk.EventController>(
     return controller;
 };
 
+type ControllerOwner<T extends Gtk.EventController> = {
+    widget: Gtk.Widget;
+    controllers: T[];
+};
+
+const findControllerOwner = <T extends Gtk.EventController>(
+    target: Gtk.Accessible,
+    controllerType: ControllerConstructor<T>,
+): ControllerOwner<T> => {
+    let widget: Gtk.Widget | null = requireWidget(target);
+
+    while (widget !== null) {
+        const controllers = queryAllControllers(widget, controllerType);
+
+        if (controllers.length > 0) {
+            return { widget, controllers };
+        }
+
+        widget = widget.getParent();
+    }
+
+    throw new Error(`No ${controllerType.name} controller is attached to the widget or its ancestors`);
+};
+
 const getOrCreateControllers = <T extends Gtk.EventController>(
     target: Gtk.Accessible,
     controllerType: ControllerConstructor<T>,
@@ -106,5 +130,6 @@ export {
     getAllControllers,
     getController,
     getOrCreateControllers,
+    findControllerOwner,
     type ControllerConstructor,
 };
