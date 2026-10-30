@@ -4,86 +4,26 @@ description: "Collapse the sidebar and task list into one pane on narrow windows
 
 # Adapt the Layout
 
-The [sidebar and task list](/v2/tutorial/lists-and-the-sidebar) fit beside each other in a wide window. At the minimum width of 360 logical pixels, they need to share one pane. Add a breakpoint that collapses the split view and lets the navigator handle moving between the panes.
+The [sidebar and task list](/v2/tutorial/lists-and-the-sidebar) fit beside each other in a wide window. At the minimum width of 360 logical pixels, they need to share one pane. Give the split view navigator a breakpoint condition so it collapses the panes and handles moving between them.
 
-## Store the collapse state
+## Collapse below a breakpoint
 
-Create `src/store/ui.ts`:
-
-```ts [src/store/ui.ts]
-import type { StateCreator } from "zustand";
-import type { Mutators, Store } from "./index.js";
-
-export type UiSlice = {
-    collapsed: boolean;
-    setCollapsed: (collapsed: boolean) => void;
-};
-
-export const createUiSlice: StateCreator<Store, Mutators, [], UiSlice> = (set) => ({
-    collapsed: false,
-    setCollapsed: (collapsed) => set({ collapsed }),
-});
-```
-
-Add the UI slice to `src/store/index.ts`:
-
-```diff [src/store/index.ts]
-@@ -6,0 +7 @@
-+import { createUiSlice, type UiSlice } from "./ui.js";
-@@ -8 +9 @@
--export type Store = TasksSlice & ListsSlice;
-+export type Store = TasksSlice & ListsSlice & UiSlice;
-@@ -20,0 +22 @@
-+            ...createUiSlice(...a),
-```
-
-Keep `PersistedState` and `partialize` unchanged. The window's current size determines `collapsed` each time the app starts; it should not be restored from disk.
-
-## Add the breakpoint
-
-In `src/components/window.tsx`, read `collapsed` and `setCollapsed`. Add an `AdwBreakpoint` to the window's `breakpoints` slot:
+In `src/components/window.tsx`, pass `collapseCondition` to `Split.Navigator`:
 
 ```diff [src/components/window.tsx]
-@@ -1 +1,2 @@
--import { AdwApplicationWindow } from "@gtkx/jsx/adw";
-+import * as Adw from "@gtkx/gi/adw";
-+import { AdwApplicationWindow, AdwBreakpoint } from "@gtkx/jsx/adw";
-@@ -10,0 +12,2 @@
-+    const collapsed = useStore((state) => state.collapsed);
-+    const setCollapsed = useStore((state) => state.setCollapsed);
-@@ -13 +16,13 @@
--        <AdwApplicationWindow title="Tasks" widthRequest={360} heightRequest={294} onCloseRequest={() => quit()}>
-+        <AdwApplicationWindow
-+            title="Tasks"
-+            widthRequest={360}
-+            heightRequest={294}
-+            onCloseRequest={() => quit()}
-+            breakpoints={
-+                <AdwBreakpoint
-+                    condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
-+                    onApply={() => setCollapsed(true)}
-+                    onUnapply={() => setCollapsed(false)}
-+                />
-+            }
-+        >
+@@ -16,0 +17 @@
++                    collapseCondition="max-width: 500sp"
 ```
 
-`onApply` sets `collapsed` when the condition becomes true; `onUnapply` clears it when the window grows again. `Adw.BreakpointCondition.parse` parses the condition at runtime, so TypeScript cannot catch a malformed condition string.
+The panes collapse while the condition holds and return side by side when the window grows again. The navigator measures the condition against its own size, which here is the whole window. libadwaita applies it while it lays out the window, as it does for an `AdwBreakpoint`, so the navigator changes layout before GTK moves keyboard focus. The window's `widthRequest` and `heightRequest` set the smallest size the collapsed layout must fit.
+
+The condition uses the [`Adw.BreakpointCondition` syntax](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/type_func.BreakpointCondition.parse.html). It is parsed at runtime, so TypeScript cannot catch a malformed condition string.
 
 Use `sp` for the threshold so it grows with the text scale. At the default text size, `500sp` equals `500px`; with the standard Large Text setting it equals `625px`. See [Adwaita's length units](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/enum.LengthUnit.html).
 
 Here `px` means logical window coordinates, not physical display pixels. GTK maps window coordinates to device pixels using the [display scale](https://docs.gtk.org/gtk4/method.Widget.get_scale_factor.html). A threshold in `px` follows display scaling but does not grow with the text scale.
 
-## Pass the state to the navigator
-
-Still in `src/components/window.tsx`, pass the new value to `Split.Navigator`:
-
-```diff [src/components/window.tsx]
-@@ -31,0 +32 @@
-+                    collapsed={collapsed}
-```
-
-The breakpoint updates the store; the navigator reads it to switch layouts. Keep the selected page in navigation state. The navigator handles the back button, keyboard navigation, and swipe gestures without a separate selected-pane field.
+Keep the selected page in navigation state. The navigator handles the back button, keyboard navigation, and swipe gestures without a separate selected-pane field.
 
 ## Fill the empty content pane
 
@@ -92,10 +32,10 @@ In a collapsed window, going back from the task list returns to the sidebar and 
 Above `Window`, add `NothingSelected`:
 
 ```diff [src/components/window.tsx]
-@@ -2 +2 @@
--import { AdwApplicationWindow, AdwBreakpoint } from "@gtkx/jsx/adw";
-+import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage } from "@gtkx/jsx/adw";
-@@ -8,0 +9,8 @@
+@@ -1 +1 @@
+-import { AdwApplicationWindow } from "@gtkx/jsx/adw";
++import { AdwApplicationWindow, AdwStatusPage } from "@gtkx/jsx/adw";
+@@ -7,0 +8,8 @@
 +
 +const NothingSelected = () => (
 +    <AdwStatusPage
@@ -109,7 +49,7 @@ Above `Window`, add `NothingSelected`:
 Pass it to the navigator:
 
 ```diff [src/components/window.tsx]
-@@ -43,0 +44 @@
+@@ -28,0 +29 @@
 +                    contentPlaceholder={<NothingSelected />}
 ```
 

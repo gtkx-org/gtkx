@@ -50,13 +50,13 @@ Add these helpers at the end of the same file. They reuse the existing `isSelect
 In `src/components/window.tsx`, add `navigationRef` to the navigation import and pass it to the container:
 
 ```diff [src/components/window.tsx]
-@@ -10 +10 @@
+@@ -9 +9 @@
 -import { ALL_TASKS, Split } from "../navigation.js";
 +import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
 ```
 
 ```diff [src/components/window.tsx]
-@@ -43 +43 @@
+@@ -28 +28 @@
 -            <NavigationContainer>
 +            <NavigationContainer ref={navigationRef}>
 ```
@@ -82,7 +82,7 @@ In `src/store/ui.ts`, add `DialogKind` to the existing type import, then extend 
 @@ -5,0 +6,2 @@
 +    dialog: DialogKind;
 +    showDialog: (dialog: DialogKind) => void;
-@@ -17,0 +20,2 @@
+@@ -15,0 +18,2 @@
 +    dialog: "none",
 +    showDialog: (dialog) => set({ dialog }),
 ```
@@ -171,14 +171,21 @@ Update `src/components/window.tsx`. Import the button and the two new components
 +import { GtkButton } from "@gtkx/jsx/gtk";
 +import { MainMenu } from "./main-menu.js";
 +import { WindowActions } from "./window-actions.js";
-@@ -30,0 +34 @@
+@@ -27 +30,7 @@
+-        <AdwApplicationWindow title="Tasks" widthRequest={360} heightRequest={294} onCloseRequest={() => quit()}>
++        <AdwApplicationWindow
 +            actions={<WindowActions />}
++            title="Tasks"
++            widthRequest={360}
++            heightRequest={294}
++            onCloseRequest={() => quit()}
++        >
 ```
 
 Add `actions={<WindowActions />}` to `AdwApplicationWindow`. In the Tasks screen's existing options, replace `headerStart` and add `headerEnd`:
 
 ```diff [src/components/window.tsx]
-@@ -64 +64,11 @@
+@@ -54 +54,11 @@
 -                            headerStart: <SearchButton />,
 +                            headerStart: (
 +                                <>
@@ -342,9 +349,9 @@ Finish the window wiring:
 @@ -0,0 +1,2 @@
 +import { AppShortcuts } from "./app-shortcuts.js";
 +import { Dialogs } from "./dialogs.js";
-@@ -33,0 +36 @@
+@@ -30,0 +33 @@
 +            controllers={<AppShortcuts />}
-@@ -86,0 +90 @@
+@@ -76,0 +80 @@
 +            <Dialogs />
 ```
 

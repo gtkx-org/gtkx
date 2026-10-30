@@ -144,7 +144,7 @@ Components will select the stored arrays and derive their visible rows during re
 
 ## Add the filter and search state
 
-Replace `src/store/ui.ts` with:
+Create `src/store/ui.ts`:
 
 ```ts [src/store/ui.ts]
 import type { StateCreator } from "zustand";
@@ -152,11 +152,9 @@ import type { Filter } from "../types.js";
 import type { Mutators, Store } from "./index.js";
 
 export type UiSlice = {
-    collapsed: boolean;
     filter: Filter;
     searchMode: boolean;
     searchQuery: string;
-    setCollapsed: (collapsed: boolean) => void;
     setFilter: (filter: Filter) => void;
     setSearchMode: (searchMode: boolean) => void;
     setSearchQuery: (searchQuery: string) => void;
@@ -164,11 +162,9 @@ export type UiSlice = {
 };
 
 export const createUiSlice: StateCreator<Store, Mutators, [], UiSlice> = (set) => ({
-    collapsed: false,
     filter: "all",
     searchMode: false,
     searchQuery: "",
-    setCollapsed: (collapsed) => set({ collapsed }),
     setFilter: (filter) => set({ filter }),
     setSearchMode: (searchMode) => set({ searchMode }),
     setSearchQuery: (searchQuery) => set({ searchQuery }),
@@ -176,7 +172,19 @@ export const createUiSlice: StateCreator<Store, Mutators, [], UiSlice> = (set) =
 });
 ```
 
-The UI slice is already excluded by `partialize`, so the filter and search start fresh on each launch. Choosing a sidebar entry calls `resetSearch` before navigating.
+Add the UI slice to `src/store/index.ts`:
+
+```diff [src/store/index.ts]
+@@ -6,0 +7 @@
++import { createUiSlice, type UiSlice } from "./ui.js";
+@@ -8 +9 @@
+-export type Store = TasksSlice & ListsSlice;
++export type Store = TasksSlice & ListsSlice & UiSlice;
+@@ -20,0 +22 @@
++            ...createUiSlice(...a),
+```
+
+Keep `PersistedState` and `partialize` unchanged, so the filter and search start fresh on each launch. Choosing a sidebar entry calls `resetSearch` before navigating.
 
 ## Update the sidebar
 
@@ -304,7 +312,7 @@ In `src/navigation.ts`, add the launch selection:
 In `src/components/window.tsx`, import it and the title helper:
 
 ```diff [src/components/window.tsx]
-@@ -5 +5,2 @@
+@@ -4 +4,2 @@
 -import { Split } from "../navigation.js";
 +import { ALL_TASKS, Split } from "../navigation.js";
 +import { selectionTitle } from "../store/selectors.js";
@@ -375,10 +383,10 @@ In `src/components/window.tsx`, import both controls:
 Replace the `Tasks` screen declaration with:
 
 ```diff [src/components/window.tsx]
-@@ -53 +53 @@
+@@ -38 +38 @@
 -                        initialParams={{ kind: "list", listId: "personal" }}
 +                        initialParams={ALL_TASKS}
-@@ -55 +55,3 @@
+@@ -40 +40,3 @@
 -                            title: lists.find((list) => list.id === route.params.listId)?.name ?? "Tasks",
 +                            title: selectionTitle(route.params, lists),
 +                            headerTitle: <TaskFilter />,

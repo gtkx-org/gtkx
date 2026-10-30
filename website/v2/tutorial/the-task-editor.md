@@ -372,7 +372,7 @@ In `src/components/window.tsx`, add these imports:
 Add the editor after the `Tasks` screen in `Split.Navigator`:
 
 ```diff [src/components/window.tsx]
-@@ -62,0 +63,8 @@
+@@ -47,0 +48,8 @@
 +                    <Split.Screen
 +                        name="Task"
 +                        component={TaskScreen}

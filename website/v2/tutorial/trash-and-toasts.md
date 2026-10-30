@@ -28,9 +28,10 @@ In `src/components/window.tsx`, add `AdwToastOverlay` to the Adwaita element imp
 @@ -0,0 +1,2 @@
 +import { ToastProvider } from "@gtkx/components";
 +import { useRef } from "react";
-@@ -12 +14 @@
--import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage } from "@gtkx/jsx/adw";
-+import { AdwApplicationWindow, AdwToastOverlay, AdwBreakpoint, AdwStatusPage } from "@gtkx/jsx/adw";
+@@ -11 +13,2 @@
+-import { AdwApplicationWindow, AdwStatusPage } from "@gtkx/jsx/adw";
++import * as Adw from "@gtkx/gi/adw";
++import { AdwApplicationWindow, AdwToastOverlay, AdwStatusPage } from "@gtkx/jsx/adw";
 ```
 
 Inside `Window`, create the overlay ref:
@@ -38,7 +39,7 @@ Inside `Window`, create the overlay ref:
 ```diff [src/components/window.tsx]
 @@ -31,0 +32 @@
 +    const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
-@@ -37,44 +38,13 @@
+@@ -35,50 +36,54 @@
 -        <AdwApplicationWindow
 -            controllers={<AppShortcuts />}
 -            actions={<WindowActions />}
@@ -46,18 +47,11 @@ Inside `Window`, create the overlay ref:
 -            widthRequest={360}
 -            heightRequest={294}
 -            onCloseRequest={() => quit()}
--            breakpoints={
--                <AdwBreakpoint
--                    condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
--                    onApply={() => setCollapsed(true)}
--                    onUnapply={() => setCollapsed(false)}
--                />
--            }
 -        >
 -            <NavigationContainer ref={navigationRef}>
 -                <Split.Navigator
 -                    initialRouteName="Tasks"
--                    collapsed={collapsed}
+-                    collapseCondition="max-width: 500sp"
 -                    sidebarWidthFraction={0.25}
 -                    minSidebarWidth={220}
 -                    maxSidebarWidth={300}
@@ -83,20 +77,7 @@ Inside `Window`, create the overlay ref:
 -                            ),
 -                            headerEnd: <MainMenu />,
 -                        })}
-+        <ToastProvider overlayRef={toastOverlayRef}>
-+            <AdwApplicationWindow
-+                controllers={<AppShortcuts />}
-+                actions={<WindowActions />}
-+                title="Tasks"
-+                widthRequest={360}
-+                heightRequest={294}
-+                onCloseRequest={() => quit()}
-+                breakpoints={
-+                    <AdwBreakpoint
-+                        condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
-+                        onApply={() => setCollapsed(true)}
-+                        onUnapply={() => setCollapsed(false)}
-@@ -82,12 +52,47 @@
+-                    />
 -                    <Split.Screen
 -                        name="Task"
 -                        component={TaskScreen}
@@ -109,13 +90,20 @@ Inside `Window`, create the overlay ref:
 -            </NavigationContainer>
 -            <Dialogs />
 -        </AdwApplicationWindow>
-+                }
++        <ToastProvider overlayRef={toastOverlayRef}>
++            <AdwApplicationWindow
++                controllers={<AppShortcuts />}
++                actions={<WindowActions />}
++                title="Tasks"
++                widthRequest={360}
++                heightRequest={294}
++                onCloseRequest={() => quit()}
 +            >
 +                <AdwToastOverlay ref={toastOverlayRef}>
 +                    <NavigationContainer ref={navigationRef}>
 +                        <Split.Navigator
 +                            initialRouteName="Tasks"
-+                            collapsed={collapsed}
++                            collapseCondition="max-width: 500sp"
 +                            sidebarWidthFraction={0.25}
 +                            minSidebarWidth={220}
 +                            maxSidebarWidth={300}
@@ -211,7 +199,7 @@ Update the type import and dialog fields in `src/store/ui.ts`:
 +    dialog: DialogState;
 @@ -7,0 +8 @@
 +    askDeleteTask: (task: Task) => void;
-@@ -20,2 +21,3 @@
+@@ -18,2 +19,3 @@
 -    dialog: "none",
 -    showDialog: (dialog) => set({ dialog }),
 +    dialog: { kind: "none" },
@@ -427,7 +415,7 @@ In `Window`, read `const showDialog = useStore((state) => state.showDialog)` and
 ```diff [src/components/window.tsx]
 @@ -31,0 +32 @@
 +    const showDialog = useStore((state) => state.showDialog);
-@@ -64 +65,14 @@
+@@ -55 +56,14 @@
 -                            <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
 +                            <Split.Screen
 +                                name="Lists"

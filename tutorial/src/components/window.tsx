@@ -1,8 +1,8 @@
+import type * as Adw from "@gtkx/gi/adw";
 import type { RefObject } from "react";
 import { ToastProvider } from "@gtkx/components";
-import * as Adw from "@gtkx/gi/adw";
 import { useTranslation } from "@gtkx/i18n";
-import { AdwApplicationWindow, AdwBreakpoint, AdwStatusPage, AdwToastOverlay } from "@gtkx/jsx/adw";
+import { AdwApplicationWindow, AdwStatusPage, AdwToastOverlay } from "@gtkx/jsx/adw";
 import { GtkButton } from "@gtkx/jsx/gtk";
 import { NavigationContainer } from "@gtkx/navigation";
 import { quit, useBindSetting, useSetting } from "@gtkx/react";
@@ -68,13 +68,12 @@ const NewTaskButtons = () => {
 const TaskNavigation = () => {
     const { t } = useTranslation();
     const lists = useStore((state) => state.lists);
-    const isCollapsed = useStore((state) => state.collapsed);
 
     return (
         <NavigationContainer ref={navigationRef} onReady={openPendingTask}>
             <Split.Navigator
                 initialRouteName="Tasks"
-                collapsed={isCollapsed}
+                collapseCondition="max-width: 500sp"
                 sidebarWidthFraction={0.25}
                 minSidebarWidth={220}
                 maxSidebarWidth={300}
@@ -111,7 +110,6 @@ const TaskNavigation = () => {
 
 const WindowContent = ({ toastOverlayRef }: { toastOverlayRef: RefObject<Adw.ToastOverlay | null> }) => {
     const { t } = useTranslation();
-    const setCollapsed = useStore((state) => state.setCollapsed);
 
     const settings = useAppSettings();
     const [colorScheme] = useSetting(settings, schema, "color-scheme");
@@ -131,17 +129,6 @@ const WindowContent = ({ toastOverlayRef }: { toastOverlayRef: RefObject<Adw.Toa
             widthRequest={360}
             heightRequest={294}
             onCloseRequest={() => quit()}
-            breakpoints={
-                <AdwBreakpoint
-                    condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
-                    onApply={() => {
-                        setCollapsed(true);
-                    }}
-                    onUnapply={() => {
-                        setCollapsed(false);
-                    }}
-                />
-            }
             actions={<WindowActions />}
             controllers={<AppShortcuts />}
         >

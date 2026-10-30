@@ -140,7 +140,7 @@ Inside `Window`, subscribe to tasks and read the reminder interval using the exi
 Render the reminders inside the existing `ToastProvider`, before `AdwApplicationWindow`:
 
 ```diff [src/components/window.tsx]
-@@ -58,0 +59,3 @@
+@@ -56,0 +57,3 @@
 +            {reminders.map((reminder) => (
 +                <ReminderNotification key={`${reminder.id}:${reminder.due}`} {...reminder} />
 +            ))}
@@ -251,7 +251,7 @@ Open any queued task when navigation is ready:
 @@ -22 +22 @@
 -import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
 +import { ALL_TASKS, navigationRef, openPendingTask, Split } from "../navigation.js";
-@@ -79 +79 @@
+@@ -70 +70 @@
 -                    <NavigationContainer ref={navigationRef}>
 +                    <NavigationContainer ref={navigationRef} onReady={openPendingTask}>
 ```

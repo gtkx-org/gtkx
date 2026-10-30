@@ -272,9 +272,9 @@ const Folders = ({ navigation }: SplitViewScreenProps<MailParams, "Folders">) =>
     <GtkButton label="Inbox" onClicked={() => navigation.navigate("Messages", { folder: "inbox" })} />
 );
 
-export const Mail = ({ isNarrow }: { isNarrow: boolean }) => (
+export const Mail = () => (
     <Split.Navigator
-        collapsed={isNarrow}
+        collapseCondition="max-width: 500sp"
         minSidebarWidth={220}
         maxSidebarWidth={300}
         sidebarWidthFraction={0.25}
@@ -299,34 +299,21 @@ The sidebar stays pinned beneath the content routes. Going back from the first c
 
 Content pages use the stack's headers, back controls and transition events. The first selection fills an empty pane and emits no page transition. The sidebar has its own header without a back button.
 
-Drive `collapsed` from a window breakpoint so the panes adapt to the available width:
+`collapseCondition` collapses the panes while an [`Adw.BreakpointCondition`](https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/type_func.BreakpointCondition.parse.html) holds, measured against the navigator's size. libadwaita applies it during layout, as it applies an `AdwBreakpoint` setter, so the panes change before GTK moves keyboard focus. Setting `collapsed` from a breakpoint's `onApply` and `onUnapply` handlers lands after GTK has moved focus, and widening the window can then select the focused sidebar row. Use `collapsed` when the layout depends on application state rather than size.
+
+As with window breakpoints, give the window a minimum size the collapsed layout fits:
 
 ```tsx
-import * as Adw from "@gtkx/gi/adw";
-import { AdwApplicationWindow, AdwBreakpoint } from "@gtkx/jsx/adw";
+import { AdwApplicationWindow } from "@gtkx/jsx/adw";
 import { NavigationContainer } from "@gtkx/navigation";
-import { useState } from "react";
 
-export const App = () => {
-    const [isNarrow, setIsNarrow] = useState(false);
-
-    return (
-        <AdwApplicationWindow
-            title="Mail"
-            breakpoints={(
-                <AdwBreakpoint
-                    condition={Adw.BreakpointCondition.parse("max-width: 500sp")}
-                    onApply={() => setIsNarrow(true)}
-                    onUnapply={() => setIsNarrow(false)}
-                />
-            )}
-        >
-            <NavigationContainer>
-                <Mail isNarrow={isNarrow} />
-            </NavigationContainer>
-        </AdwApplicationWindow>
-    );
-};
+export const App = () => (
+    <AdwApplicationWindow title="Mail" widthRequest={360} heightRequest={294}>
+        <NavigationContainer>
+            <Mail />
+        </NavigationContainer>
+    </AdwApplicationWindow>
+);
 ```
 
 In a collapsed split view, Back or Escape from the first content page returns directly to the sidebar. Sizing and sidebar placement are covered by the [split view configuration reference](/v2/reference/@gtkx/navigation/type-aliases/SplitViewNavigationConfig).

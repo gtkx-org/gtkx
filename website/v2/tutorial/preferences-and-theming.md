@@ -138,7 +138,7 @@ In `src/components/window.tsx`, extend the React and GTKX imports, then hold the
 +    useBindSetting({ settings, schema, key: "window-width", object: window, property: "defaultWidth" });
 +    useBindSetting({ settings, schema, key: "window-height", object: window, property: "defaultHeight" });
 +
-@@ -40,0 +50 @@
+@@ -38,0 +48 @@
 +                ref={setWindow}
 ```
 
@@ -351,7 +351,7 @@ Apply it when the setting changes in `src/components/window.tsx`:
 ```diff [src/components/window.tsx]
 @@ -0,0 +1 @@
 +import { applyColorScheme } from "../theme.js";
-@@ -45,0 +47,4 @@
+@@ -43,0 +45,4 @@
 +
 +    useEffect(() => {
 +        applyColorScheme(colorScheme);

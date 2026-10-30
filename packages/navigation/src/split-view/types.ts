@@ -60,8 +60,15 @@ type SplitViewDescriptorMap = Record<string, SplitViewDescriptor>;
 
 /** Props of the split view navigator beyond the options every navigator shares. */
 type SplitViewNavigationConfig = {
-    /** Whether the panes stack into one instead of sitting side by side; defaults to `false`. */
+    /** Whether the panes stack into one instead of sitting side by side; defaults to `false`. Ignored while `collapseCondition` is set. */
     collapsed?: boolean;
+    /**
+     * An `Adw.BreakpointCondition` string, such as `"max-width: 500sp"`, measured against the navigator's size.
+     * The panes collapse while it holds. libadwaita applies it during layout, before GTK moves focus, so
+     * widening the window does not reselect the focused sidebar row the way a `collapsed` prop set from a
+     * breakpoint handler can. Give the window a `widthRequest` and `heightRequest`, as for window breakpoints.
+     */
+    collapseCondition?: string;
     /** Fills the content pane, below an untitled header bar, while no content route is open; defaults to nothing. */
     contentPlaceholder?: ReactNode;
     /** Which side the sidebar sits on; defaults to `"start"`. */

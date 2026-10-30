@@ -10,10 +10,10 @@ import type { RenderResult } from "@gtkx/testing";
 import type { ComponentProps, ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkBox, GtkButton, GtkLabel } from "@gtkx/jsx/gtk";
-import { createSplitViewNavigator, NavigationContainer, usePreventRemove } from "@gtkx/navigation";
+import { GtkBox, GtkButton, GtkLabel, GtkListBox } from "@gtkx/jsx/gtk";
+import { createSplitViewNavigator, NavigationContainer, useNavigationState, usePreventRemove } from "@gtkx/navigation";
 import { render, screen, userEvent } from "@gtkx/testing";
-import { createContext, useContext, useEffect } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { expect } from "vitest";
 
 import { getAncestor } from "./widget-ancestors.js";
@@ -112,6 +112,35 @@ const Lists = ({ navigation, route }: SplitViewScreenProps<Params, "Lists">): Re
     );
 };
 
+const SIDEBAR_LISTS = [
+    { id: "personal", title: "Personal" },
+    { id: "work", title: "Work" },
+];
+
+const ListBoxSidebar = ({ navigation }: SplitViewScreenProps<Params, "Lists">): ReactNode => {
+    const [selected, setSelected] = useState(0);
+    const hasContent = useNavigationState((state) => state.routes.length > 1);
+
+    return (
+        <GtkListBox
+            cssClasses={["navigation-sidebar"]}
+            selectedIndex={hasContent ? selected : -1}
+            onRowSelected={(row) => {
+                if (row === null) {
+                    return;
+                }
+
+                setSelected(row.getIndex());
+                navigation.navigate("Tasks", { listId: SIDEBAR_LISTS[row.getIndex()]?.id ?? "" });
+            }}
+        >
+            {SIDEBAR_LISTS.map((list) => (
+                <GtkLabel key={list.id}>{list.title}</GtkLabel>
+            ))}
+        </GtkListBox>
+    );
+};
+
 const Tasks = ({ navigation, route }: SplitViewScreenProps<Params, "Tasks">): ReactNode => {
     useEventRecorder(navigation, route.name);
 
@@ -192,6 +221,19 @@ const buildSplit = (options: SplitOptions = {}): ReactNode => (
     </CallbackContext>
 );
 
+const buildSidebarSplit = (collapseCondition: string): ReactNode => (
+    <NavigationContainer>
+        <Split.Navigator
+            initialRouteName="Tasks"
+            collapseCondition={collapseCondition}
+            contentPlaceholder={<GtkLabel>Nothing Selected</GtkLabel>}
+        >
+            <Split.Screen name="Lists" component={ListBoxSidebar} />
+            <Split.Screen name="Tasks" component={Tasks} initialParams={{ listId: "personal" }} />
+        </Split.Navigator>
+    </NavigationContainer>
+);
+
 const renderSplit = (options: SplitOptions = {}): Promise<RenderResult> =>
     render(buildSplit(options), { areAnimationsEnabled: options.isAnimated });
 
@@ -253,6 +295,7 @@ const expectHidden = (text: string): void => {
 };
 
 export {
+    buildSidebarSplit,
     buildSplit,
     clickButton,
     createEventLog,

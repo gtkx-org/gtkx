@@ -48,6 +48,7 @@ const createSplitViewScreen: StaticScreenFactory<SplitViewTypeBag> = createScree
 /** Renders the screens of a {@link createSplitViewNavigator} in an `AdwNavigationSplitView`. */
 function SplitViewNavigator({
     collapsed,
+    collapseCondition,
     contentPlaceholder,
     sidebarPosition,
     minSidebarWidth,
@@ -71,6 +72,7 @@ function SplitViewNavigator({
             descriptors={descriptors}
             describe={describe}
             collapsed={collapsed}
+            collapseCondition={collapseCondition}
             contentPlaceholder={contentPlaceholder}
             sidebarPosition={sidebarPosition}
             minSidebarWidth={minSidebarWidth}

@@ -35,10 +35,10 @@ Translate the window title and new-task tooltip in `src/components/window.tsx`:
 +import { useTranslation } from "@gtkx/i18n";
 @@ -36,0 +38 @@
 +    const { t } = useTranslation();
-@@ -66 +68 @@
+@@ -64 +66 @@
 -                title="Tasks"
 +                title={t("Tasks")}
-@@ -113 +115 @@
+@@ -104 +106 @@
 -                                                tooltipText="New Task (Ctrl+N)"
 +                                                tooltipText={t("New Task (Ctrl+N)")}
 ```
