@@ -8,6 +8,7 @@ import {
     AdwBottomSheet,
     AdwClamp,
     AdwClampScrollable,
+    AdwHeaderBar,
     AdwEntryRow,
     AdwOverlaySplitView,
     AdwPreferencesDialog,
@@ -22,6 +23,7 @@ import {
     AdwToastOverlay,
     AdwToggle,
     AdwToggleGroup,
+    AdwToolbarView,
     AdwWrapBox,
     AdwWindow,
 } from "@gtkx/jsx/adw";
@@ -50,6 +52,7 @@ import {
     GtkRevealer,
     GtkScrolledWindow,
     GtkSearchBar,
+    GtkSearchEntry,
     GtkStringList,
     GtkTextView,
     GtkTreeExpander,
@@ -59,7 +62,7 @@ import {
 import { typeFromName } from "@gtkx/runtime";
 import { render, screen, waitFor } from "@gtkx/testing";
 import { createRef, Suspense, use } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { ItemFactory } from "../helpers/list-view-render.js";
 
 const containers: { name: string; wrap: (child: ReactNode) => ReactNode }[] = [
@@ -113,6 +116,17 @@ const containers: { name: string; wrap: (child: ReactNode) => ReactNode }[] = [
     { name: "AdwWindow", wrap: (child) => <AdwWindow title="Content host">{child}</AdwWindow> },
 ];
 
+const builtinContainers = containers.filter(({ name }) => name !== "GtkAspectFrame");
+
+const observeStderr = () => {
+    const write = vi.spyOn(process.stderr, "write");
+    onTestFinished(() => {
+        write.mockRestore();
+    });
+
+    return write;
+};
+
 describe("default child adapters", () => {
     it.each(containers)("attaches, updates and removes $name content", async ({ wrap }) => {
         const ref = createRef<Gtk.Label>();
@@ -147,6 +161,7 @@ describe("default child adapters", () => {
             );
         const { rerender } = await render(view(false));
         const label = content.current;
+        const stderr = observeStderr();
         await rerender(view(true));
         expect(fallback.current?.getParent()).not.toBeNull();
         resolve();
@@ -154,6 +169,49 @@ describe("default child adapters", () => {
         expect(content.current).toBe(label);
         expect(label?.getParent()).not.toBeNull();
         expect(label?.getVisible()).toBe(true);
+        expect(stderr).not.toHaveBeenCalled();
+    });
+
+    it.each(builtinContainers)("warns when $name holds two visible children", async ({ wrap }) => {
+        const stderr = observeStderr();
+        await render(
+            wrap(
+                <>
+                    <GtkLabel>First</GtkLabel>
+                    <GtkLabel>Second</GtkLabel>
+                </>,
+            ),
+        );
+        expect(stderr).toHaveBeenCalled();
+    });
+
+    it("warns about two visible children in a content or property slot, but not about hidden ones", async () => {
+        const stderr = observeStderr();
+        await render(
+            <AdwToolbarView>
+                <GtkSearchEntry visible={false} />
+                <GtkLabel>Content</GtkLabel>
+            </AdwToolbarView>,
+        );
+        expect(stderr).not.toHaveBeenCalled();
+        await render(
+            <AdwToolbarView>
+                <GtkSearchEntry />
+                <GtkLabel>Content</GtkLabel>
+            </AdwToolbarView>,
+        );
+        expect(stderr).toHaveBeenCalledTimes(1);
+        await render(
+            <AdwHeaderBar
+                titleWidget={
+                    <>
+                        <GtkLabel>Title</GtkLabel>
+                        <GtkLabel>Subtitle</GtkLabel>
+                    </>
+                }
+            />,
+        );
+        expect(stderr).toHaveBeenCalledTimes(2);
     });
 
     it("accepts a scrollable widget and replaces it without retaining the old child", async () => {

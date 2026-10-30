@@ -72,6 +72,16 @@ const slotAccepting = (
     return matcher?.matches(parent, child) === true ? matcher.slotName : undefined;
 };
 
+const singleChildBehaviors: WeakSet<ElementBehavior> = new WeakSet();
+
+const holdingOneChild = (behavior: ElementBehavior): ElementBehavior => {
+    singleChildBehaviors.add(behavior);
+
+    return behavior;
+};
+
+const holdsOneChild = (behavior: ElementBehavior): boolean => singleChildBehaviors.has(behavior);
+
 const childMatcher =
     <C extends GObject.Object>(cls: ChildClass<C> | undefined): ((child: GObject.Object) => child is C) =>
     (child): child is C =>
@@ -183,27 +193,31 @@ const controlledText = (prop: string): ElementBehavior =>
     });
 
 const childSetterSlot = <P extends ChildSetter>(accepts?: (parent: P) => boolean): ElementBehavior<P> =>
-    slot<P, Gtk.Widget>("children", Gtk.Widget, {
-        accepts,
-        attach: (parent, child) => {
-            parent.setChild(child);
-        },
-        detach: (parent, _child, info) => {
-            parent.setChild(info.remaining.at(-1) ?? null);
-        },
-    });
+    holdingOneChild(
+        slot<P, Gtk.Widget>("children", Gtk.Widget, {
+            accepts,
+            attach: (parent, child) => {
+                parent.setChild(child);
+            },
+            detach: (parent, _child, info) => {
+                parent.setChild(info.remaining.at(-1) ?? null);
+            },
+        }),
+    );
 
 const contentSetterSlot = <P extends ContentSetter<C>, C extends Gtk.Widget = Gtk.Widget>(
     childClass: ChildClass<C>,
 ): ElementBehavior<P> =>
-    slot<P, C>("children", childClass, {
-        attach: (parent, child) => {
-            parent.setContent(child);
-        },
-        detach: (parent, _child, info) => {
-            parent.setContent(info.remaining.at(-1) ?? null);
-        },
-    });
+    holdingOneChild(
+        slot<P, C>("children", childClass, {
+            attach: (parent, child) => {
+                parent.setContent(child);
+            },
+            detach: (parent, _child, info) => {
+                parent.setContent(info.remaining.at(-1) ?? null);
+            },
+        }),
+    );
 
 const boxSlot = <P extends BoxLike>(): ElementBehavior<P> =>
     slot<P, Gtk.Widget>("children", Gtk.Widget, {
@@ -241,14 +255,16 @@ const setterSlot = <P extends GObject.Object, C extends GObject.Object>(
     childClass: ChildClass<C> | undefined,
     setter: MethodKey<P, C | null>,
 ): ElementBehavior =>
-    slot<P, C>(slotName, childClass, {
-        attach: (parent, child) => {
-            callMethod<P, C | null>(parent, setter, child);
-        },
-        detach: (parent) => {
-            callMethod<P, C | null>(parent, setter, null);
-        },
-    });
+    holdingOneChild(
+        slot<P, C>(slotName, childClass, {
+            attach: (parent, child) => {
+                callMethod<P, C | null>(parent, setter, child);
+            },
+            detach: (parent) => {
+                callMethod<P, C | null>(parent, setter, null);
+            },
+        }),
+    );
 
 const indexedSlot = <P extends IndexedChildHost<C>, C extends GObject.Object>(
     slotName: string,
@@ -314,4 +330,5 @@ export {
     indexedSlot,
     rowSlot,
     slotAccepting,
+    holdsOneChild,
 };

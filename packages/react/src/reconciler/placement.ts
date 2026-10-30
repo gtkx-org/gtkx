@@ -1,9 +1,9 @@
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
-import { drain, indexBeforeOrEnd } from "@gtkx/utils";
+import { createLogger, drain, indexBeforeOrEnd, type Logger } from "@gtkx/utils";
 import type { DetachInfo, ElementBehavior, PlaceInfo } from "./registry.js";
 import { applyAdoptedProps, discardAccessible, markDependentPropsDirty } from "./apply-props.js";
-import { slotAccepting } from "./behaviors.js";
+import { holdsOneChild, slotAccepting } from "./behaviors.js";
 import { propertiesAccepting, typeInfoFor } from "./metadata.js";
 import {
     DEFAULT_SLOT,
@@ -23,6 +23,8 @@ import { markTextDirty } from "./text.js";
 type AttachContext = { parent: ElementNode; entry: PlacedChild; index: number; sibling: GObject.Object | null };
 
 const pendingAdoptions: Set<LazyNode> = new Set();
+const pendingSlotChecks: Set<ElementNode> = new Set();
+const log: Logger = createLogger("react");
 
 const createEntry = (slot: string, node: PlaceableNode): PlacedChild | null => {
     const leaf = leafElement(node);
@@ -114,6 +116,44 @@ const flushAdoptions = (): void => {
     drain(pendingAdoptions, (node) => {
         for (const notify of node.adoptionListeners) {
             notify();
+        }
+    });
+};
+
+const isShownWidget = (entry: PlacedChild): boolean => entry.object instanceof Gtk.Widget && entry.object.getVisible();
+
+const singleChildGroups = (entries: readonly PlacedChild[]): PlacedChild[][] => {
+    const groups: Map<ElementBehavior | null, PlacedChild[]> = new Map();
+
+    for (const entry of entries) {
+        if (entry.behavior === null || holdsOneChild(entry.behavior)) {
+            groups.getOrInsertComputed(entry.behavior, () => []).push(entry);
+        }
+    }
+
+    return [...groups.values()];
+};
+
+const warnHiddenChildren = (parent: ElementNode, slot: string, entries: readonly PlacedChild[]): void => {
+    for (const group of singleChildGroups(entries)) {
+        const shown = group.filter((entry) => isShownWidget(entry));
+        const last = shown.at(-1);
+
+        if (shown.length > 1 && last !== undefined) {
+            const place = slot === DEFAULT_SLOT ? "as its child" : `in ${slot}`;
+            log.warn(
+                `<${parent.typeName}> shows one widget ${place} but was given ${String(shown.length)} visible ones; ` +
+                    `only the last, <${last.typeName}>, is shown. Wrap them in a container such as <GtkBox>, ` +
+                    `or pass the others through the props that take them.`,
+            );
+        }
+    }
+};
+
+const flushSlotChecks = (): void => {
+    drain(pendingSlotChecks, (parent) => {
+        for (const [slot, entries] of parent.placements) {
+            warnHiddenChildren(parent, slot, entries);
         }
     });
 };
@@ -329,6 +369,10 @@ const placeChild = (parent: ElementNode, slot: string, node: PlaceableNode, befo
     } else {
         placeNew(parent, entry, entries, index);
     }
+
+    if (process.env.NODE_ENV !== "production") {
+        pendingSlotChecks.add(parent);
+    }
 };
 
 const unplaceChild = (parent: ElementNode, slot: string, node: PlaceableNode): void => {
@@ -369,4 +413,4 @@ const teardownPlacements = (parent: ElementNode): void => {
     }
 };
 
-export { flushAdoptions, placeChild, teardownPlacements, unplaceChild };
+export { flushAdoptions, flushSlotChecks, placeChild, teardownPlacements, unplaceChild };

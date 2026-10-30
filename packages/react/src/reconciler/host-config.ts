@@ -30,7 +30,7 @@ import {
     TEXT_KIND,
     type TextNode,
 } from "./node.js";
-import { flushAdoptions, teardownPlacements } from "./placement.js";
+import { flushAdoptions, flushSlotChecks, teardownPlacements } from "./placement.js";
 import { isRootElement, type RootElement } from "./root-element.js";
 import { disconnectAllHandlers } from "./signals.js";
 import { flushStyles, releaseCssClasses, releaseStyle } from "./style.js";
@@ -97,6 +97,7 @@ const hostConfig = {
         flushAccessible();
         flushStyles();
         flushAdoptions();
+        flushSlotChecks();
     },
     preparePortalMount: (): void => undefined,
     clearContainer: (): void => undefined,
