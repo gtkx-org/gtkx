@@ -464,13 +464,20 @@ const joinTexts = (texts: string[]): string | null => (texts.length > 0 ? texts.
 
 const labelledByText = (targets: Gtk.Widget[]): string | null => joinTexts(collectAccessibleNames(targets));
 
-const referencedName = (target: Gtk.Widget): string =>
-    getWidgetAccessibleName(target) || namingLabelText(target) || collectLabels(target).join(" ");
+const referencedName = (target: Gtk.Widget, isPresentationIncluded: boolean): string =>
+    getWidgetAccessibleName(target) ||
+    (isPresentationIncluded ? namingLabelText(target) : null) ||
+    collectLabels(target).join(" ");
 
 const getWidgetLabelledByName = (widget: Gtk.Widget): string | null => {
     const targets = readAccessibleWidgets(widget, Gtk.AccessibleRelation.LABELLED_BY);
+    const isPresentationIncluded = MENU_ITEM_ROLES.has(widget.getAccessibleRole());
 
-    return targets === null ? null : joinTexts(targets.map(referencedName).filter((text) => text !== ""));
+    return targets === null
+        ? null
+        : joinTexts(
+              targets.map((target) => referencedName(target, isPresentationIncluded)).filter((text) => text !== ""),
+          );
 };
 
 const getWidgetLabelledByText = (widget: Gtk.Widget): string | null => {
