@@ -74,6 +74,77 @@ describe("scaffold command", () => {
         expect(JSON.parse(read(target, "package.json"))).toHaveProperty("name", "example");
     });
 
+    it.each([
+        {
+            packageManager: "yarn",
+            file: ".yarnrc.yml",
+            config: "# Company registry\nnpmRegistryServer: https://registry.example.com\nnodeLinker: pnp\n",
+            settings: { npmRegistryServer: "https://registry.example.com", nodeLinker: "node-modules" },
+        },
+        {
+            packageManager: "pnpm",
+            file: "pnpm-workspace.yaml",
+            config: "# Shared settings\npackages:\n  - tools/*\nallowBuilds:\n  sharp: true\nminimumReleaseAge: 1440\n",
+            settings: {
+                packages: ["tools/*"],
+                allowBuilds: { sharp: true, "@swc/core": true, esbuild: true },
+                minimumReleaseAge: 1440,
+            },
+        },
+    ])(
+        "keeps the settings of an existing $file and the packageManager pin when overwriting",
+        async ({ packageManager, file, config, settings }) => {
+            using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-config-"));
+            const target = join(directory.path, "example");
+            mkdirSync(target);
+            writeFileSync(join(target, file), config);
+            writeFileSync(
+                join(target, "package.json"),
+                JSON.stringify({ name: "keep", packageManager: `${packageManager}@4.18.1` }),
+            );
+            const { status, output } = await create(target, ["--overwrite", "--package-manager", packageManager]);
+            expect(status).toBe(0);
+            expect(parse(read(target, file))).toEqual(settings);
+            expect(read(target, file)).toContain(config.split("\n")[0]);
+            expect(JSON.parse(read(target, "package.json"))).toMatchObject({
+                name: "example",
+                packageManager: `${packageManager}@4.18.1`,
+            });
+            expect(output).toContain("package.json");
+            expect(output).not.toContain(file);
+        },
+    );
+
+    it("adds an app to the pnpm workspace that includes it and prints the build scripts to allow there", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-workspace-"));
+        const bin = join(directory.path, "node_modules/.bin");
+        mkdirSync(bin, { recursive: true });
+        writeFileSync(
+            join(bin, "corepack"),
+            `#!${process.execPath}\nimport { appendFileSync } from "node:fs";\nif (process.argv[2] === "--version") process.exit(0);\nappendFileSync(${JSON.stringify(join(directory.path, "install.log"))}, process.argv.slice(3).join(" ") + "\\n");\nprocess.exit(process.env.pnpm_config_strict_dep_builds === "false" ? 0 : 1);\n`,
+            { mode: 0o755 },
+        );
+        const workspace = "packages:\n  - apps/*\nallowBuilds:\n  esbuild: true\n";
+        writeFileSync(join(directory.path, "pnpm-workspace.yaml"), workspace);
+        const target = join(directory.path, "apps/example");
+        const { status, output } = await create(target, ["--no-skip-install", "--package-manager", "pnpm"]);
+        expect(status).toBe(0);
+        expect(read(directory.path, "install.log")).toContain("add");
+        expect(existsSync(join(target, "pnpm-workspace.yaml"))).toBe(false);
+        expect(read(directory.path, "pnpm-workspace.yaml")).toBe(workspace);
+        expect(output).toContain(join(directory.path, "pnpm-workspace.yaml"));
+        expect(output).toContain('"@swc/core": true');
+        expect(output).not.toContain("esbuild: true");
+    });
+
+    it("gives an app that the enclosing pnpm workspace excludes its own workspace", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-excluded-"));
+        writeFileSync(join(directory.path, "pnpm-workspace.yaml"), "packages:\n  - apps/*\n  - '!apps/example'\n");
+        const target = join(directory.path, "apps/example");
+        expect((await create(target, ["--package-manager", "pnpm"])).status).toBe(0);
+        expect(parse(read(target, "pnpm-workspace.yaml"))).toMatchObject({ packages: ["."] });
+    });
+
     it("refuses to scaffold through a symlink to another directory", async () => {
         using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-links-"));
         const target = join(directory.path, "example");

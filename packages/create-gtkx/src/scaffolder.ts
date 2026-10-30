@@ -7,7 +7,14 @@ import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
 import packageManifest from "../package.json" with { type: "json" };
-import { PACKAGE_MANAGER_CONFIG_FILES, writeBuildAllowance } from "./build-allowance.js";
+import {
+    PACKAGE_MANAGER_CONFIG_FILES,
+    enclosingPnpmWorkspace,
+    formatMissingAllowances,
+    pinnedPackageManager,
+    type PnpmWorkspace,
+    writeBuildAllowance,
+} from "./build-allowance.js";
 import { OperationCanceledError, ScaffoldAbortedError } from "./errors.js";
 import { updateManifest } from "./manifest.js";
 import {
@@ -38,6 +45,7 @@ type ResolvedOptions = {
     displayName: string;
     applicationId: string;
     packageManager: PackageManager;
+    pnpmWorkspace: PnpmWorkspace | null;
     isTypescript: boolean;
     shouldIncludeTesting: boolean;
     shouldInitializeGit: boolean;
@@ -52,6 +60,7 @@ type ScaffoldPlan = {
     files: ScaffoldFile[];
     replaceDestinations: string[];
     changes: ScaffoldChanges;
+    packageManagerPin: string | null;
 };
 
 type Progress = {
@@ -85,6 +94,7 @@ const INSTALL_COMMAND: Record<PackageManager, string> = Object.fromEntries(
 ) as Record<PackageManager, string>;
 
 const INHERITED_SCRIPT_POLICY_VARS = ["npm_config_allow_scripts", "npm_config_allow-scripts"];
+const LENIENT_PNPM_BUILDS_ENV = { pnpm_config_strict_dep_builds: "false" };
 const TESTING_TEMPLATES = new Set(["vitest.config.ts", "tests/app.test.tsx"]);
 const TYPESCRIPT_TEMPLATES = new Set(["tsconfig.json", "src/gtkx-env.d.ts"]);
 
@@ -460,6 +470,7 @@ const resolveOptions = async (options: CreateOptions): Promise<ResolvedOptions> 
         displayName,
         applicationId,
         packageManager,
+        pnpmWorkspace: packageManager === "pnpm" ? enclosingPnpmWorkspace(root) : null,
         isTypescript,
         shouldIncludeTesting,
         shouldInitializeGit: shouldInitialize,
@@ -555,22 +566,31 @@ const plannedScaffoldFiles = async (root: string, resolved: ResolvedOptions): Pr
     return files;
 };
 
-const auxiliaryDestinations = (root: string, resolved: ResolvedOptions): string[] =>
-    PACKAGE_MANAGER_CONFIG_FILES[resolved.packageManager].map((file) => join(root, file));
+const configDestinations = (root: string, resolved: ResolvedOptions): string[] =>
+    resolved.pnpmWorkspace === null
+        ? PACKAGE_MANAGER_CONFIG_FILES[resolved.packageManager].map((file) => join(root, file))
+        : [];
 
 const planScaffoldProject = async (root: string, resolved: ResolvedOptions): Promise<ScaffoldPlan> => {
     const files = await plannedScaffoldFiles(root, resolved);
-    const destinations = [...files.map((file) => file.destination), ...auxiliaryDestinations(root, resolved)];
-    const replaceDestinations = destinations.filter((destination) => hasExistingDestination(root, destination));
+
+    for (const destination of configDestinations(root, resolved)) {
+        hasExistingDestination(root, destination);
+    }
+
+    const replaceDestinations = files
+        .map((file) => file.destination)
+        .filter((destination) => hasExistingDestination(root, destination));
 
     return {
         files,
         replaceDestinations,
         changes: replaceDestinations.map((destination) => relative(root, destination)),
+        packageManagerPin: pinnedPackageManager(root, resolved.packageManager),
     };
 };
 
-const scaffoldProject = (plan: ScaffoldPlan): void => {
+const scaffoldProject = (root: string, plan: ScaffoldPlan): void => {
     for (const destination of plan.replaceDestinations) {
         rmSync(destination);
     }
@@ -578,6 +598,14 @@ const scaffoldProject = (plan: ScaffoldPlan): void => {
     for (const file of plan.files) {
         mkdirSync(dirname(file.destination), { recursive: true });
         writeFileSync(file.destination, file.contents);
+    }
+
+    const pin = plan.packageManagerPin;
+
+    if (pin !== null) {
+        updateManifest(root, (manifest) => {
+            manifest.packageManager = pin;
+        });
     }
 };
 
@@ -672,8 +700,12 @@ const runWithSpinner = async (step: SpinnerStep): Promise<void> => {
     }
 };
 
+const hasMissingAllowances = (resolved: ResolvedOptions): boolean =>
+    (resolved.pnpmWorkspace?.missingAllowances.length ?? 0) > 0;
+
 const installAllDependencies = async (resolved: ResolvedOptions, devDependencies: string[]): Promise<void> => {
     const { root, packageManager } = resolved;
+    const env = hasMissingAllowances(resolved) ? LENIENT_PNPM_BUILDS_ENV : {};
 
     await runWithSpinner({
         pending: "Installing dependencies...",
@@ -682,7 +714,7 @@ const installAllDependencies = async (resolved: ResolvedOptions, devDependencies
         run: async () => {
             try {
                 await withoutInheritedScriptPolicy(async () => {
-                    const options = { cwd: root, packageManager, silent: true };
+                    const options = { cwd: root, packageManager, env, silent: true };
                     await addDependency(dependencyArguments(DEPENDENCIES), options);
                     await addDependency(dependencyArguments(devDependencies), { ...options, dev: true });
                 });
@@ -741,6 +773,17 @@ const missingHeadlessToolsNote = (): string => {
         : ["", "", "To run tests, install these tools:", ...missingToolLines(missing)].join("\n");
 };
 
+const printWorkspaceAllowances = ({ pnpmWorkspace }: ResolvedOptions): void => {
+    if (pnpmWorkspace === null || pnpmWorkspace.missingAllowances.length === 0) {
+        return;
+    }
+
+    p.log.warn(
+        "The pnpm workspace does not allow the build scripts this app needs. " +
+            `Add these entries to ${pnpmWorkspace.file}, then run pnpm install:\n\n${formatMissingAllowances(pnpmWorkspace)}`,
+    );
+};
+
 const printNextSteps = (resolved: ResolvedOptions): void => {
     const devCmd = DEV_COMMAND[resolved.packageManager];
     const installStep = resolved.shouldInstallDependencies ? "" : `${INSTALL_COMMAND[resolved.packageManager]}\n`;
@@ -755,8 +798,11 @@ const createProjectStructure = async (root: string, resolved: ResolvedOptions, p
         failed: "Failed to create the project structure",
         run: () => {
             mkdirSync(root, { recursive: true });
-            scaffoldProject(plan);
-            writeBuildAllowance(root, resolved.packageManager);
+            scaffoldProject(root, plan);
+
+            if (resolved.pnpmWorkspace === null) {
+                writeBuildAllowance(root, resolved.packageManager);
+            }
         },
     });
 };
@@ -780,6 +826,7 @@ const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     }
 
     await initializeGitRepo(root, resolved.shouldInitializeGit);
+    printWorkspaceAllowances(resolved);
     printNextSteps(resolved);
 };
 

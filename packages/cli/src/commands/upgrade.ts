@@ -3,7 +3,7 @@ import { defineCommand } from "citty";
 import { relative } from "node:path";
 import { cwdArg, resolveCwd } from "../internal/entry-arg.js";
 import { detectInstaller, installWorkspace, resolveTargetVersion } from "../upgrade/package-manager.js";
-import { planUpgrade, type UpgradePlan } from "../upgrade/specs.js";
+import { excludingPeerRanges, planUpgrade, type UpgradePlan } from "../upgrade/specs.js";
 import { installedGtkxPackages } from "../upgrade/version-skew.js";
 import { findWorkspace, type Workspace } from "../upgrade/workspace.js";
 import packageManifest from "../../package.json" with { type: "json" };
@@ -35,6 +35,15 @@ const assertInstalledVersion = (workspace: Workspace, version: string): void => 
             `The installed GTKX packages are not all on ${version}: ${stale.join(", ")}. ` +
                 "A spec gtkx upgrade does not rewrite still selects them, such as a Yarn catalog, overrides, " +
                 `resolutions or a range that also accepts newer releases. Set it to ${version} and install again.`,
+        );
+    }
+
+    const peers = excludingPeerRanges(workspace, version);
+
+    if (peers.length > 0) {
+        throw new Error(
+            `These GTKX peer dependency ranges do not accept ${version}: ${peers.join(", ")}. ` +
+                `Change them to accept ${version}.`,
         );
     }
 };
