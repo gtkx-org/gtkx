@@ -6,6 +6,7 @@ import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     AdwActionRow,
+    AdwEntryRow,
     AdwHeaderBar,
     AdwSidebar,
     AdwSidebarItem,
@@ -39,6 +40,7 @@ import {
     GtkShortcut,
     GtkShortcutController,
     GtkShortcutTrigger,
+    GtkSpinButton,
     GtkSwitch,
     GtkTextBuffer,
     GtkTextTag,
@@ -622,6 +624,55 @@ describe("userEvent.type", () => {
         expect(bufferText(single)).toBe("Zello");
         await userEvent.keyboard(single, "{Control>}z{/Control}");
         expect(bufferText(single)).toBe("hello");
+    });
+
+    it("presses key descriptors, so Enter submits an entry, an entry row and a spin button", async () => {
+        const activations: string[] = [];
+
+        const { findByRole, findByName } = await renderColumn(
+            <>
+                <GtkEntry name="entry" onActivate={(entry) => activations.push(entry.getText())} />
+                <AdwEntryRow name="row" title="Title" onEntryActivated={(row) => activations.push(row.getText())} />
+                <GtkSpinButton name="spin" adjustment={new Gtk.Adjustment({ upper: 10, stepIncrement: 1 })} />
+            </>,
+        );
+
+        await userEvent.type(await findByName("entry"), "Celebrate{Enter}");
+        await userEvent.type(await findByName("row"), "Party{Enter}");
+        const spin = await findByRole(Gtk.AccessibleRole.SPIN_BUTTON, { as: Gtk.SpinButton });
+        await userEvent.type(spin, "{Backspace}4{Enter}");
+        expect(activations).toEqual(["Celebrate", "Party"]);
+        expect(spin.getValue()).toBe(4);
+    });
+
+    it("edits with Backspace and arrow keys, holds modifiers, and types a doubled brace literally", async () => {
+        const entry = await renderTextBox();
+        await userEvent.type(entry, "{{tex{Backspace}{Backspace}{ArrowLeft}a{End}}");
+        expect(editableText(entry)).toBe("{at}");
+        await userEvent.type(entry, "{Control>}a{/Control}Z");
+        expect(editableText(entry)).toBe("Z");
+        const view = await renderTextView();
+        await userEvent.type(view, "one{Enter}two");
+        expect(bufferText(view)).toBe("one\ntwo");
+    });
+
+    it("moves focus on Tab between the fields it types into", async () => {
+        const { findByName } = await renderColumn(
+            <>
+                <GtkEntry name="first" />
+                <GtkEntry name="second" />
+            </>,
+        );
+
+        await userEvent.type(await findByName("first"), "Ada{Tab}");
+        expect(await findByName("second", { as: Gtk.Entry })).toHaveFocus();
+    });
+
+    it("throws on an unknown or unclosed key descriptor without typing", async () => {
+        const entry = await renderTextBox();
+        await expect(userEvent.type(entry, "a{Unknown}")).rejects.toThrow();
+        await expect(userEvent.type(entry, "a{Enter")).rejects.toThrow();
+        expect(editableText(entry)).toBe("");
     });
 
     it("throws when the widget is not editable", async () => {

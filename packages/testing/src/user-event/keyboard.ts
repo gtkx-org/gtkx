@@ -16,6 +16,8 @@ type TabOptions = {
 
 type KeyAction = { keyval: number; isPress: boolean };
 type ParseStep = { actions: KeyAction[]; next: number };
+type TypedStep = { text: string } | { actions: KeyAction[] };
+type TypedParseStep = { step: TypedStep; next: number };
 type KeyStopController = Gtk.EventControllerKey | Gtk.ShortcutController;
 type KeyStop = { widget: Gtk.Widget; controller: KeyStopController };
 type KeyTarget = { root: Gtk.Root | null; focus: Gtk.Widget | null };
@@ -57,6 +59,7 @@ const KEY_MAP: Record<string, number> = {
 };
 
 const KEY_CONTROLLER_SIGNALS = ["key-pressed", "key-released"];
+const LITERAL_BRACE = "{{";
 
 const MODIFIER_KEYVAL_TO_MASK: Record<number, number> = {
     [Gdk.KEY_Shift_L]: Gdk.ModifierType.SHIFT_MASK,
@@ -155,6 +158,59 @@ const parseKeyboardInput = (input: string): KeyAction[] => {
     }
 
     return actions;
+};
+
+const characterActions = (text: string): KeyAction[] =>
+    Array.from(text, (character) => parseCharAt(character, 0).actions).flat();
+
+const parseTypedTextAt = (input: string, i: number): TypedParseStep => {
+    const brace = input.indexOf("{", i);
+    const next = brace === -1 ? input.length : brace;
+
+    return { step: { text: input.slice(i, next) }, next };
+};
+
+const parseTypedStepAt = (input: string, i: number): TypedParseStep => {
+    if (input.startsWith(LITERAL_BRACE, i)) {
+        return { step: { text: "{" }, next: i + LITERAL_BRACE.length };
+    }
+
+    if (input[i] !== "{") {
+        return parseTypedTextAt(input, i);
+    }
+
+    const brace = parseBraceAt(input, i);
+
+    if (brace === null) {
+        throw new Error(`Unclosed key descriptor at ${String(i)} in "${input}"; type a literal { as {{`);
+    }
+
+    return { step: { actions: brace.actions }, next: brace.next };
+};
+
+const appendTypedStep = (steps: TypedStep[], step: TypedStep): void => {
+    const last = steps.at(-1);
+
+    if (last !== undefined && "text" in last && "text" in step) {
+        steps[steps.length - 1] = { text: last.text + step.text };
+
+        return;
+    }
+
+    steps.push(step);
+};
+
+const parseTypedInput = (input: string): TypedStep[] => {
+    const steps: TypedStep[] = [];
+    let i = 0;
+
+    while (i < input.length) {
+        const { step, next } = parseTypedStepAt(input, i);
+        appendTypedStep(steps, step);
+        i = next;
+    }
+
+    return steps;
 };
 
 const updateModifierState = (state: UserEventState, action: KeyAction): void => {
@@ -484,11 +540,13 @@ const applyKeyAction = async (widget: Gtk.Widget, state: UserEventState, action:
     emitKeyReleased(widget, action.keyval, state.modifierState);
 };
 
-const keyboard = (state: UserEventState, widget: Gtk.Widget, input: string): Promise<void> =>
-    wrapEvent(widget, async () => {
-        for (const action of parseKeyboardInput(input)) {
-            await applyKeyAction(widget, state, action);
-        }
-    });
+const applyKeyActions = async (widget: Gtk.Widget, state: UserEventState, actions: KeyAction[]): Promise<void> => {
+    for (const action of actions) {
+        await applyKeyAction(widget, state, action);
+    }
+};
 
-export { tab, keyboard, type TabOptions };
+const keyboard = (state: UserEventState, widget: Gtk.Widget, input: string): Promise<void> =>
+    wrapEvent(widget, () => applyKeyActions(widget, state, parseKeyboardInput(input)));
+
+export { applyKeyActions, characterActions, keyboard, parseTypedInput, tab, type TabOptions, type TypedStep };

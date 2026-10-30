@@ -8,7 +8,7 @@ import { keyboard, tab } from "./keyboard.js";
 import { pointer, type PointerInput } from "./pointer.js";
 import { deselectOptions, selectOptions } from "./selection.js";
 import { createInitialState, type UserEventState } from "./state.js";
-import { clear, copy, cut, paste, type } from "./text.js";
+import { clear, copy, cut, paste, type, type TypeOptions } from "./text.js";
 
 /** Options shared by every helper on a {@link UserEvent} instance. */
 type UserEventOptions = {
@@ -40,11 +40,11 @@ type UserEvent = {
         widget: Gtk.Accessible,
         ...args: Parameters<typeof tab> extends [Gtk.Widget, ...infer Args] ? Args : never
     ) => Promise<void>;
-    /** Types into an editable widget. */
-    type: (
-        widget: Gtk.Accessible,
-        ...args: Parameters<typeof type> extends [Gtk.Widget, ...infer Args] ? Args : never
-    ) => Promise<void>;
+    /**
+     * Types into an editable widget. Keys named in braces, such as `{Enter}`, `{Backspace}` or `{Tab}`, are pressed
+     * as `keyboard` presses them, and a doubled opening brace types a literal `{`.
+     */
+    type: (widget: Gtk.Accessible, text: string, options?: TypeOptions) => Promise<void>;
     /** Deletes all text from an editable widget. */
     clear: (
         widget: Gtk.Accessible,
@@ -175,7 +175,11 @@ function createInstance(state: UserEventState, options: UserEventOptions): UserE
         dblClick: after(onWidget(dblClick)),
         tripleClick: after(onWidget(tripleClick)),
         tab: after(onWidget(tab)),
-        type: after(onWidget(type)),
+        type: after(
+            onWidget((widget: Gtk.Widget, text: string, options?: TypeOptions): Promise<void> =>
+                type(state, widget, text, options),
+            ),
+        ),
         clear: after(onWidget(clear)),
         copy: after(onWidget(copy)),
         cut: after(onWidget(cut)),

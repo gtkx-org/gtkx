@@ -111,6 +111,8 @@ await user.type(entry, "Replacement");
 await user.click(saveButton);
 ```
 
+`type` inserts text into an editable widget and presses the keys named in braces, as in Testing Library's `user-event`, so `type(entry, "Ada{Enter}")` types "Ada" and then activates the entry. Type a literal `{` as <span v-pre>`{{`</span>.
+
 `keyboard` sends keys to the focused widget inside the given widget, or to the widget itself, through GTK's key bindings and key controllers. A key no widget handles reaches the window's bindings, so `{Tab}`, `{Shift>}{Tab}{/Shift}` and arrow keys move focus as they do on a keyboard.
 
 Use `slide(range, value)` for a slider. `drag` drives application-defined drag gestures and cannot drive a range's native slider. The [interaction reference](/v2/reference/@gtkx/testing/) covers the available helpers.

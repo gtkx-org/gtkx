@@ -1587,11 +1587,11 @@ describe("CLI commands", () => {
                     return entry?.id;
                 };
                 const entryId = await openDialog();
-                await callTool(client, "gtkx_type", { widgetId: entryId, text: "Invoices" });
+                await callTool(client, "gtkx_type", { widgetId: entryId, text: "Invoices {2026}" });
                 expect(
                     (await callTool(client, "gtkx_press_keys", { widgetId: entryId, keys: "{Enter}" })).isError,
                 ).toBe(false);
-                expect(await queryWidgets(client, { by: "text", value: "Created Invoices" })).toHaveLength(1);
+                expect(await queryWidgets(client, { by: "text", value: "Created Invoices {2026}" })).toHaveLength(1);
 
                 await openDialog();
                 await callTool(client, "gtkx_press_keys", { keys: "{Escape}" });

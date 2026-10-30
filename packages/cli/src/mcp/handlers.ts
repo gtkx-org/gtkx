@@ -71,7 +71,7 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
                 await testing.userEvent.clear(widget);
             }
 
-            await testing.userEvent.type(widget, params.text);
+            await testing.userEvent.type(widget, params.text.replaceAll("{", "{{"));
         });
 
         return { success: true };
