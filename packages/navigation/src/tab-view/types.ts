@@ -168,8 +168,14 @@ type TabViewNavigationConfig = {
     tabBarInverted?: boolean;
     /** Renders an `AdwTabOverview` around the view. */
     overview?: TabViewOverviewConfig;
-    /** Context menu of the tabs, such as a `GMenu` rendered through `createPortal` into `rootElement` and kept from its ref. */
+    /** An existing menu model to use as the tabs' context menu. Use `renderMenu` to declare the menu in JSX instead. */
     menuModel?: Gio.MenuModel | null;
+    /**
+     * Renders the tabs' context menu. Attach `ref` to a `GMenu`, or to any menu model element, anywhere in the
+     * returned tree; the navigator renders the tree outside the widget hierarchy and uses that model. A navigator
+     * given both `renderMenu` and a `menuModel` throws.
+     */
+    renderMenu?: (ref: (menu: Gio.MenuModel | null) => void) => ReactNode;
     /** Additional content accepted by drops on tabs. */
     extraDropTarget?: TabViewExtraDropTarget | null;
     /** Handles content dropped on a tab; returns whether the drop was accepted. */

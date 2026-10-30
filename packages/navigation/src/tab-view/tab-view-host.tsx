@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import { AdwBin, AdwTabBar, AdwTabOverview, AdwToolbarView } from "@gtkx/jsx/adw";
-import { createPortal, useProperty, useSignal } from "@gtkx/react";
+import { createPortal, rootElement, useProperty, useSignal } from "@gtkx/react";
 import { createContext, useContext, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import type { AppliedOptions, PageRecord, PageStore } from "./page-registry.js";
 import type {
@@ -207,16 +207,23 @@ const TabContent = ({ descriptor, isFocused }: TabContentProps): ReactNode => {
 
 const TabViewHost = (props: TabViewHostProps): ReactNode => {
     const { view, state, navigation, descriptors } = props;
-    const { tabBarVisible, tabBarAutohide, tabBarExpand, tabBarInverted, overview, menuModel } = props;
+    const { tabBarVisible, tabBarAutohide, tabBarExpand, tabBarInverted, overview, menuModel, renderMenu } = props;
     const { extraDropTarget, onExtraDragDrop, onCreateWindow, onSetupMenu, shortcuts, defaultIcon } = props;
     const [store] = useState(createPageStore);
     const [placeholder, setPlaceholder] = useState<Adw.Bin | null>(null);
     const [overviewWidget, setOverviewWidget] = useState<Adw.TabOverview | null>(null);
+    const [renderedMenu, setRenderedMenu] = useState<Gio.MenuModel | null>(null);
     const selectedPage = useProperty(view, "selectedPage");
     const focused = getFocusedRoute(state);
     const descriptor = requireDescriptor(descriptors, focused.key);
 
     useSyncExternalStore(store.subscribe, store.getVersion, store.getVersion);
+
+    if (menuModel != null && renderMenu !== undefined) {
+        throw new Error("Pass the tab view navigator either menuModel or renderMenu, not both.");
+    }
+
+    const menu = renderMenu === undefined ? (menuModel ?? null) : renderedMenu;
 
     const routeOf = (page: Adw.TabPage): RouteProp<ParamListBase> | undefined => {
         const key = recordOf(page)?.route.key;
@@ -266,8 +273,8 @@ const TabViewHost = (props: TabViewHostProps): ReactNode => {
     }, [placeholder, view]);
 
     useLayoutEffect(() => {
-        view.setMenuModel(menuModel ?? null);
-    }, [view, menuModel]);
+        view.setMenuModel(menu);
+    }, [view, menu]);
 
     useLayoutEffect(() => {
         if (shortcuts !== undefined) {
@@ -450,6 +457,7 @@ const TabViewHost = (props: TabViewHostProps): ReactNode => {
                     {content}
                 </AdwTabOverview>
             )}
+            {renderMenu === undefined ? null : createPortal(renderMenu(setRenderedMenu), rootElement)}
             {state.routes.map((route) => {
                 const record = presentRecord(view, store, route.key);
 

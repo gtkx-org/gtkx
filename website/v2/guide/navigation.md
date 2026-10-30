@@ -373,19 +373,16 @@ Native interaction flows back into the state: selecting a tab emits a cancellabl
 
 ### Tab context menu
 
-`menuModel` sets the menu that right-clicking a tab or pressing Shift+F10 opens. The navigator passes it to a native view it created itself, so it takes the menu object rather than an element: render a `GMenu` through `createPortal` into `rootElement` and keep its ref in state. `onSetupMenu` reports the tab the menu opens for, and `null` once it closes after the chosen action has run:
+`renderMenu` declares the menu that right-clicking a tab or pressing Shift+F10 opens. It receives a ref to attach to a `GMenu` anywhere in what it returns, directly or through a component of yours that passes the ref on; the navigator renders the result outside the widget tree and uses that menu. `onSetupMenu` reports the tab the menu opens for, and `null` once it closes after the chosen action has run:
 
 ```tsx
-import type * as Gio from "@gtkx/gi/gio";
 import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
 import { AdwApplicationWindow } from "@gtkx/jsx/adw";
 import { NavigationContainer, TabViewActions, useNavigationContainerRef } from "@gtkx/navigation";
-import { createPortal, rootElement } from "@gtkx/react";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 export const DocumentWindow = () => {
     const navigation = useNavigationContainerRef<DocumentParams>();
-    const [menu, setMenu] = useState<Gio.Menu | null>(null);
     const menuTab = useRef<string | null>(null);
 
     return (
@@ -397,13 +394,11 @@ export const DocumentWindow = () => {
                 />
             }
         >
-            {createPortal(
-                <GMenu ref={setMenu} items={[{ label: "Close Other Tabs", action: "win.close-others" }]} />,
-                rootElement,
-            )}
             <NavigationContainer ref={navigation}>
                 <Tabs.Navigator
-                    menuModel={menu}
+                    renderMenu={(ref) => (
+                        <GMenu ref={ref} items={[{ label: "Close Other Tabs", action: "win.close-others" }]} />
+                    )}
                     onSetupMenu={(route) => {
                         menuTab.current = route?.key ?? null;
                     }}
@@ -415,6 +410,8 @@ export const DocumentWindow = () => {
     );
 };
 ```
+
+To reuse a menu model that already exists, such as one shared with another widget, pass it as `menuModel` instead. A navigator given both `renderMenu` and `menuModel` throws.
 
 Without a tab from `onSetupMenu`, as when the same action runs from a shortcut, the actions act on the selected tab.
 

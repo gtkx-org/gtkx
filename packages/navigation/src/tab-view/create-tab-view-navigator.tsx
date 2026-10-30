@@ -57,6 +57,7 @@ function TabViewNavigator({
     tabBarInverted,
     overview,
     menuModel,
+    renderMenu,
     extraDropTarget,
     onExtraDragDrop,
     onCreateWindow,
@@ -87,6 +88,7 @@ function TabViewNavigator({
             tabBarInverted={tabBarInverted}
             overview={overview}
             menuModel={menuModel}
+            renderMenu={renderMenu}
             extraDropTarget={extraDropTarget}
             onExtraDragDrop={onExtraDragDrop}
             onCreateWindow={onCreateWindow}

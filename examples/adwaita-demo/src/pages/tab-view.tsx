@@ -1,7 +1,6 @@
 import type { NavigationAction, NavigationState } from "@gtkx/navigation";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gdk from "@gtkx/gi/gdk";
-import type * as Gio from "@gtkx/gi/gio";
 import * as GLib from "@gtkx/gi/glib";
 import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
@@ -27,7 +26,7 @@ import {
     useNavigationState,
     usePreventRemove,
 } from "@gtkx/navigation";
-import { createPortal, rootElement, useApplication, useSignal } from "@gtkx/react";
+import { useApplication, useSignal } from "@gtkx/react";
 import { useState, useSyncExternalStore } from "react";
 
 type TabData = {
@@ -151,7 +150,6 @@ const DemoWindow = ({ entry }: { entry: DemoWindowEntry }) => {
     const [narrow, setNarrow] = useState(false);
     const [open, setOpen] = useState(false);
     const [menuKey, setMenuKey] = useState<string | null>(null);
-    const [menu, setMenu] = useState<Gio.Menu | null>(null);
     const [style] = useState(() => Adw.StyleManager.getDefault());
     useSignal(style, "notify::dark", () => view.invalidateThumbnails());
     useSignal(style, "notify::high-contrast", () => view.invalidateThumbnails());
@@ -293,49 +291,6 @@ const DemoWindow = ({ entry }: { entry: DemoWindowEntry }) => {
                 />
             }
         >
-            {createPortal(
-                <GMenu
-                    ref={setMenu}
-                    items={[
-                        {
-                            section: [
-                                { label: "_Move to New Window", action: "tab.move-to-new-window" },
-                                { label: "D_uplicate", action: "tab.duplicate" },
-                            ],
-                        },
-                        {
-                            section: [
-                                {
-                                    label: pinned ? "Unp_in Tab" : "P_in Tab",
-                                    action: pinned ? "tab.unpin" : "tab.pin",
-                                },
-                            ],
-                        },
-                        {
-                            section: [
-                                { label: "Icon", action: "tab.icon" },
-                                { label: "R_efresh Icon", action: "tab.refresh-icon" },
-                            ],
-                        },
-                        {
-                            section: [
-                                { label: "Loa_ding", action: "tab.loading" },
-                                { label: "Needs _Attention", action: "tab.needs-attention" },
-                                { label: "Indicator", action: "tab.indicator" },
-                            ],
-                        },
-                        {
-                            section: [
-                                { label: "Close _Other Tabs", action: "tab.close-other" },
-                                { label: "Close Tabs to the _Left", action: "tab.close-before" },
-                                { label: "Close Tabs to the _Right", action: "tab.close-after" },
-                            ],
-                        },
-                        { section: [{ label: "_Close", action: "tab.close" }] },
-                    ]}
-                />,
-                rootElement,
-            )}
             <NavigationContainer
                 ref={container}
                 onReady={() => {
@@ -362,7 +317,48 @@ const DemoWindow = ({ entry }: { entry: DemoWindowEntry }) => {
                     }}
                     onCreateWindow={() => openWindow(new Adw.TabView(), false)}
                     onSetupMenu={(route) => setMenuKey(route?.key ?? null)}
-                    menuModel={menu}
+                    renderMenu={(ref) => (
+                        <GMenu
+                            ref={ref}
+                            items={[
+                                {
+                                    section: [
+                                        { label: "_Move to New Window", action: "tab.move-to-new-window" },
+                                        { label: "D_uplicate", action: "tab.duplicate" },
+                                    ],
+                                },
+                                {
+                                    section: [
+                                        {
+                                            label: pinned ? "Unp_in Tab" : "P_in Tab",
+                                            action: pinned ? "tab.unpin" : "tab.pin",
+                                        },
+                                    ],
+                                },
+                                {
+                                    section: [
+                                        { label: "Icon", action: "tab.icon" },
+                                        { label: "R_efresh Icon", action: "tab.refresh-icon" },
+                                    ],
+                                },
+                                {
+                                    section: [
+                                        { label: "Loa_ding", action: "tab.loading" },
+                                        { label: "Needs _Attention", action: "tab.needs-attention" },
+                                        { label: "Indicator", action: "tab.indicator" },
+                                    ],
+                                },
+                                {
+                                    section: [
+                                        { label: "Close _Other Tabs", action: "tab.close-other" },
+                                        { label: "Close Tabs to the _Left", action: "tab.close-before" },
+                                        { label: "Close Tabs to the _Right", action: "tab.close-after" },
+                                    ],
+                                },
+                                { section: [{ label: "_Close", action: "tab.close" }] },
+                            ]}
+                        />
+                    )}
                     overview={{
                         open,
                         onOpenChange: (value) => {
