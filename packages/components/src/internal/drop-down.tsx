@@ -1,12 +1,15 @@
 import type * as Adw from "@gtkx/gi/adw";
 import type { ElementType, ReactNode, Ref } from "react";
+import * as GObject from "@gtkx/gi/gobject";
 import * as Gtk from "@gtkx/gi/gtk";
 import { GtkBox, GtkImage, GtkLabel, GtkSignalListItemFactory } from "@gtkx/jsx/gtk";
 import { useProperty } from "@gtkx/react";
+import { useLatestRef } from "@gtkx/react/internal";
 import { omit, type Primitive } from "@gtkx/utils";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { DropDownOwnProps, ListItemRenderArgs, ListItemRenderer } from "../types.js";
 import { ItemPortals, useItemCells, useSectionHeader } from "./cells.js";
+import { slotRefFor } from "./collection-model.js";
 import { type Collection, isCollectionIdle } from "./collection.js";
 import { useControlledSync } from "./controlled-sync.js";
 import { showFirstHeader } from "./first-header.js";
@@ -77,6 +80,37 @@ const selectionMarkedRenderer =
 
 const popupRenderer = (props: DropDownBaseProps, selected: number | undefined): ListItemRenderer<never> | null =>
     props.renderListItem ?? (props.renderItem == null ? selectionMarkedRenderer(selected) : null);
+
+const textOf = (value: unknown): string => {
+    switch (typeof value) {
+        case "string":
+            return value;
+        case "number":
+        case "bigint":
+        case "boolean":
+            return String(value);
+        case "symbol":
+            return value.toString();
+        default:
+            return "";
+    }
+};
+
+const useItemTextExpression = (collection: Collection): Gtk.Expression => {
+    const latest = useLatestRef(collection);
+    const [expression] = useState(() =>
+        Gtk.ClosureExpression.new(
+            GObject.TYPE_STRING,
+            (object: GObject.Object | null) => {
+                const ref = slotRefFor(object);
+                return ref === null ? "" : textOf(latest.current.itemAt(ref)?.value);
+            },
+            null,
+        ),
+    );
+
+    return expression;
+};
 
 const resolvePosition = (widget: SelectableWidget, collection: Collection, selectedId: string | undefined): number => {
     if (selectedId === undefined) {
@@ -209,12 +243,14 @@ function DropDownBase(props: DropDownBaseProps & { component: ElementType }): Re
     const header = useSectionHeader(renderHeader, collection, { width: -1, height: -1 });
     const handleNotifySelected = useDropDownSelection({ widget, collection, props });
     const renderListItem = popupRenderer(props, useProperty(widget, "selected"));
+    const expression = useItemTextExpression(collection);
 
     return (
         <>
             <Component
                 ref={refCallback}
                 model={model}
+                expression={expression}
                 factory={<GtkSignalListItemFactory {...faceCells.handlers} />}
                 {...(renderListItem !== null && {
                     listFactory: <GtkSignalListItemFactory {...listCells.handlers} />,

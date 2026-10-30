@@ -110,6 +110,14 @@ describe("render - ComboRow", () => {
         });
     });
 
+    it("shows the selected item as its subtitle with useSubtitle", async () => {
+        const ref = createRef<Adw.ComboRow>();
+        const { rerender } = await render(<ComboShell comboRef={ref} items={items} selectedId="date" useSubtitle />);
+        expect(ref.current).toHaveObjectProperty("subtitle", "By date");
+        await rerender(<ComboShell comboRef={ref} items={items} selectedId="size" useSubtitle />);
+        expect(ref.current).toHaveObjectProperty("subtitle", "By size");
+    });
+
     it("renders custom item templates", async () => {
         const ref = createRef<Adw.ComboRow>();
         await render(<TemplatedComboProbe comboRef={ref} />);
