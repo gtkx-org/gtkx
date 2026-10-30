@@ -543,9 +543,17 @@ const applyKeyAction = async (widget: Gtk.Widget, state: UserEventState, action:
     emitKeyReleased(widget, action.keyval, state.modifierState);
 };
 
+const currentKeyWidget = (widget: Gtk.Widget, start: KeyTarget): Gtk.Widget => {
+    const { root, focus } = keyTargetFor(widget);
+
+    return root === start.root && focus !== null && focus !== start.focus && !focus.isAncestor(widget) ? focus : widget;
+};
+
 const applyKeyActions = async (widget: Gtk.Widget, state: UserEventState, actions: KeyAction[]): Promise<void> => {
+    const start = keyTargetFor(widget);
+
     for (const action of actions) {
-        await applyKeyAction(widget, state, action);
+        await applyKeyAction(currentKeyWidget(widget, start), state, action);
     }
 };
 
