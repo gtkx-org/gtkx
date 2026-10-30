@@ -7,9 +7,19 @@ import type { ModuleContext } from "../../writer/context.js";
 import { renderDescriptor } from "../../analysis/descriptor-render.js";
 import { inputParameters, parameterIdentifier } from "../../analysis/param-structure.js";
 import { renderParameterTsType } from "../../analysis/ts-type.js";
+import { renderJsDoc } from "../../writer/doc.js";
 import { renderBlock, renderBracedOrEmpty } from "../../writer/emit.js";
-import { type Callables, staticMembers } from "./callables.js";
+import { callableNote, callableSpec } from "./callable-doc.js";
+import {
+    type Callables,
+    constructorMemberName,
+    dedupeCallables,
+    isEmittableCallable,
+    matchStaticFinishFunction,
+    staticMembers,
+} from "./callables.js";
 import { getDoc } from "./doc-spec.js";
+import { renderMethodSignature, returnedOutParameters } from "./method.js";
 import {
     emitFieldWrite,
     hasOwnedFieldStorage,
@@ -20,7 +30,13 @@ import {
     isVisibleField,
 } from "./record-field-accessor.js";
 import { computeRecordFieldSlots, type RecordFieldSlot } from "./record-layout.js";
-import { defaultRecordConstructor, hasBoxedZeroInitialization, isConstructibleRecord } from "./value-marshalable.js";
+import {
+    defaultRecordConstructor,
+    hasBoxedZeroInitialization,
+    hasOwnCopySemantics,
+    isConstructibleRecord,
+    isValueMarshalable,
+} from "./value-marshalable.js";
 
 type WritableFieldSlot = RecordFieldSlot & { field: GirField & { type: TypeId } };
 
@@ -68,12 +84,20 @@ const renderRecordConstructorPropsInterface = (
     return renderBracedOrEmpty(head, lines.join("\n"));
 };
 
-const isSelfReturning = (context: ModuleContext, record: GirRecord, callable: GirFunction): boolean => {
+const returnsRecord = (
+    context: ModuleContext,
+    namespaceName: string,
+    record: GirRecord,
+    callable: GirFunction,
+): boolean => {
     const ref = callable.returnValue.type;
     const name = ref === undefined ? undefined : context.library.nameFor(ref);
 
-    return name?.namespaceName === context.namespace.name && name.typeName === record.name;
+    return name?.namespaceName === namespaceName && name.typeName === record.name;
 };
+
+const isSelfReturning = (context: ModuleContext, record: GirRecord, callable: GirFunction): boolean =>
+    returnsRecord(context, context.namespace.name, record, callable);
 
 const renderStaticCall = (context: ModuleContext, callable: GirFunction, name: string): string => {
     const args = inputParameters(context.library, callable).map(({ parameter, index }) =>
@@ -100,6 +124,70 @@ const unconstructibleMessage = (context: ModuleContext, spec: RecordConstructorS
     return hint === undefined
         ? `Cannot construct ${qualified} with new: its instances come from the functions that return them.`
         : `Cannot construct ${qualified} with new: use ${qualified}.${hint} instead.`;
+};
+
+const isDelegableConstructor = (
+    context: ModuleContext,
+    namespaceName: string,
+    record: GirRecord,
+    callable: GirFunction,
+): boolean =>
+    constructorMemberName(callable.name) === "new" &&
+    isEmittableCallable(context, callable) &&
+    returnsRecord(context, namespaceName, record, callable) &&
+    returnedOutParameters(context, callable).length === 0 &&
+    matchStaticFinishFunction(context, callable, [...record.constructors, ...record.functions]) === undefined;
+
+/**
+ * The `new` constructor that `new Record(...)` delegates to, following GJS (`gi/boxed.cpp`): a boxed record
+ * that GTKX cannot build itself calls its zero-argument constructor when it has one, and otherwise its `new`
+ * constructor with the given arguments unless it can be allocated directly.
+ */
+const delegatedRecordConstructor = (
+    context: ModuleContext,
+    namespaceName: string,
+    record: GirRecord,
+): GirFunction | undefined => {
+    if (isConstructibleRecord(context, namespaceName, record) || !hasOwnCopySemantics(record)) {
+        return undefined;
+    }
+
+    const constructors = dedupeCallables(record.constructors).filter((callable) => callable.introspectable);
+    const candidate =
+        constructors.find((callable) => callable.parameters.length === 0) ??
+        (isValueMarshalable(context, namespaceName, record)
+            ? undefined
+            : constructors.find((callable) => callable.name === "new"));
+
+    return candidate !== undefined && isDelegableConstructor(context, namespaceName, record, candidate)
+        ? candidate
+        : undefined;
+};
+
+const renderDelegatingConstructor = (
+    context: ModuleContext,
+    spec: RecordConstructorSpec,
+    callable: GirFunction,
+): string => {
+    const header = `constructor(${renderMethodSignature(context, callable)})`;
+    const call = `${spec.className}.${renderStaticCall(context, callable, "new")}`;
+    const superCall = spec.isErrorSubclass ? ["super();"] : [];
+    const qualified = `${context.namespace.name}.${spec.className}`;
+    const nullMessage = sourceStringLiteral(`Cannot construct ${qualified}: ${qualified}.new returned null.`);
+    const statements = callable.returnValue.nullable
+        ? [
+              `const __instance = ${call};`,
+              renderBlock("if (__instance === null)", `throw new globalThis.Error(${nullMessage});`),
+              "return __instance;",
+          ]
+        : [`return ${call};`];
+
+    const doc = renderJsDoc(callable.doc, callableNote(context, callable, undefined), {
+        ...callableSpec(context, callable, {}),
+        returns: undefined,
+    });
+
+    return `${doc}${renderBlock(header, [...superCall, ...statements].join("\n"))}`;
 };
 
 const renderUnconstructibleGuard = (context: ModuleContext, spec: RecordConstructorSpec): string => {
@@ -155,7 +243,11 @@ const renderRecordConstructor = (context: ModuleContext, spec: RecordConstructor
     const { record, className, isErrorSubclass } = spec;
 
     if (!isConstructibleRecord(context, context.namespace.name, record)) {
-        return renderUnconstructibleGuard(context, spec);
+        const delegated = delegatedRecordConstructor(context, context.namespace.name, record);
+
+        return delegated === undefined
+            ? renderUnconstructibleGuard(context, spec)
+            : renderDelegatingConstructor(context, spec, delegated);
     }
 
     const { slots, size } = computeRecordFieldSlots(context, record.fields, record.isUnion);
@@ -214,4 +306,4 @@ const renderFieldWrite = (context: ModuleContext, entry: WritableFieldSlot): str
     return `if (props.${name} !== undefined) ${write}`;
 };
 
-export { renderRecordConstructorPropsInterface, renderRecordConstructor };
+export { delegatedRecordConstructor, renderRecordConstructorPropsInterface, renderRecordConstructor };

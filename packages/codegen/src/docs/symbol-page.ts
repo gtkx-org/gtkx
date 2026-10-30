@@ -32,6 +32,7 @@ import {
     renderPromisifiedSignature,
 } from "../store/gi/method.js";
 import { resolveAccessor, type ResolvedAccessor, resolvePropertyMetadata } from "../store/gi/property-accessor.js";
+import { delegatedRecordConstructor } from "../store/gi/record-constructor.js";
 import { resolveRecordFieldEntry } from "../store/gi/record-field-accessor.js";
 import { computeRecordFieldSlots } from "../store/gi/record-layout.js";
 import { vfuncEntries } from "../store/gi/vtable.js";
@@ -542,7 +543,11 @@ const recordInstanceEntries = (context: ModuleContext, record: GirRecord): Signa
 const recordPage = (entry: GiSymbolBase & { kind: "record"; record: GirRecord }, library: Library): string => {
     const docsContext = docsSignatureContext(entry.namespace, library);
     const qualified = qualifiedName(entry);
-    const constructorsIntro = `Constructors are called on the class: \`${qualified}.new(...)\`.`;
+    const delegated = delegatedRecordConstructor(docsContext, entry.namespace.name, entry.record);
+    const constructorsIntro = [
+        `Constructors are called on the class: \`${qualified}.new(...)\`.`,
+        ...(delegated === undefined ? [] : [`\`new ${qualified}(...)\` calls \`${qualified}.new(...)\`.`]),
+    ].join(" ");
     const staticIntro = `Static methods are called on the class: \`${qualified}.<method>(...)\`.`;
     const methodEntries = recordInstanceEntries(docsContext, entry.record);
     const claimedNames = new Set(methodEntries.map((item) => item.name));

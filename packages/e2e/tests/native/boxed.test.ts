@@ -185,6 +185,14 @@ test("boxed d computes magic and copies deeply", () => {
     expect(Regress.TestBoxedD.new("", 0).getMagic()).toBe(0);
 });
 
+test("new on a boxed without a default constructor calls its new constructor", () => {
+    const d = new Regress.TestBoxedD("abcd", 8);
+    expect(d).toBeInstanceOf(Regress.TestBoxedD);
+    expect(d.getMagic()).toBe(12);
+    // @ts-expect-error the new constructor takes a string and a number
+    expect(() => new Regress.TestBoxedD()).toThrow();
+});
+
 test("gvariant returns round trip their contents", () => {
     const i = Regress.testGvariantI();
     expect(i.getInt32()).toBe(1);

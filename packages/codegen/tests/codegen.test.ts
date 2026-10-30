@@ -498,6 +498,89 @@ describe("generated bindings", () => {
         );
     });
 
+    it("constructs records with new through their new constructor like GJS", async () => {
+        using directory = createProject();
+        writeFileSync(
+            join(directory.path, "Digest-1.0.gir"),
+            `<?xml version="1.0"?>
+             <repository version="1.0" xmlns="http://www.gtk.org/introspection/core/1.0"
+               xmlns:c="http://www.gtk.org/introspection/c/1.0" xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+               <include name="GLib" version="2.0"/>
+               <namespace name="Digest" version="1.0" shared-library="libglib-2.0.so.0" c:prefix="G">
+                 <record name="Checksum" c:type="GChecksum" copy-function="g_checksum_copy"
+                   free-function="g_checksum_free">
+                   <constructor name="new" c:identifier="g_checksum_new">
+                     <return-value transfer-ownership="full" nullable="1"><type name="Checksum"/></return-value>
+                     <parameters>
+                       <parameter name="checksum_type" transfer-ownership="none"><type name="gint"/></parameter>
+                     </parameters>
+                   </constructor>
+                   <method name="get_string" c:identifier="g_checksum_get_string">
+                     <return-value transfer-ownership="none"><type name="utf8"/></return-value>
+                     <parameters>
+                       <instance-parameter name="checksum" transfer-ownership="none"><type name="Checksum"/></instance-parameter>
+                     </parameters>
+                   </method>
+                 </record>
+               </namespace>
+             </repository>`,
+        );
+        const girPath = resolveGirPath([directory.path], directory.path);
+        const libraries = ["GLib-2.0", "Digest-1.0"];
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries, girPath, gi });
+        const consumer = `import { Checksum } from "@gtkx/gi/digest";
+            import { ChecksumType, KeyFile, TimeZone, VariantType } from "@gtkx/gi/glib";
+            const type: VariantType = new VariantType("s");
+            const file: KeyFile = new KeyFile();
+            const checksum: Checksum = new Checksum(ChecksumType.SHA256);
+            const failures: string[] = [];
+            for (const construct of [
+                // @ts-expect-error the new constructor takes a type string
+                () => new VariantType(),
+                () => new Checksum(-1),
+                // @ts-expect-error a zero-argument constructor other than new keeps the record abstract
+                () => new TimeZone("UTC"),
+            ]) {
+                try {
+                    construct();
+                } catch (error) {
+                    failures.push(String(error));
+                }
+            }
+            console.log(JSON.stringify({
+                type: type instanceof VariantType && type.dupString(),
+                file: file instanceof KeyFile,
+                checksum: checksum instanceof Checksum && checksum.getString().length,
+                failures,
+            }));`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
+        const output = execFileSync(process.execPath, ["consumer.ts"], {
+            cwd: directory.path,
+            encoding: "utf8",
+            stdio: "pipe",
+            timeout: 20_000,
+        });
+        expect(JSON.parse(output)).toEqual({
+            type: "s",
+            file: true,
+            checksum: 64,
+            failures: [
+                expect.stringContaining("Missing required argument"),
+                expect.stringContaining("Cannot construct Digest.Checksum: Digest.Checksum.new returned null."),
+                expect.stringContaining("Cannot construct GLib.TimeZone with new"),
+            ],
+        });
+        const reference = loadApiReference({ libraries, girPath, resolveFrom: directory.path });
+        const page = (name: string) => {
+            const result = reference.lookup(name);
+            return result.outcome === "page" ? result.markdown : "";
+        };
+        expect(page("GLib.VariantType")).toContain("`new GLib.VariantType(...)` calls `GLib.VariantType.new(...)`.");
+        expect(page("GLib.TimeZone")).toContain("## Constructors");
+        expect(page("GLib.TimeZone")).not.toContain("`new GLib.TimeZone(...)`");
+    });
+
     it("generates JSX bindings that accept documented props and reject incompatible consumers", async () => {
         using directory = createProject();
         const { gi, jsx } = resolveStore(directory.path);
