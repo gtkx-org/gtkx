@@ -361,6 +361,65 @@ describe("generated bindings", () => {
         );
     });
 
+    it("limits each project sharing a store to the namespaces of its own libraries", async () => {
+        using directory = createProject();
+        const girPath = resolveGirPath(undefined, directory.path);
+        const root = resolveStore(directory.path);
+        if (root.jsx === null) throw new Error("JSX store was not resolved");
+        await runCodegen({ libraries: ["Gio-2.0"], girPath, gi: root.gi, jsx: root.jsx });
+        const app = join(directory.path, "apps", "app");
+        mkdirSync(app, { recursive: true });
+        const shared = resolveStore(app);
+        if (shared.jsx === null) throw new Error("Shared JSX store was not resolved");
+        await runCodegen({ libraries: ["GObject-2.0"], girPath, gi: shared.gi, jsx: shared.jsx });
+        const resolveFrom = (cwd: string, specifier: string) =>
+            realpathSync(
+                fileURLToPath(
+                    execFileSync(
+                        process.execPath,
+                        ["--input-type=module", "-e", `console.log(import.meta.resolve(${JSON.stringify(specifier)}))`],
+                        { cwd, encoding: "utf8", stdio: "pipe" },
+                    ).trim(),
+                ),
+            );
+
+        expect(resolveFrom(app, "@gtkx/gi/gobject")).toBe(resolveFrom(directory.path, "@gtkx/gi/gobject"));
+        expect(resolveFrom(app, "@gtkx/gi/glib")).toBe(resolveFrom(directory.path, "@gtkx/gi/glib"));
+        expect(resolveFrom(app, "@gtkx/jsx/gobject")).toBe(resolveFrom(directory.path, "@gtkx/jsx/gobject"));
+        expect(() => resolveFrom(app, "@gtkx/gi/gio")).toThrow();
+        expect(() => resolveFrom(app, "@gtkx/jsx/gio")).toThrow();
+        expect(resolveFrom(directory.path, "@gtkx/gi/gio")).toBe(
+            realpathSync(join(root.gi.linkDir, "gio", "index.js")),
+        );
+        expect(
+            diagnostics(
+                app,
+                `import { typeFromName } from "@gtkx/gi/gobject";
+                export const type: bigint = typeFromName("GObject");`,
+            ),
+        ).toEqual([]);
+        expect(
+            diagnostics(app, `import { File } from "@gtkx/gi/gio"; export const file = File.newForPath("/tmp");`),
+        ).not.toEqual([]);
+        expect(
+            diagnostics(
+                directory.path,
+                `import { File } from "@gtkx/gi/gio"; export const file: File = File.newForPath("/tmp");`,
+            ),
+        ).toEqual([]);
+
+        await runCodegen({ libraries: ["Gio-2.0", "Json-1.0"], girPath, gi: root.gi, jsx: root.jsx });
+        expect(
+            diagnostics(app, `import { Parser } from "@gtkx/gi/json"; export const parser: Parser = new Parser();`),
+        ).not.toEqual([]);
+        expect(
+            diagnostics(
+                directory.path,
+                `import { Parser } from "@gtkx/gi/json"; export const parser: Parser = new Parser();`,
+            ),
+        ).toEqual([]);
+    });
+
     it("refreshes reference pages when their props dependencies or cached metadata change", () => {
         using directory = createProject();
         const props = join(directory.path, "props.ts");

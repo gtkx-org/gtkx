@@ -1,6 +1,6 @@
 import { isPathWithin } from "@gtkx/utils";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import type { StoreOptions } from "./store-fs.js";
 import { EXTERNAL_NAMESPACES } from "../gir/external-namespaces.js";
 import { sweepStagingDirs } from "../staging.js";
@@ -194,7 +194,23 @@ const checkSharedDependencies = (owner: string, nodeModules: string, dependencie
     }
 };
 
-const getShadowingStorePaths = (projectRoot: string): string[] => {
+/** Whether the project's installed packages resolve the store written into `nodeModules`. */
+const resolvesStoreIn = (projectRoot: string, nodeModules: string): boolean => {
+    const anchored = findStoreNodeModules(projectRoot);
+
+    return anchored !== null && realpathSync(anchored) === realpathSync(nodeModules);
+};
+
+const isStoreView = (path: string): boolean =>
+    basename(dirname(path)) === SCOPE && lstatSync(path, { throwIfNoEntry: false })?.isDirectory() === true;
+
+/**
+ * Stores and links in a project's own `node_modules` that would shadow the store its packages resolve from
+ * another `node_modules`, such as one an earlier GTKX generated there.
+ *
+ * @param shouldKeepViews Leaves out the project's views of the shared store, which codegen keeps up to date.
+ */
+const getShadowingStorePaths = (projectRoot: string, shouldKeepViews: boolean): string[] => {
     const root = resolve(projectRoot);
     const nodeModules = join(root, "node_modules");
     const anchored = findStoreNodeModules(root);
@@ -203,7 +219,7 @@ const getShadowingStorePaths = (projectRoot: string): string[] => {
         return [];
     }
 
-    return storePaths(nodeModules);
+    return storePaths(nodeModules).filter((path) => !shouldKeepViews || !isStoreView(path));
 };
 
 const stagingRoots = (projectRoot: string): string[] => {
@@ -259,4 +275,4 @@ const resolveStore = (projectRoot: string): ResolvedStore => {
     };
 };
 
-export { getShadowingStorePaths, resolveStore, sweepProjectStaging, type ResolvedStore };
+export { getShadowingStorePaths, resolveStore, resolvesStoreIn, sweepProjectStaging, type ResolvedStore };

@@ -111,4 +111,8 @@ const registerSharedProject = (storeDir: string, owner: string, project: SharedP
 const sharedProjectRoots = (storeDir: string, owner: string): string[] =>
     otherProjects(storeDir, owner).map(([root]) => root);
 
-export { registerSharedProject, shareStore, sharedProjectRoots, type SharedProject };
+/** What the project at `owner` recorded it needs from the store at `storeDir`, or undefined before it generates. */
+const readSharedProject = (storeDir: string, owner: string): SharedProject | undefined =>
+    readSharedProjects(storeDir)[owner];
+
+export { readSharedProject, registerSharedProject, shareStore, sharedProjectRoots, type SharedProject };

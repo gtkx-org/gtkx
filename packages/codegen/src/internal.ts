@@ -4,6 +4,7 @@ export { readBuiltinElementsForDocs } from "./react/element-config.js";
 export { runGlCodegen } from "./runner.js";
 export { getShadowingStorePaths, sweepProjectStaging } from "./store/resolve-store.js";
 export { ensureStoreLinks } from "./store/store-links.js";
+export { storeViewDir } from "./store/store-views.js";
 export { createXmlParser, parseXmlFile } from "./xml.js";
 export { generateBindings } from "./project/generate.js";
 export { type CodegenInputs, isCodegenStale, resolveCodegenInputs } from "./project/freshness.js";

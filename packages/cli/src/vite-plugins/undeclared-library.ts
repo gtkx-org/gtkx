@@ -2,6 +2,7 @@ import type { StoreOptions } from "@gtkx/codegen";
 import type { ConfigLoader } from "@gtkx/config";
 import type { Plugin, UserConfig } from "vite";
 import { discoverGirNamespaces, resolveGirPath, resolveStore } from "@gtkx/codegen";
+import { storeViewDir } from "@gtkx/codegen/internal";
 import { createConfigLoader, viteProjectRoot } from "@gtkx/config/internal";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -106,6 +107,23 @@ const undeclaredLibraryError = (source: string, namespace: string, girPath: stri
     );
 };
 
+const unsharedLibraryError = (source: string, namespace: string, girPath: string[]): Error => {
+    const identifier = findGirIdentifier(girPath, namespace) ?? namespace;
+
+    return new Error(
+        `Cannot resolve "${source}": "${identifier}" is not in this project's \`libraries\`. Another project ` +
+            "sharing the generated bindings declares it, but each project can import only the libraries it " +
+            `declares and their dependencies. Add "${identifier}" to \`libraries\` in gtkx.config.ts, then run ` +
+            "gtkx dev or gtkx build again.",
+    );
+};
+
+const isOutsideView = (root: string, options: StoreOptions, namespace: string): boolean => {
+    const viewDir = storeViewDir(root, options);
+
+    return viewDir !== null && !existsSync(join(viewDir, namespace, "index.js"));
+};
+
 const unresolvedModuleError = async (
     state: PluginState,
     generated: GeneratedModule,
@@ -114,11 +132,15 @@ const unresolvedModuleError = async (
     const options = getStoreOptions(state.root, generated.kind);
     const exportKey = `./${generated.namespace}`;
 
-    if (options !== null && hasStoreModule(options.storeDir, exportKey)) {
-        return resolverError ?? unreachableStoreError(generated, options);
+    if (options === null || !hasStoreModule(options.storeDir, exportKey)) {
+        return undeclaredLibraryError(generated.source, generated.namespace, await girSearchPaths(state));
     }
 
-    return undeclaredLibraryError(generated.source, generated.namespace, await girSearchPaths(state));
+    if (isOutsideView(state.root, options, generated.namespace)) {
+        return unsharedLibraryError(generated.source, generated.namespace, await girSearchPaths(state));
+    }
+
+    return resolverError ?? unreachableStoreError(generated, options);
 };
 
 function gtkxUndeclaredLibrary(loadConfig: ConfigLoader = createConfigLoader()): Plugin {

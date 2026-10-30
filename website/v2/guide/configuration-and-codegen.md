@@ -101,9 +101,11 @@ Apps that resolve the same directory share one set of bindings, generated for th
 - a version of a GIR namespace, such as `Soup-2.4` and `Soup-3.0`
 - the installed copies of the GTKX packages, `react` or `@types/react`
 
-Keep these aligned across the workspace, for example with a pnpm catalog. After changing `girPath` or `elements` in every app, run `gtkx codegen --force` in one of them; the others share its bindings again the next time they generate theirs. An app can import bindings that only another app declared, but `gtkx deploy` derives an app's requirements from its own `libraries`, so declare every library each app imports.
+Keep these aligned across the workspace, for example with a pnpm catalog. After changing `girPath` or `elements` in every app, run `gtkx codegen --force` in one of them; the others share its bindings again the next time they generate theirs.
 
-A shared package declares `@gtkx/react` as a peer dependency and imports `@gtkx/gi` and `@gtkx/jsx` subpaths like an app. List it in the dependencies of each app that uses it, so `gtkx dev` loads it through Vite.
+Each app still imports only the libraries it declares and their dependencies, which are also what `gtkx deploy` requires of the installed system. Codegen gives an app that shares bindings its own `@gtkx/gi` and `@gtkx/jsx` packages in its `node_modules`, which expose those namespaces and link them to the shared bindings. Importing a namespace that only another app declared fails in `gtkx dev`, `gtkx build` and Vitest with an error naming the library to add to `libraries`, Node reports the subpath as not exported, and `tsc` reports the namespace as having no exports. An app at the workspace root, where the bindings are written, sees all of them.
+
+A shared package declares `@gtkx/react` as a peer dependency and imports `@gtkx/gi` and `@gtkx/jsx` subpaths like an app. List it in the dependencies of each app that uses it, so `gtkx dev` loads it through Vite. A shared package resolves the bindings from the workspace root, so it can import any library some app declares; each app that uses it has to declare the libraries the package imports.
 
 ## The JSX prop model
 

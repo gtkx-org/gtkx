@@ -21,6 +21,7 @@ import {
     reclaimStoreArtifacts,
     type StoreOptions,
 } from "./store/store-fs.js";
+import { writeSharedStoreViews } from "./store/store-views.js";
 
 type GlCodegenOptions = {
     registryPath: string;
@@ -37,7 +38,8 @@ type CodegenRunnerOptions = {
     girPath: string[];
     /**
      * Where to write and link the `@gtkx/gi` store. With an `owner`, the store is shared with the other projects
-     * that generated it and binds the union of their libraries.
+     * that generated it and binds the union of their libraries. Each sharing project whose own `node_modules` does
+     * not hold the store gets a view there that exports only the namespaces of its libraries.
      */
     gi: StoreOptions;
     /** Where to write and link the `@gtkx/jsx` store; omit to generate the gi store alone. */
@@ -246,6 +248,7 @@ const emitStores = async (input: CodegenRunnerOptions): Promise<StoreResult> => 
 
         if (shared !== null) {
             registerSharedProject(gi.storeDir, shared.owner, project, shared);
+            writeSharedStoreViews(gi, jsx ?? null, [[shared.owner, project], ...shared.others]);
         }
 
         return {

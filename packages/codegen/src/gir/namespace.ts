@@ -33,6 +33,7 @@ type GirNamespace = {
     girFile: string;
     sharedLibrary: string | undefined;
     cSymbolPrefixes: string[];
+    includes: string[];
     classes: GirClass[];
     interfaces: GirClass[];
     records: GirRecord[];
@@ -87,6 +88,7 @@ const createNamespaceShell = (header: NamespaceHeader, id: number): GirNamespace
     girFile: header.girFile,
     sharedLibrary: header.sharedLibrary,
     cSymbolPrefixes: header.cSymbolPrefixes,
+    includes: header.includes.map((include) => include.name),
     classes: [],
     interfaces: [],
     records: [],

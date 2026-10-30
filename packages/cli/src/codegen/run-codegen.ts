@@ -61,9 +61,9 @@ const removeStores = (paths: string[]): void => {
     }
 };
 
-const removeShadowingStores = (cwd: string): void => {
+const removeShadowingStores = (cwd: string, config: Config): void => {
     sweepProjectStaging(cwd);
-    removeStores(getShadowingStorePaths(cwd));
+    removeStores(getShadowingStorePaths(cwd, config.codegen !== false));
 };
 
 const disabledCodegenResult = (configFile: string): RunCodegenResult => ({
@@ -87,7 +87,7 @@ const runCodegen = async (options: RunCodegenOptions = {}): Promise<RunCodegenRe
     await syncI18n(cwd, config.applicationId, options.shouldPreserveI18nMetadata);
     emitSchemaEnv(cwd);
 
-    removeShadowingStores(cwd);
+    removeShadowingStores(cwd, config);
 
     if (config.codegen === false) {
         return disabledCodegenResult(configFile);

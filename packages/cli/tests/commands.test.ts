@@ -13,12 +13,14 @@ import {
     mkdirSync,
     readFileSync,
     readdirSync,
+    realpathSync,
     renameSync,
     rmSync,
     symlinkSync,
 } from "node:fs";
 import { join, relative } from "node:path";
 import { setTimeout } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { stdout, stderr } from "test-console";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -744,13 +746,34 @@ describe("CLI commands", () => {
             export declare const Badge: (props: GtkLabelProps) => ReactNode;`,
         );
         workspace.linkApp("packages/ui");
-        const writeApp = (app: string, label: string, imports = "") => {
+        for (const app of ["journal", "editor"]) {
             mkdirSync(join(appDir(app), "node_modules/@studio"), { recursive: true });
             symlinkSync(join(workspace.root, "packages/ui"), join(appDir(app), "node_modules/@studio/ui"), "dir");
             workspace.write(
                 `apps/${app}/package.json`,
                 JSON.stringify({ name: app, type: "module", dependencies: { "@studio/ui": "workspace:*" } }),
             );
+            workspace.write(
+                `apps/${app}/tsconfig.json`,
+                JSON.stringify({
+                    compilerOptions: {
+                        module: "NodeNext",
+                        jsx: "react-jsx",
+                        strict: true,
+                        skipLibCheck: true,
+                        noEmit: true,
+                        types: ["node", "react"],
+                    },
+                    include: ["src"],
+                }),
+            );
+            workspace.write(
+                `apps/${app}/vitest.config.mjs`,
+                `import gtkx from "@gtkx/cli/vitest-plugin";
+                export default { plugins: [gtkx()], test: { include: ["tests/*.test.tsx"] } };`,
+            );
+        }
+        const writeApp = (app: string, label: string, imports = "") => {
             workspace.write(
                 `apps/${app}/src/index.tsx`,
                 `${imports}
@@ -778,14 +801,7 @@ describe("CLI commands", () => {
         );
         workspace.write("apps/editor/node_modules/.gtkx/gi/package.json", '{"name":"@gtkx/gi","exports":{}}');
         symlinkSync("../.gtkx/gi", join(appDir("editor"), "node_modules/@gtkx/gi"), "dir");
-        workspace.write(
-            "apps/editor/vitest.config.mjs",
-            `import gtkx from "@gtkx/cli/vitest-plugin";
-            export default { plugins: [gtkx()], test: { include: ["tests/*.test.tsx"] } };`,
-        );
-        workspace.write(
-            "apps/editor/tests/badge.test.tsx",
-            `import * as GtkSource from "@gtkx/gi/gtksource";
+        const sourceTest = `import * as GtkSource from "@gtkx/gi/gtksource";
             import { render, screen } from "@gtkx/testing";
             import { Badge } from "@studio/ui";
             import { expect, test } from "vitest";
@@ -793,8 +809,9 @@ describe("CLI commands", () => {
                 await render(<Badge label="shared" />);
                 expect(await screen.findByText("shared")).toBeTruthy();
                 expect(new GtkSource.Buffer().getLanguage()).toBeNull();
-            });`,
-        );
+            });`;
+        workspace.write("apps/editor/tests/badge.test.tsx", sourceTest);
+        workspace.write("apps/journal/tests/badge.test.tsx", sourceTest);
         const run = (app: string, args: string[], timeout = 180_000) =>
             promisify(execFile)(process.execPath, args, {
                 cwd: appDir(app),
@@ -802,23 +819,37 @@ describe("CLI commands", () => {
                 timeout,
                 killSignal: "SIGKILL",
             });
+        const typecheck = (app: string) =>
+            promisify(execFile)(workspace.tsc, ["-p", appDir(app)], { env: childEnv(), timeout: 180_000 });
+        const resolveModule = async (directory: string, specifier: string) => {
+            const { stdout } = await promisify(execFile)(
+                process.execPath,
+                ["--input-type=module", "-e", `console.log(import.meta.resolve(${JSON.stringify(specifier)}))`],
+                { cwd: directory, env: childEnv(), timeout: 60_000 },
+            );
+            return realpathSync(fileURLToPath(stdout.trim()));
+        };
 
-        workspace.write(
-            "apps/editor/tsconfig.json",
-            JSON.stringify({
-                compilerOptions: {
-                    module: "NodeNext",
-                    jsx: "react-jsx",
-                    strict: true,
-                    skipLibCheck: true,
-                    noEmit: true,
-                    types: ["node", "react"],
-                },
-                include: ["src"],
-            }),
-        );
         await run("editor", [workspace.cli("editor"), "codegen"]);
-        await promisify(execFile)(workspace.tsc, ["-p", appDir("editor")], { env: childEnv(), timeout: 180_000 });
+        await typecheck("editor");
+
+        writeApp("journal", "String(GtkSource.Buffer)", 'import * as GtkSource from "@gtkx/gi/gtksource";');
+        await run("journal", [workspace.cli("journal"), "codegen"]);
+        await expect(typecheck("journal")).rejects.toThrow();
+        await expect(resolveModule(appDir("journal"), "@gtkx/gi/gtksource")).rejects.toThrow();
+        await expect(run("journal", [workspace.cli("journal"), "build"])).rejects.toThrow();
+        await expect(
+            run("journal", [join(appDir("journal"), "node_modules/vitest/vitest.mjs"), "run"]),
+        ).rejects.toThrow();
+        expect(await resolveModule(appDir("journal"), "@gtkx/gi/gtk")).toBe(
+            await resolveModule(workspace.root, "@gtkx/gi/gtk"),
+        );
+        expect(await resolveModule(appDir("editor"), "@gtkx/gi/gtksource")).toBe(
+            await resolveModule(workspace.root, "@gtkx/gi/gtksource"),
+        );
+        writeApp("journal", '"journal"');
+        rmSync(join(appDir("journal"), "tests"), { recursive: true });
+        await typecheck("journal");
 
         await run("journal", [workspace.cli("journal"), "build"]);
         await run("editor", [workspace.cli("editor"), "build"]);

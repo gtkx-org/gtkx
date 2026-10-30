@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import type { SourceModule } from "../compile.js";
 import { FINGERPRINT_FILENAME, type GiFingerprint } from "../fingerprint.js";
 import { type GeneratedLibraries, LIBRARIES_FILENAME, renderGeneratedLibraries } from "./gi/generated-libraries.js";
+import { NAMESPACES_FILENAME, type NamespaceIncludes, renderNamespaceIncludes } from "./gi/namespace-includes.js";
 import { namespaceOverrides, renderOverrideExports } from "./gi/overrides.js";
 import {
     buildManifest,
@@ -25,6 +26,7 @@ type GiNamespaceInput = {
 type GiStoreRecords = {
     fingerprint: GiFingerprint;
     libraries: GeneratedLibraries;
+    includes: NamespaceIncludes;
 };
 
 const OVERRIDES_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "overrides");
@@ -103,6 +105,7 @@ const writeGiStore = (
         rawFiles: [
             { relativePath: FINGERPRINT_FILENAME, content: `${JSON.stringify(records.fingerprint, null, 2)}\n` },
             { relativePath: LIBRARIES_FILENAME, content: renderGeneratedLibraries(records.libraries) },
+            { relativePath: NAMESPACES_FILENAME, content: renderNamespaceIncludes(records.includes) },
         ],
     });
 };
