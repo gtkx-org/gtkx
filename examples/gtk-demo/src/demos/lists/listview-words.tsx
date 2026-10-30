@@ -237,7 +237,7 @@ function WordsView(props: WordsViewProps) {
     const { pending, filterProgress, ...model } = props;
 
     return (
-        <GtkOverlay vexpand hexpand overlays={progressOverlay(pending, filterProgress)}>
+        <GtkOverlay vexpand hexpand overlay={progressOverlay(pending, filterProgress)}>
             <GtkScrolledWindow vexpand hexpand>
                 <GtkListView
                     name="list-view"

@@ -50,7 +50,7 @@ import { AdwApplicationWindow, AdwHeaderBar, AdwToolbarView } from "@gtkx/jsx/ad
 const MirrorWindow = ({ open }: { open: boolean }) =>
     open ? (
         <AdwApplicationWindow title="Mirror" defaultWidth={400} defaultHeight={300}>
-            <AdwToolbarView topBar={<AdwHeaderBar />} />
+            <AdwToolbarView top={<AdwHeaderBar />} />
         </AdwApplicationWindow>
     ) : null;
 ```

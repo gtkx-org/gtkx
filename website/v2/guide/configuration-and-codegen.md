@@ -110,6 +110,7 @@ Generated elements follow the native API with GTKX naming conventions:
 - Property notifications use `onNotifyX`, receiving the new value and the emitting object.
 - Object properties that accept elements can be expressed as JSX, with GTKX managing their lifetime.
 - Elements that show one child, such as `GtkScrolledWindow`, `AdwClamp`, window content or `AdwToolbarView` content, show the last one passed. Development builds warn when such an element holds more than one visible child; wrap them in a `GtkBox`.
+- Child slots that no property backs take their GtkBuilder child type, such as `start` and `end` on a header bar or `top` and `bottom` on a toolbar view.
 - Refs expose the corresponding GI instance for imperative APIs.
 
 Prefer JSX for object creation and child placement. The [generated element reference](#generating-element-reference-docs) shows the exact props, slots, and signals for each configured library.

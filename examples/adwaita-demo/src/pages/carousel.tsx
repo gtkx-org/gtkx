@@ -28,7 +28,7 @@ export const CarouselPage = (): ReactNode => {
 
     return (
         <>
-            <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+            <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
                 <GtkBox
                     orientation={
                         orientation === Gtk.Orientation.HORIZONTAL

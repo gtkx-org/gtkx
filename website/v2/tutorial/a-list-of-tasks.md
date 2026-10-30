@@ -124,7 +124,7 @@ export function App() {
                 heightRequest={294}
                 onCloseRequest={() => quit()}
             >
-                <AdwToolbarView topBar={<AdwHeaderBar />}>
+                <AdwToolbarView top={<AdwHeaderBar />}>
                     <TaskList />
                 </AdwToolbarView>
             </AdwApplicationWindow>

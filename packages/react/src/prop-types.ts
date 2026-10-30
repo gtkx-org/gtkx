@@ -302,6 +302,8 @@ type GtkShortcutTriggerElementProps = {
 /** Props of a `Gtk.Overlay` element, whose `children` is the widget the overlays sit above. */
 type GtkOverlayProps = {
     /** Widgets stacked over the main child. */
+    overlay?: ReactNode | null | undefined;
+    /** @deprecated Since 2.0. Use `overlay` instead. Removed in v3. */
     overlays?: ReactNode | null | undefined;
 } & ChildrenProps;
 
@@ -343,6 +345,8 @@ type GtkListBoxProps = {
      * re-applied whenever the box's own selection drifts from it. Left alone while the prop is absent.
      */
     selectedIndex?: number | null | undefined;
+    /** Widget shown in place of the rows while the box has none to show. */
+    placeholder?: ReactNode | null | undefined;
 } & ChildrenProps;
 
 /** Props of a `Gtk.Calendar` element. */
@@ -467,8 +471,12 @@ type AdwExpanderRowProps = {
 /** Props of an `Adw.ToolbarView` element, whose `children` is the content the bars surround. */
 type AdwToolbarViewProps = {
     /** Widgets stacked above the content. */
-    topBar?: ReactNode | null | undefined;
+    top?: ReactNode | null | undefined;
     /** Widgets stacked below the content. */
+    bottom?: ReactNode | null | undefined;
+    /** @deprecated Since 2.0. Use `top` instead. Removed in v3. */
+    topBar?: ReactNode | null | undefined;
+    /** @deprecated Since 2.0. Use `bottom` instead. Removed in v3. */
     bottomBar?: ReactNode | null | undefined;
 } & ChildrenProps;
 

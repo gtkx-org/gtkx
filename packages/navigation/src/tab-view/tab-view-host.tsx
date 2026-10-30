@@ -413,7 +413,7 @@ const TabViewHost = (props: TabViewHostProps): ReactNode => {
 
     const content = (
         <AdwToolbarView
-            topBar={
+            top={
                 <>
                     {header}
                     <AdwTabBar

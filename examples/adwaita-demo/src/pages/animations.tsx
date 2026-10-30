@@ -180,7 +180,7 @@ const AnimationsPage = () => {
                     </>,
                     rootElement,
                 )}
-            <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+            <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
                 <GtkScrolledWindow hscrollbarPolicy={Gtk.PolicyType.NEVER}>
                     <GtkBox
                         orientation={Gtk.Orientation.VERTICAL}

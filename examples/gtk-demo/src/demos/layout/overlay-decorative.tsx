@@ -79,7 +79,7 @@ function OverlayDecorativeDemo() {
     return (
         <GtkOverlay
             name="overlay"
-            overlays={[
+            overlay={[
                 marginScale(margin, handleMarginChanged),
                 decorPicture({ name: "picture-start", paintable: decor1, align: Gtk.Align.START }),
                 decorPicture({ name: "picture-end", paintable: decor2, align: Gtk.Align.END }),

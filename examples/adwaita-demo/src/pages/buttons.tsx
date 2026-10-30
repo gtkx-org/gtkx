@@ -8,7 +8,7 @@ const SampleMenu = () => (
 );
 
 export const ButtonsPage = () => (
-    <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+    <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
         <AdwStatusPage title="Buttons" description="Button helper widgets" iconName="widget-buttons-symbolic">
             <AdwClamp maximumSize={400} tighteningThreshold={300}>
                 <GtkGrid halign={Gtk.Align.CENTER} columnSpacing={12} rowSpacing={12}>

@@ -625,7 +625,7 @@ function GearsDemo() {
             marginEnd={12}
             marginTop={12}
             marginBottom={12}
-            overlays={[
+            overlay={[
                 <GtkOverlayLayoutChild key="overlay-0">
                     <GtkLabel
                         halign={Gtk.Align.START}

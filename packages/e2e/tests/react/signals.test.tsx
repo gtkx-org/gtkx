@@ -148,7 +148,7 @@ const renderOverlayWithChild = async (mainLabel: string): Promise<Gtk.Overlay> =
             ref={overlayRef}
             widthRequest={200}
             heightRequest={200}
-            overlays={<GtkBox name="overlay-child" widthRequest={40} heightRequest={20} />}
+            overlay={<GtkBox name="overlay-child" widthRequest={40} heightRequest={20} />}
         >
             <GtkLabel>{mainLabel}</GtkLabel>
         </GtkOverlay>,

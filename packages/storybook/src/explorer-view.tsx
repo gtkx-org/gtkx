@@ -46,7 +46,7 @@ const StorybookView = ({ catalog, title = "GTKX Storybook" }: StorybookViewProps
             maxSidebarWidth={300}
             sidebar={
                 <AdwToolbarView
-                    topBar={
+                    top={
                         <AdwHeaderBar
                             titleWidget={
                                 <AdwWindowTitle title={title} subtitle={storyCount(snapshot.stories.length)} />
@@ -66,7 +66,7 @@ const StorybookView = ({ catalog, title = "GTKX Storybook" }: StorybookViewProps
             {selected ? (
                 <StorybookPreview key={selected.id} entry={selected} />
             ) : (
-                <AdwToolbarView topBar={<AdwHeaderBar />}>
+                <AdwToolbarView top={<AdwHeaderBar />}>
                     <AdwStatusPage
                         name="storybook-empty"
                         title={snapshot.isLoading ? "Loading stories" : "Choose a story"}

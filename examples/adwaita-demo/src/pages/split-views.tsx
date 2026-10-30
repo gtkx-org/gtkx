@@ -41,7 +41,7 @@ const NavigationSplitDialog = ({ onClosed }: { onClosed: () => void }): ReactNod
                 collapsed={collapsed}
                 sidebar={
                     <AdwNavigationPage title="Sidebar" tag="sidebar">
-                        <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+                        <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
                             <AdwStatusPage title="Sidebar">
                                 <GtkButton
                                     label="Open Content"
@@ -58,7 +58,7 @@ const NavigationSplitDialog = ({ onClosed }: { onClosed: () => void }): ReactNod
                 }
             >
                 <AdwNavigationPage title="Content" tag="content">
-                    <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+                    <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
                         <AdwStatusPage title="Content" />
                     </AdwToolbarView>
                 </AdwNavigationPage>
@@ -95,7 +95,7 @@ const OverlaySplitDialog = ({ onClosed }: { onClosed: () => void }): ReactNode =
         >
             <AdwToolbarView
                 topBarStyle={Adw.ToolbarStyle.RAISED}
-                topBar={
+                top={
                     <AdwHeaderBar
                         start={
                             <GtkToggleButton
@@ -157,7 +157,7 @@ export const SplitViewsPage = (): ReactNode => {
 
     return (
         <>
-            <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+            <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
                 <AdwStatusPage
                     iconName="widget-split-views-symbolic"
                     title="Split Views"

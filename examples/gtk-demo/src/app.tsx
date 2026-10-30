@@ -468,7 +468,7 @@ const MainWindow = () => {
             })}
         >
             <AdwToolbarView
-                topBar={
+                top={
                     <AppHeaderBar
                         hasDemo={!!currentDemo?.component}
                         isSearchActive={chrome.isSearchActive}

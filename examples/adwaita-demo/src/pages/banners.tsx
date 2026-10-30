@@ -23,7 +23,7 @@ export const BannersPage = () => {
     const [suggested, setSuggested] = useState(false);
 
     return (
-        <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+        <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
             <GtkCenterBox
                 orientation={Gtk.Orientation.VERTICAL}
                 vexpand

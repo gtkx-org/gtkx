@@ -45,21 +45,21 @@ const MultiLayoutDialog = ({ onClosed }: { onClosed: () => void }): ReactNode =>
                         <AdwLayout name="wide">
                             <AdwOverlaySplitView
                                 sidebar={
-                                    <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+                                    <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
                                         <AdwLayoutSlot id="sidebar" />
                                     </AdwToolbarView>
                                 }
                             >
-                                <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+                                <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
                                     <AdwLayoutSlot id="content" />
                                 </AdwToolbarView>
                             </AdwOverlaySplitView>
                         </AdwLayout>
                         <AdwLayout name="narrow">
                             <AdwToolbarView
-                                topBar={<AdwHeaderBar showTitle={false} />}
+                                top={<AdwHeaderBar showTitle={false} />}
                                 bottomBarStyle={Adw.ToolbarStyle.RAISED}
-                                bottomBar={<AdwLayoutSlot id="sidebar" heightRequest={100} />}
+                                bottom={<AdwLayoutSlot id="sidebar" heightRequest={100} />}
                             >
                                 <AdwLayoutSlot id="content" />
                             </AdwToolbarView>
@@ -76,7 +76,7 @@ export const MultiLayoutPage = (): ReactNode => {
 
     return (
         <>
-            <AdwToolbarView topBar={<AdwHeaderBar showTitle={false} />}>
+            <AdwToolbarView top={<AdwHeaderBar showTitle={false} />}>
                 <AdwStatusPage
                     iconName="widget-multi-layout-symbolic"
                     title="Multi-Layout View"

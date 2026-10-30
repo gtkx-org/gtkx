@@ -102,7 +102,7 @@ function OverlayDemo() {
     };
 
     return (
-        <GtkOverlay overlays={[renderNumbersLabel(), renderLuckyNumberEntry(value, handleEntryChanged)]}>
+        <GtkOverlay overlay={[renderNumbersLabel(), renderLuckyNumberEntry(value, handleEntryChanged)]}>
             <GtkGrid name="number-grid">{buildNumberButtons(handleNumber)}</GtkGrid>
         </GtkOverlay>
     );

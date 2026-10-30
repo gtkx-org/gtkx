@@ -103,10 +103,10 @@ const TabView = ({ state, navigation, descriptors, tabBarPosition = "top" }: Tab
 
     return (
         <AdwToolbarView
-            topBar={
+            top={
                 <TabHeader descriptor={descriptor} viewSwitcher={tabBarPosition === "top" ? viewSwitcher : undefined} />
             }
-            bottomBar={hasSwitcherBar ? <AdwViewSwitcherBar stack={stack} reveal /> : undefined}
+            bottom={hasSwitcherBar ? <AdwViewSwitcherBar stack={stack} reveal /> : undefined}
         >
             <AdwViewStack
                 ref={setStack}
