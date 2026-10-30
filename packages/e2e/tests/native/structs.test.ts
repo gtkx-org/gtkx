@@ -120,6 +120,7 @@ test("StructuredUnion constructs each plain variant and reports its type", () =>
     for (const type of cases) {
         const union = GIMarshallingTests.StructuredUnion.new(type);
         expect(union.type()).toBe(type);
+        expect(new GIMarshallingTests.StructuredUnion(type).type()).toBe(type);
     }
 });
 
