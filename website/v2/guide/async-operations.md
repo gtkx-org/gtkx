@@ -132,6 +132,34 @@ Unpacking always reads the variant's actual runtime type. An explicit type param
 
 The generated promise is named `call` here; use the generated signature rather than deriving a name from the C function.
 
+## Handling termination signals
+
+Listen for `SIGINT` and `SIGTERM` with Node's `process.on`, not `GLibUnix.signalAdd`. GTKX quits the application on `SIGINT`, `SIGTERM` and `SIGHUP` while no other listener handles the signal. A listener you add takes over, so finish your cleanup and call `quit()`:
+
+```tsx
+import { quit } from "@gtkx/react";
+import { useEffect } from "react";
+
+export const useQuitOnSignals = (save: () => void): void => {
+    useEffect(() => {
+        const handleSignal = (): void => {
+            save();
+            quit();
+        };
+
+        process.on("SIGINT", handleSignal);
+        process.on("SIGTERM", handleSignal);
+
+        return () => {
+            process.off("SIGINT", handleSignal);
+            process.off("SIGTERM", handleSignal);
+        };
+    }, [save]);
+};
+```
+
+When the last `GLibUnix.signalAdd` source for a signal is removed, for example on unmount or after a Fast Refresh, GLib resets that signal to its default action. That silently disables GTKX's exit handling and every `process.on` listener, although Node still lists them. The next `SIGTERM` then ends the process without cleanup, and a Vitest worker ends without releasing its headless display.
+
 ## Keeping a helper process alive
 
 Application elements manage the GLib lifecycle automatically. A standalone Node helper needs an explicit hold while native work is pending; see [helper processes](/v2/guide/workers#keeping-a-helper-process-alive).
