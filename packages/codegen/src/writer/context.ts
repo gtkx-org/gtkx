@@ -4,6 +4,11 @@ import { declaredTypeNames, type GirNamespace } from "../gir/namespace.js";
 import { namespaceOverrides } from "../store/gi/overrides.js";
 import { type Declaration, ModuleBuilder } from "./module.js";
 
+type GeneratedClass = {
+    className: string;
+    glibTypeName: string;
+};
+
 type BootstrapCallOptions = {
     moduleExports?: string[];
 };
@@ -31,6 +36,7 @@ class ModuleContext {
     public externalDependencies: Set<string> = new Set();
     public bootstrapCalls: string[] = [];
     public bootstrapModuleExports: Set<string> = new Set();
+    public generatedClasses: GeneratedClass[] = [];
 
     constructor(namespace: GirNamespace, library: Library) {
         this.namespace = namespace;
@@ -163,4 +169,4 @@ class ModuleContext {
     }
 }
 
-export { ModuleContext };
+export { type GeneratedClass, ModuleContext };

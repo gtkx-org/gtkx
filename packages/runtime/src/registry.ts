@@ -9,6 +9,7 @@ import {
 } from "./native.js";
 import { type AnyClass, walkClassChain } from "@gtkx/utils";
 import type { Descriptor } from "./descriptor-types.js";
+import { reportDroppedClass } from "./dropped-classes.js";
 import { forgetFundamentalWrapper, getFundamentalWrapper, setFundamentalWrapper } from "./fundamental-cache.js";
 import { copyLayerMembers, createMixinLayer, installMixins, type Mixin, type MixinReceiver } from "./mixin.js";
 import {
@@ -522,6 +523,10 @@ function getExactWrapperClass(type: bigint, label?: string): AnyClass {
     return cls;
 }
 
+function isRegisteredType(type: bigint): boolean {
+    return classRegistry.has(type);
+}
+
 function resolveWrapperClass(type: bigint): AnyClass | null {
     let currentType = type;
 
@@ -651,6 +656,10 @@ function createWrapper(handle: ExternalObject<Handle>, fallbackClass?: () => Any
     }
 
     const cls = resolveComposedClass(runtimeType, fallbackClass);
+
+    if (fallbackClass === undefined) {
+        reportDroppedClass(runtimeType, isRegisteredType);
+    }
 
     if (!cls) {
         throw new Error(`Expected registered GLib type, got type ${String(runtimeType)}`);

@@ -270,6 +270,54 @@ describe("CLI commands", () => {
         expect(JSON.parse(result.stdout)).toEqual({ matched: true, matches: ["hello", "hello"], replaced: "[hello]" });
     });
 
+    it("warns once about a class a production bundle dropped, unless the app references it", async () => {
+        const buildEnumRow = async (itemCheck: string) => {
+            const project = createProject();
+            linkWorkspaceBindings(project.root);
+            project.write(
+                "src/index.tsx",
+                `import * as Adw from "@gtkx/gi/adw";
+                import * as GObject from "@gtkx/gi/gobject";
+                import * as Gtk from "@gtkx/gi/gtk";
+                import { AdwApplication, AdwApplicationWindow, AdwComboRow, AdwEnumListModel } from "@gtkx/jsx/adw";
+                import { GtkListBox } from "@gtkx/jsx/gtk";
+                import { createRoot } from "@gtkx/react";
+                const name = Gtk.ClosureExpression.new(GObject.TYPE_STRING, (item: GObject.Object) => ${itemCheck}, null);
+                createRoot().render(
+                    <AdwApplication applicationId="org.gtkx.droppedclass">
+                        <AdwApplicationWindow>
+                            <GtkListBox>
+                                <AdwComboRow
+                                    title="Easing"
+                                    model={<AdwEnumListModel enumType={GObject.typeFromName("AdwEasing")} />}
+                                    expression={name}
+                                    onMap={() => setTimeout(() => process.exit(0), 100)}
+                                />
+                            </GtkListBox>
+                        </AdwApplicationWindow>
+                    </AdwApplication>
+                );`,
+            );
+            await invoke(["build", "--cwd", project.root]);
+            return project;
+        };
+        using dropped = await buildEnumRow(`item.constructor.name`);
+        using referenced = await buildEnumRow(`item instanceof Adw.EnumListItem ? item.getName() : ""`);
+        const warnings = async (root: string) => {
+            const { stderr } = await promisify(execFile)(process.execPath, [join(root, "dist/bundle.mjs")], {
+                timeout: 30_000,
+            });
+            return stderr.split("\n").filter((line) => line.includes("Adw.EnumListItem"));
+        };
+        const stopDisplay = await startHeadlessDisplay(resolveHeadlessOptions({ size: "640x480" }));
+        try {
+            expect(await warnings(dropped.root)).toHaveLength(1);
+            expect(await warnings(referenced.root)).toHaveLength(0);
+        } finally {
+            stopDisplay();
+        }
+    });
+
     it("names the library to declare when a build imports bindings the store lacks", async () => {
         using project = createProject({ codegen: true, libraries: ["GLib-2.0"] });
         project.write(
