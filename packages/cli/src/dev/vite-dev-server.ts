@@ -47,6 +47,15 @@ const watchErrorPlugin = (): Plugin => ({
     },
 });
 
+const runnerUpdatesPlugin = (): Plugin => ({
+    name: "gtkx:runner-updates",
+    enforce: "post",
+
+    hotUpdate() {
+        return [];
+    },
+});
+
 const dependsOnRenderer = (manifest: Record<string, Record<string, string> | undefined>): boolean =>
     [manifest["dependencies"], manifest["peerDependencies"]].some(
         (dependencies) => dependencies !== undefined && Object.hasOwn(dependencies, "@gtkx/react"),
@@ -98,7 +107,7 @@ const createDevServerConfig = (
     root,
     appType: "custom",
     customLogger: logger,
-    plugins: [watchErrorPlugin(), rendererLibrariesPlugin(), ...plugins],
+    plugins: [watchErrorPlugin(), rendererLibrariesPlugin(), ...plugins, runnerUpdatesPlugin()],
     server: {
         middlewareMode: true,
         ws: false,
