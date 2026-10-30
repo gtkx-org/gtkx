@@ -12,6 +12,8 @@ import {
     GtkFrame,
     GtkLabel,
     GtkPaned,
+    GtkScrolledWindow,
+    GtkTextView,
 } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
 import { getWidgetText, render, screen, waitFor, within } from "@gtkx/testing";
@@ -223,6 +225,34 @@ describe("host-config - children", () => {
             await screen.findByText("Removable");
             await rerender(<RemovableChildBox shouldShowChild={false} />);
             expect(screen.queryByText("Removable")).toBeNull();
+        });
+
+        it("moves the focus out of a removed paned before detaching it", async () => {
+            const viewRef = createRef<Gtk.TextView>();
+            const panedRef = createRef<Gtk.Paned>();
+            const view = (isEditing: boolean) => (
+                <GtkBox>
+                    <GtkButton label="Outside" />
+                    {isEditing && (
+                        <GtkPaned
+                            ref={panedRef}
+                            startChild={
+                                <GtkScrolledWindow>
+                                    <GtkTextView ref={viewRef} />
+                                </GtkScrolledWindow>
+                            }
+                            endChild={<GtkLabel>Preview</GtkLabel>}
+                        />
+                    )}
+                </GtkBox>
+            );
+            const { rerender } = await render(view(true));
+            const paned = panedRef.current;
+            viewRef.current?.grabFocus();
+            expect(viewRef.current).toHaveFocus();
+            await rerender(view(false));
+            expect(paned?.getFocusChild()).toBeNull();
+            expect(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Outside" })).toHaveFocus();
         });
 
         it("clears child on single-child widget", async () => {

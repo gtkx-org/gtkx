@@ -16,6 +16,7 @@ import {
     flushDependentProps,
 } from "./apply-props.js";
 import { attachChild, detachChild } from "./child-routing.js";
+import { releaseFocus } from "./focus.js";
 import { resolveElementNode } from "./instance.js";
 import {
     type AnyNode,
@@ -114,6 +115,7 @@ const hostConfig = {
         attachToContainer(container, child, before);
     },
     removeChild: (parent: Instance, child: AnyNode): void => {
+        releaseFocus(child);
         detachSubtree(child);
         detachChild(parent, child);
     },
@@ -277,6 +279,7 @@ const attachToContainer = (container: Container, child: AnyNode, before: AnyNode
 };
 
 const detachFromContainer = (container: Container, child: AnyNode): void => {
+    releaseFocus(child);
     detachSubtree(child);
 
     if (!isRootElement(container)) {
