@@ -161,6 +161,18 @@ const Compose = () => {
 
 Dispatch the action supplied to the callback after confirmation. React Navigation documents the rest of the [removal guard lifecycle](https://reactnavigation.org/docs/preventing-going-back/).
 
+React Navigation 7 depends on `use-latest-callback` 0.2, which outside a browser updates the guard's callback in a passive effect. A passive effect that leaves the screen, such as `useEffect(() => { if (sent) navigation.goBack(); }, [sent])`, and runs before that update still sees the old `preventRemove` value, so the guard blocks a leave it should allow. Version 0.3 fixes this. Until React Navigation 7 accepts it, override the version: with npm, add it to `"overrides"` in `package.json`; with Yarn, to `"resolutions"`; with pnpm, to `overrides` in `pnpm-workspace.yaml`. For npm:
+
+```json
+{
+    "overrides": {
+        "use-latest-callback": "^0.3.5"
+    }
+}
+```
+
+Otherwise, call `usePreventRemove` before the effect that leaves the screen, so its callback updates first.
+
 ### Transition events
 
 Stack screens emit `transitionStart` and `transitionEnd` from their native page signals. Their `closing` value distinguishes a page leaving from one arriving. Screen `listeners` can observe them whether animation is enabled or disabled.
