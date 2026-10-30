@@ -19,7 +19,7 @@ See the [component reference](/v2/reference/@gtkx/components/) for props. Hooks 
 
 ### ListView
 
-`ListView<T, S>` wraps `Gtk.ListView`. Pass `items` as `{ id, value }` pairs plus a `renderItem`. Selection is controlled: update `selectedIds` from `onSelectionChanged` to retain the selection.
+`ListView<T, S>` wraps `Gtk.ListView`. Pass `items` as `{ id, value }` pairs plus a `renderItem`. Selection is controlled: update `selectedIds` from `onSelectionChanged` to retain the selection. Like a React input's `onChange`, `onSelectionChanged` reports what the user or the widget changes, not the `selectedIds` you pass in. It also reports the remaining selection when an item named by `selectedIds` is not in the list.
 
 ```tsx
 import { ListView } from "@gtkx/components";
@@ -36,7 +36,7 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 />
 ```
 
-Nesting `ListItem.children` turns the same component into an acyclic tree, with `expandedIds` and `onExpandedChange` driving expansion. Keep item IDs stable and unique across the collection, including nested items, since selection and expansion name rows by ID. Section IDs must be unique among sections.
+Nesting `ListItem.children` turns the same component into an acyclic tree, with `expandedIds` and `onExpandedChange` driving expansion the same way. Keep item IDs stable and unique across the collection, including nested items, since selection and expansion name rows by ID. Section IDs must be unique among sections.
 
 IDs also give rows their identity. When items are inserted, removed or reordered, GTK keeps every row whose ID stays among the same siblings bound, so its component state survives, and only new rows mount. A row that moves keeps its state in a flat list, grid, table or section; a tree row that moves among its siblings remounts, because GTK rebuilds its tree node. A reorder that moves more than about a thousand rows at once updates rows in place instead, and the rows that move there remount. An ID repeated among siblings pairs rows by their order.
 

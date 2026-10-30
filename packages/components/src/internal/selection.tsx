@@ -6,7 +6,7 @@ import type { Collection } from "./collection.js";
 import type { ItemsChangeHandler } from "./expansion.js";
 import type { MatchedRows } from "./tree-order.js";
 import { isCollectionIdle } from "./collection.js";
-import { useControlledSync } from "./controlled-sync.js";
+import { hasSameIds, useControlledSync } from "./controlled-sync.js";
 import { joinParts } from "./keys.js";
 
 type SelectionOptions = {
@@ -146,16 +146,27 @@ function applySelection(selection: Gtk.SelectionModel, positions: number[]): Gtk
     return selected;
 }
 
-function reportSelection(context: SelectionContext, ids: string[]): void {
+function rememberSelection(context: SelectionContext, ids: string[]): boolean {
     const key = joinParts(ids);
-
-    if (context.last.selection === context.selection && context.last.key === key) {
-        return;
-    }
-
+    const isKnown = context.last.selection === context.selection && context.last.key === key;
     context.last.selection = context.selection;
     context.last.key = key;
-    context.onSelectionChanged?.(ids);
+
+    return isKnown;
+}
+
+function reportSelection(context: SelectionContext, ids: string[]): void {
+    if (!rememberSelection(context, ids)) {
+        context.onSelectionChanged?.(ids);
+    }
+}
+
+function settleSelection(context: SelectionContext, ids: string[], selectedIds: string[]): void {
+    if (hasSameIds(ids, selectedIds)) {
+        rememberSelection(context, ids);
+    } else {
+        reportSelection(context, ids);
+    }
 }
 
 function hasSelectionDrifted(actual: number[], planned: number[]): boolean {
@@ -194,15 +205,16 @@ function applyControlledSelection(context: SelectionContext, selectedIds: string
         return;
     }
 
-    const planned = plannedSelection(context, selectedIds ?? []);
+    const requested = selectedIds ?? [];
+    const planned = plannedSelection(context, requested);
 
     if (planned !== null && didApplyPlanned(context, selection, planned.positions)) {
-        reportSelection(context, planned.ids);
+        settleSelection(context, planned.ids, requested);
 
         return;
     }
 
-    reportSelection(context, collection.idsAt(selectedPositions(selection)));
+    settleSelection(context, collection.idsAt(selectedPositions(selection)), requested);
 }
 
 function reportDrift(
@@ -225,16 +237,13 @@ function observeSelection(
 ): void {
     const { selection, collection, state } = context;
 
-    if (selection === null || state.isApplying) {
+    if (selection === null || state.isApplying || !isCollectionIdle(collection)) {
         return;
     }
 
     const positions = selectedPositions(selection);
     reportSelection(context, collection.idsAt(positions));
-
-    if (isCollectionIdle(collection)) {
-        reportDrift(context, selectedIds, positions, onDrift);
-    }
+    reportDrift(context, selectedIds, positions, onDrift);
 }
 
 function newLastSelection(): LastSelection {

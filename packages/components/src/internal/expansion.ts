@@ -3,7 +3,7 @@ import type { Collection } from "./collection.js";
 import type { TreeExpansion } from "./tree-expansion.js";
 import type { VisibleOrder, WalkOptions } from "./tree-order.js";
 import { isCollectionIdle } from "./collection.js";
-import { useControlledSync } from "./controlled-sync.js";
+import { hasSameIds, useControlledSync } from "./controlled-sync.js";
 import { joinParts } from "./keys.js";
 import { trackPaths } from "./slots.js";
 import { adoptOrder, markExpanded, orderFor } from "./tree-expansion.js";
@@ -91,16 +91,20 @@ function applyWanted(collection: Collection, expandedIds: string[]): void {
     }
 }
 
+function rememberExpansion(context: ExpansionContext, expandedPaths: string[]): boolean {
+    const key = joinParts(expandedPaths);
+    const isKnown = context.last.key === key;
+    context.last.key = key;
+
+    return isKnown;
+}
+
 function reportExpansion(context: ExpansionContext): void {
     const { expandedIds, expandedPaths } = orderFor(context.collection.expansion);
-    const key = joinParts(expandedPaths);
 
-    if (context.last.key === key) {
-        return;
+    if (!rememberExpansion(context, expandedPaths)) {
+        context.onExpandedChange?.([...expandedIds]);
     }
-
-    context.last.key = key;
-    context.onExpandedChange?.([...expandedIds]);
 }
 
 function applyControlledExpansion(context: ExpansionContext, expandedIds: string[] | null | undefined): void {
@@ -108,8 +112,15 @@ function applyControlledExpansion(context: ExpansionContext, expandedIds: string
         return;
     }
 
-    applyWanted(context.collection, expandedIds ?? []);
-    reportExpansion(context);
+    const requested = expandedIds ?? [];
+    applyWanted(context.collection, requested);
+    const order = orderFor(context.collection.expansion);
+
+    if (hasSameIds(order.expandedIds, requested)) {
+        rememberExpansion(context, order.expandedPaths);
+    } else {
+        reportExpansion(context);
+    }
 }
 
 function didRowDrift(collection: Collection, change: ItemsChange): boolean {

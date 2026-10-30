@@ -116,7 +116,10 @@ type SelectionProps = {
      * user's selection is adopted into it.
      */
     selectedIds?: string[] | null | undefined;
-    /** Called with one id per selected row whenever the selection changes, and once on mount. */
+    /**
+     * Called with one id per selected row when the user or the widget changes the selection, or when an item
+     * `selectedIds` names is not in the collection; a `selectedIds` change is not reported back.
+     */
     onSelectionChanged?: ((ids: string[]) => void) | null | undefined;
     /** How much the user may select, one item at a time unless `MULTIPLE` or `NONE` is given. */
     selectionMode?: Gtk.SelectionMode | null | undefined;
@@ -141,7 +144,10 @@ type ExpansionProps = {
      * user's expansion is adopted into it.
      */
     expandedIds?: string[] | null | undefined;
-    /** Called with one id per expanded row, in visible order, whenever expansion changes. */
+    /**
+     * Called with one id per expanded row, in visible order, when the user or the widget changes expansion, or
+     * when a row `expandedIds` names cannot expand; an `expandedIds` change is not reported back.
+     */
     onExpandedChange?: ((ids: string[]) => void) | null | undefined;
     /**
      * Wording announced for the expander of every row that can expand, describing what activating it does.

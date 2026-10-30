@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import type { TreeName } from "./helpers/trees.js";
 import { expanderCount, expanderNamed, listRowByName } from "./helpers/expanders.js";
 import { renderListView, renderStatefulListView } from "./helpers/list-fixtures.js";
-import { expectRowTexts, rowTexts } from "./helpers/row-texts.js";
+import { expectRowTexts } from "./helpers/row-texts.js";
 import { ScrollWrapper } from "./helpers/scroll-wrapper.js";
 import { getSelectionModel, getTreeRow } from "./helpers/selection-model.js";
 import { treeBranch, treeLeaf } from "./helpers/trees.js";
@@ -76,14 +76,27 @@ const expectNoDescription = (names: string[]): void => {
 };
 
 describe("ListView tree expansion", () => {
-    it("draws the children of the rows expandedIds names and follows the prop", async () => {
-        const { ref, rerender } = await renderListView<TreeName>(parentWithChildren, { expandedIds: [] });
-        expect(rowTexts(ref.current)).toEqual(["Parent"]);
-        expect(listRowByName("Parent")).toHaveObjectProperty("expandable", true);
-        await rerender(parentWithChildren, { expandedIds: ["parent"] });
+    it("draws the children of the rows expandedIds names and follows the prop without reporting it back", async () => {
+        const reported: string[][] = [];
+        const options = { expandedIds: ["parent"], onExpandedChange: (ids: string[]) => reported.push(ids) };
+        const { ref, rerender } = await renderListView<TreeName>(parentWithChildren, options);
         await expectRowTexts(ref, ["Parent", "Child 1", "Child 2"]);
-        await rerender(parentWithChildren, { expandedIds: [] });
+        await rerender(parentWithChildren, { ...options, expandedIds: [] });
         await expectRowTexts(ref, ["Parent"]);
+        expect(listRowByName("Parent")).toHaveObjectProperty("expandable", true);
+        await rerender(parentWithChildren, { ...options, expandedIds: ["parent"] });
+        await expectRowTexts(ref, ["Parent", "Child 1", "Child 2"]);
+        expect(reported).toEqual([]);
+    });
+
+    it("reports an expanded row that leaves the tree", async () => {
+        const reported: string[][] = [];
+        const options = { expandedIds: ["parent"], onExpandedChange: (ids: string[]) => reported.push(ids) };
+        const { ref, rerender } = await renderListView<TreeName>(parentWithChildren, options);
+        await expectRowTexts(ref, ["Parent", "Child 1", "Child 2"]);
+        await rerender([treeBranch("other", [treeLeaf("kid")])], options);
+        await expectRowTexts(ref, ["other"]);
+        expect(reported).toEqual([[]]);
     });
 
     it("draws exactly one expander on each row of a single-column tree", async () => {

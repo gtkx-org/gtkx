@@ -1,8 +1,9 @@
 import type { ListItem, ListItemRenderer } from "@gtkx/components";
 import type { ReactNode } from "react";
+import { ListView } from "@gtkx/components";
 import * as Gtk from "@gtkx/gi/gtk";
-import { GtkLabel } from "@gtkx/jsx/gtk";
-import { act, screen, userEvent, waitFor } from "@gtkx/testing";
+import { GtkBox, GtkLabel } from "@gtkx/jsx/gtk";
+import { act, render, screen, userEvent, waitFor } from "@gtkx/testing";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import {
@@ -46,6 +47,33 @@ const countedItems = (offset: number): ListItem<{ count: number }>[] => [
     { id: "1", value: { count: offset } },
     { id: "2", value: { count: offset * 2 } },
 ];
+
+function LateSelection({ reported }: { reported: string[][] }): ReactNode {
+    const [rowId, setRowId] = useState("1");
+    const [openId, setOpenId] = useState("1");
+
+    return (
+        <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+            <GtkLabel>{`open:${openId}`}</GtkLabel>
+            <ListView
+                items={firstSecondItems}
+                selectedIds={[rowId === openId ? rowId : openId]}
+                onSelectionChanged={(ids) => {
+                    reported.push(ids);
+                    const [id] = ids;
+
+                    if (id !== undefined && reported.length < 20) {
+                        setRowId(id);
+                        queueMicrotask(() => {
+                            setOpenId(id);
+                        });
+                    }
+                }}
+                renderItem={({ item }) => <GtkLabel>{item.name}</GtkLabel>}
+            />
+        </GtkBox>
+    );
+}
 
 describe("ListView", () => {
     it("draws a row per item and follows insertions, removals and value changes", async () => {
@@ -148,21 +176,38 @@ describe("ListView rendering", () => {
 });
 
 describe("ListView selection", () => {
-    it("selects the row named by selectedIds and reports what it selected", async () => {
-        let selectedIds: string[] = [];
-        const onSelectionChanged = (ids: string[]): void => {
-            selectedIds = ids;
-        };
-        const { ref, rerender } = await renderListView(firstSecondItems, { selected: ["2"], onSelectionChanged });
+    it("selects the row named by selectedIds without reporting it back", async () => {
+        const reported: string[][] = [];
+        const options = { selected: ["2"], onSelectionChanged: (ids: string[]) => reported.push(ids) };
+        const { ref, rerender } = await renderListView(firstSecondItems, options);
         const model = getSelectionModel(ref);
-        expect(selectedIds).toEqual(["2"]);
 
         await waitFor(() => {
             expect(model.isSelected(1)).toBe(true);
         });
 
-        await rerender(firstSecondItems, { selected: [] });
+        await rerender(firstSecondItems, { ...options, selected: ["1"] });
+
+        await waitFor(() => {
+            expect(model.isSelected(0)).toBe(true);
+        });
+
+        await rerender(firstSecondItems, { ...options, selected: [] });
+        expect(model.getSelection().getSize()).toBe(0n);
         expect(labelTexts(ref.current)).toEqual(["First", "Second"]);
+        expect(reported).toEqual([]);
+    });
+
+    it("settles when selectedIds catches up with a reported selection a commit late", async () => {
+        const reported: string[][] = [];
+        await render(<LateSelection reported={reported} />);
+        await userEvent.click(await screen.findByText("Second"));
+
+        await waitFor(() => {
+            expect(screen.queryAllByText("open:2")).toHaveLength(1);
+        });
+
+        expect(reported).toEqual([["2"]]);
     });
 
     it.each([
@@ -314,11 +359,11 @@ describe("ListView selection across many rows", () => {
             expect(selection.getMaximum()).toBe(hundredItems.length - 1);
         });
 
-        expect(selectedIds).toEqual(everyId);
+        expect(selectedIds).toEqual([]);
     });
 
     it("narrows a whole-list selection to scattered rows and then to none", async () => {
-        let selectedIds: string[] = [];
+        let selectedIds: string[] | null = null;
         const onSelectionChanged = (ids: string[]): void => {
             selectedIds = ids;
         };
@@ -336,14 +381,13 @@ describe("ListView selection across many rows", () => {
             expect(selection.contains(99)).toBe(true);
         });
 
-        expect(selectedIds).toEqual(scattered);
         await rerender(hundredItems, { ...options, selected: [] });
 
         await waitFor(() => {
             expect(getSelectionModel(ref).getSelection().getSize()).toBe(0n);
         });
 
-        expect(selectedIds).toEqual([]);
+        expect(selectedIds).toBeNull();
     });
 });
 

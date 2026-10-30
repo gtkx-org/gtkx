@@ -76,7 +76,7 @@ const secondExpandedRows = [...collapsedRows, "Child 3"];
 const secondOnlyRows = ["H:Two", "Solo 2", "Parent 2", "Child 3"];
 const soloSectionRows = ["H:One", "Parent 1", "Child 1", "Child 2", "Solo 1"];
 const mirrorExpandedRows = ["H:Three", "Parent 3", "Child 4", "Solo 3"];
-const soloPosition = 1;
+const secondSoloPosition = 2;
 
 function leaf(id: string, name: string): ListItem<Named> {
     return { id, value: { name } };
@@ -215,18 +215,13 @@ describe("ListView sections", () => {
     });
 
     it("selects the row named by selectedIds once a section arrives", async () => {
-        let selectedIds: string[] = [];
-        const onSelectionChanged = (ids: string[]): void => {
-            selectedIds = ids;
-        };
-        const from = { groups: firstSectionOnly, expandedIds: ["p1"] };
-        const { ref, to } = await renderFixture(from, { onSelectionChanged });
-        await to({ groups: sections, expandedIds: [], selectedIds: ["x1"] });
+        const from = { groups: firstSectionOnly, expandedIds: ["p1"], selectedIds: ["x2"] };
+        const { ref, to } = await renderFixture(from);
+        await to({ groups: sections, expandedIds: [], selectedIds: ["x2"] });
         await expectRowTexts(ref, collapsedRows);
 
         await waitFor(() => {
-            expect(selectedPositions(ref)).toEqual([soloPosition]);
-            expect(selectedIds).toEqual(["x1"]);
+            expect(selectedPositions(ref)).toEqual([secondSoloPosition]);
         });
     });
 });
@@ -258,19 +253,13 @@ describe("ListView sectioned trees", () => {
         await expectRowTexts(ref, secondOnlyRows);
     });
 
-    it("collapses a nested row when expandedIds empties and reports it", async () => {
-        let expandedIds: string[] = ["p1"];
-        const onExpandedChange = (ids: string[]): void => {
-            expandedIds = ids;
-        };
+    it("collapses a nested row when expandedIds empties without reporting it back", async () => {
+        const reported: string[][] = [];
         const from = { groups: firstSectionOnly, expandedIds: ["p1"] };
-        const { ref, to } = await renderFixture(from, { onExpandedChange });
+        const { ref, to } = await renderFixture(from, { onExpandedChange: (ids) => reported.push(ids) });
         await to({ groups: sections, expandedIds: [] });
         await expectRowTexts(ref, collapsedRows);
-
-        await waitFor(() => {
-            expect(expandedIds).toEqual([]);
-        });
+        expect(reported).toEqual([]);
     });
 
     it("expands and reports the row whose sectioned expander is clicked", async () => {

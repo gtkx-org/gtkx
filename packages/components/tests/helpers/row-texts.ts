@@ -18,4 +18,4 @@ const expectRowTexts = (ref: RefObject<Gtk.Widget | null>, expected: (string | n
         expect(rowTexts(ref.current)).toEqual(expected);
     });
 
-export { expectRowTexts, labelTexts, rowTexts };
+export { expectRowTexts, labelTexts };

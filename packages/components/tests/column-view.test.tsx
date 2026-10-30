@@ -330,14 +330,13 @@ describe("ColumnView sorting", () => {
 });
 
 describe("ColumnView selection", () => {
-    it("applies a selectedIds change after mount and reports it once", async () => {
+    it("applies a selectedIds change after mount without reporting it back", async () => {
         const selectionChanges: string[][] = [];
         const onSelectionChanged = (ids: string[]): void => {
             selectionChanges.push(ids);
         };
         const options = { columns: personColumns, selectionMode: Gtk.SelectionMode.MULTIPLE, onSelectionChanged };
         const { ref, rerender } = await renderColumnView(personRows(null), { ...options, selected: [] });
-        selectionChanges.length = 0;
         await rerender(personRows(null), { ...options, selected: ["Charlie", "Bob"] });
 
         await waitFor(() => {
@@ -348,7 +347,7 @@ describe("ColumnView selection", () => {
             expect(model.isSelected(2)).toBe(true);
         });
 
-        expect(selectionChanges).toEqual([["Charlie", "Bob"]]);
+        expect(selectionChanges).toEqual([]);
     });
 });
 
