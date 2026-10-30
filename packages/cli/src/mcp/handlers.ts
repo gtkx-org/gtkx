@@ -171,7 +171,7 @@ const interact = async (ctx: HandlerContext, testing: TestingModule, run: () => 
     try {
         await run();
     } catch (cause) {
-        if (!testing.isUncaughtError(cause)) {
+        if (testing.isUsageError(cause)) {
             throw cause;
         }
 
@@ -179,6 +179,10 @@ const interact = async (ctx: HandlerContext, testing: TestingModule, run: () => 
 
         for (const error of errors) {
             ctx.reportUncaughtError(error);
+        }
+
+        if (!testing.isUncaughtError(cause)) {
+            throw cause;
         }
 
         throw new Error(errors.map((error) => errorMessage(error)).join("\n"), { cause });

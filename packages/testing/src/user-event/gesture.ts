@@ -8,6 +8,7 @@ import { runInAct } from "../act.js";
 import { findControllerOwner } from "./controller.js";
 import { dispatchOnControllers, dispatchOnOrCreateControllers } from "./dispatch.js";
 import { wrapPointerEvent } from "./event-wrapper.js";
+import { usageError } from "../usage-error.js";
 
 /** The value delivered to a drop target: a primitive (converted to a GObject.Value) or an explicit GObject.Value. */
 type DropContent = string | number | boolean | GObject.Value;
@@ -217,10 +218,12 @@ const resolveDragUpdates = (dx: number, dy: number, options: DragOptions): DragO
 /** Drags a widget by an offset. */
 const drag = async (widget: Gtk.Widget, dx: number, dy: number, options: DragOptions = {}): Promise<void> => {
     if (widget instanceof Gtk.Range) {
-        throw new TypeError(
-            "userEvent.drag cannot drive a Gtk.Range's built-in slider " +
-                "(its drag reads pointer coordinates from the display); " +
-                "use userEvent.slide(range, value) or userEvent.keyboard for sliders",
+        throw usageError(
+            new TypeError(
+                "userEvent.drag cannot drive a Gtk.Range's built-in slider " +
+                    "(its drag reads pointer coordinates from the display); " +
+                    "use userEvent.slide(range, value) or userEvent.keyboard for sliders",
+            ),
         );
     }
 
@@ -271,7 +274,7 @@ const resolveDragEnvironment = (widget: Gtk.Widget, content: DropContent | undef
     const device = widget.getDisplay().getDefaultSeat()?.getPointer() ?? null;
 
     if (surface === null || device === null) {
-        throw new Error("The drag source has no surface or pointer device");
+        throw usageError(new Error("The drag source has no surface or pointer device"));
     }
 
     return {
@@ -285,13 +288,13 @@ const beginDragSource = (source: Gtk.DragSource, environment: DragEnvironment): 
     const provider = source.emit("prepare", 0, 0) ?? source.getContent() ?? environment.fallback;
 
     if (provider === undefined) {
-        throw new Error("The drag source did not provide content");
+        throw usageError(new Error("The drag source did not provide content"));
     }
 
     const drag = Gdk.Drag.begin(environment.surface, environment.device, provider, source.getActions(), 0, 0);
 
     if (drag === null) {
-        throw new Error("The display refused to begin the drag");
+        throw usageError(new Error("The display refused to begin the drag"));
     }
 
     return { source, drag };

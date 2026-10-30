@@ -7,6 +7,7 @@ import { getEditableDelegate } from "../editable.js";
 import { fireEvent } from "../fire-event.js";
 import { ancestors, descendants } from "../traversal.js";
 import { wrapEvent } from "./event-wrapper.js";
+import { usageError } from "../usage-error.js";
 
 /** Options for `userEvent.tab`. */
 type TabOptions = {
@@ -99,7 +100,7 @@ const parseKeyToken = (token: string): { keyval: number; isPress: boolean; isRel
     const keyval = KEY_MAP[keyName];
 
     if (keyval === undefined) {
-        throw new Error(`Unknown key: {${keyName}}`);
+        throw usageError(new Error(`Unknown key: {${keyName}}`));
     }
 
     return { keyval, isPress, isRelease };
@@ -182,7 +183,7 @@ const parseTypedStepAt = (input: string, i: number): TypedParseStep => {
     const brace = parseBraceAt(input, i);
 
     if (brace === null) {
-        throw new Error(`Unclosed key descriptor at ${String(i)} in "${input}"; type a literal { as {{`);
+        throw usageError(new Error(`Unclosed key descriptor at ${String(i)} in "${input}"; type a literal { as {{`));
     }
 
     return { step: { actions: brace.actions }, next: brace.next };

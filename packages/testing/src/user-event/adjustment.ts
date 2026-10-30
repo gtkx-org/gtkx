@@ -2,6 +2,7 @@ import * as Gtk from "@gtkx/gi/gtk";
 import { scheduleNextFrame } from "../frame-sync.js";
 import { getTypeTag } from "../widget-getters.js";
 import { wrapPointerEvent } from "./event-wrapper.js";
+import { usageError } from "../usage-error.js";
 
 /** A scroll distance in pixels along each axis. */
 type ScrollDelta = {
@@ -20,7 +21,9 @@ type ScrollAdjustments = {
 const slide = (widget: Gtk.Widget, value: number): Promise<void> =>
     wrapPointerEvent(widget, () => {
         if (!(widget instanceof Gtk.Range)) {
-            throw new TypeError(`userEvent.slide requires a Gtk.Range (e.g. Gtk.Scale), got ${getTypeTag(widget)}`);
+            throw usageError(
+                new TypeError(`userEvent.slide requires a Gtk.Range (e.g. Gtk.Scale), got ${getTypeTag(widget)}`),
+            );
         }
 
         widget.emit("change-value", Gtk.ScrollType.JUMP, value);
@@ -76,8 +79,10 @@ const scroll = (widget: Gtk.Widget, delta: ScrollDelta): Promise<void> =>
         const adjustments = resolveScrollAdjustments(widget);
 
         if (!adjustments) {
-            throw new Error(
-                "userEvent.scroll: no Gtk.ScrolledWindow or Gtk.Scrollable found on the widget or its ancestors",
+            throw usageError(
+                new Error(
+                    "userEvent.scroll: no Gtk.ScrolledWindow or Gtk.Scrollable found on the widget or its ancestors",
+                ),
             );
         }
 

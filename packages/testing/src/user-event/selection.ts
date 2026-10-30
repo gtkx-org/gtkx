@@ -10,6 +10,7 @@ import {
     selectContainerChild,
     unselectContainerChild,
 } from "./indexed-children.js";
+import { usageError } from "../usage-error.js";
 
 type CollectionWidget = Gtk.ListView | Gtk.GridView | Gtk.ColumnView;
 type IndexedChildAction = (container: Gtk.Widget, child: Gtk.Widget) => void;
@@ -58,11 +59,13 @@ const selectDropDownOption = (widget: Gtk.Widget, valueArray: number[]): void =>
     const setSelected = getIndexSelector(widget);
 
     if (!setSelected) {
-        throw new TypeError("Cannot select options: the COMBO_BOX role needs a widget exposing setSelected");
+        throw usageError(
+            new TypeError("Cannot select options: the COMBO_BOX role needs a widget exposing setSelected"),
+        );
     }
 
     if (valueArray.length > 1) {
-        throw new Error("Cannot select multiple options: a drop-down only supports single selection");
+        throw usageError(new Error("Cannot select multiple options: a drop-down only supports single selection"));
     }
 
     const [selection] = valueArray;
@@ -92,7 +95,7 @@ const requireSelectionModel = (widget: CollectionWidget, verb: string): Gtk.Sele
     const selectionModel = widget.getModel();
 
     if (selectionModel === null) {
-        throw new Error(`Cannot ${verb} options: list view has no selection model`);
+        throw usageError(new Error(`Cannot ${verb} options: list view has no selection model`));
     }
 
     return selectionModel;
@@ -106,7 +109,9 @@ const selectInListView = (widget: CollectionWidget, valueArray: number[]): void 
 
 const requireSelectableRole = (widget: Gtk.Widget, verb: string): void => {
     if (!isSelectable(widget)) {
-        throw new Error(`Cannot ${verb} options: expected selectable widget (${formatRoleList(SELECTABLE_ROLES)})`);
+        throw usageError(
+            new Error(`Cannot ${verb} options: expected selectable widget (${formatRoleList(SELECTABLE_ROLES)})`),
+        );
     }
 };
 
@@ -121,7 +126,7 @@ const selectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     }
 
     if (!hasIndexedChildren(widget)) {
-        throw new TypeError("Cannot select options: the widget exposes no children to select by index");
+        throw usageError(new TypeError("Cannot select options: the widget exposes no children to select by index"));
     }
 
     applyIndexedChildren(widget, valueArray, selectContainerChild);
@@ -161,7 +166,7 @@ const deselectByRole = (widget: Gtk.Widget, valueArray: number[]): void => {
     requireSelectableRole(widget, "deselect");
 
     if (!hasIndexedChildren(widget)) {
-        throw new TypeError("Cannot deselect options: the widget exposes no children to deselect by index");
+        throw usageError(new TypeError("Cannot deselect options: the widget exposes no children to deselect by index"));
     }
 
     applyIndexedChildren(widget, valueArray, unselectChildRow);

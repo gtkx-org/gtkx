@@ -8,6 +8,7 @@ import { ancestors } from "../traversal.js";
 import { getWidgetAccessibleName } from "../widget-accessible-properties.js";
 import { getTypeTag, isDefaultWidgetName } from "../widget-getters.js";
 import { isWindowAllocated, isWindowBlockedByModal } from "../window-state.js";
+import { usageError } from "../usage-error.js";
 
 const NOT_SENSITIVE = "it is not sensitive (the widget or one of its ancestors is disabled)";
 const NOT_ROOTED = "it is not inside a toplevel (it was removed from the widget tree, or was never added to one)";
@@ -117,9 +118,11 @@ const waitForActionable = async (widget: Gtk.Widget, findFailure: FailureFinder)
     }
 
     if (failure !== null) {
-        throw new Error(
-            `Cannot dispatch user event: ${describeWidget(widget)} did not become actionable ` +
-                `within ${String(timeout)}ms because ${failure}`,
+        throw usageError(
+            new Error(
+                `Cannot dispatch user event: ${describeWidget(widget)} did not become actionable ` +
+                    `within ${String(timeout)}ms because ${failure}`,
+            ),
         );
     }
 };

@@ -11,4 +11,5 @@ export { isUncaughtError } from "./act.js";
 export { cleanup, render } from "./production.js";
 export { renderChildren, type ChildrenBuilder } from "./render-children.js";
 export { getWidgetAccessibleName } from "./widget-accessible-properties.js";
+export { isUsageError } from "./usage-error.js";
 export { getTypeTag } from "./widget-getters.js";

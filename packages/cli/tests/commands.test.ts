@@ -1531,6 +1531,49 @@ describe("CLI commands", () => {
         });
     });
 
+    it("reports a signal handler's error from an MCP click like one from a real click, but not a misused tool", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        writeWidgetApp(
+            project,
+            readyPath,
+            `import { GtkButton } from "@gtkx/jsx/gtk";
+            export const Content = () => (
+                <GtkButton label="Save" onClicked={() => { throw new Error("Saving the card failed"); }} />
+            );`,
+        );
+        await withMcpClient(project.root, async (client) => {
+            const session = spawn(
+                process.execPath,
+                [join(project.root, "node_modules/@gtkx/cli/bin/gtkx.js"), "dev", "--headless", "--size", "640x480"],
+                {
+                    cwd: project.root,
+                    env: Object.fromEntries(
+                        Object.entries(process.env).filter(
+                            ([name]) => !name.startsWith("VITEST") && name !== "DISPLAY",
+                        ),
+                    ),
+                },
+            );
+            let output = "";
+            session.stdout.on("data", (chunk: Buffer) => (output += chunk.toString()));
+            session.stderr.on("data", (chunk: Buffer) => (output += chunk.toString()));
+            const exited = once(session, "exit");
+            try {
+                await expect.poll(() => existsSync(readyPath), { timeout: 60_000 }).toBe(true);
+                const [button] = await queryWidgets(client, { by: "role", value: "button", options: { name: "Save" } });
+                const misused = await callTool(client, "gtkx_type", { widgetId: button?.id, text: "typed" });
+                expect(misused.isError).toBe(true);
+                expect((await callTool(client, "gtkx_click", { widgetId: button?.id })).isError).toBe(true);
+                await expect.poll(() => output, { timeout: 10_000 }).toContain("Saving the card failed");
+                expect(output).not.toContain(misused.text);
+            } finally {
+                session.kill("SIGTERM");
+                await exited;
+            }
+        });
+    });
+
     it("presses keys through MCP on a widget or the focused widget", async () => {
         using project = createProject();
         const readyPath = join(project.root, "ready.txt");

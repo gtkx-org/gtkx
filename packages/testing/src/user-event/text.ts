@@ -6,6 +6,7 @@ import type { UserEventState } from "./state.js";
 import { callBooleanGetter } from "../widget-getters.js";
 import { wrapEvent } from "./event-wrapper.js";
 import { applyKeyActions, characterActions, parseTypedInput, type TypedStep } from "./keyboard.js";
+import { usageError } from "../usage-error.js";
 
 type SignalWatchTarget = {
     on(signal: string, handler: (...args: unknown[]) => unknown, isAfter?: boolean): unknown;
@@ -193,7 +194,7 @@ const runEditableEvent = (
 ): Promise<void> =>
     wrapEvent(widget, () => {
         if (!isEditable(widget)) {
-            throw new Error(`${failure}: ${EDITABLE_REQUIRED}`);
+            throw usageError(new Error(`${failure}: ${EDITABLE_REQUIRED}`));
         }
 
         return action(widget);
@@ -251,11 +252,11 @@ const hasProtectedText = (widget: EditableTarget): boolean =>
 
 const requireClearableText = (editable: EditableTarget): void => {
     if (!isWidgetEditable(editable)) {
-        throw new Error("Cannot clear element: the widget is not editable");
+        throw usageError(new Error("Cannot clear element: the widget is not editable"));
     }
 
     if (hasProtectedText(editable)) {
-        throw new Error(CLEAR_REFUSED);
+        throw usageError(new Error(CLEAR_REFUSED));
     }
 };
 
@@ -297,7 +298,7 @@ const clearEditable = (editable: EditableTarget): void => {
     }
 
     if (!didDeleteAllText(editable)) {
-        throw new Error(CLEAR_REFUSED);
+        throw usageError(new Error(CLEAR_REFUSED));
     }
 };
 
@@ -315,7 +316,7 @@ const runClipboardEvent = (widget: Gtk.Widget, signal: "copy-clipboard" | "cut-c
         const target = editable instanceof Gtk.TextView ? editable : getDelegateText(editable);
 
         if (target === null) {
-            throw new TypeError("The editable widget has no native clipboard action");
+            throw usageError(new TypeError("The editable widget has no native clipboard action"));
         }
 
         target.emit(signal);
@@ -324,7 +325,7 @@ const runClipboardEvent = (widget: Gtk.Widget, signal: "copy-clipboard" | "cut-c
 /** Pastes text or clipboard contents. */
 const paste = async (widget: Gtk.Widget, text?: string): Promise<void> => {
     if (!isEditable(widget)) {
-        throw new Error(`Cannot paste: ${EDITABLE_REQUIRED}`);
+        throw usageError(new Error(`Cannot paste: ${EDITABLE_REQUIRED}`));
     }
 
     const content = text ?? (await widget.getClipboard().readTextAsync(null)) ?? "";

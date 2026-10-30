@@ -1,5 +1,6 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import { requireWidget } from "../widget-target.js";
+import { usageError } from "../usage-error.js";
 
 /** An event controller class that can be constructed without arguments, such as `Gtk.GestureClick`. */
 type ControllerConstructor<T extends Gtk.EventController> = new () => T;
@@ -57,7 +58,7 @@ const getAllControllers = <T extends Gtk.EventController>(
     const controllers = queryAllControllers(widget, controllerType);
 
     if (controllers.length === 0) {
-        throw new Error(`No ${controllerType.name} controller is attached to the widget`);
+        throw usageError(new Error(`No ${controllerType.name} controller is attached to the widget`));
     }
 
     return controllers;
@@ -77,7 +78,7 @@ const getController = <T extends Gtk.EventController>(
     const controller = queryController(widget, controllerType);
 
     if (controller === null) {
-        throw new Error(`No ${controllerType.name} controller is attached to the widget`);
+        throw usageError(new Error(`No ${controllerType.name} controller is attached to the widget`));
     }
 
     return controller;
@@ -104,7 +105,7 @@ const findControllerOwner = <T extends Gtk.EventController>(
         widget = widget.getParent();
     }
 
-    throw new Error(`No ${controllerType.name} controller is attached to the widget or its ancestors`);
+    throw usageError(new Error(`No ${controllerType.name} controller is attached to the widget or its ancestors`));
 };
 
 const getOrCreateControllers = <T extends Gtk.EventController>(
