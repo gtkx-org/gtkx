@@ -73,6 +73,8 @@ The [tutorial](/v2/tutorial/) follows development on `main` and may use APIs add
 | `npm start`      | Run that production bundle with Node.js                             |
 | `npm run deploy` | Build a distributable package; see [Deploying](/v2/guide/deploying) |
 
+With pnpm, run the last one as `pnpm run deploy`, because `pnpm deploy` is pnpm's built-in command.
+
 The production bundle still needs the native runtime libraries. Packaging can supply a Node.js runtime and desktop integration files.
 
 ## Project structure

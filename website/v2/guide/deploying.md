@@ -81,6 +81,8 @@ From a scaffolded project on Fedora, preview an RPM:
 npm run deploy -- --target rpm --print-manifests
 ```
 
+With pnpm, run `pnpm run deploy --target rpm --print-manifests`; `pnpm deploy` is pnpm's built-in command and does not run the script.
+
 Use `--target deb` on Debian or Ubuntu. The preview writes the generated metadata to `build/<arch>/metadata/` and the
 package manifests to `build/<arch>/targets/` for review.
 
