@@ -124,7 +124,8 @@ describe("scaffold command", () => {
             `#!${process.execPath}\nimport { appendFileSync, readFileSync, writeFileSync } from "node:fs";\nif (process.argv[2] === "--version") process.exit(0);\nappendFileSync(${JSON.stringify(join(directory.path, "install.log"))}, process.argv.slice(3).join(" ") + "\\n");\nconst catalog = ["react", "vitest"];\nconst manifest = JSON.parse(readFileSync("package.json", "utf8"));\nconst field = process.argv.includes("-D") ? "devDependencies" : "dependencies";\nmanifest[field] ??= {};\nfor (const spec of process.argv.slice(4).filter((arg) => !arg.startsWith("-"))) {\n    const at = spec.lastIndexOf("@");\n    const name = at > 0 ? spec.slice(0, at) : spec;\n    const range = spec.slice(at + 1);\n    manifest[field][name] = at < 1 ? (catalog.includes(spec) ? "catalog:" : "^1.0.0") : range === "latest" ? "^1.0.0" : range;\n}\nwriteFileSync("package.json", JSON.stringify(manifest));\nprocess.exit(process.env.pnpm_config_strict_dep_builds === "false" ? 0 : 1);\n`,
             { mode: 0o755 },
         );
-        const workspace = "packages:\n  - apps/*\ncatalog:\n  react: ^18.3.0\n  vitest: ^4.0.0\nallowBuilds:\n  esbuild: true\n";
+        const workspace =
+            "packages:\n  - apps/*\ncatalog:\n  react: ^18.3.0\n  vitest: ^4.0.0\nallowBuilds:\n  esbuild: true\n";
         writeFileSync(join(directory.path, "pnpm-workspace.yaml"), workspace);
         const target = join(directory.path, "apps/example");
         const { status, output } = await create(target, ["--no-skip-install", "--package-manager", "pnpm"]);
