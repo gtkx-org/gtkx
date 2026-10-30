@@ -31,7 +31,7 @@ const appimageTarget: DeployTarget = {
     prefix: PREFIX,
     isHostOnly: true,
     tools: [FILE_TOOL],
-    render: (payload) => renderManifests(payload),
+    render: (payload) => Promise.try(() => renderManifests(payload)),
     pack: (payload) => packAppImage(payload),
 };
 

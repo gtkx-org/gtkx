@@ -42,7 +42,7 @@ const resolveBuilder = (): BuilderInvocation => {
 
 const isSourceMode = (settings: DeploySettings): boolean => settings.deploy.flatpak?.mode === "source";
 
-const renderManifests = (payload: DeployPayload): DeployManifest[] => {
+const renderManifests = async (payload: DeployPayload): Promise<DeployManifest[]> => {
     const settings = payload.settings;
 
     if (isSourceMode(settings)) {
@@ -53,7 +53,7 @@ const renderManifests = (payload: DeployPayload): DeployManifest[] => {
     return [
         {
             path: manifestPathFor(settings),
-            contents: stringify(renderFlatpakManifest(payload), { lineWidth: 0 }),
+            contents: stringify(await renderFlatpakManifest(payload), { lineWidth: 0 }),
         },
     ];
 };

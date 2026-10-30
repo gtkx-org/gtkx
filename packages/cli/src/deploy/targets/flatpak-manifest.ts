@@ -89,9 +89,9 @@ const sdkExtensionsFor = (settings: DeploySettings): string[] => {
     return [...nodeExtension, ...(flatpak.sdkExtensions ?? [])];
 };
 
-const modulesFor = (payload: DeployPayload): unknown[] => {
+const modulesFor = async (payload: DeployPayload): Promise<unknown[]> => {
     const settings = payload.settings;
-    const own = isSourceMode(settings) ? flatpakSourceModule(payload) : flatpakPrebuiltModule(payload);
+    const own = isSourceMode(settings) ? await flatpakSourceModule(payload) : flatpakPrebuiltModule(payload);
 
     return [...(settings.deploy.flatpak?.modules ?? []), own];
 };
@@ -116,7 +116,7 @@ const runtimeLabelFor = (settings: DeploySettings): string => {
     return `${flatpak.runtime ?? DEFAULT_RUNTIME}//${flatpak.runtimeVersion ?? DEFAULT_RUNTIME_VERSION}`;
 };
 
-const renderFlatpakManifest = (payload: DeployPayload): FlatpakManifest => {
+const renderFlatpakManifest = async (payload: DeployPayload): Promise<FlatpakManifest> => {
     const settings = payload.settings;
 
     return {
@@ -126,7 +126,7 @@ const renderFlatpakManifest = (payload: DeployPayload): FlatpakManifest => {
         "finish-args": finishArgsFor(settings),
         cleanup: cleanupFor(settings),
         ...when(!isSourceMode(settings), { "separate-locales": false }),
-        modules: modulesFor(payload),
+        modules: await modulesFor(payload),
     };
 };
 

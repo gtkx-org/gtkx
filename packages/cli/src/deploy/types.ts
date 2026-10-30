@@ -171,7 +171,7 @@ type DeployTarget = {
     prefix: string;
     isHostOnly: boolean;
     tools: DeployTool[];
-    render: (payload: DeployPayload) => DeployManifest[];
+    render: (payload: DeployPayload) => Promise<DeployManifest[]>;
     pack: (payload: DeployPayload, manifests: DeployManifest[]) => Promise<DeployArtifact[]>;
 };
 

@@ -487,14 +487,14 @@ const buildArchPayload = async ({ options, plan, settings, metadata }: BuildPayl
     };
 };
 
-const renderTargetManifests = (
+const renderTargetManifests = async (
     targets: DeployTarget[],
     payload: DeployPayload,
-): Map<DeployTarget, DeployManifest[]> => {
+): Promise<Map<DeployTarget, DeployManifest[]>> => {
     const rendered: Map<DeployTarget, DeployManifest[]> = new Map();
 
     for (const target of targets) {
-        const manifests = target.render(payload);
+        const manifests = await target.render(payload);
 
         for (const manifest of manifests) {
             writeManifest(manifest);
@@ -537,7 +537,7 @@ const deployArch = async (request: ArchRunRequest): Promise<DeployArtifact[]> =>
     const { options, plan, arch, metadata } = request;
     const settings = settingsFor(plan, options, arch);
     const payload = await buildArchPayload({ options, plan, settings, metadata });
-    const rendered = renderTargetManifests(plan.targets, payload);
+    const rendered = await renderTargetManifests(plan.targets, payload);
 
     if (options.shouldPrintManifests) {
         const count = rendered.values().toArray().flat().length;

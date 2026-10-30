@@ -210,7 +210,9 @@ commit. Source builds use Node.js from the SDK extension.
 Install [`flatpak-node-generator`](https://github.com/flatpak/flatpak-builder-tools/blob/master/node/README.md)
 for dependency preparation, including previews. GTKX detects npm, pnpm, or yarn from the lockfile. A pnpm
 project needs a generator with `--pnpm-store-version`. Explicit pnpm pins support major versions 10, 11
-(11.3.0 or later), and 12. The `packageManager` field must include an integrity digest.
+(11.3.0 or later), and 12. The `packageManager` field must include an integrity digest. For pnpm 12, which
+runs as a native binary, the manifest also vendors that binary for each architecture, with checksums read from
+the npm registry when the manifest is generated.
 
 Keep the generated Flatpak manifest and `generated-sources.json` together, and regenerate them after dependency
 changes.

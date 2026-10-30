@@ -22,6 +22,7 @@ import { promisify } from "node:util";
 import { stdout, stderr } from "test-console";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createVitest } from "vitest/node";
+import { parse } from "yaml";
 import { createCommand } from "../dist/command.js";
 import { createProject, linkWorkspaceBindings } from "./project.js";
 
@@ -956,6 +957,64 @@ describe("CLI commands", () => {
             "utf8",
         );
         expect(notices).toContain(nodeLicense);
+    });
+
+    it("renders a source Flatpak that installs with pnpm 12's native binary and keeps workers", async () => {
+        using project = createProject({
+            applicationIcon: "icon.svg",
+            deploy: {
+                name: "CLI Example",
+                summary: "Exercises the source Flatpak manifest",
+                categories: ["Utility"],
+                description: ["An example application used to exercise a Flathub source manifest."],
+                developer: { id: "dev.gtkx", name: "GTKX", email: "hello@gtkx.dev" },
+                license: "MIT",
+                homepage: "https://gtkx.dev",
+                releases: [{ version: "1.0.0", date: "2026-10-30" }],
+                contentRating: {},
+                flatpak: {
+                    mode: "source",
+                    source: { url: "https://example.org/cli-example.git", commit: "0".repeat(40) },
+                },
+            },
+        });
+        project.write("LICENSE", "MIT License\nCopyright GTKX\nPermission is hereby granted, free of charge.\n");
+        project.write("pnpm-lock.yaml", "lockfileVersion: '9.0'\n\nimporters:\n\n  .: {}\n");
+        project.write(
+            "icon.svg",
+            '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="blue"/></svg>',
+        );
+        await invoke(["deploy", "--cwd", project.root, "--print-manifests", "--target", "flatpak"]);
+        const manifest = parse(
+            readFileSync(join(project.root, "build", process.arch, "targets/flatpak/org.gtkx.example.yml"), "utf8"),
+        ) as { modules: { sources: Record<string, unknown>[]; "build-commands": string[] }[] };
+        const module = manifest.modules.at(-1);
+        const nativeBinaries = module?.sources
+            .filter((source) => String(source.url).includes("/@pnpm/exe."))
+            .map((source) => ({
+                type: source.type,
+                url: source.url,
+                hasDigest: /^[\da-f]{128}$/.test(String(source.sha512)),
+                onlyArches: source["only-arches"],
+            }));
+        expect(nativeBinaries).toEqual([
+            {
+                type: "archive",
+                url: "https://registry.npmjs.org/@pnpm/exe.linux-arm64/-/exe.linux-arm64-12.4.2.tgz",
+                hasDigest: true,
+                onlyArches: ["aarch64"],
+            },
+            {
+                type: "archive",
+                url: "https://registry.npmjs.org/@pnpm/exe.linux-x64/-/exe.linux-x64-12.4.2.tgz",
+                hasDigest: true,
+                onlyArches: ["x86_64"],
+            },
+        ]);
+        expect(module?.["build-commands"].some((command) => command.startsWith("test ! -d dist/workers ||"))).toBe(
+            true,
+        );
+        expect(JSON.stringify(module)).not.toContain("pnpm.cjs");
     });
 
     it("preserves arguments, configuration, translations and MCP across headless dev restarts", async () => {

@@ -257,4 +257,4 @@ function gtkxWorker(root: string): Plugin {
     };
 }
 
-export { gtkxWorker };
+export { gtkxWorker, WORKER_DIR };

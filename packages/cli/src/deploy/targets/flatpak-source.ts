@@ -7,6 +7,7 @@ import { BUILD_NOTICES_FILENAME } from "../../internal/build-manifest.js";
 import { FONTS_DIR } from "../../internal/font-path.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
 import { BUNDLE_FILENAME } from "../../vite-plugins/esm-extension.js";
+import { WORKER_DIR } from "../../vite-plugins/worker.js";
 import { renderDbusService } from "../freedesktop/dbus-service.js";
 import { BINDING_FILENAME } from "../native-addon.js";
 import { optional } from "../nfpm/optional.js";
@@ -15,7 +16,7 @@ import { executableModeFor } from "../payload/copy-tree.js";
 import { iconPathFor } from "../payload/icons.js";
 import { renderLauncher } from "../payload/launcher.js";
 import { licenseDestination, nodeLicenseDestination, NOTICES_FILENAME, noticesDestination } from "../payload/stage.js";
-import { pnpmPathFor, type PnpmPin, pnpmSources } from "./flatpak-pnpm.js";
+import { pnpmPathFor, type PnpmPin, pnpmSetupCommands, pnpmSources } from "./flatpak-pnpm.js";
 import { DESTINATION, type FlatpakModule, postInstallCommands, validationCommands } from "./flatpak-prebuilt.js";
 import {
     detectPackageManager,
@@ -71,6 +72,7 @@ const runtimeInstallCommands = (settings: DeploySettings, nodeExtensionPath: str
         "test ! -f dist/gschemas.compiled || " +
             installCommand("dist/gschemas.compiled", `${lib}/gschemas.compiled`, "m644"),
         `test ! -d dist/assets || cp -a dist/assets ${lib}/assets`,
+        `test ! -d dist/${WORKER_DIR} || cp -a dist/${WORKER_DIR} ${lib}/${WORKER_DIR}`,
         `test ! -d dist/${FONTS_DIR} || cp -a dist/${FONTS_DIR} ${lib}/${FONTS_DIR}`,
         `test ! -d dist/${LOCALE_DIRNAME} || { mkdir -p ${locale} && cp -a dist/${LOCALE_DIRNAME}/. ${locale}/; }`,
         installCommand(LAUNCHER_FILENAME, `${DESTINATION}/bin/${settings.binaryName}`, "m755"),
@@ -265,7 +267,7 @@ const sourceBuildCommand = (settings: DeploySettings): string => {
     return `npx gtkx build --config ${pathArgument(configFile)}`;
 };
 
-const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
+const flatpakSourceModule = async (payload: DeployPayload): Promise<FlatpakModule> => {
     const settings = payload.settings;
     const manager = detectPackageManager(settings);
     const pin = pnpmPinFor(settings, manager);
@@ -283,7 +285,7 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
         },
         sources: [
             resolveGitSource(settings),
-            ...(pin === null ? [] : pnpmSources(pin, moduleDirFor(settings))),
+            ...(pin === null ? [] : await pnpmSources(pin, moduleDirFor(settings))),
             GENERATED_SOURCES,
             ...stagedMetadataSources(payload),
             inlineSource(LAUNCHER_FILENAME, renderLauncher(settings)),
@@ -295,6 +297,7 @@ const flatpakSourceModule = (payload: DeployPayload): FlatpakModule => {
             ...activationSource(settings),
         ],
         "build-commands": [
+            ...(pin === null ? [] : pnpmSetupCommands(pin)),
             installCommandFor(settings, manager),
             sourceBuildCommand(settings),
             ...runtimeInstallCommands(settings, nodeExtensionPath),
