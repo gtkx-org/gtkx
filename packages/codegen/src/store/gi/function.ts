@@ -228,29 +228,12 @@ const appendInitBootstrap = (context: ModuleContext, exportName: string): void =
     context.addBootstrapCall(`${exportName}();`, { moduleExports: [exportName] });
 };
 
-const appendFinalizeBootstrap = (context: ModuleContext, exportName: string): void => {
-    context.addBootstrapCall(`onExit(${exportName});`, {
-        moduleExports: [exportName],
-        runtimeImports: ["onExit"],
-    });
-};
-
 const isCallableWithoutArguments = (context: ModuleContext, fn: GirFunction): boolean =>
     inputParameters(context.library, fn).every(({ parameter }) => parameter.optional);
 
 const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, exportName: string): void => {
-    if (!isCallableWithoutArguments(context, fn)) {
-        return;
-    }
-
-    if (fn.name === "init") {
+    if (fn.name === "init" && isCallableWithoutArguments(context, fn)) {
         appendInitBootstrap(context, exportName);
-
-        return;
-    }
-
-    if (fn.name === "finalize") {
-        appendFinalizeBootstrap(context, exportName);
     }
 };
 

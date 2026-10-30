@@ -624,6 +624,15 @@ describe("generated bindings", () => {
         expect(JSON.parse(initialized)).toEqual([true, "function"]);
     });
 
+    it("leaves library teardown to process exit", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["GtkSource-5"], girPath: resolveGirPath(undefined, directory.path), gi });
+        const bootstrap = readFileSync(join(gi.linkDir, "gtksource", "bootstrap.js"), "utf8");
+        expect(bootstrap).toContain("init();");
+        expect(bootstrap).not.toContain("finalize");
+    });
+
     it("rejects missing and malformed metadata without publishing a store", async () => {
         using directory = createProject();
         const { gi } = resolveStore(directory.path);

@@ -76,7 +76,7 @@ Concurrent generation waits up to ten minutes for each binding-store lock. Use `
 
 ### Library initialization
 
-Importing a namespace initializes its library. When its GIR declares a top-level `init` function that can be called without arguments, such as `Gtk.init()`, `Adw.init()`, `GtkSource.init()` or `Gst.init()`, the namespace calls it as it loads, before any namespace that depends on it, and registers a matching `finalize` function to run when the app quits. GStreamer apps can therefore import `@gtkx/gi/gst` and plugin namespaces such as `@gtkx/gi/gstpbutils` in any order without calling `Gst.init()` first. A later `Gst.init(argv)` call does nothing, so pass GStreamer options through environment variables such as `GST_DEBUG`.
+Importing a namespace initializes its library. When its GIR declares a top-level `init` function that can be called without arguments, such as `Gtk.init()`, `Adw.init()`, `GtkSource.init()` or `Gst.init()`, the namespace calls it as it loads, before any namespace that depends on it. GStreamer apps can therefore import `@gtkx/gi/gst` and plugin namespaces such as `@gtkx/gi/gstpbutils` in any order without calling `Gst.init()` first. A later `Gst.init(argv)` call does nothing, so pass GStreamer options through environment variables such as `GST_DEBUG`. Library teardown functions such as `GtkSource.finalize()` are never called; the process releases the libraries when it exits.
 
 ### Production bindings
 
