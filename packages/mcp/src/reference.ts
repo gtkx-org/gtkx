@@ -159,8 +159,10 @@ const findProjectRoot = (start: string): string | undefined => {
     return parent === current ? undefined : findProjectRoot(parent);
 };
 
+const projectRootOf = (path: string): string => findProjectRoot(path) ?? resolve(path);
+
 const projectAt = (candidate: string, source: ProjectSource): ResolvedProject => ({
-    root: findProjectRoot(candidate) ?? resolve(candidate),
+    root: projectRootOf(candidate),
     source,
 });
 
@@ -566,4 +568,10 @@ const registerReferenceResources = (server: ResourceServer, provider: ReferenceP
     registerSymbolResource(server, provider);
 };
 
-export { createReferenceProvider, buildReferenceTools, registerReferenceResources, type ReferenceProvider };
+export {
+    createReferenceProvider,
+    buildReferenceTools,
+    projectRootOf,
+    registerReferenceResources,
+    type ReferenceProvider,
+};

@@ -26,6 +26,7 @@ type DevRunnerDeps = {
     createServer(config: InlineConfig): Promise<ViteDevServer>;
     waitForApplicationId(timeoutMs: number, shouldKeepWaiting: () => boolean): Promise<string | null>;
     applicationId: string;
+    mcpApplicationId: string;
     startMcpClient(applicationId: string, loadAppModule: LoadAppModule): Promise<unknown>;
     stopMcpClient(): void;
     reportApplicationError(cause: unknown): void;
@@ -781,9 +782,9 @@ const refusedExitCode = (): number => (process.exitCode === undefined ? 1 : Numb
 
 const connectApplication = async (session: DevSession): Promise<void> => {
     const { deps, server } = session;
-    const { applicationId } = deps;
-    deps.log(`Connected application ID: ${applicationId}`);
-    await deps.startMcpClient(applicationId, (id) => loadModuleExclusively(server, id));
+    const { mcpApplicationId } = deps;
+    deps.log(`Connected application ID: ${mcpApplicationId}`);
+    await deps.startMcpClient(mcpApplicationId, (id) => loadModuleExclusively(server, id));
 };
 
 const stopForStoppedApplication = async (session: DevSession, registrationState: ApplicationState): Promise<void> => {

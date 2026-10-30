@@ -95,7 +95,7 @@ it("invokes the button callback", async () => {
 });
 ```
 
-Pass shared preview configuration as the second argument to `composeStories`. Native queries, events, screenshots, and cleanup come from `@gtkx/testing`. A running explorer also exposes the [GTKX MCP server](/v2/guide/mcp) for live widget inspection and interaction.
+Pass shared preview configuration as the second argument to `composeStories`. Native queries, events, screenshots, and cleanup come from `@gtkx/testing`. A running explorer also exposes the [GTKX MCP server](/v2/guide/mcp) for live widget inspection and interaction. The explorer's application ID is the project's ID with a `.Storybook` suffix, so it can run alongside `gtkx dev`; pass that ID as `applicationId` to target the explorer.
 
 ## Lifecycle and compatibility
 

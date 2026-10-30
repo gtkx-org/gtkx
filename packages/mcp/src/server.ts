@@ -28,6 +28,7 @@ import {
 import {
     buildReferenceTools,
     createReferenceProvider,
+    projectRootOf,
     type ReferenceProvider,
     registerReferenceResources,
 } from "./reference.js";
@@ -94,8 +95,9 @@ const INSTRUCTIONS =
     "fast refresh patches a component, re-read the tree or re-run the query instead of reusing an ID.";
 
 const APPLICATION_ID_DESCRIPTION =
-    "Application ID to query. If not specified, uses the first connected app. The tool waits briefly for the " +
-    "requested app to register.";
+    "Application ID to query. If not specified, uses the connected app from this server's project, or the first " +
+    "connected app when none is from it. `gtkx storybook` registers its explorer under the project's ID with a " +
+    "`.Storybook` suffix. The tool waits briefly for the requested app to register.";
 
 const APP_TIMEOUT_DESCRIPTION = "Milliseconds to wait for the requested app to register (default: 10000).";
 
@@ -545,9 +547,13 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
         log.warn(`MCP socket path exceeds the safe Unix byte budget; using private fallback ${socketPath}`);
     }
 
+    const workingDirectory = (): string => options.cwd ?? process.cwd();
     const registry = new ConnectionRegistry();
     const socketServer = new SocketServer(registry, socketAddress);
-    const appRouter = new AppRouter(registry);
+    const appRouter = new AppRouter(
+        registry,
+        (projectRoot) => projectRootOf(projectRoot) === projectRootOf(workingDirectory()),
+    );
     registry.addEventListener("error", logSocketError);
 
     appRouter.addEventListener("appRegistered", (event) => {
@@ -562,7 +568,7 @@ const createMcpServer = (options: CreateMcpServerOptions): McpServerHandle => {
     const mcpServer = new McpServer({ name: "gtkx-mcp", version: options.version }, { instructions: INSTRUCTIONS });
     const referenceProvider = createReferenceProvider({
         getAppRoot: () => appRouter.getProjectRoot(),
-        getWorkingDirectory: () => options.cwd ?? process.cwd(),
+        getWorkingDirectory: workingDirectory,
     });
     registerTools(mcpServer, appRouter, referenceProvider, options.settings ?? DEFAULT_SETTINGS);
     registerReferenceResources(mcpServer, referenceProvider);

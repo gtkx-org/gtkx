@@ -2,6 +2,10 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
 
+const STORYBOOK_APPLICATION_ID_SUFFIX = ".Storybook";
+
+const storybookApplicationId = (applicationId: string): string => `${applicationId}${STORYBOOK_APPLICATION_ID_SUFFIX}`;
+
 const assertStorybookInstalled = (root: string): void => {
     try {
         createRequire(resolve(root, "package.json")).resolve("@gtkx/storybook/package.json");
@@ -19,7 +23,7 @@ const createStorybookEntry = (root: string): string => {
     const source = [
         'import { startStorybook } from "@gtkx/storybook/explorer";',
         'import { applicationId } from "virtual:gtkx-config";',
-        "const explorer = startStorybook({ applicationId });",
+        `const explorer = startStorybook({ applicationId: applicationId + ${JSON.stringify(STORYBOOK_APPLICATION_ID_SUFFIX)} });`,
         "export const updateStories = explorer.updateStories;",
         "export const reportStorybookError = explorer.reportStorybookError;",
         "",
@@ -30,4 +34,4 @@ const createStorybookEntry = (root: string): string => {
     return path;
 };
 
-export { assertStorybookInstalled, createStorybookEntry };
+export { assertStorybookInstalled, createStorybookEntry, storybookApplicationId };

@@ -25,6 +25,7 @@ import { type CatalogWrites, createCatalogWrites } from "./catalog-writes.js";
 
 type DevRunnerDepsOptions = {
     applicationId: string;
+    mcpApplicationId: string;
     loadConfig: ConfigLoader;
     mcpSocketPath?: string | undefined;
     staging: ProjectStaging;
@@ -111,6 +112,7 @@ const createDevRunnerDeps = (
     createServer,
     waitForApplicationId,
     applicationId: options.applicationId,
+    mcpApplicationId: options.mcpApplicationId,
     startMcpClient: (applicationId, loadAppModule) => {
         setTestingModuleLoader(async () => {
             const [publicApi, internals] = await Promise.all([

@@ -17,6 +17,7 @@ import { type AppInfo, RegisterParamsSchema } from "./protocol/schemas.js";
 type AppRegisteredEvent = CustomEvent<AppInfo>;
 type AppUnregisteredEvent = CustomEvent<string>;
 type PendingAppWait = { reject: (error: Error) => void };
+type ProjectMatcher = (projectRoot: string) => boolean;
 
 type RegisteredApp = {
     info: AppInfo;
@@ -53,9 +54,12 @@ class AppRouter extends EventTarget {
 
     private isDisposed = false;
 
-    constructor(connections: AppConnections) {
+    private isServerProject: ProjectMatcher;
+
+    constructor(connections: AppConnections, isServerProject: ProjectMatcher) {
         super();
         this.connections = connections;
+        this.isServerProject = isServerProject;
         this.connections.onRequest = (connection, request) => this.handleRequest(connection, request);
 
         this.connections.addEventListener("disconnection", (event) => {
@@ -187,9 +191,12 @@ class AppRouter extends EventTarget {
     }
 
     getDefaultApp(): RegisteredApp | undefined {
-        const first = this.apps.values().next();
+        const apps = [...this.apps.values()];
+        const fromServerProject = apps.find(
+            ({ info }) => info.projectRoot !== undefined && this.isServerProject(info.projectRoot),
+        );
 
-        return first.done ? undefined : first.value;
+        return fromServerProject ?? apps[0];
     }
 
     getProjectRoot(): string | undefined {

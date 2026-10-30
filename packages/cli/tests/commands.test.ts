@@ -1248,6 +1248,37 @@ describe("CLI commands", () => {
         });
     });
 
+    it("registers the storybook explorer with MCP under its own application ID", async () => {
+        using project = createProject({ codegen: true });
+        const readyPath = join(project.root, "ready.txt");
+        project.write(".storybook/main.mts", 'export default { stories: ["stories/**/*.stories.tsx"] };');
+        project.write(
+            "stories/example.stories.tsx",
+            `import { writeFileSync } from "node:fs";
+            writeFileSync(${JSON.stringify(readyPath)}, "ready");
+            export default { title: "Example" }; export const Empty = { render: () => null };`,
+        );
+        const socketPath = join(project.root, "mcp.sock");
+        vi.stubEnv("GTKX_MCP_SOCKET_PATH", socketPath);
+        const [clientTransport, transport] = InMemoryTransport.createLinkedPair();
+        const server = createMcpServer({ transport, socketPath, version: "1.0.0" });
+        const client = new Client({ name: "storybook-registration-test", version: "1.0.0" });
+        try {
+            await server.start();
+            await client.connect(clientTransport);
+            await withSession("storybook", project.root, readyPath, async () => {
+                const apps = await client.callTool({
+                    name: "gtkx_list_apps",
+                    arguments: { waitForApps: true, timeout: 30_000 },
+                });
+                expect(JSON.stringify(apps)).toContain("org.gtkx.example.Storybook");
+            });
+        } finally {
+            await client.close();
+            await server.stop();
+        }
+    });
+
     it("reports actionable deployment configuration errors", async () => {
         using project = createProject();
         await expect(invoke(["deploy", "--cwd", project.root, "--print-manifests"])).rejects.toThrow("deploy");

@@ -2,6 +2,7 @@ import { ensureStoreLinks } from "@gtkx/codegen/internal";
 import { createConfigLoader } from "@gtkx/config/internal";
 import { resolve } from "node:path";
 import { createProjectStaging } from "../internal/project-staging.js";
+import { storybookApplicationId } from "../storybook/entry.js";
 import { receiveDevRunnerBootstrap } from "./bootstrap.js";
 import { prepareDevFontDir } from "./font-dir.js";
 import { prepareDevIconDir } from "./icon-dir.js";
@@ -35,6 +36,8 @@ const main = async (): Promise<void> => {
     const runner = createDevRunner(
         defaultDevRunnerDeps(configFile, config.deploy?.outDir, {
             applicationId: config.applicationId,
+            mcpApplicationId:
+                storybookConfig === undefined ? config.applicationId : storybookApplicationId(config.applicationId),
             loadConfig,
             mcpSocketPath,
             staging,

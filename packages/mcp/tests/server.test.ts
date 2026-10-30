@@ -97,6 +97,41 @@ describe("MCP server", () => {
         }
     });
 
+    it("routes requests without an application ID to the app from the server's project", async () => {
+        await using session = await openServer();
+        const other = mkdtempDisposableSync(join(tmpdir(), "gtkx-mcp-other-"));
+        const apps = [
+            { applicationId: "org.gtkx.other", projectRoot: other.path },
+            { applicationId: "org.gtkx.project", projectRoot: session.root },
+        ];
+        const connections = await Promise.all(
+            apps.map(async (app) => {
+                const socket = createConnection(session.socketPath);
+                await once(socket, "connect");
+                const connection = ProtocolConnection.fromSocket(socket, {
+                    onClose: () => undefined,
+                    onError: () => undefined,
+                });
+                connection.fallbackRequestHandler = () => Promise.resolve({ tree: app.applicationId });
+                return connection;
+            }),
+        );
+        try {
+            for (const [index, app] of apps.entries()) {
+                await connections[index]?.send("app.register", { ...app, pid: process.pid });
+            }
+            expect(await textResult(session.client, "gtkx_get_widget_tree")).toBe("org.gtkx.project");
+            expect(await textResult(session.client, "gtkx_get_widget_tree", { applicationId: "org.gtkx.other" })).toBe(
+                "org.gtkx.other",
+            );
+            await connections[1]?.send("app.unregister");
+            expect(await textResult(session.client, "gtkx_get_widget_tree")).toBe("org.gtkx.other");
+        } finally {
+            await Promise.all(connections.map((connection) => connection.close()));
+            other[Symbol.dispose]();
+        }
+    });
+
     it("enforces tool selection and reports requests without an application", async () => {
         await using session = await openServer({
             settings: { tools: ["gtkx_*", "!gtkx_take_screenshot"], isReadOnly: true },
