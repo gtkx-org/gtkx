@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import * as Adw from "@gtkx/gi/adw";
 import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
-import { AdwPreferencesGroup } from "@gtkx/jsx/adw";
+import { AdwDialog, AdwPreferencesGroup } from "@gtkx/jsx/adw";
 import { GSimpleAction } from "@gtkx/jsx/gio";
 import { GtkApplication, GtkApplicationWindow, GtkBox, GtkButton, GtkEntry, GtkLabel, GtkWindow } from "@gtkx/jsx/gtk";
 import { rootElement } from "@gtkx/react";
@@ -17,6 +17,7 @@ import {
     queryAllByRole,
     render,
     screen,
+    userEvent,
     waitFor,
     type WrapperComponent,
 } from "@gtkx/testing";
@@ -318,6 +319,22 @@ describe("render window activation", () => {
         );
 
         expectFocusedEntry();
+    });
+
+    it("hands activation to a dialog rendered on its own, so keys move focus inside it", async () => {
+        await render(
+            <AdwDialog title="Rename">
+                <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                    <AutoFocusedEntry />
+                    <GtkButton name="rename" label="Rename" />
+                </GtkBox>
+            </AdwDialog>,
+        );
+
+        expectFocusedEntry();
+        const entry = screen.getByPlaceholderText("Search tasks");
+        await userEvent.keyboard(entry, "{Tab}");
+        expect(screen.getByName("rename")).toHaveFocus();
     });
 
     it("reports it as focused when rendering into a window the caller presented", async () => {

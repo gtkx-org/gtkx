@@ -1,7 +1,7 @@
 import type { Root, RootElement } from "@gtkx/react";
 import * as Gtk from "@gtkx/gi/gtk";
 import { createRoot } from "@gtkx/react";
-import { isRootElement, settleAccessible } from "@gtkx/react/internal";
+import { isRootElement, ParentWindowContext, settleAccessible } from "@gtkx/react/internal";
 import { type ErrorInfo, type ReactNode, StrictMode } from "react";
 import type { RenderResult } from "./bound-queries.js";
 import type { QueryMap, RenderOptions, ScreenshotOptions } from "./types.js";
@@ -9,7 +9,7 @@ import { runInAct, runWithActEnvironment } from "./act.js";
 import { addToCleanupQueue, runCleanup, runCleanupCallbacks } from "./cleanup-registry.js";
 import { getConfig } from "./config.js";
 import { scheduleWhenWindowReady } from "./frame-sync.js";
-import { createHarnessWindow, presentHarnessWindow } from "./harness-window.js";
+import { createHarnessWindow, presentHarnessTransients, presentHarnessWindow } from "./harness-window.js";
 import { logWidget, type PrettyWidgetOptions } from "./pretty-widget.js";
 import { logRoles } from "./role-helpers.js";
 import { clearScreen, setScreen } from "./screen.js";
@@ -193,11 +193,13 @@ const applyEnableAnimations = (areAnimationsEnabled: boolean): void => {
  * Renders React into native widgets and returns queries, debug helpers, and lifecycle controls.
  *
  * @remarks
- * Without a container, creates and presents a harness window. Its initially focused editable
- * keeps its text unselected, with the caret at the end.
+ * Without a container, creates and presents a harness window, which the tree sees as its parent
+ * window. Windows the tree opens over it, such as an Adwaita dialog rendered on its own, are shown
+ * again after it, so the topmost one is active as in a running application. Initially focused
+ * editables keep their text unselected, with the caret at the end.
  *
  * Waits for layout and activation before resolving, so focus and other platform state can be
- * read immediately. A new harness waits for its own activation; a caller-owned or rendered
+ * read immediately. A new harness waits for its topmost window's activation; a caller-owned or rendered
  * window waits for application activation, since only presentation can claim it. A container
  * that is not shown requires no activation wait.
  *
@@ -233,15 +235,22 @@ const render = async <Q extends QueryMap = Record<never, never>>(
 
     const wrap = (node: ReactNode): ReactNode => {
         const wrapped = Wrapper ? <Wrapper>{node}</Wrapper> : node;
+        const hosted =
+            resolved.window === null ? (
+                wrapped
+            ) : (
+                <ParentWindowContext.Provider value={resolved.window}>{wrapped}</ParentWindowContext.Provider>
+            );
 
-        return options?.isReactStrictMode ? <StrictMode>{wrapped}</StrictMode> : wrapped;
+        return options?.isReactStrictMode ? <StrictMode>{hosted}</StrictMode> : hosted;
     };
 
     await flushRender(active, () => {
         root.render(wrap(element));
     });
-    presentHarnessWindow(resolved.window);
+    const transients = presentHarnessWindow(resolved.window);
     await settleRender(resolved, options?.container, "render");
+    await settleWindow(realizedWindow(presentHarnessTransients(transients)), findPresentedWindowFailure, "render");
     const container = resolveResultContainer(resolved, options?.container, baseElement);
 
     const result: RenderResult<Q> = {

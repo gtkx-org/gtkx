@@ -23,6 +23,8 @@ export { createCustomLayoutComponent } from "./components/custom-layout.js";
 /** @internal */
 export { createWindowComponent } from "./components/window.js";
 export { settleAccessible } from "./hooks/use-accessible-map.js";
+/** @internal */
+export { ParentWindowContext } from "./hooks/use-parent-window.js";
 export { useLatestRef } from "./hooks/use-latest-ref.js";
 export { useMergedRef } from "./hooks/use-merged-refs.js";
 export type {
