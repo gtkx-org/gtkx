@@ -26,6 +26,7 @@ type RegisteredApp = {
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 const DEFAULT_APP_TIMEOUT_MS = 10_000;
+const STORYBOOK_APPLICATION_ID_SUFFIX = ".Storybook";
 
 const routerStoppedError = (): Error => new Error("GTKX MCP server stopped while waiting for an application");
 
@@ -192,11 +193,15 @@ class AppRouter extends EventTarget {
 
     getDefaultApp(): RegisteredApp | undefined {
         const apps = [...this.apps.values()];
-        const fromServerProject = apps.find(
+        const fromServerProject = apps.filter(
             ({ info }) => info.projectRoot !== undefined && this.isServerProject(info.projectRoot),
         );
 
-        return fromServerProject ?? apps[0];
+        return (
+            fromServerProject.find(({ info }) => !info.applicationId.endsWith(STORYBOOK_APPLICATION_ID_SUFFIX)) ??
+            fromServerProject[0] ??
+            apps[0]
+        );
     }
 
     getProjectRoot(): string | undefined {

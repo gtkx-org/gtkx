@@ -98,7 +98,7 @@ const INSTRUCTIONS =
 const APPLICATION_ID_DESCRIPTION =
     "Application ID to query. If not specified, uses the connected app from this server's project, or the first " +
     "connected app when none is from it. `gtkx storybook` registers its explorer under the project's ID with a " +
-    "`.Storybook` suffix. The tool waits briefly for the requested app to register.";
+    "`.Storybook` suffix; the project's app is preferred over it. The tool waits briefly for the requested app to register.";
 
 const APP_TIMEOUT_DESCRIPTION = "Milliseconds to wait for the requested app to register (default: 10000).";
 

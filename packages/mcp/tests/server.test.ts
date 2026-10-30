@@ -97,11 +97,12 @@ describe("MCP server", () => {
         }
     });
 
-    it("routes requests without an application ID to the app from the server's project", async () => {
+    it("routes requests without an application ID to the app from the server's project before its Storybook explorer", async () => {
         await using session = await openServer();
         const other = mkdtempDisposableSync(join(tmpdir(), "gtkx-mcp-other-"));
         const apps = [
             { applicationId: "org.gtkx.other", projectRoot: other.path },
+            { applicationId: "org.gtkx.project.Storybook", projectRoot: session.root },
             { applicationId: "org.gtkx.project", projectRoot: session.root },
         ];
         const connections = await Promise.all(
@@ -124,6 +125,8 @@ describe("MCP server", () => {
             expect(await textResult(session.client, "gtkx_get_widget_tree", { applicationId: "org.gtkx.other" })).toBe(
                 "org.gtkx.other",
             );
+            await connections[2]?.send("app.unregister");
+            expect(await textResult(session.client, "gtkx_get_widget_tree")).toBe("org.gtkx.project.Storybook");
             await connections[1]?.send("app.unregister");
             expect(await textResult(session.client, "gtkx_get_widget_tree")).toBe("org.gtkx.other");
         } finally {
