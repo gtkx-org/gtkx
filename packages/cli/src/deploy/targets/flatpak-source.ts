@@ -3,6 +3,7 @@ import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { posix, relative, resolve } from "node:path";
 import type { DeployPayload, DeploySettings } from "../types.js";
 import { LOCALE_DIRNAME } from "../../i18n/catalogs.js";
+import { I18N_RUNTIME_CONFIG_FILENAME } from "../../i18n/runtime-config.js";
 import { BUILD_NOTICES_FILENAME } from "../../internal/build-manifest.js";
 import { FONTS_DIR } from "../../internal/font-path.js";
 import { listFilesRecursive } from "../../internal/list-files.js";
@@ -15,7 +16,14 @@ import { renderNotices } from "../notices/render.js";
 import { executableModeFor } from "../payload/copy-tree.js";
 import { iconPathFor } from "../payload/icons.js";
 import { renderLauncher } from "../payload/launcher.js";
-import { licenseDestination, nodeLicenseDestination, NOTICES_FILENAME, noticesDestination } from "../payload/stage.js";
+import {
+    i18nConfigDestination,
+    licenseDestination,
+    nodeLicenseDestination,
+    NOTICES_FILENAME,
+    noticesDestination,
+    renderInstalledI18nConfig,
+} from "../payload/stage.js";
 import { pnpmPathFor, type PnpmPin, pnpmSetupCommands, pnpmSources } from "./flatpak-pnpm.js";
 import { DESTINATION, type FlatpakModule, postInstallCommands, validationCommands } from "./flatpak-prebuilt.js";
 import {
@@ -75,6 +83,8 @@ const runtimeInstallCommands = (settings: DeploySettings, nodeExtensionPath: str
         `test ! -d dist/${WORKER_DIR} || cp -a dist/${WORKER_DIR} ${lib}/${WORKER_DIR}`,
         `test ! -d dist/${FONTS_DIR} || cp -a dist/${FONTS_DIR} ${lib}/${FONTS_DIR}`,
         `test ! -d dist/${LOCALE_DIRNAME} || { mkdir -p ${locale} && cp -a dist/${LOCALE_DIRNAME}/. ${locale}/; }`,
+        `test ! -f dist/${I18N_RUNTIME_CONFIG_FILENAME} || ` +
+            installCommand(I18N_RUNTIME_CONFIG_FILENAME, `${DESTINATION}/${i18nConfigDestination(settings)}`, "m644"),
         installCommand(LAUNCHER_FILENAME, `${DESTINATION}/bin/${settings.binaryName}`, "m755"),
     ];
 };
@@ -289,6 +299,7 @@ const flatpakSourceModule = async (payload: DeployPayload): Promise<FlatpakModul
             GENERATED_SOURCES,
             ...stagedMetadataSources(payload),
             inlineSource(LAUNCHER_FILENAME, renderLauncher(settings)),
+            inlineSource(I18N_RUNTIME_CONFIG_FILENAME, renderInstalledI18nConfig(settings)),
             inlineSource(
                 NOTICES_FILENAME,
                 renderNotices(settings, payload.notices.flatpak) +

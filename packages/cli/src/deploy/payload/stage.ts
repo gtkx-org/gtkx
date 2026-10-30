@@ -94,20 +94,19 @@ const assertStagedArchitecture = (settings: DeploySettings, staged: StagedFile[]
     }
 };
 
+const i18nConfigDestination = (settings: DeploySettings): string =>
+    posix.join(libDirFor(settings), I18N_RUNTIME_CONFIG_FILENAME);
+
+const renderInstalledI18nConfig = (settings: DeploySettings): string =>
+    renderI18nRuntimeConfig(posix.relative(libDirFor(settings), SHARE_LOCALE));
+
 const stageCatalogs = (settings: DeploySettings, root: string): StagedFile[] => {
     const files = listFilesRecursive(join(settings.paths.dist, LOCALE_DIRNAME)).map((file) =>
         copyInto(root, join(SHARE_LOCALE, file.rel), file.absPath),
     );
 
     if (existsSync(join(settings.paths.dist, I18N_RUNTIME_CONFIG_FILENAME))) {
-        const libDir = libDirFor(settings);
-        files.push(
-            writeInto(
-                root,
-                join(libDir, I18N_RUNTIME_CONFIG_FILENAME),
-                renderI18nRuntimeConfig(posix.relative(libDir, SHARE_LOCALE)),
-            ),
-        );
+        files.push(writeInto(root, i18nConfigDestination(settings), renderInstalledI18nConfig(settings)));
     }
 
     return files;
@@ -270,10 +269,12 @@ const stageOverlays = (
 });
 
 export {
+    i18nConfigDestination,
     licenseDestination,
     nodeLicenseDestination,
     NOTICES_FILENAME,
     noticesDestination,
+    renderInstalledI18nConfig,
     type StagedMetadata,
     stageOverlays,
     stagePayload,

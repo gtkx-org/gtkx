@@ -1135,7 +1135,7 @@ describe("CLI commands", () => {
         expect(notices).toContain(nodeLicense);
     });
 
-    it("renders a source Flatpak that installs with pnpm 12's native binary and keeps workers", async () => {
+    it("renders a source Flatpak that installs with pnpm 12's native binary and keeps workers and translations", async () => {
         using project = createProject({
             applicationIcon: "icon.svg",
             deploy: {
@@ -1156,6 +1156,8 @@ describe("CLI commands", () => {
         });
         project.write("LICENSE", "MIT License\nCopyright GTKX\nPermission is hereby granted, free of charge.\n");
         project.write("pnpm-lock.yaml", "lockfileVersion: '9.0'\n\nimporters:\n\n  .: {}\n");
+        project.write("po/LINGUAS", "fr\n");
+        project.write("po/fr.po", readFileSync(new URL("../../i18n/tests/fixtures/fr.po", import.meta.url), "utf8"));
         project.write(
             "icon.svg",
             '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="blue"/></svg>',
@@ -1191,6 +1193,13 @@ describe("CLI commands", () => {
             true,
         );
         expect(JSON.stringify(module)).not.toContain("pnpm.cjs");
+        const localeConfig = module?.sources.find((source) => source["dest-filename"] === "gtkx-i18n.json");
+        expect(JSON.parse(String(localeConfig?.contents))).toEqual({ localeDir: "../../share/locale" });
+        expect(
+            module?.["build-commands"].some((command) =>
+                command.endsWith("gtkx-i18n.json ${FLATPAK_DEST}/lib/cli-example/gtkx-i18n.json"),
+            ),
+        ).toBe(true);
     });
 
     it("preserves arguments, configuration, translations and MCP across headless dev restarts", async () => {
