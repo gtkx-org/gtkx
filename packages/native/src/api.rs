@@ -7,6 +7,7 @@ pub mod bind;
 pub mod call;
 pub mod closure;
 pub mod descriptor;
+pub mod external_memory;
 pub mod field;
 pub mod function;
 pub mod fundamental_identity;

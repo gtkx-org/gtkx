@@ -16,6 +16,7 @@ export {
     quit,
     readField,
     registerClass,
+    reportExternalMemory,
     resolveSymbol,
     setObjectProperty,
     setValuePointer,

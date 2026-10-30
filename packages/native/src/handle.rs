@@ -1,4 +1,5 @@
 mod boxed;
+mod external_memory;
 mod fundamental;
 mod lease;
 pub(crate) mod surface;
@@ -10,6 +11,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 pub use boxed::{Boxed, BoxedFreeFn};
+use external_memory::ExternalMemory;
 pub use fundamental::{Fundamental, RefFn, UnrefFn};
 use glib::prelude::{ObjectExt as _, ObjectType as _};
 pub(crate) use lease::{LeaseScope, RecordLease};
@@ -198,6 +200,7 @@ struct HandleInner {
     pointer_storage: RefCell<Option<(Handle, bool)>>,
     invalidated: Cell<bool>,
     allocated_bytes: Cell<Option<usize>>,
+    external_memory: ExternalMemory,
 }
 
 /// A shared reference to one native instance. Cloning shares the same instance, so a value that
@@ -239,6 +242,7 @@ impl From<HandleKind> for Handle {
                 pointer_storage: RefCell::new(None),
                 invalidated: Cell::new(false),
                 allocated_bytes: Cell::new(None),
+                external_memory: ExternalMemory::default(),
             }),
         }
     }
@@ -451,6 +455,12 @@ impl Handle {
     #[must_use]
     pub fn allocated_bytes(&self) -> Option<usize> {
         self.inner.allocated_bytes.get()
+    }
+
+    /// Counts `bytes` of native memory the instance keeps alive toward the garbage collector's
+    /// external memory, until the last clone of this handle is released.
+    pub fn report_external_memory(&self, bytes: i64) -> napi::Result<()> {
+        self.inner.external_memory.add(bytes)
     }
 
     pub(crate) fn check_range(&self, offset: usize, size: usize) -> anyhow::Result<()> {
