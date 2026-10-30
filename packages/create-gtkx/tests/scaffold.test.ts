@@ -2,6 +2,7 @@ import { runCommand } from "citty";
 import { existsSync, mkdirSync, mkdtempDisposableSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { minVersion, satisfies, subset, validRange } from "semver";
 import { stdout, stderr } from "test-console";
 import { afterEach, describe, expect, it } from "vitest";
 import { parse } from "yaml";
@@ -32,6 +33,10 @@ const create = async (target: string, args: string[] = []) => {
     return { status: process.exitCode, output: output.join("") };
 };
 const read = (root: string, path: string) => readFileSync(join(root, path), "utf8");
+const packageManifest = (name: string) =>
+    JSON.parse(read(join(import.meta.dirname, "../.."), `${name}/package.json`)) as {
+        peerDependencies?: Record<string, string>;
+    };
 
 describe("scaffold command", () => {
     it.each([
@@ -202,9 +207,37 @@ describe("scaffold command", () => {
             Record<string, string>
         >;
         const specifiers = { ...manifest.dependencies, ...manifest.devDependencies };
-        expect(specifiers).toHaveProperty("react", "^1.0.0");
         expect(specifiers["@gtkx/react"]).toMatch(/^\^/);
         expect(Object.values(specifiers)).not.toContain("latest");
+    });
+
+    it("installs the React, Vitest and tool majors the GTKX release supports", async () => {
+        using directory = mkdtempDisposableSync(join(tmpdir(), "gtkx-create-supported-"));
+        const target = join(directory.path, "example");
+        expect((await create(target, ["--typescript", "--vitest"])).status).toBe(0);
+        const manifest = JSON.parse(read(target, "package.json")) as Record<
+            "dependencies" | "devDependencies",
+            Record<string, string>
+        >;
+        const specifiers = Object.entries({ ...manifest.dependencies, ...manifest.devDependencies }).filter(
+            ([name]) => !name.startsWith("@gtkx/"),
+        );
+        const peers: Record<string, string | undefined> = {
+            ...packageManifest("react").peerDependencies,
+            ...packageManifest("testing").peerDependencies,
+        };
+        const unsupported = specifiers.filter(([name, specifier]) => {
+            const lowest = validRange(specifier) === null ? null : minVersion(specifier);
+            const peer = peers[name];
+
+            return (
+                lowest === null ||
+                satisfies(`${String(lowest.major + 1)}.0.0`, specifier) ||
+                (peer !== undefined && !subset(specifier, peer))
+            );
+        });
+        expect(specifiers.map(([name]) => name)).toEqual(expect.arrayContaining(["react", "@types/react", "vitest"]));
+        expect(unsupported).toEqual([]);
     });
 
     it.each([["--application-id", "invalid"], ["--package-manager", "missing"], ["--unknown"], ["extra-directory"]])(

@@ -13,6 +13,8 @@ npm create gtkx@beta -- my-app --yes --application-id com.example.MyApp --displa
 
 Without `--display-name`, noninteractive scaffolding derives a name from the project directory, so `my-app` becomes `My App`. `--skip-install` writes the project without installing dependencies; run your package manager's install command in that directory afterward.
 
+The new project depends on the major versions this GTKX release supports rather than the newest ones: React, `@types/react` and Vitest within the ranges GTKX declares as peers, the Vite range `@gtkx/cli` depends on, TypeScript 6, and the `@types/node` major of the oldest Node.js GTKX supports. When a later GTKX release supports a new major, run `gtkx upgrade` first, then move those packages with your package manager.
+
 ## Existing directories
 
 Without `--overwrite`, an existing scaffold-owned file stops the command before it changes anything. `--overwrite` lists and replaces only files owned by the scaffold; unrelated files remain in place. The command refuses a destination reached through a symbolic link.
