@@ -16,7 +16,8 @@ type ErrorLike = Error & {
 
 /**
  * An error enum object carrying its member codes plus an `instanceof` check that
- * matches wrapped GLib errors belonging to a specific error domain.
+ * matches wrapped GLib errors belonging to a specific error domain. As in GJS, its
+ * `valueOf()` returns the domain quark, so it converts to the quark with `Number()`.
  */
 type ErrorDomain<T extends Record<string, number>> = T & {
     /** Backs `instanceof`, matching a wrapped GLib error whose domain is this one. */
@@ -57,6 +58,7 @@ function createErrorDomain<const T extends Record<string, number>>(
 
     const enumObject: Record<string, unknown> = { ...members };
     Object.defineProperty(enumObject, Symbol.hasInstance, { value: hasInstance });
+    Object.defineProperty(enumObject, "valueOf", { value: () => (domain ??= resolveDomain()) });
 
     return enumObject as ErrorDomain<T>;
 }
