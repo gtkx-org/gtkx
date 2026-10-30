@@ -12,7 +12,6 @@ import {
     version,
     versionString,
 } from "@gtkx/cairo";
-import { type ExternalObject, getHandle, type Handle, t, wrapHandle } from "@gtkx/runtime";
 import { describe, expect, it } from "vitest";
 
 const regionOperations = [
@@ -78,36 +77,28 @@ it("composes native matrices and reverses the resulting transformation", () => {
     expect(new Matrix(0, 0, 0, 0, 0, 0).invert()).toBe(Status.INVALID_MATRIX);
 });
 
-it("copies curved and flattened paths, appends them and reads an owned native Path", () => {
+it("copies curved and flattened paths as native Paths and appends them", () => {
     const context = new Context(new ImageSurface(Format.ARGB32, 16, 16));
     context.moveTo(1, 2);
     context.curveTo(2, 10, 10, 2, 12, 12);
     context.closePath();
-    const original = context.copyPath();
-    expect(original).toContainEqual({ type: "curveTo", x1: 2, y1: 10, x2: 10, y2: 2, x3: 12, y3: 12 });
-    expect(context.copyPathFlat().some((segment) => segment.type === "curveTo")).toBe(false);
-    const copy = t.bind(
-        "libcairo.so.2",
-        "cairo_copy_path",
-        [
-            t.boxed("CairoContext", {
-                ownership: "borrowed",
-                sharedLibrary: "libcairo-gobject.so.2",
-                getTypeFnName: "cairo_gobject_context_get_type",
-            }),
-        ],
-        t.boxed("cairo_path_t", {
-            ownership: "full",
-            sharedLibrary: "libcairo.so.2",
-            freeFnName: "cairo_path_destroy",
-        }),
-    );
-    const path = wrapHandle(copy(getHandle(context)) as ExternalObject<Handle>, Path);
-    expect(path.toData()).toEqual(original);
+    const path = context.copyPath();
+    expect(path).toBeInstanceOf(Path);
+    const segments = path.toData();
+    expect(segments).toContainEqual({ type: "curveTo", x1: 2, y1: 10, x2: 10, y2: 2, x3: 12, y3: 12 });
+    expect(
+        context
+            .copyPathFlat()
+            .toData()
+            .some((segment) => segment.type === "curveTo"),
+    ).toBe(false);
     context.newPath();
-    expect(context.copyPath()).toEqual([]);
-    context.appendPath(original);
-    expect(context.copyPath()).toEqual(original);
+    expect(context.copyPath().toData()).toEqual([]);
+    context.appendPath(path);
+    expect(context.copyPath().toData()).toEqual(segments);
+    context.newPath();
+    context.appendPath(segments);
+    expect(context.copyPath().toData()).toEqual(segments);
 });
 
 it("reports the linked Cairo version and error descriptions", () => {

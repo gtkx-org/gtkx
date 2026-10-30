@@ -77,7 +77,7 @@ describe("ScaledFont", () => {
         context.showGlyphs(glyphs);
         expect(surface.getData().some((byte) => byte !== 0)).toBe(true);
         context.glyphPath(glyphs);
-        expect(context.copyPath().length).toBeGreaterThan(0);
+        expect(context.copyPath().toData().length).toBeGreaterThan(0);
         expect(context.status()).toBe(Status.SUCCESS);
     });
 

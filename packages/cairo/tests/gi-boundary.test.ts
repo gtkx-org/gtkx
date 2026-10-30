@@ -139,6 +139,18 @@ describe("PangoCairo text layout", () => {
     });
 });
 
+describe("generated bindings taking cairo values", () => {
+    it("builds a GskPath from a copied cairo path", () => {
+        const cr = snapshotContext();
+        cr.rectangle(1, 1, 4, 4);
+        const builder = Gsk.PathBuilder.new();
+        builder.addCairoPath(cr.copyPathFlat());
+        const [hasBounds, bounds] = builder.toPath().getBounds();
+        expect(hasBounds).toBe(true);
+        expect(bounds.getWidth()).toBe(4);
+    });
+});
+
 describe("generated bindings returning cairo boxed values", () => {
     it("wraps a cairo node's draw context as Context and its surface as a recording surface", () => {
         const node = Gsk.CairoNode.new(new Graphene.Rect().init(0, 0, 10, 10));

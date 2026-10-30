@@ -62,6 +62,20 @@ const Caption = () => (
 
 `PangoCairo.createLayout(cr)` creates a layout with Pango's default font rather than the widget's, so text drawn with it does not match the rest of the interface. Use it for offscreen rendering, and set a font with `layout.setFontDescription()`; `widget.getPangoContext().getFontDescription()` returns the font a widget uses. The [PangoCairo documentation](https://docs.gtk.org/PangoCairo/) covers shaping, font fallback and layout; import its bindings from `@gtkx/gi/pangocairo`.
 
+`cr.copyPath()` and `cr.copyPathFlat()` return a `Path`, which `cr.appendPath()` and bindings such as `Gsk.PathBuilder.addCairoPath()` accept as is. This turns text into a `GskPath`, for example:
+
+```ts
+import * as Gsk from "@gtkx/gi/gsk";
+import * as PangoCairo from "@gtkx/gi/pangocairo";
+
+PangoCairo.layoutPath(cr, layout);
+const builder = Gsk.PathBuilder.new();
+builder.addCairoPath(cr.copyPathFlat());
+const textPath = builder.toPath();
+```
+
+Call `path.toData()` to read a path's segments.
+
 Values returned by native libraries use their concrete wrapper classes. Check `surface instanceof ImageSurface` before reading image pixels from a surface returned by `cr.getTarget()`.
 
 ## Render offscreen

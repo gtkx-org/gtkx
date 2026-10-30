@@ -16,7 +16,7 @@ import {
     type BoundFunction,
     cairoGType,
     MATRIX_T,
-    PATH_T,
+    PATH_FULL_T,
     PATTERN_FULL_T,
     PATTERN_T,
     SURFACE_T,
@@ -137,7 +137,7 @@ const cairoMeshPatternGetPatchCount = bindCairo(
     t.int32,
 );
 
-const cairoMeshPatternGetPath = bindCairo("cairo_mesh_pattern_get_path", [PATTERN_T, t.int32], PATH_T);
+const cairoMeshPatternGetPath = bindCairo("cairo_mesh_pattern_get_path", [PATTERN_T, t.int32], PATH_FULL_T);
 
 const cairoMeshPatternGetControlPoint = bindCairo(
     "cairo_mesh_pattern_get_control_point",
