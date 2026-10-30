@@ -29,7 +29,17 @@ const parseKeyFile = (contents: string) => {
 
 Checking a domain narrows the value to an error with `domain` and `code`. Check `error instanceof GLib.Error` when you need its native methods, such as `matches` or `copy`. As in GJS, `matches` accepts a generated domain in place of its quark, as in `error.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)`. The generated reference describes each library's domains and codes.
 
-For a native callback that expects an error value, create one through the generated `GLib.Error` API.
+To report a failure through GLib, such as from a virtual function or with `Gio.Task.returnError()`, create an error as in GJS. The domain may be a generated domain or its quark, here and in `GLib.Error.newLiteral()`:
+
+```ts
+import * as Gio from "@gtkx/gi/gio";
+import * as GLib from "@gtkx/gi/glib";
+
+const reportMissingNote = (callback: Gio.AsyncReadyCallback) => {
+    const task = Gio.Task.new(null, null, callback);
+    task.returnError(new GLib.Error(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND, "No such note"));
+};
+```
 
 ## GLib criticals and warnings
 

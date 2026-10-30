@@ -10,7 +10,7 @@ import * as Regress from "@gtkx/gi/regress";
 
 import { callParent, getClassType, getInstanceType, registerClass, typeIsA } from "@gtkx/runtime";
 
-import { expect, test } from "vitest";
+import { assert, expect, test } from "vitest";
 
 import { didSettle, drainGC } from "./helpers/memory.js";
 
@@ -392,6 +392,26 @@ test("a GError rethrown from a vfunc surfaces as an error from the C caller", ()
 
     const Registered = registerClass(Rethrowing, { typeName: uniqueName("GtkxRethrowing") });
     expect(() => new Registered({}).vfuncMethWithError(0)).toThrow();
+});
+
+test("a GLib.Error constructed with new and thrown from a vfunc reaches the C caller intact", () => {
+    class Denying extends GIMarshallingTests.Object {
+        override vfuncVfuncMethWithErr(): boolean {
+            throw new GLib.Error(Gio.IOErrorEnum, Gio.IOErrorEnum.PERMISSION_DENIED, "denied");
+        }
+    }
+
+    const Registered = registerClass(Denying, { typeName: uniqueName("GtkxDenying") });
+    let error: unknown;
+
+    try {
+        new Registered({}).vfuncMethWithError(0);
+    } catch (thrown) {
+        error = thrown;
+    }
+
+    assert(error instanceof Gio.IOErrorEnum);
+    expect([error.code, error.message]).toEqual([Gio.IOErrorEnum.PERMISSION_DENIED, "denied"]);
 });
 
 test("object returning vfuncs report the ref counts their transfer annotations imply", async () => {
