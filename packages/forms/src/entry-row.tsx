@@ -14,9 +14,11 @@ function EntryRow<
     const { field, fieldState } = useController<TFieldValues, TName, TTransformedValues>(props);
     const rowProps = widgetProps(props);
 
-    const binding = useEditableFieldWidget<Adw.EntryRow>(field, fieldState, rowProps);
-
     const value = field.value ?? "";
+    const binding = useEditableFieldWidget(field, fieldState, rowProps, {
+        value,
+        read: (row: Adw.EntryRow) => row.getText(),
+    });
 
     return (
         <AdwEntryRow

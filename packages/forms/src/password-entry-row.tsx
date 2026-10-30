@@ -14,9 +14,11 @@ function PasswordEntryRow<
     const { field, fieldState } = useController<TFieldValues, TName, TTransformedValues>(props);
     const rowProps = widgetProps(props);
 
-    const binding = useEditableFieldWidget<Adw.PasswordEntryRow>(field, fieldState, rowProps);
-
     const value = field.value ?? "";
+    const binding = useEditableFieldWidget(field, fieldState, rowProps, {
+        value,
+        read: (row: Adw.PasswordEntryRow) => row.getText(),
+    });
 
     return (
         <AdwPasswordEntryRow

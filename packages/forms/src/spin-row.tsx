@@ -14,9 +14,11 @@ function SpinRow<
     const { field, fieldState } = useController<TFieldValues, TName, TTransformedValues>(props);
     const rowProps = widgetProps(props);
 
-    const binding = useEditableFieldWidget<Adw.SpinRow>(field, fieldState, rowProps);
-
     const value = field.value ?? 0;
+    const binding = useEditableFieldWidget(field, fieldState, rowProps, {
+        value,
+        read: (row: Adw.SpinRow) => row.getValue(),
+    });
 
     return (
         <AdwSpinRow

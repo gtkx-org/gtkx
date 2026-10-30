@@ -72,7 +72,7 @@ You can also import `FormProvider` from `@gtkx/forms` to supply the control to r
 | `SpinRow`                      | Number       |
 | `ComboRow`                     | Item ID      |
 
-The rows retain their native props, children, refs and signal handlers. React Hook Form owns the value, so configure a spin row's range through a JSX `GtkAdjustment`, and use `setValue` or `reset` to change its current value. Those form updates do not echo back as user edits.
+The rows retain their native props, children, refs and signal handlers. React Hook Form owns the value, so configure a spin row's range through a JSX `GtkAdjustment`, and use `setValue` or `reset` to change its current value. Those form updates do not echo back as user edits. If GTK clamps a value to the adjustment's range or cuts text at `maxLength`, the form keeps the stored value and submits it. The row is marked invalid, and a development build logs a warning, until an edit replaces the value.
 
 `ComboRow` shares the [collection component's sources and renderers](/v2/guide/components#dropdown). Item IDs remain stable when items move or their labels change. Strings and other primitive values have a default display; structured values require `renderItem`. Passing `control` also lets TypeScript infer item and section types for renderers.
 
