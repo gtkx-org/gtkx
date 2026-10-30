@@ -1769,14 +1769,15 @@ describe("CLI commands", () => {
         });
     });
 
-    it("regenerates bindings and restarts when a GIR file in girPath changes", async () => {
+    it("regenerates bindings and restarts when GIR files of declared libraries change", async () => {
         using project = createProject({ codegen: true, libraries: ["Probe-1.0"], girPath: ["gir"] });
         const readyPath = join(project.root, "ready.txt");
-        const gir = (functions: string[]) => `<?xml version="1.0"?>
+        const launchesPath = join(project.root, "launches.txt");
+        const gir = (functions: string[], namespace = "Probe") => `<?xml version="1.0"?>
             <repository version="1.0" xmlns="http://www.gtk.org/introspection/core/1.0"
               xmlns:c="http://www.gtk.org/introspection/c/1.0" xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
               <include name="GLib" version="2.0"/>
-              <namespace name="Probe" version="1.0" shared-library="libglib-2.0.so.0" c:prefix="G">
+              <namespace name="${namespace}" version="1.0" shared-library="libglib-2.0.so.0" c:prefix="G">
                 ${functions
                     .map(
                         (name) => `<function name="${name}" c:identifier="g_get_${name}">
@@ -1791,11 +1792,12 @@ describe("CLI commands", () => {
             "src/index.ts",
             `import { Application } from "@gtkx/gi/gio";
             import * as Probe from "@gtkx/gi/probe";
-            import { writeFileSync } from "node:fs";
+            import { appendFileSync, writeFileSync } from "node:fs";
             export const application = new Application({ applicationId: "org.gtkx.example" });
             application.setDefault();
             application.register(null);
             application.hold();
+            appendFileSync(${JSON.stringify(launchesPath)}, "x");
             writeFileSync(${JSON.stringify(readyPath)}, typeof Probe.hostName);`,
         );
 
@@ -1803,6 +1805,19 @@ describe("CLI commands", () => {
             expect(readFileSync(readyPath, "utf8")).toBe("undefined");
             project.write("gir/Probe-1.0.gir", gir(["user_name", "host_name"]));
             await expect.poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 }).toBe("function");
+            expect(readFileSync(launchesPath, "utf8")).toBe("xx");
+
+            project.write("gir/Extra-1.0.gir", gir(["user_name"], "Extra"));
+            project.write(
+                "gtkx.config.ts",
+                readFileSync(join(project.root, "gtkx.config.ts"), "utf8").replace(
+                    '"Probe-1.0"',
+                    '"Probe-1.0","Extra-1.0"',
+                ),
+            );
+            await expect.poll(() => readFileSync(launchesPath, "utf8"), { timeout: 30_000 }).toBe("xxx");
+            project.write("gir/Extra-1.0.gir", gir(["user_name", "host_name"], "Extra"));
+            await expect.poll(() => readFileSync(launchesPath, "utf8"), { timeout: 30_000 }).toBe("xxxx");
         });
     });
 

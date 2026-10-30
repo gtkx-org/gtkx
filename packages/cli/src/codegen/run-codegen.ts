@@ -215,18 +215,23 @@ const resolveConfigWatch = async (
     mode?: string,
     configFile?: string,
     initialDependencies: string[] = [],
-): Promise<{ paths: string[]; resolvePaths: () => string[]; regenerate: () => Promise<string[]> }> => {
-    const reloader = await createConfigReloader(cwd, { mode, configFile }, initialDependencies);
-    const resolvePaths = (): string[] => [
-        ...reloader.resolvePaths(),
-        ...readGiStoreGirFiles(resolveStore(cwd).gi.storeDir),
-    ];
+): Promise<{
+    paths: string[];
+    inputs: string[];
+    resolvePaths: () => string[];
+    resolveInputs: () => string[];
+    regenerate: () => Promise<string[]>;
+}> => {
+    const { reload, resolvePaths } = await createConfigReloader(cwd, { mode, configFile }, initialDependencies);
+    const resolveInputs = (): string[] => readGiStoreGirFiles(resolveStore(cwd).gi.storeDir);
 
     return {
         paths: resolvePaths(),
+        inputs: resolveInputs(),
         resolvePaths,
+        resolveInputs,
         regenerate: async () => {
-            const loaded = await reloader.reload();
+            const loaded = await reload();
             await runCodegen({ cwd, mode, resolved: loaded });
 
             return resolvePaths();

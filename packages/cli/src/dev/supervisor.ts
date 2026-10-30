@@ -1,4 +1,4 @@
-import { error, exitCodeForSignal, info, installGracefulShutdown } from "@gtkx/utils";
+import { error, exitCodeForSignal, info, installGracefulShutdown, isPathWithin } from "@gtkx/utils";
 import { type FSWatcher, watch as watchFs } from "chokidar";
 import { type ChildProcess, fork as nodeFork } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
@@ -9,7 +9,9 @@ import { DEV_RUNNER_READY, type DevRunnerBootstrap } from "./bootstrap.js";
 
 type DevWatch = {
     paths: string[];
+    inputs: string[];
     resolvePaths: () => string[];
+    resolveInputs: () => string[];
     regenerate: () => Promise<string[]>;
 };
 
@@ -165,7 +167,8 @@ const reconcileConfigWatchers = async (
 
     const added = paths.filter((path) => !watch.paths.includes(path) && existsSync(path));
     watch.paths = paths;
-    const targets = new Set(paths.map(configWatchDirectory));
+    watch.inputs = watch.resolveInputs();
+    const targets = new Set([...paths, ...watch.inputs].map(configWatchDirectory));
     const pending: Promise<void>[] = [];
 
     for (const [path, watcher] of state.watchers) {
@@ -186,7 +189,9 @@ const reconcileConfigWatchers = async (
             if (
                 !state.isShuttingDown &&
                 state.watchers.get(path) === watcher &&
-                watch.paths.some((target) => target === changed || target.startsWith(changed + sep))
+                [...watch.paths, ...watch.inputs].some(
+                    (target) => target === changed || target.startsWith(changed + sep),
+                )
             ) {
                 if (event === "unlinkDir" && changed === path) {
                     state.watchers.delete(path);
@@ -221,7 +226,9 @@ const reconcileConfigWatchers = async (
 };
 
 const consumeChangedPaths = (state: SupervisorState): string => {
-    const changed = [...state.changedPaths].map((path) => relative(state.cwd, path));
+    const changed = [...state.changedPaths].map((path) =>
+        isPathWithin(state.cwd, path) ? relative(state.cwd, path) : path,
+    );
     state.changedPaths.clear();
 
     return changed.length === 0 ? basename(state.configFile) : changed.join(", ");
