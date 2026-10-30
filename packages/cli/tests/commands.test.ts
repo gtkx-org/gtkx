@@ -1246,6 +1246,75 @@ describe("CLI commands", () => {
         });
     });
 
+    it("presses keys through MCP on a widget or the focused widget", async () => {
+        using project = createProject();
+        const readyPath = join(project.root, "ready.txt");
+        writeWidgetApp(
+            project,
+            readyPath,
+            `import { AdwAlertDialog } from "@gtkx/jsx/adw";
+            import { GtkBox, GtkButton, GtkEntry, GtkLabel } from "@gtkx/jsx/gtk";
+            import { useState } from "react";
+            export const Content = () => {
+                const [isOpen, setIsOpen] = useState(false);
+                const [name, setName] = useState("");
+                const [result, setResult] = useState("Waiting");
+                return (
+                    <GtkBox>
+                        <GtkButton label="New Folder" onClicked={() => setIsOpen(true)} />
+                        <GtkLabel label={result} />
+                        {isOpen && (
+                            <AdwAlertDialog
+                                heading="New Folder"
+                                defaultResponse="create"
+                                closeResponse="cancel"
+                                responses={[{ id: "cancel", label: "Cancel" }, { id: "create", label: "Create" }]}
+                                onResponse={(id) => {
+                                    setResult(id === "create" ? \`Created \${name}\` : "Cancelled");
+                                    setIsOpen(false);
+                                }}
+                            >
+                                <GtkEntry
+                                    accessibleLabel="Folder name"
+                                    activatesDefault
+                                    onChanged={(entry) => setName(entry.getText())}
+                                />
+                            </AdwAlertDialog>
+                        )}
+                    </GtkBox>
+                );
+            };`,
+        );
+        await withMcpClient(project.root, async (client) => {
+            await withSession("dev", project.root, readyPath, async () => {
+                const openDialog = async () => {
+                    const [button] = await queryWidgets(client, {
+                        by: "role",
+                        value: "button",
+                        options: { name: "New Folder" },
+                    });
+                    await callTool(client, "gtkx_click", { widgetId: button?.id });
+                    const [entry] = await queryWidgets(client, {
+                        by: "role",
+                        value: "text_box",
+                        options: { name: "Folder name" },
+                    });
+                    return entry?.id;
+                };
+                const entryId = await openDialog();
+                await callTool(client, "gtkx_type", { widgetId: entryId, text: "Invoices" });
+                expect(
+                    (await callTool(client, "gtkx_press_keys", { widgetId: entryId, keys: "{Enter}" })).isError,
+                ).toBe(false);
+                expect(await queryWidgets(client, { by: "text", value: "Created Invoices" })).toHaveLength(1);
+
+                await openDialog();
+                await callTool(client, "gtkx_press_keys", { keys: "{Escape}" });
+                expect(await queryWidgets(client, { by: "text", value: "Cancelled" })).toHaveLength(1);
+            });
+        });
+    });
+
     it("reloads imported configuration after atomic saves and missing directories are created", async () => {
         using project = createProject({ codegen: true, libraries: ["Gio-2.0"] });
         const readyPath = join(project.root, "ready.txt");

@@ -86,6 +86,11 @@ const queryParams: z.ZodObject<{
 const typeParams: z.ZodObject<{ widgetId: z.ZodString; text: z.ZodString; clear: z.ZodOptional<z.ZodBoolean> }> =
     z.object({ widgetId: z.string(), text: z.string(), clear: z.boolean().optional() });
 
+const pressKeysParams: z.ZodObject<{ widgetId: z.ZodOptional<z.ZodString>; keys: z.ZodString }> = z.object({
+    widgetId: z.string().optional(),
+    keys: z.string(),
+});
+
 const fireEventParams: z.ZodObject<{
     widgetId: z.ZodString;
     signal: z.ZodString;
@@ -105,6 +110,7 @@ const ServerRequestParamsSchemas: {
     "widget.getProps": typeof widgetPropsParams;
     "widget.click": typeof widgetIdParams;
     "widget.type": typeof typeParams;
+    "widget.pressKeys": typeof pressKeysParams;
     "widget.fireEvent": typeof fireEventParams;
     "widget.screenshot": typeof screenshotParams;
 } = {
@@ -114,6 +120,7 @@ const ServerRequestParamsSchemas: {
     "widget.getProps": widgetPropsParams,
     "widget.click": widgetIdParams,
     "widget.type": typeParams,
+    "widget.pressKeys": pressKeysParams,
     "widget.fireEvent": fireEventParams,
     "widget.screenshot": screenshotParams,
 };
@@ -127,6 +134,7 @@ export {
     treeParams,
     queryParams,
     typeParams,
+    pressKeysParams,
     fireEventParams,
     screenshotParams,
     ServerRequestParamsSchemas,

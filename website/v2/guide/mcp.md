@@ -53,10 +53,12 @@ Ask the agent to inspect the running app before changing it, then verify the res
 
 1. Find a widget by its role, accessible name, or text with `gtkx_query_widgets`.
 2. Read its properties or subtree when more context is needed.
-3. Click or type through the interaction tools.
+3. Click, type, or press keys through the interaction tools.
 4. Take a screenshot to check the rendered result.
 
 The widget tools use the same queries and events as [`@gtkx/testing`](/v2/guide/testing). Each widget summary reports the widget's GTK type as `type` and its accessible name as `name`, so an icon-only button reads as its tooltip, such as "New Note". For large windows, request a subtree or limit the depth instead of repeatedly reading the whole tree. Widget IDs last only while their widgets are mounted; query again after the relevant UI is replaced.
+
+`gtkx_press_keys` sends keys through `userEvent.keyboard` to a widget, or to the focused widget when no `widgetId` is given. Use it to submit a form with `{Enter}`, which activates a dialog's default response from an entry with `activatesDefault`, to close a dialog with `{Escape}`, or to run a shortcut such as `{Control>}s{/Control}`. The keys reach the widget's own key bindings, such as arrows in a list, but `{Tab}` and arrows do not move focus between widgets.
 
 An error the app raises while handling an interaction, such as a render error after a click, comes back in the tool result. `gtkx dev` also reports it as it does for an error from keyboard or mouse input, and waits for a saved fix instead of stopping.
 

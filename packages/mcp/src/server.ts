@@ -18,6 +18,7 @@ import {
     DEFAULT_SUBTREE_DEPTH,
     fireEventParams,
     MAX_SUBTREE_WIDGETS,
+    pressKeysParams,
     queryParams,
     screenshotParams,
     treeParams,
@@ -168,6 +169,20 @@ const typeShape = {
         widgetId: WIDGET_ID_DESCRIPTION,
         text: "Text to type",
         clear: "Clear existing text before typing",
+    }),
+};
+
+const pressKeysShape = {
+    ...applicationIdShape,
+    ...describeParams(pressKeysParams.shape, {
+        widgetId:
+            `${WIDGET_ID_DESCRIPTION} Omit it to press the keys on the focused widget of the active window, ` +
+            "or of the first window when none is active.",
+        keys:
+            "Keys to press in order. A plain character presses that key. Name other keys in braces: {Enter}, " +
+            "{Escape}, {Tab}, {Backspace}, {Delete}, {Space}, {ArrowUp}, {ArrowDown}, {ArrowLeft}, {ArrowRight}, " +
+            "{Home}, {End}, {PageUp}, {PageDown} and {F1} to {F12}. Hold a modifier with {Control>}, {Shift>}, " +
+            "{Alt>} or {Meta>} and release it with {/Control} and so on, so Ctrl+S is `{Control>}s{/Control}`.",
     }),
 };
 
@@ -405,12 +420,31 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
             name: "gtkx_type",
             title: "Type text",
             kind: "action",
-            description: "Type text into an editable widget like Entry or TextView",
+            description:
+                "Type text into an editable widget like Entry or TextView. A newline is typed as text and does " +
+                "not submit; use `gtkx_press_keys` with {Enter} to activate an entry.",
             inputSchema: typeShape,
             handler: async ({ applicationId, appTimeout, ...params }) => {
                 await appRouter.sendToApp(applicationId, "widget.type", params, appTimeout);
 
                 return textContent("Typed text");
+            },
+        }),
+        defineTool({
+            name: "gtkx_press_keys",
+            title: "Press keys",
+            kind: "action",
+            description:
+                "Press keys through userEvent.keyboard, as a user would on the keyboard: {Enter} activates an " +
+                "entry and the dialog's default response, {Escape} closes a dialog or popover, and shortcuts " +
+                "such as `{Control>}s{/Control}` run the actions bound to them. Keys reach the widget's own key " +
+                "bindings, such as arrows in a list or slider, but {Tab} and arrows do not move focus to another " +
+                "widget; pass that widget's `widgetId` instead. Use `gtkx_type` to enter text.",
+            inputSchema: pressKeysShape,
+            handler: async ({ applicationId, appTimeout, ...params }) => {
+                await appRouter.sendToApp(applicationId, "widget.pressKeys", params, appTimeout);
+
+                return textContent("Pressed keys");
             },
         }),
         defineTool({
