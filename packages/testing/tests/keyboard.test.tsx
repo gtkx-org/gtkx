@@ -2,12 +2,14 @@ import * as Gdk from "@gtkx/gi/gdk";
 import * as Gtk from "@gtkx/gi/gtk";
 import {
     GtkBox,
+    GtkButton,
     GtkCheckButton,
     GtkEntry,
     GtkEventControllerKey,
     GtkLabel,
     GtkShortcut,
     GtkShortcutController,
+    GtkTextView,
 } from "@gtkx/jsx/gtk";
 import { render, screen, userEvent } from "@gtkx/testing";
 import { describe, expect, it } from "vitest";
@@ -152,5 +154,62 @@ describe("keyboard mnemonics", () => {
         await expect(user.keyboard(target, "{Alt>}{Unknown}{/Alt}")).rejects.toThrow();
         await user.keyboard(target, "r");
         expect(target).not.toBeChecked();
+    });
+});
+
+describe("keyboard focus movement", () => {
+    it("moves focus with Tab, Shift+Tab and arrow keys as the window's bindings do", async () => {
+        await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkEntry name="name" />
+                <GtkCheckButton name="subscribe" label="Subscribe" />
+                <GtkButton name="submit" label="Submit" />
+            </GtkBox>,
+        );
+
+        const name = screen.getByName("name");
+        const subscribe = screen.getByName("subscribe");
+        const submit = screen.getByName("submit");
+        await userEvent.click(name);
+        await userEvent.keyboard(name, "{Tab}");
+        expect(subscribe).toHaveFocus();
+        await userEvent.keyboard(subscribe, "{Tab}");
+        expect(submit).toHaveFocus();
+        await userEvent.keyboard(submit, "{Shift>}{Tab}{/Shift}");
+        expect(subscribe).toHaveFocus();
+        await userEvent.keyboard(subscribe, "{ArrowDown}");
+        expect(submit).toHaveFocus();
+        await userEvent.keyboard(submit, "{ArrowUp}");
+        expect(subscribe).toHaveFocus();
+    });
+
+    it("follows focus through one key sequence on a common ancestor", async () => {
+        await render(
+            <GtkBox name="form" orientation={Gtk.Orientation.VERTICAL}>
+                <GtkEntry name="first" />
+                <GtkEntry name="second" />
+                <GtkEntry name="third" />
+            </GtkBox>,
+        );
+
+        await userEvent.click(screen.getByName("first"));
+        await userEvent.keyboard(screen.getByName("form"), "{Tab}{Tab}");
+        expect(screen.getByName("third")).toHaveFocus();
+    });
+
+    it("keeps a text view's Tab and Return as text instead of moving focus", async () => {
+        await render(
+            <GtkBox orientation={Gtk.Orientation.VERTICAL}>
+                <GtkTextView name="notes" />
+                <GtkButton name="after" label="After" />
+            </GtkBox>,
+        );
+
+        const notes = screen.getByName("notes", { as: Gtk.TextView });
+        await userEvent.click(notes);
+        await userEvent.keyboard(notes, "{Tab}{Enter}");
+        const buffer = notes.getBuffer();
+        expect(buffer.getText(buffer.getStartIter(), buffer.getEndIter(), true)).toBe("\t\n");
+        expect(notes).toHaveFocus();
     });
 });

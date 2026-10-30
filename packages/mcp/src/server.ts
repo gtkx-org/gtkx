@@ -438,8 +438,8 @@ function buildInteractionTools(appRouter: AppRouter): Tool[] {
                 "Press keys through userEvent.keyboard, as a user would on the keyboard: {Enter} activates an " +
                 "entry and the dialog's default response, {Escape} closes a dialog or popover, and shortcuts " +
                 "such as `{Control>}s{/Control}` run the actions bound to them. Keys reach the widget's own key " +
-                "bindings, such as arrows in a list or slider, but {Tab} and arrows do not move focus to another " +
-                "widget; pass that widget's `widgetId` instead. Use `gtkx_type` to enter text.",
+                "bindings first, such as arrows in a list or slider; otherwise {Tab}, `{Shift>}{Tab}{/Shift}` and " +
+                "arrows move focus between widgets. Use `gtkx_type` to enter text.",
             inputSchema: pressKeysShape,
             handler: async ({ applicationId, appTimeout, ...params }) => {
                 await appRouter.sendToApp(applicationId, "widget.pressKeys", params, appTimeout);

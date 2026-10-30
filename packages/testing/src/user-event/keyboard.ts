@@ -237,15 +237,12 @@ const managedShortcutHost = (manager: Gtk.Widget, shortcut: Gtk.Shortcut): Gtk.W
     return null;
 };
 
-const isMovingFocus = (action: Gtk.ShortcutAction): boolean =>
-    action instanceof Gtk.SignalAction && action.getSignalName() === "move-focus";
-
 const isShortcutLive = (host: Gtk.Widget): boolean => host.isSensitive() && host.getMapped();
 
 const didRunShortcutAction = (shortcut: Gtk.Shortcut, host: Gtk.Widget, flags: Gtk.ShortcutActionFlags): boolean => {
     const action = shortcut.getAction();
 
-    if (action === null || isMovingFocus(action) || !isShortcutLive(host)) {
+    if (action === null || !isShortcutLive(host)) {
         return false;
     }
 
@@ -361,19 +358,22 @@ const didDispatchApplicationAccels = (widget: Gtk.Widget, keyval: number, modifi
     return root instanceof Gtk.Window && didDispatchAccelsOnWindow(root, keyval, modifiers);
 };
 
-const isKeyStopController = (controller: Gtk.EventController): controller is KeyStopController => {
+const isKeyStopController = (controller: Gtk.EventController, widget: Gtk.Widget): controller is KeyStopController => {
     if (controller instanceof Gtk.ShortcutController) {
         return controller.getScope() === Gtk.ShortcutScope.LOCAL;
     }
 
-    return controller instanceof Gtk.EventControllerKey && hasSignalListener(controller, KEY_CONTROLLER_SIGNALS);
+    return (
+        controller instanceof Gtk.EventControllerKey &&
+        (widget instanceof Gtk.TextView || hasSignalListener(controller, KEY_CONTROLLER_SIGNALS))
+    );
 };
 
 const keyStopsInPhase = (widget: Gtk.Widget, phase: Gtk.PropagationPhase): KeyStop[] => {
     const stops: KeyStop[] = [];
 
     for (const controller of controllersOn(widget)) {
-        if (controller.getPropagationPhase() === phase && isKeyStopController(controller)) {
+        if (controller.getPropagationPhase() === phase && isKeyStopController(controller, widget)) {
             stops.push({ widget, controller });
         }
     }

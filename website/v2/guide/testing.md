@@ -111,6 +111,8 @@ await user.type(entry, "Replacement");
 await user.click(saveButton);
 ```
 
+`keyboard` sends keys to the focused widget inside the given widget, or to the widget itself, through GTK's key bindings and key controllers. A key no widget handles reaches the window's bindings, so `{Tab}`, `{Shift>}{Tab}{/Shift}` and arrow keys move focus as they do on a keyboard.
+
 Use `slide(range, value)` for a slider. `drag` drives application-defined drag gestures and cannot drive a range's native slider. The [interaction reference](/v2/reference/@gtkx/testing/) covers the available helpers.
 
 Use `dragAndDrop(source, target)` to transfer a drag source's typed content to a `GtkDropTarget`. Use `drop(target, content)` when testing how a target handles a supplied value. Gesture helpers such as these, `drag` and `longPress` use the nearest controller from the given widget up through its ancestors, as GTK propagates pointer events, so you can pass the visible label of a cell whose container carries the controller.
