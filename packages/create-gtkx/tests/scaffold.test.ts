@@ -121,10 +121,10 @@ describe("scaffold command", () => {
         mkdirSync(bin, { recursive: true });
         writeFileSync(
             join(bin, "corepack"),
-            `#!${process.execPath}\nimport { appendFileSync } from "node:fs";\nif (process.argv[2] === "--version") process.exit(0);\nappendFileSync(${JSON.stringify(join(directory.path, "install.log"))}, process.argv.slice(3).join(" ") + "\\n");\nprocess.exit(process.env.pnpm_config_strict_dep_builds === "false" ? 0 : 1);\n`,
+            `#!${process.execPath}\nimport { appendFileSync, readFileSync, writeFileSync } from "node:fs";\nif (process.argv[2] === "--version") process.exit(0);\nappendFileSync(${JSON.stringify(join(directory.path, "install.log"))}, process.argv.slice(3).join(" ") + "\\n");\nconst catalog = ["react", "vitest"];\nconst manifest = JSON.parse(readFileSync("package.json", "utf8"));\nconst field = process.argv.includes("-D") ? "devDependencies" : "dependencies";\nmanifest[field] ??= {};\nfor (const spec of process.argv.slice(4).filter((arg) => !arg.startsWith("-"))) {\n    const at = spec.lastIndexOf("@");\n    const name = at > 0 ? spec.slice(0, at) : spec;\n    const range = spec.slice(at + 1);\n    manifest[field][name] = at < 1 ? (catalog.includes(spec) ? "catalog:" : "^1.0.0") : range === "latest" ? "^1.0.0" : range;\n}\nwriteFileSync("package.json", JSON.stringify(manifest));\nprocess.exit(process.env.pnpm_config_strict_dep_builds === "false" ? 0 : 1);\n`,
             { mode: 0o755 },
         );
-        const workspace = "packages:\n  - apps/*\nallowBuilds:\n  esbuild: true\n";
+        const workspace = "packages:\n  - apps/*\ncatalog:\n  react: ^18.3.0\n  vitest: ^4.0.0\nallowBuilds:\n  esbuild: true\n";
         writeFileSync(join(directory.path, "pnpm-workspace.yaml"), workspace);
         const target = join(directory.path, "apps/example");
         const { status, output } = await create(target, ["--no-skip-install", "--package-manager", "pnpm"]);
@@ -135,6 +135,7 @@ describe("scaffold command", () => {
         expect(output).toContain(join(directory.path, "pnpm-workspace.yaml"));
         expect(output).toContain('"@swc/core": true');
         expect(output).not.toContain("esbuild: true");
+        expect(read(target, "package.json")).not.toContain("catalog:");
     });
 
     it("gives an app that the enclosing pnpm workspace excludes its own workspace", async () => {
@@ -189,7 +190,7 @@ describe("scaffold command", () => {
         mkdirSync(bin, { recursive: true });
         writeFileSync(
             join(bin, "corepack"),
-            `#!${process.execPath}\nimport { readFileSync, writeFileSync } from "node:fs";\nif (process.argv[2] === "--version") process.exit(0);\nconst args = process.argv.slice(4);\nconst manifest = JSON.parse(readFileSync("package.json", "utf8"));\nconst field = args.includes("--save-dev") ? "devDependencies" : "dependencies";\nmanifest[field] ??= {};\nfor (const spec of args.filter((arg) => !arg.startsWith("-"))) {\n    const at = spec.lastIndexOf("@");\n    const [name, range] = at > 0 ? [spec.slice(0, at), spec.slice(at + 1).replace("^", "")] : [spec, "^1.0.0"];\n    manifest[field][name] ??= range;\n}\nwriteFileSync("package.json", JSON.stringify(manifest));\n`,
+            `#!${process.execPath}\nimport { readFileSync, writeFileSync } from "node:fs";\nif (process.argv[2] === "--version") process.exit(0);\nconst args = process.argv.slice(4);\nconst manifest = JSON.parse(readFileSync("package.json", "utf8"));\nconst field = args.includes("--save-dev") ? "devDependencies" : "dependencies";\nmanifest[field] ??= {};\nfor (const spec of args.filter((arg) => !arg.startsWith("-"))) {\n    const at = spec.lastIndexOf("@");\n    const [name, range] = at > 0 ? [spec.slice(0, at), spec.slice(at + 1).replace("^", "").replace("latest", "^1.0.0")] : [spec, "^1.0.0"];\n    manifest[field][name] ??= range;\n}\nwriteFileSync("package.json", JSON.stringify(manifest));\n`,
             { mode: 0o755 },
         );
         const target = join(directory.path, "example");

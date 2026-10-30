@@ -21,7 +21,7 @@ The package manager's own settings are not replaced. An existing `.yarnrc.yml` k
 
 ## Workspaces
 
-Inside a pnpm workspace whose `packages` include the target directory, `pnpm create gtkx apps/my-app` adds the app to that workspace. It writes no `pnpm-workspace.yaml` or lockfile of its own and installs through the workspace, so `pnpm add`, `gtkx upgrade` and other commands run from the app act on the whole workspace. The scaffold does not edit the workspace's `pnpm-workspace.yaml`; when its `allowBuilds` does not mention `@swc/core` or `esbuild` yet, the command prints the entries to add there and pnpm skips those build scripts until you add them and run `pnpm install`.
+Inside a pnpm workspace whose `packages` include the target directory, `pnpm create gtkx apps/my-app` adds the app to that workspace. It writes no `pnpm-workspace.yaml` or lockfile of its own and installs through the workspace, so `pnpm add`, `gtkx upgrade` and other commands run from the app act on the whole workspace. The app's dependencies get their own version ranges rather than `catalog:` references, so a workspace catalog that pins another major version of `react` or `vitest` neither changes nor applies to the app. The scaffold does not edit the workspace's `pnpm-workspace.yaml`; when its `allowBuilds` does not mention `@swc/core` or `esbuild` yet, the command prints the entries to add there and pnpm skips those build scripts until you add them and run `pnpm install`.
 
 ## Installation failures
 

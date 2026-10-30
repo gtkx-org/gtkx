@@ -639,9 +639,7 @@ const dependencyVersions = (names: string[]): Record<string, string> =>
     );
 
 const dependencyArguments = (names: string[]): string[] =>
-    Object.entries(dependencyVersions(names)).map(([name, version]) =>
-        version === "latest" ? name : `${name}@${version}`,
-    );
+    Object.entries(dependencyVersions(names)).map(([name, version]) => `${name}@${version}`);
 
 const declaredDependencies = (value: unknown): Record<string, unknown> =>
     typeof value === "object" && value !== null ? { ...value } : {};
