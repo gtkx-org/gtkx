@@ -87,6 +87,7 @@ type PositionedHost = Gtk.ListItem | Gtk.ColumnViewRow;
 type ItemSlot = {
     itemKey: string;
     item: ListItem;
+    position: number | undefined;
     row: Gtk.TreeListRow | null;
     args: ListItemRenderArgs<unknown>;
 };
@@ -340,13 +341,27 @@ function isRowWanted(options: ItemSlotOptions, item: ListItem): boolean {
     return options.expandedIds?.includes(item.id) ?? false;
 }
 
+function collectionIndex(collection: Collection, item: ListItem, position: number | undefined): number {
+    if (position === undefined) {
+        return 0;
+    }
+
+    if (collection.idAt(position) === item.id) {
+        return position;
+    }
+
+    const index = collection.positionFor(item.id);
+
+    return index === -1 ? position : index;
+}
+
 function itemArgs(
     item: ListItem,
-    position: number | undefined,
+    index: number,
     row: Gtk.TreeListRow | null,
     isExpanded: boolean,
 ): ListItemRenderArgs<unknown> {
-    const args: ListItemRenderArgs<unknown> = { item: item.value, index: position ?? 0 };
+    const args: ListItemRenderArgs<unknown> = { item: item.value, index };
 
     if (row === null) {
         return args;
@@ -377,8 +392,14 @@ function slotFor(options: ItemSlotOptions): ItemSlot | null {
     return {
         itemKey: ref.key,
         item,
+        position: options.position,
         row: options.row,
-        args: itemArgs(item, options.position, options.row, isRowWanted(options, item)),
+        args: itemArgs(
+            item,
+            collectionIndex(options.collection, item, options.position),
+            options.row,
+            isRowWanted(options, item),
+        ),
     };
 }
 
@@ -390,6 +411,7 @@ function useItemSlot(
     const position = useProperty(entry.host, "position");
     const item = useProperty(entry.host, "item") ?? null;
     const row = item instanceof Gtk.TreeListRow ? item : null;
+    const { collection, expandedIds } = state.current;
 
     if (position === identity.position) {
         return identity.item === undefined
@@ -397,12 +419,16 @@ function useItemSlot(
             : {
                   itemKey: identity.itemKey,
                   item: identity.item,
+                  position,
                   row,
-                  args: itemArgs(identity.item, position, row, identity.isExpanded),
+                  args: itemArgs(
+                      identity.item,
+                      collectionIndex(collection, identity.item, position),
+                      row,
+                      identity.isExpanded,
+                  ),
               };
     }
-
-    const { collection, expandedIds } = state.current;
 
     return slotFor({ item, position, row, collection, expandedIds });
 }
@@ -479,7 +505,7 @@ function renderedIdentity(entry: CellEntry<PositionedHost>, slot: ItemSlot | nul
     return {
         itemKey: slot?.itemKey ?? "",
         item: slot?.item,
-        position: slot?.args.index ?? entry.host.getPosition(),
+        position: slot?.position ?? entry.host.getPosition(),
         isExpanded: slot?.args.isExpanded ?? false,
     };
 }

@@ -278,6 +278,47 @@ describe.each([DropDown, ComboRow])("dropdown value rendering", (Component) => {
         expect(await checkmarkOpacity("Second")).toBe(1);
     });
 
+    it("checks the selected item in a filtered popup", async () => {
+        await render(
+            <AdwPreferencesGroup halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                <Component
+                    items={valueItems(["Every Day", "Specific Days", "As Needed"])}
+                    selectedId="1"
+                    enableSearch
+                />
+            </AdwPreferencesGroup>,
+        );
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX));
+        await userEvent.type(await screen.findByRole(Gtk.AccessibleRole.SEARCH_BOX), "Sp");
+
+        await waitFor(() => {
+            expect(screen.queryByText("As Needed")).toBeNull();
+        });
+        const mark = (await screen.findByText("Specific Days")).getNextSibling();
+
+        expect(mark).toBeInstanceOf(Gtk.Image);
+        expect(mark?.getOpacity()).toBe(0);
+    });
+
+    it("gives popup renderers the unfiltered index", async () => {
+        await render(
+            <AdwPreferencesGroup halign={Gtk.Align.CENTER} valign={Gtk.Align.CENTER}>
+                <Component
+                    items={valueItems(["Every Day", "Specific Days", "As Needed"])}
+                    renderListItem={({ item, index }) => <GtkLabel>{`${item} at ${String(index)}`}</GtkLabel>}
+                    enableSearch
+                />
+            </AdwPreferencesGroup>,
+        );
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX));
+        await userEvent.type(await screen.findByRole(Gtk.AccessibleRole.SEARCH_BOX), "As");
+
+        await waitFor(() => {
+            expect(screen.queryByText("Every Day at 0")).toBeNull();
+        });
+        expect(screen.getByText(/^As Needed at/)).toHaveTextContent("As Needed at 2");
+    });
+
     it.each([null, undefined, ""])("leaves an empty display for %s", async (value) => {
         await renderValue(<Component items={[{ id: "choice", value }]} />);
         expect(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX)).toHaveDisplayValue("");

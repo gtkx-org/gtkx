@@ -48,7 +48,10 @@ type ListSection<S = unknown, T = unknown> = {
 type ListItemRenderArgs<T> = {
     /** Value of the `ListItem` being rendered. */
     item: T;
-    /** Position of the item in the flattened item list, which excludes section headers and collapsed tree rows. */
+    /**
+     * Position of the item in the flattened item list, which excludes section headers and collapsed tree rows.
+     * A drop-down popup filtered by `enableSearch` still passes this position, not the row's place in the results.
+     */
     index: number;
     /** Depth of the item within a tree, starting at zero for top-level items. */
     depth?: number | undefined;
