@@ -66,7 +66,7 @@ type CollectionModel = {
     rowAt: (position: number) => Gtk.TreeListRow | null;
     bind: (root: CollectionRootStore, model: Gtk.FlattenListModel) => void;
     clear: () => void;
-    sync: (index: CollectionIndex) => void;
+    sync: (index: CollectionIndex, onSectionsFilled: () => void) => void;
 };
 
 type CollectionRootProps = { ref: Ref<CollectionRootStore> };
@@ -419,7 +419,17 @@ function stepGroupStores(state: ModelState, context: SyncContext): void {
     }
 }
 
-function syncModel(state: ModelState, index: CollectionIndex): void {
+function rowCount(index: CollectionIndex): number {
+    return index.groups.reduce((rows, level) => rows + level.items.length, 0);
+}
+
+function hasFilledSections(previous: CollectionIndex, index: CollectionIndex): boolean {
+    return (
+        rowCount(previous) === 0 && index.groups.some((level) => level.section !== undefined && level.items.length > 0)
+    );
+}
+
+function syncModel(state: ModelState, index: CollectionIndex, onSectionsFilled: () => void): void {
     if (state.root === null) {
         return;
     }
@@ -432,6 +442,10 @@ function syncModel(state: ModelState, index: CollectionIndex): void {
     try {
         syncRoot(state, previous);
         stepGroupStores(state, context);
+
+        if (hasFilledSections(previous, index)) {
+            onSectionsFilled();
+        }
     } finally {
         state.expansion.isSyncing = false;
     }
@@ -503,8 +517,8 @@ function createCollectionModel(): CollectionModel {
         clear: () => {
             clearModel(state);
         },
-        sync: (index) => {
-            syncModel(state, index);
+        sync: (index, onSectionsFilled) => {
+            syncModel(state, index, onSectionsFilled);
         },
     };
 }

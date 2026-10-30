@@ -10,6 +10,7 @@ import type { ColumnViewColumn, ColumnViewProps, ExpanderDescriptions, SortProps
 import { ItemPortals, useItemCells, useRowProps, useSectionHeader } from "./internal/cells.js";
 import { useControlledSync } from "./internal/controlled-sync.js";
 import { useCollection } from "./internal/use-collection.js";
+import { showFirstHeader } from "./internal/first-header.js";
 import { useWidgetRef } from "./internal/use-widget-ref.js";
 
 type SortTarget = { view: Gtk.ColumnView; column: Gtk.ColumnViewColumn | null };
@@ -205,7 +206,7 @@ function ColumnView<T = unknown, S = unknown>(props: ColumnViewProps<T, S>): Rea
     const rest = omit(props, COLUMN_VIEW_PROPS);
     const size = { width: -1, height: props.estimatedItemHeight ?? -1 };
     const [view, refCallback] = useWidgetRef<Gtk.ColumnView>(ref);
-    const { collection, selection } = useCollection(props);
+    const { collection, selection } = useCollection({ ...props, onSectionsFilled: () => showFirstHeader(view) });
     const header = useSectionHeader(renderHeader, collection, size);
     const rows = useRowProps(rowProps, collection, expandedIds);
     const columnList = columns as ColumnViewColumn<never>[];

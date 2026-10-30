@@ -359,4 +359,33 @@ describe("ColumnView sections", () => {
         await rerender(drawSections(ref, sections.slice(1)));
         await expectRowTexts(ref, ["Name", "H:Two", "Parent 2", "Child 2"]);
     });
+
+    it("starts at the first section header when the sections overflow the viewport", async () => {
+        const ref = createRef<Gtk.ColumnView>();
+        const tall = ["A", "B", "C", "D"].map((name) => ({
+            id: name,
+            value: name,
+            data: Array.from({ length: 6 }, (_, index) => ({
+                id: `${name}${String(index)}`,
+                value: { name: `${name} ${String(index)}` },
+            })),
+        }));
+        await render(
+            <ScrollWrapper minContentHeight={300} maxContentHeight={300}>
+                <ColumnView<Named, string>
+                    ref={ref}
+                    sections={tall}
+                    columns={[{ id: "name", title: "Name", renderCell: renderNamed }]}
+                    renderHeader={({ section }: { section: string }) => <GtkLabel>{`H:${section}`}</GtkLabel>}
+                />
+            </ScrollWrapper>,
+        );
+
+        await waitFor(() => {
+            const adjustment = ref.current?.getVadjustment();
+            expect(adjustment?.getUpper()).toBeGreaterThan(adjustment?.getPageSize() ?? 0);
+        });
+
+        expect(ref.current?.getVadjustment()?.getValue()).toBe(0);
+    });
 });

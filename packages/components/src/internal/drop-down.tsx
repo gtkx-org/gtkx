@@ -9,6 +9,7 @@ import type { DropDownOwnProps, ListItemRenderArgs, ListItemRenderer } from "../
 import { ItemPortals, useItemCells, useSectionHeader } from "./cells.js";
 import { type Collection, isCollectionIdle } from "./collection.js";
 import { useControlledSync } from "./controlled-sync.js";
+import { showFirstHeader } from "./first-header.js";
 import { useCollectionData } from "./use-collection.js";
 import { useWidgetRef } from "./use-widget-ref.js";
 
@@ -197,7 +198,12 @@ function DropDownBase(props: DropDownBaseProps & { component: ElementType }): Re
     const { component: Component, items, sections, renderHeader, ref } = props;
     const rest = omit(props, DROP_DOWN_PROPS);
     const [widget, refCallback] = useWidgetRef<SelectableWidget>(ref);
-    const { collection, model } = useCollectionData({ items, sections, isFlat: true });
+    const { collection, model } = useCollectionData({
+        items,
+        sections,
+        isFlat: true,
+        onSectionsFilled: () => showFirstHeader(widget),
+    });
     const faceCells = useItemCells({ width: -1, height: -1 });
     const listCells = useItemCells({ width: -1, height: -1 });
     const header = useSectionHeader(renderHeader, collection, { width: -1, height: -1 });

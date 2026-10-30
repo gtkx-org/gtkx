@@ -189,6 +189,35 @@ describe("ListView sections", () => {
         expect(ref.current?.getModel()).toHaveObjectProperty("nItems", 0);
     });
 
+    it("starts at the first section header when the sections overflow the viewport", async () => {
+        const ref = createRef<Gtk.ListView>();
+        const tall = ["A", "B", "C", "D"].map((name) => ({
+            id: name,
+            value: name,
+            data: Array.from({ length: 6 }, (_, index) => leaf(`${name}${String(index)}`, `${name} ${String(index)}`)),
+        }));
+        await render(
+            <ScrollWrapper minContentHeight={300} maxContentHeight={300}>
+                <ListView ref={ref} sections={tall} renderItem={renderItem} renderHeader={renderHeader} />
+            </ScrollWrapper>,
+        );
+        const adjustment = (): Gtk.Adjustment => {
+            const value = ref.current?.getVadjustment();
+
+            if (value == null) {
+                throw new TypeError("Expected the list to scroll vertically");
+            }
+
+            return value;
+        };
+
+        await waitFor(() => {
+            expect(adjustment().getUpper()).toBeGreaterThan(adjustment().getPageSize());
+        });
+
+        expect(adjustment().getValue()).toBe(0);
+    });
+
     it("draws a header per section and models only the children as items", async () => {
         const { ref } = await renderFixture({ groups: sections, expandedIds: [] });
         await expectRowTexts(ref, collapsedRows);

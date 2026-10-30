@@ -208,7 +208,6 @@ describe("DropDown sections", () => {
         const { rerender } = await render(drawSections(true));
         await openDropDownList();
         await expectTextPresent("Letters");
-        await expectTextPresent("Numbers");
         await expectTextPresent("Alpha");
         await rerender(drawSections(false));
         await openDropDownList();
@@ -218,6 +217,40 @@ describe("DropDown sections", () => {
 });
 
 const renderValue = (element: ReactNode) => render(<AdwPreferencesGroup>{element}</AdwPreferencesGroup>);
+
+const COLOR_SECTIONS = ["Basic", "RGB", "HSV"].map((title) => ({
+    id: title,
+    value: title,
+    data: Array.from({ length: 4 }, (_, index) => ({
+        id: `${title}-${String(index)}`,
+        value: `${title} ${String(index)}`,
+    })),
+}));
+
+describe.each([DropDown, ComboRow])("sectioned dropdown popup", (Component) => {
+    it("opens at the first section header", async () => {
+        await renderValue(
+            <Component
+                sections={COLOR_SECTIONS}
+                renderHeader={({ section }: { section: string }) => <GtkLabel>{`Header ${section}`}</GtkLabel>}
+            />,
+        );
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.COMBO_BOX));
+
+        const label = await screen.findByText("Header Basic");
+        const list = label.getAncestor(Gtk.ListView.prototype.__type__);
+
+        if (!(list instanceof Gtk.ListView)) {
+            throw new TypeError("Expected the popup to list the items");
+        }
+
+        await waitFor(() => {
+            expect(list.getVadjustment()?.getUpper()).toBeGreaterThan(0);
+        });
+
+        expect(list.getVadjustment()?.getValue()).toBe(0);
+    });
+});
 
 describe.each([DropDown, ComboRow])("dropdown value rendering", (Component) => {
     it.each([
