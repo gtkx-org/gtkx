@@ -1,28 +1,25 @@
 import type { ListItem, ListSection } from "../types.js";
 import { decodePartAt, encodePart } from "./keys.js";
 
+type SectionIdentity = Pick<ListSection, "id" | "value">;
+
 type Level = {
     path: string;
     items: ListItem[];
     expandableFlags: boolean[];
+    section?: SectionIdentity | undefined;
 };
-
-type SectionIdentity = Pick<ListSection, "id" | "value">;
 
 type CollectionIndex = {
     isTree: boolean;
     groups: Level[];
     childLevel: (level: Level, slot: number) => Level | undefined;
-    levelFor: (levelPath: string) => Level | undefined;
-    itemAt: (levelPath: string, slot: number) => ListItem | undefined;
-    sectionFor: (levelPath: string) => SectionIdentity | undefined;
 };
 
 type IndexState = {
     isTree: boolean;
     groups: Level[];
     levels: Map<string, Level>;
-    sections: Map<string, SectionIdentity>;
 };
 
 type ParentItem = ListItem & { children: ListItem[] };
@@ -97,10 +94,10 @@ function buildGroups(state: IndexState, source: ListItem[], sections: ListSectio
     }
 
     return sections.map((section, group) => {
-        const path = encodePart(String(group));
-        state.sections.set(path, { id: section.id, value: section.value });
+        const level = newLevel(state, encodePart(String(group)), section.data);
+        level.section = { id: section.id, value: section.value };
 
-        return newLevel(state, path, section.data);
+        return level;
     });
 }
 
@@ -127,7 +124,6 @@ function createCollectionIndex(
         isTree: isTreeSource(source, sections, isFlat),
         groups: [],
         levels: new Map(),
-        sections: new Map(),
     };
 
     state.groups = buildGroups(state, source, sections);
@@ -136,10 +132,7 @@ function createCollectionIndex(
         isTree: state.isTree,
         groups: state.groups,
         childLevel: (level, slot) => childLevel(state, level, slot),
-        levelFor: (levelPath) => levelFor(state, levelPath),
-        itemAt: (levelPath, slot) => levelFor(state, levelPath)?.items[slot],
-        sectionFor: (levelPath) => state.sections.get(levelPath),
     };
 }
 
-export { createCollectionIndex, type CollectionIndex, type Level, type SectionIdentity };
+export { createCollectionIndex, type CollectionIndex, type Level };

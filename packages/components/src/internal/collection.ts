@@ -1,18 +1,18 @@
 import type * as Gtk from "@gtkx/gi/gtk";
 import type { ListItem } from "../types.js";
-import type { CollectionIndex, SectionIdentity } from "./collection-index.js";
+import type { CollectionIndex } from "./collection-index.js";
 import type { CollectionModel, SlotRef } from "./collection-model.js";
 import type { MatchedRows } from "./tree-order.js";
 import { slotPathAt, slotRefFor } from "./collection-model.js";
 import { findIds, findRows } from "./tree-order.js";
 
-type Collection = Pick<CollectionModel, "expansion" | "rowAt"> & {
+type Collection = Pick<CollectionModel, "expansion" | "rowAt" | "subscribe" | "getVersion"> & {
     isTree: boolean;
     itemAt: (ref: SlotRef) => ListItem | undefined;
-    sectionFor: (levelPath: string) => SectionIdentity | undefined;
     idAt: (position: number) => string | null;
     idsAt: (positions: number[]) => string[];
     pathAt: (position: number) => string | null;
+    isPending: () => boolean;
     positionFor: (id: string) => number;
     rowsFor: (ids: string[]) => MatchedRows;
 };
@@ -44,14 +44,14 @@ function refAt(model: Gtk.FlattenListModel | null, position: number): SlotRef | 
     return slotRefFor(model?.getItem(position) ?? null);
 }
 
-function itemAt(index: CollectionIndex, ref: SlotRef): ListItem | undefined {
-    return index.itemAt(ref.store.level.path, ref.slot);
+function itemAt(ref: SlotRef): ListItem | undefined {
+    return ref.store.level.items[ref.slot];
 }
 
-function idAt(model: Gtk.FlattenListModel | null, index: CollectionIndex, position: number): string | null {
+function idAt(model: Gtk.FlattenListModel | null, position: number): string | null {
     const ref = refAt(model, position);
 
-    return ref === null ? null : (itemAt(index, ref)?.id ?? null);
+    return ref === null ? null : (itemAt(ref)?.id ?? null);
 }
 
 function pathAt(model: Gtk.FlattenListModel | null, position: number): string | null {
@@ -89,11 +89,13 @@ function createCollection(
         expansion: gtkModel.expansion,
         isTree: index.isTree,
         rowAt: gtkModel.rowAt,
-        itemAt: (ref) => itemAt(index, ref),
-        sectionFor: index.sectionFor,
-        idAt: (position) => idAt(model, index, position),
+        subscribe: gtkModel.subscribe,
+        getVersion: gtkModel.getVersion,
+        itemAt,
+        idAt: (position) => idAt(model, position),
         idsAt: (positions) => idsAt(gtkModel, positions),
         pathAt: (position) => pathAt(model, position),
+        isPending: () => gtkModel.isPending(index),
         positionFor: (id) => positionFor(gtkModel, id),
         rowsFor: (ids) => rowsFor(gtkModel, ids),
     };

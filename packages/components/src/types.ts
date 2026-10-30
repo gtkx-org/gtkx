@@ -17,7 +17,10 @@ import type { ReactNode, RefObject } from "react";
  * arbitrary value. Nested items form a tree.
  */
 type ListItem<T = unknown> = {
-    /** Stable identifier, unique across the collection, used to preserve identity across updates and selection. */
+    /**
+     * Stable identifier that names the item in selection and expansion, so keep it unique across the collection.
+     * A row keeps its component state while its id stays among the same siblings.
+     */
     id: string;
     /** Payload handed to the cell renderer as `ListItemRenderArgs.item`. */
     value: T;

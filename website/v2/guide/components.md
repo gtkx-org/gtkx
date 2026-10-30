@@ -36,7 +36,9 @@ import { GtkLabel } from "@gtkx/jsx/gtk";
 />
 ```
 
-Nesting `ListItem.children` turns the same component into an acyclic tree, with `expandedIds` and `onExpandedChange` driving expansion. Keep item IDs stable and unique across the collection, including nested items. Section IDs must be unique among sections.
+Nesting `ListItem.children` turns the same component into an acyclic tree, with `expandedIds` and `onExpandedChange` driving expansion. Keep item IDs stable and unique across the collection, including nested items, since selection and expansion name rows by ID. Section IDs must be unique among sections.
+
+IDs also give rows their identity. When items are inserted, removed or reordered, GTK keeps every row whose ID stays among the same siblings bound, so its component state survives, and only new rows mount. A row that moves keeps its state in a flat list, grid, table or section; a tree row that moves among its siblings remounts, because GTK rebuilds its tree node. A reorder that moves more than about a thousand rows at once updates rows in place instead, and the rows that move there remount. An ID repeated among siblings pairs rows by their order.
 
 When every item is known to be a leaf, pass `isFlat` to `ListView` or `ColumnView`. This skips tree discovery when synchronizing large collections; do not use it when any item has children.
 

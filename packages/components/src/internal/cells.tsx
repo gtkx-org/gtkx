@@ -15,7 +15,7 @@ import type {
     ListSectionRenderer,
 } from "../types.js";
 import type { Collection } from "./collection.js";
-import { slotPathAt, type SlotRef, slotRefFor } from "./collection-model.js";
+import { type SlotRef, slotRefFor } from "./collection-model.js";
 import { joinParts } from "./keys.js";
 
 type CellSize = {
@@ -120,6 +120,15 @@ type ItemPortalsProps = {
     expanderDescriptions?: ExpanderDescriptions | null | undefined;
 };
 
+type PendingList<H extends FactoryHost> = {
+    entries: CellEntry<H>[];
+    isPending: boolean;
+};
+
+type ItemCellListProps = Omit<ItemPortalsProps, "registry"> & PendingList<Gtk.ListItem>;
+
+type ItemRowListProps = Omit<RowPortalsProps, "registry"> & PendingList<Gtk.ColumnViewRow>;
+
 type ItemRowProps = {
     entry: CellEntry<Gtk.ColumnViewRow>;
     rowProps: ListRowPropsResolver<never>;
@@ -136,7 +145,7 @@ type RowPortalsProps = {
 type HeaderCellProps = {
     entry: CellEntry<Gtk.ListHeader>;
     render: ListSectionRenderer<never>;
-    collection: Collection;
+    version: number;
 };
 
 type HeaderPortalsProps = {
@@ -175,6 +184,8 @@ type RowSlot = {
 const ItemCell = memo(ItemCellImpl, isSameItemCell);
 const ItemRow = memo(ItemRowImpl, isSameItemRow);
 const HeaderCell = memo(HeaderCellImpl);
+const ItemCellList = memo(ItemCellListImpl, isWaitingForSync);
+const ItemRowList = memo(ItemRowListImpl, isWaitingForSync);
 const CELL_OPTIONS: CellRegistryOptions<Gtk.ListItem> = { isHost: isListItem, prepare: prepareCell };
 const HEADER_OPTIONS: CellRegistryOptions<Gtk.ListHeader> = { isHost: isListHeader, prepare: prepareCell };
 const ROW_OPTIONS: CellRegistryOptions<Gtk.ColumnViewRow> = { isHost: isColumnViewRow };
@@ -350,10 +361,6 @@ function itemArgs(
     return args;
 }
 
-function keyForItem(ref: SlotRef, item: ListItem): string {
-    return joinParts([slotPathAt(ref.store, ref.slot), item.id]);
-}
-
 function slotFor(options: ItemSlotOptions): ItemSlot | null {
     const ref = slotRefFor(options.item);
 
@@ -368,7 +375,7 @@ function slotFor(options: ItemSlotOptions): ItemSlot | null {
     }
 
     return {
-        itemKey: keyForItem(ref, item),
+        itemKey: ref.key,
         item,
         row: options.row,
         args: itemArgs(item, options.position, options.row, isRowWanted(options, item)),
@@ -409,7 +416,7 @@ function itemIdentity(
     const item = ref === null ? undefined : collection.itemAt(ref);
 
     return {
-        itemKey: ref === null || item === undefined ? "" : keyForItem(ref, item),
+        itemKey: ref === null || item === undefined ? "" : ref.key,
         item,
         position: entry.host.getPosition(),
         isExpanded: item !== undefined && (expandedIds?.includes(item.id) ?? false),
@@ -435,6 +442,10 @@ function isSameItemCell(previous: ItemCellProps, next: ItemCellProps): boolean {
         previous.expanderDescriptions === next.expanderDescriptions &&
         isSameItemIdentity(identity, next)
     );
+}
+
+function isWaitingForSync<H extends FactoryHost>(_previous: PendingList<H>, next: PendingList<H>): boolean {
+    return next.isPending;
 }
 
 function isSameItemRow(previous: ItemRowProps, next: ItemRowProps): boolean {
@@ -606,10 +617,10 @@ function ItemRowImpl({ entry, rowProps, state, ...identity }: ItemRowProps): Rea
     return null;
 }
 
-function HeaderCellImpl({ entry, render, collection }: HeaderCellProps): ReactNode {
+function HeaderCellImpl({ entry, render }: HeaderCellProps): ReactNode {
     const item = useProperty(entry.host, "item") ?? null;
 
-    return createPortal(headerBody(slotRefFor(item), render, collection), entry.host, entry.key);
+    return createPortal(headerBody(slotRefFor(item), render), entry.host, entry.key);
 }
 
 function NativeItemCell<T extends GObject.Object>({ entry, render, keys, size }: NativeItemCellProps<T>): ReactNode {
@@ -631,19 +642,19 @@ function NativeItemCell<T extends GObject.Object>({ entry, render, keys, size }:
     return createPortal(body, entry.host, entry.key);
 }
 
-function headerBody(ref: SlotRef | null, render: ListSectionRenderer<never>, collection: Collection): ReactNode {
+function headerBody(ref: SlotRef | null, render: ListSectionRenderer<never>): ReactNode {
     if (ref === null) {
         return null;
     }
 
-    const section = collection.sectionFor(ref.store.level.path);
+    const section = ref.store.level.section;
 
     if (section === undefined) {
         return null;
     }
 
     const renderHeader = render as ListSectionRenderer<unknown>;
-    const key = joinParts([ref.store.level.path, section.id]);
+    const key = joinParts([ref.store.key, section.id]);
 
     return <Fragment key={key}>{renderHeader({ section: section.value })}</Fragment>;
 }
@@ -652,15 +663,18 @@ function usePortalEntries<H extends FactoryHost>(registry: CellRegistry<H>): Cel
     return useSyncExternalStore(registry.subscribe, registry.getEntries);
 }
 
-const ItemPortals = ({
-    registry,
+function useCollectionVersion(collection: Collection): number {
+    return useSyncExternalStore(collection.subscribe, collection.getVersion);
+}
+
+function ItemCellListImpl({
+    entries,
     render,
     collection,
     hasExpander,
     expandedIds,
     expanderDescriptions,
-}: ItemPortalsProps): ReactNode => {
-    const entries = usePortalEntries(registry);
+}: ItemCellListProps): ReactNode {
     const state = useLatestRef({ collection, expandedIds });
 
     return entries.map((entry) => (
@@ -674,10 +688,16 @@ const ItemPortals = ({
             {...itemIdentity(entry, collection, expandedIds)}
         />
     ));
+}
+
+const ItemPortals = ({ registry, ...props }: ItemPortalsProps): ReactNode => {
+    const entries = usePortalEntries(registry);
+    useCollectionVersion(props.collection);
+
+    return <ItemCellList {...props} entries={entries} isPending={props.collection.isPending()} />;
 };
 
-const RowPortals = ({ registry, rowProps, collection, expandedIds }: RowPortalsProps): ReactNode => {
-    const entries = usePortalEntries(registry);
+function ItemRowListImpl({ entries, rowProps, collection, expandedIds }: ItemRowListProps): ReactNode {
     const state = useLatestRef({ collection, expandedIds });
 
     return entries.map((entry) => (
@@ -689,12 +709,21 @@ const RowPortals = ({ registry, rowProps, collection, expandedIds }: RowPortalsP
             {...itemIdentity(entry, collection, expandedIds)}
         />
     ));
+}
+
+const RowPortals = ({ registry, ...props }: RowPortalsProps): ReactNode => {
+    const entries = usePortalEntries(registry);
+    useCollectionVersion(props.collection);
+
+    return <ItemRowList {...props} entries={entries} isPending={props.collection.isPending()} />;
 };
 
-const HeaderPortals = ({ registry, render, collection }: HeaderPortalsProps): ReactNode =>
-    usePortalEntries(registry).map((entry) => (
-        <HeaderCell key={entry.key} entry={entry} render={render} collection={collection} />
-    ));
+const HeaderPortals = ({ registry, render, collection }: HeaderPortalsProps): ReactNode => {
+    const entries = usePortalEntries(registry);
+    const version = useCollectionVersion(collection);
+
+    return entries.map((entry) => <HeaderCell key={entry.key} entry={entry} render={render} version={version} />);
+};
 
 function NativeItemPortals<T extends GObject.Object>({ registry, render, size }: NativeItemPortalsProps<T>): ReactNode {
     const entries = usePortalEntries(registry);
