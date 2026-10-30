@@ -33,12 +33,12 @@ Translate the window title and new-task tooltip in `src/components/window.tsx`:
 ```diff [src/components/window.tsx]
 @@ -0,0 +1 @@
 +import { useTranslation } from "@gtkx/i18n";
-@@ -36,0 +38 @@
+@@ -35,0 +37 @@
 +    const { t } = useTranslation();
-@@ -64 +66 @@
+@@ -63 +65 @@
 -                title="Tasks"
 +                title={t("Tasks")}
-@@ -104 +106 @@
+@@ -102 +104 @@
 -                                                tooltipText="New Task (Ctrl+N)"
 +                                                tooltipText={t("New Task (Ctrl+N)")}
 ```
@@ -70,9 +70,9 @@ Translate the search entry in `src/components/task-list.tsx`:
 ```diff [src/components/task-list.tsx]
 @@ -0,0 +1 @@
 +import { useTranslation } from "@gtkx/i18n";
-@@ -11,0 +13 @@
+@@ -12,0 +14 @@
 +    const { t } = useTranslation();
-@@ -34 +36 @@
+@@ -35 +37 @@
 -                    placeholderText="Search tasks…"
 +                    placeholderText={t("Search tasks…")}
 ```

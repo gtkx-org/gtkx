@@ -126,11 +126,11 @@ In `src/components/window.tsx`, extend the React and GTKX imports, then hold the
 +import { useAppSettings } from "./settings.js";
 @@ -2 +6,0 @@
 -import { useRef } from "react";
-@@ -13 +16,0 @@
+@@ -12 +15,0 @@
 -import * as Adw from "@gtkx/gi/adw";
-@@ -16 +18,0 @@
+@@ -15 +17,0 @@
 -import { quit } from "@gtkx/react";
-@@ -31,0 +34,7 @@
+@@ -30,0 +33,7 @@
 +    const settings = useAppSettings();
 +    const [colorScheme] = useSetting(settings, schema, "color-scheme");
 +    const [window, setWindow] = useState<Adw.ApplicationWindow | null>(null);
@@ -138,7 +138,7 @@ In `src/components/window.tsx`, extend the React and GTKX imports, then hold the
 +    useBindSetting({ settings, schema, key: "window-width", object: window, property: "defaultWidth" });
 +    useBindSetting({ settings, schema, key: "window-height", object: window, property: "defaultHeight" });
 +
-@@ -38,0 +48 @@
+@@ -37,0 +47 @@
 +                ref={setWindow}
 ```
 
@@ -241,9 +241,9 @@ In `src/components/task-list.tsx`, read the setting and pass it to the selector:
 ```diff [src/components/task-list.tsx]
 @@ -0,0 +1 @@
 +import { useSortOrder } from "../hooks/use-sort-order.js";
-@@ -10,0 +12 @@
+@@ -11,0 +13 @@
 +    const [sortOrder] = useSortOrder();
-@@ -20 +22 @@
+@@ -21 +23 @@
 -    const visible = visibleTasks(tasks, selection, { query: searchQuery, filter });
 +    const visible = visibleTasks(tasks, selection, { query: searchQuery, filter, sortOrder });
 ```
@@ -351,7 +351,7 @@ Apply it when the setting changes in `src/components/window.tsx`:
 ```diff [src/components/window.tsx]
 @@ -0,0 +1 @@
 +import { applyColorScheme } from "../theme.js";
-@@ -43,0 +45,4 @@
+@@ -42,0 +44,4 @@
 +
 +    useEffect(() => {
 +        applyColorScheme(colorScheme);

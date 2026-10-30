@@ -28,7 +28,7 @@ In `src/components/window.tsx`, add `AdwToastOverlay` to the Adwaita element imp
 @@ -0,0 +1,2 @@
 +import { ToastProvider } from "@gtkx/components";
 +import { useRef } from "react";
-@@ -11 +13,2 @@
+@@ -10 +12,2 @@
 -import { AdwApplicationWindow, AdwStatusPage } from "@gtkx/jsx/adw";
 +import * as Adw from "@gtkx/gi/adw";
 +import { AdwApplicationWindow, AdwToastOverlay, AdwStatusPage } from "@gtkx/jsx/adw";
@@ -37,9 +37,9 @@ In `src/components/window.tsx`, add `AdwToastOverlay` to the Adwaita element imp
 Inside `Window`, create the overlay ref:
 
 ```diff [src/components/window.tsx]
-@@ -31,0 +32 @@
+@@ -30,0 +31 @@
 +    const toastOverlayRef = useRef<Adw.ToastOverlay | null>(null);
-@@ -35,50 +36,54 @@
+@@ -34,49 +35,53 @@
 -        <AdwApplicationWindow
 -            controllers={<AppShortcuts />}
 -            actions={<WindowActions />}
@@ -64,7 +64,6 @@ Inside `Window`, create the overlay ref:
 -                        initialParams={ALL_TASKS}
 -                        options={({ route }) => ({
 -                            title: selectionTitle(route.params, lists),
--                            headerTitle: <TaskFilter />,
 -                            headerStart: (
 -                                <>
 -                                    <GtkButton
@@ -116,7 +115,6 @@ Inside `Window`, create the overlay ref:
 +                                initialParams={ALL_TASKS}
 +                                options={({ route }) => ({
 +                                    title: selectionTitle(route.params, lists),
-+                                    headerTitle: <TaskFilter />,
 +                                    headerStart: (
 +                                        <>
 +                                            <GtkButton
@@ -413,9 +411,9 @@ In `src/components/app-shortcuts.tsx`, import the same hook and call it inside `
 In `Window`, read `const showDialog = useStore((state) => state.showDialog)` and update the Lists screen header:
 
 ```diff [src/components/window.tsx]
-@@ -31,0 +32 @@
+@@ -30,0 +31 @@
 +    const showDialog = useStore((state) => state.showDialog);
-@@ -55 +56,14 @@
+@@ -54 +55,14 @@
 -                            <Split.Screen name="Lists" component={Sidebar} options={{ title: "Tasks" }} />
 +                            <Split.Screen
 +                                name="Lists"

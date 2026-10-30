@@ -7,6 +7,7 @@ import type { Selection, Task } from "../types.js";
 import { useSortOrder } from "../hooks/use-sort-order.js";
 import { useStore } from "../store/index.js";
 import { addListId, emptyState, isReorderable, visibleTasks } from "../store/selectors.js";
+import { TaskFilter } from "./task-filter.js";
 import { TaskRow } from "./task-row.js";
 
 const TaskSearch = () => {
@@ -82,6 +83,7 @@ const TaskCollection = ({ selection }: { selection: Selection }) => {
         <GtkScrolledWindow vexpand>
             <AdwClamp maximumSize={640} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
                 <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                    <TaskFilter />
                     <TaskRows tasks={visible} canReorder={canReorder} listId={listId} />
                     {visible.length === 0 ? (
                         <AdwStatusPage

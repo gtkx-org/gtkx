@@ -320,9 +320,9 @@ In `src/components/window.tsx`, import it and the title helper:
 
 Use `initialParams={ALL_TASKS}` on the `Tasks` screen. Its title now comes from `selectionTitle(route.params, lists)`; the complete options appear below.
 
-## Put controls in the header
+## Add the filter and search controls
 
-A header control can be a component with its own store subscription. Create `src/components/task-filter.tsx`:
+A control can be a component with its own store subscription. Create `src/components/task-filter.tsx`:
 
 ```tsx [src/components/task-filter.tsx]
 import { AdwToggle, AdwToggleGroup } from "@gtkx/jsx/adw";
@@ -372,28 +372,26 @@ export const SearchButton = () => {
 
 The shortcut in the tooltip is added in [Add Menus and Shortcuts](/v2/tutorial/actions-menus-shortcuts).
 
-In `src/components/window.tsx`, import both controls:
+In `src/components/window.tsx`, import the search button:
 
 ```diff [src/components/window.tsx]
-@@ -0,0 +1,2 @@
+@@ -0,0 +1 @@
 +import { SearchButton } from "./search-button.js";
-+import { TaskFilter } from "./task-filter.js";
 ```
 
 Replace the `Tasks` screen declaration with:
 
 ```diff [src/components/window.tsx]
-@@ -38 +38 @@
+@@ -37 +37 @@
 -                        initialParams={{ kind: "list", listId: "personal" }}
 +                        initialParams={ALL_TASKS}
-@@ -40 +40,3 @@
+@@ -39 +39,2 @@
 -                            title: lists.find((list) => list.id === route.params.listId)?.name ?? "Tasks",
 +                            title: selectionTitle(route.params, lists),
-+                            headerTitle: <TaskFilter />,
 +                            headerStart: <SearchButton />,
 ```
 
-`headerTitle` replaces the visible title widget. Keep `title` as well: it names the native navigation page and is used for back navigation.
+The filter goes above the list rather than in the header. A collapsed header already holds the back button, the page title and the window controls, and later chapters add more buttons, so the header must still fit the window's 360-pixel minimum width.
 
 ## Render search and empty states
 
@@ -407,6 +405,7 @@ import { GtkBox, GtkListBox, GtkScrolledWindow, GtkSearchBar, GtkSearchEntry } f
 import type { Selection } from "../types.js";
 import { useStore } from "../store/index.js";
 import { addListId, emptyState, visibleTasks } from "../store/selectors.js";
+import { TaskFilter } from "./task-filter.js";
 import { TaskRow } from "./task-row.js";
 
 export const TaskList = ({ selection }: { selection: Selection }) => {
@@ -438,6 +437,7 @@ export const TaskList = ({ selection }: { selection: Selection }) => {
             <GtkScrolledWindow vexpand>
                 <AdwClamp maximumSize={640} marginTop={12} marginBottom={12} marginStart={12} marginEnd={12}>
                     <GtkBox orientation={Gtk.Orientation.VERTICAL} spacing={12}>
+                        <TaskFilter />
                         <GtkListBox selectionMode={Gtk.SelectionMode.NONE} cssClasses={["boxed-list"]}>
                             <AdwEntryRow
                                 title="Add a task…"
@@ -491,7 +491,7 @@ Save the files and restart the app to see All Tasks as the launch view.
 
 - Complete an open task and check the sidebar counts.
 - Select Today, Important, and Trash. Each shows tasks matching that view.
-- Switch the header filter between All, Open, and Done.
+- Switch the filter above the list between All, Open, and Done.
 - Search for `report`, then `<b>missing</b> & café`. The empty-state message should show the second query literally.
 - Choose another sidebar entry. Its handler clears the query and closes the search bar.
 

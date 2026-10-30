@@ -56,9 +56,9 @@ Add `isReorderable` to the selector import in `src/components/task-list.tsx`. Co
 @@ -8 +8 @@
 -import { addListId, emptyState, visibleTasks } from "../store/selectors.js";
 +import { addListId, emptyState, isReorderable, visibleTasks } from "../store/selectors.js";
-@@ -21,0 +22 @@
+@@ -22,0 +23 @@
 +    const canReorder = isReorderable(selection, searchQuery, filter, sortOrder);
-@@ -49,2 +50,8 @@
+@@ -51,2 +52,8 @@
 -                            {visible.map((task) => (
 -                                <TaskRow key={task.id} task={task} />
 +                            {visible.map((task, index) => (

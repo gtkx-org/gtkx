@@ -50,13 +50,13 @@ Add these helpers at the end of the same file. They reuse the existing `isSelect
 In `src/components/window.tsx`, add `navigationRef` to the navigation import and pass it to the container:
 
 ```diff [src/components/window.tsx]
-@@ -9 +9 @@
+@@ -8 +8 @@
 -import { ALL_TASKS, Split } from "../navigation.js";
 +import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
 ```
 
 ```diff [src/components/window.tsx]
-@@ -28 +28 @@
+@@ -27 +27 @@
 -            <NavigationContainer>
 +            <NavigationContainer ref={navigationRef}>
 ```
@@ -171,7 +171,7 @@ Update `src/components/window.tsx`. Import the button and the two new components
 +import { GtkButton } from "@gtkx/jsx/gtk";
 +import { MainMenu } from "./main-menu.js";
 +import { WindowActions } from "./window-actions.js";
-@@ -27 +30,7 @@
+@@ -26 +29,7 @@
 -        <AdwApplicationWindow title="Tasks" widthRequest={360} heightRequest={294} onCloseRequest={() => quit()}>
 +        <AdwApplicationWindow
 +            actions={<WindowActions />}
@@ -185,7 +185,7 @@ Update `src/components/window.tsx`. Import the button and the two new components
 Add `actions={<WindowActions />}` to `AdwApplicationWindow`. In the Tasks screen's existing options, replace `headerStart` and add `headerEnd`:
 
 ```diff [src/components/window.tsx]
-@@ -54 +54,11 @@
+@@ -52 +52,11 @@
 -                            headerStart: <SearchButton />,
 +                            headerStart: (
 +                                <>
@@ -349,9 +349,9 @@ Finish the window wiring:
 @@ -0,0 +1,2 @@
 +import { AppShortcuts } from "./app-shortcuts.js";
 +import { Dialogs } from "./dialogs.js";
-@@ -30,0 +33 @@
+@@ -29,0 +32 @@
 +            controllers={<AppShortcuts />}
-@@ -76,0 +80 @@
+@@ -74,0 +78 @@
 +            <Dialogs />
 ```
 

@@ -21,7 +21,6 @@ import { SearchButton } from "./search-button.js";
 import { useAppSettings } from "./settings.js";
 import { Sidebar } from "./sidebar.js";
 import { TaskButtons } from "./task-buttons.js";
-import { TaskFilter } from "./task-filter.js";
 import { TaskScreen } from "./task-screen.js";
 import { TaskTitle } from "./task-title.js";
 import { TasksScreen } from "./tasks-screen.js";
@@ -90,7 +89,6 @@ const TaskNavigation = () => {
                     initialParams={ALL_TASKS}
                     options={({ route }) => ({
                         title: selectionTitle(route.params, lists),
-                        headerTitle: <TaskFilter />,
                         headerStart: <NewTaskButtons />,
                         headerEnd: <MainMenu />,
                     })}

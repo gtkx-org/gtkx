@@ -131,7 +131,7 @@ In `src/components/window.tsx`, add these imports:
 Inside `Window`, subscribe to tasks and read the reminder interval using the existing settings instance and schema:
 
 ```diff [src/components/window.tsx]
-@@ -45,0 +46,3 @@
+@@ -44,0 +45,3 @@
 +    const tasks = useStore((state) => state.tasks);
 +    const [reminderMinutes] = useSetting(settings, schema, "reminder-minutes");
 +    const reminders = useReminders(tasks, reminderMinutes);
@@ -140,7 +140,7 @@ Inside `Window`, subscribe to tasks and read the reminder interval using the exi
 Render the reminders inside the existing `ToastProvider`, before `AdwApplicationWindow`:
 
 ```diff [src/components/window.tsx]
-@@ -56,0 +57,3 @@
+@@ -55,0 +56,3 @@
 +            {reminders.map((reminder) => (
 +                <ReminderNotification key={`${reminder.id}:${reminder.due}`} {...reminder} />
 +            ))}
@@ -248,10 +248,10 @@ Initialize the marker in the seed helper:
 Open any queued task when navigation is ready:
 
 ```diff [src/components/window.tsx]
-@@ -22 +22 @@
+@@ -21 +21 @@
 -import { ALL_TASKS, navigationRef, Split } from "../navigation.js";
 +import { ALL_TASKS, navigationRef, openPendingTask, Split } from "../navigation.js";
-@@ -70 +70 @@
+@@ -69 +69 @@
 -                    <NavigationContainer ref={navigationRef}>
 +                    <NavigationContainer ref={navigationRef} onReady={openPendingTask}>
 ```
