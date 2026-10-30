@@ -103,6 +103,16 @@ test("regress enum params resolve to their registered nicks", () => {
     expect(Regress.testUnsignedEnumParam(Regress.TestEnumUnsigned.VALUE1)).toBe("value1");
 });
 
+test("functions GIR attaches to an enum or error domain are also its statics", () => {
+    expect(Regress.TestEnum.param(Regress.TestEnum.VALUE2)).toBe("value2");
+    expect(GIMarshallingTests.GEnum.returnv()).toBe(GIMarshallingTests.GEnum.VALUE3);
+    expect(GIMarshallingTests.Flags.returnv()).toBe(GIMarshallingTests.flagsReturnv());
+    expect(Regress.TestError.quark()).toBe(Regress.testErrorQuark());
+    expect(Regress.TestEnum[Regress.TestEnum.VALUE2]).toBe("VALUE2");
+    expect(Object.keys(Regress.TestEnum)).not.toContain("param");
+    expect(Object.keys(Regress.TestError)).not.toContain("quark");
+});
+
 test("flags out slots decode combined and private bits", () => {
     expect(Regress.globalGetFlagsOut()).toBe(Regress.TestFlags.FLAG1 | Regress.TestFlags.FLAG3);
     expect(Regress.globalGetFlagsOut()).toBe(5);

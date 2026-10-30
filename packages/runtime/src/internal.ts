@@ -60,6 +60,7 @@ export {
     type SignalName,
 } from "./signal.js";
 export { retainWrapperClasses };
+export { defineStatics } from "./statics.js";
 export { fromValue, getBoxedValue, getValueType, setBoxedValue, toValue } from "./value.js";
 export { registerClassOption } from "./class-options.js";
 export {

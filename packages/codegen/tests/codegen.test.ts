@@ -145,12 +145,15 @@ describe("generated bindings", () => {
                 `import {
                 Application,
                 Cancellable,
+                DBusError,
+                dbusErrorGetRemoteError,
                 File,
                 ListModel,
                 type ListModelImpl,
                 type Socket,
                 type SocketAddress,
             } from "@gtkx/gi/gio";
+            import { Error as GLibError, UnicodeScript } from "@gtkx/gi/glib";
             import { Object as GObject, TYPE_INT, TYPE_OBJECT } from "@gtkx/gi/gobject";
             import { registerClass, withSignals } from "@gtkx/runtime";
             const file: File = File.newForPath("/tmp/example");
@@ -212,6 +215,15 @@ describe("generated bindings", () => {
             }
             export const Counter = registerClass(CounterBase, { typeName: "ConsumerCounter" });
             new Counter().emit("bumped", 2);
+            declare const gerror: GLibError;
+            const remote: string | null = DBusError.getRemoteError(gerror);
+            const flat: string | null = dbusErrorGetRemoteError(gerror);
+            const domain: number = DBusError.quark();
+            const failed: DBusError = DBusError.FAILED;
+            const script: UnicodeScript = UnicodeScript.fromIso15924(0x4c61746e);
+            const latin: UnicodeScript.LATIN = UnicodeScript.LATIN;
+            const tag: number = UnicodeScript.toIso15924(latin);
+            const latinName: string | undefined = UnicodeScript[latin];
             class TickerBase extends withSignals(Application, { ticked: { paramTypes: [TYPE_INT] } }) {
                 tick(): void {
                     this.emit("ticked", 1);
@@ -233,7 +245,7 @@ describe("generated bindings", () => {
             declare const either: Application | ServiceBase;
             either.emit("activate");
             either.on("startup", () => {}).disconnect(either.connect("shutdown", () => {}));
-            export { cancellable, connected, path };`,
+            export { cancellable, connected, domain, failed, flat, latinName, path, remote, script, tag };`,
             ),
         ).toEqual([]);
         expect(
@@ -442,6 +454,10 @@ describe("generated bindings", () => {
         });
         expect(reference.lookup("Gio.File", "interface")).toMatchObject({ outcome: "page", symbol: { name: "File" } });
         expect(reference.lookup("Gio.DoesNotExist")).toMatchObject({ outcome: "notFound" });
+        const domainPage = reference.lookup("Gio.DBusError");
+        expect(domainPage.outcome === "page" ? domainPage.markdown : "").toContain(
+            "| `Gio.DBusError.getRemoteError()` | `Gio.dbusErrorGetRemoteError()` |",
+        );
         expect(reference.symbols({ namespace: "Gio", kinds: ["class"] })).toEqual(
             expect.arrayContaining([expect.objectContaining({ name: "Application" })]),
         );

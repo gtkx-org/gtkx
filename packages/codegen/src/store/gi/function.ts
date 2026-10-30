@@ -102,6 +102,43 @@ const isEmittableNamespaceFunction = (context: ModuleContext, namespaceName: str
     fn.cIdentifier !== undefined &&
     !hasUnmarshalableParam(context, fn);
 
+type EnumStaticFunction = {
+    name: string;
+    exportName: string;
+    fn: GirFunction;
+};
+
+/**
+ * Namespace functions GIR moves onto an enumeration or error domain, which become its statics under
+ * the member name, as in GJS, while keeping their namespace export.
+ */
+const enumStaticFunctions = (context: ModuleContext, enumName: string): EnumStaticFunction[] => {
+    const statics: EnumStaticFunction[] = [];
+
+    for (const fn of context.namespace.functions) {
+        const [typeName, memberName] = fn.movedTo?.split(".") ?? [];
+        const cIdentifier = fn.cIdentifier;
+
+        if (
+            typeName !== enumName ||
+            memberName === undefined ||
+            cIdentifier === undefined ||
+            context.namespace.sharedLibrary === undefined ||
+            !isEmittableNamespaceFunction(context, context.namespace.name, fn)
+        ) {
+            continue;
+        }
+
+        const exportName = namespaceFunctionExportName(cIdentifier, fn.name, context.namespace.cSymbolPrefixes);
+
+        if (exportName.length > 0) {
+            statics.push({ name: toCamelIdentifier(memberName), exportName, fn });
+        }
+    }
+
+    return statics;
+};
+
 const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
     if (!isEmittableNamespaceFunction(context, context.namespace.name, fn)) {
         return;
@@ -236,4 +273,11 @@ const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, ex
     }
 };
 
-export { renderFnExpression, generateNamespaceFunction, isEmittableNamespaceFunction, namespaceFunctionExportName };
+export {
+    enumStaticFunctions,
+    type EnumStaticFunction,
+    renderFnExpression,
+    generateNamespaceFunction,
+    isEmittableNamespaceFunction,
+    namespaceFunctionExportName,
+};

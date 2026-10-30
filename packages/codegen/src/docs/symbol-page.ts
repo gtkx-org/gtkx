@@ -22,6 +22,7 @@ import {
     renderStaticSignature,
 } from "../store/gi/callables.js";
 import { callbackSignature } from "../store/gi/callback.js";
+import { enumStaticFunctions } from "../store/gi/function.js";
 import { constantLiteral } from "../store/gi/constant.js";
 import { annotationSpec } from "../store/gi/doc-spec.js";
 import {
@@ -499,7 +500,7 @@ const renderSymbolPage = (entry: GiSymbolEntry, options: SymbolPageOptions): str
             return recordPage(entry, options.library);
         }
         case "enum": {
-            return enumPage(entry);
+            return enumPage(entry, options.library);
         }
         case "callback": {
             return callbackPage(entry, options.library);
@@ -608,8 +609,30 @@ const memberDescription = (member: EnumMember): string => {
         .replaceAll("|", String.raw`\|`);
 };
 
-const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }): string => {
+const enumFunctionSections = (
+    entry: GiSymbolBase,
+    qualified: string,
+    statics: ReturnType<typeof enumStaticFunctions>,
+): string[] => {
+    if (statics.length === 0) {
+        return [];
+    }
+
+    const namespaceName = entry.namespace.name;
+    const rows = statics.map(
+        ({ name, exportName }) => `| \`${qualified}.${name}()\` | \`${namespaceName}.${exportName}()\` |`,
+    );
+
+    return [
+        "## Functions",
+        "Each function is also exported from the namespace under its flat name.",
+        ["| Function | Namespace export |", "| --- | --- |", ...rows].join("\n"),
+    ];
+};
+
+const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }, library: Library): string => {
     const { enumeration } = entry;
+    const statics = enumStaticFunctions(docsSignatureContext(entry.namespace, library), enumeration.name);
     const kindLabel = enumeration.errorDomain === undefined ? enumeration.kind : "error domain";
     const qualified = qualifiedName(entry);
 
@@ -625,7 +648,13 @@ const enumPage = (entry: GiSymbolBase & { kind: "enum"; enumeration: GirEnum }):
 
     const table = ["| Member | Value | Description |", "| --- | --- | --- |", ...rows].join("\n");
 
-    return joinSections([...pageHeader(entry, kindLabel), "## Members", usage, table]);
+    return joinSections([
+        ...pageHeader(entry, kindLabel),
+        "## Members",
+        usage,
+        table,
+        ...enumFunctionSections(entry, qualified, statics),
+    ]);
 };
 
 const callbackPage = (entry: GiSymbolBase & { kind: "callback"; callback: GirCallback }, library: Library): string => {
