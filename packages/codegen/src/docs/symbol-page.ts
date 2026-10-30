@@ -368,6 +368,7 @@ const ownerPropertyEntries = (owner: MemberOwner, setup: PropertyAccessorSetup, 
         entries.push({
             name: accessor.jsName,
             meta: propertyMetaLine({
+                library: setup.context.library,
                 type: documentedAccessorType(accessor),
                 property,
                 accessNotes:

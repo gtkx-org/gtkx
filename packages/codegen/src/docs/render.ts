@@ -1,6 +1,7 @@
 import { sanitizeTypeIdentifier, sortStringsBy } from "@gtkx/utils";
 import type { GirAnnotations } from "../gir/annotations.js";
 import type { GirClass } from "../gir/class.js";
+import { enumMemberKey } from "../gir/enum.js";
 import type { GirFunction } from "../gir/function.js";
 import type { Library } from "../gir/library.js";
 import type { GirNamespace } from "../gir/namespace.js";
@@ -48,6 +49,7 @@ type MetaDocEntry = {
 };
 
 type PropertyMetaOptions = {
+    library: Library;
     type: string;
     property: GirProperty;
     accessNotes: string[];
@@ -110,8 +112,27 @@ const renderDocsSignalSignature = (library: Library, signal: GirCallable, selfTy
 const renderDocsSignalHandlerType = (library: Library, signal: GirCallable): string =>
     `(${renderDocsHandlerParameters(library, signal).join(", ")}) => ${renderDocsHandlerResultType(library, signal)}`;
 
-const docsDefaultValue = (value: string): string =>
-    DOCS_DEFAULT_VALUES[value] ?? (DECIMAL_LITERAL.test(value) ? String(Number(value)) : value);
+const enumDefaultValue = (library: Library, property: GirProperty, value: string): string | undefined => {
+    const resolved = property.type === undefined ? undefined : library.typeFor(property.type);
+
+    if (resolved?.kind !== "enum") {
+        return undefined;
+    }
+
+    const typeName = renderDocsType(library, property.type, false);
+    const members = value
+        .split("|")
+        .map((identifier) => resolved.value.members.find((member) => member.cIdentifier === identifier.trim()));
+
+    return members.every((member) => member !== undefined)
+        ? members.map((member) => `${typeName}.${enumMemberKey(member.name)}`).join(" | ")
+        : undefined;
+};
+
+const docsDefaultValue = (library: Library, property: GirProperty, value: string): string =>
+    enumDefaultValue(library, property, value) ??
+    DOCS_DEFAULT_VALUES[value] ??
+    (DECIMAL_LITERAL.test(value) ? String(Number(value)) : value);
 
 const demoteLine = (line: string, isInFence: boolean): { text: string; isInFence: boolean } => {
     if (isFenceLine(line)) {
@@ -277,11 +298,11 @@ const metaBlock = (entry: MetaDocEntry): string => {
 const sortedMetaBlocks = (entries: MetaDocEntry[]): string[] =>
     sortStringsBy(entries, (item) => item.name).map((item) => metaBlock(item));
 
-const propertyMetaLine = ({ type, property, accessNotes, origin }: PropertyMetaOptions): string => {
+const propertyMetaLine = ({ library, type, property, accessNotes, origin }: PropertyMetaOptions): string => {
     const meta = [`\`${type}\``];
 
     if (property.defaultValue !== undefined) {
-        meta.push(`default \`${docsDefaultValue(property.defaultValue)}\``);
+        meta.push(`default \`${docsDefaultValue(library, property, property.defaultValue)}\``);
     }
 
     if (property.constructOnly) {

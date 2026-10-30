@@ -155,7 +155,7 @@ const propertyEntry = (options: PropertyEntryOptions): MetaDocEntry => {
 
     return {
         name: jsName,
-        meta: propertyMetaLine({ type, property, accessNotes, origin: owner.origin }),
+        meta: propertyMetaLine({ library: context.library, type, property, accessNotes, origin: owner.origin }),
         doc: docMarkdown(property.doc),
         tags: annotationSpec(property.annotations),
     };
