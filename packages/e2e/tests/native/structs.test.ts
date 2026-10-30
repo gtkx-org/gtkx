@@ -307,3 +307,20 @@ test("a struct method whose C symbol is missing throws", () => {
     const union = Regress.FooBUnion.new();
     expect(() => union.getContainedType()).toThrow("regress_foo_bunion_get_contained_type");
 });
+
+test("functions GIR moves onto a record, union or interface keep their flat namespace names", () => {
+    const original = GIMarshallingTests.BoxedStruct.new();
+    original.long = 42n;
+    expect(GIMarshallingTests.boxedStructInout(original).long).toBe(0n);
+    expect(GIMarshallingTests.boxedStructOut().long).toBe(42n);
+    expect(GIMarshallingTests.boxedStructOutUninitialized()).toEqual([false, null]);
+    expect(GIMarshallingTests.boxedStructReturnv().long).toBe(42n);
+    expect(GIMarshallingTests.overridesStructReturnv().method()).toBe(42n);
+    expect(GIMarshallingTests.pointerArrayStructWithUint8Array().refCount).toBe(1);
+    expect(GIMarshallingTests.pointerStructReturnv().long).toBe(42n);
+    expect(GIMarshallingTests.simpleStructReturnv().int8).toBe(7);
+    expect(GIMarshallingTests.unionReturnv().long).toBe(42n);
+    expect(Regress.testSimpleBoxedAConstReturn().someInt).toBe(5);
+    expect(Regress.testStructAParse("ignored").someInt).toBe(23);
+    expect(Regress.fooInterfaceStaticMethod(42)).toBeUndefined();
+});

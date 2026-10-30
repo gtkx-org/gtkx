@@ -153,7 +153,7 @@ describe("generated bindings", () => {
                 type Socket,
                 type SocketAddress,
             } from "@gtkx/gi/gio";
-            import { Error as GLibError, UnicodeScript } from "@gtkx/gi/glib";
+            import { Error as GLibError, Source, sourceRemove, UnicodeScript } from "@gtkx/gi/glib";
             import { Object as GObject, TYPE_INT, TYPE_OBJECT } from "@gtkx/gi/gobject";
             import { registerClass, withSignals } from "@gtkx/runtime";
             const file: File = File.newForPath("/tmp/example");
@@ -224,6 +224,8 @@ describe("generated bindings", () => {
             const latin: UnicodeScript.LATIN = UnicodeScript.LATIN;
             const tag: number = UnicodeScript.toIso15924(latin);
             const latinName: string | undefined = UnicodeScript[latin];
+            const removed: boolean = Source.remove(1);
+            const removedFlat: boolean = sourceRemove(1);
             class TickerBase extends withSignals(Application, { ticked: { paramTypes: [TYPE_INT] } }) {
                 tick(): void {
                     this.emit("ticked", 1);
@@ -245,7 +247,7 @@ describe("generated bindings", () => {
             declare const either: Application | ServiceBase;
             either.emit("activate");
             either.on("startup", () => {}).disconnect(either.connect("shutdown", () => {}));
-            export { cancellable, connected, domain, failed, flat, latinName, path, remote, script, tag };`,
+            export { cancellable, connected, domain, failed, flat, latinName, path, remote, removed, removedFlat, script, tag };`,
             ),
         ).toEqual([]);
         expect(

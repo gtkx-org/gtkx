@@ -78,27 +78,8 @@ const renderFnExpression = (context: ModuleContext, fn: GirFunction): string | u
     });
 };
 
-const isMovedOntoEmittedMember = (context: ModuleContext, namespaceName: string, fn: GirFunction): boolean => {
-    const [typeName, memberName] = fn.movedTo?.split(".") ?? [];
-
-    if (typeName === undefined || memberName === undefined) {
-        return false;
-    }
-
-    const resolved = context.library.resolveType(namespaceName, typeName);
-
-    if (resolved?.kind !== "class" && resolved?.kind !== "interface" && resolved?.kind !== "record") {
-        return false;
-    }
-
-    const members = [...resolved.value.methods, ...resolved.value.functions, ...resolved.value.constructors];
-
-    return members.some((member) => member.name === memberName);
-};
-
-const isEmittableNamespaceFunction = (context: ModuleContext, namespaceName: string, fn: GirFunction): boolean =>
+const isEmittableNamespaceFunction = (context: ModuleContext, fn: GirFunction): boolean =>
     fn.introspectable &&
-    !isMovedOntoEmittedMember(context, namespaceName, fn) &&
     fn.shadowedBy === undefined &&
     fn.cIdentifier !== undefined &&
     !hasUnmarshalableParam(context, fn);
@@ -125,7 +106,7 @@ const enumStaticFunctions = (context: ModuleContext, enumName: string): EnumStat
             memberName === undefined ||
             cIdentifier === undefined ||
             context.namespace.sharedLibrary === undefined ||
-            !isEmittableNamespaceFunction(context, context.namespace.name, fn)
+            !isEmittableNamespaceFunction(context, fn)
         ) {
             continue;
         }
@@ -141,7 +122,7 @@ const enumStaticFunctions = (context: ModuleContext, enumName: string): EnumStat
 };
 
 const generateNamespaceFunction = (context: ModuleContext, fn: GirFunction): void => {
-    if (!isEmittableNamespaceFunction(context, context.namespace.name, fn)) {
+    if (!isEmittableNamespaceFunction(context, fn)) {
         return;
     }
 
@@ -182,11 +163,7 @@ const matchNamespaceFinish = (context: ModuleContext, fn: GirFunction): Namespac
     const finishFn = matchAsyncFinish(context.library, fn, context.namespace.functions);
     const cIdentifier = finishFn?.cIdentifier;
 
-    if (
-        finishFn === undefined ||
-        cIdentifier === undefined ||
-        !isEmittableNamespaceFunction(context, context.namespace.name, finishFn)
-    ) {
+    if (finishFn === undefined || cIdentifier === undefined || !isEmittableNamespaceFunction(context, finishFn)) {
         return undefined;
     }
 

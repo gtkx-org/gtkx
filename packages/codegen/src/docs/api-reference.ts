@@ -206,7 +206,7 @@ const functionEntry = (
     docsContext: ReturnType<typeof docsSignatureContext>,
     fn: GirFunction,
 ): GiSymbolEntry | undefined => {
-    if (!isEmittableNamespaceFunction(docsContext, namespace.name, fn)) {
+    if (!isEmittableNamespaceFunction(docsContext, fn)) {
         return undefined;
     }
 

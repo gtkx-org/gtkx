@@ -125,8 +125,8 @@
     ],
     "namespaces": {
         "GIMarshallingTests": {
-            "generated": 866,
-            "executed": 858,
+            "generated": 875,
+            "executed": 867,
             "unavailable": [
                 {
                     "reason": "Abstract record with no upstream constructor, factory or function returning an instance.",
@@ -147,8 +147,8 @@
             "diagnosticOnly": ["Object.method:fullIn", "Object.method:methodVariantArrayIn"]
         },
         "Regress": {
-            "generated": 609,
-            "executed": 607,
+            "generated": 612,
+            "executed": 610,
             "unavailable": [
                 {
                     "reason": "Private owned pointer; overwriting it would corrupt the boxed destructor's ownership.",
