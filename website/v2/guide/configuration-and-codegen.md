@@ -90,7 +90,7 @@ if (!(invocation instanceof Gio.DBusMethodInvocation)) throw new TypeError("Expe
 
 ## Monorepos
 
-GTKX apps work in pnpm, npm and Yarn workspaces with the package manager's default `node_modules` layout, alongside shared packages of components.
+GTKX apps work in pnpm, npm and Yarn workspaces with the package manager's default `node_modules` layout, alongside shared packages of components. In a pnpm workspace, `pnpm create gtkx apps/my-app` adds the app to the workspace and prints any `allowBuilds` entries to add to its root `pnpm-workspace.yaml`; see [Scaffold Options](/v2/guide/scaffold-options#workspaces).
 
 Codegen writes the bindings into the `node_modules` directory the GTKX packages are installed in. In a workspace this is usually the root: pnpm keeps every package under the root `node_modules/.pnpm`, and npm and Yarn hoist them there. The bindings link `@gtkx/runtime`, `@gtkx/cairo`, `@gtkx/react` and `react` from the app, so they load the same copies the app does.
 
