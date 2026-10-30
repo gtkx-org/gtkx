@@ -1769,6 +1769,43 @@ describe("CLI commands", () => {
         });
     });
 
+    it("regenerates bindings and restarts when a GIR file in girPath changes", async () => {
+        using project = createProject({ codegen: true, libraries: ["Probe-1.0"], girPath: ["gir"] });
+        const readyPath = join(project.root, "ready.txt");
+        const gir = (functions: string[]) => `<?xml version="1.0"?>
+            <repository version="1.0" xmlns="http://www.gtk.org/introspection/core/1.0"
+              xmlns:c="http://www.gtk.org/introspection/c/1.0" xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+              <include name="GLib" version="2.0"/>
+              <namespace name="Probe" version="1.0" shared-library="libglib-2.0.so.0" c:prefix="G">
+                ${functions
+                    .map(
+                        (name) => `<function name="${name}" c:identifier="g_get_${name}">
+                          <return-value transfer-ownership="none"><type name="utf8"/></return-value>
+                        </function>`,
+                    )
+                    .join("\n")}
+              </namespace>
+            </repository>`;
+        project.write("gir/Probe-1.0.gir", gir(["user_name"]));
+        project.write(
+            "src/index.ts",
+            `import { Application } from "@gtkx/gi/gio";
+            import * as Probe from "@gtkx/gi/probe";
+            import { writeFileSync } from "node:fs";
+            export const application = new Application({ applicationId: "org.gtkx.example" });
+            application.setDefault();
+            application.register(null);
+            application.hold();
+            writeFileSync(${JSON.stringify(readyPath)}, typeof Probe.hostName);`,
+        );
+
+        await withSession("dev", project.root, readyPath, async () => {
+            expect(readFileSync(readyPath, "utf8")).toBe("undefined");
+            project.write("gir/Probe-1.0.gir", gir(["user_name", "host_name"]));
+            await expect.poll(() => readFileSync(readyPath, "utf8"), { timeout: 30_000 }).toBe("function");
+        });
+    });
+
     it("starts a real storybook session and stops its application", async () => {
         using project = createProject({ codegen: true });
         const readyPath = join(project.root, "ready.txt");

@@ -1,8 +1,10 @@
+import { resolveStore } from "@gtkx/codegen";
 import {
     type CodegenInputs,
     generateBindings,
     getShadowingStorePaths,
     isCodegenStale,
+    readGiStoreGirFiles,
     resolveCodegenInputs,
     sweepProjectStaging,
 } from "@gtkx/codegen/internal";
@@ -214,13 +216,17 @@ const resolveConfigWatch = async (
     configFile?: string,
     initialDependencies: string[] = [],
 ): Promise<{ paths: string[]; resolvePaths: () => string[]; regenerate: () => Promise<string[]> }> => {
-    const { reload, resolvePaths } = await createConfigReloader(cwd, { mode, configFile }, initialDependencies);
+    const reloader = await createConfigReloader(cwd, { mode, configFile }, initialDependencies);
+    const resolvePaths = (): string[] => [
+        ...reloader.resolvePaths(),
+        ...readGiStoreGirFiles(resolveStore(cwd).gi.storeDir),
+    ];
 
     return {
         paths: resolvePaths(),
         resolvePaths,
         regenerate: async () => {
-            const loaded = await reload();
+            const loaded = await reloader.reload();
             await runCodegen({ cwd, mode, resolved: loaded });
 
             return resolvePaths();

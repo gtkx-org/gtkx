@@ -1,4 +1,5 @@
 export { removeDocs, writeDocs } from "./docs/pipeline.js";
+export { readGiStoreGirFiles } from "./fingerprint.js";
 export { resolveBoundLibraries } from "./gir/libraries.js";
 export { readBuiltinElementsForDocs } from "./react/element-config.js";
 export { runGlCodegen } from "./runner.js";

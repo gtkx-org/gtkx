@@ -225,6 +225,12 @@ const isGiStoreFresh = (giStoreDir: string, inputs: GiInputs): boolean => {
     return sentinel.success && isGiFingerprintFresh(sentinel.data, inputs);
 };
 
+const readGiStoreGirFiles = (giStoreDir: string): string[] => {
+    const sentinel = giFingerprintSchema.safeParse(readSentinel(giStoreDir));
+
+    return sentinel.success ? sentinel.data.girFiles : [];
+};
+
 const isGiFingerprintFresh = (fingerprint: GiFingerprint, inputs: GiInputs): boolean =>
     recordedGiValue(fingerprint, inputs) === fingerprint.value;
 
@@ -343,6 +349,7 @@ export {
     computeDocsFingerprint,
     isGiStoreFresh,
     isGiFingerprintFresh,
+    readGiStoreGirFiles,
     isDocsOutputFresh,
     computeJsxFingerprint,
     hashElementConfig,

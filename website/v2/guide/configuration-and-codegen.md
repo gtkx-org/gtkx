@@ -44,7 +44,7 @@ gtkx build --config gtkx.enterprise.config.ts
 
 The path is relative to the project root selected by `--cwd` and must stay inside it. For tests, pass the same path as `gtkx({ configFile: "gtkx.enterprise.config.ts" })` in `vitest.config.ts`.
 
-Development watches the selected config and the local dependencies it loads, including shared config layers and imported data. Changes regenerate bindings and restart the app. If a reload fails, the current app keeps running until the configuration is fixed; creating a missing imported file also triggers another attempt.
+Development watches the selected config and the local dependencies it loads, including shared config layers and imported data, and the GIR files the bindings were generated from, such as a library built alongside the app into a `girPath` directory. Changes regenerate bindings and restart the app. If a reload fails, the current app keeps running until the configuration is fixed; creating a missing imported file also triggers another attempt.
 
 Builds use the selected configuration throughout generation and bundling. `gtkx deploy --skip-build --config ...` rejects a bundle created with another config file or different production settings.
 
