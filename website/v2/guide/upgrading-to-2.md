@@ -56,6 +56,7 @@ The `"*"` wildcard is gone, and explicitly listing `Adw-1` or `Gtk-4.0` is rejec
 - Changes to runtime imports, re-exports, or imported resources and icons restart development apps and reset their state. Edits to component bodies still use Fast Refresh.
 - Generated classes register with their own definitions, so production builds retain only reached bindings. Import a class if `GObject.typeFromName` must find it.
 - GLib criticals are logged by GLib, as in C and GJS applications, instead of becoming uncaught exceptions. They no longer end the application or fail tests; see [Error Handling](/v2/guide/error-handling#glib-criticals-and-warnings).
+- `userEvent.type` presses keys named in braces, so `type(entry, "Ada{Enter}")` activates the entry. Text with a literal `{`, such as JSON, fails with "Unclosed key descriptor"; write it as <span v-pre>`{{`</span>. See [Testing](/v2/guide/testing).
 
 Run `tsc --noEmit` after these changes. The typechecker catches the value and tuple changes; `gtkx build` catches stale resource imports.
 
