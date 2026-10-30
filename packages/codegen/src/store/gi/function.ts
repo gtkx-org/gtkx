@@ -3,6 +3,7 @@ import type { GirFunction } from "../../gir/function.js";
 import type { ModuleContext } from "../../writer/context.js";
 import { tFn } from "../../analysis/descriptor.js";
 import { hasUnmarshalableParam } from "../../analysis/param-capability.js";
+import { inputParameters } from "../../analysis/param-structure.js";
 import { arrayLiteral, renderBlock } from "../../writer/emit.js";
 import { matchAsyncFinish } from "./async.js";
 import { callableDoc } from "./callable-doc.js";
@@ -257,8 +258,11 @@ const appendFinalizeBootstrap = (context: ModuleContext, exportName: string): vo
     });
 };
 
+const isCallableWithoutArguments = (context: ModuleContext, fn: GirFunction): boolean =>
+    inputParameters(context.library, fn).every(({ parameter }) => parameter.optional);
+
 const appendBootstrapRegistration = (context: ModuleContext, fn: GirFunction, exportName: string): void => {
-    if (fn.parameters.length > 0) {
+    if (!isCallableWithoutArguments(context, fn)) {
         return;
     }
 

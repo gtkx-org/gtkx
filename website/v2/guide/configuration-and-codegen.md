@@ -74,6 +74,10 @@ Leave generation enabled for an ordinary application. `codegen: false` is for pr
 
 Concurrent generation waits up to ten minutes for each binding-store lock. Use `gtkx codegen --lock-timeout 900000` to change that wait in milliseconds, or pass `lockTimeoutMs` to the `@gtkx/codegen` `runCodegen` API.
 
+### Library initialization
+
+Importing a namespace initializes its library. When its GIR declares a top-level `init` function that can be called without arguments, such as `Gtk.init()`, `Adw.init()`, `GtkSource.init()` or `Gst.init()`, the namespace calls it as it loads, before any namespace that depends on it, and registers a matching `finalize` function to run when the app quits. GStreamer apps can therefore import `@gtkx/gi/gst` and plugin namespaces such as `@gtkx/gi/gstpbutils` in any order without calling `Gst.init()` first. A later `Gst.init(argv)` call does nothing, so pass GStreamer options through environment variables such as `GST_DEBUG`.
+
 ### Production bindings
 
 Production builds remove unused generated classes. Import a class as a runtime value when the app needs its type registration, including when using `GObject.typeFromName`. A side-effect-only namespace import initializes the namespace but does not retain every class. Development and tests do not bundle.

@@ -604,6 +604,24 @@ describe("generated bindings", () => {
         expect(JSON.parse(cancelled)).toEqual([false, true]);
     });
 
+    it("initializes a library whose GIR declares an init function when its namespace is imported", async () => {
+        using directory = createProject();
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries: ["GstPbutils-1.0"], girPath: resolveGirPath(undefined, directory.path), gi });
+        const initialized = execFileSync(
+            process.execPath,
+            [
+                "--input-type=module",
+                "-e",
+                `import * as GstPbutils from "@gtkx/gi/gstpbutils";
+                import * as Gst from "@gtkx/gi/gst";
+                console.log(JSON.stringify([Gst.isInitialized(), typeof GstPbutils.Discoverer]));`,
+            ],
+            { cwd: directory.path, encoding: "utf8", stdio: "pipe", timeout: 20_000 },
+        );
+        expect(JSON.parse(initialized)).toEqual([true, "function"]);
+    });
+
     it("rejects missing and malformed metadata without publishing a store", async () => {
         using directory = createProject();
         const { gi } = resolveStore(directory.path);
