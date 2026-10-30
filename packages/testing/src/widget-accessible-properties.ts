@@ -465,7 +465,7 @@ const joinTexts = (texts: string[]): string | null => (texts.length > 0 ? texts.
 const labelledByText = (targets: Gtk.Widget[]): string | null => joinTexts(collectAccessibleNames(targets));
 
 const referencedName = (target: Gtk.Widget): string =>
-    getWidgetAccessibleName(target) || collectLabels(target).join(" ");
+    getWidgetAccessibleName(target) || namingLabelText(target) || collectLabels(target).join(" ");
 
 const getWidgetLabelledByName = (widget: Gtk.Widget): string | null => {
     const targets = readAccessibleWidgets(widget, Gtk.AccessibleRelation.LABELLED_BY);

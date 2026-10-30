@@ -1,8 +1,12 @@
 import type { ReactNode } from "react";
+import * as Gio from "@gtkx/gi/gio";
 import * as Gtk from "@gtkx/gi/gtk";
 import { AdwDialog, AdwEntryRow, AdwPreferencesGroup, AdwSpinRow, AdwWindow } from "@gtkx/jsx/adw";
+import { GMenu, GSimpleAction } from "@gtkx/jsx/gio";
 import {
     GtkAdjustment,
+    GtkApplication,
+    GtkApplicationWindow,
     GtkBox,
     GtkButton,
     GtkCheckButton,
@@ -11,6 +15,7 @@ import {
     GtkFrame,
     GtkLabel,
     GtkLevelBar,
+    GtkMenuButton,
     GtkProgressBar,
     GtkScale,
     GtkSearchEntry,
@@ -232,6 +237,28 @@ describe("ByRole", () => {
 
         expect(await findByRole(container, Gtk.AccessibleRole.MENU_ITEM_CHECKBOX, { name: "Words" })).toBeDefined();
         expect(await findByRole(container, Gtk.AccessibleRole.MENU_ITEM_RADIO, { name: "By Name" })).toBeDefined();
+    });
+
+    it("names a menu item from the label GTK relates it to, leaving out its accelerator", async () => {
+        await render(
+            <GtkApplication
+                applicationId="org.gtkx.menuaccelerators"
+                flags={Gio.ApplicationFlags.NON_UNIQUE}
+                actionAccels={[{ detailedActionName: "win.save", accels: ["<Control>s"] }]}
+            >
+                <GtkApplicationWindow actions={<GSimpleAction name="save" />}>
+                    <GtkMenuButton
+                        tooltipText="Main Menu"
+                        menuModel={<GMenu items={[{ label: "Save", action: "win.save" }]} />}
+                    />
+                </GtkApplicationWindow>
+            </GtkApplication>,
+            { container: rootElement },
+        );
+
+        await userEvent.click(screen.getByRole(Gtk.AccessibleRole.BUTTON, { name: "Main Menu" }));
+        expect(await screen.findByText("Ctrl+S")).toBeVisible();
+        expect(screen.getByRole(Gtk.AccessibleRole.MENU_ITEM, { name: "Save" })).toHaveAccessibleName("Save");
     });
 
     it("skips accessibility-hidden widgets by default and never-mapped ones either way", async () => {
