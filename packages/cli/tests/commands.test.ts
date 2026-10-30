@@ -138,6 +138,17 @@ describe("CLI commands", () => {
         expect(readFileSync(join(project.root, "keep.txt"), "utf8")).toBe("keep");
     });
 
+    it("keeps builds out of the deploy output directory that each deployment replaces", async () => {
+        using project = createProject({ deploy: { outDir: "packages" } });
+
+        await expect(invoke(["build", "--cwd", project.root, "--out", "packages/helper"])).rejects.toThrow();
+        await expect(invoke(["build", "--cwd", project.root, "--out", "packages"])).rejects.toThrow();
+        await invoke(["build", "--cwd", project.root, "--out", "build/helper"]);
+
+        expect(existsSync(join(project.root, "packages"))).toBe(false);
+        expect(existsSync(join(project.root, "build/helper/bundle.mjs"))).toBe(true);
+    });
+
     it("keeps line breaks in production bundles so an error while loading points at a readable line", async () => {
         using project = createProject();
         project.write(

@@ -36,10 +36,10 @@ During development, changing, removing, or restoring an imported resource or ico
 `gtkx build` writes to `dist/`. Use `--out` for another independently runnable build:
 
 ```bash
-gtkx build src/helper.ts --out build/helper
+gtkx build src/helper.ts --out dist-helper
 ```
 
-Choose a directory below the project root that is empty or contains an earlier GTKX build. GTKX rejects unrelated files, symlinked paths, and output nested inside another build. Generated bundles contain their JavaScript dependencies; unresolved package imports fail the build.
+Choose a directory below the project root that is empty or contains an earlier GTKX build. GTKX rejects unrelated files, symlinked paths, output nested inside another build, and output inside the deploy output directory (`build/` unless `deploy.outDir` says otherwise), which every deployment replaces. Generated bundles contain their JavaScript dependencies; unresolved package imports fail the build.
 
 `gtkx deploy --skip-build` packages `dist/`. Its `--out` option selects the deployment artifact directory, not the application build directory. See [Deploying](/v2/guide/deploying).
 
