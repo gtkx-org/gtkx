@@ -42,6 +42,21 @@ Returned byte sequences use `Uint8Array`; byte inputs accept `Uint8Array` or `nu
 
 Promisified operations omit a redundant leading success boolean from multi-value finish results; boolean-only results remain booleans. Inout records and boxed values are updated in place without being repeated in the return value. See [Async Operations](/v2/guide/async-operations) for promise usage.
 
+## Reading embedded records
+
+A record or union field that embeds another record by value, such as `Pango.Item.analysis` or the members of a `Poppler.Action`, reads as a view into the parent's memory, as in GJS:
+
+```ts
+import * as Poppler from "@gtkx/gi/poppler";
+
+const describeAction = (action: Poppler.Action) =>
+    action.type === Poppler.ActionType.GOTO_DEST
+        ? `${action.any.title} (page ${action.gotoDest.dest.pageNum})`
+        : action.any.title;
+```
+
+A view reflects later changes to the parent and keeps the parent alive while it is reachable. A view of a value lent to a callback expires with that value when the callback returns. When the embedded record holds pointers, the field is read-only, because copying a whole record would alias pointers the parent already owns.
+
 ## Next
 
 [Async Operations](/v2/guide/async-operations) covers promises, cancellation, and errors from native calls.

@@ -125,8 +125,8 @@
     ],
     "namespaces": {
         "GIMarshallingTests": {
-            "generated": 876,
-            "executed": 868,
+            "generated": 877,
+            "executed": 869,
             "unavailable": [
                 {
                     "reason": "Abstract record with no upstream constructor, factory or function returning an instance.",

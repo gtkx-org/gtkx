@@ -581,6 +581,43 @@ describe("generated bindings", () => {
         expect(page("GLib.TimeZone")).not.toContain("`new GLib.TimeZone(...)`");
     });
 
+    it("reads embedded records that hold pointers as read-only views like GJS", async () => {
+        using directory = createProject();
+        const libraries = ["PangoCairo-1.0"];
+        const girPath = resolveGirPath(undefined, directory.path);
+        const { gi } = resolveStore(directory.path);
+        await runCodegen({ libraries, girPath, gi });
+        const consumer = `import { Analysis, AttrList, Font, itemize } from "@gtkx/gi/pango";
+            import { FontMap } from "@gtkx/gi/pangocairo";
+            const context = FontMap.getDefault().createContext();
+            const [item] = itemize(context, "Hello", 0, 5, AttrList.new(), null);
+            const analysis: Analysis = item.analysis;
+            const assign = () => {
+                // @ts-expect-error an embedded record is read-only
+                item.analysis = analysis;
+            };
+            console.log(JSON.stringify({
+                isView: analysis instanceof Analysis,
+                font: analysis.font instanceof Font,
+                level: analysis.level,
+                length: item.length,
+                assign: typeof assign,
+            }));`;
+        expect(diagnostics(directory.path, consumer)).toEqual([]);
+        const output = execFileSync(process.execPath, ["consumer.ts"], {
+            cwd: directory.path,
+            encoding: "utf8",
+            stdio: "pipe",
+            timeout: 20_000,
+        });
+        expect(JSON.parse(output)).toEqual({ isView: true, font: true, level: 0, length: 5, assign: "function" });
+        const reference = loadApiReference({ libraries, girPath, resolveFrom: directory.path });
+        const item = reference.lookup("Pango.Item");
+        expect(item.outcome === "page" ? item.markdown : "").toContain(
+            "### `analysis`\n\n`Pango.Analysis` · read-only",
+        );
+    });
+
     it("generates JSX bindings that accept documented props and reject incompatible consumers", async () => {
         using directory = createProject();
         const { gi, jsx } = resolveStore(directory.path);
