@@ -76,7 +76,12 @@ test("a returned gerror is an owned value with working error methods", () => {
     expect(error.matches(marshallingDomain(), 6)).toBe(false);
     expect(error.matches(ioDomain(), GIMarshallingTests.CONSTANT_GERROR_CODE)).toBe(false);
     expect(error.matches(Gio.IOErrorEnum, GIMarshallingTests.CONSTANT_GERROR_CODE)).toBe(false);
-    expect(GLib.Error.newLiteral(ioDomain(), Gio.IOErrorEnum.FAILED, "boom").matches(Gio.IOErrorEnum, Gio.IOErrorEnum.FAILED)).toBe(true);
+    expect(
+        GLib.Error.newLiteral(ioDomain(), Gio.IOErrorEnum.FAILED, "boom").matches(
+            Gio.IOErrorEnum,
+            Gio.IOErrorEnum.FAILED,
+        ),
+    ).toBe(true);
 
     const copy = error.copy();
     expect(copy.code).toBe(GIMarshallingTests.CONSTANT_GERROR_CODE);
