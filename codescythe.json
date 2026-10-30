@@ -18,6 +18,7 @@
         "packages/runtime/src/index.ts",
         "packages/storybook/src/index.ts",
         "packages/testing/src/index.ts",
+        "packages/testing/src/internal.ts",
         "packages/utils/src/index.ts",
         "packages/vitest/src/index.ts",
         "packages/cli/src/{cli,vitest-plugin}.ts",

@@ -10,12 +10,14 @@ import {
 import { error, errorMessage, info, normalizeError } from "@gtkx/utils";
 import * as net from "node:net";
 import { dispatch } from "./handlers.js";
+import type { TestingModuleLoader } from "./testing-loader.js";
 import { WidgetRegistry } from "./widget-registry.js";
 
 type McpClientOptions = {
     socketPath?: string;
     applicationId: string;
     lastApplicationError: () => string | null;
+    loadTesting: TestingModuleLoader;
     reportUncaughtError: (cause: unknown) => void;
 };
 
@@ -66,12 +68,14 @@ class McpClient {
     private pendingConnectReject: ((error: Error) => void) | null = null;
     private registry = new WidgetRegistry();
     private lastApplicationError: () => string | null;
+    private loadTesting: TestingModuleLoader;
     private reportUncaughtError: (cause: unknown) => void;
 
     constructor(options: McpClientOptions) {
         this.socketPath = resolveMcpSocketPath(options.socketPath);
         this.applicationId = options.applicationId;
         this.lastApplicationError = options.lastApplicationError;
+        this.loadTesting = options.loadTesting;
         this.reportUncaughtError = options.reportUncaughtError;
     }
 
@@ -169,6 +173,7 @@ class McpClient {
 
         return dispatch(request.method, request.params, {
             registry: this.registry,
+            loadTesting: this.loadTesting,
             reportUncaughtError: this.reportUncaughtError,
         });
     }

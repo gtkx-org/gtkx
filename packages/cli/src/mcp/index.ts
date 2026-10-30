@@ -1,9 +1,11 @@
 import { errorMessage } from "@gtkx/utils";
 import { McpClient } from "./client.js";
+import type { TestingModuleLoader } from "./testing-loader.js";
 
 type McpClientController = {
     start: (
         applicationId: string,
+        loadTesting: TestingModuleLoader,
         reportUncaughtError: (cause: unknown) => void,
         socketPath?: string,
     ) => Promise<McpClient>;
@@ -34,6 +36,7 @@ function createMcpClientController(): McpClientController {
     return {
         start: async (
             applicationId: string,
+            loadTesting: TestingModuleLoader,
             reportUncaughtError: (cause: unknown) => void,
             socketPath?: string,
         ): Promise<McpClient> => {
@@ -44,6 +47,7 @@ function createMcpClientController(): McpClientController {
             const client = new McpClient({
                 applicationId,
                 lastApplicationError: () => applicationError,
+                loadTesting,
                 reportUncaughtError,
                 ...(socketPath !== undefined && { socketPath }),
             });

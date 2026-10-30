@@ -12,11 +12,12 @@ import {
 import { errorMessage } from "@gtkx/utils";
 import type { WidgetRegistry } from "./widget-registry.js";
 import { serializeWidget } from "./serialize-widget.js";
-import { loadTestingModule, type TestingModule } from "./testing-loader.js";
+import type { TestingModule } from "./testing-loader.js";
 import { readWidgetProperties } from "./widget-properties.js";
 
 type HandlerContext = {
     registry: WidgetRegistry;
+    loadTesting: () => Promise<TestingModule>;
     reportUncaughtError: (cause: unknown) => void;
 };
 
@@ -38,17 +39,20 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
             })),
         }),
     ),
-    "widget.getTree": validated(ServerRequestParamsSchemas["widget.getTree"], async ({ registry }, params) => {
-        const testing = await loadTestingModule();
-        const roots = params.rootId === undefined ? registry.toplevels() : [requireWidget(registry, params.rootId)];
-        const options = {
-            getId: (w: Gtk.Widget) => registry.getOrCreateId(w),
-            shouldHighlight: false,
-            ...(params.maxDepth !== undefined && { maxDepth: params.maxDepth }),
-        };
+    "widget.getTree": validated(
+        ServerRequestParamsSchemas["widget.getTree"],
+        async ({ registry, loadTesting }, params) => {
+            const testing = await loadTesting();
+            const roots = params.rootId === undefined ? registry.toplevels() : [requireWidget(registry, params.rootId)];
+            const options = {
+                getId: (w: Gtk.Widget) => registry.getOrCreateId(w),
+                shouldHighlight: false,
+                ...(params.maxDepth !== undefined && { maxDepth: params.maxDepth }),
+            };
 
-        return { tree: roots.map((root) => testing.prettyWidget(root, options)).join("\n") };
-    }),
+            return { tree: roots.map((root) => testing.prettyWidget(root, options)).join("\n") };
+        },
+    ),
     "widget.query": validated(ServerRequestParamsSchemas["widget.query"], handleQuery),
     "widget.getProps": targeted(
         ServerRequestParamsSchemas["widget.getProps"],
@@ -77,7 +81,7 @@ const HANDLERS: Record<ServerInitiatedMethod, ValidatedHandler> = {
         return { success: true };
     }),
     "widget.pressKeys": validated(ServerRequestParamsSchemas["widget.pressKeys"], async (ctx, params) => {
-        const testing = await loadTestingModule();
+        const testing = await ctx.loadTesting();
         const { registry } = ctx;
         const widget =
             params.widgetId === undefined ? focusedWidget(registry) : requireWidget(registry, params.widgetId);
@@ -141,13 +145,14 @@ function targeted<Params extends WidgetParams>(
     schema: ParamsSchema<Params>,
     handler: TargetedHandler<Params>,
 ): ValidatedHandler {
-    return validated(schema, async (ctx, params) =>
-        handler(ctx, await widgetTarget(ctx.registry, params.widgetId), params),
-    );
+    return validated(schema, async (ctx, params) => handler(ctx, await widgetTarget(ctx, params.widgetId), params));
 }
 
-const widgetTarget = async (registry: WidgetRegistry, widgetId: string | undefined): Promise<WidgetTarget> => ({
-    testing: await loadTestingModule(),
+const widgetTarget = async (
+    { registry, loadTesting }: HandlerContext,
+    widgetId: string | undefined,
+): Promise<WidgetTarget> => ({
+    testing: await loadTesting(),
     widget: requireWidget(registry, widgetId),
 });
 
@@ -282,8 +287,8 @@ const emptyQueryHint = (params: QueryParams): string =>
     'Call gtkx_get_widget_tree to see what is mounted; by:"name" is the widest match, and by:"role" accepts ' +
     "options.name to match the accessible name of a known role.";
 
-async function handleQuery({ registry }: HandlerContext, params: QueryParams): Promise<Result> {
-    const testing = await loadTestingModule();
+async function handleQuery({ registry, loadTesting }: HandlerContext, params: QueryParams): Promise<Result> {
+    const testing = await loadTesting();
     const query = QUERY_RUNNERS[params.by](testing, params);
     const matchToplevels = (): Gtk.Widget[] => {
         const matches = new Set(registry.toplevels().flatMap(query));
@@ -315,10 +320,10 @@ const defaultScreenshotTarget = (registry: WidgetRegistry): Gtk.Widget => {
 };
 
 async function handleScreenshot(
-    { registry }: HandlerContext,
+    { registry, loadTesting }: HandlerContext,
     params: ServerRequestParams<"widget.screenshot">,
 ): Promise<Result> {
-    const testing = await loadTestingModule();
+    const testing = await loadTesting();
     const target = params.windowId ? requireWidget(registry, params.windowId) : defaultScreenshotTarget(registry);
     const result = await testing.screenshot(target, { path: params.path });
 

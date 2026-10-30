@@ -11,8 +11,8 @@ import { openWorkerSources } from "../internal/worker-sources.js";
 import type { ProjectStaging } from "../internal/project-staging.js";
 import { reportMcpApplicationError, startMcpClient, stopMcpClient } from "../mcp/index.js";
 import {
+    cacheTestingModule,
     mergeTestingModule,
-    setTestingModuleLoader,
     type TestingInternalModule,
     type TestingPublicModule,
 } from "../mcp/testing-loader.js";
@@ -114,7 +114,7 @@ const createDevRunnerDeps = (
     applicationId: options.applicationId,
     mcpApplicationId: options.mcpApplicationId,
     startMcpClient: (applicationId, loadAppModule, reportUncaughtError) => {
-        setTestingModuleLoader(async () => {
+        const loadTesting = cacheTestingModule(async () => {
             const [publicApi, internals] = await Promise.all([
                 loadAppModule("@gtkx/testing") as Promise<TestingPublicModule>,
                 loadAppModule("@gtkx/testing/internal") as Promise<TestingInternalModule>,
@@ -123,7 +123,7 @@ const createDevRunnerDeps = (
             return mergeTestingModule(publicApi, internals);
         });
 
-        return startMcpClient(applicationId, reportUncaughtError, options.mcpSocketPath);
+        return startMcpClient(applicationId, loadTesting, reportUncaughtError, options.mcpSocketPath);
     },
     stopMcpClient,
     reportApplicationError: reportMcpApplicationError,

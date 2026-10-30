@@ -109,16 +109,12 @@
     },
     "peerDependencies": {
         "@gtkx/react": "workspace:^",
-        "@gtkx/testing": "workspace:^",
         "@types/react": "^19.3",
         "react": "^19.3",
         "vitest": ">=5"
     },
     "peerDependenciesMeta": {
         "@gtkx/react": {
-            "optional": true
-        },
-        "@gtkx/testing": {
             "optional": true
         },
         "@types/react": {
