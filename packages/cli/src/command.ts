@@ -1,11 +1,20 @@
 import type { ServerOptions } from "@gtkx/mcp/server";
-import { defineCommand } from "citty";
+import { type ArgsDef, type CommandDef, defineCommand } from "citty";
 import { withErrorBoundary } from "./internal/errors.js";
 import packageManifest from "../package.json" with { type: "json" };
 
 type CommandOptions = Pick<ServerOptions, "signal" | "transport" | "socketPath"> & {
     applicationArgs?: string[];
     onError?: (cause: unknown) => never;
+};
+
+const withVersionSkewWarning = async <T extends ArgsDef>(
+    command: CommandDef<T>,
+    onError: CommandOptions["onError"],
+): Promise<CommandDef<T>> => {
+    const { withVersionSkewCheck } = await import("./upgrade/version-skew.js");
+
+    return withErrorBoundary(withVersionSkewCheck(command), onError);
 };
 
 const createCommand = (options: CommandOptions = {}) =>
@@ -19,27 +28,27 @@ const createCommand = (options: CommandOptions = {}) =>
             storybook: async () => {
                 const { createStorybookCommand } = await import("./commands/storybook.js");
 
-                return withErrorBoundary(createStorybookCommand(options), options.onError);
+                return withVersionSkewWarning(createStorybookCommand(options), options.onError);
             },
             dev: async () => {
                 const { createDevCommand } = await import("./commands/dev.js");
 
-                return withErrorBoundary(createDevCommand(options), options.onError);
+                return withVersionSkewWarning(createDevCommand(options), options.onError);
             },
             build: async () => {
                 const { build } = await import("./commands/build.js");
 
-                return withErrorBoundary(build, options.onError);
+                return withVersionSkewWarning(build, options.onError);
             },
             deploy: async () => {
                 const { deploy } = await import("./commands/deploy.js");
 
-                return withErrorBoundary(deploy, options.onError);
+                return withVersionSkewWarning(deploy, options.onError);
             },
             codegen: async () => {
                 const { codegen } = await import("./commands/codegen.js");
 
-                return withErrorBoundary(codegen, options.onError);
+                return withVersionSkewWarning(codegen, options.onError);
             },
             docs: async () => {
                 const { docs } = await import("./commands/docs.js");
@@ -49,7 +58,7 @@ const createCommand = (options: CommandOptions = {}) =>
             mcp: async () => {
                 const { createMcpCommand } = await import("./commands/mcp.js");
 
-                return withErrorBoundary(createMcpCommand(options), options.onError);
+                return withVersionSkewWarning(createMcpCommand(options), options.onError);
             },
             create: async () => {
                 const { scaffoldCommand } = await import("create-gtkx");

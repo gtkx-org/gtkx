@@ -30,4 +30,16 @@ const readManifest = (directory: string): Manifest =>
  */
 const isGtkxPackage = (name: string): boolean => name.startsWith("@gtkx/") || name === "create-gtkx";
 
-export { type DependencyField, isGtkxPackage, MANIFEST_FILE, manifestPath, parseManifest, readManifest };
+const gtkxDependencies = (manifest: Manifest, fields: readonly DependencyField[]): string[] => [
+    ...new Set(fields.flatMap((field) => Object.keys(manifest[field] ?? {}).filter(isGtkxPackage))),
+];
+
+export {
+    type DependencyField,
+    gtkxDependencies,
+    isGtkxPackage,
+    MANIFEST_FILE,
+    manifestPath,
+    parseManifest,
+    readManifest,
+};

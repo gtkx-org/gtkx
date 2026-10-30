@@ -1,11 +1,12 @@
 import { runCommand } from "citty";
-import { existsSync, mkdirSync, mkdtempDisposableSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempDisposableSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { stdout, stderr } from "test-console";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { parse } from "yaml";
 import { createCommand } from "../dist/command.js";
+import { createProject } from "./project.js";
 
 type LoggedCommand = { name: string; cwd: string; args: string[] };
 
@@ -205,5 +206,32 @@ describe("gtkx upgrade", () => {
 
         expect(project.read("package.json")).toBe(original);
         expect(installs(project.commands())).toEqual([]);
+    });
+});
+
+describe("GTKX version skew", () => {
+    it("warns when the project's GTKX packages are installed at different versions", async () => {
+        using project = createProject();
+        project.write(
+            "package.json",
+            JSON.stringify({
+                name: "cli-example",
+                version: "1.0.0",
+                type: "module",
+                dependencies: { "@gtkx/cli": "^2.0.0", "@gtkx/i18n": "^2.0.0", "@gtkx/react": "^2.0.0" },
+            }),
+        );
+
+        expect(await invoke(["build", "--cwd", project.root])).not.toContain("gtkx upgrade");
+
+        rmSync(join(project.root, "node_modules/@gtkx/i18n"));
+        project.write(
+            "node_modules/@gtkx/i18n/package.json",
+            JSON.stringify({ name: "@gtkx/i18n", version: "2.0.0-beta.11" }),
+        );
+        const output = await invoke(["build", "--cwd", project.root]);
+
+        expect(output).toContain("@gtkx/i18n");
+        expect(output).toContain("gtkx upgrade");
     });
 });
