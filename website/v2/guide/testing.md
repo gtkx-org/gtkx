@@ -114,6 +114,8 @@ Prefer `screen.getByRole` with a `Gtk.AccessibleRole` enum and an accessible nam
 
 GTKX follows [Testing Library's query conventions](https://testing-library.com/docs/queries/about/). Other query families match label text, placeholders, display values, or the widget's `name` prop; see the [query reference](/v2/reference/@gtkx/testing/).
 
+`findBy` and `findAllBy` queries take Testing Library's wait options as their third argument, as in `screen.findByText("Saved", undefined, { timeout: 3000 })`. They also accept them with the query options, as in `screen.findByRole(Gtk.AccessibleRole.BUTTON, { name: "Save", timeout: 3000 })`; when both are given, the third argument wins. Queries built with `buildQueries` take wait options with their own options only.
+
 Queries exclude widgets that are not mapped, including content on inactive stack pages. The `hidden` option on role queries only includes widgets excluded from the accessibility tree; it does not include unmapped widgets. A role query matches an Adwaita dialog only once its content is shown, which libadwaita does a frame after the dialog opens, so a dialog found with `findByRole` can be queried right away.
 
 A text button's child label takes precedence over its `accessibleLabel` prop. Query the visible label and use `within` when several buttons share it.
@@ -132,6 +134,8 @@ await user.click(saveButton);
 `type` inserts text into an editable widget and presses the keys named in braces, as in Testing Library's `user-event`, so `type(entry, "Ada{Enter}")` types "Ada" and then activates the entry. Type a literal `{` as <span v-pre>`{{`</span>.
 
 `keyboard` sends keys to the focused widget inside the given widget, or to the widget itself, through GTK's key bindings and key controllers. A key no widget handles reaches the window's bindings, so `{Tab}`, `{Shift>}{Tab}{/Shift}` and arrow keys move focus as they do on a keyboard.
+
+`selectOptions` and `deselectOptions` take positions rather than option values or labels, because GTK drop-downs, lists and grids have no option values: `selectOptions(dropDown, 2)` selects the third item, and an array selects several positions in a multiple-selection list.
 
 Use `slide(range, value)` for a slider. `drag` drives application-defined drag gestures and cannot drive a range's native slider. The [interaction reference](/v2/reference/@gtkx/testing/) covers the available helpers.
 

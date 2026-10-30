@@ -213,7 +213,7 @@ Registration adds the interface's public members to instances. Inside the class,
 
 ### Reporting a vfunc error
 
-Throw from a vfunc that reports errors through `GError`. GTKX preserves a thrown `GLib.Error` and converts other exceptions into a native error. A virtual function without an error channel cannot report failure that way; see [Error Handling](/v2/guide/error-handling).
+Throw from a vfunc that reports errors through `GError`. GTKX preserves a thrown `GLib.Error`, such as `new GLib.Error(Gio.IOErrorEnum, Gio.IOErrorEnum.PERMISSION_DENIED, "Read-only")`, and converts other exceptions into a native error. A virtual function without an error channel cannot report failure that way; see [Error Handling](/v2/guide/error-handling).
 
 ## Elements that cannot be children
 

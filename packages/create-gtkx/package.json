@@ -43,10 +43,12 @@
     "sideEffects": false,
     "files": [
         "bin",
+        "dependency-ranges.json",
         "dist",
         "src"
     ],
     "scripts": {
+        "_build:ranges": "node scripts/dependency-ranges.ts",
         "_build:templates": "mkdir -p dist/templates && cp -R src/templates/. dist/templates/",
         "release": "node ../../scripts/release/publish-package.ts"
     },
@@ -69,6 +71,8 @@
         "typescript": "catalog:",
         "vitest": "catalog:",
         "test-console": "^2.0.0",
-        "@types/test-console": "^2.0.3"
+        "@types/test-console": "^2.0.3",
+        "semver": "^7.8.5",
+        "@types/semver": "^7.8.0"
     }
 }

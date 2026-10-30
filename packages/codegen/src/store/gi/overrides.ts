@@ -20,7 +20,7 @@ const OVERRIDES: Record<string, Override[]> = {
         },
     ],
     glib: [
-        { module: "error", exports: [], needsBootstrap: true },
+        { module: "error", exports: ["Error", "type ErrorConstructor"], needsBootstrap: true },
         { module: "regex", exports: [], needsBootstrap: true },
         {
             module: "variant",

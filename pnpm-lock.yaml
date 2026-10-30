@@ -800,9 +800,15 @@ importers:
       '@types/node':
         specifier: 'catalog:'
         version: 26.5.1
+      '@types/semver':
+        specifier: ^7.8.0
+        version: 7.8.0
       '@types/test-console':
         specifier: ^2.0.3
         version: 2.0.3
+      semver:
+        specifier: ^7.8.5
+        version: 7.8.5
       test-console:
         specifier: ^2.0.0
         version: 2.0.0

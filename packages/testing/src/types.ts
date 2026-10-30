@@ -142,12 +142,18 @@ type QueryArgs<Kind extends QueryKind, T extends Gtk.Accessible> = Kind extends 
         : [text: Matcher, options?: MatcherOptions<T>];
 
 /**
+ * The arguments a variant takes after the family's own. As in Testing Library, `findBy` and `findAllBy` take
+ * their wait options third; options given with the matcher options also apply, and the third argument wins.
+ */
+type VariantArgs<Variant> = Variant extends "findBy" | "findAllBy" ? [waitForOptions?: WaitForOptions] : [];
+
+/**
  * One family's query variants, each named for its variant followed by `Suffix` and taking `Head`
  * ahead of the family's own arguments.
  */
 type QueryFamily<Suffix extends string, Kind extends QueryKind, Head extends unknown[]> = {
     [K in keyof QueryFamilyReturns<Gtk.Widget> as `${K & string}${Suffix}`]: <T extends Gtk.Accessible = Gtk.Widget>(
-        ...args: [...Head, ...QueryArgs<Kind, T>]
+        ...args: [...Head, ...QueryArgs<Kind, T>, ...VariantArgs<K>]
     ) => QueryFamilyReturns<T>[K];
 };
 

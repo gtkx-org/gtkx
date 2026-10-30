@@ -2,7 +2,7 @@ import * as p from "@clack/prompts";
 import { APPLICATION_ID_MAX_LENGTH, isValidApplicationId } from "@gtkx/config/internal";
 import { errorMessage, HEADLESS_DISPLAY_TOOLS, missingToolLines, tryResolveExecutable, upperFirst } from "@gtkx/utils";
 import { execFileSync } from "node:child_process";
-import { lstatSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { addDependency, detectPackageManager as nypmDetectPackageManager } from "nypm";
 import { x } from "tinyexec";
@@ -79,6 +79,13 @@ type SpinnerStep = {
 const selfVersion = packageManifest.version;
 const ICON_TEMPLATE_NAME = "icon.svg";
 const TYPESCRIPT_VERSION = "^6.0.3";
+const DEPENDENCY_RANGES: Record<string, string | undefined> = {
+    ...(JSON.parse(readFileSync(new URL("../dependency-ranges.json", import.meta.url), "utf8")) as Record<
+        string,
+        string
+    >),
+    typescript: TYPESCRIPT_VERSION,
+};
 
 const DEPENDENCIES = ["@gtkx/cairo", "@gtkx/css", "@gtkx/runtime", "@gtkx/react", "react"];
 const DEV_DEPENDENCIES = ["@gtkx/cli", "@gtkx/config", "@gtkx/mcp", "vite"];
@@ -634,7 +641,13 @@ const dependencyVersions = (names: string[]): Record<string, string> =>
                 return [dependency, `^${selfVersion}`];
             }
 
-            return [dependency, dependency === "typescript" ? TYPESCRIPT_VERSION : "latest"];
+            const range = DEPENDENCY_RANGES[dependency];
+
+            if (range === undefined) {
+                throw new Error(`No supported version range for ${dependency}`);
+            }
+
+            return [dependency, range];
         }),
     );
 
@@ -644,25 +657,14 @@ const dependencyArguments = (names: string[]): string[] =>
 const declaredDependencies = (value: unknown): Record<string, unknown> =>
     typeof value === "object" && value !== null ? { ...value } : {};
 
-const isVersionRange = (version: string): boolean => version !== "latest";
-
-const isAnyVersion = (): boolean => true;
-
-const selectedVersions = (names: string[], isSelected: (version: string) => boolean): Record<string, string> =>
-    Object.fromEntries(Object.entries(dependencyVersions(names)).filter(([, version]) => isSelected(version)));
-
-const writeDependencies = (
-    root: string,
-    devDependencies: string[],
-    isSelected: (version: string) => boolean = isAnyVersion,
-): void => {
+const writeDependencies = (root: string, devDependencies: string[]): void => {
     updateManifest(root, (manifest) => {
         manifest.dependencies = {
-            ...selectedVersions(DEPENDENCIES, isSelected),
+            ...dependencyVersions(DEPENDENCIES),
             ...declaredDependencies(manifest.dependencies),
         };
         manifest.devDependencies = {
-            ...selectedVersions(devDependencies, isSelected),
+            ...dependencyVersions(devDependencies),
             ...declaredDependencies(manifest.devDependencies),
         };
     });
@@ -814,13 +816,11 @@ const scaffold = async (options: CreateOptions = {}): Promise<void> => {
     const plan = await planScaffoldProject(root, resolved);
     await validateTargetAvailability(root, resolved.target, options, plan.changes);
     await createProjectStructure(root, resolved, plan);
-    writeDependencies(root, devDeps, isVersionRange);
+    writeDependencies(root, devDeps);
     reportCompletedChanges(plan.changes);
 
     if (resolved.shouldInstallDependencies) {
         await installAllDependencies(resolved, devDeps);
-    } else {
-        writeDependencies(root, devDeps);
     }
 
     await initializeGitRepo(root, resolved.shouldInitializeGit);
